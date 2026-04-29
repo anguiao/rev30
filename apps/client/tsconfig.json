@@ -3,7 +3,7 @@
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "tsBuildInfoFile": "node_modules/.cache/tsconfig.tsbuildinfo",
-    "types": ["vite/client"]
+    "types": ["vite/client", "node"]
   },
   "include": ["src/**/*.ts", "src/**/*.vue", "src/env.d.ts", "typed-router.d.ts"],
   "exclude": ["src/**/*.test.ts"],

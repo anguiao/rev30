@@ -3,14 +3,14 @@ import type {
   SystemUserListQuery,
   SystemUserUpdateInput,
 } from '@rev30/shared'
-import { db, type Db } from '../../../db'
+import type { Db } from '../../../db'
 import { SystemUserConflictError, SystemUserNotFoundError } from './errors'
 import { toSystemUser } from './mapper'
 import { createSystemUserRepository } from './repository'
 
 export { SystemUserConflictError, SystemUserNotFoundError } from './errors'
 
-export function createSystemUserService(database: Db = db) {
+export function createSystemUserService(database: Db) {
   const repository = createSystemUserRepository(database)
 
   return {

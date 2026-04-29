@@ -114,11 +114,11 @@ describe('api client', () => {
 })
 
 describe('server RPC contract boundary', () => {
-  it('uses a pure type contract for client-facing server imports', () => {
+  it('uses the real app routes for client-facing server imports', () => {
     expect(serverPackage.exports['.']).toEqual({
-      types: './src/rpc.ts',
+      types: './src/app.ts',
       default: './src/app.ts',
     })
-    expect(tsconfig.compilerOptions.paths['@rev30/server']).toEqual(['apps/server/src/rpc.ts'])
+    expect(tsconfig.compilerOptions.paths['@rev30/server']).toEqual(['apps/server/src/app.ts'])
   })
 })

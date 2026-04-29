@@ -17,6 +17,9 @@
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check ."
   },
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
   "devDependencies": {
     "@types/node": "^24.12.2",
     "oxfmt": "^0.47.0",

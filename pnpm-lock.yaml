@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@types/node':
         specifier: ^24.12.2
@@ -78,6 +82,9 @@ importers:
       '@hono/node-server':
         specifier: ^2.0.0
         version: 2.0.0(hono@4.12.15)
+      '@hono/zod-validator':
+        specifier: ^0.7.6
+        version: 0.7.6(hono@4.12.15)(zod@4.3.6)
       '@rev30/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -624,6 +631,12 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
+
+  '@hono/zod-validator@0.7.6':
+    resolution: {integrity: sha512-Io1B6d011Gj1KknV4rXYz4le5+5EubcWEU/speUjuw9XMMIaP3n78yXLhjd2A3PXaXaUwEAluOiAyLqhBEJgsw==}
+    peerDependencies:
+      hono: '>=3.9.0'
+      zod: ^3.25.0 || ^4.0.0
 
   '@iconify/json@2.2.467':
     resolution: {integrity: sha512-vjw27l6Sp6OJnCSNAhE6PGCZFYNSp68j1xK+hws0T5mptSEez0EjmmJBQLUk4yM5nhA9G5H5mW3EF2/yRfk74Q==}
@@ -2595,6 +2608,11 @@ snapshots:
   '@hono/node-server@2.0.0(hono@4.12.15)':
     dependencies:
       hono: 4.12.15
+
+  '@hono/zod-validator@0.7.6(hono@4.12.15)(zod@4.3.6)':
+    dependencies:
+      hono: 4.12.15
+      zod: 4.3.6
 
   '@iconify/json@2.2.467':
     dependencies:

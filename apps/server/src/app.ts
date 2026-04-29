@@ -1,9 +1,14 @@
 import { Hono } from 'hono'
+import type { Db } from './db'
 import { healthRoutes } from './modules/health/routes'
-import { systemRoutes } from './modules/system/routes'
+import { createSystemRoutes } from './modules/system/routes'
 
-export const apiRoutes = new Hono().route('/', healthRoutes).route('/system', systemRoutes)
+export function createApiRoutes(database: Db) {
+  return new Hono().route('/', healthRoutes).route('/system', createSystemRoutes(database))
+}
 
-export const app = new Hono().route('/api', apiRoutes)
+export function createApp(database: Db) {
+  return new Hono().route('/api', createApiRoutes(database))
+}
 
-export type AppType = typeof apiRoutes
+export type AppType = ReturnType<typeof createApiRoutes>

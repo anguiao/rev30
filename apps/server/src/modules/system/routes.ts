@@ -1,4 +1,7 @@
 import { Hono } from 'hono'
-import { systemUserRoutes } from './users/routes'
+import type { Db } from '../../db'
+import { createSystemUserRoutes } from './users/routes'
 
-export const systemRoutes = new Hono().route('/users', systemUserRoutes)
+export function createSystemRoutes(database: Db) {
+  return new Hono().route('/users', createSystemUserRoutes(database))
+}

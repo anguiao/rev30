@@ -102,10 +102,14 @@ describe('api client', () => {
   })
 
   it('types nested system user query params', () => {
-    if (false) {
-      // @ts-expect-error Unknown query params should not be accepted by the RPC contract.
-      void api.system.users.$get({ query: { unknown: 'value' } })
+    const invalidQuery: Parameters<typeof api.system.users.$get>[0] = {
+      query: {
+        // @ts-expect-error Unknown query params should not be accepted by the RPC contract.
+        unknown: 'value',
+      },
     }
+
+    void invalidQuery
   })
 })
 

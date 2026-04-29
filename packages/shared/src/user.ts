@@ -10,38 +10,29 @@ export const systemUserStatusSchema = z.union([
 
 const trimmedRequiredStringSchema = z.string().trim().min(1)
 
-const nullableContactInputSchema = z.preprocess(
-  (value) => {
-    if (typeof value === 'string' && value.trim() === '') {
-      return null
-    }
+const nullableContactInputSchema = z.preprocess((value) => {
+  if (typeof value === 'string' && value.trim() === '') {
+    return null
+  }
 
-    return value
-  },
-  z.union([trimmedRequiredStringSchema, z.null()]).optional(),
-)
+  return value
+}, z.union([trimmedRequiredStringSchema, z.null()]).optional())
 
-const optionalKeywordSchema = z.preprocess(
-  (value) => {
-    if (typeof value === 'string' && value.trim() === '') {
-      return undefined
-    }
+const optionalKeywordSchema = z.preprocess((value) => {
+  if (typeof value === 'string' && value.trim() === '') {
+    return undefined
+  }
 
-    return value
-  },
-  z.string().trim().optional(),
-)
+  return value
+}, z.string().trim().optional())
 
-const optionalStatusQuerySchema = z.preprocess(
-  (value) => {
-    if (typeof value === 'string' && value.trim() === '') {
-      return undefined
-    }
+const optionalStatusQuerySchema = z.preprocess((value) => {
+  if (typeof value === 'string' && value.trim() === '') {
+    return undefined
+  }
 
-    return value
-  },
-  z.coerce.number().pipe(systemUserStatusSchema).optional(),
-)
+  return value
+}, z.coerce.number().pipe(systemUserStatusSchema).optional())
 
 export const systemUserSchema = z.object({
   id: z.uuid(),

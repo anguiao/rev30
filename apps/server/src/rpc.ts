@@ -43,16 +43,13 @@ const systemUserListQueryValidator = validator(
 >
 
 const systemUserContract = new Hono()
-  .get(
-    '/',
-    systemUserListQueryValidator,
-    (c) =>
-      c.json({
-        list: [],
-        total: 0,
-        page: 1,
-        pageSize: 20,
-      } satisfies SystemUserListResponse),
+  .get('/', systemUserListQueryValidator, (c) =>
+    c.json({
+      list: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+    } satisfies SystemUserListResponse),
   )
   .get('/:id', (c) => c.json(systemUserFixture))
   .post(

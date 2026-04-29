@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
-import { healthRoutes } from './routes/health'
-import { systemRoutes } from './routes/system'
+import { healthRoutes } from './modules/health/routes'
+import { systemRoutes } from './modules/system/routes'
 
 export const apiRoutes = new Hono().route('/', healthRoutes).route('/system', systemRoutes)
 

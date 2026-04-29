@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { app } from '../app'
-import { healthRoutes } from './health'
+import { app } from '../../app'
+import { healthRoutes } from './routes'
 
 describe('health routes', () => {
   it('returns health status through the app', async () => {
@@ -14,7 +14,7 @@ describe('health routes', () => {
     })
   })
 
-  it('keeps health route implementation outside app assembly', async () => {
+  it('keeps health route implementation inside the health module', async () => {
     const response = await healthRoutes.request('/health')
     const body = await response.json()
 

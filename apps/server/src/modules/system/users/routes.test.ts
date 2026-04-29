@@ -1,28 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { USER_STATUS_DISABLED, USER_STATUS_ENABLED } from '@rev30/shared'
-import { users } from '../../db/schema'
-import { createTestDb } from '../../test/db'
-import { createSystemUserRoutes } from './users'
-
-type SystemUserResponse = {
-  id: string
-  username: string
-  nickname: string
-  email: string | null
-  phone: string | null
-  status: 0 | 1
-  createdAt: string
-  updatedAt: string
-}
-
-type SystemUserListResponse = {
-  total: number
-  page: number
-  pageSize: number
-  list: SystemUserResponse[]
-}
+import {
+  USER_STATUS_DISABLED,
+  USER_STATUS_ENABLED,
+  type SystemUser,
+  type SystemUserListResponse,
+  type SystemUserStatus,
+} from '@rev30/shared'
+import { users } from '../../../db/schema'
+import { createTestDb } from '../../../test/db'
+import { createSystemUserRoutes } from './routes'
 
 type ErrorResponse = {
   message: string
@@ -39,7 +27,7 @@ async function createUser(
     nickname: string
     email?: string | null
     phone?: string | null
-    status?: 0 | 1
+    status?: SystemUserStatus
   },
 ) {
   const response = await app.request('/api/system/users', {
@@ -51,7 +39,7 @@ async function createUser(
   })
 
   return {
-    body: (await response.json()) as SystemUserResponse,
+    body: (await response.json()) as SystemUser,
     response,
   }
 }
@@ -110,7 +98,7 @@ describe('system user routes', () => {
     })
 
     const detailResponse = await app.request(`/api/system/users/${created.id}`)
-    const detailBody = (await detailResponse.json()) as SystemUserResponse
+    const detailBody = (await detailResponse.json()) as SystemUser
 
     expect(detailResponse.status).toBe(200)
     expect(detailBody).toMatchObject({
@@ -128,7 +116,7 @@ describe('system user routes', () => {
         'content-type': 'application/json',
       },
     })
-    const updateBody = (await updateResponse.json()) as SystemUserResponse
+    const updateBody = (await updateResponse.json()) as SystemUser
 
     expect(updateResponse.status).toBe(200)
     expect(updateBody).toMatchObject({

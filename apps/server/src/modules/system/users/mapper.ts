@@ -1,0 +1,17 @@
+import type { SystemUser } from '@rev30/shared'
+import { users } from '../../../db/schema'
+
+export type UserRow = typeof users.$inferSelect
+
+export function toSystemUser(user: UserRow): SystemUser {
+  return {
+    id: user.id,
+    username: user.username,
+    nickname: user.nickname,
+    email: user.email,
+    phone: user.phone,
+    status: user.status as SystemUser['status'],
+    createdAt: user.createdAt.toISOString(),
+    updatedAt: user.updatedAt.toISOString(),
+  }
+}

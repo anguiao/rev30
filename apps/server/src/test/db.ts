@@ -1,27 +1,20 @@
 import { PGlite } from '@electric-sql/pglite'
 import { drizzle } from 'drizzle-orm/pglite'
+import { readFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import * as schema from '../db/schema'
+
+const migrationPath = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../drizzle/0000_add_system_users.sql',
+)
 
 export async function createTestDb() {
   const client = new PGlite()
+  const migration = await readFile(migrationPath, 'utf8')
 
-  await client.exec(`
-    CREATE TABLE users (
-      id uuid PRIMARY KEY,
-      username text NOT NULL,
-      nickname text NOT NULL,
-      email text,
-      phone text,
-      status smallint NOT NULL DEFAULT 1,
-      created_at timestamp with time zone NOT NULL DEFAULT now(),
-      updated_at timestamp with time zone NOT NULL DEFAULT now(),
-      deleted_at timestamp with time zone
-    );
-
-    CREATE UNIQUE INDEX users_username_unique ON users(username);
-    CREATE UNIQUE INDEX users_email_unique ON users(email);
-    CREATE UNIQUE INDEX users_phone_unique ON users(phone);
-  `)
+  await client.exec(migration)
 
   return drizzle(client, { schema })
 }

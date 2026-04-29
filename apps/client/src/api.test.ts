@@ -33,6 +33,80 @@ describe('api client', () => {
       status: 'ok',
     })
   })
+
+  it('requests nested system user endpoints', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          list: [],
+          total: 0,
+          page: 1,
+          pageSize: 20,
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await api.system.users.$get()
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/system/users',
+      expect.objectContaining({
+        method: 'GET',
+      }),
+    )
+    await expect(response.json()).resolves.toEqual({
+      list: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+    })
+  })
+
+  it('requests nested system user endpoints with query params', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          list: [],
+          total: 0,
+          page: 2,
+          pageSize: 10,
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await api.system.users.$get({
+      query: {
+        page: '2',
+        pageSize: '10',
+        keyword: 'ada',
+        status: '1',
+      },
+    })
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/system/users?page=2&pageSize=10&keyword=ada&status=1',
+      expect.objectContaining({
+        method: 'GET',
+      }),
+    )
+    await expect(response.json()).resolves.toEqual({
+      list: [],
+      total: 0,
+      page: 2,
+      pageSize: 10,
+    })
+  })
+
+  it('types nested system user query params', () => {
+    if (false) {
+      // @ts-expect-error Unknown query params should not be accepted by the RPC contract.
+      void api.system.users.$get({ query: { unknown: 'value' } })
+    }
+  })
 })
 
 describe('server RPC contract boundary', () => {

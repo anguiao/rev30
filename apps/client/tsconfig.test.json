@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsconfig.test.tsbuildinfo"
+  },
+  "include": ["src/**/*.test.ts", "src/env.d.ts", "typed-router.d.ts"],
+  "exclude": []
+}

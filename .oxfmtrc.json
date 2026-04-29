@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "proseWrap": "preserve",
+  "semi": false,
+  "singleQuote": true,
+  "sortTailwindcss": {
+    "stylesheet": "apps/client/src/style.css"
+  },
+  "tabWidth": 2,
+  "trailingComma": "all",
+  "ignorePatterns": [
+    "node_modules/**",
+    "dist/**",
+    "coverage/**",
+    ".pglite/**",
+    "pnpm-lock.yaml",
+    "apps/client/typed-router.d.ts"
+  ]
+}

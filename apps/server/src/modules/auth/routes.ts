@@ -11,11 +11,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../db'
 import { UserConflictError } from '../system/users/errors'
-import {
-  clearRefreshTokenCookie,
-  getRefreshTokenCookie,
-  setRefreshTokenCookie,
-} from './cookies'
+import { clearRefreshTokenCookie, getRefreshTokenCookie, setRefreshTokenCookie } from './cookies'
 import { readAuthConfig } from './config'
 import {
   AuthInvalidCredentialsError,

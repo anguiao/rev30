@@ -63,11 +63,7 @@ export function createAuthRepository(database: Db) {
       return rows[0]
     },
 
-    async createRefreshSession(input: {
-      userId: string
-      tokenHash: string
-      expiresAt: Date
-    }) {
+    async createRefreshSession(input: { userId: string; tokenHash: string; expiresAt: Date }) {
       const now = new Date()
       const [created] = await database
         .insert(authRefreshTokens)

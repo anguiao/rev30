@@ -1,9 +1,10 @@
+import { randomUUID } from 'node:crypto'
 import { PGlite } from '@electric-sql/pglite'
 import { afterEach, describe, expect, it } from 'vitest'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { users } from './schema'
+import { authPasswordCredentials, authRefreshTokens, users } from './schema'
 import { createDb } from './index'
 import { applyPgliteMigrations } from './migrations'
 
@@ -60,15 +61,52 @@ describe('PGlite migrations', () => {
     await client.close()
   })
 
-  it('creates a usable users table for fresh development databases', async () => {
+  it('creates usable auth tables for fresh development databases', async () => {
     const dataDir = join(await createTempDir(), 'dev')
 
     process.env.NODE_ENV = 'development'
     process.env.PGLITE_DATA_DIR = dataDir
 
     const database = await createDb()
-    const rows = await database.select().from(users).limit(1)
+    const now = new Date()
+    const [created] = await database
+      .insert(users)
+      .values({
+        id: randomUUID(),
+        username: 'migration-auth',
+        nickname: 'Migration Auth',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
 
-    expect(rows).toEqual([])
+    if (!created) {
+      throw new Error('Expected migrated user')
+    }
+
+    const [credential] = await database
+      .insert(authPasswordCredentials)
+      .values({
+        userId: created.id,
+        passwordHash: 'scrypt$salt$hash',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+
+    const [session] = await database
+      .insert(authRefreshTokens)
+      .values({
+        id: randomUUID(),
+        userId: created.id,
+        tokenHash: 'token-hash',
+        expiresAt: now,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+
+    expect(credential?.passwordHash).toBe('scrypt$salt$hash')
+    expect(session?.tokenHash).toBe('token-hash')
   })
 })

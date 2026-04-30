@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { PGlite } from '@electric-sql/pglite'
 import { afterEach, describe, expect, it } from 'vitest'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
+import { readMigrationFiles } from 'drizzle-orm/migrator'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { authPasswordCredentials, authRefreshTokens, users } from './schema'
 import { createDb } from './index'
-import { applyPgliteMigrations } from './migrations'
+import { applyPgliteMigrations, defaultMigrationsDir } from './migrations'
 
 const originalNodeEnv = process.env.NODE_ENV
 const originalPgliteDataDir = process.env.PGLITE_DATA_DIR
@@ -108,5 +109,19 @@ describe('PGlite migrations', () => {
 
     expect(credential?.passwordHash).toBe('scrypt$salt$hash')
     expect(session?.tokenHash).toBe('token-hash')
+  })
+
+  it('keeps Drizzle migration journal in sync with SQL migrations', async () => {
+    const migrationFiles = (await readdir(defaultMigrationsDir))
+      .filter((fileName) => fileName.endsWith('.sql'))
+      .sort()
+    const journalMigrations = readMigrationFiles({
+      migrationsFolder: defaultMigrationsDir,
+    })
+    const journalSql = journalMigrations.flatMap((migration) => migration.sql).join('\n')
+
+    expect(journalMigrations).toHaveLength(migrationFiles.length)
+    expect(journalSql).toContain('CREATE TABLE "auth_password_credentials"')
+    expect(journalSql).toContain('CREATE TABLE "auth_refresh_tokens"')
   })
 })

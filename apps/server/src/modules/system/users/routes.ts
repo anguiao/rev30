@@ -1,56 +1,49 @@
 import {
-  type SystemUserCreateInput,
-  type SystemUserListQuery,
-  type SystemUserUpdateInput,
-  systemUserCreateSchema,
-  systemUserListQuerySchema,
-  systemUserSchema,
-  systemUserUpdateSchema,
+  type UserCreateInput,
+  type UserListQuery,
+  type UserUpdateInput,
+  userCreateSchema,
+  userListQuerySchema,
+  userSchema,
+  userUpdateSchema,
 } from '@rev30/shared'
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
-import {
-  SystemUserConflictError,
-  SystemUserNotFoundError,
-  createSystemUserService,
-} from './service'
+import { UserConflictError, UserNotFoundError } from './errors'
+import { createUserService } from './service'
 
-const systemUserIdParamSchema = systemUserSchema.pick({ id: true })
-const systemUserListRequestQuerySchema = systemUserListQuerySchema
+const userIdParamSchema = userSchema.pick({ id: true })
+const userListRequestQuerySchema = userListQuerySchema
   .optional()
-  .transform((query) => query ?? systemUserListQuerySchema.parse({}))
+  .transform((query) => query ?? userListQuerySchema.parse({}))
 
-const systemUserIdValidator = zValidator('param', systemUserIdParamSchema, (result, c) => {
+const userIdValidator = zValidator('param', userIdParamSchema, (result, c) => {
   if (!result.success) {
     return c.json({ message: 'Invalid user id' }, 400)
   }
 })
 
-const systemUserListQueryValidator = zValidator(
-  'query',
-  systemUserListRequestQuerySchema,
-  (result, c) => {
-    if (!result.success) {
-      return c.json({ message: 'Invalid query' }, 400)
-    }
-  },
-)
+const userListQueryValidator = zValidator('query', userListRequestQuerySchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ message: 'Invalid query' }, 400)
+  }
+})
 
-const systemUserCreateBodyValidator = zValidator('json', systemUserCreateSchema, (result, c) => {
+const userCreateBodyValidator = zValidator('json', userCreateSchema, (result, c) => {
   if (!result.success) {
     return c.json({ message: 'Invalid body' }, 400)
   }
 })
 
-const systemUserUpdateBodyValidator = zValidator('json', systemUserUpdateSchema, (result, c) => {
+const userUpdateBodyValidator = zValidator('json', userUpdateSchema, (result, c) => {
   if (!result.success) {
     return c.json({ message: 'Invalid body' }, 400)
   }
 })
 
-function serviceErrorResponse(c: Context, error: unknown) {
-  if (error instanceof SystemUserConflictError) {
+function userErrorResponse(error: unknown, c: Context) {
+  if (error instanceof UserConflictError) {
     return c.json(
       {
         field: error.field,
@@ -60,59 +53,46 @@ function serviceErrorResponse(c: Context, error: unknown) {
     )
   }
 
-  if (error instanceof SystemUserNotFoundError) {
+  if (error instanceof UserNotFoundError) {
     return c.json({ message: error.message }, 404)
   }
 
   throw error
 }
 
-export function createSystemUserRoutes(database: Db) {
-  const service = createSystemUserService(database)
+export function createUserRoutes(database: Db) {
+  const service = createUserService(database)
+  const app = new Hono()
 
-  return new Hono()
-    .get('/', systemUserListQueryValidator, async (c) => {
-      const query: SystemUserListQuery = c.req.valid('query')
+  app.onError((error, c) => userErrorResponse(error, c))
+
+  return app
+    .get('/', userListQueryValidator, async (c) => {
+      const query: UserListQuery = c.req.valid('query')
 
       return c.json(await service.list(query))
     })
-    .get('/:id', systemUserIdValidator, async (c) => {
+    .get('/:id', userIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
-      try {
-        return c.json(await service.get(id))
-      } catch (error) {
-        return serviceErrorResponse(c, error)
-      }
+      return c.json(await service.get(id))
     })
-    .post('/', systemUserCreateBodyValidator, async (c) => {
-      const body: SystemUserCreateInput = c.req.valid('json')
+    .post('/', userCreateBodyValidator, async (c) => {
+      const body: UserCreateInput = c.req.valid('json')
 
-      try {
-        return c.json(await service.create(body), 201)
-      } catch (error) {
-        return serviceErrorResponse(c, error)
-      }
+      return c.json(await service.create(body), 201)
     })
-    .patch('/:id', systemUserIdValidator, systemUserUpdateBodyValidator, async (c) => {
+    .patch('/:id', userIdValidator, userUpdateBodyValidator, async (c) => {
       const { id } = c.req.valid('param')
-      const body: SystemUserUpdateInput = c.req.valid('json')
+      const body: UserUpdateInput = c.req.valid('json')
 
-      try {
-        return c.json(await service.update(id, body))
-      } catch (error) {
-        return serviceErrorResponse(c, error)
-      }
+      return c.json(await service.update(id, body))
     })
-    .delete('/:id', systemUserIdValidator, async (c) => {
+    .delete('/:id', userIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
-      try {
-        await service.delete(id)
+      await service.delete(id)
 
-        return new Response(null, { status: 204 })
-      } catch (error) {
-        return serviceErrorResponse(c, error)
-      }
+      return new Response(null, { status: 204 })
     })
 }

@@ -34,7 +34,7 @@ describe('api client', () => {
     })
   })
 
-  it('requests nested system user endpoints', async () => {
+  it('requests nested user endpoints', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -64,7 +64,7 @@ describe('api client', () => {
     })
   })
 
-  it('requests nested system user endpoints with query params', async () => {
+  it('requests nested user endpoints with query params', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -101,7 +101,7 @@ describe('api client', () => {
     })
   })
 
-  it('types nested system user query params', () => {
+  it('types nested user query params', () => {
     const invalidQuery: Parameters<typeof api.system.users.$get>[0] = {
       query: {
         // @ts-expect-error Unknown query params should not be accepted by the RPC contract.

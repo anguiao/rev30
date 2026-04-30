@@ -8,6 +8,7 @@
 - 服务端位于 `apps/server`，使用 Hono、Drizzle；开发默认 PGlite，生产通过 `DATABASE_URL` 使用 PostgreSQL。
 - 共享 zod schema 和 TypeScript 类型放在 `packages/shared`。
 - 代码检查使用 oxlint，格式化使用 oxfmt。
+- 只添加必要测试：优先覆盖用户可见行为、核心业务规则和回归风险；避免为纯重构、导入整理或内部实现细节添加冗余测试。
 - 提交信息遵循 Conventional Commits，标题使用英文，并保持与历史提交格式一致。
 
 ## 常用验证

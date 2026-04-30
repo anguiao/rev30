@@ -1,25 +1,33 @@
-import type {
-  SystemUserCreateInput,
-  SystemUserListQuery,
-  SystemUserUpdateInput,
-} from '@rev30/shared'
+import type { UserCreateInput, UserListQuery, UserUpdateInput } from '@rev30/shared'
 import type { Db } from '../../../db'
-import { SystemUserConflictError, SystemUserNotFoundError } from './errors'
-import { toSystemUser } from './mapper'
-import { createSystemUserRepository } from './repository'
+import { toUserConflictError, UserNotFoundError } from './errors'
+import { toUser } from './mapper'
+import { createUserRepository } from './repository'
 
-export { SystemUserConflictError, SystemUserNotFoundError } from './errors'
+async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
+  try {
+    return await operation()
+  } catch (error) {
+    const uniqueConflict = toUserConflictError(error)
 
-export function createSystemUserService(database: Db) {
-  const repository = createSystemUserRepository(database)
+    if (uniqueConflict) {
+      throw uniqueConflict
+    }
+
+    throw error
+  }
+}
+
+export function createUserService(database: Db) {
+  const repository = createUserRepository(database)
 
   return {
-    async list(query: SystemUserListQuery) {
+    async list(query: UserListQuery) {
       const result = await repository.list(query)
 
       return {
         ...result,
-        list: result.list.map(toSystemUser),
+        list: result.list.map(toUser),
       }
     },
 
@@ -27,49 +35,31 @@ export function createSystemUserService(database: Db) {
       const user = await repository.findActiveById(id)
 
       if (!user) {
-        throw new SystemUserNotFoundError()
+        throw new UserNotFoundError()
       }
 
-      return toSystemUser(user)
+      return toUser(user)
     },
 
-    async create(input: SystemUserCreateInput) {
-      const conflict = await repository.findUniqueConflict(input)
-
-      if (conflict) {
-        throw new SystemUserConflictError(conflict)
-      }
-
-      return toSystemUser(await repository.create(input))
+    async create(input: UserCreateInput) {
+      return toUser(await withUserUniqueConflict(() => repository.create(input)))
     },
 
-    async update(id: string, input: SystemUserUpdateInput) {
-      const exists = await repository.existsActive(id)
-
-      if (!exists) {
-        throw new SystemUserNotFoundError()
-      }
-
-      const conflict = await repository.findUniqueConflict(input, id)
-
-      if (conflict) {
-        throw new SystemUserConflictError(conflict)
-      }
-
-      const updated = await repository.update(id, input)
+    async update(id: string, input: UserUpdateInput) {
+      const updated = await withUserUniqueConflict(() => repository.update(id, input))
 
       if (!updated) {
-        throw new SystemUserNotFoundError()
+        throw new UserNotFoundError()
       }
 
-      return toSystemUser(updated)
+      return toUser(updated)
     },
 
     async delete(id: string) {
       const deleted = await repository.softDelete(id)
 
       if (!deleted) {
-        throw new SystemUserNotFoundError()
+        throw new UserNotFoundError()
       }
     },
   }

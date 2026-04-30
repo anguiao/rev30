@@ -2,16 +2,16 @@ import { describe, expect, it } from 'vitest'
 import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
-  systemUserCreateSchema,
-  systemUserListQuerySchema,
-  systemUserUpdateSchema,
-  systemUserSchema,
+  userCreateSchema,
+  userListQuerySchema,
+  userUpdateSchema,
+  userSchema,
 } from './user'
 
-describe('system user schemas', () => {
+describe('user schemas', () => {
   it('accepts a user response with nullable email and phone', () => {
     expect(
-      systemUserSchema.parse({
+      userSchema.parse({
         id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
         username: 'ada',
         nickname: 'Ada Lovelace',
@@ -31,7 +31,7 @@ describe('system user schemas', () => {
 
   it('defaults new users to enabled status', () => {
     expect(
-      systemUserCreateSchema.parse({
+      userCreateSchema.parse({
         username: 'grace',
         nickname: 'Grace Hopper',
       }),
@@ -44,7 +44,7 @@ describe('system user schemas', () => {
 
   it('accepts disabled status but rejects unknown status values', () => {
     expect(
-      systemUserCreateSchema.parse({
+      userCreateSchema.parse({
         username: 'alan',
         nickname: 'Alan Turing',
         status: USER_STATUS_DISABLED,
@@ -54,7 +54,7 @@ describe('system user schemas', () => {
     })
 
     expect(() =>
-      systemUserCreateSchema.parse({
+      userCreateSchema.parse({
         username: 'invalid',
         nickname: 'Invalid User',
         status: 2,
@@ -64,7 +64,7 @@ describe('system user schemas', () => {
 
   it('parses list query strings into pagination and status values', () => {
     expect(
-      systemUserListQuerySchema.parse({
+      userListQuerySchema.parse({
         page: '2',
         pageSize: '10',
         keyword: ' ada ',
@@ -79,21 +79,21 @@ describe('system user schemas', () => {
   })
 
   it('treats blank list query status as undefined', () => {
-    expect(systemUserListQuerySchema.parse({ status: '' })).toEqual({
+    expect(userListQuerySchema.parse({ status: '' })).toEqual({
       page: 1,
       pageSize: 20,
     })
 
-    expect(systemUserListQuerySchema.parse({ status: '   ' })).toEqual({
+    expect(userListQuerySchema.parse({ status: '   ' })).toEqual({
       page: 1,
       pageSize: 20,
     })
   })
 
   it('requires at least one field for updates', () => {
-    expect(() => systemUserUpdateSchema.parse({})).toThrow()
-    expect(() => systemUserUpdateSchema.parse({ email: undefined })).toThrow()
-    expect(() => systemUserUpdateSchema.parse({ status: undefined })).toThrow()
-    expect(systemUserUpdateSchema.parse({ phone: null })).toEqual({ phone: null })
+    expect(() => userUpdateSchema.parse({})).toThrow()
+    expect(() => userUpdateSchema.parse({ email: undefined })).toThrow()
+    expect(() => userUpdateSchema.parse({ status: undefined })).toThrow()
+    expect(userUpdateSchema.parse({ phone: null })).toEqual({ phone: null })
   })
 })

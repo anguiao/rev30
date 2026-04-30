@@ -4,20 +4,20 @@ import { Hono } from 'hono'
 import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
-  type SystemUser,
-  type SystemUserListResponse,
-  type SystemUserStatus,
+  type User,
+  type UserListResponse,
+  type UserStatus,
 } from '@rev30/shared'
 import { users } from '../../../db/schema'
 import { createTestDb } from '../../../test/db'
-import { createSystemUserRoutes } from './routes'
+import { createUserRoutes } from './routes'
 
 type ErrorResponse = {
   message: string
 }
 
 function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
-  return new Hono().route('/api/system/users', createSystemUserRoutes(database))
+  return new Hono().route('/api/system/users', createUserRoutes(database))
 }
 
 async function createUser(
@@ -27,7 +27,7 @@ async function createUser(
     nickname: string
     email?: string | null
     phone?: string | null
-    status?: SystemUserStatus
+    status?: UserStatus
   },
 ) {
   const response = await app.request('/api/system/users', {
@@ -39,12 +39,12 @@ async function createUser(
   })
 
   return {
-    body: (await response.json()) as SystemUser,
+    body: (await response.json()) as User,
     response,
   }
 }
 
-describe('system user routes', () => {
+describe('user routes', () => {
   it('creates users in the database and returns paginated users', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
@@ -72,7 +72,7 @@ describe('system user routes', () => {
     expect(storedUsers[0]?.username).toBe('ada')
 
     const listResponse = await app.request('/api/system/users?page=1&pageSize=10')
-    const listBody = (await listResponse.json()) as SystemUserListResponse
+    const listBody = (await listResponse.json()) as UserListResponse
 
     expect(listResponse.status).toBe(200)
     expect(listBody).toMatchObject({
@@ -98,7 +98,7 @@ describe('system user routes', () => {
     })
 
     const detailResponse = await app.request(`/api/system/users/${created.id}`)
-    const detailBody = (await detailResponse.json()) as SystemUser
+    const detailBody = (await detailResponse.json()) as User
 
     expect(detailResponse.status).toBe(200)
     expect(detailBody).toMatchObject({
@@ -116,7 +116,7 @@ describe('system user routes', () => {
         'content-type': 'application/json',
       },
     })
-    const updateBody = (await updateResponse.json()) as SystemUser
+    const updateBody = (await updateResponse.json()) as User
 
     expect(updateResponse.status).toBe(200)
     expect(updateBody).toMatchObject({
@@ -157,7 +157,7 @@ describe('system user routes', () => {
 
     const listResponse = await app.request('/api/system/users')
     expect(listResponse.status).toBe(200)
-    const listBody = (await listResponse.json()) as SystemUserListResponse
+    const listBody = (await listResponse.json()) as UserListResponse
 
     expect(listBody.total).toBe(0)
     expect(listBody.list).toEqual([])
@@ -215,6 +215,28 @@ describe('system user routes', () => {
     expect(afterDeleteDuplicate.response.status).toBe(409)
   })
 
+  it('returns conflict when concurrent creates hit the username unique index', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const body = JSON.stringify({
+      username: 'race',
+      nickname: 'Race User',
+    })
+    const createRaceUser = () =>
+      app.request('/api/system/users', {
+        method: 'POST',
+        body,
+        headers: {
+          'content-type': 'application/json',
+        },
+      })
+
+    const responses = await Promise.all([createRaceUser(), createRaceUser()])
+    const statuses = responses.map((response) => response.status).sort()
+
+    expect(statuses).toEqual([201, 409])
+  })
+
   it('rejects duplicate username, email, and phone when updating users', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
@@ -254,6 +276,35 @@ describe('system user routes', () => {
 
       expect(response.status).toBe(409)
     }
+  })
+
+  it('returns conflict when concurrent updates hit the username unique index', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const { body: first } = await createUser(app, {
+      username: 'first-update-target',
+      nickname: 'First Update Target',
+    })
+    const { body: second } = await createUser(app, {
+      username: 'second-update-target',
+      nickname: 'Second Update Target',
+    })
+    const body = JSON.stringify({
+      username: 'shared-update-target',
+    })
+    const updateUser = (id: string) =>
+      app.request(`/api/system/users/${id}`, {
+        method: 'PATCH',
+        body,
+        headers: {
+          'content-type': 'application/json',
+        },
+      })
+
+    const responses = await Promise.all([updateUser(first.id), updateUser(second.id)])
+    const statuses = responses.map((response) => response.status).sort()
+
+    expect(statuses).toEqual([200, 409])
   })
 
   it('returns 400 when user id params are invalid', async () => {

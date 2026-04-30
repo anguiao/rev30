@@ -1,12 +1,12 @@
 import { PGlite } from '@electric-sql/pglite'
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite'
 import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js'
-import { mkdirSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { mkdir } from 'node:fs/promises'
 import postgres from 'postgres'
+import { applyPgliteMigrations } from './migrations'
 import * as schema from './schema'
 
-export function createDb() {
+export async function createDb() {
   if (process.env.NODE_ENV === 'production') {
     const databaseUrl = process.env.DATABASE_URL
 
@@ -21,13 +21,13 @@ export function createDb() {
 
   const dataDir = process.env.PGLITE_DATA_DIR ?? '.pglite/dev'
 
-  mkdirSync(dirname(dataDir), { recursive: true })
+  await mkdir(dataDir, { recursive: true })
 
   const client = new PGlite(dataDir)
+
+  await applyPgliteMigrations(client)
 
   return drizzlePglite(client, { schema })
 }
 
-export type Db = ReturnType<typeof createDb>
-
-export const db = createDb()
+export type Db = Awaited<ReturnType<typeof createDb>>

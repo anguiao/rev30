@@ -1,17 +1,12 @@
 import { randomUUID } from 'node:crypto'
-import type {
-  SystemUserCreateInput,
-  SystemUserListQuery,
-  SystemUserUpdateInput,
-} from '@rev30/shared'
-import { and, count, desc, eq, ilike, isNull, ne, or } from 'drizzle-orm'
+import type { UserCreateInput, UserListQuery, UserUpdateInput } from '@rev30/shared'
+import { and, count, desc, eq, ilike, isNull, or } from 'drizzle-orm'
 import type { Db } from '../../../db'
 import { users } from '../../../db/schema'
-import type { UniqueField } from './errors'
 
-export function createSystemUserRepository(database: Db) {
+export function createUserRepository(database: Db) {
   return {
-    async list(query: SystemUserListQuery) {
+    async list(query: UserListQuery) {
       const { page, pageSize, keyword, status } = query
       const keywordFilter = keyword ? `%${keyword}%` : undefined
       const filters = [
@@ -62,65 +57,7 @@ export function createSystemUserRepository(database: Db) {
       return rows[0]
     },
 
-    async existsActive(id: string) {
-      const rows = await database
-        .select({
-          id: users.id,
-        })
-        .from(users)
-        .where(and(eq(users.id, id), isNull(users.deletedAt)))
-        .limit(1)
-
-      return rows[0] !== undefined
-    },
-
-    async findUniqueConflict(
-      input: Partial<Record<UniqueField, string | null | undefined>>,
-      excludeId?: string,
-    ) {
-      const checks = [
-        input.username ? eq(users.username, input.username) : undefined,
-        input.email ? eq(users.email, input.email) : undefined,
-        input.phone ? eq(users.phone, input.phone) : undefined,
-      ].filter((condition) => condition !== undefined)
-
-      if (checks.length === 0) {
-        return undefined
-      }
-
-      const rows = await database
-        .select({
-          id: users.id,
-          username: users.username,
-          email: users.email,
-          phone: users.phone,
-        })
-        .from(users)
-        .where(and(or(...checks), excludeId ? ne(users.id, excludeId) : undefined))
-        .limit(1)
-
-      const conflict = rows[0]
-
-      if (!conflict) {
-        return undefined
-      }
-
-      if (input.username && conflict.username === input.username) {
-        return 'username'
-      }
-
-      if (input.email && conflict.email === input.email) {
-        return 'email'
-      }
-
-      if (input.phone && conflict.phone === input.phone) {
-        return 'phone'
-      }
-
-      return undefined
-    },
-
-    async create(input: SystemUserCreateInput) {
+    async create(input: UserCreateInput) {
       const now = new Date()
       const [created] = await database
         .insert(users)
@@ -139,7 +76,7 @@ export function createSystemUserRepository(database: Db) {
       return created
     },
 
-    async update(id: string, input: SystemUserUpdateInput) {
+    async update(id: string, input: UserUpdateInput) {
       const [updated] = await database
         .update(users)
         .set({

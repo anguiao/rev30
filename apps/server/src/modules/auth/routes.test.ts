@@ -159,4 +159,103 @@ describe('auth routes', () => {
       message: 'Invalid username or password',
     })
   })
+
+  it('rotates refresh tokens and rejects reuse of the old refresh token', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app)
+
+    const refreshResponse = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({
+        refreshToken: registered.body.refreshToken,
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
+
+    expect(refreshResponse.status).toBe(200)
+    expect(refreshResponse.headers.get('set-cookie')).toContain('refresh_token=')
+    expect(refreshBody.refreshToken).not.toBe(registered.body.refreshToken)
+
+    const reuseResponse = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({
+        refreshToken: registered.body.refreshToken,
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const reuseBody = (await reuseResponse.json()) as ErrorResponse
+
+    expect(reuseResponse.status).toBe(401)
+    expect(reuseBody).toEqual({
+      message: 'Invalid refresh token',
+    })
+  })
+
+  it('refreshes from the refresh cookie when no body token is provided', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app)
+
+    const refreshResponse = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        cookie: `refresh_token=${registered.body.refreshToken}`,
+      },
+    })
+    const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
+
+    expect(refreshResponse.status).toBe(200)
+    expect(refreshBody.user.id).toBe(registered.body.user.id)
+    expect(refreshBody.refreshToken).not.toBe(registered.body.refreshToken)
+  })
+
+  it('logs out by revoking refresh tokens and clearing the cookie', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app)
+
+    const logoutResponse = await app.request('/api/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify({
+        refreshToken: registered.body.refreshToken,
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+
+    expect(logoutResponse.status).toBe(204)
+    expect(logoutResponse.headers.get('set-cookie')).toContain('refresh_token=')
+    expect(logoutResponse.headers.get('set-cookie')).toContain('Max-Age=0')
+
+    const refreshResponse = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({
+        refreshToken: registered.body.refreshToken,
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+
+    expect(refreshResponse.status).toBe(401)
+
+    const secondLogoutResponse = await app.request('/api/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify({
+        refreshToken: registered.body.refreshToken,
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+
+    expect(secondLogoutResponse.status).toBe(204)
+  })
 })

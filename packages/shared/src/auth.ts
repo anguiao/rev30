@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { userCreateSchema, userSchema } from './user'
 
-const passwordSchema = z.string().min(1)
+const passwordSchema = z.string().min(8)
 const optionalTokenSchema = z.preprocess(
   (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
   z.string().trim().min(1).optional(),

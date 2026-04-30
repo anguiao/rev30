@@ -36,15 +36,34 @@ describe('auth schemas', () => {
     ).toThrow()
   })
 
+  it('rejects weak registration passwords', () => {
+    expect(() =>
+      authRegisterSchema.parse({
+        username: 'ada',
+        password: 'short',
+        nickname: 'Ada Lovelace',
+      }),
+    ).toThrow()
+  })
+
+  it('rejects weak login passwords', () => {
+    expect(() =>
+      authLoginSchema.parse({
+        username: 'ada',
+        password: 'short',
+      }),
+    ).toThrow()
+  })
+
   it('parses username and password login input', () => {
     expect(
       authLoginSchema.parse({
         username: ' ada ',
-        password: 'secret',
+        password: 'secret-password',
       }),
     ).toEqual({
       username: 'ada',
-      password: 'secret',
+      password: 'secret-password',
     })
   })
 

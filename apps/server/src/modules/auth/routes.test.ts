@@ -1,0 +1,162 @@
+import { describe, expect, it } from 'vitest'
+import { eq } from 'drizzle-orm'
+import { Hono } from 'hono'
+import { USER_STATUS_DISABLED, type AuthTokenResponse } from '@rev30/shared'
+import { authPasswordCredentials, users } from '../../db/schema'
+import { createTestDb } from '../../test/db'
+import { verifyPassword } from './password'
+import { createAuthRoutes } from './routes'
+
+type ErrorResponse = {
+  message: string
+  field?: string
+}
+
+function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
+  return new Hono().route('/api/auth', createAuthRoutes(database))
+}
+
+async function register(app: Hono, body = {}) {
+  const response = await app.request('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({
+      username: 'ada',
+      password: 'secret-password',
+      nickname: 'Ada Lovelace',
+      ...body,
+    }),
+    headers: {
+      'content-type': 'application/json',
+    },
+  })
+
+  return {
+    body: (await response.json()) as AuthTokenResponse,
+    response,
+  }
+}
+
+async function login(app: Hono, body = {}) {
+  const response = await app.request('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({
+      username: 'ada',
+      password: 'secret-password',
+      ...body,
+    }),
+    headers: {
+      'content-type': 'application/json',
+    },
+  })
+
+  return {
+    body:
+      response.status === 200
+        ? ((await response.json()) as AuthTokenResponse)
+        : ((await response.json()) as ErrorResponse),
+    response,
+  }
+}
+
+describe('auth routes', () => {
+  it('registers users with a password credential, token response, and refresh cookie', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+
+    const { body, response } = await register(app, {
+      email: 'ada@example.com',
+      phone: '10000000001',
+    })
+
+    expect(response.status).toBe(201)
+    expect(response.headers.get('set-cookie')).toContain('refresh_token=')
+    expect(body).toMatchObject({
+      tokenType: 'Bearer',
+      expiresIn: 900,
+      user: {
+        username: 'ada',
+        nickname: 'Ada Lovelace',
+        email: 'ada@example.com',
+        phone: '10000000001',
+      },
+    })
+    expect(body.accessToken).toEqual(expect.any(String))
+    expect(body.refreshToken).toEqual(expect.any(String))
+
+    const storedUsers = await database.select().from(users).where(eq(users.id, body.user.id))
+    expect(storedUsers).toHaveLength(1)
+    const storedCredentials = await database
+      .select()
+      .from(authPasswordCredentials)
+      .where(eq(authPasswordCredentials.userId, body.user.id))
+
+    expect(storedCredentials).toHaveLength(1)
+    expect(storedCredentials[0]?.passwordHash).not.toBe('secret-password')
+    await expect(
+      verifyPassword('secret-password', storedCredentials[0]?.passwordHash ?? ''),
+    ).resolves.toBe(true)
+  })
+
+  it('returns conflict when registering duplicate usernames', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+
+    await register(app)
+    const duplicate = await register(app, {
+      nickname: 'Duplicate Ada',
+    })
+
+    expect(duplicate.response.status).toBe(409)
+    expect(duplicate.body).toMatchObject({
+      field: 'username',
+      message: 'username already exists',
+    })
+  })
+
+  it('logs in with username and password', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+
+    await register(app)
+    const { body, response } = await login(app)
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('set-cookie')).toContain('refresh_token=')
+    expect(body).toMatchObject({
+      tokenType: 'Bearer',
+      expiresIn: 900,
+      user: {
+        username: 'ada',
+      },
+    })
+  })
+
+  it('returns a uniform credentials error for wrong passwords and disabled users', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+
+    const registered = await register(app)
+    const wrongPassword = await login(app, {
+      password: 'wrong-password',
+    })
+
+    expect(wrongPassword.response.status).toBe(401)
+    expect(wrongPassword.body).toEqual({
+      message: 'Invalid username or password',
+    })
+
+    await database
+      .update(users)
+      .set({
+        status: USER_STATUS_DISABLED,
+      })
+      .where(eq(users.id, registered.body.user.id))
+
+    const disabled = await login(app)
+
+    expect(disabled.response.status).toBe(401)
+    expect(disabled.body).toEqual({
+      message: 'Invalid username or password',
+    })
+  })
+})

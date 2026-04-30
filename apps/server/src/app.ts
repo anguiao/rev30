@@ -1,10 +1,14 @@
 import { Hono } from 'hono'
 import type { Db } from './db'
 import { healthRoutes } from './modules/health/routes'
+import { createAuthRoutes } from './modules/auth/routes'
 import { createSystemRoutes } from './modules/system/routes'
 
 export function createApiRoutes(database: Db) {
-  return new Hono().route('/', healthRoutes).route('/system', createSystemRoutes(database))
+  return new Hono()
+    .route('/', healthRoutes)
+    .route('/auth', createAuthRoutes(database))
+    .route('/system', createSystemRoutes(database))
 }
 
 export function createApp(database: Db) {

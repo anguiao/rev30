@@ -17,6 +17,9 @@ import { hashPassword, verifyPassword } from './password'
 import { createAuthRepository } from './repository'
 import { createTokenPair, verifyAccessToken, verifyRefreshToken } from './tokens'
 
+const dummyPasswordHash =
+  'scrypt$rev30-auth-dummy-salt$gqCTp4XOR3Xf1LvfHOITCoogF-vpgXvmPkOuxWGr-ChkgWkyXG0_Zf19YMXZ_Oy3mXaxJAVa2LGtlr8sJPJDjA'
+
 async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
   try {
     return await operation()
@@ -65,12 +68,10 @@ export function createAuthService(database: Db, config: AuthConfig) {
 
     async login(input: AuthLoginInput): Promise<AuthTokenResponse> {
       const account = await repository.findActiveUserCredentialByUsername(input.username)
+      const passwordHash = account?.credential.passwordHash ?? dummyPasswordHash
+      const passwordMatches = await verifyPassword(input.password, passwordHash)
 
-      if (
-        !account ||
-        account.user.status !== USER_STATUS_ENABLED ||
-        !(await verifyPassword(input.password, account.credential.passwordHash))
-      ) {
+      if (!account || account.user.status !== USER_STATUS_ENABLED || !passwordMatches) {
         throw new AuthInvalidCredentialsError()
       }
 

@@ -8,10 +8,14 @@ import type { Db } from '../../db'
 import { toUserConflictError } from '../system/users/errors'
 import { toUser } from '../system/users/mapper'
 import type { AuthConfig } from './config'
-import { AuthInvalidCredentialsError, AuthInvalidRefreshTokenError } from './errors'
+import {
+  AuthInvalidCredentialsError,
+  AuthInvalidRefreshTokenError,
+  AuthUnauthorizedError,
+} from './errors'
 import { hashPassword, verifyPassword } from './password'
 import { createAuthRepository } from './repository'
-import { createTokenPair, verifyRefreshToken } from './tokens'
+import { createTokenPair, verifyAccessToken, verifyRefreshToken } from './tokens'
 
 async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
   try {
@@ -123,6 +127,28 @@ export function createAuthService(database: Db, config: AuthConfig) {
       } catch {
         return
       }
+    },
+
+    async me(accessToken: string | undefined) {
+      if (!accessToken) {
+        throw new AuthUnauthorizedError()
+      }
+
+      let verified: Awaited<ReturnType<typeof verifyAccessToken>>
+
+      try {
+        verified = await verifyAccessToken(accessToken, config)
+      } catch {
+        throw new AuthUnauthorizedError()
+      }
+
+      const user = await repository.findActiveUserById(verified.userId)
+
+      if (!user || user.status !== USER_STATUS_ENABLED) {
+        throw new AuthUnauthorizedError()
+      }
+
+      return toUser(user)
     },
   }
 }

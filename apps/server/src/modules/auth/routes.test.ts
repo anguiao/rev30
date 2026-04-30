@@ -258,4 +258,61 @@ describe('auth routes', () => {
 
     expect(secondLogoutResponse.status).toBe(204)
   })
+
+  it('returns the current user for a valid access token', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app)
+
+    const response = await app.request('/api/auth/me', {
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken}`,
+      },
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({
+      id: registered.body.user.id,
+      username: 'ada',
+      nickname: 'Ada Lovelace',
+    })
+  })
+
+  it('rejects missing, refresh, and disabled-user tokens for current user', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app)
+
+    const missingResponse = await app.request('/api/auth/me')
+    expect(missingResponse.status).toBe(401)
+    expect(await missingResponse.json()).toEqual({
+      message: 'Unauthorized',
+    })
+
+    const refreshTokenResponse = await app.request('/api/auth/me', {
+      headers: {
+        authorization: `Bearer ${registered.body.refreshToken}`,
+      },
+    })
+    expect(refreshTokenResponse.status).toBe(401)
+
+    await database
+      .update(users)
+      .set({
+        status: USER_STATUS_DISABLED,
+      })
+      .where(eq(users.id, registered.body.user.id))
+
+    const disabledResponse = await app.request('/api/auth/me', {
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken}`,
+      },
+    })
+
+    expect(disabledResponse.status).toBe(401)
+    expect(await disabledResponse.json()).toEqual({
+      message: 'Unauthorized',
+    })
+  })
 })

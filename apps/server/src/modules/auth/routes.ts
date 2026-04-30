@@ -17,7 +17,11 @@ import {
   setRefreshTokenCookie,
 } from './cookies'
 import { readAuthConfig } from './config'
-import { AuthInvalidCredentialsError, AuthInvalidRefreshTokenError } from './errors'
+import {
+  AuthInvalidCredentialsError,
+  AuthInvalidRefreshTokenError,
+  AuthUnauthorizedError,
+} from './errors'
 import { createAuthService } from './service'
 
 const registerBodyValidator = zValidator('json', authRegisterSchema, (result, c) => {
@@ -66,6 +70,17 @@ async function readLogoutBody(c: Context): Promise<AuthRefreshInput> {
   return result.data
 }
 
+function bearerToken(c: Context) {
+  const authorization = c.req.header('authorization')
+  const [scheme, token] = authorization?.split(' ') ?? []
+
+  if (scheme !== 'Bearer' || !token) {
+    return undefined
+  }
+
+  return token
+}
+
 function authErrorResponse(error: unknown, c: Context) {
   if (error instanceof UserConflictError) {
     return c.json(
@@ -82,6 +97,10 @@ function authErrorResponse(error: unknown, c: Context) {
   }
 
   if (error instanceof AuthInvalidRefreshTokenError) {
+    return c.json({ message: error.message }, 401)
+  }
+
+  if (error instanceof AuthUnauthorizedError) {
     return c.json({ message: error.message }, 401)
   }
 
@@ -128,4 +147,5 @@ export function createAuthRoutes(database: Db) {
 
       return c.body(null, 204)
     })
+    .get('/me', async (c) => c.json(await service.me(bearerToken(c))))
 }

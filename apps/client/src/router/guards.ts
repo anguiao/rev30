@@ -1,6 +1,6 @@
 import type { Router } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { refreshSession } from './requests'
+import { refreshSession } from '../auth/requests'
 
 export const authRoutes = new Set(['/login', '/register'])
 

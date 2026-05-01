@@ -1,7 +1,85 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import serverPackage from '../../server/package.json'
 import tsconfig from '../../../tsconfig.base.json'
-import { api } from './api'
+import { api, authFetch } from './api'
+import { useAuthStore } from './stores/auth'
+
+beforeEach(() => {
+  setActivePinia(createPinia())
+})
+
+describe('authFetch', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('preserves caller authorization when an access token is present', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    await authFetch('/api/health', {
+      headers: {
+        authorization: 'Basic caller-token',
+      },
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
+    expect(new Headers(init.headers).get('authorization')).toBe('Basic caller-token')
+  })
+
+  it('preserves caller headers while adding the bearer token', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    await authFetch('/api/health', {
+      headers: {
+        'x-request-id': 'request-id',
+      },
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
+    const headers = new Headers(init.headers)
+    expect(headers.get('x-request-id')).toBe('request-id')
+    expect(headers.get('authorization')).toBe('Bearer access-token')
+  })
+
+  it('preserves explicit include credentials', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await authFetch('/api/health', {
+      credentials: 'include',
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
+    expect(init.credentials).toBe('include')
+  })
+
+  it('preserves explicit omit credentials', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await authFetch('/api/health', {
+      credentials: 'omit',
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
+    expect(init.credentials).toBe('omit')
+  })
+
+  it('omits authorization when no access token is present', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await authFetch('/api/health')
+
+    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
+    expect(new Headers(init.headers).has('authorization')).toBe(false)
+  })
+})
 
 describe('api client', () => {
   afterEach(() => {
@@ -32,6 +110,31 @@ describe('api client', () => {
       service: 'rev30-server',
       status: 'ok',
     })
+  })
+
+  it('sends same-origin credentials through the Hono RPC client', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ service: 'rev30-server', status: 'ok' })),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.health.$get()
+
+    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
+    expect(init.credentials).toBe('same-origin')
+  })
+
+  it('adds the bearer token from the auth store when present', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ service: 'rev30-server', status: 'ok' })),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    await api.health.$get()
+
+    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
+    expect(new Headers(init.headers).get('authorization')).toBe('Bearer access-token')
   })
 
   it('requests nested user endpoints', async () => {

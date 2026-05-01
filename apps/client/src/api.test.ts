@@ -113,9 +113,9 @@ describe('api client', () => {
   })
 
   it('sends same-origin credentials through the Hono RPC client', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ service: 'rev30-server', status: 'ok' })),
-    )
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ service: 'rev30-server', status: 'ok' })))
     vi.stubGlobal('fetch', fetchMock)
 
     await api.health.$get()
@@ -125,9 +125,9 @@ describe('api client', () => {
   })
 
   it('adds the bearer token from the auth store when present', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ service: 'rev30-server', status: 'ok' })),
-    )
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ service: 'rev30-server', status: 'ok' })))
     vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 

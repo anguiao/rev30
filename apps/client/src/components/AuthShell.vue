@@ -11,7 +11,7 @@
             R30
           </div>
           <div>
-            <p class="text-base font-semibold leading-6">Rev30</p>
+            <p class="text-base leading-6 font-semibold">Rev30</p>
             <p class="text-sm text-slate-500">Workspace access</p>
           </div>
         </div>
@@ -25,14 +25,20 @@
         </p>
       </div>
 
-      <aside class="border-t border-slate-200 bg-slate-950 p-6 text-white sm:p-8 lg:border-l lg:border-t-0">
+      <aside
+        class="border-t border-slate-200 bg-slate-950 p-6 text-white sm:p-8 lg:border-t-0 lg:border-l"
+      >
         <div class="flex h-full flex-col justify-between gap-10">
           <div>
-            <p class="text-sm font-medium uppercase tracking-[0.18em] text-slate-400">Auth console</p>
-            <h2 class="mt-4 text-2xl font-semibold leading-tight">Secure team sessions for focused work.</h2>
+            <p class="text-sm font-medium tracking-[0.18em] text-slate-400 uppercase">
+              Auth console
+            </p>
+            <h2 class="mt-4 text-2xl leading-tight font-semibold">
+              Secure team sessions for focused work.
+            </h2>
             <p class="mt-4 text-sm leading-6 text-slate-300">
-              Sign in to continue into the Rev30 workbench. Tokens are issued by the server and stored
-              separately from refresh credentials.
+              Sign in to continue into the Rev30 workbench. Tokens are issued by the server and
+              stored separately from refresh credentials.
             </p>
           </div>
 
@@ -43,7 +49,9 @@
             </div>
             <div class="border-t border-white/10 pt-4">
               <dt class="font-medium text-slate-200">Session recovery</dt>
-              <dd class="mt-1 text-slate-400">Refresh checks run before guarded pages are entered.</dd>
+              <dd class="mt-1 text-slate-400">
+                Refresh checks run before guarded pages are entered.
+              </dd>
             </div>
             <div class="border-t border-white/10 pt-4">
               <dt class="font-medium text-slate-200">Audit friendly</dt>

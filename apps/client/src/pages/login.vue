@@ -79,10 +79,7 @@ function formatValidationError(error: unknown) {
 
     <NForm class="grid gap-1" @submit.prevent="form.handleSubmit()">
       <form.Field name="username" v-slot="{ field, state }">
-        <NFormItem
-          label="用户名"
-          v-bind="formItemProps('username', state.meta.errors)"
-        >
+        <NFormItem label="用户名" v-bind="formItemProps('username', state.meta.errors)">
           <NInput
             data-test="login-username"
             :value="state.value"
@@ -95,10 +92,7 @@ function formatValidationError(error: unknown) {
       </form.Field>
 
       <form.Field name="password" v-slot="{ field, state }">
-        <NFormItem
-          label="密码"
-          v-bind="formItemProps('password', state.meta.errors)"
-        >
+        <NFormItem label="密码" v-bind="formItemProps('password', state.meta.errors)">
           <NInput
             data-test="login-password"
             :value="state.value"
@@ -126,7 +120,10 @@ function formatValidationError(error: unknown) {
 
     <p class="mt-6 text-center text-sm text-slate-500">
       还没有账号？
-      <RouterLink class="font-medium text-slate-950 underline-offset-4 hover:underline" to="/register">
+      <RouterLink
+        class="font-medium text-slate-950 underline-offset-4 hover:underline"
+        to="/register"
+      >
         注册
       </RouterLink>
     </p>

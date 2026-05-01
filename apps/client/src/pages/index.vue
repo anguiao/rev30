@@ -30,18 +30,15 @@ function handleLogout() {
 <template>
   <main class="min-h-screen bg-slate-50 px-6 py-10 text-slate-950">
     <section class="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-4xl flex-col justify-center">
-      <div class="mb-10 flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        class="mb-10 flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center sm:justify-between"
+      >
         <div>
           <p class="text-sm font-medium text-slate-500">Rev30 工作台</p>
           <h1 class="mt-2 text-3xl font-semibold tracking-normal">欢迎回来</h1>
         </div>
 
-        <NButton
-          data-test="logout"
-          size="large"
-          :loading="isLoggingOut"
-          @click="handleLogout"
-        >
+        <NButton data-test="logout" size="large" :loading="isLoggingOut" @click="handleLogout">
           退出登录
         </NButton>
       </div>

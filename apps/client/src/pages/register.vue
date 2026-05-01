@@ -111,8 +111,12 @@ function formatValidationError(error: unknown) {
 <template>
   <AuthShell>
     <div class="mb-8">
-      <h1 class="text-3xl font-semibold tracking-normal text-slate-950">注册 Rev30</h1>
-      <p class="mt-3 text-sm leading-6 text-slate-500">创建账号后直接进入工作台。</p>
+      <h1 class="text-3xl font-semibold tracking-normal text-slate-950 dark:text-slate-100">
+        注册 Rev30
+      </h1>
+      <p class="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+        创建账号后直接进入工作台。
+      </p>
     </div>
 
     <NAlert v-if="formError" class="mb-5" type="error" :show-icon="false">
@@ -232,9 +236,12 @@ function formatValidationError(error: unknown) {
       </NButton>
     </NForm>
 
-    <p class="mt-6 text-center text-sm text-slate-500">
+    <p class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
       已有账号？
-      <RouterLink class="font-medium text-slate-950 underline-offset-4 hover:underline" to="/login">
+      <RouterLink
+        class="font-medium text-slate-950 underline-offset-4 hover:underline dark:text-slate-100"
+        to="/login"
+      >
         登录
       </RouterLink>
     </p>

@@ -1,13 +1,14 @@
 // @vitest-environment happy-dom
 
 import { PiniaColada } from '@pinia/colada'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { createPinia, disposePinia, setActivePinia, type Pinia } from 'pinia'
 import { defineComponent } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthTokenResponse } from '@rev30/shared'
 import { USER_STATUS_ENABLED } from '@rev30/shared'
+import { NDropdown } from 'naive-ui'
 import { useAuthStore } from '../stores/auth'
 import HomePage from './index.vue'
 import LoginPage from './login.vue'
@@ -15,6 +16,8 @@ import loginPageSource from './login.vue?raw'
 import RegisterPage from './register.vue'
 import registerPageSource from './register.vue?raw'
 import { login, logout, register } from '../auth/requests'
+
+enableAutoUnmount(afterEach)
 
 const { MockAuthRequestError } = vi.hoisted(() => ({
   MockAuthRequestError: class MockAuthRequestError extends Error {
@@ -57,6 +60,31 @@ const loginMock = vi.mocked(login)
 const logoutMock = vi.mocked(logout)
 const registerMock = vi.mocked(register)
 
+let activeTestPinia: Pinia | undefined
+
+function createTestPinia() {
+  activeTestPinia = createPinia()
+  setActivePinia(activeTestPinia)
+
+  return activeTestPinia
+}
+
+function stubPreferredDark(matches: boolean) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  )
+}
+
 function createTestRouter() {
   return createRouter({
     history: createMemoryHistory(),
@@ -69,8 +97,7 @@ function createTestRouter() {
 }
 
 async function mountAuthPage(path: '/' | '/login' | '/register') {
-  const pinia = createPinia()
-  setActivePinia(pinia)
+  const pinia = createTestPinia()
 
   const router = createTestRouter()
   await router.push(path)
@@ -110,16 +137,33 @@ async function triggerBrowserSubmit(wrapper: ReturnType<typeof mount>) {
   await flushPromises()
 }
 
+async function selectThemeMode(wrapper: ReturnType<typeof mount>, value: string) {
+  wrapper.findComponent(NDropdown).vm.$emit('select', value)
+  await flushPromises()
+}
+
 describe('auth pages', () => {
   beforeEach(() => {
     loginMock.mockReset()
     logoutMock.mockReset()
     registerMock.mockReset()
+    localStorage.clear()
+    document.documentElement.className = ''
+    document.documentElement.style.colorScheme = ''
+    stubPreferredDark(false)
+  })
+
+  afterEach(() => {
+    if (activeTestPinia !== undefined) {
+      disposePinia(activeTestPinia)
+      activeTestPinia = undefined
+    }
+
+    vi.unstubAllGlobals()
   })
 
   it('shows the current user summary on the home page', async () => {
-    const pinia = createPinia()
-    setActivePinia(pinia)
+    const pinia = createTestPinia()
     useAuthStore().setSession(session)
 
     const wrapper = mount(HomePage, {
@@ -201,6 +245,26 @@ describe('auth pages', () => {
     await triggerBrowserSubmit(wrapper)
 
     expect(loginMock).toHaveBeenCalledOnce()
+  })
+
+  it('switches between light, dark, and system theme modes from the theme dropdown', async () => {
+    stubPreferredDark(true)
+    const { wrapper } = await mountLoginPage()
+
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="theme-mode-trigger"]').exists()).toBe(true)
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+
+    await selectThemeMode(wrapper, 'light')
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+
+    await selectThemeMode(wrapper, 'dark')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+
+    await selectThemeMode(wrapper, 'auto')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(wrapper.find('[data-test="theme-mode-trigger"]').text()).toContain('跟随')
   })
 
   it('keeps the login submit button as a submit-only trigger', () => {

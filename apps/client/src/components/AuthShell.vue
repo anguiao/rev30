@@ -1,32 +1,42 @@
+<script setup lang="ts">
+import ThemeModeSwitch from './ThemeModeSwitch.vue'
+</script>
+
 <template>
-  <main class="min-h-svh bg-slate-100 px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
+  <main
+    class="min-h-svh bg-slate-100 px-4 py-6 text-slate-950 sm:px-6 lg:px-8 dark:bg-slate-950 dark:text-slate-100"
+  >
     <section
-      class="mx-auto grid min-h-[calc(100svh-3rem)] w-full max-w-6xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm lg:grid-cols-[minmax(0,1fr)_25rem]"
+      class="mx-auto grid min-h-[calc(100svh-3rem)] w-full max-w-6xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm lg:grid-cols-[minmax(0,1fr)_25rem] dark:border-slate-800 dark:bg-slate-900"
     >
       <div class="flex min-h-[34rem] flex-col justify-between p-6 sm:p-8 lg:p-10">
-        <div class="flex items-center gap-3">
-          <div
-            class="flex size-10 items-center justify-center rounded-md bg-slate-950 text-sm font-semibold text-white"
-          >
-            R30
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex min-w-0 items-center gap-3">
+            <div
+              class="flex size-10 shrink-0 items-center justify-center rounded-md bg-slate-950 text-sm font-semibold text-white dark:bg-cyan-300 dark:text-slate-950"
+            >
+              R30
+            </div>
+            <div class="min-w-0">
+              <p class="text-base leading-6 font-semibold">Rev30</p>
+              <p class="text-sm text-slate-500 dark:text-slate-400">Workspace access</p>
+            </div>
           </div>
-          <div>
-            <p class="text-base leading-6 font-semibold">Rev30</p>
-            <p class="text-sm text-slate-500">Workspace access</p>
-          </div>
+
+          <ThemeModeSwitch />
         </div>
 
         <div class="mx-auto w-full max-w-md py-10">
           <slot />
         </div>
 
-        <p class="text-xs text-slate-500">
+        <p class="text-xs text-slate-500 dark:text-slate-400">
           Session state is scoped to this browser and refreshed by the Rev30 API.
         </p>
       </div>
 
       <aside
-        class="border-t border-slate-200 bg-slate-950 p-6 text-white sm:p-8 lg:border-t-0 lg:border-l"
+        class="border-t border-slate-200 bg-slate-950 p-6 text-white sm:p-8 lg:border-t-0 lg:border-l dark:border-slate-800"
       >
         <div class="flex h-full flex-col justify-between gap-10">
           <div>

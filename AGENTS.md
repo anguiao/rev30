@@ -5,6 +5,7 @@
 - 对话和项目文档使用中文，代码与注释使用英文。
 - 使用 pnpm workspace；内部包依赖保持 `workspace:*`。
 - 前端位于 `apps/client`，使用 Vue 3、Vite、Tailwind CSS v4、Naive UI、Pinia、Pinia Colada、TanStack Vue Form 和 `vue-router/vite` 文件路由。
+- Iconify 图标类使用 `i-[collection--name]` 格式（如 `i-[lucide--sun]`）。
 - 服务端位于 `apps/server`，使用 Hono、Drizzle、PGlite/PostgreSQL；API 统一挂在 `/api`。
 - 共享 zod schema 和 TypeScript 类型放在 `packages/shared`，前后端请求/响应尽量复用这些约束。
 - 当前业务核心包含认证、刷新令牌、登录态恢复，以及受 Bearer token 保护的系统用户管理。

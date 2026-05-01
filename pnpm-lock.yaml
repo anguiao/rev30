@@ -29,6 +29,9 @@ importers:
       '@pinia/colada':
         specifier: ^1.2.1
         version: 1.2.1(pinia@3.0.4(typescript@6.0.3)(vue@3.5.33(typescript@6.0.3)))(vue@3.5.33(typescript@6.0.3))
+      '@rev30/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@tanstack/vue-form':
         specifier: ^1.29.1
         version: 1.29.1(vue@3.5.33(typescript@6.0.3))

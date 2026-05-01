@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@pinia/colada": "^1.2.1",
+    "@rev30/shared": "workspace:*",
     "@tanstack/vue-form": "^1.29.1",
     "@vueuse/core": "^14.2.1",
     "hono": "^4.12.15",

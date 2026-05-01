@@ -20,7 +20,7 @@
 
 ## File Structure
 
-- Modify `apps/client/package.json`: add `@pinia/colada`, `@vue/test-utils`, and `happy-dom`.
+- Modify `apps/client/package.json`: add `@pinia/colada`, `@rev30/shared`, `@vue/test-utils`, and `happy-dom`.
 - Modify `pnpm-lock.yaml`: dependency lockfile updates from pnpm.
 - Modify `apps/client/src/main.ts`: install Pinia once, then install Pinia Colada and the router.
 - Modify `apps/client/src/api.ts`: add `authFetch`, keep `api = hc<AppType>('/api', { fetch: authFetch })`.
@@ -51,16 +51,16 @@
 - Modify: `apps/client/src/main.ts`
 - Verify through: `apps/client/src/pages/auth-pages.test.ts`
 
-- [ ] **Step 1: Install request state and component test dependencies**
+- [ ] **Step 1: Install request state, shared, and component test dependencies**
 
 Run:
 
 ```bash
-pnpm --filter @rev30/client add @pinia/colada@latest
+pnpm --filter @rev30/client add @pinia/colada@latest '@rev30/shared@workspace:*'
 pnpm --filter @rev30/client add -D @vue/test-utils@latest happy-dom@latest
 ```
 
-Expected: `apps/client/package.json` includes `@pinia/colada` in `dependencies`, and includes `@vue/test-utils` plus `happy-dom` in `devDependencies`.
+Expected: `apps/client/package.json` includes `@pinia/colada` and `@rev30/shared` in `dependencies` with `@rev30/shared@workspace:*`, and includes `@vue/test-utils` plus `happy-dom` in `devDependencies`.
 
 - [ ] **Step 2: Install Pinia Colada in the app**
 

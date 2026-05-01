@@ -119,7 +119,6 @@ function formatValidationError(error: unknown) {
         attr-type="submit"
         block
         :loading="isSubmitting"
-        @click="form.handleSubmit()"
       >
         登录
       </NButton>

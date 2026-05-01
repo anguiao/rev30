@@ -10,7 +10,10 @@ import type { AuthTokenResponse } from '@rev30/shared'
 import { USER_STATUS_ENABLED } from '@rev30/shared'
 import { useAuthStore } from '../stores/auth'
 import LoginPage from './login.vue'
-import { login } from '../auth/requests'
+import loginPageSource from './login.vue?raw'
+import RegisterPage from './register.vue'
+import registerPageSource from './register.vue?raw'
+import { login, register } from '../auth/requests'
 
 const { MockAuthRequestError } = vi.hoisted(() => ({
   MockAuthRequestError: class MockAuthRequestError extends Error {
@@ -50,6 +53,7 @@ const session: AuthTokenResponse = {
 }
 
 const loginMock = vi.mocked(login)
+const registerMock = vi.mocked(register)
 
 function createTestRouter() {
   return createRouter({
@@ -57,17 +61,17 @@ function createTestRouter() {
     routes: [
       { path: '/', component: { template: '<main>Home</main>' } },
       { path: '/login', component: LoginPage },
-      { path: '/register', component: { template: '<main>Register</main>' } },
+      { path: '/register', component: RegisterPage },
     ],
   })
 }
 
-async function mountLoginPage() {
+async function mountAuthPage(path: '/login' | '/register') {
   const pinia = createPinia()
   setActivePinia(pinia)
 
   const router = createTestRouter()
-  await router.push('/login')
+  await router.push(path)
   await router.isReady()
 
   const wrapper = mount(
@@ -84,9 +88,26 @@ async function mountLoginPage() {
   return { router, wrapper }
 }
 
+async function mountLoginPage() {
+  return mountAuthPage('/login')
+}
+
+async function mountRegisterPage() {
+  return mountAuthPage('/register')
+}
+
+async function triggerBrowserSubmit(wrapper: ReturnType<typeof mount>) {
+  const form = wrapper.find('form')
+
+  await wrapper.find('[data-test$="-submit"]').trigger('click')
+  await form.trigger('submit')
+  await flushPromises()
+}
+
 describe('auth pages', () => {
   beforeEach(() => {
     loginMock.mockReset()
+    registerMock.mockReset()
   })
 
   it('blocks invalid login submissions with field feedback without calling login', async () => {
@@ -106,7 +127,7 @@ describe('auth pages', () => {
 
     await wrapper.find('[data-test="login-username"] input').setValue('ada')
     await wrapper.find('[data-test="login-password"] input').setValue('password123')
-    await wrapper.find('[data-test="login-submit"]').trigger('click')
+    await wrapper.find('form').trigger('submit')
     await flushPromises()
 
     const auth = useAuthStore()
@@ -119,5 +140,77 @@ describe('auth pages', () => {
     expect(auth.accessToken).toBe(session.accessToken)
     expect(auth.user).toEqual(session.user)
     expect(router.currentRoute.value.fullPath).toBe('/')
+  })
+
+  it('calls login once when the browser submits the login form from the submit button', async () => {
+    loginMock.mockResolvedValue(session)
+    const { wrapper } = await mountLoginPage()
+
+    await wrapper.find('[data-test="login-username"] input').setValue('ada')
+    await wrapper.find('[data-test="login-password"] input').setValue('password123')
+    await triggerBrowserSubmit(wrapper)
+
+    expect(loginMock).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the login submit button as a submit-only trigger', () => {
+    expect(loginPageSource).not.toContain('@click="form.handleSubmit()"')
+  })
+
+  it('blocks invalid registration submissions with field feedback without calling register', async () => {
+    const { wrapper } = await mountRegisterPage()
+
+    await wrapper.find('[data-test="register-nickname"] input').setValue('Ada Lovelace')
+    await wrapper.find('[data-test="register-password"] input').setValue('password123')
+    await wrapper.find('[data-test="register-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(registerMock).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('请输入用户名')
+  })
+
+  it('stores the returned session and navigates home after successful registration', async () => {
+    registerMock.mockResolvedValue(session)
+    const { router, wrapper } = await mountRegisterPage()
+
+    await wrapper.find('[data-test="register-username"] input').setValue('ada')
+    await wrapper.find('[data-test="register-nickname"] input').setValue('Ada Lovelace')
+    await wrapper.find('[data-test="register-password"] input').setValue('password123')
+    await wrapper.find('[data-test="register-email"] input').setValue('')
+    await wrapper.find('[data-test="register-phone"] input').setValue('')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    const auth = useAuthStore()
+
+    expect(registerMock).toHaveBeenCalledOnce()
+    expect(registerMock).toHaveBeenCalledWith({
+      username: 'ada',
+      nickname: 'Ada Lovelace',
+      password: 'password123',
+      email: null,
+      phone: null,
+    })
+    expect(auth.accessToken).toBe(session.accessToken)
+    expect(auth.user).toEqual(session.user)
+    expect(router.currentRoute.value.fullPath).toBe('/')
+  })
+
+  it('calls register once when the browser submits the registration form from the submit button', async () => {
+    registerMock.mockResolvedValue(session)
+    const { wrapper } = await mountRegisterPage()
+
+    await wrapper.find('[data-test="register-username"] input').setValue('ada')
+    await wrapper.find('[data-test="register-nickname"] input').setValue('Ada Lovelace')
+    await wrapper.find('[data-test="register-password"] input').setValue('password123')
+    await wrapper.find('[data-test="register-email"] input').setValue('')
+    await wrapper.find('[data-test="register-phone"] input').setValue('')
+    await triggerBrowserSubmit(wrapper)
+
+    expect(registerMock).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the registration submit button as a submit-only trigger', () => {
+    expect(registerPageSource).not.toContain('@click="form.handleSubmit()"')
   })
 })

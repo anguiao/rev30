@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@pinia/colada": "^1.2.1",
     "@tanstack/vue-form": "^1.29.1",
     "@vueuse/core": "^14.2.1",
     "hono": "^4.12.15",
@@ -26,6 +27,8 @@
     "@rev30/server": "workspace:*",
     "@tailwindcss/vite": "^4.2.4",
     "@vitejs/plugin-vue": "^6.0.6",
+    "@vue/test-utils": "^2.4.10",
+    "happy-dom": "^20.9.0",
     "tailwindcss": "^4.2.4",
     "vite": "^8.0.10",
     "vue-tsc": "^3.2.7"

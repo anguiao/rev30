@@ -9,11 +9,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthTokenResponse } from '@rev30/shared'
 import { USER_STATUS_ENABLED } from '@rev30/shared'
 import { useAuthStore } from '../stores/auth'
+import HomePage from './index.vue'
 import LoginPage from './login.vue'
 import loginPageSource from './login.vue?raw'
 import RegisterPage from './register.vue'
 import registerPageSource from './register.vue?raw'
-import { login, register } from '../auth/requests'
+import { login, logout, register } from '../auth/requests'
 
 const { MockAuthRequestError } = vi.hoisted(() => ({
   MockAuthRequestError: class MockAuthRequestError extends Error {
@@ -53,20 +54,21 @@ const session: AuthTokenResponse = {
 }
 
 const loginMock = vi.mocked(login)
+const logoutMock = vi.mocked(logout)
 const registerMock = vi.mocked(register)
 
 function createTestRouter() {
   return createRouter({
     history: createMemoryHistory(),
     routes: [
-      { path: '/', component: { template: '<main>Home</main>' } },
+      { path: '/', component: HomePage },
       { path: '/login', component: LoginPage },
       { path: '/register', component: RegisterPage },
     ],
   })
 }
 
-async function mountAuthPage(path: '/login' | '/register') {
+async function mountAuthPage(path: '/' | '/login' | '/register') {
   const pinia = createPinia()
   setActivePinia(pinia)
 
@@ -88,6 +90,10 @@ async function mountAuthPage(path: '/login' | '/register') {
   return { router, wrapper }
 }
 
+async function mountHomePage() {
+  return mountAuthPage('/')
+}
+
 async function mountLoginPage() {
   return mountAuthPage('/login')
 }
@@ -107,7 +113,51 @@ async function triggerBrowserSubmit(wrapper: ReturnType<typeof mount>) {
 describe('auth pages', () => {
   beforeEach(() => {
     loginMock.mockReset()
+    logoutMock.mockReset()
     registerMock.mockReset()
+  })
+
+  it('shows the current user summary on the home page', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    useAuthStore().setSession(session)
+
+    const wrapper = mount(HomePage, {
+      global: {
+        plugins: [pinia, PiniaColada],
+      },
+    })
+
+    expect(wrapper.text()).toContain('Ada Lovelace')
+    expect(wrapper.text()).toContain('ada')
+  })
+
+  it('logs out, clears the local session, and navigates to login', async () => {
+    logoutMock.mockResolvedValue(undefined)
+    const { router, wrapper } = await mountHomePage()
+    const auth = useAuthStore()
+    auth.setSession(session)
+
+    await wrapper.find('[data-test="logout"]').trigger('click')
+    await flushPromises()
+
+    expect(logoutMock).toHaveBeenCalledOnce()
+    expect(auth.isAuthenticated).toBe(false)
+    expect(router.currentRoute.value.fullPath).toBe('/login')
+  })
+
+  it('clears the local session and navigates to login when logout fails', async () => {
+    logoutMock.mockRejectedValue(new Error('logout failed'))
+    const { router, wrapper } = await mountHomePage()
+    const auth = useAuthStore()
+    auth.setSession(session)
+
+    await wrapper.find('[data-test="logout"]').trigger('click')
+    await flushPromises()
+
+    expect(logoutMock).toHaveBeenCalledOnce()
+    expect(auth.isAuthenticated).toBe(false)
+    expect(router.currentRoute.value.fullPath).toBe('/login')
   })
 
   it('blocks invalid login submissions with field feedback without calling login', async () => {

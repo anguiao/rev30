@@ -72,6 +72,9 @@ describe('auth schemas', () => {
     expect(authRefreshSchema.parse({ refreshToken: ' token ' })).toEqual({
       refreshToken: 'token',
     })
+    expect(authRefreshSchema.parse({ refreshToken: ' ' })).toEqual({
+      refreshToken: '',
+    })
     expect(authLogoutSchema.parse({})).toEqual({})
     expect(authLogoutSchema.parse({ refreshToken: ' token ' })).toEqual({
       refreshToken: 'token',

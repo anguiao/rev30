@@ -2,10 +2,6 @@ import { z } from 'zod'
 import { userCreateSchema, userSchema } from './user'
 
 const passwordSchema = z.string().min(8)
-const optionalTokenSchema = z.preprocess(
-  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
-  z.string().trim().min(1).optional(),
-)
 
 export const authRegisterSchema = userCreateSchema
   .pick({
@@ -26,13 +22,14 @@ export const authLoginSchema = z
   })
   .strict()
 
-export const authRefreshSchema = z
+export const authRefreshTokenRequestSchema = z
   .object({
-    refreshToken: optionalTokenSchema,
+    refreshToken: z.string().trim().optional(),
   })
   .strict()
 
-export const authLogoutSchema = authRefreshSchema
+export const authRefreshSchema = authRefreshTokenRequestSchema
+export const authLogoutSchema = authRefreshTokenRequestSchema
 
 export const authTokenResponseSchema = z.object({
   user: userSchema,
@@ -48,7 +45,8 @@ export const authErrorResponseSchema = z.object({
 
 export type AuthRegisterInput = z.infer<typeof authRegisterSchema>
 export type AuthLoginInput = z.infer<typeof authLoginSchema>
-export type AuthRefreshInput = z.infer<typeof authRefreshSchema>
-export type AuthLogoutInput = z.infer<typeof authLogoutSchema>
+export type AuthRefreshTokenRequestInput = z.infer<typeof authRefreshTokenRequestSchema>
+export type AuthRefreshInput = AuthRefreshTokenRequestInput
+export type AuthLogoutInput = AuthRefreshTokenRequestInput
 export type AuthTokenResponse = z.infer<typeof authTokenResponseSchema>
 export type AuthErrorResponse = z.infer<typeof authErrorResponseSchema>

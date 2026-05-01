@@ -1,14 +1,13 @@
 import {
   type AuthLoginInput,
-  type AuthRefreshInput,
   type AuthRegisterInput,
-  authLogoutSchema,
-  authRefreshSchema,
+  authRefreshTokenRequestSchema,
   authLoginSchema,
   authRegisterSchema,
 } from '@rev30/shared'
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
+import type { ZodType } from 'zod'
 import type { Db } from '../../db'
 import { UserConflictError } from '../system/users/errors'
 import { clearRefreshTokenCookie, getRefreshTokenCookie, setRefreshTokenCookie } from './cookies'
@@ -20,50 +19,25 @@ import {
 } from './errors'
 import { createAuthService } from './service'
 
-const registerBodyValidator = zValidator('json', authRegisterSchema, (result, c) => {
-  if (!result.success) {
-    return c.json({ message: 'Invalid body' }, 400)
-  }
-})
+const jsonBodyValidator = <T extends ZodType>(schema: T) =>
+  zValidator('json', schema, (result, c) => {
+    if (!result.success) {
+      return c.json({ message: 'Invalid body' }, 400)
+    }
+  })
 
-const loginBodyValidator = zValidator('json', authLoginSchema, (result, c) => {
-  if (!result.success) {
-    return c.json({ message: 'Invalid body' }, 400)
-  }
-})
+const registerBodyValidator = jsonBodyValidator(authRegisterSchema)
+const loginBodyValidator = jsonBodyValidator(authLoginSchema)
 
-async function readOptionalJson(c: Context) {
-  const text = await c.req.text()
-
-  if (!text.trim()) {
-    return {}
-  }
-
+async function readRefreshToken(c: Context) {
   try {
-    return JSON.parse(text) as unknown
+    const text = await c.req.text()
+    const body = authRefreshTokenRequestSchema.safeParse(text.trim() ? JSON.parse(text) : {})
+
+    return body.success ? (body.data.refreshToken ?? getRefreshTokenCookie(c)) : null
   } catch {
-    return {}
+    return null
   }
-}
-
-async function readRefreshBody(c: Context): Promise<AuthRefreshInput> {
-  const result = authRefreshSchema.safeParse(await readOptionalJson(c))
-
-  if (!result.success) {
-    throw new AuthInvalidRefreshTokenError()
-  }
-
-  return result.data
-}
-
-async function readLogoutBody(c: Context): Promise<AuthRefreshInput> {
-  const result = authLogoutSchema.safeParse(await readOptionalJson(c))
-
-  if (!result.success) {
-    return {}
-  }
-
-  return result.data
 }
 
 function bearerToken(c: Context) {
@@ -88,15 +62,11 @@ function authErrorResponse(error: unknown, c: Context) {
     )
   }
 
-  if (error instanceof AuthInvalidCredentialsError) {
-    return c.json({ message: error.message }, 401)
-  }
-
-  if (error instanceof AuthInvalidRefreshTokenError) {
-    return c.json({ message: error.message }, 401)
-  }
-
-  if (error instanceof AuthUnauthorizedError) {
+  if (
+    error instanceof AuthInvalidCredentialsError ||
+    error instanceof AuthInvalidRefreshTokenError ||
+    error instanceof AuthUnauthorizedError
+  ) {
     return c.json({ message: error.message }, 401)
   }
 
@@ -128,17 +98,25 @@ export function createAuthRoutes(database: Db) {
       return c.json(result)
     })
     .post('/refresh', async (c) => {
-      const body = await readRefreshBody(c)
-      const result = await service.refresh(body.refreshToken ?? getRefreshTokenCookie(c))
+      const refreshToken = await readRefreshToken(c)
 
+      if (refreshToken === null) {
+        return c.json({ message: 'Invalid body' }, 400)
+      }
+
+      const result = await service.refresh(refreshToken)
       setRefreshTokenCookie(c, result.refreshToken, config)
 
       return c.json(result)
     })
     .post('/logout', async (c) => {
-      const body = await readLogoutBody(c)
+      const refreshToken = await readRefreshToken(c)
 
-      await service.logout(body.refreshToken ?? getRefreshTokenCookie(c))
+      if (refreshToken === null) {
+        return c.json({ message: 'Invalid body' }, 400)
+      }
+
+      await service.logout(refreshToken)
       clearRefreshTokenCookie(c)
 
       return c.body(null, 204)

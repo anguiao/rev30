@@ -10,6 +10,7 @@ import { Hono, type Context } from 'hono'
 import type { ZodType } from 'zod'
 import type { Db } from '../../db'
 import { UserConflictError } from '../system/users/errors'
+import { parseBearerToken } from './bearer'
 import { clearRefreshTokenCookie, getRefreshTokenCookie, setRefreshTokenCookie } from './cookies'
 import { readAuthConfig } from './config'
 import {
@@ -38,17 +39,6 @@ async function readRefreshToken(c: Context) {
   } catch {
     return null
   }
-}
-
-function bearerToken(c: Context) {
-  const authorization = c.req.header('authorization')
-  const [scheme, token] = authorization?.split(' ') ?? []
-
-  if (scheme !== 'Bearer' || !token) {
-    return undefined
-  }
-
-  return token
 }
 
 function authErrorResponse(error: unknown, c: Context) {
@@ -121,5 +111,7 @@ export function createAuthRoutes(database: Db) {
 
       return c.body(null, 204)
     })
-    .get('/me', async (c) => c.json(await service.me(bearerToken(c))))
+    .get('/me', async (c) =>
+      c.json(await service.me(parseBearerToken(c.req.header('authorization')))),
+    )
 }

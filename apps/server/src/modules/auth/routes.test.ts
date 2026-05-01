@@ -356,6 +356,23 @@ describe('auth routes', () => {
     })
   })
 
+  it('rejects bearer authorization headers with extra fields for current user', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app)
+
+    const response = await app.request('/api/auth/me', {
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken} extra`,
+      },
+    })
+
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({
+      message: 'Unauthorized',
+    })
+  })
+
   it('rejects missing, refresh, and disabled-user tokens for current user', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)

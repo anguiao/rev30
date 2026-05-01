@@ -8,9 +8,9 @@ import {
   type UserListResponse,
   type UserStatus,
 } from '@rev30/shared'
-import { users } from '../../../db/schema'
-import { createTestDb } from '../../../test/db'
-import { createUserRoutes } from './routes'
+import { users } from '../../../../src/db/schema'
+import { createTestDb } from '../../../helpers/db'
+import { createUserRoutes } from '../../../../src/modules/system/users/routes'
 
 type ErrorResponse = {
   message: string

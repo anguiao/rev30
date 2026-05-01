@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { USER_STATUS_DISABLED, type AuthTokenResponse } from '@rev30/shared'
-import { authPasswordCredentials, users } from '../../db/schema'
-import { createTestDb } from '../../test/db'
-import { verifyPassword } from './password'
-import { createAuthRoutes } from './routes'
+import { authPasswordCredentials, users } from '../../../src/db/schema'
+import { createTestDb } from '../../helpers/db'
+import { verifyPassword } from '../../../src/modules/auth/password'
+import { createAuthRoutes } from '../../../src/modules/auth/routes'
 
 type ErrorResponse = {
   message: string

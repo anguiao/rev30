@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AuthTokenResponse, UserListResponse } from '@rev30/shared'
-import { createApp } from './app'
-import { createTestDb } from './test/db'
+import { createApp } from '../src/app'
+import { createTestDb } from './helpers/db'
 
 async function register(app: ReturnType<typeof createApp>) {
   const response = await app.request('/api/auth/register', {

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { USER_STATUS_ENABLED } from './system/users'
+import { USER_STATUS_ENABLED } from '../../src/schemas/system/users'
 import {
   authLoginSchema,
   authLogoutSchema,
   authRefreshSchema,
   authRegisterSchema,
   authTokenResponseSchema,
-} from './auth'
+} from '../../src/schemas/auth'
 
 describe('auth schemas', () => {
   it('parses public registration input without allowing status', () => {

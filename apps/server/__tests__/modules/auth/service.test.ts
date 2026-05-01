@@ -1,8 +1,8 @@
 import { USER_STATUS_DISABLED, USER_STATUS_ENABLED } from '@rev30/shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AuthConfig } from './config'
-import { AuthInvalidCredentialsError } from './errors'
-import { createAuthService } from './service'
+import type { AuthConfig } from '../../../src/modules/auth/config'
+import { AuthInvalidCredentialsError } from '../../../src/modules/auth/errors'
+import { createAuthService } from '../../../src/modules/auth/service'
 
 const mocks = vi.hoisted(() => {
   const repository = {
@@ -21,11 +21,11 @@ const mocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('./repository', () => ({
+vi.mock('../../../src/modules/auth/repository', () => ({
   createAuthRepository: mocks.createAuthRepository,
 }))
 
-vi.mock('./password', () => ({
+vi.mock('../../../src/modules/auth/password', () => ({
   hashPassword: vi.fn(),
   verifyPassword: mocks.verifyPassword,
 }))

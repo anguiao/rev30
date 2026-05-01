@@ -5,9 +5,9 @@ import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
 import { readMigrationFiles } from 'drizzle-orm/migrator'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { authPasswordCredentials, authRefreshTokens, users } from './schema'
-import { createDb } from './index'
-import { applyPgliteMigrations, defaultMigrationsDir } from './migrations'
+import { authPasswordCredentials, authRefreshTokens, users } from '../../src/db/schema'
+import { createDb } from '../../src/db/index'
+import { applyPgliteMigrations, defaultMigrationsDir } from '../../src/db/migrations'
 
 const originalNodeEnv = process.env.NODE_ENV
 const originalPgliteDataDir = process.env.PGLITE_DATA_DIR

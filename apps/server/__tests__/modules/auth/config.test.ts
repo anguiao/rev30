@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readAuthConfig } from './config'
+import { readAuthConfig } from '../../../src/modules/auth/config'
 
 describe('auth config', () => {
   it('uses development defaults for local and test environments', () => {

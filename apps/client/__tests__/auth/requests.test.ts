@@ -1,7 +1,13 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { USER_STATUS_ENABLED } from '@rev30/shared'
-import { AuthRequestError, logout, parseAuthError, parseAuthSession, register } from './requests'
+import {
+  AuthRequestError,
+  logout,
+  parseAuthError,
+  parseAuthSession,
+  register,
+} from '../../src/auth/requests'
 
 const tokenBody = {
   accessToken: 'access-token',

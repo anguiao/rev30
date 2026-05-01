@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createApp } from '../../app'
-import { createTestDb } from '../../test/db'
+import { createApp } from '../../../src/app'
+import { createTestDb } from '../../helpers/db'
 
 describe('health routes', () => {
   it('returns health status through the app', async () => {

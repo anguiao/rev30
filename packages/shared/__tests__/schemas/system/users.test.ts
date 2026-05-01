@@ -6,7 +6,7 @@ import {
   userListQuerySchema,
   userUpdateSchema,
   userSchema,
-} from './users'
+} from '../../../src/schemas/system/users'
 
 describe('user schemas', () => {
   it('accepts a user response with nullable email and phone', () => {

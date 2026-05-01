@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import type { AuthConfig } from './config'
+import type { AuthConfig } from '../../../src/modules/auth/config'
 import {
   createTokenPair,
   hashRefreshTokenId,
   verifyAccessToken,
   verifyRefreshToken,
-} from './tokens'
+} from '../../../src/modules/auth/tokens'
 
 const config: AuthConfig = {
   accessSecret: 'test-access-secret',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { USER_STATUS_ENABLED } from './user'
+import { USER_STATUS_ENABLED } from './system/users'
 import {
   authLoginSchema,
   authLogoutSchema,

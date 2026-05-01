@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { userCreateSchema, userSchema } from './user'
+import { userCreateSchema, userSchema } from './system/users'
 
 const passwordSchema = z.string().min(8)
 

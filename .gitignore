@@ -12,6 +12,7 @@ coverage/
 
 # Local data
 .pglite/
+.superpowers/
 .worktrees/
 
 # Environment files

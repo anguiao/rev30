@@ -219,6 +219,20 @@ describe('auth pages', () => {
     expect(wrapper.text()).toContain('请输入用户名')
   })
 
+  it('blocks registration when the confirmation password does not match', async () => {
+    const { wrapper } = await mountRegisterPage()
+
+    await wrapper.find('[data-test="register-username"] input').setValue('ada')
+    await wrapper.find('[data-test="register-nickname"] input').setValue('Ada Lovelace')
+    await wrapper.find('[data-test="register-password"] input').setValue('password123')
+    await wrapper.find('[data-test="register-confirm-password"] input').setValue('different123')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(registerMock).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('两次输入的密码不一致')
+  })
+
   it('stores the returned session and navigates home after successful registration', async () => {
     registerMock.mockResolvedValue(session)
     const { router, wrapper } = await mountRegisterPage()
@@ -226,6 +240,7 @@ describe('auth pages', () => {
     await wrapper.find('[data-test="register-username"] input').setValue('ada')
     await wrapper.find('[data-test="register-nickname"] input').setValue('Ada Lovelace')
     await wrapper.find('[data-test="register-password"] input').setValue('password123')
+    await wrapper.find('[data-test="register-confirm-password"] input').setValue('password123')
     await wrapper.find('[data-test="register-email"] input').setValue('')
     await wrapper.find('[data-test="register-phone"] input').setValue('')
     await wrapper.find('form').trigger('submit')
@@ -253,6 +268,7 @@ describe('auth pages', () => {
     await wrapper.find('[data-test="register-username"] input').setValue('ada')
     await wrapper.find('[data-test="register-nickname"] input').setValue('Ada Lovelace')
     await wrapper.find('[data-test="register-password"] input').setValue('password123')
+    await wrapper.find('[data-test="register-confirm-password"] input').setValue('password123')
     await wrapper.find('[data-test="register-email"] input').setValue('')
     await wrapper.find('[data-test="register-phone"] input').setValue('')
     await triggerBrowserSubmit(wrapper)

@@ -10,6 +10,7 @@ import { fieldFeedback, registerDefaultValues, setServerFieldError } from '../au
 import { AuthRequestError, register } from '../auth/requests'
 import { useAuthStore } from '../stores/auth'
 
+type RegisterFormValues = typeof registerDefaultValues
 type RegisterField = keyof typeof registerDefaultValues
 
 const router = useRouter()
@@ -24,26 +25,32 @@ const form = useForm({
   defaultValues: registerDefaultValues,
   validators: {
     onSubmit: ({ value }) => {
-      const result = authRegisterSchema.safeParse(value)
+      const result = authRegisterSchema.safeParse(toRegisterInput(value))
+      const fields: Record<string, string> = {}
 
-      if (result.success) {
-        return undefined
+      if (!result.success) {
+        Object.assign(
+          fields,
+          Object.fromEntries(
+            result.error.issues
+              .filter((issue) => issue.path.length > 0)
+              .map((issue) => [issue.path.join('.'), issue.message]),
+          ),
+        )
       }
 
-      return {
-        fields: Object.fromEntries(
-          result.error.issues
-            .filter((issue) => issue.path.length > 0)
-            .map((issue) => [issue.path.join('.'), issue.message]),
-        ),
+      if (value.password !== value.confirmPassword) {
+        fields.confirmPassword = 'Password confirmation does not match'
       }
+
+      return Object.keys(fields).length === 0 ? undefined : { fields }
     },
   },
   async onSubmit({ value }) {
     formError.value = null
 
     try {
-      const input = authRegisterSchema.parse(value)
+      const input = authRegisterSchema.parse(toRegisterInput(value))
       const session = await registerMutation.mutateAsync(input)
       auth.setSession(session)
       await router.push('/')
@@ -67,8 +74,15 @@ const validationMessages: Record<RegisterField, string> = {
   username: '请输入用户名',
   nickname: '请输入昵称',
   password: '密码至少需要 8 位',
+  confirmPassword: '两次输入的密码不一致',
   email: '请输入邮箱',
   phone: '请输入手机号',
+}
+
+function toRegisterInput(value: RegisterFormValues) {
+  const { confirmPassword: _confirmPassword, ...input } = value
+
+  return input
 }
 
 function fieldMessage(name: RegisterField, errors: unknown[], serverError: unknown) {
@@ -150,6 +164,24 @@ function formatValidationError(error: unknown) {
             show-password-on="click"
             autocomplete="new-password"
             placeholder="至少 8 位"
+            @blur="field.handleBlur"
+            @update:value="field.handleChange"
+          />
+        </NFormItem>
+      </form.Field>
+
+      <form.Field name="confirmPassword" v-slot="{ field, state }">
+        <NFormItem
+          label="确认密码"
+          v-bind="formItemProps('confirmPassword', state.meta.errors, state.meta.errorMap.onServer)"
+        >
+          <NInput
+            data-test="register-confirm-password"
+            :value="state.value"
+            type="password"
+            show-password-on="click"
+            autocomplete="new-password"
+            placeholder="请再次输入密码"
             @blur="field.handleBlur"
             @update:value="field.handleChange"
           />

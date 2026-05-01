@@ -9,6 +9,7 @@ export const registerDefaultValues = {
   username: '',
   nickname: '',
   password: '',
+  confirmPassword: '',
   email: '',
   phone: '',
 }

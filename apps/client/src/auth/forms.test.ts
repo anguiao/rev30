@@ -30,6 +30,7 @@ describe('auth form helpers', () => {
       username: '',
       nickname: '',
       password: '',
+      confirmPassword: '',
       email: '',
       phone: '',
     })

@@ -19,7 +19,7 @@ function readPositiveInteger(value: string | undefined, fallback: number) {
   const parsed = Number(value)
 
   if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error('JWT expiration values must be positive integers')
+    throw new Error('JWT 过期时间必须是正整数')
   }
 
   return parsed
@@ -32,11 +32,11 @@ export function readAuthConfig(env = process.env): AuthConfig {
     env.JWT_REFRESH_SECRET ?? (isProduction ? undefined : developmentRefreshSecret)
 
   if (!accessSecret) {
-    throw new Error('JWT_ACCESS_SECRET is required in production')
+    throw new Error('生产环境必须设置 JWT_ACCESS_SECRET')
   }
 
   if (!refreshSecret) {
-    throw new Error('JWT_REFRESH_SECRET is required in production')
+    throw new Error('生产环境必须设置 JWT_REFRESH_SECRET')
   }
 
   return {

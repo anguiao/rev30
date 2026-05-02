@@ -12,7 +12,7 @@ describe('auth config', () => {
 
   it('requires explicit secrets in production', () => {
     expect(() => readAuthConfig({ NODE_ENV: 'production' })).toThrow(
-      'JWT_ACCESS_SECRET is required in production',
+      '生产环境必须设置 JWT_ACCESS_SECRET',
     )
   })
 

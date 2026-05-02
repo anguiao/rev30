@@ -109,7 +109,7 @@ describe('auth routes', () => {
     expect(duplicate.response.status).toBe(409)
     expect(duplicate.body).toMatchObject({
       field: 'username',
-      message: 'username already exists',
+      message: '用户名已存在',
     })
   })
 
@@ -142,7 +142,7 @@ describe('auth routes', () => {
 
     expect(wrongPassword.response.status).toBe(401)
     expect(wrongPassword.body).toEqual({
-      message: 'Invalid username or password',
+      message: '用户名或密码错误',
     })
 
     await database
@@ -156,7 +156,30 @@ describe('auth routes', () => {
 
     expect(disabled.response.status).toBe(401)
     expect(disabled.body).toEqual({
-      message: 'Invalid username or password',
+      message: '用户名或密码错误',
+    })
+  })
+
+  it('returns stable request body errors for invalid login and registration bodies', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+
+    const invalidRegister = await register(app, {
+      password: 'short',
+    })
+
+    expect(invalidRegister.response.status).toBe(400)
+    expect(invalidRegister.body).toEqual({
+      message: '请求体无效',
+    })
+
+    const invalidLogin = await login(app, {
+      username: '   ',
+    })
+
+    expect(invalidLogin.response.status).toBe(400)
+    expect(invalidLogin.body).toEqual({
+      message: '请求体无效',
     })
   })
 
@@ -193,7 +216,7 @@ describe('auth routes', () => {
 
     expect(reuseResponse.status).toBe(401)
     expect(reuseBody).toEqual({
-      message: 'Invalid refresh token',
+      message: '刷新令牌无效',
     })
   })
 
@@ -217,25 +240,39 @@ describe('auth routes', () => {
 
   it('rejects invalid token request bodies before using the refresh cookie', async () => {
     for (const path of ['/api/auth/refresh', '/api/auth/logout']) {
-      for (const body of ['{', JSON.stringify({ refreshToken: 123 })]) {
-        const database = await createTestDb()
-        const app = createTestApp(database)
-        const registered = await register(app)
+      const database = await createTestDb()
+      const app = createTestApp(database)
+      const registered = await register(app)
 
-        const response = await app.request(path, {
-          method: 'POST',
-          body,
-          headers: {
-            'content-type': 'application/json',
-            cookie: `refresh_token=${registered.body.refreshToken}`,
-          },
-        })
+      const malformedResponse = await app.request(path, {
+        method: 'POST',
+        body: '{',
+        headers: {
+          'content-type': 'application/json',
+          cookie: `refresh_token=${registered.body.refreshToken}`,
+        },
+      })
 
-        expect(response.status).toBe(400)
-        expect(await response.json()).toEqual({
-          message: 'Invalid body',
-        })
-      }
+      expect(malformedResponse.status).toBe(400)
+      expect(await malformedResponse.json()).toEqual({
+        message: '请求体无效',
+      })
+
+      const invalidTypeResponse = await app.request(path, {
+        method: 'POST',
+        body: JSON.stringify({
+          refreshToken: 123,
+        }),
+        headers: {
+          'content-type': 'application/json',
+          cookie: `refresh_token=${registered.body.refreshToken}`,
+        },
+      })
+
+      expect(invalidTypeResponse.status).toBe(400)
+      expect(await invalidTypeResponse.json()).toEqual({
+        message: '请求体无效',
+      })
     }
   })
 
@@ -257,7 +294,7 @@ describe('auth routes', () => {
 
     expect(refreshResponse.status).toBe(401)
     expect(await refreshResponse.json()).toEqual({
-      message: 'Invalid refresh token',
+      message: '刷新令牌无效',
     })
   })
 
@@ -369,7 +406,7 @@ describe('auth routes', () => {
 
     expect(response.status).toBe(401)
     expect(await response.json()).toEqual({
-      message: 'Unauthorized',
+      message: '未授权',
     })
   })
 
@@ -381,7 +418,7 @@ describe('auth routes', () => {
     const missingResponse = await app.request('/api/auth/me')
     expect(missingResponse.status).toBe(401)
     expect(await missingResponse.json()).toEqual({
-      message: 'Unauthorized',
+      message: '未授权',
     })
 
     const refreshTokenResponse = await app.request('/api/auth/me', {
@@ -406,7 +443,7 @@ describe('auth routes', () => {
 
     expect(disabledResponse.status).toBe(401)
     expect(await disabledResponse.json()).toEqual({
-      message: 'Unauthorized',
+      message: '未授权',
     })
   })
 })

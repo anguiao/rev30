@@ -2,7 +2,7 @@
 import { computed, h } from 'vue'
 import { NButton, NDropdown } from 'naive-ui'
 import { storeToRefs } from 'pinia'
-import { type ThemeMode, themeModeOptions, useThemeStore } from '../stores/theme'
+import { type ThemeMode, themeModeOptions, useThemeStore } from '../../stores/theme'
 
 const theme = useThemeStore()
 const { mode } = storeToRefs(theme)

@@ -1,20 +1,20 @@
 export class AuthInvalidCredentialsError extends Error {
   constructor() {
-    super('Invalid username or password')
+    super('用户名或密码错误')
     this.name = 'AuthInvalidCredentialsError'
   }
 }
 
 export class AuthInvalidRefreshTokenError extends Error {
   constructor() {
-    super('Invalid refresh token')
+    super('刷新令牌无效')
     this.name = 'AuthInvalidRefreshTokenError'
   }
 }
 
 export class AuthUnauthorizedError extends Error {
   constructor() {
-    super('Unauthorized')
+    super('未授权')
     this.name = 'AuthUnauthorizedError'
   }
 }

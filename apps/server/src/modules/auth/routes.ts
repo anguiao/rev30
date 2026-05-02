@@ -23,7 +23,7 @@ import { createAuthService } from './service'
 const jsonBodyValidator = <T extends ZodType>(schema: T) =>
   zValidator('json', schema, (result, c) => {
     if (!result.success) {
-      return c.json({ message: 'Invalid body' }, 400)
+      return c.json({ message: '请求体无效' }, 400)
     }
   })
 
@@ -91,7 +91,7 @@ export function createAuthRoutes(database: Db) {
       const refreshToken = await readRefreshToken(c)
 
       if (refreshToken === null) {
-        return c.json({ message: 'Invalid body' }, 400)
+        return c.json({ message: '请求体无效' }, 400)
       }
 
       const result = await service.refresh(refreshToken)
@@ -103,7 +103,7 @@ export function createAuthRoutes(database: Db) {
       const refreshToken = await readRefreshToken(c)
 
       if (refreshToken === null) {
-        return c.json({ message: 'Invalid body' }, 400)
+        return c.json({ message: '请求体无效' }, 400)
       }
 
       await service.logout(refreshToken)

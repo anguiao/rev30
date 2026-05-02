@@ -1,32 +1,35 @@
 import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 import type { AuthTokenResponse, User } from '@rev30/shared'
 
-type AuthState = {
-  accessToken: string | null
-  user: User | null
-  isReady: boolean
-}
+export const useAuthStore = defineStore('auth', () => {
+  const accessToken = ref<string | null>(null)
+  const user = ref<User | null>(null)
+  const isReady = ref(false)
 
-export const useAuthStore = defineStore('auth', {
-  state: (): AuthState => ({
-    accessToken: null,
-    user: null,
-    isReady: false,
-  }),
-  getters: {
-    isAuthenticated: (state) => state.accessToken !== null && state.user !== null,
-  },
-  actions: {
-    setSession(session: AuthTokenResponse) {
-      this.accessToken = session.accessToken
-      this.user = session.user
-    },
-    clearSession() {
-      this.accessToken = null
-      this.user = null
-    },
-    markReady() {
-      this.isReady = true
-    },
-  },
+  const isAuthenticated = computed(() => accessToken.value !== null && user.value !== null)
+
+  function setSession(session: AuthTokenResponse) {
+    accessToken.value = session.accessToken
+    user.value = session.user
+  }
+
+  function clearSession() {
+    accessToken.value = null
+    user.value = null
+  }
+
+  function markReady() {
+    isReady.value = true
+  }
+
+  return {
+    accessToken,
+    user,
+    isReady,
+    isAuthenticated,
+    setSession,
+    clearSession,
+    markReady,
+  }
 })

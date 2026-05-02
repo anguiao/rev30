@@ -6,6 +6,14 @@ const userUniqueConstraintFields: Partial<Record<string, UserUniqueField>> = {
   users_email_unique: 'email',
   users_phone_unique: 'phone',
   users_username_unique: 'username',
+} satisfies {
+  [K in UserUniqueField as `users_${K}_unique`]: K
+}
+
+const userUniqueFieldConflictMessages: Record<UserUniqueField, string> = {
+  email: '邮箱已存在',
+  phone: '手机号已存在',
+  username: '用户名已存在',
 }
 
 type DatabaseErrorCause = {
@@ -16,14 +24,14 @@ type DatabaseErrorCause = {
 
 export class UserConflictError extends Error {
   constructor(public readonly field: UserUniqueField) {
-    super(`${field} already exists`)
+    super(userUniqueFieldConflictMessages[field])
     this.name = 'UserConflictError'
   }
 }
 
 export class UserNotFoundError extends Error {
   constructor() {
-    super('User not found')
+    super('用户不存在')
     this.name = 'UserNotFoundError'
   }
 }

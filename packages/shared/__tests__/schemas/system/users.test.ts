@@ -8,6 +8,10 @@ import {
   userSchema,
 } from '../../../src/schemas/system/users'
 
+function firstIssueMessage(result: { success: false; error: { issues: { message: string }[] } }) {
+  return result.error.issues[0]?.message
+}
+
 describe('user schemas', () => {
   it('accepts a user response with nullable email and phone', () => {
     expect(
@@ -53,13 +57,16 @@ describe('user schemas', () => {
       status: USER_STATUS_DISABLED,
     })
 
-    expect(() =>
-      userCreateSchema.parse({
-        username: 'invalid',
-        nickname: 'Invalid User',
-        status: 2,
-      }),
-    ).toThrow()
+    const result = userCreateSchema.safeParse({
+      username: 'invalid',
+      nickname: 'Invalid User',
+      status: 2,
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(firstIssueMessage(result)).toBe('用户状态无效')
+    }
   })
 
   it('parses list query strings into pagination and status values', () => {
@@ -91,9 +98,42 @@ describe('user schemas', () => {
   })
 
   it('requires at least one field for updates', () => {
-    expect(() => userUpdateSchema.parse({})).toThrow()
-    expect(() => userUpdateSchema.parse({ email: undefined })).toThrow()
-    expect(() => userUpdateSchema.parse({ status: undefined })).toThrow()
+    for (const input of [{}, { email: undefined }, { status: undefined }]) {
+      const result = userUpdateSchema.safeParse(input)
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(firstIssueMessage(result)).toBe('至少修改一个字段')
+      }
+    }
+
     expect(userUpdateSchema.parse({ phone: null })).toEqual({ phone: null })
+  })
+
+  it('reports schema messages for invalid user input fields', () => {
+    const invalidUser = userSchema.safeParse({
+      id: 'not-a-uuid',
+      username: 'ada',
+      nickname: 'Ada Lovelace',
+      email: null,
+      phone: null,
+      status: USER_STATUS_ENABLED,
+      createdAt: '2026-04-29T08:00:00.000Z',
+      updatedAt: '2026-04-29T08:00:00.000Z',
+    })
+
+    expect(invalidUser.success).toBe(false)
+    if (!invalidUser.success) {
+      expect(firstIssueMessage(invalidUser)).toBe('用户 ID 无效')
+    }
+
+    const invalidQuery = userListQuerySchema.safeParse({
+      page: '0',
+    })
+
+    expect(invalidQuery.success).toBe(false)
+    if (!invalidQuery.success) {
+      expect(firstIssueMessage(invalidQuery)).toBe('页码不能小于 1')
+    }
   })
 })

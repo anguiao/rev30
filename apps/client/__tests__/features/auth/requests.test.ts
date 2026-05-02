@@ -7,7 +7,7 @@ import {
   parseAuthError,
   parseAuthSession,
   register,
-} from '../../src/auth/requests'
+} from '../../../src/features/auth/requests'
 
 const tokenBody = {
   accessToken: 'access-token',
@@ -55,16 +55,18 @@ describe('auth requests', () => {
     })
   })
 
-  it('ignores auth error fields outside the user unique field whitelist', async () => {
-    const error = await parseAuthError(
-      new Response(JSON.stringify({ field: 'role', message: 'role is not unique' }), {
-        status: 409,
-      }),
-    )
-
-    expect(error.status).toBe(409)
-    expect(error.message).toBe('role is not unique')
-    expect(error.field).toBeUndefined()
+  it('falls back when auth error responses violate the shared schema', async () => {
+    await expect(
+      parseAuthError(
+        new Response(JSON.stringify({ field: 'role', message: 'role is not unique' }), {
+          status: 409,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      status: 409,
+      message: 'Request failed',
+      field: undefined,
+    })
   })
 
   it('keeps a stable message when the server response is not json', async () => {
@@ -109,6 +111,28 @@ describe('auth requests', () => {
       password: 'password123',
       email: null,
       phone: null,
+    })
+  })
+
+  it('normalizes registration input through the shared schema before sending it', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(tokenBody)))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await register({
+      username: 'ada',
+      nickname: 'Ada Lovelace',
+      password: 'password123',
+      email: ' ada@example.com ',
+      phone: ' 12345678901 ',
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
+    expect(JSON.parse(String(init.body))).toEqual({
+      username: 'ada',
+      nickname: 'Ada Lovelace',
+      password: 'password123',
+      email: 'ada@example.com',
+      phone: '12345678901',
     })
   })
 

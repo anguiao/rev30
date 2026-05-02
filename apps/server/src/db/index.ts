@@ -11,7 +11,7 @@ export async function createDb() {
     const databaseUrl = process.env.DATABASE_URL
 
     if (!databaseUrl) {
-      throw new Error('DATABASE_URL is required in production')
+      throw new Error('生产环境必须设置 DATABASE_URL')
     }
 
     const client = postgres(databaseUrl)

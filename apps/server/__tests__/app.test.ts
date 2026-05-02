@@ -28,7 +28,7 @@ describe('app auth boundaries', () => {
 
     expect(response.status).toBe(401)
     expect(await response.json()).toEqual({
-      message: 'Unauthorized',
+      message: '未授权',
     })
   })
 
@@ -62,7 +62,7 @@ describe('app auth boundaries', () => {
 
     expect(response.status).toBe(401)
     expect(await response.json()).toEqual({
-      message: 'Unauthorized',
+      message: '未授权',
     })
   })
 })

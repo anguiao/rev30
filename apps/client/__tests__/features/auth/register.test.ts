@@ -2,16 +2,16 @@
 
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useAuthStore } from '../../src/stores/auth'
-import { register } from '../../src/auth/requests'
-import RegisterPage from '../../src/pages/register.vue'
+import { useAuthStore } from '../../../src/stores/auth'
+import { register } from '../../../src/features/auth/requests'
+import RegisterPage from '../../../src/pages/register.vue'
 import {
   disposeActiveTestPinia,
   mountAuthRoute,
   session,
   stubPreferredDark,
   triggerBrowserSubmit,
-} from './helpers'
+} from '../../helpers/auth'
 
 enableAutoUnmount(afterEach)
 
@@ -28,7 +28,7 @@ const { MockAuthRequestError } = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('../../src/auth/requests', () => ({
+vi.mock('../../../src/features/auth/requests', () => ({
   AuthRequestError: MockAuthRequestError,
   register: vi.fn(),
 }))

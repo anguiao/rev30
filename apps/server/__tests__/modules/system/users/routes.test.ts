@@ -164,11 +164,17 @@ describe('user routes', () => {
 
     const detailResponse = await app.request(`/api/system/users/${created.id}`)
     expect(detailResponse.status).toBe(404)
+    expect(await detailResponse.json()).toEqual({
+      message: '用户不存在',
+    })
 
     const secondDeleteResponse = await app.request(`/api/system/users/${created.id}`, {
       method: 'DELETE',
     })
     expect(secondDeleteResponse.status).toBe(404)
+    expect(await secondDeleteResponse.json()).toEqual({
+      message: '用户不存在',
+    })
   })
 
   it('rejects duplicate username, email, and phone even after soft delete', async () => {
@@ -315,7 +321,7 @@ describe('user routes', () => {
     const getBody = (await getResponse.json()) as ErrorResponse
 
     expect(getResponse.status).toBe(400)
-    expect(getBody).toEqual({ message: 'Invalid user id' })
+    expect(getBody).toEqual({ message: '用户 ID 无效' })
 
     const patchResponse = await app.request('/api/system/users/not-a-uuid', {
       method: 'PATCH',
@@ -329,7 +335,7 @@ describe('user routes', () => {
     const patchBody = (await patchResponse.json()) as ErrorResponse
 
     expect(patchResponse.status).toBe(400)
-    expect(patchBody).toEqual({ message: 'Invalid user id' })
+    expect(patchBody).toEqual({ message: '用户 ID 无效' })
 
     const deleteResponse = await app.request('/api/system/users/not-a-uuid', {
       method: 'DELETE',
@@ -337,6 +343,48 @@ describe('user routes', () => {
     const deleteBody = (await deleteResponse.json()) as ErrorResponse
 
     expect(deleteResponse.status).toBe(400)
-    expect(deleteBody).toEqual({ message: 'Invalid user id' })
+    expect(deleteBody).toEqual({ message: '用户 ID 无效' })
+  })
+
+  it('returns stable validation errors for invalid user query and body input', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+
+    const queryResponse = await app.request('/api/system/users?page=0')
+    const queryBody = (await queryResponse.json()) as ErrorResponse
+
+    expect(queryResponse.status).toBe(400)
+    expect(queryBody).toEqual({ message: '查询参数无效' })
+
+    const createResponse = await app.request('/api/system/users', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: '',
+        nickname: 'Missing Username',
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const createBody = (await createResponse.json()) as ErrorResponse
+
+    expect(createResponse.status).toBe(400)
+    expect(createBody).toEqual({ message: '请求体无效' })
+
+    const { body: created } = await createUser(app, {
+      username: 'update-target',
+      nickname: 'Update Target',
+    })
+    const updateResponse = await app.request(`/api/system/users/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({}),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const updateBody = (await updateResponse.json()) as ErrorResponse
+
+    expect(updateResponse.status).toBe(400)
+    expect(updateBody).toEqual({ message: '请求体无效' })
   })
 })

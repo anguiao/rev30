@@ -20,25 +20,25 @@ const userListRequestQuerySchema = userListQuerySchema
 
 const userIdValidator = zValidator('param', userIdParamSchema, (result, c) => {
   if (!result.success) {
-    return c.json({ message: 'Invalid user id' }, 400)
+    return c.json({ message: '用户 ID 无效' }, 400)
   }
 })
 
 const userListQueryValidator = zValidator('query', userListRequestQuerySchema, (result, c) => {
   if (!result.success) {
-    return c.json({ message: 'Invalid query' }, 400)
+    return c.json({ message: '查询参数无效' }, 400)
   }
 })
 
 const userCreateBodyValidator = zValidator('json', userCreateSchema, (result, c) => {
   if (!result.success) {
-    return c.json({ message: 'Invalid body' }, 400)
+    return c.json({ message: '请求体无效' }, 400)
   }
 })
 
 const userUpdateBodyValidator = zValidator('json', userUpdateSchema, (result, c) => {
   if (!result.success) {
-    return c.json({ message: 'Invalid body' }, 400)
+    return c.json({ message: '请求体无效' }, 400)
   }
 })
 

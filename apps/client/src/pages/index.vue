@@ -3,8 +3,8 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMutation } from '@pinia/colada'
 import { NButton } from 'naive-ui'
-import { logout } from '../auth/requests'
-import ThemeModeSwitch from '../components/ThemeModeSwitch.vue'
+import ThemeModeSwitch from '../components/common/ThemeModeSwitch.vue'
+import { logout } from '../features/auth'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()

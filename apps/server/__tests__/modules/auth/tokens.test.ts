@@ -32,8 +32,6 @@ describe('auth token helpers', () => {
       refreshTokenId: pair.refreshTokenId,
       refreshTokenHash: pair.refreshTokenHash,
     })
-    await expect(verifyAccessToken(pair.refreshToken, config)).rejects.toThrow(
-      'Invalid access token',
-    )
+    await expect(verifyAccessToken(pair.refreshToken, config)).rejects.toThrow('访问令牌无效')
   })
 })

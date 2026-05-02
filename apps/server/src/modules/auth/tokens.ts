@@ -14,7 +14,7 @@ function nowInSeconds() {
 
 function assertSubject(payload: JwtPayload) {
   if (typeof payload.sub !== 'string') {
-    throw new Error('Invalid token subject')
+    throw new Error('令牌 subject 无效')
   }
 
   return payload.sub
@@ -68,12 +68,12 @@ export async function verifyAccessToken(token: string, config: AuthConfig) {
     const userId = assertSubject(payload)
 
     if (payload.type !== 'access') {
-      throw new Error('Invalid access token')
+      throw new Error('访问令牌无效')
     }
 
     return { userId }
   } catch {
-    throw new Error('Invalid access token')
+    throw new Error('访问令牌无效')
   }
 }
 
@@ -83,7 +83,7 @@ export async function verifyRefreshToken(token: string, config: AuthConfig) {
     const userId = assertSubject(payload)
 
     if (payload.type !== 'refresh' || typeof payload.jti !== 'string') {
-      throw new Error('Invalid refresh token')
+      throw new Error('刷新令牌无效')
     }
 
     return {
@@ -92,6 +92,6 @@ export async function verifyRefreshToken(token: string, config: AuthConfig) {
       refreshTokenHash: hashRefreshTokenId(payload.jti),
     }
   } catch {
-    throw new Error('Invalid refresh token')
+    throw new Error('刷新令牌无效')
   }
 }

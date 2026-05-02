@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import ThemeModeSwitch from './ThemeModeSwitch.vue'
+import ThemeModeSwitch from '../../components/common/ThemeModeSwitch.vue'
 </script>
 
 <template>
@@ -9,7 +9,7 @@ import ThemeModeSwitch from './ThemeModeSwitch.vue'
     <section
       class="mx-auto grid min-h-[calc(100svh-3rem)] w-full max-w-6xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm lg:grid-cols-[minmax(0,1fr)_25rem] dark:border-slate-800 dark:bg-slate-900"
     >
-      <div class="flex min-h-[34rem] flex-col justify-between p-6 sm:p-8 lg:p-10">
+      <div class="flex min-h-128 flex-col justify-between p-6 sm:p-8 lg:p-10">
         <div class="flex items-center justify-between gap-4">
           <div class="flex min-w-0 items-center gap-3">
             <div

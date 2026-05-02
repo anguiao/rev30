@@ -1,30 +1,20 @@
 import {
+  authErrorResponseSchema,
+  authLoginSchema,
+  authRegisterSchema,
   authTokenResponseSchema,
   type AuthErrorResponse,
   type AuthLoginInput,
   type AuthRegisterInput,
   type AuthTokenResponse,
-  type UserUniqueField,
 } from '@rev30/shared'
-import { api } from '../api'
-
-type AuthErrorBody = AuthErrorResponse & {
-  field?: unknown
-}
-
-const userUniqueFields = new Set<UserUniqueField>(['username', 'email', 'phone'])
-
-function parseAuthErrorField(field: unknown): UserUniqueField | undefined {
-  return typeof field === 'string' && userUniqueFields.has(field as UserUniqueField)
-    ? (field as UserUniqueField)
-    : undefined
-}
+import { api } from '../../api'
 
 export class AuthRequestError extends Error {
   constructor(
     public readonly status: number,
     message: string,
-    public readonly field?: UserUniqueField,
+    public readonly field?: AuthErrorResponse['field'],
   ) {
     super(message)
     this.name = 'AuthRequestError'
@@ -37,13 +27,11 @@ export async function parseAuthSession(response: Response): Promise<AuthTokenRes
 
 export async function parseAuthError(response: Response): Promise<AuthRequestError> {
   try {
-    const body = (await response.json()) as Partial<AuthErrorBody>
+    const result = authErrorResponseSchema.safeParse(await response.json())
 
-    return new AuthRequestError(
-      response.status,
-      typeof body.message === 'string' ? body.message : 'Request failed',
-      parseAuthErrorField(body.field),
-    )
+    return result.success
+      ? new AuthRequestError(response.status, result.data.message, result.data.field)
+      : new AuthRequestError(response.status, 'Request failed')
   } catch {
     return new AuthRequestError(response.status, 'Request failed')
   }
@@ -57,24 +45,12 @@ async function parseAuthResponse(response: Response) {
   return parseAuthSession(response)
 }
 
-function normalizeContact(value: string | null | undefined) {
-  return value === undefined || value === null || value.trim() === '' ? null : value
-}
-
 export async function login(input: AuthLoginInput) {
-  return parseAuthResponse(await api.auth.login.$post({ json: input }))
+  return parseAuthResponse(await api.auth.login.$post({ json: authLoginSchema.parse(input) }))
 }
 
 export async function register(input: AuthRegisterInput) {
-  return parseAuthResponse(
-    await api.auth.register.$post({
-      json: {
-        ...input,
-        email: normalizeContact(input.email),
-        phone: normalizeContact(input.phone),
-      },
-    }),
-  )
+  return parseAuthResponse(await api.auth.register.$post({ json: authRegisterSchema.parse(input) }))
 }
 
 export async function refreshSession() {

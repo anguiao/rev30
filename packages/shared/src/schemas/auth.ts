@@ -1,30 +1,35 @@
 import { z } from 'zod'
-import { userCreateSchema, userSchema } from './system/users'
+import {
+  nullableContactInputSchema,
+  userCreateSchema,
+  userSchema,
+  userUniqueFieldSchema,
+} from './system/users'
 
-const passwordSchema = z.string().min(8)
+const passwordSchema = z.string().min(8, '密码至少需要 8 位')
 
 export const authRegisterSchema = userCreateSchema
   .pick({
     username: true,
     nickname: true,
-    email: true,
-    phone: true,
   })
   .extend({
+    email: nullableContactInputSchema.default(null),
+    phone: nullableContactInputSchema.default(null),
     password: passwordSchema,
   })
   .strict()
 
 export const authLoginSchema = z
   .object({
-    username: z.string().trim().min(1),
+    username: z.string().trim().min(1, '请输入用户名'),
     password: passwordSchema,
   })
   .strict()
 
 export const authRefreshTokenRequestSchema = z
   .object({
-    refreshToken: z.string().trim().optional(),
+    refreshToken: z.string('刷新令牌必须是字符串').trim().optional(),
   })
   .strict()
 
@@ -40,6 +45,7 @@ export const authTokenResponseSchema = z.object({
 })
 
 export const authErrorResponseSchema = z.object({
+  field: userUniqueFieldSchema.optional(),
   message: z.string(),
 })
 

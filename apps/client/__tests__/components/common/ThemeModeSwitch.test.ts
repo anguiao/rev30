@@ -4,7 +4,7 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { createPinia, disposePinia, setActivePinia, type Pinia } from 'pinia'
 import { NDropdown } from 'naive-ui'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import ThemeModeSwitch from '../../src/components/ThemeModeSwitch.vue'
+import ThemeModeSwitch from '../../../src/components/common/ThemeModeSwitch.vue'
 
 enableAutoUnmount(afterEach)
 

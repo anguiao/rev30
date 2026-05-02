@@ -3,10 +3,15 @@ import { USER_STATUS_ENABLED } from '../../src/schemas/system/users'
 import {
   authLoginSchema,
   authLogoutSchema,
+  authErrorResponseSchema,
   authRefreshSchema,
   authRegisterSchema,
   authTokenResponseSchema,
 } from '../../src/schemas/auth'
+
+function firstIssueMessage(result: { success: false; error: { issues: { message: string }[] } }) {
+  return result.error.issues[0]?.message
+}
 
 describe('auth schemas', () => {
   it('parses public registration input without allowing status', () => {
@@ -36,23 +41,70 @@ describe('auth schemas', () => {
     ).toThrow()
   })
 
-  it('rejects weak registration passwords', () => {
-    expect(() =>
+  it('defaults omitted registration contact fields to null', () => {
+    expect(
       authRegisterSchema.parse({
         username: 'ada',
-        password: 'short',
+        password: 'correct horse battery staple',
         nickname: 'Ada Lovelace',
       }),
-    ).toThrow()
+    ).toEqual({
+      username: 'ada',
+      password: 'correct horse battery staple',
+      nickname: 'Ada Lovelace',
+      email: null,
+      phone: null,
+    })
+  })
+
+  it('rejects weak registration passwords', () => {
+    const result = authRegisterSchema.safeParse({
+      username: 'ada',
+      password: 'short',
+      nickname: 'Ada Lovelace',
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(firstIssueMessage(result)).toBe('密码至少需要 8 位')
+    }
   })
 
   it('rejects weak login passwords', () => {
-    expect(() =>
-      authLoginSchema.parse({
-        username: 'ada',
-        password: 'short',
-      }),
-    ).toThrow()
+    const result = authLoginSchema.safeParse({
+      username: 'ada',
+      password: 'short',
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(firstIssueMessage(result)).toBe('密码至少需要 8 位')
+    }
+  })
+
+  it('rejects blank login usernames with a schema message', () => {
+    const result = authLoginSchema.safeParse({
+      username: '   ',
+      password: 'secret-password',
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(firstIssueMessage(result)).toBe('请输入用户名')
+    }
+  })
+
+  it('rejects invalid refresh token body fields with a schema message', () => {
+    for (const schema of [authRefreshSchema, authLogoutSchema]) {
+      const result = schema.safeParse({
+        refreshToken: 123,
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(firstIssueMessage(result)).toBe('刷新令牌必须是字符串')
+      }
+    }
   })
 
   it('parses username and password login input', () => {
@@ -105,5 +157,24 @@ describe('auth schemas', () => {
       tokenType: 'Bearer',
       expiresIn: 900,
     })
+  })
+
+  it('parses auth errors with optional unique user fields', () => {
+    expect(
+      authErrorResponseSchema.parse({
+        field: 'username',
+        message: '用户名已存在',
+      }),
+    ).toEqual({
+      field: 'username',
+      message: '用户名已存在',
+    })
+
+    expect(() =>
+      authErrorResponseSchema.parse({
+        field: 'role',
+        message: 'role is not unique',
+      }),
+    ).toThrow()
   })
 })

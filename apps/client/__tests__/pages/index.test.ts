@@ -3,13 +3,13 @@
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '../../src/stores/auth'
-import { logout } from '../../src/auth/requests'
+import { logout } from '../../src/features/auth/requests'
 import HomePage from '../../src/pages/index.vue'
-import { disposeActiveTestPinia, mountAuthRoute, session, stubPreferredDark } from './helpers'
+import { disposeActiveTestPinia, mountAuthRoute, session, stubPreferredDark } from '../helpers/auth'
 
 enableAutoUnmount(afterEach)
 
-vi.mock('../../src/auth/requests', () => ({
+vi.mock('../../src/features/auth/requests', () => ({
   logout: vi.fn(),
 }))
 

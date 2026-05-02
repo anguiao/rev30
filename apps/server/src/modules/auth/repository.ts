@@ -25,7 +25,7 @@ export function createAuthRepository(database: Db) {
           .returning()
 
         if (!created) {
-          throw new Error('Failed to create user')
+          throw new Error('创建用户失败')
         }
 
         await tx.insert(authPasswordCredentials).values({
@@ -78,7 +78,7 @@ export function createAuthRepository(database: Db) {
         .returning()
 
       if (!created) {
-        throw new Error('Failed to create refresh session')
+        throw new Error('创建刷新会话失败')
       }
 
       return created

@@ -4,10 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthTokenResponse } from '@rev30/shared'
 import { USER_STATUS_ENABLED } from '@rev30/shared'
 import { useAuthStore } from '../../src/stores/auth'
-import { refreshSession } from '../../src/auth/requests'
+import { refreshSession } from '../../src/features/auth/requests'
 import { installAuthGuards } from '../../src/router/guards'
 
-vi.mock('../../src/auth/requests', () => ({
+vi.mock('../../src/features/auth/requests', () => ({
   refreshSession: vi.fn(),
 }))
 

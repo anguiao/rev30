@@ -70,7 +70,7 @@ export function createUserRepository(database: Db) {
         .returning()
 
       if (!created) {
-        throw new Error('Failed to create user')
+        throw new Error('创建用户失败')
       }
 
       return created

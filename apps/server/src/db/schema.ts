@@ -1,5 +1,16 @@
-import { USER_STATUS_ENABLED } from '@rev30/shared'
-import { index, pgTable, smallint, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import {
+  type AnyPgColumn,
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  smallint,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core'
+import { DEPARTMENT_STATUS_ENABLED, USER_STATUS_ENABLED } from '@rev30/shared'
 
 export const users = pgTable(
   'users',
@@ -46,5 +57,44 @@ export const authRefreshTokens = pgTable(
   (table) => [
     uniqueIndex('auth_refresh_tokens_token_hash_unique').on(table.tokenHash),
     index('auth_refresh_tokens_user_id_idx').on(table.userId),
+  ],
+)
+
+export const departments = pgTable(
+  'departments',
+  {
+    id: uuid('id').primaryKey(),
+    parentId: uuid('parent_id').references((): AnyPgColumn => departments.id),
+    name: text('name').notNull(),
+    code: text('code').notNull(),
+    status: smallint('status').notNull().default(DEPARTMENT_STATUS_ENABLED),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('departments_code_unique').on(table.code),
+    index('departments_parent_id_idx').on(table.parentId),
+    index('departments_status_idx').on(table.status),
+  ],
+)
+
+export const userDepartments = pgTable(
+  'user_departments',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    departmentId: uuid('department_id')
+      .notNull()
+      .references(() => departments.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.userId, table.departmentId],
+    }),
+    index('user_departments_department_id_idx').on(table.departmentId),
   ],
 )

@@ -5,7 +5,13 @@ import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
 import { readMigrationFiles } from 'drizzle-orm/migrator'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { authPasswordCredentials, authRefreshTokens, users } from '../../src/db/schema'
+import {
+  authPasswordCredentials,
+  authRefreshTokens,
+  departments,
+  userDepartments,
+  users,
+} from '../../src/db/schema'
 import { createDb } from '../../src/db/index'
 import { applyPgliteMigrations, defaultMigrationsDir } from '../../src/db/migrations'
 
@@ -111,6 +117,55 @@ describe('PGlite migrations', () => {
     expect(session?.tokenHash).toBe('token-hash')
   })
 
+  it('creates usable department tables for fresh development databases', async () => {
+    const dataDir = join(await createTempDir(), 'departments')
+
+    process.env.NODE_ENV = 'development'
+    process.env.PGLITE_DATA_DIR = dataDir
+
+    const database = await createDb()
+    const now = new Date()
+    const [createdUser] = await database
+      .insert(users)
+      .values({
+        id: randomUUID(),
+        username: 'department-user',
+        nickname: 'Department User',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+
+    const [createdDepartment] = await database
+      .insert(departments)
+      .values({
+        id: randomUUID(),
+        name: 'Engineering',
+        code: 'engineering',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+
+    if (!createdUser || !createdDepartment) {
+      throw new Error('Expected migrated user and department')
+    }
+
+    const [createdRelation] = await database
+      .insert(userDepartments)
+      .values({
+        userId: createdUser.id,
+        departmentId: createdDepartment.id,
+        createdAt: now,
+      })
+      .returning()
+
+    expect(createdRelation).toMatchObject({
+      userId: createdUser.id,
+      departmentId: createdDepartment.id,
+    })
+  })
+
   it('keeps Drizzle migration journal in sync with SQL migrations', async () => {
     const migrationFiles = (await readdir(defaultMigrationsDir))
       .filter((fileName) => fileName.endsWith('.sql'))
@@ -123,5 +178,7 @@ describe('PGlite migrations', () => {
     expect(journalMigrations).toHaveLength(migrationFiles.length)
     expect(journalSql).toContain('CREATE TABLE "auth_password_credentials"')
     expect(journalSql).toContain('CREATE TABLE "auth_refresh_tokens"')
+    expect(journalSql).toContain('CREATE TABLE "departments"')
+    expect(journalSql).toContain('CREATE TABLE "user_departments"')
   })
 })

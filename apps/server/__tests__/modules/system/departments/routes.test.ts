@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { Hono } from 'hono'
+import { eq } from 'drizzle-orm'
 import {
   DEPARTMENT_STATUS_DISABLED,
   DEPARTMENT_STATUS_ENABLED,
@@ -7,7 +9,7 @@ import {
   type DepartmentListResponse,
   type DepartmentTreeNode,
 } from '@rev30/shared'
-import { departments } from '../../../../src/db/schema'
+import { departments, userDepartments, users } from '../../../../src/db/schema'
 import { createTestDb } from '../../../helpers/db'
 import { createDepartmentRoutes } from '../../../../src/modules/system/departments/routes'
 
@@ -179,5 +181,161 @@ describe('department routes', () => {
 
     expect(detailResponse.status).toBe(400)
     expect(detailBody).toEqual({ message: '部门 ID 无效' })
+  })
+
+  it('updates department fields and rejects moving a department under itself or descendants', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const { body: root } = await createDepartment(app, { name: 'Company', code: 'company' })
+    const { body: child } = await createDepartment(app, {
+      name: 'Engineering',
+      code: 'engineering',
+      parentId: root.id,
+    })
+
+    const updateResponse = await app.request(`/api/system/departments/${child.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        name: 'Platform Engineering',
+        code: 'platform-engineering',
+        sortOrder: 20,
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const updateBody = (await updateResponse.json()) as Department
+
+    expect(updateResponse.status).toBe(200)
+    expect(updateBody).toMatchObject({
+      id: child.id,
+      name: 'Platform Engineering',
+      code: 'platform-engineering',
+      sortOrder: 20,
+    })
+
+    const selfMoveResponse = await app.request(`/api/system/departments/${child.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ parentId: child.id }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(selfMoveResponse.status).toBe(409)
+    expect(await selfMoveResponse.json()).toEqual({ message: '不能移动到自己或子部门下' })
+
+    const descendantMoveResponse = await app.request(`/api/system/departments/${root.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ parentId: child.id }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(descendantMoveResponse.status).toBe(409)
+    expect(await descendantMoveResponse.json()).toEqual({ message: '不能移动到自己或子部门下' })
+  })
+
+  it('rejects duplicate department codes on create and update', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    await createDepartment(app, { name: 'Engineering', code: 'engineering' })
+    const { body: sales } = await createDepartment(app, { name: 'Sales', code: 'sales' })
+
+    const createConflict = await createDepartment(app, { name: 'Duplicate', code: 'engineering' })
+    expect(createConflict.response.status).toBe(409)
+
+    const updateConflict = await app.request(`/api/system/departments/${sales.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ code: 'engineering' }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(updateConflict.status).toBe(409)
+  })
+
+  it('soft deletes empty departments and rejects deleting departments with children', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const { body: root } = await createDepartment(app, { name: 'Company', code: 'company' })
+    const { body: child } = await createDepartment(app, {
+      name: 'Engineering',
+      code: 'engineering',
+      parentId: root.id,
+    })
+
+    const rootDeleteResponse = await app.request(`/api/system/departments/${root.id}`, {
+      method: 'DELETE',
+    })
+    expect(rootDeleteResponse.status).toBe(409)
+    expect(await rootDeleteResponse.json()).toEqual({ message: '部门存在子部门，不能删除' })
+
+    const childDeleteResponse = await app.request(`/api/system/departments/${child.id}`, {
+      method: 'DELETE',
+    })
+    expect(childDeleteResponse.status).toBe(204)
+
+    const storedRows = await database.select().from(departments).where(eq(departments.id, child.id))
+    expect(storedRows).toHaveLength(1)
+    expect(storedRows[0]?.deletedAt).toBeInstanceOf(Date)
+    expect(storedRows[0]?.status).toBe(DEPARTMENT_STATUS_ENABLED)
+
+    const detailResponse = await app.request(`/api/system/departments/${child.id}`)
+    const detailBody = (await detailResponse.json()) as ErrorResponse
+    expect(detailResponse.status).toBe(404)
+    expect(detailBody).toEqual({ message: '部门不存在' })
+  })
+
+  it('returns invalid parent errors for create and update requests', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const missingParentId = randomUUID()
+
+    const createResponse = await app.request('/api/system/departments', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Ghost Child',
+        code: 'ghost-child',
+        parentId: missingParentId,
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const createBody = (await createResponse.json()) as ErrorResponse
+
+    expect(createResponse.status).toBe(400)
+    expect(createBody).toEqual({ message: '父部门不存在' })
+
+    const { body: existing } = await createDepartment(app, { name: 'Support', code: 'support' })
+    const updateResponse = await app.request(`/api/system/departments/${existing.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ parentId: missingParentId }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const updateBody = (await updateResponse.json()) as ErrorResponse
+
+    expect(updateResponse.status).toBe(400)
+    expect(updateBody).toEqual({ message: '父部门不存在' })
+  })
+
+  it('rejects deleting departments with related users', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const { body: department } = await createDepartment(app, {
+      name: 'Operations',
+      code: 'operations',
+    })
+    const userId = randomUUID()
+
+    await database.insert(users).values({
+      id: userId,
+      username: 'linked-user',
+      nickname: 'Linked User',
+    })
+    await database.insert(userDepartments).values({
+      userId,
+      departmentId: department.id,
+    })
+
+    const deleteResponse = await app.request(`/api/system/departments/${department.id}`, {
+      method: 'DELETE',
+    })
+    const deleteBody = (await deleteResponse.json()) as ErrorResponse
+
+    expect(deleteResponse.status).toBe(409)
+    expect(deleteBody).toEqual({ message: '部门存在关联用户，不能删除' })
   })
 })

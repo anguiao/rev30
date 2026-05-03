@@ -1,9 +1,9 @@
-import type { User } from '@rev30/shared'
+import type { DepartmentSummary, User } from '@rev30/shared'
 import { users } from '../../../db/schema'
 
 export type UserRow = typeof users.$inferSelect
 
-export function toUser(user: UserRow): User {
+export function toUser(user: UserRow, departments: DepartmentSummary[] = []): User {
   return {
     id: user.id,
     username: user.username,
@@ -11,6 +11,7 @@ export function toUser(user: UserRow): User {
     email: user.email,
     phone: user.phone,
     status: user.status as User['status'],
+    departments,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   }

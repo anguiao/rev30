@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
@@ -8,7 +9,7 @@ import {
   type UserListResponse,
   type UserStatus,
 } from '@rev30/shared'
-import { users } from '../../../../src/db/schema'
+import { departments, userDepartments, users } from '../../../../src/db/schema'
 import { createTestDb } from '../../../helpers/db'
 import { createUserRoutes } from '../../../../src/modules/system/users/routes'
 
@@ -28,6 +29,7 @@ async function createUser(
     email?: string | null
     phone?: string | null
     status?: UserStatus
+    departmentIds?: string[]
   },
 ) {
   const response = await app.request('/api/system/users', {
@@ -42,6 +44,30 @@ async function createUser(
     body: (await response.json()) as User,
     response,
   }
+}
+
+async function createDepartment(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  input: { name: string; code: string; deletedAt?: Date | null },
+) {
+  const now = new Date()
+  const [department] = await database
+    .insert(departments)
+    .values({
+      id: randomUUID(),
+      name: input.name,
+      code: input.code,
+      deletedAt: input.deletedAt ?? null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning()
+
+  if (!department) {
+    throw new Error('Expected department')
+  }
+
+  return department
 }
 
 describe('user routes', () => {
@@ -63,6 +89,7 @@ describe('user routes', () => {
       email: 'ada@example.com',
       phone: '10000000001',
       status: USER_STATUS_ENABLED,
+      departments: [],
     })
     expect(body.createdAt).toEqual(expect.any(String))
     expect(body.updatedAt).toEqual(expect.any(String))
@@ -84,6 +111,7 @@ describe('user routes', () => {
     expect(listBody.list[0]).toMatchObject({
       id: body.id,
       username: 'ada',
+      departments: [],
     })
   })
 
@@ -104,6 +132,7 @@ describe('user routes', () => {
     expect(detailBody).toMatchObject({
       id: created.id,
       status: USER_STATUS_DISABLED,
+      departments: [],
     })
 
     const updateResponse = await app.request(`/api/system/users/${created.id}`, {
@@ -124,18 +153,216 @@ describe('user routes', () => {
       nickname: 'Rear Admiral Grace Hopper',
       phone: '10000000002',
       status: USER_STATUS_DISABLED,
+      departments: [],
     })
+  })
+
+  it('creates users with multiple departments and returns department summaries', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const engineering = await createDepartment(database, {
+      name: 'Engineering',
+      code: 'engineering',
+    })
+    const product = await createDepartment(database, {
+      name: 'Product',
+      code: 'product',
+    })
+
+    const { body, response } = await createUser(app, {
+      username: 'department-user',
+      nickname: 'Department User',
+      departmentIds: [engineering.id, product.id],
+    })
+
+    expect(response.status).toBe(201)
+    expect(body.departments).toEqual([
+      {
+        id: engineering.id,
+        name: 'Engineering',
+        code: 'engineering',
+      },
+      {
+        id: product.id,
+        name: 'Product',
+        code: 'product',
+      },
+    ])
+
+    const detailResponse = await app.request(`/api/system/users/${body.id}`)
+    const detailBody = (await detailResponse.json()) as User
+    expect(detailResponse.status).toBe(200)
+    expect(detailBody.departments).toEqual(body.departments)
+
+    const listResponse = await app.request('/api/system/users?page=1&pageSize=10')
+    const listBody = (await listResponse.json()) as UserListResponse
+    expect(listResponse.status).toBe(200)
+    expect(listBody.list).toHaveLength(1)
+    expect(listBody.list[0]?.departments).toEqual(body.departments)
+
+    const storedRelations = await database.select().from(userDepartments)
+    expect(storedRelations).toHaveLength(2)
+  })
+
+  it('replaces and clears user departments on update', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const engineering = await createDepartment(database, {
+      name: 'Engineering',
+      code: 'engineering',
+    })
+    const product = await createDepartment(database, {
+      name: 'Product',
+      code: 'product',
+    })
+
+    const { body: created } = await createUser(app, {
+      username: 'department-update-user',
+      nickname: 'Department Update User',
+      departmentIds: [engineering.id],
+    })
+
+    const replaceResponse = await app.request(`/api/system/users/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        departmentIds: [product.id],
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const replaceBody = (await replaceResponse.json()) as User
+
+    expect(replaceResponse.status).toBe(200)
+    expect(replaceBody.departments).toEqual([
+      {
+        id: product.id,
+        name: 'Product',
+        code: 'product',
+      },
+    ])
+
+    const updateNicknameResponse = await app.request(`/api/system/users/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        nickname: 'Department Update User v2',
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const updateNicknameBody = (await updateNicknameResponse.json()) as User
+
+    expect(updateNicknameResponse.status).toBe(200)
+    expect(updateNicknameBody.departments).toEqual([
+      {
+        id: product.id,
+        name: 'Product',
+        code: 'product',
+      },
+    ])
+
+    const clearResponse = await app.request(`/api/system/users/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        departmentIds: [],
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const clearBody = (await clearResponse.json()) as User
+
+    expect(clearResponse.status).toBe(200)
+    expect(clearBody.departments).toEqual([])
+  })
+
+  it('rejects missing or deleted department ids on user create and update', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const deletedDepartment = await createDepartment(database, {
+      name: 'Deleted',
+      code: 'deleted',
+      deletedAt: new Date(),
+    })
+    const missingDepartmentId = randomUUID()
+    const invalidDepartmentIds = [deletedDepartment.id, missingDepartmentId]
+
+    for (const [index, departmentId] of invalidDepartmentIds.entries()) {
+      const createResponse = await app.request('/api/system/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: `invalid-create-user-${index}`,
+          nickname: `Invalid Create User ${index}`,
+          departmentIds: [departmentId],
+        }),
+        headers: {
+          'content-type': 'application/json',
+        },
+      })
+      const createBody = (await createResponse.json()) as ErrorResponse
+
+      expect(createResponse.status).toBe(400)
+      expect(createBody).toEqual({ message: '部门不存在' })
+    }
+
+    const { body: validUser } = await createUser(app, {
+      username: 'valid-for-invalid-update',
+      nickname: 'Valid For Invalid Update',
+    })
+
+    for (const departmentId of invalidDepartmentIds) {
+      const updateResponse = await app.request(`/api/system/users/${validUser.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          departmentIds: [departmentId],
+        }),
+        headers: {
+          'content-type': 'application/json',
+        },
+      })
+      const updateBody = (await updateResponse.json()) as ErrorResponse
+
+      expect(updateResponse.status).toBe(400)
+      expect(updateBody).toEqual({ message: '部门不存在' })
+    }
+  })
+
+  it('returns not found when updating a missing user before validating department ids', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const missingUserId = randomUUID()
+    const missingDepartmentId = randomUUID()
+
+    const response = await app.request(`/api/system/users/${missingUserId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        departmentIds: [missingDepartmentId],
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const body = (await response.json()) as ErrorResponse
+
+    expect(response.status).toBe(404)
+    expect(body).toEqual({ message: '用户不存在' })
   })
 
   it('soft deletes users without removing database rows', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
+    const department = await createDepartment(database, {
+      name: 'Research',
+      code: 'research',
+    })
 
     const { body: created } = await createUser(app, {
       username: 'alan',
       nickname: 'Alan Turing',
       email: 'alan@example.com',
       phone: '10000000003',
+      departmentIds: [department.id],
     })
 
     const deleteResponse = await app.request(`/api/system/users/${created.id}`, {
@@ -154,6 +381,12 @@ describe('user routes', () => {
 
     expect(storedUser.deletedAt).toBeInstanceOf(Date)
     expect(storedUser.status).toBe(USER_STATUS_ENABLED)
+
+    const storedRelations = await database
+      .select()
+      .from(userDepartments)
+      .where(eq(userDepartments.userId, created.id))
+    expect(storedRelations).toEqual([])
 
     const listResponse = await app.request('/api/system/users')
     expect(listResponse.status).toBe(200)

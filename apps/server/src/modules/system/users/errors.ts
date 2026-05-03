@@ -36,6 +36,13 @@ export class UserNotFoundError extends Error {
   }
 }
 
+export class UserInvalidDepartmentError extends Error {
+  constructor() {
+    super('部门不存在')
+    this.name = 'UserInvalidDepartmentError'
+  }
+}
+
 export function toUserConflictError(error: unknown) {
   const cause = error instanceof DrizzleQueryError ? error.cause : error
 

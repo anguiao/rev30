@@ -27,22 +27,24 @@ export function createUserService(database: Db) {
 
       return {
         ...result,
-        list: result.list.map(toUser),
+        list: result.list.map((row) => toUser(row.user, row.departments)),
       }
     },
 
     async get(id: string) {
-      const user = await repository.findActiveById(id)
+      const row = await repository.findActiveById(id)
 
-      if (!user) {
+      if (!row) {
         throw new UserNotFoundError()
       }
 
-      return toUser(user)
+      return toUser(row.user, row.departments)
     },
 
     async create(input: UserCreateInput) {
-      return toUser(await withUserUniqueConflict(() => repository.create(input)))
+      const created = await withUserUniqueConflict(() => repository.create(input))
+
+      return toUser(created.user, created.departments)
     },
 
     async update(id: string, input: UserUpdateInput) {
@@ -52,7 +54,7 @@ export function createUserService(database: Db) {
         throw new UserNotFoundError()
       }
 
-      return toUser(updated)
+      return toUser(updated.user, updated.departments)
     },
 
     async delete(id: string) {

@@ -63,7 +63,7 @@ export const departmentIdsSchema = z.array(z.uuid('部门 ID 无效')).superRefi
   for (const departmentId of value) {
     if (seenDepartmentIds.has(departmentId)) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: '部门不能重复',
       })
       return

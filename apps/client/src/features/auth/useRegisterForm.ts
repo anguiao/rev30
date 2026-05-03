@@ -16,9 +16,9 @@ const authRegisterFormSchema = authRegisterSchema
     path: ['confirmPassword'],
     message: '两次输入的密码不一致',
   })
-type RegisterInput = z.input<typeof authRegisterFormSchema>
+type RegisterFormData = z.input<typeof authRegisterFormSchema>
 
-function toRegisterInput(value: RegisterInput): AuthRegisterInput {
+function toRegisterInput(value: RegisterFormData): AuthRegisterInput {
   const { confirmPassword: _confirmPassword, ...input } = authRegisterFormSchema.parse(value)
 
   return input
@@ -41,7 +41,7 @@ export function useRegisterForm() {
       confirmPassword: '',
       email: '',
       phone: '',
-    } as RegisterInput,
+    } as RegisterFormData,
     validators: {
       onSubmit: authRegisterFormSchema,
     },

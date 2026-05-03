@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import type { AuthTokenResponse, UserListResponse } from '@rev30/shared'
+import { sign } from 'hono/jwt'
+import {
+  AUTH_ACTION_HEADER,
+  AUTH_ACTION_REFRESH,
+  type AuthTokenResponse,
+  type UserListResponse,
+} from '@rev30/shared'
 import { createApp } from '../src/app'
 import { createTestDb } from './helpers/db'
+import { readAuthConfig } from '../src/modules/auth/config'
 
 async function register(app: ReturnType<typeof createApp>) {
   const response = await app.request('/api/auth/register', {
@@ -33,6 +40,7 @@ describe('app auth boundaries', () => {
     expect(await response.json()).toEqual({
       message: '未授权',
     })
+    expect(response.headers.has(AUTH_ACTION_HEADER)).toBe(false)
   })
 
   it('allows system routes with an access token', async () => {
@@ -67,5 +75,59 @@ describe('app auth boundaries', () => {
     expect(await response.json()).toEqual({
       message: '未授权',
     })
+    expect(response.headers.has(AUTH_ACTION_HEADER)).toBe(false)
+  })
+
+  it('marks expired access tokens as refreshable on system routes', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+    const registered = await register(app)
+    const expiredAccessToken = await sign(
+      {
+        sub: registered.body.user.id,
+        type: 'access',
+        iat: 1,
+        exp: 2,
+      },
+      readAuthConfig().accessSecret,
+      'HS256',
+    )
+
+    const response = await app.request('/api/system/users', {
+      headers: {
+        authorization: `Bearer ${expiredAccessToken}`,
+      },
+    })
+
+    expect(response.status).toBe(401)
+    expect(response.headers.get(AUTH_ACTION_HEADER)).toBe(AUTH_ACTION_REFRESH)
+    expect(await response.json()).toEqual({
+      message: '未授权',
+    })
+  })
+
+  it('does not mark invalid access tokens as refreshable on system routes', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+    const registered = await register(app)
+    const invalidExpiredAccessToken = await sign(
+      {
+        sub: registered.body.user.id,
+        type: 'access',
+        iat: 1,
+        exp: 2,
+      },
+      'wrong-access-secret',
+      'HS256',
+    )
+
+    const response = await app.request('/api/system/users', {
+      headers: {
+        authorization: `Bearer ${invalidExpiredAccessToken}`,
+      },
+    })
+
+    expect(response.status).toBe(401)
+    expect(response.headers.has(AUTH_ACTION_HEADER)).toBe(false)
   })
 })

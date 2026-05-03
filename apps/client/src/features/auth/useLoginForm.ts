@@ -2,12 +2,11 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMutation } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
-import { authLoginSchema } from '@rev30/shared'
+import { authLoginSchema, type AuthLoginInput } from '@rev30/shared'
 import { AuthRequestError, login } from './requests'
 import { useAuthStore } from '../../stores/auth'
-import type { z } from 'zod'
 
-type LoginInput = z.input<typeof authLoginSchema>
+type LoginFormData = AuthLoginInput
 
 export function useLoginForm() {
   const router = useRouter()
@@ -15,14 +14,14 @@ export function useLoginForm() {
   const formError = ref<string | null>(null)
 
   const loginMutation = useMutation({
-    mutation: (input: LoginInput) => login(input),
+    mutation: (input: AuthLoginInput) => login(input),
   })
 
   const form = useForm({
     defaultValues: {
       username: '',
       password: '',
-    } as LoginInput,
+    } as LoginFormData,
     validators: {
       onSubmit: authLoginSchema,
     },
@@ -30,7 +29,8 @@ export function useLoginForm() {
       formError.value = null
 
       try {
-        const session = await loginMutation.mutateAsync(value)
+        const input = authLoginSchema.parse(value)
+        const session = await loginMutation.mutateAsync(input)
         auth.setSession(session)
         await router.push('/')
       } catch (error) {

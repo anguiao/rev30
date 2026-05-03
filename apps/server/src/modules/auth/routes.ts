@@ -1,4 +1,6 @@
 import {
+  AUTH_ACTION_HEADER,
+  AUTH_ACTION_REFRESH,
   type AuthLoginInput,
   type AuthRegisterInput,
   authLoginSchema,
@@ -13,6 +15,7 @@ import { parseBearerToken } from './bearer'
 import { clearRefreshTokenCookie, getRefreshTokenCookie, setRefreshTokenCookie } from './cookies'
 import { readAuthConfig } from './config'
 import {
+  AuthAccessTokenExpiredError,
   AuthInvalidCredentialsError,
   AuthInvalidRefreshTokenError,
   AuthUnauthorizedError,
@@ -38,6 +41,12 @@ function authErrorResponse(error: unknown, c: Context) {
       },
       409,
     )
+  }
+
+  if (error instanceof AuthAccessTokenExpiredError) {
+    c.header(AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH)
+
+    return c.json({ message: '未授权' }, 401)
   }
 
   if (

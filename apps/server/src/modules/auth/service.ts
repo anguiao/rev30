@@ -9,6 +9,7 @@ import { toUserConflictError } from '../system/users/errors'
 import { toUser } from '../system/users/mapper'
 import type { AuthConfig } from './config'
 import {
+  AuthAccessTokenExpiredError,
   AuthInvalidCredentialsError,
   AuthInvalidRefreshTokenError,
   AuthUnauthorizedError,
@@ -143,7 +144,11 @@ export function createAuthService(database: Db, config: AuthConfig) {
 
       try {
         verified = await verifyAccessToken(accessToken, config)
-      } catch {
+      } catch (error) {
+        if (error instanceof AuthAccessTokenExpiredError) {
+          throw error
+        }
+
         throw new AuthUnauthorizedError()
       }
 

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { sign } from 'hono/jwt'
 import type { AuthConfig } from '../../../src/modules/auth/config'
+import {
+  AuthAccessTokenExpiredError,
+  AuthInvalidAccessTokenError,
+} from '../../../src/modules/auth/errors'
 import {
   createTokenPair,
   hashRefreshTokenId,
@@ -33,5 +38,35 @@ describe('auth token helpers', () => {
       refreshTokenHash: pair.refreshTokenHash,
     })
     await expect(verifyAccessToken(pair.refreshToken, config)).rejects.toThrow('访问令牌无效')
+  })
+
+  it('distinguishes expired access tokens from invalid access tokens', async () => {
+    const expiredToken = await sign(
+      {
+        sub: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        type: 'access',
+        iat: 1,
+        exp: 2,
+      },
+      config.accessSecret,
+      'HS256',
+    )
+    const invalidExpiredToken = await sign(
+      {
+        sub: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        type: 'access',
+        iat: 1,
+        exp: 2,
+      },
+      'wrong-access-secret',
+      'HS256',
+    )
+
+    await expect(verifyAccessToken(expiredToken, config)).rejects.toBeInstanceOf(
+      AuthAccessTokenExpiredError,
+    )
+    await expect(verifyAccessToken(invalidExpiredToken, config)).rejects.toBeInstanceOf(
+      AuthInvalidAccessTokenError,
+    )
   })
 })

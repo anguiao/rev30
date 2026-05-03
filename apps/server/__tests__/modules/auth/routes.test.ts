@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { USER_STATUS_DISABLED, type AuthTokenResponse } from '@rev30/shared'
+import { sign } from 'hono/jwt'
+import {
+  AUTH_ACTION_HEADER,
+  AUTH_ACTION_REFRESH,
+  USER_STATUS_DISABLED,
+  type AuthTokenResponse,
+} from '@rev30/shared'
 import { authPasswordCredentials, users } from '../../../src/db/schema'
 import { createTestDb } from '../../helpers/db'
 import { verifyPassword } from '../../../src/modules/auth/password'
 import { createAuthRoutes } from '../../../src/modules/auth/routes'
+import { readAuthConfig } from '../../../src/modules/auth/config'
 
 type ErrorResponse = {
   message: string
@@ -411,6 +418,34 @@ describe('auth routes', () => {
 
     expect(disabledResponse.status).toBe(401)
     expect(await disabledResponse.json()).toEqual({
+      message: '未授权',
+    })
+  })
+
+  it('marks expired access tokens as refreshable for current user requests', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app)
+    const expiredAccessToken = await sign(
+      {
+        sub: registered.body.user.id,
+        type: 'access',
+        iat: 1,
+        exp: 2,
+      },
+      readAuthConfig().accessSecret,
+      'HS256',
+    )
+
+    const response = await app.request('/api/auth/me', {
+      headers: {
+        authorization: `Bearer ${expiredAccessToken}`,
+      },
+    })
+
+    expect(response.status).toBe(401)
+    expect(response.headers.get(AUTH_ACTION_HEADER)).toBe(AUTH_ACTION_REFRESH)
+    expect(await response.json()).toEqual({
       message: '未授权',
     })
   })

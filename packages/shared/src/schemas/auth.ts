@@ -6,6 +6,9 @@ import {
   userUniqueFieldSchema,
 } from './system/users'
 
+export const AUTH_ACTION_HEADER = 'Auth-Action'
+export const AUTH_ACTION_REFRESH = 'refresh'
+
 const passwordSchema = z.string().min(8, '密码至少需要 8 位')
 
 export const authRegisterSchema = userCreateSchema

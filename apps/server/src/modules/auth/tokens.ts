@@ -1,11 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { sign, verify } from 'hono/jwt'
 import type { AuthConfig } from './config'
+import { AuthAccessTokenExpiredError, AuthInvalidAccessTokenError } from './errors'
 
 type JwtPayload = {
   sub?: unknown
   type?: unknown
   jti?: unknown
+  exp?: unknown
 }
 
 function nowInSeconds() {
@@ -63,17 +65,32 @@ export async function createTokenPair(userId: string, config: AuthConfig) {
 }
 
 export async function verifyAccessToken(token: string, config: AuthConfig) {
+  let payload: JwtPayload
+
   try {
-    const payload = (await verify(token, config.accessSecret, 'HS256')) as JwtPayload
+    payload = (await verify(token, config.accessSecret, { alg: 'HS256', exp: false })) as JwtPayload
+  } catch {
+    throw new AuthInvalidAccessTokenError()
+  }
+
+  try {
     const userId = assertSubject(payload)
 
-    if (payload.type !== 'access') {
-      throw new Error('访问令牌无效')
+    if (payload.type !== 'access' || typeof payload.exp !== 'number') {
+      throw new AuthInvalidAccessTokenError()
+    }
+
+    if (payload.exp <= nowInSeconds()) {
+      throw new AuthAccessTokenExpiredError()
     }
 
     return { userId }
-  } catch {
-    throw new Error('访问令牌无效')
+  } catch (error) {
+    if (error instanceof AuthAccessTokenExpiredError) {
+      throw error
+    }
+
+    throw new AuthInvalidAccessTokenError()
   }
 }
 

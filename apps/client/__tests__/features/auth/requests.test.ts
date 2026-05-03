@@ -63,7 +63,7 @@ describe('auth requests', () => {
       ),
     ).resolves.toMatchObject({
       status: 409,
-      message: 'Request failed',
+      message: '请求失败',
       field: undefined,
     })
   })
@@ -71,7 +71,7 @@ describe('auth requests', () => {
   it('keeps a stable message when the server response is not json', async () => {
     await expect(parseAuthError(new Response('nope', { status: 500 }))).resolves.toMatchObject({
       status: 500,
-      message: 'Request failed',
+      message: '请求失败',
     })
   })
 
@@ -83,7 +83,7 @@ describe('auth requests', () => {
     expect(error.field).toBeUndefined()
   })
 
-  it('registers through the Hono RPC client and normalizes empty contact fields', async () => {
+  it('registers through the Hono RPC client with parsed input', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(tokenBody)))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -91,8 +91,8 @@ describe('auth requests', () => {
       username: 'ada',
       nickname: 'Ada Lovelace',
       password: 'password123',
-      email: '',
-      phone: '',
+      email: null,
+      phone: null,
     })
 
     expect(fetchMock).toHaveBeenCalledOnce()
@@ -113,50 +113,18 @@ describe('auth requests', () => {
     })
   })
 
-  it('normalizes registration input through the shared schema before sending it', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(tokenBody)))
+  it('logs out through the Hono RPC client', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await register({
-      username: 'ada',
-      nickname: 'Ada Lovelace',
-      password: 'password123',
-      email: ' ada@example.com ',
-      phone: ' 12345678901 ',
-    })
+    await logout()
 
-    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
-    expect(JSON.parse(String(init.body))).toEqual({
-      username: 'ada',
-      nickname: 'Ada Lovelace',
-      password: 'password123',
-      email: 'ada@example.com',
-      phone: '12345678901',
-    })
-  })
-
-  it.each([400, 401])('tolerates logout %i responses', async (status) => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ message: 'Invalid refresh token' }), {
-        status,
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
       }),
     )
-    vi.stubGlobal('fetch', fetchMock)
-
-    await expect(logout()).resolves.toBeUndefined()
-  })
-
-  it('rejects other failed logout responses as auth request errors', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ message: 'server exploded' }), {
-        status: 500,
-      }),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-
-    await expect(logout()).rejects.toMatchObject({
-      status: 500,
-      message: 'server exploded',
-    })
   })
 })

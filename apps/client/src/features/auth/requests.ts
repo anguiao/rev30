@@ -1,7 +1,5 @@
 import {
   authErrorResponseSchema,
-  authLoginSchema,
-  authRegisterSchema,
   authTokenResponseSchema,
   type AuthErrorResponse,
   type AuthLoginInput,
@@ -31,13 +29,13 @@ export async function parseAuthError(response: Response): Promise<AuthRequestErr
 
     return result.success
       ? new AuthRequestError(response.status, result.data.message, result.data.field)
-      : new AuthRequestError(response.status, 'Request failed')
+      : new AuthRequestError(response.status, '请求失败')
   } catch {
-    return new AuthRequestError(response.status, 'Request failed')
+    return new AuthRequestError(response.status, '请求失败')
   }
 }
 
-async function parseAuthResponse(response: Response) {
+async function parseAuthResponse(response: Response): Promise<AuthTokenResponse> {
   if (!response.ok) {
     throw await parseAuthError(response)
   }
@@ -45,23 +43,18 @@ async function parseAuthResponse(response: Response) {
   return parseAuthSession(response)
 }
 
-export async function login(input: AuthLoginInput) {
-  return parseAuthResponse(await api.auth.login.$post({ json: authLoginSchema.parse(input) }))
+export async function login(input: AuthLoginInput): Promise<AuthTokenResponse> {
+  return parseAuthResponse(await api.auth.login.$post({ json: input }))
 }
 
-export async function register(input: AuthRegisterInput) {
-  return parseAuthResponse(await api.auth.register.$post({ json: authRegisterSchema.parse(input) }))
+export async function register(input: AuthRegisterInput): Promise<AuthTokenResponse> {
+  return parseAuthResponse(await api.auth.register.$post({ json: input }))
 }
 
-export async function refreshSession() {
+export async function refreshSession(): Promise<AuthTokenResponse> {
   return parseAuthResponse(await api.auth.refresh.$post())
 }
 
-export async function logout() {
-  const response = await api.auth.logout.$post()
-  const status: number = response.status
-
-  if (!response.ok && status !== 401 && status !== 400) {
-    throw await parseAuthError(response)
-  }
+export async function logout(): Promise<void> {
+  await api.auth.logout.$post()
 }

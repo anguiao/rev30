@@ -15,6 +15,7 @@ const session: AuthTokenResponse = {
     email: null,
     phone: null,
     status: USER_STATUS_ENABLED,
+    departments: [],
     createdAt: '2026-05-01T00:00:00.000Z',
     updatedAt: '2026-05-01T00:00:00.000Z',
   },
@@ -35,6 +36,7 @@ describe('auth store', () => {
       user: session.user,
       isReady: false,
     })
+    expect(auth.user?.departments).toEqual([])
     expect('refreshToken' in auth.$state).toBe(false)
     expect(auth.isAuthenticated).toBe(true)
   })

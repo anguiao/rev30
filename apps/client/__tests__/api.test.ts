@@ -1,12 +1,12 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH, USER_STATUS_ENABLED } from '@rev30/shared'
+import { AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH, type DepartmentSummary } from '@rev30/shared'
 import { api, authFetch } from '../src/api'
 import { useAuthStore } from '../src/stores/auth'
 
 const session = {
   accessToken: 'access-token',
-  tokenType: 'Bearer',
+  tokenType: 'Bearer' as const,
   expiresIn: 900,
   user: {
     id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
@@ -14,16 +14,17 @@ const session = {
     nickname: 'Ada Lovelace',
     email: null,
     phone: null,
-    status: USER_STATUS_ENABLED,
+    status: 1 as 0 | 1,
+    departments: [] as DepartmentSummary[],
     createdAt: '2026-05-01T00:00:00.000Z',
     updatedAt: '2026-05-01T00:00:00.000Z',
   },
-} as const
+}
 
 const refreshedSession = {
   ...session,
   accessToken: 'new-access-token',
-} as const
+}
 
 const newerSession = {
   ...session,
@@ -34,7 +35,7 @@ const newerSession = {
     username: 'grace',
     nickname: 'Grace Hopper',
   },
-} as const
+}
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
@@ -337,6 +338,35 @@ describe('api client', () => {
     )
   })
 
+  it('requests nested department endpoints with query params', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          list: [],
+          total: 0,
+          page: 1,
+          pageSize: 20,
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.system.departments.$get({
+      query: {
+        keyword: 'eng',
+        status: '1',
+        parentId: '4be2dfda-2fd6-4ee5-b06b-c551328bc343',
+        page: '1',
+        pageSize: '20',
+      },
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/system/departments?keyword=eng&status=1&parentId=4be2dfda-2fd6-4ee5-b06b-c551328bc343&page=1&pageSize=20',
+      expect.objectContaining({ method: 'GET' }),
+    )
+  })
+
   it('types nested user query params', () => {
     const invalidQuery: Parameters<typeof api.system.users.$get>[0] = {
       query: {
@@ -346,5 +376,19 @@ describe('api client', () => {
     }
 
     void invalidQuery
+  })
+
+  it('types user create input with department ids', () => {
+    const validBody: Parameters<typeof api.system.users.$post>[0] = {
+      json: {
+        username: 'department-client',
+        nickname: 'Department Client',
+        email: null,
+        phone: null,
+        departmentIds: ['4be2dfda-2fd6-4ee5-b06b-c551328bc343'],
+      },
+    }
+
+    void validBody
   })
 })

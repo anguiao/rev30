@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthConfig } from '../../../src/modules/auth/config'
 import { AuthInvalidCredentialsError } from '../../../src/modules/auth/errors'
 import { createAuthService } from '../../../src/modules/auth/service'
+import { createTokenPair } from '../../../src/modules/auth/tokens'
 
 const mocks = vi.hoisted(() => {
   const repository = {
@@ -96,5 +97,15 @@ describe('auth service', () => {
     ).rejects.toBeInstanceOf(AuthInvalidCredentialsError)
     expect(mocks.verifyPassword).toHaveBeenCalledOnce()
     expect(mocks.verifyPassword).toHaveBeenCalledWith('secret-password', 'stored-password-hash')
+  })
+
+  it('does not hide refresh session revoke failures during logout', async () => {
+    const pair = await createTokenPair('8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7', config)
+    const error = new Error('revoke failed')
+    mocks.repository.revokeRefreshSession.mockRejectedValue(error)
+
+    const service = createAuthService({} as never, config)
+
+    await expect(service.logout(pair.refreshToken)).rejects.toBe(error)
   })
 })

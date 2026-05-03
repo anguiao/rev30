@@ -13,6 +13,7 @@ import { createTestDb } from '../../helpers/db'
 import { verifyPassword } from '../../../src/modules/auth/password'
 import { createAuthRoutes } from '../../../src/modules/auth/routes'
 import { readAuthConfig } from '../../../src/modules/auth/config'
+import { createTokenPair } from '../../../src/modules/auth/tokens'
 
 type ErrorResponse = {
   message: string
@@ -346,6 +347,35 @@ describe('auth routes', () => {
     })
 
     expect(refreshResponse.status).toBe(401)
+  })
+
+  it('clears the refresh cookie when logout cannot revoke the refresh session', async () => {
+    const tokenPair = await createTokenPair(
+      '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+      readAuthConfig(),
+    )
+    const app = createTestApp({
+      update: () => ({
+        set: () => ({
+          where: () => ({
+            returning: async () => {
+              throw new Error('revoke failed')
+            },
+          }),
+        }),
+      }),
+    } as never)
+
+    const response = await app.request('/api/auth/logout', {
+      method: 'POST',
+      headers: {
+        cookie: `refresh_token=${tokenPair.refreshToken}`,
+      },
+    })
+
+    expect(response.status).toBe(500)
+    expect(response.headers.get('set-cookie')).toContain('refresh_token=')
+    expect(response.headers.get('set-cookie')).toContain('Max-Age=0')
   })
 
   it('returns the current user for a valid access token', async () => {

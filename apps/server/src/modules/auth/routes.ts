@@ -1,6 +1,4 @@
 import {
-  AUTH_ACTION_HEADER,
-  AUTH_ACTION_REFRESH,
   type AuthLoginInput,
   type AuthRegisterInput,
   authLoginSchema,
@@ -10,16 +8,11 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { ZodType } from 'zod'
 import type { Db } from '../../db'
+import { createAuthMiddleware } from '../../middleware/auth'
 import { UserConflictError } from '../system/users/errors'
-import { parseBearerToken } from './bearer'
 import { clearRefreshTokenCookie, getRefreshTokenCookie, setRefreshTokenCookie } from './cookies'
 import { readAuthConfig } from './config'
-import {
-  AuthAccessTokenExpiredError,
-  AuthInvalidCredentialsError,
-  AuthInvalidRefreshTokenError,
-  AuthUnauthorizedError,
-} from './errors'
+import { AuthInvalidCredentialsError, AuthInvalidRefreshTokenError } from './errors'
 import { createAuthService } from './service'
 
 const jsonBodyValidator = <T extends ZodType>(schema: T) =>
@@ -43,16 +36,9 @@ function authErrorResponse(error: unknown, c: Context) {
     )
   }
 
-  if (error instanceof AuthAccessTokenExpiredError) {
-    c.header(AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH)
-
-    return c.json({ message: '未授权' }, 401)
-  }
-
   if (
     error instanceof AuthInvalidCredentialsError ||
-    error instanceof AuthInvalidRefreshTokenError ||
-    error instanceof AuthUnauthorizedError
+    error instanceof AuthInvalidRefreshTokenError
   ) {
     return c.json({ message: error.message }, 401)
   }
@@ -91,15 +77,13 @@ export function createAuthRoutes(database: Db) {
       return c.json(session)
     })
     .post('/logout', async (c) => {
-      await service.logout(getRefreshTokenCookie(c))
-      clearRefreshTokenCookie(c)
+      try {
+        await service.logout(getRefreshTokenCookie(c))
+      } finally {
+        clearRefreshTokenCookie(c)
+      }
 
       return c.body(null, 204)
     })
-    .get('/me', async (c) => {
-      const accessToken = parseBearerToken(c.req.header('authorization'))
-      const user = await service.me(accessToken)
-
-      return c.json(user)
-    })
+    .get('/me', createAuthMiddleware(database), (c) => c.json(c.get('currentUser')))
 }

@@ -1,25 +1,20 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { sign, verify } from 'hono/jwt'
 import type { AuthConfig } from './config'
-import { AuthAccessTokenExpiredError, AuthInvalidAccessTokenError } from './errors'
+import {
+  AuthAccessTokenExpiredError,
+  AuthInvalidAccessTokenError,
+  AuthInvalidRefreshTokenError,
+} from './errors'
 
-type JwtPayload = {
-  sub?: unknown
-  type?: unknown
-  jti?: unknown
-  exp?: unknown
-}
+type JwtPayload = Awaited<ReturnType<typeof verify>>
 
 function nowInSeconds() {
   return Math.floor(Date.now() / 1000)
 }
 
-function assertSubject(payload: JwtPayload) {
-  if (typeof payload.sub !== 'string') {
-    throw new Error('令牌 subject 无效')
-  }
-
-  return payload.sub
+function readSubject(payload: JwtPayload) {
+  return typeof payload.sub === 'string' ? payload.sub : undefined
 }
 
 export function hashRefreshTokenId(refreshTokenId: string) {
@@ -73,34 +68,26 @@ export async function verifyAccessToken(token: string, config: AuthConfig) {
     throw new AuthInvalidAccessTokenError()
   }
 
-  try {
-    const userId = assertSubject(payload)
+  const userId = readSubject(payload)
 
-    if (payload.type !== 'access' || typeof payload.exp !== 'number') {
-      throw new AuthInvalidAccessTokenError()
-    }
-
-    if (payload.exp <= nowInSeconds()) {
-      throw new AuthAccessTokenExpiredError()
-    }
-
-    return { userId }
-  } catch (error) {
-    if (error instanceof AuthAccessTokenExpiredError) {
-      throw error
-    }
-
+  if (!userId || payload.type !== 'access' || typeof payload.exp !== 'number') {
     throw new AuthInvalidAccessTokenError()
   }
+
+  if (payload.exp <= nowInSeconds()) {
+    throw new AuthAccessTokenExpiredError()
+  }
+
+  return { userId }
 }
 
 export async function verifyRefreshToken(token: string, config: AuthConfig) {
   try {
     const payload = (await verify(token, config.refreshSecret, 'HS256')) as JwtPayload
-    const userId = assertSubject(payload)
+    const userId = readSubject(payload)
 
-    if (payload.type !== 'refresh' || typeof payload.jti !== 'string') {
-      throw new Error('刷新令牌无效')
+    if (!userId || payload.type !== 'refresh' || typeof payload.jti !== 'string') {
+      throw new AuthInvalidRefreshTokenError()
     }
 
     return {
@@ -109,6 +96,6 @@ export async function verifyRefreshToken(token: string, config: AuthConfig) {
       refreshTokenHash: hashRefreshTokenId(payload.jti),
     }
   } catch {
-    throw new Error('刷新令牌无效')
+    throw new AuthInvalidRefreshTokenError()
   }
 }

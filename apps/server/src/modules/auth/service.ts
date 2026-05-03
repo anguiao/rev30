@@ -93,13 +93,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
         throw new AuthInvalidRefreshTokenError()
       }
 
-      let verified: Awaited<ReturnType<typeof verifyRefreshToken>>
-
-      try {
-        verified = await verifyRefreshToken(refreshToken, config)
-      } catch {
-        throw new AuthInvalidRefreshTokenError()
-      }
+      const verified = await verifyRefreshToken(refreshToken, config)
 
       const consumed = await repository.consumeRefreshSession(verified.refreshTokenHash)
 
@@ -126,13 +120,19 @@ export function createAuthService(database: Db, config: AuthConfig) {
         return
       }
 
-      try {
-        const verified = await verifyRefreshToken(refreshToken, config)
+      let verified: Awaited<ReturnType<typeof verifyRefreshToken>>
 
-        await repository.revokeRefreshSession(verified.refreshTokenHash)
-      } catch {
-        return
+      try {
+        verified = await verifyRefreshToken(refreshToken, config)
+      } catch (error) {
+        if (error instanceof AuthInvalidRefreshTokenError) {
+          return
+        }
+
+        throw error
       }
+
+      await repository.revokeRefreshSession(verified.refreshTokenHash)
     },
 
     async me(accessToken: string | undefined) {

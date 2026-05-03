@@ -22,6 +22,7 @@ describe('user schemas', () => {
         email: null,
         phone: null,
         status: USER_STATUS_ENABLED,
+        departments: [],
         createdAt: '2026-04-29T08:00:00.000Z',
         updatedAt: '2026-04-29T08:00:00.000Z',
       }),
@@ -30,6 +31,36 @@ describe('user schemas', () => {
       email: null,
       phone: null,
       status: USER_STATUS_ENABLED,
+    })
+  })
+
+  it('requires user responses to include department summaries', () => {
+    expect(
+      userSchema.parse({
+        id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        username: 'ada',
+        nickname: 'Ada Lovelace',
+        email: null,
+        phone: null,
+        status: USER_STATUS_ENABLED,
+        departments: [
+          {
+            id: '7a4f8d8c-7f20-4d3c-9d8e-5b2ca8b6b8d1',
+            name: 'Engineering',
+            code: 'engineering',
+          },
+        ],
+        createdAt: '2026-04-29T08:00:00.000Z',
+        updatedAt: '2026-04-29T08:00:00.000Z',
+      }),
+    ).toMatchObject({
+      departments: [
+        {
+          id: '7a4f8d8c-7f20-4d3c-9d8e-5b2ca8b6b8d1',
+          name: 'Engineering',
+          code: 'engineering',
+        },
+      ],
     })
   })
 
@@ -110,6 +141,43 @@ describe('user schemas', () => {
     expect(userUpdateSchema.parse({ phone: null })).toEqual({ phone: null })
   })
 
+  it('accepts unique department ids on create and update input', () => {
+    const firstDepartmentId = 'a89d9bf8-8d13-45f4-a1de-3f4adfd4b8d1'
+    const secondDepartmentId = 'c3b4f5ab-2e4d-48ea-9a65-5e2d6b0f9f7d'
+
+    expect(
+      userCreateSchema.parse({
+        username: 'grace',
+        nickname: 'Grace Hopper',
+        departmentIds: [firstDepartmentId, secondDepartmentId],
+      }),
+    ).toEqual({
+      username: 'grace',
+      nickname: 'Grace Hopper',
+      status: USER_STATUS_ENABLED,
+      departmentIds: [firstDepartmentId, secondDepartmentId],
+    })
+
+    expect(userUpdateSchema.parse({ departmentIds: [] })).toEqual({
+      departmentIds: [],
+    })
+  })
+
+  it('rejects duplicate department ids on user input', () => {
+    const duplicateDepartmentId = 'd0db3e95-4bc8-44a9-b0ce-0f5b7a7f3f5b'
+
+    const result = userCreateSchema.safeParse({
+      username: 'grace',
+      nickname: 'Grace Hopper',
+      departmentIds: [duplicateDepartmentId, duplicateDepartmentId],
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(firstIssueMessage(result)).toBe('部门不能重复')
+    }
+  })
+
   it('reports schema messages for invalid user input fields', () => {
     const invalidUser = userSchema.safeParse({
       id: 'not-a-uuid',
@@ -117,6 +185,7 @@ describe('user schemas', () => {
       nickname: 'Ada Lovelace',
       email: null,
       phone: null,
+      departments: [],
       status: USER_STATUS_ENABLED,
       createdAt: '2026-04-29T08:00:00.000Z',
       updatedAt: '2026-04-29T08:00:00.000Z',

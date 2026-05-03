@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { departmentSummarySchema } from './departments'
 
 export const USER_STATUS_DISABLED = 0
 export const USER_STATUS_ENABLED = 1
@@ -49,8 +50,27 @@ export const userSchema = z.object({
   email: z.string().nullable(),
   phone: z.string().nullable(),
   status: userStatusSchema,
+  departments: z.array(departmentSummarySchema),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
+})
+
+export const userDepartmentSchema = departmentSummarySchema
+
+export const departmentIdsSchema = z.array(z.uuid('部门 ID 无效')).superRefine((value, context) => {
+  const seenDepartmentIds = new Set<string>()
+
+  for (const departmentId of value) {
+    if (seenDepartmentIds.has(departmentId)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '部门不能重复',
+      })
+      return
+    }
+
+    seenDepartmentIds.add(departmentId)
+  }
 })
 
 export const userListQuerySchema = z.object({
@@ -66,6 +86,7 @@ export const userCreateSchema = z.object({
   email: nullableContactInputSchema,
   phone: nullableContactInputSchema,
   status: userStatusSchema.default(USER_STATUS_ENABLED),
+  departmentIds: departmentIdsSchema.optional(),
 })
 
 export const userUpdateSchema = z
@@ -75,6 +96,7 @@ export const userUpdateSchema = z
     email: nullableContactInputSchema,
     phone: nullableContactInputSchema,
     status: userStatusSchema.optional(),
+    departmentIds: departmentIdsSchema.optional(),
   })
   .refine((value) => Object.values(value).some((fieldValue) => fieldValue !== undefined), {
     message: '至少修改一个字段',

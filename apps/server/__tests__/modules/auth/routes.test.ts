@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
@@ -8,7 +9,12 @@ import {
   USER_STATUS_DISABLED,
   type AuthTokenResponse,
 } from '@rev30/shared'
-import { authPasswordCredentials, users } from '../../../src/db/schema'
+import {
+  authPasswordCredentials,
+  departments,
+  userDepartments,
+  users,
+} from '../../../src/db/schema'
 import { createTestDb } from '../../helpers/db'
 import { verifyPassword } from '../../../src/modules/auth/password'
 import { createAuthRoutes } from '../../../src/modules/auth/routes'
@@ -91,6 +97,7 @@ describe('auth routes', () => {
         nickname: 'Ada Lovelace',
         email: 'ada@example.com',
         phone: '10000000001',
+        departments: [],
       },
     })
     expect(body.accessToken).toEqual(expect.any(String))
@@ -141,6 +148,7 @@ describe('auth routes', () => {
       expiresIn: 900,
       user: {
         username: 'ada',
+        departments: [],
       },
     })
     expect(body).not.toHaveProperty('refreshToken')
@@ -248,6 +256,7 @@ describe('auth routes', () => {
 
     expect(refreshResponse.status).toBe(200)
     expect(refreshBody.user.id).toBe(registered.body.user.id)
+    expect(refreshBody.user.departments).toEqual([])
     expect(refreshBody).not.toHaveProperty('refreshToken')
     expect(getRefreshTokenCookie(refreshResponse)).not.toBe(registered.refreshToken)
   })
@@ -395,6 +404,83 @@ describe('auth routes', () => {
       id: registered.body.user.id,
       username: 'ada',
       nickname: 'Ada Lovelace',
+      departments: [],
+    })
+  })
+
+  it('returns department summaries from login me and refresh for associated users', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app)
+    const departmentId = randomUUID()
+    const now = new Date()
+
+    await database.insert(departments).values({
+      id: departmentId,
+      name: 'Engineering',
+      code: 'engineering',
+      createdAt: now,
+      updatedAt: now,
+    })
+    await database.insert(userDepartments).values({
+      userId: registered.body.user.id,
+      departmentId,
+      createdAt: now,
+    })
+
+    const loggedIn = await login(app)
+
+    expect(loggedIn.response.status).toBe(200)
+    expect(loggedIn.body).toMatchObject({
+      user: {
+        id: registered.body.user.id,
+        departments: [
+          {
+            id: departmentId,
+            name: 'Engineering',
+            code: 'engineering',
+          },
+        ],
+      },
+    })
+
+    const meResponse = await app.request('/api/auth/me', {
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken}`,
+      },
+    })
+    const meBody = await meResponse.json()
+
+    expect(meResponse.status).toBe(200)
+    expect(meBody).toMatchObject({
+      id: registered.body.user.id,
+      departments: [
+        {
+          id: departmentId,
+          name: 'Engineering',
+          code: 'engineering',
+        },
+      ],
+    })
+
+    const refreshResponse = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        cookie: `refresh_token=${registered.refreshToken}`,
+      },
+    })
+    const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
+
+    expect(refreshResponse.status).toBe(200)
+    expect(refreshBody.user).toMatchObject({
+      id: registered.body.user.id,
+      departments: [
+        {
+          id: departmentId,
+          name: 'Engineering',
+          code: 'engineering',
+        },
+      ],
     })
   })
 

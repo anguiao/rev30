@@ -63,10 +63,10 @@ export function createAuthService(database: Db, config: AuthConfig) {
     async register(input: AuthRegisterInput): Promise<AuthSession> {
       const passwordHash = await hashPassword(input.password)
       const created = await withUserUniqueConflict(() => repository.createUser(input, passwordHash))
-      const tokens = await createTokenResponse(created.id)
+      const tokens = await createTokenResponse(created.user.id)
 
       return {
-        user: toUser(created),
+        user: toUser(created.user, created.departments),
         ...tokens,
       }
     },
@@ -83,7 +83,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
       const tokens = await createTokenResponse(account.user.id)
 
       return {
-        user: toUser(account.user),
+        user: toUser(account.user, account.departments),
         ...tokens,
       }
     },
@@ -101,16 +101,16 @@ export function createAuthService(database: Db, config: AuthConfig) {
         throw new AuthInvalidRefreshTokenError()
       }
 
-      const user = await repository.findActiveUserById(verified.userId)
+      const account = await repository.findActiveUserById(verified.userId)
 
-      if (!user || user.status !== USER_STATUS_ENABLED) {
+      if (!account || account.user.status !== USER_STATUS_ENABLED) {
         throw new AuthInvalidRefreshTokenError()
       }
 
-      const tokens = await createTokenResponse(user.id)
+      const tokens = await createTokenResponse(account.user.id)
 
       return {
-        user: toUser(user),
+        user: toUser(account.user, account.departments),
         ...tokens,
       }
     },
@@ -152,13 +152,13 @@ export function createAuthService(database: Db, config: AuthConfig) {
         throw new AuthUnauthorizedError()
       }
 
-      const user = await repository.findActiveUserById(verified.userId)
+      const account = await repository.findActiveUserById(verified.userId)
 
-      if (!user || user.status !== USER_STATUS_ENABLED) {
+      if (!account || account.user.status !== USER_STATUS_ENABLED) {
         throw new AuthUnauthorizedError()
       }
 
-      return toUser(user)
+      return toUser(account.user, account.departments)
     },
   }
 }

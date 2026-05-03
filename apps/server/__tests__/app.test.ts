@@ -47,6 +47,7 @@ describe('app auth boundaries', () => {
     const database = await createTestDb()
     const app = createApp(database)
     const registered = await register(app)
+    expect(registered.body.user.departments).toEqual([])
 
     const response = await app.request('/api/system/users', {
       headers: {

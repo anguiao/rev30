@@ -84,6 +84,7 @@ describe('auth service', () => {
         createdAt: new Date('2026-04-30T00:00:00.000Z'),
         updatedAt: new Date('2026-04-30T00:00:00.000Z'),
       },
+      departments: [],
       user: createUserRow(USER_STATUS_DISABLED),
     })
 

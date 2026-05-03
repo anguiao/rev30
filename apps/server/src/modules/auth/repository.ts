@@ -1,8 +1,35 @@
 import { randomUUID } from 'node:crypto'
-import { USER_STATUS_ENABLED, type AuthRegisterInput } from '@rev30/shared'
-import { and, eq, gt, isNull } from 'drizzle-orm'
+import { USER_STATUS_ENABLED, type AuthRegisterInput, type DepartmentSummary } from '@rev30/shared'
+import { and, asc, eq, gt, isNull } from 'drizzle-orm'
 import type { Db } from '../../db'
-import { authPasswordCredentials, authRefreshTokens, users } from '../../db/schema'
+import {
+  authPasswordCredentials,
+  authRefreshTokens,
+  departments,
+  userDepartments,
+  users,
+} from '../../db/schema'
+
+type DbExecutor = Pick<Db, 'select' | 'insert' | 'update' | 'delete'>
+
+async function findDepartmentSummariesByUserId(executor: DbExecutor, userId: string) {
+  const rows = await executor
+    .select({
+      departmentId: departments.id,
+      departmentName: departments.name,
+      departmentCode: departments.code,
+    })
+    .from(userDepartments)
+    .innerJoin(departments, eq(departments.id, userDepartments.departmentId))
+    .where(and(eq(userDepartments.userId, userId), isNull(departments.deletedAt)))
+    .orderBy(asc(userDepartments.createdAt), asc(userDepartments.departmentId))
+
+  return rows.map<DepartmentSummary>((row) => ({
+    id: row.departmentId,
+    name: row.departmentName,
+    code: row.departmentCode,
+  }))
+}
 
 export function createAuthRepository(database: Db) {
   return {
@@ -35,7 +62,10 @@ export function createAuthRepository(database: Db) {
           updatedAt: now,
         })
 
-        return created
+        return {
+          user: created,
+          departments: [],
+        }
       })
     },
 
@@ -50,7 +80,16 @@ export function createAuthRepository(database: Db) {
         .where(and(eq(users.username, username), isNull(users.deletedAt)))
         .limit(1)
 
-      return rows[0]
+      const account = rows[0]
+
+      if (!account) {
+        return undefined
+      }
+
+      return {
+        ...account,
+        departments: await findDepartmentSummariesByUserId(database, account.user.id),
+      }
     },
 
     async findActiveUserById(id: string) {
@@ -60,7 +99,16 @@ export function createAuthRepository(database: Db) {
         .where(and(eq(users.id, id), isNull(users.deletedAt)))
         .limit(1)
 
-      return rows[0]
+      const user = rows[0]
+
+      if (!user) {
+        return undefined
+      }
+
+      return {
+        user,
+        departments: await findDepartmentSummariesByUserId(database, user.id),
+      }
     },
 
     async createRefreshSession(input: { userId: string; tokenHash: string; expiresAt: Date }) {

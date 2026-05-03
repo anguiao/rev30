@@ -1,7 +1,6 @@
 import {
   type AuthLoginInput,
   type AuthRegisterInput,
-  authRefreshTokenRequestSchema,
   authLoginSchema,
   authRegisterSchema,
 } from '@rev30/shared'
@@ -29,17 +28,6 @@ const jsonBodyValidator = <T extends ZodType>(schema: T) =>
 
 const registerBodyValidator = jsonBodyValidator(authRegisterSchema)
 const loginBodyValidator = jsonBodyValidator(authLoginSchema)
-
-async function readRefreshToken(c: Context) {
-  try {
-    const text = await c.req.text()
-    const body = authRefreshTokenRequestSchema.safeParse(text.trim() ? JSON.parse(text) : {})
-
-    return body.success ? (body.data.refreshToken ?? getRefreshTokenCookie(c)) : null
-  } catch {
-    return null
-  }
-}
 
 function authErrorResponse(error: unknown, c: Context) {
   if (error instanceof UserConflictError) {
@@ -73,45 +61,36 @@ export function createAuthRoutes(database: Db) {
   return app
     .post('/register', registerBodyValidator, async (c) => {
       const body: AuthRegisterInput = c.req.valid('json')
-      const result = await service.register(body)
+      const { refreshToken, ...session } = await service.register(body)
 
-      setRefreshTokenCookie(c, result.refreshToken, config)
+      setRefreshTokenCookie(c, refreshToken, config)
 
-      return c.json(result, 201)
+      return c.json(session, 201)
     })
     .post('/login', loginBodyValidator, async (c) => {
       const body: AuthLoginInput = c.req.valid('json')
-      const result = await service.login(body)
+      const { refreshToken, ...session } = await service.login(body)
 
-      setRefreshTokenCookie(c, result.refreshToken, config)
+      setRefreshTokenCookie(c, refreshToken, config)
 
-      return c.json(result)
+      return c.json(session)
     })
     .post('/refresh', async (c) => {
-      const refreshToken = await readRefreshToken(c)
+      const { refreshToken, ...session } = await service.refresh(getRefreshTokenCookie(c))
+      setRefreshTokenCookie(c, refreshToken, config)
 
-      if (refreshToken === null) {
-        return c.json({ message: '请求体无效' }, 400)
-      }
-
-      const result = await service.refresh(refreshToken)
-      setRefreshTokenCookie(c, result.refreshToken, config)
-
-      return c.json(result)
+      return c.json(session)
     })
     .post('/logout', async (c) => {
-      const refreshToken = await readRefreshToken(c)
-
-      if (refreshToken === null) {
-        return c.json({ message: '请求体无效' }, 400)
-      }
-
-      await service.logout(refreshToken)
+      await service.logout(getRefreshTokenCookie(c))
       clearRefreshTokenCookie(c)
 
       return c.body(null, 204)
     })
-    .get('/me', async (c) =>
-      c.json(await service.me(parseBearerToken(c.req.header('authorization')))),
-    )
+    .get('/me', async (c) => {
+      const accessToken = parseBearerToken(c.req.header('authorization'))
+      const user = await service.me(accessToken)
+
+      return c.json(user)
+    })
 }

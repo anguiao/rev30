@@ -13,7 +13,6 @@ vi.mock('../../src/features/auth/requests', () => ({
 
 const session: AuthTokenResponse = {
   accessToken: 'access-token',
-  refreshToken: 'refresh-token',
   tokenType: 'Bearer',
   expiresIn: 900,
   user: {

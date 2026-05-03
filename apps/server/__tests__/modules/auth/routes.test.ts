@@ -16,6 +16,10 @@ function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
   return new Hono().route('/api/auth', createAuthRoutes(database))
 }
 
+function getRefreshTokenCookie(response: Response) {
+  return response.headers.get('set-cookie')?.match(/refresh_token=([^;]+)/)?.[1]
+}
+
 async function register(app: Hono, body = {}) {
   const response = await app.request('/api/auth/register', {
     method: 'POST',
@@ -32,6 +36,7 @@ async function register(app: Hono, body = {}) {
 
   return {
     body: (await response.json()) as AuthTokenResponse,
+    refreshToken: getRefreshTokenCookie(response),
     response,
   }
 }
@@ -63,7 +68,7 @@ describe('auth routes', () => {
     const database = await createTestDb()
     const app = createTestApp(database)
 
-    const { body, response } = await register(app, {
+    const { body, refreshToken, response } = await register(app, {
       email: 'ada@example.com',
       phone: '10000000001',
     })
@@ -81,7 +86,8 @@ describe('auth routes', () => {
       },
     })
     expect(body.accessToken).toEqual(expect.any(String))
-    expect(body.refreshToken).toEqual(expect.any(String))
+    expect(body).not.toHaveProperty('refreshToken')
+    expect(refreshToken).toEqual(expect.any(String))
 
     const storedUsers = await database.select().from(users).where(eq(users.id, body.user.id))
     expect(storedUsers).toHaveLength(1)
@@ -129,6 +135,7 @@ describe('auth routes', () => {
         username: 'ada',
       },
     })
+    expect(body).not.toHaveProperty('refreshToken')
   })
 
   it('returns a uniform credentials error for wrong passwords and disabled users', async () => {
@@ -187,29 +194,27 @@ describe('auth routes', () => {
     const database = await createTestDb()
     const app = createTestApp(database)
     const registered = await register(app)
+    const oldRefreshToken = registered.refreshToken
 
     const refreshResponse = await app.request('/api/auth/refresh', {
       method: 'POST',
-      body: JSON.stringify({
-        refreshToken: registered.body.refreshToken,
-      }),
       headers: {
-        'content-type': 'application/json',
+        cookie: `refresh_token=${oldRefreshToken}`,
       },
     })
     const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
+    const newRefreshToken = getRefreshTokenCookie(refreshResponse)
 
     expect(refreshResponse.status).toBe(200)
     expect(refreshResponse.headers.get('set-cookie')).toContain('refresh_token=')
-    expect(refreshBody.refreshToken).not.toBe(registered.body.refreshToken)
+    expect(refreshBody).not.toHaveProperty('refreshToken')
+    expect(newRefreshToken).toEqual(expect.any(String))
+    expect(newRefreshToken).not.toBe(oldRefreshToken)
 
     const reuseResponse = await app.request('/api/auth/refresh', {
       method: 'POST',
-      body: JSON.stringify({
-        refreshToken: registered.body.refreshToken,
-      }),
       headers: {
-        'content-type': 'application/json',
+        cookie: `refresh_token=${oldRefreshToken}`,
       },
     })
     const reuseBody = (await reuseResponse.json()) as ErrorResponse
@@ -228,55 +233,18 @@ describe('auth routes', () => {
     const refreshResponse = await app.request('/api/auth/refresh', {
       method: 'POST',
       headers: {
-        cookie: `refresh_token=${registered.body.refreshToken}`,
+        cookie: `refresh_token=${registered.refreshToken}`,
       },
     })
     const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
 
     expect(refreshResponse.status).toBe(200)
     expect(refreshBody.user.id).toBe(registered.body.user.id)
-    expect(refreshBody.refreshToken).not.toBe(registered.body.refreshToken)
+    expect(refreshBody).not.toHaveProperty('refreshToken')
+    expect(getRefreshTokenCookie(refreshResponse)).not.toBe(registered.refreshToken)
   })
 
-  it('rejects invalid token request bodies before using the refresh cookie', async () => {
-    for (const path of ['/api/auth/refresh', '/api/auth/logout']) {
-      const database = await createTestDb()
-      const app = createTestApp(database)
-      const registered = await register(app)
-
-      const malformedResponse = await app.request(path, {
-        method: 'POST',
-        body: '{',
-        headers: {
-          'content-type': 'application/json',
-          cookie: `refresh_token=${registered.body.refreshToken}`,
-        },
-      })
-
-      expect(malformedResponse.status).toBe(400)
-      expect(await malformedResponse.json()).toEqual({
-        message: '请求体无效',
-      })
-
-      const invalidTypeResponse = await app.request(path, {
-        method: 'POST',
-        body: JSON.stringify({
-          refreshToken: 123,
-        }),
-        headers: {
-          'content-type': 'application/json',
-          cookie: `refresh_token=${registered.body.refreshToken}`,
-        },
-      })
-
-      expect(invalidTypeResponse.status).toBe(400)
-      expect(await invalidTypeResponse.json()).toEqual({
-        message: '请求体无效',
-      })
-    }
-  })
-
-  it('does not fall back to the refresh cookie when the body provides an empty refresh token', async () => {
+  it('does not accept body refresh tokens without the refresh cookie', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
     const registered = await register(app)
@@ -284,11 +252,10 @@ describe('auth routes', () => {
     const refreshResponse = await app.request('/api/auth/refresh', {
       method: 'POST',
       body: JSON.stringify({
-        refreshToken: '',
+        refreshToken: registered.refreshToken,
       }),
       headers: {
         'content-type': 'application/json',
-        cookie: `refresh_token=${registered.body.refreshToken}`,
       },
     })
 
@@ -298,6 +265,19 @@ describe('auth routes', () => {
     })
   })
 
+  it('logs out successfully without a refresh cookie', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+
+    const response = await app.request('/api/auth/logout', {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(204)
+    expect(response.headers.get('set-cookie')).toContain('refresh_token=')
+    expect(response.headers.get('set-cookie')).toContain('Max-Age=0')
+  })
+
   it('logs out by revoking refresh tokens and clearing the cookie', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
@@ -305,11 +285,8 @@ describe('auth routes', () => {
 
     const logoutResponse = await app.request('/api/auth/logout', {
       method: 'POST',
-      body: JSON.stringify({
-        refreshToken: registered.body.refreshToken,
-      }),
       headers: {
-        'content-type': 'application/json',
+        cookie: `refresh_token=${registered.refreshToken}`,
       },
     })
 
@@ -319,11 +296,8 @@ describe('auth routes', () => {
 
     const refreshResponse = await app.request('/api/auth/refresh', {
       method: 'POST',
-      body: JSON.stringify({
-        refreshToken: registered.body.refreshToken,
-      }),
       headers: {
-        'content-type': 'application/json',
+        cookie: `refresh_token=${registered.refreshToken}`,
       },
     })
 
@@ -331,18 +305,15 @@ describe('auth routes', () => {
 
     const secondLogoutResponse = await app.request('/api/auth/logout', {
       method: 'POST',
-      body: JSON.stringify({
-        refreshToken: registered.body.refreshToken,
-      }),
       headers: {
-        'content-type': 'application/json',
+        cookie: `refresh_token=${registered.refreshToken}`,
       },
     })
 
     expect(secondLogoutResponse.status).toBe(204)
   })
 
-  it('uses the logout body refresh token before the refresh cookie', async () => {
+  it('ignores logout body tokens and uses the refresh cookie', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
     const registered = await register(app)
@@ -354,7 +325,7 @@ describe('auth routes', () => {
       }),
       headers: {
         'content-type': 'application/json',
-        cookie: `refresh_token=${registered.body.refreshToken}`,
+        cookie: `refresh_token=${registered.refreshToken}`,
       },
     })
 
@@ -362,15 +333,12 @@ describe('auth routes', () => {
 
     const refreshResponse = await app.request('/api/auth/refresh', {
       method: 'POST',
-      body: JSON.stringify({
-        refreshToken: registered.body.refreshToken,
-      }),
       headers: {
-        'content-type': 'application/json',
+        cookie: `refresh_token=${registered.refreshToken}`,
       },
     })
 
-    expect(refreshResponse.status).toBe(200)
+    expect(refreshResponse.status).toBe(401)
   })
 
   it('returns the current user for a valid access token', async () => {
@@ -423,7 +391,7 @@ describe('auth routes', () => {
 
     const refreshTokenResponse = await app.request('/api/auth/me', {
       headers: {
-        authorization: `Bearer ${registered.body.refreshToken}`,
+        authorization: `Bearer ${registered.refreshToken}`,
       },
     })
     expect(refreshTokenResponse.status).toBe(401)

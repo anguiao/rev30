@@ -6,7 +6,6 @@ import { useAuthStore } from '../../src/stores/auth'
 
 const session: AuthTokenResponse = {
   accessToken: 'access-token',
-  refreshToken: 'refresh-token',
   tokenType: 'Bearer',
   expiresIn: 900,
   user: {

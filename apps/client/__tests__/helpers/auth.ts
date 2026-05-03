@@ -9,7 +9,6 @@ import { USER_STATUS_ENABLED } from '@rev30/shared'
 
 export const session: AuthTokenResponse = {
   accessToken: 'access-token',
-  refreshToken: 'refresh-token',
   tokenType: 'Bearer',
   expiresIn: 900,
   user: {

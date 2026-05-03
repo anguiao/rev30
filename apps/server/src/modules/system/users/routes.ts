@@ -93,6 +93,6 @@ export function createUserRoutes(database: Db) {
 
       await service.delete(id)
 
-      return new Response(null, { status: 204 })
+      return c.body(null, 204)
     })
 }

@@ -16,7 +16,10 @@ async function register(app: ReturnType<typeof createApp>) {
     },
   })
 
-  return (await response.json()) as AuthTokenResponse
+  return {
+    body: (await response.json()) as AuthTokenResponse,
+    refreshToken: response.headers.get('set-cookie')?.match(/refresh_token=([^;]+)/)?.[1],
+  }
 }
 
 describe('app auth boundaries', () => {
@@ -39,14 +42,14 @@ describe('app auth boundaries', () => {
 
     const response = await app.request('/api/system/users', {
       headers: {
-        authorization: `Bearer ${registered.accessToken}`,
+        authorization: `Bearer ${registered.body.accessToken}`,
       },
     })
     const body = (await response.json()) as UserListResponse
 
     expect(response.status).toBe(200)
     expect(body.total).toBe(1)
-    expect(body.list[0]?.id).toBe(registered.user.id)
+    expect(body.list[0]?.id).toBe(registered.body.user.id)
   })
 
   it('rejects system routes with a refresh token', async () => {

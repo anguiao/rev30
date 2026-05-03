@@ -20,6 +20,10 @@ import { createTokenPair, verifyAccessToken, verifyRefreshToken } from './tokens
 const dummyPasswordHash =
   'scrypt$rev30-auth-dummy-salt$gqCTp4XOR3Xf1LvfHOITCoogF-vpgXvmPkOuxWGr-ChkgWkyXG0_Zf19YMXZ_Oy3mXaxJAVa2LGtlr8sJPJDjA'
 
+type AuthSession = AuthTokenResponse & {
+  refreshToken: string
+}
+
 async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
   try {
     return await operation()
@@ -37,7 +41,7 @@ async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
 export function createAuthService(database: Db, config: AuthConfig) {
   const repository = createAuthRepository(database)
 
-  async function createTokenResponse(userId: string): Promise<Omit<AuthTokenResponse, 'user'>> {
+  async function createTokenResponse(userId: string): Promise<Omit<AuthSession, 'user'>> {
     const tokenPair = await createTokenPair(userId, config)
 
     await repository.createRefreshSession({
@@ -55,7 +59,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
   }
 
   return {
-    async register(input: AuthRegisterInput): Promise<AuthTokenResponse> {
+    async register(input: AuthRegisterInput): Promise<AuthSession> {
       const passwordHash = await hashPassword(input.password)
       const created = await withUserUniqueConflict(() => repository.createUser(input, passwordHash))
       const tokens = await createTokenResponse(created.id)
@@ -66,7 +70,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
       }
     },
 
-    async login(input: AuthLoginInput): Promise<AuthTokenResponse> {
+    async login(input: AuthLoginInput): Promise<AuthSession> {
       const account = await repository.findActiveUserCredentialByUsername(input.username)
       const passwordHash = account?.credential.passwordHash ?? dummyPasswordHash
       const passwordMatches = await verifyPassword(input.password, passwordHash)
@@ -83,7 +87,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
       }
     },
 
-    async refresh(refreshToken: string | undefined): Promise<AuthTokenResponse> {
+    async refresh(refreshToken: string | undefined): Promise<AuthSession> {
       if (!refreshToken) {
         throw new AuthInvalidRefreshTokenError()
       }

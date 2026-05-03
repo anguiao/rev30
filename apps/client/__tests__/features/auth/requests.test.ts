@@ -11,7 +11,6 @@ import {
 
 const tokenBody = {
   accessToken: 'access-token',
-  refreshToken: 'refresh-token',
   tokenType: 'Bearer',
   expiresIn: 900,
   user: {

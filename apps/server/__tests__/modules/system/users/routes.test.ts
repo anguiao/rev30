@@ -48,7 +48,7 @@ async function createUser(
 
 async function createDepartment(
   database: Awaited<ReturnType<typeof createTestDb>>,
-  input: { name: string; code: string; deletedAt?: Date | null },
+  input: { name: string; code: string; sortOrder?: number; deletedAt?: Date | null },
 ) {
   const now = new Date()
   const [department] = await database
@@ -57,6 +57,7 @@ async function createDepartment(
       id: randomUUID(),
       name: input.name,
       code: input.code,
+      sortOrder: input.sortOrder ?? 0,
       deletedAt: input.deletedAt ?? null,
       createdAt: now,
       updatedAt: now,
@@ -163,10 +164,12 @@ describe('user routes', () => {
     const engineering = await createDepartment(database, {
       name: 'Engineering',
       code: 'engineering',
+      sortOrder: 20,
     })
     const product = await createDepartment(database, {
       name: 'Product',
       code: 'product',
+      sortOrder: 10,
     })
 
     const { body, response } = await createUser(app, {
@@ -178,14 +181,14 @@ describe('user routes', () => {
     expect(response.status).toBe(201)
     expect(body.departments).toEqual([
       {
-        id: engineering.id,
-        name: 'Engineering',
-        code: 'engineering',
-      },
-      {
         id: product.id,
         name: 'Product',
         code: 'product',
+      },
+      {
+        id: engineering.id,
+        name: 'Engineering',
+        code: 'engineering',
       },
     ])
 
@@ -202,6 +205,7 @@ describe('user routes', () => {
 
     const storedRelations = await database.select().from(userDepartments)
     expect(storedRelations).toHaveLength(2)
+    expect(new Set(storedRelations.map((relation) => relation.createdAt.getTime()))).toHaveLength(1)
   })
 
   it('replaces and clears user departments on update', async () => {

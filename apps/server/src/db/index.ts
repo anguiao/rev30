@@ -31,3 +31,5 @@ export async function createDb() {
 }
 
 export type Db = Awaited<ReturnType<typeof createDb>>
+export type DbReader = Pick<Db, 'select'>
+export type DbExecutor = Pick<Db, 'select' | 'insert' | 'update' | 'delete'>

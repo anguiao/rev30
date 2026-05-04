@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { sign } from 'hono/jwt'
@@ -359,32 +359,38 @@ describe('auth routes', () => {
   })
 
   it('clears the refresh cookie when logout cannot revoke the refresh session', async () => {
-    const tokenPair = await createTokenPair(
-      '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-      readAuthConfig(),
-    )
-    const app = createTestApp({
-      update: () => ({
-        set: () => ({
-          where: () => ({
-            returning: async () => {
-              throw new Error('revoke failed')
-            },
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      const tokenPair = await createTokenPair(
+        '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        readAuthConfig(),
+      )
+      const app = createTestApp({
+        update: () => ({
+          set: () => ({
+            where: () => ({
+              returning: async () => {
+                throw new Error('revoke failed')
+              },
+            }),
           }),
         }),
-      }),
-    } as never)
+      } as never)
 
-    const response = await app.request('/api/auth/logout', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${tokenPair.refreshToken}`,
-      },
-    })
+      const response = await app.request('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${tokenPair.refreshToken}`,
+        },
+      })
 
-    expect(response.status).toBe(500)
-    expect(response.headers.get('set-cookie')).toContain('refresh_token=')
-    expect(response.headers.get('set-cookie')).toContain('Max-Age=0')
+      expect(response.status).toBe(500)
+      expect(response.headers.get('set-cookie')).toContain('refresh_token=')
+      expect(response.headers.get('set-cookie')).toContain('Max-Age=0')
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 
   it('returns the current user for a valid access token', async () => {

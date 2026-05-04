@@ -390,6 +390,59 @@ describe('resource routes', () => {
     expect(await response.json()).toEqual({ message: '内部菜单路径不能为空' })
   })
 
+  it('normalizes omitted-type update fields against the existing resource type', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const { body: menu } = await createResource(app, {
+      type: RESOURCE_TYPE_MENU,
+      name: 'Users',
+      code: 'system:user',
+      path: '/system/users',
+    })
+    const { body: directory } = await createResource(app, {
+      type: RESOURCE_TYPE_DIRECTORY,
+      name: 'System',
+      code: 'system',
+    })
+    const { body: action } = await createResource(app, {
+      type: RESOURCE_TYPE_ACTION,
+      name: 'Export Users',
+      code: 'system:user:export',
+    })
+
+    for (const resource of [menu, directory, action]) {
+      const response = await app.request(`/api/system/resources/${resource.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ externalUrl: 'not-a-url' }),
+        headers: { 'content-type': 'application/json' },
+      })
+      const responseBody = (await response.json()) as Resource
+
+      expect(response.status).toBe(200)
+      expect(responseBody.externalUrl).toBe(null)
+    }
+  })
+
+  it('rejects invalid external urls when updating an existing external resource', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const { body } = await createResource(app, {
+      type: RESOURCE_TYPE_EXTERNAL,
+      name: 'Docs',
+      code: 'system:docs',
+      externalUrl: 'https://example.com/docs',
+    })
+
+    const response = await app.request(`/api/system/resources/${body.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ externalUrl: 'not-a-url' }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ message: '外链地址无效' })
+  })
+
   it('rejects duplicate resource codes on create and update', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)

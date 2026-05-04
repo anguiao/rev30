@@ -320,15 +320,14 @@ describe('resource schemas', () => {
     }
   })
 
-  it('validates externalUrl on update when it is not explicitly ignored', () => {
-    const invalidUpdate = resourceUpdateSchema.safeParse({
+  it('defers omitted-type externalUrl validation and validates explicit external updates', () => {
+    expect(
+      resourceUpdateSchema.parse({
+        externalUrl: 'not-a-url',
+      }),
+    ).toMatchObject({
       externalUrl: 'not-a-url',
     })
-
-    expect(invalidUpdate.success).toBe(false)
-    if (!invalidUpdate.success) {
-      expect(firstIssueMessage(invalidUpdate)).toBe('外链地址无效')
-    }
 
     expect(
       resourceUpdateSchema.parse({

@@ -225,7 +225,7 @@ function validateResourceUpdateTypeFields(
   context: z.RefinementCtx,
 ) {
   if (
-    (value.type === undefined || value.type === RESOURCE_TYPE_EXTERNAL) &&
+    value.type === RESOURCE_TYPE_EXTERNAL &&
     value.externalUrl !== undefined &&
     value.externalUrl !== null
   ) {

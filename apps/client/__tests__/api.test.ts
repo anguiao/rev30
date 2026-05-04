@@ -431,13 +431,15 @@ describe('api client', () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
     vi.stubGlobal('fetch', fetchMock)
 
-    void api.system.users.$post({
+    const validBody = {
       json: {
         username: 'role-user',
         nickname: 'Role User',
         roleIds: ['875dd9cb-488b-43d7-a55f-6db070a8e83f'],
       },
-    })
+    } as Parameters<typeof api.system.users.$post>[0]
+
+    void api.system.users.$post(validBody)
   })
 
   it('requests nested resource endpoints with query params', async () => {

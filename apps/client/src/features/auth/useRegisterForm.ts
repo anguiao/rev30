@@ -8,7 +8,7 @@ import { setServerFieldError } from './form'
 import { AuthRequestError, register } from './requests'
 import { useAuthStore } from '../../stores/auth'
 
-const authRegisterFormSchema = authRegisterSchema
+const authRegisterInputSchema = authRegisterSchema
   .extend({
     confirmPassword: z.string(),
   })
@@ -16,10 +16,14 @@ const authRegisterFormSchema = authRegisterSchema
     path: ['confirmPassword'],
     message: '两次输入的密码不一致',
   })
+const authRegisterFormSchema = authRegisterInputSchema.safeExtend({
+  email: z.string(),
+  phone: z.string(),
+})
 type RegisterFormData = z.input<typeof authRegisterFormSchema>
 
 function toRegisterInput(value: RegisterFormData): AuthRegisterInput {
-  const { confirmPassword: _confirmPassword, ...input } = authRegisterFormSchema.parse(value)
+  const { confirmPassword: _confirmPassword, ...input } = authRegisterInputSchema.parse(value)
 
   return input
 }

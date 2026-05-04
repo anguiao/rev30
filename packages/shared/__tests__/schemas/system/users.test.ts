@@ -23,6 +23,7 @@ describe('user schemas', () => {
         phone: null,
         status: USER_STATUS_ENABLED,
         departments: [],
+        roles: [],
         createdAt: '2026-04-29T08:00:00.000Z',
         updatedAt: '2026-04-29T08:00:00.000Z',
       }),
@@ -50,6 +51,7 @@ describe('user schemas', () => {
             code: 'engineering',
           },
         ],
+        roles: [],
         createdAt: '2026-04-29T08:00:00.000Z',
         updatedAt: '2026-04-29T08:00:00.000Z',
       }),
@@ -186,6 +188,7 @@ describe('user schemas', () => {
       email: null,
       phone: null,
       departments: [],
+      roles: [],
       status: USER_STATUS_ENABLED,
       createdAt: '2026-04-29T08:00:00.000Z',
       updatedAt: '2026-04-29T08:00:00.000Z',
@@ -203,6 +206,74 @@ describe('user schemas', () => {
     expect(invalidQuery.success).toBe(false)
     if (!invalidQuery.success) {
       expect(firstIssueMessage(invalidQuery)).toBe('页码不能小于 1')
+    }
+  })
+
+  it('requires user responses to include role summaries', () => {
+    expect(
+      userSchema.parse({
+        id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        username: 'ada',
+        nickname: 'Ada Lovelace',
+        email: null,
+        phone: null,
+        status: USER_STATUS_ENABLED,
+        departments: [],
+        roles: [
+          {
+            id: '875dd9cb-488b-43d7-a55f-6db070a8e83f',
+            name: 'Administrator',
+            code: 'admin',
+          },
+        ],
+        createdAt: '2026-04-29T08:00:00.000Z',
+        updatedAt: '2026-04-29T08:00:00.000Z',
+      }),
+    ).toMatchObject({
+      roles: [
+        {
+          id: '875dd9cb-488b-43d7-a55f-6db070a8e83f',
+          name: 'Administrator',
+          code: 'admin',
+        },
+      ],
+    })
+  })
+
+  it('accepts unique role ids on create and update input', () => {
+    const firstRoleId = '4be2dfda-2fd6-4ee5-b06b-c551328bc343'
+    const secondRoleId = '875dd9cb-488b-43d7-a55f-6db070a8e83f'
+
+    expect(
+      userCreateSchema.parse({
+        username: 'grace',
+        nickname: 'Grace Hopper',
+        roleIds: [firstRoleId, secondRoleId],
+      }),
+    ).toEqual({
+      username: 'grace',
+      nickname: 'Grace Hopper',
+      status: USER_STATUS_ENABLED,
+      roleIds: [firstRoleId, secondRoleId],
+    })
+
+    expect(userUpdateSchema.parse({ roleIds: [] })).toEqual({
+      roleIds: [],
+    })
+  })
+
+  it('rejects duplicate role ids on user input', () => {
+    const duplicateRoleId = 'd0db3e95-4bc8-44a9-b0ce-0f5b7a7f3f5b'
+
+    const result = userCreateSchema.safeParse({
+      username: 'grace',
+      nickname: 'Grace Hopper',
+      roleIds: [duplicateRoleId, duplicateRoleId],
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(firstIssueMessage(result)).toBe('角色不能重复')
     }
   })
 })

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { blankStringToNull, blankStringToUndefined } from '../utils'
 import { departmentSummarySchema } from './departments'
+import { roleIdsSchema, roleSummarySchema } from './roles'
 
 export const USER_STATUS_DISABLED = 0
 export const USER_STATUS_ENABLED = 1
@@ -48,11 +49,13 @@ export const userSchema = z.object({
   phone: z.string().nullable(),
   status: userStatusSchema,
   departments: z.array(departmentSummarySchema),
+  roles: z.array(roleSummarySchema),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 })
 
 export const userDepartmentSchema = departmentSummarySchema
+export const userRoleSchema = roleSummarySchema
 
 export const departmentIdsSchema = z.array(z.uuid('部门 ID 无效')).superRefine((value, context) => {
   const seenDepartmentIds = new Set<string>()
@@ -84,6 +87,7 @@ export const userCreateSchema = z.object({
   phone: nullableContactInputSchema,
   status: userStatusSchema.default(USER_STATUS_ENABLED),
   departmentIds: departmentIdsSchema.optional(),
+  roleIds: roleIdsSchema.optional(),
 })
 
 export const userUpdateSchema = z
@@ -94,6 +98,7 @@ export const userUpdateSchema = z
     phone: nullableContactInputSchema,
     status: userStatusSchema.optional(),
     departmentIds: departmentIdsSchema.optional(),
+    roleIds: roleIdsSchema.optional(),
   })
   .refine((value) => Object.values(value).some((fieldValue) => fieldValue !== undefined), {
     message: '至少修改一个字段',

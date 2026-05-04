@@ -2,6 +2,7 @@ import 'dotenv/config'
 import { serve } from '@hono/node-server'
 import { createApp } from './app'
 import { createDb } from './db'
+import { logger } from './logger'
 
 const port = Number(process.env.PORT ?? 3000)
 const db = await createDb()
@@ -13,6 +14,12 @@ serve(
     port,
   },
   (info) => {
-    console.log(`Server listening on http://localhost:${info.port}`)
+    logger.info(
+      {
+        port: info.port,
+        url: `http://localhost:${info.port}`,
+      },
+      'server listening',
+    )
   },
 )

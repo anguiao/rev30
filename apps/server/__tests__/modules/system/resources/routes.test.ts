@@ -15,7 +15,7 @@ import {
   type ResourceListResponse,
   type ResourceTreeNode,
 } from '@rev30/shared'
-import { systemResources } from '../../../../src/db/schema'
+import { roleResources, roles, systemResources } from '../../../../src/db/schema'
 import { createTestDb } from '../../../helpers/db'
 import { createResourceRoutes } from '../../../../src/modules/system/resources/routes'
 
@@ -564,6 +564,36 @@ describe('resource routes', () => {
     expect(treeAfterDeleteBody).toHaveLength(1)
     expect(treeAfterDeleteBody[0]).toMatchObject({ id: root.id })
     expect(treeAfterDeleteBody[0]?.children).toEqual([])
+  })
+
+  it('rejects deleting resources assigned to roles', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const { body: resource } = await createResource(app, {
+      type: RESOURCE_TYPE_ACTION,
+      name: 'Export Users',
+      code: 'system:user:export',
+    })
+
+    const roleId = randomUUID()
+    await database.insert(roles).values({
+      id: roleId,
+      name: 'Role With Resource',
+      code: 'resource-linked-role',
+    })
+    await database.insert(roleResources).values({
+      roleId,
+      resourceId: resource.id,
+      createdAt: new Date(),
+    })
+
+    const response = await app.request(`/api/system/resources/${resource.id}`, {
+      method: 'DELETE',
+    })
+    expect(response.status).toBe(409)
+
+    const body = (await response.json()) as ErrorResponse
+    expect(body).toEqual({ message: '资源存在角色授权，不能删除' })
   })
 
   it('returns invalid parent errors for create and update requests', async () => {

@@ -15,6 +15,7 @@ import type { Db } from '../../../db'
 import {
   ResourceDeleteConflictError,
   ResourceInvalidParentError,
+  ResourceRoleAuthorizationConflictError,
   ResourceInvalidTypeFieldsError,
   ResourceMoveConflictError,
   ResourceNotFoundError,
@@ -238,6 +239,10 @@ export function createResourceService(database: Db) {
 
       if (await repository.hasActiveChildren(id)) {
         throw new ResourceDeleteConflictError()
+      }
+
+      if (await repository.hasRoleAuthorizations(id)) {
+        throw new ResourceRoleAuthorizationConflictError()
       }
 
       const deleted = await repository.softDelete(id)

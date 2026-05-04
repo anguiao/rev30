@@ -2,8 +2,12 @@ import { randomUUID } from 'node:crypto'
 import type { ResourceCreateInput, ResourceListQuery, ResourceUpdateInput } from '@rev30/shared'
 import { and, asc, count, desc, eq, ilike, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
-import { systemResources } from '../../../db/schema'
-import { ResourceDeleteConflictError, ResourceInvalidParentError } from './errors'
+import { roleResources, systemResources } from '../../../db/schema'
+import {
+  ResourceDeleteConflictError,
+  ResourceInvalidParentError,
+  ResourceRoleAuthorizationConflictError,
+} from './errors'
 
 function resourceSortOrder() {
   return [
@@ -29,6 +33,16 @@ async function hasActiveChildren(executor: DbReader, id: string) {
     .select({ id: systemResources.id })
     .from(systemResources)
     .where(and(eq(systemResources.parentId, id), isNull(systemResources.deletedAt)))
+    .limit(1)
+
+  return rows.length > 0
+}
+
+async function hasRoleAuthorizations(executor: DbReader, id: string) {
+  const rows = await executor
+    .select({ roleId: roleResources.roleId })
+    .from(roleResources)
+    .where(eq(roleResources.resourceId, id))
     .limit(1)
 
   return rows.length > 0
@@ -101,6 +115,10 @@ export function createResourceRepository(database: Db) {
       return await hasActiveChildren(database, id)
     },
 
+    async hasRoleAuthorizations(id: string) {
+      return await hasRoleAuthorizations(database, id)
+    },
+
     async create(input: ResourceCreateInput) {
       const now = new Date()
 
@@ -162,6 +180,10 @@ export function createResourceRepository(database: Db) {
 
         if (await hasActiveChildren(tx, id)) {
           throw new ResourceDeleteConflictError()
+        }
+
+        if (await hasRoleAuthorizations(tx, id)) {
+          throw new ResourceRoleAuthorizationConflictError()
         }
 
         const [deleted] = await tx

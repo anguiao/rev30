@@ -44,6 +44,13 @@ export class ResourceDeleteConflictError extends Error {
   }
 }
 
+export class ResourceRoleAuthorizationConflictError extends Error {
+  constructor() {
+    super('资源存在角色授权，不能删除')
+    this.name = 'ResourceRoleAuthorizationConflictError'
+  }
+}
+
 export class ResourceInvalidTypeFieldsError extends Error {
   constructor(message: string) {
     super(message)

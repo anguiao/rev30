@@ -14,6 +14,7 @@ import {
   ResourceConflictError,
   ResourceDeleteConflictError,
   ResourceInvalidParentError,
+  ResourceRoleAuthorizationConflictError,
   ResourceInvalidTypeFieldsError,
   ResourceMoveConflictError,
   ResourceNotFoundError,
@@ -68,7 +69,8 @@ function resourceErrorResponse(error: unknown, c: Context) {
   if (
     error instanceof ResourceConflictError ||
     error instanceof ResourceMoveConflictError ||
-    error instanceof ResourceDeleteConflictError
+    error instanceof ResourceDeleteConflictError ||
+    error instanceof ResourceRoleAuthorizationConflictError
   ) {
     return c.json({ message: error.message }, 409)
   }

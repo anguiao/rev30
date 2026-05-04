@@ -1,4 +1,5 @@
 import {
+  RESOURCE_OPEN_TARGET_BLANK,
   RESOURCE_OPEN_TARGET_SELF,
   RESOURCE_TYPE_ACTION,
   RESOURCE_TYPE_DIRECTORY,
@@ -57,6 +58,7 @@ function normalizeTypeFields(input: ResourceUpdateInput, existing?: ResourceRow)
 
     next.path = null
     next.externalUrl = externalUrl
+    next.openTarget = input.openTarget ?? RESOURCE_OPEN_TARGET_BLANK
   }
 
   if (type === RESOURCE_TYPE_DIRECTORY || type === RESOURCE_TYPE_ACTION) {

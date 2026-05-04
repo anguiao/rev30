@@ -313,6 +313,35 @@ describe('resource routes', () => {
     expect(await descendantMoveResponse.json()).toEqual({ message: '不能移动到自己或子资源下' })
   })
 
+  it('defaults open target to blank when updating a resource to an external link', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const { body } = await createResource(app, {
+      type: RESOURCE_TYPE_MENU,
+      name: 'Users',
+      code: 'system:user',
+      path: '/system/users',
+    })
+
+    const response = await app.request(`/api/system/resources/${body.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        type: RESOURCE_TYPE_EXTERNAL,
+        externalUrl: 'https://example.com/users',
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const responseBody = (await response.json()) as Resource
+
+    expect(response.status).toBe(200)
+    expect(responseBody).toMatchObject({
+      type: RESOURCE_TYPE_EXTERNAL,
+      path: null,
+      externalUrl: 'https://example.com/users',
+      openTarget: RESOURCE_OPEN_TARGET_BLANK,
+    })
+  })
+
   it('rejects invalid final type fields on update', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)

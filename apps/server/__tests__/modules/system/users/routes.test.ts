@@ -3,13 +3,15 @@ import { describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import {
+  ROLE_STATUS_ENABLED,
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
+  type RoleStatus,
   type User,
   type UserListResponse,
   type UserStatus,
 } from '@rev30/shared'
-import { departments, userDepartments, users } from '../../../../src/db/schema'
+import { departments, roles, userDepartments, userRoles, users } from '../../../../src/db/schema'
 import { createTestDb } from '../../../helpers/db'
 import { createUserRoutes } from '../../../../src/modules/system/users/routes'
 
@@ -30,6 +32,7 @@ async function createUser(
     phone?: string | null
     status?: UserStatus
     departmentIds?: string[]
+    roleIds?: string[]
   },
 ) {
   const response = await app.request('/api/system/users', {
@@ -71,6 +74,38 @@ async function createDepartment(
   return department
 }
 
+async function createRole(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  input: {
+    name: string
+    code: string
+    status?: RoleStatus
+    sortOrder?: number
+    deletedAt?: Date | null
+  },
+) {
+  const now = new Date()
+  const [role] = await database
+    .insert(roles)
+    .values({
+      id: randomUUID(),
+      name: input.name,
+      code: input.code,
+      status: input.status ?? ROLE_STATUS_ENABLED,
+      sortOrder: input.sortOrder ?? 0,
+      deletedAt: input.deletedAt ?? null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning()
+
+  if (!role) {
+    throw new Error('Expected role')
+  }
+
+  return role
+}
+
 describe('user routes', () => {
   it('creates users in the database and returns paginated users', async () => {
     const database = await createTestDb()
@@ -91,6 +126,7 @@ describe('user routes', () => {
       phone: '10000000001',
       status: USER_STATUS_ENABLED,
       departments: [],
+      roles: [],
     })
     expect(body.createdAt).toEqual(expect.any(String))
     expect(body.updatedAt).toEqual(expect.any(String))
@@ -113,6 +149,7 @@ describe('user routes', () => {
       id: body.id,
       username: 'ada',
       departments: [],
+      roles: [],
     })
   })
 
@@ -134,6 +171,7 @@ describe('user routes', () => {
       id: created.id,
       status: USER_STATUS_DISABLED,
       departments: [],
+      roles: [],
     })
 
     const updateResponse = await app.request(`/api/system/users/${created.id}`, {
@@ -155,6 +193,7 @@ describe('user routes', () => {
       phone: '10000000002',
       status: USER_STATUS_DISABLED,
       departments: [],
+      roles: [],
     })
   })
 
@@ -279,6 +318,185 @@ describe('user routes', () => {
 
     expect(clearResponse.status).toBe(200)
     expect(clearBody.departments).toEqual([])
+    expect(clearBody.roles).toEqual([])
+  })
+
+  it('creates users with multiple roles and returns role summaries', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const admin = await createRole(database, {
+      name: 'Administrator',
+      code: 'admin',
+      sortOrder: 20,
+    })
+    const editor = await createRole(database, {
+      name: 'Editor',
+      code: 'editor',
+      sortOrder: 10,
+    })
+
+    const { body, response } = await createUser(app, {
+      username: 'role-user',
+      nickname: 'Role User',
+      roleIds: [admin.id, editor.id],
+    })
+
+    expect(response.status).toBe(201)
+    expect(body.roles).toEqual([
+      {
+        id: editor.id,
+        name: 'Editor',
+        code: 'editor',
+      },
+      {
+        id: admin.id,
+        name: 'Administrator',
+        code: 'admin',
+      },
+    ])
+    expect(body.departments).toEqual([])
+
+    const detailResponse = await app.request(`/api/system/users/${body.id}`)
+    const detailBody = (await detailResponse.json()) as User
+    expect(detailResponse.status).toBe(200)
+    expect(detailBody.roles).toEqual(body.roles)
+    expect(detailBody.departments).toEqual([])
+
+    const listResponse = await app.request('/api/system/users?page=1&pageSize=10')
+    const listBody = (await listResponse.json()) as UserListResponse
+    expect(listResponse.status).toBe(200)
+    expect(listBody.list).toHaveLength(1)
+    expect(listBody.list[0]?.roles).toEqual(body.roles)
+    expect(listBody.list[0]?.departments).toEqual([])
+
+    const storedRelations = await database.select().from(userRoles)
+    expect(storedRelations).toHaveLength(2)
+    expect(new Set(storedRelations.map((relation) => relation.createdAt.getTime()))).toHaveLength(1)
+  })
+
+  it('replaces and clears user roles on update', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const admin = await createRole(database, {
+      name: 'Administrator',
+      code: 'admin',
+    })
+    const editor = await createRole(database, {
+      name: 'Editor',
+      code: 'editor',
+    })
+
+    const { body: created } = await createUser(app, {
+      username: 'role-update-user',
+      nickname: 'Role Update User',
+      roleIds: [admin.id],
+    })
+
+    const replaceResponse = await app.request(`/api/system/users/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        roleIds: [editor.id],
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const replaceBody = (await replaceResponse.json()) as User
+
+    expect(replaceResponse.status).toBe(200)
+    expect(replaceBody.roles).toEqual([
+      {
+        id: editor.id,
+        name: 'Editor',
+        code: 'editor',
+      },
+    ])
+
+    const updateNicknameResponse = await app.request(`/api/system/users/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        nickname: 'Role Update User v2',
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const updateNicknameBody = (await updateNicknameResponse.json()) as User
+
+    expect(updateNicknameResponse.status).toBe(200)
+    expect(updateNicknameBody.roles).toEqual([
+      {
+        id: editor.id,
+        name: 'Editor',
+        code: 'editor',
+      },
+    ])
+
+    const clearResponse = await app.request(`/api/system/users/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        roleIds: [],
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const clearBody = (await clearResponse.json()) as User
+
+    expect(clearResponse.status).toBe(200)
+    expect(clearBody.roles).toEqual([])
+    expect(clearBody.departments).toEqual([])
+  })
+
+  it('rejects missing or deleted role ids on user create and update', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const deletedRole = await createRole(database, {
+      name: 'Deleted Role',
+      code: 'deleted-role',
+      deletedAt: new Date(),
+    })
+    const missingRoleId = randomUUID()
+    const invalidRoleIds = [deletedRole.id, missingRoleId]
+
+    for (const [index, roleId] of invalidRoleIds.entries()) {
+      const createResponse = await app.request('/api/system/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: `invalid-role-create-user-${index}`,
+          nickname: `Invalid Role Create User ${index}`,
+          roleIds: [roleId],
+        }),
+        headers: {
+          'content-type': 'application/json',
+        },
+      })
+      const createBody = (await createResponse.json()) as ErrorResponse
+
+      expect(createResponse.status).toBe(400)
+      expect(createBody).toEqual({ message: '角色不存在' })
+    }
+
+    const { body: validUser } = await createUser(app, {
+      username: 'valid-for-invalid-role-update',
+      nickname: 'Valid For Invalid Role Update',
+    })
+
+    for (const roleId of invalidRoleIds) {
+      const updateResponse = await app.request(`/api/system/users/${validUser.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          roleIds: [roleId],
+        }),
+        headers: {
+          'content-type': 'application/json',
+        },
+      })
+      const updateBody = (await updateResponse.json()) as ErrorResponse
+
+      expect(updateResponse.status).toBe(400)
+      expect(updateBody).toEqual({ message: '角色不存在' })
+    }
   })
 
   it('rejects missing or deleted department ids on user create and update', async () => {
@@ -367,6 +585,14 @@ describe('user routes', () => {
       email: 'alan@example.com',
       phone: '10000000003',
       departmentIds: [department.id],
+      roleIds: [
+        (
+          await createRole(database, {
+            name: 'Research Role',
+            code: 'research-role',
+          })
+        ).id,
+      ],
     })
 
     const deleteResponse = await app.request(`/api/system/users/${created.id}`, {
@@ -391,6 +617,12 @@ describe('user routes', () => {
       .from(userDepartments)
       .where(eq(userDepartments.userId, created.id))
     expect(storedRelations).toEqual([])
+
+    const storedRoleRelations = await database
+      .select()
+      .from(userRoles)
+      .where(eq(userRoles.userId, created.id))
+    expect(storedRoleRelations).toEqual([])
 
     const listResponse = await app.request('/api/system/users')
     expect(listResponse.status).toBe(200)

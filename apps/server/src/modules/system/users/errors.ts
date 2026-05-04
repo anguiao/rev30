@@ -43,6 +43,13 @@ export class UserInvalidDepartmentError extends Error {
   }
 }
 
+export class UserInvalidRoleError extends Error {
+  constructor() {
+    super('角色不存在')
+    this.name = 'UserInvalidRoleError'
+  }
+}
+
 export function toUserConflictError(error: unknown) {
   const cause = error instanceof DrizzleQueryError ? error.cause : error
 

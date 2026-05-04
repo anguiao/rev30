@@ -1,29 +1,40 @@
 import { randomUUID } from 'node:crypto'
 import type {
   DepartmentSummary,
+  RoleSummary,
   UserCreateInput,
   UserListQuery,
   UserUpdateInput,
 } from '@rev30/shared'
 import { and, count, desc, eq, ilike, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
-import { userDepartments, users } from '../../../db/schema'
+import { userDepartments, userRoles, users } from '../../../db/schema'
 import {
   findDepartmentSummariesByUserIds,
   lockActiveDepartmentsByIds,
 } from '../departments/repository'
-import { UserInvalidDepartmentError } from './errors'
+import { findRoleSummariesByUserIds, lockActiveRolesByIds } from '../roles/repository'
+import { UserInvalidDepartmentError, UserInvalidRoleError } from './errors'
 import type { UserRow } from './mapper'
 
-export type UserWithDepartmentsRow = {
+export type UserWithRelationsRow = {
   user: UserRow
   departments: DepartmentSummary[]
+  roles: RoleSummary[]
 }
 
 function buildUserDepartmentValues(userId: string, departmentIds: string[], now: Date) {
   return departmentIds.map((departmentId) => ({
     userId,
     departmentId,
+    createdAt: now,
+  }))
+}
+
+function buildUserRoleValues(userId: string, roleIds: string[], now: Date) {
+  return roleIds.map((roleId) => ({
+    userId,
+    roleId,
     createdAt: now,
   }))
 }
@@ -37,6 +48,18 @@ async function lockActiveDepartmentIdsOrThrow(executor: DbReader, ids: string[])
 
   if (rows.length !== new Set(ids).size) {
     throw new UserInvalidDepartmentError()
+  }
+}
+
+async function lockActiveRoleIdsOrThrow(executor: DbReader, ids: string[]) {
+  if (ids.length === 0) {
+    return
+  }
+
+  const rows = await lockActiveRolesByIds(executor, ids)
+
+  if (rows.length !== new Set(ids).size) {
+    throw new UserInvalidRoleError()
   }
 }
 
@@ -75,15 +98,17 @@ export function createUserRepository(database: Db) {
           .where(where),
       ])
 
-      const departmentSummaries = await findDepartmentSummariesByUserIds(
-        database,
-        list.map((user) => user.id),
-      )
+      const userIds = list.map((user) => user.id)
+      const [departmentSummaries, roleSummaries] = await Promise.all([
+        findDepartmentSummariesByUserIds(database, userIds),
+        findRoleSummariesByUserIds(database, userIds),
+      ])
 
       return {
         list: list.map((user) => ({
           user,
           departments: departmentSummaries.get(user.id) ?? [],
+          roles: roleSummaries.get(user.id) ?? [],
         })),
         total: totalRows[0]?.total ?? 0,
         page,
@@ -104,20 +129,27 @@ export function createUserRepository(database: Db) {
         return undefined
       }
 
-      const departmentSummaries = await findDepartmentSummariesByUserIds(database, [id])
+      const [departmentSummaries, roleSummaries] = await Promise.all([
+        findDepartmentSummariesByUserIds(database, [id]),
+        findRoleSummariesByUserIds(database, [id]),
+      ])
 
       return {
         user,
         departments: departmentSummaries.get(id) ?? [],
+        roles: roleSummaries.get(id) ?? [],
       }
     },
 
     async create(input: UserCreateInput) {
-      const { departmentIds = [], ...userInput } = input
+      const { departmentIds = [], roleIds = [], ...userInput } = input
       const now = new Date()
 
       return await database.transaction(async (tx) => {
-        await lockActiveDepartmentIdsOrThrow(tx, departmentIds)
+        await Promise.all([
+          lockActiveDepartmentIdsOrThrow(tx, departmentIds),
+          lockActiveRoleIdsOrThrow(tx, roleIds),
+        ])
 
         const [created] = await tx
           .insert(users)
@@ -139,17 +171,25 @@ export function createUserRepository(database: Db) {
             .values(buildUserDepartmentValues(created.id, departmentIds, now))
         }
 
-        const departmentSummaries = await findDepartmentSummariesByUserIds(tx, [created.id])
+        if (roleIds.length > 0) {
+          await tx.insert(userRoles).values(buildUserRoleValues(created.id, roleIds, now))
+        }
+
+        const [departmentSummaries, roleSummaries] = await Promise.all([
+          findDepartmentSummariesByUserIds(tx, [created.id]),
+          findRoleSummariesByUserIds(tx, [created.id]),
+        ])
 
         return {
           user: created,
           departments: departmentSummaries.get(created.id) ?? [],
+          roles: roleSummaries.get(created.id) ?? [],
         }
       })
     },
 
     async update(id: string, input: UserUpdateInput) {
-      const { departmentIds, ...userInput } = input
+      const { departmentIds, roleIds, ...userInput } = input
 
       return await database.transaction(async (tx) => {
         const existingRows = await tx
@@ -167,11 +207,16 @@ export function createUserRepository(database: Db) {
           await lockActiveDepartmentIdsOrThrow(tx, departmentIds)
         }
 
+        if (roleIds !== undefined) {
+          await lockActiveRoleIdsOrThrow(tx, roleIds)
+        }
+
+        const now = new Date()
         const [updated] = await tx
           .update(users)
           .set({
             ...userInput,
-            updatedAt: new Date(),
+            updatedAt: now,
           })
           .where(and(eq(users.id, id), isNull(users.deletedAt)))
           .returning()
@@ -186,15 +231,27 @@ export function createUserRepository(database: Db) {
           if (departmentIds.length > 0) {
             await tx
               .insert(userDepartments)
-              .values(buildUserDepartmentValues(updated.id, departmentIds, new Date()))
+              .values(buildUserDepartmentValues(updated.id, departmentIds, now))
           }
         }
 
-        const departmentSummaries = await findDepartmentSummariesByUserIds(tx, [updated.id])
+        if (roleIds !== undefined) {
+          await tx.delete(userRoles).where(eq(userRoles.userId, id))
+
+          if (roleIds.length > 0) {
+            await tx.insert(userRoles).values(buildUserRoleValues(updated.id, roleIds, now))
+          }
+        }
+
+        const [departmentSummaries, roleSummaries] = await Promise.all([
+          findDepartmentSummariesByUserIds(tx, [updated.id]),
+          findRoleSummariesByUserIds(tx, [updated.id]),
+        ])
 
         return {
           user: updated,
           departments: departmentSummaries.get(updated.id) ?? [],
+          roles: roleSummaries.get(updated.id) ?? [],
         }
       })
     },
@@ -217,6 +274,7 @@ export function createUserRepository(database: Db) {
         }
 
         await tx.delete(userDepartments).where(eq(userDepartments.userId, id))
+        await tx.delete(userRoles).where(eq(userRoles.userId, id))
 
         return deleted
       })

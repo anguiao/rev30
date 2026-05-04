@@ -10,7 +10,12 @@ import {
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
-import { UserConflictError, UserInvalidDepartmentError, UserNotFoundError } from './errors'
+import {
+  UserConflictError,
+  UserInvalidDepartmentError,
+  UserInvalidRoleError,
+  UserNotFoundError,
+} from './errors'
 import { createUserService } from './service'
 
 const userIdParamSchema = userSchema.pick({ id: true })
@@ -58,6 +63,10 @@ function userErrorResponse(error: unknown, c: Context) {
   }
 
   if (error instanceof UserInvalidDepartmentError) {
+    return c.json({ message: error.message }, 400)
+  }
+
+  if (error instanceof UserInvalidRoleError) {
     return c.json({ message: error.message }, 400)
   }
 

@@ -4,7 +4,7 @@ import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'driz
 import type { Db, DbReader } from '../../../db'
 import { roleResources, roles, systemResources, userRoles, users } from '../../../db/schema'
 import { RoleDeleteConflictError, RoleInvalidResourceError } from './errors'
-import type { RoleRow } from './mapper'
+import type { RoleResourceRow, RoleRow } from './mapper'
 
 function roleSortOrder() {
   return [asc(roles.sortOrder), desc(roles.createdAt), desc(roles.id)] as const
@@ -59,6 +59,20 @@ function buildRoleResourceValues(roleId: string, resourceIds: string[], now: Dat
     resourceId,
     createdAt: now,
   }))
+}
+
+async function findResourcesByRoleId(executor: DbReader, roleId: string): Promise<RoleResourceRow[]> {
+  return await executor
+    .select({
+      id: systemResources.id,
+      name: systemResources.name,
+      code: systemResources.code,
+      type: systemResources.type,
+    })
+    .from(roleResources)
+    .innerJoin(systemResources, eq(systemResources.id, roleResources.resourceId))
+    .where(and(eq(roleResources.roleId, roleId), isNull(systemResources.deletedAt)))
+    .orderBy(asc(systemResources.sortOrder), desc(systemResources.createdAt), desc(systemResources.id))
 }
 
 export async function lockActiveRolesByIds(executor: DbReader, ids: string[]) {
@@ -197,21 +211,7 @@ export function createRoleRepository(database: Db) {
     },
 
     async findResourcesByRoleId(roleId: string) {
-      return await database
-        .select({
-          id: systemResources.id,
-          name: systemResources.name,
-          code: systemResources.code,
-          type: systemResources.type,
-        })
-        .from(roleResources)
-        .innerJoin(systemResources, eq(systemResources.id, roleResources.resourceId))
-        .where(and(eq(roleResources.roleId, roleId), isNull(systemResources.deletedAt)))
-        .orderBy(
-          asc(systemResources.sortOrder),
-          desc(systemResources.createdAt),
-          desc(systemResources.id),
-        )
+      return await findResourcesByRoleId(database, roleId)
     },
 
     async hasUsers(id: string) {
@@ -245,7 +245,10 @@ export function createRoleRepository(database: Db) {
             .values(buildRoleResourceValues(created.id, resourceIds, now))
         }
 
-        return created
+        return {
+          role: created,
+          resources: await findResourcesByRoleId(tx, created.id),
+        }
       })
     },
 
@@ -280,7 +283,10 @@ export function createRoleRepository(database: Db) {
           }
         }
 
-        return updated
+        return {
+          role: updated,
+          resources: await findResourcesByRoleId(tx, updated.id),
+        }
       })
     },
 

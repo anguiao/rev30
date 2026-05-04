@@ -2,6 +2,12 @@ import type { Role, RoleListItem, RoleResource, RoleSummary } from '@rev30/share
 import { roles } from '../../../db/schema'
 
 export type RoleRow = typeof roles.$inferSelect
+export type RoleResourceRow = {
+  id: string
+  name: string
+  code: string
+  type: string
+}
 
 export function toRoleSummary(row: RoleRow): RoleSummary {
   return {
@@ -31,4 +37,17 @@ export function toRole(row: RoleRow, resources: RoleResource[]): Role {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }
+}
+
+export function toRoleResource(row: RoleResourceRow): RoleResource {
+  return {
+    id: row.id,
+    name: row.name,
+    code: row.code,
+    type: row.type as RoleResource['type'],
+  }
+}
+
+export function toRoleResources(rows: RoleResourceRow[]): RoleResource[] {
+  return rows.map(toRoleResource)
 }

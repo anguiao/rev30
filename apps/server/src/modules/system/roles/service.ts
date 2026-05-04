@@ -1,7 +1,7 @@
-import type { RoleCreateInput, RoleListQuery, RoleResource, RoleUpdateInput } from '@rev30/shared'
+import type { RoleCreateInput, RoleListQuery, RoleUpdateInput } from '@rev30/shared'
 import type { Db } from '../../../db'
 import { RoleDeleteConflictError, RoleNotFoundError, toRoleConflictError } from './errors'
-import { toRole, toRoleListItem } from './mapper'
+import { toRole, toRoleListItem, toRoleResources } from './mapper'
 import { createRoleRepository } from './repository'
 
 async function withRoleUniqueConflict<T>(operation: () => Promise<T>) {
@@ -16,17 +16,6 @@ async function withRoleUniqueConflict<T>(operation: () => Promise<T>) {
 
     throw error
   }
-}
-
-function toRoleResources(
-  rows: Awaited<ReturnType<ReturnType<typeof createRoleRepository>['findResourcesByRoleId']>>,
-): RoleResource[] {
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    code: row.code,
-    type: row.type as RoleResource['type'],
-  }))
 }
 
 export function createRoleService(database: Db) {
@@ -61,9 +50,8 @@ export function createRoleService(database: Db) {
 
     async create(input: RoleCreateInput) {
       const created = await withRoleUniqueConflict(() => repository.create(input))
-      const resources = toRoleResources(await repository.findResourcesByRoleId(created.id))
 
-      return toRole(created, resources)
+      return toRole(created.role, toRoleResources(created.resources))
     },
 
     async update(id: string, input: RoleUpdateInput) {
@@ -79,9 +67,7 @@ export function createRoleService(database: Db) {
         throw new RoleNotFoundError()
       }
 
-      const resources = toRoleResources(await repository.findResourcesByRoleId(id))
-
-      return toRole(updated, resources)
+      return toRole(updated.role, toRoleResources(updated.resources))
     },
 
     async delete(id: string) {

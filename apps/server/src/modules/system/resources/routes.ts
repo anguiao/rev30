@@ -54,7 +54,10 @@ const resourceUpdateBodyValidator = zValidator('json', resourceUpdateSchema, (re
 })
 
 function resourceErrorResponse(error: unknown, c: Context) {
-  if (error instanceof ResourceInvalidParentError || error instanceof ResourceInvalidTypeFieldsError) {
+  if (
+    error instanceof ResourceInvalidParentError ||
+    error instanceof ResourceInvalidTypeFieldsError
+  ) {
     return c.json({ message: error.message }, 400)
   }
 

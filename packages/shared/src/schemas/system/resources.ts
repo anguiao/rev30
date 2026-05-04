@@ -25,10 +25,7 @@ export const resourceOpenTargetSchema = z.enum(
 
 const nonBlankStringSchema = z.string().trim().min(1, '不能为空')
 const resourceIdSchema = z.uuid('资源 ID 无效')
-const pageSchema = z.coerce
-  .number('页码必须是数字')
-  .int('页码必须是整数')
-  .min(1, '页码不能小于 1')
+const pageSchema = z.coerce.number('页码必须是数字').int('页码必须是整数').min(1, '页码不能小于 1')
 const pageSizeSchema = z.coerce
   .number('每页数量必须是数字')
   .int('每页数量必须是整数')
@@ -63,6 +60,7 @@ const nullableAnyTextInputSchema = z.preprocess(
   (value) => (isBlankString(value) ? null : value),
   z.union([z.string().trim().min(1, '不能为空'), z.null()]).optional(),
 )
+const externalUrlValidationSchema = z.url({ error: '外链地址无效' })
 
 export const resourceSchema = z.object({
   id: resourceIdSchema,
@@ -157,7 +155,7 @@ function validateResourceTypeFields(
 
   if (value.type === RESOURCE_TYPE_EXTERNAL && value.externalUrl !== null) {
     const normalizedExternalUrl = value.externalUrl.trim()
-    const urlResult = z.string().trim().url('外链地址无效').safeParse(normalizedExternalUrl)
+    const urlResult = externalUrlValidationSchema.safeParse(normalizedExternalUrl)
 
     if (!urlResult.success) {
       context.addIssue({
@@ -232,7 +230,7 @@ function validateResourceUpdateTypeFields(
     value.externalUrl !== null
   ) {
     const normalizedExternalUrl = value.externalUrl.trim()
-    const urlResult = z.string().trim().url('外链地址无效').safeParse(normalizedExternalUrl)
+    const urlResult = externalUrlValidationSchema.safeParse(normalizedExternalUrl)
 
     if (!urlResult.success) {
       context.addIssue({

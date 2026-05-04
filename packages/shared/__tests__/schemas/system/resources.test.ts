@@ -194,12 +194,12 @@ describe('resource schemas', () => {
       pageSize: 20,
     })
 
-    expect(resourceListQuerySchema.parse({ keyword: '', parentId: '   ', status: '   ', type: '' })).toEqual(
-      {
-        page: 1,
-        pageSize: 20,
-      },
-    )
+    expect(
+      resourceListQuerySchema.parse({ keyword: '', parentId: '   ', status: '   ', type: '' }),
+    ).toEqual({
+      page: 1,
+      pageSize: 20,
+    })
   })
 
   it('accepts valid resource list responses', () => {

@@ -6,7 +6,11 @@ import { systemResources } from '../../../db/schema'
 import { ResourceDeleteConflictError, ResourceInvalidParentError } from './errors'
 
 function resourceSortOrder() {
-  return [asc(systemResources.sortOrder), desc(systemResources.createdAt), desc(systemResources.id)] as const
+  return [
+    asc(systemResources.sortOrder),
+    desc(systemResources.createdAt),
+    desc(systemResources.id),
+  ] as const
 }
 
 async function lockActiveResourceById(executor: DbReader, id: string) {

@@ -68,7 +68,10 @@ function normalizeCreateTypeFields(input: ResourceCreateInput): ResourceCreateIn
   return next
 }
 
-function normalizeUpdateTypeFields(input: ResourceUpdateInput, existing: ResourceRow): ResourceUpdateInput {
+function normalizeUpdateTypeFields(
+  input: ResourceUpdateInput,
+  existing: ResourceRow,
+): ResourceUpdateInput {
   const type = input.type ?? (existing.type as Resource['type'])
   const existingType = existing.type as Resource['type']
   const next: ResourceUpdateInput = { ...input }

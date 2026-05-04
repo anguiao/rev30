@@ -41,12 +41,8 @@
           "name": "auth_password_credentials_user_id_users_id_fk",
           "tableFrom": "auth_password_credentials",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -143,12 +139,8 @@
           "name": "auth_refresh_tokens_user_id_users_id_fk",
           "tableFrom": "auth_refresh_tokens",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -274,12 +266,8 @@
           "name": "departments_parent_id_departments_id_fk",
           "tableFrom": "departments",
           "tableTo": "departments",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -458,12 +446,8 @@
           "name": "system_resources_parent_id_system_resources_id_fk",
           "tableFrom": "system_resources",
           "tableTo": "system_resources",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -520,12 +504,8 @@
           "name": "user_departments_user_id_users_id_fk",
           "tableFrom": "user_departments",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -533,12 +513,8 @@
           "name": "user_departments_department_id_departments_id_fk",
           "tableFrom": "user_departments",
           "tableTo": "departments",
-          "columnsFrom": [
-            "department_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["department_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -546,10 +522,7 @@
       "compositePrimaryKeys": {
         "user_departments_user_id_department_id_pk": {
           "name": "user_departments_user_id_department_id_pk",
-          "columns": [
-            "user_id",
-            "department_id"
-          ]
+          "columns": ["user_id", "department_id"]
         }
       },
       "uniqueConstraints": {},

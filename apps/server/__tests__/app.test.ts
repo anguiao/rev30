@@ -4,6 +4,7 @@ import {
   AUTH_ACTION_HEADER,
   AUTH_ACTION_REFRESH,
   type AuthTokenResponse,
+  type ResourceListResponse,
   type UserListResponse,
 } from '@rev30/shared'
 import { createApp } from '../src/app'
@@ -59,6 +60,27 @@ describe('app auth boundaries', () => {
     expect(response.status).toBe(200)
     expect(body.total).toBe(1)
     expect(body.list[0]?.id).toBe(registered.body.user.id)
+  })
+
+  it('allows resources route with a system access token', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+    const registered = await register(app)
+
+    const response = await app.request('/api/system/resources', {
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken}`,
+      },
+    })
+    const body = (await response.json()) as ResourceListResponse
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      list: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+    })
   })
 
   it('rejects system routes with a refresh token', async () => {

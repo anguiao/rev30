@@ -1,6 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH, type DepartmentSummary } from '@rev30/shared'
+import {
+  AUTH_ACTION_HEADER,
+  AUTH_ACTION_REFRESH,
+  RESOURCE_TYPE_MENU,
+  type DepartmentSummary,
+} from '@rev30/shared'
 import { api, authFetch } from '../src/api'
 import { useAuthStore } from '../src/stores/auth'
 
@@ -386,6 +391,64 @@ describe('api client', () => {
         email: null,
         phone: null,
         departmentIds: ['4be2dfda-2fd6-4ee5-b06b-c551328bc343'],
+      },
+    }
+
+    void validBody
+  })
+
+  it('requests nested resource endpoints with query params', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          list: [],
+          total: 0,
+          page: 1,
+          pageSize: 20,
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.system.resources.$get({
+      query: {
+        keyword: 'user',
+        type: RESOURCE_TYPE_MENU,
+        status: '1',
+        parentId: '4be2dfda-2fd6-4ee5-b06b-c551328bc343',
+        page: '1',
+        pageSize: '20',
+      },
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/system/resources?keyword=user&type=menu&status=1&parentId=4be2dfda-2fd6-4ee5-b06b-c551328bc343&page=1&pageSize=20',
+      expect.objectContaining({
+        method: 'GET',
+      }),
+    )
+  })
+
+  it('types nested resource query params', () => {
+    const invalidQuery: Parameters<typeof api.system.resources.$get>[0] = {
+      query: {
+        // @ts-expect-error Unknown query params should not be accepted by the RPC contract.
+        unknown: 'value',
+      },
+    }
+
+    void invalidQuery
+  })
+
+  it('types resource create input with menu fields', () => {
+    const validBody: Parameters<typeof api.system.resources.$post>[0] = {
+      json: {
+        type: RESOURCE_TYPE_MENU,
+        name: '用户管理',
+        code: 'system:user',
+        path: '/system/users',
+        externalUrl: null,
+        icon: null,
       },
     }
 

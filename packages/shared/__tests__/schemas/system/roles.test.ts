@@ -16,6 +16,10 @@ function firstIssueMessage(result: { success: false; error: { issues: { message:
   return result.error.issues[0]?.message
 }
 
+function testUuid(index: number) {
+  return `00000000-0000-4000-8000-${index.toString(16).padStart(12, '0')}`
+}
+
 describe('role schemas', () => {
   it('accepts role list items with user counts and no resources', () => {
     expect(
@@ -130,6 +134,19 @@ describe('role schemas', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(firstIssueMessage(result)).toBe('资源不能重复')
+    }
+  })
+
+  it('rejects excessive resource ids on role input', () => {
+    const result = roleCreateSchema.safeParse({
+      name: 'Administrator',
+      code: 'admin',
+      resourceIds: Array.from({ length: 501 }, (_, index) => testUuid(index + 1)),
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(firstIssueMessage(result)).toBe('资源授权不能超过 500 个')
     }
   })
 

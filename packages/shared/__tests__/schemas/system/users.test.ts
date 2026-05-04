@@ -12,6 +12,10 @@ function firstIssueMessage(result: { success: false; error: { issues: { message:
   return result.error.issues[0]?.message
 }
 
+function testUuid(index: number) {
+  return `00000000-0000-4000-8000-${index.toString(16).padStart(12, '0')}`
+}
+
 describe('user schemas', () => {
   it('accepts a user response with nullable email and phone', () => {
     expect(
@@ -180,6 +184,19 @@ describe('user schemas', () => {
     }
   })
 
+  it('rejects excessive department ids on user input', () => {
+    const result = userCreateSchema.safeParse({
+      username: 'grace',
+      nickname: 'Grace Hopper',
+      departmentIds: Array.from({ length: 51 }, (_, index) => testUuid(index + 1)),
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(firstIssueMessage(result)).toBe('用户部门不能超过 50 个')
+    }
+  })
+
   it('reports schema messages for invalid user input fields', () => {
     const invalidUser = userSchema.safeParse({
       id: 'not-a-uuid',
@@ -274,6 +291,19 @@ describe('user schemas', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(firstIssueMessage(result)).toBe('角色不能重复')
+    }
+  })
+
+  it('rejects excessive role ids on user input', () => {
+    const result = userCreateSchema.safeParse({
+      username: 'grace',
+      nickname: 'Grace Hopper',
+      roleIds: Array.from({ length: 51 }, (_, index) => testUuid(index + 1)),
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(firstIssueMessage(result)).toBe('用户角色不能超过 50 个')
     }
   })
 })

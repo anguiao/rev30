@@ -54,37 +54,45 @@ export const roleSchema = roleBaseSchema.extend({
   resources: z.array(roleResourceSchema),
 })
 
-export const roleResourceIdsSchema = z.array(resourceIdSchema).superRefine((value, context) => {
-  const seenResourceIds = new Set<string>()
+const roleResourceIdsMaxLength = 500
+export const roleResourceIdsSchema = z
+  .array(resourceIdSchema)
+  .max(roleResourceIdsMaxLength, `资源授权不能超过 ${roleResourceIdsMaxLength} 个`)
+  .superRefine((value, context) => {
+    const seenResourceIds = new Set<string>()
 
-  for (const resourceId of value) {
-    if (seenResourceIds.has(resourceId)) {
-      context.addIssue({
-        code: 'custom',
-        message: '资源不能重复',
-      })
-      return
+    for (const resourceId of value) {
+      if (seenResourceIds.has(resourceId)) {
+        context.addIssue({
+          code: 'custom',
+          message: '资源不能重复',
+        })
+        return
+      }
+
+      seenResourceIds.add(resourceId)
     }
+  })
 
-    seenResourceIds.add(resourceId)
-  }
-})
+const roleIdsMaxLength = 50
+export const roleIdsSchema = z
+  .array(roleIdSchema)
+  .max(roleIdsMaxLength, `用户角色不能超过 ${roleIdsMaxLength} 个`)
+  .superRefine((value, context) => {
+    const seenRoleIds = new Set<string>()
 
-export const roleIdsSchema = z.array(roleIdSchema).superRefine((value, context) => {
-  const seenRoleIds = new Set<string>()
+    for (const roleId of value) {
+      if (seenRoleIds.has(roleId)) {
+        context.addIssue({
+          code: 'custom',
+          message: '角色不能重复',
+        })
+        return
+      }
 
-  for (const roleId of value) {
-    if (seenRoleIds.has(roleId)) {
-      context.addIssue({
-        code: 'custom',
-        message: '角色不能重复',
-      })
-      return
+      seenRoleIds.add(roleId)
     }
-
-    seenRoleIds.add(roleId)
-  }
-})
+  })
 
 export const roleListQuerySchema = z.object({
   page: pageSchema.default(1),

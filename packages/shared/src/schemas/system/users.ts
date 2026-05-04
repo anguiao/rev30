@@ -54,21 +54,25 @@ export const userSchema = z.object({
 export const userDepartmentSchema = departmentSummarySchema
 export const userRoleSchema = roleSummarySchema
 
-export const departmentIdsSchema = z.array(z.uuid('部门 ID 无效')).superRefine((value, context) => {
-  const seenDepartmentIds = new Set<string>()
+const departmentIdsMaxLength = 50
+export const departmentIdsSchema = z
+  .array(z.uuid('部门 ID 无效'))
+  .max(departmentIdsMaxLength, `用户部门不能超过 ${departmentIdsMaxLength} 个`)
+  .superRefine((value, context) => {
+    const seenDepartmentIds = new Set<string>()
 
-  for (const departmentId of value) {
-    if (seenDepartmentIds.has(departmentId)) {
-      context.addIssue({
-        code: 'custom',
-        message: '部门不能重复',
-      })
-      return
+    for (const departmentId of value) {
+      if (seenDepartmentIds.has(departmentId)) {
+        context.addIssue({
+          code: 'custom',
+          message: '部门不能重复',
+        })
+        return
+      }
+
+      seenDepartmentIds.add(departmentId)
     }
-
-    seenDepartmentIds.add(departmentId)
-  }
-})
+  })
 
 export const userListQuerySchema = z.object({
   page: pageSchema.default(1),

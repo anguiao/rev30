@@ -59,7 +59,7 @@ const nullableTextInputSchema = z.preprocess(
   (value) => (isBlankString(value) ? null : value),
   z.union([z.string().trim().min(1, '不能为空'), z.null()]).optional(),
 )
-const nullableUrlInputSchema = z.preprocess(
+const nullableAnyTextInputSchema = z.preprocess(
   (value) => (isBlankString(value) ? null : value),
   z.union([z.string().trim().min(1, '不能为空'), z.null()]).optional(),
 )
@@ -105,7 +105,7 @@ const resourceCreateBaseSchema = z.object({
   code: z.string().trim().min(1, '请输入资源编码'),
   parentId: resourceIdSchema.nullable().default(null),
   path: nullableTextInputSchema,
-  externalUrl: nullableUrlInputSchema,
+  externalUrl: nullableAnyTextInputSchema,
   openTarget: resourceOpenTargetSchema.optional(),
   icon: nullableTextInputSchema,
   hidden: z.boolean().default(false),
@@ -179,7 +179,7 @@ const resourceUpdatePayloadSchema = z.object({
   code: z.string().trim().min(1, '请输入资源编码').optional(),
   parentId: resourceIdSchema.nullable().optional(),
   path: nullableTextInputSchema,
-  externalUrl: nullableUrlInputSchema,
+  externalUrl: nullableAnyTextInputSchema,
   openTarget: resourceOpenTargetSchema.optional(),
   icon: nullableTextInputSchema,
   hidden: z.boolean().optional(),
@@ -187,12 +187,69 @@ const resourceUpdatePayloadSchema = z.object({
   sortOrder: z.coerce.number('排序必须是数字').int('排序必须是整数').optional(),
 })
 
-export const resourceUpdateSchema = resourceUpdatePayloadSchema.refine(
-  (value) => Object.values(value).some((fieldValue) => fieldValue !== undefined),
-  {
-    message: '至少修改一个字段',
+function normalizeResourceUpdateInput(input: z.infer<typeof resourceUpdatePayloadSchema>) {
+  const output = {
+    ...input,
+  }
+
+  if (output.type === RESOURCE_TYPE_MENU) {
+    if (output.externalUrl !== undefined) {
+      output.externalUrl = null
+    }
+  }
+
+  if (output.type === RESOURCE_TYPE_EXTERNAL) {
+    if (output.path !== undefined) {
+      output.path = null
+    }
+  }
+
+  if (output.type === RESOURCE_TYPE_DIRECTORY || output.type === RESOURCE_TYPE_ACTION) {
+    if (output.path !== undefined) {
+      output.path = null
+    }
+
+    if (output.externalUrl !== undefined) {
+      output.externalUrl = null
+    }
+
+    output.openTarget = RESOURCE_OPEN_TARGET_SELF
+  }
+
+  return output
+}
+
+function validateResourceUpdateTypeFields(
+  value: {
+    type?: Resource['type'] | undefined
+    externalUrl?: string | null | undefined
   },
-)
+  context: z.RefinementCtx,
+) {
+  if (
+    (value.type === undefined || value.type === RESOURCE_TYPE_EXTERNAL) &&
+    value.externalUrl !== undefined &&
+    value.externalUrl !== null
+  ) {
+    const normalizedExternalUrl = value.externalUrl.trim()
+    const urlResult = z.string().trim().url('外链地址无效').safeParse(normalizedExternalUrl)
+
+    if (!urlResult.success) {
+      context.addIssue({
+        code: 'custom',
+        message: '外链地址无效',
+        path: ['externalUrl'],
+      })
+    }
+  }
+}
+
+export const resourceUpdateSchema = resourceUpdatePayloadSchema
+  .transform(normalizeResourceUpdateInput)
+  .superRefine(validateResourceUpdateTypeFields)
+  .refine((value) => Object.values(value).some((fieldValue) => fieldValue !== undefined), {
+    message: '至少修改一个字段',
+  })
 
 export const resourceListResponseSchema = z.object({
   list: z.array(resourceSchema),

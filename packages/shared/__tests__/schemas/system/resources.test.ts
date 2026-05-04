@@ -225,7 +225,7 @@ describe('resource schemas', () => {
       total: 10,
       page: 2,
       pageSize: 10,
-    }) as any
+    })
 
     expect(listResponse).toMatchObject({
       total: 10,
@@ -317,6 +317,75 @@ describe('resource schemas', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(firstIssueMessage(result)).toBe('至少修改一个字段')
+    }
+  })
+
+  it('validates externalUrl on update when it is not explicitly ignored', () => {
+    const invalidUpdate = resourceUpdateSchema.safeParse({
+      externalUrl: 'not-a-url',
+    })
+
+    expect(invalidUpdate.success).toBe(false)
+    if (!invalidUpdate.success) {
+      expect(firstIssueMessage(invalidUpdate)).toBe('外链地址无效')
+    }
+
+    expect(
+      resourceUpdateSchema.parse({
+        externalUrl: 'https://example.com/docs',
+      }),
+    ).toMatchObject({
+      externalUrl: 'https://example.com/docs',
+    })
+
+    const ignoredByMenu = resourceUpdateSchema.parse({
+      type: RESOURCE_TYPE_MENU,
+      path: '/system/users',
+      externalUrl: 'not-a-url',
+    })
+
+    expect(ignoredByMenu).toMatchObject({
+      type: RESOURCE_TYPE_MENU,
+      path: '/system/users',
+      externalUrl: null,
+    })
+
+    const ignoredByDirectory = resourceUpdateSchema.parse({
+      type: RESOURCE_TYPE_DIRECTORY,
+      path: '/x',
+      externalUrl: 'not-a-url',
+      openTarget: RESOURCE_OPEN_TARGET_BLANK,
+    })
+
+    expect(ignoredByDirectory).toMatchObject({
+      type: RESOURCE_TYPE_DIRECTORY,
+      path: null,
+      externalUrl: null,
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
+    })
+
+    const ignoredByAction = resourceUpdateSchema.parse({
+      type: RESOURCE_TYPE_ACTION,
+      path: '/x',
+      externalUrl: 'not-a-url',
+      openTarget: RESOURCE_OPEN_TARGET_BLANK,
+    })
+
+    expect(ignoredByAction).toMatchObject({
+      type: RESOURCE_TYPE_ACTION,
+      path: null,
+      externalUrl: null,
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
+    })
+
+    const ignoredByExternal = resourceUpdateSchema.safeParse({
+      type: RESOURCE_TYPE_EXTERNAL,
+      externalUrl: 'not-a-url',
+    })
+
+    expect(ignoredByExternal.success).toBe(false)
+    if (!ignoredByExternal.success) {
+      expect(firstIssueMessage(ignoredByExternal)).toBe('外链地址无效')
     }
   })
 })

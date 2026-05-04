@@ -12,7 +12,7 @@ export interface AppLogger {
 export type RequestLogger = Pick<AppLogger, 'error' | 'info'>
 
 function readLogLevel() {
-  return process.env.LOG_LEVEL ?? 'info'
+  return process.env.LOG_LEVEL ?? (process.env.NODE_ENV === 'test' ? 'silent' : 'info')
 }
 
 export function createLogger() {
@@ -28,14 +28,6 @@ export function createLogger() {
       'req.headers.cookie',
       'res.headers.set-cookie',
     ],
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        colorize: true,
-        ignore: 'pid,hostname',
-        translateTime: 'SYS:standard',
-      },
-    },
   })
 }
 

@@ -31,6 +31,7 @@ describe('auth middleware', () => {
     const authApp = new Hono().route('/api/auth', createAuthRoutes(database))
     const registered = await register(authApp)
     expect(registered.user.departments).toEqual([])
+    expect(registered.user.roles).toEqual([])
     const app = new Hono<{ Variables: AuthVariables }>()
       .use('/me', createAuthMiddleware(database))
       .get('/me', (c) => c.json(c.get('currentUser')))

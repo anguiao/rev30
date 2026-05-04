@@ -12,7 +12,9 @@ import {
 import {
   authPasswordCredentials,
   departments,
+  roles,
   userDepartments,
+  userRoles,
   users,
 } from '../../../src/db/schema'
 import { createTestDb } from '../../helpers/db'
@@ -98,6 +100,7 @@ describe('auth routes', () => {
         email: 'ada@example.com',
         phone: '10000000001',
         departments: [],
+        roles: [],
       },
     })
     expect(body.accessToken).toEqual(expect.any(String))
@@ -149,6 +152,7 @@ describe('auth routes', () => {
       user: {
         username: 'ada',
         departments: [],
+        roles: [],
       },
     })
     expect(body).not.toHaveProperty('refreshToken')
@@ -181,6 +185,58 @@ describe('auth routes', () => {
     expect(disabled.body).toEqual({
       message: '用户名或密码错误',
     })
+  })
+
+  it('returns role summaries on login', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app, {
+      username: 'role-login-user',
+      nickname: 'Role Login User',
+      password: 'secret-password',
+    })
+    const now = new Date()
+    const [role] = await database
+      .insert(roles)
+      .values({
+        id: randomUUID(),
+        name: 'Administrator',
+        code: 'admin',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+
+    if (!role) {
+      throw new Error('Expected role')
+    }
+
+    await database.insert(userRoles).values({
+      userId: registered.body.user.id,
+      roleId: role.id,
+      createdAt: now,
+    })
+
+    const response = await app.request('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: 'role-login-user',
+        password: 'secret-password',
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const body = (await response.json()) as AuthTokenResponse
+
+    expect(response.status).toBe(200)
+    expect(body.user.roles).toEqual([
+      {
+        id: role.id,
+        name: 'Administrator',
+        code: 'admin',
+      },
+    ])
   })
 
   it('returns stable request body errors for invalid login and registration bodies', async () => {
@@ -257,6 +313,7 @@ describe('auth routes', () => {
     expect(refreshResponse.status).toBe(200)
     expect(refreshBody.user.id).toBe(registered.body.user.id)
     expect(refreshBody.user.departments).toEqual([])
+    expect(refreshBody.user.roles).toEqual([])
     expect(refreshBody).not.toHaveProperty('refreshToken')
     expect(getRefreshTokenCookie(refreshResponse)).not.toBe(registered.refreshToken)
   })
@@ -411,6 +468,7 @@ describe('auth routes', () => {
       username: 'ada',
       nickname: 'Ada Lovelace',
       departments: [],
+      roles: [],
     })
   })
 
@@ -447,6 +505,7 @@ describe('auth routes', () => {
             code: 'engineering',
           },
         ],
+        roles: [],
       },
     })
 
@@ -467,6 +526,7 @@ describe('auth routes', () => {
           code: 'engineering',
         },
       ],
+      roles: [],
     })
 
     const refreshResponse = await app.request('/api/auth/refresh', {
@@ -487,6 +547,7 @@ describe('auth routes', () => {
           code: 'engineering',
         },
       ],
+      roles: [],
     })
   })
 

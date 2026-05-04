@@ -66,7 +66,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
       const tokens = await createTokenResponse(created.user.id)
 
       return {
-        user: toUser(created.user, created.departments),
+        user: toUser(created.user, created.departments, created.roles),
         ...tokens,
       }
     },
@@ -83,7 +83,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
       const tokens = await createTokenResponse(account.user.id)
 
       return {
-        user: toUser(account.user, account.departments),
+        user: toUser(account.user, account.departments, account.roles),
         ...tokens,
       }
     },
@@ -110,7 +110,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
       const tokens = await createTokenResponse(account.user.id)
 
       return {
-        user: toUser(account.user, account.departments),
+        user: toUser(account.user, account.departments, account.roles),
         ...tokens,
       }
     },
@@ -158,7 +158,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
         throw new AuthUnauthorizedError()
       }
 
-      return toUser(account.user, account.departments)
+      return toUser(account.user, account.departments, account.roles)
     },
   }
 }

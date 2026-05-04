@@ -4,6 +4,7 @@ import { and, eq, gt, isNull } from 'drizzle-orm'
 import type { Db } from '../../db'
 import { authPasswordCredentials, authRefreshTokens, users } from '../../db/schema'
 import { findDepartmentSummariesByUserId } from '../system/departments/repository'
+import { findRoleSummariesByUserId } from '../system/roles/repository'
 
 export function createAuthRepository(database: Db) {
   return {
@@ -39,6 +40,7 @@ export function createAuthRepository(database: Db) {
         return {
           user: created,
           departments: [],
+          roles: [],
         }
       })
     },
@@ -63,6 +65,7 @@ export function createAuthRepository(database: Db) {
       return {
         ...account,
         departments: await findDepartmentSummariesByUserId(database, account.user.id),
+        roles: await findRoleSummariesByUserId(database, account.user.id),
       }
     },
 
@@ -82,6 +85,7 @@ export function createAuthRepository(database: Db) {
       return {
         user,
         departments: await findDepartmentSummariesByUserId(database, user.id),
+        roles: await findRoleSummariesByUserId(database, user.id),
       }
     },
 

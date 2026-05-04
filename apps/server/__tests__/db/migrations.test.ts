@@ -9,6 +9,7 @@ import {
   authPasswordCredentials,
   authRefreshTokens,
   departments,
+  systemResources,
   userDepartments,
   users,
 } from '../../src/db/schema'
@@ -166,6 +167,51 @@ describe('PGlite migrations', () => {
     })
   })
 
+  it('creates usable system resource tables for fresh development databases', async () => {
+    const dataDir = join(await createTempDir(), 'resources')
+
+    process.env.NODE_ENV = 'development'
+    process.env.PGLITE_DATA_DIR = dataDir
+
+    const database = await createDb()
+    const now = new Date()
+    const [root] = await database
+      .insert(systemResources)
+      .values({
+        id: randomUUID(),
+        type: 'directory',
+        name: 'System',
+        code: 'system',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+
+    if (!root) {
+      throw new Error('Expected migrated system resource')
+    }
+
+    const [child] = await database
+      .insert(systemResources)
+      .values({
+        id: randomUUID(),
+        parentId: root.id,
+        type: 'menu',
+        name: 'Users',
+        code: 'system:user',
+        path: '/system/users',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+
+    expect(child).toMatchObject({
+      parentId: root.id,
+      code: 'system:user',
+      path: '/system/users',
+    })
+  })
+
   it('keeps Drizzle migration journal in sync with SQL migrations', async () => {
     const migrationFiles = (await readdir(defaultMigrationsDir))
       .filter((fileName) => fileName.endsWith('.sql'))
@@ -180,5 +226,6 @@ describe('PGlite migrations', () => {
     expect(journalSql).toContain('CREATE TABLE "auth_refresh_tokens"')
     expect(journalSql).toContain('CREATE TABLE "departments"')
     expect(journalSql).toContain('CREATE TABLE "user_departments"')
+    expect(journalSql).toContain('CREATE TABLE "system_resources"')
   })
 })

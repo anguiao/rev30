@@ -435,9 +435,11 @@ describe('api client', () => {
       json: {
         username: 'role-user',
         nickname: 'Role User',
+        email: null,
+        phone: null,
         roleIds: ['875dd9cb-488b-43d7-a55f-6db070a8e83f'],
       },
-    } as Parameters<typeof api.system.users.$post>[0]
+    } satisfies Parameters<typeof api.system.users.$post>[0]
 
     void api.system.users.$post(validBody)
   })

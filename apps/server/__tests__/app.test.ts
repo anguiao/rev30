@@ -4,6 +4,7 @@ import {
   AUTH_ACTION_HEADER,
   AUTH_ACTION_REFRESH,
   type AuthTokenResponse,
+  type RoleListResponse,
   type ResourceListResponse,
   type UserListResponse,
 } from '@rev30/shared'
@@ -113,6 +114,27 @@ describe('app auth boundaries', () => {
       },
     })
     const body = (await response.json()) as ResourceListResponse
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      list: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+    })
+  })
+
+  it('allows roles route with a system access token', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+    const registered = await register(app)
+
+    const response = await app.request('/api/system/roles', {
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken}`,
+      },
+    })
+    const body = (await response.json()) as RoleListResponse
 
     expect(response.status).toBe(200)
     expect(body).toEqual({

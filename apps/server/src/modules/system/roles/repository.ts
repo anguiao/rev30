@@ -20,17 +20,33 @@ async function hasUsers(executor: DbReader, id: string) {
   return rows.length > 0
 }
 
+async function lockActiveResourcesByIds(executor: DbReader, ids: string[]) {
+  const rows: Array<typeof systemResources.$inferSelect> = []
+  const sortedIds = [...new Set(ids)].sort()
+
+  for (const id of sortedIds) {
+    const [row] = await executor
+      .select()
+      .from(systemResources)
+      .where(and(eq(systemResources.id, id), isNull(systemResources.deletedAt)))
+      .limit(1)
+      .for('update')
+
+    if (row) {
+      rows.push(row)
+    }
+  }
+
+  return rows
+}
+
 async function lockActiveResourceIdsOrThrow(executor: DbReader, ids: string[]) {
   if (ids.length === 0) {
     return
   }
 
   const uniqueIds = [...new Set(ids)]
-  const rows = await executor
-    .select({ id: systemResources.id })
-    .from(systemResources)
-    .where(and(inArray(systemResources.id, uniqueIds), isNull(systemResources.deletedAt)))
-    .for('update')
+  const rows = await lockActiveResourcesByIds(executor, ids)
 
   if (rows.length !== uniqueIds.length) {
     throw new RoleInvalidResourceError()

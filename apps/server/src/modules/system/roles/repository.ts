@@ -61,7 +61,10 @@ function buildRoleResourceValues(roleId: string, resourceIds: string[], now: Dat
   }))
 }
 
-async function findResourcesByRoleId(executor: DbReader, roleId: string): Promise<RoleResourceRow[]> {
+async function findResourcesByRoleId(
+  executor: DbReader,
+  roleId: string,
+): Promise<RoleResourceRow[]> {
   return await executor
     .select({
       id: systemResources.id,
@@ -72,7 +75,11 @@ async function findResourcesByRoleId(executor: DbReader, roleId: string): Promis
     .from(roleResources)
     .innerJoin(systemResources, eq(systemResources.id, roleResources.resourceId))
     .where(and(eq(roleResources.roleId, roleId), isNull(systemResources.deletedAt)))
-    .orderBy(asc(systemResources.sortOrder), desc(systemResources.createdAt), desc(systemResources.id))
+    .orderBy(
+      asc(systemResources.sortOrder),
+      desc(systemResources.createdAt),
+      desc(systemResources.id),
+    )
 }
 
 export async function lockActiveRolesByIds(executor: DbReader, ids: string[]) {

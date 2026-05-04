@@ -27,18 +27,12 @@ export const resourceOpenTargetSchema = z.enum(
 const nonBlankStringSchema = z.string().trim().min(1, '不能为空')
 
 const resourceIdSchema = z.uuid('资源 ID 无效')
-const optionalKeywordSchema = z.preprocess(
-  blankStringToUndefined,
-  z.string().trim().optional(),
-)
+const optionalKeywordSchema = z.preprocess(blankStringToUndefined, z.string().trim().optional())
 const optionalStatusQuerySchema = z.preprocess(
   blankStringToUndefined,
   z.coerce.number().pipe(resourceStatusSchema).optional(),
 )
-const optionalTypeQuerySchema = z.preprocess(
-  blankStringToUndefined,
-  resourceTypeSchema.optional(),
-)
+const optionalTypeQuerySchema = z.preprocess(blankStringToUndefined, resourceTypeSchema.optional())
 const optionalParentIdQuerySchema = z.preprocess(
   blankStringToUndefined,
   resourceIdSchema.optional(),

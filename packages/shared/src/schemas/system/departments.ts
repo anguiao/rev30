@@ -15,10 +15,7 @@ const optionalParentIdQuerySchema = z.preprocess(
   blankStringToUndefined,
   departmentIdSchema.optional(),
 )
-const optionalKeywordSchema = z.preprocess(
-  blankStringToUndefined,
-  z.string().trim().optional(),
-)
+const optionalKeywordSchema = z.preprocess(blankStringToUndefined, z.string().trim().optional())
 const optionalStatusQuerySchema = z.preprocess(
   blankStringToUndefined,
   z.coerce.number().pipe(departmentStatusSchema).optional(),

@@ -24,10 +24,7 @@ export const nullableContactInputSchema = z.preprocess(
   z.union([nonBlankStringSchema, z.null()]).optional(),
 )
 
-const optionalKeywordSchema = z.preprocess(
-  blankStringToUndefined,
-  z.string().trim().optional(),
-)
+const optionalKeywordSchema = z.preprocess(blankStringToUndefined, z.string().trim().optional())
 
 const optionalStatusQuerySchema = z.preprocess(
   blankStringToUndefined,

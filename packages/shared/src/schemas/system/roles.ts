@@ -13,10 +13,7 @@ const nonBlankStringSchema = z.string().trim().min(1, '不能为空')
 const roleIdSchema = z.uuid('角色 ID 无效')
 const resourceIdSchema = z.uuid('资源 ID 无效')
 
-const optionalKeywordSchema = z.preprocess(
-  blankStringToUndefined,
-  z.string().trim().optional(),
-)
+const optionalKeywordSchema = z.preprocess(blankStringToUndefined, z.string().trim().optional())
 const optionalStatusQuerySchema = z.preprocess(
   blankStringToUndefined,
   z.coerce.number().pipe(roleStatusSchema).optional(),

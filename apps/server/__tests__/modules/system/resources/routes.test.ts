@@ -342,6 +342,35 @@ describe('resource routes', () => {
     })
   })
 
+  it('preserves external open target on partial updates', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const { body } = await createResource(app, {
+      type: RESOURCE_TYPE_EXTERNAL,
+      name: 'Docs',
+      code: 'system:docs',
+      externalUrl: 'https://example.com/docs',
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
+    })
+
+    const response = await app.request(`/api/system/resources/${body.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        name: 'Documentation',
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const responseBody = (await response.json()) as Resource
+
+    expect(response.status).toBe(200)
+    expect(responseBody).toMatchObject({
+      type: RESOURCE_TYPE_EXTERNAL,
+      name: 'Documentation',
+      externalUrl: 'https://example.com/docs',
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
+    })
+  })
+
   it('rejects invalid final type fields on update', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)

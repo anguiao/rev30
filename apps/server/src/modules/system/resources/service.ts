@@ -36,14 +36,47 @@ async function withResourceUniqueConflict<T>(operation: () => Promise<T>) {
   }
 }
 
-function normalizeTypeFields(input: ResourceUpdateInput, existing?: ResourceRow): ResourceUpdateInput {
-  const type = input.type ?? (existing?.type as Resource['type'] | undefined)
+function normalizeCreateTypeFields(input: ResourceCreateInput): ResourceCreateInput {
+  const next: ResourceCreateInput = { ...input }
+
+  if (input.type === RESOURCE_TYPE_MENU) {
+    if (input.path === null) {
+      throw new ResourceInvalidTypeFieldsError('内部菜单路径不能为空')
+    }
+
+    next.path = input.path
+    next.externalUrl = null
+    next.openTarget = input.openTarget ?? RESOURCE_OPEN_TARGET_SELF
+  }
+
+  if (input.type === RESOURCE_TYPE_EXTERNAL) {
+    if (input.externalUrl === null) {
+      throw new ResourceInvalidTypeFieldsError('外链地址不能为空')
+    }
+
+    next.path = null
+    next.externalUrl = input.externalUrl
+    next.openTarget = input.openTarget ?? RESOURCE_OPEN_TARGET_BLANK
+  }
+
+  if (input.type === RESOURCE_TYPE_DIRECTORY || input.type === RESOURCE_TYPE_ACTION) {
+    next.path = null
+    next.externalUrl = null
+    next.openTarget = RESOURCE_OPEN_TARGET_SELF
+  }
+
+  return next
+}
+
+function normalizeUpdateTypeFields(input: ResourceUpdateInput, existing: ResourceRow): ResourceUpdateInput {
+  const type = input.type ?? (existing.type as Resource['type'])
+  const existingType = existing.type as Resource['type']
   const next: ResourceUpdateInput = { ...input }
-  const path = input.path !== undefined ? input.path : existing?.path
-  const externalUrl = input.externalUrl !== undefined ? input.externalUrl : existing?.externalUrl
+  const path = input.path !== undefined ? input.path : existing.path
+  const externalUrl = input.externalUrl !== undefined ? input.externalUrl : existing.externalUrl
 
   if (type === RESOURCE_TYPE_MENU) {
-    if (path === null || path === undefined) {
+    if (path === null) {
       throw new ResourceInvalidTypeFieldsError('内部菜单路径不能为空')
     }
 
@@ -52,13 +85,18 @@ function normalizeTypeFields(input: ResourceUpdateInput, existing?: ResourceRow)
   }
 
   if (type === RESOURCE_TYPE_EXTERNAL) {
-    if (externalUrl === null || externalUrl === undefined) {
+    if (externalUrl === null) {
       throw new ResourceInvalidTypeFieldsError('外链地址不能为空')
     }
 
     next.path = null
     next.externalUrl = externalUrl
-    next.openTarget = input.openTarget ?? RESOURCE_OPEN_TARGET_BLANK
+
+    if (input.openTarget !== undefined) {
+      next.openTarget = input.openTarget
+    } else if (existingType !== RESOURCE_TYPE_EXTERNAL) {
+      next.openTarget = RESOURCE_OPEN_TARGET_BLANK
+    }
   }
 
   if (type === RESOURCE_TYPE_DIRECTORY || type === RESOURCE_TYPE_ACTION) {
@@ -132,7 +170,9 @@ export function createResourceService(database: Db) {
         await validateParent(input.parentId)
       }
 
-      return toResource(await withResourceUniqueConflict(() => repository.create(input)))
+      const normalizedInput = normalizeCreateTypeFields(input)
+
+      return toResource(await withResourceUniqueConflict(() => repository.create(normalizedInput)))
     },
 
     async update(id: string, input: ResourceUpdateInput) {
@@ -158,7 +198,7 @@ export function createResourceService(database: Db) {
         }
       }
 
-      const normalizedInput = normalizeTypeFields(input, existingResource)
+      const normalizedInput = normalizeUpdateTypeFields(input, existingResource)
       const updated = await withResourceUniqueConflict(() => repository.update(id, normalizedInput))
 
       if (!updated) {

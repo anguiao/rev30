@@ -136,7 +136,16 @@ export function createRoleRepository(database: Db) {
       const [list, totalRows] = await Promise.all([
         database
           .select({
-            ...roles,
+            role: {
+              id: roles.id,
+              name: roles.name,
+              code: roles.code,
+              status: roles.status,
+              sortOrder: roles.sortOrder,
+              createdAt: roles.createdAt,
+              updatedAt: roles.updatedAt,
+              deletedAt: roles.deletedAt,
+            },
             userCount: sql<number>`coalesce(${roleUserCounts.userCount}, 0)::int`.as('user_count'),
           })
           .from(roles)

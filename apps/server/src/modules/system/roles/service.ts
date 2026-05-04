@@ -38,7 +38,12 @@ export function createRoleService(database: Db) {
 
       return {
         ...result,
-        list: result.list.map(toRoleListItem),
+        list: result.list.map((row) =>
+          toRoleListItem({
+            ...row.role,
+            userCount: row.userCount,
+          }),
+        ),
       }
     },
 

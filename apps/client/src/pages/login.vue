@@ -8,19 +8,15 @@ const { form, formError, isSubmitting } = useLoginForm()
 <template>
   <AuthShell>
     <div class="mb-8">
-      <h1 class="text-3xl font-semibold tracking-normal text-slate-950 dark:text-slate-100">
-        登录 Rev30
-      </h1>
-      <p class="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
-        使用你的账号进入工作台。
-      </p>
+      <h1 class="text-2xl font-medium tracking-tight text-stone-900 dark:text-zinc-100">登录</h1>
+      <p class="mt-2 text-sm text-stone-500 dark:text-zinc-400">请输入您的账号密码</p>
     </div>
 
-    <NAlert v-if="formError" class="mb-5" type="error" :show-icon="false">
+    <NAlert v-if="formError" class="mb-6" type="error" :show-icon="false">
       {{ formError }}
     </NAlert>
 
-    <NForm class="grid" @submit.prevent="form.handleSubmit()">
+    <NForm class="flex flex-col gap-4" @submit.prevent="form.handleSubmit()">
       <form.Field name="username" v-slot="{ field, state }">
         <NFormItem label="用户名" v-bind="formItemValidationProps(state.meta.errors)">
           <NInput
@@ -28,6 +24,7 @@ const { form, formError, isSubmitting } = useLoginForm()
             :value="state.value"
             autocomplete="username"
             placeholder="请输入用户名"
+            size="large"
             @blur="field.handleBlur"
             @update:value="field.handleChange"
           />
@@ -43,32 +40,37 @@ const { form, formError, isSubmitting } = useLoginForm()
             show-password-on="click"
             autocomplete="current-password"
             placeholder="请输入密码"
+            size="large"
             @blur="field.handleBlur"
             @update:value="field.handleChange"
           />
         </NFormItem>
       </form.Field>
 
-      <NButton
-        data-test="login-submit"
-        type="primary"
-        size="large"
-        attr-type="submit"
-        block
-        :loading="isSubmitting"
-      >
-        登录
-      </NButton>
+      <div class="pt-2">
+        <NButton
+          data-test="login-submit"
+          type="primary"
+          size="large"
+          attr-type="submit"
+          block
+          :loading="isSubmitting"
+        >
+          登录
+        </NButton>
+      </div>
     </NForm>
 
-    <p class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
-      还没有账号？
+    <div
+      class="mt-8 flex items-center justify-center gap-2 text-sm text-stone-500 dark:text-zinc-500"
+    >
+      <span>未注册账号？</span>
       <RouterLink
-        class="font-medium text-slate-950 underline-offset-4 hover:underline dark:text-slate-100"
+        class="font-medium text-stone-900 transition-colors hover:text-stone-600 dark:text-primary dark:hover:text-primary-hover"
         to="/register"
       >
         注册
       </RouterLink>
-    </p>
+    </div>
   </AuthShell>
 </template>

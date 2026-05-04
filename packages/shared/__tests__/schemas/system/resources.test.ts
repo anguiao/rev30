@@ -283,6 +283,34 @@ describe('resource schemas', () => {
     })
   })
 
+  it('forcibly normalizes directory openTarget to self', () => {
+    expect(
+      resourceCreateSchema.parse({
+        type: RESOURCE_TYPE_DIRECTORY,
+        name: 'System',
+        code: 'system',
+        openTarget: RESOURCE_OPEN_TARGET_BLANK,
+      }),
+    ).toMatchObject({
+      type: RESOURCE_TYPE_DIRECTORY,
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
+    })
+  })
+
+  it('forcibly normalizes action openTarget to self', () => {
+    expect(
+      resourceCreateSchema.parse({
+        type: RESOURCE_TYPE_ACTION,
+        name: 'Export',
+        code: 'system:user:export',
+        openTarget: RESOURCE_OPEN_TARGET_BLANK,
+      }),
+    ).toMatchObject({
+      type: RESOURCE_TYPE_ACTION,
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
+    })
+  })
+
   it('requires at least one resource update field', () => {
     const result = resourceUpdateSchema.safeParse({})
 

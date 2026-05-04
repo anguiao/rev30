@@ -137,6 +137,7 @@ function normalizeResourceCreateInput(input: z.infer<typeof resourceCreateBaseSc
   if (output.type === RESOURCE_TYPE_DIRECTORY || output.type === RESOURCE_TYPE_ACTION) {
     output.path = null
     output.externalUrl = null
+    output.openTarget = RESOURCE_OPEN_TARGET_SELF
   }
 
   return output

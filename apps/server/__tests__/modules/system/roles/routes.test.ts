@@ -333,12 +333,17 @@ describe('role routes', () => {
     expect(body).toEqual({ message: '角色存在关联用户，不能删除' })
   })
 
-  it('soft deletes empty roles and returns not found for subsequent detail requests', async () => {
+  it('soft deletes roles with resources and clears role resource relations', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
+    const resource = await createResource(database, {
+      name: 'System',
+      code: 'system',
+    })
     const { body: role } = await createRole(app, {
       name: 'Administrator',
       code: 'admin',
+      resourceIds: [resource.id],
     })
 
     const deleteResponse = await app.request(`/api/system/roles/${role.id}`, {
@@ -349,6 +354,12 @@ describe('role routes', () => {
     const storedRows = await database.select().from(roles).where(eq(roles.id, role.id))
     expect(storedRows).toHaveLength(1)
     expect(storedRows[0]?.deletedAt).toBeInstanceOf(Date)
+
+    const storedRelations = await database
+      .select()
+      .from(roleResources)
+      .where(eq(roleResources.roleId, role.id))
+    expect(storedRelations).toEqual([])
 
     const detailResponse = await app.request(`/api/system/roles/${role.id}`)
     const detailBody = (await detailResponse.json()) as ErrorResponse

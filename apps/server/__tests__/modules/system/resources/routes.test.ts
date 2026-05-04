@@ -403,6 +403,26 @@ describe('resource routes', () => {
     const detailResponse = await app.request(`/api/system/resources/${child.id}`)
     expect(detailResponse.status).toBe(404)
     expect(await detailResponse.json()).toEqual({ message: '资源不存在' })
+
+    const listAfterDeleteResponse = await app.request('/api/system/resources?page=1&pageSize=10')
+    const listAfterDeleteBody = (await listAfterDeleteResponse.json()) as ResourceListResponse
+
+    expect(listAfterDeleteResponse.status).toBe(200)
+    expect(listAfterDeleteBody).toMatchObject({
+      total: 1,
+      page: 1,
+      pageSize: 10,
+    })
+    expect(listAfterDeleteBody.list).toHaveLength(1)
+    expect(listAfterDeleteBody.list[0]).toMatchObject({ id: root.id })
+
+    const treeAfterDeleteResponse = await app.request('/api/system/resources/tree')
+    const treeAfterDeleteBody = (await treeAfterDeleteResponse.json()) as ResourceTreeNode[]
+
+    expect(treeAfterDeleteResponse.status).toBe(200)
+    expect(treeAfterDeleteBody).toHaveLength(1)
+    expect(treeAfterDeleteBody[0]).toMatchObject({ id: root.id })
+    expect(treeAfterDeleteBody[0]?.children).toEqual([])
   })
 
   it('returns invalid parent errors for create and update requests', async () => {
@@ -435,5 +455,42 @@ describe('resource routes', () => {
     })
     expect(updateResponse.status).toBe(400)
     expect(await updateResponse.json()).toEqual({ message: '父资源不存在' })
+  })
+
+  it('returns siblings sorted by sortOrder in ascending order', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const { body: root } = await createResource(app, {
+      type: RESOURCE_TYPE_DIRECTORY,
+      name: 'System',
+      code: 'system',
+    })
+
+    const { body: later } = await createResource(app, {
+      type: RESOURCE_TYPE_MENU,
+      name: 'Later',
+      code: 'system:later',
+      parentId: root.id,
+      path: '/system/later',
+      sortOrder: 20,
+    })
+    const { body: first } = await createResource(app, {
+      type: RESOURCE_TYPE_MENU,
+      name: 'First',
+      code: 'system:first',
+      parentId: root.id,
+      path: '/system/first',
+      sortOrder: 10,
+    })
+
+    const listResponse = await app.request(
+      `/api/system/resources?parentId=${root.id}&page=1&pageSize=10`,
+    )
+    const listBody = (await listResponse.json()) as ResourceListResponse
+
+    expect(listResponse.status).toBe(200)
+    expect(listBody.list).toHaveLength(2)
+    expect(listBody.list[0]?.id).toBe(first.id)
+    expect(listBody.list[1]?.id).toBe(later.id)
   })
 })

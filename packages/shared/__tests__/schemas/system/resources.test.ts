@@ -10,10 +10,12 @@ import {
   RESOURCE_TYPE_MENU,
   resourceCreateSchema,
   resourceListQuerySchema,
+  resourceListResponseSchema,
   resourceSchema,
   resourceTreeNodeSchema,
   resourceUpdateSchema,
 } from '../../../src/schemas/system/resources'
+import type { Resource } from '../../../src/schemas/system/resources'
 
 function firstIssueMessage(result: { success: false; error: { issues: { message: string }[] } }) {
   return result.error.issues[0]?.message
@@ -183,6 +185,101 @@ describe('resource schemas', () => {
     ).toMatchObject({
       code: 'system',
       children: [{ code: 'system:user:create' }],
+    })
+  })
+
+  it('parses list query defaults and blank filters', () => {
+    expect(resourceListQuerySchema.parse({})).toEqual({
+      page: 1,
+      pageSize: 20,
+    })
+
+    expect(resourceListQuerySchema.parse({ keyword: '', parentId: '   ', status: '   ', type: '' })).toEqual(
+      {
+        page: 1,
+        pageSize: 20,
+      },
+    )
+  })
+
+  it('accepts valid resource list responses', () => {
+    const listResponse = resourceListResponseSchema.parse({
+      list: [
+        {
+          id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+          parentId: null,
+          type: RESOURCE_TYPE_MENU,
+          name: 'Users',
+          code: 'system:user',
+          path: '/system/users',
+          externalUrl: null,
+          openTarget: RESOURCE_OPEN_TARGET_SELF,
+          icon: 'i-[lucide--users]',
+          hidden: false,
+          status: RESOURCE_STATUS_ENABLED,
+          sortOrder: 10,
+          createdAt: '2026-05-04T08:00:00.000Z',
+          updatedAt: '2026-05-04T08:00:00.000Z',
+        } satisfies Resource,
+      ],
+      total: 10,
+      page: 2,
+      pageSize: 10,
+    }) as any
+
+    expect(listResponse).toMatchObject({
+      total: 10,
+      page: 2,
+      pageSize: 10,
+      list: [
+        {
+          code: 'system:user',
+        },
+      ],
+    })
+  })
+
+  it('normalizes ignored external links for menu, directory, and action resources', () => {
+    expect(
+      resourceCreateSchema.parse({
+        type: RESOURCE_TYPE_MENU,
+        name: 'Users',
+        code: 'system:user',
+        path: '/system/users',
+        externalUrl: 'not-a-url',
+      }),
+    ).toMatchObject({
+      type: RESOURCE_TYPE_MENU,
+      externalUrl: null,
+      path: '/system/users',
+    })
+
+    expect(
+      resourceCreateSchema.parse({
+        type: RESOURCE_TYPE_DIRECTORY,
+        name: 'System',
+        code: 'system',
+        path: '/should-be-ignored',
+        externalUrl: 'not-a-url',
+      }),
+    ).toMatchObject({
+      type: RESOURCE_TYPE_DIRECTORY,
+      path: null,
+      externalUrl: null,
+    })
+
+    expect(
+      resourceCreateSchema.parse({
+        type: RESOURCE_TYPE_ACTION,
+        name: 'Export',
+        code: 'system:user:export',
+        path: '/should-be-ignored',
+        externalUrl: 'not-a-url',
+      }),
+    ).toMatchObject({
+      type: RESOURCE_TYPE_ACTION,
+      path: null,
+      externalUrl: null,
     })
   })
 

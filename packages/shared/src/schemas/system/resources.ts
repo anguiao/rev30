@@ -61,7 +61,7 @@ const nullableTextInputSchema = z.preprocess(
 )
 const nullableUrlInputSchema = z.preprocess(
   (value) => (isBlankString(value) ? null : value),
-  z.union([z.string().trim().url('外链地址无效'), z.null()]).optional(),
+  z.union([z.string().trim().min(1, '不能为空'), z.null()]).optional(),
 )
 
 export const resourceSchema = z.object({
@@ -152,6 +152,19 @@ function validateResourceTypeFields(
 
   if (value.type === RESOURCE_TYPE_EXTERNAL && value.externalUrl === null) {
     context.addIssue({ code: 'custom', message: '外链地址不能为空', path: ['externalUrl'] })
+  }
+
+  if (value.type === RESOURCE_TYPE_EXTERNAL && value.externalUrl !== null) {
+    const normalizedExternalUrl = value.externalUrl.trim()
+    const urlResult = z.string().trim().url('外链地址无效').safeParse(normalizedExternalUrl)
+
+    if (!urlResult.success) {
+      context.addIssue({
+        code: 'custom',
+        message: '外链地址无效',
+        path: ['externalUrl'],
+      })
+    }
   }
 }
 

@@ -1,4 +1,4 @@
-import pino, { type LoggerOptions } from 'pino'
+import pino from 'pino'
 
 export type LogPayload = Record<string, unknown>
 
@@ -11,34 +11,14 @@ export interface AppLogger {
 
 export type RequestLogger = Pick<AppLogger, 'error' | 'info'>
 
-export type LoggerEnvironment = {
-  logLevel?: string | undefined
-  logPretty?: string | undefined
-  nodeEnv?: string | undefined
+function readLogLevel() {
+  return process.env.LOG_LEVEL ?? 'info'
 }
 
-function readLogLevel(environment: LoggerEnvironment) {
-  return environment.logLevel ?? (environment.nodeEnv === 'test' ? 'silent' : 'info')
-}
-
-function shouldUsePretty(environment: LoggerEnvironment) {
-  if (environment.logPretty) {
-    return environment.logPretty === 'true'
-  }
-
-  return environment.nodeEnv !== 'production' && environment.nodeEnv !== 'test'
-}
-
-export function createLoggerOptions(
-  environment: LoggerEnvironment = {
-    logLevel: process.env.LOG_LEVEL,
-    logPretty: process.env.LOG_PRETTY,
-    nodeEnv: process.env.NODE_ENV,
-  },
-): LoggerOptions {
-  const options: LoggerOptions = {
+export function createLogger() {
+  return pino({
     name: 'rev30-server',
-    level: readLogLevel(environment),
+    level: readLogLevel(),
     timestamp: pino.stdTimeFunctions.isoTime,
     redact: [
       'authorization',
@@ -48,24 +28,15 @@ export function createLoggerOptions(
       'req.headers.cookie',
       'res.headers.set-cookie',
     ],
-  }
-
-  if (shouldUsePretty(environment)) {
-    options.transport = {
+    transport: {
       target: 'pino-pretty',
       options: {
         colorize: true,
         ignore: 'pid,hostname',
         translateTime: 'SYS:standard',
       },
-    }
-  }
-
-  return options
-}
-
-export function createLogger(environment?: LoggerEnvironment) {
-  return pino(createLoggerOptions(environment))
+    },
+  })
 }
 
 export const logger = createLogger()

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { blankStringToNull, blankStringToUndefined } from '../utils'
 import { departmentSummarySchema } from './departments'
 
 export const USER_STATUS_DISABLED = 0
@@ -14,28 +15,24 @@ export const userUniqueFieldSchema = z.enum(userUniqueFields)
 
 const nonBlankStringSchema = z.string().trim().min(1, '不能为空')
 
-function isBlankString(value: unknown) {
-  return typeof value === 'string' && value.trim() === ''
-}
-
+const userIdSchema = z.uuid('用户 ID 无效')
+const userNameSchema = z.string().trim().min(1, '请输入用户名')
+const userNicknameSchema = z.string().trim().min(1, '请输入昵称')
 export const nullableContactInputSchema = z.preprocess(
-  (value: string | null) => (isBlankString(value) ? null : value),
+  blankStringToNull,
   z.union([nonBlankStringSchema, z.null()]).optional(),
 )
 
 const optionalKeywordSchema = z.preprocess(
-  (value) => (isBlankString(value) ? undefined : value),
+  blankStringToUndefined,
   z.string().trim().optional(),
 )
 
 const optionalStatusQuerySchema = z.preprocess(
-  (value) => (isBlankString(value) ? undefined : value),
+  blankStringToUndefined,
   z.coerce.number().pipe(userStatusSchema).optional(),
 )
 
-const userIdSchema = z.uuid('用户 ID 无效')
-const userNameSchema = z.string().trim().min(1, '请输入用户名')
-const userNicknameSchema = z.string().trim().min(1, '请输入昵称')
 const pageSchema = z.coerce.number('页码必须是数字').int('页码必须是整数').min(1, '页码不能小于 1')
 const pageSizeSchema = z.coerce
   .number('每页数量必须是数字')

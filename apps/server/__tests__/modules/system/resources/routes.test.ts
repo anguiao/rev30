@@ -342,6 +342,36 @@ describe('resource routes', () => {
     })
   })
 
+  it('defaults open target to self when updating an external link to an internal menu', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const { body } = await createResource(app, {
+      type: RESOURCE_TYPE_EXTERNAL,
+      name: 'Docs',
+      code: 'system:docs',
+      externalUrl: 'https://example.com/docs',
+      openTarget: RESOURCE_OPEN_TARGET_BLANK,
+    })
+
+    const response = await app.request(`/api/system/resources/${body.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        type: RESOURCE_TYPE_MENU,
+        path: '/system/docs',
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const responseBody = (await response.json()) as Resource
+
+    expect(response.status).toBe(200)
+    expect(responseBody).toMatchObject({
+      type: RESOURCE_TYPE_MENU,
+      path: '/system/docs',
+      externalUrl: null,
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
+    })
+  })
+
   it('preserves external open target on partial updates', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)

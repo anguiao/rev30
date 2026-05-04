@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { blankStringToNull, blankStringToUndefined } from '../utils'
 
 export const RESOURCE_STATUS_DISABLED = 0
 export const RESOURCE_STATUS_ENABLED = 1
@@ -24,43 +25,36 @@ export const resourceOpenTargetSchema = z.enum(
 )
 
 const nonBlankStringSchema = z.string().trim().min(1, '不能为空')
+
 const resourceIdSchema = z.uuid('资源 ID 无效')
+const optionalKeywordSchema = z.preprocess(
+  blankStringToUndefined,
+  z.string().trim().optional(),
+)
+const optionalStatusQuerySchema = z.preprocess(
+  blankStringToUndefined,
+  z.coerce.number().pipe(resourceStatusSchema).optional(),
+)
+const optionalTypeQuerySchema = z.preprocess(
+  blankStringToUndefined,
+  resourceTypeSchema.optional(),
+)
+const optionalParentIdQuerySchema = z.preprocess(
+  blankStringToUndefined,
+  resourceIdSchema.optional(),
+)
+const nullableOptionalTextInputSchema = z.preprocess(
+  blankStringToNull,
+  z.union([z.string().trim().min(1, '不能为空'), z.null()]).optional(),
+)
+export const resourceExternalUrlSchema = z.url({ error: '外链地址无效' })
+
 const pageSchema = z.coerce.number('页码必须是数字').int('页码必须是整数').min(1, '页码不能小于 1')
 const pageSizeSchema = z.coerce
   .number('每页数量必须是数字')
   .int('每页数量必须是整数')
   .min(1, '每页数量不能小于 1')
   .max(100, '每页数量不能超过 100')
-
-function isBlankString(value: unknown) {
-  return typeof value === 'string' && value.trim() === ''
-}
-
-const optionalKeywordSchema = z.preprocess(
-  (value) => (isBlankString(value) ? undefined : value),
-  z.string().trim().optional(),
-)
-const optionalStatusQuerySchema = z.preprocess(
-  (value) => (isBlankString(value) ? undefined : value),
-  z.coerce.number().pipe(resourceStatusSchema).optional(),
-)
-const optionalTypeQuerySchema = z.preprocess(
-  (value) => (isBlankString(value) ? undefined : value),
-  resourceTypeSchema.optional(),
-)
-const optionalParentIdQuerySchema = z.preprocess(
-  (value) => (isBlankString(value) ? undefined : value),
-  resourceIdSchema.optional(),
-)
-const nullableTextInputSchema = z.preprocess(
-  (value) => (isBlankString(value) ? null : value),
-  z.union([z.string().trim().min(1, '不能为空'), z.null()]).optional(),
-)
-const nullableAnyTextInputSchema = z.preprocess(
-  (value) => (isBlankString(value) ? null : value),
-  z.union([z.string().trim().min(1, '不能为空'), z.null()]).optional(),
-)
-const externalUrlValidationSchema = z.url({ error: '外链地址无效' })
 
 export const resourceSchema = z.object({
   id: resourceIdSchema,
@@ -102,10 +96,10 @@ const resourceCreateBaseSchema = z.object({
   name: z.string().trim().min(1, '请输入资源名称'),
   code: z.string().trim().min(1, '请输入资源编码'),
   parentId: resourceIdSchema.nullable().default(null),
-  path: nullableTextInputSchema,
-  externalUrl: nullableAnyTextInputSchema,
+  path: nullableOptionalTextInputSchema,
+  externalUrl: nullableOptionalTextInputSchema,
   openTarget: resourceOpenTargetSchema.optional(),
-  icon: nullableTextInputSchema,
+  icon: nullableOptionalTextInputSchema,
   hidden: z.boolean().default(false),
   status: resourceStatusSchema.default(RESOURCE_STATUS_ENABLED),
   sortOrder: z.coerce.number('排序必须是数字').int('排序必须是整数').default(0),
@@ -155,7 +149,7 @@ function validateResourceTypeFields(
 
   if (value.type === RESOURCE_TYPE_EXTERNAL && value.externalUrl !== null) {
     const normalizedExternalUrl = value.externalUrl.trim()
-    const urlResult = externalUrlValidationSchema.safeParse(normalizedExternalUrl)
+    const urlResult = resourceExternalUrlSchema.safeParse(normalizedExternalUrl)
 
     if (!urlResult.success) {
       context.addIssue({
@@ -176,10 +170,10 @@ const resourceUpdatePayloadSchema = z.object({
   name: z.string().trim().min(1, '请输入资源名称').optional(),
   code: z.string().trim().min(1, '请输入资源编码').optional(),
   parentId: resourceIdSchema.nullable().optional(),
-  path: nullableTextInputSchema,
-  externalUrl: nullableAnyTextInputSchema,
+  path: nullableOptionalTextInputSchema,
+  externalUrl: nullableOptionalTextInputSchema,
   openTarget: resourceOpenTargetSchema.optional(),
-  icon: nullableTextInputSchema,
+  icon: nullableOptionalTextInputSchema,
   hidden: z.boolean().optional(),
   status: resourceStatusSchema.optional(),
   sortOrder: z.coerce.number('排序必须是数字').int('排序必须是整数').optional(),
@@ -230,7 +224,7 @@ function validateResourceUpdateTypeFields(
     value.externalUrl !== null
   ) {
     const normalizedExternalUrl = value.externalUrl.trim()
-    const urlResult = externalUrlValidationSchema.safeParse(normalizedExternalUrl)
+    const urlResult = resourceExternalUrlSchema.safeParse(normalizedExternalUrl)
 
     if (!urlResult.success) {
       context.addIssue({

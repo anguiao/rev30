@@ -9,8 +9,8 @@ import {
   type ResourceCreateInput,
   type ResourceListQuery,
   type ResourceUpdateInput,
+  resourceExternalUrlSchema,
 } from '@rev30/shared'
-import { z } from 'zod'
 import type { Db } from '../../../db'
 import {
   ResourceDeleteConflictError,
@@ -22,8 +22,6 @@ import {
 } from './errors'
 import { toResource, toResourceTree, type ResourceRow } from './mapper'
 import { createResourceRepository } from './repository'
-
-const externalUrlValidationSchema = z.url({ error: '外链地址无效' })
 
 async function withResourceUniqueConflict<T>(operation: () => Promise<T>) {
   try {
@@ -41,7 +39,7 @@ async function withResourceUniqueConflict<T>(operation: () => Promise<T>) {
 
 function normalizeExternalUrl(externalUrl: string) {
   const normalizedExternalUrl = externalUrl.trim()
-  const urlResult = externalUrlValidationSchema.safeParse(normalizedExternalUrl)
+  const urlResult = resourceExternalUrlSchema.safeParse(normalizedExternalUrl)
 
   if (!urlResult.success) {
     throw new ResourceInvalidTypeFieldsError('外链地址无效')
@@ -99,6 +97,12 @@ function normalizeUpdateTypeFields(
 
     next.path = path
     next.externalUrl = null
+
+    if (input.openTarget !== undefined) {
+      next.openTarget = input.openTarget
+    } else if (existingType !== RESOURCE_TYPE_MENU) {
+      next.openTarget = RESOURCE_OPEN_TARGET_SELF
+    }
   }
 
   if (type === RESOURCE_TYPE_EXTERNAL) {

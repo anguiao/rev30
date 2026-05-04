@@ -16,6 +16,7 @@ const session: AuthTokenResponse = {
     phone: null,
     status: USER_STATUS_ENABLED,
     departments: [],
+    roles: [],
     createdAt: '2026-05-01T00:00:00.000Z',
     updatedAt: '2026-05-01T00:00:00.000Z',
   },

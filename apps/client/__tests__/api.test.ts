@@ -5,6 +5,7 @@ import {
   AUTH_ACTION_REFRESH,
   RESOURCE_TYPE_MENU,
   type DepartmentSummary,
+  type RoleSummary,
 } from '@rev30/shared'
 import { api, authFetch } from '../src/api'
 import { useAuthStore } from '../src/stores/auth'
@@ -21,6 +22,7 @@ const session = {
     phone: null,
     status: 1 as 0 | 1,
     departments: [] as DepartmentSummary[],
+    roles: [] as RoleSummary[],
     createdAt: '2026-05-01T00:00:00.000Z',
     updatedAt: '2026-05-01T00:00:00.000Z',
   },
@@ -372,6 +374,34 @@ describe('api client', () => {
     )
   })
 
+  it('exposes typed system role endpoints', () => {
+    expect(api.system.roles.$get).toEqual(expect.any(Function))
+    expect(api.system.roles[':id'].$get).toEqual(expect.any(Function))
+    expect(api.system.roles.$post).toEqual(expect.any(Function))
+  })
+
+  it('types role query and create input', () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    void api.system.roles.$get({
+      query: {
+        page: '1',
+        pageSize: '20',
+        keyword: 'admin',
+        status: '1',
+      },
+    })
+
+    void api.system.roles.$post({
+      json: {
+        name: 'Administrator',
+        code: 'admin',
+        resourceIds: ['4be2dfda-2fd6-4ee5-b06b-c551328bc343'],
+      },
+    })
+  })
+
   it('types nested user query params', () => {
     const invalidQuery: Parameters<typeof api.system.users.$get>[0] = {
       query: {
@@ -395,6 +425,19 @@ describe('api client', () => {
     }
 
     void validBody
+  })
+
+  it('types user create input with role ids', () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    void api.system.users.$post({
+      json: {
+        username: 'role-user',
+        nickname: 'Role User',
+        roleIds: ['875dd9cb-488b-43d7-a55f-6db070a8e83f'],
+      },
+    })
   })
 
   it('requests nested resource endpoints with query params', async () => {

@@ -29,6 +29,13 @@
       "when": 1777875702388,
       "tag": "0003_add_system_resources",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777888730841,
+      "tag": "0004_add_roles",
+      "breakpoints": true
     }
   ]
 }

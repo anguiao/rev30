@@ -9,7 +9,10 @@ import {
   authPasswordCredentials,
   authRefreshTokens,
   departments,
+  roleResources,
+  roles,
   systemResources,
+  userRoles,
   userDepartments,
   users,
 } from '../../src/db/schema'
@@ -167,6 +170,77 @@ describe('PGlite migrations', () => {
     })
   })
 
+  it('creates usable role tables for fresh development databases', async () => {
+    const dataDir = join(await createTempDir(), 'roles')
+
+    process.env.NODE_ENV = 'development'
+    process.env.PGLITE_DATA_DIR = dataDir
+
+    const database = await createDb()
+    const now = new Date()
+    const [createdUser] = await database
+      .insert(users)
+      .values({
+        id: randomUUID(),
+        username: 'role-user',
+        nickname: 'Role User',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+    const [createdResource] = await database
+      .insert(systemResources)
+      .values({
+        id: randomUUID(),
+        type: 'action',
+        name: 'Create User',
+        code: 'system:user:create',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+    const [createdRole] = await database
+      .insert(roles)
+      .values({
+        id: randomUUID(),
+        name: 'Administrator',
+        code: 'admin',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+
+    if (!createdUser || !createdResource || !createdRole) {
+      throw new Error('Expected migrated user, resource, and role')
+    }
+
+    const [createdRoleResource] = await database
+      .insert(roleResources)
+      .values({
+        roleId: createdRole.id,
+        resourceId: createdResource.id,
+        createdAt: now,
+      })
+      .returning()
+    const [createdUserRole] = await database
+      .insert(userRoles)
+      .values({
+        userId: createdUser.id,
+        roleId: createdRole.id,
+        createdAt: now,
+      })
+      .returning()
+
+    expect(createdRoleResource).toMatchObject({
+      roleId: createdRole.id,
+      resourceId: createdResource.id,
+    })
+    expect(createdUserRole).toMatchObject({
+      userId: createdUser.id,
+      roleId: createdRole.id,
+    })
+  })
+
   it('creates usable system resource tables for fresh development databases', async () => {
     const dataDir = join(await createTempDir(), 'resources')
 
@@ -227,5 +301,8 @@ describe('PGlite migrations', () => {
     expect(journalSql).toContain('CREATE TABLE "departments"')
     expect(journalSql).toContain('CREATE TABLE "user_departments"')
     expect(journalSql).toContain('CREATE TABLE "system_resources"')
+    expect(journalSql).toContain('CREATE TABLE "roles"')
+    expect(journalSql).toContain('CREATE TABLE "role_resources"')
+    expect(journalSql).toContain('CREATE TABLE "user_roles"')
   })
 })

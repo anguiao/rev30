@@ -15,6 +15,7 @@ import {
   DEPARTMENT_STATUS_ENABLED,
   RESOURCE_OPEN_TARGET_SELF,
   RESOURCE_STATUS_ENABLED,
+  ROLE_STATUS_ENABLED,
   USER_STATUS_ENABLED,
 } from '@rev30/shared'
 
@@ -129,5 +130,61 @@ export const systemResources = pgTable(
     index('system_resources_parent_id_idx').on(table.parentId),
     index('system_resources_type_idx').on(table.type),
     index('system_resources_status_idx').on(table.status),
+  ],
+)
+
+export const roles = pgTable(
+  'roles',
+  {
+    id: uuid('id').primaryKey(),
+    name: text('name').notNull(),
+    code: text('code').notNull(),
+    status: smallint('status').notNull().default(ROLE_STATUS_ENABLED),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('roles_code_unique').on(table.code),
+    index('roles_status_idx').on(table.status),
+  ],
+)
+
+export const roleResources = pgTable(
+  'role_resources',
+  {
+    roleId: uuid('role_id')
+      .notNull()
+      .references(() => roles.id),
+    resourceId: uuid('resource_id')
+      .notNull()
+      .references(() => systemResources.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.roleId, table.resourceId],
+    }),
+    index('role_resources_resource_id_idx').on(table.resourceId),
+  ],
+)
+
+export const userRoles = pgTable(
+  'user_roles',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    roleId: uuid('role_id')
+      .notNull()
+      .references(() => roles.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.userId, table.roleId],
+    }),
+    index('user_roles_role_id_idx').on(table.roleId),
   ],
 )

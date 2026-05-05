@@ -1,0 +1,137 @@
+// @vitest-environment happy-dom
+
+import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { NPagination, NSelect } from 'naive-ui'
+import {
+  DEPARTMENT_STATUS_DISABLED,
+  DEPARTMENT_STATUS_ENABLED,
+  type DepartmentTreeNode,
+} from '@rev30/shared'
+import { formatDateTime } from '../../../src/features/system/labels'
+import { getDepartmentTree } from '../../../src/features/system/requests'
+import DepartmentsPage from '../../../src/pages/system/departments.vue'
+import { disposeActiveTestPinia, mountAuthRoute, stubPreferredDark } from '../../helpers/auth'
+
+enableAutoUnmount(afterEach)
+
+vi.mock('../../../src/features/system/requests', () => ({
+  getDepartmentTree: vi.fn(),
+  getSystemErrorMessage: vi.fn((error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback,
+  ),
+}))
+
+const getDepartmentTreeMock = vi.mocked(getDepartmentTree)
+
+const departmentTreeResponse: DepartmentTreeNode[] = [
+  {
+    id: '11111111-1111-4111-8111-111111111111',
+    parentId: null,
+    name: '研发中心',
+    code: 'ENG',
+    status: DEPARTMENT_STATUS_ENABLED,
+    sortOrder: 1,
+    createdAt: '2026-05-01T00:00:00.000Z',
+    updatedAt: '2026-05-01T00:00:00.000Z',
+    children: [
+      {
+        id: '22222222-2222-4222-8222-222222222222',
+        parentId: '11111111-1111-4111-8111-111111111111',
+        name: '平台架构组',
+        code: 'ARCH',
+        status: DEPARTMENT_STATUS_DISABLED,
+        sortOrder: 2,
+        createdAt: '2026-05-02T00:00:00.000Z',
+        updatedAt: '2026-05-02T00:00:00.000Z',
+        children: [],
+      },
+      {
+        id: '33333333-3333-4333-8333-333333333333',
+        parentId: '11111111-1111-4111-8111-111111111111',
+        name: '前端组',
+        code: 'WEB',
+        status: DEPARTMENT_STATUS_ENABLED,
+        sortOrder: 3,
+        createdAt: '2026-05-03T00:00:00.000Z',
+        updatedAt: '2026-05-03T00:00:00.000Z',
+        children: [],
+      },
+    ],
+  },
+]
+
+async function mountDepartmentsPage() {
+  return mountAuthRoute('/system/departments', [
+    { path: '/system/departments', component: DepartmentsPage },
+  ])
+}
+
+describe('departments page', () => {
+  beforeEach(() => {
+    getDepartmentTreeMock.mockReset()
+    localStorage.clear()
+    document.documentElement.className = ''
+    document.documentElement.style.colorScheme = ''
+    stubPreferredDark(false)
+  })
+
+  afterEach(() => {
+    disposeActiveTestPinia()
+    vi.unstubAllGlobals()
+  })
+
+  it('loads and renders a department tree without pagination', async () => {
+    const architectureChild = departmentTreeResponse[0]!.children[0]!
+    getDepartmentTreeMock.mockResolvedValue([
+      {
+        ...departmentTreeResponse[0]!,
+        children: [architectureChild],
+      },
+    ])
+    const { wrapper } = await mountDepartmentsPage()
+    await flushPromises()
+
+    expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('部门管理')
+    expect(wrapper.text()).toContain('共 2 个部门')
+    expect(wrapper.text()).toContain('研发中心')
+    expect(wrapper.text()).toContain('ENG')
+    expect(wrapper.text()).toContain('平台架构组')
+    expect(wrapper.text()).toContain('ARCH')
+    expect(wrapper.text()).toContain(formatDateTime('2026-05-01T00:00:00.000Z'))
+    expect(wrapper.text()).toContain(formatDateTime('2026-05-02T00:00:00.000Z'))
+    expect(wrapper.findComponent(NPagination).exists()).toBe(false)
+  })
+
+  it('filters by child keyword and preserves parent context', async () => {
+    getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
+    const { wrapper } = await mountDepartmentsPage()
+    await flushPromises()
+
+    await wrapper.find('[data-test="departments-keyword"] input').setValue('  arch ')
+    await wrapper.get('[data-test="departments-search"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('共 2 个部门')
+    expect(wrapper.text()).toContain('研发中心')
+    expect(wrapper.text()).toContain('平台架构组')
+    expect(wrapper.text()).not.toContain('前端组')
+  })
+
+  it('filters by status and preserves disabled child with parent context', async () => {
+    getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
+    const { wrapper } = await mountDepartmentsPage()
+    await flushPromises()
+
+    wrapper.getComponent(NSelect).vm.$emit('update:value', DEPARTMENT_STATUS_DISABLED)
+    await flushPromises()
+    await wrapper.get('[data-test="departments-search"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('共 2 个部门')
+    expect(wrapper.text()).toContain('研发中心')
+    expect(wrapper.text()).toContain('平台架构组')
+    expect(wrapper.text()).not.toContain('前端组')
+  })
+})

@@ -4,51 +4,69 @@ import { useQuery } from '@pinia/colada'
 import type { DataTableColumns, SelectOption } from 'naive-ui'
 import { NAlert, NButton, NDataTable, NInput, NPagination, NSelect, NSpace, NTag } from 'naive-ui'
 import {
-  ROLE_STATUS_DISABLED,
-  ROLE_STATUS_ENABLED,
-  type RoleListItem,
-  type RoleListQuery,
+  USER_STATUS_DISABLED,
+  USER_STATUS_ENABLED,
+  type User,
+  type UserListQuery,
 } from '@rev30/shared'
-import { formatDateTime, statusLabels, statusTagTypes } from '../../features/system/labels'
-import { getSystemErrorMessage, listRoles } from '../../features/system/requests'
+import { formatDateTime, statusLabels, statusTagTypes } from '../../../features/system/labels'
+import { getSystemErrorMessage, listUsers } from '../../../features/system/requests'
 
-type RoleStatusFilter = typeof ROLE_STATUS_ENABLED | typeof ROLE_STATUS_DISABLED | 'all'
+type UserStatusFilter = typeof USER_STATUS_ENABLED | typeof USER_STATUS_DISABLED | 'all'
 
 const keyword = ref('')
-const status = ref<RoleStatusFilter>('all')
-const query = ref<RoleListQuery>({
+const status = ref<UserStatusFilter>('all')
+const query = ref<UserListQuery>({
   page: 1,
   pageSize: 20,
 })
 
-const rolesQuery = useQuery({
+const usersQuery = useQuery({
   key: () => [
     'system',
-    'roles',
+    'users',
     query.value.page,
     query.value.pageSize,
     query.value.keyword ?? '',
     query.value.status ?? null,
   ],
-  query: () => listRoles(query.value),
+  query: () => listUsers(query.value),
 })
 
-const isLoading = computed(() => rolesQuery.asyncStatus.value === 'loading')
-const roles = computed(() => rolesQuery.state.value.data?.list ?? [])
-const total = computed(() => rolesQuery.state.value.data?.total ?? 0)
+const isLoading = computed(() => usersQuery.asyncStatus.value === 'loading')
+const users = computed(() => usersQuery.state.value.data?.list ?? [])
+const total = computed(() => usersQuery.state.value.data?.total ?? 0)
 const loadErrorMessage = computed(() => {
-  if (rolesQuery.state.value.status !== 'error') {
+  if (usersQuery.state.value.status !== 'error') {
     return ''
   }
 
-  return getSystemErrorMessage(rolesQuery.state.value.error, '加载角色失败')
+  return getSystemErrorMessage(usersQuery.state.value.error, '加载用户失败')
 })
 
 const statusOptions: SelectOption[] = [
   { label: '全部', value: 'all' },
-  { label: '启用', value: ROLE_STATUS_ENABLED },
-  { label: '禁用', value: ROLE_STATUS_DISABLED },
+  { label: '启用', value: USER_STATUS_ENABLED },
+  { label: '禁用', value: USER_STATUS_DISABLED },
 ]
+
+function summarizeNames(items: Array<{ name: string }>) {
+  const names = items.map((item) => item.name)
+
+  if (names.length === 0) {
+    return '-'
+  }
+
+  if (names.length <= 2) {
+    return names.join('、')
+  }
+
+  return `${names.slice(0, 2).join('、')}等 ${names.length} 个`
+}
+
+function formatContact(user: User) {
+  return user.email ?? user.phone ?? '-'
+}
 
 function buildNextQuery(targetPage: number) {
   const nextKeyword = keyword.value.trim()
@@ -58,7 +76,7 @@ function buildNextQuery(targetPage: number) {
     pageSize: query.value.pageSize,
     ...(nextKeyword.length > 0 ? { keyword: nextKeyword } : {}),
     ...(status.value !== 'all' ? { status: status.value } : {}),
-  } satisfies RoleListQuery
+  } satisfies UserListQuery
 }
 
 function handleSearch() {
@@ -82,19 +100,25 @@ function handlePageChange(page: number) {
 }
 
 function handleRefresh() {
-  void rolesQuery.refresh()
+  void usersQuery.refresh()
 }
 
-const columns: DataTableColumns<RoleListItem> = [
+const columns: DataTableColumns<User> = [
   {
-    title: '角色名',
-    key: 'name',
-    width: 160,
+    title: '用户名',
+    key: 'username',
+    width: 140,
   },
   {
-    title: '角色编码',
-    key: 'code',
-    width: 170,
+    title: '昵称',
+    key: 'nickname',
+    width: 180,
+  },
+  {
+    title: '联系方式',
+    key: 'contact',
+    minWidth: 200,
+    render: (row) => formatContact(row),
   },
   {
     title: '状态',
@@ -111,14 +135,16 @@ const columns: DataTableColumns<RoleListItem> = [
       ),
   },
   {
-    title: '用户数',
-    key: 'userCount',
-    width: 100,
+    title: '部门',
+    key: 'departments',
+    minWidth: 240,
+    render: (row) => summarizeNames(row.departments),
   },
   {
-    title: '排序',
-    key: 'sortOrder',
-    width: 100,
+    title: '角色',
+    key: 'roles',
+    minWidth: 220,
+    render: (row) => summarizeNames(row.roles),
   },
   {
     title: '创建时间',
@@ -133,8 +159,8 @@ const columns: DataTableColumns<RoleListItem> = [
   <main class="space-y-5">
     <header class="flex items-center justify-between">
       <div>
-        <h1 class="text-xl font-semibold">角色管理</h1>
-        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ total }} 个角色</p>
+        <h1 class="text-xl font-semibold">用户管理</h1>
+        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ total }} 个用户</p>
       </div>
       <NButton type="primary" secondary :loading="isLoading" @click="handleRefresh">刷新</NButton>
     </header>
@@ -145,19 +171,19 @@ const columns: DataTableColumns<RoleListItem> = [
       <NSpace align="end" :size="12">
         <NInput
           v-model:value="keyword"
-          data-test="roles-keyword"
+          data-test="users-keyword"
           clearable
-          placeholder="请输入角色名或编码"
+          placeholder="请输入用户名或昵称"
           class="w-[260px]"
         />
         <NSelect
           v-model:value="status"
-          data-test="roles-status"
+          data-test="users-status"
           :options="statusOptions"
           placeholder="全部状态"
           class="w-[160px]"
         />
-        <NButton data-test="roles-search" type="primary" @click="handleSearch">查询</NButton>
+        <NButton data-test="users-search" type="primary" @click="handleSearch">查询</NButton>
         <NButton @click="handleReset">重置</NButton>
       </NSpace>
     </section>
@@ -169,10 +195,10 @@ const columns: DataTableColumns<RoleListItem> = [
     >
       <NDataTable
         :columns="columns"
-        :data="roles"
+        :data="users"
         :loading="isLoading"
         :pagination="false"
-        :row-key="(row: RoleListItem) => row.id"
+        :row-key="(row: User) => row.id"
       />
 
       <div class="mt-4 flex justify-end">

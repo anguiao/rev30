@@ -6,6 +6,7 @@
 - 仅当用户明确提及时，才使用 Superpowers 相关技能。
 - 使用 pnpm workspace；内部包依赖保持 `workspace:*`。
 - 前端位于 `apps/client`，使用 Vue 3、Vite、Tailwind CSS v4、Naive UI、Pinia、Pinia Colada、TanStack Vue Form 和 `vue-router/vite` 文件路由。
+- 后台区域使用 `apps/client/src/pages/index.vue` 作为布局，后台子路由放在 `apps/client/src/pages/index/` 下；业务模块目录本身默认不作为可导航页面。
 - Iconify 图标类使用 `i-[collection--name]` 格式（如 `i-[lucide--sun]`）。
 - 服务端位于 `apps/server`，使用 Hono、Drizzle、PGlite/PostgreSQL；API 统一挂在 `/api`。
 - 共享 zod schema 和 TypeScript 类型放在 `packages/shared`，前后端请求/响应尽量复用这些约束。

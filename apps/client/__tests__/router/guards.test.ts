@@ -53,7 +53,7 @@ describe('auth guards', () => {
     refreshSessionMock.mockReset()
   })
 
-  it('restores the session before entering the protected home route', async () => {
+  it('restores the session before redirecting the protected root route to the default admin route', async () => {
     refreshSessionMock.mockResolvedValue(session)
     const router = createTestRouter()
 
@@ -65,7 +65,7 @@ describe('auth guards', () => {
     expect(auth.accessToken).toBe(session.accessToken)
     expect(auth.user).toEqual(session.user)
     expect(auth.isReady).toBe(true)
-    expect(router.currentRoute.value.fullPath).toBe('/')
+    expect(router.currentRoute.value.fullPath).toBe('/system/users')
   })
 
   it('redirects unauthenticated users from admin pages to login with redirect query', async () => {

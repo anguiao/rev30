@@ -6,7 +6,7 @@ import { NPagination, NSelect } from 'naive-ui'
 import { USER_STATUS_DISABLED, USER_STATUS_ENABLED, type UserListResponse } from '@rev30/shared'
 import { listUsers } from '../../../src/features/system/requests'
 import { formatDateTime } from '../../../src/features/system/labels'
-import UsersPage from '../../../src/pages/system/users.vue'
+import UsersPage from '../../../src/pages/index/system/users.vue'
 import { disposeActiveTestPinia, mountAuthRoute, stubPreferredDark } from '../../helpers/auth'
 
 enableAutoUnmount(afterEach)

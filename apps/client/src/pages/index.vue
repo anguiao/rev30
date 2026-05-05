@@ -1,14 +1,14 @@
-<script setup lang="ts">
-import { useRouter } from 'vue-router'
-import { onMounted } from 'vue'
-import { adminDefaultRoute } from '../router/guards'
+<route lang="yaml">
+name: false
+</route>
 
-const router = useRouter()
-onMounted(() => {
-  void router.replace(adminDefaultRoute)
-})
+<script setup lang="ts">
+import { RouterView } from 'vue-router'
+import AdminLayout from '../components/admin/AdminLayout.vue'
 </script>
 
 <template>
-  <main class="min-h-screen bg-white dark:bg-slate-950" />
+  <AdminLayout>
+    <RouterView />
+  </AdminLayout>
 </template>

@@ -18,9 +18,9 @@ import {
   resourceTypeLabels,
   statusLabels,
   statusTagTypes,
-} from '../../features/system/labels'
-import { getResourceTree, getSystemErrorMessage } from '../../features/system/requests'
-import { countTreeNodes, filterTree } from '../../features/system/tree'
+} from '../../../features/system/labels'
+import { getResourceTree, getSystemErrorMessage } from '../../../features/system/requests'
+import { countTreeNodes, filterTree } from '../../../features/system/tree'
 
 type ResourceTypeFilter = ResourceType | 'all'
 type ResourceStatusFilter = typeof RESOURCE_STATUS_ENABLED | typeof RESOURCE_STATUS_DISABLED | 'all'

@@ -8,9 +8,9 @@ import {
   DEPARTMENT_STATUS_ENABLED,
   type DepartmentTreeNode,
 } from '@rev30/shared'
-import { formatDateTime, statusLabels, statusTagTypes } from '../../features/system/labels'
-import { getSystemErrorMessage, getDepartmentTree } from '../../features/system/requests'
-import { countTreeNodes, filterTree } from '../../features/system/tree'
+import { formatDateTime, statusLabels, statusTagTypes } from '../../../features/system/labels'
+import { getSystemErrorMessage, getDepartmentTree } from '../../../features/system/requests'
+import { countTreeNodes, filterTree } from '../../../features/system/tree'
 
 type DepartmentStatusFilter =
   | typeof DEPARTMENT_STATUS_ENABLED

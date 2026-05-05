@@ -14,7 +14,7 @@ import {
 } from '@rev30/shared'
 import { formatDateTime } from '../../../src/features/system/labels'
 import { getResourceTree } from '../../../src/features/system/requests'
-import ResourcesPage from '../../../src/pages/system/resources.vue'
+import ResourcesPage from '../../../src/pages/index/system/resources.vue'
 import { disposeActiveTestPinia, mountAuthRoute, stubPreferredDark } from '../../helpers/auth'
 
 enableAutoUnmount(afterEach)

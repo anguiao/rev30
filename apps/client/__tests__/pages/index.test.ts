@@ -1,23 +1,26 @@
 // @vitest-environment happy-dom
 
-import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
+import { enableAutoUnmount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import HomePage from '../../src/pages/index.vue'
-import SystemPage from '../../src/pages/system/index.vue'
+import AdminPage from '../../src/pages/index.vue'
 import { disposeActiveTestPinia, mountAuthRoute, stubPreferredDark } from '../helpers/auth'
 
 enableAutoUnmount(afterEach)
 
-async function mountHomePage() {
-  return mountAuthRoute('/', [
-    { path: '/', component: HomePage },
-    { path: '/system', component: SystemPage },
-    { path: '/system/users', component: { template: '<main>System Users</main>' } },
+async function mountAdminRoute(path = '/') {
+  return mountAuthRoute(path, [
+    {
+      path: '/',
+      component: AdminPage,
+      children: [
+        { path: 'system/users', component: { template: '<main>System Users</main>' } },
+      ],
+    },
     { path: '/login', component: { template: '<main>Login</main>' } },
   ])
 }
 
-describe('home page', () => {
+describe('admin route layout', () => {
   beforeEach(() => {
     localStorage.clear()
     document.documentElement.className = ''
@@ -30,22 +33,11 @@ describe('home page', () => {
     vi.unstubAllGlobals()
   })
 
-  it('redirects root route to system users on mount', async () => {
-    const { router } = await mountHomePage()
-    await flushPromises()
+  it('renders the admin layout around backend child routes', async () => {
+    const { wrapper } = await mountAdminRoute('/system/users')
 
-    expect(router.currentRoute.value.fullPath).toBe('/system/users')
-  })
-
-  it('redirects system route to system users on mount', async () => {
-    const { router } = await mountAuthRoute('/system', [
-      { path: '/', component: HomePage },
-      { path: '/system', component: SystemPage },
-      { path: '/system/users', component: { template: '<main>System Users</main>' } },
-      { path: '/login', component: { template: '<main>Login</main>' } },
-    ])
-    await flushPromises()
-
-    expect(router.currentRoute.value.fullPath).toBe('/system/users')
+    expect(wrapper.text()).toContain('Rev30')
+    expect(wrapper.text()).toContain('后台管理')
+    expect(wrapper.text()).toContain('System Users')
   })
 })

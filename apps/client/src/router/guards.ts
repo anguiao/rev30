@@ -32,7 +32,7 @@ export function installAuthGuards(router: Router) {
     }
 
     if (auth.isAuthenticated) {
-      return true
+      return to.path === '/' ? { path: adminDefaultRoute } : true
     }
 
     return { path: '/login', query: { redirect: to.fullPath } }

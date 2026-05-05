@@ -57,11 +57,19 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       Record<never, never>,
       | '/system/'
+      | '/system/roles'
       | '/system/users'
     >,
     '/system/': RouteRecordInfo<
       '/system/',
       '/system',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/system/roles': RouteRecordInfo<
+      '/system/roles',
+      '/system/roles',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -108,6 +116,7 @@ declare module 'vue-router/auto-routes' {
       routes:
         | '/system'
         | '/system/'
+        | '/system/roles'
         | '/system/users'
       views:
         | 'default'
@@ -115,6 +124,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/system/index.vue': {
       routes:
         | '/system/'
+      views:
+        | never
+    }
+    'src/pages/system/roles.vue': {
+      routes:
+        | '/system/roles'
       views:
         | never
     }

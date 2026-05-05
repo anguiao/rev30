@@ -3,8 +3,9 @@ import type { Db } from './db'
 import type { RequestLogger } from './logger'
 import { createAuthMiddleware } from './middleware/auth'
 import { createRequestLogger } from './middleware/logger'
-import { healthRoutes } from './modules/health/routes'
 import { createAuthRoutes } from './modules/auth/routes'
+import { healthRoutes } from './modules/health/routes'
+import { iconRoutes } from './modules/icons/routes'
 import { createSystemRoutes } from './modules/system/routes'
 
 export type CreateAppOptions = {
@@ -16,6 +17,7 @@ export function createApiRoutes(database: Db) {
   return new Hono()
     .route('/', healthRoutes)
     .route('/auth', createAuthRoutes(database))
+    .route('/icons', iconRoutes)
     .use('/system/*', createAuthMiddleware(database))
     .route('/system', createSystemRoutes(database))
 }

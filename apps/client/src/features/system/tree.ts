@@ -26,6 +26,6 @@ export function filterTree<TNode>(
   })
 }
 
-export function countTreeNodes<TNode>(nodes: TreeNodeWithChildren<TNode>[]) {
+export function countTreeNodes<TNode>(nodes: TreeNodeWithChildren<TNode>[]): number {
   return nodes.reduce((total, node) => total + 1 + countTreeNodes(node.children), 0)
 }

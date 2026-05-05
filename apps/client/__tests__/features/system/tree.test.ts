@@ -49,19 +49,20 @@ const tree: TestNode[] = [
 
 describe('filterTree', () => {
   it('keeps ancestors when a child node matches', () => {
+    const rootNode = tree[0]!
+    const engineeringNode = rootNode.children[0]!
+    const platformNode = engineeringNode.children[0]!
     const filtered = filterTree(tree, {
       matches: (node) => node.name === '平台组',
     })
 
     expect(filtered).toEqual([
       {
-        ...tree[0],
+        ...rootNode,
         children: [
           {
-            ...tree[0].children[0],
-            children: [
-              tree[0].children[0].children[0],
-            ],
+            ...engineeringNode,
+            children: [platformNode],
           },
         ],
       },
@@ -69,6 +70,10 @@ describe('filterTree', () => {
   })
 
   it('filters by multiple predicates without mutating original tree', () => {
+    const rootNode = tree[0]!
+    const engineeringNode = rootNode.children[0]!
+    const platformNode = engineeringNode.children[0]!
+    const financeNode = rootNode.children[1]!
     const snapshot = JSON.parse(JSON.stringify(tree))
     const matchesName = (node: TestNode) => node.name.includes('部')
     const matchesType = (node: TestNode) => node.type === 'menu'
@@ -79,15 +84,13 @@ describe('filterTree', () => {
 
     expect(filtered).toEqual([
       {
-        ...tree[0],
+        ...rootNode,
         children: [
           {
-            ...tree[0].children[0],
-            children: [
-              tree[0].children[0].children[0],
-            ],
+            ...engineeringNode,
+            children: [platformNode],
           },
-          tree[0].children[1],
+          financeNode,
         ],
       },
     ])

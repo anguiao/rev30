@@ -3,6 +3,11 @@ import type { IconifyJSON } from '@iconify/types'
 import { getIcons } from '@iconify/utils'
 
 const iconSetCache = new Map<string, Promise<IconifyJSON>>()
+const iconPrefixPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+export function isValidIconPrefix(prefix: string) {
+  return iconPrefixPattern.test(prefix)
+}
 
 async function loadIconSet(prefix: string) {
   let iconSetPromise = iconSetCache.get(prefix)

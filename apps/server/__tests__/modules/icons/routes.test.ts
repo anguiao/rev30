@@ -77,4 +77,50 @@ describe('icon routes', () => {
     expect(body.icons).toEqual({})
     expect(body.not_found).toEqual([''])
   })
+
+  it('returns text 404 for missing collections, missing icons parameter, and invalid prefixes', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+
+    const missingCollection = await app.request('/api/icons/not-a-prefix.json?icons=sun')
+    expect(missingCollection.status).toBe(404)
+    expect(missingCollection.headers.get('content-type')).toContain('text/plain')
+    expectIconHeaders(missingCollection)
+    expect(await missingCollection.text()).toBe('404')
+
+    const missingIcons = await app.request('/api/icons/lucide.json')
+    expect(missingIcons.status).toBe(404)
+    expect(missingIcons.headers.get('content-type')).toContain('text/plain')
+    expect(await missingIcons.text()).toBe('404')
+
+    const invalidPrefix = await app.request('/api/icons/Invalid.json?icons=sun')
+    expect(invalidPrefix.status).toBe(404)
+    expect(await invalidPrefix.text()).toBe('404')
+  })
+
+  it('returns CORS headers for OPTIONS requests', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+
+    const response = await app.request('/api/icons/lucide.json?icons=sun', {
+      method: 'OPTIONS',
+    })
+
+    expect(response.status).toBe(204)
+    expectIconHeaders(response)
+    expect(await response.text()).toBe('')
+  })
+
+  it('pretty prints JSON when pretty is 1 or true', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+
+    const prettyOne = await app.request('/api/icons/lucide.json?icons=sun&pretty=1')
+    const prettyTrue = await app.request('/api/icons/lucide.json?icons=sun&pretty=true')
+    const compact = await app.request('/api/icons/lucide.json?icons=sun')
+
+    expect(await prettyOne.text()).toContain('\n    "prefix": "lucide"')
+    expect(await prettyTrue.text()).toContain('\n    "prefix": "lucide"')
+    expect(await compact.text()).not.toContain('\n    "prefix": "lucide"')
+  })
 })

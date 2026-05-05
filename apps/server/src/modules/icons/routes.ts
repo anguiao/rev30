@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { getIconSubset } from './service'
+import { getIconSubset, isValidIconPrefix } from './service'
 
 const jsonExtension = '.json'
 
@@ -12,11 +12,13 @@ const iconHeaders = {
   'cache-control': 'public, max-age=604800, min-refresh=604800, immutable',
 } as const
 
-function createHeaders(contentType: string) {
-  return {
-    ...iconHeaders,
-    'content-type': contentType,
-  }
+function createHeaders(contentType?: string) {
+  return contentType
+    ? {
+        ...iconHeaders,
+        'content-type': contentType,
+      }
+    : iconHeaders
 }
 
 function notFoundResponse() {
@@ -32,29 +34,45 @@ function parsePrefix(filename: string) {
   }
 
   const prefix = filename.slice(0, -jsonExtension.length)
-  return prefix.length > 0 ? prefix : null
+  return isValidIconPrefix(prefix) ? prefix : null
 }
 
-export const iconRoutes = new Hono().get('/:filename', async (c) => {
-  const prefix = parsePrefix(c.req.param('filename'))
-  const icons = c.req.query('icons')
+function isPretty(value: string | undefined) {
+  return value === '1' || value === 'true'
+}
 
-  if (!prefix || icons === undefined) {
-    return notFoundResponse()
-  }
+export const iconRoutes = new Hono()
+  .options(
+    '/:filename',
+    () =>
+      new Response(null, {
+        status: 204,
+        headers: createHeaders(),
+      }),
+  )
+  .get('/:filename', async (c) => {
+    const prefix = parsePrefix(c.req.param('filename'))
+    const icons = c.req.query('icons')
 
-  try {
-    const subset = await getIconSubset(prefix, icons.split(','))
-
-    if (!subset) {
+    if (!prefix || icons === undefined) {
       return notFoundResponse()
     }
 
-    return new Response(JSON.stringify(subset), {
-      status: 200,
-      headers: createHeaders('application/json; charset=utf-8'),
-    })
-  } catch {
-    return notFoundResponse()
-  }
-})
+    try {
+      const subset = await getIconSubset(prefix, icons.split(','))
+
+      if (!subset) {
+        return notFoundResponse()
+      }
+
+      return new Response(
+        JSON.stringify(subset, null, isPretty(c.req.query('pretty')) ? 4 : undefined),
+        {
+          status: 200,
+          headers: createHeaders('application/json; charset=utf-8'),
+        },
+      )
+    } catch {
+      return notFoundResponse()
+    }
+  })

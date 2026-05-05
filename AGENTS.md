@@ -20,6 +20,7 @@
 
 - 已完成基础 monorepo 结构，包含 Vue 客户端、Hono 服务端和共享 zod schema/types。
 - 当前业务核心包含认证、刷新令牌、登录态恢复，以及受 Bearer token 保护的系统用户、部门、角色、资源管理 API。
+- 当前后端新增 Iconify API 兼容图标服务，可从 `@iconify/json` 按需读取全部已安装图标集，供后续 `@iconify/vue` 默认 provider 接入。
 - 当前前端已包含桌面优先的后台管理壳层，以及系统用户、部门、角色、资源的只读管理页面。
 
 ## 常用验证

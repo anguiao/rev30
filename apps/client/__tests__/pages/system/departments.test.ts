@@ -2,7 +2,7 @@
 
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NPagination, NSelect } from 'naive-ui'
+import { NDataTable, NPagination, NSelect } from 'naive-ui'
 import {
   DEPARTMENT_STATUS_DISABLED,
   DEPARTMENT_STATUS_ENABLED,
@@ -97,10 +97,15 @@ describe('departments page', () => {
     expect(wrapper.text()).toContain('共 2 个部门')
     expect(wrapper.text()).toContain('研发中心')
     expect(wrapper.text()).toContain('ENG')
-    expect(wrapper.text()).toContain('平台架构组')
-    expect(wrapper.text()).toContain('ARCH')
     expect(wrapper.text()).toContain(formatDateTime('2026-05-01T00:00:00.000Z'))
-    expect(wrapper.text()).toContain(formatDateTime('2026-05-02T00:00:00.000Z'))
+    const treeData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
+    expect(treeData).toHaveLength(1)
+    expect(treeData[0]!.children).toHaveLength(1)
+    expect(treeData[0]!.children[0]!.name).toBe('平台架构组')
+    expect(treeData[0]!.children[0]!.code).toBe('ARCH')
+    expect(formatDateTime(treeData[0]!.children[0]!.createdAt)).toBe(
+      formatDateTime('2026-05-02T00:00:00.000Z'),
+    )
     expect(wrapper.findComponent(NPagination).exists()).toBe(false)
   })
 
@@ -115,8 +120,43 @@ describe('departments page', () => {
 
     expect(wrapper.text()).toContain('共 2 个部门')
     expect(wrapper.text()).toContain('研发中心')
-    expect(wrapper.text()).toContain('平台架构组')
-    expect(wrapper.text()).not.toContain('前端组')
+    const filteredTree = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
+    expect(filteredTree).toHaveLength(1)
+    expect(filteredTree[0]!.children.map((child) => child.name)).toEqual(['平台架构组'])
+  })
+
+  it('does not apply draft keyword until search and reset restores full tree', async () => {
+    getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
+    const { wrapper } = await mountDepartmentsPage()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('共 3 个部门')
+    let tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
+    expect(tableData[0]!.children).toHaveLength(2)
+
+    await wrapper.find('[data-test="departments-keyword"] input').setValue('arch')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('共 3 个部门')
+    tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
+    expect(tableData[0]!.children).toHaveLength(2)
+
+    await wrapper.get('[data-test="departments-search"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('共 2 个部门')
+    tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
+    expect(tableData[0]!.children.map((child) => child.name)).toEqual(['平台架构组'])
+
+    const resetButton = wrapper.findAll('button').find((buttonWrapper) => buttonWrapper.text() === '重置')
+
+    expect(resetButton).toBeDefined()
+    await resetButton!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('共 3 个部门')
+    tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
+    expect(tableData[0]!.children.map((child) => child.name)).toEqual(['平台架构组', '前端组'])
   })
 
   it('filters by status and preserves disabled child with parent context', async () => {
@@ -131,7 +171,7 @@ describe('departments page', () => {
 
     expect(wrapper.text()).toContain('共 2 个部门')
     expect(wrapper.text()).toContain('研发中心')
-    expect(wrapper.text()).toContain('平台架构组')
-    expect(wrapper.text()).not.toContain('前端组')
+    const statusFilteredTree = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
+    expect(statusFilteredTree[0]!.children.map((child) => child.name)).toEqual(['平台架构组'])
   })
 })

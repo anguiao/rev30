@@ -74,7 +74,7 @@ const rows = computed(() => {
 })
 
 const visibleCount = computed(() => countTreeNodes(rows.value))
-const expandedRowKeys = computed(() => collectTreeIds(rows.value))
+const defaultExpandedRowKeys = computed(() => collectTreeIds(rows.value))
 
 function handleSearch() {
   activeFilters.value = {
@@ -180,7 +180,7 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
         :data="rows"
         :loading="isLoading"
         :pagination="false"
-        :expanded-row-keys="expandedRowKeys"
+        :default-expanded-row-keys="defaultExpandedRowKeys"
         :row-key="(row: DepartmentTreeNode) => row.id"
       />
     </section>

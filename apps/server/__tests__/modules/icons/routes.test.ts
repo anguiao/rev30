@@ -37,4 +37,44 @@ describe('icon routes', () => {
     expect(body.icons.home).toBeUndefined()
     expect(body.not_found).toBeUndefined()
   })
+
+  it('returns not_found for missing icons while keeping found icons', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+
+    const response = await app.request('/api/icons/lucide.json?icons=sun,not-a-real-icon')
+    const body = (await response.json()) as IconifyJSON
+
+    expect(response.status).toBe(200)
+    expectIconHeaders(response)
+    expect(Object.keys(body.icons)).toEqual(['sun'])
+    expect(body.not_found).toEqual(['not-a-real-icon'])
+  })
+
+  it('returns empty icons and not_found when every requested icon is missing', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+
+    const response = await app.request('/api/icons/lucide.json?icons=not-a-real-icon')
+    const body = (await response.json()) as IconifyJSON
+
+    expect(response.status).toBe(200)
+    expectIconHeaders(response)
+    expect(body.prefix).toBe('lucide')
+    expect(body.icons).toEqual({})
+    expect(body.aliases).toEqual({})
+    expect(body.not_found).toEqual(['not-a-real-icon'])
+  })
+
+  it('treats an empty icon name as not_found', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+
+    const response = await app.request('/api/icons/lucide.json?icons=')
+    const body = (await response.json()) as IconifyJSON
+
+    expect(response.status).toBe(200)
+    expect(body.icons).toEqual({})
+    expect(body.not_found).toEqual([''])
+  })
 })

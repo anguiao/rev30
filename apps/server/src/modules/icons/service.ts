@@ -22,7 +22,7 @@ async function loadIconSet(prefix: string) {
 
 export async function getIconSubset(prefix: string, names: string[]): Promise<IconifyJSON | null> {
   const iconSet = await loadIconSet(prefix)
-  const subset = getIcons(iconSet, names)
+  const subset = getIcons(iconSet, names, true)
 
   if (!subset) {
     return null

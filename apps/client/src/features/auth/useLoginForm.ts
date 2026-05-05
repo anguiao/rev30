@@ -1,14 +1,16 @@
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useMutation } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
 import { authLoginSchema, type AuthLoginInput } from '@rev30/shared'
 import { AuthRequestError, login } from './requests'
+import { resolveRedirectTarget } from '../../router/redirect'
 import { useAuthStore } from '../../stores/auth'
 
 type LoginFormData = AuthLoginInput
 
 export function useLoginForm() {
+  const route = useRoute()
   const router = useRouter()
   const auth = useAuthStore()
   const formError = ref<string | null>(null)
@@ -32,7 +34,7 @@ export function useLoginForm() {
         const input = authLoginSchema.parse(value)
         const session = await loginMutation.mutateAsync(input)
         auth.setSession(session)
-        await router.push('/')
+        await router.push(resolveRedirectTarget(route.query.redirect))
       } catch (error) {
         formError.value =
           error instanceof AuthRequestError && error.status === 401

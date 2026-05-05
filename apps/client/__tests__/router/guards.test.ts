@@ -94,4 +94,19 @@ describe('auth guards', () => {
     expect(refreshSessionMock).not.toHaveBeenCalled()
     expect(router.currentRoute.value.fullPath).toBe('/system/users')
   })
+
+  it('restores a cold session before redirecting users away from auth pages', async () => {
+    refreshSessionMock.mockResolvedValue(session)
+    const router = createTestRouter()
+
+    await router.push('/login')
+
+    const auth = useAuthStore()
+
+    expect(refreshSessionMock).toHaveBeenCalledOnce()
+    expect(auth.accessToken).toBe(session.accessToken)
+    expect(auth.user).toEqual(session.user)
+    expect(auth.isReady).toBe(true)
+    expect(router.currentRoute.value.fullPath).toBe('/system/users')
+  })
 })

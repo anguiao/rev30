@@ -35,11 +35,12 @@ vi.mock('../../../src/features/auth/requests', () => ({
 
 const loginMock = vi.mocked(login)
 
-async function mountLoginPage() {
-  return mountAuthRoute('/login', [
+async function mountLoginPage(path = '/login') {
+  return mountAuthRoute(path, [
     { path: '/', component: { template: '<main>Home</main>' } },
     { path: '/login', component: LoginPage },
     { path: '/register', component: { template: '<main>Register</main>' } },
+    { path: '/system/resources', component: { template: '<main>Resources</main>' } },
   ])
 }
 
@@ -87,6 +88,18 @@ describe('login page', () => {
     expect(auth.accessToken).toBe(session.accessToken)
     expect(auth.user).toEqual(session.user)
     expect(router.currentRoute.value.fullPath).toBe('/')
+  })
+
+  it('navigates to the redirect target after successful login', async () => {
+    loginMock.mockResolvedValue(session)
+    const { router, wrapper } = await mountLoginPage('/login?redirect=/system/resources')
+
+    await wrapper.find('[data-test="login-username"] input').setValue('ada')
+    await wrapper.find('[data-test="login-password"] input').setValue('password123')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/system/resources')
   })
 
   it('calls login once when the browser submits the login form from the submit button', async () => {

@@ -58,6 +58,7 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | '/system/'
       | '/system/departments'
+      | '/system/resources'
       | '/system/roles'
       | '/system/users'
     >,
@@ -71,6 +72,13 @@ declare module 'vue-router/auto-routes' {
     '/system/departments': RouteRecordInfo<
       '/system/departments',
       '/system/departments',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/system/resources': RouteRecordInfo<
+      '/system/resources',
+      '/system/resources',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -125,6 +133,7 @@ declare module 'vue-router/auto-routes' {
         | '/system'
         | '/system/'
         | '/system/departments'
+        | '/system/resources'
         | '/system/roles'
         | '/system/users'
       views:
@@ -139,6 +148,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/system/departments.vue': {
       routes:
         | '/system/departments'
+      views:
+        | never
+    }
+    'src/pages/system/resources.vue': {
+      routes:
+        | '/system/resources'
       views:
         | never
     }

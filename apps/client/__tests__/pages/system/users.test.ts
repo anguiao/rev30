@@ -134,4 +134,26 @@ describe('users page', () => {
       pageSize: 20,
     })
   })
+
+  it('keeps applied filters when changing page after search', async () => {
+    listUsersMock.mockResolvedValue(userListResponse)
+    const { wrapper } = await mountUsersPage()
+    await flushPromises()
+
+    await wrapper.find('[data-test="users-keyword"] input').setValue('  ada  ')
+    wrapper.getComponent(NSelect).vm.$emit('update:value', USER_STATUS_DISABLED)
+    await flushPromises()
+    await wrapper.get('[data-test="users-search"]').trigger('click')
+    await flushPromises()
+
+    wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
+    await flushPromises()
+
+    expect(listUsersMock).toHaveBeenLastCalledWith({
+      page: 2,
+      pageSize: 20,
+      keyword: 'ada',
+      status: USER_STATUS_DISABLED,
+    })
+  })
 })

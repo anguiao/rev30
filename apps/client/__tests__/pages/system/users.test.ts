@@ -2,7 +2,7 @@
 
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NSelect } from 'naive-ui'
+import { NPagination, NSelect } from 'naive-ui'
 import { USER_STATUS_DISABLED, USER_STATUS_ENABLED, type UserListResponse } from '@rev30/shared'
 import { listUsers } from '../../../src/features/system/requests'
 import { formatDateTime } from '../../../src/features/system/labels'
@@ -115,6 +115,23 @@ describe('users page', () => {
       pageSize: 20,
       keyword: 'ada',
       status: USER_STATUS_DISABLED,
+    })
+  })
+
+  it('changes page without applying draft filters before search', async () => {
+    listUsersMock.mockResolvedValue(userListResponse)
+    const { wrapper } = await mountUsersPage()
+    await flushPromises()
+
+    await wrapper.find('[data-test="users-keyword"] input').setValue('  ada  ')
+    await flushPromises()
+
+    wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
+    await flushPromises()
+
+    expect(listUsersMock).toHaveBeenLastCalledWith({
+      page: 2,
+      pageSize: 20,
     })
   })
 })

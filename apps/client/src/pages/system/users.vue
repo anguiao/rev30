@@ -102,7 +102,10 @@ function handleReset() {
 }
 
 function handlePageChange(page: number) {
-  query.value = buildNextQuery(page)
+  query.value = {
+    ...query.value,
+    page,
+  }
 }
 
 function handleRefresh() {

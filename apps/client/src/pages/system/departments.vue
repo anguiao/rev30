@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, h, ref } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 import { useQuery } from '@pinia/colada'
-import type { DataTableColumns, SelectOption } from 'naive-ui'
+import type { DataTableColumns, DataTableRowKey, SelectOption } from 'naive-ui'
 import { NAlert, NButton, NDataTable, NInput, NSelect, NSpace, NTag } from 'naive-ui'
 import {
   DEPARTMENT_STATUS_DISABLED,
@@ -74,7 +74,15 @@ const rows = computed(() => {
 })
 
 const visibleCount = computed(() => countTreeNodes(rows.value))
-const defaultExpandedRowKeys = computed(() => collectTreeIds(rows.value))
+const expandedRowKeys = ref<DataTableRowKey[]>([])
+
+watch(
+  rows,
+  (nextRows) => {
+    expandedRowKeys.value = collectTreeIds(nextRows)
+  },
+  { immediate: true },
+)
 
 function handleSearch() {
   activeFilters.value = {
@@ -98,8 +106,12 @@ function handleRefresh() {
   void departmentTreeQuery.refresh()
 }
 
-function collectTreeIds(nodes: DepartmentTreeNode[]): string[] {
+function collectTreeIds(nodes: DepartmentTreeNode[]): DataTableRowKey[] {
   return nodes.flatMap((node) => [node.id, ...collectTreeIds(node.children)])
+}
+
+function handleUpdateExpandedRowKeys(keys: DataTableRowKey[]) {
+  expandedRowKeys.value = keys
 }
 
 const columns: DataTableColumns<DepartmentTreeNode> = [
@@ -180,7 +192,8 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
         :data="rows"
         :loading="isLoading"
         :pagination="false"
-        :default-expanded-row-keys="defaultExpandedRowKeys"
+        :expanded-row-keys="expandedRowKeys"
+        @update:expanded-row-keys="handleUpdateExpandedRowKeys"
         :row-key="(row: DepartmentTreeNode) => row.id"
       />
     </section>

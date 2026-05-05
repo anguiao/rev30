@@ -98,11 +98,19 @@ describe('departments page', () => {
     expect(wrapper.text()).toContain('研发中心')
     expect(wrapper.text()).toContain('ENG')
     expect(wrapper.text()).toContain(formatDateTime('2026-05-01T00:00:00.000Z'))
-    const treeData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
+    const table = wrapper.getComponent(NDataTable)
+    const treeData = table.props('data') as DepartmentTreeNode[]
     expect(treeData).toHaveLength(1)
     expect(treeData[0]!.children).toHaveLength(1)
     expect(treeData[0]!.children[0]!.name).toBe('平台架构组')
     expect(treeData[0]!.children[0]!.code).toBe('ARCH')
+    expect(table.props('expandedRowKeys')).toEqual([
+      '11111111-1111-4111-8111-111111111111',
+      '22222222-2222-4222-8222-222222222222',
+    ])
+    table.vm.$emit('update:expandedRowKeys', [])
+    await flushPromises()
+    expect(wrapper.getComponent(NDataTable).props('expandedRowKeys')).toEqual([])
     expect(formatDateTime(treeData[0]!.children[0]!.createdAt)).toBe(
       formatDateTime('2026-05-02T00:00:00.000Z'),
     )

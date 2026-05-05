@@ -1,11 +1,11 @@
 # Rev30
 
-Rev30 是一个 TypeScript monorepo 项目，包含 Vue 客户端、Hono API、共享 zod schema，以及基于 Drizzle 的用户与认证基础能力。
+Rev30 是一个 TypeScript monorepo 项目，包含 Vue 客户端、Hono API、共享 zod schema，以及基于 Drizzle 的认证和系统管理基础能力。
 
 ## 目录结构
 
-- `apps/server`：Node.js + Hono + Drizzle API，提供健康检查、认证和系统用户接口。
-- `apps/client`：Vue 3 + Vite 前端，包含登录、注册和受保护工作台页面，通过 `/api` 代理调用服务端。
+- `apps/server`：Node.js + Hono + Drizzle API，提供健康检查、认证和系统用户、部门、角色、资源接口。
+- `apps/client`：Vue 3 + Vite 前端，包含登录、注册、后台管理壳层，以及系统用户、部门、角色、资源只读管理页面，通过 `/api` 代理调用服务端。
 - `packages/shared`：前后端共用的 zod schema 和 TypeScript 类型。
 
 ## 技术栈

@@ -57,16 +57,22 @@ function handleLogout() {
 </script>
 
 <template>
-  <div class="min-h-screen min-w-[1120px] bg-stone-50 text-stone-900 dark:bg-zinc-950 dark:text-zinc-100">
+  <div
+    class="min-h-screen min-w-[1120px] bg-stone-50 text-stone-900 dark:bg-zinc-950 dark:text-zinc-100"
+  >
     <div class="mx-auto grid min-h-screen max-w-[1600px] grid-cols-[260px_1fr]">
-      <aside class="flex flex-col border-r border-stone-200 bg-white px-5 py-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <aside
+        class="flex flex-col border-r border-stone-200 bg-white px-5 py-6 dark:border-zinc-800 dark:bg-zinc-900"
+      >
         <header class="mb-8 border-b border-stone-200 pb-5 dark:border-zinc-800">
           <p class="text-lg font-semibold">Rev30</p>
           <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">后台管理</p>
         </header>
 
         <nav class="flex-1">
-          <p class="mb-3 text-xs font-medium tracking-wide text-stone-500 dark:text-zinc-400">系统管理</p>
+          <p class="mb-3 text-xs font-medium tracking-wide text-stone-500 dark:text-zinc-400">
+            系统管理
+          </p>
           <ul class="space-y-1.5">
             <li v-for="item in navItems" :key="item.to">
               <RouterLink

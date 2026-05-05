@@ -3,11 +3,7 @@
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NPagination, NSelect } from 'naive-ui'
-import {
-  ROLE_STATUS_DISABLED,
-  ROLE_STATUS_ENABLED,
-  type RoleListResponse,
-} from '@rev30/shared'
+import { ROLE_STATUS_DISABLED, ROLE_STATUS_ENABLED, type RoleListResponse } from '@rev30/shared'
 import { formatDateTime } from '../../../src/features/system/labels'
 import { listRoles } from '../../../src/features/system/requests'
 import RolesPage from '../../../src/pages/system/roles.vue'

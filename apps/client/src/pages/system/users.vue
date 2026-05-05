@@ -2,16 +2,7 @@
 import { computed, h, ref } from 'vue'
 import { useQuery } from '@pinia/colada'
 import type { DataTableColumns, SelectOption } from 'naive-ui'
-import {
-  NAlert,
-  NButton,
-  NDataTable,
-  NInput,
-  NPagination,
-  NSelect,
-  NSpace,
-  NTag,
-} from 'naive-ui'
+import { NAlert, NButton, NDataTable, NInput, NPagination, NSelect, NSpace, NTag } from 'naive-ui'
 import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
@@ -174,7 +165,9 @@ const columns: DataTableColumns<User> = [
       <NButton type="primary" secondary :loading="isLoading" @click="handleRefresh">刷新</NButton>
     </header>
 
-    <section class="rounded-md border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <section
+      class="rounded-md border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+    >
       <NSpace align="end" :size="12">
         <NInput
           v-model:value="keyword"
@@ -197,7 +190,9 @@ const columns: DataTableColumns<User> = [
 
     <NAlert v-if="loadErrorMessage" type="error">{{ loadErrorMessage }}</NAlert>
 
-    <section class="rounded-md border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <section
+      class="rounded-md border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+    >
       <NDataTable
         :columns="columns"
         :data="users"

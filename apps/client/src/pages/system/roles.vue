@@ -164,7 +164,9 @@ const columns: DataTableColumns<RoleListItem> = [
 
     <NAlert v-if="loadErrorMessage" type="error">{{ loadErrorMessage }}</NAlert>
 
-    <section class="rounded-md border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <section
+      class="rounded-md border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+    >
       <NDataTable
         :columns="columns"
         :data="roles"

@@ -84,7 +84,9 @@ const resourceTreeResponse: ResourceTreeNode[] = [
 ]
 
 async function mountResourcesPage() {
-  return mountAuthRoute('/system/resources', [{ path: '/system/resources', component: ResourcesPage }])
+  return mountAuthRoute('/system/resources', [
+    { path: '/system/resources', component: ResourcesPage },
+  ])
 }
 
 describe('resources page', () => {
@@ -178,7 +180,9 @@ describe('resources page', () => {
     tableData = wrapper.getComponent(NDataTable).props('data') as ResourceTreeNode[]
     expect(tableData[0]!.children.map((child) => child.name)).toEqual(['Resource Delete'])
 
-    const resetButton = wrapper.findAll('button').find((buttonWrapper) => buttonWrapper.text() === '重置')
+    const resetButton = wrapper
+      .findAll('button')
+      .find((buttonWrapper) => buttonWrapper.text() === '重置')
 
     expect(resetButton).toBeDefined()
     await resetButton!.trigger('click')

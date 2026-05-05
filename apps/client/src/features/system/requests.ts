@@ -16,17 +16,19 @@ const fallbackErrorMessage = '请求失败'
 
 type RequestQueryValue = string | number | undefined
 
-type UserListRequestQuery = NonNullable<Parameters<typeof api.system.users.$get>[0]> extends {
-  query: infer TQuery
-}
-  ? TQuery
-  : never
+type UserListRequestQuery =
+  NonNullable<Parameters<typeof api.system.users.$get>[0]> extends {
+    query: infer TQuery
+  }
+    ? TQuery
+    : never
 
-type RoleListRequestQuery = NonNullable<Parameters<typeof api.system.roles.$get>[0]> extends {
-  query: infer TQuery
-}
-  ? TQuery
-  : never
+type RoleListRequestQuery =
+  NonNullable<Parameters<typeof api.system.roles.$get>[0]> extends {
+    query: infer TQuery
+  }
+    ? TQuery
+    : never
 
 function toRequestQueryEntry(value: RequestQueryValue): string | undefined {
   if (value === undefined) {
@@ -55,7 +57,10 @@ function createRequestQuery<T extends Record<string, RequestQueryValue>>(query: 
 }
 
 export class SystemRequestError extends Error {
-  constructor(public readonly status: number, message: string) {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
     super(message)
     this.name = 'SystemRequestError'
   }

@@ -156,7 +156,9 @@ describe('departments page', () => {
     tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
     expect(tableData[0]!.children.map((child) => child.name)).toEqual(['平台架构组'])
 
-    const resetButton = wrapper.findAll('button').find((buttonWrapper) => buttonWrapper.text() === '重置')
+    const resetButton = wrapper
+      .findAll('button')
+      .find((buttonWrapper) => buttonWrapper.text() === '重置')
 
     expect(resetButton).toBeDefined()
     await resetButton!.trigger('click')
@@ -179,7 +181,9 @@ describe('departments page', () => {
 
     expect(wrapper.text()).toContain('共 2 个部门')
     expect(wrapper.text()).toContain('研发中心')
-    const statusFilteredTree = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
+    const statusFilteredTree = wrapper
+      .getComponent(NDataTable)
+      .props('data') as DepartmentTreeNode[]
     expect(statusFilteredTree[0]!.children.map((child) => child.name)).toEqual(['平台架构组'])
   })
 })

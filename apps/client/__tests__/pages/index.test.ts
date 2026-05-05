@@ -2,29 +2,23 @@
 
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useAuthStore } from '../../src/stores/auth'
-import { logout } from '../../src/features/auth/requests'
 import HomePage from '../../src/pages/index.vue'
-import { disposeActiveTestPinia, mountAuthRoute, session, stubPreferredDark } from '../helpers/auth'
+import SystemPage from '../../src/pages/system/index.vue'
+import { disposeActiveTestPinia, mountAuthRoute, stubPreferredDark } from '../helpers/auth'
 
 enableAutoUnmount(afterEach)
-
-vi.mock('../../src/features/auth/requests', () => ({
-  logout: vi.fn(),
-}))
-
-const logoutMock = vi.mocked(logout)
 
 async function mountHomePage() {
   return mountAuthRoute('/', [
     { path: '/', component: HomePage },
+    { path: '/system', component: SystemPage },
+    { path: '/system/users', component: { template: '<main>System Users</main>' } },
     { path: '/login', component: { template: '<main>Login</main>' } },
   ])
 }
 
 describe('home page', () => {
   beforeEach(() => {
-    logoutMock.mockReset()
     localStorage.clear()
     document.documentElement.className = ''
     document.documentElement.style.colorScheme = ''
@@ -36,40 +30,22 @@ describe('home page', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows the current user summary on the home page', async () => {
-    const { wrapper } = await mountHomePage()
-    useAuthStore().setSession(session)
+  it('redirects root route to system users on mount', async () => {
+    const { router } = await mountHomePage()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Ada Lovelace')
-    expect(wrapper.text()).toContain('ada')
+    expect(router.currentRoute.value.fullPath).toBe('/system/users')
   })
 
-  it('logs out, clears the local session, and navigates to login', async () => {
-    logoutMock.mockResolvedValue(undefined)
-    const { router, wrapper } = await mountHomePage()
-    const auth = useAuthStore()
-    auth.setSession(session)
-
-    await wrapper.find('[data-test="logout"]').trigger('click')
+  it('redirects system route to system users on mount', async () => {
+    const { router } = await mountAuthRoute('/system', [
+      { path: '/', component: HomePage },
+      { path: '/system', component: SystemPage },
+      { path: '/system/users', component: { template: '<main>System Users</main>' } },
+      { path: '/login', component: { template: '<main>Login</main>' } },
+    ])
     await flushPromises()
 
-    expect(logoutMock).toHaveBeenCalledOnce()
-    expect(auth.isAuthenticated).toBe(false)
-    expect(router.currentRoute.value.fullPath).toBe('/login')
-  })
-
-  it('clears the local session and navigates to login when logout fails', async () => {
-    logoutMock.mockRejectedValue(new Error('logout failed'))
-    const { router, wrapper } = await mountHomePage()
-    const auth = useAuthStore()
-    auth.setSession(session)
-
-    await wrapper.find('[data-test="logout"]').trigger('click')
-    await flushPromises()
-
-    expect(logoutMock).toHaveBeenCalledOnce()
-    expect(auth.isAuthenticated).toBe(false)
-    expect(router.currentRoute.value.fullPath).toBe('/login')
+    expect(router.currentRoute.value.fullPath).toBe('/system/users')
   })
 })

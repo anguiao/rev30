@@ -36,6 +36,7 @@ function createTestRouter() {
     history: createMemoryHistory(),
     routes: [
       { path: '/', component: { template: '<main>Home</main>' } },
+      { path: '/system/users', component: { template: '<main>System users</main>' } },
       { path: '/login', component: { template: '<main>Login</main>' } },
       { path: '/register', component: { template: '<main>Register</main>' } },
     ],
@@ -67,11 +68,11 @@ describe('auth guards', () => {
     expect(router.currentRoute.value.fullPath).toBe('/')
   })
 
-  it('redirects unauthenticated users to login when refresh fails, preserving redirect query and marking auth ready', async () => {
+  it('redirects unauthenticated users from admin pages to login with redirect query', async () => {
     refreshSessionMock.mockRejectedValue(new Error('refresh failed'))
     const router = createTestRouter()
 
-    await router.push('/')
+    await router.push('/system/users')
 
     const auth = useAuthStore()
 
@@ -79,7 +80,7 @@ describe('auth guards', () => {
     expect(auth.isAuthenticated).toBe(false)
     expect(auth.isReady).toBe(true)
     expect(router.currentRoute.value.path).toBe('/login')
-    expect(router.currentRoute.value.query).toEqual({ redirect: '/' })
+    expect(router.currentRoute.value.query).toEqual({ redirect: '/system/users' })
   })
 
   it('redirects authenticated users away from auth pages', async () => {
@@ -91,6 +92,6 @@ describe('auth guards', () => {
     await router.push('/login')
 
     expect(refreshSessionMock).not.toHaveBeenCalled()
-    expect(router.currentRoute.value.fullPath).toBe('/')
+    expect(router.currentRoute.value.fullPath).toBe('/system/users')
   })
 })

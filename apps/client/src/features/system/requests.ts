@@ -1,5 +1,6 @@
 import {
   departmentTreeNodeSchema,
+  errorMessageSchema,
   resourceTreeNodeSchema,
   roleListResponseSchema,
   type DepartmentTreeNode,
@@ -10,51 +11,12 @@ import {
   type UserListResponse,
   userListResponseSchema,
 } from '@rev30/shared'
+import type { z } from 'zod'
 import { api } from '../../api'
+import { normalizeRequestQuery } from '../../utils/request'
 
-const fallbackErrorMessage = '请求失败'
-
-type RequestQueryValue = string | number | undefined
-
-type UserListRequestQuery =
-  NonNullable<Parameters<typeof api.system.users.$get>[0]> extends {
-    query: infer TQuery
-  }
-    ? TQuery
-    : never
-
-type RoleListRequestQuery =
-  NonNullable<Parameters<typeof api.system.roles.$get>[0]> extends {
-    query: infer TQuery
-  }
-    ? TQuery
-    : never
-
-function toRequestQueryEntry(value: RequestQueryValue): string | undefined {
-  if (value === undefined) {
-    return undefined
-  }
-
-  if (typeof value === 'string' && value === '') {
-    return undefined
-  }
-
-  return String(value)
-}
-
-function createRequestQuery<T extends Record<string, RequestQueryValue>>(query: T) {
-  const requestQuery = {} as Partial<Record<keyof T, string>>
-
-  for (const [key, value] of Object.entries(query) as [keyof T, T[keyof T]][]) {
-    const entry = toRequestQueryEntry(value)
-
-    if (entry !== undefined) {
-      requestQuery[key] = entry
-    }
-  }
-
-  return requestQuery
-}
+const departmentTreeResponseSchema = departmentTreeNodeSchema.array()
+const resourceTreeResponseSchema = resourceTreeNodeSchema.array()
 
 export class SystemRequestError extends Error {
   constructor(
@@ -66,51 +28,25 @@ export class SystemRequestError extends Error {
   }
 }
 
-function parseErrorMessage(error: unknown) {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'message' in error &&
-    typeof error.message === 'string'
-  ) {
-    return error.message
-  }
-
-  return fallbackErrorMessage
-}
-
 async function parseSystemError(response: Response): Promise<SystemRequestError> {
   try {
-    return new SystemRequestError(response.status, parseErrorMessage(await response.json()))
+    const result = errorMessageSchema.safeParse(await response.json())
+
+    return new SystemRequestError(
+      response.status,
+      result.success ? result.data.message : '请求失败',
+    )
   } catch {
-    return new SystemRequestError(response.status, fallbackErrorMessage)
+    return new SystemRequestError(response.status, '请求失败')
   }
 }
 
-async function parseSystemResponse<T>(response: Response, parse: (json: unknown) => T): Promise<T> {
+async function parseSystemResponse<T>(response: Response, schema: z.ZodType<T>): Promise<T> {
   if (!response.ok) {
     throw await parseSystemError(response)
   }
 
-  return parse(await response.json())
-}
-
-function toUserListQuery(query: UserListQuery): UserListRequestQuery {
-  return createRequestQuery({
-    page: query.page,
-    pageSize: query.pageSize,
-    keyword: query.keyword,
-    status: query.status,
-  }) as UserListRequestQuery
-}
-
-function toRoleListQuery(query: RoleListQuery): RoleListRequestQuery {
-  return createRequestQuery({
-    page: query.page,
-    pageSize: query.pageSize,
-    keyword: query.keyword,
-    status: query.status,
-  }) as RoleListRequestQuery
+  return schema.parse(await response.json())
 }
 
 export function getSystemErrorMessage(error: unknown, fallback: string) {
@@ -118,29 +54,27 @@ export function getSystemErrorMessage(error: unknown, fallback: string) {
 }
 
 export async function listUsers(query: UserListQuery): Promise<UserListResponse> {
-  const response = await api.system.users.$get({
-    query: toUserListQuery(query),
-  })
-
-  return parseSystemResponse(response, (json) => userListResponseSchema.parse(json))
+  return parseSystemResponse(
+    await api.system.users.$get({
+      query: normalizeRequestQuery(query),
+    }),
+    userListResponseSchema,
+  )
 }
 
 export async function listRoles(query: RoleListQuery): Promise<RoleListResponse> {
-  const response = await api.system.roles.$get({
-    query: toRoleListQuery(query),
-  })
-
-  return parseSystemResponse(response, (json) => roleListResponseSchema.parse(json))
+  return parseSystemResponse(
+    await api.system.roles.$get({
+      query: normalizeRequestQuery(query),
+    }),
+    roleListResponseSchema,
+  )
 }
 
 export async function getDepartmentTree(): Promise<DepartmentTreeNode[]> {
-  const response = await api.system.departments.tree.$get()
-
-  return parseSystemResponse(response, (json) => departmentTreeNodeSchema.array().parse(json))
+  return parseSystemResponse(await api.system.departments.tree.$get(), departmentTreeResponseSchema)
 }
 
 export async function getResourceTree(): Promise<ResourceTreeNode[]> {
-  const response = await api.system.resources.tree.$get()
-
-  return parseSystemResponse(response, (json) => resourceTreeNodeSchema.array().parse(json))
+  return parseSystemResponse(await api.system.resources.tree.$get(), resourceTreeResponseSchema)
 }

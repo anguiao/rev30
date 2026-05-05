@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { blankStringToNull, blankStringToUndefined } from '../utils'
+import { blankStringToNull } from '../utils'
+import { optionalNumericQueryValue, optionalTrimmedQueryString } from '../query'
 import { departmentSummarySchema } from './departments'
 import { roleIdsSchema, roleSummarySchema } from './roles'
 
@@ -24,12 +25,8 @@ export const nullableContactInputSchema = z.preprocess(
   z.union([nonBlankStringSchema, z.null()]).optional(),
 )
 
-const optionalKeywordSchema = z.preprocess(blankStringToUndefined, z.string().trim().optional())
-
-const optionalStatusQuerySchema = z.preprocess(
-  blankStringToUndefined,
-  z.coerce.number().pipe(userStatusSchema).optional(),
-)
+const optionalKeywordSchema = optionalTrimmedQueryString()
+const optionalStatusQuerySchema = optionalNumericQueryValue(userStatusSchema)
 
 const pageSchema = z.coerce.number('页码必须是数字').int('页码必须是整数').min(1, '页码不能小于 1')
 const pageSizeSchema = z.coerce
@@ -50,6 +47,8 @@ export const userSchema = z.object({
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 })
+
+export const userListItemSchema = userSchema
 
 export const userDepartmentSchema = departmentSummarySchema
 export const userRoleSchema = roleSummarySchema
@@ -106,13 +105,14 @@ export const userUpdateSchema = z
   })
 
 export const userListResponseSchema = z.object({
-  list: z.array(userSchema),
+  list: z.array(userListItemSchema),
   total: z.number().int().min(0),
   page: z.number().int().min(1),
   pageSize: z.number().int().min(1),
 })
 
 export type User = z.infer<typeof userSchema>
+export type UserListItem = z.infer<typeof userListItemSchema>
 export type UserListQuery = z.infer<typeof userListQuerySchema>
 export type UserCreateInput = z.infer<typeof userCreateSchema>
 export type UserUpdateInput = z.infer<typeof userUpdateSchema>

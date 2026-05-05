@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { blankStringToNull, blankStringToUndefined } from '../utils'
+import { blankStringToNull } from '../utils'
+import { optionalNumericQueryValue, optionalQueryValue, optionalTrimmedQueryString } from '../query'
 
 export const RESOURCE_STATUS_DISABLED = 0
 export const RESOURCE_STATUS_ENABLED = 1
@@ -27,16 +28,10 @@ export const resourceOpenTargetSchema = z.enum(
 const nonBlankStringSchema = z.string().trim().min(1, '不能为空')
 
 const resourceIdSchema = z.uuid('资源 ID 无效')
-const optionalKeywordSchema = z.preprocess(blankStringToUndefined, z.string().trim().optional())
-const optionalStatusQuerySchema = z.preprocess(
-  blankStringToUndefined,
-  z.coerce.number().pipe(resourceStatusSchema).optional(),
-)
-const optionalTypeQuerySchema = z.preprocess(blankStringToUndefined, resourceTypeSchema.optional())
-const optionalParentIdQuerySchema = z.preprocess(
-  blankStringToUndefined,
-  resourceIdSchema.optional(),
-)
+const optionalKeywordSchema = optionalTrimmedQueryString()
+const optionalStatusQuerySchema = optionalNumericQueryValue(resourceStatusSchema)
+const optionalTypeQuerySchema = optionalQueryValue(resourceTypeSchema)
+const optionalParentIdQuerySchema = optionalQueryValue(resourceIdSchema)
 const nullableOptionalTextInputSchema = z.preprocess(
   blankStringToNull,
   z.union([z.string().trim().min(1, '不能为空'), z.null()]).optional(),

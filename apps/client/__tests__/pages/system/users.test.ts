@@ -4,14 +4,14 @@ import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NPagination, NSelect } from 'naive-ui'
 import { USER_STATUS_DISABLED, USER_STATUS_ENABLED, type UserListResponse } from '@rev30/shared'
-import { listUsers } from '../../../src/features/system/requests'
-import { formatDateTime } from '../../../src/features/system/labels'
+import { formatDateTime, listUsers } from '../../../src/features/system'
 import UsersPage from '../../../src/pages/index/system/users.vue'
 import { disposeActiveTestPinia, mountAuthRoute, stubPreferredDark } from '../../helpers/auth'
 
 enableAutoUnmount(afterEach)
 
-vi.mock('../../../src/features/system/requests', () => ({
+vi.mock('../../../src/features/system', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/system')>()),
   listUsers: vi.fn(),
   getSystemErrorMessage: vi.fn((error: unknown, fallback: string) =>
     error instanceof Error ? error.message : fallback,
@@ -85,7 +85,6 @@ describe('users page', () => {
     expect(listUsersMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
     expect(wrapper.text()).toContain('用户管理')
     expect(wrapper.text()).toContain('共 2 个用户')
-    expect(wrapper.text()).toContain('刷新')
     expect(wrapper.text()).toContain('ada')
     expect(wrapper.text()).toContain('Ada Lovelace')
     expect(wrapper.text()).toContain('ada@example.com')

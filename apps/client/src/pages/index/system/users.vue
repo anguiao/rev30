@@ -1,27 +1,38 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue'
 import { useQuery } from '@pinia/colada'
-import type { DataTableColumns, SelectOption } from 'naive-ui'
+import type { DataTableColumns } from 'naive-ui'
 import { NAlert, NButton, NDataTable, NInput, NPagination, NSelect, NSpace, NTag } from 'naive-ui'
+import type { UserListItem, UserListQuery, UserListResponse } from '@rev30/shared'
 import {
-  USER_STATUS_DISABLED,
-  USER_STATUS_ENABLED,
-  type User,
-  type UserListQuery,
-} from '@rev30/shared'
-import { formatDateTime, statusLabels, statusTagTypes } from '../../../features/system/labels'
-import { getSystemErrorMessage, listUsers } from '../../../features/system/requests'
-
-type UserStatusFilter = typeof USER_STATUS_ENABLED | typeof USER_STATUS_DISABLED | 'all'
+  STATUS_FILTER_ALL,
+  formatDateTime,
+  getSystemErrorMessage,
+  listUsers,
+  statusLabels,
+  statusOptions,
+  statusTagTypes,
+  type StatusFilter,
+} from '../../../features/system'
 
 const keyword = ref('')
-const status = ref<UserStatusFilter>('all')
+const status = ref<StatusFilter>(STATUS_FILTER_ALL)
 const query = ref<UserListQuery>({
   page: 1,
   pageSize: 20,
 })
+const emptyUsersData: UserListResponse = {
+  list: [],
+  total: 0,
+  page: 1,
+  pageSize: query.value.pageSize,
+}
 
-const usersQuery = useQuery({
+const {
+  data: usersResponse,
+  error: usersError,
+  isLoading,
+} = useQuery({
   key: () => [
     'system',
     'users',
@@ -30,25 +41,14 @@ const usersQuery = useQuery({
     query.value.keyword ?? '',
     query.value.status ?? null,
   ],
+  placeholderData: () => emptyUsersData,
   query: () => listUsers(query.value),
 })
 
-const isLoading = computed(() => usersQuery.asyncStatus.value === 'loading')
-const users = computed(() => usersQuery.state.value.data?.list ?? [])
-const total = computed(() => usersQuery.state.value.data?.total ?? 0)
-const loadErrorMessage = computed(() => {
-  if (usersQuery.state.value.status !== 'error') {
-    return ''
-  }
-
-  return getSystemErrorMessage(usersQuery.state.value.error, '加载用户失败')
-})
-
-const statusOptions: SelectOption[] = [
-  { label: '全部', value: 'all' },
-  { label: '启用', value: USER_STATUS_ENABLED },
-  { label: '禁用', value: USER_STATUS_DISABLED },
-]
+const usersData = computed(() => usersResponse.value ?? emptyUsersData)
+const loadErrorMessage = computed(() =>
+  usersError.value === null ? '' : getSystemErrorMessage(usersError.value, '加载用户失败'),
+)
 
 function summarizeNames(items: Array<{ name: string }>) {
   const names = items.map((item) => item.name)
@@ -64,46 +64,31 @@ function summarizeNames(items: Array<{ name: string }>) {
   return `${names.slice(0, 2).join('、')}等 ${names.length} 个`
 }
 
-function formatContact(user: User) {
+function formatContact(user: UserListItem) {
   return user.email ?? user.phone ?? '-'
 }
 
-function buildNextQuery(targetPage: number) {
+function handleSearch() {
   const nextKeyword = keyword.value.trim()
 
-  return {
-    page: targetPage,
+  query.value = {
+    page: 1,
     pageSize: query.value.pageSize,
     ...(nextKeyword.length > 0 ? { keyword: nextKeyword } : {}),
-    ...(status.value !== 'all' ? { status: status.value } : {}),
+    ...(status.value !== STATUS_FILTER_ALL ? { status: status.value } : {}),
   } satisfies UserListQuery
-}
-
-function handleSearch() {
-  query.value = buildNextQuery(1)
 }
 
 function handleReset() {
   keyword.value = ''
-  status.value = 'all'
+  status.value = STATUS_FILTER_ALL
   query.value = {
     page: 1,
     pageSize: query.value.pageSize,
   }
 }
 
-function handlePageChange(page: number) {
-  query.value = {
-    ...query.value,
-    page,
-  }
-}
-
-function handleRefresh() {
-  void usersQuery.refresh()
-}
-
-const columns: DataTableColumns<User> = [
+const columns: DataTableColumns<UserListItem> = [
   {
     title: '用户名',
     key: 'username',
@@ -118,51 +103,52 @@ const columns: DataTableColumns<User> = [
     title: '联系方式',
     key: 'contact',
     minWidth: 200,
-    render: (row) => formatContact(row),
+    render: (user) => formatContact(user),
   },
   {
     title: '状态',
     key: 'status',
     width: 100,
-    render: (row) =>
+    render: (user) =>
       h(
         NTag,
         {
-          type: statusTagTypes[row.status],
+          type: statusTagTypes[user.status],
           bordered: false,
         },
-        () => statusLabels[row.status],
+        () => statusLabels[user.status],
       ),
   },
   {
     title: '部门',
     key: 'departments',
     minWidth: 240,
-    render: (row) => summarizeNames(row.departments),
+    render: (user) => summarizeNames(user.departments),
   },
   {
     title: '角色',
     key: 'roles',
     minWidth: 220,
-    render: (row) => summarizeNames(row.roles),
+    render: (user) => summarizeNames(user.roles),
   },
   {
     title: '创建时间',
     key: 'createdAt',
     minWidth: 160,
-    render: (row) => formatDateTime(row.createdAt),
+    render: (user) => formatDateTime(user.createdAt),
   },
 ]
 </script>
 
 <template>
   <main class="space-y-5">
-    <header class="flex items-center justify-between">
+    <header>
       <div>
         <h1 class="text-xl font-semibold">用户管理</h1>
-        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ total }} 个用户</p>
+        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">
+          共 {{ usersData.total }} 个用户
+        </p>
       </div>
-      <NButton type="primary" secondary :loading="isLoading" @click="handleRefresh">刷新</NButton>
     </header>
 
     <section
@@ -174,14 +160,14 @@ const columns: DataTableColumns<User> = [
           data-test="users-keyword"
           clearable
           placeholder="请输入用户名或昵称"
-          class="w-[260px]"
+          class="w-64!"
         />
         <NSelect
           v-model:value="status"
           data-test="users-status"
           :options="statusOptions"
           placeholder="全部状态"
-          class="w-[160px]"
+          class="w-40!"
         />
         <NButton data-test="users-search" type="primary" @click="handleSearch">查询</NButton>
         <NButton @click="handleReset">重置</NButton>
@@ -195,18 +181,17 @@ const columns: DataTableColumns<User> = [
     >
       <NDataTable
         :columns="columns"
-        :data="users"
+        :data="usersData.list"
         :loading="isLoading"
         :pagination="false"
-        :row-key="(row: User) => row.id"
+        :row-key="(user: UserListItem) => user.id"
       />
 
       <div class="mt-4 flex justify-end">
         <NPagination
-          :page="query.page"
+          v-model:page="query.page"
           :page-size="query.pageSize"
-          :item-count="total"
-          @update:page="handlePageChange"
+          :item-count="usersData.total"
         />
       </div>
     </section>

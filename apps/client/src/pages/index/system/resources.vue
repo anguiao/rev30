@@ -4,8 +4,6 @@ import { useQuery } from '@pinia/colada'
 import type { DataTableColumns, DataTableRowKey, SelectOption } from 'naive-ui'
 import { NAlert, NButton, NDataTable, NInput, NSelect, NSpace, NTag } from 'naive-ui'
 import {
-  RESOURCE_STATUS_DISABLED,
-  RESOURCE_STATUS_ENABLED,
   RESOURCE_TYPE_ACTION,
   RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_EXTERNAL,
@@ -14,33 +12,38 @@ import {
   type ResourceType,
 } from '@rev30/shared'
 import {
+  STATUS_FILTER_ALL,
+  countTreeNodes,
+  filterTree,
   formatDateTime,
+  getResourceTree,
+  getSystemErrorMessage,
   resourceTypeLabels,
   statusLabels,
+  statusOptions,
   statusTagTypes,
-} from '../../../features/system/labels'
-import { getResourceTree, getSystemErrorMessage } from '../../../features/system/requests'
-import { countTreeNodes, filterTree } from '../../../features/system/tree'
+  type StatusFilter,
+  type SystemStatus,
+} from '../../../features/system'
 
 type ResourceTypeFilter = ResourceType | 'all'
-type ResourceStatusFilter = typeof RESOURCE_STATUS_ENABLED | typeof RESOURCE_STATUS_DISABLED | 'all'
 
 type ResourceFilters = {
   keyword: string
   type: ResourceTypeFilter
-  status: ResourceStatusFilter
+  status: StatusFilter
 }
 
 type ResourceActiveFilters = {
   keyword: string
   type: ResourceType | null
-  status: typeof RESOURCE_STATUS_ENABLED | typeof RESOURCE_STATUS_DISABLED | null
+  status: SystemStatus | null
 }
 
 const filters = ref<ResourceFilters>({
   keyword: '',
   type: 'all',
-  status: 'all',
+  status: STATUS_FILTER_ALL,
 })
 
 const activeFilters = ref<ResourceActiveFilters>({
@@ -48,21 +51,24 @@ const activeFilters = ref<ResourceActiveFilters>({
   type: null,
   status: null,
 })
+const emptyResourceTree: ResourceTreeNode[] = []
 
-const resourceTreeQuery = useQuery({
+const {
+  data: resourceTree,
+  error: resourceTreeError,
+  isLoading,
+} = useQuery({
   key: () => ['system', 'resources', 'tree'],
+  placeholderData: () => emptyResourceTree,
   query: () => getResourceTree(),
 })
 
-const isLoading = computed(() => resourceTreeQuery.asyncStatus.value === 'loading')
-const rawTree = computed(() => resourceTreeQuery.state.value.data ?? [])
-const loadErrorMessage = computed(() => {
-  if (resourceTreeQuery.state.value.status !== 'error') {
-    return ''
-  }
-
-  return getSystemErrorMessage(resourceTreeQuery.state.value.error, '加载资源失败')
-})
+const rawTree = computed(() => resourceTree.value ?? emptyResourceTree)
+const loadErrorMessage = computed(() =>
+  resourceTreeError.value === null
+    ? ''
+    : getSystemErrorMessage(resourceTreeError.value, '加载资源失败'),
+)
 
 const typeOptions: SelectOption[] = [
   { label: '全部', value: 'all' },
@@ -70,12 +76,6 @@ const typeOptions: SelectOption[] = [
   { label: resourceTypeLabels[RESOURCE_TYPE_MENU], value: RESOURCE_TYPE_MENU },
   { label: resourceTypeLabels[RESOURCE_TYPE_EXTERNAL], value: RESOURCE_TYPE_EXTERNAL },
   { label: resourceTypeLabels[RESOURCE_TYPE_ACTION], value: RESOURCE_TYPE_ACTION },
-]
-
-const statusOptions: SelectOption[] = [
-  { label: '全部', value: 'all' },
-  { label: '启用', value: RESOURCE_STATUS_ENABLED },
-  { label: '禁用', value: RESOURCE_STATUS_DISABLED },
 ]
 
 const rows = computed(() => {
@@ -115,7 +115,7 @@ function handleSearch() {
   activeFilters.value = {
     keyword: filters.value.keyword.trim(),
     type: filters.value.type === 'all' ? null : filters.value.type,
-    status: filters.value.status === 'all' ? null : filters.value.status,
+    status: filters.value.status === STATUS_FILTER_ALL ? null : filters.value.status,
   }
 }
 
@@ -123,17 +123,13 @@ function handleReset() {
   filters.value = {
     keyword: '',
     type: 'all',
-    status: 'all',
+    status: STATUS_FILTER_ALL,
   }
   activeFilters.value = {
     keyword: '',
     type: null,
     status: null,
   }
-}
-
-function handleRefresh() {
-  void resourceTreeQuery.refresh()
 }
 
 function collectTreeIds(nodes: ResourceTreeNode[]): DataTableRowKey[] {
@@ -144,8 +140,8 @@ function handleUpdateExpandedRowKeys(keys: DataTableRowKey[]) {
   expandedRowKeys.value = keys
 }
 
-function renderPathValue(row: ResourceTreeNode) {
-  return row.path ?? row.externalUrl ?? '-'
+function renderPathValue(resource: ResourceTreeNode) {
+  return resource.path ?? resource.externalUrl ?? '-'
 }
 
 const columns: DataTableColumns<ResourceTreeNode> = [
@@ -163,32 +159,32 @@ const columns: DataTableColumns<ResourceTreeNode> = [
     title: '类型',
     key: 'type',
     width: 100,
-    render: (row) => resourceTypeLabels[row.type],
+    render: (resource) => resourceTypeLabels[resource.type],
   },
   {
     title: '路径/外链',
     key: 'pathOrExternalUrl',
     minWidth: 220,
-    render: (row) => renderPathValue(row),
+    render: (resource) => renderPathValue(resource),
   },
   {
     title: '隐藏',
     key: 'hidden',
     width: 90,
-    render: (row) => (row.hidden ? '是' : '否'),
+    render: (resource) => (resource.hidden ? '是' : '否'),
   },
   {
     title: '状态',
     key: 'status',
     width: 100,
-    render: (row) =>
+    render: (resource) =>
       h(
         NTag,
         {
-          type: statusTagTypes[row.status],
+          type: statusTagTypes[resource.status],
           bordered: false,
         },
-        () => statusLabels[row.status],
+        () => statusLabels[resource.status],
       ),
   },
   {
@@ -200,19 +196,18 @@ const columns: DataTableColumns<ResourceTreeNode> = [
     title: '创建时间',
     key: 'createdAt',
     minWidth: 180,
-    render: (row) => formatDateTime(row.createdAt),
+    render: (resource) => formatDateTime(resource.createdAt),
   },
 ]
 </script>
 
 <template>
   <main class="space-y-5">
-    <header class="flex items-center justify-between">
+    <header>
       <div>
         <h1 class="text-xl font-semibold">资源管理</h1>
         <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ visibleCount }} 个资源</p>
       </div>
-      <NButton type="primary" secondary :loading="isLoading" @click="handleRefresh">刷新</NButton>
     </header>
 
     <section
@@ -223,22 +218,22 @@ const columns: DataTableColumns<ResourceTreeNode> = [
           v-model:value="filters.keyword"
           data-test="resources-keyword"
           clearable
-          placeholder="请输入资源名称、编码、路径或外链"
-          class="w-[280px]"
+          placeholder="请输入名称、编码、路径或外链"
+          class="w-64!"
         />
         <NSelect
           v-model:value="filters.type"
           data-test="resources-type"
           :options="typeOptions"
           placeholder="全部类型"
-          class="w-[160px]"
+          class="w-40!"
         />
         <NSelect
           v-model:value="filters.status"
           data-test="resources-status"
           :options="statusOptions"
           placeholder="全部状态"
-          class="w-[160px]"
+          class="w-40!"
         />
         <NButton data-test="resources-search" type="primary" @click="handleSearch">查询</NButton>
         <NButton @click="handleReset">重置</NButton>
@@ -257,7 +252,7 @@ const columns: DataTableColumns<ResourceTreeNode> = [
         :pagination="false"
         :expanded-row-keys="expandedRowKeys"
         @update:expanded-row-keys="handleUpdateExpandedRowKeys"
-        :row-key="(row: ResourceTreeNode) => row.id"
+        :row-key="(resource: ResourceTreeNode) => resource.id"
       />
     </section>
   </main>

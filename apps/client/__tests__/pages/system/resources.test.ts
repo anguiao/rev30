@@ -12,14 +12,14 @@ import {
   RESOURCE_TYPE_MENU,
   type ResourceTreeNode,
 } from '@rev30/shared'
-import { formatDateTime } from '../../../src/features/system/labels'
-import { getResourceTree } from '../../../src/features/system/requests'
+import { formatDateTime, getResourceTree } from '../../../src/features/system'
 import ResourcesPage from '../../../src/pages/index/system/resources.vue'
 import { disposeActiveTestPinia, mountAuthRoute, stubPreferredDark } from '../../helpers/auth'
 
 enableAutoUnmount(afterEach)
 
-vi.mock('../../../src/features/system/requests', () => ({
+vi.mock('../../../src/features/system', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/system')>()),
   getResourceTree: vi.fn(),
   getSystemErrorMessage: vi.fn((error: unknown, fallback: string) =>
     error instanceof Error ? error.message : fallback,

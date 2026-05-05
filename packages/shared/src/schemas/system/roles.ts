@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { blankStringToUndefined } from '../utils'
+import { optionalNumericQueryValue, optionalTrimmedQueryString } from '../query'
 import { resourceTypeSchema } from './resources'
 
 export const ROLE_STATUS_DISABLED = 0
@@ -13,11 +13,8 @@ const nonBlankStringSchema = z.string().trim().min(1, '不能为空')
 const roleIdSchema = z.uuid('角色 ID 无效')
 const resourceIdSchema = z.uuid('资源 ID 无效')
 
-const optionalKeywordSchema = z.preprocess(blankStringToUndefined, z.string().trim().optional())
-const optionalStatusQuerySchema = z.preprocess(
-  blankStringToUndefined,
-  z.coerce.number().pipe(roleStatusSchema).optional(),
-)
+const optionalKeywordSchema = optionalTrimmedQueryString()
+const optionalStatusQuerySchema = optionalNumericQueryValue(roleStatusSchema)
 
 const pageSchema = z.coerce.number('页码必须是数字').int('页码必须是整数').min(1, '页码不能小于 1')
 const pageSizeSchema = z.coerce

@@ -1,15 +1,12 @@
-export type TreeNodeWithChildren<TNode> = TNode & {
-  children: TreeNodeWithChildren<TNode>[]
+export type TreeNode<T> = T & {
+  children: TreeNode<T>[]
 }
 
-export type TreeFilterOptions<TNode> = {
-  matches: (node: TreeNodeWithChildren<TNode>) => boolean
+export type TreeFilterOptions<T> = {
+  matches: (node: TreeNode<T>) => boolean
 }
 
-export function filterTree<TNode>(
-  nodes: TreeNodeWithChildren<TNode>[],
-  options: TreeFilterOptions<TNode>,
-): TreeNodeWithChildren<TNode>[] {
+export function filterTree<T>(nodes: TreeNode<T>[], options: TreeFilterOptions<T>): TreeNode<T>[] {
   return nodes.flatMap((node) => {
     const filteredChildren = filterTree(node.children, options)
 
@@ -26,6 +23,6 @@ export function filterTree<TNode>(
   })
 }
 
-export function countTreeNodes<TNode>(nodes: TreeNodeWithChildren<TNode>[]): number {
+export function countTreeNodes<T>(nodes: TreeNode<T>[]): number {
   return nodes.reduce((total, node) => total + 1 + countTreeNodes(node.children), 0)
 }

@@ -12,9 +12,7 @@ async function mountAdminRoute(path = '/') {
     {
       path: '/',
       component: AdminPage,
-      children: [
-        { path: 'system/users', component: { template: '<main>System Users</main>' } },
-      ],
+      children: [{ path: 'system/users', component: { template: '<main>System Users</main>' } }],
     },
     { path: '/login', component: { template: '<main>Login</main>' } },
   ])

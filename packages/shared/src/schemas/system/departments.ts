@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { blankStringToUndefined } from '../utils'
+import { optionalNumericQueryValue, optionalQueryValue, optionalTrimmedQueryString } from '../query'
 
 export const DEPARTMENT_STATUS_DISABLED = 0
 export const DEPARTMENT_STATUS_ENABLED = 1
@@ -11,15 +11,9 @@ export const departmentStatusSchema = z.literal(
 const nonBlankStringSchema = z.string().trim().min(1, '不能为空')
 
 const departmentIdSchema = z.uuid('部门 ID 无效')
-const optionalParentIdQuerySchema = z.preprocess(
-  blankStringToUndefined,
-  departmentIdSchema.optional(),
-)
-const optionalKeywordSchema = z.preprocess(blankStringToUndefined, z.string().trim().optional())
-const optionalStatusQuerySchema = z.preprocess(
-  blankStringToUndefined,
-  z.coerce.number().pipe(departmentStatusSchema).optional(),
-)
+const optionalParentIdQuerySchema = optionalQueryValue(departmentIdSchema)
+const optionalKeywordSchema = optionalTrimmedQueryString()
+const optionalStatusQuerySchema = optionalNumericQueryValue(departmentStatusSchema)
 
 const pageSchema = z.coerce.number('页码必须是数字').int('页码必须是整数').min(1, '页码不能小于 1')
 const pageSizeSchema = z.coerce

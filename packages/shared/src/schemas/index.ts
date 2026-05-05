@@ -1,4 +1,5 @@
 export * from './auth'
+export * from './errors'
 export * from './system/departments'
 export * from './system/resources'
 export * from './system/roles'

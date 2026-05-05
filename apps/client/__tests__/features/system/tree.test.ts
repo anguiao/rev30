@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it } from 'vitest'
-import { filterTree, countTreeNodes } from '../../../src/features/system/tree'
+import { filterTree, countTreeNodes } from '../../../src/features/system'
 
 type TestNode = {
   id: string

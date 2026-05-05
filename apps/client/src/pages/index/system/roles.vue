@@ -1,27 +1,38 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue'
 import { useQuery } from '@pinia/colada'
-import type { DataTableColumns, SelectOption } from 'naive-ui'
+import type { DataTableColumns } from 'naive-ui'
 import { NAlert, NButton, NDataTable, NInput, NPagination, NSelect, NSpace, NTag } from 'naive-ui'
+import type { RoleListItem, RoleListQuery, RoleListResponse } from '@rev30/shared'
 import {
-  ROLE_STATUS_DISABLED,
-  ROLE_STATUS_ENABLED,
-  type RoleListItem,
-  type RoleListQuery,
-} from '@rev30/shared'
-import { formatDateTime, statusLabels, statusTagTypes } from '../../../features/system/labels'
-import { getSystemErrorMessage, listRoles } from '../../../features/system/requests'
-
-type RoleStatusFilter = typeof ROLE_STATUS_ENABLED | typeof ROLE_STATUS_DISABLED | 'all'
+  STATUS_FILTER_ALL,
+  formatDateTime,
+  getSystemErrorMessage,
+  listRoles,
+  statusLabels,
+  statusOptions,
+  statusTagTypes,
+  type StatusFilter,
+} from '../../../features/system'
 
 const keyword = ref('')
-const status = ref<RoleStatusFilter>('all')
+const status = ref<StatusFilter>(STATUS_FILTER_ALL)
 const query = ref<RoleListQuery>({
   page: 1,
   pageSize: 20,
 })
+const emptyRolesData: RoleListResponse = {
+  list: [],
+  total: 0,
+  page: 1,
+  pageSize: query.value.pageSize,
+}
 
-const rolesQuery = useQuery({
+const {
+  data: rolesResponse,
+  error: rolesError,
+  isLoading,
+} = useQuery({
   key: () => [
     'system',
     'roles',
@@ -30,59 +41,33 @@ const rolesQuery = useQuery({
     query.value.keyword ?? '',
     query.value.status ?? null,
   ],
+  placeholderData: () => emptyRolesData,
   query: () => listRoles(query.value),
 })
 
-const isLoading = computed(() => rolesQuery.asyncStatus.value === 'loading')
-const roles = computed(() => rolesQuery.state.value.data?.list ?? [])
-const total = computed(() => rolesQuery.state.value.data?.total ?? 0)
-const loadErrorMessage = computed(() => {
-  if (rolesQuery.state.value.status !== 'error') {
-    return ''
-  }
-
-  return getSystemErrorMessage(rolesQuery.state.value.error, '加载角色失败')
-})
-
-const statusOptions: SelectOption[] = [
-  { label: '全部', value: 'all' },
-  { label: '启用', value: ROLE_STATUS_ENABLED },
-  { label: '禁用', value: ROLE_STATUS_DISABLED },
-]
-
-function buildNextQuery(targetPage: number) {
-  const nextKeyword = keyword.value.trim()
-
-  return {
-    page: targetPage,
-    pageSize: query.value.pageSize,
-    ...(nextKeyword.length > 0 ? { keyword: nextKeyword } : {}),
-    ...(status.value !== 'all' ? { status: status.value } : {}),
-  } satisfies RoleListQuery
-}
+const rolesData = computed(() => rolesResponse.value ?? emptyRolesData)
+const loadErrorMessage = computed(() =>
+  rolesError.value === null ? '' : getSystemErrorMessage(rolesError.value, '加载角色失败'),
+)
 
 function handleSearch() {
-  query.value = buildNextQuery(1)
+  const nextKeyword = keyword.value.trim()
+
+  query.value = {
+    page: 1,
+    pageSize: query.value.pageSize,
+    ...(nextKeyword.length > 0 ? { keyword: nextKeyword } : {}),
+    ...(status.value !== STATUS_FILTER_ALL ? { status: status.value } : {}),
+  } satisfies RoleListQuery
 }
 
 function handleReset() {
   keyword.value = ''
-  status.value = 'all'
+  status.value = STATUS_FILTER_ALL
   query.value = {
     page: 1,
     pageSize: query.value.pageSize,
   }
-}
-
-function handlePageChange(page: number) {
-  query.value = {
-    ...query.value,
-    page,
-  }
-}
-
-function handleRefresh() {
-  void rolesQuery.refresh()
 }
 
 const columns: DataTableColumns<RoleListItem> = [
@@ -100,14 +85,14 @@ const columns: DataTableColumns<RoleListItem> = [
     title: '状态',
     key: 'status',
     width: 100,
-    render: (row) =>
+    render: (role) =>
       h(
         NTag,
         {
-          type: statusTagTypes[row.status],
+          type: statusTagTypes[role.status],
           bordered: false,
         },
-        () => statusLabels[row.status],
+        () => statusLabels[role.status],
       ),
   },
   {
@@ -124,19 +109,20 @@ const columns: DataTableColumns<RoleListItem> = [
     title: '创建时间',
     key: 'createdAt',
     minWidth: 160,
-    render: (row) => formatDateTime(row.createdAt),
+    render: (role) => formatDateTime(role.createdAt),
   },
 ]
 </script>
 
 <template>
   <main class="space-y-5">
-    <header class="flex items-center justify-between">
+    <header>
       <div>
         <h1 class="text-xl font-semibold">角色管理</h1>
-        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ total }} 个角色</p>
+        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">
+          共 {{ rolesData.total }} 个角色
+        </p>
       </div>
-      <NButton type="primary" secondary :loading="isLoading" @click="handleRefresh">刷新</NButton>
     </header>
 
     <section
@@ -147,15 +133,15 @@ const columns: DataTableColumns<RoleListItem> = [
           v-model:value="keyword"
           data-test="roles-keyword"
           clearable
-          placeholder="请输入角色名或编码"
-          class="w-[260px]"
+          placeholder="请输入名称或编码"
+          class="w-64!"
         />
         <NSelect
           v-model:value="status"
           data-test="roles-status"
           :options="statusOptions"
           placeholder="全部状态"
-          class="w-[160px]"
+          class="w-40!"
         />
         <NButton data-test="roles-search" type="primary" @click="handleSearch">查询</NButton>
         <NButton @click="handleReset">重置</NButton>
@@ -169,18 +155,17 @@ const columns: DataTableColumns<RoleListItem> = [
     >
       <NDataTable
         :columns="columns"
-        :data="roles"
+        :data="rolesData.list"
         :loading="isLoading"
         :pagination="false"
-        :row-key="(row: RoleListItem) => row.id"
+        :row-key="(role: RoleListItem) => role.id"
       />
 
       <div class="mt-4 flex justify-end">
         <NPagination
-          :page="query.page"
+          v-model:page="query.page"
           :page-size="query.pageSize"
-          :item-count="total"
-          @update:page="handlePageChange"
+          :item-count="rolesData.total"
         />
       </div>
     </section>

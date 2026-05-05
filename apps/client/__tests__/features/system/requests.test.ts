@@ -16,7 +16,7 @@ import {
   getSystemErrorMessage,
   listRoles,
   listUsers,
-} from '../../../src/features/system/requests'
+} from '../../../src/features/system'
 import { useAuthStore } from '../../../src/stores/auth'
 
 beforeEach(() => {

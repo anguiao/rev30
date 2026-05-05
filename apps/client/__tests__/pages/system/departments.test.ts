@@ -8,14 +8,14 @@ import {
   DEPARTMENT_STATUS_ENABLED,
   type DepartmentTreeNode,
 } from '@rev30/shared'
-import { formatDateTime } from '../../../src/features/system/labels'
-import { getDepartmentTree } from '../../../src/features/system/requests'
+import { formatDateTime, getDepartmentTree } from '../../../src/features/system'
 import DepartmentsPage from '../../../src/pages/index/system/departments.vue'
 import { disposeActiveTestPinia, mountAuthRoute, stubPreferredDark } from '../../helpers/auth'
 
 enableAutoUnmount(afterEach)
 
-vi.mock('../../../src/features/system/requests', () => ({
+vi.mock('../../../src/features/system', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/system')>()),
   getDepartmentTree: vi.fn(),
   getSystemErrorMessage: vi.fn((error: unknown, fallback: string) =>
     error instanceof Error ? error.message : fallback,

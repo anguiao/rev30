@@ -1,3 +1,16 @@
+UPDATE "system_resources"
+SET "icon" = CASE
+  WHEN "icon" ~ '^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$' THEN "icon"
+  WHEN "icon" ~ '^i-\[[a-z0-9]+(?:-[a-z0-9]+)*--[a-z0-9]+(?:-[a-z0-9]+)*\]$'
+    THEN regexp_replace(
+      "icon",
+      '^i-\[([a-z0-9]+(?:-[a-z0-9]+)*)--([a-z0-9]+(?:-[a-z0-9]+)*)\]$',
+      '\1:\2'
+    )
+  ELSE NULL
+END
+WHERE "icon" IS NOT NULL;
+--> statement-breakpoint
 INSERT INTO "system_resources"
   ("id", "parent_id", "type", "name", "code", "path", "external_url", "open_target", "icon", "hidden", "status", "sort_order", "created_at", "updated_at")
 VALUES

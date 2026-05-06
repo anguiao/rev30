@@ -6,7 +6,9 @@ import postgres from 'postgres'
 import { applyPgliteMigrations } from './migrations'
 import * as schema from './schema'
 
-export async function createDb() {
+export type DbCloser = () => Promise<void>
+
+export async function createManagedDb() {
   if (process.env.NODE_ENV === 'production') {
     const databaseUrl = process.env.DATABASE_URL
 
@@ -16,7 +18,12 @@ export async function createDb() {
 
     const client = postgres(databaseUrl)
 
-    return drizzlePostgres(client, { schema })
+    return {
+      close: async () => {
+        await client.end({ timeout: 5 })
+      },
+      db: drizzlePostgres(client, { schema }),
+    }
   }
 
   const dataDir = process.env.PGLITE_DATA_DIR ?? '.pglite/dev'
@@ -27,7 +34,18 @@ export async function createDb() {
 
   await applyPgliteMigrations(client)
 
-  return drizzlePglite(client, { schema })
+  return {
+    close: async () => {
+      await client.close()
+    },
+    db: drizzlePglite(client, { schema }),
+  }
+}
+
+export async function createDb() {
+  const { db } = await createManagedDb()
+
+  return db
 }
 
 export type Db = Awaited<ReturnType<typeof createDb>>

@@ -2,7 +2,7 @@ import 'dotenv/config'
 import { randomUUID } from 'node:crypto'
 import { ROLE_STATUS_ENABLED, USER_STATUS_ENABLED } from '@rev30/shared'
 import { and, eq, isNull } from 'drizzle-orm'
-import { createDb, type Db } from '.'
+import { createManagedDb, type Db } from '.'
 import { hashPassword } from '../modules/auth/password'
 import { authPasswordCredentials, roles, userRoles, users } from './schema'
 
@@ -120,10 +120,28 @@ function readBootstrapInput(): BootstrapAdminInput {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const database = await createDb()
+type BootstrapCliDependencies = {
+  bootstrapAdmin?: typeof bootstrapAdminUser
+  createManagedDatabase?: typeof createManagedDb
+  readInput?: () => BootstrapAdminInput
+}
 
-  await bootstrapAdminUser(database, readBootstrapInput())
+export async function runBootstrapCli({
+  bootstrapAdmin = bootstrapAdminUser,
+  createManagedDatabase = createManagedDb,
+  readInput = readBootstrapInput,
+}: BootstrapCliDependencies = {}) {
+  const { close, db } = await createManagedDatabase()
+
+  try {
+    await bootstrapAdmin(db, readInput())
+  } finally {
+    await close()
+  }
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  await runBootstrapCli()
 
   console.log('初始管理员已就绪')
 }

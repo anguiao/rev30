@@ -498,6 +498,57 @@ describe('PGlite migrations', () => {
     }
   })
 
+  it('normalizes legacy resource icons when applying the resource access migration', async () => {
+    const client = new PGlite()
+    const migrationsDir = await createTempDir()
+
+    try {
+      const migrationFiles = (await readdir(defaultMigrationsDir))
+        .filter((fileName) => fileName.endsWith('.sql'))
+        .filter((fileName) => fileName !== '0005_seed_resource_access.sql')
+        .sort()
+
+      for (const fileName of migrationFiles) {
+        const migrationSql = await readFile(join(defaultMigrationsDir, fileName), 'utf8')
+
+        await writeFile(join(migrationsDir, fileName), migrationSql)
+      }
+
+      await applyPgliteMigrations(client, migrationsDir)
+      await client.query(`
+        insert into "system_resources"
+          ("id", "type", "name", "code", "icon")
+        values
+          ('40000000-0000-4000-8000-000000000000', 'directory', 'Legacy Root', 'legacy:root', 'i-[lucide--settings]'),
+          ('40000000-0000-4000-8000-000000000001', 'menu', 'Legacy Menu', 'legacy:menu', 'not-an-icon'),
+          ('40000000-0000-4000-8000-000000000002', 'menu', 'Valid Menu', 'legacy:valid', 'lucide:users'),
+          ('40000000-0000-4000-8000-000000000003', 'menu', 'Empty Menu', 'legacy:empty', null)
+      `)
+      await writeFile(
+        join(migrationsDir, '0005_seed_resource_access.sql'),
+        await readFile(join(defaultMigrationsDir, '0005_seed_resource_access.sql'), 'utf8'),
+      )
+
+      await applyPgliteMigrations(client, migrationsDir)
+
+      const result = await client.query<{ code: string; icon: string | null }>(`
+        select "code", "icon"
+        from "system_resources"
+        where "code" in ('legacy:root', 'legacy:menu', 'legacy:valid', 'legacy:empty')
+        order by "code"
+      `)
+
+      expect(result.rows).toEqual([
+        { code: 'legacy:empty', icon: null },
+        { code: 'legacy:menu', icon: null },
+        { code: 'legacy:root', icon: 'lucide:settings' },
+        { code: 'legacy:valid', icon: 'lucide:users' },
+      ])
+    } finally {
+      await client.close()
+    }
+  })
+
   it('creates usable system resource tables for fresh development databases', async () => {
     const dataDir = join(await createTempDir(), 'resources')
 

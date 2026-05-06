@@ -1,8 +1,13 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AuthTokenResponse } from '@rev30/shared'
-import { USER_STATUS_ENABLED } from '@rev30/shared'
+import {
+  RESOURCE_TYPE_DIRECTORY,
+  RESOURCE_TYPE_MENU,
+  USER_STATUS_ENABLED,
+  type AuthTokenResponse,
+  type ResourceTreeNode,
+} from '@rev30/shared'
 import { useAuthStore } from '../../src/stores/auth'
 import { refreshSession } from '../../src/features/auth/requests'
 import { installAuthGuards } from '../../src/router/guards'
@@ -33,11 +38,45 @@ const session: AuthTokenResponse = {
 
 const refreshSessionMock = vi.mocked(refreshSession)
 
+function createMenuNode(
+  overrides: Partial<ResourceTreeNode> & Pick<ResourceTreeNode, 'code' | 'name' | 'type'>,
+): ResourceTreeNode {
+  const { code, name, type, ...rest } = overrides
+
+  return {
+    id: `${code}-id`,
+    parentId: null,
+    type,
+    name,
+    code,
+    path: null,
+    externalUrl: null,
+    openTarget: 'self',
+    icon: null,
+    hidden: false,
+    status: 1,
+    sortOrder: 0,
+    createdAt: '2026-05-01T00:00:00.000Z',
+    updatedAt: '2026-05-01T00:00:00.000Z',
+    children: [],
+    ...rest,
+  }
+}
+
+function createSession(menus: ResourceTreeNode[]): AuthTokenResponse {
+  return {
+    ...session,
+    menus,
+  }
+}
+
 function createTestRouter() {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
       { path: '/', component: { template: '<main>Home</main>' } },
+      { path: '/system/departments', component: { template: '<main>System departments</main>' } },
+      { path: '/system/roles', component: { template: '<main>System roles</main>' } },
       { path: '/system/users', component: { template: '<main>System users</main>' } },
       { path: '/login', component: { template: '<main>Login</main>' } },
       { path: '/register', component: { template: '<main>Register</main>' } },
@@ -56,7 +95,24 @@ describe('auth guards', () => {
   })
 
   it('restores the session before redirecting the protected root route to the default admin route', async () => {
-    refreshSessionMock.mockResolvedValue(session)
+    refreshSessionMock.mockResolvedValue(
+      createSession([
+        createMenuNode({
+          code: 'system',
+          name: 'System',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'system:user',
+              name: 'Users',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/users',
+              parentId: 'system-id',
+            }),
+          ],
+        }),
+      ]),
+    )
     const router = createTestRouter()
 
     await router.push('/')
@@ -87,7 +143,24 @@ describe('auth guards', () => {
 
   it('redirects authenticated users away from auth pages', async () => {
     const auth = useAuthStore()
-    auth.setSession(session)
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system',
+          name: 'System',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'system:user',
+              name: 'Users',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/users',
+              parentId: 'system-id',
+            }),
+          ],
+        }),
+      ]),
+    )
     auth.markReady()
     const router = createTestRouter()
 
@@ -98,7 +171,24 @@ describe('auth guards', () => {
   })
 
   it('restores a cold session before redirecting users away from auth pages', async () => {
-    refreshSessionMock.mockResolvedValue(session)
+    refreshSessionMock.mockResolvedValue(
+      createSession([
+        createMenuNode({
+          code: 'system',
+          name: 'System',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'system:user',
+              name: 'Users',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/users',
+              parentId: 'system-id',
+            }),
+          ],
+        }),
+      ]),
+    )
     const router = createTestRouter()
 
     await router.push('/login')
@@ -109,6 +199,62 @@ describe('auth guards', () => {
     expect(auth.accessToken).toBe(session.accessToken)
     expect(auth.user).toEqual(session.user)
     expect(auth.isReady).toBe(true)
+    expect(router.currentRoute.value.fullPath).toBe('/system/users')
+  })
+
+  it('redirects authenticated users to the first accessible internal menu in server order', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system',
+          name: 'System',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'system:role',
+              name: 'Roles',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/roles',
+              parentId: 'system-id',
+              sortOrder: 10,
+            }),
+            createMenuNode({
+              code: 'system:department',
+              name: 'Departments',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/departments',
+              parentId: 'system-id',
+              sortOrder: 20,
+            }),
+          ],
+        }),
+      ]),
+    )
+    auth.markReady()
+    const router = createTestRouter()
+
+    await router.push('/login')
+
+    expect(router.currentRoute.value.fullPath).toBe('/system/roles')
+  })
+
+  it('falls back to the admin default route when no internal menu is available', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system',
+          name: 'System',
+          type: RESOURCE_TYPE_DIRECTORY,
+        }),
+      ]),
+    )
+    auth.markReady()
+    const router = createTestRouter()
+
+    await router.push('/register')
+
     expect(router.currentRoute.value.fullPath).toBe('/system/users')
   })
 })

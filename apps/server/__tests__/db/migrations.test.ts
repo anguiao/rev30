@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { PGlite } from '@electric-sql/pglite'
 import { afterEach, describe, expect, it } from 'vitest'
-import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { readMigrationFiles } from 'drizzle-orm/migrator'
-import { eq, isNull } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import {
@@ -30,6 +30,68 @@ import {
 const originalNodeEnv = process.env.NODE_ENV
 const originalPgliteDataDir = process.env.PGLITE_DATA_DIR
 const tempDirs: string[] = []
+
+const seededSystemMenus = [
+  {
+    code: 'system',
+    type: RESOURCE_TYPE_DIRECTORY,
+    path: null,
+    icon: 'lucide:settings',
+    parentCode: null,
+  },
+  {
+    code: 'system:user',
+    type: RESOURCE_TYPE_MENU,
+    path: '/system/users',
+    icon: 'lucide:users',
+    parentCode: 'system',
+  },
+  {
+    code: 'system:department',
+    type: RESOURCE_TYPE_MENU,
+    path: '/system/departments',
+    icon: 'lucide:building-2',
+    parentCode: 'system',
+  },
+  {
+    code: 'system:role',
+    type: RESOURCE_TYPE_MENU,
+    path: '/system/roles',
+    icon: 'lucide:shield-check',
+    parentCode: 'system',
+  },
+  {
+    code: 'system:resource',
+    type: RESOURCE_TYPE_MENU,
+    path: '/system/resources',
+    icon: 'lucide:blocks',
+    parentCode: 'system',
+  },
+] as const
+
+const seededSystemActions = [
+  { code: 'system:user:list', parentCode: 'system:user' },
+  { code: 'system:user:create', parentCode: 'system:user' },
+  { code: 'system:user:update', parentCode: 'system:user' },
+  { code: 'system:user:delete', parentCode: 'system:user' },
+  { code: 'system:department:list', parentCode: 'system:department' },
+  { code: 'system:department:create', parentCode: 'system:department' },
+  { code: 'system:department:update', parentCode: 'system:department' },
+  { code: 'system:department:delete', parentCode: 'system:department' },
+  { code: 'system:role:list', parentCode: 'system:role' },
+  { code: 'system:role:create', parentCode: 'system:role' },
+  { code: 'system:role:update', parentCode: 'system:role' },
+  { code: 'system:role:delete', parentCode: 'system:role' },
+  { code: 'system:resource:list', parentCode: 'system:resource' },
+  { code: 'system:resource:create', parentCode: 'system:resource' },
+  { code: 'system:resource:update', parentCode: 'system:resource' },
+  { code: 'system:resource:delete', parentCode: 'system:resource' },
+] as const
+
+const seededSystemResourceCodes = [
+  ...seededSystemMenus.map((item) => item.code),
+  ...seededSystemActions.map((item) => item.code),
+]
 
 async function createTempDir() {
   const directory = await mkdtemp(join(tmpdir(), 'rev30-pglite-'))
@@ -254,36 +316,52 @@ describe('PGlite migrations', () => {
 
     const resourceRows = await database
       .select({
+        id: systemResources.id,
         code: systemResources.code,
         type: systemResources.type,
         path: systemResources.path,
         icon: systemResources.icon,
+        parentId: systemResources.parentId,
       })
       .from(systemResources)
-      .where(isNull(systemResources.deletedAt))
+      .where(
+        and(
+          isNull(systemResources.deletedAt),
+          inArray(systemResources.code, seededSystemResourceCodes),
+        ),
+      )
 
-    expect(resourceRows).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: 'system',
-          type: RESOURCE_TYPE_DIRECTORY,
-          path: null,
-          icon: 'lucide:settings',
-        }),
-        expect.objectContaining({
-          code: 'system:user',
-          type: RESOURCE_TYPE_MENU,
-          path: '/system/users',
-          icon: 'lucide:users',
-        }),
-        expect.objectContaining({
-          code: 'system:user:list',
-          type: RESOURCE_TYPE_ACTION,
-          path: null,
-          icon: null,
-        }),
-      ]),
-    )
+    const resourceByCode = new Map(resourceRows.map((row) => [row.code, row]))
+    expect(resourceRows).toHaveLength(seededSystemResourceCodes.length)
+
+    for (const menu of seededSystemMenus) {
+      const row = resourceByCode.get(menu.code)
+
+      expect(row).toMatchObject({
+        code: menu.code,
+        type: menu.type,
+        path: menu.path,
+        icon: menu.icon,
+      })
+
+      if (menu.parentCode === null) {
+        expect(row?.parentId).toBeNull()
+      } else {
+        expect(row?.parentId).toBe(resourceByCode.get(menu.parentCode)?.id)
+      }
+    }
+
+    for (const action of seededSystemActions) {
+      const row = resourceByCode.get(action.code)
+
+      expect(row).toMatchObject({
+        code: action.code,
+        type: RESOURCE_TYPE_ACTION,
+        path: null,
+        icon: null,
+      })
+      expect(row?.parentId).toBe(resourceByCode.get(action.parentCode)?.id)
+    }
 
     const [adminRole] = await database.select().from(roles).where(eq(roles.code, 'admin'))
     expect(adminRole).toMatchObject({
@@ -298,6 +376,53 @@ describe('PGlite migrations', () => {
       .where(eq(roleResources.roleId, adminRole?.id ?? ''))
 
     expect(adminBindings).toEqual([])
+  })
+
+  it('maps built-in resource parents to existing rows when system code already exists', async () => {
+    const client = new PGlite()
+    const migrationsDir = await createTempDir()
+    const existingSystemId = '30000000-0000-4000-8000-000000000000'
+
+    try {
+      const migrationFiles = (await readdir(defaultMigrationsDir))
+        .filter((fileName) => fileName.endsWith('.sql'))
+        .filter((fileName) => fileName !== '0005_seed_resource_access.sql')
+        .sort()
+
+      for (const fileName of migrationFiles) {
+        const migrationSql = await readFile(join(defaultMigrationsDir, fileName), 'utf8')
+
+        await writeFile(join(migrationsDir, fileName), migrationSql)
+      }
+
+      await applyPgliteMigrations(client, migrationsDir)
+      await client.query(
+        'insert into "system_resources" ("id", "type", "name", "code") values ($1, $2, $3, $4)',
+        [existingSystemId, 'directory', 'Legacy System', 'system'],
+      )
+      await writeFile(
+        join(migrationsDir, '0005_seed_resource_access.sql'),
+        await readFile(join(defaultMigrationsDir, '0005_seed_resource_access.sql'), 'utf8'),
+      )
+      await applyPgliteMigrations(client, migrationsDir)
+
+      const systemRootResult =
+        await client.query<{ id: string; name: string; icon: string | null }>(
+          `select "id", "name", "icon" from "system_resources" where "code" = 'system'`,
+        )
+      const systemUserMenuResult = await client.query<{ parentId: string | null }>(
+        `select "parent_id" as "parentId" from "system_resources" where "code" = 'system:user'`,
+      )
+      const systemRoot = systemRootResult.rows[0]
+      const systemUserMenu = systemUserMenuResult.rows[0]
+
+      expect(systemRoot?.id).toBe(existingSystemId)
+      expect(systemRoot?.name).toBe('系统管理')
+      expect(systemRoot?.icon).toBe('lucide:settings')
+      expect(systemUserMenu?.parentId).toBe(existingSystemId)
+    } finally {
+      await client.close()
+    }
   })
 
   it('creates usable system resource tables for fresh development databases', async () => {

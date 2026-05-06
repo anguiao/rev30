@@ -34,6 +34,7 @@ const tempDirs: string[] = []
 const seededSystemMenus = [
   {
     code: 'system',
+    id: '10000000-0000-4000-8000-000000000000',
     type: RESOURCE_TYPE_DIRECTORY,
     path: null,
     icon: 'lucide:settings',
@@ -41,6 +42,7 @@ const seededSystemMenus = [
   },
   {
     code: 'system:user',
+    id: '10000000-0000-4000-8000-000000000010',
     type: RESOURCE_TYPE_MENU,
     path: '/system/users',
     icon: 'lucide:users',
@@ -48,6 +50,7 @@ const seededSystemMenus = [
   },
   {
     code: 'system:department',
+    id: '10000000-0000-4000-8000-000000000020',
     type: RESOURCE_TYPE_MENU,
     path: '/system/departments',
     icon: 'lucide:building-2',
@@ -55,6 +58,7 @@ const seededSystemMenus = [
   },
   {
     code: 'system:role',
+    id: '10000000-0000-4000-8000-000000000030',
     type: RESOURCE_TYPE_MENU,
     path: '/system/roles',
     icon: 'lucide:shield-check',
@@ -62,6 +66,7 @@ const seededSystemMenus = [
   },
   {
     code: 'system:resource',
+    id: '10000000-0000-4000-8000-000000000040',
     type: RESOURCE_TYPE_MENU,
     path: '/system/resources',
     icon: 'lucide:blocks',
@@ -70,22 +75,22 @@ const seededSystemMenus = [
 ] as const
 
 const seededSystemActions = [
-  { code: 'system:user:list', parentCode: 'system:user' },
-  { code: 'system:user:create', parentCode: 'system:user' },
-  { code: 'system:user:update', parentCode: 'system:user' },
-  { code: 'system:user:delete', parentCode: 'system:user' },
-  { code: 'system:department:list', parentCode: 'system:department' },
-  { code: 'system:department:create', parentCode: 'system:department' },
-  { code: 'system:department:update', parentCode: 'system:department' },
-  { code: 'system:department:delete', parentCode: 'system:department' },
-  { code: 'system:role:list', parentCode: 'system:role' },
-  { code: 'system:role:create', parentCode: 'system:role' },
-  { code: 'system:role:update', parentCode: 'system:role' },
-  { code: 'system:role:delete', parentCode: 'system:role' },
-  { code: 'system:resource:list', parentCode: 'system:resource' },
-  { code: 'system:resource:create', parentCode: 'system:resource' },
-  { code: 'system:resource:update', parentCode: 'system:resource' },
-  { code: 'system:resource:delete', parentCode: 'system:resource' },
+  { id: '10000000-0000-4000-8000-000000000011', code: 'system:user:list', parentCode: 'system:user' },
+  { id: '10000000-0000-4000-8000-000000000012', code: 'system:user:create', parentCode: 'system:user' },
+  { id: '10000000-0000-4000-8000-000000000013', code: 'system:user:update', parentCode: 'system:user' },
+  { id: '10000000-0000-4000-8000-000000000014', code: 'system:user:delete', parentCode: 'system:user' },
+  { id: '10000000-0000-4000-8000-000000000021', code: 'system:department:list', parentCode: 'system:department' },
+  { id: '10000000-0000-4000-8000-000000000022', code: 'system:department:create', parentCode: 'system:department' },
+  { id: '10000000-0000-4000-8000-000000000023', code: 'system:department:update', parentCode: 'system:department' },
+  { id: '10000000-0000-4000-8000-000000000024', code: 'system:department:delete', parentCode: 'system:department' },
+  { id: '10000000-0000-4000-8000-000000000031', code: 'system:role:list', parentCode: 'system:role' },
+  { id: '10000000-0000-4000-8000-000000000032', code: 'system:role:create', parentCode: 'system:role' },
+  { id: '10000000-0000-4000-8000-000000000033', code: 'system:role:update', parentCode: 'system:role' },
+  { id: '10000000-0000-4000-8000-000000000034', code: 'system:role:delete', parentCode: 'system:role' },
+  { id: '10000000-0000-4000-8000-000000000041', code: 'system:resource:list', parentCode: 'system:resource' },
+  { id: '10000000-0000-4000-8000-000000000042', code: 'system:resource:create', parentCode: 'system:resource' },
+  { id: '10000000-0000-4000-8000-000000000043', code: 'system:resource:update', parentCode: 'system:resource' },
+  { id: '10000000-0000-4000-8000-000000000044', code: 'system:resource:delete', parentCode: 'system:resource' },
 ] as const
 
 const seededSystemResourceCodes = [
@@ -338,6 +343,7 @@ describe('PGlite migrations', () => {
       const row = resourceByCode.get(menu.code)
 
       expect(row).toMatchObject({
+        id: menu.id,
         code: menu.code,
         type: menu.type,
         path: menu.path,
@@ -355,6 +361,7 @@ describe('PGlite migrations', () => {
       const row = resourceByCode.get(action.code)
 
       expect(row).toMatchObject({
+        id: action.id,
         code: action.code,
         type: RESOURCE_TYPE_ACTION,
         path: null,
@@ -365,6 +372,7 @@ describe('PGlite migrations', () => {
 
     const [adminRole] = await database.select().from(roles).where(eq(roles.code, 'admin'))
     expect(adminRole).toMatchObject({
+      id: '20000000-0000-4000-8000-000000000000',
       name: 'Administrator',
       code: 'admin',
       status: ROLE_STATUS_ENABLED,

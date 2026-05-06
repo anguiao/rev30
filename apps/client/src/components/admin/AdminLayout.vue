@@ -1,45 +1,19 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { Icon } from '@iconify/vue'
 import { useMutation } from '@pinia/colada'
-import { NButton } from 'naive-ui'
+import type { ResourceTreeNode } from '@rev30/shared'
 import { storeToRefs } from 'pinia'
-import { RouterLink, useRouter } from 'vue-router'
+import { computed, h } from 'vue'
+import { NButton, NEmpty, NMenu, type MenuOption } from 'naive-ui'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { logout } from '../../features/auth'
 import { useAuthStore } from '../../stores/auth'
 import ThemeModeSwitch from '../common/ThemeModeSwitch.vue'
 
-type NavItem = {
-  to: string
-  label: string
-  icon: string
-}
-
-const navItems: NavItem[] = [
-  {
-    to: '/system/users',
-    label: '用户管理',
-    icon: 'i-[lucide--users]',
-  },
-  {
-    to: '/system/departments',
-    label: '部门管理',
-    icon: 'i-[lucide--building-2]',
-  },
-  {
-    to: '/system/roles',
-    label: '角色管理',
-    icon: 'i-[lucide--shield-check]',
-  },
-  {
-    to: '/system/resources',
-    label: '资源管理',
-    icon: 'i-[lucide--blocks]',
-  },
-]
-
+const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const { user } = storeToRefs(auth)
+const { menus, user } = storeToRefs(auth)
 
 const logoutMutation = useMutation({
   mutation: () => logout(),
@@ -54,6 +28,88 @@ const isLoggingOut = computed(() => logoutMutation.isLoading.value)
 function handleLogout() {
   logoutMutation.mutate()
 }
+
+function renderMenuIcon(icon: string | null) {
+  if (icon === null) {
+    return undefined
+  }
+
+  return () =>
+    h(Icon, {
+      icon,
+      height: 16,
+    })
+}
+
+function renderInternalLabel(path: string, name: string) {
+  return () =>
+    h(
+      RouterLink,
+      {
+        to: path,
+      },
+      {
+        default: () => name,
+      },
+    )
+}
+
+function renderExternalLabel(resource: ResourceTreeNode) {
+  return () =>
+    h(
+      'a',
+      {
+        href: resource.externalUrl ?? undefined,
+        target: resource.openTarget === 'blank' ? '_blank' : undefined,
+        rel: resource.openTarget === 'blank' ? 'noreferrer' : undefined,
+      },
+      resource.name,
+    )
+}
+
+function createMenuOption(resource: ResourceTreeNode): MenuOption {
+  const children = resource.children.map(createMenuOption)
+  const icon = renderMenuIcon(resource.icon)
+  const option: MenuOption = {
+    key: resource.path ?? resource.externalUrl ?? resource.id,
+  }
+
+  if (children.length > 0) {
+    option.children = children
+  }
+
+  if (icon !== undefined) {
+    option.icon = icon
+  }
+
+  if (resource.path !== null) {
+    option.label = renderInternalLabel(resource.path, resource.name)
+    return option
+  }
+
+  if (resource.externalUrl !== null) {
+    option.label = renderExternalLabel(resource)
+    return option
+  }
+
+  option.label = resource.name
+  return option
+}
+
+function hasSelectedPath(resources: ResourceTreeNode[], path: string): boolean {
+  return resources.some((resource) => {
+    if (resource.path === path) {
+      return true
+    }
+
+    return hasSelectedPath(resource.children, path)
+  })
+}
+
+const menuOptions = computed<MenuOption[]>(() => menus.value.map(createMenuOption))
+const selectedMenuKey = computed<string | null>(() =>
+  hasSelectedPath(menus.value, route.path) ? route.path : null,
+)
 </script>
 
 <template>
@@ -70,21 +126,18 @@ function handleLogout() {
         </header>
 
         <nav class="flex-1">
-          <p class="mb-3 text-xs font-medium tracking-wide text-stone-500 dark:text-zinc-400">
-            系统管理
-          </p>
-          <ul class="space-y-1.5">
-            <li v-for="item in navItems" :key="item.to">
-              <RouterLink
-                :to="item.to"
-                class="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                active-class="bg-stone-900 text-white hover:bg-stone-900 hover:text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-100 dark:hover:text-zinc-900"
-              >
-                <span class="inline-block size-4 shrink-0" :class="item.icon" aria-hidden="true" />
-                <span>{{ item.label }}</span>
-              </RouterLink>
-            </li>
-          </ul>
+          <NEmpty
+            v-if="menuOptions.length === 0"
+            description="暂无可访问菜单"
+            size="small"
+            class="pt-12"
+          />
+          <NMenu
+            v-else
+            :options="menuOptions"
+            :value="selectedMenuKey"
+            default-expand-all
+          />
         </nav>
 
         <footer class="border-t border-stone-200 pt-4 dark:border-zinc-800">

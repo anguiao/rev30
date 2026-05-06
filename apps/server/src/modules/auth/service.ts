@@ -24,6 +24,7 @@ const dummyPasswordHash =
 type AuthSession = AuthTokenResponse & {
   refreshToken: string
 }
+type AuthTokenPayload = Omit<AuthSession, 'user'>
 
 async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
   try {
@@ -42,7 +43,7 @@ async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
 export function createAuthService(database: Db, config: AuthConfig) {
   const repository = createAuthRepository(database)
 
-  async function createTokenResponse(userId: string): Promise<Omit<AuthSession, 'user'>> {
+  async function createTokenResponse(userId: string): Promise<AuthTokenPayload> {
     const tokenPair = await createTokenPair(userId, config)
 
     await repository.createRefreshSession({
@@ -56,6 +57,8 @@ export function createAuthService(database: Db, config: AuthConfig) {
       refreshToken: tokenPair.refreshToken,
       tokenType: 'Bearer',
       expiresIn: tokenPair.accessExpiresIn,
+      accessCodes: [],
+      menus: [],
     }
   }
 

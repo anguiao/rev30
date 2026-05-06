@@ -94,6 +94,7 @@ describe('auth routes', () => {
     expect(body).toMatchObject({
       tokenType: 'Bearer',
       expiresIn: 900,
+      accessCodes: [],
       user: {
         username: 'ada',
         nickname: 'Ada Lovelace',
@@ -103,6 +104,7 @@ describe('auth routes', () => {
         roles: [],
       },
     })
+    expect(body.menus).toEqual([])
     expect(body.accessToken).toEqual(expect.any(String))
     expect(body).not.toHaveProperty('refreshToken')
     expect(refreshToken).toEqual(expect.any(String))
@@ -143,18 +145,21 @@ describe('auth routes', () => {
 
     await register(app)
     const { body, response } = await login(app)
+    const tokenBody = body as AuthTokenResponse
 
     expect(response.status).toBe(200)
     expect(response.headers.get('set-cookie')).toContain('refresh_token=')
-    expect(body).toMatchObject({
+    expect(tokenBody).toMatchObject({
       tokenType: 'Bearer',
       expiresIn: 900,
+      accessCodes: [],
       user: {
         username: 'ada',
         departments: [],
         roles: [],
       },
     })
+    expect(tokenBody.menus).toEqual([])
     expect(body).not.toHaveProperty('refreshToken')
   })
 
@@ -279,6 +284,10 @@ describe('auth routes', () => {
 
     expect(refreshResponse.status).toBe(200)
     expect(refreshResponse.headers.get('set-cookie')).toContain('refresh_token=')
+    expect(refreshBody).toMatchObject({
+      accessCodes: [],
+      menus: [],
+    })
     expect(refreshBody).not.toHaveProperty('refreshToken')
     expect(newRefreshToken).toEqual(expect.any(String))
     expect(newRefreshToken).not.toBe(oldRefreshToken)
@@ -311,6 +320,10 @@ describe('auth routes', () => {
     const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
 
     expect(refreshResponse.status).toBe(200)
+    expect(refreshBody).toMatchObject({
+      accessCodes: [],
+      menus: [],
+    })
     expect(refreshBody.user.id).toBe(registered.body.user.id)
     expect(refreshBody.user.departments).toEqual([])
     expect(refreshBody.user.roles).toEqual([])

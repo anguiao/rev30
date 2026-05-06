@@ -15,6 +15,8 @@ const session: AuthTokenResponse = {
   accessToken: 'access-token',
   tokenType: 'Bearer',
   expiresIn: 900,
+  accessCodes: [],
+  menus: [],
   user: {
     id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
     username: 'ada',

@@ -135,6 +135,8 @@ describe('auth service', () => {
         code: 'admin',
       },
     ])
+    expect(session.accessCodes).toEqual([])
+    expect(session.menus).toEqual([])
   })
 
   it('does not hide refresh session revoke failures during logout', async () => {

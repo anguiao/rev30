@@ -72,10 +72,8 @@ export function createAuthService(database: Db, config: AuthConfig) {
     userId: string,
     user: AuthTokenResponse['user'],
   ): Promise<AuthSession> {
-    const [tokens, access] = await Promise.all([
-      createTokenResponse(userId),
-      accessService.resolveUserAccess(userId),
-    ])
+    const access = await accessService.resolveUserAccess(userId)
+    const tokens = await createTokenResponse(userId)
 
     return {
       ...tokens,
@@ -91,9 +89,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
       const created = await withUserUniqueConflict(() => repository.createUser(input, passwordHash))
       const user = toUser(created.user, created.departments, created.roles)
 
-      return {
-        ...(await createAuthSession(created.user.id, user)),
-      }
+      return createAuthSession(created.user.id, user)
     },
 
     async login(input: AuthLoginInput): Promise<AuthSession> {
@@ -107,9 +103,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
 
       const user = toUser(account.user, account.departments, account.roles)
 
-      return {
-        ...(await createAuthSession(account.user.id, user)),
-      }
+      return createAuthSession(account.user.id, user)
     },
 
     async refresh(refreshToken: string | undefined): Promise<AuthSession> {
@@ -133,9 +127,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
 
       const user = toUser(account.user, account.departments, account.roles)
 
-      return {
-        ...(await createAuthSession(account.user.id, user)),
-      }
+      return createAuthSession(account.user.id, user)
     },
 
     async logout(refreshToken: string | undefined) {

@@ -18,7 +18,6 @@ type AccessResource = {
   code: string
   path: string | null
   externalUrl: string | null
-  openTarget: 'self' | 'blank'
   icon: string | null
   hidden: boolean
   status: number
@@ -26,6 +25,7 @@ type AccessResource = {
   createdAt: Date
   updatedAt: Date
   deletedAt: Date | null
+  openTarget: string
 }
 
 export type UserAccess = {
@@ -48,6 +48,24 @@ function filterMenuNodes(nodes: ResourceTreeNode[]): ResourceTreeNode[] {
     .map((node) => ({ ...node, children: filterMenuNodes(node.children) }))
 }
 
+const resourceSelect = {
+  id: systemResources.id,
+  parentId: systemResources.parentId,
+  type: systemResources.type,
+  name: systemResources.name,
+  code: systemResources.code,
+  path: systemResources.path,
+  externalUrl: systemResources.externalUrl,
+  openTarget: systemResources.openTarget,
+  icon: systemResources.icon,
+  hidden: systemResources.hidden,
+  status: systemResources.status,
+  sortOrder: systemResources.sortOrder,
+  createdAt: systemResources.createdAt,
+  updatedAt: systemResources.updatedAt,
+  deletedAt: systemResources.deletedAt,
+}
+
 export function createUserAccessService(database: Db) {
   async function findActiveRoles(userId: string) {
     return await database
@@ -61,32 +79,18 @@ export function createUserAccessService(database: Db) {
   }
 
   async function listEnabledResourcesForAdmin() {
-    return await database
-      .select()
+    const rows = await database
+      .select(resourceSelect)
       .from(systemResources)
       .where(and(eq(systemResources.status, RESOURCE_STATUS_ENABLED), isNull(systemResources.deletedAt)))
       .orderBy(...resourceOrder())
+
+    return rows
   }
 
   async function listEnabledResourcesForUser(userId: string) {
-    return await database
-      .select({
-        id: systemResources.id,
-        parentId: systemResources.parentId,
-        type: systemResources.type,
-        name: systemResources.name,
-        code: systemResources.code,
-        path: systemResources.path,
-        externalUrl: systemResources.externalUrl,
-        openTarget: systemResources.openTarget,
-        icon: systemResources.icon,
-        hidden: systemResources.hidden,
-        status: systemResources.status,
-        sortOrder: systemResources.sortOrder,
-        createdAt: systemResources.createdAt,
-        updatedAt: systemResources.updatedAt,
-        deletedAt: systemResources.deletedAt,
-      })
+    const rows = await database
+      .select(resourceSelect)
       .from(userRoles)
       .innerJoin(roles, eq(roles.id, userRoles.roleId))
       .innerJoin(roleResources, eq(roleResources.roleId, roles.id))
@@ -101,6 +105,8 @@ export function createUserAccessService(database: Db) {
         ),
       )
       .orderBy(...resourceOrder())
+
+    return rows
   }
 
   return {
@@ -112,7 +118,7 @@ export function createUserAccessService(database: Db) {
         : await listEnabledResourcesForUser(userId)
 
       const uniqueRowsByCode = new Map<string, AccessResource>()
-      for (const row of resourceRows as AccessResource[]) {
+      for (const row of resourceRows) {
         if (!uniqueRowsByCode.has(row.code)) {
           uniqueRowsByCode.set(row.code, row)
         }

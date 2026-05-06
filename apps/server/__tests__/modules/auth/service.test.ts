@@ -200,6 +200,34 @@ describe('auth service', () => {
     expect(mocks.resolveUserAccess).toHaveBeenCalledWith('8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7')
   })
 
+  it('does not create a refresh session when access resolution fails', async () => {
+    mocks.repository.findActiveUserCredentialByUsername.mockResolvedValue({
+      credential: {
+        userId: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        passwordHash: 'stored-password-hash',
+        createdAt: new Date('2026-04-30T00:00:00.000Z'),
+        updatedAt: new Date('2026-04-30T00:00:00.000Z'),
+      },
+      departments: [],
+      roles: [],
+      user: createUserRow(),
+    })
+    mocks.verifyPassword.mockResolvedValue(true)
+    mocks.repository.createRefreshSession.mockResolvedValue(undefined)
+    const accessError = new Error('access resolution failed')
+    mocks.resolveUserAccess.mockRejectedValue(accessError)
+
+    const service = createAuthService({} as never, config)
+    await expect(
+      service.login({
+        username: 'ada',
+        password: 'secret-password',
+      }),
+    ).rejects.toBe(accessError)
+
+    expect(mocks.repository.createRefreshSession).not.toHaveBeenCalled()
+  })
+
   it('does not hide refresh session revoke failures during logout', async () => {
     const pair = await createTokenPair('8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7', config)
     const error = new Error('revoke failed')

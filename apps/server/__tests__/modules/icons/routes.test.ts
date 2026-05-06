@@ -3,13 +3,30 @@ import { describe, expect, it } from 'vitest'
 import { createApp } from '../../../src/app'
 import { createTestDb } from '../../helpers/db'
 
-function expectIconHeaders(response: Response) {
+function expectHeaderList(response: Response, name: string, values: string[]) {
+  expect(
+    response.headers
+      .get(name)
+      ?.split(',')
+      .map((value) => value.trim()),
+  ).toEqual(values)
+}
+
+function expectIconHeaders(response: Response, options: { preflight?: boolean } = {}) {
   expect(response.headers.get('access-control-allow-origin')).toBe('*')
-  expect(response.headers.get('access-control-allow-methods')).toBe('GET, OPTIONS')
-  expect(response.headers.get('access-control-allow-headers')).toBe(
-    'Origin, X-Requested-With, Content-Type, Accept, Accept-Encoding',
-  )
-  expect(response.headers.get('access-control-max-age')).toBe('86400')
+
+  if (options.preflight) {
+    expectHeaderList(response, 'access-control-allow-methods', ['GET', 'OPTIONS'])
+    expectHeaderList(response, 'access-control-allow-headers', [
+      'Origin',
+      'X-Requested-With',
+      'Content-Type',
+      'Accept',
+      'Accept-Encoding',
+    ])
+    expect(response.headers.get('access-control-max-age')).toBe('86400')
+  }
+
   expect(response.headers.get('cross-origin-resource-policy')).toBe('cross-origin')
   expect(response.headers.get('cache-control')).toBe(
     'public, max-age=604800, min-refresh=604800, immutable',
@@ -107,20 +124,26 @@ describe('icon routes', () => {
     })
 
     expect(response.status).toBe(204)
-    expectIconHeaders(response)
+    expectIconHeaders(response, { preflight: true })
     expect(await response.text()).toBe('')
   })
 
-  it('pretty prints JSON when pretty is 1 or true', async () => {
+  it('pretty prints JSON when pretty has a non-empty value', async () => {
     const database = await createTestDb()
     const app = createApp(database)
 
     const prettyOne = await app.request('/api/icons/lucide.json?icons=sun&pretty=1')
     const prettyTrue = await app.request('/api/icons/lucide.json?icons=sun&pretty=true')
+    const prettyFalse = await app.request('/api/icons/lucide.json?icons=sun&pretty=false')
+    const prettyZero = await app.request('/api/icons/lucide.json?icons=sun&pretty=0')
     const compact = await app.request('/api/icons/lucide.json?icons=sun')
+    const emptyPretty = await app.request('/api/icons/lucide.json?icons=sun&pretty=')
 
     expect(await prettyOne.text()).toContain('\n    "prefix": "lucide"')
     expect(await prettyTrue.text()).toContain('\n    "prefix": "lucide"')
+    expect(await prettyFalse.text()).toContain('\n    "prefix": "lucide"')
+    expect(await prettyZero.text()).toContain('\n    "prefix": "lucide"')
     expect(await compact.text()).not.toContain('\n    "prefix": "lucide"')
+    expect(await emptyPretty.text()).not.toContain('\n    "prefix": "lucide"')
   })
 })

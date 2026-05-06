@@ -2,14 +2,9 @@ import { lookupCollection } from '@iconify/json'
 import type { IconifyJSON } from '@iconify/types'
 import { getIcons } from '@iconify/utils'
 
-const iconSetCache = new Map<string, Promise<IconifyJSON>>()
-const iconPrefixPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const iconSetCache = new Map<string, Promise<IconifyJSON | null>>()
 
-export function isValidIconPrefix(prefix: string) {
-  return iconPrefixPattern.test(prefix)
-}
-
-async function loadIconSet(prefix: string) {
+async function loadIconSet(prefix: string): Promise<IconifyJSON | null> {
   let iconSetPromise = iconSetCache.get(prefix)
 
   if (!iconSetPromise) {
@@ -19,22 +14,25 @@ async function loadIconSet(prefix: string) {
 
   try {
     return await iconSetPromise
-  } catch (error) {
+  } catch {
     iconSetCache.delete(prefix)
-    throw error
+    return null
   }
 }
 
 export async function getIconSubset(prefix: string, names: string[]): Promise<IconifyJSON | null> {
   const iconSet = await loadIconSet(prefix)
-  const subset = getIcons(iconSet, names, true)
 
-  if (!subset) {
+  if (!iconSet) {
     return null
   }
 
-  return {
-    ...subset,
-    aliases: subset.aliases ?? {},
-  }
+  const subset = getIcons(iconSet, names, true)
+
+  return subset
+    ? {
+        ...subset,
+        aliases: subset.aliases ?? {},
+      }
+    : null
 }

@@ -1,78 +1,47 @@
+import { iconDataParamSchema, iconDataQuerySchema } from '@rev30/shared'
+import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
-import { getIconSubset, isValidIconPrefix } from './service'
+import { cors } from 'hono/cors'
+import { getIconSubset } from './service'
 
-const jsonExtension = '.json'
-
-const iconHeaders = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, OPTIONS',
-  'access-control-allow-headers': 'Origin, X-Requested-With, Content-Type, Accept, Accept-Encoding',
-  'access-control-max-age': '86400',
-  'cross-origin-resource-policy': 'cross-origin',
-  'cache-control': 'public, max-age=604800, min-refresh=604800, immutable',
-} as const
-
-function createHeaders(contentType?: string) {
-  return contentType
-    ? {
-        ...iconHeaders,
-        'content-type': contentType,
-      }
-    : iconHeaders
-}
-
-function notFoundResponse() {
-  return new Response('404', {
-    status: 404,
-    headers: createHeaders('text/plain; charset=utf-8'),
-  })
-}
-
-function parsePrefix(filename: string) {
-  if (!filename.endsWith(jsonExtension)) {
-    return null
+const iconParamValidator = zValidator('param', iconDataParamSchema, (result, c) => {
+  if (!result.success) {
+    return c.text('404', 404)
   }
+})
 
-  const prefix = filename.slice(0, -jsonExtension.length)
-  return isValidIconPrefix(prefix) ? prefix : null
-}
-
-function isPretty(value: string | undefined) {
-  return value === '1' || value === 'true'
-}
+const iconQueryValidator = zValidator('query', iconDataQuerySchema, (result, c) => {
+  if (!result.success) {
+    return c.text('404', 404)
+  }
+})
 
 export const iconRoutes = new Hono()
-  .options(
-    '/:filename',
-    () =>
-      new Response(null, {
-        status: 204,
-        headers: createHeaders(),
-      }),
+  .use('*', (c, next) => {
+    c.header('cross-origin-resource-policy', 'cross-origin')
+    c.header('cache-control', 'public, max-age=604800, min-refresh=604800, immutable')
+
+    return next()
+  })
+  .use(
+    '*',
+    cors({
+      origin: '*',
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Accept-Encoding'],
+      maxAge: 86400,
+    }),
   )
-  .get('/:filename', async (c) => {
-    const prefix = parsePrefix(c.req.param('filename'))
-    const icons = c.req.query('icons')
+  .get('/:filename', iconParamValidator, iconQueryValidator, async (c) => {
+    const { prefix } = c.req.valid('param')
+    const { icons, pretty } = c.req.valid('query')
+    const subset = await getIconSubset(prefix, icons)
 
-    if (!prefix || icons === undefined) {
-      return notFoundResponse()
+    if (!subset) {
+      return c.text('404', 404)
     }
 
-    try {
-      const subset = await getIconSubset(prefix, icons.split(','))
+    c.header('content-type', 'application/json; charset=utf-8')
 
-      if (!subset) {
-        return notFoundResponse()
-      }
-
-      return new Response(
-        JSON.stringify(subset, null, isPretty(c.req.query('pretty')) ? 4 : undefined),
-        {
-          status: 200,
-          headers: createHeaders('application/json; charset=utf-8'),
-        },
-      )
-    } catch {
-      return notFoundResponse()
-    }
+    return c.body(JSON.stringify(subset, null, pretty ? 4 : undefined), 200)
   })

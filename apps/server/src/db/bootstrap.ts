@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { randomUUID } from 'node:crypto'
-import { USER_STATUS_ENABLED } from '@rev30/shared'
-import { and, eq } from 'drizzle-orm'
+import { ROLE_STATUS_ENABLED, USER_STATUS_ENABLED } from '@rev30/shared'
+import { and, eq, isNull } from 'drizzle-orm'
 import { createDb, type Db } from '.'
 import { hashPassword } from '../modules/auth/password'
 import {
@@ -40,7 +40,7 @@ export async function bootstrapAdminUser(database: Db, input: BootstrapAdminInpu
   const [adminRole] = await database
     .select()
     .from(roles)
-    .where(eq(roles.code, 'admin'))
+    .where(and(eq(roles.code, 'admin'), eq(roles.status, ROLE_STATUS_ENABLED), isNull(roles.deletedAt)))
     .limit(1)
 
   if (!adminRole) {
@@ -54,24 +54,10 @@ export async function bootstrapAdminUser(database: Db, input: BootstrapAdminInpu
   const phone = normalizeOptionalText(input.phone)
 
   await database.transaction(async (tx) => {
-    const [existingUser] = await tx.select().from(users).where(eq(users.username, username)).limit(1)
-    const userId = existingUser?.id ?? randomUUID()
-
-    if (existingUser) {
-      await tx
-        .update(users)
-        .set({
-          nickname,
-          email,
-          phone,
-          status: USER_STATUS_ENABLED,
-          deletedAt: null,
-          updatedAt: now,
-        })
-        .where(eq(users.id, userId))
-    } else {
-      await tx.insert(users).values({
-        id: userId,
+    const [upsertedUser] = await tx
+      .insert(users)
+      .values({
+        id: randomUUID(),
         username,
         nickname,
         email,
@@ -81,44 +67,49 @@ export async function bootstrapAdminUser(database: Db, input: BootstrapAdminInpu
         updatedAt: now,
         deletedAt: null,
       })
+      .onConflictDoUpdate({
+        target: users.username,
+        set: {
+          nickname,
+          email,
+          phone,
+          status: USER_STATUS_ENABLED,
+          deletedAt: null,
+          updatedAt: now,
+        },
+      })
+      .returning()
+
+    if (!upsertedUser) {
+      throw new Error('创建初始管理员失败')
     }
 
-    const [existingCredential] = await tx
-      .select()
-      .from(authPasswordCredentials)
-      .where(eq(authPasswordCredentials.userId, userId))
-      .limit(1)
-
-    if (existingCredential) {
-      await tx
-        .update(authPasswordCredentials)
-        .set({
-          passwordHash,
-          updatedAt: now,
-        })
-        .where(eq(authPasswordCredentials.userId, userId))
-    } else {
-      await tx.insert(authPasswordCredentials).values({
-        userId,
+    await tx
+      .insert(authPasswordCredentials)
+      .values({
+        userId: upsertedUser.id,
         passwordHash,
         createdAt: now,
         updatedAt: now,
       })
-    }
+      .onConflictDoUpdate({
+        target: authPasswordCredentials.userId,
+        set: {
+          passwordHash,
+          updatedAt: now,
+        },
+      })
 
-    const [existingAdminBinding] = await tx
-      .select()
-      .from(userRoles)
-      .where(and(eq(userRoles.userId, userId), eq(userRoles.roleId, adminRole.id)))
-      .limit(1)
-
-    if (!existingAdminBinding) {
-      await tx.insert(userRoles).values({
-        userId,
+    await tx
+      .insert(userRoles)
+      .values({
+        userId: upsertedUser.id,
         roleId: adminRole.id,
         createdAt: now,
       })
-    }
+      .onConflictDoNothing({
+        target: [userRoles.userId, userRoles.roleId],
+      })
   })
 }
 

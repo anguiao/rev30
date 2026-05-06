@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { USER_STATUS_DISABLED, USER_STATUS_ENABLED } from '@rev30/shared'
+import { ROLE_STATUS_DISABLED, ROLE_STATUS_ENABLED, USER_STATUS_DISABLED, USER_STATUS_ENABLED } from '@rev30/shared'
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import {
@@ -157,6 +157,47 @@ describe('bootstrap admin user', () => {
     ).rejects.toThrow('admin 角色不存在，请先执行数据库迁移')
   })
 
+  it('fails when the admin role is disabled or soft deleted', async () => {
+    const database = await createTestDb()
+
+    await database
+      .update(roles)
+      .set({
+        status: ROLE_STATUS_DISABLED,
+        updatedAt: now,
+      })
+      .where(eq(roles.code, 'admin'))
+
+    await expect(
+      bootstrapAdminUser(database, {
+        username: 'admin',
+        password: 'secret-admin-password',
+        nickname: 'Administrator',
+        email: null,
+        phone: null,
+      }),
+    ).rejects.toThrow('admin 角色不存在，请先执行数据库迁移')
+
+    await database
+      .update(roles)
+      .set({
+        status: ROLE_STATUS_ENABLED,
+        deletedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(roles.code, 'admin'))
+
+    await expect(
+      bootstrapAdminUser(database, {
+        username: 'admin',
+        password: 'secret-admin-password',
+        nickname: 'Administrator',
+        email: null,
+        phone: null,
+      }),
+    ).rejects.toThrow('admin 角色不存在，请先执行数据库迁移')
+  })
+
   it('adds a password credential for an existing user without one', async () => {
     const database = await createTestDb()
     const userId = randomUUID()
@@ -204,5 +245,52 @@ describe('bootstrap admin user', () => {
     await expect(
       verifyPassword('restored-admin-password', credential?.passwordHash ?? ''),
     ).resolves.toBe(true)
+  })
+
+  it('allows simultaneous bootstrap calls without duplicate user, credential, or admin binding rows', async () => {
+    const database = await createTestDb()
+
+    await expect(
+      Promise.all([
+        bootstrapAdminUser(database, {
+          username: 'admin',
+          password: 'secret-admin-password',
+          nickname: 'Administrator',
+          email: 'admin@example.com',
+          phone: null,
+        }),
+        bootstrapAdminUser(database, {
+          username: 'admin',
+          password: 'secret-admin-password',
+          nickname: 'Administrator',
+          email: 'admin@example.com',
+          phone: null,
+        }),
+      ]),
+    ).resolves.toEqual([undefined, undefined])
+
+    const allUsers = await database.select().from(users).where(eq(users.username, 'admin'))
+    const [adminRole] = await database.select().from(roles).where(eq(roles.code, 'admin'))
+    const allCredentials = await database.select().from(authPasswordCredentials)
+    const bindings = await database
+      .select()
+      .from(userRoles)
+      .where(
+        and(
+          eq(userRoles.userId, allUsers[0]?.id ?? ''),
+          eq(userRoles.roleId, adminRole?.id ?? ''),
+        ),
+      )
+
+    expect(allUsers).toHaveLength(1)
+    expect(allCredentials).toHaveLength(1)
+    expect(bindings).toHaveLength(1)
+    expect(allUsers[0]).toMatchObject({
+      username: 'admin',
+      nickname: 'Administrator',
+      email: 'admin@example.com',
+      status: USER_STATUS_ENABLED,
+      deletedAt: null,
+    })
   })
 })

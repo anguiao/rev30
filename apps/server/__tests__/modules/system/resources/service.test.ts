@@ -15,7 +15,7 @@ describe('resource service', () => {
     const external = await service.create({
       type: RESOURCE_TYPE_EXTERNAL,
       name: 'Docs',
-      code: 'system:docs',
+      code: 'test-system:docs',
       parentId: null,
       path: '/stale-path',
       externalUrl: 'https://example.com/docs',
@@ -28,7 +28,7 @@ describe('resource service', () => {
     const directory = await service.create({
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
-      code: 'system',
+      code: 'test-system',
       parentId: null,
       path: '/stale-directory-path',
       externalUrl: 'https://example.com/system',

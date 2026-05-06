@@ -202,7 +202,7 @@ describe('PGlite migrations', () => {
         id: randomUUID(),
         type: 'action',
         name: 'Create User',
-        code: 'system:user:create',
+        code: 'test-system:user:create',
         createdAt: now,
         updatedAt: now,
       })
@@ -212,7 +212,7 @@ describe('PGlite migrations', () => {
       .values({
         id: randomUUID(),
         name: 'Administrator',
-        code: 'admin',
+        code: 'test-admin',
         createdAt: now,
         updatedAt: now,
       })
@@ -314,7 +314,7 @@ describe('PGlite migrations', () => {
         id: randomUUID(),
         type: 'directory',
         name: 'System',
-        code: 'system',
+        code: 'test-system',
         createdAt: now,
         updatedAt: now,
       })
@@ -331,7 +331,7 @@ describe('PGlite migrations', () => {
         parentId: root.id,
         type: 'menu',
         name: 'Users',
-        code: 'system:user',
+        code: 'test-system:user',
         path: '/system/users',
         createdAt: now,
         updatedAt: now,
@@ -340,7 +340,7 @@ describe('PGlite migrations', () => {
 
     expect(child).toMatchObject({
       parentId: root.id,
-      code: 'system:user',
+      code: 'test-system:user',
       path: '/system/users',
     })
   })

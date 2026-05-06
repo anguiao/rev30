@@ -326,7 +326,7 @@ describe('user routes', () => {
     const app = createTestApp(database)
     const admin = await createRole(database, {
       name: 'Administrator',
-      code: 'admin',
+      code: 'test-admin',
       sortOrder: 20,
     })
     const editor = await createRole(database, {
@@ -351,7 +351,7 @@ describe('user routes', () => {
       {
         id: admin.id,
         name: 'Administrator',
-        code: 'admin',
+        code: 'test-admin',
       },
     ])
     expect(body.departments).toEqual([])
@@ -379,7 +379,7 @@ describe('user routes', () => {
     const app = createTestApp(database)
     const admin = await createRole(database, {
       name: 'Administrator',
-      code: 'admin',
+      code: 'test-admin',
     })
     const editor = await createRole(database, {
       name: 'Editor',

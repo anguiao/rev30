@@ -80,20 +80,20 @@ describe('role routes', () => {
     const app = createTestApp(database)
     const action = await createResource(database, {
       name: 'Create User',
-      code: 'system:user:create',
+      code: 'test-system:user:create',
       type: RESOURCE_TYPE_ACTION,
       sortOrder: 2,
     })
     const directory = await createResource(database, {
       name: 'System',
-      code: 'system',
+      code: 'test-system',
       type: RESOURCE_TYPE_DIRECTORY,
       sortOrder: 1,
     })
 
     const { body, response } = await createRole(app, {
       name: 'Administrator',
-      code: 'admin',
+      code: 'test-admin',
       sortOrder: 10,
       resourceIds: [action.id, directory.id],
     })
@@ -101,7 +101,7 @@ describe('role routes', () => {
     expect(response.status).toBe(201)
     expect(body).toMatchObject({
       name: 'Administrator',
-      code: 'admin',
+      code: 'test-admin',
       status: ROLE_STATUS_ENABLED,
       sortOrder: 10,
     })
@@ -109,13 +109,13 @@ describe('role routes', () => {
       {
         id: directory.id,
         name: 'System',
-        code: 'system',
+        code: 'test-system',
         type: RESOURCE_TYPE_DIRECTORY,
       },
       {
         id: action.id,
         name: 'Create User',
-        code: 'system:user:create',
+        code: 'test-system:user:create',
         type: RESOURCE_TYPE_ACTION,
       },
     ])
@@ -126,7 +126,7 @@ describe('role routes', () => {
     const app = createTestApp(database)
     const { body: admin } = await createRole(app, {
       name: 'Administrator',
-      code: 'admin',
+      code: 'test-admin',
       status: ROLE_STATUS_ENABLED,
     })
     await createRole(app, {
@@ -155,7 +155,7 @@ describe('role routes', () => {
       { userId: deletedUserId, roleId: admin.id },
     ])
 
-    const response = await app.request('/api/system/roles?keyword=adm&status=1')
+    const response = await app.request('/api/system/roles?keyword=test-admin&status=1')
     const body = (await response.json()) as RoleListResponse
 
     expect(response.status).toBe(200)
@@ -164,7 +164,7 @@ describe('role routes', () => {
     expect(body.list[0]).toMatchObject({
       id: admin.id,
       name: 'Administrator',
-      code: 'admin',
+      code: 'test-admin',
       status: ROLE_STATUS_ENABLED,
       userCount: 1,
     })
@@ -177,12 +177,12 @@ describe('role routes', () => {
     const app = createTestApp(database)
     const resource = await createResource(database, {
       name: 'System',
-      code: 'system',
+      code: 'test-system',
       type: RESOURCE_TYPE_DIRECTORY,
     })
     const { body: created } = await createRole(app, {
       name: 'Administrator',
-      code: 'admin',
+      code: 'test-admin',
       resourceIds: [resource.id],
     })
 
@@ -192,13 +192,13 @@ describe('role routes', () => {
     expect(response.status).toBe(200)
     expect(body).toMatchObject({
       id: created.id,
-      code: 'admin',
+      code: 'test-admin',
     })
     expect(body.resources).toEqual([
       {
         id: resource.id,
         name: 'System',
-        code: 'system',
+        code: 'test-system',
         type: RESOURCE_TYPE_DIRECTORY,
       },
     ])
@@ -207,15 +207,15 @@ describe('role routes', () => {
   it('replaces and clears role resource authorization on patch', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const system = await createResource(database, { name: 'System', code: 'system' })
+    const system = await createResource(database, { name: 'System', code: 'test-system' })
     const createUser = await createResource(database, {
       name: 'Create User',
-      code: 'system:user:create',
+      code: 'test-system:user:create',
       type: RESOURCE_TYPE_ACTION,
     })
     const { body: created } = await createRole(app, {
       name: 'Administrator',
-      code: 'admin',
+      code: 'test-admin',
       resourceIds: [system.id],
     })
 
@@ -233,7 +233,7 @@ describe('role routes', () => {
       {
         id: createUser.id,
         name: 'Create User',
-        code: 'system:user:create',
+        code: 'test-system:user:create',
         type: RESOURCE_TYPE_ACTION,
       },
     ])
@@ -260,9 +260,9 @@ describe('role routes', () => {
   it('returns conflict for duplicate role code', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    await createRole(app, { name: 'Administrator', code: 'admin' })
+    await createRole(app, { name: 'Test Administrator', code: 'test-admin' })
 
-    const duplicate = await createRole(app, { name: 'Admin Duplicate', code: 'admin' })
+    const duplicate = await createRole(app, { name: 'Admin Duplicate', code: 'test-admin' })
     const body = duplicate.body as unknown as ErrorResponse
 
     expect(duplicate.response.status).toBe(409)
@@ -283,7 +283,7 @@ describe('role routes', () => {
       method: 'POST',
       body: JSON.stringify({
         name: 'Administrator',
-        code: 'admin',
+        code: 'test-admin',
         resourceIds: [missingResourceId],
       }),
       headers: { 'content-type': 'application/json' },
@@ -313,7 +313,7 @@ describe('role routes', () => {
     const app = createTestApp(database)
     const { body: role } = await createRole(app, {
       name: 'Administrator',
-      code: 'admin',
+      code: 'test-admin',
     })
     const userId = randomUUID()
 
@@ -338,11 +338,11 @@ describe('role routes', () => {
     const app = createTestApp(database)
     const resource = await createResource(database, {
       name: 'System',
-      code: 'system',
+      code: 'test-system',
     })
     const { body: role } = await createRole(app, {
       name: 'Administrator',
-      code: 'admin',
+      code: 'test-admin',
       resourceIds: [resource.id],
     })
 

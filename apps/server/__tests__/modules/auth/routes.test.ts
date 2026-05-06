@@ -206,7 +206,7 @@ describe('auth routes', () => {
       .values({
         id: randomUUID(),
         name: 'Administrator',
-        code: 'admin',
+        code: 'test-admin',
         createdAt: now,
         updatedAt: now,
       })
@@ -239,7 +239,7 @@ describe('auth routes', () => {
       {
         id: role.id,
         name: 'Administrator',
-        code: 'admin',
+        code: 'test-admin',
       },
     ])
   })

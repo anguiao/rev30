@@ -117,12 +117,17 @@ describe('app auth boundaries', () => {
     const body = (await response.json()) as ResourceListResponse
 
     expect(response.status).toBe(200)
-    expect(body).toEqual({
-      list: [],
-      total: 0,
-      page: 1,
-      pageSize: 20,
-    })
+    expect(body.total).toBeGreaterThanOrEqual(1)
+    expect(body.page).toBe(1)
+    expect(body.pageSize).toBe(20)
+    expect(body.list).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'system',
+          name: '系统管理',
+        }),
+      ]),
+    )
   })
 
   it('allows roles route with a system access token', async () => {
@@ -138,12 +143,17 @@ describe('app auth boundaries', () => {
     const body = (await response.json()) as RoleListResponse
 
     expect(response.status).toBe(200)
-    expect(body).toEqual({
-      list: [],
-      total: 0,
-      page: 1,
-      pageSize: 20,
-    })
+    expect(body.total).toBeGreaterThanOrEqual(1)
+    expect(body.page).toBe(1)
+    expect(body.pageSize).toBe(20)
+    expect(body.list).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'admin',
+          name: 'Administrator',
+        }),
+      ]),
+    )
   })
 
   it('rejects system routes with a refresh token', async () => {

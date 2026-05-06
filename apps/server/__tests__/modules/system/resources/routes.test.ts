@@ -60,7 +60,7 @@ describe('resource routes', () => {
     const { body, response } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
-      code: 'system',
+      code: 'test-system',
       icon: 'lucide:settings',
       sortOrder: 10,
     })
@@ -70,7 +70,7 @@ describe('resource routes', () => {
       parentId: null,
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
-      code: 'system',
+      code: 'test-system',
       path: null,
       externalUrl: null,
       openTarget: RESOURCE_OPEN_TARGET_SELF,
@@ -83,19 +83,18 @@ describe('resource routes', () => {
     expect(body.updatedAt).toEqual(expect.any(String))
 
     const storedResources = await database.select().from(systemResources)
-    expect(storedResources).toHaveLength(1)
-    expect(storedResources[0]?.code).toBe('system')
+    expect(storedResources.some((resource) => resource.code === 'test-system')).toBe(true)
 
     const listResponse = await app.request('/api/system/resources?page=1&pageSize=10')
     const listBody = (await listResponse.json()) as ResourceListResponse
 
     expect(listResponse.status).toBe(200)
-    expect(listBody).toMatchObject({
-      total: 1,
-      page: 1,
-      pageSize: 10,
-    })
-    expect(listBody.list[0]).toMatchObject({ id: body.id, code: 'system' })
+    expect(listBody.page).toBe(1)
+    expect(listBody.pageSize).toBe(10)
+    expect(listBody.total).toBeGreaterThanOrEqual(1)
+    expect(listBody.list).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: body.id, code: 'test-system' })]),
+    )
   })
 
   it('creates typed menus, external links, and action permission points', async () => {
@@ -104,13 +103,13 @@ describe('resource routes', () => {
     const { body: root } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
-      code: 'system',
+      code: 'test-system',
     })
 
     const { body: menu } = await createResource(app, {
       type: RESOURCE_TYPE_MENU,
       name: 'Users',
-      code: 'system:user',
+      code: 'test-system:user',
       parentId: root.id,
       path: '/system/users',
       hidden: true,
@@ -118,13 +117,13 @@ describe('resource routes', () => {
     const { body: external } = await createResource(app, {
       type: RESOURCE_TYPE_EXTERNAL,
       name: 'Docs',
-      code: 'system:docs',
+      code: 'test-system:docs',
       externalUrl: 'https://example.com/docs',
     })
     const { body: action } = await createResource(app, {
       type: RESOURCE_TYPE_ACTION,
       name: 'Export Users',
-      code: 'system:user:export',
+      code: 'test-system:user:export',
     })
 
     expect(menu).toMatchObject({
@@ -152,12 +151,12 @@ describe('resource routes', () => {
     const { body: root } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
-      code: 'system',
+      code: 'test-system',
     })
     const { body: users } = await createResource(app, {
       type: RESOURCE_TYPE_MENU,
       name: 'Users',
-      code: 'system:user',
+      code: 'test-system:user',
       parentId: root.id,
       path: '/system/users',
       status: RESOURCE_STATUS_DISABLED,
@@ -165,7 +164,7 @@ describe('resource routes', () => {
     await createResource(app, {
       type: RESOURCE_TYPE_MENU,
       name: 'Departments',
-      code: 'system:department',
+      code: 'test-system:department',
       parentId: root.id,
       path: '/system/departments',
       status: RESOURCE_STATUS_ENABLED,
@@ -181,7 +180,7 @@ describe('resource routes', () => {
     expect(listBody.list).toHaveLength(1)
     expect(listBody.list[0]).toMatchObject({
       id: users.id,
-      code: 'system:user',
+      code: 'test-system:user',
       type: RESOURCE_TYPE_MENU,
       status: RESOURCE_STATUS_DISABLED,
     })
@@ -193,13 +192,13 @@ describe('resource routes', () => {
     const { body: root } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
-      code: 'system',
+      code: 'test-system',
       sortOrder: 1,
     })
     const { body: child } = await createResource(app, {
       type: RESOURCE_TYPE_ACTION,
       name: 'Create User',
-      code: 'system:user:create',
+      code: 'test-system:user:create',
       parentId: root.id,
       sortOrder: 2,
     })
@@ -211,22 +210,28 @@ describe('resource routes', () => {
     expect(detailBody).toMatchObject({
       id: child.id,
       parentId: root.id,
-      code: 'system:user:create',
+      code: 'test-system:user:create',
     })
 
     const treeResponse = await app.request('/api/system/resources/tree')
     const treeBody = (await treeResponse.json()) as ResourceTreeNode[]
 
     expect(treeResponse.status).toBe(200)
-    expect(treeBody).toHaveLength(1)
-    expect(treeBody[0]).toMatchObject({ id: root.id, code: 'system' })
-    expect(treeBody[0]?.children).toHaveLength(1)
-    expect(treeBody[0]?.children[0]).toMatchObject({
-      id: child.id,
-      parentId: root.id,
-      code: 'system:user:create',
-      children: [],
+    const treeRoot = treeBody.find((resource) => resource.id === root.id)
+    expect(treeRoot).toMatchObject({
+      id: root.id,
+      code: 'test-system',
     })
+    expect(treeRoot?.children).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: child.id,
+          parentId: root.id,
+          code: 'test-system:user:create',
+          children: [],
+        }),
+      ]),
+    )
   })
 
   it('returns validation errors for invalid query, id params, and request bodies', async () => {
@@ -246,7 +251,7 @@ describe('resource routes', () => {
       body: JSON.stringify({
         type: RESOURCE_TYPE_MENU,
         name: 'Users',
-        code: 'system:user',
+        code: 'test-system:user',
       }),
       headers: { 'content-type': 'application/json' },
     })
@@ -260,12 +265,12 @@ describe('resource routes', () => {
     const { body: root } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
-      code: 'system',
+      code: 'test-system',
     })
     const { body: child } = await createResource(app, {
       type: RESOURCE_TYPE_MENU,
       name: 'Users',
-      code: 'system:user',
+      code: 'test-system:user',
       parentId: root.id,
       path: '/system/users',
     })
@@ -275,7 +280,7 @@ describe('resource routes', () => {
       body: JSON.stringify({
         type: RESOURCE_TYPE_EXTERNAL,
         name: 'User Docs',
-        code: 'system:user-docs',
+        code: 'test-system:user-docs',
         externalUrl: 'https://example.com/users',
         openTarget: RESOURCE_OPEN_TARGET_BLANK,
         sortOrder: 20,
@@ -289,7 +294,7 @@ describe('resource routes', () => {
       id: child.id,
       type: RESOURCE_TYPE_EXTERNAL,
       name: 'User Docs',
-      code: 'system:user-docs',
+      code: 'test-system:user-docs',
       path: null,
       externalUrl: 'https://example.com/users',
       openTarget: RESOURCE_OPEN_TARGET_BLANK,
@@ -319,7 +324,7 @@ describe('resource routes', () => {
     const { body } = await createResource(app, {
       type: RESOURCE_TYPE_MENU,
       name: 'Users',
-      code: 'system:user',
+      code: 'test-system:user',
       path: '/system/users',
     })
 
@@ -348,7 +353,7 @@ describe('resource routes', () => {
     const { body } = await createResource(app, {
       type: RESOURCE_TYPE_EXTERNAL,
       name: 'Docs',
-      code: 'system:docs',
+      code: 'test-system:docs',
       externalUrl: 'https://example.com/docs',
       openTarget: RESOURCE_OPEN_TARGET_BLANK,
     })
@@ -378,7 +383,7 @@ describe('resource routes', () => {
     const { body } = await createResource(app, {
       type: RESOURCE_TYPE_EXTERNAL,
       name: 'Docs',
-      code: 'system:docs',
+      code: 'test-system:docs',
       externalUrl: 'https://example.com/docs',
       openTarget: RESOURCE_OPEN_TARGET_SELF,
     })
@@ -407,7 +412,7 @@ describe('resource routes', () => {
     const { body } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
-      code: 'system',
+      code: 'test-system',
     })
 
     const response = await app.request(`/api/system/resources/${body.id}`, {
@@ -426,18 +431,18 @@ describe('resource routes', () => {
     const { body: menu } = await createResource(app, {
       type: RESOURCE_TYPE_MENU,
       name: 'Users',
-      code: 'system:user',
+      code: 'test-system:user',
       path: '/system/users',
     })
     const { body: directory } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
-      code: 'system',
+      code: 'test-system',
     })
     const { body: action } = await createResource(app, {
       type: RESOURCE_TYPE_ACTION,
       name: 'Export Users',
-      code: 'system:user:export',
+      code: 'test-system:user:export',
     })
 
     for (const resource of [menu, directory, action]) {
@@ -459,7 +464,7 @@ describe('resource routes', () => {
     const { body } = await createResource(app, {
       type: RESOURCE_TYPE_EXTERNAL,
       name: 'Docs',
-      code: 'system:docs',
+      code: 'test-system:docs',
       externalUrl: 'https://example.com/docs',
     })
 
@@ -479,19 +484,19 @@ describe('resource routes', () => {
     await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
-      code: 'system',
+      code: 'test-system',
     })
     const { body: userMenu } = await createResource(app, {
       type: RESOURCE_TYPE_MENU,
       name: 'Users',
-      code: 'system:user',
+      code: 'test-system:user',
       path: '/system/users',
     })
 
     const createConflict = await createResource(app, {
       type: RESOURCE_TYPE_ACTION,
       name: 'Duplicate',
-      code: 'system',
+      code: 'test-system',
     })
     expect(createConflict.response.status).toBe(409)
     expect(createConflict.body as unknown as ErrorResponse).toMatchObject({
@@ -500,7 +505,7 @@ describe('resource routes', () => {
 
     const updateConflict = await app.request(`/api/system/resources/${userMenu.id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ code: 'system' }),
+      body: JSON.stringify({ code: 'test-system' }),
       headers: { 'content-type': 'application/json' },
     })
     expect(updateConflict.status).toBe(409)
@@ -513,12 +518,12 @@ describe('resource routes', () => {
     const { body: root } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
-      code: 'system',
+      code: 'test-system',
     })
     const { body: child } = await createResource(app, {
       type: RESOURCE_TYPE_ACTION,
       name: 'Create User',
-      code: 'system:user:create',
+      code: 'test-system:user:create',
       parentId: root.id,
     })
 
@@ -549,21 +554,22 @@ describe('resource routes', () => {
     const listAfterDeleteBody = (await listAfterDeleteResponse.json()) as ResourceListResponse
 
     expect(listAfterDeleteResponse.status).toBe(200)
-    expect(listAfterDeleteBody).toMatchObject({
-      total: 1,
-      page: 1,
-      pageSize: 10,
-    })
-    expect(listAfterDeleteBody.list).toHaveLength(1)
-    expect(listAfterDeleteBody.list[0]).toMatchObject({ id: root.id })
+    expect(listAfterDeleteBody.page).toBe(1)
+    expect(listAfterDeleteBody.pageSize).toBe(10)
+    expect(listAfterDeleteBody.total).toBeGreaterThanOrEqual(1)
+    expect(listAfterDeleteBody.list).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: root.id })]),
+    )
 
     const treeAfterDeleteResponse = await app.request('/api/system/resources/tree')
     const treeAfterDeleteBody = (await treeAfterDeleteResponse.json()) as ResourceTreeNode[]
 
     expect(treeAfterDeleteResponse.status).toBe(200)
-    expect(treeAfterDeleteBody).toHaveLength(1)
-    expect(treeAfterDeleteBody[0]).toMatchObject({ id: root.id })
-    expect(treeAfterDeleteBody[0]?.children).toEqual([])
+    const deletedTreeRoot = treeAfterDeleteBody.find((resource) => resource.id === root.id)
+    expect(deletedTreeRoot).toMatchObject({
+      id: root.id,
+      children: [],
+    })
   })
 
   it('rejects deleting resources assigned to roles', async () => {
@@ -572,7 +578,7 @@ describe('resource routes', () => {
     const { body: resource } = await createResource(app, {
       type: RESOURCE_TYPE_ACTION,
       name: 'Export Users',
-      code: 'system:user:export',
+      code: 'test-system:user:export',
     })
 
     const roleId = randomUUID()
@@ -634,13 +640,13 @@ describe('resource routes', () => {
     const { body: root } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
-      code: 'system',
+      code: 'test-system',
     })
 
     const { body: later } = await createResource(app, {
       type: RESOURCE_TYPE_MENU,
       name: 'Later',
-      code: 'system:later',
+      code: 'test-system:later',
       parentId: root.id,
       path: '/system/later',
       sortOrder: 20,
@@ -648,7 +654,7 @@ describe('resource routes', () => {
     const { body: first } = await createResource(app, {
       type: RESOURCE_TYPE_MENU,
       name: 'First',
-      code: 'system:first',
+      code: 'test-system:first',
       parentId: root.id,
       path: '/system/first',
       sortOrder: 10,

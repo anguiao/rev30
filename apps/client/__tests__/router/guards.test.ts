@@ -78,6 +78,7 @@ function createTestRouter() {
       { path: '/system/departments', component: { template: '<main>System departments</main>' } },
       { path: '/system/roles', component: { template: '<main>System roles</main>' } },
       { path: '/system/users', component: { template: '<main>System users</main>' } },
+      { path: '/403', component: { template: '<main>No access</main>' } },
       { path: '/login', component: { template: '<main>Login</main>' } },
       { path: '/register', component: { template: '<main>Register</main>' } },
     ],
@@ -239,7 +240,7 @@ describe('auth guards', () => {
     expect(router.currentRoute.value.fullPath).toBe('/system/roles')
   })
 
-  it('falls back to the admin default route when no internal menu is available', async () => {
+  it('redirects authenticated users to the forbidden page when no internal menu is available', async () => {
     const auth = useAuthStore()
     auth.setSession(
       createSession([
@@ -255,6 +256,6 @@ describe('auth guards', () => {
 
     await router.push('/register')
 
-    expect(router.currentRoute.value.fullPath).toBe('/system/users')
+    expect(router.currentRoute.value.fullPath).toBe('/403')
   })
 })

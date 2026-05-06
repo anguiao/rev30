@@ -61,7 +61,7 @@ describe('resource routes', () => {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
       code: 'system',
-      icon: 'i-[lucide--settings]',
+      icon: 'lucide:settings',
       sortOrder: 10,
     })
 
@@ -74,7 +74,7 @@ describe('resource routes', () => {
       path: null,
       externalUrl: null,
       openTarget: RESOURCE_OPEN_TARGET_SELF,
-      icon: 'i-[lucide--settings]',
+      icon: 'lucide:settings',
       hidden: false,
       status: RESOURCE_STATUS_ENABLED,
       sortOrder: 10,

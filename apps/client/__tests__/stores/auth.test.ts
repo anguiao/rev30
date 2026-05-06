@@ -8,8 +8,44 @@ const session: AuthTokenResponse = {
   accessToken: 'access-token',
   tokenType: 'Bearer',
   expiresIn: 900,
-  accessCodes: [],
-  menus: [],
+  accessCodes: ['system:user:list', 'system:user:create', 'system:role:update'],
+  menus: [
+    {
+      id: 'f905f4dc-c43f-41a8-b6fc-d381f291331a',
+      parentId: null,
+      type: 'directory',
+      name: 'System',
+      code: 'system',
+      path: null,
+      externalUrl: null,
+      openTarget: 'self',
+      icon: 'lucide:settings',
+      hidden: false,
+      status: 1,
+      sortOrder: 0,
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T00:00:00.000Z',
+      children: [
+        {
+          id: '83d85ddf-9ebf-4f62-af9f-368af6d0d2a5',
+          parentId: 'f905f4dc-c43f-41a8-b6fc-d381f291331a',
+          type: 'menu',
+          name: 'Users',
+          code: 'system:user:list',
+          path: '/system/users',
+          externalUrl: null,
+          openTarget: 'self',
+          icon: 'lucide:users',
+          hidden: false,
+          status: 1,
+          sortOrder: 1,
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+          children: [],
+        },
+      ],
+    },
+  ],
   user: {
     id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
     username: 'ada',
@@ -29,13 +65,15 @@ describe('auth store', () => {
     setActivePinia(createPinia())
   })
 
-  it('stores only the access token and current user from a session response', () => {
+  it('stores the access token, current user, access codes, and menus from a session response', () => {
     const auth = useAuthStore()
 
     auth.setSession(session)
 
     expect(auth.$state).toEqual({
       accessToken: 'access-token',
+      accessCodes: session.accessCodes,
+      menus: session.menus,
       user: session.user,
       isReady: false,
     })
@@ -52,6 +90,8 @@ describe('auth store', () => {
     auth.clearSession()
 
     expect(auth.accessToken).toBeNull()
+    expect(auth.accessCodes).toEqual([])
+    expect(auth.menus).toEqual([])
     expect(auth.user).toBeNull()
     expect(auth.isAuthenticated).toBe(false)
     expect(auth.isReady).toBe(true)
@@ -64,6 +104,8 @@ describe('auth store', () => {
     auth.clearSession()
 
     expect(auth.accessToken).toBeNull()
+    expect(auth.accessCodes).toEqual([])
+    expect(auth.menus).toEqual([])
     expect(auth.user).toBeNull()
     expect(auth.isAuthenticated).toBe(false)
     expect(auth.isReady).toBe(false)
@@ -75,5 +117,17 @@ describe('auth store', () => {
     auth.markReady()
 
     expect(auth.isReady).toBe(true)
+  })
+
+  it('exposes can helpers based on the current access codes', () => {
+    const auth = useAuthStore()
+    auth.setSession(session)
+
+    expect(auth.can('system:user:list')).toBe(true)
+    expect(auth.can('system:user:delete')).toBe(false)
+    expect(auth.canAny(['system:user:delete', 'system:user:create'])).toBe(true)
+    expect(auth.canAny(['system:user:delete', 'system:role:delete'])).toBe(false)
+    expect(auth.canAll(['system:user:list', 'system:user:create'])).toBe(true)
+    expect(auth.canAll(['system:user:list', 'system:user:delete'])).toBe(false)
   })
 })

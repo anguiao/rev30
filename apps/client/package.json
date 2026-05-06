@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@iconify/vue": "^5.0.0",
     "@pinia/colada": "^1.2.1",
     "@rev30/shared": "workspace:*",
     "@tanstack/vue-form": "^1.29.1",

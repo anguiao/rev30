@@ -32,9 +32,19 @@ const optionalKeywordSchema = optionalTrimmedQueryString()
 const optionalStatusQuerySchema = optionalNumericQueryValue(resourceStatusSchema)
 const optionalTypeQuerySchema = optionalQueryValue(resourceTypeSchema)
 const optionalParentIdQuerySchema = optionalQueryValue(resourceIdSchema)
+
+export const iconifyIconNameSchema = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/, '图标名称无效')
+
 const nullableOptionalTextInputSchema = z.preprocess(
   blankStringToNull,
   z.union([z.string().trim().min(1, '不能为空'), z.null()]).optional(),
+)
+const nullableOptionalIconInputSchema = z.preprocess(
+  blankStringToNull,
+  z.union([iconifyIconNameSchema, z.null()]).optional(),
 )
 export const resourceExternalUrlSchema = z.url({ error: '外链地址无效' })
 
@@ -54,7 +64,7 @@ export const resourceSchema = z.object({
   path: z.string().nullable(),
   externalUrl: z.string().nullable(),
   openTarget: resourceOpenTargetSchema,
-  icon: z.string().nullable(),
+  icon: iconifyIconNameSchema.nullable(),
   hidden: z.boolean(),
   status: resourceStatusSchema,
   sortOrder: z.number().int(),
@@ -88,7 +98,7 @@ const resourceCreateBaseSchema = z.object({
   path: nullableOptionalTextInputSchema,
   externalUrl: nullableOptionalTextInputSchema,
   openTarget: resourceOpenTargetSchema.optional(),
-  icon: nullableOptionalTextInputSchema,
+  icon: nullableOptionalIconInputSchema,
   hidden: z.boolean().default(false),
   status: resourceStatusSchema.default(RESOURCE_STATUS_ENABLED),
   sortOrder: z.coerce.number('排序必须是数字').int('排序必须是整数').default(0),
@@ -162,7 +172,7 @@ const resourceUpdatePayloadSchema = z.object({
   path: nullableOptionalTextInputSchema,
   externalUrl: nullableOptionalTextInputSchema,
   openTarget: resourceOpenTargetSchema.optional(),
-  icon: nullableOptionalTextInputSchema,
+  icon: nullableOptionalIconInputSchema,
   hidden: z.boolean().optional(),
   status: resourceStatusSchema.optional(),
   sortOrder: z.coerce.number('排序必须是数字').int('排序必须是整数').optional(),

@@ -33,7 +33,7 @@ describe('resource schemas', () => {
         path: '/system/users',
         externalUrl: null,
         openTarget: RESOURCE_OPEN_TARGET_SELF,
-        icon: 'i-[lucide--users]',
+        icon: 'lucide:users',
         hidden: false,
         status: RESOURCE_STATUS_ENABLED,
         sortOrder: 10,
@@ -156,7 +156,7 @@ describe('resource schemas', () => {
         path: null,
         externalUrl: null,
         openTarget: RESOURCE_OPEN_TARGET_SELF,
-        icon: 'i-[lucide--settings]',
+        icon: 'lucide:settings',
         hidden: false,
         status: RESOURCE_STATUS_ENABLED,
         sortOrder: 0,
@@ -214,7 +214,7 @@ describe('resource schemas', () => {
           path: '/system/users',
           externalUrl: null,
           openTarget: RESOURCE_OPEN_TARGET_SELF,
-          icon: 'i-[lucide--users]',
+          icon: 'lucide:users',
           hidden: false,
           status: RESOURCE_STATUS_ENABLED,
           sortOrder: 10,
@@ -237,6 +237,42 @@ describe('resource schemas', () => {
         },
       ],
     })
+  })
+
+  it('requires icon fields to use Iconify icon names', () => {
+    expect(
+      resourceCreateSchema.parse({
+        type: RESOURCE_TYPE_MENU,
+        name: 'Users',
+        code: 'system:user',
+        path: '/system/users',
+        icon: 'lucide:users',
+      }),
+    ).toMatchObject({
+      icon: 'lucide:users',
+    })
+
+    const createResult = resourceCreateSchema.safeParse({
+      type: RESOURCE_TYPE_MENU,
+      name: 'Users',
+      code: 'system:user',
+      path: '/system/users',
+      icon: 'i-[lucide--users]',
+    })
+
+    expect(createResult.success).toBe(false)
+    if (!createResult.success) {
+      expect(firstIssueMessage(createResult)).toBe('图标名称无效')
+    }
+
+    const updateResult = resourceUpdateSchema.safeParse({
+      icon: 'i-[lucide--users]',
+    })
+
+    expect(updateResult.success).toBe(false)
+    if (!updateResult.success) {
+      expect(firstIssueMessage(updateResult)).toBe('图标名称无效')
+    }
   })
 
   it('normalizes ignored external links for menu, directory, and action resources', () => {

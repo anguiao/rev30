@@ -118,6 +118,26 @@ describe('auth schemas', () => {
         createdAt: '2026-04-30T00:00:00.000Z',
         updatedAt: '2026-04-30T00:00:00.000Z',
       },
+      accessCodes: ['system', 'system:user', 'system:user:list'],
+      menus: [
+        {
+          id: '69b8cf85-bf4f-40d2-85da-3e80d30dbb00',
+          parentId: null,
+          type: 'directory',
+          name: 'System',
+          code: 'system',
+          path: null,
+          externalUrl: null,
+          openTarget: 'self',
+          icon: 'lucide:settings',
+          hidden: false,
+          status: 1,
+          sortOrder: 0,
+          createdAt: '2026-05-04T08:00:00.000Z',
+          updatedAt: '2026-05-04T08:00:00.000Z',
+          children: [],
+        },
+      ],
       accessToken: 'access.jwt',
       refreshToken: 'refresh.jwt',
       tokenType: 'Bearer',
@@ -129,6 +149,8 @@ describe('auth schemas', () => {
       tokenType: 'Bearer',
       expiresIn: 900,
     })
+    expect(response.accessCodes).toEqual(['system', 'system:user', 'system:user:list'])
+    expect(response.menus).toHaveLength(1)
     expect(response).not.toHaveProperty('refreshToken')
   })
 

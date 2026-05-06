@@ -12,6 +12,10 @@ import {
   type RoleStatus,
 } from '@rev30/shared'
 import { roleResources, roles, systemResources, userRoles, users } from '../../../../src/db/schema'
+import {
+  createProtectedSystemRouteTestApp,
+  createSystemAccessFixture,
+} from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 import { createRoleRoutes } from '../../../../src/modules/system/roles/routes'
 
@@ -19,8 +23,23 @@ type ErrorResponse = {
   message: string
 }
 
-function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
-  return new Hono().route('/api/system/roles', createRoleRoutes(database))
+async function createTestApp(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  authHeaders?: Record<string, string>,
+) {
+  const headers =
+    authHeaders ??
+    (await createSystemAccessFixture(database, {
+      admin: true,
+      usernamePrefix: 'role-routes-admin',
+    })).authHeaders
+
+  return createProtectedSystemRouteTestApp(
+    database,
+    '/api/system/roles',
+    createRoleRoutes(database),
+    headers,
+  )
 }
 
 async function createResource(
@@ -77,7 +96,7 @@ async function createRole(
 describe('role routes', () => {
   it('creates roles with resource ids and returns resources sorted by resource sort order', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const action = await createResource(database, {
       name: 'Create User',
       code: 'test-system:user:create',
@@ -123,7 +142,7 @@ describe('role routes', () => {
 
   it('lists roles with userCount only and supports keyword/status with non-deleted user counting', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: admin } = await createRole(app, {
       name: 'Administrator',
       code: 'test-admin',
@@ -174,7 +193,7 @@ describe('role routes', () => {
 
   it('returns role details with resources', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const resource = await createResource(database, {
       name: 'System',
       code: 'test-system',
@@ -206,7 +225,7 @@ describe('role routes', () => {
 
   it('replaces and clears role resource authorization on patch', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const system = await createResource(database, { name: 'System', code: 'test-system' })
     const createUser = await createResource(database, {
       name: 'Create User',
@@ -259,7 +278,7 @@ describe('role routes', () => {
 
   it('returns conflict for duplicate role code', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     await createRole(app, { name: 'Test Administrator', code: 'test-admin' })
 
     const duplicate = await createRole(app, { name: 'Admin Duplicate', code: 'test-admin' })
@@ -271,7 +290,7 @@ describe('role routes', () => {
 
   it('returns invalid resource errors for missing or deleted resources', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const missingResourceId = randomUUID()
     const deletedResource = await createResource(database, {
       name: 'Deleted',
@@ -310,7 +329,7 @@ describe('role routes', () => {
 
   it('rejects deleting roles that are assigned to users', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: role } = await createRole(app, {
       name: 'Administrator',
       code: 'test-admin',
@@ -335,7 +354,7 @@ describe('role routes', () => {
 
   it('soft deletes roles with resources and clears role resource relations', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const resource = await createResource(database, {
       name: 'System',
       code: 'test-system',
@@ -369,7 +388,7 @@ describe('role routes', () => {
 
   it('returns stable validation errors for invalid query, id params, and request bodies', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
 
     const listResponse = await app.request('/api/system/roles?page=0')
     expect(listResponse.status).toBe(400)
@@ -388,5 +407,42 @@ describe('role routes', () => {
     })
     expect(createResponse.status).toBe(400)
     expect(await createResponse.json()).toEqual({ message: '请求体无效' })
+  })
+
+  it('returns 401 when requesting role routes without authentication', async () => {
+    const database = await createTestDb()
+    const app = createProtectedSystemRouteTestApp(
+      database,
+      '/api/system/roles',
+      createRoleRoutes(database),
+    )
+
+    const response = await app.request('/api/system/roles')
+
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ message: '未授权' })
+  })
+
+  it('returns 403 when the user lacks role list access', async () => {
+    const database = await createTestDb()
+    const denied = await createSystemAccessFixture(database, {
+      accessCodes: ['system:department:list'],
+      usernamePrefix: 'role-routes-forbidden',
+    })
+    const app = await createTestApp(database, denied.authHeaders)
+
+    const response = await app.request('/api/system/roles')
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ message: '无权访问' })
+  })
+
+  it('allows admin users to access protected role routes without explicit role resources', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+
+    const response = await app.request('/api/system/roles')
+
+    expect(response.status).toBe(200)
   })
 })

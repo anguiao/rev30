@@ -10,6 +10,10 @@ import {
   type DepartmentTreeNode,
 } from '@rev30/shared'
 import { departments, userDepartments, users } from '../../../../src/db/schema'
+import {
+  createProtectedSystemRouteTestApp,
+  createSystemAccessFixture,
+} from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 import { createDepartmentRoutes } from '../../../../src/modules/system/departments/routes'
 
@@ -17,8 +21,23 @@ type ErrorResponse = {
   message: string
 }
 
-function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
-  return new Hono().route('/api/system/departments', createDepartmentRoutes(database))
+async function createTestApp(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  authHeaders?: Record<string, string>,
+) {
+  const headers =
+    authHeaders ??
+    (await createSystemAccessFixture(database, {
+      admin: true,
+      usernamePrefix: 'department-routes-admin',
+    })).authHeaders
+
+  return createProtectedSystemRouteTestApp(
+    database,
+    '/api/system/departments',
+    createDepartmentRoutes(database),
+    headers,
+  )
 }
 
 async function createDepartment(
@@ -43,7 +62,7 @@ async function createDepartment(
 describe('department routes', () => {
   it('creates departments in the database and returns paginated departments', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
 
     const { body, response } = await createDepartment(app, {
       name: 'Engineering',
@@ -83,7 +102,7 @@ describe('department routes', () => {
 
   it('filters department lists by keyword, status, and parent id', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
 
     const { body: root } = await createDepartment(app, {
       name: 'Company',
@@ -123,7 +142,7 @@ describe('department routes', () => {
 
   it('returns department details and department trees', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
 
     const { body: root } = await createDepartment(app, {
       name: 'Company',
@@ -168,7 +187,7 @@ describe('department routes', () => {
 
   it('returns validation errors for invalid query and id params', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
 
     const listResponse = await app.request('/api/system/departments?page=0')
     const listBody = (await listResponse.json()) as ErrorResponse
@@ -185,7 +204,7 @@ describe('department routes', () => {
 
   it('updates department fields and rejects moving a department under itself or descendants', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: root } = await createDepartment(app, { name: 'Company', code: 'company' })
     const { body: child } = await createDepartment(app, {
       name: 'Engineering',
@@ -233,7 +252,7 @@ describe('department routes', () => {
 
   it('rejects duplicate department codes on create and update', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     await createDepartment(app, { name: 'Engineering', code: 'engineering' })
     const { body: sales } = await createDepartment(app, { name: 'Sales', code: 'sales' })
 
@@ -250,7 +269,7 @@ describe('department routes', () => {
 
   it('soft deletes empty departments and rejects deleting departments with children', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: root } = await createDepartment(app, { name: 'Company', code: 'company' })
     const { body: child } = await createDepartment(app, {
       name: 'Engineering',
@@ -282,7 +301,7 @@ describe('department routes', () => {
 
   it('returns invalid parent errors for create and update requests', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const missingParentId = randomUUID()
 
     const createResponse = await app.request('/api/system/departments', {
@@ -313,7 +332,7 @@ describe('department routes', () => {
 
   it('rejects deleting departments with related users', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: department } = await createDepartment(app, {
       name: 'Operations',
       code: 'operations',
@@ -337,5 +356,42 @@ describe('department routes', () => {
 
     expect(deleteResponse.status).toBe(409)
     expect(deleteBody).toEqual({ message: '部门存在关联用户，不能删除' })
+  })
+
+  it('returns 401 when requesting department routes without authentication', async () => {
+    const database = await createTestDb()
+    const app = createProtectedSystemRouteTestApp(
+      database,
+      '/api/system/departments',
+      createDepartmentRoutes(database),
+    )
+
+    const response = await app.request('/api/system/departments')
+
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ message: '未授权' })
+  })
+
+  it('returns 403 when the user lacks department list access', async () => {
+    const database = await createTestDb()
+    const denied = await createSystemAccessFixture(database, {
+      accessCodes: ['system:user:list'],
+      usernamePrefix: 'department-routes-forbidden',
+    })
+    const app = await createTestApp(database, denied.authHeaders)
+
+    const response = await app.request('/api/system/departments')
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ message: '无权访问' })
+  })
+
+  it('allows admin users to access protected department routes without explicit role resources', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+
+    const response = await app.request('/api/system/departments')
+
+    expect(response.status).toBe(200)
   })
 })

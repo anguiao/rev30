@@ -16,6 +16,10 @@ import {
   type ResourceTreeNode,
 } from '@rev30/shared'
 import { roleResources, roles, systemResources } from '../../../../src/db/schema'
+import {
+  createProtectedSystemRouteTestApp,
+  createSystemAccessFixture,
+} from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 import { createResourceRoutes } from '../../../../src/modules/system/resources/routes'
 
@@ -23,8 +27,23 @@ type ErrorResponse = {
   message: string
 }
 
-function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
-  return new Hono().route('/api/system/resources', createResourceRoutes(database))
+async function createTestApp(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  authHeaders?: Record<string, string>,
+) {
+  const headers =
+    authHeaders ??
+    (await createSystemAccessFixture(database, {
+      admin: true,
+      usernamePrefix: 'resource-routes-admin',
+    })).authHeaders
+
+  return createProtectedSystemRouteTestApp(
+    database,
+    '/api/system/resources',
+    createResourceRoutes(database),
+    headers,
+  )
 }
 
 async function createResource(
@@ -55,7 +74,7 @@ async function createResource(
 describe('resource routes', () => {
   it('creates resources in the database and returns paginated resources', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
 
     const { body, response } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
@@ -99,7 +118,7 @@ describe('resource routes', () => {
 
   it('creates typed menus, external links, and action permission points', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: root } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
@@ -147,7 +166,7 @@ describe('resource routes', () => {
 
   it('filters resource lists by keyword, type, status, and parent id', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: root } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
@@ -188,7 +207,7 @@ describe('resource routes', () => {
 
   it('returns resource details and resource trees', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: root } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
@@ -236,7 +255,7 @@ describe('resource routes', () => {
 
   it('returns validation errors for invalid query, id params, and request bodies', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
 
     const listResponse = await app.request('/api/system/resources?page=0')
     expect(listResponse.status).toBe(400)
@@ -261,7 +280,7 @@ describe('resource routes', () => {
 
   it('updates resource fields, normalizes type-specific fields, and rejects circular moves', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: root } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
@@ -320,7 +339,7 @@ describe('resource routes', () => {
 
   it('defaults open target to blank when updating a resource to an external link', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body } = await createResource(app, {
       type: RESOURCE_TYPE_MENU,
       name: 'Users',
@@ -349,7 +368,7 @@ describe('resource routes', () => {
 
   it('defaults open target to self when updating an external link to an internal menu', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body } = await createResource(app, {
       type: RESOURCE_TYPE_EXTERNAL,
       name: 'Docs',
@@ -379,7 +398,7 @@ describe('resource routes', () => {
 
   it('preserves external open target on partial updates', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body } = await createResource(app, {
       type: RESOURCE_TYPE_EXTERNAL,
       name: 'Docs',
@@ -408,7 +427,7 @@ describe('resource routes', () => {
 
   it('rejects invalid final type fields on update', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
@@ -427,7 +446,7 @@ describe('resource routes', () => {
 
   it('normalizes omitted-type update fields against the existing resource type', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: menu } = await createResource(app, {
       type: RESOURCE_TYPE_MENU,
       name: 'Users',
@@ -460,7 +479,7 @@ describe('resource routes', () => {
 
   it('rejects invalid external urls when updating an existing external resource', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body } = await createResource(app, {
       type: RESOURCE_TYPE_EXTERNAL,
       name: 'Docs',
@@ -480,7 +499,7 @@ describe('resource routes', () => {
 
   it('rejects duplicate resource codes on create and update', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
@@ -514,7 +533,7 @@ describe('resource routes', () => {
 
   it('soft deletes empty resources and rejects deleting resources with children', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: root } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
@@ -574,7 +593,7 @@ describe('resource routes', () => {
 
   it('rejects deleting resources assigned to roles', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: resource } = await createResource(app, {
       type: RESOURCE_TYPE_ACTION,
       name: 'Export Users',
@@ -604,7 +623,7 @@ describe('resource routes', () => {
 
   it('returns invalid parent errors for create and update requests', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const missingParentId = randomUUID()
 
     const createResponse = await app.request('/api/system/resources', {
@@ -636,7 +655,7 @@ describe('resource routes', () => {
 
   it('returns siblings sorted by sortOrder in ascending order', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: root } = await createResource(app, {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
@@ -669,5 +688,42 @@ describe('resource routes', () => {
     expect(listBody.list).toHaveLength(2)
     expect(listBody.list[0]?.id).toBe(first.id)
     expect(listBody.list[1]?.id).toBe(later.id)
+  })
+
+  it('returns 401 when requesting resource routes without authentication', async () => {
+    const database = await createTestDb()
+    const app = createProtectedSystemRouteTestApp(
+      database,
+      '/api/system/resources',
+      createResourceRoutes(database),
+    )
+
+    const response = await app.request('/api/system/resources')
+
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ message: '未授权' })
+  })
+
+  it('returns 403 when the user lacks resource list access', async () => {
+    const database = await createTestDb()
+    const denied = await createSystemAccessFixture(database, {
+      accessCodes: ['system:user:list'],
+      usernamePrefix: 'resource-routes-forbidden',
+    })
+    const app = await createTestApp(database, denied.authHeaders)
+
+    const response = await app.request('/api/system/resources')
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ message: '无权访问' })
+  })
+
+  it('allows admin users to access protected resource routes without explicit role resources', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+
+    const response = await app.request('/api/system/resources')
+
+    expect(response.status).toBe(200)
   })
 })

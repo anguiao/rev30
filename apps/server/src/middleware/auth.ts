@@ -16,9 +16,10 @@ export type AuthVariables = {
   currentUser: User
   accessCodes: AuthSessionResponse['accessCodes']
   menus: ResourceTreeNode[]
+  isAdmin: boolean
 }
 
-type AuthEnv = {
+export type AuthEnv = {
   Variables: AuthVariables
 }
 
@@ -33,6 +34,7 @@ export function createAuthMiddleware(database: Db): MiddlewareHandler<AuthEnv> {
       c.set('currentUser', session.user)
       c.set('accessCodes', session.accessCodes)
       c.set('menus', session.menus)
+      c.set('isAdmin', session.isAdmin)
     } catch (error) {
       if (error instanceof AuthAccessTokenExpiredError) {
         c.header(AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH)

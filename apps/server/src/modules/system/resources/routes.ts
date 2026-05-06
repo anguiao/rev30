@@ -10,6 +10,7 @@ import {
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
+import { requireAccess } from '../../../middleware/access'
 import {
   ResourceConflictError,
   ResourceDeleteConflictError,
@@ -85,33 +86,44 @@ export function createResourceRoutes(database: Db) {
   app.onError((error, c) => resourceErrorResponse(error, c))
 
   return app
-    .get('/', resourceListQueryValidator, async (c) => {
+    .get('/', requireAccess('system:resource:list'), resourceListQueryValidator, async (c) => {
       const query: ResourceListQuery = c.req.valid('query')
 
       return c.json(await service.list(query))
     })
-    .get('/tree', async (c) => c.json(await service.tree()))
-    .get('/:id', resourceIdValidator, async (c) => {
+    .get('/tree', requireAccess('system:resource:list'), async (c) => c.json(await service.tree()))
+    .get('/:id', requireAccess('system:resource:list'), resourceIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
       return c.json(await service.get(id))
     })
-    .post('/', resourceCreateBodyValidator, async (c) => {
+    .post('/', requireAccess('system:resource:create'), resourceCreateBodyValidator, async (c) => {
       const body: ResourceCreateInput = c.req.valid('json')
 
       return c.json(await service.create(body), 201)
     })
-    .patch('/:id', resourceIdValidator, resourceUpdateBodyValidator, async (c) => {
+    .patch(
+      '/:id',
+      requireAccess('system:resource:update'),
+      resourceIdValidator,
+      resourceUpdateBodyValidator,
+      async (c) => {
       const { id } = c.req.valid('param')
       const body: ResourceUpdateInput = c.req.valid('json')
 
       return c.json(await service.update(id, body))
-    })
-    .delete('/:id', resourceIdValidator, async (c) => {
+      },
+    )
+    .delete(
+      '/:id',
+      requireAccess('system:resource:delete'),
+      resourceIdValidator,
+      async (c) => {
       const { id } = c.req.valid('param')
 
       await service.delete(id)
 
       return c.body(null, 204)
-    })
+      },
+    )
 }

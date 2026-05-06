@@ -10,6 +10,7 @@ import {
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
+import { requireAccess } from '../../../middleware/access'
 import {
   UserConflictError,
   UserInvalidDepartmentError,
@@ -80,28 +81,34 @@ export function createUserRoutes(database: Db) {
   app.onError((error, c) => userErrorResponse(error, c))
 
   return app
-    .get('/', userListQueryValidator, async (c) => {
+    .get('/', requireAccess('system:user:list'), userListQueryValidator, async (c) => {
       const query: UserListQuery = c.req.valid('query')
 
       return c.json(await service.list(query))
     })
-    .get('/:id', userIdValidator, async (c) => {
+    .get('/:id', requireAccess('system:user:list'), userIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
       return c.json(await service.get(id))
     })
-    .post('/', userCreateBodyValidator, async (c) => {
+    .post('/', requireAccess('system:user:create'), userCreateBodyValidator, async (c) => {
       const body: UserCreateInput = c.req.valid('json')
 
       return c.json(await service.create(body), 201)
     })
-    .patch('/:id', userIdValidator, userUpdateBodyValidator, async (c) => {
+    .patch(
+      '/:id',
+      requireAccess('system:user:update'),
+      userIdValidator,
+      userUpdateBodyValidator,
+      async (c) => {
       const { id } = c.req.valid('param')
       const body: UserUpdateInput = c.req.valid('json')
 
       return c.json(await service.update(id, body))
-    })
-    .delete('/:id', userIdValidator, async (c) => {
+      },
+    )
+    .delete('/:id', requireAccess('system:user:delete'), userIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
       await service.delete(id)

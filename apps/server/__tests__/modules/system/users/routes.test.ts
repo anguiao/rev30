@@ -12,6 +12,10 @@ import {
   type UserStatus,
 } from '@rev30/shared'
 import { departments, roles, userDepartments, userRoles, users } from '../../../../src/db/schema'
+import {
+  createProtectedSystemRouteTestApp,
+  createSystemAccessFixture,
+} from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 import { createUserRoutes } from '../../../../src/modules/system/users/routes'
 
@@ -19,8 +23,23 @@ type ErrorResponse = {
   message: string
 }
 
-function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
-  return new Hono().route('/api/system/users', createUserRoutes(database))
+async function createTestApp(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  authHeaders?: Record<string, string>,
+) {
+  const headers =
+    authHeaders ??
+    (await createSystemAccessFixture(database, {
+      admin: true,
+      usernamePrefix: 'user-routes-admin',
+    })).authHeaders
+
+  return createProtectedSystemRouteTestApp(
+    database,
+    '/api/system/users',
+    createUserRoutes(database),
+    headers,
+  )
 }
 
 async function createUser(
@@ -109,7 +128,7 @@ async function createRole(
 describe('user routes', () => {
   it('creates users in the database and returns paginated users', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
 
     const { body, response } = await createUser(app, {
       username: 'ada',
@@ -131,11 +150,11 @@ describe('user routes', () => {
     expect(body.createdAt).toEqual(expect.any(String))
     expect(body.updatedAt).toEqual(expect.any(String))
 
-    const storedUsers = await database.select().from(users)
+    const storedUsers = await database.select().from(users).where(eq(users.username, 'ada'))
     expect(storedUsers).toHaveLength(1)
     expect(storedUsers[0]?.username).toBe('ada')
 
-    const listResponse = await app.request('/api/system/users?page=1&pageSize=10')
+    const listResponse = await app.request('/api/system/users?keyword=ada&page=1&pageSize=10')
     const listBody = (await listResponse.json()) as UserListResponse
 
     expect(listResponse.status).toBe(200)
@@ -155,7 +174,7 @@ describe('user routes', () => {
 
   it('returns details and updates disabled users without treating them as deleted', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
 
     const { body: created } = await createUser(app, {
       username: 'grace',
@@ -199,7 +218,7 @@ describe('user routes', () => {
 
   it('creates users with multiple departments and returns department summaries', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const engineering = await createDepartment(database, {
       name: 'Engineering',
       code: 'engineering',
@@ -236,7 +255,7 @@ describe('user routes', () => {
     expect(detailResponse.status).toBe(200)
     expect(detailBody.departments).toEqual(body.departments)
 
-    const listResponse = await app.request('/api/system/users?page=1&pageSize=10')
+    const listResponse = await app.request('/api/system/users?keyword=department-user&page=1&pageSize=10')
     const listBody = (await listResponse.json()) as UserListResponse
     expect(listResponse.status).toBe(200)
     expect(listBody.list).toHaveLength(1)
@@ -249,7 +268,7 @@ describe('user routes', () => {
 
   it('replaces and clears user departments on update', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const engineering = await createDepartment(database, {
       name: 'Engineering',
       code: 'engineering',
@@ -323,7 +342,7 @@ describe('user routes', () => {
 
   it('creates users with multiple roles and returns role summaries', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const admin = await createRole(database, {
       name: 'Administrator',
       code: 'test-admin',
@@ -362,21 +381,24 @@ describe('user routes', () => {
     expect(detailBody.roles).toEqual(body.roles)
     expect(detailBody.departments).toEqual([])
 
-    const listResponse = await app.request('/api/system/users?page=1&pageSize=10')
+    const listResponse = await app.request('/api/system/users?keyword=role-user&page=1&pageSize=10')
     const listBody = (await listResponse.json()) as UserListResponse
     expect(listResponse.status).toBe(200)
     expect(listBody.list).toHaveLength(1)
     expect(listBody.list[0]?.roles).toEqual(body.roles)
     expect(listBody.list[0]?.departments).toEqual([])
 
-    const storedRelations = await database.select().from(userRoles)
+    const storedRelations = await database
+      .select()
+      .from(userRoles)
+      .where(eq(userRoles.userId, body.id))
     expect(storedRelations).toHaveLength(2)
     expect(new Set(storedRelations.map((relation) => relation.createdAt.getTime()))).toHaveLength(1)
   })
 
   it('replaces and clears user roles on update', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const admin = await createRole(database, {
       name: 'Administrator',
       code: 'test-admin',
@@ -450,7 +472,7 @@ describe('user routes', () => {
 
   it('rejects missing or deleted role ids on user create and update', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const deletedRole = await createRole(database, {
       name: 'Deleted Role',
       code: 'deleted-role',
@@ -501,7 +523,7 @@ describe('user routes', () => {
 
   it('rejects missing or deleted department ids on user create and update', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const deletedDepartment = await createDepartment(database, {
       name: 'Deleted',
       code: 'deleted',
@@ -552,7 +574,7 @@ describe('user routes', () => {
 
   it('returns not found when updating a missing user before validating department ids', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const missingUserId = randomUUID()
     const missingDepartmentId = randomUUID()
 
@@ -573,7 +595,7 @@ describe('user routes', () => {
 
   it('soft deletes users without removing database rows', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const department = await createDepartment(database, {
       name: 'Research',
       code: 'research',
@@ -624,7 +646,7 @@ describe('user routes', () => {
       .where(eq(userRoles.userId, created.id))
     expect(storedRoleRelations).toEqual([])
 
-    const listResponse = await app.request('/api/system/users')
+    const listResponse = await app.request('/api/system/users?keyword=alan')
     expect(listResponse.status).toBe(200)
     const listBody = (await listResponse.json()) as UserListResponse
 
@@ -648,7 +670,7 @@ describe('user routes', () => {
 
   it('rejects duplicate username, email, and phone even after soft delete', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
 
     const { body: created } = await createUser(app, {
       username: 'margaret',
@@ -692,7 +714,7 @@ describe('user routes', () => {
 
   it('returns conflict when concurrent creates hit the username unique index', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const body = JSON.stringify({
       username: 'race',
       nickname: 'Race User',
@@ -714,7 +736,7 @@ describe('user routes', () => {
 
   it('rejects duplicate username, email, and phone when updating users', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
 
     await createUser(app, {
       username: 'katherine',
@@ -755,7 +777,7 @@ describe('user routes', () => {
 
   it('returns conflict when concurrent updates hit the username unique index', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
     const { body: first } = await createUser(app, {
       username: 'first-update-target',
       nickname: 'First Update Target',
@@ -784,7 +806,7 @@ describe('user routes', () => {
 
   it('returns 400 when user id params are invalid', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
 
     const getResponse = await app.request('/api/system/users/not-a-uuid')
     const getBody = (await getResponse.json()) as ErrorResponse
@@ -817,7 +839,7 @@ describe('user routes', () => {
 
   it('returns stable validation errors for invalid user query and body input', async () => {
     const database = await createTestDb()
-    const app = createTestApp(database)
+    const app = await createTestApp(database)
 
     const queryResponse = await app.request('/api/system/users?page=0')
     const queryBody = (await queryResponse.json()) as ErrorResponse
@@ -855,5 +877,69 @@ describe('user routes', () => {
 
     expect(updateResponse.status).toBe(400)
     expect(updateBody).toEqual({ message: '请求体无效' })
+  })
+
+  it('returns 401 when requesting user routes without authentication', async () => {
+    const database = await createTestDb()
+    const app = createProtectedSystemRouteTestApp(
+      database,
+      '/api/system/users',
+      createUserRoutes(database),
+    )
+
+    const response = await app.request('/api/system/users')
+
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ message: '未授权' })
+  })
+
+  it('returns 403 when the user lacks user list access', async () => {
+    const database = await createTestDb()
+    const denied = await createSystemAccessFixture(database, {
+      accessCodes: ['system:department:list'],
+      usernamePrefix: 'user-routes-forbidden',
+    })
+    const app = await createTestApp(database, denied.authHeaders)
+
+    const response = await app.request('/api/system/users')
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ message: '无权访问' })
+  })
+
+  it('allows non-admin users with system:user:list access to list users', async () => {
+    const database = await createTestDb()
+    const adminApp = await createTestApp(database)
+    const authorized = await createSystemAccessFixture(database, {
+      accessCodes: ['system:user:list'],
+      usernamePrefix: 'user-routes-reader',
+    })
+    const app = await createTestApp(database, authorized.authHeaders)
+
+    const { body: created } = await createUser(adminApp, {
+      username: 'authorized-visible-user',
+      nickname: 'Authorized Visible User',
+    })
+    const response = await app.request('/api/system/users')
+    const body = (await response.json()) as UserListResponse
+
+    expect(response.status).toBe(200)
+    expect(body.list).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: created.id,
+          username: 'authorized-visible-user',
+        }),
+      ]),
+    )
+  })
+
+  it('allows admin users to access protected user routes without explicit role resources', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+
+    const response = await app.request('/api/system/users')
+
+    expect(response.status).toBe(200)
   })
 })

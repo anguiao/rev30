@@ -9,6 +9,7 @@ import {
   type UserListResponse,
 } from '@rev30/shared'
 import { createApp } from '../src/app'
+import { createSystemAccessFixture } from './helpers/auth'
 import { createTestDb } from './helpers/db'
 import { readAuthConfig } from '../src/modules/auth/config'
 
@@ -85,34 +86,49 @@ describe('app auth boundaries', () => {
     expect(response.headers.has(AUTH_ACTION_HEADER)).toBe(false)
   })
 
-  it('allows system routes with an access token', async () => {
+  it('returns 403 for logged-in users without route access', async () => {
     const database = await createTestDb()
     const app = createApp(database)
     const registered = await register(app)
-    expect(registered.body.user.departments).toEqual([])
-    expect(registered.body.user.roles).toEqual([])
 
     const response = await app.request('/api/system/users', {
       headers: {
         authorization: `Bearer ${registered.body.accessToken}`,
       },
     })
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ message: '无权访问' })
+  })
+
+  it('allows system routes with a matching resource access token', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+    const authorized = await createSystemAccessFixture(database, {
+      accessCodes: ['system:user:list'],
+      usernamePrefix: 'app-users-reader',
+    })
+
+    const response = await app.request('/api/system/users', {
+      headers: authorized.authHeaders,
+    })
     const body = (await response.json()) as UserListResponse
 
     expect(response.status).toBe(200)
     expect(body.total).toBe(1)
-    expect(body.list[0]?.id).toBe(registered.body.user.id)
+    expect(body.list[0]?.id).toBe(authorized.userId)
   })
 
   it('allows resources route with a system access token', async () => {
     const database = await createTestDb()
     const app = createApp(database)
-    const registered = await register(app)
+    const authorized = await createSystemAccessFixture(database, {
+      accessCodes: ['system:resource:list'],
+      usernamePrefix: 'app-resources-reader',
+    })
 
     const response = await app.request('/api/system/resources', {
-      headers: {
-        authorization: `Bearer ${registered.body.accessToken}`,
-      },
+      headers: authorized.authHeaders,
     })
     const body = (await response.json()) as ResourceListResponse
 
@@ -133,12 +149,13 @@ describe('app auth boundaries', () => {
   it('allows roles route with a system access token', async () => {
     const database = await createTestDb()
     const app = createApp(database)
-    const registered = await register(app)
+    const authorized = await createSystemAccessFixture(database, {
+      accessCodes: ['system:role:list'],
+      usernamePrefix: 'app-roles-reader',
+    })
 
     const response = await app.request('/api/system/roles', {
-      headers: {
-        authorization: `Bearer ${registered.body.accessToken}`,
-      },
+      headers: authorized.authHeaders,
     })
     const body = (await response.json()) as RoleListResponse
 

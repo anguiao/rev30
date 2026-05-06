@@ -180,6 +180,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
         user,
         accessCodes: access.accessCodes,
         menus: access.menus,
+        isAdmin: access.isAdmin,
       }
     },
   }

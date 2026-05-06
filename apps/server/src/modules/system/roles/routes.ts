@@ -10,6 +10,7 @@ import {
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
+import { requireAccess } from '../../../middleware/access'
 import {
   RoleConflictError,
   RoleDeleteConflictError,
@@ -70,28 +71,34 @@ export function createRoleRoutes(database: Db) {
   app.onError((error, c) => roleErrorResponse(error, c))
 
   return app
-    .get('/', roleListQueryValidator, async (c) => {
+    .get('/', requireAccess('system:role:list'), roleListQueryValidator, async (c) => {
       const query: RoleListQuery = c.req.valid('query')
 
       return c.json(await service.list(query))
     })
-    .get('/:id', roleIdValidator, async (c) => {
+    .get('/:id', requireAccess('system:role:list'), roleIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
       return c.json(await service.get(id))
     })
-    .post('/', roleCreateBodyValidator, async (c) => {
+    .post('/', requireAccess('system:role:create'), roleCreateBodyValidator, async (c) => {
       const body: RoleCreateInput = c.req.valid('json')
 
       return c.json(await service.create(body), 201)
     })
-    .patch('/:id', roleIdValidator, roleUpdateBodyValidator, async (c) => {
+    .patch(
+      '/:id',
+      requireAccess('system:role:update'),
+      roleIdValidator,
+      roleUpdateBodyValidator,
+      async (c) => {
       const { id } = c.req.valid('param')
       const body: RoleUpdateInput = c.req.valid('json')
 
       return c.json(await service.update(id, body))
-    })
-    .delete('/:id', roleIdValidator, async (c) => {
+      },
+    )
+    .delete('/:id', requireAccess('system:role:delete'), roleIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
       await service.delete(id)

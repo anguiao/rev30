@@ -35,7 +35,11 @@ export type UserAccess = {
 }
 
 function resourceOrder() {
-  return [asc(systemResources.sortOrder), desc(systemResources.createdAt), desc(systemResources.id)] as const
+  return [
+    asc(systemResources.sortOrder),
+    desc(systemResources.createdAt),
+    desc(systemResources.id),
+  ] as const
 }
 
 function isVisibleMenuResource(resource: Resource) {
@@ -75,14 +79,22 @@ export function createUserAccessService(database: Db) {
       })
       .from(userRoles)
       .innerJoin(roles, eq(roles.id, userRoles.roleId))
-      .where(and(eq(userRoles.userId, userId), eq(roles.status, ROLE_STATUS_ENABLED), isNull(roles.deletedAt)))
+      .where(
+        and(
+          eq(userRoles.userId, userId),
+          eq(roles.status, ROLE_STATUS_ENABLED),
+          isNull(roles.deletedAt),
+        ),
+      )
   }
 
   async function listEnabledResourcesForAdmin() {
     const rows = await database
       .select(resourceSelect)
       .from(systemResources)
-      .where(and(eq(systemResources.status, RESOURCE_STATUS_ENABLED), isNull(systemResources.deletedAt)))
+      .where(
+        and(eq(systemResources.status, RESOURCE_STATUS_ENABLED), isNull(systemResources.deletedAt)),
+      )
       .orderBy(...resourceOrder())
 
     return rows

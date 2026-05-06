@@ -92,10 +92,10 @@ export function createRoleRoutes(database: Db) {
       roleIdValidator,
       roleUpdateBodyValidator,
       async (c) => {
-      const { id } = c.req.valid('param')
-      const body: RoleUpdateInput = c.req.valid('json')
+        const { id } = c.req.valid('param')
+        const body: RoleUpdateInput = c.req.valid('json')
 
-      return c.json(await service.update(id, body))
+        return c.json(await service.update(id, body))
       },
     )
     .delete('/:id', requireAccess('system:role:delete'), roleIdValidator, async (c) => {

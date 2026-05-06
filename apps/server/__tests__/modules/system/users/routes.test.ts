@@ -12,10 +12,7 @@ import {
   type UserStatus,
 } from '@rev30/shared'
 import { departments, roles, userDepartments, userRoles, users } from '../../../../src/db/schema'
-import {
-  createProtectedSystemRouteTestApp,
-  createSystemAccessFixture,
-} from '../../../helpers/auth'
+import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 import { createUserRoutes } from '../../../../src/modules/system/users/routes'
 
@@ -29,10 +26,12 @@ async function createTestApp(
 ) {
   const headers =
     authHeaders ??
-    (await createSystemAccessFixture(database, {
-      admin: true,
-      usernamePrefix: 'user-routes-admin',
-    })).authHeaders
+    (
+      await createSystemAccessFixture(database, {
+        admin: true,
+        usernamePrefix: 'user-routes-admin',
+      })
+    ).authHeaders
 
   return createProtectedSystemRouteTestApp(
     database,
@@ -255,7 +254,9 @@ describe('user routes', () => {
     expect(detailResponse.status).toBe(200)
     expect(detailBody.departments).toEqual(body.departments)
 
-    const listResponse = await app.request('/api/system/users?keyword=department-user&page=1&pageSize=10')
+    const listResponse = await app.request(
+      '/api/system/users?keyword=department-user&page=1&pageSize=10',
+    )
     const listBody = (await listResponse.json()) as UserListResponse
     expect(listResponse.status).toBe(200)
     expect(listBody.list).toHaveLength(1)

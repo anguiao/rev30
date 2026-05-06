@@ -1,4 +1,11 @@
-import { effectScope, ref, watchEffect, type EffectScope, type ObjectDirective, type Ref } from 'vue'
+import {
+  effectScope,
+  ref,
+  watchEffect,
+  type EffectScope,
+  type ObjectDirective,
+  type Ref,
+} from 'vue'
 import { useAuthStore } from '../stores/auth'
 
 type CanValue = string | string[]

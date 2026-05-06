@@ -114,7 +114,10 @@ function findSelectedMenuKey(resources: ResourceTreeNode[], currentPath: string)
 
     const childMatchedPath = findSelectedMenuKey(resource.children, currentPath)
 
-    if (childMatchedPath !== null && (matchedPath === null || childMatchedPath.length > matchedPath.length)) {
+    if (
+      childMatchedPath !== null &&
+      (matchedPath === null || childMatchedPath.length > matchedPath.length)
+    ) {
       matchedPath = childMatchedPath
     }
   }
@@ -145,12 +148,7 @@ const selectedMenuKey = computed<string | null>(() => findSelectedMenuKey(menus.
             size="small"
             class="pt-12"
           />
-          <NMenu
-            v-else
-            :options="menuOptions"
-            :value="selectedMenuKey"
-            default-expand-all
-          />
+          <NMenu v-else :options="menuOptions" :value="selectedMenuKey" default-expand-all />
         </nav>
 
         <footer class="border-t border-stone-200 pt-4 dark:border-zinc-800">

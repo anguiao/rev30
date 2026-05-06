@@ -91,7 +91,11 @@ export async function createSystemAccessFixture(
       })
       .from(roles)
       .where(
-        and(eq(roles.code, 'admin'), eq(roles.status, ROLE_STATUS_ENABLED), isNull(roles.deletedAt)),
+        and(
+          eq(roles.code, 'admin'),
+          eq(roles.status, ROLE_STATUS_ENABLED),
+          isNull(roles.deletedAt),
+        ),
       )
       .limit(1)
 

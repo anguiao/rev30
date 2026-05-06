@@ -175,11 +175,7 @@ const columns: DataTableColumns<UserListItem> = [
           class="w-40!"
         />
         <NButton data-test="users-search" type="primary" @click="handleSearch">查询</NButton>
-        <NButton
-          v-can="'system:user:list'"
-          data-test="users-refresh"
-          @click="handleRefresh"
-        >
+        <NButton v-can="'system:user:list'" data-test="users-refresh" @click="handleRefresh">
           刷新
         </NButton>
         <NButton @click="handleReset">重置</NButton>

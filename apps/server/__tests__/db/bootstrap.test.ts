@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto'
-import { ROLE_STATUS_DISABLED, ROLE_STATUS_ENABLED, USER_STATUS_DISABLED, USER_STATUS_ENABLED } from '@rev30/shared'
+import {
+  ROLE_STATUS_DISABLED,
+  ROLE_STATUS_ENABLED,
+  USER_STATUS_DISABLED,
+  USER_STATUS_ENABLED,
+} from '@rev30/shared'
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import {
-  authPasswordCredentials,
-  roles,
-  userRoles,
-  users,
-} from '../../src/db/schema'
+import { authPasswordCredentials, roles, userRoles, users } from '../../src/db/schema'
 import { bootstrapAdminUser } from '../../src/db/bootstrap'
 import { verifyPassword } from '../../src/modules/auth/password'
 import { createTestDb } from '../helpers/db'
@@ -51,9 +51,9 @@ describe('bootstrap admin user', () => {
         roleId: adminRole?.id,
       }),
     ])
-    await expect(verifyPassword('secret-admin-password', credential?.passwordHash ?? '')).resolves.toBe(
-      true,
-    )
+    await expect(
+      verifyPassword('secret-admin-password', credential?.passwordHash ?? ''),
+    ).resolves.toBe(true)
   })
 
   it('updates an existing admin user, updates password, and keeps a single admin binding', async () => {
@@ -112,9 +112,9 @@ describe('bootstrap admin user', () => {
       deletedAt: null,
     })
     expect(bindings).toHaveLength(1)
-    await expect(verifyPassword('second-admin-password', credential?.passwordHash ?? '')).resolves.toBe(
-      true,
-    )
+    await expect(
+      verifyPassword('second-admin-password', credential?.passwordHash ?? ''),
+    ).resolves.toBe(true)
   })
 
   it('requires username and password', async () => {
@@ -276,10 +276,7 @@ describe('bootstrap admin user', () => {
       .select()
       .from(userRoles)
       .where(
-        and(
-          eq(userRoles.userId, allUsers[0]?.id ?? ''),
-          eq(userRoles.roleId, adminRole?.id ?? ''),
-        ),
+        and(eq(userRoles.userId, allUsers[0]?.id ?? ''), eq(userRoles.roleId, adminRole?.id ?? '')),
       )
 
     expect(allUsers).toHaveLength(1)

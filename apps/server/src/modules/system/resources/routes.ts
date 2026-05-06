@@ -108,22 +108,17 @@ export function createResourceRoutes(database: Db) {
       resourceIdValidator,
       resourceUpdateBodyValidator,
       async (c) => {
-      const { id } = c.req.valid('param')
-      const body: ResourceUpdateInput = c.req.valid('json')
+        const { id } = c.req.valid('param')
+        const body: ResourceUpdateInput = c.req.valid('json')
 
-      return c.json(await service.update(id, body))
+        return c.json(await service.update(id, body))
       },
     )
-    .delete(
-      '/:id',
-      requireAccess('system:resource:delete'),
-      resourceIdValidator,
-      async (c) => {
+    .delete('/:id', requireAccess('system:resource:delete'), resourceIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
       await service.delete(id)
 
       return c.body(null, 204)
-      },
-    )
+    })
 }

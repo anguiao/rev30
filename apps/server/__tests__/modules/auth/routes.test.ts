@@ -184,7 +184,7 @@ describe('auth routes', () => {
     const app = createTestApp(database)
 
     await register(app)
-  const { body: responseBody, response } = await login(app)
+    const { body: responseBody, response } = await login(app)
     const body = responseBody as AuthTokenResponse
 
     expect(response.status).toBe(200)
@@ -301,17 +301,19 @@ describe('auth routes', () => {
       .where(eq(roles.code, 'admin'))
       .then((rows) => rows[0])
 
-    const adminRole = existingAdminRole ?? (await database
-      .insert(roles)
-      .values({
-        id: randomUUID(),
-        name: 'Administrator',
-        code: 'admin',
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
-      .then((rows) => rows[0]))
+    const adminRole =
+      existingAdminRole ??
+      (await database
+        .insert(roles)
+        .values({
+          id: randomUUID(),
+          name: 'Administrator',
+          code: 'admin',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+        .then((rows) => rows[0]))
 
     if (!adminRole) {
       throw new Error('Expected admin role')

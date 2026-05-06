@@ -102,10 +102,10 @@ export function createUserRoutes(database: Db) {
       userIdValidator,
       userUpdateBodyValidator,
       async (c) => {
-      const { id } = c.req.valid('param')
-      const body: UserUpdateInput = c.req.valid('json')
+        const { id } = c.req.valid('param')
+        const body: UserUpdateInput = c.req.valid('json')
 
-      return c.json(await service.update(id, body))
+        return c.json(await service.update(id, body))
       },
     )
     .delete('/:id', requireAccess('system:user:delete'), userIdValidator, async (c) => {

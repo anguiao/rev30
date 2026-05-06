@@ -6,7 +6,12 @@ import { NPagination, NSelect } from 'naive-ui'
 import { USER_STATUS_DISABLED, USER_STATUS_ENABLED, type UserListResponse } from '@rev30/shared'
 import { formatDateTime, listUsers } from '../../../src/features/system'
 import UsersPage from '../../../src/pages/index/system/users.vue'
-import { disposeActiveTestPinia, mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
+import {
+  disposeActiveTestPinia,
+  mountAuthRoute,
+  session,
+  stubPreferredDark,
+} from '../../helpers/auth'
 
 enableAutoUnmount(afterEach)
 
@@ -60,14 +65,10 @@ const userListResponse: UserListResponse = {
 }
 
 async function mountUsersPage(accessCodes: string[] = session.accessCodes) {
-  return mountAuthRoute(
-    '/system/users',
-    [{ path: '/system/users', component: UsersPage }],
-    {
-      ...session,
-      accessCodes,
-    },
-  )
+  return mountAuthRoute('/system/users', [{ path: '/system/users', component: UsersPage }], {
+    ...session,
+    accessCodes,
+  })
 }
 
 describe('users page', () => {

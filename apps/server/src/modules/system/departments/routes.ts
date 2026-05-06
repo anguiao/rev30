@@ -85,7 +85,9 @@ export function createDepartmentRoutes(database: Db) {
 
       return c.json(await service.list(query))
     })
-    .get('/tree', requireAccess('system:department:list'), async (c) => c.json(await service.tree()))
+    .get('/tree', requireAccess('system:department:list'), async (c) =>
+      c.json(await service.tree()),
+    )
     .get('/:id', requireAccess('system:department:list'), departmentIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
@@ -96,9 +98,9 @@ export function createDepartmentRoutes(database: Db) {
       requireAccess('system:department:create'),
       departmentCreateBodyValidator,
       async (c) => {
-      const body: DepartmentCreateInput = c.req.valid('json')
+        const body: DepartmentCreateInput = c.req.valid('json')
 
-      return c.json(await service.create(body), 201)
+        return c.json(await service.create(body), 201)
       },
     )
     .patch(
@@ -107,22 +109,17 @@ export function createDepartmentRoutes(database: Db) {
       departmentIdValidator,
       departmentUpdateBodyValidator,
       async (c) => {
-      const { id } = c.req.valid('param')
-      const body: DepartmentUpdateInput = c.req.valid('json')
+        const { id } = c.req.valid('param')
+        const body: DepartmentUpdateInput = c.req.valid('json')
 
-      return c.json(await service.update(id, body))
+        return c.json(await service.update(id, body))
       },
     )
-    .delete(
-      '/:id',
-      requireAccess('system:department:delete'),
-      departmentIdValidator,
-      async (c) => {
+    .delete('/:id', requireAccess('system:department:delete'), departmentIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
       await service.delete(id)
 
       return c.body(null, 204)
-      },
-    )
+    })
 }

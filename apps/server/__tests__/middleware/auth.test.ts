@@ -48,8 +48,12 @@ describe('auth middleware', () => {
     expect(body.user.roles).toEqual(
       expect.arrayContaining([expect.objectContaining({ code: 'admin' })]),
     )
-    expect(body.accessCodes).toEqual(expect.arrayContaining(['system', 'system:user', 'system:user:list']))
-    expect(body.menus).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'system' })]))
+    expect(body.accessCodes).toEqual(
+      expect.arrayContaining(['system', 'system:user', 'system:user:list']),
+    )
+    expect(body.menus).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'system' })]),
+    )
     expect(body.isAdmin).toBe(true)
   })
 
@@ -70,10 +74,7 @@ describe('auth middleware', () => {
         }),
       )
 
-    await database
-      .update(roles)
-      .set({ status: 0 })
-      .where(eq(roles.code, 'admin'))
+    await database.update(roles).set({ status: 0 }).where(eq(roles.code, 'admin'))
 
     const response = await app.request('/me', {
       headers: {

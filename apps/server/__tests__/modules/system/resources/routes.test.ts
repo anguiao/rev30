@@ -16,10 +16,7 @@ import {
   type ResourceTreeNode,
 } from '@rev30/shared'
 import { roleResources, roles, systemResources } from '../../../../src/db/schema'
-import {
-  createProtectedSystemRouteTestApp,
-  createSystemAccessFixture,
-} from '../../../helpers/auth'
+import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 import { createResourceRoutes } from '../../../../src/modules/system/resources/routes'
 
@@ -33,10 +30,12 @@ async function createTestApp(
 ) {
   const headers =
     authHeaders ??
-    (await createSystemAccessFixture(database, {
-      admin: true,
-      usernamePrefix: 'resource-routes-admin',
-    })).authHeaders
+    (
+      await createSystemAccessFixture(database, {
+        admin: true,
+        usernamePrefix: 'resource-routes-admin',
+      })
+    ).authHeaders
 
   return createProtectedSystemRouteTestApp(
     database,

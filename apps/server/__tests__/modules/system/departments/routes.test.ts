@@ -10,10 +10,7 @@ import {
   type DepartmentTreeNode,
 } from '@rev30/shared'
 import { departments, userDepartments, users } from '../../../../src/db/schema'
-import {
-  createProtectedSystemRouteTestApp,
-  createSystemAccessFixture,
-} from '../../../helpers/auth'
+import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 import { createDepartmentRoutes } from '../../../../src/modules/system/departments/routes'
 
@@ -27,10 +24,12 @@ async function createTestApp(
 ) {
   const headers =
     authHeaders ??
-    (await createSystemAccessFixture(database, {
-      admin: true,
-      usernamePrefix: 'department-routes-admin',
-    })).authHeaders
+    (
+      await createSystemAccessFixture(database, {
+        admin: true,
+        usernamePrefix: 'department-routes-admin',
+      })
+    ).authHeaders
 
   return createProtectedSystemRouteTestApp(
     database,

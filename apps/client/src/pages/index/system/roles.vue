@@ -149,11 +149,7 @@ const columns: DataTableColumns<RoleListItem> = [
           class="w-40!"
         />
         <NButton data-test="roles-search" type="primary" @click="handleSearch">查询</NButton>
-        <NButton
-          v-can="'system:role:list'"
-          data-test="roles-refresh"
-          @click="handleRefresh"
-        >
+        <NButton v-can="'system:role:list'" data-test="roles-refresh" @click="handleRefresh">
           刷新
         </NButton>
         <NButton @click="handleReset">重置</NButton>

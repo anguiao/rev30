@@ -10,7 +10,12 @@ import {
 } from '@rev30/shared'
 import { formatDateTime, getDepartmentTree } from '../../../src/features/system'
 import DepartmentsPage from '../../../src/pages/index/system/departments.vue'
-import { disposeActiveTestPinia, mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
+import {
+  disposeActiveTestPinia,
+  mountAuthRoute,
+  session,
+  stubPreferredDark,
+} from '../../helpers/auth'
 
 enableAutoUnmount(afterEach)
 

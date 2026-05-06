@@ -75,22 +75,86 @@ const seededSystemMenus = [
 ] as const
 
 const seededSystemActions = [
-  { id: '10000000-0000-4000-8000-000000000011', code: 'system:user:list', parentCode: 'system:user' },
-  { id: '10000000-0000-4000-8000-000000000012', code: 'system:user:create', parentCode: 'system:user' },
-  { id: '10000000-0000-4000-8000-000000000013', code: 'system:user:update', parentCode: 'system:user' },
-  { id: '10000000-0000-4000-8000-000000000014', code: 'system:user:delete', parentCode: 'system:user' },
-  { id: '10000000-0000-4000-8000-000000000021', code: 'system:department:list', parentCode: 'system:department' },
-  { id: '10000000-0000-4000-8000-000000000022', code: 'system:department:create', parentCode: 'system:department' },
-  { id: '10000000-0000-4000-8000-000000000023', code: 'system:department:update', parentCode: 'system:department' },
-  { id: '10000000-0000-4000-8000-000000000024', code: 'system:department:delete', parentCode: 'system:department' },
-  { id: '10000000-0000-4000-8000-000000000031', code: 'system:role:list', parentCode: 'system:role' },
-  { id: '10000000-0000-4000-8000-000000000032', code: 'system:role:create', parentCode: 'system:role' },
-  { id: '10000000-0000-4000-8000-000000000033', code: 'system:role:update', parentCode: 'system:role' },
-  { id: '10000000-0000-4000-8000-000000000034', code: 'system:role:delete', parentCode: 'system:role' },
-  { id: '10000000-0000-4000-8000-000000000041', code: 'system:resource:list', parentCode: 'system:resource' },
-  { id: '10000000-0000-4000-8000-000000000042', code: 'system:resource:create', parentCode: 'system:resource' },
-  { id: '10000000-0000-4000-8000-000000000043', code: 'system:resource:update', parentCode: 'system:resource' },
-  { id: '10000000-0000-4000-8000-000000000044', code: 'system:resource:delete', parentCode: 'system:resource' },
+  {
+    id: '10000000-0000-4000-8000-000000000011',
+    code: 'system:user:list',
+    parentCode: 'system:user',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000012',
+    code: 'system:user:create',
+    parentCode: 'system:user',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000013',
+    code: 'system:user:update',
+    parentCode: 'system:user',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000014',
+    code: 'system:user:delete',
+    parentCode: 'system:user',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000021',
+    code: 'system:department:list',
+    parentCode: 'system:department',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000022',
+    code: 'system:department:create',
+    parentCode: 'system:department',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000023',
+    code: 'system:department:update',
+    parentCode: 'system:department',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000024',
+    code: 'system:department:delete',
+    parentCode: 'system:department',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000031',
+    code: 'system:role:list',
+    parentCode: 'system:role',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000032',
+    code: 'system:role:create',
+    parentCode: 'system:role',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000033',
+    code: 'system:role:update',
+    parentCode: 'system:role',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000034',
+    code: 'system:role:delete',
+    parentCode: 'system:role',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000041',
+    code: 'system:resource:list',
+    parentCode: 'system:resource',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000042',
+    code: 'system:resource:create',
+    parentCode: 'system:resource',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000043',
+    code: 'system:resource:update',
+    parentCode: 'system:resource',
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000044',
+    code: 'system:resource:delete',
+    parentCode: 'system:resource',
+  },
 ] as const
 
 const seededSystemResourceCodes = [
@@ -414,10 +478,11 @@ describe('PGlite migrations', () => {
       )
       await applyPgliteMigrations(client, migrationsDir)
 
-      const systemRootResult =
-        await client.query<{ id: string; name: string; icon: string | null }>(
-          `select "id", "name", "icon" from "system_resources" where "code" = 'system'`,
-        )
+      const systemRootResult = await client.query<{
+        id: string
+        name: string
+        icon: string | null
+      }>(`select "id", "name", "icon" from "system_resources" where "code" = 'system'`)
       const systemUserMenuResult = await client.query<{ parentId: string | null }>(
         `select "parent_id" as "parentId" from "system_resources" where "code" = 'system:user'`,
       )

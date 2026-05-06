@@ -4,12 +4,7 @@ import { ROLE_STATUS_ENABLED, USER_STATUS_ENABLED } from '@rev30/shared'
 import { and, eq, isNull } from 'drizzle-orm'
 import { createDb, type Db } from '.'
 import { hashPassword } from '../modules/auth/password'
-import {
-  authPasswordCredentials,
-  roles,
-  userRoles,
-  users,
-} from './schema'
+import { authPasswordCredentials, roles, userRoles, users } from './schema'
 
 export type BootstrapAdminInput = {
   username: string
@@ -40,7 +35,9 @@ export async function bootstrapAdminUser(database: Db, input: BootstrapAdminInpu
   const [adminRole] = await database
     .select()
     .from(roles)
-    .where(and(eq(roles.code, 'admin'), eq(roles.status, ROLE_STATUS_ENABLED), isNull(roles.deletedAt)))
+    .where(
+      and(eq(roles.code, 'admin'), eq(roles.status, ROLE_STATUS_ENABLED), isNull(roles.deletedAt)),
+    )
     .limit(1)
 
   if (!adminRole) {

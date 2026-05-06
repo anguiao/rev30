@@ -10,13 +10,7 @@ import {
   RESOURCE_TYPE_MENU,
   ROLE_STATUS_DISABLED,
 } from '@rev30/shared'
-import {
-  roleResources,
-  roles,
-  systemResources,
-  userRoles,
-  users,
-} from '../../../src/db/schema'
+import { roleResources, roles, systemResources, userRoles, users } from '../../../src/db/schema'
 import { createTestDb } from '../../helpers/db'
 import { createUserAccessService } from '../../../src/modules/auth/access'
 
@@ -75,7 +69,10 @@ async function createRole(database: Awaited<ReturnType<typeof createTestDb>>, co
   return role
 }
 
-async function createResource(database: Awaited<ReturnType<typeof createTestDb>>, input: ResourceInsertInput) {
+async function createResource(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  input: ResourceInsertInput,
+) {
   const [resource] = await database
     .insert(systemResources)
     .values({
@@ -211,21 +208,23 @@ describe('user access service', () => {
       resourceId: userList.id,
       createdAt: now,
     })
-    await database
-      .update(roles)
-      .set({ status: ROLE_STATUS_DISABLED })
-      .where(eq(roles.id, role.id))
+    await database.update(roles).set({ status: ROLE_STATUS_DISABLED }).where(eq(roles.id, role.id))
 
     const disabledRoleAccess = await createUserAccessService(database).resolveUserAccess(user.id)
     expect(disabledRoleAccess.accessCodes).toEqual([])
 
-    await database.update(roles).set({ status: RESOURCE_STATUS_ENABLED }).where(eq(roles.id, role.id))
+    await database
+      .update(roles)
+      .set({ status: RESOURCE_STATUS_ENABLED })
+      .where(eq(roles.id, role.id))
     await database
       .update(systemResources)
       .set({ status: RESOURCE_STATUS_DISABLED })
       .where(eq(systemResources.id, userList.id))
 
-    const disabledResourceAccess = await createUserAccessService(database).resolveUserAccess(user.id)
+    const disabledResourceAccess = await createUserAccessService(database).resolveUserAccess(
+      user.id,
+    )
     expect(disabledResourceAccess.accessCodes).toEqual([])
   })
 
@@ -239,9 +238,7 @@ describe('user access service', () => {
       .where(eq(roles.code, 'admin'))
       .then((rows) => rows[0])
 
-    const adminRole =
-      existingAdminRole ??
-      (await createRole(database, 'admin'))
+    const adminRole = existingAdminRole ?? (await createRole(database, 'admin'))
 
     const system = await createResource(database, {
       code: `${prefix}-system`,
@@ -452,8 +449,8 @@ describe('user access service', () => {
       }),
     ])
     const userMenuNode = access.menus[0]!.children.find(
-    (node) => node.code === `${prefix}-system:user`,
-  )
+      (node) => node.code === `${prefix}-system:user`,
+    )
     expect(userMenuNode?.children).toHaveLength(0)
   })
 })

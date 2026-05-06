@@ -39,12 +39,7 @@ const logoutMock = vi.mocked(logout)
 function createMenuSession(): AuthTokenResponse {
   return {
     ...session,
-    accessCodes: [
-      'system',
-      'system:user:list',
-      'system:role:list',
-      'docs:guide',
-    ],
+    accessCodes: ['system', 'system:user:list', 'system:role:list', 'docs:guide'],
     menus: [
       {
         id: 'f905f4dc-c43f-41a8-b6fc-d381f291331a',

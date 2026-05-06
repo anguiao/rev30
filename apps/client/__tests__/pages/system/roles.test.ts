@@ -6,7 +6,12 @@ import { NPagination, NSelect } from 'naive-ui'
 import { ROLE_STATUS_DISABLED, ROLE_STATUS_ENABLED, type RoleListResponse } from '@rev30/shared'
 import { formatDateTime, listRoles } from '../../../src/features/system'
 import RolesPage from '../../../src/pages/index/system/roles.vue'
-import { disposeActiveTestPinia, mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
+import {
+  disposeActiveTestPinia,
+  mountAuthRoute,
+  session,
+  stubPreferredDark,
+} from '../../helpers/auth'
 
 enableAutoUnmount(afterEach)
 
@@ -49,14 +54,10 @@ const roleListResponse: RoleListResponse = {
 }
 
 async function mountRolesPage(accessCodes: string[] = session.accessCodes) {
-  return mountAuthRoute(
-    '/system/roles',
-    [{ path: '/system/roles', component: RolesPage }],
-    {
-      ...session,
-      accessCodes,
-    },
-  )
+  return mountAuthRoute('/system/roles', [{ path: '/system/roles', component: RolesPage }], {
+    ...session,
+    accessCodes,
+  })
 }
 
 describe('roles page', () => {

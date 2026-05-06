@@ -6,6 +6,8 @@ import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-rout
 import { vi } from 'vitest'
 import type { AuthTokenResponse } from '@rev30/shared'
 import { USER_STATUS_ENABLED } from '@rev30/shared'
+import { can } from '../../src/directives/can'
+import { useAuthStore } from '../../src/stores/auth'
 
 export const session: AuthTokenResponse = {
   accessToken: 'access-token',
@@ -97,8 +99,18 @@ export function stubPreferredDark(matches: boolean) {
   )
 }
 
-export async function mountAuthRoute(path: string, routes: RouteRecordRaw[]) {
+export async function mountAuthRoute(
+  path: string,
+  routes: RouteRecordRaw[],
+  authSession?: AuthTokenResponse,
+) {
   const pinia = createTestPinia()
+  const auth = useAuthStore(pinia)
+
+  if (authSession !== undefined) {
+    auth.setSession(authSession)
+  }
+
   const router = createRouter({
     history: createMemoryHistory(),
     routes,
@@ -114,6 +126,9 @@ export async function mountAuthRoute(path: string, routes: RouteRecordRaw[]) {
     {
       global: {
         plugins: [pinia, PiniaColada, router],
+        directives: {
+          can,
+        },
       },
     },
   )

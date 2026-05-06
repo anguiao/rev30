@@ -10,7 +10,7 @@ import {
 } from '@rev30/shared'
 import { formatDateTime, getDepartmentTree } from '../../../src/features/system'
 import DepartmentsPage from '../../../src/pages/index/system/departments.vue'
-import { disposeActiveTestPinia, mountAuthRoute, stubPreferredDark } from '../../helpers/auth'
+import { disposeActiveTestPinia, mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
 enableAutoUnmount(afterEach)
 
@@ -61,10 +61,15 @@ const departmentTreeResponse: DepartmentTreeNode[] = [
   },
 ]
 
-async function mountDepartmentsPage() {
-  return mountAuthRoute('/system/departments', [
-    { path: '/system/departments', component: DepartmentsPage },
-  ])
+async function mountDepartmentsPage(accessCodes: string[] = session.accessCodes) {
+  return mountAuthRoute(
+    '/system/departments',
+    [{ path: '/system/departments', component: DepartmentsPage }],
+    {
+      ...session,
+      accessCodes,
+    },
+  )
 }
 
 describe('departments page', () => {
@@ -115,6 +120,19 @@ describe('departments page', () => {
       formatDateTime('2026-05-02T00:00:00.000Z'),
     )
     expect(wrapper.findComponent(NPagination).exists()).toBe(false)
+  })
+
+  it('shows the refresh button only when the user has list permission', async () => {
+    getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
+    const { wrapper: unauthorizedWrapper } = await mountDepartmentsPage([])
+    await flushPromises()
+
+    expect(unauthorizedWrapper.find('[data-test="departments-refresh"]').exists()).toBe(false)
+
+    const { wrapper: authorizedWrapper } = await mountDepartmentsPage(['system:department:list'])
+    await flushPromises()
+
+    expect(authorizedWrapper.find('[data-test="departments-refresh"]').exists()).toBe(true)
   })
 
   it('filters by child keyword and preserves parent context', async () => {

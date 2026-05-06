@@ -32,6 +32,7 @@ const {
   data: usersResponse,
   error: usersError,
   isLoading,
+  refetch,
 } = useQuery({
   key: () => [
     'system',
@@ -86,6 +87,10 @@ function handleReset() {
     page: 1,
     pageSize: query.value.pageSize,
   }
+}
+
+function handleRefresh() {
+  void refetch()
 }
 
 const columns: DataTableColumns<UserListItem> = [
@@ -170,6 +175,13 @@ const columns: DataTableColumns<UserListItem> = [
           class="w-40!"
         />
         <NButton data-test="users-search" type="primary" @click="handleSearch">查询</NButton>
+        <NButton
+          v-can="'system:user:list'"
+          data-test="users-refresh"
+          @click="handleRefresh"
+        >
+          刷新
+        </NButton>
         <NButton @click="handleReset">重置</NButton>
       </NSpace>
     </section>

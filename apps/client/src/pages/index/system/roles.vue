@@ -32,6 +32,7 @@ const {
   data: rolesResponse,
   error: rolesError,
   isLoading,
+  refetch,
 } = useQuery({
   key: () => [
     'system',
@@ -68,6 +69,10 @@ function handleReset() {
     page: 1,
     pageSize: query.value.pageSize,
   }
+}
+
+function handleRefresh() {
+  void refetch()
 }
 
 const columns: DataTableColumns<RoleListItem> = [
@@ -144,6 +149,13 @@ const columns: DataTableColumns<RoleListItem> = [
           class="w-40!"
         />
         <NButton data-test="roles-search" type="primary" @click="handleSearch">查询</NButton>
+        <NButton
+          v-can="'system:role:list'"
+          data-test="roles-refresh"
+          @click="handleRefresh"
+        >
+          刷新
+        </NButton>
         <NButton @click="handleReset">重置</NButton>
       </NSpace>
     </section>

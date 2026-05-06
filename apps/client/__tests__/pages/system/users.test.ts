@@ -6,7 +6,7 @@ import { NPagination, NSelect } from 'naive-ui'
 import { USER_STATUS_DISABLED, USER_STATUS_ENABLED, type UserListResponse } from '@rev30/shared'
 import { formatDateTime, listUsers } from '../../../src/features/system'
 import UsersPage from '../../../src/pages/index/system/users.vue'
-import { disposeActiveTestPinia, mountAuthRoute, stubPreferredDark } from '../../helpers/auth'
+import { disposeActiveTestPinia, mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
 enableAutoUnmount(afterEach)
 
@@ -59,8 +59,15 @@ const userListResponse: UserListResponse = {
   pageSize: 20,
 }
 
-async function mountUsersPage() {
-  return mountAuthRoute('/system/users', [{ path: '/system/users', component: UsersPage }])
+async function mountUsersPage(accessCodes: string[] = session.accessCodes) {
+  return mountAuthRoute(
+    '/system/users',
+    [{ path: '/system/users', component: UsersPage }],
+    {
+      ...session,
+      accessCodes,
+    },
+  )
 }
 
 describe('users page', () => {
@@ -96,6 +103,19 @@ describe('users page', () => {
     expect(wrapper.text()).toContain('平台架构、数据治理等 3 个')
     expect(wrapper.text()).toContain('审计员、访客')
     expect(wrapper.text()).toContain(formatDateTime('2026-05-01T00:00:00.000Z'))
+  })
+
+  it('shows the refresh button only when the user has list permission', async () => {
+    listUsersMock.mockResolvedValue(userListResponse)
+    const { wrapper: unauthorizedWrapper } = await mountUsersPage([])
+    await flushPromises()
+
+    expect(unauthorizedWrapper.find('[data-test="users-refresh"]').exists()).toBe(false)
+
+    const { wrapper: authorizedWrapper } = await mountUsersPage(['system:user:list'])
+    await flushPromises()
+
+    expect(authorizedWrapper.find('[data-test="users-refresh"]').exists()).toBe(true)
   })
 
   it('submits keyword and status filters from page one', async () => {

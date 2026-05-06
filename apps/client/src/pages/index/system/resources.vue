@@ -57,6 +57,7 @@ const {
   data: resourceTree,
   error: resourceTreeError,
   isLoading,
+  refetch,
 } = useQuery({
   key: () => ['system', 'resources', 'tree'],
   placeholderData: () => emptyResourceTree,
@@ -130,6 +131,10 @@ function handleReset() {
     type: null,
     status: null,
   }
+}
+
+function handleRefresh() {
+  void refetch()
 }
 
 function collectTreeIds(nodes: ResourceTreeNode[]): DataTableRowKey[] {
@@ -236,6 +241,13 @@ const columns: DataTableColumns<ResourceTreeNode> = [
           class="w-40!"
         />
         <NButton data-test="resources-search" type="primary" @click="handleSearch">查询</NButton>
+        <NButton
+          v-can="'system:resource:list'"
+          data-test="resources-refresh"
+          @click="handleRefresh"
+        >
+          刷新
+        </NButton>
         <NButton @click="handleReset">重置</NButton>
       </NSpace>
     </section>

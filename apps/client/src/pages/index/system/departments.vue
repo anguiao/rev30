@@ -43,6 +43,7 @@ const {
   data: departmentTree,
   error: departmentTreeError,
   isLoading,
+  refetch,
 } = useQuery({
   key: () => ['system', 'departments', 'tree'],
   placeholderData: () => emptyDepartmentTree,
@@ -101,6 +102,10 @@ function handleReset() {
     keyword: '',
     status: null,
   }
+}
+
+function handleRefresh() {
+  void refetch()
 }
 
 function collectTreeIds(nodes: DepartmentTreeNode[]): DataTableRowKey[] {
@@ -178,6 +183,13 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
           class="w-40!"
         />
         <NButton data-test="departments-search" type="primary" @click="handleSearch">查询</NButton>
+        <NButton
+          v-can="'system:department:list'"
+          data-test="departments-refresh"
+          @click="handleRefresh"
+        >
+          刷新
+        </NButton>
         <NButton @click="handleReset">重置</NButton>
       </NSpace>
     </section>

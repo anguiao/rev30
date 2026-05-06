@@ -14,7 +14,7 @@ import {
 } from '@rev30/shared'
 import { formatDateTime, getResourceTree } from '../../../src/features/system'
 import ResourcesPage from '../../../src/pages/index/system/resources.vue'
-import { disposeActiveTestPinia, mountAuthRoute, stubPreferredDark } from '../../helpers/auth'
+import { disposeActiveTestPinia, mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
 enableAutoUnmount(afterEach)
 
@@ -83,10 +83,15 @@ const resourceTreeResponse: ResourceTreeNode[] = [
   },
 ]
 
-async function mountResourcesPage() {
-  return mountAuthRoute('/system/resources', [
-    { path: '/system/resources', component: ResourcesPage },
-  ])
+async function mountResourcesPage(accessCodes: string[] = session.accessCodes) {
+  return mountAuthRoute(
+    '/system/resources',
+    [{ path: '/system/resources', component: ResourcesPage }],
+    {
+      ...session,
+      accessCodes,
+    },
+  )
 }
 
 describe('resources page', () => {
@@ -133,6 +138,19 @@ describe('resources page', () => {
       '11111111-1111-4111-8111-111111111111',
     ])
     expect(wrapper.findComponent(NPagination).exists()).toBe(false)
+  })
+
+  it('shows the refresh button only when the user has list permission', async () => {
+    getResourceTreeMock.mockResolvedValue(resourceTreeResponse)
+    const { wrapper: unauthorizedWrapper } = await mountResourcesPage([])
+    await flushPromises()
+
+    expect(unauthorizedWrapper.find('[data-test="resources-refresh"]').exists()).toBe(false)
+
+    const { wrapper: authorizedWrapper } = await mountResourcesPage(['system:resource:list'])
+    await flushPromises()
+
+    expect(authorizedWrapper.find('[data-test="resources-refresh"]').exists()).toBe(true)
   })
 
   it('filters by action type while preserving parent context', async () => {

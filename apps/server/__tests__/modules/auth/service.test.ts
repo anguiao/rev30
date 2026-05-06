@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => {
     createAuthRepository: vi.fn(() => repository),
     repository,
     verifyPassword: vi.fn(),
+    resolveUserAccess: vi.fn(),
   }
 })
 
@@ -29,6 +30,12 @@ vi.mock('../../../src/modules/auth/repository', () => ({
 vi.mock('../../../src/modules/auth/password', () => ({
   hashPassword: vi.fn(),
   verifyPassword: mocks.verifyPassword,
+}))
+
+vi.mock('../../../src/modules/auth/access', () => ({
+  createUserAccessService: () => ({
+    resolveUserAccess: mocks.resolveUserAccess,
+  }),
 }))
 
 const config: AuthConfig = {
@@ -59,6 +66,11 @@ describe('auth service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.verifyPassword.mockResolvedValue(false)
+    mocks.resolveUserAccess.mockResolvedValue({
+      accessCodes: [],
+      menus: [],
+      isAdmin: false,
+    })
   })
 
   it('uses password verification work for unknown-user login failures', async () => {
@@ -137,6 +149,55 @@ describe('auth service', () => {
     ])
     expect(session.accessCodes).toEqual([])
     expect(session.menus).toEqual([])
+  })
+
+  it('returns access codes and menus for register and login sessions', async () => {
+    mocks.repository.createUser.mockResolvedValue({
+      user: createUserRow(),
+      departments: [],
+      roles: [],
+    })
+    mocks.repository.createRefreshSession.mockResolvedValue(undefined)
+
+    const accessData = {
+      accessCodes: ['system'],
+      menus: [
+        {
+          id: 'system-id',
+          parentId: null,
+          type: 'directory',
+          name: 'System',
+          code: 'system',
+          path: null,
+          externalUrl: null,
+          openTarget: 'self',
+          icon: 'lucide:settings',
+          hidden: false,
+          status: 1,
+          sortOrder: 0,
+          createdAt: '2026-05-06T00:00:00.000Z',
+          updatedAt: '2026-05-06T00:00:00.000Z',
+          children: [],
+        },
+      ],
+      isAdmin: false,
+    }
+
+    mocks.resolveUserAccess.mockResolvedValue(accessData)
+
+    const service = createAuthService({} as never, config)
+    const session = await service.register({
+      username: 'ada',
+      email: null,
+      phone: null,
+      nickname: 'Ada Lovelace',
+      password: 'secret-password',
+    })
+
+    expect(session.accessCodes).toEqual(accessData.accessCodes)
+    expect(session.menus).toEqual(accessData.menus)
+    expect(mocks.resolveUserAccess).toHaveBeenCalledTimes(1)
+    expect(mocks.resolveUserAccess).toHaveBeenCalledWith('8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7')
   })
 
   it('does not hide refresh session revoke failures during logout', async () => {

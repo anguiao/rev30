@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { Hono } from 'hono'
-import type { User } from '@rev30/shared'
+import { type ResourceTreeNode, type User } from '@rev30/shared'
 import { createTestDb } from '../helpers/db'
 import { createAuthMiddleware } from '../../src/middleware/auth'
 import { createAuthRoutes } from '../../src/modules/auth/routes'
 
 type AuthVariables = {
   currentUser: User
+  accessCodes: string[]
+  menus: ResourceTreeNode[]
 }
 
 async function register(app: Hono) {
@@ -34,7 +36,13 @@ describe('auth middleware', () => {
     expect(registered.user.roles).toEqual([])
     const app = new Hono<{ Variables: AuthVariables }>()
       .use('/me', createAuthMiddleware(database))
-      .get('/me', (c) => c.json(c.get('currentUser')))
+      .get('/me', (c) =>
+        c.json({
+          user: c.get('currentUser'),
+          accessCodes: c.get('accessCodes'),
+          menus: c.get('menus'),
+        }),
+      )
 
     const response = await app.request('/me', {
       headers: {
@@ -43,6 +51,10 @@ describe('auth middleware', () => {
     })
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual(registered.user)
+    expect(await response.json()).toEqual({
+      user: registered.user,
+      accessCodes: [],
+      menus: [],
+    })
   })
 })

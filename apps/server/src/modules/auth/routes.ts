@@ -85,5 +85,11 @@ export function createAuthRoutes(database: Db) {
 
       return c.body(null, 204)
     })
-    .get('/me', createAuthMiddleware(database), (c) => c.json(c.get('currentUser')))
+    .get('/me', createAuthMiddleware(database), (c) =>
+      c.json({
+        user: c.get('currentUser'),
+        accessCodes: c.get('accessCodes'),
+        menus: c.get('menus'),
+      }),
+    )
 }

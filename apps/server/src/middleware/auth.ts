@@ -1,5 +1,11 @@
 import type { MiddlewareHandler } from 'hono'
-import { AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH, type User } from '@rev30/shared'
+import {
+  AUTH_ACTION_HEADER,
+  AUTH_ACTION_REFRESH,
+  type AuthSessionResponse,
+  type ResourceTreeNode,
+  type User,
+} from '@rev30/shared'
 import type { Db } from '../db'
 import { parseBearerToken } from '../modules/auth/bearer'
 import { readAuthConfig } from '../modules/auth/config'
@@ -8,6 +14,8 @@ import { createAuthService } from '../modules/auth/service'
 
 export type AuthVariables = {
   currentUser: User
+  accessCodes: AuthSessionResponse['accessCodes']
+  menus: ResourceTreeNode[]
 }
 
 type AuthEnv = {
@@ -20,9 +28,11 @@ export function createAuthMiddleware(database: Db): MiddlewareHandler<AuthEnv> {
 
   return async (c, next) => {
     try {
-      const user = await service.me(parseBearerToken(c.req.header('authorization')))
+      const session = await service.me(parseBearerToken(c.req.header('authorization')))
 
-      c.set('currentUser', user)
+      c.set('currentUser', session.user)
+      c.set('accessCodes', session.accessCodes)
+      c.set('menus', session.menus)
     } catch (error) {
       if (error instanceof AuthAccessTokenExpiredError) {
         c.header(AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH)

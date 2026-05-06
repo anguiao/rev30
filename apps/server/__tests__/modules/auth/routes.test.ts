@@ -6,6 +6,9 @@ import { sign } from 'hono/jwt'
 import {
   AUTH_ACTION_HEADER,
   AUTH_ACTION_REFRESH,
+  RESOURCE_TYPE_ACTION,
+  RESOURCE_TYPE_DIRECTORY,
+  RESOURCE_TYPE_MENU,
   USER_STATUS_DISABLED,
   type AuthTokenResponse,
 } from '@rev30/shared'
@@ -13,6 +16,7 @@ import {
   authPasswordCredentials,
   departments,
   roles,
+  systemResources,
   userDepartments,
   userRoles,
   users,
@@ -28,12 +32,51 @@ type ErrorResponse = {
   field?: string
 }
 
+type AuthLoginResponse = AuthTokenResponse | ErrorResponse
+
+type ResourceInsert = {
+  code: string
+  name: string
+  type: string
+  parentId: string | null
+  path: string | null
+  externalUrl: string | null
+  openTarget: string
+  icon: string | null
+  hidden: boolean
+  status: number
+  sortOrder: number
+}
+
+const now = new Date('2026-05-06T00:00:00.000Z')
+
 function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
   return new Hono().route('/api/auth', createAuthRoutes(database))
 }
 
 function getRefreshTokenCookie(response: Response) {
   return response.headers.get('set-cookie')?.match(/refresh_token=([^;]+)/)?.[1]
+}
+
+async function createResource(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  input: ResourceInsert,
+) {
+  const [resource] = await database
+    .insert(systemResources)
+    .values({
+      id: randomUUID(),
+      ...input,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning()
+
+  if (!resource) {
+    throw new Error(`Expected resource ${input.code}`)
+  }
+
+  return resource
 }
 
 async function register(app: Hono, body = {}) {
@@ -71,10 +114,7 @@ async function login(app: Hono, body = {}) {
   })
 
   return {
-    body:
-      response.status === 200
-        ? ((await response.json()) as AuthTokenResponse)
-        : ((await response.json()) as ErrorResponse),
+    body: (await response.json()) as AuthLoginResponse,
     response,
   }
 }
@@ -94,7 +134,6 @@ describe('auth routes', () => {
     expect(body).toMatchObject({
       tokenType: 'Bearer',
       expiresIn: 900,
-      accessCodes: [],
       user: {
         username: 'ada',
         nickname: 'Ada Lovelace',
@@ -104,8 +143,9 @@ describe('auth routes', () => {
         roles: [],
       },
     })
-    expect(body.menus).toEqual([])
     expect(body.accessToken).toEqual(expect.any(String))
+    expect(body.accessCodes).toEqual([])
+    expect(body.menus).toEqual([])
     expect(body).not.toHaveProperty('refreshToken')
     expect(refreshToken).toEqual(expect.any(String))
 
@@ -144,22 +184,22 @@ describe('auth routes', () => {
     const app = createTestApp(database)
 
     await register(app)
-    const { body, response } = await login(app)
-    const tokenBody = body as AuthTokenResponse
+  const { body: responseBody, response } = await login(app)
+    const body = responseBody as AuthTokenResponse
 
     expect(response.status).toBe(200)
     expect(response.headers.get('set-cookie')).toContain('refresh_token=')
-    expect(tokenBody).toMatchObject({
+    expect(body).toMatchObject({
       tokenType: 'Bearer',
       expiresIn: 900,
-      accessCodes: [],
       user: {
         username: 'ada',
         departments: [],
         roles: [],
       },
     })
-    expect(tokenBody.menus).toEqual([])
+    expect(body.accessCodes).toEqual([])
+    expect(body.menus).toEqual([])
     expect(body).not.toHaveProperty('refreshToken')
   })
 
@@ -201,12 +241,13 @@ describe('auth routes', () => {
       password: 'secret-password',
     })
     const now = new Date()
+
     const [role] = await database
       .insert(roles)
       .values({
         id: randomUUID(),
-        name: 'Administrator',
-        code: 'test-admin',
+        name: 'Manager',
+        code: 'manager',
         createdAt: now,
         updatedAt: now,
       })
@@ -235,13 +276,116 @@ describe('auth routes', () => {
     const body = (await response.json()) as AuthTokenResponse
 
     expect(response.status).toBe(200)
+    expect(body.accessCodes).toEqual([])
+    expect(body.menus).toEqual([])
     expect(body.user.roles).toEqual([
       {
         id: role.id,
-        name: 'Administrator',
-        code: 'test-admin',
+        name: 'Manager',
+        code: 'manager',
       },
     ])
+  })
+
+  it('returns admin access codes and menus on login', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app, {
+      username: 'admin-login',
+      nickname: 'Admin Login',
+      password: 'secret-password',
+    })
+    const existingAdminRole = await database
+      .select()
+      .from(roles)
+      .where(eq(roles.code, 'admin'))
+      .then((rows) => rows[0])
+
+    const adminRole = existingAdminRole ?? (await database
+      .insert(roles)
+      .values({
+        id: randomUUID(),
+        name: 'Administrator',
+        code: 'admin',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+      .then((rows) => rows[0]))
+
+    if (!adminRole) {
+      throw new Error('Expected admin role')
+    }
+
+    const prefix = randomUUID()
+
+    const systemMenu = await createResource(database, {
+      code: `${prefix}-system`,
+      name: 'System',
+      type: RESOURCE_TYPE_DIRECTORY,
+      parentId: null,
+      path: null,
+      externalUrl: null,
+      openTarget: 'self',
+      icon: 'lucide:settings',
+      hidden: false,
+      status: 1,
+      sortOrder: 0,
+    })
+
+    const userMenu = await createResource(database, {
+      code: `${prefix}-system:user`,
+      name: 'Users',
+      type: RESOURCE_TYPE_MENU,
+      parentId: systemMenu.id,
+      path: '/system/users',
+      externalUrl: null,
+      openTarget: 'self',
+      icon: 'lucide:users',
+      hidden: false,
+      status: 1,
+      sortOrder: 0,
+    })
+
+    await createResource(database, {
+      code: `${prefix}-system:user:list`,
+      name: 'View Users',
+      type: RESOURCE_TYPE_ACTION,
+      parentId: userMenu.id,
+      path: null,
+      externalUrl: null,
+      openTarget: 'self',
+      icon: null,
+      hidden: false,
+      status: 1,
+      sortOrder: 0,
+    })
+
+    await database.insert(userRoles).values({
+      userId: registered.body.user.id,
+      roleId: adminRole.id,
+      createdAt: now,
+    })
+
+    const response = await app.request('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: 'admin-login',
+        password: 'secret-password',
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const body = (await response.json()) as AuthTokenResponse
+
+    expect(response.status).toBe(200)
+    expect(body.accessCodes).toContain(`${prefix}-system`)
+    expect(body.accessCodes).toContain(`${prefix}-system:user`)
+    expect(body.accessCodes).toContain(`${prefix}-system:user:list`)
+    expect(body.menus.flatMap((node) => node.children.map((child) => child.code))).toContain(
+      `${prefix}-system:user`,
+    )
   })
 
   it('returns stable request body errors for invalid login and registration bodies', async () => {
@@ -284,11 +428,9 @@ describe('auth routes', () => {
 
     expect(refreshResponse.status).toBe(200)
     expect(refreshResponse.headers.get('set-cookie')).toContain('refresh_token=')
-    expect(refreshBody).toMatchObject({
-      accessCodes: [],
-      menus: [],
-    })
     expect(refreshBody).not.toHaveProperty('refreshToken')
+    expect(refreshBody.accessCodes).toEqual([])
+    expect(refreshBody.menus).toEqual([])
     expect(newRefreshToken).toEqual(expect.any(String))
     expect(newRefreshToken).not.toBe(oldRefreshToken)
 
@@ -320,11 +462,9 @@ describe('auth routes', () => {
     const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
 
     expect(refreshResponse.status).toBe(200)
-    expect(refreshBody).toMatchObject({
-      accessCodes: [],
-      menus: [],
-    })
     expect(refreshBody.user.id).toBe(registered.body.user.id)
+    expect(refreshBody.accessCodes).toEqual([])
+    expect(refreshBody.menus).toEqual([])
     expect(refreshBody.user.departments).toEqual([])
     expect(refreshBody.user.roles).toEqual([])
     expect(refreshBody).not.toHaveProperty('refreshToken')
@@ -473,15 +613,36 @@ describe('auth routes', () => {
         authorization: `Bearer ${registered.body.accessToken}`,
       },
     })
-    const body = await response.json()
+    const body = (await response.json()) as {
+      user: {
+        id: string
+        username: string
+        nickname: string
+        email: string | null
+        phone: string | null
+        status: number
+        departments: { id: string; name: string; code: string }[]
+        roles: { id: string; name: string; code: string }[]
+        createdAt: string
+        updatedAt: string
+      }
+      accessCodes: string[]
+      menus: unknown[]
+    }
 
     expect(response.status).toBe(200)
     expect(body).toMatchObject({
-      id: registered.body.user.id,
-      username: 'ada',
-      nickname: 'Ada Lovelace',
-      departments: [],
-      roles: [],
+      user: {
+        id: registered.body.user.id,
+        username: 'ada',
+        nickname: 'Ada Lovelace',
+        departments: [],
+        roles: [],
+      },
+    })
+    expect(body).toMatchObject({
+      accessCodes: [],
+      menus: [],
     })
   })
 
@@ -508,6 +669,8 @@ describe('auth routes', () => {
     const loggedIn = await login(app)
 
     expect(loggedIn.response.status).toBe(200)
+    expect((loggedIn.body as AuthTokenResponse).accessCodes).toEqual([])
+    expect((loggedIn.body as AuthTokenResponse).menus).toEqual([])
     expect(loggedIn.body).toMatchObject({
       user: {
         id: registered.body.user.id,
@@ -531,15 +694,19 @@ describe('auth routes', () => {
 
     expect(meResponse.status).toBe(200)
     expect(meBody).toMatchObject({
-      id: registered.body.user.id,
-      departments: [
-        {
-          id: departmentId,
-          name: 'Engineering',
-          code: 'engineering',
-        },
-      ],
-      roles: [],
+      user: {
+        id: registered.body.user.id,
+        departments: [
+          {
+            id: departmentId,
+            name: 'Engineering',
+            code: 'engineering',
+          },
+        ],
+        roles: [],
+      },
+      accessCodes: [],
+      menus: [],
     })
 
     const refreshResponse = await app.request('/api/auth/refresh', {
@@ -551,17 +718,21 @@ describe('auth routes', () => {
     const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
 
     expect(refreshResponse.status).toBe(200)
-    expect(refreshBody.user).toMatchObject({
-      id: registered.body.user.id,
-      departments: [
-        {
-          id: departmentId,
-          name: 'Engineering',
-          code: 'engineering',
-        },
-      ],
-      roles: [],
+    expect(refreshBody).toMatchObject({
+      user: {
+        id: registered.body.user.id,
+        departments: [
+          {
+            id: departmentId,
+            name: 'Engineering',
+            code: 'engineering',
+          },
+        ],
+        roles: [],
+      },
     })
+    expect(refreshBody.accessCodes).toEqual([])
+    expect(refreshBody.menus).toEqual([])
   })
 
   it('rejects bearer authorization headers with extra fields for current user', async () => {

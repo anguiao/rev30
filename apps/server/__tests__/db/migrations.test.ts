@@ -3,6 +3,7 @@ import { PGlite } from '@electric-sql/pglite'
 import { afterEach, describe, expect, it } from 'vitest'
 import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
 import { readMigrationFiles } from 'drizzle-orm/migrator'
+import { eq, isNull } from 'drizzle-orm'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import {
@@ -18,6 +19,13 @@ import {
 } from '../../src/db/schema'
 import { createDb } from '../../src/db/index'
 import { applyPgliteMigrations, defaultMigrationsDir } from '../../src/db/migrations'
+import { createTestDb } from '../helpers/db'
+import {
+  RESOURCE_TYPE_ACTION,
+  RESOURCE_TYPE_DIRECTORY,
+  RESOURCE_TYPE_MENU,
+  ROLE_STATUS_ENABLED,
+} from '@rev30/shared'
 
 const originalNodeEnv = process.env.NODE_ENV
 const originalPgliteDataDir = process.env.PGLITE_DATA_DIR
@@ -239,6 +247,57 @@ describe('PGlite migrations', () => {
       userId: createdUser.id,
       roleId: createdRole.id,
     })
+  })
+
+  it('seeds built-in system resources and the admin role without role resource bindings', async () => {
+    const database = await createTestDb()
+
+    const resourceRows = await database
+      .select({
+        code: systemResources.code,
+        type: systemResources.type,
+        path: systemResources.path,
+        icon: systemResources.icon,
+      })
+      .from(systemResources)
+      .where(isNull(systemResources.deletedAt))
+
+    expect(resourceRows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'system',
+          type: RESOURCE_TYPE_DIRECTORY,
+          path: null,
+          icon: 'lucide:settings',
+        }),
+        expect.objectContaining({
+          code: 'system:user',
+          type: RESOURCE_TYPE_MENU,
+          path: '/system/users',
+          icon: 'lucide:users',
+        }),
+        expect.objectContaining({
+          code: 'system:user:list',
+          type: RESOURCE_TYPE_ACTION,
+          path: null,
+          icon: null,
+        }),
+      ]),
+    )
+
+    const [adminRole] = await database.select().from(roles).where(eq(roles.code, 'admin'))
+    expect(adminRole).toMatchObject({
+      name: 'Administrator',
+      code: 'admin',
+      status: ROLE_STATUS_ENABLED,
+    })
+
+    const adminBindings = await database
+      .select()
+      .from(roleResources)
+      .where(eq(roleResources.roleId, adminRole?.id ?? ''))
+
+    expect(adminBindings).toEqual([])
   })
 
   it('creates usable system resource tables for fresh development databases', async () => {

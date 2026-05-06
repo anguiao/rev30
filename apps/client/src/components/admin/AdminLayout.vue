@@ -96,20 +96,33 @@ function createMenuOption(resource: ResourceTreeNode): MenuOption {
   return option
 }
 
-function hasSelectedPath(resources: ResourceTreeNode[], path: string): boolean {
-  return resources.some((resource) => {
-    if (resource.path === path) {
-      return true
-    }
-
-    return hasSelectedPath(resource.children, path)
-  })
+function matchesMenuPath(currentPath: string, menuPath: string) {
+  return currentPath === menuPath || currentPath.startsWith(`${menuPath}/`)
 }
 
 const menuOptions = computed<MenuOption[]>(() => menus.value.map(createMenuOption))
-const selectedMenuKey = computed<string | null>(() =>
-  hasSelectedPath(menus.value, route.path) ? route.path : null,
-)
+
+function findSelectedMenuKey(resources: ResourceTreeNode[], currentPath: string): string | null {
+  let matchedPath: string | null = null
+
+  for (const resource of resources) {
+    if (resource.path !== null && matchesMenuPath(currentPath, resource.path)) {
+      if (matchedPath === null || resource.path.length > matchedPath.length) {
+        matchedPath = resource.path
+      }
+    }
+
+    const childMatchedPath = findSelectedMenuKey(resource.children, currentPath)
+
+    if (childMatchedPath !== null && (matchedPath === null || childMatchedPath.length > matchedPath.length)) {
+      matchedPath = childMatchedPath
+    }
+  }
+
+  return matchedPath
+}
+
+const selectedMenuKey = computed<string | null>(() => findSelectedMenuKey(menus.value, route.path))
 </script>
 
 <template>

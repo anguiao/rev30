@@ -144,9 +144,11 @@ async function mountLayout(options?: { initialPath?: string; authSession?: AuthT
     history: createMemoryHistory(),
     routes: [
       { path: '/system/users', component: { template: '<main>Users</main>' } },
+      { path: '/system/users/:id', component: { template: '<main>User Detail</main>' } },
       { path: '/system/departments', component: { template: '<main>Departments</main>' } },
       { path: '/system/roles', component: { template: '<main>Roles</main>' } },
       { path: '/system/resources', component: { template: '<main>Resources</main>' } },
+      { path: '/unknown', component: { template: '<main>Unknown</main>' } },
       { path: '/login', component: { template: '<main>Login</main>' } },
     ],
   })
@@ -221,6 +223,24 @@ describe('admin layout', () => {
 
     expect(wrapper.text()).toContain('暂无可访问菜单')
     expect(wrapper.find('.n-menu').exists()).toBe(false)
+  })
+
+  it('keeps the parent menu selected for nested internal routes', async () => {
+    const { wrapper } = await mountLayout({
+      initialPath: '/system/users/123',
+    })
+    const menu = wrapper.getComponent(NMenu)
+
+    expect(menu.props('value')).toBe('/system/users')
+  })
+
+  it('returns a null selected key for unknown routes', async () => {
+    const { wrapper } = await mountLayout({
+      initialPath: '/unknown',
+    })
+    const menu = wrapper.getComponent(NMenu)
+
+    expect(menu.props('value')).toBeNull()
   })
 
   it('logs out, clears auth session, and navigates to login', async () => {

@@ -31,11 +31,7 @@ export function renderTableActionButton({
     ...(onClick === undefined ? {} : { onClick }),
   }
 
-  return h(
-    NButton,
-    buttonProps,
-    () => label,
-  )
+  return h(NButton, buttonProps, () => label)
 }
 
 export function renderTableActions(actions: Array<ReturnType<typeof renderTableActionButton>>) {

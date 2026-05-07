@@ -306,6 +306,7 @@ watch(
               v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
             >
               <NTree
+                data-test="role-form-resources"
                 block-line
                 checkable
                 cascade

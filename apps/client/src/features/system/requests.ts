@@ -1,14 +1,22 @@
 import {
   departmentTreeNodeSchema,
   errorMessageSchema,
+  roleSchema,
   resourceTreeNodeSchema,
+  type ErrorMessage,
+  type Role,
+  type RoleCreateInput,
+  type RoleUpdateInput,
   roleListResponseSchema,
   type DepartmentTreeNode,
   type ResourceTreeNode,
   type RoleListQuery,
   type RoleListResponse,
+  type User,
   type UserListQuery,
   type UserListResponse,
+  type UserUpdateInput,
+  userSchema,
   userListResponseSchema,
 } from '@rev30/shared'
 import type { z } from 'zod'
@@ -17,11 +25,13 @@ import { normalizeRequestQuery } from '../../utils/request'
 
 const departmentTreeResponseSchema = departmentTreeNodeSchema.array()
 const resourceTreeResponseSchema = resourceTreeNodeSchema.array()
+const updateUserRoute = api.system.users[':id']
 
 export class SystemRequestError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    public readonly field?: ErrorMessage['field'],
   ) {
     super(message)
     this.name = 'SystemRequestError'
@@ -35,6 +45,7 @@ async function parseSystemError(response: Response): Promise<SystemRequestError>
     return new SystemRequestError(
       response.status,
       result.success ? result.data.message : '请求失败',
+      result.success ? result.data.field : undefined,
     )
   } catch {
     return new SystemRequestError(response.status, '请求失败')
@@ -77,4 +88,49 @@ export async function getDepartmentTree(): Promise<DepartmentTreeNode[]> {
 
 export async function getResourceTree(): Promise<ResourceTreeNode[]> {
   return parseSystemResponse(await api.system.resources.tree.$get(), resourceTreeResponseSchema)
+}
+
+export async function getRole(id: string): Promise<Role> {
+  return parseSystemResponse(await api.system.roles[':id'].$get({ param: { id } }), roleSchema)
+}
+
+export async function createRole(input: RoleCreateInput): Promise<Role> {
+  return parseSystemResponse(await api.system.roles.$post({ json: input }), roleSchema)
+}
+
+export async function updateRole(id: string, input: RoleUpdateInput): Promise<Role> {
+  return parseSystemResponse(
+    await api.system.roles[':id'].$patch({ param: { id }, json: input }),
+    roleSchema,
+  )
+}
+
+export async function deleteRole(id: string): Promise<void> {
+  const response = await api.system.roles[':id'].$delete({ param: { id } })
+
+  if (!response.ok) {
+    throw await parseSystemError(response)
+  }
+}
+
+export async function getUser(id: string): Promise<User> {
+  return parseSystemResponse(await api.system.users[':id'].$get({ param: { id } }), userSchema)
+}
+
+export async function updateUser(id: string, input: UserUpdateInput): Promise<User> {
+  return parseSystemResponse(
+    await updateUserRoute.$patch({
+      param: { id },
+      json: input as Parameters<typeof updateUserRoute.$patch>[0]['json'],
+    }),
+    userSchema,
+  )
+}
+
+export async function deleteUser(id: string): Promise<void> {
+  const response = await api.system.users[':id'].$delete({ param: { id } })
+
+  if (!response.ok) {
+    throw await parseSystemError(response)
+  }
 }

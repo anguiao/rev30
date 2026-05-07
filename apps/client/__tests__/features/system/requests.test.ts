@@ -10,12 +10,19 @@ import {
   USER_STATUS_ENABLED,
 } from '@rev30/shared'
 import {
+  createRole,
+  deleteRole,
+  deleteUser,
+  getRole,
   SystemRequestError,
+  getUser,
   getDepartmentTree,
   getResourceTree,
   getSystemErrorMessage,
   listRoles,
   listUsers,
+  updateRole,
+  updateUser,
 } from '../../../src/features/system'
 import { useAuthStore } from '../../../src/stores/auth'
 
@@ -215,5 +222,158 @@ describe('system request helpers', () => {
       '请求体无效',
     )
     expect(getSystemErrorMessage(new Error('boom'), '加载用户失败')).toBe('加载用户失败')
+  })
+
+  it('parses system errors with field names', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ field: 'code', message: '角色编码已存在' }), {
+        status: 409,
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      createRole({
+        name: '重复角色',
+        code: 'admin',
+        status: ROLE_STATUS_ENABLED,
+        sortOrder: 0,
+        resourceIds: [],
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      field: 'code',
+      message: '角色编码已存在',
+    })
+  })
+
+  it('sends role create, update, detail, and delete requests', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: '11111111-1111-4111-8111-111111111111',
+            name: '运营',
+            code: 'operator',
+            status: ROLE_STATUS_ENABLED,
+            sortOrder: 1,
+            resources: [],
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-01T00:00:00.000Z',
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: '11111111-1111-4111-8111-111111111111',
+            name: '运营主管',
+            code: 'operator',
+            status: ROLE_STATUS_ENABLED,
+            sortOrder: 2,
+            resources: [],
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-02T00:00:00.000Z',
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: '11111111-1111-4111-8111-111111111111',
+            name: '运营主管',
+            code: 'operator',
+            status: ROLE_STATUS_ENABLED,
+            sortOrder: 2,
+            resources: [],
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-02T00:00:00.000Z',
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    await createRole({
+      name: '运营',
+      code: 'operator',
+      status: ROLE_STATUS_ENABLED,
+      sortOrder: 1,
+      resourceIds: [],
+    })
+    await updateRole('11111111-1111-4111-8111-111111111111', {
+      name: '运营主管',
+      code: 'operator',
+      status: ROLE_STATUS_ENABLED,
+      sortOrder: 2,
+      resourceIds: [],
+    })
+    const role = await getRole('11111111-1111-4111-8111-111111111111')
+    await deleteRole('11111111-1111-4111-8111-111111111111')
+
+    expect(role.name).toBe('运营主管')
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/roles')
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
+      '/api/system/roles/11111111-1111-4111-8111-111111111111',
+    )
+  })
+
+  it('sends user detail, update, and delete requests', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: '22222222-2222-4222-8222-222222222222',
+            username: 'ada',
+            nickname: 'Ada',
+            email: null,
+            phone: null,
+            status: USER_STATUS_ENABLED,
+            departments: [],
+            roles: [],
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-01T00:00:00.000Z',
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: '22222222-2222-4222-8222-222222222222',
+            username: 'ada',
+            nickname: 'Ada Lovelace',
+            email: 'ada@example.com',
+            phone: null,
+            status: USER_STATUS_ENABLED,
+            departments: [],
+            roles: [],
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-02T00:00:00.000Z',
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    const user = await getUser('22222222-2222-4222-8222-222222222222')
+    const updated = await updateUser('22222222-2222-4222-8222-222222222222', {
+      username: 'ada',
+      nickname: 'Ada Lovelace',
+      email: 'ada@example.com',
+      phone: null,
+      status: USER_STATUS_ENABLED,
+      departmentIds: [],
+      roleIds: [],
+    })
+    await deleteUser('22222222-2222-4222-8222-222222222222')
+
+    expect(user.username).toBe('ada')
+    expect(updated.nickname).toBe('Ada Lovelace')
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 })

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import {
+  BUILT_IN_ADMIN_ROLE_CODE,
   RESOURCE_TYPE_ACTION,
   RESOURCE_TYPE_DIRECTORY,
   ROLE_STATUS_DISABLED,
@@ -324,6 +325,48 @@ describe('role routes', () => {
 
     expect(deletedUpdateResponse.status).toBe(400)
     expect(await deletedUpdateResponse.json()).toEqual({ message: '资源不存在' })
+  })
+
+  it('rejects updating and deleting the built-in admin role', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const [adminRole] = await database
+      .select()
+      .from(roles)
+      .where(eq(roles.code, BUILT_IN_ADMIN_ROLE_CODE))
+
+    if (!adminRole) {
+      throw new Error('Expected built-in admin role')
+    }
+
+    const updateResponse = await app.request(`/api/system/roles/${adminRole.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        name: 'Root Administrator',
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(updateResponse.status).toBe(409)
+    expect(await updateResponse.json()).toEqual({ message: '内置 admin 角色不能编辑' })
+
+    const deleteResponse = await app.request(`/api/system/roles/${adminRole.id}`, {
+      method: 'DELETE',
+    })
+
+    expect(deleteResponse.status).toBe(409)
+    expect(await deleteResponse.json()).toEqual({ message: '内置 admin 角色不能删除' })
+
+    const [storedAdminRole] = await database
+      .select()
+      .from(roles)
+      .where(eq(roles.id, adminRole.id))
+
+    expect(storedAdminRole).toMatchObject({
+      name: adminRole.name,
+      code: BUILT_IN_ADMIN_ROLE_CODE,
+      deletedAt: null,
+    })
   })
 
   it('rejects deleting roles that are assigned to users', async () => {

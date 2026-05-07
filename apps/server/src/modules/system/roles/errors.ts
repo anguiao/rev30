@@ -37,6 +37,13 @@ export class RoleDeleteConflictError extends Error {
   }
 }
 
+export class BuiltInAdminRoleMutationError extends Error {
+  constructor(action: 'edit' | 'delete') {
+    super(action === 'edit' ? '内置 admin 角色不能编辑' : '内置 admin 角色不能删除')
+    this.name = 'BuiltInAdminRoleMutationError'
+  }
+}
+
 export function toRoleConflictError(error: unknown) {
   const cause = error instanceof DrizzleQueryError ? error.cause : error
 

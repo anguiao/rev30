@@ -12,6 +12,7 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import {
+  BuiltInAdminRoleMutationError,
   RoleConflictError,
   RoleDeleteConflictError,
   RoleInvalidResourceError,
@@ -62,6 +63,10 @@ function roleErrorResponse(error: unknown, c: Context) {
   }
 
   if (error instanceof RoleDeleteConflictError) {
+    return c.json({ message: error.message }, 409)
+  }
+
+  if (error instanceof BuiltInAdminRoleMutationError) {
     return c.json({ message: error.message }, 409)
   }
 

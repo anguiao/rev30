@@ -1,6 +1,16 @@
-import type { RoleCreateInput, RoleListQuery, RoleUpdateInput } from '@rev30/shared'
+import {
+  BUILT_IN_ADMIN_ROLE_CODE,
+  type RoleCreateInput,
+  type RoleListQuery,
+  type RoleUpdateInput,
+} from '@rev30/shared'
 import type { Db } from '../../../db'
-import { RoleDeleteConflictError, RoleNotFoundError, toRoleConflictError } from './errors'
+import {
+  BuiltInAdminRoleMutationError,
+  RoleDeleteConflictError,
+  RoleNotFoundError,
+  toRoleConflictError,
+} from './errors'
 import { toRole, toRoleListItem, toRoleResources } from './mapper'
 import { createRoleRepository } from './repository'
 
@@ -61,6 +71,10 @@ export function createRoleService(database: Db) {
         throw new RoleNotFoundError()
       }
 
+      if (existingRole.code === BUILT_IN_ADMIN_ROLE_CODE) {
+        throw new BuiltInAdminRoleMutationError('edit')
+      }
+
       const updated = await withRoleUniqueConflict(() => repository.update(id, input))
 
       if (!updated) {
@@ -75,6 +89,10 @@ export function createRoleService(database: Db) {
 
       if (!existingRole) {
         throw new RoleNotFoundError()
+      }
+
+      if (existingRole.code === BUILT_IN_ADMIN_ROLE_CODE) {
+        throw new BuiltInAdminRoleMutationError('delete')
       }
 
       if (await repository.hasUsers(id)) {

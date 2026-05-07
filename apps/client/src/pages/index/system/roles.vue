@@ -15,7 +15,12 @@ import {
   useMessage,
 } from 'naive-ui'
 import type { ButtonProps } from 'naive-ui'
-import type { RoleListItem, RoleListQuery, RoleListResponse } from '@rev30/shared'
+import {
+  BUILT_IN_ADMIN_ROLE_CODE,
+  type RoleListItem,
+  type RoleListQuery,
+  type RoleListResponse,
+} from '@rev30/shared'
 import RoleFormDrawer from '../../../features/system/RoleFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
@@ -176,21 +181,23 @@ const columns: DataTableColumns<RoleListItem> = [
     width: 120,
     fixed: 'right',
     render: (role) =>
-      renderTableActions([
-        renderTableActionButton({
-          label: '编辑',
-          accessCode: ['system:role:update', 'system:role:list', 'system:resource:list'],
-          onClick: () => openEditRoleDrawer(role.id),
-          testId: 'roles-edit',
-        }),
-        renderTableActionButton({
-          label: '删除',
-          accessCode: 'system:role:delete',
-          onClick: () => confirmDeleteRole(role),
-          type: 'error',
-          testId: 'roles-delete',
-        }),
-      ]),
+      role.code === BUILT_IN_ADMIN_ROLE_CODE
+        ? renderTableActions([])
+        : renderTableActions([
+            renderTableActionButton({
+              label: '编辑',
+              accessCode: ['system:role:update', 'system:role:list', 'system:resource:list'],
+              onClick: () => openEditRoleDrawer(role.id),
+              testId: 'roles-edit',
+            }),
+            renderTableActionButton({
+              label: '删除',
+              accessCode: 'system:role:delete',
+              onClick: () => confirmDeleteRole(role),
+              type: 'error',
+              testId: 'roles-delete',
+            }),
+          ]),
   },
 ]
 </script>

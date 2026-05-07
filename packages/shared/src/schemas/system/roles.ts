@@ -4,6 +4,7 @@ import { resourceTypeSchema } from './resources'
 
 export const ROLE_STATUS_DISABLED = 0
 export const ROLE_STATUS_ENABLED = 1
+export const BUILT_IN_ADMIN_ROLE_CODE = 'admin'
 export const roleStatusSchema = z.literal(
   [ROLE_STATUS_DISABLED, ROLE_STATUS_ENABLED],
   '角色状态无效',

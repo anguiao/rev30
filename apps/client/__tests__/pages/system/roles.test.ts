@@ -3,7 +3,12 @@
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NPagination, NSelect } from 'naive-ui'
-import { ROLE_STATUS_DISABLED, ROLE_STATUS_ENABLED, type RoleListResponse } from '@rev30/shared'
+import {
+  BUILT_IN_ADMIN_ROLE_CODE,
+  ROLE_STATUS_DISABLED,
+  ROLE_STATUS_ENABLED,
+  type RoleListResponse,
+} from '@rev30/shared'
 import { defineComponent, h } from 'vue'
 import { deleteRole, formatDateTime, listRoles } from '../../../src/features/system'
 import RolesPage from '../../../src/pages/index/system/roles.vue'
@@ -58,7 +63,7 @@ const roleListResponse: RoleListResponse = {
     {
       id: '11111111-1111-4111-8111-111111111111',
       name: '管理员',
-      code: 'admin',
+      code: BUILT_IN_ADMIN_ROLE_CODE,
       status: ROLE_STATUS_ENABLED,
       userCount: 12,
       sortOrder: 1,
@@ -141,7 +146,7 @@ describe('roles page', () => {
 
     expect(insufficientPermissionWrapper.find('[data-test="roles-create"]').exists()).toBe(false)
     expect(insufficientPermissionWrapper.find('[data-test="roles-edit"]').exists()).toBe(false)
-    expect(insufficientPermissionWrapper.find('[data-test="roles-delete"]').exists()).toBe(true)
+    expect(insufficientPermissionWrapper.findAll('[data-test="roles-delete"]')).toHaveLength(1)
 
     const { wrapper: authorizedWrapper } = await mountRolesPage([
       'system:role:create',
@@ -153,8 +158,8 @@ describe('roles page', () => {
     await flushPromises()
 
     expect(authorizedWrapper.find('[data-test="roles-create"]').exists()).toBe(true)
-    expect(authorizedWrapper.find('[data-test="roles-edit"]').exists()).toBe(true)
-    expect(authorizedWrapper.find('[data-test="roles-delete"]').exists()).toBe(true)
+    expect(authorizedWrapper.findAll('[data-test="roles-edit"]')).toHaveLength(1)
+    expect(authorizedWrapper.findAll('[data-test="roles-delete"]')).toHaveLength(1)
   })
 
   it('submits keyword and status filters from page one', async () => {
@@ -229,7 +234,7 @@ describe('roles page', () => {
   })
 
   it('opens edit drawer with selected role id', async () => {
-    const firstRole = roleListResponse.list[0]!
+    const editableRole = roleListResponse.list[1]!
     listRolesMock.mockResolvedValue(roleListResponse)
     const { wrapper } = await mountRolesPage([
       'system:role:update',
@@ -243,11 +248,11 @@ describe('roles page', () => {
 
     const drawer = wrapper.get('[data-test="role-form-drawer"]')
     expect(drawer.attributes('data-show')).toBe('true')
-    expect(drawer.attributes('data-role-id')).toBe(firstRole.id)
+    expect(drawer.attributes('data-role-id')).toBe(editableRole.id)
   })
 
   it('deletes a role after confirmation and refreshes the list', async () => {
-    const firstRole = roleListResponse.list[0]!
+    const deletableRole = roleListResponse.list[1]!
     listRolesMock.mockResolvedValue(roleListResponse)
     deleteRoleMock.mockResolvedValue(undefined)
 
@@ -266,7 +271,7 @@ describe('roles page', () => {
     confirmButton?.click()
     await flushPromises()
 
-    expect(deleteRoleMock).toHaveBeenCalledWith(firstRole.id)
+    expect(deleteRoleMock).toHaveBeenCalledWith(deletableRole.id)
     expect(listRolesMock).toHaveBeenCalledTimes(2)
     expect(listRolesMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
   })
@@ -290,7 +295,7 @@ describe('roles page', () => {
     confirmButton?.click()
     await flushPromises()
 
-    expect(deleteRoleMock).toHaveBeenCalledWith(roleListResponse.list[0]!.id)
+    expect(deleteRoleMock).toHaveBeenCalledWith(roleListResponse.list[1]!.id)
     expect(listRolesMock).toHaveBeenCalledTimes(1)
     expect(document.body.querySelector('[data-test="roles-delete-confirm"]')).not.toBeNull()
   })

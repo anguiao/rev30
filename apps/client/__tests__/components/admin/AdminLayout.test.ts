@@ -35,6 +35,11 @@ vi.mock('@iconify/vue', () => ({
 }))
 
 const logoutMock = vi.mocked(logout)
+const systemResourceId = 'f905f4dc-c43f-41a8-b6fc-d381f291331a'
+const usersResourceId = '83d85ddf-9ebf-4f62-af9f-368af6d0d2a5'
+const docsResourceId = '78093266-57fe-4e0f-b420-ab55a67df4e9'
+const rolesResourceId = 'c54bf1f7-5c52-42ff-b055-b71f2606cc69'
+const externalDocsResourceId = '5fe0dd74-45fc-42fd-a3da-dfe6fcc60e4e'
 
 function createMenuSession(): AuthTokenResponse {
   return {
@@ -42,7 +47,7 @@ function createMenuSession(): AuthTokenResponse {
     accessCodes: ['system', 'system:user:list', 'system:role:list', 'docs:guide'],
     menus: [
       {
-        id: 'f905f4dc-c43f-41a8-b6fc-d381f291331a',
+        id: systemResourceId,
         parentId: null,
         type: 'directory',
         name: '系统管理',
@@ -58,8 +63,8 @@ function createMenuSession(): AuthTokenResponse {
         updatedAt: '2026-05-01T00:00:00.000Z',
         children: [
           {
-            id: '83d85ddf-9ebf-4f62-af9f-368af6d0d2a5',
-            parentId: 'f905f4dc-c43f-41a8-b6fc-d381f291331a',
+            id: usersResourceId,
+            parentId: systemResourceId,
             type: 'menu',
             name: '用户管理',
             code: 'system:user:list',
@@ -75,8 +80,8 @@ function createMenuSession(): AuthTokenResponse {
             children: [],
           },
           {
-            id: '78093266-57fe-4e0f-b420-ab55a67df4e9',
-            parentId: 'f905f4dc-c43f-41a8-b6fc-d381f291331a',
+            id: docsResourceId,
+            parentId: systemResourceId,
             type: 'directory',
             name: '指南',
             code: 'docs',
@@ -91,8 +96,8 @@ function createMenuSession(): AuthTokenResponse {
             updatedAt: '2026-05-01T00:00:00.000Z',
             children: [
               {
-                id: 'c54bf1f7-5c52-42ff-b055-b71f2606cc69',
-                parentId: '78093266-57fe-4e0f-b420-ab55a67df4e9',
+                id: rolesResourceId,
+                parentId: docsResourceId,
                 type: 'menu',
                 name: '角色管理',
                 code: 'system:role:list',
@@ -110,8 +115,8 @@ function createMenuSession(): AuthTokenResponse {
             ],
           },
           {
-            id: '5fe0dd74-45fc-42fd-a3da-dfe6fcc60e4e',
-            parentId: 'f905f4dc-c43f-41a8-b6fc-d381f291331a',
+            id: externalDocsResourceId,
+            parentId: systemResourceId,
             type: 'external',
             name: '开发文档',
             code: 'docs:guide',
@@ -185,26 +190,112 @@ describe('admin layout', () => {
     expect(wrapper.text()).toContain(session.user.nickname)
     expect(wrapper.text()).toContain(session.user.username)
     expect(wrapper.get('[data-test="layout-content"]').text()).toContain('Content')
+    expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('系统管理')
+    expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('用户管理')
     expect(wrapper.find('.n-menu').exists()).toBe(true)
-    expect(menu.props('value')).toBe('/system/users')
+    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').attributes('aria-label')).toBe(
+      '收起侧边栏',
+    )
+    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').element.tagName).toBe('BUTTON')
+    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').classes()).toContain(
+      'focus-visible:outline-solid',
+    )
+    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').classes()).toContain(
+      'focus-visible:outline-primary',
+    )
+    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').classes()).toContain('cursor-pointer')
+    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').classes()).toContain('mt-0.5')
+    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').classes()).not.toContain('n-button')
+    expect(wrapper.get('[data-test="admin-sidebar-toggle-icon"]').classes()).toContain('size-4')
+    expect(wrapper.get('[data-test="admin-shell"]').attributes('style')).toContain(
+      '--admin-sidebar-width: 256px',
+    )
+    expect(wrapper.get('[data-test="admin-sidebar"]').classes()).not.toContain('px-5')
+    expect(wrapper.get('[data-test="admin-sidebar"]').classes()).toContain('py-6')
+    expect(wrapper.get('[data-test="admin-sidebar-header"]').classes()).toContain('relative')
+    expect(wrapper.get('[data-test="admin-sidebar-header"]').classes()).toContain('h-20')
+    expect(wrapper.get('[data-test="admin-sidebar-header"]').classes()).toContain('mb-6')
+    expect(wrapper.get('[data-test="admin-sidebar-header-content"]').classes()).toContain('h-full')
+    expect(wrapper.get('[data-test="admin-sidebar-header-content"]').classes()).toContain('px-5')
+    expect(wrapper.get('[data-test="admin-sidebar-header-content"]').classes()).toContain(
+      'items-start',
+    )
+    expect(wrapper.get('[data-test="admin-sidebar-header-separator"]').classes()).toContain(
+      'bottom-0',
+    )
+    expect(wrapper.get('[data-test="admin-sidebar-header-separator"]').classes()).toContain(
+      'left-5',
+    )
+    expect(wrapper.get('[data-test="admin-sidebar-header-separator"]').classes()).toContain(
+      'right-5',
+    )
+    expect(wrapper.get('[data-test="admin-sidebar-footer-separator"]').classes()).toContain('mx-5')
+    expect(wrapper.get('[data-test="admin-sidebar-footer-content"]').classes()).toContain('px-5')
+    expect(menu.props('value')).toBe(usersResourceId)
+    expect(menu.props('collapsed')).toBe(false)
+    expect(menu.props('defaultExpandAll')).toBe(false)
+    expect(menu.props('expandedKeys')).toEqual([systemResourceId])
+    expect(menu.props('rootIndent')).toBe(20)
     expect(wrapper.text()).toContain('系统管理')
     expect(wrapper.text()).toContain('指南')
     expect(wrapper.get('a[href="/system/users"]').text()).toContain('用户管理')
-    expect(wrapper.get('a[href="/system/roles"]').text()).toContain('角色管理')
 
     const externalLink = wrapper.get('a[href="https://example.com/docs"]')
     expect(externalLink.text()).toContain('开发文档')
     expect(externalLink.attributes('target')).toBe('_blank')
-    expect(externalLink.attributes('rel')).toBe('noreferrer')
+    expect(externalLink.attributes('rel')).toBe('noopener noreferrer')
 
     const icons = wrapper.findAll('[data-test="menu-icon"]').map((icon) => icon.text())
     expect(icons).toContain('lucide:settings')
     expect(icons).toContain('lucide:users')
     expect(icons).toContain('lucide:book-open')
-    expect(icons).toContain('lucide:shield-check')
     expect(icons).toContain('lucide:square-arrow-out-up-right')
     expect(wrapper.html()).not.toContain('i-[lucide--users]')
     expect(wrapper.find('[data-test="theme-mode-trigger"]').exists()).toBe(true)
+  })
+
+  it('collapses the desktop sidebar while keeping icon navigation available', async () => {
+    const { wrapper } = await mountLayout()
+
+    await wrapper.get('[data-test="admin-sidebar-toggle"]').trigger('click')
+
+    const menu = wrapper.getComponent(NMenu)
+
+    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').attributes('aria-label')).toBe(
+      '展开侧边栏',
+    )
+    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').classes()).not.toContain('mt-0.5')
+    expect(wrapper.get('[data-test="admin-sidebar-toggle-icon"]').classes()).toContain('size-4.5')
+    expect(wrapper.get('[data-test="admin-shell"]').attributes('style')).toContain(
+      '--admin-sidebar-width: 64px',
+    )
+    expect(wrapper.get('[data-test="admin-sidebar"]').classes()).not.toContain('px-3')
+    expect(wrapper.get('[data-test="admin-sidebar"]').classes()).toContain('py-6')
+    expect(wrapper.get('[data-test="admin-sidebar-header"]').classes()).toContain('relative')
+    expect(wrapper.get('[data-test="admin-sidebar-header"]').classes()).toContain('h-20')
+    expect(wrapper.get('[data-test="admin-sidebar-header"]').classes()).toContain('mb-6')
+    expect(wrapper.get('[data-test="admin-sidebar-header-content"]').classes()).toContain('h-full')
+    expect(wrapper.get('[data-test="admin-sidebar-header-content"]').classes()).toContain('px-3')
+    expect(wrapper.get('[data-test="admin-sidebar-header-content"]').classes()).toContain('gap-2')
+    expect(wrapper.get('[data-test="admin-sidebar-brand-mark"] span').classes()).toContain('size-8')
+    expect(wrapper.get('[data-test="admin-sidebar-header-separator"]').classes()).toContain(
+      'left-3',
+    )
+    expect(wrapper.get('[data-test="admin-sidebar-header-separator"]').classes()).toContain(
+      'right-3',
+    )
+    expect(wrapper.get('[data-test="admin-sidebar-footer-separator"]').classes()).toContain('mx-3')
+    expect(wrapper.get('[data-test="admin-sidebar-footer-content"]').classes()).toContain('px-3')
+    expect(wrapper.find('[data-test="admin-sidebar-brand"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="admin-sidebar-brand-mark"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="admin-sidebar-user"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="theme-mode-trigger"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="admin-logout"]').exists()).toBe(true)
+    expect(menu.props('collapsed')).toBe(true)
+    expect(menu.props('collapsedWidth')).toBe(64)
+    expect(menu.props('collapsedIconSize')).toBe(18)
+    expect(menu.props('value')).toBe(usersResourceId)
+    expect(menu.props('expandedKeys')).toEqual([systemResourceId])
   })
 
   it('renders empty state when there are no accessible menus', async () => {
@@ -226,7 +317,22 @@ describe('admin layout', () => {
     })
     const menu = wrapper.getComponent(NMenu)
 
-    expect(menu.props('value')).toBe('/system/users')
+    expect(menu.props('value')).toBe(usersResourceId)
+    expect(menu.props('expandedKeys')).toEqual([systemResourceId])
+  })
+
+  it('expands only the current route ancestors by default', async () => {
+    const { wrapper } = await mountLayout({
+      initialPath: '/system/roles',
+    })
+    const menu = wrapper.getComponent(NMenu)
+
+    expect(menu.props('value')).toBe(rolesResourceId)
+    expect(menu.props('expandedKeys')).toEqual([systemResourceId, docsResourceId])
+    expect(wrapper.get('a[href="/system/roles"]').text()).toContain('角色管理')
+    expect(wrapper.findAll('[data-test="menu-icon"]').map((icon) => icon.text())).toContain(
+      'lucide:shield-check',
+    )
   })
 
   it('returns a null selected key for unknown routes', async () => {
@@ -236,6 +342,34 @@ describe('admin layout', () => {
     const menu = wrapper.getComponent(NMenu)
 
     expect(menu.props('value')).toBeNull()
+    expect(menu.props('expandedKeys')).toEqual([])
+    expect(wrapper.find('[data-test="admin-breadcrumb"]').exists()).toBe(false)
+  })
+
+  it('allows the current route ancestors to be manually collapsed', async () => {
+    const { wrapper } = await mountLayout()
+    const menu = wrapper.getComponent(NMenu)
+
+    menu.vm.$emit('update:expandedKeys', [])
+    await flushPromises()
+
+    expect(menu.props('expandedKeys')).toEqual([])
+  })
+
+  it('keeps user-expanded menu groups and expands new route ancestors on navigation', async () => {
+    const { router, wrapper } = await mountLayout()
+    const menu = wrapper.getComponent(NMenu)
+
+    menu.vm.$emit('update:expandedKeys', [systemResourceId, docsResourceId])
+    await flushPromises()
+
+    expect(menu.props('expandedKeys')).toEqual([systemResourceId, docsResourceId])
+
+    menu.vm.$emit('update:expandedKeys', [])
+    await router.push('/system/roles')
+    await flushPromises()
+
+    expect(menu.props('expandedKeys')).toEqual([systemResourceId, docsResourceId])
   })
 
   it('logs out, clears auth session, and navigates to login', async () => {

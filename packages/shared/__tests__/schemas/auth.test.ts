@@ -39,22 +39,6 @@ describe('auth schemas', () => {
     ).toThrow()
   })
 
-  it('defaults omitted registration contact fields to null', () => {
-    expect(
-      authRegisterSchema.parse({
-        username: 'ada',
-        password: 'correct horse battery staple',
-        nickname: 'Ada Lovelace',
-      }),
-    ).toEqual({
-      username: 'ada',
-      password: 'correct horse battery staple',
-      nickname: 'Ada Lovelace',
-      email: null,
-      phone: null,
-    })
-  })
-
   it('rejects weak registration passwords', () => {
     const result = authRegisterSchema.safeParse({
       username: 'ada',

@@ -1,10 +1,5 @@
 import { z } from 'zod'
-import {
-  nullableContactInputSchema,
-  userCreateSchema,
-  userSchema,
-  userUniqueFieldSchema,
-} from './system/users'
+import { userCreateSchema, userSchema, userUniqueFieldSchema } from './system/users'
 import { resourceTreeNodeSchema } from './system/resources'
 
 export const AUTH_ACTION_HEADER = 'Auth-Action'
@@ -16,10 +11,10 @@ export const authRegisterSchema = userCreateSchema
   .pick({
     username: true,
     nickname: true,
+    email: true,
+    phone: true,
   })
   .extend({
-    email: nullableContactInputSchema.default(null),
-    phone: nullableContactInputSchema.default(null),
     password: passwordSchema,
   })
   .strict()

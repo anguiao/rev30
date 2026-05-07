@@ -1,5 +1,12 @@
 import { z } from 'zod'
-import { blankStringToNull } from '../utils'
+import {
+  nonBlankString,
+  optionalNullableInput,
+  optionalNullableString,
+  sortOrderInputSchema,
+} from '../common/inputs'
+import { paginationQuerySchema } from '../common/pagination'
+import { hasAnyDefinedValue } from '../common/refinements'
 import { optionalNumericQueryValue, optionalQueryValue, optionalTrimmedQueryString } from '../query'
 
 export const RESOURCE_STATUS_DISABLED = 0
@@ -25,9 +32,9 @@ export const resourceOpenTargetSchema = z.enum(
   '打开方式无效',
 )
 
-const nonBlankStringSchema = z.string().trim().min(1, '不能为空')
-
 const resourceIdSchema = z.uuid('资源 ID 无效')
+const resourceNameSchema = nonBlankString('请输入资源名称')
+const resourceCodeSchema = nonBlankString('请输入资源编码')
 const optionalKeywordSchema = optionalTrimmedQueryString()
 const optionalStatusQuerySchema = optionalNumericQueryValue(resourceStatusSchema)
 const optionalTypeQuerySchema = optionalQueryValue(resourceTypeSchema)
@@ -38,29 +45,15 @@ export const iconifyIconNameSchema = z
   .trim()
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/, '图标名称无效')
 
-const nullableOptionalTextInputSchema = z.preprocess(
-  blankStringToNull,
-  z.union([z.string().trim().min(1, '不能为空'), z.null()]).optional(),
-)
-const nullableOptionalIconInputSchema = z.preprocess(
-  blankStringToNull,
-  z.union([iconifyIconNameSchema, z.null()]).optional(),
-)
+const iconInputSchema = optionalNullableInput(iconifyIconNameSchema)
 export const resourceExternalUrlSchema = z.url({ error: '外链地址无效' })
-
-const pageSchema = z.coerce.number('页码必须是数字').int('页码必须是整数').min(1, '页码不能小于 1')
-const pageSizeSchema = z.coerce
-  .number('每页数量必须是数字')
-  .int('每页数量必须是整数')
-  .min(1, '每页数量不能小于 1')
-  .max(100, '每页数量不能超过 100')
 
 export const resourceSchema = z.object({
   id: resourceIdSchema,
   parentId: resourceIdSchema.nullable(),
   type: resourceTypeSchema,
-  name: nonBlankStringSchema,
-  code: nonBlankStringSchema,
+  name: nonBlankString(),
+  code: nonBlankString(),
   path: z.string().nullable(),
   externalUrl: z.string().nullable(),
   openTarget: resourceOpenTargetSchema,
@@ -81,34 +74,39 @@ export const resourceTreeNodeSchema: z.ZodType<ResourceTreeNode> = resourceSchem
   children: z.lazy(() => resourceTreeNodeSchema.array()),
 })
 
-export const resourceListQuerySchema = z.object({
-  page: pageSchema.default(1),
-  pageSize: pageSizeSchema.default(20),
+export const resourceListQuerySchema = paginationQuerySchema.extend({
   keyword: optionalKeywordSchema,
   type: optionalTypeQuerySchema,
   status: optionalStatusQuerySchema,
   parentId: optionalParentIdQuerySchema,
 })
 
-const resourceCreateBaseSchema = z.object({
+export const resourceFormSchema = z.object({
   type: resourceTypeSchema,
-  name: z.string().trim().min(1, '请输入资源名称'),
-  code: z.string().trim().min(1, '请输入资源编码'),
-  parentId: resourceIdSchema.nullable().default(null),
-  path: nullableOptionalTextInputSchema,
-  externalUrl: nullableOptionalTextInputSchema,
+  name: resourceNameSchema,
+  code: resourceCodeSchema,
+  parentId: resourceIdSchema.nullable(),
+  path: optionalNullableString(),
+  externalUrl: optionalNullableString(),
   openTarget: resourceOpenTargetSchema.optional(),
-  icon: nullableOptionalIconInputSchema,
+  icon: iconInputSchema,
+  hidden: z.boolean(),
+  status: resourceStatusSchema,
+  sortOrder: sortOrderInputSchema,
+})
+
+const resourceCreatePayloadSchema = resourceFormSchema.extend({
+  parentId: resourceIdSchema.nullable().default(null),
   hidden: z.boolean().default(false),
   status: resourceStatusSchema.default(RESOURCE_STATUS_ENABLED),
-  sortOrder: z.coerce.number('排序必须是数字').int('排序必须是整数').default(0),
+  sortOrder: sortOrderInputSchema.default(0),
 })
 
 function defaultOpenTarget(type: Resource['type']) {
   return type === RESOURCE_TYPE_EXTERNAL ? RESOURCE_OPEN_TARGET_BLANK : RESOURCE_OPEN_TARGET_SELF
 }
 
-function normalizeResourceCreateInput(input: z.infer<typeof resourceCreateBaseSchema>) {
+function normalizeResourceCreateInput(input: z.infer<typeof resourceCreatePayloadSchema>) {
   const output = {
     ...input,
     path: input.path ?? null,
@@ -160,23 +158,11 @@ function validateResourceTypeFields(
   }
 }
 
-export const resourceCreateSchema = resourceCreateBaseSchema
+export const resourceCreateSchema = resourceCreatePayloadSchema
   .transform(normalizeResourceCreateInput)
   .superRefine(validateResourceTypeFields)
 
-const resourceUpdatePayloadSchema = z.object({
-  type: resourceTypeSchema.optional(),
-  name: z.string().trim().min(1, '请输入资源名称').optional(),
-  code: z.string().trim().min(1, '请输入资源编码').optional(),
-  parentId: resourceIdSchema.nullable().optional(),
-  path: nullableOptionalTextInputSchema,
-  externalUrl: nullableOptionalTextInputSchema,
-  openTarget: resourceOpenTargetSchema.optional(),
-  icon: nullableOptionalIconInputSchema,
-  hidden: z.boolean().optional(),
-  status: resourceStatusSchema.optional(),
-  sortOrder: z.coerce.number('排序必须是数字').int('排序必须是整数').optional(),
-})
+const resourceUpdatePayloadSchema = resourceFormSchema.partial()
 
 function normalizeResourceUpdateInput(input: z.infer<typeof resourceUpdatePayloadSchema>) {
   const output = {
@@ -238,7 +224,7 @@ function validateResourceUpdateTypeFields(
 export const resourceUpdateSchema = resourceUpdatePayloadSchema
   .transform(normalizeResourceUpdateInput)
   .superRefine(validateResourceUpdateTypeFields)
-  .refine((value) => Object.values(value).some((fieldValue) => fieldValue !== undefined), {
+  .refine(hasAnyDefinedValue, {
     message: '至少修改一个字段',
   })
 
@@ -250,6 +236,7 @@ export const resourceListResponseSchema = z.object({
 })
 
 export type ResourceListQuery = z.infer<typeof resourceListQuerySchema>
+export type ResourceFormInput = z.infer<typeof resourceFormSchema>
 export type ResourceCreateInput = z.infer<typeof resourceCreateSchema>
 export type ResourceUpdateInput = z.infer<typeof resourceUpdateSchema>
 export type ResourceListResponse = z.infer<typeof resourceListResponseSchema>

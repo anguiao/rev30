@@ -1,5 +1,7 @@
 import { z } from 'zod'
-import { blankStringToNull } from '../utils'
+import { nonBlankString, optionalNullableString } from '../common/inputs'
+import { paginationQuerySchema } from '../common/pagination'
+import { ensureUniqueItems, hasAnyDefinedValue } from '../common/refinements'
 import { optionalNumericQueryValue, optionalTrimmedQueryString } from '../query'
 import { departmentSummarySchema } from './departments'
 import { roleIdsSchema, roleSummarySchema } from './roles'
@@ -15,30 +17,18 @@ const userUniqueFields = ['username', 'email', 'phone'] as const
 export type UserUniqueField = (typeof userUniqueFields)[number]
 export const userUniqueFieldSchema = z.enum(userUniqueFields)
 
-const nonBlankStringSchema = z.string().trim().min(1, '不能为空')
-
 const userIdSchema = z.uuid('用户 ID 无效')
-const userNameSchema = z.string().trim().min(1, '请输入用户名')
-const userNicknameSchema = z.string().trim().min(1, '请输入昵称')
-export const nullableContactInputSchema = z.preprocess(
-  blankStringToNull,
-  z.union([nonBlankStringSchema, z.null()]).optional(),
-)
+const userNameSchema = nonBlankString('请输入用户名')
+const userNicknameSchema = nonBlankString('请输入昵称')
+export const contactInputSchema = optionalNullableString()
 
 const optionalKeywordSchema = optionalTrimmedQueryString()
 const optionalStatusQuerySchema = optionalNumericQueryValue(userStatusSchema)
 
-const pageSchema = z.coerce.number('页码必须是数字').int('页码必须是整数').min(1, '页码不能小于 1')
-const pageSizeSchema = z.coerce
-  .number('每页数量必须是数字')
-  .int('每页数量必须是整数')
-  .min(1, '每页数量不能小于 1')
-  .max(100, '每页数量不能超过 100')
-
 export const userSchema = z.object({
   id: userIdSchema,
-  username: nonBlankStringSchema,
-  nickname: nonBlankStringSchema,
+  username: nonBlankString(),
+  nickname: nonBlankString(),
   email: z.string().nullable(),
   phone: z.string().nullable(),
   status: userStatusSchema,
@@ -58,52 +48,32 @@ const departmentIdsMaxLength = 50
 export const departmentIdsSchema = z
   .array(z.uuid('部门 ID 无效'))
   .max(departmentIdsMaxLength, `用户部门不能超过 ${departmentIdsMaxLength} 个`)
-  .superRefine((value, context) => {
-    const seenDepartmentIds = new Set<string>()
+  .superRefine(ensureUniqueItems('部门不能重复'))
 
-    for (const departmentId of value) {
-      if (seenDepartmentIds.has(departmentId)) {
-        context.addIssue({
-          code: 'custom',
-          message: '部门不能重复',
-        })
-        return
-      }
-
-      seenDepartmentIds.add(departmentId)
-    }
-  })
-
-export const userListQuerySchema = z.object({
-  page: pageSchema.default(1),
-  pageSize: pageSizeSchema.default(20),
+export const userListQuerySchema = paginationQuerySchema.extend({
   keyword: optionalKeywordSchema,
   status: optionalStatusQuerySchema,
 })
 
-export const userCreateSchema = z.object({
+export const userFormSchema = z.object({
   username: userNameSchema,
   nickname: userNicknameSchema,
-  email: nullableContactInputSchema,
-  phone: nullableContactInputSchema,
+  email: contactInputSchema,
+  phone: contactInputSchema,
+  status: userStatusSchema,
+  departmentIds: departmentIdsSchema,
+  roleIds: roleIdsSchema,
+})
+
+export const userCreateSchema = userFormSchema.extend({
   status: userStatusSchema.default(USER_STATUS_ENABLED),
   departmentIds: departmentIdsSchema.optional(),
   roleIds: roleIdsSchema.optional(),
 })
 
-export const userUpdateSchema = z
-  .object({
-    username: userNameSchema.optional(),
-    nickname: userNicknameSchema.optional(),
-    email: nullableContactInputSchema,
-    phone: nullableContactInputSchema,
-    status: userStatusSchema.optional(),
-    departmentIds: departmentIdsSchema.optional(),
-    roleIds: roleIdsSchema.optional(),
-  })
-  .refine((value) => Object.values(value).some((fieldValue) => fieldValue !== undefined), {
-    message: '至少修改一个字段',
-  })
+export const userUpdateSchema = userFormSchema.partial().refine(hasAnyDefinedValue, {
+  message: '至少修改一个字段',
+})
 
 export const userListResponseSchema = z.object({
   list: z.array(userListItemSchema),
@@ -115,6 +85,7 @@ export const userListResponseSchema = z.object({
 export type User = z.infer<typeof userSchema>
 export type UserListItem = z.infer<typeof userListItemSchema>
 export type UserListQuery = z.infer<typeof userListQuerySchema>
+export type UserFormInput = z.infer<typeof userFormSchema>
 export type UserCreateInput = z.infer<typeof userCreateSchema>
 export type UserUpdateInput = z.infer<typeof userUpdateSchema>
 export type UserListResponse = z.infer<typeof userListResponseSchema>

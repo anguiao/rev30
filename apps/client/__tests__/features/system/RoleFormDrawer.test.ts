@@ -40,7 +40,9 @@ const updateRoleMock = vi.mocked(updateRole)
 
 const directoryResourceId = '11111111-1111-4111-8111-111111111111'
 const actionResourceId = '22222222-2222-4222-8222-222222222222'
+const secondActionResourceId = '44444444-4444-4444-8444-444444444444'
 const roleId = '33333333-3333-4333-8333-333333333333'
+const secondRoleId = '55555555-5555-4555-8555-555555555555'
 
 const resourceTreeResponse: ResourceTreeNode[] = [
   {
@@ -76,6 +78,23 @@ const resourceTreeResponse: ResourceTreeNode[] = [
         updatedAt: '2026-05-01T00:00:00.000Z',
         children: [],
       },
+      {
+        id: secondActionResourceId,
+        parentId: directoryResourceId,
+        type: RESOURCE_TYPE_ACTION,
+        name: '角色分配',
+        code: 'system:role:assign',
+        path: null,
+        externalUrl: null,
+        openTarget: RESOURCE_OPEN_TARGET_SELF,
+        icon: null,
+        hidden: false,
+        status: RESOURCE_STATUS_ENABLED,
+        sortOrder: 3,
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+        children: [],
+      },
     ],
   },
 ]
@@ -96,6 +115,39 @@ const roleResponse: Role = {
   ],
   createdAt: '2026-05-01T00:00:00.000Z',
   updatedAt: '2026-05-01T00:00:00.000Z',
+}
+
+const secondRoleResponse: Role = {
+  id: secondRoleId,
+  name: '审计',
+  code: 'auditor',
+  status: ROLE_STATUS_ENABLED,
+  sortOrder: 5,
+  resources: [
+    {
+      id: secondActionResourceId,
+      name: '角色分配',
+      code: 'system:role:assign',
+      type: RESOURCE_TYPE_ACTION,
+    },
+  ],
+  createdAt: '2026-05-01T00:00:00.000Z',
+  updatedAt: '2026-05-01T00:00:00.000Z',
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return {
+    promise,
+    resolve,
+    reject,
+  }
 }
 
 function mountDrawer(props = { show: true, roleId: null as string | null }) {
@@ -204,5 +256,69 @@ describe('RoleFormDrawer', () => {
     expect(createRoleMock).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('角色编码已存在')
     expect(wrapper.emitted('saved')).toBeUndefined()
+  })
+
+  it('does not submit create mode with empty required fields and shows validation feedback', async () => {
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await submitForm(wrapper)
+
+    expect(createRoleMock).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('请输入角色名称')
+    expect(wrapper.text()).toContain('请输入角色编码')
+    expect(wrapper.text()).not.toContain('保存角色失败')
+  })
+
+  it('ignores stale role load responses after switching to another role', async () => {
+    const firstRoleRequest = deferred<Role>()
+    const secondRoleRequest = deferred<Role>()
+
+    getRoleMock.mockImplementation((id: string) => {
+      if (id === roleId) {
+        return firstRoleRequest.promise
+      }
+
+      if (id === secondRoleId) {
+        return secondRoleRequest.promise
+      }
+
+      throw new Error(`Unexpected role id: ${id}`)
+    })
+    updateRoleMock.mockResolvedValue(secondRoleResponse)
+
+    const wrapper = mountDrawer({ show: true, roleId })
+    await flushPromises()
+
+    await wrapper.setProps({ show: true, roleId: secondRoleId })
+    await flushPromises()
+
+    secondRoleRequest.resolve(secondRoleResponse)
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="role-form-name"] input').element).toHaveProperty(
+      'value',
+      '审计',
+    )
+    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([secondActionResourceId])
+
+    firstRoleRequest.resolve(roleResponse)
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="role-form-name"] input').element).toHaveProperty(
+      'value',
+      '审计',
+    )
+    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([secondActionResourceId])
+
+    await submitForm(wrapper)
+
+    expect(updateRoleMock).toHaveBeenCalledWith(secondRoleId, {
+      name: '审计',
+      code: 'auditor',
+      status: ROLE_STATUS_ENABLED,
+      sortOrder: 5,
+      resourceIds: [secondActionResourceId],
+    })
   })
 })

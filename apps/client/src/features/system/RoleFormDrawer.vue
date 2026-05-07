@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useForm } from '@tanstack/vue-form'
+import { z } from 'zod'
 import {
   NAlert,
   NButton,
@@ -18,6 +19,8 @@ import {
   ROLE_STATUS_DISABLED,
   ROLE_STATUS_ENABLED,
   roleCreateSchema,
+  roleResourceIdsSchema,
+  roleStatusSchema,
   roleUpdateSchema,
   type ResourceTreeNode,
   type Role,
@@ -60,6 +63,14 @@ const defaultFormValues: RoleFormData = {
   resourceIds: [],
 }
 
+const roleFormSchema = z.object({
+  name: z.string().trim().min(1, '请输入角色名称'),
+  code: z.string().trim().min(1, '请输入角色编码'),
+  status: roleStatusSchema,
+  sortOrder: z.number('排序必须是数字').int('排序必须是整数'),
+  resourceIds: roleResourceIdsSchema,
+})
+
 const statusOptions = [
   {
     label: statusLabels[ROLE_STATUS_ENABLED],
@@ -76,11 +87,15 @@ const loadError = ref<string | null>(null)
 const formError = ref<string | null>(null)
 const loading = ref(false)
 const saving = ref(false)
+const loadToken = ref(0)
 
 const drawerTitle = computed(() => (props.roleId === null ? '新增角色' : '编辑角色'))
 
 const form = useForm({
   defaultValues: defaultFormValues,
+  validators: {
+    onSubmit: roleFormSchema,
+  },
   async onSubmit({ value }) {
     formError.value = null
     saving.value = true
@@ -117,6 +132,7 @@ function applyFormValues(values: RoleFormData) {
 }
 
 function resetDrawerState() {
+  loadToken.value += 1
   form.reset()
   resourceTree.value = []
   loadError.value = null
@@ -144,6 +160,10 @@ function toRoleFormValues(role: Role): RoleFormData {
 }
 
 async function loadForm() {
+  const currentLoadToken = loadToken.value + 1
+  const loadRoleId = props.roleId
+
+  loadToken.value = currentLoadToken
   loading.value = true
   loadError.value = null
   formError.value = null
@@ -151,8 +171,12 @@ async function loadForm() {
   try {
     const [resources, role] = await Promise.all([
       getResourceTree(),
-      props.roleId === null ? Promise.resolve(null) : getRole(props.roleId),
+      loadRoleId === null ? Promise.resolve(null) : getRole(loadRoleId),
     ])
+
+    if (loadToken.value !== currentLoadToken || !props.show || props.roleId !== loadRoleId) {
+      return
+    }
 
     resourceTree.value = toTreeOptions(resources)
 
@@ -163,9 +187,15 @@ async function loadForm() {
 
     applyFormValues(toRoleFormValues(role))
   } catch (error) {
+    if (loadToken.value !== currentLoadToken || !props.show || props.roleId !== loadRoleId) {
+      return
+    }
+
     loadError.value = getSystemErrorMessage(error, '加载角色表单失败')
   } finally {
-    loading.value = false
+    if (loadToken.value === currentLoadToken) {
+      loading.value = false
+    }
   }
 }
 

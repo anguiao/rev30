@@ -753,17 +753,11 @@ describe('user routes', () => {
       phone: '10000000006',
     })
 
-    for (const body of [
-      {
-        username: 'katherine',
-      },
-      {
-        email: 'katherine@example.com',
-      },
-      {
-        phone: '10000000005',
-      },
-    ]) {
+    for (const [body, field, message] of [
+      [{ username: 'katherine' }, 'username', '用户名已存在'],
+      [{ email: 'katherine@example.com' }, 'email', '邮箱已存在'],
+      [{ phone: '10000000005' }, 'phone', '手机号已存在'],
+    ] as const) {
       const response = await app.request(`/api/system/users/${target.id}`, {
         method: 'PATCH',
         body: JSON.stringify(body),
@@ -773,6 +767,7 @@ describe('user routes', () => {
       })
 
       expect(response.status).toBe(409)
+      expect(await response.json()).toEqual({ field, message })
     }
   })
 

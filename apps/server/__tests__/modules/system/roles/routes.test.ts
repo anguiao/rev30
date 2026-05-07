@@ -284,7 +284,7 @@ describe('role routes', () => {
     const body = duplicate.body as unknown as ErrorResponse
 
     expect(duplicate.response.status).toBe(409)
-    expect(body).toEqual({ message: '角色编码已存在' })
+    expect(body).toEqual({ field: 'code', message: '角色编码已存在' })
   })
 
   it('returns invalid resource errors for missing or deleted resources', async () => {

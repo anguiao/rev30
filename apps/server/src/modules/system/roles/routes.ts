@@ -57,7 +57,11 @@ function roleErrorResponse(error: unknown, c: Context) {
     return c.json({ message: error.message }, 404)
   }
 
-  if (error instanceof RoleConflictError || error instanceof RoleDeleteConflictError) {
+  if (error instanceof RoleConflictError) {
+    return c.json({ field: 'code', message: error.message }, 409)
+  }
+
+  if (error instanceof RoleDeleteConflictError) {
     return c.json({ message: error.message }, 409)
   }
 

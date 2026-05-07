@@ -388,4 +388,39 @@ describe('RoleFormDrawer', () => {
       '审计',
     )
   })
+
+  it('does not submit while switching to a role that is still loading', async () => {
+    const pendingRoleLoad = deferred<Role>()
+
+    getRoleMock.mockImplementation((id: string) => {
+      if (id === roleId) {
+        return Promise.resolve(roleResponse)
+      }
+
+      if (id === secondRoleId) {
+        return pendingRoleLoad.promise
+      }
+
+      throw new Error(`Unexpected role id: ${id}`)
+    })
+
+    const wrapper = mountDrawer({ show: true, roleId })
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="role-form-name"] input').element).toHaveProperty(
+      'value',
+      '运营',
+    )
+
+    await wrapper.setProps({ show: true, roleId: secondRoleId })
+    await flushPromises()
+
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(updateRoleMock).not.toHaveBeenCalled()
+
+    pendingRoleLoad.resolve(secondRoleResponse)
+    await flushPromises()
+  })
 })

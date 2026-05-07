@@ -96,6 +96,14 @@ function isActiveSave(currentSaveToken: number, submittedRoleId: string | null) 
   return saveToken.value === currentSaveToken && props.show && props.roleId === submittedRoleId
 }
 
+function handleSubmit() {
+  if (loading.value || saving.value || loadError.value !== null) {
+    return
+  }
+
+  void form.handleSubmit()
+}
+
 const form = useForm({
   defaultValues: defaultFormValues,
   validators: {
@@ -259,7 +267,7 @@ watch(
           {{ formError }}
         </NAlert>
 
-        <NForm class="flex flex-col gap-4" @submit.prevent="form.handleSubmit()">
+        <NForm class="flex flex-col gap-4" @submit.prevent="handleSubmit">
           <form.Field name="name" v-slot="{ field, state }">
             <NFormItem
               label="角色名称"

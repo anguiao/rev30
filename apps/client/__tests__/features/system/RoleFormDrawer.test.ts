@@ -327,4 +327,65 @@ describe('RoleFormDrawer', () => {
       resourceIds: [secondActionResourceId],
     })
   })
+
+  it('does not emit saved or close the current drawer when a stale save resolves', async () => {
+    const pendingSave = deferred<Role>()
+
+    getRoleMock.mockImplementation((id: string) => {
+      if (id === roleId) {
+        return Promise.resolve(roleResponse)
+      }
+
+      if (id === secondRoleId) {
+        return Promise.resolve(secondRoleResponse)
+      }
+
+      throw new Error(`Unexpected role id: ${id}`)
+    })
+    updateRoleMock.mockImplementation((id: string) => {
+      if (id !== roleId) {
+        throw new Error(`Unexpected save id: ${id}`)
+      }
+
+      return pendingSave.promise
+    })
+
+    const wrapper = mountDrawer({ show: true, roleId })
+    await flushPromises()
+
+    await wrapper.get('[data-test="role-form-name"] input').setValue('运营负责人')
+    await submitForm(wrapper)
+
+    expect(updateRoleMock).toHaveBeenCalledWith(roleId, {
+      name: '运营负责人',
+      code: 'operator',
+      status: ROLE_STATUS_ENABLED,
+      sortOrder: 2,
+      resourceIds: [actionResourceId],
+    })
+
+    await wrapper.setProps({ show: true, roleId: secondRoleId })
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="role-form-name"] input').element).toHaveProperty(
+      'value',
+      '审计',
+    )
+    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([secondActionResourceId])
+
+    pendingSave.resolve({
+      ...roleResponse,
+      name: '运营负责人',
+    })
+    await flushPromises()
+
+    expect(wrapper.emitted('saved')).toBeUndefined()
+    expect(wrapper.emitted('update:show')).toBeUndefined()
+    expect(wrapper.props('show')).toBe(true)
+    expect(wrapper.props('roleId')).toBe(secondRoleId)
+    expect(wrapper.get('[data-test="role-form-name"] input').element).toHaveProperty(
+      'value',
+      '审计',
+    )
+  })
 })

@@ -88,8 +88,13 @@ const formError = ref<string | null>(null)
 const loading = ref(false)
 const saving = ref(false)
 const loadToken = ref(0)
+const saveToken = ref(0)
 
 const drawerTitle = computed(() => (props.roleId === null ? '新增角色' : '编辑角色'))
+
+function isActiveSave(currentSaveToken: number, submittedRoleId: string | null) {
+  return saveToken.value === currentSaveToken && props.show && props.roleId === submittedRoleId
+}
 
 const form = useForm({
   defaultValues: defaultFormValues,
@@ -97,19 +102,31 @@ const form = useForm({
     onSubmit: roleFormSchema,
   },
   async onSubmit({ value }) {
+    const currentSaveToken = saveToken.value + 1
+    const submittedRoleId = props.roleId
+
+    saveToken.value = currentSaveToken
     formError.value = null
     saving.value = true
 
     try {
-      if (props.roleId === null) {
+      if (submittedRoleId === null) {
         await createRole(roleCreateSchema.parse(value))
       } else {
-        await updateRole(props.roleId, roleUpdateSchema.parse(value))
+        await updateRole(submittedRoleId, roleUpdateSchema.parse(value))
+      }
+
+      if (!isActiveSave(currentSaveToken, submittedRoleId)) {
+        return
       }
 
       emit('saved')
       emit('update:show', false)
     } catch (error) {
+      if (!isActiveSave(currentSaveToken, submittedRoleId)) {
+        return
+      }
+
       if (error instanceof SystemRequestError && error.field !== undefined) {
         setServerFieldError(form, error.field as keyof RoleFormData, error.message)
         return
@@ -117,7 +134,9 @@ const form = useForm({
 
       formError.value = getSystemErrorMessage(error, '保存角色失败')
     } finally {
-      saving.value = false
+      if (isActiveSave(currentSaveToken, submittedRoleId)) {
+        saving.value = false
+      }
     }
   },
 })
@@ -133,6 +152,7 @@ function applyFormValues(values: RoleFormData) {
 
 function resetDrawerState() {
   loadToken.value += 1
+  saveToken.value += 1
   form.reset()
   resourceTree.value = []
   loadError.value = null
@@ -211,6 +231,8 @@ watch(
     const previousRoleId = previousValue?.[1]
 
     if (!previousShow || previousRoleId !== roleId) {
+      saveToken.value += 1
+      saving.value = false
       void loadForm()
     }
   },

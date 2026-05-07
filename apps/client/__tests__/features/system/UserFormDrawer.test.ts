@@ -200,9 +200,7 @@ describe('UserFormDrawer', () => {
 
   it('shows a field-level error when the username is already used', async () => {
     getUserMock.mockResolvedValue(userResponse)
-    updateUserMock.mockRejectedValue(
-      new SystemRequestError(409, '用户名已存在', 'username'),
-    )
+    updateUserMock.mockRejectedValue(new SystemRequestError(409, '用户名已存在', 'username'))
 
     const wrapper = mountDrawer()
     await flushPromises()

@@ -4,7 +4,8 @@ import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NPagination, NSelect } from 'naive-ui'
 import { ROLE_STATUS_DISABLED, ROLE_STATUS_ENABLED, type RoleListResponse } from '@rev30/shared'
-import { formatDateTime, listRoles } from '../../../src/features/system'
+import { defineComponent, h } from 'vue'
+import { deleteRole, formatDateTime, listRoles } from '../../../src/features/system'
 import RolesPage from '../../../src/pages/index/system/roles.vue'
 import {
   disposeActiveTestPinia,
@@ -15,14 +16,41 @@ import {
 
 enableAutoUnmount(afterEach)
 
+vi.mock('../../../src/features/system/RoleFormDrawer.vue', () => ({
+  default: defineComponent({
+    name: 'RoleFormDrawerStub',
+    props: {
+      show: {
+        type: Boolean,
+        required: true,
+      },
+      roleId: {
+        type: String,
+        default: null,
+      },
+    },
+    emits: ['update:show', 'saved'],
+    setup(props) {
+      return () =>
+        h('div', {
+          'data-role-id': props.roleId ?? '',
+          'data-show': String(props.show),
+          'data-test': 'role-form-drawer',
+        })
+    },
+  }),
+}))
+
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
+  deleteRole: vi.fn(),
   listRoles: vi.fn(),
   getSystemErrorMessage: vi.fn((error: unknown, fallback: string) =>
     error instanceof Error ? error.message : fallback,
   ),
 }))
 
+const deleteRoleMock = vi.mocked(deleteRole)
 const listRolesMock = vi.mocked(listRoles)
 
 const roleListResponse: RoleListResponse = {
@@ -62,10 +90,12 @@ async function mountRolesPage(accessCodes: string[] = session.accessCodes) {
 
 describe('roles page', () => {
   beforeEach(() => {
+    deleteRoleMock.mockReset()
     listRolesMock.mockReset()
     localStorage.clear()
     document.documentElement.className = ''
     document.documentElement.style.colorScheme = ''
+    document.body.innerHTML = ''
     stubPreferredDark(false)
   })
 
@@ -170,5 +200,57 @@ describe('roles page', () => {
       keyword: 'admin',
       status: ROLE_STATUS_DISABLED,
     })
+  })
+
+  it('opens create drawer when clicking create button', async () => {
+    listRolesMock.mockResolvedValue(roleListResponse)
+    const { wrapper } = await mountRolesPage(['system:role:create'])
+    await flushPromises()
+
+    await wrapper.get('[data-test="roles-create"]').trigger('click')
+    await flushPromises()
+
+    const drawer = wrapper.get('[data-test="role-form-drawer"]')
+    expect(drawer.attributes('data-show')).toBe('true')
+    expect(drawer.attributes('data-role-id')).toBe('')
+  })
+
+  it('opens edit drawer with selected role id', async () => {
+    const firstRole = roleListResponse.list[0]!
+    listRolesMock.mockResolvedValue(roleListResponse)
+    const { wrapper } = await mountRolesPage(['system:role:update'])
+    await flushPromises()
+
+    await wrapper.get('[data-test="roles-edit"]').trigger('click')
+    await flushPromises()
+
+    const drawer = wrapper.get('[data-test="role-form-drawer"]')
+    expect(drawer.attributes('data-show')).toBe('true')
+    expect(drawer.attributes('data-role-id')).toBe(firstRole.id)
+  })
+
+  it('deletes a role after confirmation and refreshes the list', async () => {
+    const firstRole = roleListResponse.list[0]!
+    listRolesMock.mockResolvedValue(roleListResponse)
+    deleteRoleMock.mockResolvedValue(undefined)
+
+    const { wrapper } = await mountRolesPage(['system:role:delete'])
+    await flushPromises()
+
+    await wrapper.get('[data-test="roles-delete"]').trigger('click')
+    await flushPromises()
+
+    const confirmButton = document.body.querySelector(
+      '[data-test="roles-delete-confirm"]',
+    ) as HTMLButtonElement | null
+
+    expect(confirmButton).not.toBeNull()
+
+    confirmButton?.click()
+    await flushPromises()
+
+    expect(deleteRoleMock).toHaveBeenCalledWith(firstRole.id)
+    expect(listRolesMock).toHaveBeenCalledTimes(2)
+    expect(listRolesMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
   })
 })

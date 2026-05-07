@@ -1,5 +1,6 @@
 import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
+import { NConfigProvider, NDialogProvider, NMessageProvider, dateZhCN, zhCN } from 'naive-ui'
 import { createPinia, disposePinia, setActivePinia, type Pinia } from 'pinia'
 import { defineComponent } from 'vue'
 import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router'
@@ -103,7 +104,10 @@ export async function mountAuthRoute(
   path: string,
   routes: RouteRecordRaw[],
   authSession?: AuthTokenResponse,
-) {
+): Promise<{
+  router: ReturnType<typeof createRouter>
+  wrapper: ReturnType<typeof mount>
+}> {
   const pinia = createTestPinia()
   const auth = useAuthStore(pinia)
 
@@ -121,7 +125,26 @@ export async function mountAuthRoute(
 
   const wrapper = mount(
     defineComponent({
-      template: '<RouterView />',
+      template: `
+        <NConfigProvider :date-locale="dateZhCN" :locale="zhCN">
+          <NDialogProvider>
+            <NMessageProvider>
+              <RouterView />
+            </NMessageProvider>
+          </NDialogProvider>
+        </NConfigProvider>
+      `,
+      components: {
+        NConfigProvider,
+        NDialogProvider,
+        NMessageProvider,
+      },
+      setup() {
+        return {
+          dateZhCN,
+          zhCN,
+        }
+      },
     }),
     {
       global: {

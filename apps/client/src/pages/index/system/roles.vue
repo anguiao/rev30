@@ -2,10 +2,24 @@
 import { computed, h, ref } from 'vue'
 import { useQuery } from '@pinia/colada'
 import type { DataTableColumns } from 'naive-ui'
-import { NAlert, NButton, NDataTable, NFlex, NInput, NPagination, NSelect, NTag } from 'naive-ui'
+import {
+  NAlert,
+  NButton,
+  NDataTable,
+  NFlex,
+  NInput,
+  NPagination,
+  NSelect,
+  NTag,
+  useDialog,
+  useMessage,
+} from 'naive-ui'
+import type { ButtonProps } from 'naive-ui'
 import type { RoleListItem, RoleListQuery, RoleListResponse } from '@rev30/shared'
+import RoleFormDrawer from '../../../features/system/RoleFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
+  deleteRole,
   formatDateTime,
   getSystemErrorMessage,
   listRoles,
@@ -16,8 +30,12 @@ import {
 } from '../../../features/system'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
+const dialog = useDialog()
+const message = useMessage()
 const keyword = ref('')
 const status = ref<StatusFilter>(STATUS_FILTER_ALL)
+const isRoleDrawerShown = ref(false)
+const editingRoleId = ref<string | null>(null)
 const query = ref<RoleListQuery>({
   page: 1,
   pageSize: 20,
@@ -33,6 +51,7 @@ const {
   data: rolesResponse,
   error: rolesError,
   isLoading,
+  refetch,
 } = useQuery({
   key: () => [
     'system',
@@ -50,6 +69,44 @@ const rolesData = computed(() => rolesResponse.value ?? emptyRolesData)
 const loadErrorMessage = computed(() =>
   rolesError.value === null ? '' : getSystemErrorMessage(rolesError.value, '加载角色失败'),
 )
+
+async function refreshRoles() {
+  await refetch()
+}
+
+function openCreateRoleDrawer() {
+  editingRoleId.value = null
+  isRoleDrawerShown.value = true
+}
+
+function openEditRoleDrawer(roleId: string) {
+  editingRoleId.value = roleId
+  isRoleDrawerShown.value = true
+}
+
+function confirmDeleteRole(role: RoleListItem) {
+  const positiveButtonProps: ButtonProps & Record<string, unknown> = {
+    type: 'error',
+    'data-test': 'roles-delete-confirm',
+  }
+
+  dialog.warning({
+    title: '确认删除',
+    content: `确定删除角色“${role.name}”吗？`,
+    positiveText: '删除',
+    negativeText: '取消',
+    positiveButtonProps,
+    async onPositiveClick() {
+      try {
+        await deleteRole(role.id)
+        message.success('删除角色成功')
+        await refreshRoles()
+      } catch (error) {
+        message.error(getSystemErrorMessage(error, '删除角色失败'))
+      }
+    },
+  })
+}
 
 function handleSearch() {
   const nextKeyword = keyword.value.trim()
@@ -117,16 +174,18 @@ const columns: DataTableColumns<RoleListItem> = [
     key: 'actions',
     width: 120,
     fixed: 'right',
-    render: () =>
+    render: (role) =>
       renderTableActions([
         renderTableActionButton({
           label: '编辑',
           accessCode: 'system:role:update',
+          onClick: () => openEditRoleDrawer(role.id),
           testId: 'roles-edit',
         }),
         renderTableActionButton({
           label: '删除',
           accessCode: 'system:role:delete',
+          onClick: () => confirmDeleteRole(role),
           type: 'error',
           testId: 'roles-delete',
         }),
@@ -144,7 +203,12 @@ const columns: DataTableColumns<RoleListItem> = [
           共 {{ rolesData.total }} 个角色
         </p>
       </div>
-      <NButton v-can="'system:role:create'" data-test="roles-create" type="primary">
+      <NButton
+        v-can="'system:role:create'"
+        data-test="roles-create"
+        type="primary"
+        @click="openCreateRoleDrawer"
+      >
         新增角色
       </NButton>
     </header>
@@ -191,5 +255,11 @@ const columns: DataTableColumns<RoleListItem> = [
         />
       </div>
     </section>
+
+    <RoleFormDrawer
+      v-model:show="isRoleDrawerShown"
+      :role-id="editingRoleId"
+      @saved="refreshRoles"
+    />
   </main>
 </template>

@@ -7,6 +7,7 @@ type TableActionOptions = {
   accessCode: string
   type?: ButtonProps['type']
   testId?: string
+  onClick?: () => void
 }
 
 export function renderTableActionButton({
@@ -14,6 +15,7 @@ export function renderTableActionButton({
   accessCode,
   type = 'primary',
   testId,
+  onClick,
 }: TableActionOptions) {
   const auth = useAuthStore()
 
@@ -21,14 +23,17 @@ export function renderTableActionButton({
     return null
   }
 
+  const buttonProps: ButtonProps & Record<string, unknown> = {
+    text: true,
+    size: 'small',
+    type,
+    ...(testId === undefined ? {} : { 'data-test': testId }),
+    ...(onClick === undefined ? {} : { onClick }),
+  }
+
   return h(
     NButton,
-    {
-      text: true,
-      size: 'small',
-      type,
-      'data-test': testId,
-    },
+    buttonProps,
     () => label,
   )
 }

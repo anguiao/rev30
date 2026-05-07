@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { darkTheme, dateZhCN, NConfigProvider, NGlobalStyle, zhCN } from 'naive-ui'
+import {
+  darkTheme,
+  dateZhCN,
+  NConfigProvider,
+  NDialogProvider,
+  NGlobalStyle,
+  NMessageProvider,
+  zhCN,
+} from 'naive-ui'
 import ThemeTokenProvider from './components/common/ThemeTokenProvider.vue'
 import { useThemeStore } from './stores/theme'
 
@@ -10,9 +18,13 @@ const naiveTheme = computed(() => (theme.isDark ? darkTheme : null))
 
 <template>
   <NConfigProvider :date-locale="dateZhCN" :locale="zhCN" :theme="naiveTheme">
-    <NGlobalStyle />
-    <ThemeTokenProvider>
-      <RouterView />
-    </ThemeTokenProvider>
+    <NDialogProvider>
+      <NMessageProvider>
+        <NGlobalStyle />
+        <ThemeTokenProvider>
+          <RouterView />
+        </ThemeTokenProvider>
+      </NMessageProvider>
+    </NDialogProvider>
   </NConfigProvider>
 </template>

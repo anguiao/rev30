@@ -4,7 +4,7 @@ import { useAuthStore } from '../stores/auth'
 
 type TableActionOptions = {
   label: string
-  accessCode: string
+  accessCode: string | string[]
   type?: ButtonProps['type']
   testId?: string
   onClick?: () => void
@@ -18,8 +18,9 @@ export function renderTableActionButton({
   onClick,
 }: TableActionOptions) {
   const auth = useAuthStore()
+  const hasPermission = Array.isArray(accessCode) ? auth.canAll(accessCode) : auth.can(accessCode)
 
-  if (!auth.can(accessCode)) {
+  if (!hasPermission) {
     return null
   }
 

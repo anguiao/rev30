@@ -200,7 +200,12 @@ const columns: DataTableColumns<UserListItem> = [
       renderTableActions([
         renderTableActionButton({
           label: '编辑',
-          accessCode: 'system:user:update',
+          accessCode: [
+            'system:user:update',
+            'system:user:list',
+            'system:department:list',
+            'system:role:list',
+          ],
           onClick: () => openEditUserDrawer(user.id),
           testId: 'users-edit',
         }),

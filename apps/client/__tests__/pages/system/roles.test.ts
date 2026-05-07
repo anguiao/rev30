@@ -132,9 +132,22 @@ describe('roles page', () => {
     expect(unauthorizedWrapper.find('[data-test="roles-edit"]').exists()).toBe(false)
     expect(unauthorizedWrapper.find('[data-test="roles-delete"]').exists()).toBe(false)
 
-    const { wrapper: authorizedWrapper } = await mountRolesPage([
+    const { wrapper: insufficientPermissionWrapper } = await mountRolesPage([
       'system:role:create',
       'system:role:update',
+      'system:role:delete',
+    ])
+    await flushPromises()
+
+    expect(insufficientPermissionWrapper.find('[data-test="roles-create"]').exists()).toBe(false)
+    expect(insufficientPermissionWrapper.find('[data-test="roles-edit"]').exists()).toBe(false)
+    expect(insufficientPermissionWrapper.find('[data-test="roles-delete"]').exists()).toBe(true)
+
+    const { wrapper: authorizedWrapper } = await mountRolesPage([
+      'system:role:create',
+      'system:resource:list',
+      'system:role:update',
+      'system:role:list',
       'system:role:delete',
     ])
     await flushPromises()
@@ -204,7 +217,7 @@ describe('roles page', () => {
 
   it('opens create drawer when clicking create button', async () => {
     listRolesMock.mockResolvedValue(roleListResponse)
-    const { wrapper } = await mountRolesPage(['system:role:create'])
+    const { wrapper } = await mountRolesPage(['system:role:create', 'system:resource:list'])
     await flushPromises()
 
     await wrapper.get('[data-test="roles-create"]').trigger('click')
@@ -218,7 +231,11 @@ describe('roles page', () => {
   it('opens edit drawer with selected role id', async () => {
     const firstRole = roleListResponse.list[0]!
     listRolesMock.mockResolvedValue(roleListResponse)
-    const { wrapper } = await mountRolesPage(['system:role:update'])
+    const { wrapper } = await mountRolesPage([
+      'system:role:update',
+      'system:role:list',
+      'system:resource:list',
+    ])
     await flushPromises()
 
     await wrapper.get('[data-test="roles-edit"]').trigger('click')

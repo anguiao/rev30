@@ -179,7 +179,7 @@ const columns: DataTableColumns<RoleListItem> = [
       renderTableActions([
         renderTableActionButton({
           label: '编辑',
-          accessCode: 'system:role:update',
+          accessCode: ['system:role:update', 'system:role:list', 'system:resource:list'],
           onClick: () => openEditRoleDrawer(role.id),
           testId: 'roles-edit',
         }),
@@ -205,7 +205,7 @@ const columns: DataTableColumns<RoleListItem> = [
         </p>
       </div>
       <NButton
-        v-can="'system:role:create'"
+        v-can.all="['system:role:create', 'system:resource:list']"
         data-test="roles-create"
         type="primary"
         @click="openCreateRoleDrawer"

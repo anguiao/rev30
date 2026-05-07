@@ -145,10 +145,20 @@ describe('users page', () => {
     expect(unauthorizedWrapper.find('[data-test="users-edit"]').exists()).toBe(false)
     expect(unauthorizedWrapper.find('[data-test="users-delete"]').exists()).toBe(false)
 
+    const { wrapper: insufficientPermissionWrapper } = await mountUsersPage(['system:user:update'])
+    await flushPromises()
+
+    expect(insufficientPermissionWrapper.find('[data-test="users-create"]').exists()).toBe(false)
+    expect(insufficientPermissionWrapper.find('[data-test="users-edit"]').exists()).toBe(false)
+    expect(insufficientPermissionWrapper.find('[data-test="users-delete"]').exists()).toBe(false)
+
     const { wrapper: authorizedWrapper } = await mountUsersPage([
       'system:user:create',
       'system:user:update',
       'system:user:delete',
+      'system:user:list',
+      'system:department:list',
+      'system:role:list',
     ])
     await flushPromises()
 
@@ -173,7 +183,12 @@ describe('users page', () => {
   it('opens edit drawer with selected user id', async () => {
     const firstUser = userListResponse.list[0]!
     listUsersMock.mockResolvedValue(userListResponse)
-    const { wrapper } = await mountUsersPage(['system:user:update'])
+    const { wrapper } = await mountUsersPage([
+      'system:user:update',
+      'system:user:list',
+      'system:department:list',
+      'system:role:list',
+    ])
     await flushPromises()
 
     await wrapper.get('[data-test="users-edit"]').trigger('click')

@@ -1,6 +1,6 @@
 import type { UserCreateInput, UserListQuery, UserUpdateInput } from '@rev30/shared'
 import type { Db } from '../../../db'
-import { toUserConflictError, UserNotFoundError } from './errors'
+import { BuiltInUserMutationError, toUserConflictError, UserNotFoundError } from './errors'
 import { toUser } from './mapper'
 import { createUserRepository } from './repository'
 
@@ -48,6 +48,16 @@ export function createUserService(database: Db) {
     },
 
     async update(id: string, input: UserUpdateInput) {
+      const existing = await repository.findActiveById(id)
+
+      if (!existing) {
+        throw new UserNotFoundError()
+      }
+
+      if (existing.user.builtIn) {
+        throw new BuiltInUserMutationError('edit')
+      }
+
       const updated = await withUserUniqueConflict(() => repository.update(id, input))
 
       if (!updated) {
@@ -58,6 +68,16 @@ export function createUserService(database: Db) {
     },
 
     async delete(id: string) {
+      const existing = await repository.findActiveById(id)
+
+      if (!existing) {
+        throw new UserNotFoundError()
+      }
+
+      if (existing.user.builtIn) {
+        throw new BuiltInUserMutationError('delete')
+      }
+
       const deleted = await repository.softDelete(id)
 
       if (!deleted) {

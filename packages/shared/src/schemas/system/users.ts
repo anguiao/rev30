@@ -42,6 +42,7 @@ export const userSchema = z.object({
   email: z.string().nullable(),
   phone: z.string().nullable(),
   status: userStatusSchema,
+  builtIn: z.boolean(),
   departments: z.array(departmentSummarySchema),
   roles: z.array(roleSummarySchema),
   createdAt: z.iso.datetime(),

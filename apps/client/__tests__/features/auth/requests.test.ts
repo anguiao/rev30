@@ -22,6 +22,7 @@ const tokenBody = {
     email: null,
     phone: null,
     status: USER_STATUS_ENABLED,
+    builtIn: false,
     departments: [],
     roles: [],
     createdAt: '2026-05-01T00:00:00.000Z',

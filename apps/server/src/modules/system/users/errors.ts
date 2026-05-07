@@ -50,6 +50,13 @@ export class UserInvalidRoleError extends Error {
   }
 }
 
+export class BuiltInUserMutationError extends Error {
+  constructor(action: 'edit' | 'delete') {
+    super(action === 'edit' ? '内置用户不能编辑' : '内置用户不能删除')
+    this.name = 'BuiltInUserMutationError'
+  }
+}
+
 export function toUserConflictError(error: unknown) {
   const cause = error instanceof DrizzleQueryError ? error.cause : error
 

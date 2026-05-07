@@ -197,26 +197,28 @@ const columns: DataTableColumns<UserListItem> = [
     width: 120,
     fixed: 'right',
     render: (user) =>
-      renderTableActions([
-        renderTableActionButton({
-          label: '编辑',
-          accessCode: [
-            'system:user:update',
-            'system:user:list',
-            'system:department:list',
-            'system:role:list',
-          ],
-          onClick: () => openEditUserDrawer(user.id),
-          testId: 'users-edit',
-        }),
-        renderTableActionButton({
-          label: '删除',
-          accessCode: 'system:user:delete',
-          onClick: () => confirmDeleteUser(user),
-          type: 'error',
-          testId: 'users-delete',
-        }),
-      ]),
+      user.builtIn
+        ? renderTableActions([])
+        : renderTableActions([
+            renderTableActionButton({
+              label: '编辑',
+              accessCode: [
+                'system:user:update',
+                'system:user:list',
+                'system:department:list',
+                'system:role:list',
+              ],
+              onClick: () => openEditUserDrawer(user.id),
+              testId: 'users-edit',
+            }),
+            renderTableActionButton({
+              label: '删除',
+              accessCode: 'system:user:delete',
+              onClick: () => confirmDeleteUser(user),
+              type: 'error',
+              testId: 'users-delete',
+            }),
+          ]),
   },
 ]
 </script>

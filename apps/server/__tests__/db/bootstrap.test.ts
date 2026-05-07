@@ -43,6 +43,7 @@ describe('bootstrap admin user', () => {
       email: null,
       phone: null,
       status: USER_STATUS_ENABLED,
+      builtIn: true,
       deletedAt: null,
     })
     expect(bindings).toEqual([
@@ -109,6 +110,7 @@ describe('bootstrap admin user', () => {
       email: 'root@example.com',
       phone: null,
       status: USER_STATUS_ENABLED,
+      builtIn: true,
       deletedAt: null,
     })
     expect(bindings).toHaveLength(1)
@@ -215,6 +217,7 @@ describe('bootstrap admin user', () => {
       email: null,
       phone: null,
       status: USER_STATUS_ENABLED,
+      builtIn: true,
       deletedAt: null,
     })
     expect(bindings).toHaveLength(1)

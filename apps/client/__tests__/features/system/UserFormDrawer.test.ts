@@ -105,6 +105,7 @@ const userResponse: User = {
   email: 'ada@example.com',
   phone: '13800138000',
   status: USER_STATUS_ENABLED as UserStatus,
+  builtIn: false,
   departments: [
     {
       id: departmentId,

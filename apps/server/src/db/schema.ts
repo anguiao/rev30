@@ -28,6 +28,7 @@ export const users = pgTable(
     email: text('email'),
     phone: text('phone'),
     status: smallint('status').notNull().default(USER_STATUS_ENABLED),
+    builtIn: boolean('built_in').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),

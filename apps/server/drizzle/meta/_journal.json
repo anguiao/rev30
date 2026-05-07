@@ -43,6 +43,13 @@
       "when": 1778054400000,
       "tag": "0005_seed_resource_access",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778140800000,
+      "tag": "0006_add_user_built_in",
+      "breakpoints": true
     }
   ]
 }

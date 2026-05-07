@@ -12,6 +12,7 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import {
+  BuiltInUserMutationError,
   UserConflictError,
   UserInvalidDepartmentError,
   UserInvalidRoleError,
@@ -69,6 +70,10 @@ function userErrorResponse(error: unknown, c: Context) {
 
   if (error instanceof UserInvalidRoleError) {
     return c.json({ message: error.message }, 400)
+  }
+
+  if (error instanceof BuiltInUserMutationError) {
+    return c.json({ message: error.message }, 409)
   }
 
   throw error

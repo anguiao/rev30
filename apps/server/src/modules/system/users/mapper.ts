@@ -15,6 +15,7 @@ export function toUser(
     email: user.email,
     phone: user.phone,
     status: user.status as User['status'],
+    builtIn: user.builtIn,
     departments,
     roles,
     createdAt: user.createdAt.toISOString(),

@@ -234,6 +234,8 @@ describe('PGlite migrations', () => {
       throw new Error('Expected migrated user')
     }
 
+    expect(created.builtIn).toBe(false)
+
     const [credential] = await database
       .insert(authPasswordCredentials)
       .values({

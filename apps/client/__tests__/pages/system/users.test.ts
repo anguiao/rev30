@@ -62,6 +62,7 @@ const userListResponse: UserListResponse = {
       email: 'ada@example.com',
       phone: null,
       status: USER_STATUS_ENABLED,
+      builtIn: true,
       departments: [{ id: '11111111-1111-4111-8111-111111111111', name: '研发中心', code: 'eng' }],
       roles: [{ id: '22222222-2222-4222-8222-222222222222', name: '管理员', code: 'admin' }],
       createdAt: '2026-05-01T00:00:00.000Z',
@@ -74,6 +75,7 @@ const userListResponse: UserListResponse = {
       email: null,
       phone: '13800138000',
       status: USER_STATUS_DISABLED,
+      builtIn: false,
       departments: [
         { id: '31111111-1111-4111-8111-111111111111', name: '平台架构', code: 'arch' },
         { id: '41111111-1111-4111-8111-111111111111', name: '数据治理', code: 'data' },
@@ -163,8 +165,8 @@ describe('users page', () => {
     await flushPromises()
 
     expect(authorizedWrapper.find('[data-test="users-create"]').exists()).toBe(true)
-    expect(authorizedWrapper.find('[data-test="users-edit"]').exists()).toBe(true)
-    expect(authorizedWrapper.find('[data-test="users-delete"]').exists()).toBe(true)
+    expect(authorizedWrapper.findAll('[data-test="users-edit"]')).toHaveLength(1)
+    expect(authorizedWrapper.findAll('[data-test="users-delete"]')).toHaveLength(1)
   })
 
   it('keeps create button visible by permission but does not open drawer on click', async () => {
@@ -181,7 +183,7 @@ describe('users page', () => {
   })
 
   it('opens edit drawer with selected user id', async () => {
-    const firstUser = userListResponse.list[0]!
+    const editableUser = userListResponse.list[1]!
     listUsersMock.mockResolvedValue(userListResponse)
     const { wrapper } = await mountUsersPage([
       'system:user:update',
@@ -196,11 +198,11 @@ describe('users page', () => {
 
     const drawer = wrapper.get('[data-test="user-form-drawer"]')
     expect(drawer.attributes('data-show')).toBe('true')
-    expect(drawer.attributes('data-user-id')).toBe(firstUser.id)
+    expect(drawer.attributes('data-user-id')).toBe(editableUser.id)
   })
 
   it('deletes a user after confirmation and refreshes the list', async () => {
-    const firstUser = userListResponse.list[0]!
+    const deletableUser = userListResponse.list[1]!
     listUsersMock.mockResolvedValue(userListResponse)
     deleteUserMock.mockResolvedValue(undefined)
 
@@ -219,7 +221,7 @@ describe('users page', () => {
     confirmButton?.click()
     await flushPromises()
 
-    expect(deleteUserMock).toHaveBeenCalledWith(firstUser.id)
+    expect(deleteUserMock).toHaveBeenCalledWith(deletableUser.id)
     expect(listUsersMock).toHaveBeenCalledTimes(2)
     expect(listUsersMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
   })
@@ -243,7 +245,7 @@ describe('users page', () => {
     confirmButton?.click()
     await flushPromises()
 
-    expect(deleteUserMock).toHaveBeenCalledWith(userListResponse.list[0]!.id)
+    expect(deleteUserMock).toHaveBeenCalledWith(userListResponse.list[1]!.id)
     expect(listUsersMock).toHaveBeenCalledTimes(1)
     expect(document.body.querySelector('[data-test="users-delete-confirm"]')).not.toBeNull()
   })

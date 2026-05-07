@@ -112,6 +112,7 @@ describe('auth schemas', () => {
         nickname: 'Ada Lovelace',
         email: null,
         phone: null,
+        builtIn: false,
         departments: [],
         roles: [],
         status: USER_STATUS_ENABLED,

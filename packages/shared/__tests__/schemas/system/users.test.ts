@@ -26,6 +26,7 @@ describe('user schemas', () => {
         email: null,
         phone: null,
         status: USER_STATUS_ENABLED,
+        builtIn: false,
         departments: [],
         roles: [],
         createdAt: '2026-04-29T08:00:00.000Z',
@@ -48,6 +49,7 @@ describe('user schemas', () => {
         email: null,
         phone: null,
         status: USER_STATUS_ENABLED,
+        builtIn: false,
         departments: [
           {
             id: '7a4f8d8c-7f20-4d3c-9d8e-5b2ca8b6b8d1',
@@ -204,6 +206,7 @@ describe('user schemas', () => {
       nickname: 'Ada Lovelace',
       email: null,
       phone: null,
+      builtIn: false,
       departments: [],
       roles: [],
       status: USER_STATUS_ENABLED,
@@ -235,6 +238,7 @@ describe('user schemas', () => {
         email: null,
         phone: null,
         status: USER_STATUS_ENABLED,
+        builtIn: false,
         departments: [],
         roles: [
           {

@@ -594,6 +594,51 @@ describe('user routes', () => {
     expect(body).toEqual({ message: '用户不存在' })
   })
 
+  it('rejects updating and deleting built-in users', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const [builtInUser] = await database
+      .insert(users)
+      .values({
+        id: randomUUID(),
+        username: 'built-in-admin',
+        nickname: 'Built-in Admin',
+        builtIn: true,
+      })
+      .returning()
+
+    if (!builtInUser) {
+      throw new Error('Expected built-in user')
+    }
+
+    const updateResponse = await app.request(`/api/system/users/${builtInUser.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        nickname: 'Edited Built-in Admin',
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+
+    expect(updateResponse.status).toBe(409)
+    expect(await updateResponse.json()).toEqual({ message: '内置用户不能编辑' })
+
+    const deleteResponse = await app.request(`/api/system/users/${builtInUser.id}`, {
+      method: 'DELETE',
+    })
+
+    expect(deleteResponse.status).toBe(409)
+    expect(await deleteResponse.json()).toEqual({ message: '内置用户不能删除' })
+
+    const [storedUser] = await database.select().from(users).where(eq(users.id, builtInUser.id))
+    expect(storedUser).toMatchObject({
+      nickname: 'Built-in Admin',
+      builtIn: true,
+      deletedAt: null,
+    })
+  })
+
   it('soft deletes users without removing database rows', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)

@@ -23,6 +23,7 @@ const session = {
     email: null,
     phone: null,
     status: 1 as 0 | 1,
+    builtIn: false,
     departments: [] as DepartmentSummary[],
     roles: [] as RoleSummary[],
     createdAt: '2026-05-01T00:00:00.000Z',

@@ -1,15 +1,18 @@
 <script setup lang="ts">
+import { useStorage } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import AdminBreadcrumb from './navigation/AdminBreadcrumb.vue'
 import AdminSidebar from './sidebar/AdminSidebar.vue'
 
+const ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY = 'admin-sidebar-collapsed'
+
 const auth = useAuthStore()
 const { menus } = storeToRefs(auth)
-const isSidebarCollapsed = ref(false)
 
-const sidebarWidth = computed(() => (isSidebarCollapsed.value ? '64px' : '256px'))
+const isSidebarCollapsed = useStorage(ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY, false)
+const sidebarWidth = computed(() => (isSidebarCollapsed.value ? '60px' : '256px'))
 const shellStyle = computed(() => ({
   '--admin-sidebar-width': sidebarWidth.value,
 }))

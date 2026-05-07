@@ -2,7 +2,7 @@
 import { computed, h, ref } from 'vue'
 import { useQuery } from '@pinia/colada'
 import type { DataTableColumns } from 'naive-ui'
-import { NAlert, NButton, NDataTable, NInput, NPagination, NSelect, NSpace, NTag } from 'naive-ui'
+import { NAlert, NButton, NDataTable, NFlex, NInput, NPagination, NSelect, NTag } from 'naive-ui'
 import type { RoleListItem, RoleListQuery, RoleListResponse } from '@rev30/shared'
 import {
   STATUS_FILTER_ALL,
@@ -116,6 +116,7 @@ const columns: DataTableColumns<RoleListItem> = [
     title: '操作',
     key: 'actions',
     width: 120,
+    fixed: 'right',
     render: () =>
       renderTableActions([
         renderTableActionButton({
@@ -149,9 +150,9 @@ const columns: DataTableColumns<RoleListItem> = [
     </header>
 
     <section
-      class="rounded-md border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+      class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <NSpace align="end" :size="12">
+      <NFlex align="end" size="medium">
         <NInput
           v-model:value="keyword"
           data-test="roles-keyword"
@@ -168,14 +169,12 @@ const columns: DataTableColumns<RoleListItem> = [
         />
         <NButton data-test="roles-search" type="primary" @click="handleSearch">查询</NButton>
         <NButton @click="handleReset">重置</NButton>
-      </NSpace>
+      </NFlex>
     </section>
 
     <NAlert v-if="loadErrorMessage" type="error">{{ loadErrorMessage }}</NAlert>
 
-    <section
-      class="rounded-md border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-    >
+    <section>
       <NDataTable
         :columns="columns"
         :data="rolesData.list"

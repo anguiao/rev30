@@ -2,7 +2,7 @@
 import { computed, h, ref, watch } from 'vue'
 import { useQuery } from '@pinia/colada'
 import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
-import { NAlert, NButton, NDataTable, NInput, NSelect, NSpace, NTag } from 'naive-ui'
+import { NAlert, NButton, NDataTable, NFlex, NInput, NSelect, NTag } from 'naive-ui'
 import type { DepartmentTreeNode } from '@rev30/shared'
 import {
   STATUS_FILTER_ALL,
@@ -152,6 +152,7 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
     title: '操作',
     key: 'actions',
     width: 180,
+    fixed: 'right',
     render: () =>
       renderTableActions([
         renderTableActionButton({
@@ -188,9 +189,9 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
     </header>
 
     <section
-      class="rounded-md border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+      class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <NSpace align="end" :size="12">
+      <NFlex align="end" size="medium">
         <NInput
           v-model:value="filters.keyword"
           data-test="departments-keyword"
@@ -207,14 +208,12 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
         />
         <NButton data-test="departments-search" type="primary" @click="handleSearch">查询</NButton>
         <NButton @click="handleReset">重置</NButton>
-      </NSpace>
+      </NFlex>
     </section>
 
     <NAlert v-if="loadErrorMessage" type="error">{{ loadErrorMessage }}</NAlert>
 
-    <section
-      class="rounded-md border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-    >
+    <section>
       <NDataTable
         :columns="columns"
         :data="rows"

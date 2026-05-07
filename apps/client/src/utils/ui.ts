@@ -1,5 +1,5 @@
 import { h } from 'vue'
-import { NButton, NSpace, type ButtonProps } from 'naive-ui'
+import { NButton, type ButtonProps } from 'naive-ui'
 import { useAuthStore } from '../stores/auth'
 
 type TableActionOptions = {
@@ -38,5 +38,5 @@ export function renderTableActions(actions: Array<ReturnType<typeof renderTableA
 
   return visibleActions.length === 0
     ? '-'
-    : h(NSpace, { size: 8 }, { default: () => visibleActions })
+    : h('div', { class: 'flex flex-wrap items-center gap-2' }, visibleActions)
 }

@@ -119,7 +119,7 @@ function createMenuOption(resource: ResourceTreeNode): MenuOption {
       v-else
       :collapsed="collapsed"
       :collapsed-icon-size="18"
-      :collapsed-width="64"
+      :collapsed-width="60"
       :options="menuOptions"
       :root-indent="20"
       :value="activeMenuKey"

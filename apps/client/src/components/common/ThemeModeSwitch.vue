@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h } from 'vue'
-import { NDropdown } from 'naive-ui'
+import { NButton, NDropdown } from 'naive-ui'
 import { storeToRefs } from 'pinia'
 import { type ThemeMode, themeModeOptions, useThemeStore } from '../../stores/theme'
 
@@ -45,25 +45,28 @@ function handleSelect(value: string | number) {
     :options="dropdownOptions"
     @select="handleSelect"
   >
-    <button
+    <NButton
       data-test="theme-mode-trigger"
-      type="button"
+      quaternary
+      :size="compact ? 'medium' : 'small'"
+      :circle="compact"
       :aria-label="`主题模式：${currentThemeOption.label}`"
-      class="flex items-center rounded-md py-1.5 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-      :class="compact ? 'justify-center px-2' : 'gap-1.5 px-2'"
     >
-      <span
-        data-test="theme-mode-trigger-icon"
-        class="inline-block size-3.5 shrink-0"
-        :class="currentThemeOption.icon"
-        aria-hidden="true"
-      />
-      <span v-if="!compact" class="hidden sm:inline-block">{{ currentThemeOption.label }}</span>
-      <span
-        v-if="!compact"
-        class="i-[lucide--chevron-down] inline-block size-3.5 shrink-0 opacity-50"
-        aria-hidden="true"
-      />
-    </button>
+      <template #icon>
+        <span
+          data-test="theme-mode-trigger-icon"
+          class="inline-block size-3.5 shrink-0"
+          :class="currentThemeOption.icon"
+          aria-hidden="true"
+        />
+      </template>
+      <template v-if="!compact">
+        <span class="hidden sm:inline-block">{{ currentThemeOption.label }}</span>
+        <span
+          class="relative -right-1 i-[lucide--chevron-down] inline-block size-3.5 shrink-0 opacity-50"
+          aria-hidden="true"
+        />
+      </template>
+    </NButton>
   </NDropdown>
 </template>

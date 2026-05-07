@@ -11,6 +11,8 @@
 }
 
 @theme inline {
+  --radius-ui: var(--app-border-radius);
+
   --color-primary: var(--app-primary-color);
   --color-primary-hover: var(--app-primary-color-hover);
   --color-primary-pressed: var(--app-primary-color-pressed);

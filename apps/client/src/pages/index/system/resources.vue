@@ -2,7 +2,7 @@
 import { computed, h, ref, watch } from 'vue'
 import { useQuery } from '@pinia/colada'
 import type { DataTableColumns, DataTableRowKey, SelectOption } from 'naive-ui'
-import { NAlert, NButton, NDataTable, NInput, NSelect, NSpace, NTag } from 'naive-ui'
+import { NAlert, NButton, NDataTable, NFlex, NInput, NSelect, NTag } from 'naive-ui'
 import {
   RESOURCE_TYPE_ACTION,
   RESOURCE_TYPE_DIRECTORY,
@@ -207,6 +207,7 @@ const columns: DataTableColumns<ResourceTreeNode> = [
     title: '操作',
     key: 'actions',
     width: 180,
+    fixed: 'right',
     render: (resource) =>
       renderTableActions([
         canCreateChildResource(resource)
@@ -245,9 +246,9 @@ const columns: DataTableColumns<ResourceTreeNode> = [
     </header>
 
     <section
-      class="rounded-md border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+      class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <NSpace align="end" :size="12">
+      <NFlex align="end" size="medium">
         <NInput
           v-model:value="filters.keyword"
           data-test="resources-keyword"
@@ -271,14 +272,12 @@ const columns: DataTableColumns<ResourceTreeNode> = [
         />
         <NButton data-test="resources-search" type="primary" @click="handleSearch">查询</NButton>
         <NButton @click="handleReset">重置</NButton>
-      </NSpace>
+      </NFlex>
     </section>
 
     <NAlert v-if="loadErrorMessage" type="error">{{ loadErrorMessage }}</NAlert>
 
-    <section
-      class="rounded-md border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-    >
+    <section>
       <NDataTable
         :columns="columns"
         :data="rows"

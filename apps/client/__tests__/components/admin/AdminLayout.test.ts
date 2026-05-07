@@ -40,6 +40,7 @@ const usersResourceId = '83d85ddf-9ebf-4f62-af9f-368af6d0d2a5'
 const docsResourceId = '78093266-57fe-4e0f-b420-ab55a67df4e9'
 const rolesResourceId = 'c54bf1f7-5c52-42ff-b055-b71f2606cc69'
 const externalDocsResourceId = '5fe0dd74-45fc-42fd-a3da-dfe6fcc60e4e'
+const adminSidebarCollapsedStorageKey = 'admin-sidebar-collapsed'
 
 function createMenuSession(): AuthTokenResponse {
   return {
@@ -258,6 +259,7 @@ describe('admin layout', () => {
     const { wrapper } = await mountLayout()
 
     await wrapper.get('[data-test="admin-sidebar-toggle"]').trigger('click')
+    await flushPromises()
 
     const menu = wrapper.getComponent(NMenu)
 
@@ -267,7 +269,7 @@ describe('admin layout', () => {
     expect(wrapper.get('[data-test="admin-sidebar-toggle"]').classes()).not.toContain('mt-0.5')
     expect(wrapper.get('[data-test="admin-sidebar-toggle-icon"]').classes()).toContain('size-4.5')
     expect(wrapper.get('[data-test="admin-shell"]').attributes('style')).toContain(
-      '--admin-sidebar-width: 64px',
+      '--admin-sidebar-width: 60px',
     )
     expect(wrapper.get('[data-test="admin-sidebar"]').classes()).not.toContain('px-3')
     expect(wrapper.get('[data-test="admin-sidebar"]').classes()).toContain('py-6')
@@ -292,10 +294,26 @@ describe('admin layout', () => {
     expect(wrapper.find('[data-test="theme-mode-trigger"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="admin-logout"]').exists()).toBe(true)
     expect(menu.props('collapsed')).toBe(true)
-    expect(menu.props('collapsedWidth')).toBe(64)
+    expect(menu.props('collapsedWidth')).toBe(60)
     expect(menu.props('collapsedIconSize')).toBe(18)
     expect(menu.props('value')).toBe(usersResourceId)
     expect(menu.props('expandedKeys')).toEqual([systemResourceId])
+    expect(localStorage.getItem(adminSidebarCollapsedStorageKey)).toBe('true')
+  })
+
+  it('restores the collapsed sidebar state from storage', async () => {
+    localStorage.setItem(adminSidebarCollapsedStorageKey, 'true')
+
+    const { wrapper } = await mountLayout()
+    const menu = wrapper.getComponent(NMenu)
+
+    expect(menu.props('collapsed')).toBe(true)
+    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').attributes('aria-label')).toBe(
+      '展开侧边栏',
+    )
+    expect(wrapper.get('[data-test="admin-shell"]').attributes('style')).toContain(
+      '--admin-sidebar-width: 60px',
+    )
   })
 
   it('renders empty state when there are no accessible menus', async () => {

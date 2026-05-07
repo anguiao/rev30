@@ -103,6 +103,7 @@ function confirmDeleteRole(role: RoleListItem) {
         await refreshRoles()
       } catch (error) {
         message.error(getSystemErrorMessage(error, '删除角色失败'))
+        return false
       }
     },
   })

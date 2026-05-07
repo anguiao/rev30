@@ -253,4 +253,28 @@ describe('roles page', () => {
     expect(listRolesMock).toHaveBeenCalledTimes(2)
     expect(listRolesMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
   })
+
+  it('keeps delete dialog open when deleting role fails', async () => {
+    deleteRoleMock.mockRejectedValue(new Error('删除失败'))
+    listRolesMock.mockResolvedValue(roleListResponse)
+
+    const { wrapper } = await mountRolesPage(['system:role:delete'])
+    await flushPromises()
+
+    await wrapper.get('[data-test="roles-delete"]').trigger('click')
+    await flushPromises()
+
+    const confirmButton = document.body.querySelector(
+      '[data-test="roles-delete-confirm"]',
+    ) as HTMLButtonElement | null
+
+    expect(confirmButton).not.toBeNull()
+
+    confirmButton?.click()
+    await flushPromises()
+
+    expect(deleteRoleMock).toHaveBeenCalledWith(roleListResponse.list[0]!.id)
+    expect(listRolesMock).toHaveBeenCalledTimes(1)
+    expect(document.body.querySelector('[data-test="roles-delete-confirm"]')).not.toBeNull()
+  })
 })

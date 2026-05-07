@@ -6,8 +6,6 @@ import postgres from 'postgres'
 import { applyPgliteMigrations } from './migrations'
 import * as schema from './schema'
 
-export type DbCloser = () => Promise<void>
-
 export async function createManagedDb() {
   if (process.env.NODE_ENV === 'production') {
     const databaseUrl = process.env.DATABASE_URL

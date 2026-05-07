@@ -2,8 +2,8 @@ import { PiniaColada } from '@pinia/colada'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
-import { can } from './directives/can'
-import './icons'
+import { canDirective } from './directives/can'
+import './plugins/iconify'
 import { router } from './router'
 import './style.css'
 
@@ -13,6 +13,6 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(PiniaColada)
 app.use(router)
-app.directive('can', can)
+app.directive('can', canDirective)
 
 app.mount('#app')

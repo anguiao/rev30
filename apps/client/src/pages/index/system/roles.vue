@@ -14,6 +14,7 @@ import {
   statusTagTypes,
   type StatusFilter,
 } from '../../../features/system'
+import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 const keyword = ref('')
 const status = ref<StatusFilter>(STATUS_FILTER_ALL)
@@ -32,7 +33,6 @@ const {
   data: rolesResponse,
   error: rolesError,
   isLoading,
-  refetch,
 } = useQuery({
   key: () => [
     'system',
@@ -69,10 +69,6 @@ function handleReset() {
     page: 1,
     pageSize: query.value.pageSize,
   }
-}
-
-function handleRefresh() {
-  void refetch()
 }
 
 const columns: DataTableColumns<RoleListItem> = [
@@ -116,18 +112,40 @@ const columns: DataTableColumns<RoleListItem> = [
     minWidth: 160,
     render: (role) => formatDateTime(role.createdAt),
   },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 120,
+    render: () =>
+      renderTableActions([
+        renderTableActionButton({
+          label: '编辑',
+          accessCode: 'system:role:update',
+          testId: 'roles-edit',
+        }),
+        renderTableActionButton({
+          label: '删除',
+          accessCode: 'system:role:delete',
+          type: 'error',
+          testId: 'roles-delete',
+        }),
+      ]),
+  },
 ]
 </script>
 
 <template>
   <main class="space-y-5">
-    <header>
+    <header class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-xl font-semibold">角色管理</h1>
         <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">
           共 {{ rolesData.total }} 个角色
         </p>
       </div>
+      <NButton v-can="'system:role:create'" data-test="roles-create" type="primary">
+        新增角色
+      </NButton>
     </header>
 
     <section
@@ -149,9 +167,6 @@ const columns: DataTableColumns<RoleListItem> = [
           class="w-40!"
         />
         <NButton data-test="roles-search" type="primary" @click="handleSearch">查询</NButton>
-        <NButton v-can="'system:role:list'" data-test="roles-refresh" @click="handleRefresh">
-          刷新
-        </NButton>
         <NButton @click="handleReset">重置</NButton>
       </NSpace>
     </section>

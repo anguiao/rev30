@@ -5,7 +5,7 @@ import type { AuthTokenResponse } from '@rev30/shared'
 import { defineComponent, nextTick, ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '../../src/stores/auth'
-import { can } from '../../src/directives/can'
+import { canDirective } from '../../src/directives/can'
 import { createTestPinia, disposeActiveTestPinia, session } from '../helpers/auth'
 
 enableAutoUnmount(afterEach)
@@ -23,7 +23,7 @@ function mountProtectedButton(template: string, authSession: AuthTokenResponse =
       global: {
         plugins: [pinia],
         directives: {
-          can,
+          can: canDirective,
         },
       },
     },
@@ -117,7 +117,7 @@ describe('v-can directive', () => {
         global: {
           plugins: [pinia],
           directives: {
-            can,
+            can: canDirective,
           },
         },
       },

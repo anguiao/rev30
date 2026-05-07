@@ -106,17 +106,25 @@ describe('users page', () => {
     expect(wrapper.text()).toContain(formatDateTime('2026-05-01T00:00:00.000Z'))
   })
 
-  it('shows the refresh button only when the user has list permission', async () => {
+  it('shows create and row actions according to permissions', async () => {
     listUsersMock.mockResolvedValue(userListResponse)
     const { wrapper: unauthorizedWrapper } = await mountUsersPage([])
     await flushPromises()
 
-    expect(unauthorizedWrapper.find('[data-test="users-refresh"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="users-create"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="users-edit"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="users-delete"]').exists()).toBe(false)
 
-    const { wrapper: authorizedWrapper } = await mountUsersPage(['system:user:list'])
+    const { wrapper: authorizedWrapper } = await mountUsersPage([
+      'system:user:create',
+      'system:user:update',
+      'system:user:delete',
+    ])
     await flushPromises()
 
-    expect(authorizedWrapper.find('[data-test="users-refresh"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="users-create"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="users-edit"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="users-delete"]').exists()).toBe(true)
   })
 
   it('submits keyword and status filters from page one', async () => {

@@ -4,15 +4,8 @@ import { Hono } from 'hono'
 import { type ResourceTreeNode, type User } from '@rev30/shared'
 import { createTestDb } from '../helpers/db'
 import { createSystemAccessFixture } from '../helpers/auth'
-import { createAuthMiddleware } from '../../src/middleware/auth'
+import { createAuthMiddleware, type AuthVariables } from '../../src/middleware/auth'
 import { roles } from '../../src/db/schema'
-
-type AuthVariables = {
-  currentUser: User
-  accessCodes: string[]
-  menus: ResourceTreeNode[]
-  isAdmin: boolean
-}
 
 describe('auth middleware', () => {
   it('exposes the authenticated user and admin access context to downstream handlers', async () => {

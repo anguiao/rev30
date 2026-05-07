@@ -1,12 +1,7 @@
 import type { MiddlewareHandler } from 'hono'
-import {
-  AUTH_ACTION_HEADER,
-  AUTH_ACTION_REFRESH,
-  type AuthSessionResponse,
-  type ResourceTreeNode,
-  type User,
-} from '@rev30/shared'
+import { AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH, type User } from '@rev30/shared'
 import type { Db } from '../db'
+import type { ResolvedUserAccess } from '../modules/auth/access'
 import { parseBearerToken } from '../modules/auth/bearer'
 import { readAuthConfig } from '../modules/auth/config'
 import { AuthAccessTokenExpiredError, AuthUnauthorizedError } from '../modules/auth/errors'
@@ -14,10 +9,7 @@ import { createAuthService } from '../modules/auth/service'
 
 export type AuthVariables = {
   currentUser: User
-  accessCodes: AuthSessionResponse['accessCodes']
-  menus: ResourceTreeNode[]
-  isAdmin: boolean
-}
+} & ResolvedUserAccess
 
 export type AuthEnv = {
   Variables: AuthVariables

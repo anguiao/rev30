@@ -6,7 +6,7 @@ import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-rout
 import { vi } from 'vitest'
 import type { AuthTokenResponse } from '@rev30/shared'
 import { USER_STATUS_ENABLED } from '@rev30/shared'
-import { can } from '../../src/directives/can'
+import { canDirective } from '../../src/directives/can'
 import { useAuthStore } from '../../src/stores/auth'
 
 export const session: AuthTokenResponse = {
@@ -127,7 +127,7 @@ export async function mountAuthRoute(
       global: {
         plugins: [pinia, PiniaColada, router],
         directives: {
-          can,
+          can: canDirective,
         },
       },
     },

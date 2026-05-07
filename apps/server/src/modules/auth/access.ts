@@ -2,35 +2,16 @@ import {
   RESOURCE_STATUS_ENABLED,
   RESOURCE_TYPE_ACTION,
   ROLE_STATUS_ENABLED,
+  type AuthSessionResponse,
   type Resource,
   type ResourceTreeNode,
 } from '@rev30/shared'
-import { and, asc, desc, eq, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, getTableColumns, isNull } from 'drizzle-orm'
 import type { Db } from '../../db'
 import { roleResources, roles, systemResources, userRoles } from '../../db/schema'
-import { toResourceTree } from '../system/resources/mapper'
+import { toResourceTree, type ResourceRow } from '../system/resources/mapper'
 
-type AccessResource = {
-  id: string
-  parentId: string | null
-  type: string
-  name: string
-  code: string
-  path: string | null
-  externalUrl: string | null
-  icon: string | null
-  hidden: boolean
-  status: number
-  sortOrder: number
-  createdAt: Date
-  updatedAt: Date
-  deletedAt: Date | null
-  openTarget: string
-}
-
-export type UserAccess = {
-  accessCodes: string[]
-  menus: ResourceTreeNode[]
+export type ResolvedUserAccess = Pick<AuthSessionResponse, 'accessCodes' | 'menus'> & {
   isAdmin: boolean
 }
 
@@ -50,24 +31,6 @@ function filterMenuNodes(nodes: ResourceTreeNode[]): ResourceTreeNode[] {
   return nodes
     .filter(isVisibleMenuResource)
     .map((node) => ({ ...node, children: filterMenuNodes(node.children) }))
-}
-
-const resourceSelect = {
-  id: systemResources.id,
-  parentId: systemResources.parentId,
-  type: systemResources.type,
-  name: systemResources.name,
-  code: systemResources.code,
-  path: systemResources.path,
-  externalUrl: systemResources.externalUrl,
-  openTarget: systemResources.openTarget,
-  icon: systemResources.icon,
-  hidden: systemResources.hidden,
-  status: systemResources.status,
-  sortOrder: systemResources.sortOrder,
-  createdAt: systemResources.createdAt,
-  updatedAt: systemResources.updatedAt,
-  deletedAt: systemResources.deletedAt,
 }
 
 export function createUserAccessService(database: Db) {
@@ -90,7 +53,7 @@ export function createUserAccessService(database: Db) {
 
   async function listEnabledResourcesForAdmin() {
     const rows = await database
-      .select(resourceSelect)
+      .select()
       .from(systemResources)
       .where(
         and(eq(systemResources.status, RESOURCE_STATUS_ENABLED), isNull(systemResources.deletedAt)),
@@ -102,7 +65,7 @@ export function createUserAccessService(database: Db) {
 
   async function listEnabledResourcesForUser(userId: string) {
     const rows = await database
-      .select(resourceSelect)
+      .select(getTableColumns(systemResources))
       .from(userRoles)
       .innerJoin(roles, eq(roles.id, userRoles.roleId))
       .innerJoin(roleResources, eq(roleResources.roleId, roles.id))
@@ -122,14 +85,14 @@ export function createUserAccessService(database: Db) {
   }
 
   return {
-    async resolveUserAccess(userId: string): Promise<UserAccess> {
+    async resolveUserAccess(userId: string): Promise<ResolvedUserAccess> {
       const activeRoles = await findActiveRoles(userId)
       const isAdmin = activeRoles.some((role) => role.code === 'admin')
       const resourceRows = isAdmin
         ? await listEnabledResourcesForAdmin()
         : await listEnabledResourcesForUser(userId)
 
-      const uniqueRowsByCode = new Map<string, AccessResource>()
+      const uniqueRowsByCode = new Map<string, ResourceRow>()
       for (const row of resourceRows) {
         if (!uniqueRowsByCode.has(row.code)) {
           uniqueRowsByCode.set(row.code, row)

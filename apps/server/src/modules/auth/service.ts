@@ -3,6 +3,7 @@ import {
   type AuthLoginInput,
   type AuthRegisterInput,
   type AuthTokenResponse,
+  type User,
 } from '@rev30/shared'
 import type { Db } from '../../db'
 import { toUserConflictError } from '../system/users/errors'
@@ -22,17 +23,6 @@ import { createTokenPair, verifyAccessToken, verifyRefreshToken } from './tokens
 const dummyPasswordHash =
   'scrypt$rev30-auth-dummy-salt$gqCTp4XOR3Xf1LvfHOITCoogF-vpgXvmPkOuxWGr-ChkgWkyXG0_Zf19YMXZ_Oy3mXaxJAVa2LGtlr8sJPJDjA'
 
-type AuthSession = AuthTokenResponse & {
-  refreshToken: string
-}
-
-type AuthSessionTokens = {
-  accessToken: string
-  refreshToken: string
-  tokenType: 'Bearer'
-  expiresIn: number
-}
-
 async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
   try {
     return await operation()
@@ -51,7 +41,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
   const repository = createAuthRepository(database)
   const accessService = createUserAccessService(database)
 
-  async function createTokenResponse(userId: string): Promise<AuthSessionTokens> {
+  async function createTokenResponse(userId: string) {
     const tokenPair = await createTokenPair(userId, config)
 
     await repository.createRefreshSession({
@@ -63,17 +53,16 @@ export function createAuthService(database: Db, config: AuthConfig) {
     return {
       accessToken: tokenPair.accessToken,
       refreshToken: tokenPair.refreshToken,
-      tokenType: 'Bearer',
+      tokenType: 'Bearer' as const,
       expiresIn: tokenPair.accessExpiresIn,
     }
   }
 
   async function createAuthSession(
-    userId: string,
-    user: AuthTokenResponse['user'],
-  ): Promise<AuthSession> {
-    const access = await accessService.resolveUserAccess(userId)
-    const tokens = await createTokenResponse(userId)
+    user: User,
+  ): Promise<AuthTokenResponse & { refreshToken: string }> {
+    const access = await accessService.resolveUserAccess(user.id)
+    const tokens = await createTokenResponse(user.id)
 
     return {
       ...tokens,
@@ -84,15 +73,15 @@ export function createAuthService(database: Db, config: AuthConfig) {
   }
 
   return {
-    async register(input: AuthRegisterInput): Promise<AuthSession> {
+    async register(input: AuthRegisterInput) {
       const passwordHash = await hashPassword(input.password)
       const created = await withUserUniqueConflict(() => repository.createUser(input, passwordHash))
       const user = toUser(created.user, created.departments, created.roles)
 
-      return createAuthSession(created.user.id, user)
+      return createAuthSession(user)
     },
 
-    async login(input: AuthLoginInput): Promise<AuthSession> {
+    async login(input: AuthLoginInput) {
       const account = await repository.findActiveUserCredentialByUsername(input.username)
       const passwordHash = account?.credential.passwordHash ?? dummyPasswordHash
       const passwordMatches = await verifyPassword(input.password, passwordHash)
@@ -103,10 +92,10 @@ export function createAuthService(database: Db, config: AuthConfig) {
 
       const user = toUser(account.user, account.departments, account.roles)
 
-      return createAuthSession(account.user.id, user)
+      return createAuthSession(user)
     },
 
-    async refresh(refreshToken: string | undefined): Promise<AuthSession> {
+    async refresh(refreshToken: string | undefined) {
       if (!refreshToken) {
         throw new AuthInvalidRefreshTokenError()
       }
@@ -127,7 +116,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
 
       const user = toUser(account.user, account.departments, account.roles)
 
-      return createAuthSession(account.user.id, user)
+      return createAuthSession(user)
     },
 
     async logout(refreshToken: string | undefined) {

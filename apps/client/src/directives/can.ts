@@ -1,79 +1,67 @@
-import {
-  effectScope,
-  ref,
-  watchEffect,
-  type EffectScope,
-  type ObjectDirective,
-  type Ref,
-} from 'vue'
+import { ref, watchEffect, type DirectiveBinding, type ObjectDirective, type Ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 
 type CanValue = string | string[]
-type CanModifiers = Partial<Record<string, boolean>>
-type CanDirectiveState = {
+type CanModifier = 'all' | 'any'
+type CanBinding = DirectiveBinding<CanValue, CanModifier>
+type DirectiveState = {
   anchor: Comment
-  scope: EffectScope
+  stop: ReturnType<typeof watchEffect>
   value: Ref<CanValue>
-  modifiers: Ref<CanModifiers>
+  modifiers: Ref<CanBinding['modifiers']>
 }
 
-const directiveStateMap = new WeakMap<HTMLElement, CanDirectiveState>()
+const directiveStateMap = new WeakMap<HTMLElement, DirectiveState>()
 
-function normalizeCodes(value: CanValue) {
-  return typeof value === 'string' ? [value] : value
-}
-
-function hasPermission(value: CanValue, modifiers: CanModifiers) {
+function hasPermission(value: CanValue, modifiers: CanBinding['modifiers']) {
   const auth = useAuthStore()
-  const codes = normalizeCodes(value)
-
-  if (codes.length === 0) {
-    return false
-  }
 
   if (typeof value === 'string') {
     return auth.can(value)
   }
 
+  if (value.length === 0) {
+    return false
+  }
+
   return modifiers.any ? auth.canAny(value) : auth.canAll(value)
 }
 
-function syncElement(el: HTMLElement, anchor: Comment, value: CanValue, modifiers: CanModifiers) {
-  if (!hasPermission(value, modifiers)) {
+function syncElement(el: HTMLElement, anchor: Comment, allowed: boolean) {
+  if (!allowed) {
     el.remove()
     return
   }
 
   const parentNode = anchor.parentNode
 
-  if (parentNode === null || el.parentNode === parentNode) {
+  if (parentNode === null || el.previousSibling === anchor) {
     return
   }
 
   parentNode.insertBefore(el, anchor.nextSibling)
 }
 
-function createDirectiveState(el: HTMLElement, value: CanValue, modifiers: CanModifiers) {
+function createDirectiveState(el: HTMLElement, { value, modifiers }: CanBinding) {
   const anchor = document.createComment('v-can')
+  const valueRef = ref(value)
+  const modifiersRef = ref(modifiers)
+
   el.parentNode?.insertBefore(anchor, el)
 
-  const state: CanDirectiveState = {
+  const state: DirectiveState = {
     anchor,
-    scope: effectScope(),
-    value: ref(value),
-    modifiers: ref(modifiers),
+    stop: watchEffect(() => {
+      syncElement(el, anchor, hasPermission(valueRef.value, modifiersRef.value))
+    }),
+    value: valueRef,
+    modifiers: modifiersRef,
   }
-
-  state.scope.run(() => {
-    watchEffect(() => {
-      syncElement(el, state.anchor, state.value.value, state.modifiers.value)
-    })
-  })
 
   directiveStateMap.set(el, state)
 }
 
-function updateDirectiveState(el: HTMLElement, value: CanValue, modifiers: CanModifiers) {
+function updateDirectiveState(el: HTMLElement, { value, modifiers }: CanBinding) {
   const state = directiveStateMap.get(el)
 
   if (state === undefined) {
@@ -91,19 +79,13 @@ function disposeDirectiveState(el: HTMLElement) {
     return
   }
 
-  state.scope.stop()
+  state.stop()
   state.anchor.remove()
   directiveStateMap.delete(el)
 }
 
-export const can: ObjectDirective<HTMLElement, CanValue> = {
-  mounted(el, binding) {
-    createDirectiveState(el, binding.value, binding.modifiers)
-  },
-  updated(el, binding) {
-    updateDirectiveState(el, binding.value, binding.modifiers)
-  },
-  unmounted(el) {
-    disposeDirectiveState(el)
-  },
+export const canDirective: ObjectDirective<HTMLElement, CanValue, CanModifier> = {
+  mounted: createDirectiveState,
+  updated: updateDirectiveState,
+  unmounted: disposeDirectiveState,
 }

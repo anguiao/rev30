@@ -145,17 +145,27 @@ describe('resources page', () => {
     expect(wrapper.findComponent(NPagination).exists()).toBe(false)
   })
 
-  it('shows the refresh button only when the user has list permission', async () => {
+  it('shows create and row actions according to permissions', async () => {
     getResourceTreeMock.mockResolvedValue(resourceTreeResponse)
     const { wrapper: unauthorizedWrapper } = await mountResourcesPage([])
     await flushPromises()
 
-    expect(unauthorizedWrapper.find('[data-test="resources-refresh"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="resources-create"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="resources-create-child"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="resources-edit"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="resources-delete"]').exists()).toBe(false)
 
-    const { wrapper: authorizedWrapper } = await mountResourcesPage(['system:resource:list'])
+    const { wrapper: authorizedWrapper } = await mountResourcesPage([
+      'system:resource:create',
+      'system:resource:update',
+      'system:resource:delete',
+    ])
     await flushPromises()
 
-    expect(authorizedWrapper.find('[data-test="resources-refresh"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="resources-create"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="resources-create-child"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="resources-edit"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="resources-delete"]').exists()).toBe(true)
   })
 
   it('filters by action type while preserving parent context', async () => {

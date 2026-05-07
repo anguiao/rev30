@@ -93,17 +93,25 @@ describe('roles page', () => {
     expect(wrapper.text()).toContain('1')
   })
 
-  it('shows the refresh button only when the user has list permission', async () => {
+  it('shows create and row actions according to permissions', async () => {
     listRolesMock.mockResolvedValue(roleListResponse)
     const { wrapper: unauthorizedWrapper } = await mountRolesPage([])
     await flushPromises()
 
-    expect(unauthorizedWrapper.find('[data-test="roles-refresh"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="roles-create"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="roles-edit"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="roles-delete"]').exists()).toBe(false)
 
-    const { wrapper: authorizedWrapper } = await mountRolesPage(['system:role:list'])
+    const { wrapper: authorizedWrapper } = await mountRolesPage([
+      'system:role:create',
+      'system:role:update',
+      'system:role:delete',
+    ])
     await flushPromises()
 
-    expect(authorizedWrapper.find('[data-test="roles-refresh"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="roles-create"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="roles-edit"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="roles-delete"]').exists()).toBe(true)
   })
 
   it('submits keyword and status filters from page one', async () => {

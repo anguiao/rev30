@@ -127,17 +127,27 @@ describe('departments page', () => {
     expect(wrapper.findComponent(NPagination).exists()).toBe(false)
   })
 
-  it('shows the refresh button only when the user has list permission', async () => {
+  it('shows create and row actions according to permissions', async () => {
     getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
     const { wrapper: unauthorizedWrapper } = await mountDepartmentsPage([])
     await flushPromises()
 
-    expect(unauthorizedWrapper.find('[data-test="departments-refresh"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="departments-create"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="departments-create-child"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="departments-edit"]').exists()).toBe(false)
+    expect(unauthorizedWrapper.find('[data-test="departments-delete"]').exists()).toBe(false)
 
-    const { wrapper: authorizedWrapper } = await mountDepartmentsPage(['system:department:list'])
+    const { wrapper: authorizedWrapper } = await mountDepartmentsPage([
+      'system:department:create',
+      'system:department:update',
+      'system:department:delete',
+    ])
     await flushPromises()
 
-    expect(authorizedWrapper.find('[data-test="departments-refresh"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="departments-create"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="departments-create-child"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="departments-edit"]').exists()).toBe(true)
+    expect(authorizedWrapper.find('[data-test="departments-delete"]').exists()).toBe(true)
   })
 
   it('filters by child keyword and preserves parent context', async () => {

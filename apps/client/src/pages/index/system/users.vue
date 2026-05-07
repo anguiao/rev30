@@ -14,6 +14,7 @@ import {
   statusTagTypes,
   type StatusFilter,
 } from '../../../features/system'
+import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 const keyword = ref('')
 const status = ref<StatusFilter>(STATUS_FILTER_ALL)
@@ -32,7 +33,6 @@ const {
   data: usersResponse,
   error: usersError,
   isLoading,
-  refetch,
 } = useQuery({
   key: () => [
     'system',
@@ -89,10 +89,6 @@ function handleReset() {
   }
 }
 
-function handleRefresh() {
-  void refetch()
-}
-
 const columns: DataTableColumns<UserListItem> = [
   {
     title: '用户名',
@@ -142,18 +138,40 @@ const columns: DataTableColumns<UserListItem> = [
     minWidth: 160,
     render: (user) => formatDateTime(user.createdAt),
   },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 120,
+    render: () =>
+      renderTableActions([
+        renderTableActionButton({
+          label: '编辑',
+          accessCode: 'system:user:update',
+          testId: 'users-edit',
+        }),
+        renderTableActionButton({
+          label: '删除',
+          accessCode: 'system:user:delete',
+          type: 'error',
+          testId: 'users-delete',
+        }),
+      ]),
+  },
 ]
 </script>
 
 <template>
   <main class="space-y-5">
-    <header>
+    <header class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-xl font-semibold">用户管理</h1>
         <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">
           共 {{ usersData.total }} 个用户
         </p>
       </div>
+      <NButton v-can="'system:user:create'" data-test="users-create" type="primary">
+        新增用户
+      </NButton>
     </header>
 
     <section
@@ -175,9 +193,6 @@ const columns: DataTableColumns<UserListItem> = [
           class="w-40!"
         />
         <NButton data-test="users-search" type="primary" @click="handleSearch">查询</NButton>
-        <NButton v-can="'system:user:list'" data-test="users-refresh" @click="handleRefresh">
-          刷新
-        </NButton>
         <NButton @click="handleReset">重置</NButton>
       </NSpace>
     </section>

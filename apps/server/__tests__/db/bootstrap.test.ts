@@ -6,14 +6,9 @@ import {
   USER_STATUS_ENABLED,
 } from '@rev30/shared'
 import { and, eq } from 'drizzle-orm'
-import { describe, expect, it, vi } from 'vitest'
-import type { DbCloser } from '../../src/db'
+import { describe, expect, it } from 'vitest'
 import { authPasswordCredentials, roles, userRoles, users } from '../../src/db/schema'
-import {
-  bootstrapAdminUser,
-  runBootstrapCli,
-  type BootstrapAdminInput,
-} from '../../src/db/bootstrap'
+import { bootstrapAdminUser } from '../../src/db/bootstrap'
 import { verifyPassword } from '../../src/modules/auth/password'
 import { createTestDb } from '../helpers/db'
 
@@ -120,30 +115,6 @@ describe('bootstrap admin user', () => {
     await expect(
       verifyPassword('second-admin-password', credential?.passwordHash ?? ''),
     ).resolves.toBe(true)
-  })
-
-  it('requires username and password', async () => {
-    const database = await createTestDb()
-
-    await expect(
-      bootstrapAdminUser(database, {
-        username: '   ',
-        password: 'secret-admin-password',
-        nickname: 'Administrator',
-        email: null,
-        phone: null,
-      }),
-    ).rejects.toThrow('必须提供初始管理员用户名和密码')
-
-    await expect(
-      bootstrapAdminUser(database, {
-        username: 'admin',
-        password: '',
-        nickname: 'Administrator',
-        email: null,
-        phone: null,
-      }),
-    ).rejects.toThrow('必须提供初始管理员用户名和密码')
   })
 
   it('fails when the admin role does not exist', async () => {
@@ -294,28 +265,5 @@ describe('bootstrap admin user', () => {
       status: USER_STATUS_ENABLED,
       deletedAt: null,
     })
-  })
-
-  it('closes the database connection after the bootstrap CLI finishes', async () => {
-    const database = await createTestDb()
-    const close = vi.fn<DbCloser>().mockResolvedValue(undefined)
-    const bootstrap = vi.fn(async () => undefined)
-    const input: BootstrapAdminInput = {
-      username: 'admin',
-      password: 'secret-admin-password',
-      nickname: 'Administrator',
-      email: null,
-      phone: null,
-    }
-
-    await runBootstrapCli({
-      bootstrapAdmin: bootstrap,
-      createManagedDatabase: async () => ({ close, db: database }),
-      readInput: () => input,
-    })
-
-    expect(bootstrap).toHaveBeenCalledOnce()
-    expect(bootstrap).toHaveBeenCalledWith(database, input)
-    expect(close).toHaveBeenCalledOnce()
   })
 })

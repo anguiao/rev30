@@ -17,6 +17,7 @@ import {
   type StatusFilter,
   type SystemStatus,
 } from '../../../features/system'
+import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 type DepartmentFilters = {
   keyword: string
@@ -43,7 +44,6 @@ const {
   data: departmentTree,
   error: departmentTreeError,
   isLoading,
-  refetch,
 } = useQuery({
   key: () => ['system', 'departments', 'tree'],
   placeholderData: () => emptyDepartmentTree,
@@ -104,10 +104,6 @@ function handleReset() {
   }
 }
 
-function handleRefresh() {
-  void refetch()
-}
-
 function collectTreeIds(nodes: DepartmentTreeNode[]): DataTableRowKey[] {
   return nodes.flatMap((node) => [node.id, ...collectTreeIds(node.children)])
 }
@@ -152,16 +148,43 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
     minWidth: 180,
     render: (department) => formatDateTime(department.createdAt),
   },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 180,
+    render: () =>
+      renderTableActions([
+        renderTableActionButton({
+          label: '新增下级',
+          accessCode: 'system:department:create',
+          testId: 'departments-create-child',
+        }),
+        renderTableActionButton({
+          label: '编辑',
+          accessCode: 'system:department:update',
+          testId: 'departments-edit',
+        }),
+        renderTableActionButton({
+          label: '删除',
+          accessCode: 'system:department:delete',
+          type: 'error',
+          testId: 'departments-delete',
+        }),
+      ]),
+  },
 ]
 </script>
 
 <template>
   <main class="space-y-5">
-    <header>
+    <header class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-xl font-semibold">部门管理</h1>
         <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ visibleCount }} 个部门</p>
       </div>
+      <NButton v-can="'system:department:create'" data-test="departments-create" type="primary">
+        新增部门
+      </NButton>
     </header>
 
     <section
@@ -183,13 +206,6 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
           class="w-40!"
         />
         <NButton data-test="departments-search" type="primary" @click="handleSearch">查询</NButton>
-        <NButton
-          v-can="'system:department:list'"
-          data-test="departments-refresh"
-          @click="handleRefresh"
-        >
-          刷新
-        </NButton>
         <NButton @click="handleReset">重置</NButton>
       </NSpace>
     </section>

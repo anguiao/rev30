@@ -25,6 +25,7 @@ import {
   type StatusFilter,
   type SystemStatus,
 } from '../../../features/system'
+import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 type ResourceTypeFilter = ResourceType | 'all'
 
@@ -57,7 +58,6 @@ const {
   data: resourceTree,
   error: resourceTreeError,
   isLoading,
-  refetch,
 } = useQuery({
   key: () => ['system', 'resources', 'tree'],
   placeholderData: () => emptyResourceTree,
@@ -133,10 +133,6 @@ function handleReset() {
   }
 }
 
-function handleRefresh() {
-  void refetch()
-}
-
 function collectTreeIds(nodes: ResourceTreeNode[]): DataTableRowKey[] {
   return nodes.flatMap((node) => [node.id, ...collectTreeIds(node.children)])
 }
@@ -147,6 +143,10 @@ function handleUpdateExpandedRowKeys(keys: DataTableRowKey[]) {
 
 function renderPathValue(resource: ResourceTreeNode) {
   return resource.path ?? resource.externalUrl ?? '-'
+}
+
+function canCreateChildResource(resource: ResourceTreeNode) {
+  return resource.type === RESOURCE_TYPE_DIRECTORY || resource.type === RESOURCE_TYPE_MENU
 }
 
 const columns: DataTableColumns<ResourceTreeNode> = [
@@ -203,16 +203,45 @@ const columns: DataTableColumns<ResourceTreeNode> = [
     minWidth: 180,
     render: (resource) => formatDateTime(resource.createdAt),
   },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 180,
+    render: (resource) =>
+      renderTableActions([
+        canCreateChildResource(resource)
+          ? renderTableActionButton({
+              label: '新增下级',
+              accessCode: 'system:resource:create',
+              testId: 'resources-create-child',
+            })
+          : null,
+        renderTableActionButton({
+          label: '编辑',
+          accessCode: 'system:resource:update',
+          testId: 'resources-edit',
+        }),
+        renderTableActionButton({
+          label: '删除',
+          accessCode: 'system:resource:delete',
+          type: 'error',
+          testId: 'resources-delete',
+        }),
+      ]),
+  },
 ]
 </script>
 
 <template>
   <main class="space-y-5">
-    <header>
+    <header class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-xl font-semibold">资源管理</h1>
         <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ visibleCount }} 个资源</p>
       </div>
+      <NButton v-can="'system:resource:create'" data-test="resources-create" type="primary">
+        新增资源
+      </NButton>
     </header>
 
     <section
@@ -241,13 +270,6 @@ const columns: DataTableColumns<ResourceTreeNode> = [
           class="w-40!"
         />
         <NButton data-test="resources-search" type="primary" @click="handleSearch">查询</NButton>
-        <NButton
-          v-can="'system:resource:list'"
-          data-test="resources-refresh"
-          @click="handleRefresh"
-        >
-          刷新
-        </NButton>
         <NButton @click="handleReset">重置</NButton>
       </NSpace>
     </section>

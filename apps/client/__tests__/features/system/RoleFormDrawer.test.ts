@@ -197,10 +197,10 @@ describe('RoleFormDrawer', () => {
     await wrapper.get('[data-test="role-form-name"] input').setValue('运营')
     await wrapper.get('[data-test="role-form-code"] input').setValue('operator')
     wrapper.getComponent(NInputNumber).vm.$emit('update:value', 2)
-    wrapper.get('[data-test="role-form-resources"]').getComponent(NTree).vm.$emit(
-      'update:checkedKeys',
-      [actionResourceId],
-    )
+    wrapper
+      .get('[data-test="role-form-resources"]')
+      .getComponent(NTree)
+      .vm.$emit('update:checkedKeys', [actionResourceId])
     await flushPromises()
 
     await submitForm(wrapper)

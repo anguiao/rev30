@@ -251,12 +251,7 @@ watch(
 </script>
 
 <template>
-  <NDrawer
-    :show="show"
-    placement="right"
-    :width="640"
-    @update:show="emit('update:show', $event)"
-  >
+  <NDrawer :show="show" placement="right" :width="640" @update:show="emit('update:show', $event)">
     <NDrawerContent :title="drawerTitle" closable>
       <div class="flex flex-col gap-4">
         <NAlert v-if="loadError" type="error" :show-icon="false">

@@ -2,10 +2,24 @@
 import { computed, h, ref } from 'vue'
 import { useQuery } from '@pinia/colada'
 import type { DataTableColumns } from 'naive-ui'
-import { NAlert, NButton, NDataTable, NFlex, NInput, NPagination, NSelect, NTag } from 'naive-ui'
+import {
+  NAlert,
+  NButton,
+  NDataTable,
+  NFlex,
+  NInput,
+  NPagination,
+  NSelect,
+  NTag,
+  useDialog,
+  useMessage,
+} from 'naive-ui'
+import type { ButtonProps } from 'naive-ui'
 import type { UserListItem, UserListQuery, UserListResponse } from '@rev30/shared'
+import UserFormDrawer from '../../../features/system/UserFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
+  deleteUser,
   formatDateTime,
   getSystemErrorMessage,
   listUsers,
@@ -16,8 +30,12 @@ import {
 } from '../../../features/system'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
+const dialog = useDialog()
+const message = useMessage()
 const keyword = ref('')
 const status = ref<StatusFilter>(STATUS_FILTER_ALL)
+const userDrawerVisible = ref(false)
+const editingUserId = ref<string | null>(null)
 const query = ref<UserListQuery>({
   page: 1,
   pageSize: 20,
@@ -33,6 +51,7 @@ const {
   data: usersResponse,
   error: usersError,
   isLoading,
+  refetch,
 } = useQuery({
   key: () => [
     'system',
@@ -50,6 +69,40 @@ const usersData = computed(() => usersResponse.value ?? emptyUsersData)
 const loadErrorMessage = computed(() =>
   usersError.value === null ? '' : getSystemErrorMessage(usersError.value, '加载用户失败'),
 )
+
+async function refreshUsers() {
+  await refetch()
+}
+
+function openEditUserDrawer(userId: string) {
+  editingUserId.value = userId
+  userDrawerVisible.value = true
+}
+
+function confirmDeleteUser(user: UserListItem) {
+  const positiveButtonProps: ButtonProps & Record<string, unknown> = {
+    type: 'error',
+    'data-test': 'users-delete-confirm',
+  }
+
+  dialog.warning({
+    title: '确认删除',
+    content: `确定删除用户“${user.nickname || user.username}”吗？`,
+    positiveText: '删除',
+    negativeText: '取消',
+    positiveButtonProps,
+    async onPositiveClick() {
+      try {
+        await deleteUser(user.id)
+        message.success('删除用户成功')
+        await refreshUsers()
+      } catch (error) {
+        message.error(getSystemErrorMessage(error, '删除用户失败'))
+        return false
+      }
+    },
+  })
+}
 
 function summarizeNames(items: Array<{ name: string }>) {
   const names = items.map((item) => item.name)
@@ -143,16 +196,18 @@ const columns: DataTableColumns<UserListItem> = [
     key: 'actions',
     width: 120,
     fixed: 'right',
-    render: () =>
+    render: (user) =>
       renderTableActions([
         renderTableActionButton({
           label: '编辑',
           accessCode: 'system:user:update',
+          onClick: () => openEditUserDrawer(user.id),
           testId: 'users-edit',
         }),
         renderTableActionButton({
           label: '删除',
           accessCode: 'system:user:delete',
+          onClick: () => confirmDeleteUser(user),
           type: 'error',
           testId: 'users-delete',
         }),
@@ -217,5 +272,11 @@ const columns: DataTableColumns<UserListItem> = [
         />
       </div>
     </section>
+
+    <UserFormDrawer
+      v-model:show="userDrawerVisible"
+      :user-id="editingUserId"
+      @saved="refreshUsers"
+    />
   </main>
 </template>

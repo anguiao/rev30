@@ -4,7 +4,8 @@ import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NPagination, NSelect } from 'naive-ui'
 import { USER_STATUS_DISABLED, USER_STATUS_ENABLED, type UserListResponse } from '@rev30/shared'
-import { formatDateTime, listUsers } from '../../../src/features/system'
+import { defineComponent, h } from 'vue'
+import { deleteUser, formatDateTime, listUsers } from '../../../src/features/system'
 import UsersPage from '../../../src/pages/index/system/users.vue'
 import {
   disposeActiveTestPinia,
@@ -15,14 +16,41 @@ import {
 
 enableAutoUnmount(afterEach)
 
+vi.mock('../../../src/features/system/UserFormDrawer.vue', () => ({
+  default: defineComponent({
+    name: 'UserFormDrawerStub',
+    props: {
+      show: {
+        type: Boolean,
+        required: true,
+      },
+      userId: {
+        type: String,
+        default: null,
+      },
+    },
+    emits: ['update:show', 'saved'],
+    setup(props) {
+      return () =>
+        h('div', {
+          'data-show': String(props.show),
+          'data-test': 'user-form-drawer',
+          'data-user-id': props.userId ?? '',
+        })
+    },
+  }),
+}))
+
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
+  deleteUser: vi.fn(),
   listUsers: vi.fn(),
   getSystemErrorMessage: vi.fn((error: unknown, fallback: string) =>
     error instanceof Error ? error.message : fallback,
   ),
 }))
 
+const deleteUserMock = vi.mocked(deleteUser)
 const listUsersMock = vi.mocked(listUsers)
 
 const userListResponse: UserListResponse = {
@@ -73,10 +101,12 @@ async function mountUsersPage(accessCodes: string[] = session.accessCodes) {
 
 describe('users page', () => {
   beforeEach(() => {
+    deleteUserMock.mockReset()
     listUsersMock.mockReset()
     localStorage.clear()
     document.documentElement.className = ''
     document.documentElement.style.colorScheme = ''
+    document.body.innerHTML = ''
     stubPreferredDark(false)
   })
 
@@ -125,6 +155,82 @@ describe('users page', () => {
     expect(authorizedWrapper.find('[data-test="users-create"]').exists()).toBe(true)
     expect(authorizedWrapper.find('[data-test="users-edit"]').exists()).toBe(true)
     expect(authorizedWrapper.find('[data-test="users-delete"]').exists()).toBe(true)
+  })
+
+  it('keeps create button visible by permission but does not open drawer on click', async () => {
+    listUsersMock.mockResolvedValue(userListResponse)
+    const { wrapper } = await mountUsersPage(['system:user:create'])
+    await flushPromises()
+
+    await wrapper.get('[data-test="users-create"]').trigger('click')
+    await flushPromises()
+
+    const drawer = wrapper.get('[data-test="user-form-drawer"]')
+    expect(drawer.attributes('data-show')).toBe('false')
+    expect(drawer.attributes('data-user-id')).toBe('')
+  })
+
+  it('opens edit drawer with selected user id', async () => {
+    const firstUser = userListResponse.list[0]!
+    listUsersMock.mockResolvedValue(userListResponse)
+    const { wrapper } = await mountUsersPage(['system:user:update'])
+    await flushPromises()
+
+    await wrapper.get('[data-test="users-edit"]').trigger('click')
+    await flushPromises()
+
+    const drawer = wrapper.get('[data-test="user-form-drawer"]')
+    expect(drawer.attributes('data-show')).toBe('true')
+    expect(drawer.attributes('data-user-id')).toBe(firstUser.id)
+  })
+
+  it('deletes a user after confirmation and refreshes the list', async () => {
+    const firstUser = userListResponse.list[0]!
+    listUsersMock.mockResolvedValue(userListResponse)
+    deleteUserMock.mockResolvedValue(undefined)
+
+    const { wrapper } = await mountUsersPage(['system:user:delete'])
+    await flushPromises()
+
+    await wrapper.get('[data-test="users-delete"]').trigger('click')
+    await flushPromises()
+
+    const confirmButton = document.body.querySelector(
+      '[data-test="users-delete-confirm"]',
+    ) as HTMLButtonElement | null
+
+    expect(confirmButton).not.toBeNull()
+
+    confirmButton?.click()
+    await flushPromises()
+
+    expect(deleteUserMock).toHaveBeenCalledWith(firstUser.id)
+    expect(listUsersMock).toHaveBeenCalledTimes(2)
+    expect(listUsersMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
+  })
+
+  it('keeps delete dialog open when deleting user fails', async () => {
+    deleteUserMock.mockRejectedValue(new Error('删除失败'))
+    listUsersMock.mockResolvedValue(userListResponse)
+
+    const { wrapper } = await mountUsersPage(['system:user:delete'])
+    await flushPromises()
+
+    await wrapper.get('[data-test="users-delete"]').trigger('click')
+    await flushPromises()
+
+    const confirmButton = document.body.querySelector(
+      '[data-test="users-delete-confirm"]',
+    ) as HTMLButtonElement | null
+
+    expect(confirmButton).not.toBeNull()
+
+    confirmButton?.click()
+    await flushPromises()
+
+    expect(deleteUserMock).toHaveBeenCalledWith(userListResponse.list[0]!.id)
+    expect(listUsersMock).toHaveBeenCalledTimes(1)
+    expect(document.body.querySelector('[data-test="users-delete-confirm"]')).not.toBeNull()
   })
 
   it('submits keyword and status filters from page one', async () => {

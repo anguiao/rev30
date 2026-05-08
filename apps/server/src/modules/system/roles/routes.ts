@@ -16,6 +16,7 @@ import {
   RoleConflictError,
   RoleDeleteConflictError,
   RoleInvalidResourceError,
+  RoleInvalidResourceAssignmentError,
   RoleNotFoundError,
 } from './errors'
 import { createRoleService } from './service'
@@ -52,6 +53,10 @@ const roleUpdateBodyValidator = zValidator('json', roleUpdateSchema, (result, c)
 function roleErrorResponse(error: unknown, c: Context) {
   if (error instanceof RoleInvalidResourceError) {
     return c.json({ message: error.message }, 400)
+  }
+
+  if (error instanceof RoleInvalidResourceAssignmentError) {
+    return c.json({ field: 'resourceIds', message: error.message }, 400)
   }
 
   if (error instanceof RoleNotFoundError) {

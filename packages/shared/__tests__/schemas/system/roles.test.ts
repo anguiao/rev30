@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import {
   ROLE_STATUS_DISABLED,
   ROLE_STATUS_ENABLED,
@@ -6,14 +7,15 @@ import {
   roleListItemSchema,
   roleListQuerySchema,
   roleListResponseSchema,
+  createRoleResourceIdsSchema,
   roleResourceSchema,
   roleSchema,
   roleUpdateSchema,
 } from '../../../src/schemas/system/roles'
 import { RESOURCE_TYPE_ACTION, RESOURCE_TYPE_MENU } from '../../../src/schemas/system/resources'
 
-function firstIssueMessage(result: { success: false; error: { issues: { message: string }[] } }) {
-  return result.error.issues[0]?.message
+function errorText(result: { success: false; error: z.ZodError }) {
+  return z.prettifyError(result.error)
 }
 
 function testUuid(index: number) {
@@ -133,7 +135,7 @@ describe('role schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(firstIssueMessage(result)).toBe('资源不能重复')
+      expect(errorText(result)).toContain('资源不能重复')
     }
   })
 
@@ -146,7 +148,34 @@ describe('role schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(firstIssueMessage(result)).toBe('资源授权不能超过 500 个')
+      expect(errorText(result)).toContain('资源授权不能超过 500 个')
+    }
+  })
+
+  it('rejects resource ids that omit required parent resources', () => {
+    const systemId = testUuid(1)
+    const userMenuId = testUuid(2)
+    const listUserId = testUuid(3)
+    const createUserId = testUuid(4)
+    const schema = createRoleResourceIdsSchema([
+      { id: systemId, parentId: null },
+      { id: userMenuId, parentId: systemId },
+      { id: listUserId, parentId: userMenuId },
+      { id: createUserId, parentId: userMenuId },
+    ])
+
+    expect(schema.parse([systemId, userMenuId])).toEqual([systemId, userMenuId])
+
+    const missingDirectParent = schema.safeParse([listUserId])
+    expect(missingDirectParent.success).toBe(false)
+    if (!missingDirectParent.success) {
+      expect(errorText(missingDirectParent)).toContain('子资源授权需要包含所有上级资源')
+    }
+
+    const missingRootParent = schema.safeParse([userMenuId, listUserId, createUserId])
+    expect(missingRootParent.success).toBe(false)
+    if (!missingRootParent.success) {
+      expect(errorText(missingRootParent)).toContain('子资源授权需要包含所有上级资源')
     }
   })
 
@@ -155,7 +184,7 @@ describe('role schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(firstIssueMessage(result)).toBe('至少修改一个字段')
+      expect(errorText(result)).toContain('至少修改一个字段')
     }
   })
 

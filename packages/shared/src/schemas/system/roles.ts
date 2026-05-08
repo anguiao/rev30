@@ -3,7 +3,7 @@ import { nonBlankString, sortOrderInputSchema } from '../common/inputs'
 import { paginationQuerySchema } from '../common/pagination'
 import { ensureUniqueItems, hasAnyDefinedValue } from '../common/refinements'
 import { optionalNumericQueryValue, optionalTrimmedQueryString } from '../query'
-import { resourceTypeSchema } from './resources'
+import { resourceTypeSchema, type Resource } from './resources'
 
 export const ROLE_STATUS_DISABLED = 0
 export const ROLE_STATUS_ENABLED = 1
@@ -54,6 +54,24 @@ export const roleResourceIdsSchema = z
   .array(resourceIdSchema)
   .max(roleResourceIdsMaxLength, `资源授权不能超过 ${roleResourceIdsMaxLength} 个`)
   .superRefine(ensureUniqueItems('资源不能重复'))
+
+export function createRoleResourceIdsSchema(
+  resources: readonly Pick<Resource, 'id' | 'parentId'>[],
+) {
+  const parentIdsByResourceId = new Map(
+    resources.map((resource) => [resource.id, resource.parentId]),
+  )
+
+  return roleResourceIdsSchema.refine((resourceIds) => {
+    const selectedIds = new Set(resourceIds)
+
+    return resourceIds.every((resourceId) => {
+      const parentId = parentIdsByResourceId.get(resourceId)
+
+      return parentId === undefined || parentId === null || selectedIds.has(parentId)
+    })
+  }, '子资源授权需要包含所有上级资源')
+}
 
 const roleIdsMaxLength = 50
 export const roleIdsSchema = z

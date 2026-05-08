@@ -18,11 +18,13 @@ import {
 import {
   ROLE_STATUS_ENABLED,
   roleCreateSchema,
+  createRoleResourceIdsSchema,
   roleUpdateSchema,
   type ResourceTreeNode,
   type Role,
   type RoleFormInput,
   roleFormSchema,
+  treeToArray,
 } from '@rev30/shared'
 import {
   SystemRequestError,
@@ -70,12 +72,12 @@ const {
     ])
 
     return {
-      resourceTreeOptions: toResourceTreeOptions(resources),
+      resources,
       formValues: role === null ? defaultFormValues : toRoleFormValues(role),
     }
   },
 })
-const resourceTreeOptions = computed(() => formData.value?.resourceTreeOptions ?? [])
+const resourceTreeOptions = computed(() => toResourceTreeOptions(formData.value?.resources ?? []))
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
@@ -164,11 +166,18 @@ watch(
 )
 
 function toResourceTreeOptions(nodes: ResourceTreeNode[]): TreeOption[] {
-  return nodes.map((node) => ({
-    key: node.id,
-    label: `${node.name} (${node.code})`,
-    children: toResourceTreeOptions(node.children),
-  }))
+  return nodes.map((node) => {
+    const option: TreeOption = {
+      key: node.id,
+      label: `${node.name} (${node.code})`,
+    }
+
+    if (node.children.length > 0) {
+      option.children = toResourceTreeOptions(node.children)
+    }
+
+    return option
+  })
 }
 
 function toRoleFormValues(role: Role): RoleFormInput {
@@ -177,6 +186,10 @@ function toRoleFormValues(role: Role): RoleFormInput {
     resourceIds: role.resources.map((resource) => resource.id),
   }
 }
+
+const resourceIdsSchema = computed(() =>
+  createRoleResourceIdsSchema(treeToArray(formData.value?.resources ?? [])),
+)
 </script>
 
 <template>
@@ -254,7 +267,12 @@ function toRoleFormValues(role: Role): RoleFormInput {
             </NFormItem>
           </form.Field>
 
-          <form.Field name="resourceIds" v-slot="{ field, state }">
+          <form.Field
+            v-if="formData !== undefined"
+            name="resourceIds"
+            :validators="{ onChange: resourceIdsSchema }"
+            v-slot="{ field, state }"
+          >
             <NFormItem
               label="资源权限"
               v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
@@ -263,7 +281,7 @@ function toRoleFormValues(role: Role): RoleFormInput {
                 data-test="role-form-resources"
                 block-line
                 checkable
-                cascade
+                :cascade="false"
                 :data="resourceTreeOptions"
                 :checked-keys="state.value"
                 @update:checked-keys="

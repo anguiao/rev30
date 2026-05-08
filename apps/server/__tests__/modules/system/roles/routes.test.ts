@@ -48,6 +48,7 @@ async function createResource(
     name: string
     code: string
     type?: 'directory' | 'menu' | 'external' | 'action'
+    parentId?: string | null
     sortOrder?: number
     deletedAt?: Date | null
   },
@@ -57,6 +58,7 @@ async function createResource(
     .insert(systemResources)
     .values({
       id: randomUUID(),
+      parentId: input.parentId ?? null,
       name: input.name,
       code: input.code,
       type: input.type ?? RESOURCE_TYPE_DIRECTORY,
@@ -226,11 +228,17 @@ describe('role routes', () => {
   it('replaces and clears role resource authorization on patch', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
-    const system = await createResource(database, { name: 'System', code: 'test-system' })
+    const system = await createResource(database, {
+      name: 'System',
+      code: 'test-system',
+      sortOrder: 1,
+    })
     const createUser = await createResource(database, {
       name: 'Create User',
       code: 'test-system:user:create',
       type: RESOURCE_TYPE_ACTION,
+      parentId: system.id,
+      sortOrder: 2,
     })
     const { body: created } = await createRole(app, {
       name: 'Administrator',
@@ -241,7 +249,7 @@ describe('role routes', () => {
     const replaceResponse = await app.request(`/api/system/roles/${created.id}`, {
       method: 'PATCH',
       body: JSON.stringify({
-        resourceIds: [createUser.id],
+        resourceIds: [system.id, createUser.id],
       }),
       headers: { 'content-type': 'application/json' },
     })
@@ -249,6 +257,12 @@ describe('role routes', () => {
 
     expect(replaceResponse.status).toBe(200)
     expect(replaceBody.resources).toEqual([
+      {
+        id: system.id,
+        name: 'System',
+        code: 'test-system',
+        type: RESOURCE_TYPE_DIRECTORY,
+      },
       {
         id: createUser.id,
         name: 'Create User',
@@ -325,6 +339,74 @@ describe('role routes', () => {
 
     expect(deletedUpdateResponse.status).toBe(400)
     expect(await deletedUpdateResponse.json()).toEqual({ message: '资源不存在' })
+  })
+
+  it('rejects child resource authorization without its parent resource', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const system = await createResource(database, {
+      name: 'System',
+      code: 'test-system',
+      sortOrder: 1,
+    })
+    const userMenu = await createResource(database, {
+      name: 'Users',
+      code: 'test-system:user',
+      type: RESOURCE_TYPE_DIRECTORY,
+      parentId: system.id,
+      sortOrder: 2,
+    })
+    const listUser = await createResource(database, {
+      name: 'List Users',
+      code: 'test-system:user:list',
+      type: RESOURCE_TYPE_ACTION,
+      parentId: userMenu.id,
+      sortOrder: 3,
+    })
+
+    const parentOnly = await createRole(app, {
+      name: 'Menu Viewer',
+      code: 'menu-viewer',
+      resourceIds: [system.id],
+    })
+    expect(parentOnly.response.status).toBe(201)
+    expect(parentOnly.body.resources).toEqual([
+      {
+        id: system.id,
+        name: 'System',
+        code: 'test-system',
+        type: RESOURCE_TYPE_DIRECTORY,
+      },
+    ])
+
+    const missingParentResponse = await app.request('/api/system/roles', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Action Viewer',
+        code: 'action-viewer',
+        resourceIds: [system.id, listUser.id],
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(missingParentResponse.status).toBe(400)
+    expect(await missingParentResponse.json()).toEqual({
+      field: 'resourceIds',
+      message: '子资源授权需要包含所有上级资源',
+    })
+
+    const fullChain = await createRole(app, {
+      name: 'User Viewer',
+      code: 'user-viewer',
+      resourceIds: [system.id, userMenu.id, listUser.id],
+    })
+
+    expect(fullChain.response.status).toBe(201)
+    expect(fullChain.body.resources.map((resource) => resource.id)).toEqual([
+      system.id,
+      userMenu.id,
+      listUser.id,
+    ])
   })
 
   it('rejects updating and deleting the built-in admin role', async () => {

@@ -30,6 +30,13 @@ export class RoleInvalidResourceError extends Error {
   }
 }
 
+export class RoleInvalidResourceAssignmentError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'RoleInvalidResourceAssignmentError'
+  }
+}
+
 export class RoleDeleteConflictError extends Error {
   constructor() {
     super('角色存在关联用户，不能删除')

@@ -107,6 +107,12 @@ const roleResponse: Role = {
   sortOrder: 2,
   resources: [
     {
+      id: directoryResourceId,
+      name: '系统管理',
+      code: 'system',
+      type: RESOURCE_TYPE_DIRECTORY,
+    },
+    {
       id: actionResourceId,
       name: '角色保存',
       code: 'system:role:save',
@@ -124,6 +130,12 @@ const secondRoleResponse: Role = {
   status: ROLE_STATUS_ENABLED,
   sortOrder: 5,
   resources: [
+    {
+      id: directoryResourceId,
+      name: '系统管理',
+      code: 'system',
+      type: RESOURCE_TYPE_DIRECTORY,
+    },
     {
       id: secondActionResourceId,
       name: '角色分配',
@@ -200,7 +212,7 @@ describe('RoleFormDrawer', () => {
     wrapper
       .get('[data-test="role-form-resources"]')
       .getComponent(NTree)
-      .vm.$emit('update:checkedKeys', [actionResourceId])
+      .vm.$emit('update:checkedKeys', [directoryResourceId, actionResourceId])
     await flushPromises()
 
     await submitForm(wrapper)
@@ -210,7 +222,7 @@ describe('RoleFormDrawer', () => {
       code: 'operator',
       status: ROLE_STATUS_ENABLED,
       sortOrder: 2,
-      resourceIds: [actionResourceId],
+      resourceIds: [directoryResourceId, actionResourceId],
     })
     expect(wrapper.emitted('saved')).toHaveLength(1)
     expect(wrapper.emitted('update:show')).toEqual([[false]])
@@ -229,7 +241,27 @@ describe('RoleFormDrawer', () => {
     expect(wrapper.text()).toContain('编辑角色')
     expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
     expect(getRoleMock).toHaveBeenCalledWith(roleId)
-    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([actionResourceId])
+    expect(wrapper.getComponent(NTree).props('cascade')).toBe(false)
+    expect(wrapper.getComponent(NTree).props('data')).toEqual([
+      {
+        key: directoryResourceId,
+        label: '系统管理 (system)',
+        children: [
+          {
+            key: actionResourceId,
+            label: '角色保存 (system:role:save)',
+          },
+          {
+            key: secondActionResourceId,
+            label: '角色分配 (system:role:assign)',
+          },
+        ],
+      },
+    ])
+    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
+      directoryResourceId,
+      actionResourceId,
+    ])
 
     await wrapper.get('[data-test="role-form-name"] input').setValue('运营负责人')
     await submitForm(wrapper)
@@ -239,10 +271,58 @@ describe('RoleFormDrawer', () => {
       code: 'operator',
       status: ROLE_STATUS_ENABLED,
       sortOrder: 2,
-      resourceIds: [actionResourceId],
+      resourceIds: [directoryResourceId, actionResourceId],
     })
     expect(wrapper.emitted('saved')).toHaveLength(1)
     expect(wrapper.emitted('update:show')).toEqual([[false]])
+  })
+
+  it('shows missing parent resource validation feedback immediately', async () => {
+    createRoleMock.mockResolvedValue(roleResponse)
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await wrapper.get('[data-test="role-form-name"] input').setValue('运营')
+    await wrapper.get('[data-test="role-form-code"] input').setValue('operator')
+    wrapper
+      .get('[data-test="role-form-resources"]')
+      .getComponent(NTree)
+      .vm.$emit('update:checkedKeys', [actionResourceId])
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('子资源授权需要包含所有上级资源')
+
+    await submitForm(wrapper)
+
+    expect(createRoleMock).not.toHaveBeenCalled()
+    expect(wrapper.emitted('saved')).toBeUndefined()
+  })
+
+  it('allows submitting a parent resource without child resources', async () => {
+    createRoleMock.mockResolvedValue(roleResponse)
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await wrapper.get('[data-test="role-form-name"] input').setValue('运营')
+    await wrapper.get('[data-test="role-form-code"] input').setValue('operator')
+    wrapper
+      .get('[data-test="role-form-resources"]')
+      .getComponent(NTree)
+      .vm.$emit('update:checkedKeys', [directoryResourceId])
+    await flushPromises()
+
+    await submitForm(wrapper)
+
+    expect(createRoleMock).toHaveBeenCalledWith({
+      name: '运营',
+      code: 'operator',
+      status: ROLE_STATUS_ENABLED,
+      sortOrder: 0,
+      resourceIds: [directoryResourceId],
+    })
+    expect(wrapper.emitted('saved')).toHaveLength(1)
   })
 
   it('shows a field-level server error when create fails', async () => {
@@ -306,7 +386,10 @@ describe('RoleFormDrawer', () => {
       'value',
       '审计',
     )
-    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([secondActionResourceId])
+    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
+      directoryResourceId,
+      secondActionResourceId,
+    ])
 
     firstRoleRequest.resolve(roleResponse)
     await flushPromises()
@@ -315,7 +398,10 @@ describe('RoleFormDrawer', () => {
       'value',
       '审计',
     )
-    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([secondActionResourceId])
+    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
+      directoryResourceId,
+      secondActionResourceId,
+    ])
 
     await submitForm(wrapper)
 
@@ -324,7 +410,7 @@ describe('RoleFormDrawer', () => {
       code: 'auditor',
       status: ROLE_STATUS_ENABLED,
       sortOrder: 5,
-      resourceIds: [secondActionResourceId],
+      resourceIds: [directoryResourceId, secondActionResourceId],
     })
   })
 
@@ -361,7 +447,7 @@ describe('RoleFormDrawer', () => {
       code: 'operator',
       status: ROLE_STATUS_ENABLED,
       sortOrder: 2,
-      resourceIds: [actionResourceId],
+      resourceIds: [directoryResourceId, actionResourceId],
     })
 
     await wrapper.setProps({ show: true, roleId: secondRoleId })
@@ -371,7 +457,10 @@ describe('RoleFormDrawer', () => {
       'value',
       '审计',
     )
-    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([secondActionResourceId])
+    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
+      directoryResourceId,
+      secondActionResourceId,
+    ])
 
     pendingSave.resolve({
       ...roleResponse,

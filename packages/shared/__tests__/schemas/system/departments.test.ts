@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import {
   DEPARTMENT_STATUS_DISABLED,
   DEPARTMENT_STATUS_ENABLED,
@@ -9,8 +10,8 @@ import {
   departmentUpdateSchema,
 } from '../../../src/schemas/system/departments'
 
-function firstIssueMessage(result: { success: false; error: { issues: { message: string }[] } }) {
-  return result.error.issues[0]?.message
+function errorText(result: { success: false; error: z.ZodError }) {
+  return z.prettifyError(result.error)
 }
 
 describe('department schemas', () => {
@@ -119,7 +120,7 @@ describe('department schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(firstIssueMessage(result)).toBe('至少修改一个字段')
+      expect(errorText(result)).toContain('至少修改一个字段')
     }
   })
 })

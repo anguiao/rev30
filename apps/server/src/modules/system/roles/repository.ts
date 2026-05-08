@@ -1,9 +1,20 @@
 import { randomUUID } from 'node:crypto'
-import type { RoleCreateInput, RoleListQuery, RoleSummary, RoleUpdateInput } from '@rev30/shared'
+import {
+  type RoleCreateInput,
+  type RoleListQuery,
+  createRoleResourceIdsSchema,
+  type RoleSummary,
+  type RoleUpdateInput,
+} from '@rev30/shared'
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
+import { z } from 'zod'
 import type { Db, DbReader } from '../../../db'
 import { roleResources, roles, systemResources, userRoles, users } from '../../../db/schema'
-import { RoleDeleteConflictError, RoleInvalidResourceError } from './errors'
+import {
+  RoleDeleteConflictError,
+  RoleInvalidResourceError,
+  RoleInvalidResourceAssignmentError,
+} from './errors'
 import type { RoleResourceRow, RoleRow } from './mapper'
 
 function roleSortOrder() {
@@ -40,7 +51,7 @@ async function lockActiveResourcesByIds(executor: DbReader, ids: string[]) {
   return rows
 }
 
-async function lockActiveResourceIdsOrThrow(executor: DbReader, ids: string[]) {
+async function lockValidResourceIdsOrThrow(executor: DbReader, ids: string[]) {
   if (ids.length === 0) {
     return
   }
@@ -50,6 +61,13 @@ async function lockActiveResourceIdsOrThrow(executor: DbReader, ids: string[]) {
 
   if (rows.length !== uniqueIds.length) {
     throw new RoleInvalidResourceError()
+  }
+
+  const resourceIdsResult = createRoleResourceIdsSchema(rows).safeParse(uniqueIds)
+
+  if (!resourceIdsResult.success) {
+    const { formErrors } = z.flattenError(resourceIdsResult.error)
+    throw new RoleInvalidResourceAssignmentError(formErrors.join('，'))
   }
 }
 
@@ -230,7 +248,7 @@ export function createRoleRepository(database: Db) {
       const { resourceIds = [], ...roleInput } = input
 
       return await database.transaction(async (tx) => {
-        await lockActiveResourceIdsOrThrow(tx, resourceIds)
+        await lockValidResourceIdsOrThrow(tx, resourceIds)
 
         const [created] = await tx
           .insert(roles)
@@ -264,7 +282,7 @@ export function createRoleRepository(database: Db) {
 
       return await database.transaction(async (tx) => {
         if (resourceIds !== undefined) {
-          await lockActiveResourceIdsOrThrow(tx, resourceIds)
+          await lockValidResourceIdsOrThrow(tx, resourceIds)
         }
 
         const [updated] = await tx

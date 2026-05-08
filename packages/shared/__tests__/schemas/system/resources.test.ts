@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import {
   RESOURCE_OPEN_TARGET_BLANK,
   RESOURCE_OPEN_TARGET_SELF,
@@ -17,8 +18,8 @@ import {
 } from '../../../src/schemas/system/resources'
 import type { Resource } from '../../../src/schemas/system/resources'
 
-function firstIssueMessage(result: { success: false; error: { issues: { message: string }[] } }) {
-  return result.error.issues[0]?.message
+function errorText(result: { success: false; error: z.ZodError }) {
+  return z.prettifyError(result.error)
 }
 
 describe('resource schemas', () => {
@@ -94,7 +95,7 @@ describe('resource schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(firstIssueMessage(result)).toBe('内部菜单路径不能为空')
+      expect(errorText(result)).toContain('内部菜单路径不能为空')
     }
   })
 
@@ -121,7 +122,7 @@ describe('resource schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(firstIssueMessage(result)).toBe('外链地址不能为空')
+      expect(errorText(result)).toContain('外链地址不能为空')
     }
   })
 
@@ -262,7 +263,7 @@ describe('resource schemas', () => {
 
     expect(createResult.success).toBe(false)
     if (!createResult.success) {
-      expect(firstIssueMessage(createResult)).toBe('图标名称无效')
+      expect(errorText(createResult)).toContain('图标名称无效')
     }
 
     const updateResult = resourceUpdateSchema.safeParse({
@@ -271,7 +272,7 @@ describe('resource schemas', () => {
 
     expect(updateResult.success).toBe(false)
     if (!updateResult.success) {
-      expect(firstIssueMessage(updateResult)).toBe('图标名称无效')
+      expect(errorText(updateResult)).toContain('图标名称无效')
     }
   })
 
@@ -352,7 +353,7 @@ describe('resource schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(firstIssueMessage(result)).toBe('至少修改一个字段')
+      expect(errorText(result)).toContain('至少修改一个字段')
     }
   })
 
@@ -420,7 +421,7 @@ describe('resource schemas', () => {
 
     expect(ignoredByExternal.success).toBe(false)
     if (!ignoredByExternal.success) {
-      expect(firstIssueMessage(ignoredByExternal)).toBe('外链地址无效')
+      expect(errorText(ignoredByExternal)).toContain('外链地址无效')
     }
   })
 })

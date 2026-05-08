@@ -77,14 +77,16 @@ const {
     ])
 
     return {
-      departmentTreeOptions: toDepartmentTreeOptions(departments),
-      roleOptions: toRoleOptions(roleList.list),
+      departments,
+      roles: roleList.list,
       formValues: toUserFormValues(user),
     }
   },
 })
-const departmentTreeOptions = computed(() => formData.value?.departmentTreeOptions ?? [])
-const roleOptions = computed(() => formData.value?.roleOptions ?? [])
+const departmentTreeOptions = computed(() =>
+  toDepartmentTreeOptions(formData.value?.departments ?? []),
+)
+const roleOptions = computed(() => toRoleOptions(formData.value?.roles ?? []))
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
@@ -175,11 +177,18 @@ watch(
 )
 
 function toDepartmentTreeOptions(nodes: DepartmentTreeNode[]): TreeOption[] {
-  return nodes.map((node) => ({
-    key: node.id,
-    label: `${node.name} (${node.code})`,
-    children: toDepartmentTreeOptions(node.children),
-  }))
+  return nodes.map((node) => {
+    const option: TreeOption = {
+      key: node.id,
+      label: `${node.name} (${node.code})`,
+    }
+
+    if (node.children.length > 0) {
+      option.children = toDepartmentTreeOptions(node.children)
+    }
+
+    return option
+  })
 }
 
 function toRoleOptions(roles: RoleListItem[]) {

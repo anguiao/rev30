@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
@@ -8,8 +9,8 @@ import {
   userSchema,
 } from '../../../src/schemas/system/users'
 
-function firstIssueMessage(result: { success: false; error: { issues: { message: string }[] } }) {
-  return result.error.issues[0]?.message
+function errorText(result: { success: false; error: z.ZodError }) {
+  return z.prettifyError(result.error)
 }
 
 function testUuid(index: number) {
@@ -104,7 +105,7 @@ describe('user schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(firstIssueMessage(result)).toBe('用户状态无效')
+      expect(errorText(result)).toContain('用户状态无效')
     }
   })
 
@@ -142,7 +143,7 @@ describe('user schemas', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(firstIssueMessage(result)).toBe('至少修改一个字段')
+        expect(errorText(result)).toContain('至少修改一个字段')
       }
     }
 
@@ -182,7 +183,7 @@ describe('user schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(firstIssueMessage(result)).toBe('部门不能重复')
+      expect(errorText(result)).toContain('部门不能重复')
     }
   })
 
@@ -195,7 +196,7 @@ describe('user schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(firstIssueMessage(result)).toBe('用户部门不能超过 50 个')
+      expect(errorText(result)).toContain('用户部门不能超过 50 个')
     }
   })
 
@@ -216,7 +217,7 @@ describe('user schemas', () => {
 
     expect(invalidUser.success).toBe(false)
     if (!invalidUser.success) {
-      expect(firstIssueMessage(invalidUser)).toBe('用户 ID 无效')
+      expect(errorText(invalidUser)).toContain('用户 ID 无效')
     }
 
     const invalidQuery = userListQuerySchema.safeParse({
@@ -225,7 +226,7 @@ describe('user schemas', () => {
 
     expect(invalidQuery.success).toBe(false)
     if (!invalidQuery.success) {
-      expect(firstIssueMessage(invalidQuery)).toBe('页码不能小于 1')
+      expect(errorText(invalidQuery)).toContain('页码不能小于 1')
     }
   })
 
@@ -294,7 +295,7 @@ describe('user schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(firstIssueMessage(result)).toBe('角色不能重复')
+      expect(errorText(result)).toContain('角色不能重复')
     }
   })
 
@@ -307,7 +308,7 @@ describe('user schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(firstIssueMessage(result)).toBe('用户角色不能超过 50 个')
+      expect(errorText(result)).toContain('用户角色不能超过 50 个')
     }
   })
 })

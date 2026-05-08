@@ -171,6 +171,18 @@ describe('UserFormDrawer', () => {
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
     expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 100 })
     expect(getUserMock).toHaveBeenCalledWith(userId)
+    expect(wrapper.getComponent(NTree).props('data')).toEqual([
+      {
+        key: departmentId,
+        label: '研发部 (rd)',
+        children: [
+          {
+            key: secondDepartmentId,
+            label: '前端组 (frontend)',
+          },
+        ],
+      },
+    ])
     expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([departmentId])
 
     await wrapper.get('[data-test="user-form-nickname"] input').setValue('Ada Lovelace')

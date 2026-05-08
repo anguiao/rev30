@@ -648,6 +648,101 @@ describe('auth routes', () => {
     })
   })
 
+  it('updates current user profile without allowing username changes', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app)
+
+    const response = await app.request('/api/auth/me/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        username: 'ignored',
+        nickname: 'Updated Nickname',
+        email: 'updated@example.com',
+        phone: '',
+      }),
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken}`,
+        'content-type': 'application/json',
+      },
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body).toEqual({ message: '请求体无效' })
+
+    const validResponse = await app.request('/api/auth/me/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        nickname: 'Updated Nickname',
+        email: 'updated@example.com',
+        phone: '',
+      }),
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken}`,
+        'content-type': 'application/json',
+      },
+    })
+    const validBody = await validResponse.json()
+
+    expect(validResponse.status).toBe(200)
+    expect(validBody).toMatchObject({
+      username: registered.body.user.username,
+      nickname: 'Updated Nickname',
+      email: 'updated@example.com',
+      phone: null,
+    })
+  })
+
+  it('changes current user password and clears must-change-password state', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app, {
+      password: 'old-password',
+    })
+    await database
+      .update(authPasswordCredentials)
+      .set({ mustChangePassword: true })
+      .where(eq(authPasswordCredentials.userId, registered.body.user.id))
+
+    const wrongResponse = await app.request('/api/auth/me/password', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        currentPassword: 'wrong-password',
+        newPassword: 'new-password',
+      }),
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken}`,
+        'content-type': 'application/json',
+      },
+    })
+    expect(wrongResponse.status).toBe(400)
+    expect(await wrongResponse.json()).toEqual({
+      field: 'currentPassword',
+      message: '当前密码错误',
+    })
+
+    const response = await app.request('/api/auth/me/password', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        currentPassword: 'old-password',
+        newPassword: 'new-password',
+      }),
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken}`,
+        cookie: `refresh_token=${registered.refreshToken}`,
+        'content-type': 'application/json',
+      },
+    })
+    expect(response.status).toBe(204)
+
+    const credential = await database.query.authPasswordCredentials.findFirst({
+      where: eq(authPasswordCredentials.userId, registered.body.user.id),
+    })
+    expect(credential?.mustChangePassword).toBe(false)
+    expect(await verifyPassword('new-password', credential!.passwordHash)).toBe(true)
+  })
+
   it('returns department summaries from login me and refresh for associated users', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)

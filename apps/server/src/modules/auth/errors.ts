@@ -19,6 +19,15 @@ export class AuthInvalidAccessTokenError extends Error {
   }
 }
 
+export class AuthInvalidCurrentPasswordError extends Error {
+  readonly field = 'currentPassword'
+
+  constructor() {
+    super('当前密码错误')
+    this.name = 'AuthInvalidCurrentPasswordError'
+  }
+}
+
 export class AuthAccessTokenExpiredError extends Error {
   constructor() {
     super('访问令牌已过期')

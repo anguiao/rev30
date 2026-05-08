@@ -1,7 +1,11 @@
 import {
   type AuthLoginInput,
+  type AuthPasswordUpdateInput,
+  type AuthProfileUpdateInput,
   type AuthRegisterInput,
   authLoginSchema,
+  authPasswordUpdateSchema,
+  authProfileUpdateSchema,
   authRegisterSchema,
 } from '@rev30/shared'
 import { zValidator } from '@hono/zod-validator'
@@ -12,7 +16,11 @@ import { createAuthMiddleware } from '../../middleware/auth'
 import { UserConflictError } from '../system/users/errors'
 import { clearRefreshTokenCookie, getRefreshTokenCookie, setRefreshTokenCookie } from './cookies'
 import { readAuthConfig } from './config'
-import { AuthInvalidCredentialsError, AuthInvalidRefreshTokenError } from './errors'
+import {
+  AuthInvalidCredentialsError,
+  AuthInvalidCurrentPasswordError,
+  AuthInvalidRefreshTokenError,
+} from './errors'
 import { createAuthService } from './service'
 
 const jsonBodyValidator = <T extends ZodType>(schema: T) =>
@@ -24,6 +32,8 @@ const jsonBodyValidator = <T extends ZodType>(schema: T) =>
 
 const registerBodyValidator = jsonBodyValidator(authRegisterSchema)
 const loginBodyValidator = jsonBodyValidator(authLoginSchema)
+const profileUpdateBodyValidator = jsonBodyValidator(authProfileUpdateSchema)
+const passwordUpdateBodyValidator = jsonBodyValidator(authPasswordUpdateSchema)
 
 function authErrorResponse(error: unknown, c: Context) {
   if (error instanceof UserConflictError) {
@@ -33,6 +43,16 @@ function authErrorResponse(error: unknown, c: Context) {
         message: error.message,
       },
       409,
+    )
+  }
+
+  if (error instanceof AuthInvalidCurrentPasswordError) {
+    return c.json(
+      {
+        field: error.field,
+        message: error.message,
+      },
+      400,
     )
   }
 
@@ -91,5 +111,26 @@ export function createAuthRoutes(database: Db) {
         accessCodes: c.get('accessCodes'),
         menus: c.get('menus'),
       }),
+    )
+    .patch('/me/profile', createAuthMiddleware(database), profileUpdateBodyValidator, async (c) => {
+      const body: AuthProfileUpdateInput = c.req.valid('json')
+
+      return c.json(await service.updateProfile(c.get('currentUser').id, body))
+    })
+    .patch(
+      '/me/password',
+      createAuthMiddleware(database),
+      passwordUpdateBodyValidator,
+      async (c) => {
+        const body: AuthPasswordUpdateInput = c.req.valid('json')
+
+        await service.updatePassword(
+          c.get('currentUser').id,
+          body,
+          getRefreshTokenCookie(c),
+        )
+
+        return c.body(null, 204)
+      },
     )
 }

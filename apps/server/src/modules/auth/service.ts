@@ -1,6 +1,8 @@
 import {
   USER_STATUS_ENABLED,
   type AuthLoginInput,
+  type AuthPasswordUpdateInput,
+  type AuthProfileUpdateInput,
   type AuthRegisterInput,
   type AuthTokenResponse,
   type User,
@@ -12,6 +14,7 @@ import type { AuthConfig } from './config'
 import {
   AuthAccessTokenExpiredError,
   AuthInvalidCredentialsError,
+  AuthInvalidCurrentPasswordError,
   AuthInvalidRefreshTokenError,
   AuthUnauthorizedError,
 } from './errors'
@@ -171,6 +174,60 @@ export function createAuthService(database: Db, config: AuthConfig) {
         menus: access.menus,
         isAdmin: access.isAdmin,
       }
+    },
+
+    async updateProfile(userId: string, input: AuthProfileUpdateInput) {
+      const updated = await withUserUniqueConflict(() =>
+        repository.updateUserProfile(userId, input),
+      )
+
+      if (!updated || updated.user.status !== USER_STATUS_ENABLED) {
+        throw new AuthUnauthorizedError()
+      }
+
+      return toUser(updated.user, updated.departments, updated.roles)
+    },
+
+    async updatePassword(
+      userId: string,
+      input: AuthPasswordUpdateInput,
+      refreshToken: string | undefined,
+    ) {
+      const account = await repository.findActiveUserCredentialById(userId)
+
+      if (!account || account.user.status !== USER_STATUS_ENABLED) {
+        throw new AuthUnauthorizedError()
+      }
+
+      const passwordMatches = await verifyPassword(
+        input.currentPassword,
+        account.credential.passwordHash,
+      )
+
+      if (!passwordMatches) {
+        throw new AuthInvalidCurrentPasswordError()
+      }
+
+      const passwordHash = await hashPassword(input.newPassword)
+      const updatedCredential = await repository.updatePasswordCredential(userId, passwordHash)
+
+      if (!updatedCredential) {
+        throw new AuthUnauthorizedError()
+      }
+
+      let currentTokenHash: string | undefined
+
+      if (refreshToken) {
+        try {
+          currentTokenHash = (await verifyRefreshToken(refreshToken, config)).refreshTokenHash
+        } catch (error) {
+          if (!(error instanceof AuthInvalidRefreshTokenError)) {
+            throw error
+          }
+        }
+      }
+
+      await repository.revokeOtherRefreshSessions(userId, currentTokenHash)
     },
   }
 }

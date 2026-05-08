@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { USER_STATUS_ENABLED, type AuthRegisterInput } from '@rev30/shared'
-import { and, eq, gt, isNull } from 'drizzle-orm'
+import {
+  USER_STATUS_ENABLED,
+  type AuthProfileUpdateInput,
+  type AuthRegisterInput,
+} from '@rev30/shared'
+import { and, eq, gt, isNull, ne } from 'drizzle-orm'
 import type { Db } from '../../db'
 import { authPasswordCredentials, authRefreshTokens, users } from '../../db/schema'
 import { findDepartmentSummariesByUserId } from '../system/departments/repository'
@@ -87,6 +91,90 @@ export function createAuthRepository(database: Db) {
         departments: await findDepartmentSummariesByUserId(database, user.id),
         roles: await findRoleSummariesByUserId(database, user.id),
       }
+    },
+
+    async updateUserProfile(userId: string, input: AuthProfileUpdateInput) {
+      const now = new Date()
+
+      return await database.transaction(async (tx) => {
+        const [updated] = await tx
+          .update(users)
+          .set({
+            nickname: input.nickname,
+            email: input.email,
+            phone: input.phone,
+            updatedAt: now,
+          })
+          .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+          .returning()
+
+        if (!updated) {
+          return undefined
+        }
+
+        return {
+          user: updated,
+          departments: await findDepartmentSummariesByUserId(tx, updated.id),
+          roles: await findRoleSummariesByUserId(tx, updated.id),
+        }
+      })
+    },
+
+    async findActiveUserCredentialById(userId: string) {
+      const rows = await database
+        .select({
+          user: users,
+          credential: authPasswordCredentials,
+        })
+        .from(users)
+        .innerJoin(authPasswordCredentials, eq(authPasswordCredentials.userId, users.id))
+        .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+        .limit(1)
+
+      const account = rows[0]
+
+      if (!account) {
+        return undefined
+      }
+
+      return {
+        ...account,
+        departments: await findDepartmentSummariesByUserId(database, account.user.id),
+        roles: await findRoleSummariesByUserId(database, account.user.id),
+      }
+    },
+
+    async updatePasswordCredential(userId: string, passwordHash: string) {
+      const now = new Date()
+      const [credential] = await database
+        .update(authPasswordCredentials)
+        .set({
+          passwordHash,
+          mustChangePassword: false,
+          updatedAt: now,
+        })
+        .where(eq(authPasswordCredentials.userId, userId))
+        .returning()
+
+      return credential
+    },
+
+    async revokeOtherRefreshSessions(userId: string, currentTokenHash: string | undefined) {
+      const now = new Date()
+
+      await database
+        .update(authRefreshTokens)
+        .set({
+          revokedAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(authRefreshTokens.userId, userId),
+            isNull(authRefreshTokens.revokedAt),
+            currentTokenHash ? ne(authRefreshTokens.tokenHash, currentTokenHash) : undefined,
+          ),
+        )
     },
 
     async createRefreshSession(input: { userId: string; tokenHash: string; expiresAt: Date }) {

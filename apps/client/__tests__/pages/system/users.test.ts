@@ -17,6 +17,7 @@ import {
   listUsers,
   resetUserPassword,
 } from '../../../src/features/system'
+import TemporaryPasswordDialog from '../../../src/features/system/TemporaryPasswordDialog.vue'
 import UsersPage from '../../../src/pages/index/system/users.vue'
 import {
   disposeActiveTestPinia,
@@ -182,6 +183,11 @@ describe('users page', () => {
     expect(insufficientPermissionWrapper.find('[data-test="users-edit"]').exists()).toBe(false)
     expect(insufficientPermissionWrapper.find('[data-test="users-delete"]').exists()).toBe(false)
 
+    const { wrapper: createOnlyWrapper } = await mountUsersPage(['system:user:create'])
+    await flushPromises()
+
+    expect(createOnlyWrapper.find('[data-test="users-create"]').exists()).toBe(false)
+
     const { wrapper: authorizedWrapper } = await mountUsersPage([
       'system:user:create',
       'system:user:update',
@@ -199,9 +205,13 @@ describe('users page', () => {
     expect(authorizedWrapper.findAll('[data-test="users-reset-password"]')).toHaveLength(1)
   })
 
-  it('opens create drawer and refetches after created', async () => {
+  it('opens create drawer and refetches after created with full permissions', async () => {
     listUsersMock.mockResolvedValue(userListResponse)
-    const { wrapper } = await mountUsersPage(['system:user:create'])
+    const { wrapper } = await mountUsersPage([
+      'system:user:create',
+      'system:department:list',
+      'system:role:list',
+    ])
     await flushPromises()
 
     await wrapper.get('[data-test="users-create"]').trigger('click')
@@ -220,6 +230,42 @@ describe('users page', () => {
     expect(wrapper.find('[data-test="temporary-password"]').element).toHaveProperty(
       'value',
       'TempPass123',
+    )
+  })
+
+  it('clears temporary password state after closing the dialog', async () => {
+    listUsersMock.mockResolvedValue(userListResponse)
+    const { wrapper } = await mountUsersPage([
+      'system:user:create',
+      'system:department:list',
+      'system:role:list',
+    ])
+    await flushPromises()
+
+    wrapper.getComponent({ name: 'UserFormDrawerStub' }).vm.$emit('created', userCreateResponse)
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="temporary-password-dialog"]').exists()).toBe(true)
+    expect(wrapper.getComponent(TemporaryPasswordDialog).props('temporaryPassword')).toBe(
+      'TempPass123',
+    )
+
+    await wrapper.get('[data-test="temporary-password-close"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="temporary-password-dialog"]').exists()).toBe(false)
+    expect(wrapper.getComponent(TemporaryPasswordDialog).props('username')).toBe('')
+    expect(wrapper.getComponent(TemporaryPasswordDialog).props('temporaryPassword')).toBe('')
+
+    wrapper.getComponent({ name: 'UserFormDrawerStub' }).vm.$emit('created', {
+      ...userCreateResponse,
+      temporaryPassword: 'TempPass456',
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="temporary-password"]').element).toHaveProperty(
+      'value',
+      'TempPass456',
     )
   })
 

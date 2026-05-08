@@ -43,7 +43,7 @@ async function copyTemporaryPassword(temporaryPassword: string) {
         </div>
 
         <div class="flex justify-end">
-          <NButton @click="show = false">关闭</NButton>
+          <NButton data-test="temporary-password-close" @click="show = false">关闭</NButton>
         </div>
       </div>
     </div>

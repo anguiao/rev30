@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 import { useQuery } from '@pinia/colada'
 import type { DataTableColumns } from 'naive-ui'
 import {
@@ -85,6 +85,10 @@ function showTemporaryPasswordDialog(username: string, temporaryPassword: string
   temporaryPasswordValue.value = temporaryPassword
   isTemporaryPasswordDialogVisible.value = true
 }
+function clearTemporaryPasswordDialog() {
+  temporaryPasswordUsername.value = ''
+  temporaryPasswordValue.value = ''
+}
 function openCreateUserDrawer() {
   editingUserId.value = null
   isUserDrawerVisible.value = true
@@ -97,6 +101,12 @@ async function handleUserCreated(result: UserCreateResponse) {
   await refetchUsers()
   showTemporaryPasswordDialog(result.user.nickname || result.user.username, result.temporaryPassword)
 }
+
+watch(isTemporaryPasswordDialogVisible, (show) => {
+  if (!show) {
+    clearTemporaryPasswordDialog()
+  }
+})
 
 const dialog = useDialog()
 function confirmDeleteUser(user: UserListItem) {
@@ -282,7 +292,7 @@ const columns: DataTableColumns<UserListItem> = [
         </p>
       </div>
       <NButton
-        v-can="'system:user:create'"
+        v-can.all="['system:user:create', 'system:department:list', 'system:role:list']"
         data-test="users-create"
         type="primary"
         @click="openCreateUserDrawer"

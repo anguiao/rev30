@@ -121,6 +121,30 @@ describe('account settings page', () => {
     )
   })
 
+  it('shows unsupported profile field errors as a global error', async () => {
+    updateMyProfileMock.mockRejectedValue(new MockAuthRequestError(400, '用户名不可修改', 'username'))
+    const { wrapper } = await mountAccountSettingsPage()
+
+    await wrapper.find('[data-test="account-profile-nickname"] input').setValue('Ada Byron')
+    await submitForm(
+      wrapper,
+      '[data-test="account-profile-form"]',
+      '[data-test="account-profile-submit"]',
+    )
+
+    const nicknameFormItem = wrapper
+      .get('[data-test="account-profile-nickname"]')
+      .element.closest('.n-form-item')
+    const emailFormItem = wrapper.get('[data-test="account-profile-email"]').element.closest('.n-form-item')
+    const phoneFormItem = wrapper.get('[data-test="account-profile-phone"]').element.closest('.n-form-item')
+
+    expect(updateMyProfileMock).toHaveBeenCalledOnce()
+    expect(wrapper.find('.n-alert').text()).toContain('用户名不可修改')
+    expect(nicknameFormItem?.textContent).not.toContain('用户名不可修改')
+    expect(emailFormItem?.textContent).not.toContain('用户名不可修改')
+    expect(phoneFormItem?.textContent).not.toContain('用户名不可修改')
+  })
+
   it('renders a field error on current password failures', async () => {
     updateMyPasswordMock.mockRejectedValue(
       new MockAuthRequestError(400, '当前密码错误', 'currentPassword'),

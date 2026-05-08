@@ -32,6 +32,9 @@ const passwordFormSchema = authPasswordUpdateSchema
 
 type ProfileFormData = z.input<typeof authProfileUpdateSchema>
 type PasswordFormData = z.input<typeof passwordFormSchema>
+type ProfileFieldName = keyof ProfileFormData
+
+const profileFieldNames = new Set<ProfileFieldName>(['nickname', 'email', 'phone'])
 
 const auth = useAuthStore()
 
@@ -55,6 +58,10 @@ function toProfileFormValues(user: User): ProfileFormData {
   }
 }
 
+function isProfileFieldName(field: string): field is ProfileFieldName {
+  return profileFieldNames.has(field as ProfileFieldName)
+}
+
 const profileForm = useForm({
   defaultValues: toProfileFormValues(currentUser.value),
   validators: {
@@ -69,12 +76,16 @@ const profileForm = useForm({
       auth.setUser(user)
       profileForm.reset(toProfileFormValues(user))
     } catch (error) {
-      if (error instanceof AuthRequestError && error.field !== undefined) {
+      if (
+        error instanceof AuthRequestError &&
+        error.field !== undefined &&
+        isProfileFieldName(error.field)
+      ) {
         setServerFieldError(profileForm, error.field, error.message)
         return
       }
 
-      profileFormError.value = getAuthErrorMessage(error, '保存资料失败')
+      profileFormError.value = getAuthErrorMessage(error, '保存个人资料失败')
     }
   },
 })

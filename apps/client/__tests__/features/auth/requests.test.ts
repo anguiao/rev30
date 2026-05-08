@@ -198,6 +198,32 @@ describe('auth requests', () => {
     })
   })
 
+  it('rejects malformed update profile responses that do not match the User schema', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+          username: 'ada',
+          status: 'enabled',
+          builtIn: false,
+          departments: [],
+          roles: [],
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      updateMyProfile({
+        nickname: 'Ada Lovelace',
+        email: null,
+        phone: null,
+      }),
+    ).rejects.toThrow()
+  })
+
   it('validates profile update payloads before sending requests', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
     vi.stubGlobal('fetch', fetchMock)

@@ -366,6 +366,80 @@ describe('system request helpers', () => {
     )
   })
 
+  it('rejects malformed create user responses with invalid temporaryPassword length', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          user: {
+            id: '22222222-2222-4222-8222-222222222222',
+            username: 'ada',
+            nickname: 'Ada',
+            email: null,
+            phone: null,
+            status: USER_STATUS_ENABLED,
+            builtIn: false,
+            departments: [],
+            roles: [],
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-01T00:00:00.000Z',
+          },
+          temporaryPassword: 'short',
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(
+      createUser({
+        username: 'ada',
+        nickname: 'Ada',
+        email: null,
+        phone: null,
+        status: USER_STATUS_ENABLED,
+        departmentIds: [],
+        roleIds: [],
+      }),
+    ).rejects.toThrow()
+  })
+
+  it('rejects malformed create user responses when user is invalid', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          user: {
+            id: 'not-a-uuid',
+            username: 'ada',
+            nickname: 'Ada',
+            email: null,
+            phone: null,
+            status: USER_STATUS_ENABLED,
+            builtIn: false,
+            departments: [],
+            roles: [],
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-01T00:00:00.000Z',
+          },
+          temporaryPassword: 'temp-pwd-001',
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(
+      createUser({
+        username: 'ada',
+        nickname: 'Ada',
+        email: null,
+        phone: null,
+        status: USER_STATUS_ENABLED,
+        departmentIds: [],
+        roleIds: [],
+      }),
+    ).rejects.toThrow()
+  })
+
   it('parses reset user password responses and returns temporary passwords', async () => {
     const responseBody = {
       userId: '33333333-3333-4333-8333-333333333333',
@@ -388,6 +462,36 @@ describe('system request helpers', () => {
         method: 'POST',
       }),
     )
+  })
+
+  it('rejects malformed reset user password responses with non-uuid userId', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          userId: 'not-a-uuid',
+          temporaryPassword: 'temp-reset-001',
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(resetUserPassword('not-a-uuid')).rejects.toThrow()
+  })
+
+  it('rejects malformed reset user password responses with invalid temporaryPassword', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          userId: '33333333-3333-4333-8333-333333333333',
+          temporaryPassword: 'short',
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(resetUserPassword('33333333-3333-4333-8333-333333333333')).rejects.toThrow()
   })
 
   it('sends user detail, update, and delete requests', async () => {

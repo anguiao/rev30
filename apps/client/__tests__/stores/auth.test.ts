@@ -120,6 +120,24 @@ describe('auth store', () => {
     expect(auth.isReady).toBe(true)
   })
 
+  it('updates only user data when setting user and preserves session tokens', () => {
+    const auth = useAuthStore()
+
+    auth.setSession(session)
+    const nextUser = {
+      ...session.user,
+      nickname: 'Ada Lovelace 2',
+    }
+
+    auth.setUser(nextUser)
+
+    expect(auth.accessToken).toBe('access-token')
+    expect(auth.accessCodes).toEqual(session.accessCodes)
+    expect(auth.menus).toEqual(session.menus)
+    expect(auth.isReady).toBe(false)
+    expect(auth.user).toEqual(nextUser)
+  })
+
   it('exposes can helpers based on the current access codes', () => {
     const auth = useAuthStore()
     auth.setSession(session)

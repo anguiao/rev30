@@ -1,12 +1,19 @@
 import {
   authErrorResponseSchema,
+  authPasswordUpdateSchema,
   authTokenResponseSchema,
+  authProfileUpdateSchema,
   type AuthErrorResponse,
   type AuthLoginInput,
   type AuthRegisterInput,
   type AuthTokenResponse,
+  type AuthProfileUpdateInput,
+  type AuthPasswordUpdateInput,
+  type User,
+  userSchema,
 } from '@rev30/shared'
 import { api } from '../../api'
+import type { ZodType } from 'zod'
 
 export class AuthRequestError extends Error {
   constructor(
@@ -35,26 +42,46 @@ export async function parseAuthError(response: Response): Promise<AuthRequestErr
   }
 }
 
-async function parseAuthResponse(response: Response): Promise<AuthTokenResponse> {
+async function parseAuthResponse<T>(response: Response, schema: ZodType<T>): Promise<T> {
   if (!response.ok) {
     throw await parseAuthError(response)
   }
 
-  return parseAuthSession(response)
+  return schema.parse(await response.json())
 }
 
 export async function login(input: AuthLoginInput): Promise<AuthTokenResponse> {
-  return parseAuthResponse(await api.auth.login.$post({ json: input }))
+  return parseAuthResponse(await api.auth.login.$post({ json: input }), authTokenResponseSchema)
 }
 
 export async function register(input: AuthRegisterInput): Promise<AuthTokenResponse> {
-  return parseAuthResponse(await api.auth.register.$post({ json: input }))
+  return parseAuthResponse(await api.auth.register.$post({ json: input }), authTokenResponseSchema)
 }
 
 export async function refreshSession(): Promise<AuthTokenResponse> {
-  return parseAuthResponse(await api.auth.refresh.$post())
+  return parseAuthResponse(await api.auth.refresh.$post(), authTokenResponseSchema)
 }
 
 export async function logout(): Promise<void> {
   await api.auth.logout.$post()
+}
+
+export function getAuthErrorMessage(error: unknown, fallback: string) {
+  return error instanceof AuthRequestError ? error.message : fallback
+}
+
+export async function updateMyProfile(input: AuthProfileUpdateInput): Promise<User> {
+  const response = await api.auth.me.profile.$patch({ json: authProfileUpdateSchema.parse(input) })
+
+  return parseAuthResponse(response, userSchema)
+}
+
+export async function updateMyPassword(input: AuthPasswordUpdateInput): Promise<void> {
+  const response = await api.auth.me.password.$patch({
+    json: authPasswordUpdateSchema.parse(input),
+  })
+
+  if (!response.ok) {
+    throw await parseAuthError(response)
+  }
 }

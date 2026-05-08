@@ -13,6 +13,8 @@ export {
   createRole,
   deleteRole,
   deleteUser,
+  createUser,
+  resetUserPassword,
   getDepartmentTree,
   getRole,
   getUser,

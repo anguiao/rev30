@@ -18,6 +18,10 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = session.user
   }
 
+  function setUser(nextUser: User) {
+    user.value = nextUser
+  }
+
   function clearSession() {
     accessToken.value = null
     accessCodes.value = []
@@ -49,6 +53,7 @@ export const useAuthStore = defineStore('auth', () => {
     isReady,
     isAuthenticated,
     setSession,
+    setUser,
     clearSession,
     can,
     canAny,

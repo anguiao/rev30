@@ -14,6 +14,8 @@ import {
   deleteRole,
   deleteUser,
   getRole,
+  createUser,
+  resetUserPassword,
   SystemRequestError,
   getUser,
   getDepartmentTree,
@@ -318,6 +320,73 @@ describe('system request helpers', () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/roles')
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
       '/api/system/roles/11111111-1111-4111-8111-111111111111',
+    )
+  })
+
+  it('parses create user responses and temporary passwords', async () => {
+    const responseBody = {
+      user: {
+        id: '22222222-2222-4222-8222-222222222222',
+        username: 'ada',
+        nickname: 'Ada',
+        email: null,
+        phone: null,
+        status: USER_STATUS_ENABLED,
+        builtIn: false,
+        departments: [],
+        roles: [],
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      },
+      temporaryPassword: 'temp-pwd-001',
+    }
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(responseBody)))
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    const result = await createUser({
+      username: 'ada',
+      nickname: 'Ada',
+      email: null,
+      phone: null,
+      status: USER_STATUS_ENABLED,
+      departmentIds: [],
+      roleIds: [],
+    })
+
+    expect(result).toEqual(responseBody)
+    expect(result.temporaryPassword).toBe('temp-pwd-001')
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/users')
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/system/users',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    )
+  })
+
+  it('parses reset user password responses and returns temporary passwords', async () => {
+    const responseBody = {
+      userId: '33333333-3333-4333-8333-333333333333',
+      temporaryPassword: 'temp-reset-001',
+    }
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(responseBody)))
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    const result = await resetUserPassword('33333333-3333-4333-8333-333333333333')
+
+    expect(result.temporaryPassword).toBe('temp-reset-001')
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      '/api/system/users/33333333-3333-4333-8333-333333333333/password/reset',
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/api/system/users/33333333-3333-4333-8333-333333333333/password/reset'),
+      expect.objectContaining({
+        method: 'POST',
+      }),
     )
   })
 

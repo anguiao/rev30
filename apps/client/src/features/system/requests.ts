@@ -15,7 +15,12 @@ import {
   type User,
   type UserListQuery,
   type UserListResponse,
+  type UserCreateInput,
+  type UserCreateResponse,
+  type UserResetPasswordResponse,
   type UserUpdateInput,
+  userCreateResponseSchema,
+  userResetPasswordResponseSchema,
   userSchema,
   userListResponseSchema,
 } from '@rev30/shared'
@@ -97,6 +102,10 @@ export async function createRole(input: RoleCreateInput): Promise<Role> {
   return parseSystemResponse(await api.system.roles.$post({ json: input }), roleSchema)
 }
 
+export async function createUser(input: UserCreateInput): Promise<UserCreateResponse> {
+  return parseSystemResponse(await api.system.users.$post({ json: input }), userCreateResponseSchema)
+}
+
 export async function updateRole(id: string, input: RoleUpdateInput): Promise<Role> {
   return parseSystemResponse(
     await api.system.roles[':id'].$patch({ param: { id }, json: input }),
@@ -114,6 +123,15 @@ export async function deleteRole(id: string): Promise<void> {
 
 export async function getUser(id: string): Promise<User> {
   return parseSystemResponse(await api.system.users[':id'].$get({ param: { id } }), userSchema)
+}
+
+export async function resetUserPassword(id: string): Promise<UserResetPasswordResponse> {
+  return parseSystemResponse(
+    await api.system.users[':id']['password']['reset'].$post({
+      param: { id },
+    }),
+    userResetPasswordResponseSchema,
+  )
 }
 
 export async function updateUser(id: string, input: UserUpdateInput): Promise<User> {

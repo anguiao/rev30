@@ -8,7 +8,7 @@ import type {
 } from '@rev30/shared'
 import { and, count, desc, eq, ilike, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
-import { userDepartments, userRoles, users } from '../../../db/schema'
+import { authPasswordCredentials, authRefreshTokens, userDepartments, userRoles, users } from '../../../db/schema'
 import {
   findDepartmentSummariesByUserIds,
   lockActiveDepartmentsByIds,
@@ -141,7 +141,7 @@ export function createUserRepository(database: Db) {
       }
     },
 
-    async create(input: UserCreateInput) {
+    async create(input: UserCreateInput, passwordHash: string) {
       const { departmentIds = [], roleIds = [], ...userInput } = input
       const now = new Date()
 
@@ -165,6 +165,14 @@ export function createUserRepository(database: Db) {
           throw new Error('创建用户失败')
         }
 
+        await tx.insert(authPasswordCredentials).values({
+          userId: created.id,
+          passwordHash,
+          mustChangePassword: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+
         if (departmentIds.length > 0) {
           await tx
             .insert(userDepartments)
@@ -185,6 +193,51 @@ export function createUserRepository(database: Db) {
           departments: departmentSummaries.get(created.id) ?? [],
           roles: roleSummaries.get(created.id) ?? [],
         }
+      })
+    },
+
+    async resetPassword(id: string, passwordHash: string) {
+      const now = new Date()
+
+      return await database.transaction(async (tx) => {
+        const existingRows = await tx
+          .select()
+          .from(users)
+          .where(and(eq(users.id, id), isNull(users.deletedAt)))
+          .limit(1)
+        const existingUser = existingRows[0]
+
+        if (!existingUser) {
+          return undefined
+        }
+
+        await tx
+          .insert(authPasswordCredentials)
+          .values({
+            userId: id,
+            passwordHash,
+            mustChangePassword: true,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: authPasswordCredentials.userId,
+            set: {
+              passwordHash,
+              mustChangePassword: true,
+              updatedAt: now,
+            },
+          })
+
+        await tx
+          .update(authRefreshTokens)
+          .set({
+            revokedAt: now,
+            updatedAt: now,
+          })
+          .where(and(eq(authRefreshTokens.userId, id), isNull(authRefreshTokens.revokedAt)))
+
+        return existingUser
       })
     },
 

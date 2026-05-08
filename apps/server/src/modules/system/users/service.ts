@@ -1,5 +1,12 @@
-import type { UserCreateInput, UserListQuery, UserUpdateInput } from '@rev30/shared'
+import type {
+  UserCreateInput,
+  UserCreateResponse,
+  UserListQuery,
+  UserResetPasswordResponse,
+  UserUpdateInput,
+} from '@rev30/shared'
 import type { Db } from '../../../db'
+import { generateTemporaryPassword, hashPassword } from '../../auth/password'
 import { BuiltInUserMutationError, toUserConflictError, UserNotFoundError } from './errors'
 import { toUser } from './mapper'
 import { createUserRepository } from './repository'
@@ -41,10 +48,40 @@ export function createUserService(database: Db) {
       return toUser(row.user, row.departments, row.roles)
     },
 
-    async create(input: UserCreateInput) {
-      const created = await withUserUniqueConflict(() => repository.create(input))
+    async create(input: UserCreateInput): Promise<UserCreateResponse> {
+      const temporaryPassword = generateTemporaryPassword()
+      const passwordHash = await hashPassword(temporaryPassword)
+      const created = await withUserUniqueConflict(() => repository.create(input, passwordHash))
 
-      return toUser(created.user, created.departments, created.roles)
+      return {
+        user: toUser(created.user, created.departments, created.roles),
+        temporaryPassword,
+      }
+    },
+
+    async resetPassword(id: string): Promise<UserResetPasswordResponse> {
+      const existing = await repository.findActiveById(id)
+
+      if (!existing) {
+        throw new UserNotFoundError()
+      }
+
+      if (existing.user.builtIn) {
+        throw new BuiltInUserMutationError('edit')
+      }
+
+      const temporaryPassword = generateTemporaryPassword()
+      const passwordHash = await hashPassword(temporaryPassword)
+      const updated = await repository.resetPassword(id, passwordHash)
+
+      if (!updated) {
+        throw new UserNotFoundError()
+      }
+
+      return {
+        userId: updated.id,
+        temporaryPassword,
+      }
     },
 
     async update(id: string, input: UserUpdateInput) {

@@ -37,6 +37,8 @@ export class UserNotFoundError extends Error {
 }
 
 export class UserInvalidDepartmentError extends Error {
+  readonly field = 'departmentIds'
+
   constructor() {
     super('部门不存在')
     this.name = 'UserInvalidDepartmentError'
@@ -44,6 +46,8 @@ export class UserInvalidDepartmentError extends Error {
 }
 
 export class UserInvalidRoleError extends Error {
+  readonly field = 'roleIds'
+
   constructor() {
     super('角色不存在')
     this.name = 'UserInvalidRoleError'

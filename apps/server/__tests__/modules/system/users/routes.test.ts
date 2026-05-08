@@ -8,16 +8,28 @@ import {
   USER_STATUS_ENABLED,
   type RoleStatus,
   type User,
+  type UserCreateResponse,
   type UserListResponse,
+  type UserResetPasswordResponse,
   type UserStatus,
 } from '@rev30/shared'
-import { departments, roles, userDepartments, userRoles, users } from '../../../../src/db/schema'
+import {
+  authPasswordCredentials,
+  authRefreshTokens,
+  departments,
+  roles,
+  userDepartments,
+  userRoles,
+  users,
+} from '../../../../src/db/schema'
+import { hashPassword, verifyPassword } from '../../../../src/modules/auth/password'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 import { createUserRoutes } from '../../../../src/modules/system/users/routes'
 
 type ErrorResponse = {
   message: string
+  field?: string
 }
 
 async function createTestApp(
@@ -61,9 +73,12 @@ async function createUser(
     },
   })
 
+  const responseBody = (await response.json()) as UserCreateResponse
+
   return {
-    body: (await response.json()) as User,
+    body: responseBody.user,
     response,
+    temporaryPassword: responseBody.temporaryPassword,
   }
 }
 
@@ -125,11 +140,160 @@ async function createRole(
 }
 
 describe('user routes', () => {
+  it('creates users with a generated temporary password credential', async () => {
+    const database = await createTestDb()
+    const fixture = await createSystemAccessFixture(database, {
+      accessCodes: ['system:user:create'],
+    })
+    const app = createProtectedSystemRouteTestApp(
+      database,
+      '/api/system/users',
+      createUserRoutes(database),
+      fixture.authHeaders,
+    )
+
+    const response = await app.request('/api/system/users', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: 'created-by-admin',
+        nickname: 'Created By Admin',
+        email: null,
+        phone: null,
+        status: USER_STATUS_ENABLED,
+        departmentIds: [],
+        roleIds: [],
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const body = (await response.json()) as UserCreateResponse
+
+    expect(response.status).toBe(201)
+    expect(body.user.username).toBe('created-by-admin')
+    expect(body.temporaryPassword).toEqual(expect.any(String))
+    expect(body.temporaryPassword.length).toBeGreaterThanOrEqual(8)
+
+    const credential = await database.query.authPasswordCredentials.findFirst({
+      where: eq(authPasswordCredentials.userId, body.user.id),
+    })
+    expect(credential?.mustChangePassword).toBe(true)
+    expect(await verifyPassword(body.temporaryPassword, credential!.passwordHash)).toBe(true)
+  })
+
+  it('returns field errors when create user relations are invalid', async () => {
+    const database = await createTestDb()
+    const fixture = await createSystemAccessFixture(database, {
+      accessCodes: ['system:user:create'],
+    })
+    const app = createProtectedSystemRouteTestApp(
+      database,
+      '/api/system/users',
+      createUserRoutes(database),
+      fixture.authHeaders,
+    )
+
+    const departmentResponse = await app.request('/api/system/users', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: 'invalid-department-user',
+        nickname: 'Invalid Department User',
+        email: null,
+        phone: null,
+        status: USER_STATUS_ENABLED,
+        departmentIds: ['11111111-1111-4111-8111-111111111111'],
+        roleIds: [],
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(departmentResponse.status).toBe(400)
+    expect(await departmentResponse.json()).toEqual({
+      field: 'departmentIds',
+      message: '部门不存在',
+    })
+
+    const roleResponse = await app.request('/api/system/users', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: 'invalid-role-user',
+        nickname: 'Invalid Role User',
+        email: null,
+        phone: null,
+        status: USER_STATUS_ENABLED,
+        departmentIds: [],
+        roleIds: ['22222222-2222-4222-8222-222222222222'],
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(roleResponse.status).toBe(400)
+    expect(await roleResponse.json()).toEqual({
+      field: 'roleIds',
+      message: '角色不存在',
+    })
+  })
+
+  it('resets non-built-in user passwords and revokes refresh sessions', async () => {
+    const database = await createTestDb()
+    const fixture = await createSystemAccessFixture(database, {
+      accessCodes: ['system:user:reset-password'],
+    })
+    const app = createProtectedSystemRouteTestApp(
+      database,
+      '/api/system/users',
+      createUserRoutes(database),
+      fixture.authHeaders,
+    )
+    const userId = '33333333-3333-4333-8333-333333333333'
+    await database.insert(users).values({
+      id: userId,
+      username: 'reset-password-user',
+      nickname: 'Reset Password User',
+      status: USER_STATUS_ENABLED,
+      createdAt: new Date('2026-05-08T00:00:00.000Z'),
+      updatedAt: new Date('2026-05-08T00:00:00.000Z'),
+    })
+    await database.insert(authPasswordCredentials).values({
+      userId,
+      passwordHash: await hashPassword('old-password'),
+      mustChangePassword: false,
+      createdAt: new Date('2026-05-08T00:00:00.000Z'),
+      updatedAt: new Date('2026-05-08T00:00:00.000Z'),
+    })
+    await database.insert(authRefreshTokens).values({
+      id: '44444444-4444-4444-8444-444444444444',
+      userId,
+      tokenHash: 'reset-password-token-hash',
+      expiresAt: new Date('2026-06-08T00:00:00.000Z'),
+      createdAt: new Date('2026-05-08T00:00:00.000Z'),
+      updatedAt: new Date('2026-05-08T00:00:00.000Z'),
+    })
+
+    const response = await app.request(`/api/system/users/${userId}/password/reset`, {
+      method: 'POST',
+    })
+    const body = (await response.json()) as UserResetPasswordResponse
+
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({ userId })
+    expect(body.temporaryPassword).toEqual(expect.any(String))
+
+    const credential = await database.query.authPasswordCredentials.findFirst({
+      where: eq(authPasswordCredentials.userId, userId),
+    })
+    expect(credential?.mustChangePassword).toBe(true)
+    expect(await verifyPassword(body.temporaryPassword, credential!.passwordHash)).toBe(true)
+
+    const sessions = await database.query.authRefreshTokens.findMany({
+      where: eq(authRefreshTokens.userId, userId),
+    })
+    expect(sessions[0]?.revokedAt).toBeInstanceOf(Date)
+  })
+
   it('creates users in the database and returns paginated users', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
 
-    const { body, response } = await createUser(app, {
+    const { body, response, temporaryPassword } = await createUser(app, {
       username: 'ada',
       nickname: 'Ada Lovelace',
       email: 'ada@example.com',
@@ -148,6 +312,7 @@ describe('user routes', () => {
     })
     expect(body.createdAt).toEqual(expect.any(String))
     expect(body.updatedAt).toEqual(expect.any(String))
+    expect(temporaryPassword).toEqual(expect.any(String))
 
     const storedUsers = await database.select().from(users).where(eq(users.username, 'ada'))
     expect(storedUsers).toHaveLength(1)
@@ -497,7 +662,7 @@ describe('user routes', () => {
       const createBody = (await createResponse.json()) as ErrorResponse
 
       expect(createResponse.status).toBe(400)
-      expect(createBody).toEqual({ message: '角色不存在' })
+      expect(createBody).toEqual({ field: 'roleIds', message: '角色不存在' })
     }
 
     const { body: validUser } = await createUser(app, {
@@ -518,7 +683,7 @@ describe('user routes', () => {
       const updateBody = (await updateResponse.json()) as ErrorResponse
 
       expect(updateResponse.status).toBe(400)
-      expect(updateBody).toEqual({ message: '角色不存在' })
+      expect(updateBody).toEqual({ field: 'roleIds', message: '角色不存在' })
     }
   })
 
@@ -548,7 +713,7 @@ describe('user routes', () => {
       const createBody = (await createResponse.json()) as ErrorResponse
 
       expect(createResponse.status).toBe(400)
-      expect(createBody).toEqual({ message: '部门不存在' })
+      expect(createBody).toEqual({ field: 'departmentIds', message: '部门不存在' })
     }
 
     const { body: validUser } = await createUser(app, {
@@ -569,7 +734,7 @@ describe('user routes', () => {
       const updateBody = (await updateResponse.json()) as ErrorResponse
 
       expect(updateResponse.status).toBe(400)
-      expect(updateBody).toEqual({ message: '部门不存在' })
+      expect(updateBody).toEqual({ field: 'departmentIds', message: '部门不存在' })
     }
   })
 

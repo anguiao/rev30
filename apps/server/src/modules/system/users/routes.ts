@@ -65,11 +65,23 @@ function userErrorResponse(error: unknown, c: Context) {
   }
 
   if (error instanceof UserInvalidDepartmentError) {
-    return c.json({ message: error.message }, 400)
+    return c.json(
+      {
+        field: error.field,
+        message: error.message,
+      },
+      400,
+    )
   }
 
   if (error instanceof UserInvalidRoleError) {
-    return c.json({ message: error.message }, 400)
+    return c.json(
+      {
+        field: error.field,
+        message: error.message,
+      },
+      400,
+    )
   }
 
   if (error instanceof BuiltInUserMutationError) {
@@ -91,15 +103,25 @@ export function createUserRoutes(database: Db) {
 
       return c.json(await service.list(query))
     })
-    .get('/:id', requireAccess('system:user:list'), userIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
-
-      return c.json(await service.get(id))
-    })
     .post('/', requireAccess('system:user:create'), userCreateBodyValidator, async (c) => {
       const body: UserCreateInput = c.req.valid('json')
 
       return c.json(await service.create(body), 201)
+    })
+    .post(
+      '/:id/password/reset',
+      requireAccess('system:user:reset-password'),
+      userIdValidator,
+      async (c) => {
+        const { id } = c.req.valid('param')
+
+        return c.json(await service.resetPassword(id))
+      },
+    )
+    .get('/:id', requireAccess('system:user:list'), userIdValidator, async (c) => {
+      const { id } = c.req.valid('param')
+
+      return c.json(await service.get(id))
     })
     .patch(
       '/:id',

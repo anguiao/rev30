@@ -12,6 +12,10 @@ export async function hashPassword(password: string) {
   return `${algorithm}$${salt}$${hash.toString('base64url')}`
 }
 
+export function generateTemporaryPassword() {
+  return randomBytes(18).toString('base64url')
+}
+
 export async function verifyPassword(password: string, storedHash: string) {
   const [storedAlgorithm, salt, encodedHash] = storedHash.split('$')
 

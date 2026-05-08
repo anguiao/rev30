@@ -8,19 +8,20 @@ import {
   RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_EXTERNAL,
   RESOURCE_TYPE_MENU,
+  filterTree,
+  getTreeNodeCount,
+  treeToArray,
   type ResourceTreeNode,
   type ResourceType,
 } from '@rev30/shared'
 import {
   STATUS_FILTER_ALL,
-  countTreeNodes,
-  filterTree,
   formatDateTime,
   getResourceTree,
   getSystemErrorMessage,
   resourceTypeLabels,
+  statusFilterOptions,
   statusLabels,
-  statusOptions,
   statusTagTypes,
   type StatusFilter,
   type SystemStatus,
@@ -101,16 +102,7 @@ const rows = computed(() => {
   })
 })
 
-const visibleCount = computed(() => countTreeNodes(rows.value))
-const expandedRowKeys = ref<DataTableRowKey[]>([])
-
-watch(
-  rows,
-  (nextRows) => {
-    expandedRowKeys.value = collectTreeIds(nextRows)
-  },
-  { immediate: true },
-)
+const visibleCount = computed(() => getTreeNodeCount(rows.value))
 
 function handleSearch() {
   activeFilters.value = {
@@ -133,10 +125,14 @@ function handleReset() {
   }
 }
 
-function collectTreeIds(nodes: ResourceTreeNode[]): DataTableRowKey[] {
-  return nodes.flatMap((node) => [node.id, ...collectTreeIds(node.children)])
-}
-
+const expandedRowKeys = ref<DataTableRowKey[]>([])
+watch(
+  rows,
+  (nextRows) => {
+    expandedRowKeys.value = treeToArray(nextRows).map((node) => node.id)
+  },
+  { immediate: true },
+)
 function handleUpdateExpandedRowKeys(keys: DataTableRowKey[]) {
   expandedRowKeys.value = keys
 }
@@ -266,7 +262,7 @@ const columns: DataTableColumns<ResourceTreeNode> = [
         <NSelect
           v-model:value="filters.status"
           data-test="resources-status"
-          :options="statusOptions"
+          :options="statusFilterOptions"
           placeholder="全部状态"
           class="w-40!"
         />

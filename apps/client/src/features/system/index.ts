@@ -2,8 +2,9 @@ export {
   STATUS_FILTER_ALL,
   formatDateTime,
   resourceTypeLabels,
+  statusFilterOptions,
   statusLabels,
-  statusOptions,
+  statusSelectOptions,
   statusTagTypes,
 } from './labels'
 export type { StatusFilter, SystemStatus } from './labels'
@@ -22,4 +23,3 @@ export {
   updateRole,
   updateUser,
 } from './requests'
-export { countTreeNodes, filterTree } from './tree'

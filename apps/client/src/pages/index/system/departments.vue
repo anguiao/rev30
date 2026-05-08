@@ -3,16 +3,14 @@ import { computed, h, ref, watch } from 'vue'
 import { useQuery } from '@pinia/colada'
 import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
 import { NAlert, NButton, NDataTable, NFlex, NInput, NSelect, NTag } from 'naive-ui'
-import type { DepartmentTreeNode } from '@rev30/shared'
+import { filterTree, getTreeNodeCount, treeToArray, type DepartmentTreeNode } from '@rev30/shared'
 import {
   STATUS_FILTER_ALL,
-  countTreeNodes,
-  filterTree,
   formatDateTime,
   getDepartmentTree,
   getSystemErrorMessage,
+  statusFilterOptions,
   statusLabels,
-  statusOptions,
   statusTagTypes,
   type StatusFilter,
   type SystemStatus,
@@ -75,16 +73,7 @@ const rows = computed(() => {
   })
 })
 
-const visibleCount = computed(() => countTreeNodes(rows.value))
-const expandedRowKeys = ref<DataTableRowKey[]>([])
-
-watch(
-  rows,
-  (nextRows) => {
-    expandedRowKeys.value = collectTreeIds(nextRows)
-  },
-  { immediate: true },
-)
+const visibleCount = computed(() => getTreeNodeCount(rows.value))
 
 function handleSearch() {
   activeFilters.value = {
@@ -104,10 +93,14 @@ function handleReset() {
   }
 }
 
-function collectTreeIds(nodes: DepartmentTreeNode[]): DataTableRowKey[] {
-  return nodes.flatMap((node) => [node.id, ...collectTreeIds(node.children)])
-}
-
+const expandedRowKeys = ref<DataTableRowKey[]>([])
+watch(
+  rows,
+  (nextRows) => {
+    expandedRowKeys.value = treeToArray(nextRows).map((node) => node.id)
+  },
+  { immediate: true },
+)
 function handleUpdateExpandedRowKeys(keys: DataTableRowKey[]) {
   expandedRowKeys.value = keys
 }
@@ -202,7 +195,7 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
         <NSelect
           v-model:value="filters.status"
           data-test="departments-status"
-          :options="statusOptions"
+          :options="statusFilterOptions"
           placeholder="全部状态"
           class="w-40!"
         />

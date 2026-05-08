@@ -5,9 +5,9 @@ import { useForm } from '@tanstack/vue-form'
 import { mount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 import { z } from 'zod'
-import { formItemValidationProps, setServerFieldError } from '../../../src/features/auth/form'
+import { formItemValidationProps, setServerFieldError } from '../../src/utils/form'
 
-describe('auth form helpers', () => {
+describe('form helpers', () => {
   it('maps field errors to Naive UI form item props', () => {
     expect(formItemValidationProps(['Required', 'Too short'])).toEqual({
       feedback: 'Required',

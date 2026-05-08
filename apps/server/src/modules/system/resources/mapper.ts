@@ -1,4 +1,4 @@
-import type { Resource, ResourceTreeNode } from '@rev30/shared'
+import { arrayToTree, type Resource, type ResourceTreeNode } from '@rev30/shared'
 import { systemResources } from '../../../db/schema'
 
 export type ResourceRow = typeof systemResources.$inferSelect
@@ -23,21 +23,5 @@ export function toResource(row: ResourceRow): Resource {
 }
 
 export function toResourceTree(rows: ResourceRow[]): ResourceTreeNode[] {
-  const childrenByParentId = new Map<string | null, ResourceTreeNode[]>()
-  const nodes = rows.map<ResourceTreeNode>((row) => ({
-    ...toResource(row),
-    children: [],
-  }))
-
-  for (const node of nodes) {
-    const siblings = childrenByParentId.get(node.parentId) ?? []
-    siblings.push(node)
-    childrenByParentId.set(node.parentId, siblings)
-  }
-
-  for (const node of nodes) {
-    node.children = childrenByParentId.get(node.id) ?? []
-  }
-
-  return childrenByParentId.get(null) ?? []
+  return arrayToTree(rows.map(toResource))
 }

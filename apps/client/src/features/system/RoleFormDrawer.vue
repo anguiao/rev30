@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useMutation, useQuery } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
-import { z } from 'zod'
 import {
   NAlert,
   NButton,
@@ -16,15 +16,13 @@ import {
   type TreeOption,
 } from 'naive-ui'
 import {
-  ROLE_STATUS_DISABLED,
   ROLE_STATUS_ENABLED,
   roleCreateSchema,
-  roleResourceIdsSchema,
-  roleStatusSchema,
   roleUpdateSchema,
   type ResourceTreeNode,
   type Role,
-  type RoleCreateInput,
+  type RoleFormInput,
+  roleFormSchema,
 } from '@rev30/shared'
 import {
   SystemRequestError,
@@ -34,28 +32,22 @@ import {
   getSystemErrorMessage,
   updateRole,
 } from '.'
-import { statusLabels } from './labels'
+import { statusSelectOptions } from './labels'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
 
-type RoleFormData = {
-  name: string
-  code: string
-  status: RoleCreateInput['status']
-  sortOrder: number
-  resourceIds: string[]
-}
-
 const props = defineProps<{
-  show: boolean
   roleId: string | null
 }>()
 
+const show = defineModel<boolean>('show', { required: true })
+
 const emit = defineEmits<{
-  'update:show': [value: boolean]
   saved: []
 }>()
 
-const defaultFormValues: RoleFormData = {
+const drawerTitle = computed(() => (props.roleId === null ? '新增角色' : '编辑角色'))
+
+const defaultFormValues: RoleFormInput = {
   name: '',
   code: '',
   status: ROLE_STATUS_ENABLED,
@@ -63,195 +55,132 @@ const defaultFormValues: RoleFormData = {
   resourceIds: [],
 }
 
-const roleFormSchema = z.object({
-  name: z.string().trim().min(1, '请输入角色名称'),
-  code: z.string().trim().min(1, '请输入角色编码'),
-  status: roleStatusSchema,
-  sortOrder: z.number('排序必须是数字').int('排序必须是整数'),
-  resourceIds: roleResourceIdsSchema,
+const {
+  data: formData,
+  error: formLoadError,
+  isLoading,
+} = useQuery({
+  key: () => ['system', 'role-form', props.roleId ?? 'create'],
+  enabled: () => show.value,
+  async query() {
+    const roleId = props.roleId
+    const [resources, role] = await Promise.all([
+      getResourceTree(),
+      roleId === null ? null : getRole(roleId),
+    ])
+
+    return {
+      resourceTreeOptions: toResourceTreeOptions(resources),
+      formValues: role === null ? defaultFormValues : toRoleFormValues(role),
+    }
+  },
 })
+const resourceTreeOptions = computed(() => formData.value?.resourceTreeOptions ?? [])
+const loadError = computed(() =>
+  isLoading.value || formLoadError.value === null
+    ? null
+    : getSystemErrorMessage(formLoadError.value, '加载角色表单失败'),
+)
 
-const statusOptions = [
-  {
-    label: statusLabels[ROLE_STATUS_ENABLED],
-    value: ROLE_STATUS_ENABLED,
-  },
-  {
-    label: statusLabels[ROLE_STATUS_DISABLED],
-    value: ROLE_STATUS_DISABLED,
-  },
-]
-
-const resourceTree = ref<TreeOption[]>([])
-const loadError = ref<string | null>(null)
 const formError = ref<string | null>(null)
-const loading = ref(false)
-const saving = ref(false)
-const loadToken = ref(0)
-const saveToken = ref(0)
-
-const drawerTitle = computed(() => (props.roleId === null ? '新增角色' : '编辑角色'))
-
-function isActiveSave(currentSaveToken: number, submittedRoleId: string | null) {
-  return saveToken.value === currentSaveToken && props.show && props.roleId === submittedRoleId
-}
-
-function handleSubmit() {
-  if (loading.value || saving.value || loadError.value !== null) {
-    return
-  }
-
-  void form.handleSubmit()
-}
 
 const form = useForm({
   defaultValues: defaultFormValues,
   validators: {
     onSubmit: roleFormSchema,
   },
-  async onSubmit({ value }) {
-    const currentSaveToken = saveToken.value + 1
-    const submittedRoleId = props.roleId
+  onSubmit({ value }) {
+    const roleId = props.roleId
 
-    saveToken.value = currentSaveToken
     formError.value = null
-    saving.value = true
 
-    try {
-      if (submittedRoleId === null) {
-        await createRole(roleCreateSchema.parse(value))
-      } else {
-        await updateRole(submittedRoleId, roleUpdateSchema.parse(value))
-      }
-
-      if (!isActiveSave(currentSaveToken, submittedRoleId)) {
-        return
-      }
-
-      emit('saved')
-      emit('update:show', false)
-    } catch (error) {
-      if (!isActiveSave(currentSaveToken, submittedRoleId)) {
-        return
-      }
-
-      if (error instanceof SystemRequestError && error.field !== undefined) {
-        setServerFieldError(form, error.field as keyof RoleFormData, error.message)
-        return
-      }
-
-      formError.value = getSystemErrorMessage(error, '保存角色失败')
-    } finally {
-      if (isActiveSave(currentSaveToken, submittedRoleId)) {
-        saving.value = false
-      }
-    }
+    saveRoleMutation.mutate({ roleId, value })
   },
 })
 
-function applyFormValues(values: RoleFormData) {
-  form.reset()
-  form.setFieldValue('name', values.name)
-  form.setFieldValue('code', values.code)
-  form.setFieldValue('status', values.status)
-  form.setFieldValue('sortOrder', values.sortOrder)
-  form.setFieldValue('resourceIds', values.resourceIds)
-}
+const { isLoading: isSaving, ...saveRoleMutation } = useMutation({
+  mutation: ({ roleId, value }: { roleId: string | null; value: RoleFormInput }) =>
+    roleId === null
+      ? createRole(roleCreateSchema.parse(value))
+      : updateRole(roleId, roleUpdateSchema.parse(value)),
+  onSuccess(_, { roleId }) {
+    if (!show.value || props.roleId !== roleId) {
+      return
+    }
 
-function resetDrawerState() {
-  loadToken.value += 1
-  saveToken.value += 1
-  form.reset()
-  resourceTree.value = []
-  loadError.value = null
-  formError.value = null
-  loading.value = false
-  saving.value = false
-}
+    emit('saved')
+    show.value = false
+  },
+  onError(error, { roleId }) {
+    if (!show.value || props.roleId !== roleId) {
+      return
+    }
 
-function toTreeOptions(nodes: ResourceTreeNode[]): TreeOption[] {
-  return nodes.map((node) => ({
-    key: node.id,
-    label: `${node.name} (${node.code})`,
-    children: toTreeOptions(node.children),
-  }))
-}
+    if (error instanceof SystemRequestError && error.field !== undefined) {
+      setServerFieldError(form, error.field as keyof RoleFormInput, error.message)
+      return
+    }
 
-function toRoleFormValues(role: Role): RoleFormData {
-  return {
-    name: role.name,
-    code: role.code,
-    status: role.status,
-    sortOrder: role.sortOrder,
-    resourceIds: role.resources.map((resource) => resource.id),
+    formError.value = getSystemErrorMessage(error, '保存角色失败')
+  },
+})
+
+function handleSubmit() {
+  if (isLoading.value || isSaving.value || loadError.value) {
+    return
   }
-}
 
-async function loadForm() {
-  const currentLoadToken = loadToken.value + 1
-  const loadRoleId = props.roleId
-
-  loadToken.value = currentLoadToken
-  loading.value = true
-  loadError.value = null
-  formError.value = null
-
-  try {
-    const [resources, role] = await Promise.all([
-      getResourceTree(),
-      loadRoleId === null ? Promise.resolve(null) : getRole(loadRoleId),
-    ])
-
-    if (loadToken.value !== currentLoadToken || !props.show || props.roleId !== loadRoleId) {
-      return
-    }
-
-    resourceTree.value = toTreeOptions(resources)
-
-    if (role === null) {
-      applyFormValues(defaultFormValues)
-      return
-    }
-
-    applyFormValues(toRoleFormValues(role))
-  } catch (error) {
-    if (loadToken.value !== currentLoadToken || !props.show || props.roleId !== loadRoleId) {
-      return
-    }
-
-    loadError.value = getSystemErrorMessage(error, '加载角色表单失败')
-  } finally {
-    if (loadToken.value === currentLoadToken) {
-      loading.value = false
-    }
-  }
+  void form.handleSubmit()
 }
 
 watch(
-  () => [props.show, props.roleId] as const,
-  ([show, roleId], previousValue) => {
-    if (!show) {
-      resetDrawerState()
+  () => [show.value, props.roleId] as const,
+  ([isVisible]) => {
+    if (!isVisible) {
       return
     }
 
-    const previousShow = previousValue?.[0]
-    const previousRoleId = previousValue?.[1]
-
-    if (!previousShow || previousRoleId !== roleId) {
-      saveToken.value += 1
-      saving.value = false
-      void loadForm()
-    }
+    saveRoleMutation.reset()
+    formError.value = null
+    form.reset(defaultFormValues)
   },
   {
     immediate: true,
   },
 )
+
+watch(
+  () => [show.value, formData.value?.formValues] as const,
+  ([isVisible, formValues]) => {
+    if (!isVisible || formValues === undefined) {
+      return
+    }
+
+    form.reset(formValues)
+  },
+  {
+    immediate: true,
+  },
+)
+
+function toResourceTreeOptions(nodes: ResourceTreeNode[]): TreeOption[] {
+  return nodes.map((node) => ({
+    key: node.id,
+    label: `${node.name} (${node.code})`,
+    children: toResourceTreeOptions(node.children),
+  }))
+}
+
+function toRoleFormValues(role: Role): RoleFormInput {
+  return {
+    ...role,
+    resourceIds: role.resources.map((resource) => resource.id),
+  }
+}
 </script>
 
 <template>
-  <NDrawer :show="show" placement="right" :width="640" @update:show="emit('update:show', $event)">
+  <NDrawer v-model:show="show" placement="right" :width="640">
     <NDrawerContent :title="drawerTitle" closable>
       <div class="flex flex-col gap-4">
         <NAlert v-if="loadError" type="error" :show-icon="false">
@@ -301,7 +230,7 @@ watch(
               <NSelect
                 data-test="role-form-status"
                 :value="state.value"
-                :options="statusOptions"
+                :options="statusSelectOptions"
                 @update:value="field.handleChange"
               />
             </NFormItem>
@@ -335,7 +264,7 @@ watch(
                 block-line
                 checkable
                 cascade
-                :data="resourceTree"
+                :data="resourceTreeOptions"
                 :checked-keys="state.value"
                 @update:checked-keys="
                   (keys) => {
@@ -351,8 +280,8 @@ watch(
               data-test="role-form-submit"
               type="primary"
               attr-type="submit"
-              :loading="saving"
-              :disabled="loading || loadError !== null"
+              :loading="isSaving"
+              :disabled="isLoading || !!loadError"
             >
               保存
             </NButton>

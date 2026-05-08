@@ -4,26 +4,22 @@ import { useMutation } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
 import { z } from 'zod'
 import { authRegisterSchema, type AuthRegisterInput } from '@rev30/shared'
-import { setServerFieldError } from './form'
 import { AuthRequestError, register } from './requests'
 import { useAuthStore } from '../../stores/auth'
+import { setServerFieldError } from '../../utils/form'
 
-const authRegisterInputSchema = authRegisterSchema
-  .extend({
+const authRegisterFormSchema = authRegisterSchema
+  .safeExtend({
     confirmPassword: z.string(),
   })
   .refine((value) => value.password === value.confirmPassword, {
     path: ['confirmPassword'],
     message: '两次输入的密码不一致',
   })
-const authRegisterFormSchema = authRegisterInputSchema.safeExtend({
-  email: z.string(),
-  phone: z.string(),
-})
 type RegisterFormData = z.input<typeof authRegisterFormSchema>
 
 function toRegisterInput(value: RegisterFormData): AuthRegisterInput {
-  const { confirmPassword: _confirmPassword, ...input } = authRegisterInputSchema.parse(value)
+  const { confirmPassword: _confirmPassword, ...input } = authRegisterFormSchema.parse(value)
 
   return input
 }

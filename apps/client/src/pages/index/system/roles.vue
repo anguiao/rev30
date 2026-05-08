@@ -28,19 +28,17 @@ import {
   formatDateTime,
   getSystemErrorMessage,
   listRoles,
+  statusFilterOptions,
   statusLabels,
-  statusOptions,
   statusTagTypes,
   type StatusFilter,
 } from '../../../features/system'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
-const dialog = useDialog()
 const message = useMessage()
+
 const keyword = ref('')
 const status = ref<StatusFilter>(STATUS_FILTER_ALL)
-const isRoleDrawerShown = ref(false)
-const editingRoleId = ref<string | null>(null)
 const query = ref<RoleListQuery>({
   page: 1,
   pageSize: 20,
@@ -56,7 +54,7 @@ const {
   data: rolesResponse,
   error: rolesError,
   isLoading,
-  refetch,
+  refetch: refetchRoles,
 } = useQuery({
   key: () => [
     'system',
@@ -75,20 +73,18 @@ const loadErrorMessage = computed(() =>
   rolesError.value === null ? '' : getSystemErrorMessage(rolesError.value, '加载角色失败'),
 )
 
-async function refreshRoles() {
-  await refetch()
-}
-
+const isRoleDrawerVisible = ref(false)
+const editingRoleId = ref<string | null>(null)
 function openCreateRoleDrawer() {
   editingRoleId.value = null
-  isRoleDrawerShown.value = true
+  isRoleDrawerVisible.value = true
 }
-
 function openEditRoleDrawer(roleId: string) {
   editingRoleId.value = roleId
-  isRoleDrawerShown.value = true
+  isRoleDrawerVisible.value = true
 }
 
+const dialog = useDialog()
 function confirmDeleteRole(role: RoleListItem) {
   const positiveButtonProps: ButtonProps & Record<string, unknown> = {
     type: 'error',
@@ -105,7 +101,7 @@ function confirmDeleteRole(role: RoleListItem) {
       try {
         await deleteRole(role.id)
         message.success('删除角色成功')
-        await refreshRoles()
+        await refetchRoles()
       } catch (error) {
         message.error(getSystemErrorMessage(error, '删除角色失败'))
         return false
@@ -235,7 +231,7 @@ const columns: DataTableColumns<RoleListItem> = [
         <NSelect
           v-model:value="status"
           data-test="roles-status"
-          :options="statusOptions"
+          :options="statusFilterOptions"
           placeholder="全部状态"
           class="w-40!"
         />
@@ -265,9 +261,9 @@ const columns: DataTableColumns<RoleListItem> = [
     </section>
 
     <RoleFormDrawer
-      v-model:show="isRoleDrawerShown"
+      v-model:show="isRoleDrawerVisible"
       :role-id="editingRoleId"
-      @saved="refreshRoles"
+      @saved="refetchRoles"
     />
   </main>
 </template>

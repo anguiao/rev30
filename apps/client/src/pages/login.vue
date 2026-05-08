@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { NAlert, NButton, NForm, NFormItem, NInput } from 'naive-ui'
-import { AuthShell, formItemValidationProps, useLoginForm } from '../features/auth'
+import { AuthShell, useLoginForm } from '../features/auth'
+import { formItemValidationProps } from '../utils/form'
 
 const { form, formError, isSubmitting } = useLoginForm()
 </script>

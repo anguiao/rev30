@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useMutation, useQuery } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
-import { z } from 'zod'
 import {
   NAlert,
   NButton,
@@ -17,9 +17,10 @@ import {
 import {
   type DepartmentTreeNode,
   type User,
-  USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
   type RoleListItem,
+  type UserFormInput,
+  userFormSchema,
   userUpdateSchema,
 } from '@rev30/shared'
 import {
@@ -30,22 +31,22 @@ import {
   updateUser,
   getSystemErrorMessage,
 } from '.'
-import { statusLabels } from './labels'
+import { statusSelectOptions } from './labels'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
 
-type UserFormData = z.input<typeof userUpdateSchema>
-
 const props = defineProps<{
-  show: boolean
   userId: string | null
 }>()
 
+const show = defineModel<boolean>('show', { required: true })
+
 const emit = defineEmits<{
-  'update:show': [value: boolean]
   saved: []
 }>()
 
-const defaultFormValues: UserFormData = {
+const drawerTitle = computed(() => (props.userId === null ? '新增用户' : '编辑用户'))
+
+const defaultFormValues: UserFormInput = {
   username: '',
   nickname: '',
   email: null,
@@ -55,100 +56,123 @@ const defaultFormValues: UserFormData = {
   roleIds: [],
 }
 
-const statusOptions = [
-  {
-    label: statusLabels[USER_STATUS_ENABLED],
-    value: USER_STATUS_ENABLED,
-  },
-  {
-    label: statusLabels[USER_STATUS_DISABLED],
-    value: USER_STATUS_DISABLED,
-  },
-]
+const {
+  data: formData,
+  error: formLoadError,
+  isLoading,
+} = useQuery({
+  key: () => ['system', 'user-form', props.userId ?? 'none'],
+  enabled: () => show.value && props.userId !== null,
+  async query() {
+    const userId = props.userId
 
-const departmentTreeOptions = ref<TreeOption[]>([])
-const roleOptions = ref<Array<{ label: string; value: string }>>([])
-const loadError = ref<string | null>(null)
+    if (userId === null) {
+      throw new Error('User id is required')
+    }
+
+    const [departments, roleList, user] = await Promise.all([
+      getDepartmentTree(),
+      listRoles({ page: 1, pageSize: 100 }),
+      getUser(userId),
+    ])
+
+    return {
+      departmentTreeOptions: toDepartmentTreeOptions(departments),
+      roleOptions: toRoleOptions(roleList.list),
+      formValues: toUserFormValues(user),
+    }
+  },
+})
+const departmentTreeOptions = computed(() => formData.value?.departmentTreeOptions ?? [])
+const roleOptions = computed(() => formData.value?.roleOptions ?? [])
+const loadError = computed(() =>
+  isLoading.value || formLoadError.value === null
+    ? null
+    : getSystemErrorMessage(formLoadError.value, '加载用户信息失败'),
+)
+
 const formError = ref<string | null>(null)
-const loading = ref(false)
-const saving = ref(false)
-const loadToken = ref(0)
-const saveToken = ref(0)
 
-const drawerTitle = computed(() => '编辑用户')
+const form = useForm({
+  defaultValues: defaultFormValues,
+  validators: {
+    onSubmit: userFormSchema,
+  },
+  onSubmit({ value }) {
+    const userId = props.userId
 
-function isActiveLoad(currentLoadToken: number, loadUserId: string | null) {
-  return loadToken.value === currentLoadToken && props.show && props.userId === loadUserId
-}
+    formError.value = null
 
-function isActiveSave(currentSaveToken: number, submittedUserId: string | null) {
-  return saveToken.value === currentSaveToken && props.show && props.userId === submittedUserId
-}
+    if (userId === null) {
+      return
+    }
+
+    saveUserMutation.mutate({ userId, value })
+  },
+})
+
+const { isLoading: isSaving, ...saveUserMutation } = useMutation({
+  mutation: ({ userId, value }: { userId: string; value: UserFormInput }) =>
+    updateUser(userId, userUpdateSchema.parse(value)),
+  onSuccess(_, { userId }) {
+    if (!show.value || props.userId !== userId) {
+      return
+    }
+
+    emit('saved')
+    show.value = false
+  },
+  onError(error, { userId }) {
+    if (!show.value || props.userId !== userId) {
+      return
+    }
+
+    if (error instanceof SystemRequestError && error.field !== undefined) {
+      setServerFieldError(form, error.field as keyof UserFormInput, error.message)
+      return
+    }
+
+    formError.value = getSystemErrorMessage(error, '保存用户失败')
+  },
+})
 
 function handleSubmit() {
-  if (loading.value || saving.value || loadError.value !== null) {
+  if (isLoading.value || isSaving.value || loadError.value) {
     return
   }
 
   void form.handleSubmit()
 }
 
-const form = useForm({
-  defaultValues: defaultFormValues,
-  validators: {
-    onSubmit: userUpdateSchema,
-  },
-  async onSubmit({ value }) {
-    const currentSaveToken = saveToken.value + 1
-    const submittedUserId = props.userId
-
-    saveToken.value = currentSaveToken
-    formError.value = null
-    saving.value = true
-
-    try {
-      if (submittedUserId === null) {
-        formError.value = '请先选择用户'
-        return
-      }
-
-      await updateUser(submittedUserId, userUpdateSchema.parse(value))
-
-      if (!isActiveSave(currentSaveToken, submittedUserId)) {
-        return
-      }
-
-      emit('saved')
-      emit('update:show', false)
-    } catch (error) {
-      if (!isActiveSave(currentSaveToken, submittedUserId)) {
-        return
-      }
-
-      if (error instanceof SystemRequestError && error.field !== undefined) {
-        setServerFieldError(form, error.field as keyof UserFormData, error.message)
-        return
-      }
-
-      formError.value = getSystemErrorMessage(error, '保存用户失败')
-    } finally {
-      if (isActiveSave(currentSaveToken, submittedUserId)) {
-        saving.value = false
-      }
+watch(
+  () => [show.value, props.userId] as const,
+  ([isVisible]) => {
+    if (!isVisible) {
+      return
     }
-  },
-})
 
-function applyFormValues(values: UserFormData) {
-  form.reset()
-  form.setFieldValue('username', values.username)
-  form.setFieldValue('nickname', values.nickname)
-  form.setFieldValue('email', values.email)
-  form.setFieldValue('phone', values.phone)
-  form.setFieldValue('status', values.status)
-  form.setFieldValue('departmentIds', values.departmentIds)
-  form.setFieldValue('roleIds', values.roleIds)
-}
+    saveUserMutation.reset()
+    formError.value = null
+    form.reset(defaultFormValues)
+  },
+  {
+    immediate: true,
+  },
+)
+
+watch(
+  () => [show.value, formData.value?.formValues] as const,
+  ([isVisible, formValues]) => {
+    if (!isVisible || formValues === undefined) {
+      return
+    }
+
+    form.reset(formValues)
+  },
+  {
+    immediate: true,
+  },
+)
 
 function toDepartmentTreeOptions(nodes: DepartmentTreeNode[]): TreeOption[] {
   return nodes.map((node) => ({
@@ -165,103 +189,17 @@ function toRoleOptions(roles: RoleListItem[]) {
   }))
 }
 
-function toUserFormValues(user: User): UserFormData {
+function toUserFormValues(user: User): UserFormInput {
   return {
-    username: user.username,
-    nickname: user.nickname,
-    email: user.email,
-    phone: user.phone,
-    status: user.status,
+    ...user,
     departmentIds: user.departments.map((department) => department.id),
     roleIds: user.roles.map((role) => role.id),
   }
 }
-
-function resetDrawerState() {
-  loadToken.value += 1
-  saveToken.value += 1
-  form.reset()
-  departmentTreeOptions.value = []
-  roleOptions.value = []
-  loadError.value = null
-  formError.value = null
-  loading.value = false
-  saving.value = false
-}
-
-async function loadForm() {
-  const currentLoadToken = loadToken.value + 1
-  const loadUserId = props.userId
-
-  loadToken.value = currentLoadToken
-  loading.value = true
-  loadError.value = null
-  formError.value = null
-
-  try {
-    const [departments, roleList, user] = await Promise.all([
-      getDepartmentTree(),
-      listRoles({ page: 1, pageSize: 100 }),
-      loadUserId === null ? Promise.resolve(null) : getUser(loadUserId),
-    ])
-
-    if (!isActiveLoad(currentLoadToken, loadUserId)) {
-      return
-    }
-
-    departmentTreeOptions.value = toDepartmentTreeOptions(departments)
-    roleOptions.value = toRoleOptions(roleList.list)
-
-    if (loadUserId === null) {
-      loadError.value = '请先选择用户'
-      applyFormValues(defaultFormValues)
-      return
-    }
-
-    if (user === null) {
-      applyFormValues(defaultFormValues)
-      return
-    }
-
-    applyFormValues(toUserFormValues(user))
-  } catch (error) {
-    if (!isActiveLoad(currentLoadToken, loadUserId)) {
-      return
-    }
-
-    loadError.value = getSystemErrorMessage(error, '加载用户信息失败')
-  } finally {
-    if (isActiveLoad(currentLoadToken, loadUserId)) {
-      loading.value = false
-    }
-  }
-}
-
-watch(
-  () => [props.show, props.userId] as const,
-  ([show, userId], previousValue) => {
-    if (!show) {
-      resetDrawerState()
-      return
-    }
-
-    const previousShow = previousValue?.[0]
-    const previousUserId = previousValue?.[1]
-
-    if (!previousShow || previousUserId !== userId) {
-      saveToken.value += 1
-      saving.value = false
-      void loadForm()
-    }
-  },
-  {
-    immediate: true,
-  },
-)
 </script>
 
 <template>
-  <NDrawer :show="show" placement="right" :width="640" @update:show="emit('update:show', $event)">
+  <NDrawer v-model:show="show" placement="right" :width="640">
     <NDrawerContent :title="drawerTitle" closable>
       <div class="flex flex-col gap-4">
         <NAlert v-if="loadError" type="error" :show-icon="false">
@@ -280,7 +218,7 @@ watch(
             >
               <NInput
                 data-test="user-form-username"
-                :value="state.value ?? ''"
+                :value="state.value"
                 placeholder="请输入用户名"
                 @blur="field.handleBlur"
                 @update:value="field.handleChange"
@@ -295,7 +233,7 @@ watch(
             >
               <NInput
                 data-test="user-form-nickname"
-                :value="state.value ?? ''"
+                :value="state.value"
                 placeholder="请输入昵称"
                 @blur="field.handleBlur"
                 @update:value="field.handleChange"
@@ -311,7 +249,7 @@ watch(
               >
                 <NInput
                   data-test="user-form-email"
-                  :value="(state.value as string | null) ?? ''"
+                  :value="state.value ?? ''"
                   placeholder="可选"
                   @blur="field.handleBlur"
                   @update:value="field.handleChange"
@@ -326,7 +264,7 @@ watch(
               >
                 <NInput
                   data-test="user-form-phone"
-                  :value="(state.value as string | null) ?? ''"
+                  :value="state.value ?? ''"
                   placeholder="可选"
                   @blur="field.handleBlur"
                   @update:value="field.handleChange"
@@ -342,8 +280,8 @@ watch(
             >
               <NSelect
                 data-test="user-form-status"
-                :value="state.value ?? USER_STATUS_ENABLED"
-                :options="statusOptions"
+                :value="state.value"
+                :options="statusSelectOptions"
                 @update:value="field.handleChange"
               />
             </NFormItem>
@@ -360,7 +298,7 @@ watch(
                 checkable
                 cascade
                 :data="departmentTreeOptions"
-                :checked-keys="(state.value ?? []) as string[]"
+                :checked-keys="state.value"
                 @update:checked-keys="
                   (keys) => {
                     field.handleChange(keys.map(String))
@@ -377,7 +315,7 @@ watch(
             >
               <NSelect
                 data-test="user-form-roles"
-                :value="(state.value ?? []) as string[]"
+                :value="state.value"
                 multiple
                 filterable
                 clearable
@@ -392,8 +330,8 @@ watch(
               data-test="user-form-submit"
               type="primary"
               attr-type="submit"
-              :loading="saving"
-              :disabled="loading || loadError !== null"
+              :loading="isSaving"
+              :disabled="isLoading || !!loadError"
             >
               保存
             </NButton>

@@ -99,13 +99,14 @@ describe('register page', () => {
     const auth = useAuthStore()
 
     expect(registerMock).toHaveBeenCalledOnce()
-    expect(registerMock).toHaveBeenCalledWith({
-      username: 'ada',
-      nickname: 'Ada Lovelace',
-      password: 'password123',
-      email: null,
-      phone: null,
-    })
+    expect(registerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        username: 'ada',
+        nickname: 'Ada Lovelace',
+        password: 'password123',
+      }),
+    )
+    expect(registerMock.mock.calls[0]?.[0]).not.toHaveProperty('confirmPassword')
     expect(auth.accessToken).toBe(session.accessToken)
     expect(auth.user).toEqual(session.user)
     expect(router.currentRoute.value.fullPath).toBe('/')

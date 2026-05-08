@@ -24,10 +24,14 @@ export const statusLabels = {
   [USER_STATUS_ENABLED]: '启用',
 } as const satisfies Record<SystemStatus, string>
 
-export const statusOptions: Array<{ label: string; value: StatusFilter }> = [
-  { label: '全部', value: STATUS_FILTER_ALL },
+export const statusSelectOptions: Array<{ label: string; value: SystemStatus }> = [
   { label: statusLabels[USER_STATUS_ENABLED], value: USER_STATUS_ENABLED },
   { label: statusLabels[USER_STATUS_DISABLED], value: USER_STATUS_DISABLED },
+]
+
+export const statusFilterOptions: Array<{ label: string; value: StatusFilter }> = [
+  { label: '全部', value: STATUS_FILTER_ALL },
+  ...statusSelectOptions,
 ]
 
 export const statusTagTypes = {

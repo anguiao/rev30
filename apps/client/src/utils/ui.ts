@@ -24,15 +24,17 @@ export function renderTableActionButton({
     return null
   }
 
-  const buttonProps: ButtonProps & Record<string, unknown> = {
-    text: true,
-    size: 'small',
-    type,
-    ...(testId === undefined ? {} : { 'data-test': testId }),
-    ...(onClick === undefined ? {} : { onClick }),
-  }
-
-  return h(NButton, buttonProps, () => label)
+  return h(
+    NButton,
+    {
+      text: true,
+      size: 'small',
+      type,
+      ...(testId === undefined ? {} : { 'data-test': testId }),
+      ...(onClick === undefined ? {} : { onClick }),
+    },
+    () => label,
+  )
 }
 
 export function renderTableActions(actions: Array<ReturnType<typeof renderTableActionButton>>) {

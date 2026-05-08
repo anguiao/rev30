@@ -1,5 +1,4 @@
 export { default as AuthShell } from './AuthShell.vue'
-export { formItemValidationProps, setServerFieldError } from './form'
 export { useLoginForm } from './useLoginForm'
 export { useRegisterForm } from './useRegisterForm'
 export { AuthRequestError, login, logout, refreshSession, register } from './requests'

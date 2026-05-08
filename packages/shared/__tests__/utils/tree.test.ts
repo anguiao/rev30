@@ -1,53 +1,78 @@
-// @vitest-environment happy-dom
-
 import { describe, expect, it } from 'vitest'
-import { filterTree, countTreeNodes } from '../../../src/features/system'
+import { arrayToTree, filterTree, getTreeNodeCount, treeToArray } from '../../src/utils'
 
-type TestNode = {
+type FlatNode = {
   id: string
+  parentId: string | null
   name: string
   code: string
   status: 0 | 1
   type?: string
-  children: TestNode[]
 }
 
-const tree: TestNode[] = [
+const items: FlatNode[] = [
   {
     id: 'root',
+    parentId: null,
     name: '总部',
     code: 'hq',
     status: 1,
-    children: [
+  },
+  {
+    id: 'engineering',
+    parentId: 'root',
+    name: '研发中心',
+    code: 'eng',
+    status: 1,
+  },
+  {
+    id: 'platform',
+    parentId: 'engineering',
+    name: '平台组',
+    code: 'platform',
+    status: 0,
+    type: 'menu',
+  },
+  {
+    id: 'finance',
+    parentId: 'root',
+    name: '财务部',
+    code: 'finance',
+    status: 1,
+    type: 'directory',
+  },
+]
+
+const tree = arrayToTree(items)
+
+describe('tree utils', () => {
+  it('converts arrays to trees and preserves sibling order', () => {
+    expect(tree).toEqual([
       {
-        id: 'engineering',
-        name: '研发中心',
-        code: 'eng',
-        status: 1,
+        ...items[0],
         children: [
           {
-            id: 'platform',
-            name: '平台组',
-            code: 'platform',
-            status: 0,
-            type: 'menu',
+            ...items[1],
+            children: [
+              {
+                ...items[2],
+                children: [],
+              },
+            ],
+          },
+          {
+            ...items[3],
             children: [],
           },
         ],
       },
-      {
-        id: 'finance',
-        name: '财务部',
-        code: 'finance',
-        status: 1,
-        type: 'directory',
-        children: [],
-      },
-    ],
-  },
-]
+    ])
+  })
 
-describe('filterTree', () => {
+  it('converts trees back to arrays without children fields', () => {
+    expect(treeToArray(tree)).toEqual(items)
+  })
+
   it('keeps ancestors when a child node matches', () => {
     const rootNode = tree[0]!
     const engineeringNode = rootNode.children[0]!
@@ -75,8 +100,8 @@ describe('filterTree', () => {
     const platformNode = engineeringNode.children[0]!
     const financeNode = rootNode.children[1]!
     const snapshot = JSON.parse(JSON.stringify(tree))
-    const matchesName = (node: TestNode) => node.name.includes('部')
-    const matchesType = (node: TestNode) => node.type === 'menu'
+    const matchesName = (node: FlatNode) => node.name.includes('部')
+    const matchesType = (node: FlatNode) => node.type === 'menu'
 
     const filtered = filterTree(tree, {
       matches: (node) => matchesName(node) || matchesType(node),
@@ -103,6 +128,6 @@ describe('filterTree', () => {
       matches: (node) => node.name.includes('平台组'),
     })
 
-    expect(countTreeNodes(filtered)).toBe(3)
+    expect(getTreeNodeCount(filtered)).toBe(3)
   })
 })

@@ -1,4 +1,4 @@
-import type { Department, DepartmentTreeNode } from '@rev30/shared'
+import { arrayToTree, type Department, type DepartmentTreeNode } from '@rev30/shared'
 import { departments } from '../../../db/schema'
 
 export type DepartmentRow = typeof departments.$inferSelect
@@ -17,21 +17,5 @@ export function toDepartment(row: DepartmentRow): Department {
 }
 
 export function toDepartmentTree(rows: DepartmentRow[]): DepartmentTreeNode[] {
-  const childrenByParentId = new Map<string | null, DepartmentTreeNode[]>()
-  const nodes = rows.map<DepartmentTreeNode>((row) => ({
-    ...toDepartment(row),
-    children: [],
-  }))
-
-  for (const node of nodes) {
-    const siblings = childrenByParentId.get(node.parentId) ?? []
-    siblings.push(node)
-    childrenByParentId.set(node.parentId, siblings)
-  }
-
-  for (const node of nodes) {
-    node.children = childrenByParentId.get(node.id) ?? []
-  }
-
-  return childrenByParentId.get(null) ?? []
+  return arrayToTree(rows.map(toDepartment))
 }

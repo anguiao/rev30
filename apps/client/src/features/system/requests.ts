@@ -25,7 +25,6 @@ import { normalizeRequestQuery } from '../../utils/request'
 
 const departmentTreeResponseSchema = departmentTreeNodeSchema.array()
 const resourceTreeResponseSchema = resourceTreeNodeSchema.array()
-const updateUserRoute = api.system.users[':id']
 
 export class SystemRequestError extends Error {
   constructor(
@@ -119,9 +118,9 @@ export async function getUser(id: string): Promise<User> {
 
 export async function updateUser(id: string, input: UserUpdateInput): Promise<User> {
   return parseSystemResponse(
-    await updateUserRoute.$patch({
+    await api.system.users[':id'].$patch({
       param: { id },
-      json: input as Parameters<typeof updateUserRoute.$patch>[0]['json'],
+      json: input,
     }),
     userSchema,
   )

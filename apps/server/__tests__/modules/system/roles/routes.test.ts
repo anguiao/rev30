@@ -357,10 +357,7 @@ describe('role routes', () => {
     expect(deleteResponse.status).toBe(409)
     expect(await deleteResponse.json()).toEqual({ message: '内置 admin 角色不能删除' })
 
-    const [storedAdminRole] = await database
-      .select()
-      .from(roles)
-      .where(eq(roles.id, adminRole.id))
+    const [storedAdminRole] = await database.select().from(roles).where(eq(roles.id, adminRole.id))
 
     expect(storedAdminRole).toMatchObject({
       name: adminRole.name,

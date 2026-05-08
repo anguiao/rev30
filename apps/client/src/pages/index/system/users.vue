@@ -23,19 +23,17 @@ import {
   formatDateTime,
   getSystemErrorMessage,
   listUsers,
+  statusFilterOptions,
   statusLabels,
-  statusOptions,
   statusTagTypes,
   type StatusFilter,
 } from '../../../features/system'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
-const dialog = useDialog()
 const message = useMessage()
+
 const keyword = ref('')
 const status = ref<StatusFilter>(STATUS_FILTER_ALL)
-const userDrawerVisible = ref(false)
-const editingUserId = ref<string | null>(null)
 const query = ref<UserListQuery>({
   page: 1,
   pageSize: 20,
@@ -51,7 +49,7 @@ const {
   data: usersResponse,
   error: usersError,
   isLoading,
-  refetch,
+  refetch: refetchUsers,
 } = useQuery({
   key: () => [
     'system',
@@ -70,15 +68,14 @@ const loadErrorMessage = computed(() =>
   usersError.value === null ? '' : getSystemErrorMessage(usersError.value, '加载用户失败'),
 )
 
-async function refreshUsers() {
-  await refetch()
-}
-
+const isUserDrawerVisible = ref(false)
+const editingUserId = ref<string | null>(null)
 function openEditUserDrawer(userId: string) {
   editingUserId.value = userId
-  userDrawerVisible.value = true
+  isUserDrawerVisible.value = true
 }
 
+const dialog = useDialog()
 function confirmDeleteUser(user: UserListItem) {
   const positiveButtonProps: ButtonProps & Record<string, unknown> = {
     type: 'error',
@@ -95,7 +92,7 @@ function confirmDeleteUser(user: UserListItem) {
       try {
         await deleteUser(user.id)
         message.success('删除用户成功')
-        await refreshUsers()
+        await refetchUsers()
       } catch (error) {
         message.error(getSystemErrorMessage(error, '删除用户失败'))
         return false
@@ -251,7 +248,7 @@ const columns: DataTableColumns<UserListItem> = [
         <NSelect
           v-model:value="status"
           data-test="users-status"
-          :options="statusOptions"
+          :options="statusFilterOptions"
           placeholder="全部状态"
           class="w-40!"
         />
@@ -281,9 +278,9 @@ const columns: DataTableColumns<UserListItem> = [
     </section>
 
     <UserFormDrawer
-      v-model:show="userDrawerVisible"
+      v-model:show="isUserDrawerVisible"
       :user-id="editingUserId"
-      @saved="refreshUsers"
+      @saved="refetchUsers"
     />
   </main>
 </template>

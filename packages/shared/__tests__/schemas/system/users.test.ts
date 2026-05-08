@@ -4,10 +4,12 @@ import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
   userCreateSchema,
+  userCreateResponseSchema,
+  userResetPasswordResponseSchema,
   userListQuerySchema,
   userUpdateSchema,
   userSchema,
-} from '../../../src/schemas/system/users'
+} from '../../../src'
 
 function errorText(result: { success: false; error: z.ZodError }) {
   return z.prettifyError(result.error)
@@ -310,5 +312,39 @@ describe('user schemas', () => {
     if (!result.success) {
       expect(errorText(result)).toContain('用户角色不能超过 50 个')
     }
+  })
+
+  it('parses user create responses with a one-time temporary password', () => {
+    const result = userCreateResponseSchema.parse({
+      user: {
+        id: '11111111-1111-4111-8111-111111111111',
+        username: 'grace',
+        nickname: 'Grace Hopper',
+        email: null,
+        phone: null,
+        status: USER_STATUS_ENABLED,
+        builtIn: false,
+        departments: [],
+        roles: [],
+        createdAt: '2026-05-08T00:00:00.000Z',
+        updatedAt: '2026-05-08T00:00:00.000Z',
+      },
+      temporaryPassword: 'generated-password',
+    })
+
+    expect(result.temporaryPassword).toBe('generated-password')
+    expect(result.user.username).toBe('grace')
+  })
+
+  it('parses user reset password responses', () => {
+    expect(
+      userResetPasswordResponseSchema.parse({
+        userId: '11111111-1111-4111-8111-111111111111',
+        temporaryPassword: 'new-password',
+      }),
+    ).toEqual({
+      userId: '11111111-1111-4111-8111-111111111111',
+      temporaryPassword: 'new-password',
+    })
   })
 })

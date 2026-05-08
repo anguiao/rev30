@@ -82,6 +82,18 @@ export const userListResponseSchema = z.object({
   pageSize: z.number().int().min(1),
 })
 
+const temporaryPasswordSchema = z.string().min(8)
+
+export const userCreateResponseSchema = z.object({
+  user: userSchema,
+  temporaryPassword: temporaryPasswordSchema,
+})
+
+export const userResetPasswordResponseSchema = z.object({
+  userId: userIdSchema,
+  temporaryPassword: temporaryPasswordSchema,
+})
+
 export type User = z.infer<typeof userSchema>
 export type UserListItem = z.infer<typeof userListItemSchema>
 export type UserListQuery = z.infer<typeof userListQuerySchema>
@@ -89,4 +101,6 @@ export type UserFormInput = z.infer<typeof userFormSchema>
 export type UserCreateInput = z.infer<typeof userCreateSchema>
 export type UserUpdateInput = z.infer<typeof userUpdateSchema>
 export type UserListResponse = z.infer<typeof userListResponseSchema>
+export type UserCreateResponse = z.infer<typeof userCreateResponseSchema>
+export type UserResetPasswordResponse = z.infer<typeof userResetPasswordResponseSchema>
 export type UserStatus = z.infer<typeof userStatusSchema>

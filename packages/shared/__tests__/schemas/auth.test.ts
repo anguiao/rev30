@@ -4,6 +4,8 @@ import { USER_STATUS_ENABLED } from '../../src/schemas/system/users'
 import {
   authLoginSchema,
   authErrorResponseSchema,
+  authPasswordUpdateSchema,
+  authProfileUpdateSchema,
   authRegisterSchema,
   authTokenResponseSchema,
 } from '../../src/schemas/auth'
@@ -157,5 +159,49 @@ describe('auth schemas', () => {
         message: 'role is not unique',
       }),
     ).toThrow()
+  })
+
+  it('parses current user profile updates without username', () => {
+    const result = authProfileUpdateSchema.parse({
+      nickname: 'Ada',
+      email: '',
+      phone: '13800138000',
+    })
+
+    expect(result).toEqual({
+      nickname: 'Ada',
+      email: null,
+      phone: '13800138000',
+    })
+    expect(() =>
+      authProfileUpdateSchema.parse({
+        username: 'ada',
+        nickname: 'Ada',
+        email: null,
+        phone: null,
+      }),
+    ).toThrow()
+  })
+
+  it('parses password update requests and current-password field errors', () => {
+    expect(
+      authPasswordUpdateSchema.parse({
+        currentPassword: 'old-secret',
+        newPassword: 'new-secret',
+      }),
+    ).toEqual({
+      currentPassword: 'old-secret',
+      newPassword: 'new-secret',
+    })
+
+    expect(
+      authErrorResponseSchema.parse({
+        field: 'currentPassword',
+        message: '当前密码错误',
+      }),
+    ).toEqual({
+      field: 'currentPassword',
+      message: '当前密码错误',
+    })
   })
 })

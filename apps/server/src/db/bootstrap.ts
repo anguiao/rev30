@@ -65,6 +65,7 @@ export async function bootstrapAdminUser(database: Db, input: AuthRegisterInput)
       .values({
         userId: upsertedUser.id,
         passwordHash,
+        mustChangePassword: false,
         createdAt: now,
         updatedAt: now,
       })
@@ -72,6 +73,7 @@ export async function bootstrapAdminUser(database: Db, input: AuthRegisterInput)
         target: authPasswordCredentials.userId,
         set: {
           passwordHash,
+          mustChangePassword: false,
           updatedAt: now,
         },
       })

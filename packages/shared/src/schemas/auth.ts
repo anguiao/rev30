@@ -39,12 +39,29 @@ export const authTokenResponseSchema = authSessionResponseSchema.extend({
 })
 
 export const authErrorResponseSchema = z.object({
-  field: userUniqueFieldSchema.optional(),
+  field: z.union([userUniqueFieldSchema, z.literal('currentPassword')]).optional(),
   message: z.string(),
 })
+
+export const authProfileUpdateSchema = userCreateSchema
+  .pick({
+    nickname: true,
+    email: true,
+    phone: true,
+  })
+  .strict()
+
+export const authPasswordUpdateSchema = z
+  .object({
+    currentPassword: passwordSchema,
+    newPassword: passwordSchema,
+  })
+  .strict()
 
 export type AuthRegisterInput = z.infer<typeof authRegisterSchema>
 export type AuthLoginInput = z.infer<typeof authLoginSchema>
 export type AuthSessionResponse = z.infer<typeof authSessionResponseSchema>
 export type AuthTokenResponse = z.infer<typeof authTokenResponseSchema>
 export type AuthErrorResponse = z.infer<typeof authErrorResponseSchema>
+export type AuthProfileUpdateInput = z.infer<typeof authProfileUpdateSchema>
+export type AuthPasswordUpdateInput = z.infer<typeof authPasswordUpdateSchema>

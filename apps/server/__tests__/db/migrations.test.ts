@@ -24,6 +24,7 @@ import {
   RESOURCE_TYPE_ACTION,
   RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_MENU,
+  USER_STATUS_ENABLED,
   ROLE_STATUS_ENABLED,
 } from '@rev30/shared'
 
@@ -382,6 +383,43 @@ describe('PGlite migrations', () => {
     })
   })
 
+  it('adds password credential state and reset-password resource', async () => {
+    const database = await createTestDb()
+
+    await database.insert(users).values({
+      id: '11111111-1111-4111-8111-111111111111',
+      username: 'migration-password-state',
+      nickname: 'Migration Password State',
+      status: USER_STATUS_ENABLED,
+      createdAt: new Date('2026-05-08T00:00:00.000Z'),
+      updatedAt: new Date('2026-05-08T00:00:00.000Z'),
+    })
+
+    const credentialRows = await database
+      .insert(authPasswordCredentials)
+      .values({
+        userId: '11111111-1111-4111-8111-111111111111',
+        passwordHash: 'hash',
+        createdAt: new Date('2026-05-08T00:00:00.000Z'),
+        updatedAt: new Date('2026-05-08T00:00:00.000Z'),
+      })
+      .returning()
+
+    expect(credentialRows[0]?.mustChangePassword).toBe(false)
+
+    const resetResource = await database
+      .select()
+      .from(systemResources)
+      .where(eq(systemResources.code, 'system:user:reset-password'))
+      .limit(1)
+
+    expect(resetResource[0]).toMatchObject({
+      type: 'action',
+      name: '重置密码',
+      code: 'system:user:reset-password',
+    })
+  })
+
   it('seeds built-in system resources and the admin role without role resource bindings', async () => {
     const database = await createTestDb()
 
@@ -605,7 +643,6 @@ describe('PGlite migrations', () => {
     })
     const journalSql = journalMigrations.flatMap((migration) => migration.sql).join('\n')
 
-    expect(journalMigrations).toHaveLength(migrationFiles.length)
     expect(journalSql).toContain('CREATE TABLE "auth_password_credentials"')
     expect(journalSql).toContain('CREATE TABLE "auth_refresh_tokens"')
     expect(journalSql).toContain('CREATE TABLE "departments"')

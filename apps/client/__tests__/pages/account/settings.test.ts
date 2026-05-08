@@ -156,8 +156,21 @@ describe('account settings page', () => {
     await wrapper.find('[data-test="account-password-confirm"] input').setValue('password456')
     await submitForm(wrapper, '[data-test="account-password-form"]', '[data-test="account-password-submit"]')
 
+    const currentPasswordFormItem = wrapper
+      .get('[data-test="account-password-current"]')
+      .element.closest('.n-form-item')
+    const newPasswordFormItem = wrapper
+      .get('[data-test="account-password-new"]')
+      .element.closest('.n-form-item')
+    const confirmPasswordFormItem = wrapper
+      .get('[data-test="account-password-confirm"]')
+      .element.closest('.n-form-item')
+
     expect(updateMyPasswordMock).toHaveBeenCalledOnce()
-    expect(wrapper.text()).toContain('当前密码错误')
+    expect(currentPasswordFormItem?.textContent).toContain('当前密码错误')
+    expect(wrapper.find('.n-alert').exists()).toBe(false)
+    expect(newPasswordFormItem?.textContent).not.toContain('当前密码错误')
+    expect(confirmPasswordFormItem?.textContent).not.toContain('当前密码错误')
   })
 
   it('blocks password submission when the confirmation password does not match', async () => {

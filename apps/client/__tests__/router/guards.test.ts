@@ -144,6 +144,21 @@ describe('auth guards', () => {
     expect(router.currentRoute.value.query).toEqual({ redirect: '/system/users' })
   })
 
+  it('redirects unauthenticated users from account settings to login with redirect query', async () => {
+    refreshSessionMock.mockRejectedValue(new Error('refresh failed'))
+    const router = createTestRouter()
+
+    await router.push('/account/settings')
+
+    const auth = useAuthStore()
+
+    expect(refreshSessionMock).toHaveBeenCalledOnce()
+    expect(auth.isAuthenticated).toBe(false)
+    expect(auth.isReady).toBe(true)
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(router.currentRoute.value.query).toEqual({ redirect: '/account/settings' })
+  })
+
   it('redirects authenticated users away from auth pages', async () => {
     const auth = useAuthStore()
     auth.setSession(
@@ -270,5 +285,16 @@ describe('auth guards', () => {
     await router.push('/account/settings')
 
     expect(router.currentRoute.value.fullPath).toBe('/account/settings')
+  })
+
+  it('redirects authenticated users without menus from protected admin pages to forbidden', async () => {
+    const auth = useAuthStore()
+    auth.setSession(createSession([]))
+    auth.markReady()
+    const router = createTestRouter()
+
+    await router.push('/system/users')
+
+    expect(router.currentRoute.value.fullPath).toBe('/403')
   })
 })

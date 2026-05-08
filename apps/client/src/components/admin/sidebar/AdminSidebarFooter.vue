@@ -26,6 +26,10 @@ const { isLoading: isLoggingOut, ...logoutMutation } = useMutation({
 function handleLogout() {
   logoutMutation.mutate()
 }
+
+async function navigateToAccountSettings() {
+  await router.push('/account/settings')
+}
 </script>
 
 <template>
@@ -41,6 +45,23 @@ function handleLogout() {
     >
       <template v-if="collapsed">
         <ThemeModeSwitch compact />
+        <NTooltip trigger="hover" placement="right">
+          <template #trigger>
+            <NButton
+              data-test="admin-account-settings"
+              circle
+              quaternary
+              type="default"
+              aria-label="个人设置"
+              @click="navigateToAccountSettings"
+            >
+              <template #icon>
+                <span class="i-[lucide--user-cog] inline-block size-4" aria-hidden="true" />
+              </template>
+            </NButton>
+          </template>
+          个人设置
+        </NTooltip>
         <NTooltip trigger="hover" placement="right">
           <template #trigger>
             <NButton
@@ -62,12 +83,19 @@ function handleLogout() {
       </template>
       <template v-else>
         <div class="mb-4 flex items-center justify-between">
-          <div data-test="admin-sidebar-user" class="min-w-0 space-y-0.5">
-            <p class="truncate text-sm font-medium">{{ user?.nickname ?? '' }}</p>
+          <button
+            data-test="admin-account-settings"
+            type="button"
+            class="min-w-0 flex-1 cursor-pointer space-y-0.5 text-left transition-colors hover:text-primary"
+            @click="navigateToAccountSettings"
+          >
+            <p data-test="admin-sidebar-user" class="truncate text-sm font-medium">
+              {{ user?.nickname ?? '' }}
+            </p>
             <p class="truncate text-xs text-stone-500 dark:text-zinc-400">
               {{ user?.username ?? '' }}
             </p>
-          </div>
+          </button>
           <ThemeModeSwitch />
         </div>
         <NButton

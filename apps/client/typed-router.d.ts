@@ -65,6 +65,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/account/settings': RouteRecordInfo<
+      '/account/settings',
+      '/account/settings',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/login': RouteRecordInfo<
       '/login',
       '/login',
@@ -128,6 +135,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/403.vue': {
       routes:
         | '/403'
+      views:
+        | never
+    }
+    'src/pages/account/settings.vue': {
+      routes:
+        | '/account/settings'
       views:
         | never
     }

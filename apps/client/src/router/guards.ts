@@ -4,6 +4,7 @@ import { refreshSession } from '../features/auth/requests'
 import { useAuthStore } from '../stores/auth'
 
 export const authRoutes = new Set(['/login', '/register'])
+export const accountRoutes = new Set(['/account/settings'])
 
 function findDefaultRoute(menus: ResourceTreeNode[]): string | null {
   for (const menu of menus) {
@@ -50,6 +51,10 @@ export function installAuthGuards(router: Router) {
     }
 
     if (auth.isAuthenticated) {
+      if (accountRoutes.has(to.path)) {
+        return true
+      }
+
       if (defaultRoute === null && to.path !== '/403') {
         return { path: '/403' }
       }

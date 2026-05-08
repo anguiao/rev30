@@ -76,6 +76,7 @@ function createTestRouter() {
     history: createMemoryHistory(),
     routes: [
       { path: '/', component: { template: '<main>Home</main>' } },
+      { path: '/account/settings', component: { template: '<main>Account Settings</main>' } },
       { path: '/system/departments', component: { template: '<main>System departments</main>' } },
       { path: '/system/roles', component: { template: '<main>System roles</main>' } },
       { path: '/system/users', component: { template: '<main>System users</main>' } },
@@ -258,5 +259,16 @@ describe('auth guards', () => {
     await router.push('/register')
 
     expect(router.currentRoute.value.fullPath).toBe('/403')
+  })
+
+  it('allows authenticated users without menus to access account settings', async () => {
+    const auth = useAuthStore()
+    auth.setSession(createSession([]))
+    auth.markReady()
+    const router = createTestRouter()
+
+    await router.push('/account/settings')
+
+    expect(router.currentRoute.value.fullPath).toBe('/account/settings')
   })
 })

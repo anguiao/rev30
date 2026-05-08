@@ -50,6 +50,13 @@
       "when": 1778140800000,
       "tag": "0006_add_user_built_in",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778227200000,
+      "tag": "0007_add_user_password_account",
+      "breakpoints": true
     }
   ]
 }

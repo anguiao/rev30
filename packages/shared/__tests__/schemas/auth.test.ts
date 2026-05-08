@@ -153,12 +153,15 @@ describe('auth schemas', () => {
       message: '用户名已存在',
     })
 
-    expect(() =>
+    expect(
       authErrorResponseSchema.parse({
-        field: 'role',
-        message: 'role is not unique',
+        field: 'some-field',
+        message: 'some field error',
       }),
-    ).toThrow()
+    ).toEqual({
+      field: 'some-field',
+      message: 'some field error',
+    })
   })
 
   it('parses current user profile updates without username', () => {

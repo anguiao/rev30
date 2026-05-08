@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { userCreateSchema, userSchema, userUniqueFieldSchema } from './system/users'
+import { userCreateSchema, userSchema } from './system/users'
 import { resourceTreeNodeSchema } from './system/resources'
 
 export const AUTH_ACTION_HEADER = 'Auth-Action'
@@ -39,7 +39,7 @@ export const authTokenResponseSchema = authSessionResponseSchema.extend({
 })
 
 export const authErrorResponseSchema = z.object({
-  field: z.union([userUniqueFieldSchema, z.literal('currentPassword')]).optional(),
+  field: z.string().optional(),
   message: z.string(),
 })
 

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { PGlite } from '@electric-sql/pglite'
 import { afterEach, describe, expect, it } from 'vitest'
 import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import { readMigrationFiles } from 'drizzle-orm/migrator'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { join } from 'node:path'
@@ -638,11 +639,20 @@ describe('PGlite migrations', () => {
     const migrationFiles = (await readdir(defaultMigrationsDir))
       .filter((fileName) => fileName.endsWith('.sql'))
       .sort()
+    const journalEntries = JSON.parse(
+      readFileSync(join(defaultMigrationsDir, 'meta', '_journal.json'), 'utf8'),
+    ) as {
+      entries: { tag: string; when: number }[]
+    }
     const journalMigrations = readMigrationFiles({
       migrationsFolder: defaultMigrationsDir,
     })
     const journalSql = journalMigrations.flatMap((migration) => migration.sql).join('\n')
 
+    expect(
+      journalEntries.entries.map((entry) => entry.tag),
+    ).toEqual(migrationFiles.map((fileName) => fileName.replace('.sql', '')))
+    expect(journalEntries.entries.map((entry) => entry.when)).toHaveLength(migrationFiles.length)
     expect(journalSql).toContain('CREATE TABLE "auth_password_credentials"')
     expect(journalSql).toContain('CREATE TABLE "auth_refresh_tokens"')
     expect(journalSql).toContain('CREATE TABLE "departments"')

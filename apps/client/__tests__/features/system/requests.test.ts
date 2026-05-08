@@ -457,7 +457,9 @@ describe('system request helpers', () => {
       '/api/system/users/33333333-3333-4333-8333-333333333333/password/reset',
     )
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/api/system/users/33333333-3333-4333-8333-333333333333/password/reset'),
+      expect.stringContaining(
+        '/api/system/users/33333333-3333-4333-8333-333333333333/password/reset',
+      ),
       expect.objectContaining({
         method: 'POST',
       }),

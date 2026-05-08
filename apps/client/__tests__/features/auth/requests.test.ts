@@ -296,7 +296,9 @@ describe('auth requests', () => {
   })
 
   it('extracts auth error messages and falls back for unknown errors', async () => {
-    expect(getAuthErrorMessage(new AuthRequestError(401, '会话已过期'), '操作失败')).toBe('会话已过期')
+    expect(getAuthErrorMessage(new AuthRequestError(401, '会话已过期'), '操作失败')).toBe(
+      '会话已过期',
+    )
     expect(getAuthErrorMessage(new Error('boom'), '操作失败')).toBe('操作失败')
   })
 })

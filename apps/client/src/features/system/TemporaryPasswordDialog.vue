@@ -38,7 +38,7 @@ async function copyTemporaryPassword(temporaryPassword: string) {
             :value="temporaryPassword"
             readonly
             class="min-w-0 flex-1 rounded-md border border-stone-200 bg-stone-50 px-3 py-2 font-mono text-sm text-stone-900 outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-          >
+          />
           <NButton @click="copyTemporaryPassword(temporaryPassword)">复制</NButton>
         </div>
 

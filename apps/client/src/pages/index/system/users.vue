@@ -99,7 +99,10 @@ function openEditUserDrawer(userId: string) {
 }
 async function handleUserCreated(result: UserCreateResponse) {
   await refetchUsers()
-  showTemporaryPasswordDialog(result.user.nickname || result.user.username, result.temporaryPassword)
+  showTemporaryPasswordDialog(
+    result.user.nickname || result.user.username,
+    result.temporaryPassword,
+  )
 }
 
 watch(isTemporaryPasswordDialogVisible, (show) => {

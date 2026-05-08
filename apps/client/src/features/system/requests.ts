@@ -103,7 +103,10 @@ export async function createRole(input: RoleCreateInput): Promise<Role> {
 }
 
 export async function createUser(input: UserCreateInput): Promise<UserCreateResponse> {
-  return parseSystemResponse(await api.system.users.$post({ json: input }), userCreateResponseSchema)
+  return parseSystemResponse(
+    await api.system.users.$post({ json: input }),
+    userCreateResponseSchema,
+  )
 }
 
 export async function updateRole(id: string, input: RoleUpdateInput): Promise<Role> {

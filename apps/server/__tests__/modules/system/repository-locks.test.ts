@@ -157,12 +157,15 @@ describe('system repository locks', () => {
     const events: string[] = []
     const repository = createUserRepository(createLockTrackingDb(events))
 
-    await repository.create({
-      username: 'ada',
-      nickname: 'Ada Lovelace',
-      status: 1,
-      departmentIds: [departmentId],
-    })
+    await repository.create(
+      {
+        username: 'ada',
+        nickname: 'Ada Lovelace',
+        status: 1,
+        departmentIds: [departmentId],
+      },
+      'password-hash',
+    )
 
     expect(events.indexOf('lock:update')).toBeGreaterThanOrEqual(0)
     expect(events.indexOf('lock:update')).toBeLessThan(events.indexOf('insert:userDepartments'))

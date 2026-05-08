@@ -70,10 +70,7 @@ function requireRefreshToken(token: string | undefined) {
   return token
 }
 
-async function createResource(
-  database: TestDatabase,
-  input: ResourceInsert,
-) {
+async function createResource(database: TestDatabase, input: ResourceInsert) {
   const [resource] = await database
     .insert(systemResources)
     .values({
@@ -139,31 +136,33 @@ function createTestAppWithRefreshRevokeFailure(database: TestDatabase) {
         if (property === 'transaction') {
           return async (callback: (tx: TestTransaction) => Promise<unknown>) =>
             target.transaction(async (tx) =>
-              callback(new Proxy(tx, {
-                get(txTarget, txProperty, txReceiver) {
-                  if (txProperty === 'update') {
-                    return (table: unknown) => {
-                      if (table === authRefreshTokens) {
-                        return {
-                          set() {
-                            return {
-                              where: async () => {
-                                throw new Error('revoke failed')
-                              },
-                            }
-                          },
+              callback(
+                new Proxy(tx, {
+                  get(txTarget, txProperty, txReceiver) {
+                    if (txProperty === 'update') {
+                      return (table: unknown) => {
+                        if (table === authRefreshTokens) {
+                          return {
+                            set() {
+                              return {
+                                where: async () => {
+                                  throw new Error('revoke failed')
+                                },
+                              }
+                            },
+                          }
                         }
+
+                        return txTarget.update(table as never)
                       }
-
-                      return txTarget.update(table as never)
                     }
-                  }
 
-                  const value = Reflect.get(txTarget, txProperty, txReceiver)
+                    const value = Reflect.get(txTarget, txProperty, txReceiver)
 
-                  return typeof value === 'function' ? value.bind(txTarget) : value
-                },
-              }) as TestTransaction),
+                    return typeof value === 'function' ? value.bind(txTarget) : value
+                  },
+                }) as TestTransaction,
+              ),
             )
         }
 
@@ -834,7 +833,8 @@ describe('auth routes', () => {
     })
 
     expect(
-      sessions.find((session) => session.tokenHash === verifiedCurrentToken.refreshTokenHash)?.revokedAt,
+      sessions.find((session) => session.tokenHash === verifiedCurrentToken.refreshTokenHash)
+        ?.revokedAt,
     ).toBeNull()
     expect(
       sessions

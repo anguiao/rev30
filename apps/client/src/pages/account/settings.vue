@@ -128,7 +128,9 @@ const isPasswordSubmitting = computed(() => passwordMutation.isLoading.value)
 <template>
   <AdminLayout>
     <div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <section class="rounded-lg border border-stone-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <section
+        class="rounded-lg border border-stone-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900"
+      >
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 class="text-2xl font-semibold text-stone-900 dark:text-zinc-100">个人设置</h1>
@@ -137,7 +139,10 @@ const isPasswordSubmitting = computed(() => passwordMutation.isLoading.value)
             </p>
           </div>
           <div class="text-sm text-stone-500 dark:text-zinc-400">
-            <p data-test="account-current-nickname" class="font-medium text-stone-900 dark:text-zinc-100">
+            <p
+              data-test="account-current-nickname"
+              class="font-medium text-stone-900 dark:text-zinc-100"
+            >
               {{ currentUser.nickname }}
             </p>
             <p data-test="account-current-username">{{ currentUser.username }}</p>
@@ -151,9 +156,7 @@ const isPasswordSubmitting = computed(() => passwordMutation.isLoading.value)
         >
           <div class="mb-6">
             <h2 class="text-lg font-medium text-stone-900 dark:text-zinc-100">基础资料</h2>
-            <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">
-              更新昵称、邮箱和手机号
-            </p>
+            <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">更新昵称、邮箱和手机号</p>
           </div>
 
           <NAlert v-if="profileFormError" class="mb-4" type="error" :show-icon="false">

@@ -126,4 +126,18 @@ describe('register page', () => {
 
     expect(registerMock).toHaveBeenCalledOnce()
   })
+
+  it('shows unsupported server field errors as a global registration error', async () => {
+    registerMock.mockRejectedValue(new MockAuthRequestError(409, '当前密码错误', 'currentPassword'))
+    const { wrapper } = await mountRegisterPage()
+
+    await wrapper.find('[data-test="register-username"] input').setValue('ada')
+    await wrapper.find('[data-test="register-nickname"] input').setValue('Ada Lovelace')
+    await wrapper.find('[data-test="register-password"] input').setValue('password123')
+    await wrapper.find('[data-test="register-confirm-password"] input').setValue('password123')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('注册信息已被占用')
+  })
 })

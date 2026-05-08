@@ -8,7 +8,13 @@ import type {
 } from '@rev30/shared'
 import { and, count, desc, eq, ilike, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
-import { authPasswordCredentials, authRefreshTokens, userDepartments, userRoles, users } from '../../../db/schema'
+import {
+  authPasswordCredentials,
+  authRefreshTokens,
+  userDepartments,
+  userRoles,
+  users,
+} from '../../../db/schema'
 import {
   findDepartmentSummariesByUserIds,
   lockActiveDepartmentsByIds,

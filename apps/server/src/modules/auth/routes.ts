@@ -129,11 +129,7 @@ export function createAuthRoutes(database: Db) {
       async (c) => {
         const body: AuthPasswordUpdateInput = c.req.valid('json')
 
-        await service.updatePassword(
-          c.get('currentUser').id,
-          body,
-          getRefreshTokenCookie(c),
-        )
+        await service.updatePassword(c.get('currentUser').id, body, getRefreshTokenCookie(c))
 
         return c.body(null, 204)
       },

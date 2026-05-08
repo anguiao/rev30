@@ -17,11 +17,24 @@ const authRegisterFormSchema = authRegisterSchema
     message: '两次输入的密码不一致',
   })
 type RegisterFormData = z.input<typeof authRegisterFormSchema>
+const registerServerErrorFields = [
+  'username',
+  'nickname',
+  'password',
+  'confirmPassword',
+  'email',
+  'phone',
+] as const
+type RegisterServerErrorField = (typeof registerServerErrorFields)[number]
 
 function toRegisterInput(value: RegisterFormData): AuthRegisterInput {
   const { confirmPassword: _confirmPassword, ...input } = authRegisterFormSchema.parse(value)
 
   return input
+}
+
+function isRegisterServerErrorField(field: string): field is RegisterServerErrorField {
+  return registerServerErrorFields.includes(field as RegisterServerErrorField)
 }
 
 export function useRegisterForm() {
@@ -54,7 +67,11 @@ export function useRegisterForm() {
         auth.setSession(session)
         await router.push('/')
       } catch (error) {
-        if (error instanceof AuthRequestError && error.field !== undefined) {
+        if (
+          error instanceof AuthRequestError &&
+          error.field !== undefined &&
+          isRegisterServerErrorField(error.field)
+        ) {
           setServerFieldError(form, error.field, error.message)
           return
         }

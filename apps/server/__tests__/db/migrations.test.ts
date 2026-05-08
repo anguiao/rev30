@@ -649,9 +649,9 @@ describe('PGlite migrations', () => {
     })
     const journalSql = journalMigrations.flatMap((migration) => migration.sql).join('\n')
 
-    expect(
-      journalEntries.entries.map((entry) => entry.tag),
-    ).toEqual(migrationFiles.map((fileName) => fileName.replace('.sql', '')))
+    expect(journalEntries.entries.map((entry) => entry.tag)).toEqual(
+      migrationFiles.map((fileName) => fileName.replace('.sql', '')),
+    )
     expect(journalEntries.entries.map((entry) => entry.when)).toHaveLength(migrationFiles.length)
     expect(journalSql).toContain('CREATE TABLE "auth_password_credentials"')
     expect(journalSql).toContain('CREATE TABLE "auth_refresh_tokens"')

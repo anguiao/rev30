@@ -106,7 +106,11 @@ describe('account settings page', () => {
     await wrapper.find('[data-test="account-profile-nickname"] input').setValue('Ada Byron')
     await wrapper.find('[data-test="account-profile-email"] input').setValue('ada@example.com')
     await wrapper.find('[data-test="account-profile-phone"] input').setValue('18888888888')
-    await submitForm(wrapper, '[data-test="account-profile-form"]', '[data-test="account-profile-submit"]')
+    await submitForm(
+      wrapper,
+      '[data-test="account-profile-form"]',
+      '[data-test="account-profile-submit"]',
+    )
 
     expect(updateMyProfileMock).toHaveBeenCalledOnce()
     expect(updateMyProfileMock).toHaveBeenCalledWith({
@@ -116,13 +120,16 @@ describe('account settings page', () => {
     })
     expect(auth.user).toEqual(updatedUser)
     expect(wrapper.get('[data-test="account-current-nickname"]').text()).toContain('Ada Byron')
-    expect((wrapper.get('[data-test="account-profile-nickname"] input').element as HTMLInputElement).value).toBe(
-      'Ada Byron',
-    )
+    expect(
+      (wrapper.get('[data-test="account-profile-nickname"] input').element as HTMLInputElement)
+        .value,
+    ).toBe('Ada Byron')
   })
 
   it('shows unsupported profile field errors as a global error', async () => {
-    updateMyProfileMock.mockRejectedValue(new MockAuthRequestError(400, '用户名不可修改', 'username'))
+    updateMyProfileMock.mockRejectedValue(
+      new MockAuthRequestError(400, '用户名不可修改', 'username'),
+    )
     const { wrapper } = await mountAccountSettingsPage()
 
     await wrapper.find('[data-test="account-profile-nickname"] input').setValue('Ada Byron')
@@ -135,8 +142,12 @@ describe('account settings page', () => {
     const nicknameFormItem = wrapper
       .get('[data-test="account-profile-nickname"]')
       .element.closest('.n-form-item')
-    const emailFormItem = wrapper.get('[data-test="account-profile-email"]').element.closest('.n-form-item')
-    const phoneFormItem = wrapper.get('[data-test="account-profile-phone"]').element.closest('.n-form-item')
+    const emailFormItem = wrapper
+      .get('[data-test="account-profile-email"]')
+      .element.closest('.n-form-item')
+    const phoneFormItem = wrapper
+      .get('[data-test="account-profile-phone"]')
+      .element.closest('.n-form-item')
 
     expect(updateMyProfileMock).toHaveBeenCalledOnce()
     expect(wrapper.find('.n-alert').text()).toContain('用户名不可修改')
@@ -154,7 +165,11 @@ describe('account settings page', () => {
     await wrapper.find('[data-test="account-password-current"] input').setValue('password123')
     await wrapper.find('[data-test="account-password-new"] input').setValue('password456')
     await wrapper.find('[data-test="account-password-confirm"] input').setValue('password456')
-    await submitForm(wrapper, '[data-test="account-password-form"]', '[data-test="account-password-submit"]')
+    await submitForm(
+      wrapper,
+      '[data-test="account-password-form"]',
+      '[data-test="account-password-submit"]',
+    )
 
     const currentPasswordFormItem = wrapper
       .get('[data-test="account-password-current"]')
@@ -179,7 +194,11 @@ describe('account settings page', () => {
     await wrapper.find('[data-test="account-password-current"] input').setValue('password123')
     await wrapper.find('[data-test="account-password-new"] input').setValue('password456')
     await wrapper.find('[data-test="account-password-confirm"] input').setValue('password789')
-    await submitForm(wrapper, '[data-test="account-password-form"]', '[data-test="account-password-submit"]')
+    await submitForm(
+      wrapper,
+      '[data-test="account-password-form"]',
+      '[data-test="account-password-submit"]',
+    )
 
     expect(updateMyPasswordMock).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('两次输入的密码不一致')
@@ -192,20 +211,26 @@ describe('account settings page', () => {
     await wrapper.find('[data-test="account-password-current"] input').setValue('password123')
     await wrapper.find('[data-test="account-password-new"] input').setValue('password456')
     await wrapper.find('[data-test="account-password-confirm"] input').setValue('password456')
-    await submitForm(wrapper, '[data-test="account-password-form"]', '[data-test="account-password-submit"]')
+    await submitForm(
+      wrapper,
+      '[data-test="account-password-form"]',
+      '[data-test="account-password-submit"]',
+    )
 
     expect(updateMyPasswordMock).toHaveBeenCalledWith({
       currentPassword: 'password123',
       newPassword: 'password456',
     })
-    expect((wrapper.get('[data-test="account-password-current"] input').element as HTMLInputElement).value).toBe(
-      '',
-    )
-    expect((wrapper.get('[data-test="account-password-new"] input').element as HTMLInputElement).value).toBe(
-      '',
-    )
-    expect((wrapper.get('[data-test="account-password-confirm"] input').element as HTMLInputElement).value).toBe(
-      '',
-    )
+    expect(
+      (wrapper.get('[data-test="account-password-current"] input').element as HTMLInputElement)
+        .value,
+    ).toBe('')
+    expect(
+      (wrapper.get('[data-test="account-password-new"] input').element as HTMLInputElement).value,
+    ).toBe('')
+    expect(
+      (wrapper.get('[data-test="account-password-confirm"] input').element as HTMLInputElement)
+        .value,
+    ).toBe('')
   })
 })

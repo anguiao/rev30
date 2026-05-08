@@ -4,15 +4,6 @@ import { NButton, NDropdown } from 'naive-ui'
 import { storeToRefs } from 'pinia'
 import { type ThemeMode, themeModeOptions, useThemeStore } from '../../stores/theme'
 
-withDefaults(
-  defineProps<{
-    compact?: boolean
-  }>(),
-  {
-    compact: false,
-  },
-)
-
 const theme = useThemeStore()
 const { mode } = storeToRefs(theme)
 const dropdownOptions = themeModeOptions.map((option) => ({
@@ -48,8 +39,8 @@ function handleSelect(value: string | number) {
     <NButton
       data-test="theme-mode-trigger"
       quaternary
-      :size="compact ? 'medium' : 'small'"
-      :circle="compact"
+      size="medium"
+      circle
       :aria-label="`主题模式：${currentThemeOption.label}`"
     >
       <template #icon>
@@ -57,13 +48,6 @@ function handleSelect(value: string | number) {
           data-test="theme-mode-trigger-icon"
           class="inline-block size-3.5 shrink-0"
           :class="currentThemeOption.icon"
-          aria-hidden="true"
-        />
-      </template>
-      <template v-if="!compact">
-        <span class="hidden sm:inline-block">{{ currentThemeOption.label }}</span>
-        <span
-          class="relative -right-1 i-[lucide--chevron-down] inline-block size-3.5 shrink-0 opacity-50"
           aria-hidden="true"
         />
       </template>

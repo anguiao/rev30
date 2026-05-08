@@ -44,7 +44,7 @@ async function navigateToAccountSettings() {
       :class="collapsed ? 'flex flex-col items-center gap-3 px-3 pt-4' : 'px-5 pt-4'"
     >
       <template v-if="collapsed">
-        <ThemeModeSwitch compact />
+        <ThemeModeSwitch />
         <NTooltip trigger="hover" placement="right">
           <template #trigger>
             <NButton
@@ -83,20 +83,34 @@ async function navigateToAccountSettings() {
       </template>
       <template v-else>
         <div class="mb-4 flex items-center justify-between">
-          <button
-            data-test="admin-account-settings"
-            type="button"
-            class="min-w-0 flex-1 cursor-pointer space-y-0.5 text-left transition-colors hover:text-primary"
-            @click="navigateToAccountSettings"
-          >
+          <div class="min-w-0 flex-1 space-y-0.5">
             <p data-test="admin-sidebar-user" class="truncate text-sm font-medium">
               {{ user?.nickname ?? '' }}
             </p>
             <p class="truncate text-xs text-stone-500 dark:text-zinc-400">
               {{ user?.username ?? '' }}
             </p>
-          </button>
-          <ThemeModeSwitch />
+          </div>
+          <div class="ml-3 flex shrink-0 items-center gap-1">
+            <ThemeModeSwitch />
+            <NTooltip trigger="hover" placement="top">
+              <template #trigger>
+                <NButton
+                  data-test="admin-account-settings"
+                  circle
+                  quaternary
+                  type="default"
+                  aria-label="个人设置"
+                  @click="navigateToAccountSettings"
+                >
+                  <template #icon>
+                    <span class="i-[lucide--user-cog] inline-block size-4" aria-hidden="true" />
+                  </template>
+                </NButton>
+              </template>
+              个人设置
+            </NTooltip>
+          </div>
         </div>
         <NButton
           data-test="admin-logout"

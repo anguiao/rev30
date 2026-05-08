@@ -14,6 +14,7 @@ import {
 } from '@rev30/shared'
 import {
   authPasswordCredentials,
+  authRefreshTokens,
   departments,
   roles,
   systemResources,
@@ -25,7 +26,7 @@ import { createTestDb } from '../../helpers/db'
 import { verifyPassword } from '../../../src/modules/auth/password'
 import { createAuthRoutes } from '../../../src/modules/auth/routes'
 import { readAuthConfig } from '../../../src/modules/auth/config'
-import { createTokenPair } from '../../../src/modules/auth/tokens'
+import { createTokenPair, verifyRefreshToken } from '../../../src/modules/auth/tokens'
 
 type ErrorResponse = {
   message: string
@@ -56,6 +57,14 @@ function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
 
 function getRefreshTokenCookie(response: Response) {
   return response.headers.get('set-cookie')?.match(/refresh_token=([^;]+)/)?.[1]
+}
+
+function requireRefreshToken(token: string | undefined) {
+  if (!token) {
+    throw new Error('Expected refresh token cookie')
+  }
+
+  return token
 }
 
 async function createResource(
@@ -115,8 +124,54 @@ async function login(app: Hono, body = {}) {
 
   return {
     body: (await response.json()) as AuthLoginResponse,
+    refreshToken: getRefreshTokenCookie(response),
     response,
   }
+}
+
+function createTestAppWithRefreshRevokeFailure(database: Awaited<ReturnType<typeof createTestDb>>) {
+  return createTestApp(
+    new Proxy(database, {
+      get(target, property, receiver) {
+        if (property === 'transaction') {
+          return async (callback: (tx: typeof target) => Promise<unknown>) =>
+            target.transaction(async (tx) =>
+              callback(
+                new Proxy(tx, {
+                  get(txTarget, txProperty, txReceiver) {
+                    if (txProperty === 'update') {
+                      return (table: unknown) => {
+                        if (table === authRefreshTokens) {
+                          return {
+                            set() {
+                              return {
+                                where: async () => {
+                                  throw new Error('revoke failed')
+                                },
+                              }
+                            },
+                          }
+                        }
+
+                        return txTarget.update(table as never)
+                      }
+                    }
+
+                    const value = Reflect.get(txTarget, txProperty, txReceiver)
+
+                    return typeof value === 'function' ? value.bind(txTarget) : value
+                  },
+                }),
+              ),
+            )
+        }
+
+        const value = Reflect.get(target, property, receiver)
+
+        return typeof value === 'function' ? value.bind(target) : value
+      },
+    }) as Awaited<ReturnType<typeof createTestDb>>,
+  )
 }
 
 describe('auth routes', () => {
@@ -741,6 +796,217 @@ describe('auth routes', () => {
     })
     expect(credential?.mustChangePassword).toBe(false)
     expect(await verifyPassword('new-password', credential!.passwordHash)).toBe(true)
+  })
+
+  it('keeps the current refresh session while revoking other sessions after a password change', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app, {
+      password: 'old-password',
+      username: 'password-keep-current',
+      nickname: 'Password Keep Current',
+    })
+    const currentSession = await login(app, {
+      username: 'password-keep-current',
+      password: 'old-password',
+    })
+    const currentRefreshToken = requireRefreshToken(currentSession.refreshToken)
+
+    const response = await app.request('/api/auth/me/password', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        currentPassword: 'old-password',
+        newPassword: 'new-password',
+      }),
+      headers: {
+        authorization: `Bearer ${(currentSession.body as AuthTokenResponse).accessToken}`,
+        cookie: `refresh_token=${currentRefreshToken}`,
+        'content-type': 'application/json',
+      },
+    })
+
+    expect(response.status).toBe(204)
+
+    const verifiedCurrentToken = await verifyRefreshToken(currentRefreshToken, readAuthConfig())
+    const sessions = await database.query.authRefreshTokens.findMany({
+      where: eq(authRefreshTokens.userId, registered.body.user.id),
+    })
+
+    expect(
+      sessions.find((session) => session.tokenHash === verifiedCurrentToken.refreshTokenHash)?.revokedAt,
+    ).toBeNull()
+    expect(
+      sessions
+        .filter((session) => session.tokenHash !== verifiedCurrentToken.refreshTokenHash)
+        .every((session) => session.revokedAt instanceof Date),
+    ).toBe(true)
+
+    const oldRefreshResponse = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        cookie: `refresh_token=${requireRefreshToken(registered.refreshToken)}`,
+      },
+    })
+    expect(oldRefreshResponse.status).toBe(401)
+
+    const currentRefreshResponse = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        cookie: `refresh_token=${currentRefreshToken}`,
+      },
+    })
+    expect(currentRefreshResponse.status).toBe(200)
+  })
+
+  it('revokes all refresh sessions after a password change when the refresh cookie is missing', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app, {
+      password: 'old-password',
+      username: 'password-revoke-missing-cookie',
+      nickname: 'Password Revoke Missing Cookie',
+    })
+    const secondSession = await login(app, {
+      username: 'password-revoke-missing-cookie',
+      password: 'old-password',
+    })
+
+    const response = await app.request('/api/auth/me/password', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        currentPassword: 'old-password',
+        newPassword: 'new-password',
+      }),
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken}`,
+        'content-type': 'application/json',
+      },
+    })
+
+    expect(response.status).toBe(204)
+
+    const sessions = await database.query.authRefreshTokens.findMany({
+      where: eq(authRefreshTokens.userId, registered.body.user.id),
+    })
+    expect(sessions.every((session) => session.revokedAt instanceof Date)).toBe(true)
+
+    const firstRefreshResponse = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        cookie: `refresh_token=${requireRefreshToken(registered.refreshToken)}`,
+      },
+    })
+    expect(firstRefreshResponse.status).toBe(401)
+
+    const secondRefreshResponse = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        cookie: `refresh_token=${requireRefreshToken(secondSession.refreshToken)}`,
+      },
+    })
+    expect(secondRefreshResponse.status).toBe(401)
+  })
+
+  it('revokes all refresh sessions after a password change when the refresh cookie is invalid', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await register(app, {
+      password: 'old-password',
+      username: 'password-revoke-invalid-cookie',
+      nickname: 'Password Revoke Invalid Cookie',
+    })
+    const secondSession = await login(app, {
+      username: 'password-revoke-invalid-cookie',
+      password: 'old-password',
+    })
+
+    const response = await app.request('/api/auth/me/password', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        currentPassword: 'old-password',
+        newPassword: 'new-password',
+      }),
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken}`,
+        cookie: 'refresh_token=invalid-refresh-token',
+        'content-type': 'application/json',
+      },
+    })
+
+    expect(response.status).toBe(204)
+
+    const sessions = await database.query.authRefreshTokens.findMany({
+      where: eq(authRefreshTokens.userId, registered.body.user.id),
+    })
+    expect(sessions.every((session) => session.revokedAt instanceof Date)).toBe(true)
+
+    const firstRefreshResponse = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        cookie: `refresh_token=${requireRefreshToken(registered.refreshToken)}`,
+      },
+    })
+    expect(firstRefreshResponse.status).toBe(401)
+
+    const secondRefreshResponse = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        cookie: `refresh_token=${requireRefreshToken(secondSession.refreshToken)}`,
+      },
+    })
+    expect(secondRefreshResponse.status).toBe(401)
+  })
+
+  it('rolls back password changes when refresh session revocation fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      const database = await createTestDb()
+      const setupApp = createTestApp(database)
+      const registered = await register(setupApp, {
+        password: 'old-password',
+        username: 'password-rollback-on-revoke-failure',
+        nickname: 'Password Rollback On Revoke Failure',
+      })
+      const currentSession = await login(setupApp, {
+        username: 'password-rollback-on-revoke-failure',
+        password: 'old-password',
+      })
+      await database
+        .update(authPasswordCredentials)
+        .set({ mustChangePassword: true })
+        .where(eq(authPasswordCredentials.userId, registered.body.user.id))
+
+      const app = createTestAppWithRefreshRevokeFailure(database)
+      const response = await app.request('/api/auth/me/password', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          currentPassword: 'old-password',
+          newPassword: 'new-password',
+        }),
+        headers: {
+          authorization: `Bearer ${(currentSession.body as AuthTokenResponse).accessToken}`,
+          cookie: `refresh_token=${requireRefreshToken(currentSession.refreshToken)}`,
+          'content-type': 'application/json',
+        },
+      })
+
+      expect(response.status).toBe(500)
+
+      const credential = await database.query.authPasswordCredentials.findFirst({
+        where: eq(authPasswordCredentials.userId, registered.body.user.id),
+      })
+      const sessions = await database.query.authRefreshTokens.findMany({
+        where: eq(authRefreshTokens.userId, registered.body.user.id),
+      })
+
+      expect(credential?.mustChangePassword).toBe(true)
+      expect(await verifyPassword('old-password', credential!.passwordHash)).toBe(true)
+      expect(await verifyPassword('new-password', credential!.passwordHash)).toBe(false)
+      expect(sessions.every((session) => session.revokedAt === null)).toBe(true)
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 
   it('returns department summaries from login me and refresh for associated users', async () => {

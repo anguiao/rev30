@@ -20,6 +20,7 @@ import {
   AuthInvalidCredentialsError,
   AuthInvalidCurrentPasswordError,
   AuthInvalidRefreshTokenError,
+  AuthUnauthorizedError,
 } from './errors'
 import { createAuthService } from './service'
 
@@ -60,6 +61,10 @@ function authErrorResponse(error: unknown, c: Context) {
     error instanceof AuthInvalidCredentialsError ||
     error instanceof AuthInvalidRefreshTokenError
   ) {
+    return c.json({ message: error.message }, 401)
+  }
+
+  if (error instanceof AuthUnauthorizedError) {
     return c.json({ message: error.message }, 401)
   }
 

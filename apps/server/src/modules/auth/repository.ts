@@ -144,37 +144,44 @@ export function createAuthRepository(database: Db) {
       }
     },
 
-    async updatePasswordCredential(userId: string, passwordHash: string) {
-      const now = new Date()
-      const [credential] = await database
-        .update(authPasswordCredentials)
-        .set({
-          passwordHash,
-          mustChangePassword: false,
-          updatedAt: now,
-        })
-        .where(eq(authPasswordCredentials.userId, userId))
-        .returning()
-
-      return credential
-    },
-
-    async revokeOtherRefreshSessions(userId: string, currentTokenHash: string | undefined) {
+    async updatePasswordCredentialAndRevokeSessions(
+      userId: string,
+      passwordHash: string,
+      currentTokenHash: string | undefined,
+    ) {
       const now = new Date()
 
-      await database
-        .update(authRefreshTokens)
-        .set({
-          revokedAt: now,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(authRefreshTokens.userId, userId),
-            isNull(authRefreshTokens.revokedAt),
-            currentTokenHash ? ne(authRefreshTokens.tokenHash, currentTokenHash) : undefined,
-          ),
-        )
+      return await database.transaction(async (tx) => {
+        const [credential] = await tx
+          .update(authPasswordCredentials)
+          .set({
+            passwordHash,
+            mustChangePassword: false,
+            updatedAt: now,
+          })
+          .where(eq(authPasswordCredentials.userId, userId))
+          .returning()
+
+        if (!credential) {
+          return undefined
+        }
+
+        await tx
+          .update(authRefreshTokens)
+          .set({
+            revokedAt: now,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(authRefreshTokens.userId, userId),
+              isNull(authRefreshTokens.revokedAt),
+              currentTokenHash ? ne(authRefreshTokens.tokenHash, currentTokenHash) : undefined,
+            ),
+          )
+
+        return credential
+      })
     },
 
     async createRefreshSession(input: { userId: string; tokenHash: string; expiresAt: Date }) {

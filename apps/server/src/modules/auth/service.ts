@@ -208,13 +208,6 @@ export function createAuthService(database: Db, config: AuthConfig) {
         throw new AuthInvalidCurrentPasswordError()
       }
 
-      const passwordHash = await hashPassword(input.newPassword)
-      const updatedCredential = await repository.updatePasswordCredential(userId, passwordHash)
-
-      if (!updatedCredential) {
-        throw new AuthUnauthorizedError()
-      }
-
       let currentTokenHash: string | undefined
 
       if (refreshToken) {
@@ -227,7 +220,16 @@ export function createAuthService(database: Db, config: AuthConfig) {
         }
       }
 
-      await repository.revokeOtherRefreshSessions(userId, currentTokenHash)
+      const passwordHash = await hashPassword(input.newPassword)
+      const updatedCredential = await repository.updatePasswordCredentialAndRevokeSessions(
+        userId,
+        passwordHash,
+        currentTokenHash,
+      )
+
+      if (!updatedCredential) {
+        throw new AuthUnauthorizedError()
+      }
     },
   }
 }

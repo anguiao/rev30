@@ -15,7 +15,13 @@ import {
   useMessage,
 } from 'naive-ui'
 import type { ButtonProps } from 'naive-ui'
-import type { UserListItem, UserListQuery, UserListResponse } from '@rev30/shared'
+import type {
+  UserCreateResponse,
+  UserListItem,
+  UserListQuery,
+  UserListResponse,
+} from '@rev30/shared'
+import TemporaryPasswordDialog from '../../../features/system/TemporaryPasswordDialog.vue'
 import UserFormDrawer from '../../../features/system/UserFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
@@ -23,6 +29,7 @@ import {
   formatDateTime,
   getSystemErrorMessage,
   listUsers,
+  resetUserPassword,
   statusFilterOptions,
   statusLabels,
   statusTagTypes,
@@ -70,9 +77,25 @@ const loadErrorMessage = computed(() =>
 
 const isUserDrawerVisible = ref(false)
 const editingUserId = ref<string | null>(null)
+const temporaryPasswordUsername = ref('')
+const temporaryPasswordValue = ref('')
+const isTemporaryPasswordDialogVisible = ref(false)
+function showTemporaryPasswordDialog(username: string, temporaryPassword: string) {
+  temporaryPasswordUsername.value = username
+  temporaryPasswordValue.value = temporaryPassword
+  isTemporaryPasswordDialogVisible.value = true
+}
+function openCreateUserDrawer() {
+  editingUserId.value = null
+  isUserDrawerVisible.value = true
+}
 function openEditUserDrawer(userId: string) {
   editingUserId.value = userId
   isUserDrawerVisible.value = true
+}
+async function handleUserCreated(result: UserCreateResponse) {
+  await refetchUsers()
+  showTemporaryPasswordDialog(result.user.nickname || result.user.username, result.temporaryPassword)
 }
 
 const dialog = useDialog()
@@ -95,6 +118,29 @@ function confirmDeleteUser(user: UserListItem) {
         await refetchUsers()
       } catch (error) {
         message.error(getSystemErrorMessage(error, '删除用户失败'))
+        return false
+      }
+    },
+  })
+}
+
+function confirmResetUserPassword(user: UserListItem) {
+  const positiveButtonProps: ButtonProps & Record<string, unknown> = {
+    'data-test': 'users-reset-password-confirm',
+  }
+
+  dialog.warning({
+    title: '确认重置密码',
+    content: `确定重置用户“${user.nickname || user.username}”的密码吗？`,
+    positiveText: '重置密码',
+    negativeText: '取消',
+    positiveButtonProps,
+    async onPositiveClick() {
+      try {
+        const result = await resetUserPassword(user.id)
+        showTemporaryPasswordDialog(user.nickname || user.username, result.temporaryPassword)
+      } catch (error) {
+        message.error(getSystemErrorMessage(error, '重置密码失败'))
         return false
       }
     },
@@ -191,7 +237,7 @@ const columns: DataTableColumns<UserListItem> = [
   {
     title: '操作',
     key: 'actions',
-    width: 120,
+    width: 180,
     fixed: 'right',
     render: (user) =>
       user.builtIn
@@ -207,6 +253,12 @@ const columns: DataTableColumns<UserListItem> = [
               ],
               onClick: () => openEditUserDrawer(user.id),
               testId: 'users-edit',
+            }),
+            renderTableActionButton({
+              label: '重置密码',
+              accessCode: 'system:user:reset-password',
+              onClick: () => confirmResetUserPassword(user),
+              testId: 'users-reset-password',
             }),
             renderTableActionButton({
               label: '删除',
@@ -229,7 +281,12 @@ const columns: DataTableColumns<UserListItem> = [
           共 {{ usersData.total }} 个用户
         </p>
       </div>
-      <NButton v-can="'system:user:create'" data-test="users-create" type="primary">
+      <NButton
+        v-can="'system:user:create'"
+        data-test="users-create"
+        type="primary"
+        @click="openCreateUserDrawer"
+      >
         新增用户
       </NButton>
     </header>
@@ -280,7 +337,13 @@ const columns: DataTableColumns<UserListItem> = [
     <UserFormDrawer
       v-model:show="isUserDrawerVisible"
       :user-id="editingUserId"
+      @created="handleUserCreated"
       @saved="refetchUsers"
+    />
+    <TemporaryPasswordDialog
+      v-model:show="isTemporaryPasswordDialogVisible"
+      :username="temporaryPasswordUsername"
+      :temporary-password="temporaryPasswordValue"
     />
   </main>
 </template>

@@ -8,12 +8,14 @@ import {
   DEPARTMENT_STATUS_ENABLED,
   type DepartmentTreeNode,
   type RoleListResponse,
+  type UserCreateResponse,
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
   type User,
   type UserStatus,
 } from '@rev30/shared'
 import {
+  createUser,
   getDepartmentTree,
   getUser,
   listRoles,
@@ -27,12 +29,14 @@ enableAutoUnmount(afterEach)
 
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
+  createUser: vi.fn(),
   getDepartmentTree: vi.fn(),
   getUser: vi.fn(),
   listRoles: vi.fn(),
   updateUser: vi.fn(),
 }))
 
+const createUserMock = vi.mocked(createUser)
 const getDepartmentTreeMock = vi.mocked(getDepartmentTree)
 const getUserMock = vi.mocked(getUser)
 const listRolesMock = vi.mocked(listRoles)
@@ -124,14 +128,27 @@ const userResponse: User = {
   updatedAt: '2026-05-01T00:00:00.000Z',
 }
 
-function mountDrawer() {
+const userCreateResponse: UserCreateResponse = {
+  user: {
+    ...userResponse,
+    username: 'new-user',
+    nickname: 'New User',
+    email: null,
+    phone: null,
+    departments: [],
+    roles: [],
+  },
+  temporaryPassword: 'TempPass123',
+}
+
+function mountDrawer(props?: { show?: boolean; userId?: string | null }) {
   const pinia = createPinia()
   setActivePinia(pinia)
 
   return mount(UserFormDrawer, {
     props: {
-      show: true,
-      userId,
+      show: props?.show ?? true,
+      userId: props === undefined || !('userId' in props) ? userId : props.userId,
     },
     attachTo: document.body,
     global: {
@@ -151,6 +168,7 @@ async function submitForm(wrapper: ReturnType<typeof mount>) {
 
 describe('UserFormDrawer', () => {
   beforeEach(() => {
+    createUserMock.mockReset()
     getDepartmentTreeMock.mockReset()
     getUserMock.mockReset()
     listRolesMock.mockReset()
@@ -158,6 +176,46 @@ describe('UserFormDrawer', () => {
 
     getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
     listRolesMock.mockResolvedValue(roleListResponse)
+  })
+
+  it('loads departments and roles in create mode and submits a new user', async () => {
+    createUserMock.mockResolvedValue(userCreateResponse)
+
+    const wrapper = mountDrawer({ userId: null })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('新增用户')
+    expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
+    expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 100 })
+    expect(getUserMock).not.toHaveBeenCalled()
+    expect(wrapper.getComponent(NTree).props('data')).toEqual([
+      {
+        key: departmentId,
+        label: '研发部 (rd)',
+        children: [
+          {
+            key: secondDepartmentId,
+            label: '前端组 (frontend)',
+          },
+        ],
+      },
+    ])
+
+    await wrapper.get('[data-test="user-form-username"] input').setValue('new-user')
+    await wrapper.get('[data-test="user-form-nickname"] input').setValue('New User')
+    await submitForm(wrapper)
+
+    expect(createUserMock).toHaveBeenCalledWith({
+      username: 'new-user',
+      nickname: 'New User',
+      email: null,
+      phone: null,
+      status: USER_STATUS_ENABLED,
+      departmentIds: [],
+      roleIds: [],
+    })
+    expect(wrapper.emitted('created')).toEqual([[userCreateResponse]])
+    expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
 
   it('loads user detail, departments and roles and submits updated fields', async () => {

@@ -17,14 +17,17 @@ import {
 import {
   type DepartmentTreeNode,
   type User,
+  type UserCreateResponse,
   USER_STATUS_ENABLED,
   type RoleListItem,
   type UserFormInput,
+  userCreateSchema,
   userFormSchema,
   userUpdateSchema,
 } from '@rev30/shared'
 import {
   SystemRequestError,
+  createUser,
   getDepartmentTree,
   getUser,
   listRoles,
@@ -42,6 +45,7 @@ const show = defineModel<boolean>('show', { required: true })
 
 const emit = defineEmits<{
   saved: []
+  created: [payload: UserCreateResponse]
 }>()
 
 const drawerTitle = computed(() => (props.userId === null ? '新增用户' : '编辑用户'))
@@ -62,24 +66,20 @@ const {
   isLoading,
 } = useQuery({
   key: () => ['system', 'user-form', props.userId ?? 'none'],
-  enabled: () => show.value && props.userId !== null,
+  enabled: () => show.value,
   async query() {
     const userId = props.userId
-
-    if (userId === null) {
-      throw new Error('User id is required')
-    }
 
     const [departments, roleList, user] = await Promise.all([
       getDepartmentTree(),
       listRoles({ page: 1, pageSize: 100 }),
-      getUser(userId),
+      userId === null ? Promise.resolve(null) : getUser(userId),
     ])
 
     return {
       departments,
       roles: roleList.list,
-      formValues: toUserFormValues(user),
+      formValues: user === null ? defaultFormValues : toUserFormValues(user),
     }
   },
 })
@@ -106,14 +106,39 @@ const form = useForm({
     formError.value = null
 
     if (userId === null) {
+      createUserMutation.mutate(value)
       return
     }
 
-    saveUserMutation.mutate({ userId, value })
+    updateUserMutation.mutate({ userId, value })
   },
 })
 
-const { isLoading: isSaving, ...saveUserMutation } = useMutation({
+const { isLoading: isCreating, ...createUserMutation } = useMutation({
+  mutation: (value: UserFormInput) => createUser(userCreateSchema.parse(value)),
+  onSuccess(result) {
+    if (!show.value || props.userId !== null) {
+      return
+    }
+
+    emit('created', result)
+    show.value = false
+  },
+  onError(error) {
+    if (!show.value || props.userId !== null) {
+      return
+    }
+
+    if (error instanceof SystemRequestError && error.field !== undefined) {
+      setServerFieldError(form, error.field as keyof UserFormInput, error.message)
+      return
+    }
+
+    formError.value = getSystemErrorMessage(error, '保存用户失败')
+  },
+})
+
+const { isLoading: isUpdating, ...updateUserMutation } = useMutation({
   mutation: ({ userId, value }: { userId: string; value: UserFormInput }) =>
     updateUser(userId, userUpdateSchema.parse(value)),
   onSuccess(_, { userId }) {
@@ -137,6 +162,7 @@ const { isLoading: isSaving, ...saveUserMutation } = useMutation({
     formError.value = getSystemErrorMessage(error, '保存用户失败')
   },
 })
+const isSaving = computed(() => isCreating.value || isUpdating.value)
 
 function handleSubmit() {
   if (isLoading.value || isSaving.value || loadError.value) {
@@ -153,7 +179,8 @@ watch(
       return
     }
 
-    saveUserMutation.reset()
+    createUserMutation.reset()
+    updateUserMutation.reset()
     formError.value = null
     form.reset(defaultFormValues)
   },

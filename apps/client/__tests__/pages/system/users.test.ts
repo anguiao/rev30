@@ -3,9 +3,20 @@
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NPagination, NSelect } from 'naive-ui'
-import { USER_STATUS_DISABLED, USER_STATUS_ENABLED, type UserListResponse } from '@rev30/shared'
+import {
+  USER_STATUS_DISABLED,
+  USER_STATUS_ENABLED,
+  type UserCreateResponse,
+  type UserListResponse,
+  type UserResetPasswordResponse,
+} from '@rev30/shared'
 import { defineComponent, h } from 'vue'
-import { deleteUser, formatDateTime, listUsers } from '../../../src/features/system'
+import {
+  deleteUser,
+  formatDateTime,
+  listUsers,
+  resetUserPassword,
+} from '../../../src/features/system'
 import UsersPage from '../../../src/pages/index/system/users.vue'
 import {
   disposeActiveTestPinia,
@@ -29,7 +40,7 @@ vi.mock('../../../src/features/system/UserFormDrawer.vue', () => ({
         default: null,
       },
     },
-    emits: ['update:show', 'saved'],
+    emits: ['update:show', 'saved', 'created'],
     setup(props) {
       return () =>
         h('div', {
@@ -45,6 +56,7 @@ vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   deleteUser: vi.fn(),
   listUsers: vi.fn(),
+  resetUserPassword: vi.fn(),
   getSystemErrorMessage: vi.fn((error: unknown, fallback: string) =>
     error instanceof Error ? error.message : fallback,
   ),
@@ -52,6 +64,7 @@ vi.mock('../../../src/features/system', async (importOriginal) => ({
 
 const deleteUserMock = vi.mocked(deleteUser)
 const listUsersMock = vi.mocked(listUsers)
+const resetUserPasswordMock = vi.mocked(resetUserPassword)
 
 const userListResponse: UserListResponse = {
   list: [
@@ -94,6 +107,20 @@ const userListResponse: UserListResponse = {
   pageSize: 20,
 }
 
+const userCreateResponse: UserCreateResponse = {
+  user: {
+    ...userListResponse.list[1]!,
+    username: 'new-user',
+    nickname: 'New User',
+  },
+  temporaryPassword: 'TempPass123',
+}
+
+const resetPasswordResponse: UserResetPasswordResponse = {
+  userId: userListResponse.list[1]!.id,
+  temporaryPassword: 'ResetPass123',
+}
+
 async function mountUsersPage(accessCodes: string[] = session.accessCodes) {
   return mountAuthRoute('/system/users', [{ path: '/system/users', component: UsersPage }], {
     ...session,
@@ -105,6 +132,7 @@ describe('users page', () => {
   beforeEach(() => {
     deleteUserMock.mockReset()
     listUsersMock.mockReset()
+    resetUserPasswordMock.mockReset()
     localStorage.clear()
     document.documentElement.className = ''
     document.documentElement.style.colorScheme = ''
@@ -158,6 +186,7 @@ describe('users page', () => {
       'system:user:create',
       'system:user:update',
       'system:user:delete',
+      'system:user:reset-password',
       'system:user:list',
       'system:department:list',
       'system:role:list',
@@ -167,9 +196,10 @@ describe('users page', () => {
     expect(authorizedWrapper.find('[data-test="users-create"]').exists()).toBe(true)
     expect(authorizedWrapper.findAll('[data-test="users-edit"]')).toHaveLength(1)
     expect(authorizedWrapper.findAll('[data-test="users-delete"]')).toHaveLength(1)
+    expect(authorizedWrapper.findAll('[data-test="users-reset-password"]')).toHaveLength(1)
   })
 
-  it('keeps create button visible by permission but does not open drawer on click', async () => {
+  it('opens create drawer and refetches after created', async () => {
     listUsersMock.mockResolvedValue(userListResponse)
     const { wrapper } = await mountUsersPage(['system:user:create'])
     await flushPromises()
@@ -178,8 +208,19 @@ describe('users page', () => {
     await flushPromises()
 
     const drawer = wrapper.get('[data-test="user-form-drawer"]')
-    expect(drawer.attributes('data-show')).toBe('false')
+    expect(drawer.attributes('data-show')).toBe('true')
     expect(drawer.attributes('data-user-id')).toBe('')
+
+    wrapper.getComponent({ name: 'UserFormDrawerStub' }).vm.$emit('created', userCreateResponse)
+    await flushPromises()
+
+    expect(listUsersMock).toHaveBeenCalledTimes(2)
+    expect(listUsersMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
+    expect(wrapper.text()).toContain('用户 New User 的临时密码只会显示一次。')
+    expect(wrapper.find('[data-test="temporary-password"]').element).toHaveProperty(
+      'value',
+      'TempPass123',
+    )
   })
 
   it('opens edit drawer with selected user id', async () => {
@@ -224,6 +265,59 @@ describe('users page', () => {
     expect(deleteUserMock).toHaveBeenCalledWith(deletableUser.id)
     expect(listUsersMock).toHaveBeenCalledTimes(2)
     expect(listUsersMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
+  })
+
+  it('resets password after confirmation and shows the temporary password dialog', async () => {
+    const resettableUser = userListResponse.list[1]!
+    listUsersMock.mockResolvedValue(userListResponse)
+    resetUserPasswordMock.mockResolvedValue(resetPasswordResponse)
+
+    const { wrapper } = await mountUsersPage(['system:user:reset-password'])
+    await flushPromises()
+
+    await wrapper.get('[data-test="users-reset-password"]').trigger('click')
+    await flushPromises()
+
+    const confirmButton = document.body.querySelector(
+      '[data-test="users-reset-password-confirm"]',
+    ) as HTMLButtonElement | null
+
+    expect(confirmButton).not.toBeNull()
+
+    confirmButton?.click()
+    await flushPromises()
+
+    expect(resetUserPasswordMock).toHaveBeenCalledWith(resettableUser.id)
+    expect(listUsersMock).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('用户 Grace Hopper 的临时密码只会显示一次。')
+    expect(wrapper.find('[data-test="temporary-password"]').element).toHaveProperty(
+      'value',
+      'ResetPass123',
+    )
+  })
+
+  it('keeps reset password dialog open when resetting password fails', async () => {
+    listUsersMock.mockResolvedValue(userListResponse)
+    resetUserPasswordMock.mockRejectedValue(new Error('重置失败'))
+
+    const { wrapper } = await mountUsersPage(['system:user:reset-password'])
+    await flushPromises()
+
+    await wrapper.get('[data-test="users-reset-password"]').trigger('click')
+    await flushPromises()
+
+    const confirmButton = document.body.querySelector(
+      '[data-test="users-reset-password-confirm"]',
+    ) as HTMLButtonElement | null
+
+    expect(confirmButton).not.toBeNull()
+
+    confirmButton?.click()
+    await flushPromises()
+
+    expect(resetUserPasswordMock).toHaveBeenCalledWith(userListResponse.list[1]!.id)
+    expect(listUsersMock).toHaveBeenCalledTimes(1)
+    expect(document.body.querySelector('[data-test="users-reset-password-confirm"]')).not.toBeNull()
   })
 
   it('keeps delete dialog open when deleting user fails', async () => {

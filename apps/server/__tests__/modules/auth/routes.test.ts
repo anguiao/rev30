@@ -49,9 +49,12 @@ type ResourceInsert = {
   sortOrder: number
 }
 
+type TestDatabase = Awaited<ReturnType<typeof createTestDb>>
+type TestTransaction = Parameters<Parameters<TestDatabase['transaction']>[0]>[0]
+
 const now = new Date('2026-05-06T00:00:00.000Z')
 
-function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
+function createTestApp(database: TestDatabase) {
   return new Hono().route('/api/auth', createAuthRoutes(database))
 }
 
@@ -68,7 +71,7 @@ function requireRefreshToken(token: string | undefined) {
 }
 
 async function createResource(
-  database: Awaited<ReturnType<typeof createTestDb>>,
+  database: TestDatabase,
   input: ResourceInsert,
 ) {
   const [resource] = await database
@@ -129,40 +132,38 @@ async function login(app: Hono, body = {}) {
   }
 }
 
-function createTestAppWithRefreshRevokeFailure(database: Awaited<ReturnType<typeof createTestDb>>) {
+function createTestAppWithRefreshRevokeFailure(database: TestDatabase) {
   return createTestApp(
     new Proxy(database, {
       get(target, property, receiver) {
         if (property === 'transaction') {
-          return async (callback: (tx: typeof target) => Promise<unknown>) =>
+          return async (callback: (tx: TestTransaction) => Promise<unknown>) =>
             target.transaction(async (tx) =>
-              callback(
-                new Proxy(tx, {
-                  get(txTarget, txProperty, txReceiver) {
-                    if (txProperty === 'update') {
-                      return (table: unknown) => {
-                        if (table === authRefreshTokens) {
-                          return {
-                            set() {
-                              return {
-                                where: async () => {
-                                  throw new Error('revoke failed')
-                                },
-                              }
-                            },
-                          }
+              callback(new Proxy(tx, {
+                get(txTarget, txProperty, txReceiver) {
+                  if (txProperty === 'update') {
+                    return (table: unknown) => {
+                      if (table === authRefreshTokens) {
+                        return {
+                          set() {
+                            return {
+                              where: async () => {
+                                throw new Error('revoke failed')
+                              },
+                            }
+                          },
                         }
-
-                        return txTarget.update(table as never)
                       }
+
+                      return txTarget.update(table as never)
                     }
+                  }
 
-                    const value = Reflect.get(txTarget, txProperty, txReceiver)
+                  const value = Reflect.get(txTarget, txProperty, txReceiver)
 
-                    return typeof value === 'function' ? value.bind(txTarget) : value
-                  },
-                }),
-              ),
+                  return typeof value === 'function' ? value.bind(txTarget) : value
+                },
+              }) as TestTransaction),
             )
         }
 
@@ -170,7 +171,7 @@ function createTestAppWithRefreshRevokeFailure(database: Awaited<ReturnType<type
 
         return typeof value === 'function' ? value.bind(target) : value
       },
-    }) as Awaited<ReturnType<typeof createTestDb>>,
+    }) as TestDatabase,
   )
 }
 

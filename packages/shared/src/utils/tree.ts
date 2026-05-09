@@ -62,3 +62,16 @@ export function filterTree<T>(
 export function getTreeNodeCount<T>(nodes: readonly TreeNode<T>[]): number {
   return nodes.reduce((total, node) => total + 1 + getTreeNodeCount(node.children), 0)
 }
+
+export function isLeafInTree<T extends TreeArrayItem>(
+  nodes: readonly TreeNode<T>[],
+  nodeId: string,
+): boolean {
+  return nodes.some((node) => {
+    if (node.id === nodeId) {
+      return node.children.length === 0
+    }
+
+    return isLeafInTree(node.children, nodeId)
+  })
+}

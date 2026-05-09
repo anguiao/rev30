@@ -14,15 +14,12 @@ import {
   NInputNumber,
   NSelect,
   NTree,
-  type TreeOption,
 } from 'naive-ui'
 import {
   ROLE_STATUS_ENABLED,
   roleCreateSchema,
   createRoleResourceIdsSchema,
   roleUpdateSchema,
-  type ResourceTreeNode,
-  type Role,
   type RoleFormInput,
   roleFormSchema,
   treeToArray,
@@ -37,6 +34,7 @@ import {
 } from '.'
 import { statusSelectOptions } from './labels'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
+import { toTreeOptions } from '../../utils/ui'
 
 const props = defineProps<{
   roleId: string | null
@@ -84,11 +82,15 @@ const {
     }
   },
 })
-const resourceTreeOptions = computed(() => toResourceTreeOptions(formData.value?.resources ?? []))
+const resourceTreeOptions = computed(() =>
+  toTreeOptions(formData.value?.resources ?? [], {
+    label: (resource) => `${resource.name} (${resource.code})`,
+  }),
+)
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
-    : getSystemErrorMessage(formLoadError.value, '加载角色表单失败'),
+    : getSystemErrorMessage(formLoadError.value, '加载角色信息失败'),
 )
 
 const formError = ref<string | null>(null)
@@ -173,21 +175,6 @@ watch(
     immediate: true,
   },
 )
-
-function toResourceTreeOptions(nodes: ResourceTreeNode[]): TreeOption[] {
-  return nodes.map((node) => {
-    const option: TreeOption = {
-      key: node.id,
-      label: `${node.name} (${node.code})`,
-    }
-
-    if (node.children.length > 0) {
-      option.children = toResourceTreeOptions(node.children)
-    }
-
-    return option
-  })
-}
 
 const resourceIdsSchema = computed(() =>
   createRoleResourceIdsSchema(treeToArray(formData.value?.resources ?? [])),
@@ -300,8 +287,8 @@ const resourceIdsSchema = computed(() =>
               data-test="role-form-submit"
               type="primary"
               attr-type="submit"
+              :disabled="isLoading || isSaving || !!loadError"
               :loading="isSaving"
-              :disabled="isLoading || !!loadError"
             >
               保存
             </NButton>

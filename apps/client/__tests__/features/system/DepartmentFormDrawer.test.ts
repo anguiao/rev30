@@ -357,6 +357,7 @@ describe('DepartmentFormDrawer', () => {
       {
         key: rootDepartmentId,
         label: '总部 (hq)',
+        disabled: false,
         children: [
           {
             key: childDepartmentId,
@@ -373,12 +374,14 @@ describe('DepartmentFormDrawer', () => {
           {
             key: siblingDepartmentId,
             label: '市场部 (marketing)',
+            disabled: false,
           },
         ],
       },
       {
         key: secondRootDepartmentId,
         label: '财务中心 (finance)',
+        disabled: false,
       },
     ])
 

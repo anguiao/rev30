@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useMutation, useQuery } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
+import { pick } from 'lodash-es'
 import {
   NAlert,
   NButton,
@@ -13,7 +14,6 @@ import {
   NInputNumber,
   NSelect,
   NTreeSelect,
-  type TreeSelectOption,
 } from 'naive-ui'
 import {
   DEPARTMENT_STATUS_ENABLED,
@@ -31,8 +31,8 @@ import {
   updateDepartment,
 } from '.'
 import { statusSelectOptions } from './labels'
-import { toDepartmentTreeSelectOptions } from './departmentOptions'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
+import { toTreeOptions } from '../../utils/ui'
 
 const props = defineProps<{
   departmentId: string | null
@@ -47,20 +47,12 @@ const emit = defineEmits<{
 
 const drawerTitle = computed(() => (props.departmentId === null ? '新增部门' : '编辑部门'))
 
-function getDefaultFormValues(parentId: string | null): DepartmentFormInput {
-  return {
-    name: '',
-    code: '',
-    parentId,
-    status: DEPARTMENT_STATUS_ENABLED,
-    sortOrder: 0,
-  }
-}
-
-type SaveDepartmentMutationVariables = {
-  departmentId: string | null
-  parentId: string | null
-  value: DepartmentFormInput
+const defaultFormValues: DepartmentFormInput = {
+  name: '',
+  code: '',
+  parentId: null,
+  status: DEPARTMENT_STATUS_ENABLED,
+  sortOrder: 0,
 }
 
 const {
@@ -87,36 +79,29 @@ const {
       departments,
       formValues:
         department === null
-          ? getDefaultFormValues(parentId)
-          : {
-              name: department.name,
-              code: department.code,
-              parentId: department.parentId,
-              status: department.status,
-              sortOrder: department.sortOrder,
-            },
+          ? { ...defaultFormValues, parentId }
+          : pick(department, ['name', 'code', 'parentId', 'status', 'sortOrder']),
     }
   },
 })
-
-const departmentTreeOptions = computed<TreeSelectOption[]>(() => {
+const departmentTreeOptions = computed(() => {
   const departmentId = props.departmentId
 
-  return toDepartmentTreeSelectOptions(
-    formData.value?.departments ?? [],
-    departmentId === null ? {} : { disabledDepartmentId: departmentId },
-  )
+  return toTreeOptions(formData.value?.departments ?? [], {
+    label: (department) => `${department.name} (${department.code})`,
+    ...(departmentId === null ? {} : { disabledSubtreeId: departmentId }),
+  })
 })
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
-    : getSystemErrorMessage(formLoadError.value, '加载部门表单失败'),
+    : getSystemErrorMessage(formLoadError.value, '加载部门信息失败'),
 )
 
 const formError = ref<string | null>(null)
 
 const form = useForm({
-  defaultValues: getDefaultFormValues(props.parentId),
+  defaultValues: { ...defaultFormValues, parentId: props.parentId },
   validators: {
     onSubmit: departmentFormSchema,
   },
@@ -131,7 +116,14 @@ const form = useForm({
 })
 
 const { isLoading: isSaving, ...saveDepartmentMutation } = useMutation({
-  mutation: ({ departmentId, value }: SaveDepartmentMutationVariables) =>
+  mutation: ({
+    departmentId,
+    value,
+  }: {
+    departmentId: string | null
+    parentId: string | null
+    value: DepartmentFormInput
+  }) =>
     departmentId === null
       ? createDepartment(departmentCreateSchema.parse(value))
       : updateDepartment(departmentId, departmentUpdateSchema.parse(value)),
@@ -176,7 +168,7 @@ watch(
 
     saveDepartmentMutation.reset()
     formError.value = null
-    form.reset(getDefaultFormValues(parentId))
+    form.reset({ ...defaultFormValues, parentId })
   },
   {
     immediate: true,

@@ -163,6 +163,65 @@ function confirmResetUserPassword(user: UserListItem) {
   })
 }
 
+function summarizeNames(items: Array<{ name: string }>) {
+  const names = items.map((item) => item.name)
+
+  if (names.length === 0) {
+    return '-'
+  }
+
+  if (names.length <= 2) {
+    return names.join('、')
+  }
+
+  return `${names.slice(0, 2).join('、')}等 ${names.length} 个`
+}
+
+function formatContact(user: UserListItem) {
+  return user.email ?? user.phone ?? '-'
+}
+
+const { copied, copy } = useClipboard()
+function showTemporaryPasswordDialog(username: string, temporaryPassword: string) {
+  dialog.info({
+    title: '临时密码',
+    showIcon: false,
+    content: () =>
+      h('div', { class: 'space-y-4' }, [
+        h(
+          'p',
+          { class: 'text-sm text-stone-600 dark:text-zinc-300' },
+          `用户 ${username} 的临时密码只会显示一次。`,
+        ),
+        h('div', { class: 'flex items-center gap-3' }, [
+          h(NInput, {
+            'data-test': 'temporary-password',
+            class: 'min-w-0 flex-1',
+            readonly: true,
+            value: temporaryPassword,
+          }),
+          h(
+            NButton,
+            {
+              'data-test': 'temporary-password-copy',
+              class: 'w-24!',
+              onClick: () => copy(temporaryPassword),
+            },
+            {
+              default: () =>
+                copied.value
+                  ? h('span', { class: 'inline-flex items-center' }, [
+                      h('span', { class: 'relative -left-0.5 i-[lucide--check] text-sm' }),
+                      '已复制',
+                    ])
+                  : '点击复制',
+            },
+          ),
+        ]),
+      ]),
+  })
+}
+
 const columns: DataTableColumns<UserListItem> = [
   {
     title: '用户名',
@@ -248,65 +307,6 @@ const columns: DataTableColumns<UserListItem> = [
           ]),
   },
 ]
-
-function summarizeNames(items: Array<{ name: string }>) {
-  const names = items.map((item) => item.name)
-
-  if (names.length === 0) {
-    return '-'
-  }
-
-  if (names.length <= 2) {
-    return names.join('、')
-  }
-
-  return `${names.slice(0, 2).join('、')}等 ${names.length} 个`
-}
-
-function formatContact(user: UserListItem) {
-  return user.email ?? user.phone ?? '-'
-}
-
-const { copied, copy } = useClipboard()
-function showTemporaryPasswordDialog(username: string, temporaryPassword: string) {
-  dialog.info({
-    title: '临时密码',
-    showIcon: false,
-    content: () =>
-      h('div', { class: 'space-y-4' }, [
-        h(
-          'p',
-          { class: 'text-sm text-stone-600 dark:text-zinc-300' },
-          `用户 ${username} 的临时密码只会显示一次。`,
-        ),
-        h('div', { class: 'flex items-center gap-3' }, [
-          h(NInput, {
-            'data-test': 'temporary-password',
-            class: 'min-w-0 flex-1',
-            readonly: true,
-            value: temporaryPassword,
-          }),
-          h(
-            NButton,
-            {
-              'data-test': 'temporary-password-copy',
-              class: 'w-24!',
-              onClick: () => copy(temporaryPassword),
-            },
-            {
-              default: () =>
-                copied.value
-                  ? h('span', { class: 'inline-flex items-center' }, [
-                      h('span', { class: 'relative -left-0.5 i-[lucide--check] text-sm' }),
-                      '已复制',
-                    ])
-                  : '点击复制',
-            },
-          ),
-        ]),
-      ]),
-  })
-}
 </script>
 
 <template>

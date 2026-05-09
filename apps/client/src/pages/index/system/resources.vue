@@ -35,7 +35,6 @@ type ResourceFilters = {
   type: ResourceTypeFilter
   status: StatusFilter
 }
-
 type ResourceActiveFilters = {
   keyword: string
   type: ResourceType | null
@@ -47,7 +46,6 @@ const filters = ref<ResourceFilters>({
   type: 'all',
   status: STATUS_FILTER_ALL,
 })
-
 const activeFilters = ref<ResourceActiveFilters>({
   keyword: '',
   type: null,
@@ -137,6 +135,14 @@ function canCreateChildResource(resource: ResourceTreeNode) {
   return resource.type === RESOURCE_TYPE_DIRECTORY || resource.type === RESOURCE_TYPE_MENU
 }
 
+const typeOptions: SelectOption[] = [
+  { label: '全部', value: 'all' },
+  { label: resourceTypeLabels[RESOURCE_TYPE_DIRECTORY], value: RESOURCE_TYPE_DIRECTORY },
+  { label: resourceTypeLabels[RESOURCE_TYPE_MENU], value: RESOURCE_TYPE_MENU },
+  { label: resourceTypeLabels[RESOURCE_TYPE_EXTERNAL], value: RESOURCE_TYPE_EXTERNAL },
+  { label: resourceTypeLabels[RESOURCE_TYPE_ACTION], value: RESOURCE_TYPE_ACTION },
+]
+
 const columns: DataTableColumns<ResourceTreeNode> = [
   {
     title: '资源名称',
@@ -218,14 +224,6 @@ const columns: DataTableColumns<ResourceTreeNode> = [
         }),
       ]),
   },
-]
-
-const typeOptions: SelectOption[] = [
-  { label: '全部', value: 'all' },
-  { label: resourceTypeLabels[RESOURCE_TYPE_DIRECTORY], value: RESOURCE_TYPE_DIRECTORY },
-  { label: resourceTypeLabels[RESOURCE_TYPE_MENU], value: RESOURCE_TYPE_MENU },
-  { label: resourceTypeLabels[RESOURCE_TYPE_EXTERNAL], value: RESOURCE_TYPE_EXTERNAL },
-  { label: resourceTypeLabels[RESOURCE_TYPE_ACTION], value: RESOURCE_TYPE_ACTION },
 ]
 </script>
 

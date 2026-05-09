@@ -13,13 +13,10 @@ import {
   NInput,
   NSelect,
   NTreeSelect,
-  type TreeSelectOption,
 } from 'naive-ui'
 import {
-  type User,
   type UserCreateResponse,
   USER_STATUS_ENABLED,
-  type RoleListItem,
   type UserFormInput,
   userCreateSchema,
   userFormSchema,
@@ -35,8 +32,8 @@ import {
   getSystemErrorMessage,
 } from '.'
 import { statusSelectOptions } from './labels'
-import { toDepartmentTreeSelectOptions } from './departmentOptions'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
+import { toSelectOptions, toTreeOptions } from '../../utils/ui'
 
 const props = defineProps<{
   userId: string | null
@@ -89,21 +86,22 @@ const {
     }
   },
 })
-const departmentTreeOptions = computed<TreeSelectOption[]>(() =>
-  toDepartmentTreeSelectOptions(formData.value?.departments ?? []),
+const departmentTreeOptions = computed(() =>
+  toTreeOptions(formData.value?.departments ?? [], {
+    label: (department) => `${department.name} (${department.code})`,
+  }),
 )
-const roleOptions = computed(() => toRoleOptions(formData.value?.roles ?? []))
+const roleOptions = computed(() =>
+  toSelectOptions(formData.value?.roles ?? [], {
+    label: (role) => `${role.name} (${role.code})`,
+    value: (role) => role.id,
+  }),
+)
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
     : getSystemErrorMessage(formLoadError.value, '加载用户信息失败'),
 )
-
-type DepartmentTreeSelectValue = string | number | Array<string | number> | null
-
-function normalizeDepartmentIds(value: DepartmentTreeSelectValue) {
-  return Array.isArray(value) ? value.map(String) : []
-}
 
 const formError = ref<string | null>(null)
 
@@ -193,11 +191,8 @@ watch(
   },
 )
 
-function toRoleOptions(roles: RoleListItem[]) {
-  return roles.map((role) => ({
-    label: `${role.name} (${role.code})`,
-    value: role.id,
-  }))
+function toDepartmentIds(value: Array<string | number> | null) {
+  return value?.map(String) ?? []
 }
 </script>
 
@@ -309,7 +304,7 @@ function toRoleOptions(roles: RoleListItem[]) {
                 placeholder="请选择所属部门"
                 @update:value="
                   (value) => {
-                    field.handleChange(normalizeDepartmentIds(value))
+                    field.handleChange(toDepartmentIds(value))
                   }
                 "
               />
@@ -338,8 +333,8 @@ function toRoleOptions(roles: RoleListItem[]) {
               data-test="user-form-submit"
               type="primary"
               attr-type="submit"
+              :disabled="isLoading || isSaving || !!loadError"
               :loading="isSaving"
-              :disabled="isLoading || !!loadError"
             >
               保存
             </NButton>

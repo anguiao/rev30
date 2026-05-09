@@ -246,14 +246,17 @@ describe('RoleFormDrawer', () => {
       {
         key: directoryResourceId,
         label: '系统管理 (system)',
+        disabled: false,
         children: [
           {
             key: actionResourceId,
             label: '角色保存 (system:role:save)',
+            disabled: false,
           },
           {
             key: secondActionResourceId,
             label: '角色分配 (system:role:assign)',
+            disabled: false,
           },
         ],
       },

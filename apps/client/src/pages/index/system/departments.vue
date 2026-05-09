@@ -13,7 +13,13 @@ import {
   useDialog,
   useMessage,
 } from 'naive-ui'
-import { filterTree, getTreeNodeCount, treeToArray, type DepartmentTreeNode } from '@rev30/shared'
+import {
+  filterTree,
+  getTreeNodeCount,
+  isLeafInTree,
+  treeToArray,
+  type DepartmentTreeNode,
+} from '@rev30/shared'
 import DepartmentFormDrawer from '../../../features/system/DepartmentFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
@@ -29,11 +35,13 @@ import {
 } from '../../../features/system'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
+const message = useMessage()
+const dialog = useDialog()
+
 type DepartmentFilters = {
   keyword: string
   status: StatusFilter
 }
-
 type DepartmentActiveFilters = {
   keyword: string
   status: SystemStatus | null
@@ -43,14 +51,11 @@ const filters = ref<DepartmentFilters>({
   keyword: '',
   status: STATUS_FILTER_ALL,
 })
-
 const activeFilters = ref<DepartmentActiveFilters>({
   keyword: '',
   status: null,
 })
 const emptyDepartmentTree: DepartmentTreeNode[] = []
-const message = useMessage()
-const dialog = useDialog()
 
 const {
   data: departmentTree,
@@ -62,10 +67,6 @@ const {
   placeholderData: () => emptyDepartmentTree,
   query: () => getDepartmentTree(),
 })
-
-const isDepartmentDrawerVisible = ref(false)
-const editingDepartmentId = ref<string | null>(null)
-const selectedParentDepartmentId = ref<string | null>(null)
 
 function handleSearch() {
   activeFilters.value = {
@@ -85,6 +86,36 @@ function handleReset() {
   }
 }
 
+const rawTree = computed(() => departmentTree.value ?? emptyDepartmentTree)
+const loadErrorMessage = computed(() =>
+  departmentTreeError.value === null
+    ? ''
+    : getSystemErrorMessage(departmentTreeError.value, '加载部门失败'),
+)
+
+const rows = computed(() => {
+  const normalizedKeyword = activeFilters.value.keyword.trim().toLowerCase()
+  const hasKeyword = normalizedKeyword.length > 0
+  const selectedStatus = activeFilters.value.status
+
+  return filterTree(rawTree.value, {
+    matches: (node) => {
+      const matchesKeyword =
+        !hasKeyword ||
+        node.name.toLowerCase().includes(normalizedKeyword) ||
+        node.code.toLowerCase().includes(normalizedKeyword)
+      const matchesStatus = selectedStatus === null || node.status === selectedStatus
+
+      return matchesKeyword && matchesStatus
+    },
+  })
+})
+
+const visibleCount = computed(() => getTreeNodeCount(rows.value))
+
+const isDepartmentDrawerVisible = ref(false)
+const editingDepartmentId = ref<string | null>(null)
+const selectedParentDepartmentId = ref<string | null>(null)
 function openDepartmentFormDrawer(
   departmentId: string | null = null,
   parentId: string | null = null,
@@ -93,14 +124,13 @@ function openDepartmentFormDrawer(
   selectedParentDepartmentId.value = parentId
   isDepartmentDrawerVisible.value = true
 }
-
 async function handleDepartmentSaved() {
   message.success('保存部门成功')
   await refetchDepartments()
 }
 
 function confirmDeleteDepartment(department: DepartmentTreeNode) {
-  if (hasActualChildren(department)) {
+  if (!isLeafInTree(rawTree.value, department.id)) {
     return
   }
 
@@ -128,50 +158,6 @@ function confirmDeleteDepartment(department: DepartmentTreeNode) {
     },
   })
 }
-
-const rawTree = computed(() => departmentTree.value ?? emptyDepartmentTree)
-const departmentIdsWithChildren = computed(() => collectDepartmentIdsWithChildren(rawTree.value))
-const loadErrorMessage = computed(() =>
-  departmentTreeError.value === null
-    ? ''
-    : getSystemErrorMessage(departmentTreeError.value, '加载部门失败'),
-)
-
-function collectDepartmentIdsWithChildren(nodes: DepartmentTreeNode[], ids = new Set<string>()) {
-  for (const node of nodes) {
-    if (node.children.length > 0) {
-      ids.add(node.id)
-    }
-
-    collectDepartmentIdsWithChildren(node.children, ids)
-  }
-
-  return ids
-}
-
-function hasActualChildren(department: DepartmentTreeNode) {
-  return departmentIdsWithChildren.value.has(department.id)
-}
-
-const rows = computed(() => {
-  const normalizedKeyword = activeFilters.value.keyword.trim().toLowerCase()
-  const hasKeyword = normalizedKeyword.length > 0
-  const selectedStatus = activeFilters.value.status
-
-  return filterTree(rawTree.value, {
-    matches: (node) => {
-      const matchesKeyword =
-        !hasKeyword ||
-        node.name.toLowerCase().includes(normalizedKeyword) ||
-        node.code.toLowerCase().includes(normalizedKeyword)
-      const matchesStatus = selectedStatus === null || node.status === selectedStatus
-
-      return matchesKeyword && matchesStatus
-    },
-  })
-})
-
-const visibleCount = computed(() => getTreeNodeCount(rows.value))
 
 const expandedRowKeys = ref<DataTableRowKey[]>([])
 watch(
@@ -245,7 +231,7 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
           accessCode: 'system:department:delete',
           type: 'error',
           testId: 'departments-delete',
-          disabled: hasActualChildren(department),
+          disabled: !isLeafInTree(rawTree.value, department.id),
           onClick: () => confirmDeleteDepartment(department),
         }),
       ]),

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { arrayToTree, filterTree, getTreeNodeCount, treeToArray } from '../../src/utils'
+import {
+  arrayToTree,
+  filterTree,
+  getTreeNodeCount,
+  isLeafInTree,
+  treeToArray,
+} from '../../src/utils'
 
 type FlatNode = {
   id: string
@@ -129,5 +135,12 @@ describe('tree utils', () => {
     })
 
     expect(getTreeNodeCount(filtered)).toBe(3)
+  })
+
+  it('checks whether a tree node is a leaf', () => {
+    expect(isLeafInTree(tree, 'root')).toBe(false)
+    expect(isLeafInTree(tree, 'engineering')).toBe(false)
+    expect(isLeafInTree(tree, 'platform')).toBe(true)
+    expect(isLeafInTree(tree, 'missing')).toBe(false)
   })
 })

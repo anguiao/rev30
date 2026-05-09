@@ -23,7 +23,6 @@ import {
   updateUser,
 } from '../../../src/features/system'
 import UserFormDrawer from '../../../src/features/system/UserFormDrawer.vue'
-import { toDepartmentTreeSelectOptions } from '../../../src/features/system/departmentOptions'
 import { createPinia, setActivePinia } from 'pinia'
 
 enableAutoUnmount(afterEach)
@@ -167,99 +166,6 @@ async function submitForm(wrapper: ReturnType<typeof mount>) {
   await flushPromises()
 }
 
-describe('toDepartmentTreeSelectOptions', () => {
-  it('disables root and all descendants when disabledDepartmentId is root', () => {
-    expect(
-      toDepartmentTreeSelectOptions(departmentTreeResponse, {
-        disabledDepartmentId: departmentId,
-      }),
-    ).toEqual([
-      {
-        key: departmentId,
-        label: '研发部 (rd)',
-        disabled: true,
-        children: [
-          {
-            key: secondDepartmentId,
-            label: '前端组 (frontend)',
-            disabled: true,
-          },
-        ],
-      },
-    ])
-  })
-
-  it('disables only the target subtree when disabledDepartmentId is a child node', () => {
-    const siblingDepartmentId = '66666666-6666-4666-8666-666666666666'
-    const thirdDepartmentId = '77777777-7777-4777-8777-777777777777'
-    const rootDepartment = departmentTreeResponse[0]!
-    const childDepartment = rootDepartment.children[0]!
-    const nodes: DepartmentTreeNode[] = [
-      {
-        ...rootDepartment,
-        children: [
-          {
-            ...childDepartment,
-            children: [
-              {
-                id: thirdDepartmentId,
-                parentId: secondDepartmentId,
-                name: '前端平台组',
-                code: 'frontend-platform',
-                status: DEPARTMENT_STATUS_ENABLED,
-                sortOrder: 1,
-                createdAt: '2026-05-03T00:00:00.000Z',
-                updatedAt: '2026-05-03T00:00:00.000Z',
-                children: [],
-              },
-            ],
-          },
-          {
-            id: siblingDepartmentId,
-            parentId: departmentId,
-            name: '后端组',
-            code: 'backend',
-            status: DEPARTMENT_STATUS_ENABLED,
-            sortOrder: 2,
-            createdAt: '2026-05-04T00:00:00.000Z',
-            updatedAt: '2026-05-04T00:00:00.000Z',
-            children: [],
-          },
-        ],
-      },
-    ]
-
-    expect(
-      toDepartmentTreeSelectOptions(nodes, {
-        disabledDepartmentId: secondDepartmentId,
-      }),
-    ).toEqual([
-      {
-        key: departmentId,
-        label: '研发部 (rd)',
-        children: [
-          {
-            key: secondDepartmentId,
-            label: '前端组 (frontend)',
-            disabled: true,
-            children: [
-              {
-                key: thirdDepartmentId,
-                label: '前端平台组 (frontend-platform)',
-                disabled: true,
-              },
-            ],
-          },
-          {
-            key: siblingDepartmentId,
-            label: '后端组 (backend)',
-          },
-        ],
-      },
-    ])
-  })
-})
-
 describe('UserFormDrawer', () => {
   beforeEach(() => {
     createUserMock.mockReset()
@@ -292,10 +198,12 @@ describe('UserFormDrawer', () => {
       {
         key: departmentId,
         label: '研发部 (rd)',
+        disabled: false,
         children: [
           {
             key: secondDepartmentId,
             label: '前端组 (frontend)',
+            disabled: false,
           },
         ],
       },
@@ -334,10 +242,12 @@ describe('UserFormDrawer', () => {
       {
         key: departmentId,
         label: '研发部 (rd)',
+        disabled: false,
         children: [
           {
             key: secondDepartmentId,
             label: '前端组 (frontend)',
+            disabled: false,
           },
         ],
       },

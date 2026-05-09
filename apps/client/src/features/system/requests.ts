@@ -1,5 +1,8 @@
 import {
+  departmentSchema,
   departmentTreeNodeSchema,
+  type Department,
+  type DepartmentCreateInput,
   errorResponseSchema,
   roleSchema,
   resourceTreeNodeSchema,
@@ -9,6 +12,7 @@ import {
   type RoleUpdateInput,
   roleListResponseSchema,
   type DepartmentTreeNode,
+  type DepartmentUpdateInput,
   type ResourceTreeNode,
   type RoleListQuery,
   type RoleListResponse,
@@ -149,6 +153,38 @@ export async function deleteRole(id: string): Promise<void> {
 
 export async function getDepartmentTree(): Promise<DepartmentTreeNode[]> {
   return parseSystemResponse(await api.system.departments.tree.$get(), departmentTreeResponseSchema)
+}
+
+export async function getDepartment(id: string): Promise<Department> {
+  return parseSystemResponse(await api.system.departments[':id'].$get({ param: { id } }), departmentSchema)
+}
+
+export async function createDepartment(input: DepartmentCreateInput): Promise<Department> {
+  return parseSystemResponse(
+    await api.system.departments.$post({ json: input }),
+    departmentSchema,
+  )
+}
+
+export async function updateDepartment(
+  id: string,
+  input: DepartmentUpdateInput,
+): Promise<Department> {
+  return parseSystemResponse(
+    await api.system.departments[':id'].$patch({
+      param: { id },
+      json: input,
+    }),
+    departmentSchema,
+  )
+}
+
+export async function deleteDepartment(id: string): Promise<void> {
+  const response = await api.system.departments[':id'].$delete({ param: { id } })
+
+  if (!response.ok) {
+    throw await parseSystemError(response)
+  }
 }
 
 export async function getResourceTree(): Promise<ResourceTreeNode[]> {

@@ -13,12 +13,16 @@ import {
   createRole,
   deleteRole,
   deleteUser,
+  createDepartment,
+  deleteDepartment,
+  getDepartment,
   getRole,
   createUser,
   resetUserPassword,
   SystemRequestError,
   getUser,
   getDepartmentTree,
+  updateDepartment,
   getResourceTree,
   getSystemErrorMessage,
   listRoles,
@@ -171,6 +175,77 @@ describe('system request helpers', () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/departments/tree')
   })
 
+  it('sends department detail, create, update, and delete requests', async () => {
+    const departmentResponse = {
+      id: '22222222-2222-4222-8222-222222222222',
+      parentId: null,
+      name: '总部',
+      code: 'hq',
+      status: DEPARTMENT_STATUS_ENABLED,
+      sortOrder: 1,
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T00:00:00.000Z',
+    }
+    const updatedDepartmentResponse = {
+      ...departmentResponse,
+      name: '研发中心',
+      code: 'eng',
+      sortOrder: 2,
+      updatedAt: '2026-05-02T00:00:00.000Z',
+    }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(departmentResponse)))
+      .mockResolvedValueOnce(new Response(JSON.stringify(departmentResponse), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(updatedDepartmentResponse)))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    const department = await getDepartment('22222222-2222-4222-8222-222222222222')
+    const created = await createDepartment({
+      name: '总部',
+      code: 'hq',
+      parentId: null,
+      status: DEPARTMENT_STATUS_ENABLED,
+      sortOrder: 1,
+    })
+    const updated = await updateDepartment('22222222-2222-4222-8222-222222222222', {
+      name: '研发中心',
+      code: 'eng',
+      parentId: null,
+      status: DEPARTMENT_STATUS_ENABLED,
+      sortOrder: 2,
+    })
+    await deleteDepartment('22222222-2222-4222-8222-222222222222')
+
+    expect(department.code).toBe('hq')
+    expect(created.name).toBe('总部')
+    expect(updated.code).toBe('eng')
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      '/api/system/departments/22222222-2222-4222-8222-222222222222',
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/system/departments',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/system/departments/22222222-2222-4222-8222-222222222222',
+      expect.objectContaining({
+        method: 'PATCH',
+      }),
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/system/departments/22222222-2222-4222-8222-222222222222',
+      expect.objectContaining({
+        method: 'DELETE',
+      }),
+    )
+  })
+
   it('parses resource tree responses from the system resources endpoint', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -246,6 +321,29 @@ describe('system request helpers', () => {
       status: 409,
       field: 'code',
       message: '角色编码已存在',
+    })
+  })
+
+  it('parses department code conflict field errors', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ field: 'code', message: '部门编码已存在' }), {
+        status: 409,
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const promise = createDepartment({
+      name: '重复部门',
+      code: 'hq',
+      parentId: null,
+      status: DEPARTMENT_STATUS_ENABLED,
+      sortOrder: 0,
+    })
+
+    await expect(promise).rejects.toBeInstanceOf(SystemRequestError)
+    await expect(promise).rejects.toMatchObject({
+      status: 409,
+      field: 'code',
+      message: '部门编码已存在',
     })
   })
 

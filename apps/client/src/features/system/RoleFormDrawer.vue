@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useMutation, useQuery } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
+import { pick } from 'lodash-es'
 import {
   NAlert,
   NButton,
@@ -73,7 +74,13 @@ const {
 
     return {
       resources,
-      formValues: role === null ? defaultFormValues : toRoleFormValues(role),
+      formValues:
+        role === null
+          ? defaultFormValues
+          : {
+              ...pick(role, ['name', 'code', 'status', 'sortOrder']),
+              resourceIds: role.resources.map((resource) => resource.id),
+            },
     }
   },
 })
@@ -118,8 +125,10 @@ const { isLoading: isSaving, ...saveRoleMutation } = useMutation({
       return
     }
 
-    if (error instanceof SystemRequestError && error.field !== undefined) {
-      setServerFieldError(form, error.field as keyof RoleFormInput, error.message)
+    if (
+      error instanceof SystemRequestError &&
+      setServerFieldError(form, error.field, error.message)
+    ) {
       return
     }
 
@@ -180,13 +189,6 @@ function toResourceTreeOptions(nodes: ResourceTreeNode[]): TreeOption[] {
   })
 }
 
-function toRoleFormValues(role: Role): RoleFormInput {
-  return {
-    ...role,
-    resourceIds: role.resources.map((resource) => resource.id),
-  }
-}
-
 const resourceIdsSchema = computed(() =>
   createRoleResourceIdsSchema(treeToArray(formData.value?.resources ?? [])),
 )
@@ -204,7 +206,7 @@ const resourceIdsSchema = computed(() =>
           {{ formError }}
         </NAlert>
 
-        <NForm class="flex flex-col gap-4" @submit.prevent="handleSubmit">
+        <NForm @submit.prevent="handleSubmit">
           <form.Field name="name" v-slot="{ field, state }">
             <NFormItem
               label="角色名称"

@@ -64,17 +64,7 @@ function userErrorResponse(error: unknown, c: Context) {
     return c.json({ message: error.message }, 404)
   }
 
-  if (error instanceof UserInvalidDepartmentError) {
-    return c.json(
-      {
-        field: error.field,
-        message: error.message,
-      },
-      400,
-    )
-  }
-
-  if (error instanceof UserInvalidRoleError) {
+  if (error instanceof UserInvalidDepartmentError || error instanceof UserInvalidRoleError) {
     return c.json(
       {
         field: error.field,

@@ -1,12 +1,8 @@
 import type { ResourceTreeNode } from '@rev30/shared'
 import { describe, expect, it } from 'vitest'
-import {
-  collectMenuKeys,
-  findActiveNavigation,
-  matchesMenuPath,
-} from '../../../../src/components/admin/navigation/adminNavigation'
+import { findMenuMatch } from '../../../../src/components/admin/navigation/menu'
 
-function createResource(
+function createMenu(
   overrides: Partial<ResourceTreeNode> & Pick<ResourceTreeNode, 'id' | 'name'>,
 ): ResourceTreeNode {
   const { id, name, ...rest } = overrides
@@ -31,25 +27,25 @@ function createResource(
   }
 }
 
-const resources: ResourceTreeNode[] = [
-  createResource({
+const menus: ResourceTreeNode[] = [
+  createMenu({
     id: 'system',
     type: 'directory',
     name: '系统管理',
     children: [
-      createResource({
+      createMenu({
         id: 'users',
         parentId: 'system',
         name: '用户管理',
         path: '/system/users',
       }),
-      createResource({
+      createMenu({
         id: 'docs',
         parentId: 'system',
         type: 'directory',
         name: '指南',
         children: [
-          createResource({
+          createMenu({
             id: 'roles',
             parentId: 'docs',
             name: '角色管理',
@@ -57,7 +53,7 @@ const resources: ResourceTreeNode[] = [
           }),
         ],
       }),
-      createResource({
+      createMenu({
         id: 'external-docs',
         parentId: 'system',
         type: 'external',
@@ -69,30 +65,13 @@ const resources: ResourceTreeNode[] = [
   }),
 ]
 
-describe('admin navigation helpers', () => {
-  it('matches menu paths and nested route paths', () => {
-    expect(matchesMenuPath('/system/users', '/system/users')).toBe(true)
-    expect(matchesMenuPath('/system/users/123', '/system/users')).toBe(true)
-    expect(matchesMenuPath('/system/usersettings', '/system/users')).toBe(false)
-  })
-
-  it('collects every menu key in the resource tree', () => {
-    expect([...collectMenuKeys(resources)]).toEqual([
-      'system',
-      'users',
-      'docs',
-      'roles',
-      'external-docs',
-    ])
-  })
-
+describe('admin menu helpers', () => {
   it('selects the most specific internal route and returns breadcrumb items', () => {
-    const match = findActiveNavigation(resources, '/system/users/123')
+    const match = findMenuMatch(menus, '/system/users/123')
 
     expect(match).toEqual({
       selectedKey: 'users',
       parentKeys: ['system'],
-      matchedPath: '/system/users',
       breadcrumbItems: [
         { key: 'system', name: '系统管理', path: null },
         { key: 'users', name: '用户管理', path: '/system/users' },
@@ -101,7 +80,7 @@ describe('admin navigation helpers', () => {
   })
 
   it('returns all parent keys for deeply nested menu items', () => {
-    const match = findActiveNavigation(resources, '/system/roles')
+    const match = findMenuMatch(menus, '/system/roles')
 
     expect(match?.selectedKey).toBe('roles')
     expect(match?.parentKeys).toEqual(['system', 'docs'])
@@ -112,8 +91,9 @@ describe('admin navigation helpers', () => {
     ])
   })
 
-  it('ignores external resources and unknown routes', () => {
-    expect(findActiveNavigation(resources, 'https://example.com/docs')).toBeNull()
-    expect(findActiveNavigation(resources, '/unknown')).toBeNull()
+  it('ignores external menus and unknown routes', () => {
+    expect(findMenuMatch(menus, 'https://example.com/docs')).toBeNull()
+    expect(findMenuMatch(menus, '/unknown')).toBeNull()
+    expect(findMenuMatch(menus, '/system/usersettings')).toBeNull()
   })
 })

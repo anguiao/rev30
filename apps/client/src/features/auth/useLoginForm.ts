@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMutation } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
@@ -7,15 +7,14 @@ import { AuthRequestError, login } from './requests'
 import { resolveRedirectTarget } from '../../router/redirect'
 import { useAuthStore } from '../../stores/auth'
 
-type LoginFormData = AuthLoginInput
-
 export function useLoginForm() {
   const route = useRoute()
   const router = useRouter()
   const auth = useAuthStore()
+
   const formError = ref<string | null>(null)
 
-  const loginMutation = useMutation({
+  const { isLoading: isSubmitting, ...loginMutation } = useMutation({
     mutation: (input: AuthLoginInput) => login(input),
   })
 
@@ -23,7 +22,7 @@ export function useLoginForm() {
     defaultValues: {
       username: '',
       password: '',
-    } as LoginFormData,
+    } as AuthLoginInput,
     validators: {
       onSubmit: authLoginSchema,
     },
@@ -43,8 +42,6 @@ export function useLoginForm() {
       }
     },
   })
-
-  const isSubmitting = computed(() => loginMutation.isLoading.value)
 
   return {
     form,

@@ -1,48 +1,48 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
-import type { ResourceTreeNode } from '@rev30/shared'
+import { treeToArray, type ResourceTreeNode } from '@rev30/shared'
 import { computed, h, ref, watch } from 'vue'
 import { NEmpty, NMenu, type MenuOption } from 'naive-ui'
 import { RouterLink, useRoute } from 'vue-router'
-import { collectMenuKeys, findActiveNavigation } from './adminNavigation'
+import { findMenuMatch, type MenuMatch } from './menu'
 
 const props = defineProps<{
   collapsed: boolean
-  resources: ResourceTreeNode[]
+  menus: ResourceTreeNode[]
 }>()
 
 const route = useRoute()
-const menuOptions = computed(() => props.resources.map(createMenuOption))
+
+const menuOptions = computed(() => props.menus.map(createMenuOption))
+const availableMenuKeys = computed(() => new Set(treeToArray(props.menus).map((menu) => menu.id)))
+
+const menuMatch = computed(() => findMenuMatch(props.menus, route.path))
+const activeMenuKey = computed(() => menuMatch.value?.selectedKey ?? null)
+
 const expandedMenuKeys = ref<string[]>([])
-const availableMenuKeys = computed(() => collectMenuKeys(props.resources))
-const activeNavigation = computed(() => findActiveNavigation(props.resources, route.path))
-const activeMenuKey = computed(() => activeNavigation.value?.selectedKey ?? null)
 
 function handleExpandedKeysUpdate(keys: string[]) {
   expandedMenuKeys.value = keys.filter((key) => availableMenuKeys.value.has(key))
 }
 
+function syncExpandedMenuKeys(match: MenuMatch | null, availableKeys: Set<string>) {
+  const expandedKeys = expandedMenuKeys.value.filter((key) => availableKeys.has(key))
+  const mergedExpandedKeys = new Set(expandedKeys)
+
+  for (const key of match?.parentKeys ?? []) {
+    mergedExpandedKeys.add(key)
+  }
+
+  expandedMenuKeys.value = [...mergedExpandedKeys]
+}
+
 watch(
-  [activeNavigation, availableMenuKeys],
-  ([match, availableKeys]) => {
-    const mergedExpandedKeys = new Set(
-      expandedMenuKeys.value.filter((key) => availableKeys.has(key)),
-    )
-
-    for (const key of match?.parentKeys ?? []) {
-      mergedExpandedKeys.add(key)
-    }
-
-    expandedMenuKeys.value = [...mergedExpandedKeys]
-  },
+  [menuMatch, availableMenuKeys],
+  ([match, availableKeys]) => syncExpandedMenuKeys(match, availableKeys),
   { immediate: true },
 )
 
-function renderMenuIcon(icon: string | null) {
-  if (icon === null) {
-    return undefined
-  }
-
+function renderMenuIcon(icon: string) {
   return () =>
     h(Icon, {
       icon,
@@ -63,45 +63,45 @@ function renderInternalLabel(path: string, name: string) {
     )
 }
 
-function renderExternalLabel(resource: ResourceTreeNode) {
+function renderExternalLabel(
+  url: string,
+  openTarget: ResourceTreeNode['openTarget'],
+  name: string,
+) {
   return () =>
     h(
       'a',
       {
-        href: resource.externalUrl ?? undefined,
-        target: resource.openTarget === 'blank' ? '_blank' : undefined,
-        rel: resource.openTarget === 'blank' ? 'noopener noreferrer' : undefined,
+        href: url,
+        target: openTarget === 'blank' ? '_blank' : undefined,
+        rel: openTarget === 'blank' ? 'noopener noreferrer' : undefined,
       },
-      resource.name,
+      name,
     )
 }
 
-function createMenuOption(resource: ResourceTreeNode): MenuOption {
-  const children = resource.children.map(createMenuOption)
-  const icon = renderMenuIcon(resource.icon)
+function createMenuOption(menu: ResourceTreeNode): MenuOption {
   const option: MenuOption = {
-    key: resource.id,
+    key: menu.id,
   }
 
+  if (menu.icon !== null) {
+    option.icon = renderMenuIcon(menu.icon)
+  }
+
+  if (menu.path !== null) {
+    option.label = renderInternalLabel(menu.path, menu.name)
+  } else if (menu.externalUrl !== null) {
+    option.label = renderExternalLabel(menu.externalUrl, menu.openTarget, menu.name)
+  } else {
+    option.label = menu.name
+  }
+
+  const children = menu.children.map(createMenuOption)
   if (children.length > 0) {
     option.children = children
   }
 
-  if (icon !== undefined) {
-    option.icon = icon
-  }
-
-  if (resource.path !== null) {
-    option.label = renderInternalLabel(resource.path, resource.name)
-    return option
-  }
-
-  if (resource.externalUrl !== null) {
-    option.label = renderExternalLabel(resource)
-    return option
-  }
-
-  option.label = resource.name
   return option
 }
 </script>

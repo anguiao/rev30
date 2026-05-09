@@ -214,7 +214,7 @@ describe('UserFormDrawer', () => {
       departmentIds: [],
       roleIds: [],
     })
-    expect(wrapper.emitted('created')).toEqual([[userCreateResponse]])
+    expect(wrapper.emitted('saved')).toEqual([[userCreateResponse]])
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
 

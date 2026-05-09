@@ -8,9 +8,9 @@ import {
   authProfileUpdateSchema,
   type AuthPasswordUpdateInput,
   type AuthProfileUpdateInput,
-  type User,
 } from '@rev30/shared'
-import { NAlert, NButton, NForm, NFormItem, NInput } from 'naive-ui'
+import { NAlert, NButton, NForm, NFormItem, NInput, useMessage } from 'naive-ui'
+import { omit, pick } from 'lodash-es'
 import {
   AuthRequestError,
   getAuthErrorMessage,
@@ -21,7 +21,7 @@ import AdminLayout from '../../components/admin/AdminLayout.vue'
 import { useAuthStore } from '../../stores/auth'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
 
-const passwordFormSchema = authPasswordUpdateSchema
+const authPasswordUpdateFormSchema = authPasswordUpdateSchema
   .safeExtend({
     confirmPassword: z.string(),
   })
@@ -29,41 +29,21 @@ const passwordFormSchema = authPasswordUpdateSchema
     path: ['confirmPassword'],
     message: '两次输入的密码不一致',
   })
+type AuthPasswordUpdateFormInput = z.input<typeof authPasswordUpdateFormSchema>
 
-type ProfileFormData = z.input<typeof authProfileUpdateSchema>
-type PasswordFormData = z.input<typeof passwordFormSchema>
-type ProfileFieldName = keyof ProfileFormData
-
-const profileFieldNames = new Set<ProfileFieldName>(['nickname', 'email', 'phone'])
+const message = useMessage()
 
 const auth = useAuthStore()
+const currentUser = computed(() => auth.user!)
 
-const currentUser = computed(() => auth.user as User)
 const profileFormError = ref<string | null>(null)
-const passwordFormError = ref<string | null>(null)
 
-const profileMutation = useMutation({
+const { isLoading: isProfileSubmitting, ...profileMutation } = useMutation({
   mutation: (input: AuthProfileUpdateInput) => updateMyProfile(input),
 })
 
-const passwordMutation = useMutation({
-  mutation: (input: AuthPasswordUpdateInput) => updateMyPassword(input),
-})
-
-function toProfileFormValues(user: User): ProfileFormData {
-  return {
-    nickname: user.nickname,
-    email: user.email,
-    phone: user.phone,
-  }
-}
-
-function isProfileFieldName(field: string): field is ProfileFieldName {
-  return profileFieldNames.has(field as ProfileFieldName)
-}
-
 const profileForm = useForm({
-  defaultValues: toProfileFormValues(currentUser.value),
+  defaultValues: pick(currentUser.value, ['nickname', 'email', 'phone']) as AuthProfileUpdateInput,
   validators: {
     onSubmit: authProfileUpdateSchema,
   },
@@ -74,20 +54,26 @@ const profileForm = useForm({
       const input = authProfileUpdateSchema.parse(value)
       const user = await profileMutation.mutateAsync(input)
       auth.setUser(user)
-      profileForm.reset(toProfileFormValues(user))
+
+      profileForm.reset(pick(user, ['nickname', 'email', 'phone']))
+      message.success('保存个人信息成功')
     } catch (error) {
       if (
         error instanceof AuthRequestError &&
-        error.field !== undefined &&
-        isProfileFieldName(error.field)
-      ) {
         setServerFieldError(profileForm, error.field, error.message)
+      ) {
         return
       }
 
-      profileFormError.value = getAuthErrorMessage(error, '保存个人资料失败')
+      profileFormError.value = getAuthErrorMessage(error, '保存个人信息失败')
     }
   },
+})
+
+const passwordFormError = ref<string | null>(null)
+
+const { isLoading: isPasswordSubmitting, ...passwordMutation } = useMutation({
+  mutation: (input: AuthPasswordUpdateInput) => updateMyPassword(input),
 })
 
 const passwordForm = useForm({
@@ -95,24 +81,25 @@ const passwordForm = useForm({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
-  } as PasswordFormData,
+  } as AuthPasswordUpdateFormInput,
   validators: {
-    onSubmit: passwordFormSchema,
+    onSubmit: authPasswordUpdateFormSchema,
   },
   async onSubmit({ value }) {
     passwordFormError.value = null
 
     try {
-      const { confirmPassword: _confirmPassword, ...input } = passwordFormSchema.parse(value)
+      const input = omit(authPasswordUpdateFormSchema.parse(value), 'confirmPassword')
       await passwordMutation.mutateAsync(input)
+
       passwordForm.reset()
+      message.success('修改密码成功')
     } catch (error) {
       if (
         error instanceof AuthRequestError &&
         error.status === 400 &&
-        error.field === 'currentPassword'
+        setServerFieldError(passwordForm, error.field, error.message)
       ) {
-        setServerFieldError(passwordForm, 'currentPassword', error.message)
         return
       }
 
@@ -120,9 +107,6 @@ const passwordForm = useForm({
     }
   },
 })
-
-const isProfileSubmitting = computed(() => profileMutation.isLoading.value)
-const isPasswordSubmitting = computed(() => passwordMutation.isLoading.value)
 </script>
 
 <template>
@@ -147,11 +131,7 @@ const isPasswordSubmitting = computed(() => passwordMutation.isLoading.value)
               {{ profileFormError }}
             </NAlert>
 
-            <NForm
-              data-test="account-profile-form"
-              class="flex flex-col gap-2"
-              @submit.prevent="profileForm.handleSubmit()"
-            >
+            <NForm data-test="account-profile-form" @submit.prevent="profileForm.handleSubmit()">
               <NFormItem label="用户名">
                 <NInput
                   data-test="account-profile-username"
@@ -236,11 +216,7 @@ const isPasswordSubmitting = computed(() => passwordMutation.isLoading.value)
               {{ passwordFormError }}
             </NAlert>
 
-            <NForm
-              data-test="account-password-form"
-              class="flex flex-col gap-2"
-              @submit.prevent="passwordForm.handleSubmit()"
-            >
+            <NForm data-test="account-password-form" @submit.prevent="passwordForm.handleSubmit()">
               <passwordForm.Field name="currentPassword" v-slot="{ field, state }">
                 <NFormItem
                   label="当前密码"

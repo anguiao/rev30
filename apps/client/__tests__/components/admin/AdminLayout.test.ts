@@ -35,11 +35,11 @@ vi.mock('@iconify/vue', () => ({
 }))
 
 const logoutMock = vi.mocked(logout)
-const systemResourceId = 'f905f4dc-c43f-41a8-b6fc-d381f291331a'
-const usersResourceId = '83d85ddf-9ebf-4f62-af9f-368af6d0d2a5'
-const docsResourceId = '78093266-57fe-4e0f-b420-ab55a67df4e9'
-const rolesResourceId = 'c54bf1f7-5c52-42ff-b055-b71f2606cc69'
-const externalDocsResourceId = '5fe0dd74-45fc-42fd-a3da-dfe6fcc60e4e'
+const systemMenuId = 'f905f4dc-c43f-41a8-b6fc-d381f291331a'
+const usersMenuId = '83d85ddf-9ebf-4f62-af9f-368af6d0d2a5'
+const docsMenuId = '78093266-57fe-4e0f-b420-ab55a67df4e9'
+const rolesMenuId = 'c54bf1f7-5c52-42ff-b055-b71f2606cc69'
+const externalDocsMenuId = '5fe0dd74-45fc-42fd-a3da-dfe6fcc60e4e'
 const adminSidebarCollapsedStorageKey = 'admin-sidebar-collapsed'
 
 function createMenuSession(): AuthTokenResponse {
@@ -48,7 +48,7 @@ function createMenuSession(): AuthTokenResponse {
     accessCodes: ['system', 'system:user:list', 'system:role:list', 'docs:guide'],
     menus: [
       {
-        id: systemResourceId,
+        id: systemMenuId,
         parentId: null,
         type: 'directory',
         name: '系统管理',
@@ -64,8 +64,8 @@ function createMenuSession(): AuthTokenResponse {
         updatedAt: '2026-05-01T00:00:00.000Z',
         children: [
           {
-            id: usersResourceId,
-            parentId: systemResourceId,
+            id: usersMenuId,
+            parentId: systemMenuId,
             type: 'menu',
             name: '用户管理',
             code: 'system:user:list',
@@ -81,8 +81,8 @@ function createMenuSession(): AuthTokenResponse {
             children: [],
           },
           {
-            id: docsResourceId,
-            parentId: systemResourceId,
+            id: docsMenuId,
+            parentId: systemMenuId,
             type: 'directory',
             name: '指南',
             code: 'docs',
@@ -97,8 +97,8 @@ function createMenuSession(): AuthTokenResponse {
             updatedAt: '2026-05-01T00:00:00.000Z',
             children: [
               {
-                id: rolesResourceId,
-                parentId: docsResourceId,
+                id: rolesMenuId,
+                parentId: docsMenuId,
                 type: 'menu',
                 name: '角色管理',
                 code: 'system:role:list',
@@ -116,8 +116,8 @@ function createMenuSession(): AuthTokenResponse {
             ],
           },
           {
-            id: externalDocsResourceId,
-            parentId: systemResourceId,
+            id: externalDocsMenuId,
+            parentId: systemMenuId,
             type: 'external',
             name: '开发文档',
             code: 'docs:guide',
@@ -233,10 +233,10 @@ describe('admin layout', () => {
     )
     expect(wrapper.get('[data-test="admin-sidebar-footer-separator"]').classes()).toContain('mx-5')
     expect(wrapper.get('[data-test="admin-sidebar-footer-content"]').classes()).toContain('px-5')
-    expect(menu.props('value')).toBe(usersResourceId)
+    expect(menu.props('value')).toBe(usersMenuId)
     expect(menu.props('collapsed')).toBe(false)
     expect(menu.props('defaultExpandAll')).toBe(false)
-    expect(menu.props('expandedKeys')).toEqual([systemResourceId])
+    expect(menu.props('expandedKeys')).toEqual([systemMenuId])
     expect(menu.props('rootIndent')).toBe(20)
     expect(wrapper.text()).toContain('系统管理')
     expect(wrapper.text()).toContain('指南')
@@ -297,8 +297,8 @@ describe('admin layout', () => {
     expect(menu.props('collapsed')).toBe(true)
     expect(menu.props('collapsedWidth')).toBe(60)
     expect(menu.props('collapsedIconSize')).toBe(18)
-    expect(menu.props('value')).toBe(usersResourceId)
-    expect(menu.props('expandedKeys')).toEqual([systemResourceId])
+    expect(menu.props('value')).toBe(usersMenuId)
+    expect(menu.props('expandedKeys')).toEqual([systemMenuId])
     expect(localStorage.getItem(adminSidebarCollapsedStorageKey)).toBe('true')
   })
 
@@ -356,8 +356,8 @@ describe('admin layout', () => {
     })
     const menu = wrapper.getComponent(NMenu)
 
-    expect(menu.props('value')).toBe(usersResourceId)
-    expect(menu.props('expandedKeys')).toEqual([systemResourceId])
+    expect(menu.props('value')).toBe(usersMenuId)
+    expect(menu.props('expandedKeys')).toEqual([systemMenuId])
   })
 
   it('expands only the current route ancestors by default', async () => {
@@ -366,8 +366,8 @@ describe('admin layout', () => {
     })
     const menu = wrapper.getComponent(NMenu)
 
-    expect(menu.props('value')).toBe(rolesResourceId)
-    expect(menu.props('expandedKeys')).toEqual([systemResourceId, docsResourceId])
+    expect(menu.props('value')).toBe(rolesMenuId)
+    expect(menu.props('expandedKeys')).toEqual([systemMenuId, docsMenuId])
     expect(wrapper.get('a[href="/system/roles"]').text()).toContain('角色管理')
     expect(wrapper.findAll('[data-test="menu-icon"]').map((icon) => icon.text())).toContain(
       'lucide:shield-check',
@@ -399,16 +399,16 @@ describe('admin layout', () => {
     const { router, wrapper } = await mountLayout()
     const menu = wrapper.getComponent(NMenu)
 
-    menu.vm.$emit('update:expandedKeys', [systemResourceId, docsResourceId])
+    menu.vm.$emit('update:expandedKeys', [systemMenuId, docsMenuId])
     await flushPromises()
 
-    expect(menu.props('expandedKeys')).toEqual([systemResourceId, docsResourceId])
+    expect(menu.props('expandedKeys')).toEqual([systemMenuId, docsMenuId])
 
     menu.vm.$emit('update:expandedKeys', [])
     await router.push('/system/roles')
     await flushPromises()
 
-    expect(menu.props('expandedKeys')).toEqual([systemResourceId, docsResourceId])
+    expect(menu.props('expandedKeys')).toEqual([systemMenuId, docsMenuId])
   })
 
   it('logs out, clears auth session, and navigates to login', async () => {

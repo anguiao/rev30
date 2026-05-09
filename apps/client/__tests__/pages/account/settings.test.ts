@@ -119,11 +119,12 @@ describe('account settings page', () => {
       phone: '18888888888',
     })
     expect(auth.user).toEqual(updatedUser)
-    expect(wrapper.get('[data-test="account-current-nickname"]').text()).toContain('Ada Byron')
+    expect(wrapper.get('[data-test="admin-sidebar-user"]').text()).toContain('Ada Byron')
     expect(
       (wrapper.get('[data-test="account-profile-nickname"] input').element as HTMLInputElement)
         .value,
     ).toBe('Ada Byron')
+    expect(document.body.textContent).toContain('保存个人信息成功')
   })
 
   it('shows unsupported profile field errors as a global error', async () => {
@@ -232,5 +233,6 @@ describe('account settings page', () => {
       (wrapper.get('[data-test="account-password-confirm"] input').element as HTMLInputElement)
         .value,
     ).toBe('')
+    expect(document.body.textContent).toContain('修改密码成功')
   })
 })

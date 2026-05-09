@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { USER_STATUS_ENABLED } from '../../src/schemas/system/users'
 import {
   authLoginSchema,
-  authErrorResponseSchema,
   authPasswordUpdateSchema,
   authProfileUpdateSchema,
   authRegisterSchema,
@@ -142,28 +141,6 @@ describe('auth schemas', () => {
     expect(response).not.toHaveProperty('refreshToken')
   })
 
-  it('parses auth errors with optional unique user fields', () => {
-    expect(
-      authErrorResponseSchema.parse({
-        field: 'username',
-        message: '用户名已存在',
-      }),
-    ).toEqual({
-      field: 'username',
-      message: '用户名已存在',
-    })
-
-    expect(
-      authErrorResponseSchema.parse({
-        field: 'some-field',
-        message: 'some field error',
-      }),
-    ).toEqual({
-      field: 'some-field',
-      message: 'some field error',
-    })
-  })
-
   it('parses current user profile updates without username', () => {
     const result = authProfileUpdateSchema.parse({
       nickname: 'Ada',
@@ -186,7 +163,7 @@ describe('auth schemas', () => {
     ).toThrow()
   })
 
-  it('parses password update requests and current-password field errors', () => {
+  it('parses password update requests', () => {
     expect(
       authPasswordUpdateSchema.parse({
         currentPassword: 'old-secret',
@@ -195,16 +172,6 @@ describe('auth schemas', () => {
     ).toEqual({
       currentPassword: 'old-secret',
       newPassword: 'new-secret',
-    })
-
-    expect(
-      authErrorResponseSchema.parse({
-        field: 'currentPassword',
-        message: '当前密码错误',
-      }),
-    ).toEqual({
-      field: 'currentPassword',
-      message: '当前密码错误',
     })
   })
 })

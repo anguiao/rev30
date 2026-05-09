@@ -76,6 +76,8 @@ describe('theme mode switch', () => {
 
     await selectThemeMode(wrapper, 'auto')
     expect(document.documentElement.classList.contains('dark')).toBe(true)
-    expect(wrapper.find('[data-test="theme-mode-trigger"]').text()).toContain('跟随')
+    expect(wrapper.find('[data-test="theme-mode-trigger"]').attributes('aria-label')).toContain(
+      '跟随',
+    )
   })
 })

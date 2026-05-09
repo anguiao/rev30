@@ -20,4 +20,6 @@ export function optionalNullableString(message = '不能为空') {
     .pipe(z.union([nonBlankString(message), z.null()]).optional())
 }
 
+export const passwordInputSchema = z.string().min(8, '密码至少需要 8 位')
+
 export const sortOrderInputSchema = z.number('排序必须是数字').int('排序必须是整数')

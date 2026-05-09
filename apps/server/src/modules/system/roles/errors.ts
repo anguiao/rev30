@@ -1,4 +1,5 @@
 import { DrizzleQueryError } from 'drizzle-orm/errors'
+import { FormFieldError } from '../../../common/errors'
 import { POSTGRES_UNIQUE_VIOLATION_CODE } from '../../../db/errors'
 
 const roleUniqueConstraintName = 'roles_code_unique'
@@ -9,10 +10,9 @@ type DatabaseErrorCause = {
   constraint_name?: unknown
 }
 
-export class RoleConflictError extends Error {
+export class RoleConflictError extends FormFieldError<'code'> {
   constructor() {
-    super('角色编码已存在')
-    this.name = 'RoleConflictError'
+    super('角色编码已存在', 'code')
   }
 }
 
@@ -30,10 +30,9 @@ export class RoleInvalidResourceError extends Error {
   }
 }
 
-export class RoleInvalidResourceAssignmentError extends Error {
+export class RoleInvalidResourceAssignmentError extends FormFieldError<'resourceIds'> {
   constructor(message: string) {
-    super(message)
-    this.name = 'RoleInvalidResourceAssignmentError'
+    super(message, 'resourceIds')
   }
 }
 

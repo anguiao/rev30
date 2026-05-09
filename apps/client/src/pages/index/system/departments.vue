@@ -48,6 +48,24 @@ const {
   query: () => getDepartmentTree(),
 })
 
+function handleSearch() {
+  activeFilters.value = {
+    keyword: filters.value.keyword.trim(),
+    status: filters.value.status === STATUS_FILTER_ALL ? null : filters.value.status,
+  }
+}
+
+function handleReset() {
+  filters.value = {
+    keyword: '',
+    status: STATUS_FILTER_ALL,
+  }
+  activeFilters.value = {
+    keyword: '',
+    status: null,
+  }
+}
+
 const rawTree = computed(() => departmentTree.value ?? emptyDepartmentTree)
 const loadErrorMessage = computed(() =>
   departmentTreeError.value === null
@@ -74,24 +92,6 @@ const rows = computed(() => {
 })
 
 const visibleCount = computed(() => getTreeNodeCount(rows.value))
-
-function handleSearch() {
-  activeFilters.value = {
-    keyword: filters.value.keyword.trim(),
-    status: filters.value.status === STATUS_FILTER_ALL ? null : filters.value.status,
-  }
-}
-
-function handleReset() {
-  filters.value = {
-    keyword: '',
-    status: STATUS_FILTER_ALL,
-  }
-  activeFilters.value = {
-    keyword: '',
-    status: null,
-  }
-}
 
 const expandedRowKeys = ref<DataTableRowKey[]>([])
 watch(

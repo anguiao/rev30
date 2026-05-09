@@ -44,6 +44,9 @@ importers:
       hono:
         specifier: ^4.12.15
         version: 4.12.15
+      lodash-es:
+        specifier: ^4.18.1
+        version: 4.18.1
       naive-ui:
         specifier: ^2.44.1
         version: 2.44.1(vue@3.5.33(typescript@6.0.3))
@@ -72,6 +75,9 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.2.4
         version: 4.2.4(vite@8.0.10(@types/node@24.12.2)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+      '@types/lodash-es':
+        specifier: ^4.17.12
+        version: 4.17.12
       '@vitejs/plugin-vue':
         specifier: ^6.0.6
         version: 6.0.6(vite@8.0.10(@types/node@24.12.2)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3))

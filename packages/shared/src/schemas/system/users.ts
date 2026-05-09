@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { nonBlankString, optionalNullableString } from '../common/inputs'
+import { nonBlankString, optionalNullableString, passwordInputSchema } from '../common/inputs'
 import { paginationQuerySchema } from '../common/pagination'
 import { ensureUniqueItems, hasAnyDefinedValue } from '../common/refinements'
 import { optionalNumericQueryValue, optionalTrimmedQueryString } from '../query'
@@ -82,16 +82,14 @@ export const userListResponseSchema = z.object({
   pageSize: z.number().int().min(1),
 })
 
-const temporaryPasswordSchema = z.string().min(8)
-
 export const userCreateResponseSchema = z.object({
   user: userSchema,
-  temporaryPassword: temporaryPasswordSchema,
+  temporaryPassword: passwordInputSchema,
 })
 
 export const userResetPasswordResponseSchema = z.object({
   userId: userIdSchema,
-  temporaryPassword: temporaryPasswordSchema,
+  temporaryPassword: passwordInputSchema,
 })
 
 export type User = z.infer<typeof userSchema>

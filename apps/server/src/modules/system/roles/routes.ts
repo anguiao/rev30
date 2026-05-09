@@ -56,7 +56,7 @@ function roleErrorResponse(error: unknown, c: Context) {
   }
 
   if (error instanceof RoleInvalidResourceAssignmentError) {
-    return c.json({ field: 'resourceIds', message: error.message }, 400)
+    return c.json({ field: error.field, message: error.message }, 400)
   }
 
   if (error instanceof RoleNotFoundError) {
@@ -64,14 +64,10 @@ function roleErrorResponse(error: unknown, c: Context) {
   }
 
   if (error instanceof RoleConflictError) {
-    return c.json({ field: 'code', message: error.message }, 409)
+    return c.json({ field: error.field, message: error.message }, 409)
   }
 
-  if (error instanceof RoleDeleteConflictError) {
-    return c.json({ message: error.message }, 409)
-  }
-
-  if (error instanceof BuiltInAdminRoleMutationError) {
+  if (error instanceof RoleDeleteConflictError || error instanceof BuiltInAdminRoleMutationError) {
     return c.json({ message: error.message }, 409)
   }
 

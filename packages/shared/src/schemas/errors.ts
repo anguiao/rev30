@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
-export const errorMessageSchema = z.object({
+export const errorResponseSchema = z.object({
   field: z.string().optional(),
   message: z.string(),
 })
 
-export type ErrorMessage = z.infer<typeof errorMessageSchema>
+export type ErrorResponse = z.infer<typeof errorResponseSchema>

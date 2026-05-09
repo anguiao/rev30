@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, h, ref, watch } from 'vue'
+import { computed, h, ref } from 'vue'
 import { useQuery } from '@pinia/colada'
+import { useClipboard } from '@vueuse/core'
 import type { DataTableColumns } from 'naive-ui'
 import {
   NAlert,
@@ -21,7 +22,6 @@ import type {
   UserListQuery,
   UserListResponse,
 } from '@rev30/shared'
-import TemporaryPasswordDialog from '../../../features/system/TemporaryPasswordDialog.vue'
 import UserFormDrawer from '../../../features/system/UserFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
@@ -38,6 +38,7 @@ import {
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 const message = useMessage()
+const dialog = useDialog()
 
 const keyword = ref('')
 const status = ref<StatusFilter>(STATUS_FILTER_ALL)
@@ -70,6 +71,26 @@ const {
   query: () => listUsers(query.value),
 })
 
+function handleSearch() {
+  const nextKeyword = keyword.value.trim()
+
+  query.value = {
+    page: 1,
+    pageSize: query.value.pageSize,
+    ...(nextKeyword.length > 0 ? { keyword: nextKeyword } : {}),
+    ...(status.value !== STATUS_FILTER_ALL ? { status: status.value } : {}),
+  } satisfies UserListQuery
+}
+
+function handleReset() {
+  keyword.value = ''
+  status.value = STATUS_FILTER_ALL
+  query.value = {
+    page: 1,
+    pageSize: query.value.pageSize,
+  }
+}
+
 const usersData = computed(() => usersResponse.value ?? emptyUsersData)
 const loadErrorMessage = computed(() =>
   usersError.value === null ? '' : getSystemErrorMessage(usersError.value, '加载用户失败'),
@@ -77,41 +98,22 @@ const loadErrorMessage = computed(() =>
 
 const isUserDrawerVisible = ref(false)
 const editingUserId = ref<string | null>(null)
-const temporaryPasswordUsername = ref('')
-const temporaryPasswordValue = ref('')
-const isTemporaryPasswordDialogVisible = ref(false)
-function showTemporaryPasswordDialog(username: string, temporaryPassword: string) {
-  temporaryPasswordUsername.value = username
-  temporaryPasswordValue.value = temporaryPassword
-  isTemporaryPasswordDialogVisible.value = true
-}
-function clearTemporaryPasswordDialog() {
-  temporaryPasswordUsername.value = ''
-  temporaryPasswordValue.value = ''
-}
-function openCreateUserDrawer() {
-  editingUserId.value = null
-  isUserDrawerVisible.value = true
-}
-function openEditUserDrawer(userId: string) {
+function openUserFormDrawer(userId: string | null = null) {
   editingUserId.value = userId
   isUserDrawerVisible.value = true
 }
-async function handleUserCreated(result: UserCreateResponse) {
+async function handleUserSaved(result?: UserCreateResponse) {
+  message.success('保存用户成功')
   await refetchUsers()
-  showTemporaryPasswordDialog(
-    result.user.nickname || result.user.username,
-    result.temporaryPassword,
-  )
+
+  if (result !== undefined) {
+    showTemporaryPasswordDialog(
+      result.user.nickname || result.user.username,
+      result.temporaryPassword,
+    )
+  }
 }
 
-watch(isTemporaryPasswordDialogVisible, (show) => {
-  if (!show) {
-    clearTemporaryPasswordDialog()
-  }
-})
-
-const dialog = useDialog()
 function confirmDeleteUser(user: UserListItem) {
   const positiveButtonProps: ButtonProps & Record<string, unknown> = {
     type: 'error',
@@ -127,6 +129,7 @@ function confirmDeleteUser(user: UserListItem) {
     async onPositiveClick() {
       try {
         await deleteUser(user.id)
+
         message.success('删除用户成功')
         await refetchUsers()
       } catch (error) {
@@ -158,44 +161,6 @@ function confirmResetUserPassword(user: UserListItem) {
       }
     },
   })
-}
-
-function summarizeNames(items: Array<{ name: string }>) {
-  const names = items.map((item) => item.name)
-
-  if (names.length === 0) {
-    return '-'
-  }
-
-  if (names.length <= 2) {
-    return names.join('、')
-  }
-
-  return `${names.slice(0, 2).join('、')}等 ${names.length} 个`
-}
-
-function formatContact(user: UserListItem) {
-  return user.email ?? user.phone ?? '-'
-}
-
-function handleSearch() {
-  const nextKeyword = keyword.value.trim()
-
-  query.value = {
-    page: 1,
-    pageSize: query.value.pageSize,
-    ...(nextKeyword.length > 0 ? { keyword: nextKeyword } : {}),
-    ...(status.value !== STATUS_FILTER_ALL ? { status: status.value } : {}),
-  } satisfies UserListQuery
-}
-
-function handleReset() {
-  keyword.value = ''
-  status.value = STATUS_FILTER_ALL
-  query.value = {
-    page: 1,
-    pageSize: query.value.pageSize,
-  }
 }
 
 const columns: DataTableColumns<UserListItem> = [
@@ -264,7 +229,7 @@ const columns: DataTableColumns<UserListItem> = [
                 'system:department:list',
                 'system:role:list',
               ],
-              onClick: () => openEditUserDrawer(user.id),
+              onClick: () => openUserFormDrawer(user.id),
               testId: 'users-edit',
             }),
             renderTableActionButton({
@@ -283,6 +248,65 @@ const columns: DataTableColumns<UserListItem> = [
           ]),
   },
 ]
+
+function summarizeNames(items: Array<{ name: string }>) {
+  const names = items.map((item) => item.name)
+
+  if (names.length === 0) {
+    return '-'
+  }
+
+  if (names.length <= 2) {
+    return names.join('、')
+  }
+
+  return `${names.slice(0, 2).join('、')}等 ${names.length} 个`
+}
+
+function formatContact(user: UserListItem) {
+  return user.email ?? user.phone ?? '-'
+}
+
+const { copied, copy } = useClipboard()
+function showTemporaryPasswordDialog(username: string, temporaryPassword: string) {
+  dialog.info({
+    title: '临时密码',
+    showIcon: false,
+    content: () =>
+      h('div', { class: 'space-y-4' }, [
+        h(
+          'p',
+          { class: 'text-sm text-stone-600 dark:text-zinc-300' },
+          `用户 ${username} 的临时密码只会显示一次。`,
+        ),
+        h('div', { class: 'flex items-center gap-3' }, [
+          h(NInput, {
+            'data-test': 'temporary-password',
+            class: 'min-w-0 flex-1',
+            readonly: true,
+            value: temporaryPassword,
+          }),
+          h(
+            NButton,
+            {
+              'data-test': 'temporary-password-copy',
+              class: 'w-24!',
+              onClick: () => copy(temporaryPassword),
+            },
+            {
+              default: () =>
+                copied.value
+                  ? h('span', { class: 'inline-flex items-center' }, [
+                      h('span', { class: 'relative -left-0.5 i-[lucide--check] text-sm' }),
+                      '已复制',
+                    ])
+                  : '点击复制',
+            },
+          ),
+        ]),
+      ]),
+  })
+}
 </script>
 
 <template>
@@ -298,7 +322,7 @@ const columns: DataTableColumns<UserListItem> = [
         v-can.all="['system:user:create', 'system:department:list', 'system:role:list']"
         data-test="users-create"
         type="primary"
-        @click="openCreateUserDrawer"
+        @click="openUserFormDrawer()"
       >
         新增用户
       </NButton>
@@ -350,13 +374,7 @@ const columns: DataTableColumns<UserListItem> = [
     <UserFormDrawer
       v-model:show="isUserDrawerVisible"
       :user-id="editingUserId"
-      @created="handleUserCreated"
-      @saved="refetchUsers"
-    />
-    <TemporaryPasswordDialog
-      v-model:show="isTemporaryPasswordDialogVisible"
-      :username="temporaryPasswordUsername"
-      :temporary-password="temporaryPasswordValue"
+      @saved="handleUserSaved"
     />
   </main>
 </template>

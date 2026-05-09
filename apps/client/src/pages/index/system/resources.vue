@@ -65,20 +65,33 @@ const {
   query: () => getResourceTree(),
 })
 
+function handleSearch() {
+  activeFilters.value = {
+    keyword: filters.value.keyword.trim(),
+    type: filters.value.type === 'all' ? null : filters.value.type,
+    status: filters.value.status === STATUS_FILTER_ALL ? null : filters.value.status,
+  }
+}
+
+function handleReset() {
+  filters.value = {
+    keyword: '',
+    type: 'all',
+    status: STATUS_FILTER_ALL,
+  }
+  activeFilters.value = {
+    keyword: '',
+    type: null,
+    status: null,
+  }
+}
+
 const rawTree = computed(() => resourceTree.value ?? emptyResourceTree)
 const loadErrorMessage = computed(() =>
   resourceTreeError.value === null
     ? ''
     : getSystemErrorMessage(resourceTreeError.value, '加载资源失败'),
 )
-
-const typeOptions: SelectOption[] = [
-  { label: '全部', value: 'all' },
-  { label: resourceTypeLabels[RESOURCE_TYPE_DIRECTORY], value: RESOURCE_TYPE_DIRECTORY },
-  { label: resourceTypeLabels[RESOURCE_TYPE_MENU], value: RESOURCE_TYPE_MENU },
-  { label: resourceTypeLabels[RESOURCE_TYPE_EXTERNAL], value: RESOURCE_TYPE_EXTERNAL },
-  { label: resourceTypeLabels[RESOURCE_TYPE_ACTION], value: RESOURCE_TYPE_ACTION },
-]
 
 const rows = computed(() => {
   const normalizedKeyword = activeFilters.value.keyword.trim().toLowerCase()
@@ -103,27 +116,6 @@ const rows = computed(() => {
 })
 
 const visibleCount = computed(() => getTreeNodeCount(rows.value))
-
-function handleSearch() {
-  activeFilters.value = {
-    keyword: filters.value.keyword.trim(),
-    type: filters.value.type === 'all' ? null : filters.value.type,
-    status: filters.value.status === STATUS_FILTER_ALL ? null : filters.value.status,
-  }
-}
-
-function handleReset() {
-  filters.value = {
-    keyword: '',
-    type: 'all',
-    status: STATUS_FILTER_ALL,
-  }
-  activeFilters.value = {
-    keyword: '',
-    type: null,
-    status: null,
-  }
-}
 
 const expandedRowKeys = ref<DataTableRowKey[]>([])
 watch(
@@ -226,6 +218,14 @@ const columns: DataTableColumns<ResourceTreeNode> = [
         }),
       ]),
   },
+]
+
+const typeOptions: SelectOption[] = [
+  { label: '全部', value: 'all' },
+  { label: resourceTypeLabels[RESOURCE_TYPE_DIRECTORY], value: RESOURCE_TYPE_DIRECTORY },
+  { label: resourceTypeLabels[RESOURCE_TYPE_MENU], value: RESOURCE_TYPE_MENU },
+  { label: resourceTypeLabels[RESOURCE_TYPE_EXTERNAL], value: RESOURCE_TYPE_EXTERNAL },
+  { label: resourceTypeLabels[RESOURCE_TYPE_ACTION], value: RESOURCE_TYPE_ACTION },
 ]
 </script>
 

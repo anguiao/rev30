@@ -59,12 +59,9 @@ function authErrorResponse(error: unknown, c: Context) {
 
   if (
     error instanceof AuthInvalidCredentialsError ||
-    error instanceof AuthInvalidRefreshTokenError
+    error instanceof AuthInvalidRefreshTokenError ||
+    error instanceof AuthUnauthorizedError
   ) {
-    return c.json({ message: error.message }, 401)
-  }
-
-  if (error instanceof AuthUnauthorizedError) {
     return c.json({ message: error.message }, 401)
   }
 

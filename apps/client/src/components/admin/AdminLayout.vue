@@ -6,20 +6,20 @@ import { useAuthStore } from '../../stores/auth'
 import AdminBreadcrumb from './navigation/AdminBreadcrumb.vue'
 import AdminSidebar from './sidebar/AdminSidebar.vue'
 
-const ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY = 'admin-sidebar-collapsed'
-
 const auth = useAuthStore()
 const { menus } = storeToRefs(auth)
 
+const ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY = 'admin-sidebar-collapsed'
 const isSidebarCollapsed = useStorage(ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY, false)
-const sidebarWidth = computed(() => (isSidebarCollapsed.value ? '60px' : '256px'))
-const shellStyle = computed(() => ({
-  '--admin-sidebar-width': sidebarWidth.value,
-}))
 
 function toggleSidebarCollapsed() {
   isSidebarCollapsed.value = !isSidebarCollapsed.value
 }
+
+const sidebarWidth = computed(() => (isSidebarCollapsed.value ? '60px' : '256px'))
+const shellStyle = computed(() => ({
+  '--admin-sidebar-width': sidebarWidth.value,
+}))
 </script>
 
 <template>
@@ -31,12 +31,12 @@ function toggleSidebarCollapsed() {
     >
       <AdminSidebar
         :collapsed="isSidebarCollapsed"
-        :resources="menus"
+        :menus="menus"
         @toggle-collapsed="toggleSidebarCollapsed"
       />
 
       <main class="min-w-0 overflow-x-auto p-6">
-        <AdminBreadcrumb :resources="menus" class="mb-5" />
+        <AdminBreadcrumb :menus="menus" class="mb-5" />
         <slot />
       </main>
     </div>

@@ -36,6 +36,7 @@ import {
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 const message = useMessage()
+const dialog = useDialog()
 
 const keyword = ref('')
 const status = ref<StatusFilter>(STATUS_FILTER_ALL)
@@ -68,48 +69,6 @@ const {
   query: () => listRoles(query.value),
 })
 
-const rolesData = computed(() => rolesResponse.value ?? emptyRolesData)
-const loadErrorMessage = computed(() =>
-  rolesError.value === null ? '' : getSystemErrorMessage(rolesError.value, '加载角色失败'),
-)
-
-const isRoleDrawerVisible = ref(false)
-const editingRoleId = ref<string | null>(null)
-function openCreateRoleDrawer() {
-  editingRoleId.value = null
-  isRoleDrawerVisible.value = true
-}
-function openEditRoleDrawer(roleId: string) {
-  editingRoleId.value = roleId
-  isRoleDrawerVisible.value = true
-}
-
-const dialog = useDialog()
-function confirmDeleteRole(role: RoleListItem) {
-  const positiveButtonProps: ButtonProps & Record<string, unknown> = {
-    type: 'error',
-    'data-test': 'roles-delete-confirm',
-  }
-
-  dialog.warning({
-    title: '确认删除',
-    content: `确定删除角色“${role.name}”吗？`,
-    positiveText: '删除',
-    negativeText: '取消',
-    positiveButtonProps,
-    async onPositiveClick() {
-      try {
-        await deleteRole(role.id)
-        message.success('删除角色成功')
-        await refetchRoles()
-      } catch (error) {
-        message.error(getSystemErrorMessage(error, '删除角色失败'))
-        return false
-      }
-    },
-  })
-}
-
 function handleSearch() {
   const nextKeyword = keyword.value.trim()
 
@@ -128,6 +87,48 @@ function handleReset() {
     page: 1,
     pageSize: query.value.pageSize,
   }
+}
+
+const rolesData = computed(() => rolesResponse.value ?? emptyRolesData)
+const loadErrorMessage = computed(() =>
+  rolesError.value === null ? '' : getSystemErrorMessage(rolesError.value, '加载角色失败'),
+)
+
+const isRoleDrawerVisible = ref(false)
+const editingRoleId = ref<string | null>(null)
+function openRoleFormDrawer(roleId: string | null = null) {
+  editingRoleId.value = roleId
+  isRoleDrawerVisible.value = true
+}
+async function handleRoleSaved() {
+  message.success('保存角色成功')
+  await refetchRoles()
+}
+
+function confirmDeleteRole(role: RoleListItem) {
+  const positiveButtonProps: ButtonProps & Record<string, unknown> = {
+    type: 'error',
+    'data-test': 'roles-delete-confirm',
+  }
+
+  dialog.warning({
+    title: '确认删除',
+    content: `确定删除角色“${role.name}”吗？`,
+    positiveText: '删除',
+    negativeText: '取消',
+    positiveButtonProps,
+    async onPositiveClick() {
+      try {
+        await deleteRole(role.id)
+
+        message.success('删除角色成功')
+        await refetchRoles()
+      } catch (error) {
+        message.error(getSystemErrorMessage(error, '删除角色失败'))
+        return false
+      }
+    },
+  })
 }
 
 const columns: DataTableColumns<RoleListItem> = [
@@ -183,7 +184,7 @@ const columns: DataTableColumns<RoleListItem> = [
             renderTableActionButton({
               label: '编辑',
               accessCode: ['system:role:update', 'system:role:list', 'system:resource:list'],
-              onClick: () => openEditRoleDrawer(role.id),
+              onClick: () => openRoleFormDrawer(role.id),
               testId: 'roles-edit',
             }),
             renderTableActionButton({
@@ -211,7 +212,7 @@ const columns: DataTableColumns<RoleListItem> = [
         v-can.all="['system:role:create', 'system:resource:list']"
         data-test="roles-create"
         type="primary"
-        @click="openCreateRoleDrawer"
+        @click="openRoleFormDrawer()"
       >
         新增角色
       </NButton>
@@ -263,7 +264,7 @@ const columns: DataTableColumns<RoleListItem> = [
     <RoleFormDrawer
       v-model:show="isRoleDrawerVisible"
       :role-id="editingRoleId"
-      @saved="refetchRoles"
+      @saved="handleRoleSaved"
     />
   </main>
 </template>

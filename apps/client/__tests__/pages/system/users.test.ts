@@ -17,7 +17,6 @@ import {
   listUsers,
   resetUserPassword,
 } from '../../../src/features/system'
-import TemporaryPasswordDialog from '../../../src/features/system/TemporaryPasswordDialog.vue'
 import UsersPage from '../../../src/pages/index/system/users.vue'
 import {
   disposeActiveTestPinia,
@@ -41,7 +40,7 @@ vi.mock('../../../src/features/system/UserFormDrawer.vue', () => ({
         default: null,
       },
     },
-    emits: ['update:show', 'saved', 'created'],
+    emits: ['update:show', 'saved'],
     setup(props) {
       return () =>
         h('div', {
@@ -129,6 +128,31 @@ async function mountUsersPage(accessCodes: string[] = session.accessCodes) {
   })
 }
 
+function queryTemporaryPasswordDialog() {
+  const dialogs = Array.from(document.body.querySelectorAll('.n-dialog')) as HTMLElement[]
+
+  return (
+    dialogs.find(
+      (dialog) =>
+        dialog.style.display !== 'none' && dialog.querySelector('[data-test="temporary-password"]'),
+    ) ?? null
+  )
+}
+
+function getTemporaryPasswordInput() {
+  return queryTemporaryPasswordDialog()?.querySelector(
+    '[data-test="temporary-password"] input',
+  ) as HTMLInputElement | null
+}
+
+function getTemporaryPasswordButton(testId: string) {
+  return document.body.querySelector(`[data-test="${testId}"]`) as HTMLButtonElement | null
+}
+
+function getTemporaryPasswordCloseButton() {
+  return queryTemporaryPasswordDialog()?.querySelector('.n-dialog__close') as HTMLElement | null
+}
+
 describe('users page', () => {
   beforeEach(() => {
     deleteUserMock.mockReset()
@@ -205,7 +229,7 @@ describe('users page', () => {
     expect(authorizedWrapper.findAll('[data-test="users-reset-password"]')).toHaveLength(1)
   })
 
-  it('opens create drawer and refetches after created with full permissions', async () => {
+  it('opens create drawer and refetches after saving with full permissions', async () => {
     listUsersMock.mockResolvedValue(userListResponse)
     const { wrapper } = await mountUsersPage([
       'system:user:create',
@@ -221,19 +245,16 @@ describe('users page', () => {
     expect(drawer.attributes('data-show')).toBe('true')
     expect(drawer.attributes('data-user-id')).toBe('')
 
-    wrapper.getComponent({ name: 'UserFormDrawerStub' }).vm.$emit('created', userCreateResponse)
+    wrapper.getComponent({ name: 'UserFormDrawerStub' }).vm.$emit('saved', userCreateResponse)
     await flushPromises()
 
     expect(listUsersMock).toHaveBeenCalledTimes(2)
     expect(listUsersMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
-    expect(wrapper.text()).toContain('用户 New User 的临时密码只会显示一次。')
-    expect(wrapper.find('[data-test="temporary-password"]').element).toHaveProperty(
-      'value',
-      'TempPass123',
-    )
+    expect(document.body.textContent).toContain('用户 New User 的临时密码只会显示一次。')
+    expect(getTemporaryPasswordInput()).toHaveProperty('value', 'TempPass123')
   })
 
-  it('clears temporary password state after closing the dialog', async () => {
+  it('closes temporary password dialog and opens a fresh one', async () => {
     listUsersMock.mockResolvedValue(userListResponse)
     const { wrapper } = await mountUsersPage([
       'system:user:create',
@@ -242,31 +263,27 @@ describe('users page', () => {
     ])
     await flushPromises()
 
-    wrapper.getComponent({ name: 'UserFormDrawerStub' }).vm.$emit('created', userCreateResponse)
+    wrapper.getComponent({ name: 'UserFormDrawerStub' }).vm.$emit('saved', userCreateResponse)
     await flushPromises()
 
-    expect(wrapper.find('[data-test="temporary-password-dialog"]').exists()).toBe(true)
-    expect(wrapper.getComponent(TemporaryPasswordDialog).props('temporaryPassword')).toBe(
-      'TempPass123',
-    )
+    expect(queryTemporaryPasswordDialog()).not.toBeNull()
+    expect(getTemporaryPasswordInput()).toHaveProperty('value', 'TempPass123')
 
-    await wrapper.get('[data-test="temporary-password-close"]').trigger('click')
+    const closeButton = getTemporaryPasswordCloseButton()
+    expect(closeButton).not.toBeNull()
+
+    closeButton?.click()
     await flushPromises()
 
-    expect(wrapper.find('[data-test="temporary-password-dialog"]').exists()).toBe(false)
-    expect(wrapper.getComponent(TemporaryPasswordDialog).props('username')).toBe('')
-    expect(wrapper.getComponent(TemporaryPasswordDialog).props('temporaryPassword')).toBe('')
+    expect(queryTemporaryPasswordDialog()).toBeNull()
 
-    wrapper.getComponent({ name: 'UserFormDrawerStub' }).vm.$emit('created', {
+    wrapper.getComponent({ name: 'UserFormDrawerStub' }).vm.$emit('saved', {
       ...userCreateResponse,
       temporaryPassword: 'TempPass456',
     })
     await flushPromises()
 
-    expect(wrapper.find('[data-test="temporary-password"]').element).toHaveProperty(
-      'value',
-      'TempPass456',
-    )
+    expect(getTemporaryPasswordInput()).toHaveProperty('value', 'TempPass456')
   })
 
   it('opens edit drawer with selected user id', async () => {
@@ -286,6 +303,26 @@ describe('users page', () => {
     const drawer = wrapper.get('[data-test="user-form-drawer"]')
     expect(drawer.attributes('data-show')).toBe('true')
     expect(drawer.attributes('data-user-id')).toBe(editableUser.id)
+  })
+
+  it('shows a success message and refreshes after the user drawer saves', async () => {
+    listUsersMock.mockResolvedValue(userListResponse)
+    const { wrapper } = await mountUsersPage([
+      'system:user:update',
+      'system:user:list',
+      'system:department:list',
+      'system:role:list',
+    ])
+    await flushPromises()
+
+    await wrapper.get('[data-test="users-edit"]').trigger('click')
+    await flushPromises()
+    wrapper.getComponent({ name: 'UserFormDrawerStub' }).vm.$emit('saved')
+    await flushPromises()
+
+    expect(listUsersMock).toHaveBeenCalledTimes(2)
+    expect(listUsersMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
+    expect(document.body.textContent).toContain('保存用户成功')
   })
 
   it('deletes a user after confirmation and refreshes the list', async () => {
@@ -335,11 +372,40 @@ describe('users page', () => {
 
     expect(resetUserPasswordMock).toHaveBeenCalledWith(resettableUser.id)
     expect(listUsersMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('用户 Grace Hopper 的临时密码只会显示一次。')
-    expect(wrapper.find('[data-test="temporary-password"]').element).toHaveProperty(
-      'value',
-      'ResetPass123',
-    )
+    expect(document.body.textContent).toContain('用户 Grace Hopper 的临时密码只会显示一次。')
+    expect(getTemporaryPasswordInput()).toHaveProperty('value', 'ResetPass123')
+  })
+
+  it('shows copied state after copying the temporary password', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    })
+    listUsersMock.mockResolvedValue(userListResponse)
+    resetUserPasswordMock.mockResolvedValue(resetPasswordResponse)
+
+    const { wrapper } = await mountUsersPage(['system:user:reset-password'])
+    await flushPromises()
+
+    await wrapper.get('[data-test="users-reset-password"]').trigger('click')
+    await flushPromises()
+
+    const confirmButton = document.body.querySelector(
+      '[data-test="users-reset-password-confirm"]',
+    ) as HTMLButtonElement | null
+
+    confirmButton?.click()
+    await flushPromises()
+
+    const copyButton = getTemporaryPasswordButton('temporary-password-copy')
+    expect(copyButton).not.toBeNull()
+
+    copyButton?.click()
+    await flushPromises()
+
+    expect(writeText).toHaveBeenCalledWith('ResetPass123')
+    expect(copyButton?.textContent).toContain('已复制')
   })
 
   it('keeps reset password dialog open when resetting password fails', async () => {

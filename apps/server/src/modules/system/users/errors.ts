@@ -1,5 +1,6 @@
 import type { UserUniqueField } from '@rev30/shared'
 import { DrizzleQueryError } from 'drizzle-orm/errors'
+import { FormFieldError } from '../../../common/errors'
 import { POSTGRES_UNIQUE_VIOLATION_CODE } from '../../../db/errors'
 
 const userUniqueConstraintFields: Partial<Record<string, UserUniqueField>> = {
@@ -22,10 +23,9 @@ type DatabaseErrorCause = {
   constraint_name?: unknown
 }
 
-export class UserConflictError extends Error {
-  constructor(public readonly field: UserUniqueField) {
-    super(userUniqueFieldConflictMessages[field])
-    this.name = 'UserConflictError'
+export class UserConflictError extends FormFieldError<UserUniqueField> {
+  constructor(field: UserUniqueField) {
+    super(userUniqueFieldConflictMessages[field], field)
   }
 }
 
@@ -36,21 +36,15 @@ export class UserNotFoundError extends Error {
   }
 }
 
-export class UserInvalidDepartmentError extends Error {
-  readonly field = 'departmentIds'
-
+export class UserInvalidDepartmentError extends FormFieldError<'departmentIds'> {
   constructor() {
-    super('部门不存在')
-    this.name = 'UserInvalidDepartmentError'
+    super('部门不存在', 'departmentIds')
   }
 }
 
-export class UserInvalidRoleError extends Error {
-  readonly field = 'roleIds'
-
+export class UserInvalidRoleError extends FormFieldError<'roleIds'> {
   constructor() {
-    super('角色不存在')
-    this.name = 'UserInvalidRoleError'
+    super('角色不存在', 'roleIds')
   }
 }
 

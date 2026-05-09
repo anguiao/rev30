@@ -3,15 +3,16 @@ import type { ResourceTreeNode } from '@rev30/shared'
 import { computed } from 'vue'
 import { NBreadcrumb, NBreadcrumbItem } from 'naive-ui'
 import { RouterLink, useRoute } from 'vue-router'
-import { findActiveNavigation } from './adminNavigation'
+import { findMenuMatch } from './menu'
 
 const props = defineProps<{
-  resources: ResourceTreeNode[]
+  menus: ResourceTreeNode[]
 }>()
 
 const route = useRoute()
-const activeNavigation = computed(() => findActiveNavigation(props.resources, route.path))
-const breadcrumbItems = computed(() => activeNavigation.value?.breadcrumbItems ?? [])
+
+const menuMatch = computed(() => findMenuMatch(props.menus, route.path))
+const breadcrumbItems = computed(() => menuMatch.value?.breadcrumbItems ?? [])
 </script>
 
 <template>

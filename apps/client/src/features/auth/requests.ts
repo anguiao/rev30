@@ -1,10 +1,8 @@
 import {
-  authErrorResponseSchema,
-  authPasswordUpdateSchema,
   authTokenResponseSchema,
-  authProfileUpdateSchema,
-  type AuthErrorResponse,
+  errorResponseSchema,
   type AuthLoginInput,
+  type ErrorResponse,
   type AuthRegisterInput,
   type AuthTokenResponse,
   type AuthProfileUpdateInput,
@@ -19,20 +17,16 @@ export class AuthRequestError extends Error {
   constructor(
     public readonly status: number,
     message: string,
-    public readonly field?: AuthErrorResponse['field'],
+    public readonly field?: ErrorResponse['field'],
   ) {
     super(message)
     this.name = 'AuthRequestError'
   }
 }
 
-export async function parseAuthSession(response: Response): Promise<AuthTokenResponse> {
-  return authTokenResponseSchema.parse(await response.json())
-}
-
 export async function parseAuthError(response: Response): Promise<AuthRequestError> {
   try {
-    const result = authErrorResponseSchema.safeParse(await response.json())
+    const result = errorResponseSchema.safeParse(await response.json())
 
     return result.success
       ? new AuthRequestError(response.status, result.data.message, result.data.field)
@@ -48,6 +42,10 @@ async function parseAuthResponse<T>(response: Response, schema: ZodType<T>): Pro
   }
 
   return schema.parse(await response.json())
+}
+
+export function getAuthErrorMessage(error: unknown, fallback: string) {
+  return error instanceof AuthRequestError ? error.message : fallback
 }
 
 export async function login(input: AuthLoginInput): Promise<AuthTokenResponse> {
@@ -66,20 +64,12 @@ export async function logout(): Promise<void> {
   await api.auth.logout.$post()
 }
 
-export function getAuthErrorMessage(error: unknown, fallback: string) {
-  return error instanceof AuthRequestError ? error.message : fallback
-}
-
 export async function updateMyProfile(input: AuthProfileUpdateInput): Promise<User> {
-  const response = await api.auth.me.profile.$patch({ json: authProfileUpdateSchema.parse(input) })
-
-  return parseAuthResponse(response, userSchema)
+  return parseAuthResponse(await api.auth.me.profile.$patch({ json: input }), userSchema)
 }
 
 export async function updateMyPassword(input: AuthPasswordUpdateInput): Promise<void> {
-  const response = await api.auth.me.password.$patch({
-    json: authPasswordUpdateSchema.parse(input),
-  })
+  const response = await api.auth.me.password.$patch({ json: input })
 
   if (!response.ok) {
     throw await parseAuthError(response)

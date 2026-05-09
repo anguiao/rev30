@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useMutation, useQuery } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
+import { pick } from 'lodash-es'
 import {
   NAlert,
   NButton,
@@ -44,8 +45,7 @@ const props = defineProps<{
 const show = defineModel<boolean>('show', { required: true })
 
 const emit = defineEmits<{
-  saved: []
-  created: [payload: UserCreateResponse]
+  saved: [payload?: UserCreateResponse]
 }>()
 
 const drawerTitle = computed(() => (props.userId === null ? '新增用户' : '编辑用户'))
@@ -65,21 +65,27 @@ const {
   error: formLoadError,
   isLoading,
 } = useQuery({
-  key: () => ['system', 'user-form', props.userId ?? 'none'],
+  key: () => ['system', 'user-form', props.userId ?? 'create'],
   enabled: () => show.value,
   async query() {
     const userId = props.userId
-
     const [departments, roleList, user] = await Promise.all([
       getDepartmentTree(),
       listRoles({ page: 1, pageSize: 100 }),
-      userId === null ? Promise.resolve(null) : getUser(userId),
+      userId === null ? null : getUser(userId),
     ])
 
     return {
       departments,
       roles: roleList.list,
-      formValues: user === null ? defaultFormValues : toUserFormValues(user),
+      formValues:
+        user === null
+          ? defaultFormValues
+          : {
+              ...pick(user, ['username', 'nickname', 'email', 'phone', 'status']),
+              departmentIds: user.departments.map((department) => department.id),
+              roleIds: user.roles.map((role) => role.id),
+            },
     }
   },
 })
@@ -105,48 +111,26 @@ const form = useForm({
 
     formError.value = null
 
-    if (userId === null) {
-      createUserMutation.mutate(value)
-      return
-    }
-
-    updateUserMutation.mutate({ userId, value })
+    saveUserMutation.mutate({ userId, value })
   },
 })
 
-const { isLoading: isCreating, ...createUserMutation } = useMutation({
-  mutation: (value: UserFormInput) => createUser(userCreateSchema.parse(value)),
-  onSuccess(result) {
-    if (!show.value || props.userId !== null) {
-      return
-    }
-
-    emit('created', result)
-    show.value = false
+const { isLoading: isSaving, ...saveUserMutation } = useMutation({
+  async mutation({ userId, value }: { userId: string | null; value: UserFormInput }) {
+    return userId === null
+      ? createUser(userCreateSchema.parse(value))
+      : updateUser(userId, userUpdateSchema.parse(value))
   },
-  onError(error) {
-    if (!show.value || props.userId !== null) {
-      return
-    }
-
-    if (error instanceof SystemRequestError && error.field !== undefined) {
-      setServerFieldError(form, error.field as keyof UserFormInput, error.message)
-      return
-    }
-
-    formError.value = getSystemErrorMessage(error, '保存用户失败')
-  },
-})
-
-const { isLoading: isUpdating, ...updateUserMutation } = useMutation({
-  mutation: ({ userId, value }: { userId: string; value: UserFormInput }) =>
-    updateUser(userId, userUpdateSchema.parse(value)),
-  onSuccess(_, { userId }) {
+  onSuccess(data, { userId }) {
     if (!show.value || props.userId !== userId) {
       return
     }
 
-    emit('saved')
+    if (userId === null) {
+      emit('saved', data as UserCreateResponse)
+    } else {
+      emit('saved')
+    }
     show.value = false
   },
   onError(error, { userId }) {
@@ -154,15 +138,16 @@ const { isLoading: isUpdating, ...updateUserMutation } = useMutation({
       return
     }
 
-    if (error instanceof SystemRequestError && error.field !== undefined) {
-      setServerFieldError(form, error.field as keyof UserFormInput, error.message)
+    if (
+      error instanceof SystemRequestError &&
+      setServerFieldError(form, error.field, error.message)
+    ) {
       return
     }
 
     formError.value = getSystemErrorMessage(error, '保存用户失败')
   },
 })
-const isSaving = computed(() => isCreating.value || isUpdating.value)
 
 function handleSubmit() {
   if (isLoading.value || isSaving.value || loadError.value) {
@@ -179,8 +164,7 @@ watch(
       return
     }
 
-    createUserMutation.reset()
-    updateUserMutation.reset()
+    saveUserMutation.reset()
     formError.value = null
     form.reset(defaultFormValues)
   },
@@ -224,14 +208,6 @@ function toRoleOptions(roles: RoleListItem[]) {
     value: role.id,
   }))
 }
-
-function toUserFormValues(user: User): UserFormInput {
-  return {
-    ...user,
-    departmentIds: user.departments.map((department) => department.id),
-    roleIds: user.roles.map((role) => role.id),
-  }
-}
 </script>
 
 <template>
@@ -246,7 +222,7 @@ function toUserFormValues(user: User): UserFormInput {
           {{ formError }}
         </NAlert>
 
-        <NForm class="flex flex-col gap-4" @submit.prevent="handleSubmit">
+        <NForm @submit.prevent="handleSubmit">
           <form.Field name="username" v-slot="{ field, state }">
             <NFormItem
               label="用户名"

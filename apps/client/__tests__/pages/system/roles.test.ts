@@ -233,6 +233,21 @@ describe('roles page', () => {
     expect(drawer.attributes('data-role-id')).toBe('')
   })
 
+  it('shows a success message and refreshes after the role drawer saves', async () => {
+    listRolesMock.mockResolvedValue(roleListResponse)
+    const { wrapper } = await mountRolesPage(['system:role:create', 'system:resource:list'])
+    await flushPromises()
+
+    await wrapper.get('[data-test="roles-create"]').trigger('click')
+    await flushPromises()
+    wrapper.getComponent({ name: 'RoleFormDrawerStub' }).vm.$emit('saved')
+    await flushPromises()
+
+    expect(listRolesMock).toHaveBeenCalledTimes(2)
+    expect(listRolesMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
+    expect(document.body.textContent).toContain('保存角色成功')
+  })
+
   it('opens edit drawer with selected role id', async () => {
     const editableRole = roleListResponse.list[1]!
     listRolesMock.mockResolvedValue(roleListResponse)

@@ -30,9 +30,13 @@ export function formItemValidationProps(errors: unknown[], serverError?: unknown
 
 export function setServerFieldError<TForm extends AnyFormApi>(
   form: TForm,
-  field: Parameters<TForm['setFieldMeta']>[0],
+  field: string | undefined,
   message: string,
 ) {
+  if (field === undefined || !Object.hasOwn(form.state.values, field)) {
+    return false
+  }
+
   form.setFieldMeta(field, (meta) => ({
     ...meta,
     errorMap: {
@@ -44,4 +48,6 @@ export function setServerFieldError<TForm extends AnyFormApi>(
       onServer: 'form',
     },
   }))
+
+  return true
 }

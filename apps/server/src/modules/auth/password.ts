@@ -13,7 +13,7 @@ export async function hashPassword(password: string) {
 }
 
 export function generateTemporaryPassword() {
-  return randomBytes(18).toString('base64url')
+  return randomBytes(10).toString('base64url')
 }
 
 export async function verifyPassword(password: string, storedHash: string) {

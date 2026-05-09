@@ -1,3 +1,5 @@
+import { FormFieldError } from '../../common/errors'
+
 export class AuthInvalidCredentialsError extends Error {
   constructor() {
     super('用户名或密码错误')
@@ -19,12 +21,9 @@ export class AuthInvalidAccessTokenError extends Error {
   }
 }
 
-export class AuthInvalidCurrentPasswordError extends Error {
-  readonly field = 'currentPassword'
-
+export class AuthInvalidCurrentPasswordError extends FormFieldError<'currentPassword'> {
   constructor() {
-    super('当前密码错误')
-    this.name = 'AuthInvalidCurrentPasswordError'
+    super('当前密码错误', 'currentPassword')
   }
 }
 

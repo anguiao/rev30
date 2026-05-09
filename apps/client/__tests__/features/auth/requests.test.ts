@@ -6,7 +6,6 @@ import {
   getAuthErrorMessage,
   logout,
   parseAuthError,
-  parseAuthSession,
   updateMyPassword,
   updateMyProfile,
   register,
@@ -40,12 +39,6 @@ describe('auth requests', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
-  })
-
-  it('parses auth token responses through the shared schema', async () => {
-    await expect(parseAuthSession(new Response(JSON.stringify(tokenBody)))).resolves.toEqual(
-      tokenBody,
-    )
   })
 
   it('maps auth error responses to a typed error', async () => {
@@ -136,7 +129,7 @@ describe('auth requests', () => {
     )
   })
 
-  it('updates my profile through the Hono RPC client with parsed input', async () => {
+  it('updates my profile through the Hono RPC client with provided input', async () => {
     const responseBody = {
       id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
       username: 'ada',
@@ -224,21 +217,7 @@ describe('auth requests', () => {
     ).rejects.toThrow()
   })
 
-  it('validates profile update payloads before sending requests', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
-    vi.stubGlobal('fetch', fetchMock)
-
-    await expect(
-      updateMyProfile({
-        nickname: '',
-        email: null,
-        phone: null,
-      } as never),
-    ).rejects.toThrow()
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-
-  it('updates my password through the Hono RPC client with parsed input', async () => {
+  it('updates my password through the Hono RPC client with provided input', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -280,19 +259,6 @@ describe('auth requests', () => {
       status: 400,
       message: '当前密码错误',
     })
-  })
-
-  it('validates password update payloads before sending requests', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
-    vi.stubGlobal('fetch', fetchMock)
-
-    await expect(
-      updateMyPassword({
-        currentPassword: 'short',
-        newPassword: 'another',
-      } as never),
-    ).rejects.toThrow()
-    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('extracts auth error messages and falls back for unknown errors', async () => {

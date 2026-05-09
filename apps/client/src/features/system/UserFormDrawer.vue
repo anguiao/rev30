@@ -99,6 +99,12 @@ const loadError = computed(() =>
     : getSystemErrorMessage(formLoadError.value, '加载用户信息失败'),
 )
 
+type DepartmentTreeSelectValue = string | number | Array<string | number> | null
+
+function normalizeDepartmentIds(value: DepartmentTreeSelectValue) {
+  return Array.isArray(value) ? value.map(String) : []
+}
+
 const formError = ref<string | null>(null)
 
 const form = useForm({
@@ -303,7 +309,7 @@ function toRoleOptions(roles: RoleListItem[]) {
                 placeholder="请选择所属部门"
                 @update:value="
                   (value) => {
-                    field.handleChange(Array.isArray(value) ? value.map(String) : [])
+                    field.handleChange(normalizeDepartmentIds(value))
                   }
                 "
               />

@@ -156,14 +156,14 @@ export async function getDepartmentTree(): Promise<DepartmentTreeNode[]> {
 }
 
 export async function getDepartment(id: string): Promise<Department> {
-  return parseSystemResponse(await api.system.departments[':id'].$get({ param: { id } }), departmentSchema)
+  return parseSystemResponse(
+    await api.system.departments[':id'].$get({ param: { id } }),
+    departmentSchema,
+  )
 }
 
 export async function createDepartment(input: DepartmentCreateInput): Promise<Department> {
-  return parseSystemResponse(
-    await api.system.departments.$post({ json: input }),
-    departmentSchema,
-  )
+  return parseSystemResponse(await api.system.departments.$post({ json: input }), departmentSchema)
 }
 
 export async function updateDepartment(

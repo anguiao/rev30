@@ -85,7 +85,10 @@ function handleReset() {
   }
 }
 
-function openDepartmentFormDrawer(departmentId: string | null = null, parentId: string | null = null) {
+function openDepartmentFormDrawer(
+  departmentId: string | null = null,
+  parentId: string | null = null,
+) {
   editingDepartmentId.value = departmentId
   selectedParentDepartmentId.value = parentId
   isDepartmentDrawerVisible.value = true

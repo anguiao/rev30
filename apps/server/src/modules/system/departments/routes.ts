@@ -66,7 +66,10 @@ function departmentErrorResponse(error: unknown, c: Context) {
     return c.json({ field: error.field, message: error.message }, 409)
   }
 
-  if (error instanceof DepartmentMoveConflictError || error instanceof DepartmentDeleteConflictError) {
+  if (
+    error instanceof DepartmentMoveConflictError ||
+    error instanceof DepartmentDeleteConflictError
+  ) {
     return c.json({ message: error.message }, 409)
   }
 

@@ -192,12 +192,14 @@ describe('toDepartmentTreeSelectOptions', () => {
   it('disables only the target subtree when disabledDepartmentId is a child node', () => {
     const siblingDepartmentId = '66666666-6666-4666-8666-666666666666'
     const thirdDepartmentId = '77777777-7777-4777-8777-777777777777'
+    const rootDepartment = departmentTreeResponse[0]!
+    const childDepartment = rootDepartment.children[0]!
     const nodes: DepartmentTreeNode[] = [
       {
-        ...departmentTreeResponse[0],
+        ...rootDepartment,
         children: [
           {
-            ...departmentTreeResponse[0].children[0],
+            ...childDepartment,
             children: [
               {
                 id: thirdDepartmentId,

@@ -151,8 +151,7 @@ function mountDrawer(
   return mount(DepartmentFormDrawer, {
     props: {
       show: props.show ?? true,
-      departmentId:
-        props.departmentId === undefined ? null : props.departmentId,
+      departmentId: props.departmentId === undefined ? null : props.departmentId,
       parentId: props.parentId === undefined ? null : props.parentId,
     },
     attachTo: document.body,
@@ -401,9 +400,7 @@ describe('DepartmentFormDrawer', () => {
   })
 
   it('shows a field-level server error when create fails', async () => {
-    createDepartmentMock.mockRejectedValue(
-      new SystemRequestError(409, '部门编码已存在', 'code'),
-    )
+    createDepartmentMock.mockRejectedValue(new SystemRequestError(409, '部门编码已存在', 'code'))
 
     const wrapper = mountDrawer({
       show: true,

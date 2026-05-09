@@ -99,11 +99,14 @@ const {
   },
 })
 
-const departmentTreeOptions = computed<TreeSelectOption[]>(() =>
-  toDepartmentTreeSelectOptions(formData.value?.departments ?? [], {
-    disabledDepartmentId: props.departmentId ?? undefined,
-  }),
-)
+const departmentTreeOptions = computed<TreeSelectOption[]>(() => {
+  const departmentId = props.departmentId
+
+  return toDepartmentTreeSelectOptions(
+    formData.value?.departments ?? [],
+    departmentId === null ? {} : { disabledDepartmentId: departmentId },
+  )
+})
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
@@ -133,11 +136,7 @@ const { isLoading: isSaving, ...saveDepartmentMutation } = useMutation({
       ? createDepartment(departmentCreateSchema.parse(value))
       : updateDepartment(departmentId, departmentUpdateSchema.parse(value)),
   onSuccess(_, { departmentId, parentId }) {
-    if (
-      !show.value ||
-      props.departmentId !== departmentId ||
-      props.parentId !== parentId
-    ) {
+    if (!show.value || props.departmentId !== departmentId || props.parentId !== parentId) {
       return
     }
 
@@ -145,11 +144,7 @@ const { isLoading: isSaving, ...saveDepartmentMutation } = useMutation({
     show.value = false
   },
   onError(error, { departmentId, parentId }) {
-    if (
-      !show.value ||
-      props.departmentId !== departmentId ||
-      props.parentId !== parentId
-    ) {
+    if (!show.value || props.departmentId !== departmentId || props.parentId !== parentId) {
       return
     }
 

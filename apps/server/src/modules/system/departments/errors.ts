@@ -1,4 +1,5 @@
 import { DrizzleQueryError } from 'drizzle-orm/errors'
+import { FormFieldError } from '../../../common/errors'
 import { POSTGRES_UNIQUE_VIOLATION_CODE } from '../../../db/errors'
 
 const departmentUniqueConstraintName = 'departments_code_unique'
@@ -9,10 +10,9 @@ type DatabaseErrorCause = {
   constraint_name?: unknown
 }
 
-export class DepartmentConflictError extends Error {
+export class DepartmentConflictError extends FormFieldError<'code'> {
   constructor() {
-    super('部门编码已存在')
-    this.name = 'DepartmentConflictError'
+    super('部门编码已存在', 'code')
   }
 }
 

@@ -257,6 +257,10 @@ describe('department routes', () => {
 
     const createConflict = await createDepartment(app, { name: 'Duplicate', code: 'engineering' })
     expect(createConflict.response.status).toBe(409)
+    expect(createConflict.body).toEqual({
+      field: 'code',
+      message: '部门编码已存在',
+    })
 
     const updateConflict = await app.request(`/api/system/departments/${sales.id}`, {
       method: 'PATCH',
@@ -264,6 +268,10 @@ describe('department routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(updateConflict.status).toBe(409)
+    expect(await updateConflict.json()).toEqual({
+      field: 'code',
+      message: '部门编码已存在',
+    })
   })
 
   it('soft deletes empty departments and rejects deleting departments with children', async () => {

@@ -142,10 +142,30 @@ const loadError = computed(() =>
 const formError = ref<string | null>(null)
 const activeResourceType = ref<ResourceType>(defaultFormValues.type)
 
+function validateResourceForm({ value }: { value: ResourceFormInput }) {
+  const result = resourceFormSchema.safeParse(value)
+
+  if (result.success) {
+    return undefined
+  }
+
+  const fields: Partial<Record<keyof ResourceFormInput, string>> = {}
+
+  for (const issue of result.error.issues) {
+    const field = issue.path[0]
+
+    if (typeof field === 'string' && Object.hasOwn(value, field)) {
+      fields[field as keyof ResourceFormInput] ??= issue.message
+    }
+  }
+
+  return { fields }
+}
+
 const form = useForm({
   defaultValues: { ...defaultFormValues, parentId: props.parentId },
   validators: {
-    onSubmit: resourceFormSchema,
+    onSubmit: validateResourceForm,
   },
   onSubmit({ value }) {
     const resourceId = props.resourceId
@@ -376,7 +396,7 @@ watch(
             >
               <NSelect
                 data-test="resource-form-open-target"
-                :value="state.value"
+                :value="state.value ?? null"
                 :options="openTargetOptions"
                 @update:value="field.handleChange"
               />
@@ -448,7 +468,7 @@ watch(
                 :show-button="false"
                 placeholder="请输入排序"
                 @blur="field.handleBlur"
-                @update:value="field.handleChange"
+                @update:value="(value) => value !== null && field.handleChange(value)"
               />
             </NFormItem>
           </form.Field>

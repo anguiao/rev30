@@ -232,10 +232,7 @@ describe('resources page', () => {
 
   it('shows a success message and refreshes after drawer saves', async () => {
     getResourceTreeMock.mockResolvedValue(resourceTreeResponse)
-    const { wrapper } = await mountResourcesPage([
-      'system:resource:create',
-      'system:resource:list',
-    ])
+    const { wrapper } = await mountResourcesPage(['system:resource:create', 'system:resource:list'])
     await flushPromises()
 
     await wrapper.get('[data-test="resources-create"]').trigger('click')

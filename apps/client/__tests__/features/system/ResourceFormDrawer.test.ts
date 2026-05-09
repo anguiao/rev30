@@ -400,9 +400,9 @@ describe('ResourceFormDrawer', () => {
     await flushPromises()
     await wrapper.get('[data-test="resource-form-name"] input').setValue('帮助中心')
     await wrapper.get('[data-test="resource-form-code"] input').setValue('help')
-    await wrapper.get('[data-test="resource-form-external-url"] input').setValue(
-      'https://example.com/help',
-    )
+    await wrapper
+      .get('[data-test="resource-form-external-url"] input')
+      .setValue('https://example.com/help')
     await wrapper.get('[data-test="resource-form-icon"] input').setValue('lucide:circle-help')
     wrapper.getComponent(NInputNumber).vm.$emit('update:value', 6)
     await flushPromises()
@@ -441,4 +441,3 @@ describe('ResourceFormDrawer', () => {
     expect(wrapper.emitted('saved')).toBeUndefined()
   })
 })
-

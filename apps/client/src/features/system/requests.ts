@@ -6,10 +6,14 @@ import {
   errorResponseSchema,
   roleSchema,
   resourceTreeNodeSchema,
+  resourceSchema,
   type ErrorResponse,
   type Role,
   type RoleCreateInput,
   type RoleUpdateInput,
+  type Resource,
+  type ResourceCreateInput,
+  type ResourceUpdateInput,
   roleListResponseSchema,
   type DepartmentTreeNode,
   type DepartmentUpdateInput,
@@ -189,4 +193,30 @@ export async function deleteDepartment(id: string): Promise<void> {
 
 export async function getResourceTree(): Promise<ResourceTreeNode[]> {
   return parseSystemResponse(await api.system.resources.tree.$get(), resourceTreeResponseSchema)
+}
+
+export async function getResource(id: string): Promise<Resource> {
+  return parseSystemResponse(
+    await api.system.resources[':id'].$get({ param: { id } }),
+    resourceSchema,
+  )
+}
+
+export async function createResource(input: ResourceCreateInput): Promise<Resource> {
+  return parseSystemResponse(await api.system.resources.$post({ json: input }), resourceSchema)
+}
+
+export async function updateResource(id: string, input: ResourceUpdateInput): Promise<Resource> {
+  return parseSystemResponse(
+    await api.system.resources[':id'].$patch({ param: { id }, json: input }),
+    resourceSchema,
+  )
+}
+
+export async function deleteResource(id: string): Promise<void> {
+  const response = await api.system.resources[':id'].$delete({ param: { id } })
+
+  if (!response.ok) {
+    throw await parseSystemError(response)
+  }
 }

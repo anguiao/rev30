@@ -4,18 +4,23 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DEPARTMENT_STATUS_ENABLED,
+  RESOURCE_OPEN_TARGET_SELF,
   RESOURCE_STATUS_ENABLED,
+  RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_MENU,
   ROLE_STATUS_ENABLED,
   USER_STATUS_ENABLED,
 } from '@rev30/shared'
 import {
+  createResource,
   createRole,
   deleteRole,
+  deleteResource,
   deleteUser,
   createDepartment,
   deleteDepartment,
   getDepartment,
+  getResource,
   getRole,
   createUser,
   resetUserPassword,
@@ -27,6 +32,7 @@ import {
   getSystemErrorMessage,
   listRoles,
   listUsers,
+  updateResource,
   updateRole,
   updateUser,
 } from '../../../src/features/system'
@@ -278,6 +284,85 @@ describe('system request helpers', () => {
     expect(result[0]?.path).toBe('/system/users')
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/resources/tree')
+  })
+
+  it('sends resource detail, create, update, and delete requests', async () => {
+    const resourceResponse = {
+      id: '44444444-4444-4444-8444-444444444444',
+      parentId: null,
+      type: RESOURCE_TYPE_DIRECTORY,
+      name: '系统管理',
+      code: 'system',
+      path: null,
+      externalUrl: null,
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
+      icon: 'lucide:settings',
+      hidden: false,
+      status: RESOURCE_STATUS_ENABLED,
+      sortOrder: 1,
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T00:00:00.000Z',
+    }
+    const updatedResourceResponse = {
+      ...resourceResponse,
+      name: '资源管理',
+      code: 'system:resource',
+      updatedAt: '2026-05-02T00:00:00.000Z',
+    }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(resourceResponse)))
+      .mockResolvedValueOnce(new Response(JSON.stringify(resourceResponse), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(updatedResourceResponse)))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    const resource = await getResource('44444444-4444-4444-8444-444444444444')
+    const created = await createResource({
+      type: RESOURCE_TYPE_DIRECTORY,
+      name: '系统管理',
+      code: 'system',
+      parentId: null,
+      path: null,
+      externalUrl: null,
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
+      icon: 'lucide:settings',
+      hidden: false,
+      status: RESOURCE_STATUS_ENABLED,
+      sortOrder: 1,
+    })
+    const updated = await updateResource('44444444-4444-4444-8444-444444444444', {
+      name: '资源管理',
+      code: 'system:resource',
+    })
+    await deleteResource('44444444-4444-4444-8444-444444444444')
+
+    expect(resource.icon).toBe('lucide:settings')
+    expect(created.name).toBe('系统管理')
+    expect(updated.code).toBe('system:resource')
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      '/api/system/resources/44444444-4444-4444-8444-444444444444',
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/system/resources',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/system/resources/44444444-4444-4444-8444-444444444444',
+      expect.objectContaining({
+        method: 'PATCH',
+      }),
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/system/resources/44444444-4444-4444-8444-444444444444',
+      expect.objectContaining({
+        method: 'DELETE',
+      }),
+    )
   })
 
   it('throws a stable request error with the response message', async () => {

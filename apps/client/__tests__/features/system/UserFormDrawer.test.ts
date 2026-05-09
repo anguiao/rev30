@@ -23,6 +23,7 @@ import {
   updateUser,
 } from '../../../src/features/system'
 import UserFormDrawer from '../../../src/features/system/UserFormDrawer.vue'
+import { toDepartmentTreeSelectOptions } from '../../../src/features/system/departmentOptions'
 import { createPinia, setActivePinia } from 'pinia'
 
 enableAutoUnmount(afterEach)
@@ -166,6 +167,97 @@ async function submitForm(wrapper: ReturnType<typeof mount>) {
   await flushPromises()
 }
 
+describe('toDepartmentTreeSelectOptions', () => {
+  it('disables root and all descendants when disabledDepartmentId is root', () => {
+    expect(
+      toDepartmentTreeSelectOptions(departmentTreeResponse, {
+        disabledDepartmentId: departmentId,
+      }),
+    ).toEqual([
+      {
+        key: departmentId,
+        label: '研发部 (rd)',
+        disabled: true,
+        children: [
+          {
+            key: secondDepartmentId,
+            label: '前端组 (frontend)',
+            disabled: true,
+          },
+        ],
+      },
+    ])
+  })
+
+  it('disables only the target subtree when disabledDepartmentId is a child node', () => {
+    const siblingDepartmentId = '66666666-6666-4666-8666-666666666666'
+    const thirdDepartmentId = '77777777-7777-4777-8777-777777777777'
+    const nodes: DepartmentTreeNode[] = [
+      {
+        ...departmentTreeResponse[0],
+        children: [
+          {
+            ...departmentTreeResponse[0].children[0],
+            children: [
+              {
+                id: thirdDepartmentId,
+                parentId: secondDepartmentId,
+                name: '前端平台组',
+                code: 'frontend-platform',
+                status: DEPARTMENT_STATUS_ENABLED,
+                sortOrder: 1,
+                createdAt: '2026-05-03T00:00:00.000Z',
+                updatedAt: '2026-05-03T00:00:00.000Z',
+                children: [],
+              },
+            ],
+          },
+          {
+            id: siblingDepartmentId,
+            parentId: departmentId,
+            name: '后端组',
+            code: 'backend',
+            status: DEPARTMENT_STATUS_ENABLED,
+            sortOrder: 2,
+            createdAt: '2026-05-04T00:00:00.000Z',
+            updatedAt: '2026-05-04T00:00:00.000Z',
+            children: [],
+          },
+        ],
+      },
+    ]
+
+    expect(
+      toDepartmentTreeSelectOptions(nodes, {
+        disabledDepartmentId: secondDepartmentId,
+      }),
+    ).toEqual([
+      {
+        key: departmentId,
+        label: '研发部 (rd)',
+        children: [
+          {
+            key: secondDepartmentId,
+            label: '前端组 (frontend)',
+            disabled: true,
+            children: [
+              {
+                key: thirdDepartmentId,
+                label: '前端平台组 (frontend-platform)',
+                disabled: true,
+              },
+            ],
+          },
+          {
+            key: siblingDepartmentId,
+            label: '后端组 (backend)',
+          },
+        ],
+      },
+    ])
+  })
+})
+
 describe('UserFormDrawer', () => {
   beforeEach(() => {
     createUserMock.mockReset()
@@ -286,5 +378,29 @@ describe('UserFormDrawer', () => {
     expect(updateUserMock).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('用户名已存在')
     expect(wrapper.emitted('saved')).toBeUndefined()
+  })
+
+  it('submits empty departmentIds when tree select emits null', async () => {
+    createUserMock.mockResolvedValue(userCreateResponse)
+
+    const wrapper = mountDrawer({ userId: null })
+    await flushPromises()
+
+    await wrapper.get('[data-test="user-form-username"] input').setValue('new-user')
+    await wrapper.get('[data-test="user-form-nickname"] input').setValue('New User')
+    wrapper.getComponent(NTreeSelect).vm.$emit('update:value', null)
+    await flushPromises()
+
+    await submitForm(wrapper)
+
+    expect(createUserMock).toHaveBeenCalledWith({
+      username: 'new-user',
+      nickname: 'New User',
+      email: null,
+      phone: null,
+      status: USER_STATUS_ENABLED,
+      departmentIds: [],
+      roleIds: [],
+    })
   })
 })

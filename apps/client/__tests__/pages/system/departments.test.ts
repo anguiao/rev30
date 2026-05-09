@@ -2,13 +2,14 @@
 
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
 import { NDataTable, NPagination, NSelect } from 'naive-ui'
 import {
   DEPARTMENT_STATUS_DISABLED,
   DEPARTMENT_STATUS_ENABLED,
   type DepartmentTreeNode,
 } from '@rev30/shared'
-import { formatDateTime, getDepartmentTree } from '../../../src/features/system'
+import { deleteDepartment, formatDateTime, getDepartmentTree } from '../../../src/features/system'
 import DepartmentsPage from '../../../src/pages/index/system/departments.vue'
 import {
   disposeActiveTestPinia,
@@ -19,14 +20,37 @@ import {
 
 enableAutoUnmount(afterEach)
 
+vi.mock('../../../src/features/system/DepartmentFormDrawer.vue', () => ({
+  default: defineComponent({
+    name: 'DepartmentFormDrawerStub',
+    props: {
+      show: { type: Boolean, required: true },
+      departmentId: { type: String, default: null },
+      parentId: { type: String, default: null },
+    },
+    emits: ['update:show', 'saved'],
+    setup(props) {
+      return () =>
+        h('div', {
+          'data-department-id': props.departmentId ?? '',
+          'data-parent-id': props.parentId ?? '',
+          'data-show': String(props.show),
+          'data-test': 'department-form-drawer',
+        })
+    },
+  }),
+}))
+
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
+  deleteDepartment: vi.fn(),
   getDepartmentTree: vi.fn(),
   getSystemErrorMessage: vi.fn((error: unknown, fallback: string) =>
     error instanceof Error ? error.message : fallback,
   ),
 }))
 
+const deleteDepartmentMock = vi.mocked(deleteDepartment)
 const getDepartmentTreeMock = vi.mocked(getDepartmentTree)
 
 const departmentTreeResponse: DepartmentTreeNode[] = [
@@ -79,6 +103,7 @@ async function mountDepartmentsPage(accessCodes: string[] = session.accessCodes)
 
 describe('departments page', () => {
   beforeEach(() => {
+    deleteDepartmentMock.mockReset()
     getDepartmentTreeMock.mockReset()
     localStorage.clear()
     document.documentElement.className = ''
@@ -140,6 +165,7 @@ describe('departments page', () => {
     const { wrapper: authorizedWrapper } = await mountDepartmentsPage([
       'system:department:create',
       'system:department:update',
+      'system:department:list',
       'system:department:delete',
     ])
     await flushPromises()
@@ -148,6 +174,119 @@ describe('departments page', () => {
     expect(authorizedWrapper.find('[data-test="departments-create-child"]').exists()).toBe(true)
     expect(authorizedWrapper.find('[data-test="departments-edit"]').exists()).toBe(true)
     expect(authorizedWrapper.find('[data-test="departments-delete"]').exists()).toBe(true)
+  })
+
+  it('opens create, child create, and edit drawers', async () => {
+    getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
+    const { wrapper } = await mountDepartmentsPage([
+      'system:department:create',
+      'system:department:update',
+      'system:department:list',
+    ])
+    await flushPromises()
+
+    const drawer = wrapper.get('[data-test="department-form-drawer"]')
+    expect(drawer.attributes('data-show')).toBe('false')
+    expect(drawer.attributes('data-department-id')).toBe('')
+    expect(drawer.attributes('data-parent-id')).toBe('')
+
+    await wrapper.get('[data-test="departments-create"]').trigger('click')
+    await flushPromises()
+
+    expect(drawer.attributes('data-show')).toBe('true')
+    expect(drawer.attributes('data-department-id')).toBe('')
+    expect(drawer.attributes('data-parent-id')).toBe('')
+
+    await wrapper.get('[data-test="departments-create-child"]').trigger('click')
+    await flushPromises()
+
+    expect(drawer.attributes('data-show')).toBe('true')
+    expect(drawer.attributes('data-department-id')).toBe('')
+    expect(drawer.attributes('data-parent-id')).toBe(departmentTreeResponse[0]!.id)
+
+    await wrapper.get('[data-test="departments-edit"]').trigger('click')
+    await flushPromises()
+
+    expect(drawer.attributes('data-show')).toBe('true')
+    expect(drawer.attributes('data-department-id')).toBe(departmentTreeResponse[0]!.id)
+    expect(drawer.attributes('data-parent-id')).toBe('')
+  })
+
+  it('shows a success message and refreshes after drawer saves', async () => {
+    getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
+    const { wrapper } = await mountDepartmentsPage([
+      'system:department:create',
+      'system:department:list',
+    ])
+    await flushPromises()
+
+    await wrapper.get('[data-test="departments-create"]').trigger('click')
+    await flushPromises()
+    await wrapper.getComponent({ name: 'DepartmentFormDrawerStub' }).vm.$emit('saved')
+    await flushPromises()
+
+    expect(getDepartmentTreeMock).toHaveBeenCalledTimes(2)
+    expect(document.body.textContent).toContain('保存部门成功')
+  })
+
+  it('disables row delete when a department has children', async () => {
+    getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
+    const { wrapper } = await mountDepartmentsPage(['system:department:delete'])
+    await flushPromises()
+
+    const deleteButtons = wrapper.findAll('[data-test="departments-delete"]')
+    expect(deleteButtons).toHaveLength(3)
+    expect(deleteButtons[0]!.attributes('disabled')).toBeDefined()
+
+    await deleteButtons[0]!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="departments-delete-confirm"]').exists()).toBe(false)
+    expect(deleteDepartmentMock).not.toHaveBeenCalled()
+  })
+
+  it('deletes a leaf department after confirmation and refreshes tree', async () => {
+    getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
+    deleteDepartmentMock.mockResolvedValue(undefined)
+    const { wrapper } = await mountDepartmentsPage(['system:department:delete'])
+    await flushPromises()
+
+    const leafDepartment = departmentTreeResponse[0]!.children[0]!
+    const deleteButtons = wrapper.findAll('[data-test="departments-delete"]')
+    await deleteButtons[1]!.trigger('click')
+    await flushPromises()
+    const confirmButton = document.body.querySelector(
+      '[data-test="departments-delete-confirm"]',
+    ) as HTMLButtonElement | null
+    expect(confirmButton).not.toBeNull()
+    confirmButton!.click()
+    await flushPromises()
+
+    expect(deleteDepartmentMock).toHaveBeenCalledWith(leafDepartment.id)
+    expect(getDepartmentTreeMock).toHaveBeenCalledTimes(2)
+    expect(document.body.textContent).toContain('删除部门成功')
+  })
+
+  it('keeps delete dialog open when deleting department fails', async () => {
+    getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
+    deleteDepartmentMock.mockRejectedValue(new Error('部门存在关联用户，不能删除'))
+    const { wrapper } = await mountDepartmentsPage(['system:department:delete'])
+    await flushPromises()
+
+    const deleteButtons = wrapper.findAll('[data-test="departments-delete"]')
+    await deleteButtons[1]!.trigger('click')
+    await flushPromises()
+    const confirmButton = document.body.querySelector(
+      '[data-test="departments-delete-confirm"]',
+    ) as HTMLButtonElement | null
+    expect(confirmButton).not.toBeNull()
+    confirmButton!.click()
+    await flushPromises()
+
+    expect(deleteDepartmentMock).toHaveBeenCalledTimes(1)
+    expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
+    expect(document.body.textContent).toContain('部门存在关联用户，不能删除')
+    expect(document.body.querySelector('[data-test="departments-delete-confirm"]')).not.toBeNull()
   })
 
   it('filters by child keyword and preserves parent context', async () => {

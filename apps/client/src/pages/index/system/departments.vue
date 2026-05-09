@@ -1,11 +1,23 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue'
 import { useQuery } from '@pinia/colada'
-import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
-import { NAlert, NButton, NDataTable, NFlex, NInput, NSelect, NTag } from 'naive-ui'
+import type { ButtonProps, DataTableColumns, DataTableRowKey } from 'naive-ui'
+import {
+  NAlert,
+  NButton,
+  NDataTable,
+  NFlex,
+  NInput,
+  NSelect,
+  NTag,
+  useDialog,
+  useMessage,
+} from 'naive-ui'
 import { filterTree, getTreeNodeCount, treeToArray, type DepartmentTreeNode } from '@rev30/shared'
+import DepartmentFormDrawer from '../../../features/system/DepartmentFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
+  deleteDepartment,
   formatDateTime,
   getDepartmentTree,
   getSystemErrorMessage,
@@ -37,16 +49,23 @@ const activeFilters = ref<DepartmentActiveFilters>({
   status: null,
 })
 const emptyDepartmentTree: DepartmentTreeNode[] = []
+const message = useMessage()
+const dialog = useDialog()
 
 const {
   data: departmentTree,
   error: departmentTreeError,
   isLoading,
+  refetch: refetchDepartments,
 } = useQuery({
   key: () => ['system', 'departments', 'tree'],
   placeholderData: () => emptyDepartmentTree,
   query: () => getDepartmentTree(),
 })
+
+const isDepartmentDrawerVisible = ref(false)
+const editingDepartmentId = ref<string | null>(null)
+const selectedParentDepartmentId = ref<string | null>(null)
 
 function handleSearch() {
   activeFilters.value = {
@@ -64,6 +83,47 @@ function handleReset() {
     keyword: '',
     status: null,
   }
+}
+
+function openDepartmentFormDrawer(departmentId: string | null = null, parentId: string | null = null) {
+  editingDepartmentId.value = departmentId
+  selectedParentDepartmentId.value = parentId
+  isDepartmentDrawerVisible.value = true
+}
+
+async function handleDepartmentSaved() {
+  message.success('保存部门成功')
+  await refetchDepartments()
+}
+
+function confirmDeleteDepartment(department: DepartmentTreeNode) {
+  if (department.children.length > 0) {
+    return
+  }
+
+  const positiveButtonProps: ButtonProps & Record<string, unknown> = {
+    type: 'error',
+    'data-test': 'departments-delete-confirm',
+  }
+
+  dialog.warning({
+    title: '确认删除',
+    content: `确定删除部门“${department.name}”吗？`,
+    positiveText: '删除',
+    negativeText: '取消',
+    positiveButtonProps,
+    async onPositiveClick() {
+      try {
+        await deleteDepartment(department.id)
+
+        message.success('删除部门成功')
+        await refetchDepartments()
+      } catch (error) {
+        message.error(getSystemErrorMessage(error, '删除部门失败'))
+        return false
+      }
+    },
+  })
 }
 
 const rawTree = computed(() => departmentTree.value ?? emptyDepartmentTree)
@@ -146,23 +206,27 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
     key: 'actions',
     width: 180,
     fixed: 'right',
-    render: () =>
+    render: (department) =>
       renderTableActions([
         renderTableActionButton({
           label: '新增下级',
           accessCode: 'system:department:create',
           testId: 'departments-create-child',
+          onClick: () => openDepartmentFormDrawer(null, department.id),
         }),
         renderTableActionButton({
           label: '编辑',
-          accessCode: 'system:department:update',
+          accessCode: ['system:department:update', 'system:department:list'],
           testId: 'departments-edit',
+          onClick: () => openDepartmentFormDrawer(department.id),
         }),
         renderTableActionButton({
           label: '删除',
           accessCode: 'system:department:delete',
           type: 'error',
           testId: 'departments-delete',
+          disabled: department.children.length > 0,
+          onClick: () => confirmDeleteDepartment(department),
         }),
       ]),
   },
@@ -176,7 +240,12 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
         <h1 class="text-xl font-semibold">部门管理</h1>
         <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ visibleCount }} 个部门</p>
       </div>
-      <NButton v-can="'system:department:create'" data-test="departments-create" type="primary">
+      <NButton
+        v-can="'system:department:create'"
+        data-test="departments-create"
+        type="primary"
+        @click="openDepartmentFormDrawer()"
+      >
         新增部门
       </NButton>
     </header>
@@ -217,5 +286,12 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
         :row-key="(department: DepartmentTreeNode) => department.id"
       />
     </section>
+
+    <DepartmentFormDrawer
+      v-model:show="isDepartmentDrawerVisible"
+      :department-id="editingDepartmentId"
+      :parent-id="selectedParentDepartmentId"
+      @saved="handleDepartmentSaved"
+    />
   </main>
 </template>

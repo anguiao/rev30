@@ -7,6 +7,7 @@ type TableActionOptions = {
   accessCode: string | string[]
   type?: ButtonProps['type']
   testId?: string
+  disabled?: boolean
   onClick?: () => void
 }
 
@@ -15,6 +16,7 @@ export function renderTableActionButton({
   accessCode,
   type = 'primary',
   testId,
+  disabled = false,
   onClick,
 }: TableActionOptions) {
   const auth = useAuthStore()
@@ -30,6 +32,7 @@ export function renderTableActionButton({
       text: true,
       size: 'small',
       type,
+      disabled,
       ...(testId === undefined ? {} : { 'data-test': testId }),
       ...(onClick === undefined ? {} : { onClick }),
     },

@@ -3,7 +3,7 @@
 import { PiniaColada } from '@pinia/colada'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NSelect, NTree } from 'naive-ui'
+import { NSelect, NTreeSelect } from 'naive-ui'
 import {
   DEPARTMENT_STATUS_ENABLED,
   type DepartmentTreeNode,
@@ -188,7 +188,13 @@ describe('UserFormDrawer', () => {
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
     expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 100 })
     expect(getUserMock).not.toHaveBeenCalled()
-    expect(wrapper.getComponent(NTree).props('data')).toEqual([
+    const departmentTreeSelect = wrapper.getComponent(NTreeSelect)
+    expect(departmentTreeSelect.props('multiple')).toBe(true)
+    expect(departmentTreeSelect.props('checkable')).toBe(true)
+    expect(departmentTreeSelect.props('cascade')).toBe(true)
+    expect(departmentTreeSelect.props('clearable')).toBe(true)
+    expect(departmentTreeSelect.props('filterable')).toBe(true)
+    expect(departmentTreeSelect.props('options')).toEqual([
       {
         key: departmentId,
         label: '研发部 (rd)',
@@ -229,7 +235,8 @@ describe('UserFormDrawer', () => {
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
     expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 100 })
     expect(getUserMock).toHaveBeenCalledWith(userId)
-    expect(wrapper.getComponent(NTree).props('data')).toEqual([
+    const departmentTreeSelect = wrapper.getComponent(NTreeSelect)
+    expect(departmentTreeSelect.props('options')).toEqual([
       {
         key: departmentId,
         label: '研发部 (rd)',
@@ -241,13 +248,10 @@ describe('UserFormDrawer', () => {
         ],
       },
     ])
-    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([departmentId])
+    expect(departmentTreeSelect.props('value')).toEqual([departmentId])
 
     await wrapper.get('[data-test="user-form-nickname"] input').setValue('Ada Lovelace')
-    wrapper
-      .get('[data-test="user-form-departments"]')
-      .getComponent(NTree)
-      .vm.$emit('update:checkedKeys', [secondDepartmentId])
+    departmentTreeSelect.vm.$emit('update:value', [secondDepartmentId])
     wrapper
       .get('[data-test="user-form-roles"]')
       .getComponent(NSelect)

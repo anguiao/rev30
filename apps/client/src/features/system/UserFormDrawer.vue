@@ -12,11 +12,10 @@ import {
   NFormItem,
   NInput,
   NSelect,
-  NTree,
-  type TreeOption,
+  NTreeSelect,
+  type TreeSelectOption,
 } from 'naive-ui'
 import {
-  type DepartmentTreeNode,
   type User,
   type UserCreateResponse,
   USER_STATUS_ENABLED,
@@ -36,6 +35,7 @@ import {
   getSystemErrorMessage,
 } from '.'
 import { statusSelectOptions } from './labels'
+import { toDepartmentTreeSelectOptions } from './departmentOptions'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
 
 const props = defineProps<{
@@ -89,8 +89,8 @@ const {
     }
   },
 })
-const departmentTreeOptions = computed(() =>
-  toDepartmentTreeOptions(formData.value?.departments ?? []),
+const departmentTreeOptions = computed<TreeSelectOption[]>(() =>
+  toDepartmentTreeSelectOptions(formData.value?.departments ?? []),
 )
 const roleOptions = computed(() => toRoleOptions(formData.value?.roles ?? []))
 const loadError = computed(() =>
@@ -186,21 +186,6 @@ watch(
     immediate: true,
   },
 )
-
-function toDepartmentTreeOptions(nodes: DepartmentTreeNode[]): TreeOption[] {
-  return nodes.map((node) => {
-    const option: TreeOption = {
-      key: node.id,
-      label: `${node.name} (${node.code})`,
-    }
-
-    if (node.children.length > 0) {
-      option.children = toDepartmentTreeOptions(node.children)
-    }
-
-    return option
-  })
-}
 
 function toRoleOptions(roles: RoleListItem[]) {
   return roles.map((role) => ({
@@ -304,16 +289,21 @@ function toRoleOptions(roles: RoleListItem[]) {
               label="所属部门"
               v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
             >
-              <NTree
+              <NTreeSelect
                 data-test="user-form-departments"
-                block-line
+                multiple
                 checkable
                 cascade
-                :data="departmentTreeOptions"
-                :checked-keys="state.value"
-                @update:checked-keys="
-                  (keys) => {
-                    field.handleChange(keys.map(String))
+                clearable
+                filterable
+                default-expand-all
+                max-tag-count="responsive"
+                :options="departmentTreeOptions"
+                :value="state.value"
+                placeholder="请选择所属部门"
+                @update:value="
+                  (value) => {
+                    field.handleChange(Array.isArray(value) ? value.map(String) : [])
                   }
                 "
               />

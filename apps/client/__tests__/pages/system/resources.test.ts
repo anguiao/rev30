@@ -2,6 +2,7 @@
 
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
 import { NDataTable, NPagination, NSelect } from 'naive-ui'
 import {
   RESOURCE_OPEN_TARGET_SELF,
@@ -12,7 +13,7 @@ import {
   RESOURCE_TYPE_MENU,
   type ResourceTreeNode,
 } from '@rev30/shared'
-import { formatDateTime, getResourceTree } from '../../../src/features/system'
+import { deleteResource, formatDateTime, getResourceTree } from '../../../src/features/system'
 import ResourcesPage from '../../../src/pages/index/system/resources.vue'
 import {
   disposeActiveTestPinia,
@@ -23,14 +24,37 @@ import {
 
 enableAutoUnmount(afterEach)
 
+vi.mock('../../../src/features/system/ResourceFormDrawer.vue', () => ({
+  default: defineComponent({
+    name: 'ResourceFormDrawerStub',
+    props: {
+      show: { type: Boolean, required: true },
+      resourceId: { type: String, default: null },
+      parentId: { type: String, default: null },
+    },
+    emits: ['update:show', 'saved'],
+    setup(props) {
+      return () =>
+        h('div', {
+          'data-parent-id': props.parentId ?? '',
+          'data-resource-id': props.resourceId ?? '',
+          'data-show': String(props.show),
+          'data-test': 'resource-form-drawer',
+        })
+    },
+  }),
+}))
+
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
+  deleteResource: vi.fn(),
   getResourceTree: vi.fn(),
   getSystemErrorMessage: vi.fn((error: unknown, fallback: string) =>
     error instanceof Error ? error.message : fallback,
   ),
 }))
 
+const deleteResourceMock = vi.mocked(deleteResource)
 const getResourceTreeMock = vi.mocked(getResourceTree)
 
 const resourceTreeResponse: ResourceTreeNode[] = [
@@ -101,6 +125,7 @@ async function mountResourcesPage(accessCodes: string[] = session.accessCodes) {
 
 describe('resources page', () => {
   beforeEach(() => {
+    deleteResourceMock.mockReset()
     getResourceTreeMock.mockReset()
     localStorage.clear()
     document.documentElement.className = ''
@@ -158,6 +183,7 @@ describe('resources page', () => {
     const { wrapper: authorizedWrapper } = await mountResourcesPage([
       'system:resource:create',
       'system:resource:update',
+      'system:resource:list',
       'system:resource:delete',
     ])
     await flushPromises()
@@ -166,6 +192,148 @@ describe('resources page', () => {
     expect(authorizedWrapper.find('[data-test="resources-create-child"]').exists()).toBe(true)
     expect(authorizedWrapper.find('[data-test="resources-edit"]').exists()).toBe(true)
     expect(authorizedWrapper.find('[data-test="resources-delete"]').exists()).toBe(true)
+  })
+
+  it('opens create, child create, and edit drawers', async () => {
+    getResourceTreeMock.mockResolvedValue(resourceTreeResponse)
+    const { wrapper } = await mountResourcesPage([
+      'system:resource:create',
+      'system:resource:update',
+      'system:resource:list',
+    ])
+    await flushPromises()
+
+    const drawer = wrapper.get('[data-test="resource-form-drawer"]')
+    expect(drawer.attributes('data-show')).toBe('false')
+    expect(drawer.attributes('data-resource-id')).toBe('')
+    expect(drawer.attributes('data-parent-id')).toBe('')
+
+    await wrapper.get('[data-test="resources-create"]').trigger('click')
+    await flushPromises()
+
+    expect(drawer.attributes('data-show')).toBe('true')
+    expect(drawer.attributes('data-resource-id')).toBe('')
+    expect(drawer.attributes('data-parent-id')).toBe('')
+
+    await wrapper.get('[data-test="resources-create-child"]').trigger('click')
+    await flushPromises()
+
+    expect(drawer.attributes('data-show')).toBe('true')
+    expect(drawer.attributes('data-resource-id')).toBe('')
+    expect(drawer.attributes('data-parent-id')).toBe(resourceTreeResponse[0]!.id)
+
+    await wrapper.get('[data-test="resources-edit"]').trigger('click')
+    await flushPromises()
+
+    expect(drawer.attributes('data-show')).toBe('true')
+    expect(drawer.attributes('data-resource-id')).toBe(resourceTreeResponse[0]!.id)
+    expect(drawer.attributes('data-parent-id')).toBe('')
+  })
+
+  it('shows a success message and refreshes after drawer saves', async () => {
+    getResourceTreeMock.mockResolvedValue(resourceTreeResponse)
+    const { wrapper } = await mountResourcesPage([
+      'system:resource:create',
+      'system:resource:list',
+    ])
+    await flushPromises()
+
+    await wrapper.get('[data-test="resources-create"]').trigger('click')
+    await flushPromises()
+    await wrapper.getComponent({ name: 'ResourceFormDrawerStub' }).vm.$emit('saved')
+    await flushPromises()
+
+    expect(getResourceTreeMock).toHaveBeenCalledTimes(2)
+    expect(document.body.textContent).toContain('保存资源成功')
+  })
+
+  it('disables row delete when a resource has children', async () => {
+    getResourceTreeMock.mockResolvedValue(resourceTreeResponse)
+    const { wrapper } = await mountResourcesPage(['system:resource:delete'])
+    await flushPromises()
+
+    const deleteButtons = wrapper.findAll('[data-test="resources-delete"]')
+    expect(deleteButtons).toHaveLength(3)
+    expect(deleteButtons[0]!.attributes('disabled')).toBeDefined()
+
+    await deleteButtons[0]!.trigger('click')
+    await flushPromises()
+
+    expect(document.body.querySelector('[data-test="resources-delete-confirm"]')).toBeNull()
+    expect(deleteResourceMock).not.toHaveBeenCalled()
+  })
+
+  it('keeps delete disabled for filtered resources with hidden children', async () => {
+    getResourceTreeMock.mockResolvedValue(resourceTreeResponse)
+    const { wrapper } = await mountResourcesPage(['system:resource:delete'])
+    await flushPromises()
+
+    const typeSelect = wrapper
+      .findAllComponents(NSelect)
+      .find((componentWrapper) => componentWrapper.attributes('data-test') === 'resources-type')
+
+    expect(typeSelect).toBeDefined()
+    typeSelect!.vm.$emit('update:value', RESOURCE_TYPE_DIRECTORY)
+    await wrapper.get('[data-test="resources-search"]').trigger('click')
+    await flushPromises()
+
+    const tableData = wrapper.getComponent(NDataTable).props('data') as ResourceTreeNode[]
+    expect(tableData).toHaveLength(1)
+    expect(tableData[0]!.children).toEqual([])
+
+    const deleteButtons = wrapper.findAll('[data-test="resources-delete"]')
+    expect(deleteButtons).toHaveLength(1)
+    expect(deleteButtons[0]!.attributes('disabled')).toBeDefined()
+
+    await deleteButtons[0]!.trigger('click')
+    await flushPromises()
+
+    expect(document.body.querySelector('[data-test="resources-delete-confirm"]')).toBeNull()
+    expect(deleteResourceMock).not.toHaveBeenCalled()
+  })
+
+  it('deletes a leaf resource after confirmation and refreshes tree', async () => {
+    getResourceTreeMock.mockResolvedValue(resourceTreeResponse)
+    deleteResourceMock.mockResolvedValue(undefined)
+    const { wrapper } = await mountResourcesPage(['system:resource:delete'])
+    await flushPromises()
+
+    const leafResource = resourceTreeResponse[0]!.children[0]!
+    const deleteButtons = wrapper.findAll('[data-test="resources-delete"]')
+    await deleteButtons[1]!.trigger('click')
+    await flushPromises()
+    const confirmButton = document.body.querySelector(
+      '[data-test="resources-delete-confirm"]',
+    ) as HTMLButtonElement | null
+    expect(confirmButton).not.toBeNull()
+    confirmButton!.click()
+    await flushPromises()
+
+    expect(deleteResourceMock).toHaveBeenCalledWith(leafResource.id)
+    expect(getResourceTreeMock).toHaveBeenCalledTimes(2)
+    expect(document.body.textContent).toContain('删除资源成功')
+  })
+
+  it('keeps delete dialog open when deleting resource fails', async () => {
+    getResourceTreeMock.mockResolvedValue(resourceTreeResponse)
+    deleteResourceMock.mockRejectedValue(new Error('资源已被角色授权，不能删除'))
+    const { wrapper } = await mountResourcesPage(['system:resource:delete'])
+    await flushPromises()
+
+    const deleteButtons = wrapper.findAll('[data-test="resources-delete"]')
+    await deleteButtons[1]!.trigger('click')
+    await flushPromises()
+    const confirmButton = document.body.querySelector(
+      '[data-test="resources-delete-confirm"]',
+    ) as HTMLButtonElement | null
+    expect(confirmButton).not.toBeNull()
+    confirmButton!.click()
+    await flushPromises()
+
+    expect(deleteResourceMock).toHaveBeenCalledTimes(1)
+    expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
+    expect(document.body.textContent).toContain('资源已被角色授权，不能删除')
+    expect(document.body.querySelector('[data-test="resources-delete-confirm"]')).not.toBeNull()
   })
 
   it('filters by action type while preserving parent context', async () => {

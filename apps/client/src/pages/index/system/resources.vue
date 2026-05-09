@@ -1,8 +1,18 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue'
 import { useQuery } from '@pinia/colada'
-import type { DataTableColumns, DataTableRowKey, SelectOption } from 'naive-ui'
-import { NAlert, NButton, NDataTable, NFlex, NInput, NSelect, NTag } from 'naive-ui'
+import type { ButtonProps, DataTableColumns, DataTableRowKey, SelectOption } from 'naive-ui'
+import {
+  NAlert,
+  NButton,
+  NDataTable,
+  NFlex,
+  NInput,
+  NSelect,
+  NTag,
+  useDialog,
+  useMessage,
+} from 'naive-ui'
 import {
   RESOURCE_TYPE_ACTION,
   RESOURCE_TYPE_DIRECTORY,
@@ -10,12 +20,15 @@ import {
   RESOURCE_TYPE_MENU,
   filterTree,
   getTreeNodeCount,
+  isLeafInTree,
   treeToArray,
   type ResourceTreeNode,
   type ResourceType,
 } from '@rev30/shared'
+import ResourceFormDrawer from '../../../features/system/ResourceFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
+  deleteResource,
   formatDateTime,
   getResourceTree,
   getSystemErrorMessage,
@@ -27,6 +40,9 @@ import {
   type SystemStatus,
 } from '../../../features/system'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
+
+const message = useMessage()
+const dialog = useDialog()
 
 type ResourceTypeFilter = ResourceType | 'all'
 
@@ -57,6 +73,7 @@ const {
   data: resourceTree,
   error: resourceTreeError,
   isLoading,
+  refetch: refetchResources,
 } = useQuery({
   key: () => ['system', 'resources', 'tree'],
   placeholderData: () => emptyResourceTree,
@@ -114,6 +131,49 @@ const rows = computed(() => {
 })
 
 const visibleCount = computed(() => getTreeNodeCount(rows.value))
+
+const isResourceDrawerVisible = ref(false)
+const editingResourceId = ref<string | null>(null)
+const selectedParentResourceId = ref<string | null>(null)
+function openResourceFormDrawer(resourceId: string | null = null, parentId: string | null = null) {
+  editingResourceId.value = resourceId
+  selectedParentResourceId.value = parentId
+  isResourceDrawerVisible.value = true
+}
+async function handleResourceSaved() {
+  message.success('保存资源成功')
+  await refetchResources()
+}
+
+function confirmDeleteResource(resource: ResourceTreeNode) {
+  if (!isLeafInTree(rawTree.value, resource.id)) {
+    return
+  }
+
+  const positiveButtonProps: ButtonProps & Record<string, unknown> = {
+    type: 'error',
+    'data-test': 'resources-delete-confirm',
+  }
+
+  dialog.warning({
+    title: '确认删除',
+    content: `确定删除资源“${resource.name}”吗？`,
+    positiveText: '删除',
+    negativeText: '取消',
+    positiveButtonProps,
+    async onPositiveClick() {
+      try {
+        await deleteResource(resource.id)
+
+        message.success('删除资源成功')
+        await refetchResources()
+      } catch (error) {
+        message.error(getSystemErrorMessage(error, '删除资源失败'))
+        return false
+      }
+    },
+  })
+}
 
 const expandedRowKeys = ref<DataTableRowKey[]>([])
 watch(
@@ -209,18 +269,22 @@ const columns: DataTableColumns<ResourceTreeNode> = [
               label: '新增下级',
               accessCode: 'system:resource:create',
               testId: 'resources-create-child',
+              onClick: () => openResourceFormDrawer(null, resource.id),
             })
           : null,
         renderTableActionButton({
           label: '编辑',
-          accessCode: 'system:resource:update',
+          accessCode: ['system:resource:update', 'system:resource:list'],
           testId: 'resources-edit',
+          onClick: () => openResourceFormDrawer(resource.id),
         }),
         renderTableActionButton({
           label: '删除',
           accessCode: 'system:resource:delete',
           type: 'error',
           testId: 'resources-delete',
+          disabled: !isLeafInTree(rawTree.value, resource.id),
+          onClick: () => confirmDeleteResource(resource),
         }),
       ]),
   },
@@ -234,7 +298,12 @@ const columns: DataTableColumns<ResourceTreeNode> = [
         <h1 class="text-xl font-semibold">资源管理</h1>
         <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ visibleCount }} 个资源</p>
       </div>
-      <NButton v-can="'system:resource:create'" data-test="resources-create" type="primary">
+      <NButton
+        v-can="'system:resource:create'"
+        data-test="resources-create"
+        type="primary"
+        @click="openResourceFormDrawer()"
+      >
         新增资源
       </NButton>
     </header>
@@ -282,5 +351,12 @@ const columns: DataTableColumns<ResourceTreeNode> = [
         :row-key="(resource: ResourceTreeNode) => resource.id"
       />
     </section>
+
+    <ResourceFormDrawer
+      v-model:show="isResourceDrawerVisible"
+      :resource-id="editingResourceId"
+      :parent-id="selectedParentResourceId"
+      @saved="handleResourceSaved"
+    />
   </main>
 </template>

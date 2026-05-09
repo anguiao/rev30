@@ -323,7 +323,7 @@ describe('department routes', () => {
     const createBody = (await createResponse.json()) as ErrorResponse
 
     expect(createResponse.status).toBe(400)
-    expect(createBody).toEqual({ message: '父部门不存在' })
+    expect(createBody).toEqual({ message: '上级部门不存在' })
 
     const { body: existing } = await createDepartment(app, { name: 'Support', code: 'support' })
     const updateResponse = await app.request(`/api/system/departments/${existing.id}`, {
@@ -334,7 +334,7 @@ describe('department routes', () => {
     const updateBody = (await updateResponse.json()) as ErrorResponse
 
     expect(updateResponse.status).toBe(400)
-    expect(updateBody).toEqual({ message: '父部门不存在' })
+    expect(updateBody).toEqual({ message: '上级部门不存在' })
   })
 
   it('rejects deleting departments with related users', async () => {

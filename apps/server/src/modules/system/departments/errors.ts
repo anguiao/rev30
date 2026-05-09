@@ -25,7 +25,7 @@ export class DepartmentNotFoundError extends Error {
 
 export class DepartmentInvalidParentError extends Error {
   constructor() {
-    super('父部门不存在')
+    super('上级部门不存在')
     this.name = 'DepartmentInvalidParentError'
   }
 }

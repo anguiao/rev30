@@ -241,7 +241,31 @@ describe('departments page', () => {
     await deleteButtons[0]!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('[data-test="departments-delete-confirm"]').exists()).toBe(false)
+    expect(document.body.querySelector('[data-test="departments-delete-confirm"]')).toBeNull()
+    expect(deleteDepartmentMock).not.toHaveBeenCalled()
+  })
+
+  it('keeps delete disabled for filtered departments with hidden children', async () => {
+    getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
+    const { wrapper } = await mountDepartmentsPage(['system:department:delete'])
+    await flushPromises()
+
+    await wrapper.find('[data-test="departments-keyword"] input').setValue('eng')
+    await wrapper.get('[data-test="departments-search"]').trigger('click')
+    await flushPromises()
+
+    const tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
+    expect(tableData).toHaveLength(1)
+    expect(tableData[0]!.children).toEqual([])
+
+    const deleteButtons = wrapper.findAll('[data-test="departments-delete"]')
+    expect(deleteButtons).toHaveLength(1)
+    expect(deleteButtons[0]!.attributes('disabled')).toBeDefined()
+
+    await deleteButtons[0]!.trigger('click')
+    await flushPromises()
+
+    expect(document.body.querySelector('[data-test="departments-delete-confirm"]')).toBeNull()
     expect(deleteDepartmentMock).not.toHaveBeenCalled()
   })
 

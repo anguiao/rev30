@@ -100,7 +100,7 @@ async function handleDepartmentSaved() {
 }
 
 function confirmDeleteDepartment(department: DepartmentTreeNode) {
-  if (department.children.length > 0) {
+  if (hasActualChildren(department)) {
     return
   }
 
@@ -130,11 +130,28 @@ function confirmDeleteDepartment(department: DepartmentTreeNode) {
 }
 
 const rawTree = computed(() => departmentTree.value ?? emptyDepartmentTree)
+const departmentIdsWithChildren = computed(() => collectDepartmentIdsWithChildren(rawTree.value))
 const loadErrorMessage = computed(() =>
   departmentTreeError.value === null
     ? ''
     : getSystemErrorMessage(departmentTreeError.value, '加载部门失败'),
 )
+
+function collectDepartmentIdsWithChildren(nodes: DepartmentTreeNode[], ids = new Set<string>()) {
+  for (const node of nodes) {
+    if (node.children.length > 0) {
+      ids.add(node.id)
+    }
+
+    collectDepartmentIdsWithChildren(node.children, ids)
+  }
+
+  return ids
+}
+
+function hasActualChildren(department: DepartmentTreeNode) {
+  return departmentIdsWithChildren.value.has(department.id)
+}
 
 const rows = computed(() => {
   const normalizedKeyword = activeFilters.value.keyword.trim().toLowerCase()
@@ -228,7 +245,7 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
           accessCode: 'system:department:delete',
           type: 'error',
           testId: 'departments-delete',
-          disabled: department.children.length > 0,
+          disabled: hasActualChildren(department),
           onClick: () => confirmDeleteDepartment(department),
         }),
       ]),

@@ -29,19 +29,17 @@ export type UserWithRelationsRow = {
   roles: RoleSummary[]
 }
 
-function buildUserDepartmentValues(userId: string, departmentIds: string[], now: Date) {
+function buildUserDepartmentValues(userId: string, departmentIds: string[]) {
   return departmentIds.map((departmentId) => ({
     userId,
     departmentId,
-    createdAt: now,
   }))
 }
 
-function buildUserRoleValues(userId: string, roleIds: string[], now: Date) {
+function buildUserRoleValues(userId: string, roleIds: string[]) {
   return roleIds.map((roleId) => ({
     userId,
     roleId,
-    createdAt: now,
   }))
 }
 
@@ -149,7 +147,6 @@ export function createUserRepository(database: Db) {
 
     async create(input: UserCreateInput, passwordHash: string) {
       const { departmentIds = [], roleIds = [], ...userInput } = input
-      const now = new Date()
 
       return await database.transaction(async (tx) => {
         await Promise.all([
@@ -162,8 +159,6 @@ export function createUserRepository(database: Db) {
           .values({
             id: randomUUID(),
             ...userInput,
-            createdAt: now,
-            updatedAt: now,
           })
           .returning()
 
@@ -175,18 +170,16 @@ export function createUserRepository(database: Db) {
           userId: created.id,
           passwordHash,
           mustChangePassword: true,
-          createdAt: now,
-          updatedAt: now,
         })
 
         if (departmentIds.length > 0) {
           await tx
             .insert(userDepartments)
-            .values(buildUserDepartmentValues(created.id, departmentIds, now))
+            .values(buildUserDepartmentValues(created.id, departmentIds))
         }
 
         if (roleIds.length > 0) {
-          await tx.insert(userRoles).values(buildUserRoleValues(created.id, roleIds, now))
+          await tx.insert(userRoles).values(buildUserRoleValues(created.id, roleIds))
         }
 
         const [departmentSummaries, roleSummaries] = await Promise.all([
@@ -223,8 +216,6 @@ export function createUserRepository(database: Db) {
             userId: id,
             passwordHash,
             mustChangePassword: true,
-            createdAt: now,
-            updatedAt: now,
           })
           .onConflictDoUpdate({
             target: authPasswordCredentials.userId,
@@ -239,7 +230,6 @@ export function createUserRepository(database: Db) {
           .update(authRefreshTokens)
           .set({
             revokedAt: now,
-            updatedAt: now,
           })
           .where(and(eq(authRefreshTokens.userId, id), isNull(authRefreshTokens.revokedAt)))
 
@@ -270,13 +260,12 @@ export function createUserRepository(database: Db) {
           await lockActiveRoleIdsOrThrow(tx, roleIds)
         }
 
-        const now = new Date()
+        const userUpdateValues = Object.values(userInput).some((value) => value !== undefined)
+          ? userInput
+          : { updatedAt: new Date() }
         const [updated] = await tx
           .update(users)
-          .set({
-            ...userInput,
-            updatedAt: now,
-          })
+          .set(userUpdateValues)
           .where(and(eq(users.id, id), isNull(users.deletedAt)))
           .returning()
 
@@ -290,7 +279,7 @@ export function createUserRepository(database: Db) {
           if (departmentIds.length > 0) {
             await tx
               .insert(userDepartments)
-              .values(buildUserDepartmentValues(updated.id, departmentIds, now))
+              .values(buildUserDepartmentValues(updated.id, departmentIds))
           }
         }
 
@@ -298,7 +287,7 @@ export function createUserRepository(database: Db) {
           await tx.delete(userRoles).where(eq(userRoles.userId, id))
 
           if (roleIds.length > 0) {
-            await tx.insert(userRoles).values(buildUserRoleValues(updated.id, roleIds, now))
+            await tx.insert(userRoles).values(buildUserRoleValues(updated.id, roleIds))
           }
         }
 

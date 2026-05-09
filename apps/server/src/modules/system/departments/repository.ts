@@ -184,8 +184,6 @@ export function createDepartmentRepository(database: Db) {
     },
 
     async create(input: DepartmentCreateInput) {
-      const now = new Date()
-
       return await database.transaction(async (tx) => {
         if (input.parentId !== null && !(await lockActiveDepartmentById(tx, input.parentId))) {
           throw new DepartmentInvalidParentError()
@@ -196,8 +194,6 @@ export function createDepartmentRepository(database: Db) {
           .values({
             id: randomUUID(),
             ...input,
-            createdAt: now,
-            updatedAt: now,
           })
           .returning()
 
@@ -221,10 +217,7 @@ export function createDepartmentRepository(database: Db) {
 
         const [updated] = await tx
           .update(departments)
-          .set({
-            ...input,
-            updatedAt: new Date(),
-          })
+          .set(input)
           .where(and(eq(departments.id, id), isNull(departments.deletedAt)))
           .returning()
 

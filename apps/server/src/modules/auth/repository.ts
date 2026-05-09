@@ -13,8 +13,6 @@ import { findRoleSummariesByUserId } from '../system/roles/repository'
 export function createAuthRepository(database: Db) {
   return {
     async createUser(input: AuthRegisterInput, passwordHash: string) {
-      const now = new Date()
-
       return await database.transaction(async (tx) => {
         const [created] = await tx
           .insert(users)
@@ -25,8 +23,6 @@ export function createAuthRepository(database: Db) {
             email: input.email ?? null,
             phone: input.phone ?? null,
             status: USER_STATUS_ENABLED,
-            createdAt: now,
-            updatedAt: now,
           })
           .returning()
 
@@ -37,8 +33,6 @@ export function createAuthRepository(database: Db) {
         await tx.insert(authPasswordCredentials).values({
           userId: created.id,
           passwordHash,
-          createdAt: now,
-          updatedAt: now,
         })
 
         return {
@@ -94,8 +88,6 @@ export function createAuthRepository(database: Db) {
     },
 
     async updateUserProfile(userId: string, input: AuthProfileUpdateInput) {
-      const now = new Date()
-
       return await database.transaction(async (tx) => {
         const [updated] = await tx
           .update(users)
@@ -103,7 +95,6 @@ export function createAuthRepository(database: Db) {
             nickname: input.nickname,
             email: input.email,
             phone: input.phone,
-            updatedAt: now,
           })
           .where(and(eq(users.id, userId), isNull(users.deletedAt)))
           .returning()
@@ -157,7 +148,6 @@ export function createAuthRepository(database: Db) {
           .set({
             passwordHash,
             mustChangePassword: false,
-            updatedAt: now,
           })
           .where(eq(authPasswordCredentials.userId, userId))
           .returning()
@@ -170,7 +160,6 @@ export function createAuthRepository(database: Db) {
           .update(authRefreshTokens)
           .set({
             revokedAt: now,
-            updatedAt: now,
           })
           .where(
             and(
@@ -185,7 +174,6 @@ export function createAuthRepository(database: Db) {
     },
 
     async createRefreshSession(input: { userId: string; tokenHash: string; expiresAt: Date }) {
-      const now = new Date()
       const [created] = await database
         .insert(authRefreshTokens)
         .values({
@@ -193,8 +181,6 @@ export function createAuthRepository(database: Db) {
           userId: input.userId,
           tokenHash: input.tokenHash,
           expiresAt: input.expiresAt,
-          createdAt: now,
-          updatedAt: now,
         })
         .returning()
 
@@ -211,7 +197,6 @@ export function createAuthRepository(database: Db) {
         .update(authRefreshTokens)
         .set({
           revokedAt: now,
-          updatedAt: now,
         })
         .where(
           and(
@@ -231,7 +216,6 @@ export function createAuthRepository(database: Db) {
         .update(authRefreshTokens)
         .set({
           revokedAt: now,
-          updatedAt: now,
         })
         .where(and(eq(authRefreshTokens.tokenHash, tokenHash), isNull(authRefreshTokens.revokedAt)))
         .returning()

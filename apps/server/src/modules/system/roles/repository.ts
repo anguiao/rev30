@@ -71,11 +71,10 @@ async function lockValidResourceIdsOrThrow(executor: DbReader, ids: string[]) {
   }
 }
 
-function buildRoleResourceValues(roleId: string, resourceIds: string[], now: Date) {
+function buildRoleResourceValues(roleId: string, resourceIds: string[]) {
   return resourceIds.map((resourceId) => ({
     roleId,
     resourceId,
-    createdAt: now,
   }))
 }
 
@@ -244,7 +243,6 @@ export function createRoleRepository(database: Db) {
     },
 
     async create(input: RoleCreateInput) {
-      const now = new Date()
       const { resourceIds = [], ...roleInput } = input
 
       return await database.transaction(async (tx) => {
@@ -255,8 +253,6 @@ export function createRoleRepository(database: Db) {
           .values({
             id: randomUUID(),
             ...roleInput,
-            createdAt: now,
-            updatedAt: now,
           })
           .returning()
 
@@ -265,9 +261,7 @@ export function createRoleRepository(database: Db) {
         }
 
         if (resourceIds.length > 0) {
-          await tx
-            .insert(roleResources)
-            .values(buildRoleResourceValues(created.id, resourceIds, now))
+          await tx.insert(roleResources).values(buildRoleResourceValues(created.id, resourceIds))
         }
 
         return {
@@ -285,12 +279,12 @@ export function createRoleRepository(database: Db) {
           await lockValidResourceIdsOrThrow(tx, resourceIds)
         }
 
+        const roleUpdateValues = Object.values(roleInput).some((value) => value !== undefined)
+          ? roleInput
+          : { updatedAt: new Date() }
         const [updated] = await tx
           .update(roles)
-          .set({
-            ...roleInput,
-            updatedAt: new Date(),
-          })
+          .set(roleUpdateValues)
           .where(and(eq(roles.id, id), isNull(roles.deletedAt)))
           .returning()
 
@@ -302,9 +296,7 @@ export function createRoleRepository(database: Db) {
           await tx.delete(roleResources).where(eq(roleResources.roleId, id))
 
           if (resourceIds.length > 0) {
-            await tx
-              .insert(roleResources)
-              .values(buildRoleResourceValues(updated.id, resourceIds, new Date()))
+            await tx.insert(roleResources).values(buildRoleResourceValues(updated.id, resourceIds))
           }
         }
 

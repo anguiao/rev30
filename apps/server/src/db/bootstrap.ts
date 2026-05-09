@@ -38,8 +38,6 @@ export async function bootstrapAdminUser(database: Db, input: AuthRegisterInput)
         phone: input.phone ?? null,
         status: USER_STATUS_ENABLED,
         builtIn: true,
-        createdAt: now,
-        updatedAt: now,
         deletedAt: null,
       })
       .onConflictDoUpdate({
@@ -66,8 +64,6 @@ export async function bootstrapAdminUser(database: Db, input: AuthRegisterInput)
         userId: upsertedUser.id,
         passwordHash,
         mustChangePassword: false,
-        createdAt: now,
-        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: authPasswordCredentials.userId,
@@ -83,7 +79,6 @@ export async function bootstrapAdminUser(database: Db, input: AuthRegisterInput)
       .values({
         userId: upsertedUser.id,
         roleId: adminRole.id,
-        createdAt: now,
       })
       .onConflictDoNothing({
         target: [userRoles.userId, userRoles.roleId],

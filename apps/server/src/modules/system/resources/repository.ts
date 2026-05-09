@@ -120,8 +120,6 @@ export function createResourceRepository(database: Db) {
     },
 
     async create(input: ResourceCreateInput) {
-      const now = new Date()
-
       return await database.transaction(async (tx) => {
         if (input.parentId !== null && !(await lockActiveResourceById(tx, input.parentId))) {
           throw new ResourceInvalidParentError()
@@ -132,8 +130,6 @@ export function createResourceRepository(database: Db) {
           .values({
             id: randomUUID(),
             ...input,
-            createdAt: now,
-            updatedAt: now,
           })
           .returning()
 
@@ -157,10 +153,7 @@ export function createResourceRepository(database: Db) {
 
         const [updated] = await tx
           .update(systemResources)
-          .set({
-            ...input,
-            updatedAt: new Date(),
-          })
+          .set(input)
           .where(and(eq(systemResources.id, id), isNull(systemResources.deletedAt)))
           .returning()
 

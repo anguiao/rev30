@@ -19,6 +19,44 @@ import {
   USER_STATUS_ENABLED,
 } from '@rev30/shared'
 
+const timestampOptions = { withTimezone: true } as const
+
+function createdAtColumn() {
+  return timestamp('created_at', timestampOptions).notNull().defaultNow()
+}
+
+function updatedAtColumn() {
+  return timestamp('updated_at', timestampOptions)
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date())
+}
+
+function deletedAtColumn() {
+  return timestamp('deleted_at', timestampOptions)
+}
+
+function auditTimestamps() {
+  return {
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+    deletedAt: deletedAtColumn(),
+  }
+}
+
+function mutableTimestamps() {
+  return {
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  }
+}
+
+function createdTimestamp() {
+  return {
+    createdAt: createdAtColumn(),
+  }
+}
+
 export const users = pgTable(
   'users',
   {
@@ -29,9 +67,7 @@ export const users = pgTable(
     phone: text('phone'),
     status: smallint('status').notNull().default(USER_STATUS_ENABLED),
     builtIn: boolean('built_in').notNull().default(false),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    ...auditTimestamps(),
   },
   (table) => [
     uniqueIndex('users_username_unique').on(table.username),
@@ -46,8 +82,7 @@ export const authPasswordCredentials = pgTable('auth_password_credentials', {
     .references(() => users.id),
   passwordHash: text('password_hash').notNull(),
   mustChangePassword: boolean('must_change_password').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  ...mutableTimestamps(),
 })
 
 export const authRefreshTokens = pgTable(
@@ -58,10 +93,9 @@ export const authRefreshTokens = pgTable(
       .notNull()
       .references(() => users.id),
     tokenHash: text('token_hash').notNull(),
-    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-    revokedAt: timestamp('revoked_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', timestampOptions).notNull(),
+    revokedAt: timestamp('revoked_at', timestampOptions),
+    ...mutableTimestamps(),
   },
   (table) => [
     uniqueIndex('auth_refresh_tokens_token_hash_unique').on(table.tokenHash),
@@ -78,9 +112,7 @@ export const departments = pgTable(
     code: text('code').notNull(),
     status: smallint('status').notNull().default(DEPARTMENT_STATUS_ENABLED),
     sortOrder: integer('sort_order').notNull().default(0),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    ...auditTimestamps(),
   },
   (table) => [
     uniqueIndex('departments_code_unique').on(table.code),
@@ -98,7 +130,7 @@ export const userDepartments = pgTable(
     departmentId: uuid('department_id')
       .notNull()
       .references(() => departments.id),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    ...createdTimestamp(),
   },
   (table) => [
     primaryKey({
@@ -123,9 +155,7 @@ export const systemResources = pgTable(
     hidden: boolean('hidden').notNull().default(false),
     status: smallint('status').notNull().default(RESOURCE_STATUS_ENABLED),
     sortOrder: integer('sort_order').notNull().default(0),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    ...auditTimestamps(),
   },
   (table) => [
     uniqueIndex('system_resources_code_unique').on(table.code),
@@ -143,9 +173,7 @@ export const roles = pgTable(
     code: text('code').notNull(),
     status: smallint('status').notNull().default(ROLE_STATUS_ENABLED),
     sortOrder: integer('sort_order').notNull().default(0),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    ...auditTimestamps(),
   },
   (table) => [
     uniqueIndex('roles_code_unique').on(table.code),
@@ -162,7 +190,7 @@ export const roleResources = pgTable(
     resourceId: uuid('resource_id')
       .notNull()
       .references(() => systemResources.id),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    ...createdTimestamp(),
   },
   (table) => [
     primaryKey({
@@ -181,7 +209,7 @@ export const userRoles = pgTable(
     roleId: uuid('role_id')
       .notNull()
       .references(() => roles.id),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    ...createdTimestamp(),
   },
   (table) => [
     primaryKey({

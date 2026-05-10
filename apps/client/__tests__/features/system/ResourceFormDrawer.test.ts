@@ -29,17 +29,38 @@ import ResourceFormDrawer from '../../../src/features/system/ResourceFormDrawer.
 
 enableAutoUnmount(afterEach)
 
-vi.mock('@iconify/vue', () => ({
-  Icon: defineComponent({
-    name: 'Icon',
+vi.mock('../../../src/features/system/ResourceIconPicker.vue', () => ({
+  default: defineComponent({
+    name: 'ResourceIconPickerStub',
     props: {
-      icon: {
+      value: {
         type: String,
-        required: true,
+        default: null,
       },
     },
-    setup(props: { icon: string }) {
-      return () => h('span', { 'data-test': 'resource-icon-preview' }, props.icon)
+    emits: ['update:value', 'blur'],
+    setup(props, { emit }) {
+      return () =>
+        h('div', { 'data-test': 'resource-icon-picker' }, [
+          props.value
+            ? h('span', { 'data-test': 'resource-icon-preview' }, props.value)
+            : h('span', { 'data-test': 'resource-icon-empty' }, '无'),
+          h('button', {
+            'data-test': 'resource-icon-pick-users',
+            type: 'button',
+            onClick: () => emit('update:value', 'lucide:users'),
+          }),
+          h('button', {
+            'data-test': 'resource-icon-pick-help',
+            type: 'button',
+            onClick: () => emit('update:value', 'lucide:circle-help'),
+          }),
+          h('button', {
+            'data-test': 'resource-icon-clear',
+            type: 'button',
+            onClick: () => emit('update:value', null),
+          }),
+        ])
     },
   }),
 }))
@@ -403,7 +424,7 @@ describe('ResourceFormDrawer', () => {
     await wrapper
       .get('[data-test="resource-form-external-url"] input')
       .setValue('https://example.com/help')
-    await wrapper.get('[data-test="resource-form-icon"] input').setValue('lucide:circle-help')
+    await wrapper.get('[data-test="resource-icon-pick-help"]').trigger('click')
     wrapper.getComponent(NInputNumber).vm.$emit('update:value', 6)
     await flushPromises()
 
@@ -424,6 +445,34 @@ describe('ResourceFormDrawer', () => {
       status: RESOURCE_STATUS_ENABLED,
       sortOrder: 6,
     })
+  })
+
+  it('binds selected and cleared icon values from the icon picker', async () => {
+    createResourceMock.mockResolvedValue({
+      ...menuResourceResponse,
+      id: '99999999-9999-4999-8999-999999999999',
+      parentId: null,
+      type: RESOURCE_TYPE_DIRECTORY,
+      name: '图标管理',
+      code: 'icons',
+      icon: null,
+      sortOrder: 0,
+    })
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await wrapper.get('[data-test="resource-form-name"] input').setValue('图标管理')
+    await wrapper.get('[data-test="resource-form-code"] input').setValue('icons')
+    await wrapper.get('[data-test="resource-icon-pick-users"]').trigger('click')
+    await wrapper.get('[data-test="resource-icon-clear"]').trigger('click')
+    await submitForm(wrapper)
+
+    expect(createResourceMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        icon: null,
+      }),
+    )
   })
 
   it('shows a field-level server error when create fails', async () => {

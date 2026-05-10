@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
 import { computed, ref, watch } from 'vue'
 import { useMutation, useQuery } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
@@ -12,7 +11,6 @@ import {
   NForm,
   NFormItem,
   NInput,
-  NInputGroup,
   NInputNumber,
   NSelect,
   NSwitch,
@@ -40,6 +38,7 @@ import {
   getSystemErrorMessage,
   updateResource,
 } from '.'
+import ResourceIconPicker from './ResourceIconPicker.vue'
 import { resourceTypeLabels, statusSelectOptions } from './labels'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
 import { toTreeOptions } from '../../utils/ui'
@@ -360,21 +359,11 @@ watch(
 
           <form.Field name="icon" v-slot="{ field, state }">
             <NFormItem label="图标" v-bind="formItemValidationProps(state.meta)">
-              <NInputGroup>
-                <NInput
-                  data-test="resource-form-icon"
-                  :value="state.value ?? ''"
-                  placeholder="例如 lucide:users"
-                  @blur="field.handleBlur"
-                  @update:value="field.handleChange"
-                />
-                <span
-                  class="flex w-18 shrink-0 items-center justify-center border border-l-0 border-stone-200 bg-stone-50 text-stone-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                >
-                  <Icon v-if="state.value" :icon="state.value" />
-                  <span v-else data-test="resource-icon-empty">无</span>
-                </span>
-              </NInputGroup>
+              <ResourceIconPicker
+                :value="state.value ?? null"
+                @blur="field.handleBlur"
+                @update:value="field.handleChange"
+              />
             </NFormItem>
           </form.Field>
 

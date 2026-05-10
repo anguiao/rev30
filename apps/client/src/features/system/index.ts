@@ -27,6 +27,7 @@ export {
   getRole,
   getUser,
   listRoles,
+  searchIcons,
   listUsers,
   updateResource,
   updateRole,

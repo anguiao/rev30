@@ -27,10 +27,13 @@ import {
   type UserCreateResponse,
   type UserResetPasswordResponse,
   type UserUpdateInput,
+  type IconSearchQuery,
+  type IconSearchResponse,
   userCreateResponseSchema,
   userSchema,
   userListResponseSchema,
   userResetPasswordResponseSchema,
+  iconSearchResponseSchema,
 } from '@rev30/shared'
 import type { z } from 'zod'
 import { api } from '../../api'
@@ -165,6 +168,15 @@ export async function listRoles(query: RoleListQuery): Promise<RoleListResponse>
       query: normalizeRequestQuery(query),
     }),
     roleListResponseSchema,
+  )
+}
+
+export async function searchIcons(query: IconSearchQuery): Promise<IconSearchResponse> {
+  return parseSystemResponse(
+    await api.icons.search.$get({
+      query: normalizeRequestQuery(query),
+    }),
+    iconSearchResponseSchema,
   )
 }
 

@@ -29,6 +29,7 @@ import {
   getDepartmentTree,
   updateDepartment,
   getResourceTree,
+  searchIcons,
   getSystemErrorMessage,
   listRoles,
   listUsers,
@@ -47,6 +48,33 @@ afterEach(() => {
 })
 
 describe('system request helpers', () => {
+  it('searches icons through the public icon endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          list: [
+            {
+              icon: 'lucide:users',
+              prefix: 'lucide',
+              name: 'users',
+              collection: 'Lucide',
+              palette: false,
+            },
+          ],
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await searchIcons({ keyword: '用户', limit: 20 })
+
+    expect(result.list[0]?.icon).toBe('lucide:users')
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/icons/search')
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('keyword=%E7%94%A8%E6%88%B7')
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('limit=20')
+  })
+
   it('parses list responses from the system users endpoint', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(

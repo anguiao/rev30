@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { iconDataParamSchema, iconDataQuerySchema } from '../../src/schemas/icons'
+import {
+  iconDataParamSchema,
+  iconDataQuerySchema,
+  iconSearchQuerySchema,
+  iconSearchResponseSchema,
+} from '../../src/schemas/icons'
 
 describe('icon schemas', () => {
   it('parses icon data route params into an icon prefix', () => {
@@ -43,5 +48,54 @@ describe('icon schemas', () => {
 
   it('requires the icons query parameter', () => {
     expect(iconDataQuerySchema.safeParse({}).success).toBe(false)
+  })
+
+  it('parses icon search query defaults and trims the keyword', () => {
+    expect(iconSearchQuerySchema.parse({})).toEqual({
+      keyword: '',
+      limit: 60,
+    })
+
+    expect(
+      iconSearchQuerySchema.parse({
+        keyword: ' 用户 ',
+        limit: '24',
+      }),
+    ).toEqual({
+      keyword: '用户',
+      limit: 24,
+    })
+  })
+
+  it('clamps icon search limits and rejects invalid limits', () => {
+    expect(iconSearchQuerySchema.parse({ limit: '200' }).limit).toBe(100)
+    expect(iconSearchQuerySchema.safeParse({ limit: '0' }).success).toBe(false)
+    expect(iconSearchQuerySchema.safeParse({ limit: 'abc' }).success).toBe(false)
+  })
+
+  it('parses icon search responses', () => {
+    expect(
+      iconSearchResponseSchema.parse({
+        list: [
+          {
+            icon: 'lucide:users',
+            prefix: 'lucide',
+            name: 'users',
+            collection: 'Lucide',
+            palette: false,
+          },
+        ],
+      }),
+    ).toEqual({
+      list: [
+        {
+          icon: 'lucide:users',
+          prefix: 'lucide',
+          name: 'users',
+          collection: 'Lucide',
+          palette: false,
+        },
+      ],
+    })
   })
 })

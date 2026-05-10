@@ -143,6 +143,7 @@ const formError = ref<string | null>(null)
 const form = useForm({
   defaultValues: { ...defaultFormValues, parentId: props.parentId },
   validators: {
+    onChange: resourceFormSchema,
     onSubmit: resourceFormSchema,
   },
   onSubmit({ value }) {
@@ -273,10 +274,7 @@ watch(
 
         <NForm @submit.prevent="handleSubmit">
           <form.Field name="type" v-slot="{ field, state }">
-            <NFormItem
-              label="资源类型"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="资源类型" v-bind="formItemValidationProps(state.meta)">
               <NSelect
                 data-test="resource-form-type"
                 :value="state.value"
@@ -287,10 +285,7 @@ watch(
           </form.Field>
 
           <form.Field name="name" v-slot="{ field, state }">
-            <NFormItem
-              label="资源名称"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="资源名称" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="resource-form-name"
                 :value="state.value"
@@ -302,10 +297,7 @@ watch(
           </form.Field>
 
           <form.Field name="code" v-slot="{ field, state }">
-            <NFormItem
-              label="资源编码"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="资源编码" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="resource-form-code"
                 :value="state.value"
@@ -317,10 +309,7 @@ watch(
           </form.Field>
 
           <form.Field name="parentId" v-slot="{ field, state }">
-            <NFormItem
-              label="上级资源"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="上级资源" v-bind="formItemValidationProps(state.meta)">
               <NTreeSelect
                 data-test="resource-form-parent"
                 clearable
@@ -335,10 +324,7 @@ watch(
           </form.Field>
 
           <form.Field v-if="showsPath" name="path" v-slot="{ field, state }">
-            <NFormItem
-              label="内部路径"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="内部路径" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="resource-form-path"
                 :value="state.value ?? ''"
@@ -350,10 +336,7 @@ watch(
           </form.Field>
 
           <form.Field v-if="showsExternalUrl" name="externalUrl" v-slot="{ field, state }">
-            <NFormItem
-              label="外链地址"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="外链地址" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="resource-form-external-url"
                 :value="state.value ?? ''"
@@ -365,10 +348,7 @@ watch(
           </form.Field>
 
           <form.Field v-if="showsOpenTarget" name="openTarget" v-slot="{ field, state }">
-            <NFormItem
-              label="打开方式"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="打开方式" v-bind="formItemValidationProps(state.meta)">
               <NSelect
                 data-test="resource-form-open-target"
                 :value="state.value ?? null"
@@ -379,10 +359,7 @@ watch(
           </form.Field>
 
           <form.Field name="icon" v-slot="{ field, state }">
-            <NFormItem
-              label="图标"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="图标" v-bind="formItemValidationProps(state.meta)">
               <NInputGroup>
                 <NInput
                   data-test="resource-form-icon"
@@ -403,10 +380,7 @@ watch(
 
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <form.Field name="hidden" v-slot="{ field, state }">
-              <NFormItem
-                label="隐藏"
-                v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-              >
+              <NFormItem label="隐藏" v-bind="formItemValidationProps(state.meta)">
                 <NSwitch
                   data-test="resource-form-hidden"
                   :value="state.value"
@@ -416,10 +390,7 @@ watch(
             </form.Field>
 
             <form.Field name="status" v-slot="{ field, state }">
-              <NFormItem
-                label="状态"
-                v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-              >
+              <NFormItem label="状态" v-bind="formItemValidationProps(state.meta)">
                 <NSelect
                   data-test="resource-form-status"
                   :value="state.value"
@@ -431,10 +402,7 @@ watch(
           </div>
 
           <form.Field name="sortOrder" v-slot="{ field, state }">
-            <NFormItem
-              label="排序"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="排序" v-bind="formItemValidationProps(state.meta)">
               <NInputNumber
                 data-test="resource-form-sort-order"
                 class="w-full"

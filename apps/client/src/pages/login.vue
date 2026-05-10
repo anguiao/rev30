@@ -19,7 +19,7 @@ const { form, formError, isSubmitting } = useLoginForm()
 
     <NForm class="flex flex-col gap-4" @submit.prevent="form.handleSubmit()">
       <form.Field name="username" v-slot="{ field, state }">
-        <NFormItem label="用户名" v-bind="formItemValidationProps(state.meta.errors)">
+        <NFormItem label="用户名" v-bind="formItemValidationProps(state.meta)">
           <NInput
             data-test="login-username"
             :value="state.value"
@@ -33,7 +33,7 @@ const { form, formError, isSubmitting } = useLoginForm()
       </form.Field>
 
       <form.Field name="password" v-slot="{ field, state }">
-        <NFormItem label="密码" v-bind="formItemValidationProps(state.meta.errors)">
+        <NFormItem label="密码" v-bind="formItemValidationProps(state.meta)">
           <NInput
             data-test="login-password"
             :value="state.value"

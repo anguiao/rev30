@@ -45,6 +45,7 @@ const { isLoading: isProfileSubmitting, ...profileMutation } = useMutation({
 const profileForm = useForm({
   defaultValues: pick(currentUser.value, ['nickname', 'email', 'phone']) as AuthProfileUpdateInput,
   validators: {
+    onChange: authProfileUpdateSchema,
     onSubmit: authProfileUpdateSchema,
   },
   async onSubmit({ value }) {
@@ -83,6 +84,7 @@ const passwordForm = useForm({
     confirmPassword: '',
   } as AuthPasswordUpdateFormInput,
   validators: {
+    onChange: authPasswordUpdateFormSchema,
     onSubmit: authPasswordUpdateFormSchema,
   },
   async onSubmit({ value }) {
@@ -142,10 +144,7 @@ const passwordForm = useForm({
               </NFormItem>
 
               <profileForm.Field name="nickname" v-slot="{ field, state }">
-                <NFormItem
-                  label="昵称"
-                  v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-                >
+                <NFormItem label="昵称" v-bind="formItemValidationProps(state.meta)">
                   <NInput
                     data-test="account-profile-nickname"
                     :value="state.value"
@@ -158,10 +157,7 @@ const passwordForm = useForm({
               </profileForm.Field>
 
               <profileForm.Field name="email" v-slot="{ field, state }">
-                <NFormItem
-                  label="邮箱"
-                  v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-                >
+                <NFormItem label="邮箱" v-bind="formItemValidationProps(state.meta)">
                   <NInput
                     data-test="account-profile-email"
                     :value="state.value ?? ''"
@@ -174,10 +170,7 @@ const passwordForm = useForm({
               </profileForm.Field>
 
               <profileForm.Field name="phone" v-slot="{ field, state }">
-                <NFormItem
-                  label="手机号"
-                  v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-                >
+                <NFormItem label="手机号" v-bind="formItemValidationProps(state.meta)">
                   <NInput
                     data-test="account-profile-phone"
                     :value="state.value ?? ''"
@@ -218,10 +211,7 @@ const passwordForm = useForm({
 
             <NForm data-test="account-password-form" @submit.prevent="passwordForm.handleSubmit()">
               <passwordForm.Field name="currentPassword" v-slot="{ field, state }">
-                <NFormItem
-                  label="当前密码"
-                  v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-                >
+                <NFormItem label="当前密码" v-bind="formItemValidationProps(state.meta)">
                   <NInput
                     data-test="account-password-current"
                     :value="state.value"
@@ -236,10 +226,7 @@ const passwordForm = useForm({
               </passwordForm.Field>
 
               <passwordForm.Field name="newPassword" v-slot="{ field, state }">
-                <NFormItem
-                  label="新密码"
-                  v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-                >
+                <NFormItem label="新密码" v-bind="formItemValidationProps(state.meta)">
                   <NInput
                     data-test="account-password-new"
                     :value="state.value"
@@ -254,10 +241,7 @@ const passwordForm = useForm({
               </passwordForm.Field>
 
               <passwordForm.Field name="confirmPassword" v-slot="{ field, state }">
-                <NFormItem
-                  label="确认新密码"
-                  v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-                >
+                <NFormItem label="确认新密码" v-bind="formItemValidationProps(state.meta)">
                   <NInput
                     data-test="account-password-confirm"
                     :value="state.value"

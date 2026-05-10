@@ -20,10 +20,7 @@ const { form, formError, isSubmitting } = useRegisterForm()
     <NForm class="flex flex-col gap-2" @submit.prevent="form.handleSubmit()">
       <div class="grid grid-cols-1 gap-x-4 md:grid-cols-2">
         <form.Field name="username" v-slot="{ field, state }">
-          <NFormItem
-            label="用户名"
-            v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-          >
+          <NFormItem label="用户名" v-bind="formItemValidationProps(state.meta)">
             <NInput
               data-test="register-username"
               :value="state.value"
@@ -36,10 +33,7 @@ const { form, formError, isSubmitting } = useRegisterForm()
         </form.Field>
 
         <form.Field name="nickname" v-slot="{ field, state }">
-          <NFormItem
-            label="昵称"
-            v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-          >
+          <NFormItem label="昵称" v-bind="formItemValidationProps(state.meta)">
             <NInput
               data-test="register-nickname"
               :value="state.value"
@@ -52,10 +46,7 @@ const { form, formError, isSubmitting } = useRegisterForm()
         </form.Field>
 
         <form.Field name="password" v-slot="{ field, state }">
-          <NFormItem
-            label="密码"
-            v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-          >
+          <NFormItem label="密码" v-bind="formItemValidationProps(state.meta)">
             <NInput
               data-test="register-password"
               :value="state.value"
@@ -70,10 +61,7 @@ const { form, formError, isSubmitting } = useRegisterForm()
         </form.Field>
 
         <form.Field name="confirmPassword" v-slot="{ field, state }">
-          <NFormItem
-            label="确认密码"
-            v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-          >
+          <NFormItem label="确认密码" v-bind="formItemValidationProps(state.meta)">
             <NInput
               data-test="register-confirm-password"
               :value="state.value"
@@ -88,10 +76,7 @@ const { form, formError, isSubmitting } = useRegisterForm()
         </form.Field>
 
         <form.Field name="email" v-slot="{ field, state }">
-          <NFormItem
-            label="邮箱"
-            v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-          >
+          <NFormItem label="邮箱" v-bind="formItemValidationProps(state.meta)">
             <NInput
               data-test="register-email"
               :value="state.value ?? ''"
@@ -104,10 +89,7 @@ const { form, formError, isSubmitting } = useRegisterForm()
         </form.Field>
 
         <form.Field name="phone" v-slot="{ field, state }">
-          <NFormItem
-            label="手机号"
-            v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-          >
+          <NFormItem label="手机号" v-bind="formItemValidationProps(state.meta)">
             <NInput
               data-test="register-phone"
               :value="state.value ?? ''"

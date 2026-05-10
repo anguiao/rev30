@@ -98,6 +98,7 @@ const formError = ref<string | null>(null)
 const form = useForm({
   defaultValues: defaultFormValues,
   validators: {
+    onChange: roleFormSchema,
     onSubmit: roleFormSchema,
   },
   onSubmit({ value }) {
@@ -195,10 +196,7 @@ const resourceIdsSchema = computed(() =>
 
         <NForm @submit.prevent="handleSubmit">
           <form.Field name="name" v-slot="{ field, state }">
-            <NFormItem
-              label="角色名称"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="角色名称" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="role-form-name"
                 :value="state.value"
@@ -210,10 +208,7 @@ const resourceIdsSchema = computed(() =>
           </form.Field>
 
           <form.Field name="code" v-slot="{ field, state }">
-            <NFormItem
-              label="角色编码"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="角色编码" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="role-form-code"
                 :value="state.value"
@@ -225,10 +220,7 @@ const resourceIdsSchema = computed(() =>
           </form.Field>
 
           <form.Field name="status" v-slot="{ field, state }">
-            <NFormItem
-              label="状态"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="状态" v-bind="formItemValidationProps(state.meta)">
               <NSelect
                 data-test="role-form-status"
                 :value="state.value"
@@ -239,10 +231,7 @@ const resourceIdsSchema = computed(() =>
           </form.Field>
 
           <form.Field name="sortOrder" v-slot="{ field, state }">
-            <NFormItem
-              label="排序"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="排序" v-bind="formItemValidationProps(state.meta)">
               <NInputNumber
                 data-test="role-form-sort-order"
                 class="w-full"
@@ -262,10 +251,7 @@ const resourceIdsSchema = computed(() =>
             :validators="{ onChange: resourceIdsSchema }"
             v-slot="{ field, state }"
           >
-            <NFormItem
-              label="资源权限"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="资源权限" v-bind="formItemValidationProps(state.meta)">
               <NTree
                 data-test="role-form-resources"
                 block-line

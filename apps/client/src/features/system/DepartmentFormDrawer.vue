@@ -103,6 +103,7 @@ const formError = ref<string | null>(null)
 const form = useForm({
   defaultValues: { ...defaultFormValues, parentId: props.parentId },
   validators: {
+    onChange: departmentFormSchema,
     onSubmit: departmentFormSchema,
   },
   onSubmit({ value }) {
@@ -204,10 +205,7 @@ watch(
 
         <NForm @submit.prevent="handleSubmit">
           <form.Field name="name" v-slot="{ field, state }">
-            <NFormItem
-              label="部门名称"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="部门名称" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="department-form-name"
                 :value="state.value"
@@ -219,10 +217,7 @@ watch(
           </form.Field>
 
           <form.Field name="code" v-slot="{ field, state }">
-            <NFormItem
-              label="部门编码"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="部门编码" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="department-form-code"
                 :value="state.value"
@@ -234,10 +229,7 @@ watch(
           </form.Field>
 
           <form.Field name="parentId" v-slot="{ field, state }">
-            <NFormItem
-              label="上级部门"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="上级部门" v-bind="formItemValidationProps(state.meta)">
               <NTreeSelect
                 data-test="department-form-parent"
                 clearable
@@ -252,10 +244,7 @@ watch(
           </form.Field>
 
           <form.Field name="status" v-slot="{ field, state }">
-            <NFormItem
-              label="状态"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="状态" v-bind="formItemValidationProps(state.meta)">
               <NSelect
                 data-test="department-form-status"
                 :value="state.value"
@@ -266,10 +255,7 @@ watch(
           </form.Field>
 
           <form.Field name="sortOrder" v-slot="{ field, state }">
-            <NFormItem
-              label="排序"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="排序" v-bind="formItemValidationProps(state.meta)">
               <NInputNumber
                 data-test="department-form-sort-order"
                 class="w-full"

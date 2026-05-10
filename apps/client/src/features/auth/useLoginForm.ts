@@ -24,6 +24,7 @@ export function useLoginForm() {
       password: '',
     } as AuthLoginInput,
     validators: {
+      onChange: authLoginSchema,
       onSubmit: authLoginSchema,
     },
     async onSubmit({ value }) {

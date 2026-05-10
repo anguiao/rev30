@@ -108,6 +108,7 @@ const formError = ref<string | null>(null)
 const form = useForm({
   defaultValues: defaultFormValues,
   validators: {
+    onChange: userFormSchema,
     onSubmit: userFormSchema,
   },
   onSubmit({ value }) {
@@ -210,10 +211,7 @@ function toDepartmentIds(value: Array<string | number> | null) {
 
         <NForm @submit.prevent="handleSubmit">
           <form.Field name="username" v-slot="{ field, state }">
-            <NFormItem
-              label="用户名"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="用户名" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="user-form-username"
                 :value="state.value"
@@ -225,10 +223,7 @@ function toDepartmentIds(value: Array<string | number> | null) {
           </form.Field>
 
           <form.Field name="nickname" v-slot="{ field, state }">
-            <NFormItem
-              label="昵称"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="昵称" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="user-form-nickname"
                 :value="state.value"
@@ -241,10 +236,7 @@ function toDepartmentIds(value: Array<string | number> | null) {
 
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <form.Field name="email" v-slot="{ field, state }">
-              <NFormItem
-                label="邮箱"
-                v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-              >
+              <NFormItem label="邮箱" v-bind="formItemValidationProps(state.meta)">
                 <NInput
                   data-test="user-form-email"
                   :value="state.value ?? ''"
@@ -256,10 +248,7 @@ function toDepartmentIds(value: Array<string | number> | null) {
             </form.Field>
 
             <form.Field name="phone" v-slot="{ field, state }">
-              <NFormItem
-                label="手机号"
-                v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-              >
+              <NFormItem label="手机号" v-bind="formItemValidationProps(state.meta)">
                 <NInput
                   data-test="user-form-phone"
                   :value="state.value ?? ''"
@@ -272,10 +261,7 @@ function toDepartmentIds(value: Array<string | number> | null) {
           </div>
 
           <form.Field name="status" v-slot="{ field, state }">
-            <NFormItem
-              label="状态"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="状态" v-bind="formItemValidationProps(state.meta)">
               <NSelect
                 data-test="user-form-status"
                 :value="state.value"
@@ -286,10 +272,7 @@ function toDepartmentIds(value: Array<string | number> | null) {
           </form.Field>
 
           <form.Field name="departmentIds" v-slot="{ field, state }">
-            <NFormItem
-              label="所属部门"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="所属部门" v-bind="formItemValidationProps(state.meta)">
               <NTreeSelect
                 data-test="user-form-departments"
                 multiple
@@ -312,10 +295,7 @@ function toDepartmentIds(value: Array<string | number> | null) {
           </form.Field>
 
           <form.Field name="roleIds" v-slot="{ field, state }">
-            <NFormItem
-              label="角色"
-              v-bind="formItemValidationProps(state.meta.errors, state.meta.errorMap.onServer)"
-            >
+            <NFormItem label="角色" v-bind="formItemValidationProps(state.meta)">
               <NSelect
                 data-test="user-form-roles"
                 :value="state.value"

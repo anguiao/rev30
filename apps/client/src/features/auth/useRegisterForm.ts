@@ -39,6 +39,7 @@ export function useRegisterForm() {
       phone: '',
     } as AuthRegisterFormInput,
     validators: {
+      onChange: authRegisterFormSchema,
       onSubmit: authRegisterFormSchema,
     },
     async onSubmit({ value }) {

@@ -1,4 +1,4 @@
-import type { AnyFormApi } from '@tanstack/vue-form'
+import type { AnyFieldMeta, AnyFormApi } from '@tanstack/vue-form'
 
 function flattenValidationErrors(errors: unknown[]): unknown[] {
   return errors.flatMap((error) =>
@@ -18,10 +18,15 @@ function validationErrorMessage(error: unknown) {
   return error === undefined ? undefined : String(error)
 }
 
-export function formItemValidationProps(errors: unknown[], serverError?: unknown) {
-  const firstError = flattenValidationErrors(errors).find((error) => error !== undefined)
+export function formItemValidationProps(meta: AnyFieldMeta) {
+  const firstError =
+    meta.isTouched || meta.isBlurred
+      ? flattenValidationErrors(meta.errors).find((error) => error !== undefined)
+      : undefined
   const validationFeedback =
-    typeof serverError === 'string' ? serverError : validationErrorMessage(firstError)
+    typeof meta.errorMap.onServer === 'string'
+      ? meta.errorMap.onServer
+      : validationErrorMessage(firstError)
 
   return validationFeedback === undefined
     ? {}

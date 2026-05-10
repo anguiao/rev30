@@ -2,15 +2,7 @@
 import { useDebounceFn } from '@vueuse/core'
 import { Icon } from '@iconify/vue'
 import type { IconSearchItem } from '@rev30/shared'
-import {
-  NAlert,
-  NEmpty,
-  NInput,
-  NInputGroup,
-  NPopover,
-  NSpin,
-  NTooltip,
-} from 'naive-ui'
+import { NAlert, NEmpty, NInput, NInputGroup, NPopover, NSpin, NTooltip } from 'naive-ui'
 import { nextTick, ref, watch } from 'vue'
 import { searchIcons } from '.'
 

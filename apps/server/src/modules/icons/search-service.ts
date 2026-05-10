@@ -216,7 +216,10 @@ function getSearchTokens(item: SearchIndexItem): string[] {
   return [...tokens]
 }
 
-function addItemToTokenBuckets(tokenBuckets: Map<string, SearchIndexItem[]>, item: SearchIndexItem) {
+function addItemToTokenBuckets(
+  tokenBuckets: Map<string, SearchIndexItem[]>,
+  item: SearchIndexItem,
+) {
   for (const token of getSearchTokens(item)) {
     const bucket = tokenBuckets.get(token)
 
@@ -292,9 +295,9 @@ function collectRecallPool(index: SearchIndex, search: ExpandedSearch): SearchIn
     }
 
     if (
-      matchedLiteralToken
-      || candidate.length < minimumFuzzyCandidateLength
-      || !fuzzyCandidatePattern.test(candidate)
+      matchedLiteralToken ||
+      candidate.length < minimumFuzzyCandidateLength ||
+      !fuzzyCandidatePattern.test(candidate)
     ) {
       continue
     }
@@ -328,7 +331,10 @@ async function buildSearchIndex(): Promise<SearchIndex> {
     const collection = collectionInfo.name.trim() || prefix
     const category = collectionInfo.category?.trim() ?? ''
     const palette = Boolean(collectionInfo.palette)
-    const names = new Set<string>([...Object.keys(iconSet.icons), ...Object.keys(iconSet.aliases ?? {})])
+    const names = new Set<string>([
+      ...Object.keys(iconSet.icons),
+      ...Object.keys(iconSet.aliases ?? {}),
+    ])
 
     for (const name of names) {
       const icon = `${prefix}:${name}`
@@ -390,7 +396,11 @@ async function getSearchIndex(): Promise<SearchIndex> {
   return searchIndexPromise
 }
 
-async function recallCandidates(index: SearchIndex, search: ExpandedSearch, limit: number): Promise<SearchIndexItem[]> {
+async function recallCandidates(
+  index: SearchIndex,
+  search: ExpandedSearch,
+  limit: number,
+): Promise<SearchIndexItem[]> {
   if (search.candidates.length === 0) {
     return []
   }
@@ -401,7 +411,10 @@ async function recallCandidates(index: SearchIndex, search: ExpandedSearch, limi
     tiebreakers: [byStartAsc, byLengthAsc],
     limit: Math.max(limit * 4, 60),
   }
-  const fastFinder = recallPool.length === index.all.length ? index.fastFinder : new AsyncFzf(recallPool, finderOptions)
+  const fastFinder =
+    recallPool.length === index.all.length
+      ? index.fastFinder
+      : new AsyncFzf(recallPool, finderOptions)
   const extendedFinder =
     recallPool.length === index.all.length
       ? index.extendedFinder

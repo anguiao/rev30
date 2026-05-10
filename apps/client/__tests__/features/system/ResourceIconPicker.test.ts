@@ -71,7 +71,9 @@ describe('ResourceIconPicker', () => {
     expect(findDisplayInput(emptyWrapper)?.props('value')).toBe('')
 
     const selectedWrapper = mountPicker('lucide:users')
-    expect(selectedWrapper.find('[data-test="resource-icon-empty"]').text()).toContain('lucide:users')
+    expect(selectedWrapper.find('[data-test="resource-icon-empty"]').text()).toContain(
+      'lucide:users',
+    )
     expect(findDisplayInput(selectedWrapper)?.props('value')).toBe('lucide:users')
   })
 

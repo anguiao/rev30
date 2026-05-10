@@ -75,7 +75,13 @@ describe('icon routes', () => {
 
     const response = await app.request('/api/icons/search?keyword=用户&limit=20')
     const body = (await response.json()) as {
-      list: Array<{ icon: string; prefix: string; name: string; collection: string; palette: boolean }>
+      list: Array<{
+        icon: string
+        prefix: string
+        name: string
+        collection: string
+        palette: boolean
+      }>
     }
 
     expect(response.status).toBe(200)
@@ -182,7 +188,9 @@ describe('icon routes', () => {
     expect(result.list.length).toBeGreaterThan(0)
     expect(result.list.length).toBeLessThanOrEqual(12)
     expect(result.list.some((item) => item.icon === 'lucide:users')).toBe(true)
-    expect(whitespaceResult.list.map((item) => item.icon)).toEqual(result.list.map((item) => item.icon))
+    expect(whitespaceResult.list.map((item) => item.icon)).toEqual(
+      result.list.map((item) => item.icon),
+    )
   })
 
   it('searches icons by English, Chinese, alias, exact, and fuzzy keywords', async () => {
@@ -198,7 +206,8 @@ describe('icon routes', () => {
     const combinedChinese = await searchIcons({ keyword: '用户权限', limit: 40 })
     expect(
       combinedChinese.list.some(
-        (item) => item.icon.includes('user') || item.icon.includes('shield') || item.icon.includes('key'),
+        (item) =>
+          item.icon.includes('user') || item.icon.includes('shield') || item.icon.includes('key'),
       ),
     ).toBe(true)
 

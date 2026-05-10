@@ -32,6 +32,7 @@ type ExpandedSearch = {
 }
 
 let searchIndexPromise: Promise<SearchIndex> | null = null
+const maxSearchCandidateCount = 12
 const minimumFuzzyCandidateLength = 3
 const searchTokenPattern = /[a-z0-9]+(?:-[a-z0-9]+)*/g
 const fuzzyCandidatePattern = /^[a-z0-9-]+$/
@@ -46,21 +47,21 @@ function toResponseItem(item: SearchIndexItem): IconSearchItem {
   }
 }
 
-function addPluralVariants(value: string, values: Set<string>) {
+function addPluralVariants(value: string, addValue: (value: string) => boolean) {
   if (value.length <= 1) {
     return
   }
 
   if (value.endsWith('ies') && value.length > 3) {
-    values.add(`${value.slice(0, -3)}y`)
+    addValue(`${value.slice(0, -3)}y`)
   } else if (value.endsWith('y')) {
-    values.add(`${value.slice(0, -1)}ies`)
+    addValue(`${value.slice(0, -1)}ies`)
   }
 
   if (value.endsWith('s')) {
-    values.add(value.slice(0, -1))
+    addValue(value.slice(0, -1))
   } else {
-    values.add(`${value}s`)
+    addValue(`${value}s`)
   }
 }
 
@@ -70,15 +71,50 @@ function expandSearchCandidates(keyword: string): ExpandedSearch {
   const tokens = new Set<string>()
   const aliasTokens = new Set<string>()
   const englishTokens = normalizedKeyword.match(/[a-z0-9:-]+/g) ?? []
+  const addCandidate = (value: string, options: { alias?: boolean } = {}) => {
+    const candidate = value.trim()
+
+    if (!candidate) {
+      return false
+    }
+
+    if (candidates.has(candidate)) {
+      if (options.alias) {
+        aliasTokens.add(candidate)
+      }
+
+      return true
+    }
+
+    if (candidates.size >= maxSearchCandidateCount) {
+      return false
+    }
+
+    candidates.add(candidate)
+
+    if (options.alias) {
+      aliasTokens.add(candidate)
+    }
+
+    return true
+  }
+  const addCandidateWithVariants = (value: string, options: { alias?: boolean } = {}) => {
+    const added = addCandidate(value, options)
+
+    if (!added && !candidates.has(value)) {
+      return
+    }
+
+    addPluralVariants(value, (variant) => addCandidate(variant, options))
+  }
 
   if (normalizedKeyword) {
-    candidates.add(normalizedKeyword)
+    addCandidate(normalizedKeyword)
   }
 
   for (const token of englishTokens) {
     tokens.add(token)
-    candidates.add(token)
-    addPluralVariants(token, candidates)
+    addCandidateWithVariants(token)
   }
 
   for (const group of iconSearchAliasGroups) {
@@ -87,9 +123,7 @@ function expandSearchCandidates(keyword: string): ExpandedSearch {
     }
 
     for (const alias of group) {
-      candidates.add(alias)
-      aliasTokens.add(alias)
-      addPluralVariants(alias, candidates)
+      addCandidateWithVariants(alias, { alias: true })
     }
   }
 
@@ -99,9 +133,7 @@ function expandSearchCandidates(keyword: string): ExpandedSearch {
     }
 
     for (const alias of aliases) {
-      candidates.add(alias)
-      aliasTokens.add(alias)
-      addPluralVariants(alias, candidates)
+      addCandidateWithVariants(alias, { alias: true })
     }
   }
 

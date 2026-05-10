@@ -67,6 +67,10 @@ describe('icon schemas', () => {
     })
   })
 
+  it('rejects overlong icon search keywords', () => {
+    expect(iconSearchQuerySchema.safeParse({ keyword: 'a'.repeat(121) }).success).toBe(false)
+  })
+
   it('clamps icon search limits and rejects invalid limits', () => {
     expect(iconSearchQuerySchema.parse({ limit: '200' }).limit).toBe(100)
     expect(iconSearchQuerySchema.safeParse({ limit: '0' }).success).toBe(false)

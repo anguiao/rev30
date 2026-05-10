@@ -22,6 +22,7 @@ export const iconDataQuerySchema = z.object({
 
 const iconSearchLimitDefault = 60
 const iconSearchLimitMax = 100
+const iconSearchKeywordMaxLength = 120
 const iconNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 const iconSearchLimitSchema = z
@@ -37,7 +38,8 @@ export const iconSearchQuerySchema = z.object({
     .string()
     .optional()
     .default('')
-    .transform((value) => value.trim()),
+    .transform((value) => value.trim())
+    .pipe(z.string().max(iconSearchKeywordMaxLength, '搜索关键词过长')),
   limit: iconSearchLimitSchema,
 })
 

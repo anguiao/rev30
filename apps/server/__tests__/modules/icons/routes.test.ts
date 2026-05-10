@@ -97,9 +97,14 @@ describe('icon routes', () => {
     const app = createApp(database)
 
     const response = await app.request('/api/icons/search?limit=0')
+    const overlongKeywordResponse = await app.request(
+      `/api/icons/search?keyword=${'a'.repeat(121)}`,
+    )
 
     expect(response.status).toBe(404)
     expect(await response.text()).toBe('404')
+    expect(overlongKeywordResponse.status).toBe(404)
+    expect(await overlongKeywordResponse.text()).toBe('404')
   })
 
   it('returns empty icons and not_found when every requested icon is missing', async () => {
@@ -219,6 +224,20 @@ describe('icon routes', () => {
 
     const fuzzy = await searchIcons({ keyword: 'usr', limit: 20 })
     expect(fuzzy.list.some((item) => item.icon.includes('user'))).toBe(true)
+  })
+
+  it('searches broad Chinese keywords with bounded candidate expansion', async () => {
+    const result = await searchIcons({
+      keyword:
+        '用户角色权限菜单资源部门组织系统设置日志首页统计报表字典通知文件外链操作状态排序配置',
+      limit: 20,
+    })
+
+    expect(result.list.length).toBeGreaterThan(0)
+    expect(result.list.length).toBeLessThanOrEqual(20)
+    expect(
+      result.list.some((item) => item.icon.includes('user') || item.icon.includes('shield')),
+    ).toBe(true)
   })
 
   it('keeps color and brand icons searchable while preferring monochrome admin icon sets', async () => {

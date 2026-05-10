@@ -69,6 +69,33 @@ describe('icon routes', () => {
     expect(body.not_found).toEqual(['not-a-real-icon'])
   })
 
+  it('returns icon search results without authentication', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+
+    const response = await app.request('/api/icons/search?keyword=用户&limit=20')
+    const body = (await response.json()) as {
+      list: Array<{ icon: string; prefix: string; name: string; collection: string; palette: boolean }>
+    }
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toContain('application/json')
+    expectIconHeaders(response)
+    expect(body.list.length).toBeGreaterThan(0)
+    expect(body.list.length).toBeLessThanOrEqual(20)
+    expect(body.list.some((item) => item.icon === 'lucide:users')).toBe(true)
+  })
+
+  it('returns 404 for invalid icon search queries', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+
+    const response = await app.request('/api/icons/search?limit=0')
+
+    expect(response.status).toBe(404)
+    expect(await response.text()).toBe('404')
+  })
+
   it('returns empty icons and not_found when every requested icon is missing', async () => {
     const database = await createTestDb()
     const app = createApp(database)

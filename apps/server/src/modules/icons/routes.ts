@@ -1,7 +1,8 @@
-import { iconDataParamSchema, iconDataQuerySchema } from '@rev30/shared'
+import { iconDataParamSchema, iconDataQuerySchema, iconSearchQuerySchema } from '@rev30/shared'
 import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { searchIcons } from './search-service'
 import { getIconSubset } from './service'
 
 const iconParamValidator = zValidator('param', iconDataParamSchema, (result, c) => {
@@ -11,6 +12,12 @@ const iconParamValidator = zValidator('param', iconDataParamSchema, (result, c) 
 })
 
 const iconQueryValidator = zValidator('query', iconDataQuerySchema, (result, c) => {
+  if (!result.success) {
+    return c.text('404', 404)
+  }
+})
+
+const iconSearchQueryValidator = zValidator('query', iconSearchQuerySchema, (result, c) => {
   if (!result.success) {
     return c.text('404', 404)
   }
@@ -32,6 +39,14 @@ export const iconRoutes = new Hono()
       maxAge: 86400,
     }),
   )
+  .get('/search', iconSearchQueryValidator, async (c) => {
+    const query = c.req.valid('query')
+    const result = await searchIcons(query)
+
+    c.header('content-type', 'application/json; charset=utf-8')
+
+    return c.json(result)
+  })
   .get('/:filename', iconParamValidator, iconQueryValidator, async (c) => {
     const { prefix } = c.req.valid('param')
     const { icons, pretty } = c.req.valid('query')

@@ -274,7 +274,26 @@ describe('resource routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(createResponse.status).toBe(400)
-    expect(await createResponse.json()).toEqual({ message: '请求体无效' })
+    expect(await createResponse.json()).toEqual({
+      field: 'path',
+      message: '内部菜单路径不能为空',
+    })
+
+    const invalidExternalUrlResponse = await app.request('/api/system/resources', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: RESOURCE_TYPE_EXTERNAL,
+        name: 'Docs',
+        code: 'test-system:docs',
+        externalUrl: 'not-a-url',
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(invalidExternalUrlResponse.status).toBe(400)
+    expect(await invalidExternalUrlResponse.json()).toEqual({
+      field: 'externalUrl',
+      message: '外链地址无效',
+    })
   })
 
   it('updates resource fields, normalizes type-specific fields, and rejects circular moves', async () => {
@@ -440,7 +459,10 @@ describe('resource routes', () => {
     })
 
     expect(response.status).toBe(400)
-    expect(await response.json()).toEqual({ message: '内部菜单路径不能为空' })
+    expect(await response.json()).toEqual({
+      field: 'path',
+      message: '内部菜单路径不能为空',
+    })
   })
 
   it('normalizes omitted-type update fields against the existing resource type', async () => {
@@ -493,7 +515,10 @@ describe('resource routes', () => {
     })
 
     expect(response.status).toBe(400)
-    expect(await response.json()).toEqual({ message: '外链地址无效' })
+    expect(await response.json()).toEqual({
+      field: 'externalUrl',
+      message: '外链地址无效',
+    })
   })
 
   it('rejects duplicate resource codes on create and update', async () => {

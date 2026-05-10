@@ -123,38 +123,6 @@ export async function resetUserPassword(id: string): Promise<UserResetPasswordRe
   )
 }
 
-export async function listRoles(query: RoleListQuery): Promise<RoleListResponse> {
-  return parseSystemResponse(
-    await api.system.roles.$get({
-      query: normalizeRequestQuery(query),
-    }),
-    roleListResponseSchema,
-  )
-}
-
-export async function getRole(id: string): Promise<Role> {
-  return parseSystemResponse(await api.system.roles[':id'].$get({ param: { id } }), roleSchema)
-}
-
-export async function createRole(input: RoleCreateInput): Promise<Role> {
-  return parseSystemResponse(await api.system.roles.$post({ json: input }), roleSchema)
-}
-
-export async function updateRole(id: string, input: RoleUpdateInput): Promise<Role> {
-  return parseSystemResponse(
-    await api.system.roles[':id'].$patch({ param: { id }, json: input }),
-    roleSchema,
-  )
-}
-
-export async function deleteRole(id: string): Promise<void> {
-  const response = await api.system.roles[':id'].$delete({ param: { id } })
-
-  if (!response.ok) {
-    throw await parseSystemError(response)
-  }
-}
-
 export async function getDepartmentTree(): Promise<DepartmentTreeNode[]> {
   return parseSystemResponse(await api.system.departments.tree.$get(), departmentTreeResponseSchema)
 }
@@ -185,6 +153,38 @@ export async function updateDepartment(
 
 export async function deleteDepartment(id: string): Promise<void> {
   const response = await api.system.departments[':id'].$delete({ param: { id } })
+
+  if (!response.ok) {
+    throw await parseSystemError(response)
+  }
+}
+
+export async function listRoles(query: RoleListQuery): Promise<RoleListResponse> {
+  return parseSystemResponse(
+    await api.system.roles.$get({
+      query: normalizeRequestQuery(query),
+    }),
+    roleListResponseSchema,
+  )
+}
+
+export async function getRole(id: string): Promise<Role> {
+  return parseSystemResponse(await api.system.roles[':id'].$get({ param: { id } }), roleSchema)
+}
+
+export async function createRole(input: RoleCreateInput): Promise<Role> {
+  return parseSystemResponse(await api.system.roles.$post({ json: input }), roleSchema)
+}
+
+export async function updateRole(id: string, input: RoleUpdateInput): Promise<Role> {
+  return parseSystemResponse(
+    await api.system.roles[':id'].$patch({ param: { id }, json: input }),
+    roleSchema,
+  )
+}
+
+export async function deleteRole(id: string): Promise<void> {
+  const response = await api.system.roles[':id'].$delete({ param: { id } })
 
   if (!response.ok) {
     throw await parseSystemError(response)

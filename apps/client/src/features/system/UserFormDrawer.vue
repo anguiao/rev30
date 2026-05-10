@@ -328,7 +328,8 @@ function toDepartmentIds(value: Array<string | number> | null) {
             </NFormItem>
           </form.Field>
 
-          <div class="flex justify-end">
+          <div class="flex justify-end gap-3">
+            <NButton @click="show = false">取消</NButton>
             <NButton
               data-test="user-form-submit"
               type="primary"

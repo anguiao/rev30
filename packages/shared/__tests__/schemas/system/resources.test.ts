@@ -10,6 +10,7 @@ import {
   RESOURCE_TYPE_EXTERNAL,
   RESOURCE_TYPE_MENU,
   resourceCreateSchema,
+  resourceFormSchema,
   resourceListQuerySchema,
   resourceListResponseSchema,
   resourceSchema,
@@ -86,20 +87,21 @@ describe('resource schemas', () => {
     })
   })
 
-  it('requires internal menus to provide a path', () => {
-    const result = resourceCreateSchema.safeParse({
+  it('normalizes missing internal menu paths for service-level validation', () => {
+    expect(
+      resourceCreateSchema.parse({
+        type: RESOURCE_TYPE_MENU,
+        name: 'Users',
+        code: 'system:user',
+      }),
+    ).toMatchObject({
       type: RESOURCE_TYPE_MENU,
-      name: 'Users',
-      code: 'system:user',
+      path: null,
+      externalUrl: null,
     })
-
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(errorText(result)).toContain('内部菜单路径不能为空')
-    }
   })
 
-  it('requires external menus to provide an external url and defaults to blank target', () => {
+  it('defaults external menus to blank target and leaves final url validation to service', () => {
     expect(
       resourceCreateSchema.parse({
         type: RESOURCE_TYPE_EXTERNAL,
@@ -114,16 +116,107 @@ describe('resource schemas', () => {
       openTarget: RESOURCE_OPEN_TARGET_BLANK,
     })
 
-    const result = resourceCreateSchema.safeParse({
+    expect(
+      resourceCreateSchema.parse({
+        type: RESOURCE_TYPE_EXTERNAL,
+        name: 'Broken Docs',
+        code: 'system:broken-docs',
+      }),
+    ).toMatchObject({
       type: RESOURCE_TYPE_EXTERNAL,
-      name: 'Broken Docs',
-      code: 'system:broken-docs',
+      path: null,
+      externalUrl: null,
+      openTarget: RESOURCE_OPEN_TARGET_BLANK,
+    })
+  })
+
+  it('validates full resource form submissions before normalization', () => {
+    const baseFormInput = {
+      name: 'Docs',
+      code: 'system:docs',
+      parentId: null,
+      path: null,
+      externalUrl: null,
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
+      icon: null,
+      hidden: false,
+      status: RESOURCE_STATUS_ENABLED,
+      sortOrder: 0,
+    }
+
+    const missingMenuPath = resourceFormSchema.safeParse({
+      ...baseFormInput,
+      type: RESOURCE_TYPE_MENU,
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(errorText(result)).toContain('外链地址不能为空')
+    expect(missingMenuPath.success).toBe(false)
+    if (!missingMenuPath.success) {
+      expect(errorText(missingMenuPath)).toContain('内部菜单路径不能为空')
     }
+
+    const missingExternalUrl = resourceFormSchema.safeParse({
+      ...baseFormInput,
+      type: RESOURCE_TYPE_EXTERNAL,
+    })
+
+    expect(missingExternalUrl.success).toBe(false)
+    if (!missingExternalUrl.success) {
+      expect(errorText(missingExternalUrl)).toContain('外链地址不能为空')
+    }
+
+    const invalidExternalUrl = resourceFormSchema.safeParse({
+      ...baseFormInput,
+      type: RESOURCE_TYPE_EXTERNAL,
+      externalUrl: 'not-a-url',
+    })
+
+    expect(invalidExternalUrl.success).toBe(false)
+    if (!invalidExternalUrl.success) {
+      expect(errorText(invalidExternalUrl)).toContain('外链地址无效')
+    }
+
+    expect(
+      resourceFormSchema.parse({
+        ...baseFormInput,
+        type: RESOURCE_TYPE_EXTERNAL,
+        externalUrl: 'https://example.com/docs',
+      }),
+    ).toMatchObject({
+      type: RESOURCE_TYPE_EXTERNAL,
+      externalUrl: 'https://example.com/docs',
+    })
+  })
+
+  it('keeps submitted resource type-specific validation in the service layer', () => {
+    const baseFormInput = {
+      name: 'Docs',
+      code: 'system:docs',
+      parentId: null,
+      path: null,
+      externalUrl: null,
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
+      icon: null,
+      hidden: false,
+      status: RESOURCE_STATUS_ENABLED,
+      sortOrder: 0,
+    }
+
+    expect(
+      resourceCreateSchema.parse({ ...baseFormInput, type: RESOURCE_TYPE_MENU }),
+    ).toMatchObject({
+      type: RESOURCE_TYPE_MENU,
+      path: null,
+    })
+    expect(
+      resourceCreateSchema.parse({
+        ...baseFormInput,
+        type: RESOURCE_TYPE_EXTERNAL,
+        externalUrl: 'not-a-url',
+      }),
+    ).toMatchObject({
+      type: RESOURCE_TYPE_EXTERNAL,
+      externalUrl: 'not-a-url',
+    })
   })
 
   it('parses list query strings into pagination and filters', () => {
@@ -414,14 +507,24 @@ describe('resource schemas', () => {
       openTarget: RESOURCE_OPEN_TARGET_SELF,
     })
 
-    const ignoredByExternal = resourceUpdateSchema.safeParse({
+    expect(
+      resourceUpdateSchema.parse({
+        type: RESOURCE_TYPE_EXTERNAL,
+        externalUrl: 'not-a-url',
+      }),
+    ).toMatchObject({
       type: RESOURCE_TYPE_EXTERNAL,
       externalUrl: 'not-a-url',
     })
 
-    expect(ignoredByExternal.success).toBe(false)
-    if (!ignoredByExternal.success) {
-      expect(errorText(ignoredByExternal)).toContain('外链地址无效')
-    }
+    expect(
+      resourceUpdateSchema.parse({
+        type: RESOURCE_TYPE_EXTERNAL,
+        externalUrl: null,
+      }),
+    ).toMatchObject({
+      type: RESOURCE_TYPE_EXTERNAL,
+      externalUrl: null,
+    })
   })
 })

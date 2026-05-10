@@ -8,10 +8,6 @@ export function nonBlankString(message = '不能为空') {
   return z.string().trim().min(1, message)
 }
 
-export function optionalNullableInput<TSchema extends z.ZodType>(schema: TSchema) {
-  return z.preprocess(blankStringToNull, z.union([schema, z.null()])).optional()
-}
-
 export function optionalNullableString(message = '不能为空') {
   return z
     .union([z.string(), z.null()])

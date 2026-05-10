@@ -1,10 +1,5 @@
 import { z } from 'zod'
-import {
-  nonBlankString,
-  optionalNullableInput,
-  optionalNullableString,
-  sortOrderInputSchema,
-} from '../common/inputs'
+import { nonBlankString, optionalNullableString, sortOrderInputSchema } from '../common/inputs'
 import { paginationQuerySchema } from '../common/pagination'
 import { hasAnyDefinedValue } from '../common/refinements'
 import { optionalNumericQueryValue, optionalQueryValue, optionalTrimmedQueryString } from '../query'
@@ -45,7 +40,9 @@ export const iconifyIconNameSchema = z
   .trim()
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/, '图标名称无效')
 
-const iconInputSchema = optionalNullableInput(iconifyIconNameSchema)
+const iconInputSchema = optionalNullableString().pipe(
+  z.union([iconifyIconNameSchema, z.null()]).optional(),
+)
 export const resourceExternalUrlSchema = z.url({ error: '外链地址无效' })
 
 export const resourceSchema = z.object({
@@ -81,7 +78,7 @@ export const resourceListQuerySchema = paginationQuerySchema.extend({
   parentId: optionalParentIdQuerySchema,
 })
 
-export const resourceFormSchema = z.object({
+const resourceFormBaseSchema = z.object({
   type: resourceTypeSchema,
   name: resourceNameSchema,
   code: resourceCodeSchema,
@@ -95,18 +92,49 @@ export const resourceFormSchema = z.object({
   sortOrder: sortOrderInputSchema,
 })
 
-const resourceCreatePayloadSchema = resourceFormSchema.extend({
-  parentId: resourceIdSchema.nullable().default(null),
-  hidden: z.boolean().default(false),
-  status: resourceStatusSchema.default(RESOURCE_STATUS_ENABLED),
-  sortOrder: sortOrderInputSchema.default(0),
-})
+function validateResourceTypeFields(
+  input: z.infer<typeof resourceFormBaseSchema>,
+  context: z.RefinementCtx,
+) {
+  if (input.type === RESOURCE_TYPE_MENU && input.path == null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['path'],
+      message: '内部菜单路径不能为空',
+    })
+  }
+
+  if (input.type !== RESOURCE_TYPE_EXTERNAL) {
+    return
+  }
+
+  if (input.externalUrl == null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['externalUrl'],
+      message: '外链地址不能为空',
+    })
+    return
+  }
+
+  const externalUrlResult = resourceExternalUrlSchema.safeParse(input.externalUrl)
+
+  if (!externalUrlResult.success) {
+    context.addIssue({
+      code: 'custom',
+      path: ['externalUrl'],
+      message: '外链地址无效',
+    })
+  }
+}
+
+export const resourceFormSchema = resourceFormBaseSchema.superRefine(validateResourceTypeFields)
 
 function defaultOpenTarget(type: Resource['type']) {
   return type === RESOURCE_TYPE_EXTERNAL ? RESOURCE_OPEN_TARGET_BLANK : RESOURCE_OPEN_TARGET_SELF
 }
 
-function normalizeResourceCreateInput(input: z.infer<typeof resourceCreatePayloadSchema>) {
+function normalizeResourceCreateInput(input: z.infer<typeof resourceFormBaseSchema>) {
   const output = {
     ...input,
     path: input.path ?? null,
@@ -132,39 +160,18 @@ function normalizeResourceCreateInput(input: z.infer<typeof resourceCreatePayloa
   return output
 }
 
-function validateResourceTypeFields(
-  value: { type: Resource['type']; path: string | null; externalUrl: string | null },
-  context: z.RefinementCtx,
-) {
-  if (value.type === RESOURCE_TYPE_MENU && value.path === null) {
-    context.addIssue({ code: 'custom', message: '内部菜单路径不能为空', path: ['path'] })
-  }
-
-  if (value.type === RESOURCE_TYPE_EXTERNAL && value.externalUrl === null) {
-    context.addIssue({ code: 'custom', message: '外链地址不能为空', path: ['externalUrl'] })
-  }
-
-  if (value.type === RESOURCE_TYPE_EXTERNAL && value.externalUrl !== null) {
-    const normalizedExternalUrl = value.externalUrl.trim()
-    const urlResult = resourceExternalUrlSchema.safeParse(normalizedExternalUrl)
-
-    if (!urlResult.success) {
-      context.addIssue({
-        code: 'custom',
-        message: '外链地址无效',
-        path: ['externalUrl'],
-      })
-    }
-  }
-}
-
-export const resourceCreateSchema = resourceCreatePayloadSchema
+export const resourceCreateSchema = resourceFormBaseSchema
+  .extend({
+    parentId: resourceIdSchema.nullable().default(null),
+    hidden: z.boolean().default(false),
+    status: resourceStatusSchema.default(RESOURCE_STATUS_ENABLED),
+    sortOrder: sortOrderInputSchema.default(0),
+  })
   .transform(normalizeResourceCreateInput)
-  .superRefine(validateResourceTypeFields)
 
-const resourceUpdatePayloadSchema = resourceFormSchema.partial()
-
-function normalizeResourceUpdateInput(input: z.infer<typeof resourceUpdatePayloadSchema>) {
+function normalizeResourceUpdateInput(
+  input: z.infer<ReturnType<typeof resourceFormBaseSchema.partial>>,
+) {
   const output = {
     ...input,
   }
@@ -196,34 +203,9 @@ function normalizeResourceUpdateInput(input: z.infer<typeof resourceUpdatePayloa
   return output
 }
 
-function validateResourceUpdateTypeFields(
-  value: {
-    type?: Resource['type'] | undefined
-    externalUrl?: string | null | undefined
-  },
-  context: z.RefinementCtx,
-) {
-  if (
-    value.type === RESOURCE_TYPE_EXTERNAL &&
-    value.externalUrl !== undefined &&
-    value.externalUrl !== null
-  ) {
-    const normalizedExternalUrl = value.externalUrl.trim()
-    const urlResult = resourceExternalUrlSchema.safeParse(normalizedExternalUrl)
-
-    if (!urlResult.success) {
-      context.addIssue({
-        code: 'custom',
-        message: '外链地址无效',
-        path: ['externalUrl'],
-      })
-    }
-  }
-}
-
-export const resourceUpdateSchema = resourceUpdatePayloadSchema
+export const resourceUpdateSchema = resourceFormBaseSchema
+  .partial()
   .transform(normalizeResourceUpdateInput)
-  .superRefine(validateResourceUpdateTypeFields)
   .refine(hasAnyDefinedValue, {
     message: '至少修改一个字段',
   })

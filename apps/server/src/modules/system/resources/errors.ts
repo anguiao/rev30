@@ -1,4 +1,5 @@
 import { DrizzleQueryError } from 'drizzle-orm/errors'
+import { FormFieldError } from '../../../common/errors'
 import { POSTGRES_UNIQUE_VIOLATION_CODE } from '../../../db/errors'
 
 const resourceUniqueConstraintName = 'system_resources_code_unique'
@@ -51,10 +52,9 @@ export class ResourceRoleAuthorizationConflictError extends Error {
   }
 }
 
-export class ResourceInvalidTypeFieldsError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'ResourceInvalidTypeFieldsError'
+export class ResourceInvalidTypeFieldsError extends FormFieldError<'path' | 'externalUrl'> {
+  constructor(message: string, field: 'path' | 'externalUrl') {
+    super(message, field)
   }
 }
 

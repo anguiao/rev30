@@ -282,7 +282,8 @@ const resourceIdsSchema = computed(() =>
             </NFormItem>
           </form.Field>
 
-          <div class="flex justify-end">
+          <div class="flex justify-end gap-3">
+            <NButton @click="show = false">取消</NButton>
             <NButton
               data-test="role-form-submit"
               type="primary"

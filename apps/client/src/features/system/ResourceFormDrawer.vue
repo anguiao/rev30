@@ -38,10 +38,9 @@ import {
   getResource,
   getResourceTree,
   getSystemErrorMessage,
-  resourceTypeLabels,
-  statusSelectOptions,
   updateResource,
 } from '.'
+import { resourceTypeLabels, statusSelectOptions } from './labels'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
 import { toTreeOptions } from '../../utils/ui'
 
@@ -140,32 +139,11 @@ const loadError = computed(() =>
 )
 
 const formError = ref<string | null>(null)
-const activeResourceType = ref<ResourceType>(defaultFormValues.type)
-
-function validateResourceForm({ value }: { value: ResourceFormInput }) {
-  const result = resourceFormSchema.safeParse(value)
-
-  if (result.success) {
-    return undefined
-  }
-
-  const fields: Partial<Record<keyof ResourceFormInput, string>> = {}
-
-  for (const issue of result.error.issues) {
-    const field = issue.path[0]
-
-    if (typeof field === 'string' && Object.hasOwn(value, field)) {
-      fields[field as keyof ResourceFormInput] ??= issue.message
-    }
-  }
-
-  return { fields }
-}
 
 const form = useForm({
   defaultValues: { ...defaultFormValues, parentId: props.parentId },
   validators: {
-    onSubmit: validateResourceForm,
+    onSubmit: resourceFormSchema,
   },
   onSubmit({ value }) {
     const resourceId = props.resourceId
@@ -177,7 +155,7 @@ const form = useForm({
   },
 })
 
-const selectedResourceType = computed(() => activeResourceType.value)
+const selectedResourceType = form.useStore((state) => state.values.type)
 const showsPath = computed(() => selectedResourceType.value === RESOURCE_TYPE_MENU)
 const showsExternalUrl = computed(() => selectedResourceType.value === RESOURCE_TYPE_EXTERNAL)
 const showsOpenTarget = computed(
@@ -222,9 +200,16 @@ const { isLoading: isSaving, ...saveResourceMutation } = useMutation({
   },
 })
 
+function handleSubmit() {
+  if (isLoading.value || isSaving.value || loadError.value) {
+    return
+  }
+
+  void form.handleSubmit()
+}
+
 function handleTypeChange(type: ResourceType, onChange: (value: ResourceType) => void) {
   onChange(type)
-  activeResourceType.value = type
 
   if (type === RESOURCE_TYPE_EXTERNAL) {
     form.setFieldValue('path', null)
@@ -243,14 +228,6 @@ function handleTypeChange(type: ResourceType, onChange: (value: ResourceType) =>
   form.setFieldValue('openTarget', RESOURCE_OPEN_TARGET_SELF)
 }
 
-function handleSubmit() {
-  if (isLoading.value || isSaving.value || loadError.value) {
-    return
-  }
-
-  void form.handleSubmit()
-}
-
 watch(
   () => [show.value, props.resourceId, props.parentId] as const,
   ([isVisible, , parentId]) => {
@@ -260,7 +237,6 @@ watch(
 
     saveResourceMutation.reset()
     formError.value = null
-    activeResourceType.value = defaultFormValues.type
     form.reset({ ...defaultFormValues, parentId })
   },
   {
@@ -275,7 +251,6 @@ watch(
       return
     }
 
-    activeResourceType.value = formValues.type
     form.reset(formValues)
   },
   {
@@ -285,7 +260,7 @@ watch(
 </script>
 
 <template>
-  <NDrawer v-model:show="show" placement="right" :width="680">
+  <NDrawer v-model:show="show" placement="right" :width="640">
     <NDrawerContent :title="drawerTitle" closable>
       <div class="flex flex-col gap-4">
         <NAlert v-if="loadError" type="error" :show-icon="false">
@@ -468,7 +443,7 @@ watch(
                 :show-button="false"
                 placeholder="请输入排序"
                 @blur="field.handleBlur"
-                @update:value="(value) => value !== null && field.handleChange(value)"
+                @update:value="field.handleChange($event ?? 0)"
               />
             </NFormItem>
           </form.Field>
@@ -480,7 +455,7 @@ watch(
               type="primary"
               attr-type="submit"
               :loading="isSaving"
-              :disabled="isLoading || !!loadError"
+              :disabled="isLoading || isSaving || !!loadError"
             >
               保存
             </NButton>

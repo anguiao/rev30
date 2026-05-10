@@ -43,7 +43,7 @@ function normalizeExternalUrl(externalUrl: string) {
   const urlResult = resourceExternalUrlSchema.safeParse(normalizedExternalUrl)
 
   if (!urlResult.success) {
-    throw new ResourceInvalidTypeFieldsError('外链地址无效')
+    throw new ResourceInvalidTypeFieldsError('外链地址无效', 'externalUrl')
   }
 
   return normalizedExternalUrl
@@ -54,7 +54,7 @@ function normalizeCreateTypeFields(input: ResourceCreateInput): ResourceCreateIn
 
   if (input.type === RESOURCE_TYPE_MENU) {
     if (input.path === null) {
-      throw new ResourceInvalidTypeFieldsError('内部菜单路径不能为空')
+      throw new ResourceInvalidTypeFieldsError('内部菜单路径不能为空', 'path')
     }
 
     next.path = input.path
@@ -64,7 +64,7 @@ function normalizeCreateTypeFields(input: ResourceCreateInput): ResourceCreateIn
 
   if (input.type === RESOURCE_TYPE_EXTERNAL) {
     if (input.externalUrl === null) {
-      throw new ResourceInvalidTypeFieldsError('外链地址不能为空')
+      throw new ResourceInvalidTypeFieldsError('外链地址不能为空', 'externalUrl')
     }
 
     next.path = null
@@ -93,7 +93,7 @@ function normalizeUpdateTypeFields(
 
   if (type === RESOURCE_TYPE_MENU) {
     if (path === null) {
-      throw new ResourceInvalidTypeFieldsError('内部菜单路径不能为空')
+      throw new ResourceInvalidTypeFieldsError('内部菜单路径不能为空', 'path')
     }
 
     next.path = path
@@ -108,7 +108,7 @@ function normalizeUpdateTypeFields(
 
   if (type === RESOURCE_TYPE_EXTERNAL) {
     if (externalUrl === null) {
-      throw new ResourceInvalidTypeFieldsError('外链地址不能为空')
+      throw new ResourceInvalidTypeFieldsError('外链地址不能为空', 'externalUrl')
     }
 
     next.path = null

@@ -19,8 +19,10 @@ import {
   ROLE_STATUS_ENABLED,
   roleCreateSchema,
   createRoleResourceIdsSchema,
+  normalizeTreeCheckedKeys,
   roleUpdateSchema,
   type RoleFormInput,
+  type TreeCheckedKey,
   roleFormSchema,
   treeToArray,
 } from '@rev30/shared'
@@ -180,6 +182,16 @@ watch(
 const resourceIdsSchema = computed(() =>
   createRoleResourceIdsSchema(treeToArray(formData.value?.resources ?? [])),
 )
+
+function normalizeResourceCheckedKeys(
+  checkedKeys: readonly TreeCheckedKey[],
+  previousResourceIds: readonly string[],
+) {
+  return normalizeTreeCheckedKeys(formData.value?.resources ?? [], {
+    checkedKeys,
+    previousCheckedKeys: previousResourceIds,
+  })
+}
 </script>
 
 <template>
@@ -261,7 +273,7 @@ const resourceIdsSchema = computed(() =>
                 :checked-keys="state.value"
                 @update:checked-keys="
                   (keys) => {
-                    field.handleChange(keys.map(String))
+                    field.handleChange(normalizeResourceCheckedKeys(keys, state.value))
                   }
                 "
               />

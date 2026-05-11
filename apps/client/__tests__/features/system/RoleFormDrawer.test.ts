@@ -280,7 +280,7 @@ describe('RoleFormDrawer', () => {
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
 
-  it('shows missing parent resource validation feedback immediately', async () => {
+  it('adds parent resources when selecting a child resource', async () => {
     createRoleMock.mockResolvedValue(roleResponse)
 
     const wrapper = mountDrawer()
@@ -294,12 +294,87 @@ describe('RoleFormDrawer', () => {
       .vm.$emit('update:checkedKeys', [actionResourceId])
     await flushPromises()
 
-    expect(wrapper.text()).toContain('子资源授权需要包含所有上级资源')
+    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
+      directoryResourceId,
+      actionResourceId,
+    ])
+    expect(wrapper.text()).not.toContain('子资源授权需要包含所有上级资源')
 
     await submitForm(wrapper)
 
-    expect(createRoleMock).not.toHaveBeenCalled()
-    expect(wrapper.emitted('saved')).toBeUndefined()
+    expect(createRoleMock).toHaveBeenCalledWith({
+      name: '运营',
+      code: 'operator',
+      status: ROLE_STATUS_ENABLED,
+      sortOrder: 0,
+      resourceIds: [directoryResourceId, actionResourceId],
+    })
+    expect(wrapper.emitted('saved')).toHaveLength(1)
+  })
+
+  it('removes child resources when unchecking a parent resource', async () => {
+    getRoleMock.mockResolvedValue(roleResponse)
+    updateRoleMock.mockResolvedValue({
+      ...roleResponse,
+      resources: [],
+    })
+
+    const wrapper = mountDrawer({ show: true, roleId })
+    await flushPromises()
+
+    wrapper
+      .get('[data-test="role-form-resources"]')
+      .getComponent(NTree)
+      .vm.$emit('update:checkedKeys', [actionResourceId])
+    await flushPromises()
+
+    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([])
+
+    await submitForm(wrapper)
+
+    expect(updateRoleMock).toHaveBeenCalledWith(roleId, {
+      name: '运营',
+      code: 'operator',
+      status: ROLE_STATUS_ENABLED,
+      sortOrder: 2,
+      resourceIds: [],
+    })
+  })
+
+  it('keeps parent resources when unchecking a child resource', async () => {
+    getRoleMock.mockResolvedValue(roleResponse)
+    updateRoleMock.mockResolvedValue({
+      ...roleResponse,
+      resources: [
+        {
+          id: directoryResourceId,
+          name: '系统管理',
+          code: 'system',
+          type: RESOURCE_TYPE_DIRECTORY,
+        },
+      ],
+    })
+
+    const wrapper = mountDrawer({ show: true, roleId })
+    await flushPromises()
+
+    wrapper
+      .get('[data-test="role-form-resources"]')
+      .getComponent(NTree)
+      .vm.$emit('update:checkedKeys', [directoryResourceId])
+    await flushPromises()
+
+    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([directoryResourceId])
+
+    await submitForm(wrapper)
+
+    expect(updateRoleMock).toHaveBeenCalledWith(roleId, {
+      name: '运营',
+      code: 'operator',
+      status: ROLE_STATUS_ENABLED,
+      sortOrder: 2,
+      resourceIds: [directoryResourceId],
+    })
   })
 
   it('allows submitting a parent resource without child resources', async () => {

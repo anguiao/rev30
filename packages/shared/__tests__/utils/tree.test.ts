@@ -4,6 +4,7 @@ import {
   filterTree,
   getTreeNodeCount,
   isLeafInTree,
+  normalizeTreeCheckedKeys,
   treeToArray,
 } from '../../src/utils'
 
@@ -142,5 +143,32 @@ describe('tree utils', () => {
     expect(isLeafInTree(tree, 'engineering')).toBe(false)
     expect(isLeafInTree(tree, 'platform')).toBe(true)
     expect(isLeafInTree(tree, 'missing')).toBe(false)
+  })
+
+  it('adds ancestor keys when checking a child node', () => {
+    expect(
+      normalizeTreeCheckedKeys(tree, {
+        checkedKeys: ['platform'],
+        previousCheckedKeys: [],
+      }),
+    ).toEqual(['root', 'engineering', 'platform'])
+  })
+
+  it('removes descendant keys when unchecking a parent node', () => {
+    expect(
+      normalizeTreeCheckedKeys(tree, {
+        checkedKeys: ['root', 'platform', 'finance'],
+        previousCheckedKeys: ['root', 'engineering', 'platform', 'finance'],
+      }),
+    ).toEqual(['root', 'finance'])
+  })
+
+  it('keeps parent keys when unchecking a child node', () => {
+    expect(
+      normalizeTreeCheckedKeys(tree, {
+        checkedKeys: ['root', 'engineering'],
+        previousCheckedKeys: ['root', 'engineering', 'platform'],
+      }),
+    ).toEqual(['root', 'engineering'])
   })
 })

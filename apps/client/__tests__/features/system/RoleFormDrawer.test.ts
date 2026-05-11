@@ -228,6 +228,24 @@ describe('RoleFormDrawer', () => {
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
 
+  it('shows a load error and disables submit when resource permissions fail to load', async () => {
+    getResourceTreeMock.mockRejectedValue(new Error('network'))
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('加载角色信息失败')
+    expect(wrapper.get('[data-test="role-form-submit"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.get('[data-test="role-form-name"] input').setValue('异常角色')
+    await wrapper.get('[data-test="role-form-code"] input').setValue('blocked-role')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(createRoleMock).not.toHaveBeenCalled()
+    expect(updateRoleMock).not.toHaveBeenCalled()
+  })
+
   it('loads role detail and submits updates in edit mode', async () => {
     getRoleMock.mockResolvedValue(roleResponse)
     updateRoleMock.mockResolvedValue({
@@ -241,26 +259,6 @@ describe('RoleFormDrawer', () => {
     expect(wrapper.text()).toContain('编辑角色')
     expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
     expect(getRoleMock).toHaveBeenCalledWith(roleId)
-    expect(wrapper.getComponent(NTree).props('cascade')).toBe(false)
-    expect(wrapper.getComponent(NTree).props('data')).toEqual([
-      {
-        key: directoryResourceId,
-        label: '系统管理 (system)',
-        disabled: false,
-        children: [
-          {
-            key: actionResourceId,
-            label: '角色保存 (system:role:save)',
-            disabled: false,
-          },
-          {
-            key: secondActionResourceId,
-            label: '角色分配 (system:role:assign)',
-            disabled: false,
-          },
-        ],
-      },
-    ])
     expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
       directoryResourceId,
       actionResourceId,

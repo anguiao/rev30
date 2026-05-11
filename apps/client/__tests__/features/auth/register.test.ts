@@ -127,6 +127,26 @@ describe('register page', () => {
     expect(registerMock).toHaveBeenCalledOnce()
   })
 
+  it('renders supported server field errors on the matching registration field', async () => {
+    registerMock.mockRejectedValue(new MockAuthRequestError(409, '用户名已存在', 'username'))
+    const { wrapper } = await mountRegisterPage()
+
+    await wrapper.find('[data-test="register-username"] input').setValue('ada')
+    await wrapper.find('[data-test="register-nickname"] input').setValue('Ada Lovelace')
+    await wrapper.find('[data-test="register-password"] input').setValue('password123')
+    await wrapper.find('[data-test="register-confirm-password"] input').setValue('password123')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    const usernameFormItem = wrapper
+      .get('[data-test="register-username"]')
+      .element.closest('.n-form-item')
+
+    expect(registerMock).toHaveBeenCalledOnce()
+    expect(usernameFormItem?.textContent).toContain('用户名已存在')
+    expect(wrapper.text()).not.toContain('注册信息已被占用')
+  })
+
   it('shows unsupported server field errors as a global registration error', async () => {
     registerMock.mockRejectedValue(new MockAuthRequestError(409, '当前密码错误', 'currentPassword'))
     const { wrapper } = await mountRegisterPage()

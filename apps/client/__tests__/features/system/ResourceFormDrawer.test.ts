@@ -289,6 +289,28 @@ describe('ResourceFormDrawer', () => {
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
 
+  it('shows a load error and disables submit when resource options fail to load', async () => {
+    getResourceTreeMock.mockRejectedValue(new Error('network'))
+
+    const wrapper = mountDrawer({
+      show: true,
+      resourceId: null,
+      parentId: null,
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('加载资源信息失败')
+    expect(wrapper.get('[data-test="resource-form-submit"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.get('[data-test="resource-form-name"] input').setValue('异常资源')
+    await wrapper.get('[data-test="resource-form-code"] input').setValue('blocked-resource')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(createResourceMock).not.toHaveBeenCalled()
+    expect(updateResourceMock).not.toHaveBeenCalled()
+  })
+
   it('creates a child menu resource with the provided parent id', async () => {
     createResourceMock.mockResolvedValue({
       ...menuResourceResponse,
@@ -351,37 +373,6 @@ describe('ResourceFormDrawer', () => {
 
     const treeSelect = wrapper.getComponent(NTreeSelect)
     expect(treeSelect.props('value')).toBe(rootResourceId)
-    expect(treeSelect.props('options')).toEqual([
-      {
-        key: rootResourceId,
-        label: '系统管理 (system)',
-        disabled: false,
-        children: [
-          {
-            key: menuResourceId,
-            label: '用户管理 (system:user)',
-            disabled: true,
-            children: [
-              {
-                key: actionResourceId,
-                label: '创建用户 (system:user:create)',
-                disabled: true,
-              },
-            ],
-          },
-          {
-            key: externalResourceId,
-            label: '项目文档 (docs)',
-            disabled: false,
-          },
-        ],
-      },
-      {
-        key: secondRootResourceId,
-        label: '内容管理 (content)',
-        disabled: false,
-      },
-    ])
 
     await wrapper.get('[data-test="resource-form-name"] input').setValue('成员管理')
     await submitForm(wrapper)

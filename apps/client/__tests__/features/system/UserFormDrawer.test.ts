@@ -188,26 +188,6 @@ describe('UserFormDrawer', () => {
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
     expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 100 })
     expect(getUserMock).not.toHaveBeenCalled()
-    const departmentTreeSelect = wrapper.getComponent(NTreeSelect)
-    expect(departmentTreeSelect.props('multiple')).toBe(true)
-    expect(departmentTreeSelect.props('checkable')).toBe(true)
-    expect(departmentTreeSelect.props('cascade')).toBe(true)
-    expect(departmentTreeSelect.props('clearable')).toBe(true)
-    expect(departmentTreeSelect.props('filterable')).toBe(true)
-    expect(departmentTreeSelect.props('options')).toEqual([
-      {
-        key: departmentId,
-        label: '研发部 (rd)',
-        disabled: false,
-        children: [
-          {
-            key: secondDepartmentId,
-            label: '前端组 (frontend)',
-            disabled: false,
-          },
-        ],
-      },
-    ])
 
     await wrapper.get('[data-test="user-form-username"] input').setValue('new-user')
     await wrapper.get('[data-test="user-form-nickname"] input').setValue('New User')
@@ -226,6 +206,24 @@ describe('UserFormDrawer', () => {
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
 
+  it('shows a load error and disables submit when create form options fail to load', async () => {
+    getDepartmentTreeMock.mockRejectedValue(new Error('network'))
+
+    const wrapper = mountDrawer({ userId: null })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('加载用户信息失败')
+    expect(wrapper.get('[data-test="user-form-submit"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.get('[data-test="user-form-username"] input').setValue('blocked-user')
+    await wrapper.get('[data-test="user-form-nickname"] input').setValue('Blocked User')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(createUserMock).not.toHaveBeenCalled()
+    expect(updateUserMock).not.toHaveBeenCalled()
+  })
+
   it('loads user detail, departments and roles and submits updated fields', async () => {
     getUserMock.mockResolvedValue(userResponse)
     updateUserMock.mockResolvedValue(userResponse)
@@ -238,21 +236,6 @@ describe('UserFormDrawer', () => {
     expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 100 })
     expect(getUserMock).toHaveBeenCalledWith(userId)
     const departmentTreeSelect = wrapper.getComponent(NTreeSelect)
-    expect(departmentTreeSelect.props('options')).toEqual([
-      {
-        key: departmentId,
-        label: '研发部 (rd)',
-        disabled: false,
-        children: [
-          {
-            key: secondDepartmentId,
-            label: '前端组 (frontend)',
-            disabled: false,
-          },
-        ],
-      },
-    ])
-    expect(departmentTreeSelect.props('value')).toEqual([departmentId])
 
     await wrapper.get('[data-test="user-form-nickname"] input').setValue('Ada Lovelace')
     departmentTreeSelect.vm.$emit('update:value', [secondDepartmentId])

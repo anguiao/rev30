@@ -13,7 +13,12 @@ import {
   RESOURCE_TYPE_MENU,
   type ResourceTreeNode,
 } from '@rev30/shared'
-import { deleteResource, formatDateTime, getResourceTree } from '../../../src/features/system'
+import {
+  deleteResource,
+  formatDateTime,
+  getResourceTree,
+  SystemRequestError,
+} from '../../../src/features/system'
 import ResourcesPage from '../../../src/pages/index/system/resources.vue'
 import {
   disposeActiveTestPinia,
@@ -49,9 +54,6 @@ vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   deleteResource: vi.fn(),
   getResourceTree: vi.fn(),
-  getSystemErrorMessage: vi.fn((error: unknown, fallback: string) =>
-    error instanceof Error ? error.message : fallback,
-  ),
 }))
 
 const deleteResourceMock = vi.mocked(deleteResource)
@@ -168,6 +170,25 @@ describe('resources page', () => {
       '11111111-1111-4111-8111-111111111111',
     ])
     expect(wrapper.findComponent(NPagination).exists()).toBe(false)
+  })
+
+  it('shows a server load error when resources cannot be loaded', async () => {
+    getResourceTreeMock.mockRejectedValue(new SystemRequestError(500, '加载资源树失败'))
+    const { wrapper } = await mountResourcesPage()
+    await flushPromises()
+
+    expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('加载资源树失败')
+  })
+
+  it('shows a fallback load error for unexpected resource load errors', async () => {
+    getResourceTreeMock.mockRejectedValue(new Error('network down'))
+    const { wrapper } = await mountResourcesPage()
+    await flushPromises()
+
+    expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('加载资源失败')
+    expect(wrapper.text()).not.toContain('network down')
   })
 
   it('shows create and row actions according to permissions', async () => {
@@ -313,7 +334,7 @@ describe('resources page', () => {
 
   it('keeps delete dialog open when deleting resource fails', async () => {
     getResourceTreeMock.mockResolvedValue(resourceTreeResponse)
-    deleteResourceMock.mockRejectedValue(new Error('资源已被角色授权，不能删除'))
+    deleteResourceMock.mockRejectedValue(new SystemRequestError(409, '资源已被角色授权，不能删除'))
     const { wrapper } = await mountResourcesPage(['system:resource:delete'])
     await flushPromises()
 

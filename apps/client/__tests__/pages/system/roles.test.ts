@@ -10,7 +10,13 @@ import {
   type RoleListResponse,
 } from '@rev30/shared'
 import { defineComponent, h } from 'vue'
-import { deleteRole, formatDateTime, listRoles } from '../../../src/features/system'
+import {
+  STATUS_FILTER_ALL,
+  deleteRole,
+  formatDateTime,
+  listRoles,
+  SystemRequestError,
+} from '../../../src/features/system'
 import RolesPage from '../../../src/pages/index/system/roles.vue'
 import {
   disposeActiveTestPinia,
@@ -50,9 +56,6 @@ vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   deleteRole: vi.fn(),
   listRoles: vi.fn(),
-  getSystemErrorMessage: vi.fn((error: unknown, fallback: string) =>
-    error instanceof Error ? error.message : fallback,
-  ),
 }))
 
 const deleteRoleMock = vi.mocked(deleteRole)
@@ -84,6 +87,11 @@ const roleListResponse: RoleListResponse = {
   total: 2,
   page: 1,
   pageSize: 20,
+}
+
+const paginatedRoleListResponse: RoleListResponse = {
+  ...roleListResponse,
+  total: 21,
 }
 
 async function mountRolesPage(accessCodes: string[] = session.accessCodes) {
@@ -126,6 +134,25 @@ describe('roles page', () => {
     expect(wrapper.text()).toContain('12')
     expect(wrapper.text()).toContain('3')
     expect(wrapper.text()).toContain('1')
+  })
+
+  it('shows a server load error when roles cannot be loaded', async () => {
+    listRolesMock.mockRejectedValue(new SystemRequestError(500, '加载角色列表失败'))
+    const { wrapper } = await mountRolesPage()
+    await flushPromises()
+
+    expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
+    expect(wrapper.text()).toContain('加载角色列表失败')
+  })
+
+  it('shows a fallback load error for unexpected role load errors', async () => {
+    listRolesMock.mockRejectedValue(new Error('network down'))
+    const { wrapper } = await mountRolesPage()
+    await flushPromises()
+
+    expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
+    expect(wrapper.text()).toContain('加载角色失败')
+    expect(wrapper.text()).not.toContain('network down')
   })
 
   it('shows create and row actions according to permissions', async () => {
@@ -182,7 +209,7 @@ describe('roles page', () => {
   })
 
   it('changes page without applying draft filters before search', async () => {
-    listRolesMock.mockResolvedValue(roleListResponse)
+    listRolesMock.mockResolvedValue(paginatedRoleListResponse)
     const { wrapper } = await mountRolesPage()
     await flushPromises()
 
@@ -199,7 +226,7 @@ describe('roles page', () => {
   })
 
   it('keeps applied filters when changing page after search', async () => {
-    listRolesMock.mockResolvedValue(roleListResponse)
+    listRolesMock.mockResolvedValue(paginatedRoleListResponse)
     const { wrapper } = await mountRolesPage()
     await flushPromises()
 
@@ -218,6 +245,46 @@ describe('roles page', () => {
       keyword: 'admin',
       status: ROLE_STATUS_DISABLED,
     })
+  })
+
+  it('resets keyword and status filters back to the first page', async () => {
+    listRolesMock.mockResolvedValue(paginatedRoleListResponse)
+    const { wrapper } = await mountRolesPage()
+    await flushPromises()
+
+    await wrapper.find('[data-test="roles-keyword"] input').setValue('admin')
+    wrapper.getComponent(NSelect).vm.$emit('update:value', ROLE_STATUS_DISABLED)
+    await wrapper.get('[data-test="roles-search"]').trigger('click')
+    await flushPromises()
+
+    wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
+    await flushPromises()
+
+    expect(listRolesMock).toHaveBeenLastCalledWith({
+      page: 2,
+      pageSize: 20,
+      keyword: 'admin',
+      status: ROLE_STATUS_DISABLED,
+    })
+    expect(wrapper.getComponent(NPagination).props('page')).toBe(2)
+
+    const resetButton = wrapper
+      .findAll('button')
+      .find((buttonWrapper) => buttonWrapper.text() === '重置')
+    expect(resetButton).toBeDefined()
+    await resetButton!.trigger('click')
+    await flushPromises()
+
+    expect(
+      (wrapper.get('[data-test="roles-keyword"] input').element as HTMLInputElement).value,
+    ).toBe('')
+    expect(wrapper.getComponent(NSelect).props('value')).toBe(STATUS_FILTER_ALL)
+    expect(wrapper.getComponent(NPagination).props('page')).toBe(1)
+
+    wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
+    await flushPromises()
+
+    expect(listRolesMock).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 })
   })
 
   it('opens create drawer when clicking create button', async () => {

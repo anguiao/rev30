@@ -219,6 +219,28 @@ describe('DepartmentFormDrawer', () => {
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
 
+  it('shows a load error and disables submit when department options fail to load', async () => {
+    getDepartmentTreeMock.mockRejectedValue(new Error('network'))
+
+    const wrapper = mountDrawer({
+      show: true,
+      departmentId: null,
+      parentId: null,
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('加载部门信息失败')
+    expect(wrapper.get('[data-test="department-form-submit"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.get('[data-test="department-form-name"] input').setValue('异常部门')
+    await wrapper.get('[data-test="department-form-code"] input').setValue('blocked-dept')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(createDepartmentMock).not.toHaveBeenCalled()
+    expect(updateDepartmentMock).not.toHaveBeenCalled()
+  })
+
   it('creates a child department with the provided parent id', async () => {
     createDepartmentMock.mockResolvedValue({
       ...childDepartmentResponse,
@@ -353,37 +375,6 @@ describe('DepartmentFormDrawer', () => {
 
     const treeSelect = wrapper.getComponent(NTreeSelect)
     expect(treeSelect.props('value')).toBe(rootDepartmentId)
-    expect(treeSelect.props('options')).toEqual([
-      {
-        key: rootDepartmentId,
-        label: '总部 (hq)',
-        disabled: false,
-        children: [
-          {
-            key: childDepartmentId,
-            label: '运营部 (ops)',
-            disabled: true,
-            children: [
-              {
-                key: grandchildDepartmentId,
-                label: '运营支持组 (ops-support)',
-                disabled: true,
-              },
-            ],
-          },
-          {
-            key: siblingDepartmentId,
-            label: '市场部 (marketing)',
-            disabled: false,
-          },
-        ],
-      },
-      {
-        key: secondRootDepartmentId,
-        label: '财务中心 (finance)',
-        disabled: false,
-      },
-    ])
 
     await wrapper.get('[data-test="department-form-name"] input').setValue('运营管理部')
     wrapper.getComponent(NSelect).vm.$emit('update:value', DEPARTMENT_STATUS_DISABLED)

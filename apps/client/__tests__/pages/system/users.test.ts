@@ -12,10 +12,12 @@ import {
 } from '@rev30/shared'
 import { defineComponent, h } from 'vue'
 import {
+  STATUS_FILTER_ALL,
   deleteUser,
   formatDateTime,
   listUsers,
   resetUserPassword,
+  SystemRequestError,
 } from '../../../src/features/system'
 import UsersPage from '../../../src/pages/index/system/users.vue'
 import {
@@ -57,9 +59,6 @@ vi.mock('../../../src/features/system', async (importOriginal) => ({
   deleteUser: vi.fn(),
   listUsers: vi.fn(),
   resetUserPassword: vi.fn(),
-  getSystemErrorMessage: vi.fn((error: unknown, fallback: string) =>
-    error instanceof Error ? error.message : fallback,
-  ),
 }))
 
 const deleteUserMock = vi.mocked(deleteUser)
@@ -105,6 +104,11 @@ const userListResponse: UserListResponse = {
   total: 2,
   page: 1,
   pageSize: 20,
+}
+
+const paginatedUserListResponse: UserListResponse = {
+  ...userListResponse,
+  total: 21,
 }
 
 const userCreateResponse: UserCreateResponse = {
@@ -190,6 +194,25 @@ describe('users page', () => {
     expect(wrapper.text()).toContain('平台架构、数据治理等 3 个')
     expect(wrapper.text()).toContain('审计员、访客')
     expect(wrapper.text()).toContain(formatDateTime('2026-05-01T00:00:00.000Z'))
+  })
+
+  it('shows a server load error when users cannot be loaded', async () => {
+    listUsersMock.mockRejectedValue(new SystemRequestError(500, '加载用户列表失败'))
+    const { wrapper } = await mountUsersPage()
+    await flushPromises()
+
+    expect(listUsersMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
+    expect(wrapper.text()).toContain('加载用户列表失败')
+  })
+
+  it('shows a fallback load error for unexpected user load errors', async () => {
+    listUsersMock.mockRejectedValue(new Error('network down'))
+    const { wrapper } = await mountUsersPage()
+    await flushPromises()
+
+    expect(listUsersMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
+    expect(wrapper.text()).toContain('加载用户失败')
+    expect(wrapper.text()).not.toContain('network down')
   })
 
   it('shows create and row actions according to permissions', async () => {
@@ -488,7 +511,7 @@ describe('users page', () => {
   })
 
   it('changes page without applying draft filters before search', async () => {
-    listUsersMock.mockResolvedValue(userListResponse)
+    listUsersMock.mockResolvedValue(paginatedUserListResponse)
     const { wrapper } = await mountUsersPage()
     await flushPromises()
 
@@ -505,7 +528,7 @@ describe('users page', () => {
   })
 
   it('keeps applied filters when changing page after search', async () => {
-    listUsersMock.mockResolvedValue(userListResponse)
+    listUsersMock.mockResolvedValue(paginatedUserListResponse)
     const { wrapper } = await mountUsersPage()
     await flushPromises()
 
@@ -524,5 +547,45 @@ describe('users page', () => {
       keyword: 'ada',
       status: USER_STATUS_DISABLED,
     })
+  })
+
+  it('resets keyword and status filters back to the first page', async () => {
+    listUsersMock.mockResolvedValue(paginatedUserListResponse)
+    const { wrapper } = await mountUsersPage()
+    await flushPromises()
+
+    await wrapper.find('[data-test="users-keyword"] input').setValue('ada')
+    wrapper.getComponent(NSelect).vm.$emit('update:value', USER_STATUS_DISABLED)
+    await wrapper.get('[data-test="users-search"]').trigger('click')
+    await flushPromises()
+
+    wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
+    await flushPromises()
+
+    expect(listUsersMock).toHaveBeenLastCalledWith({
+      page: 2,
+      pageSize: 20,
+      keyword: 'ada',
+      status: USER_STATUS_DISABLED,
+    })
+    expect(wrapper.getComponent(NPagination).props('page')).toBe(2)
+
+    const resetButton = wrapper
+      .findAll('button')
+      .find((buttonWrapper) => buttonWrapper.text() === '重置')
+    expect(resetButton).toBeDefined()
+    await resetButton!.trigger('click')
+    await flushPromises()
+
+    expect(
+      (wrapper.get('[data-test="users-keyword"] input').element as HTMLInputElement).value,
+    ).toBe('')
+    expect(wrapper.getComponent(NSelect).props('value')).toBe(STATUS_FILTER_ALL)
+    expect(wrapper.getComponent(NPagination).props('page')).toBe(1)
+
+    wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
+    await flushPromises()
+
+    expect(listUsersMock).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 })
   })
 })

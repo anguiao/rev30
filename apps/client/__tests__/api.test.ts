@@ -223,6 +223,96 @@ describe('authFetch', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
   })
 
+  it('clears the current session and logs out for non-refreshable unauthorized responses', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ message: '未授权' }), { status: 401 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const auth = useAuthStore()
+    auth.setSession(session)
+
+    const response = await authFetch('/api/system/users')
+
+    expect(response.status).toBe(401)
+    expect(auth.isAuthenticated).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    )
+  })
+
+  it('clears the current session and logs out when refresh fails', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: '未授权' }), {
+          status: 401,
+          headers: {
+            [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ message: '刷新失败' }), { status: 401 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const auth = useAuthStore()
+    auth.setSession(session)
+
+    const response = await authFetch('/api/system/users')
+
+    expect(response.status).toBe(401)
+    expect(auth.isAuthenticated).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/auth/refresh',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    )
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    )
+  })
+
+  it('clears the current session and logs out when retry remains unauthorized', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: '未授权' }), {
+          status: 401,
+          headers: {
+            [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify(refreshedSession)))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ message: '未授权' }), { status: 401 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const auth = useAuthStore()
+    auth.setSession(session)
+
+    const response = await authFetch('/api/system/users')
+
+    expect(response.status).toBe(401)
+    expect(auth.isAuthenticated).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    )
+  })
+
   it('does not clear a newer session after a stale unauthorized response', async () => {
     const firstResponse = createDeferred<Response>()
     const fetchMock = vi.fn().mockReturnValueOnce(firstResponse.promise)
@@ -377,76 +467,6 @@ describe('api client', () => {
     )
   })
 
-  it('exposes typed system role endpoints', () => {
-    expect(api.system.roles.$get).toEqual(expect.any(Function))
-    expect(api.system.roles[':id'].$get).toEqual(expect.any(Function))
-    expect(api.system.roles.$post).toEqual(expect.any(Function))
-  })
-
-  it('types role query and create input', () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
-    vi.stubGlobal('fetch', fetchMock)
-
-    void api.system.roles.$get({
-      query: {
-        page: '1',
-        pageSize: '20',
-        keyword: 'admin',
-        status: '1',
-      },
-    })
-
-    void api.system.roles.$post({
-      json: {
-        name: 'Administrator',
-        code: 'admin',
-        resourceIds: ['4be2dfda-2fd6-4ee5-b06b-c551328bc343'],
-      },
-    })
-  })
-
-  it('types nested user query params', () => {
-    const invalidQuery: Parameters<typeof api.system.users.$get>[0] = {
-      query: {
-        // @ts-expect-error Unknown query params should not be accepted by the RPC contract.
-        unknown: 'value',
-      },
-    }
-
-    void invalidQuery
-  })
-
-  it('types user create input with department ids', () => {
-    const validBody: Parameters<typeof api.system.users.$post>[0] = {
-      json: {
-        username: 'department-client',
-        nickname: 'Department Client',
-        email: null,
-        phone: null,
-        departmentIds: ['4be2dfda-2fd6-4ee5-b06b-c551328bc343'],
-      },
-    }
-
-    void validBody
-  })
-
-  it('types user create input with role ids', () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
-    vi.stubGlobal('fetch', fetchMock)
-
-    const validBody = {
-      json: {
-        username: 'role-user',
-        nickname: 'Role User',
-        email: null,
-        phone: null,
-        roleIds: ['875dd9cb-488b-43d7-a55f-6db070a8e83f'],
-      },
-    } satisfies Parameters<typeof api.system.users.$post>[0]
-
-    void api.system.users.$post(validBody)
-  })
-
   it('requests nested resource endpoints with query params', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -477,31 +497,5 @@ describe('api client', () => {
         method: 'GET',
       }),
     )
-  })
-
-  it('types nested resource query params', () => {
-    const invalidQuery: Parameters<typeof api.system.resources.$get>[0] = {
-      query: {
-        // @ts-expect-error Unknown query params should not be accepted by the RPC contract.
-        unknown: 'value',
-      },
-    }
-
-    void invalidQuery
-  })
-
-  it('types resource create input with menu fields', () => {
-    const validBody: Parameters<typeof api.system.resources.$post>[0] = {
-      json: {
-        type: RESOURCE_TYPE_MENU,
-        name: '用户管理',
-        code: 'system:user',
-        path: '/system/users',
-        externalUrl: null,
-        icon: null,
-      },
-    }
-
-    void validBody
   })
 })

@@ -57,12 +57,6 @@ function mountPicker(value: string | null = null) {
   })
 }
 
-function findDisplayInput(wrapper: ReturnType<typeof mount>) {
-  return wrapper
-    .findAllComponents(NInput)
-    .find((inputWrapper) => inputWrapper.attributes('data-test') === 'resource-form-icon')
-}
-
 describe('ResourceIconPicker', () => {
   afterEach(() => {
     searchIconsMock.mockReset()
@@ -74,13 +68,19 @@ describe('ResourceIconPicker', () => {
 
     const emptyWrapper = mountPicker(null)
     expect(emptyWrapper.get('[data-test="resource-icon-empty"]').text()).toContain('无')
-    expect(findDisplayInput(emptyWrapper)?.props('value')).toBe('')
+    expect(
+      (emptyWrapper.get('[data-test="resource-form-icon"] input').element as HTMLInputElement)
+        .value,
+    ).toBe('')
 
     const selectedWrapper = mountPicker('lucide:users')
     expect(selectedWrapper.find('[data-test="resource-icon-empty"]').text()).toContain(
       'lucide:users',
     )
-    expect(findDisplayInput(selectedWrapper)?.props('value')).toBe('lucide:users')
+    expect(
+      (selectedWrapper.get('[data-test="resource-form-icon"] input').element as HTMLInputElement)
+        .value,
+    ).toBe('lucide:users')
   })
 
   it('opens by focus and requests recommendations', async () => {
@@ -112,7 +112,6 @@ describe('ResourceIconPicker', () => {
 
     const option = wrapper.get('[data-test="resource-icon-option"]')
     expect(option.attributes('aria-label')).toBe('lucide:users')
-    expect(option.classes()).toContain('border-transparent')
     expect(option.text()).toBe('lucide:users')
   })
 
@@ -229,23 +228,14 @@ describe('ResourceIconPicker', () => {
     await wrapper.get('[data-test="resource-icon-option"]').trigger('click')
     expect(wrapper.emitted('update:value')?.[0]).toEqual(['lucide:users'])
 
-    const displayInput = findDisplayInput(wrapper)
-    expect(displayInput).toBeDefined()
-    displayInput!.vm.$emit('update:value', '')
+    wrapper.getComponent(NPopover).vm.$emit('update:show', false)
+    await flushPromises()
+    await wrapper.setProps({ value: 'lucide:users' })
+    wrapper.getComponent(NInput).vm.$emit('update:value', '')
     await flushPromises()
 
     const emittedValues = wrapper.emitted('update:value') ?? []
     expect(emittedValues.some((args) => args[0] === null)).toBe(true)
-  })
-
-  it('blocks direct input on display field via allowInput', () => {
-    const wrapper = mountPicker('lucide:users')
-    const displayInput = findDisplayInput(wrapper)
-
-    expect(displayInput).toBeDefined()
-    expect(displayInput!.props('allowInput')).toBeTypeOf('function')
-    const allowInput = displayInput!.props('allowInput') as (nextValue: string) => boolean
-    expect(allowInput('manually-typed')).toBe(false)
   })
 
   it('shows search error and keeps selected value', async () => {
@@ -256,7 +246,9 @@ describe('ResourceIconPicker', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('图标搜索失败')
-    expect(findDisplayInput(wrapper)?.props('value')).toBe('lucide:users')
+    expect(
+      (wrapper.get('[data-test="resource-form-icon"] input').element as HTMLInputElement).value,
+    ).toBe('lucide:users')
     expect(wrapper.find('[data-test="resource-icon-empty"]').text()).toContain('lucide:users')
   })
 

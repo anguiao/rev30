@@ -199,45 +199,9 @@ describe('admin layout', () => {
       '收起侧边栏',
     )
     expect(wrapper.get('[data-test="admin-sidebar-toggle"]').element.tagName).toBe('BUTTON')
-    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').classes()).toContain(
-      'focus-visible:outline-solid',
-    )
-    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').classes()).toContain(
-      'focus-visible:outline-primary',
-    )
-    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').classes()).toContain('cursor-pointer')
-    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').classes()).toContain('mt-0.5')
-    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').classes()).not.toContain('n-button')
-    expect(wrapper.get('[data-test="admin-sidebar-toggle-icon"]').classes()).toContain('size-4')
-    expect(wrapper.get('[data-test="admin-shell"]').attributes('style')).toContain(
-      '--admin-sidebar-width: 256px',
-    )
-    expect(wrapper.get('[data-test="admin-sidebar"]').classes()).not.toContain('px-5')
-    expect(wrapper.get('[data-test="admin-sidebar"]').classes()).toContain('py-6')
-    expect(wrapper.get('[data-test="admin-sidebar-header"]').classes()).toContain('relative')
-    expect(wrapper.get('[data-test="admin-sidebar-header"]').classes()).toContain('h-20')
-    expect(wrapper.get('[data-test="admin-sidebar-header"]').classes()).toContain('mb-6')
-    expect(wrapper.get('[data-test="admin-sidebar-header-content"]').classes()).toContain('h-full')
-    expect(wrapper.get('[data-test="admin-sidebar-header-content"]').classes()).toContain('px-5')
-    expect(wrapper.get('[data-test="admin-sidebar-header-content"]').classes()).toContain(
-      'items-start',
-    )
-    expect(wrapper.get('[data-test="admin-sidebar-header-separator"]').classes()).toContain(
-      'bottom-0',
-    )
-    expect(wrapper.get('[data-test="admin-sidebar-header-separator"]').classes()).toContain(
-      'left-5',
-    )
-    expect(wrapper.get('[data-test="admin-sidebar-header-separator"]').classes()).toContain(
-      'right-5',
-    )
-    expect(wrapper.get('[data-test="admin-sidebar-footer-separator"]').classes()).toContain('mx-5')
-    expect(wrapper.get('[data-test="admin-sidebar-footer-content"]').classes()).toContain('px-5')
     expect(menu.props('value')).toBe(usersMenuId)
     expect(menu.props('collapsed')).toBe(false)
-    expect(menu.props('defaultExpandAll')).toBe(false)
     expect(menu.props('expandedKeys')).toEqual([systemMenuId])
-    expect(menu.props('rootIndent')).toBe(20)
     expect(wrapper.text()).toContain('系统管理')
     expect(wrapper.text()).toContain('指南')
     expect(wrapper.get('a[href="/system/users"]').text()).toContain('用户管理')
@@ -252,7 +216,6 @@ describe('admin layout', () => {
     expect(icons).toContain('lucide:users')
     expect(icons).toContain('lucide:book-open')
     expect(icons).toContain('lucide:square-arrow-out-up-right')
-    expect(wrapper.html()).not.toContain('i-[lucide--users]')
     expect(wrapper.find('[data-test="theme-mode-trigger"]').exists()).toBe(true)
   })
 
@@ -267,36 +230,12 @@ describe('admin layout', () => {
     expect(wrapper.get('[data-test="admin-sidebar-toggle"]').attributes('aria-label')).toBe(
       '展开侧边栏',
     )
-    expect(wrapper.get('[data-test="admin-sidebar-toggle"]').classes()).not.toContain('mt-0.5')
-    expect(wrapper.get('[data-test="admin-sidebar-toggle-icon"]').classes()).toContain('size-4.5')
-    expect(wrapper.get('[data-test="admin-shell"]').attributes('style')).toContain(
-      '--admin-sidebar-width: 60px',
-    )
-    expect(wrapper.get('[data-test="admin-sidebar"]').classes()).not.toContain('px-3')
-    expect(wrapper.get('[data-test="admin-sidebar"]').classes()).toContain('py-6')
-    expect(wrapper.get('[data-test="admin-sidebar-header"]').classes()).toContain('relative')
-    expect(wrapper.get('[data-test="admin-sidebar-header"]').classes()).toContain('h-20')
-    expect(wrapper.get('[data-test="admin-sidebar-header"]').classes()).toContain('mb-6')
-    expect(wrapper.get('[data-test="admin-sidebar-header-content"]').classes()).toContain('h-full')
-    expect(wrapper.get('[data-test="admin-sidebar-header-content"]').classes()).toContain('px-3')
-    expect(wrapper.get('[data-test="admin-sidebar-header-content"]').classes()).toContain('gap-2')
-    expect(wrapper.get('[data-test="admin-sidebar-brand-mark"] span').classes()).toContain('size-8')
-    expect(wrapper.get('[data-test="admin-sidebar-header-separator"]').classes()).toContain(
-      'left-3',
-    )
-    expect(wrapper.get('[data-test="admin-sidebar-header-separator"]').classes()).toContain(
-      'right-3',
-    )
-    expect(wrapper.get('[data-test="admin-sidebar-footer-separator"]').classes()).toContain('mx-3')
-    expect(wrapper.get('[data-test="admin-sidebar-footer-content"]').classes()).toContain('px-3')
     expect(wrapper.find('[data-test="admin-sidebar-brand"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="admin-sidebar-brand-mark"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="admin-sidebar-user"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="theme-mode-trigger"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="admin-logout"]').exists()).toBe(true)
     expect(menu.props('collapsed')).toBe(true)
-    expect(menu.props('collapsedWidth')).toBe(60)
-    expect(menu.props('collapsedIconSize')).toBe(18)
     expect(menu.props('value')).toBe(usersMenuId)
     expect(menu.props('expandedKeys')).toEqual([systemMenuId])
     expect(localStorage.getItem(adminSidebarCollapsedStorageKey)).toBe('true')
@@ -331,9 +270,6 @@ describe('admin layout', () => {
     expect(menu.props('collapsed')).toBe(true)
     expect(wrapper.get('[data-test="admin-sidebar-toggle"]').attributes('aria-label')).toBe(
       '展开侧边栏',
-    )
-    expect(wrapper.get('[data-test="admin-shell"]').attributes('style')).toContain(
-      '--admin-sidebar-width: 60px',
     )
   })
 

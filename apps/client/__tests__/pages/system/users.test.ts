@@ -168,6 +168,7 @@ describe('users page', () => {
   afterEach(() => {
     disposeActiveTestPinia()
     vi.unstubAllGlobals()
+    Reflect.deleteProperty(navigator, 'clipboard')
   })
 
   it('loads and renders users with departments and roles', async () => {
@@ -377,9 +378,14 @@ describe('users page', () => {
   })
 
   it('shows copied state after copying the temporary password', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined)
+    class TestClipboardItem {
+      constructor(readonly items: Record<string, unknown>) {}
+    }
+
+    const write = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('ClipboardItem', TestClipboardItem)
     Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText },
+      value: { write },
       configurable: true,
     })
     listUsersMock.mockResolvedValue(userListResponse)
@@ -404,7 +410,13 @@ describe('users page', () => {
     copyButton?.click()
     await flushPromises()
 
-    expect(writeText).toHaveBeenCalledWith('ResetPass123')
+    expect(write).toHaveBeenCalledTimes(1)
+    const [clipboardItems] = write.mock.calls[0]!
+    expect(clipboardItems).toHaveLength(1)
+    expect((clipboardItems as TestClipboardItem[])[0]?.items).toHaveProperty(
+      'text/plain',
+      'ResetPass123',
+    )
     expect(copyButton?.textContent).toContain('已复制')
   })
 

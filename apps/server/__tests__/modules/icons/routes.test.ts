@@ -1,8 +1,28 @@
 import type { IconifyJSON } from '@iconify/types'
-import { describe, expect, it } from 'vitest'
-import { createApp } from '../../../src/app'
-import { searchIcons } from '../../../src/modules/icons/search-service'
-import { createTestDb } from '../../helpers/db'
+import { Hono } from 'hono'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { iconRoutes } from '../../../src/modules/icons/routes'
+import * as iconService from '../../../src/modules/icons/service'
+import * as iconSearchService from '../../../src/modules/icons/search-service'
+
+function createIconTestApp() {
+  return new Hono().route('/api/icons', iconRoutes)
+}
+
+const lucideSubset: IconifyJSON = {
+  prefix: 'lucide',
+  icons: {
+    moon: {
+      body: '<path d="moon" />',
+    },
+    sun: {
+      body: '<path d="sun" />',
+    },
+  },
+  aliases: {},
+  width: 24,
+  height: 24,
+}
 
 function expectHeaderList(response: Response, name: string, values: string[]) {
   expect(
@@ -35,9 +55,13 @@ function expectIconHeaders(response: Response, options: { preflight?: boolean } 
 }
 
 describe('icon routes', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('returns requested Iconify JSON without authentication', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
+    const getIconSubsetSpy = vi.spyOn(iconService, 'getIconSubset').mockResolvedValue(lucideSubset)
+    const app = createIconTestApp()
 
     const response = await app.request('/api/icons/lucide.json?icons=sun,moon')
     const body = (await response.json()) as IconifyJSON
@@ -45,20 +69,27 @@ describe('icon routes', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toContain('application/json')
     expectIconHeaders(response)
+    expect(getIconSubsetSpy).toHaveBeenCalledWith('lucide', ['sun', 'moon'])
     expect(body.prefix).toBe('lucide')
     expect(body.width).toBe(24)
     expect(body.height).toBe(24)
     expect(body.aliases).toEqual({})
     expect(Object.keys(body.icons).sort()).toEqual(['moon', 'sun'])
-    expect(body.icons.sun?.body).toContain('currentColor')
-    expect(body.icons.moon?.body).toContain('currentColor')
+    expect(body.icons.sun?.body).toContain('sun')
+    expect(body.icons.moon?.body).toContain('moon')
     expect(body.icons.home).toBeUndefined()
     expect(body.not_found).toBeUndefined()
   })
 
   it('returns not_found for missing icons while keeping found icons', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
+    vi.spyOn(iconService, 'getIconSubset').mockResolvedValue({
+      ...lucideSubset,
+      icons: {
+        sun: lucideSubset.icons.sun!,
+      },
+      not_found: ['not-a-real-icon'],
+    })
+    const app = createIconTestApp()
 
     const response = await app.request('/api/icons/lucide.json?icons=sun,not-a-real-icon')
     const body = (await response.json()) as IconifyJSON
@@ -70,31 +101,41 @@ describe('icon routes', () => {
   })
 
   it('returns icon search results without authentication', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
+    const searchIconsSpy = vi.spyOn(iconSearchService, 'searchIcons').mockResolvedValue({
+      list: [
+        {
+          icon: 'lucide:users',
+          prefix: 'lucide',
+          name: 'users',
+          collection: 'Lucide',
+          palette: false,
+        },
+      ],
+    })
+    const app = createIconTestApp()
 
     const response = await app.request('/api/icons/search?keyword=用户&limit=20')
-    const body = (await response.json()) as {
-      list: Array<{
-        icon: string
-        prefix: string
-        name: string
-        collection: string
-        palette: boolean
-      }>
-    }
+    const body = await response.json()
 
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toContain('application/json')
     expectIconHeaders(response)
-    expect(body.list.length).toBeGreaterThan(0)
-    expect(body.list.length).toBeLessThanOrEqual(20)
-    expect(body.list.some((item) => item.icon === 'lucide:users')).toBe(true)
+    expect(searchIconsSpy).toHaveBeenCalledWith({ keyword: '用户', limit: 20 })
+    expect(body).toEqual({
+      list: [
+        {
+          icon: 'lucide:users',
+          prefix: 'lucide',
+          name: 'users',
+          collection: 'Lucide',
+          palette: false,
+        },
+      ],
+    })
   })
 
   it('returns 404 for invalid icon search queries', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
+    const app = createIconTestApp()
 
     const response = await app.request('/api/icons/search?limit=0')
     const overlongKeywordResponse = await app.request(
@@ -108,8 +149,12 @@ describe('icon routes', () => {
   })
 
   it('returns empty icons and not_found when every requested icon is missing', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
+    vi.spyOn(iconService, 'getIconSubset').mockResolvedValue({
+      ...lucideSubset,
+      icons: {},
+      not_found: ['not-a-real-icon'],
+    })
+    const app = createIconTestApp()
 
     const response = await app.request('/api/icons/lucide.json?icons=not-a-real-icon')
     const body = (await response.json()) as IconifyJSON
@@ -123,20 +168,25 @@ describe('icon routes', () => {
   })
 
   it('treats an empty icon name as not_found', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
+    const getIconSubsetSpy = vi.spyOn(iconService, 'getIconSubset').mockResolvedValue({
+      ...lucideSubset,
+      icons: {},
+      not_found: [''],
+    })
+    const app = createIconTestApp()
 
     const response = await app.request('/api/icons/lucide.json?icons=')
     const body = (await response.json()) as IconifyJSON
 
     expect(response.status).toBe(200)
+    expect(getIconSubsetSpy).toHaveBeenCalledWith('lucide', [''])
     expect(body.icons).toEqual({})
     expect(body.not_found).toEqual([''])
   })
 
   it('returns text 404 for missing collections, missing icons parameter, and invalid prefixes', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
+    vi.spyOn(iconService, 'getIconSubset').mockResolvedValue(null)
+    const app = createIconTestApp()
 
     const missingCollection = await app.request('/api/icons/not-a-prefix.json?icons=sun')
     expect(missingCollection.status).toBe(404)
@@ -155,8 +205,7 @@ describe('icon routes', () => {
   })
 
   it('returns CORS headers for OPTIONS requests', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
+    const app = createIconTestApp()
 
     const response = await app.request('/api/icons/lucide.json?icons=sun', {
       method: 'OPTIONS',
@@ -168,8 +217,8 @@ describe('icon routes', () => {
   })
 
   it('pretty prints JSON when pretty has a non-empty value', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
+    vi.spyOn(iconService, 'getIconSubset').mockResolvedValue(lucideSubset)
+    const app = createIconTestApp()
 
     const prettyOne = await app.request('/api/icons/lucide.json?icons=sun&pretty=1')
     const prettyTrue = await app.request('/api/icons/lucide.json?icons=sun&pretty=true')
@@ -184,69 +233,5 @@ describe('icon routes', () => {
     expect(await prettyZero.text()).toContain('\n    "prefix": "lucide"')
     expect(await compact.text()).not.toContain('\n    "prefix": "lucide"')
     expect(await emptyPretty.text()).not.toContain('\n    "prefix": "lucide"')
-  })
-
-  it('searches recommended icons for an empty keyword', async () => {
-    const result = await searchIcons({ keyword: '', limit: 12 })
-    const whitespaceResult = await searchIcons({ keyword: '   ', limit: 12 })
-
-    expect(result.list.length).toBeGreaterThan(0)
-    expect(result.list.length).toBeLessThanOrEqual(12)
-    expect(result.list.some((item) => item.icon === 'lucide:users')).toBe(true)
-    expect(whitespaceResult.list.map((item) => item.icon)).toEqual(
-      result.list.map((item) => item.icon),
-    )
-  })
-
-  it('searches icons by English, Chinese, alias, exact, and fuzzy keywords', async () => {
-    const english = await searchIcons({ keyword: 'user', limit: 20 })
-    expect(english.list[0]?.icon).toBe('lucide:user')
-
-    const settings = await searchIcons({ keyword: 'settings', limit: 20 })
-    expect(settings.list[0]?.icon).toBe('lucide:settings')
-
-    const chinese = await searchIcons({ keyword: '用户', limit: 20 })
-    expect(chinese.list.some((item) => item.icon === 'lucide:users')).toBe(true)
-
-    const combinedChinese = await searchIcons({ keyword: '用户权限', limit: 40 })
-    expect(
-      combinedChinese.list.some(
-        (item) =>
-          item.icon.includes('user') || item.icon.includes('shield') || item.icon.includes('key'),
-      ),
-    ).toBe(true)
-
-    const alias = await searchIcons({ keyword: 'person', limit: 20 })
-    expect(alias.list.some((item) => item.icon === 'lucide:user')).toBe(true)
-
-    const exact = await searchIcons({ keyword: 'lucide:users', limit: 10 })
-    expect(exact.list[0]?.icon).toBe('lucide:users')
-
-    const fuzzy = await searchIcons({ keyword: 'usr', limit: 20 })
-    expect(fuzzy.list.some((item) => item.icon.includes('user'))).toBe(true)
-  })
-
-  it('searches broad Chinese keywords with bounded candidate expansion', async () => {
-    const result = await searchIcons({
-      keyword:
-        '用户角色权限菜单资源部门组织系统设置日志首页统计报表字典通知文件外链操作状态排序配置',
-      limit: 20,
-    })
-
-    expect(result.list.length).toBeGreaterThan(0)
-    expect(result.list.length).toBeLessThanOrEqual(20)
-    expect(
-      result.list.some((item) => item.icon.includes('user') || item.icon.includes('shield')),
-    ).toBe(true)
-  })
-
-  it('keeps color and brand icons searchable while preferring monochrome admin icon sets', async () => {
-    const result = await searchIcons({ keyword: 'vue', limit: 80 })
-    const colorIndex = result.list.findIndex((item) => item.prefix === 'logos')
-    const monochromeIndex = result.list.findIndex((item) => !item.palette)
-
-    expect(colorIndex).toBeGreaterThanOrEqual(0)
-    expect(monochromeIndex).toBeGreaterThanOrEqual(0)
-    expect(monochromeIndex).toBeLessThan(colorIndex)
   })
 })

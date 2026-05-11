@@ -1,569 +1,282 @@
-import { randomUUID } from 'node:crypto'
-import { describe, expect, it } from 'vitest'
+import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
-import { eq } from 'drizzle-orm'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { RESOURCE_TYPE_ACTION, ROLE_STATUS_ENABLED } from '@rev30/shared'
 import {
-  BUILT_IN_ADMIN_ROLE_CODE,
-  RESOURCE_TYPE_ACTION,
-  RESOURCE_TYPE_DIRECTORY,
-  ROLE_STATUS_DISABLED,
-  ROLE_STATUS_ENABLED,
-  type Role,
-  type RoleListResponse,
-  type RoleStatus,
-} from '@rev30/shared'
-import { roleResources, roles, systemResources, userRoles, users } from '../../../../src/db/schema'
-import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
-import { createTestDb } from '../../../helpers/db'
+  BuiltInAdminRoleMutationError,
+  RoleConflictError,
+  RoleDeleteConflictError,
+  RoleInvalidResourceAssignmentError,
+  RoleInvalidResourceError,
+  RoleNotFoundError,
+} from '../../../../src/modules/system/roles/errors'
 import { createRoleRoutes } from '../../../../src/modules/system/roles/routes'
 
-type ErrorResponse = {
-  message: string
+const roleId = '33333333-3333-4333-8333-333333333333'
+const resourceId = '44444444-4444-4444-8444-444444444444'
+const role = {
+  id: roleId,
+  name: 'Administrator',
+  code: 'test-admin',
+  status: ROLE_STATUS_ENABLED,
+  sortOrder: 10,
+  createdAt: '2026-05-06T00:00:00.000Z',
+  updatedAt: '2026-05-06T00:00:00.000Z',
+  resources: [
+    {
+      id: resourceId,
+      name: 'Create User',
+      code: 'system:user:create',
+      type: RESOURCE_TYPE_ACTION,
+    },
+  ],
 }
 
-async function createTestApp(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  authHeaders?: Record<string, string>,
-) {
-  const headers =
-    authHeaders ??
-    (
-      await createSystemAccessFixture(database, {
-        admin: true,
-        usernamePrefix: 'role-routes-admin',
-      })
-    ).authHeaders
-
-  return createProtectedSystemRouteTestApp(
-    database,
-    '/api/system/roles',
-    createRoleRoutes(database),
-    headers,
-  )
-}
-
-async function createResource(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  input: {
-    name: string
-    code: string
-    type?: 'directory' | 'menu' | 'external' | 'action'
-    parentId?: string | null
-    sortOrder?: number
-    deletedAt?: Date | null
-  },
-) {
-  const now = new Date()
-  const [resource] = await database
-    .insert(systemResources)
-    .values({
-      id: randomUUID(),
-      parentId: input.parentId ?? null,
-      name: input.name,
-      code: input.code,
-      type: input.type ?? RESOURCE_TYPE_DIRECTORY,
-      sortOrder: input.sortOrder ?? 0,
-      deletedAt: input.deletedAt ?? null,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning()
-
-  if (!resource) {
-    throw new Error('Expected resource')
+const mocks = vi.hoisted(() => {
+  const accessMiddleware = vi.fn(async (_c: Context, next: Next) => next())
+  const service = {
+    create: vi.fn(),
+    delete: vi.fn(),
+    get: vi.fn(),
+    list: vi.fn(),
+    update: vi.fn(),
   }
 
-  return resource
-}
+  return {
+    accessMiddleware,
+    createRoleService: vi.fn(() => service),
+    requireAccess: vi.fn(() => accessMiddleware),
+    service,
+  }
+})
 
-async function createRole(
-  app: Hono,
-  body: {
-    name: string
-    code: string
-    status?: RoleStatus
-    sortOrder?: number
-    resourceIds?: string[]
-  },
-) {
-  const response = await app.request('/api/system/roles', {
-    method: 'POST',
-    body: JSON.stringify(body),
-    headers: { 'content-type': 'application/json' },
-  })
+vi.mock('../../../../src/middleware/access', () => ({
+  requireAccess: mocks.requireAccess,
+}))
 
-  return { body: (await response.json()) as Role, response }
+vi.mock('../../../../src/modules/system/roles/service', () => ({
+  createRoleService: mocks.createRoleService,
+}))
+
+function createTestApp() {
+  return new Hono().route('/api/system/roles', createRoleRoutes({} as never))
 }
 
 describe('role routes', () => {
-  it('creates roles with resource ids and returns resources sorted by resource sort order', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const action = await createResource(database, {
-      name: 'Create User',
-      code: 'test-system:user:create',
-      type: RESOURCE_TYPE_ACTION,
-      sortOrder: 2,
+  beforeEach(() => {
+    vi.clearAllMocks()
+    Object.values(mocks.service).forEach((mock) => mock.mockReset())
+    mocks.requireAccess.mockReturnValue(mocks.accessMiddleware)
+    mocks.createRoleService.mockReturnValue(mocks.service)
+    mocks.service.list.mockResolvedValue({
+      list: [{ ...role, userCount: 0 }],
+      total: 1,
+      page: 2,
+      pageSize: 5,
     })
-    const directory = await createResource(database, {
-      name: 'System',
-      code: 'test-system',
-      type: RESOURCE_TYPE_DIRECTORY,
-      sortOrder: 1,
-    })
-
-    const { body, response } = await createRole(app, {
-      name: 'Administrator',
-      code: 'test-admin',
-      sortOrder: 10,
-      resourceIds: [action.id, directory.id],
-    })
-
-    expect(response.status).toBe(201)
-    expect(body).toMatchObject({
-      name: 'Administrator',
-      code: 'test-admin',
-      status: ROLE_STATUS_ENABLED,
-      sortOrder: 10,
-    })
-    expect(body.resources).toEqual([
-      {
-        id: directory.id,
-        name: 'System',
-        code: 'test-system',
-        type: RESOURCE_TYPE_DIRECTORY,
-      },
-      {
-        id: action.id,
-        name: 'Create User',
-        code: 'test-system:user:create',
-        type: RESOURCE_TYPE_ACTION,
-      },
-    ])
+    mocks.service.get.mockResolvedValue(role)
+    mocks.service.create.mockResolvedValue(role)
+    mocks.service.update.mockResolvedValue({ ...role, name: 'Updated Administrator' })
+    mocks.service.delete.mockResolvedValue(undefined)
   })
 
-  it('lists roles with userCount only and supports keyword/status with non-deleted user counting', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const { body: admin } = await createRole(app, {
-      name: 'Administrator',
-      code: 'test-admin',
+  it('registers expected access guards for every role endpoint', () => {
+    createTestApp()
+
+    expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
+      [
+        'system:role:list',
+        'system:role:list',
+        'system:role:create',
+        'system:role:update',
+        'system:role:delete',
+      ],
+    )
+  })
+
+  it('parses list query and delegates to the role service', async () => {
+    const app = createTestApp()
+
+    const listResponse = await app.request(
+      '/api/system/roles?page=2&pageSize=5&keyword=admin&status=1',
+    )
+    expect(listResponse.status).toBe(200)
+    expect(mocks.service.list).toHaveBeenCalledWith({
+      keyword: 'admin',
+      page: 2,
+      pageSize: 5,
       status: ROLE_STATUS_ENABLED,
     })
-    await createRole(app, {
-      name: 'Operator',
-      code: 'operator',
-      status: ROLE_STATUS_DISABLED,
-    })
-    const activeUserId = randomUUID()
-    const deletedUserId = randomUUID()
-
-    await database.insert(users).values([
-      {
-        id: activeUserId,
-        username: 'active-user',
-        nickname: 'Active User',
-      },
-      {
-        id: deletedUserId,
-        username: 'deleted-user',
-        nickname: 'Deleted User',
-        deletedAt: new Date(),
-      },
-    ])
-    await database.insert(userRoles).values([
-      { userId: activeUserId, roleId: admin.id },
-      { userId: deletedUserId, roleId: admin.id },
-    ])
-
-    const response = await app.request('/api/system/roles?keyword=test-admin&status=1')
-    const body = (await response.json()) as RoleListResponse
-
-    expect(response.status).toBe(200)
-    expect(body.total).toBe(1)
-    expect(body.list).toHaveLength(1)
-    expect(body.list[0]).toMatchObject({
-      id: admin.id,
-      name: 'Administrator',
-      code: 'test-admin',
-      status: ROLE_STATUS_ENABLED,
-      userCount: 1,
-    })
-    expect(body.list[0]).not.toHaveProperty('resources')
-    expect(body.list[0]).not.toHaveProperty('resourceCount')
   })
 
-  it('returns role details with resources', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const resource = await createResource(database, {
-      name: 'System',
-      code: 'test-system',
-      type: RESOURCE_TYPE_DIRECTORY,
-    })
-    const { body: created } = await createRole(app, {
-      name: 'Administrator',
-      code: 'test-admin',
-      resourceIds: [resource.id],
-    })
+  it('delegates detail requests by id', async () => {
+    const app = createTestApp()
 
-    const response = await app.request(`/api/system/roles/${created.id}`)
-    const body = (await response.json()) as Role
-
-    expect(response.status).toBe(200)
-    expect(body).toMatchObject({
-      id: created.id,
-      code: 'test-admin',
-    })
-    expect(body.resources).toEqual([
-      {
-        id: resource.id,
-        name: 'System',
-        code: 'test-system',
-        type: RESOURCE_TYPE_DIRECTORY,
-      },
-    ])
+    const detailResponse = await app.request(`/api/system/roles/${roleId}`)
+    expect(detailResponse.status).toBe(200)
+    expect(mocks.service.get).toHaveBeenCalledWith(roleId)
   })
 
-  it('replaces and clears role resource authorization on patch', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const system = await createResource(database, {
-      name: 'System',
-      code: 'test-system',
-      sortOrder: 1,
-    })
-    const createUser = await createResource(database, {
-      name: 'Create User',
-      code: 'test-system:user:create',
-      type: RESOURCE_TYPE_ACTION,
-      parentId: system.id,
-      sortOrder: 2,
-    })
-    const { body: created } = await createRole(app, {
-      name: 'Administrator',
-      code: 'test-admin',
-      resourceIds: [system.id],
-    })
-
-    const replaceResponse = await app.request(`/api/system/roles/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        resourceIds: [system.id, createUser.id],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    const replaceBody = (await replaceResponse.json()) as Role
-
-    expect(replaceResponse.status).toBe(200)
-    expect(replaceBody.resources).toEqual([
-      {
-        id: system.id,
-        name: 'System',
-        code: 'test-system',
-        type: RESOURCE_TYPE_DIRECTORY,
-      },
-      {
-        id: createUser.id,
-        name: 'Create User',
-        code: 'test-system:user:create',
-        type: RESOURCE_TYPE_ACTION,
-      },
-    ])
-
-    const clearResponse = await app.request(`/api/system/roles/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        resourceIds: [],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    const clearBody = (await clearResponse.json()) as Role
-
-    expect(clearResponse.status).toBe(200)
-    expect(clearBody.resources).toEqual([])
-
-    const storedRelations = await database
-      .select()
-      .from(roleResources)
-      .where(eq(roleResources.roleId, created.id))
-    expect(storedRelations).toEqual([])
-  })
-
-  it('returns conflict for duplicate role code', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    await createRole(app, { name: 'Test Administrator', code: 'test-admin' })
-
-    const duplicate = await createRole(app, { name: 'Admin Duplicate', code: 'test-admin' })
-    const body = duplicate.body as unknown as ErrorResponse
-
-    expect(duplicate.response.status).toBe(409)
-    expect(body).toEqual({ field: 'code', message: '角色编码已存在' })
-  })
-
-  it('returns invalid resource errors for missing or deleted resources', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const missingResourceId = randomUUID()
-    const deletedResource = await createResource(database, {
-      name: 'Deleted',
-      code: 'system:deleted',
-      deletedAt: new Date(),
-    })
-
-    const missingCreateResponse = await app.request('/api/system/roles', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: 'Administrator',
-        code: 'test-admin',
-        resourceIds: [missingResourceId],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(missingCreateResponse.status).toBe(400)
-    expect(await missingCreateResponse.json()).toEqual({ message: '资源不存在' })
-
-    const { body: created } = await createRole(app, {
-      name: 'Operator',
-      code: 'operator',
-    })
-    const deletedUpdateResponse = await app.request(`/api/system/roles/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        resourceIds: [deletedResource.id],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(deletedUpdateResponse.status).toBe(400)
-    expect(await deletedUpdateResponse.json()).toEqual({ message: '资源不存在' })
-  })
-
-  it('rejects child resource authorization without its parent resource', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const system = await createResource(database, {
-      name: 'System',
-      code: 'test-system',
-      sortOrder: 1,
-    })
-    const userMenu = await createResource(database, {
-      name: 'Users',
-      code: 'test-system:user',
-      type: RESOURCE_TYPE_DIRECTORY,
-      parentId: system.id,
-      sortOrder: 2,
-    })
-    const listUser = await createResource(database, {
-      name: 'List Users',
-      code: 'test-system:user:list',
-      type: RESOURCE_TYPE_ACTION,
-      parentId: userMenu.id,
-      sortOrder: 3,
-    })
-
-    const parentOnly = await createRole(app, {
-      name: 'Menu Viewer',
-      code: 'menu-viewer',
-      resourceIds: [system.id],
-    })
-    expect(parentOnly.response.status).toBe(201)
-    expect(parentOnly.body.resources).toEqual([
-      {
-        id: system.id,
-        name: 'System',
-        code: 'test-system',
-        type: RESOURCE_TYPE_DIRECTORY,
-      },
-    ])
-
-    const missingParentResponse = await app.request('/api/system/roles', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: 'Action Viewer',
-        code: 'action-viewer',
-        resourceIds: [system.id, listUser.id],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(missingParentResponse.status).toBe(400)
-    expect(await missingParentResponse.json()).toEqual({
-      field: 'resourceIds',
-      message: '子资源授权需要包含所有上级资源',
-    })
-
-    const fullChain = await createRole(app, {
-      name: 'User Viewer',
-      code: 'user-viewer',
-      resourceIds: [system.id, userMenu.id, listUser.id],
-    })
-
-    expect(fullChain.response.status).toBe(201)
-    expect(fullChain.body.resources.map((resource) => resource.id)).toEqual([
-      system.id,
-      userMenu.id,
-      listUser.id,
-    ])
-  })
-
-  it('rejects updating and deleting the built-in admin role', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const [adminRole] = await database
-      .select()
-      .from(roles)
-      .where(eq(roles.code, BUILT_IN_ADMIN_ROLE_CODE))
-
-    if (!adminRole) {
-      throw new Error('Expected built-in admin role')
-    }
-
-    const updateResponse = await app.request(`/api/system/roles/${adminRole.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        name: 'Root Administrator',
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(updateResponse.status).toBe(409)
-    expect(await updateResponse.json()).toEqual({ message: '内置 admin 角色不能编辑' })
-
-    const deleteResponse = await app.request(`/api/system/roles/${adminRole.id}`, {
-      method: 'DELETE',
-    })
-
-    expect(deleteResponse.status).toBe(409)
-    expect(await deleteResponse.json()).toEqual({ message: '内置 admin 角色不能删除' })
-
-    const [storedAdminRole] = await database.select().from(roles).where(eq(roles.id, adminRole.id))
-
-    expect(storedAdminRole).toMatchObject({
-      name: adminRole.name,
-      code: BUILT_IN_ADMIN_ROLE_CODE,
-      deletedAt: null,
-    })
-  })
-
-  it('rejects deleting roles that are assigned to users', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const { body: role } = await createRole(app, {
-      name: 'Administrator',
-      code: 'test-admin',
-    })
-    const userId = randomUUID()
-
-    await database.insert(users).values({
-      id: userId,
-      username: 'linked-user',
-      nickname: 'Linked User',
-    })
-    await database.insert(userRoles).values({ userId, roleId: role.id })
-
-    const response = await app.request(`/api/system/roles/${role.id}`, {
-      method: 'DELETE',
-    })
-    const body = (await response.json()) as ErrorResponse
-
-    expect(response.status).toBe(409)
-    expect(body).toEqual({ message: '角色存在关联用户，不能删除' })
-  })
-
-  it('soft deletes roles with resources and clears role resource relations', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const resource = await createResource(database, {
-      name: 'System',
-      code: 'test-system',
-    })
-    const { body: role } = await createRole(app, {
-      name: 'Administrator',
-      code: 'test-admin',
-      resourceIds: [resource.id],
-    })
-
-    const deleteResponse = await app.request(`/api/system/roles/${role.id}`, {
-      method: 'DELETE',
-    })
-    expect(deleteResponse.status).toBe(204)
-
-    const storedRows = await database.select().from(roles).where(eq(roles.id, role.id))
-    expect(storedRows).toHaveLength(1)
-    expect(storedRows[0]?.deletedAt).toBeInstanceOf(Date)
-
-    const storedRelations = await database
-      .select()
-      .from(roleResources)
-      .where(eq(roleResources.roleId, role.id))
-    expect(storedRelations).toEqual([])
-
-    const detailResponse = await app.request(`/api/system/roles/${role.id}`)
-    const detailBody = (await detailResponse.json()) as ErrorResponse
-    expect(detailResponse.status).toBe(404)
-    expect(detailBody).toEqual({ message: '角色不存在' })
-  })
-
-  it('returns stable validation errors for invalid query, id params, and request bodies', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-
-    const listResponse = await app.request('/api/system/roles?page=0')
-    expect(listResponse.status).toBe(400)
-    expect(await listResponse.json()).toEqual({ message: '查询参数无效' })
-
-    const detailResponse = await app.request('/api/system/roles/not-a-uuid')
-    expect(detailResponse.status).toBe(400)
-    expect(await detailResponse.json()).toEqual({ message: '角色 ID 无效' })
+  it('delegates create requests to the role service', async () => {
+    const app = createTestApp()
 
     const createResponse = await app.request('/api/system/roles', {
       method: 'POST',
       body: JSON.stringify({
-        code: 'invalid',
+        name: 'Administrator',
+        code: 'test-admin',
+        resourceIds: [resourceId],
       }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(createResponse.status).toBe(201)
+    expect(mocks.service.create).toHaveBeenCalledWith({
+      name: 'Administrator',
+      code: 'test-admin',
+      resourceIds: [resourceId],
+      status: ROLE_STATUS_ENABLED,
+      sortOrder: 0,
+    })
+  })
+
+  it('delegates update requests by id', async () => {
+    const app = createTestApp()
+
+    const updateResponse = await app.request(`/api/system/roles/${roleId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name: 'Updated Administrator' }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(updateResponse.status).toBe(200)
+    expect(mocks.service.update).toHaveBeenCalledWith(roleId, {
+      name: 'Updated Administrator',
+    })
+  })
+
+  it('delegates delete requests by id', async () => {
+    const app = createTestApp()
+
+    const deleteResponse = await app.request(`/api/system/roles/${roleId}`, {
+      method: 'DELETE',
+    })
+    expect(deleteResponse.status).toBe(204)
+    expect(mocks.service.delete).toHaveBeenCalledWith(roleId)
+  })
+
+  it('returns query validation errors before calling the role service', async () => {
+    const app = createTestApp()
+
+    const listResponse = await app.request('/api/system/roles?page=0')
+    expect(listResponse.status).toBe(400)
+    expect(await listResponse.json()).toEqual({ message: '查询参数无效' })
+    expect(mocks.service.list).not.toHaveBeenCalled()
+  })
+
+  it('returns id validation errors before calling role service methods', async () => {
+    const app = createTestApp()
+
+    const detailResponse = await app.request('/api/system/roles/not-a-uuid')
+    expect(detailResponse.status).toBe(400)
+    expect(await detailResponse.json()).toEqual({ message: '角色 ID 无效' })
+    expect(mocks.service.get).not.toHaveBeenCalled()
+  })
+
+  it('returns create body validation errors before calling the role service', async () => {
+    const app = createTestApp()
+
+    const createResponse = await app.request('/api/system/roles', {
+      method: 'POST',
+      body: JSON.stringify({ code: 'test-admin' }),
       headers: { 'content-type': 'application/json' },
     })
     expect(createResponse.status).toBe(400)
     expect(await createResponse.json()).toEqual({ message: '请求体无效' })
+    expect(mocks.service.create).not.toHaveBeenCalled()
   })
 
-  it('returns 401 when requesting role routes without authentication', async () => {
-    const database = await createTestDb()
-    const app = createProtectedSystemRouteTestApp(
-      database,
-      '/api/system/roles',
-      createRoleRoutes(database),
-    )
+  it('maps invalid resource errors to route responses', async () => {
+    const app = createTestApp()
 
-    const response = await app.request('/api/system/roles')
-
-    expect(response.status).toBe(401)
-    expect(await response.json()).toEqual({ message: '未授权' })
-  })
-
-  it('returns 403 when the user lacks role list access', async () => {
-    const database = await createTestDb()
-    const denied = await createSystemAccessFixture(database, {
-      accessCodes: ['system:department:list'],
-      usernamePrefix: 'role-routes-forbidden',
+    mocks.service.create.mockRejectedValueOnce(new RoleInvalidResourceError())
+    const invalidResourceResponse = await app.request('/api/system/roles', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Administrator',
+        code: 'test-admin',
+      }),
+      headers: { 'content-type': 'application/json' },
     })
-    const app = await createTestApp(database, denied.authHeaders)
-
-    const response = await app.request('/api/system/roles')
-
-    expect(response.status).toBe(403)
-    expect(await response.json()).toEqual({ message: '无权访问' })
+    expect(invalidResourceResponse.status).toBe(400)
+    expect(await invalidResourceResponse.json()).toEqual({ message: '资源不存在' })
   })
 
-  it('allows admin users to access protected role routes without explicit role resources', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
+  it('maps invalid resource assignment errors to route responses', async () => {
+    const app = createTestApp()
 
-    const response = await app.request('/api/system/roles')
+    mocks.service.create.mockRejectedValueOnce(
+      new RoleInvalidResourceAssignmentError('子资源授权需要包含所有上级资源'),
+    )
+    const invalidAssignmentResponse = await app.request('/api/system/roles', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Operator',
+        code: 'operator',
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(invalidAssignmentResponse.status).toBe(400)
+    expect(await invalidAssignmentResponse.json()).toEqual({
+      field: 'resourceIds',
+      message: '子资源授权需要包含所有上级资源',
+    })
+  })
 
-    expect(response.status).toBe(200)
+  it('maps not-found errors to route responses', async () => {
+    const app = createTestApp()
+
+    mocks.service.get.mockRejectedValueOnce(new RoleNotFoundError())
+    const notFoundResponse = await app.request(`/api/system/roles/${roleId}`)
+    expect(notFoundResponse.status).toBe(404)
+    expect(await notFoundResponse.json()).toEqual({ message: '角色不存在' })
+  })
+
+  it('maps conflict errors to route responses', async () => {
+    const app = createTestApp()
+
+    mocks.service.update.mockRejectedValueOnce(new RoleConflictError())
+    const conflictResponse = await app.request(`/api/system/roles/${roleId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ code: 'test-admin' }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(conflictResponse.status).toBe(409)
+    expect(await conflictResponse.json()).toEqual({
+      field: 'code',
+      message: '角色编码已存在',
+    })
+  })
+
+  it('maps built-in role mutation errors to route responses', async () => {
+    const app = createTestApp()
+
+    mocks.service.update.mockRejectedValueOnce(new BuiltInAdminRoleMutationError('edit'))
+    const builtInResponse = await app.request(`/api/system/roles/${roleId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name: 'Root Administrator' }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(builtInResponse.status).toBe(409)
+    expect(await builtInResponse.json()).toEqual({ message: '内置 admin 角色不能编辑' })
+  })
+
+  it('maps delete conflict errors to route responses', async () => {
+    const app = createTestApp()
+
+    mocks.service.delete.mockRejectedValueOnce(new RoleDeleteConflictError())
+    const deleteResponse = await app.request(`/api/system/roles/${roleId}`, {
+      method: 'DELETE',
+    })
+    expect(deleteResponse.status).toBe(409)
+    expect(await deleteResponse.json()).toEqual({ message: '角色存在关联用户，不能删除' })
   })
 })

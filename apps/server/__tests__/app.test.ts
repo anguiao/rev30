@@ -13,6 +13,10 @@ import { createSystemAccessFixture } from './helpers/auth'
 import { createTestDb } from './helpers/db'
 import { readAuthConfig } from '../src/modules/auth/config'
 
+function createUnusedDatabase() {
+  return {} as Awaited<ReturnType<typeof createTestDb>>
+}
+
 async function register(app: ReturnType<typeof createApp>) {
   const response = await app.request('/api/auth/register', {
     method: 'POST',
@@ -34,13 +38,12 @@ async function register(app: ReturnType<typeof createApp>) {
 
 describe('app auth boundaries', () => {
   it('logs requests through the injected app logger', async () => {
-    const database = await createTestDb()
     const logs: Array<{
       level: string
       payload: Record<string, unknown>
       message: string
     }> = []
-    const app = createApp(database, {
+    const app = createApp(createUnusedDatabase(), {
       logger: {
         info: (payload, message) => logs.push({ level: 'info', payload, message }),
         error: (payload, message) => logs.push({ level: 'error', payload, message }),
@@ -74,8 +77,7 @@ describe('app auth boundaries', () => {
   })
 
   it('rejects system routes without an access token', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
+    const app = createApp(createUnusedDatabase())
 
     const response = await app.request('/api/system/users')
 
@@ -174,13 +176,23 @@ describe('app auth boundaries', () => {
   })
 
   it('rejects system routes with a refresh token', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
-    const registered = await register(app)
+    const app = createApp(createUnusedDatabase())
+    const config = readAuthConfig()
+    const refreshToken = await sign(
+      {
+        sub: 'unused-user-id',
+        type: 'refresh',
+        jti: 'unused-refresh-token-id',
+        iat: 1,
+        exp: 9999999999,
+      },
+      config.refreshSecret,
+      'HS256',
+    )
 
     const response = await app.request('/api/system/users', {
       headers: {
-        authorization: `Bearer ${registered.refreshToken}`,
+        authorization: `Bearer ${refreshToken}`,
       },
     })
 
@@ -192,12 +204,10 @@ describe('app auth boundaries', () => {
   })
 
   it('marks expired access tokens as refreshable on system routes', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
-    const registered = await register(app)
+    const app = createApp(createUnusedDatabase())
     const expiredAccessToken = await sign(
       {
-        sub: registered.body.user.id,
+        sub: 'unused-user-id',
         type: 'access',
         iat: 1,
         exp: 2,
@@ -220,12 +230,10 @@ describe('app auth boundaries', () => {
   })
 
   it('does not mark invalid access tokens as refreshable on system routes', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
-    const registered = await register(app)
+    const app = createApp(createUnusedDatabase())
     const invalidExpiredAccessToken = await sign(
       {
-        sub: registered.body.user.id,
+        sub: 'unused-user-id',
         type: 'access',
         iat: 1,
         exp: 2,

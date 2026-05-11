@@ -43,8 +43,6 @@ export const iconRoutes = new Hono()
     const query = c.req.valid('query')
     const result = await searchIcons(query)
 
-    c.header('content-type', 'application/json; charset=utf-8')
-
     return c.json(result)
   })
   .get('/:filename', iconParamValidator, iconQueryValidator, async (c) => {

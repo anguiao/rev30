@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 
+import { PiniaColada } from '@pinia/colada'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NInput, NPopover } from 'naive-ui'
@@ -40,10 +42,14 @@ type IconSearchList = Array<{
 }>
 
 function mountPicker(value: string | null = null) {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+
   return mount(ResourceIconPicker, {
     props: { value },
     attachTo: document.body,
     global: {
+      plugins: [pinia, PiniaColada],
       stubs: {
         teleport: true,
       },
@@ -177,8 +183,10 @@ describe('ResourceIconPicker', () => {
     await vi.advanceTimersByTimeAsync(200)
     await flushPromises()
 
-    expect(searchIconsMock).toHaveBeenCalledTimes(1)
-    expect(searchIconsMock).toHaveBeenCalledWith({ keyword: '', limit: 60 })
+    const searchInput = wrapper.get('[data-test="resource-icon-search"] input')
+      .element as HTMLInputElement
+    expect(searchInput.value).toBe('')
+    expect(wrapper.get('[data-test="resource-icon-option"]').text()).toBe('lucide:users')
   })
 
   it('does not run debounced search after closing before timer fires', async () => {

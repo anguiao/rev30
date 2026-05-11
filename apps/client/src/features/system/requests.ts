@@ -171,15 +171,6 @@ export async function listRoles(query: RoleListQuery): Promise<RoleListResponse>
   )
 }
 
-export async function searchIcons(query: IconSearchQuery): Promise<IconSearchResponse> {
-  return parseSystemResponse(
-    await api.icons.search.$get({
-      query: normalizeRequestQuery(query),
-    }),
-    iconSearchResponseSchema,
-  )
-}
-
 export async function getRole(id: string): Promise<Role> {
   return parseSystemResponse(await api.system.roles[':id'].$get({ param: { id } }), roleSchema)
 }
@@ -231,4 +222,13 @@ export async function deleteResource(id: string): Promise<void> {
   if (!response.ok) {
     throw await parseSystemError(response)
   }
+}
+
+export async function searchIcons(query: IconSearchQuery): Promise<IconSearchResponse> {
+  return parseSystemResponse(
+    await api.icons.search.$get({
+      query: normalizeRequestQuery(query),
+    }),
+    iconSearchResponseSchema,
+  )
 }

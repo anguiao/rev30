@@ -10,7 +10,6 @@ import {
 } from './search-config'
 
 type SearchIndexItem = IconSearchItem & {
-  category: string
   searchText: string
 }
 
@@ -233,14 +232,12 @@ function scoreSearchItem(item: SearchIndexItem, search: ExpandedSearch): number 
 function getSearchTokens(item: SearchIndexItem): string[] {
   const tokens = new Set<string>([item.icon, item.prefix, item.name])
 
-  for (const value of [item.name, item.collection, item.category]) {
-    for (const token of value.toLowerCase().match(searchTokenPattern) ?? []) {
-      tokens.add(token)
+  for (const token of item.name.toLowerCase().match(searchTokenPattern) ?? []) {
+    tokens.add(token)
 
-      for (const part of token.split('-')) {
-        if (part) {
-          tokens.add(part)
-        }
+    for (const part of token.split('-')) {
+      if (part) {
+        tokens.add(part)
       }
     }
   }
@@ -361,7 +358,6 @@ async function buildSearchIndex(): Promise<SearchIndex> {
   for (const [prefix, collectionInfo] of Object.entries(collections)) {
     const iconSet = await lookupCollection(prefix)
     const collection = collectionInfo.name.trim() || prefix
-    const category = collectionInfo.category?.trim() ?? ''
     const palette = Boolean(collectionInfo.palette)
     const names = new Set<string>([
       ...Object.keys(iconSet.icons),
@@ -375,14 +371,13 @@ async function buildSearchIndex(): Promise<SearchIndex> {
         continue
       }
 
-      const searchText = `${icon} ${prefix} ${name} ${collection} ${category}`.toLowerCase()
+      const searchText = `${icon} ${prefix} ${name}`.toLowerCase()
       const item: SearchIndexItem = {
         icon,
         prefix,
         name,
         collection,
         palette,
-        category,
         searchText,
       }
 

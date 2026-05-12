@@ -66,7 +66,7 @@ const openTargetOptions = [
   { label: '新窗口', value: RESOURCE_OPEN_TARGET_BLANK },
 ]
 
-const drawerTitle = computed(() => (props.resourceId === null ? '新增资源' : '编辑资源'))
+const drawerTitle = computed(() => (props.resourceId === null ? '新增权限资源' : '编辑权限资源'))
 
 const defaultFormValues: ResourceFormInput = {
   type: RESOURCE_TYPE_DIRECTORY,
@@ -134,7 +134,7 @@ const resourceTreeOptions = computed(() => {
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
-    : getSystemErrorMessage(formLoadError.value, '加载资源信息失败'),
+    : getSystemErrorMessage(formLoadError.value, '加载权限资源信息失败'),
 )
 
 const formError = ref<string | null>(null)
@@ -196,7 +196,7 @@ const { isLoading: isSaving, ...saveResourceMutation } = useMutation({
       return
     }
 
-    formError.value = getSystemErrorMessage(error, '保存资源失败')
+    formError.value = getSystemErrorMessage(error, '保存权限资源失败')
   },
 })
 
@@ -273,7 +273,7 @@ watch(
 
         <NForm @submit.prevent="handleSubmit">
           <form.Field name="type" v-slot="{ field, state }">
-            <NFormItem label="资源类型" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem label="类型" v-bind="formItemValidationProps(state.meta)">
               <NSelect
                 data-test="resource-form-type"
                 :value="state.value"
@@ -284,11 +284,11 @@ watch(
           </form.Field>
 
           <form.Field name="name" v-slot="{ field, state }">
-            <NFormItem label="资源名称" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem label="名称" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="resource-form-name"
                 :value="state.value"
-                placeholder="请输入资源名称"
+                placeholder="请输入名称"
                 @blur="field.handleBlur"
                 @update:value="field.handleChange"
               />
@@ -296,11 +296,11 @@ watch(
           </form.Field>
 
           <form.Field name="code" v-slot="{ field, state }">
-            <NFormItem label="资源编码" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem label="权限编码" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="resource-form-code"
                 :value="state.value"
-                placeholder="请输入资源编码"
+                placeholder="请输入权限编码"
                 @blur="field.handleBlur"
                 @update:value="field.handleChange"
               />
@@ -308,7 +308,7 @@ watch(
           </form.Field>
 
           <form.Field name="parentId" v-slot="{ field, state }">
-            <NFormItem label="上级资源" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem label="上级" v-bind="formItemValidationProps(state.meta)">
               <NTreeSelect
                 data-test="resource-form-parent"
                 clearable
@@ -316,7 +316,7 @@ watch(
                 default-expand-all
                 :options="resourceTreeOptions"
                 :value="state.value"
-                placeholder="请选择上级资源"
+                placeholder="请选择上级"
                 @update:value="(value) => field.handleChange(value === null ? null : String(value))"
               />
             </NFormItem>

@@ -181,8 +181,8 @@ describe('users page', () => {
     await flushPromises()
 
     expect(listUsersMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
-    expect(wrapper.text()).toContain('用户管理')
-    expect(wrapper.text()).toContain('共 2 个用户')
+    expect(wrapper.text()).toContain('系统用户')
+    expect(wrapper.text()).toContain('共 2 个')
     expect(wrapper.text()).toContain('ada')
     expect(wrapper.text()).toContain('Ada Lovelace')
     expect(wrapper.text()).toContain('ada@example.com')
@@ -211,7 +211,7 @@ describe('users page', () => {
     await flushPromises()
 
     expect(listUsersMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
-    expect(wrapper.text()).toContain('加载用户失败')
+    expect(wrapper.text()).toContain('加载系统用户失败')
     expect(wrapper.text()).not.toContain('network down')
   })
 
@@ -274,7 +274,7 @@ describe('users page', () => {
 
     expect(listUsersMock).toHaveBeenCalledTimes(2)
     expect(listUsersMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
-    expect(document.body.textContent).toContain('用户 New User 的临时密码只会显示一次。')
+    expect(document.body.textContent).toContain('系统用户 New User 的临时密码只会显示一次。')
     expect(getTemporaryPasswordInput()).toHaveProperty('value', 'TempPass123')
   })
 
@@ -346,7 +346,7 @@ describe('users page', () => {
 
     expect(listUsersMock).toHaveBeenCalledTimes(2)
     expect(listUsersMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
-    expect(document.body.textContent).toContain('保存用户成功')
+    expect(document.body.textContent).toContain('保存系统用户成功')
   })
 
   it('deletes a user after confirmation and refreshes the list', async () => {
@@ -396,7 +396,7 @@ describe('users page', () => {
 
     expect(resetUserPasswordMock).toHaveBeenCalledWith(resettableUser.id)
     expect(listUsersMock).toHaveBeenCalledTimes(1)
-    expect(document.body.textContent).toContain('用户 Grace Hopper 的临时密码只会显示一次。')
+    expect(document.body.textContent).toContain('系统用户 Grace Hopper 的临时密码只会显示一次。')
     expect(getTemporaryPasswordInput()).toHaveProperty('value', 'ResetPass123')
   })
 

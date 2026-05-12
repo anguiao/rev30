@@ -29,8 +29,8 @@ export const resourceOpenTargetSchema = z.enum(
 )
 
 const resourceIdSchema = z.uuid('资源 ID 无效')
-const resourceNameSchema = nonBlankString('请输入资源名称')
-const resourceCodeSchema = nonBlankString('请输入资源编码')
+const resourceNameSchema = nonBlankString('请输入名称')
+const resourceCodeSchema = nonBlankString('请输入权限编码')
 const optionalKeywordSchema = optionalTrimmedQueryString()
 const optionalStatusQuerySchema = optionalNumericQueryValue(resourceStatusSchema)
 const optionalTypeQuerySchema = optionalQueryValue(resourceTypeSchema)

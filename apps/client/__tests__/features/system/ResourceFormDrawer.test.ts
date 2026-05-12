@@ -105,7 +105,7 @@ const resourceTreeResponse: ResourceTreeNode[] = [
         id: menuResourceId,
         parentId: rootResourceId,
         type: RESOURCE_TYPE_MENU,
-        name: '用户管理',
+        name: '系统用户',
         code: 'system:user',
         path: '/system/users',
         externalUrl: null,
@@ -178,7 +178,7 @@ const menuResourceResponse: Resource = {
   id: menuResourceId,
   parentId: rootResourceId,
   type: RESOURCE_TYPE_MENU,
-  name: '用户管理',
+  name: '系统用户',
   code: 'system:user',
   path: '/system/users',
   externalUrl: null,
@@ -265,7 +265,7 @@ describe('ResourceFormDrawer', () => {
 
     expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
     expect(getResourceMock).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain('新增资源')
+    expect(wrapper.text()).toContain('新增权限资源')
     expect(wrapper.get('[data-test="resource-icon-empty"]').text()).toBe('无')
 
     await wrapper.get('[data-test="resource-form-name"] input').setValue('审计管理')
@@ -299,7 +299,7 @@ describe('ResourceFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('加载资源信息失败')
+    expect(wrapper.text()).toContain('加载权限资源信息失败')
     expect(wrapper.get('[data-test="resource-form-submit"]').attributes('disabled')).toBeDefined()
 
     await wrapper.get('[data-test="resource-form-name"] input').setValue('异常资源')
@@ -316,7 +316,7 @@ describe('ResourceFormDrawer', () => {
       ...menuResourceResponse,
       id: '77777777-7777-4777-8777-777777777777',
       parentId: rootResourceId,
-      name: '资源管理',
+      name: '权限资源',
       code: 'system:resource',
       path: '/system/resources',
     })
@@ -332,14 +332,14 @@ describe('ResourceFormDrawer', () => {
 
     getSelect(wrapper, 'resource-form-type').vm.$emit('update:value', RESOURCE_TYPE_MENU)
     await flushPromises()
-    await wrapper.get('[data-test="resource-form-name"] input').setValue('资源管理')
+    await wrapper.get('[data-test="resource-form-name"] input').setValue('权限资源')
     await wrapper.get('[data-test="resource-form-code"] input').setValue('system:resource')
     await wrapper.get('[data-test="resource-form-path"] input').setValue('/system/resources')
     await submitForm(wrapper)
 
     expect(createResourceMock).toHaveBeenCalledWith({
       type: RESOURCE_TYPE_MENU,
-      name: '资源管理',
+      name: '权限资源',
       code: 'system:resource',
       parentId: rootResourceId,
       path: '/system/resources',
@@ -368,7 +368,7 @@ describe('ResourceFormDrawer', () => {
 
     expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
     expect(getResourceMock).toHaveBeenCalledWith(menuResourceId)
-    expect(wrapper.text()).toContain('编辑资源')
+    expect(wrapper.text()).toContain('编辑权限资源')
     expect(wrapper.get('[data-test="resource-icon-preview"]').text()).toBe('lucide:users')
 
     const treeSelect = wrapper.getComponent(NTreeSelect)
@@ -467,7 +467,7 @@ describe('ResourceFormDrawer', () => {
   })
 
   it('shows a field-level server error when create fails', async () => {
-    createResourceMock.mockRejectedValue(new SystemRequestError(409, '资源编码已存在', 'code'))
+    createResourceMock.mockRejectedValue(new SystemRequestError(409, '权限编码已存在', 'code'))
 
     const wrapper = mountDrawer()
     await flushPromises()
@@ -477,7 +477,7 @@ describe('ResourceFormDrawer', () => {
     await submitForm(wrapper)
 
     expect(createResourceMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('资源编码已存在')
+    expect(wrapper.text()).toContain('权限编码已存在')
     expect(wrapper.emitted('saved')).toBeUndefined()
   })
 })

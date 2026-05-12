@@ -36,7 +36,7 @@ const menus: ResourceTreeNode[] = [
       createMenu({
         id: 'users',
         parentId: 'system',
-        name: '用户管理',
+        name: '系统用户',
         path: '/system/users',
       }),
       createMenu({
@@ -48,7 +48,7 @@ const menus: ResourceTreeNode[] = [
           createMenu({
             id: 'roles',
             parentId: 'docs',
-            name: '角色管理',
+            name: '系统角色',
             path: '/system/roles',
           }),
         ],
@@ -74,7 +74,7 @@ describe('admin menu helpers', () => {
       parentKeys: ['system'],
       breadcrumbItems: [
         { key: 'system', name: '系统管理', path: null },
-        { key: 'users', name: '用户管理', path: '/system/users' },
+        { key: 'users', name: '系统用户', path: '/system/users' },
       ],
     })
   })
@@ -87,7 +87,7 @@ describe('admin menu helpers', () => {
     expect(match?.breadcrumbItems.map((item) => item.name)).toEqual([
       '系统管理',
       '指南',
-      '角色管理',
+      '系统角色',
     ])
   })
 
@@ -101,7 +101,7 @@ describe('admin menu helpers', () => {
           createMenu({
             id: 'users',
             parentId: 'system',
-            name: '用户管理',
+            name: '系统用户',
             path: '/system/users',
             children: [
               createMenu({
@@ -124,7 +124,7 @@ describe('admin menu helpers', () => {
       parentKeys: ['system', 'users'],
       breadcrumbItems: [
         { key: 'system', name: '系统管理', path: null },
-        { key: 'users', name: '用户管理', path: '/system/users' },
+        { key: 'users', name: '系统用户', path: '/system/users' },
         { key: 'user-detail', name: '用户详情', path: '/system/users/:id' },
       ],
     })

@@ -12,7 +12,7 @@ type DatabaseErrorCause = {
 
 export class RoleConflictError extends FormFieldError<'code'> {
   constructor() {
-    super('角色编码已存在', 'code')
+    super('编码已存在', 'code')
   }
 }
 
@@ -25,7 +25,7 @@ export class RoleNotFoundError extends Error {
 
 export class RoleInvalidResourceError extends Error {
   constructor() {
-    super('资源不存在')
+    super('权限资源不存在')
     this.name = 'RoleInvalidResourceError'
   }
 }

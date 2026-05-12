@@ -207,14 +207,14 @@ describe('role routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(invalidResourceResponse.status).toBe(400)
-    expect(await invalidResourceResponse.json()).toEqual({ message: '资源不存在' })
+    expect(await invalidResourceResponse.json()).toEqual({ message: '权限资源不存在' })
   })
 
   it('maps invalid resource assignment errors to route responses', async () => {
     const app = createTestApp()
 
     mocks.service.create.mockRejectedValueOnce(
-      new RoleInvalidResourceAssignmentError('子资源授权需要包含所有上级资源'),
+      new RoleInvalidResourceAssignmentError('子级权限资源需要包含所有上级权限资源'),
     )
     const invalidAssignmentResponse = await app.request('/api/system/roles', {
       method: 'POST',
@@ -227,7 +227,7 @@ describe('role routes', () => {
     expect(invalidAssignmentResponse.status).toBe(400)
     expect(await invalidAssignmentResponse.json()).toEqual({
       field: 'resourceIds',
-      message: '子资源授权需要包含所有上级资源',
+      message: '子级权限资源需要包含所有上级权限资源',
     })
   })
 
@@ -252,7 +252,7 @@ describe('role routes', () => {
     expect(conflictResponse.status).toBe(409)
     expect(await conflictResponse.json()).toEqual({
       field: 'code',
-      message: '角色编码已存在',
+      message: '编码已存在',
     })
   })
 

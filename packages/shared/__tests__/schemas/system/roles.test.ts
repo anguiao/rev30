@@ -140,7 +140,7 @@ describe('role schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(prettifyZodError(result)).toContain('资源授权不能超过 500 个')
+      expect(prettifyZodError(result)).toContain('权限资源不能超过 500 个')
     }
   })
 
@@ -161,13 +161,15 @@ describe('role schemas', () => {
     const missingDirectParent = schema.safeParse([listUserId])
     expect(missingDirectParent.success).toBe(false)
     if (!missingDirectParent.success) {
-      expect(prettifyZodError(missingDirectParent)).toContain('子资源授权需要包含所有上级资源')
+      expect(prettifyZodError(missingDirectParent)).toContain(
+        '子级权限资源需要包含所有上级权限资源',
+      )
     }
 
     const missingRootParent = schema.safeParse([userMenuId, listUserId, createUserId])
     expect(missingRootParent.success).toBe(false)
     if (!missingRootParent.success) {
-      expect(prettifyZodError(missingRootParent)).toContain('子资源授权需要包含所有上级资源')
+      expect(prettifyZodError(missingRootParent)).toContain('子级权限资源需要包含所有上级权限资源')
     }
   })
 

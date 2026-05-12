@@ -45,7 +45,7 @@ const emit = defineEmits<{
   saved: []
 }>()
 
-const drawerTitle = computed(() => (props.departmentId === null ? '新增部门' : '编辑部门'))
+const drawerTitle = computed(() => (props.departmentId === null ? '新增组织部门' : '编辑组织部门'))
 
 const defaultFormValues: DepartmentFormInput = {
   name: '',
@@ -95,7 +95,7 @@ const departmentTreeOptions = computed(() => {
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
-    : getSystemErrorMessage(formLoadError.value, '加载部门信息失败'),
+    : getSystemErrorMessage(formLoadError.value, '加载组织部门信息失败'),
 )
 
 const formError = ref<string | null>(null)
@@ -148,7 +148,7 @@ const { isLoading: isSaving, ...saveDepartmentMutation } = useMutation({
       return
     }
 
-    formError.value = getSystemErrorMessage(error, '保存部门失败')
+    formError.value = getSystemErrorMessage(error, '保存组织部门失败')
   },
 })
 
@@ -205,11 +205,11 @@ watch(
 
         <NForm @submit.prevent="handleSubmit">
           <form.Field name="name" v-slot="{ field, state }">
-            <NFormItem label="部门名称" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem label="名称" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="department-form-name"
                 :value="state.value"
-                placeholder="请输入部门名称"
+                placeholder="请输入名称"
                 @blur="field.handleBlur"
                 @update:value="field.handleChange"
               />
@@ -217,11 +217,11 @@ watch(
           </form.Field>
 
           <form.Field name="code" v-slot="{ field, state }">
-            <NFormItem label="部门编码" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem label="编码" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="department-form-code"
                 :value="state.value"
-                placeholder="请输入部门编码"
+                placeholder="请输入编码"
                 @blur="field.handleBlur"
                 @update:value="field.handleChange"
               />
@@ -229,7 +229,7 @@ watch(
           </form.Field>
 
           <form.Field name="parentId" v-slot="{ field, state }">
-            <NFormItem label="上级部门" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem label="上级" v-bind="formItemValidationProps(state.meta)">
               <NTreeSelect
                 data-test="department-form-parent"
                 clearable
@@ -237,7 +237,7 @@ watch(
                 default-expand-all
                 :options="departmentTreeOptions"
                 :value="state.value"
-                placeholder="请选择上级部门"
+                placeholder="请选择上级"
                 @update:value="(value) => field.handleChange(value === null ? null : String(value))"
               />
             </NFormItem>

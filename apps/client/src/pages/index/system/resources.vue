@@ -105,7 +105,7 @@ const rawTree = computed(() => resourceTree.value ?? emptyResourceTree)
 const loadErrorMessage = computed(() =>
   resourceTreeError.value === null
     ? ''
-    : getSystemErrorMessage(resourceTreeError.value, '加载资源失败'),
+    : getSystemErrorMessage(resourceTreeError.value, '加载权限资源失败'),
 )
 
 const rows = computed(() => {
@@ -141,7 +141,7 @@ function openResourceFormDrawer(resourceId: string | null = null, parentId: stri
   isResourceDrawerVisible.value = true
 }
 async function handleResourceSaved() {
-  message.success('保存资源成功')
+  message.success('保存权限资源成功')
   await refetchResources()
 }
 
@@ -157,7 +157,7 @@ function confirmDeleteResource(resource: ResourceTreeNode) {
 
   dialog.warning({
     title: '确认删除',
-    content: `确定删除资源“${resource.name}”吗？`,
+    content: `确定删除权限资源“${resource.name}”吗？`,
     positiveText: '删除',
     negativeText: '取消',
     positiveButtonProps,
@@ -165,10 +165,10 @@ function confirmDeleteResource(resource: ResourceTreeNode) {
       try {
         await deleteResource(resource.id)
 
-        message.success('删除资源成功')
+        message.success('删除权限资源成功')
         await refetchResources()
       } catch (error) {
-        message.error(getSystemErrorMessage(error, '删除资源失败'))
+        message.error(getSystemErrorMessage(error, '删除权限资源失败'))
         return false
       }
     },
@@ -205,12 +205,12 @@ const typeOptions: SelectOption[] = [
 
 const columns: DataTableColumns<ResourceTreeNode> = [
   {
-    title: '资源名称',
+    title: '名称',
     key: 'name',
     minWidth: 220,
   },
   {
-    title: '资源编码',
+    title: '权限编码',
     key: 'code',
     minWidth: 180,
   },
@@ -295,8 +295,8 @@ const columns: DataTableColumns<ResourceTreeNode> = [
   <main class="space-y-5">
     <header class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold">资源管理</h1>
-        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ visibleCount }} 个资源</p>
+        <h1 class="text-xl font-semibold">权限资源</h1>
+        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ visibleCount }} 个</p>
       </div>
       <NButton
         v-can="'system:resource:create'"
@@ -304,7 +304,7 @@ const columns: DataTableColumns<ResourceTreeNode> = [
         type="primary"
         @click="openResourceFormDrawer()"
       >
-        新增资源
+        新增权限资源
       </NButton>
     </header>
 
@@ -316,7 +316,7 @@ const columns: DataTableColumns<ResourceTreeNode> = [
           v-model:value="filters.keyword"
           data-test="resources-keyword"
           clearable
-          placeholder="请输入名称、编码、路径或外链"
+          placeholder="请输入名称、权限编码、路径或外链"
           class="w-64!"
         />
         <NSelect

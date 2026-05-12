@@ -15,8 +15,8 @@ export const roleStatusSchema = z.literal(
 
 const roleIdSchema = z.uuid('角色 ID 无效')
 const resourceIdSchema = z.uuid('资源 ID 无效')
-const roleNameSchema = nonBlankString('请输入角色名称')
-const roleCodeSchema = nonBlankString('请输入角色编码')
+const roleNameSchema = nonBlankString('请输入名称')
+const roleCodeSchema = nonBlankString('请输入编码')
 
 const optionalKeywordSchema = optionalTrimmedQueryString()
 const optionalStatusQuerySchema = optionalNumericQueryValue(roleStatusSchema)
@@ -52,7 +52,7 @@ export const roleSchema = roleBaseSchema.extend({
 const roleResourceIdsMaxLength = 500
 export const roleResourceIdsSchema = z
   .array(resourceIdSchema)
-  .max(roleResourceIdsMaxLength, `资源授权不能超过 ${roleResourceIdsMaxLength} 个`)
+  .max(roleResourceIdsMaxLength, `权限资源不能超过 ${roleResourceIdsMaxLength} 个`)
   .superRefine(ensureUniqueItems('资源不能重复'))
 
 export function createRoleResourceIdsSchema(
@@ -70,7 +70,7 @@ export function createRoleResourceIdsSchema(
 
       return parentId === undefined || parentId === null || selectedIds.has(parentId)
     })
-  }, '子资源授权需要包含所有上级资源')
+  }, '子级权限资源需要包含所有上级权限资源')
 }
 
 const roleIdsMaxLength = 50

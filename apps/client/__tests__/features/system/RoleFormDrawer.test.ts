@@ -200,7 +200,7 @@ describe('RoleFormDrawer', () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('新增角色')
+    expect(wrapper.text()).toContain('新增系统角色')
     expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
     expect(wrapper.get('[data-test="role-form-resources"]').attributes('data-test')).toBe(
       'role-form-resources',
@@ -234,7 +234,7 @@ describe('RoleFormDrawer', () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('加载角色信息失败')
+    expect(wrapper.text()).toContain('加载系统角色信息失败')
     expect(wrapper.get('[data-test="role-form-submit"]').attributes('disabled')).toBeDefined()
 
     await wrapper.get('[data-test="role-form-name"] input').setValue('异常角色')
@@ -256,7 +256,7 @@ describe('RoleFormDrawer', () => {
     const wrapper = mountDrawer({ show: true, roleId })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('编辑角色')
+    expect(wrapper.text()).toContain('编辑系统角色')
     expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
     expect(getRoleMock).toHaveBeenCalledWith(roleId)
     expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
@@ -296,7 +296,7 @@ describe('RoleFormDrawer', () => {
       directoryResourceId,
       actionResourceId,
     ])
-    expect(wrapper.text()).not.toContain('子资源授权需要包含所有上级资源')
+    expect(wrapper.text()).not.toContain('子级权限资源需要包含所有上级权限资源')
 
     await submitForm(wrapper)
 
@@ -402,7 +402,7 @@ describe('RoleFormDrawer', () => {
   })
 
   it('shows a field-level server error when create fails', async () => {
-    createRoleMock.mockRejectedValue(new SystemRequestError(409, '角色编码已存在', 'code'))
+    createRoleMock.mockRejectedValue(new SystemRequestError(409, '编码已存在', 'code'))
 
     const wrapper = mountDrawer()
     await flushPromises()
@@ -416,7 +416,7 @@ describe('RoleFormDrawer', () => {
     await submitForm(wrapper)
 
     expect(createRoleMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('角色编码已存在')
+    expect(wrapper.text()).toContain('编码已存在')
     expect(wrapper.emitted('saved')).toBeUndefined()
   })
 
@@ -427,8 +427,8 @@ describe('RoleFormDrawer', () => {
     await submitForm(wrapper)
 
     expect(createRoleMock).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain('请输入角色名称')
-    expect(wrapper.text()).toContain('请输入角色编码')
+    expect(wrapper.text()).toContain('请输入名称')
+    expect(wrapper.text()).toContain('请输入编码')
     expect(wrapper.text()).not.toContain('保存角色失败')
   })
 

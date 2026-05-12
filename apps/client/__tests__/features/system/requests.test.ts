@@ -288,7 +288,7 @@ describe('system request helpers', () => {
             id: '44444444-4444-4444-8444-444444444444',
             parentId: null,
             type: RESOURCE_TYPE_MENU,
-            name: '用户管理',
+            name: '系统用户',
             code: 'system.users',
             path: '/system/users',
             externalUrl: null,
@@ -333,7 +333,7 @@ describe('system request helpers', () => {
     }
     const updatedResourceResponse = {
       ...resourceResponse,
-      name: '资源管理',
+      name: '权限资源',
       code: 'system:resource',
       updatedAt: '2026-05-02T00:00:00.000Z',
     }
@@ -361,7 +361,7 @@ describe('system request helpers', () => {
       sortOrder: 1,
     })
     const updated = await updateResource('44444444-4444-4444-8444-444444444444', {
-      name: '资源管理',
+      name: '权限资源',
       code: 'system:resource',
     })
     await deleteResource('44444444-4444-4444-8444-444444444444')
@@ -408,15 +408,15 @@ describe('system request helpers', () => {
   })
 
   it('formats unknown request errors with a fallback message', () => {
-    expect(getSystemErrorMessage(new SystemRequestError(400, '请求体无效'), '加载用户失败')).toBe(
-      '请求体无效',
-    )
-    expect(getSystemErrorMessage(new Error('boom'), '加载用户失败')).toBe('加载用户失败')
+    expect(
+      getSystemErrorMessage(new SystemRequestError(400, '请求体无效'), '加载系统用户失败'),
+    ).toBe('请求体无效')
+    expect(getSystemErrorMessage(new Error('boom'), '加载系统用户失败')).toBe('加载系统用户失败')
   })
 
   it('parses system errors with field names', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ field: 'code', message: '角色编码已存在' }), {
+      new Response(JSON.stringify({ field: 'code', message: '编码已存在' }), {
         status: 409,
       }),
     )
@@ -433,13 +433,13 @@ describe('system request helpers', () => {
     ).rejects.toMatchObject({
       status: 409,
       field: 'code',
-      message: '角色编码已存在',
+      message: '编码已存在',
     })
   })
 
   it('parses department code conflict field errors', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ field: 'code', message: '部门编码已存在' }), {
+      new Response(JSON.stringify({ field: 'code', message: '编码已存在' }), {
         status: 409,
       }),
     )
@@ -456,7 +456,7 @@ describe('system request helpers', () => {
     await expect(promise).rejects.toMatchObject({
       status: 409,
       field: 'code',
-      message: '部门编码已存在',
+      message: '编码已存在',
     })
   })
 

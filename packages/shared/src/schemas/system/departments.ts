@@ -12,8 +12,8 @@ export const departmentStatusSchema = z.literal(
 )
 
 const departmentIdSchema = z.uuid('部门 ID 无效')
-const departmentNameSchema = nonBlankString('请输入部门名称')
-const departmentCodeSchema = nonBlankString('请输入部门编码')
+const departmentNameSchema = nonBlankString('请输入名称')
+const departmentCodeSchema = nonBlankString('请输入编码')
 
 const optionalParentIdQuerySchema = optionalQueryValue(departmentIdSchema)
 const optionalKeywordSchema = optionalTrimmedQueryString()

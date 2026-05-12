@@ -123,8 +123,8 @@ describe('roles page', () => {
     await flushPromises()
 
     expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
-    expect(wrapper.text()).toContain('角色管理')
-    expect(wrapper.text()).toContain('共 2 个角色')
+    expect(wrapper.text()).toContain('系统角色')
+    expect(wrapper.text()).toContain('共 2 个')
     expect(wrapper.text()).toContain('管理员')
     expect(wrapper.text()).toContain('admin')
     expect(wrapper.text()).toContain('审计员')
@@ -151,7 +151,7 @@ describe('roles page', () => {
     await flushPromises()
 
     expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
-    expect(wrapper.text()).toContain('加载角色失败')
+    expect(wrapper.text()).toContain('加载系统角色失败')
     expect(wrapper.text()).not.toContain('network down')
   })
 
@@ -312,7 +312,7 @@ describe('roles page', () => {
 
     expect(listRolesMock).toHaveBeenCalledTimes(2)
     expect(listRolesMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
-    expect(document.body.textContent).toContain('保存角色成功')
+    expect(document.body.textContent).toContain('保存系统角色成功')
   })
 
   it('opens edit drawer with selected role id', async () => {

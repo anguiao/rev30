@@ -12,42 +12,42 @@ type DatabaseErrorCause = {
 
 export class ResourceConflictError extends Error {
   constructor() {
-    super('资源编码已存在')
+    super('权限编码已存在')
     this.name = 'ResourceConflictError'
   }
 }
 
 export class ResourceNotFoundError extends Error {
   constructor() {
-    super('资源不存在')
+    super('权限资源不存在')
     this.name = 'ResourceNotFoundError'
   }
 }
 
 export class ResourceInvalidParentError extends Error {
   constructor() {
-    super('父资源不存在')
+    super('上级权限资源不存在')
     this.name = 'ResourceInvalidParentError'
   }
 }
 
 export class ResourceMoveConflictError extends Error {
   constructor() {
-    super('不能移动到自己或子资源下')
+    super('不能移动到自己或子级权限资源下')
     this.name = 'ResourceMoveConflictError'
   }
 }
 
 export class ResourceDeleteConflictError extends Error {
   constructor() {
-    super('资源存在子资源，不能删除')
+    super('权限资源存在子级权限资源，不能删除')
     this.name = 'ResourceDeleteConflictError'
   }
 }
 
 export class ResourceRoleAuthorizationConflictError extends Error {
   constructor() {
-    super('资源存在角色授权，不能删除')
+    super('权限资源存在角色授权，不能删除')
     this.name = 'ResourceRoleAuthorizationConflictError'
   }
 }

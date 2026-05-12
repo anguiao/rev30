@@ -130,8 +130,8 @@ describe('departments page', () => {
     await flushPromises()
 
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('部门管理')
-    expect(wrapper.text()).toContain('共 2 个部门')
+    expect(wrapper.text()).toContain('组织部门')
+    expect(wrapper.text()).toContain('共 2 个')
     expect(wrapper.text()).toContain('研发中心')
     expect(wrapper.text()).toContain('ENG')
     expect(wrapper.text()).toContain(formatDateTime('2026-05-01T00:00:00.000Z'))
@@ -169,7 +169,7 @@ describe('departments page', () => {
     await flushPromises()
 
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('加载部门失败')
+    expect(wrapper.text()).toContain('加载组织部门失败')
     expect(wrapper.text()).not.toContain('network down')
   })
 
@@ -247,7 +247,7 @@ describe('departments page', () => {
     await flushPromises()
 
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(2)
-    expect(document.body.textContent).toContain('保存部门成功')
+    expect(document.body.textContent).toContain('保存组织部门成功')
   })
 
   it('disables row delete when a department has children', async () => {
@@ -309,7 +309,7 @@ describe('departments page', () => {
 
     expect(deleteDepartmentMock).toHaveBeenCalledWith(leafDepartment.id)
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(2)
-    expect(document.body.textContent).toContain('删除部门成功')
+    expect(document.body.textContent).toContain('删除组织部门成功')
   })
 
   it('keeps delete dialog open when deleting department fails', async () => {
@@ -345,7 +345,7 @@ describe('departments page', () => {
     await wrapper.get('[data-test="departments-search"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('共 2 个部门')
+    expect(wrapper.text()).toContain('共 2 个')
     expect(wrapper.text()).toContain('研发中心')
     const filteredTree = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
     expect(filteredTree).toHaveLength(1)
@@ -357,21 +357,21 @@ describe('departments page', () => {
     const { wrapper } = await mountDepartmentsPage()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('共 3 个部门')
+    expect(wrapper.text()).toContain('共 3 个')
     let tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
     expect(tableData[0]!.children).toHaveLength(2)
 
     await wrapper.find('[data-test="departments-keyword"] input').setValue('arch')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('共 3 个部门')
+    expect(wrapper.text()).toContain('共 3 个')
     tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
     expect(tableData[0]!.children).toHaveLength(2)
 
     await wrapper.get('[data-test="departments-search"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('共 2 个部门')
+    expect(wrapper.text()).toContain('共 2 个')
     tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
     expect(tableData[0]!.children.map((child) => child.name)).toEqual(['平台架构组'])
 
@@ -383,7 +383,7 @@ describe('departments page', () => {
     await resetButton!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('共 3 个部门')
+    expect(wrapper.text()).toContain('共 3 个')
     tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
     expect(tableData[0]!.children.map((child) => child.name)).toEqual(['平台架构组', '前端组'])
   })
@@ -398,7 +398,7 @@ describe('departments page', () => {
     await wrapper.get('[data-test="departments-search"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('共 2 个部门')
+    expect(wrapper.text()).toContain('共 2 个')
     expect(wrapper.text()).toContain('研发中心')
     const statusFilteredTree = wrapper
       .getComponent(NDataTable)

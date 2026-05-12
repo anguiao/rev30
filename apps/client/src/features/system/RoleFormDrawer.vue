@@ -47,7 +47,7 @@ const emit = defineEmits<{
   saved: []
 }>()
 
-const drawerTitle = computed(() => (props.roleId === null ? '新增角色' : '编辑角色'))
+const drawerTitle = computed(() => (props.roleId === null ? '新增系统角色' : '编辑系统角色'))
 
 const defaultFormValues: RoleFormInput = {
   name: '',
@@ -91,7 +91,7 @@ const resourceTreeOptions = computed(() =>
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
-    : getSystemErrorMessage(formLoadError.value, '加载角色信息失败'),
+    : getSystemErrorMessage(formLoadError.value, '加载系统角色信息失败'),
 )
 
 const formError = ref<string | null>(null)
@@ -136,7 +136,7 @@ const { isLoading: isSaving, ...saveRoleMutation } = useMutation({
       return
     }
 
-    formError.value = getSystemErrorMessage(error, '保存角色失败')
+    formError.value = getSystemErrorMessage(error, '保存系统角色失败')
   },
 })
 
@@ -197,11 +197,11 @@ const resourceIdsSchema = computed(() =>
 
         <NForm @submit.prevent="handleSubmit">
           <form.Field name="name" v-slot="{ field, state }">
-            <NFormItem label="角色名称" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem label="名称" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="role-form-name"
                 :value="state.value"
-                placeholder="请输入角色名称"
+                placeholder="请输入名称"
                 @blur="field.handleBlur"
                 @update:value="field.handleChange"
               />
@@ -209,11 +209,11 @@ const resourceIdsSchema = computed(() =>
           </form.Field>
 
           <form.Field name="code" v-slot="{ field, state }">
-            <NFormItem label="角色编码" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem label="编码" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="role-form-code"
                 :value="state.value"
-                placeholder="请输入角色编码"
+                placeholder="请输入编码"
                 @blur="field.handleBlur"
                 @update:value="field.handleChange"
               />
@@ -252,7 +252,7 @@ const resourceIdsSchema = computed(() =>
             :validators="{ onChange: resourceIdsSchema }"
             v-slot="{ field, state }"
           >
-            <NFormItem label="资源权限" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem label="权限资源" v-bind="formItemValidationProps(state.meta)">
               <NTree
                 data-test="role-form-resources"
                 block-line

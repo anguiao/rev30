@@ -68,7 +68,7 @@ function createMenuSession(): AuthTokenResponse {
             id: usersMenuId,
             parentId: systemMenuId,
             type: 'menu',
-            name: '用户管理',
+            name: '系统用户',
             code: 'system:user:list',
             path: '/system/users',
             externalUrl: null,
@@ -101,7 +101,7 @@ function createMenuSession(): AuthTokenResponse {
                 id: rolesMenuId,
                 parentId: docsMenuId,
                 type: 'menu',
-                name: '角色管理',
+                name: '系统角色',
                 code: 'system:role:list',
                 path: '/system/roles',
                 externalUrl: null,
@@ -212,7 +212,7 @@ describe('admin layout', () => {
     expect(wrapper.text()).toContain(session.user.username)
     expect(wrapper.get('[data-test="layout-content"]').text()).toContain('Content')
     expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('系统管理')
-    expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('用户管理')
+    expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('系统用户')
     expect(wrapper.find('.n-menu').exists()).toBe(true)
     expect(wrapper.get('[data-test="admin-sidebar-toggle"]').attributes('aria-label')).toBe(
       '收起侧边栏',
@@ -223,7 +223,7 @@ describe('admin layout', () => {
     expect(menu.props('expandedKeys')).toEqual([systemMenuId])
     expect(wrapper.text()).toContain('系统管理')
     expect(wrapper.text()).toContain('指南')
-    expect(wrapper.get('a[href="/system/users"]').text()).toContain('用户管理')
+    expect(wrapper.get('a[href="/system/users"]').text()).toContain('系统用户')
     expect(wrapper.find('a[href="/system/audit-log"]').exists()).toBe(false)
 
     const externalLink = wrapper.get('a[href="https://example.com/docs"]')
@@ -324,7 +324,7 @@ describe('admin layout', () => {
 
     expect(menu.props('value')).toBe(rolesMenuId)
     expect(menu.props('expandedKeys')).toEqual([systemMenuId, docsMenuId])
-    expect(wrapper.get('a[href="/system/roles"]').text()).toContain('角色管理')
+    expect(wrapper.get('a[href="/system/roles"]').text()).toContain('系统角色')
     expect(wrapper.findAll('[data-test="menu-icon"]').map((icon) => icon.text())).toContain(
       'lucide:shield-check',
     )

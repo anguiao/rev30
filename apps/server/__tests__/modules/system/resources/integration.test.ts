@@ -337,7 +337,7 @@ describe('resource routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(selfMoveResponse.status).toBe(409)
-    expect(await selfMoveResponse.json()).toEqual({ message: '不能移动到自己或子资源下' })
+    expect(await selfMoveResponse.json()).toEqual({ message: '不能移动到自己或子级权限资源下' })
 
     const descendantMoveResponse = await app.request(`/api/system/resources/${root.id}`, {
       method: 'PATCH',
@@ -345,7 +345,9 @@ describe('resource routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(descendantMoveResponse.status).toBe(409)
-    expect(await descendantMoveResponse.json()).toEqual({ message: '不能移动到自己或子资源下' })
+    expect(await descendantMoveResponse.json()).toEqual({
+      message: '不能移动到自己或子级权限资源下',
+    })
   })
 
   it('defaults open target to blank when updating a resource to an external link', async () => {
@@ -536,7 +538,7 @@ describe('resource routes', () => {
     })
     expect(createConflict.response.status).toBe(409)
     expect(createConflict.body as unknown as ErrorResponse).toMatchObject({
-      message: '资源编码已存在',
+      message: '权限编码已存在',
     })
 
     const updateConflict = await app.request(`/api/system/resources/${userMenu.id}`, {
@@ -545,7 +547,7 @@ describe('resource routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(updateConflict.status).toBe(409)
-    expect(await updateConflict.json()).toEqual({ message: '资源编码已存在' })
+    expect(await updateConflict.json()).toEqual({ message: '权限编码已存在' })
   })
 
   it('soft deletes empty resources and rejects deleting resources with children', async () => {
@@ -567,7 +569,9 @@ describe('resource routes', () => {
       method: 'DELETE',
     })
     expect(rootDeleteResponse.status).toBe(409)
-    expect(await rootDeleteResponse.json()).toEqual({ message: '资源存在子资源，不能删除' })
+    expect(await rootDeleteResponse.json()).toEqual({
+      message: '权限资源存在子级权限资源，不能删除',
+    })
 
     const childDeleteResponse = await app.request(`/api/system/resources/${child.id}`, {
       method: 'DELETE',
@@ -584,7 +588,7 @@ describe('resource routes', () => {
 
     const detailResponse = await app.request(`/api/system/resources/${child.id}`)
     expect(detailResponse.status).toBe(404)
-    expect(await detailResponse.json()).toEqual({ message: '资源不存在' })
+    expect(await detailResponse.json()).toEqual({ message: '权限资源不存在' })
 
     const listAfterDeleteResponse = await app.request('/api/system/resources?page=1&pageSize=10')
     const listAfterDeleteBody = (await listAfterDeleteResponse.json()) as ResourceListResponse
@@ -635,7 +639,7 @@ describe('resource routes', () => {
     expect(response.status).toBe(409)
 
     const body = (await response.json()) as ErrorResponse
-    expect(body).toEqual({ message: '资源存在角色授权，不能删除' })
+    expect(body).toEqual({ message: '权限资源存在角色授权，不能删除' })
   })
 
   it('returns invalid parent errors for create and update requests', async () => {
@@ -654,7 +658,7 @@ describe('resource routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(createResponse.status).toBe(400)
-    expect(await createResponse.json()).toEqual({ message: '父资源不存在' })
+    expect(await createResponse.json()).toEqual({ message: '上级权限资源不存在' })
 
     const { body: existing } = await createResource(app, {
       type: RESOURCE_TYPE_ACTION,
@@ -667,7 +671,7 @@ describe('resource routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(updateResponse.status).toBe(400)
-    expect(await updateResponse.json()).toEqual({ message: '父资源不存在' })
+    expect(await updateResponse.json()).toEqual({ message: '上级权限资源不存在' })
   })
 
   it('returns siblings sorted by sortOrder in ascending order', async () => {

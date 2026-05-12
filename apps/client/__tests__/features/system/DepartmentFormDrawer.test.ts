@@ -199,7 +199,7 @@ describe('DepartmentFormDrawer', () => {
 
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
     expect(getDepartmentMock).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain('新增部门')
+    expect(wrapper.text()).toContain('新增组织部门')
 
     await wrapper.get('[data-test="department-form-name"] input').setValue('运营中心')
     await wrapper.get('[data-test="department-form-code"] input').setValue('ops')
@@ -229,7 +229,7 @@ describe('DepartmentFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('加载部门信息失败')
+    expect(wrapper.text()).toContain('加载组织部门信息失败')
     expect(wrapper.get('[data-test="department-form-submit"]').attributes('disabled')).toBeDefined()
 
     await wrapper.get('[data-test="department-form-name"] input').setValue('异常部门')
@@ -371,7 +371,7 @@ describe('DepartmentFormDrawer', () => {
 
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
     expect(getDepartmentMock).toHaveBeenCalledWith(childDepartmentId)
-    expect(wrapper.text()).toContain('编辑部门')
+    expect(wrapper.text()).toContain('编辑组织部门')
 
     const treeSelect = wrapper.getComponent(NTreeSelect)
     expect(treeSelect.props('value')).toBe(rootDepartmentId)
@@ -394,7 +394,7 @@ describe('DepartmentFormDrawer', () => {
   })
 
   it('shows a field-level server error when create fails', async () => {
-    createDepartmentMock.mockRejectedValue(new SystemRequestError(409, '部门编码已存在', 'code'))
+    createDepartmentMock.mockRejectedValue(new SystemRequestError(409, '编码已存在', 'code'))
 
     const wrapper = mountDrawer({
       show: true,
@@ -408,7 +408,7 @@ describe('DepartmentFormDrawer', () => {
     await submitForm(wrapper)
 
     expect(createDepartmentMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('部门编码已存在')
+    expect(wrapper.text()).toContain('编码已存在')
     expect(wrapper.emitted('saved')).toBeUndefined()
   })
 

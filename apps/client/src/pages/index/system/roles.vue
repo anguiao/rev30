@@ -91,7 +91,7 @@ function handleReset() {
 
 const rolesData = computed(() => rolesResponse.value ?? emptyRolesData)
 const loadErrorMessage = computed(() =>
-  rolesError.value === null ? '' : getSystemErrorMessage(rolesError.value, '加载角色失败'),
+  rolesError.value === null ? '' : getSystemErrorMessage(rolesError.value, '加载系统角色失败'),
 )
 
 const isRoleDrawerVisible = ref(false)
@@ -101,7 +101,7 @@ function openRoleFormDrawer(roleId: string | null = null) {
   isRoleDrawerVisible.value = true
 }
 async function handleRoleSaved() {
-  message.success('保存角色成功')
+  message.success('保存系统角色成功')
   await refetchRoles()
 }
 
@@ -113,7 +113,7 @@ function confirmDeleteRole(role: RoleListItem) {
 
   dialog.warning({
     title: '确认删除',
-    content: `确定删除角色“${role.name}”吗？`,
+    content: `确定删除系统角色“${role.name}”吗？`,
     positiveText: '删除',
     negativeText: '取消',
     positiveButtonProps,
@@ -121,10 +121,10 @@ function confirmDeleteRole(role: RoleListItem) {
       try {
         await deleteRole(role.id)
 
-        message.success('删除角色成功')
+        message.success('删除系统角色成功')
         await refetchRoles()
       } catch (error) {
-        message.error(getSystemErrorMessage(error, '删除角色失败'))
+        message.error(getSystemErrorMessage(error, '删除系统角色失败'))
         return false
       }
     },
@@ -133,12 +133,12 @@ function confirmDeleteRole(role: RoleListItem) {
 
 const columns: DataTableColumns<RoleListItem> = [
   {
-    title: '角色名',
+    title: '名称',
     key: 'name',
     width: 160,
   },
   {
-    title: '角色编码',
+    title: '编码',
     key: 'code',
     width: 170,
   },
@@ -203,10 +203,8 @@ const columns: DataTableColumns<RoleListItem> = [
   <main class="space-y-5">
     <header class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold">角色管理</h1>
-        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">
-          共 {{ rolesData.total }} 个角色
-        </p>
+        <h1 class="text-xl font-semibold">系统角色</h1>
+        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ rolesData.total }} 个</p>
       </div>
       <NButton
         v-can.all="['system:role:create', 'system:resource:list']"
@@ -214,7 +212,7 @@ const columns: DataTableColumns<RoleListItem> = [
         type="primary"
         @click="openRoleFormDrawer()"
       >
-        新增角色
+        新增系统角色
       </NButton>
     </header>
 

@@ -90,7 +90,7 @@ const rawTree = computed(() => departmentTree.value ?? emptyDepartmentTree)
 const loadErrorMessage = computed(() =>
   departmentTreeError.value === null
     ? ''
-    : getSystemErrorMessage(departmentTreeError.value, '加载部门失败'),
+    : getSystemErrorMessage(departmentTreeError.value, '加载组织部门失败'),
 )
 
 const rows = computed(() => {
@@ -125,7 +125,7 @@ function openDepartmentFormDrawer(
   isDepartmentDrawerVisible.value = true
 }
 async function handleDepartmentSaved() {
-  message.success('保存部门成功')
+  message.success('保存组织部门成功')
   await refetchDepartments()
 }
 
@@ -141,7 +141,7 @@ function confirmDeleteDepartment(department: DepartmentTreeNode) {
 
   dialog.warning({
     title: '确认删除',
-    content: `确定删除部门“${department.name}”吗？`,
+    content: `确定删除组织部门“${department.name}”吗？`,
     positiveText: '删除',
     negativeText: '取消',
     positiveButtonProps,
@@ -149,10 +149,10 @@ function confirmDeleteDepartment(department: DepartmentTreeNode) {
       try {
         await deleteDepartment(department.id)
 
-        message.success('删除部门成功')
+        message.success('删除组织部门成功')
         await refetchDepartments()
       } catch (error) {
-        message.error(getSystemErrorMessage(error, '删除部门失败'))
+        message.error(getSystemErrorMessage(error, '删除组织部门失败'))
         return false
       }
     },
@@ -173,12 +173,12 @@ function handleUpdateExpandedRowKeys(keys: DataTableRowKey[]) {
 
 const columns: DataTableColumns<DepartmentTreeNode> = [
   {
-    title: '部门名称',
+    title: '名称',
     key: 'name',
     minWidth: 220,
   },
   {
-    title: '部门编码',
+    title: '编码',
     key: 'code',
     width: 180,
   },
@@ -243,8 +243,8 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
   <main class="space-y-5">
     <header class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold">部门管理</h1>
-        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ visibleCount }} 个部门</p>
+        <h1 class="text-xl font-semibold">组织部门</h1>
+        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ visibleCount }} 个</p>
       </div>
       <NButton
         v-can="'system:department:create'"
@@ -252,7 +252,7 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
         type="primary"
         @click="openDepartmentFormDrawer()"
       >
-        新增部门
+        新增组织部门
       </NButton>
     </header>
 

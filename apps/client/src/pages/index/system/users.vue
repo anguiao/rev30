@@ -93,7 +93,7 @@ function handleReset() {
 
 const usersData = computed(() => usersResponse.value ?? emptyUsersData)
 const loadErrorMessage = computed(() =>
-  usersError.value === null ? '' : getSystemErrorMessage(usersError.value, '加载用户失败'),
+  usersError.value === null ? '' : getSystemErrorMessage(usersError.value, '加载系统用户失败'),
 )
 
 const isUserDrawerVisible = ref(false)
@@ -103,7 +103,7 @@ function openUserFormDrawer(userId: string | null = null) {
   isUserDrawerVisible.value = true
 }
 async function handleUserSaved(result?: UserCreateResponse) {
-  message.success('保存用户成功')
+  message.success('保存系统用户成功')
   await refetchUsers()
 
   if (result !== undefined) {
@@ -122,7 +122,7 @@ function confirmDeleteUser(user: UserListItem) {
 
   dialog.warning({
     title: '确认删除',
-    content: `确定删除用户“${user.nickname || user.username}”吗？`,
+    content: `确定删除系统用户“${user.nickname || user.username}”吗？`,
     positiveText: '删除',
     negativeText: '取消',
     positiveButtonProps,
@@ -130,10 +130,10 @@ function confirmDeleteUser(user: UserListItem) {
       try {
         await deleteUser(user.id)
 
-        message.success('删除用户成功')
+        message.success('删除系统用户成功')
         await refetchUsers()
       } catch (error) {
-        message.error(getSystemErrorMessage(error, '删除用户失败'))
+        message.error(getSystemErrorMessage(error, '删除系统用户失败'))
         return false
       }
     },
@@ -147,7 +147,7 @@ function confirmResetUserPassword(user: UserListItem) {
 
   dialog.warning({
     title: '确认重置密码',
-    content: `确定重置用户“${user.nickname || user.username}”的密码吗？`,
+    content: `确定重置系统用户“${user.nickname || user.username}”的密码吗？`,
     positiveText: '重置密码',
     negativeText: '取消',
     positiveButtonProps,
@@ -191,7 +191,7 @@ function showTemporaryPasswordDialog(username: string, temporaryPassword: string
         h(
           'p',
           { class: 'text-sm text-stone-600 dark:text-zinc-300' },
-          `用户 ${username} 的临时密码只会显示一次。`,
+          `系统用户 ${username} 的临时密码只会显示一次。`,
         ),
         h('div', { class: 'flex items-center gap-3' }, [
           h(NInput, {
@@ -313,10 +313,8 @@ const columns: DataTableColumns<UserListItem> = [
   <main class="space-y-5">
     <header class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold">用户管理</h1>
-        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">
-          共 {{ usersData.total }} 个用户
-        </p>
+        <h1 class="text-xl font-semibold">系统用户</h1>
+        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ usersData.total }} 个</p>
       </div>
       <NButton
         v-can.all="['system:user:create', 'system:department:list', 'system:role:list']"
@@ -324,7 +322,7 @@ const columns: DataTableColumns<UserListItem> = [
         type="primary"
         @click="openUserFormDrawer()"
       >
-        新增用户
+        新增系统用户
       </NButton>
     </header>
 

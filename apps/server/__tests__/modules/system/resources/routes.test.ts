@@ -250,7 +250,7 @@ describe('resource routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(invalidParentResponse.status).toBe(400)
-    expect(await invalidParentResponse.json()).toEqual({ message: '父资源不存在' })
+    expect(await invalidParentResponse.json()).toEqual({ message: '上级权限资源不存在' })
   })
 
   it('maps not-found errors to route responses', async () => {
@@ -259,7 +259,7 @@ describe('resource routes', () => {
     mocks.service.get.mockRejectedValueOnce(new ResourceNotFoundError())
     const notFoundResponse = await app.request(`/api/system/resources/${resourceId}`)
     expect(notFoundResponse.status).toBe(404)
-    expect(await notFoundResponse.json()).toEqual({ message: '资源不存在' })
+    expect(await notFoundResponse.json()).toEqual({ message: '权限资源不存在' })
   })
 
   it('maps conflict errors to route responses', async () => {
@@ -272,7 +272,7 @@ describe('resource routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(conflictResponse.status).toBe(409)
-    expect(await conflictResponse.json()).toEqual({ message: '资源编码已存在' })
+    expect(await conflictResponse.json()).toEqual({ message: '权限编码已存在' })
   })
 
   it('maps move conflict errors to route responses', async () => {
@@ -285,7 +285,7 @@ describe('resource routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(moveResponse.status).toBe(409)
-    expect(await moveResponse.json()).toEqual({ message: '不能移动到自己或子资源下' })
+    expect(await moveResponse.json()).toEqual({ message: '不能移动到自己或子级权限资源下' })
   })
 
   it('maps delete conflict errors to route responses', async () => {
@@ -296,7 +296,7 @@ describe('resource routes', () => {
       method: 'DELETE',
     })
     expect(deleteResponse.status).toBe(409)
-    expect(await deleteResponse.json()).toEqual({ message: '资源存在子资源，不能删除' })
+    expect(await deleteResponse.json()).toEqual({ message: '权限资源存在子级权限资源，不能删除' })
   })
 
   it('maps role authorization conflict errors to route responses', async () => {
@@ -308,7 +308,7 @@ describe('resource routes', () => {
     })
     expect(roleAuthorizationResponse.status).toBe(409)
     expect(await roleAuthorizationResponse.json()).toEqual({
-      message: '资源存在角色授权，不能删除',
+      message: '权限资源存在角色授权，不能删除',
     })
   })
 })

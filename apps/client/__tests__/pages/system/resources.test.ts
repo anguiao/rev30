@@ -146,8 +146,8 @@ describe('resources page', () => {
     await flushPromises()
 
     expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('资源管理')
-    expect(wrapper.text()).toContain('共 3 个资源')
+    expect(wrapper.text()).toContain('权限资源')
+    expect(wrapper.text()).toContain('共 3 个')
     expect(wrapper.text()).toContain('System')
     expect(wrapper.text()).toContain('resource:list')
     expect(wrapper.text()).toContain('resource:delete')
@@ -187,7 +187,7 @@ describe('resources page', () => {
     await flushPromises()
 
     expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('加载资源失败')
+    expect(wrapper.text()).toContain('加载权限资源失败')
     expect(wrapper.text()).not.toContain('network down')
   })
 
@@ -262,7 +262,7 @@ describe('resources page', () => {
     await flushPromises()
 
     expect(getResourceTreeMock).toHaveBeenCalledTimes(2)
-    expect(document.body.textContent).toContain('保存资源成功')
+    expect(document.body.textContent).toContain('保存权限资源成功')
   })
 
   it('disables row delete when a resource has children', async () => {
@@ -329,7 +329,7 @@ describe('resources page', () => {
 
     expect(deleteResourceMock).toHaveBeenCalledWith(leafResource.id)
     expect(getResourceTreeMock).toHaveBeenCalledTimes(2)
-    expect(document.body.textContent).toContain('删除资源成功')
+    expect(document.body.textContent).toContain('删除权限资源成功')
   })
 
   it('keeps delete dialog open when deleting resource fails', async () => {
@@ -369,7 +369,7 @@ describe('resources page', () => {
     await wrapper.get('[data-test="resources-search"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('共 2 个资源')
+    expect(wrapper.text()).toContain('共 2 个')
     const filteredTree = wrapper.getComponent(NDataTable).props('data') as ResourceTreeNode[]
     expect(filteredTree).toHaveLength(1)
     expect(filteredTree[0]!.name).toBe('System')
@@ -381,21 +381,21 @@ describe('resources page', () => {
     const { wrapper } = await mountResourcesPage()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('共 3 个资源')
+    expect(wrapper.text()).toContain('共 3 个')
     let tableData = wrapper.getComponent(NDataTable).props('data') as ResourceTreeNode[]
     expect(tableData[0]!.children).toHaveLength(2)
 
     await wrapper.find('[data-test="resources-keyword"] input').setValue('delete')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('共 3 个资源')
+    expect(wrapper.text()).toContain('共 3 个')
     tableData = wrapper.getComponent(NDataTable).props('data') as ResourceTreeNode[]
     expect(tableData[0]!.children).toHaveLength(2)
 
     await wrapper.get('[data-test="resources-search"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('共 2 个资源')
+    expect(wrapper.text()).toContain('共 2 个')
     tableData = wrapper.getComponent(NDataTable).props('data') as ResourceTreeNode[]
     expect(tableData[0]!.children.map((child) => child.name)).toEqual(['Resource Delete'])
 
@@ -407,7 +407,7 @@ describe('resources page', () => {
     await resetButton!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('共 3 个资源')
+    expect(wrapper.text()).toContain('共 3 个')
     tableData = wrapper.getComponent(NDataTable).props('data') as ResourceTreeNode[]
     expect(tableData[0]!.children.map((child) => child.name)).toEqual([
       'Resource List',

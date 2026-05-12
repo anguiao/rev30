@@ -299,7 +299,7 @@ describe('role routes', () => {
     const body = duplicate.body as unknown as ErrorResponse
 
     expect(duplicate.response.status).toBe(409)
-    expect(body).toEqual({ field: 'code', message: '角色编码已存在' })
+    expect(body).toEqual({ field: 'code', message: '编码已存在' })
   })
 
   it('returns invalid resource errors for missing or deleted resources', async () => {
@@ -323,7 +323,7 @@ describe('role routes', () => {
     })
 
     expect(missingCreateResponse.status).toBe(400)
-    expect(await missingCreateResponse.json()).toEqual({ message: '资源不存在' })
+    expect(await missingCreateResponse.json()).toEqual({ message: '权限资源不存在' })
 
     const { body: created } = await createRole(app, {
       name: 'Operator',
@@ -338,7 +338,7 @@ describe('role routes', () => {
     })
 
     expect(deletedUpdateResponse.status).toBe(400)
-    expect(await deletedUpdateResponse.json()).toEqual({ message: '资源不存在' })
+    expect(await deletedUpdateResponse.json()).toEqual({ message: '权限资源不存在' })
   })
 
   it('rejects child resource authorization without its parent resource', async () => {
@@ -392,7 +392,7 @@ describe('role routes', () => {
     expect(missingParentResponse.status).toBe(400)
     expect(await missingParentResponse.json()).toEqual({
       field: 'resourceIds',
-      message: '子资源授权需要包含所有上级资源',
+      message: '子级权限资源需要包含所有上级权限资源',
     })
 
     const fullChain = await createRole(app, {

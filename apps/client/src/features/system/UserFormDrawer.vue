@@ -45,7 +45,7 @@ const emit = defineEmits<{
   saved: [payload?: UserCreateResponse]
 }>()
 
-const drawerTitle = computed(() => (props.userId === null ? '新增用户' : '编辑用户'))
+const drawerTitle = computed(() => (props.userId === null ? '新增系统用户' : '编辑系统用户'))
 
 const defaultFormValues: UserFormInput = {
   username: '',
@@ -100,7 +100,7 @@ const roleOptions = computed(() =>
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
-    : getSystemErrorMessage(formLoadError.value, '加载用户信息失败'),
+    : getSystemErrorMessage(formLoadError.value, '加载系统用户信息失败'),
 )
 
 const formError = ref<string | null>(null)
@@ -150,7 +150,7 @@ const { isLoading: isSaving, ...saveUserMutation } = useMutation({
       return
     }
 
-    formError.value = getSystemErrorMessage(error, '保存用户失败')
+    formError.value = getSystemErrorMessage(error, '保存系统用户失败')
   },
 })
 

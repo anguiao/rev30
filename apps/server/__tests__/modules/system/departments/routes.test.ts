@@ -228,7 +228,7 @@ describe('department routes', () => {
     expect(conflictResponse.status).toBe(409)
     expect(await conflictResponse.json()).toEqual({
       field: 'code',
-      message: '部门编码已存在',
+      message: '编码已存在',
     })
   })
 

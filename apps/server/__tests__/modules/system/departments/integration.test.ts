@@ -242,7 +242,7 @@ describe('department routes', () => {
     expect(createConflict.response.status).toBe(409)
     expect(createConflict.body).toEqual({
       field: 'code',
-      message: '部门编码已存在',
+      message: '编码已存在',
     })
 
     const updateConflict = await app.request(`/api/system/departments/${sales.id}`, {
@@ -253,7 +253,7 @@ describe('department routes', () => {
     expect(updateConflict.status).toBe(409)
     expect(await updateConflict.json()).toEqual({
       field: 'code',
-      message: '部门编码已存在',
+      message: '编码已存在',
     })
   })
 

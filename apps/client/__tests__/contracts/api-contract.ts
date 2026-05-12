@@ -55,7 +55,7 @@ const invalidResourceQuery: Parameters<typeof api.system.resources.$get>[0] = {
 const resourceCreateMenuInput: Parameters<typeof api.system.resources.$post>[0] = {
   json: {
     type: RESOURCE_TYPE_MENU,
-    name: '用户管理',
+    name: '系统用户',
     code: 'system:user',
     path: '/system/users',
     externalUrl: null,

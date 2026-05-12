@@ -12,7 +12,7 @@ type DatabaseErrorCause = {
 
 export class DepartmentConflictError extends FormFieldError<'code'> {
   constructor() {
-    super('部门编码已存在', 'code')
+    super('编码已存在', 'code')
   }
 }
 

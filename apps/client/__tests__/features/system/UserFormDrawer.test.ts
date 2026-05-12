@@ -184,7 +184,7 @@ describe('UserFormDrawer', () => {
     const wrapper = mountDrawer({ userId: null })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('新增用户')
+    expect(wrapper.text()).toContain('新增系统用户')
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
     expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 100 })
     expect(getUserMock).not.toHaveBeenCalled()
@@ -212,7 +212,7 @@ describe('UserFormDrawer', () => {
     const wrapper = mountDrawer({ userId: null })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('加载用户信息失败')
+    expect(wrapper.text()).toContain('加载系统用户信息失败')
     expect(wrapper.get('[data-test="user-form-submit"]').attributes('disabled')).toBeDefined()
 
     await wrapper.get('[data-test="user-form-username"] input').setValue('blocked-user')
@@ -231,7 +231,7 @@ describe('UserFormDrawer', () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('编辑用户')
+    expect(wrapper.text()).toContain('编辑系统用户')
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
     expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 100 })
     expect(getUserMock).toHaveBeenCalledWith(userId)

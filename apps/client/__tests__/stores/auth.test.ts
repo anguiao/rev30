@@ -43,6 +43,23 @@ const session: AuthTokenResponse = {
           updatedAt: '2026-05-01T00:00:00.000Z',
           children: [],
         },
+        {
+          id: '1d0a9843-8d29-4064-91f7-66769249caa9',
+          parentId: 'f905f4dc-c43f-41a8-b6fc-d381f291331a',
+          type: 'menu',
+          name: 'Audit Log',
+          code: 'system:audit-log',
+          path: '/system/audit-log',
+          externalUrl: null,
+          openTarget: 'self',
+          icon: 'lucide:history',
+          hidden: true,
+          status: 1,
+          sortOrder: 2,
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+          children: [],
+        },
       ],
     },
   ],
@@ -148,5 +165,13 @@ describe('auth store', () => {
     expect(auth.canAny(['system:user:delete', 'system:role:delete'])).toBe(false)
     expect(auth.canAll(['system:user:list', 'system:user:create'])).toBe(true)
     expect(auth.canAll(['system:user:list', 'system:user:delete'])).toBe(false)
+  })
+
+  it('derives visible menus and accessible route paths from the full menu tree', () => {
+    const auth = useAuthStore()
+    auth.setSession(session)
+
+    expect(auth.accessibleRoutePaths).toEqual(['/system/users', '/system/audit-log'])
+    expect(auth.visibleMenus[0]?.children.map((menu) => menu.path)).toEqual(['/system/users'])
   })
 })

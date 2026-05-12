@@ -77,9 +77,19 @@ function createTestRouter() {
     routes: [
       { path: '/', component: { template: '<main>Home</main>' } },
       { path: '/account/settings', component: { template: '<main>Account Settings</main>' } },
+      { path: '/system/audit-log', component: { template: '<main>Audit Log</main>' } },
+      { path: '/system/audit-log/:id', component: { template: '<main>Audit Log Detail</main>' } },
       { path: '/system/departments', component: { template: '<main>System departments</main>' } },
       { path: '/system/roles', component: { template: '<main>System roles</main>' } },
       { path: '/system/users', component: { template: '<main>System users</main>' } },
+      { path: '/system/users/:id', component: { template: '<main>System user detail</main>' } },
+      {
+        path: '/nested/users',
+        component: { template: '<main>Nested system users</main>' },
+        children: [
+          { path: ':id', component: { template: '<main>Nested system user detail</main>' } },
+        ],
+      },
       { path: '/403', component: { template: '<main>No access</main>' } },
       { path: '/login', component: { template: '<main>Login</main>' } },
       { path: '/register', component: { template: '<main>Register</main>' } },
@@ -255,6 +265,215 @@ describe('auth guards', () => {
     await router.push('/login')
 
     expect(router.currentRoute.value.fullPath).toBe('/system/roles')
+  })
+
+  it('skips hidden menus when choosing the authenticated entry route', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system',
+          name: 'System',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'system:audit-log',
+              name: 'Audit Log',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/audit-log',
+              parentId: 'system-id',
+              hidden: true,
+              sortOrder: 10,
+            }),
+            createMenuNode({
+              code: 'system:user',
+              name: 'Users',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/users',
+              parentId: 'system-id',
+              sortOrder: 20,
+            }),
+          ],
+        }),
+      ]),
+    )
+    auth.markReady()
+    const router = createTestRouter()
+
+    await router.push('/')
+
+    expect(router.currentRoute.value.fullPath).toBe('/system/users')
+  })
+
+  it('allows authenticated users to directly access hidden authorized routes', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system',
+          name: 'System',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'system:audit-log',
+              name: 'Audit Log',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/audit-log',
+              parentId: 'system-id',
+              hidden: true,
+            }),
+          ],
+        }),
+      ]),
+    )
+    auth.markReady()
+    const router = createTestRouter()
+
+    await router.push('/system/audit-log')
+
+    expect(router.currentRoute.value.fullPath).toBe('/system/audit-log')
+  })
+
+  it('allows hidden authorized dynamic route records', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system',
+          name: 'System',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'system:audit-log:detail',
+              name: 'Audit Log Detail',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/audit-log/:id',
+              parentId: 'system-id',
+              hidden: true,
+            }),
+          ],
+        }),
+      ]),
+    )
+    auth.markReady()
+    const router = createTestRouter()
+
+    await router.push('/system/audit-log/123')
+
+    expect(router.currentRoute.value.fullPath).toBe('/system/audit-log/123')
+  })
+
+  it('does not allow parent menu access to cover registered child routes', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system',
+          name: 'System',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'system:user',
+              name: 'Users',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/users',
+              parentId: 'system-id',
+            }),
+          ],
+        }),
+      ]),
+    )
+    auth.markReady()
+    const router = createTestRouter()
+
+    await router.push('/system/users/123')
+
+    expect(router.currentRoute.value.fullPath).toBe('/403')
+  })
+
+  it('does not allow nested parent route records to cover child routes', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'nested',
+          name: 'Nested',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'nested:user',
+              name: 'Nested Users',
+              type: RESOURCE_TYPE_MENU,
+              path: '/nested/users',
+              parentId: 'nested-id',
+            }),
+          ],
+        }),
+      ]),
+    )
+    auth.markReady()
+    const router = createTestRouter()
+
+    await router.push('/nested/users/123')
+
+    expect(router.currentRoute.value.fullPath).toBe('/403')
+  })
+
+  it('allows authorized nested child route records by their leaf path', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'nested',
+          name: 'Nested',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'nested:user:detail',
+              name: 'Nested User Detail',
+              type: RESOURCE_TYPE_MENU,
+              path: '/nested/users/:id',
+              parentId: 'nested-id',
+              hidden: true,
+            }),
+          ],
+        }),
+      ]),
+    )
+    auth.markReady()
+    const router = createTestRouter()
+
+    await router.push('/nested/users/123')
+
+    expect(router.currentRoute.value.fullPath).toBe('/nested/users/123')
+  })
+
+  it('redirects authenticated users away from inaccessible registered admin routes', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system',
+          name: 'System',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'system:department',
+              name: 'Departments',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/departments',
+              parentId: 'system-id',
+            }),
+          ],
+        }),
+      ]),
+    )
+    auth.markReady()
+    const router = createTestRouter()
+
+    await router.push('/system/users')
+
+    expect(router.currentRoute.value.fullPath).toBe('/403')
   })
 
   it('redirects authenticated users to the forbidden page when no internal menu is available', async () => {

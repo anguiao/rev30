@@ -37,6 +37,7 @@ vi.mock('@iconify/vue', () => ({
 const logoutMock = vi.mocked(logout)
 const systemMenuId = 'f905f4dc-c43f-41a8-b6fc-d381f291331a'
 const usersMenuId = '83d85ddf-9ebf-4f62-af9f-368af6d0d2a5'
+const auditLogMenuId = '4d6279f1-fdf9-487a-8a02-347ed201f59c'
 const docsMenuId = '78093266-57fe-4e0f-b420-ab55a67df4e9'
 const rolesMenuId = 'c54bf1f7-5c52-42ff-b055-b71f2606cc69'
 const externalDocsMenuId = '5fe0dd74-45fc-42fd-a3da-dfe6fcc60e4e'
@@ -116,6 +117,23 @@ function createMenuSession(): AuthTokenResponse {
             ],
           },
           {
+            id: auditLogMenuId,
+            parentId: systemMenuId,
+            type: 'menu',
+            name: '审计日志',
+            code: 'system:audit-log',
+            path: '/system/audit-log',
+            externalUrl: null,
+            openTarget: 'self',
+            icon: 'lucide:history',
+            hidden: true,
+            status: 1,
+            sortOrder: 2,
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-01T00:00:00.000Z',
+            children: [],
+          },
+          {
             id: externalDocsMenuId,
             parentId: systemMenuId,
             type: 'external',
@@ -147,6 +165,7 @@ async function mountLayout(options?: { initialPath?: string; authSession?: AuthT
       { path: '/account/settings', component: { template: '<main>Account Settings</main>' } },
       { path: '/system/users', component: { template: '<main>Users</main>' } },
       { path: '/system/users/:id', component: { template: '<main>User Detail</main>' } },
+      { path: '/system/audit-log', component: { template: '<main>Audit Log</main>' } },
       { path: '/system/departments', component: { template: '<main>Departments</main>' } },
       { path: '/system/roles', component: { template: '<main>Roles</main>' } },
       { path: '/system/resources', component: { template: '<main>Resources</main>' } },
@@ -205,6 +224,7 @@ describe('admin layout', () => {
     expect(wrapper.text()).toContain('系统管理')
     expect(wrapper.text()).toContain('指南')
     expect(wrapper.get('a[href="/system/users"]').text()).toContain('用户管理')
+    expect(wrapper.find('a[href="/system/audit-log"]').exists()).toBe(false)
 
     const externalLink = wrapper.get('a[href="https://example.com/docs"]')
     expect(externalLink.text()).toContain('开发文档')
@@ -319,6 +339,19 @@ describe('admin layout', () => {
     expect(menu.props('value')).toBeNull()
     expect(menu.props('expandedKeys')).toEqual([])
     expect(wrapper.find('[data-test="admin-breadcrumb"]').exists()).toBe(false)
+  })
+
+  it('uses hidden accessible menus for breadcrumbs without rendering them in the sidebar', async () => {
+    const { wrapper } = await mountLayout({
+      initialPath: '/system/audit-log',
+    })
+    const menu = wrapper.getComponent(NMenu)
+
+    expect(menu.props('value')).toBeNull()
+    expect(menu.props('expandedKeys')).toEqual([])
+    expect(wrapper.find('a[href="/system/audit-log"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('系统管理')
+    expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('审计日志')
   })
 
   it('allows the current route ancestors to be manually collapsed', async () => {

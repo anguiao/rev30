@@ -7,7 +7,7 @@ import AdminBreadcrumb from './navigation/AdminBreadcrumb.vue'
 import AdminSidebar from './sidebar/AdminSidebar.vue'
 
 const auth = useAuthStore()
-const { menus } = storeToRefs(auth)
+const { menus, visibleMenus } = storeToRefs(auth)
 
 const ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY = 'admin-sidebar-collapsed'
 const isSidebarCollapsed = useStorage(ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY, false)
@@ -31,7 +31,7 @@ const shellStyle = computed(() => ({
     >
       <AdminSidebar
         :collapsed="isSidebarCollapsed"
-        :menus="menus"
+        :menus="visibleMenus"
         @toggle-collapsed="toggleSidebarCollapsed"
       />
 

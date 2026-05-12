@@ -11,6 +11,10 @@ export type TreeFilterOptions<T> = {
   matches: (node: TreeNode<T>) => boolean
 }
 
+export type TreePruneOptions<T> = {
+  excludes: (node: TreeNode<T>) => boolean
+}
+
 export type TreeCheckedKey = string | number
 
 export function arrayToTree<T extends TreeArrayItem>(items: readonly T[]): TreeNode<T>[] {
@@ -56,6 +60,24 @@ export function filterTree<T>(
       {
         ...node,
         children: filteredChildren,
+      },
+    ]
+  })
+}
+
+export function pruneTree<T>(
+  nodes: readonly TreeNode<T>[],
+  options: TreePruneOptions<T>,
+): TreeNode<T>[] {
+  return nodes.flatMap((node) => {
+    if (options.excludes(node)) {
+      return []
+    }
+
+    return [
+      {
+        ...node,
+        children: pruneTree(node.children, options),
       },
     ]
   })

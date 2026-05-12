@@ -300,7 +300,7 @@ describe('user access service', () => {
     expect(customSystemMenu?.children).toEqual([])
   })
 
-  it('builds only visible non-action menus and does not auto-fill missing parent menus', async () => {
+  it('builds accessible non-action menus and does not auto-fill missing parent menus', async () => {
     const database = await createTestDb()
     const user = await createUser(database, 'menu-viewer')
     const role = await createRole(database, 'menu')
@@ -438,6 +438,12 @@ describe('user access service', () => {
           expect.objectContaining({
             code: `${prefix}-system:user`,
             type: RESOURCE_TYPE_MENU,
+            children: [],
+          }),
+          expect.objectContaining({
+            code: `${prefix}-system:hidden`,
+            type: RESOURCE_TYPE_MENU,
+            hidden: true,
             children: [],
           }),
           expect.objectContaining({

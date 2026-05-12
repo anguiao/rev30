@@ -5,6 +5,7 @@ import {
   getTreeNodeCount,
   isLeafInTree,
   normalizeTreeCheckedKeys,
+  pruneTree,
   treeToArray,
 } from '../../src/utils'
 
@@ -136,6 +137,24 @@ describe('tree utils', () => {
     })
 
     expect(getTreeNodeCount(filtered)).toBe(3)
+  })
+
+  it('prunes matching nodes with their descendants without mutating original tree', () => {
+    const rootNode = tree[0]!
+    const financeNode = rootNode.children[1]!
+    const snapshot = JSON.parse(JSON.stringify(tree))
+
+    const pruned = pruneTree(tree, {
+      excludes: (node) => node.code === 'eng',
+    })
+
+    expect(pruned).toEqual([
+      {
+        ...rootNode,
+        children: [financeNode],
+      },
+    ])
+    expect(tree).toEqual(snapshot)
   })
 
   it('checks whether a tree node is a leaf', () => {

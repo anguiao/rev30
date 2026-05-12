@@ -1,6 +1,13 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import type { AuthTokenResponse, ResourceTreeNode, User } from '@rev30/shared'
+import {
+  RESOURCE_TYPE_MENU,
+  pruneTree,
+  treeToArray,
+  type AuthTokenResponse,
+  type ResourceTreeNode,
+  type User,
+} from '@rev30/shared'
 
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(null)
@@ -10,6 +17,17 @@ export const useAuthStore = defineStore('auth', () => {
   const isReady = ref(false)
 
   const isAuthenticated = computed(() => accessToken.value !== null && user.value !== null)
+
+  const visibleMenus = computed(() =>
+    pruneTree(menus.value, {
+      excludes: (menu) => menu.hidden,
+    }),
+  )
+  const accessibleRoutePaths = computed(() =>
+    treeToArray(menus.value).flatMap((menu) =>
+      menu.type === RESOURCE_TYPE_MENU && menu.path !== null ? [menu.path] : [],
+    ),
+  )
 
   function setSession(session: AuthTokenResponse) {
     accessToken.value = session.accessToken
@@ -52,6 +70,8 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isReady,
     isAuthenticated,
+    visibleMenus,
+    accessibleRoutePaths,
     setSession,
     setUser,
     clearSession,

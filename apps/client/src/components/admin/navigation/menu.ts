@@ -6,6 +6,12 @@ type BreadcrumbItem = {
   path: string | null
 }
 
+type MenuPathMatchScore = {
+  segmentCount: number
+  staticSegmentCount: number
+  dynamicSegmentCount: number
+}
+
 export type MenuMatch = {
   selectedKey: string
   parentKeys: string[]
@@ -14,7 +20,7 @@ export type MenuMatch = {
 
 export function findMenuMatch(menus: ResourceTreeNode[], currentPath: string): MenuMatch | null {
   let match: MenuMatch | null = null
-  let matchedPathLength = -1
+  let matchedScore: MenuPathMatchScore | null = null
 
   visitMenus(menus, [], [])
 
@@ -36,9 +42,11 @@ export function findMenuMatch(menus: ResourceTreeNode[], currentPath: string): M
         },
       ]
 
-      if (menu.path !== null && matchesMenuPath(currentPath, menu.path)) {
-        if (menu.path.length > matchedPathLength) {
-          matchedPathLength = menu.path.length
+      if (menu.path !== null) {
+        const score = getMenuPathMatchScore(currentPath, menu.path)
+
+        if (score !== null && isBetterMenuPathMatch(score, matchedScore)) {
+          matchedScore = score
           match = {
             selectedKey: menu.id,
             parentKeys,
@@ -52,6 +60,70 @@ export function findMenuMatch(menus: ResourceTreeNode[], currentPath: string): M
   }
 }
 
-function matchesMenuPath(currentPath: string, menuPath: string) {
-  return currentPath === menuPath || currentPath.startsWith(`${menuPath}/`)
+function getMenuPathMatchScore(currentPath: string, menuPath: string): MenuPathMatchScore | null {
+  if (menuPath.includes(':')) {
+    return getDynamicMenuPathMatchScore(currentPath, menuPath)
+  }
+
+  if (currentPath !== menuPath && !currentPath.startsWith(`${menuPath}/`)) {
+    return null
+  }
+
+  const segmentCount = splitPathSegments(menuPath).length
+
+  return {
+    segmentCount,
+    staticSegmentCount: segmentCount,
+    dynamicSegmentCount: 0,
+  }
+}
+
+function getDynamicMenuPathMatchScore(
+  currentPath: string,
+  menuPath: string,
+): MenuPathMatchScore | null {
+  const currentSegments = splitPathSegments(currentPath)
+  const menuSegments = splitPathSegments(menuPath)
+
+  if (currentSegments.length !== menuSegments.length) {
+    return null
+  }
+
+  let dynamicSegmentCount = 0
+
+  for (const [index, segment] of menuSegments.entries()) {
+    const currentSegment = currentSegments[index]
+
+    if (segment.startsWith(':')) {
+      dynamicSegmentCount += 1
+    } else if (segment !== currentSegment) {
+      return null
+    }
+  }
+
+  return {
+    segmentCount: menuSegments.length,
+    staticSegmentCount: menuSegments.length - dynamicSegmentCount,
+    dynamicSegmentCount,
+  }
+}
+
+function splitPathSegments(path: string) {
+  return path.split('/').filter(Boolean)
+}
+
+function isBetterMenuPathMatch(score: MenuPathMatchScore, matchedScore: MenuPathMatchScore | null) {
+  if (matchedScore === null) {
+    return true
+  }
+
+  if (score.segmentCount !== matchedScore.segmentCount) {
+    return score.segmentCount > matchedScore.segmentCount
+  }
+
+  if (score.staticSegmentCount !== matchedScore.staticSegmentCount) {
+    return score.staticSegmentCount > matchedScore.staticSegmentCount
+  }
+
+  return score.dynamicSegmentCount < matchedScore.dynamicSegmentCount
 }

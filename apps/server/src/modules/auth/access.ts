@@ -23,13 +23,13 @@ function resourceOrder() {
   ] as const
 }
 
-function isVisibleMenuResource(resource: Resource) {
-  return resource.type !== RESOURCE_TYPE_ACTION && !resource.hidden
+function isMenuResource(resource: Resource) {
+  return resource.type !== RESOURCE_TYPE_ACTION
 }
 
 function filterMenuNodes(nodes: ResourceTreeNode[]): ResourceTreeNode[] {
   return nodes
-    .filter(isVisibleMenuResource)
+    .filter(isMenuResource)
     .map((node) => ({ ...node, children: filterMenuNodes(node.children) }))
 }
 

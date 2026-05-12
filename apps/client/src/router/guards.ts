@@ -1,5 +1,5 @@
 import type { ResourceTreeNode } from '@rev30/shared'
-import type { Router } from 'vue-router'
+import type { RouteLocationNormalized, Router } from 'vue-router'
 import { refreshSession } from '../features/auth/requests'
 import { useAuthStore } from '../stores/auth'
 
@@ -20,6 +20,15 @@ function findDefaultRoute(menus: ResourceTreeNode[]): string | null {
   }
 
   return null
+}
+
+function canAccessRoute(to: RouteLocationNormalized, routePaths: string[]) {
+  const routePathSet = new Set(routePaths)
+  const leafRoutePath = to.matched.at(-1)?.path
+
+  return (
+    routePathSet.has(to.path) || (leafRoutePath !== undefined && routePathSet.has(leafRoutePath))
+  )
 }
 
 async function restoreSessionIfNeeded() {
@@ -43,7 +52,7 @@ export function installAuthGuards(router: Router) {
     await restoreSessionIfNeeded()
 
     const auth = useAuthStore()
-    const defaultRoute = findDefaultRoute(auth.menus)
+    const defaultRoute = findDefaultRoute(auth.visibleMenus)
     const authenticatedEntryRoute = defaultRoute ?? '/403'
 
     if (authRoutes.has(to.path)) {
@@ -51,15 +60,15 @@ export function installAuthGuards(router: Router) {
     }
 
     if (auth.isAuthenticated) {
-      if (accountRoutes.has(to.path)) {
+      if (accountRoutes.has(to.path) || to.path === '/403') {
         return true
       }
 
-      if (defaultRoute === null && to.path !== '/403') {
-        return { path: '/403' }
+      if (to.path === '/') {
+        return { path: authenticatedEntryRoute }
       }
 
-      return to.path === '/' ? { path: authenticatedEntryRoute } : true
+      return canAccessRoute(to, auth.accessibleRoutePaths) ? true : { path: '/403' }
     }
 
     return { path: '/login', query: { redirect: to.fullPath } }

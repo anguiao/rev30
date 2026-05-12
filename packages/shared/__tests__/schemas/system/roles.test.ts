@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
 import {
   ROLE_STATUS_DISABLED,
   ROLE_STATUS_ENABLED,
@@ -13,14 +12,7 @@ import {
   roleUpdateSchema,
 } from '../../../src/schemas/system/roles'
 import { RESOURCE_TYPE_ACTION, RESOURCE_TYPE_MENU } from '../../../src/schemas/system/resources'
-
-function errorText(result: { success: false; error: z.ZodError }) {
-  return z.prettifyError(result.error)
-}
-
-function testUuid(index: number) {
-  return `00000000-0000-4000-8000-${index.toString(16).padStart(12, '0')}`
-}
+import { prettifyZodError, testUuid } from '../../helpers/schema'
 
 describe('role schemas', () => {
   it('accepts role list items with user counts and no resources', () => {
@@ -135,7 +127,7 @@ describe('role schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(errorText(result)).toContain('资源不能重复')
+      expect(prettifyZodError(result)).toContain('资源不能重复')
     }
   })
 
@@ -148,7 +140,7 @@ describe('role schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(errorText(result)).toContain('资源授权不能超过 500 个')
+      expect(prettifyZodError(result)).toContain('资源授权不能超过 500 个')
     }
   })
 
@@ -169,13 +161,13 @@ describe('role schemas', () => {
     const missingDirectParent = schema.safeParse([listUserId])
     expect(missingDirectParent.success).toBe(false)
     if (!missingDirectParent.success) {
-      expect(errorText(missingDirectParent)).toContain('子资源授权需要包含所有上级资源')
+      expect(prettifyZodError(missingDirectParent)).toContain('子资源授权需要包含所有上级资源')
     }
 
     const missingRootParent = schema.safeParse([userMenuId, listUserId, createUserId])
     expect(missingRootParent.success).toBe(false)
     if (!missingRootParent.success) {
-      expect(errorText(missingRootParent)).toContain('子资源授权需要包含所有上级资源')
+      expect(prettifyZodError(missingRootParent)).toContain('子资源授权需要包含所有上级资源')
     }
   })
 
@@ -184,7 +176,7 @@ describe('role schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(errorText(result)).toContain('至少修改一个字段')
+      expect(prettifyZodError(result)).toContain('至少修改一个字段')
     }
   })
 

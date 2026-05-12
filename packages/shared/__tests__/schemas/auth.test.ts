@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
 import { USER_STATUS_ENABLED } from '../../src/schemas/system/users'
 import {
   authLoginSchema,
@@ -8,10 +7,7 @@ import {
   authRegisterSchema,
   authTokenResponseSchema,
 } from '../../src/schemas/auth'
-
-function errorText(result: { success: false; error: z.ZodError }) {
-  return z.prettifyError(result.error)
-}
+import { prettifyZodError } from '../helpers/schema'
 
 describe('auth schemas', () => {
   it('parses public registration input without allowing status', () => {
@@ -50,7 +46,7 @@ describe('auth schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(errorText(result)).toContain('密码至少需要 8 位')
+      expect(prettifyZodError(result)).toContain('密码至少需要 8 位')
     }
   })
 
@@ -62,7 +58,7 @@ describe('auth schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(errorText(result)).toContain('密码至少需要 8 位')
+      expect(prettifyZodError(result)).toContain('密码至少需要 8 位')
     }
   })
 
@@ -74,7 +70,7 @@ describe('auth schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(errorText(result)).toContain('请输入用户名')
+      expect(prettifyZodError(result)).toContain('请输入用户名')
     }
   })
 

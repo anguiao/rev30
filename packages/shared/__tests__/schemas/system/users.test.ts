@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
 import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
@@ -10,14 +9,7 @@ import {
   userUpdateSchema,
   userSchema,
 } from '../../../src'
-
-function errorText(result: { success: false; error: z.ZodError }) {
-  return z.prettifyError(result.error)
-}
-
-function testUuid(index: number) {
-  return `00000000-0000-4000-8000-${index.toString(16).padStart(12, '0')}`
-}
+import { prettifyZodError, testUuid } from '../../helpers/schema'
 
 describe('user schemas', () => {
   it('accepts a user response with nullable email and phone', () => {
@@ -107,7 +99,7 @@ describe('user schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(errorText(result)).toContain('用户状态无效')
+      expect(prettifyZodError(result)).toContain('用户状态无效')
     }
   })
 
@@ -145,7 +137,7 @@ describe('user schemas', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(errorText(result)).toContain('至少修改一个字段')
+        expect(prettifyZodError(result)).toContain('至少修改一个字段')
       }
     }
 
@@ -185,7 +177,7 @@ describe('user schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(errorText(result)).toContain('部门不能重复')
+      expect(prettifyZodError(result)).toContain('部门不能重复')
     }
   })
 
@@ -198,7 +190,7 @@ describe('user schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(errorText(result)).toContain('用户部门不能超过 50 个')
+      expect(prettifyZodError(result)).toContain('用户部门不能超过 50 个')
     }
   })
 
@@ -219,7 +211,7 @@ describe('user schemas', () => {
 
     expect(invalidUser.success).toBe(false)
     if (!invalidUser.success) {
-      expect(errorText(invalidUser)).toContain('用户 ID 无效')
+      expect(prettifyZodError(invalidUser)).toContain('用户 ID 无效')
     }
 
     const invalidQuery = userListQuerySchema.safeParse({
@@ -228,7 +220,7 @@ describe('user schemas', () => {
 
     expect(invalidQuery.success).toBe(false)
     if (!invalidQuery.success) {
-      expect(errorText(invalidQuery)).toContain('页码不能小于 1')
+      expect(prettifyZodError(invalidQuery)).toContain('页码不能小于 1')
     }
   })
 
@@ -297,7 +289,7 @@ describe('user schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(errorText(result)).toContain('角色不能重复')
+      expect(prettifyZodError(result)).toContain('角色不能重复')
     }
   })
 
@@ -310,7 +302,7 @@ describe('user schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(errorText(result)).toContain('用户角色不能超过 50 个')
+      expect(prettifyZodError(result)).toContain('用户角色不能超过 50 个')
     }
   })
 

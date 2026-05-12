@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
 import {
   RESOURCE_OPEN_TARGET_BLANK,
   RESOURCE_OPEN_TARGET_SELF,
@@ -18,10 +17,7 @@ import {
   resourceUpdateSchema,
 } from '../../../src/schemas/system/resources'
 import type { Resource } from '../../../src/schemas/system/resources'
-
-function errorText(result: { success: false; error: z.ZodError }) {
-  return z.prettifyError(result.error)
-}
+import { prettifyZodError } from '../../helpers/schema'
 
 describe('resource schemas', () => {
   it('accepts a resource response with menu fields', () => {
@@ -151,7 +147,7 @@ describe('resource schemas', () => {
 
     expect(missingMenuPath.success).toBe(false)
     if (!missingMenuPath.success) {
-      expect(errorText(missingMenuPath)).toContain('内部菜单路径不能为空')
+      expect(prettifyZodError(missingMenuPath)).toContain('内部菜单路径不能为空')
     }
 
     const missingExternalUrl = resourceFormSchema.safeParse({
@@ -161,7 +157,7 @@ describe('resource schemas', () => {
 
     expect(missingExternalUrl.success).toBe(false)
     if (!missingExternalUrl.success) {
-      expect(errorText(missingExternalUrl)).toContain('外链地址不能为空')
+      expect(prettifyZodError(missingExternalUrl)).toContain('外链地址不能为空')
     }
 
     const invalidExternalUrl = resourceFormSchema.safeParse({
@@ -172,7 +168,7 @@ describe('resource schemas', () => {
 
     expect(invalidExternalUrl.success).toBe(false)
     if (!invalidExternalUrl.success) {
-      expect(errorText(invalidExternalUrl)).toContain('外链地址无效')
+      expect(prettifyZodError(invalidExternalUrl)).toContain('外链地址无效')
     }
 
     expect(
@@ -356,7 +352,7 @@ describe('resource schemas', () => {
 
     expect(createResult.success).toBe(false)
     if (!createResult.success) {
-      expect(errorText(createResult)).toContain('图标名称无效')
+      expect(prettifyZodError(createResult)).toContain('图标名称无效')
     }
 
     const updateResult = resourceUpdateSchema.safeParse({
@@ -365,7 +361,7 @@ describe('resource schemas', () => {
 
     expect(updateResult.success).toBe(false)
     if (!updateResult.success) {
-      expect(errorText(updateResult)).toContain('图标名称无效')
+      expect(prettifyZodError(updateResult)).toContain('图标名称无效')
     }
   })
 
@@ -446,7 +442,7 @@ describe('resource schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(errorText(result)).toContain('至少修改一个字段')
+      expect(prettifyZodError(result)).toContain('至少修改一个字段')
     }
   })
 

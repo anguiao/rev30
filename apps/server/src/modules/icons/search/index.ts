@@ -1,0 +1,1 @@
+export { searchIcons } from './service'

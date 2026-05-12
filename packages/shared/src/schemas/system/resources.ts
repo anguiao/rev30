@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { nonBlankString, optionalNullableString, sortOrderInputSchema } from '../common/inputs'
 import { paginationQuerySchema } from '../common/pagination'
 import { hasAnyDefinedValue } from '../common/refinements'
+import { iconifyIconNamePattern } from '../icons'
 import { optionalNumericQueryValue, optionalQueryValue, optionalTrimmedQueryString } from '../query'
 
 export const RESOURCE_STATUS_DISABLED = 0
@@ -35,10 +36,7 @@ const optionalStatusQuerySchema = optionalNumericQueryValue(resourceStatusSchema
 const optionalTypeQuerySchema = optionalQueryValue(resourceTypeSchema)
 const optionalParentIdQuerySchema = optionalQueryValue(resourceIdSchema)
 
-export const iconifyIconNameSchema = z
-  .string()
-  .trim()
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/, '图标名称无效')
+export const iconifyIconNameSchema = z.string().trim().regex(iconifyIconNamePattern, '图标名称无效')
 
 const iconInputSchema = optionalNullableString().pipe(
   z.union([iconifyIconNameSchema, z.null()]).optional(),

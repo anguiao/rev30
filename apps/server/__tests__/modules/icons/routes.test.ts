@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { iconRoutes } from '../../../src/modules/icons/routes'
 import * as iconService from '../../../src/modules/icons/service'
-import * as iconSearchService from '../../../src/modules/icons/search-service'
+import * as iconSearchService from '../../../src/modules/icons/search'
 
 function createIconTestApp() {
   return new Hono().route('/api/icons', iconRoutes)

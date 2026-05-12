@@ -2,7 +2,7 @@ import { iconDataParamSchema, iconDataQuerySchema, iconSearchQuerySchema } from 
 import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { searchIcons } from './search-service'
+import { searchIcons } from './search'
 import { getIconSubset } from './service'
 
 const iconParamValidator = zValidator('param', iconDataParamSchema, (result, c) => {

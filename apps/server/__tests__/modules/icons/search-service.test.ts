@@ -20,19 +20,65 @@ vi.mock('@iconify/json', () => {
         bell: {},
         'book-open': {},
         'building-2': {},
+        boxes: {},
+        calendar: {},
         'chart-column': {},
+        'circle-check': {},
+        'circle-minus': {},
+        'circle-plus': {},
+        'circle-x': {},
+        'clipboard-list': {},
+        clock: {},
+        database: {},
+        download: {},
+        'external-link': {},
         'file-clock': {},
+        'file-chart-column': {},
+        'file-text': {},
+        filter: {},
+        'folder-tree': {},
+        globe: {},
+        history: {},
         house: {},
         key: {},
+        'key-round': {},
+        'layout-dashboard': {},
+        link: {},
+        list: {},
+        'list-ordered': {},
+        'list-tree': {},
+        'lock-keyhole': {},
+        logs: {},
+        mail: {},
         menu: {},
+        'message-square': {},
+        network: {},
         package: {},
+        'panel-left': {},
+        'refresh-cw': {},
+        route: {},
+        'rows-3': {},
+        search: {},
+        send: {},
+        server: {},
         settings: {},
         shield: {},
+        'shield-alert': {},
         'shield-check': {},
+        'sliders-horizontal': {},
+        'square-pen': {},
+        'trash-2': {},
+        'unlock-keyhole': {},
+        upload: {},
         user: {},
+        'user-check': {},
         'user-cog': {},
+        'user-plus': {},
+        'user-round': {},
         users: {},
         vue: {},
+        workflow: {},
+        wrench: {},
       },
       aliases: {
         account: { parent: 'user' },
@@ -56,7 +102,7 @@ vi.mock('../../../src/modules/icons/service', () => ({
   getIconSubset: vi.fn(),
 }))
 
-const { searchIcons } = await import('../../../src/modules/icons/search-service')
+const { searchIcons } = await import('../../../src/modules/icons/search')
 const getIconSubsetMock = vi.mocked(getIconSubset)
 const lookupCollectionMock = vi.mocked(lookupCollection)
 
@@ -106,12 +152,11 @@ describe('icon search service', () => {
     expect(lookupCollectionMock).not.toHaveBeenCalled()
   })
 
-  it('searches recommended icons for an empty keyword', async () => {
-    const result = await searchIcons({ keyword: '', limit: 12 })
-    const whitespaceResult = await searchIcons({ keyword: '   ', limit: 12 })
+  it('fills the default recommendation limit for an empty keyword', async () => {
+    const result = await searchIcons({ keyword: '', limit: 60 })
+    const whitespaceResult = await searchIcons({ keyword: '   ', limit: 60 })
 
-    expect(result.list.length).toBeGreaterThan(0)
-    expect(result.list.length).toBeLessThanOrEqual(12)
+    expect(result.list).toHaveLength(60)
     expect(result.list.some((item) => item.icon === 'lucide:users')).toBe(true)
     expect(whitespaceResult.list.map((item) => item.icon)).toEqual(
       result.list.map((item) => item.icon),

@@ -1,7 +1,11 @@
 import { z } from 'zod'
 
 const iconFileExtension = '.json'
-const iconFilenamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*\.json$/
+export const iconifyIconNamePartPatternSource = '[a-z0-9]+(?:-[a-z0-9]+)*'
+const iconFilenamePattern = new RegExp(`^${iconifyIconNamePartPatternSource}\\.json$`)
+export const iconifyIconNamePattern = new RegExp(
+  `^${iconifyIconNamePartPatternSource}:${iconifyIconNamePartPatternSource}$`,
+)
 const prettyQuerySchema = z
   .string()
   .optional()
@@ -23,7 +27,6 @@ export const iconDataQuerySchema = z.object({
 const iconSearchLimitDefault = 60
 const iconSearchLimitMax = 100
 const iconSearchKeywordMaxLength = 120
-const iconNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 const iconSearchLimitSchema = z
   .string()
@@ -44,7 +47,7 @@ export const iconSearchQuerySchema = z.object({
 })
 
 export const iconSearchItemSchema = z.object({
-  icon: z.string().regex(iconNamePattern, '图标名称无效'),
+  icon: z.string().regex(iconifyIconNamePattern, '图标名称无效'),
   prefix: z.string().min(1),
   name: z.string().min(1),
   collection: z.string().min(1),

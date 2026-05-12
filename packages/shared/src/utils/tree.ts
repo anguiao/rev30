@@ -13,11 +13,6 @@ export type TreeFilterOptions<T> = {
 
 export type TreeCheckedKey = string | number
 
-export type TreeCheckedKeyNormalizationOptions = {
-  checkedKeys: readonly TreeCheckedKey[]
-  previousCheckedKeys: readonly TreeCheckedKey[]
-}
-
 export function arrayToTree<T extends TreeArrayItem>(items: readonly T[]): TreeNode<T>[] {
   const childrenByParentId = new Map<string | null, TreeNode<T>[]>()
   const nodes = items.map<TreeNode<T>>((item) => ({
@@ -141,7 +136,8 @@ function findAncestorNodeIds(
 
 export function normalizeTreeCheckedKeys<T extends TreeArrayItem>(
   nodes: readonly TreeNode<T>[],
-  { checkedKeys, previousCheckedKeys }: TreeCheckedKeyNormalizationOptions,
+  checkedKeys: readonly TreeCheckedKey[],
+  previousCheckedKeys: readonly TreeCheckedKey[],
 ): string[] {
   const { orderedIds, parentIdsByNodeId, descendantIdsByNodeId } = createTreeSelectionIndex(nodes)
   const selectedIds = new Set(checkedKeys.map(String))

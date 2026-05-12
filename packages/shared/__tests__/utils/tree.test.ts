@@ -146,29 +146,26 @@ describe('tree utils', () => {
   })
 
   it('adds ancestor keys when checking a child node', () => {
-    expect(
-      normalizeTreeCheckedKeys(tree, {
-        checkedKeys: ['platform'],
-        previousCheckedKeys: [],
-      }),
-    ).toEqual(['root', 'engineering', 'platform'])
+    expect(normalizeTreeCheckedKeys(tree, ['platform'], [])).toEqual([
+      'root',
+      'engineering',
+      'platform',
+    ])
   })
 
   it('removes descendant keys when unchecking a parent node', () => {
     expect(
-      normalizeTreeCheckedKeys(tree, {
-        checkedKeys: ['root', 'platform', 'finance'],
-        previousCheckedKeys: ['root', 'engineering', 'platform', 'finance'],
-      }),
+      normalizeTreeCheckedKeys(
+        tree,
+        ['root', 'platform', 'finance'],
+        ['root', 'engineering', 'platform', 'finance'],
+      ),
     ).toEqual(['root', 'finance'])
   })
 
   it('keeps parent keys when unchecking a child node', () => {
     expect(
-      normalizeTreeCheckedKeys(tree, {
-        checkedKeys: ['root', 'engineering'],
-        previousCheckedKeys: ['root', 'engineering', 'platform'],
-      }),
+      normalizeTreeCheckedKeys(tree, ['root', 'engineering'], ['root', 'engineering', 'platform']),
     ).toEqual(['root', 'engineering'])
   })
 })

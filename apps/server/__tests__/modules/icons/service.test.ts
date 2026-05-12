@@ -12,6 +12,11 @@ const lucideIconSet: IconifyJSON = {
       body: '<path d="sun" />',
     },
   },
+  aliases: {
+    day: {
+      parent: 'sun',
+    },
+  },
   width: 24,
   height: 24,
 }
@@ -67,6 +72,37 @@ describe('icon service', () => {
 
     expect(body?.icons).toEqual({})
     expect(body?.not_found).toEqual([''])
+  })
+
+  it('keeps alias parents when caching single icon subsets', async () => {
+    const body = await getIconSubset('lucide', ['day'])
+
+    expect(body?.icons.sun?.body).toContain('sun')
+    expect(body?.aliases?.day).toEqual({ parent: 'sun' })
+    expect(body?.not_found).toBeUndefined()
+  })
+
+  it('reuses cached single icon subsets without reloading the collection', async () => {
+    const cacheTestIconSet: IconifyJSON = {
+      prefix: 'cache-test',
+      icons: {
+        cached: {
+          body: '<path d="cached" />',
+        },
+      },
+    }
+
+    mocks.lookupCollection.mockImplementation(async (prefix: string) =>
+      prefix === 'cache-test' ? cacheTestIconSet : null,
+    )
+
+    const first = await getIconSubset('cache-test', ['cached'])
+    mocks.lookupCollection.mockClear()
+    const second = await getIconSubset('cache-test', ['cached'])
+
+    expect(first?.icons.cached?.body).toContain('cached')
+    expect(second?.icons.cached?.body).toContain('cached')
+    expect(mocks.lookupCollection).not.toHaveBeenCalled()
   })
 
   it('returns null for missing collections', async () => {

@@ -36,6 +36,8 @@ pnpm dev
 
 服务端环境变量可从 `apps/server/.env.example` 复制起步；执行 bootstrap 前，请先在 `apps/server/.env` 中确认或修改 `BOOTSTRAP_ADMIN_*` 账号信息，认证相关密钥在本地也建议改成非默认值。
 
+图标搜索索引默认在闲置 `15` 分钟后释放，可通过 `ICON_SEARCH_INDEX_IDLE_TTL_MS` 调整毫秒数；设置为 `0` 可关闭自动释放。
+
 系统资源和 `admin` 角色由迁移写入；初始管理员用户通过 `pnpm --filter @rev30/server db:bootstrap` 显式创建，账号信息从 `apps/server/.env` 中的 `BOOTSTRAP_ADMIN_*` 环境变量读取。
 
 ## 常用命令

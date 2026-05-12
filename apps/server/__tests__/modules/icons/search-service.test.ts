@@ -1,4 +1,6 @@
+import { lookupCollection } from '@iconify/json'
 import { describe, expect, it, vi } from 'vitest'
+import { getIconSubset } from '../../../src/modules/icons/service'
 
 vi.mock('@iconify/json', () => {
   const collections = {
@@ -50,9 +52,60 @@ vi.mock('@iconify/json', () => {
   }
 })
 
+vi.mock('../../../src/modules/icons/service', () => ({
+  getIconSubset: vi.fn(),
+}))
+
 const { searchIcons } = await import('../../../src/modules/icons/search-service')
+const getIconSubsetMock = vi.mocked(getIconSubset)
+const lookupCollectionMock = vi.mocked(lookupCollection)
 
 describe('icon search service', () => {
+  it('resolves exact icon names without building the search index', async () => {
+    lookupCollectionMock.mockClear()
+    getIconSubsetMock.mockResolvedValueOnce({
+      prefix: 'lucide',
+      icons: {
+        users: {
+          body: '<path d="users" />',
+        },
+      },
+      aliases: {},
+    })
+
+    const result = await searchIcons({ keyword: 'lucide:users', limit: 10 })
+
+    expect(result).toEqual({
+      list: [
+        {
+          icon: 'lucide:users',
+          prefix: 'lucide',
+          name: 'users',
+          collection: 'Lucide',
+          palette: false,
+        },
+      ],
+    })
+    expect(getIconSubsetMock).toHaveBeenCalledWith('lucide', ['users'])
+    expect(lookupCollectionMock).not.toHaveBeenCalled()
+  })
+
+  it('returns an empty list for missing exact icon names without building the search index', async () => {
+    lookupCollectionMock.mockClear()
+    getIconSubsetMock.mockResolvedValueOnce({
+      prefix: 'lucide',
+      icons: {},
+      aliases: {},
+      not_found: ['not-real'],
+    })
+
+    const result = await searchIcons({ keyword: 'lucide:not-real', limit: 10 })
+
+    expect(result).toEqual({ list: [] })
+    expect(getIconSubsetMock).toHaveBeenCalledWith('lucide', ['not-real'])
+    expect(lookupCollectionMock).not.toHaveBeenCalled()
+  })
+
   it('searches recommended icons for an empty keyword', async () => {
     const result = await searchIcons({ keyword: '', limit: 12 })
     const whitespaceResult = await searchIcons({ keyword: '   ', limit: 12 })
@@ -86,11 +139,27 @@ describe('icon search service', () => {
     const alias = await searchIcons({ keyword: 'person', limit: 20 })
     expect(alias.list.some((item) => item.icon === 'lucide:user')).toBe(true)
 
+    getIconSubsetMock.mockResolvedValueOnce({
+      prefix: 'lucide',
+      icons: {
+        users: {
+          body: '<path d="users" />',
+        },
+      },
+      aliases: {},
+    })
     const exact = await searchIcons({ keyword: 'lucide:users', limit: 10 })
     expect(exact.list[0]?.icon).toBe('lucide:users')
 
     const fuzzy = await searchIcons({ keyword: 'usr', limit: 20 })
     expect(fuzzy.list.some((item) => item.icon.includes('user'))).toBe(true)
+  })
+
+  it('keeps icon set prefixes searchable without search text copies', async () => {
+    const result = await searchIcons({ keyword: 'lucide', limit: 20 })
+
+    expect(result.list.length).toBeGreaterThan(0)
+    expect(result.list.every((item) => item.prefix === 'lucide')).toBe(true)
   })
 
   it('searches broad Chinese keywords with bounded candidate expansion', async () => {

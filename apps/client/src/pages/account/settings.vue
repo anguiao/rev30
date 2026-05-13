@@ -201,7 +201,7 @@ const passwordForm = useForm({
             <div class="mb-6">
               <h2 class="text-lg font-medium text-stone-900 dark:text-zinc-100">修改密码</h2>
               <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">
-                密码修改后请使用新密码重新登录
+                修改后当前设备保持登录，其他设备需使用新密码重新登录
               </p>
             </div>
 

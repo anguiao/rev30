@@ -12,7 +12,13 @@ import {
   type RoleListResponse,
   type RoleStatus,
 } from '@rev30/shared'
-import { roleResources, roles, systemResources, userRoles, users } from '../../../../src/db/schema'
+import {
+  systemRoleResources,
+  systemRoles,
+  systemResources,
+  systemUserRoles,
+  systemUsers,
+} from '../../../../src/db/schema'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 import { createRoleRoutes } from '../../../../src/modules/system/roles/routes'
@@ -158,7 +164,7 @@ describe('role routes', () => {
     const activeUserId = randomUUID()
     const deletedUserId = randomUUID()
 
-    await database.insert(users).values([
+    await database.insert(systemUsers).values([
       {
         id: activeUserId,
         username: 'active-user',
@@ -171,7 +177,7 @@ describe('role routes', () => {
         deletedAt: new Date(),
       },
     ])
-    await database.insert(userRoles).values([
+    await database.insert(systemUserRoles).values([
       { userId: activeUserId, roleId: admin.id },
       { userId: deletedUserId, roleId: admin.id },
     ])
@@ -285,8 +291,8 @@ describe('role routes', () => {
 
     const storedRelations = await database
       .select()
-      .from(roleResources)
-      .where(eq(roleResources.roleId, created.id))
+      .from(systemRoleResources)
+      .where(eq(systemRoleResources.roleId, created.id))
     expect(storedRelations).toEqual([])
   })
 
@@ -414,8 +420,8 @@ describe('role routes', () => {
     const app = await createTestApp(database)
     const [adminRole] = await database
       .select()
-      .from(roles)
-      .where(eq(roles.code, BUILT_IN_ADMIN_ROLE_CODE))
+      .from(systemRoles)
+      .where(eq(systemRoles.code, BUILT_IN_ADMIN_ROLE_CODE))
 
     if (!adminRole) {
       throw new Error('Expected built-in admin role')
@@ -439,7 +445,10 @@ describe('role routes', () => {
     expect(deleteResponse.status).toBe(409)
     expect(await deleteResponse.json()).toEqual({ message: '内置 admin 角色不能删除' })
 
-    const [storedAdminRole] = await database.select().from(roles).where(eq(roles.id, adminRole.id))
+    const [storedAdminRole] = await database
+      .select()
+      .from(systemRoles)
+      .where(eq(systemRoles.id, adminRole.id))
 
     expect(storedAdminRole).toMatchObject({
       name: adminRole.name,
@@ -457,12 +466,12 @@ describe('role routes', () => {
     })
     const userId = randomUUID()
 
-    await database.insert(users).values({
+    await database.insert(systemUsers).values({
       id: userId,
       username: 'linked-user',
       nickname: 'Linked User',
     })
-    await database.insert(userRoles).values({ userId, roleId: role.id })
+    await database.insert(systemUserRoles).values({ userId, roleId: role.id })
 
     const response = await app.request(`/api/system/roles/${role.id}`, {
       method: 'DELETE',
@@ -491,14 +500,14 @@ describe('role routes', () => {
     })
     expect(deleteResponse.status).toBe(204)
 
-    const storedRows = await database.select().from(roles).where(eq(roles.id, role.id))
+    const storedRows = await database.select().from(systemRoles).where(eq(systemRoles.id, role.id))
     expect(storedRows).toHaveLength(1)
     expect(storedRows[0]?.deletedAt).toBeInstanceOf(Date)
 
     const storedRelations = await database
       .select()
-      .from(roleResources)
-      .where(eq(roleResources.roleId, role.id))
+      .from(systemRoleResources)
+      .where(eq(systemRoleResources.roleId, role.id))
     expect(storedRelations).toEqual([])
 
     const detailResponse = await app.request(`/api/system/roles/${role.id}`)

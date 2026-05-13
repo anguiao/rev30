@@ -1,7 +1,7 @@
 import { arrayToTree, type Department, type DepartmentTreeNode } from '@rev30/shared'
-import { departments } from '../../../db/schema'
+import { systemDepartments } from '../../../db/schema'
 
-export type DepartmentRow = typeof departments.$inferSelect
+export type DepartmentRow = typeof systemDepartments.$inferSelect
 
 export function toDepartment(row: DepartmentRow): Department {
   return {

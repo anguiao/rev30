@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { ResourceCreateInput, ResourceListQuery, ResourceUpdateInput } from '@rev30/shared'
 import { and, asc, count, desc, eq, ilike, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
-import { roleResources, systemResources } from '../../../db/schema'
+import { systemRoleResources, systemResources } from '../../../db/schema'
 import {
   ResourceDeleteConflictError,
   ResourceInvalidParentError,
@@ -40,9 +40,9 @@ async function hasActiveChildren(executor: DbReader, id: string) {
 
 async function hasRoleAuthorizations(executor: DbReader, id: string) {
   const rows = await executor
-    .select({ roleId: roleResources.roleId })
-    .from(roleResources)
-    .where(eq(roleResources.resourceId, id))
+    .select({ roleId: systemRoleResources.roleId })
+    .from(systemRoleResources)
+    .where(eq(systemRoleResources.resourceId, id))
     .limit(1)
 
   return rows.length > 0

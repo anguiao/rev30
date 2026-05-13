@@ -4,7 +4,13 @@ import { Hono } from 'hono'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import type { Db } from '../../src/db'
 import { createAuthMiddleware } from '../../src/middleware/auth'
-import { roles, roleResources, systemResources, userRoles, users } from '../../src/db/schema'
+import {
+  systemRoles,
+  systemRoleResources,
+  systemResources,
+  systemUserRoles,
+  systemUsers,
+} from '../../src/db/schema'
 import { readAuthConfig } from '../../src/modules/auth/config'
 import { createTokenPair } from '../../src/modules/auth/tokens'
 
@@ -69,7 +75,7 @@ export async function createSystemAccessFixture(
   const usernamePrefix = options.usernamePrefix ?? 'system-route-user'
   const accessCodes = [...new Set(options.accessCodes ?? [])]
   const [user] = await database
-    .insert(users)
+    .insert(systemUsers)
     .values({
       id: randomUUID(),
       username: `${usernamePrefix}-${randomUUID()}`,
@@ -87,14 +93,14 @@ export async function createSystemAccessFixture(
   if (options.admin) {
     const [adminRole] = await database
       .select({
-        id: roles.id,
+        id: systemRoles.id,
       })
-      .from(roles)
+      .from(systemRoles)
       .where(
         and(
-          eq(roles.code, 'admin'),
-          eq(roles.status, ROLE_STATUS_ENABLED),
-          isNull(roles.deletedAt),
+          eq(systemRoles.code, 'admin'),
+          eq(systemRoles.status, ROLE_STATUS_ENABLED),
+          isNull(systemRoles.deletedAt),
         ),
       )
       .limit(1)
@@ -103,7 +109,7 @@ export async function createSystemAccessFixture(
       throw new Error('Expected seeded admin role')
     }
 
-    await database.insert(userRoles).values({
+    await database.insert(systemUserRoles).values({
       userId: user.id,
       roleId: adminRole.id,
       createdAt: now,
@@ -112,7 +118,7 @@ export async function createSystemAccessFixture(
 
   if (accessCodes.length > 0) {
     const [role] = await database
-      .insert(roles)
+      .insert(systemRoles)
       .values({
         id: randomUUID(),
         name: `${usernamePrefix} Role`,
@@ -142,13 +148,13 @@ export async function createSystemAccessFixture(
       throw new Error(`Expected seeded resources for access codes: ${missingCodes.join(', ')}`)
     }
 
-    await database.insert(userRoles).values({
+    await database.insert(systemUserRoles).values({
       userId: user.id,
       roleId: role.id,
       createdAt: now,
     })
 
-    await database.insert(roleResources).values(
+    await database.insert(systemRoleResources).values(
       resources.map((resource) => ({
         roleId: role.id,
         resourceId: resource.id,

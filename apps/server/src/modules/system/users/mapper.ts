@@ -1,7 +1,7 @@
 import type { DepartmentSummary, RoleSummary, User } from '@rev30/shared'
-import { users } from '../../../db/schema'
+import { systemUsers } from '../../../db/schema'
 
-export type UserRow = typeof users.$inferSelect
+export type UserRow = typeof systemUsers.$inferSelect
 
 export function toUser(
   user: UserRow,

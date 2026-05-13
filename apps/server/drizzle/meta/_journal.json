@@ -64,6 +64,13 @@
       "when": 1778313600000,
       "tag": "0008_update_system_resource_labels",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778634585290,
+      "tag": "0009_rename_system_tables",
+      "breakpoints": true
     }
   ]
 }

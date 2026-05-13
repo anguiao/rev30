@@ -6,7 +6,7 @@ import {
 } from '@rev30/shared'
 import { and, eq, gt, isNull, ne } from 'drizzle-orm'
 import type { Db } from '../../db'
-import { authPasswordCredentials, authRefreshTokens, users } from '../../db/schema'
+import { authPasswordCredentials, authRefreshTokens, systemUsers } from '../../db/schema'
 import { findDepartmentSummariesByUserId } from '../system/departments/repository'
 import { findRoleSummariesByUserId } from '../system/roles/repository'
 
@@ -15,7 +15,7 @@ export function createAuthRepository(database: Db) {
     async createUser(input: AuthRegisterInput, passwordHash: string) {
       return await database.transaction(async (tx) => {
         const [created] = await tx
-          .insert(users)
+          .insert(systemUsers)
           .values({
             id: randomUUID(),
             username: input.username,
@@ -46,12 +46,12 @@ export function createAuthRepository(database: Db) {
     async findActiveUserCredentialByUsername(username: string) {
       const rows = await database
         .select({
-          user: users,
+          user: systemUsers,
           credential: authPasswordCredentials,
         })
-        .from(users)
-        .innerJoin(authPasswordCredentials, eq(authPasswordCredentials.userId, users.id))
-        .where(and(eq(users.username, username), isNull(users.deletedAt)))
+        .from(systemUsers)
+        .innerJoin(authPasswordCredentials, eq(authPasswordCredentials.userId, systemUsers.id))
+        .where(and(eq(systemUsers.username, username), isNull(systemUsers.deletedAt)))
         .limit(1)
 
       const account = rows[0]
@@ -70,8 +70,8 @@ export function createAuthRepository(database: Db) {
     async findActiveUserById(id: string) {
       const rows = await database
         .select()
-        .from(users)
-        .where(and(eq(users.id, id), isNull(users.deletedAt)))
+        .from(systemUsers)
+        .where(and(eq(systemUsers.id, id), isNull(systemUsers.deletedAt)))
         .limit(1)
 
       const user = rows[0]
@@ -90,13 +90,13 @@ export function createAuthRepository(database: Db) {
     async updateUserProfile(userId: string, input: AuthProfileUpdateInput) {
       return await database.transaction(async (tx) => {
         const [updated] = await tx
-          .update(users)
+          .update(systemUsers)
           .set({
             nickname: input.nickname,
             email: input.email,
             phone: input.phone,
           })
-          .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+          .where(and(eq(systemUsers.id, userId), isNull(systemUsers.deletedAt)))
           .returning()
 
         if (!updated) {
@@ -114,12 +114,12 @@ export function createAuthRepository(database: Db) {
     async findActiveUserCredentialById(userId: string) {
       const rows = await database
         .select({
-          user: users,
+          user: systemUsers,
           credential: authPasswordCredentials,
         })
-        .from(users)
-        .innerJoin(authPasswordCredentials, eq(authPasswordCredentials.userId, users.id))
-        .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+        .from(systemUsers)
+        .innerJoin(authPasswordCredentials, eq(authPasswordCredentials.userId, systemUsers.id))
+        .where(and(eq(systemUsers.id, userId), isNull(systemUsers.deletedAt)))
         .limit(1)
 
       const account = rows[0]

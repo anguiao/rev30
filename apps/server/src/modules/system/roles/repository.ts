@@ -9,7 +9,13 @@ import {
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Db, DbReader } from '../../../db'
-import { roleResources, roles, systemResources, userRoles, users } from '../../../db/schema'
+import {
+  systemRoleResources,
+  systemRoles,
+  systemResources,
+  systemUserRoles,
+  systemUsers,
+} from '../../../db/schema'
 import {
   RoleDeleteConflictError,
   RoleInvalidResourceError,
@@ -18,14 +24,14 @@ import {
 import type { RoleResourceRow, RoleRow } from './mapper'
 
 function roleSortOrder() {
-  return [asc(roles.sortOrder), desc(roles.createdAt), desc(roles.id)] as const
+  return [asc(systemRoles.sortOrder), desc(systemRoles.createdAt), desc(systemRoles.id)] as const
 }
 
 async function hasUsers(executor: DbReader, id: string) {
   const rows = await executor
-    .select({ userId: userRoles.userId })
-    .from(userRoles)
-    .where(eq(userRoles.roleId, id))
+    .select({ userId: systemUserRoles.userId })
+    .from(systemUserRoles)
+    .where(eq(systemUserRoles.roleId, id))
     .limit(1)
 
   return rows.length > 0
@@ -89,9 +95,9 @@ async function findResourcesByRoleId(
       code: systemResources.code,
       type: systemResources.type,
     })
-    .from(roleResources)
-    .innerJoin(systemResources, eq(systemResources.id, roleResources.resourceId))
-    .where(and(eq(roleResources.roleId, roleId), isNull(systemResources.deletedAt)))
+    .from(systemRoleResources)
+    .innerJoin(systemResources, eq(systemResources.id, systemRoleResources.resourceId))
+    .where(and(eq(systemRoleResources.roleId, roleId), isNull(systemResources.deletedAt)))
     .orderBy(
       asc(systemResources.sortOrder),
       desc(systemResources.createdAt),
@@ -106,8 +112,8 @@ export async function lockActiveRolesByIds(executor: DbReader, ids: string[]) {
   for (const id of sortedIds) {
     const [row] = await executor
       .select()
-      .from(roles)
-      .where(and(eq(roles.id, id), isNull(roles.deletedAt)))
+      .from(systemRoles)
+      .where(and(eq(systemRoles.id, id), isNull(systemRoles.deletedAt)))
       .limit(1)
       .for('update')
 
@@ -128,14 +134,14 @@ export async function findRoleSummariesByUserIds(executor: DbReader, userIds: st
 
   const rows = await executor
     .select({
-      userId: userRoles.userId,
-      roleId: roles.id,
-      roleName: roles.name,
-      roleCode: roles.code,
+      userId: systemUserRoles.userId,
+      roleId: systemRoles.id,
+      roleName: systemRoles.name,
+      roleCode: systemRoles.code,
     })
-    .from(userRoles)
-    .innerJoin(roles, eq(roles.id, userRoles.roleId))
-    .where(and(inArray(userRoles.userId, userIds), isNull(roles.deletedAt)))
+    .from(systemUserRoles)
+    .innerJoin(systemRoles, eq(systemRoles.id, systemUserRoles.roleId))
+    .where(and(inArray(systemUserRoles.userId, userIds), isNull(systemRoles.deletedAt)))
     .orderBy(...roleSortOrder())
 
   for (const row of rows) {
@@ -169,41 +175,44 @@ export function createRoleRepository(database: Db) {
       const { page, pageSize, keyword, status } = query
       const keywordFilter = keyword ? `%${keyword}%` : undefined
       const filters = [
-        isNull(roles.deletedAt),
-        status === undefined ? undefined : eq(roles.status, status),
+        isNull(systemRoles.deletedAt),
+        status === undefined ? undefined : eq(systemRoles.status, status),
         keywordFilter
-          ? or(ilike(roles.name, keywordFilter), ilike(roles.code, keywordFilter))
+          ? or(ilike(systemRoles.name, keywordFilter), ilike(systemRoles.code, keywordFilter))
           : undefined,
       ]
       const where = and(...filters)
 
       const roleUserCounts = database
         .select({
-          roleId: userRoles.roleId,
-          userCount: sql<number>`count(${users.id})::int`.as('user_count'),
+          roleId: systemUserRoles.roleId,
+          userCount: sql<number>`count(${systemUsers.id})::int`.as('user_count'),
         })
-        .from(userRoles)
-        .innerJoin(users, and(eq(users.id, userRoles.userId), isNull(users.deletedAt)))
-        .groupBy(userRoles.roleId)
+        .from(systemUserRoles)
+        .innerJoin(
+          systemUsers,
+          and(eq(systemUsers.id, systemUserRoles.userId), isNull(systemUsers.deletedAt)),
+        )
+        .groupBy(systemUserRoles.roleId)
         .as('role_user_counts')
 
       const [list, totalRows] = await Promise.all([
         database
           .select({
             role: {
-              id: roles.id,
-              name: roles.name,
-              code: roles.code,
-              status: roles.status,
-              sortOrder: roles.sortOrder,
-              createdAt: roles.createdAt,
-              updatedAt: roles.updatedAt,
-              deletedAt: roles.deletedAt,
+              id: systemRoles.id,
+              name: systemRoles.name,
+              code: systemRoles.code,
+              status: systemRoles.status,
+              sortOrder: systemRoles.sortOrder,
+              createdAt: systemRoles.createdAt,
+              updatedAt: systemRoles.updatedAt,
+              deletedAt: systemRoles.deletedAt,
             },
             userCount: sql<number>`coalesce(${roleUserCounts.userCount}, 0)::int`.as('user_count'),
           })
-          .from(roles)
-          .leftJoin(roleUserCounts, eq(roleUserCounts.roleId, roles.id))
+          .from(systemRoles)
+          .leftJoin(roleUserCounts, eq(roleUserCounts.roleId, systemRoles.id))
           .where(where)
           .orderBy(...roleSortOrder())
           .limit(pageSize)
@@ -212,7 +221,7 @@ export function createRoleRepository(database: Db) {
           .select({
             total: count(),
           })
-          .from(roles)
+          .from(systemRoles)
           .where(where),
       ])
 
@@ -227,8 +236,8 @@ export function createRoleRepository(database: Db) {
     async findActiveById(id: string) {
       const rows = await database
         .select()
-        .from(roles)
-        .where(and(eq(roles.id, id), isNull(roles.deletedAt)))
+        .from(systemRoles)
+        .where(and(eq(systemRoles.id, id), isNull(systemRoles.deletedAt)))
         .limit(1)
 
       return rows[0]
@@ -249,7 +258,7 @@ export function createRoleRepository(database: Db) {
         await lockValidResourceIdsOrThrow(tx, resourceIds)
 
         const [created] = await tx
-          .insert(roles)
+          .insert(systemRoles)
           .values({
             id: randomUUID(),
             ...roleInput,
@@ -261,7 +270,9 @@ export function createRoleRepository(database: Db) {
         }
 
         if (resourceIds.length > 0) {
-          await tx.insert(roleResources).values(buildRoleResourceValues(created.id, resourceIds))
+          await tx
+            .insert(systemRoleResources)
+            .values(buildRoleResourceValues(created.id, resourceIds))
         }
 
         return {
@@ -283,9 +294,9 @@ export function createRoleRepository(database: Db) {
           ? roleInput
           : { updatedAt: new Date() }
         const [updated] = await tx
-          .update(roles)
+          .update(systemRoles)
           .set(roleUpdateValues)
-          .where(and(eq(roles.id, id), isNull(roles.deletedAt)))
+          .where(and(eq(systemRoles.id, id), isNull(systemRoles.deletedAt)))
           .returning()
 
         if (!updated) {
@@ -293,10 +304,12 @@ export function createRoleRepository(database: Db) {
         }
 
         if (resourceIds !== undefined) {
-          await tx.delete(roleResources).where(eq(roleResources.roleId, id))
+          await tx.delete(systemRoleResources).where(eq(systemRoleResources.roleId, id))
 
           if (resourceIds.length > 0) {
-            await tx.insert(roleResources).values(buildRoleResourceValues(updated.id, resourceIds))
+            await tx
+              .insert(systemRoleResources)
+              .values(buildRoleResourceValues(updated.id, resourceIds))
           }
         }
 
@@ -321,15 +334,15 @@ export function createRoleRepository(database: Db) {
           throw new RoleDeleteConflictError()
         }
 
-        await tx.delete(roleResources).where(eq(roleResources.roleId, id))
+        await tx.delete(systemRoleResources).where(eq(systemRoleResources.roleId, id))
 
         const [deleted] = await tx
-          .update(roles)
+          .update(systemRoles)
           .set({
             deletedAt: now,
             updatedAt: now,
           })
-          .where(and(eq(roles.id, id), isNull(roles.deletedAt)))
+          .where(and(eq(systemRoles.id, id), isNull(systemRoles.deletedAt)))
           .returning()
 
         return deleted

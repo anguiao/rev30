@@ -10,13 +10,13 @@ import { tmpdir } from 'node:os'
 import {
   authPasswordCredentials,
   authRefreshTokens,
-  departments,
-  roleResources,
-  roles,
+  systemDepartments,
+  systemRoleResources,
+  systemRoles,
   systemResources,
-  userRoles,
-  userDepartments,
-  users,
+  systemUserRoles,
+  systemUserDepartments,
+  systemUsers,
 } from '../../src/db/schema'
 import { createDb } from '../../src/db/index'
 import { applyPgliteMigrations, defaultMigrationsDir } from '../../src/db/migrations'
@@ -222,7 +222,7 @@ describe('PGlite migrations', () => {
     const database = await createDb()
     const now = new Date()
     const [created] = await database
-      .insert(users)
+      .insert(systemUsers)
       .values({
         id: randomUUID(),
         username: 'migration-auth',
@@ -273,7 +273,7 @@ describe('PGlite migrations', () => {
     const database = await createDb()
     const now = new Date()
     const [createdUser] = await database
-      .insert(users)
+      .insert(systemUsers)
       .values({
         id: randomUUID(),
         username: 'department-user',
@@ -284,7 +284,7 @@ describe('PGlite migrations', () => {
       .returning()
 
     const [createdDepartment] = await database
-      .insert(departments)
+      .insert(systemDepartments)
       .values({
         id: randomUUID(),
         name: 'Engineering',
@@ -299,7 +299,7 @@ describe('PGlite migrations', () => {
     }
 
     const [createdRelation] = await database
-      .insert(userDepartments)
+      .insert(systemUserDepartments)
       .values({
         userId: createdUser.id,
         departmentId: createdDepartment.id,
@@ -322,7 +322,7 @@ describe('PGlite migrations', () => {
     const database = await createDb()
     const now = new Date()
     const [createdUser] = await database
-      .insert(users)
+      .insert(systemUsers)
       .values({
         id: randomUUID(),
         username: 'role-user',
@@ -343,7 +343,7 @@ describe('PGlite migrations', () => {
       })
       .returning()
     const [createdRole] = await database
-      .insert(roles)
+      .insert(systemRoles)
       .values({
         id: randomUUID(),
         name: 'Administrator',
@@ -358,7 +358,7 @@ describe('PGlite migrations', () => {
     }
 
     const [createdRoleResource] = await database
-      .insert(roleResources)
+      .insert(systemRoleResources)
       .values({
         roleId: createdRole.id,
         resourceId: createdResource.id,
@@ -366,7 +366,7 @@ describe('PGlite migrations', () => {
       })
       .returning()
     const [createdUserRole] = await database
-      .insert(userRoles)
+      .insert(systemUserRoles)
       .values({
         userId: createdUser.id,
         roleId: createdRole.id,
@@ -387,7 +387,7 @@ describe('PGlite migrations', () => {
   it('adds password credential state and reset-password resource', async () => {
     const database = await createTestDb()
 
-    await database.insert(users).values({
+    await database.insert(systemUsers).values({
       id: '11111111-1111-4111-8111-111111111111',
       username: 'migration-password-state',
       nickname: 'Migration Password State',
@@ -475,7 +475,10 @@ describe('PGlite migrations', () => {
       expect(row?.parentId).toBe(resourceByCode.get(action.parentCode)?.id)
     }
 
-    const [adminRole] = await database.select().from(roles).where(eq(roles.code, 'admin'))
+    const [adminRole] = await database
+      .select()
+      .from(systemRoles)
+      .where(eq(systemRoles.code, 'admin'))
     expect(adminRole).toMatchObject({
       id: '20000000-0000-4000-8000-000000000000',
       name: 'Administrator',
@@ -485,8 +488,8 @@ describe('PGlite migrations', () => {
 
     const adminBindings = await database
       .select()
-      .from(roleResources)
-      .where(eq(roleResources.roleId, adminRole?.id ?? ''))
+      .from(systemRoleResources)
+      .where(eq(systemRoleResources.roleId, adminRole?.id ?? ''))
 
     expect(adminBindings).toEqual([])
   })
@@ -499,7 +502,7 @@ describe('PGlite migrations', () => {
     try {
       const migrationFiles = (await readdir(defaultMigrationsDir))
         .filter((fileName) => fileName.endsWith('.sql'))
-        .filter((fileName) => fileName !== '0005_seed_resource_access.sql')
+        .filter((fileName) => fileName < '0005_seed_resource_access.sql')
         .sort()
 
       for (const fileName of migrationFiles) {
@@ -546,7 +549,7 @@ describe('PGlite migrations', () => {
     try {
       const migrationFiles = (await readdir(defaultMigrationsDir))
         .filter((fileName) => fileName.endsWith('.sql'))
-        .filter((fileName) => fileName !== '0005_seed_resource_access.sql')
+        .filter((fileName) => fileName < '0005_seed_resource_access.sql')
         .sort()
 
       for (const fileName of migrationFiles) {
@@ -655,11 +658,14 @@ describe('PGlite migrations', () => {
     expect(journalEntries.entries.map((entry) => entry.when)).toHaveLength(migrationFiles.length)
     expect(journalSql).toContain('CREATE TABLE "auth_password_credentials"')
     expect(journalSql).toContain('CREATE TABLE "auth_refresh_tokens"')
-    expect(journalSql).toContain('CREATE TABLE "departments"')
-    expect(journalSql).toContain('CREATE TABLE "user_departments"')
     expect(journalSql).toContain('CREATE TABLE "system_resources"')
-    expect(journalSql).toContain('CREATE TABLE "roles"')
-    expect(journalSql).toContain('CREATE TABLE "role_resources"')
-    expect(journalSql).toContain('CREATE TABLE "user_roles"')
+    expect(journalSql).toContain('ALTER TABLE "departments" RENAME TO "system_departments"')
+    expect(journalSql).toContain(
+      'ALTER TABLE "user_departments" RENAME TO "system_user_departments"',
+    )
+    expect(journalSql).toContain('ALTER TABLE "roles" RENAME TO "system_roles"')
+    expect(journalSql).toContain('ALTER TABLE "role_resources" RENAME TO "system_role_resources"')
+    expect(journalSql).toContain('ALTER TABLE "user_roles" RENAME TO "system_user_roles"')
+    expect(journalSql).toContain('ALTER TABLE "users" RENAME TO "system_users"')
   })
 })

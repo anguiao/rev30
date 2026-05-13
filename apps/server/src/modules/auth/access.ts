@@ -8,7 +8,7 @@ import {
 } from '@rev30/shared'
 import { and, asc, desc, eq, getTableColumns, isNull } from 'drizzle-orm'
 import type { Db } from '../../db'
-import { roleResources, roles, systemResources, userRoles } from '../../db/schema'
+import { systemRoleResources, systemRoles, systemResources, systemUserRoles } from '../../db/schema'
 import { toResourceTree, type ResourceRow } from '../system/resources/mapper'
 
 export type ResolvedUserAccess = Pick<AuthSessionResponse, 'accessCodes' | 'menus'> & {
@@ -37,16 +37,16 @@ export function createUserAccessService(database: Db) {
   async function findActiveRoles(userId: string) {
     return await database
       .select({
-        id: roles.id,
-        code: roles.code,
+        id: systemRoles.id,
+        code: systemRoles.code,
       })
-      .from(userRoles)
-      .innerJoin(roles, eq(roles.id, userRoles.roleId))
+      .from(systemUserRoles)
+      .innerJoin(systemRoles, eq(systemRoles.id, systemUserRoles.roleId))
       .where(
         and(
-          eq(userRoles.userId, userId),
-          eq(roles.status, ROLE_STATUS_ENABLED),
-          isNull(roles.deletedAt),
+          eq(systemUserRoles.userId, userId),
+          eq(systemRoles.status, ROLE_STATUS_ENABLED),
+          isNull(systemRoles.deletedAt),
         ),
       )
   }
@@ -66,15 +66,15 @@ export function createUserAccessService(database: Db) {
   async function listEnabledResourcesForUser(userId: string) {
     const rows = await database
       .select(getTableColumns(systemResources))
-      .from(userRoles)
-      .innerJoin(roles, eq(roles.id, userRoles.roleId))
-      .innerJoin(roleResources, eq(roleResources.roleId, roles.id))
-      .innerJoin(systemResources, eq(systemResources.id, roleResources.resourceId))
+      .from(systemUserRoles)
+      .innerJoin(systemRoles, eq(systemRoles.id, systemUserRoles.roleId))
+      .innerJoin(systemRoleResources, eq(systemRoleResources.roleId, systemRoles.id))
+      .innerJoin(systemResources, eq(systemResources.id, systemRoleResources.resourceId))
       .where(
         and(
-          eq(userRoles.userId, userId),
-          eq(roles.status, ROLE_STATUS_ENABLED),
-          isNull(roles.deletedAt),
+          eq(systemUserRoles.userId, userId),
+          eq(systemRoles.status, ROLE_STATUS_ENABLED),
+          isNull(systemRoles.deletedAt),
           eq(systemResources.status, RESOURCE_STATUS_ENABLED),
           isNull(systemResources.deletedAt),
         ),

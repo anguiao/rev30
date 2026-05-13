@@ -1,7 +1,7 @@
 import type { Role, RoleListItem, RoleResource, RoleSummary } from '@rev30/shared'
-import { roles } from '../../../db/schema'
+import { systemRoles } from '../../../db/schema'
 
-export type RoleRow = typeof roles.$inferSelect
+export type RoleRow = typeof systemRoles.$inferSelect
 export type RoleResourceRow = {
   id: string
   name: string

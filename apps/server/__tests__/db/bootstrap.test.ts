@@ -7,7 +7,12 @@ import {
 } from '@rev30/shared'
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import { authPasswordCredentials, roles, userRoles, users } from '../../src/db/schema'
+import {
+  authPasswordCredentials,
+  systemRoles,
+  systemUserRoles,
+  systemUsers,
+} from '../../src/db/schema'
 import { bootstrapAdminUser } from '../../src/db/bootstrap'
 import { verifyPassword } from '../../src/modules/auth/password'
 import { createTestDb } from '../helpers/db'
@@ -26,12 +31,23 @@ describe('bootstrap admin user', () => {
       phone: null,
     })
 
-    const [user] = await database.select().from(users).where(eq(users.username, 'admin'))
-    const [adminRole] = await database.select().from(roles).where(eq(roles.code, 'admin'))
+    const [user] = await database
+      .select()
+      .from(systemUsers)
+      .where(eq(systemUsers.username, 'admin'))
+    const [adminRole] = await database
+      .select()
+      .from(systemRoles)
+      .where(eq(systemRoles.code, 'admin'))
     const bindings = await database
       .select()
-      .from(userRoles)
-      .where(and(eq(userRoles.userId, user?.id ?? ''), eq(userRoles.roleId, adminRole?.id ?? '')))
+      .from(systemUserRoles)
+      .where(
+        and(
+          eq(systemUserRoles.userId, user?.id ?? ''),
+          eq(systemUserRoles.roleId, adminRole?.id ?? ''),
+        ),
+      )
     const [credential] = await database
       .select()
       .from(authPasswordCredentials)
@@ -68,14 +84,17 @@ describe('bootstrap admin user', () => {
       phone: null,
     })
 
-    const [createdUser] = await database.select().from(users).where(eq(users.username, 'admin'))
+    const [createdUser] = await database
+      .select()
+      .from(systemUsers)
+      .where(eq(systemUsers.username, 'admin'))
 
     if (!createdUser) {
       throw new Error('Expected bootstrap user')
     }
 
     await database
-      .update(users)
+      .update(systemUsers)
       .set({
         nickname: 'Old Root',
         email: null,
@@ -84,7 +103,7 @@ describe('bootstrap admin user', () => {
         deletedAt: now,
         updatedAt: now,
       })
-      .where(eq(users.id, createdUser.id))
+      .where(eq(systemUsers.id, createdUser.id))
 
     await bootstrapAdminUser(database, {
       username: 'admin',
@@ -94,12 +113,23 @@ describe('bootstrap admin user', () => {
       phone: null,
     })
 
-    const [adminRole] = await database.select().from(roles).where(eq(roles.code, 'admin'))
-    const [user] = await database.select().from(users).where(eq(users.username, 'admin'))
+    const [adminRole] = await database
+      .select()
+      .from(systemRoles)
+      .where(eq(systemRoles.code, 'admin'))
+    const [user] = await database
+      .select()
+      .from(systemUsers)
+      .where(eq(systemUsers.username, 'admin'))
     const bindings = await database
       .select()
-      .from(userRoles)
-      .where(and(eq(userRoles.userId, user?.id ?? ''), eq(userRoles.roleId, adminRole?.id ?? '')))
+      .from(systemUserRoles)
+      .where(
+        and(
+          eq(systemUserRoles.userId, user?.id ?? ''),
+          eq(systemUserRoles.roleId, adminRole?.id ?? ''),
+        ),
+      )
     const [credential] = await database
       .select()
       .from(authPasswordCredentials)
@@ -122,7 +152,7 @@ describe('bootstrap admin user', () => {
   it('fails when the admin role does not exist', async () => {
     const database = await createTestDb()
 
-    await database.delete(roles).where(eq(roles.code, 'admin'))
+    await database.delete(systemRoles).where(eq(systemRoles.code, 'admin'))
 
     await expect(
       bootstrapAdminUser(database, {
@@ -139,12 +169,12 @@ describe('bootstrap admin user', () => {
     const database = await createTestDb()
 
     await database
-      .update(roles)
+      .update(systemRoles)
       .set({
         status: ROLE_STATUS_DISABLED,
         updatedAt: now,
       })
-      .where(eq(roles.code, 'admin'))
+      .where(eq(systemRoles.code, 'admin'))
 
     await expect(
       bootstrapAdminUser(database, {
@@ -157,13 +187,13 @@ describe('bootstrap admin user', () => {
     ).rejects.toThrow('admin 角色不存在，请先执行数据库迁移')
 
     await database
-      .update(roles)
+      .update(systemRoles)
       .set({
         status: ROLE_STATUS_ENABLED,
         deletedAt: now,
         updatedAt: now,
       })
-      .where(eq(roles.code, 'admin'))
+      .where(eq(systemRoles.code, 'admin'))
 
     await expect(
       bootstrapAdminUser(database, {
@@ -181,7 +211,7 @@ describe('bootstrap admin user', () => {
     const userId = randomUUID()
     const deletedAt = new Date('2026-05-01T00:00:00.000Z')
 
-    await database.insert(users).values({
+    await database.insert(systemUsers).values({
       id: userId,
       username: 'admin',
       nickname: 'Legacy Admin',
@@ -201,12 +231,17 @@ describe('bootstrap admin user', () => {
       phone: null,
     })
 
-    const [adminRole] = await database.select().from(roles).where(eq(roles.code, 'admin'))
-    const [user] = await database.select().from(users).where(eq(users.id, userId))
+    const [adminRole] = await database
+      .select()
+      .from(systemRoles)
+      .where(eq(systemRoles.code, 'admin'))
+    const [user] = await database.select().from(systemUsers).where(eq(systemUsers.id, userId))
     const bindings = await database
       .select()
-      .from(userRoles)
-      .where(and(eq(userRoles.userId, userId), eq(userRoles.roleId, adminRole?.id ?? '')))
+      .from(systemUserRoles)
+      .where(
+        and(eq(systemUserRoles.userId, userId), eq(systemUserRoles.roleId, adminRole?.id ?? '')),
+      )
     const [credential] = await database
       .select()
       .from(authPasswordCredentials)
@@ -248,14 +283,23 @@ describe('bootstrap admin user', () => {
       ]),
     ).resolves.toEqual([undefined, undefined])
 
-    const allUsers = await database.select().from(users).where(eq(users.username, 'admin'))
-    const [adminRole] = await database.select().from(roles).where(eq(roles.code, 'admin'))
+    const allUsers = await database
+      .select()
+      .from(systemUsers)
+      .where(eq(systemUsers.username, 'admin'))
+    const [adminRole] = await database
+      .select()
+      .from(systemRoles)
+      .where(eq(systemRoles.code, 'admin'))
     const allCredentials = await database.select().from(authPasswordCredentials)
     const bindings = await database
       .select()
-      .from(userRoles)
+      .from(systemUserRoles)
       .where(
-        and(eq(userRoles.userId, allUsers[0]?.id ?? ''), eq(userRoles.roleId, adminRole?.id ?? '')),
+        and(
+          eq(systemUserRoles.userId, allUsers[0]?.id ?? ''),
+          eq(systemUserRoles.roleId, adminRole?.id ?? ''),
+        ),
       )
 
     expect(allUsers).toHaveLength(1)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Db } from '../../../src/db'
-import { departments, userDepartments, users } from '../../../src/db/schema'
+import { systemDepartments, systemUserDepartments, systemUsers } from '../../../src/db/schema'
 import { createDepartmentRepository } from '../../../src/modules/system/departments/repository'
 import { createUserRepository } from '../../../src/modules/system/users/repository'
 
@@ -9,15 +9,15 @@ const userId = 'd5f2d7ac-15ee-4d71-8c47-65963c62d07f'
 const now = new Date('2026-05-04T00:00:00.000Z')
 
 function tableEventName(table: unknown) {
-  if (table === departments) {
+  if (table === systemDepartments) {
     return 'departments'
   }
 
-  if (table === users) {
+  if (table === systemUsers) {
     return 'users'
   }
 
-  if (table === userDepartments) {
+  if (table === systemUserDepartments) {
     return 'userDepartments'
   }
 
@@ -86,7 +86,7 @@ function createLockTrackingDb(events: string[]) {
     deletedAt: null,
   }
   function getSelectRows(table: unknown) {
-    if (table === departments) {
+    if (table === systemDepartments) {
       departmentSelects += 1
 
       return departmentSelects === 1 ? [departmentRow] : []
@@ -111,7 +111,7 @@ function createLockTrackingDb(events: string[]) {
         values() {
           return {
             returning() {
-              return Promise.resolve(table === users ? [userRow] : [])
+              return Promise.resolve(table === systemUsers ? [userRow] : [])
             },
             then<TResult1 = unknown[], TResult2 = never>(
               onfulfilled?: ((value: unknown[]) => TResult1 | PromiseLike<TResult1>) | null,

@@ -15,7 +15,7 @@ import {
   type ResourceListResponse,
   type ResourceTreeNode,
 } from '@rev30/shared'
-import { roleResources, roles, systemResources } from '../../../../src/db/schema'
+import { systemRoleResources, systemRoles, systemResources } from '../../../../src/db/schema'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 import { createResourceRoutes } from '../../../../src/modules/system/resources/routes'
@@ -622,12 +622,12 @@ describe('resource routes', () => {
     })
 
     const roleId = randomUUID()
-    await database.insert(roles).values({
+    await database.insert(systemRoles).values({
       id: roleId,
       name: 'Role With Resource',
       code: 'resource-linked-role',
     })
-    await database.insert(roleResources).values({
+    await database.insert(systemRoleResources).values({
       roleId,
       resourceId: resource.id,
       createdAt: new Date(),

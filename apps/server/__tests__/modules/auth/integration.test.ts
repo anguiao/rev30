@@ -15,12 +15,12 @@ import {
 import {
   authPasswordCredentials,
   authRefreshTokens,
-  departments,
-  roles,
+  systemDepartments,
+  systemRoles,
   systemResources,
-  userDepartments,
-  userRoles,
-  users,
+  systemUserDepartments,
+  systemUserRoles,
+  systemUsers,
 } from '../../../src/db/schema'
 import { createTestDb } from '../../helpers/db'
 import { verifyPassword } from '../../../src/modules/auth/password'
@@ -204,7 +204,10 @@ describe('auth routes', () => {
     expect(body).not.toHaveProperty('refreshToken')
     expect(refreshToken).toEqual(expect.any(String))
 
-    const storedUsers = await database.select().from(users).where(eq(users.id, body.user.id))
+    const storedUsers = await database
+      .select()
+      .from(systemUsers)
+      .where(eq(systemUsers.id, body.user.id))
     expect(storedUsers).toHaveLength(1)
     const storedCredentials = await database
       .select()
@@ -273,11 +276,11 @@ describe('auth routes', () => {
     })
 
     await database
-      .update(users)
+      .update(systemUsers)
       .set({
         status: USER_STATUS_DISABLED,
       })
-      .where(eq(users.id, registered.body.user.id))
+      .where(eq(systemUsers.id, registered.body.user.id))
 
     const disabled = await login(app)
 
@@ -298,7 +301,7 @@ describe('auth routes', () => {
     const now = new Date()
 
     const [role] = await database
-      .insert(roles)
+      .insert(systemRoles)
       .values({
         id: randomUUID(),
         name: 'Manager',
@@ -312,7 +315,7 @@ describe('auth routes', () => {
       throw new Error('Expected role')
     }
 
-    await database.insert(userRoles).values({
+    await database.insert(systemUserRoles).values({
       userId: registered.body.user.id,
       roleId: role.id,
       createdAt: now,
@@ -352,14 +355,14 @@ describe('auth routes', () => {
     })
     const existingAdminRole = await database
       .select()
-      .from(roles)
-      .where(eq(roles.code, 'admin'))
+      .from(systemRoles)
+      .where(eq(systemRoles.code, 'admin'))
       .then((rows) => rows[0])
 
     const adminRole =
       existingAdminRole ??
       (await database
-        .insert(roles)
+        .insert(systemRoles)
         .values({
           id: randomUUID(),
           name: 'Administrator',
@@ -418,7 +421,7 @@ describe('auth routes', () => {
       sortOrder: 0,
     })
 
-    await database.insert(userRoles).values({
+    await database.insert(systemUserRoles).values({
       userId: registered.body.user.id,
       roleId: adminRole.id,
       createdAt: now,
@@ -879,14 +882,14 @@ describe('auth routes', () => {
     const departmentId = randomUUID()
     const now = new Date()
 
-    await database.insert(departments).values({
+    await database.insert(systemDepartments).values({
       id: departmentId,
       name: 'Engineering',
       code: 'engineering',
       createdAt: now,
       updatedAt: now,
     })
-    await database.insert(userDepartments).values({
+    await database.insert(systemUserDepartments).values({
       userId: registered.body.user.id,
       departmentId,
       createdAt: now,
@@ -997,11 +1000,11 @@ describe('auth routes', () => {
     expect(refreshTokenResponse.status).toBe(401)
 
     await database
-      .update(users)
+      .update(systemUsers)
       .set({
         status: USER_STATUS_DISABLED,
       })
-      .where(eq(users.id, registered.body.user.id))
+      .where(eq(systemUsers.id, registered.body.user.id))
 
     const disabledResponse = await app.request('/api/auth/me', {
       headers: {

@@ -57,8 +57,8 @@ function createdTimestamp() {
   }
 }
 
-export const users = pgTable(
-  'users',
+export const systemUsers = pgTable(
+  'system_users',
   {
     id: uuid('id').primaryKey(),
     username: text('username').notNull(),
@@ -70,16 +70,16 @@ export const users = pgTable(
     ...auditTimestamps(),
   },
   (table) => [
-    uniqueIndex('users_username_unique').on(table.username),
-    uniqueIndex('users_email_unique').on(table.email),
-    uniqueIndex('users_phone_unique').on(table.phone),
+    uniqueIndex('system_users_username_unique').on(table.username),
+    uniqueIndex('system_users_email_unique').on(table.email),
+    uniqueIndex('system_users_phone_unique').on(table.phone),
   ],
 )
 
 export const authPasswordCredentials = pgTable('auth_password_credentials', {
   userId: uuid('user_id')
     .primaryKey()
-    .references(() => users.id),
+    .references(() => systemUsers.id),
   passwordHash: text('password_hash').notNull(),
   mustChangePassword: boolean('must_change_password').notNull().default(false),
   ...mutableTimestamps(),
@@ -91,7 +91,7 @@ export const authRefreshTokens = pgTable(
     id: uuid('id').primaryKey(),
     userId: uuid('user_id')
       .notNull()
-      .references(() => users.id),
+      .references(() => systemUsers.id),
     tokenHash: text('token_hash').notNull(),
     expiresAt: timestamp('expires_at', timestampOptions).notNull(),
     revokedAt: timestamp('revoked_at', timestampOptions),
@@ -103,11 +103,11 @@ export const authRefreshTokens = pgTable(
   ],
 )
 
-export const departments = pgTable(
-  'departments',
+export const systemDepartments = pgTable(
+  'system_departments',
   {
     id: uuid('id').primaryKey(),
-    parentId: uuid('parent_id').references((): AnyPgColumn => departments.id),
+    parentId: uuid('parent_id').references((): AnyPgColumn => systemDepartments.id),
     name: text('name').notNull(),
     code: text('code').notNull(),
     status: smallint('status').notNull().default(DEPARTMENT_STATUS_ENABLED),
@@ -115,28 +115,28 @@ export const departments = pgTable(
     ...auditTimestamps(),
   },
   (table) => [
-    uniqueIndex('departments_code_unique').on(table.code),
-    index('departments_parent_id_idx').on(table.parentId),
-    index('departments_status_idx').on(table.status),
+    uniqueIndex('system_departments_code_unique').on(table.code),
+    index('system_departments_parent_id_idx').on(table.parentId),
+    index('system_departments_status_idx').on(table.status),
   ],
 )
 
-export const userDepartments = pgTable(
-  'user_departments',
+export const systemUserDepartments = pgTable(
+  'system_user_departments',
   {
     userId: uuid('user_id')
       .notNull()
-      .references(() => users.id),
+      .references(() => systemUsers.id),
     departmentId: uuid('department_id')
       .notNull()
-      .references(() => departments.id),
+      .references(() => systemDepartments.id),
     ...createdTimestamp(),
   },
   (table) => [
     primaryKey({
       columns: [table.userId, table.departmentId],
     }),
-    index('user_departments_department_id_idx').on(table.departmentId),
+    index('system_user_departments_department_id_idx').on(table.departmentId),
   ],
 )
 
@@ -165,8 +165,8 @@ export const systemResources = pgTable(
   ],
 )
 
-export const roles = pgTable(
-  'roles',
+export const systemRoles = pgTable(
+  'system_roles',
   {
     id: uuid('id').primaryKey(),
     name: text('name').notNull(),
@@ -176,17 +176,17 @@ export const roles = pgTable(
     ...auditTimestamps(),
   },
   (table) => [
-    uniqueIndex('roles_code_unique').on(table.code),
-    index('roles_status_idx').on(table.status),
+    uniqueIndex('system_roles_code_unique').on(table.code),
+    index('system_roles_status_idx').on(table.status),
   ],
 )
 
-export const roleResources = pgTable(
-  'role_resources',
+export const systemRoleResources = pgTable(
+  'system_role_resources',
   {
     roleId: uuid('role_id')
       .notNull()
-      .references(() => roles.id),
+      .references(() => systemRoles.id),
     resourceId: uuid('resource_id')
       .notNull()
       .references(() => systemResources.id),
@@ -196,25 +196,25 @@ export const roleResources = pgTable(
     primaryKey({
       columns: [table.roleId, table.resourceId],
     }),
-    index('role_resources_resource_id_idx').on(table.resourceId),
+    index('system_role_resources_resource_id_idx').on(table.resourceId),
   ],
 )
 
-export const userRoles = pgTable(
-  'user_roles',
+export const systemUserRoles = pgTable(
+  'system_user_roles',
   {
     userId: uuid('user_id')
       .notNull()
-      .references(() => users.id),
+      .references(() => systemUsers.id),
     roleId: uuid('role_id')
       .notNull()
-      .references(() => roles.id),
+      .references(() => systemRoles.id),
     ...createdTimestamp(),
   },
   (table) => [
     primaryKey({
       columns: [table.userId, table.roleId],
     }),
-    index('user_roles_role_id_idx').on(table.roleId),
+    index('system_user_roles_role_id_idx').on(table.roleId),
   ],
 )

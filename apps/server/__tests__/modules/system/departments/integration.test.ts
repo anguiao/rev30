@@ -9,7 +9,7 @@ import {
   type DepartmentListResponse,
   type DepartmentTreeNode,
 } from '@rev30/shared'
-import { departments, userDepartments, users } from '../../../../src/db/schema'
+import { systemDepartments, systemUserDepartments, systemUsers } from '../../../../src/db/schema'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 import { createDepartmentRoutes } from '../../../../src/modules/system/departments/routes'
@@ -80,7 +80,7 @@ describe('department routes', () => {
     expect(body.createdAt).toEqual(expect.any(String))
     expect(body.updatedAt).toEqual(expect.any(String))
 
-    const storedDepartments = await database.select().from(departments)
+    const storedDepartments = await database.select().from(systemDepartments)
     expect(storedDepartments).toHaveLength(1)
     expect(storedDepartments[0]?.code).toBe('engineering')
 
@@ -278,7 +278,10 @@ describe('department routes', () => {
     })
     expect(childDeleteResponse.status).toBe(204)
 
-    const storedRows = await database.select().from(departments).where(eq(departments.id, child.id))
+    const storedRows = await database
+      .select()
+      .from(systemDepartments)
+      .where(eq(systemDepartments.id, child.id))
     expect(storedRows).toHaveLength(1)
     expect(storedRows[0]?.deletedAt).toBeInstanceOf(Date)
     expect(storedRows[0]?.status).toBe(DEPARTMENT_STATUS_ENABLED)
@@ -329,12 +332,12 @@ describe('department routes', () => {
     })
     const userId = randomUUID()
 
-    await database.insert(users).values({
+    await database.insert(systemUsers).values({
       id: userId,
       username: 'linked-user',
       nickname: 'Linked User',
     })
-    await database.insert(userDepartments).values({
+    await database.insert(systemUserDepartments).values({
       userId,
       departmentId: department.id,
     })

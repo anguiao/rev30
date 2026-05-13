@@ -11,9 +11,9 @@ import type { Db, DbReader } from '../../../db'
 import {
   authPasswordCredentials,
   authRefreshTokens,
-  userDepartments,
-  userRoles,
-  users,
+  systemUserDepartments,
+  systemUserRoles,
+  systemUsers,
 } from '../../../db/schema'
 import {
   findDepartmentSummariesByUserIds,
@@ -73,14 +73,14 @@ export function createUserRepository(database: Db) {
       const { page, pageSize, keyword, status } = query
       const keywordFilter = keyword ? `%${keyword}%` : undefined
       const filters = [
-        isNull(users.deletedAt),
-        status === undefined ? undefined : eq(users.status, status),
+        isNull(systemUsers.deletedAt),
+        status === undefined ? undefined : eq(systemUsers.status, status),
         keywordFilter
           ? or(
-              ilike(users.username, keywordFilter),
-              ilike(users.nickname, keywordFilter),
-              ilike(users.email, keywordFilter),
-              ilike(users.phone, keywordFilter),
+              ilike(systemUsers.username, keywordFilter),
+              ilike(systemUsers.nickname, keywordFilter),
+              ilike(systemUsers.email, keywordFilter),
+              ilike(systemUsers.phone, keywordFilter),
             )
           : undefined,
       ]
@@ -89,16 +89,16 @@ export function createUserRepository(database: Db) {
       const [list, totalRows] = await Promise.all([
         database
           .select()
-          .from(users)
+          .from(systemUsers)
           .where(where)
-          .orderBy(desc(users.createdAt), desc(users.id))
+          .orderBy(desc(systemUsers.createdAt), desc(systemUsers.id))
           .limit(pageSize)
           .offset((page - 1) * pageSize),
         database
           .select({
             total: count(),
           })
-          .from(users)
+          .from(systemUsers)
           .where(where),
       ])
 
@@ -123,8 +123,8 @@ export function createUserRepository(database: Db) {
     async findActiveById(id: string) {
       const rows = await database
         .select()
-        .from(users)
-        .where(and(eq(users.id, id), isNull(users.deletedAt)))
+        .from(systemUsers)
+        .where(and(eq(systemUsers.id, id), isNull(systemUsers.deletedAt)))
         .limit(1)
 
       const user = rows[0]
@@ -155,7 +155,7 @@ export function createUserRepository(database: Db) {
         ])
 
         const [created] = await tx
-          .insert(users)
+          .insert(systemUsers)
           .values({
             id: randomUUID(),
             ...userInput,
@@ -174,12 +174,12 @@ export function createUserRepository(database: Db) {
 
         if (departmentIds.length > 0) {
           await tx
-            .insert(userDepartments)
+            .insert(systemUserDepartments)
             .values(buildUserDepartmentValues(created.id, departmentIds))
         }
 
         if (roleIds.length > 0) {
-          await tx.insert(userRoles).values(buildUserRoleValues(created.id, roleIds))
+          await tx.insert(systemUserRoles).values(buildUserRoleValues(created.id, roleIds))
         }
 
         const [departmentSummaries, roleSummaries] = await Promise.all([
@@ -201,8 +201,8 @@ export function createUserRepository(database: Db) {
       return await database.transaction(async (tx) => {
         const existingRows = await tx
           .select()
-          .from(users)
-          .where(and(eq(users.id, id), isNull(users.deletedAt)))
+          .from(systemUsers)
+          .where(and(eq(systemUsers.id, id), isNull(systemUsers.deletedAt)))
           .limit(1)
         const existingUser = existingRows[0]
 
@@ -243,8 +243,8 @@ export function createUserRepository(database: Db) {
       return await database.transaction(async (tx) => {
         const existingRows = await tx
           .select()
-          .from(users)
-          .where(and(eq(users.id, id), isNull(users.deletedAt)))
+          .from(systemUsers)
+          .where(and(eq(systemUsers.id, id), isNull(systemUsers.deletedAt)))
           .limit(1)
         const existingUser = existingRows[0]
 
@@ -264,9 +264,9 @@ export function createUserRepository(database: Db) {
           ? userInput
           : { updatedAt: new Date() }
         const [updated] = await tx
-          .update(users)
+          .update(systemUsers)
           .set(userUpdateValues)
-          .where(and(eq(users.id, id), isNull(users.deletedAt)))
+          .where(and(eq(systemUsers.id, id), isNull(systemUsers.deletedAt)))
           .returning()
 
         if (!updated) {
@@ -274,20 +274,20 @@ export function createUserRepository(database: Db) {
         }
 
         if (departmentIds !== undefined) {
-          await tx.delete(userDepartments).where(eq(userDepartments.userId, id))
+          await tx.delete(systemUserDepartments).where(eq(systemUserDepartments.userId, id))
 
           if (departmentIds.length > 0) {
             await tx
-              .insert(userDepartments)
+              .insert(systemUserDepartments)
               .values(buildUserDepartmentValues(updated.id, departmentIds))
           }
         }
 
         if (roleIds !== undefined) {
-          await tx.delete(userRoles).where(eq(userRoles.userId, id))
+          await tx.delete(systemUserRoles).where(eq(systemUserRoles.userId, id))
 
           if (roleIds.length > 0) {
-            await tx.insert(userRoles).values(buildUserRoleValues(updated.id, roleIds))
+            await tx.insert(systemUserRoles).values(buildUserRoleValues(updated.id, roleIds))
           }
         }
 
@@ -309,20 +309,20 @@ export function createUserRepository(database: Db) {
 
       return await database.transaction(async (tx) => {
         const [deleted] = await tx
-          .update(users)
+          .update(systemUsers)
           .set({
             deletedAt: now,
             updatedAt: now,
           })
-          .where(and(eq(users.id, id), isNull(users.deletedAt)))
+          .where(and(eq(systemUsers.id, id), isNull(systemUsers.deletedAt)))
           .returning()
 
         if (!deleted) {
           return undefined
         }
 
-        await tx.delete(userDepartments).where(eq(userDepartments.userId, id))
-        await tx.delete(userRoles).where(eq(userRoles.userId, id))
+        await tx.delete(systemUserDepartments).where(eq(systemUserDepartments.userId, id))
+        await tx.delete(systemUserRoles).where(eq(systemUserRoles.userId, id))
 
         return deleted
       })

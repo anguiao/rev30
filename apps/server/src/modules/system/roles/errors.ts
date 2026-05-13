@@ -2,7 +2,7 @@ import { DrizzleQueryError } from 'drizzle-orm/errors'
 import { FormFieldError } from '../../../common/errors'
 import { POSTGRES_UNIQUE_VIOLATION_CODE } from '../../../db/errors'
 
-const roleUniqueConstraintName = 'roles_code_unique'
+const roleUniqueConstraintName = 'system_roles_code_unique'
 
 type DatabaseErrorCause = {
   code?: unknown

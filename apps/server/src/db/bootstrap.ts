@@ -9,14 +9,18 @@ import {
 import { and, eq, isNull } from 'drizzle-orm'
 import { createManagedDb, type Db } from '.'
 import { hashPassword } from '../modules/auth/password'
-import { authPasswordCredentials, roles, userRoles, users } from './schema'
+import { authPasswordCredentials, systemRoles, systemUserRoles, systemUsers } from './schema'
 
 export async function bootstrapAdminUser(database: Db, input: AuthRegisterInput) {
   const [adminRole] = await database
     .select()
-    .from(roles)
+    .from(systemRoles)
     .where(
-      and(eq(roles.code, 'admin'), eq(roles.status, ROLE_STATUS_ENABLED), isNull(roles.deletedAt)),
+      and(
+        eq(systemRoles.code, 'admin'),
+        eq(systemRoles.status, ROLE_STATUS_ENABLED),
+        isNull(systemRoles.deletedAt),
+      ),
     )
     .limit(1)
 
@@ -29,7 +33,7 @@ export async function bootstrapAdminUser(database: Db, input: AuthRegisterInput)
 
   await database.transaction(async (tx) => {
     const [upsertedUser] = await tx
-      .insert(users)
+      .insert(systemUsers)
       .values({
         id: randomUUID(),
         username: input.username,
@@ -41,7 +45,7 @@ export async function bootstrapAdminUser(database: Db, input: AuthRegisterInput)
         deletedAt: null,
       })
       .onConflictDoUpdate({
-        target: users.username,
+        target: systemUsers.username,
         set: {
           nickname: input.nickname,
           email: input.email ?? null,
@@ -75,13 +79,13 @@ export async function bootstrapAdminUser(database: Db, input: AuthRegisterInput)
       })
 
     await tx
-      .insert(userRoles)
+      .insert(systemUserRoles)
       .values({
         userId: upsertedUser.id,
         roleId: adminRole.id,
       })
       .onConflictDoNothing({
-        target: [userRoles.userId, userRoles.roleId],
+        target: [systemUserRoles.userId, systemUserRoles.roleId],
       })
   })
 }

@@ -5,7 +5,7 @@ import { type ResourceTreeNode, type User } from '@rev30/shared'
 import { createTestDb } from '../helpers/db'
 import { createSystemAccessFixture } from '../helpers/auth'
 import { createAuthMiddleware, type AuthVariables } from '../../src/middleware/auth'
-import { roles } from '../../src/db/schema'
+import { systemRoles } from '../../src/db/schema'
 
 describe('auth middleware', () => {
   it('exposes the authenticated user and admin access context to downstream handlers', async () => {
@@ -67,7 +67,7 @@ describe('auth middleware', () => {
         }),
       )
 
-    await database.update(roles).set({ status: 0 }).where(eq(roles.code, 'admin'))
+    await database.update(systemRoles).set({ status: 0 }).where(eq(systemRoles.code, 'admin'))
 
     const response = await app.request('/me', {
       headers: {

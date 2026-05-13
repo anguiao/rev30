@@ -4,11 +4,11 @@ import { FormFieldError } from '../../../common/errors'
 import { POSTGRES_UNIQUE_VIOLATION_CODE } from '../../../db/errors'
 
 const userUniqueConstraintFields: Partial<Record<string, UserUniqueField>> = {
-  users_email_unique: 'email',
-  users_phone_unique: 'phone',
-  users_username_unique: 'username',
+  system_users_email_unique: 'email',
+  system_users_phone_unique: 'phone',
+  system_users_username_unique: 'username',
 } satisfies {
-  [K in UserUniqueField as `users_${K}_unique`]: K
+  [K in UserUniqueField as `system_users_${K}_unique`]: K
 }
 
 const userUniqueFieldConflictMessages: Record<UserUniqueField, string> = {

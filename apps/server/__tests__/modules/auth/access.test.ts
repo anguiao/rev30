@@ -10,7 +10,13 @@ import {
   RESOURCE_TYPE_MENU,
   ROLE_STATUS_DISABLED,
 } from '@rev30/shared'
-import { roleResources, roles, systemResources, userRoles, users } from '../../../src/db/schema'
+import {
+  systemRoleResources,
+  systemRoles,
+  systemResources,
+  systemUserRoles,
+  systemUsers,
+} from '../../../src/db/schema'
 import { createTestDb } from '../../helpers/db'
 import { createUserAccessService } from '../../../src/modules/auth/access'
 
@@ -32,7 +38,7 @@ const now = new Date('2026-05-06T00:00:00.000Z')
 
 async function createUser(database: Awaited<ReturnType<typeof createTestDb>>, username: string) {
   const [user] = await database
-    .insert(users)
+    .insert(systemUsers)
     .values({
       id: randomUUID(),
       username,
@@ -52,7 +58,7 @@ async function createUser(database: Awaited<ReturnType<typeof createTestDb>>, us
 
 async function createRole(database: Awaited<ReturnType<typeof createTestDb>>, code: string) {
   const [role] = await database
-    .insert(roles)
+    .insert(systemRoles)
     .values({
       id: randomUUID(),
       name: code,
@@ -140,19 +146,19 @@ describe('user access service', () => {
       sortOrder: 20,
     })
 
-    await database.insert(userRoles).values({
+    await database.insert(systemUserRoles).values({
       userId: user.id,
       roleId: operatorRole.id,
       createdAt: now,
     })
 
-    await database.insert(userRoles).values({
+    await database.insert(systemUserRoles).values({
       userId: user.id,
       roleId: auditRole.id,
       createdAt: now,
     })
 
-    await database.insert(roleResources).values([
+    await database.insert(systemRoleResources).values([
       { roleId: operatorRole.id, resourceId: system.id, createdAt: now },
       { roleId: operatorRole.id, resourceId: userMenu.id, createdAt: now },
       { roleId: operatorRole.id, resourceId: userListAction.id, createdAt: now },
@@ -198,25 +204,28 @@ describe('user access service', () => {
       sortOrder: 0,
     })
 
-    await database.insert(userRoles).values({
+    await database.insert(systemUserRoles).values({
       userId: user.id,
       roleId: role.id,
       createdAt: now,
     })
-    await database.insert(roleResources).values({
+    await database.insert(systemRoleResources).values({
       roleId: role.id,
       resourceId: userList.id,
       createdAt: now,
     })
-    await database.update(roles).set({ status: ROLE_STATUS_DISABLED }).where(eq(roles.id, role.id))
+    await database
+      .update(systemRoles)
+      .set({ status: ROLE_STATUS_DISABLED })
+      .where(eq(systemRoles.id, role.id))
 
     const disabledRoleAccess = await createUserAccessService(database).resolveUserAccess(user.id)
     expect(disabledRoleAccess.accessCodes).toEqual([])
 
     await database
-      .update(roles)
+      .update(systemRoles)
       .set({ status: RESOURCE_STATUS_ENABLED })
-      .where(eq(roles.id, role.id))
+      .where(eq(systemRoles.id, role.id))
     await database
       .update(systemResources)
       .set({ status: RESOURCE_STATUS_DISABLED })
@@ -234,8 +243,8 @@ describe('user access service', () => {
     const prefix = randomUUID()
     const existingAdminRole = await database
       .select()
-      .from(roles)
-      .where(eq(roles.code, 'admin'))
+      .from(systemRoles)
+      .where(eq(systemRoles.code, 'admin'))
       .then((rows) => rows[0])
 
     const adminRole = existingAdminRole ?? (await createRole(database, 'admin'))
@@ -282,7 +291,7 @@ describe('user access service', () => {
       sortOrder: 20,
     })
 
-    await database.insert(userRoles).values({
+    await database.insert(systemUserRoles).values({
       userId: user.id,
       roleId: adminRole.id,
       createdAt: now,
@@ -404,13 +413,13 @@ describe('user access service', () => {
       sortOrder: 41,
     })
 
-    await database.insert(userRoles).values({
+    await database.insert(systemUserRoles).values({
       userId: user.id,
       roleId: role.id,
       createdAt: now,
     })
 
-    await database.insert(roleResources).values([
+    await database.insert(systemRoleResources).values([
       { roleId: role.id, resourceId: rootMenu.id, createdAt: now },
       { roleId: role.id, resourceId: usersMenu.id, createdAt: now },
       { roleId: role.id, resourceId: usersListAction.id, createdAt: now },

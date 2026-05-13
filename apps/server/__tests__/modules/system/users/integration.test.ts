@@ -16,11 +16,11 @@ import {
 import {
   authPasswordCredentials,
   authRefreshTokens,
-  departments,
-  roles,
-  userDepartments,
-  userRoles,
-  users,
+  systemDepartments,
+  systemRoles,
+  systemUserDepartments,
+  systemUserRoles,
+  systemUsers,
 } from '../../../../src/db/schema'
 import { hashPassword, verifyPassword } from '../../../../src/modules/auth/password'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
@@ -88,7 +88,7 @@ async function createDepartment(
 ) {
   const now = new Date()
   const [department] = await database
-    .insert(departments)
+    .insert(systemDepartments)
     .values({
       id: randomUUID(),
       name: input.name,
@@ -119,7 +119,7 @@ async function createRole(
 ) {
   const now = new Date()
   const [role] = await database
-    .insert(roles)
+    .insert(systemRoles)
     .values({
       id: randomUUID(),
       name: input.name,
@@ -244,7 +244,7 @@ describe('user routes', () => {
       fixture.authHeaders,
     )
     const userId = '33333333-3333-4333-8333-333333333333'
-    await database.insert(users).values({
+    await database.insert(systemUsers).values({
       id: userId,
       username: 'reset-password-user',
       nickname: 'Reset Password User',
@@ -314,7 +314,10 @@ describe('user routes', () => {
     expect(body.updatedAt).toEqual(expect.any(String))
     expect(temporaryPassword).toEqual(expect.any(String))
 
-    const storedUsers = await database.select().from(users).where(eq(users.username, 'ada'))
+    const storedUsers = await database
+      .select()
+      .from(systemUsers)
+      .where(eq(systemUsers.username, 'ada'))
     expect(storedUsers).toHaveLength(1)
     expect(storedUsers[0]?.username).toBe('ada')
 
@@ -427,7 +430,7 @@ describe('user routes', () => {
     expect(listBody.list).toHaveLength(1)
     expect(listBody.list[0]?.departments).toEqual(body.departments)
 
-    const storedRelations = await database.select().from(userDepartments)
+    const storedRelations = await database.select().from(systemUserDepartments)
     expect(storedRelations).toHaveLength(2)
     expect(new Set(storedRelations.map((relation) => relation.createdAt.getTime()))).toHaveLength(1)
   })
@@ -556,8 +559,8 @@ describe('user routes', () => {
 
     const storedRelations = await database
       .select()
-      .from(userRoles)
-      .where(eq(userRoles.userId, body.id))
+      .from(systemUserRoles)
+      .where(eq(systemUserRoles.userId, body.id))
     expect(storedRelations).toHaveLength(2)
     expect(new Set(storedRelations.map((relation) => relation.createdAt.getTime()))).toHaveLength(1)
   })
@@ -763,7 +766,7 @@ describe('user routes', () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
     const [builtInUser] = await database
-      .insert(users)
+      .insert(systemUsers)
       .values({
         id: randomUUID(),
         username: 'built-in-admin',
@@ -796,7 +799,10 @@ describe('user routes', () => {
     expect(deleteResponse.status).toBe(409)
     expect(await deleteResponse.json()).toEqual({ message: '内置用户不能删除' })
 
-    const [storedUser] = await database.select().from(users).where(eq(users.id, builtInUser.id))
+    const [storedUser] = await database
+      .select()
+      .from(systemUsers)
+      .where(eq(systemUsers.id, builtInUser.id))
     expect(storedUser).toMatchObject({
       nickname: 'Built-in Admin',
       builtIn: true,
@@ -834,7 +840,10 @@ describe('user routes', () => {
 
     expect(deleteResponse.status).toBe(204)
 
-    const storedRows = await database.select().from(users).where(eq(users.id, created.id))
+    const storedRows = await database
+      .select()
+      .from(systemUsers)
+      .where(eq(systemUsers.id, created.id))
     expect(storedRows).toHaveLength(1)
 
     const storedUser = storedRows[0]
@@ -847,14 +856,14 @@ describe('user routes', () => {
 
     const storedRelations = await database
       .select()
-      .from(userDepartments)
-      .where(eq(userDepartments.userId, created.id))
+      .from(systemUserDepartments)
+      .where(eq(systemUserDepartments.userId, created.id))
     expect(storedRelations).toEqual([])
 
     const storedRoleRelations = await database
       .select()
-      .from(userRoles)
-      .where(eq(userRoles.userId, created.id))
+      .from(systemUserRoles)
+      .where(eq(systemUserRoles.userId, created.id))
     expect(storedRoleRelations).toEqual([])
 
     const listResponse = await app.request('/api/system/users?keyword=alan')

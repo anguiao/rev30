@@ -7,19 +7,23 @@ import type {
 } from '@rev30/shared'
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
-import { departments, userDepartments } from '../../../db/schema'
+import { systemDepartments, systemUserDepartments } from '../../../db/schema'
 import { DepartmentDeleteConflictError, DepartmentInvalidParentError } from './errors'
 import type { DepartmentRow } from './mapper'
 
 function departmentSortOrder() {
-  return [asc(departments.sortOrder), desc(departments.createdAt), desc(departments.id)] as const
+  return [
+    asc(systemDepartments.sortOrder),
+    desc(systemDepartments.createdAt),
+    desc(systemDepartments.id),
+  ] as const
 }
 
 async function hasActiveChildren(executor: DbReader, id: string) {
   const rows = await executor
-    .select({ id: departments.id })
-    .from(departments)
-    .where(and(eq(departments.parentId, id), isNull(departments.deletedAt)))
+    .select({ id: systemDepartments.id })
+    .from(systemDepartments)
+    .where(and(eq(systemDepartments.parentId, id), isNull(systemDepartments.deletedAt)))
     .limit(1)
 
   return rows.length > 0
@@ -27,9 +31,9 @@ async function hasActiveChildren(executor: DbReader, id: string) {
 
 async function hasUsers(executor: DbReader, id: string) {
   const rows = await executor
-    .select({ userId: userDepartments.userId })
-    .from(userDepartments)
-    .where(eq(userDepartments.departmentId, id))
+    .select({ userId: systemUserDepartments.userId })
+    .from(systemUserDepartments)
+    .where(eq(systemUserDepartments.departmentId, id))
     .limit(1)
 
   return rows.length > 0
@@ -42,8 +46,8 @@ export async function lockActiveDepartmentsByIds(executor: DbReader, ids: string
   for (const id of sortedIds) {
     const [row] = await executor
       .select()
-      .from(departments)
-      .where(and(eq(departments.id, id), isNull(departments.deletedAt)))
+      .from(systemDepartments)
+      .where(and(eq(systemDepartments.id, id), isNull(systemDepartments.deletedAt)))
       .limit(1)
       .for('update')
 
@@ -64,14 +68,14 @@ export async function findDepartmentSummariesByUserIds(executor: DbReader, userI
 
   const rows = await executor
     .select({
-      userId: userDepartments.userId,
-      departmentId: departments.id,
-      departmentName: departments.name,
-      departmentCode: departments.code,
+      userId: systemUserDepartments.userId,
+      departmentId: systemDepartments.id,
+      departmentName: systemDepartments.name,
+      departmentCode: systemDepartments.code,
     })
-    .from(userDepartments)
-    .innerJoin(departments, eq(departments.id, userDepartments.departmentId))
-    .where(and(inArray(userDepartments.userId, userIds), isNull(departments.deletedAt)))
+    .from(systemUserDepartments)
+    .innerJoin(systemDepartments, eq(systemDepartments.id, systemUserDepartments.departmentId))
+    .where(and(inArray(systemUserDepartments.userId, userIds), isNull(systemDepartments.deletedAt)))
     .orderBy(...departmentSortOrder())
 
   for (const row of rows) {
@@ -105,11 +109,14 @@ export function createDepartmentRepository(database: Db) {
       const { page, pageSize, keyword, status, parentId } = query
       const keywordFilter = keyword ? `%${keyword}%` : undefined
       const filters = [
-        isNull(departments.deletedAt),
-        status === undefined ? undefined : eq(departments.status, status),
-        parentId === undefined ? undefined : eq(departments.parentId, parentId),
+        isNull(systemDepartments.deletedAt),
+        status === undefined ? undefined : eq(systemDepartments.status, status),
+        parentId === undefined ? undefined : eq(systemDepartments.parentId, parentId),
         keywordFilter
-          ? or(ilike(departments.name, keywordFilter), ilike(departments.code, keywordFilter))
+          ? or(
+              ilike(systemDepartments.name, keywordFilter),
+              ilike(systemDepartments.code, keywordFilter),
+            )
           : undefined,
       ]
       const where = and(...filters)
@@ -117,7 +124,7 @@ export function createDepartmentRepository(database: Db) {
       const [list, totalRows] = await Promise.all([
         database
           .select()
-          .from(departments)
+          .from(systemDepartments)
           .where(where)
           .orderBy(...departmentSortOrder())
           .limit(pageSize)
@@ -126,7 +133,7 @@ export function createDepartmentRepository(database: Db) {
           .select({
             total: count(),
           })
-          .from(departments)
+          .from(systemDepartments)
           .where(where),
       ])
 
@@ -141,8 +148,8 @@ export function createDepartmentRepository(database: Db) {
     async findActiveById(id: string) {
       const rows = await database
         .select()
-        .from(departments)
-        .where(and(eq(departments.id, id), isNull(departments.deletedAt)))
+        .from(systemDepartments)
+        .where(and(eq(systemDepartments.id, id), isNull(systemDepartments.deletedAt)))
         .limit(1)
 
       return rows[0]
@@ -155,23 +162,23 @@ export function createDepartmentRepository(database: Db) {
 
       return await database
         .select()
-        .from(departments)
-        .where(and(inArray(departments.id, ids), isNull(departments.deletedAt)))
+        .from(systemDepartments)
+        .where(and(inArray(systemDepartments.id, ids), isNull(systemDepartments.deletedAt)))
     },
 
     async findActiveChildren(parentId: string) {
       return await database
         .select()
-        .from(departments)
-        .where(and(eq(departments.parentId, parentId), isNull(departments.deletedAt)))
+        .from(systemDepartments)
+        .where(and(eq(systemDepartments.parentId, parentId), isNull(systemDepartments.deletedAt)))
         .orderBy(...departmentSortOrder())
     },
 
     async listTreeRows() {
       return await database
         .select()
-        .from(departments)
-        .where(isNull(departments.deletedAt))
+        .from(systemDepartments)
+        .where(isNull(systemDepartments.deletedAt))
         .orderBy(...departmentSortOrder())
     },
 
@@ -190,7 +197,7 @@ export function createDepartmentRepository(database: Db) {
         }
 
         const [created] = await tx
-          .insert(departments)
+          .insert(systemDepartments)
           .values({
             id: randomUUID(),
             ...input,
@@ -216,9 +223,9 @@ export function createDepartmentRepository(database: Db) {
         }
 
         const [updated] = await tx
-          .update(departments)
+          .update(systemDepartments)
           .set(input)
-          .where(and(eq(departments.id, id), isNull(departments.deletedAt)))
+          .where(and(eq(systemDepartments.id, id), isNull(systemDepartments.deletedAt)))
           .returning()
 
         return updated
@@ -244,12 +251,12 @@ export function createDepartmentRepository(database: Db) {
         }
 
         const [deleted] = await tx
-          .update(departments)
+          .update(systemDepartments)
           .set({
             deletedAt: now,
             updatedAt: now,
           })
-          .where(and(eq(departments.id, id), isNull(departments.deletedAt)))
+          .where(and(eq(systemDepartments.id, id), isNull(systemDepartments.deletedAt)))
           .returning()
 
         return deleted

@@ -71,6 +71,13 @@
       "when": 1778634585290,
       "tag": "0009_rename_system_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778640412001,
+      "tag": "0010_add_auth_refresh_token_cleanup_indexes",
+      "breakpoints": true
     }
   ]
 }

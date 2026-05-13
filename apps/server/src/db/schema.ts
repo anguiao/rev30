@@ -100,6 +100,8 @@ export const authRefreshTokens = pgTable(
   (table) => [
     uniqueIndex('auth_refresh_tokens_token_hash_unique').on(table.tokenHash),
     index('auth_refresh_tokens_user_id_idx').on(table.userId),
+    index('auth_refresh_tokens_expires_at_idx').on(table.expiresAt),
+    index('auth_refresh_tokens_revoked_at_idx').on(table.revokedAt),
   ],
 )
 

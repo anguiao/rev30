@@ -219,49 +219,54 @@ describe('PGlite migrations', () => {
     process.env.NODE_ENV = 'development'
     process.env.PGLITE_DATA_DIR = dataDir
 
-    const database = await createDb()
-    const now = new Date()
-    const [created] = await database
-      .insert(systemUsers)
-      .values({
-        id: randomUUID(),
-        username: 'migration-auth',
-        nickname: 'Migration Auth',
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
+    const { close, db: database } = await createDb()
 
-    if (!created) {
-      throw new Error('Expected migrated user')
+    try {
+      const now = new Date()
+      const [created] = await database
+        .insert(systemUsers)
+        .values({
+          id: randomUUID(),
+          username: 'migration-auth',
+          nickname: 'Migration Auth',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+
+      if (!created) {
+        throw new Error('Expected migrated user')
+      }
+
+      expect(created.builtIn).toBe(false)
+
+      const [credential] = await database
+        .insert(authPasswordCredentials)
+        .values({
+          userId: created.id,
+          passwordHash: 'scrypt$salt$hash',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+
+      const [session] = await database
+        .insert(authRefreshTokens)
+        .values({
+          id: randomUUID(),
+          userId: created.id,
+          tokenHash: 'token-hash',
+          expiresAt: now,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+
+      expect(credential?.passwordHash).toBe('scrypt$salt$hash')
+      expect(session?.tokenHash).toBe('token-hash')
+    } finally {
+      await close()
     }
-
-    expect(created.builtIn).toBe(false)
-
-    const [credential] = await database
-      .insert(authPasswordCredentials)
-      .values({
-        userId: created.id,
-        passwordHash: 'scrypt$salt$hash',
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
-
-    const [session] = await database
-      .insert(authRefreshTokens)
-      .values({
-        id: randomUUID(),
-        userId: created.id,
-        tokenHash: 'token-hash',
-        expiresAt: now,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
-
-    expect(credential?.passwordHash).toBe('scrypt$salt$hash')
-    expect(session?.tokenHash).toBe('token-hash')
   })
 
   it('creates usable department tables for fresh development databases', async () => {
@@ -270,47 +275,52 @@ describe('PGlite migrations', () => {
     process.env.NODE_ENV = 'development'
     process.env.PGLITE_DATA_DIR = dataDir
 
-    const database = await createDb()
-    const now = new Date()
-    const [createdUser] = await database
-      .insert(systemUsers)
-      .values({
-        id: randomUUID(),
-        username: 'department-user',
-        nickname: 'Department User',
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
+    const { close, db: database } = await createDb()
 
-    const [createdDepartment] = await database
-      .insert(systemDepartments)
-      .values({
-        id: randomUUID(),
-        name: 'Engineering',
-        code: 'engineering',
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
+    try {
+      const now = new Date()
+      const [createdUser] = await database
+        .insert(systemUsers)
+        .values({
+          id: randomUUID(),
+          username: 'department-user',
+          nickname: 'Department User',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
 
-    if (!createdUser || !createdDepartment) {
-      throw new Error('Expected migrated user and department')
-    }
+      const [createdDepartment] = await database
+        .insert(systemDepartments)
+        .values({
+          id: randomUUID(),
+          name: 'Engineering',
+          code: 'engineering',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
 
-    const [createdRelation] = await database
-      .insert(systemUserDepartments)
-      .values({
+      if (!createdUser || !createdDepartment) {
+        throw new Error('Expected migrated user and department')
+      }
+
+      const [createdRelation] = await database
+        .insert(systemUserDepartments)
+        .values({
+          userId: createdUser.id,
+          departmentId: createdDepartment.id,
+          createdAt: now,
+        })
+        .returning()
+
+      expect(createdRelation).toMatchObject({
         userId: createdUser.id,
         departmentId: createdDepartment.id,
-        createdAt: now,
       })
-      .returning()
-
-    expect(createdRelation).toMatchObject({
-      userId: createdUser.id,
-      departmentId: createdDepartment.id,
-    })
+    } finally {
+      await close()
+    }
   })
 
   it('creates usable role tables for fresh development databases', async () => {
@@ -319,69 +329,74 @@ describe('PGlite migrations', () => {
     process.env.NODE_ENV = 'development'
     process.env.PGLITE_DATA_DIR = dataDir
 
-    const database = await createDb()
-    const now = new Date()
-    const [createdUser] = await database
-      .insert(systemUsers)
-      .values({
-        id: randomUUID(),
-        username: 'role-user',
-        nickname: 'Role User',
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
-    const [createdResource] = await database
-      .insert(systemResources)
-      .values({
-        id: randomUUID(),
-        type: 'action',
-        name: 'Create User',
-        code: 'test-system:user:create',
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
-    const [createdRole] = await database
-      .insert(systemRoles)
-      .values({
-        id: randomUUID(),
-        name: 'Administrator',
-        code: 'test-admin',
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
+    const { close, db: database } = await createDb()
 
-    if (!createdUser || !createdResource || !createdRole) {
-      throw new Error('Expected migrated user, resource, and role')
-    }
+    try {
+      const now = new Date()
+      const [createdUser] = await database
+        .insert(systemUsers)
+        .values({
+          id: randomUUID(),
+          username: 'role-user',
+          nickname: 'Role User',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+      const [createdResource] = await database
+        .insert(systemResources)
+        .values({
+          id: randomUUID(),
+          type: 'action',
+          name: 'Create User',
+          code: 'test-system:user:create',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+      const [createdRole] = await database
+        .insert(systemRoles)
+        .values({
+          id: randomUUID(),
+          name: 'Administrator',
+          code: 'test-admin',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
 
-    const [createdRoleResource] = await database
-      .insert(systemRoleResources)
-      .values({
+      if (!createdUser || !createdResource || !createdRole) {
+        throw new Error('Expected migrated user, resource, and role')
+      }
+
+      const [createdRoleResource] = await database
+        .insert(systemRoleResources)
+        .values({
+          roleId: createdRole.id,
+          resourceId: createdResource.id,
+          createdAt: now,
+        })
+        .returning()
+      const [createdUserRole] = await database
+        .insert(systemUserRoles)
+        .values({
+          userId: createdUser.id,
+          roleId: createdRole.id,
+          createdAt: now,
+        })
+        .returning()
+
+      expect(createdRoleResource).toMatchObject({
         roleId: createdRole.id,
         resourceId: createdResource.id,
-        createdAt: now,
       })
-      .returning()
-    const [createdUserRole] = await database
-      .insert(systemUserRoles)
-      .values({
+      expect(createdUserRole).toMatchObject({
         userId: createdUser.id,
         roleId: createdRole.id,
-        createdAt: now,
       })
-      .returning()
-
-    expect(createdRoleResource).toMatchObject({
-      roleId: createdRole.id,
-      resourceId: createdResource.id,
-    })
-    expect(createdUserRole).toMatchObject({
-      userId: createdUser.id,
-      roleId: createdRole.id,
-    })
+    } finally {
+      await close()
+    }
   })
 
   it('adds password credential state and reset-password resource', async () => {
@@ -599,43 +614,48 @@ describe('PGlite migrations', () => {
     process.env.NODE_ENV = 'development'
     process.env.PGLITE_DATA_DIR = dataDir
 
-    const database = await createDb()
-    const now = new Date()
-    const [root] = await database
-      .insert(systemResources)
-      .values({
-        id: randomUUID(),
-        type: 'directory',
-        name: 'System',
-        code: 'test-system',
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
+    const { close, db: database } = await createDb()
 
-    if (!root) {
-      throw new Error('Expected migrated system resource')
-    }
+    try {
+      const now = new Date()
+      const [root] = await database
+        .insert(systemResources)
+        .values({
+          id: randomUUID(),
+          type: 'directory',
+          name: 'System',
+          code: 'test-system',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
 
-    const [child] = await database
-      .insert(systemResources)
-      .values({
-        id: randomUUID(),
+      if (!root) {
+        throw new Error('Expected migrated system resource')
+      }
+
+      const [child] = await database
+        .insert(systemResources)
+        .values({
+          id: randomUUID(),
+          parentId: root.id,
+          type: 'menu',
+          name: 'Users',
+          code: 'test-system:user',
+          path: '/system/users',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+
+      expect(child).toMatchObject({
         parentId: root.id,
-        type: 'menu',
-        name: 'Users',
         code: 'test-system:user',
         path: '/system/users',
-        createdAt: now,
-        updatedAt: now,
       })
-      .returning()
-
-    expect(child).toMatchObject({
-      parentId: root.id,
-      code: 'test-system:user',
-      path: '/system/users',
-    })
+    } finally {
+      await close()
+    }
   })
 
   it('keeps Drizzle migration journal in sync with SQL migrations', async () => {

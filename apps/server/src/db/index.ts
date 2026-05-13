@@ -6,7 +6,7 @@ import postgres from 'postgres'
 import { applyPgliteMigrations } from './migrations'
 import * as schema from './schema'
 
-export async function createManagedDb() {
+export async function createDb() {
   if (process.env.NODE_ENV === 'production') {
     const databaseUrl = process.env.DATABASE_URL
 
@@ -40,12 +40,7 @@ export async function createManagedDb() {
   }
 }
 
-export async function createDb() {
-  const { db } = await createManagedDb()
-
-  return db
-}
-
-export type Db = Awaited<ReturnType<typeof createDb>>
+export type ManagedDb = Awaited<ReturnType<typeof createDb>>
+export type Db = ManagedDb['db']
 export type DbReader = Pick<Db, 'select'>
 export type DbExecutor = Pick<Db, 'select' | 'insert' | 'update' | 'delete'>

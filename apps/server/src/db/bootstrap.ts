@@ -7,7 +7,7 @@ import {
   type AuthRegisterInput,
 } from '@rev30/shared'
 import { and, eq, isNull } from 'drizzle-orm'
-import { createManagedDb, type Db } from '.'
+import { createDb, type Db } from '.'
 import { hashPassword } from '../modules/auth/password'
 import { authPasswordCredentials, systemRoles, systemUserRoles, systemUsers } from './schema'
 
@@ -91,7 +91,7 @@ export async function bootstrapAdminUser(database: Db, input: AuthRegisterInput)
 }
 
 export async function bootstrapAdminFromEnv() {
-  const { close, db } = await createManagedDb()
+  const { close, db } = await createDb()
 
   try {
     await bootstrapAdminUser(

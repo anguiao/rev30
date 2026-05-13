@@ -1,11 +1,11 @@
 import 'dotenv/config'
 import { serve } from '@hono/node-server'
 import { createApp } from './app'
-import { createManagedDb } from './db'
+import { createDb } from './db'
 import { logger } from './logger'
 
 const port = Number(process.env.PORT ?? 3000)
-const { close: closeDb, db } = await createManagedDb()
+const { close: closeDb, db } = await createDb()
 const app = createApp(db)
 
 const server = serve(

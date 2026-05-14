@@ -129,6 +129,24 @@ describe('login page', () => {
     expect(wrapper.text()).toContain('用户名或密码错误')
   })
 
+  it('shows the server message for login rate limit errors', async () => {
+    loginMock.mockRejectedValue(
+      new MockAuthRequestError(429, '登录失败次数过多，请稍后再试'),
+    )
+    const { router, wrapper } = await mountLoginPage()
+
+    await wrapper.find('[data-test="login-username"] input').setValue('ada')
+    await wrapper.find('[data-test="login-password"] input').setValue('password123')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    const auth = useAuthStore()
+    expect(loginMock).toHaveBeenCalledOnce()
+    expect(auth.isAuthenticated).toBe(false)
+    expect(router.currentRoute.value.fullPath).toBe('/login')
+    expect(wrapper.text()).toContain('登录失败次数过多，请稍后再试')
+  })
+
   it('shows a stable fallback error for unexpected login failures', async () => {
     loginMock.mockRejectedValue(new Error('network'))
     const { wrapper } = await mountLoginPage()

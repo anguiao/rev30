@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   AuthInvalidCredentialsError,
   AuthInvalidCurrentPasswordError,
+  AuthLoginRateLimitedError,
   AuthInvalidRefreshTokenError,
 } from '../../../src/modules/auth/errors'
 import { createAuthRoutes } from '../../../src/modules/auth/routes'
@@ -351,6 +352,26 @@ describe('auth routes', () => {
     })
     expect(loginResponse.status).toBe(401)
     expect(await loginResponse.json()).toEqual({ message: '用户名或密码错误' })
+  })
+
+  it('maps login rate limit errors to route responses without refresh cookies', async () => {
+    const app = createTestApp()
+
+    mocks.service.login.mockRejectedValueOnce(new AuthLoginRateLimitedError())
+    const loginResponse = await app.request('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: 'ada',
+        password: 'secret-password',
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(loginResponse.status).toBe(429)
+    expect(await loginResponse.json()).toEqual({
+      message: '登录失败次数过多，请稍后再试',
+    })
+    expect(loginResponse.headers.get('set-cookie')).toBeNull()
   })
 
   it('maps invalid refresh tokens to route responses', async () => {

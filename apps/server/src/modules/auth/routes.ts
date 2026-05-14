@@ -18,6 +18,7 @@ import {
   AuthInvalidCredentialsError,
   AuthInvalidCurrentPasswordError,
   AuthInvalidRefreshTokenError,
+  AuthLoginRateLimitedError,
   AuthUnauthorizedError,
 } from './errors'
 import { createAuthService } from './service'
@@ -52,6 +53,10 @@ function authErrorResponse(error: unknown, c: Context) {
       },
       400,
     )
+  }
+
+  if (error instanceof AuthLoginRateLimitedError) {
+    return c.json({ message: error.message }, 429)
   }
 
   if (

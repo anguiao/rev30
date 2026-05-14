@@ -1,9 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import {
-  USER_STATUS_ENABLED,
-  type AuthProfileUpdateInput,
-  type AuthRegisterInput,
-} from '@rev30/shared'
+import type { AuthProfileUpdateInput } from '@rev30/shared'
 import { and, eq, gt, isNull, ne } from 'drizzle-orm'
 import type { Db } from '../../db'
 import { authPasswordCredentials, authRefreshTokens, systemUsers } from '../../db/schema'
@@ -12,37 +8,6 @@ import { findRoleSummariesByUserId } from '../system/roles/repository'
 
 export function createAuthRepository(database: Db) {
   return {
-    async createUser(input: AuthRegisterInput, passwordHash: string) {
-      return await database.transaction(async (tx) => {
-        const [created] = await tx
-          .insert(systemUsers)
-          .values({
-            id: randomUUID(),
-            username: input.username,
-            nickname: input.nickname,
-            email: input.email ?? null,
-            phone: input.phone ?? null,
-            status: USER_STATUS_ENABLED,
-          })
-          .returning()
-
-        if (!created) {
-          throw new Error('创建用户失败')
-        }
-
-        await tx.insert(authPasswordCredentials).values({
-          userId: created.id,
-          passwordHash,
-        })
-
-        return {
-          user: created,
-          departments: [],
-          roles: [],
-        }
-      })
-    },
-
     async findActiveUserCredentialByUsername(username: string) {
       const rows = await database
         .select({

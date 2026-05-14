@@ -3,7 +3,6 @@ import { sign } from 'hono/jwt'
 import {
   AUTH_ACTION_HEADER,
   AUTH_ACTION_REFRESH,
-  type AuthTokenResponse,
   type RoleListResponse,
   type ResourceListResponse,
   type UserListResponse,
@@ -15,25 +14,6 @@ import { readAuthConfig } from '../src/modules/auth/config'
 
 function createUnusedDatabase() {
   return {} as Awaited<ReturnType<typeof createTestDb>>
-}
-
-async function register(app: ReturnType<typeof createApp>) {
-  const response = await app.request('/api/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({
-      username: 'ada',
-      password: 'secret-password',
-      nickname: 'Ada Lovelace',
-    }),
-    headers: {
-      'content-type': 'application/json',
-    },
-  })
-
-  return {
-    body: (await response.json()) as AuthTokenResponse,
-    refreshToken: response.headers.get('set-cookie')?.match(/refresh_token=([^;]+)/)?.[1],
-  }
 }
 
 describe('app auth boundaries', () => {
@@ -91,12 +71,12 @@ describe('app auth boundaries', () => {
   it('returns 403 for logged-in users without route access', async () => {
     const database = await createTestDb()
     const app = createApp(database)
-    const registered = await register(app)
+    const authenticated = await createSystemAccessFixture(database, {
+      usernamePrefix: 'app-no-access',
+    })
 
     const response = await app.request('/api/system/users', {
-      headers: {
-        authorization: `Bearer ${registered.body.accessToken}`,
-      },
+      headers: authenticated.authHeaders,
     })
 
     expect(response.status).toBe(403)

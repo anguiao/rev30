@@ -4,61 +4,32 @@ import {
   authLoginSchema,
   authPasswordUpdateSchema,
   authProfileUpdateSchema,
-  authRegisterSchema,
   authTokenResponseSchema,
 } from '../../src/schemas/auth'
 import { prettifyZodError } from '../helpers/schema'
 
 describe('auth schemas', () => {
-  it('parses public registration input without allowing status', () => {
+  it('parses short login passwords without enforcing password policy', () => {
     expect(
-      authRegisterSchema.parse({
+      authLoginSchema.parse({
         username: 'ada',
-        password: 'correct horse battery staple',
-        nickname: 'Ada Lovelace',
-        email: '',
-        phone: '',
+        password: 'short',
       }),
     ).toEqual({
       username: 'ada',
-      password: 'correct horse battery staple',
-      nickname: 'Ada Lovelace',
-      email: null,
-      phone: null,
-    })
-
-    expect(() =>
-      authRegisterSchema.parse({
-        username: 'ada',
-        password: 'correct horse battery staple',
-        nickname: 'Ada Lovelace',
-        status: 0,
-      }),
-    ).toThrow()
-  })
-
-  it('rejects weak registration passwords', () => {
-    const result = authRegisterSchema.safeParse({
-      username: 'ada',
       password: 'short',
-      nickname: 'Ada Lovelace',
     })
-
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('密码至少需要 8 位')
-    }
   })
 
-  it('rejects weak login passwords', () => {
+  it('rejects blank login passwords with a schema message', () => {
     const result = authLoginSchema.safeParse({
       username: 'ada',
-      password: 'short',
+      password: '   ',
     })
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(prettifyZodError(result)).toContain('密码至少需要 8 位')
+      expect(prettifyZodError(result)).toContain('请输入密码')
     }
   })
 
@@ -78,11 +49,11 @@ describe('auth schemas', () => {
     expect(
       authLoginSchema.parse({
         username: ' ada ',
-        password: 'secret-password',
+        password: ' secret-password ',
       }),
     ).toEqual({
       username: 'ada',
-      password: 'secret-password',
+      password: ' secret-password ',
     })
   })
 

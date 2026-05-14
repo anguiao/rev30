@@ -3,15 +3,30 @@ import { randomUUID } from 'node:crypto'
 import {
   ROLE_STATUS_ENABLED,
   USER_STATUS_ENABLED,
-  authRegisterSchema,
-  type AuthRegisterInput,
+  passwordInputSchema,
+  userCreateSchema,
 } from '@rev30/shared'
 import { and, eq, isNull } from 'drizzle-orm'
+import type { z } from 'zod'
 import { createDb, type Db } from '.'
 import { hashPassword } from '../modules/auth/password'
 import { authPasswordCredentials, systemRoles, systemUserRoles, systemUsers } from './schema'
 
-export async function bootstrapAdminUser(database: Db, input: AuthRegisterInput) {
+const bootstrapAdminSchema = userCreateSchema
+  .pick({
+    username: true,
+    nickname: true,
+    email: true,
+    phone: true,
+  })
+  .extend({
+    password: passwordInputSchema,
+  })
+  .strict()
+
+type BootstrapAdminInput = z.infer<typeof bootstrapAdminSchema>
+
+export async function bootstrapAdminUser(database: Db, input: BootstrapAdminInput) {
   const [adminRole] = await database
     .select()
     .from(systemRoles)
@@ -96,7 +111,7 @@ export async function bootstrapAdminFromEnv() {
   try {
     await bootstrapAdminUser(
       db,
-      authRegisterSchema.parse({
+      bootstrapAdminSchema.parse({
         username: process.env.BOOTSTRAP_ADMIN_USERNAME ?? '',
         password: process.env.BOOTSTRAP_ADMIN_PASSWORD ?? '',
         nickname: process.env.BOOTSTRAP_ADMIN_NICKNAME?.trim() || 'Administrator',

@@ -1,0 +1,1 @@
+export { passwordInputSchema } from './inputs'

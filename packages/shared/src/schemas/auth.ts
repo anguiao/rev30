@@ -6,22 +6,10 @@ import { resourceTreeNodeSchema } from './system/resources'
 export const AUTH_ACTION_HEADER = 'Auth-Action'
 export const AUTH_ACTION_REFRESH = 'refresh'
 
-export const authRegisterSchema = userCreateSchema
-  .pick({
-    username: true,
-    nickname: true,
-    email: true,
-    phone: true,
-  })
-  .extend({
-    password: passwordInputSchema,
-  })
-  .strict()
-
 export const authLoginSchema = z
   .object({
     username: z.string().trim().min(1, '请输入用户名'),
-    password: passwordInputSchema,
+    password: z.string().refine((value) => value.trim().length > 0, '请输入密码'),
   })
   .strict()
 
@@ -52,7 +40,6 @@ export const authPasswordUpdateSchema = z
   })
   .strict()
 
-export type AuthRegisterInput = z.infer<typeof authRegisterSchema>
 export type AuthLoginInput = z.infer<typeof authLoginSchema>
 export type AuthSessionResponse = z.infer<typeof authSessionResponseSchema>
 export type AuthTokenResponse = z.infer<typeof authTokenResponseSchema>

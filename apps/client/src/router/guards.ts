@@ -3,7 +3,7 @@ import type { RouteLocationNormalized, Router } from 'vue-router'
 import { refreshSession } from '../features/auth/requests'
 import { useAuthStore } from '../stores/auth'
 
-export const authRoutes = new Set(['/login', '/register'])
+export const authRoutes = new Set(['/login'])
 export const accountRoutes = new Set(['/account/settings'])
 
 function findDefaultRoute(menus: ResourceTreeNode[]): string | null {

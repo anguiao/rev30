@@ -39,7 +39,6 @@ async function mountLoginPage(path = '/login') {
   return mountAuthRoute(path, [
     { path: '/', component: { template: '<main>Home</main>' } },
     { path: '/login', component: LoginPage },
-    { path: '/register', component: { template: '<main>Register</main>' } },
     { path: '/system/resources', component: { template: '<main>Resources</main>' } },
   ])
 }
@@ -74,7 +73,7 @@ describe('login page', () => {
     const { router, wrapper } = await mountLoginPage()
 
     await wrapper.find('[data-test="login-username"] input').setValue('ada')
-    await wrapper.find('[data-test="login-password"] input').setValue('password123')
+    await wrapper.find('[data-test="login-password"] input').setValue(' short ')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
@@ -83,7 +82,7 @@ describe('login page', () => {
     expect(loginMock).toHaveBeenCalledOnce()
     expect(loginMock).toHaveBeenCalledWith({
       username: 'ada',
-      password: 'password123',
+      password: ' short ',
     })
     expect(auth.accessToken).toBe(session.accessToken)
     expect(auth.user).toEqual(session.user)

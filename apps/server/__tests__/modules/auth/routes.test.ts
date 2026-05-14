@@ -28,7 +28,6 @@ const mocks = vi.hoisted(() => {
     logout: vi.fn(),
     me: vi.fn(),
     refresh: vi.fn(),
-    register: vi.fn(),
     updatePassword: vi.fn(),
     updateProfile: vi.fn(),
   }
@@ -95,7 +94,6 @@ describe('auth routes', () => {
     Object.values(mocks.service).forEach((mock) => mock.mockReset())
     mocks.createAuthService.mockReturnValue(mocks.service)
     mocks.createAuthMiddleware.mockReturnValue(mocks.authMiddleware)
-    mocks.service.register.mockResolvedValue(createSession('register-refresh-token'))
     mocks.service.login.mockResolvedValue(createSession('login-refresh-token'))
     mocks.service.refresh.mockResolvedValue(createSession('rotated-refresh-token'))
     mocks.service.logout.mockResolvedValue(undefined)
@@ -107,7 +105,7 @@ describe('auth routes', () => {
     mocks.service.updatePassword.mockResolvedValue(undefined)
   })
 
-  it('delegates register requests while keeping refresh tokens in cookies only', async () => {
+  it('does not expose public registration', async () => {
     const app = createTestApp()
 
     const registerResponse = await app.request('/api/auth/register', {
@@ -119,16 +117,9 @@ describe('auth routes', () => {
       }),
       headers: { 'content-type': 'application/json' },
     })
-    const registerBody = await readJson(registerResponse)
 
-    expect(registerResponse.status).toBe(201)
-    expect(registerResponse.headers.get('set-cookie')).toContain('refresh_token=')
-    expect(registerBody).not.toHaveProperty('refreshToken')
-    expect(mocks.service.register).toHaveBeenCalledWith({
-      username: 'ada',
-      password: 'secret-password',
-      nickname: 'Ada Lovelace',
-    })
+    expect(registerResponse.status).toBe(404)
+    expect(mocks.service.login).not.toHaveBeenCalled()
   })
 
   it('delegates login requests while keeping refresh tokens in cookies only', async () => {
@@ -294,23 +285,6 @@ describe('auth routes', () => {
     )
   })
 
-  it('returns register validation errors before calling the auth service', async () => {
-    const app = createTestApp()
-
-    const registerResponse = await app.request('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({
-        username: 'ada',
-        password: 'short',
-        nickname: 'Ada Lovelace',
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(registerResponse.status).toBe(400)
-    expect(await registerResponse.json()).toEqual({ message: '请求体无效' })
-    expect(mocks.service.register).not.toHaveBeenCalled()
-  })
-
   it('returns login validation errors before calling the auth service', async () => {
     const app = createTestApp()
 
@@ -343,23 +317,23 @@ describe('auth routes', () => {
     expect(mocks.service.updateProfile).not.toHaveBeenCalled()
   })
 
-  it('maps register conflict errors to route responses', async () => {
+  it('maps profile conflict errors to route responses', async () => {
     const app = createTestApp()
 
-    mocks.service.register.mockRejectedValueOnce(new UserConflictError('username'))
-    const conflictResponse = await app.request('/api/auth/register', {
-      method: 'POST',
+    mocks.service.updateProfile.mockRejectedValueOnce(new UserConflictError('email'))
+    const conflictResponse = await app.request('/api/auth/me/profile', {
+      method: 'PATCH',
       body: JSON.stringify({
-        username: 'ada',
-        password: 'secret-password',
         nickname: 'Ada Lovelace',
+        email: 'ada@example.com',
+        phone: null,
       }),
       headers: { 'content-type': 'application/json' },
     })
     expect(conflictResponse.status).toBe(409)
     expect(await conflictResponse.json()).toEqual({
-      field: 'username',
-      message: '用户名已存在',
+      field: 'email',
+      message: '邮箱已存在',
     })
   })
 

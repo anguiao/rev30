@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => {
   const repository = {
     consumeRefreshSession: vi.fn(),
     createRefreshSession: vi.fn(),
-    createUser: vi.fn(),
     findActiveUserById: vi.fn(),
     findActiveUserCredentialByUsername: vi.fn(),
     revokeRefreshSession: vi.fn(),
@@ -151,12 +150,19 @@ describe('auth service', () => {
     expect(session.menus).toEqual([])
   })
 
-  it('returns access codes and menus for register and login sessions', async () => {
-    mocks.repository.createUser.mockResolvedValue({
-      user: createUserRow(),
+  it('returns access codes and menus for login sessions', async () => {
+    mocks.repository.findActiveUserCredentialByUsername.mockResolvedValue({
+      credential: {
+        userId: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        passwordHash: 'stored-password-hash',
+        createdAt: new Date('2026-04-30T00:00:00.000Z'),
+        updatedAt: new Date('2026-04-30T00:00:00.000Z'),
+      },
       departments: [],
       roles: [],
+      user: createUserRow(),
     })
+    mocks.verifyPassword.mockResolvedValue(true)
     mocks.repository.createRefreshSession.mockResolvedValue(undefined)
 
     const accessData = {
@@ -186,11 +192,8 @@ describe('auth service', () => {
     mocks.resolveUserAccess.mockResolvedValue(accessData)
 
     const service = createAuthService({} as never, config)
-    const session = await service.register({
+    const session = await service.login({
       username: 'ada',
-      email: null,
-      phone: null,
-      nickname: 'Ada Lovelace',
       password: 'secret-password',
     })
 

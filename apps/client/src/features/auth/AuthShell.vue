@@ -81,7 +81,7 @@ import ThemeModeSwitch from '../../components/common/ThemeModeSwitch.vue'
               类型化请求
             </h3>
             <p class="leading-relaxed text-stone-500 dark:text-zinc-500">
-              登录、注册和刷新响应复用共享 schema，前后端约束保持一致。
+              登录和刷新响应复用共享 schema，前后端约束保持一致。
             </p>
           </div>
         </div>

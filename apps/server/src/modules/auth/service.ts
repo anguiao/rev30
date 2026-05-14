@@ -3,7 +3,6 @@ import {
   type AuthLoginInput,
   type AuthPasswordUpdateInput,
   type AuthProfileUpdateInput,
-  type AuthRegisterInput,
   type AuthTokenResponse,
   type User,
 } from '@rev30/shared'
@@ -76,14 +75,6 @@ export function createAuthService(database: Db, config: AuthConfig) {
   }
 
   return {
-    async register(input: AuthRegisterInput) {
-      const passwordHash = await hashPassword(input.password)
-      const created = await withUserUniqueConflict(() => repository.createUser(input, passwordHash))
-      const user = toUser(created.user, created.departments, created.roles)
-
-      return createAuthSession(user)
-    },
-
     async login(input: AuthLoginInput) {
       const account = await repository.findActiveUserCredentialByUsername(input.username)
       const passwordHash = account?.credential.passwordHash ?? dummyPasswordHash

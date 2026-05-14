@@ -92,7 +92,6 @@ function createTestRouter() {
       },
       { path: '/403', component: { template: '<main>No access</main>' } },
       { path: '/login', component: { template: '<main>Login</main>' } },
-      { path: '/register', component: { template: '<main>Register</main>' } },
     ],
   })
 
@@ -490,7 +489,7 @@ describe('auth guards', () => {
     auth.markReady()
     const router = createTestRouter()
 
-    await router.push('/register')
+    await router.push('/login')
 
     expect(router.currentRoute.value.fullPath).toBe('/403')
   })

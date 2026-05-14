@@ -2,11 +2,9 @@ import {
   type AuthLoginInput,
   type AuthPasswordUpdateInput,
   type AuthProfileUpdateInput,
-  type AuthRegisterInput,
   authLoginSchema,
   authPasswordUpdateSchema,
   authProfileUpdateSchema,
-  authRegisterSchema,
 } from '@rev30/shared'
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
@@ -31,7 +29,6 @@ const jsonBodyValidator = <T extends ZodType>(schema: T) =>
     }
   })
 
-const registerBodyValidator = jsonBodyValidator(authRegisterSchema)
 const loginBodyValidator = jsonBodyValidator(authLoginSchema)
 const profileUpdateBodyValidator = jsonBodyValidator(authProfileUpdateSchema)
 const passwordUpdateBodyValidator = jsonBodyValidator(authPasswordUpdateSchema)
@@ -76,14 +73,6 @@ export function createAuthRoutes(database: Db) {
   app.onError((error, c) => authErrorResponse(error, c))
 
   return app
-    .post('/register', registerBodyValidator, async (c) => {
-      const body: AuthRegisterInput = c.req.valid('json')
-      const { refreshToken, ...session } = await service.register(body)
-
-      setRefreshTokenCookie(c, refreshToken, config)
-
-      return c.json(session, 201)
-    })
     .post('/login', loginBodyValidator, async (c) => {
       const body: AuthLoginInput = c.req.valid('json')
       const { refreshToken, ...session } = await service.login(body)

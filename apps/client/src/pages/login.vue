@@ -62,16 +62,8 @@ const { form, formError, isSubmitting } = useLoginForm()
       </div>
     </NForm>
 
-    <div
-      class="mt-8 flex items-center justify-center gap-2 text-sm text-stone-500 dark:text-zinc-500"
-    >
-      <span>未注册账号？</span>
-      <RouterLink
-        class="font-medium text-stone-900 transition-colors hover:text-stone-600 dark:text-primary dark:hover:text-primary-hover"
-        to="/register"
-      >
-        注册
-      </RouterLink>
-    </div>
+    <p class="mt-8 text-center text-sm text-stone-500 dark:text-zinc-500">
+      如需注册账号，请联系管理员。
+    </p>
   </AuthShell>
 </template>

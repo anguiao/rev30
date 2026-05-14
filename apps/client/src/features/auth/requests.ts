@@ -3,7 +3,6 @@ import {
   errorResponseSchema,
   type AuthLoginInput,
   type ErrorResponse,
-  type AuthRegisterInput,
   type AuthTokenResponse,
   type AuthProfileUpdateInput,
   type AuthPasswordUpdateInput,
@@ -50,10 +49,6 @@ export function getAuthErrorMessage(error: unknown, fallback: string) {
 
 export async function login(input: AuthLoginInput): Promise<AuthTokenResponse> {
   return parseAuthResponse(await api.auth.login.$post({ json: input }), authTokenResponseSchema)
-}
-
-export async function register(input: AuthRegisterInput): Promise<AuthTokenResponse> {
-  return parseAuthResponse(await api.auth.register.$post({ json: input }), authTokenResponseSchema)
 }
 
 export async function refreshSession(): Promise<AuthTokenResponse> {

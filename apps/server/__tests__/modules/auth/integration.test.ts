@@ -10,6 +10,7 @@ import {
   RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_MENU,
   USER_STATUS_DISABLED,
+  USER_STATUS_ENABLED,
   type AuthTokenResponse,
 } from '@rev30/shared'
 import {
@@ -23,7 +24,7 @@ import {
   systemUsers,
 } from '../../../src/db/schema'
 import { createTestDb } from '../../helpers/db'
-import { verifyPassword } from '../../../src/modules/auth/password'
+import { hashPassword, verifyPassword } from '../../../src/modules/auth/password'
 import { createAuthRoutes } from '../../../src/modules/auth/routes'
 import { readAuthConfig } from '../../../src/modules/auth/config'
 import { verifyRefreshToken } from '../../../src/modules/auth/tokens'
@@ -51,6 +52,14 @@ type ResourceInsert = {
 
 type TestDatabase = Awaited<ReturnType<typeof createTestDb>>
 type TestTransaction = Parameters<Parameters<TestDatabase['transaction']>[0]>[0]
+type AccountInput = {
+  username?: string
+  password?: string
+  nickname?: string
+  email?: string | null
+  phone?: string | null
+  status?: number
+}
 
 const now = new Date('2026-05-06T00:00:00.000Z')
 
@@ -88,24 +97,44 @@ async function createResource(database: TestDatabase, input: ResourceInsert) {
   return resource
 }
 
-async function register(app: Hono, body = {}) {
-  const response = await app.request('/api/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({
-      username: 'ada',
-      password: 'secret-password',
-      nickname: 'Ada Lovelace',
-      ...body,
-    }),
-    headers: {
-      'content-type': 'application/json',
-    },
+async function createPasswordAccount(database: TestDatabase, input: AccountInput = {}) {
+  const [user] = await database
+    .insert(systemUsers)
+    .values({
+      id: randomUUID(),
+      username: input.username ?? 'ada',
+      nickname: input.nickname ?? 'Ada Lovelace',
+      email: input.email ?? null,
+      phone: input.phone ?? null,
+      status: input.status ?? USER_STATUS_ENABLED,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning()
+
+  if (!user) {
+    throw new Error('Expected account user')
+  }
+
+  await database.insert(authPasswordCredentials).values({
+    userId: user.id,
+    passwordHash: await hashPassword(input.password ?? 'secret-password'),
+  })
+
+  return user
+}
+
+async function createLoggedInAccount(app: Hono, database: TestDatabase, input: AccountInput = {}) {
+  const user = await createPasswordAccount(database, input)
+  const session = await login(app, {
+    username: user.username,
+    password: input.password ?? 'secret-password',
   })
 
   return {
-    body: (await response.json()) as AuthTokenResponse,
-    refreshToken: getRefreshTokenCookie(response),
-    response,
+    ...session,
+    body: session.body as AuthTokenResponse,
+    user,
   }
 }
 
@@ -175,73 +204,36 @@ function createTestAppWithRefreshRevokeFailure(database: TestDatabase) {
 }
 
 describe('auth routes', () => {
-  it('registers users with a password credential, token response, and refresh cookie', async () => {
+  it('does not expose public registration', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
 
-    const { body, refreshToken, response } = await register(app, {
-      email: 'ada@example.com',
-      phone: '10000000001',
-    })
-
-    expect(response.status).toBe(201)
-    expect(response.headers.get('set-cookie')).toContain('refresh_token=')
-    expect(body).toMatchObject({
-      tokenType: 'Bearer',
-      expiresIn: 900,
-      user: {
+    const response = await app.request('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
         username: 'ada',
+        password: 'secret-password',
         nickname: 'Ada Lovelace',
-        email: 'ada@example.com',
-        phone: '10000000001',
-        departments: [],
-        roles: [],
+      }),
+      headers: {
+        'content-type': 'application/json',
       },
     })
-    expect(body.accessToken).toEqual(expect.any(String))
-    expect(body.accessCodes).toEqual([])
-    expect(body.menus).toEqual([])
-    expect(body).not.toHaveProperty('refreshToken')
-    expect(refreshToken).toEqual(expect.any(String))
 
     const storedUsers = await database
       .select()
       .from(systemUsers)
-      .where(eq(systemUsers.id, body.user.id))
-    expect(storedUsers).toHaveLength(1)
-    const storedCredentials = await database
-      .select()
-      .from(authPasswordCredentials)
-      .where(eq(authPasswordCredentials.userId, body.user.id))
+      .where(eq(systemUsers.username, 'ada'))
 
-    expect(storedCredentials).toHaveLength(1)
-    expect(storedCredentials[0]?.passwordHash).not.toBe('secret-password')
-    await expect(
-      verifyPassword('secret-password', storedCredentials[0]?.passwordHash ?? ''),
-    ).resolves.toBe(true)
-  })
-
-  it('returns conflict when registering duplicate usernames', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-
-    await register(app)
-    const duplicate = await register(app, {
-      nickname: 'Duplicate Ada',
-    })
-
-    expect(duplicate.response.status).toBe(409)
-    expect(duplicate.body).toMatchObject({
-      field: 'username',
-      message: '用户名已存在',
-    })
+    expect(response.status).toBe(404)
+    expect(storedUsers).toHaveLength(0)
   })
 
   it('logs in with username and password', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
 
-    await register(app)
+    await createLoggedInAccount(app, database)
     const { body: responseBody, response } = await login(app)
     const body = responseBody as AuthTokenResponse
 
@@ -265,7 +257,7 @@ describe('auth routes', () => {
     const database = await createTestDb()
     const app = createTestApp(database)
 
-    const registered = await register(app)
+    const registered = await createLoggedInAccount(app, database)
     const wrongPassword = await login(app, {
       password: 'wrong-password',
     })
@@ -293,7 +285,7 @@ describe('auth routes', () => {
   it('returns role summaries on login', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app, {
+    const registered = await createLoggedInAccount(app, database, {
       username: 'role-login-user',
       nickname: 'Role Login User',
       password: 'secret-password',
@@ -348,7 +340,7 @@ describe('auth routes', () => {
   it('returns admin access codes and menus on login', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app, {
+    const registered = await createLoggedInAccount(app, database, {
       username: 'admin-login',
       nickname: 'Admin Login',
       password: 'secret-password',
@@ -451,7 +443,7 @@ describe('auth routes', () => {
   it('rotates refresh tokens and rejects reuse of the old refresh token', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app)
+    const registered = await createLoggedInAccount(app, database)
     const oldRefreshToken = registered.refreshToken
 
     const refreshResponse = await app.request('/api/auth/refresh', {
@@ -488,7 +480,7 @@ describe('auth routes', () => {
   it('refreshes from the refresh cookie when no body token is provided', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app)
+    const registered = await createLoggedInAccount(app, database)
 
     const refreshResponse = await app.request('/api/auth/refresh', {
       method: 'POST',
@@ -511,7 +503,7 @@ describe('auth routes', () => {
   it('logs out by revoking refresh tokens and clearing the cookie', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app)
+    const registered = await createLoggedInAccount(app, database)
 
     const logoutResponse = await app.request('/api/auth/logout', {
       method: 'POST',
@@ -546,7 +538,7 @@ describe('auth routes', () => {
   it('returns the current user for a valid access token', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app)
+    const registered = await createLoggedInAccount(app, database)
 
     const response = await app.request('/api/auth/me', {
       headers: {
@@ -589,7 +581,7 @@ describe('auth routes', () => {
   it('updates current user profile', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app)
+    const registered = await createLoggedInAccount(app, database)
 
     const validResponse = await app.request('/api/auth/me/profile', {
       method: 'PATCH',
@@ -617,7 +609,7 @@ describe('auth routes', () => {
   it('changes current user password and clears must-change-password state', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app, {
+    const registered = await createLoggedInAccount(app, database, {
       password: 'old-password',
     })
     await database
@@ -666,7 +658,7 @@ describe('auth routes', () => {
   it('keeps the current refresh session while revoking other sessions after a password change', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app, {
+    const registered = await createLoggedInAccount(app, database, {
       password: 'old-password',
       username: 'password-keep-current',
       nickname: 'Password Keep Current',
@@ -727,7 +719,7 @@ describe('auth routes', () => {
   it('revokes all refresh sessions after a password change when the refresh cookie is missing', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app, {
+    const registered = await createLoggedInAccount(app, database, {
       password: 'old-password',
       username: 'password-revoke-missing-cookie',
       nickname: 'Password Revoke Missing Cookie',
@@ -776,7 +768,7 @@ describe('auth routes', () => {
   it('revokes all refresh sessions after a password change when the refresh cookie is invalid', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app, {
+    const registered = await createLoggedInAccount(app, database, {
       password: 'old-password',
       username: 'password-revoke-invalid-cookie',
       nickname: 'Password Revoke Invalid Cookie',
@@ -829,7 +821,7 @@ describe('auth routes', () => {
     try {
       const database = await createTestDb()
       const setupApp = createTestApp(database)
-      const registered = await register(setupApp, {
+      const registered = await createLoggedInAccount(setupApp, database, {
         password: 'old-password',
         username: 'password-rollback-on-revoke-failure',
         nickname: 'Password Rollback On Revoke Failure',
@@ -878,7 +870,7 @@ describe('auth routes', () => {
   it('returns department summaries from login me and refresh for associated users', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app)
+    const registered = await createLoggedInAccount(app, database)
     const departmentId = randomUUID()
     const now = new Date()
 
@@ -967,7 +959,7 @@ describe('auth routes', () => {
   it('rejects bearer authorization headers with extra fields for current user', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app)
+    const registered = await createLoggedInAccount(app, database)
 
     const response = await app.request('/api/auth/me', {
       headers: {
@@ -984,7 +976,7 @@ describe('auth routes', () => {
   it('rejects missing, refresh, and disabled-user tokens for current user', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app)
+    const registered = await createLoggedInAccount(app, database)
 
     const missingResponse = await app.request('/api/auth/me')
     expect(missingResponse.status).toBe(401)
@@ -1021,7 +1013,7 @@ describe('auth routes', () => {
   it('marks expired access tokens as refreshable for current user requests', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await register(app)
+    const registered = await createLoggedInAccount(app, database)
     const expiredAccessToken = await sign(
       {
         sub: registered.body.user.id,

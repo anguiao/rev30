@@ -184,7 +184,7 @@ describe('auth service', () => {
       password: 'secret-password',
     })
 
-    expect(mocks.repository.clearLoginAttemptBucket).toHaveBeenCalledWith('ada')
+    expect(mocks.repository.clearLoginAttemptBucket).toHaveBeenCalledWith('ada', expect.any(Date))
   })
 
   it('uses password verification work for disabled-user login failures', async () => {

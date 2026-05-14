@@ -107,7 +107,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
 
       const user = toUser(account.user, account.departments, account.roles)
       const session = await createAuthSession(user)
-      await repository.clearLoginAttemptBucket(input.username)
+      await repository.clearLoginAttemptBucket(input.username, now)
 
       return session
     },

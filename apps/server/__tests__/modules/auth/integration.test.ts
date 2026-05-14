@@ -612,6 +612,49 @@ describe('auth routes', () => {
     })
   })
 
+  it('keeps active login failure lock when stale successful login cleanup runs', async () => {
+    const database = await createTestDb()
+    const repository = createAuthRepository(database)
+    const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
+    const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
+    const staleSuccessStartedAt = new Date('2026-05-14T00:01:30.000Z')
+    const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
+    const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
+
+    await repository.recordLoginFailure({
+      username: 'stale-success-lock-user',
+      now: firstAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.recordLoginFailure({
+      username: 'stale-success-lock-user',
+      now: secondAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.recordLoginFailure({
+      username: 'stale-success-lock-user',
+      now: thirdAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.clearLoginAttemptBucket('stale-success-lock-user', staleSuccessStartedAt)
+
+    const bucket = await repository.findLoginAttemptBucketByUsername('stale-success-lock-user')
+
+    expect(bucket).toMatchObject({
+      username: 'stale-success-lock-user',
+      failedCount: 3,
+      windowStartedAt: firstAttempt,
+      lastFailedAt: thirdAttempt,
+      lockedUntil: expectedLockUntil,
+    })
+  })
+
   it('returns role summaries on login', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)

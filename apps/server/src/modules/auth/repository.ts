@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { AuthProfileUpdateInput } from '@rev30/shared'
-import { and, eq, gt, isNull, ne, sql } from 'drizzle-orm'
+import { and, eq, gt, isNull, lte, ne, or, sql } from 'drizzle-orm'
 import type { Db } from '../../db'
 import {
   authLoginAttemptBuckets,
@@ -178,10 +178,18 @@ export function createAuthRepository(database: Db) {
       return rows[0]
     },
 
-    async clearLoginAttemptBucket(username: string) {
+    async clearLoginAttemptBucket(username: string, now: Date) {
       await database
         .delete(authLoginAttemptBuckets)
-        .where(eq(authLoginAttemptBuckets.username, username))
+        .where(
+          and(
+            eq(authLoginAttemptBuckets.username, username),
+            or(
+              isNull(authLoginAttemptBuckets.lockedUntil),
+              lte(authLoginAttemptBuckets.lockedUntil, now),
+            ),
+          ),
+        )
     },
 
     async updatePasswordCredentialAndRevokeSessions(

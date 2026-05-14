@@ -40,14 +40,9 @@ async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
   }
 }
 
-function isLoginAttemptLocked(
-  bucket: { lockedUntil: Date | null } | undefined,
-  now: Date,
-) {
+function isLoginAttemptLocked(bucket: { lockedUntil: Date | null } | undefined, now: Date) {
   return (
-    bucket?.lockedUntil !== null &&
-    bucket?.lockedUntil !== undefined &&
-    bucket.lockedUntil > now
+    bucket?.lockedUntil !== null && bucket?.lockedUntil !== undefined && bucket.lockedUntil > now
   )
 }
 

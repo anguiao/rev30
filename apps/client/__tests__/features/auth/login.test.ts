@@ -130,9 +130,7 @@ describe('login page', () => {
   })
 
   it('shows the server message for login rate limit errors', async () => {
-    loginMock.mockRejectedValue(
-      new MockAuthRequestError(429, '登录失败次数过多，请稍后再试'),
-    )
+    loginMock.mockRejectedValue(new MockAuthRequestError(429, '登录失败次数过多，请稍后再试'))
     const { router, wrapper } = await mountLoginPage()
 
     await wrapper.find('[data-test="login-username"] input').setValue('ada')

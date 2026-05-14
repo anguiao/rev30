@@ -41,7 +41,7 @@ export function useLoginForm() {
             ? '用户名或密码错误'
             : error instanceof AuthRequestError && error.status === 429
               ? error.message
-            : '登录失败，请稍后再试'
+              : '登录失败，请稍后再试'
       }
     },
   })

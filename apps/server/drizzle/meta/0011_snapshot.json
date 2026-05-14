@@ -136,12 +136,8 @@
           "name": "auth_password_credentials_user_id_system_users_id_fk",
           "tableFrom": "auth_password_credentials",
           "tableTo": "system_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -268,12 +264,8 @@
           "name": "auth_refresh_tokens_user_id_system_users_id_fk",
           "tableFrom": "auth_refresh_tokens",
           "tableTo": "system_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -399,12 +391,8 @@
           "name": "system_departments_parent_id_system_departments_id_fk",
           "tableFrom": "system_departments",
           "tableTo": "system_departments",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -583,12 +571,8 @@
           "name": "system_resources_parent_id_system_resources_id_fk",
           "tableFrom": "system_resources",
           "tableTo": "system_resources",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -645,12 +629,8 @@
           "name": "system_role_resources_role_id_system_roles_id_fk",
           "tableFrom": "system_role_resources",
           "tableTo": "system_roles",
-          "columnsFrom": [
-            "role_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["role_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -658,12 +638,8 @@
           "name": "system_role_resources_resource_id_system_resources_id_fk",
           "tableFrom": "system_role_resources",
           "tableTo": "system_resources",
-          "columnsFrom": [
-            "resource_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["resource_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -671,10 +647,7 @@
       "compositePrimaryKeys": {
         "system_role_resources_role_id_resource_id_pk": {
           "name": "system_role_resources_role_id_resource_id_pk",
-          "columns": [
-            "role_id",
-            "resource_id"
-          ]
+          "columns": ["role_id", "resource_id"]
         }
       },
       "uniqueConstraints": {},
@@ -824,12 +797,8 @@
           "name": "system_user_departments_user_id_system_users_id_fk",
           "tableFrom": "system_user_departments",
           "tableTo": "system_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -837,12 +806,8 @@
           "name": "system_user_departments_department_id_system_departments_id_fk",
           "tableFrom": "system_user_departments",
           "tableTo": "system_departments",
-          "columnsFrom": [
-            "department_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["department_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -850,10 +815,7 @@
       "compositePrimaryKeys": {
         "system_user_departments_user_id_department_id_pk": {
           "name": "system_user_departments_user_id_department_id_pk",
-          "columns": [
-            "user_id",
-            "department_id"
-          ]
+          "columns": ["user_id", "department_id"]
         }
       },
       "uniqueConstraints": {},
@@ -907,12 +869,8 @@
           "name": "system_user_roles_user_id_system_users_id_fk",
           "tableFrom": "system_user_roles",
           "tableTo": "system_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -920,12 +878,8 @@
           "name": "system_user_roles_role_id_system_roles_id_fk",
           "tableFrom": "system_user_roles",
           "tableTo": "system_roles",
-          "columnsFrom": [
-            "role_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["role_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -933,10 +887,7 @@
       "compositePrimaryKeys": {
         "system_user_roles_user_id_role_id_pk": {
           "name": "system_user_roles_user_id_role_id_pk",
-          "columns": [
-            "user_id",
-            "role_id"
-          ]
+          "columns": ["user_id", "role_id"]
         }
       },
       "uniqueConstraints": {},

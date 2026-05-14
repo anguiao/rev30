@@ -21,7 +21,9 @@ function readLoginAttemptCleanupIntervalMs() {
 }
 
 function readLoginAttemptRetentionMs() {
-  const value = Number(process.env.AUTH_LOGIN_ATTEMPT_RETENTION_MS ?? defaultLoginAttemptRetentionMs)
+  const value = Number(
+    process.env.AUTH_LOGIN_ATTEMPT_RETENTION_MS ?? defaultLoginAttemptRetentionMs,
+  )
 
   if (!Number.isInteger(value) || value < 0) {
     throw new Error(`AUTH_LOGIN_ATTEMPT_RETENTION_MS 必须是 0 或正整数毫秒值`)

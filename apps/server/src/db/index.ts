@@ -4,7 +4,7 @@ import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js'
 import { mkdir } from 'node:fs/promises'
 import postgres from 'postgres'
 import { startDbMaintenance } from './maintenance'
-import { applyPgliteMigrations } from './migrations'
+import { migratePGlite } from './migrate'
 import * as schema from './schema'
 
 export async function createDb() {
@@ -35,7 +35,7 @@ export async function createDb() {
 
   const client = new PGlite(dataDir)
 
-  await applyPgliteMigrations(client)
+  await migratePGlite(client)
 
   const db = drizzlePglite(client, { schema })
   const maintenance = startDbMaintenance(db)

@@ -16,6 +16,7 @@ import {
 import {
   authPasswordCredentials,
   authRefreshTokens,
+  authLoginAttemptBuckets,
   systemDepartments,
   systemRoles,
   systemResources,
@@ -281,6 +282,64 @@ describe('auth routes', () => {
     expect(disabled.body).toEqual({
       message: '用户名或密码错误',
     })
+  })
+
+  it('locks a username after repeated login failures and clears failures after success', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+
+    await createPasswordAccount(database, {
+      username: 'rate-limit-user',
+      password: 'secret-password',
+    })
+
+    for (let index = 0; index < 5; index += 1) {
+      const failed = await login(app, {
+        username: 'rate-limit-user',
+        password: 'wrong-password',
+      })
+
+      expect(failed.response.status).toBe(401)
+      expect(failed.body).toEqual({ message: '用户名或密码错误' })
+    }
+
+    const locked = await login(app, {
+      username: 'rate-limit-user',
+      password: 'secret-password',
+    })
+
+    expect(locked.response.status).toBe(429)
+    expect(locked.body).toEqual({ message: '登录失败次数过多，请稍后再试' })
+    expect(locked.response.headers.get('set-cookie')).toBeNull()
+
+    const unaffectedUser = await createPasswordAccount(database, {
+      username: 'unaffected-login-user',
+      password: 'secret-password',
+    })
+    const unaffected = await login(app, {
+      username: unaffectedUser.username,
+      password: 'secret-password',
+    })
+
+    expect(unaffected.response.status).toBe(200)
+
+    await database
+      .delete(authLoginAttemptBuckets)
+      .where(eq(authLoginAttemptBuckets.username, 'rate-limit-user'))
+
+    const recovered = await login(app, {
+      username: 'rate-limit-user',
+      password: 'secret-password',
+    })
+
+    expect(recovered.response.status).toBe(200)
+
+    const remainingBuckets = await database
+      .select()
+      .from(authLoginAttemptBuckets)
+      .where(eq(authLoginAttemptBuckets.username, 'rate-limit-user'))
+
+    expect(remainingBuckets).toHaveLength(0)
   })
 
   it('creates a login failure bucket for a new username', async () => {

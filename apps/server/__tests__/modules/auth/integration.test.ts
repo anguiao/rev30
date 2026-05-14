@@ -26,6 +26,7 @@ import {
 import { createTestDb } from '../../helpers/db'
 import { hashPassword, verifyPassword } from '../../../src/modules/auth/password'
 import { createAuthRoutes } from '../../../src/modules/auth/routes'
+import { createAuthRepository } from '../../../src/modules/auth/repository'
 import { readAuthConfig } from '../../../src/modules/auth/config'
 import { verifyRefreshToken } from '../../../src/modules/auth/tokens'
 
@@ -279,6 +280,191 @@ describe('auth routes', () => {
     expect(disabled.response.status).toBe(401)
     expect(disabled.body).toEqual({
       message: '用户名或密码错误',
+    })
+  })
+
+  it('creates a login failure bucket for a new username', async () => {
+    const database = await createTestDb()
+    const repository = createAuthRepository(database)
+    const attemptTime = new Date('2026-05-14T00:00:00.000Z')
+
+    await repository.recordLoginFailure({
+      username: 'missing-user',
+      now: attemptTime,
+      maxAttempts: 5,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+
+    const bucket = await repository.findLoginAttemptBucketByUsername('missing-user')
+
+    expect(bucket).toMatchObject({
+      username: 'missing-user',
+      failedCount: 1,
+      windowStartedAt: attemptTime,
+      lastFailedAt: attemptTime,
+      lockedUntil: null,
+    })
+  })
+
+  it('increments failed count within an active login failure window', async () => {
+    const database = await createTestDb()
+    const repository = createAuthRepository(database)
+    const windowStart = new Date('2026-05-14T00:00:00.000Z')
+    const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
+
+    await repository.recordLoginFailure({
+      username: 'window-user',
+      now: windowStart,
+      maxAttempts: 5,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.recordLoginFailure({
+      username: 'window-user',
+      now: secondAttempt,
+      maxAttempts: 5,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+
+    const bucket = await repository.findLoginAttemptBucketByUsername('window-user')
+
+    expect(bucket).toMatchObject({
+      username: 'window-user',
+      failedCount: 2,
+      windowStartedAt: windowStart,
+      lastFailedAt: secondAttempt,
+      lockedUntil: null,
+    })
+  })
+
+  it('locks username when failed login attempts hit the threshold', async () => {
+    const database = await createTestDb()
+    const repository = createAuthRepository(database)
+    const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
+    const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
+    const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
+    const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
+
+    await repository.recordLoginFailure({
+      username: 'threshold-user',
+      now: firstAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.recordLoginFailure({
+      username: 'threshold-user',
+      now: secondAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.recordLoginFailure({
+      username: 'threshold-user',
+      now: thirdAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+
+    const bucket = await repository.findLoginAttemptBucketByUsername('threshold-user')
+
+    expect(bucket).toMatchObject({
+      username: 'threshold-user',
+      failedCount: 3,
+      windowStartedAt: firstAttempt,
+      lastFailedAt: thirdAttempt,
+      lockedUntil: expectedLockUntil,
+    })
+  })
+
+  it('resets failed count when the login failure window expires', async () => {
+    const database = await createTestDb()
+    const repository = createAuthRepository(database)
+    const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
+    const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
+    const expiredWindowAttempt = new Date('2026-05-14T00:16:00.000Z')
+
+    await repository.recordLoginFailure({
+      username: 'window-expired-user',
+      now: firstAttempt,
+      maxAttempts: 5,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.recordLoginFailure({
+      username: 'window-expired-user',
+      now: secondAttempt,
+      maxAttempts: 5,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.recordLoginFailure({
+      username: 'window-expired-user',
+      now: expiredWindowAttempt,
+      maxAttempts: 5,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+
+    const bucket = await repository.findLoginAttemptBucketByUsername('window-expired-user')
+
+    expect(bucket).toMatchObject({
+      username: 'window-expired-user',
+      failedCount: 1,
+      windowStartedAt: expiredWindowAttempt,
+      lastFailedAt: expiredWindowAttempt,
+      lockedUntil: null,
+    })
+  })
+
+  it('resets failed count when the previous login failure lock expires', async () => {
+    const database = await createTestDb()
+    const repository = createAuthRepository(database)
+    const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
+    const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
+    const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
+    const afterLockExpiresAttempt = new Date('2026-05-14T00:17:01.000Z')
+
+    await repository.recordLoginFailure({
+      username: 'lock-expired-user',
+      now: firstAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.recordLoginFailure({
+      username: 'lock-expired-user',
+      now: secondAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.recordLoginFailure({
+      username: 'lock-expired-user',
+      now: thirdAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.recordLoginFailure({
+      username: 'lock-expired-user',
+      now: afterLockExpiresAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+
+    const bucket = await repository.findLoginAttemptBucketByUsername('lock-expired-user')
+
+    expect(bucket).toMatchObject({
+      username: 'lock-expired-user',
+      failedCount: 1,
+      windowStartedAt: afterLockExpiresAttempt,
+      lastFailedAt: afterLockExpiresAttempt,
+      lockedUntil: null,
     })
   })
 

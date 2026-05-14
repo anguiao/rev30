@@ -18,6 +18,9 @@ const config: AuthConfig = {
   accessExpiresInSeconds: 900,
   refreshExpiresInSeconds: 604800,
   secureCookies: false,
+  loginFailureMaxAttempts: 5,
+  loginFailureWindowSeconds: 900,
+  loginFailureLockSeconds: 900,
 }
 
 describe('auth token helpers', () => {

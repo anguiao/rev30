@@ -72,13 +72,25 @@ function createUserRow(status = USER_STATUS_ENABLED) {
 
 describe('auth service', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mocks.repository.clearLoginAttemptBucket.mockReset()
+    mocks.repository.consumeRefreshSession.mockReset()
+    mocks.repository.createRefreshSession.mockReset()
+    mocks.repository.findActiveUserById.mockReset()
+    mocks.repository.findActiveUserCredentialByUsername.mockReset()
+    mocks.repository.findLoginAttemptBucketByUsername.mockReset()
+    mocks.repository.recordLoginFailure.mockReset()
+    mocks.repository.revokeRefreshSession.mockReset()
+    mocks.createAuthRepository.mockClear()
+    mocks.createAuthRepository.mockImplementation(() => mocks.repository)
+    mocks.repository.findLoginAttemptBucketByUsername.mockResolvedValue(undefined)
     mocks.verifyPassword.mockResolvedValue(false)
+    mocks.verifyPassword.mockClear()
     mocks.resolveUserAccess.mockResolvedValue({
       accessCodes: [],
       menus: [],
       isAdmin: false,
     })
+    mocks.resolveUserAccess.mockClear()
   })
 
   it('uses password verification work for unknown-user login failures', async () => {

@@ -14,6 +14,7 @@ import {
   AuthAccessTokenExpiredError,
   AuthInvalidCredentialsError,
   AuthInvalidCurrentPasswordError,
+  AuthLoginRateLimitedError,
   AuthInvalidRefreshTokenError,
   AuthUnauthorizedError,
 } from './errors'
@@ -37,6 +38,17 @@ async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
 
     throw error
   }
+}
+
+function isLoginAttemptLocked(
+  bucket: { lockedUntil: Date | null } | undefined,
+  now: Date,
+) {
+  return (
+    bucket?.lockedUntil !== null &&
+    bucket?.lockedUntil !== undefined &&
+    bucket.lockedUntil > now
+  )
 }
 
 export function createAuthService(database: Db, config: AuthConfig) {
@@ -76,13 +88,29 @@ export function createAuthService(database: Db, config: AuthConfig) {
 
   return {
     async login(input: AuthLoginInput) {
+      const now = new Date()
+      const bucket = await repository.findLoginAttemptBucketByUsername(input.username)
+
+      if (isLoginAttemptLocked(bucket, now)) {
+        throw new AuthLoginRateLimitedError()
+      }
+
       const account = await repository.findActiveUserCredentialByUsername(input.username)
       const passwordHash = account?.credential.passwordHash ?? dummyPasswordHash
       const passwordMatches = await verifyPassword(input.password, passwordHash)
 
       if (!account || account.user.status !== USER_STATUS_ENABLED || !passwordMatches) {
+        await repository.recordLoginFailure({
+          username: input.username,
+          now,
+          maxAttempts: config.loginFailureMaxAttempts,
+          windowSeconds: config.loginFailureWindowSeconds,
+          lockSeconds: config.loginFailureLockSeconds,
+        })
         throw new AuthInvalidCredentialsError()
       }
+
+      await repository.clearLoginAttemptBucket(input.username)
 
       const user = toUser(account.user, account.departments, account.roles)
 

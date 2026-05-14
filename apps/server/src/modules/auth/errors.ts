@@ -7,6 +7,13 @@ export class AuthInvalidCredentialsError extends Error {
   }
 }
 
+export class AuthLoginRateLimitedError extends Error {
+  constructor() {
+    super('登录失败次数过多，请稍后再试')
+    this.name = 'AuthLoginRateLimitedError'
+  }
+}
+
 export class AuthInvalidRefreshTokenError extends Error {
   constructor() {
     super('刷新令牌无效')

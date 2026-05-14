@@ -1,11 +1,15 @@
 import { randomUUID } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { authRefreshTokens, systemUsers } from '../../src/db/schema'
+import { authLoginAttemptBuckets, authRefreshTokens, systemUsers } from '../../src/db/schema'
 import {
   cleanupAuthRefreshTokens,
   startAuthRefreshTokenCleanup,
 } from '../../src/db/maintenance/refresh-token-cleanup'
+import {
+  cleanupAuthLoginAttemptBuckets,
+  startAuthLoginAttemptCleanup,
+} from '../../src/db/maintenance/login-attempt-cleanup'
 import { createTestDb } from '../helpers/db'
 
 const hourMs = 60 * 60 * 1000
@@ -92,6 +96,61 @@ describe('database maintenance', () => {
     ])
   })
 
+  it('removes login attempt buckets outside the retention window', async () => {
+    const database = await createTestDb()
+    const now = new Date()
+
+    await database.insert(authLoginAttemptBuckets).values([
+      {
+        username: 'expired-open-window',
+        failedCount: 1,
+        windowStartedAt: new Date(now.getTime() - 25 * hourMs),
+        lastFailedAt: new Date(now.getTime() - 25 * hourMs),
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        username: 'expired-lock',
+        failedCount: 5,
+        windowStartedAt: new Date(now.getTime() - 48 * hourMs),
+        lastFailedAt: new Date(now.getTime() - 48 * hourMs),
+        lockedUntil: new Date(now.getTime() - 25 * hourMs),
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        username: 'recent-open-window',
+        failedCount: 1,
+        windowStartedAt: new Date(now.getTime() - hourMs),
+        lastFailedAt: new Date(now.getTime() - hourMs),
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        username: 'recent-lock',
+        failedCount: 5,
+        windowStartedAt: new Date(now.getTime() - 2 * hourMs),
+        lastFailedAt: new Date(now.getTime() - 2 * hourMs),
+        lockedUntil: new Date(now.getTime() - hourMs),
+        createdAt: now,
+        updatedAt: now,
+      },
+    ])
+
+    const deletedCount = await cleanupAuthLoginAttemptBuckets(database, 24 * hourMs)
+
+    const remaining = await database
+      .select({ username: authLoginAttemptBuckets.username })
+      .from(authLoginAttemptBuckets)
+      .orderBy(authLoginAttemptBuckets.username)
+
+    expect(deletedCount).toBe(2)
+    expect(remaining.map((bucket) => bucket.username)).toEqual([
+      'recent-lock',
+      'recent-open-window',
+    ])
+  })
+
   it('runs refresh token cleanup after the previous run finishes', async () => {
     vi.useFakeTimers()
     vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', '50')
@@ -146,6 +205,25 @@ describe('database maintenance', () => {
 
     const returning = vi.fn(() => Promise.resolve([]))
     const worker = startAuthRefreshTokenCleanup({
+      delete: vi.fn(() => ({
+        where: vi.fn(() => ({
+          returning,
+        })),
+      })),
+    } as never)
+
+    await vi.advanceTimersByTimeAsync(0)
+    await worker.stop()
+
+    expect(returning).not.toHaveBeenCalled()
+  })
+
+  it('keeps login attempt cleanup disabled when the interval is zero', async () => {
+    vi.useFakeTimers()
+    vi.stubEnv('AUTH_LOGIN_ATTEMPT_CLEANUP_INTERVAL_MS', '0')
+
+    const returning = vi.fn(() => Promise.resolve([]))
+    const worker = startAuthLoginAttemptCleanup({
       delete: vi.fn(() => ({
         where: vi.fn(() => ({
           returning,

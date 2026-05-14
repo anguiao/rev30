@@ -3,7 +3,6 @@
 ## 项目约定
 
 - 对话和项目文档使用中文，代码与注释使用英文。
-- 仅当用户明确提及时，才使用 Superpowers 相关技能。
 - 使用 pnpm workspace；内部包依赖保持 `workspace:*`。
 - 前端位于 `apps/client`，基于 Vue 3 + Vite。
 - 优先使用 Naive UI 组件，非必要不覆盖样式；优先复用已定义的主题工具类，避免硬编码等效值。

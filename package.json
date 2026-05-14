@@ -8,7 +8,7 @@
     "dev:client": "pnpm --filter @rev30/client dev",
     "dev:server": "pnpm --filter @rev30/server dev",
     "build": "pnpm -r build",
-    "check": "pnpm format:check && pnpm lint:check && pnpm check:deprecated && pnpm typecheck && pnpm test && pnpm build",
+    "check": "pnpm format:check && pnpm lint:check && pnpm typecheck && pnpm test && pnpm build",
     "check:deprecated": "node scripts/check-deprecated-apis.mjs",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",

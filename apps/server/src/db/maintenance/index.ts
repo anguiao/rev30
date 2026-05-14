@@ -8,10 +8,18 @@ export type DbMaintenance = {
 }
 
 export function startDbMaintenance(database: Db): DbMaintenance {
-  const workers: MaintenanceWorker[] = [
-    startAuthRefreshTokenCleanup(database),
-    startAuthLoginAttemptCleanup(database),
-  ]
+  const workers: MaintenanceWorker[] = []
+
+  try {
+    workers.push(startAuthRefreshTokenCleanup(database))
+    workers.push(startAuthLoginAttemptCleanup(database))
+  } catch (error) {
+    for (const worker of workers) {
+      worker.stop()
+    }
+
+    throw error
+  }
 
   return {
     async stop() {

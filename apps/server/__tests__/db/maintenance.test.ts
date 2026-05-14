@@ -10,6 +10,7 @@ import {
   cleanupAuthLoginAttemptBuckets,
   startAuthLoginAttemptCleanup,
 } from '../../src/db/maintenance/login-attempt-cleanup'
+import { startDbMaintenance } from '../../src/db/maintenance'
 import { createTestDb } from '../helpers/db'
 
 const hourMs = 60 * 60 * 1000
@@ -233,6 +234,29 @@ describe('database maintenance', () => {
 
     await vi.advanceTimersByTimeAsync(0)
     await worker.stop()
+
+    expect(returning).not.toHaveBeenCalled()
+  })
+
+  it('stops earlier maintenance workers when a later worker fails to start', async () => {
+    vi.useFakeTimers()
+    vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', '50')
+    vi.stubEnv('AUTH_LOGIN_ATTEMPT_RETENTION_MS', '-1')
+
+    const returning = vi.fn(() => Promise.resolve([]))
+    const database = {
+      delete: vi.fn(() => ({
+        where: vi.fn(() => ({
+          returning,
+        })),
+      })),
+    } as never
+
+    expect(() => {
+      startDbMaintenance(database)
+    }).toThrow('AUTH_LOGIN_ATTEMPT_RETENTION_MS 必须是 0 或正整数毫秒值')
+
+    await vi.advanceTimersByTimeAsync(0)
 
     expect(returning).not.toHaveBeenCalled()
   })

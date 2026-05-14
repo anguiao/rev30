@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { AuthProfileUpdateInput } from '@rev30/shared'
-import { and, eq, gt, isNull, ne } from 'drizzle-orm'
+import { and, eq, gt, isNull, ne, sql } from 'drizzle-orm'
 import type { Db } from '../../db'
 import {
   authLoginAttemptBuckets,
@@ -125,53 +125,47 @@ export function createAuthRepository(database: Db) {
 
     async recordLoginFailure(input: RecordLoginFailureInput) {
       const windowCutoff = new Date(input.now.getTime() - input.windowSeconds * 1000)
+      const lockUntil = new Date(input.now.getTime() + input.lockSeconds * 1000)
+      const shouldResetSql = sql`(
+        ${authLoginAttemptBuckets.windowStartedAt} <= ${windowCutoff}
+        or (
+          ${authLoginAttemptBuckets.lockedUntil} is not null
+          and ${authLoginAttemptBuckets.lockedUntil} <= ${input.now}
+        )
+      )`
+      const nextFailedCountSql = sql<number>`case
+        when ${shouldResetSql} then 1
+        else ${authLoginAttemptBuckets.failedCount} + 1
+      end`
 
-      return await database.transaction(async (tx) => {
-        const [bucket] = await tx
-          .select()
-          .from(authLoginAttemptBuckets)
-          .where(eq(authLoginAttemptBuckets.username, input.username))
-          .limit(1)
-          .for('update')
-
-        const shouldReset =
-          !bucket ||
-          bucket.windowStartedAt <= windowCutoff ||
-          (bucket.lockedUntil !== null && bucket.lockedUntil <= input.now)
-        const failedCount = shouldReset ? 1 : bucket.failedCount + 1
-        const lockedUntil =
-          failedCount >= input.maxAttempts
-            ? new Date(input.now.getTime() + input.lockSeconds * 1000)
-            : null
-
-        if (!bucket) {
-          const [created] = await tx
-            .insert(authLoginAttemptBuckets)
-            .values({
-              username: input.username,
-              failedCount,
-              windowStartedAt: input.now,
-              lastFailedAt: input.now,
-              lockedUntil,
-            })
-            .returning()
-
-          return created
-        }
-
-        const [updated] = await tx
-          .update(authLoginAttemptBuckets)
-          .set({
-            failedCount,
-            windowStartedAt: shouldReset ? input.now : bucket.windowStartedAt,
+      const rows = await database
+        .insert(authLoginAttemptBuckets)
+        .values({
+          username: input.username,
+          failedCount: 1,
+          windowStartedAt: input.now,
+          lastFailedAt: input.now,
+          lockedUntil: input.maxAttempts <= 1 ? lockUntil : null,
+        })
+        .onConflictDoUpdate({
+          target: authLoginAttemptBuckets.username,
+          set: {
+            failedCount: nextFailedCountSql,
+            windowStartedAt: sql<Date>`case
+              when ${shouldResetSql} then ${input.now}
+              else ${authLoginAttemptBuckets.windowStartedAt}
+            end`,
             lastFailedAt: input.now,
-            lockedUntil,
-          })
-          .where(eq(authLoginAttemptBuckets.username, input.username))
-          .returning()
+            lockedUntil: sql<Date | null>`case
+              when ${nextFailedCountSql} >= ${input.maxAttempts} then ${lockUntil}::timestamptz
+              else null::timestamptz
+            end`,
+            updatedAt: input.now,
+          },
+        })
+        .returning()
 
-        return updated
-      })
+      return rows[0]
     },
 
     async clearLoginAttemptBucket(username: string) {

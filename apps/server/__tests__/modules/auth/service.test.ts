@@ -317,6 +317,34 @@ describe('auth service', () => {
     ).rejects.toBe(accessError)
 
     expect(mocks.repository.createRefreshSession).not.toHaveBeenCalled()
+    expect(mocks.repository.clearLoginAttemptBucket).not.toHaveBeenCalled()
+  })
+
+  it('does not clear failed login attempts when refresh session creation fails', async () => {
+    mocks.repository.findActiveUserCredentialByUsername.mockResolvedValue({
+      credential: {
+        userId: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        passwordHash: 'stored-password-hash',
+        createdAt: new Date('2026-04-30T00:00:00.000Z'),
+        updatedAt: new Date('2026-04-30T00:00:00.000Z'),
+      },
+      departments: [],
+      roles: [],
+      user: createUserRow(),
+    })
+    mocks.verifyPassword.mockResolvedValue(true)
+    const sessionError = new Error('create refresh session failed')
+    mocks.repository.createRefreshSession.mockRejectedValue(sessionError)
+
+    const service = createAuthService({} as never, config)
+    await expect(
+      service.login({
+        username: 'ada',
+        password: 'secret-password',
+      }),
+    ).rejects.toBe(sessionError)
+
+    expect(mocks.repository.clearLoginAttemptBucket).not.toHaveBeenCalled()
   })
 
   it('does not hide refresh session revoke failures during logout', async () => {

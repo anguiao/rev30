@@ -110,11 +110,11 @@ export function createAuthService(database: Db, config: AuthConfig) {
         throw new AuthInvalidCredentialsError()
       }
 
+      const user = toUser(account.user, account.departments, account.roles)
+      const session = await createAuthSession(user)
       await repository.clearLoginAttemptBucket(input.username)
 
-      const user = toUser(account.user, account.departments, account.roles)
-
-      return createAuthSession(user)
+      return session
     },
 
     async refresh(refreshToken: string | undefined) {

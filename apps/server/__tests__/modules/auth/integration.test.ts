@@ -312,6 +312,41 @@ describe('auth routes', () => {
     expect(locked.body).toEqual({ message: '登录失败次数过多，请稍后再试' })
     expect(locked.response.headers.get('set-cookie')).toBeNull()
 
+    await createPasswordAccount(database, {
+      username: 'clear-bucket-login-user',
+      password: 'secret-password',
+    })
+
+    const clearBucketFailed = await login(app, {
+      username: 'clear-bucket-login-user',
+      password: 'wrong-password',
+    })
+
+    expect(clearBucketFailed.response.status).toBe(401)
+    expect(clearBucketFailed.body).toEqual({ message: '用户名或密码错误' })
+
+    const failedBuckets = await database
+      .select()
+      .from(authLoginAttemptBuckets)
+      .where(eq(authLoginAttemptBuckets.username, 'clear-bucket-login-user'))
+
+    expect(failedBuckets).toHaveLength(1)
+
+    const clearBucketSuccess = await login(app, {
+      username: 'clear-bucket-login-user',
+      password: 'secret-password',
+    })
+
+    expect(clearBucketSuccess.response.status).toBe(200)
+    expect(clearBucketSuccess.response.headers.get('set-cookie')).toContain('refresh_token=')
+
+    const clearedBuckets = await database
+      .select()
+      .from(authLoginAttemptBuckets)
+      .where(eq(authLoginAttemptBuckets.username, 'clear-bucket-login-user'))
+
+    expect(clearedBuckets).toHaveLength(0)
+
     const unaffectedUser = await createPasswordAccount(database, {
       username: 'unaffected-login-user',
       password: 'secret-password',
@@ -333,6 +368,7 @@ describe('auth routes', () => {
     })
 
     expect(recovered.response.status).toBe(200)
+    expect(recovered.response.headers.get('set-cookie')).toContain('refresh_token=')
 
     const remainingBuckets = await database
       .select()

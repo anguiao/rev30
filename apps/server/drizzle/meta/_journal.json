@@ -78,6 +78,13 @@
       "when": 1778640412001,
       "tag": "0010_add_auth_refresh_token_cleanup_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1778772692273,
+      "tag": "0011_add_auth_login_attempt_buckets",
+      "breakpoints": true
     }
   ]
 }

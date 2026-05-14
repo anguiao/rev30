@@ -105,6 +105,22 @@ export const authRefreshTokens = pgTable(
   ],
 )
 
+export const authLoginAttemptBuckets = pgTable(
+  'auth_login_attempt_buckets',
+  {
+    username: text('username').primaryKey(),
+    failedCount: integer('failed_count').notNull(),
+    windowStartedAt: timestamp('window_started_at', timestampOptions).notNull(),
+    lastFailedAt: timestamp('last_failed_at', timestampOptions).notNull(),
+    lockedUntil: timestamp('locked_until', timestampOptions),
+    ...mutableTimestamps(),
+  },
+  (table) => [
+    index('auth_login_attempt_buckets_locked_until_idx').on(table.lockedUntil),
+    index('auth_login_attempt_buckets_window_started_at_idx').on(table.windowStartedAt),
+  ],
+)
+
 export const systemDepartments = pgTable(
   'system_departments',
   {

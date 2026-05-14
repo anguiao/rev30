@@ -70,6 +70,15 @@ describe('PGlite migration runner', () => {
         code: 'system',
         name: '系统管理',
       })
+
+      await client.query(
+        `
+          insert into "auth_login_attempt_buckets"
+            ("username", "failed_count", "window_started_at", "last_failed_at", "created_at", "updated_at")
+          values
+            ('migrated-login-attempt', 1, now(), now(), now(), now())
+        `,
+      )
     } finally {
       await client.close()
     }

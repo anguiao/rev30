@@ -10,6 +10,29 @@ describe('auth config', () => {
     })
   })
 
+  it('uses login failure rate limit defaults', () => {
+    expect(readAuthConfig({ NODE_ENV: 'test' })).toMatchObject({
+      loginFailureMaxAttempts: 5,
+      loginFailureWindowSeconds: 900,
+      loginFailureLockSeconds: 900,
+    })
+  })
+
+  it('reads login failure rate limit settings from env', () => {
+    expect(
+      readAuthConfig({
+        NODE_ENV: 'test',
+        AUTH_LOGIN_FAILURE_MAX_ATTEMPTS: '7',
+        AUTH_LOGIN_FAILURE_WINDOW_SECONDS: '300',
+        AUTH_LOGIN_FAILURE_LOCK_SECONDS: '600',
+      }),
+    ).toMatchObject({
+      loginFailureMaxAttempts: 7,
+      loginFailureWindowSeconds: 300,
+      loginFailureLockSeconds: 600,
+    })
+  })
+
   it('requires explicit secrets in production', () => {
     expect(() => readAuthConfig({ NODE_ENV: 'production' })).toThrow(
       '生产环境必须设置 JWT_ACCESS_SECRET',
@@ -30,6 +53,9 @@ describe('auth config', () => {
       refreshSecret: 'refresh-secret',
       accessExpiresInSeconds: 60,
       refreshExpiresInSeconds: 120,
+      loginFailureMaxAttempts: 5,
+      loginFailureWindowSeconds: 900,
+      loginFailureLockSeconds: 900,
       secureCookies: true,
     })
   })

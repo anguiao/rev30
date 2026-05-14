@@ -126,14 +126,22 @@ export function createAuthRepository(database: Db) {
     async recordLoginFailure(input: RecordLoginFailureInput) {
       const windowCutoff = new Date(input.now.getTime() - input.windowSeconds * 1000)
       const lockUntil = new Date(input.now.getTime() + input.lockSeconds * 1000)
+      const activeLockSql = sql`(
+        ${authLoginAttemptBuckets.lockedUntil} is not null
+        and ${authLoginAttemptBuckets.lockedUntil} > ${input.now}
+      )`
       const shouldResetSql = sql`(
-        ${authLoginAttemptBuckets.windowStartedAt} <= ${windowCutoff}
+        (
+          ${authLoginAttemptBuckets.windowStartedAt} <= ${windowCutoff}
+          and not ${activeLockSql}
+        )
         or (
           ${authLoginAttemptBuckets.lockedUntil} is not null
           and ${authLoginAttemptBuckets.lockedUntil} <= ${input.now}
         )
       )`
       const nextFailedCountSql = sql<number>`case
+        when ${activeLockSql} then ${authLoginAttemptBuckets.failedCount}
         when ${shouldResetSql} then 1
         else ${authLoginAttemptBuckets.failedCount} + 1
       end`
@@ -152,11 +160,13 @@ export function createAuthRepository(database: Db) {
           set: {
             failedCount: nextFailedCountSql,
             windowStartedAt: sql<Date>`case
+              when ${activeLockSql} then ${authLoginAttemptBuckets.windowStartedAt}
               when ${shouldResetSql} then ${input.now}
               else ${authLoginAttemptBuckets.windowStartedAt}
             end`,
             lastFailedAt: input.now,
             lockedUntil: sql<Date | null>`case
+              when ${activeLockSql} then ${authLoginAttemptBuckets.lockedUntil}
               when ${nextFailedCountSql} >= ${input.maxAttempts} then ${lockUntil}::timestamptz
               else null::timestamptz
             end`,

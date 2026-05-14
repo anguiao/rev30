@@ -563,6 +563,55 @@ describe('auth routes', () => {
     })
   })
 
+  it('keeps active login failure lock when stale write sees expired window', async () => {
+    const database = await createTestDb()
+    const repository = createAuthRepository(database)
+    const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
+    const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
+    const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
+    const staleAttempt = new Date('2026-05-14T00:16:00.000Z')
+    const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
+
+    await repository.recordLoginFailure({
+      username: 'stale-lock-user',
+      now: firstAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.recordLoginFailure({
+      username: 'stale-lock-user',
+      now: secondAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.recordLoginFailure({
+      username: 'stale-lock-user',
+      now: thirdAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+    await repository.recordLoginFailure({
+      username: 'stale-lock-user',
+      now: staleAttempt,
+      maxAttempts: 3,
+      windowSeconds: 900,
+      lockSeconds: 900,
+    })
+
+    const bucket = await repository.findLoginAttemptBucketByUsername('stale-lock-user')
+
+    expect(bucket).toMatchObject({
+      username: 'stale-lock-user',
+      failedCount: 3,
+      windowStartedAt: firstAttempt,
+      lastFailedAt: staleAttempt,
+      lockedUntil: expectedLockUntil,
+    })
+  })
+
   it('returns role summaries on login', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)

@@ -13,6 +13,7 @@ import {
   RESOURCE_TYPE_MENU,
   type Resource,
   type ResourceListResponse,
+  type ResourceTreeOptionsResponse,
   type ResourceTreeNode,
 } from '@rev30/shared'
 import { systemRoleResources, systemRoles, systemResources } from '../../../../src/db/schema'
@@ -287,6 +288,204 @@ describe('resource routes', () => {
         }),
       ]),
     )
+  })
+
+  it('returns lightweight resource tree options with enabled and non-deleted nodes by default', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: root } = await createResource(app, {
+      type: RESOURCE_TYPE_DIRECTORY,
+      name: 'System',
+      code: 'test-system',
+      status: RESOURCE_STATUS_ENABLED,
+      sortOrder: 1,
+    })
+    const { body: enabledChild } = await createResource(app, {
+      type: RESOURCE_TYPE_ACTION,
+      name: 'Create',
+      code: 'test-system:create',
+      parentId: root.id,
+      status: RESOURCE_STATUS_ENABLED,
+      sortOrder: 2,
+    })
+    const { body: disabledChild } = await createResource(app, {
+      type: RESOURCE_TYPE_ACTION,
+      name: 'Disabled',
+      code: 'test-system:disabled',
+      parentId: root.id,
+      status: RESOURCE_STATUS_DISABLED,
+      sortOrder: 3,
+    })
+
+    await app.request(`/api/system/resources/${disabledChild.id}`, { method: 'DELETE' })
+
+    const response = await app.request('/api/system/resources/options/tree')
+    const body = (await response.json()) as ResourceTreeOptionsResponse
+
+    expect(response.status).toBe(200)
+    const rootNode = body.find((item) => item.id === root.id)
+    expect(rootNode).toMatchObject({
+      id: root.id,
+      parentId: null,
+      type: RESOURCE_TYPE_DIRECTORY,
+      name: 'System',
+      code: 'test-system',
+      status: RESOURCE_STATUS_ENABLED,
+      children: [
+        {
+          id: enabledChild.id,
+          parentId: root.id,
+          type: RESOURCE_TYPE_ACTION,
+          name: 'Create',
+          code: 'test-system:create',
+          status: RESOURCE_STATUS_ENABLED,
+          children: [],
+        },
+      ],
+    })
+    expect(rootNode).not.toHaveProperty('path')
+    expect(rootNode).not.toHaveProperty('externalUrl')
+    expect(rootNode).not.toHaveProperty('openTarget')
+    expect(rootNode).not.toHaveProperty('icon')
+    expect(rootNode).not.toHaveProperty('hidden')
+    expect(rootNode).not.toHaveProperty('sortOrder')
+    expect(rootNode).not.toHaveProperty('createdAt')
+    expect(rootNode).not.toHaveProperty('updatedAt')
+  })
+
+  it('does not expose disabled parent when only enabled descendant matches default options tree', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: disabledParent } = await createResource(app, {
+      type: RESOURCE_TYPE_DIRECTORY,
+      name: 'Disabled Parent',
+      code: 'disabled-parent-default',
+      status: RESOURCE_STATUS_DISABLED,
+    })
+    const { body: enabledChild } = await createResource(app, {
+      type: RESOURCE_TYPE_ACTION,
+      name: 'Enabled Child',
+      code: 'enabled-child-default',
+      parentId: disabledParent.id,
+      status: RESOURCE_STATUS_ENABLED,
+    })
+
+    const response = await app.request('/api/system/resources/options/tree')
+    const body = (await response.json()) as ResourceTreeOptionsResponse
+
+    expect(response.status).toBe(200)
+    expect(JSON.stringify(body)).not.toContain(disabledParent.id)
+    expect(JSON.stringify(body)).not.toContain(enabledChild.id)
+  })
+
+  it('includes disabled resources and required non-deleted ancestors when includeIds is provided', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: enabledRoot } = await createResource(app, {
+      type: RESOURCE_TYPE_DIRECTORY,
+      name: 'Enabled Root',
+      code: 'enabled-root',
+      status: RESOURCE_STATUS_ENABLED,
+      sortOrder: 10,
+    })
+    const { body: disabledRoot } = await createResource(app, {
+      type: RESOURCE_TYPE_DIRECTORY,
+      name: 'Disabled Root',
+      code: 'disabled-root',
+      status: RESOURCE_STATUS_DISABLED,
+      sortOrder: 20,
+    })
+    const { body: disabledParent } = await createResource(app, {
+      type: RESOURCE_TYPE_MENU,
+      name: 'Disabled Parent',
+      code: 'disabled-parent',
+      parentId: disabledRoot.id,
+      path: '/disabled-parent',
+      status: RESOURCE_STATUS_DISABLED,
+      sortOrder: 1,
+    })
+    const { body: disabledLeaf } = await createResource(app, {
+      type: RESOURCE_TYPE_ACTION,
+      name: 'Disabled Leaf',
+      code: 'disabled-leaf',
+      parentId: disabledParent.id,
+      status: RESOURCE_STATUS_DISABLED,
+      sortOrder: 1,
+    })
+    const { body: deletedLeaf } = await createResource(app, {
+      type: RESOURCE_TYPE_ACTION,
+      name: 'Deleted Leaf',
+      code: 'deleted-leaf',
+      parentId: enabledRoot.id,
+      status: RESOURCE_STATUS_DISABLED,
+    })
+
+    await app.request(`/api/system/resources/${deletedLeaf.id}`, { method: 'DELETE' })
+
+    const response = await app.request(
+      `/api/system/resources/options/tree?includeIds=${disabledLeaf.id},${deletedLeaf.id},${randomUUID()}`,
+    )
+    const body = (await response.json()) as ResourceTreeOptionsResponse
+
+    expect(response.status).toBe(200)
+    const disabledRootNode = body.find((item) => item.id === disabledRoot.id)
+    const enabledRootNode = body.find((item) => item.id === enabledRoot.id)
+    expect(disabledRootNode).toMatchObject({
+      id: disabledRoot.id,
+      status: RESOURCE_STATUS_DISABLED,
+      children: [
+        {
+          id: disabledParent.id,
+          status: RESOURCE_STATUS_DISABLED,
+          children: [
+            {
+              id: disabledLeaf.id,
+              status: RESOURCE_STATUS_DISABLED,
+              children: [],
+            },
+          ],
+        },
+      ],
+    })
+    expect(enabledRootNode).toMatchObject({
+      id: enabledRoot.id,
+      status: RESOURCE_STATUS_ENABLED,
+    })
+    expect(JSON.stringify(body)).not.toContain(deletedLeaf.id)
+  })
+
+  it('does not include includeIds nodes when required ancestor is deleted', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: deletedParent } = await createResource(app, {
+      type: RESOURCE_TYPE_DIRECTORY,
+      name: 'Deleted Parent',
+      code: 'deleted-parent',
+      status: RESOURCE_STATUS_DISABLED,
+    })
+    const { body: includedChild } = await createResource(app, {
+      type: RESOURCE_TYPE_ACTION,
+      name: 'Included Child',
+      code: 'included-child',
+      parentId: deletedParent.id,
+      status: RESOURCE_STATUS_DISABLED,
+    })
+
+    await database
+      .update(systemResources)
+      .set({
+        deletedAt: new Date(),
+      })
+      .where(eq(systemResources.id, deletedParent.id))
+
+    const response = await app.request(
+      `/api/system/resources/options/tree?includeIds=${includedChild.id}`,
+    )
+    const body = (await response.json()) as ResourceTreeOptionsResponse
+
+    expect(response.status).toBe(200)
+    expect(JSON.stringify(body)).not.toContain(deletedParent.id)
+    expect(JSON.stringify(body)).not.toContain(includedChild.id)
   })
 
   it('updates resource fields, normalizes type-specific fields, and rejects circular moves', async () => {

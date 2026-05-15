@@ -7,6 +7,7 @@ import {
   DEPARTMENT_STATUS_ENABLED,
   type Department,
   type DepartmentListResponse,
+  type DepartmentTreeOptionsResponse,
   type DepartmentTreeNode,
 } from '@rev30/shared'
 import { systemDepartments, systemUserDepartments, systemUsers } from '../../../../src/db/schema'
@@ -182,6 +183,186 @@ describe('department routes', () => {
       code: 'engineering',
       children: [],
     })
+  })
+
+  it('returns lightweight department tree options with enabled and non-deleted nodes by default', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: root } = await createDepartment(app, {
+      name: 'Company',
+      code: 'company',
+      status: DEPARTMENT_STATUS_ENABLED,
+      sortOrder: 1,
+    })
+    const { body: enabledChild } = await createDepartment(app, {
+      name: 'Engineering',
+      code: 'engineering',
+      parentId: root.id,
+      status: DEPARTMENT_STATUS_ENABLED,
+      sortOrder: 2,
+    })
+    const { body: disabledChild } = await createDepartment(app, {
+      name: 'Disabled',
+      code: 'disabled',
+      parentId: root.id,
+      status: DEPARTMENT_STATUS_DISABLED,
+      sortOrder: 3,
+    })
+
+    await app.request(`/api/system/departments/${disabledChild.id}`, { method: 'DELETE' })
+
+    const response = await app.request('/api/system/departments/options/tree')
+    const body = (await response.json()) as DepartmentTreeOptionsResponse
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual([
+      {
+        id: root.id,
+        parentId: null,
+        name: 'Company',
+        code: 'company',
+        status: DEPARTMENT_STATUS_ENABLED,
+        children: [
+          {
+            id: enabledChild.id,
+            parentId: root.id,
+            name: 'Engineering',
+            code: 'engineering',
+            status: DEPARTMENT_STATUS_ENABLED,
+            children: [],
+          },
+        ],
+      },
+    ])
+    expect(body[0]).not.toHaveProperty('sortOrder')
+    expect(body[0]).not.toHaveProperty('createdAt')
+    expect(body[0]).not.toHaveProperty('updatedAt')
+  })
+
+  it('does not expose disabled parent when only enabled descendant matches default options tree', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: disabledParent } = await createDepartment(app, {
+      name: 'Disabled Parent',
+      code: 'disabled-parent-default',
+      status: DEPARTMENT_STATUS_DISABLED,
+    })
+    const { body: enabledChild } = await createDepartment(app, {
+      name: 'Enabled Child',
+      code: 'enabled-child-default',
+      parentId: disabledParent.id,
+      status: DEPARTMENT_STATUS_ENABLED,
+    })
+
+    const response = await app.request('/api/system/departments/options/tree')
+    const body = (await response.json()) as DepartmentTreeOptionsResponse
+
+    expect(response.status).toBe(200)
+    expect(JSON.stringify(body)).not.toContain(disabledParent.id)
+    expect(JSON.stringify(body)).not.toContain(enabledChild.id)
+  })
+
+  it('includes disabled departments and required non-deleted ancestors when includeIds is provided', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: enabledRoot } = await createDepartment(app, {
+      name: 'Enabled Root',
+      code: 'enabled-root',
+      status: DEPARTMENT_STATUS_ENABLED,
+      sortOrder: 10,
+    })
+    const { body: disabledRoot } = await createDepartment(app, {
+      name: 'Disabled Root',
+      code: 'disabled-root',
+      status: DEPARTMENT_STATUS_DISABLED,
+      sortOrder: 20,
+    })
+    const { body: disabledParent } = await createDepartment(app, {
+      name: 'Disabled Parent',
+      code: 'disabled-parent',
+      parentId: disabledRoot.id,
+      status: DEPARTMENT_STATUS_DISABLED,
+      sortOrder: 1,
+    })
+    const { body: disabledLeaf } = await createDepartment(app, {
+      name: 'Disabled Leaf',
+      code: 'disabled-leaf',
+      parentId: disabledParent.id,
+      status: DEPARTMENT_STATUS_DISABLED,
+      sortOrder: 1,
+    })
+    const { body: deletedLeaf } = await createDepartment(app, {
+      name: 'Deleted Leaf',
+      code: 'deleted-leaf',
+      parentId: enabledRoot.id,
+      status: DEPARTMENT_STATUS_DISABLED,
+    })
+
+    await app.request(`/api/system/departments/${deletedLeaf.id}`, { method: 'DELETE' })
+
+    const response = await app.request(
+      `/api/system/departments/options/tree?includeIds=${disabledLeaf.id},${deletedLeaf.id},${randomUUID()}`,
+    )
+    const body = (await response.json()) as DepartmentTreeOptionsResponse
+
+    expect(response.status).toBe(200)
+    expect(body).toHaveLength(2)
+    const disabledRootNode = body.find((item) => item.id === disabledRoot.id)
+    const enabledRootNode = body.find((item) => item.id === enabledRoot.id)
+    expect(disabledRootNode).toMatchObject({
+      id: disabledRoot.id,
+      status: DEPARTMENT_STATUS_DISABLED,
+      children: [
+        {
+          id: disabledParent.id,
+          status: DEPARTMENT_STATUS_DISABLED,
+          children: [
+            {
+              id: disabledLeaf.id,
+              status: DEPARTMENT_STATUS_DISABLED,
+              children: [],
+            },
+          ],
+        },
+      ],
+    })
+    expect(enabledRootNode).toMatchObject({
+      id: enabledRoot.id,
+      status: DEPARTMENT_STATUS_ENABLED,
+    })
+    expect(JSON.stringify(body)).not.toContain(deletedLeaf.id)
+  })
+
+  it('does not include includeIds nodes when required ancestor is deleted', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: deletedParent } = await createDepartment(app, {
+      name: 'Deleted Parent',
+      code: 'deleted-parent',
+      status: DEPARTMENT_STATUS_DISABLED,
+    })
+    const { body: includedChild } = await createDepartment(app, {
+      name: 'Included Child',
+      code: 'included-child',
+      parentId: deletedParent.id,
+      status: DEPARTMENT_STATUS_DISABLED,
+    })
+
+    await database
+      .update(systemDepartments)
+      .set({
+        deletedAt: new Date(),
+      })
+      .where(eq(systemDepartments.id, deletedParent.id))
+
+    const response = await app.request(
+      `/api/system/departments/options/tree?includeIds=${includedChild.id}`,
+    )
+    const body = (await response.json()) as DepartmentTreeOptionsResponse
+
+    expect(response.status).toBe(200)
+    expect(JSON.stringify(body)).not.toContain(deletedParent.id)
+    expect(JSON.stringify(body)).not.toContain(includedChild.id)
   })
 
   it('updates department fields and rejects moving a department under itself or descendants', async () => {

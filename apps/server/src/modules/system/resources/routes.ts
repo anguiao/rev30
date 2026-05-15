@@ -1,10 +1,12 @@
 import {
   type ResourceCreateInput,
   type ResourceListQuery,
+  type ResourceTreeOptionsQuery,
   type ResourceUpdateInput,
   resourceCreateSchema,
   resourceListQuerySchema,
   resourceSchema,
+  resourceTreeOptionsQuerySchema,
   resourceUpdateSchema,
 } from '@rev30/shared'
 import { zValidator } from '@hono/zod-validator'
@@ -36,6 +38,15 @@ const resourceIdValidator = zValidator('param', resourceIdParamSchema, (result, 
 const resourceListQueryValidator = zValidator(
   'query',
   resourceListRequestQuerySchema,
+  (result, c) => {
+    if (!result.success) {
+      return c.json({ message: '查询参数无效' }, 400)
+    }
+  },
+)
+const resourceTreeOptionsQueryValidator = zValidator(
+  'query',
+  resourceTreeOptionsQuerySchema,
   (result, c) => {
     if (!result.success) {
       return c.json({ message: '查询参数无效' }, 400)
@@ -93,6 +104,16 @@ export function createResourceRoutes(database: Db) {
       return c.json(await service.list(query))
     })
     .get('/tree', requireAccess('system:resource:list'), async (c) => c.json(await service.tree()))
+    .get(
+      '/options/tree',
+      requireAccess('system:resource:list'),
+      resourceTreeOptionsQueryValidator,
+      async (c) => {
+        const query: ResourceTreeOptionsQuery = c.req.valid('query')
+
+        return c.json(await service.treeOptions(query))
+      },
+    )
     .get('/:id', requireAccess('system:resource:list'), resourceIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 

@@ -1,6 +1,7 @@
 import type {
   DepartmentCreateInput,
   DepartmentListQuery,
+  DepartmentTreeOptionsQuery,
   DepartmentUpdateInput,
 } from '@rev30/shared'
 import type { Db } from '../../../db'
@@ -11,7 +12,7 @@ import {
   DepartmentNotFoundError,
   toDepartmentConflictError,
 } from './errors'
-import { toDepartment, toDepartmentTree } from './mapper'
+import { toDepartment, toDepartmentTree, toDepartmentTreeOptions } from './mapper'
 import { createDepartmentRepository } from './repository'
 
 async function withDepartmentUniqueConflict<T>(operation: () => Promise<T>) {
@@ -73,6 +74,12 @@ export function createDepartmentService(database: Db) {
       const rows = await repository.listTreeRows()
 
       return toDepartmentTree(rows)
+    },
+
+    async treeOptions(query: DepartmentTreeOptionsQuery) {
+      const rows = await repository.treeOptions(query)
+
+      return toDepartmentTreeOptions(rows)
     },
 
     async get(id: string) {

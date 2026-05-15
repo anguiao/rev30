@@ -1,10 +1,12 @@
 import {
   type DepartmentCreateInput,
   type DepartmentListQuery,
+  type DepartmentTreeOptionsQuery,
   type DepartmentUpdateInput,
   departmentCreateSchema,
   departmentListQuerySchema,
   departmentSchema,
+  departmentTreeOptionsQuerySchema,
   departmentUpdateSchema,
 } from '@rev30/shared'
 import { zValidator } from '@hono/zod-validator'
@@ -34,6 +36,15 @@ const departmentIdValidator = zValidator('param', departmentIdParamSchema, (resu
 const departmentListQueryValidator = zValidator(
   'query',
   departmentListRequestQuerySchema,
+  (result, c) => {
+    if (!result.success) {
+      return c.json({ message: '查询参数无效' }, 400)
+    }
+  },
+)
+const departmentTreeOptionsQueryValidator = zValidator(
+  'query',
+  departmentTreeOptionsQuerySchema,
   (result, c) => {
     if (!result.success) {
       return c.json({ message: '查询参数无效' }, 400)
@@ -90,6 +101,16 @@ export function createDepartmentRoutes(database: Db) {
     })
     .get('/tree', requireAccess('system:department:list'), async (c) =>
       c.json(await service.tree()),
+    )
+    .get(
+      '/options/tree',
+      requireAccess('system:department:list'),
+      departmentTreeOptionsQueryValidator,
+      async (c) => {
+        const query: DepartmentTreeOptionsQuery = c.req.valid('query')
+
+        return c.json(await service.treeOptions(query))
+      },
     )
     .get('/:id', requireAccess('system:department:list'), departmentIdValidator, async (c) => {
       const { id } = c.req.valid('param')

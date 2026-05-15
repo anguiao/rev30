@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto'
-import type { ResourceCreateInput, ResourceListQuery, ResourceUpdateInput } from '@rev30/shared'
-import { and, asc, count, desc, eq, ilike, isNull, or } from 'drizzle-orm'
+import {
+  RESOURCE_STATUS_ENABLED,
+  type ResourceCreateInput,
+  type ResourceListQuery,
+  type ResourceStatus,
+  type ResourceTreeOptionsQuery,
+  type ResourceUpdateInput,
+} from '@rev30/shared'
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
 import { systemRoleResources, systemResources } from '../../../db/schema'
 import {
@@ -8,6 +15,7 @@ import {
   ResourceInvalidParentError,
   ResourceRoleAuthorizationConflictError,
 } from './errors'
+import type { ResourceRow } from './mapper'
 
 function resourceSortOrder() {
   return [
@@ -49,6 +57,46 @@ async function hasRoleAuthorizations(executor: DbReader, id: string) {
 }
 
 export function createResourceRepository(database: Db) {
+  async function findActiveByIds(ids: string[]) {
+    if (ids.length === 0) {
+      return []
+    }
+
+    return await database
+      .select()
+      .from(systemResources)
+      .where(and(inArray(systemResources.id, ids), isNull(systemResources.deletedAt)))
+  }
+
+  async function fillActiveAncestors(rows: ResourceRow[]) {
+    const rowMap = new Map(rows.map((row) => [row.id, row]))
+    let missingParentIds = [...new Set(rows.map((row) => row.parentId).filter((id) => id !== null))]
+
+    while (missingParentIds.length > 0) {
+      const unresolvedParentIds = missingParentIds.filter((id) => !rowMap.has(id))
+
+      if (unresolvedParentIds.length === 0) {
+        break
+      }
+
+      const parentRows = await findActiveByIds(unresolvedParentIds)
+
+      if (parentRows.length === 0) {
+        break
+      }
+
+      for (const parentRow of parentRows) {
+        rowMap.set(parentRow.id, parentRow)
+      }
+
+      missingParentIds = [
+        ...new Set(parentRows.map((row) => row.parentId).filter((id) => id !== null)),
+      ]
+    }
+
+    return rowMap
+  }
+
   return {
     async list(query: ResourceListQuery) {
       const { page, pageSize, keyword, type, status, parentId } = query
@@ -103,11 +151,50 @@ export function createResourceRepository(database: Db) {
       return rows[0]
     },
 
+    findActiveByIds,
+
     async listTreeRows() {
       return await database
         .select()
         .from(systemResources)
         .where(isNull(systemResources.deletedAt))
+        .orderBy(...resourceSortOrder())
+    },
+
+    async treeOptions(query: ResourceTreeOptionsQuery) {
+      const { includeIds } = query
+      const includeIdSet = new Set(includeIds)
+      const enabledStatus = RESOURCE_STATUS_ENABLED as ResourceStatus
+      const baseWhere = and(
+        isNull(systemResources.deletedAt),
+        includeIds.length > 0
+          ? or(eq(systemResources.status, enabledStatus), inArray(systemResources.id, includeIds))
+          : eq(systemResources.status, enabledStatus),
+      )
+      const selectedRows = await database.select().from(systemResources).where(baseWhere)
+      const includeRows = selectedRows.filter((row) => includeIdSet.has(row.id))
+      const enabledRows = selectedRows.filter((row) => row.status === enabledStatus)
+      const ancestorRowsMap = await fillActiveAncestors(includeRows)
+      const rowsMap = new Map<string, ResourceRow>()
+
+      for (const row of enabledRows) {
+        rowsMap.set(row.id, row)
+      }
+
+      for (const [id, row] of ancestorRowsMap) {
+        rowsMap.set(id, row)
+      }
+
+      const rowIds = [...rowsMap.keys()]
+
+      if (rowIds.length === 0) {
+        return []
+      }
+
+      return await database
+        .select()
+        .from(systemResources)
+        .where(and(isNull(systemResources.deletedAt), inArray(systemResources.id, rowIds)))
         .orderBy(...resourceSortOrder())
     },
 

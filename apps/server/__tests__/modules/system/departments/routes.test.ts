@@ -1,7 +1,7 @@
 import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEPARTMENT_STATUS_ENABLED } from '@rev30/shared'
+import { DEPARTMENT_STATUS_ENABLED, DEPARTMENT_STATUS_DISABLED } from '@rev30/shared'
 import {
   DepartmentConflictError,
   DepartmentDeleteConflictError,
@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => {
     get: vi.fn(),
     list: vi.fn(),
     tree: vi.fn(),
+    treeOptions: vi.fn(),
     update: vi.fn(),
   }
 
@@ -62,6 +63,9 @@ describe('department routes', () => {
     mocks.createDepartmentService.mockReturnValue(mocks.service)
     mocks.service.list.mockResolvedValue({ list: [department], total: 1, page: 2, pageSize: 5 })
     mocks.service.tree.mockResolvedValue([{ ...department, children: [] }])
+    mocks.service.treeOptions.mockResolvedValue([
+      { ...department, status: DEPARTMENT_STATUS_DISABLED, children: [] },
+    ])
     mocks.service.get.mockResolvedValue(department)
     mocks.service.create.mockResolvedValue(department)
     mocks.service.update.mockResolvedValue({ ...department, name: 'Platform Engineering' })
@@ -73,6 +77,7 @@ describe('department routes', () => {
 
     expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
       [
+        'system:department:list',
         'system:department:list',
         'system:department:list',
         'system:department:list',
@@ -105,6 +110,36 @@ describe('department routes', () => {
     const treeResponse = await app.request('/api/system/departments/tree')
     expect(treeResponse.status).toBe(200)
     expect(mocks.service.tree).toHaveBeenCalledWith()
+  })
+
+  it('parses tree options query and delegates to the department service', async () => {
+    const app = createTestApp()
+
+    const optionsResponse = await app.request(
+      `/api/system/departments/options/tree?includeIds=${departmentId}`,
+    )
+    expect(optionsResponse.status).toBe(200)
+    expect(mocks.service.treeOptions).toHaveBeenCalledWith({
+      includeIds: [departmentId],
+    })
+  })
+
+  it('returns tree options query validation errors before calling the department service', async () => {
+    const app = createTestApp()
+
+    const optionsResponse = await app.request('/api/system/departments/options/tree?includeIds=bad')
+    expect(optionsResponse.status).toBe(400)
+    expect(await optionsResponse.json()).toEqual({ message: '查询参数无效' })
+    expect(mocks.service.treeOptions).not.toHaveBeenCalled()
+  })
+
+  it('matches static /options/tree before dynamic /:id route', async () => {
+    const app = createTestApp()
+
+    const optionsResponse = await app.request('/api/system/departments/options/tree')
+    expect(optionsResponse.status).toBe(200)
+    expect(mocks.service.treeOptions).toHaveBeenCalledWith({ includeIds: [] })
+    expect(mocks.service.get).not.toHaveBeenCalled()
   })
 
   it('delegates detail requests by id', async () => {

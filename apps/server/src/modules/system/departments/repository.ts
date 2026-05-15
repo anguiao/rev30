@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto'
-import type {
-  DepartmentCreateInput,
-  DepartmentListQuery,
-  DepartmentSummary,
-  DepartmentUpdateInput,
+import {
+  DEPARTMENT_STATUS_ENABLED,
+  type DepartmentCreateInput,
+  type DepartmentListQuery,
+  type DepartmentStatus,
+  type DepartmentSummary,
+  type DepartmentTreeOptionsQuery,
+  type DepartmentUpdateInput,
 } from '@rev30/shared'
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
@@ -104,6 +107,46 @@ async function lockActiveDepartmentById(executor: DbReader, id: string) {
 }
 
 export function createDepartmentRepository(database: Db) {
+  async function findActiveByIds(ids: string[]) {
+    if (ids.length === 0) {
+      return []
+    }
+
+    return await database
+      .select()
+      .from(systemDepartments)
+      .where(and(inArray(systemDepartments.id, ids), isNull(systemDepartments.deletedAt)))
+  }
+
+  async function fillActiveAncestors(rows: DepartmentRow[]) {
+    const rowMap = new Map(rows.map((row) => [row.id, row]))
+    let missingParentIds = [...new Set(rows.map((row) => row.parentId).filter((id) => id !== null))]
+
+    while (missingParentIds.length > 0) {
+      const unresolvedParentIds = missingParentIds.filter((id) => !rowMap.has(id))
+
+      if (unresolvedParentIds.length === 0) {
+        break
+      }
+
+      const parentRows = await findActiveByIds(unresolvedParentIds)
+
+      if (parentRows.length === 0) {
+        break
+      }
+
+      for (const parentRow of parentRows) {
+        rowMap.set(parentRow.id, parentRow)
+      }
+
+      missingParentIds = [
+        ...new Set(parentRows.map((row) => row.parentId).filter((id) => id !== null)),
+      ]
+    }
+
+    return rowMap
+  }
+
   return {
     async list(query: DepartmentListQuery) {
       const { page, pageSize, keyword, status, parentId } = query
@@ -155,16 +198,7 @@ export function createDepartmentRepository(database: Db) {
       return rows[0]
     },
 
-    async findActiveByIds(ids: string[]) {
-      if (ids.length === 0) {
-        return []
-      }
-
-      return await database
-        .select()
-        .from(systemDepartments)
-        .where(and(inArray(systemDepartments.id, ids), isNull(systemDepartments.deletedAt)))
-    },
+    findActiveByIds,
 
     async findActiveChildren(parentId: string) {
       return await database
@@ -179,6 +213,46 @@ export function createDepartmentRepository(database: Db) {
         .select()
         .from(systemDepartments)
         .where(isNull(systemDepartments.deletedAt))
+        .orderBy(...departmentSortOrder())
+    },
+
+    async treeOptions(query: DepartmentTreeOptionsQuery) {
+      const { includeIds } = query
+      const includeIdSet = new Set(includeIds)
+      const enabledStatus = DEPARTMENT_STATUS_ENABLED as DepartmentStatus
+      const baseWhere = and(
+        isNull(systemDepartments.deletedAt),
+        includeIds.length > 0
+          ? or(
+              eq(systemDepartments.status, enabledStatus),
+              inArray(systemDepartments.id, includeIds),
+            )
+          : eq(systemDepartments.status, enabledStatus),
+      )
+      const selectedRows = await database.select().from(systemDepartments).where(baseWhere)
+      const includeRows = selectedRows.filter((row) => includeIdSet.has(row.id))
+      const enabledRows = selectedRows.filter((row) => row.status === enabledStatus)
+      const ancestorRowsMap = await fillActiveAncestors(includeRows)
+      const rowsMap = new Map<string, DepartmentRow>()
+
+      for (const row of enabledRows) {
+        rowsMap.set(row.id, row)
+      }
+
+      for (const [id, row] of ancestorRowsMap) {
+        rowsMap.set(id, row)
+      }
+
+      const rowIds = [...rowsMap.keys()]
+
+      if (rowIds.length === 0) {
+        return []
+      }
+
+      return await database
+        .select()
+        .from(systemDepartments)
+        .where(and(isNull(systemDepartments.deletedAt), inArray(systemDepartments.id, rowIds)))
         .orderBy(...departmentSortOrder())
     },
 

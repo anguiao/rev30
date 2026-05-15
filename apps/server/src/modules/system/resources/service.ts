@@ -8,6 +8,7 @@ import {
   type Resource,
   type ResourceCreateInput,
   type ResourceListQuery,
+  type ResourceTreeOptionsQuery,
   type ResourceUpdateInput,
   resourceExternalUrlSchema,
 } from '@rev30/shared'
@@ -21,7 +22,7 @@ import {
   ResourceNotFoundError,
   toResourceConflictError,
 } from './errors'
-import { toResource, toResourceTree, type ResourceRow } from './mapper'
+import { toResource, toResourceTree, toResourceTreeOptions, type ResourceRow } from './mapper'
 import { createResourceRepository } from './repository'
 
 async function withResourceUniqueConflict<T>(operation: () => Promise<T>) {
@@ -175,6 +176,12 @@ export function createResourceService(database: Db) {
       const rows = await repository.listTreeRows()
 
       return toResourceTree(rows)
+    },
+
+    async treeOptions(query: ResourceTreeOptionsQuery) {
+      const rows = await repository.treeOptions(query)
+
+      return toResourceTreeOptions(rows)
     },
 
     async get(id: string) {

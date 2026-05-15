@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   RESOURCE_OPEN_TARGET_SELF,
+  RESOURCE_STATUS_DISABLED,
   RESOURCE_STATUS_ENABLED,
   RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_MENU,
@@ -45,6 +46,7 @@ const mocks = vi.hoisted(() => {
     get: vi.fn(),
     list: vi.fn(),
     tree: vi.fn(),
+    treeOptions: vi.fn(),
     update: vi.fn(),
   }
 
@@ -76,6 +78,9 @@ describe('resource routes', () => {
     mocks.createResourceService.mockReturnValue(mocks.service)
     mocks.service.list.mockResolvedValue({ list: [resource], total: 1, page: 2, pageSize: 5 })
     mocks.service.tree.mockResolvedValue([{ ...resource, children: [] }])
+    mocks.service.treeOptions.mockResolvedValue([
+      { ...resource, status: RESOURCE_STATUS_DISABLED, children: [] },
+    ])
     mocks.service.get.mockResolvedValue(resource)
     mocks.service.create.mockResolvedValue(resource)
     mocks.service.update.mockResolvedValue({ ...resource, name: 'Settings' })
@@ -87,6 +92,7 @@ describe('resource routes', () => {
 
     expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
       [
+        'system:resource:list',
         'system:resource:list',
         'system:resource:list',
         'system:resource:list',
@@ -120,6 +126,36 @@ describe('resource routes', () => {
     const treeResponse = await app.request('/api/system/resources/tree')
     expect(treeResponse.status).toBe(200)
     expect(mocks.service.tree).toHaveBeenCalledWith()
+  })
+
+  it('parses tree options query and delegates to the resource service', async () => {
+    const app = createTestApp()
+
+    const optionsResponse = await app.request(
+      `/api/system/resources/options/tree?includeIds=${resourceId}`,
+    )
+    expect(optionsResponse.status).toBe(200)
+    expect(mocks.service.treeOptions).toHaveBeenCalledWith({
+      includeIds: [resourceId],
+    })
+  })
+
+  it('returns tree options query validation errors before calling the resource service', async () => {
+    const app = createTestApp()
+
+    const optionsResponse = await app.request('/api/system/resources/options/tree?includeIds=bad')
+    expect(optionsResponse.status).toBe(400)
+    expect(await optionsResponse.json()).toEqual({ message: '查询参数无效' })
+    expect(mocks.service.treeOptions).not.toHaveBeenCalled()
+  })
+
+  it('matches static /options/tree before dynamic /:id route', async () => {
+    const app = createTestApp()
+
+    const optionsResponse = await app.request('/api/system/resources/options/tree')
+    expect(optionsResponse.status).toBe(200)
+    expect(mocks.service.treeOptions).toHaveBeenCalledWith({ includeIds: [] })
+    expect(mocks.service.get).not.toHaveBeenCalled()
   })
 
   it('delegates detail requests by id', async () => {

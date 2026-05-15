@@ -272,7 +272,8 @@ export const userOptionsQuerySchema = z.object({
 - 部门编辑：传入当前 `department.parentId`，并继续在前端禁用当前部门及其子树，避免循环移动。
 - 资源编辑：传入当前 `resource.parentId`，并继续在前端禁用当前资源及其子树，避免循环移动。
 
-新增模式没有当前关联值，默认不传 `includeIds`。
+新增模式默认不传 `includeIds`。如果是从“新增下级部门”或“新增下级资源”进入，并且页面传入了
+`parentId`，则把这个 `parentId` 作为 `includeIds` 传入，保证禁用父节点也能在选择器中回显。
 
 前端组件用业务字段决定展示：
 

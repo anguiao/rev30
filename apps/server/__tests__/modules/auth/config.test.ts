@@ -59,4 +59,13 @@ describe('auth config', () => {
       secureCookies: true,
     })
   })
+
+  it('rejects invalid positive integer settings', () => {
+    expect(() =>
+      readAuthConfig({
+        NODE_ENV: 'test',
+        AUTH_LOGIN_FAILURE_MAX_ATTEMPTS: '1e3',
+      }),
+    ).toThrow('AUTH_LOGIN_FAILURE_MAX_ATTEMPTS 必须是正整数')
+  })
 })

@@ -30,6 +30,8 @@ const { MockAuthRequestError } = vi.hoisted(() => ({
 
 vi.mock('../../../src/features/auth/requests', () => ({
   AuthRequestError: MockAuthRequestError,
+  getAuthErrorMessage: (error: unknown, fallback: string) =>
+    error instanceof MockAuthRequestError ? error.message : fallback,
   login: vi.fn(),
 }))
 
@@ -114,7 +116,7 @@ describe('login page', () => {
   })
 
   it('shows an invalid credentials error without storing a session', async () => {
-    loginMock.mockRejectedValue(new MockAuthRequestError(401, 'Invalid username or password'))
+    loginMock.mockRejectedValue(new MockAuthRequestError(401, '用户名或密码错误'))
     const { router, wrapper } = await mountLoginPage()
 
     await wrapper.find('[data-test="login-username"] input').setValue('ada')

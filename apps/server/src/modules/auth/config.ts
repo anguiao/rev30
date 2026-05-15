@@ -17,18 +17,18 @@ export type AuthConfig = {
   secureCookies: boolean
 }
 
-function readPositiveInteger(value: string | undefined, fallback: number) {
-  if (value === undefined || value.trim() === '') {
+function readPositiveInteger(value: string | undefined, fallback: number, name: string) {
+  const rawValue = value?.trim()
+
+  if (!rawValue) {
     return fallback
   }
 
-  const parsed = Number(value)
-
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error('JWT 过期时间必须是正整数')
+  if (!/^[1-9]\d*$/.test(rawValue)) {
+    throw new Error(`${name} 必须是正整数`)
   }
 
-  return parsed
+  return Number(rawValue)
 }
 
 export function readAuthConfig(env = process.env): AuthConfig {
@@ -51,22 +51,27 @@ export function readAuthConfig(env = process.env): AuthConfig {
     accessExpiresInSeconds: readPositiveInteger(
       env.JWT_ACCESS_EXPIRES_IN_SECONDS,
       defaultAccessExpiresInSeconds,
+      'JWT_ACCESS_EXPIRES_IN_SECONDS',
     ),
     refreshExpiresInSeconds: readPositiveInteger(
       env.JWT_REFRESH_EXPIRES_IN_SECONDS,
       defaultRefreshExpiresInSeconds,
+      'JWT_REFRESH_EXPIRES_IN_SECONDS',
     ),
     loginFailureMaxAttempts: readPositiveInteger(
       env.AUTH_LOGIN_FAILURE_MAX_ATTEMPTS,
       defaultLoginFailureMaxAttempts,
+      'AUTH_LOGIN_FAILURE_MAX_ATTEMPTS',
     ),
     loginFailureWindowSeconds: readPositiveInteger(
       env.AUTH_LOGIN_FAILURE_WINDOW_SECONDS,
       defaultLoginFailureWindowSeconds,
+      'AUTH_LOGIN_FAILURE_WINDOW_SECONDS',
     ),
     loginFailureLockSeconds: readPositiveInteger(
       env.AUTH_LOGIN_FAILURE_LOCK_SECONDS,
       defaultLoginFailureLockSeconds,
+      'AUTH_LOGIN_FAILURE_LOCK_SECONDS',
     ),
     secureCookies: isProduction,
   }

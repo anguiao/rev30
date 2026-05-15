@@ -26,9 +26,13 @@ import {
   resetUserPassword,
   SystemRequestError,
   getUser,
+  getUserOptions,
   getDepartmentTree,
+  getDepartmentTreeOptions,
   updateDepartment,
   getResourceTree,
+  getResourceTreeOptions,
+  getRoleOptions,
   searchIcons,
   getSystemErrorMessage,
   listRoles,
@@ -127,6 +131,149 @@ describe('system request helpers', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('keyword=')
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('status=1')
+  })
+
+  it('parses user options responses from the users options endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: '11111111-1111-4111-8111-111111111111',
+            username: 'alice',
+            nickname: 'Alice',
+            status: USER_STATUS_ENABLED,
+          },
+        ]),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    const result = await getUserOptions({ includeIds: ['11111111-1111-4111-8111-111111111111'] })
+
+    expect(result[0]?.username).toBe('alice')
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/users/options')
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      'includeIds=11111111-1111-4111-8111-111111111111',
+    )
+  })
+
+  it('omits includeIds when empty for user options requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([])))
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    await getUserOptions({ includeIds: [] })
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('includeIds=')
+  })
+
+  it('parses role options responses from the roles options endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: '22222222-2222-4222-8222-222222222222',
+            name: '管理员',
+            code: 'admin',
+            status: ROLE_STATUS_ENABLED,
+          },
+        ]),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    const result = await getRoleOptions({ includeIds: ['22222222-2222-4222-8222-222222222222'] })
+
+    expect(result[0]?.name).toBe('管理员')
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/roles/options')
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      'includeIds=22222222-2222-4222-8222-222222222222',
+    )
+  })
+
+  it('parses department tree options responses from the department tree options endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: '33333333-3333-4333-8333-333333333333',
+            parentId: null,
+            name: '总部',
+            code: 'hq',
+            status: DEPARTMENT_STATUS_ENABLED,
+            children: [
+              {
+                id: '44444444-4444-4444-8444-444444444444',
+                parentId: '33333333-3333-4333-8333-333333333333',
+                name: '研发中心',
+                code: 'eng',
+                status: DEPARTMENT_STATUS_ENABLED,
+                children: [],
+              },
+            ],
+          },
+        ]),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    const result = await getDepartmentTreeOptions({
+      includeIds: ['33333333-3333-4333-8333-333333333333'],
+    })
+
+    expect(result[0]?.children[0]?.name).toBe('研发中心')
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/departments/options/tree')
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      'includeIds=33333333-3333-4333-8333-333333333333',
+    )
+  })
+
+  it('parses resource tree options responses from the resource tree options endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: '55555555-5555-4555-8555-555555555555',
+            parentId: null,
+            type: RESOURCE_TYPE_MENU,
+            name: '系统用户',
+            code: 'system.users',
+            status: RESOURCE_STATUS_ENABLED,
+            children: [
+              {
+                id: '66666666-6666-4666-8666-666666666666',
+                parentId: '55555555-5555-4555-8555-555555555555',
+                type: RESOURCE_TYPE_MENU,
+                name: '用户管理',
+                code: 'system.users.list',
+                status: RESOURCE_STATUS_ENABLED,
+                children: [],
+              },
+            ],
+          },
+        ]),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    const result = await getResourceTreeOptions({
+      includeIds: ['55555555-5555-4555-8555-555555555555'],
+    })
+
+    expect(result[0]?.children[0]?.code).toBe('system.users.list')
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/resources/options/tree')
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      'includeIds=55555555-5555-4555-8555-555555555555',
+    )
   })
 
   it('parses list responses from the system roles endpoint', async () => {

@@ -39,6 +39,7 @@ const mocks = vi.hoisted(() => {
     delete: vi.fn(),
     get: vi.fn(),
     list: vi.fn(),
+    options: vi.fn(),
     update: vi.fn(),
   }
 
@@ -74,6 +75,14 @@ describe('role routes', () => {
       page: 2,
       pageSize: 5,
     })
+    mocks.service.options.mockResolvedValue([
+      {
+        id: roleId,
+        name: 'Administrator',
+        code: 'test-admin',
+        status: ROLE_STATUS_ENABLED,
+      },
+    ])
     mocks.service.get.mockResolvedValue(role)
     mocks.service.create.mockResolvedValue(role)
     mocks.service.update.mockResolvedValue({ ...role, name: 'Updated Administrator' })
@@ -85,6 +94,7 @@ describe('role routes', () => {
 
     expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
       [
+        'system:role:list',
         'system:role:list',
         'system:role:list',
         'system:role:create',
@@ -107,6 +117,26 @@ describe('role routes', () => {
       pageSize: 5,
       status: ROLE_STATUS_ENABLED,
     })
+  })
+
+  it('delegates option requests to the role service', async () => {
+    const app = createTestApp()
+
+    const response = await app.request(`/api/system/roles/options?includeIds=${roleId}`)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual([
+      {
+        id: roleId,
+        name: 'Administrator',
+        code: 'test-admin',
+        status: ROLE_STATUS_ENABLED,
+      },
+    ])
+    expect(mocks.service.options).toHaveBeenCalledWith({
+      includeIds: [roleId],
+    })
+    expect(mocks.service.get).not.toHaveBeenCalled()
   })
 
   it('delegates detail requests by id', async () => {
@@ -170,6 +200,16 @@ describe('role routes', () => {
     expect(listResponse.status).toBe(400)
     expect(await listResponse.json()).toEqual({ message: '查询参数无效' })
     expect(mocks.service.list).not.toHaveBeenCalled()
+  })
+
+  it('returns option query validation errors before calling the role service', async () => {
+    const app = createTestApp()
+
+    const response = await app.request('/api/system/roles/options?includeIds=not-a-uuid')
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ message: '查询参数无效' })
+    expect(mocks.service.options).not.toHaveBeenCalled()
   })
 
   it('returns id validation errors before calling role service methods', async () => {

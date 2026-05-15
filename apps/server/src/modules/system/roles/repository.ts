@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import {
+  ROLE_STATUS_ENABLED,
   type RoleCreateInput,
   type RoleListQuery,
+  type RoleOptionsQuery,
   createRoleResourceIdsSchema,
   type RoleSummary,
   type RoleUpdateInput,
@@ -231,6 +233,24 @@ export function createRoleRepository(database: Db) {
         page,
         pageSize,
       }
+    },
+
+    async options(query: RoleOptionsQuery) {
+      const filters = [
+        isNull(systemRoles.deletedAt),
+        query.includeIds.length > 0
+          ? or(
+              eq(systemRoles.status, ROLE_STATUS_ENABLED),
+              inArray(systemRoles.id, query.includeIds),
+            )
+          : eq(systemRoles.status, ROLE_STATUS_ENABLED),
+      ]
+
+      return await database
+        .select()
+        .from(systemRoles)
+        .where(and(...filters))
+        .orderBy(...roleSortOrder())
     },
 
     async findActiveById(id: string) {

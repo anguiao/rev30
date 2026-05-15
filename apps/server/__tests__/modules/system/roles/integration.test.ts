@@ -10,6 +10,7 @@ import {
   ROLE_STATUS_ENABLED,
   type Role,
   type RoleListResponse,
+  type RoleOptionsResponse,
   type RoleStatus,
 } from '@rev30/shared'
 import {
@@ -197,6 +198,105 @@ describe('role routes', () => {
     })
     expect(body.list[0]).not.toHaveProperty('resources')
     expect(body.list[0]).not.toHaveProperty('resourceCount')
+  })
+
+  it('returns flat role options and supports includeIds for disabled roles only', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const enabledRoleId = randomUUID()
+    const disabledRoleId = randomUUID()
+    const deletedRoleId = randomUUID()
+
+    await database.insert(systemRoles).values([
+      {
+        id: enabledRoleId,
+        name: 'Enabled Role',
+        code: 'enabled-role',
+        status: ROLE_STATUS_ENABLED,
+        sortOrder: 1,
+        createdAt: new Date('2026-05-10T00:00:00.000Z'),
+        updatedAt: new Date('2026-05-10T00:00:00.000Z'),
+      },
+      {
+        id: disabledRoleId,
+        name: 'Disabled Role',
+        code: 'disabled-role',
+        status: ROLE_STATUS_DISABLED,
+        sortOrder: 2,
+        createdAt: new Date('2026-05-09T00:00:00.000Z'),
+        updatedAt: new Date('2026-05-09T00:00:00.000Z'),
+      },
+      {
+        id: deletedRoleId,
+        name: 'Deleted Role',
+        code: 'deleted-role',
+        status: ROLE_STATUS_ENABLED,
+        sortOrder: 0,
+        deletedAt: new Date('2026-05-11T00:00:00.000Z'),
+        createdAt: new Date('2026-05-11T00:00:00.000Z'),
+        updatedAt: new Date('2026-05-11T00:00:00.000Z'),
+      },
+    ])
+
+    const optionsResponse = await app.request('/api/system/roles/options')
+    const optionsBody = (await optionsResponse.json()) as RoleOptionsResponse
+
+    expect(optionsResponse.status).toBe(200)
+    expect(optionsBody).toContainEqual({
+      id: enabledRoleId,
+      name: 'Enabled Role',
+      code: 'enabled-role',
+      status: ROLE_STATUS_ENABLED,
+    })
+    expect(optionsBody).not.toContainEqual(
+      expect.objectContaining({
+        id: disabledRoleId,
+      }),
+    )
+    expect(optionsBody).not.toContainEqual(
+      expect.objectContaining({
+        id: deletedRoleId,
+      }),
+    )
+    expect(optionsBody.every((item) => item.status === ROLE_STATUS_ENABLED)).toBe(true)
+    for (const item of optionsBody) {
+      expect(item).not.toHaveProperty('createdAt')
+      expect(item).not.toHaveProperty('updatedAt')
+      expect(item).not.toHaveProperty('sortOrder')
+      expect(item).not.toHaveProperty('userCount')
+      expect(item).not.toHaveProperty('resources')
+    }
+
+    const includeResponse = await app.request(
+      `/api/system/roles/options?includeIds=${disabledRoleId},${deletedRoleId}`,
+    )
+    const includeBody = (await includeResponse.json()) as RoleOptionsResponse
+
+    expect(includeResponse.status).toBe(200)
+    expect(includeBody).toContainEqual({
+      id: enabledRoleId,
+      name: 'Enabled Role',
+      code: 'enabled-role',
+      status: ROLE_STATUS_ENABLED,
+    })
+    expect(includeBody).toContainEqual({
+      id: disabledRoleId,
+      name: 'Disabled Role',
+      code: 'disabled-role',
+      status: ROLE_STATUS_DISABLED,
+    })
+    expect(includeBody).not.toContainEqual(
+      expect.objectContaining({
+        id: deletedRoleId,
+      }),
+    )
+    for (const item of includeBody) {
+      expect(item).not.toHaveProperty('createdAt')
+      expect(item).not.toHaveProperty('updatedAt')
+      expect(item).not.toHaveProperty('sortOrder')
+      expect(item).not.toHaveProperty('userCount')
+      expect(item).not.toHaveProperty('resources')
+    }
   })
 
   it('returns role details with resources', async () => {

@@ -2,13 +2,14 @@ import type {
   UserCreateInput,
   UserCreateResponse,
   UserListQuery,
+  UserOptionsQuery,
   UserResetPasswordResponse,
   UserUpdateInput,
 } from '@rev30/shared'
 import type { Db } from '../../../db'
 import { generateTemporaryPassword, hashPassword } from '../../auth/password'
 import { BuiltInUserMutationError, toUserConflictError, UserNotFoundError } from './errors'
-import { toUser } from './mapper'
+import { toUser, toUserOption } from './mapper'
 import { createUserRepository } from './repository'
 
 async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
@@ -46,6 +47,10 @@ export function createUserService(database: Db) {
       }
 
       return toUser(row.user, row.departments, row.roles)
+    },
+
+    async options(query: UserOptionsQuery) {
+      return (await repository.options(query)).map(toUserOption)
     },
 
     async create(input: UserCreateInput): Promise<UserCreateResponse> {

@@ -33,6 +33,7 @@ const mocks = vi.hoisted(() => {
     delete: vi.fn(),
     get: vi.fn(),
     list: vi.fn(),
+    options: vi.fn(),
     resetPassword: vi.fn(),
     update: vi.fn(),
   }
@@ -64,6 +65,14 @@ describe('user routes', () => {
     mocks.requireAccess.mockReturnValue(mocks.accessMiddleware)
     mocks.createUserService.mockReturnValue(mocks.service)
     mocks.service.list.mockResolvedValue({ list: [user], total: 1, page: 2, pageSize: 5 })
+    mocks.service.options.mockResolvedValue([
+      {
+        id: userId,
+        username: 'ada',
+        nickname: 'Ada Lovelace',
+        status: USER_STATUS_ENABLED,
+      },
+    ])
     mocks.service.create.mockResolvedValue({ user, temporaryPassword: 'temporary-password' })
     mocks.service.get.mockResolvedValue(user)
     mocks.service.update.mockResolvedValue({ ...user, nickname: 'Updated Ada' })
@@ -76,6 +85,7 @@ describe('user routes', () => {
 
     expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
       [
+        'system:user:list',
         'system:user:list',
         'system:user:create',
         'system:user:reset-password',
@@ -100,6 +110,28 @@ describe('user routes', () => {
       pageSize: 5,
       status: USER_STATUS_ENABLED,
     })
+  })
+
+  it('delegates option requests to the user service', async () => {
+    const app = createTestApp()
+
+    const response = await app.request(
+      `/api/system/users/options?includeIds=${userId},22222222-2222-4222-8222-222222222222`,
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual([
+      {
+        id: userId,
+        username: 'ada',
+        nickname: 'Ada Lovelace',
+        status: USER_STATUS_ENABLED,
+      },
+    ])
+    expect(mocks.service.options).toHaveBeenCalledWith({
+      includeIds: [userId, '22222222-2222-4222-8222-222222222222'],
+    })
+    expect(mocks.service.get).not.toHaveBeenCalled()
   })
 
   it('delegates create requests to the user service', async () => {
@@ -177,6 +209,16 @@ describe('user routes', () => {
     expect(listResponse.status).toBe(400)
     expect(await listResponse.json()).toEqual({ message: '查询参数无效' })
     expect(mocks.service.list).not.toHaveBeenCalled()
+  })
+
+  it('returns option query validation errors before calling the user service', async () => {
+    const app = createTestApp()
+
+    const response = await app.request('/api/system/users/options?includeIds=not-a-uuid')
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ message: '查询参数无效' })
+    expect(mocks.service.options).not.toHaveBeenCalled()
   })
 
   it('returns id validation errors before calling user service methods', async () => {

@@ -1,4 +1,4 @@
-import type { Role, RoleListItem, RoleResource, RoleSummary } from '@rev30/shared'
+import type { Role, RoleListItem, RoleOption, RoleResource, RoleSummary } from '@rev30/shared'
 import { systemRoles } from '../../../db/schema'
 
 export type RoleRow = typeof systemRoles.$inferSelect
@@ -36,6 +36,15 @@ export function toRole(row: RoleRow, resources: RoleResource[]): Role {
     resources,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  }
+}
+
+export function toRoleOption(row: RoleRow): RoleOption {
+  return {
+    id: row.id,
+    name: row.name,
+    code: row.code,
+    status: row.status as RoleOption['status'],
   }
 }
 

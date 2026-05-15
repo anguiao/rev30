@@ -10,6 +10,7 @@ import {
   type User,
   type UserCreateResponse,
   type UserListResponse,
+  type UserOptionsResponse,
   type UserResetPasswordResponse,
   type UserStatus,
 } from '@rev30/shared'
@@ -337,6 +338,101 @@ describe('user routes', () => {
       departments: [],
       roles: [],
     })
+  })
+
+  it('returns flat user options and supports includeIds for disabled users only', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const now = new Date('2026-05-10T00:00:00.000Z')
+    const enabledUserId = randomUUID()
+    const disabledUserId = randomUUID()
+    const deletedUserId = randomUUID()
+
+    await database.insert(systemUsers).values([
+      {
+        id: enabledUserId,
+        username: 'enabled-user',
+        nickname: 'Enabled User',
+        status: USER_STATUS_ENABLED,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: disabledUserId,
+        username: 'disabled-user',
+        nickname: 'Disabled User',
+        status: USER_STATUS_DISABLED,
+        createdAt: new Date('2026-05-09T00:00:00.000Z'),
+        updatedAt: new Date('2026-05-09T00:00:00.000Z'),
+      },
+      {
+        id: deletedUserId,
+        username: 'deleted-user',
+        nickname: 'Deleted User',
+        status: USER_STATUS_ENABLED,
+        deletedAt: new Date('2026-05-11T00:00:00.000Z'),
+        createdAt: new Date('2026-05-11T00:00:00.000Z'),
+        updatedAt: new Date('2026-05-11T00:00:00.000Z'),
+      },
+    ])
+
+    const optionsResponse = await app.request('/api/system/users/options')
+    const optionsBody = (await optionsResponse.json()) as UserOptionsResponse
+
+    expect(optionsResponse.status).toBe(200)
+    expect(optionsBody).toContainEqual({
+      id: enabledUserId,
+      username: 'enabled-user',
+      nickname: 'Enabled User',
+      status: USER_STATUS_ENABLED,
+    })
+    expect(optionsBody).not.toContainEqual(
+      expect.objectContaining({
+        id: disabledUserId,
+      }),
+    )
+    expect(optionsBody).not.toContainEqual(
+      expect.objectContaining({
+        id: deletedUserId,
+      }),
+    )
+    expect(optionsBody.every((item) => item.status === USER_STATUS_ENABLED)).toBe(true)
+    for (const item of optionsBody) {
+      expect(item).not.toHaveProperty('createdAt')
+      expect(item).not.toHaveProperty('updatedAt')
+      expect(item).not.toHaveProperty('departments')
+      expect(item).not.toHaveProperty('roles')
+    }
+
+    const includeResponse = await app.request(
+      `/api/system/users/options?includeIds=${disabledUserId},${deletedUserId}`,
+    )
+    const includeBody = (await includeResponse.json()) as UserOptionsResponse
+
+    expect(includeResponse.status).toBe(200)
+    expect(includeBody).toContainEqual({
+      id: enabledUserId,
+      username: 'enabled-user',
+      nickname: 'Enabled User',
+      status: USER_STATUS_ENABLED,
+    })
+    expect(includeBody).toContainEqual({
+      id: disabledUserId,
+      username: 'disabled-user',
+      nickname: 'Disabled User',
+      status: USER_STATUS_DISABLED,
+    })
+    expect(includeBody).not.toContainEqual(
+      expect.objectContaining({
+        id: deletedUserId,
+      }),
+    )
+    for (const item of includeBody) {
+      expect(item).not.toHaveProperty('createdAt')
+      expect(item).not.toHaveProperty('updatedAt')
+      expect(item).not.toHaveProperty('departments')
+      expect(item).not.toHaveProperty('roles')
+    }
   })
 
   it('returns details and updates disabled users without treating them as deleted', async () => {

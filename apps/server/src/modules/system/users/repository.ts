@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto'
-import type {
-  DepartmentSummary,
-  RoleSummary,
-  UserCreateInput,
-  UserListQuery,
-  UserUpdateInput,
+import {
+  USER_STATUS_ENABLED,
+  type DepartmentSummary,
+  type RoleSummary,
+  type UserCreateInput,
+  type UserListQuery,
+  type UserOptionsQuery,
+  type UserUpdateInput,
 } from '@rev30/shared'
-import { and, count, desc, eq, ilike, isNull, or } from 'drizzle-orm'
+import { and, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
 import {
   authPasswordCredentials,
@@ -118,6 +120,24 @@ export function createUserRepository(database: Db) {
         page,
         pageSize,
       }
+    },
+
+    async options(query: UserOptionsQuery) {
+      const filters = [
+        isNull(systemUsers.deletedAt),
+        query.includeIds.length > 0
+          ? or(
+              eq(systemUsers.status, USER_STATUS_ENABLED),
+              inArray(systemUsers.id, query.includeIds),
+            )
+          : eq(systemUsers.status, USER_STATUS_ENABLED),
+      ]
+
+      return await database
+        .select()
+        .from(systemUsers)
+        .where(and(...filters))
+        .orderBy(desc(systemUsers.createdAt), desc(systemUsers.id))
     },
 
     async findActiveById(id: string) {

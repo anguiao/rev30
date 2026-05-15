@@ -1,9 +1,11 @@
 import {
   type RoleCreateInput,
   type RoleListQuery,
+  type RoleOptionsQuery,
   type RoleUpdateInput,
   roleCreateSchema,
   roleListQuerySchema,
+  roleOptionsQuerySchema,
   roleSchema,
   roleUpdateSchema,
 } from '@rev30/shared'
@@ -33,6 +35,11 @@ const roleIdValidator = zValidator('param', roleIdParamSchema, (result, c) => {
 })
 
 const roleListQueryValidator = zValidator('query', roleListRequestQuerySchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ message: '查询参数无效' }, 400)
+  }
+})
+const roleOptionsQueryValidator = zValidator('query', roleOptionsQuerySchema, (result, c) => {
   if (!result.success) {
     return c.json({ message: '查询参数无效' }, 400)
   }
@@ -85,6 +92,11 @@ export function createRoleRoutes(database: Db) {
       const query: RoleListQuery = c.req.valid('query')
 
       return c.json(await service.list(query))
+    })
+    .get('/options', requireAccess('system:role:list'), roleOptionsQueryValidator, async (c) => {
+      const query: RoleOptionsQuery = c.req.valid('query')
+
+      return c.json(await service.options(query))
     })
     .get('/:id', requireAccess('system:role:list'), roleIdValidator, async (c) => {
       const { id } = c.req.valid('param')

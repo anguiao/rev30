@@ -1,4 +1,4 @@
-import type { DepartmentSummary, RoleSummary, User } from '@rev30/shared'
+import type { DepartmentSummary, RoleSummary, User, UserOption } from '@rev30/shared'
 import { systemUsers } from '../../../db/schema'
 
 export type UserRow = typeof systemUsers.$inferSelect
@@ -20,5 +20,14 @@ export function toUser(
     roles,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
+  }
+}
+
+export function toUserOption(user: UserRow): UserOption {
+  return {
+    id: user.id,
+    username: user.username,
+    nickname: user.nickname,
+    status: user.status as UserOption['status'],
   }
 }

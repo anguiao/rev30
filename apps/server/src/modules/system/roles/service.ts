@@ -2,6 +2,7 @@ import {
   BUILT_IN_ADMIN_ROLE_CODE,
   type RoleCreateInput,
   type RoleListQuery,
+  type RoleOptionsQuery,
   type RoleUpdateInput,
 } from '@rev30/shared'
 import type { Db } from '../../../db'
@@ -11,7 +12,7 @@ import {
   RoleNotFoundError,
   toRoleConflictError,
 } from './errors'
-import { toRole, toRoleListItem, toRoleResources } from './mapper'
+import { toRole, toRoleListItem, toRoleOption, toRoleResources } from './mapper'
 import { createRoleRepository } from './repository'
 
 async function withRoleUniqueConflict<T>(operation: () => Promise<T>) {
@@ -56,6 +57,10 @@ export function createRoleService(database: Db) {
       const resources = toRoleResources(await repository.findResourcesByRoleId(id))
 
       return toRole(role, resources)
+    },
+
+    async options(query: RoleOptionsQuery) {
+      return (await repository.options(query)).map(toRoleOption)
     },
 
     async create(input: RoleCreateInput) {

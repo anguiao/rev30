@@ -26,7 +26,9 @@ describe('department schemas', () => {
 
   it('parses department includeIds as empty array for blank strings or non-string values', () => {
     expect(departmentTreeOptionsQuerySchema.parse({ includeIds: '' })).toEqual({ includeIds: [] })
-    expect(departmentTreeOptionsQuerySchema.parse({ includeIds: '   ' })).toEqual({ includeIds: [] })
+    expect(departmentTreeOptionsQuerySchema.parse({ includeIds: '   ' })).toEqual({
+      includeIds: [],
+    })
     expect(departmentTreeOptionsQuerySchema.parse({ includeIds: {} })).toEqual({ includeIds: [] })
   })
 

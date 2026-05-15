@@ -1,9 +1,11 @@
 import {
   type UserCreateInput,
   type UserListQuery,
+  type UserOptionsQuery,
   type UserUpdateInput,
   userCreateSchema,
   userListQuerySchema,
+  userOptionsQuerySchema,
   userSchema,
   userUpdateSchema,
 } from '@rev30/shared'
@@ -32,6 +34,11 @@ const userIdValidator = zValidator('param', userIdParamSchema, (result, c) => {
 })
 
 const userListQueryValidator = zValidator('query', userListRequestQuerySchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ message: '查询参数无效' }, 400)
+  }
+})
+const userOptionsQueryValidator = zValidator('query', userOptionsQuerySchema, (result, c) => {
   if (!result.success) {
     return c.json({ message: '查询参数无效' }, 400)
   }
@@ -92,6 +99,11 @@ export function createUserRoutes(database: Db) {
       const query: UserListQuery = c.req.valid('query')
 
       return c.json(await service.list(query))
+    })
+    .get('/options', requireAccess('system:user:list'), userOptionsQueryValidator, async (c) => {
+      const query: UserOptionsQuery = c.req.valid('query')
+
+      return c.json(await service.options(query))
     })
     .post('/', requireAccess('system:user:create'), userCreateBodyValidator, async (c) => {
       const body: UserCreateInput = c.req.valid('json')

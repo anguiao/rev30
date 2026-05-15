@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NInputNumber, NSelect, NTree } from 'naive-ui'
 import {
   RESOURCE_OPEN_TARGET_SELF,
+  RESOURCE_STATUS_DISABLED,
   RESOURCE_STATUS_ENABLED,
   RESOURCE_TYPE_ACTION,
   RESOURCE_TYPE_DIRECTORY,
@@ -16,7 +17,7 @@ import {
 import {
   createRole,
   getRole,
-  getResourceTree,
+  getResourceTreeOptions,
   SystemRequestError,
   updateRole,
 } from '../../../src/features/system'
@@ -28,13 +29,13 @@ enableAutoUnmount(afterEach)
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   createRole: vi.fn(),
-  getResourceTree: vi.fn(),
+  getResourceTreeOptions: vi.fn(),
   getRole: vi.fn(),
   updateRole: vi.fn(),
 }))
 
 const createRoleMock = vi.mocked(createRole)
-const getResourceTreeMock = vi.mocked(getResourceTree)
+const getResourceTreeOptionsMock = vi.mocked(getResourceTreeOptions)
 const getRoleMock = vi.mocked(getRole)
 const updateRoleMock = vi.mocked(updateRole)
 
@@ -72,7 +73,7 @@ const resourceTreeResponse: ResourceTreeNode[] = [
         openTarget: RESOURCE_OPEN_TARGET_SELF,
         icon: null,
         hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
+        status: RESOURCE_STATUS_DISABLED,
         sortOrder: 2,
         createdAt: '2026-05-01T00:00:00.000Z',
         updatedAt: '2026-05-01T00:00:00.000Z',
@@ -187,11 +188,11 @@ async function submitForm(wrapper: ReturnType<typeof mount>) {
 describe('RoleFormDrawer', () => {
   beforeEach(() => {
     createRoleMock.mockReset()
-    getResourceTreeMock.mockReset()
+    getResourceTreeOptionsMock.mockReset()
     getRoleMock.mockReset()
     updateRoleMock.mockReset()
 
-    getResourceTreeMock.mockResolvedValue(resourceTreeResponse)
+    getResourceTreeOptionsMock.mockResolvedValue(resourceTreeResponse)
   })
 
   it('submits a new role in create mode', async () => {
@@ -201,7 +202,26 @@ describe('RoleFormDrawer', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('新增系统角色')
-    expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
+    expect(getResourceTreeOptionsMock).toHaveBeenCalledWith()
+    expect(wrapper.getComponent(NTree).props('data')).toEqual([
+      {
+        key: directoryResourceId,
+        label: '系统管理 (system)',
+        disabled: false,
+        children: [
+          {
+            key: actionResourceId,
+            label: '角色保存 (system:role:save)',
+            disabled: true,
+          },
+          {
+            key: secondActionResourceId,
+            label: '角色分配 (system:role:assign)',
+            disabled: false,
+          },
+        ],
+      },
+    ])
     expect(wrapper.get('[data-test="role-form-resources"]').attributes('data-test')).toBe(
       'role-form-resources',
     )
@@ -229,7 +249,7 @@ describe('RoleFormDrawer', () => {
   })
 
   it('shows a load error and disables submit when resource permissions fail to load', async () => {
-    getResourceTreeMock.mockRejectedValue(new Error('network'))
+    getResourceTreeOptionsMock.mockRejectedValue(new Error('network'))
 
     const wrapper = mountDrawer()
     await flushPromises()
@@ -257,7 +277,9 @@ describe('RoleFormDrawer', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('编辑系统角色')
-    expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
+    expect(getResourceTreeOptionsMock).toHaveBeenCalledWith({
+      includeIds: [directoryResourceId, actionResourceId],
+    })
     expect(getRoleMock).toHaveBeenCalledWith(roleId)
     expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
       directoryResourceId,

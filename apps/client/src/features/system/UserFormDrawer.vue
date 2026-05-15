@@ -15,6 +15,8 @@ import {
   NTreeSelect,
 } from 'naive-ui'
 import {
+  DEPARTMENT_STATUS_ENABLED,
+  ROLE_STATUS_ENABLED,
   type UserCreateResponse,
   USER_STATUS_ENABLED,
   type UserFormInput,
@@ -25,9 +27,9 @@ import {
 import {
   SystemRequestError,
   createUser,
-  getDepartmentTree,
+  getDepartmentTreeOptions,
+  getRoleOptions,
   getUser,
-  listRoles,
   updateUser,
   getSystemErrorMessage,
 } from '.'
@@ -66,35 +68,48 @@ const {
   enabled: () => show.value,
   async query() {
     const userId = props.userId
-    const [departments, roleList, user] = await Promise.all([
-      getDepartmentTree(),
-      listRoles({ page: 1, pageSize: 100 }),
-      userId === null ? null : getUser(userId),
+    if (userId === null) {
+      const [departments, roles] = await Promise.all([getDepartmentTreeOptions(), getRoleOptions()])
+
+      return {
+        departments,
+        roles,
+        formValues: defaultFormValues,
+      }
+    }
+
+    const user = await getUser(userId)
+    const [departments, roles] = await Promise.all([
+      getDepartmentTreeOptions({
+        includeIds: user.departments.map((department) => department.id),
+      }),
+      getRoleOptions({
+        includeIds: user.roles.map((role) => role.id),
+      }),
     ])
 
     return {
       departments,
-      roles: roleList.list,
-      formValues:
-        user === null
-          ? defaultFormValues
-          : {
-              ...pick(user, ['username', 'nickname', 'email', 'phone', 'status']),
-              departmentIds: user.departments.map((department) => department.id),
-              roleIds: user.roles.map((role) => role.id),
-            },
+      roles,
+      formValues: {
+        ...pick(user, ['username', 'nickname', 'email', 'phone', 'status']),
+        departmentIds: user.departments.map((department) => department.id),
+        roleIds: user.roles.map((role) => role.id),
+      },
     }
   },
 })
 const departmentTreeOptions = computed(() =>
   toTreeOptions(formData.value?.departments ?? [], {
     label: (department) => `${department.name} (${department.code})`,
+    disabled: (department) => department.status !== DEPARTMENT_STATUS_ENABLED,
   }),
 )
 const roleOptions = computed(() =>
   toSelectOptions(formData.value?.roles ?? [], {
     label: (role) => `${role.name} (${role.code})`,
     value: (role) => role.id,
+    disabled: (role) => role.status !== ROLE_STATUS_ENABLED,
   }),
 )
 const loadError = computed(() =>

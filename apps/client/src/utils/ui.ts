@@ -19,6 +19,7 @@ type TreeOptionNode<TNode> = {
 
 type TreeOptionsConfig<TNode> = {
   label?: (node: TNode) => string
+  disabled?: (node: TNode) => boolean
   disabledSubtreeId?: string
 }
 
@@ -30,6 +31,7 @@ type SelectOptionNode = {
 type SelectOptionsConfig<TNode> = {
   label: (node: TNode) => string
   value: (node: TNode) => string | number
+  disabled?: (node: TNode) => boolean
 }
 
 export function renderTableActionButton({
@@ -72,10 +74,11 @@ export function renderTableActions(actions: Array<ReturnType<typeof renderTableA
 function toTreeOptionsInternal<TNode extends TreeOptionNode<TNode>>(
   nodes: readonly TNode[],
   config: TreeOptionsConfig<TNode>,
-  inheritedDisabled = false,
+  inheritedSubtreeDisabled = false,
 ): TreeOption[] {
   return nodes.map((node) => {
-    const disabled = inheritedDisabled || node.id === config.disabledSubtreeId
+    const subtreeDisabled = inheritedSubtreeDisabled || node.id === config.disabledSubtreeId
+    const disabled = subtreeDisabled || config.disabled?.(node) === true
     const option: TreeOption = {
       key: node.id,
       label: config.label?.(node) ?? node.name,
@@ -83,7 +86,7 @@ function toTreeOptionsInternal<TNode extends TreeOptionNode<TNode>>(
     }
 
     if (node.children.length > 0) {
-      option.children = toTreeOptionsInternal(node.children, config, disabled)
+      option.children = toTreeOptionsInternal(node.children, config, subtreeDisabled)
     }
 
     return option
@@ -108,8 +111,13 @@ export function toSelectOptions<TNode>(
   nodes: readonly TNode[],
   config?: SelectOptionsConfig<TNode>,
 ): SelectOption[] {
-  return nodes.map((node) => ({
-    label: config?.label(node) ?? (node as SelectOptionNode).name,
-    value: config?.value(node) ?? (node as SelectOptionNode).id,
-  }))
+  return nodes.map((node) => {
+    const disabled = config?.disabled?.(node)
+
+    return {
+      label: config?.label(node) ?? (node as SelectOptionNode).name,
+      value: config?.value(node) ?? (node as SelectOptionNode).id,
+      ...(disabled === undefined ? {} : { disabled }),
+    }
+  })
 }

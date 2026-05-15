@@ -26,7 +26,7 @@ import {
   SystemRequestError,
   createDepartment,
   getDepartment,
-  getDepartmentTree,
+  getDepartmentTreeOptions,
   getSystemErrorMessage,
   updateDepartment,
 } from '.'
@@ -70,17 +70,27 @@ const {
   async query() {
     const departmentId = props.departmentId
     const parentId = props.parentId
-    const [departments, department] = await Promise.all([
-      getDepartmentTree(),
-      departmentId === null ? null : getDepartment(departmentId),
-    ])
+    if (departmentId === null) {
+      const departments =
+        parentId === null
+          ? await getDepartmentTreeOptions()
+          : await getDepartmentTreeOptions({ includeIds: [parentId] })
+
+      return {
+        departments,
+        formValues: { ...defaultFormValues, parentId },
+      }
+    }
+
+    const department = await getDepartment(departmentId)
+    const departments =
+      department.parentId === null
+        ? await getDepartmentTreeOptions()
+        : await getDepartmentTreeOptions({ includeIds: [department.parentId] })
 
     return {
       departments,
-      formValues:
-        department === null
-          ? { ...defaultFormValues, parentId }
-          : pick(department, ['name', 'code', 'parentId', 'status', 'sortOrder']),
+      formValues: pick(department, ['name', 'code', 'parentId', 'status', 'sortOrder']),
     }
   },
 })
@@ -89,6 +99,7 @@ const departmentTreeOptions = computed(() => {
 
   return toTreeOptions(formData.value?.departments ?? [], {
     label: (department) => `${department.name} (${department.code})`,
+    disabled: (department) => department.status !== DEPARTMENT_STATUS_ENABLED,
     ...(departmentId === null ? {} : { disabledSubtreeId: departmentId }),
   })
 })

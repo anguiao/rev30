@@ -21,7 +21,7 @@ import {
 import {
   createResource,
   getResource,
-  getResourceTree,
+  getResourceTreeOptions,
   SystemRequestError,
   updateResource,
 } from '../../../src/features/system'
@@ -69,13 +69,13 @@ vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   createResource: vi.fn(),
   getResource: vi.fn(),
-  getResourceTree: vi.fn(),
+  getResourceTreeOptions: vi.fn(),
   updateResource: vi.fn(),
 }))
 
 const createResourceMock = vi.mocked(createResource)
 const getResourceMock = vi.mocked(getResource)
-const getResourceTreeMock = vi.mocked(getResourceTree)
+const getResourceTreeOptionsMock = vi.mocked(getResourceTreeOptions)
 const updateResourceMock = vi.mocked(updateResource)
 
 const rootResourceId = '11111111-1111-4111-8111-111111111111'
@@ -237,10 +237,10 @@ describe('ResourceFormDrawer', () => {
   beforeEach(() => {
     createResourceMock.mockReset()
     getResourceMock.mockReset()
-    getResourceTreeMock.mockReset()
+    getResourceTreeOptionsMock.mockReset()
     updateResourceMock.mockReset()
 
-    getResourceTreeMock.mockResolvedValue(resourceTreeResponse)
+    getResourceTreeOptionsMock.mockResolvedValue(resourceTreeResponse)
   })
 
   it('creates a root directory resource with default values', async () => {
@@ -263,7 +263,7 @@ describe('ResourceFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
+    expect(getResourceTreeOptionsMock).toHaveBeenCalledWith()
     expect(getResourceMock).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('新增权限资源')
     expect(wrapper.get('[data-test="resource-icon-empty"]').text()).toBe('无')
@@ -290,7 +290,7 @@ describe('ResourceFormDrawer', () => {
   })
 
   it('shows a load error and disables submit when resource options fail to load', async () => {
-    getResourceTreeMock.mockRejectedValue(new Error('network'))
+    getResourceTreeOptionsMock.mockRejectedValue(new Error('network'))
 
     const wrapper = mountDrawer({
       show: true,
@@ -328,7 +328,41 @@ describe('ResourceFormDrawer', () => {
     })
     await flushPromises()
 
+    expect(getResourceTreeOptionsMock).toHaveBeenCalledWith({
+      includeIds: [rootResourceId],
+    })
     expect(wrapper.getComponent(NTreeSelect).props('value')).toBe(rootResourceId)
+    expect(wrapper.getComponent(NTreeSelect).props('options')).toEqual([
+      {
+        key: rootResourceId,
+        label: '系统管理 (system)',
+        disabled: false,
+        children: [
+          {
+            key: menuResourceId,
+            label: '系统用户 (system:user)',
+            disabled: false,
+            children: [
+              {
+                key: actionResourceId,
+                label: '创建用户 (system:user:create)',
+                disabled: false,
+              },
+            ],
+          },
+          {
+            key: externalResourceId,
+            label: '项目文档 (docs)',
+            disabled: true,
+          },
+        ],
+      },
+      {
+        key: secondRootResourceId,
+        label: '内容管理 (content)',
+        disabled: false,
+      },
+    ])
 
     getSelect(wrapper, 'resource-form-type').vm.$emit('update:value', RESOURCE_TYPE_MENU)
     await flushPromises()
@@ -366,7 +400,9 @@ describe('ResourceFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
+    expect(getResourceTreeOptionsMock).toHaveBeenCalledWith({
+      includeIds: [rootResourceId],
+    })
     expect(getResourceMock).toHaveBeenCalledWith(menuResourceId)
     expect(wrapper.text()).toContain('编辑权限资源')
     expect(wrapper.get('[data-test="resource-icon-preview"]').text()).toBe('lucide:users')

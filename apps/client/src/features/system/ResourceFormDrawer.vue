@@ -34,7 +34,7 @@ import {
   SystemRequestError,
   createResource,
   getResource,
-  getResourceTree,
+  getResourceTreeOptions,
   getSystemErrorMessage,
   updateResource,
 } from '.'
@@ -97,29 +97,39 @@ const {
   async query() {
     const resourceId = props.resourceId
     const parentId = props.parentId
-    const [resources, resource] = await Promise.all([
-      getResourceTree(),
-      resourceId === null ? null : getResource(resourceId),
-    ])
+    if (resourceId === null) {
+      const resources =
+        parentId === null
+          ? await getResourceTreeOptions()
+          : await getResourceTreeOptions({ includeIds: [parentId] })
+
+      return {
+        resources,
+        formValues: { ...defaultFormValues, parentId },
+      }
+    }
+
+    const resource = await getResource(resourceId)
+    const resources =
+      resource.parentId === null
+        ? await getResourceTreeOptions()
+        : await getResourceTreeOptions({ includeIds: [resource.parentId] })
 
     return {
       resources,
-      formValues:
-        resource === null
-          ? { ...defaultFormValues, parentId }
-          : pick(resource, [
-              'type',
-              'name',
-              'code',
-              'parentId',
-              'path',
-              'externalUrl',
-              'openTarget',
-              'icon',
-              'hidden',
-              'status',
-              'sortOrder',
-            ]),
+      formValues: pick(resource, [
+        'type',
+        'name',
+        'code',
+        'parentId',
+        'path',
+        'externalUrl',
+        'openTarget',
+        'icon',
+        'hidden',
+        'status',
+        'sortOrder',
+      ]),
     }
   },
 })
@@ -128,6 +138,7 @@ const resourceTreeOptions = computed(() => {
 
   return toTreeOptions(formData.value?.resources ?? [], {
     label: (resource) => `${resource.name} (${resource.code})`,
+    disabled: (resource) => resource.status !== RESOURCE_STATUS_ENABLED,
     ...(resourceId === null ? {} : { disabledSubtreeId: resourceId }),
   })
 })

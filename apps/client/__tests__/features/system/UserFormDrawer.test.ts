@@ -5,20 +5,22 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NSelect, NTreeSelect } from 'naive-ui'
 import {
+  DEPARTMENT_STATUS_DISABLED,
   DEPARTMENT_STATUS_ENABLED,
+  ROLE_STATUS_DISABLED,
+  ROLE_STATUS_ENABLED,
   type DepartmentTreeNode,
-  type RoleListResponse,
+  type RoleOptionsResponse,
   type UserCreateResponse,
-  USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
   type User,
   type UserStatus,
 } from '@rev30/shared'
 import {
   createUser,
-  getDepartmentTree,
+  getDepartmentTreeOptions,
+  getRoleOptions,
   getUser,
-  listRoles,
   SystemRequestError,
   updateUser,
 } from '../../../src/features/system'
@@ -30,16 +32,16 @@ enableAutoUnmount(afterEach)
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   createUser: vi.fn(),
-  getDepartmentTree: vi.fn(),
+  getDepartmentTreeOptions: vi.fn(),
+  getRoleOptions: vi.fn(),
   getUser: vi.fn(),
-  listRoles: vi.fn(),
   updateUser: vi.fn(),
 }))
 
 const createUserMock = vi.mocked(createUser)
-const getDepartmentTreeMock = vi.mocked(getDepartmentTree)
+const getDepartmentTreeOptionsMock = vi.mocked(getDepartmentTreeOptions)
+const getRoleOptionsMock = vi.mocked(getRoleOptions)
 const getUserMock = vi.mocked(getUser)
-const listRolesMock = vi.mocked(listRoles)
 const updateUserMock = vi.mocked(updateUser)
 
 const userId = '11111111-1111-4111-8111-111111111111'
@@ -64,7 +66,7 @@ const departmentTreeResponse: DepartmentTreeNode[] = [
         parentId: departmentId,
         name: '前端组',
         code: 'frontend',
-        status: DEPARTMENT_STATUS_ENABLED,
+        status: DEPARTMENT_STATUS_DISABLED,
         sortOrder: 1,
         createdAt: '2026-05-02T00:00:00.000Z',
         updatedAt: '2026-05-02T00:00:00.000Z',
@@ -74,33 +76,20 @@ const departmentTreeResponse: DepartmentTreeNode[] = [
   },
 ]
 
-const roleListResponse: RoleListResponse = {
-  page: 1,
-  pageSize: 100,
-  total: 2,
-  list: [
-    {
-      id: roleId,
-      name: '管理员',
-      code: 'admin',
-      status: USER_STATUS_ENABLED,
-      sortOrder: 1,
-      userCount: 2,
-      createdAt: '2026-05-01T00:00:00.000Z',
-      updatedAt: '2026-05-01T00:00:00.000Z',
-    },
-    {
-      id: secondRoleId,
-      name: '审核员',
-      code: 'auditor',
-      status: USER_STATUS_DISABLED,
-      sortOrder: 2,
-      userCount: 1,
-      createdAt: '2026-05-01T00:00:00.000Z',
-      updatedAt: '2026-05-01T00:00:00.000Z',
-    },
-  ],
-}
+const roleOptionsResponse: RoleOptionsResponse = [
+  {
+    id: roleId,
+    name: '管理员',
+    code: 'admin',
+    status: ROLE_STATUS_ENABLED,
+  },
+  {
+    id: secondRoleId,
+    name: '审核员',
+    code: 'auditor',
+    status: ROLE_STATUS_DISABLED,
+  },
+]
 
 const userResponse: User = {
   id: userId,
@@ -169,13 +158,13 @@ async function submitForm(wrapper: ReturnType<typeof mount>) {
 describe('UserFormDrawer', () => {
   beforeEach(() => {
     createUserMock.mockReset()
-    getDepartmentTreeMock.mockReset()
+    getDepartmentTreeOptionsMock.mockReset()
+    getRoleOptionsMock.mockReset()
     getUserMock.mockReset()
-    listRolesMock.mockReset()
     updateUserMock.mockReset()
 
-    getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
-    listRolesMock.mockResolvedValue(roleListResponse)
+    getDepartmentTreeOptionsMock.mockResolvedValue(departmentTreeResponse)
+    getRoleOptionsMock.mockResolvedValue(roleOptionsResponse)
   })
 
   it('loads departments and roles in create mode and submits a new user', async () => {
@@ -185,9 +174,37 @@ describe('UserFormDrawer', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('新增系统用户')
-    expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
-    expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 100 })
+    expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith()
+    expect(getRoleOptionsMock).toHaveBeenCalledWith()
     expect(getUserMock).not.toHaveBeenCalled()
+    expect(wrapper.getComponent(NTreeSelect).props('options')).toEqual([
+      {
+        key: departmentId,
+        label: '研发部 (rd)',
+        disabled: false,
+        children: [
+          {
+            key: secondDepartmentId,
+            label: '前端组 (frontend)',
+            disabled: true,
+          },
+        ],
+      },
+    ])
+    expect(
+      wrapper.get('[data-test="user-form-roles"]').getComponent(NSelect).props('options'),
+    ).toEqual([
+      {
+        label: '管理员 (admin)',
+        value: roleId,
+        disabled: false,
+      },
+      {
+        label: '审核员 (auditor)',
+        value: secondRoleId,
+        disabled: true,
+      },
+    ])
 
     await wrapper.get('[data-test="user-form-username"] input').setValue('new-user')
     await wrapper.get('[data-test="user-form-nickname"] input').setValue('New User')
@@ -207,7 +224,7 @@ describe('UserFormDrawer', () => {
   })
 
   it('shows a load error and disables submit when create form options fail to load', async () => {
-    getDepartmentTreeMock.mockRejectedValue(new Error('network'))
+    getDepartmentTreeOptionsMock.mockRejectedValue(new Error('network'))
 
     const wrapper = mountDrawer({ userId: null })
     await flushPromises()
@@ -232,8 +249,12 @@ describe('UserFormDrawer', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('编辑系统用户')
-    expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
-    expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 100 })
+    expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith({
+      includeIds: [departmentId],
+    })
+    expect(getRoleOptionsMock).toHaveBeenCalledWith({
+      includeIds: [roleId],
+    })
     expect(getUserMock).toHaveBeenCalledWith(userId)
     const departmentTreeSelect = wrapper.getComponent(NTreeSelect)
 

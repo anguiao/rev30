@@ -13,7 +13,7 @@ import {
 import {
   createDepartment,
   getDepartment,
-  getDepartmentTree,
+  getDepartmentTreeOptions,
   SystemRequestError,
   updateDepartment,
 } from '../../../src/features/system'
@@ -26,13 +26,13 @@ vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   createDepartment: vi.fn(),
   getDepartment: vi.fn(),
-  getDepartmentTree: vi.fn(),
+  getDepartmentTreeOptions: vi.fn(),
   updateDepartment: vi.fn(),
 }))
 
 const createDepartmentMock = vi.mocked(createDepartment)
 const getDepartmentMock = vi.mocked(getDepartment)
-const getDepartmentTreeMock = vi.mocked(getDepartmentTree)
+const getDepartmentTreeOptionsMock = vi.mocked(getDepartmentTreeOptions)
 const updateDepartmentMock = vi.mocked(updateDepartment)
 
 const rootDepartmentId = '11111111-1111-4111-8111-111111111111'
@@ -40,6 +40,7 @@ const childDepartmentId = '22222222-2222-4222-8222-222222222222'
 const grandchildDepartmentId = '33333333-3333-4333-8333-333333333333'
 const siblingDepartmentId = '44444444-4444-4444-8444-444444444444'
 const secondRootDepartmentId = '55555555-5555-4555-8555-555555555555'
+const enabledChildOfDisabledDepartmentId = '66666666-6666-4666-8666-666666666666'
 
 const departmentTreeResponse: DepartmentTreeNode[] = [
   {
@@ -80,11 +81,23 @@ const departmentTreeResponse: DepartmentTreeNode[] = [
         parentId: rootDepartmentId,
         name: '市场部',
         code: 'marketing',
-        status: DEPARTMENT_STATUS_ENABLED,
+        status: DEPARTMENT_STATUS_DISABLED,
         sortOrder: 3,
         createdAt: '2026-05-04T00:00:00.000Z',
         updatedAt: '2026-05-04T00:00:00.000Z',
-        children: [],
+        children: [
+          {
+            id: enabledChildOfDisabledDepartmentId,
+            parentId: siblingDepartmentId,
+            name: '市场活动组',
+            code: 'campaign',
+            status: DEPARTMENT_STATUS_ENABLED,
+            sortOrder: 1,
+            createdAt: '2026-05-04T00:00:00.000Z',
+            updatedAt: '2026-05-04T00:00:00.000Z',
+            children: [],
+          },
+        ],
       },
     ],
   },
@@ -174,10 +187,10 @@ describe('DepartmentFormDrawer', () => {
   beforeEach(() => {
     createDepartmentMock.mockReset()
     getDepartmentMock.mockReset()
-    getDepartmentTreeMock.mockReset()
+    getDepartmentTreeOptionsMock.mockReset()
     updateDepartmentMock.mockReset()
 
-    getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
+    getDepartmentTreeOptionsMock.mockResolvedValue(departmentTreeResponse)
   })
 
   it('creates a top-level department', async () => {
@@ -197,9 +210,47 @@ describe('DepartmentFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
+    expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith()
     expect(getDepartmentMock).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('新增组织部门')
+    expect(wrapper.getComponent(NTreeSelect).props('options')).toEqual([
+      {
+        key: rootDepartmentId,
+        label: '总部 (hq)',
+        disabled: false,
+        children: [
+          {
+            key: childDepartmentId,
+            label: '运营部 (ops)',
+            disabled: false,
+            children: [
+              {
+                key: grandchildDepartmentId,
+                label: '运营支持组 (ops-support)',
+                disabled: false,
+              },
+            ],
+          },
+          {
+            key: siblingDepartmentId,
+            label: '市场部 (marketing)',
+            disabled: true,
+            children: [
+              {
+                key: enabledChildOfDisabledDepartmentId,
+                label: '市场活动组 (campaign)',
+                disabled: false,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        key: secondRootDepartmentId,
+        label: '财务中心 (finance)',
+        disabled: false,
+      },
+    ])
 
     await wrapper.get('[data-test="department-form-name"] input').setValue('运营中心')
     await wrapper.get('[data-test="department-form-code"] input').setValue('ops')
@@ -220,7 +271,7 @@ describe('DepartmentFormDrawer', () => {
   })
 
   it('shows a load error and disables submit when department options fail to load', async () => {
-    getDepartmentTreeMock.mockRejectedValue(new Error('network'))
+    getDepartmentTreeOptionsMock.mockRejectedValue(new Error('network'))
 
     const wrapper = mountDrawer({
       show: true,
@@ -258,6 +309,9 @@ describe('DepartmentFormDrawer', () => {
     })
     await flushPromises()
 
+    expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith({
+      includeIds: [rootDepartmentId],
+    })
     const treeSelect = wrapper.getComponent(NTreeSelect)
     expect(treeSelect.props('value')).toBe(rootDepartmentId)
 
@@ -306,7 +360,7 @@ describe('DepartmentFormDrawer', () => {
     const secondTreeLoad = deferred<DepartmentTreeNode[]>()
     let treeLoadCount = 0
 
-    getDepartmentTreeMock.mockImplementation(() => {
+    getDepartmentTreeOptionsMock.mockImplementation(() => {
       treeLoadCount += 1
 
       if (treeLoadCount === 1) {
@@ -369,7 +423,9 @@ describe('DepartmentFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
+    expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith({
+      includeIds: [rootDepartmentId],
+    })
     expect(getDepartmentMock).toHaveBeenCalledWith(childDepartmentId)
     expect(wrapper.text()).toContain('编辑组织部门')
 

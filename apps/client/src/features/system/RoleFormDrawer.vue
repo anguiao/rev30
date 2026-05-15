@@ -16,6 +16,7 @@ import {
   NTree,
 } from 'naive-ui'
 import {
+  RESOURCE_STATUS_ENABLED,
   ROLE_STATUS_ENABLED,
   roleCreateSchema,
   createRoleResourceIdsSchema,
@@ -28,7 +29,7 @@ import {
 import {
   SystemRequestError,
   createRole,
-  getResourceTree,
+  getResourceTreeOptions,
   getRole,
   getSystemErrorMessage,
   updateRole,
@@ -66,26 +67,33 @@ const {
   enabled: () => show.value,
   async query() {
     const roleId = props.roleId
-    const [resources, role] = await Promise.all([
-      getResourceTree(),
-      roleId === null ? null : getRole(roleId),
-    ])
+    if (roleId === null) {
+      const resources = await getResourceTreeOptions()
+
+      return {
+        resources,
+        formValues: defaultFormValues,
+      }
+    }
+
+    const role = await getRole(roleId)
+    const resources = await getResourceTreeOptions({
+      includeIds: role.resources.map((resource) => resource.id),
+    })
 
     return {
       resources,
-      formValues:
-        role === null
-          ? defaultFormValues
-          : {
-              ...pick(role, ['name', 'code', 'status', 'sortOrder']),
-              resourceIds: role.resources.map((resource) => resource.id),
-            },
+      formValues: {
+        ...pick(role, ['name', 'code', 'status', 'sortOrder']),
+        resourceIds: role.resources.map((resource) => resource.id),
+      },
     }
   },
 })
 const resourceTreeOptions = computed(() =>
   toTreeOptions(formData.value?.resources ?? [], {
     label: (resource) => `${resource.name} (${resource.code})`,
+    disabled: (resource) => resource.status !== RESOURCE_STATUS_ENABLED,
   }),
 )
 const loadError = computed(() =>

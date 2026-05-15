@@ -2,7 +2,12 @@ import { z } from 'zod'
 import { nonBlankString, sortOrderInputSchema } from '../common/inputs'
 import { paginationQuerySchema } from '../common/pagination'
 import { hasAnyDefinedValue } from '../common/refinements'
-import { optionalNumericQueryValue, optionalQueryValue, optionalTrimmedQueryString } from '../query'
+import {
+  includeIdsQueryValue,
+  optionalNumericQueryValue,
+  optionalQueryValue,
+  optionalTrimmedQueryString,
+} from '../query'
 
 export const DEPARTMENT_STATUS_DISABLED = 0
 export const DEPARTMENT_STATUS_ENABLED = 1
@@ -49,6 +54,29 @@ export const departmentListQuerySchema = paginationQuerySchema.extend({
   parentId: optionalParentIdQuerySchema,
 })
 
+export const departmentTreeOptionsQuerySchema = z.object({
+  includeIds: includeIdsQueryValue(departmentIdSchema),
+})
+
+const departmentTreeOptionBaseSchema = departmentSchema.pick({
+  id: true,
+  parentId: true,
+  name: true,
+  code: true,
+  status: true,
+})
+
+export type DepartmentTreeOption = z.infer<typeof departmentTreeOptionBaseSchema> & {
+  children: DepartmentTreeOption[]
+}
+
+export const departmentTreeOptionSchema: z.ZodType<DepartmentTreeOption> =
+  departmentTreeOptionBaseSchema.extend({
+    children: z.lazy(() => departmentTreeOptionSchema.array()),
+  })
+
+export const departmentTreeOptionsResponseSchema = z.array(departmentTreeOptionSchema)
+
 export const departmentFormSchema = z.object({
   name: departmentNameSchema,
   code: departmentCodeSchema,
@@ -74,6 +102,8 @@ export const departmentListResponseSchema = z.object({
   pageSize: z.number().int().min(1),
 })
 
+export type DepartmentTreeOptionsQuery = z.infer<typeof departmentTreeOptionsQuerySchema>
+export type DepartmentTreeOptionsResponse = z.infer<typeof departmentTreeOptionsResponseSchema>
 export type DepartmentListQuery = z.infer<typeof departmentListQuerySchema>
 export type DepartmentFormInput = z.infer<typeof departmentFormSchema>
 export type DepartmentCreateInput = z.infer<typeof departmentCreateSchema>

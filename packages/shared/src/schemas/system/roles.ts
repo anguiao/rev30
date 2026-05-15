@@ -2,7 +2,11 @@ import { z } from 'zod'
 import { nonBlankString, sortOrderInputSchema } from '../common/inputs'
 import { paginationQuerySchema } from '../common/pagination'
 import { ensureUniqueItems, hasAnyDefinedValue } from '../common/refinements'
-import { optionalNumericQueryValue, optionalTrimmedQueryString } from '../query'
+import {
+  includeIdsQueryValue,
+  optionalNumericQueryValue,
+  optionalTrimmedQueryString,
+} from '../query'
 import { resourceTypeSchema, type Resource } from './resources'
 
 export const ROLE_STATUS_DISABLED = 0
@@ -54,6 +58,19 @@ export const roleResourceIdsSchema = z
   .array(resourceIdSchema)
   .max(roleResourceIdsMaxLength, `权限资源不能超过 ${roleResourceIdsMaxLength} 个`)
   .superRefine(ensureUniqueItems('资源不能重复'))
+
+export const roleOptionsQuerySchema = z.object({
+  includeIds: includeIdsQueryValue(roleIdSchema),
+})
+
+export const roleOptionSchema = roleSchema.pick({
+  id: true,
+  name: true,
+  code: true,
+  status: true,
+})
+
+export const roleOptionsResponseSchema = z.array(roleOptionSchema)
 
 export function createRoleResourceIdsSchema(
   resources: readonly Pick<Resource, 'id' | 'parentId'>[],
@@ -108,6 +125,10 @@ export const roleListResponseSchema = z.object({
   page: z.number().int().min(1),
   pageSize: z.number().int().min(1),
 })
+
+export type RoleOptionsQuery = z.infer<typeof roleOptionsQuerySchema>
+export type RoleOption = z.infer<typeof roleOptionSchema>
+export type RoleOptionsResponse = z.infer<typeof roleOptionsResponseSchema>
 
 export type RoleSummary = z.infer<typeof roleSummarySchema>
 export type RoleResource = z.infer<typeof roleResourceSchema>

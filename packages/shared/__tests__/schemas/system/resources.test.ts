@@ -10,6 +10,8 @@ import {
   RESOURCE_TYPE_MENU,
   resourceCreateSchema,
   resourceFormSchema,
+  resourceTreeOptionsQuerySchema,
+  resourceTreeOptionsResponseSchema,
   resourceListQuerySchema,
   resourceListResponseSchema,
   resourceSchema,
@@ -20,6 +22,69 @@ import type { Resource } from '../../../src/schemas/system/resources'
 import { prettifyZodError } from '../../helpers/schema'
 
 describe('resource schemas', () => {
+  it('parses includeIds as comma-separated resource ids and deduplicates values', () => {
+    const first = '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7'
+    const second = '4be2dfda-2fd6-4ee5-b06b-c551328bc343'
+
+    expect(
+      resourceTreeOptionsQuerySchema.parse({ includeIds: `${first}, ${second}, ${first}` }),
+    ).toEqual({
+      includeIds: [first, second],
+    })
+  })
+
+  it('parses resource includeIds as empty array for blank strings or non-string values', () => {
+    expect(resourceTreeOptionsQuerySchema.parse({ includeIds: '' })).toEqual({ includeIds: [] })
+    expect(resourceTreeOptionsQuerySchema.parse({ includeIds: '   ' })).toEqual({ includeIds: [] })
+    expect(resourceTreeOptionsQuerySchema.parse({ includeIds: {} })).toEqual({ includeIds: [] })
+  })
+
+  it('parses resource includeIds query with empty object as []', () => {
+    expect(resourceTreeOptionsQuerySchema.parse({})).toEqual({ includeIds: [] })
+  })
+
+  it('reports invalid resource id in includeIds query', () => {
+    const result = resourceTreeOptionsQuerySchema.safeParse({
+      includeIds: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7, invalid-uuid',
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(prettifyZodError(result)).toContain('资源 ID 无效')
+    }
+  })
+
+  it('accepts recursive lightweight resource tree options responses', () => {
+    expect(
+      resourceTreeOptionsResponseSchema.parse([
+        {
+          id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+          parentId: null,
+          type: RESOURCE_TYPE_DIRECTORY,
+          name: 'System',
+          code: 'system',
+          status: RESOURCE_STATUS_ENABLED,
+          children: [
+            {
+              id: '4be2dfda-2fd6-4ee5-b06b-c551328bc343',
+              parentId: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+              type: RESOURCE_TYPE_ACTION,
+              name: 'Create User',
+              code: 'system:user:create',
+              status: RESOURCE_STATUS_ENABLED,
+              children: [],
+            },
+          ],
+        },
+      ]),
+    ).toMatchObject({
+      0: {
+        code: 'system',
+        children: [{ code: 'system:user:create' }],
+      },
+    })
+  })
+
   it('accepts a resource response with menu fields', () => {
     expect(
       resourceSchema.parse({

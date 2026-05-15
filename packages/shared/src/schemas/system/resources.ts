@@ -3,7 +3,12 @@ import { nonBlankString, optionalNullableString, sortOrderInputSchema } from '..
 import { paginationQuerySchema } from '../common/pagination'
 import { hasAnyDefinedValue } from '../common/refinements'
 import { iconifyIconNamePattern } from '../icons'
-import { optionalNumericQueryValue, optionalQueryValue, optionalTrimmedQueryString } from '../query'
+import {
+  includeIdsQueryValue,
+  optionalNumericQueryValue,
+  optionalQueryValue,
+  optionalTrimmedQueryString,
+} from '../query'
 
 export const RESOURCE_STATUS_DISABLED = 0
 export const RESOURCE_STATUS_ENABLED = 1
@@ -64,6 +69,30 @@ export type Resource = z.infer<typeof resourceSchema>
 export type ResourceTreeNode = Resource & {
   children: ResourceTreeNode[]
 }
+
+export const resourceTreeOptionsQuerySchema = z.object({
+  includeIds: includeIdsQueryValue(resourceIdSchema),
+})
+
+const resourceTreeOptionBaseSchema = resourceSchema.pick({
+  id: true,
+  parentId: true,
+  type: true,
+  name: true,
+  code: true,
+  status: true,
+})
+
+export type ResourceTreeOption = z.infer<typeof resourceTreeOptionBaseSchema> & {
+  children: ResourceTreeOption[]
+}
+
+export const resourceTreeOptionSchema: z.ZodType<ResourceTreeOption> =
+  resourceTreeOptionBaseSchema.extend({
+    children: z.lazy(() => resourceTreeOptionSchema.array()),
+  })
+
+export const resourceTreeOptionsResponseSchema = z.array(resourceTreeOptionSchema)
 
 export const resourceTreeNodeSchema: z.ZodType<ResourceTreeNode> = resourceSchema.extend({
   children: z.lazy(() => resourceTreeNodeSchema.array()),
@@ -214,6 +243,9 @@ export const resourceListResponseSchema = z.object({
   page: z.number().int().min(1),
   pageSize: z.number().int().min(1),
 })
+
+export type ResourceTreeOptionsQuery = z.infer<typeof resourceTreeOptionsQuerySchema>
+export type ResourceTreeOptionsResponse = z.infer<typeof resourceTreeOptionsResponseSchema>
 
 export type ResourceListQuery = z.infer<typeof resourceListQuerySchema>
 export type ResourceFormInput = z.infer<typeof resourceFormSchema>

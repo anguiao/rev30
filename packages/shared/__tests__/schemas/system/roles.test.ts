@@ -7,6 +7,9 @@ import {
   roleListQuerySchema,
   roleListResponseSchema,
   createRoleResourceIdsSchema,
+  roleOptionSchema,
+  roleOptionsQuerySchema,
+  roleOptionsResponseSchema,
   roleResourceSchema,
   roleSchema,
   roleUpdateSchema,
@@ -15,6 +18,67 @@ import { RESOURCE_TYPE_ACTION, RESOURCE_TYPE_MENU } from '../../../src/schemas/s
 import { prettifyZodError, testUuid } from '../../helpers/schema'
 
 describe('role schemas', () => {
+  it('parses includeIds as comma-separated role ids and deduplicates values', () => {
+    const first = '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7'
+    const second = '4be2dfda-2fd6-4ee5-b06b-c551328bc343'
+
+    expect(roleOptionsQuerySchema.parse({ includeIds: `${first}, ${second}, ${first}` })).toEqual({
+      includeIds: [first, second],
+    })
+  })
+
+  it('parses includeIds as empty array for blank strings or non-string values', () => {
+    expect(roleOptionsQuerySchema.parse({ includeIds: '' })).toEqual({ includeIds: [] })
+    expect(roleOptionsQuerySchema.parse({ includeIds: '   ' })).toEqual({ includeIds: [] })
+    expect(roleOptionsQuerySchema.parse({ includeIds: {} })).toEqual({ includeIds: [] })
+  })
+
+  it('parses includeIds query with empty object as []', () => {
+    expect(roleOptionsQuerySchema.parse({})).toEqual({ includeIds: [] })
+  })
+
+  it('reports invalid role id in includeIds query', () => {
+    const result = roleOptionsQuerySchema.safeParse({
+      includeIds: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7, invalid-uuid',
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(prettifyZodError(result)).toContain('角色 ID 无效')
+    }
+  })
+
+  it('accepts lightweight role options response', () => {
+    expect(
+      roleOptionsResponseSchema.parse([
+        {
+          id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+          name: 'Administrator',
+          code: 'admin',
+          status: ROLE_STATUS_ENABLED,
+        },
+      ]),
+    ).toMatchObject([
+      {
+        id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        name: 'Administrator',
+        code: 'admin',
+        status: ROLE_STATUS_ENABLED,
+      },
+    ])
+  })
+
+  it('parses role options with field selection', () => {
+    const result = roleOptionSchema.safeParse({
+      id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+      name: 'Administrator',
+      code: 'admin',
+      status: ROLE_STATUS_ENABLED,
+    })
+
+    expect(result.success).toBe(true)
+  })
+
   it('accepts role list items with user counts and no resources', () => {
     expect(
       roleListItemSchema.parse({

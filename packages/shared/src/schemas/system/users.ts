@@ -2,7 +2,11 @@ import { z } from 'zod'
 import { nonBlankString, optionalNullableString, passwordInputSchema } from '../common/inputs'
 import { paginationQuerySchema } from '../common/pagination'
 import { ensureUniqueItems, hasAnyDefinedValue } from '../common/refinements'
-import { optionalNumericQueryValue, optionalTrimmedQueryString } from '../query'
+import {
+  includeIdsQueryValue,
+  optionalNumericQueryValue,
+  optionalTrimmedQueryString,
+} from '../query'
 import { departmentSummarySchema } from './departments'
 import { roleIdsSchema, roleSummarySchema } from './roles'
 
@@ -65,6 +69,19 @@ export const userFormSchema = z.object({
   roleIds: roleIdsSchema,
 })
 
+export const userOptionsQuerySchema = z.object({
+  includeIds: includeIdsQueryValue(userIdSchema),
+})
+
+export const userOptionSchema = userSchema.pick({
+  id: true,
+  username: true,
+  nickname: true,
+  status: true,
+})
+
+export const userOptionsResponseSchema = z.array(userOptionSchema)
+
 export const userCreateSchema = userFormSchema.extend({
   status: userStatusSchema.default(USER_STATUS_ENABLED),
   departmentIds: departmentIdsSchema.optional(),
@@ -93,6 +110,9 @@ export const userResetPasswordResponseSchema = z.object({
 })
 
 export type User = z.infer<typeof userSchema>
+export type UserOptionsQuery = z.infer<typeof userOptionsQuerySchema>
+export type UserOption = z.infer<typeof userOptionSchema>
+export type UserOptionsResponse = z.infer<typeof userOptionsResponseSchema>
 export type UserListItem = z.infer<typeof userListItemSchema>
 export type UserListQuery = z.infer<typeof userListQuerySchema>
 export type UserFormInput = z.infer<typeof userFormSchema>

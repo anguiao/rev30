@@ -1,11 +1,11 @@
 import {
   departmentSchema,
-  departmentTreeNodeSchema,
+  departmentTreeResponseSchema,
   type Department,
   type DepartmentCreateInput,
   errorResponseSchema,
   roleSchema,
-  resourceTreeNodeSchema,
+  resourceTreeResponseSchema,
   resourceSchema,
   type ErrorResponse,
   type Role,
@@ -15,9 +15,7 @@ import {
   type ResourceCreateInput,
   type ResourceUpdateInput,
   roleListResponseSchema,
-  type DepartmentTreeNode,
   type DepartmentUpdateInput,
-  type ResourceTreeNode,
   type RoleListQuery,
   type RoleListResponse,
   type User,
@@ -32,8 +30,10 @@ import {
   type RoleOptionsResponse,
   departmentTreeOptionsResponseSchema,
   type DepartmentTreeOptionsResponse,
+  type DepartmentTreeResponse,
   resourceTreeOptionsResponseSchema,
   type ResourceTreeOptionsResponse,
+  type ResourceTreeResponse,
   type UserUpdateInput,
   type IconSearchQuery,
   type IconSearchResponse,
@@ -46,18 +46,6 @@ import {
 import type { z } from 'zod'
 import { api } from '../../api'
 import { normalizeRequestQuery } from '../../utils/request'
-
-const departmentTreeResponseSchema = departmentTreeNodeSchema.array()
-const resourceTreeResponseSchema = resourceTreeNodeSchema.array()
-type OptionsQuery = {
-  includeIds?: string[]
-}
-
-function normalizeOptionsQuery(query: OptionsQuery = {}) {
-  return normalizeRequestQuery({
-    includeIds: query.includeIds?.join(','),
-  }) as { includeIds: string | string[] }
-}
 
 export class SystemRequestError extends Error {
   constructor(
@@ -109,10 +97,10 @@ export async function getUser(id: string): Promise<User> {
   return parseSystemResponse(await api.system.users[':id'].$get({ param: { id } }), userSchema)
 }
 
-export async function getUserOptions(query: OptionsQuery = {}): Promise<UserOptionsResponse> {
+export async function getUserOptions(includeIds: string[] = []): Promise<UserOptionsResponse> {
   return parseSystemResponse(
     await api.system.users.options.$get({
-      query: normalizeOptionsQuery(query),
+      query: normalizeRequestQuery({ includeIds: includeIds.join(',') }),
     }),
     userOptionsResponseSchema,
   )
@@ -152,16 +140,16 @@ export async function resetUserPassword(id: string): Promise<UserResetPasswordRe
   )
 }
 
-export async function getDepartmentTree(): Promise<DepartmentTreeNode[]> {
+export async function getDepartmentTree(): Promise<DepartmentTreeResponse> {
   return parseSystemResponse(await api.system.departments.tree.$get(), departmentTreeResponseSchema)
 }
 
 export async function getDepartmentTreeOptions(
-  query: OptionsQuery = {},
+  includeIds: string[] = [],
 ): Promise<DepartmentTreeOptionsResponse> {
   return parseSystemResponse(
     await api.system.departments.options.tree.$get({
-      query: normalizeOptionsQuery(query),
+      query: normalizeRequestQuery({ includeIds: includeIds.join(',') }),
     }),
     departmentTreeOptionsResponseSchema,
   )
@@ -212,10 +200,10 @@ export async function getRole(id: string): Promise<Role> {
   return parseSystemResponse(await api.system.roles[':id'].$get({ param: { id } }), roleSchema)
 }
 
-export async function getRoleOptions(query: OptionsQuery = {}): Promise<RoleOptionsResponse> {
+export async function getRoleOptions(includeIds: string[] = []): Promise<RoleOptionsResponse> {
   return parseSystemResponse(
     await api.system.roles.options.$get({
-      query: normalizeOptionsQuery(query),
+      query: normalizeRequestQuery({ includeIds: includeIds.join(',') }),
     }),
     roleOptionsResponseSchema,
   )
@@ -240,16 +228,16 @@ export async function deleteRole(id: string): Promise<void> {
   }
 }
 
-export async function getResourceTree(): Promise<ResourceTreeNode[]> {
+export async function getResourceTree(): Promise<ResourceTreeResponse> {
   return parseSystemResponse(await api.system.resources.tree.$get(), resourceTreeResponseSchema)
 }
 
 export async function getResourceTreeOptions(
-  query: OptionsQuery = {},
+  includeIds: string[] = [],
 ): Promise<ResourceTreeOptionsResponse> {
   return parseSystemResponse(
     await api.system.resources.options.tree.$get({
-      query: normalizeOptionsQuery(query),
+      query: normalizeRequestQuery({ includeIds: includeIds.join(',') }),
     }),
     resourceTreeOptionsResponseSchema,
   )

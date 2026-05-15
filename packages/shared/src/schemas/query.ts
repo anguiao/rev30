@@ -20,16 +20,19 @@ export function optionalNumericQueryValue<TSchema extends NumericQuerySchema>(sc
 }
 
 export function includeIdsQueryValue<TSchema extends z.ZodType<string>>(schema: TSchema) {
-  return z.preprocess((value) => {
-    if (typeof value !== 'string') {
-      return []
-    }
+  return z
+    .preprocess((value) => {
+      if (typeof value !== 'string') {
+        return []
+      }
 
-    const values = value
-      .split(',')
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0)
+      const values = value
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0)
 
-    return [...new Set(values)]
-  }, z.array(schema))
+      return [...new Set(values)]
+    }, z.array(schema))
+    .optional()
+    .transform((value) => value ?? [])
 }

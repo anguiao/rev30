@@ -80,12 +80,8 @@ const {
 
     const user = await getUser(userId)
     const [departments, roles] = await Promise.all([
-      getDepartmentTreeOptions({
-        includeIds: user.departments.map((department) => department.id),
-      }),
-      getRoleOptions({
-        includeIds: user.roles.map((role) => role.id),
-      }),
+      getDepartmentTreeOptions(user.departments.map((department) => department.id)),
+      getRoleOptions(user.roles.map((role) => role.id)),
     ])
 
     return {

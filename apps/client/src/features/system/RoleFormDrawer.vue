@@ -77,9 +77,7 @@ const {
     }
 
     const role = await getRole(roleId)
-    const resources = await getResourceTreeOptions({
-      includeIds: role.resources.map((resource) => resource.id),
-    })
+    const resources = await getResourceTreeOptions(role.resources.map((resource) => resource.id))
 
     return {
       resources,

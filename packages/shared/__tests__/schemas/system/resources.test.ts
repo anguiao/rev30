@@ -10,12 +10,12 @@ import {
   RESOURCE_TYPE_MENU,
   resourceCreateSchema,
   resourceFormSchema,
+  resourceTreeResponseSchema,
   resourceTreeOptionsQuerySchema,
   resourceTreeOptionsResponseSchema,
   resourceListQuerySchema,
   resourceListResponseSchema,
   resourceSchema,
-  resourceTreeNodeSchema,
   resourceUpdateSchema,
 } from '../../../src/schemas/system/resources'
 import type { Resource } from '../../../src/schemas/system/resources'
@@ -300,47 +300,51 @@ describe('resource schemas', () => {
     })
   })
 
-  it('accepts recursive resource tree nodes', () => {
+  it('accepts recursive resource tree responses', () => {
     expect(
-      resourceTreeNodeSchema.parse({
-        id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-        parentId: null,
-        type: RESOURCE_TYPE_DIRECTORY,
-        name: 'System',
+      resourceTreeResponseSchema.parse([
+        {
+          id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+          parentId: null,
+          type: RESOURCE_TYPE_DIRECTORY,
+          name: 'System',
+          code: 'system',
+          path: null,
+          externalUrl: null,
+          openTarget: RESOURCE_OPEN_TARGET_SELF,
+          icon: 'lucide:settings',
+          hidden: false,
+          status: RESOURCE_STATUS_ENABLED,
+          sortOrder: 0,
+          createdAt: '2026-05-04T08:00:00.000Z',
+          updatedAt: '2026-05-04T08:00:00.000Z',
+          children: [
+            {
+              id: '4be2dfda-2fd6-4ee5-b06b-c551328bc343',
+              parentId: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+              type: RESOURCE_TYPE_ACTION,
+              name: 'Create User',
+              code: 'system:user:create',
+              path: null,
+              externalUrl: null,
+              openTarget: RESOURCE_OPEN_TARGET_SELF,
+              icon: null,
+              hidden: false,
+              status: RESOURCE_STATUS_ENABLED,
+              sortOrder: 1,
+              createdAt: '2026-05-04T08:00:00.000Z',
+              updatedAt: '2026-05-04T08:00:00.000Z',
+              children: [],
+            },
+          ],
+        },
+      ]),
+    ).toMatchObject([
+      {
         code: 'system',
-        path: null,
-        externalUrl: null,
-        openTarget: RESOURCE_OPEN_TARGET_SELF,
-        icon: 'lucide:settings',
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
-        sortOrder: 0,
-        createdAt: '2026-05-04T08:00:00.000Z',
-        updatedAt: '2026-05-04T08:00:00.000Z',
-        children: [
-          {
-            id: '4be2dfda-2fd6-4ee5-b06b-c551328bc343',
-            parentId: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-            type: RESOURCE_TYPE_ACTION,
-            name: 'Create User',
-            code: 'system:user:create',
-            path: null,
-            externalUrl: null,
-            openTarget: RESOURCE_OPEN_TARGET_SELF,
-            icon: null,
-            hidden: false,
-            status: RESOURCE_STATUS_ENABLED,
-            sortOrder: 1,
-            createdAt: '2026-05-04T08:00:00.000Z',
-            updatedAt: '2026-05-04T08:00:00.000Z',
-            children: [],
-          },
-        ],
-      }),
-    ).toMatchObject({
-      code: 'system',
-      children: [{ code: 'system:user:create' }],
-    })
+        children: [{ code: 'system:user:create' }],
+      },
+    ])
   })
 
   it('parses list query defaults and blank filters', () => {

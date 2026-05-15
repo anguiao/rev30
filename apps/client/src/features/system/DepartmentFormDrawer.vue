@@ -74,7 +74,7 @@ const {
       const departments =
         parentId === null
           ? await getDepartmentTreeOptions()
-          : await getDepartmentTreeOptions({ includeIds: [parentId] })
+          : await getDepartmentTreeOptions([parentId])
 
       return {
         departments,
@@ -83,10 +83,9 @@ const {
     }
 
     const department = await getDepartment(departmentId)
-    const departments =
-      department.parentId === null
-        ? await getDepartmentTreeOptions()
-        : await getDepartmentTreeOptions({ includeIds: [department.parentId] })
+    const departments = await getDepartmentTreeOptions(
+      department.parentId === null ? [departmentId] : [department.parentId, departmentId],
+    )
 
     return {
       departments,
@@ -100,7 +99,7 @@ const departmentTreeOptions = computed(() => {
   return toTreeOptions(formData.value?.departments ?? [], {
     label: (department) => `${department.name} (${department.code})`,
     disabled: (department) => department.status !== DEPARTMENT_STATUS_ENABLED,
-    ...(departmentId === null ? {} : { disabledSubtreeId: departmentId }),
+    ...(departmentId === null ? {} : { disabledSubtreeRootId: departmentId }),
   })
 })
 const loadError = computed(() =>

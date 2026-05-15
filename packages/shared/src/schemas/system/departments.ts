@@ -48,6 +48,8 @@ export const departmentTreeNodeSchema: z.ZodType<DepartmentTreeNode> = departmen
   children: z.lazy(() => departmentTreeNodeSchema.array()),
 })
 
+export const departmentTreeResponseSchema = z.array(departmentTreeNodeSchema)
+
 export const departmentListQuerySchema = paginationQuerySchema.extend({
   keyword: optionalKeywordSchema,
   status: optionalStatusQuerySchema,
@@ -102,6 +104,7 @@ export const departmentListResponseSchema = z.object({
   pageSize: z.number().int().min(1),
 })
 
+export type DepartmentTreeResponse = z.infer<typeof departmentTreeResponseSchema>
 export type DepartmentTreeOptionsQuery = z.infer<typeof departmentTreeOptionsQuerySchema>
 export type DepartmentTreeOptionsResponse = z.infer<typeof departmentTreeOptionsResponseSchema>
 export type DepartmentListQuery = z.infer<typeof departmentListQuerySchema>

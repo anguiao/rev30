@@ -277,9 +277,7 @@ describe('RoleFormDrawer', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('编辑系统角色')
-    expect(getResourceTreeOptionsMock).toHaveBeenCalledWith({
-      includeIds: [directoryResourceId, actionResourceId],
-    })
+    expect(getResourceTreeOptionsMock).toHaveBeenCalledWith([directoryResourceId, actionResourceId])
     expect(getRoleMock).toHaveBeenCalledWith(roleId)
     expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
       directoryResourceId,

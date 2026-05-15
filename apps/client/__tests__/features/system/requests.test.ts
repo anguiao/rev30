@@ -149,7 +149,7 @@ describe('system request helpers', () => {
     vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
-    const result = await getUserOptions({ includeIds: ['11111111-1111-4111-8111-111111111111'] })
+    const result = await getUserOptions(['11111111-1111-4111-8111-111111111111'])
 
     expect(result[0]?.username).toBe('alice')
     expect(fetchMock).toHaveBeenCalledOnce()
@@ -164,7 +164,7 @@ describe('system request helpers', () => {
     vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
-    await getUserOptions({ includeIds: [] })
+    await getUserOptions([])
 
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('includeIds=')
@@ -186,7 +186,7 @@ describe('system request helpers', () => {
     vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
-    const result = await getRoleOptions({ includeIds: ['22222222-2222-4222-8222-222222222222'] })
+    const result = await getRoleOptions(['22222222-2222-4222-8222-222222222222'])
 
     expect(result[0]?.name).toBe('管理员')
     expect(fetchMock).toHaveBeenCalledOnce()
@@ -223,9 +223,7 @@ describe('system request helpers', () => {
     vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
-    const result = await getDepartmentTreeOptions({
-      includeIds: ['33333333-3333-4333-8333-333333333333'],
-    })
+    const result = await getDepartmentTreeOptions(['33333333-3333-4333-8333-333333333333'])
 
     expect(result[0]?.children[0]?.name).toBe('研发中心')
     expect(fetchMock).toHaveBeenCalledOnce()
@@ -264,9 +262,7 @@ describe('system request helpers', () => {
     vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
-    const result = await getResourceTreeOptions({
-      includeIds: ['55555555-5555-4555-8555-555555555555'],
-    })
+    const result = await getResourceTreeOptions(['55555555-5555-4555-8555-555555555555'])
 
     expect(result[0]?.children[0]?.code).toBe('system.users.list')
     expect(fetchMock).toHaveBeenCalledOnce()

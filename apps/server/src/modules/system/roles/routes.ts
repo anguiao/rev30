@@ -39,6 +39,7 @@ const roleListQueryValidator = zValidator('query', roleListRequestQuerySchema, (
     return c.json({ message: '查询参数无效' }, 400)
   }
 })
+
 const roleOptionsQueryValidator = zValidator('query', roleOptionsQuerySchema, (result, c) => {
   if (!result.success) {
     return c.json({ message: '查询参数无效' }, 400)

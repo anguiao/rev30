@@ -328,9 +328,7 @@ describe('ResourceFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(getResourceTreeOptionsMock).toHaveBeenCalledWith({
-      includeIds: [rootResourceId],
-    })
+    expect(getResourceTreeOptionsMock).toHaveBeenCalledWith([rootResourceId])
     expect(wrapper.getComponent(NTreeSelect).props('value')).toBe(rootResourceId)
     expect(wrapper.getComponent(NTreeSelect).props('options')).toEqual([
       {
@@ -400,9 +398,7 @@ describe('ResourceFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(getResourceTreeOptionsMock).toHaveBeenCalledWith({
-      includeIds: [rootResourceId],
-    })
+    expect(getResourceTreeOptionsMock).toHaveBeenCalledWith([rootResourceId, menuResourceId])
     expect(getResourceMock).toHaveBeenCalledWith(menuResourceId)
     expect(wrapper.text()).toContain('编辑权限资源')
     expect(wrapper.get('[data-test="resource-icon-preview"]').text()).toBe('lucide:users')

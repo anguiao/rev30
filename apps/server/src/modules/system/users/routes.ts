@@ -38,6 +38,7 @@ const userListQueryValidator = zValidator('query', userListRequestQuerySchema, (
     return c.json({ message: '查询参数无效' }, 400)
   }
 })
+
 const userOptionsQueryValidator = zValidator('query', userOptionsQuerySchema, (result, c) => {
   if (!result.success) {
     return c.json({ message: '查询参数无效' }, 400)

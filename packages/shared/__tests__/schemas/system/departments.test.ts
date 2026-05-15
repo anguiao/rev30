@@ -3,11 +3,11 @@ import {
   DEPARTMENT_STATUS_DISABLED,
   DEPARTMENT_STATUS_ENABLED,
   departmentCreateSchema,
+  departmentTreeResponseSchema,
   departmentTreeOptionsQuerySchema,
   departmentTreeOptionsResponseSchema,
   departmentListQuerySchema,
   departmentSchema,
-  departmentTreeNodeSchema,
   departmentUpdateSchema,
 } from '../../../src/schemas/system/departments'
 import { prettifyZodError } from '../../helpers/schema'
@@ -142,47 +142,60 @@ describe('department schemas', () => {
     })
   })
 
-  it('accepts recursive department tree nodes', () => {
+  it('accepts recursive department tree responses', () => {
     expect(
-      departmentTreeNodeSchema.parse({
-        id: 'd9e4a3b2-0b6c-47c1-84d3-c8b8af3c2a21',
-        parentId: null,
+      departmentTreeResponseSchema.parse([
+        {
+          id: 'd9e4a3b2-0b6c-47c1-84d3-c8b8af3c2a21',
+          parentId: null,
+          name: 'Root',
+          code: 'root',
+          status: DEPARTMENT_STATUS_ENABLED,
+          sortOrder: 0,
+          createdAt: '2026-04-29T08:00:00.000Z',
+          updatedAt: '2026-04-29T08:00:00.000Z',
+          children: [
+            {
+              id: 'f4b7f0a0-4d0d-4e80-86f4-5f4a5f5dd9b5',
+              parentId: 'd9e4a3b2-0b6c-47c1-84d3-c8b8af3c2a21',
+              name: 'Child',
+              code: 'child',
+              status: DEPARTMENT_STATUS_ENABLED,
+              sortOrder: 1,
+              createdAt: '2026-04-29T08:00:00.000Z',
+              updatedAt: '2026-04-29T08:00:00.000Z',
+              children: [
+                {
+                  id: '7f5a8c53-17fb-4db6-9b6d-a0f8e5f8f6f2',
+                  parentId: 'f4b7f0a0-4d0d-4e80-86f4-5f4a5f5dd9b5',
+                  name: 'Grandchild',
+                  code: 'grandchild',
+                  status: DEPARTMENT_STATUS_ENABLED,
+                  sortOrder: 2,
+                  createdAt: '2026-04-29T08:00:00.000Z',
+                  updatedAt: '2026-04-29T08:00:00.000Z',
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+      ]),
+    ).toMatchObject([
+      {
         name: 'Root',
-        code: 'root',
-        status: DEPARTMENT_STATUS_ENABLED,
-        sortOrder: 0,
-        createdAt: '2026-04-29T08:00:00.000Z',
-        updatedAt: '2026-04-29T08:00:00.000Z',
         children: [
           {
-            id: 'f4b7f0a0-4d0d-4e80-86f4-5f4a5f5dd9b5',
-            parentId: 'd9e4a3b2-0b6c-47c1-84d3-c8b8af3c2a21',
             name: 'Child',
-            code: 'child',
-            status: DEPARTMENT_STATUS_ENABLED,
-            sortOrder: 1,
-            createdAt: '2026-04-29T08:00:00.000Z',
-            updatedAt: '2026-04-29T08:00:00.000Z',
             children: [
               {
-                id: '7f5a8c53-17fb-4db6-9b6d-a0f8e5f8f6f2',
-                parentId: 'f4b7f0a0-4d0d-4e80-86f4-5f4a5f5dd9b5',
                 name: 'Grandchild',
-                code: 'grandchild',
-                status: DEPARTMENT_STATUS_ENABLED,
-                sortOrder: 2,
-                createdAt: '2026-04-29T08:00:00.000Z',
-                updatedAt: '2026-04-29T08:00:00.000Z',
-                children: [],
               },
             ],
           },
         ],
-      }),
-    ).toMatchObject({
-      name: 'Root',
-      children: [{ name: 'Child' }],
-    })
+      },
+    ])
   })
 
   it('requires at least one field for updates', () => {

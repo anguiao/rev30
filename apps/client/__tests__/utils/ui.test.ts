@@ -47,11 +47,11 @@ describe('toTreeOptions', () => {
     ])
   })
 
-  it('disables root and all descendants when disabledSubtreeId is root', () => {
+  it('disables root and all descendants when disabledSubtreeRootId is root', () => {
     expect(
       toTreeOptions(tree, {
         label: (department) => `${department.name} (${department.code})`,
-        disabledSubtreeId: departmentId,
+        disabledSubtreeRootId: departmentId,
       }),
     ).toEqual([
       {
@@ -69,7 +69,7 @@ describe('toTreeOptions', () => {
     ])
   })
 
-  it('disables only the target subtree when disabledSubtreeId is a child node', () => {
+  it('disables only the target subtree when disabledSubtreeRootId is a child node', () => {
     const siblingDepartmentId = '66666666-6666-4666-8666-666666666666'
     const thirdDepartmentId = '77777777-7777-4777-8777-777777777777'
     const nodes: TestTreeNode[] = [
@@ -100,7 +100,7 @@ describe('toTreeOptions', () => {
     expect(
       toTreeOptions(nodes, {
         label: (department) => `${department.name} (${department.code})`,
-        disabledSubtreeId: secondDepartmentId,
+        disabledSubtreeRootId: secondDepartmentId,
       }),
     ).toEqual([
       {

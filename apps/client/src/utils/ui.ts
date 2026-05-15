@@ -20,7 +20,7 @@ type TreeOptionNode<TNode> = {
 type TreeOptionsConfig<TNode> = {
   label?: (node: TNode) => string
   disabled?: (node: TNode) => boolean
-  disabledSubtreeId?: string
+  disabledSubtreeRootId?: string
 }
 
 type SelectOptionNode = {
@@ -71,14 +71,13 @@ export function renderTableActions(actions: Array<ReturnType<typeof renderTableA
     : h('div', { class: 'flex flex-wrap items-center gap-2' }, visibleActions)
 }
 
-function toTreeOptionsInternal<TNode extends TreeOptionNode<TNode>>(
+export function toTreeOptions<TNode extends TreeOptionNode<TNode>>(
   nodes: readonly TNode[],
-  config: TreeOptionsConfig<TNode>,
-  inheritedSubtreeDisabled = false,
+  config: TreeOptionsConfig<TNode> = {},
 ): TreeOption[] {
-  return nodes.map((node) => {
-    const subtreeDisabled = inheritedSubtreeDisabled || node.id === config.disabledSubtreeId
-    const disabled = subtreeDisabled || config.disabled?.(node) === true
+  function visit(node: TNode, isInsideDisabledSubtree = false): TreeOption {
+    const isInDisabledSubtree = isInsideDisabledSubtree || node.id === config.disabledSubtreeRootId
+    const disabled = isInDisabledSubtree || config.disabled?.(node) === true
     const option: TreeOption = {
       key: node.id,
       label: config.label?.(node) ?? node.name,
@@ -86,18 +85,13 @@ function toTreeOptionsInternal<TNode extends TreeOptionNode<TNode>>(
     }
 
     if (node.children.length > 0) {
-      option.children = toTreeOptionsInternal(node.children, config, subtreeDisabled)
+      option.children = node.children.map((child) => visit(child, isInDisabledSubtree))
     }
 
     return option
-  })
-}
+  }
 
-export function toTreeOptions<TNode extends TreeOptionNode<TNode>>(
-  nodes: readonly TNode[],
-  config: TreeOptionsConfig<TNode> = {},
-): TreeOption[] {
-  return toTreeOptionsInternal(nodes, config)
+  return nodes.map((node) => visit(node))
 }
 
 export function toSelectOptions<TNode extends SelectOptionNode>(

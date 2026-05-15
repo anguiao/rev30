@@ -98,6 +98,8 @@ export const resourceTreeNodeSchema: z.ZodType<ResourceTreeNode> = resourceSchem
   children: z.lazy(() => resourceTreeNodeSchema.array()),
 })
 
+export const resourceTreeResponseSchema = z.array(resourceTreeNodeSchema)
+
 export const resourceListQuerySchema = paginationQuerySchema.extend({
   keyword: optionalKeywordSchema,
   type: optionalTypeQuerySchema,
@@ -244,6 +246,7 @@ export const resourceListResponseSchema = z.object({
   pageSize: z.number().int().min(1),
 })
 
+export type ResourceTreeResponse = z.infer<typeof resourceTreeResponseSchema>
 export type ResourceTreeOptionsQuery = z.infer<typeof resourceTreeOptionsQuerySchema>
 export type ResourceTreeOptionsResponse = z.infer<typeof resourceTreeOptionsResponseSchema>
 

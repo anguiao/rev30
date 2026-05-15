@@ -44,6 +44,7 @@ const resourceListQueryValidator = zValidator(
     }
   },
 )
+
 const resourceTreeOptionsQueryValidator = zValidator(
   'query',
   resourceTreeOptionsQuerySchema,

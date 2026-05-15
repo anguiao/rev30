@@ -309,9 +309,7 @@ describe('DepartmentFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith({
-      includeIds: [rootDepartmentId],
-    })
+    expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith([rootDepartmentId])
     const treeSelect = wrapper.getComponent(NTreeSelect)
     expect(treeSelect.props('value')).toBe(rootDepartmentId)
 
@@ -423,9 +421,7 @@ describe('DepartmentFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith({
-      includeIds: [rootDepartmentId],
-    })
+    expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith([rootDepartmentId, childDepartmentId])
     expect(getDepartmentMock).toHaveBeenCalledWith(childDepartmentId)
     expect(wrapper.text()).toContain('编辑组织部门')
 

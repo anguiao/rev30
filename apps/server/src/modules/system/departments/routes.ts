@@ -42,6 +42,7 @@ const departmentListQueryValidator = zValidator(
     }
   },
 )
+
 const departmentTreeOptionsQueryValidator = zValidator(
   'query',
   departmentTreeOptionsQuerySchema,

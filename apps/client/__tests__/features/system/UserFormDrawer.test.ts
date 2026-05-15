@@ -249,12 +249,8 @@ describe('UserFormDrawer', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('编辑系统用户')
-    expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith({
-      includeIds: [departmentId],
-    })
-    expect(getRoleOptionsMock).toHaveBeenCalledWith({
-      includeIds: [roleId],
-    })
+    expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith([departmentId])
+    expect(getRoleOptionsMock).toHaveBeenCalledWith([roleId])
     expect(getUserMock).toHaveBeenCalledWith(userId)
     const departmentTreeSelect = wrapper.getComponent(NTreeSelect)
 

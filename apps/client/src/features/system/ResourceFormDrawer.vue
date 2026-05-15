@@ -101,7 +101,7 @@ const {
       const resources =
         parentId === null
           ? await getResourceTreeOptions()
-          : await getResourceTreeOptions({ includeIds: [parentId] })
+          : await getResourceTreeOptions([parentId])
 
       return {
         resources,
@@ -110,10 +110,9 @@ const {
     }
 
     const resource = await getResource(resourceId)
-    const resources =
-      resource.parentId === null
-        ? await getResourceTreeOptions()
-        : await getResourceTreeOptions({ includeIds: [resource.parentId] })
+    const resources = await getResourceTreeOptions(
+      resource.parentId === null ? [resourceId] : [resource.parentId, resourceId],
+    )
 
     return {
       resources,
@@ -139,7 +138,7 @@ const resourceTreeOptions = computed(() => {
   return toTreeOptions(formData.value?.resources ?? [], {
     label: (resource) => `${resource.name} (${resource.code})`,
     disabled: (resource) => resource.status !== RESOURCE_STATUS_ENABLED,
-    ...(resourceId === null ? {} : { disabledSubtreeId: resourceId }),
+    ...(resourceId === null ? {} : { disabledSubtreeRootId: resourceId }),
   })
 })
 const loadError = computed(() =>

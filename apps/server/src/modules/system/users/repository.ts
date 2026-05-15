@@ -23,13 +23,20 @@ import {
 } from '../departments/repository'
 import { findRoleSummariesByUserIds, lockActiveRolesByIds } from '../roles/repository'
 import { UserInvalidDepartmentError, UserInvalidRoleError } from './errors'
-import type { UserRow } from './mapper'
+import type { UserOptionRow, UserRow } from './mapper'
 
 export type UserWithRelationsRow = {
   user: UserRow
   departments: DepartmentSummary[]
   roles: RoleSummary[]
 }
+
+const userOptionColumns = {
+  id: systemUsers.id,
+  username: systemUsers.username,
+  nickname: systemUsers.nickname,
+  status: systemUsers.status,
+} satisfies Record<keyof UserOptionRow, unknown>
 
 function buildUserDepartmentValues(userId: string, departmentIds: string[]) {
   return departmentIds.map((departmentId) => ({
@@ -134,7 +141,7 @@ export function createUserRepository(database: Db) {
       ]
 
       return await database
-        .select()
+        .select(userOptionColumns)
         .from(systemUsers)
         .where(and(...filters))
         .orderBy(desc(systemUsers.createdAt), desc(systemUsers.id))

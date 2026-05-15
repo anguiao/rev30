@@ -7,6 +7,7 @@ import {
 import { systemResources } from '../../../db/schema'
 
 export type ResourceRow = typeof systemResources.$inferSelect
+export type ResourceTreeOptionRow = Pick<ResourceRow, keyof Omit<ResourceTreeOption, 'children'>>
 
 export function toResource(row: ResourceRow): Resource {
   return {
@@ -31,7 +32,7 @@ export function toResourceTree(rows: ResourceRow[]): ResourceTreeNode[] {
   return arrayToTree(rows.map(toResource))
 }
 
-export function toResourceTreeOption(row: ResourceRow): ResourceTreeOption {
+export function toResourceTreeOption(row: ResourceTreeOptionRow): ResourceTreeOption {
   return {
     id: row.id,
     parentId: row.parentId,
@@ -43,6 +44,6 @@ export function toResourceTreeOption(row: ResourceRow): ResourceTreeOption {
   }
 }
 
-export function toResourceTreeOptions(rows: ResourceRow[]): ResourceTreeOption[] {
+export function toResourceTreeOptions(rows: ResourceTreeOptionRow[]): ResourceTreeOption[] {
   return arrayToTree(rows.map(toResourceTreeOption))
 }

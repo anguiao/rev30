@@ -2,6 +2,7 @@ import type { DepartmentSummary, RoleSummary, User, UserOption } from '@rev30/sh
 import { systemUsers } from '../../../db/schema'
 
 export type UserRow = typeof systemUsers.$inferSelect
+export type UserOptionRow = Pick<UserRow, keyof UserOption>
 
 export function toUser(
   user: UserRow,
@@ -23,7 +24,7 @@ export function toUser(
   }
 }
 
-export function toUserOption(user: UserRow): UserOption {
+export function toUserOption(user: UserOptionRow): UserOption {
   return {
     id: user.id,
     username: user.username,

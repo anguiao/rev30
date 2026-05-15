@@ -15,7 +15,16 @@ import {
   ResourceInvalidParentError,
   ResourceRoleAuthorizationConflictError,
 } from './errors'
-import type { ResourceRow } from './mapper'
+import type { ResourceTreeOptionRow } from './mapper'
+
+const resourceTreeOptionColumns = {
+  id: systemResources.id,
+  parentId: systemResources.parentId,
+  type: systemResources.type,
+  name: systemResources.name,
+  code: systemResources.code,
+  status: systemResources.status,
+} satisfies Record<keyof ResourceTreeOptionRow, unknown>
 
 function resourceSortOrder() {
   return [
@@ -57,18 +66,7 @@ async function hasRoleAuthorizations(executor: DbReader, id: string) {
 }
 
 export function createResourceRepository(database: Db) {
-  async function findActiveByIds(ids: string[]) {
-    if (ids.length === 0) {
-      return []
-    }
-
-    return await database
-      .select()
-      .from(systemResources)
-      .where(and(inArray(systemResources.id, ids), isNull(systemResources.deletedAt)))
-  }
-
-  async function fillActiveAncestors(rows: ResourceRow[]) {
+  async function fillActiveAncestors(rows: ResourceTreeOptionRow[]) {
     const rowMap = new Map(rows.map((row) => [row.id, row]))
     let missingParentIds = [...new Set(rows.map((row) => row.parentId).filter((id) => id !== null))]
 
@@ -79,7 +77,12 @@ export function createResourceRepository(database: Db) {
         break
       }
 
-      const parentRows = await findActiveByIds(unresolvedParentIds)
+      const parentRows = await database
+        .select(resourceTreeOptionColumns)
+        .from(systemResources)
+        .where(
+          and(inArray(systemResources.id, unresolvedParentIds), isNull(systemResources.deletedAt)),
+        )
 
       if (parentRows.length === 0) {
         break
@@ -151,7 +154,16 @@ export function createResourceRepository(database: Db) {
       return rows[0]
     },
 
-    findActiveByIds,
+    async findActiveByIds(ids: string[]) {
+      if (ids.length === 0) {
+        return []
+      }
+
+      return await database
+        .select()
+        .from(systemResources)
+        .where(and(inArray(systemResources.id, ids), isNull(systemResources.deletedAt)))
+    },
 
     async listTreeRows() {
       return await database
@@ -171,11 +183,14 @@ export function createResourceRepository(database: Db) {
           ? or(eq(systemResources.status, enabledStatus), inArray(systemResources.id, includeIds))
           : eq(systemResources.status, enabledStatus),
       )
-      const selectedRows = await database.select().from(systemResources).where(baseWhere)
+      const selectedRows = await database
+        .select(resourceTreeOptionColumns)
+        .from(systemResources)
+        .where(baseWhere)
       const includeRows = selectedRows.filter((row) => includeIdSet.has(row.id))
       const enabledRows = selectedRows.filter((row) => row.status === enabledStatus)
       const ancestorRowsMap = await fillActiveAncestors(includeRows)
-      const rowsMap = new Map<string, ResourceRow>()
+      const rowsMap = new Map<string, ResourceTreeOptionRow>()
 
       for (const row of enabledRows) {
         rowsMap.set(row.id, row)
@@ -192,7 +207,7 @@ export function createResourceRepository(database: Db) {
       }
 
       return await database
-        .select()
+        .select(resourceTreeOptionColumns)
         .from(systemResources)
         .where(and(isNull(systemResources.deletedAt), inArray(systemResources.id, rowIds)))
         .orderBy(...resourceSortOrder())

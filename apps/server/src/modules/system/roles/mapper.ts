@@ -2,6 +2,7 @@ import type { Role, RoleListItem, RoleOption, RoleResource, RoleSummary } from '
 import { systemRoles } from '../../../db/schema'
 
 export type RoleRow = typeof systemRoles.$inferSelect
+export type RoleOptionRow = Pick<RoleRow, keyof RoleOption>
 export type RoleResourceRow = {
   id: string
   name: string
@@ -39,7 +40,7 @@ export function toRole(row: RoleRow, resources: RoleResource[]): Role {
   }
 }
 
-export function toRoleOption(row: RoleRow): RoleOption {
+export function toRoleOption(row: RoleOptionRow): RoleOption {
   return {
     id: row.id,
     name: row.name,

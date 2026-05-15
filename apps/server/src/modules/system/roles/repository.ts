@@ -23,7 +23,14 @@ import {
   RoleInvalidResourceError,
   RoleInvalidResourceAssignmentError,
 } from './errors'
-import type { RoleResourceRow, RoleRow } from './mapper'
+import type { RoleOptionRow, RoleResourceRow, RoleRow } from './mapper'
+
+const roleOptionColumns = {
+  id: systemRoles.id,
+  name: systemRoles.name,
+  code: systemRoles.code,
+  status: systemRoles.status,
+} satisfies Record<keyof RoleOptionRow, unknown>
 
 function roleSortOrder() {
   return [asc(systemRoles.sortOrder), desc(systemRoles.createdAt), desc(systemRoles.id)] as const
@@ -247,7 +254,7 @@ export function createRoleRepository(database: Db) {
       ]
 
       return await database
-        .select()
+        .select(roleOptionColumns)
         .from(systemRoles)
         .where(and(...filters))
         .orderBy(...roleSortOrder())

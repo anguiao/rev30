@@ -7,6 +7,10 @@ import {
 import { systemDepartments } from '../../../db/schema'
 
 export type DepartmentRow = typeof systemDepartments.$inferSelect
+export type DepartmentTreeOptionRow = Pick<
+  DepartmentRow,
+  keyof Omit<DepartmentTreeOption, 'children'>
+>
 
 export function toDepartment(row: DepartmentRow): Department {
   return {
@@ -25,7 +29,7 @@ export function toDepartmentTree(rows: DepartmentRow[]): DepartmentTreeNode[] {
   return arrayToTree(rows.map(toDepartment))
 }
 
-export function toDepartmentTreeOption(row: DepartmentRow): DepartmentTreeOption {
+export function toDepartmentTreeOption(row: DepartmentTreeOptionRow): DepartmentTreeOption {
   return {
     id: row.id,
     parentId: row.parentId,
@@ -36,6 +40,6 @@ export function toDepartmentTreeOption(row: DepartmentRow): DepartmentTreeOption
   }
 }
 
-export function toDepartmentTreeOptions(rows: DepartmentRow[]): DepartmentTreeOption[] {
+export function toDepartmentTreeOptions(rows: DepartmentTreeOptionRow[]): DepartmentTreeOption[] {
   return arrayToTree(rows.map(toDepartmentTreeOption))
 }

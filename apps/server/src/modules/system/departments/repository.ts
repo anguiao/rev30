@@ -12,7 +12,15 @@ import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-o
 import type { Db, DbReader } from '../../../db'
 import { systemDepartments, systemUserDepartments } from '../../../db/schema'
 import { DepartmentDeleteConflictError, DepartmentInvalidParentError } from './errors'
-import type { DepartmentRow } from './mapper'
+import type { DepartmentRow, DepartmentTreeOptionRow } from './mapper'
+
+const departmentTreeOptionColumns = {
+  id: systemDepartments.id,
+  parentId: systemDepartments.parentId,
+  name: systemDepartments.name,
+  code: systemDepartments.code,
+  status: systemDepartments.status,
+} satisfies Record<keyof DepartmentTreeOptionRow, unknown>
 
 function departmentSortOrder() {
   return [
@@ -107,18 +115,7 @@ async function lockActiveDepartmentById(executor: DbReader, id: string) {
 }
 
 export function createDepartmentRepository(database: Db) {
-  async function findActiveByIds(ids: string[]) {
-    if (ids.length === 0) {
-      return []
-    }
-
-    return await database
-      .select()
-      .from(systemDepartments)
-      .where(and(inArray(systemDepartments.id, ids), isNull(systemDepartments.deletedAt)))
-  }
-
-  async function fillActiveAncestors(rows: DepartmentRow[]) {
+  async function fillActiveAncestors(rows: DepartmentTreeOptionRow[]) {
     const rowMap = new Map(rows.map((row) => [row.id, row]))
     let missingParentIds = [...new Set(rows.map((row) => row.parentId).filter((id) => id !== null))]
 
@@ -129,7 +126,15 @@ export function createDepartmentRepository(database: Db) {
         break
       }
 
-      const parentRows = await findActiveByIds(unresolvedParentIds)
+      const parentRows = await database
+        .select(departmentTreeOptionColumns)
+        .from(systemDepartments)
+        .where(
+          and(
+            inArray(systemDepartments.id, unresolvedParentIds),
+            isNull(systemDepartments.deletedAt),
+          ),
+        )
 
       if (parentRows.length === 0) {
         break
@@ -198,7 +203,16 @@ export function createDepartmentRepository(database: Db) {
       return rows[0]
     },
 
-    findActiveByIds,
+    async findActiveByIds(ids: string[]) {
+      if (ids.length === 0) {
+        return []
+      }
+
+      return await database
+        .select()
+        .from(systemDepartments)
+        .where(and(inArray(systemDepartments.id, ids), isNull(systemDepartments.deletedAt)))
+    },
 
     async findActiveChildren(parentId: string) {
       return await database
@@ -229,11 +243,14 @@ export function createDepartmentRepository(database: Db) {
             )
           : eq(systemDepartments.status, enabledStatus),
       )
-      const selectedRows = await database.select().from(systemDepartments).where(baseWhere)
+      const selectedRows = await database
+        .select(departmentTreeOptionColumns)
+        .from(systemDepartments)
+        .where(baseWhere)
       const includeRows = selectedRows.filter((row) => includeIdSet.has(row.id))
       const enabledRows = selectedRows.filter((row) => row.status === enabledStatus)
       const ancestorRowsMap = await fillActiveAncestors(includeRows)
-      const rowsMap = new Map<string, DepartmentRow>()
+      const rowsMap = new Map<string, DepartmentTreeOptionRow>()
 
       for (const row of enabledRows) {
         rowsMap.set(row.id, row)
@@ -250,7 +267,7 @@ export function createDepartmentRepository(database: Db) {
       }
 
       return await database
-        .select()
+        .select(departmentTreeOptionColumns)
         .from(systemDepartments)
         .where(and(isNull(systemDepartments.deletedAt), inArray(systemDepartments.id, rowIds)))
         .orderBy(...departmentSortOrder())

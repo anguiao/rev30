@@ -7,11 +7,13 @@ import {
   NAlert,
   NButton,
   NDataTable,
-  NFlex,
+  NForm,
+  NFormItem,
   NInput,
   NPagination,
   NSelect,
   NTag,
+  NTreeSelect,
   useDialog,
   useMessage,
 } from 'naive-ui'
@@ -27,6 +29,8 @@ import {
   STATUS_FILTER_ALL,
   deleteUser,
   formatDateTime,
+  getDepartmentTreeOptions,
+  getRoleOptions,
   getSystemErrorMessage,
   listUsers,
   resetUserPassword,
@@ -35,13 +39,20 @@ import {
   statusTagTypes,
   type StatusFilter,
 } from '../../../features/system'
-import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
+import {
+  renderTableActionButton,
+  renderTableActions,
+  toSelectOptions,
+  toTreeOptions,
+} from '../../../utils/ui'
 
 const message = useMessage()
 const dialog = useDialog()
 
 const keyword = ref('')
 const status = ref<StatusFilter>(STATUS_FILTER_ALL)
+const departmentId = ref<string | null>(null)
+const roleId = ref<string | null>(null)
 const query = ref<UserListQuery>({
   page: 1,
   pageSize: 20,
@@ -66,10 +77,35 @@ const {
     query.value.pageSize,
     query.value.keyword ?? '',
     query.value.status ?? null,
+    query.value.departmentId ?? null,
+    query.value.roleId ?? null,
   ],
   placeholderData: () => emptyUsersData,
   query: () => listUsers(query.value),
 })
+
+const { data: departmentFilterOptionsData } = useQuery({
+  key: () => ['system', 'users', 'department-filter-options'],
+  placeholderData: () => [],
+  query: () => getDepartmentTreeOptions(),
+})
+const departmentFilterOptions = computed(() =>
+  toTreeOptions(departmentFilterOptionsData.value ?? [], {
+    label: (department) => `${department.name} (${department.code})`,
+  }),
+)
+
+const { data: roleFilterOptionsData } = useQuery({
+  key: () => ['system', 'users', 'role-filter-options'],
+  placeholderData: () => [],
+  query: () => getRoleOptions(),
+})
+const roleFilterOptions = computed(() =>
+  toSelectOptions(roleFilterOptionsData.value ?? [], {
+    label: (role) => `${role.name} (${role.code})`,
+    value: (role) => role.id,
+  }),
+)
 
 function handleSearch() {
   const nextKeyword = keyword.value.trim()
@@ -79,12 +115,16 @@ function handleSearch() {
     pageSize: query.value.pageSize,
     ...(nextKeyword.length > 0 ? { keyword: nextKeyword } : {}),
     ...(status.value !== STATUS_FILTER_ALL ? { status: status.value } : {}),
+    ...(departmentId.value === null ? {} : { departmentId: departmentId.value }),
+    ...(roleId.value === null ? {} : { roleId: roleId.value }),
   } satisfies UserListQuery
 }
 
 function handleReset() {
   keyword.value = ''
   status.value = STATUS_FILTER_ALL
+  departmentId.value = null
+  roleId.value = null
   query.value = {
     page: 1,
     pageSize: query.value.pageSize,
@@ -329,24 +369,53 @@ const columns: DataTableColumns<UserListItem> = [
     <section
       class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <NFlex align="end" size="medium">
-        <NInput
-          v-model:value="keyword"
-          data-test="users-keyword"
-          clearable
-          placeholder="请输入用户名或昵称"
-          class="w-64!"
-        />
-        <NSelect
-          v-model:value="status"
-          data-test="users-status"
-          :options="statusFilterOptions"
-          placeholder="全部状态"
-          class="w-40!"
-        />
-        <NButton data-test="users-search" type="primary" @click="handleSearch">查询</NButton>
-        <NButton @click="handleReset">重置</NButton>
-      </NFlex>
+      <NForm inline label-placement="left" :show-feedback="false" class="items-center gap-y-3">
+        <NFormItem label="关键词">
+          <NInput
+            v-model:value="keyword"
+            data-test="users-keyword"
+            clearable
+            placeholder="请输入关键词"
+            class="w-64!"
+          />
+        </NFormItem>
+        <NFormItem label="部门">
+          <NTreeSelect
+            v-model:value="departmentId"
+            data-test="users-department"
+            clearable
+            filterable
+            default-expand-all
+            :options="departmentFilterOptions"
+            placeholder="全部"
+            class="w-56!"
+          />
+        </NFormItem>
+        <NFormItem label="角色">
+          <NSelect
+            v-model:value="roleId"
+            data-test="users-role"
+            clearable
+            filterable
+            :options="roleFilterOptions"
+            placeholder="全部"
+            class="w-56!"
+          />
+        </NFormItem>
+        <NFormItem label="状态">
+          <NSelect
+            v-model:value="status"
+            data-test="users-status"
+            :options="statusFilterOptions"
+            placeholder="全部"
+            class="w-40!"
+          />
+        </NFormItem>
+        <div class="flex gap-2">
+          <NButton data-test="users-search" type="primary" @click="handleSearch">查询</NButton>
+          <NButton @click="handleReset">重置</NButton>
+        </div>
+      </NForm>
     </section>
 
     <NAlert v-if="loadErrorMessage" type="error">{{ loadErrorMessage }}</NAlert>

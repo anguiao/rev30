@@ -426,12 +426,14 @@ describe('api client', () => {
         pageSize: '10',
         keyword: 'ada',
         status: '1',
+        departmentId: '4be2dfda-2fd6-4ee5-b06b-c551328bc343',
+        roleId: '875dd9cb-488b-43d7-a55f-6db070a8e83f',
       },
     })
 
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/system/users?page=2&pageSize=10&keyword=ada&status=1',
+      '/api/system/users?page=2&pageSize=10&keyword=ada&status=1&departmentId=4be2dfda-2fd6-4ee5-b06b-c551328bc343&roleId=875dd9cb-488b-43d7-a55f-6db070a8e83f',
       expect.objectContaining({
         method: 'GET',
       }),

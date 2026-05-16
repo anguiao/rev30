@@ -6,7 +6,8 @@ import {
   NAlert,
   NButton,
   NDataTable,
-  NFlex,
+  NForm,
+  NFormItem,
   NInput,
   NSelect,
   NTag,
@@ -259,24 +260,32 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
     <section
       class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <NFlex align="end" size="medium">
-        <NInput
-          v-model:value="filters.keyword"
-          data-test="departments-keyword"
-          clearable
-          placeholder="请输入名称或编码"
-          class="w-64!"
-        />
-        <NSelect
-          v-model:value="filters.status"
-          data-test="departments-status"
-          :options="statusFilterOptions"
-          placeholder="全部状态"
-          class="w-40!"
-        />
-        <NButton data-test="departments-search" type="primary" @click="handleSearch">查询</NButton>
-        <NButton @click="handleReset">重置</NButton>
-      </NFlex>
+      <NForm inline label-placement="left" :show-feedback="false" class="items-center gap-y-3">
+        <NFormItem label="关键词">
+          <NInput
+            v-model:value="filters.keyword"
+            data-test="departments-keyword"
+            clearable
+            placeholder="请输入关键词"
+            class="w-64!"
+          />
+        </NFormItem>
+        <NFormItem label="状态">
+          <NSelect
+            v-model:value="filters.status"
+            data-test="departments-status"
+            :options="statusFilterOptions"
+            placeholder="全部"
+            class="w-40!"
+          />
+        </NFormItem>
+        <div class="flex gap-2">
+          <NButton data-test="departments-search" type="primary" @click="handleSearch"
+            >查询</NButton
+          >
+          <NButton @click="handleReset">重置</NButton>
+        </div>
+      </NForm>
     </section>
 
     <NAlert v-if="loadErrorMessage" type="error">{{ loadErrorMessage }}</NAlert>

@@ -10,6 +10,17 @@ const roleQuery: Parameters<typeof api.system.roles.$get>[0] = {
   },
 }
 
+const userQuery: Parameters<typeof api.system.users.$get>[0] = {
+  query: {
+    page: '1',
+    pageSize: '20',
+    keyword: 'ada',
+    status: '1',
+    departmentId: '4be2dfda-2fd6-4ee5-b06b-c551328bc343',
+    roleId: '875dd9cb-488b-43d7-a55f-6db070a8e83f',
+  },
+}
+
 const roleCreateInput: Parameters<typeof api.system.roles.$post>[0] = {
   json: {
     name: 'Administrator',
@@ -65,6 +76,7 @@ const resourceCreateMenuInput: Parameters<typeof api.system.resources.$post>[0] 
 
 void [
   roleQuery,
+  userQuery,
   roleCreateInput,
   invalidUserQuery,
   userCreateWithDepartmentIds,

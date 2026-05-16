@@ -13,6 +13,8 @@ import type { Db, DbReader } from '../../../db'
 import {
   authPasswordCredentials,
   authRefreshTokens,
+  systemDepartments,
+  systemRoles,
   systemUserDepartments,
   systemUserRoles,
   systemUsers,
@@ -79,11 +81,37 @@ async function lockActiveRoleIdsOrThrow(executor: DbReader, ids: string[]) {
 export function createUserRepository(database: Db) {
   return {
     async list(query: UserListQuery) {
-      const { page, pageSize, keyword, status } = query
+      const { page, pageSize, keyword, status, departmentId, roleId } = query
       const keywordFilter = keyword ? `%${keyword}%` : undefined
+      const departmentUserIds =
+        departmentId === undefined
+          ? undefined
+          : database
+              .select({ userId: systemUserDepartments.userId })
+              .from(systemUserDepartments)
+              .innerJoin(
+                systemDepartments,
+                eq(systemDepartments.id, systemUserDepartments.departmentId),
+              )
+              .where(
+                and(
+                  eq(systemUserDepartments.departmentId, departmentId),
+                  isNull(systemDepartments.deletedAt),
+                ),
+              )
+      const roleUserIds =
+        roleId === undefined
+          ? undefined
+          : database
+              .select({ userId: systemUserRoles.userId })
+              .from(systemUserRoles)
+              .innerJoin(systemRoles, eq(systemRoles.id, systemUserRoles.roleId))
+              .where(and(eq(systemUserRoles.roleId, roleId), isNull(systemRoles.deletedAt)))
       const filters = [
         isNull(systemUsers.deletedAt),
         status === undefined ? undefined : eq(systemUsers.status, status),
+        departmentUserIds === undefined ? undefined : inArray(systemUsers.id, departmentUserIds),
+        roleUserIds === undefined ? undefined : inArray(systemUsers.id, roleUserIds),
         keywordFilter
           ? or(
               ilike(systemUsers.username, keywordFilter),

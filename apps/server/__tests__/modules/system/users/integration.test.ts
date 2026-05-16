@@ -340,6 +340,75 @@ describe('user routes', () => {
     })
   })
 
+  it('filters paginated users by department and role assignments', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const engineering = await createDepartment(database, {
+      name: 'Engineering',
+      code: 'engineering-filter',
+    })
+    const product = await createDepartment(database, {
+      name: 'Product',
+      code: 'product-filter',
+    })
+    const admin = await createRole(database, {
+      name: 'Admin',
+      code: 'admin-filter',
+    })
+    const auditor = await createRole(database, {
+      name: 'Auditor',
+      code: 'auditor-filter',
+    })
+
+    await createUser(app, {
+      username: 'engineering-admin-user',
+      nickname: 'Engineering Admin User',
+      departmentIds: [engineering.id],
+      roleIds: [admin.id],
+    })
+    await createUser(app, {
+      username: 'engineering-auditor-user',
+      nickname: 'Engineering Auditor User',
+      departmentIds: [engineering.id],
+      roleIds: [auditor.id],
+    })
+    await createUser(app, {
+      username: 'product-admin-user',
+      nickname: 'Product Admin User',
+      departmentIds: [product.id],
+      roleIds: [admin.id],
+    })
+
+    const departmentResponse = await app.request(
+      `/api/system/users?departmentId=${engineering.id}&page=1&pageSize=10`,
+    )
+    const departmentBody = (await departmentResponse.json()) as UserListResponse
+
+    expect(departmentResponse.status).toBe(200)
+    expect(departmentBody.total).toBe(2)
+    expect(new Set(departmentBody.list.map((user) => user.username))).toEqual(
+      new Set(['engineering-admin-user', 'engineering-auditor-user']),
+    )
+
+    const roleResponse = await app.request(`/api/system/users?roleId=${admin.id}`)
+    const roleBody = (await roleResponse.json()) as UserListResponse
+
+    expect(roleResponse.status).toBe(200)
+    expect(roleBody.total).toBe(2)
+    expect(new Set(roleBody.list.map((user) => user.username))).toEqual(
+      new Set(['engineering-admin-user', 'product-admin-user']),
+    )
+
+    const combinedResponse = await app.request(
+      `/api/system/users?departmentId=${engineering.id}&roleId=${admin.id}`,
+    )
+    const combinedBody = (await combinedResponse.json()) as UserListResponse
+
+    expect(combinedResponse.status).toBe(200)
+    expect(combinedBody.total).toBe(1)
+    expect(combinedBody.list[0]?.username).toBe('engineering-admin-user')
+  })
+
   it('returns flat user options and supports includeIds for disabled users only', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)

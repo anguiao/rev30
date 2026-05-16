@@ -1,11 +1,13 @@
 // @vitest-environment happy-dom
 
-import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NPagination, NSelect } from 'naive-ui'
+import { NPagination, NSelect, NTreeSelect } from 'naive-ui'
 import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
+  type DepartmentTreeOptionsResponse,
+  type RoleOptionsResponse,
   type UserCreateResponse,
   type UserListResponse,
   type UserResetPasswordResponse,
@@ -15,6 +17,8 @@ import {
   STATUS_FILTER_ALL,
   deleteUser,
   formatDateTime,
+  getDepartmentTreeOptions,
+  getRoleOptions,
   listUsers,
   resetUserPassword,
   SystemRequestError,
@@ -57,13 +61,40 @@ vi.mock('../../../src/features/system/UserFormDrawer.vue', () => ({
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   deleteUser: vi.fn(),
+  getDepartmentTreeOptions: vi.fn(),
+  getRoleOptions: vi.fn(),
   listUsers: vi.fn(),
   resetUserPassword: vi.fn(),
 }))
 
 const deleteUserMock = vi.mocked(deleteUser)
+const getDepartmentTreeOptionsMock = vi.mocked(getDepartmentTreeOptions)
+const getRoleOptionsMock = vi.mocked(getRoleOptions)
 const listUsersMock = vi.mocked(listUsers)
 const resetUserPasswordMock = vi.mocked(resetUserPassword)
+
+const departmentFilterId = '11111111-1111-4111-8111-111111111111'
+const roleFilterId = '22222222-2222-4222-8222-222222222222'
+
+const departmentFilterOptions: DepartmentTreeOptionsResponse = [
+  {
+    id: departmentFilterId,
+    parentId: null,
+    name: '研发中心',
+    code: 'eng',
+    status: USER_STATUS_ENABLED,
+    children: [],
+  },
+]
+
+const roleFilterOptions: RoleOptionsResponse = [
+  {
+    id: roleFilterId,
+    name: '管理员',
+    code: 'admin',
+    status: USER_STATUS_ENABLED,
+  },
+]
 
 const userListResponse: UserListResponse = {
   list: [
@@ -75,8 +106,8 @@ const userListResponse: UserListResponse = {
       phone: null,
       status: USER_STATUS_ENABLED,
       builtIn: true,
-      departments: [{ id: '11111111-1111-4111-8111-111111111111', name: '研发中心', code: 'eng' }],
-      roles: [{ id: '22222222-2222-4222-8222-222222222222', name: '管理员', code: 'admin' }],
+      departments: [{ id: departmentFilterId, name: '研发中心', code: 'eng' }],
+      roles: [{ id: roleFilterId, name: '管理员', code: 'admin' }],
       createdAt: '2026-05-01T00:00:00.000Z',
       updatedAt: '2026-05-01T00:00:00.000Z',
     },
@@ -157,11 +188,35 @@ function getTemporaryPasswordCloseButton() {
   return queryTemporaryPasswordDialog()?.querySelector('.n-dialog__close') as HTMLElement | null
 }
 
+function getSelect(wrapper: VueWrapper, testId: string) {
+  const select = wrapper
+    .findAllComponents(NSelect)
+    .find((componentWrapper) => componentWrapper.attributes('data-test') === testId)
+
+  expect(select).toBeDefined()
+
+  return select!
+}
+
+function getTreeSelect(wrapper: VueWrapper, testId: string) {
+  const select = wrapper
+    .findAllComponents(NTreeSelect)
+    .find((componentWrapper) => componentWrapper.attributes('data-test') === testId)
+
+  expect(select).toBeDefined()
+
+  return select!
+}
+
 describe('users page', () => {
   beforeEach(() => {
     deleteUserMock.mockReset()
+    getDepartmentTreeOptionsMock.mockReset()
+    getRoleOptionsMock.mockReset()
     listUsersMock.mockReset()
     resetUserPasswordMock.mockReset()
+    getDepartmentTreeOptionsMock.mockResolvedValue(departmentFilterOptions)
+    getRoleOptionsMock.mockResolvedValue(roleFilterOptions)
     localStorage.clear()
     document.documentElement.className = ''
     document.documentElement.style.colorScheme = ''
@@ -497,7 +552,7 @@ describe('users page', () => {
     await flushPromises()
 
     await wrapper.find('[data-test="users-keyword"] input').setValue('  ada  ')
-    wrapper.getComponent(NSelect).vm.$emit('update:value', USER_STATUS_DISABLED)
+    getSelect(wrapper, 'users-status').vm.$emit('update:value', USER_STATUS_DISABLED)
     await flushPromises()
     await wrapper.get('[data-test="users-search"]').trigger('click')
     await flushPromises()
@@ -507,6 +562,25 @@ describe('users page', () => {
       pageSize: 20,
       keyword: 'ada',
       status: USER_STATUS_DISABLED,
+    })
+  })
+
+  it('submits department and role filters from page one', async () => {
+    listUsersMock.mockResolvedValue(userListResponse)
+    const { wrapper } = await mountUsersPage()
+    await flushPromises()
+
+    getTreeSelect(wrapper, 'users-department').vm.$emit('update:value', departmentFilterId)
+    getSelect(wrapper, 'users-role').vm.$emit('update:value', roleFilterId)
+    await flushPromises()
+    await wrapper.get('[data-test="users-search"]').trigger('click')
+    await flushPromises()
+
+    expect(listUsersMock).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
+      departmentId: departmentFilterId,
+      roleId: roleFilterId,
     })
   })
 
@@ -533,7 +607,7 @@ describe('users page', () => {
     await flushPromises()
 
     await wrapper.find('[data-test="users-keyword"] input').setValue('  ada  ')
-    wrapper.getComponent(NSelect).vm.$emit('update:value', USER_STATUS_DISABLED)
+    getSelect(wrapper, 'users-status').vm.$emit('update:value', USER_STATUS_DISABLED)
     await flushPromises()
     await wrapper.get('[data-test="users-search"]').trigger('click')
     await flushPromises()
@@ -555,7 +629,9 @@ describe('users page', () => {
     await flushPromises()
 
     await wrapper.find('[data-test="users-keyword"] input').setValue('ada')
-    wrapper.getComponent(NSelect).vm.$emit('update:value', USER_STATUS_DISABLED)
+    getSelect(wrapper, 'users-status').vm.$emit('update:value', USER_STATUS_DISABLED)
+    getTreeSelect(wrapper, 'users-department').vm.$emit('update:value', departmentFilterId)
+    getSelect(wrapper, 'users-role').vm.$emit('update:value', roleFilterId)
     await wrapper.get('[data-test="users-search"]').trigger('click')
     await flushPromises()
 
@@ -567,6 +643,8 @@ describe('users page', () => {
       pageSize: 20,
       keyword: 'ada',
       status: USER_STATUS_DISABLED,
+      departmentId: departmentFilterId,
+      roleId: roleFilterId,
     })
     expect(wrapper.getComponent(NPagination).props('page')).toBe(2)
 
@@ -580,7 +658,9 @@ describe('users page', () => {
     expect(
       (wrapper.get('[data-test="users-keyword"] input').element as HTMLInputElement).value,
     ).toBe('')
-    expect(wrapper.getComponent(NSelect).props('value')).toBe(STATUS_FILTER_ALL)
+    expect(getSelect(wrapper, 'users-status').props('value')).toBe(STATUS_FILTER_ALL)
+    expect(getTreeSelect(wrapper, 'users-department').props('value')).toBeNull()
+    expect(getSelect(wrapper, 'users-role').props('value')).toBeNull()
     expect(wrapper.getComponent(NPagination).props('page')).toBe(1)
 
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)

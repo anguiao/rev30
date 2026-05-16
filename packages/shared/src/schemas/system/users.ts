@@ -5,6 +5,7 @@ import { ensureUniqueItems, hasAnyDefinedValue } from '../common/refinements'
 import {
   includeIdsQueryValue,
   optionalNumericQueryValue,
+  optionalQueryValue,
   optionalTrimmedQueryString,
 } from '../query'
 import { departmentSummarySchema } from './departments'
@@ -28,6 +29,8 @@ export const contactInputSchema = optionalNullableString()
 
 const optionalKeywordSchema = optionalTrimmedQueryString()
 const optionalStatusQuerySchema = optionalNumericQueryValue(userStatusSchema)
+const optionalDepartmentIdQuerySchema = optionalQueryValue(z.uuid('部门 ID 无效'))
+const optionalRoleIdQuerySchema = optionalQueryValue(z.uuid('角色 ID 无效'))
 
 export const userSchema = z.object({
   id: userIdSchema,
@@ -57,6 +60,8 @@ export const departmentIdsSchema = z
 export const userListQuerySchema = paginationQuerySchema.extend({
   keyword: optionalKeywordSchema,
   status: optionalStatusQuerySchema,
+  departmentId: optionalDepartmentIdQuerySchema,
+  roleId: optionalRoleIdQuerySchema,
 })
 
 export const userFormSchema = z.object({

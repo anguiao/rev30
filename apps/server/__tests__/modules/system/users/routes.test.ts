@@ -12,6 +12,8 @@ import {
 } from '../../../../src/modules/system/users/errors'
 
 const userId = '11111111-1111-4111-8111-111111111111'
+const departmentId = '22222222-2222-4222-8222-222222222222'
+const roleId = '33333333-3333-4333-8333-333333333333'
 const user = {
   id: userId,
   username: 'ada',
@@ -100,7 +102,7 @@ describe('user routes', () => {
     const app = createTestApp()
 
     const listResponse = await app.request(
-      '/api/system/users?page=2&pageSize=5&keyword=ada&status=1',
+      `/api/system/users?page=2&pageSize=5&keyword=ada&status=1&departmentId=${departmentId}&roleId=${roleId}`,
     )
     expect(listResponse.status).toBe(200)
     expect(await listResponse.json()).toEqual({ list: [user], total: 1, page: 2, pageSize: 5 })
@@ -109,6 +111,8 @@ describe('user routes', () => {
       page: 2,
       pageSize: 5,
       status: USER_STATUS_ENABLED,
+      departmentId,
+      roleId,
     })
   })
 

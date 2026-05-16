@@ -168,23 +168,30 @@ describe('user schemas', () => {
   })
 
   it('parses list query strings into pagination and status values', () => {
+    const departmentId = '4be2dfda-2fd6-4ee5-b06b-c551328bc343'
+    const roleId = '875dd9cb-488b-43d7-a55f-6db070a8e83f'
+
     expect(
       userListQuerySchema.parse({
         page: '2',
         pageSize: '10',
         keyword: ' ada ',
         status: '0',
+        departmentId,
+        roleId,
       }),
     ).toEqual({
       page: 2,
       pageSize: 10,
       keyword: 'ada',
       status: USER_STATUS_DISABLED,
+      departmentId,
+      roleId,
     })
   })
 
   it('treats blank list query status as undefined', () => {
-    expect(userListQuerySchema.parse({ status: '' })).toEqual({
+    expect(userListQuerySchema.parse({ status: '', departmentId: '', roleId: '   ' })).toEqual({
       page: 1,
       pageSize: 20,
     })
@@ -193,6 +200,21 @@ describe('user schemas', () => {
       page: 1,
       pageSize: 20,
     })
+  })
+
+  it('reports invalid list relation filter ids', () => {
+    const result = userListQuerySchema.safeParse({
+      departmentId: 'not-a-uuid',
+      roleId: 'also-invalid',
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const message = prettifyZodError(result)
+
+      expect(message).toContain('部门 ID 无效')
+      expect(message).toContain('角色 ID 无效')
+    }
   })
 
   it('requires at least one field for updates', () => {

@@ -31,3 +31,15 @@
     @apply min-w-80 bg-slate-100 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100;
   }
 }
+
+@layer components {
+  .n-tree-select-menu .n-tree-node-content {
+    overflow: hidden;
+  }
+
+  .n-tree-select-menu .n-tree-node-content__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

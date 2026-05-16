@@ -111,7 +111,8 @@ describe('auth requests', () => {
     )
 
     const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
-    expect(JSON.parse(String(init.body))).toEqual({
+    expect(init.body).toEqual(expect.any(String))
+    expect(JSON.parse(init.body as string)).toEqual({
       nickname: 'Ada Lovelace',
       email: 'ada@example.com',
       phone: '18888888888',
@@ -184,7 +185,8 @@ describe('auth requests', () => {
     )
 
     const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
-    expect(JSON.parse(String(init.body))).toEqual({
+    expect(init.body).toEqual(expect.any(String))
+    expect(JSON.parse(init.body as string)).toEqual({
       currentPassword: 'password123',
       newPassword: 'password456',
     })

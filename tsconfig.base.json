@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "declaration": true,
     "declarationMap": true,
     "esModuleInterop": true,
@@ -11,8 +10,8 @@
     "moduleResolution": "Bundler",
     "noUncheckedIndexedAccess": true,
     "paths": {
-      "@rev30/server": ["apps/server/src/app.ts"],
-      "@rev30/shared": ["packages/shared/src/index.ts"]
+      "@rev30/server": ["./apps/server/src/app.ts"],
+      "@rev30/shared": ["./packages/shared/src/index.ts"]
     },
     "resolveJsonModule": true,
     "skipLibCheck": true,

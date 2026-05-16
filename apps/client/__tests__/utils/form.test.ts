@@ -94,6 +94,17 @@ describe('form helpers', () => {
     })
   })
 
+  it('hides unsupported client field error shapes', () => {
+    expect(
+      formItemValidationProps(
+        createFieldMeta({ errors: [{ reason: 'Required' }], isTouched: true }),
+      ),
+    ).toEqual({})
+    expect(
+      formItemValidationProps(createFieldMeta({ errors: [{ message: 123 }], isTouched: true })),
+    ).toEqual({})
+  })
+
   it('shows on-change feedback only after a field is touched', async () => {
     const schema = z.object({
       username: z.string().trim().min(1, '请输入用户名'),

@@ -1114,7 +1114,9 @@ describe('user routes', () => {
       })
 
     const responses = await Promise.all([createRaceUser(), createRaceUser()])
-    const statuses = responses.map((response) => response.status).sort()
+    const statuses = responses
+      .map((response) => response.status)
+      .sort((left, right) => left - right)
 
     expect(statuses).toEqual([201, 409])
   })
@@ -1179,7 +1181,9 @@ describe('user routes', () => {
       })
 
     const responses = await Promise.all([updateUser(first.id), updateUser(second.id)])
-    const statuses = responses.map((response) => response.status).sort()
+    const statuses = responses
+      .map((response) => response.status)
+      .sort((left, right) => left - right)
 
     expect(statuses).toEqual([200, 409])
   })

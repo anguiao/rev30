@@ -15,7 +15,7 @@ export function startDbMaintenance(database: Db): DbMaintenance {
     workers.push(startAuthLoginAttemptCleanup(database))
   } catch (error) {
     for (const worker of workers) {
-      worker.stop()
+      void worker.stop()
     }
 
     throw error

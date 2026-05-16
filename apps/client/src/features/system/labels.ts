@@ -6,13 +6,10 @@ import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
   type DepartmentStatus,
-  type ResourceStatus,
   type ResourceType,
-  type RoleStatus,
-  type UserStatus,
 } from '@rev30/shared'
 
-export type SystemStatus = DepartmentStatus | ResourceStatus | RoleStatus | UserStatus
+export type SystemStatus = DepartmentStatus
 type StatusTagType = 'default' | 'success'
 
 export const STATUS_FILTER_ALL = 'all'

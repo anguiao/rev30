@@ -12,10 +12,12 @@ function validationErrorMessage(error: unknown) {
   }
 
   if (typeof error === 'object' && error !== null && 'message' in error) {
-    return String((error as { message: unknown }).message)
+    const message = (error as { message: unknown }).message
+
+    return typeof message === 'string' ? message : undefined
   }
 
-  return error === undefined ? undefined : String(error)
+  return undefined
 }
 
 export function formItemValidationProps(meta: AnyFieldMeta) {

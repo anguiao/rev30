@@ -60,7 +60,7 @@ function collectTsconfigPaths(root) {
 }
 
 function parseTsconfig(configPath) {
-  const configFile = ts.readConfigFile(configPath, ts.sys.readFile)
+  const configFile = ts.readConfigFile(configPath, (fileName) => ts.sys.readFile(fileName))
 
   if (configFile.error) {
     throw new Error(formatMessage(configFile.error.messageText))
@@ -86,7 +86,7 @@ function createLanguageService(root, parsedConfig) {
     getCompilationSettings: () => parsedConfig.options,
     getCurrentDirectory: () => root,
     getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
-    getDirectories: ts.sys.getDirectories,
+    getDirectories: (directoryName) => ts.sys.getDirectories(directoryName),
     getScriptFileNames: () => parsedConfig.fileNames,
     getScriptSnapshot: (fileName) => {
       if (!fs.existsSync(fileName)) {
@@ -100,11 +100,11 @@ function createLanguageService(root, parsedConfig) {
       return ts.ScriptSnapshot.fromString(snapshots.get(fileName))
     },
     getScriptVersion: () => '0',
-    directoryExists: ts.sys.directoryExists,
-    fileExists: ts.sys.fileExists,
-    readDirectory: ts.sys.readDirectory,
-    readFile: ts.sys.readFile,
-    realpath: ts.sys.realpath,
+    directoryExists: (directoryName) => ts.sys.directoryExists(directoryName),
+    fileExists: (fileName) => ts.sys.fileExists(fileName),
+    readDirectory: (...args) => ts.sys.readDirectory(...args),
+    readFile: (fileName) => ts.sys.readFile(fileName),
+    realpath: (fileName) => ts.sys.realpath(fileName),
   }
 
   return ts.createLanguageService(host, ts.createDocumentRegistry())

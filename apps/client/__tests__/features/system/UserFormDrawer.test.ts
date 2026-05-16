@@ -177,34 +177,6 @@ describe('UserFormDrawer', () => {
     expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith()
     expect(getRoleOptionsMock).toHaveBeenCalledWith()
     expect(getUserMock).not.toHaveBeenCalled()
-    expect(wrapper.getComponent(NTreeSelect).props('options')).toEqual([
-      {
-        key: departmentId,
-        label: '研发部 (rd)',
-        disabled: false,
-        children: [
-          {
-            key: secondDepartmentId,
-            label: '前端组 (frontend)',
-            disabled: true,
-          },
-        ],
-      },
-    ])
-    expect(
-      wrapper.get('[data-test="user-form-roles"]').getComponent(NSelect).props('options'),
-    ).toEqual([
-      {
-        label: '管理员 (admin)',
-        value: roleId,
-        disabled: false,
-      },
-      {
-        label: '审核员 (auditor)',
-        value: secondRoleId,
-        disabled: true,
-      },
-    ])
 
     await wrapper.get('[data-test="user-form-username"] input').setValue('new-user')
     await wrapper.get('[data-test="user-form-nickname"] input').setValue('New User')

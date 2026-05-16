@@ -160,4 +160,22 @@ describe('toSelectOptions', () => {
       { label: '运营部', value: 'ops' },
     ])
   })
+
+  it('preserves custom disabled states', () => {
+    const roles = [
+      { id: 'admin', name: '管理员', enabled: true },
+      { id: 'auditor', name: '审核员', enabled: false },
+    ]
+
+    expect(
+      toSelectOptions(roles, {
+        label: (role) => role.name,
+        value: (role) => role.id,
+        disabled: (role) => !role.enabled,
+      }),
+    ).toEqual([
+      { label: '管理员', value: 'admin', disabled: false },
+      { label: '审核员', value: 'auditor', disabled: true },
+    ])
+  })
 })

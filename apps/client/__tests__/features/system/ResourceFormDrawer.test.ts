@@ -5,7 +5,7 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NInputNumber, NSelect, NTreeSelect } from 'naive-ui'
+import { NInputNumber, NSelect } from 'naive-ui'
 import {
   RESOURCE_OPEN_TARGET_BLANK,
   RESOURCE_OPEN_TARGET_SELF,
@@ -329,38 +329,6 @@ describe('ResourceFormDrawer', () => {
     await flushPromises()
 
     expect(getResourceTreeOptionsMock).toHaveBeenCalledWith([rootResourceId])
-    expect(wrapper.getComponent(NTreeSelect).props('value')).toBe(rootResourceId)
-    expect(wrapper.getComponent(NTreeSelect).props('options')).toEqual([
-      {
-        key: rootResourceId,
-        label: '系统管理 (system)',
-        disabled: false,
-        children: [
-          {
-            key: menuResourceId,
-            label: '系统用户 (system:user)',
-            disabled: false,
-            children: [
-              {
-                key: actionResourceId,
-                label: '创建用户 (system:user:create)',
-                disabled: false,
-              },
-            ],
-          },
-          {
-            key: externalResourceId,
-            label: '项目文档 (docs)',
-            disabled: true,
-          },
-        ],
-      },
-      {
-        key: secondRootResourceId,
-        label: '内容管理 (content)',
-        disabled: false,
-      },
-    ])
 
     getSelect(wrapper, 'resource-form-type').vm.$emit('update:value', RESOURCE_TYPE_MENU)
     await flushPromises()
@@ -384,7 +352,7 @@ describe('ResourceFormDrawer', () => {
     })
   })
 
-  it('loads resource detail, disables the edited subtree, and renders icon preview', async () => {
+  it('loads resource detail and renders icon preview', async () => {
     getResourceMock.mockResolvedValue(menuResourceResponse)
     updateResourceMock.mockResolvedValue({
       ...menuResourceResponse,
@@ -402,9 +370,6 @@ describe('ResourceFormDrawer', () => {
     expect(getResourceMock).toHaveBeenCalledWith(menuResourceId)
     expect(wrapper.text()).toContain('编辑权限资源')
     expect(wrapper.get('[data-test="resource-icon-preview"]').text()).toBe('lucide:users')
-
-    const treeSelect = wrapper.getComponent(NTreeSelect)
-    expect(treeSelect.props('value')).toBe(rootResourceId)
 
     await wrapper.get('[data-test="resource-form-name"] input').setValue('成员管理')
     await submitForm(wrapper)

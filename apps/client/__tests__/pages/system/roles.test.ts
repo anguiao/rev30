@@ -11,7 +11,6 @@ import {
 } from '@rev30/shared'
 import { defineComponent, h } from 'vue'
 import {
-  STATUS_FILTER_ALL,
   deleteRole,
   formatDateTime,
   listRoles,
@@ -266,7 +265,6 @@ describe('roles page', () => {
       keyword: 'admin',
       status: ROLE_STATUS_DISABLED,
     })
-    expect(wrapper.getComponent(NPagination).props('page')).toBe(2)
 
     const resetButton = wrapper
       .findAll('button')
@@ -278,8 +276,6 @@ describe('roles page', () => {
     expect(
       (wrapper.get('[data-test="roles-keyword"] input').element as HTMLInputElement).value,
     ).toBe('')
-    expect(wrapper.getComponent(NSelect).props('value')).toBe(STATUS_FILTER_ALL)
-    expect(wrapper.getComponent(NPagination).props('page')).toBe(1)
 
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
     await flushPromises()

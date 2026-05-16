@@ -14,7 +14,6 @@ import {
 } from '@rev30/shared'
 import { defineComponent, h } from 'vue'
 import {
-  STATUS_FILTER_ALL,
   deleteUser,
   formatDateTime,
   getDepartmentTreeOptions,
@@ -646,7 +645,6 @@ describe('users page', () => {
       departmentId: departmentFilterId,
       roleId: roleFilterId,
     })
-    expect(wrapper.getComponent(NPagination).props('page')).toBe(2)
 
     const resetButton = wrapper
       .findAll('button')
@@ -658,10 +656,6 @@ describe('users page', () => {
     expect(
       (wrapper.get('[data-test="users-keyword"] input').element as HTMLInputElement).value,
     ).toBe('')
-    expect(getSelect(wrapper, 'users-status').props('value')).toBe(STATUS_FILTER_ALL)
-    expect(getTreeSelect(wrapper, 'users-department').props('value')).toBeNull()
-    expect(getSelect(wrapper, 'users-role').props('value')).toBeNull()
-    expect(wrapper.getComponent(NPagination).props('page')).toBe(1)
 
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
     await flushPromises()

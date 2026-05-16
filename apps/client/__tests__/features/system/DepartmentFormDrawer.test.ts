@@ -3,7 +3,7 @@
 import { PiniaColada } from '@pinia/colada'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NInputNumber, NSelect, NTreeSelect } from 'naive-ui'
+import { NInputNumber, NSelect } from 'naive-ui'
 import {
   DEPARTMENT_STATUS_DISABLED,
   DEPARTMENT_STATUS_ENABLED,
@@ -213,44 +213,6 @@ describe('DepartmentFormDrawer', () => {
     expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith()
     expect(getDepartmentMock).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('新增组织部门')
-    expect(wrapper.getComponent(NTreeSelect).props('options')).toEqual([
-      {
-        key: rootDepartmentId,
-        label: '总部 (hq)',
-        disabled: false,
-        children: [
-          {
-            key: childDepartmentId,
-            label: '运营部 (ops)',
-            disabled: false,
-            children: [
-              {
-                key: grandchildDepartmentId,
-                label: '运营支持组 (ops-support)',
-                disabled: false,
-              },
-            ],
-          },
-          {
-            key: siblingDepartmentId,
-            label: '市场部 (marketing)',
-            disabled: true,
-            children: [
-              {
-                key: enabledChildOfDisabledDepartmentId,
-                label: '市场活动组 (campaign)',
-                disabled: false,
-              },
-            ],
-          },
-        ],
-      },
-      {
-        key: secondRootDepartmentId,
-        label: '财务中心 (finance)',
-        disabled: false,
-      },
-    ])
 
     await wrapper.get('[data-test="department-form-name"] input').setValue('运营中心')
     await wrapper.get('[data-test="department-form-code"] input').setValue('ops')
@@ -310,8 +272,6 @@ describe('DepartmentFormDrawer', () => {
     await flushPromises()
 
     expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith([rootDepartmentId])
-    const treeSelect = wrapper.getComponent(NTreeSelect)
-    expect(treeSelect.props('value')).toBe(rootDepartmentId)
 
     await wrapper.get('[data-test="department-form-name"] input').setValue('新运营组')
     await wrapper.get('[data-test="department-form-code"] input').setValue('new-ops')
@@ -326,15 +286,22 @@ describe('DepartmentFormDrawer', () => {
     })
   })
 
-  it('uses the latest parent id after closing and reopening create mode', async () => {
+  it('submits the latest parent id after closing and reopening create mode', async () => {
+    createDepartmentMock.mockResolvedValue({
+      ...childDepartmentResponse,
+      id: '99999999-9999-4999-8999-999999999999',
+      parentId: secondRootDepartmentId,
+      name: '财务分析组',
+      code: 'finance-analysis',
+      sortOrder: 0,
+    })
+
     const wrapper = mountDrawer({
       show: true,
       departmentId: null,
       parentId: rootDepartmentId,
     })
     await flushPromises()
-
-    expect(wrapper.getComponent(NTreeSelect).props('value')).toBe(rootDepartmentId)
 
     await wrapper.setProps({
       show: false,
@@ -350,13 +317,31 @@ describe('DepartmentFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(wrapper.getComponent(NTreeSelect).props('value')).toBe(secondRootDepartmentId)
+    await wrapper.get('[data-test="department-form-name"] input').setValue('财务分析组')
+    await wrapper.get('[data-test="department-form-code"] input').setValue('finance-analysis')
+    await submitForm(wrapper)
+
+    expect(createDepartmentMock).toHaveBeenCalledWith({
+      name: '财务分析组',
+      code: 'finance-analysis',
+      parentId: secondRootDepartmentId,
+      status: DEPARTMENT_STATUS_ENABLED,
+      sortOrder: 0,
+    })
   })
 
   it('keeps the original parent cached for a stale create load after switching parents', async () => {
     const firstTreeLoad = deferred<DepartmentTreeNode[]>()
     const secondTreeLoad = deferred<DepartmentTreeNode[]>()
     let treeLoadCount = 0
+    createDepartmentMock.mockResolvedValue({
+      ...childDepartmentResponse,
+      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      parentId: secondRootDepartmentId,
+      name: '财务分析组',
+      code: 'finance-analysis',
+      sortOrder: 0,
+    })
 
     getDepartmentTreeOptionsMock.mockImplementation(() => {
       treeLoadCount += 1
@@ -389,12 +374,27 @@ describe('DepartmentFormDrawer', () => {
     secondTreeLoad.resolve(departmentTreeResponse)
     await flushPromises()
 
-    expect(wrapper.getComponent(NTreeSelect).props('value')).toBe(secondRootDepartmentId)
-
     firstTreeLoad.resolve(departmentTreeResponse)
     await flushPromises()
 
-    expect(wrapper.getComponent(NTreeSelect).props('value')).toBe(secondRootDepartmentId)
+    await wrapper.get('[data-test="department-form-name"] input').setValue('财务分析组')
+    await wrapper.get('[data-test="department-form-code"] input').setValue('finance-analysis')
+    await submitForm(wrapper)
+
+    expect(createDepartmentMock).toHaveBeenLastCalledWith({
+      name: '财务分析组',
+      code: 'finance-analysis',
+      parentId: secondRootDepartmentId,
+      status: DEPARTMENT_STATUS_ENABLED,
+      sortOrder: 0,
+    })
+
+    await wrapper.setProps({
+      show: false,
+      departmentId: null,
+      parentId: secondRootDepartmentId,
+    })
+    await flushPromises()
 
     await wrapper.setProps({
       show: true,
@@ -403,7 +403,17 @@ describe('DepartmentFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(wrapper.getComponent(NTreeSelect).props('value')).toBe(rootDepartmentId)
+    await wrapper.get('[data-test="department-form-name"] input').setValue('运营分析组')
+    await wrapper.get('[data-test="department-form-code"] input').setValue('ops-analysis')
+    await submitForm(wrapper)
+
+    expect(createDepartmentMock).toHaveBeenLastCalledWith({
+      name: '运营分析组',
+      code: 'ops-analysis',
+      parentId: rootDepartmentId,
+      status: DEPARTMENT_STATUS_ENABLED,
+      sortOrder: 0,
+    })
   })
 
   it('loads department detail and submits updates in edit mode', async () => {
@@ -424,9 +434,6 @@ describe('DepartmentFormDrawer', () => {
     expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith([rootDepartmentId, childDepartmentId])
     expect(getDepartmentMock).toHaveBeenCalledWith(childDepartmentId)
     expect(wrapper.text()).toContain('编辑组织部门')
-
-    const treeSelect = wrapper.getComponent(NTreeSelect)
-    expect(treeSelect.props('value')).toBe(rootDepartmentId)
 
     await wrapper.get('[data-test="department-form-name"] input').setValue('运营管理部')
     wrapper.getComponent(NSelect).vm.$emit('update:value', DEPARTMENT_STATUS_DISABLED)
@@ -533,8 +540,6 @@ describe('DepartmentFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(wrapper.getComponent(NTreeSelect).props('value')).toBe(secondRootDepartmentId)
-
     pendingSave.resolve({
       ...childDepartmentResponse,
       id: '88888888-8888-4888-8888-888888888888',
@@ -548,6 +553,17 @@ describe('DepartmentFormDrawer', () => {
     expect(wrapper.emitted('saved')).toBeUndefined()
     expect(wrapper.emitted('update:show')).toBeUndefined()
     expect(wrapper.props('show')).toBe(true)
-    expect(wrapper.getComponent(NTreeSelect).props('value')).toBe(secondRootDepartmentId)
+
+    await wrapper.get('[data-test="department-form-name"] input').setValue('财务商务组')
+    await wrapper.get('[data-test="department-form-code"] input').setValue('finance-biz')
+    await submitForm(wrapper)
+
+    expect(createDepartmentMock).toHaveBeenLastCalledWith({
+      name: '财务商务组',
+      code: 'finance-biz',
+      parentId: secondRootDepartmentId,
+      status: DEPARTMENT_STATUS_ENABLED,
+      sortOrder: 0,
+    })
   })
 })

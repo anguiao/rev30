@@ -4,7 +4,6 @@ import { PiniaColada } from '@pinia/colada'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import type { AuthTokenResponse } from '@rev30/shared'
 import { createPinia, setActivePinia } from 'pinia'
-import { NMenu } from 'naive-ui'
 import { defineComponent, h } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -204,7 +203,6 @@ describe('admin layout', () => {
 
   it('renders navigation, branding, user summary, and content slot', async () => {
     const { wrapper } = await mountLayout()
-    const menu = wrapper.getComponent(NMenu)
 
     expect(wrapper.text()).toContain('Rev30')
     expect(wrapper.text()).toContain('后台管理')
@@ -213,14 +211,10 @@ describe('admin layout', () => {
     expect(wrapper.get('[data-test="layout-content"]').text()).toContain('Content')
     expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('系统管理')
     expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('系统用户')
-    expect(wrapper.find('.n-menu').exists()).toBe(true)
     expect(wrapper.get('[data-test="admin-sidebar-toggle"]').attributes('aria-label')).toBe(
       '收起侧边栏',
     )
     expect(wrapper.get('[data-test="admin-sidebar-toggle"]').element.tagName).toBe('BUTTON')
-    expect(menu.props('value')).toBe(usersMenuId)
-    expect(menu.props('collapsed')).toBe(false)
-    expect(menu.props('expandedKeys')).toEqual([systemMenuId])
     expect(wrapper.text()).toContain('系统管理')
     expect(wrapper.text()).toContain('指南')
     expect(wrapper.get('a[href="/system/users"]').text()).toContain('系统用户')
@@ -245,8 +239,6 @@ describe('admin layout', () => {
     await wrapper.get('[data-test="admin-sidebar-toggle"]').trigger('click')
     await flushPromises()
 
-    const menu = wrapper.getComponent(NMenu)
-
     expect(wrapper.get('[data-test="admin-sidebar-toggle"]').attributes('aria-label')).toBe(
       '展开侧边栏',
     )
@@ -255,9 +247,6 @@ describe('admin layout', () => {
     expect(wrapper.find('[data-test="admin-sidebar-user"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="theme-mode-trigger"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="admin-logout"]').exists()).toBe(true)
-    expect(menu.props('collapsed')).toBe(true)
-    expect(menu.props('value')).toBe(usersMenuId)
-    expect(menu.props('expandedKeys')).toEqual([systemMenuId])
     expect(localStorage.getItem(adminSidebarCollapsedStorageKey)).toBe('true')
   })
 
@@ -285,15 +274,15 @@ describe('admin layout', () => {
     localStorage.setItem(adminSidebarCollapsedStorageKey, 'true')
 
     const { wrapper } = await mountLayout()
-    const menu = wrapper.getComponent(NMenu)
 
-    expect(menu.props('collapsed')).toBe(true)
     expect(wrapper.get('[data-test="admin-sidebar-toggle"]').attributes('aria-label')).toBe(
       '展开侧边栏',
     )
+    expect(wrapper.find('[data-test="admin-sidebar-brand"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="admin-sidebar-brand-mark"]').exists()).toBe(true)
   })
 
-  it('renders empty state when there are no accessible menus', async () => {
+  it('renders an empty navigation state when there are no accessible menus', async () => {
     const { wrapper } = await mountLayout({
       authSession: {
         ...createMenuSession(),
@@ -303,41 +292,38 @@ describe('admin layout', () => {
     })
 
     expect(wrapper.text()).toContain('暂无可访问菜单')
-    expect(wrapper.find('.n-menu').exists()).toBe(false)
+    expect(wrapper.find('a[href="/system/users"]').exists()).toBe(false)
   })
 
-  it('keeps the parent menu selected for nested internal routes', async () => {
+  it('renders the parent breadcrumb for nested internal routes', async () => {
     const { wrapper } = await mountLayout({
       initialPath: '/system/users/123',
     })
-    const menu = wrapper.getComponent(NMenu)
 
-    expect(menu.props('value')).toBe(usersMenuId)
-    expect(menu.props('expandedKeys')).toEqual([systemMenuId])
+    expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('系统管理')
+    expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('系统用户')
+    expect(wrapper.get('a[href="/system/users"]').text()).toContain('系统用户')
   })
 
-  it('expands only the current route ancestors by default', async () => {
+  it('renders nested route breadcrumbs and links', async () => {
     const { wrapper } = await mountLayout({
       initialPath: '/system/roles',
     })
-    const menu = wrapper.getComponent(NMenu)
 
-    expect(menu.props('value')).toBe(rolesMenuId)
-    expect(menu.props('expandedKeys')).toEqual([systemMenuId, docsMenuId])
+    expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('系统管理')
+    expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('指南')
+    expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('系统角色')
     expect(wrapper.get('a[href="/system/roles"]').text()).toContain('系统角色')
     expect(wrapper.findAll('[data-test="menu-icon"]').map((icon) => icon.text())).toContain(
       'lucide:shield-check',
     )
   })
 
-  it('returns a null selected key for unknown routes', async () => {
+  it('does not render a breadcrumb on unknown routes', async () => {
     const { wrapper } = await mountLayout({
       initialPath: '/unknown',
     })
-    const menu = wrapper.getComponent(NMenu)
 
-    expect(menu.props('value')).toBeNull()
-    expect(menu.props('expandedKeys')).toEqual([])
     expect(wrapper.find('[data-test="admin-breadcrumb"]').exists()).toBe(false)
   })
 
@@ -345,39 +331,10 @@ describe('admin layout', () => {
     const { wrapper } = await mountLayout({
       initialPath: '/system/audit-log',
     })
-    const menu = wrapper.getComponent(NMenu)
 
-    expect(menu.props('value')).toBeNull()
-    expect(menu.props('expandedKeys')).toEqual([])
     expect(wrapper.find('a[href="/system/audit-log"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('系统管理')
     expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('审计日志')
-  })
-
-  it('allows the current route ancestors to be manually collapsed', async () => {
-    const { wrapper } = await mountLayout()
-    const menu = wrapper.getComponent(NMenu)
-
-    menu.vm.$emit('update:expandedKeys', [])
-    await flushPromises()
-
-    expect(menu.props('expandedKeys')).toEqual([])
-  })
-
-  it('keeps user-expanded menu groups and expands new route ancestors on navigation', async () => {
-    const { router, wrapper } = await mountLayout()
-    const menu = wrapper.getComponent(NMenu)
-
-    menu.vm.$emit('update:expandedKeys', [systemMenuId, docsMenuId])
-    await flushPromises()
-
-    expect(menu.props('expandedKeys')).toEqual([systemMenuId, docsMenuId])
-
-    menu.vm.$emit('update:expandedKeys', [])
-    await router.push('/system/roles')
-    await flushPromises()
-
-    expect(menu.props('expandedKeys')).toEqual([systemMenuId, docsMenuId])
   })
 
   it('logs out, clears auth session, and navigates to login', async () => {

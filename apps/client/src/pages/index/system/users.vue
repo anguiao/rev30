@@ -24,6 +24,7 @@ import type {
   UserListQuery,
   UserListResponse,
 } from '@rev30/shared'
+import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import UserFormDrawer from '../../../features/system/UserFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
@@ -45,6 +46,8 @@ import {
   toSelectOptions,
   toTreeOptions,
 } from '../../../utils/ui'
+
+const pageTitle = useAdminPageTitle('系统用户')
 
 const message = useMessage()
 const dialog = useDialog()
@@ -353,7 +356,7 @@ const columns: DataTableColumns<UserListItem> = [
   <main class="space-y-5">
     <header class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold">系统用户</h1>
+        <h1 class="text-xl font-semibold">{{ pageTitle }}</h1>
         <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ usersData.total }} 个</p>
       </div>
       <NButton

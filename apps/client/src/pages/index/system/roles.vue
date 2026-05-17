@@ -22,6 +22,7 @@ import {
   type RoleListQuery,
   type RoleListResponse,
 } from '@rev30/shared'
+import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import RoleFormDrawer from '../../../features/system/RoleFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
@@ -35,6 +36,8 @@ import {
   type StatusFilter,
 } from '../../../features/system'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
+
+const pageTitle = useAdminPageTitle('系统角色')
 
 const message = useMessage()
 const dialog = useDialog()
@@ -204,7 +207,7 @@ const columns: DataTableColumns<RoleListItem> = [
   <main class="space-y-5">
     <header class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold">系统角色</h1>
+        <h1 class="text-xl font-semibold">{{ pageTitle }}</h1>
         <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ rolesData.total }} 个</p>
       </div>
       <NButton

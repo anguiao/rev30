@@ -4,7 +4,7 @@ import { treeToArray, type ResourceTreeNode } from '@rev30/shared'
 import { computed, h, ref, watch } from 'vue'
 import { NEmpty, NMenu, type MenuOption } from 'naive-ui'
 import { RouterLink, useRoute } from 'vue-router'
-import { findMenuMatch, type MenuMatch } from './menu'
+import { findMenuMatch, type MenuMatch } from '../../../utils/menu'
 
 const props = defineProps<{
   collapsed: boolean
@@ -17,7 +17,7 @@ const menuOptions = computed(() => props.menus.map(createMenuOption))
 const availableMenuKeys = computed(() => new Set(treeToArray(props.menus).map((menu) => menu.id)))
 
 const menuMatch = computed(() => findMenuMatch(props.menus, route.path))
-const activeMenuKey = computed(() => menuMatch.value?.selectedKey ?? null)
+const activeMenuKey = computed(() => menuMatch.value?.selectedMenu.key ?? null)
 
 const expandedMenuKeys = ref<string[]>([])
 

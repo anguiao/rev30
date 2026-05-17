@@ -3,7 +3,7 @@ import type { ResourceTreeNode } from '@rev30/shared'
 import { computed } from 'vue'
 import { NBreadcrumb, NBreadcrumbItem } from 'naive-ui'
 import { RouterLink, useRoute } from 'vue-router'
-import { findMenuMatch } from './menu'
+import { findMenuMatch } from '../../../utils/menu'
 
 const props = defineProps<{
   menus: ResourceTreeNode[]

@@ -235,7 +235,7 @@ describe('users page', () => {
     await flushPromises()
 
     expect(listUsersMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
-    expect(wrapper.text()).toContain('系统用户')
+    expect(wrapper.get('h1').text()).toBe('Users')
     expect(wrapper.text()).toContain('共 2 个')
     expect(wrapper.text()).toContain('ada')
     expect(wrapper.text()).toContain('Ada Lovelace')

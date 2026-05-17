@@ -1,6 +1,6 @@
 import type { ResourceTreeNode } from '@rev30/shared'
 
-type BreadcrumbItem = {
+type MenuMatchItem = {
   key: string
   name: string
   path: string | null
@@ -13,9 +13,9 @@ type MenuPathMatchScore = {
 }
 
 export type MenuMatch = {
-  selectedKey: string
+  selectedMenu: MenuMatchItem
   parentKeys: string[]
-  breadcrumbItems: BreadcrumbItem[]
+  breadcrumbItems: MenuMatchItem[]
 }
 
 export function findMenuMatch(menus: ResourceTreeNode[], currentPath: string): MenuMatch | null {
@@ -29,7 +29,7 @@ export function findMenuMatch(menus: ResourceTreeNode[], currentPath: string): M
   function visitMenus(
     currentMenus: ResourceTreeNode[],
     parentKeys: string[],
-    breadcrumbItems: BreadcrumbItem[],
+    breadcrumbItems: MenuMatchItem[],
   ) {
     for (const menu of currentMenus) {
       const nextParentKeys = [...parentKeys, menu.id]
@@ -48,7 +48,11 @@ export function findMenuMatch(menus: ResourceTreeNode[], currentPath: string): M
         if (score !== null && isBetterMenuPathMatch(score, matchedScore)) {
           matchedScore = score
           match = {
-            selectedKey: menu.id,
+            selectedMenu: {
+              key: menu.id,
+              name: menu.name,
+              path: menu.path,
+            },
             parentKeys,
             breadcrumbItems: nextBreadcrumbItems,
           }

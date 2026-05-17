@@ -1,6 +1,6 @@
 import type { ResourceTreeNode } from '@rev30/shared'
 import { describe, expect, it } from 'vitest'
-import { findMenuMatch } from '../../../../src/components/admin/navigation/menu'
+import { findMenuMatch } from '../../src/utils/menu'
 
 function createMenu(
   overrides: Partial<ResourceTreeNode> & Pick<ResourceTreeNode, 'id' | 'name'>,
@@ -70,7 +70,11 @@ describe('admin menu helpers', () => {
     const match = findMenuMatch(menus, '/system/users/123')
 
     expect(match).toEqual({
-      selectedKey: 'users',
+      selectedMenu: {
+        key: 'users',
+        name: '系统用户',
+        path: '/system/users',
+      },
       parentKeys: ['system'],
       breadcrumbItems: [
         { key: 'system', name: '系统管理', path: null },
@@ -82,7 +86,7 @@ describe('admin menu helpers', () => {
   it('returns all parent keys for deeply nested menu items', () => {
     const match = findMenuMatch(menus, '/system/roles')
 
-    expect(match?.selectedKey).toBe('roles')
+    expect(match?.selectedMenu.key).toBe('roles')
     expect(match?.parentKeys).toEqual(['system', 'docs'])
     expect(match?.breadcrumbItems.map((item) => item.name)).toEqual([
       '系统管理',
@@ -120,7 +124,11 @@ describe('admin menu helpers', () => {
     const match = findMenuMatch(dynamicMenus, '/system/users/123')
 
     expect(match).toEqual({
-      selectedKey: 'user-detail',
+      selectedMenu: {
+        key: 'user-detail',
+        name: '用户详情',
+        path: '/system/users/:id',
+      },
       parentKeys: ['system', 'users'],
       breadcrumbItems: [
         { key: 'system', name: '系统管理', path: null },
@@ -157,8 +165,7 @@ describe('admin menu helpers', () => {
 
     const match = findMenuMatch(staticAndDynamicMenus, '/system/resources/new')
 
-    expect(match?.selectedKey).toBe('resource-create')
-    expect(match?.breadcrumbItems.at(-1)).toEqual({
+    expect(match?.selectedMenu).toEqual({
       key: 'resource-create',
       name: '新建资源',
       path: '/system/resources/new',

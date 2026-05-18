@@ -168,6 +168,24 @@ describe('config routes', () => {
     expect(createResponse.status).toBe(400)
     expect(await createResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.create).not.toHaveBeenCalled()
+
+    const createInvalidValueResponse = await app.request('/api/system/configs', {
+      method: 'POST',
+      body: JSON.stringify({
+        groupCode: 'site',
+        key: 'site.retry',
+        name: '重试次数',
+        valueType: 'number',
+        value: 'abc',
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(createInvalidValueResponse.status).toBe(400)
+    expect(await createInvalidValueResponse.json()).toEqual({
+      field: 'value',
+      message: '配置值必须是有限数字',
+    })
+    expect(mocks.service.create).not.toHaveBeenCalled()
   })
 
   it('maps config domain errors to route responses', async () => {

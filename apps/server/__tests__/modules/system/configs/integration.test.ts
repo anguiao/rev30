@@ -136,6 +136,11 @@ describe('config routes', () => {
       .from(systemConfigs)
       .where(eq(systemConfigs.id, created.id))
     expect(deleted?.deletedAt).toEqual(expect.any(Date))
+
+    const postDeleteListResponse = await app.request('/api/system/configs?page=1&pageSize=10')
+    const postDeleteListBody = (await postDeleteListResponse.json()) as ConfigListResponse
+    expect(postDeleteListResponse.status).toBe(200)
+    expect(postDeleteListBody.list.some((item) => item.id === created.id)).toBe(false)
   })
 
   it('returns list without sortOrder and sorts by groupCode, sortOrder, key', async () => {
@@ -250,6 +255,30 @@ describe('config routes', () => {
     const response = await app.request(`/api/system/configs/${created.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ valueType: CONFIG_VALUE_TYPE_NUMBER }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(400)
+    expect((await response.json()) as ErrorResponse).toEqual({
+      field: 'value',
+      message: '配置值必须是有限数字',
+    })
+  })
+
+  it('validates merged existing value when only updating value', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: created } = await createConfig(app, {
+      groupCode: 'site',
+      key: 'site.maxRetry',
+      name: '最大重试次数',
+      valueType: CONFIG_VALUE_TYPE_NUMBER,
+      value: '3',
+    })
+
+    const response = await app.request(`/api/system/configs/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ value: 'abc' }),
       headers: { 'content-type': 'application/json' },
     })
 

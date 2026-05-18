@@ -19,10 +19,7 @@ async function withConfigUniqueConflict<T>(operation: () => Promise<T>) {
   }
 }
 
-function validateMergedValue(input: {
-  valueType: ConfigCreateInput['valueType']
-  value: string
-}) {
+function validateMergedValue(input: { valueType: ConfigCreateInput['valueType']; value: string }) {
   const message = getConfigValueError(input.valueType, input.value)
 
   if (message !== null) {
@@ -67,8 +64,7 @@ export function createConfigService(database: Db) {
       }
 
       validateMergedValue({
-        valueType: (input.valueType ??
-          existingConfig.valueType) as ConfigCreateInput['valueType'],
+        valueType: (input.valueType ?? existingConfig.valueType) as ConfigCreateInput['valueType'],
         value: input.value ?? existingConfig.value,
       })
 

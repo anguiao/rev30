@@ -115,9 +115,7 @@ describe('config schemas', () => {
   it('validates boolean values as true or false strings', () => {
     expect(getConfigValueError(CONFIG_VALUE_TYPE_BOOLEAN, 'true')).toBeNull()
     expect(getConfigValueError(CONFIG_VALUE_TYPE_BOOLEAN, 'false')).toBeNull()
-    expect(getConfigValueError(CONFIG_VALUE_TYPE_BOOLEAN, 'yes')).toBe(
-      '配置值必须是 true 或 false',
-    )
+    expect(getConfigValueError(CONFIG_VALUE_TYPE_BOOLEAN, 'yes')).toBe('配置值必须是 true 或 false')
 
     const result = configCreateSchema.safeParse({
       groupCode: 'feature',

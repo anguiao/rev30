@@ -205,9 +205,9 @@ describe('configs page', () => {
     expect(
       (wrapper.get('[data-test="configs-group-code"] input').element as HTMLInputElement).value,
     ).toBe('')
-    expect(wrapper.get('[data-test="configs-value-type"]').getComponent(NSelect).props('value')).toBe(
-      'all',
-    )
+    expect(
+      wrapper.get('[data-test="configs-value-type"]').getComponent(NSelect).props('value'),
+    ).toBe('all')
     expect(wrapper.get('[data-test="configs-status"]').getComponent(NSelect).props('value')).toBe(
       'all',
     )

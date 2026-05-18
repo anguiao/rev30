@@ -26,13 +26,7 @@ import {
   type ConfigValueType,
   configUpdateSchema,
 } from '@rev30/shared'
-import {
-  SystemRequestError,
-  createConfig,
-  getConfig,
-  getSystemErrorMessage,
-  updateConfig,
-} from '.'
+import { SystemRequestError, createConfig, getConfig, getSystemErrorMessage, updateConfig } from '.'
 import { configValueTypeSelectOptions, statusSelectOptions } from './labels'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
 

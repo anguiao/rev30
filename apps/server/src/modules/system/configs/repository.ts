@@ -5,7 +5,11 @@ import type { Db } from '../../../db'
 import { systemConfigs } from '../../../db/schema'
 
 function configSortOrder() {
-  return [asc(systemConfigs.groupCode), asc(systemConfigs.sortOrder), asc(systemConfigs.key)] as const
+  return [
+    asc(systemConfigs.groupCode),
+    asc(systemConfigs.sortOrder),
+    asc(systemConfigs.key),
+  ] as const
 }
 
 export function createConfigRepository(database: Db) {

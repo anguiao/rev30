@@ -3,6 +3,8 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  CONFIG_STATUS_ENABLED,
+  CONFIG_VALUE_TYPE_STRING,
   DEPARTMENT_STATUS_ENABLED,
   RESOURCE_OPEN_TARGET_SELF,
   RESOURCE_STATUS_ENABLED,
@@ -22,13 +24,18 @@ import {
   getDepartment,
   getResource,
   getRole,
+  createConfig,
+  deleteConfig,
+  getConfig,
+  listConfigs,
+  updateConfig,
   createUser,
-  resetUserPassword,
-  SystemRequestError,
   getUser,
   getUserOptions,
   getDepartmentTree,
   getDepartmentTreeOptions,
+  resetUserPassword,
+  SystemRequestError,
   updateDepartment,
   getResourceTree,
   getResourceTreeOptions,
@@ -131,6 +138,98 @@ describe('system request helpers', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('keyword=')
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('status=1')
+  })
+
+  it('parses list responses from the system configs endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          list: [
+            {
+              id: '11111111-1111-4111-8111-111111111111',
+              groupCode: 'site',
+              key: 'site.title',
+              name: '站点名称',
+              valueType: CONFIG_VALUE_TYPE_STRING,
+              value: 'Rev30',
+              description: '后台显示名称',
+              status: CONFIG_STATUS_ENABLED,
+              createdAt: '2026-05-18T00:00:00.000Z',
+              updatedAt: '2026-05-18T00:00:00.000Z',
+            },
+          ],
+          total: 1,
+          page: 1,
+          pageSize: 20,
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    const result = await listConfigs({
+      page: 1,
+      pageSize: 20,
+      keyword: 'title',
+      groupCode: 'site',
+      valueType: CONFIG_VALUE_TYPE_STRING,
+      status: CONFIG_STATUS_ENABLED,
+    })
+
+    expect(result.total).toBe(1)
+    expect(result.list[0]?.key).toBe('site.title')
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/configs')
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('keyword=title')
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('groupCode=site')
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('valueType=string')
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('status=1')
+  })
+
+  it('gets, creates, updates, and deletes configs through system config endpoints', async () => {
+    const config = {
+      id: '11111111-1111-4111-8111-111111111111',
+      groupCode: 'site',
+      key: 'site.title',
+      name: '站点名称',
+      valueType: CONFIG_VALUE_TYPE_STRING,
+      value: 'Rev30',
+      description: null,
+      status: CONFIG_STATUS_ENABLED,
+      sortOrder: 0,
+      createdAt: '2026-05-18T00:00:00.000Z',
+      updatedAt: '2026-05-18T00:00:00.000Z',
+    }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(config)))
+      .mockResolvedValueOnce(new Response(JSON.stringify(config), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ...config, name: '新站点名称' })))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(getConfig(config.id)).resolves.toMatchObject({ key: 'site.title' })
+    await expect(
+      createConfig({
+        groupCode: 'site',
+        key: 'site.title',
+        name: '站点名称',
+        valueType: CONFIG_VALUE_TYPE_STRING,
+        value: 'Rev30',
+        status: CONFIG_STATUS_ENABLED,
+        sortOrder: 0,
+      }),
+    ).resolves.toMatchObject({ key: 'site.title' })
+    await expect(updateConfig(config.id, { name: '新站点名称' })).resolves.toMatchObject({
+      name: '新站点名称',
+    })
+    await expect(deleteConfig(config.id)).resolves.toBeUndefined()
+
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(`/api/system/configs/${config.id}`)
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('/api/system/configs')
+    expect(String(fetchMock.mock.calls[2]?.[0])).toContain(`/api/system/configs/${config.id}`)
+    expect(String(fetchMock.mock.calls[3]?.[0])).toContain(`/api/system/configs/${config.id}`)
   })
 
   it('parses user options responses from the users options endpoint', async () => {

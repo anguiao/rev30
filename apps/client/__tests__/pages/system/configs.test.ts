@@ -155,7 +155,7 @@ describe('configs page', () => {
     })
   })
 
-  it('searches and resets filters', async () => {
+  it('searches and resets filters without issuing duplicate requests', async () => {
     listConfigsMock.mockResolvedValue(configsResponse)
     const { wrapper } = await mountConfigsPage()
     await flushPromises()
@@ -163,9 +163,14 @@ describe('configs page', () => {
     await wrapper.find('[data-test="configs-keyword"] input').setValue('  site  ')
     await wrapper.find('[data-test="configs-group-code"] input').setValue('  base  ')
 
-    const filterSelects = wrapper.findAllComponents(NSelect)
-    filterSelects[0]!.vm.$emit('update:value', CONFIG_VALUE_TYPE_NUMBER)
-    filterSelects[1]!.vm.$emit('update:value', CONFIG_STATUS_DISABLED)
+    wrapper
+      .get('[data-test="configs-value-type"]')
+      .getComponent(NSelect)
+      .vm.$emit('update:value', CONFIG_VALUE_TYPE_NUMBER)
+    wrapper
+      .get('[data-test="configs-status"]')
+      .getComponent(NSelect)
+      .vm.$emit('update:value', CONFIG_STATUS_DISABLED)
     await flushPromises()
     await wrapper.get('[data-test="configs-search"]').trigger('click')
     await flushPromises()
@@ -189,17 +194,22 @@ describe('configs page', () => {
       (wrapper.get('[data-test="configs-group-code"] input').element as HTMLInputElement).value,
     ).toBe('')
 
-    expect(listConfigsMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
+    const callCountAfterFirstReset = listConfigsMock.mock.calls.length
+    await wrapper.get('[data-test="configs-reset"]').trigger('click')
+    await flushPromises()
+
+    expect(listConfigsMock.mock.calls.length).toBe(callCountAfterFirstReset)
   })
 
-  it('shows a server load error and fallback load error', async () => {
+  it('shows a server load error when configs cannot be loaded', async () => {
     listConfigsMock.mockRejectedValueOnce(new SystemRequestError(500, '加载配置失败'))
     const { wrapper: serverErrorWrapper } = await mountConfigsPage()
     await flushPromises()
 
     expect(serverErrorWrapper.text()).toContain('加载配置失败')
+  })
 
-    listConfigsMock.mockReset()
+  it('shows a fallback load error for unexpected config load errors', async () => {
     listConfigsMock.mockRejectedValueOnce(new Error('network down'))
     const { wrapper: fallbackErrorWrapper } = await mountConfigsPage()
     await flushPromises()

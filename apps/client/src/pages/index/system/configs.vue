@@ -104,7 +104,6 @@ function handleReset() {
     page: 1,
     pageSize: query.value.pageSize,
   }
-  void refetchConfigs()
 }
 
 const configsData = computed(() => configsResponse.value ?? emptyConfigsData)

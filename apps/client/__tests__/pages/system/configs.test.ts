@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 
+import { useQueryCache } from '@pinia/colada'
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NDataTable, NEllipsis, NPagination, NSelect } from 'naive-ui'
@@ -174,6 +175,7 @@ describe('configs page', () => {
     await flushPromises()
     await wrapper.get('[data-test="configs-search"]').trigger('click')
     await flushPromises()
+    const callCountAfterSearch = listConfigsMock.mock.calls.length
 
     expect(listConfigsMock).toHaveBeenLastCalledWith({
       page: 1,
@@ -184,8 +186,18 @@ describe('configs page', () => {
       status: CONFIG_STATUS_DISABLED,
     })
 
+    const queryCache = useQueryCache()
+    const initialQueryEntry = queryCache.get(['system', 'configs', 1, 20, '', '', null, null])
+    if (initialQueryEntry !== undefined) {
+      queryCache.remove(initialQueryEntry)
+    }
+
     await wrapper.get('[data-test="configs-reset"]').trigger('click')
     await flushPromises()
+    await vi.waitFor(() => {
+      expect(listConfigsMock.mock.calls.length).toBe(callCountAfterSearch + 1)
+    })
+    expect(listConfigsMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
 
     expect(
       (wrapper.get('[data-test="configs-keyword"] input').element as HTMLInputElement).value,
@@ -193,6 +205,12 @@ describe('configs page', () => {
     expect(
       (wrapper.get('[data-test="configs-group-code"] input').element as HTMLInputElement).value,
     ).toBe('')
+    expect(wrapper.get('[data-test="configs-value-type"]').getComponent(NSelect).props('value')).toBe(
+      'all',
+    )
+    expect(wrapper.get('[data-test="configs-status"]').getComponent(NSelect).props('value')).toBe(
+      'all',
+    )
 
     const callCountAfterFirstReset = listConfigsMock.mock.calls.length
     await wrapper.get('[data-test="configs-reset"]').trigger('click')

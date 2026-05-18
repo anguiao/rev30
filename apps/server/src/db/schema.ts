@@ -11,7 +11,9 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 import {
+  CONFIG_STATUS_ENABLED,
   DEPARTMENT_STATUS_ENABLED,
   RESOURCE_OPEN_TARGET_SELF,
   RESOURCE_STATUS_ENABLED,
@@ -196,6 +198,30 @@ export const systemRoles = pgTable(
   (table) => [
     uniqueIndex('system_roles_code_unique').on(table.code),
     index('system_roles_status_idx').on(table.status),
+  ],
+)
+
+export const systemConfigs = pgTable(
+  'system_configs',
+  {
+    id: uuid('id').primaryKey(),
+    groupCode: text('group_code').notNull(),
+    key: text('key').notNull(),
+    name: text('name').notNull(),
+    valueType: text('value_type').notNull(),
+    value: text('value').notNull(),
+    description: text('description'),
+    status: smallint('status').notNull().default(CONFIG_STATUS_ENABLED),
+    sortOrder: integer('sort_order').notNull().default(0),
+    ...auditTimestamps(),
+  },
+  (table) => [
+    uniqueIndex('system_configs_key_active_unique')
+      .on(table.key)
+      .where(sql`${table.deletedAt} IS NULL`),
+    index('system_configs_group_code_idx').on(table.groupCode),
+    index('system_configs_value_type_idx').on(table.valueType),
+    index('system_configs_status_idx').on(table.status),
   ],
 )
 

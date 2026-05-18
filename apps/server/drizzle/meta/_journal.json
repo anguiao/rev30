@@ -85,6 +85,13 @@
       "when": 1778772692273,
       "tag": "0011_add_auth_login_attempt_buckets",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1779097234404,
+      "tag": "0012_add_system_configs",
+      "breakpoints": true
     }
   ]
 }

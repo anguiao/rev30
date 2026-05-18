@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createDb } from '../../src/db/index'
 import { migratePGlite } from '../../src/db/migrate'
-import { systemResources, systemUsers } from '../../src/db/schema'
+import { systemConfigs, systemResources, systemUsers } from '../../src/db/schema'
 import * as schema from '../../src/db/schema'
 
 const originalNodeEnv = process.env.NODE_ENV
@@ -79,6 +79,37 @@ describe('PGlite migration runner', () => {
             ('migrated-login-attempt', 1, now(), now(), now(), now())
         `,
       )
+
+      const [createdConfig] = await database
+        .insert(systemConfigs)
+        .values({
+          id: randomUUID(),
+          groupCode: 'site',
+          key: 'site.title',
+          name: '站点名称',
+          valueType: 'string',
+          value: 'Rev30',
+          description: '后台显示名称',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+      const [configMenu] = await database
+        .select()
+        .from(systemResources)
+        .where(eq(systemResources.code, 'system:config'))
+
+      expect(createdConfig).toMatchObject({
+        groupCode: 'site',
+        key: 'site.title',
+        valueType: 'string',
+        value: 'Rev30',
+      })
+      expect(configMenu).toMatchObject({
+        code: 'system:config',
+        name: '系统配置',
+        path: '/system/configs',
+      })
     } finally {
       await client.close()
     }

@@ -12,7 +12,6 @@ import {
   configListResponseSchema,
   configSchema,
   configUpdateSchema,
-  getConfigValueError,
 } from '../../../src/schemas/system/configs'
 import { prettifyZodError } from '../../helpers/schema'
 
@@ -75,8 +74,15 @@ describe('config schemas', () => {
   })
 
   it('validates string values as non-blank text', () => {
-    expect(getConfigValueError(CONFIG_VALUE_TYPE_STRING, 'Rev30')).toBeNull()
-    expect(getConfigValueError(CONFIG_VALUE_TYPE_STRING, '   ')).toBe('请输入配置值')
+    expect(
+      configCreateSchema.safeParse({
+        groupCode: 'site',
+        key: 'site.title',
+        name: '站点名称',
+        valueType: CONFIG_VALUE_TYPE_STRING,
+        value: 'Rev30',
+      }).success,
+    ).toBe(true)
 
     const result = configCreateSchema.safeParse({
       groupCode: 'site',
@@ -93,10 +99,15 @@ describe('config schemas', () => {
   })
 
   it('validates number values as finite numbers', () => {
-    expect(getConfigValueError(CONFIG_VALUE_TYPE_NUMBER, '12.5')).toBeNull()
-    expect(getConfigValueError(CONFIG_VALUE_TYPE_NUMBER, '-3')).toBeNull()
-    expect(getConfigValueError(CONFIG_VALUE_TYPE_NUMBER, 'Infinity')).toBe('配置值必须是有限数字')
-    expect(getConfigValueError(CONFIG_VALUE_TYPE_NUMBER, 'abc')).toBe('配置值必须是有限数字')
+    expect(
+      configCreateSchema.safeParse({
+        groupCode: 'site',
+        key: 'site.limit',
+        name: '限制',
+        valueType: CONFIG_VALUE_TYPE_NUMBER,
+        value: '12.5',
+      }).success,
+    ).toBe(true)
 
     const result = configCreateSchema.safeParse({
       groupCode: 'site',
@@ -113,9 +124,15 @@ describe('config schemas', () => {
   })
 
   it('validates boolean values as true or false strings', () => {
-    expect(getConfigValueError(CONFIG_VALUE_TYPE_BOOLEAN, 'true')).toBeNull()
-    expect(getConfigValueError(CONFIG_VALUE_TYPE_BOOLEAN, 'false')).toBeNull()
-    expect(getConfigValueError(CONFIG_VALUE_TYPE_BOOLEAN, 'yes')).toBe('配置值必须是 true 或 false')
+    expect(
+      configCreateSchema.safeParse({
+        groupCode: 'feature',
+        key: 'feature.enabled',
+        name: '功能启用',
+        valueType: CONFIG_VALUE_TYPE_BOOLEAN,
+        value: 'true',
+      }).success,
+    ).toBe(true)
 
     const result = configCreateSchema.safeParse({
       groupCode: 'feature',
@@ -132,9 +149,15 @@ describe('config schemas', () => {
   })
 
   it('validates json values with JSON.parse', () => {
-    expect(getConfigValueError(CONFIG_VALUE_TYPE_JSON, '{"enabled":true}')).toBeNull()
-    expect(getConfigValueError(CONFIG_VALUE_TYPE_JSON, '[1,2,3]')).toBeNull()
-    expect(getConfigValueError(CONFIG_VALUE_TYPE_JSON, '{bad json')).toBe('配置值必须是合法 JSON')
+    expect(
+      configCreateSchema.safeParse({
+        groupCode: 'feature',
+        key: 'feature.flags',
+        name: '功能开关',
+        valueType: CONFIG_VALUE_TYPE_JSON,
+        value: '{"enabled":true}',
+      }).success,
+    ).toBe(true)
   })
 
   it('validates value type and value together on create input', () => {
@@ -178,8 +201,8 @@ describe('config schemas', () => {
         pageSize: '5',
         keyword: ' title ',
         groupCode: 'site',
-        valueType: CONFIG_VALUE_TYPE_STRING,
-        status: '1',
+        valueType: ' string ',
+        status: ' 1 ',
       }),
     ).toEqual({
       page: 2,

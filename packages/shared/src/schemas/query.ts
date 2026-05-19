@@ -1,14 +1,18 @@
 import { z } from 'zod'
 
-const blankQueryStringSchema = z
-  .string()
-  .trim()
-  .length(0)
-  .transform(() => undefined)
 type NumericQuerySchema = Parameters<ReturnType<typeof z.coerce.number>['pipe']>[0]
 
+function normalizeOptionalQueryValue(value: unknown) {
+  if (typeof value !== 'string') {
+    return value
+  }
+
+  const trimmedValue = value.trim()
+  return trimmedValue === '' ? undefined : trimmedValue
+}
+
 export function optionalQueryValue<TSchema extends z.ZodType>(schema: TSchema) {
-  return z.union([blankQueryStringSchema, schema]).optional()
+  return z.preprocess(normalizeOptionalQueryValue, schema.optional())
 }
 
 export function optionalTrimmedQueryString() {

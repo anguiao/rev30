@@ -361,6 +361,22 @@ describe('resource schemas', () => {
     })
   })
 
+  it('trims resource list query filters before validation', () => {
+    expect(
+      resourceListQuerySchema.parse({
+        type: ' menu ',
+        status: ' 1 ',
+        parentId: ' 8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7 ',
+      }),
+    ).toEqual({
+      page: 1,
+      pageSize: 20,
+      type: RESOURCE_TYPE_MENU,
+      status: RESOURCE_STATUS_ENABLED,
+      parentId: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+    })
+  })
+
   it('accepts valid resource list responses', () => {
     const listResponse = resourceListResponseSchema.parse({
       list: [

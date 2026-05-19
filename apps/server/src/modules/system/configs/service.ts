@@ -1,8 +1,17 @@
-import type { ConfigCreateInput, ConfigListQuery, ConfigUpdateInput } from '@rev30/shared'
-import { getConfigValueError } from '@rev30/shared'
+import type {
+  ConfigCreateInput,
+  ConfigListQuery,
+  ConfigUpdateInput,
+  ConfigValueType,
+} from '@rev30/shared'
+import {
+  CONFIG_VALUE_TYPE_BOOLEAN,
+  CONFIG_VALUE_TYPE_JSON,
+  CONFIG_VALUE_TYPE_NUMBER,
+} from '@rev30/shared'
 import type { Db } from '../../../db'
 import { ConfigInvalidValueError, ConfigNotFoundError, toConfigConflictError } from './errors'
-import { toConfig, toConfigListItem } from './mapper'
+import { toConfig, toConfigListItem, type ConfigRow } from './mapper'
 import { createConfigRepository } from './repository'
 
 async function withConfigUniqueConflict<T>(operation: () => Promise<T>) {
@@ -19,12 +28,41 @@ async function withConfigUniqueConflict<T>(operation: () => Promise<T>) {
   }
 }
 
-function validateMergedValue(input: { valueType: ConfigCreateInput['valueType']; value: string }) {
-  const message = getConfigValueError(input.valueType, input.value)
+function validateConfigValue(valueType: ConfigValueType, value: string) {
+  const trimmedValue = value.trim()
 
-  if (message !== null) {
-    throw new ConfigInvalidValueError(message)
+  if (trimmedValue.length === 0) {
+    throw new ConfigInvalidValueError('请输入配置值')
   }
+
+  if (valueType === CONFIG_VALUE_TYPE_NUMBER && !Number.isFinite(Number(trimmedValue))) {
+    throw new ConfigInvalidValueError('配置值必须是有限数字')
+  }
+
+  if (
+    valueType === CONFIG_VALUE_TYPE_BOOLEAN &&
+    trimmedValue !== 'true' &&
+    trimmedValue !== 'false'
+  ) {
+    throw new ConfigInvalidValueError('配置值必须是 true 或 false')
+  }
+
+  if (valueType !== CONFIG_VALUE_TYPE_JSON) {
+    return
+  }
+
+  try {
+    JSON.parse(trimmedValue)
+  } catch {
+    throw new ConfigInvalidValueError('配置值必须是合法 JSON')
+  }
+}
+
+function validateMergedValue(input: ConfigUpdateInput, existingConfig: ConfigRow) {
+  validateConfigValue(
+    (input.valueType ?? existingConfig.valueType) as ConfigValueType,
+    input.value ?? existingConfig.value,
+  )
 }
 
 export function createConfigService(database: Db) {
@@ -51,8 +89,6 @@ export function createConfigService(database: Db) {
     },
 
     async create(input: ConfigCreateInput) {
-      validateMergedValue(input)
-
       return toConfig(await withConfigUniqueConflict(() => repository.create(input)))
     },
 
@@ -63,10 +99,7 @@ export function createConfigService(database: Db) {
         throw new ConfigNotFoundError()
       }
 
-      validateMergedValue({
-        valueType: (input.valueType ?? existingConfig.valueType) as ConfigCreateInput['valueType'],
-        value: input.value ?? existingConfig.value,
-      })
+      validateMergedValue(input, existingConfig)
 
       const updated = await withConfigUniqueConflict(() => repository.update(id, input))
 

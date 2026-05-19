@@ -147,38 +147,6 @@ export async function resetUserPassword(id: string): Promise<UserResetPasswordRe
   )
 }
 
-export async function listConfigs(query: ConfigListQuery): Promise<ConfigListResponse> {
-  return parseSystemResponse(
-    await api.system.configs.$get({
-      query: normalizeRequestQuery(query),
-    }),
-    configListResponseSchema,
-  )
-}
-
-export async function getConfig(id: string): Promise<Config> {
-  return parseSystemResponse(await api.system.configs[':id'].$get({ param: { id } }), configSchema)
-}
-
-export async function createConfig(input: ConfigCreateInput): Promise<Config> {
-  return parseSystemResponse(await api.system.configs.$post({ json: input }), configSchema)
-}
-
-export async function updateConfig(id: string, input: ConfigUpdateInput): Promise<Config> {
-  return parseSystemResponse(
-    await api.system.configs[':id'].$patch({ param: { id }, json: input }),
-    configSchema,
-  )
-}
-
-export async function deleteConfig(id: string): Promise<void> {
-  const response = await api.system.configs[':id'].$delete({ param: { id } })
-
-  if (!response.ok) {
-    throw await parseSystemError(response)
-  }
-}
-
 export async function getDepartmentTree(): Promise<DepartmentTreeResponse> {
   return parseSystemResponse(await api.system.departments.tree.$get(), departmentTreeResponseSchema)
 }
@@ -302,6 +270,38 @@ export async function updateResource(id: string, input: ResourceUpdateInput): Pr
 
 export async function deleteResource(id: string): Promise<void> {
   const response = await api.system.resources[':id'].$delete({ param: { id } })
+
+  if (!response.ok) {
+    throw await parseSystemError(response)
+  }
+}
+
+export async function listConfigs(query: ConfigListQuery): Promise<ConfigListResponse> {
+  return parseSystemResponse(
+    await api.system.configs.$get({
+      query: normalizeRequestQuery(query),
+    }),
+    configListResponseSchema,
+  )
+}
+
+export async function getConfig(id: string): Promise<Config> {
+  return parseSystemResponse(await api.system.configs[':id'].$get({ param: { id } }), configSchema)
+}
+
+export async function createConfig(input: ConfigCreateInput): Promise<Config> {
+  return parseSystemResponse(await api.system.configs.$post({ json: input }), configSchema)
+}
+
+export async function updateConfig(id: string, input: ConfigUpdateInput): Promise<Config> {
+  return parseSystemResponse(
+    await api.system.configs[':id'].$patch({ param: { id }, json: input }),
+    configSchema,
+  )
+}
+
+export async function deleteConfig(id: string): Promise<void> {
+  const response = await api.system.configs[':id'].$delete({ param: { id } })
 
   if (!response.ok) {
     throw await parseSystemError(response)

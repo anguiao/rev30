@@ -6,6 +6,9 @@ import {
   CONFIG_STATUS_ENABLED,
   CONFIG_VALUE_TYPE_STRING,
   DEPARTMENT_STATUS_ENABLED,
+  DICTIONARY_STATUS_ENABLED,
+  type DictionaryCreateInput,
+  type DictionaryUpdateInput,
   RESOURCE_OPEN_TARGET_SELF,
   RESOURCE_STATUS_ENABLED,
   RESOURCE_TYPE_DIRECTORY,
@@ -40,6 +43,12 @@ import {
   getResourceTree,
   getResourceTreeOptions,
   getRoleOptions,
+  listDictionaries,
+  getDictionary,
+  createDictionary,
+  updateDictionary,
+  deleteDictionary,
+  getDictionaryOptions,
   searchIcons,
   getSystemErrorMessage,
   listRoles,
@@ -774,6 +783,165 @@ describe('system request helpers', () => {
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
       '/api/system/roles/11111111-1111-4111-8111-111111111111',
     )
+  })
+
+  it('parses list/detail/create/update/delete/options dictionary requests', async () => {
+    const dictionaryId = '11111111-1111-4111-8111-111111111111'
+    const listResponse = {
+      list: [
+        {
+          id: dictionaryId,
+          code: 'user_status',
+          name: '用户状态',
+          description: '用户状态字典',
+          status: DICTIONARY_STATUS_ENABLED,
+          sortOrder: 1,
+          itemCount: 2,
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+    }
+    const detailResponse = {
+      id: dictionaryId,
+      code: 'user_status',
+      name: '用户状态',
+      description: '用户状态字典',
+      status: DICTIONARY_STATUS_ENABLED,
+      sortOrder: 1,
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T00:00:00.000Z',
+      items: [
+        {
+          id: '11111111-1111-4111-8111-111111111112',
+          typeId: dictionaryId,
+          label: '启用',
+          value: 'enabled',
+          description: null,
+          status: DICTIONARY_STATUS_ENABLED,
+          sortOrder: 0,
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      ],
+    }
+    const createResponse = {
+      ...detailResponse,
+      id: '11111111-1111-4111-8111-111111111113',
+      name: '地区',
+      code: 'region',
+    }
+    const updatedResponse = {
+      ...createResponse,
+      name: '地区字典',
+    }
+    const optionsResponse = {
+      user_status: [
+        {
+          value: 'enabled',
+          label: '启用',
+        },
+      ],
+      region: [
+        {
+          value: 'north',
+          label: '北区',
+        },
+      ],
+    }
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(listResponse)))
+      .mockResolvedValueOnce(new Response(JSON.stringify(detailResponse)))
+      .mockResolvedValueOnce(new Response(JSON.stringify(createResponse)))
+      .mockResolvedValueOnce(new Response(JSON.stringify(updatedResponse)))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(optionsResponse)))
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().accessToken = 'access-token'
+
+    const listResult = await listDictionaries({
+      page: 1,
+      pageSize: 20,
+      keyword: '状态',
+      status: DICTIONARY_STATUS_ENABLED,
+    })
+    const detailResult = await getDictionary(dictionaryId)
+    const createInput: DictionaryCreateInput = {
+      code: 'region',
+      name: '地区',
+      description: null,
+      status: 1,
+      sortOrder: 0,
+      items: [],
+    }
+    await createDictionary(createInput)
+    const updateInput: DictionaryUpdateInput = {
+      code: 'user_status',
+      name: '地区字典',
+      description: null,
+      status: 1,
+      sortOrder: 1,
+      items: [
+        {
+          id: '11111111-1111-4111-8111-111111111112',
+          label: '启用',
+          value: 'enabled',
+          description: null,
+          status: 1,
+          sortOrder: 0,
+        },
+      ],
+    }
+    await updateDictionary(dictionaryId, updateInput)
+    await deleteDictionary(dictionaryId)
+    const optionsResult = await getDictionaryOptions(['user_status', 'region'])
+
+    expect(listResult.total).toBe(1)
+    expect(listResult.list[0]?.code).toBe('user_status')
+    expect(detailResult.code).toBe('user_status')
+    expect(optionsResult).toMatchObject({
+      user_status: [{ value: 'enabled', label: '启用' }],
+      region: [{ value: 'north', label: '北区' }],
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(6)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/dictionaries')
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('keyword=%E7%8A%B6%E6%80%81')
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('status=1')
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
+      `/api/system/dictionaries/${dictionaryId}`,
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/system/dictionaries',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    )
+    const [, createInit] = fetchMock.mock.calls[2] as [RequestInfo | URL, RequestInit]
+    expect(createInit.body).toEqual(expect.any(String))
+    expect(JSON.parse(createInit.body as string)).toEqual(createInput)
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/system/dictionaries/${dictionaryId}`,
+      expect.objectContaining({
+        method: 'PUT',
+      }),
+    )
+    const [, updateInit] = fetchMock.mock.calls[3] as [RequestInfo | URL, RequestInit]
+    expect(updateInit.body).toEqual(expect.any(String))
+    expect(JSON.parse(updateInit.body as string)).toEqual(updateInput)
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/system/dictionaries/${dictionaryId}`,
+      expect.objectContaining({
+        method: 'DELETE',
+      }),
+    )
+    expect(String(fetchMock.mock.calls[5]?.[0])).toContain('/api/system/dictionaries/options')
+    const optionsUrl = new URL(String(fetchMock.mock.calls[5]?.[0]), 'http://localhost')
+    expect(optionsUrl.searchParams.get('codes')).toBe('user_status,region')
   })
 
   it('parses create user responses and temporary passwords', async () => {

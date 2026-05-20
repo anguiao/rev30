@@ -49,6 +49,15 @@ import {
   userListResponseSchema,
   userResetPasswordResponseSchema,
   iconSearchResponseSchema,
+  dictionaryListResponseSchema,
+  dictionaryDetailSchema,
+  dictionaryOptionsResponseSchema,
+  type DictionaryListQuery,
+  type DictionaryListResponse,
+  type DictionaryDetail,
+  type DictionaryCreateInput,
+  type DictionaryUpdateInput,
+  type DictionaryOptionsResponse,
 } from '@rev30/shared'
 import type { z } from 'zod'
 import { api } from '../../api'
@@ -306,6 +315,61 @@ export async function deleteConfig(id: string): Promise<void> {
   if (!response.ok) {
     throw await parseSystemError(response)
   }
+}
+
+export async function listDictionaries(
+  query: DictionaryListQuery,
+): Promise<DictionaryListResponse> {
+  return parseSystemResponse(
+    await api.system.dictionaries.$get({
+      query: normalizeRequestQuery(query),
+    }),
+    dictionaryListResponseSchema,
+  )
+}
+
+export async function getDictionary(id: string): Promise<DictionaryDetail> {
+  return parseSystemResponse(
+    await api.system.dictionaries[':id'].$get({ param: { id } }),
+    dictionaryDetailSchema,
+  )
+}
+
+export async function createDictionary(input: DictionaryCreateInput): Promise<DictionaryDetail> {
+  return parseSystemResponse(
+    await api.system.dictionaries.$post({ json: input }),
+    dictionaryDetailSchema,
+  )
+}
+
+export async function updateDictionary(
+  id: string,
+  input: DictionaryUpdateInput,
+): Promise<DictionaryDetail> {
+  return parseSystemResponse(
+    await api.system.dictionaries[':id'].$put({
+      param: { id },
+      json: input,
+    }),
+    dictionaryDetailSchema,
+  )
+}
+
+export async function deleteDictionary(id: string): Promise<void> {
+  const response = await api.system.dictionaries[':id'].$delete({ param: { id } })
+
+  if (!response.ok) {
+    throw await parseSystemError(response)
+  }
+}
+
+export async function getDictionaryOptions(codes: string[]): Promise<DictionaryOptionsResponse> {
+  return parseSystemResponse(
+    await api.system.dictionaries.options.$get({
+      query: normalizeRequestQuery({ codes: codes.join(',') }) as { codes: string },
+    }),
+    dictionaryOptionsResponseSchema,
+  )
 }
 
 export async function searchIcons(query: IconSearchQuery): Promise<IconSearchResponse> {

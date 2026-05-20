@@ -44,6 +44,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/system/dictionaries': RouteRecordInfo<
+      '/system/dictionaries',
+      '/system/dictionaries',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/system/resources': RouteRecordInfo<
       '/system/resources',
       '/system/resources',
@@ -103,6 +110,7 @@ declare module 'vue-router/auto-routes' {
       routes:
         | '/system/configs'
         | '/system/departments'
+        | '/system/dictionaries'
         | '/system/resources'
         | '/system/roles'
         | '/system/users'
@@ -118,6 +126,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/index/system/departments.vue': {
       routes:
         | '/system/departments'
+      views:
+        | never
+    }
+    'src/pages/index/system/dictionaries.vue': {
+      routes:
+        | '/system/dictionaries'
       views:
         | never
     }

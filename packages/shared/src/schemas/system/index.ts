@@ -1,4 +1,5 @@
 export * from './departments'
+export * from './dictionaries'
 export * from './configs'
 export * from './resources'
 export * from './roles'

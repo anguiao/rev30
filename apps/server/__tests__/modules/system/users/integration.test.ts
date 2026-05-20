@@ -295,17 +295,17 @@ describe('user routes', () => {
     const app = await createTestApp(database)
 
     const { body, response, temporaryPassword } = await createUser(app, {
-      username: 'ada',
-      nickname: 'Ada Lovelace',
-      email: 'ada@example.com',
+      username: 'ada-lovelace-created',
+      nickname: 'Ada Lovelace Created',
+      email: 'ada-lovelace-created@example.com',
       phone: '10000000001',
     })
 
     expect(response.status).toBe(201)
     expect(body).toMatchObject({
-      username: 'ada',
-      nickname: 'Ada Lovelace',
-      email: 'ada@example.com',
+      username: 'ada-lovelace-created',
+      nickname: 'Ada Lovelace Created',
+      email: 'ada-lovelace-created@example.com',
       phone: '10000000001',
       status: USER_STATUS_ENABLED,
       departments: [],
@@ -318,11 +318,13 @@ describe('user routes', () => {
     const storedUsers = await database
       .select()
       .from(systemUsers)
-      .where(eq(systemUsers.username, 'ada'))
+      .where(eq(systemUsers.username, 'ada-lovelace-created'))
     expect(storedUsers).toHaveLength(1)
-    expect(storedUsers[0]?.username).toBe('ada')
+    expect(storedUsers[0]?.username).toBe('ada-lovelace-created')
 
-    const listResponse = await app.request('/api/system/users?keyword=ada&page=1&pageSize=10')
+    const listResponse = await app.request(
+      '/api/system/users?keyword=ada-lovelace-created&page=1&pageSize=10',
+    )
     const listBody = (await listResponse.json()) as UserListResponse
 
     expect(listResponse.status).toBe(200)
@@ -334,7 +336,7 @@ describe('user routes', () => {
     expect(listBody.list).toHaveLength(1)
     expect(listBody.list[0]).toMatchObject({
       id: body.id,
-      username: 'ada',
+      username: 'ada-lovelace-created',
       departments: [],
       roles: [],
     })
@@ -1053,7 +1055,7 @@ describe('user routes', () => {
     })
   })
 
-  it('rejects duplicate username, email, and phone even after soft delete', async () => {
+  it('allows reusing username, email, and phone after soft delete', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
 
@@ -1088,13 +1090,20 @@ describe('user routes', () => {
       method: 'DELETE',
     })
 
-    const afterDeleteDuplicate = await createUser(app, {
-      username: 'margaret-after-delete',
-      nickname: 'Still Duplicate Email',
+    const afterDeleteRecreated = await createUser(app, {
+      username: 'margaret',
+      nickname: 'Margaret Recreated',
       email: 'margaret@example.com',
+      phone: '10000000004',
     })
 
-    expect(afterDeleteDuplicate.response.status).toBe(409)
+    expect(afterDeleteRecreated.response.status).toBe(201)
+    expect(afterDeleteRecreated.body).toMatchObject({
+      username: 'margaret',
+      nickname: 'Margaret Recreated',
+      email: 'margaret@example.com',
+      phone: '10000000004',
+    })
   })
 
   it('returns conflict when concurrent creates hit the username unique index', async () => {

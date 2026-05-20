@@ -100,7 +100,6 @@ describe('bootstrap admin user', () => {
         email: null,
         phone: '13300000000',
         status: USER_STATUS_DISABLED,
-        deletedAt: now,
         updatedAt: now,
       })
       .where(eq(systemUsers.id, createdUser.id))
@@ -136,6 +135,7 @@ describe('bootstrap admin user', () => {
       .where(eq(authPasswordCredentials.userId, user?.id ?? ''))
 
     expect(user).toMatchObject({
+      id: createdUser.id,
       nickname: 'Root',
       email: 'root@example.com',
       phone: null,
@@ -206,10 +206,9 @@ describe('bootstrap admin user', () => {
     ).rejects.toThrow('admin 角色不存在，请先执行数据库迁移')
   })
 
-  it('adds a password credential for an existing user without one', async () => {
+  it('adds a password credential for an existing active user without one', async () => {
     const database = await createTestDb()
     const userId = randomUUID()
-    const deletedAt = new Date('2026-05-01T00:00:00.000Z')
 
     await database.insert(systemUsers).values({
       id: userId,
@@ -220,7 +219,7 @@ describe('bootstrap admin user', () => {
       status: USER_STATUS_DISABLED,
       createdAt: now,
       updatedAt: now,
-      deletedAt,
+      deletedAt: null,
     })
 
     await bootstrapAdminUser(database, {
@@ -248,6 +247,7 @@ describe('bootstrap admin user', () => {
       .where(eq(authPasswordCredentials.userId, userId))
 
     expect(user).toMatchObject({
+      id: userId,
       nickname: 'Administrator',
       email: null,
       phone: null,
@@ -258,6 +258,78 @@ describe('bootstrap admin user', () => {
     expect(bindings).toHaveLength(1)
     await expect(
       verifyPassword('restored-admin-password', credential?.passwordHash ?? ''),
+    ).resolves.toBe(true)
+  })
+
+  it('creates a new active admin user when the existing admin was soft deleted', async () => {
+    const database = await createTestDb()
+    const deletedUserId = randomUUID()
+    const deletedAt = new Date('2026-05-01T00:00:00.000Z')
+
+    await database.insert(systemUsers).values({
+      id: deletedUserId,
+      username: 'admin',
+      nickname: 'Deleted Admin',
+      email: 'deleted-admin@example.com',
+      phone: '18800000000',
+      status: USER_STATUS_DISABLED,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt,
+    })
+
+    await bootstrapAdminUser(database, {
+      username: 'admin',
+      password: 'new-admin-password',
+      nickname: 'Administrator',
+      email: 'admin@example.com',
+      phone: null,
+    })
+
+    const users = await database.select().from(systemUsers).where(eq(systemUsers.username, 'admin'))
+    const deletedUser = users.find((user) => user.id === deletedUserId)
+    const activeUser = users.find((user) => user.id !== deletedUserId)
+
+    if (!activeUser) {
+      throw new Error('Expected active admin user')
+    }
+
+    const [adminRole] = await database
+      .select()
+      .from(systemRoles)
+      .where(eq(systemRoles.code, 'admin'))
+    const [credential] = await database
+      .select()
+      .from(authPasswordCredentials)
+      .where(eq(authPasswordCredentials.userId, activeUser.id))
+    const bindings = await database
+      .select()
+      .from(systemUserRoles)
+      .where(
+        and(
+          eq(systemUserRoles.userId, activeUser.id),
+          eq(systemUserRoles.roleId, adminRole?.id ?? ''),
+        ),
+      )
+
+    expect(users).toHaveLength(2)
+    expect(deletedUser).toMatchObject({
+      id: deletedUserId,
+      nickname: 'Deleted Admin',
+      deletedAt,
+    })
+    expect(activeUser).toMatchObject({
+      username: 'admin',
+      nickname: 'Administrator',
+      email: 'admin@example.com',
+      phone: null,
+      status: USER_STATUS_ENABLED,
+      builtIn: true,
+      deletedAt: null,
+    })
+    expect(bindings).toHaveLength(1)
+    await expect(
+      verifyPassword('new-admin-password', credential?.passwordHash ?? ''),
     ).resolves.toBe(true)
   })
 

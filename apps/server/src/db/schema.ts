@@ -72,9 +72,15 @@ export const systemUsers = pgTable(
     ...auditTimestamps(),
   },
   (table) => [
-    uniqueIndex('system_users_username_unique').on(table.username),
-    uniqueIndex('system_users_email_unique').on(table.email),
-    uniqueIndex('system_users_phone_unique').on(table.phone),
+    uniqueIndex('system_users_username_unique')
+      .on(table.username)
+      .where(sql`${table.deletedAt} IS NULL`),
+    uniqueIndex('system_users_email_unique')
+      .on(table.email)
+      .where(sql`${table.deletedAt} IS NULL`),
+    uniqueIndex('system_users_phone_unique')
+      .on(table.phone)
+      .where(sql`${table.deletedAt} IS NULL`),
   ],
 )
 
@@ -135,7 +141,9 @@ export const systemDepartments = pgTable(
     ...auditTimestamps(),
   },
   (table) => [
-    uniqueIndex('system_departments_code_unique').on(table.code),
+    uniqueIndex('system_departments_code_unique')
+      .on(table.code)
+      .where(sql`${table.deletedAt} IS NULL`),
     index('system_departments_parent_id_idx').on(table.parentId),
     index('system_departments_status_idx').on(table.status),
   ],
@@ -178,7 +186,9 @@ export const systemResources = pgTable(
     ...auditTimestamps(),
   },
   (table) => [
-    uniqueIndex('system_resources_code_unique').on(table.code),
+    uniqueIndex('system_resources_code_unique')
+      .on(table.code)
+      .where(sql`${table.deletedAt} IS NULL`),
     index('system_resources_parent_id_idx').on(table.parentId),
     index('system_resources_type_idx').on(table.type),
     index('system_resources_status_idx').on(table.status),
@@ -196,7 +206,9 @@ export const systemRoles = pgTable(
     ...auditTimestamps(),
   },
   (table) => [
-    uniqueIndex('system_roles_code_unique').on(table.code),
+    uniqueIndex('system_roles_code_unique')
+      .on(table.code)
+      .where(sql`${table.deletedAt} IS NULL`),
     index('system_roles_status_idx').on(table.status),
   ],
 )

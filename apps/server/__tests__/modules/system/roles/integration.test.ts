@@ -408,6 +408,30 @@ describe('role routes', () => {
     expect(body).toEqual({ field: 'code', message: '编码已存在' })
   })
 
+  it('allows recreating a role code after soft delete', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: created } = await createRole(app, {
+      name: 'Auditor',
+      code: 'auditor-recreated',
+    })
+
+    const deleteResponse = await app.request(`/api/system/roles/${created.id}`, {
+      method: 'DELETE',
+    })
+    expect(deleteResponse.status).toBe(204)
+
+    const recreated = await createRole(app, {
+      name: 'Auditor Recreated',
+      code: 'auditor-recreated',
+    })
+    expect(recreated.response.status).toBe(201)
+    expect(recreated.body).toMatchObject({
+      name: 'Auditor Recreated',
+      code: 'auditor-recreated',
+    })
+  })
+
   it('returns invalid resource errors for missing or deleted resources', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)

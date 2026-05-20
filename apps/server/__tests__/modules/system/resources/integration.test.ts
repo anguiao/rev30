@@ -749,6 +749,32 @@ describe('resource routes', () => {
     expect(await updateConflict.json()).toEqual({ message: '权限编码已存在' })
   })
 
+  it('allows recreating a resource code after soft delete', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: created } = await createResource(app, {
+      type: RESOURCE_TYPE_ACTION,
+      name: 'Export User',
+      code: 'test-system:user:export-recreated',
+    })
+
+    const deleteResponse = await app.request(`/api/system/resources/${created.id}`, {
+      method: 'DELETE',
+    })
+    expect(deleteResponse.status).toBe(204)
+
+    const recreated = await createResource(app, {
+      type: RESOURCE_TYPE_ACTION,
+      name: 'Export User Recreated',
+      code: 'test-system:user:export-recreated',
+    })
+    expect(recreated.response.status).toBe(201)
+    expect(recreated.body).toMatchObject({
+      name: 'Export User Recreated',
+      code: 'test-system:user:export-recreated',
+    })
+  })
+
   it('soft deletes empty resources and rejects deleting resources with children', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)

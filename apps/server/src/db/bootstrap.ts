@@ -6,7 +6,7 @@ import {
   passwordInputSchema,
   userCreateSchema,
 } from '@rev30/shared'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { createDb, type Db } from '.'
 import { hashPassword } from '../modules/auth/password'
@@ -61,6 +61,7 @@ export async function bootstrapAdminUser(database: Db, input: BootstrapAdminInpu
       })
       .onConflictDoUpdate({
         target: systemUsers.username,
+        targetWhere: sql`${systemUsers.deletedAt} IS NULL`,
         set: {
           nickname: input.nickname,
           email: input.email ?? null,

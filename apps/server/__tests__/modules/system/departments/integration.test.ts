@@ -438,6 +438,30 @@ describe('department routes', () => {
     })
   })
 
+  it('allows recreating a department code after soft delete', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: created } = await createDepartment(app, {
+      name: 'Engineering',
+      code: 'engineering-recreated',
+    })
+
+    const deleteResponse = await app.request(`/api/system/departments/${created.id}`, {
+      method: 'DELETE',
+    })
+    expect(deleteResponse.status).toBe(204)
+
+    const recreated = await createDepartment(app, {
+      name: 'Engineering Recreated',
+      code: 'engineering-recreated',
+    })
+    expect(recreated.response.status).toBe(201)
+    expect(recreated.body).toMatchObject({
+      name: 'Engineering Recreated',
+      code: 'engineering-recreated',
+    })
+  })
+
   it('soft deletes empty departments and rejects deleting departments with children', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)

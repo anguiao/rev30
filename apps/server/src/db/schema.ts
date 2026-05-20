@@ -15,6 +15,7 @@ import { sql } from 'drizzle-orm'
 import {
   CONFIG_STATUS_ENABLED,
   DEPARTMENT_STATUS_ENABLED,
+  DICTIONARY_STATUS_ENABLED,
   RESOURCE_OPEN_TARGET_SELF,
   RESOURCE_STATUS_ENABLED,
   ROLE_STATUS_ENABLED,
@@ -234,6 +235,48 @@ export const systemConfigs = pgTable(
     index('system_configs_group_code_idx').on(table.groupCode),
     index('system_configs_value_type_idx').on(table.valueType),
     index('system_configs_status_idx').on(table.status),
+  ],
+)
+
+export const systemDictionaryTypes = pgTable(
+  'system_dictionary_types',
+  {
+    id: uuid('id').primaryKey(),
+    code: text('code').notNull(),
+    name: text('name').notNull(),
+    description: text('description'),
+    status: smallint('status').notNull().default(DICTIONARY_STATUS_ENABLED),
+    sortOrder: integer('sort_order').notNull().default(0),
+    ...auditTimestamps(),
+  },
+  (table) => [
+    uniqueIndex('system_dictionary_types_code_active_unique')
+      .on(table.code)
+      .where(sql`${table.deletedAt} IS NULL`),
+    index('system_dictionary_types_status_idx').on(table.status),
+  ],
+)
+
+export const systemDictionaryItems = pgTable(
+  'system_dictionary_items',
+  {
+    id: uuid('id').primaryKey(),
+    typeId: uuid('type_id')
+      .notNull()
+      .references(() => systemDictionaryTypes.id),
+    label: text('label').notNull(),
+    value: text('value').notNull(),
+    description: text('description'),
+    status: smallint('status').notNull().default(DICTIONARY_STATUS_ENABLED),
+    sortOrder: integer('sort_order').notNull().default(0),
+    ...auditTimestamps(),
+  },
+  (table) => [
+    uniqueIndex('system_dictionary_items_type_value_active_unique')
+      .on(table.typeId, table.value)
+      .where(sql`${table.deletedAt} IS NULL`),
+    index('system_dictionary_items_type_id_idx').on(table.typeId),
+    index('system_dictionary_items_status_idx').on(table.status),
   ],
 )
 

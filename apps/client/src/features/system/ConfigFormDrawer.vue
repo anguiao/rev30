@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useMutation, useQuery } from '@pinia/colada'
+import { useMutation, useQuery, useQueryCache } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
 import { pick } from 'lodash-es'
 import {
@@ -52,6 +52,9 @@ const defaultFormValues: ConfigFormInput = {
   status: CONFIG_STATUS_ENABLED,
   sortOrder: 0,
 }
+
+const queryCache = useQueryCache()
+const drawerSessionId = ref(0)
 
 const {
   data: formData,
@@ -109,20 +112,32 @@ const form = useForm({
 const selectedValueType = form.useStore((state) => state.values.valueType)
 
 const { isLoading: isSaving, ...saveConfigMutation } = useMutation({
+  onMutate() {
+    return {
+      sessionId: drawerSessionId.value,
+    }
+  },
   mutation: ({ configId, value }: { configId: string | null; value: ConfigFormInput }) =>
     configId === null
       ? createConfig(configCreateSchema.parse(value))
       : updateConfig(configId, configUpdateSchema.parse(value)),
-  onSuccess(_, { configId }) {
-    if (!show.value || props.configId !== configId) {
+  onSuccess(_, { configId }, { sessionId }) {
+    if (!show.value || props.configId !== configId || sessionId !== drawerSessionId.value) {
       return
+    }
+
+    if (configId !== null) {
+      void queryCache.invalidateQueries({
+        key: ['system', 'config-form', configId],
+        exact: true,
+      })
     }
 
     emit('saved')
     show.value = false
   },
-  onError(error, { configId }) {
-    if (!show.value || props.configId !== configId) {
+  onError(error, { configId }, { sessionId }) {
+    if (!show.value || props.configId !== configId || sessionId !== drawerSessionId.value) {
       return
     }
 
@@ -174,6 +189,7 @@ watch(
       return
     }
 
+    drawerSessionId.value += 1
     saveConfigMutation.reset()
     formError.value = null
     form.reset(defaultFormValues)

@@ -124,6 +124,12 @@ const childDepartmentResponse: Department = {
   createdAt: '2026-05-02T00:00:00.000Z',
   updatedAt: '2026-05-02T00:00:00.000Z',
 }
+const updatedChildDepartmentResponse: Department = {
+  ...childDepartmentResponse,
+  name: '运营管理部',
+  status: DEPARTMENT_STATUS_DISABLED,
+  updatedAt: '2026-05-20T00:00:00.000Z',
+}
 
 const siblingDepartmentResponse: Department = {
   id: siblingDepartmentId,
@@ -452,6 +458,46 @@ describe('DepartmentFormDrawer', () => {
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
 
+  it('reloads detail when reopening the same department after save', async () => {
+    getDepartmentMock
+      .mockResolvedValueOnce(childDepartmentResponse)
+      .mockResolvedValueOnce(updatedChildDepartmentResponse)
+    updateDepartmentMock.mockResolvedValue(updatedChildDepartmentResponse)
+
+    const wrapper = mountDrawer({
+      show: true,
+      departmentId: childDepartmentId,
+      parentId: null,
+    })
+    await flushPromises()
+
+    await wrapper.get('[data-test="department-form-name"] input').setValue('运营管理部')
+    wrapper.getComponent(NSelect).vm.$emit('update:value', DEPARTMENT_STATUS_DISABLED)
+    await submitForm(wrapper)
+
+    expect(wrapper.emitted('saved')).toHaveLength(1)
+    expect(wrapper.emitted('update:show')).toEqual([[false]])
+
+    await wrapper.setProps({
+      show: false,
+      departmentId: childDepartmentId,
+      parentId: null,
+    })
+    await flushPromises()
+    await wrapper.setProps({
+      show: true,
+      departmentId: childDepartmentId,
+      parentId: null,
+    })
+    await flushPromises()
+
+    expect(getDepartmentMock).toHaveBeenCalledTimes(2)
+    expect(
+      (wrapper.get('[data-test="department-form-name"] input').element as HTMLInputElement).value,
+    ).toBe(updatedChildDepartmentResponse.name)
+    expect(wrapper.getComponent(NSelect).props('value')).toBe(updatedChildDepartmentResponse.status)
+  })
+
   it('shows a field-level server error when create fails', async () => {
     createDepartmentMock.mockRejectedValue(new SystemRequestError(409, '编码已存在', 'code'))
 
@@ -469,6 +515,52 @@ describe('DepartmentFormDrawer', () => {
     expect(createDepartmentMock).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('编码已存在')
     expect(wrapper.emitted('saved')).toBeUndefined()
+  })
+
+  it('ignores stale mutation errors from a previous create session', async () => {
+    const pendingCreate = deferred<Department>()
+    createDepartmentMock.mockImplementationOnce(() => pendingCreate.promise)
+
+    const wrapper = mountDrawer({
+      show: true,
+      departmentId: null,
+      parentId: rootDepartmentId,
+    })
+    await flushPromises()
+
+    await wrapper.get('[data-test="department-form-name"] input').setValue('旧会话')
+    await wrapper.get('[data-test="department-form-code"] input').setValue('stale-dept')
+    await submitForm(wrapper)
+
+    expect(createDepartmentMock).toHaveBeenCalledTimes(1)
+
+    await wrapper.setProps({
+      show: false,
+      departmentId: null,
+      parentId: rootDepartmentId,
+    })
+    await flushPromises()
+    await wrapper.setProps({
+      show: true,
+      departmentId: null,
+      parentId: rootDepartmentId,
+    })
+    await flushPromises()
+
+    await wrapper.get('[data-test="department-form-name"] input').setValue('新会话')
+    await wrapper.get('[data-test="department-form-code"] input').setValue('fresh-dept')
+
+    pendingCreate.reject(new SystemRequestError(400, '旧会话错误', 'code'))
+    await flushPromises()
+
+    const codeFieldContainer = wrapper
+      .get('[data-test="department-form-code"]')
+      .element.closest('.n-form-item')
+
+    expect(codeFieldContainer?.textContent).not.toContain('旧会话错误')
+    expect(wrapper.text()).not.toContain('旧会话错误')
+    expect(wrapper.emitted('saved')).toBeUndefined()
+    expect(wrapper.emitted('update:show')).toBeUndefined()
   })
 
   it('does not submit while switching to another department that is still loading', async () => {

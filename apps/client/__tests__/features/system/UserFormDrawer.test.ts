@@ -129,6 +129,27 @@ const userCreateResponse: UserCreateResponse = {
   },
   temporaryPassword: 'TempPass123',
 }
+const updatedUserResponse: User = {
+  ...userResponse,
+  nickname: 'Ada Lovelace',
+  email: 'ada.lovelace@example.com',
+  updatedAt: '2026-05-20T00:00:00.000Z',
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return {
+    promise,
+    resolve,
+    reject,
+  }
+}
 
 function mountDrawer(props?: { show?: boolean; userId?: string | null }) {
   const pinia = createPinia()
@@ -249,6 +270,34 @@ describe('UserFormDrawer', () => {
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
 
+  it('reloads detail when reopening the same user after save', async () => {
+    getUserMock.mockResolvedValueOnce(userResponse).mockResolvedValueOnce(updatedUserResponse)
+    updateUserMock.mockResolvedValue(updatedUserResponse)
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await wrapper.get('[data-test="user-form-nickname"] input').setValue('Ada Lovelace')
+    await wrapper.get('[data-test="user-form-email"] input').setValue('ada.lovelace@example.com')
+    await submitForm(wrapper)
+
+    expect(wrapper.emitted('saved')).toHaveLength(1)
+    expect(wrapper.emitted('update:show')).toEqual([[false]])
+
+    await wrapper.setProps({ show: false, userId })
+    await flushPromises()
+    await wrapper.setProps({ show: true, userId })
+    await flushPromises()
+
+    expect(getUserMock).toHaveBeenCalledTimes(2)
+    expect(
+      (wrapper.get('[data-test="user-form-nickname"] input').element as HTMLInputElement).value,
+    ).toBe(updatedUserResponse.nickname)
+    expect(
+      (wrapper.get('[data-test="user-form-email"] input').element as HTMLInputElement).value,
+    ).toBe(updatedUserResponse.email ?? '')
+  })
+
   it('shows a field-level error when the username is already used', async () => {
     getUserMock.mockResolvedValue(userResponse)
     updateUserMock.mockRejectedValue(new SystemRequestError(409, '用户名已存在', 'username'))
@@ -286,5 +335,39 @@ describe('UserFormDrawer', () => {
       departmentIds: [],
       roleIds: [],
     })
+  })
+
+  it('ignores stale mutation errors from a previous create session', async () => {
+    const pendingCreate = deferred<UserCreateResponse>()
+    createUserMock.mockImplementationOnce(() => pendingCreate.promise)
+
+    const wrapper = mountDrawer({ userId: null })
+    await flushPromises()
+
+    await wrapper.get('[data-test="user-form-username"] input').setValue('stale-user')
+    await wrapper.get('[data-test="user-form-nickname"] input').setValue('旧会话')
+    await submitForm(wrapper)
+
+    expect(createUserMock).toHaveBeenCalledTimes(1)
+
+    await wrapper.setProps({ show: false, userId: null })
+    await flushPromises()
+    await wrapper.setProps({ show: true, userId: null })
+    await flushPromises()
+
+    await wrapper.get('[data-test="user-form-username"] input').setValue('fresh-user')
+    await wrapper.get('[data-test="user-form-nickname"] input').setValue('新会话')
+
+    pendingCreate.reject(new SystemRequestError(400, '旧会话错误', 'username'))
+    await flushPromises()
+
+    const usernameFieldContainer = wrapper
+      .get('[data-test="user-form-username"]')
+      .element.closest('.n-form-item')
+
+    expect(usernameFieldContainer?.textContent).not.toContain('旧会话错误')
+    expect(wrapper.text()).not.toContain('旧会话错误')
+    expect(wrapper.emitted('saved')).toBeUndefined()
+    expect(wrapper.emitted('update:show')).toBeUndefined()
   })
 })

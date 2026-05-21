@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useMutation, useQuery } from '@pinia/colada'
+import { useMutation, useQuery, useQueryCache } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
 import { pick } from 'lodash-es'
 import {
@@ -57,6 +57,9 @@ const defaultFormValues: RoleFormInput = {
   sortOrder: 0,
   resourceIds: [],
 }
+
+const queryCache = useQueryCache()
+const drawerSessionId = ref(0)
 
 const {
   data: formData,
@@ -118,20 +121,32 @@ const form = useForm({
 })
 
 const { isLoading: isSaving, ...saveRoleMutation } = useMutation({
+  onMutate() {
+    return {
+      sessionId: drawerSessionId.value,
+    }
+  },
   mutation: ({ roleId, value }: { roleId: string | null; value: RoleFormInput }) =>
     roleId === null
       ? createRole(roleCreateSchema.parse(value))
       : updateRole(roleId, roleUpdateSchema.parse(value)),
-  onSuccess(_, { roleId }) {
-    if (!show.value || props.roleId !== roleId) {
+  onSuccess(_, { roleId }, { sessionId }) {
+    if (!show.value || props.roleId !== roleId || sessionId !== drawerSessionId.value) {
       return
+    }
+
+    if (roleId !== null) {
+      void queryCache.invalidateQueries({
+        key: ['system', 'role-form', roleId],
+        exact: true,
+      })
     }
 
     emit('saved')
     show.value = false
   },
-  onError(error, { roleId }) {
-    if (!show.value || props.roleId !== roleId) {
+  onError(error, { roleId }, { sessionId }) {
+    if (!show.value || props.roleId !== roleId || sessionId !== drawerSessionId.value) {
       return
     }
 
@@ -161,6 +176,7 @@ watch(
       return
     }
 
+    drawerSessionId.value += 1
     saveRoleMutation.reset()
     formError.value = null
     form.reset(defaultFormValues)

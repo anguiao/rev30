@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useMutation, useQuery } from '@pinia/colada'
+import { useMutation, useQuery, useQueryCache } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
 import { pick } from 'lodash-es'
 import {
@@ -58,6 +58,9 @@ const defaultFormValues: UserFormInput = {
   departmentIds: [],
   roleIds: [],
 }
+
+const queryCache = useQueryCache()
+const drawerSessionId = ref(0)
 
 const {
   data: formData,
@@ -132,14 +135,26 @@ const form = useForm({
 })
 
 const { isLoading: isSaving, ...saveUserMutation } = useMutation({
+  onMutate() {
+    return {
+      sessionId: drawerSessionId.value,
+    }
+  },
   async mutation({ userId, value }: { userId: string | null; value: UserFormInput }) {
     return userId === null
       ? createUser(userCreateSchema.parse(value))
       : updateUser(userId, userUpdateSchema.parse(value))
   },
-  onSuccess(data, { userId }) {
-    if (!show.value || props.userId !== userId) {
+  onSuccess(data, { userId }, { sessionId }) {
+    if (!show.value || props.userId !== userId || sessionId !== drawerSessionId.value) {
       return
+    }
+
+    if (userId !== null) {
+      void queryCache.invalidateQueries({
+        key: ['system', 'user-form', userId],
+        exact: true,
+      })
     }
 
     if (userId === null) {
@@ -149,8 +164,8 @@ const { isLoading: isSaving, ...saveUserMutation } = useMutation({
     }
     show.value = false
   },
-  onError(error, { userId }) {
-    if (!show.value || props.userId !== userId) {
+  onError(error, { userId }, { sessionId }) {
+    if (!show.value || props.userId !== userId || sessionId !== drawerSessionId.value) {
       return
     }
 
@@ -180,6 +195,7 @@ watch(
       return
     }
 
+    drawerSessionId.value += 1
     saveUserMutation.reset()
     formError.value = null
     form.reset(defaultFormValues)

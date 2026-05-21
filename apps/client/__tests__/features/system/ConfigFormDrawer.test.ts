@@ -47,6 +47,23 @@ const configResponse: Config = {
   createdAt: '2026-05-18T00:00:00.000Z',
   updatedAt: '2026-05-18T00:00:00.000Z',
 }
+const updatedConfigResponse: Config = {
+  ...configResponse,
+  name: '新站点名称',
+  value: 'Rev30 Admin',
+  updatedAt: '2026-05-20T00:00:00.000Z',
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, resolve, reject }
+}
 
 function mountDrawer(props = { show: true, configId: null as string | null }) {
   const pinia = createPinia()
@@ -136,6 +153,34 @@ describe('ConfigFormDrawer', () => {
     })
   })
 
+  it('reloads detail when reopening the same config after save', async () => {
+    getConfigMock.mockResolvedValueOnce(configResponse).mockResolvedValueOnce(updatedConfigResponse)
+    updateConfigMock.mockResolvedValue(updatedConfigResponse)
+
+    const wrapper = mountDrawer({ show: true, configId })
+    await flushPromises()
+
+    await wrapper.get('[data-test="config-form-name"] input').setValue('新站点名称')
+    await wrapper.get('[data-test="config-form-value"] input').setValue('Rev30 Admin')
+    await submitForm(wrapper)
+
+    expect(wrapper.emitted('saved')).toHaveLength(1)
+    expect(wrapper.emitted('update:show')).toEqual([[false]])
+
+    await wrapper.setProps({ show: false, configId })
+    await flushPromises()
+    await wrapper.setProps({ show: true, configId })
+    await flushPromises()
+
+    expect(getConfigMock).toHaveBeenCalledTimes(2)
+    expect(
+      (wrapper.get('[data-test="config-form-name"] input').element as HTMLInputElement).value,
+    ).toBe(updatedConfigResponse.name)
+    expect(
+      (wrapper.get('[data-test="config-form-value"] input').element as HTMLInputElement).value,
+    ).toBe(updatedConfigResponse.value)
+  })
+
   it('uses a switch for boolean values and submits true or false strings', async () => {
     createConfigMock.mockResolvedValue({
       ...configResponse,
@@ -222,5 +267,42 @@ describe('ConfigFormDrawer', () => {
     await submitForm(wrapper)
 
     expect(wrapper.text()).toContain('配置值必须是有限数字')
+  })
+
+  it('ignores stale mutation errors from a previous create session', async () => {
+    const pendingCreate = deferred<Config>()
+    createConfigMock.mockImplementationOnce(() => pendingCreate.promise)
+
+    const wrapper = mountDrawer({ show: true, configId: null })
+    await flushPromises()
+
+    await wrapper.get('[data-test="config-form-group-code"] input').setValue('site')
+    await wrapper.get('[data-test="config-form-key"] input').setValue('site.title')
+    await wrapper.get('[data-test="config-form-name"] input').setValue('旧会话')
+    await wrapper.get('[data-test="config-form-value"] input').setValue('Rev30')
+    await submitForm(wrapper)
+
+    expect(createConfigMock).toHaveBeenCalledTimes(1)
+
+    await wrapper.setProps({ show: false, configId: null })
+    await flushPromises()
+    await wrapper.setProps({ show: true, configId: null })
+    await flushPromises()
+
+    await wrapper.get('[data-test="config-form-group-code"] input').setValue('site')
+    await wrapper.get('[data-test="config-form-key"] input').setValue('site.subtitle')
+    await wrapper.get('[data-test="config-form-name"] input').setValue('新会话')
+
+    pendingCreate.reject(new SystemRequestError(400, '旧会话错误', 'key'))
+    await flushPromises()
+
+    const keyFieldContainer = wrapper
+      .get('[data-test="config-form-key"]')
+      .element.closest('.n-form-item')
+
+    expect(keyFieldContainer?.textContent).not.toContain('旧会话错误')
+    expect(wrapper.text()).not.toContain('旧会话错误')
+    expect(wrapper.emitted('saved')).toBeUndefined()
+    expect(wrapper.emitted('update:show')).toBeUndefined()
   })
 })

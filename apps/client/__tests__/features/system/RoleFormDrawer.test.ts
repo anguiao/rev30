@@ -123,6 +123,12 @@ const roleResponse: Role = {
   createdAt: '2026-05-01T00:00:00.000Z',
   updatedAt: '2026-05-01T00:00:00.000Z',
 }
+const updatedRoleResponse: Role = {
+  ...roleResponse,
+  name: '运营负责人',
+  sortOrder: 3,
+  updatedAt: '2026-05-20T00:00:00.000Z',
+}
 
 const secondRoleResponse: Role = {
   id: secondRoleId,
@@ -246,6 +252,33 @@ describe('RoleFormDrawer', () => {
     })
     expect(wrapper.emitted('saved')).toHaveLength(1)
     expect(wrapper.emitted('update:show')).toEqual([[false]])
+  })
+
+  it('reloads detail when reopening the same role after save', async () => {
+    getRoleMock.mockResolvedValueOnce(roleResponse).mockResolvedValueOnce(updatedRoleResponse)
+    updateRoleMock.mockResolvedValue(updatedRoleResponse)
+
+    const wrapper = mountDrawer({ show: true, roleId })
+    await flushPromises()
+
+    await wrapper.get('[data-test="role-form-name"] input').setValue('运营负责人')
+    wrapper.getComponent(NInputNumber).vm.$emit('update:value', 3)
+    await submitForm(wrapper)
+
+    expect(wrapper.emitted('saved')).toHaveLength(1)
+    expect(wrapper.emitted('update:show')).toEqual([[false]])
+
+    await wrapper.setProps({ show: false, roleId })
+    await flushPromises()
+    await wrapper.setProps({ show: true, roleId })
+    await flushPromises()
+
+    expect(getRoleMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('[data-test="role-form-name"] input').element).toHaveProperty(
+      'value',
+      updatedRoleResponse.name,
+    )
+    expect(wrapper.getComponent(NInputNumber).props('value')).toBe(updatedRoleResponse.sortOrder)
   })
 
   it('shows a load error and disables submit when resource permissions fail to load', async () => {
@@ -438,6 +471,40 @@ describe('RoleFormDrawer', () => {
     expect(createRoleMock).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('编码已存在')
     expect(wrapper.emitted('saved')).toBeUndefined()
+  })
+
+  it('ignores stale mutation errors from a previous create session', async () => {
+    const pendingCreate = deferred<Role>()
+    createRoleMock.mockImplementationOnce(() => pendingCreate.promise)
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await wrapper.get('[data-test="role-form-name"] input').setValue('旧会话')
+    await wrapper.get('[data-test="role-form-code"] input').setValue('stale-role')
+    await submitForm(wrapper)
+
+    expect(createRoleMock).toHaveBeenCalledTimes(1)
+
+    await wrapper.setProps({ show: false, roleId: null })
+    await flushPromises()
+    await wrapper.setProps({ show: true, roleId: null })
+    await flushPromises()
+
+    await wrapper.get('[data-test="role-form-name"] input').setValue('新会话')
+    await wrapper.get('[data-test="role-form-code"] input').setValue('fresh-role')
+
+    pendingCreate.reject(new SystemRequestError(400, '旧会话错误', 'code'))
+    await flushPromises()
+
+    const codeFieldContainer = wrapper
+      .get('[data-test="role-form-code"]')
+      .element.closest('.n-form-item')
+
+    expect(codeFieldContainer?.textContent).not.toContain('旧会话错误')
+    expect(wrapper.text()).not.toContain('旧会话错误')
+    expect(wrapper.emitted('saved')).toBeUndefined()
+    expect(wrapper.emitted('update:show')).toBeUndefined()
   })
 
   it('does not submit create mode with empty required fields and shows validation feedback', async () => {

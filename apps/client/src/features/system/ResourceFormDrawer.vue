@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useMutation, useQuery } from '@pinia/colada'
+import { useMutation, useQuery, useQueryCache } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
 import { pick } from 'lodash-es'
 import {
@@ -81,6 +81,9 @@ const defaultFormValues: ResourceFormInput = {
   status: RESOURCE_STATUS_ENABLED,
   sortOrder: 0,
 }
+
+const queryCache = useQueryCache()
+const drawerSessionId = ref(0)
 
 const {
   data: formData,
@@ -175,6 +178,11 @@ const showsOpenTarget = computed(
 )
 
 const { isLoading: isSaving, ...saveResourceMutation } = useMutation({
+  onMutate() {
+    return {
+      sessionId: drawerSessionId.value,
+    }
+  },
   mutation: ({
     resourceId,
     value,
@@ -186,16 +194,33 @@ const { isLoading: isSaving, ...saveResourceMutation } = useMutation({
     resourceId === null
       ? createResource(resourceCreateSchema.parse(value))
       : updateResource(resourceId, resourceUpdateSchema.parse(value)),
-  onSuccess(_, { resourceId, parentId }) {
-    if (!show.value || props.resourceId !== resourceId || props.parentId !== parentId) {
+  onSuccess(_, { resourceId, parentId }, { sessionId }) {
+    if (
+      !show.value ||
+      props.resourceId !== resourceId ||
+      props.parentId !== parentId ||
+      sessionId !== drawerSessionId.value
+    ) {
       return
+    }
+
+    if (resourceId !== null) {
+      void queryCache.invalidateQueries({
+        key: ['system', 'resource-form', resourceId, 'edit'],
+        exact: true,
+      })
     }
 
     emit('saved')
     show.value = false
   },
-  onError(error, { resourceId, parentId }) {
-    if (!show.value || props.resourceId !== resourceId || props.parentId !== parentId) {
+  onError(error, { resourceId, parentId }, { sessionId }) {
+    if (
+      !show.value ||
+      props.resourceId !== resourceId ||
+      props.parentId !== parentId ||
+      sessionId !== drawerSessionId.value
+    ) {
       return
     }
 
@@ -245,6 +270,7 @@ watch(
       return
     }
 
+    drawerSessionId.value += 1
     saveResourceMutation.reset()
     formError.value = null
     form.reset({ ...defaultFormValues, parentId })

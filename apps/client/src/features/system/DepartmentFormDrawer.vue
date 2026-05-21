@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useMutation, useQuery } from '@pinia/colada'
+import { useMutation, useQuery, useQueryCache } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
 import { pick } from 'lodash-es'
 import {
@@ -54,6 +54,9 @@ const defaultFormValues: DepartmentFormInput = {
   status: DEPARTMENT_STATUS_ENABLED,
   sortOrder: 0,
 }
+
+const queryCache = useQueryCache()
+const drawerSessionId = ref(0)
 
 const {
   data: formData,
@@ -127,6 +130,11 @@ const form = useForm({
 })
 
 const { isLoading: isSaving, ...saveDepartmentMutation } = useMutation({
+  onMutate() {
+    return {
+      sessionId: drawerSessionId.value,
+    }
+  },
   mutation: ({
     departmentId,
     value,
@@ -138,16 +146,33 @@ const { isLoading: isSaving, ...saveDepartmentMutation } = useMutation({
     departmentId === null
       ? createDepartment(departmentCreateSchema.parse(value))
       : updateDepartment(departmentId, departmentUpdateSchema.parse(value)),
-  onSuccess(_, { departmentId, parentId }) {
-    if (!show.value || props.departmentId !== departmentId || props.parentId !== parentId) {
+  onSuccess(_, { departmentId, parentId }, { sessionId }) {
+    if (
+      !show.value ||
+      props.departmentId !== departmentId ||
+      props.parentId !== parentId ||
+      sessionId !== drawerSessionId.value
+    ) {
       return
+    }
+
+    if (departmentId !== null) {
+      void queryCache.invalidateQueries({
+        key: ['system', 'department-form', departmentId, 'edit'],
+        exact: true,
+      })
     }
 
     emit('saved')
     show.value = false
   },
-  onError(error, { departmentId, parentId }) {
-    if (!show.value || props.departmentId !== departmentId || props.parentId !== parentId) {
+  onError(error, { departmentId, parentId }, { sessionId }) {
+    if (
+      !show.value ||
+      props.departmentId !== departmentId ||
+      props.parentId !== parentId ||
+      sessionId !== drawerSessionId.value
+    ) {
       return
     }
 
@@ -177,6 +202,7 @@ watch(
       return
     }
 
+    drawerSessionId.value += 1
     saveDepartmentMutation.reset()
     formError.value = null
     form.reset({ ...defaultFormValues, parentId })

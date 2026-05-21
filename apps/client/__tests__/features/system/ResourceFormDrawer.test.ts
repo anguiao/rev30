@@ -190,6 +190,27 @@ const menuResourceResponse: Resource = {
   createdAt: '2026-05-02T00:00:00.000Z',
   updatedAt: '2026-05-02T00:00:00.000Z',
 }
+const updatedMenuResourceResponse: Resource = {
+  ...menuResourceResponse,
+  name: '成员管理',
+  icon: 'lucide:circle-help',
+  updatedAt: '2026-05-20T00:00:00.000Z',
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return {
+    promise,
+    resolve,
+    reject,
+  }
+}
 
 function mountDrawer(
   props: {
@@ -389,6 +410,48 @@ describe('ResourceFormDrawer', () => {
     })
   })
 
+  it('reloads detail when reopening the same resource after save', async () => {
+    getResourceMock
+      .mockResolvedValueOnce(menuResourceResponse)
+      .mockResolvedValueOnce(updatedMenuResourceResponse)
+    updateResourceMock.mockResolvedValue(updatedMenuResourceResponse)
+
+    const wrapper = mountDrawer({
+      show: true,
+      resourceId: menuResourceId,
+      parentId: null,
+    })
+    await flushPromises()
+
+    await wrapper.get('[data-test="resource-form-name"] input').setValue('成员管理')
+    await wrapper.get('[data-test="resource-icon-pick-help"]').trigger('click')
+    await submitForm(wrapper)
+
+    expect(wrapper.emitted('saved')).toHaveLength(1)
+    expect(wrapper.emitted('update:show')).toEqual([[false]])
+
+    await wrapper.setProps({
+      show: false,
+      resourceId: menuResourceId,
+      parentId: null,
+    })
+    await flushPromises()
+    await wrapper.setProps({
+      show: true,
+      resourceId: menuResourceId,
+      parentId: null,
+    })
+    await flushPromises()
+
+    expect(getResourceMock).toHaveBeenCalledTimes(2)
+    expect(
+      (wrapper.get('[data-test="resource-form-name"] input').element as HTMLInputElement).value,
+    ).toBe(updatedMenuResourceResponse.name)
+    expect(wrapper.get('[data-test="resource-icon-preview"]').text()).toBe(
+      updatedMenuResourceResponse.icon,
+    )
+  })
+
   it('submits external resources with external url and blank target', async () => {
     createResourceMock.mockResolvedValue({
       ...menuResourceResponse,
@@ -476,5 +539,51 @@ describe('ResourceFormDrawer', () => {
     expect(createResourceMock).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('权限编码已存在')
     expect(wrapper.emitted('saved')).toBeUndefined()
+  })
+
+  it('ignores stale mutation errors from a previous create session', async () => {
+    const pendingCreate = deferred<Resource>()
+    createResourceMock.mockImplementationOnce(() => pendingCreate.promise)
+
+    const wrapper = mountDrawer({
+      show: true,
+      resourceId: null,
+      parentId: rootResourceId,
+    })
+    await flushPromises()
+
+    await wrapper.get('[data-test="resource-form-name"] input').setValue('旧会话')
+    await wrapper.get('[data-test="resource-form-code"] input').setValue('stale-resource')
+    await submitForm(wrapper)
+
+    expect(createResourceMock).toHaveBeenCalledTimes(1)
+
+    await wrapper.setProps({
+      show: false,
+      resourceId: null,
+      parentId: rootResourceId,
+    })
+    await flushPromises()
+    await wrapper.setProps({
+      show: true,
+      resourceId: null,
+      parentId: rootResourceId,
+    })
+    await flushPromises()
+
+    await wrapper.get('[data-test="resource-form-name"] input').setValue('新会话')
+    await wrapper.get('[data-test="resource-form-code"] input').setValue('fresh-resource')
+
+    pendingCreate.reject(new SystemRequestError(400, '旧会话错误', 'code'))
+    await flushPromises()
+
+    const codeFieldContainer = wrapper
+      .get('[data-test="resource-form-code"]')
+      .element.closest('.n-form-item')
+
+    expect(codeFieldContainer?.textContent).not.toContain('旧会话错误')
+    expect(wrapper.text()).not.toContain('旧会话错误')
+    expect(wrapper.emitted('saved')).toBeUndefined()
+    expect(wrapper.emitted('update:show')).toBeUndefined()
   })
 })

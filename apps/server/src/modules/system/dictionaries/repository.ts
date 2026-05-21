@@ -9,7 +9,8 @@ import type {
 import { and, asc, count, desc, eq, ilike, inArray, isNull, notInArray, or, sql } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
 import { systemDictionaryItems, systemDictionaryTypes } from '../../../db/schema'
-import type { DictionaryItemRow, DictionaryListRow, DictionaryTypeRow } from './mapper'
+import { DictionaryInvalidItemError } from './errors'
+import type { DictionaryItemRow, DictionaryListRow, DictionaryOptionRow } from './mapper'
 
 function dictionaryTypeSortOrder() {
   return [
@@ -57,17 +58,6 @@ async function findActiveItemsByTypeId(
     .from(systemDictionaryItems)
     .where(and(eq(systemDictionaryItems.typeId, typeId), isNull(systemDictionaryItems.deletedAt)))
     .orderBy(...dictionaryItemSortOrder())
-}
-
-type DictionaryUpdateResult =
-  | { type: 'not_found' }
-  | { type: 'invalid_item' }
-  | { type: 'updated'; dictionary: DictionaryTypeRow; items: DictionaryItemRow[] }
-
-type DictionaryOptionRow = {
-  code: string
-  label: string
-  value: string
 }
 
 export function createDictionaryRepository(database: Db) {
@@ -241,12 +231,12 @@ export function createDictionaryRepository(database: Db) {
       })
     },
 
-    async update(id: string, input: DictionaryUpdateInput): Promise<DictionaryUpdateResult> {
+    async update(id: string, input: DictionaryUpdateInput) {
       return await database.transaction(async (tx) => {
         const dictionary = await lockActiveTypeById(tx, id)
 
         if (!dictionary) {
-          return { type: 'not_found' }
+          return undefined
         }
 
         const now = new Date()
@@ -263,11 +253,11 @@ export function createDictionaryRepository(database: Db) {
         const updateItemIds = [...new Set(updateItems.map((item) => item.id!))]
 
         if (updateItemIds.length !== updateItems.length) {
-          return { type: 'invalid_item' }
+          throw new DictionaryInvalidItemError()
         }
 
         if (updateItemIds.some((itemId) => !existingItemById.has(itemId))) {
-          return { type: 'invalid_item' }
+          throw new DictionaryInvalidItemError()
         }
 
         const [updatedDictionary] = await tx
@@ -280,7 +270,7 @@ export function createDictionaryRepository(database: Db) {
           .returning()
 
         if (!updatedDictionary) {
-          return { type: 'not_found' }
+          return undefined
         }
 
         if (updateItemIds.length > 0) {
@@ -368,7 +358,6 @@ export function createDictionaryRepository(database: Db) {
         }
 
         return {
-          type: 'updated',
           dictionary: updatedDictionary,
           items: await findActiveItemsByTypeId(tx, id),
         }

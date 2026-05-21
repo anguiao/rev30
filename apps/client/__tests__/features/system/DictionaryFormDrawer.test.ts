@@ -294,8 +294,10 @@ describe('DictionaryFormDrawer', () => {
     })
   })
 
-  it('uses saved detail cache when reopening same dictionary after save', async () => {
-    getDictionaryMock.mockResolvedValueOnce(dictionaryDetail)
+  it('reloads detail when reopening same dictionary after save', async () => {
+    getDictionaryMock
+      .mockResolvedValueOnce(dictionaryDetail)
+      .mockResolvedValueOnce(updatedDictionaryDetail)
     updateDictionaryMock.mockResolvedValue(updatedDictionaryDetail)
 
     const wrapper = mountDrawer({ show: true, dictionaryId })
@@ -341,7 +343,7 @@ describe('DictionaryFormDrawer', () => {
     await wrapper.setProps({ show: true, dictionaryId })
     await flushPromises()
 
-    expect(getDictionaryMock).toHaveBeenCalledTimes(1)
+    expect(getDictionaryMock).toHaveBeenCalledTimes(2)
     expect(
       (wrapper.get('[data-test="dictionary-form-name"] input').element as HTMLInputElement).value,
     ).toBe(updatedDictionaryDetail.name)
@@ -423,7 +425,7 @@ describe('DictionaryFormDrawer', () => {
     await getItemRow(wrapper, 0).get('[data-test="dictionary-item-label"] input').setValue('中国')
     await submitForm(wrapper)
 
-    expect(wrapper.get('[data-test="dictionary-items-error"]').text()).toContain('字典项值不能重复')
+    expect(wrapper.get('[data-test="dictionary-items"]').text()).toContain('字典项值不能重复')
   })
 
   it('ignores stale mutation errors from a previous create session', async () => {
@@ -480,7 +482,7 @@ describe('DictionaryFormDrawer', () => {
 
     await submitForm(wrapper)
 
-    expect(wrapper.get('[data-test="dictionary-items-error"]').text()).toContain('字典项值不能重复')
+    expect(wrapper.get('[data-test="dictionary-items"]').text()).toContain('字典项值不能重复')
     expect(createDictionaryMock).not.toHaveBeenCalled()
     expect(updateDictionaryMock).not.toHaveBeenCalled()
   })

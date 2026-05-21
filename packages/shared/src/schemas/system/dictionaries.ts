@@ -54,40 +54,15 @@ function ensureUniqueDictionaryItems(
 }
 
 function normalizeDictionaryCodes(value: unknown) {
-  if (typeof value === 'string') {
-    return [
-      ...new Set(
-        value
-          .split(',')
-          .map((item) => item.trim())
-          .filter((item) => item.length > 0),
-      ),
-    ]
-  }
+  const codes = typeof value === 'string' ? value.split(',') : value
 
-  if (!Array.isArray(value)) {
+  if (!Array.isArray(codes)) {
     return value
   }
 
-  const normalizedCodes: Array<unknown> = []
-  const seen = new Set<unknown>()
-
-  for (const item of value) {
-    const normalizedItem = typeof item === 'string' ? item.trim() : item
-
-    if (normalizedItem === '') {
-      continue
-    }
-
-    if (seen.has(normalizedItem)) {
-      continue
-    }
-
-    seen.add(normalizedItem)
-    normalizedCodes.push(normalizedItem)
-  }
-
-  return normalizedCodes
+  return [...new Set(codes.map((item) => (typeof item === 'string' ? item.trim() : item)))].filter(
+    (item) => item !== '',
+  )
 }
 
 const dictionaryItemInputSchema = z.object({
@@ -142,12 +117,21 @@ export const dictionaryListQuerySchema = paginationQuerySchema.extend({
   status: optionalNumericQueryValue(dictionaryStatusSchema),
 })
 
+const dictionaryFormBaseSchema = z.object({
+  code: dictionaryCodeSchema,
+  name: dictionaryNameSchema,
+  description: dictionaryDescriptionInputSchema,
+  status: dictionaryStatusSchema,
+  sortOrder: sortOrderInputSchema,
+  items: z.array(dictionaryItemUpdateInputSchema),
+})
+
+export const dictionaryFormSchema = dictionaryFormBaseSchema.superRefine(
+  ensureUniqueDictionaryItems,
+)
+
 export const dictionaryCreateSchema = z
-  .object({
-    code: dictionaryCodeSchema,
-    name: dictionaryNameSchema,
-    description: dictionaryDescriptionInputSchema,
-  })
+  .object(dictionaryFormBaseSchema.shape)
   .extend({
     status: dictionaryStatusSchema.default(DICTIONARY_STATUS_ENABLED),
     sortOrder: sortOrderInputSchema.default(0),
@@ -155,16 +139,7 @@ export const dictionaryCreateSchema = z
   })
   .superRefine(ensureUniqueDictionaryItems)
 
-export const dictionaryUpdateSchema = z
-  .object({
-    code: dictionaryCodeSchema,
-    name: dictionaryNameSchema,
-    description: dictionaryDescriptionInputSchema,
-    status: dictionaryStatusSchema,
-    sortOrder: sortOrderInputSchema,
-    items: z.array(dictionaryItemUpdateInputSchema),
-  })
-  .superRefine(ensureUniqueDictionaryItems)
+export const dictionaryUpdateSchema = dictionaryFormSchema
 
 export const dictionaryListResponseSchema = z.object({
   list: z.array(dictionaryListItemSchema),
@@ -197,6 +172,7 @@ export type DictionaryListItem = z.infer<typeof dictionaryListItemSchema>
 export type DictionaryDetail = z.infer<typeof dictionaryDetailSchema>
 export type DictionaryListQuery = z.infer<typeof dictionaryListQuerySchema>
 export type DictionaryListResponse = z.infer<typeof dictionaryListResponseSchema>
+export type DictionaryFormInput = z.infer<typeof dictionaryFormSchema>
 export type DictionaryCreateInput = z.infer<typeof dictionaryCreateSchema>
 export type DictionaryUpdateInput = z.infer<typeof dictionaryUpdateSchema>
 export type DictionaryOptionsQuery = z.infer<typeof dictionaryOptionsQuerySchema>

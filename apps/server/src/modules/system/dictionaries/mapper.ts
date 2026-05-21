@@ -13,6 +13,8 @@ export type DictionaryListRow = {
   type: DictionaryTypeRow
   itemCount: number
 }
+export type DictionaryOptionRow = Pick<DictionaryTypeRow, 'code'> &
+  Pick<DictionaryItemRow, 'label' | 'value'>
 
 export function toDictionaryType(row: DictionaryTypeRow): DictionaryType {
   return {

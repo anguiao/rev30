@@ -6,11 +6,7 @@ import type {
   DictionaryUpdateInput,
 } from '@rev30/shared'
 import type { Db } from '../../../db'
-import {
-  DictionaryInvalidItemError,
-  DictionaryNotFoundError,
-  toDictionaryConflictError,
-} from './errors'
+import { DictionaryNotFoundError, toDictionaryConflictError } from './errors'
 import { toDictionaryDetail, toDictionaryListItem } from './mapper'
 import { createDictionaryRepository } from './repository'
 
@@ -76,12 +72,8 @@ export function createDictionaryService(database: Db) {
     async update(id: string, input: DictionaryUpdateInput) {
       const updated = await withDictionaryConflict(() => repository.update(id, input))
 
-      if (updated.type === 'not_found') {
+      if (!updated) {
         throw new DictionaryNotFoundError()
-      }
-
-      if (updated.type === 'invalid_item') {
-        throw new DictionaryInvalidItemError()
       }
 
       return toDictionaryDetail(updated.dictionary, updated.items)

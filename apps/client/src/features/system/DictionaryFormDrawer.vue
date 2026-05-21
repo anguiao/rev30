@@ -16,12 +16,10 @@ import {
 import {
   DICTIONARY_STATUS_ENABLED,
   dictionaryCreateSchema,
+  dictionaryFormSchema,
   dictionaryUpdateSchema,
-  type DictionaryCreateInput,
-  type DictionaryDetail,
-  type DictionaryUpdateInput,
+  type DictionaryFormInput,
 } from '@rev30/shared'
-import type { ZodIssue } from 'zod'
 import {
   SystemRequestError,
   createDictionary,
@@ -44,19 +42,15 @@ const emit = defineEmits<{
 
 const drawerTitle = computed(() => (props.dictionaryId === null ? '新增数据字典' : '编辑数据字典'))
 
-type DictionaryFormValues = Omit<DictionaryUpdateInput, 'items'>
-type DictionaryItemInput = DictionaryUpdateInput['items'][number]
-type DictionaryFormData = {
-  formValues: DictionaryFormValues
-  items: DictionaryUpdateInput['items']
-}
+type DictionaryItemInput = DictionaryFormInput['items'][number]
 
-const defaultFormValues: DictionaryFormValues = {
+const defaultFormValues: DictionaryFormInput = {
   code: '',
   name: '',
   description: null,
   status: DICTIONARY_STATUS_ENABLED,
   sortOrder: 0,
+  items: [],
 }
 
 const defaultItemValues: Omit<DictionaryItemInput, 'id'> = {
@@ -67,28 +61,8 @@ const defaultItemValues: Omit<DictionaryItemInput, 'id'> = {
   sortOrder: 0,
 }
 
-function toDictionaryFormData(dictionary: DictionaryDetail): DictionaryFormData {
-  return {
-    formValues: {
-      code: dictionary.code,
-      name: dictionary.name,
-      description: dictionary.description,
-      status: dictionary.status,
-      sortOrder: dictionary.sortOrder,
-    },
-    items: dictionary.items.map((item) => ({
-      id: item.id,
-      label: item.label,
-      value: item.value,
-      description: item.description,
-      status: item.status,
-      sortOrder: item.sortOrder,
-    })),
-  }
-}
-
-const items = ref<DictionaryUpdateInput['items']>([])
 const queryCache = useQueryCache()
+const drawerSessionId = ref(0)
 
 const {
   data: formData,
@@ -102,14 +76,30 @@ const {
     if (dictionaryId === null) {
       return {
         formValues: defaultFormValues,
-        items: [],
       }
     }
 
-    return toDictionaryFormData(await getDictionary(dictionaryId))
+    const dictionary = await getDictionary(dictionaryId)
+
+    return {
+      formValues: {
+        code: dictionary.code,
+        name: dictionary.name,
+        description: dictionary.description,
+        status: dictionary.status,
+        sortOrder: dictionary.sortOrder,
+        items: dictionary.items.map((item) => ({
+          id: item.id,
+          label: item.label,
+          value: item.value,
+          description: item.description,
+          status: item.status,
+          sortOrder: item.sortOrder,
+        })),
+      },
+    }
   },
 })
-
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
@@ -117,95 +107,54 @@ const loadError = computed(() =>
 )
 
 const formError = ref<string | null>(null)
-const itemsError = ref<string | null>(null)
-const drawerSessionId = ref(0)
-
-function setLocalValidationErrors(issues: ZodIssue[]) {
-  let fallbackMessage: string | null = null
-
-  for (const issue of issues) {
-    const field = issue.path[0]
-
-    if (field === 'items') {
-      itemsError.value ??= issue.message
-      continue
-    }
-
-    if (typeof field === 'string' && setServerFieldError(form, field, issue.message)) {
-      continue
-    }
-
-    fallbackMessage ??= issue.message
-  }
-
-  formError.value = fallbackMessage ?? '保存数据字典失败'
-}
 
 const form = useForm({
   defaultValues: defaultFormValues,
+  validators: {
+    onChange: dictionaryFormSchema,
+    onSubmit: dictionaryFormSchema,
+  },
   onSubmit({ value }) {
     const dictionaryId = props.dictionaryId
-    const sessionId = drawerSessionId.value
     formError.value = null
-    itemsError.value = null
 
-    const payload = {
-      ...value,
-      items: items.value,
-    }
-
-    const parseResult =
-      dictionaryId === null
-        ? dictionaryCreateSchema.safeParse(payload)
-        : dictionaryUpdateSchema.safeParse(payload)
-
-    if (!parseResult.success) {
-      setLocalValidationErrors(parseResult.error.issues)
-      return
-    }
-
-    saveDictionaryMutation.mutate(
-      dictionaryId === null
-        ? {
-            dictionaryId: null,
-            sessionId,
-            value: parseResult.data,
-          }
-        : {
-            dictionaryId,
-            sessionId,
-            value: parseResult.data,
-          },
-    )
+    saveDictionaryMutation.mutate({ dictionaryId, value })
   },
 })
 
-type DictionarySavePayload =
-  | { dictionaryId: null; sessionId: number; value: DictionaryCreateInput }
-  | { dictionaryId: string; sessionId: number; value: DictionaryUpdateInput }
-
 const { isLoading: isSaving, ...saveDictionaryMutation } = useMutation({
-  mutation: ({ dictionaryId, value }: DictionarySavePayload) =>
-    dictionaryId === null ? createDictionary(value) : updateDictionary(dictionaryId, value),
-  onSuccess(savedDictionary, { dictionaryId, sessionId }) {
+  onMutate() {
+    return {
+      sessionId: drawerSessionId.value,
+    }
+  },
+  mutation: ({
+    dictionaryId,
+    value,
+  }: {
+    dictionaryId: string | null
+    value: DictionaryFormInput
+  }) =>
+    dictionaryId === null
+      ? createDictionary(dictionaryCreateSchema.parse(value))
+      : updateDictionary(dictionaryId, dictionaryUpdateSchema.parse(value)),
+  onSuccess(_, { dictionaryId }, { sessionId }) {
     if (!show.value || props.dictionaryId !== dictionaryId || sessionId !== drawerSessionId.value) {
       return
     }
 
-    queryCache.setQueryData(
-      ['system', 'dictionary-form', savedDictionary.id],
-      toDictionaryFormData(savedDictionary),
-    )
+    if (dictionaryId !== null) {
+      void queryCache.invalidateQueries({
+        key: ['system', 'dictionary-form', dictionaryId],
+        exact: true,
+      })
+    }
+
     emit('saved')
     show.value = false
   },
-  onError(error, { dictionaryId, sessionId }) {
+  onError(error, { dictionaryId }, { sessionId }) {
     if (!show.value || props.dictionaryId !== dictionaryId || sessionId !== drawerSessionId.value) {
-      return
-    }
-
-    if (error instanceof SystemRequestError && error.field === 'items') {
-      itemsError.value = error.message
       return
     }
 
@@ -229,17 +178,23 @@ function handleSubmit() {
 }
 
 function updateItem(index: number, value: Partial<DictionaryItemInput>) {
-  items.value = items.value.map((item, itemIndex) =>
-    itemIndex === index ? { ...item, ...value } : item,
+  const items = form.getFieldValue('items')
+
+  form.setFieldValue(
+    'items',
+    items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...value } : item)),
   )
 }
 
 function addItem() {
-  items.value = [...items.value, { ...defaultItemValues }]
+  form.setFieldValue('items', [...form.getFieldValue('items'), { ...defaultItemValues }])
 }
 
 function removeItem(index: number) {
-  items.value = items.value.filter((_, itemIndex) => itemIndex !== index)
+  form.setFieldValue(
+    'items',
+    form.getFieldValue('items').filter((_, itemIndex) => itemIndex !== index),
+  )
 }
 
 watch(
@@ -252,9 +207,7 @@ watch(
     drawerSessionId.value += 1
     saveDictionaryMutation.reset()
     formError.value = null
-    itemsError.value = null
     form.reset(defaultFormValues)
-    items.value = []
   },
   {
     immediate: true,
@@ -262,14 +215,13 @@ watch(
 )
 
 watch(
-  () => [show.value, formData.value] as const,
-  ([isVisible, value]) => {
-    if (!isVisible || value === undefined) {
+  () => [show.value, formData.value?.formValues] as const,
+  ([isVisible, formValues]) => {
+    if (!isVisible || formValues === undefined) {
       return
     }
 
-    form.reset(value.formValues)
-    items.value = value.items
+    form.reset(formValues)
   },
   {
     immediate: true,
@@ -356,90 +308,87 @@ watch(
             </form.Field>
           </div>
 
-          <NFormItem label="字典项">
-            <div class="flex w-full flex-col gap-3">
-              <div class="flex justify-end">
-                <NButton data-test="dictionary-item-add" @click="addItem">新增字典项</NButton>
-              </div>
+          <form.Field name="items" v-slot="{ state }">
+            <NFormItem
+              data-test="dictionary-items"
+              label="字典项"
+              v-bind="formItemValidationProps(state.meta)"
+            >
+              <div class="flex w-full flex-col gap-3">
+                <div class="flex justify-end">
+                  <NButton data-test="dictionary-item-add" @click="addItem">新增字典项</NButton>
+                </div>
 
-              <div
-                class="grid gap-2 text-xs text-neutral-500"
-                style="grid-template-columns: 1.2fr 1.2fr 120px 100px 1.2fr 88px"
-              >
-                <span>字典项值</span>
-                <span>字典项标签</span>
-                <span>状态</span>
-                <span>排序</span>
-                <span>说明</span>
-                <span>操作</span>
-              </div>
-
-              <div
-                v-for="(item, index) in items"
-                :key="item.id ?? `new-${index}`"
-                data-test="dictionary-item-row"
-                class="grid items-start gap-2"
-                style="grid-template-columns: 1.2fr 1.2fr 120px 100px 1.2fr 88px"
-              >
-                <NInput
-                  data-test="dictionary-item-value"
-                  :value="item.value"
-                  placeholder="请输入值"
-                  @update:value="updateItem(index, { value: $event })"
-                />
-
-                <NInput
-                  data-test="dictionary-item-label"
-                  :value="item.label"
-                  placeholder="请输入标签"
-                  @update:value="updateItem(index, { label: $event })"
-                />
-
-                <NSelect
-                  data-test="dictionary-item-status"
-                  :value="item.status"
-                  :options="statusSelectOptions"
-                  @update:value="updateItem(index, { status: $event })"
-                />
-
-                <NInputNumber
-                  data-test="dictionary-item-sort-order"
-                  class="w-full"
-                  :value="item.sortOrder"
-                  :precision="0"
-                  :show-button="false"
-                  @update:value="updateItem(index, { sortOrder: $event ?? 0 })"
-                />
-
-                <NInput
-                  data-test="dictionary-item-description"
-                  type="textarea"
-                  :value="item.description ?? ''"
-                  :autosize="{ minRows: 1, maxRows: 3 }"
-                  placeholder="可选"
-                  @update:value="updateItem(index, { description: $event })"
-                />
-
-                <NButton
-                  data-test="dictionary-item-remove"
-                  type="error"
-                  tertiary
-                  @click="removeItem(index)"
+                <div
+                  class="grid gap-2 text-xs text-neutral-500"
+                  style="grid-template-columns: 1.2fr 1.2fr 120px 100px 1.2fr 88px"
                 >
-                  删除
-                </NButton>
-              </div>
+                  <span>字典项值</span>
+                  <span>字典项标签</span>
+                  <span>状态</span>
+                  <span>排序</span>
+                  <span>说明</span>
+                  <span>操作</span>
+                </div>
 
-              <NAlert
-                v-if="itemsError"
-                data-test="dictionary-items-error"
-                type="error"
-                :show-icon="false"
-              >
-                {{ itemsError }}
-              </NAlert>
-            </div>
-          </NFormItem>
+                <div
+                  v-for="(item, index) in state.value"
+                  :key="item.id ?? `new-${index}`"
+                  data-test="dictionary-item-row"
+                  class="grid items-start gap-2"
+                  style="grid-template-columns: 1.2fr 1.2fr 120px 100px 1.2fr 88px"
+                >
+                  <NInput
+                    data-test="dictionary-item-value"
+                    :value="item.value"
+                    placeholder="请输入值"
+                    @update:value="updateItem(index, { value: $event })"
+                  />
+
+                  <NInput
+                    data-test="dictionary-item-label"
+                    :value="item.label"
+                    placeholder="请输入标签"
+                    @update:value="updateItem(index, { label: $event })"
+                  />
+
+                  <NSelect
+                    data-test="dictionary-item-status"
+                    :value="item.status"
+                    :options="statusSelectOptions"
+                    @update:value="updateItem(index, { status: $event })"
+                  />
+
+                  <NInputNumber
+                    data-test="dictionary-item-sort-order"
+                    class="w-full"
+                    :value="item.sortOrder"
+                    :precision="0"
+                    :show-button="false"
+                    @update:value="updateItem(index, { sortOrder: $event ?? 0 })"
+                  />
+
+                  <NInput
+                    data-test="dictionary-item-description"
+                    type="textarea"
+                    :value="item.description ?? ''"
+                    :autosize="{ minRows: 1, maxRows: 3 }"
+                    placeholder="可选"
+                    @update:value="updateItem(index, { description: $event })"
+                  />
+
+                  <NButton
+                    data-test="dictionary-item-remove"
+                    type="error"
+                    tertiary
+                    @click="removeItem(index)"
+                  >
+                    删除
+                  </NButton>
+                </div>
+              </div>
+            </NFormItem>
+          </form.Field>
 
           <div class="flex justify-end gap-3">
             <NButton @click="show = false">取消</NButton>

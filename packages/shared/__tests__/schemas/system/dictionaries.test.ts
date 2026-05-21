@@ -4,6 +4,7 @@ import {
   DICTIONARY_STATUS_ENABLED,
   dictionaryCreateSchema,
   dictionaryDetailSchema,
+  dictionaryFormSchema,
   dictionaryItemSchema,
   dictionaryListItemSchema,
   dictionaryListQuerySchema,
@@ -11,6 +12,7 @@ import {
   dictionaryOptionsQuerySchema,
   dictionaryOptionsResponseSchema,
   dictionaryUpdateSchema,
+  type DictionaryFormInput,
   type DictionaryListResponse,
 } from '../../../src/schemas/system/dictionaries'
 import { prettifyZodError } from '../../helpers/schema'
@@ -224,6 +226,36 @@ describe('dictionary schemas', () => {
       status: DICTIONARY_STATUS_ENABLED,
       sortOrder: 0,
     })
+  })
+
+  it('accepts dictionary form input with editable items', () => {
+    const formInput: DictionaryFormInput = dictionaryFormSchema.parse({
+      code: 'user_status',
+      name: '用户状态',
+      description: '状态说明',
+      status: DICTIONARY_STATUS_ENABLED,
+      sortOrder: 1,
+      items: [
+        {
+          id: '11111111-1111-4111-8111-111111111112',
+          label: '启用',
+          value: 'active',
+          description: null,
+          status: DICTIONARY_STATUS_ENABLED,
+          sortOrder: 0,
+        },
+        {
+          label: '禁用',
+          value: 'disabled',
+          description: '不可用状态',
+          status: DICTIONARY_STATUS_DISABLED,
+          sortOrder: 1,
+        },
+      ],
+    })
+
+    expect(formInput.items).toHaveLength(2)
+    expect(formInput.items[0]?.id).toBe('11111111-1111-4111-8111-111111111112')
   })
 
   it('rejects create and update description longer than 500 characters', () => {

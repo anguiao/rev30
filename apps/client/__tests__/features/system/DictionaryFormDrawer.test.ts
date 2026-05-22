@@ -136,6 +136,17 @@ function getItemRow(wrapper: ReturnType<typeof mount>, index: number) {
   return row!
 }
 
+async function confirmRemoveItem(wrapper: ReturnType<typeof mount>, index: number) {
+  await getItemRow(wrapper, index).get('[data-test="dictionary-item-remove"]').trigger('click')
+  await flushPromises()
+
+  const deleteButton = wrapper.findAll('button').find((button) => button.text() === '删除')
+
+  expect(deleteButton).toBeDefined()
+  await deleteButton!.trigger('click')
+  await flushPromises()
+}
+
 async function submitForm(wrapper: ReturnType<typeof mount>) {
   await wrapper.get('[data-test="dictionary-form-submit"]').trigger('click')
   await wrapper.get('form').trigger('submit')
@@ -245,7 +256,7 @@ describe('DictionaryFormDrawer', () => {
       (wrapper.get('[data-test="dictionary-form-code"] input').element as HTMLInputElement).value,
     ).toBe('user_status')
 
-    await getItemRow(wrapper, 0).get('[data-test="dictionary-item-remove"]').trigger('click')
+    await confirmRemoveItem(wrapper, 0)
     await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
     await flushPromises()
 
@@ -304,8 +315,7 @@ describe('DictionaryFormDrawer', () => {
     await flushPromises()
 
     await wrapper.get('[data-test="dictionary-form-name"] input').setValue('用户状态维护')
-    await getItemRow(wrapper, 1).get('[data-test="dictionary-item-remove"]').trigger('click')
-    await flushPromises()
+    await confirmRemoveItem(wrapper, 1)
 
     const firstRow = getItemRow(wrapper, 0)
     await firstRow.get('[data-test="dictionary-item-value"] input').setValue('active')
@@ -374,8 +384,7 @@ describe('DictionaryFormDrawer', () => {
     const wrapper = mountDrawer({ show: true, dictionaryId })
     await flushPromises()
 
-    await getItemRow(wrapper, 0).get('[data-test="dictionary-item-remove"]').trigger('click')
-    await flushPromises()
+    await confirmRemoveItem(wrapper, 0)
 
     const cancelButton = wrapper.findAll('button').find((button) => button.text() === '取消')
 

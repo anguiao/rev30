@@ -19,6 +19,7 @@ vi.mock('@iconify/json', () => {
         'bar-chart': {},
         bell: {},
         'book-open': {},
+        'book-open-text': {},
         'building-2': {},
         boxes: {},
         calendar: {},

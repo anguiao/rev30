@@ -11,6 +11,7 @@ import {
   NFormItem,
   NInput,
   NInputNumber,
+  NPopconfirm,
   NSelect,
 } from 'naive-ui'
 import {
@@ -315,28 +316,33 @@ watch(
               v-bind="formItemValidationProps(state.meta)"
             >
               <div class="flex w-full flex-col gap-3">
-                <div class="flex justify-end">
-                  <NButton data-test="dictionary-item-add" @click="addItem">新增字典项</NButton>
-                </div>
-
                 <div
-                  class="grid gap-2 text-xs text-neutral-500"
-                  style="grid-template-columns: 1.2fr 1.2fr 120px 100px 1.2fr 88px"
+                  class="grid grid-cols-[1.2fr_1.2fr_120px_100px_1.2fr_76px] items-center gap-2 text-xs text-neutral-500"
                 >
                   <span>字典项值</span>
                   <span>字典项标签</span>
                   <span>状态</span>
                   <span>排序</span>
                   <span>说明</span>
-                  <span>操作</span>
+                  <NButton
+                    data-test="dictionary-item-add"
+                    class="justify-self-start"
+                    size="small"
+                    tertiary
+                    @click="addItem"
+                  >
+                    <template #icon>
+                      <span class="i-[lucide--plus]"></span>
+                    </template>
+                    新增
+                  </NButton>
                 </div>
 
                 <div
                   v-for="(item, index) in state.value"
                   :key="item.id ?? `new-${index}`"
                   data-test="dictionary-item-row"
-                  class="grid items-start gap-2"
-                  style="grid-template-columns: 1.2fr 1.2fr 120px 100px 1.2fr 88px"
+                  class="grid grid-cols-[1.2fr_1.2fr_120px_100px_1.2fr_76px] items-start gap-2"
                 >
                   <NInput
                     data-test="dictionary-item-value"
@@ -377,14 +383,29 @@ watch(
                     @update:value="updateItem(index, { description: $event })"
                   />
 
-                  <NButton
-                    data-test="dictionary-item-remove"
-                    type="error"
-                    tertiary
-                    @click="removeItem(index)"
+                  <NPopconfirm
+                    positive-text="删除"
+                    negative-text="取消"
+                    :positive-button-props="{ type: 'error' }"
+                    @positive-click="removeItem(index)"
                   >
-                    删除
-                  </NButton>
+                    确定删除该字典项吗？
+
+                    <template #trigger>
+                      <NButton
+                        data-test="dictionary-item-remove"
+                        class="justify-self-center"
+                        quaternary
+                        circle
+                        aria-label="删除字典项"
+                        title="删除字典项"
+                      >
+                        <template #icon>
+                          <span class="i-[lucide--trash-2]"></span>
+                        </template>
+                      </NButton>
+                    </template>
+                  </NPopconfirm>
                 </div>
               </div>
             </NFormItem>

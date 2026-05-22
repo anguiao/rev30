@@ -9,7 +9,7 @@ export const recommendedIconNames = [
   'lucide:file-clock',
   'lucide:house',
   'lucide:chart-column',
-  'lucide:book-open',
+  'lucide:book-open-text',
   'lucide:bell',
   'lucide:user',
   'lucide:user-plus',

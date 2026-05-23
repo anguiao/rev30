@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { onBeforeUnmount, shallowRef, watch } from 'vue'
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import { NButton, NButtonGroup } from 'naive-ui'
@@ -21,49 +21,6 @@ const emit = defineEmits<{
   'update:modelValue': [value: TiptapDocument]
   blur: []
 }>()
-
-function toPlainText(document: TiptapDocument) {
-  const texts: string[] = []
-
-  function visit(node: unknown) {
-    if (typeof node !== 'object' || node === null) {
-      return
-    }
-
-    if ('text' in node && typeof node.text === 'string') {
-      texts.push(node.text)
-    }
-
-    if ('content' in node && Array.isArray(node.content)) {
-      for (const child of node.content) {
-        visit(child)
-      }
-    }
-  }
-
-  visit(document)
-
-  return texts.join('\n')
-}
-
-function toDocument(text: string): TiptapDocument {
-  const trimmedText = text.trim()
-
-  return trimmedText === ''
-    ? {
-        type: 'doc',
-        content: [{ type: 'paragraph' }],
-      }
-    : {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [{ type: 'text', text: trimmedText }],
-          },
-        ],
-      }
-}
 
 const editor = shallowRef(
   new Editor({
@@ -90,8 +47,6 @@ const editor = shallowRef(
     },
   }),
 )
-const isEditorReady = ref(false)
-const fallbackText = ref(toPlainText(props.modelValue))
 
 function setHeading(level: 1 | 2) {
   editor.value?.chain().focus().toggleHeading({ level }).run()
@@ -112,21 +67,6 @@ function toggleLink() {
   chain.setLink({ href: 'https://example.com' }).run()
 }
 
-function handleFallbackInput(event: Event) {
-  const value = (event.target as HTMLTextAreaElement).value
-  fallbackText.value = value
-
-  const nextValue = toDocument(value)
-  editor.value?.commands.setContent(nextValue, { emitUpdate: false })
-  emit('update:modelValue', nextValue)
-}
-
-onMounted(() => {
-  void nextTick(() => {
-    isEditorReady.value = true
-  })
-})
-
 watch(
   () => props.disabled,
   (disabled) => {
@@ -142,7 +82,6 @@ watch(
       return
     }
 
-    fallbackText.value = toPlainText(value)
     editor.value?.commands.setContent(value, { emitUpdate: false })
   },
 )
@@ -244,21 +183,9 @@ onBeforeUnmount(() => {
     </div>
 
     <EditorContent
-      v-show="isEditorReady"
       :editor="editor"
-      class="prose max-w-none p-3 dark:prose-invert"
+      class="prose dark:prose-invert max-w-none p-3"
       :style="{ minHeight: `${minHeight}px` }"
     />
-
-    <textarea
-      v-show="!isEditorReady"
-      class="min-h-0 w-full resize-none border-0 bg-transparent p-3 outline-none"
-      :contenteditable="disabled ? 'false' : 'true'"
-      :style="{ minHeight: `${minHeight}px` }"
-      :value="fallbackText"
-      @blur="emit('blur')"
-      @input="handleFallbackInput"
-    />
-    <span v-show="!isEditorReady" class="sr-only">{{ fallbackText }}</span>
   </div>
 </template>

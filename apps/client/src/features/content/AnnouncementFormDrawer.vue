@@ -274,7 +274,11 @@ watch(
           </form.Field>
 
           <form.Field name="contentJson" v-slot="{ field, state }">
-            <NFormItem label="公告正文" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem
+              data-test="announcement-form-content-item"
+              label="公告正文"
+              v-bind="formItemValidationProps(state.meta)"
+            >
               <RichTextEditor
                 :disabled="isLoading || isSaving"
                 :model-value="state.value"
@@ -300,9 +304,7 @@ watch(
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <NButton data-test="announcement-form-cancel" @click="show = false">
-            取消
-          </NButton>
+          <NButton data-test="announcement-form-cancel" @click="show = false"> 取消 </NButton>
           <NButton
             data-test="announcement-form-save-draft"
             :disabled="isLoading || isSaving || loadError !== null"

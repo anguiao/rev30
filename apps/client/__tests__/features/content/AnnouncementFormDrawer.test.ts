@@ -100,6 +100,10 @@ async function clickAction(wrapper: ReturnType<typeof mount>, selector: string) 
   await flushPromises()
 }
 
+function getContentFormItem(wrapper: ReturnType<typeof mount>) {
+  return wrapper.get('[data-test="announcement-form-content-item"]')
+}
+
 describe('AnnouncementFormDrawer', () => {
   beforeEach(() => {
     createAnnouncementMock.mockReset()
@@ -125,7 +129,8 @@ describe('AnnouncementFormDrawer', () => {
     expect(wrapper.text()).toContain('编辑通知公告')
     expect(getAnnouncementMock).toHaveBeenCalledWith(announcementId)
     expect(
-      (wrapper.get('[data-test="announcement-form-title"] input').element as HTMLInputElement).value,
+      (wrapper.get('[data-test="announcement-form-title"] input').element as HTMLInputElement)
+        .value,
     ).toBe('维护通知')
   })
 
@@ -205,7 +210,7 @@ describe('AnnouncementFormDrawer', () => {
     await wrapper.get('[data-test="announcement-form-title"] input').setValue('新的维护通知')
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
-    expect(wrapper.text()).toContain('请输入公告正文')
+    expect(getContentFormItem(wrapper).text()).toContain('请输入公告正文')
   })
 
   it('clears old server field errors when opening a new session', async () => {
@@ -218,13 +223,13 @@ describe('AnnouncementFormDrawer', () => {
 
     await wrapper.get('[data-test="announcement-form-title"] input').setValue('新的维护通知')
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
-    expect(wrapper.text()).toContain('请输入公告正文')
+    expect(getContentFormItem(wrapper).text()).toContain('请输入公告正文')
 
     await wrapper.setProps({ show: false, announcementId: null })
     await flushPromises()
     await wrapper.setProps({ show: true, announcementId: null })
     await flushPromises()
 
-    expect(wrapper.text()).not.toContain('请输入公告正文')
+    expect(getContentFormItem(wrapper).text()).not.toContain('请输入公告正文')
   })
 })

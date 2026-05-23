@@ -25,7 +25,7 @@ const announcementSummarySchema = z.union([z.string().max(300), z.null()])
 const announcementSummaryInputSchema = optionalNullableString().pipe(
   z.union([z.string().trim().max(300, '公告摘要不能超过 300 个字符'), z.null()]).optional(),
 )
-const announcementContentTextSchema = z.string().max(20_000)
+const announcementContentTextSchema = z.string()
 
 const tiptapDocumentSchema = z
   .object({

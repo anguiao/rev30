@@ -110,6 +110,8 @@ describe('announcement schemas', () => {
 
   it('requires update input to contain at least one changed field', () => {
     expect(announcementUpdateSchema.parse({ title: '新标题' })).toEqual({ title: '新标题' })
+    expect(announcementUpdateSchema.parse({ title: '新标题' })).not.toHaveProperty('pinned')
+    expect(announcementUpdateSchema.parse({ title: '新标题' })).not.toHaveProperty('publish')
     expect(announcementUpdateSchema.parse({ publish: true })).toEqual({ publish: true })
 
     const result = announcementUpdateSchema.safeParse({})
@@ -175,5 +177,14 @@ describe('announcement schemas', () => {
         }),
       ).toMatchObject({ status })
     }
+  })
+
+  it('ignores blank pinned query and keeps default pagination', () => {
+    const parsed = announcementListQuerySchema.parse({ pinned: '   ' })
+    expect(parsed).toMatchObject({
+      page: 1,
+      pageSize: 20,
+    })
+    expect(parsed.pinned).toBeUndefined()
   })
 })

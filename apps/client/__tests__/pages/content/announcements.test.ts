@@ -16,6 +16,7 @@ import {
 import { defineComponent, h } from 'vue'
 import {
   archiveAnnouncement,
+  ContentRequestError,
   deleteAnnouncement,
   formatDateTime,
   listAnnouncements,
@@ -246,6 +247,41 @@ describe('announcements page', () => {
     expect(listAnnouncementsMock.mock.calls.length).toBe(callCountAfterFirstReset)
   })
 
+  it('keeps applied filters when changing page after search', async () => {
+    listAnnouncementsMock.mockResolvedValue(announcementsResponse)
+    const { wrapper } = await mountAnnouncementsPage()
+    await flushPromises()
+
+    await wrapper.find('[data-test="announcements-keyword"] input').setValue('  维护通知  ')
+    wrapper
+      .get('[data-test="announcements-type"]')
+      .getComponent(NSelect)
+      .vm.$emit('update:value', ANNOUNCEMENT_TYPE_NOTICE)
+    wrapper
+      .get('[data-test="announcements-status"]')
+      .getComponent(NSelect)
+      .vm.$emit('update:value', ANNOUNCEMENT_STATUS_DRAFT)
+    wrapper
+      .get('[data-test="announcements-pinned"]')
+      .getComponent(NSelect)
+      .vm.$emit('update:value', 'true')
+    await flushPromises()
+    await wrapper.get('[data-test="announcements-search"]').trigger('click')
+    await flushPromises()
+
+    wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
+    await flushPromises()
+
+    expect(listAnnouncementsMock).toHaveBeenLastCalledWith({
+      page: 2,
+      pageSize: 20,
+      keyword: '维护通知',
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+      status: ANNOUNCEMENT_STATUS_DRAFT,
+      pinned: true,
+    })
+  })
+
   it('shows create and row actions according to permissions', async () => {
     listAnnouncementsMock.mockResolvedValue(announcementsResponse)
     const { wrapper: unauthorizedWrapper } = await mountAnnouncementsPage({
@@ -354,6 +390,86 @@ describe('announcements page', () => {
     expect(listAnnouncementsMock).toHaveBeenCalledTimes(2)
     expect(listAnnouncementsMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
     expect(document.body.textContent).toContain('发布通知公告成功')
+  })
+
+  it('shows backend error and keeps list untouched when publish fails', async () => {
+    listAnnouncementsMock.mockResolvedValue(announcementsResponse)
+    publishAnnouncementMock.mockRejectedValue(new ContentRequestError(409, '当前状态不能发布'))
+    const { wrapper } = await mountAnnouncementsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="announcements-publish"]').trigger('click')
+    await flushPromises()
+
+    const confirmButton = document.body.querySelector(
+      '[data-test="announcements-publish-confirm"]',
+    ) as HTMLButtonElement | null
+    expect(confirmButton).not.toBeNull()
+
+    confirmButton?.click()
+    await flushPromises()
+
+    expect(publishAnnouncementMock).toHaveBeenCalledWith(draftAnnouncement.id)
+    expect(listAnnouncementsMock).toHaveBeenCalledTimes(1)
+    expect(document.body.textContent).toContain('当前状态不能发布')
+    expect(document.body.textContent).not.toContain('发布通知公告成功')
+    expect(
+      document.body.querySelector('[data-test="announcements-publish-confirm"]'),
+    ).not.toBeNull()
+  })
+
+  it('invalidates cached default list after a successful publish', async () => {
+    listAnnouncementsMock.mockResolvedValue(announcementsResponse)
+    publishAnnouncementMock.mockResolvedValue({
+      ...toAnnouncementResponse(draftAnnouncement),
+      status: ANNOUNCEMENT_STATUS_PUBLISHED,
+      publishedAt: '2026-05-24T00:00:00.000Z',
+    })
+    const { wrapper } = await mountAnnouncementsPage()
+    await flushPromises()
+
+    await wrapper.find('[data-test="announcements-keyword"] input').setValue('  维护通知  ')
+    wrapper
+      .get('[data-test="announcements-type"]')
+      .getComponent(NSelect)
+      .vm.$emit('update:value', ANNOUNCEMENT_TYPE_NOTICE)
+    wrapper
+      .get('[data-test="announcements-status"]')
+      .getComponent(NSelect)
+      .vm.$emit('update:value', ANNOUNCEMENT_STATUS_DRAFT)
+    wrapper
+      .get('[data-test="announcements-pinned"]')
+      .getComponent(NSelect)
+      .vm.$emit('update:value', 'true')
+    await flushPromises()
+    await wrapper.get('[data-test="announcements-search"]').trigger('click')
+    await flushPromises()
+
+    await wrapper.get('[data-test="announcements-publish"]').trigger('click')
+    await flushPromises()
+
+    const confirmButton = document.body.querySelector(
+      '[data-test="announcements-publish-confirm"]',
+    ) as HTMLButtonElement | null
+    expect(confirmButton).not.toBeNull()
+
+    confirmButton?.click()
+    await flushPromises()
+
+    expect(listAnnouncementsMock).toHaveBeenNthCalledWith(3, {
+      page: 1,
+      pageSize: 20,
+      keyword: '维护通知',
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+      status: ANNOUNCEMENT_STATUS_DRAFT,
+      pinned: true,
+    })
+
+    await wrapper.get('[data-test="announcements-reset"]').trigger('click')
+    await flushPromises()
+
+    expect(listAnnouncementsMock).toHaveBeenCalledTimes(4)
+    expect(listAnnouncementsMock).toHaveBeenNthCalledWith(4, { page: 1, pageSize: 20 })
   })
 
   it('archives after confirmation and refreshes list', async () => {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue'
-import { useQuery } from '@pinia/colada'
+import { useQuery, useQueryCache } from '@pinia/colada'
 import type { DataTableColumns } from 'naive-ui'
 import {
   NAlert,
@@ -65,6 +65,7 @@ const pageTitle = useAdminPageTitle('通知公告')
 
 const message = useMessage()
 const dialog = useDialog()
+const queryCache = useQueryCache()
 
 const keyword = ref('')
 const type = ref<AnnouncementTypeFilter>(ANNOUNCEMENT_TYPE_FILTER_ALL)
@@ -85,7 +86,6 @@ const {
   data: announcementsResponse,
   error: announcementsError,
   isLoading,
-  refetch: refetchAnnouncements,
 } = useQuery({
   key: () => [
     'content',
@@ -139,9 +139,16 @@ function openAnnouncementFormDrawer(announcementId: string | null = null) {
   editingAnnouncementId.value = announcementId
   isAnnouncementDrawerVisible.value = true
 }
+
+async function invalidateAnnouncementListQueries() {
+  await queryCache.invalidateQueries({
+    key: ['content', 'announcements'],
+  })
+}
+
 async function handleAnnouncementSaved() {
   message.success('保存通知公告成功')
-  await refetchAnnouncements()
+  await invalidateAnnouncementListQueries()
 }
 
 function confirmPublishAnnouncement(announcement: AnnouncementListItem) {
@@ -161,7 +168,7 @@ function confirmPublishAnnouncement(announcement: AnnouncementListItem) {
         await publishAnnouncement(announcement.id)
 
         message.success('发布通知公告成功')
-        await refetchAnnouncements()
+        await invalidateAnnouncementListQueries()
       } catch (error) {
         message.error(getContentErrorMessage(error, '发布通知公告失败'))
         return false
@@ -187,7 +194,7 @@ function confirmArchiveAnnouncement(announcement: AnnouncementListItem) {
         await archiveAnnouncement(announcement.id)
 
         message.success('归档通知公告成功')
-        await refetchAnnouncements()
+        await invalidateAnnouncementListQueries()
       } catch (error) {
         message.error(getContentErrorMessage(error, '归档通知公告失败'))
         return false
@@ -213,7 +220,7 @@ function confirmDeleteAnnouncement(announcement: AnnouncementListItem) {
         await deleteAnnouncement(announcement.id)
 
         message.success('删除通知公告成功')
-        await refetchAnnouncements()
+        await invalidateAnnouncementListQueries()
       } catch (error) {
         message.error(getContentErrorMessage(error, '删除通知公告失败'))
         return false

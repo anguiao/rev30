@@ -28,6 +28,8 @@ function announcementSortOrder() {
     sql`${contentAnnouncements.publishedAt} IS NULL`,
     desc(contentAnnouncements.publishedAt),
     desc(contentAnnouncements.updatedAt),
+    desc(contentAnnouncements.createdAt),
+    desc(contentAnnouncements.id),
   ] as const
 }
 

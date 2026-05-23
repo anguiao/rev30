@@ -93,19 +93,31 @@ const announcementWriteBaseSchema = z.object({
   pinned: z.boolean(),
 })
 
+const announcementUpdateFieldsSchema = announcementWriteBaseSchema.extend({
+  publish: z.boolean(),
+})
+
+const partialAnnouncementUpdateFieldsSchema = announcementUpdateFieldsSchema.partial()
+
+type AnnouncementUpdateFields = z.infer<typeof partialAnnouncementUpdateFieldsSchema>
+
+function hasMeaningfulAnnouncementUpdate(input: AnnouncementUpdateFields) {
+  const { publish, ...rest } = input
+
+  return publish === true || hasAnyDefinedValue(rest)
+}
+
 export const announcementCreateSchema = announcementWriteBaseSchema.extend({
   publish: z.boolean().default(false),
   pinned: z.boolean().default(false),
 })
 
-export const announcementUpdateSchema = announcementWriteBaseSchema
-  .extend({
-    publish: z.boolean(),
-  })
-  .partial()
-  .refine(hasAnyDefinedValue, {
+export const announcementUpdateSchema = partialAnnouncementUpdateFieldsSchema.refine(
+  hasMeaningfulAnnouncementUpdate,
+  {
     message: '至少修改一个字段',
-  })
+  },
+)
 
 export const announcementListResponseSchema = z.object({
   list: z.array(announcementListItemSchema),

@@ -1,6 +1,4 @@
 import { getSchema } from '@tiptap/core'
-import Link from '@tiptap/extension-link'
-import Underline from '@tiptap/extension-underline'
 import { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import StarterKit from '@tiptap/starter-kit'
 import { AnnouncementContentInvalidError, AnnouncementEmptyContentError } from './errors'
@@ -10,12 +8,11 @@ const announcementExtensions = [
     heading: {
       levels: [1, 2, 3],
     },
-  }),
-  Underline,
-  Link.configure({
-    openOnClick: false,
-    autolink: true,
-    linkOnPaste: true,
+    link: {
+      openOnClick: false,
+      autolink: true,
+      linkOnPaste: true,
+    },
   }),
 ]
 

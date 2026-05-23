@@ -13,7 +13,7 @@ import {
 } from '@rev30/shared'
 import { and, eq, isNull } from 'drizzle-orm'
 import type { Hono } from 'hono'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { contentAnnouncements } from '../../../../src/db/schema'
 import { createAnnouncementRoutes } from '../../../../src/modules/content/announcements/routes'
 import { createProtectedContentRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
@@ -68,6 +68,10 @@ async function createAnnouncement(
 
   return { body: (await response.json()) as Announcement, response }
 }
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('announcement routes', () => {
   it('supports creating draft and published announcements and exposes list/detail shapes', async () => {
@@ -129,6 +133,21 @@ describe('announcement routes', () => {
     })
   })
 
+  it('rejects patching with publish false as the only update', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: created } = await createAnnouncement(app, createBody)
+
+    const response = await app.request(`/api/content/announcements/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ publish: false }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(400)
+    expect((await response.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
+  })
+
   it('updates content text when patching announcement content', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
@@ -153,6 +172,10 @@ describe('announcement routes', () => {
   it('publishes archived announcements and refreshes publishedAt', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
+    const firstTime = new Date()
+    vi.useFakeTimers()
+    vi.setSystemTime(firstTime)
+
     const { body: created } = await createAnnouncement(app, {
       ...createBody,
       publish: true,
@@ -167,13 +190,15 @@ describe('announcement routes', () => {
     expect(archived.status).toBe(ANNOUNCEMENT_STATUS_ARCHIVED)
     expect(archived.publishedAt).toBe(firstPublishedAt)
 
+    const republishTime = new Date(firstTime.getTime() + 1000)
+    vi.setSystemTime(republishTime)
     const publishResponse = await app.request(`/api/content/announcements/${created.id}/publish`, {
       method: 'POST',
     })
     const republished = (await publishResponse.json()) as Announcement
     expect(publishResponse.status).toBe(200)
     expect(republished.status).toBe(ANNOUNCEMENT_STATUS_PUBLISHED)
-    expect(republished.publishedAt).toEqual(expect.any(String))
+    expect(republished.publishedAt).toBe(republishTime.toISOString())
     expect(republished.publishedAt).not.toBe(firstPublishedAt)
   })
 
@@ -305,6 +330,93 @@ describe('announcement routes', () => {
       '较新已发布',
       '较旧已发布',
       '草稿最近更新',
+    ])
+  })
+
+  it('uses deterministic tie breakers when publishedAt and updatedAt are equal', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const sharedPublishedAt = new Date('2026-05-18T08:00:00.000Z')
+    const sharedUpdatedAt = new Date('2026-05-18T09:00:00.000Z')
+
+    await database.insert(contentAnnouncements).values([
+      {
+        id: '11111111-1111-4111-8111-111111111111',
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '较小 ID',
+        summary: null,
+        contentJson: createBody.contentJson,
+        contentText: '较小 ID',
+        status: ANNOUNCEMENT_STATUS_PUBLISHED,
+        pinned: false,
+        publishedAt: sharedPublishedAt,
+        createdAt: new Date('2026-05-18T07:00:00.000Z'),
+        updatedAt: sharedUpdatedAt,
+      },
+      {
+        id: '22222222-2222-4222-8222-222222222222',
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '较大 ID 但较早创建',
+        summary: null,
+        contentJson: createBody.contentJson,
+        contentText: '较大 ID 但较早创建',
+        status: ANNOUNCEMENT_STATUS_PUBLISHED,
+        pinned: false,
+        publishedAt: sharedPublishedAt,
+        createdAt: new Date('2026-05-18T06:00:00.000Z'),
+        updatedAt: sharedUpdatedAt,
+      },
+      {
+        id: '33333333-3333-4333-8333-333333333333',
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '更新创建更晚',
+        summary: null,
+        contentJson: createBody.contentJson,
+        contentText: '更新创建更晚',
+        status: ANNOUNCEMENT_STATUS_PUBLISHED,
+        pinned: false,
+        publishedAt: sharedPublishedAt,
+        createdAt: new Date('2026-05-18T10:00:00.000Z'),
+        updatedAt: sharedUpdatedAt,
+      },
+      {
+        id: '44444444-4444-4444-8444-444444444444',
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '同创建时间取较大 ID',
+        summary: null,
+        contentJson: createBody.contentJson,
+        contentText: '同创建时间取较大 ID',
+        status: ANNOUNCEMENT_STATUS_PUBLISHED,
+        pinned: false,
+        publishedAt: sharedPublishedAt,
+        createdAt: new Date('2026-05-18T05:00:00.000Z'),
+        updatedAt: sharedUpdatedAt,
+      },
+      {
+        id: '55555555-5555-4555-8555-555555555555',
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '同创建时间取最大 ID',
+        summary: null,
+        contentJson: createBody.contentJson,
+        contentText: '同创建时间取最大 ID',
+        status: ANNOUNCEMENT_STATUS_PUBLISHED,
+        pinned: false,
+        publishedAt: sharedPublishedAt,
+        createdAt: new Date('2026-05-18T05:00:00.000Z'),
+        updatedAt: sharedUpdatedAt,
+      },
+    ])
+
+    const response = await app.request('/api/content/announcements?page=1&pageSize=10')
+    const body = (await response.json()) as AnnouncementListResponse
+
+    expect(response.status).toBe(200)
+    expect(body.list.slice(0, 5).map((item) => item.title)).toEqual([
+      '更新创建更晚',
+      '较小 ID',
+      '较大 ID 但较早创建',
+      '同创建时间取最大 ID',
+      '同创建时间取较大 ID',
     ])
   })
 

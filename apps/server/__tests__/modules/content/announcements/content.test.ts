@@ -1,12 +1,21 @@
-import { describe, expect, it } from 'vitest'
-import {
-  AnnouncementContentInvalidError,
-  AnnouncementEmptyContentError,
-} from '../../../../src/modules/content/announcements/errors'
-import { deriveAnnouncementContentText } from '../../../../src/modules/content/announcements/content'
+import { describe, expect, it, vi } from 'vitest'
+
+async function loadContentHelpers() {
+  vi.resetModules()
+
+  const contentModule = await import('../../../../src/modules/content/announcements/content')
+  const errorModule = await import('../../../../src/modules/content/announcements/errors')
+
+  return {
+    ...contentModule,
+    ...errorModule,
+  }
+}
 
 describe('announcement content helpers', () => {
-  it('derives plain text from Tiptap JSON with block separators', () => {
+  it('derives plain text from Tiptap JSON with block separators', async () => {
+    const { deriveAnnouncementContentText } = await loadContentHelpers()
+
     expect(
       deriveAnnouncementContentText({
         type: 'doc',
@@ -18,7 +27,9 @@ describe('announcement content helpers', () => {
     ).toBe('维护通知\n\n今晚 22:00 开始维护')
   })
 
-  it('rejects empty documents', () => {
+  it('rejects empty documents', async () => {
+    const { AnnouncementEmptyContentError, deriveAnnouncementContentText } = await loadContentHelpers()
+
     expect(() =>
       deriveAnnouncementContentText({
         type: 'doc',
@@ -27,12 +38,28 @@ describe('announcement content helpers', () => {
     ).toThrow(AnnouncementEmptyContentError)
   })
 
-  it('rejects documents that do not match enabled extensions', () => {
+  it('rejects documents that do not match enabled extensions', async () => {
+    const { AnnouncementContentInvalidError, deriveAnnouncementContentText } = await loadContentHelpers()
+
     expect(() =>
       deriveAnnouncementContentText({
         type: 'doc',
         content: [{ type: 'unsupportedBlock', content: [{ type: 'text', text: 'x' }] }],
       }),
     ).toThrow(AnnouncementContentInvalidError)
+  })
+
+  it('does not register duplicate tiptap extensions', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await loadContentHelpers()
+
+    expect(
+      warnSpy.mock.calls.some(([message]) =>
+        typeof message === 'string' && message.includes('Duplicate extension names found'),
+      ),
+    ).toBe(false)
+
+    warnSpy.mockRestore()
   })
 })

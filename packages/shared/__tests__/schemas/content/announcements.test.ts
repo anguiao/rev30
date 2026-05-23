@@ -113,11 +113,21 @@ describe('announcement schemas', () => {
     expect(announcementUpdateSchema.parse({ title: '新标题' })).not.toHaveProperty('pinned')
     expect(announcementUpdateSchema.parse({ title: '新标题' })).not.toHaveProperty('publish')
     expect(announcementUpdateSchema.parse({ publish: true })).toEqual({ publish: true })
+    expect(announcementUpdateSchema.parse({ title: '新标题', publish: false })).toEqual({
+      title: '新标题',
+      publish: false,
+    })
 
     const result = announcementUpdateSchema.safeParse({})
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(prettifyZodError(result)).toContain('至少修改一个字段')
+    }
+
+    const publishFalseOnlyResult = announcementUpdateSchema.safeParse({ publish: false })
+    expect(publishFalseOnlyResult.success).toBe(false)
+    if (!publishFalseOnlyResult.success) {
+      expect(prettifyZodError(publishFalseOnlyResult)).toContain('至少修改一个字段')
     }
   })
 

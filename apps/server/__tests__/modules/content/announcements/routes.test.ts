@@ -227,6 +227,15 @@ describe('announcement routes', () => {
       message: '公告正文格式无效',
     })
     expect(mocks.service.create).not.toHaveBeenCalled()
+
+    const publishFalseOnlyResponse = await app.request(`/api/content/announcements/${announcementId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ publish: false }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(publishFalseOnlyResponse.status).toBe(400)
+    expect(await publishFalseOnlyResponse.json()).toEqual({ message: '请求体无效' })
+    expect(mocks.service.update).not.toHaveBeenCalled()
   })
 
   it('maps announcement domain errors to route responses', async () => {

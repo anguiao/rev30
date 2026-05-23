@@ -43,11 +43,23 @@ const announcementListQueryValidator = zValidator(
   },
 )
 
-function getInvalidContentJsonMessage(error: Parameters<typeof z.flattenError>[0]) {
-  const fieldErrors = z.flattenError(error).fieldErrors as Record<string, string[] | undefined>
-  const contentJsonError = fieldErrors.contentJson?.[0]
+function mapBodyValidationError(error: Parameters<typeof z.flattenError>[0]) {
+  const flattenedError = z.flattenError(error)
+  const fieldErrors = flattenedError.fieldErrors as Record<string, string[] | undefined>
 
-  return contentJsonError === '公告正文格式无效' ? contentJsonError : undefined
+  for (const [field, messages] of Object.entries(fieldErrors)) {
+    const message = messages?.[0]
+    if (message) {
+      return {
+        field,
+        message,
+      }
+    }
+  }
+
+  const formMessage = flattenedError.formErrors[0]
+
+  return formMessage ? { message: formMessage } : { message: '请求体无效' }
 }
 
 const announcementCreateBodyValidator = zValidator(
@@ -55,13 +67,7 @@ const announcementCreateBodyValidator = zValidator(
   announcementCreateSchema,
   (result, c) => {
     if (!result.success) {
-      const contentJsonError = getInvalidContentJsonMessage(result.error)
-
-      if (contentJsonError) {
-        return c.json({ field: 'contentJson', message: contentJsonError }, 400)
-      }
-
-      return c.json({ message: '请求体无效' }, 400)
+      return c.json(mapBodyValidationError(result.error), 400)
     }
   },
 )
@@ -71,13 +77,7 @@ const announcementUpdateBodyValidator = zValidator(
   announcementUpdateSchema,
   (result, c) => {
     if (!result.success) {
-      const contentJsonError = getInvalidContentJsonMessage(result.error)
-
-      if (contentJsonError) {
-        return c.json({ field: 'contentJson', message: contentJsonError }, 400)
-      }
-
-      return c.json({ message: '请求体无效' }, 400)
+      return c.json(mapBodyValidationError(result.error), 400)
     }
   },
 )

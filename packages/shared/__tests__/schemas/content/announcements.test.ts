@@ -108,6 +108,38 @@ describe('announcement schemas', () => {
     }
   })
 
+  it('rejects empty announcement content documents', () => {
+    const result = announcementCreateSchema.safeParse({
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+      title: '维护通知',
+      contentJson: { type: 'doc', content: [] },
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ['contentJson'],
+            message: '请输入公告正文',
+          }),
+        ]),
+      )
+    }
+  })
+
+  it('accepts non-empty announcement content documents', () => {
+    expect(
+      announcementCreateSchema.parse({
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '维护通知',
+        contentJson,
+      }),
+    ).toMatchObject({
+      contentJson,
+    })
+  })
+
   it('requires update input to contain at least one changed field', () => {
     expect(announcementUpdateSchema.parse({ title: '新标题' })).toEqual({ title: '新标题' })
     expect(announcementUpdateSchema.parse({ title: '新标题' })).not.toHaveProperty('pinned')

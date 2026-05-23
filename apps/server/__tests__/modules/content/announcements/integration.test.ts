@@ -138,6 +138,26 @@ describe('announcement routes', () => {
     })
   })
 
+  it('returns field-level zod messages for invalid create payloads', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+
+    const response = await app.request('/api/content/announcements', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...createBody,
+        title: '   ',
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(400)
+    expect((await response.json()) as ErrorResponse).toEqual({
+      field: 'title',
+      message: '请输入公告标题',
+    })
+  })
+
   it('rejects patching with publish false as the only update', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
@@ -150,7 +170,7 @@ describe('announcement routes', () => {
     })
 
     expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
+    expect((await response.json()) as ErrorResponse).toEqual({ message: '至少修改一个字段' })
   })
 
   it('updates content text when patching announcement content', async () => {
@@ -266,7 +286,7 @@ describe('announcement routes', () => {
     ])
   })
 
-  it('sorts pinned announcements first, then newest published, then updated drafts', async () => {
+  it('sorts pinned announcements first, then published, then drafts, then archived', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
     const now = new Date('2026-05-18T10:00:00.000Z')
@@ -314,6 +334,19 @@ describe('announcement routes', () => {
       {
         id: randomUUID(),
         type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '归档但发布时间更新',
+        summary: null,
+        contentJson: createBody.contentJson,
+        contentText: '归档但发布时间更新',
+        status: ANNOUNCEMENT_STATUS_ARCHIVED,
+        pinned: false,
+        publishedAt: new Date('2026-05-18T10:30:00.000Z'),
+        createdAt: now,
+        updatedAt: new Date('2026-05-18T10:30:00.000Z'),
+      },
+      {
+        id: randomUUID(),
+        type: ANNOUNCEMENT_TYPE_NOTICE,
         title: '草稿最近更新',
         summary: null,
         contentJson: createBody.contentJson,
@@ -324,17 +357,46 @@ describe('announcement routes', () => {
         createdAt: now,
         updatedAt: new Date('2026-05-18T11:00:00.000Z'),
       },
+      {
+        id: randomUUID(),
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '草稿较旧更新',
+        summary: null,
+        contentJson: createBody.contentJson,
+        contentText: '草稿较旧更新',
+        status: ANNOUNCEMENT_STATUS_DRAFT,
+        pinned: false,
+        publishedAt: null,
+        createdAt: new Date('2026-05-18T09:30:00.000Z'),
+        updatedAt: new Date('2026-05-18T09:30:00.000Z'),
+      },
+      {
+        id: randomUUID(),
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '更早归档',
+        summary: null,
+        contentJson: createBody.contentJson,
+        contentText: '更早归档',
+        status: ANNOUNCEMENT_STATUS_ARCHIVED,
+        pinned: false,
+        publishedAt: new Date('2026-05-18T06:00:00.000Z'),
+        createdAt: new Date('2026-05-18T06:00:00.000Z'),
+        updatedAt: new Date('2026-05-18T06:00:00.000Z'),
+      },
     ])
 
     const response = await app.request('/api/content/announcements?page=1&pageSize=10')
     const body = (await response.json()) as AnnouncementListResponse
 
     expect(response.status).toBe(200)
-    expect(body.list.slice(0, 4).map((item) => item.title)).toEqual([
+    expect(body.list.slice(0, 7).map((item) => item.title)).toEqual([
       '置顶已发布',
       '较新已发布',
       '较旧已发布',
       '草稿最近更新',
+      '草稿较旧更新',
+      '归档但发布时间更新',
+      '更早归档',
     ])
   })
 

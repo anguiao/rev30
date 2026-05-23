@@ -207,9 +207,20 @@ describe('AnnouncementFormDrawer', () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
+    await fillRequiredFields(wrapper)
+    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
+
+    expect(getContentFormItem(wrapper).text()).toContain('请输入公告正文')
+  })
+
+  it('does not submit empty content locally', async () => {
+    const wrapper = mountDrawer()
+    await flushPromises()
+
     await wrapper.get('[data-test="announcement-form-title"] input').setValue('新的维护通知')
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
+    expect(createAnnouncementMock).not.toHaveBeenCalled()
     expect(getContentFormItem(wrapper).text()).toContain('请输入公告正文')
   })
 
@@ -221,7 +232,7 @@ describe('AnnouncementFormDrawer', () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
-    await wrapper.get('[data-test="announcement-form-title"] input').setValue('新的维护通知')
+    await fillRequiredFields(wrapper)
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
     expect(getContentFormItem(wrapper).text()).toContain('请输入公告正文')
 

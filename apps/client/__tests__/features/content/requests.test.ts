@@ -27,7 +27,10 @@ const announcementResponse: Announcement = {
   type: ANNOUNCEMENT_TYPE_NOTICE,
   title: '维护通知',
   summary: '系统维护公告',
-  contentJson: { type: 'doc', content: [] },
+  contentJson: {
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: '系统将进行维护' }] }],
+  },
   contentText: '系统将进行维护',
   status: ANNOUNCEMENT_STATUS_PUBLISHED,
   pinned: false,
@@ -40,7 +43,10 @@ const createInput: AnnouncementCreateInput = {
   type: ANNOUNCEMENT_TYPE_NOTICE,
   title: '新增维护公告',
   summary: '即将更新服务',
-  contentJson: { type: 'doc', content: [] },
+  contentJson: {
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: '即将更新服务' }] }],
+  },
   pinned: false,
   publish: false,
 }

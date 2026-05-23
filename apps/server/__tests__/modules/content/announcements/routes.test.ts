@@ -216,7 +216,10 @@ describe('announcement routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(invalidBodyResponse.status).toBe(400)
-    expect(await invalidBodyResponse.json()).toEqual({ message: '请求体无效' })
+    expect(await invalidBodyResponse.json()).toEqual({
+      field: 'type',
+      message: '公告类型无效',
+    })
     expect(mocks.service.create).not.toHaveBeenCalled()
 
     const createInvalidContentResponse = await app.request('/api/content/announcements', {
@@ -243,7 +246,7 @@ describe('announcement routes', () => {
       },
     )
     expect(publishFalseOnlyResponse.status).toBe(400)
-    expect(await publishFalseOnlyResponse.json()).toEqual({ message: '请求体无效' })
+    expect(await publishFalseOnlyResponse.json()).toEqual({ message: '至少修改一个字段' })
     expect(mocks.service.update).not.toHaveBeenCalled()
   })
 

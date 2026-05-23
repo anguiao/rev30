@@ -5,6 +5,11 @@ import type {
   AnnouncementType,
   TiptapDocument,
 } from '@rev30/shared'
+import {
+  ANNOUNCEMENT_STATUS_ARCHIVED,
+  ANNOUNCEMENT_STATUS_DRAFT,
+  ANNOUNCEMENT_STATUS_PUBLISHED,
+} from '@rev30/shared'
 import { and, count, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm'
 import type { Db } from '../../../db'
 import { contentAnnouncements } from '../../../db/schema'
@@ -25,7 +30,12 @@ type AnnouncementUpdateRecord = Partial<AnnouncementCreateRecord>
 function announcementSortOrder() {
   return [
     desc(contentAnnouncements.pinned),
-    sql`${contentAnnouncements.publishedAt} IS NULL`,
+    sql`case
+      when ${contentAnnouncements.status} = ${ANNOUNCEMENT_STATUS_PUBLISHED} then 0
+      when ${contentAnnouncements.status} = ${ANNOUNCEMENT_STATUS_DRAFT} then 1
+      when ${contentAnnouncements.status} = ${ANNOUNCEMENT_STATUS_ARCHIVED} then 2
+      else 3
+    end`,
     desc(contentAnnouncements.publishedAt),
     desc(contentAnnouncements.updatedAt),
     desc(contentAnnouncements.createdAt),

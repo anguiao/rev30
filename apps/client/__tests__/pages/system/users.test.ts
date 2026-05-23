@@ -1,6 +1,4 @@
-// @vitest-environment happy-dom
-
-import { enableAutoUnmount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NPagination, NSelect, NTreeSelect } from 'naive-ui'
 import {
@@ -29,9 +27,6 @@ import {
   session,
   stubPreferredDark,
 } from '../../helpers/auth'
-
-enableAutoUnmount(afterEach)
-
 vi.mock('../../../src/features/system/UserFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'UserFormDrawerStub',

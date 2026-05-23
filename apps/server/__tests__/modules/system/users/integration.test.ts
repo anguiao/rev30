@@ -27,6 +27,7 @@ import { hashPassword, verifyPassword } from '../../../../src/modules/auth/passw
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 import { createUserRoutes } from '../../../../src/modules/system/users/routes'
+import { expectJsonResponse, jsonRequest, responseJson } from '../../../helpers/http'
 
 type ErrorResponse = {
   message: string
@@ -66,15 +67,9 @@ async function createUser(
     roleIds?: string[]
   },
 ) {
-  const response = await app.request('/api/system/users', {
-    method: 'POST',
-    body: JSON.stringify(body),
-    headers: {
-      'content-type': 'application/json',
-    },
-  })
+  const response = await app.request('/api/system/users', jsonRequest(body, { method: 'POST' }))
 
-  const responseBody = (await response.json()) as UserCreateResponse
+  const responseBody = await responseJson<UserCreateResponse>(response)
 
   return {
     body: responseBody.user,
@@ -153,22 +148,24 @@ describe('user routes', () => {
       fixture.authHeaders,
     )
 
-    const response = await app.request('/api/system/users', {
-      method: 'POST',
-      body: JSON.stringify({
-        username: 'created-by-admin',
-        nickname: 'Created By Admin',
-        email: null,
-        phone: null,
-        status: USER_STATUS_ENABLED,
-        departmentIds: [],
-        roleIds: [],
-      }),
-      headers: {
-        'content-type': 'application/json',
-      },
-    })
-    const body = (await response.json()) as UserCreateResponse
+    const response = await app.request(
+      '/api/system/users',
+      jsonRequest(
+        {
+          username: 'created-by-admin',
+          nickname: 'Created By Admin',
+          email: null,
+          phone: null,
+          status: USER_STATUS_ENABLED,
+          departmentIds: [],
+          roleIds: [],
+        },
+        {
+          method: 'POST',
+        },
+      ),
+    )
+    const body = await responseJson<UserCreateResponse>(response)
 
     expect(response.status).toBe(201)
     expect(body.user.username).toBe('created-by-admin')
@@ -194,42 +191,54 @@ describe('user routes', () => {
       fixture.authHeaders,
     )
 
-    const departmentResponse = await app.request('/api/system/users', {
-      method: 'POST',
-      body: JSON.stringify({
-        username: 'invalid-department-user',
-        nickname: 'Invalid Department User',
-        email: null,
-        phone: null,
-        status: USER_STATUS_ENABLED,
-        departmentIds: ['11111111-1111-4111-8111-111111111111'],
-        roleIds: [],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(departmentResponse.status).toBe(400)
-    expect(await departmentResponse.json()).toEqual({
-      field: 'departmentIds',
-      message: '部门不存在',
+    const departmentResponse = await app.request(
+      '/api/system/users',
+      jsonRequest(
+        {
+          username: 'invalid-department-user',
+          nickname: 'Invalid Department User',
+          email: null,
+          phone: null,
+          status: USER_STATUS_ENABLED,
+          departmentIds: ['11111111-1111-4111-8111-111111111111'],
+          roleIds: [],
+        },
+        {
+          method: 'POST',
+        },
+      ),
+    )
+    await expectJsonResponse(departmentResponse, {
+      status: 400,
+      body: {
+        field: 'departmentIds',
+        message: '部门不存在',
+      },
     })
 
-    const roleResponse = await app.request('/api/system/users', {
-      method: 'POST',
-      body: JSON.stringify({
-        username: 'invalid-role-user',
-        nickname: 'Invalid Role User',
-        email: null,
-        phone: null,
-        status: USER_STATUS_ENABLED,
-        departmentIds: [],
-        roleIds: ['22222222-2222-4222-8222-222222222222'],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(roleResponse.status).toBe(400)
-    expect(await roleResponse.json()).toEqual({
-      field: 'roleIds',
-      message: '角色不存在',
+    const roleResponse = await app.request(
+      '/api/system/users',
+      jsonRequest(
+        {
+          username: 'invalid-role-user',
+          nickname: 'Invalid Role User',
+          email: null,
+          phone: null,
+          status: USER_STATUS_ENABLED,
+          departmentIds: [],
+          roleIds: ['22222222-2222-4222-8222-222222222222'],
+        },
+        {
+          method: 'POST',
+        },
+      ),
+    )
+    await expectJsonResponse(roleResponse, {
+      status: 400,
+      body: {
+        field: 'roleIds',
+        message: '角色不存在',
+      },
     })
   })
 

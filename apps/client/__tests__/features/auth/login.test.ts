@@ -1,6 +1,4 @@
-// @vitest-environment happy-dom
-
-import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
+import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '../../../src/stores/auth'
 import { login } from '../../../src/features/auth/requests'
@@ -12,9 +10,6 @@ import {
   stubPreferredDark,
   triggerBrowserSubmit,
 } from '../../helpers/auth'
-
-enableAutoUnmount(afterEach)
-
 const { MockAuthRequestError } = vi.hoisted(() => ({
   MockAuthRequestError: class MockAuthRequestError extends Error {
     constructor(

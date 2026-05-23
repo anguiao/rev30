@@ -1,5 +1,4 @@
-import { createPinia, setActivePinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   AUTH_ACTION_HEADER,
   AUTH_ACTION_REFRESH,
@@ -9,6 +8,14 @@ import {
 } from '@rev30/shared'
 import { api, authFetch } from '../src/api'
 import { useAuthStore } from '../src/stores/auth'
+import {
+  createFetchMock,
+  emptyResponse,
+  expectFetchCall,
+  getFetchCall,
+  jsonResponse,
+} from './helpers/fetch'
+import { createTestPinia } from './helpers/pinia'
 
 const session = {
   accessToken: 'access-token',
@@ -65,17 +72,12 @@ async function flushMicrotasks() {
 }
 
 beforeEach(() => {
-  setActivePinia(createPinia())
-})
-
-afterEach(() => {
-  vi.unstubAllGlobals()
+  createTestPinia()
 })
 
 describe('authFetch', () => {
   it('preserves caller authorization when an access token is present', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(jsonResponse({}))
     useAuthStore().accessToken = 'access-token'
 
     await authFetch('/api/health', {
@@ -84,13 +86,11 @@ describe('authFetch', () => {
       },
     })
 
-    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
-    expect(new Headers(init.headers).get('authorization')).toBe('Basic caller-token')
+    expect(getFetchCall(fetchMock).headers.get('authorization')).toBe('Basic caller-token')
   })
 
   it('preserves caller headers while adding the bearer token', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(jsonResponse({}))
     useAuthStore().accessToken = 'access-token'
 
     await authFetch('/api/health', {
@@ -99,8 +99,7 @@ describe('authFetch', () => {
       },
     })
 
-    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
-    const headers = new Headers(init.headers)
+    const { headers } = getFetchCall(fetchMock)
     expect(headers.get('x-request-id')).toBe('request-id')
     expect(headers.get('authorization')).toBe('Bearer access-token')
   })
@@ -108,42 +107,40 @@ describe('authFetch', () => {
   it.each(['include', 'omit'] as const)(
     'preserves explicit %s credentials',
     async (credentials) => {
-      const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
-      vi.stubGlobal('fetch', fetchMock)
+      const fetchMock = createFetchMock(jsonResponse({}))
 
       await authFetch('/api/health', {
         credentials,
       })
 
-      const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
-      expect(init.credentials).toBe(credentials)
+      expect(getFetchCall(fetchMock).init.credentials).toBe(credentials)
     },
   )
 
   it('omits authorization when no access token is present', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(jsonResponse({}))
 
     await authFetch('/api/health')
 
-    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
-    expect(new Headers(init.headers).has('authorization')).toBe(false)
+    expect(getFetchCall(fetchMock).headers.has('authorization')).toBe(false)
   })
 
   it('refreshes the access token through RPC and retries refreshable unauthorized responses', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ message: '未授权' }), {
+    const fetchMock = createFetchMock(
+      jsonResponse(
+        {
+          message: '未授权',
+        },
+        {
           status: 401,
           headers: {
             [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
           },
-        }),
-      )
-      .mockResolvedValueOnce(new Response(JSON.stringify(refreshedSession)))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })))
-    vi.stubGlobal('fetch', fetchMock)
+        },
+      ),
+      jsonResponse(refreshedSession),
+      jsonResponse({ ok: true }),
+    )
     const auth = useAuthStore()
     auth.setSession(session)
 
@@ -166,10 +163,8 @@ describe('authFetch', () => {
       }),
     )
 
-    const [, firstInit] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
-    const [, retryInit] = fetchMock.mock.calls[2] as [RequestInfo | URL, RequestInit]
-    const firstHeaders = new Headers(firstInit.headers)
-    const retryHeaders = new Headers(retryInit.headers)
+    const firstHeaders = getFetchCall(fetchMock, 0).headers
+    const retryHeaders = getFetchCall(fetchMock, 2).headers
 
     expect(firstHeaders.get('authorization')).toBe('Bearer access-token')
     expect(retryHeaders.get('authorization')).toBe('Bearer new-access-token')
@@ -207,15 +202,19 @@ describe('authFetch', () => {
   })
 
   it('does not refresh unauthorized responses without a local access token', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ message: '未授权' }), {
-        status: 401,
-        headers: {
-          [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
+    const fetchMock = createFetchMock(
+      jsonResponse(
+        {
+          message: '未授权',
         },
-      }),
+        {
+          status: 401,
+          headers: {
+            [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
+          },
+        },
+      ),
     )
-    vi.stubGlobal('fetch', fetchMock)
 
     const response = await authFetch('/api/system/users')
 
@@ -224,11 +223,10 @@ describe('authFetch', () => {
   })
 
   it('clears the current session and logs out for non-refreshable unauthorized responses', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ message: '未授权' }), { status: 401 }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(
+      jsonResponse({ message: '未授权' }, { status: 401 }),
+      emptyResponse(),
+    )
     const auth = useAuthStore()
     auth.setSession(session)
 
@@ -371,27 +369,21 @@ describe('authFetch', () => {
 
 describe('api client', () => {
   it('requests the health endpoint through authFetch defaults', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          service: 'rev30-server',
-          status: 'ok',
-        }),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        service: 'rev30-server',
+        status: 'ok',
+      }),
     )
-    vi.stubGlobal('fetch', fetchMock)
 
     await api.health.$get()
 
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/health',
-      expect.objectContaining({
-        method: 'GET',
-      }),
-    )
-    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
-    expect(init.credentials).toBe('same-origin')
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/health',
+    })
+    expect(getFetchCall(fetchMock).init.credentials).toBe('same-origin')
   })
 
   it('adds the bearer token from the auth store when present', async () => {

@@ -1,14 +1,15 @@
 import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { NConfigProvider, NDialogProvider, NMessageProvider, dateZhCN, zhCN } from 'naive-ui'
-import { createPinia, disposePinia, setActivePinia, type Pinia } from 'pinia'
 import { defineComponent } from 'vue'
 import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router'
-import { vi } from 'vitest'
 import type { AuthTokenResponse } from '@rev30/shared'
 import { USER_STATUS_ENABLED } from '@rev30/shared'
 import { canDirective } from '../../src/directives/can'
 import { useAuthStore } from '../../src/stores/auth'
+import { createTestPinia } from './pinia'
+export { resetThemeDom, stubPreferredDark } from './dom'
+export { createTestPinia, disposeActiveTestPinia } from './pinia'
 
 export const session: AuthTokenResponse = {
   accessToken: 'access-token',
@@ -65,40 +66,6 @@ export const session: AuthTokenResponse = {
     createdAt: '2026-05-01T00:00:00.000Z',
     updatedAt: '2026-05-01T00:00:00.000Z',
   },
-}
-
-let activeTestPinia: Pinia | undefined
-
-export function createTestPinia() {
-  activeTestPinia = createPinia()
-  setActivePinia(activeTestPinia)
-
-  return activeTestPinia
-}
-
-export function disposeActiveTestPinia() {
-  if (activeTestPinia === undefined) {
-    return
-  }
-
-  disposePinia(activeTestPinia)
-  activeTestPinia = undefined
-}
-
-export function stubPreferredDark(matches: boolean) {
-  vi.stubGlobal(
-    'matchMedia',
-    vi.fn((query: string) => ({
-      matches,
-      media: query,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
-  )
 }
 
 export async function mountAuthRoute(

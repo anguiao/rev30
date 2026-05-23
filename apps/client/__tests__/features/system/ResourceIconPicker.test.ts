@@ -1,7 +1,5 @@
-// @vitest-environment happy-dom
-
 import { PiniaColada } from '@pinia/colada'
-import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -30,9 +28,6 @@ vi.mock('../../../src/features/system', async (importOriginal) => ({
 }))
 
 const searchIconsMock = vi.mocked(searchIcons)
-
-enableAutoUnmount(afterEach)
-
 type IconSearchList = Array<{
   icon: string
   prefix: string

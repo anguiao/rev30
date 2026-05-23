@@ -1,10 +1,8 @@
-// @vitest-environment happy-dom
-
 import { PiniaColada } from '@pinia/colada'
-import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NInputNumber, NSelect } from 'naive-ui'
 import {
   RESOURCE_OPEN_TARGET_BLANK,
@@ -26,9 +24,6 @@ import {
   updateResource,
 } from '../../../src/features/system'
 import ResourceFormDrawer from '../../../src/features/system/ResourceFormDrawer.vue'
-
-enableAutoUnmount(afterEach)
-
 vi.mock('../../../src/features/system/ResourceIconPicker.vue', () => ({
   default: defineComponent({
     name: 'ResourceIconPickerStub',

@@ -1,5 +1,3 @@
-// @vitest-environment happy-dom
-
 import { describe, expect, it } from 'vitest'
 import { useForm, type AnyFieldMeta } from '@tanstack/vue-form'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'

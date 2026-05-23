@@ -1,6 +1,4 @@
-// @vitest-environment happy-dom
-
-import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
+import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { NDataTable, NPagination, NSelect } from 'naive-ui'
@@ -26,9 +24,6 @@ import {
   session,
   stubPreferredDark,
 } from '../../helpers/auth'
-
-enableAutoUnmount(afterEach)
-
 vi.mock('../../../src/features/system/ResourceFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'ResourceFormDrawerStub',

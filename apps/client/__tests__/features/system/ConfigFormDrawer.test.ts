@@ -1,9 +1,7 @@
-// @vitest-environment happy-dom
-
 import { PiniaColada } from '@pinia/colada'
-import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NInputNumber, NSelect, NSwitch } from 'naive-ui'
 import {
   CONFIG_STATUS_ENABLED,
@@ -19,9 +17,6 @@ import {
   updateConfig,
 } from '../../../src/features/system'
 import ConfigFormDrawer from '../../../src/features/system/ConfigFormDrawer.vue'
-
-enableAutoUnmount(afterEach)
-
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   createConfig: vi.fn(),

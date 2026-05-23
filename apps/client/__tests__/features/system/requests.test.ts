@@ -1,7 +1,4 @@
-// @vitest-environment happy-dom
-
-import { createPinia, setActivePinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   CONFIG_STATUS_ENABLED,
   CONFIG_VALUE_TYPE_STRING,
@@ -58,55 +55,51 @@ import {
   updateUser,
 } from '../../../src/features/system'
 import { useAuthStore } from '../../../src/stores/auth'
+import { createFetchMock, expectFetchCall, jsonResponse } from '../../helpers/fetch'
+import { createTestPinia } from '../../helpers/pinia'
 
 beforeEach(() => {
-  setActivePinia(createPinia())
-})
-
-afterEach(() => {
-  vi.unstubAllGlobals()
+  createTestPinia()
 })
 
 describe('system request helpers', () => {
   it('searches icons through the public icon endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          list: [
-            {
-              icon: 'lucide:users',
-              prefix: 'lucide',
-              name: 'users',
-              collection: 'Lucide',
-              palette: false,
-            },
-          ],
-        }),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        list: [
+          {
+            icon: 'lucide:users',
+            prefix: 'lucide',
+            name: 'users',
+            collection: 'Lucide',
+            palette: false,
+          },
+        ],
+      }),
     )
-    vi.stubGlobal('fetch', fetchMock)
 
     const result = await searchIcons({ keyword: '用户', limit: 20 })
 
     expect(result.list[0]?.icon).toBe('lucide:users')
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/icons/search')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('keyword=%E7%94%A8%E6%88%B7')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('limit=20')
+    expectFetchCall(fetchMock, 0, {
+      pathname: '/api/icons/search',
+      query: {
+        keyword: '用户',
+        limit: '20',
+      },
+    })
   })
 
   it('parses list responses from the system users endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          list: [],
-          total: 0,
-          page: 1,
-          pageSize: 20,
-        }),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        list: [],
+        total: 0,
+        page: 1,
+        pageSize: 20,
+      }),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
     const result = await listUsers({
@@ -118,23 +111,24 @@ describe('system request helpers', () => {
 
     expect(result.total).toBe(0)
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/users')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('keyword=ada')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('status=1')
+    expectFetchCall(fetchMock, 0, {
+      pathname: '/api/system/users',
+      query: {
+        keyword: 'ada',
+        status: '1',
+      },
+    })
   })
 
   it('omits empty query values before sending requests', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          list: [],
-          total: 0,
-          page: 1,
-          pageSize: 20,
-        }),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        list: [],
+        total: 0,
+        page: 1,
+        pageSize: 20,
+      }),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
     await listUsers({
@@ -145,8 +139,13 @@ describe('system request helpers', () => {
     })
 
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('keyword=')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('status=1')
+    expectFetchCall(fetchMock, 0, {
+      pathname: '/api/system/users',
+      query: {
+        keyword: undefined,
+        status: '1',
+      },
+    })
   })
 
   it('parses list responses from the system configs endpoint', async () => {

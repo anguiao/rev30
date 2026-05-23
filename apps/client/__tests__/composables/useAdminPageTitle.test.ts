@@ -1,13 +1,8 @@
-// @vitest-environment happy-dom
-
-import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
+import { flushPromises } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
 import { defineComponent } from 'vue'
 import { useAdminPageTitle } from '../../src/composables/useAdminPageTitle'
 import { disposeActiveTestPinia, mountAuthRoute, session } from '../helpers/auth'
-
-enableAutoUnmount(afterEach)
-
 const TestPage = defineComponent({
   setup() {
     const title = useAdminPageTitle('Fallback Title')

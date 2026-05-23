@@ -1,5 +1,3 @@
-// @vitest-environment happy-dom
-
 import { describe, expect, it } from 'vitest'
 import { toSelectOptions, toTreeOptions } from '../../src/utils/ui'
 

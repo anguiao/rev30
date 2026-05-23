@@ -1,8 +1,6 @@
-// @vitest-environment happy-dom
-
 import { PiniaColada } from '@pinia/colada'
-import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NInputNumber, NSelect, NTree } from 'naive-ui'
 import {
   RESOURCE_OPEN_TARGET_SELF,
@@ -23,9 +21,6 @@ import {
 } from '../../../src/features/system'
 import RoleFormDrawer from '../../../src/features/system/RoleFormDrawer.vue'
 import { createPinia, setActivePinia } from 'pinia'
-
-enableAutoUnmount(afterEach)
-
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   createRole: vi.fn(),

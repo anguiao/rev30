@@ -1,8 +1,6 @@
-// @vitest-environment happy-dom
-
 import { PiniaColada } from '@pinia/colada'
-import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NSelect, NTreeSelect } from 'naive-ui'
 import {
   DEPARTMENT_STATUS_DISABLED,
@@ -26,9 +24,6 @@ import {
 } from '../../../src/features/system'
 import UserFormDrawer from '../../../src/features/system/UserFormDrawer.vue'
 import { createPinia, setActivePinia } from 'pinia'
-
-enableAutoUnmount(afterEach)
-
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   createUser: vi.fn(),

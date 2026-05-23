@@ -1,12 +1,6 @@
-// @vitest-environment happy-dom
-
-import { enableAutoUnmount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AdminPage from '../../src/pages/index.vue'
 import { disposeActiveTestPinia, mountAuthRoute, stubPreferredDark } from '../helpers/auth'
-
-enableAutoUnmount(afterEach)
-
 async function mountAdminRoute(path = '/') {
   return mountAuthRoute(path, [
     {

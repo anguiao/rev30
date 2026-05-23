@@ -1,15 +1,10 @@
-// @vitest-environment happy-dom
-
-import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import type { AuthTokenResponse } from '@rev30/shared'
 import { defineComponent, nextTick, ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '../../src/stores/auth'
 import { canDirective } from '../../src/directives/can'
 import { createTestPinia, disposeActiveTestPinia, session } from '../helpers/auth'
-
-enableAutoUnmount(afterEach)
-
 function mountProtectedButton(template: string, authSession: AuthTokenResponse = session) {
   const pinia = createTestPinia()
   const auth = useAuthStore(pinia)

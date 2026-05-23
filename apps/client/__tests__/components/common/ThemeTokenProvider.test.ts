@@ -1,11 +1,7 @@
-// @vitest-environment happy-dom
-
-import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { NConfigProvider } from 'naive-ui'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import ThemeTokenProvider from '../../../src/components/common/ThemeTokenProvider.vue'
-
-enableAutoUnmount(afterEach)
 
 describe('ThemeTokenProvider', () => {
   beforeEach(() => {

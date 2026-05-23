@@ -6,3 +6,4 @@
 - `modules/*/integration.test.ts`：模块级集成测试，使用 `createTestDb` 提供的事务化 PGlite 数据库，覆盖用户可见 API 行为、权限、关联数据、软删除和唯一性约束。
 - `modules/system/repository-locks.test.ts`：仓储并发契约测试，使用轻量 fake db 记录查询顺序，只验证事务与行锁调用时机，不验证数据库持久化结果。
 - `helpers/*`：测试夹具和共享基础设施，`db.ts` 提供已迁移数据库和逐测试事务回滚，`auth.ts` 构造系统访问权限场景。
+- `helpers/http.ts`：HTTP 边界测试的 JSON 请求、响应解析和状态/响应体断言工具；新增或重构路由测试时优先使用，避免重复手写 `JSON.stringify`、`content-type` 和类型断言。

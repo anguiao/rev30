@@ -1,5 +1,4 @@
-import { createPinia, setActivePinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { USER_STATUS_ENABLED } from '@rev30/shared'
 import {
   AuthRequestError,
@@ -9,14 +8,18 @@ import {
   updateMyPassword,
   updateMyProfile,
 } from '../../../src/features/auth/requests'
+import {
+  createFetchMock,
+  emptyResponse,
+  expectFetchCall,
+  expectJsonBody,
+  jsonResponse,
+} from '../../helpers/fetch'
+import { createTestPinia } from '../../helpers/pinia'
 
 describe('auth requests', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
+    createTestPinia()
   })
 
   it('maps auth error responses to a typed error', async () => {
@@ -63,18 +66,15 @@ describe('auth requests', () => {
   })
 
   it('logs out through the Hono RPC client', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(emptyResponse())
 
     await logout()
 
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/auth/logout',
-      expect.objectContaining({
-        method: 'POST',
-      }),
-    )
+    expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: '/api/auth/logout',
+    })
   })
 
   it('updates my profile through the Hono RPC client with provided input', async () => {
@@ -92,8 +92,7 @@ describe('auth requests', () => {
       updatedAt: '2026-05-02T00:00:00.000Z',
     }
 
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(responseBody)))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(jsonResponse(responseBody))
 
     const result = await updateMyProfile({
       nickname: 'Ada Lovelace',
@@ -103,16 +102,11 @@ describe('auth requests', () => {
 
     expect(result).toEqual(responseBody)
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/auth/me/profile',
-      expect.objectContaining({
-        method: 'PATCH',
-      }),
-    )
-
-    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
-    expect(init.body).toEqual(expect.any(String))
-    expect(JSON.parse(init.body as string)).toEqual({
+    expectFetchCall(fetchMock, 0, {
+      method: 'PATCH',
+      pathname: '/api/auth/me/profile',
+    })
+    expectJsonBody(fetchMock, 0, {
       nickname: 'Ada Lovelace',
       email: 'ada@example.com',
       phone: '18888888888',
@@ -120,12 +114,17 @@ describe('auth requests', () => {
   })
 
   it('parses auth request errors for my profile updates', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ field: 'nickname', message: '昵称过长' }), {
-        status: 400,
-      }),
+    createFetchMock(
+      jsonResponse(
+        {
+          field: 'nickname',
+          message: '昵称过长',
+        },
+        {
+          status: 400,
+        },
+      ),
     )
-    vi.stubGlobal('fetch', fetchMock)
 
     await expect(
       updateMyProfile({
@@ -141,21 +140,18 @@ describe('auth requests', () => {
   })
 
   it('rejects malformed update profile responses that do not match the User schema', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-          username: 'ada',
-          status: 'enabled',
-          builtIn: false,
-          departments: [],
-          roles: [],
-          createdAt: '2026-05-01T00:00:00.000Z',
-          updatedAt: '2026-05-01T00:00:00.000Z',
-        }),
-      ),
+    createFetchMock(
+      jsonResponse({
+        id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        username: 'ada',
+        status: 'enabled',
+        builtIn: false,
+        departments: [],
+        roles: [],
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      }),
     )
-    vi.stubGlobal('fetch', fetchMock)
 
     await expect(
       updateMyProfile({
@@ -167,8 +163,7 @@ describe('auth requests', () => {
   })
 
   it('updates my password through the Hono RPC client with provided input', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(emptyResponse())
 
     const result = await updateMyPassword({
       currentPassword: 'password123',
@@ -177,28 +172,27 @@ describe('auth requests', () => {
 
     expect(result).toBeUndefined()
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/auth/me/password',
-      expect.objectContaining({
-        method: 'PATCH',
-      }),
-    )
-
-    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
-    expect(init.body).toEqual(expect.any(String))
-    expect(JSON.parse(init.body as string)).toEqual({
+    expectFetchCall(fetchMock, 0, {
+      method: 'PATCH',
+      pathname: '/api/auth/me/password',
+    })
+    expectJsonBody(fetchMock, 0, {
       currentPassword: 'password123',
       newPassword: 'password456',
     })
   })
 
   it('reuses parseAuthError for profile and password request failures', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ message: '当前密码错误' }), {
-        status: 400,
-      }),
+    createFetchMock(
+      jsonResponse(
+        {
+          message: '当前密码错误',
+        },
+        {
+          status: 400,
+        },
+      ),
     )
-    vi.stubGlobal('fetch', fetchMock)
 
     await expect(
       updateMyPassword({

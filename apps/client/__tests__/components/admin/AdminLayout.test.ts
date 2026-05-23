@@ -1,7 +1,5 @@
-// @vitest-environment happy-dom
-
 import { PiniaColada } from '@pinia/colada'
-import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import type { AuthTokenResponse } from '@rev30/shared'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
@@ -11,9 +9,6 @@ import AdminLayout from '../../../src/components/admin/AdminLayout.vue'
 import { logout } from '../../../src/features/auth'
 import { useAuthStore } from '../../../src/stores/auth'
 import { session, stubPreferredDark } from '../../helpers/auth'
-
-enableAutoUnmount(afterEach)
-
 vi.mock('../../../src/features/auth', () => ({
   logout: vi.fn(),
 }))

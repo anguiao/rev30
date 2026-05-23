@@ -1,6 +1,4 @@
-// @vitest-environment happy-dom
-
-import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
+import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NPagination, NSelect } from 'naive-ui'
 import {
@@ -23,9 +21,6 @@ import {
   session,
   stubPreferredDark,
 } from '../../helpers/auth'
-
-enableAutoUnmount(afterEach)
-
 vi.mock('../../../src/features/system/RoleFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'RoleFormDrawerStub',

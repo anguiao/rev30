@@ -212,6 +212,21 @@ describe('announcement routes', () => {
     expect(invalidBodyResponse.status).toBe(400)
     expect(await invalidBodyResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.create).not.toHaveBeenCalled()
+
+    const createInvalidContentResponse = await app.request('/api/content/announcements', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...createBody,
+        contentJson: { type: 'bad' },
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(createInvalidContentResponse.status).toBe(400)
+    expect(await createInvalidContentResponse.json()).toEqual({
+      field: 'contentJson',
+      message: '公告正文格式无效',
+    })
+    expect(mocks.service.create).not.toHaveBeenCalled()
   })
 
   it('maps announcement domain errors to route responses', async () => {

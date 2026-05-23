@@ -43,17 +43,30 @@ const announcementListQueryValidator = zValidator(
   },
 )
 
+function getInvalidContentJsonMessage(error: Parameters<typeof z.flattenError>[0]) {
+  const fieldErrors = z.flattenError(error).fieldErrors as Record<string, string[] | undefined>
+  const contentJsonError = fieldErrors.contentJson?.[0]
+
+  return contentJsonError === '公告正文格式无效' ? contentJsonError : undefined
+}
+
 const announcementCreateBodyValidator = zValidator('json', announcementCreateSchema, (result, c) => {
   if (!result.success) {
+    const contentJsonError = getInvalidContentJsonMessage(result.error)
+
+    if (contentJsonError) {
+      return c.json({ field: 'contentJson', message: contentJsonError }, 400)
+    }
+
     return c.json({ message: '请求体无效' }, 400)
   }
 })
 
 const announcementUpdateBodyValidator = zValidator('json', announcementUpdateSchema, (result, c) => {
   if (!result.success) {
-    const contentJsonError = z.flattenError(result.error).fieldErrors.contentJson?.[0]
+    const contentJsonError = getInvalidContentJsonMessage(result.error)
 
-    if (contentJsonError === '公告正文格式无效') {
+    if (contentJsonError) {
       return c.json({ field: 'contentJson', message: contentJsonError }, 400)
     }
 

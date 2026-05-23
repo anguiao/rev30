@@ -109,6 +109,26 @@ describe('announcement routes', () => {
     expect(detailBody.contentJson).toEqual(createBody.contentJson)
   })
 
+  it('rejects creating announcements with invalid contentJson structure', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+
+    const response = await app.request('/api/content/announcements', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...createBody,
+        contentJson: { type: 'bad' },
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(400)
+    expect((await response.json()) as ErrorResponse).toEqual({
+      field: 'contentJson',
+      message: '公告正文格式无效',
+    })
+  })
+
   it('updates content text when patching announcement content', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)

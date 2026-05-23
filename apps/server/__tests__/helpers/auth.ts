@@ -68,6 +68,19 @@ export function createProtectedSystemRouteTestApp(
   return withDefaultHeaders(app, defaultHeaders)
 }
 
+export function createProtectedContentRouteTestApp(
+  database: Db,
+  routePath: string,
+  routeApp: Hono<any, any, any>,
+  defaultHeaders?: Record<string, string>,
+) {
+  const app = new Hono()
+    .use('/api/content/*', createAuthMiddleware(database))
+    .route(routePath, routeApp)
+
+  return withDefaultHeaders(app, defaultHeaders)
+}
+
 export async function createSystemAccessFixture(
   database: Db,
   options: SystemAccessFixtureOptions = {},

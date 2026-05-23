@@ -1,0 +1,260 @@
+import type { Context, Next } from 'hono'
+import { Hono } from 'hono'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  ANNOUNCEMENT_STATUS_DRAFT,
+  ANNOUNCEMENT_STATUS_PUBLISHED,
+  ANNOUNCEMENT_TYPE_NOTICE,
+} from '@rev30/shared'
+import {
+  AnnouncementContentInvalidError,
+  AnnouncementDraftArchiveError,
+  AnnouncementEmptyContentError,
+  AnnouncementNotFoundError,
+} from '../../../../src/modules/content/announcements/errors'
+import { createAnnouncementRoutes } from '../../../../src/modules/content/announcements/routes'
+
+const announcementId = '11111111-1111-4111-8111-111111111111'
+const announcement = {
+  id: announcementId,
+  type: ANNOUNCEMENT_TYPE_NOTICE,
+  title: '维护通知',
+  summary: '今晚维护',
+  contentJson: {
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: '今晚维护' }] }],
+  },
+  contentText: '今晚维护',
+  status: ANNOUNCEMENT_STATUS_DRAFT,
+  pinned: true,
+  publishedAt: null,
+  createdAt: '2026-05-18T00:00:00.000Z',
+  updatedAt: '2026-05-18T00:00:00.000Z',
+}
+
+const listResponse = {
+  list: [
+    {
+      id: announcementId,
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+      title: '维护通知',
+      summary: '今晚维护',
+      status: ANNOUNCEMENT_STATUS_PUBLISHED,
+      pinned: true,
+      publishedAt: '2026-05-18T00:00:00.000Z',
+      createdAt: '2026-05-18T00:00:00.000Z',
+      updatedAt: '2026-05-18T00:00:00.000Z',
+    },
+  ],
+  total: 1,
+  page: 2,
+  pageSize: 5,
+}
+
+const createBody = {
+  type: ANNOUNCEMENT_TYPE_NOTICE,
+  title: '维护通知',
+  summary: '今晚维护',
+  contentJson: {
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: '今晚维护' }] }],
+  },
+  pinned: true,
+}
+
+const mocks = vi.hoisted(() => {
+  const accessMiddleware = vi.fn(async (_c: Context, next: Next) => next())
+  const service = {
+    archive: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
+    get: vi.fn(),
+    list: vi.fn(),
+    publish: vi.fn(),
+    update: vi.fn(),
+  }
+
+  return {
+    accessMiddleware,
+    createAnnouncementService: vi.fn(() => service),
+    requireAccess: vi.fn(() => accessMiddleware),
+    service,
+  }
+})
+
+vi.mock('../../../../src/middleware/access', () => ({
+  requireAccess: mocks.requireAccess,
+}))
+
+vi.mock('../../../../src/modules/content/announcements/service', () => ({
+  createAnnouncementService: mocks.createAnnouncementService,
+}))
+
+function createTestApp() {
+  return new Hono().route('/api/content/announcements', createAnnouncementRoutes({} as never))
+}
+
+describe('announcement routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    Object.values(mocks.service).forEach((mock) => mock.mockReset())
+    mocks.requireAccess.mockReturnValue(mocks.accessMiddleware)
+    mocks.createAnnouncementService.mockReturnValue(mocks.service)
+    mocks.service.list.mockResolvedValue(listResponse)
+    mocks.service.get.mockResolvedValue(announcement)
+    mocks.service.create.mockResolvedValue(announcement)
+    mocks.service.update.mockResolvedValue({ ...announcement, title: '维护通知（更新）' })
+    mocks.service.publish.mockResolvedValue({
+      ...announcement,
+      status: ANNOUNCEMENT_STATUS_PUBLISHED,
+      publishedAt: '2026-05-19T00:00:00.000Z',
+    })
+    mocks.service.archive.mockResolvedValue({
+      ...announcement,
+      status: 'archived',
+    })
+    mocks.service.delete.mockResolvedValue(undefined)
+  })
+
+  it('registers expected access guards for every announcement endpoint', () => {
+    createTestApp()
+
+    expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
+      [
+        'content:announcement:list',
+        'content:announcement:list',
+        'content:announcement:create',
+        'content:announcement:update',
+        'content:announcement:update',
+        'content:announcement:update',
+        'content:announcement:delete',
+      ],
+    )
+  })
+
+  it('parses list query and delegates CRUD actions to the announcement service', async () => {
+    const app = createTestApp()
+    const headers = { 'content-type': 'application/json' }
+
+    const listResponse = await app.request(
+      '/api/content/announcements?page=2&pageSize=5&keyword=维护&type=notice&status=published&pinned=true',
+    )
+    expect(listResponse.status).toBe(200)
+    expect(mocks.service.list).toHaveBeenCalledWith({
+      page: 2,
+      pageSize: 5,
+      keyword: '维护',
+      type: 'notice',
+      status: 'published',
+      pinned: true,
+    })
+
+    const detailResponse = await app.request(`/api/content/announcements/${announcementId}`)
+    expect(detailResponse.status).toBe(200)
+    expect(mocks.service.get).toHaveBeenCalledWith(announcementId)
+
+    const createResponse = await app.request('/api/content/announcements', {
+      method: 'POST',
+      body: JSON.stringify(createBody),
+      headers,
+    })
+    expect(createResponse.status).toBe(201)
+    expect(mocks.service.create).toHaveBeenCalledWith({
+      ...createBody,
+      publish: false,
+    })
+
+    const updateResponse = await app.request(`/api/content/announcements/${announcementId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title: '维护通知（更新）' }),
+      headers,
+    })
+    expect(updateResponse.status).toBe(200)
+    expect(mocks.service.update).toHaveBeenCalledWith(announcementId, { title: '维护通知（更新）' })
+
+    const publishResponse = await app.request(`/api/content/announcements/${announcementId}/publish`, {
+      method: 'POST',
+    })
+    expect(publishResponse.status).toBe(200)
+    expect(mocks.service.publish).toHaveBeenCalledWith(announcementId)
+
+    const archiveResponse = await app.request(`/api/content/announcements/${announcementId}/archive`, {
+      method: 'POST',
+    })
+    expect(archiveResponse.status).toBe(200)
+    expect(mocks.service.archive).toHaveBeenCalledWith(announcementId)
+
+    const deleteResponse = await app.request(`/api/content/announcements/${announcementId}`, {
+      method: 'DELETE',
+    })
+    expect(deleteResponse.status).toBe(204)
+    expect(mocks.service.delete).toHaveBeenCalledWith(announcementId)
+  })
+
+  it('returns validation errors before calling service methods', async () => {
+    const app = createTestApp()
+
+    const queryResponse = await app.request('/api/content/announcements?page=0')
+    expect(queryResponse.status).toBe(400)
+    expect(await queryResponse.json()).toEqual({ message: '查询参数无效' })
+    expect(mocks.service.list).not.toHaveBeenCalled()
+
+    const idResponse = await app.request('/api/content/announcements/not-a-uuid')
+    expect(idResponse.status).toBe(400)
+    expect(await idResponse.json()).toEqual({ message: '通知公告 ID 无效' })
+    expect(mocks.service.get).not.toHaveBeenCalled()
+
+    const invalidBodyResponse = await app.request('/api/content/announcements', {
+      method: 'POST',
+      body: JSON.stringify({ title: 'x' }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(invalidBodyResponse.status).toBe(400)
+    expect(await invalidBodyResponse.json()).toEqual({ message: '请求体无效' })
+    expect(mocks.service.create).not.toHaveBeenCalled()
+  })
+
+  it('maps announcement domain errors to route responses', async () => {
+    const app = createTestApp()
+    const headers = { 'content-type': 'application/json' }
+
+    mocks.service.create.mockRejectedValueOnce(new AnnouncementEmptyContentError())
+    const emptyContentResponse = await app.request('/api/content/announcements', {
+      method: 'POST',
+      body: JSON.stringify(createBody),
+      headers,
+    })
+    expect(emptyContentResponse.status).toBe(400)
+    expect(await emptyContentResponse.json()).toEqual({
+      field: 'contentJson',
+      message: '请输入公告正文',
+    })
+
+    mocks.service.update.mockRejectedValueOnce(new AnnouncementContentInvalidError())
+    const invalidContentResponse = await app.request(`/api/content/announcements/${announcementId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ contentJson: { type: 'doc', content: [{ type: 'bad' }] } }),
+      headers,
+    })
+    expect(invalidContentResponse.status).toBe(400)
+    expect(await invalidContentResponse.json()).toEqual({
+      field: 'contentJson',
+      message: '公告正文格式无效',
+    })
+
+    mocks.service.get.mockRejectedValueOnce(new AnnouncementNotFoundError())
+    const notFoundResponse = await app.request(`/api/content/announcements/${announcementId}`)
+    expect(notFoundResponse.status).toBe(404)
+    expect(await notFoundResponse.json()).toEqual({ message: '通知公告不存在' })
+
+    mocks.service.archive.mockRejectedValueOnce(new AnnouncementDraftArchiveError())
+    const draftArchiveResponse = await app.request(
+      `/api/content/announcements/${announcementId}/archive`,
+      {
+        method: 'POST',
+      },
+    )
+    expect(draftArchiveResponse.status).toBe(400)
+    expect(await draftArchiveResponse.json()).toEqual({ message: '草稿公告不能下线' })
+  })
+})

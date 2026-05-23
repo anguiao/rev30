@@ -89,10 +89,7 @@ export const announcementListQuerySchema = paginationQuerySchema.extend({
   pinned: optionalPinnedQuerySchema,
 })
 
-function addAnnouncementContentIssue(
-  contentJson: unknown,
-  ctx: z.RefinementCtx,
-) {
+function addAnnouncementContentIssue(contentJson: unknown, ctx: z.RefinementCtx) {
   const result = parseAnnouncementContent(contentJson)
 
   if (result.success) {

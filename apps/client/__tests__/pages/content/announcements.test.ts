@@ -122,10 +122,15 @@ const announcementsResponse: AnnouncementListResponse = {
 }
 
 function toAnnouncementResponse(announcement: AnnouncementListItem): Announcement {
+  const contentText = announcement.summary ?? announcement.title
+
   return {
     ...announcement,
-    contentJson: { type: 'doc', content: [] },
-    contentText: announcement.summary ?? announcement.title,
+    contentJson: {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: contentText }] }],
+    },
+    contentText,
   }
 }
 

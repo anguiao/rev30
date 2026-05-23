@@ -13,13 +13,12 @@ import {
   NSelect,
   NSwitch,
 } from 'naive-ui'
+import { ANNOUNCEMENT_TYPE_NOTICE, type TiptapDocument } from '@rev30/shared'
 import {
-  ANNOUNCEMENT_TYPE_NOTICE,
   announcementCreateSchema,
   announcementUpdateSchema,
   type AnnouncementCreateInput,
-  type TiptapDocument,
-} from '@rev30/shared'
+} from '@rev30/shared/content/announcement-write'
 import RichTextEditor from './RichTextEditor.vue'
 import {
   ContentRequestError,

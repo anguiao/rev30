@@ -1,9 +1,7 @@
 import { z } from 'zod'
 import { nonBlankString, optionalNullableString } from '../common/inputs'
 import { paginationQuerySchema } from '../common/pagination'
-import { hasAnyDefinedValue } from '../common/refinements'
 import { optionalQueryValue, optionalTrimmedQueryString } from '../query'
-import { parseAnnouncementContent } from '../../utils/announcement-content'
 
 export const ANNOUNCEMENT_TYPE_NOTICE = 'notice'
 export const ANNOUNCEMENT_TYPE_ANNOUNCEMENT = 'announcement'
@@ -21,17 +19,17 @@ export const announcementStatusSchema = z.enum(
 )
 
 const announcementIdSchema = z.uuid('通知公告 ID 无效')
-const announcementTitleSchema = nonBlankString('请输入公告标题').max(
+export const announcementTitleSchema = nonBlankString('请输入公告标题').max(
   100,
   '公告标题不能超过 100 个字符',
 )
 const announcementSummarySchema = z.union([z.string().max(300), z.null()])
-const announcementSummaryInputSchema = optionalNullableString().pipe(
+export const announcementSummaryInputSchema = optionalNullableString().pipe(
   z.union([z.string().trim().max(300, '公告摘要不能超过 300 个字符'), z.null()]).optional(),
 )
 const announcementContentTextSchema = z.string()
 
-const tiptapDocumentSchema = z
+export const tiptapDocumentSchema = z
   .object({
     type: z.literal('doc', '公告正文格式无效'),
   })
@@ -89,65 +87,6 @@ export const announcementListQuerySchema = paginationQuerySchema.extend({
   pinned: optionalPinnedQuerySchema,
 })
 
-function addAnnouncementContentIssue(contentJson: unknown, ctx: z.RefinementCtx) {
-  const result = parseAnnouncementContent(contentJson)
-
-  if (result.success) {
-    return
-  }
-
-  ctx.addIssue({
-    code: 'custom',
-    path: ['contentJson'],
-    message: result.reason === 'empty' ? '请输入公告正文' : '公告正文格式无效',
-  })
-}
-
-const announcementWriteBaseFields = {
-  type: announcementTypeSchema,
-  title: announcementTitleSchema,
-  summary: announcementSummaryInputSchema,
-  contentJson: tiptapDocumentSchema,
-  pinned: z.boolean(),
-} satisfies z.ZodRawShape
-
-const partialAnnouncementUpdateFieldsSchema = z
-  .object({
-    ...announcementWriteBaseFields,
-    publish: z.boolean(),
-  })
-  .partial()
-  .superRefine((value, ctx) => {
-    if (value.contentJson !== undefined) {
-      addAnnouncementContentIssue(value.contentJson, ctx)
-    }
-  })
-
-type AnnouncementUpdateFields = z.infer<typeof partialAnnouncementUpdateFieldsSchema>
-
-function hasMeaningfulAnnouncementUpdate(input: AnnouncementUpdateFields) {
-  const { publish, ...rest } = input
-
-  return publish === true || hasAnyDefinedValue(rest)
-}
-
-export const announcementCreateSchema = z
-  .object({
-    ...announcementWriteBaseFields,
-    publish: z.boolean().default(false),
-    pinned: z.boolean().default(false),
-  })
-  .superRefine((value, ctx) => {
-    addAnnouncementContentIssue(value.contentJson, ctx)
-  })
-
-export const announcementUpdateSchema = partialAnnouncementUpdateFieldsSchema.refine(
-  hasMeaningfulAnnouncementUpdate,
-  {
-    message: '至少修改一个字段',
-  },
-)
-
 export const announcementListResponseSchema = z.object({
   list: z.array(announcementListItemSchema),
   total: z.number().int().min(0),
@@ -162,5 +101,3 @@ export type Announcement = z.infer<typeof announcementSchema>
 export type AnnouncementListItem = z.infer<typeof announcementListItemSchema>
 export type AnnouncementListQuery = z.infer<typeof announcementListQuerySchema>
 export type AnnouncementListResponse = z.infer<typeof announcementListResponseSchema>
-export type AnnouncementCreateInput = z.infer<typeof announcementCreateSchema>
-export type AnnouncementUpdateInput = z.infer<typeof announcementUpdateSchema>

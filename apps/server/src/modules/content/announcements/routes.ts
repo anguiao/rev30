@@ -1,14 +1,11 @@
-import type {
-  AnnouncementCreateInput,
-  AnnouncementListQuery,
-  AnnouncementUpdateInput,
-} from '@rev30/shared'
+import type { AnnouncementListQuery } from '@rev30/shared'
+import { announcementListQuerySchema, announcementSchema } from '@rev30/shared'
 import {
   announcementCreateSchema,
-  announcementListQuerySchema,
-  announcementSchema,
   announcementUpdateSchema,
-} from '@rev30/shared'
+  type AnnouncementCreateInput,
+  type AnnouncementUpdateInput,
+} from '@rev30/shared/content/announcement-write'
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import { z } from 'zod'

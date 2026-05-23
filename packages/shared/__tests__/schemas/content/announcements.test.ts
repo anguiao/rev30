@@ -5,13 +5,15 @@ import {
   ANNOUNCEMENT_STATUS_PUBLISHED,
   ANNOUNCEMENT_TYPE_ANNOUNCEMENT,
   ANNOUNCEMENT_TYPE_NOTICE,
-  announcementCreateSchema,
   announcementListItemSchema,
   announcementListQuerySchema,
   announcementListResponseSchema,
   announcementSchema,
-  announcementUpdateSchema,
 } from '../../../src/schemas/content/announcements'
+import {
+  announcementCreateSchema,
+  announcementUpdateSchema,
+} from '../../../src/schemas/content/announcement-write'
 import { prettifyZodError } from '../../helpers/schema'
 
 const announcementId = '11111111-1111-4111-8111-111111111111'

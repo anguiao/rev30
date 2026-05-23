@@ -335,10 +335,15 @@ watch(
           </div>
 
           <form.Field name="items" v-slot="{ state }">
-            <NFormItem data-test="dictionary-items" label="字典项" v-bind="itemsValidationProps">
+            <NFormItem
+              data-test="dictionary-items"
+              label="字典项"
+              content-style="align-items: flex-start;"
+              v-bind="itemsValidationProps"
+            >
               <div class="flex w-full flex-col gap-3">
                 <div
-                  class="grid grid-cols-[1.2fr_1.2fr_120px_100px_1.2fr_76px] items-center gap-2 text-sm text-neutral-500"
+                  class="grid grid-cols-[1.2fr_1.2fr_120px_100px_1.2fr_76px] items-center gap-2 text-sm text-stone-500 dark:text-zinc-400"
                 >
                   <span>字典项值</span>
                   <span>字典项名称</span>

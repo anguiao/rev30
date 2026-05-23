@@ -111,17 +111,19 @@ describe('PGlite migration runner', () => {
         path: '/system/configs',
       })
 
+      const announcementId = randomUUID()
+      const announcementContentJson = {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: '今晚维护' }] }],
+      }
       const [createdAnnouncement] = await database
         .insert(contentAnnouncements)
         .values({
-          id: randomUUID(),
+          id: announcementId,
           type: 'notice',
           title: '维护通知',
           summary: '今晚维护',
-          contentJson: {
-            type: 'doc',
-            content: [{ type: 'paragraph', content: [{ type: 'text', text: '今晚维护' }] }],
-          },
+          contentJson: announcementContentJson,
           contentText: '今晚维护',
           status: 'draft',
           pinned: true,
@@ -135,10 +137,16 @@ describe('PGlite migration runner', () => {
         .where(eq(systemResources.code, 'content:announcement'))
 
       expect(createdAnnouncement).toMatchObject({
+        id: announcementId,
         type: 'notice',
         title: '维护通知',
+        summary: '今晚维护',
+        contentJson: announcementContentJson,
+        contentText: '今晚维护',
         status: 'draft',
         pinned: true,
+        createdAt: now,
+        updatedAt: now,
       })
       expect(contentMenu).toMatchObject({
         code: 'content:announcement',

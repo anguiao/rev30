@@ -21,6 +21,7 @@ import {
   RESOURCE_OPEN_TARGET_SELF,
   RESOURCE_STATUS_ENABLED,
   ROLE_STATUS_ENABLED,
+  type TiptapDocument,
   USER_STATUS_ENABLED,
 } from '@rev30/shared'
 
@@ -159,7 +160,7 @@ export const contentAnnouncements = pgTable(
     type: text('type').notNull(),
     title: text('title').notNull(),
     summary: text('summary'),
-    contentJson: jsonb('content_json').notNull(),
+    contentJson: jsonb('content_json').$type<TiptapDocument>().notNull(),
     contentText: text('content_text').notNull(),
     status: text('status').notNull().default(ANNOUNCEMENT_STATUS_DRAFT),
     pinned: boolean('pinned').notNull().default(false),

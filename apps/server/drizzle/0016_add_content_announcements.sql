@@ -39,9 +39,9 @@ ON CONFLICT ("code") WHERE "system_resources"."deleted_at" IS NULL DO UPDATE SET
 INSERT INTO "system_resources"
   ("id", "parent_id", "type", "name", "code", "path", "external_url", "open_target", "icon", "hidden", "status", "sort_order", "created_at", "updated_at")
 VALUES
-  ('10000000-0000-4000-8000-000000000101', (SELECT "id" FROM "system_resources" WHERE "code" = 'content'), 'menu', '通知公告', 'content:announcement', '/content/announcements', NULL, 'self', 'lucide:megaphone', false, 1, 10, now(), now())
+  ('10000000-0000-4000-8000-000000000101', (SELECT "id" FROM "system_resources" WHERE "code" = 'content' AND "deleted_at" IS NULL), 'menu', '通知公告', 'content:announcement', '/content/announcements', NULL, 'self', 'lucide:megaphone', false, 1, 10, now(), now())
 ON CONFLICT ("code") WHERE "system_resources"."deleted_at" IS NULL DO UPDATE SET
-  "parent_id" = (SELECT "id" FROM "system_resources" WHERE "code" = 'content'),
+  "parent_id" = (SELECT "id" FROM "system_resources" WHERE "code" = 'content' AND "deleted_at" IS NULL),
   "type" = EXCLUDED."type",
   "name" = EXCLUDED."name",
   "path" = EXCLUDED."path",
@@ -57,12 +57,12 @@ ON CONFLICT ("code") WHERE "system_resources"."deleted_at" IS NULL DO UPDATE SET
 INSERT INTO "system_resources"
   ("id", "parent_id", "type", "name", "code", "path", "external_url", "open_target", "icon", "hidden", "status", "sort_order", "created_at", "updated_at")
 VALUES
-  ('10000000-0000-4000-8000-000000000102', (SELECT "id" FROM "system_resources" WHERE "code" = 'content:announcement'), 'action', '查看通知公告', 'content:announcement:list', NULL, NULL, 'self', NULL, false, 1, 10, now(), now()),
-  ('10000000-0000-4000-8000-000000000103', (SELECT "id" FROM "system_resources" WHERE "code" = 'content:announcement'), 'action', '创建通知公告', 'content:announcement:create', NULL, NULL, 'self', NULL, false, 1, 20, now(), now()),
-  ('10000000-0000-4000-8000-000000000104', (SELECT "id" FROM "system_resources" WHERE "code" = 'content:announcement'), 'action', '更新通知公告', 'content:announcement:update', NULL, NULL, 'self', NULL, false, 1, 30, now(), now()),
-  ('10000000-0000-4000-8000-000000000105', (SELECT "id" FROM "system_resources" WHERE "code" = 'content:announcement'), 'action', '删除通知公告', 'content:announcement:delete', NULL, NULL, 'self', NULL, false, 1, 40, now(), now())
+  ('10000000-0000-4000-8000-000000000102', (SELECT "id" FROM "system_resources" WHERE "code" = 'content:announcement' AND "deleted_at" IS NULL), 'action', '查看通知公告', 'content:announcement:list', NULL, NULL, 'self', NULL, false, 1, 10, now(), now()),
+  ('10000000-0000-4000-8000-000000000103', (SELECT "id" FROM "system_resources" WHERE "code" = 'content:announcement' AND "deleted_at" IS NULL), 'action', '创建通知公告', 'content:announcement:create', NULL, NULL, 'self', NULL, false, 1, 20, now(), now()),
+  ('10000000-0000-4000-8000-000000000104', (SELECT "id" FROM "system_resources" WHERE "code" = 'content:announcement' AND "deleted_at" IS NULL), 'action', '更新通知公告', 'content:announcement:update', NULL, NULL, 'self', NULL, false, 1, 30, now(), now()),
+  ('10000000-0000-4000-8000-000000000105', (SELECT "id" FROM "system_resources" WHERE "code" = 'content:announcement' AND "deleted_at" IS NULL), 'action', '删除通知公告', 'content:announcement:delete', NULL, NULL, 'self', NULL, false, 1, 40, now(), now())
 ON CONFLICT ("code") WHERE "system_resources"."deleted_at" IS NULL DO UPDATE SET
-  "parent_id" = (SELECT "id" FROM "system_resources" WHERE "code" = 'content:announcement'),
+  "parent_id" = (SELECT "id" FROM "system_resources" WHERE "code" = 'content:announcement' AND "deleted_at" IS NULL),
   "type" = EXCLUDED."type",
   "name" = EXCLUDED."name",
   "path" = EXCLUDED."path",

@@ -23,13 +23,16 @@ export const announcementTypeLabels = {
 
 export const announcementTypeSelectOptions: Array<{ label: string; value: AnnouncementType }> = [
   { label: announcementTypeLabels[ANNOUNCEMENT_TYPE_NOTICE], value: ANNOUNCEMENT_TYPE_NOTICE },
-  { label: announcementTypeLabels[ANNOUNCEMENT_TYPE_ANNOUNCEMENT], value: ANNOUNCEMENT_TYPE_ANNOUNCEMENT },
+  {
+    label: announcementTypeLabels[ANNOUNCEMENT_TYPE_ANNOUNCEMENT],
+    value: ANNOUNCEMENT_TYPE_ANNOUNCEMENT,
+  },
 ]
 
-export const announcementTypeFilterOptions: Array<{ label: string; value: AnnouncementTypeFilter }> = [
-  { label: '全部', value: ANNOUNCEMENT_TYPE_FILTER_ALL },
-  ...announcementTypeSelectOptions,
-]
+export const announcementTypeFilterOptions: Array<{
+  label: string
+  value: AnnouncementTypeFilter
+}> = [{ label: '全部', value: ANNOUNCEMENT_TYPE_FILTER_ALL }, ...announcementTypeSelectOptions]
 
 export const announcementStatusLabels = {
   [ANNOUNCEMENT_STATUS_DRAFT]: '草稿',
@@ -37,11 +40,21 @@ export const announcementStatusLabels = {
   [ANNOUNCEMENT_STATUS_ARCHIVED]: '已归档',
 } as const satisfies Record<AnnouncementStatus, string>
 
-export const announcementStatusSelectOptions: Array<{ label: string; value: AnnouncementStatus }> = [
-  { label: announcementStatusLabels[ANNOUNCEMENT_STATUS_DRAFT], value: ANNOUNCEMENT_STATUS_DRAFT },
-  { label: announcementStatusLabels[ANNOUNCEMENT_STATUS_PUBLISHED], value: ANNOUNCEMENT_STATUS_PUBLISHED },
-  { label: announcementStatusLabels[ANNOUNCEMENT_STATUS_ARCHIVED], value: ANNOUNCEMENT_STATUS_ARCHIVED },
-]
+export const announcementStatusSelectOptions: Array<{ label: string; value: AnnouncementStatus }> =
+  [
+    {
+      label: announcementStatusLabels[ANNOUNCEMENT_STATUS_DRAFT],
+      value: ANNOUNCEMENT_STATUS_DRAFT,
+    },
+    {
+      label: announcementStatusLabels[ANNOUNCEMENT_STATUS_PUBLISHED],
+      value: ANNOUNCEMENT_STATUS_PUBLISHED,
+    },
+    {
+      label: announcementStatusLabels[ANNOUNCEMENT_STATUS_ARCHIVED],
+      value: ANNOUNCEMENT_STATUS_ARCHIVED,
+    },
+  ]
 
 export const announcementStatusFilterOptions: Array<{
   label: string

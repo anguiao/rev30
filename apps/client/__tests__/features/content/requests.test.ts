@@ -91,6 +91,63 @@ describe('content request helpers', () => {
     })
   })
 
+  it('keeps false pinned in the query string', async () => {
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        list: [],
+        total: 0,
+        page: 1,
+        pageSize: 20,
+      }),
+    )
+    useAuthStore().accessToken = 'access-token'
+
+    await listAnnouncements({
+      page: 1,
+      pageSize: 20,
+      pinned: false,
+    })
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/content/announcements',
+      query: {
+        page: '1',
+        pageSize: '20',
+        pinned: 'false',
+      },
+    })
+  })
+
+  it('omits pinned when it is not provided', async () => {
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        list: [],
+        total: 0,
+        page: 1,
+        pageSize: 20,
+      }),
+    )
+    useAuthStore().accessToken = 'access-token'
+
+    await listAnnouncements({
+      page: 1,
+      pageSize: 20,
+    })
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/content/announcements',
+      query: {
+        page: '1',
+        pageSize: '20',
+        pinned: undefined,
+      },
+    })
+  })
+
   it('gets announcement detail and parses response', async () => {
     const fetchMock = createFetchMock(jsonResponse(announcementResponse))
     useAuthStore().accessToken = 'access-token'
@@ -136,7 +193,9 @@ describe('content request helpers', () => {
   })
 
   it('publishes announcements and parses response', async () => {
-    const fetchMock = createFetchMock(jsonResponse({ ...announcementResponse, status: ANNOUNCEMENT_STATUS_PUBLISHED }))
+    const fetchMock = createFetchMock(
+      jsonResponse({ ...announcementResponse, status: ANNOUNCEMENT_STATUS_PUBLISHED }),
+    )
     useAuthStore().accessToken = 'access-token'
 
     const result = await publishAnnouncement(announcementId)
@@ -200,6 +259,29 @@ describe('content request helpers', () => {
     expectFetchCall(fetchMock, 0, {
       method: 'POST',
       pathname: '/api/content/announcements',
+    })
+  })
+
+  it('falls back when response error body is not structured', async () => {
+    const fetchMock = createFetchMock(
+      new Response('internal server error', {
+        status: 500,
+      }),
+    )
+    useAuthStore().accessToken = 'access-token'
+
+    const failedGet = getAnnouncement(announcementId)
+
+    await expect(failedGet).rejects.toBeInstanceOf(ContentRequestError)
+    await expect(failedGet).rejects.toMatchObject({
+      status: 500,
+      message: '请求失败',
+      field: undefined,
+    })
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: `/api/content/announcements/${announcementId}`,
     })
   })
 })

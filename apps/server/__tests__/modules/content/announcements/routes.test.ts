@@ -172,15 +172,21 @@ describe('announcement routes', () => {
     expect(updateResponse.status).toBe(200)
     expect(mocks.service.update).toHaveBeenCalledWith(announcementId, { title: '维护通知（更新）' })
 
-    const publishResponse = await app.request(`/api/content/announcements/${announcementId}/publish`, {
-      method: 'POST',
-    })
+    const publishResponse = await app.request(
+      `/api/content/announcements/${announcementId}/publish`,
+      {
+        method: 'POST',
+      },
+    )
     expect(publishResponse.status).toBe(200)
     expect(mocks.service.publish).toHaveBeenCalledWith(announcementId)
 
-    const archiveResponse = await app.request(`/api/content/announcements/${announcementId}/archive`, {
-      method: 'POST',
-    })
+    const archiveResponse = await app.request(
+      `/api/content/announcements/${announcementId}/archive`,
+      {
+        method: 'POST',
+      },
+    )
     expect(archiveResponse.status).toBe(200)
     expect(mocks.service.archive).toHaveBeenCalledWith(announcementId)
 
@@ -228,11 +234,14 @@ describe('announcement routes', () => {
     })
     expect(mocks.service.create).not.toHaveBeenCalled()
 
-    const publishFalseOnlyResponse = await app.request(`/api/content/announcements/${announcementId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ publish: false }),
-      headers: { 'content-type': 'application/json' },
-    })
+    const publishFalseOnlyResponse = await app.request(
+      `/api/content/announcements/${announcementId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ publish: false }),
+        headers: { 'content-type': 'application/json' },
+      },
+    )
     expect(publishFalseOnlyResponse.status).toBe(400)
     expect(await publishFalseOnlyResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.update).not.toHaveBeenCalled()
@@ -255,11 +264,14 @@ describe('announcement routes', () => {
     })
 
     mocks.service.update.mockRejectedValueOnce(new AnnouncementContentInvalidError())
-    const invalidContentResponse = await app.request(`/api/content/announcements/${announcementId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ contentJson: { type: 'doc', content: [{ type: 'bad' }] } }),
-      headers,
-    })
+    const invalidContentResponse = await app.request(
+      `/api/content/announcements/${announcementId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ contentJson: { type: 'doc', content: [{ type: 'bad' }] } }),
+        headers,
+      },
+    )
     expect(invalidContentResponse.status).toBe(400)
     expect(await invalidContentResponse.json()).toEqual({
       field: 'contentJson',

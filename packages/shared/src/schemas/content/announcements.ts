@@ -20,7 +20,10 @@ export const announcementStatusSchema = z.enum(
 )
 
 const announcementIdSchema = z.uuid('通知公告 ID 无效')
-const announcementTitleSchema = nonBlankString('请输入公告标题').max(100, '公告标题不能超过 100 个字符')
+const announcementTitleSchema = nonBlankString('请输入公告标题').max(
+  100,
+  '公告标题不能超过 100 个字符',
+)
 const announcementSummarySchema = z.union([z.string().max(300), z.null()])
 const announcementSummaryInputSchema = optionalNullableString().pipe(
   z.union([z.string().trim().max(300, '公告摘要不能超过 300 个字符'), z.null()]).optional(),

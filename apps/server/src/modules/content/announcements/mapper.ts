@@ -20,7 +20,11 @@ export function toAnnouncement(row: AnnouncementRow): Announcement {
 }
 
 export function toAnnouncementListItem(row: AnnouncementRow): AnnouncementListItem {
-  const { contentJson: _contentJson, contentText: _contentText, ...announcement } = toAnnouncement(row)
+  const {
+    contentJson: _contentJson,
+    contentText: _contentText,
+    ...announcement
+  } = toAnnouncement(row)
 
   return announcement
 }

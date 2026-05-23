@@ -1,9 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type {
-  Announcement,
-  AnnouncementListResponse,
-  TiptapDocument,
-} from '@rev30/shared'
+import type { Announcement, AnnouncementListResponse, TiptapDocument } from '@rev30/shared'
 import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
@@ -16,7 +12,10 @@ import type { Hono } from 'hono'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { contentAnnouncements } from '../../../../src/db/schema'
 import { createAnnouncementRoutes } from '../../../../src/modules/content/announcements/routes'
-import { createProtectedContentRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
+import {
+  createProtectedContentRouteTestApp,
+  createSystemAccessFixture,
+} from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 
 type ErrorResponse = {
@@ -78,7 +77,10 @@ describe('announcement routes', () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
 
-    const { body: createdDraft, response: createDraftResponse } = await createAnnouncement(app, createBody)
+    const { body: createdDraft, response: createDraftResponse } = await createAnnouncement(
+      app,
+      createBody,
+    )
     expect(createDraftResponse.status).toBe(201)
     expect(createdDraft).toMatchObject({
       type: 'notice',
@@ -90,11 +92,14 @@ describe('announcement routes', () => {
       contentText: '今晚维护',
     })
 
-    const { body: createdPublished, response: createPublishedResponse } = await createAnnouncement(app, {
-      ...createBody,
-      title: '已发布通知',
-      publish: true,
-    })
+    const { body: createdPublished, response: createPublishedResponse } = await createAnnouncement(
+      app,
+      {
+        ...createBody,
+        title: '已发布通知',
+        publish: true,
+      },
+    )
     expect(createPublishedResponse.status).toBe(201)
     expect(createdPublished.status).toBe('published')
     expect(createdPublished.publishedAt).toEqual(expect.any(String))

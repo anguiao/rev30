@@ -9,7 +9,12 @@ import { tmpdir } from 'node:os'
 import { ANNOUNCEMENT_STATUS_DRAFT, type TiptapDocument } from '@rev30/shared'
 import { createDb } from '../../src/db/index'
 import { migratePGlite } from '../../src/db/migrate'
-import { contentAnnouncements, systemConfigs, systemResources, systemUsers } from '../../src/db/schema'
+import {
+  contentAnnouncements,
+  systemConfigs,
+  systemResources,
+  systemUsers,
+} from '../../src/db/schema'
 import * as schema from '../../src/db/schema'
 
 const originalNodeEnv = process.env.NODE_ENV
@@ -264,7 +269,9 @@ describe('PGlite migration runner', () => {
       const [contentMenu] = await database
         .select()
         .from(systemResources)
-        .where(and(eq(systemResources.code, 'content:announcement'), isNull(systemResources.deletedAt)))
+        .where(
+          and(eq(systemResources.code, 'content:announcement'), isNull(systemResources.deletedAt)),
+        )
       const [contentAnnouncementListAction] = await database
         .select()
         .from(systemResources)

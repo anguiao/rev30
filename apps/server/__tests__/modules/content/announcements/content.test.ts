@@ -28,7 +28,8 @@ describe('announcement content helpers', () => {
   })
 
   it('rejects empty documents', async () => {
-    const { AnnouncementEmptyContentError, deriveAnnouncementContentText } = await loadContentHelpers()
+    const { AnnouncementEmptyContentError, deriveAnnouncementContentText } =
+      await loadContentHelpers()
 
     expect(() =>
       deriveAnnouncementContentText({
@@ -39,7 +40,8 @@ describe('announcement content helpers', () => {
   })
 
   it('rejects documents that do not match enabled extensions', async () => {
-    const { AnnouncementContentInvalidError, deriveAnnouncementContentText } = await loadContentHelpers()
+    const { AnnouncementContentInvalidError, deriveAnnouncementContentText } =
+      await loadContentHelpers()
 
     expect(() =>
       deriveAnnouncementContentText({
@@ -55,8 +57,9 @@ describe('announcement content helpers', () => {
     await loadContentHelpers()
 
     expect(
-      warnSpy.mock.calls.some(([message]) =>
-        typeof message === 'string' && message.includes('Duplicate extension names found'),
+      warnSpy.mock.calls.some(
+        ([message]) =>
+          typeof message === 'string' && message.includes('Duplicate extension names found'),
       ),
     ).toBe(false)
 

@@ -1,4 +1,8 @@
-import type { AnnouncementCreateInput, AnnouncementListQuery, AnnouncementUpdateInput } from '@rev30/shared'
+import type {
+  AnnouncementCreateInput,
+  AnnouncementListQuery,
+  AnnouncementUpdateInput,
+} from '@rev30/shared'
 import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
@@ -6,10 +10,7 @@ import {
 } from '@rev30/shared'
 import type { Db } from '../../../db'
 import { deriveAnnouncementContentText } from './content'
-import {
-  AnnouncementDraftArchiveError,
-  AnnouncementNotFoundError,
-} from './errors'
+import { AnnouncementDraftArchiveError, AnnouncementNotFoundError } from './errors'
 import { toAnnouncement, toAnnouncementListItem } from './mapper'
 import { createAnnouncementRepository } from './repository'
 

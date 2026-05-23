@@ -50,29 +50,37 @@ function getInvalidContentJsonMessage(error: Parameters<typeof z.flattenError>[0
   return contentJsonError === '公告正文格式无效' ? contentJsonError : undefined
 }
 
-const announcementCreateBodyValidator = zValidator('json', announcementCreateSchema, (result, c) => {
-  if (!result.success) {
-    const contentJsonError = getInvalidContentJsonMessage(result.error)
+const announcementCreateBodyValidator = zValidator(
+  'json',
+  announcementCreateSchema,
+  (result, c) => {
+    if (!result.success) {
+      const contentJsonError = getInvalidContentJsonMessage(result.error)
 
-    if (contentJsonError) {
-      return c.json({ field: 'contentJson', message: contentJsonError }, 400)
+      if (contentJsonError) {
+        return c.json({ field: 'contentJson', message: contentJsonError }, 400)
+      }
+
+      return c.json({ message: '请求体无效' }, 400)
     }
+  },
+)
 
-    return c.json({ message: '请求体无效' }, 400)
-  }
-})
+const announcementUpdateBodyValidator = zValidator(
+  'json',
+  announcementUpdateSchema,
+  (result, c) => {
+    if (!result.success) {
+      const contentJsonError = getInvalidContentJsonMessage(result.error)
 
-const announcementUpdateBodyValidator = zValidator('json', announcementUpdateSchema, (result, c) => {
-  if (!result.success) {
-    const contentJsonError = getInvalidContentJsonMessage(result.error)
+      if (contentJsonError) {
+        return c.json({ field: 'contentJson', message: contentJsonError }, 400)
+      }
 
-    if (contentJsonError) {
-      return c.json({ field: 'contentJson', message: contentJsonError }, 400)
+      return c.json({ message: '请求体无效' }, 400)
     }
-
-    return c.json({ message: '请求体无效' }, 400)
-  }
-})
+  },
+)
 
 function announcementErrorResponse(error: unknown, c: Context) {
   if (
@@ -100,21 +108,31 @@ export function createAnnouncementRoutes(database: Db) {
   app.onError((error, c) => announcementErrorResponse(error, c))
 
   return app
-    .get('/', requireAccess('content:announcement:list'), announcementListQueryValidator, async (c) => {
-      const query: AnnouncementListQuery = c.req.valid('query')
+    .get(
+      '/',
+      requireAccess('content:announcement:list'),
+      announcementListQueryValidator,
+      async (c) => {
+        const query: AnnouncementListQuery = c.req.valid('query')
 
-      return c.json(await service.list(query))
-    })
+        return c.json(await service.list(query))
+      },
+    )
     .get('/:id', requireAccess('content:announcement:list'), announcementIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
       return c.json(await service.get(id))
     })
-    .post('/', requireAccess('content:announcement:create'), announcementCreateBodyValidator, async (c) => {
-      const body: AnnouncementCreateInput = c.req.valid('json')
+    .post(
+      '/',
+      requireAccess('content:announcement:create'),
+      announcementCreateBodyValidator,
+      async (c) => {
+        const body: AnnouncementCreateInput = c.req.valid('json')
 
-      return c.json(await service.create(body), 201)
-    })
+        return c.json(await service.create(body), 201)
+      },
+    )
     .patch(
       '/:id',
       requireAccess('content:announcement:update'),
@@ -127,21 +145,36 @@ export function createAnnouncementRoutes(database: Db) {
         return c.json(await service.update(id, body))
       },
     )
-    .post('/:id/publish', requireAccess('content:announcement:update'), announcementIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
+    .post(
+      '/:id/publish',
+      requireAccess('content:announcement:update'),
+      announcementIdValidator,
+      async (c) => {
+        const { id } = c.req.valid('param')
 
-      return c.json(await service.publish(id))
-    })
-    .post('/:id/archive', requireAccess('content:announcement:update'), announcementIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
+        return c.json(await service.publish(id))
+      },
+    )
+    .post(
+      '/:id/archive',
+      requireAccess('content:announcement:update'),
+      announcementIdValidator,
+      async (c) => {
+        const { id } = c.req.valid('param')
 
-      return c.json(await service.archive(id))
-    })
-    .delete('/:id', requireAccess('content:announcement:delete'), announcementIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
+        return c.json(await service.archive(id))
+      },
+    )
+    .delete(
+      '/:id',
+      requireAccess('content:announcement:delete'),
+      announcementIdValidator,
+      async (c) => {
+        const { id } = c.req.valid('param')
 
-      await service.delete(id)
+        await service.delete(id)
 
-      return c.body(null, 204)
-    })
+        return c.body(null, 204)
+      },
+    )
 }

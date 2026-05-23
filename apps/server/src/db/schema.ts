@@ -3,6 +3,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   smallint,
@@ -13,6 +14,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import {
+  ANNOUNCEMENT_STATUS_DRAFT,
   CONFIG_STATUS_ENABLED,
   DEPARTMENT_STATUS_ENABLED,
   DICTIONARY_STATUS_ENABLED,
@@ -147,6 +149,28 @@ export const systemDepartments = pgTable(
       .where(sql`${table.deletedAt} IS NULL`),
     index('system_departments_parent_id_idx').on(table.parentId),
     index('system_departments_status_idx').on(table.status),
+  ],
+)
+
+export const contentAnnouncements = pgTable(
+  'content_announcements',
+  {
+    id: uuid('id').primaryKey(),
+    type: text('type').notNull(),
+    title: text('title').notNull(),
+    summary: text('summary'),
+    contentJson: jsonb('content_json').notNull(),
+    contentText: text('content_text').notNull(),
+    status: text('status').notNull().default(ANNOUNCEMENT_STATUS_DRAFT),
+    pinned: boolean('pinned').notNull().default(false),
+    publishedAt: timestamp('published_at', timestampOptions),
+    ...auditTimestamps(),
+  },
+  (table) => [
+    index('content_announcements_type_idx').on(table.type),
+    index('content_announcements_status_idx').on(table.status),
+    index('content_announcements_pinned_idx').on(table.pinned),
+    index('content_announcements_published_at_idx').on(table.publishedAt),
   ],
 )
 

@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createDb } from '../../src/db/index'
 import { migratePGlite } from '../../src/db/migrate'
-import { systemConfigs, systemResources, systemUsers } from '../../src/db/schema'
+import { contentAnnouncements, systemConfigs, systemResources, systemUsers } from '../../src/db/schema'
 import * as schema from '../../src/db/schema'
 
 const originalNodeEnv = process.env.NODE_ENV
@@ -109,6 +109,41 @@ describe('PGlite migration runner', () => {
         code: 'system:config',
         name: '系统配置',
         path: '/system/configs',
+      })
+
+      const [createdAnnouncement] = await database
+        .insert(contentAnnouncements)
+        .values({
+          id: randomUUID(),
+          type: 'notice',
+          title: '维护通知',
+          summary: '今晚维护',
+          contentJson: {
+            type: 'doc',
+            content: [{ type: 'paragraph', content: [{ type: 'text', text: '今晚维护' }] }],
+          },
+          contentText: '今晚维护',
+          status: 'draft',
+          pinned: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+      const [contentMenu] = await database
+        .select()
+        .from(systemResources)
+        .where(eq(systemResources.code, 'content:announcement'))
+
+      expect(createdAnnouncement).toMatchObject({
+        type: 'notice',
+        title: '维护通知',
+        status: 'draft',
+        pinned: true,
+      })
+      expect(contentMenu).toMatchObject({
+        code: 'content:announcement',
+        name: '通知公告',
+        path: '/content/announcements',
       })
     } finally {
       await client.close()

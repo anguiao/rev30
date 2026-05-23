@@ -35,6 +35,10 @@ const dictionaryId = '11111111-1111-4111-8111-111111111111'
 const firstItemId = '22222222-2222-4222-8222-222222222222'
 const secondItemId = '33333333-3333-4333-8333-333333333333'
 const thirdItemId = '44444444-4444-4444-8444-444444444444'
+type ElementWrapper = {
+  element: Element
+  findAll: (selector: string) => Array<{ element: Element }>
+}
 const dictionaryDetail: DictionaryDetail = {
   id: dictionaryId,
   code: 'user_status',
@@ -134,6 +138,12 @@ function getItemRow(wrapper: ReturnType<typeof mount>, index: number) {
   expect(row).toBeDefined()
 
   return row!
+}
+
+function hasErrorStatus(wrapper: ElementWrapper) {
+  return [wrapper.element, ...wrapper.findAll('*').map((child) => child.element)].some((element) =>
+    Array.from(element.classList).some((className) => className.endsWith('--error-status')),
+  )
 }
 
 async function confirmRemoveItem(wrapper: ReturnType<typeof mount>, index: number) {
@@ -492,6 +502,76 @@ describe('DictionaryFormDrawer', () => {
     await submitForm(wrapper)
 
     expect(wrapper.get('[data-test="dictionary-items"]').text()).toContain('字典项值不能重复')
+    expect(createDictionaryMock).not.toHaveBeenCalled()
+    expect(updateDictionaryMock).not.toHaveBeenCalled()
+  })
+
+  it('does not show duplicate value feedback immediately after adding blank items', async () => {
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
+    await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
+    await flushPromises()
+
+    expect(getItemRows(wrapper)).toHaveLength(2)
+    expect(wrapper.get('[data-test="dictionary-items"]').text()).not.toContain('字典项值不能重复')
+  })
+
+  it('shows aggregate item feedback when blank items are submitted', async () => {
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await wrapper.get('[data-test="dictionary-form-code"] input').setValue('order_status')
+    await wrapper.get('[data-test="dictionary-form-name"] input').setValue('订单状态')
+    await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
+    await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
+    await flushPromises()
+
+    await submitForm(wrapper)
+
+    const firstRow = getItemRow(wrapper, 0)
+    const secondRow = getItemRow(wrapper, 1)
+
+    expect(wrapper.get('[data-test="dictionary-items"]').text()).toContain('字典项值不能为空')
+    expect(wrapper.get('[data-test="dictionary-items"]').text()).not.toContain('字典项值不能重复')
+    expect(hasErrorStatus(firstRow.get('[data-test="dictionary-item-value"]'))).toBe(true)
+    expect(hasErrorStatus(firstRow.get('[data-test="dictionary-item-label"]'))).toBe(true)
+    expect(hasErrorStatus(secondRow.get('[data-test="dictionary-item-value"]'))).toBe(true)
+    expect(hasErrorStatus(secondRow.get('[data-test="dictionary-item-label"]'))).toBe(true)
+    expect(createDictionaryMock).not.toHaveBeenCalled()
+    expect(updateDictionaryMock).not.toHaveBeenCalled()
+  })
+
+  it('marks only dictionary item rows with duplicate nonblank values', async () => {
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await wrapper.get('[data-test="dictionary-form-code"] input').setValue('order_status')
+    await wrapper.get('[data-test="dictionary-form-name"] input').setValue('订单状态')
+    await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
+    await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
+    await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
+    await flushPromises()
+
+    const firstRow = getItemRow(wrapper, 0)
+    await firstRow.get('[data-test="dictionary-item-value"] input').setValue('same')
+    await firstRow.get('[data-test="dictionary-item-label"] input').setValue('重复一')
+
+    const secondRow = getItemRow(wrapper, 1)
+    await secondRow.get('[data-test="dictionary-item-value"] input').setValue('unique')
+    await secondRow.get('[data-test="dictionary-item-label"] input').setValue('唯一')
+
+    const thirdRow = getItemRow(wrapper, 2)
+    await thirdRow.get('[data-test="dictionary-item-value"] input').setValue('same')
+    await thirdRow.get('[data-test="dictionary-item-label"] input').setValue('重复二')
+
+    await submitForm(wrapper)
+
+    expect(wrapper.get('[data-test="dictionary-items"]').text()).toContain('字典项值不能重复')
+    expect(hasErrorStatus(firstRow.get('[data-test="dictionary-item-value"]'))).toBe(true)
+    expect(hasErrorStatus(secondRow.get('[data-test="dictionary-item-value"]'))).toBe(false)
+    expect(hasErrorStatus(thirdRow.get('[data-test="dictionary-item-value"]'))).toBe(true)
     expect(createDictionaryMock).not.toHaveBeenCalled()
     expect(updateDictionaryMock).not.toHaveBeenCalled()
   })

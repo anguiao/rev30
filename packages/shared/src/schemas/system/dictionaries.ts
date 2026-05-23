@@ -37,19 +37,30 @@ function ensureUniqueDictionaryItems(
   input: { items: Array<{ value: string }> },
   context: z.RefinementCtx,
 ) {
-  const values = new Set<string>()
+  const values = new Map<string, number[]>()
 
-  for (const item of input.items) {
-    if (values.has(item.value)) {
-      context.addIssue({
-        code: 'custom',
-        path: ['items'],
-        message: '字典项值不能重复',
-      })
-      return
+  for (const [index, item] of input.items.entries()) {
+    const value = item.value.trim()
+
+    if (value === '') {
+      continue
     }
 
-    values.add(item.value)
+    values.set(value, [...(values.get(value) ?? []), index])
+  }
+
+  for (const indexes of values.values()) {
+    if (indexes.length > 1) {
+      for (const index of indexes) {
+        context.addIssue({
+          code: 'custom',
+          path: ['items', index, 'value'],
+          message: '字典项值不能重复',
+        })
+      }
+
+      return
+    }
   }
 }
 

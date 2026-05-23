@@ -29,7 +29,11 @@ import {
   updateDictionary,
 } from '.'
 import { statusSelectOptions } from './labels'
-import { formItemValidationProps, setServerFieldError } from '../../utils/form'
+import {
+  formItemValidationFeedback,
+  formItemValidationProps,
+  setServerFieldError,
+} from '../../utils/form'
 
 const props = defineProps<{
   dictionaryId: string | null
@@ -178,17 +182,11 @@ function handleSubmit() {
   void form.handleSubmit()
 }
 
-function updateItem(index: number, value: Partial<DictionaryItemInput>) {
-  const items = form.getFieldValue('items')
-
-  form.setFieldValue(
-    'items',
-    items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...value } : item)),
-  )
-}
-
 function addItem() {
-  form.setFieldValue('items', [...form.getFieldValue('items'), { ...defaultItemValues }])
+  form.setFieldValue('items', [...form.getFieldValue('items'), { ...defaultItemValues }], {
+    dontUpdateMeta: true,
+    dontValidate: true,
+  })
 }
 
 function removeItem(index: number) {
@@ -197,6 +195,33 @@ function removeItem(index: number) {
     form.getFieldValue('items').filter((_, itemIndex) => itemIndex !== index),
   )
 }
+
+const fieldMeta = form.useStore((state) => state.fieldMeta)
+const itemsValidationProps = computed(() => {
+  const parentMeta = fieldMeta.value.items
+
+  if (parentMeta !== undefined) {
+    const parentFeedback = formItemValidationFeedback(parentMeta)
+
+    if (parentFeedback !== undefined) {
+      return { feedback: parentFeedback, validationStatus: 'error' as const }
+    }
+  }
+
+  for (const [field, meta] of Object.entries(fieldMeta.value)) {
+    if (!field.startsWith('items[') || meta === undefined) {
+      continue
+    }
+
+    const feedback = formItemValidationFeedback(meta)
+
+    if (feedback !== undefined) {
+      return { feedback, validationStatus: 'error' as const }
+    }
+  }
+
+  return {}
+})
 
 watch(
   () => [show.value, props.dictionaryId] as const,
@@ -310,17 +335,13 @@ watch(
           </div>
 
           <form.Field name="items" v-slot="{ state }">
-            <NFormItem
-              data-test="dictionary-items"
-              label="字典项"
-              v-bind="formItemValidationProps(state.meta)"
-            >
+            <NFormItem data-test="dictionary-items" label="字典项" v-bind="itemsValidationProps">
               <div class="flex w-full flex-col gap-3">
                 <div
-                  class="grid grid-cols-[1.2fr_1.2fr_120px_100px_1.2fr_76px] items-center gap-2 text-xs text-neutral-500"
+                  class="grid grid-cols-[1.2fr_1.2fr_120px_100px_1.2fr_76px] items-center gap-2 text-sm text-neutral-500"
                 >
                   <span>字典项值</span>
-                  <span>字典项标签</span>
+                  <span>字典项名称</span>
                   <span>状态</span>
                   <span>排序</span>
                   <span>说明</span>
@@ -344,44 +365,88 @@ watch(
                   data-test="dictionary-item-row"
                   class="grid grid-cols-[1.2fr_1.2fr_120px_100px_1.2fr_76px] items-start gap-2"
                 >
-                  <NInput
-                    data-test="dictionary-item-value"
-                    :value="item.value"
-                    placeholder="请输入值"
-                    @update:value="updateItem(index, { value: $event })"
-                  />
+                  <form.Field :name="`items[${index}].value`" v-slot="{ field, state }">
+                    <NFormItem
+                      class="m-0"
+                      :show-label="false"
+                      :show-feedback="false"
+                      v-bind="formItemValidationProps(state.meta)"
+                    >
+                      <NInput
+                        data-test="dictionary-item-value"
+                        :value="state.value"
+                        placeholder="请输入值"
+                        @blur="field.handleBlur"
+                        @update:value="field.handleChange"
+                      />
+                    </NFormItem>
+                  </form.Field>
 
-                  <NInput
-                    data-test="dictionary-item-label"
-                    :value="item.label"
-                    placeholder="请输入标签"
-                    @update:value="updateItem(index, { label: $event })"
-                  />
+                  <form.Field :name="`items[${index}].label`" v-slot="{ field, state }">
+                    <NFormItem
+                      class="m-0"
+                      :show-label="false"
+                      :show-feedback="false"
+                      v-bind="formItemValidationProps(state.meta)"
+                    >
+                      <NInput
+                        data-test="dictionary-item-label"
+                        :value="state.value"
+                        placeholder="请输入标签"
+                        @blur="field.handleBlur"
+                        @update:value="field.handleChange"
+                      />
+                    </NFormItem>
+                  </form.Field>
 
-                  <NSelect
-                    data-test="dictionary-item-status"
-                    :value="item.status"
-                    :options="statusSelectOptions"
-                    @update:value="updateItem(index, { status: $event })"
-                  />
+                  <form.Field :name="`items[${index}].status`" v-slot="{ field, state }">
+                    <NFormItem class="m-0" :show-label="false" :show-feedback="false">
+                      <NSelect
+                        data-test="dictionary-item-status"
+                        :value="state.value"
+                        :options="statusSelectOptions"
+                        @update:value="field.handleChange"
+                      />
+                    </NFormItem>
+                  </form.Field>
 
-                  <NInputNumber
-                    data-test="dictionary-item-sort-order"
-                    class="w-full"
-                    :value="item.sortOrder"
-                    :precision="0"
-                    :show-button="false"
-                    @update:value="updateItem(index, { sortOrder: $event ?? 0 })"
-                  />
+                  <form.Field :name="`items[${index}].sortOrder`" v-slot="{ field, state }">
+                    <NFormItem
+                      class="m-0"
+                      :show-label="false"
+                      :show-feedback="false"
+                      v-bind="formItemValidationProps(state.meta)"
+                    >
+                      <NInputNumber
+                        data-test="dictionary-item-sort-order"
+                        class="w-full"
+                        :value="state.value"
+                        :precision="0"
+                        :show-button="false"
+                        @blur="field.handleBlur"
+                        @update:value="field.handleChange($event ?? 0)"
+                      />
+                    </NFormItem>
+                  </form.Field>
 
-                  <NInput
-                    data-test="dictionary-item-description"
-                    type="textarea"
-                    :value="item.description ?? ''"
-                    :autosize="{ minRows: 1, maxRows: 3 }"
-                    placeholder="可选"
-                    @update:value="updateItem(index, { description: $event })"
-                  />
+                  <form.Field :name="`items[${index}].description`" v-slot="{ field, state }">
+                    <NFormItem
+                      class="m-0"
+                      :show-label="false"
+                      :show-feedback="false"
+                      v-bind="formItemValidationProps(state.meta)"
+                    >
+                      <NInput
+                        data-test="dictionary-item-description"
+                        type="textarea"
+                        :value="state.value ?? ''"
+                        :autosize="{ minRows: 1, maxRows: 3 }"
+                        placeholder="可选"
+                        @blur="field.handleBlur"
+                        @update:value="field.handleChange"
+                      />
+                    </NFormItem>
+                  </form.Field>
 
                   <NPopconfirm
                     positive-text="删除"

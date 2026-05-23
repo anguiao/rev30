@@ -20,15 +20,19 @@ function validationErrorMessage(error: unknown) {
   return undefined
 }
 
-export function formItemValidationProps(meta: AnyFieldMeta) {
+export function formItemValidationFeedback(meta: AnyFieldMeta) {
   const firstError =
     meta.isTouched || meta.isBlurred
       ? flattenValidationErrors(meta.errors).find((error) => error !== undefined)
       : undefined
-  const validationFeedback =
-    typeof meta.errorMap.onServer === 'string'
-      ? meta.errorMap.onServer
-      : validationErrorMessage(firstError)
+
+  return typeof meta.errorMap.onServer === 'string'
+    ? meta.errorMap.onServer
+    : validationErrorMessage(firstError)
+}
+
+export function formItemValidationProps(meta: AnyFieldMeta) {
+  const validationFeedback = formItemValidationFeedback(meta)
 
   return validationFeedback === undefined
     ? {}

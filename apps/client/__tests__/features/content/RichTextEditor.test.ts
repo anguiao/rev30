@@ -18,10 +18,14 @@ const toolbarDataTests = [
   'rich-text-bullet-list',
   'rich-text-ordered-list',
   'rich-text-horizontal-rule',
-  'rich-text-link',
   'rich-text-undo',
   'rich-text-redo',
 ]
+
+const updatedContentJson: TiptapDocument = {
+  type: 'doc',
+  content: [{ type: 'paragraph', content: [{ type: 'text', text: '新的外部内容' }] }],
+}
 
 async function getEditable(wrapper: ReturnType<typeof mount>) {
   await flushPromises()
@@ -72,6 +76,55 @@ describe('RichTextEditor', () => {
           content: [{ type: 'text', text: '新的通知' }],
         },
       ],
+    })
+  })
+
+  it('syncs external modelValue changes into the editor DOM', async () => {
+    const wrapper = mount(RichTextEditor, {
+      props: {
+        modelValue: contentJson,
+      },
+    })
+
+    const editable = await getEditable(wrapper)
+
+    expect(editable.text()).toContain('维护通知')
+
+    await wrapper.setProps({
+      modelValue: updatedContentJson,
+    })
+    await flushPromises()
+
+    await vi.waitFor(() => {
+      expect(wrapper.get('.ProseMirror').text()).toContain('新的外部内容')
+    })
+  })
+
+  it('toggles editor editability when disabled changes', async () => {
+    const wrapper = mount(RichTextEditor, {
+      props: {
+        modelValue: contentJson,
+      },
+    })
+
+    await getEditable(wrapper)
+
+    await wrapper.setProps({
+      disabled: true,
+    })
+    await flushPromises()
+
+    await vi.waitFor(() => {
+      expect(wrapper.get('.ProseMirror').attributes('contenteditable')).toBe('false')
+    })
+
+    await wrapper.setProps({
+      disabled: false,
+    })
+    await flushPromises()
+
+    await vi.waitFor(() => {
+      expect(wrapper.get('.ProseMirror').attributes('contenteditable')).toBe('true')
     })
   })
 })

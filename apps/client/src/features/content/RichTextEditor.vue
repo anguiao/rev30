@@ -52,21 +52,6 @@ function setHeading(level: 1 | 2) {
   editor.value?.chain().focus().toggleHeading({ level }).run()
 }
 
-function toggleLink() {
-  if (editor.value === undefined) {
-    return
-  }
-
-  const chain = editor.value.chain().focus().extendMarkRange('link')
-
-  if (editor.value.isActive('link')) {
-    chain.unsetLink().run()
-    return
-  }
-
-  chain.setLink({ href: 'https://example.com' }).run()
-}
-
 watch(
   () => props.disabled,
   (disabled) => {
@@ -151,9 +136,6 @@ onBeforeUnmount(() => {
           @click="editor?.chain().focus().toggleOrderedList().run()"
         >
           <span class="i-[lucide--list-ordered]" />
-        </NButton>
-        <NButton data-test="rich-text-link" :disabled="disabled" @click="toggleLink">
-          <span class="i-[lucide--link]" />
         </NButton>
       </NButtonGroup>
 

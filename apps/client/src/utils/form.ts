@@ -1,5 +1,10 @@
 import type { AnyFieldMeta, AnyFormApi } from '@tanstack/vue-form'
 
+export type FieldValidationMeta = Pick<
+  AnyFieldMeta,
+  'isTouched' | 'isBlurred' | 'errors' | 'errorMap'
+>
+
 function flattenValidationErrors(errors: unknown[]): unknown[] {
   return errors.flatMap((error) =>
     Array.isArray(error) ? flattenValidationErrors(error) : [error],
@@ -20,7 +25,7 @@ function validationErrorMessage(error: unknown) {
   return undefined
 }
 
-export function formItemValidationFeedback(meta: AnyFieldMeta) {
+export function formItemValidationFeedback(meta: FieldValidationMeta) {
   const firstError =
     meta.isTouched || meta.isBlurred
       ? flattenValidationErrors(meta.errors).find((error) => error !== undefined)
@@ -31,7 +36,7 @@ export function formItemValidationFeedback(meta: AnyFieldMeta) {
     : validationErrorMessage(firstError)
 }
 
-export function formItemValidationProps(meta: AnyFieldMeta) {
+export function formItemValidationProps(meta: FieldValidationMeta) {
   const validationFeedback = formItemValidationFeedback(meta)
 
   return validationFeedback === undefined

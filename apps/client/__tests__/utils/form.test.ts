@@ -4,20 +4,18 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import { z } from 'zod'
 import { NFormItem, NInput } from 'naive-ui'
-import { formItemValidationProps, setServerFieldError } from '../../src/utils/form'
+import {
+  formItemValidationProps,
+  setServerFieldError,
+  type FieldValidationMeta,
+} from '../../src/utils/form'
 
-function createFieldMeta(overrides: Partial<AnyFieldMeta> = {}): AnyFieldMeta {
+function createFieldMeta(overrides: Partial<FieldValidationMeta> = {}): FieldValidationMeta {
   return {
-    isValidating: false,
     isTouched: false,
     isBlurred: false,
-    isDirty: false,
-    isPristine: true,
-    isValid: true,
-    isDefaultValue: true,
     errors: [],
     errorMap: {},
-    errorSourceMap: {},
     ...overrides,
   }
 }

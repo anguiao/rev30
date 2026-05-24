@@ -30,7 +30,7 @@ pnpm --filter @rev30/server db:bootstrap
 pnpm dev
 ```
 
-服务端默认监听 `http://localhost:3000`，客户端默认监听 `http://localhost:5173`。
+服务端默认监听 `http://localhost:3000`，客户端默认监听 `http://localhost:3200`。
 
 开发环境不需要 `DATABASE_URL`，默认使用 `.pglite/dev` 并自动应用迁移。部署到 PostgreSQL 时设置 `NODE_ENV=production` 和 `DATABASE_URL`。
 

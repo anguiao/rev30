@@ -1,43 +1,35 @@
 import type { MiddlewareHandler } from 'hono'
-import { logger as defaultLogger, type RequestLogger } from '../logger'
-
-export type RequestLoggerOptions = {
-  logger?: RequestLogger
-  now?: () => number
-}
+import { logger } from '../runtime/logger'
 
 function getRequestPath(url: string) {
   return new URL(url).pathname
 }
 
-export function createRequestLogger(options: RequestLoggerOptions = {}): MiddlewareHandler {
-  const log = options.logger ?? defaultLogger
-  const now = options.now ?? Date.now
-
+export function createRequestLogger(): MiddlewareHandler {
   return async (c, next) => {
-    const start = now()
+    const start = Date.now()
     const request = {
       method: c.req.method,
       path: getRequestPath(c.req.url),
     }
 
-    log.info(request, 'request started')
+    logger.info(request, 'request started')
 
     try {
       await next()
-      log.info(
+      logger.info(
         {
           ...request,
-          durationMs: now() - start,
+          durationMs: Date.now() - start,
           status: c.res.status,
         },
         'request completed',
       )
     } catch (error) {
-      log.error(
+      logger.error(
         {
           ...request,
-          durationMs: now() - start,
+          durationMs: Date.now() - start,
           err: error,
         },
         'request failed',

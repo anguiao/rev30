@@ -1,5 +1,5 @@
 import { DrizzleQueryError } from 'drizzle-orm/errors'
-import { FormFieldError } from '../../../common/errors'
+import { FormFieldError } from '../../../core/errors'
 import { POSTGRES_UNIQUE_VIOLATION_CODE } from '../../../db/errors'
 
 const dictionaryCodeUniqueConstraintName = 'system_dictionary_types_code_active_unique'

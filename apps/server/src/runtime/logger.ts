@@ -1,16 +1,5 @@
 import pino from 'pino'
 
-export type LogPayload = Record<string, unknown>
-
-export interface AppLogger {
-  debug: (payload: LogPayload, message: string) => void
-  error: (payload: LogPayload, message: string) => void
-  info: (payload: LogPayload, message: string) => void
-  warn: (payload: LogPayload, message: string) => void
-}
-
-export type RequestLogger = Pick<AppLogger, 'error' | 'info'>
-
 function readLogLevel() {
   return process.env.LOG_LEVEL ?? (process.env.NODE_ENV === 'test' ? 'silent' : 'info')
 }

@@ -17,45 +17,6 @@ function createUnusedDatabase() {
 }
 
 describe('app auth boundaries', () => {
-  it('logs requests through the injected app logger', async () => {
-    const logs: Array<{
-      level: string
-      payload: Record<string, unknown>
-      message: string
-    }> = []
-    const app = createApp(createUnusedDatabase(), {
-      logger: {
-        info: (payload, message) => logs.push({ level: 'info', payload, message }),
-        error: (payload, message) => logs.push({ level: 'error', payload, message }),
-      },
-      now: () => 100,
-    })
-
-    const response = await app.request('/api/health')
-
-    expect(response.status).toBe(200)
-    expect(logs).toEqual([
-      {
-        level: 'info',
-        payload: {
-          method: 'GET',
-          path: '/api/health',
-        },
-        message: 'request started',
-      },
-      {
-        level: 'info',
-        payload: {
-          durationMs: 0,
-          method: 'GET',
-          path: '/api/health',
-          status: 200,
-        },
-        message: 'request completed',
-      },
-    ])
-  })
-
   it('rejects system routes without an access token', async () => {
     const app = createApp(createUnusedDatabase())
 

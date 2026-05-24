@@ -1,5 +1,5 @@
 import { and, isNotNull, isNull, lte, or } from 'drizzle-orm'
-import { logger } from '../../logger'
+import { logger } from '../../runtime/logger'
 import type { Db } from '../index'
 import { authLoginAttemptBuckets } from '../schema'
 import type { MaintenanceWorker } from './types'

@@ -1,4 +1,4 @@
-import { FormFieldError } from '../../common/errors'
+import { FormFieldError } from '../../core/errors'
 
 export class AuthInvalidCredentialsError extends Error {
   constructor() {

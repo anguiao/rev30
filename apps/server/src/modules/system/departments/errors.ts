@@ -1,5 +1,5 @@
 import { DrizzleQueryError } from 'drizzle-orm/errors'
-import { FormFieldError } from '../../../common/errors'
+import { FormFieldError } from '../../../core/errors'
 import { POSTGRES_UNIQUE_VIOLATION_CODE } from '../../../db/errors'
 
 const departmentUniqueConstraintName = 'system_departments_code_unique'

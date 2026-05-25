@@ -197,18 +197,6 @@ const form = useForm({
   },
 })
 
-const userTargetIds = computed(() =>
-  getTargetIds(form.state.values.targets ?? [], ANNOUNCEMENT_TARGET_TYPE_USER),
-)
-
-const departmentTargetIds = computed(() =>
-  getTargetIds(form.state.values.targets ?? [], ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT),
-)
-
-const roleTargetIds = computed(() =>
-  getTargetIds(form.state.values.targets ?? [], ANNOUNCEMENT_TARGET_TYPE_ROLE),
-)
-
 const isTargetedVisibility = computed(
   () => form.state.values.visibility === ANNOUNCEMENT_VISIBILITY_TARGETED,
 )
@@ -323,6 +311,7 @@ function updateTargets(targetType: AnnouncementTargetType, targetIds: string[]) 
 }
 
 function handleVisibilityChange(value: AnnouncementVisibility) {
+  clearServerFieldError('targets')
   form.setFieldValue('visibility', value)
 
   if (value === ANNOUNCEMENT_VISIBILITY_ALL) {
@@ -331,15 +320,28 @@ function handleVisibilityChange(value: AnnouncementVisibility) {
 }
 
 function handleUserTargetsChange(value: Array<string | number> | null) {
+  clearServerFieldError('targets')
   updateTargets(ANNOUNCEMENT_TARGET_TYPE_USER, toTargetIds(value))
 }
 
 function handleDepartmentTargetsChange(value: Array<string | number> | string | number | null) {
+  clearServerFieldError('targets')
   updateTargets(ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT, toTargetIds(value))
 }
 
 function handleRoleTargetsChange(value: Array<string | number> | null) {
+  clearServerFieldError('targets')
   updateTargets(ANNOUNCEMENT_TARGET_TYPE_ROLE, toTargetIds(value))
+}
+
+function clearServerFieldError(field: keyof AnnouncementFormInput) {
+  form.setFieldMeta(field, (meta) => ({
+    ...meta,
+    errorMap: {
+      ...meta.errorMap,
+      onServer: undefined,
+    },
+  }))
 }
 
 function handleSubmit() {
@@ -455,7 +457,12 @@ watch(
                 :disabled="isLoading || isSaving"
                 :model-value="state.value"
                 @blur="field.handleBlur"
-                @update:model-value="field.handleChange"
+                @update:model-value="
+                  (value) => {
+                    clearServerFieldError('contentJson')
+                    field.handleChange(value)
+                  }
+                "
               />
             </NFormItem>
           </form.Field>
@@ -492,7 +499,7 @@ watch(
                   data-test="announcement-form-target-users"
                   :disabled="isLoading || isSaving"
                   :options="userOptions"
-                  :value="userTargetIds"
+                  :value="getTargetIds(state.value ?? [], ANNOUNCEMENT_TARGET_TYPE_USER)"
                   multiple
                   clearable
                   filterable
@@ -511,7 +518,7 @@ watch(
                   default-expand-all
                   max-tag-count="responsive"
                   :options="departmentTreeOptions"
-                  :value="departmentTargetIds"
+                  :value="getTargetIds(state.value ?? [], ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT)"
                   placeholder="请选择部门"
                   @update:value="handleDepartmentTargetsChange"
                 />
@@ -520,7 +527,7 @@ watch(
                   data-test="announcement-form-target-roles"
                   :disabled="isLoading || isSaving"
                   :options="roleOptions"
-                  :value="roleTargetIds"
+                  :value="getTargetIds(state.value ?? [], ANNOUNCEMENT_TARGET_TYPE_ROLE)"
                   multiple
                   clearable
                   filterable

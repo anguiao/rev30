@@ -240,6 +240,18 @@ describe('AnnouncementFormDrawer', () => {
     expect(getUserOptionsMock).toHaveBeenCalledWith([userTargetId])
     expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith([departmentTargetId])
     expect(getRoleOptionsMock).toHaveBeenCalledWith([roleTargetId])
+    expect(getTestComponent(wrapper, 'announcement-form-visibility').props('value')).toBe(
+      ANNOUNCEMENT_VISIBILITY_TARGETED,
+    )
+    expect(getTestComponent(wrapper, 'announcement-form-target-users').props('value')).toEqual([
+      userTargetId,
+    ])
+    expect(getTestComponent(wrapper, 'announcement-form-target-departments').props('value')).toEqual(
+      [departmentTargetId],
+    )
+    expect(getTestComponent(wrapper, 'announcement-form-target-roles').props('value')).toEqual([
+      roleTargetId,
+    ])
     expect(
       (wrapper.get('[data-test="announcement-form-title"] input').element as HTMLInputElement)
         .value,
@@ -460,6 +472,26 @@ describe('AnnouncementFormDrawer', () => {
     expect(getTargetsFormItem(wrapper).text()).toContain('请选择可见对象')
   })
 
+  it('clears targets server field errors when visible object changes in the same session', async () => {
+    createAnnouncementMock.mockRejectedValue(
+      new ContentRequestError(400, '请选择可见对象', 'targets'),
+    )
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await fillRequiredFields(wrapper)
+    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
+    expect(getTargetsFormItem(wrapper).text()).toContain('请选择可见对象')
+
+    getTestComponent(wrapper, 'announcement-form-target-users').vm.$emit('update:value', [
+      userTargetId,
+    ])
+    await flushPromises()
+
+    expect(getTargetsFormItem(wrapper).text()).not.toContain('请选择可见对象')
+  })
+
   it('delegates empty content validation to the server', async () => {
     createAnnouncementMock.mockRejectedValue(
       new ContentRequestError(400, '请输入正文', 'contentJson'),
@@ -480,6 +512,24 @@ describe('AnnouncementFormDrawer', () => {
       }),
     )
     expect(getContentFormItem(wrapper).text()).toContain('请输入正文')
+  })
+
+  it('clears content server field errors when content changes in the same session', async () => {
+    createAnnouncementMock.mockRejectedValue(
+      new ContentRequestError(400, '请输入正文', 'contentJson'),
+    )
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await fillRequiredFields(wrapper)
+    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
+    expect(getContentFormItem(wrapper).text()).toContain('请输入正文')
+
+    await wrapper.get('[data-test="announcement-form-content-json"]').trigger('click')
+    await flushPromises()
+
+    expect(getContentFormItem(wrapper).text()).not.toContain('请输入正文')
   })
 
   it('clears old server field errors when opening a new session', async () => {

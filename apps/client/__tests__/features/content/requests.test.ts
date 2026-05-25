@@ -333,6 +333,29 @@ describe('content request helpers', () => {
     })
   })
 
+  it('returns targets error fields when response json contains field and message', async () => {
+    const fetchMock = createFetchMock(
+      new Response(JSON.stringify({ field: 'targets', message: '请选择可见对象' }), {
+        status: 400,
+      }),
+    )
+    useAuthStore().accessToken = 'access-token'
+
+    const failedCreate = createAnnouncement(createInput)
+
+    await expect(failedCreate).rejects.toBeInstanceOf(ContentRequestError)
+    await expect(failedCreate).rejects.toMatchObject({
+      status: 400,
+      field: 'targets',
+      message: '请选择可见对象',
+    })
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: '/api/content/announcements',
+    })
+  })
+
   it('falls back when response error body is not structured', async () => {
     const fetchMock = createFetchMock(
       new Response('internal server error', {

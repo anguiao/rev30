@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 async function loadContentHelpers() {
   vi.resetModules()
@@ -12,7 +12,35 @@ async function loadContentHelpers() {
   }
 }
 
+afterEach(() => {
+  vi.doUnmock('@tiptap/html')
+  vi.doUnmock('@tiptap/html/server')
+  vi.resetModules()
+})
+
 describe('announcement content helpers', () => {
+  it('uses the server tiptap html entry instead of the browser entry', async () => {
+    vi.resetModules()
+    const serverGenerateHtml = vi.fn(() => '<p>维护通知</p>')
+    vi.doMock('@tiptap/html/server', () => {
+      return {
+        generateHTML: serverGenerateHtml,
+      }
+    })
+
+    const { deriveAnnouncementContentHtml } = await import(
+      '../../../../src/modules/content/announcements/content'
+    )
+
+    expect(
+      deriveAnnouncementContentHtml({
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] }],
+      }),
+    ).toBe('<p>维护通知</p>')
+    expect(serverGenerateHtml).toHaveBeenCalledOnce()
+  })
+
   it('derives sanitized html from supported tiptap json', async () => {
     const {
       deriveAnnouncementContent,
@@ -103,6 +131,41 @@ describe('announcement content helpers', () => {
     expect(safeLinkHtml).toContain('href="https://safe.example.com"')
     expect(safeLinkHtml).toContain('target="_blank"')
     expect(safeLinkHtml).toContain('rel="noopener noreferrer nofollow"')
+  })
+
+  it('normalizes unsafe link target and rel attribute values', async () => {
+    const { deriveAnnouncementContentHtml } = await loadContentHelpers()
+
+    const normalizedLinkHtml = deriveAnnouncementContentHtml({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: '安全链接',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://safe.example.com',
+                    target: '_self',
+                    rel: 'opener',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(normalizedLinkHtml).toContain('href="https://safe.example.com"')
+    expect(normalizedLinkHtml).toContain('target="_blank"')
+    expect(normalizedLinkHtml).toContain('rel="noopener noreferrer nofollow"')
+    expect(normalizedLinkHtml).not.toContain('target="_self"')
+    expect(normalizedLinkHtml).not.toContain('rel="opener"')
   })
 
   it('derives plain text from Tiptap JSON with block separators', async () => {

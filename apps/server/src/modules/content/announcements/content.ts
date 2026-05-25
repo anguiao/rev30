@@ -1,11 +1,14 @@
 import { getSchema } from '@tiptap/core'
-import { generateHTML } from '@tiptap/html'
+import { generateHTML } from '@tiptap/html/server'
 import { Node as ProseMirrorNode, type Schema } from '@tiptap/pm/model'
 import StarterKit from '@tiptap/starter-kit'
 import sanitizeHtml from 'sanitize-html'
 import { AnnouncementContentInvalidError, AnnouncementEmptyContentError } from './errors'
 
 let announcementSchema: Schema | undefined
+
+const SAFE_LINK_TARGET = '_blank'
+const SAFE_LINK_REL = 'noopener noreferrer nofollow'
 
 function getAnnouncementExtensions() {
   return [
@@ -55,6 +58,16 @@ function sanitizeAnnouncementHtml(html: string) {
     },
     allowedSchemes: ['http', 'https', 'mailto', 'tel'],
     allowProtocolRelative: false,
+    transformTags: {
+      a: (_tagName, attribs) => ({
+        tagName: 'a',
+        attribs: {
+          ...attribs,
+          target: SAFE_LINK_TARGET,
+          rel: SAFE_LINK_REL,
+        },
+      }),
+    },
   })
 }
 

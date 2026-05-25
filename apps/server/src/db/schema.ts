@@ -15,6 +15,7 @@ import {
 import { sql } from 'drizzle-orm'
 import {
   ANNOUNCEMENT_STATUS_DRAFT,
+  ANNOUNCEMENT_VISIBILITY_TARGETED,
   CONFIG_STATUS_ENABLED,
   DEPARTMENT_STATUS_ENABLED,
   DICTIONARY_STATUS_ENABLED,
@@ -330,6 +331,8 @@ export const contentAnnouncements = pgTable(
     summary: text('summary'),
     contentJson: jsonb('content_json').$type<TiptapDocument>().notNull(),
     contentText: text('content_text').notNull(),
+    contentHtml: text('content_html').notNull(),
+    visibility: text('visibility').notNull().default(ANNOUNCEMENT_VISIBILITY_TARGETED),
     status: text('status').notNull().default(ANNOUNCEMENT_STATUS_DRAFT),
     pinned: boolean('pinned').notNull().default(false),
     publishedAt: timestamp('published_at', timestampOptions),
@@ -337,8 +340,28 @@ export const contentAnnouncements = pgTable(
   },
   (table) => [
     index('content_announcements_type_idx').on(table.type),
+    index('content_announcements_visibility_idx').on(table.visibility),
     index('content_announcements_status_idx').on(table.status),
     index('content_announcements_pinned_idx').on(table.pinned),
     index('content_announcements_published_at_idx').on(table.publishedAt),
+  ],
+)
+
+export const contentAnnouncementTargets = pgTable(
+  'content_announcement_targets',
+  {
+    announcementId: uuid('announcement_id')
+      .notNull()
+      .references(() => contentAnnouncements.id),
+    targetType: text('target_type').notNull(),
+    targetId: uuid('target_id').notNull(),
+    ...createdTimestamp(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.announcementId, table.targetType, table.targetId],
+    }),
+    index('content_announcement_targets_announcement_id_idx').on(table.announcementId),
+    index('content_announcement_targets_target_idx').on(table.targetType, table.targetId),
   ],
 )

@@ -6,7 +6,11 @@ import { copyFile, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promi
 import { and, eq, isNull } from 'drizzle-orm'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { ANNOUNCEMENT_STATUS_DRAFT, type TiptapDocument } from '@rev30/contracts'
+import {
+  ANNOUNCEMENT_STATUS_DRAFT,
+  ANNOUNCEMENT_VISIBILITY_TARGETED,
+  type TiptapDocument,
+} from '@rev30/contracts'
 import { createDb } from '../../src/db/index'
 import { migratePGlite } from '../../src/db/migrate'
 import {
@@ -171,6 +175,8 @@ describe('PGlite migration runner', () => {
           summary: '今晚维护',
           contentJson: announcementContentJson,
           contentText: '今晚维护',
+          contentHtml: '<p>今晚维护</p>',
+          visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
           status: ANNOUNCEMENT_STATUS_DRAFT,
           pinned: true,
           createdAt: now,
@@ -189,6 +195,8 @@ describe('PGlite migration runner', () => {
         summary: '今晚维护',
         contentJson: announcementContentJson,
         contentText: '今晚维护',
+        contentHtml: '<p>今晚维护</p>',
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
         status: ANNOUNCEMENT_STATUS_DRAFT,
         pinned: true,
         createdAt: now,
@@ -291,6 +299,52 @@ describe('PGlite migration runner', () => {
         code: 'content:announcement:list',
         parentId: contentMenu?.id,
       })
+    } finally {
+      await client.close()
+    }
+  }, 10_000)
+
+  it('adds announcement visibility columns and target table columns through migrations', async () => {
+    const client = new PGlite()
+
+    try {
+      await migratePGlite(client)
+
+      const announcementColumns = await client.query<{
+        column_name: string
+      }>(
+        `
+          select column_name
+          from information_schema.columns
+          where table_schema = 'public'
+            and table_name = 'content_announcements'
+            and column_name in ('content_html', 'visibility')
+          order by column_name
+        `,
+      )
+      const targetColumns = await client.query<{
+        column_name: string
+      }>(
+        `
+          select column_name
+          from information_schema.columns
+          where table_schema = 'public'
+            and table_name = 'content_announcement_targets'
+            and column_name in ('announcement_id', 'created_at', 'target_id', 'target_type')
+          order by column_name
+        `,
+      )
+
+      expect(announcementColumns.rows.map((row) => row.column_name)).toEqual([
+        'content_html',
+        'visibility',
+      ])
+      expect(targetColumns.rows.map((row) => row.column_name)).toEqual([
+        'announcement_id',
+        'created_at',
+        'target_id',
+        'target_type',
+      ])
     } finally {
       await client.close()
     }

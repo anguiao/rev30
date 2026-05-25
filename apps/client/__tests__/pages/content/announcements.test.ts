@@ -8,6 +8,7 @@ import {
   ANNOUNCEMENT_STATUS_PUBLISHED,
   ANNOUNCEMENT_TYPE_BULLETIN,
   ANNOUNCEMENT_TYPE_NOTICE,
+  ANNOUNCEMENT_VISIBILITY_TARGETED,
   type Announcement,
   type AnnouncementListItem,
   type AnnouncementListResponse,
@@ -83,6 +84,7 @@ const draftAnnouncement: AnnouncementListItem = {
   type: ANNOUNCEMENT_TYPE_NOTICE,
   title: '维护通知',
   summary: '请关注维护窗口',
+  visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
   status: ANNOUNCEMENT_STATUS_DRAFT,
   pinned: true,
   publishedAt: null,
@@ -95,6 +97,7 @@ const publishedAnnouncement: AnnouncementListItem = {
   type: ANNOUNCEMENT_TYPE_BULLETIN,
   title: '版本上线公告',
   summary: '新版功能已发布',
+  visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
   status: ANNOUNCEMENT_STATUS_PUBLISHED,
   pinned: false,
   publishedAt: '2026-05-21T00:00:00.000Z',
@@ -107,6 +110,7 @@ const archivedAnnouncement: AnnouncementListItem = {
   type: ANNOUNCEMENT_TYPE_NOTICE,
   title: '历史通知',
   summary: null,
+  visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
   status: ANNOUNCEMENT_STATUS_ARCHIVED,
   pinned: false,
   publishedAt: '2026-05-19T00:00:00.000Z',
@@ -131,6 +135,8 @@ function toAnnouncementResponse(announcement: AnnouncementListItem): Announcemen
       content: [{ type: 'paragraph', content: [{ type: 'text', text: contentText }] }],
     },
     contentText,
+    contentHtml: `<p>${contentText}</p>`,
+    targets: [],
   }
 }
 

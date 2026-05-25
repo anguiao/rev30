@@ -26,11 +26,15 @@ export const announcementVisibilitySchema = z.enum(
   '可见范围无效',
 )
 
-export const ANNOUNCEMENT_TARGET_USER = 'user'
-export const ANNOUNCEMENT_TARGET_DEPARTMENT = 'department'
-export const ANNOUNCEMENT_TARGET_ROLE = 'role'
+export const ANNOUNCEMENT_TARGET_TYPE_USER = 'user'
+export const ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT = 'department'
+export const ANNOUNCEMENT_TARGET_TYPE_ROLE = 'role'
 export const announcementTargetTypeSchema = z.enum(
-  [ANNOUNCEMENT_TARGET_USER, ANNOUNCEMENT_TARGET_DEPARTMENT, ANNOUNCEMENT_TARGET_ROLE],
+  [
+    ANNOUNCEMENT_TARGET_TYPE_USER,
+    ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+    ANNOUNCEMENT_TARGET_TYPE_ROLE,
+  ],
   '可见对象类型无效',
 )
 

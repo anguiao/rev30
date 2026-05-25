@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  ANNOUNCEMENT_TARGET_ROLE,
   ANNOUNCEMENT_VISIBILITY_ALL,
   ANNOUNCEMENT_VISIBILITY_TARGETED,
+  ANNOUNCEMENT_TARGET_TYPE_ROLE,
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_STATUS_PUBLISHED,
@@ -324,11 +324,11 @@ describe('announcement schemas', () => {
   it('fails when duplicate visibility targets exist with same type and id', () => {
     const result = announcementTargetsSchema.safeParse([
       {
-        targetType: ANNOUNCEMENT_TARGET_ROLE,
+        targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
         targetId: '33333333-3333-4333-8333-333333333333',
       },
       {
-        targetType: ANNOUNCEMENT_TARGET_ROLE,
+        targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
         targetId: '33333333-3333-4333-8333-333333333333',
       },
     ])
@@ -415,11 +415,11 @@ describe('announcement schemas', () => {
   it('accepts role target type for announcement targets', () => {
     expect(
       announcementTargetSchema.parse({
-        targetType: ANNOUNCEMENT_TARGET_ROLE,
+        targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
         targetId: '44444444-4444-4444-8444-444444444444',
       }),
     ).toEqual({
-      targetType: ANNOUNCEMENT_TARGET_ROLE,
+      targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
       targetId: '44444444-4444-4444-8444-444444444444',
     })
   })

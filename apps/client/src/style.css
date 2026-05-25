@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@plugin '@tailwindcss/typography';
 @plugin '@iconify/tailwind4' {
   prefix: 'i';
 }
@@ -19,6 +20,9 @@
   --color-primary-suppl: var(--app-primary-color-suppl);
   --color-primary-muted: color-mix(in srgb, var(--app-primary-color) 16%, transparent);
   --color-primary-selection: color-mix(in srgb, var(--app-primary-color) 24%, transparent);
+  --color-input-hover-border: var(--app-input-border-hover-color);
+  --color-input-focus-border: var(--app-input-border-focus-color);
+  --shadow-input-focus: var(--app-input-box-shadow-focus);
 }
 
 @layer base {

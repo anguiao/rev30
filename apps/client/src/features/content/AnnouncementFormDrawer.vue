@@ -13,12 +13,15 @@ import {
   NSelect,
   NSwitch,
 } from 'naive-ui'
-import { ANNOUNCEMENT_TYPE_NOTICE, type TiptapDocument } from '@rev30/shared'
 import {
+  ANNOUNCEMENT_STATUS_PUBLISHED,
+  ANNOUNCEMENT_TYPE_NOTICE,
   announcementCreateSchema,
+  announcementFormSchema,
   announcementUpdateSchema,
-  type AnnouncementCreateInput,
-} from '@rev30/shared/content/announcement-write'
+  type AnnouncementFormInput,
+  type TiptapDocument,
+} from '@rev30/shared'
 import RichTextEditor from './RichTextEditor.vue'
 import {
   ContentRequestError,
@@ -49,22 +52,13 @@ const emptyDocument: TiptapDocument = {
   content: [{ type: 'paragraph' }],
 }
 
-const defaultFormValues: AnnouncementCreateInput = {
+const defaultFormValues: AnnouncementFormInput = {
   type: ANNOUNCEMENT_TYPE_NOTICE,
   title: '',
   summary: null,
   contentJson: emptyDocument,
   pinned: false,
   publish: false,
-}
-
-const announcementFormSchema = announcementCreateSchema as typeof announcementCreateSchema & {
-  readonly '~standard': {
-    readonly types?: {
-      readonly input: AnnouncementCreateInput
-      readonly output: AnnouncementCreateInput
-    }
-  }
 }
 
 const queryCache = useQueryCache()
@@ -83,12 +77,14 @@ const {
     if (announcementId === null) {
       return {
         formValues: defaultFormValues,
+        status: null,
       }
     }
 
     const announcement = await getAnnouncement(announcementId)
 
     return {
+      status: announcement.status,
       formValues: {
         type: announcement.type,
         title: announcement.title,
@@ -96,10 +92,13 @@ const {
         contentJson: announcement.contentJson,
         pinned: announcement.pinned,
         publish: false,
-      } satisfies AnnouncementCreateInput,
+      } satisfies AnnouncementFormInput,
     }
   },
 })
+const isPublishedAnnouncement = computed(
+  () => formData.value?.status === ANNOUNCEMENT_STATUS_PUBLISHED,
+)
 
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
@@ -119,6 +118,7 @@ const form = useForm({
     const announcementId = props.announcementId
 
     formError.value = null
+
     saveAnnouncementMutation.mutate({ announcementId, value })
   },
 })
@@ -134,7 +134,7 @@ const { isLoading: isSaving, ...saveAnnouncementMutation } = useMutation({
     value,
   }: {
     announcementId: string | null
-    value: AnnouncementCreateInput
+    value: AnnouncementFormInput
   }) =>
     announcementId === null
       ? createAnnouncement(announcementCreateSchema.parse(value))
@@ -178,12 +178,21 @@ const { isLoading: isSaving, ...saveAnnouncementMutation } = useMutation({
   },
 })
 
-function handleSave(publish: boolean) {
+function handleSubmit() {
   if (isLoading.value || isSaving.value || loadError.value) {
     return
   }
 
-  form.setFieldValue('publish', publish)
+  form.setFieldValue('publish', false)
+  void form.handleSubmit()
+}
+
+function handleSubmitAndPublish() {
+  if (isLoading.value || isSaving.value || loadError.value) {
+    return
+  }
+
+  form.setFieldValue('publish', true)
   void form.handleSubmit()
 }
 
@@ -231,9 +240,9 @@ watch(
           {{ formError }}
         </NAlert>
 
-        <NForm>
+        <NForm @submit.prevent="handleSubmit">
           <form.Field name="type" v-slot="{ field, state }">
-            <NFormItem label="公告类型" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem label="类型" v-bind="formItemValidationProps(state.meta)">
               <NSelect
                 data-test="announcement-form-type"
                 :disabled="isLoading || isSaving"
@@ -246,12 +255,12 @@ watch(
           </form.Field>
 
           <form.Field name="title" v-slot="{ field, state }">
-            <NFormItem label="公告标题" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem label="标题" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="announcement-form-title"
                 :disabled="isLoading || isSaving"
                 :value="state.value"
-                placeholder="请输入公告标题"
+                placeholder="请输入标题"
                 @blur="field.handleBlur"
                 @update:value="field.handleChange"
               />
@@ -259,13 +268,13 @@ watch(
           </form.Field>
 
           <form.Field name="summary" v-slot="{ field, state }">
-            <NFormItem label="公告摘要" v-bind="formItemValidationProps(state.meta)">
+            <NFormItem label="摘要" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="announcement-form-summary"
                 :disabled="isLoading || isSaving"
                 :value="state.value ?? ''"
                 type="textarea"
-                placeholder="请输入公告摘要"
+                placeholder="请输入摘要"
                 @blur="field.handleBlur"
                 @update:value="field.handleChange"
               />
@@ -275,7 +284,7 @@ watch(
           <form.Field name="contentJson" v-slot="{ field, state }">
             <NFormItem
               data-test="announcement-form-content-item"
-              label="公告正文"
+              label="正文"
               v-bind="formItemValidationProps(state.meta)"
             >
               <RichTextEditor
@@ -305,20 +314,31 @@ watch(
         <div class="flex justify-end gap-3">
           <NButton data-test="announcement-form-cancel" @click="show = false"> 取消 </NButton>
           <NButton
-            data-test="announcement-form-save-draft"
-            :disabled="isLoading || isSaving || loadError !== null"
-            @click="handleSave(false)"
-          >
-            保存草稿
-          </NButton>
-          <NButton
-            data-test="announcement-form-save-publish"
+            v-if="isPublishedAnnouncement"
+            data-test="announcement-form-save"
             type="primary"
             :disabled="isLoading || isSaving || loadError !== null"
-            @click="handleSave(true)"
+            @click="handleSubmit"
           >
-            保存并发布
+            保存
           </NButton>
+          <template v-else>
+            <NButton
+              data-test="announcement-form-save-draft"
+              :disabled="isLoading || isSaving || loadError !== null"
+              @click="handleSubmit"
+            >
+              保存草稿
+            </NButton>
+            <NButton
+              data-test="announcement-form-save-publish"
+              type="primary"
+              :disabled="isLoading || isSaving || loadError !== null"
+              @click="handleSubmitAndPublish"
+            >
+              保存并发布
+            </NButton>
+          </template>
         </div>
       </template>
     </NDrawerContent>

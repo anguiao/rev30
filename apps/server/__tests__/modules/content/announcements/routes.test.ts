@@ -216,10 +216,7 @@ describe('announcement routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(invalidBodyResponse.status).toBe(400)
-    expect(await invalidBodyResponse.json()).toEqual({
-      field: 'type',
-      message: '公告类型无效',
-    })
+    expect(await invalidBodyResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.create).not.toHaveBeenCalled()
 
     const createInvalidContentResponse = await app.request('/api/content/announcements', {
@@ -231,10 +228,7 @@ describe('announcement routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(createInvalidContentResponse.status).toBe(400)
-    expect(await createInvalidContentResponse.json()).toEqual({
-      field: 'contentJson',
-      message: '公告正文格式无效',
-    })
+    expect(await createInvalidContentResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.create).not.toHaveBeenCalled()
 
     const publishFalseOnlyResponse = await app.request(
@@ -246,7 +240,7 @@ describe('announcement routes', () => {
       },
     )
     expect(publishFalseOnlyResponse.status).toBe(400)
-    expect(await publishFalseOnlyResponse.json()).toEqual({ message: '至少修改一个字段' })
+    expect(await publishFalseOnlyResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.update).not.toHaveBeenCalled()
   })
 
@@ -263,7 +257,7 @@ describe('announcement routes', () => {
     expect(emptyContentResponse.status).toBe(400)
     expect(await emptyContentResponse.json()).toEqual({
       field: 'contentJson',
-      message: '请输入公告正文',
+      message: '请输入正文',
     })
 
     mocks.service.update.mockRejectedValueOnce(new AnnouncementContentInvalidError())
@@ -278,7 +272,7 @@ describe('announcement routes', () => {
     expect(invalidContentResponse.status).toBe(400)
     expect(await invalidContentResponse.json()).toEqual({
       field: 'contentJson',
-      message: '公告正文格式无效',
+      message: '正文格式无效',
     })
 
     mocks.service.get.mockRejectedValueOnce(new AnnouncementNotFoundError())
@@ -294,6 +288,6 @@ describe('announcement routes', () => {
       },
     )
     expect(draftArchiveResponse.status).toBe(400)
-    expect(await draftArchiveResponse.json()).toEqual({ message: '草稿公告不能下线' })
+    expect(await draftArchiveResponse.json()).toEqual({ message: '草稿通知公告不能下线' })
   })
 })

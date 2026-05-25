@@ -1,4 +1,4 @@
-type RequestQueryValue = string | number | undefined
+type RequestQueryValue = string | number | boolean | undefined
 
 export function normalizeRequestQuery<T extends Record<string, RequestQueryValue>>(query: T) {
   return Object.fromEntries(

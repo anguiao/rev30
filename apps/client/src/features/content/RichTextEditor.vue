@@ -79,13 +79,21 @@ onBeforeUnmount(() => {
 <template>
   <div
     data-test="rich-text-editor"
-    class="overflow-hidden rounded-ui border border-stone-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+    class="w-full overflow-hidden rounded-ui border border-stone-200 bg-white transition-[border-color,box-shadow] duration-300 dark:border-zinc-800 dark:bg-zinc-900"
+    :class="
+      disabled
+        ? ''
+        : 'focus-within:border-input-focus-border focus-within:shadow-input-focus hover:border-input-hover-border'
+    "
   >
     <div class="flex flex-wrap gap-1 border-b border-stone-200 p-2 dark:border-zinc-800">
       <NButtonGroup size="small">
         <NButton
           data-test="rich-text-bold"
           :disabled="disabled"
+          quaternary
+          title="加粗"
+          aria-label="加粗"
           @click="editor?.chain().focus().toggleBold().run()"
         >
           <span class="i-[lucide--bold]" />
@@ -93,6 +101,9 @@ onBeforeUnmount(() => {
         <NButton
           data-test="rich-text-italic"
           :disabled="disabled"
+          quaternary
+          title="斜体"
+          aria-label="斜体"
           @click="editor?.chain().focus().toggleItalic().run()"
         >
           <span class="i-[lucide--italic]" />
@@ -100,32 +111,55 @@ onBeforeUnmount(() => {
         <NButton
           data-test="rich-text-underline"
           :disabled="disabled"
+          quaternary
+          title="下划线"
+          aria-label="下划线"
           @click="editor?.chain().focus().toggleUnderline().run()"
         >
           <span class="i-[lucide--underline]" />
         </NButton>
       </NButtonGroup>
 
-      <NButtonGroup size="small">
-        <NButton data-test="rich-text-heading-1" :disabled="disabled" @click="setHeading(1)">
+      <NButtonGroup size="small" class="border-l border-stone-200 pl-1 dark:border-zinc-800">
+        <NButton
+          data-test="rich-text-heading-1"
+          :disabled="disabled"
+          quaternary
+          title="一级标题"
+          aria-label="一级标题"
+          @click="setHeading(1)"
+        >
           <span class="i-[lucide--heading-1]" />
         </NButton>
-        <NButton data-test="rich-text-heading-2" :disabled="disabled" @click="setHeading(2)">
+        <NButton
+          data-test="rich-text-heading-2"
+          :disabled="disabled"
+          quaternary
+          title="二级标题"
+          aria-label="二级标题"
+          @click="setHeading(2)"
+        >
           <span class="i-[lucide--heading-2]" />
         </NButton>
         <NButton
           data-test="rich-text-blockquote"
           :disabled="disabled"
+          quaternary
+          title="引用"
+          aria-label="引用"
           @click="editor?.chain().focus().toggleBlockquote().run()"
         >
           <span class="i-[lucide--quote]" />
         </NButton>
       </NButtonGroup>
 
-      <NButtonGroup size="small">
+      <NButtonGroup size="small" class="border-l border-stone-200 pl-1 dark:border-zinc-800">
         <NButton
           data-test="rich-text-bullet-list"
           :disabled="disabled"
+          quaternary
+          title="无序列表"
+          aria-label="无序列表"
           @click="editor?.chain().focus().toggleBulletList().run()"
         >
           <span class="i-[lucide--list]" />
@@ -133,16 +167,22 @@ onBeforeUnmount(() => {
         <NButton
           data-test="rich-text-ordered-list"
           :disabled="disabled"
+          quaternary
+          title="有序列表"
+          aria-label="有序列表"
           @click="editor?.chain().focus().toggleOrderedList().run()"
         >
           <span class="i-[lucide--list-ordered]" />
         </NButton>
       </NButtonGroup>
 
-      <NButtonGroup size="small">
+      <NButtonGroup size="small" class="border-l border-stone-200 pl-1 dark:border-zinc-800">
         <NButton
           data-test="rich-text-horizontal-rule"
           :disabled="disabled"
+          quaternary
+          title="分割线"
+          aria-label="分割线"
           @click="editor?.chain().focus().setHorizontalRule().run()"
         >
           <span class="i-[lucide--minus]" />
@@ -150,6 +190,9 @@ onBeforeUnmount(() => {
         <NButton
           data-test="rich-text-undo"
           :disabled="disabled"
+          quaternary
+          title="撤销"
+          aria-label="撤销"
           @click="editor?.chain().focus().undo().run()"
         >
           <span class="i-[lucide--undo-2]" />
@@ -157,6 +200,9 @@ onBeforeUnmount(() => {
         <NButton
           data-test="rich-text-redo"
           :disabled="disabled"
+          quaternary
+          title="重做"
+          aria-label="重做"
           @click="editor?.chain().focus().redo().run()"
         >
           <span class="i-[lucide--redo-2]" />
@@ -166,8 +212,8 @@ onBeforeUnmount(() => {
 
     <EditorContent
       :editor="editor"
-      class="prose dark:prose-invert max-w-none p-3"
-      :style="{ minHeight: `${minHeight}px` }"
+      class="prose prose-sm max-w-none dark:prose-invert [&_.ProseMirror]:min-h-(--rich-text-editor-min-height) [&_.ProseMirror]:px-3 [&_.ProseMirror]:outline-none"
+      :style="{ '--rich-text-editor-min-height': `${minHeight}px` }"
     />
   </div>
 </template>

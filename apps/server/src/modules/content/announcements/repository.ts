@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import type {
+  AnnouncementCreateInput,
   AnnouncementListQuery,
-  AnnouncementStatus,
-  AnnouncementType,
-  TiptapDocument,
+  AnnouncementUpdateInput,
 } from '@rev30/shared'
 import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
@@ -13,19 +12,7 @@ import {
 import { and, count, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm'
 import type { Db } from '../../../db'
 import { contentAnnouncements } from '../../../db/schema'
-
-type AnnouncementCreateRecord = {
-  type: AnnouncementType
-  title: string
-  summary?: string | null
-  contentJson: TiptapDocument
-  contentText: string
-  status: AnnouncementStatus
-  pinned: boolean
-  publishedAt: Date | null
-}
-
-type AnnouncementUpdateRecord = Partial<AnnouncementCreateRecord>
+import { deriveAnnouncementContentText } from './content'
 
 function announcementSortOrder() {
   return [
@@ -97,12 +84,18 @@ export function createAnnouncementRepository(database: Db) {
       return row
     },
 
-    async create(input: AnnouncementCreateRecord) {
+    async create(input: AnnouncementCreateInput) {
+      const { publish, ...announcementInput } = input
+      const now = new Date()
+
       const [created] = await database
         .insert(contentAnnouncements)
         .values({
           id: randomUUID(),
-          ...input,
+          ...announcementInput,
+          contentText: deriveAnnouncementContentText(announcementInput.contentJson),
+          status: publish ? ANNOUNCEMENT_STATUS_PUBLISHED : ANNOUNCEMENT_STATUS_DRAFT,
+          publishedAt: publish ? now : null,
         })
         .returning()
 
@@ -113,10 +106,45 @@ export function createAnnouncementRepository(database: Db) {
       return created
     },
 
-    async update(id: string, input: AnnouncementUpdateRecord) {
+    async update(id: string, input: AnnouncementUpdateInput) {
+      const { publish, ...announcementInput } = input
+
       const [updated] = await database
         .update(contentAnnouncements)
-        .set(input)
+        .set({
+          ...announcementInput,
+          contentText:
+            announcementInput.contentJson === undefined
+              ? undefined
+              : deriveAnnouncementContentText(announcementInput.contentJson),
+          status: publish ? ANNOUNCEMENT_STATUS_PUBLISHED : undefined,
+          publishedAt: publish ? new Date() : undefined,
+        })
+        .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
+        .returning()
+
+      return updated
+    },
+
+    async publish(id: string) {
+      const [updated] = await database
+        .update(contentAnnouncements)
+        .set({
+          status: ANNOUNCEMENT_STATUS_PUBLISHED,
+          publishedAt: new Date(),
+        })
+        .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
+        .returning()
+
+      return updated
+    },
+
+    async archive(id: string) {
+      const [updated] = await database
+        .update(contentAnnouncements)
+        .set({
+          status: ANNOUNCEMENT_STATUS_ARCHIVED,
+        })
         .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
         .returning()
 

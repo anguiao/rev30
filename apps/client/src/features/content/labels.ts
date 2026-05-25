@@ -2,7 +2,7 @@ import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_STATUS_PUBLISHED,
-  ANNOUNCEMENT_TYPE_ANNOUNCEMENT,
+  ANNOUNCEMENT_TYPE_BULLETIN,
   ANNOUNCEMENT_TYPE_NOTICE,
   type AnnouncementStatus,
   type AnnouncementType,
@@ -18,14 +18,14 @@ export type AnnouncementPinnedFilter = boolean | typeof ANNOUNCEMENT_PINNED_FILT
 
 export const announcementTypeLabels = {
   [ANNOUNCEMENT_TYPE_NOTICE]: '通知',
-  [ANNOUNCEMENT_TYPE_ANNOUNCEMENT]: '公告',
+  [ANNOUNCEMENT_TYPE_BULLETIN]: '公告',
 } as const satisfies Record<AnnouncementType, string>
 
 export const announcementTypeSelectOptions: Array<{ label: string; value: AnnouncementType }> = [
   { label: announcementTypeLabels[ANNOUNCEMENT_TYPE_NOTICE], value: ANNOUNCEMENT_TYPE_NOTICE },
   {
-    label: announcementTypeLabels[ANNOUNCEMENT_TYPE_ANNOUNCEMENT],
-    value: ANNOUNCEMENT_TYPE_ANNOUNCEMENT,
+    label: announcementTypeLabels[ANNOUNCEMENT_TYPE_BULLETIN],
+    value: ANNOUNCEMENT_TYPE_BULLETIN,
   },
 ]
 

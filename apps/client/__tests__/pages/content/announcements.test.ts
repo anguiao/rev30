@@ -6,7 +6,7 @@ import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_STATUS_PUBLISHED,
-  ANNOUNCEMENT_TYPE_ANNOUNCEMENT,
+  ANNOUNCEMENT_TYPE_BULLETIN,
   ANNOUNCEMENT_TYPE_NOTICE,
   type Announcement,
   type AnnouncementListItem,
@@ -92,7 +92,7 @@ const draftAnnouncement: AnnouncementListItem = {
 
 const publishedAnnouncement: AnnouncementListItem = {
   id: '22222222-2222-4111-8111-111111111112',
-  type: ANNOUNCEMENT_TYPE_ANNOUNCEMENT,
+  type: ANNOUNCEMENT_TYPE_BULLETIN,
   title: '版本上线公告',
   summary: '新版功能已发布',
   status: ANNOUNCEMENT_STATUS_PUBLISHED,

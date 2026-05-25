@@ -4,7 +4,7 @@ import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_STATUS_PUBLISHED,
-  ANNOUNCEMENT_TYPE_ANNOUNCEMENT,
+  ANNOUNCEMENT_TYPE_BULLETIN,
   ANNOUNCEMENT_TYPE_NOTICE,
 } from '@rev30/shared'
 import { and, eq, isNull } from 'drizzle-orm'
@@ -51,7 +51,7 @@ async function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>)
 async function createAnnouncement(
   app: Hono,
   body: {
-    type: 'notice' | 'announcement'
+    type: 'notice' | 'bulletin'
     title: string
     summary?: string | null
     contentJson: TiptapDocument
@@ -132,13 +132,10 @@ describe('announcement routes', () => {
     })
 
     expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({
-      field: 'contentJson',
-      message: '公告正文格式无效',
-    })
+    expect((await response.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
   })
 
-  it('returns field-level zod messages for invalid create payloads', async () => {
+  it('rejects invalid create payloads', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
 
@@ -152,13 +149,10 @@ describe('announcement routes', () => {
     })
 
     expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({
-      field: 'title',
-      message: '请输入公告标题',
-    })
+    expect((await response.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
   })
 
-  it('rejects patching with publish false as the only update', async () => {
+  it('rejects publish false in update payloads', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
     const { body: created } = await createAnnouncement(app, createBody)
@@ -170,7 +164,7 @@ describe('announcement routes', () => {
     })
 
     expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({ message: '至少修改一个字段' })
+    expect((await response.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
   })
 
   it('updates content text when patching announcement content', async () => {
@@ -237,7 +231,7 @@ describe('announcement routes', () => {
     })
 
     expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({ message: '草稿公告不能下线' })
+    expect((await response.json()) as ErrorResponse).toEqual({ message: '草稿通知公告不能下线' })
   })
 
   it('matches keyword against title, summary, and content text', async () => {
@@ -320,7 +314,7 @@ describe('announcement routes', () => {
       },
       {
         id: randomUUID(),
-        type: ANNOUNCEMENT_TYPE_ANNOUNCEMENT,
+        type: ANNOUNCEMENT_TYPE_BULLETIN,
         title: '较旧已发布',
         summary: null,
         contentJson: createBody.contentJson,

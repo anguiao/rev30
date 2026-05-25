@@ -3,17 +3,16 @@ import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_STATUS_PUBLISHED,
-  ANNOUNCEMENT_TYPE_ANNOUNCEMENT,
+  ANNOUNCEMENT_TYPE_BULLETIN,
   ANNOUNCEMENT_TYPE_NOTICE,
+  announcementFormSchema,
   announcementListItemSchema,
   announcementListQuerySchema,
   announcementListResponseSchema,
   announcementSchema,
-} from '../../../src/schemas/content/announcements'
-import {
   announcementCreateSchema,
   announcementUpdateSchema,
-} from '../../../src/schemas/content/announcement-write'
+} from '../../../src/schemas/content/announcements'
 import { prettifyZodError } from '../../helpers/schema'
 
 const announcementId = '11111111-1111-4111-8111-111111111111'
@@ -81,17 +80,37 @@ describe('announcement schemas', () => {
     })
   })
 
+  it('accepts explicit form input values', () => {
+    expect(
+      announcementFormSchema.parse({
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '  维护通知  ',
+        summary: '   ',
+        contentJson,
+        pinned: false,
+        publish: false,
+      }),
+    ).toEqual({
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+      title: '维护通知',
+      summary: null,
+      contentJson,
+      pinned: false,
+      publish: false,
+    })
+  })
+
   it('allows create input to publish immediately', () => {
     expect(
       announcementCreateSchema.parse({
-        type: ANNOUNCEMENT_TYPE_ANNOUNCEMENT,
+        type: ANNOUNCEMENT_TYPE_BULLETIN,
         title: '版本公告',
         contentJson,
         pinned: true,
         publish: true,
       }),
     ).toMatchObject({
-      type: ANNOUNCEMENT_TYPE_ANNOUNCEMENT,
+      type: ANNOUNCEMENT_TYPE_BULLETIN,
       pinned: true,
       publish: true,
     })
@@ -106,28 +125,22 @@ describe('announcement schemas', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(prettifyZodError(result)).toContain('公告正文格式无效')
+      expect(prettifyZodError(result)).toContain('正文格式无效')
     }
   })
 
-  it('rejects empty announcement content documents', () => {
-    const result = announcementCreateSchema.safeParse({
+  it('allows empty doc-shaped content documents for server-side content validation', () => {
+    expect(
+      announcementCreateSchema.parse({
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '维护通知',
+        contentJson: { type: 'doc', content: [] },
+      }),
+    ).toMatchObject({
       type: ANNOUNCEMENT_TYPE_NOTICE,
       title: '维护通知',
       contentJson: { type: 'doc', content: [] },
     })
-
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            path: ['contentJson'],
-            message: '请输入公告正文',
-          }),
-        ]),
-      )
-    }
   })
 
   it('accepts non-empty announcement content documents', () => {
@@ -149,7 +162,6 @@ describe('announcement schemas', () => {
     expect(announcementUpdateSchema.parse({ publish: true })).toEqual({ publish: true })
     expect(announcementUpdateSchema.parse({ title: '新标题', publish: false })).toEqual({
       title: '新标题',
-      publish: false,
     })
 
     const result = announcementUpdateSchema.safeParse({})
@@ -195,8 +207,8 @@ describe('announcement schemas', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       const error = prettifyZodError(result)
-      expect(error).toContain('公告类型无效')
-      expect(error).toContain('公告状态无效')
+      expect(error).toContain('类型无效')
+      expect(error).toContain('状态无效')
       expect(error).toContain('置顶筛选无效')
     }
   })

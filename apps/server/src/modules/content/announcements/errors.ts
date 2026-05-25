@@ -9,19 +9,19 @@ export class AnnouncementNotFoundError extends Error {
 
 export class AnnouncementEmptyContentError extends FormFieldError<'contentJson'> {
   constructor() {
-    super('请输入公告正文', 'contentJson')
+    super('请输入正文', 'contentJson')
   }
 }
 
 export class AnnouncementContentInvalidError extends FormFieldError<'contentJson'> {
   constructor() {
-    super('公告正文格式无效', 'contentJson')
+    super('正文格式无效', 'contentJson')
   }
 }
 
 export class AnnouncementDraftArchiveError extends Error {
   constructor() {
-    super('草稿公告不能下线')
+    super('草稿通知公告不能下线')
     this.name = 'AnnouncementDraftArchiveError'
   }
 }

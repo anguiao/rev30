@@ -7,14 +7,6 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
-    },
-    "./content/announcement-write": {
-      "types": "./src/schemas/content/announcement-write.ts",
-      "default": "./src/schemas/content/announcement-write.ts"
-    },
-    "./utils/announcement-content": {
-      "types": "./src/utils/announcement-content.ts",
-      "default": "./src/utils/announcement-content.ts"
     }
   },
   "scripts": {
@@ -23,9 +15,6 @@
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.test.json"
   },
   "dependencies": {
-    "@tiptap/core": "^3.23.6",
-    "@tiptap/pm": "^3.23.6",
-    "@tiptap/starter-kit": "^3.23.6",
     "zod": "^4.4.3"
   }
 }

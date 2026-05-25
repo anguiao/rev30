@@ -121,6 +121,7 @@ const form = useForm({
   },
   onSubmit({ value }) {
     const dictionaryId = props.dictionaryId
+
     formError.value = null
 
     saveDictionaryMutation.mutate({ dictionaryId, value })

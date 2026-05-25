@@ -53,14 +53,9 @@ export function getContentErrorMessage(error: unknown, fallback: string) {
 export async function listAnnouncements(
   query: AnnouncementListQuery,
 ): Promise<AnnouncementListResponse> {
-  const normalizedQuery = {
-    ...query,
-    pinned: query.pinned === undefined ? undefined : query.pinned.toString(),
-  }
-
   return parseContentResponse(
     await api.content.announcements.$get({
-      query: normalizeRequestQuery(normalizedQuery),
+      query: normalizeRequestQuery(query),
     }),
     announcementListResponseSchema,
   )

@@ -247,7 +247,7 @@ describe('content request helpers', () => {
 
   it('returns content error fields when response json contains field and message', async () => {
     const fetchMock = createFetchMock(
-      new Response(JSON.stringify({ field: 'contentJson', message: '请输入公告正文' }), {
+      new Response(JSON.stringify({ field: 'contentJson', message: '请输入正文' }), {
         status: 400,
       }),
     )
@@ -259,7 +259,7 @@ describe('content request helpers', () => {
     await expect(failedCreate).rejects.toMatchObject({
       status: 400,
       field: 'contentJson',
-      message: '请输入公告正文',
+      message: '请输入正文',
     })
     expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {

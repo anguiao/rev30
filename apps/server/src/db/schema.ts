@@ -88,51 +88,6 @@ export const systemUsers = pgTable(
   ],
 )
 
-export const authPasswordCredentials = pgTable('auth_password_credentials', {
-  userId: uuid('user_id')
-    .primaryKey()
-    .references(() => systemUsers.id),
-  passwordHash: text('password_hash').notNull(),
-  mustChangePassword: boolean('must_change_password').notNull().default(false),
-  ...mutableTimestamps(),
-})
-
-export const authRefreshTokens = pgTable(
-  'auth_refresh_tokens',
-  {
-    id: uuid('id').primaryKey(),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => systemUsers.id),
-    tokenHash: text('token_hash').notNull(),
-    expiresAt: timestamp('expires_at', timestampOptions).notNull(),
-    revokedAt: timestamp('revoked_at', timestampOptions),
-    ...mutableTimestamps(),
-  },
-  (table) => [
-    uniqueIndex('auth_refresh_tokens_token_hash_unique').on(table.tokenHash),
-    index('auth_refresh_tokens_user_id_idx').on(table.userId),
-    index('auth_refresh_tokens_expires_at_idx').on(table.expiresAt),
-    index('auth_refresh_tokens_revoked_at_idx').on(table.revokedAt),
-  ],
-)
-
-export const authLoginAttemptBuckets = pgTable(
-  'auth_login_attempt_buckets',
-  {
-    username: text('username').primaryKey(),
-    failedCount: integer('failed_count').notNull(),
-    windowStartedAt: timestamp('window_started_at', timestampOptions).notNull(),
-    lastFailedAt: timestamp('last_failed_at', timestampOptions).notNull(),
-    lockedUntil: timestamp('locked_until', timestampOptions),
-    ...mutableTimestamps(),
-  },
-  (table) => [
-    index('auth_login_attempt_buckets_locked_until_idx').on(table.lockedUntil),
-    index('auth_login_attempt_buckets_window_started_at_idx').on(table.windowStartedAt),
-  ],
-)
-
 export const systemDepartments = pgTable(
   'system_departments',
   {
@@ -150,47 +105,6 @@ export const systemDepartments = pgTable(
       .where(sql`${table.deletedAt} IS NULL`),
     index('system_departments_parent_id_idx').on(table.parentId),
     index('system_departments_status_idx').on(table.status),
-  ],
-)
-
-export const contentAnnouncements = pgTable(
-  'content_announcements',
-  {
-    id: uuid('id').primaryKey(),
-    type: text('type').notNull(),
-    title: text('title').notNull(),
-    summary: text('summary'),
-    contentJson: jsonb('content_json').$type<TiptapDocument>().notNull(),
-    contentText: text('content_text').notNull(),
-    status: text('status').notNull().default(ANNOUNCEMENT_STATUS_DRAFT),
-    pinned: boolean('pinned').notNull().default(false),
-    publishedAt: timestamp('published_at', timestampOptions),
-    ...auditTimestamps(),
-  },
-  (table) => [
-    index('content_announcements_type_idx').on(table.type),
-    index('content_announcements_status_idx').on(table.status),
-    index('content_announcements_pinned_idx').on(table.pinned),
-    index('content_announcements_published_at_idx').on(table.publishedAt),
-  ],
-)
-
-export const systemUserDepartments = pgTable(
-  'system_user_departments',
-  {
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => systemUsers.id),
-    departmentId: uuid('department_id')
-      .notNull()
-      .references(() => systemDepartments.id),
-    ...createdTimestamp(),
-  },
-  (table) => [
-    primaryKey({
-      columns: [table.userId, table.departmentId],
-    }),
-    index('system_user_departments_department_id_idx').on(table.departmentId),
   ],
 )
 
@@ -305,6 +219,25 @@ export const systemDictionaryItems = pgTable(
   ],
 )
 
+export const systemUserDepartments = pgTable(
+  'system_user_departments',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => systemUsers.id),
+    departmentId: uuid('department_id')
+      .notNull()
+      .references(() => systemDepartments.id),
+    ...createdTimestamp(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.userId, table.departmentId],
+    }),
+    index('system_user_departments_department_id_idx').on(table.departmentId),
+  ],
+)
+
 export const systemRoleResources = pgTable(
   'system_role_resources',
   {
@@ -340,5 +273,72 @@ export const systemUserRoles = pgTable(
       columns: [table.userId, table.roleId],
     }),
     index('system_user_roles_role_id_idx').on(table.roleId),
+  ],
+)
+
+export const authPasswordCredentials = pgTable('auth_password_credentials', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => systemUsers.id),
+  passwordHash: text('password_hash').notNull(),
+  mustChangePassword: boolean('must_change_password').notNull().default(false),
+  ...mutableTimestamps(),
+})
+
+export const authRefreshTokens = pgTable(
+  'auth_refresh_tokens',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => systemUsers.id),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', timestampOptions).notNull(),
+    revokedAt: timestamp('revoked_at', timestampOptions),
+    ...mutableTimestamps(),
+  },
+  (table) => [
+    uniqueIndex('auth_refresh_tokens_token_hash_unique').on(table.tokenHash),
+    index('auth_refresh_tokens_user_id_idx').on(table.userId),
+    index('auth_refresh_tokens_expires_at_idx').on(table.expiresAt),
+    index('auth_refresh_tokens_revoked_at_idx').on(table.revokedAt),
+  ],
+)
+
+export const authLoginAttemptBuckets = pgTable(
+  'auth_login_attempt_buckets',
+  {
+    username: text('username').primaryKey(),
+    failedCount: integer('failed_count').notNull(),
+    windowStartedAt: timestamp('window_started_at', timestampOptions).notNull(),
+    lastFailedAt: timestamp('last_failed_at', timestampOptions).notNull(),
+    lockedUntil: timestamp('locked_until', timestampOptions),
+    ...mutableTimestamps(),
+  },
+  (table) => [
+    index('auth_login_attempt_buckets_locked_until_idx').on(table.lockedUntil),
+    index('auth_login_attempt_buckets_window_started_at_idx').on(table.windowStartedAt),
+  ],
+)
+
+export const contentAnnouncements = pgTable(
+  'content_announcements',
+  {
+    id: uuid('id').primaryKey(),
+    type: text('type').notNull(),
+    title: text('title').notNull(),
+    summary: text('summary'),
+    contentJson: jsonb('content_json').$type<TiptapDocument>().notNull(),
+    contentText: text('content_text').notNull(),
+    status: text('status').notNull().default(ANNOUNCEMENT_STATUS_DRAFT),
+    pinned: boolean('pinned').notNull().default(false),
+    publishedAt: timestamp('published_at', timestampOptions),
+    ...auditTimestamps(),
+  },
+  (table) => [
+    index('content_announcements_type_idx').on(table.type),
+    index('content_announcements_status_idx').on(table.status),
+    index('content_announcements_pinned_idx').on(table.pinned),
+    index('content_announcements_published_at_idx').on(table.publishedAt),
   ],
 )

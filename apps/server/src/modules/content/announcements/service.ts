@@ -3,13 +3,8 @@ import type {
   AnnouncementListQuery,
   AnnouncementUpdateInput,
 } from '@rev30/shared'
-import {
-  ANNOUNCEMENT_STATUS_ARCHIVED,
-  ANNOUNCEMENT_STATUS_DRAFT,
-  ANNOUNCEMENT_STATUS_PUBLISHED,
-} from '@rev30/shared'
+import { ANNOUNCEMENT_STATUS_ARCHIVED, ANNOUNCEMENT_STATUS_DRAFT } from '@rev30/shared'
 import type { Db } from '../../../db'
-import { deriveAnnouncementContentText } from './content'
 import { AnnouncementDraftArchiveError, AnnouncementNotFoundError } from './errors'
 import { toAnnouncement, toAnnouncementListItem } from './mapper'
 import { createAnnouncementRepository } from './repository'
@@ -38,20 +33,7 @@ export function createAnnouncementService(database: Db) {
     },
 
     async create(input: AnnouncementCreateInput) {
-      const now = new Date()
-      const contentText = deriveAnnouncementContentText(input.contentJson)
-      const createInput: Parameters<typeof repository.create>[0] = {
-        type: input.type,
-        title: input.title,
-        contentJson: input.contentJson,
-        contentText,
-        status: input.publish ? ANNOUNCEMENT_STATUS_PUBLISHED : ANNOUNCEMENT_STATUS_DRAFT,
-        pinned: input.pinned,
-        publishedAt: input.publish ? now : null,
-        ...(input.summary === undefined ? {} : { summary: input.summary }),
-      }
-
-      return toAnnouncement(await repository.create(createInput))
+      return toAnnouncement(await repository.create(input))
     },
 
     async update(id: string, input: AnnouncementUpdateInput) {
@@ -61,26 +43,7 @@ export function createAnnouncementService(database: Db) {
         throw new AnnouncementNotFoundError()
       }
 
-      const nextUpdate: Parameters<typeof repository.update>[1] = {
-        ...(input.type === undefined ? {} : { type: input.type }),
-        ...(input.title === undefined ? {} : { title: input.title }),
-        ...(input.summary === undefined ? {} : { summary: input.summary }),
-        ...(input.pinned === undefined ? {} : { pinned: input.pinned }),
-        ...(input.contentJson === undefined
-          ? {}
-          : {
-              contentJson: input.contentJson,
-              contentText: deriveAnnouncementContentText(input.contentJson),
-            }),
-        ...(input.publish
-          ? {
-              status: ANNOUNCEMENT_STATUS_PUBLISHED,
-              publishedAt: new Date(),
-            }
-          : {}),
-      }
-
-      const updated = await repository.update(id, nextUpdate)
+      const updated = await repository.update(id, input)
 
       if (!updated) {
         throw new AnnouncementNotFoundError()
@@ -96,10 +59,7 @@ export function createAnnouncementService(database: Db) {
         throw new AnnouncementNotFoundError()
       }
 
-      const updated = await repository.update(id, {
-        status: ANNOUNCEMENT_STATUS_PUBLISHED,
-        publishedAt: new Date(),
-      })
+      const updated = await repository.publish(id)
 
       if (!updated) {
         throw new AnnouncementNotFoundError()
@@ -123,9 +83,7 @@ export function createAnnouncementService(database: Db) {
         return toAnnouncement(existingAnnouncement)
       }
 
-      const updated = await repository.update(id, {
-        status: ANNOUNCEMENT_STATUS_ARCHIVED,
-      })
+      const updated = await repository.archive(id)
 
       if (!updated) {
         throw new AnnouncementNotFoundError()

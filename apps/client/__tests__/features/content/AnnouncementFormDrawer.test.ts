@@ -5,6 +5,7 @@ import { defineComponent, h } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ANNOUNCEMENT_STATUS_DRAFT,
+  ANNOUNCEMENT_STATUS_PUBLISHED,
   ANNOUNCEMENT_TYPE_NOTICE,
   type Announcement,
 } from '@rev30/shared'
@@ -32,6 +33,7 @@ vi.mock('../../../src/features/content/RichTextEditor.vue', () => ({
           'button',
           {
             'data-test': 'announcement-form-content-json',
+            type: 'button',
             onClick: () =>
               emit('update:modelValue', {
                 type: 'doc',
@@ -199,9 +201,52 @@ describe('AnnouncementFormDrawer', () => {
     )
   })
 
+  it('omits publish false when saving a draft in edit mode', async () => {
+    getAnnouncementMock.mockResolvedValue(announcementResponse)
+    updateAnnouncementMock.mockResolvedValue(announcementResponse)
+
+    const wrapper = mountDrawer({ show: true, announcementId })
+    await flushPromises()
+
+    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
+
+    expect(updateAnnouncementMock).toHaveBeenCalledWith(
+      announcementId,
+      expect.not.objectContaining({
+        publish: false,
+      }),
+    )
+  })
+
+  it('shows a plain save action for published announcements', async () => {
+    const publishedAnnouncement: Announcement = {
+      ...announcementResponse,
+      status: ANNOUNCEMENT_STATUS_PUBLISHED,
+      publishedAt: '2026-05-21T00:00:00.000Z',
+    }
+    getAnnouncementMock.mockResolvedValue(publishedAnnouncement)
+    updateAnnouncementMock.mockResolvedValue(publishedAnnouncement)
+
+    const wrapper = mountDrawer({ show: true, announcementId })
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="announcement-form-save-draft"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="announcement-form-save-publish"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="announcement-form-save"]').text()).toBe('保存')
+
+    await clickAction(wrapper, '[data-test="announcement-form-save"]')
+
+    expect(updateAnnouncementMock).toHaveBeenCalledWith(
+      announcementId,
+      expect.not.objectContaining({
+        publish: true,
+      }),
+    )
+  })
+
   it('shows server field errors on content form item', async () => {
     createAnnouncementMock.mockRejectedValue(
-      new ContentRequestError(400, '请输入公告正文', 'contentJson'),
+      new ContentRequestError(400, '请输入正文', 'contentJson'),
     )
 
     const wrapper = mountDrawer()
@@ -210,23 +255,34 @@ describe('AnnouncementFormDrawer', () => {
     await fillRequiredFields(wrapper)
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
-    expect(getContentFormItem(wrapper).text()).toContain('请输入公告正文')
+    expect(getContentFormItem(wrapper).text()).toContain('请输入正文')
   })
 
-  it('does not submit empty content locally', async () => {
+  it('delegates empty content validation to the server', async () => {
+    createAnnouncementMock.mockRejectedValue(
+      new ContentRequestError(400, '请输入正文', 'contentJson'),
+    )
+
     const wrapper = mountDrawer()
     await flushPromises()
 
     await wrapper.get('[data-test="announcement-form-title"] input').setValue('新的维护通知')
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
-    expect(createAnnouncementMock).not.toHaveBeenCalled()
-    expect(getContentFormItem(wrapper).text()).toContain('请输入公告正文')
+    expect(createAnnouncementMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentJson: {
+          type: 'doc',
+          content: [{ type: 'paragraph' }],
+        },
+      }),
+    )
+    expect(getContentFormItem(wrapper).text()).toContain('请输入正文')
   })
 
   it('clears old server field errors when opening a new session', async () => {
     createAnnouncementMock.mockRejectedValue(
-      new ContentRequestError(400, '请输入公告正文', 'contentJson'),
+      new ContentRequestError(400, '请输入正文', 'contentJson'),
     )
 
     const wrapper = mountDrawer()
@@ -234,13 +290,13 @@ describe('AnnouncementFormDrawer', () => {
 
     await fillRequiredFields(wrapper)
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
-    expect(getContentFormItem(wrapper).text()).toContain('请输入公告正文')
+    expect(getContentFormItem(wrapper).text()).toContain('请输入正文')
 
     await wrapper.setProps({ show: false, announcementId: null })
     await flushPromises()
     await wrapper.setProps({ show: true, announcementId: null })
     await flushPromises()
 
-    expect(getContentFormItem(wrapper).text()).not.toContain('请输入公告正文')
+    expect(getContentFormItem(wrapper).text()).not.toContain('请输入正文')
   })
 })

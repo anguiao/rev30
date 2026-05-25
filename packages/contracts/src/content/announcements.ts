@@ -19,6 +19,21 @@ export const announcementStatusSchema = z.enum(
   '状态无效',
 )
 
+export const ANNOUNCEMENT_VISIBILITY_ALL = 'all'
+export const ANNOUNCEMENT_VISIBILITY_TARGETED = 'targeted'
+export const announcementVisibilitySchema = z.enum(
+  [ANNOUNCEMENT_VISIBILITY_ALL, ANNOUNCEMENT_VISIBILITY_TARGETED],
+  '可见范围无效',
+)
+
+export const ANNOUNCEMENT_TARGET_USER = 'user'
+export const ANNOUNCEMENT_TARGET_DEPARTMENT = 'department'
+export const ANNOUNCEMENT_TARGET_ROLE = 'role'
+export const announcementTargetTypeSchema = z.enum(
+  [ANNOUNCEMENT_TARGET_USER, ANNOUNCEMENT_TARGET_DEPARTMENT, ANNOUNCEMENT_TARGET_ROLE],
+  '可见对象类型无效',
+)
+
 const announcementIdSchema = z.uuid('通知公告 ID 无效')
 export const announcementTitleSchema = nonBlankString('请输入标题').max(
   100,
@@ -37,9 +52,40 @@ const pinnedQuerySchema = z
   .transform((value) => value === 'true')
 const optionalPinnedQuerySchema = optionalQueryValue(pinnedQuerySchema)
 
+function ensureUniqueAnnouncementTargets(
+  targets: z.infer<typeof announcementTargetSchema>[],
+  context: z.RefinementCtx,
+) {
+  const seen = new Set<string>()
+
+  for (const target of targets) {
+    const key = `${target.targetType}:${target.targetId}`
+
+    if (seen.has(key)) {
+      context.addIssue({
+        code: 'custom',
+        message: '可见对象不能重复',
+      })
+      return
+    }
+
+    seen.add(key)
+  }
+}
+
 export const tiptapDocumentSchema = z.looseObject({
   type: z.literal('doc', '正文格式无效'),
 })
+export const announcementTargetSchema = z.object({
+  targetType: announcementTargetTypeSchema,
+  targetId: z.uuid('可见对象 ID 无效'),
+})
+
+const announcementTargetsMaxLength = 200
+export const announcementTargetsSchema = z
+  .array(announcementTargetSchema)
+  .max(announcementTargetsMaxLength, '可见对象不能超过 200 个')
+  .superRefine(ensureUniqueAnnouncementTargets)
 
 export const announcementSchema = z.object({
   id: announcementIdSchema,
@@ -48,6 +94,9 @@ export const announcementSchema = z.object({
   summary: announcementSummarySchema,
   contentJson: tiptapDocumentSchema,
   contentText: announcementContentTextSchema,
+  contentHtml: z.string(),
+  visibility: announcementVisibilitySchema,
+  targets: announcementTargetsSchema,
   status: announcementStatusSchema,
   pinned: z.boolean(),
   publishedAt: z.iso.datetime().nullable(),
@@ -72,6 +121,8 @@ export const announcementFormSchema = z.object({
   title: announcementTitleSchema,
   summary: announcementSummaryInputSchema,
   contentJson: tiptapDocumentSchema,
+  visibility: announcementVisibilitySchema,
+  targets: announcementTargetsSchema,
   pinned: z.boolean(),
   publish: z.boolean(),
 })
@@ -79,6 +130,8 @@ export const announcementFormSchema = z.object({
 export const announcementCreateSchema = announcementFormSchema.extend({
   publish: z.boolean().default(false),
   pinned: z.boolean().default(false),
+  visibility: announcementVisibilitySchema.default(ANNOUNCEMENT_VISIBILITY_TARGETED),
+  targets: announcementTargetsSchema.default([]),
 })
 
 export const announcementUpdateSchema = announcementFormSchema
@@ -100,13 +153,49 @@ export const announcementListResponseSchema = z.object({
   pageSize: z.number().int().min(1),
 })
 
+export const announcementMyListQuerySchema = paginationQuerySchema.extend({
+  keyword: optionalKeywordSchema,
+  type: optionalTypeQuerySchema,
+})
+
+export const announcementMyListItemSchema = announcementListItemSchema
+  .pick({
+    id: true,
+    type: true,
+    title: true,
+    summary: true,
+    pinned: true,
+    publishedAt: true,
+  })
+  .extend({
+    publishedAt: z.iso.datetime(),
+  })
+
+export const announcementMyDetailSchema = announcementMyListItemSchema.extend({
+  contentHtml: z.string(),
+})
+
+export const announcementMyListResponseSchema = z.object({
+  list: z.array(announcementMyListItemSchema),
+  total: z.number().int().min(0),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1),
+})
+
 export type TiptapDocument = z.infer<typeof tiptapDocumentSchema>
 export type Announcement = z.infer<typeof announcementSchema>
 export type AnnouncementListItem = z.infer<typeof announcementListItemSchema>
 export type AnnouncementListQuery = z.infer<typeof announcementListQuerySchema>
+export type AnnouncementVisibility = z.infer<typeof announcementVisibilitySchema>
+export type AnnouncementTargetType = z.infer<typeof announcementTargetTypeSchema>
+export type AnnouncementTarget = z.infer<typeof announcementTargetSchema>
 export type AnnouncementFormInput = z.infer<typeof announcementFormSchema>
 export type AnnouncementCreateInput = z.infer<typeof announcementCreateSchema>
 export type AnnouncementUpdateInput = z.infer<typeof announcementUpdateSchema>
 export type AnnouncementListResponse = z.infer<typeof announcementListResponseSchema>
+export type AnnouncementMyListQuery = z.infer<typeof announcementMyListQuerySchema>
+export type AnnouncementMyListItem = z.infer<typeof announcementMyListItemSchema>
+export type AnnouncementMyDetail = z.infer<typeof announcementMyDetailSchema>
+export type AnnouncementMyListResponse = z.infer<typeof announcementMyListResponseSchema>
 export type AnnouncementType = z.infer<typeof announcementTypeSchema>
 export type AnnouncementStatus = z.infer<typeof announcementStatusSchema>

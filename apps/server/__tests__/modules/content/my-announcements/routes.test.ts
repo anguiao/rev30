@@ -2,6 +2,7 @@ import type { User } from '@rev30/contracts'
 import {
   ANNOUNCEMENT_TYPE_NOTICE,
   type AnnouncementMyDetail,
+  type AnnouncementMyListItem,
   type AnnouncementMyListResponse,
 } from '@rev30/contracts'
 import { Hono } from 'hono'
@@ -36,24 +37,24 @@ const currentUser: User = {
   updatedAt: '2026-05-18T00:00:00.000Z',
 }
 
+const listItem: AnnouncementMyListItem = {
+  id: announcementId,
+  type: ANNOUNCEMENT_TYPE_NOTICE,
+  title: '维护通知',
+  summary: '今晚维护',
+  pinned: true,
+  publishedAt: '2026-05-19T00:00:00.000Z',
+}
+
 const listResponse: AnnouncementMyListResponse = {
-  list: [
-    {
-      id: announcementId,
-      type: ANNOUNCEMENT_TYPE_NOTICE,
-      title: '维护通知',
-      summary: '今晚维护',
-      pinned: true,
-      publishedAt: '2026-05-19T00:00:00.000Z',
-    },
-  ],
+  list: [listItem],
   total: 1,
   page: 2,
   pageSize: 5,
 }
 
 const detailResponse: AnnouncementMyDetail = {
-  ...listResponse.list[0],
+  ...listItem,
   contentHtml: '<p>今晚维护</p>',
 }
 

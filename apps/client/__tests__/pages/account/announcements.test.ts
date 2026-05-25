@@ -9,10 +9,7 @@ import {
 } from '@rev30/contracts'
 import { defineComponent, h } from 'vue'
 import AccountAnnouncementsPage from '../../../src/pages/account/announcements.vue'
-import {
-  getMyAnnouncement,
-  listMyAnnouncements,
-} from '../../../src/features/content'
+import { getMyAnnouncement, listMyAnnouncements } from '../../../src/features/content'
 import {
   disposeActiveTestPinia,
   mountAuthRoute,
@@ -88,6 +85,11 @@ const listResponse: AnnouncementMyListResponse = {
 const detailResponse: AnnouncementMyDetail = {
   ...noticeItem,
   contentHtml: '<p>维护详情</p>',
+}
+
+const bulletinDetailResponse: AnnouncementMyDetail = {
+  ...bulletinItem,
+  contentHtml: '<p>版本详情</p>',
 }
 
 async function mountAnnouncementsPage() {
@@ -181,5 +183,106 @@ describe('account announcements page', () => {
     expect(
       wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-detail-title'),
     ).toBe(detailResponse.title)
+  })
+
+  it('does not show the empty state while the list is loading', async () => {
+    let resolveList!: (value: AnnouncementMyListResponse) => void
+
+    listMyAnnouncementsMock.mockReturnValue(
+      new Promise<AnnouncementMyListResponse>((resolve) => {
+        resolveList = resolve
+      }),
+    )
+
+    const { wrapper } = await mountAnnouncementsPage()
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('暂无通知公告')
+
+    resolveList(listResponse)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(noticeItem.title)
+  })
+
+  it('clears stale detail when the next detail request fails', async () => {
+    const { wrapper } = await mountAnnouncementsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="my-announcements-list-item"]').trigger('click')
+    await flushPromises()
+
+    expect(
+      wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-detail-id'),
+    ).toBe(detailResponse.id)
+
+    getMyAnnouncementMock.mockRejectedValueOnce(new Error('load failed'))
+
+    await wrapper.findAll('[data-test="my-announcements-list-item"]')[1]!.trigger('click')
+    await flushPromises()
+
+    const drawer = wrapper.get('[data-test="announcement-detail-drawer"]')
+
+    expect(drawer.attributes('data-show')).toBe('false')
+    expect(drawer.attributes('data-detail-id')).toBe('')
+  })
+
+  it('closes the detail drawer when the active tab changes', async () => {
+    getMyAnnouncementMock
+      .mockResolvedValueOnce(detailResponse)
+      .mockResolvedValueOnce(bulletinDetailResponse)
+
+    const { wrapper } = await mountAnnouncementsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="my-announcements-list-item"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-show')).toBe(
+      'true',
+    )
+
+    const bulletinTab = wrapper.findAll('.n-tabs-tab').find((tab) => tab.text() === '公告')
+
+    expect(bulletinTab).toBeDefined()
+
+    await bulletinTab!.trigger('click')
+    await flushPromises()
+
+    const drawer = wrapper.get('[data-test="announcement-detail-drawer"]')
+
+    expect(drawer.attributes('data-show')).toBe('false')
+    expect(drawer.attributes('data-detail-id')).toBe('')
+  })
+
+  it('ignores an outdated detail request after the active tab changes', async () => {
+    let resolveDetail!: (value: AnnouncementMyDetail) => void
+
+    getMyAnnouncementMock.mockReturnValue(
+      new Promise<AnnouncementMyDetail>((resolve) => {
+        resolveDetail = resolve
+      }),
+    )
+
+    const { wrapper } = await mountAnnouncementsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="my-announcements-list-item"]').trigger('click')
+    await flushPromises()
+
+    const bulletinTab = wrapper.findAll('.n-tabs-tab').find((tab) => tab.text() === '公告')
+
+    expect(bulletinTab).toBeDefined()
+
+    await bulletinTab!.trigger('click')
+    await flushPromises()
+
+    resolveDetail(detailResponse)
+    await flushPromises()
+
+    const drawer = wrapper.get('[data-test="announcement-detail-drawer"]')
+
+    expect(drawer.attributes('data-show')).toBe('false')
+    expect(drawer.attributes('data-detail-id')).toBe('')
   })
 })

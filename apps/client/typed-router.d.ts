@@ -87,6 +87,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/account/announcements': RouteRecordInfo<
+      '/account/announcements',
+      '/account/announcements',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/account/settings': RouteRecordInfo<
       '/account/settings',
       '/account/settings',
@@ -171,6 +178,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/403.vue': {
       routes:
         | '/403'
+      views:
+        | never
+    }
+    'src/pages/account/announcements.vue': {
+      routes:
+        | '/account/announcements'
       views:
         | never
     }

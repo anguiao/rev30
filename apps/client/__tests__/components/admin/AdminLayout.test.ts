@@ -156,6 +156,7 @@ async function mountLayout(options?: { initialPath?: string; authSession?: AuthT
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
+      { path: '/account/announcements', component: { template: '<main>My Announcements</main>' } },
       { path: '/account/settings', component: { template: '<main>Account Settings</main>' } },
       { path: '/system/users', component: { template: '<main>Users</main>' } },
       { path: '/system/users/:id', component: { template: '<main>User Detail</main>' } },
@@ -252,6 +253,15 @@ describe('admin layout', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/account/settings')
+  })
+
+  it('navigates to announcements from the expanded user area', async () => {
+    const { router, wrapper } = await mountLayout()
+
+    await wrapper.get('[data-test="admin-announcements"]').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/account/announcements')
   })
 
   it('navigates to account settings from the collapsed footer action', async () => {

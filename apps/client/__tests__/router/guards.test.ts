@@ -76,6 +76,7 @@ function createTestRouter() {
     history: createMemoryHistory(),
     routes: [
       { path: '/', component: { template: '<main>Home</main>' } },
+      { path: '/account/announcements', component: { template: '<main>My Announcements</main>' } },
       { path: '/account/settings', component: { template: '<main>Account Settings</main>' } },
       { path: '/system/audit-log', component: { template: '<main>Audit Log</main>' } },
       { path: '/system/audit-log/:id', component: { template: '<main>Audit Log Detail</main>' } },
@@ -503,6 +504,17 @@ describe('auth guards', () => {
     await router.push('/account/settings')
 
     expect(router.currentRoute.value.fullPath).toBe('/account/settings')
+  })
+
+  it('allows authenticated users without menus to access my announcements', async () => {
+    const auth = useAuthStore()
+    auth.setSession(createSession([]))
+    auth.markReady()
+    const router = createTestRouter()
+
+    await router.push('/account/announcements')
+
+    expect(router.currentRoute.value.fullPath).toBe('/account/announcements')
   })
 
   it('redirects authenticated users without menus from protected admin pages to forbidden', async () => {

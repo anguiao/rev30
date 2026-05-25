@@ -27,6 +27,10 @@ function handleLogout() {
   logoutMutation.mutate()
 }
 
+async function navigateToAnnouncements() {
+  await router.push('/account/announcements')
+}
+
 async function navigateToAccountSettings() {
   await router.push('/account/settings')
 }
@@ -45,6 +49,23 @@ async function navigateToAccountSettings() {
     >
       <template v-if="collapsed">
         <ThemeModeSwitch />
+        <NTooltip trigger="hover" placement="right">
+          <template #trigger>
+            <NButton
+              data-test="admin-announcements"
+              circle
+              quaternary
+              type="default"
+              aria-label="通知公告"
+              @click="navigateToAnnouncements"
+            >
+              <template #icon>
+                <span class="i-[lucide--megaphone] inline-block size-4" aria-hidden="true" />
+              </template>
+            </NButton>
+          </template>
+          通知公告
+        </NTooltip>
         <NTooltip trigger="hover" placement="right">
           <template #trigger>
             <NButton
@@ -93,6 +114,23 @@ async function navigateToAccountSettings() {
           </div>
           <div class="ml-3 flex shrink-0 items-center gap-1">
             <ThemeModeSwitch />
+            <NTooltip trigger="hover" placement="top">
+              <template #trigger>
+                <NButton
+                  data-test="admin-announcements"
+                  circle
+                  quaternary
+                  type="default"
+                  aria-label="通知公告"
+                  @click="navigateToAnnouncements"
+                >
+                  <template #icon>
+                    <span class="i-[lucide--megaphone] inline-block size-4" aria-hidden="true" />
+                  </template>
+                </NButton>
+              </template>
+              通知公告
+            </NTooltip>
             <NTooltip trigger="hover" placement="top">
               <template #trigger>
                 <NButton

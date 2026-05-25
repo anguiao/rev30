@@ -21,7 +21,7 @@ import {
   type RoleListItem,
   type RoleListQuery,
   type RoleListResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import RoleFormDrawer from '../../../features/system/RoleFormDrawer.vue'
 import {

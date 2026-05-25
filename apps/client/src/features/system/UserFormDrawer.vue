@@ -23,7 +23,7 @@ import {
   userCreateSchema,
   userFormSchema,
   userUpdateSchema,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   SystemRequestError,
   createUser,

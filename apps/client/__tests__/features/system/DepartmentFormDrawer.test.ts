@@ -7,7 +7,7 @@ import {
   DEPARTMENT_STATUS_ENABLED,
   type Department,
   type DepartmentTreeNode,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   createDepartment,
   getDepartment,

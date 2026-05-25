@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto'
-import type { Announcement, AnnouncementListResponse, TiptapDocument } from '@rev30/shared'
+import type { Announcement, AnnouncementListResponse, TiptapDocument } from '@rev30/contracts'
 import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_STATUS_PUBLISHED,
   ANNOUNCEMENT_TYPE_BULLETIN,
   ANNOUNCEMENT_TYPE_NOTICE,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { and, eq, isNull } from 'drizzle-orm'
 import type { Hono } from 'hono'
 import { afterEach, describe, expect, it, vi } from 'vitest'

@@ -7,7 +7,7 @@ import {
   type DepartmentSummary,
   type DepartmentTreeOptionsQuery,
   type DepartmentUpdateInput,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
 import { systemDepartments, systemUserDepartments } from '../../../db/schema'

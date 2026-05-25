@@ -3,7 +3,7 @@ import {
   RESOURCE_OPEN_TARGET_SELF,
   RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_EXTERNAL,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { createTestDb } from '../../../helpers/db'
 import { createResourceService } from '../../../../src/modules/system/resources/service'
 

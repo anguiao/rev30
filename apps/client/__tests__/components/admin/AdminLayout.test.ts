@@ -1,6 +1,6 @@
 import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
-import type { AuthTokenResponse } from '@rev30/shared'
+import type { AuthTokenResponse } from '@rev30/contracts'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'

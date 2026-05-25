@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { ConfigCreateInput, ConfigListQuery, ConfigUpdateInput } from '@rev30/shared'
+import type { ConfigCreateInput, ConfigListQuery, ConfigUpdateInput } from '@rev30/contracts'
 import { and, asc, count, eq, ilike, isNull, or } from 'drizzle-orm'
 import type { Db } from '../../../db'
 import { systemConfigs } from '../../../db/schema'

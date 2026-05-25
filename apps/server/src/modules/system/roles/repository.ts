@@ -7,7 +7,7 @@ import {
   createRoleResourceIdsSchema,
   type RoleSummary,
   type RoleUpdateInput,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Db, DbReader } from '../../../db'

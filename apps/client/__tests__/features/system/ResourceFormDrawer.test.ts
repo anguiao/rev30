@@ -15,7 +15,7 @@ import {
   RESOURCE_TYPE_MENU,
   type Resource,
   type ResourceTreeNode,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   createResource,
   getResource,

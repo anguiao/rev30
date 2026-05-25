@@ -1,4 +1,4 @@
-import type { ResourceTreeNode } from '@rev30/shared'
+import type { ResourceTreeNode } from '@rev30/contracts'
 
 type MenuMatchItem = {
   key: string

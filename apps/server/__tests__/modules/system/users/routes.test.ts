@@ -1,7 +1,7 @@
 import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { USER_STATUS_ENABLED } from '@rev30/shared'
+import { USER_STATUS_ENABLED } from '@rev30/contracts'
 import { createUserRoutes } from '../../../../src/modules/system/users/routes'
 import {
   BuiltInUserMutationError,

@@ -9,7 +9,7 @@ import {
   CONFIG_VALUE_TYPE_JSON,
   CONFIG_VALUE_TYPE_STRING,
   type Config,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   createConfig,
   getConfig,

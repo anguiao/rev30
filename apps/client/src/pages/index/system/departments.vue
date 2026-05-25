@@ -14,13 +14,8 @@ import {
   useDialog,
   useMessage,
 } from 'naive-ui'
-import {
-  filterTree,
-  getTreeNodeCount,
-  isLeafInTree,
-  treeToArray,
-  type DepartmentTreeNode,
-} from '@rev30/shared'
+import type { DepartmentTreeNode } from '@rev30/contracts'
+import { filterTree, getTreeNodeCount, isLeafInTree, treeToArray } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import DepartmentFormDrawer from '../../../features/system/DepartmentFormDrawer.vue'
 import {

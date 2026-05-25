@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from 'hono'
-import { AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH, type User } from '@rev30/shared'
+import { AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH, type User } from '@rev30/contracts'
 import type { Db } from '../db'
 import type { ResolvedUserAccess } from '../modules/auth/access'
 import { parseBearerToken } from '../modules/auth/bearer'

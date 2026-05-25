@@ -12,7 +12,7 @@ import {
   configListResponseSchema,
   configSchema,
   configUpdateSchema,
-} from '../../../src/schemas/system/configs'
+} from '../../../src/system/configs'
 import { prettifyZodError } from '../../helpers/schema'
 
 const configId = '11111111-1111-4111-8111-111111111111'

@@ -20,12 +20,11 @@ import {
   ROLE_STATUS_ENABLED,
   roleCreateSchema,
   createRoleResourceIdsSchema,
-  normalizeTreeCheckedKeys,
   roleUpdateSchema,
   type RoleFormInput,
   roleFormSchema,
-  treeToArray,
-} from '@rev30/shared'
+} from '@rev30/contracts'
+import { normalizeTreeCheckedKeys, treeToArray } from '@rev30/utils'
 import {
   SystemRequestError,
   createRole,

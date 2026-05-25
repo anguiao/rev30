@@ -5,7 +5,7 @@ import {
   type AuthSessionResponse,
   type Resource,
   type ResourceTreeNode,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { and, asc, desc, eq, getTableColumns, isNull } from 'drizzle-orm'
 import type { Db } from '../../db'
 import { systemRoleResources, systemRoles, systemResources, systemUserRoles } from '../../db/schema'

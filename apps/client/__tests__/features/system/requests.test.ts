@@ -12,7 +12,7 @@ import {
   RESOURCE_TYPE_MENU,
   ROLE_STATUS_ENABLED,
   USER_STATUS_ENABLED,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   createResource,
   createRole,

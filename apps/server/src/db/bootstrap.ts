@@ -5,7 +5,7 @@ import {
   USER_STATUS_ENABLED,
   passwordInputSchema,
   userCreateSchema,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { createDb, type Db } from '.'

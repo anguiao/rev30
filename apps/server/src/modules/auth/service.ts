@@ -5,7 +5,7 @@ import {
   type AuthProfileUpdateInput,
   type AuthTokenResponse,
   type User,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import type { Db } from '../../db'
 import { toUserConflictError } from '../system/users/errors'
 import { toUser } from '../system/users/mapper'

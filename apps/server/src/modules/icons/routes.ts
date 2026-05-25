@@ -1,4 +1,4 @@
-import { iconDataParamSchema, iconDataQuerySchema, iconSearchQuerySchema } from '@rev30/shared'
+import { iconDataParamSchema, iconDataQuerySchema, iconSearchQuerySchema } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'

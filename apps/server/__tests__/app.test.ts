@@ -6,7 +6,7 @@ import {
   type RoleListResponse,
   type ResourceListResponse,
   type UserListResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { createApp } from '../src/app'
 import { createSystemAccessFixture } from './helpers/auth'
 import { createTestDb } from './helpers/db'

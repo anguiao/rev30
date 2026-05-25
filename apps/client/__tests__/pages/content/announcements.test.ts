@@ -12,7 +12,7 @@ import {
   type AnnouncementListItem,
   type AnnouncementListResponse,
   type AuthTokenResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { defineComponent, h } from 'vue'
 import {
   archiveAnnouncement,

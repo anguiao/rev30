@@ -5,7 +5,7 @@ import {
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_STATUS_PUBLISHED,
   ANNOUNCEMENT_TYPE_NOTICE,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   AnnouncementContentInvalidError,
   AnnouncementDraftArchiveError,

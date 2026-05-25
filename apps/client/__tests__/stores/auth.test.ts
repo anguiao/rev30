@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import type { AuthTokenResponse } from '@rev30/shared'
-import { USER_STATUS_ENABLED } from '@rev30/shared'
+import type { AuthTokenResponse } from '@rev30/contracts'
+import { USER_STATUS_ENABLED } from '@rev30/contracts'
 import { useAuthStore } from '../../src/stores/auth'
 
 const session: AuthTokenResponse = {

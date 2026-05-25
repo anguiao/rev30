@@ -4,7 +4,7 @@ import {
   ROLE_STATUS_ENABLED,
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import {

@@ -10,7 +10,7 @@ import {
   RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_MENU,
   type ResourceTreeNode,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   deleteResource,
   formatDateTime,

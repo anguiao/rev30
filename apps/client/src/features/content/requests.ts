@@ -8,7 +8,7 @@ import {
   type AnnouncementListResponse,
   type AnnouncementUpdateInput,
   type ErrorResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import type { z } from 'zod'
 import { api } from '../../api'
 import { normalizeRequestQuery } from '../../utils/request'

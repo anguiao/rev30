@@ -17,7 +17,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import type { ButtonProps } from 'naive-ui'
-import type { ConfigListItem, ConfigListQuery, ConfigListResponse } from '@rev30/shared'
+import type { ConfigListItem, ConfigListQuery, ConfigListResponse } from '@rev30/contracts'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import ConfigFormDrawer from '../../../features/system/ConfigFormDrawer.vue'
 import {

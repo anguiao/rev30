@@ -11,7 +11,7 @@ import {
   ROLE_STATUS_ENABLED,
   type ResourceTreeNode,
   type Role,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   createRole,
   getRole,

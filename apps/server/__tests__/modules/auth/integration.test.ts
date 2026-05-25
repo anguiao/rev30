@@ -12,7 +12,7 @@ import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
   type AuthTokenResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   authPasswordCredentials,
   authRefreshTokens,

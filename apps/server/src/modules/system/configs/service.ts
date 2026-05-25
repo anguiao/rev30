@@ -3,12 +3,12 @@ import type {
   ConfigListQuery,
   ConfigUpdateInput,
   ConfigValueType,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   CONFIG_VALUE_TYPE_BOOLEAN,
   CONFIG_VALUE_TYPE_JSON,
   CONFIG_VALUE_TYPE_NUMBER,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import type { Db } from '../../../db'
 import { ConfigInvalidValueError, ConfigNotFoundError, toConfigConflictError } from './errors'
 import { toConfig, toConfigListItem, type ConfigRow } from './mapper'

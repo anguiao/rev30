@@ -9,7 +9,7 @@ import {
   CONFIG_VALUE_TYPE_STRING,
   type Config,
   type ConfigListResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { systemConfigs } from '../../../../src/db/schema'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'

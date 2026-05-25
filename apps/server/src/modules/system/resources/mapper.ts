@@ -1,9 +1,5 @@
-import {
-  arrayToTree,
-  type Resource,
-  type ResourceTreeNode,
-  type ResourceTreeOption,
-} from '@rev30/shared'
+import type { Resource, ResourceTreeNode, ResourceTreeOption } from '@rev30/contracts'
+import { arrayToTree } from '@rev30/utils'
 import { systemResources } from '../../../db/schema'
 
 export type ResourceRow = typeof systemResources.$inferSelect

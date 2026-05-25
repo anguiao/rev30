@@ -6,7 +6,7 @@ import {
   ANNOUNCEMENT_TYPE_NOTICE,
   type AnnouncementStatus,
   type AnnouncementType,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 
 export const ANNOUNCEMENT_TYPE_FILTER_ALL = 'all'
 export const ANNOUNCEMENT_STATUS_FILTER_ALL = 'all'

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { USER_STATUS_ENABLED } from '../../src/schemas/system/users'
+import { USER_STATUS_ENABLED } from '../../src/system/users'
 import {
   authLoginSchema,
   authPasswordUpdateSchema,
   authProfileUpdateSchema,
   authTokenResponseSchema,
-} from '../../src/schemas/auth'
+} from '../../src/auth'
 import { prettifyZodError } from '../helpers/schema'
 
 describe('auth schemas', () => {

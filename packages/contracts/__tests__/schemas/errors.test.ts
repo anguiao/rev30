@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { errorResponseSchema } from '../../src/schemas/errors'
+import { errorResponseSchema } from '../../src/errors'
 
 describe('error schemas', () => {
   it('parses error responses with optional field names', () => {

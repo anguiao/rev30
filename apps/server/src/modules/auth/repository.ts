@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { AuthProfileUpdateInput } from '@rev30/shared'
+import type { AuthProfileUpdateInput } from '@rev30/contracts'
 import { and, eq, gt, isNull, lte, ne, or, sql } from 'drizzle-orm'
 import type { Db } from '../../db'
 import {

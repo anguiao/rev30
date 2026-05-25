@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ResourceTreeNode } from '@rev30/shared'
+import type { ResourceTreeNode } from '@rev30/contracts'
 import { computed } from 'vue'
 import { NBreadcrumb, NBreadcrumbItem } from 'naive-ui'
 import { RouterLink, useRoute } from 'vue-router'

@@ -13,8 +13,8 @@ import {
   roleResourceSchema,
   roleSchema,
   roleUpdateSchema,
-} from '../../../src/schemas/system/roles'
-import { RESOURCE_TYPE_ACTION, RESOURCE_TYPE_MENU } from '../../../src/schemas/system/resources'
+} from '../../../src/system/roles'
+import { RESOURCE_TYPE_ACTION, RESOURCE_TYPE_MENU } from '../../../src/system/resources'
 import { prettifyZodError, testUuid } from '../../helpers/schema'
 
 describe('role schemas', () => {

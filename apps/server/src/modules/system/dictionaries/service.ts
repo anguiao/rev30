@@ -4,7 +4,7 @@ import type {
   DictionaryOptionsQuery,
   DictionaryOptionsResponse,
   DictionaryUpdateInput,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import type { Db } from '../../../db'
 import { DictionaryNotFoundError, toDictionaryConflictError } from './errors'
 import { toDictionaryDetail, toDictionaryListItem } from './mapper'

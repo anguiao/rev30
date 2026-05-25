@@ -7,7 +7,7 @@ import {
   RESOURCE_STATUS_ENABLED,
   RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_MENU,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   ResourceConflictError,
   ResourceDeleteConflictError,

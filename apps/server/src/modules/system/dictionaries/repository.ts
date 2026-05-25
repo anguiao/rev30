@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto'
-import { DICTIONARY_STATUS_ENABLED } from '@rev30/shared'
+import { DICTIONARY_STATUS_ENABLED } from '@rev30/contracts'
 import type {
   DictionaryOptionsQuery,
   DictionaryCreateInput,
   DictionaryListQuery,
   DictionaryUpdateInput,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { and, asc, count, desc, eq, ilike, inArray, isNull, notInArray, or, sql } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
 import { systemDictionaryItems, systemDictionaryTypes } from '../../../db/schema'

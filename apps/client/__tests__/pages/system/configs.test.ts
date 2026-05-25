@@ -10,7 +10,7 @@ import {
   CONFIG_VALUE_TYPE_STRING,
   type ConfigListItem,
   type ConfigListResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { defineComponent, h } from 'vue'
 import {
   deleteConfig,

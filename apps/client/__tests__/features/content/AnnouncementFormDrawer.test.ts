@@ -8,7 +8,7 @@ import {
   ANNOUNCEMENT_STATUS_PUBLISHED,
   ANNOUNCEMENT_TYPE_NOTICE,
   type Announcement,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   ContentRequestError,
   createAnnouncement,

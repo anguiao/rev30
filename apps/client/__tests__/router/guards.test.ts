@@ -7,7 +7,7 @@ import {
   USER_STATUS_ENABLED,
   type AuthTokenResponse,
   type ResourceTreeNode,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { useAuthStore } from '../../src/stores/auth'
 import { refreshSession } from '../../src/features/auth/requests'
 import { installAuthGuards } from '../../src/router/guards'

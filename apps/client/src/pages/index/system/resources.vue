@@ -19,13 +19,10 @@ import {
   RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_EXTERNAL,
   RESOURCE_TYPE_MENU,
-  filterTree,
-  getTreeNodeCount,
-  isLeafInTree,
-  treeToArray,
   type ResourceTreeNode,
   type ResourceType,
-} from '@rev30/shared'
+} from '@rev30/contracts'
+import { filterTree, getTreeNodeCount, isLeafInTree, treeToArray } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import ResourceFormDrawer from '../../../features/system/ResourceFormDrawer.vue'
 import {

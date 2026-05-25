@@ -2,12 +2,11 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import {
   RESOURCE_TYPE_MENU,
-  pruneTree,
-  treeToArray,
   type AuthTokenResponse,
   type ResourceTreeNode,
   type User,
-} from '@rev30/shared'
+} from '@rev30/contracts'
+import { pruneTree, treeToArray } from '@rev30/utils'
 
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(null)

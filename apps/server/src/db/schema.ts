@@ -23,7 +23,7 @@ import {
   ROLE_STATUS_ENABLED,
   type TiptapDocument,
   USER_STATUS_ENABLED,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 
 const timestampOptions = { withTimezone: true } as const
 

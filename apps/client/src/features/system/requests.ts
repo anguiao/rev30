@@ -58,7 +58,7 @@ import {
   type DictionaryCreateInput,
   type DictionaryUpdateInput,
   type DictionaryOptionsResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import type { z } from 'zod'
 import { api } from '../../api'
 import { normalizeRequestQuery } from '../../utils/request'

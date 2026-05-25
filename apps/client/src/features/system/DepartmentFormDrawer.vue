@@ -21,7 +21,7 @@ import {
   departmentFormSchema,
   type DepartmentFormInput,
   departmentUpdateSchema,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   SystemRequestError,
   createDepartment,

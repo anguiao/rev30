@@ -9,7 +9,7 @@ import {
   departmentListQuerySchema,
   departmentSchema,
   departmentUpdateSchema,
-} from '../../../src/schemas/system/departments'
+} from '../../../src/system/departments'
 import { prettifyZodError } from '../../helpers/schema'
 
 describe('department schemas', () => {

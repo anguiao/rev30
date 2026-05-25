@@ -4,7 +4,7 @@ import {
   iconDataQuerySchema,
   iconSearchQuerySchema,
   iconSearchResponseSchema,
-} from '../../src/schemas/icons'
+} from '../../src/icons'
 
 describe('icon schemas', () => {
   it('parses icon data route params into an icon prefix', () => {

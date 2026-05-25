@@ -29,7 +29,7 @@ import {
   type ResourceFormInput,
   type ResourceType,
   resourceUpdateSchema,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   SystemRequestError,
   createResource,

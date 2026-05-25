@@ -7,7 +7,7 @@ import {
   DICTIONARY_STATUS_ENABLED,
   type DictionaryListItem,
   type DictionaryListResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { defineComponent, h } from 'vue'
 import {
   deleteDictionary,

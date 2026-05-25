@@ -8,7 +8,7 @@ import {
   type AuthPasswordUpdateInput,
   type User,
   userSchema,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { api } from '../../api'
 import type { ZodType } from 'zod'
 

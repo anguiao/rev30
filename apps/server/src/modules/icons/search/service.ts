@@ -3,7 +3,7 @@ import {
   type IconSearchItem,
   type IconSearchQuery,
   type IconSearchResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { loadIconCollections } from './collections'
 import { expandSearchCandidates } from './query'
 import { recallCandidates, scoreSearchItem } from './ranking'

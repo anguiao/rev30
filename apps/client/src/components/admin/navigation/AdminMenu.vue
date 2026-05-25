@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
-import { treeToArray, type ResourceTreeNode } from '@rev30/shared'
+import type { ResourceTreeNode } from '@rev30/contracts'
+import { treeToArray } from '@rev30/utils'
 import { computed, h, ref, watch } from 'vue'
 import { NEmpty, NMenu, type MenuOption } from 'naive-ui'
 import { RouterLink, useRoute } from 'vue-router'

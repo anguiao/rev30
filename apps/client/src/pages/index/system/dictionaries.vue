@@ -16,7 +16,11 @@ import {
   useMessage,
 } from 'naive-ui'
 import type { ButtonProps } from 'naive-ui'
-import type { DictionaryListItem, DictionaryListQuery, DictionaryListResponse } from '@rev30/shared'
+import type {
+  DictionaryListItem,
+  DictionaryListQuery,
+  DictionaryListResponse,
+} from '@rev30/contracts'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import DictionaryFormDrawer from '../../../features/system/DictionaryFormDrawer.vue'
 import {

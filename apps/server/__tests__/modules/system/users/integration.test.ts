@@ -13,7 +13,7 @@ import {
   type UserOptionsResponse,
   type UserResetPasswordResponse,
   type UserStatus,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   authPasswordCredentials,
   authRefreshTokens,

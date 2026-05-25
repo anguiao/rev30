@@ -4,7 +4,7 @@ import {
   type RoleListQuery,
   type RoleOptionsQuery,
   type RoleUpdateInput,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import type { Db } from '../../../db'
 import {
   BuiltInAdminRoleMutationError,

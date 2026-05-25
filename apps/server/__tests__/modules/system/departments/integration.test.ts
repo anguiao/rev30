@@ -9,7 +9,7 @@ import {
   type DepartmentListResponse,
   type DepartmentTreeOptionsResponse,
   type DepartmentTreeNode,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { systemDepartments, systemUserDepartments, systemUsers } from '../../../../src/db/schema'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'

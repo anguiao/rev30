@@ -23,7 +23,7 @@ import type {
   UserListItem,
   UserListQuery,
   UserListResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import UserFormDrawer from '../../../features/system/UserFormDrawer.vue'
 import {

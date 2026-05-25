@@ -8,7 +8,8 @@
 - 优先使用 Naive UI 组件，非必要不覆盖样式；优先复用已定义的主题工具类，避免硬编码等效值。
 - 图标优先使用 Iconify 原子类，格式为 `i-[collection--name]`。
 - 服务端位于 `apps/server`，基于 Hono + Drizzle；API 统一挂在 `/api`。
-- 共享 zod schema 和 TypeScript 类型放在 `packages/shared`，前后端请求/响应尽量复用这些约束。
+- 共享 zod schema、请求/响应契约和 TypeScript 类型放在 `packages/contracts`，前后端尽量复用这些约束。
+- 跨端纯工具函数放在 `packages/utils`；不要和接口契约混放。
 - 优先复用项目和依赖提供的 TypeScript 类型，不为绕过检查自定义宽松类型。
 - 数据库 schema 在 `apps/server/src/db/schema.ts`；开发用 PGlite，生产用 `DATABASE_URL`。
 - 代码检查使用 oxlint，格式化使用 oxfmt；提交前注意废弃 API 检查。

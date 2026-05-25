@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { ROLE_STATUS_ENABLED, USER_STATUS_ENABLED } from '@rev30/shared'
+import { ROLE_STATUS_ENABLED, USER_STATUS_ENABLED } from '@rev30/contracts'
 import { Hono } from 'hono'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import type { Db } from '../../src/db'

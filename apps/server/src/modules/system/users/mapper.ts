@@ -1,4 +1,4 @@
-import type { DepartmentSummary, RoleSummary, User, UserOption } from '@rev30/shared'
+import type { DepartmentSummary, RoleSummary, User, UserOption } from '@rev30/contracts'
 import { systemUsers } from '../../../db/schema'
 
 export type UserRow = typeof systemUsers.$inferSelect

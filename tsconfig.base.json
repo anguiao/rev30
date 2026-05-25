@@ -11,7 +11,8 @@
     "noUncheckedIndexedAccess": true,
     "paths": {
       "@rev30/server": ["./apps/server/src/app.ts"],
-      "@rev30/shared": ["./packages/shared/src/index.ts"]
+      "@rev30/contracts": ["./packages/contracts/src/index.ts"],
+      "@rev30/utils": ["./packages/utils/src/index.ts"]
     },
     "resolveJsonModule": true,
     "skipLibCheck": true,

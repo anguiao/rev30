@@ -12,7 +12,7 @@ import {
   announcementSchema,
   announcementCreateSchema,
   announcementUpdateSchema,
-} from '../../../src/schemas/content/announcements'
+} from '../../../src/content/announcements'
 import { prettifyZodError } from '../../helpers/schema'
 
 const announcementId = '11111111-1111-4111-8111-111111111111'

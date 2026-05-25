@@ -4,7 +4,7 @@ import {
   type Announcement,
   type AnnouncementCreateInput,
   type AnnouncementUpdateInput,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   ContentRequestError,

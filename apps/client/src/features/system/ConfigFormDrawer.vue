@@ -25,7 +25,7 @@ import {
   type ConfigFormInput,
   type ConfigValueType,
   configUpdateSchema,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { SystemRequestError, createConfig, getConfig, getSystemErrorMessage, updateConfig } from '.'
 import { configValueTypeSelectOptions, statusSelectOptions } from './labels'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'

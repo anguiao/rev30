@@ -8,7 +8,7 @@ import {
   authProfileUpdateSchema,
   type AuthPasswordUpdateInput,
   type AuthProfileUpdateInput,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { NAlert, NButton, NForm, NFormItem, NInput, useMessage } from 'naive-ui'
 import { omit, pick } from 'lodash-es'
 import {

@@ -6,7 +6,7 @@ import {
   type ResourceStatus,
   type ResourceTreeOptionsQuery,
   type ResourceUpdateInput,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
 import { systemRoleResources, systemResources } from '../../../db/schema'

@@ -1,7 +1,7 @@
 import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { RESOURCE_TYPE_ACTION, ROLE_STATUS_ENABLED } from '@rev30/shared'
+import { RESOURCE_TYPE_ACTION, ROLE_STATUS_ENABLED } from '@rev30/contracts'
 import {
   BuiltInAdminRoleMutationError,
   RoleConflictError,

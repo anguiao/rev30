@@ -3,7 +3,7 @@ import type {
   DictionaryItem,
   DictionaryListItem,
   DictionaryType,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { systemDictionaryItems, systemDictionaryTypes } from '../../../db/schema'
 
 export type DictionaryTypeRow = typeof systemDictionaryTypes.$inferSelect

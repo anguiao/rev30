@@ -6,7 +6,7 @@ import { copyFile, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promi
 import { and, eq, isNull } from 'drizzle-orm'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { ANNOUNCEMENT_STATUS_DRAFT, type TiptapDocument } from '@rev30/shared'
+import { ANNOUNCEMENT_STATUS_DRAFT, type TiptapDocument } from '@rev30/contracts'
 import { createDb } from '../../src/db/index'
 import { migratePGlite } from '../../src/db/migrate'
 import {

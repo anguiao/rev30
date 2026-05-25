@@ -7,7 +7,7 @@ import {
   DICTIONARY_STATUS_DISABLED,
   DICTIONARY_STATUS_ENABLED,
   type DictionaryDetail,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   createDictionary,
   getDictionary,

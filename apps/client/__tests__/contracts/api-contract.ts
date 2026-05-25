@@ -1,4 +1,4 @@
-import { RESOURCE_TYPE_MENU } from '@rev30/shared'
+import { RESOURCE_TYPE_MENU } from '@rev30/contracts'
 import { api } from '../../src/api'
 
 const roleQuery: Parameters<typeof api.system.roles.$get>[0] = {

@@ -6,7 +6,7 @@ import {
   announcementListQuerySchema,
   announcementSchema,
   announcementUpdateSchema,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'

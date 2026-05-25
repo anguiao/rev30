@@ -3,7 +3,7 @@ import type {
   DepartmentListQuery,
   DepartmentTreeOptionsQuery,
   DepartmentUpdateInput,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import type { Db } from '../../../db'
 import {
   DepartmentDeleteConflictError,

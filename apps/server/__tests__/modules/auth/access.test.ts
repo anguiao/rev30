@@ -9,7 +9,7 @@ import {
   RESOURCE_TYPE_EXTERNAL,
   RESOURCE_TYPE_MENU,
   ROLE_STATUS_DISABLED,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   systemRoleResources,
   systemRoles,

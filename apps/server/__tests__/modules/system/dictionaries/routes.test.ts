@@ -2,7 +2,7 @@ import {
   DICTIONARY_STATUS_ENABLED,
   type DictionaryDetail,
   type DictionaryOptionsResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'

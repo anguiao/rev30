@@ -12,7 +12,7 @@ import {
   type RoleListResponse,
   type RoleOptionsResponse,
   type RoleStatus,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   systemRoleResources,
   systemRoles,

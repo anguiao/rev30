@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { USER_STATUS_ENABLED } from '@rev30/shared'
+import { USER_STATUS_ENABLED } from '@rev30/contracts'
 import {
   AuthRequestError,
   getAuthErrorMessage,

@@ -1,4 +1,4 @@
-import type { ResourceTreeNode } from '@rev30/shared'
+import type { ResourceTreeNode } from '@rev30/contracts'
 import type { RouteLocationNormalized, Router } from 'vue-router'
 import { refreshSession } from '../features/auth/requests'
 import { useAuthStore } from '../stores/auth'

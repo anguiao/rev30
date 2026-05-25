@@ -6,7 +6,7 @@ import {
   configListQuerySchema,
   configSchema,
   configUpdateSchema,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import { z } from 'zod'

@@ -6,7 +6,7 @@ import {
   DEPARTMENT_STATUS_DISABLED,
   DEPARTMENT_STATUS_ENABLED,
   type DepartmentTreeNode,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   deleteDepartment,
   formatDateTime,

@@ -15,7 +15,7 @@ import {
   type ResourceListResponse,
   type ResourceTreeOptionsResponse,
   type ResourceTreeNode,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { systemRoleResources, systemRoles, systemResources } from '../../../../src/db/schema'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'

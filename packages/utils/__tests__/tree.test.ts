@@ -7,7 +7,7 @@ import {
   normalizeTreeCheckedKeys,
   pruneTree,
   treeToArray,
-} from '../../src/utils'
+} from '../src'
 
 type FlatNode = {
   id: string

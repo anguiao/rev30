@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { type ResourceTreeNode, type User } from '@rev30/shared'
+import { type ResourceTreeNode, type User } from '@rev30/contracts'
 import { createTestDb } from '../helpers/db'
 import { createSystemAccessFixture } from '../helpers/auth'
 import { createAuthMiddleware, type AuthVariables } from '../../src/middleware/auth'

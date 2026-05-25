@@ -1,4 +1,4 @@
-import { USER_STATUS_DISABLED, USER_STATUS_ENABLED } from '@rev30/shared'
+import { USER_STATUS_DISABLED, USER_STATUS_ENABLED } from '@rev30/contracts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthConfig } from '../../../src/modules/auth/config'
 import {

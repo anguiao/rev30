@@ -6,7 +6,7 @@ import {
   ROLE_STATUS_DISABLED,
   ROLE_STATUS_ENABLED,
   type RoleListResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { defineComponent, h } from 'vue'
 import {
   deleteRole,

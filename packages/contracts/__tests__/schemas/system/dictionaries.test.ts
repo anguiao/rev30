@@ -14,7 +14,7 @@ import {
   dictionaryUpdateSchema,
   type DictionaryFormInput,
   type DictionaryListResponse,
-} from '../../../src/schemas/system/dictionaries'
+} from '../../../src/system/dictionaries'
 import { prettifyZodError } from '../../helpers/schema'
 
 describe('dictionary schemas', () => {

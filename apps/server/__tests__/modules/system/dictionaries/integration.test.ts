@@ -4,7 +4,7 @@ import {
   type DictionaryDetail,
   type DictionaryListResponse,
   type DictionaryOptionsResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { eq } from 'drizzle-orm'
 import type { Hono } from 'hono'
 import { describe, expect, it } from 'vitest'

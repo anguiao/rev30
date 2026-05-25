@@ -3,7 +3,7 @@ import { onBeforeUnmount, shallowRef, watch } from 'vue'
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import { NButton, NButtonGroup } from 'naive-ui'
-import type { TiptapDocument } from '@rev30/shared'
+import type { TiptapDocument } from '@rev30/contracts'
 
 const props = withDefaults(
   defineProps<{

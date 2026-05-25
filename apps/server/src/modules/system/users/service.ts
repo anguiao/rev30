@@ -5,7 +5,7 @@ import type {
   UserOptionsQuery,
   UserResetPasswordResponse,
   UserUpdateInput,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import type { Db } from '../../../db'
 import { generateTemporaryPassword, hashPassword } from '../../auth/password'
 import { BuiltInUserMutationError, toUserConflictError, UserNotFoundError } from './errors'

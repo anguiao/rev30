@@ -5,7 +5,7 @@ import {
   RESOURCE_TYPE_MENU,
   type DepartmentSummary,
   type RoleSummary,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { api, authFetch } from '../src/api'
 import { useAuthStore } from '../src/stores/auth'
 import {

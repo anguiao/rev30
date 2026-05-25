@@ -1,4 +1,4 @@
-import { iconifyIconNamePartPatternSource, type IconSearchItem } from '@rev30/shared'
+import { iconifyIconNamePartPatternSource, type IconSearchItem } from '@rev30/contracts'
 import { lookupCollection } from '@iconify/json'
 import { AsyncFzf, asyncExtendedMatch, byLengthAsc, byStartAsc } from 'fzf'
 import { preferredIconPrefixes, recommendedIconNames } from './config'

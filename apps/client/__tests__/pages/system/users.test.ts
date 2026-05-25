@@ -9,7 +9,7 @@ import {
   type UserCreateResponse,
   type UserListResponse,
   type UserResetPasswordResponse,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { defineComponent, h } from 'vue'
 import {
   deleteUser,

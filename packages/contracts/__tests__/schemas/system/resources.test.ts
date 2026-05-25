@@ -17,8 +17,8 @@ import {
   resourceListResponseSchema,
   resourceSchema,
   resourceUpdateSchema,
-} from '../../../src/schemas/system/resources'
-import type { Resource } from '../../../src/schemas/system/resources'
+} from '../../../src/system/resources'
+import type { Resource } from '../../../src/system/resources'
 import { prettifyZodError } from '../../helpers/schema'
 
 describe('resource schemas', () => {

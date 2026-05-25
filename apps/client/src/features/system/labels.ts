@@ -12,7 +12,7 @@ import {
   type DepartmentStatus,
   type ResourceType,
   type ConfigValueType,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 
 export type SystemStatus = DepartmentStatus
 type StatusTagType = 'default' | 'success'

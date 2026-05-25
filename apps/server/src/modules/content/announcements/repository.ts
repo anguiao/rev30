@@ -3,12 +3,12 @@ import type {
   AnnouncementCreateInput,
   AnnouncementListQuery,
   AnnouncementUpdateInput,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_STATUS_PUBLISHED,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { and, count, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm'
 import type { Db } from '../../../db'
 import { contentAnnouncements } from '../../../db/schema'

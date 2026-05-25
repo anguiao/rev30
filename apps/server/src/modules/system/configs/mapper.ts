@@ -1,4 +1,4 @@
-import type { Config, ConfigListItem } from '@rev30/shared'
+import type { Config, ConfigListItem } from '@rev30/contracts'
 import { systemConfigs } from '../../../db/schema'
 
 export type ConfigRow = typeof systemConfigs.$inferSelect

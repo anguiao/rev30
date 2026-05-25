@@ -1,7 +1,7 @@
 import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEPARTMENT_STATUS_ENABLED, DEPARTMENT_STATUS_DISABLED } from '@rev30/shared'
+import { DEPARTMENT_STATUS_ENABLED, DEPARTMENT_STATUS_DISABLED } from '@rev30/contracts'
 import {
   DepartmentConflictError,
   DepartmentDeleteConflictError,

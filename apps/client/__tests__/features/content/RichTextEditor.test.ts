@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import type { TiptapDocument } from '@rev30/shared'
+import type { TiptapDocument } from '@rev30/contracts'
 import RichTextEditor from '../../../src/features/content/RichTextEditor.vue'
 
 const contentJson: TiptapDocument = {

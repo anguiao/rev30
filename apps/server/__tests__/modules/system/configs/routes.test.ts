@@ -1,7 +1,7 @@
 import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { CONFIG_STATUS_ENABLED, CONFIG_VALUE_TYPE_STRING } from '@rev30/shared'
+import { CONFIG_STATUS_ENABLED, CONFIG_VALUE_TYPE_STRING } from '@rev30/contracts'
 import {
   ConfigConflictError,
   ConfigInvalidValueError,

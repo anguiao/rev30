@@ -1,4 +1,4 @@
-import type { UserUniqueField } from '@rev30/shared'
+import type { UserUniqueField } from '@rev30/contracts'
 import { DrizzleQueryError } from 'drizzle-orm/errors'
 import { FormFieldError } from '../../../core/errors'
 import { POSTGRES_UNIQUE_VIOLATION_CODE } from '../../../db/errors'

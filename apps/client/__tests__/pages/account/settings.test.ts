@@ -1,6 +1,6 @@
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { User } from '@rev30/shared'
+import type { User } from '@rev30/contracts'
 import { h } from 'vue'
 import { useAuthStore } from '../../../src/stores/auth'
 import { updateMyPassword, updateMyProfile } from '../../../src/features/auth/requests'

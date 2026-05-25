@@ -11,7 +11,7 @@ import {
   type ResourceTreeOptionsQuery,
   type ResourceUpdateInput,
   resourceExternalUrlSchema,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import type { Db } from '../../../db'
 import {
   ResourceDeleteConflictError,

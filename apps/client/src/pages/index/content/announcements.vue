@@ -25,7 +25,7 @@ import {
   type AnnouncementListQuery,
   type AnnouncementListResponse,
   type AnnouncementStatus,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import AnnouncementFormDrawer from '../../../features/content/AnnouncementFormDrawer.vue'
 import {

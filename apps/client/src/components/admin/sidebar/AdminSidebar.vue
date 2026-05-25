@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ResourceTreeNode } from '@rev30/shared'
+import type { ResourceTreeNode } from '@rev30/contracts'
 import AdminMenu from '../navigation/AdminMenu.vue'
 import AdminSidebarFooter from './AdminSidebarFooter.vue'
 import AdminSidebarHeader from './AdminSidebarHeader.vue'

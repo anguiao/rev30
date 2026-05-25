@@ -13,7 +13,7 @@ import {
   USER_STATUS_ENABLED,
   type User,
   type UserStatus,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import {
   createUser,
   getDepartmentTreeOptions,

@@ -1,4 +1,4 @@
-import type { Role, RoleListItem, RoleOption, RoleResource, RoleSummary } from '@rev30/shared'
+import type { Role, RoleListItem, RoleOption, RoleResource, RoleSummary } from '@rev30/contracts'
 import { systemRoles } from '../../../db/schema'
 
 export type RoleRow = typeof systemRoles.$inferSelect

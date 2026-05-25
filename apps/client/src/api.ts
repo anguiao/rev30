@@ -1,7 +1,7 @@
 import { hc } from 'hono/client'
-import { AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH, authTokenResponseSchema } from '@rev30/shared'
+import { AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH, authTokenResponseSchema } from '@rev30/contracts'
 import type { AppType } from '@rev30/server'
-import type { AuthTokenResponse } from '@rev30/shared'
+import type { AuthTokenResponse } from '@rev30/contracts'
 import { useAuthStore } from './stores/auth'
 
 function cloneFetchInput(input: RequestInfo | URL) {

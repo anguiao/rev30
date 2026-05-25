@@ -21,7 +21,7 @@ import {
   announcementUpdateSchema,
   type AnnouncementFormInput,
   type TiptapDocument,
-} from '@rev30/shared'
+} from '@rev30/contracts'
 import RichTextEditor from './RichTextEditor.vue'
 import {
   ContentRequestError,

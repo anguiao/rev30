@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import type { AuthTokenResponse } from '@rev30/shared'
+import type { AuthTokenResponse } from '@rev30/contracts'
 import { defineComponent, nextTick, ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '../../src/stores/auth'

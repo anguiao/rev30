@@ -2,8 +2,8 @@ import type {
   AnnouncementCreateInput,
   AnnouncementListQuery,
   AnnouncementUpdateInput,
-} from '@rev30/shared'
-import { ANNOUNCEMENT_STATUS_ARCHIVED, ANNOUNCEMENT_STATUS_DRAFT } from '@rev30/shared'
+} from '@rev30/contracts'
+import { ANNOUNCEMENT_STATUS_ARCHIVED, ANNOUNCEMENT_STATUS_DRAFT } from '@rev30/contracts'
 import type { Db } from '../../../db'
 import { AnnouncementDraftArchiveError, AnnouncementNotFoundError } from './errors'
 import { toAnnouncement, toAnnouncementListItem } from './mapper'

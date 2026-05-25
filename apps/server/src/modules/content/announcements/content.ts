@@ -53,16 +53,6 @@ function sanitizeAnnouncementHtml(html: string) {
     allowedAttributes: {
       a: ['href', 'target', 'rel'],
     },
-    transformTags: {
-      a(tagName, attributes) {
-        return {
-          tagName,
-          attribs: {
-            href: attributes.href,
-          },
-        }
-      },
-    },
     allowedSchemes: ['http', 'https', 'mailto', 'tel'],
     allowProtocolRelative: false,
   })

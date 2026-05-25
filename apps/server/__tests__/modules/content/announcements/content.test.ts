@@ -38,10 +38,12 @@ describe('announcement content helpers', () => {
     }
     const content = deriveAnnouncementContent(contentJson)
 
-    expect(content).toEqual({
-      text: '维护通知\n\n请访问 帮助中心',
-      html: '<h2>维护通知</h2><p>请访问 <a href="https://example.com/help">帮助中心</a></p>',
-    })
+    expect(content.text).toBe('维护通知\n\n请访问 帮助中心')
+    expect(content.html).toContain('<h2>维护通知</h2>')
+    expect(content.html).toContain('<a')
+    expect(content.html).toContain('href="https://example.com/help"')
+    expect(content.html).toContain('target="_blank"')
+    expect(content.html).toContain('rel="noopener noreferrer nofollow"')
 
     const simpleContentJson = {
       type: 'doc',
@@ -51,26 +53,56 @@ describe('announcement content helpers', () => {
     expect(deriveAnnouncementContentHtml(simpleContentJson)).toBe('<p>维护通知</p>')
   })
 
-  it('removes unsafe html generated from link attributes', async () => {
+  it('preserves safe link attributes and removes unsafe href protocol', async () => {
     const { deriveAnnouncementContentHtml } = await loadContentHelpers()
 
-    expect(
-      deriveAnnouncementContentHtml({
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [
-              {
-                type: 'text',
-                text: '危险链接',
-                marks: [{ type: 'link', attrs: { href: 'javascript:alert(1)' } }],
-              },
-            ],
-          },
-        ],
-      }),
-    ).toBe('<p><a>危险链接</a></p>')
+    const unsafeLinkHtml = deriveAnnouncementContentHtml({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: '危险链接',
+              marks: [{ type: 'link', attrs: { href: 'javascript:alert(1)' } }],
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(unsafeLinkHtml).toBe('<p><a target="_blank" rel="noopener noreferrer nofollow">危险链接</a></p>')
+    expect(unsafeLinkHtml).not.toContain('href="javascript:alert(1)"')
+
+    const safeLinkHtml = deriveAnnouncementContentHtml({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: '安全链接',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://safe.example.com',
+                    target: '_blank',
+                    rel: 'noopener noreferrer nofollow',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(safeLinkHtml).toContain('href="https://safe.example.com"')
+    expect(safeLinkHtml).toContain('target="_blank"')
+    expect(safeLinkHtml).toContain('rel="noopener noreferrer nofollow"')
   })
 
   it('derives plain text from Tiptap JSON with block separators', async () => {

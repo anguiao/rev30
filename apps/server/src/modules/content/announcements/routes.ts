@@ -15,7 +15,9 @@ import {
   AnnouncementContentInvalidError,
   AnnouncementDraftArchiveError,
   AnnouncementEmptyContentError,
+  AnnouncementInvalidTargetError,
   AnnouncementNotFoundError,
+  AnnouncementVisibilityTargetRequiredError,
 } from './errors'
 import { createAnnouncementService } from './service'
 
@@ -63,7 +65,9 @@ const announcementUpdateBodyValidator = zValidator(
 function announcementErrorResponse(error: unknown, c: Context) {
   if (
     error instanceof AnnouncementEmptyContentError ||
-    error instanceof AnnouncementContentInvalidError
+    error instanceof AnnouncementContentInvalidError ||
+    error instanceof AnnouncementVisibilityTargetRequiredError ||
+    error instanceof AnnouncementInvalidTargetError
   ) {
     return c.json({ field: error.field, message: error.message }, 400)
   }

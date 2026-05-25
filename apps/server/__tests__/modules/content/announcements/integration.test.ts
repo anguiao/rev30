@@ -1,16 +1,32 @@
 import { randomUUID } from 'node:crypto'
-import type { Announcement, AnnouncementListResponse, TiptapDocument } from '@rev30/contracts'
+import type {
+  Announcement,
+  AnnouncementListResponse,
+  AnnouncementTarget,
+  TiptapDocument,
+} from '@rev30/contracts'
 import {
+  ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+  ANNOUNCEMENT_TARGET_TYPE_ROLE,
+  ANNOUNCEMENT_TARGET_TYPE_USER,
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_STATUS_PUBLISHED,
   ANNOUNCEMENT_TYPE_BULLETIN,
   ANNOUNCEMENT_TYPE_NOTICE,
+  ANNOUNCEMENT_VISIBILITY_TARGETED,
+  ROLE_STATUS_DISABLED,
 } from '@rev30/contracts'
 import { and, eq, isNull } from 'drizzle-orm'
 import type { Hono } from 'hono'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { contentAnnouncements } from '../../../../src/db/schema'
+import {
+  contentAnnouncements,
+  contentAnnouncementTargets,
+  systemDepartments,
+  systemRoles,
+  systemUsers,
+} from '../../../../src/db/schema'
 import { createAnnouncementRoutes } from '../../../../src/modules/content/announcements/routes'
 import {
   createProtectedContentRouteTestApp,
@@ -34,6 +50,8 @@ const createBody = {
   pinned: true,
 } as const
 
+const createBodyContentHtml = '<p>今晚维护</p>'
+
 async function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
   const fixture = await createSystemAccessFixture(database, {
     admin: true,
@@ -55,6 +73,8 @@ async function createAnnouncement(
     title: string
     summary?: string | null
     contentJson: TiptapDocument
+    visibility?: 'all' | 'targeted'
+    targets?: AnnouncementTarget[]
     pinned?: boolean
     publish?: boolean
   },
@@ -66,6 +86,39 @@ async function createAnnouncement(
   })
 
   return { body: (await response.json()) as Announcement, response }
+}
+
+async function createAnnouncementTargetsFixture(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+) {
+  const userId = randomUUID()
+  const departmentId = randomUUID()
+  const roleId = randomUUID()
+
+  await database.insert(systemUsers).values({
+    id: userId,
+    username: `announcement-target-user-${userId.slice(0, 8)}`,
+    nickname: 'Announcement Target User',
+  })
+  await database.insert(systemDepartments).values({
+    id: departmentId,
+    name: 'Announcement Target Department',
+    code: `announcement-target-dept-${departmentId.slice(0, 8)}`,
+  })
+  await database.insert(systemRoles).values({
+    id: roleId,
+    name: 'Announcement Target Role',
+    code: `announcement-target-role-${roleId.slice(0, 8)}`,
+  })
+
+  return {
+    user: { targetType: ANNOUNCEMENT_TARGET_TYPE_USER, targetId: userId } as const,
+    department: {
+      targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+      targetId: departmentId,
+    } as const,
+    role: { targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE, targetId: roleId } as const,
+  }
 }
 
 afterEach(() => {
@@ -86,6 +139,9 @@ describe('announcement routes', () => {
       type: 'notice',
       title: '维护通知',
       summary: '今晚维护',
+      contentHtml: createBodyContentHtml,
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [],
       status: 'draft',
       pinned: true,
       publishedAt: null,
@@ -97,6 +153,7 @@ describe('announcement routes', () => {
       {
         ...createBody,
         title: '已发布通知',
+        visibility: 'all',
         publish: true,
       },
     )
@@ -116,6 +173,9 @@ describe('announcement routes', () => {
     const detailBody = (await detailResponse.json()) as Announcement
     expect(detailResponse.status).toBe(200)
     expect(detailBody.contentJson).toEqual(createBody.contentJson)
+    expect(detailBody.contentHtml).toBe(createBodyContentHtml)
+    expect(detailBody.visibility).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
+    expect(detailBody.targets).toEqual([])
   })
 
   it('rejects creating announcements with invalid contentJson structure', async () => {
@@ -186,6 +246,120 @@ describe('announcement routes', () => {
 
     expect(response.status).toBe(200)
     expect(body.contentText).toBe('维护时间改到 23:00')
+    expect(body.contentHtml).toContain('维护时间改到 23:00')
+  })
+
+  it('persists visibility targets and returns them in management detail', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const targets = await createAnnouncementTargetsFixture(database)
+
+    const createResponse = await createAnnouncement(app, {
+      ...createBody,
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [targets.user, targets.role],
+    })
+    expect(createResponse.response.status).toBe(201)
+    expect(createResponse.body.contentHtml).toBe(createBodyContentHtml)
+    expect(createResponse.body.visibility).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
+    expect(createResponse.body.targets).toEqual([targets.user, targets.role])
+
+    const createdTargetRows = await database
+      .select()
+      .from(contentAnnouncementTargets)
+      .where(eq(contentAnnouncementTargets.announcementId, createResponse.body.id))
+    expect(createdTargetRows).toHaveLength(2)
+    expect(
+      createdTargetRows.map((row) => ({
+        targetType: row.targetType,
+        targetId: row.targetId,
+      })),
+    ).toEqual(
+      expect.arrayContaining([
+        { targetType: targets.user.targetType, targetId: targets.user.targetId },
+        { targetType: targets.role.targetType, targetId: targets.role.targetId },
+      ]),
+    )
+
+    const updateResponse = await app.request(`/api/content/announcements/${createResponse.body.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [targets.department],
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const updated = (await updateResponse.json()) as Announcement
+    expect(updateResponse.status).toBe(200)
+    expect(updated.visibility).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
+    expect(updated.targets).toEqual([targets.department])
+
+    const detailResponse = await app.request(`/api/content/announcements/${createResponse.body.id}`)
+    const detail = (await detailResponse.json()) as Announcement
+    expect(detailResponse.status).toBe(200)
+    expect(detail.visibility).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
+    expect(detail.targets).toEqual([targets.department])
+    expect(detail.contentHtml).toBe(createBodyContentHtml)
+
+    const updatedTargetRows = await database
+      .select()
+      .from(contentAnnouncementTargets)
+      .where(eq(contentAnnouncementTargets.announcementId, createResponse.body.id))
+    expect(updatedTargetRows).toHaveLength(1)
+    expect(updatedTargetRows[0]).toMatchObject({
+      announcementId: createResponse.body.id,
+      targetType: targets.department.targetType,
+      targetId: targets.department.targetId,
+    })
+  })
+
+  it('rejects publishing targeted announcements without visible objects', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: created } = await createAnnouncement(app, {
+      ...createBody,
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [],
+    })
+
+    const response = await app.request(`/api/content/announcements/${created.id}/publish`, {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(400)
+    expect((await response.json()) as ErrorResponse).toEqual({
+      field: 'targets',
+      message: '请选择可见对象',
+    })
+  })
+
+  it('rejects invalid announcement targets', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const roleId = randomUUID()
+
+    await database.insert(systemRoles).values({
+      id: roleId,
+      name: 'Disabled Announcement Role',
+      code: `disabled-announcement-role-${roleId.slice(0, 8)}`,
+      status: ROLE_STATUS_DISABLED,
+    })
+
+    const response = await app.request('/api/content/announcements', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...createBody,
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [{ targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE, targetId: roleId }],
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(400)
+    expect((await response.json()) as ErrorResponse).toEqual({
+      field: 'targets',
+      message: '可见对象无效',
+    })
   })
 
   it('publishes archived announcements and refreshes publishedAt', async () => {
@@ -197,6 +371,7 @@ describe('announcement routes', () => {
 
     const { body: created } = await createAnnouncement(app, {
       ...createBody,
+      visibility: 'all',
       publish: true,
     })
     const firstPublishedAt = created.publishedAt
@@ -293,6 +468,7 @@ describe('announcement routes', () => {
         summary: null,
         contentJson: createBody.contentJson,
         contentText: '置顶已发布',
+        contentHtml: '<p>置顶已发布</p>',
         status: ANNOUNCEMENT_STATUS_PUBLISHED,
         pinned: true,
         publishedAt: new Date('2026-05-18T09:00:00.000Z'),
@@ -306,6 +482,7 @@ describe('announcement routes', () => {
         summary: null,
         contentJson: createBody.contentJson,
         contentText: '较新已发布',
+        contentHtml: '<p>较新已发布</p>',
         status: ANNOUNCEMENT_STATUS_PUBLISHED,
         pinned: false,
         publishedAt: new Date('2026-05-18T08:00:00.000Z'),
@@ -319,6 +496,7 @@ describe('announcement routes', () => {
         summary: null,
         contentJson: createBody.contentJson,
         contentText: '较旧已发布',
+        contentHtml: '<p>较旧已发布</p>',
         status: ANNOUNCEMENT_STATUS_PUBLISHED,
         pinned: false,
         publishedAt: new Date('2026-05-18T07:00:00.000Z'),
@@ -332,6 +510,7 @@ describe('announcement routes', () => {
         summary: null,
         contentJson: createBody.contentJson,
         contentText: '归档但发布时间更新',
+        contentHtml: '<p>归档但发布时间更新</p>',
         status: ANNOUNCEMENT_STATUS_ARCHIVED,
         pinned: false,
         publishedAt: new Date('2026-05-18T10:30:00.000Z'),
@@ -345,6 +524,7 @@ describe('announcement routes', () => {
         summary: null,
         contentJson: createBody.contentJson,
         contentText: '草稿最近更新',
+        contentHtml: '<p>草稿最近更新</p>',
         status: ANNOUNCEMENT_STATUS_DRAFT,
         pinned: false,
         publishedAt: null,
@@ -358,6 +538,7 @@ describe('announcement routes', () => {
         summary: null,
         contentJson: createBody.contentJson,
         contentText: '草稿较旧更新',
+        contentHtml: '<p>草稿较旧更新</p>',
         status: ANNOUNCEMENT_STATUS_DRAFT,
         pinned: false,
         publishedAt: null,
@@ -371,6 +552,7 @@ describe('announcement routes', () => {
         summary: null,
         contentJson: createBody.contentJson,
         contentText: '更早归档',
+        contentHtml: '<p>更早归档</p>',
         status: ANNOUNCEMENT_STATUS_ARCHIVED,
         pinned: false,
         publishedAt: new Date('2026-05-18T06:00:00.000Z'),
@@ -408,6 +590,7 @@ describe('announcement routes', () => {
         summary: null,
         contentJson: createBody.contentJson,
         contentText: '较小 ID',
+        contentHtml: '<p>较小 ID</p>',
         status: ANNOUNCEMENT_STATUS_PUBLISHED,
         pinned: false,
         publishedAt: sharedPublishedAt,
@@ -421,6 +604,7 @@ describe('announcement routes', () => {
         summary: null,
         contentJson: createBody.contentJson,
         contentText: '较大 ID 但较早创建',
+        contentHtml: '<p>较大 ID 但较早创建</p>',
         status: ANNOUNCEMENT_STATUS_PUBLISHED,
         pinned: false,
         publishedAt: sharedPublishedAt,
@@ -434,6 +618,7 @@ describe('announcement routes', () => {
         summary: null,
         contentJson: createBody.contentJson,
         contentText: '更新创建更晚',
+        contentHtml: '<p>更新创建更晚</p>',
         status: ANNOUNCEMENT_STATUS_PUBLISHED,
         pinned: false,
         publishedAt: sharedPublishedAt,
@@ -447,6 +632,7 @@ describe('announcement routes', () => {
         summary: null,
         contentJson: createBody.contentJson,
         contentText: '同创建时间取较大 ID',
+        contentHtml: '<p>同创建时间取较大 ID</p>',
         status: ANNOUNCEMENT_STATUS_PUBLISHED,
         pinned: false,
         publishedAt: sharedPublishedAt,
@@ -460,6 +646,7 @@ describe('announcement routes', () => {
         summary: null,
         contentJson: createBody.contentJson,
         contentText: '同创建时间取最大 ID',
+        contentHtml: '<p>同创建时间取最大 ID</p>',
         status: ANNOUNCEMENT_STATUS_PUBLISHED,
         pinned: false,
         publishedAt: sharedPublishedAt,

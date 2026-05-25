@@ -2,15 +2,20 @@ import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  ANNOUNCEMENT_TARGET_TYPE_ROLE,
+  ANNOUNCEMENT_TARGET_TYPE_USER,
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_STATUS_PUBLISHED,
   ANNOUNCEMENT_TYPE_NOTICE,
+  ANNOUNCEMENT_VISIBILITY_TARGETED,
 } from '@rev30/contracts'
 import {
   AnnouncementContentInvalidError,
   AnnouncementDraftArchiveError,
   AnnouncementEmptyContentError,
+  AnnouncementInvalidTargetError,
   AnnouncementNotFoundError,
+  AnnouncementVisibilityTargetRequiredError,
 } from '../../../../src/modules/content/announcements/errors'
 import { createAnnouncementRoutes } from '../../../../src/modules/content/announcements/routes'
 
@@ -25,6 +30,9 @@ const announcement = {
     content: [{ type: 'paragraph', content: [{ type: 'text', text: '今晚维护' }] }],
   },
   contentText: '今晚维护',
+  contentHtml: '<p>今晚维护</p>',
+  visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+  targets: [],
   status: ANNOUNCEMENT_STATUS_DRAFT,
   pinned: true,
   publishedAt: null,
@@ -60,6 +68,21 @@ const createBody = {
     content: [{ type: 'paragraph', content: [{ type: 'text', text: '今晚维护' }] }],
   },
   pinned: true,
+}
+
+const createBodyWithTargets = {
+  ...createBody,
+  visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+  targets: [
+    {
+      targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
+      targetId: '22222222-2222-4222-8222-222222222222',
+    },
+    {
+      targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+      targetId: '33333333-3333-4333-8333-333333333333',
+    },
+  ],
 }
 
 const mocks = vi.hoisted(() => {
@@ -162,6 +185,19 @@ describe('announcement routes', () => {
     expect(mocks.service.create).toHaveBeenCalledWith({
       ...createBody,
       publish: false,
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [],
+    })
+
+    const createTargetsResponse = await app.request('/api/content/announcements', {
+      method: 'POST',
+      body: JSON.stringify(createBodyWithTargets),
+      headers,
+    })
+    expect(createTargetsResponse.status).toBe(201)
+    expect(mocks.service.create).toHaveBeenCalledWith({
+      ...createBodyWithTargets,
+      publish: false,
     })
 
     const updateResponse = await app.request(`/api/content/announcements/${announcementId}`, {
@@ -171,6 +207,20 @@ describe('announcement routes', () => {
     })
     expect(updateResponse.status).toBe(200)
     expect(mocks.service.update).toHaveBeenCalledWith(announcementId, { title: '维护通知（更新）' })
+
+    const updateTargetsResponse = await app.request(`/api/content/announcements/${announcementId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: createBodyWithTargets.targets,
+      }),
+      headers,
+    })
+    expect(updateTargetsResponse.status).toBe(200)
+    expect(mocks.service.update).toHaveBeenCalledWith(announcementId, {
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: createBodyWithTargets.targets,
+    })
 
     const publishResponse = await app.request(
       `/api/content/announcements/${announcementId}/publish`,
@@ -289,5 +339,33 @@ describe('announcement routes', () => {
     )
     expect(draftArchiveResponse.status).toBe(400)
     expect(await draftArchiveResponse.json()).toEqual({ message: '草稿通知公告不能下线' })
+
+    mocks.service.publish.mockRejectedValueOnce(new AnnouncementVisibilityTargetRequiredError())
+    const targetRequiredResponse = await app.request(
+      `/api/content/announcements/${announcementId}/publish`,
+      {
+        method: 'POST',
+      },
+    )
+    expect(targetRequiredResponse.status).toBe(400)
+    expect(await targetRequiredResponse.json()).toEqual({
+      field: 'targets',
+      message: '请选择可见对象',
+    })
+
+    mocks.service.update.mockRejectedValueOnce(new AnnouncementInvalidTargetError())
+    const invalidTargetResponse = await app.request(
+      `/api/content/announcements/${announcementId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ targets: createBodyWithTargets.targets }),
+        headers,
+      },
+    )
+    expect(invalidTargetResponse.status).toBe(400)
+    expect(await invalidTargetResponse.json()).toEqual({
+      field: 'targets',
+      message: '可见对象无效',
+    })
   })
 })

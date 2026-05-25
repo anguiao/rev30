@@ -7,6 +7,7 @@ import {
   type AnnouncementMyListItem,
   type AnnouncementMyListResponse,
 } from '@rev30/contracts'
+import { NPagination } from 'naive-ui'
 import { defineComponent, h } from 'vue'
 import AccountAnnouncementsPage from '../../../src/pages/account/announcements.vue'
 import { getMyAnnouncement, listMyAnnouncements } from '../../../src/features/content'
@@ -247,6 +248,46 @@ describe('account announcements page', () => {
     expect(bulletinTab).toBeDefined()
 
     await bulletinTab!.trigger('click')
+    await flushPromises()
+
+    const drawer = wrapper.get('[data-test="announcement-detail-drawer"]')
+
+    expect(drawer.attributes('data-show')).toBe('false')
+    expect(drawer.attributes('data-detail-id')).toBe('')
+  })
+
+  it('closes the detail drawer when filters are reset', async () => {
+    const { wrapper } = await mountAnnouncementsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="my-announcements-list-item"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-show')).toBe(
+      'true',
+    )
+
+    await wrapper.get('[data-test="my-announcements-reset"]').trigger('click')
+    await flushPromises()
+
+    const drawer = wrapper.get('[data-test="announcement-detail-drawer"]')
+
+    expect(drawer.attributes('data-show')).toBe('false')
+    expect(drawer.attributes('data-detail-id')).toBe('')
+  })
+
+  it('closes the detail drawer when the page changes', async () => {
+    const { wrapper } = await mountAnnouncementsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="my-announcements-list-item"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-show')).toBe(
+      'true',
+    )
+
+    wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
     await flushPromises()
 
     const drawer = wrapper.get('[data-test="announcement-detail-drawer"]')

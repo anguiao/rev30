@@ -57,4 +57,29 @@ describe('announcement detail drawer', () => {
       document.body.querySelector('[data-test="announcement-detail-content"]')?.innerHTML,
     ).toBe(detail.contentHtml)
   })
+
+  it('does not render the empty state while loading detail content', async () => {
+    mount({
+      components: {
+        AnnouncementDetailDrawer,
+        NConfigProvider,
+      },
+      template: `
+        <NConfigProvider :date-locale="dateZhCN" :locale="zhCN">
+          <AnnouncementDetailDrawer v-model:show="show" :detail="null" loading />
+        </NConfigProvider>
+      `,
+      data() {
+        return {
+          show: true,
+          dateZhCN,
+          zhCN,
+        }
+      },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    expect(document.body.textContent ?? '').not.toContain('暂无详情')
+  })
 })

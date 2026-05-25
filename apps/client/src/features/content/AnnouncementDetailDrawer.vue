@@ -51,7 +51,7 @@ const show = defineModel<boolean>('show', { required: true })
           />
         </div>
 
-        <NEmpty v-else description="暂无详情" />
+        <NEmpty v-else-if="loading !== true" description="暂无详情" />
       </NSpin>
     </NDrawerContent>
   </NDrawer>

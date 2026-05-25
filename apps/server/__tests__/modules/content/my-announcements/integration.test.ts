@@ -15,7 +15,9 @@ import {
   ANNOUNCEMENT_TYPE_NOTICE,
   ANNOUNCEMENT_VISIBILITY_ALL,
   ANNOUNCEMENT_VISIBILITY_TARGETED,
+  DEPARTMENT_STATUS_DISABLED,
   DEPARTMENT_STATUS_ENABLED,
+  ROLE_STATUS_DISABLED,
   ROLE_STATUS_ENABLED,
 } from '@rev30/contracts'
 import { and, eq } from 'drizzle-orm'
@@ -251,6 +253,52 @@ describe('my announcement integration', () => {
     expect(body.list.map((item) => item.id)).toEqual([visibleId])
   })
 
+  it('hides department-targeted announcements when the matched department is disabled', async () => {
+    const database = await createTestDb()
+    const { app, fixture } = await createTestApp(database)
+    const departmentId = randomUUID()
+
+    await database.insert(systemDepartments).values({
+      id: departmentId,
+      name: 'Disabled Engineering',
+      code: `disabled-engineering-${departmentId.slice(0, 8)}`,
+      status: DEPARTMENT_STATUS_ENABLED,
+      sortOrder: 0,
+      createdAt: now,
+      updatedAt: now,
+    })
+    await database.insert(systemUserDepartments).values({
+      userId: fixture.userId,
+      departmentId,
+      createdAt: now,
+    })
+
+    const announcementId = await insertAnnouncement(database, {
+      title: '禁用部门通知',
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+          targetId: departmentId,
+        },
+      ],
+    })
+
+    await database
+      .update(systemDepartments)
+      .set({ status: DEPARTMENT_STATUS_DISABLED })
+      .where(eq(systemDepartments.id, departmentId))
+
+    const listResponse = await app.request('/api/content/my-announcements?page=1&pageSize=10')
+    const listBody = (await listResponse.json()) as AnnouncementMyListResponse
+
+    expect(listResponse.status).toBe(200)
+    expect(listBody.list.map((item) => item.id)).not.toContain(announcementId)
+
+    const detailResponse = await app.request(`/api/content/my-announcements/${announcementId}`)
+    expect(detailResponse.status).toBe(404)
+  })
+
   it('does not include child department users when targeting a parent department', async () => {
     const database = await createTestDb()
     const { app, fixture } = await createTestApp(database)
@@ -357,6 +405,52 @@ describe('my announcement integration', () => {
 
     expect(response.status).toBe(200)
     expect(body.list.map((item) => item.id)).toEqual([visibleId])
+  })
+
+  it('hides role-targeted announcements when the matched role is disabled', async () => {
+    const database = await createTestDb()
+    const { app, fixture } = await createTestApp(database)
+    const roleId = randomUUID()
+
+    await database.insert(systemRoles).values({
+      id: roleId,
+      name: 'Disabled Announcement Reader',
+      code: `disabled-announcement-reader-${roleId.slice(0, 8)}`,
+      status: ROLE_STATUS_ENABLED,
+      sortOrder: 0,
+      createdAt: now,
+      updatedAt: now,
+    })
+    await database.insert(systemUserRoles).values({
+      userId: fixture.userId,
+      roleId,
+      createdAt: now,
+    })
+
+    const announcementId = await insertAnnouncement(database, {
+      title: '禁用角色通知',
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+          targetId: roleId,
+        },
+      ],
+    })
+
+    await database
+      .update(systemRoles)
+      .set({ status: ROLE_STATUS_DISABLED })
+      .where(eq(systemRoles.id, roleId))
+
+    const listResponse = await app.request('/api/content/my-announcements?page=1&pageSize=10')
+    const listBody = (await listResponse.json()) as AnnouncementMyListResponse
+
+    expect(listResponse.status).toBe(200)
+    expect(listBody.list.map((item) => item.id)).not.toContain(announcementId)
+
+    const detailResponse = await app.request(`/api/content/my-announcements/${announcementId}`)
+    expect(detailResponse.status).toBe(404)
   })
 
   it('hides draft, archived, soft-deleted, and non-matching targeted announcements', async () => {

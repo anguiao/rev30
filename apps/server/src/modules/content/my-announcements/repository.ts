@@ -6,10 +6,19 @@ import {
   ANNOUNCEMENT_TARGET_TYPE_USER,
   ANNOUNCEMENT_VISIBILITY_ALL,
   ANNOUNCEMENT_VISIBILITY_TARGETED,
+  DEPARTMENT_STATUS_ENABLED,
+  ROLE_STATUS_ENABLED,
 } from '@rev30/contracts'
-import { and, count, desc, eq, exists, ilike, inArray, isNull, or } from 'drizzle-orm'
+import { and, count, desc, eq, exists, ilike, isNull, or } from 'drizzle-orm'
 import type { Db } from '../../../db'
-import { contentAnnouncements, contentAnnouncementTargets } from '../../../db/schema'
+import {
+  contentAnnouncements,
+  contentAnnouncementTargets,
+  systemDepartments,
+  systemRoles,
+  systemUserDepartments,
+  systemUserRoles,
+} from '../../../db/schema'
 import type { AnnouncementRow } from './mapper'
 
 function announcementSortOrder() {
@@ -24,26 +33,53 @@ function announcementSortOrder() {
 
 export function createMyAnnouncementRepository(database: Db) {
   function buildVisibilityFilter(currentUser: User) {
-    const departmentIds = currentUser.departments.map((department) => department.id)
-    const roleIds = currentUser.roles.map((role) => role.id)
     const targetFilters = [
       and(
         eq(contentAnnouncementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_USER),
         eq(contentAnnouncementTargets.targetId, currentUser.id),
       ),
-      departmentIds.length > 0
-        ? and(
-            eq(contentAnnouncementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT),
-            inArray(contentAnnouncementTargets.targetId, departmentIds),
-          )
-        : undefined,
-      roleIds.length > 0
-        ? and(
-            eq(contentAnnouncementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_ROLE),
-            inArray(contentAnnouncementTargets.targetId, roleIds),
-          )
-        : undefined,
-    ].filter((filter) => filter !== undefined)
+      and(
+        eq(contentAnnouncementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT),
+        exists(
+          database
+            .select({
+              userId: systemUserDepartments.userId,
+            })
+            .from(systemUserDepartments)
+            .innerJoin(
+              systemDepartments,
+              eq(systemDepartments.id, systemUserDepartments.departmentId),
+            )
+            .where(
+              and(
+                eq(systemUserDepartments.userId, currentUser.id),
+                eq(systemUserDepartments.departmentId, contentAnnouncementTargets.targetId),
+                eq(systemDepartments.status, DEPARTMENT_STATUS_ENABLED),
+                isNull(systemDepartments.deletedAt),
+              ),
+            ),
+        ),
+      ),
+      and(
+        eq(contentAnnouncementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_ROLE),
+        exists(
+          database
+            .select({
+              userId: systemUserRoles.userId,
+            })
+            .from(systemUserRoles)
+            .innerJoin(systemRoles, eq(systemRoles.id, systemUserRoles.roleId))
+            .where(
+              and(
+                eq(systemUserRoles.userId, currentUser.id),
+                eq(systemUserRoles.roleId, contentAnnouncementTargets.targetId),
+                eq(systemRoles.status, ROLE_STATUS_ENABLED),
+                isNull(systemRoles.deletedAt),
+              ),
+            ),
+        ),
+      ),
+    ]
 
     return or(
       eq(contentAnnouncements.visibility, ANNOUNCEMENT_VISIBILITY_ALL),

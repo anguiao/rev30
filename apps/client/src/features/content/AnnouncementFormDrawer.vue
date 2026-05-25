@@ -44,15 +44,8 @@ import {
   getContentErrorMessage,
   updateAnnouncement,
 } from '.'
-import {
-  getDepartmentTreeOptions,
-  getRoleOptions,
-  getUserOptions,
-} from '../system'
-import {
-  announcementTypeSelectOptions,
-  announcementVisibilityOptions,
-} from './labels'
+import { getDepartmentTreeOptions, getRoleOptions, getUserOptions } from '../system'
+import { announcementTypeSelectOptions, announcementVisibilityOptions } from './labels'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
 import { toSelectOptions, toTreeOptions } from '../../utils/ui'
 

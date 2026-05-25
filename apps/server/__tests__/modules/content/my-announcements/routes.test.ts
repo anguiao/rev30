@@ -109,9 +109,7 @@ describe('my announcement routes', () => {
       type: 'notice',
     })
 
-    const detailHttpResponse = await app.request(
-      `/api/content/my-announcements/${announcementId}`,
-    )
+    const detailHttpResponse = await app.request(`/api/content/my-announcements/${announcementId}`)
     expect(detailHttpResponse.status).toBe(200)
     expect(mocks.service.get).toHaveBeenCalledWith(currentUser, announcementId)
   })

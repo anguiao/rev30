@@ -1,10 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { NConfigProvider, dateZhCN, zhCN } from 'naive-ui'
 import { afterEach, describe, expect, it } from 'vitest'
-import {
-  ANNOUNCEMENT_TYPE_BULLETIN,
-  type AnnouncementMyDetail,
-} from '@rev30/contracts'
+import { ANNOUNCEMENT_TYPE_BULLETIN, type AnnouncementMyDetail } from '@rev30/contracts'
 import AnnouncementDetailDrawer from '../../../src/features/content/AnnouncementDetailDrawer.vue'
 import { announcementTypeLabels, formatDateTime } from '../../../src/features/content'
 
@@ -24,7 +21,7 @@ describe('announcement detail drawer', () => {
   })
 
   it('renders the announcement detail content, tags, and html body', async () => {
-    const wrapper = mount({
+    mount({
       components: {
         AnnouncementDetailDrawer,
         NConfigProvider,
@@ -56,8 +53,8 @@ describe('announcement detail drawer', () => {
     expect(bodyText).toContain(formatDateTime(detail.publishedAt))
     expect(bodyText).toContain('第一段内容')
     expect(bodyText).toContain('第二段内容')
-    expect(document.body.querySelector('[data-test="announcement-detail-content"]')?.innerHTML).toBe(
-      detail.contentHtml,
-    )
+    expect(
+      document.body.querySelector('[data-test="announcement-detail-content"]')?.innerHTML,
+    ).toBe(detail.contentHtml)
   })
 })

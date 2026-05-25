@@ -28,9 +28,8 @@ describe('announcement content helpers', () => {
       }
     })
 
-    const { deriveAnnouncementContentHtml } = await import(
-      '../../../../src/modules/content/announcements/content'
-    )
+    const { deriveAnnouncementContentHtml } =
+      await import('../../../../src/modules/content/announcements/content')
 
     expect(
       deriveAnnouncementContentHtml({
@@ -100,7 +99,9 @@ describe('announcement content helpers', () => {
       ],
     })
 
-    expect(unsafeLinkHtml).toBe('<p><a target="_blank" rel="noopener noreferrer nofollow">危险链接</a></p>')
+    expect(unsafeLinkHtml).toBe(
+      '<p><a target="_blank" rel="noopener noreferrer nofollow">危险链接</a></p>',
+    )
     expect(unsafeLinkHtml).not.toContain('href="javascript:alert(1)"')
 
     const safeLinkHtml = deriveAnnouncementContentHtml({

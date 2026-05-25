@@ -223,9 +223,9 @@ describe('AnnouncementFormDrawer', () => {
       ANNOUNCEMENT_VISIBILITY_TARGETED,
     )
     expect(getTestComponent(wrapper, 'announcement-form-target-users').props('value')).toEqual([])
-    expect(getTestComponent(wrapper, 'announcement-form-target-departments').props('value')).toEqual(
-      [],
-    )
+    expect(
+      getTestComponent(wrapper, 'announcement-form-target-departments').props('value'),
+    ).toEqual([])
     expect(getTestComponent(wrapper, 'announcement-form-target-roles').props('value')).toEqual([])
   })
 
@@ -246,9 +246,9 @@ describe('AnnouncementFormDrawer', () => {
     expect(getTestComponent(wrapper, 'announcement-form-target-users').props('value')).toEqual([
       userTargetId,
     ])
-    expect(getTestComponent(wrapper, 'announcement-form-target-departments').props('value')).toEqual(
-      [departmentTargetId],
-    )
+    expect(
+      getTestComponent(wrapper, 'announcement-form-target-departments').props('value'),
+    ).toEqual([departmentTargetId])
     expect(getTestComponent(wrapper, 'announcement-form-target-roles').props('value')).toEqual([
       roleTargetId,
     ])
@@ -329,9 +329,9 @@ describe('AnnouncementFormDrawer', () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
-    expect(getTestComponent(wrapper, 'announcement-form-target-departments').vm.$.vnode.props).not.toHaveProperty(
-      'cascade',
-    )
+    expect(
+      getTestComponent(wrapper, 'announcement-form-target-departments').vm.$.vnode.props,
+    ).not.toHaveProperty('cascade')
   })
 
   it('saves draft without publish true in create mode', async () => {

@@ -208,14 +208,17 @@ describe('announcement routes', () => {
     expect(updateResponse.status).toBe(200)
     expect(mocks.service.update).toHaveBeenCalledWith(announcementId, { title: '维护通知（更新）' })
 
-    const updateTargetsResponse = await app.request(`/api/content/announcements/${announcementId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-        targets: createBodyWithTargets.targets,
-      }),
-      headers,
-    })
+    const updateTargetsResponse = await app.request(
+      `/api/content/announcements/${announcementId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+          targets: createBodyWithTargets.targets,
+        }),
+        headers,
+      },
+    )
     expect(updateTargetsResponse.status).toBe(200)
     expect(mocks.service.update).toHaveBeenCalledWith(announcementId, {
       visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,

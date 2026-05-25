@@ -58,14 +58,24 @@ describe('announcement schemas', () => {
       title: '维护通知',
       contentJson,
     })
-    const announcementListItemInput = { ...announcement }
-    delete announcementListItemInput.contentHtml
-    delete announcementListItemInput.targets
+    const {
+      contentHtml: _contentHtml,
+      targets: _targets,
+      ...announcementListItemInput
+    } = announcement
 
-    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty('contentJson')
-    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty('contentText')
-    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty('contentHtml')
-    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty('targets')
+    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty(
+      'contentJson',
+    )
+    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty(
+      'contentText',
+    )
+    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty(
+      'contentHtml',
+    )
+    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty(
+      'targets',
+    )
     expect(
       announcementListResponseSchema.parse({
         list: [announcement],

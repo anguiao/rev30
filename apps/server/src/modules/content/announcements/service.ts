@@ -8,7 +8,6 @@ import type {
 import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
-  ANNOUNCEMENT_STATUS_PUBLISHED,
   ANNOUNCEMENT_VISIBILITY_ALL,
 } from '@rev30/contracts'
 import type { Db } from '../../../db'
@@ -83,32 +82,7 @@ export function createAnnouncementService(database: Db) {
     },
 
     async update(id: string, input: AnnouncementUpdateInput) {
-      const existingAnnouncement = await repository.findActiveById(id)
-
-      if (!existingAnnouncement) {
-        throw new AnnouncementNotFoundError()
-      }
-
-      const finalState = normalizeVisibilityTargets({
-        visibility:
-          input.visibility ??
-          (existingAnnouncement.announcement.visibility as Announcement['visibility']),
-        targets: input.targets ?? existingAnnouncement.targets,
-      })
-      const shouldValidatePublishableState =
-        existingAnnouncement.announcement.status === ANNOUNCEMENT_STATUS_PUBLISHED ||
-        input.publish === true
-
-      if (shouldValidatePublishableState) {
-        await assertPublishableVisibility(finalState)
-      }
-
-      const normalizedInput = {
-        ...input,
-        targets: finalState.targets,
-      }
-
-      const updated = await repository.update(id, normalizedInput)
+      const updated = await repository.update(id, input)
 
       if (!updated) {
         throw new AnnouncementNotFoundError()
@@ -118,19 +92,6 @@ export function createAnnouncementService(database: Db) {
     },
 
     async publish(id: string) {
-      const existingAnnouncement = await repository.findActiveById(id)
-
-      if (!existingAnnouncement) {
-        throw new AnnouncementNotFoundError()
-      }
-
-      await assertPublishableVisibility(
-        normalizeVisibilityTargets({
-          visibility: existingAnnouncement.announcement.visibility as Announcement['visibility'],
-          targets: existingAnnouncement.targets,
-        }),
-      )
-
       const updated = await repository.publish(id)
 
       if (!updated) {

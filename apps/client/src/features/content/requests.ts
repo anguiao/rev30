@@ -1,11 +1,16 @@
 import {
   announcementListResponseSchema,
+  announcementMyDetailSchema,
+  announcementMyListResponseSchema,
   announcementSchema,
   errorResponseSchema,
   type Announcement,
   type AnnouncementCreateInput,
   type AnnouncementListQuery,
   type AnnouncementListResponse,
+  type AnnouncementMyDetail,
+  type AnnouncementMyListQuery,
+  type AnnouncementMyListResponse,
   type AnnouncementUpdateInput,
   type ErrorResponse,
 } from '@rev30/contracts'
@@ -65,6 +70,24 @@ export async function getAnnouncement(id: string): Promise<Announcement> {
   return parseContentResponse(
     await api.content.announcements[':id'].$get({ param: { id } }),
     announcementSchema,
+  )
+}
+
+export async function listMyAnnouncements(
+  query: AnnouncementMyListQuery,
+): Promise<AnnouncementMyListResponse> {
+  return parseContentResponse(
+    await api.content['my-announcements'].$get({
+      query: normalizeRequestQuery(query),
+    }),
+    announcementMyListResponseSchema,
+  )
+}
+
+export async function getMyAnnouncement(id: string): Promise<AnnouncementMyDetail> {
+  return parseContentResponse(
+    await api.content['my-announcements'][':id'].$get({ param: { id } }),
+    announcementMyDetailSchema,
   )
 }
 

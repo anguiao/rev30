@@ -10,16 +10,30 @@ import {
   NForm,
   NFormItem,
   NInput,
+  NRadio,
+  NRadioGroup,
   NSelect,
   NSwitch,
+  NTreeSelect,
 } from 'naive-ui'
 import {
   ANNOUNCEMENT_STATUS_PUBLISHED,
+  ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+  ANNOUNCEMENT_TARGET_TYPE_ROLE,
+  ANNOUNCEMENT_TARGET_TYPE_USER,
   ANNOUNCEMENT_TYPE_NOTICE,
+  ANNOUNCEMENT_VISIBILITY_ALL,
+  ANNOUNCEMENT_VISIBILITY_TARGETED,
+  DEPARTMENT_STATUS_ENABLED,
+  ROLE_STATUS_ENABLED,
+  USER_STATUS_ENABLED,
   announcementCreateSchema,
   announcementFormSchema,
   announcementUpdateSchema,
   type AnnouncementFormInput,
+  type AnnouncementTarget,
+  type AnnouncementTargetType,
+  type AnnouncementVisibility,
   type TiptapDocument,
 } from '@rev30/contracts'
 import RichTextEditor from './RichTextEditor.vue'
@@ -30,8 +44,17 @@ import {
   getContentErrorMessage,
   updateAnnouncement,
 } from '.'
-import { announcementTypeSelectOptions } from './labels'
+import {
+  getDepartmentTreeOptions,
+  getRoleOptions,
+  getUserOptions,
+} from '../system'
+import {
+  announcementTypeSelectOptions,
+  announcementVisibilityOptions,
+} from './labels'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
+import { toSelectOptions, toTreeOptions } from '../../utils/ui'
 
 const props = defineProps<{
   announcementId: string | null
@@ -57,6 +80,8 @@ const defaultFormValues: AnnouncementFormInput = {
   title: '',
   summary: null,
   contentJson: emptyDocument,
+  visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+  targets: [],
   pinned: false,
   publish: false,
 }
@@ -75,27 +100,76 @@ const {
     const announcementId = props.announcementId
 
     if (announcementId === null) {
+      const [users, departments, roles] = await Promise.all([
+        getUserOptions(),
+        getDepartmentTreeOptions(),
+        getRoleOptions(),
+      ])
+
       return {
+        users,
+        departments,
+        roles,
         formValues: defaultFormValues,
         status: null,
       }
     }
 
     const announcement = await getAnnouncement(announcementId)
+    const userTargetIds = getTargetIds(announcement.targets, ANNOUNCEMENT_TARGET_TYPE_USER)
+    const departmentTargetIds = getTargetIds(
+      announcement.targets,
+      ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+    )
+    const roleTargetIds = getTargetIds(announcement.targets, ANNOUNCEMENT_TARGET_TYPE_ROLE)
+    const [users, departments, roles] = await Promise.all([
+      getUserOptions(userTargetIds),
+      getDepartmentTreeOptions(departmentTargetIds),
+      getRoleOptions(roleTargetIds),
+    ])
 
     return {
+      users,
+      departments,
+      roles,
       status: announcement.status,
       formValues: {
         type: announcement.type,
         title: announcement.title,
         summary: announcement.summary,
         contentJson: announcement.contentJson,
+        visibility: announcement.visibility,
+        targets: announcement.targets,
         pinned: announcement.pinned,
         publish: false,
       } satisfies AnnouncementFormInput,
     }
   },
 })
+
+const userOptions = computed(() =>
+  toSelectOptions(formData.value?.users ?? [], {
+    label: (user) => `${user.nickname} (${user.username})`,
+    value: (user) => user.id,
+    disabled: (user) => user.status !== USER_STATUS_ENABLED,
+  }),
+)
+
+const departmentTreeOptions = computed(() =>
+  toTreeOptions(formData.value?.departments ?? [], {
+    label: (department) => `${department.name} (${department.code})`,
+    disabled: (department) => department.status !== DEPARTMENT_STATUS_ENABLED,
+  }),
+)
+
+const roleOptions = computed(() =>
+  toSelectOptions(formData.value?.roles ?? [], {
+    label: (role) => `${role.name} (${role.code})`,
+    value: (role) => role.id,
+    disabled: (role) => role.status !== ROLE_STATUS_ENABLED,
+  }),
+)
+
 const isPublishedAnnouncement = computed(
   () => formData.value?.status === ANNOUNCEMENT_STATUS_PUBLISHED,
 )
@@ -122,6 +196,22 @@ const form = useForm({
     saveAnnouncementMutation.mutate({ announcementId, value })
   },
 })
+
+const userTargetIds = computed(() =>
+  getTargetIds(form.state.values.targets ?? [], ANNOUNCEMENT_TARGET_TYPE_USER),
+)
+
+const departmentTargetIds = computed(() =>
+  getTargetIds(form.state.values.targets ?? [], ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT),
+)
+
+const roleTargetIds = computed(() =>
+  getTargetIds(form.state.values.targets ?? [], ANNOUNCEMENT_TARGET_TYPE_ROLE),
+)
+
+const isTargetedVisibility = computed(
+  () => form.state.values.visibility === ANNOUNCEMENT_VISIBILITY_TARGETED,
+)
 
 const { isLoading: isSaving, ...saveAnnouncementMutation } = useMutation({
   onMutate() {
@@ -177,6 +267,80 @@ const { isLoading: isSaving, ...saveAnnouncementMutation } = useMutation({
     formError.value = getContentErrorMessage(error, '保存通知公告失败')
   },
 })
+
+function getTargetIds(targets: AnnouncementTarget[], targetType: AnnouncementTargetType) {
+  return targets
+    .filter((target) => target.targetType === targetType)
+    .map((target) => target.targetId)
+}
+
+function buildTargets(
+  nextUserTargetIds: string[],
+  nextDepartmentTargetIds: string[],
+  nextRoleTargetIds: string[],
+): AnnouncementTarget[] {
+  return [
+    ...nextUserTargetIds.map<AnnouncementTarget>((targetId) => ({
+      targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
+      targetId,
+    })),
+    ...nextDepartmentTargetIds.map<AnnouncementTarget>((targetId) => ({
+      targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+      targetId,
+    })),
+    ...nextRoleTargetIds.map<AnnouncementTarget>((targetId) => ({
+      targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+      targetId,
+    })),
+  ]
+}
+
+function toTargetIds(value: Array<string | number> | string | number | null) {
+  const values = Array.isArray(value) ? value : value === null ? [] : [value]
+
+  return [...new Set(values.map(String))]
+}
+
+function updateTargets(targetType: AnnouncementTargetType, targetIds: string[]) {
+  const currentTargets = form.state.values.targets ?? []
+  const nextUserTargetIds =
+    targetType === ANNOUNCEMENT_TARGET_TYPE_USER
+      ? targetIds
+      : getTargetIds(currentTargets, ANNOUNCEMENT_TARGET_TYPE_USER)
+  const nextDepartmentTargetIds =
+    targetType === ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT
+      ? targetIds
+      : getTargetIds(currentTargets, ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT)
+  const nextRoleTargetIds =
+    targetType === ANNOUNCEMENT_TARGET_TYPE_ROLE
+      ? targetIds
+      : getTargetIds(currentTargets, ANNOUNCEMENT_TARGET_TYPE_ROLE)
+
+  form.setFieldValue(
+    'targets',
+    buildTargets(nextUserTargetIds, nextDepartmentTargetIds, nextRoleTargetIds),
+  )
+}
+
+function handleVisibilityChange(value: AnnouncementVisibility) {
+  form.setFieldValue('visibility', value)
+
+  if (value === ANNOUNCEMENT_VISIBILITY_ALL) {
+    form.setFieldValue('targets', [])
+  }
+}
+
+function handleUserTargetsChange(value: Array<string | number> | null) {
+  updateTargets(ANNOUNCEMENT_TARGET_TYPE_USER, toTargetIds(value))
+}
+
+function handleDepartmentTargetsChange(value: Array<string | number> | string | number | null) {
+  updateTargets(ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT, toTargetIds(value))
+}
+
+function handleRoleTargetsChange(value: Array<string | number> | null) {
+  updateTargets(ANNOUNCEMENT_TARGET_TYPE_ROLE, toTargetIds(value))
+}
 
 function handleSubmit() {
   if (isLoading.value || isSaving.value || loadError.value) {
@@ -293,6 +457,78 @@ watch(
                 @blur="field.handleBlur"
                 @update:model-value="field.handleChange"
               />
+            </NFormItem>
+          </form.Field>
+
+          <form.Field name="visibility" v-slot="{ state }">
+            <NFormItem label="可见范围" v-bind="formItemValidationProps(state.meta)">
+              <NRadioGroup
+                data-test="announcement-form-visibility"
+                :disabled="isLoading || isSaving"
+                :value="state.value"
+                @update:value="handleVisibilityChange"
+              >
+                <div class="flex flex-wrap gap-4">
+                  <NRadio
+                    v-for="option in announcementVisibilityOptions"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </NRadio>
+                </div>
+              </NRadioGroup>
+            </NFormItem>
+          </form.Field>
+
+          <form.Field name="targets" v-slot="{ state }">
+            <NFormItem
+              data-test="announcement-form-targets-item"
+              label="可见对象"
+              v-bind="formItemValidationProps(state.meta)"
+            >
+              <div v-if="isTargetedVisibility" class="flex flex-col gap-4">
+                <NSelect
+                  data-test="announcement-form-target-users"
+                  :disabled="isLoading || isSaving"
+                  :options="userOptions"
+                  :value="userTargetIds"
+                  multiple
+                  clearable
+                  filterable
+                  max-tag-count="responsive"
+                  placeholder="请选择用户"
+                  @update:value="handleUserTargetsChange"
+                />
+
+                <NTreeSelect
+                  data-test="announcement-form-target-departments"
+                  :disabled="isLoading || isSaving"
+                  multiple
+                  checkable
+                  clearable
+                  filterable
+                  default-expand-all
+                  max-tag-count="responsive"
+                  :options="departmentTreeOptions"
+                  :value="departmentTargetIds"
+                  placeholder="请选择部门"
+                  @update:value="handleDepartmentTargetsChange"
+                />
+
+                <NSelect
+                  data-test="announcement-form-target-roles"
+                  :disabled="isLoading || isSaving"
+                  :options="roleOptions"
+                  :value="roleTargetIds"
+                  multiple
+                  clearable
+                  filterable
+                  max-tag-count="responsive"
+                  placeholder="请选择角色"
+                  @update:value="handleRoleTargetsChange"
+                />
+              </div>
             </NFormItem>
           </form.Field>
 

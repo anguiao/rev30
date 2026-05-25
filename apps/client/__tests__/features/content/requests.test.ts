@@ -3,18 +3,21 @@ import {
   ANNOUNCEMENT_TYPE_NOTICE,
   type Announcement,
   type AnnouncementCreateInput,
+  type AnnouncementMyDetail,
   type AnnouncementUpdateInput,
 } from '@rev30/contracts'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   ContentRequestError,
+  archiveAnnouncement,
   createAnnouncement,
   deleteAnnouncement,
+  getMyAnnouncement,
   getAnnouncement,
   listAnnouncements,
+  listMyAnnouncements,
   publishAnnouncement,
   updateAnnouncement,
-  archiveAnnouncement,
 } from '../../../src/features/content'
 import { useAuthStore } from '../../../src/stores/auth'
 import { createFetchMock, expectFetchCall, expectJsonBody, jsonResponse } from '../../helpers/fetch'
@@ -32,11 +35,24 @@ const announcementResponse: Announcement = {
     content: [{ type: 'paragraph', content: [{ type: 'text', text: '系统将进行维护' }] }],
   },
   contentText: '系统将进行维护',
+  contentHtml: '<p>系统将进行维护</p>',
+  visibility: 'targeted',
+  targets: [],
   status: ANNOUNCEMENT_STATUS_PUBLISHED,
   pinned: false,
   publishedAt: '2026-05-20T08:00:00.000Z',
   createdAt: '2026-05-20T07:00:00.000Z',
   updatedAt: '2026-05-20T07:10:00.000Z',
+}
+
+const myAnnouncementResponse: AnnouncementMyDetail = {
+  id: announcementId,
+  type: ANNOUNCEMENT_TYPE_NOTICE,
+  title: '我的维护通知',
+  summary: '仅对我可见',
+  contentHtml: '<p>仅对我可见</p>',
+  pinned: true,
+  publishedAt: '2026-05-20T08:00:00.000Z',
 }
 
 const createInput: AnnouncementCreateInput = {
@@ -47,6 +63,8 @@ const createInput: AnnouncementCreateInput = {
     type: 'doc',
     content: [{ type: 'paragraph', content: [{ type: 'text', text: '即将更新服务' }] }],
   },
+  visibility: 'targeted',
+  targets: [],
   pinned: false,
   publish: false,
 }
@@ -165,6 +183,53 @@ describe('content request helpers', () => {
     expectFetchCall(fetchMock, 0, {
       method: 'GET',
       pathname: `/api/content/announcements/${announcementId}`,
+    })
+  })
+
+  it('lists my announcements with query params and parses response', async () => {
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        list: [myAnnouncementResponse],
+        total: 1,
+        page: 2,
+        pageSize: 5,
+      }),
+    )
+    useAuthStore().accessToken = 'access-token'
+
+    const result = await listMyAnnouncements({
+      page: 2,
+      pageSize: 5,
+      keyword: '维护',
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+    })
+
+    expect(result.total).toBe(1)
+    expect(result.list[0]?.id).toBe(announcementId)
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/content/my-announcements',
+      query: {
+        page: '2',
+        pageSize: '5',
+        keyword: '维护',
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+      },
+    })
+  })
+
+  it('gets my announcement detail and parses response', async () => {
+    const fetchMock = createFetchMock(jsonResponse(myAnnouncementResponse))
+    useAuthStore().accessToken = 'access-token'
+
+    const result = await getMyAnnouncement(announcementId)
+
+    expect(result.id).toBe(announcementId)
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: `/api/content/my-announcements/${announcementId}`,
     })
   })
 

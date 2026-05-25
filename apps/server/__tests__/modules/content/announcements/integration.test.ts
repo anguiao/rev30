@@ -9,6 +9,7 @@ import {
   ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
   ANNOUNCEMENT_TARGET_TYPE_ROLE,
   ANNOUNCEMENT_TARGET_TYPE_USER,
+  ANNOUNCEMENT_VISIBILITY_ALL,
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_STATUS_PUBLISHED,
@@ -16,6 +17,7 @@ import {
   ANNOUNCEMENT_TYPE_NOTICE,
   ANNOUNCEMENT_VISIBILITY_TARGETED,
   ROLE_STATUS_DISABLED,
+  USER_STATUS_DISABLED,
 } from '@rev30/contracts'
 import { and, eq, isNull } from 'drizzle-orm'
 import type { Hono } from 'hono'
@@ -331,6 +333,118 @@ describe('announcement routes', () => {
       field: 'targets',
       message: '请选择可见对象',
     })
+  })
+
+  it('rejects updating published announcements to targeted visibility without visible objects', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: created } = await createAnnouncement(app, {
+      ...createBody,
+      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+      targets: [],
+      publish: true,
+    })
+
+    const response = await app.request(`/api/content/announcements/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [],
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(400)
+    expect((await response.json()) as ErrorResponse).toEqual({
+      field: 'targets',
+      message: '请选择可见对象',
+    })
+  })
+
+  it('rejects publishing targeted announcements whose saved targets became invalid', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const targets = await createAnnouncementTargetsFixture(database)
+    const { body: created } = await createAnnouncement(app, {
+      ...createBody,
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [targets.user],
+    })
+
+    await database
+      .update(systemUsers)
+      .set({
+        status: USER_STATUS_DISABLED,
+      })
+      .where(eq(systemUsers.id, targets.user.targetId))
+
+    const response = await app.request(`/api/content/announcements/${created.id}/publish`, {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(400)
+    expect((await response.json()) as ErrorResponse).toEqual({
+      field: 'targets',
+      message: '可见对象无效',
+    })
+  })
+
+  it('switches targeted announcements to all visibility and clears targets', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const targets = await createAnnouncementTargetsFixture(database)
+    const { body: created } = await createAnnouncement(app, {
+      ...createBody,
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [targets.user, targets.department],
+    })
+
+    const updateResponse = await app.request(`/api/content/announcements/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const updated = (await updateResponse.json()) as Announcement
+
+    expect(updateResponse.status).toBe(200)
+    expect(updated.visibility).toBe(ANNOUNCEMENT_VISIBILITY_ALL)
+    expect(updated.targets).toEqual([])
+
+    const detailResponse = await app.request(`/api/content/announcements/${created.id}`)
+    const detail = (await detailResponse.json()) as Announcement
+    expect(detailResponse.status).toBe(200)
+    expect(detail.visibility).toBe(ANNOUNCEMENT_VISIBILITY_ALL)
+    expect(detail.targets).toEqual([])
+
+    const targetRows = await database
+      .select()
+      .from(contentAnnouncementTargets)
+      .where(eq(contentAnnouncementTargets.announcementId, created.id))
+    expect(targetRows).toHaveLength(0)
+  })
+
+  it('ignores targets when creating all-visible announcements', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const targets = await createAnnouncementTargetsFixture(database)
+
+    const { body: created, response } = await createAnnouncement(app, {
+      ...createBody,
+      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+      targets: [targets.user, targets.role],
+    })
+
+    expect(response.status).toBe(201)
+    expect(created.visibility).toBe(ANNOUNCEMENT_VISIBILITY_ALL)
+    expect(created.targets).toEqual([])
+
+    const targetRows = await database
+      .select()
+      .from(contentAnnouncementTargets)
+      .where(eq(contentAnnouncementTargets.announcementId, created.id))
+    expect(targetRows).toHaveLength(0)
   })
 
   it('rejects invalid announcement targets', async () => {

@@ -62,15 +62,15 @@ function ensureUniqueAnnouncementTargets(
 ) {
   const seen = new Set<string>()
 
-  for (const target of targets) {
+  for (const [index, target] of targets.entries()) {
     const key = `${target.targetType}:${target.targetId}`
 
     if (seen.has(key)) {
       context.addIssue({
         code: 'custom',
         message: '可见对象不能重复',
+        path: [index],
       })
-      return
     }
 
     seen.add(key)
@@ -111,6 +111,8 @@ export const announcementSchema = z.object({
 export const announcementListItemSchema = announcementSchema.omit({
   contentJson: true,
   contentText: true,
+  contentHtml: true,
+  targets: true,
 })
 
 export const announcementListQuerySchema = paginationQuerySchema.extend({

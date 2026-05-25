@@ -19,7 +19,6 @@ import {
   announcementSchema,
   announcementCreateSchema,
   announcementTargetSchema,
-  announcementTargetsSchema,
   announcementUpdateSchema,
 } from '../../../src/content/announcements'
 import { prettifyZodError } from '../../helpers/schema'
@@ -41,8 +40,8 @@ describe('announcement schemas', () => {
       id: announcementId,
       type: ANNOUNCEMENT_TYPE_NOTICE,
       title: '维护通知',
-      summary: '今晚维护',
       contentHtml: '<p>今晚维护</p>',
+      summary: '今晚维护',
       contentJson,
       contentText: '系统维护通知',
       status: ANNOUNCEMENT_STATUS_PUBLISHED,
@@ -59,8 +58,14 @@ describe('announcement schemas', () => {
       title: '维护通知',
       contentJson,
     })
-    expect(announcementListItemSchema.parse(announcement)).not.toHaveProperty('contentJson')
-    expect(announcementListItemSchema.parse(announcement)).not.toHaveProperty('contentText')
+    const announcementListItemInput = { ...announcement }
+    delete announcementListItemInput.contentHtml
+    delete announcementListItemInput.targets
+
+    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty('contentJson')
+    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty('contentText')
+    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty('contentHtml')
+    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty('targets')
     expect(
       announcementListResponseSchema.parse({
         list: [announcement],
@@ -185,6 +190,26 @@ describe('announcement schemas', () => {
     expect(announcementUpdateSchema.parse({ title: '新标题', publish: false })).toEqual({
       title: '新标题',
     })
+    expect(announcementUpdateSchema.parse({ visibility: ANNOUNCEMENT_VISIBILITY_ALL })).toEqual({
+      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+    })
+    expect(
+      announcementUpdateSchema.parse({
+        targets: [
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+            targetId: '55555555-5555-4555-8555-555555555555',
+          },
+        ],
+      }),
+    ).toMatchObject({
+      targets: [
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+          targetId: '55555555-5555-4555-8555-555555555555',
+        },
+      ],
+    })
 
     const result = announcementUpdateSchema.safeParse({})
     expect(result.success).toBe(false)
@@ -247,14 +272,12 @@ describe('announcement schemas', () => {
           type: ANNOUNCEMENT_TYPE_NOTICE,
           title: '维护通知',
           summary: null,
-          contentHtml: '<p>维护通知</p>',
           status,
           pinned: false,
           publishedAt: null,
           createdAt: '2026-05-24T09:00:00.000Z',
           updatedAt: '2026-05-24T10:00:00.000Z',
           visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-          targets: [],
         }),
       ).toMatchObject({ status })
     }
@@ -322,20 +345,29 @@ describe('announcement schemas', () => {
   })
 
   it('fails when duplicate visibility targets exist with same type and id', () => {
-    const result = announcementTargetsSchema.safeParse([
-      {
-        targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
-        targetId: '33333333-3333-4333-8333-333333333333',
-      },
-      {
-        targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
-        targetId: '33333333-3333-4333-8333-333333333333',
-      },
-    ])
+    const result = announcementCreateSchema.safeParse({
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+      title: '重复可见对象测试',
+      contentJson,
+      targets: [
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+          targetId: '33333333-3333-4333-8333-333333333333',
+        },
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+          targetId: '33333333-3333-4333-8333-333333333333',
+        },
+      ],
+    })
 
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(prettifyZodError(result)).toContain('可见对象不能重复')
+      const duplicateIssue = result.error.issues.find(
+        (issue) => issue.message === '可见对象不能重复',
+      )
+      expect(duplicateIssue?.path).toContain(1)
     }
   })
 

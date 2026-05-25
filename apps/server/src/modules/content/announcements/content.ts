@@ -1,12 +1,14 @@
 import { getSchema } from '@tiptap/core'
+import { generateHTML } from '@tiptap/html'
 import { Node as ProseMirrorNode, type Schema } from '@tiptap/pm/model'
 import StarterKit from '@tiptap/starter-kit'
+import sanitizeHtml from 'sanitize-html'
 import { AnnouncementContentInvalidError, AnnouncementEmptyContentError } from './errors'
 
 let announcementSchema: Schema | undefined
 
-function getAnnouncementSchema() {
-  announcementSchema ??= getSchema([
+function getAnnouncementExtensions() {
+  return [
     StarterKit.configure({
       heading: {
         levels: [1, 2, 3],
@@ -18,12 +20,55 @@ function getAnnouncementSchema() {
       },
       underline: {},
     }),
-  ])
+  ]
+}
+
+function getAnnouncementSchema() {
+  announcementSchema ??= getSchema(getAnnouncementExtensions())
 
   return announcementSchema
 }
 
-export function deriveAnnouncementContentText(contentJson: unknown) {
+function sanitizeAnnouncementHtml(html: string) {
+  return sanitizeHtml(html, {
+    allowedTags: [
+      'p',
+      'h1',
+      'h2',
+      'h3',
+      'strong',
+      'em',
+      'u',
+      's',
+      'blockquote',
+      'ul',
+      'ol',
+      'li',
+      'hr',
+      'br',
+      'a',
+      'code',
+      'pre',
+    ],
+    allowedAttributes: {
+      a: ['href', 'target', 'rel'],
+    },
+    transformTags: {
+      a(tagName, attributes) {
+        return {
+          tagName,
+          attribs: {
+            href: attributes.href,
+          },
+        }
+      },
+    },
+    allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+    allowProtocolRelative: false,
+  })
+}
+
+export function deriveAnnouncementContent(contentJson: unknown) {
   try {
     const document = ProseMirrorNode.fromJSON(getAnnouncementSchema(), contentJson)
     const text = document.textBetween(0, document.content.size, '\n\n').trim()
@@ -32,7 +77,10 @@ export function deriveAnnouncementContentText(contentJson: unknown) {
       throw new AnnouncementEmptyContentError()
     }
 
-    return text
+    return {
+      text,
+      html: sanitizeAnnouncementHtml(generateHTML(document.toJSON(), getAnnouncementExtensions())),
+    }
   } catch (error) {
     if (error instanceof AnnouncementEmptyContentError) {
       throw error
@@ -40,4 +88,12 @@ export function deriveAnnouncementContentText(contentJson: unknown) {
 
     throw new AnnouncementContentInvalidError()
   }
+}
+
+export function deriveAnnouncementContentText(contentJson: unknown) {
+  return deriveAnnouncementContent(contentJson).text
+}
+
+export function deriveAnnouncementContentHtml(contentJson: unknown) {
+  return deriveAnnouncementContent(contentJson).html
 }

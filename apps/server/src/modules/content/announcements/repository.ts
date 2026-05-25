@@ -3,6 +3,7 @@ import type {
   AnnouncementTarget,
   AnnouncementCreateInput,
   AnnouncementListQuery,
+  AnnouncementVisibility,
   AnnouncementUpdateInput,
 } from '@rev30/contracts'
 import {
@@ -12,11 +13,12 @@ import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_STATUS_PUBLISHED,
+  ANNOUNCEMENT_VISIBILITY_ALL,
   DEPARTMENT_STATUS_ENABLED,
   ROLE_STATUS_ENABLED,
   USER_STATUS_ENABLED,
 } from '@rev30/contracts'
-import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
 import {
   contentAnnouncements,
@@ -27,6 +29,7 @@ import {
 } from '../../../db/schema'
 import type { AnnouncementRow, AnnouncementWithTargetsRow } from './mapper'
 import { deriveAnnouncementContent } from './content'
+import { AnnouncementInvalidTargetError, AnnouncementVisibilityTargetRequiredError } from './errors'
 
 function announcementSortOrder() {
   return [
@@ -52,6 +55,119 @@ function buildAnnouncementTargetValues(announcementId: string, targets: Announce
   }))
 }
 
+function normalizeTargetsForVisibility(
+  visibility: AnnouncementVisibility,
+  targets: AnnouncementTarget[],
+) {
+  return visibility === ANNOUNCEMENT_VISIBILITY_ALL ? [] : targets
+}
+
+function uniqueTargetIds(
+  targets: AnnouncementTarget[],
+  targetType: AnnouncementTarget['targetType'],
+) {
+  return [
+    ...new Set(
+      targets.filter((target) => target.targetType === targetType).map((target) => target.targetId),
+    ),
+  ]
+}
+
+async function countValidTargetIds(
+  executor: DbReader,
+  targetType: AnnouncementTarget['targetType'],
+  targetIds: string[],
+) {
+  if (targetIds.length === 0) {
+    return 0
+  }
+
+  if (targetType === ANNOUNCEMENT_TARGET_TYPE_USER) {
+    const rows = await executor
+      .select({ id: systemUsers.id })
+      .from(systemUsers)
+      .where(
+        and(
+          inArray(systemUsers.id, targetIds),
+          eq(systemUsers.status, USER_STATUS_ENABLED),
+          isNull(systemUsers.deletedAt),
+        ),
+      )
+      .for('update')
+
+    return rows.length
+  }
+
+  if (targetType === ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT) {
+    const rows = await executor
+      .select({ id: systemDepartments.id })
+      .from(systemDepartments)
+      .where(
+        and(
+          inArray(systemDepartments.id, targetIds),
+          eq(systemDepartments.status, DEPARTMENT_STATUS_ENABLED),
+          isNull(systemDepartments.deletedAt),
+        ),
+      )
+      .for('update')
+
+    return rows.length
+  }
+
+  const rows = await executor
+    .select({ id: systemRoles.id })
+    .from(systemRoles)
+    .where(
+      and(
+        inArray(systemRoles.id, targetIds),
+        eq(systemRoles.status, ROLE_STATUS_ENABLED),
+        isNull(systemRoles.deletedAt),
+      ),
+    )
+    .for('update')
+
+  return rows.length
+}
+
+async function areTargetsValid(executor: DbReader, targets: AnnouncementTarget[]) {
+  const userIds = uniqueTargetIds(targets, ANNOUNCEMENT_TARGET_TYPE_USER)
+  const departmentIds = uniqueTargetIds(targets, ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT)
+  const roleIds = uniqueTargetIds(targets, ANNOUNCEMENT_TARGET_TYPE_ROLE)
+  const [validUserCount, validDepartmentCount, validRoleCount] = await Promise.all([
+    countValidTargetIds(executor, ANNOUNCEMENT_TARGET_TYPE_USER, userIds),
+    countValidTargetIds(executor, ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT, departmentIds),
+    countValidTargetIds(executor, ANNOUNCEMENT_TARGET_TYPE_ROLE, roleIds),
+  ])
+
+  return (
+    validUserCount === userIds.length &&
+    validDepartmentCount === departmentIds.length &&
+    validRoleCount === roleIds.length
+  )
+}
+
+async function assertValidTargets(executor: DbReader, targets: AnnouncementTarget[]) {
+  if (targets.length === 0) {
+    return
+  }
+
+  if (!(await areTargetsValid(executor, targets))) {
+    throw new AnnouncementInvalidTargetError()
+  }
+}
+
+async function assertPublishableTargets(
+  executor: DbReader,
+  visibility: AnnouncementVisibility,
+  targets: AnnouncementTarget[],
+) {
+  if (visibility !== ANNOUNCEMENT_VISIBILITY_ALL && targets.length === 0) {
+    throw new AnnouncementVisibilityTargetRequiredError()
+  }
+
+  await assertValidTargets(executor, targets)
+}
+
 async function toAnnouncementWithTargets(
   executor: DbReader,
   announcement: AnnouncementRow,
@@ -64,10 +180,7 @@ async function toAnnouncementWithTargets(
   }
 }
 
-export async function findTargetsByAnnouncementIds(
-  executor: DbReader,
-  announcementIds: string[],
-) {
+export async function findTargetsByAnnouncementIds(executor: DbReader, announcementIds: string[]) {
   const targetsByAnnouncementId = new Map<string, AnnouncementTarget[]>()
 
   if (announcementIds.length === 0) {
@@ -82,6 +195,7 @@ export async function findTargetsByAnnouncementIds(
     })
     .from(contentAnnouncementTargets)
     .where(inArray(contentAnnouncementTargets.announcementId, announcementIds))
+    .orderBy(asc(contentAnnouncementTargets.targetType), asc(contentAnnouncementTargets.targetId))
 
   for (const row of rows) {
     const targets = targetsByAnnouncementId.get(row.announcementId) ?? []
@@ -157,8 +271,15 @@ export function createAnnouncementRepository(database: Db) {
       const { publish, targets, ...announcementInput } = input
       const now = new Date()
       const content = deriveAnnouncementContent(announcementInput.contentJson)
+      const normalizedTargets = normalizeTargetsForVisibility(input.visibility, targets)
 
       return await database.transaction(async (tx) => {
+        if (publish) {
+          await assertPublishableTargets(tx, input.visibility, normalizedTargets)
+        } else {
+          await assertValidTargets(tx, normalizedTargets)
+        }
+
         const [created] = await tx
           .insert(contentAnnouncements)
           .values({
@@ -175,15 +296,15 @@ export function createAnnouncementRepository(database: Db) {
           throw new Error('创建通知公告失败')
         }
 
-        if (targets.length > 0) {
+        if (normalizedTargets.length > 0) {
           await tx
             .insert(contentAnnouncementTargets)
-            .values(buildAnnouncementTargetValues(created.id, targets))
+            .values(buildAnnouncementTargetValues(created.id, normalizedTargets))
         }
 
         return {
           announcement: created,
-          targets,
+          targets: normalizedTargets,
         }
       })
     },
@@ -196,10 +317,38 @@ export function createAnnouncementRepository(database: Db) {
           : deriveAnnouncementContent(announcementInput.contentJson)
 
       return await database.transaction(async (tx) => {
+        const [existing] = await tx
+          .select()
+          .from(contentAnnouncements)
+          .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
+          .limit(1)
+          .for('update')
+
+        if (!existing) {
+          return undefined
+        }
+
+        const existingTargets =
+          targets === undefined
+            ? ((await findTargetsByAnnouncementIds(tx, [id])).get(id) ?? [])
+            : targets
+        const finalVisibility = (announcementInput.visibility ??
+          existing.visibility) as AnnouncementVisibility
+        const finalTargets = normalizeTargetsForVisibility(finalVisibility, existingTargets)
+        const shouldValidatePublishableState =
+          existing.status === ANNOUNCEMENT_STATUS_PUBLISHED || publish === true
+
+        if (shouldValidatePublishableState) {
+          await assertPublishableTargets(tx, finalVisibility, finalTargets)
+        } else {
+          await assertValidTargets(tx, finalTargets)
+        }
+
         const [updated] = await tx
           .update(contentAnnouncements)
           .set({
             ...announcementInput,
+            visibility: finalVisibility,
             contentText: content?.text,
             contentHtml: content?.html,
             status: publish ? ANNOUNCEMENT_STATUS_PUBLISHED : undefined,
@@ -212,20 +361,20 @@ export function createAnnouncementRepository(database: Db) {
           return undefined
         }
 
-        if (targets !== undefined) {
+        if (targets !== undefined || finalVisibility === ANNOUNCEMENT_VISIBILITY_ALL) {
           await tx
             .delete(contentAnnouncementTargets)
             .where(eq(contentAnnouncementTargets.announcementId, id))
 
-          if (targets.length > 0) {
+          if (finalTargets.length > 0) {
             await tx
               .insert(contentAnnouncementTargets)
-              .values(buildAnnouncementTargetValues(id, targets))
+              .values(buildAnnouncementTargetValues(id, finalTargets))
           }
 
           return {
             announcement: updated,
-            targets,
+            targets: finalTargets,
           }
         }
 
@@ -235,6 +384,29 @@ export function createAnnouncementRepository(database: Db) {
 
     async publish(id: string) {
       return await database.transaction(async (tx) => {
+        const [existing] = await tx
+          .select()
+          .from(contentAnnouncements)
+          .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
+          .limit(1)
+          .for('update')
+
+        if (!existing) {
+          return undefined
+        }
+
+        const existingTargets = (await findTargetsByAnnouncementIds(tx, [id])).get(id) ?? []
+        const visibility = existing.visibility as AnnouncementVisibility
+        const targets = normalizeTargetsForVisibility(visibility, existingTargets)
+
+        await assertPublishableTargets(tx, visibility, targets)
+
+        if (visibility === ANNOUNCEMENT_VISIBILITY_ALL && existingTargets.length > 0) {
+          await tx
+            .delete(contentAnnouncementTargets)
+            .where(eq(contentAnnouncementTargets.announcementId, id))
+        }
+
         const [updated] = await tx
           .update(contentAnnouncements)
           .set({
@@ -248,7 +420,10 @@ export function createAnnouncementRepository(database: Db) {
           return undefined
         }
 
-        return await toAnnouncementWithTargets(tx, updated)
+        return {
+          announcement: updated,
+          targets,
+        }
       })
     },
 
@@ -285,68 +460,7 @@ export function createAnnouncementRepository(database: Db) {
     },
 
     async validateTargets(targets: AnnouncementTarget[]) {
-      const targetsByType = new Map<AnnouncementTarget['targetType'], string[]>()
-
-      for (const target of targets) {
-        const ids = targetsByType.get(target.targetType) ?? []
-        ids.push(target.targetId)
-        targetsByType.set(target.targetType, ids)
-      }
-
-      const [userRows, departmentRows, roleRows] = await Promise.all([
-        targetsByType.has(ANNOUNCEMENT_TARGET_TYPE_USER)
-          ? database
-              .select({ id: systemUsers.id })
-              .from(systemUsers)
-              .where(
-                and(
-                  inArray(
-                    systemUsers.id,
-                    [...new Set(targetsByType.get(ANNOUNCEMENT_TARGET_TYPE_USER) ?? [])],
-                  ),
-                  eq(systemUsers.status, USER_STATUS_ENABLED),
-                  isNull(systemUsers.deletedAt),
-                ),
-              )
-          : Promise.resolve([]),
-        targetsByType.has(ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT)
-          ? database
-              .select({ id: systemDepartments.id })
-              .from(systemDepartments)
-              .where(
-                and(
-                  inArray(
-                    systemDepartments.id,
-                    [...new Set(targetsByType.get(ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT) ?? [])],
-                  ),
-                  eq(systemDepartments.status, DEPARTMENT_STATUS_ENABLED),
-                  isNull(systemDepartments.deletedAt),
-                ),
-              )
-          : Promise.resolve([]),
-        targetsByType.has(ANNOUNCEMENT_TARGET_TYPE_ROLE)
-          ? database
-              .select({ id: systemRoles.id })
-              .from(systemRoles)
-              .where(
-                and(
-                  inArray(
-                    systemRoles.id,
-                    [...new Set(targetsByType.get(ANNOUNCEMENT_TARGET_TYPE_ROLE) ?? [])],
-                  ),
-                  eq(systemRoles.status, ROLE_STATUS_ENABLED),
-                  isNull(systemRoles.deletedAt),
-                ),
-              )
-          : Promise.resolve([]),
-      ])
-
-      return (
-        userRows.length === new Set(targetsByType.get(ANNOUNCEMENT_TARGET_TYPE_USER) ?? []).size &&
-        departmentRows.length ===
-          new Set(targetsByType.get(ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT) ?? []).size &&
-        roleRows.length === new Set(targetsByType.get(ANNOUNCEMENT_TARGET_TYPE_ROLE) ?? []).size
-      )
+      return await areTargetsValid(database, targets)
     },
   }
 }

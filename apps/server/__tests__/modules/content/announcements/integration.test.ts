@@ -29,6 +29,8 @@ import {
   systemRoles,
   systemUsers,
 } from '../../../../src/db/schema'
+import { AnnouncementInvalidTargetError } from '../../../../src/modules/content/announcements/errors'
+import { createAnnouncementRepository } from '../../../../src/modules/content/announcements/repository'
 import { createAnnouncementRoutes } from '../../../../src/modules/content/announcements/routes'
 import {
   createProtectedContentRouteTestApp,
@@ -283,14 +285,17 @@ describe('announcement routes', () => {
       ]),
     )
 
-    const updateResponse = await app.request(`/api/content/announcements/${createResponse.body.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-        targets: [targets.department],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
+    const updateResponse = await app.request(
+      `/api/content/announcements/${createResponse.body.id}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+          targets: [targets.department],
+        }),
+        headers: { 'content-type': 'application/json' },
+      },
+    )
     const updated = (await updateResponse.json()) as Announcement
     expect(updateResponse.status).toBe(200)
     expect(updated.visibility).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
@@ -474,6 +479,40 @@ describe('announcement routes', () => {
       field: 'targets',
       message: '可见对象无效',
     })
+  })
+
+  it('rejects invalid targets inside repository publishing writes', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const repository = createAnnouncementRepository(database)
+    const roleId = randomUUID()
+    const { body: created } = await createAnnouncement(app, {
+      ...createBody,
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [],
+    })
+
+    await database.insert(systemRoles).values({
+      id: roleId,
+      name: 'Disabled Publish Role',
+      code: `disabled-publish-role-${roleId.slice(0, 8)}`,
+      status: ROLE_STATUS_DISABLED,
+    })
+
+    await expect(
+      repository.update(created.id, {
+        publish: true,
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [{ targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE, targetId: roleId }],
+      }),
+    ).rejects.toThrow(AnnouncementInvalidTargetError)
+
+    const [announcement] = await database
+      .select()
+      .from(contentAnnouncements)
+      .where(eq(contentAnnouncements.id, created.id))
+
+    expect(announcement?.status).toBe(ANNOUNCEMENT_STATUS_DRAFT)
   })
 
   it('publishes archived announcements and refreshes publishedAt', async () => {

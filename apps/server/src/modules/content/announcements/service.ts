@@ -14,7 +14,6 @@ import {
 import type { Db } from '../../../db'
 import {
   AnnouncementDraftArchiveError,
-  AnnouncementInvalidTargetError,
   AnnouncementNotFoundError,
   AnnouncementVisibilityTargetRequiredError,
 } from './errors'
@@ -38,28 +37,12 @@ export function createAnnouncementService(database: Db) {
     return input
   }
 
-  async function assertPublishableVisibility(
-    input: {
-      visibility: Announcement['visibility']
-      targets: AnnouncementTarget[]
-    },
-    options: {
-      validateTargets?: boolean
-    } = {},
-  ) {
-    if (
-      input.visibility !== ANNOUNCEMENT_VISIBILITY_ALL &&
-      input.targets.length === 0
-    ) {
+  async function assertPublishableVisibility(input: {
+    visibility: Announcement['visibility']
+    targets: AnnouncementTarget[]
+  }) {
+    if (input.visibility !== ANNOUNCEMENT_VISIBILITY_ALL && input.targets.length === 0) {
       throw new AnnouncementVisibilityTargetRequiredError()
-    }
-
-    if (options.validateTargets === true && input.targets.length > 0) {
-      const targetsValid = await repository.validateTargets(input.targets)
-
-      if (!targetsValid) {
-        throw new AnnouncementInvalidTargetError()
-      }
     }
   }
 
@@ -93,13 +76,7 @@ export function createAnnouncementService(database: Db) {
       }
 
       if (normalizedInput.publish) {
-        await assertPublishableVisibility(normalizedInput, { validateTargets: true })
-      }
-      else if (
-        normalizedInput.targets.length > 0 &&
-        !(await repository.validateTargets(normalizedInput.targets))
-      ) {
-        throw new AnnouncementInvalidTargetError()
+        await assertPublishableVisibility(normalizedInput)
       }
 
       return toAnnouncement(await repository.create(normalizedInput))
@@ -123,21 +100,12 @@ export function createAnnouncementService(database: Db) {
         input.publish === true
 
       if (shouldValidatePublishableState) {
-        await assertPublishableVisibility(finalState, { validateTargets: true })
+        await assertPublishableVisibility(finalState)
       }
 
       const normalizedInput = {
         ...input,
         targets: finalState.targets,
-      }
-
-      if (
-        !shouldValidatePublishableState &&
-        input.targets !== undefined &&
-        normalizedInput.targets.length > 0 &&
-        !(await repository.validateTargets(normalizedInput.targets))
-      ) {
-        throw new AnnouncementInvalidTargetError()
       }
 
       const updated = await repository.update(id, normalizedInput)
@@ -161,7 +129,6 @@ export function createAnnouncementService(database: Db) {
           visibility: existingAnnouncement.announcement.visibility as Announcement['visibility'],
           targets: existingAnnouncement.targets,
         }),
-        { validateTargets: true },
       )
 
       const updated = await repository.publish(id)

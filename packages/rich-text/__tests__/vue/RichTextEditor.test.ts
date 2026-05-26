@@ -1,5 +1,9 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { defineRichTextPreset } from '../../src/core/preset'
+import { baseFeature } from '../../src/features/base/shared'
+import { boldFeature } from '../../src/features/bold/shared'
+import { historyFeature } from '../../src/features/history/shared'
 import RichTextEditor from '../../src/vue/RichTextEditor.vue'
 import { compactRichTextPreset, compactRichTextToolbarLayout } from '../../src/presets'
 import type { RichTextDocument } from '../../src/schema'
@@ -24,6 +28,19 @@ const toolbarDataTests = [
   'rich-text-redo',
 ]
 
+const noHeadingPreset = defineRichTextPreset({
+  key: 'no-heading',
+  features: [baseFeature, boldFeature, historyFeature],
+})
+
+const wrappers: Array<ReturnType<typeof mount>> = []
+
+function mountRichTextEditor(props: InstanceType<typeof RichTextEditor>['$props']) {
+  const wrapper = mount(RichTextEditor, { props })
+  wrappers.push(wrapper)
+  return wrapper
+}
+
 async function getEditable(wrapper: ReturnType<typeof mount>) {
   await flushPromises()
   await vi.waitFor(() => {
@@ -34,13 +51,17 @@ async function getEditable(wrapper: ReturnType<typeof mount>) {
 }
 
 describe('RichTextEditor', () => {
+  afterEach(() => {
+    while (wrappers.length > 0) {
+      wrappers.pop()?.unmount()
+    }
+  })
+
   it('renders editor content and compact toolbar buttons', async () => {
-    const wrapper = mount(RichTextEditor, {
-      props: {
-        modelValue: contentJson,
-        preset: compactRichTextPreset,
-        toolbarLayout: compactRichTextToolbarLayout,
-      },
+    const wrapper = mountRichTextEditor({
+      modelValue: contentJson,
+      preset: compactRichTextPreset,
+      toolbarLayout: compactRichTextToolbarLayout,
     })
 
     const editable = await getEditable(wrapper)
@@ -54,11 +75,9 @@ describe('RichTextEditor', () => {
   })
 
   it('emits updated Tiptap JSON when content changes', async () => {
-    const wrapper = mount(RichTextEditor, {
-      props: {
-        modelValue: contentJson,
-        preset: compactRichTextPreset,
-      },
+    const wrapper = mountRichTextEditor({
+      modelValue: contentJson,
+      preset: compactRichTextPreset,
     })
 
     const editable = await getEditable(wrapper)
@@ -73,11 +92,9 @@ describe('RichTextEditor', () => {
   })
 
   it('syncs external modelValue changes into the editor DOM', async () => {
-    const wrapper = mount(RichTextEditor, {
-      props: {
-        modelValue: contentJson,
-        preset: compactRichTextPreset,
-      },
+    const wrapper = mountRichTextEditor({
+      modelValue: contentJson,
+      preset: compactRichTextPreset,
     })
 
     await getEditable(wrapper)
@@ -94,11 +111,9 @@ describe('RichTextEditor', () => {
   })
 
   it('toggles editor editability when disabled changes', async () => {
-    const wrapper = mount(RichTextEditor, {
-      props: {
-        modelValue: contentJson,
-        preset: compactRichTextPreset,
-      },
+    const wrapper = mountRichTextEditor({
+      modelValue: contentJson,
+      preset: compactRichTextPreset,
     })
 
     await getEditable(wrapper)
@@ -112,6 +127,27 @@ describe('RichTextEditor', () => {
 
     await vi.waitFor(() => {
       expect(wrapper.get('.ProseMirror').attributes('contenteditable')).toBe('true')
+    })
+  })
+
+  it('updates toolbar and editor extensions when preset changes', async () => {
+    const wrapper = mountRichTextEditor({
+      modelValue: contentJson,
+      preset: noHeadingPreset,
+      toolbarLayout: compactRichTextToolbarLayout,
+    })
+
+    await getEditable(wrapper)
+    expect(wrapper.find('[data-test="rich-text-heading-1"]').exists()).toBe(false)
+
+    await wrapper.setProps({ preset: compactRichTextPreset })
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-test="rich-text-heading-1"]').exists()).toBe(true)
+    })
+
+    await wrapper.get('[data-test="rich-text-heading-1"]').trigger('click')
+    await vi.waitFor(() => {
+      expect(wrapper.find('.ProseMirror h1').text()).toContain('维护通知')
     })
   })
 })

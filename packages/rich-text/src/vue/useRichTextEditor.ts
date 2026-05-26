@@ -12,18 +12,31 @@ interface UseRichTextEditorOptions {
 }
 
 export function useRichTextEditor(options: UseRichTextEditorOptions) {
-  const editor = shallowRef(
-    new Editor({
-      content: options.modelValue.value,
-      editable: !options.disabled.value,
-      extensions: collectRichTextExtensions(options.preset.value),
+  function isSameContent(a: unknown, b: unknown) {
+    return JSON.stringify(a) === JSON.stringify(b)
+  }
+
+  function createEditor(content: RichTextDocument, editable: boolean, preset: RichTextPreset) {
+    return new Editor({
+      content,
+      editable,
+      extensions: collectRichTextExtensions(preset),
       onBlur() {
         options.onBlur()
       },
       onUpdate({ editor: currentEditor }) {
-        options.onUpdate(currentEditor.getJSON() as RichTextDocument)
+        const nextValue = currentEditor.getJSON() as RichTextDocument
+        if (isSameContent(nextValue, options.modelValue.value)) {
+          return
+        }
+
+        options.onUpdate(nextValue)
       },
-    }),
+    })
+  }
+
+  const editor = shallowRef(
+    createEditor(options.modelValue.value, !options.disabled.value, options.preset.value),
   )
 
   watch(options.disabled, (disabled) => {
@@ -34,7 +47,7 @@ export function useRichTextEditor(options: UseRichTextEditorOptions) {
     options.modelValue,
     (value) => {
       const currentValue = editor.value?.getJSON()
-      if (JSON.stringify(currentValue) === JSON.stringify(value)) {
+      if (isSameContent(currentValue, value)) {
         return
       }
 
@@ -42,6 +55,16 @@ export function useRichTextEditor(options: UseRichTextEditorOptions) {
     },
     { deep: true },
   )
+
+  watch(options.preset, (preset) => {
+    const currentEditor = editor.value
+    const content = (currentEditor?.getJSON() as RichTextDocument | undefined) ?? options.modelValue.value
+    const editable = currentEditor?.isEditable ?? !options.disabled.value
+
+    const nextEditor = createEditor(content, editable, preset)
+    editor.value = nextEditor
+    currentEditor?.destroy()
+  })
 
   onBeforeUnmount(() => {
     editor.value?.destroy()

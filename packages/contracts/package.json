@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.app.json",
     "test": "vitest run --pool=threads",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit --rootDir .. && tsc -p tsconfig.test.json --noEmit --rootDir .."
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.test.json"
   },
   "dependencies": {
     "@rev30/rich-text": "workspace:*",

@@ -3,7 +3,7 @@
   "compilerOptions": {
     "lib": ["ES2023"],
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": ".."
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts"]

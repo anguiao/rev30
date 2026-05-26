@@ -1,12 +1,19 @@
+import type { AnyExtension } from '@tiptap/core'
 import { getSchema } from '@tiptap/core'
 import { generateHTML } from '@tiptap/html/server'
 import { Node as ProseMirrorNode, type Schema } from '@tiptap/pm/model'
 import { collectRichTextExtensions, type RichTextPreset } from '../core/preset'
 import { RichTextContentInvalidError } from './errors'
-import { getRichTextHtmlPolicies } from './registry'
+import { getRichTextHtmlPolicies, type RichTextRuntimePolicy } from './registry'
 import { sanitizeRichTextHtml } from './sanitize'
 
-const presetSchemaCache = new WeakMap<RichTextPreset, Schema>()
+interface PresetRuntimeSnapshot {
+  schema: Schema
+  extensions: AnyExtension[]
+  policies: RichTextRuntimePolicy[]
+}
+
+const presetRuntimeCache = new WeakMap<RichTextPreset, PresetRuntimeSnapshot>()
 
 export interface DeriveRichTextContentOptions {
   preset: RichTextPreset
@@ -17,42 +24,47 @@ export interface DerivedRichTextContent {
   html: string
 }
 
-function getPresetSchema(preset: RichTextPreset) {
-  const cachedSchema = presetSchemaCache.get(preset)
+function getPresetRuntime(preset: RichTextPreset): PresetRuntimeSnapshot {
+  const cachedRuntime = presetRuntimeCache.get(preset)
 
-  if (cachedSchema) {
-    return cachedSchema
+  if (cachedRuntime) {
+    return cachedRuntime
   }
 
-  const schema = getSchema(collectRichTextExtensions(preset))
-  presetSchemaCache.set(preset, schema)
+  const extensions = collectRichTextExtensions(preset)
+  const runtimeSnapshot = {
+    schema: getSchema(extensions),
+    extensions,
+    policies: getRichTextHtmlPolicies(preset),
+  }
+  presetRuntimeCache.set(preset, runtimeSnapshot)
 
-  return schema
+  return runtimeSnapshot
 }
 
 export function deriveRichTextContent(
   contentJson: unknown,
   { preset }: DeriveRichTextContentOptions,
 ): DerivedRichTextContent {
+  const runtime = getPresetRuntime(preset)
+  let document: ProseMirrorNode
+
   try {
-    const document = ProseMirrorNode.fromJSON(getPresetSchema(preset), contentJson)
-    const text = document.textBetween(0, document.content.size, '\n\n').trim()
-
-    if (text.length === 0) {
-      throw new RichTextContentInvalidError()
-    }
-
-    const html = generateHTML(document.toJSON(), collectRichTextExtensions(preset))
-
-    return {
-      text,
-      html: sanitizeRichTextHtml(html, getRichTextHtmlPolicies(preset)),
-    }
-  } catch (error) {
-    if (error instanceof RichTextContentInvalidError) {
-      throw error
-    }
-
+    document = ProseMirrorNode.fromJSON(runtime.schema, contentJson)
+  } catch {
     throw new RichTextContentInvalidError()
+  }
+
+  const text = document.textBetween(0, document.content.size, '\n\n').trim()
+
+  if (text.length === 0) {
+    throw new RichTextContentInvalidError()
+  }
+
+  const html = generateHTML(document.toJSON(), runtime.extensions)
+
+  return {
+    text,
+    html: sanitizeRichTextHtml(html, runtime.policies),
   }
 }

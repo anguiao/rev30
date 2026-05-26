@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@source '@rev30/rich-text';
+@source '../node_modules/@rev30/rich-text';
 @plugin '@tailwindcss/typography';
 @plugin '@iconify/tailwind4' {
   prefix: 'i';

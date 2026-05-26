@@ -1,36 +1,26 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-
-async function loadContentHelpers() {
-  vi.resetModules()
-
-  const contentModule = await import('../../../../src/modules/content/announcements/content')
-  const errorModule = await import('../../../../src/modules/content/announcements/errors')
-
-  return {
-    ...contentModule,
-    ...errorModule,
-  }
-}
-
-afterEach(() => {
-  vi.doUnmock('@tiptap/html')
-  vi.doUnmock('@tiptap/html/server')
-  vi.resetModules()
-})
+import { describe, expect, it } from 'vitest'
+import { deriveAnnouncementContent } from '../../../../src/modules/content/announcements/content'
+import { AnnouncementContentInvalidError } from '../../../../src/modules/content/announcements/errors'
 
 describe('announcement content helpers', () => {
-  it('does not register duplicate tiptap extensions', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-    await loadContentHelpers()
-
+  it('maps supported rich text json into derived announcement content', () => {
     expect(
-      warnSpy.mock.calls.some(
-        ([message]) =>
-          typeof message === 'string' && message.includes('Duplicate extension names found'),
-      ),
-    ).toBe(false)
+      deriveAnnouncementContent({
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] }],
+      }),
+    ).toEqual({
+      text: '维护通知',
+      html: '<p>维护通知</p>',
+    })
+  })
 
-    warnSpy.mockRestore()
+  it('maps rich text invalid content errors to announcement content errors', () => {
+    expect(() =>
+      deriveAnnouncementContent({
+        type: 'doc',
+        content: [{ type: 'unsupportedBlock', content: [{ type: 'text', text: 'x' }] }],
+      }),
+    ).toThrow(AnnouncementContentInvalidError)
   })
 })

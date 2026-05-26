@@ -12,7 +12,12 @@
     "paths": {
       "@rev30/server": ["./apps/server/src/app.ts"],
       "@rev30/contracts": ["./packages/contracts/src/index.ts"],
-      "@rev30/utils": ["./packages/utils/src/index.ts"]
+      "@rev30/utils": ["./packages/utils/src/index.ts"],
+      "@rev30/rich-text": ["./packages/rich-text/src/index.ts"],
+      "@rev30/rich-text/presets": ["./packages/rich-text/src/presets/index.ts"],
+      "@rev30/rich-text/schema": ["./packages/rich-text/src/schema/index.ts"],
+      "@rev30/rich-text/server": ["./packages/rich-text/src/server/index.ts"],
+      "@rev30/rich-text/vue": ["./packages/rich-text/src/vue/index.ts"]
     },
     "resolveJsonModule": true,
     "skipLibCheck": true,

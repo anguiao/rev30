@@ -48,7 +48,7 @@ const editor = shallowRef(
   }),
 )
 
-function setHeading(level: 1 | 2) {
+function setHeading(level: 1 | 2 | 3) {
   editor.value?.chain().focus().toggleHeading({ level }).run()
 }
 
@@ -140,6 +140,16 @@ onBeforeUnmount(() => {
           @click="setHeading(2)"
         >
           <span class="i-[lucide--heading-2]" />
+        </NButton>
+        <NButton
+          data-test="rich-text-heading-3"
+          :disabled="disabled"
+          quaternary
+          title="三级标题"
+          aria-label="三级标题"
+          @click="setHeading(3)"
+        >
+          <span class="i-[lucide--heading-3]" />
         </NButton>
         <NButton
           data-test="rich-text-blockquote"

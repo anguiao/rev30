@@ -304,7 +304,6 @@ function toDepartmentIds(value: Array<string | number> | null) {
                 data-test="user-form-departments"
                 multiple
                 checkable
-                cascade
                 clearable
                 filterable
                 default-expand-all

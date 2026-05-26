@@ -58,7 +58,8 @@ export function useRichTextEditor(options: UseRichTextEditorOptions) {
 
   watch(options.preset, (preset) => {
     const currentEditor = editor.value
-    const content = (currentEditor?.getJSON() as RichTextDocument | undefined) ?? options.modelValue.value
+    const content =
+      (currentEditor?.getJSON() as RichTextDocument | undefined) ?? options.modelValue.value
     const editable = currentEditor?.isEditable ?? !options.disabled.value
 
     const nextEditor = createEditor(content, editable, preset)

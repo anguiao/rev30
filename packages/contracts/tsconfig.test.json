@@ -2,7 +2,8 @@
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
     "noEmit": true,
-    "rootDir": ".."
+    "paths": null,
+    "rootDir": "."
   },
   "include": ["__tests__/**/*.ts"],
   "exclude": []

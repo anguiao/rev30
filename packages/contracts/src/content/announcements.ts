@@ -91,9 +91,12 @@ const announcementContentDocumentSchema = z.custom<RichTextDocument>(
   },
 )
 
-const announcementContentJsonInputSchema = announcementContentDocumentSchema.refine(hasNonBlankRichText, {
-  message: '请输入正文',
-})
+const announcementContentJsonInputSchema = announcementContentDocumentSchema.refine(
+  hasNonBlankRichText,
+  {
+    message: '请输入正文',
+  },
+)
 export const announcementTargetSchema = z.object({
   targetType: announcementTargetTypeSchema,
   targetId: z.uuid('可见对象 ID 无效'),

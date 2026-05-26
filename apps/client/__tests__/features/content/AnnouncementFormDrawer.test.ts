@@ -33,30 +33,39 @@ import {
 } from '../../../src/features/system'
 import AnnouncementFormDrawer from '../../../src/features/content/AnnouncementFormDrawer.vue'
 
-vi.mock('../../../src/features/content/RichTextEditor.vue', () => ({
-  default: defineComponent({
+vi.mock('@rev30/rich-text/vue', () => ({
+  RichTextEditor: defineComponent({
     name: 'RichTextEditorStub',
     props: {
       modelValue: {
         type: Object,
         required: true,
       },
+      disabled: {
+        type: Boolean,
+        required: false,
+      },
+      preset: {
+        type: Object,
+        required: false,
+      },
     },
     emits: ['update:modelValue', 'blur'],
-    setup(props, { emit }) {
+    setup(_, { emit }) {
       return () =>
         h(
           'button',
           {
-            'data-test': 'announcement-form-content-json',
+            'data-test': 'announcement-form-rich-text-stub',
             type: 'button',
             onClick: () =>
               emit('update:modelValue', {
                 type: 'doc',
                 content: [{ type: 'paragraph', content: [{ type: 'text', text: '更新正文' }] }],
               }),
+            onBlur: () => emit('blur'),
           },
-          JSON.stringify(props.modelValue),
+          'editor',
         )
     },
   }),
@@ -168,7 +177,7 @@ function mountDrawer(props = { show: true, announcementId: null as string | null
 
 async function fillRequiredFields(wrapper: ReturnType<typeof mount>) {
   await wrapper.get('[data-test="announcement-form-title"] input').setValue('新的维护通知')
-  await wrapper.get('[data-test="announcement-form-content-json"]').trigger('click')
+  await wrapper.get('[data-test="announcement-form-rich-text-stub"]').trigger('click')
   await flushPromises()
 }
 
@@ -526,7 +535,7 @@ describe('AnnouncementFormDrawer', () => {
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
     expect(getContentFormItem(wrapper).text()).toContain('请输入正文')
 
-    await wrapper.get('[data-test="announcement-form-content-json"]').trigger('click')
+    await wrapper.get('[data-test="announcement-form-rich-text-stub"]').trigger('click')
     await flushPromises()
 
     expect(getContentFormItem(wrapper).text()).not.toContain('请输入正文')

@@ -102,7 +102,7 @@ describe('announcement schemas', () => {
       title: '维护通知',
       summary: null,
       contentJson,
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
       targets: [],
       pinned: false,
       publish: false,
@@ -119,9 +119,32 @@ describe('announcement schemas', () => {
         visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
         pinned: false,
         publish: false,
-        targets: [],
+        targets: [
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+            targetId: '55555555-5555-4555-8555-555555555555',
+          },
+        ],
       }),
     ).toEqual({
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+      title: '维护通知',
+      summary: null,
+      contentJson,
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+          targetId: '55555555-5555-4555-8555-555555555555',
+        },
+      ],
+      pinned: false,
+      publish: false,
+    })
+  })
+
+  it('requires visible objects for targeted visibility form inputs', () => {
+    const formResult = announcementFormSchema.safeParse({
       type: ANNOUNCEMENT_TYPE_NOTICE,
       title: '维护通知',
       summary: null,
@@ -131,6 +154,25 @@ describe('announcement schemas', () => {
       pinned: false,
       publish: false,
     })
+    const createResult = announcementCreateSchema.safeParse({
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+      title: '维护通知',
+      contentJson,
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [],
+    })
+    const updateResult = announcementUpdateSchema.safeParse({
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [],
+    })
+
+    for (const result of [formResult, createResult, updateResult]) {
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(prettifyZodError(result)).toContain('请选择可见对象')
+        expect(result.error.issues[0]?.path).toEqual(['targets'])
+      }
+    }
   })
 
   it('allows create input to publish immediately', () => {
@@ -330,7 +372,7 @@ describe('announcement schemas', () => {
     expect(announcementSchema.parse(announcement).contentHtml).toBe(announcement.contentHtml)
   })
 
-  it('defaults visibility and targets in create schema and keeps publish with all visibility', () => {
+  it('defaults create schema to all visibility and keeps publish with all visibility', () => {
     expect(
       announcementCreateSchema.parse({
         type: ANNOUNCEMENT_TYPE_NOTICE,
@@ -338,7 +380,7 @@ describe('announcement schemas', () => {
         contentJson,
       }),
     ).toMatchObject({
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
       targets: [],
       publish: false,
     })

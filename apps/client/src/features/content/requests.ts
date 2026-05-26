@@ -73,24 +73,6 @@ export async function getAnnouncement(id: string): Promise<Announcement> {
   )
 }
 
-export async function listMyAnnouncements(
-  query: AnnouncementMyListQuery,
-): Promise<AnnouncementMyListResponse> {
-  return parseContentResponse(
-    await api.content['my-announcements'].$get({
-      query: normalizeRequestQuery(query),
-    }),
-    announcementMyListResponseSchema,
-  )
-}
-
-export async function getMyAnnouncement(id: string): Promise<AnnouncementMyDetail> {
-  return parseContentResponse(
-    await api.content['my-announcements'][':id'].$get({ param: { id } }),
-    announcementMyDetailSchema,
-  )
-}
-
 export async function createAnnouncement(input: AnnouncementCreateInput): Promise<Announcement> {
   return parseContentResponse(
     await api.content.announcements.$post({ json: input }),
@@ -108,18 +90,20 @@ export async function updateAnnouncement(
   )
 }
 
-export async function publishAnnouncement(id: string): Promise<Announcement> {
-  return parseContentResponse(
-    await api.content.announcements[':id'].publish.$post({ param: { id } }),
-    announcementSchema,
-  )
+export async function publishAnnouncement(id: string): Promise<void> {
+  const response = await api.content.announcements[':id'].publish.$post({ param: { id } })
+
+  if (!response.ok) {
+    throw await parseContentError(response)
+  }
 }
 
-export async function archiveAnnouncement(id: string): Promise<Announcement> {
-  return parseContentResponse(
-    await api.content.announcements[':id'].archive.$post({ param: { id } }),
-    announcementSchema,
-  )
+export async function archiveAnnouncement(id: string): Promise<void> {
+  const response = await api.content.announcements[':id'].archive.$post({ param: { id } })
+
+  if (!response.ok) {
+    throw await parseContentError(response)
+  }
 }
 
 export async function deleteAnnouncement(id: string): Promise<void> {
@@ -128,4 +112,22 @@ export async function deleteAnnouncement(id: string): Promise<void> {
   if (!response.ok) {
     throw await parseContentError(response)
   }
+}
+
+export async function listMyAnnouncements(
+  query: AnnouncementMyListQuery,
+): Promise<AnnouncementMyListResponse> {
+  return parseContentResponse(
+    await api.content.announcements.my.$get({
+      query: normalizeRequestQuery(query),
+    }),
+    announcementMyListResponseSchema,
+  )
+}
+
+export async function getMyAnnouncement(id: string): Promise<AnnouncementMyDetail> {
+  return parseContentResponse(
+    await api.content.announcements.my[':id'].$get({ param: { id } }),
+    announcementMyDetailSchema,
+  )
 }

@@ -1,5 +1,5 @@
 import type { AnnouncementMyDetail, AnnouncementMyListItem } from '@rev30/contracts'
-import { contentAnnouncements } from '../../../db/schema'
+import { contentAnnouncements } from '../../../../db/schema'
 
 export type AnnouncementRow = typeof contentAnnouncements.$inferSelect
 

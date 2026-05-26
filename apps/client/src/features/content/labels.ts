@@ -69,8 +69,8 @@ export const announcementStatusFilterOptions: Array<{
 }> = [{ label: '全部', value: ANNOUNCEMENT_STATUS_FILTER_ALL }, ...announcementStatusSelectOptions]
 
 export const announcementVisibilityLabels = {
-  [ANNOUNCEMENT_VISIBILITY_ALL]: '全员可见',
   [ANNOUNCEMENT_VISIBILITY_TARGETED]: '指定可见对象',
+  [ANNOUNCEMENT_VISIBILITY_ALL]: '全员可见',
 } as const satisfies Record<AnnouncementVisibility, string>
 
 export const announcementVisibilityOptions: Array<{
@@ -78,12 +78,12 @@ export const announcementVisibilityOptions: Array<{
   value: AnnouncementVisibility
 }> = [
   {
-    label: announcementVisibilityLabels[ANNOUNCEMENT_VISIBILITY_ALL],
-    value: ANNOUNCEMENT_VISIBILITY_ALL,
-  },
-  {
     label: announcementVisibilityLabels[ANNOUNCEMENT_VISIBILITY_TARGETED],
     value: ANNOUNCEMENT_VISIBILITY_TARGETED,
+  },
+  {
+    label: announcementVisibilityLabels[ANNOUNCEMENT_VISIBILITY_ALL],
+    value: ANNOUNCEMENT_VISIBILITY_ALL,
   },
 ]
 

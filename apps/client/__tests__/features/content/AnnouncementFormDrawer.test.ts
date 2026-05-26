@@ -172,6 +172,13 @@ async function fillRequiredFields(wrapper: ReturnType<typeof mount>) {
   await flushPromises()
 }
 
+async function selectUserTarget(wrapper: ReturnType<typeof mount>) {
+  getTestComponent(wrapper, 'announcement-form-target-users').vm.$emit('update:value', [
+    userTargetId,
+  ])
+  await flushPromises()
+}
+
 async function clickAction(wrapper: ReturnType<typeof mount>, selector: string) {
   await wrapper.get(selector).trigger('click')
   await flushPromises()
@@ -304,24 +311,28 @@ describe('AnnouncementFormDrawer', () => {
 
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
-    expect(createAnnouncementMock).toHaveBeenCalledWith(
+    const submitted = createAnnouncementMock.mock.calls[0]?.[0]
+    expect(submitted).toEqual(
       expect.objectContaining({
         visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-        targets: [
-          {
-            targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
-            targetId: userTargetId,
-          },
-          {
-            targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
-            targetId: departmentTargetId,
-          },
-          {
-            targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
-            targetId: roleTargetId,
-          },
-        ],
       }),
+    )
+    expect(submitted?.targets).toHaveLength(3)
+    expect(submitted?.targets).toEqual(
+      expect.arrayContaining([
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
+          targetId: userTargetId,
+        },
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+          targetId: departmentTargetId,
+        },
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+          targetId: roleTargetId,
+        },
+      ]),
     )
   })
 
@@ -341,6 +352,7 @@ describe('AnnouncementFormDrawer', () => {
     await flushPromises()
 
     await fillRequiredFields(wrapper)
+    await selectUserTarget(wrapper)
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
     expect(createAnnouncementMock).toHaveBeenCalledWith({
@@ -352,7 +364,12 @@ describe('AnnouncementFormDrawer', () => {
         content: [{ type: 'paragraph', content: [{ type: 'text', text: '更新正文' }] }],
       },
       visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [],
+      targets: [
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
+          targetId: userTargetId,
+        },
+      ],
       pinned: false,
       publish: false,
     })
@@ -371,6 +388,7 @@ describe('AnnouncementFormDrawer', () => {
     await flushPromises()
 
     await fillRequiredFields(wrapper)
+    await selectUserTarget(wrapper)
     await clickAction(wrapper, '[data-test="announcement-form-save-publish"]')
 
     expect(createAnnouncementMock).toHaveBeenCalledWith(
@@ -453,16 +471,13 @@ describe('AnnouncementFormDrawer', () => {
     await flushPromises()
 
     await fillRequiredFields(wrapper)
+    await selectUserTarget(wrapper)
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
     expect(getContentFormItem(wrapper).text()).toContain('请输入正文')
   })
 
-  it('shows targets server field errors on the visible object form item', async () => {
-    createAnnouncementMock.mockRejectedValue(
-      new ContentRequestError(400, '请选择可见对象', 'targets'),
-    )
-
+  it('shows targets validation feedback before submitting targeted announcements', async () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
@@ -470,13 +485,10 @@ describe('AnnouncementFormDrawer', () => {
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
     expect(getTargetsFormItem(wrapper).text()).toContain('请选择可见对象')
+    expect(createAnnouncementMock).not.toHaveBeenCalled()
   })
 
-  it('clears targets server field errors when visible object changes in the same session', async () => {
-    createAnnouncementMock.mockRejectedValue(
-      new ContentRequestError(400, '请选择可见对象', 'targets'),
-    )
-
+  it('clears targets validation feedback when visible object changes in the same session', async () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
@@ -484,10 +496,7 @@ describe('AnnouncementFormDrawer', () => {
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
     expect(getTargetsFormItem(wrapper).text()).toContain('请选择可见对象')
 
-    getTestComponent(wrapper, 'announcement-form-target-users').vm.$emit('update:value', [
-      userTargetId,
-    ])
-    await flushPromises()
+    await selectUserTarget(wrapper)
 
     expect(getTargetsFormItem(wrapper).text()).not.toContain('请选择可见对象')
   })
@@ -501,6 +510,7 @@ describe('AnnouncementFormDrawer', () => {
     await flushPromises()
 
     await wrapper.get('[data-test="announcement-form-title"] input').setValue('新的维护通知')
+    await selectUserTarget(wrapper)
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
     expect(createAnnouncementMock).toHaveBeenCalledWith(
@@ -523,6 +533,7 @@ describe('AnnouncementFormDrawer', () => {
     await flushPromises()
 
     await fillRequiredFields(wrapper)
+    await selectUserTarget(wrapper)
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
     expect(getContentFormItem(wrapper).text()).toContain('请输入正文')
 
@@ -541,6 +552,7 @@ describe('AnnouncementFormDrawer', () => {
     await flushPromises()
 
     await fillRequiredFields(wrapper)
+    await selectUserTarget(wrapper)
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
     expect(getContentFormItem(wrapper).text()).toContain('请输入正文')
 

@@ -5,8 +5,8 @@ import {
 } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
-import type { Db } from '../../../db'
-import type { AuthEnv } from '../../../middleware/auth'
+import type { Db } from '../../../../db'
+import type { AuthEnv } from '../../../../middleware/auth'
 import { MyAnnouncementNotFoundError } from './errors'
 import { createMyAnnouncementService } from './service'
 

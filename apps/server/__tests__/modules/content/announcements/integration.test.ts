@@ -144,7 +144,7 @@ describe('announcement routes', () => {
       title: '维护通知',
       summary: '今晚维护',
       contentHtml: createBodyContentHtml,
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
       targets: [],
       status: 'draft',
       pinned: true,
@@ -178,7 +178,7 @@ describe('announcement routes', () => {
     expect(detailResponse.status).toBe(200)
     expect(detailBody.contentJson).toEqual(createBody.contentJson)
     expect(detailBody.contentHtml).toBe(createBodyContentHtml)
-    expect(detailBody.visibility).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
+    expect(detailBody.visibility).toBe(ANNOUNCEMENT_VISIBILITY_ALL)
     expect(detailBody.targets).toEqual([])
   })
 
@@ -323,13 +323,20 @@ describe('announcement routes', () => {
   it('rejects publishing targeted announcements without visible objects', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
-    const { body: created } = await createAnnouncement(app, {
-      ...createBody,
+    const announcementId = randomUUID()
+    await database.insert(contentAnnouncements).values({
+      id: announcementId,
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+      title: '空可见对象草稿',
+      summary: null,
+      contentJson: createBody.contentJson,
+      contentText: '今晚维护',
+      contentHtml: createBodyContentHtml,
       visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [],
+      status: ANNOUNCEMENT_STATUS_DRAFT,
     })
 
-    const response = await app.request(`/api/content/announcements/${created.id}/publish`, {
+    const response = await app.request(`/api/content/announcements/${announcementId}/publish`, {
       method: 'POST',
     })
 
@@ -360,10 +367,7 @@ describe('announcement routes', () => {
     })
 
     expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({
-      field: 'targets',
-      message: '请选择可见对象',
-    })
+    expect((await response.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
   })
 
   it('rejects publishing targeted announcements whose saved targets became invalid', async () => {
@@ -486,11 +490,7 @@ describe('announcement routes', () => {
     const app = await createTestApp(database)
     const repository = createAnnouncementRepository(database)
     const roleId = randomUUID()
-    const { body: created } = await createAnnouncement(app, {
-      ...createBody,
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [],
-    })
+    const { body: created } = await createAnnouncement(app, createBody)
 
     await database.insert(systemRoles).values({
       id: roleId,
@@ -532,8 +532,10 @@ describe('announcement routes', () => {
     const archiveResponse = await app.request(`/api/content/announcements/${created.id}/archive`, {
       method: 'POST',
     })
-    const archived = (await archiveResponse.json()) as Announcement
-    expect(archiveResponse.status).toBe(200)
+    expect(archiveResponse.status).toBe(204)
+
+    const archivedResponse = await app.request(`/api/content/announcements/${created.id}`)
+    const archived = (await archivedResponse.json()) as Announcement
     expect(archived.status).toBe(ANNOUNCEMENT_STATUS_ARCHIVED)
     expect(archived.publishedAt).toBe(firstPublishedAt)
 
@@ -542,8 +544,10 @@ describe('announcement routes', () => {
     const publishResponse = await app.request(`/api/content/announcements/${created.id}/publish`, {
       method: 'POST',
     })
-    const republished = (await publishResponse.json()) as Announcement
-    expect(publishResponse.status).toBe(200)
+    expect(publishResponse.status).toBe(204)
+
+    const republishedResponse = await app.request(`/api/content/announcements/${created.id}`)
+    const republished = (await republishedResponse.json()) as Announcement
     expect(republished.status).toBe(ANNOUNCEMENT_STATUS_PUBLISHED)
     expect(republished.publishedAt).toBe(republishTime.toISOString())
     expect(republished.publishedAt).not.toBe(firstPublishedAt)

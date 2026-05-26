@@ -42,6 +42,7 @@ function handleSelect(value: string | number) {
       size="medium"
       circle
       :aria-label="`主题模式：${currentThemeOption.label}`"
+      :title="`主题模式：${currentThemeOption.label}`"
     >
       <template #icon>
         <span

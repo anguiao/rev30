@@ -10,7 +10,7 @@ import {
   ROLE_STATUS_ENABLED,
 } from '@rev30/contracts'
 import { and, count, desc, eq, exists, ilike, isNull, or } from 'drizzle-orm'
-import type { Db } from '../../../db'
+import type { Db } from '../../../../db'
 import {
   contentAnnouncements,
   contentAnnouncementTargets,
@@ -18,7 +18,7 @@ import {
   systemRoles,
   systemUserDepartments,
   systemUserRoles,
-} from '../../../db/schema'
+} from '../../../../db/schema'
 import type { AnnouncementRow } from './mapper'
 
 function announcementSortOrder() {
@@ -124,7 +124,7 @@ export function createMyAnnouncementRepository(database: Db) {
   }
 
   return {
-    async listVisible(currentUser: User, query: AnnouncementMyListQuery) {
+    async list(currentUser: User, query: AnnouncementMyListQuery) {
       const { page, pageSize } = query
       const where = and(...buildFilters(currentUser, query))
 
@@ -152,7 +152,7 @@ export function createMyAnnouncementRepository(database: Db) {
       }
     },
 
-    async findVisibleById(currentUser: User, id: string): Promise<AnnouncementRow | undefined> {
+    async findById(currentUser: User, id: string): Promise<AnnouncementRow | undefined> {
       const [row] = await database
         .select()
         .from(contentAnnouncements)

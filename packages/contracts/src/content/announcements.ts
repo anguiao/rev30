@@ -19,10 +19,10 @@ export const announcementStatusSchema = z.enum(
   '状态无效',
 )
 
-export const ANNOUNCEMENT_VISIBILITY_ALL = 'all'
 export const ANNOUNCEMENT_VISIBILITY_TARGETED = 'targeted'
+export const ANNOUNCEMENT_VISIBILITY_ALL = 'all'
 export const announcementVisibilitySchema = z.enum(
-  [ANNOUNCEMENT_VISIBILITY_ALL, ANNOUNCEMENT_VISIBILITY_TARGETED],
+  [ANNOUNCEMENT_VISIBILITY_TARGETED, ANNOUNCEMENT_VISIBILITY_ALL],
   '可见范围无效',
 )
 
@@ -122,7 +122,7 @@ export const announcementListQuerySchema = paginationQuerySchema.extend({
   pinned: optionalPinnedQuerySchema,
 })
 
-export const announcementFormSchema = z.object({
+const announcementFormBaseSchema = z.object({
   type: announcementTypeSchema,
   title: announcementTitleSchema,
   summary: announcementSummaryInputSchema,
@@ -133,14 +133,37 @@ export const announcementFormSchema = z.object({
   publish: z.boolean(),
 })
 
-export const announcementCreateSchema = announcementFormSchema.extend({
-  publish: z.boolean().default(false),
-  pinned: z.boolean().default(false),
-  visibility: announcementVisibilitySchema.default(ANNOUNCEMENT_VISIBILITY_TARGETED),
-  targets: announcementTargetsSchema.default([]),
-})
+function ensureTargetedAnnouncementTargets(
+  input: z.infer<ReturnType<typeof announcementFormBaseSchema.partial>>,
+  context: z.RefinementCtx,
+) {
+  if (input.visibility !== ANNOUNCEMENT_VISIBILITY_TARGETED || input.targets === undefined) {
+    return
+  }
 
-export const announcementUpdateSchema = announcementFormSchema
+  if (input.targets.length === 0) {
+    context.addIssue({
+      code: 'custom',
+      message: '请选择可见对象',
+      path: ['targets'],
+    })
+  }
+}
+
+export const announcementFormSchema = announcementFormBaseSchema.superRefine(
+  ensureTargetedAnnouncementTargets,
+)
+
+export const announcementCreateSchema = announcementFormBaseSchema
+  .extend({
+    publish: z.boolean().default(false),
+    pinned: z.boolean().default(false),
+    visibility: announcementVisibilitySchema.default(ANNOUNCEMENT_VISIBILITY_ALL),
+    targets: announcementTargetsSchema.default([]),
+  })
+  .superRefine(ensureTargetedAnnouncementTargets)
+
+export const announcementUpdateSchema = announcementFormBaseSchema
   .partial()
   .transform(({ publish, ...input }) => {
     return {
@@ -151,6 +174,7 @@ export const announcementUpdateSchema = announcementFormSchema
   .refine(hasAnyDefinedValue, {
     message: '至少修改一个字段',
   })
+  .superRefine(ensureTargetedAnnouncementTargets)
 
 export const announcementListResponseSchema = z.object({
   list: z.array(announcementListItemSchema),

@@ -7,8 +7,8 @@ import {
 } from '@rev30/contracts'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { MyAnnouncementNotFoundError } from '../../../../src/modules/content/my-announcements/errors'
-import { createMyAnnouncementRoutes } from '../../../../src/modules/content/my-announcements/routes'
+import { MyAnnouncementNotFoundError } from '../../../../../src/modules/content/announcements/my/errors'
+import { createMyAnnouncementRoutes } from '../../../../../src/modules/content/announcements/my/routes'
 
 const announcementId = '11111111-1111-4111-8111-111111111111'
 const currentUser: User = {
@@ -70,21 +70,21 @@ const mocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('../../../../src/modules/content/my-announcements/service', () => ({
+vi.mock('../../../../../src/modules/content/announcements/my/service', () => ({
   createMyAnnouncementService: mocks.createMyAnnouncementService,
 }))
 
 function createTestApp() {
   return new Hono<{ Variables: { currentUser: User } }>()
-    .use('/api/content/my-announcements/*', async (c, next) => {
+    .use('/api/content/announcements/my/*', async (c, next) => {
       c.set('currentUser', currentUser)
       await next()
     })
-    .use('/api/content/my-announcements', async (c, next) => {
+    .use('/api/content/announcements/my', async (c, next) => {
       c.set('currentUser', currentUser)
       await next()
     })
-    .route('/api/content/my-announcements', createMyAnnouncementRoutes({} as never))
+    .route('/api/content/announcements/my', createMyAnnouncementRoutes({} as never))
 }
 
 describe('my announcement routes', () => {
@@ -99,7 +99,7 @@ describe('my announcement routes', () => {
     const app = createTestApp()
 
     const listHttpResponse = await app.request(
-      '/api/content/my-announcements?page=2&pageSize=5&keyword=维护&type=notice',
+      '/api/content/announcements/my?page=2&pageSize=5&keyword=维护&type=notice',
     )
     expect(listHttpResponse.status).toBe(200)
     expect(mocks.service.list).toHaveBeenCalledWith(currentUser, {
@@ -109,7 +109,7 @@ describe('my announcement routes', () => {
       type: 'notice',
     })
 
-    const detailHttpResponse = await app.request(`/api/content/my-announcements/${announcementId}`)
+    const detailHttpResponse = await app.request(`/api/content/announcements/my/${announcementId}`)
     expect(detailHttpResponse.status).toBe(200)
     expect(mocks.service.get).toHaveBeenCalledWith(currentUser, announcementId)
   })
@@ -117,12 +117,12 @@ describe('my announcement routes', () => {
   it('returns validation errors before calling service methods', async () => {
     const app = createTestApp()
 
-    const queryResponse = await app.request('/api/content/my-announcements?page=0')
+    const queryResponse = await app.request('/api/content/announcements/my?page=0')
     expect(queryResponse.status).toBe(400)
     expect(await queryResponse.json()).toEqual({ message: '查询参数无效' })
     expect(mocks.service.list).not.toHaveBeenCalled()
 
-    const idResponse = await app.request('/api/content/my-announcements/not-a-uuid')
+    const idResponse = await app.request('/api/content/announcements/my/not-a-uuid')
     expect(idResponse.status).toBe(400)
     expect(await idResponse.json()).toEqual({ message: '通知公告 ID 无效' })
     expect(mocks.service.get).not.toHaveBeenCalled()
@@ -133,7 +133,7 @@ describe('my announcement routes', () => {
 
     mocks.service.get.mockRejectedValueOnce(new MyAnnouncementNotFoundError())
 
-    const response = await app.request(`/api/content/my-announcements/${announcementId}`)
+    const response = await app.request(`/api/content/announcements/my/${announcementId}`)
     expect(response.status).toBe(404)
     expect(await response.json()).toEqual({ message: '通知公告不存在' })
   })

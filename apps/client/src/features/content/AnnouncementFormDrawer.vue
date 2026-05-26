@@ -14,6 +14,7 @@ import {
   NRadioGroup,
   NSelect,
   NSwitch,
+  NText,
   NTreeSelect,
 } from 'naive-ui'
 import {
@@ -139,7 +140,6 @@ const {
     }
   },
 })
-
 const userOptions = computed(() =>
   toSelectOptions(formData.value?.users ?? [], {
     label: (user) => `${user.nickname} (${user.username})`,
@@ -147,14 +147,12 @@ const userOptions = computed(() =>
     disabled: (user) => user.status !== USER_STATUS_ENABLED,
   }),
 )
-
 const departmentTreeOptions = computed(() =>
   toTreeOptions(formData.value?.departments ?? [], {
     label: (department) => `${department.name} (${department.code})`,
     disabled: (department) => department.status !== DEPARTMENT_STATUS_ENABLED,
   }),
 )
-
 const roleOptions = computed(() =>
   toSelectOptions(formData.value?.roles ?? [], {
     label: (role) => `${role.name} (${role.code})`,
@@ -162,11 +160,9 @@ const roleOptions = computed(() =>
     disabled: (role) => role.status !== ROLE_STATUS_ENABLED,
   }),
 )
-
 const isPublishedAnnouncement = computed(
   () => formData.value?.status === ANNOUNCEMENT_STATUS_PUBLISHED,
 )
-
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
@@ -190,8 +186,9 @@ const form = useForm({
   },
 })
 
+const selectedVisibility = form.useStore((state) => state.values.visibility)
 const isTargetedVisibility = computed(
-  () => form.state.values.visibility === ANNOUNCEMENT_VISIBILITY_TARGETED,
+  () => selectedVisibility.value === ANNOUNCEMENT_VISIBILITY_TARGETED,
 )
 
 const { isLoading: isSaving, ...saveAnnouncementMutation } = useMutation({
@@ -255,52 +252,16 @@ function getTargetIds(targets: AnnouncementTarget[], targetType: AnnouncementTar
     .map((target) => target.targetId)
 }
 
-function buildTargets(
-  nextUserTargetIds: string[],
-  nextDepartmentTargetIds: string[],
-  nextRoleTargetIds: string[],
-): AnnouncementTarget[] {
-  return [
-    ...nextUserTargetIds.map<AnnouncementTarget>((targetId) => ({
-      targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
-      targetId,
-    })),
-    ...nextDepartmentTargetIds.map<AnnouncementTarget>((targetId) => ({
-      targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
-      targetId,
-    })),
-    ...nextRoleTargetIds.map<AnnouncementTarget>((targetId) => ({
-      targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+function updateTargets(targetType: AnnouncementTargetType, targetIds: string[]) {
+  const nextTargets = [
+    ...(form.state.values.targets ?? []).filter((target) => target.targetType !== targetType),
+    ...targetIds.map((targetId) => ({
+      targetType,
       targetId,
     })),
   ]
-}
 
-function toTargetIds(value: Array<string | number> | string | number | null) {
-  const values = Array.isArray(value) ? value : value === null ? [] : [value]
-
-  return [...new Set(values.map(String))]
-}
-
-function updateTargets(targetType: AnnouncementTargetType, targetIds: string[]) {
-  const currentTargets = form.state.values.targets ?? []
-  const nextUserTargetIds =
-    targetType === ANNOUNCEMENT_TARGET_TYPE_USER
-      ? targetIds
-      : getTargetIds(currentTargets, ANNOUNCEMENT_TARGET_TYPE_USER)
-  const nextDepartmentTargetIds =
-    targetType === ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT
-      ? targetIds
-      : getTargetIds(currentTargets, ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT)
-  const nextRoleTargetIds =
-    targetType === ANNOUNCEMENT_TARGET_TYPE_ROLE
-      ? targetIds
-      : getTargetIds(currentTargets, ANNOUNCEMENT_TARGET_TYPE_ROLE)
-
-  form.setFieldValue(
-    'targets',
-    buildTargets(nextUserTargetIds, nextDepartmentTargetIds, nextRoleTargetIds),
-  )
+  form.setFieldValue('targets', nextTargets)
 }
 
 function handleVisibilityChange(value: AnnouncementVisibility) {
@@ -312,19 +273,9 @@ function handleVisibilityChange(value: AnnouncementVisibility) {
   }
 }
 
-function handleUserTargetsChange(value: Array<string | number> | null) {
+function handleTargetsChange(targetType: AnnouncementTargetType, value: string[]) {
   clearServerFieldError('targets')
-  updateTargets(ANNOUNCEMENT_TARGET_TYPE_USER, toTargetIds(value))
-}
-
-function handleDepartmentTargetsChange(value: Array<string | number> | string | number | null) {
-  clearServerFieldError('targets')
-  updateTargets(ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT, toTargetIds(value))
-}
-
-function handleRoleTargetsChange(value: Array<string | number> | null) {
-  clearServerFieldError('targets')
-  updateTargets(ANNOUNCEMENT_TARGET_TYPE_ROLE, toTargetIds(value))
+  updateTargets(targetType, [...new Set(value)])
 }
 
 function clearServerFieldError(field: keyof AnnouncementFormInput) {
@@ -483,11 +434,18 @@ watch(
 
           <form.Field name="targets" v-slot="{ state }">
             <NFormItem
+              v-if="isTargetedVisibility"
               data-test="announcement-form-targets-item"
-              label="可见对象"
               v-bind="formItemValidationProps(state.meta)"
             >
-              <div v-if="isTargetedVisibility" class="flex flex-col gap-4">
+              <template #label>
+                <div class="flex items-center gap-2">
+                  <span>可见对象</span>
+                  <NText depth="3" class="text-xs"> 用户、部门或角色任一匹配即可查看 </NText>
+                </div>
+              </template>
+
+              <div class="w-full space-y-2">
                 <NSelect
                   data-test="announcement-form-target-users"
                   :disabled="isLoading || isSaving"
@@ -498,7 +456,7 @@ watch(
                   filterable
                   max-tag-count="responsive"
                   placeholder="请选择用户"
-                  @update:value="handleUserTargetsChange"
+                  @update:value="handleTargetsChange(ANNOUNCEMENT_TARGET_TYPE_USER, $event ?? [])"
                 />
 
                 <NTreeSelect
@@ -513,7 +471,9 @@ watch(
                   :options="departmentTreeOptions"
                   :value="getTargetIds(state.value ?? [], ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT)"
                   placeholder="请选择部门"
-                  @update:value="handleDepartmentTargetsChange"
+                  @update:value="
+                    handleTargetsChange(ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT, $event ?? [])
+                  "
                 />
 
                 <NSelect
@@ -526,7 +486,7 @@ watch(
                   filterable
                   max-tag-count="responsive"
                   placeholder="请选择角色"
-                  @update:value="handleRoleTargetsChange"
+                  @update:value="handleTargetsChange(ANNOUNCEMENT_TARGET_TYPE_ROLE, $event ?? [])"
                 />
               </div>
             </NFormItem>

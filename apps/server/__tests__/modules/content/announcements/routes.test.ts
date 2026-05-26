@@ -2,6 +2,7 @@ import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  ANNOUNCEMENT_VISIBILITY_ALL,
   ANNOUNCEMENT_TARGET_TYPE_ROLE,
   ANNOUNCEMENT_TARGET_TYPE_USER,
   ANNOUNCEMENT_STATUS_DRAFT,
@@ -127,15 +128,8 @@ describe('announcement routes', () => {
     mocks.service.get.mockResolvedValue(announcement)
     mocks.service.create.mockResolvedValue(announcement)
     mocks.service.update.mockResolvedValue({ ...announcement, title: '维护通知（更新）' })
-    mocks.service.publish.mockResolvedValue({
-      ...announcement,
-      status: ANNOUNCEMENT_STATUS_PUBLISHED,
-      publishedAt: '2026-05-19T00:00:00.000Z',
-    })
-    mocks.service.archive.mockResolvedValue({
-      ...announcement,
-      status: 'archived',
-    })
+    mocks.service.publish.mockResolvedValue(undefined)
+    mocks.service.archive.mockResolvedValue(undefined)
     mocks.service.delete.mockResolvedValue(undefined)
   })
 
@@ -185,7 +179,7 @@ describe('announcement routes', () => {
     expect(mocks.service.create).toHaveBeenCalledWith({
       ...createBody,
       publish: false,
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
       targets: [],
     })
 
@@ -231,7 +225,7 @@ describe('announcement routes', () => {
         method: 'POST',
       },
     )
-    expect(publishResponse.status).toBe(200)
+    expect(publishResponse.status).toBe(204)
     expect(mocks.service.publish).toHaveBeenCalledWith(announcementId)
 
     const archiveResponse = await app.request(
@@ -240,7 +234,7 @@ describe('announcement routes', () => {
         method: 'POST',
       },
     )
-    expect(archiveResponse.status).toBe(200)
+    expect(archiveResponse.status).toBe(204)
     expect(mocks.service.archive).toHaveBeenCalledWith(announcementId)
 
     const deleteResponse = await app.request(`/api/content/announcements/${announcementId}`, {

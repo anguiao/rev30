@@ -19,6 +19,7 @@ import {
   AnnouncementNotFoundError,
   AnnouncementVisibilityTargetRequiredError,
 } from './errors'
+import { createMyAnnouncementRoutes } from './my/routes'
 import { createAnnouncementService } from './service'
 
 const announcementIdParamSchema = announcementSchema.pick({ id: true })
@@ -90,6 +91,7 @@ export function createAnnouncementRoutes(database: Db) {
   app.onError((error, c) => announcementErrorResponse(error, c))
 
   return app
+    .route('/my', createMyAnnouncementRoutes(database))
     .get(
       '/',
       requireAccess('content:announcement:list'),
@@ -134,7 +136,9 @@ export function createAnnouncementRoutes(database: Db) {
       async (c) => {
         const { id } = c.req.valid('param')
 
-        return c.json(await service.publish(id))
+        await service.publish(id)
+
+        return c.body(null, 204)
       },
     )
     .post(
@@ -144,7 +148,9 @@ export function createAnnouncementRoutes(database: Db) {
       async (c) => {
         const { id } = c.req.valid('param')
 
-        return c.json(await service.archive(id))
+        await service.archive(id)
+
+        return c.body(null, 204)
       },
     )
     .delete(

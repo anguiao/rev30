@@ -1,8 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import {
   USER_STATUS_ENABLED,
-  type DepartmentSummary,
-  type RoleSummary,
   type UserCreateInput,
   type UserListQuery,
   type UserOptionsQuery,
@@ -25,13 +23,7 @@ import {
 } from '../departments/repository'
 import { findRoleSummariesByUserIds, lockActiveRolesByIds } from '../roles/repository'
 import { UserInvalidDepartmentError, UserInvalidRoleError } from './errors'
-import type { UserOptionRow, UserRow } from './mapper'
-
-export type UserWithRelationsRow = {
-  user: UserRow
-  departments: DepartmentSummary[]
-  roles: RoleSummary[]
-}
+import type { UserOptionRow } from './mapper'
 
 const userOptionColumns = {
   id: systemUsers.id,

@@ -79,14 +79,14 @@ onBeforeUnmount(() => {
 <template>
   <div
     data-test="rich-text-editor"
-    class="w-full overflow-hidden rounded-ui border border-stone-200 bg-white transition-[border-color,box-shadow] duration-300 dark:border-zinc-800 dark:bg-zinc-900"
+    class="w-full overflow-hidden rounded-ui border border-(--app-input-border-color) bg-(--app-input-color) transition-[background-color,border-color,box-shadow] duration-300"
     :class="
       disabled
         ? ''
-        : 'focus-within:border-input-focus-border focus-within:shadow-input-focus hover:border-input-hover-border'
+        : 'focus-within:border-input-focus-border focus-within:bg-(--app-input-color-focus) focus-within:shadow-input-focus hover:border-input-hover-border'
     "
   >
-    <div class="flex flex-wrap gap-1 border-b border-stone-200 p-2 dark:border-zinc-800">
+    <div class="flex flex-wrap gap-1 border-b border-(--app-input-divider-color) px-2 py-1">
       <NButtonGroup size="small">
         <NButton
           data-test="rich-text-bold"
@@ -120,7 +120,7 @@ onBeforeUnmount(() => {
         </NButton>
       </NButtonGroup>
 
-      <NButtonGroup size="small" class="border-l border-stone-200 pl-1 dark:border-zinc-800">
+      <NButtonGroup size="small" class="border-l border-(--app-input-divider-color) pl-1">
         <NButton
           data-test="rich-text-heading-1"
           :disabled="disabled"
@@ -153,7 +153,7 @@ onBeforeUnmount(() => {
         </NButton>
       </NButtonGroup>
 
-      <NButtonGroup size="small" class="border-l border-stone-200 pl-1 dark:border-zinc-800">
+      <NButtonGroup size="small" class="border-l border-(--app-input-divider-color) pl-1">
         <NButton
           data-test="rich-text-bullet-list"
           :disabled="disabled"
@@ -176,7 +176,7 @@ onBeforeUnmount(() => {
         </NButton>
       </NButtonGroup>
 
-      <NButtonGroup size="small" class="border-l border-stone-200 pl-1 dark:border-zinc-800">
+      <NButtonGroup size="small" class="border-l border-(--app-input-divider-color) pl-1">
         <NButton
           data-test="rich-text-horizontal-rule"
           :disabled="disabled"
@@ -212,7 +212,7 @@ onBeforeUnmount(() => {
 
     <EditorContent
       :editor="editor"
-      class="prose prose-sm max-w-none dark:prose-invert [&_.ProseMirror]:min-h-(--rich-text-editor-min-height) [&_.ProseMirror]:px-3 [&_.ProseMirror]:outline-none"
+      class="prose prose-sm flow-root max-w-none dark:prose-invert [&_.ProseMirror]:min-h-(--rich-text-editor-min-height) [&_.ProseMirror]:px-3 [&_.ProseMirror]:outline-none"
       :style="{ '--rich-text-editor-min-height': `${minHeight}px` }"
     />
   </div>

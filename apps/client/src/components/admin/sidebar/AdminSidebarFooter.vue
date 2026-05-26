@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useMutation } from '@pinia/colada'
 import { storeToRefs } from 'pinia'
-import { NButton, NTooltip } from 'naive-ui'
+import { NButton } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import { logout } from '../../../features/auth'
 import { useAuthStore } from '../../../stores/auth'
@@ -49,58 +49,46 @@ async function navigateToAccountSettings() {
     >
       <template v-if="collapsed">
         <ThemeModeSwitch />
-        <NTooltip trigger="hover" placement="right">
-          <template #trigger>
-            <NButton
-              data-test="admin-announcements"
-              circle
-              quaternary
-              type="default"
-              aria-label="通知公告"
-              @click="navigateToAnnouncements"
-            >
-              <template #icon>
-                <span class="i-[lucide--megaphone] inline-block size-4" aria-hidden="true" />
-              </template>
-            </NButton>
+        <NButton
+          data-test="admin-announcements"
+          circle
+          quaternary
+          type="default"
+          aria-label="通知公告"
+          title="通知公告"
+          @click="navigateToAnnouncements"
+        >
+          <template #icon>
+            <span class="i-[lucide--megaphone] inline-block size-4" aria-hidden="true" />
           </template>
-          通知公告
-        </NTooltip>
-        <NTooltip trigger="hover" placement="right">
-          <template #trigger>
-            <NButton
-              data-test="admin-account-settings"
-              circle
-              quaternary
-              type="default"
-              aria-label="个人设置"
-              @click="navigateToAccountSettings"
-            >
-              <template #icon>
-                <span class="i-[lucide--user-cog] inline-block size-4" aria-hidden="true" />
-              </template>
-            </NButton>
+        </NButton>
+        <NButton
+          data-test="admin-account-settings"
+          circle
+          quaternary
+          type="default"
+          aria-label="个人设置"
+          title="个人设置"
+          @click="navigateToAccountSettings"
+        >
+          <template #icon>
+            <span class="i-[lucide--user-cog] inline-block size-4" aria-hidden="true" />
           </template>
-          个人设置
-        </NTooltip>
-        <NTooltip trigger="hover" placement="right">
-          <template #trigger>
-            <NButton
-              data-test="admin-logout"
-              circle
-              quaternary
-              type="default"
-              :loading="isLoggingOut"
-              aria-label="退出登录"
-              @click="handleLogout"
-            >
-              <template #icon>
-                <span class="i-[lucide--log-out] inline-block size-4" aria-hidden="true" />
-              </template>
-            </NButton>
+        </NButton>
+        <NButton
+          data-test="admin-logout"
+          circle
+          quaternary
+          type="default"
+          :loading="isLoggingOut"
+          aria-label="退出登录"
+          title="退出登录"
+          @click="handleLogout"
+        >
+          <template #icon>
+            <span class="i-[lucide--log-out] inline-block size-4" aria-hidden="true" />
           </template>
-          退出登录
-        </NTooltip>
+        </NButton>
       </template>
       <template v-else>
         <div class="mb-4 flex items-center justify-between">
@@ -112,42 +100,34 @@ async function navigateToAccountSettings() {
               {{ user?.username ?? '' }}
             </p>
           </div>
-          <div class="ml-3 flex shrink-0 items-center gap-1">
+          <div class="ml-3 flex shrink-0 items-center">
             <ThemeModeSwitch />
-            <NTooltip trigger="hover" placement="top">
-              <template #trigger>
-                <NButton
-                  data-test="admin-announcements"
-                  circle
-                  quaternary
-                  type="default"
-                  aria-label="通知公告"
-                  @click="navigateToAnnouncements"
-                >
-                  <template #icon>
-                    <span class="i-[lucide--megaphone] inline-block size-4" aria-hidden="true" />
-                  </template>
-                </NButton>
+            <NButton
+              data-test="admin-announcements"
+              circle
+              quaternary
+              type="default"
+              aria-label="通知公告"
+              title="通知公告"
+              @click="navigateToAnnouncements"
+            >
+              <template #icon>
+                <span class="i-[lucide--megaphone] inline-block size-4" aria-hidden="true" />
               </template>
-              通知公告
-            </NTooltip>
-            <NTooltip trigger="hover" placement="top">
-              <template #trigger>
-                <NButton
-                  data-test="admin-account-settings"
-                  circle
-                  quaternary
-                  type="default"
-                  aria-label="个人设置"
-                  @click="navigateToAccountSettings"
-                >
-                  <template #icon>
-                    <span class="i-[lucide--user-cog] inline-block size-4" aria-hidden="true" />
-                  </template>
-                </NButton>
+            </NButton>
+            <NButton
+              data-test="admin-account-settings"
+              circle
+              quaternary
+              type="default"
+              aria-label="个人设置"
+              title="个人设置"
+              @click="navigateToAccountSettings"
+            >
+              <template #icon>
+                <span class="i-[lucide--user-cog] inline-block size-4" aria-hidden="true" />
               </template>
-              个人设置
-            </NTooltip>
+            </NButton>
           </div>
         </div>
         <NButton

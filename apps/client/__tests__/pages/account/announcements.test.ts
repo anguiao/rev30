@@ -3,14 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ANNOUNCEMENT_TYPE_BULLETIN,
   ANNOUNCEMENT_TYPE_NOTICE,
-  type AnnouncementMyDetail,
   type AnnouncementMyListItem,
   type AnnouncementMyListResponse,
 } from '@rev30/contracts'
 import { NPagination } from 'naive-ui'
 import { defineComponent, h } from 'vue'
 import AccountAnnouncementsPage from '../../../src/pages/account/announcements.vue'
-import { getMyAnnouncement, listMyAnnouncements } from '../../../src/features/content'
+import { listMyAnnouncements } from '../../../src/features/content'
 import {
   disposeActiveTestPinia,
   mountAuthRoute,
@@ -18,32 +17,27 @@ import {
   stubPreferredDark,
 } from '../../helpers/auth'
 
-vi.mock('../../../src/features/content/AnnouncementDetailDrawer.vue', () => ({
+vi.mock('../../../src/features/content/MyAnnouncementDetailDrawer.vue', () => ({
   default: defineComponent({
-    name: 'AnnouncementDetailDrawerStub',
+    name: 'MyAnnouncementDetailDrawerStub',
     props: {
       show: {
         type: Boolean,
         required: true,
       },
-      detail: {
+      announcement: {
         type: Object,
-        default: null,
-      },
-      loading: {
-        type: Boolean,
-        default: false,
+        required: true,
       },
     },
     emits: ['update:show'],
-    setup(props) {
+    setup(props, { emit }) {
       return () =>
-        h('div', {
+        h('button', {
           'data-test': 'announcement-detail-drawer',
           'data-show': String(props.show),
-          'data-loading': String(props.loading),
-          'data-detail-id': props.detail?.id ?? '',
-          'data-detail-title': props.detail?.title ?? '',
+          'data-announcement-id': props.announcement?.id ?? '',
+          onClick: () => emit('update:show', false),
         })
     },
   }),
@@ -52,11 +46,9 @@ vi.mock('../../../src/features/content/AnnouncementDetailDrawer.vue', () => ({
 vi.mock('../../../src/features/content', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/content')>()),
   listMyAnnouncements: vi.fn(),
-  getMyAnnouncement: vi.fn(),
 }))
 
 const listMyAnnouncementsMock = vi.mocked(listMyAnnouncements)
-const getMyAnnouncementMock = vi.mocked(getMyAnnouncement)
 
 const noticeItem: AnnouncementMyListItem = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -83,16 +75,6 @@ const listResponse: AnnouncementMyListResponse = {
   pageSize: 20,
 }
 
-const detailResponse: AnnouncementMyDetail = {
-  ...noticeItem,
-  contentHtml: '<p>维护详情</p>',
-}
-
-const bulletinDetailResponse: AnnouncementMyDetail = {
-  ...bulletinItem,
-  contentHtml: '<p>版本详情</p>',
-}
-
 async function mountAnnouncementsPage() {
   return mountAuthRoute(
     '/account/announcements',
@@ -107,9 +89,7 @@ async function mountAnnouncementsPage() {
 describe('account announcements page', () => {
   beforeEach(() => {
     listMyAnnouncementsMock.mockReset()
-    getMyAnnouncementMock.mockReset()
     listMyAnnouncementsMock.mockResolvedValue(listResponse)
-    getMyAnnouncementMock.mockResolvedValue(detailResponse)
     localStorage.clear()
     document.documentElement.className = ''
     document.documentElement.style.colorScheme = ''
@@ -167,23 +147,68 @@ describe('account announcements page', () => {
     })
   })
 
-  it('loads detail and opens the drawer when a list item is clicked', async () => {
+  it('keeps separate keywords for each announcement type tab', async () => {
+    const { wrapper } = await mountAnnouncementsPage()
+    await flushPromises()
+
+    await wrapper.find('[data-test="my-announcements-keyword"] input').setValue('维护通知')
+    await wrapper.get('[data-test="my-announcements-search"]').trigger('click')
+    await flushPromises()
+
+    const bulletinTab = wrapper.findAll('.n-tabs-tab').find((tab) => tab.text() === '公告')
+
+    expect(bulletinTab).toBeDefined()
+
+    await bulletinTab!.trigger('click')
+    await flushPromises()
+
+    const bulletinKeywordInput = wrapper.find('[data-test="my-announcements-keyword"] input')
+      .element as HTMLInputElement
+
+    expect(bulletinKeywordInput.value).toBe('')
+    expect(listMyAnnouncementsMock).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
+      type: ANNOUNCEMENT_TYPE_BULLETIN,
+    })
+
+    await wrapper.find('[data-test="my-announcements-keyword"] input').setValue('版本')
+    await wrapper.get('[data-test="my-announcements-search"]').trigger('click')
+    await flushPromises()
+
+    expect(listMyAnnouncementsMock).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
+      type: ANNOUNCEMENT_TYPE_BULLETIN,
+      keyword: '版本',
+    })
+
+    const noticeTab = wrapper.findAll('.n-tabs-tab').find((tab) => tab.text() === '通知')
+
+    expect(noticeTab).toBeDefined()
+
+    await noticeTab!.trigger('click')
+    await flushPromises()
+
+    const noticeKeywordInput = wrapper.find('[data-test="my-announcements-keyword"] input')
+      .element as HTMLInputElement
+
+    expect(noticeKeywordInput.value).toBe('维护通知')
+  })
+
+  it('opens the detail drawer with the selected announcement id', async () => {
     const { wrapper } = await mountAnnouncementsPage()
     await flushPromises()
 
     await wrapper.get('[data-test="my-announcements-list-item"]').trigger('click')
     await flushPromises()
 
-    expect(getMyAnnouncementMock).toHaveBeenCalledWith(noticeItem.id)
     expect(wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-show')).toBe(
       'true',
     )
     expect(
-      wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-detail-id'),
-    ).toBe(detailResponse.id)
-    expect(
-      wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-detail-title'),
-    ).toBe(detailResponse.title)
+      wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-announcement-id'),
+    ).toBe(noticeItem.id)
   })
 
   it('does not show the empty state while the list is loading', async () => {
@@ -206,7 +231,7 @@ describe('account announcements page', () => {
     expect(wrapper.text()).toContain(noticeItem.title)
   })
 
-  it('clears stale detail when the next detail request fails', async () => {
+  it('closes the detail drawer when the drawer closes itself', async () => {
     const { wrapper } = await mountAnnouncementsPage()
     await flushPromises()
 
@@ -214,116 +239,53 @@ describe('account announcements page', () => {
     await flushPromises()
 
     expect(
-      wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-detail-id'),
-    ).toBe(detailResponse.id)
+      wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-announcement-id'),
+    ).toBe(noticeItem.id)
 
-    getMyAnnouncementMock.mockRejectedValueOnce(new Error('load failed'))
-
-    await wrapper.findAll('[data-test="my-announcements-list-item"]')[1]!.trigger('click')
+    await wrapper.get('[data-test="announcement-detail-drawer"]').trigger('click')
     await flushPromises()
 
     const drawer = wrapper.get('[data-test="announcement-detail-drawer"]')
 
     expect(drawer.attributes('data-show')).toBe('false')
-    expect(drawer.attributes('data-detail-id')).toBe('')
+    expect(drawer.attributes('data-announcement-id')).toBe(noticeItem.id)
   })
 
-  it('closes the detail drawer when the active tab changes', async () => {
-    getMyAnnouncementMock
-      .mockResolvedValueOnce(detailResponse)
-      .mockResolvedValueOnce(bulletinDetailResponse)
-
+  it('clears the search keyword input', async () => {
     const { wrapper } = await mountAnnouncementsPage()
     await flushPromises()
 
-    await wrapper.get('[data-test="my-announcements-list-item"]').trigger('click')
+    await wrapper.find('[data-test="my-announcements-keyword"] input').setValue('维护通知')
+    await wrapper.get('[data-test="my-announcements-search"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-show')).toBe(
-      'true',
-    )
-
-    const bulletinTab = wrapper.findAll('.n-tabs-tab').find((tab) => tab.text() === '公告')
-
-    expect(bulletinTab).toBeDefined()
-
-    await bulletinTab!.trigger('click')
-    await flushPromises()
-
-    const drawer = wrapper.get('[data-test="announcement-detail-drawer"]')
-
-    expect(drawer.attributes('data-show')).toBe('false')
-    expect(drawer.attributes('data-detail-id')).toBe('')
-  })
-
-  it('closes the detail drawer when filters are reset', async () => {
-    const { wrapper } = await mountAnnouncementsPage()
-    await flushPromises()
-
-    await wrapper.get('[data-test="my-announcements-list-item"]').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-show')).toBe(
-      'true',
-    )
+    expect(listMyAnnouncementsMock).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+      keyword: '维护通知',
+    })
 
     await wrapper.get('[data-test="my-announcements-reset"]').trigger('click')
     await flushPromises()
 
-    const drawer = wrapper.get('[data-test="announcement-detail-drawer"]')
+    const keywordInput = wrapper.find('[data-test="my-announcements-keyword"] input')
+      .element as HTMLInputElement
 
-    expect(drawer.attributes('data-show')).toBe('false')
-    expect(drawer.attributes('data-detail-id')).toBe('')
+    expect(keywordInput.value).toBe('')
   })
 
-  it('closes the detail drawer when the page changes', async () => {
+  it('loads the selected page', async () => {
     const { wrapper } = await mountAnnouncementsPage()
     await flushPromises()
-
-    await wrapper.get('[data-test="my-announcements-list-item"]').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.get('[data-test="announcement-detail-drawer"]').attributes('data-show')).toBe(
-      'true',
-    )
 
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
     await flushPromises()
 
-    const drawer = wrapper.get('[data-test="announcement-detail-drawer"]')
-
-    expect(drawer.attributes('data-show')).toBe('false')
-    expect(drawer.attributes('data-detail-id')).toBe('')
-  })
-
-  it('ignores an outdated detail request after the active tab changes', async () => {
-    let resolveDetail!: (value: AnnouncementMyDetail) => void
-
-    getMyAnnouncementMock.mockReturnValue(
-      new Promise<AnnouncementMyDetail>((resolve) => {
-        resolveDetail = resolve
-      }),
-    )
-
-    const { wrapper } = await mountAnnouncementsPage()
-    await flushPromises()
-
-    await wrapper.get('[data-test="my-announcements-list-item"]').trigger('click')
-    await flushPromises()
-
-    const bulletinTab = wrapper.findAll('.n-tabs-tab').find((tab) => tab.text() === '公告')
-
-    expect(bulletinTab).toBeDefined()
-
-    await bulletinTab!.trigger('click')
-    await flushPromises()
-
-    resolveDetail(detailResponse)
-    await flushPromises()
-
-    const drawer = wrapper.get('[data-test="announcement-detail-drawer"]')
-
-    expect(drawer.attributes('data-show')).toBe('false')
-    expect(drawer.attributes('data-detail-id')).toBe('')
+    expect(listMyAnnouncementsMock).toHaveBeenLastCalledWith({
+      page: 2,
+      pageSize: 20,
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+    })
   })
 })

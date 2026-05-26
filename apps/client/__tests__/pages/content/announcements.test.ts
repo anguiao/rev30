@@ -9,7 +9,6 @@ import {
   ANNOUNCEMENT_TYPE_BULLETIN,
   ANNOUNCEMENT_TYPE_NOTICE,
   ANNOUNCEMENT_VISIBILITY_TARGETED,
-  type Announcement,
   type AnnouncementListItem,
   type AnnouncementListResponse,
   type AuthTokenResponse,
@@ -123,21 +122,6 @@ const announcementsResponse: AnnouncementListResponse = {
   total: 3,
   page: 1,
   pageSize: 20,
-}
-
-function toAnnouncementResponse(announcement: AnnouncementListItem): Announcement {
-  const contentText = announcement.summary ?? announcement.title
-
-  return {
-    ...announcement,
-    contentJson: {
-      type: 'doc',
-      content: [{ type: 'paragraph', content: [{ type: 'text', text: contentText }] }],
-    },
-    contentText,
-    contentHtml: `<p>${contentText}</p>`,
-    targets: [],
-  }
 }
 
 async function mountAnnouncementsPage(nextSession: AuthTokenResponse = authSession) {
@@ -378,11 +362,7 @@ describe('announcements page', () => {
 
   it('publishes after confirmation and refreshes list', async () => {
     listAnnouncementsMock.mockResolvedValue(announcementsResponse)
-    publishAnnouncementMock.mockResolvedValue({
-      ...toAnnouncementResponse(draftAnnouncement),
-      status: ANNOUNCEMENT_STATUS_PUBLISHED,
-      publishedAt: '2026-05-24T00:00:00.000Z',
-    })
+    publishAnnouncementMock.mockResolvedValue(undefined)
     const { wrapper } = await mountAnnouncementsPage()
     await flushPromises()
 
@@ -431,11 +411,7 @@ describe('announcements page', () => {
 
   it('invalidates cached default list after a successful publish', async () => {
     listAnnouncementsMock.mockResolvedValue(announcementsResponse)
-    publishAnnouncementMock.mockResolvedValue({
-      ...toAnnouncementResponse(draftAnnouncement),
-      status: ANNOUNCEMENT_STATUS_PUBLISHED,
-      publishedAt: '2026-05-24T00:00:00.000Z',
-    })
+    publishAnnouncementMock.mockResolvedValue(undefined)
     const { wrapper } = await mountAnnouncementsPage()
     await flushPromises()
 
@@ -485,10 +461,7 @@ describe('announcements page', () => {
 
   it('archives after confirmation and refreshes list', async () => {
     listAnnouncementsMock.mockResolvedValue(announcementsResponse)
-    archiveAnnouncementMock.mockResolvedValue({
-      ...toAnnouncementResponse(publishedAnnouncement),
-      status: ANNOUNCEMENT_STATUS_ARCHIVED,
-    })
+    archiveAnnouncementMock.mockResolvedValue(undefined)
     const { wrapper } = await mountAnnouncementsPage()
     await flushPromises()
 

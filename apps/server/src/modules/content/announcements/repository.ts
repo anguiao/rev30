@@ -27,7 +27,6 @@ import {
   systemRoles,
   systemUsers,
 } from '../../../db/schema'
-import type { AnnouncementRow, AnnouncementWithTargetsRow } from './mapper'
 import { deriveAnnouncementContent } from './content'
 import { AnnouncementInvalidTargetError, AnnouncementVisibilityTargetRequiredError } from './errors'
 
@@ -168,45 +167,22 @@ async function assertPublishableTargets(
   await assertValidTargets(executor, targets)
 }
 
-async function toAnnouncementWithTargets(
-  executor: DbReader,
-  announcement: AnnouncementRow,
-): Promise<AnnouncementWithTargetsRow> {
-  const targetsByAnnouncementId = await findTargetsByAnnouncementIds(executor, [announcement.id])
-
-  return {
-    announcement,
-    targets: targetsByAnnouncementId.get(announcement.id) ?? [],
-  }
-}
-
-export async function findTargetsByAnnouncementIds(executor: DbReader, announcementIds: string[]) {
-  const targetsByAnnouncementId = new Map<string, AnnouncementTarget[]>()
-
-  if (announcementIds.length === 0) {
-    return targetsByAnnouncementId
-  }
-
+async function findTargetsByAnnouncementId(executor: DbReader, announcementId: string) {
   const rows = await executor
     .select({
-      announcementId: contentAnnouncementTargets.announcementId,
       targetType: contentAnnouncementTargets.targetType,
       targetId: contentAnnouncementTargets.targetId,
     })
     .from(contentAnnouncementTargets)
-    .where(inArray(contentAnnouncementTargets.announcementId, announcementIds))
+    .where(eq(contentAnnouncementTargets.announcementId, announcementId))
     .orderBy(asc(contentAnnouncementTargets.targetType), asc(contentAnnouncementTargets.targetId))
 
-  for (const row of rows) {
-    const targets = targetsByAnnouncementId.get(row.announcementId) ?? []
-    targets.push({
+  return rows.map((row) => {
+    return {
       targetType: row.targetType as AnnouncementTarget['targetType'],
       targetId: row.targetId,
-    })
-    targetsByAnnouncementId.set(row.announcementId, targets)
-  }
-
-  return targetsByAnnouncementId
+    }
+  })
 }
 
 export function createAnnouncementRepository(database: Db) {
@@ -264,7 +240,10 @@ export function createAnnouncementRepository(database: Db) {
         return undefined
       }
 
-      return await toAnnouncementWithTargets(database, row)
+      return {
+        announcement: row,
+        targets: await findTargetsByAnnouncementId(database, row.id),
+      }
     },
 
     async create(input: AnnouncementCreateInput) {
@@ -329,9 +308,7 @@ export function createAnnouncementRepository(database: Db) {
         }
 
         const existingTargets =
-          targets === undefined
-            ? ((await findTargetsByAnnouncementIds(tx, [id])).get(id) ?? [])
-            : targets
+          targets === undefined ? await findTargetsByAnnouncementId(tx, id) : targets
         const finalVisibility = (announcementInput.visibility ??
           existing.visibility) as AnnouncementVisibility
         const finalTargets = normalizeTargetsForVisibility(finalVisibility, existingTargets)
@@ -371,14 +348,12 @@ export function createAnnouncementRepository(database: Db) {
               .insert(contentAnnouncementTargets)
               .values(buildAnnouncementTargetValues(id, finalTargets))
           }
-
-          return {
-            announcement: updated,
-            targets: finalTargets,
-          }
         }
 
-        return await toAnnouncementWithTargets(tx, updated)
+        return {
+          announcement: updated,
+          targets: finalTargets,
+        }
       })
     },
 
@@ -395,19 +370,19 @@ export function createAnnouncementRepository(database: Db) {
           return undefined
         }
 
-        const existingTargets = (await findTargetsByAnnouncementIds(tx, [id])).get(id) ?? []
         const visibility = existing.visibility as AnnouncementVisibility
-        const targets = normalizeTargetsForVisibility(visibility, existingTargets)
 
-        await assertPublishableTargets(tx, visibility, targets)
-
-        if (visibility === ANNOUNCEMENT_VISIBILITY_ALL && existingTargets.length > 0) {
+        if (visibility === ANNOUNCEMENT_VISIBILITY_ALL) {
           await tx
             .delete(contentAnnouncementTargets)
             .where(eq(contentAnnouncementTargets.announcementId, id))
+        } else {
+          const targets = await findTargetsByAnnouncementId(tx, id)
+
+          await assertPublishableTargets(tx, visibility, targets)
         }
 
-        const [updated] = await tx
+        const [published] = await tx
           .update(contentAnnouncements)
           .set({
             status: ANNOUNCEMENT_STATUS_PUBLISHED,
@@ -416,33 +391,20 @@ export function createAnnouncementRepository(database: Db) {
           .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
           .returning()
 
-        if (!updated) {
-          return undefined
-        }
-
-        return {
-          announcement: updated,
-          targets,
-        }
+        return published
       })
     },
 
     async archive(id: string) {
-      return await database.transaction(async (tx) => {
-        const [updated] = await tx
-          .update(contentAnnouncements)
-          .set({
-            status: ANNOUNCEMENT_STATUS_ARCHIVED,
-          })
-          .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
-          .returning()
+      const [archived] = await database
+        .update(contentAnnouncements)
+        .set({
+          status: ANNOUNCEMENT_STATUS_ARCHIVED,
+        })
+        .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
+        .returning()
 
-        if (!updated) {
-          return undefined
-        }
-
-        return await toAnnouncementWithTargets(tx, updated)
-      })
+      return archived
     },
 
     async softDelete(id: string) {
@@ -457,10 +419,6 @@ export function createAnnouncementRepository(database: Db) {
         .returning()
 
       return deleted
-    },
-
-    async validateTargets(targets: AnnouncementTarget[]) {
-      return await areTargetsValid(database, targets)
     },
   }
 }

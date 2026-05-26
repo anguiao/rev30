@@ -29,13 +29,13 @@ import {
   systemRoles,
   systemUserDepartments,
   systemUserRoles,
-} from '../../../../src/db/schema'
-import { createContentRoutes } from '../../../../src/modules/content/routes'
+} from '../../../../../src/db/schema'
+import { createContentRoutes } from '../../../../../src/modules/content/routes'
 import {
   createProtectedContentRouteTestApp,
   createSystemAccessFixture,
-} from '../../../helpers/auth'
-import { createTestDb } from '../../../helpers/db'
+} from '../../../../helpers/auth'
+import { createTestDb } from '../../../../helpers/db'
 
 const now = new Date('2026-05-20T00:00:00.000Z')
 
@@ -136,7 +136,7 @@ describe('my announcement integration', () => {
     })
 
     const listResponse = await app.request(
-      '/api/content/my-announcements?page=1&pageSize=10&keyword=维护&type=notice',
+      '/api/content/announcements/my?page=1&pageSize=10&keyword=维护&type=notice',
     )
     const listBody = (await listResponse.json()) as AnnouncementMyListResponse
 
@@ -157,7 +157,7 @@ describe('my announcement integration', () => {
       pageSize: 10,
     })
 
-    const detailResponse = await app.request(`/api/content/my-announcements/${visibleId}`)
+    const detailResponse = await app.request(`/api/content/announcements/my/${visibleId}`)
     const detailBody = (await detailResponse.json()) as AnnouncementMyDetail
 
     expect(detailResponse.status).toBe(200)
@@ -197,7 +197,7 @@ describe('my announcement integration', () => {
       ],
     })
 
-    const listResponse = await app.request('/api/content/my-announcements?page=1&pageSize=10')
+    const listResponse = await app.request('/api/content/announcements/my?page=1&pageSize=10')
     const listBody = (await listResponse.json()) as AnnouncementMyListResponse
 
     expect(listResponse.status).toBe(200)
@@ -246,7 +246,7 @@ describe('my announcement integration', () => {
       ],
     })
 
-    const response = await app.request('/api/content/my-announcements?page=1&pageSize=10')
+    const response = await app.request('/api/content/announcements/my?page=1&pageSize=10')
     const body = (await response.json()) as AnnouncementMyListResponse
 
     expect(response.status).toBe(200)
@@ -289,13 +289,13 @@ describe('my announcement integration', () => {
       .set({ status: DEPARTMENT_STATUS_DISABLED })
       .where(eq(systemDepartments.id, departmentId))
 
-    const listResponse = await app.request('/api/content/my-announcements?page=1&pageSize=10')
+    const listResponse = await app.request('/api/content/announcements/my?page=1&pageSize=10')
     const listBody = (await listResponse.json()) as AnnouncementMyListResponse
 
     expect(listResponse.status).toBe(200)
     expect(listBody.list.map((item) => item.id)).not.toContain(announcementId)
 
-    const detailResponse = await app.request(`/api/content/my-announcements/${announcementId}`)
+    const detailResponse = await app.request(`/api/content/announcements/my/${announcementId}`)
     expect(detailResponse.status).toBe(404)
   })
 
@@ -344,7 +344,7 @@ describe('my announcement integration', () => {
       ],
     })
 
-    const listResponse = await app.request('/api/content/my-announcements?page=1&pageSize=10')
+    const listResponse = await app.request('/api/content/announcements/my?page=1&pageSize=10')
     const listBody = (await listResponse.json()) as AnnouncementMyListResponse
     expect(listResponse.status).toBe(200)
     expect(listBody).toEqual({
@@ -354,7 +354,7 @@ describe('my announcement integration', () => {
       pageSize: 10,
     })
 
-    const detailResponse = await app.request(`/api/content/my-announcements/${announcementId}`)
+    const detailResponse = await app.request(`/api/content/announcements/my/${announcementId}`)
     expect(detailResponse.status).toBe(404)
     expect(await detailResponse.json()).toEqual({ message: '通知公告不存在' })
   })
@@ -400,7 +400,7 @@ describe('my announcement integration', () => {
       ],
     })
 
-    const response = await app.request('/api/content/my-announcements?page=1&pageSize=10')
+    const response = await app.request('/api/content/announcements/my?page=1&pageSize=10')
     const body = (await response.json()) as AnnouncementMyListResponse
 
     expect(response.status).toBe(200)
@@ -443,13 +443,13 @@ describe('my announcement integration', () => {
       .set({ status: ROLE_STATUS_DISABLED })
       .where(eq(systemRoles.id, roleId))
 
-    const listResponse = await app.request('/api/content/my-announcements?page=1&pageSize=10')
+    const listResponse = await app.request('/api/content/announcements/my?page=1&pageSize=10')
     const listBody = (await listResponse.json()) as AnnouncementMyListResponse
 
     expect(listResponse.status).toBe(200)
     expect(listBody.list.map((item) => item.id)).not.toContain(announcementId)
 
-    const detailResponse = await app.request(`/api/content/my-announcements/${announcementId}`)
+    const detailResponse = await app.request(`/api/content/announcements/my/${announcementId}`)
     expect(detailResponse.status).toBe(404)
   })
 
@@ -488,7 +488,7 @@ describe('my announcement integration', () => {
       ],
     })
 
-    const response = await app.request('/api/content/my-announcements?page=1&pageSize=10')
+    const response = await app.request('/api/content/announcements/my?page=1&pageSize=10')
     const body = (await response.json()) as AnnouncementMyListResponse
 
     expect(response.status).toBe(200)
@@ -511,7 +511,7 @@ describe('my announcement integration', () => {
       ],
     })
 
-    const response = await app.request(`/api/content/my-announcements/${hiddenId}`)
+    const response = await app.request(`/api/content/announcements/my/${hiddenId}`)
 
     expect(response.status).toBe(404)
     expect(await response.json()).toEqual({ message: '通知公告不存在' })

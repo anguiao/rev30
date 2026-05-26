@@ -209,7 +209,7 @@ describe('content request helpers', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
       method: 'GET',
-      pathname: '/api/content/my-announcements',
+      pathname: '/api/content/announcements/my',
       query: {
         page: '2',
         pageSize: '5',
@@ -229,7 +229,7 @@ describe('content request helpers', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
       method: 'GET',
-      pathname: `/api/content/my-announcements/${announcementId}`,
+      pathname: `/api/content/announcements/my/${announcementId}`,
     })
   })
 
@@ -263,15 +263,12 @@ describe('content request helpers', () => {
     expectJsonBody(fetchMock, 0, updateInput)
   })
 
-  it('publishes announcements and parses response', async () => {
-    const fetchMock = createFetchMock(
-      jsonResponse({ ...announcementResponse, status: ANNOUNCEMENT_STATUS_PUBLISHED }),
-    )
+  it('publishes announcements', async () => {
+    const fetchMock = createFetchMock(new Response(null, { status: 204 }))
     useAuthStore().accessToken = 'access-token'
 
-    const result = await publishAnnouncement(announcementId)
+    await expect(publishAnnouncement(announcementId)).resolves.toBeUndefined()
 
-    expect(result.status).toBe(ANNOUNCEMENT_STATUS_PUBLISHED)
     expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
       method: 'POST',
@@ -279,18 +276,12 @@ describe('content request helpers', () => {
     })
   })
 
-  it('archives announcements and parses response', async () => {
-    const fetchMock = createFetchMock(
-      jsonResponse({
-        ...announcementResponse,
-        status: 'archived',
-      }),
-    )
+  it('archives announcements', async () => {
+    const fetchMock = createFetchMock(new Response(null, { status: 204 }))
     useAuthStore().accessToken = 'access-token'
 
-    const result = await archiveAnnouncement(announcementId)
+    await expect(archiveAnnouncement(announcementId)).resolves.toBeUndefined()
 
-    expect(result.status).toBe('archived')
     expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
       method: 'POST',

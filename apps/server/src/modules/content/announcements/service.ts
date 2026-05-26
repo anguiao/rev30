@@ -1,49 +1,16 @@
 import type {
-  Announcement,
-  AnnouncementTarget,
   AnnouncementCreateInput,
   AnnouncementListQuery,
   AnnouncementUpdateInput,
 } from '@rev30/contracts'
-import {
-  ANNOUNCEMENT_STATUS_ARCHIVED,
-  ANNOUNCEMENT_STATUS_DRAFT,
-  ANNOUNCEMENT_VISIBILITY_ALL,
-} from '@rev30/contracts'
+import { ANNOUNCEMENT_STATUS_ARCHIVED, ANNOUNCEMENT_STATUS_DRAFT } from '@rev30/contracts'
 import type { Db } from '../../../db'
-import {
-  AnnouncementDraftArchiveError,
-  AnnouncementNotFoundError,
-  AnnouncementVisibilityTargetRequiredError,
-} from './errors'
+import { AnnouncementDraftArchiveError, AnnouncementNotFoundError } from './errors'
 import { toAnnouncement, toAnnouncementListItem } from './mapper'
 import { createAnnouncementRepository } from './repository'
 
 export function createAnnouncementService(database: Db) {
   const repository = createAnnouncementRepository(database)
-
-  function normalizeVisibilityTargets(input: {
-    visibility: Announcement['visibility']
-    targets: AnnouncementTarget[]
-  }) {
-    if (input.visibility === ANNOUNCEMENT_VISIBILITY_ALL) {
-      return {
-        visibility: input.visibility,
-        targets: [],
-      }
-    }
-
-    return input
-  }
-
-  async function assertPublishableVisibility(input: {
-    visibility: Announcement['visibility']
-    targets: AnnouncementTarget[]
-  }) {
-    if (input.visibility !== ANNOUNCEMENT_VISIBILITY_ALL && input.targets.length === 0) {
-      throw new AnnouncementVisibilityTargetRequiredError()
-    }
-  }
 
   return {
     async list(query: AnnouncementListQuery) {
@@ -62,23 +29,13 @@ export function createAnnouncementService(database: Db) {
         throw new AnnouncementNotFoundError()
       }
 
-      return toAnnouncement(announcement)
+      return toAnnouncement(announcement.announcement, announcement.targets)
     },
 
     async create(input: AnnouncementCreateInput) {
-      const normalizedInput = {
-        ...input,
-        ...normalizeVisibilityTargets({
-          visibility: input.visibility,
-          targets: input.targets,
-        }),
-      }
+      const created = await repository.create(input)
 
-      if (normalizedInput.publish) {
-        await assertPublishableVisibility(normalizedInput)
-      }
-
-      return toAnnouncement(await repository.create(normalizedInput))
+      return toAnnouncement(created.announcement, created.targets)
     },
 
     async update(id: string, input: AnnouncementUpdateInput) {
@@ -88,7 +45,7 @@ export function createAnnouncementService(database: Db) {
         throw new AnnouncementNotFoundError()
       }
 
-      return toAnnouncement(updated)
+      return toAnnouncement(updated.announcement, updated.targets)
     },
 
     async publish(id: string) {
@@ -97,8 +54,6 @@ export function createAnnouncementService(database: Db) {
       if (!updated) {
         throw new AnnouncementNotFoundError()
       }
-
-      return toAnnouncement(updated)
     },
 
     async archive(id: string) {
@@ -113,7 +68,7 @@ export function createAnnouncementService(database: Db) {
       }
 
       if (existingAnnouncement.announcement.status === ANNOUNCEMENT_STATUS_ARCHIVED) {
-        return toAnnouncement(existingAnnouncement)
+        return
       }
 
       const updated = await repository.archive(id)
@@ -121,8 +76,6 @@ export function createAnnouncementService(database: Db) {
       if (!updated) {
         throw new AnnouncementNotFoundError()
       }
-
-      return toAnnouncement(updated)
     },
 
     async delete(id: string) {

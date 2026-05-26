@@ -92,11 +92,3 @@ export function deriveAnnouncementContent(contentJson: unknown) {
     throw new AnnouncementContentInvalidError()
   }
 }
-
-export function deriveAnnouncementContentText(contentJson: unknown) {
-  return deriveAnnouncementContent(contentJson).text
-}
-
-export function deriveAnnouncementContentHtml(contentJson: unknown) {
-  return deriveAnnouncementContent(contentJson).html
-}

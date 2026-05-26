@@ -28,24 +28,20 @@ describe('announcement content helpers', () => {
       }
     })
 
-    const { deriveAnnouncementContentHtml } =
+    const { deriveAnnouncementContent } =
       await import('../../../../src/modules/content/announcements/content')
 
     expect(
-      deriveAnnouncementContentHtml({
+      deriveAnnouncementContent({
         type: 'doc',
         content: [{ type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] }],
-      }),
+      }).html,
     ).toBe('<p>维护通知</p>')
     expect(serverGenerateHtml).toHaveBeenCalledOnce()
   })
 
   it('derives sanitized html from supported tiptap json', async () => {
-    const {
-      deriveAnnouncementContent,
-      deriveAnnouncementContentHtml,
-      deriveAnnouncementContentText,
-    } = await loadContentHelpers()
+    const { deriveAnnouncementContent } = await loadContentHelpers()
     const contentJson = {
       type: 'doc',
       content: [
@@ -76,14 +72,16 @@ describe('announcement content helpers', () => {
       type: 'doc',
       content: [{ type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] }],
     }
-    expect(deriveAnnouncementContentText(simpleContentJson)).toBe('维护通知')
-    expect(deriveAnnouncementContentHtml(simpleContentJson)).toBe('<p>维护通知</p>')
+    const simpleContent = deriveAnnouncementContent(simpleContentJson)
+
+    expect(simpleContent.text).toBe('维护通知')
+    expect(simpleContent.html).toBe('<p>维护通知</p>')
   })
 
   it('preserves safe link attributes and removes unsafe href protocol', async () => {
-    const { deriveAnnouncementContentHtml } = await loadContentHelpers()
+    const { deriveAnnouncementContent } = await loadContentHelpers()
 
-    const unsafeLinkHtml = deriveAnnouncementContentHtml({
+    const unsafeLinkHtml = deriveAnnouncementContent({
       type: 'doc',
       content: [
         {
@@ -97,14 +95,14 @@ describe('announcement content helpers', () => {
           ],
         },
       ],
-    })
+    }).html
 
     expect(unsafeLinkHtml).toBe(
       '<p><a target="_blank" rel="noopener noreferrer nofollow">危险链接</a></p>',
     )
     expect(unsafeLinkHtml).not.toContain('href="javascript:alert(1)"')
 
-    const safeLinkHtml = deriveAnnouncementContentHtml({
+    const safeLinkHtml = deriveAnnouncementContent({
       type: 'doc',
       content: [
         {
@@ -127,7 +125,7 @@ describe('announcement content helpers', () => {
           ],
         },
       ],
-    })
+    }).html
 
     expect(safeLinkHtml).toContain('href="https://safe.example.com"')
     expect(safeLinkHtml).toContain('target="_blank"')
@@ -135,9 +133,9 @@ describe('announcement content helpers', () => {
   })
 
   it('normalizes unsafe link target and rel attribute values', async () => {
-    const { deriveAnnouncementContentHtml } = await loadContentHelpers()
+    const { deriveAnnouncementContent } = await loadContentHelpers()
 
-    const normalizedLinkHtml = deriveAnnouncementContentHtml({
+    const normalizedLinkHtml = deriveAnnouncementContent({
       type: 'doc',
       content: [
         {
@@ -160,7 +158,7 @@ describe('announcement content helpers', () => {
           ],
         },
       ],
-    })
+    }).html
 
     expect(normalizedLinkHtml).toContain('href="https://safe.example.com"')
     expect(normalizedLinkHtml).toContain('target="_blank"')
@@ -170,25 +168,24 @@ describe('announcement content helpers', () => {
   })
 
   it('derives plain text from Tiptap JSON with block separators', async () => {
-    const { deriveAnnouncementContentText } = await loadContentHelpers()
+    const { deriveAnnouncementContent } = await loadContentHelpers()
 
     expect(
-      deriveAnnouncementContentText({
+      deriveAnnouncementContent({
         type: 'doc',
         content: [
           { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: '维护通知' }] },
           { type: 'paragraph', content: [{ type: 'text', text: '今晚 22:00 开始维护' }] },
         ],
-      }),
+      }).text,
     ).toBe('维护通知\n\n今晚 22:00 开始维护')
   })
 
   it('rejects empty documents', async () => {
-    const { AnnouncementEmptyContentError, deriveAnnouncementContentText } =
-      await loadContentHelpers()
+    const { AnnouncementEmptyContentError, deriveAnnouncementContent } = await loadContentHelpers()
 
     expect(() =>
-      deriveAnnouncementContentText({
+      deriveAnnouncementContent({
         type: 'doc',
         content: [{ type: 'paragraph' }],
       }),
@@ -196,11 +193,11 @@ describe('announcement content helpers', () => {
   })
 
   it('rejects documents that do not match enabled extensions', async () => {
-    const { AnnouncementContentInvalidError, deriveAnnouncementContentText } =
+    const { AnnouncementContentInvalidError, deriveAnnouncementContent } =
       await loadContentHelpers()
 
     expect(() =>
-      deriveAnnouncementContentText({
+      deriveAnnouncementContent({
         type: 'doc',
         content: [{ type: 'unsupportedBlock', content: [{ type: 'text', text: 'x' }] }],
       }),

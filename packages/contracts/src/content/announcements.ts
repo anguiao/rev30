@@ -1,4 +1,9 @@
 import { z } from 'zod'
+import {
+  hasNonBlankRichText,
+  richTextDocumentSchema,
+  type RichTextDocument,
+} from '@rev30/rich-text/schema'
 import { nonBlankString, optionalNullableString } from '../common/inputs'
 import { paginationQuerySchema } from '../common/pagination'
 import { hasAnyDefinedValue } from '../common/refinements'
@@ -77,26 +82,16 @@ function ensureUniqueAnnouncementTargets(
   }
 }
 
-export const tiptapDocumentSchema = z.looseObject({
-  type: z.literal('doc', '正文格式无效'),
-})
-function hasNonBlankTiptapText(value: unknown): boolean {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
+export const tiptapDocumentSchema = richTextDocumentSchema
 
-  if ('text' in value && typeof value.text === 'string' && value.text.trim().length > 0) {
-    return true
-  }
+const announcementContentDocumentSchema = z.custom<RichTextDocument>(
+  (value): value is RichTextDocument => tiptapDocumentSchema.safeParse(value).success,
+  {
+    message: '正文格式无效',
+  },
+)
 
-  if (!('content' in value) || !Array.isArray(value.content)) {
-    return false
-  }
-
-  return value.content.some(hasNonBlankTiptapText)
-}
-
-const announcementContentJsonInputSchema = tiptapDocumentSchema.refine(hasNonBlankTiptapText, {
+const announcementContentJsonInputSchema = announcementContentDocumentSchema.refine(hasNonBlankRichText, {
   message: '请输入正文',
 })
 export const announcementTargetSchema = z.object({
@@ -231,7 +226,7 @@ export const announcementMyListResponseSchema = z.object({
   pageSize: z.number().int().min(1),
 })
 
-export type TiptapDocument = z.infer<typeof tiptapDocumentSchema>
+export type TiptapDocument = RichTextDocument
 export type Announcement = z.infer<typeof announcementSchema>
 export type AnnouncementListItem = z.infer<typeof announcementListItemSchema>
 export type AnnouncementListQuery = z.infer<typeof announcementListQuerySchema>

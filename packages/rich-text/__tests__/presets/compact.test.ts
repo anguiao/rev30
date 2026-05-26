@@ -35,15 +35,17 @@ describe('compact rich text preset', () => {
   it('does not register duplicate Tiptap extensions', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    getSchema(collectRichTextExtensions(compactRichTextPreset))
+    try {
+      getSchema(collectRichTextExtensions(compactRichTextPreset))
 
-    expect(
-      warnSpy.mock.calls.some(
-        ([message]) =>
-          typeof message === 'string' && message.includes('Duplicate extension names found'),
-      ),
-    ).toBe(false)
-
-    warnSpy.mockRestore()
+      expect(
+        warnSpy.mock.calls.some(
+          ([message]) =>
+            typeof message === 'string' && message.includes('Duplicate extension names found'),
+        ),
+      ).toBe(false)
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 })

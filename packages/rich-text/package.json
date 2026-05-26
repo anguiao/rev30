@@ -28,7 +28,7 @@
   "scripts": {
     "build": "vue-tsc -p tsconfig.app.json --noEmit",
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit && vue-tsc -p tsconfig.test.json --noEmit",
-    "test": "vitest run --pool=threads --passWithNoTests"
+    "test": "vitest run --pool=threads"
   },
   "dependencies": {
     "@tiptap/core": "^3.23.6",

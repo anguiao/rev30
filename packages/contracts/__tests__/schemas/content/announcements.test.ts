@@ -208,18 +208,37 @@ describe('announcement schemas', () => {
     }
   })
 
-  it('allows empty doc-shaped content documents for server-side content validation', () => {
-    expect(
-      announcementCreateSchema.parse({
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '维护通知',
-        contentJson: { type: 'doc', content: [] },
-      }),
-    ).toMatchObject({
+  it('requires non-empty announcement content input', () => {
+    const result = announcementFormSchema.safeParse({
       type: ANNOUNCEMENT_TYPE_NOTICE,
       title: '维护通知',
-      contentJson: { type: 'doc', content: [] },
+      contentJson: { type: 'doc', content: [{ type: 'paragraph' }] },
+      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+      pinned: false,
+      publish: false,
+      targets: [],
     })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(prettifyZodError(result)).toContain('请输入正文')
+    }
+  })
+
+  it('rejects whitespace-only announcement content input', () => {
+    const result = announcementCreateSchema.safeParse({
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+      title: '维护通知',
+      contentJson: {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: '   ' }] }],
+      },
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(prettifyZodError(result)).toContain('请输入正文')
+    }
   })
 
   it('accepts non-empty announcement content documents', () => {

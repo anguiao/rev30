@@ -7,12 +7,6 @@ export class AnnouncementNotFoundError extends Error {
   }
 }
 
-export class AnnouncementEmptyContentError extends FormFieldError<'contentJson'> {
-  constructor() {
-    super('请输入正文', 'contentJson')
-  }
-}
-
 export class AnnouncementContentInvalidError extends FormFieldError<'contentJson'> {
   constructor() {
     super('正文格式无效', 'contentJson')

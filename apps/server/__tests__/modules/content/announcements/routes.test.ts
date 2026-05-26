@@ -13,7 +13,6 @@ import {
 import {
   AnnouncementContentInvalidError,
   AnnouncementDraftArchiveError,
-  AnnouncementEmptyContentError,
   AnnouncementInvalidTargetError,
   AnnouncementNotFoundError,
   AnnouncementVisibilityTargetRequiredError,
@@ -295,16 +294,16 @@ describe('announcement routes', () => {
     const app = createTestApp()
     const headers = { 'content-type': 'application/json' }
 
-    mocks.service.create.mockRejectedValueOnce(new AnnouncementEmptyContentError())
-    const emptyContentResponse = await app.request('/api/content/announcements', {
+    mocks.service.create.mockRejectedValueOnce(new AnnouncementContentInvalidError())
+    const invalidContentCreateResponse = await app.request('/api/content/announcements', {
       method: 'POST',
       body: JSON.stringify(createBody),
       headers,
     })
-    expect(emptyContentResponse.status).toBe(400)
-    expect(await emptyContentResponse.json()).toEqual({
+    expect(invalidContentCreateResponse.status).toBe(400)
+    expect(await invalidContentCreateResponse.json()).toEqual({
       field: 'contentJson',
-      message: '请输入正文',
+      message: '正文格式无效',
     })
 
     mocks.service.update.mockRejectedValueOnce(new AnnouncementContentInvalidError())
@@ -312,7 +311,12 @@ describe('announcement routes', () => {
       `/api/content/announcements/${announcementId}`,
       {
         method: 'PATCH',
-        body: JSON.stringify({ contentJson: { type: 'doc', content: [{ type: 'bad' }] } }),
+        body: JSON.stringify({
+          contentJson: {
+            type: 'doc',
+            content: [{ type: 'unsupportedBlock', content: [{ type: 'text', text: 'x' }] }],
+          },
+        }),
         headers,
       },
     )

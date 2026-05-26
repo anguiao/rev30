@@ -501,11 +501,7 @@ describe('AnnouncementFormDrawer', () => {
     expect(getTargetsFormItem(wrapper).text()).not.toContain('请选择可见对象')
   })
 
-  it('delegates empty content validation to the server', async () => {
-    createAnnouncementMock.mockRejectedValue(
-      new ContentRequestError(400, '请输入正文', 'contentJson'),
-    )
-
+  it('shows content validation feedback before submitting empty content', async () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
@@ -513,15 +509,8 @@ describe('AnnouncementFormDrawer', () => {
     await selectUserTarget(wrapper)
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
-    expect(createAnnouncementMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        contentJson: {
-          type: 'doc',
-          content: [{ type: 'paragraph' }],
-        },
-      }),
-    )
     expect(getContentFormItem(wrapper).text()).toContain('请输入正文')
+    expect(createAnnouncementMock).not.toHaveBeenCalled()
   })
 
   it('clears content server field errors when content changes in the same session', async () => {

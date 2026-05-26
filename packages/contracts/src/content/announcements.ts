@@ -80,6 +80,25 @@ function ensureUniqueAnnouncementTargets(
 export const tiptapDocumentSchema = z.looseObject({
   type: z.literal('doc', '正文格式无效'),
 })
+function hasNonBlankTiptapText(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+
+  if ('text' in value && typeof value.text === 'string' && value.text.trim().length > 0) {
+    return true
+  }
+
+  if (!('content' in value) || !Array.isArray(value.content)) {
+    return false
+  }
+
+  return value.content.some(hasNonBlankTiptapText)
+}
+
+const announcementContentJsonInputSchema = tiptapDocumentSchema.refine(hasNonBlankTiptapText, {
+  message: '请输入正文',
+})
 export const announcementTargetSchema = z.object({
   targetType: announcementTargetTypeSchema,
   targetId: z.uuid('可见对象 ID 无效'),
@@ -126,7 +145,7 @@ const announcementFormBaseSchema = z.object({
   type: announcementTypeSchema,
   title: announcementTitleSchema,
   summary: announcementSummaryInputSchema,
-  contentJson: tiptapDocumentSchema,
+  contentJson: announcementContentJsonInputSchema,
   visibility: announcementVisibilitySchema,
   targets: announcementTargetsSchema,
   pinned: z.boolean(),

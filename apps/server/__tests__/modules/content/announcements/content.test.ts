@@ -182,14 +182,15 @@ describe('announcement content helpers', () => {
   })
 
   it('rejects empty documents', async () => {
-    const { AnnouncementEmptyContentError, deriveAnnouncementContent } = await loadContentHelpers()
+    const { AnnouncementContentInvalidError, deriveAnnouncementContent } =
+      await loadContentHelpers()
 
     expect(() =>
       deriveAnnouncementContent({
         type: 'doc',
         content: [{ type: 'paragraph' }],
       }),
-    ).toThrow(AnnouncementEmptyContentError)
+    ).toThrow(AnnouncementContentInvalidError)
   })
 
   it('rejects documents that do not match enabled extensions', async () => {

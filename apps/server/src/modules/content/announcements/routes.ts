@@ -14,7 +14,6 @@ import { requireAccess } from '../../../middleware/access'
 import {
   AnnouncementContentInvalidError,
   AnnouncementDraftArchiveError,
-  AnnouncementEmptyContentError,
   AnnouncementInvalidTargetError,
   AnnouncementNotFoundError,
   AnnouncementVisibilityTargetRequiredError,
@@ -65,7 +64,6 @@ const announcementUpdateBodyValidator = zValidator(
 
 function announcementErrorResponse(error: unknown, c: Context) {
   if (
-    error instanceof AnnouncementEmptyContentError ||
     error instanceof AnnouncementContentInvalidError ||
     error instanceof AnnouncementVisibilityTargetRequiredError ||
     error instanceof AnnouncementInvalidTargetError

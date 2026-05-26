@@ -3,7 +3,7 @@ import { generateHTML } from '@tiptap/html/server'
 import { Node as ProseMirrorNode, type Schema } from '@tiptap/pm/model'
 import StarterKit from '@tiptap/starter-kit'
 import sanitizeHtml from 'sanitize-html'
-import { AnnouncementContentInvalidError, AnnouncementEmptyContentError } from './errors'
+import { AnnouncementContentInvalidError } from './errors'
 
 let announcementSchema: Schema | undefined
 
@@ -77,7 +77,7 @@ export function deriveAnnouncementContent(contentJson: unknown) {
     const text = document.textBetween(0, document.content.size, '\n\n').trim()
 
     if (text.length === 0) {
-      throw new AnnouncementEmptyContentError()
+      throw new AnnouncementContentInvalidError()
     }
 
     return {
@@ -85,7 +85,7 @@ export function deriveAnnouncementContent(contentJson: unknown) {
       html: sanitizeAnnouncementHtml(generateHTML(document.toJSON(), getAnnouncementExtensions())),
     }
   } catch (error) {
-    if (error instanceof AnnouncementEmptyContentError) {
+    if (error instanceof AnnouncementContentInvalidError) {
       throw error
     }
 

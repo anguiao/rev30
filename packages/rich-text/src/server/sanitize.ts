@@ -1,10 +1,12 @@
 import sanitizeHtml from 'sanitize-html'
-import type { RichTextHtmlPolicy } from '../core/html'
+import type { RichTextHtmlPolicy } from './policy'
 
-export function mergeRichTextHtmlPolicies(policies: RichTextHtmlPolicy[]): sanitizeHtml.IOptions {
+const defaultAllowedSchemes = ['http', 'https', 'mailto', 'tel']
+
+function mergeRichTextHtmlPolicies(policies: RichTextHtmlPolicy[]): sanitizeHtml.IOptions {
   const allowedTags = new Set<string>()
-  const allowedSchemes = new Set(['http', 'https', 'mailto', 'tel'])
-  const allowedAttributes: Record<string, string[]> = {}
+  const allowedSchemes = new Set(defaultAllowedSchemes)
+  const allowedAttributes: sanitizeHtml.IDefaults['allowedAttributes'] = {}
   const transformTags: NonNullable<sanitizeHtml.IOptions['transformTags']> = {}
 
   for (const policy of policies) {
@@ -17,7 +19,7 @@ export function mergeRichTextHtmlPolicies(policies: RichTextHtmlPolicy[]): sanit
     }
 
     for (const [tag, attributes] of Object.entries(policy.allowedAttributes ?? {})) {
-      const current = new Set(allowedAttributes[tag] ?? [])
+      const current = new Set<sanitizeHtml.AllowedAttribute>(allowedAttributes[tag] ?? [])
 
       for (const attribute of attributes) {
         current.add(attribute)
@@ -26,7 +28,9 @@ export function mergeRichTextHtmlPolicies(policies: RichTextHtmlPolicy[]): sanit
       allowedAttributes[tag] = [...current]
     }
 
-    Object.assign(transformTags, policy.transformTags)
+    if (policy.transformTags) {
+      Object.assign(transformTags, policy.transformTags)
+    }
   }
 
   return {

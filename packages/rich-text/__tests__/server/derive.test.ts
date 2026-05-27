@@ -27,7 +27,7 @@ describe('deriveRichTextContent', () => {
           type: 'doc',
           content: [{ type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] }],
         },
-        { preset: compactRichTextServerPreset },
+        compactRichTextServerPreset,
       ).html,
     ).toBe('<p>维护通知</p>')
     expect(serverGenerateHtml).toHaveBeenCalledOnce()
@@ -51,7 +51,7 @@ describe('deriveRichTextContent', () => {
           },
         ],
       },
-      { preset: compactRichTextServerPreset },
+      compactRichTextServerPreset,
     )
 
     expect(content.text).toBe('维护通知\n\n请留意 发布时间')
@@ -66,7 +66,7 @@ describe('deriveRichTextContent', () => {
     expect(() =>
       deriveRichTextContent(
         { type: 'doc', content: [{ type: 'paragraph' }] },
-        { preset: compactRichTextServerPreset },
+        compactRichTextServerPreset,
       ),
     ).toThrow(RichTextContentInvalidError)
 
@@ -76,7 +76,7 @@ describe('deriveRichTextContent', () => {
           type: 'doc',
           content: [{ type: 'unsupportedBlock', content: [{ type: 'text', text: 'x' }] }],
         },
-        { preset: compactRichTextServerPreset },
+        compactRichTextServerPreset,
       ),
     ).toThrow(RichTextContentInvalidError)
 
@@ -91,7 +91,7 @@ describe('deriveRichTextContent', () => {
             },
           ],
         },
-        { preset: compactRichTextServerPreset },
+        compactRichTextServerPreset,
       ),
     ).toThrow(RichTextContentInvalidError)
   })

@@ -2,52 +2,40 @@ import type { AnyExtension } from '@tiptap/core'
 import { getSchema } from '@tiptap/core'
 import { generateHTML } from '@tiptap/html/server'
 import { Node as ProseMirrorNode, type Schema } from '@tiptap/pm/model'
-import type { RichTextHtmlPolicy } from '../core/html'
 import { collectRichTextExtensions } from '../core/preset'
 import { RichTextContentInvalidError } from './errors'
+import type { RichTextHtmlPolicy } from './policy'
 import type { RichTextServerPreset } from './presets/types'
 import { sanitizeRichTextHtml } from './sanitize'
 
-interface PresetRuntimeSnapshot {
+interface RichTextServerRuntime {
   schema: Schema
   extensions: AnyExtension[]
-  policies: RichTextHtmlPolicy[]
+  htmlPolicies: RichTextHtmlPolicy[]
 }
 
-const presetRuntimeCache = new WeakMap<RichTextServerPreset, PresetRuntimeSnapshot>()
+const serverRuntimeCache = new WeakMap<RichTextServerPreset, RichTextServerRuntime>()
 
-export interface DeriveRichTextContentOptions {
-  preset: RichTextServerPreset
-}
-
-export interface DerivedRichTextContent {
-  text: string
-  html: string
-}
-
-function getPresetRuntime(preset: RichTextServerPreset): PresetRuntimeSnapshot {
-  const cachedRuntime = presetRuntimeCache.get(preset)
+function getServerRuntime(preset: RichTextServerPreset): RichTextServerRuntime {
+  const cachedRuntime = serverRuntimeCache.get(preset)
 
   if (cachedRuntime) {
     return cachedRuntime
   }
 
   const extensions = collectRichTextExtensions(preset.preset)
-  const runtimeSnapshot = {
+  const runtime = {
     schema: getSchema(extensions),
     extensions,
-    policies: preset.htmlPolicies,
+    htmlPolicies: preset.htmlPolicies,
   }
-  presetRuntimeCache.set(preset, runtimeSnapshot)
+  serverRuntimeCache.set(preset, runtime)
 
-  return runtimeSnapshot
+  return runtime
 }
 
-export function deriveRichTextContent(
-  contentJson: unknown,
-  { preset }: DeriveRichTextContentOptions,
-): DerivedRichTextContent {
-  const runtime = getPresetRuntime(preset)
+export function deriveRichTextContent(contentJson: unknown, preset: RichTextServerPreset) {
+  const runtime = getServerRuntime(preset)
   let document: ProseMirrorNode
 
   try {
@@ -66,6 +54,6 @@ export function deriveRichTextContent(
 
   return {
     text,
-    html: sanitizeRichTextHtml(html, runtime.policies),
+    html: sanitizeRichTextHtml(html, runtime.htmlPolicies),
   }
 }

@@ -4,7 +4,7 @@ import { AnnouncementContentInvalidError } from './errors'
 
 export function deriveAnnouncementContent(contentJson: unknown) {
   try {
-    return deriveRichTextContent(contentJson, { preset: compactRichTextServerPreset })
+    return deriveRichTextContent(contentJson, compactRichTextServerPreset)
   } catch (error) {
     if (error instanceof RichTextContentInvalidError) {
       throw new AnnouncementContentInvalidError()

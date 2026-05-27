@@ -3,8 +3,7 @@ import { blockquoteFeature } from './shared'
 
 export const blockquoteToolbarItem = defineRichTextToolbarItem({
   key: blockquoteFeature.key,
-  label: blockquoteFeature.label,
-  icon: blockquoteFeature.icon!,
-  dataTest: 'rich-text-blockquote',
+  label: '引用',
+  icon: 'i-[lucide--quote]',
   run: (editor) => editor.chain().focus().toggleBlockquote().run(),
 })

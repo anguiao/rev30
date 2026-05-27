@@ -37,7 +37,7 @@ import {
   type AnnouncementVisibility,
   type TiptapDocument,
 } from '@rev30/contracts'
-import { compactRichTextPreset } from '@rev30/rich-text/presets'
+import { compactRichTextEditorPreset } from '@rev30/rich-text/vue/presets'
 import { RichTextEditor } from '@rev30/rich-text/vue'
 import {
   ContentRequestError,
@@ -401,7 +401,7 @@ watch(
               <RichTextEditor
                 :disabled="isLoading || isSaving"
                 :model-value="state.value"
-                :preset="compactRichTextPreset"
+                :preset="compactRichTextEditorPreset"
                 @blur="field.handleBlur"
                 @update:model-value="
                   (value) => {

@@ -19,7 +19,7 @@ describe('deriveRichTextContent', () => {
     vi.doMock('@tiptap/html/server', () => ({ generateHTML: serverGenerateHtml }))
 
     const { deriveRichTextContent } = await import('../../src/server')
-    const { compactRichTextPreset } = await import('../../src/presets')
+    const { compactRichTextServerPreset } = await import('../../src/server/presets')
 
     expect(
       deriveRichTextContent(
@@ -27,7 +27,7 @@ describe('deriveRichTextContent', () => {
           type: 'doc',
           content: [{ type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] }],
         },
-        { preset: compactRichTextPreset },
+        { preset: compactRichTextServerPreset },
       ).html,
     ).toBe('<p>维护通知</p>')
     expect(serverGenerateHtml).toHaveBeenCalledOnce()
@@ -35,7 +35,7 @@ describe('deriveRichTextContent', () => {
 
   it('derives sanitized html from supported tiptap json', async () => {
     const { deriveRichTextContent } = await loadServerHelpers()
-    const { compactRichTextPreset } = await import('../../src/presets')
+    const { compactRichTextServerPreset } = await import('../../src/server/presets')
 
     const content = deriveRichTextContent(
       {
@@ -51,7 +51,7 @@ describe('deriveRichTextContent', () => {
           },
         ],
       },
-      { preset: compactRichTextPreset },
+      { preset: compactRichTextServerPreset },
     )
 
     expect(content.text).toBe('维护通知\n\n请留意 发布时间')
@@ -61,12 +61,12 @@ describe('deriveRichTextContent', () => {
 
   it('rejects empty and unsupported documents', async () => {
     const { RichTextContentInvalidError, deriveRichTextContent } = await loadServerHelpers()
-    const { compactRichTextPreset } = await import('../../src/presets')
+    const { compactRichTextServerPreset } = await import('../../src/server/presets')
 
     expect(() =>
       deriveRichTextContent(
         { type: 'doc', content: [{ type: 'paragraph' }] },
-        { preset: compactRichTextPreset },
+        { preset: compactRichTextServerPreset },
       ),
     ).toThrow(RichTextContentInvalidError)
 
@@ -76,7 +76,7 @@ describe('deriveRichTextContent', () => {
           type: 'doc',
           content: [{ type: 'unsupportedBlock', content: [{ type: 'text', text: 'x' }] }],
         },
-        { preset: compactRichTextPreset },
+        { preset: compactRichTextServerPreset },
       ),
     ).toThrow(RichTextContentInvalidError)
 
@@ -91,7 +91,7 @@ describe('deriveRichTextContent', () => {
             },
           ],
         },
-        { preset: compactRichTextPreset },
+        { preset: compactRichTextServerPreset },
       ),
     ).toThrow(RichTextContentInvalidError)
   })

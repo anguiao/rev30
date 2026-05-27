@@ -33,6 +33,15 @@ import {
 } from '../../../src/features/system'
 import AnnouncementFormDrawer from '../../../src/features/content/AnnouncementFormDrawer.vue'
 
+vi.mock('@rev30/rich-text/vue/presets', () => ({
+  compactRichTextEditorPreset: {
+    preset: {
+      key: 'compact',
+      features: [],
+    },
+  },
+}))
+
 vi.mock('@rev30/rich-text/vue', () => ({
   RichTextEditor: defineComponent({
     name: 'RichTextEditorStub',
@@ -46,6 +55,10 @@ vi.mock('@rev30/rich-text/vue', () => ({
         required: false,
       },
       preset: {
+        type: Object,
+        required: true,
+      },
+      toolbarLayout: {
         type: Object,
         required: false,
       },

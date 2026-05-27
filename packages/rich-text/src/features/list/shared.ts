@@ -5,7 +5,5 @@ import { defineRichTextFeature } from '../../core/feature'
 
 export const listFeature = defineRichTextFeature({
   key: 'list',
-  label: '列表',
-  icon: 'i-[lucide--list]',
   extension: () => [BulletList, OrderedList, ListItem],
 })

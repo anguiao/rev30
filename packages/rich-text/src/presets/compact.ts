@@ -1,5 +1,4 @@
 import { defineRichTextPreset } from '../core/preset'
-import { defineRichTextToolbarLayout } from '../core/toolbar'
 import { baseFeature } from '../features/base/shared'
 import { blockquoteFeature } from '../features/blockquote/shared'
 import { boldFeature } from '../features/bold/shared'
@@ -24,11 +23,3 @@ export const compactRichTextPreset = defineRichTextPreset({
     historyFeature,
   ],
 })
-
-export const compactRichTextToolbarLayout = defineRichTextToolbarLayout([
-  { key: 'marks', items: ['bold', 'italic', 'underline'] },
-  { key: 'blocks', items: ['heading-1', 'heading-2', 'heading-3', 'blockquote'] },
-  { key: 'lists', items: ['bullet-list', 'ordered-list'] },
-  { key: 'insert', items: ['horizontal-rule'] },
-  { key: 'history', items: ['undo', 'redo'] },
-])

@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/core'
-import type { RichTextIconClass } from './feature'
+
+export type RichTextIconClass = `i-[${string}--${string}]`
 
 export interface RichTextToolbarLayoutGroup {
   key: string
@@ -20,7 +21,6 @@ export interface RichTextToolbarItem {
   key: string
   label: string
   icon: RichTextIconClass
-  dataTest: string
   run: (editor: Editor) => boolean
   isActive?: (editor: Editor) => boolean
   isDisabled?: (editor: Editor) => boolean

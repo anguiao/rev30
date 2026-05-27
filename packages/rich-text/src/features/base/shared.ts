@@ -8,6 +8,5 @@ import { defineRichTextFeature } from '../../core/feature'
 
 export const baseFeature = defineRichTextFeature({
   key: 'base',
-  label: '基础结构',
   extension: () => [Document, Paragraph, Text, HardBreak, Dropcursor, Gapcursor],
 })

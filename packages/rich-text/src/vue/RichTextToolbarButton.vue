@@ -34,7 +34,7 @@ function handleClick() {
 
 <template>
   <NButton
-    :data-test="item.dataTest"
+    :data-test="`rich-text-${item.key}`"
     :disabled="isDisabled"
     quaternary
     :title="item.label"

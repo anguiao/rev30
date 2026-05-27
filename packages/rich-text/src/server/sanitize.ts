@@ -1,11 +1,5 @@
 import sanitizeHtml from 'sanitize-html'
-
-export interface RichTextHtmlPolicy {
-  allowedTags?: string[]
-  allowedAttributes?: sanitizeHtml.IOptions['allowedAttributes']
-  allowedSchemes?: string[]
-  transformTags?: sanitizeHtml.IOptions['transformTags']
-}
+import type { RichTextHtmlPolicy } from '../core/html'
 
 export function mergeRichTextHtmlPolicies(policies: RichTextHtmlPolicy[]): sanitizeHtml.IOptions {
   const allowedTags = new Set<string>()

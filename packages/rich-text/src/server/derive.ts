@@ -2,21 +2,22 @@ import type { AnyExtension } from '@tiptap/core'
 import { getSchema } from '@tiptap/core'
 import { generateHTML } from '@tiptap/html/server'
 import { Node as ProseMirrorNode, type Schema } from '@tiptap/pm/model'
-import { collectRichTextExtensions, type RichTextPreset } from '../core/preset'
+import type { RichTextHtmlPolicy } from '../core/html'
+import { collectRichTextExtensions } from '../core/preset'
 import { RichTextContentInvalidError } from './errors'
-import { getRichTextHtmlPolicies, type RichTextRuntimePolicy } from './registry'
+import type { RichTextServerPreset } from './preset'
 import { sanitizeRichTextHtml } from './sanitize'
 
 interface PresetRuntimeSnapshot {
   schema: Schema
   extensions: AnyExtension[]
-  policies: RichTextRuntimePolicy[]
+  policies: RichTextHtmlPolicy[]
 }
 
-const presetRuntimeCache = new WeakMap<RichTextPreset, PresetRuntimeSnapshot>()
+const presetRuntimeCache = new WeakMap<RichTextServerPreset, PresetRuntimeSnapshot>()
 
 export interface DeriveRichTextContentOptions {
-  preset: RichTextPreset
+  preset: RichTextServerPreset
 }
 
 export interface DerivedRichTextContent {
@@ -24,18 +25,18 @@ export interface DerivedRichTextContent {
   html: string
 }
 
-function getPresetRuntime(preset: RichTextPreset): PresetRuntimeSnapshot {
+function getPresetRuntime(preset: RichTextServerPreset): PresetRuntimeSnapshot {
   const cachedRuntime = presetRuntimeCache.get(preset)
 
   if (cachedRuntime) {
     return cachedRuntime
   }
 
-  const extensions = collectRichTextExtensions(preset)
+  const extensions = collectRichTextExtensions(preset.preset)
   const runtimeSnapshot = {
     schema: getSchema(extensions),
     extensions,
-    policies: getRichTextHtmlPolicies(preset),
+    policies: preset.htmlPolicies,
   }
   presetRuntimeCache.set(preset, runtimeSnapshot)
 

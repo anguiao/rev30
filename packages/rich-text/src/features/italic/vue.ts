@@ -3,9 +3,8 @@ import { italicFeature } from './shared'
 
 export const italicToolbarItem = defineRichTextToolbarItem({
   key: italicFeature.key,
-  label: italicFeature.label,
-  icon: italicFeature.icon!,
-  dataTest: 'rich-text-italic',
+  label: '斜体',
+  icon: 'i-[lucide--italic]',
   run: (editor) => editor.chain().focus().toggleItalic().run(),
   isActive: (editor) => editor.isActive('italic'),
 })

@@ -3,8 +3,7 @@ import { horizontalRuleFeature } from './shared'
 
 export const horizontalRuleToolbarItem = defineRichTextToolbarItem({
   key: horizontalRuleFeature.key,
-  label: horizontalRuleFeature.label,
-  icon: horizontalRuleFeature.icon!,
-  dataTest: 'rich-text-horizontal-rule',
+  label: '分割线',
+  icon: 'i-[lucide--minus]',
   run: (editor) => editor.chain().focus().setHorizontalRule().run(),
 })

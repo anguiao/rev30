@@ -5,8 +5,9 @@ import { baseFeature } from '../../src/features/base/shared'
 import { boldFeature } from '../../src/features/bold/shared'
 import { historyFeature } from '../../src/features/history/shared'
 import RichTextEditor from '../../src/vue/RichTextEditor.vue'
-import { compactRichTextPreset, compactRichTextToolbarLayout } from '../../src/presets'
 import type { RichTextDocument } from '../../src/schema'
+import { defineRichTextEditorPreset } from '../../src/vue/preset'
+import { compactRichTextEditorPreset, compactRichTextToolbarLayout } from '../../src/vue/presets'
 
 const contentJson: RichTextDocument = {
   type: 'doc',
@@ -31,6 +32,9 @@ const toolbarDataTests = [
 const noHeadingPreset = defineRichTextPreset({
   key: 'no-heading',
   features: [baseFeature, boldFeature, historyFeature],
+})
+const noHeadingEditorPreset = defineRichTextEditorPreset({
+  preset: noHeadingPreset,
 })
 
 const wrappers: Array<ReturnType<typeof mount>> = []
@@ -60,8 +64,7 @@ describe('RichTextEditor', () => {
   it('renders editor content and compact toolbar buttons', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,
-      preset: compactRichTextPreset,
-      toolbarLayout: compactRichTextToolbarLayout,
+      preset: compactRichTextEditorPreset,
     })
 
     const editable = await getEditable(wrapper)
@@ -77,7 +80,7 @@ describe('RichTextEditor', () => {
   it('emits updated Tiptap JSON when content changes', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,
-      preset: compactRichTextPreset,
+      preset: compactRichTextEditorPreset,
     })
 
     const editable = await getEditable(wrapper)
@@ -94,7 +97,7 @@ describe('RichTextEditor', () => {
   it('syncs external modelValue changes into the editor DOM', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,
-      preset: compactRichTextPreset,
+      preset: compactRichTextEditorPreset,
     })
 
     await getEditable(wrapper)
@@ -113,7 +116,7 @@ describe('RichTextEditor', () => {
   it('toggles editor editability when disabled changes', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,
-      preset: compactRichTextPreset,
+      preset: compactRichTextEditorPreset,
     })
 
     await getEditable(wrapper)
@@ -133,14 +136,14 @@ describe('RichTextEditor', () => {
   it('updates toolbar and editor extensions when preset changes', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,
-      preset: noHeadingPreset,
+      preset: noHeadingEditorPreset,
       toolbarLayout: compactRichTextToolbarLayout,
     })
 
     await getEditable(wrapper)
     expect(wrapper.find('[data-test="rich-text-heading-1"]').exists()).toBe(false)
 
-    await wrapper.setProps({ preset: compactRichTextPreset })
+    await wrapper.setProps({ preset: compactRichTextEditorPreset })
     await vi.waitFor(() => {
       expect(wrapper.find('[data-test="rich-text-heading-1"]').exists()).toBe(true)
     })

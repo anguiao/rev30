@@ -8,10 +8,6 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
-    "./presets": {
-      "types": "./src/presets/index.ts",
-      "default": "./src/presets/index.ts"
-    },
     "./schema": {
       "types": "./src/schema/index.ts",
       "default": "./src/schema/index.ts"
@@ -20,9 +16,17 @@
       "types": "./src/server/index.ts",
       "default": "./src/server/index.ts"
     },
+    "./server/presets": {
+      "types": "./src/server/presets/index.ts",
+      "default": "./src/server/presets/index.ts"
+    },
     "./vue": {
       "types": "./src/vue/index.ts",
       "default": "./src/vue/index.ts"
+    },
+    "./vue/presets": {
+      "types": "./src/vue/presets/index.ts",
+      "default": "./src/vue/presets/index.ts"
     }
   },
   "scripts": {

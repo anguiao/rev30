@@ -1,25 +1,21 @@
 <script setup lang="ts">
 import { EditorContent } from '@tiptap/vue-3'
 import { computed, toRef } from 'vue'
-import type { RichTextPreset } from '../core/preset'
-import type { RichTextToolbarLayout } from '../core/toolbar'
-import { compactRichTextPreset, compactRichTextToolbarLayout } from '../presets'
+import type { RichTextToolbarItem, RichTextToolbarLayout } from '../core/toolbar'
 import type { RichTextDocument } from '../schema'
-import { getRichTextToolbarItems } from './registry'
+import type { RichTextEditorPreset } from './preset'
 import RichTextToolbar from './RichTextToolbar.vue'
 import { useRichTextEditor } from './useRichTextEditor'
 
 const props = withDefaults(
   defineProps<{
     modelValue: RichTextDocument
-    preset?: RichTextPreset
+    preset: RichTextEditorPreset
     toolbarLayout?: RichTextToolbarLayout
     disabled?: boolean
     minHeight?: number
   }>(),
   {
-    preset: () => compactRichTextPreset,
-    toolbarLayout: () => compactRichTextToolbarLayout,
     disabled: false,
     minHeight: 240,
   },
@@ -30,12 +26,19 @@ const emit = defineEmits<{
   blur: []
 }>()
 
-const toolbarItems = computed(() => getRichTextToolbarItems(props.preset))
+const toolbarItems = computed(
+  () =>
+    new Map<string, RichTextToolbarItem>(
+      (props.preset.toolbarItems ?? []).map((item) => [item.key, item]),
+    ),
+)
+const activeToolbarLayout = computed(() => props.toolbarLayout ?? props.preset.toolbarLayout)
+const richTextPreset = computed(() => props.preset.preset)
 
 const { editor } = useRichTextEditor({
   modelValue: toRef(props, 'modelValue'),
   disabled: toRef(props, 'disabled'),
-  preset: toRef(props, 'preset'),
+  preset: richTextPreset,
   onUpdate: (value) => emit('update:modelValue', value),
   onBlur: () => emit('blur'),
 })
@@ -51,11 +54,14 @@ const { editor } = useRichTextEditor({
         : 'focus-within:border-input-focus-border focus-within:bg-(--app-input-color-focus) focus-within:shadow-input-focus hover:border-input-hover-border'
     "
   >
-    <div class="flex flex-wrap gap-1 border-b border-(--app-input-divider-color) px-2 py-1">
+    <div
+      v-if="activeToolbarLayout"
+      class="flex flex-wrap gap-1 border-b border-(--app-input-divider-color) px-2 py-1"
+    >
       <RichTextToolbar
         :editor="editor"
         :items="toolbarItems"
-        :layout="toolbarLayout"
+        :layout="activeToolbarLayout"
         :disabled="disabled"
       />
     </div>

@@ -28,7 +28,7 @@
 
 @layer base {
   :root {
-    font-synthesis: none;
+    text-autospace: normal;
     text-rendering: optimizeLegibility;
   }
 

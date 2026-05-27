@@ -58,7 +58,7 @@ vi.mock('@rev30/rich-text/vue', () => ({
         type: Object,
         required: true,
       },
-      toolbarLayout: {
+      toolbar: {
         type: Object,
         required: false,
       },

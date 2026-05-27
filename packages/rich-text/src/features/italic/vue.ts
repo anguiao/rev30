@@ -1,7 +1,7 @@
-import { defineRichTextToolbarItem } from '../../core/toolbar'
+import { defineRichTextCommand } from '../../core/toolbar'
 import { italicFeature } from './shared'
 
-export const italicToolbarItem = defineRichTextToolbarItem({
+export const italicCommand = defineRichTextCommand({
   key: italicFeature.key,
   label: '斜体',
   icon: 'i-[lucide--italic]',

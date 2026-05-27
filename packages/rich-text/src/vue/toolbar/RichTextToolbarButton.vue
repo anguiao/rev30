@@ -2,11 +2,11 @@
 import type { Editor } from '@tiptap/vue-3'
 import { NButton } from 'naive-ui'
 import { computed } from 'vue'
-import type { RichTextToolbarItem } from '../core/toolbar'
+import type { RichTextCommand } from '../../core/toolbar'
 
 const props = withDefaults(
   defineProps<{
-    item: RichTextToolbarItem
+    command: RichTextCommand
     editor: Editor | null
     disabled?: boolean
   }>(),
@@ -20,7 +20,7 @@ const isDisabled = computed(() => {
     return true
   }
 
-  return props.item.isDisabled?.(props.editor) ?? false
+  return props.command.isDisabled?.(props.editor) ?? false
 })
 
 const isActive = computed(() => {
@@ -28,7 +28,7 @@ const isActive = computed(() => {
     return false
   }
 
-  return props.item.isActive?.(props.editor) ?? false
+  return props.command.isActive?.(props.editor) ?? false
 })
 
 const buttonType = computed(() => (isActive.value ? 'primary' : 'default'))
@@ -38,23 +38,23 @@ function handleClick() {
     return
   }
 
-  props.item.run(props.editor)
+  props.command.run(props.editor)
 }
 </script>
 
 <template>
   <NButton
-    :data-test="`rich-text-${item.key}`"
+    :data-test="`rich-text-${command.key}`"
     :data-active="isActive ? 'true' : undefined"
     :disabled="isDisabled"
     :type="buttonType"
     :secondary="isActive"
     :quaternary="!isActive"
-    :title="item.label"
-    :aria-label="item.label"
-    :aria-pressed="item.isActive ? isActive : undefined"
+    :title="command.label"
+    :aria-label="command.label"
+    :aria-pressed="command.isActive ? isActive : undefined"
     @click="handleClick"
   >
-    <span :class="item.icon" aria-hidden="true" />
+    <span :class="command.icon" aria-hidden="true" />
   </NButton>
 </template>

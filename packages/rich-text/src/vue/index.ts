@@ -1,7 +1,16 @@
 export { default as RichTextEditor } from './RichTextEditor.vue'
-export { default as RichTextToolbar } from './RichTextToolbar.vue'
-export { default as RichTextToolbarButton } from './RichTextToolbarButton.vue'
-export * from './preset'
+export * from './presets/types'
 export { useRichTextEditor } from './useRichTextEditor'
-export { defineRichTextToolbarItem } from '../core/toolbar'
-export type { RichTextToolbarItem } from '../core/toolbar'
+export {
+  defineRichTextCommand,
+  defineRichTextToolbar,
+  richTextToolbarButton,
+  richTextToolbarDropdown,
+} from '../core/toolbar'
+export type {
+  RichTextCommand,
+  RichTextIconClass,
+  RichTextToolbarConfig,
+  RichTextToolbarControlConfig,
+  RichTextToolbarGroup,
+} from '../core/toolbar'

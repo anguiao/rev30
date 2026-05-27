@@ -1,7 +1,7 @@
-import { defineRichTextToolbarItem } from '../../core/toolbar'
+import { defineRichTextCommand } from '../../core/toolbar'
 import { underlineFeature } from './shared'
 
-export const underlineToolbarItem = defineRichTextToolbarItem({
+export const underlineCommand = defineRichTextCommand({
   key: underlineFeature.key,
   label: '下划线',
   icon: 'i-[lucide--underline]',

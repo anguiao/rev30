@@ -1,3 +1,3 @@
 export * from './derive'
 export * from './errors'
-export * from './preset'
+export * from './presets/types'

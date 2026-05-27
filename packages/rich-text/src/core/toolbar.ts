@@ -2,22 +2,7 @@ import type { Editor } from '@tiptap/core'
 
 export type RichTextIconClass = `i-[${string}--${string}]`
 
-export interface RichTextToolbarLayoutGroup {
-  key: string
-  items: string[]
-}
-
-export interface RichTextToolbarLayout {
-  groups: RichTextToolbarLayoutGroup[]
-}
-
-export function defineRichTextToolbarLayout(
-  groups: RichTextToolbarLayoutGroup[],
-): RichTextToolbarLayout {
-  return { groups }
-}
-
-export interface RichTextToolbarItem {
+export interface RichTextCommand {
   key: string
   label: string
   icon: RichTextIconClass
@@ -26,6 +11,60 @@ export interface RichTextToolbarItem {
   isDisabled?: (editor: Editor) => boolean
 }
 
-export function defineRichTextToolbarItem(item: RichTextToolbarItem): RichTextToolbarItem {
-  return item
+export interface RichTextToolbarButtonControl {
+  type: 'button'
+  command: RichTextCommand
+}
+
+export interface RichTextToolbarDropdownControl {
+  type: 'dropdown'
+  key: string
+  label: string
+  icon: RichTextIconClass
+  commands: RichTextCommand[]
+  getActiveCommand?: (editor: Editor, commands: RichTextCommand[]) => RichTextCommand | undefined
+}
+
+export type RichTextToolbarControlConfig =
+  | RichTextToolbarButtonControl
+  | RichTextToolbarDropdownControl
+
+export interface RichTextToolbarGroup {
+  key: string
+  controls: RichTextToolbarControlConfig[]
+}
+
+export interface RichTextToolbarConfig {
+  groups: RichTextToolbarGroup[]
+}
+
+export function defineRichTextCommand(command: RichTextCommand): RichTextCommand {
+  return command
+}
+
+export function defineRichTextToolbar(groups: RichTextToolbarGroup[]): RichTextToolbarConfig {
+  return { groups }
+}
+
+export function richTextToolbarButton(command: RichTextCommand): RichTextToolbarButtonControl {
+  return {
+    type: 'button',
+    command,
+  }
+}
+
+export function richTextToolbarDropdown(
+  control: Omit<RichTextToolbarDropdownControl, 'type'>,
+): RichTextToolbarDropdownControl {
+  return {
+    type: 'dropdown',
+    ...control,
+  }
+}
+
+export function getActiveRichTextCommand(
+  editor: Editor,
+  commands: RichTextCommand[],
+): RichTextCommand | undefined {
+  return commands.find((command) => command.isActive?.(editor))
 }

@@ -7,7 +7,7 @@ import { italicHtmlPolicy } from '../../features/italic/server'
 import { listHtmlPolicy } from '../../features/list/server'
 import { underlineHtmlPolicy } from '../../features/underline/server'
 import { compactRichTextPreset } from '../../presets'
-import { defineRichTextServerPreset } from '../preset'
+import { defineRichTextServerPreset } from './types'
 
 export const compactRichTextHtmlPolicies = [
   baseHtmlPolicy,
@@ -15,8 +15,8 @@ export const compactRichTextHtmlPolicies = [
   italicHtmlPolicy,
   underlineHtmlPolicy,
   headingHtmlPolicy,
-  blockquoteHtmlPolicy,
   listHtmlPolicy,
+  blockquoteHtmlPolicy,
   horizontalRuleHtmlPolicy,
 ]
 

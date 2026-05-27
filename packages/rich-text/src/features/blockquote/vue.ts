@@ -1,7 +1,7 @@
-import { defineRichTextToolbarItem } from '../../core/toolbar'
+import { defineRichTextCommand } from '../../core/toolbar'
 import { blockquoteFeature } from './shared'
 
-export const blockquoteToolbarItem = defineRichTextToolbarItem({
+export const blockquoteCommand = defineRichTextCommand({
   key: blockquoteFeature.key,
   label: '引用',
   icon: 'i-[lucide--quote]',

@@ -1,11 +1,7 @@
 import { getSchema } from '@tiptap/core'
 import { describe, expect, it, vi } from 'vitest'
 import { collectRichTextExtensions } from '../../src/core/preset'
-import {
-  compactRichTextToolbarItems,
-  compactRichTextToolbarLayout,
-  compactRichTextEditorPreset,
-} from '../../src/vue/presets'
+import { compactRichTextToolbar, compactRichTextEditorPreset } from '../../src/vue/presets'
 import { compactRichTextPreset } from '../../src/presets'
 import { compactRichTextHtmlPolicies, compactRichTextServerPreset } from '../../src/server/presets'
 
@@ -26,28 +22,33 @@ describe('compact rich text preset', () => {
 
   it('keeps the current visible toolbar layout with the editor preset', () => {
     expect(compactRichTextEditorPreset.preset).toBe(compactRichTextPreset)
-    expect(compactRichTextToolbarLayout.groups).toEqual([
-      { key: 'history', items: ['undo', 'redo'] },
-      { key: 'marks', items: ['bold', 'italic', 'underline'] },
-      { key: 'blocks', items: ['heading-1', 'heading-2', 'heading-3', 'blockquote'] },
-      { key: 'lists', items: ['bullet-list', 'ordered-list'] },
-      { key: 'insert', items: ['horizontal-rule'] },
+    expect(
+      compactRichTextToolbar.groups.map((group) => ({
+        key: group.key,
+        controls: group.controls.map((control) =>
+          control.type === 'button' ? control.command.key : control.key,
+        ),
+      })),
+    ).toEqual([
+      { key: 'history', controls: ['undo', 'redo'] },
+      { key: 'marks', controls: ['bold', 'italic', 'underline'] },
+      { key: 'blocks', controls: ['heading', 'list', 'blockquote'] },
+      { key: 'insert', controls: ['horizontal-rule'] },
     ])
-    expect(compactRichTextEditorPreset.toolbarLayout).toBe(compactRichTextToolbarLayout)
-    expect(compactRichTextEditorPreset.toolbarItems).toBe(compactRichTextToolbarItems)
-    expect(compactRichTextToolbarItems.map((item) => item.key)).toEqual([
-      'undo',
-      'redo',
-      'bold',
-      'italic',
-      'underline',
-      'heading-1',
-      'heading-2',
-      'heading-3',
-      'blockquote',
+    expect(compactRichTextEditorPreset.toolbar).toBe(compactRichTextToolbar)
+
+    const blocks = compactRichTextToolbar.groups.find((group) => group.key === 'blocks')
+    const heading = blocks?.controls.find((control) => control.type === 'dropdown')
+    const list = blocks?.controls.find(
+      (control) => control.type === 'dropdown' && control.key === 'list',
+    )
+
+    expect(
+      heading?.type === 'dropdown' ? heading.commands.map((command) => command.key) : [],
+    ).toEqual(['heading-1', 'heading-2', 'heading-3'])
+    expect(list?.type === 'dropdown' ? list.commands.map((command) => command.key) : []).toEqual([
       'bullet-list',
       'ordered-list',
-      'horizontal-rule',
     ])
   })
 
@@ -63,10 +64,10 @@ describe('compact rich text preset', () => {
       'h1',
       'h2',
       'h3',
-      'blockquote',
       'ul',
       'ol',
       'li',
+      'blockquote',
       'hr',
     ])
   })

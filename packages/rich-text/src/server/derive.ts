@@ -5,7 +5,7 @@ import { Node as ProseMirrorNode, type Schema } from '@tiptap/pm/model'
 import type { RichTextHtmlPolicy } from '../core/html'
 import { collectRichTextExtensions } from '../core/preset'
 import { RichTextContentInvalidError } from './errors'
-import type { RichTextServerPreset } from './preset'
+import type { RichTextServerPreset } from './presets/types'
 import { sanitizeRichTextHtml } from './sanitize'
 
 interface PresetRuntimeSnapshot {

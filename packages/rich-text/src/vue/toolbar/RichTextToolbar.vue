@@ -2,14 +2,13 @@
 import type { Editor } from '@tiptap/vue-3'
 import { NButtonGroup } from 'naive-ui'
 import { computed } from 'vue'
-import type { RichTextToolbarItem, RichTextToolbarLayout } from '../core/toolbar'
-import RichTextToolbarButton from './RichTextToolbarButton.vue'
+import type { RichTextToolbarConfig } from '../../core/toolbar'
+import RichTextToolbarControl from './RichTextToolbarControl.vue'
 
 const props = withDefaults(
   defineProps<{
     editor: Editor | null
-    items: Map<string, RichTextToolbarItem>
-    layout: RichTextToolbarLayout
+    toolbar: RichTextToolbarConfig
     disabled?: boolean
   }>(),
   {
@@ -17,16 +16,7 @@ const props = withDefaults(
   },
 )
 
-const groups = computed(() =>
-  props.layout.groups
-    .map((group) => ({
-      key: group.key,
-      items: group.items
-        .map((itemKey) => props.items.get(itemKey))
-        .filter((item): item is RichTextToolbarItem => item !== undefined),
-    }))
-    .filter((group) => group.items.length > 0),
-)
+const groups = computed(() => props.toolbar.groups.filter((group) => group.controls.length > 0))
 </script>
 
 <template>
@@ -36,10 +26,10 @@ const groups = computed(() =>
       size="small"
       :class="index === 0 ? undefined : 'border-l border-(--app-input-divider-color) pl-1'"
     >
-      <RichTextToolbarButton
-        v-for="item in group.items"
-        :key="item.key"
-        :item="item"
+      <RichTextToolbarControl
+        v-for="control in group.controls"
+        :key="control.type === 'button' ? control.command.key : control.key"
+        :control="control"
         :editor="editor"
         :disabled="disabled"
       />

@@ -1,5 +1,5 @@
-import type { RichTextHtmlPolicy } from '../core/html'
-import type { RichTextPreset } from '../core/preset'
+import type { RichTextHtmlPolicy } from '../../core/html'
+import type { RichTextPreset } from '../../core/preset'
 
 export interface RichTextServerPreset {
   preset: RichTextPreset

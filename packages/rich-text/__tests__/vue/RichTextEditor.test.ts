@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { NDropdown } from 'naive-ui'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
 import { baseFeature } from '../../src/features/base/shared'
@@ -6,8 +7,8 @@ import { boldFeature } from '../../src/features/bold/shared'
 import { historyFeature } from '../../src/features/history/shared'
 import RichTextEditor from '../../src/vue/RichTextEditor.vue'
 import type { RichTextDocument } from '../../src/schema'
-import { defineRichTextEditorPreset } from '../../src/vue/preset'
-import { compactRichTextEditorPreset, compactRichTextToolbarLayout } from '../../src/vue/presets'
+import { defineRichTextEditorPreset } from '../../src/vue/presets'
+import { compactRichTextEditorPreset } from '../../src/vue/presets'
 
 const contentJson: RichTextDocument = {
   type: 'doc',
@@ -18,12 +19,9 @@ const toolbarDataTests = [
   'rich-text-bold',
   'rich-text-italic',
   'rich-text-underline',
-  'rich-text-heading-1',
-  'rich-text-heading-2',
-  'rich-text-heading-3',
+  'rich-text-heading',
+  'rich-text-list',
   'rich-text-blockquote',
-  'rich-text-bullet-list',
-  'rich-text-ordered-list',
   'rich-text-horizontal-rule',
   'rich-text-undo',
   'rich-text-redo',
@@ -54,6 +52,21 @@ async function getEditable(wrapper: ReturnType<typeof mount>) {
   return wrapper.get('.ProseMirror[contenteditable="true"]')
 }
 
+async function selectDropdownCommand(wrapper: ReturnType<typeof mount>, commandKey: string) {
+  const dropdown = wrapper.findAllComponents(NDropdown).find((component) => {
+    const options = component.props('options') as Array<{ key: string | number }>
+
+    return options.some((option) => option.key === commandKey)
+  })
+
+  if (!dropdown) {
+    throw new Error(`Dropdown command not found: ${commandKey}`)
+  }
+
+  dropdown.vm.$emit('select', commandKey)
+  await flushPromises()
+}
+
 describe('RichTextEditor', () => {
   afterEach(() => {
     while (wrappers.length > 0) {
@@ -70,10 +83,11 @@ describe('RichTextEditor', () => {
     const editable = await getEditable(wrapper)
 
     expect(wrapper.find('[data-test="rich-text-editor"]').exists()).toBe(true)
-    expect(wrapper.findAll('[data-test="rich-text-toolbar-group"]')).toHaveLength(5)
+    expect(wrapper.findAll('[data-test="rich-text-toolbar-group"]')).toHaveLength(4)
     for (const dataTest of toolbarDataTests) {
       expect(wrapper.find(`[data-test="${dataTest}"]`).exists()).toBe(true)
     }
+    expect(wrapper.findAllComponents(NDropdown)).toHaveLength(2)
     expect(editable.text()).toContain('维护通知')
   })
 
@@ -141,23 +155,24 @@ describe('RichTextEditor', () => {
 
     await getEditable(wrapper)
 
-    await wrapper.get('[data-test="rich-text-heading-2"]').trigger('click')
+    await selectDropdownCommand(wrapper, 'heading-2')
     await vi.waitFor(() => {
-      expect(wrapper.get('[data-test="rich-text-heading-2"]').attributes('data-active')).toBe(
-        'true',
-      )
-      expect(wrapper.get('[data-test="rich-text-heading-2"]').attributes('aria-pressed')).toBe(
-        'true',
-      )
+      expect(wrapper.get('[data-test="rich-text-heading"]').attributes('data-active')).toBe('true')
+      expect(wrapper.get('[data-test="rich-text-heading"]').attributes('aria-pressed')).toBe('true')
+      expect(wrapper.get('[data-test="rich-text-heading"]').attributes('title')).toBe('二级标题')
     })
-    expect(wrapper.get('[data-test="rich-text-heading-1"]').attributes('data-active')).toBe(
-      undefined,
-    )
+    expect(wrapper.get('[data-test="rich-text-list"]').attributes('data-active')).toBe(undefined)
 
     await wrapper.get('[data-test="rich-text-bold"]').trigger('click')
     await vi.waitFor(() => {
       expect(wrapper.get('[data-test="rich-text-bold"]').attributes('data-active')).toBe('true')
       expect(wrapper.get('[data-test="rich-text-bold"]').attributes('aria-pressed')).toBe('true')
+    })
+
+    await selectDropdownCommand(wrapper, 'bullet-list')
+    await vi.waitFor(() => {
+      expect(wrapper.get('[data-test="rich-text-list"]').attributes('data-active')).toBe('true')
+      expect(wrapper.get('[data-test="rich-text-list"]').attributes('title')).toBe('无序列表')
     })
   })
 
@@ -165,18 +180,17 @@ describe('RichTextEditor', () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,
       preset: noHeadingEditorPreset,
-      toolbarLayout: compactRichTextToolbarLayout,
     })
 
     await getEditable(wrapper)
-    expect(wrapper.find('[data-test="rich-text-heading-1"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="rich-text-heading"]').exists()).toBe(false)
 
     await wrapper.setProps({ preset: compactRichTextEditorPreset })
     await vi.waitFor(() => {
-      expect(wrapper.find('[data-test="rich-text-heading-1"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="rich-text-heading"]').exists()).toBe(true)
     })
 
-    await wrapper.get('[data-test="rich-text-heading-1"]').trigger('click')
+    await selectDropdownCommand(wrapper, 'heading-1')
     await vi.waitFor(() => {
       expect(wrapper.find('.ProseMirror h1').text()).toContain('维护通知')
     })

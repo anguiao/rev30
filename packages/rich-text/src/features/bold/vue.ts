@@ -1,7 +1,7 @@
-import { defineRichTextToolbarItem } from '../../core/toolbar'
+import { defineRichTextCommand } from '../../core/toolbar'
 import { boldFeature } from './shared'
 
-export const boldToolbarItem = defineRichTextToolbarItem({
+export const boldCommand = defineRichTextCommand({
   key: boldFeature.key,
   label: '加粗',
   icon: 'i-[lucide--bold]',

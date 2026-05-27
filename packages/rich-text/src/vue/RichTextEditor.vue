@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { EditorContent } from '@tiptap/vue-3'
 import { computed, toRef } from 'vue'
-import type { RichTextToolbarItem, RichTextToolbarLayout } from '../core/toolbar'
+import type { RichTextToolbarConfig } from '../core/toolbar'
 import type { RichTextDocument } from '../schema'
-import type { RichTextEditorPreset } from './preset'
-import RichTextToolbar from './RichTextToolbar.vue'
+import type { RichTextEditorPreset } from './presets/types'
+import RichTextToolbar from './toolbar/RichTextToolbar.vue'
 import { useRichTextEditor } from './useRichTextEditor'
 
 const props = withDefaults(
   defineProps<{
     modelValue: RichTextDocument
     preset: RichTextEditorPreset
-    toolbarLayout?: RichTextToolbarLayout
+    toolbar?: RichTextToolbarConfig
     disabled?: boolean
     minHeight?: number
   }>(),
@@ -26,13 +26,7 @@ const emit = defineEmits<{
   blur: []
 }>()
 
-const toolbarItems = computed(
-  () =>
-    new Map<string, RichTextToolbarItem>(
-      (props.preset.toolbarItems ?? []).map((item) => [item.key, item]),
-    ),
-)
-const activeToolbarLayout = computed(() => props.toolbarLayout ?? props.preset.toolbarLayout)
+const activeToolbar = computed(() => props.toolbar ?? props.preset.toolbar)
 const richTextPreset = computed(() => props.preset.preset)
 
 const { editor } = useRichTextEditor({
@@ -55,15 +49,10 @@ const { editor } = useRichTextEditor({
     "
   >
     <div
-      v-if="activeToolbarLayout"
+      v-if="activeToolbar"
       class="flex flex-wrap gap-1 border-b border-(--app-input-divider-color) px-2 py-1"
     >
-      <RichTextToolbar
-        :editor="editor"
-        :items="toolbarItems"
-        :layout="activeToolbarLayout"
-        :disabled="disabled"
-      />
+      <RichTextToolbar :editor="editor" :toolbar="activeToolbar" :disabled="disabled" />
     </div>
 
     <EditorContent

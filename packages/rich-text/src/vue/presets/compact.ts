@@ -1,36 +1,47 @@
-import { defineRichTextToolbarLayout } from '../../core/toolbar'
-import { blockquoteToolbarItem } from '../../features/blockquote/vue'
-import { boldToolbarItem } from '../../features/bold/vue'
-import { headingToolbarItems } from '../../features/heading/vue'
-import { historyToolbarItems } from '../../features/history/vue'
-import { horizontalRuleToolbarItem } from '../../features/horizontal-rule/vue'
-import { italicToolbarItem } from '../../features/italic/vue'
-import { listToolbarItems } from '../../features/list/vue'
-import { underlineToolbarItem } from '../../features/underline/vue'
+import {
+  defineRichTextToolbar,
+  richTextToolbarButton as button,
+  richTextToolbarDropdown as dropdown,
+} from '../../core/toolbar'
+import { blockquoteCommand } from '../../features/blockquote/vue'
+import { boldCommand } from '../../features/bold/vue'
+import { headingCommands } from '../../features/heading/vue'
+import { historyCommands } from '../../features/history/vue'
+import { horizontalRuleCommand } from '../../features/horizontal-rule/vue'
+import { italicCommand } from '../../features/italic/vue'
+import { listCommands } from '../../features/list/vue'
+import { underlineCommand } from '../../features/underline/vue'
 import { compactRichTextPreset } from '../../presets'
-import { defineRichTextEditorPreset } from '../preset'
+import { defineRichTextEditorPreset } from './types'
 
-export const compactRichTextToolbarLayout = defineRichTextToolbarLayout([
-  { key: 'history', items: ['undo', 'redo'] },
-  { key: 'marks', items: ['bold', 'italic', 'underline'] },
-  { key: 'blocks', items: ['heading-1', 'heading-2', 'heading-3', 'blockquote'] },
-  { key: 'lists', items: ['bullet-list', 'ordered-list'] },
-  { key: 'insert', items: ['horizontal-rule'] },
+export const compactRichTextToolbar = defineRichTextToolbar([
+  { key: 'history', controls: historyCommands.map(button) },
+  {
+    key: 'marks',
+    controls: [button(boldCommand), button(italicCommand), button(underlineCommand)],
+  },
+  {
+    key: 'blocks',
+    controls: [
+      dropdown({
+        key: 'heading',
+        label: '标题',
+        icon: 'i-[lucide--heading]',
+        commands: headingCommands,
+      }),
+      dropdown({
+        key: 'list',
+        label: '列表',
+        icon: 'i-[lucide--list]',
+        commands: listCommands,
+      }),
+      button(blockquoteCommand),
+    ],
+  },
+  { key: 'insert', controls: [button(horizontalRuleCommand)] },
 ])
-
-export const compactRichTextToolbarItems = [
-  ...historyToolbarItems,
-  boldToolbarItem,
-  italicToolbarItem,
-  underlineToolbarItem,
-  ...headingToolbarItems,
-  blockquoteToolbarItem,
-  ...listToolbarItems,
-  horizontalRuleToolbarItem,
-]
 
 export const compactRichTextEditorPreset = defineRichTextEditorPreset({
   preset: compactRichTextPreset,
-  toolbarLayout: compactRichTextToolbarLayout,
-  toolbarItems: compactRichTextToolbarItems,
+  toolbar: compactRichTextToolbar,
 })

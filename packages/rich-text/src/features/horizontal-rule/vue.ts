@@ -1,7 +1,7 @@
-import { defineRichTextToolbarItem } from '../../core/toolbar'
+import { defineRichTextCommand } from '../../core/toolbar'
 import { horizontalRuleFeature } from './shared'
 
-export const horizontalRuleToolbarItem = defineRichTextToolbarItem({
+export const horizontalRuleCommand = defineRichTextCommand({
   key: horizontalRuleFeature.key,
   label: '分割线',
   icon: 'i-[lucide--minus]',

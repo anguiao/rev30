@@ -1,13 +1,13 @@
-import { defineRichTextToolbarItem } from '../../core/toolbar'
+import { defineRichTextCommand } from '../../core/toolbar'
 
-export const historyToolbarItems = [
-  defineRichTextToolbarItem({
+export const historyCommands = [
+  defineRichTextCommand({
     key: 'undo',
     label: '撤销',
     icon: 'i-[lucide--undo-2]',
     run: (editor) => editor.chain().focus().undo().run(),
   }),
-  defineRichTextToolbarItem({
+  defineRichTextCommand({
     key: 'redo',
     label: '重做',
     icon: 'i-[lucide--redo-2]',

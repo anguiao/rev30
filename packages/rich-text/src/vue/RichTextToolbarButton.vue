@@ -23,6 +23,16 @@ const isDisabled = computed(() => {
   return props.item.isDisabled?.(props.editor) ?? false
 })
 
+const isActive = computed(() => {
+  if (!props.editor) {
+    return false
+  }
+
+  return props.item.isActive?.(props.editor) ?? false
+})
+
+const buttonType = computed(() => (isActive.value ? 'primary' : 'default'))
+
 function handleClick() {
   if (isDisabled.value || !props.editor) {
     return
@@ -35,10 +45,14 @@ function handleClick() {
 <template>
   <NButton
     :data-test="`rich-text-${item.key}`"
+    :data-active="isActive ? 'true' : undefined"
     :disabled="isDisabled"
-    quaternary
+    :type="buttonType"
+    :secondary="isActive"
+    :quaternary="!isActive"
     :title="item.label"
     :aria-label="item.label"
+    :aria-pressed="item.isActive ? isActive : undefined"
     @click="handleClick"
   >
     <span :class="item.icon" aria-hidden="true" />

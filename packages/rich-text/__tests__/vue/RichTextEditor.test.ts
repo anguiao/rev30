@@ -133,6 +133,34 @@ describe('RichTextEditor', () => {
     })
   })
 
+  it('reflects active formatting states in toolbar buttons', async () => {
+    const wrapper = mountRichTextEditor({
+      modelValue: contentJson,
+      preset: compactRichTextEditorPreset,
+    })
+
+    await getEditable(wrapper)
+
+    await wrapper.get('[data-test="rich-text-heading-2"]').trigger('click')
+    await vi.waitFor(() => {
+      expect(wrapper.get('[data-test="rich-text-heading-2"]').attributes('data-active')).toBe(
+        'true',
+      )
+      expect(wrapper.get('[data-test="rich-text-heading-2"]').attributes('aria-pressed')).toBe(
+        'true',
+      )
+    })
+    expect(wrapper.get('[data-test="rich-text-heading-1"]').attributes('data-active')).toBe(
+      undefined,
+    )
+
+    await wrapper.get('[data-test="rich-text-bold"]').trigger('click')
+    await vi.waitFor(() => {
+      expect(wrapper.get('[data-test="rich-text-bold"]').attributes('data-active')).toBe('true')
+      expect(wrapper.get('[data-test="rich-text-bold"]').attributes('aria-pressed')).toBe('true')
+    })
+  })
+
   it('updates toolbar and editor extensions when preset changes', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,

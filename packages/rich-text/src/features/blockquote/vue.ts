@@ -6,4 +6,5 @@ export const blockquoteToolbarItem = defineRichTextToolbarItem({
   label: '引用',
   icon: 'i-[lucide--quote]',
   run: (editor) => editor.chain().focus().toggleBlockquote().run(),
+  isActive: (editor) => editor.isActive('blockquote'),
 })

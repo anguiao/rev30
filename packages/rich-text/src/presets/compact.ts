@@ -13,6 +13,7 @@ export const compactRichTextPreset = defineRichTextPreset({
   key: 'compact',
   features: [
     baseFeature,
+    historyFeature,
     boldFeature,
     italicFeature,
     underlineFeature,
@@ -20,6 +21,5 @@ export const compactRichTextPreset = defineRichTextPreset({
     blockquoteFeature,
     listFeature,
     horizontalRuleFeature,
-    historyFeature,
   ],
 })

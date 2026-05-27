@@ -11,14 +11,15 @@ import { compactRichTextPreset } from '../../presets'
 import { defineRichTextEditorPreset } from '../preset'
 
 export const compactRichTextToolbarLayout = defineRichTextToolbarLayout([
+  { key: 'history', items: ['undo', 'redo'] },
   { key: 'marks', items: ['bold', 'italic', 'underline'] },
   { key: 'blocks', items: ['heading-1', 'heading-2', 'heading-3', 'blockquote'] },
   { key: 'lists', items: ['bullet-list', 'ordered-list'] },
   { key: 'insert', items: ['horizontal-rule'] },
-  { key: 'history', items: ['undo', 'redo'] },
 ])
 
 export const compactRichTextToolbarItems = [
+  ...historyToolbarItems,
   boldToolbarItem,
   italicToolbarItem,
   underlineToolbarItem,
@@ -26,7 +27,6 @@ export const compactRichTextToolbarItems = [
   blockquoteToolbarItem,
   ...listToolbarItems,
   horizontalRuleToolbarItem,
-  ...historyToolbarItems,
 ]
 
 export const compactRichTextEditorPreset = defineRichTextEditorPreset({

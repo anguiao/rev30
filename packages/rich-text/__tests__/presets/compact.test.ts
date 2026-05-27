@@ -13,6 +13,7 @@ describe('compact rich text preset', () => {
   it('enables current editor features', () => {
     expect(compactRichTextPreset.features.map((feature) => feature.key)).toEqual([
       'base',
+      'history',
       'bold',
       'italic',
       'underline',
@@ -20,22 +21,23 @@ describe('compact rich text preset', () => {
       'blockquote',
       'list',
       'horizontal-rule',
-      'history',
     ])
   })
 
   it('keeps the current visible toolbar layout with the editor preset', () => {
     expect(compactRichTextEditorPreset.preset).toBe(compactRichTextPreset)
     expect(compactRichTextToolbarLayout.groups).toEqual([
+      { key: 'history', items: ['undo', 'redo'] },
       { key: 'marks', items: ['bold', 'italic', 'underline'] },
       { key: 'blocks', items: ['heading-1', 'heading-2', 'heading-3', 'blockquote'] },
       { key: 'lists', items: ['bullet-list', 'ordered-list'] },
       { key: 'insert', items: ['horizontal-rule'] },
-      { key: 'history', items: ['undo', 'redo'] },
     ])
     expect(compactRichTextEditorPreset.toolbarLayout).toBe(compactRichTextToolbarLayout)
     expect(compactRichTextEditorPreset.toolbarItems).toBe(compactRichTextToolbarItems)
     expect(compactRichTextToolbarItems.map((item) => item.key)).toEqual([
+      'undo',
+      'redo',
       'bold',
       'italic',
       'underline',
@@ -46,8 +48,6 @@ describe('compact rich text preset', () => {
       'bullet-list',
       'ordered-list',
       'horizontal-rule',
-      'undo',
-      'redo',
     ])
   })
 

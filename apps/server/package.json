@@ -22,8 +22,8 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.4.5",
-    "@hono/node-server": "^2.0.3",
+    "@electric-sql/pglite": "^0.4.6",
+    "@hono/node-server": "^2.0.4",
     "@hono/zod-validator": "^0.8.0",
     "@iconify/json": "^2.2.478",
     "@iconify/types": "^2.0.0",
@@ -34,7 +34,7 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "fzf": "^0.5.2",
-    "hono": "^4.12.22",
+    "hono": "^4.12.23",
     "pino": "^10.3.1",
     "postgres": "^3.4.9",
     "zod": "^4.4.3"

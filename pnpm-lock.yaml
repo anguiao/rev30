@@ -45,14 +45,14 @@ importers:
         specifier: workspace:*
         version: link:../../packages/utils
       '@tanstack/vue-form':
-        specifier: 1.31.0
-        version: 1.31.0(vue@3.5.34(typescript@6.0.3))
+        specifier: ^1.32.1
+        version: 1.32.1(vue@3.5.34(typescript@6.0.3))
       '@vueuse/core':
         specifier: ^14.3.0
         version: 14.3.0(vue@3.5.34(typescript@6.0.3))
       hono:
-        specifier: ^4.12.22
-        version: 4.12.22
+        specifier: ^4.12.23
+        version: 4.12.23
       lodash-es:
         specifier: ^4.18.1
         version: 4.18.1
@@ -109,20 +109,20 @@ importers:
         specifier: ^8.1.2
         version: 8.1.2(vite@8.0.14(@types/node@24.12.3)(esbuild@0.28.0)(jiti@2.6.1)(tsx@4.22.3)(yaml@2.9.0))(vue@3.5.34(typescript@6.0.3))
       vue-tsc:
-        specifier: ^3.3.1
-        version: 3.3.1(typescript@6.0.3)
+        specifier: ^3.3.2
+        version: 3.3.2(typescript@6.0.3)
 
   apps/server:
     dependencies:
       '@electric-sql/pglite':
-        specifier: ^0.4.5
-        version: 0.4.5
+        specifier: ^0.4.6
+        version: 0.4.6
       '@hono/node-server':
-        specifier: ^2.0.3
-        version: 2.0.3(hono@4.12.22)
+        specifier: ^2.0.4
+        version: 2.0.4(hono@4.12.23)
       '@hono/zod-validator':
         specifier: ^0.8.0
-        version: 0.8.0(hono@4.12.22)(zod@4.4.3)
+        version: 0.8.0(hono@4.12.23)(zod@4.4.3)
       '@iconify/json':
         specifier: ^2.2.478
         version: 2.2.478
@@ -146,13 +146,13 @@ importers:
         version: 17.4.2
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(@electric-sql/pglite@0.4.5)(postgres@3.4.9)
+        version: 0.45.2(@electric-sql/pglite@0.4.6)(postgres@3.4.9)
       fzf:
         specifier: ^0.5.2
         version: 0.5.2
       hono:
-        specifier: ^4.12.22
-        version: 4.12.22
+        specifier: ^4.12.23
+        version: 4.12.23
       pino:
         specifier: ^10.3.1
         version: 10.3.1
@@ -288,8 +288,8 @@ importers:
         specifier: ^4.1.7
         version: 4.1.7(@types/node@24.12.3)(happy-dom@20.9.0)(vite@8.0.14(@types/node@24.12.3)(esbuild@0.28.0)(jiti@2.6.1)(tsx@4.22.3)(yaml@2.9.0))
       vue-tsc:
-        specifier: ^3.3.1
-        version: 3.3.1(typescript@6.0.3)
+        specifier: ^3.3.2
+        version: 3.3.2(typescript@6.0.3)
 
   packages/utils: {}
 
@@ -475,8 +475,8 @@ packages:
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
 
-  '@electric-sql/pglite@0.4.5':
-    resolution: {integrity: sha512-aGG2zGEyZzGWKy8P+9ZoNUV0jxt1+hgbeTf+bVAYyxVZZLXg3/9aFlfLxb08AYZVAfAkQlQIysmWjhc5hwDG8g==}
+  '@electric-sql/pglite@0.4.6':
+    resolution: {integrity: sha512-qmlmfN8UyKCee35qkV0r/MBp+Znl8FjBz7OpoglNvww3GJpw0/DLP0o1ZymvLNmcD5DTLOQdzKPtF8Hd3mdl1w==}
 
   '@emnapi/core@1.10.0':
     resolution: {integrity: sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw==}
@@ -1107,8 +1107,8 @@ packages:
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
-  '@hono/node-server@2.0.3':
-    resolution: {integrity: sha512-a0jV+/HRe3G5zjFID3zObAQFdkl6zpxTuqktdDDXS3MJKcrZIkB8OkLpNBlY/WXFqv2HF4a0takPej+aNFczWA==}
+  '@hono/node-server@2.0.4':
+    resolution: {integrity: sha512-Ut3y0dMMPWy6bZ2kVfx25EOVbZlm15dhF4mOsezMlhpNHy+4MkU1qN9Y6lnruYi4wPmFzimGX2X7LF/FwHli4A==}
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
@@ -1812,8 +1812,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@tanstack/form-core@1.31.0':
-    resolution: {integrity: sha512-t5G/LnrM/U10mQgzYis/WvHc6yTDj7jyF5cYf6GjVJpEbn0et0wDUQtafiOXY8hiXJ9D1HUqBi0u76ZX05uiHw==}
+  '@tanstack/form-core@1.32.1':
+    resolution: {integrity: sha512-5yTCJ1/0bBjdVDsZsqPpLMVZLLN/G39b+ONnwv4vjz2jDes4YAd63cVwti5RtWuGuS1yLc5tVrGl1rWyVYsNGw==}
 
   '@tanstack/pacer-lite@0.1.1':
     resolution: {integrity: sha512-y/xtNPNt/YeyoVxE/JCx+T7yjEzpezmbb+toK8DDD1P4m7Kzs5YR956+7OKexG3f8aXgC3rLZl7b1V+yNUSy5w==}
@@ -1822,8 +1822,8 @@ packages:
   '@tanstack/store@0.9.3':
     resolution: {integrity: sha512-8reSzl/qGWGGVKhBoxXPMWzATSbZLZFWhwBAFO9NAyp0TxzfBP0mIrGb8CP8KrQTmvzXlR/vFPPUrHTLBGyFyw==}
 
-  '@tanstack/vue-form@1.31.0':
-    resolution: {integrity: sha512-mPx89d60B2xwBYhEz6/vSZx2LOKkvKDeXg9f9bM+Wt56bs1JRKuG64ijH5KqQ1C1cD+4iHiV9xxqzwkrrPPckw==}
+  '@tanstack/vue-form@1.32.1':
+    resolution: {integrity: sha512-EuFBKchb+4u2IbnmeSL58dKPAoR7FKP76NJ7UujBntY2YQv8w0wdSAk/R5IxLYd096XE7RYiRvWUVXFzy0r8mA==}
     peerDependencies:
       vue: ^3.4.0
 
@@ -2129,8 +2129,8 @@ packages:
   '@vue/devtools-shared@8.1.2':
     resolution: {integrity: sha512-X9RyVFYAdkBe4IUf5v48TxBF/6QPmF8CmWrDAjXzfUHrgQ/HGfTC1A6TqgXqZ03ye66l3AD51BAGD69IvKM9sw==}
 
-  '@vue/language-core@3.3.1':
-    resolution: {integrity: sha512-NP8g6V7x81NVOXbLupUvYY6i6LqUkjkVowe2epRedmpgaFCOdjgWHE/rQBvEJ4r7koAYODIjGeBWEdt6n7jYXQ==}
+  '@vue/language-core@3.3.2':
+    resolution: {integrity: sha512-CLwjSfHlPLhjd2qhuS3tTFtnOIWHXAM5u4X1DxmzlQ8j5bmOYlKCsSusOP7jCRJnlVg0mCTQtHU3vwFvopZGoQ==}
 
   '@vue/reactivity@3.5.34':
     resolution: {integrity: sha512-y9XDjCEuBp+98k+UL5dbYkh57AHU4o6cxZedOPXw3bmrZZYLQsVHguGurq7hVrPCSrQtrnz1f9dssyFr+dMXfQ==}
@@ -2638,8 +2638,8 @@ packages:
     resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
     engines: {node: '>=12.0.0'}
 
-  hono@4.12.22:
-    resolution: {integrity: sha512-7fvVPbB92zNRsQke+uiRGwtTuef0tB2Dg4hWxYfFNvkQhIltWoyi0ONReM5LWA+jJWS3nfT5lTq+qbsIpX0IQw==}
+  hono@4.12.23:
+    resolution: {integrity: sha512-eIaZ9qDgu7XV0pxOCrg7/WhnQ6Ivm22UcxhXx/A3dcbqbbYgBEkc6e/J/s7j2tS96zoB0S9VBdLwQNCWwUo4LA==}
     engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
@@ -3506,8 +3506,8 @@ packages:
       pinia:
         optional: true
 
-  vue-tsc@3.3.1:
-    resolution: {integrity: sha512-webBP3jhlxzhELZ2g+11KJ6pg5OVY1xWhWrj7N/yQMi1CrtxJnW+tUACyRVeDK0cQNLP2Va5HNYK8pe+7c+msw==}
+  vue-tsc@3.3.2:
+    resolution: {integrity: sha512-n7nQoA3YWW/eiDR8jMiv/uJvlg0uLGs+YgUrsTrf9EZaYSt3tuvMZb5V8+7Mvh/EH5pnY/hoVdgfjH+XcK+wwA==}
     hasBin: true
     peerDependencies:
       typescript: '>=5.0.0'
@@ -3814,7 +3814,7 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
-  '@electric-sql/pglite@0.4.5': {}
+  '@electric-sql/pglite@0.4.6': {}
 
   '@emnapi/core@1.10.0':
     dependencies:
@@ -4155,13 +4155,13 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
-  '@hono/node-server@2.0.3(hono@4.12.22)':
+  '@hono/node-server@2.0.4(hono@4.12.23)':
     dependencies:
-      hono: 4.12.22
+      hono: 4.12.23
 
-  '@hono/zod-validator@0.8.0(hono@4.12.22)(zod@4.4.3)':
+  '@hono/zod-validator@0.8.0(hono@4.12.23)(zod@4.4.3)':
     dependencies:
-      hono: 4.12.22
+      hono: 4.12.23
       zod: 4.4.3
 
   '@iconify/json@2.2.478':
@@ -4593,7 +4593,7 @@ snapshots:
 
   '@tanstack/devtools-event-client@0.4.3': {}
 
-  '@tanstack/form-core@1.31.0':
+  '@tanstack/form-core@1.32.1':
     dependencies:
       '@tanstack/devtools-event-client': 0.4.3
       '@tanstack/pacer-lite': 0.1.1
@@ -4603,9 +4603,9 @@ snapshots:
 
   '@tanstack/store@0.9.3': {}
 
-  '@tanstack/vue-form@1.31.0(vue@3.5.34(typescript@6.0.3))':
+  '@tanstack/vue-form@1.32.1(vue@3.5.34(typescript@6.0.3))':
     dependencies:
-      '@tanstack/form-core': 1.31.0
+      '@tanstack/form-core': 1.32.1
       '@tanstack/vue-store': 0.9.3(vue@3.5.34(typescript@6.0.3))
       vue: 3.5.34(typescript@6.0.3)
     transitivePeerDependencies:
@@ -4965,7 +4965,7 @@ snapshots:
 
   '@vue/devtools-shared@8.1.2': {}
 
-  '@vue/language-core@3.3.1':
+  '@vue/language-core@3.3.2':
     dependencies:
       '@volar/language-core': 2.4.28
       '@vue/compiler-dom': 3.5.34
@@ -5224,9 +5224,9 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.22.3
 
-  drizzle-orm@0.45.2(@electric-sql/pglite@0.4.5)(postgres@3.4.9):
+  drizzle-orm@0.45.2(@electric-sql/pglite@0.4.6)(postgres@3.4.9):
     optionalDependencies:
-      '@electric-sql/pglite': 0.4.5
+      '@electric-sql/pglite': 0.4.6
       postgres: 3.4.9
 
   eastasianwidth@0.2.0: {}
@@ -5438,7 +5438,7 @@ snapshots:
 
   highlight.js@11.11.1: {}
 
-  hono@4.12.22: {}
+  hono@4.12.23: {}
 
   hookable@5.5.3: {}
 
@@ -6313,10 +6313,10 @@ snapshots:
       '@vue/compiler-sfc': 3.5.34
       pinia: 3.0.4(typescript@6.0.3)(vue@3.5.34(typescript@6.0.3))
 
-  vue-tsc@3.3.1(typescript@6.0.3):
+  vue-tsc@3.3.2(typescript@6.0.3):
     dependencies:
       '@volar/typescript': 2.4.28
-      '@vue/language-core': 3.3.1
+      '@vue/language-core': 3.3.2
       typescript: 6.0.3
 
   vue@3.5.34(typescript@6.0.3):

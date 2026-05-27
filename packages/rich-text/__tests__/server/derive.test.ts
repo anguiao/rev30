@@ -45,12 +45,8 @@ describe('deriveRichTextContent', () => {
           {
             type: 'paragraph',
             content: [
-              { type: 'text', text: '请访问 ' },
-              {
-                type: 'text',
-                text: '帮助中心',
-                marks: [{ type: 'link', attrs: { href: 'https://example.com/help' } }],
-              },
+              { type: 'text', text: '请留意 ' },
+              { type: 'text', text: '发布时间', marks: [{ type: 'bold' }] },
             ],
           },
         ],
@@ -58,44 +54,9 @@ describe('deriveRichTextContent', () => {
       { preset: compactRichTextPreset },
     )
 
-    expect(content.text).toBe('维护通知\n\n请访问 帮助中心')
+    expect(content.text).toBe('维护通知\n\n请留意 发布时间')
     expect(content.html).toContain('<h2>维护通知</h2>')
-    expect(content.html).toContain('href="https://example.com/help"')
-    expect(content.html).toContain('target="_blank"')
-    expect(content.html).toContain('rel="noopener noreferrer nofollow"')
-  })
-
-  it('removes unsafe link href protocols and normalizes target and rel', async () => {
-    const { deriveRichTextContent } = await loadServerHelpers()
-    const { compactRichTextPreset } = await import('../../src/presets')
-
-    const content = deriveRichTextContent(
-      {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [
-              {
-                type: 'text',
-                text: '危险链接',
-                marks: [
-                  {
-                    type: 'link',
-                    attrs: { href: 'javascript:alert(1)', target: '_self', rel: 'opener' },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-      { preset: compactRichTextPreset },
-    )
-
-    expect(content.html).toBe(
-      '<p><a target="_blank" rel="noopener noreferrer nofollow">危险链接</a></p>',
-    )
+    expect(content.html).toContain('<strong>发布时间</strong>')
   })
 
   it('rejects empty and unsupported documents', async () => {
@@ -114,6 +75,21 @@ describe('deriveRichTextContent', () => {
         {
           type: 'doc',
           content: [{ type: 'unsupportedBlock', content: [{ type: 'text', text: 'x' }] }],
+        },
+        { preset: compactRichTextPreset },
+      ),
+    ).toThrow(RichTextContentInvalidError)
+
+    expect(() =>
+      deriveRichTextContent(
+        {
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: '链接', marks: [{ type: 'link' }] }],
+            },
+          ],
         },
         { preset: compactRichTextPreset },
       ),

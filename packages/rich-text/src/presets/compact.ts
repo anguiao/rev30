@@ -3,15 +3,11 @@ import { defineRichTextToolbarLayout } from '../core/toolbar'
 import { baseFeature } from '../features/base/shared'
 import { blockquoteFeature } from '../features/blockquote/shared'
 import { boldFeature } from '../features/bold/shared'
-import { codeBlockFeature } from '../features/code-block/shared'
-import { codeFeature } from '../features/code/shared'
 import { headingFeature } from '../features/heading/shared'
 import { historyFeature } from '../features/history/shared'
 import { horizontalRuleFeature } from '../features/horizontal-rule/shared'
 import { italicFeature } from '../features/italic/shared'
-import { linkFeature } from '../features/link/shared'
 import { listFeature } from '../features/list/shared'
-import { strikeFeature } from '../features/strike/shared'
 import { underlineFeature } from '../features/underline/shared'
 
 export const compactRichTextPreset = defineRichTextPreset({
@@ -21,14 +17,10 @@ export const compactRichTextPreset = defineRichTextPreset({
     boldFeature,
     italicFeature,
     underlineFeature,
-    strikeFeature,
     headingFeature,
     blockquoteFeature,
     listFeature,
     horizontalRuleFeature,
-    linkFeature,
-    codeFeature,
-    codeBlockFeature,
     historyFeature,
   ],
 })

@@ -4,20 +4,16 @@ import { compactRichTextPreset, compactRichTextToolbarLayout } from '../../src/p
 import { collectRichTextExtensions } from '../../src/core/preset'
 
 describe('compact rich text preset', () => {
-  it('enables current editor features and compatibility features', () => {
+  it('enables current editor features', () => {
     expect(compactRichTextPreset.features.map((feature) => feature.key)).toEqual([
       'base',
       'bold',
       'italic',
       'underline',
-      'strike',
       'heading',
       'blockquote',
       'list',
       'horizontal-rule',
-      'link',
-      'code',
-      'code-block',
       'history',
     ])
   })

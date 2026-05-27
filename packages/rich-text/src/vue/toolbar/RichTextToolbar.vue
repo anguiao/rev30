@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
-import { NButtonGroup } from 'naive-ui'
 import { computed } from 'vue'
 import type { RichTextToolbarConfig } from '../../core/toolbar'
 import RichTextToolbarControl from './RichTextToolbarControl.vue'
@@ -21,9 +20,9 @@ const groups = computed(() => props.toolbar.groups.filter((group) => group.contr
 
 <template>
   <template v-for="(group, index) in groups" :key="group.key">
-    <NButtonGroup
+    <div
       data-test="rich-text-toolbar-group"
-      size="small"
+      class="flex items-center gap-1"
       :class="index === 0 ? undefined : 'border-l border-(--app-input-divider-color) pl-1'"
     >
       <RichTextToolbarControl
@@ -33,6 +32,6 @@ const groups = computed(() => props.toolbar.groups.filter((group) => group.contr
         :editor="editor"
         :disabled="disabled"
       />
-    </NButtonGroup>
+    </div>
   </template>
 </template>

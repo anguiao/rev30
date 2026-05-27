@@ -114,6 +114,8 @@ function handleSelect(key: string | number) {
       :data-test="`rich-text-${control.key}`"
       :data-active="isActive ? 'true' : undefined"
       :disabled="isDisabled"
+      size="small"
+      style="--n-padding: 0 6px"
       :type="buttonType"
       :secondary="isActive"
       :quaternary="!isActive"
@@ -122,7 +124,7 @@ function handleSelect(key: string | number) {
       :aria-pressed="isActive"
     >
       <span :class="triggerIcon" aria-hidden="true" />
-      <span class="ml-1 i-[lucide--chevron-down] text-xs" aria-hidden="true" />
+      <span class="ml-0.5 i-[lucide--chevron-down] text-xs" aria-hidden="true" />
     </NButton>
   </NDropdown>
 </template>

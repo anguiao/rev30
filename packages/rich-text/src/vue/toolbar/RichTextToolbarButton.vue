@@ -47,6 +47,8 @@ function handleClick() {
     :data-test="`rich-text-${command.key}`"
     :data-active="isActive ? 'true' : undefined"
     :disabled="isDisabled"
+    size="small"
+    style="--n-padding: 0 6px"
     :type="buttonType"
     :secondary="isActive"
     :quaternary="!isActive"

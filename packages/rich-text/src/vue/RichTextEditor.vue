@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { EditorContent } from '@tiptap/vue-3'
 import { computed, toRef } from 'vue'
-import type { RichTextToolbarConfig } from '../core/toolbar'
+import type { RichTextToolbarConfig } from './toolbar/types'
 import type { RichTextDocument } from '../schema'
 import type { RichTextEditorPreset } from './presets/types'
 import RichTextToolbar from './toolbar/RichTextToolbar.vue'

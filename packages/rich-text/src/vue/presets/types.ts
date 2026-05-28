@@ -1,5 +1,5 @@
 import type { RichTextPreset } from '../../core/preset'
-import type { RichTextToolbarConfig } from '../../core/toolbar'
+import type { RichTextToolbarConfig } from '../toolbar/types'
 
 export interface RichTextEditorPreset {
   preset: RichTextPreset

@@ -2,7 +2,7 @@ import {
   defineRichTextToolbar,
   richTextToolbarButton as button,
   richTextToolbarDropdown as dropdown,
-} from '../../core/toolbar'
+} from '../toolbar/types'
 import { blockquoteCommand } from '../../features/blockquote/vue'
 import { boldCommand } from '../../features/bold/vue'
 import { headingCommands } from '../../features/heading/vue'

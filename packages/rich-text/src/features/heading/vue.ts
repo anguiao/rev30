@@ -1,4 +1,4 @@
-import { defineRichTextCommand } from '../../core/toolbar'
+import { defineRichTextCommand } from '../../vue/toolbar/types'
 
 export const headingCommands = [
   defineRichTextCommand({

@@ -6,11 +6,11 @@ export {
   defineRichTextToolbar,
   richTextToolbarButton,
   richTextToolbarDropdown,
-} from '../core/toolbar'
+} from './toolbar/types'
 export type {
   RichTextCommand,
   RichTextIconClass,
   RichTextToolbarConfig,
   RichTextToolbarControlConfig,
   RichTextToolbarGroup,
-} from '../core/toolbar'
+} from './toolbar/types'

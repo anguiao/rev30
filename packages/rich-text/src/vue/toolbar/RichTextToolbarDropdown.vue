@@ -7,7 +7,7 @@ import {
   getActiveRichTextCommand,
   type RichTextCommand,
   type RichTextToolbarDropdownControl,
-} from '../../core/toolbar'
+} from './types'
 
 const props = withDefaults(
   defineProps<{

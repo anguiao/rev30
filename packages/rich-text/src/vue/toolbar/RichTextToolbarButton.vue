@@ -2,7 +2,7 @@
 import type { Editor } from '@tiptap/vue-3'
 import { NButton } from 'naive-ui'
 import { computed } from 'vue'
-import type { RichTextCommand } from '../../core/toolbar'
+import type { RichTextCommand } from './types'
 
 const props = withDefaults(
   defineProps<{

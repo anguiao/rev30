@@ -1,4 +1,4 @@
-import { defineRichTextCommand } from '../../core/toolbar'
+import { defineRichTextCommand } from '../../vue/toolbar/types'
 import { blockquoteFeature } from './shared'
 
 export const blockquoteCommand = defineRichTextCommand({

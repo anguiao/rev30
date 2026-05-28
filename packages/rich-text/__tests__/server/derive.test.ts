@@ -49,17 +49,31 @@ describe('deriveRichTextContent', () => {
               { type: 'text', text: '发布时间', marks: [{ type: 'bold' }] },
             ],
           },
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: '更多内容见 ' },
+              {
+                type: 'text',
+                text: '文档',
+                marks: [{ type: 'link', attrs: { href: 'https://rev30.example/docs' } }],
+              },
+            ],
+          },
         ],
       },
       compactRichTextServerPreset,
     )
 
-    expect(content.text).toBe('维护通知\n\n请留意 发布时间')
+    expect(content.text).toBe('维护通知\n\n请留意 发布时间\n\n更多内容见 文档')
     expect(content.html).toContain('<h2>维护通知</h2>')
     expect(content.html).toContain('<strong>发布时间</strong>')
+    expect(content.html).toContain(
+      '<a href="https://rev30.example/docs" target="_blank" rel="noopener noreferrer nofollow">文档</a>',
+    )
   })
 
-  it('rejects empty and unsupported documents', async () => {
+  it('rejects empty and unsupported node types', async () => {
     const { RichTextContentInvalidError, deriveRichTextContent } = await loadServerHelpers()
     const { compactRichTextServerPreset } = await import('../../src/server/presets')
 
@@ -75,21 +89,6 @@ describe('deriveRichTextContent', () => {
         {
           type: 'doc',
           content: [{ type: 'unsupportedBlock', content: [{ type: 'text', text: 'x' }] }],
-        },
-        compactRichTextServerPreset,
-      ),
-    ).toThrow(RichTextContentInvalidError)
-
-    expect(() =>
-      deriveRichTextContent(
-        {
-          type: 'doc',
-          content: [
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: '链接', marks: [{ type: 'link' }] }],
-            },
-          ],
         },
         compactRichTextServerPreset,
       ),

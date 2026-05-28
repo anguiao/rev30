@@ -19,6 +19,8 @@ const toolbarDataTests = [
   'rich-text-bold',
   'rich-text-italic',
   'rich-text-underline',
+  'rich-text-highlight',
+  'rich-text-link',
   'rich-text-heading',
   'rich-text-list',
   'rich-text-blockquote',

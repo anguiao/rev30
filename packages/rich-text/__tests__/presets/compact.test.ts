@@ -16,6 +16,8 @@ describe('compact rich text preset', () => {
       'bold',
       'italic',
       'underline',
+      'highlight',
+      'link',
       'heading',
       'blockquote',
       'list',
@@ -25,27 +27,26 @@ describe('compact rich text preset', () => {
 
   it('keeps the current visible toolbar layout with the editor preset', () => {
     expect(compactRichTextEditorPreset.preset).toBe(compactRichTextPreset)
-    expect(
-      compactRichTextToolbar.groups.map((group) => ({
-        key: group.key,
-        controls: group.controls.map((control) =>
-          control.type === 'button' ? control.command.key : control.key,
-        ),
-      })),
-    ).toEqual([
-      { key: 'history', controls: ['undo', 'redo'] },
-      { key: 'marks', controls: ['bold', 'italic', 'underline'] },
-      { key: 'blocks', controls: ['heading', 'list', 'blockquote'] },
-      { key: 'insert', controls: ['horizontal-rule'] },
+    expect(compactRichTextToolbar.groups.map((group) => group.key)).toEqual([
+      'history',
+      'marks',
+      'blocks',
+      'insert',
     ])
     expect(compactRichTextEditorPreset.toolbar).toBe(compactRichTextToolbar)
 
+    const marks = compactRichTextToolbar.groups.find((group) => group.key === 'marks')
     const blocks = compactRichTextToolbar.groups.find((group) => group.key === 'blocks')
     const heading = blocks?.controls.find((control) => control.type === 'dropdown')
     const list = blocks?.controls.find(
       (control) => control.type === 'dropdown' && control.key === 'list',
     )
 
+    expect(
+      marks?.controls.map((control) =>
+        control.type === 'button' ? control.command.key : control.key,
+      ) ?? [],
+    ).toEqual(['bold', 'italic', 'underline', 'highlight', 'link'])
     expect(
       heading?.type === 'dropdown' ? heading.commands.map((command) => command.key) : [],
     ).toEqual(['heading-1', 'heading-2', 'heading-3'])
@@ -64,6 +65,8 @@ describe('compact rich text preset', () => {
       'strong',
       'em',
       'u',
+      'mark',
+      'a',
       'h1',
       'h2',
       'h3',

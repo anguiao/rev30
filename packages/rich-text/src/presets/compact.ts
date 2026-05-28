@@ -4,8 +4,10 @@ import { blockquoteFeature } from '../features/blockquote/shared'
 import { boldFeature } from '../features/bold/shared'
 import { headingFeature } from '../features/heading/shared'
 import { historyFeature } from '../features/history/shared'
+import { highlightFeature } from '../features/highlight/shared'
 import { horizontalRuleFeature } from '../features/horizontal-rule/shared'
 import { italicFeature } from '../features/italic/shared'
+import { linkFeature } from '../features/link/shared'
 import { listFeature } from '../features/list/shared'
 import { underlineFeature } from '../features/underline/shared'
 
@@ -17,6 +19,8 @@ export const compactRichTextPreset = defineRichTextPreset({
     boldFeature,
     italicFeature,
     underlineFeature,
+    highlightFeature,
+    linkFeature,
     headingFeature,
     blockquoteFeature,
     listFeature,

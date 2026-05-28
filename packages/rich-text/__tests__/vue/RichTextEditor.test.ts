@@ -7,7 +7,7 @@ import { boldFeature } from '../../src/features/bold/shared'
 import { historyFeature } from '../../src/features/history/shared'
 import RichTextEditor from '../../src/vue/RichTextEditor.vue'
 import type { RichTextDocument } from '../../src/schema'
-import { defineRichTextEditorPreset } from '../../src/vue/presets'
+import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
 import { compactRichTextEditorPreset } from '../../src/vue/presets'
 
 const contentJson: RichTextDocument = {
@@ -125,6 +125,17 @@ describe('RichTextEditor', () => {
     await vi.waitFor(() => {
       expect(wrapper.get('.ProseMirror').text()).toContain('新的外部内容')
     })
+  })
+
+  it('does not render a toolbar when the preset has no toolbar', async () => {
+    const wrapper = mountRichTextEditor({
+      modelValue: contentJson,
+      preset: noHeadingEditorPreset,
+    })
+
+    await getEditable(wrapper)
+
+    expect(wrapper.find('[data-test="rich-text-toolbar-group"]').exists()).toBe(false)
   })
 
   it('toggles editor editability when disabled changes', async () => {

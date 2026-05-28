@@ -1,2 +1,2 @@
-export * from './compact'
-export * from './types'
+export { compactRichTextEditorPreset } from './compact'
+export type { RichTextEditorPreset } from './types'

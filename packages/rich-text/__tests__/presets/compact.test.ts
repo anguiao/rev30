@@ -1,9 +1,12 @@
 import { getSchema } from '@tiptap/core'
 import { describe, expect, it, vi } from 'vitest'
 import { collectRichTextExtensions } from '../../src/core/preset'
-import { compactRichTextToolbar, compactRichTextEditorPreset } from '../../src/vue/presets'
+import { compactRichTextToolbar, compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 import { compactRichTextPreset } from '../../src/presets'
-import { compactRichTextHtmlPolicies, compactRichTextServerPreset } from '../../src/server/presets'
+import {
+  compactRichTextHtmlPolicies,
+  compactRichTextServerPreset,
+} from '../../src/server/presets/compact'
 
 describe('compact rich text preset', () => {
   it('enables current editor features', () => {

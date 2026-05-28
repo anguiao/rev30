@@ -35,10 +35,8 @@ import AnnouncementFormDrawer from '../../../src/features/content/AnnouncementFo
 
 vi.mock('@rev30/rich-text/vue/presets', () => ({
   compactRichTextEditorPreset: {
-    preset: {
-      key: 'compact',
-      features: [],
-    },
+    key: 'compact',
+    features: [],
   },
 }))
 

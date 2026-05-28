@@ -1,8 +1,7 @@
 import type { RichTextPreset } from '../../core/preset'
 import type { RichTextHtmlPolicy } from '../policy'
 
-export interface RichTextServerPreset {
-  preset: RichTextPreset
+export interface RichTextServerPreset extends RichTextPreset {
   htmlPolicies: RichTextHtmlPolicy[]
 }
 

@@ -50,6 +50,6 @@ export const compactRichTextToolbar = defineRichTextToolbar([
 ])
 
 export const compactRichTextEditorPreset = defineRichTextEditorPreset({
-  preset: compactRichTextPreset,
+  ...compactRichTextPreset,
   toolbar: compactRichTextToolbar,
 })

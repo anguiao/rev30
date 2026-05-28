@@ -25,6 +25,6 @@ export const compactRichTextHtmlPolicies = [
 ]
 
 export const compactRichTextServerPreset = defineRichTextServerPreset({
-  preset: compactRichTextPreset,
+  ...compactRichTextPreset,
   htmlPolicies: compactRichTextHtmlPolicies,
 })

@@ -23,7 +23,7 @@ function getServerRuntime(preset: RichTextServerPreset): RichTextServerRuntime {
     return cachedRuntime
   }
 
-  const extensions = collectRichTextExtensions(preset.preset)
+  const extensions = collectRichTextExtensions(preset)
   const runtime = {
     schema: getSchema(extensions),
     extensions,

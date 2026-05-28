@@ -26,7 +26,8 @@ describe('compact rich text preset', () => {
   })
 
   it('keeps the current visible toolbar layout with the editor preset', () => {
-    expect(compactRichTextEditorPreset.preset).toBe(compactRichTextPreset)
+    expect(compactRichTextEditorPreset.key).toBe(compactRichTextPreset.key)
+    expect(compactRichTextEditorPreset.features).toBe(compactRichTextPreset.features)
     expect(compactRichTextToolbar.groups.map((group) => group.key)).toEqual([
       'history',
       'marks',
@@ -57,7 +58,8 @@ describe('compact rich text preset', () => {
   })
 
   it('keeps server html policies with the server preset', () => {
-    expect(compactRichTextServerPreset.preset).toBe(compactRichTextPreset)
+    expect(compactRichTextServerPreset.key).toBe(compactRichTextPreset.key)
+    expect(compactRichTextServerPreset.features).toBe(compactRichTextPreset.features)
     expect(compactRichTextServerPreset.htmlPolicies).toBe(compactRichTextHtmlPolicies)
     expect(compactRichTextHtmlPolicies.flatMap((policy) => policy.allowedTags ?? [])).toEqual([
       'p',

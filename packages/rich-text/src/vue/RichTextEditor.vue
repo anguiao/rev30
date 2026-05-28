@@ -25,12 +25,11 @@ const emit = defineEmits<{
 }>()
 
 const activeToolbar = computed(() => props.preset.toolbar)
-const richTextPreset = computed(() => props.preset.preset)
 
 const { editor } = useRichTextEditor({
   modelValue: toRef(props, 'modelValue'),
   disabled: toRef(props, 'disabled'),
-  preset: richTextPreset,
+  preset: toRef(props, 'preset'),
   onUpdate: (value) => emit('update:modelValue', value),
   onBlur: () => emit('blur'),
 })

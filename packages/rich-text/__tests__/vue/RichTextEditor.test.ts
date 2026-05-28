@@ -34,7 +34,7 @@ const noHeadingPreset = defineRichTextPreset({
   features: [baseFeature, boldFeature, historyFeature],
 })
 const noHeadingEditorPreset = defineRichTextEditorPreset({
-  preset: noHeadingPreset,
+  ...noHeadingPreset,
 })
 
 const wrappers: Array<ReturnType<typeof mount>> = []

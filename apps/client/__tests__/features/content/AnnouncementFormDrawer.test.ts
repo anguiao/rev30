@@ -1,4 +1,4 @@
-import { PiniaColada } from '@pinia/colada'
+import { PiniaColada, useQueryCache } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
@@ -186,6 +186,21 @@ function mountDrawer(props = { show: true, announcementId: null as string | null
       },
     },
   })
+}
+
+function getQueryCache(wrapper: ReturnType<typeof mount>) {
+  return wrapper.vm.$.appContext.app.runWithContext(() => useQueryCache())
+}
+
+async function refetchAnnouncementForm(
+  wrapper: ReturnType<typeof mount>,
+  currentAnnouncementId: string | null,
+) {
+  await getQueryCache(wrapper).invalidateQueries({
+    key: ['content', 'announcement-form', currentAnnouncementId ?? 'create'],
+    exact: true,
+  })
+  await flushPromises()
 }
 
 async function fillRequiredFields(wrapper: ReturnType<typeof mount>) {
@@ -397,6 +412,37 @@ describe('AnnouncementFormDrawer', () => {
     })
     expect(wrapper.emitted('saved')).toHaveLength(1)
     expect(wrapper.emitted('update:show')).toEqual([[false]])
+  })
+
+  it('keeps create draft values when the form query refreshes', async () => {
+    createAnnouncementMock.mockResolvedValue(announcementResponse)
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await fillRequiredFields(wrapper)
+    await selectUserTarget(wrapper)
+    await refetchAnnouncementForm(wrapper, null)
+    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
+
+    expect(createAnnouncementMock).toHaveBeenCalledWith({
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+      title: '新的维护通知',
+      summary: null,
+      contentJson: {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: '更新正文' }] }],
+      },
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
+          targetId: userTargetId,
+        },
+      ],
+      pinned: false,
+      publish: false,
+    })
   })
 
   it('saves and publishes in create mode', async () => {

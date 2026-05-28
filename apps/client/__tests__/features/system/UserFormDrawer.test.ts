@@ -1,4 +1,4 @@
-import { PiniaColada } from '@pinia/colada'
+import { PiniaColada, useQueryCache } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NSelect, NTreeSelect } from 'naive-ui'
@@ -24,6 +24,7 @@ import {
 } from '../../../src/features/system'
 import UserFormDrawer from '../../../src/features/system/UserFormDrawer.vue'
 import { createPinia, setActivePinia } from 'pinia'
+
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   createUser: vi.fn(),
@@ -165,6 +166,18 @@ function mountDrawer(props?: { show?: boolean; userId?: string | null }) {
   })
 }
 
+function getQueryCache(wrapper: ReturnType<typeof mount>) {
+  return wrapper.vm.$.appContext.app.runWithContext(() => useQueryCache())
+}
+
+async function refetchUserForm(wrapper: ReturnType<typeof mount>, currentUserId: string | null) {
+  await getQueryCache(wrapper).invalidateQueries({
+    key: ['system', 'user-form', currentUserId ?? 'create'],
+    exact: true,
+  })
+  await flushPromises()
+}
+
 async function submitForm(wrapper: ReturnType<typeof mount>) {
   await wrapper.get('[data-test="user-form-submit"]').trigger('click')
   await wrapper.get('form').trigger('submit')
@@ -209,6 +222,28 @@ describe('UserFormDrawer', () => {
     })
     expect(wrapper.emitted('saved')).toEqual([[userCreateResponse]])
     expect(wrapper.emitted('update:show')).toEqual([[false]])
+  })
+
+  it('keeps create draft values when the form query refreshes', async () => {
+    createUserMock.mockResolvedValue(userCreateResponse)
+
+    const wrapper = mountDrawer({ userId: null })
+    await flushPromises()
+
+    await wrapper.get('[data-test="user-form-username"] input').setValue('draft-user')
+    await wrapper.get('[data-test="user-form-nickname"] input').setValue('Draft User')
+    await refetchUserForm(wrapper, null)
+    await submitForm(wrapper)
+
+    expect(createUserMock).toHaveBeenCalledWith({
+      username: 'draft-user',
+      nickname: 'Draft User',
+      email: null,
+      phone: null,
+      status: USER_STATUS_ENABLED,
+      departmentIds: [],
+      roleIds: [],
+    })
   })
 
   it('shows a load error and disables submit when create form options fail to load', async () => {

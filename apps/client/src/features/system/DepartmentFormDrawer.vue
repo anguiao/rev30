@@ -219,6 +219,10 @@ watch(
       return
     }
 
+    if (form.state.isDirty || !form.state.isDefaultValue) {
+      return
+    }
+
     form.reset(formValues)
   },
   {

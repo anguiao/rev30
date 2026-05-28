@@ -2,6 +2,7 @@ import type { ResourceTreeNode } from '@rev30/contracts'
 import type { RouteLocationNormalized, Router } from 'vue-router'
 import { refreshSession } from '../features/auth/requests'
 import { useAuthStore } from '../stores/auth'
+import { resolveRedirectTarget } from './redirect'
 
 export const authRoutes = new Set(['/login'])
 export const accountRoutes = new Set(['/account/settings', '/account/announcements'])
@@ -31,6 +32,13 @@ function canAccessRoute(to: RouteLocationNormalized, routePaths: string[]) {
   )
 }
 
+function resolveAuthenticatedEntryTarget(to: RouteLocationNormalized, fallback: string) {
+  const redirectTarget = resolveRedirectTarget(to.query.redirect)
+  const redirectPath = redirectTarget.split(/[?#]/, 1)[0] ?? ''
+
+  return redirectTarget === '/' || authRoutes.has(redirectPath) ? fallback : redirectTarget
+}
+
 async function restoreSessionIfNeeded() {
   const auth = useAuthStore()
 
@@ -56,7 +64,9 @@ export function installAuthGuards(router: Router) {
     const authenticatedEntryRoute = defaultRoute ?? '/403'
 
     if (authRoutes.has(to.path)) {
-      return auth.isAuthenticated ? { path: authenticatedEntryRoute } : true
+      return auth.isAuthenticated
+        ? resolveAuthenticatedEntryTarget(to, authenticatedEntryRoute)
+        : true
     }
 
     if (auth.isAuthenticated) {

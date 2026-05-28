@@ -198,6 +198,35 @@ describe('auth guards', () => {
     expect(router.currentRoute.value.fullPath).toBe('/system/users')
   })
 
+  it('redirects authenticated users from auth pages to the redirect target', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system',
+          name: 'System',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'system:user',
+              name: 'Users',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/users',
+              parentId: 'system-id',
+            }),
+          ],
+        }),
+      ]),
+    )
+    auth.markReady()
+    const router = createTestRouter()
+
+    await router.push('/login?redirect=/account/settings')
+
+    expect(refreshSessionMock).not.toHaveBeenCalled()
+    expect(router.currentRoute.value.fullPath).toBe('/account/settings')
+  })
+
   it('restores a cold session before redirecting users away from auth pages', async () => {
     refreshSessionMock.mockResolvedValue(
       createSession([
@@ -228,6 +257,38 @@ describe('auth guards', () => {
     expect(auth.user).toEqual(session.user)
     expect(auth.isReady).toBe(true)
     expect(router.currentRoute.value.fullPath).toBe('/system/users')
+  })
+
+  it('restores a cold session before redirecting auth pages to the redirect target', async () => {
+    refreshSessionMock.mockResolvedValue(
+      createSession([
+        createMenuNode({
+          code: 'system',
+          name: 'System',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'system:user',
+              name: 'Users',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/users',
+              parentId: 'system-id',
+            }),
+          ],
+        }),
+      ]),
+    )
+    const router = createTestRouter()
+
+    await router.push('/login?redirect=/account/settings')
+
+    const auth = useAuthStore()
+
+    expect(refreshSessionMock).toHaveBeenCalledOnce()
+    expect(auth.accessToken).toBe(session.accessToken)
+    expect(auth.user).toEqual(session.user)
+    expect(auth.isReady).toBe(true)
+    expect(router.currentRoute.value.fullPath).toBe('/account/settings')
   })
 
   it('redirects authenticated users to the first accessible internal menu in server order', async () => {

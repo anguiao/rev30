@@ -28,8 +28,8 @@ defineProps<{
   <component
     :is="control.component"
     v-else
+    v-bind="control.props"
     :editor="editor"
     :disabled="disabled"
-    v-bind="control.props"
   />
 </template>

@@ -3,7 +3,6 @@ import { Hono } from 'hono'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { iconRoutes } from '../../../src/modules/icons/routes'
 import * as iconService from '../../../src/modules/icons/service'
-import * as iconSearchService from '../../../src/modules/icons/search'
 
 function createIconTestApp() {
   return new Hono().route('/api/icons', iconRoutes)
@@ -100,54 +99,6 @@ describe('icon routes', () => {
     expect(body.not_found).toEqual(['not-a-real-icon'])
   })
 
-  it('returns icon search results without authentication', async () => {
-    const searchIconsSpy = vi.spyOn(iconSearchService, 'searchIcons').mockResolvedValue({
-      list: [
-        {
-          icon: 'lucide:users',
-          prefix: 'lucide',
-          name: 'users',
-          collection: 'Lucide',
-          palette: false,
-        },
-      ],
-    })
-    const app = createIconTestApp()
-
-    const response = await app.request('/api/icons/search?keyword=用户&limit=20')
-    const body = await response.json()
-
-    expect(response.status).toBe(200)
-    expect(response.headers.get('content-type')).toContain('application/json')
-    expectIconHeaders(response)
-    expect(searchIconsSpy).toHaveBeenCalledWith({ keyword: '用户', limit: 20 })
-    expect(body).toEqual({
-      list: [
-        {
-          icon: 'lucide:users',
-          prefix: 'lucide',
-          name: 'users',
-          collection: 'Lucide',
-          palette: false,
-        },
-      ],
-    })
-  })
-
-  it('returns 404 for invalid icon search queries', async () => {
-    const app = createIconTestApp()
-
-    const response = await app.request('/api/icons/search?limit=0')
-    const overlongKeywordResponse = await app.request(
-      `/api/icons/search?keyword=${'a'.repeat(121)}`,
-    )
-
-    expect(response.status).toBe(404)
-    expect(await response.text()).toBe('404')
-    expect(overlongKeywordResponse.status).toBe(404)
-    expect(await overlongKeywordResponse.text()).toBe('404')
-  })
-
   it('returns empty icons and not_found when every requested icon is missing', async () => {
     vi.spyOn(iconService, 'getIconSubset').mockResolvedValue({
       ...lucideSubset,
@@ -202,6 +153,20 @@ describe('icon routes', () => {
     const invalidPrefix = await app.request('/api/icons/Invalid.json?icons=sun')
     expect(invalidPrefix.status).toBe(404)
     expect(await invalidPrefix.text()).toBe('404')
+  })
+
+  it('returns text 404 for malicious icon data queries', async () => {
+    const getIconSubsetSpy = vi.spyOn(iconService, 'getIconSubset').mockResolvedValue(lucideSubset)
+    const app = createIconTestApp()
+
+    const overlongIcons = await app.request(`/api/icons/lucide.json?icons=${'a'.repeat(501)}`)
+    const malformedIcons = await app.request('/api/icons/lucide.json?icons=sun,../secret')
+
+    expect(overlongIcons.status).toBe(404)
+    expect(await overlongIcons.text()).toBe('404')
+    expect(malformedIcons.status).toBe(404)
+    expect(await malformedIcons.text()).toBe('404')
+    expect(getIconSubsetSpy).not.toHaveBeenCalled()
   })
 
   it('returns CORS headers for OPTIONS requests', async () => {

@@ -29,6 +29,34 @@ describe('app auth boundaries', () => {
     expect(response.headers.has(AUTH_ACTION_HEADER)).toBe(false)
   })
 
+  it('requires authentication for icon search while keeping icon data public', async () => {
+    const app = createApp(createUnusedDatabase())
+
+    const searchResponse = await app.request('/api/icons/search?keyword=user')
+    const iconDataResponse = await app.request('/api/icons/lucide.json?icons=sun')
+
+    expect(searchResponse.status).toBe(401)
+    expect(await searchResponse.json()).toEqual({ message: '未授权' })
+    expect(iconDataResponse.status).toBe(200)
+    expect(iconDataResponse.headers.get('cache-control')).toBe(
+      'public, max-age=604800, min-refresh=604800, immutable',
+    )
+  })
+
+  it('allows icon search for logged-in users without resource access', async () => {
+    const database = await createTestDb()
+    const app = createApp(database)
+    const authenticated = await createSystemAccessFixture(database, {
+      usernamePrefix: 'app-icon-search-user',
+    })
+
+    const response = await app.request('/api/icons/search?keyword=lucide:users&limit=1', {
+      headers: authenticated.authHeaders,
+    })
+
+    expect(response.status).toBe(200)
+  })
+
   it('returns 403 for logged-in users without route access', async () => {
     const database = await createTestDb()
     const app = createApp(database)

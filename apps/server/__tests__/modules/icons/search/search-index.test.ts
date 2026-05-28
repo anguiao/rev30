@@ -11,11 +11,11 @@ vi.mock('@iconify/json', () => ({
   lookupCollections: mocks.lookupCollections,
 }))
 
-vi.mock('../../../src/modules/icons/service', () => ({
+vi.mock('../../../../src/modules/icons/service', () => ({
   getIconSubset: mocks.getIconSubset,
 }))
 
-describe('icon search service cache lifecycle', () => {
+describe('icon search index lifecycle', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.resetModules()
@@ -48,7 +48,7 @@ describe('icon search service cache lifecycle', () => {
   it('evicts the search index after the configured idle TTL', async () => {
     vi.stubEnv('ICON_SEARCH_INDEX_IDLE_TTL_MS', '50')
 
-    const { searchIcons } = await import('../../../src/modules/icons/search')
+    const { searchIcons } = await import('../../../../src/modules/icons/search')
 
     await searchIcons({ keyword: 'user', limit: 10 })
     expect(mocks.lookupCollection).toHaveBeenCalledTimes(1)
@@ -63,7 +63,7 @@ describe('icon search service cache lifecycle', () => {
   it('refreshes the idle TTL when the existing search index is reused', async () => {
     vi.stubEnv('ICON_SEARCH_INDEX_IDLE_TTL_MS', '50')
 
-    const { searchIcons } = await import('../../../src/modules/icons/search')
+    const { searchIcons } = await import('../../../../src/modules/icons/search')
 
     await searchIcons({ keyword: 'user', limit: 10 })
     expect(mocks.lookupCollection).toHaveBeenCalledTimes(1)
@@ -85,7 +85,7 @@ describe('icon search service cache lifecycle', () => {
   it('keeps the search index while idle cleanup is disabled', async () => {
     vi.stubEnv('ICON_SEARCH_INDEX_IDLE_TTL_MS', '0')
 
-    const { searchIcons } = await import('../../../src/modules/icons/search')
+    const { searchIcons } = await import('../../../../src/modules/icons/search')
 
     await searchIcons({ keyword: 'user', limit: 10 })
     expect(mocks.lookupCollection).toHaveBeenCalledTimes(1)
@@ -100,7 +100,7 @@ describe('icon search service cache lifecycle', () => {
   it('fails fast for invalid idle TTL values', async () => {
     vi.stubEnv('ICON_SEARCH_INDEX_IDLE_TTL_MS', 'abc')
 
-    await expect(import('../../../src/modules/icons/search')).rejects.toThrow(
+    await expect(import('../../../../src/modules/icons/search')).rejects.toThrow(
       'ICON_SEARCH_INDEX_IDLE_TTL_MS 必须是整数',
     )
   })
@@ -115,7 +115,7 @@ describe('icon search service cache lifecycle', () => {
       aliases: {},
     })
 
-    const { searchIcons } = await import('../../../src/modules/icons/search')
+    const { searchIcons } = await import('../../../../src/modules/icons/search')
 
     await searchIcons({ keyword: 'lucide:users', limit: 10 })
     await vi.advanceTimersByTimeAsync(100)

@@ -1,6 +1,6 @@
 import { lookupCollection } from '@iconify/json'
 import { describe, expect, it, vi } from 'vitest'
-import { getIconSubset } from '../../../src/modules/icons/service'
+import { getIconSubset } from '../../../../src/modules/icons/service'
 
 vi.mock('@iconify/json', () => {
   const collections = {
@@ -99,11 +99,11 @@ vi.mock('@iconify/json', () => {
   }
 })
 
-vi.mock('../../../src/modules/icons/service', () => ({
+vi.mock('../../../../src/modules/icons/service', () => ({
   getIconSubset: vi.fn(),
 }))
 
-const { searchIcons } = await import('../../../src/modules/icons/search')
+const { searchIcons } = await import('../../../../src/modules/icons/search')
 const getIconSubsetMock = vi.mocked(getIconSubset)
 const lookupCollectionMock = vi.mocked(lookupCollection)
 

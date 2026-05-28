@@ -50,6 +50,18 @@ describe('icon schemas', () => {
     expect(iconDataQuerySchema.safeParse({}).success).toBe(false)
   })
 
+  it('accepts Iconify Vue icon batches within the URL length budget', () => {
+    const icons = ['alpha-one', 'beta-two', 'delta-four', 'epsilon-five', 'gamma-three']
+
+    expect(iconDataQuerySchema.parse({ icons: icons.join(',') }).icons).toEqual(icons)
+  })
+
+  it('rejects overlong and malformed icon data queries', () => {
+    expect(iconDataQuerySchema.safeParse({ icons: 'a'.repeat(501) }).success).toBe(false)
+    expect(iconDataQuerySchema.safeParse({ icons: 'sun,../secret' }).success).toBe(false)
+    expect(iconDataQuerySchema.safeParse({ icons: 'sun,,moon' }).success).toBe(false)
+  })
+
   it('parses icon search query defaults and trims the keyword', () => {
     expect(iconSearchQuerySchema.parse({})).toEqual({
       keyword: '',

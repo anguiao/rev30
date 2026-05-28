@@ -44,9 +44,7 @@ const canApply = computed(
 )
 const canOpen = computed(
   () =>
-    !isDisabled.value &&
-    normalizedOpenHref.value !== '' &&
-    isAllowedHref(normalizedOpenHref.value),
+    !isDisabled.value && normalizedOpenHref.value !== '' && isAllowedHref(normalizedOpenHref.value),
 )
 
 let detachEditorListeners: (() => void) | undefined
@@ -154,7 +152,12 @@ function openLink() {
 </script>
 
 <template>
-  <NPopover v-model:show="showPopover" trigger="click" placement="bottom-start" :disabled="isDisabled">
+  <NPopover
+    v-model:show="showPopover"
+    trigger="click"
+    placement="bottom-start"
+    :disabled="isDisabled"
+  >
     <template #trigger>
       <NButton
         data-test="rich-text-link"

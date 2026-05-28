@@ -18,7 +18,12 @@ function createEditor(content = '<p>维护通知</p>') {
 
   const editor = new Editor({
     element,
-    extensions: [Document, Paragraph, Text, ...(Array.isArray(linkExtension) ? linkExtension : [linkExtension])],
+    extensions: [
+      Document,
+      Paragraph,
+      Text,
+      ...(Array.isArray(linkExtension) ? linkExtension : [linkExtension]),
+    ],
     content,
   })
   editors.push(editor)
@@ -172,7 +177,9 @@ describe('LinkToolbarControl', () => {
     const wrapperWithoutEditor = mountControl(null)
     const wrapperDisabled = mountControl(createEditor(), true)
 
-    expect(wrapperWithoutEditor.get('[data-test="rich-text-link"]').attributes('disabled')).toBeDefined()
+    expect(
+      wrapperWithoutEditor.get('[data-test="rich-text-link"]').attributes('disabled'),
+    ).toBeDefined()
     expect(wrapperDisabled.get('[data-test="rich-text-link"]').attributes('disabled')).toBeDefined()
   })
 })

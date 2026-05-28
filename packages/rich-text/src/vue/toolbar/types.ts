@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/core'
-import type { Component } from 'vue'
+import type { Component, ComponentInstance } from 'vue'
 
 export type RichTextIconClass = `i-[${string}--${string}]`
 
@@ -26,11 +26,27 @@ export interface RichTextToolbarDropdownControl {
   getActiveCommand?: (editor: Editor, commands: RichTextCommand[]) => RichTextCommand | undefined
 }
 
+export interface RichTextToolbarControlInjectedProps {
+  editor: Editor | null
+  disabled?: boolean
+}
+
+type RichTextToolbarComponentProps<TComponent extends Component> = Omit<
+  ComponentInstance<TComponent>['$props'],
+  keyof RichTextToolbarControlInjectedProps
+>
+
+type RichTextToolbarComponentControlOptions<TComponent extends Component> = {
+  key: string
+  component: TComponent
+  props: RichTextToolbarComponentProps<TComponent>
+}
+
 export interface RichTextToolbarComponentControl {
   type: 'component'
   key: string
   component: Component
-  props?: Record<string, unknown>
+  props: Record<string, unknown>
 }
 
 export type RichTextToolbarControlConfig =
@@ -71,12 +87,14 @@ export function richTextToolbarDropdown(
   }
 }
 
-export function richTextToolbarComponent(
-  control: Omit<RichTextToolbarComponentControl, 'type'>,
+export function richTextToolbarComponent<TComponent extends Component>(
+  control: RichTextToolbarComponentControlOptions<TComponent>,
 ): RichTextToolbarComponentControl {
   return {
     type: 'component',
-    ...control,
+    key: control.key,
+    component: control.component,
+    props: control.props as Record<string, unknown>,
   }
 }
 

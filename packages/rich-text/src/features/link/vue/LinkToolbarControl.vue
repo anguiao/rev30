@@ -1,17 +1,11 @@
 <script setup lang="ts">
-import type { Editor } from '@tiptap/vue-3'
+import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar/types'
 import { NButton, NInput, NPopover } from 'naive-ui'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
-const props = withDefaults(
-  defineProps<{
-    editor: Editor | null
-    disabled?: boolean
-  }>(),
-  {
-    disabled: false,
-  },
-)
+const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
+  disabled: false,
+})
 
 const allowedProtocols = new Set(['http:', 'https:', 'mailto:', 'tel:'])
 const editorStateVersion = ref(0)
@@ -53,7 +47,7 @@ function syncEditorState() {
   editorStateVersion.value += 1
 }
 
-function bindEditor(editor: Editor | null) {
+function bindEditor(editor: RichTextToolbarControlInjectedProps['editor']) {
   detachEditorListeners?.()
   detachEditorListeners = undefined
 

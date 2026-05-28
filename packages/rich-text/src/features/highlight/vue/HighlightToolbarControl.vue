@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Editor } from '@tiptap/vue-3'
+import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar/types'
 import { NButton, NPopover } from 'naive-ui'
 import { computed } from 'vue'
 
@@ -9,16 +9,13 @@ interface HighlightColorOption {
   value: string
 }
 
-const props = withDefaults(
-  defineProps<{
-    editor: Editor | null
-    disabled?: boolean
-    colors: HighlightColorOption[]
-  }>(),
-  {
-    disabled: false,
-  },
-)
+interface HighlightToolbarControlProps extends RichTextToolbarControlInjectedProps {
+  colors: readonly HighlightColorOption[]
+}
+
+const props = withDefaults(defineProps<HighlightToolbarControlProps>(), {
+  disabled: false,
+})
 
 const isDisabled = computed(() => props.disabled || !props.editor)
 

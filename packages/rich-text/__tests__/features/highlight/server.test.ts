@@ -71,6 +71,7 @@ describe('highlight html policy', () => {
     expect(attributes['data-color']).toBe('#fef08a')
     expect(parseStyleAttribute(attributes.style)).toEqual({
       'background-color': '#fef08a',
+      color: 'inherit',
     })
     expect(sanitized).not.toContain('position')
     expect(sanitized).not.toContain('inset')

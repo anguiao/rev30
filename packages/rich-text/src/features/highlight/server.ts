@@ -25,8 +25,8 @@ function getInlineStyleValue(style: unknown, property: 'background-color' | 'col
   return match?.[1]?.trim() ?? null
 }
 
-function buildHighlightStyle(color: string, keepInheritColor: boolean) {
-  return keepInheritColor ? `background-color: ${color}; color: inherit` : `background-color: ${color}`
+function buildHighlightStyle(color: string) {
+  return `background-color: ${color}; color: inherit`
 }
 
 const transformMark: sanitizeHtml.Transformer = (tagName, attribs) => {
@@ -41,13 +41,11 @@ const transformMark: sanitizeHtml.Transformer = (tagName, attribs) => {
     }
   }
 
-  const keepInheritColor = getInlineStyleValue(attribs.style, 'color')?.toLowerCase() === 'inherit'
-
   return {
     tagName,
     attribs: {
       'data-color': color,
-      style: buildHighlightStyle(color, keepInheritColor),
+      style: buildHighlightStyle(color),
     },
   }
 }

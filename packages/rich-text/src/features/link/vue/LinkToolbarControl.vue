@@ -19,18 +19,17 @@ const showPopover = ref(false)
 const url = ref('')
 
 const isDisabled = computed(() => props.disabled || !props.editor)
-const currentHref = computed(() => {
-  editorStateVersion.value
-
+const editorState = computed(() => {
   const href = props.editor?.getAttributes('link').href
 
-  return typeof href === 'string' ? href : ''
+  return {
+    version: editorStateVersion.value,
+    href: typeof href === 'string' ? href : '',
+    isActive: props.editor?.isActive('link') ?? false,
+  }
 })
-const isActive = computed(() => {
-  editorStateVersion.value
-
-  return props.editor?.isActive('link') ?? false
-})
+const currentHref = computed(() => editorState.value.href)
+const isActive = computed(() => editorState.value.isActive)
 
 const normalizedInputHref = computed(() => normalizeHref(url.value))
 const normalizedOpenHref = computed(() => normalizeHref(url.value || currentHref.value))

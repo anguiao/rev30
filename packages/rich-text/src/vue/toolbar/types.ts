@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/core'
+import type { Component } from 'vue'
 
 export type RichTextIconClass = `i-[${string}--${string}]`
 
@@ -25,9 +26,17 @@ export interface RichTextToolbarDropdownControl {
   getActiveCommand?: (editor: Editor, commands: RichTextCommand[]) => RichTextCommand | undefined
 }
 
+export interface RichTextToolbarComponentControl {
+  type: 'component'
+  key: string
+  component: Component
+  props?: Record<string, unknown>
+}
+
 export type RichTextToolbarControlConfig =
   | RichTextToolbarButtonControl
   | RichTextToolbarDropdownControl
+  | RichTextToolbarComponentControl
 
 export interface RichTextToolbarGroup {
   key: string
@@ -58,6 +67,15 @@ export function richTextToolbarDropdown(
 ): RichTextToolbarDropdownControl {
   return {
     type: 'dropdown',
+    ...control,
+  }
+}
+
+export function richTextToolbarComponent(
+  control: Omit<RichTextToolbarComponentControl, 'type'>,
+): RichTextToolbarComponentControl {
+  return {
+    type: 'component',
     ...control,
   }
 }

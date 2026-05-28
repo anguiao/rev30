@@ -18,5 +18,18 @@ defineProps<{
     :editor="editor"
     :disabled="disabled"
   />
-  <RichTextToolbarDropdown v-else :control="control" :editor="editor" :disabled="disabled" />
+  <RichTextToolbarDropdown
+    v-else-if="control.type === 'dropdown'"
+    :control="control"
+    :editor="editor"
+    :disabled="disabled"
+  />
+
+  <component
+    :is="control.component"
+    v-else
+    :editor="editor"
+    :disabled="disabled"
+    v-bind="control.props"
+  />
 </template>

@@ -1,7 +1,7 @@
 import { highlightColors } from '../../src/features/highlight/vue'
 import HighlightToolbarControl from '../../src/features/highlight/vue/HighlightToolbarControl.vue'
 import LinkToolbarControl from '../../src/features/link/vue/LinkToolbarControl.vue'
-import { richTextToolbarComponent } from '../../src/vue/toolbar/types'
+import { richTextToolbarComponent } from '../../src/vue/toolbar'
 
 richTextToolbarComponent({
   key: 'highlight',

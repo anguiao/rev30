@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar/types'
+import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import { NButton, NPopover } from 'naive-ui'
 import { computed } from 'vue'
 

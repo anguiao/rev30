@@ -1,4 +1,4 @@
-import { richTextToolbarComponent } from '../../vue/toolbar/types'
+import { richTextToolbarComponent } from '../../vue/toolbar'
 import HighlightToolbarControl from './vue/HighlightToolbarControl.vue'
 
 export const highlightColors = [

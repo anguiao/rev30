@@ -13,6 +13,7 @@ import { attachments, systemUsers } from '../../../src/db/schema'
 import { readAttachmentConfig } from '../../../src/modules/attachments/config'
 import { AttachmentNotFoundError } from '../../../src/modules/attachments/errors'
 import { createAttachmentService } from '../../../src/modules/attachments/service'
+import { logger } from '../../../src/runtime/logger'
 import {
   LocalAttachmentStorage,
   type AttachmentStorage,
@@ -69,6 +70,7 @@ function createAttachmentServiceForTest(
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks()
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })))
 })
 
@@ -112,6 +114,30 @@ describe('attachment service', () => {
     expect(signed.url).toContain(`/api/attachments/${attachment.id}/content?token=`)
     expect(signed.expiresAt).toBe('2026-05-29T00:05:00.000Z')
   })
+
+  it.each(['http://localhost/admin?x=1', 'http://localhost/'])(
+    'normalizes signed url origin from %s',
+    async (origin) => {
+      const database = await createTestDb()
+      const root = await createTempRoot()
+      const service = createAttachmentServiceForTest(database, root)
+      const userId = await createUser(database)
+      const attachment = await service.upload({
+        file: new File([pngBytes], 'avatar.png'),
+        usage: ATTACHMENT_USAGE_AVATAR,
+        userId,
+      })
+
+      const signed = await service.createSignedUrl(attachment.id, {
+        disposition: ATTACHMENT_DISPOSITION_INLINE,
+        origin,
+      })
+
+      expect(signed.url).toMatch(
+        new RegExp(`^http://localhost/api/attachments/${attachment.id}/content\\?token=`),
+      )
+    },
+  )
 
   it('does not sign deleted attachments', async () => {
     const database = await createTestDb()
@@ -198,5 +224,115 @@ describe('attachment service', () => {
     expect(put).toHaveBeenCalledTimes(1)
     expect(remove).toHaveBeenCalledTimes(1)
     expect(remove).toHaveBeenCalledWith(put.mock.calls[0]?.[0].key)
+  })
+
+  it('preserves insert failure when upload cleanup also fails', async () => {
+    const root = await createTempRoot()
+    const originalError = new Error('insert failed')
+    const cleanupError = new Error('cleanup failed')
+    const put = vi.fn(async ({ expectedSize }: Parameters<AttachmentStorage['put']>[0]) => ({
+      checksum: 'storage-checksum',
+      size: expectedSize,
+    }))
+    const remove = vi.fn(async (_key: string) => {
+      throw cleanupError
+    })
+    const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => undefined)
+    const storage: AttachmentStorage = {
+      delete: remove,
+      get: vi.fn(),
+      put,
+    }
+    const database = {
+      insert: vi.fn(() => ({
+        values: vi.fn(() => ({
+          returning: vi.fn(async () => {
+            throw originalError
+          }),
+        })),
+      })),
+    } as unknown as Db
+    const service = createAttachmentServiceForTest(database, root, storage)
+
+    await expect(
+      service.upload({
+        file: new File([pngBytes], 'avatar.png'),
+        usage: ATTACHMENT_USAGE_AVATAR,
+        userId: randomUUID(),
+      }),
+    ).rejects.toBe(originalError)
+
+    expect(remove).toHaveBeenCalledTimes(1)
+    expect(loggerError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        err: cleanupError,
+        storageKey: put.mock.calls[0]?.[0].key,
+      }),
+      'attachment upload cleanup failed',
+    )
+  })
+
+  it('resolves delete when storage cleanup fails after soft delete', async () => {
+    const database = await createTestDb()
+    const root = await createTempRoot()
+    const localStorage = new LocalAttachmentStorage(root)
+    const storageDeleteError = new Error('delete failed')
+    const storage: AttachmentStorage = {
+      delete: vi.fn(async (_key: string) => {
+        throw storageDeleteError
+      }),
+      get: localStorage.get.bind(localStorage),
+      put: localStorage.put.bind(localStorage),
+    }
+    const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => undefined)
+    const service = createAttachmentServiceForTest(database, root, storage)
+    const userId = await createUser(database)
+    const attachment = await service.upload({
+      file: new File([pngBytes], 'avatar.png'),
+      usage: ATTACHMENT_USAGE_AVATAR,
+      userId,
+    })
+
+    await expect(service.delete(attachment.id)).resolves.toBeUndefined()
+
+    await expect(
+      service.createSignedUrl(attachment.id, {
+        disposition: ATTACHMENT_DISPOSITION_INLINE,
+        origin: 'http://localhost',
+      }),
+    ).rejects.toBeInstanceOf(AttachmentNotFoundError)
+    expect(loggerError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attachmentId: attachment.id,
+        err: storageDeleteError,
+        storageKey: `2026/05/29/${attachment.id}.png`,
+      }),
+      'attachment storage deletion failed',
+    )
+  })
+
+  it('rejects old signed token after attachment delete', async () => {
+    const database = await createTestDb()
+    const root = await createTempRoot()
+    const service = createAttachmentServiceForTest(database, root)
+    const userId = await createUser(database)
+    const attachment = await service.upload({
+      file: new File([pngBytes], 'avatar.png'),
+      usage: ATTACHMENT_USAGE_AVATAR,
+      userId,
+    })
+    const signed = await service.createSignedUrl(attachment.id, {
+      disposition: ATTACHMENT_DISPOSITION_INLINE,
+      origin: 'http://localhost',
+    })
+    const token = new URL(signed.url).searchParams.get('token')
+
+    expect(token).toBeTruthy()
+
+    await service.delete(attachment.id)
+
+    await expect(service.readContent(attachment.id, token!)).rejects.toBeInstanceOf(
+      AttachmentNotFoundError,
+    )
   })
 })

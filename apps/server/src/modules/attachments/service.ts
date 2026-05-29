@@ -6,6 +6,7 @@ import {
   type AttachmentUsage,
 } from '@rev30/contracts'
 import type { Db } from '../../db'
+import { logger } from '../../runtime/logger'
 import type { AttachmentConfig } from './config'
 import { readAttachmentConfig } from './config'
 import { AttachmentNotFoundError } from './errors'
@@ -98,7 +99,18 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
           }),
         )
       } catch (error) {
-        await storage.delete(storageKey)
+        try {
+          await storage.delete(storageKey)
+        } catch (cleanupError) {
+          logger.error(
+            {
+              err: cleanupError,
+              storageKey,
+            },
+            'attachment upload cleanup failed',
+          )
+        }
+
         throw error
       }
     },
@@ -136,9 +148,10 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
         },
         config.signingSecret,
       )
+      const origin = new URL(input.origin).origin
 
       return {
-        url: `${input.origin}/api/attachments/${id}/content?token=${encodeURIComponent(token)}`,
+        url: `${origin}/api/attachments/${id}/content?token=${encodeURIComponent(token)}`,
         expiresAt: expiresAt.toISOString(),
       }
     },
@@ -178,7 +191,18 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
         throw new AttachmentNotFoundError()
       }
 
-      await storage.delete(deleted.storageKey)
+      try {
+        await storage.delete(deleted.storageKey)
+      } catch (error) {
+        logger.error(
+          {
+            attachmentId: id,
+            err: error,
+            storageKey: deleted.storageKey,
+          },
+          'attachment storage deletion failed',
+        )
+      }
     },
   }
 }

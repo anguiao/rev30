@@ -78,15 +78,16 @@ describe('attachment request helpers', () => {
       emptyResponse(),
       jsonResponse({ field: 'file', message: '不支持的文件类型' }, { status: 400 }),
     )
+    const expectedError: Partial<AttachmentRequestError> = {
+      field: 'file',
+      message: '不支持的文件类型',
+      status: 400,
+    }
 
     await expect(deleteAttachment(attachmentId)).resolves.toBeUndefined()
     await expect(
       uploadAttachment(new File(['bad'], 'bad.svg'), { usage: ATTACHMENT_USAGE_AVATAR }),
-    ).rejects.toMatchObject<Partial<AttachmentRequestError>>({
-      field: 'file',
-      message: '不支持的文件类型',
-      status: 400,
-    })
+    ).rejects.toMatchObject(expectedError)
 
     expectFetchCall(fetchMock, 0, {
       method: 'DELETE',

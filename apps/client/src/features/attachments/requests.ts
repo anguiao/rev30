@@ -79,6 +79,8 @@ export async function createAttachmentSignedUrl(
   id: string,
   input: AttachmentSignedUrlInput = attachmentSignedUrlInputSchema.parse({}),
 ): Promise<AttachmentSignedUrl> {
+  // The server route parses raw JSON manually to normalize malformed-body errors,
+  // so Hono cannot infer the json input type for this handler.
   const requestSignedUrl = api.attachments[':id']['signed-url'].$post as unknown as (input: {
     param: { id: string }
     json: AttachmentSignedUrlInput

@@ -12,7 +12,13 @@ import {
   uploadAttachment,
 } from '../../../src/features/attachments'
 import { useAuthStore } from '../../../src/stores/auth'
-import { createFetchMock, emptyResponse, expectFetchCall, jsonResponse } from '../../helpers/fetch'
+import {
+  createFetchMock,
+  emptyResponse,
+  expectFetchCall,
+  expectJsonBody,
+  jsonResponse,
+} from '../../helpers/fetch'
 import { createTestPinia } from '../../helpers/pinia'
 
 const attachmentId = '11111111-1111-4111-8111-111111111111'
@@ -71,6 +77,7 @@ describe('attachment request helpers', () => {
       method: 'POST',
       pathname: `/api/attachments/${attachmentId}/signed-url`,
     })
+    expectJsonBody(fetchMock, 1, { disposition: ATTACHMENT_DISPOSITION_INLINE })
   })
 
   it('deletes attachments and parses errors', async () => {

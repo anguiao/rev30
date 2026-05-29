@@ -13,10 +13,12 @@ type SignedUrlResult = { url: string; expiresAt: string }
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
-  const promise = new Promise<T>((innerResolve) => {
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((innerResolve, innerReject) => {
     resolve = innerResolve
+    reject = innerReject
   })
-  return { promise, resolve }
+  return { promise, reject, resolve }
 }
 
 beforeEach(() => {
@@ -152,5 +154,87 @@ describe('useAttachmentUrl', () => {
     await nextTick()
 
     expect(wrapper.text()).toBe('/api/attachments/new/content?token=new')
+  })
+
+  it('clears current URL while loading next id and ignores stale previous response', async () => {
+    const id = ref('11111111-1111-4111-8111-111111111111')
+    const requestA = createDeferred<SignedUrlResult>()
+    const requestB = createDeferred<SignedUrlResult>()
+
+    createAttachmentSignedUrlMock
+      .mockImplementationOnce(() => requestA.promise)
+      .mockImplementationOnce(() => requestB.promise)
+
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          return useAttachmentUrl(id)
+        },
+        template: '<span>{{ url }}|{{ expiresAt }}|{{ isLoading }}</span>',
+      }),
+    )
+
+    await nextTick()
+    expect(wrapper.text()).toBe('||true')
+
+    requestA.resolve({
+      url: '/api/attachments/a/content?token=a',
+      expiresAt: '2026-05-29T04:00:00.000Z',
+    })
+    await Promise.resolve()
+    await nextTick()
+
+    expect(wrapper.text()).toBe('/api/attachments/a/content?token=a|2026-05-29T04:00:00.000Z|false')
+
+    id.value = '22222222-2222-4222-8222-222222222222'
+    await nextTick()
+
+    expect(wrapper.text()).toBe('||true')
+
+    requestB.resolve({
+      url: '/api/attachments/b/content?token=b',
+      expiresAt: '2026-05-29T05:00:00.000Z',
+    })
+    await Promise.resolve()
+    await nextTick()
+
+    expect(wrapper.text()).toBe('/api/attachments/b/content?token=b|2026-05-29T05:00:00.000Z|false')
+  })
+
+  it('clears URL and exposes error when signed-url request rejects', async () => {
+    const id = ref('11111111-1111-4111-8111-111111111111')
+    const first = createDeferred<SignedUrlResult>()
+    const failed = createDeferred<SignedUrlResult>()
+    createAttachmentSignedUrlMock
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => failed.promise)
+
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          return useAttachmentUrl(id)
+        },
+        template: '<span>{{ url }}|{{ expiresAt }}|{{ isLoading }}|{{ error ? "error" : "" }}</span>',
+      }),
+    )
+
+    await nextTick()
+    first.resolve({
+      url: '/api/attachments/a/content?token=a',
+      expiresAt: '2026-05-29T06:00:00.000Z',
+    })
+    await Promise.resolve()
+    await nextTick()
+    expect(wrapper.text()).toBe('/api/attachments/a/content?token=a|2026-05-29T06:00:00.000Z|false|')
+
+    id.value = '22222222-2222-4222-8222-222222222222'
+    await nextTick()
+    expect(wrapper.text()).toBe('||true|')
+
+    failed.reject(new Error('request failed'))
+    await Promise.resolve()
+    await nextTick()
+
+    expect(wrapper.text()).toBe('||false|error')
   })
 })

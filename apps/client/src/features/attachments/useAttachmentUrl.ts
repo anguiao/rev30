@@ -41,6 +41,8 @@ export function useAttachmentUrl(
     }
 
     const currentRequestVersion = ++requestVersion
+    url.value = null
+    expiresAt.value = null
     isLoading.value = true
     error.value = null
 

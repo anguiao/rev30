@@ -191,10 +191,12 @@ describe('attachment service', () => {
 
   it('deletes stored file when metadata insert fails', async () => {
     const root = await createTempRoot()
-    const put = vi.fn(async ({ key, expectedSize }: Parameters<AttachmentStorage['put']>[0]) => ({
-      checksum: 'storage-checksum',
-      size: expectedSize,
-    }))
+    const put = vi.fn(
+      async ({ key: _key, expectedSize }: Parameters<AttachmentStorage['put']>[0]) => ({
+        checksum: 'storage-checksum',
+        size: expectedSize,
+      }),
+    )
     const remove = vi.fn(async (_key: string) => {})
     const storage: AttachmentStorage = {
       delete: remove,

@@ -220,6 +220,32 @@ export const systemDictionaryItems = pgTable(
   ],
 )
 
+export const attachments = pgTable(
+  'attachments',
+  {
+    id: uuid('id').primaryKey(),
+    storageProvider: text('storage_provider').notNull(),
+    storageKey: text('storage_key').notNull(),
+    originalName: text('original_name').notNull(),
+    mimeType: text('mime_type').notNull(),
+    extension: text('extension').notNull(),
+    size: integer('size').notNull(),
+    usage: text('usage').notNull(),
+    checksum: text('checksum'),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => systemUsers.id),
+    createdAt: createdAtColumn(),
+    deletedAt: deletedAtColumn(),
+  },
+  (table) => [
+    uniqueIndex('attachments_storage_key_unique').on(table.storageProvider, table.storageKey),
+    index('attachments_created_by_created_at_idx').on(table.createdBy, table.createdAt),
+    index('attachments_usage_created_at_idx').on(table.usage, table.createdAt),
+    index('attachments_deleted_at_idx').on(table.deletedAt),
+  ],
+)
+
 export const systemUserDepartments = pgTable(
   'system_user_departments',
   {

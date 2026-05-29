@@ -24,8 +24,9 @@ function readPositiveInteger(value: string | undefined, fallback: number, name: 
 
 export function readAttachmentConfig(env = process.env): AttachmentConfig {
   const isProduction = env.NODE_ENV === 'production'
+  const explicitSigningSecret = env.ATTACHMENT_SIGNING_SECRET?.trim()
   const signingSecret =
-    env.ATTACHMENT_SIGNING_SECRET ?? (isProduction ? undefined : developmentSigningSecret)
+    explicitSigningSecret || (isProduction ? undefined : developmentSigningSecret)
 
   if (!signingSecret) {
     throw new Error('生产环境必须设置 ATTACHMENT_SIGNING_SECRET')

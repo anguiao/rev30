@@ -18,6 +18,7 @@ const pngBytes = new Uint8Array([
 ])
 const pdfBytes = new TextEncoder().encode('%PDF-1.7\n')
 const plainBytes = new TextEncoder().encode('name,email\nAda,ada@example.com\n')
+const unknownBytes = new Uint8Array([0x00, 0x7f, 0x80, 0x2a, 0xff, 0x10])
 
 describe('attachment policy', () => {
   it('detects binary files by magic bytes', async () => {
@@ -36,6 +37,33 @@ describe('attachment policy', () => {
       extension: 'csv',
       mimeType: 'text/csv',
     })
+  })
+
+  it('rejects unknown bytes disguised as binary document extensions', async () => {
+    await expect(detectAttachmentFileType(unknownBytes, 'report.docx')).rejects.toThrow(
+      '不支持的文件类型',
+    )
+    await expect(detectAttachmentFileType(unknownBytes, 'archive.zip')).rejects.toThrow(
+      '不支持的文件类型',
+    )
+    await expect(detectAttachmentFileType(unknownBytes, 'file.pdf')).rejects.toThrow(
+      '不支持的文件类型',
+    )
+  })
+
+  it('rejects risky markup content disguised as text-like files', async () => {
+    await expect(
+      detectAttachmentFileType(new TextEncoder().encode('  <html><body>x</body></html>'), 'x.txt'),
+    ).rejects.toThrow('不支持的文件类型')
+    await expect(
+      detectAttachmentFileType(new TextEncoder().encode('\n<?xml version="1.0"?>'), 'x.csv'),
+    ).rejects.toThrow('不支持的文件类型')
+    await expect(
+      detectAttachmentFileType(
+        new TextEncoder().encode('\t<svg xmlns="http://www.w3.org/2000/svg">'),
+        'x.txt',
+      ),
+    ).rejects.toThrow('不支持的文件类型')
   })
 
   it('validates upload limits by usage', () => {
@@ -90,6 +118,9 @@ describe('attachment policy', () => {
       ATTACHMENT_DISPOSITION_ATTACHMENT,
     )
     expect(resolveContentDisposition(ATTACHMENT_DISPOSITION_INLINE, 'text/plain')).toBe(
+      ATTACHMENT_DISPOSITION_ATTACHMENT,
+    )
+    expect(resolveContentDisposition(ATTACHMENT_DISPOSITION_INLINE, 'text/csv')).toBe(
       ATTACHMENT_DISPOSITION_ATTACHMENT,
     )
   })

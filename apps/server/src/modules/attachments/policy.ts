@@ -1,6 +1,5 @@
 import { extname } from 'node:path'
 import { fileTypeFromBuffer } from 'file-type'
-import { lookup } from 'mime-types'
 import {
   ATTACHMENT_DISPOSITION_ATTACHMENT,
   ATTACHMENT_DISPOSITION_INLINE,
@@ -41,6 +40,13 @@ export type DetectedAttachmentType = {
   mimeType: string
 }
 
+const textFallbackMimeTypes: Record<string, string> = {
+  txt: 'text/plain',
+  csv: 'text/csv',
+}
+
+const blockedTextPrefixes = ['<!doctype html', '<html', '<?xml', '<svg']
+
 function normalizeExtension(extension: string) {
   return extension.replace(/^\./, '').trim().toLowerCase()
 }
@@ -57,6 +63,11 @@ function isGeneralAllowed(mimeType: string) {
   return isRasterImage(mimeType) || generalAllowedMimes.has(mimeType)
 }
 
+function hasBlockedTextLikePrefix(prefix: Uint8Array) {
+  const preview = new TextDecoder().decode(prefix.subarray(0, 256)).trimStart().toLowerCase()
+  return blockedTextPrefixes.some((value) => preview.startsWith(value))
+}
+
 export async function detectAttachmentFileType(
   prefix: Uint8Array,
   originalName: string,
@@ -70,16 +81,20 @@ export async function detectAttachmentFileType(
     }
   }
 
-  const mimeType = lookup(originalName)
   const extension = extensionFromName(originalName)
+  const mimeType = textFallbackMimeTypes[extension]
 
-  if (!mimeType || !extension) {
+  if (!mimeType) {
+    throw new AttachmentTypeUnsupportedError()
+  }
+
+  if (hasBlockedTextLikePrefix(prefix)) {
     throw new AttachmentTypeUnsupportedError()
   }
 
   return {
     extension,
-    mimeType: mimeType.toString(),
+    mimeType,
   }
 }
 

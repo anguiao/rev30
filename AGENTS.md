@@ -14,7 +14,7 @@
 - 数据库 schema 在 `apps/server/src/db/schema.ts`；开发用 PGlite，生产用 `DATABASE_URL`。
 - 代码检查使用 oxlint，格式化使用 oxfmt；提交前注意废弃 API 检查。
 - 只添加必要测试：优先覆盖用户可见行为、核心业务规则和回归风险；避免为纯重构、导入整理或内部实现细节添加冗余测试。
-- 提交信息遵循不带 scope 的 Conventional Commits，标题使用英文，并保持与历史提交格式一致。
+- 提交信息使用英文，遵循不带 scope 的 Conventional Commits，并保持与历史提交一致的 `type: subject` 格式。
 - 当用户可见功能、目录结构或项目概览发生明显变化时，按需更新 `README.md`。
 
 ## 常用验证

@@ -22,10 +22,12 @@ describe('attachments schema', () => {
       updatedAt: now,
     })
 
+    const attachmentId = randomUUID()
+
     const [created] = await database
       .insert(attachments)
       .values({
-        id: randomUUID(),
+        id: attachmentId,
         storageProvider: 'local',
         storageKey: '2026/05/29/file.png',
         originalName: 'file.png',
@@ -40,6 +42,7 @@ describe('attachments schema', () => {
       .returning()
 
     expect(created).toMatchObject({
+      id: attachmentId,
       storageProvider: 'local',
       storageKey: '2026/05/29/file.png',
       originalName: 'file.png',
@@ -49,7 +52,9 @@ describe('attachments schema', () => {
       usage: ATTACHMENT_USAGE_GENERAL,
       checksum: 'a'.repeat(64),
       createdBy: userId,
+      createdAt: now,
     })
+    expect(created?.deletedAt).toBeNull()
 
     const [row] = await database
       .select()

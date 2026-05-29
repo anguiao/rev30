@@ -57,15 +57,24 @@ function createAttachmentServiceForTest(
   database: Awaited<ReturnType<typeof createTestDb>> | Db,
   root: string,
   storage: AttachmentStorage = new LocalAttachmentStorage(root),
+  env: Record<string, string | undefined> = {},
 ) {
   return createAttachmentService(database as Db, {
     config: readAttachmentConfig({
       ATTACHMENT_SIGNING_SECRET: 'test-secret',
+      ATTACHMENT_SIGNED_URL_TTL_SECONDS: env.ATTACHMENT_SIGNED_URL_TTL_SECONDS,
       ATTACHMENT_STORAGE_DIR: root,
     }),
     now: () => new Date('2026-05-29T00:00:00.000Z'),
     storage,
   })
+}
+
+function createAccessSubject(userId: string, isAdmin = false) {
+  return {
+    isAdmin,
+    userId,
+  }
 }
 
 afterEach(async () => {
@@ -108,10 +117,54 @@ describe('attachment service', () => {
     const signed = await service.createSignedUrl(attachment.id, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
       origin: 'http://localhost',
+      subject: createAccessSubject(userId),
     })
 
     expect(signed.url).toContain(`/api/attachments/${attachment.id}/content?token=`)
     expect(signed.expiresAt).toBe('2026-05-29T00:05:00.000Z')
+  })
+
+  it('limits metadata, signing, and deletion to the owner or an admin', async () => {
+    const database = await createTestDb()
+    const root = await createTempRoot()
+    const service = createAttachmentServiceForTest(database, root)
+    const ownerId = await createUser(database)
+    const otherUserId = await createUser(database)
+    const attachment = await service.upload({
+      file: new File([pngBytes], 'avatar.png'),
+      usage: ATTACHMENT_USAGE_AVATAR,
+      userId: ownerId,
+    })
+
+    await expect(
+      service.get(attachment.id, createAccessSubject(otherUserId)),
+    ).rejects.toBeInstanceOf(AttachmentNotFoundError)
+    await expect(
+      service.createSignedUrl(attachment.id, {
+        disposition: ATTACHMENT_DISPOSITION_INLINE,
+        origin: 'http://localhost',
+        subject: createAccessSubject(otherUserId),
+      }),
+    ).rejects.toBeInstanceOf(AttachmentNotFoundError)
+    await expect(
+      service.delete(attachment.id, createAccessSubject(otherUserId)),
+    ).rejects.toBeInstanceOf(AttachmentNotFoundError)
+
+    const [activeRow] = await database.select().from(attachments)
+    expect(activeRow?.deletedAt).toBeNull()
+
+    await expect(
+      service.createSignedUrl(attachment.id, {
+        disposition: ATTACHMENT_DISPOSITION_INLINE,
+        origin: 'http://localhost',
+        subject: createAccessSubject(otherUserId, true),
+      }),
+    ).resolves.toMatchObject({
+      expiresAt: '2026-05-29T00:05:00.000Z',
+    })
+    await expect(
+      service.delete(attachment.id, createAccessSubject(otherUserId, true)),
+    ).resolves.toBeUndefined()
   })
 
   it.each(['http://localhost/admin?x=1', 'http://localhost/'])(
@@ -130,6 +183,7 @@ describe('attachment service', () => {
       const signed = await service.createSignedUrl(attachment.id, {
         disposition: ATTACHMENT_DISPOSITION_INLINE,
         origin,
+        subject: createAccessSubject(userId),
       })
 
       expect(signed.url).toMatch(
@@ -149,12 +203,13 @@ describe('attachment service', () => {
       userId,
     })
 
-    await service.delete(attachment.id)
+    await service.delete(attachment.id, createAccessSubject(userId))
 
     await expect(
       service.createSignedUrl(attachment.id, {
         disposition: ATTACHMENT_DISPOSITION_INLINE,
         origin: 'http://localhost',
+        subject: createAccessSubject(userId),
       }),
     ).rejects.toBeInstanceOf(AttachmentNotFoundError)
   })
@@ -172,6 +227,7 @@ describe('attachment service', () => {
     const signed = await service.createSignedUrl(attachment.id, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
       origin: 'http://localhost',
+      subject: createAccessSubject(userId),
     })
     const token = new URL(signed.url).searchParams.get('token')
 
@@ -187,6 +243,32 @@ describe('attachment service', () => {
       'Content-Type': 'image/png',
       'X-Content-Type-Options': 'nosniff',
     })
+  })
+
+  it('does not cache signed content beyond the token lifetime', async () => {
+    const database = await createTestDb()
+    const root = await createTempRoot()
+    const service = createAttachmentServiceForTest(database, root, undefined, {
+      ATTACHMENT_SIGNED_URL_TTL_SECONDS: '60',
+    })
+    const userId = await createUser(database)
+    const attachment = await service.upload({
+      file: new File([pngBytes], 'avatar.png'),
+      usage: ATTACHMENT_USAGE_AVATAR,
+      userId,
+    })
+    const signed = await service.createSignedUrl(attachment.id, {
+      disposition: ATTACHMENT_DISPOSITION_INLINE,
+      origin: 'http://localhost',
+      subject: createAccessSubject(userId),
+    })
+    const token = new URL(signed.url).searchParams.get('token')
+
+    expect(token).toBeTruthy()
+
+    const content = await service.readContent(attachment.id, token!)
+
+    expect(content.headers['Cache-Control']).toBe('private, max-age=60')
   })
 
   it('deletes stored file when metadata insert fails', async () => {
@@ -294,12 +376,15 @@ describe('attachment service', () => {
       userId,
     })
 
-    await expect(service.delete(attachment.id)).resolves.toBeUndefined()
+    await expect(
+      service.delete(attachment.id, createAccessSubject(userId)),
+    ).resolves.toBeUndefined()
 
     await expect(
       service.createSignedUrl(attachment.id, {
         disposition: ATTACHMENT_DISPOSITION_INLINE,
         origin: 'http://localhost',
+        subject: createAccessSubject(userId),
       }),
     ).rejects.toBeInstanceOf(AttachmentNotFoundError)
     expect(loggerError).toHaveBeenCalledWith(
@@ -325,12 +410,13 @@ describe('attachment service', () => {
     const signed = await service.createSignedUrl(attachment.id, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
       origin: 'http://localhost',
+      subject: createAccessSubject(userId),
     })
     const token = new URL(signed.url).searchParams.get('token')
 
     expect(token).toBeTruthy()
 
-    await service.delete(attachment.id)
+    await service.delete(attachment.id, createAccessSubject(userId))
 
     await expect(service.readContent(attachment.id, token!)).rejects.toBeInstanceOf(
       AttachmentNotFoundError,

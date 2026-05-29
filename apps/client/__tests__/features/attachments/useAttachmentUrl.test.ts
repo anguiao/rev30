@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { ATTACHMENT_DISPOSITION_INLINE } from '@rev30/contracts'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, nextTick, ref } from 'vue'
 import { createAttachmentSignedUrl, useAttachmentUrl } from '../../../src/features/attachments'
 
@@ -29,6 +29,10 @@ beforeEach(() => {
   })
 })
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 describe('useAttachmentUrl', () => {
   it('fetches signed URLs when enabled and id is present', async () => {
     const wrapper = mount(
@@ -50,6 +54,46 @@ describe('useAttachmentUrl', () => {
       { disposition: ATTACHMENT_DISPOSITION_INLINE },
     )
     expect(wrapper.text()).toBe('/api/attachments/1/content?token=token')
+  })
+
+  it('refreshes signed URLs before expiration', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-29T00:00:00.000Z'))
+    createAttachmentSignedUrlMock
+      .mockResolvedValueOnce({
+        url: '/api/attachments/1/content?token=first',
+        expiresAt: '2026-05-29T00:05:00.000Z',
+      })
+      .mockResolvedValueOnce({
+        url: '/api/attachments/1/content?token=second',
+        expiresAt: '2026-05-29T00:10:00.000Z',
+      })
+
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          return useAttachmentUrl(ref('11111111-1111-4111-8111-111111111111'))
+        },
+        template: '<span>{{ url }}</span>',
+      }),
+    )
+
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    expect(wrapper.text()).toBe('/api/attachments/1/content?token=first')
+    expect(createAttachmentSignedUrlMock).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(269_999)
+    expect(createAttachmentSignedUrlMock).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(1)
+    await Promise.resolve()
+    await nextTick()
+
+    expect(createAttachmentSignedUrlMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toBe('/api/attachments/1/content?token=second')
   })
 
   it('does not fetch while disabled and clears existing URL', async () => {

@@ -6,6 +6,7 @@ import {
 } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
+import { bodyLimit } from 'hono/body-limit'
 import { z } from 'zod'
 import { FormFieldError } from '../../core/errors'
 import type { Db } from '../../db'
@@ -16,6 +17,7 @@ import {
   AttachmentNotFoundError,
   AttachmentSignedUrlInvalidError,
 } from './errors'
+import { ATTACHMENT_UPLOAD_BODY_MAX_SIZE_BYTES } from './policy'
 import { createAttachmentService } from './service'
 
 const attachmentIdParamSchema = attachmentSchema.pick({ id: true })
@@ -103,6 +105,13 @@ function readUploadFormData(form: Record<string, string | File | (string | File)
   }
 }
 
+function getAttachmentAccessSubject(c: Context<AuthEnv>) {
+  return {
+    isAdmin: c.get('isAdmin'),
+    userId: c.get('currentUser').id,
+  }
+}
+
 export function createAttachmentRoutes(database: Db) {
   const service = createAttachmentService(database)
   const app = new Hono<AuthEnv>()
@@ -110,20 +119,27 @@ export function createAttachmentRoutes(database: Db) {
   app.onError((error, c) => attachmentErrorResponse(error, c))
 
   return app
-    .post('/', async (c) => {
-      const { file, usage } = readUploadFormData(await c.req.parseBody())
-      const attachment = await service.upload({
-        file,
-        usage,
-        userId: c.get('currentUser').id,
-      })
+    .post(
+      '/',
+      bodyLimit({
+        maxSize: ATTACHMENT_UPLOAD_BODY_MAX_SIZE_BYTES,
+        onError: (c) => c.json({ field: 'file', message: '文件大小不能超过 20MB' }, 413),
+      }),
+      async (c) => {
+        const { file, usage } = readUploadFormData(await c.req.parseBody())
+        const attachment = await service.upload({
+          file,
+          usage,
+          userId: c.get('currentUser').id,
+        })
 
-      return c.json(attachmentSchema.parse(attachment), 201)
-    })
+        return c.json(attachmentSchema.parse(attachment), 201)
+      },
+    )
     .get('/:id', attachmentIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
-      return c.json(attachmentSchema.parse(await service.get(id)))
+      return c.json(attachmentSchema.parse(await service.get(id, getAttachmentAccessSubject(c))))
     })
     .post('/:id/signed-url', attachmentIdValidator, async (c) => {
       const { id } = c.req.valid('param')
@@ -138,6 +154,7 @@ export function createAttachmentRoutes(database: Db) {
           await service.createSignedUrl(id, {
             disposition: body.disposition,
             origin: new URL(c.req.url).origin,
+            subject: getAttachmentAccessSubject(c),
           }),
         ),
       )
@@ -145,7 +162,7 @@ export function createAttachmentRoutes(database: Db) {
     .delete('/:id', attachmentIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
-      await service.delete(id)
+      await service.delete(id, getAttachmentAccessSubject(c))
 
       return c.body(null, 204)
     })

@@ -1,6 +1,8 @@
 import { ATTACHMENT_DISPOSITION_ATTACHMENT, type AttachmentDisposition } from '@rev30/contracts'
-import { computed, readonly, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
+import { computed, onScopeDispose, readonly, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 import { createAttachmentSignedUrl } from './requests'
+
+const signedUrlRefreshLeadMs = 30_000
 
 type UseAttachmentUrlOptions = {
   disposition?: MaybeRefOrGetter<AttachmentDisposition | undefined>
@@ -20,9 +22,31 @@ export function useAttachmentUrl(
   )
   const isEnabled = computed(() => toValue(options.enabled) ?? true)
   let requestVersion = 0
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null
+
+  function clearRefreshTimer() {
+    if (refreshTimer) {
+      clearTimeout(refreshTimer)
+      refreshTimer = null
+    }
+  }
+
+  function scheduleRefresh(nextExpiresAt: string, version: number) {
+    clearRefreshTimer()
+
+    const expiresTime = Date.parse(nextExpiresAt)
+    const delay = expiresTime - Date.now() - signedUrlRefreshLeadMs
+
+    if (!Number.isFinite(expiresTime) || delay <= 0) return
+
+    refreshTimer = setTimeout(() => {
+      if (version === requestVersion) void refresh()
+    }, delay)
+  }
 
   function invalidateAndClear() {
     requestVersion += 1
+    clearRefreshTimer()
     url.value = null
     expiresAt.value = null
     error.value = null
@@ -38,6 +62,7 @@ export function useAttachmentUrl(
     }
 
     const currentRequestVersion = ++requestVersion
+    clearRefreshTimer()
     url.value = null
     expiresAt.value = null
     isLoading.value = true
@@ -52,6 +77,7 @@ export function useAttachmentUrl(
 
       url.value = signed.url
       expiresAt.value = signed.expiresAt
+      scheduleRefresh(signed.expiresAt, currentRequestVersion)
     } catch (caught) {
       if (currentRequestVersion !== requestVersion) return
 
@@ -72,6 +98,11 @@ export function useAttachmentUrl(
       immediate: true,
     },
   )
+
+  onScopeDispose(() => {
+    requestVersion += 1
+    clearRefreshTimer()
+  })
 
   return {
     error: readonly(error),

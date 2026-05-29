@@ -11,8 +11,9 @@ import {
 } from '@rev30/contracts'
 import { AttachmentFileTooLargeError, AttachmentTypeUnsupportedError } from './errors'
 
-const generalMaxSize = 20 * 1024 * 1024
-const imageMaxSize = 5 * 1024 * 1024
+export const ATTACHMENT_GENERAL_MAX_SIZE_BYTES = 20 * 1024 * 1024
+export const ATTACHMENT_IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024
+export const ATTACHMENT_UPLOAD_BODY_MAX_SIZE_BYTES = ATTACHMENT_GENERAL_MAX_SIZE_BYTES + 64 * 1024
 
 const generalAllowedMimes = new Set([
   'application/pdf',
@@ -103,13 +104,13 @@ export function validateAttachmentUpload(input: {
   mimeType: string
   size: number
 }) {
-  if (input.usage === ATTACHMENT_USAGE_GENERAL && input.size > generalMaxSize) {
+  if (input.usage === ATTACHMENT_USAGE_GENERAL && input.size > ATTACHMENT_GENERAL_MAX_SIZE_BYTES) {
     throw new AttachmentFileTooLargeError('文件大小不能超过 20MB')
   }
 
   if (
     (input.usage === ATTACHMENT_USAGE_AVATAR || input.usage === ATTACHMENT_USAGE_RICH_TEXT) &&
-    input.size > imageMaxSize
+    input.size > ATTACHMENT_IMAGE_MAX_SIZE_BYTES
   ) {
     throw new AttachmentFileTooLargeError('图片不能超过 5MB')
   }

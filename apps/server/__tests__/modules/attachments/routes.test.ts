@@ -12,6 +12,7 @@ import {
   AttachmentSignedUrlInvalidError,
   AttachmentTypeUnsupportedError,
 } from '../../../src/modules/attachments/errors'
+import { ATTACHMENT_UPLOAD_BODY_MAX_SIZE_BYTES } from '../../../src/modules/attachments/policy'
 import {
   createAttachmentContentRoutes,
   createAttachmentRoutes,
@@ -62,6 +63,8 @@ const mocks = vi.hoisted(() => {
     const context = c as unknown as { set: (key: string, value: unknown) => void }
 
     context.set('currentUser', currentUser)
+    context.set('accessCodes', [])
+    context.set('isAdmin', false)
 
     await next()
   })
@@ -143,7 +146,10 @@ describe('attachment routes', () => {
     const detailResponse = await app.request(`/api/attachments/${attachmentId}`)
     expect(detailResponse.status).toBe(200)
     expect(await detailResponse.json()).toEqual(attachment)
-    expect(mocks.service.get).toHaveBeenCalledWith(attachmentId)
+    expect(mocks.service.get).toHaveBeenCalledWith(attachmentId, {
+      isAdmin: false,
+      userId: currentUser.id,
+    })
 
     const signedUrlResponse = await app.request(`/api/attachments/${attachmentId}/signed-url`, {
       method: 'POST',
@@ -159,13 +165,20 @@ describe('attachment routes', () => {
     expect(mocks.service.createSignedUrl).toHaveBeenCalledWith(attachmentId, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
       origin: 'http://localhost',
+      subject: {
+        isAdmin: false,
+        userId: currentUser.id,
+      },
     })
 
     const deleteResponse = await app.request(`/api/attachments/${attachmentId}`, {
       method: 'DELETE',
     })
     expect(deleteResponse.status).toBe(204)
-    expect(mocks.service.delete).toHaveBeenCalledWith(attachmentId)
+    expect(mocks.service.delete).toHaveBeenCalledWith(attachmentId, {
+      isAdmin: false,
+      userId: currentUser.id,
+    })
   })
 
   it('streams signed content without authentication middleware', async () => {
@@ -218,6 +231,21 @@ describe('attachment routes', () => {
     expect(await invalidUsageResponse.json()).toEqual({
       field: 'usage',
       message: '上传用途无效',
+    })
+    expect(mocks.service.upload).not.toHaveBeenCalled()
+
+    const overLimitResponse = await app.request('/api/attachments', {
+      method: 'POST',
+      body: 'too large',
+      headers: {
+        'content-length': String(ATTACHMENT_UPLOAD_BODY_MAX_SIZE_BYTES + 1),
+        'content-type': 'multipart/form-data; boundary=rev30',
+      },
+    })
+    expect(overLimitResponse.status).toBe(413)
+    expect(await overLimitResponse.json()).toEqual({
+      field: 'file',
+      message: '文件大小不能超过 20MB',
     })
     expect(mocks.service.upload).not.toHaveBeenCalled()
 

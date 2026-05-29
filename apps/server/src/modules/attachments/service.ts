@@ -29,6 +29,11 @@ type ServiceOptions = {
   storage?: AttachmentStorage
 }
 
+export type AttachmentAccessSubject = {
+  isAdmin: boolean
+  userId: string
+}
+
 function padDatePart(value: number) {
   return String(value).padStart(2, '0')
 }
@@ -52,6 +57,21 @@ function createDownloadFilename(name: string) {
 
 function createContentDispositionHeader(disposition: AttachmentDisposition, filename: string) {
   return `${disposition}; filename="${createDownloadFilename(filename)}"`
+}
+
+function assertCanAccessAttachment(row: { createdBy: string }, subject: AttachmentAccessSubject) {
+  if (!subject.isAdmin && row.createdBy !== subject.userId) {
+    throw new AttachmentNotFoundError()
+  }
+}
+
+function createCacheControlHeader(expiresAt: Date, requestedAt: Date) {
+  const remainingSeconds = Math.max(
+    0,
+    Math.floor((expiresAt.getTime() - requestedAt.getTime()) / 1000),
+  )
+
+  return `private, max-age=${Math.min(300, remainingSeconds)}`
 }
 
 export function createAttachmentService(database: Db, options: ServiceOptions = {}) {
@@ -115,12 +135,14 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
       }
     },
 
-    async get(id: string) {
+    async get(id: string, subject: AttachmentAccessSubject) {
       const row = await repository.findActiveById(id)
 
       if (!row) {
         throw new AttachmentNotFoundError()
       }
+
+      assertCanAccessAttachment(row, subject)
 
       return toAttachment(row)
     },
@@ -130,6 +152,7 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
       input: {
         disposition?: AttachmentDisposition
         origin: string
+        subject: AttachmentAccessSubject
       },
     ) {
       const row = await repository.findActiveById(id)
@@ -137,6 +160,8 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
       if (!row) {
         throw new AttachmentNotFoundError()
       }
+
+      assertCanAccessAttachment(row, input.subject)
 
       const expiresAt = new Date(now().getTime() + config.signedUrlTtlSeconds * 1000)
       const disposition = input.disposition ?? ATTACHMENT_DISPOSITION_ATTACHMENT
@@ -157,9 +182,10 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
     },
 
     async readContent(id: string, token: string) {
+      const requestedAt = now()
       const payload = verifyAttachmentReadToken(token, {
         attachmentId: id,
-        now: now(),
+        now: requestedAt,
         secret: config.signingSecret,
       })
       const row = await repository.findActiveById(id)
@@ -175,7 +201,7 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
       return {
         body: stored.body,
         headers: {
-          'Cache-Control': 'private, max-age=300',
+          'Cache-Control': createCacheControlHeader(payload.expiresAt, requestedAt),
           'Content-Disposition': createContentDispositionHeader(disposition, row.originalName),
           'Content-Length': String(stored.size),
           'Content-Type': resolvedContentType,
@@ -184,7 +210,15 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
       }
     },
 
-    async delete(id: string) {
+    async delete(id: string, subject: AttachmentAccessSubject) {
+      const row = await repository.findActiveById(id)
+
+      if (!row) {
+        throw new AttachmentNotFoundError()
+      }
+
+      assertCanAccessAttachment(row, subject)
+
       const deleted = await repository.softDelete(id, now())
 
       if (!deleted) {

@@ -61,6 +61,35 @@ describe('attachments schema', () => {
       .from(attachments)
       .where(eq(attachments.id, created!.id))
 
-    expect(row?.deletedAt).toBeNull()
+    expect(row).toMatchObject({
+      id: attachmentId,
+      storageProvider: 'local',
+      storageKey: '2026/05/29/file.png',
+      originalName: 'file.png',
+      mimeType: 'image/png',
+      extension: 'png',
+      size: 128,
+      usage: ATTACHMENT_USAGE_GENERAL,
+      checksum: 'a'.repeat(64),
+      createdBy: userId,
+      createdAt: now,
+      deletedAt: null,
+    })
+
+    await expect(
+      database.insert(attachments).values({
+        id: randomUUID(),
+        storageProvider: 'local',
+        storageKey: '2026/05/29/file.png',
+        originalName: 'file-duplicate.png',
+        mimeType: 'image/png',
+        extension: 'png',
+        size: 256,
+        usage: ATTACHMENT_USAGE_GENERAL,
+        checksum: 'b'.repeat(64),
+        createdBy: userId,
+        createdAt: now,
+      }),
+    ).rejects.toThrow()
   })
 })

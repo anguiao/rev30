@@ -11,6 +11,7 @@ dist-ssr/
 coverage/
 
 # Local data
+.attachments/
 .pglite/
 .superpowers/
 .worktrees/

@@ -2,6 +2,10 @@ import { Hono } from 'hono'
 import type { Db } from './db'
 import { createAuthMiddleware } from './middleware/auth'
 import { createRequestLogger } from './middleware/logger'
+import {
+  createAttachmentContentRoutes,
+  createAttachmentRoutes,
+} from './modules/attachments/routes'
 import { createAuthRoutes } from './modules/auth/routes'
 import { createContentRoutes } from './modules/content/routes'
 import { healthRoutes } from './modules/health/routes'
@@ -13,6 +17,9 @@ export function createApiRoutes(database: Db) {
   return new Hono()
     .route('/', healthRoutes)
     .route('/auth', createAuthRoutes(database))
+    .route('/attachments', createAttachmentContentRoutes(database))
+    .use('/attachments/*', createAuthMiddleware(database))
+    .route('/attachments', createAttachmentRoutes(database))
     .route('/icons/search', createIconSearchRoutes(database))
     .route('/icons', iconRoutes)
     .use('/system/*', createAuthMiddleware(database))

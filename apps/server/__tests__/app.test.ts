@@ -43,6 +43,15 @@ describe('app auth boundaries', () => {
     )
   })
 
+  it('requires authentication for attachment metadata routes', async () => {
+    const app = createApp(createUnusedDatabase())
+
+    const response = await app.request('/api/attachments/11111111-1111-4111-8111-111111111111')
+
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ message: '未授权' })
+  })
+
   it('allows icon search for logged-in users without resource access', async () => {
     const database = await createTestDb()
     const app = createApp(database)

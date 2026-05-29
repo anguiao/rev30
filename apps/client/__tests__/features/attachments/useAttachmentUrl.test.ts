@@ -96,6 +96,43 @@ describe('useAttachmentUrl', () => {
     expect(wrapper.text()).toBe('/api/attachments/1/content?token=second')
   })
 
+  it('refreshes short-lived signed URLs halfway before expiration', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-29T00:00:00.000Z'))
+    createAttachmentSignedUrlMock
+      .mockResolvedValueOnce({
+        url: '/api/attachments/1/content?token=first',
+        expiresAt: '2026-05-29T00:00:20.000Z',
+      })
+      .mockResolvedValueOnce({
+        url: '/api/attachments/1/content?token=second',
+        expiresAt: '2026-05-29T00:00:40.000Z',
+      })
+
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          return useAttachmentUrl(ref('11111111-1111-4111-8111-111111111111'))
+        },
+        template: '<span>{{ url }}</span>',
+      }),
+    )
+
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    await vi.advanceTimersByTimeAsync(9_999)
+    expect(createAttachmentSignedUrlMock).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(1)
+    await Promise.resolve()
+    await nextTick()
+
+    expect(createAttachmentSignedUrlMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toBe('/api/attachments/1/content?token=second')
+  })
+
   it('does not fetch while disabled and clears existing URL', async () => {
     const enabled = ref(false)
     const wrapper = mount(

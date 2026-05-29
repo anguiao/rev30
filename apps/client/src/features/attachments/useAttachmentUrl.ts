@@ -35,7 +35,11 @@ export function useAttachmentUrl(
     clearRefreshTimer()
 
     const expiresTime = Date.parse(nextExpiresAt)
-    const delay = expiresTime - Date.now() - signedUrlRefreshLeadMs
+    const remainingMs = expiresTime - Date.now()
+    const delay =
+      remainingMs > signedUrlRefreshLeadMs
+        ? remainingMs - signedUrlRefreshLeadMs
+        : Math.floor(remainingMs / 2)
 
     if (!Number.isFinite(expiresTime) || delay <= 0) return
 

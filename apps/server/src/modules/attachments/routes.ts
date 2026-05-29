@@ -1,6 +1,4 @@
 import {
-  type AttachmentSignedUrlInput,
-  type AttachmentUsage,
   attachmentSchema,
   attachmentSignedUrlInputSchema,
   attachmentSignedUrlSchema,
@@ -31,27 +29,39 @@ const attachmentIdValidator = zValidator('param', attachmentIdParamSchema, (resu
   }
 })
 
-const attachmentSignedUrlBodyValidator = zValidator(
-  'json',
-  attachmentSignedUrlInputSchema,
+const attachmentContentQueryValidator = zValidator(
+  'query',
+  attachmentContentQuerySchema,
   (result, c) => {
     if (!result.success) {
-      return c.json({ message: '请求体无效' }, 400)
+      return c.json(
+        {
+          field: 'token',
+          message: result.error.issues[0]?.message ?? '附件链接已失效',
+        },
+        400,
+      )
     }
   },
 )
 
-const attachmentContentQueryValidator = zValidator('query', attachmentContentQuerySchema, (result, c) => {
-  if (!result.success) {
-    return c.json(
-      {
-        field: 'token',
-        message: result.error.issues[0]?.message ?? '附件链接已失效',
-      },
-      400,
-    )
+async function readAttachmentSignedUrlBody(c: Context) {
+  let input: unknown
+
+  try {
+    input = await c.req.json()
+  } catch {
+    return c.json({ message: '请求体无效' }, 400)
   }
-})
+
+  const result = attachmentSignedUrlInputSchema.safeParse(input)
+
+  if (!result.success) {
+    return c.json({ message: '请求体无效' }, 400)
+  }
+
+  return result.data
+}
 
 function attachmentErrorResponse(error: unknown, c: Context) {
   if (error instanceof FormFieldError) {
@@ -115,9 +125,13 @@ export function createAttachmentRoutes(database: Db) {
 
       return c.json(attachmentSchema.parse(await service.get(id)))
     })
-    .post('/:id/signed-url', attachmentIdValidator, attachmentSignedUrlBodyValidator, async (c) => {
+    .post('/:id/signed-url', attachmentIdValidator, async (c) => {
       const { id } = c.req.valid('param')
-      const body: AttachmentSignedUrlInput = c.req.valid('json')
+      const body = await readAttachmentSignedUrlBody(c)
+
+      if (body instanceof Response) {
+        return body
+      }
 
       return c.json(
         attachmentSignedUrlSchema.parse(

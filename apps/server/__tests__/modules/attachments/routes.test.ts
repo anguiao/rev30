@@ -247,6 +247,22 @@ describe('attachment routes', () => {
     expect(mocks.service.readContent).not.toHaveBeenCalled()
   })
 
+  it('returns the standard json error for malformed signed-url request bodies', async () => {
+    const app = createAttachmentTestApp()
+
+    const response = await app.request(`/api/attachments/${attachmentId}/signed-url`, {
+      method: 'POST',
+      body: '{',
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ message: '请求体无效' })
+    expect(mocks.service.createSignedUrl).not.toHaveBeenCalled()
+  })
+
   it('maps attachment domain errors to route responses', async () => {
     const app = createAttachmentTestApp()
     const contentApp = createAttachmentContentTestApp()

@@ -40,6 +40,14 @@ describe('link html policy', () => {
     expect(attributes.rel).toBe('noopener noreferrer nofollow')
   })
 
+  it('normalizes href values without explicit protocol', () => {
+    const sanitized = sanitizeRichTextHtml('<a href="example.com">示例</a>', [linkHtmlPolicy])
+
+    const attributes = getAnchorAttributes(sanitized)
+
+    expect(attributes.href).toBe('https://example.com')
+  })
+
   it('removes dangerous href values while keeping forced safe attributes', () => {
     const sanitized = sanitizeRichTextHtml('<a href="javascript:alert(1)">示例</a>', [
       linkHtmlPolicy,
@@ -51,6 +59,15 @@ describe('link html policy', () => {
     expect(attributes.target).toBe('_blank')
     expect(attributes.rel).toBe('noopener noreferrer nofollow')
     expect(sanitized).not.toContain('javascript:')
+  })
+
+  it('removes protocol-relative href values', () => {
+    const sanitized = sanitizeRichTextHtml('<a href="//example.com">示例</a>', [linkHtmlPolicy])
+
+    const attributes = getAnchorAttributes(sanitized)
+
+    expect(attributes.href).toBeUndefined()
+    expect(sanitized).not.toContain('//example.com')
   })
 
   it('allows mail and telephone links', () => {

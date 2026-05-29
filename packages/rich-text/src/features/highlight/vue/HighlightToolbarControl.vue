@@ -1,13 +1,8 @@
 <script setup lang="ts">
+import type { HighlightColorOption } from '../colors'
 import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import { NButton, NPopover } from 'naive-ui'
 import { computed } from 'vue'
-
-interface HighlightColorOption {
-  key: string
-  label: string
-  value: string
-}
 
 interface HighlightToolbarControlProps extends RichTextToolbarControlInjectedProps {
   colors: readonly HighlightColorOption[]
@@ -18,18 +13,17 @@ const props = withDefaults(defineProps<HighlightToolbarControlProps>(), {
 })
 
 const isDisabled = computed(() => props.disabled || !props.editor)
+const isActive = computed(() => props.editor?.isActive('highlight') ?? false)
 
 const currentColor = computed(() => {
   const color = props.editor?.getAttributes('highlight').color
 
-  return typeof color === 'string' ? color.toLowerCase() : null
+  return typeof color === 'string' ? color.trim().toLowerCase() : null
 })
 
 const selectedColorKey = computed(
-  () => props.colors.find((color) => color.value === currentColor.value)?.key ?? null,
+  () => props.colors.find((color) => color.value.toLowerCase() === currentColor.value)?.key ?? null,
 )
-
-const isActive = computed(() => props.editor?.isActive('highlight') ?? false)
 
 function applyColor(color: string) {
   if (isDisabled.value || !props.editor) {
@@ -49,7 +43,7 @@ function clearHighlight() {
 </script>
 
 <template>
-  <NPopover trigger="click" placement="bottom-start" :disabled="isDisabled">
+  <NPopover trigger="click" placement="bottom" :disabled="isDisabled">
     <template #trigger>
       <NButton
         data-test="rich-text-highlight"
@@ -69,14 +63,17 @@ function clearHighlight() {
       </NButton>
     </template>
 
-    <div class="flex items-center gap-1 p-1">
+    <div class="flex items-center gap-1">
       <NButton
         v-for="color in colors"
         :key="color.key"
         :data-test="`rich-text-highlight-${color.key}`"
         :data-active="selectedColorKey === color.key ? 'true' : undefined"
         size="small"
-        quaternary
+        style="--n-padding: 0 6px"
+        :type="selectedColorKey === color.key ? 'primary' : 'default'"
+        :secondary="selectedColorKey === color.key"
+        :quaternary="selectedColorKey !== color.key"
         :title="color.label"
         :aria-label="color.label"
         :aria-pressed="selectedColorKey === color.key"
@@ -93,13 +90,14 @@ function clearHighlight() {
       <NButton
         data-test="rich-text-highlight-clear"
         size="small"
+        style="--n-padding: 0 6px"
         quaternary
         title="清除高亮"
         aria-label="清除高亮"
         @mousedown.prevent
         @click="clearHighlight"
       >
-        <span class="i-[lucide--eraser]" aria-hidden="true" />
+        <span class="i-[lucide--eraser] scale-110" aria-hidden="true" />
       </NButton>
     </div>
   </NPopover>

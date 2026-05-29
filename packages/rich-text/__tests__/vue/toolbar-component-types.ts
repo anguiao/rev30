@@ -1,4 +1,4 @@
-import { highlightColors } from '../../src/features/highlight/vue'
+import { highlightColorOptions } from '../../src/features/highlight/colors'
 import HighlightToolbarControl from '../../src/features/highlight/vue/HighlightToolbarControl.vue'
 import LinkToolbarControl from '../../src/features/link/vue/LinkToolbarControl.vue'
 import { richTextToolbarComponent } from '../../src/vue/toolbar'
@@ -7,7 +7,7 @@ richTextToolbarComponent({
   key: 'highlight',
   component: HighlightToolbarControl,
   props: {
-    colors: highlightColors,
+    colors: highlightColorOptions,
   },
 })
 
@@ -28,9 +28,9 @@ richTextToolbarComponent({
   key: 'highlight',
   component: HighlightToolbarControl,
   props: {
-    colors: highlightColors,
+    colors: highlightColorOptions,
     // @ts-expect-error Unknown component props should be rejected.
-    colour: highlightColors,
+    colour: highlightColorOptions,
   },
 })
 

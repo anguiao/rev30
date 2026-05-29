@@ -1,28 +1,29 @@
 import type sanitizeHtml from 'sanitize-html'
 import type { RichTextHtmlPolicy } from '../../server/policy'
-
-const highlightColors = ['#fef08a', '#bbf7d0', '#bfdbfe', '#fbcfe8'] as const
+import { highlightColors } from './colors'
 
 const highlightColorSet = new Set<string>(highlightColors)
 
-function normalizeHighlightColor(value: unknown) {
-  if (typeof value !== 'string') {
-    return null
-  }
+function createExactStyleValuePattern(value: string) {
+  const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-  const normalized = value.trim().toLowerCase()
-
-  return highlightColorSet.has(normalized) ? normalized : null
+  return new RegExp(`^${escapedValue}$`, 'i')
 }
 
-function getInlineStyleValue(style: unknown, property: 'background-color' | 'color') {
-  if (typeof style !== 'string') {
-    return null
+function normalizeHighlightColor(value: string | undefined) {
+  const normalized = value?.trim().toLowerCase()
+
+  return normalized && highlightColorSet.has(normalized) ? normalized : undefined
+}
+
+function getInlineStyleValue(style: string | undefined, property: 'background-color' | 'color') {
+  if (!style) {
+    return undefined
   }
 
   const match = new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`, 'i').exec(style)
 
-  return match?.[1]?.trim() ?? null
+  return match?.[1]?.trim()
 }
 
 function buildHighlightStyle(color: string) {
@@ -57,7 +58,7 @@ export const highlightHtmlPolicy: RichTextHtmlPolicy = {
   },
   allowedStyles: {
     mark: {
-      'background-color': highlightColors.map((color) => new RegExp(`^${color}$`, 'i')),
+      'background-color': highlightColors.map(createExactStyleValuePattern),
       color: [/^inherit$/],
     },
   },

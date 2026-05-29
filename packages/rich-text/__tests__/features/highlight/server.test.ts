@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { highlightColorOptions } from '../../../src/features/highlight/colors'
 import { highlightHtmlPolicy } from '../../../src/features/highlight/server'
 import { sanitizeRichTextHtml } from '../../../src/server/sanitize'
+
+const yellow = highlightColorOptions[0]
 
 function getMarkAttributes(html: string) {
   const match = /^<mark(?<attributes>(?:\s+[^>]+)?)>维护通知<\/mark>$/.exec(html)
@@ -34,9 +37,9 @@ function parseStyleAttribute(style: string | undefined) {
 }
 
 describe('highlight html policy', () => {
-  it('keeps fixed palette highlight styles', () => {
+  it('keeps palette highlight styles', () => {
     const sanitized = sanitizeRichTextHtml(
-      '<p><mark data-color="#fef08a" style="background-color: #fef08a; color: inherit">维护通知</mark></p>',
+      `<p><mark data-color="${yellow.value}" style="background-color: ${yellow.value}; color: inherit">维护通知</mark></p>`,
       [highlightHtmlPolicy],
     )
 
@@ -44,9 +47,9 @@ describe('highlight html policy', () => {
 
     const attributes = getMarkAttributes(sanitized)
 
-    expect(attributes['data-color']).toBe('#fef08a')
+    expect(attributes['data-color']).toBe(yellow.value)
     expect(parseStyleAttribute(attributes.style)).toEqual({
-      'background-color': '#fef08a',
+      'background-color': yellow.value,
       color: 'inherit',
     })
   })
@@ -62,15 +65,15 @@ describe('highlight html policy', () => {
 
   it('removes non-highlight inline styles from mark', () => {
     const sanitized = sanitizeRichTextHtml(
-      '<mark data-color="#fef08a" style="background-color: #fef08a; position: fixed; inset: 0">维护通知</mark>',
+      `<mark data-color="${yellow.value}" style="background-color: ${yellow.value}; position: fixed; inset: 0">维护通知</mark>`,
       [highlightHtmlPolicy],
     )
 
     const attributes = getMarkAttributes(sanitized)
 
-    expect(attributes['data-color']).toBe('#fef08a')
+    expect(attributes['data-color']).toBe(yellow.value)
     expect(parseStyleAttribute(attributes.style)).toEqual({
-      'background-color': '#fef08a',
+      'background-color': yellow.value,
       color: 'inherit',
     })
     expect(sanitized).not.toContain('position')

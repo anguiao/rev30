@@ -3,19 +3,6 @@ import type { RichTextHtmlPolicy } from './policy'
 
 const defaultAllowedSchemes = ['http', 'https', 'mailto', 'tel']
 
-function mergeAllowedStyles(
-  target: NonNullable<sanitizeHtml.IOptions['allowedStyles']>,
-  source: sanitizeHtml.IOptions['allowedStyles'],
-) {
-  for (const [tag, properties] of Object.entries(source ?? {})) {
-    const current = (target[tag] ??= {})
-
-    for (const [property, patterns] of Object.entries(properties)) {
-      current[property] = [...(current[property] ?? []), ...patterns]
-    }
-  }
-}
-
 function mergeRichTextHtmlPolicies(policies: RichTextHtmlPolicy[]): sanitizeHtml.IOptions {
   const allowedTags = new Set<string>()
   const allowedSchemes = new Set(defaultAllowedSchemes)
@@ -42,7 +29,20 @@ function mergeRichTextHtmlPolicies(policies: RichTextHtmlPolicy[]): sanitizeHtml
       allowedAttributes[tag] = [...current]
     }
 
-    mergeAllowedStyles(allowedStyles, policy.allowedStyles)
+    for (const [tag, properties] of Object.entries(policy.allowedStyles ?? {})) {
+      for (const [property, patterns] of Object.entries(properties)) {
+        const current = new Set<RegExp>(allowedStyles[tag]?.[property] ?? [])
+
+        for (const pattern of patterns) {
+          current.add(pattern)
+        }
+
+        allowedStyles[tag] = {
+          ...allowedStyles[tag],
+          [property]: [...current],
+        }
+      }
+    }
 
     if (policy.transformTags) {
       Object.assign(transformTags, policy.transformTags)

@@ -72,11 +72,14 @@ describe('link feature', () => {
     })
   })
 
-  it('does not link unsupported URLs pasted over selected text', () => {
-    const editor = createEditor()
-    selectEditorText(editor)
+  it.each(['ftp://example.com', '//example.com'])(
+    'does not link unsupported URL pasted over selected text: %s',
+    (url) => {
+      const editor = createEditor()
+      selectEditorText(editor)
 
-    expect(pasteTextOverSelection(editor, 'ftp://example.com')).not.toBe(true)
-    expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
-  })
+      expect(pasteTextOverSelection(editor, url)).not.toBe(true)
+      expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
+    },
+  )
 })

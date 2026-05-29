@@ -3,6 +3,7 @@ import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { Editor } from '@tiptap/vue-3'
 import { flushPromises, mount } from '@vue/test-utils'
+import { NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import LinkToolbarControl from '../../../../src/features/link/vue/LinkToolbarControl.vue'
@@ -56,15 +57,27 @@ function selectEditorText(editor: Editor) {
 }
 
 async function openPopover(wrapper: ReturnType<typeof mount>) {
-  await wrapper.get('[data-test="rich-text-link"]').trigger('click')
+  await flushPromises()
+  if (!isPopoverShown(wrapper)) {
+    await wrapper.get('[data-test="rich-text-link"]').trigger('click')
+  }
   await flushPromises()
   await vi.waitFor(() => {
-    expect(wrapper.find('input').exists()).toBe(true)
+    expect(isPopoverShown(wrapper)).toBe(true)
   })
 }
 
 function getUrlInput(wrapper: ReturnType<typeof mount>) {
   return wrapper.get('[data-test="rich-text-link-url"] input')
+}
+
+function isPopoverShown(wrapper: ReturnType<typeof mount>) {
+  return wrapper.getComponent(NPopover).props('show') === true
+}
+
+async function focusEditor(editor: Editor) {
+  editor.commands.focus()
+  await flushPromises()
 }
 
 describe('LinkToolbarControl', () => {
@@ -117,6 +130,74 @@ describe('LinkToolbarControl', () => {
     expect(remountedWrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(true)
   })
 
+  it('does not open automatically before the editor is focused', async () => {
+    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
+    selectEditorText(editor)
+    const wrapper = mountControl(editor)
+
+    await flushPromises()
+
+    expect(isPopoverShown(wrapper)).toBe(false)
+  })
+
+  it('opens automatically when the focused selection enters a link without focusing the input', async () => {
+    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
+    selectEditorText(editor)
+    const wrapper = mountControl(editor)
+
+    await focusEditor(editor)
+
+    await vi.waitFor(() => {
+      expect(isPopoverShown(wrapper)).toBe(true)
+    })
+
+    const input = getUrlInput(wrapper).element as HTMLInputElement
+
+    expect(input.value).toBe('https://example.com')
+    expect(document.activeElement).not.toBe(input)
+  })
+
+  it('keeps the popover closed after a manual close while staying on the same link', async () => {
+    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
+    selectEditorText(editor)
+    const wrapper = mountControl(editor)
+
+    await focusEditor(editor)
+
+    await vi.waitFor(() => {
+      expect(isPopoverShown(wrapper)).toBe(true)
+    })
+
+    await wrapper.get('[data-test="rich-text-link"]').trigger('click')
+    await flushPromises()
+
+    expect(isPopoverShown(wrapper)).toBe(false)
+
+    editor.commands.setTextSelection({ from: 1, to: 2 })
+    await flushPromises()
+
+    expect(isPopoverShown(wrapper)).toBe(false)
+  })
+
+  it('keeps link actions visible while the editor blurs before the popover closes', async () => {
+    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
+    selectEditorText(editor)
+    const wrapper = mountControl(editor)
+
+    await focusEditor(editor)
+
+    await vi.waitFor(() => {
+      expect(isPopoverShown(wrapper)).toBe(true)
+    })
+
+    expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(true)
+
+    editor.commands.blur()
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(true)
+  })
+
   it('removes the current link when applying an empty input', async () => {
     const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
     selectEditorText(editor)
@@ -145,7 +226,52 @@ describe('LinkToolbarControl', () => {
     expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
   })
 
-  it('opens the current href when the input is blank', async () => {
+  it('does not apply protocol-relative links', async () => {
+    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
+    selectEditorText(editor)
+    const wrapper = mountControl(editor)
+
+    await openPopover(wrapper)
+    await getUrlInput(wrapper).setValue('//example.com')
+    await getUrlInput(wrapper).trigger('keydown.enter')
+    await flushPromises()
+
+    expect(editor.getJSON()).toMatchObject({
+      content: [
+        {
+          content: [
+            {
+              marks: [{ type: 'link', attrs: { href: 'https://example.com' } }],
+              text: '维护通知',
+            },
+          ],
+        },
+      ],
+    })
+  })
+
+  it('opens the current input href', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
+    selectEditorText(editor)
+    const wrapper = mountControl(editor)
+
+    await openPopover(wrapper)
+    await wrapper.get('[data-test="rich-text-link-open"]').trigger('click')
+
+    expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
+
+    await getUrlInput(wrapper).setValue('rev30.example')
+    await wrapper.get('[data-test="rich-text-link-open"]').trigger('click')
+
+    expect(openSpy).toHaveBeenLastCalledWith(
+      'https://rev30.example',
+      '_blank',
+      'noopener,noreferrer',
+    )
+  })
+
+  it('does not open the current selection href after the input is cleared', async () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
     const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
     selectEditorText(editor)
@@ -155,7 +281,8 @@ describe('LinkToolbarControl', () => {
     await getUrlInput(wrapper).setValue('')
     await wrapper.get('[data-test="rich-text-link-open"]').trigger('click')
 
-    expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
+    expect(wrapper.get('[data-test="rich-text-link-open"]').attributes('disabled')).toBeDefined()
+    expect(openSpy).not.toHaveBeenCalled()
   })
 
   it('labels icon actions for assistive technology', async () => {

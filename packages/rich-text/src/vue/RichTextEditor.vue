@@ -59,3 +59,22 @@ const { editor } = useRichTextEditor({
     />
   </div>
 </template>
+
+<style scoped>
+:deep(.ProseMirror) {
+  --rich-text-selection-color: color-mix(in srgb, var(--app-primary-color) 24%, transparent);
+}
+
+:deep(.ProseMirror ::selection) {
+  background-color: var(--rich-text-selection-color);
+}
+
+:deep(.ProseMirror .selection) {
+  background-color: var(--rich-text-selection-color);
+  box-decoration-break: clone;
+  box-shadow:
+    0 -0.2em 0 var(--rich-text-selection-color),
+    0 0.2em 0 var(--rich-text-selection-color);
+  -webkit-box-decoration-break: clone;
+}
+</style>

@@ -1,110 +1,110 @@
 <script setup lang="ts">
 import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import { NButton, NInput, NPopover } from 'naive-ui'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { isAllowedLinkHref, normalizeLinkHref } from '../href'
 
 const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
   disabled: false,
 })
 
-const allowedProtocols = new Set(['http:', 'https:', 'mailto:', 'tel:'])
-const editorStateVersion = ref(0)
-const showPopover = ref(false)
-const url = ref('')
-
 const isDisabled = computed(() => props.disabled || !props.editor)
-const editorState = computed(() => {
-  const href = props.editor?.getAttributes('link').href
-
-  return {
-    version: editorStateVersion.value,
-    href: typeof href === 'string' ? href : '',
-    isActive: props.editor?.isActive('link') ?? false,
-  }
-})
-const currentHref = computed(() => editorState.value.href)
-const isActive = computed(() => editorState.value.isActive)
-
-const normalizedInputHref = computed(() => normalizeHref(url.value))
-const normalizedOpenHref = computed(() => normalizeHref(url.value || currentHref.value))
-const inputStatusProps = computed(() =>
-  url.value.trim() !== '' && !isInputHrefAllowed.value ? { status: 'error' as const } : {},
-)
-const isInputHrefAllowed = computed(
-  () => normalizedInputHref.value !== '' && isAllowedHref(normalizedInputHref.value),
-)
-const canApply = computed(
-  () => !isDisabled.value && (normalizedInputHref.value === '' || isInputHrefAllowed.value),
-)
-const canOpen = computed(
-  () =>
-    !isDisabled.value && normalizedOpenHref.value !== '' && isAllowedHref(normalizedOpenHref.value),
-)
-
-let detachEditorListeners: (() => void) | undefined
-
-function syncEditorState() {
-  editorStateVersion.value += 1
-}
-
-function bindEditor(editor: RichTextToolbarControlInjectedProps['editor']) {
-  detachEditorListeners?.()
-  detachEditorListeners = undefined
+const isEditorFocused = computed(() => {
+  const editor = props.editor
 
   if (!editor) {
-    syncEditorState()
-    return
+    return false
   }
 
-  editor.on('transaction', syncEditorState)
-  editor.on('selectionUpdate', syncEditorState)
+  return Boolean(editor.state) && editor.isFocused
+})
+const isActive = computed(() => props.editor?.isActive('link') ?? false)
 
-  detachEditorListeners = () => {
-    editor.off('transaction', syncEditorState)
-    editor.off('selectionUpdate', syncEditorState)
+const showPopover = ref(false)
+const popoverMode = ref<'create' | 'edit'>('create')
+
+const url = ref('')
+const dismissedHref = ref<string | null>(null)
+
+const currentHref = computed(() => {
+  const href = props.editor?.getAttributes('link').href
+
+  return typeof href === 'string' ? href : ''
+})
+
+const inputHrefState = computed(() => {
+  const rawHref = url.value.trim()
+  const normalizedHref = normalizeLinkHref(rawHref)
+
+  return {
+    rawHref,
+    normalizedHref,
+    isEmpty: rawHref === '',
+    isAllowed: normalizedHref !== '' && isAllowedLinkHref(normalizedHref),
   }
+})
+const openHrefState = computed(() => {
+  const href = inputHrefState.value.normalizedHref
 
-  syncEditorState()
-}
+  return {
+    href,
+    isAllowed: href !== '' && isAllowedLinkHref(href),
+  }
+})
+
+const inputStatusProps = computed(() =>
+  !inputHrefState.value.isEmpty && !inputHrefState.value.isAllowed
+    ? { status: 'error' as const }
+    : {},
+)
+const canApply = computed(
+  () => !isDisabled.value && (inputHrefState.value.isEmpty || inputHrefState.value.isAllowed),
+)
+const canOpen = computed(() => !isDisabled.value && openHrefState.value.isAllowed)
+const canRemove = computed(() => popoverMode.value === 'edit')
 
 watch(
-  () => props.editor,
-  (editor) => {
-    bindEditor(editor)
+  [currentHref, isDisabled, isEditorFocused],
+  ([href, disabled, focused]) => {
+    if (disabled || !href) {
+      showPopover.value = false
+      popoverMode.value = 'create'
+      dismissedHref.value = null
+      return
+    }
+
+    if (focused && href !== dismissedHref.value) {
+      url.value = href
+      popoverMode.value = 'edit'
+      showPopover.value = true
+    }
   },
   { immediate: true },
 )
 
-watch([showPopover, currentHref], ([show, href]) => {
-  if (show) {
-    url.value = href
-  }
-})
-
-onBeforeUnmount(() => {
-  detachEditorListeners?.()
-})
-
-function normalizeHref(value: string) {
-  const href = value.trim()
-
-  if (!href) {
-    return ''
+function closePopover() {
+  if (currentHref.value) {
+    dismissedHref.value = currentHref.value
   }
 
-  if (/^[a-z][a-z\d+.-]*:/i.test(href)) {
-    return href
-  }
-
-  return `https://${href}`
+  showPopover.value = false
+  popoverMode.value = 'create'
 }
 
-function isAllowedHref(href: string) {
-  try {
-    return allowedProtocols.has(new URL(href).protocol)
-  } catch {
-    return false
+function togglePopover() {
+  if (isDisabled.value) {
+    return
   }
+
+  if (showPopover.value) {
+    closePopover()
+    return
+  }
+
+  dismissedHref.value = null
+  url.value = currentHref.value
+  popoverMode.value = currentHref.value ? 'edit' : 'create'
+  showPopover.value = true
 }
 
 function applyLink() {
@@ -112,9 +112,10 @@ function applyLink() {
     return
   }
 
-  if (normalizedInputHref.value === '') {
+  if (inputHrefState.value.isEmpty) {
     props.editor.chain().focus().extendMarkRange('link').unsetLink().run()
     url.value = ''
+    popoverMode.value = 'create'
     return
   }
 
@@ -122,9 +123,9 @@ function applyLink() {
     .chain()
     .focus()
     .extendMarkRange('link')
-    .setLink({ href: normalizedInputHref.value })
+    .setLink({ href: inputHrefState.value.normalizedHref })
     .run()
-  url.value = normalizedInputHref.value
+  url.value = inputHrefState.value.normalizedHref
 }
 
 function removeLink() {
@@ -134,6 +135,7 @@ function removeLink() {
 
   props.editor.chain().focus().extendMarkRange('link').unsetLink().run()
   url.value = ''
+  popoverMode.value = 'create'
 }
 
 function openLink() {
@@ -141,16 +143,17 @@ function openLink() {
     return
   }
 
-  window.open(normalizedOpenHref.value, '_blank', 'noopener,noreferrer')
+  window.open(openHrefState.value.href, '_blank', 'noopener,noreferrer')
 }
 </script>
 
 <template>
   <NPopover
-    v-model:show="showPopover"
-    trigger="click"
-    placement="bottom-start"
+    :show="showPopover"
+    trigger="manual"
+    placement="bottom"
     :disabled="isDisabled"
+    @clickoutside="closePopover"
   >
     <template #trigger>
       <NButton
@@ -166,12 +169,13 @@ function openLink() {
         aria-label="链接"
         :aria-pressed="isActive"
         @mousedown.prevent
+        @click="togglePopover"
       >
         <span class="i-[lucide--link]" aria-hidden="true" />
       </NButton>
     </template>
 
-    <div class="flex items-center gap-1 p-1">
+    <div class="flex items-center gap-1">
       <NInput
         v-model:value="url"
         data-test="rich-text-link-url"
@@ -179,6 +183,7 @@ function openLink() {
         placeholder="https://example.com"
         v-bind="inputStatusProps"
         @keydown.enter.prevent="applyLink"
+        class="mr-1"
       >
         <template #suffix>
           <NButton
@@ -190,7 +195,7 @@ function openLink() {
             @mousedown.prevent
             @click="applyLink"
           >
-            <span class="i-[lucide--check]" aria-hidden="true" />
+            <span class="i-[lucide--corner-down-left]" aria-hidden="true" />
           </NButton>
         </template>
       </NInput>
@@ -198,6 +203,7 @@ function openLink() {
       <NButton
         data-test="rich-text-link-open"
         size="small"
+        style="--n-padding: 0 6px"
         quaternary
         :disabled="!canOpen"
         title="新窗口打开链接"
@@ -209,9 +215,10 @@ function openLink() {
       </NButton>
 
       <NButton
-        v-if="isActive"
+        v-if="canRemove"
         data-test="rich-text-link-remove"
         size="small"
+        style="--n-padding: 0 6px"
         quaternary
         title="移除链接"
         aria-label="移除链接"

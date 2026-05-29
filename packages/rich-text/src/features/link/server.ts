@@ -1,26 +1,9 @@
 import type sanitizeHtml from 'sanitize-html'
 import type { RichTextHtmlPolicy } from '../../server/policy'
-
-function normalizeHref(href: unknown) {
-  if (typeof href !== 'string') {
-    return null
-  }
-
-  const trimmedHref = href.trim()
-
-  if (!trimmedHref) {
-    return null
-  }
-
-  if (/^[a-z][a-z\d+.-]*:/i.test(trimmedHref) || trimmedHref.startsWith('//')) {
-    return trimmedHref
-  }
-
-  return `https://${trimmedHref}`
-}
+import { normalizeLinkHref } from './href'
 
 const transformAnchor: sanitizeHtml.Transformer = (tagName, attribs) => {
-  const href = normalizeHref(attribs.href)
+  const href = normalizeLinkHref(attribs.href ?? '')
 
   return {
     tagName,

@@ -51,6 +51,61 @@ describe('attachment schemas', () => {
     })
   })
 
+  it('rejects unknown fields for signed URL input', () => {
+    const result = attachmentSignedUrlInputSchema.safeParse({
+      dispostion: ATTACHMENT_DISPOSITION_INLINE,
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects blank attachment metadata string fields', () => {
+    expect(
+      attachmentSchema.safeParse({
+        id: '11111111-1111-4111-8111-111111111111',
+        originalName: ' ',
+        mimeType: 'image/png',
+        extension: 'png',
+        size: 123,
+        usage: ATTACHMENT_USAGE_AVATAR,
+        createdAt: '2026-05-29T00:00:00.000Z',
+      }).success,
+    ).toBe(false)
+
+    expect(
+      attachmentSchema.safeParse({
+        id: '11111111-1111-4111-8111-111111111111',
+        originalName: 'avatar.png',
+        mimeType: '',
+        extension: 'png',
+        size: 123,
+        usage: ATTACHMENT_USAGE_AVATAR,
+        createdAt: '2026-05-29T00:00:00.000Z',
+      }).success,
+    ).toBe(false)
+
+    expect(
+      attachmentSchema.safeParse({
+        id: '11111111-1111-4111-8111-111111111111',
+        originalName: 'avatar.png',
+        mimeType: 'image/png',
+        extension: ' ',
+        size: 123,
+        usage: ATTACHMENT_USAGE_AVATAR,
+        createdAt: '2026-05-29T00:00:00.000Z',
+      }).success,
+    ).toBe(false)
+  })
+
+  it('rejects blank signed URL response url', () => {
+    expect(
+      attachmentSignedUrlSchema.safeParse({
+        url: '   ',
+        expiresAt: '2026-05-29T00:05:00.000Z',
+      }).success,
+    ).toBe(false)
+  })
+
   it('accepts signed URL responses', () => {
     expect(
       attachmentSignedUrlSchema.parse({

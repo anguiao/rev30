@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { nonBlankString } from './common/inputs'
 
 export const ATTACHMENT_USAGE_GENERAL = 'general'
 export const ATTACHMENT_USAGE_AVATAR = 'avatar'
@@ -21,9 +22,9 @@ const attachmentIdSchema = z.uuid('附件 ID 无效')
 
 export const attachmentSchema = z.object({
   id: attachmentIdSchema,
-  originalName: z.string().min(1),
-  mimeType: z.string().min(1),
-  extension: z.string().min(1),
+  originalName: nonBlankString(),
+  mimeType: nonBlankString(),
+  extension: nonBlankString(),
   size: z.number().int().min(0),
   usage: attachmentUsageSchema,
   createdAt: z.iso.datetime(),
@@ -33,12 +34,13 @@ export const attachmentSignedUrlInputSchema = z
   .object({
     disposition: attachmentDispositionSchema.default(ATTACHMENT_DISPOSITION_ATTACHMENT),
   })
+  .strict()
   .default({
     disposition: ATTACHMENT_DISPOSITION_ATTACHMENT,
   })
 
 export const attachmentSignedUrlSchema = z.object({
-  url: z.string().min(1),
+  url: nonBlankString(),
   expiresAt: z.iso.datetime(),
 })
 

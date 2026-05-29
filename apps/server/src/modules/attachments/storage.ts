@@ -3,6 +3,7 @@ import { createReadStream, createWriteStream } from 'node:fs'
 import { mkdir, rename, rm, stat, unlink } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { Readable, Transform } from 'node:stream'
+import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import { pipeline } from 'node:stream/promises'
 
 export type AttachmentPutResult = {
@@ -92,7 +93,11 @@ export class LocalAttachmentStorage implements AttachmentStorage {
     await mkdir(targetDir, { recursive: true })
 
     try {
-      await pipeline(Readable.fromWeb(input.body), hashing.stream, createWriteStream(tempPath))
+      await pipeline(
+        Readable.fromWeb(input.body as unknown as NodeReadableStream<Uint8Array>),
+        hashing.stream,
+        createWriteStream(tempPath),
+      )
 
       const result = hashing.digest()
 

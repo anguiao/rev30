@@ -56,10 +56,7 @@ describe('attachments schema', () => {
     })
     expect(created?.deletedAt).toBeNull()
 
-    const [row] = await database
-      .select()
-      .from(attachments)
-      .where(eq(attachments.id, created!.id))
+    const [row] = await database.select().from(attachments).where(eq(attachments.id, created!.id))
 
     expect(row).toMatchObject({
       id: attachmentId,

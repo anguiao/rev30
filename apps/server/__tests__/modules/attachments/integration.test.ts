@@ -9,8 +9,7 @@ import { createTestDb } from '../../helpers/db'
 
 const tempDirs: string[] = []
 const pngBytes = new Uint8Array([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
-  0x52,
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
 ])
 
 async function createTempRoot() {
@@ -103,9 +102,7 @@ describe('attachment routes integration', () => {
 
     expect(contentResponse.status).toBe(200)
     expect(contentResponse.headers.get('content-type')).toBe('image/png')
-    expect(contentResponse.headers.get('content-disposition')).toBe(
-      'inline; filename="avatar.png"',
-    )
+    expect(contentResponse.headers.get('content-disposition')).toBe('inline; filename="avatar.png"')
     expect(contentResponse.headers.get('content-length')).toBe(String(pngBytes.byteLength))
     expect(contentResponse.headers.get('x-content-type-options')).toBe('nosniff')
     expect(contentBody).toEqual(pngBytes)

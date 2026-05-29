@@ -92,11 +92,7 @@ export class LocalAttachmentStorage implements AttachmentStorage {
     await mkdir(targetDir, { recursive: true })
 
     try {
-      await pipeline(
-        Readable.fromWeb(input.body),
-        hashing.stream,
-        createWriteStream(tempPath),
-      )
+      await pipeline(Readable.fromWeb(input.body), hashing.stream, createWriteStream(tempPath))
 
       const result = hashing.digest()
 

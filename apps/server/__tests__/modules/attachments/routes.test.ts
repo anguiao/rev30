@@ -78,10 +78,9 @@ vi.mock('../../../src/modules/attachments/service', () => ({
 }))
 
 function createAttachmentTestApp() {
-  return new Hono().use('*', mocks.authMiddleware).route(
-    '/api/attachments',
-    createAttachmentRoutes({} as never),
-  )
+  return new Hono()
+    .use('*', mocks.authMiddleware)
+    .route('/api/attachments', createAttachmentRoutes({} as never))
 }
 
 function createAttachmentContentTestApp() {
@@ -172,7 +171,9 @@ describe('attachment routes', () => {
   it('streams signed content without authentication middleware', async () => {
     const app = createAttachmentContentTestApp()
 
-    const response = await app.request(`/api/attachments/${attachmentId}/content?token=signed-token`)
+    const response = await app.request(
+      `/api/attachments/${attachmentId}/content?token=signed-token`,
+    )
     const body = new Uint8Array(await response.arrayBuffer())
 
     expect(response.status).toBe(200)
@@ -238,7 +239,9 @@ describe('attachment routes', () => {
     expect(await invalidBodyResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.createSignedUrl).not.toHaveBeenCalled()
 
-    const missingTokenResponse = await contentApp.request(`/api/attachments/${attachmentId}/content`)
+    const missingTokenResponse = await contentApp.request(
+      `/api/attachments/${attachmentId}/content`,
+    )
     expect(missingTokenResponse.status).toBe(400)
     expect(await missingTokenResponse.json()).toEqual({
       field: 'token',
@@ -276,7 +279,9 @@ describe('attachment routes', () => {
     )
     form.set('usage', ATTACHMENT_USAGE_GENERAL)
 
-    mocks.service.upload.mockRejectedValueOnce(new AttachmentFileTooLargeError('文件大小不能超过 20MB'))
+    mocks.service.upload.mockRejectedValueOnce(
+      new AttachmentFileTooLargeError('文件大小不能超过 20MB'),
+    )
     const tooLargeResponse = await app.request('/api/attachments', {
       method: 'POST',
       body: form,

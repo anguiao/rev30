@@ -157,11 +157,16 @@ export function createAttachmentContentRoutes(database: Db) {
 
   app.onError((error, c) => attachmentErrorResponse(error, c))
 
-  return app.get('/:id/content', attachmentIdValidator, attachmentContentQueryValidator, async (c) => {
-    const { id } = c.req.valid('param')
-    const { token } = c.req.valid('query')
-    const content = await service.readContent(id, token)
+  return app.get(
+    '/:id/content',
+    attachmentIdValidator,
+    attachmentContentQueryValidator,
+    async (c) => {
+      const { id } = c.req.valid('param')
+      const { token } = c.req.valid('query')
+      const content = await service.readContent(id, token)
 
-    return c.newResponse(content.body, 200, content.headers)
-  })
+      return c.newResponse(content.body, 200, content.headers)
+    },
+  )
 }

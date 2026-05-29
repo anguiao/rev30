@@ -32,9 +32,7 @@ describe('attachment schemas', () => {
   it('exports supported upload usages', () => {
     expect(attachmentUsageSchema.parse(ATTACHMENT_USAGE_GENERAL)).toBe(ATTACHMENT_USAGE_GENERAL)
     expect(attachmentUsageSchema.parse(ATTACHMENT_USAGE_AVATAR)).toBe(ATTACHMENT_USAGE_AVATAR)
-    expect(attachmentUsageSchema.parse(ATTACHMENT_USAGE_RICH_TEXT)).toBe(
-      ATTACHMENT_USAGE_RICH_TEXT,
-    )
+    expect(attachmentUsageSchema.parse(ATTACHMENT_USAGE_RICH_TEXT)).toBe(ATTACHMENT_USAGE_RICH_TEXT)
     expect(attachmentUsageSchema.safeParse('rich-text-image').success).toBe(false)
   })
 

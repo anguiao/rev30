@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -21,6 +21,13 @@ function streamFromText(text: string) {
 
 async function streamToText(stream: ReadableStream<Uint8Array>) {
   return await new Response(stream).text()
+}
+
+async function assertNoTmpFiles(root: string) {
+  const entries = await readdir(root, { recursive: true })
+  const tmpFiles = entries.filter((entry) => entry.endsWith('.tmp'))
+
+  expect(tmpFiles).toEqual([])
 }
 
 afterEach(async () => {
@@ -64,6 +71,7 @@ describe('LocalAttachmentStorage', () => {
       }),
     ).rejects.toThrow('附件写入大小不一致')
 
+    await assertNoTmpFiles(root)
     await expect(readFile(join(root, '2026/05/29/broken.txt'))).rejects.toThrow()
   })
 

@@ -75,17 +75,23 @@ describe('LocalAttachmentStorage', () => {
     await expect(readFile(join(root, '2026/05/29/broken.txt'))).rejects.toThrow()
   })
 
-  it('rejects storage keys outside the root directory', async () => {
+  it('rejects invalid storage keys', async () => {
     const root = await createTempRoot()
     const storage = new LocalAttachmentStorage(root)
 
-    await expect(
-      storage.put({
-        key: '../outside.txt',
-        body: streamFromText('bad'),
-        expectedSize: 3,
+    const invalidKeys = ['../outside.txt', '/absolute.txt', '', '   ', '.', './']
+
+    await Promise.all(
+      invalidKeys.map(async (key) => {
+        await expect(
+          storage.put({
+            key,
+            body: streamFromText('bad'),
+            expectedSize: 3,
+          }),
+        ).rejects.toThrow('附件存储路径无效')
       }),
-    ).rejects.toThrow('附件存储路径无效')
+    )
   })
 
   it('deletes stored files', async () => {

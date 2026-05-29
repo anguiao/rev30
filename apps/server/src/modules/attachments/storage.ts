@@ -62,9 +62,13 @@ export class LocalAttachmentStorage implements AttachmentStorage {
   }
 
   private resolveKey(key: string) {
+    if (key.trim().length === 0 || isAbsolute(key)) {
+      throw new Error('附件存储路径无效')
+    }
+
     const targetPath = resolve(join(this.rootPath, key))
 
-    if (!isInsideRoot(this.rootPath, targetPath)) {
+    if (targetPath === this.rootPath || !isInsideRoot(this.rootPath, targetPath)) {
       throw new Error('附件存储路径无效')
     }
 

@@ -1,7 +1,4 @@
-import {
-  ATTACHMENT_DISPOSITION_ATTACHMENT,
-  type AttachmentDisposition,
-} from '@rev30/contracts'
+import { ATTACHMENT_DISPOSITION_ATTACHMENT, type AttachmentDisposition } from '@rev30/contracts'
 import { computed, readonly, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 import { createAttachmentSignedUrl } from './requests'
 
@@ -51,21 +48,18 @@ export function useAttachmentUrl(
         disposition: activeDisposition.value,
       })
 
-      if (currentRequestVersion !== requestVersion)
-        return
+      if (currentRequestVersion !== requestVersion) return
 
       url.value = signed.url
       expiresAt.value = signed.expiresAt
     } catch (caught) {
-      if (currentRequestVersion !== requestVersion)
-        return
+      if (currentRequestVersion !== requestVersion) return
 
       url.value = null
       expiresAt.value = null
       error.value = caught
     } finally {
-      if (currentRequestVersion === requestVersion)
-        isLoading.value = false
+      if (currentRequestVersion === requestVersion) isLoading.value = false
     }
   }
 

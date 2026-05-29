@@ -214,7 +214,8 @@ describe('useAttachmentUrl', () => {
         setup() {
           return useAttachmentUrl(id)
         },
-        template: '<span>{{ url }}|{{ expiresAt }}|{{ isLoading }}|{{ error ? "error" : "" }}</span>',
+        template:
+          '<span>{{ url }}|{{ expiresAt }}|{{ isLoading }}|{{ error ? "error" : "" }}</span>',
       }),
     )
 
@@ -225,7 +226,9 @@ describe('useAttachmentUrl', () => {
     })
     await Promise.resolve()
     await nextTick()
-    expect(wrapper.text()).toBe('/api/attachments/a/content?token=a|2026-05-29T06:00:00.000Z|false|')
+    expect(wrapper.text()).toBe(
+      '/api/attachments/a/content?token=a|2026-05-29T06:00:00.000Z|false|',
+    )
 
     id.value = '22222222-2222-4222-8222-222222222222'
     await nextTick()

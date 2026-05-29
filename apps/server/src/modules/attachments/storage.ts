@@ -33,6 +33,10 @@ function isInsideRoot(rootPath: string, targetPath: string) {
   return pathFromRoot === '' || (!pathFromRoot.startsWith('..') && !isAbsolute(pathFromRoot))
 }
 
+function containsParentTraversalSegment(key: string) {
+  return key.split(/[\\/]/).some((segment) => segment === '..')
+}
+
 function createHashingTransform() {
   const hash = createHash('sha256')
   let size = 0
@@ -62,7 +66,7 @@ export class LocalAttachmentStorage implements AttachmentStorage {
   }
 
   private resolveKey(key: string) {
-    if (key.trim().length === 0 || isAbsolute(key)) {
+    if (key.trim().length === 0 || isAbsolute(key) || containsParentTraversalSegment(key)) {
       throw new Error('附件存储路径无效')
     }
 

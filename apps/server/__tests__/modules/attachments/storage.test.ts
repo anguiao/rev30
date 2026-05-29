@@ -79,7 +79,16 @@ describe('LocalAttachmentStorage', () => {
     const root = await createTempRoot()
     const storage = new LocalAttachmentStorage(root)
 
-    const invalidKeys = ['../outside.txt', '/absolute.txt', '', '   ', '.', './']
+    const invalidKeys = [
+      '../outside.txt',
+      '/absolute.txt',
+      '',
+      '   ',
+      '.',
+      './',
+      'safe/../file.txt',
+      '2026/05/29/../example.txt',
+    ]
 
     await Promise.all(
       invalidKeys.map(async (key) => {

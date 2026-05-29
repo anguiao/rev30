@@ -9,6 +9,15 @@ vi.mock('../../../src/features/attachments/requests', () => ({
 }))
 
 const createAttachmentSignedUrlMock = vi.mocked(createAttachmentSignedUrl)
+type SignedUrlResult = { url: string; expiresAt: string }
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((innerResolve) => {
+    resolve = innerResolve
+  })
+  return { promise, resolve }
+}
 
 beforeEach(() => {
   createAttachmentSignedUrlMock.mockReset()
@@ -70,5 +79,78 @@ describe('useAttachmentUrl', () => {
     await nextTick()
 
     expect(wrapper.text()).toBe('')
+  })
+
+  it('ignores stale signed-url result after becoming disabled', async () => {
+    const enabled = ref(true)
+    const pending = createDeferred<SignedUrlResult>()
+    createAttachmentSignedUrlMock.mockImplementationOnce(() => pending.promise)
+
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          return useAttachmentUrl(ref('11111111-1111-4111-8111-111111111111'), {
+            enabled,
+          })
+        },
+        template: '<span>{{ url }}|{{ expiresAt }}|{{ isLoading }}</span>',
+      }),
+    )
+
+    await nextTick()
+    expect(createAttachmentSignedUrlMock).toHaveBeenCalledOnce()
+    expect(wrapper.text()).toContain('true')
+
+    enabled.value = false
+    await nextTick()
+
+    expect(wrapper.text()).toBe('||false')
+
+    pending.resolve({
+      url: '/api/attachments/stale/content?token=stale',
+      expiresAt: '2026-05-29T01:00:00.000Z',
+    })
+    await Promise.resolve()
+    await nextTick()
+
+    expect(wrapper.text()).toBe('||false')
+  })
+
+  it('ignores stale result when id changes during pending request', async () => {
+    const id = ref('11111111-1111-4111-8111-111111111111')
+    const oldRequest = createDeferred<SignedUrlResult>()
+    createAttachmentSignedUrlMock.mockImplementationOnce(() => oldRequest.promise)
+    createAttachmentSignedUrlMock.mockResolvedValueOnce({
+      url: '/api/attachments/new/content?token=new',
+      expiresAt: '2026-05-29T02:00:00.000Z',
+    })
+
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          return useAttachmentUrl(id)
+        },
+        template: '<span>{{ url }}</span>',
+      }),
+    )
+
+    await nextTick()
+    expect(createAttachmentSignedUrlMock).toHaveBeenCalledTimes(1)
+
+    id.value = '22222222-2222-4222-8222-222222222222'
+    await nextTick()
+    await nextTick()
+
+    expect(createAttachmentSignedUrlMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toBe('/api/attachments/new/content?token=new')
+
+    oldRequest.resolve({
+      url: '/api/attachments/old/content?token=old',
+      expiresAt: '2026-05-29T03:00:00.000Z',
+    })
+    await Promise.resolve()
+    await nextTick()
+
+    expect(wrapper.text()).toBe('/api/attachments/new/content?token=new')
   })
 })

@@ -22,16 +22,25 @@ export function useAttachmentUrl(
     () => toValue(options.disposition) ?? ATTACHMENT_DISPOSITION_ATTACHMENT,
   )
   const isEnabled = computed(() => toValue(options.enabled) ?? true)
+  let requestVersion = 0
+
+  function invalidateAndClear() {
+    requestVersion += 1
+    url.value = null
+    expiresAt.value = null
+    error.value = null
+    isLoading.value = false
+  }
 
   async function refresh() {
     const attachmentId = toValue(id)
 
     if (!attachmentId || !isEnabled.value) {
-      url.value = null
-      expiresAt.value = null
+      invalidateAndClear()
       return
     }
 
+    const currentRequestVersion = ++requestVersion
     isLoading.value = true
     error.value = null
 
@@ -40,14 +49,21 @@ export function useAttachmentUrl(
         disposition: activeDisposition.value,
       })
 
+      if (currentRequestVersion !== requestVersion)
+        return
+
       url.value = signed.url
       expiresAt.value = signed.expiresAt
     } catch (caught) {
+      if (currentRequestVersion !== requestVersion)
+        return
+
       url.value = null
       expiresAt.value = null
       error.value = caught
     } finally {
-      isLoading.value = false
+      if (currentRequestVersion === requestVersion)
+        isLoading.value = false
     }
   }
 

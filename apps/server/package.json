@@ -33,13 +33,16 @@
     "@rev30/utils": "workspace:*",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
+    "file-type": "^22.0.1",
     "fzf": "^0.5.2",
     "hono": "^4.12.23",
+    "mime-types": "^3.0.2",
     "pino": "^10.3.1",
     "postgres": "^3.4.9",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/mime-types": "^3.0.1",
     "drizzle-kit": "^0.31.10",
     "tsup": "^8.5.1",
     "tsx": "^4.22.3"

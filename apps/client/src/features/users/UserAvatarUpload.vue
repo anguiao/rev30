@@ -102,7 +102,7 @@ watch(
       <span v-else class="i-[lucide--plus] size-5" aria-hidden="true" />
       <span
         v-if="hasImage"
-        class="absolute inset-0 hidden items-center justify-center rounded-full bg-white/45 text-stone-900 dark:bg-zinc-900/35 dark:text-white group-hover:flex"
+        class="absolute inset-0 hidden items-center justify-center rounded-full bg-white/45 text-stone-900 group-hover:flex dark:bg-zinc-900/35 dark:text-white"
         aria-hidden="true"
       >
         <span class="i-[lucide--plus] size-5" />

@@ -106,16 +106,11 @@ export function createAttachmentRoutes(database: Db) {
   app.onError((error, c) => attachmentErrorResponse(error, c))
 
   return app
-    .get(
-      '/',
-      requireAccess('content:attachment:list'),
-      attachmentListQueryValidator,
-      async (c) => {
-        const query: AttachmentListQuery = c.req.valid('query')
+    .get('/', requireAccess('content:attachment:list'), attachmentListQueryValidator, async (c) => {
+      const query: AttachmentListQuery = c.req.valid('query')
 
-        return c.json(attachmentListResponseSchema.parse(await service.list(query)))
-      },
-    )
+      return c.json(attachmentListResponseSchema.parse(await service.list(query)))
+    })
     .post('/', attachmentUploadQueryValidator, async (c) => {
       const { usage } = c.req.valid('query')
       const attachment = await handleAttachmentUpload(c.req.raw, (file) =>

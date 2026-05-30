@@ -44,7 +44,12 @@ const { isLoading: isProfileSubmitting, ...profileMutation } = useMutation({
 })
 
 const profileForm = useForm({
-  defaultValues: pick(currentUser.value, ['nickname', 'avatarId', 'email', 'phone']) as AuthProfileUpdateInput,
+  defaultValues: pick(currentUser.value, [
+    'nickname',
+    'avatarId',
+    'email',
+    'phone',
+  ]) as AuthProfileUpdateInput,
   validators: {
     onChange: authProfileUpdateSchema,
     onSubmit: authProfileUpdateSchema,

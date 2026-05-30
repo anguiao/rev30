@@ -23,11 +23,7 @@ import {
   lockActiveDepartmentsByIds,
 } from '../departments/repository'
 import { findRoleSummariesByUserIds, lockActiveRolesByIds } from '../roles/repository'
-import {
-  UserInvalidAvatarError,
-  UserInvalidDepartmentError,
-  UserInvalidRoleError,
-} from './errors'
+import { UserInvalidAvatarError, UserInvalidDepartmentError, UserInvalidRoleError } from './errors'
 import type { UserOptionRow } from './mapper'
 
 const userOptionColumns = {

@@ -34,8 +34,14 @@ describe('user avatar schema', () => {
       createdAt: now,
     })
 
-    await database.update(systemUsers).set({ avatarId: attachmentId }).where(eq(systemUsers.id, userId))
-    await database.update(attachments).set({ deletedAt: now }).where(eq(attachments.id, attachmentId))
+    await database
+      .update(systemUsers)
+      .set({ avatarId: attachmentId })
+      .where(eq(systemUsers.id, userId))
+    await database
+      .update(attachments)
+      .set({ deletedAt: now })
+      .where(eq(attachments.id, attachmentId))
 
     const storedUser = await database.query.systemUsers.findFirst({
       where: eq(systemUsers.id, userId),

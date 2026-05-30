@@ -86,9 +86,7 @@ export async function getAttachment(id: string): Promise<Attachment> {
   )
 }
 
-export async function listAttachments(
-  query: AttachmentListQuery,
-): Promise<AttachmentListResponse> {
+export async function listAttachments(query: AttachmentListQuery): Promise<AttachmentListResponse> {
   return parseAttachmentResponse(
     await api.attachments.$get({
       query: normalizeRequestQuery(query),

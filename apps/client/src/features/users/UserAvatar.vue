@@ -60,7 +60,13 @@ watch(
 </script>
 
 <template>
-  <NAvatar v-bind="avatarProps" round :size="size" class="bg-primary-muted! text-primary!" @error="imageFailed = true">
+  <NAvatar
+    v-bind="avatarProps"
+    round
+    :size="size"
+    class="bg-primary-muted! text-primary!"
+    @error="imageFailed = true"
+  >
     <span v-if="imageUrl === null">{{ initial }}</span>
   </NAvatar>
 </template>

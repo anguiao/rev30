@@ -82,4 +82,74 @@ describe('UserAvatarUpload', () => {
 
     expect(wrapper.emitted('error')?.[0]?.[0]).toBeInstanceOf(Error)
   })
+
+  it('supports repeated uploads through real customRequest flow', async () => {
+    const wrapper = mountUpload({ avatarId: null })
+    const input = wrapper.get('input[type="file"]')
+    const button = wrapper.get('button')
+
+    const fileOne = new File(['png1'], 'avatar1.png', { type: 'image/png' })
+    const fileTwo = new File(['png2'], 'avatar2.png', { type: 'image/png' })
+    let pendingResolve: () => void = () => {}
+    uploadAttachmentMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          pendingResolve = () => resolve({
+            id: '33333333-3333-4333-8333-333333333333',
+            originalName: 'avatar1.png',
+            mimeType: 'image/png',
+            extension: 'png',
+            size: 128,
+            usage: ATTACHMENT_USAGE_AVATAR,
+            createdAt: '2026-05-30T00:00:00.000Z',
+          })
+        }),
+    )
+
+    const triggerUpload = (file: File) => {
+      const dataTransfer = new DataTransfer()
+      dataTransfer.items.add(file)
+      Object.defineProperty(input.element, 'files', {
+        configurable: true,
+        value: dataTransfer.files,
+      })
+      return input.trigger('change')
+    }
+
+    const firstSubmit = triggerUpload(fileOne)
+    await flushPromises()
+    expect(button.attributes('disabled')).toBe('')
+    expect(button.attributes('aria-busy')).toBe('true')
+    expect(uploadAttachmentMock).toHaveBeenCalledTimes(1)
+
+    pendingResolve()
+    await firstSubmit
+    await flushPromises()
+
+    expect(button.attributes('disabled')).toBeUndefined()
+    expect(button.attributes('aria-busy')).toBe('false')
+
+    expect(wrapper.emitted('uploaded')?.[0]?.[0]).toBe('33333333-3333-4333-8333-333333333333')
+
+    await triggerUpload(fileTwo)
+    await flushPromises()
+
+    expect(uploadAttachmentMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.emitted('uploaded')?.[1]?.[0]).toBe('33333333-3333-4333-8333-333333333333')
+
+    uploadAttachmentMock.mockRejectedValueOnce(new Error('upload failed'))
+    await triggerUpload(fileTwo)
+    await flushPromises()
+
+    expect(wrapper.emitted('error')?.[0]?.[0]).toBeInstanceOf(Error)
+    const uploadedBeforeRecovery = wrapper.emitted('uploaded')?.length ?? 0
+
+    await triggerUpload(fileTwo)
+    await flushPromises()
+    expect(button.attributes('disabled')).toBeUndefined()
+    expect(button.attributes('aria-busy')).toBe('false')
+
+    expect(wrapper.emitted('uploaded')?.length).toBeGreaterThan(uploadedBeforeRecovery)
+    expect(wrapper.emitted('error')).toHaveLength(1)
+  })
 })

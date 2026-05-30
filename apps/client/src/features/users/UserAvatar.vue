@@ -43,6 +43,14 @@ const imageUrl = computed(() => {
   return signed.url.value
 })
 
+const avatarProps = computed(() =>
+  imageUrl.value === null
+    ? {}
+    : {
+        src: imageUrl.value,
+      },
+)
+
 watch(
   () => props.avatarId,
   () => {
@@ -52,13 +60,7 @@ watch(
 </script>
 
 <template>
-  <NAvatar
-    round
-    :size="size"
-    :src="imageUrl ?? undefined"
-    class="bg-primary-muted! text-primary!"
-    @error="imageFailed = true"
-  >
+  <NAvatar v-bind="avatarProps" round :size="size" class="bg-primary-muted! text-primary!" @error="imageFailed = true">
     <span v-if="imageUrl === null">{{ initial }}</span>
   </NAvatar>
 </template>

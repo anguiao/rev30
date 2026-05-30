@@ -81,7 +81,6 @@ watch(
     :custom-request="customRequest"
     :default-upload="true"
     :disabled="isUploading"
-    :max="1"
     :show-file-list="false"
   >
     <button
@@ -89,6 +88,8 @@ watch(
       class="group relative inline-flex items-center justify-center rounded-full border border-stone-200 bg-stone-50 text-primary transition hover:border-primary dark:border-zinc-700 dark:bg-zinc-900"
       :style="{ width: `${size}px`, height: `${size}px` }"
       :aria-label="label"
+      :disabled="isUploading"
+      :aria-busy="isUploading"
       :title="label"
     >
       <img

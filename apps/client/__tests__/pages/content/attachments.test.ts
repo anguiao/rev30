@@ -10,7 +10,11 @@ import {
   type AuthTokenResponse,
 } from '@rev30/contracts'
 import { computed } from 'vue'
-import { deleteAttachment, listAttachments, useAttachmentUrl } from '../../../src/features/attachments'
+import {
+  deleteAttachment,
+  listAttachments,
+  useAttachmentUrl,
+} from '../../../src/features/attachments'
 import AttachmentsPage from '../../../src/pages/index/content/attachments.vue'
 import {
   disposeActiveTestPinia,

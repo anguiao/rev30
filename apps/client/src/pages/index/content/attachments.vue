@@ -67,13 +67,10 @@ const AttachmentPreview = defineComponent({
   setup(props) {
     const imageFailed = ref(false)
     const isImage = computed(() => props.attachment.mimeType.startsWith('image/'))
-    const image = useAttachmentUrl(
-      () => props.attachment.id,
-      {
-        disposition: ATTACHMENT_DISPOSITION_INLINE,
-        enabled: isImage,
-      },
-    )
+    const image = useAttachmentUrl(() => props.attachment.id, {
+      disposition: ATTACHMENT_DISPOSITION_INLINE,
+      enabled: isImage,
+    })
     const previewUrl = computed(() => {
       if (!isImage.value || imageFailed.value || image.error.value !== null) return null
 
@@ -269,7 +266,9 @@ const columns: DataTableColumns<AttachmentListItem> = [
   <main class="space-y-5">
     <header>
       <h1 class="text-xl font-semibold">{{ pageTitle }}</h1>
-      <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ attachmentsData.total }} 条</p>
+      <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">
+        共 {{ attachmentsData.total }} 条
+      </p>
     </header>
 
     <section
@@ -295,7 +294,9 @@ const columns: DataTableColumns<AttachmentListItem> = [
           />
         </NFormItem>
         <div class="flex gap-2">
-          <NButton data-test="attachments-search" type="primary" @click="handleSearch">查询</NButton>
+          <NButton data-test="attachments-search" type="primary" @click="handleSearch"
+            >查询</NButton
+          >
           <NButton data-test="attachments-reset" @click="handleReset">重置</NButton>
         </div>
       </NForm>

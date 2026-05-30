@@ -1,15 +1,19 @@
 import {
   ATTACHMENT_DISPOSITION_ATTACHMENT,
+  attachmentListResponseSchema,
   attachmentSchema,
   attachmentSignedUrlSchema,
   errorResponseSchema,
   type Attachment,
   type AttachmentSignedUrl,
   type AttachmentSignedUrlInput,
+  type AttachmentListQuery,
+  type AttachmentListResponse,
   type AttachmentUsage,
 } from '@rev30/contracts'
 import type { z } from 'zod'
 import { api } from '../../api'
+import { normalizeRequestQuery } from '../../utils/request'
 
 export class AttachmentRequestError extends Error {
   constructor(
@@ -79,6 +83,17 @@ export async function getAttachment(id: string): Promise<Attachment> {
       param: { id },
     }),
     attachmentSchema,
+  )
+}
+
+export async function listAttachments(
+  query: AttachmentListQuery,
+): Promise<AttachmentListResponse> {
+  return parseAttachmentResponse(
+    await api.attachments.$get({
+      query: normalizeRequestQuery(query),
+    }),
+    attachmentListResponseSchema,
   )
 }
 

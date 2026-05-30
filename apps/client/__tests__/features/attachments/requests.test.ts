@@ -9,6 +9,7 @@ import {
   createAttachmentSignedUrl,
   deleteAttachment,
   getAttachment,
+  listAttachments,
   uploadAttachment,
 } from '../../../src/features/attachments'
 import { useAuthStore } from '../../../src/stores/auth'
@@ -83,6 +84,49 @@ describe('attachment request helpers', () => {
       pathname: `/api/attachments/${attachmentId}/signed-url`,
     })
     expectJsonBody(fetchMock, 1, { disposition: ATTACHMENT_DISPOSITION_INLINE })
+  })
+
+  it('lists attachment resources with filters', async () => {
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        list: [
+          {
+            ...attachment,
+            createdBy: {
+              id: '22222222-2222-4222-8222-222222222222',
+              username: 'ada',
+              nickname: 'Ada Lovelace',
+            },
+          },
+        ],
+        total: 1,
+        page: 2,
+        pageSize: 10,
+      }),
+    )
+
+    await expect(
+      listAttachments({
+        page: 2,
+        pageSize: 10,
+        usage: ATTACHMENT_USAGE_AVATAR,
+        keyword: 'avatar',
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      list: [{ originalName: 'avatar.png' }],
+    })
+
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/attachments',
+      query: {
+        page: '2',
+        pageSize: '10',
+        usage: ATTACHMENT_USAGE_AVATAR,
+        keyword: 'avatar',
+      },
+    })
   })
 
   it('deletes attachments and parses errors', async () => {

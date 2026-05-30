@@ -9,7 +9,7 @@ import {
   type AttachmentListResponse,
   type AuthTokenResponse,
 } from '@rev30/contracts'
-import { ref } from 'vue'
+import { computed } from 'vue'
 import { deleteAttachment, listAttachments, useAttachmentUrl } from '../../../src/features/attachments'
 import AttachmentsPage from '../../../src/pages/index/content/attachments.vue'
 import {
@@ -86,11 +86,11 @@ describe('attachments page', () => {
     listAttachmentsMock.mockReset()
     useAttachmentUrlMock.mockReset()
     useAttachmentUrlMock.mockReturnValue({
-      url: ref('https://cdn.example.com/avatar.png'),
-      expiresAt: ref('2026-05-21T01:00:00.000Z'),
-      error: ref(null),
-      isLoading: ref(false),
-      refresh: vi.fn(),
+      url: computed(() => 'https://cdn.example.com/avatar.png'),
+      expiresAt: computed(() => '2026-05-21T01:00:00.000Z'),
+      error: computed(() => null),
+      isLoading: computed(() => false),
+      refresh: async () => {},
     })
     localStorage.clear()
     document.documentElement.className = ''
@@ -114,7 +114,9 @@ describe('attachments page', () => {
     expect(wrapper.text()).toContain(avatarAttachment.originalName)
     expect(wrapper.text()).toContain(avatarAttachment.mimeType)
     expect(wrapper.text()).toContain(bytes.format(2048))
-    expect(wrapper.text()).toContain(avatarAttachment.createdBy.nickname)
+    expect(wrapper.text()).toContain(
+      `${avatarAttachment.createdBy.nickname} (${avatarAttachment.createdBy.username})`,
+    )
     expect(wrapper.find('[data-test="attachments-preview-image"]').attributes('src')).toBe(
       'https://cdn.example.com/avatar.png',
     )

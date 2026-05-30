@@ -52,6 +52,10 @@ const attachmentUsageFilterOptions: Array<{ label: string; value: AttachmentUsag
   { label: attachmentUsageLabels[ATTACHMENT_USAGE_RICH_TEXT], value: ATTACHMENT_USAGE_RICH_TEXT },
 ]
 
+function formatUploader(attachment: AttachmentListItem) {
+  return `${attachment.createdBy.nickname} (${attachment.createdBy.username})`
+}
+
 const AttachmentPreview = defineComponent({
   name: 'AttachmentPreview',
   props: {
@@ -233,8 +237,8 @@ const columns: DataTableColumns<AttachmentListItem> = [
   {
     title: '上传人',
     key: 'createdBy',
-    width: 140,
-    render: (attachment) => attachment.createdBy.nickname,
+    minWidth: 200,
+    render: (attachment) => formatUploader(attachment),
   },
   {
     title: '上传时间',

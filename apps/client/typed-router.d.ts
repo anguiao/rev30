@@ -38,6 +38,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/content/attachments': RouteRecordInfo<
+      '/content/attachments',
+      '/content/attachments',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/system/configs': RouteRecordInfo<
       '/system/configs',
       '/system/configs',
@@ -124,6 +131,7 @@ declare module 'vue-router/auto-routes' {
     'src/pages/index.vue': {
       routes:
         | '/content/announcements'
+        | '/content/attachments'
         | '/system/configs'
         | '/system/departments'
         | '/system/dictionaries'
@@ -136,6 +144,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/index/content/announcements.vue': {
       routes:
         | '/content/announcements'
+      views:
+        | never
+    }
+    'src/pages/index/content/attachments.vue': {
+      routes:
+        | '/content/attachments'
       views:
         | never
     }

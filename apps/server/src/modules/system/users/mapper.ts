@@ -13,6 +13,7 @@ export function toUser(
     id: user.id,
     username: user.username,
     nickname: user.nickname,
+    avatarId: null,
     email: user.email,
     phone: user.phone,
     status: user.status as User['status'],

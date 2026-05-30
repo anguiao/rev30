@@ -161,6 +161,7 @@ describe('system repository locks', () => {
       {
         username: 'ada',
         nickname: 'Ada Lovelace',
+        avatarId: null,
         status: 1,
         departmentIds: [departmentId],
       },

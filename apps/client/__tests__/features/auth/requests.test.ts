@@ -84,6 +84,7 @@ describe('auth requests', () => {
       nickname: 'Ada Lovelace',
       email: 'ada@example.com',
       phone: '18888888888',
+      avatarId: null,
       status: USER_STATUS_ENABLED,
       builtIn: false,
       departments: [],
@@ -98,6 +99,7 @@ describe('auth requests', () => {
       nickname: 'Ada Lovelace',
       email: 'ada@example.com',
       phone: '18888888888',
+      avatarId: null,
     })
 
     expect(result).toEqual(responseBody)
@@ -110,6 +112,7 @@ describe('auth requests', () => {
       nickname: 'Ada Lovelace',
       email: 'ada@example.com',
       phone: '18888888888',
+      avatarId: null,
     })
   })
 
@@ -131,6 +134,7 @@ describe('auth requests', () => {
         nickname: 'Ada Lovelace',
         email: null,
         phone: null,
+        avatarId: null,
       }),
     ).rejects.toMatchObject({
       status: 400,
@@ -158,6 +162,7 @@ describe('auth requests', () => {
         nickname: 'Ada Lovelace',
         email: null,
         phone: null,
+        avatarId: null,
       }),
     ).rejects.toThrow()
   })

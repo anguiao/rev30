@@ -57,6 +57,7 @@ export const session: AuthTokenResponse = {
     id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
     username: 'ada',
     nickname: 'Ada Lovelace',
+    avatarId: null,
     email: null,
     phone: null,
     status: USER_STATUS_ENABLED,

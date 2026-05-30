@@ -193,7 +193,8 @@ export function createUserRepository(database: Db) {
     },
 
     async create(input: UserCreateInput, passwordHash: string) {
-      const { departmentIds = [], roleIds = [], ...userInput } = input
+      const { departmentIds = [], roleIds = [], avatarId, ...userInput } = input
+      void avatarId
 
       return await database.transaction(async (tx) => {
         await Promise.all([
@@ -285,7 +286,8 @@ export function createUserRepository(database: Db) {
     },
 
     async update(id: string, input: UserUpdateInput) {
-      const { departmentIds, roleIds, ...userInput } = input
+      const { departmentIds, roleIds, avatarId, ...userInput } = input
+      void avatarId
 
       return await database.transaction(async (tx) => {
         const existingRows = await tx

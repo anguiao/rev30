@@ -52,6 +52,7 @@ const drawerTitle = computed(() => (props.userId === null ? '新增系统用户'
 const defaultFormValues: UserFormInput = {
   username: '',
   nickname: '',
+  avatarId: null,
   email: null,
   phone: null,
   status: USER_STATUS_ENABLED,
@@ -91,9 +92,10 @@ const {
       departments,
       roles,
       formValues: {
-        ...pick(user, ['username', 'nickname', 'email', 'phone', 'status']),
-        departmentIds: user.departments.map((department) => department.id),
-        roleIds: user.roles.map((role) => role.id),
+      ...pick(user, ['username', 'nickname', 'email', 'phone', 'status']),
+      avatarId: user.avatarId,
+      departmentIds: user.departments.map((department) => department.id),
+      roleIds: user.roles.map((role) => role.id),
       },
     }
   },

@@ -92,6 +92,7 @@ describe('account settings page', () => {
       nickname: 'Ada Byron',
       email: 'ada@example.com',
       phone: '18888888888',
+      avatarId: null,
       updatedAt: '2026-05-02T00:00:00.000Z',
     }
     updateMyProfileMock.mockResolvedValue(updatedUser)
@@ -112,6 +113,7 @@ describe('account settings page', () => {
       nickname: 'Ada Byron',
       email: 'ada@example.com',
       phone: '18888888888',
+      avatarId: null,
     })
     expect(auth.user).toEqual(updatedUser)
     expect(wrapper.get('[data-test="admin-sidebar-user"]').text()).toContain('Ada Byron')

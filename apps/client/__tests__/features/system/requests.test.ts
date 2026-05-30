@@ -945,11 +945,12 @@ describe('system request helpers', () => {
 
   it('parses create user responses and temporary passwords', async () => {
     const responseBody = {
-      user: {
-        id: '22222222-2222-4222-8222-222222222222',
-        username: 'ada',
-        nickname: 'Ada',
-        email: null,
+    user: {
+      id: '22222222-2222-4222-8222-222222222222',
+      username: 'ada',
+      nickname: 'Ada',
+      avatarId: null,
+      email: null,
         phone: null,
         status: USER_STATUS_ENABLED,
         builtIn: false,
@@ -965,6 +966,7 @@ describe('system request helpers', () => {
     useAuthStore().accessToken = 'access-token'
 
     const result = await createUser({
+      avatarId: null,
       username: 'ada',
       nickname: 'Ada',
       email: null,
@@ -994,6 +996,7 @@ describe('system request helpers', () => {
             id: '22222222-2222-4222-8222-222222222222',
             username: 'ada',
             nickname: 'Ada',
+            avatarId: null,
             email: null,
             phone: null,
             status: USER_STATUS_ENABLED,
@@ -1012,6 +1015,7 @@ describe('system request helpers', () => {
 
     await expect(
       createUser({
+        avatarId: null,
         username: 'ada',
         nickname: 'Ada',
         email: null,
@@ -1031,6 +1035,7 @@ describe('system request helpers', () => {
             id: 'not-a-uuid',
             username: 'ada',
             nickname: 'Ada',
+            avatarId: null,
             email: null,
             phone: null,
             status: USER_STATUS_ENABLED,
@@ -1049,6 +1054,7 @@ describe('system request helpers', () => {
 
     await expect(
       createUser({
+        avatarId: null,
         username: 'ada',
         nickname: 'Ada',
         email: null,
@@ -1121,11 +1127,12 @@ describe('system request helpers', () => {
       .fn()
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify({
-            id: '22222222-2222-4222-8222-222222222222',
-            username: 'ada',
-            nickname: 'Ada',
-            email: null,
+        JSON.stringify({
+          id: '22222222-2222-4222-8222-222222222222',
+          username: 'ada',
+          nickname: 'Ada',
+          avatarId: null,
+          email: null,
             phone: null,
             status: USER_STATUS_ENABLED,
             builtIn: false,
@@ -1138,11 +1145,12 @@ describe('system request helpers', () => {
       )
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify({
-            id: '22222222-2222-4222-8222-222222222222',
-            username: 'ada',
-            nickname: 'Ada Lovelace',
-            email: 'ada@example.com',
+        JSON.stringify({
+          id: '22222222-2222-4222-8222-222222222222',
+          username: 'ada',
+          nickname: 'Ada Lovelace',
+          avatarId: null,
+          email: 'ada@example.com',
             phone: null,
             status: USER_STATUS_ENABLED,
             builtIn: false,
@@ -1159,6 +1167,7 @@ describe('system request helpers', () => {
 
     const user = await getUser('22222222-2222-4222-8222-222222222222')
     const updated = await updateUser('22222222-2222-4222-8222-222222222222', {
+      avatarId: null,
       username: 'ada',
       nickname: 'Ada Lovelace',
       email: 'ada@example.com',

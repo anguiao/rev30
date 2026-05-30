@@ -43,7 +43,10 @@ const { isLoading: isProfileSubmitting, ...profileMutation } = useMutation({
 })
 
 const profileForm = useForm({
-  defaultValues: pick(currentUser.value, ['nickname', 'email', 'phone']) as AuthProfileUpdateInput,
+  defaultValues: {
+    ...pick(currentUser.value, ['nickname', 'email', 'phone']),
+    avatarId: currentUser.value.avatarId,
+  } as AuthProfileUpdateInput,
   validators: {
     onChange: authProfileUpdateSchema,
     onSubmit: authProfileUpdateSchema,
@@ -56,7 +59,10 @@ const profileForm = useForm({
       const user = await profileMutation.mutateAsync(input)
       auth.setUser(user)
 
-      profileForm.reset(pick(user, ['nickname', 'email', 'phone']))
+      profileForm.reset({
+        ...pick(user, ['nickname', 'email', 'phone']),
+        avatarId: user.avatarId,
+      })
       message.success('保存个人信息成功')
     } catch (error) {
       if (

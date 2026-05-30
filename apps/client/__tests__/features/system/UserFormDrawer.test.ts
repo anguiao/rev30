@@ -91,6 +91,7 @@ const userResponse: User = {
   id: userId,
   username: 'ada',
   nickname: 'Ada',
+  avatarId: null,
   email: 'ada@example.com',
   phone: '13800138000',
   status: USER_STATUS_ENABLED as UserStatus,
@@ -214,6 +215,7 @@ describe('UserFormDrawer', () => {
     expect(createUserMock).toHaveBeenCalledWith({
       username: 'new-user',
       nickname: 'New User',
+      avatarId: null,
       email: null,
       phone: null,
       status: USER_STATUS_ENABLED,
@@ -238,6 +240,7 @@ describe('UserFormDrawer', () => {
     expect(createUserMock).toHaveBeenCalledWith({
       username: 'draft-user',
       nickname: 'Draft User',
+      avatarId: null,
       email: null,
       phone: null,
       status: USER_STATUS_ENABLED,
@@ -290,6 +293,7 @@ describe('UserFormDrawer', () => {
     expect(updateUserMock).toHaveBeenCalledWith(userId, {
       username: 'ada',
       nickname: 'Ada Lovelace',
+      avatarId: null,
       email: 'ada@example.com',
       phone: '13800138000',
       status: USER_STATUS_ENABLED,
@@ -359,6 +363,7 @@ describe('UserFormDrawer', () => {
     expect(createUserMock).toHaveBeenCalledWith({
       username: 'new-user',
       nickname: 'New User',
+      avatarId: null,
       email: null,
       phone: null,
       status: USER_STATUS_ENABLED,

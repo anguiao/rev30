@@ -65,6 +65,51 @@ describe('user schemas', () => {
     ])
   })
 
+  it('accepts nullable avatar ids in user responses and inputs', () => {
+    const avatarId = '6a4e9b86-e4ce-43d7-89f8-49ad0c3f92c4'
+
+    expect(
+      userSchema.parse({
+        id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        username: 'ada',
+        nickname: 'Ada Lovelace',
+        avatarId,
+        email: null,
+        phone: null,
+        status: USER_STATUS_ENABLED,
+        builtIn: false,
+        departments: [],
+        roles: [],
+        createdAt: '2026-05-30T00:00:00.000Z',
+        updatedAt: '2026-05-30T00:00:00.000Z',
+      }),
+    ).toMatchObject({ avatarId })
+
+    expect(
+      userCreateSchema.parse({
+        username: 'grace',
+        nickname: 'Grace Hopper',
+        avatarId,
+      }),
+    ).toMatchObject({
+      username: 'grace',
+      nickname: 'Grace Hopper',
+      avatarId,
+      status: USER_STATUS_ENABLED,
+    })
+
+    expect(
+      userCreateSchema.parse({
+        username: 'no-avatar',
+        nickname: 'No Avatar',
+      }),
+    ).toMatchObject({
+      avatarId: null,
+    })
+
+    expect(userUpdateSchema.parse({ avatarId: null })).toEqual({ avatarId: null })
+  })
+
   it('parses user options with field selection', () => {
     const result = userOptionSchema.safeParse({
       id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
@@ -82,6 +127,7 @@ describe('user schemas', () => {
         id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
         username: 'ada',
         nickname: 'Ada Lovelace',
+        avatarId: null,
         email: null,
         phone: null,
         status: USER_STATUS_ENABLED,
@@ -105,6 +151,7 @@ describe('user schemas', () => {
         id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
         username: 'ada',
         nickname: 'Ada Lovelace',
+        avatarId: null,
         email: null,
         phone: null,
         status: USER_STATUS_ENABLED,
@@ -140,6 +187,7 @@ describe('user schemas', () => {
     ).toEqual({
       username: 'grace',
       nickname: 'Grace Hopper',
+      avatarId: null,
       status: USER_STATUS_ENABLED,
     })
   })
@@ -243,6 +291,7 @@ describe('user schemas', () => {
     ).toEqual({
       username: 'grace',
       nickname: 'Grace Hopper',
+      avatarId: null,
       status: USER_STATUS_ENABLED,
       departmentIds: [firstDepartmentId, secondDepartmentId],
     })
@@ -316,6 +365,7 @@ describe('user schemas', () => {
         id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
         username: 'ada',
         nickname: 'Ada Lovelace',
+        avatarId: null,
         email: null,
         phone: null,
         status: USER_STATUS_ENABLED,
@@ -355,6 +405,7 @@ describe('user schemas', () => {
     ).toEqual({
       username: 'grace',
       nickname: 'Grace Hopper',
+      avatarId: null,
       status: USER_STATUS_ENABLED,
       roleIds: [firstRoleId, secondRoleId],
     })
@@ -398,6 +449,7 @@ describe('user schemas', () => {
         id: '11111111-1111-4111-8111-111111111111',
         username: 'grace',
         nickname: 'Grace Hopper',
+        avatarId: null,
         email: null,
         phone: null,
         status: USER_STATUS_ENABLED,

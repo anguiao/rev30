@@ -5,6 +5,8 @@ import {
   ATTACHMENT_USAGE_AVATAR,
   ATTACHMENT_USAGE_GENERAL,
   ATTACHMENT_USAGE_RICH_TEXT,
+  attachmentListQuerySchema,
+  attachmentListResponseSchema,
   attachmentSchema,
   attachmentSignedUrlInputSchema,
   attachmentSignedUrlSchema,
@@ -12,6 +14,49 @@ import {
 } from '../../src/attachments'
 
 describe('attachment schemas', () => {
+  it('parses attachment list queries and responses', () => {
+    expect(
+      attachmentListQuerySchema.parse({
+        page: '2',
+        pageSize: '10',
+        usage: ATTACHMENT_USAGE_AVATAR,
+        keyword: ' avatar.png ',
+      }),
+    ).toEqual({
+      page: 2,
+      pageSize: 10,
+      usage: ATTACHMENT_USAGE_AVATAR,
+      keyword: 'avatar.png',
+    })
+
+    expect(
+      attachmentListResponseSchema.parse({
+        list: [
+          {
+            id: '11111111-1111-4111-8111-111111111111',
+            originalName: 'avatar.png',
+            mimeType: 'image/png',
+            extension: 'png',
+            size: 12345,
+            usage: ATTACHMENT_USAGE_AVATAR,
+            createdBy: {
+              id: '22222222-2222-4222-8222-222222222222',
+              username: 'ada',
+              nickname: 'Ada Lovelace',
+            },
+            createdAt: '2026-05-30T00:00:00.000Z',
+          },
+        ],
+        total: 1,
+        page: 2,
+        pageSize: 10,
+      }),
+    ).toMatchObject({
+      total: 1,
+      list: [{ originalName: 'avatar.png' }],
+    })
+  })
+
   it('accepts attachment metadata responses', () => {
     expect(
       attachmentSchema.parse({

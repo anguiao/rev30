@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { passwordInputSchema } from './common/inputs'
-import { userCreateSchema, userSchema } from './system/users'
+import { userAvatarIdSchema, userCreateSchema, userSchema } from './system/users'
 import { resourceTreeNodeSchema } from './system/resources'
 
 export const AUTH_ACTION_HEADER = 'Auth-Action'
@@ -30,6 +30,9 @@ export const authProfileUpdateSchema = userCreateSchema
     nickname: true,
     email: true,
     phone: true,
+  })
+  .extend({
+    avatarId: userAvatarIdSchema.nullable(),
   })
   .strict()
 

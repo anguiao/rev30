@@ -23,6 +23,7 @@ export type UserUniqueField = (typeof userUniqueFields)[number]
 export const userUniqueFieldSchema = z.enum(userUniqueFields)
 
 const userIdSchema = z.uuid('用户 ID 无效')
+export const userAvatarIdSchema = z.uuid('头像 ID 无效')
 const userNameSchema = nonBlankString('请输入用户名')
 const userNicknameSchema = nonBlankString('请输入昵称')
 export const contactInputSchema = optionalNullableString()
@@ -36,6 +37,7 @@ export const userSchema = z.object({
   id: userIdSchema,
   username: nonBlankString(),
   nickname: nonBlankString(),
+  avatarId: userAvatarIdSchema.nullable(),
   email: z.string().nullable(),
   phone: z.string().nullable(),
   status: userStatusSchema,
@@ -67,6 +69,7 @@ export const userListQuerySchema = paginationQuerySchema.extend({
 export const userFormSchema = z.object({
   username: userNameSchema,
   nickname: userNicknameSchema,
+  avatarId: userAvatarIdSchema.nullable().default(null),
   email: contactInputSchema,
   phone: contactInputSchema,
   status: userStatusSchema,
@@ -93,9 +96,14 @@ export const userCreateSchema = userFormSchema.extend({
   roleIds: roleIdsSchema.optional(),
 })
 
-export const userUpdateSchema = userFormSchema.partial().refine(hasAnyDefinedValue, {
-  message: '至少修改一个字段',
-})
+export const userUpdateSchema = userFormSchema
+  .partial()
+  .extend({
+    avatarId: userAvatarIdSchema.nullable().optional(),
+  })
+  .refine(hasAnyDefinedValue, {
+    message: '至少修改一个字段',
+  })
 
 export const userListResponseSchema = z.object({
   list: z.array(userListItemSchema),

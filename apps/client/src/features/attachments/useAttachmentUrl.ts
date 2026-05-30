@@ -1,5 +1,7 @@
 import { ATTACHMENT_DISPOSITION_ATTACHMENT, type AttachmentDisposition } from '@rev30/contracts'
-import { computed, onScopeDispose, readonly, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { useTimeoutFn } from '@vueuse/core'
+import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 import { createAttachmentSignedUrl } from './requests'
 
 const signedUrlRefreshLeadMs = 30_000
@@ -13,106 +15,81 @@ export function useAttachmentUrl(
   id: MaybeRefOrGetter<string | null | undefined>,
   options: UseAttachmentUrlOptions = {},
 ) {
-  const url = ref<string | null>(null)
-  const expiresAt = ref<string | null>(null)
-  const error = ref<unknown>(null)
-  const isLoading = ref(false)
-  const activeDisposition = computed(
+  const attachmentId = computed(() => toValue(id) || null)
+  const disposition = computed(
     () => toValue(options.disposition) ?? ATTACHMENT_DISPOSITION_ATTACHMENT,
   )
-  const isEnabled = computed(() => toValue(options.enabled) ?? true)
-  let requestVersion = 0
-  let refreshTimer: ReturnType<typeof setTimeout> | null = null
-
-  function clearRefreshTimer() {
-    if (refreshTimer) {
-      clearTimeout(refreshTimer)
-      refreshTimer = null
-    }
-  }
-
-  function scheduleRefresh(nextExpiresAt: string, version: number) {
-    clearRefreshTimer()
-
-    const expiresTime = Date.parse(nextExpiresAt)
-    const remainingMs = expiresTime - Date.now()
-    const delay =
-      remainingMs > signedUrlRefreshLeadMs
-        ? remainingMs - signedUrlRefreshLeadMs
-        : Math.floor(remainingMs / 2)
-
-    if (!Number.isFinite(expiresTime) || delay <= 0) return
-
-    refreshTimer = setTimeout(() => {
-      if (version === requestVersion) void refresh()
-    }, delay)
-  }
-
-  function invalidateAndClear() {
-    requestVersion += 1
-    clearRefreshTimer()
-    url.value = null
-    expiresAt.value = null
-    error.value = null
-    isLoading.value = false
-  }
-
-  async function refresh() {
-    const attachmentId = toValue(id)
-
-    if (!attachmentId || !isEnabled.value) {
-      invalidateAndClear()
-      return
-    }
-
-    const currentRequestVersion = ++requestVersion
-    clearRefreshTimer()
-    url.value = null
-    expiresAt.value = null
-    isLoading.value = true
-    error.value = null
-
-    try {
-      const signed = await createAttachmentSignedUrl(attachmentId, {
-        disposition: activeDisposition.value,
-      })
-
-      if (currentRequestVersion !== requestVersion) return
-
-      url.value = signed.url
-      expiresAt.value = signed.expiresAt
-      scheduleRefresh(signed.expiresAt, currentRequestVersion)
-    } catch (caught) {
-      if (currentRequestVersion !== requestVersion) return
-
-      url.value = null
-      expiresAt.value = null
-      error.value = caught
-    } finally {
-      if (currentRequestVersion === requestVersion) isLoading.value = false
-    }
-  }
-
-  watch(
-    [() => toValue(id), isEnabled, activeDisposition],
-    () => {
-      void refresh()
-    },
-    {
-      immediate: true,
-    },
+  const isEnabled = computed(
+    () => attachmentId.value !== null && (toValue(options.enabled) ?? true),
   )
 
-  onScopeDispose(() => {
-    requestVersion += 1
-    clearRefreshTimer()
+  const {
+    data,
+    error: rawError,
+    isLoading: rawLoading,
+    refetch,
+  } = useQuery({
+    key: () => ['attachments', 'signed-url', attachmentId.value, disposition.value],
+    enabled: isEnabled,
+    staleTime: 30_000,
+    gcTime: 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    query: () =>
+      createAttachmentSignedUrl(attachmentId.value!, {
+        disposition: disposition.value,
+      }),
   })
 
+  const signedUrl = computed(() => {
+    if (!isEnabled.value || rawLoading.value || rawError.value !== null) return null
+
+    return data.value ?? null
+  })
+  const expiresAt = computed(() => signedUrl.value?.expiresAt ?? null)
+  const url = computed(() => signedUrl.value?.url ?? null)
+  const error = computed(() => (isEnabled.value ? rawError.value : null))
+  const isLoading = computed(() => isEnabled.value && rawLoading.value)
+
+  const refreshDelay = ref(0)
+  const refreshTimer = useTimeoutFn(
+    () => {
+      if (isEnabled.value) void refetch()
+    },
+    refreshDelay,
+    { immediate: false },
+  )
+
+  watch(
+    expiresAt,
+    (nextExpiresAt) => {
+      refreshTimer.stop()
+
+      if (!nextExpiresAt) return
+
+      const delay = Date.parse(nextExpiresAt) - Date.now() - signedUrlRefreshLeadMs
+
+      if (delay <= 0) return
+
+      refreshDelay.value = delay
+      refreshTimer.start()
+    },
+    { immediate: true },
+  )
+
+  async function refresh() {
+    refreshTimer.stop()
+
+    if (!isEnabled.value) return
+
+    await refetch()
+  }
+
   return {
-    error: readonly(error),
-    expiresAt: readonly(expiresAt),
-    isLoading: readonly(isLoading),
+    url,
+    expiresAt,
+    error,
+    isLoading,
     refresh,
-    url: readonly(url),
   }
 }

@@ -27,12 +27,12 @@ describe('attachment config', () => {
       readAttachmentConfig({
         NODE_ENV: 'production',
         ATTACHMENT_SIGNING_SECRET: '  signing-secret  ',
-        ATTACHMENT_SIGNED_URL_TTL_SECONDS: '600',
+        ATTACHMENT_SIGNED_URL_TTL_SECONDS: '1e2',
         ATTACHMENT_STORAGE_DIR: '/tmp/attachments',
       }),
     ).toEqual({
       signingSecret: 'signing-secret',
-      signedUrlTtlSeconds: 600,
+      signedUrlTtlSeconds: 100,
       storageDir: '/tmp/attachments',
     })
   })
@@ -41,8 +41,15 @@ describe('attachment config', () => {
     expect(() =>
       readAttachmentConfig({
         NODE_ENV: 'test',
-        ATTACHMENT_SIGNED_URL_TTL_SECONDS: '1e2',
+        ATTACHMENT_SIGNED_URL_TTL_SECONDS: 'abc',
       }),
     ).toThrow('ATTACHMENT_SIGNED_URL_TTL_SECONDS 必须是正整数')
+
+    expect(() =>
+      readAttachmentConfig({
+        NODE_ENV: 'test',
+        ATTACHMENT_SIGNED_URL_TTL_SECONDS: '30',
+      }),
+    ).toThrow('ATTACHMENT_SIGNED_URL_TTL_SECONDS 不能小于 60')
   })
 })

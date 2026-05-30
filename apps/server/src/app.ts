@@ -11,17 +11,19 @@ import { createIconSearchRoutes } from './modules/icons/search/routes'
 import { createSystemRoutes } from './modules/system/routes'
 
 export function createApiRoutes(database: Db) {
+  const authMiddleware = createAuthMiddleware(database)
+
   return new Hono()
     .route('/', healthRoutes)
     .route('/auth', createAuthRoutes(database))
-    .route('/attachments', createAttachmentContentRoutes(database))
-    .use('/attachments/*', createAuthMiddleware(database))
-    .route('/attachments', createAttachmentRoutes(database))
     .route('/icons/search', createIconSearchRoutes(database))
     .route('/icons', iconRoutes)
-    .use('/system/*', createAuthMiddleware(database))
+    .route('/attachments', createAttachmentContentRoutes(database))
+    .use('/attachments/*', authMiddleware)
+    .route('/attachments', createAttachmentRoutes(database))
+    .use('/system/*', authMiddleware)
     .route('/system', createSystemRoutes(database))
-    .use('/content/*', createAuthMiddleware(database))
+    .use('/content/*', authMiddleware)
     .route('/content', createContentRoutes(database))
 }
 

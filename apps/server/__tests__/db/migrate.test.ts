@@ -304,6 +304,81 @@ describe('PGlite migration runner', () => {
     }
   }, 10_000)
 
+  it('backfills announcement html and keeps existing announcements visible', async () => {
+    const client = new PGlite()
+
+    try {
+      const partialMigrationsDir = await createMigrationFixture(16)
+
+      await migratePGlite(client, partialMigrationsDir)
+      await client.exec(`
+        INSERT INTO "content_announcements"
+          ("id", "type", "title", "content_json", "content_text", "status", "created_at", "updated_at")
+        VALUES (
+          '11111111-1111-4111-8111-111111111111',
+          'notice',
+          '历史通知',
+          $json$
+          {
+            "type": "doc",
+            "content": [
+              {
+                "type": "heading",
+                "attrs": { "level": 2 },
+                "content": [{ "type": "text", "text": "维护安排" }]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "请查看 " },
+                  {
+                    "type": "text",
+                    "text": "详情",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "https://example.com/details",
+                          "target": "_blank"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+          $json$::jsonb,
+          '维护安排 请查看 详情',
+          'published',
+          now(),
+          now()
+        );
+      `)
+
+      const fullMigrationsDir = await createMigrationFixture(17)
+
+      await migratePGlite(client, fullMigrationsDir)
+
+      const result = await client.query<{
+        content_html: string
+        visibility: string
+      }>(`
+        SELECT "content_html", "visibility"
+        FROM "content_announcements"
+        WHERE "id" = '11111111-1111-4111-8111-111111111111'
+      `)
+
+      expect(result.rows[0]).toEqual({
+        content_html:
+          '<h2>维护安排</h2><p>请查看 <a href="https://example.com/details" target="_blank" rel="noopener noreferrer">详情</a></p>',
+        visibility: 'all',
+      })
+    } finally {
+      await client.close()
+    }
+  }, 10_000)
+
   it('adds announcement visibility columns and target table columns through migrations', async () => {
     const client = new PGlite()
 

@@ -1,5 +1,8 @@
+import { readPositiveIntegerEnv } from '../../runtime/env'
+
 const defaultStorageDir = '.attachments/dev'
 const defaultSignedUrlTtlSeconds = 300
+const minSignedUrlTtlSeconds = 60
 const developmentSigningSecret = 'rev30-development-attachment-signing-secret'
 
 export type AttachmentConfig = {
@@ -8,18 +11,18 @@ export type AttachmentConfig = {
   storageDir: string
 }
 
-function readPositiveInteger(value: string | undefined, fallback: number, name: string) {
-  const rawValue = value?.trim()
+function readSignedUrlTtlSeconds(env: NodeJS.ProcessEnv) {
+  const value = readPositiveIntegerEnv(
+    env,
+    'ATTACHMENT_SIGNED_URL_TTL_SECONDS',
+    defaultSignedUrlTtlSeconds,
+  )
 
-  if (!rawValue) {
-    return fallback
+  if (value < minSignedUrlTtlSeconds) {
+    throw new Error(`ATTACHMENT_SIGNED_URL_TTL_SECONDS 不能小于 ${minSignedUrlTtlSeconds}`)
   }
 
-  if (!/^[1-9]\d*$/.test(rawValue)) {
-    throw new Error(`${name} 必须是正整数`)
-  }
-
-  return Number(rawValue)
+  return value
 }
 
 export function readAttachmentConfig(env = process.env): AttachmentConfig {
@@ -34,11 +37,7 @@ export function readAttachmentConfig(env = process.env): AttachmentConfig {
 
   return {
     signingSecret,
-    signedUrlTtlSeconds: readPositiveInteger(
-      env.ATTACHMENT_SIGNED_URL_TTL_SECONDS,
-      defaultSignedUrlTtlSeconds,
-      'ATTACHMENT_SIGNED_URL_TTL_SECONDS',
-    ),
+    signedUrlTtlSeconds: readSignedUrlTtlSeconds(env),
     storageDir: env.ATTACHMENT_STORAGE_DIR ?? defaultStorageDir,
   }
 }

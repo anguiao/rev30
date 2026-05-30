@@ -34,7 +34,8 @@ const configListQueryValidator = zValidator('query', configListRequestQuerySchem
 
 const configCreateBodyValidator = zValidator('json', configCreateSchema, (result, c) => {
   if (!result.success) {
-    const valueError = z.flattenError(result.error).fieldErrors.value?.[0]
+    const { fieldErrors } = z.flattenError(result.error)
+    const valueError = fieldErrors.value?.[0]
 
     if (valueError?.startsWith('配置值必须')) {
       return c.json({ field: 'value', message: valueError }, 400)
@@ -46,7 +47,8 @@ const configCreateBodyValidator = zValidator('json', configCreateSchema, (result
 
 const configUpdateBodyValidator = zValidator('json', configUpdateSchema, (result, c) => {
   if (!result.success) {
-    const valueError = z.flattenError(result.error).fieldErrors.value?.[0]
+    const { fieldErrors } = z.flattenError(result.error)
+    const valueError = fieldErrors.value?.[0]
 
     if (valueError?.startsWith('配置值必须')) {
       return c.json({ field: 'value', message: valueError }, 400)

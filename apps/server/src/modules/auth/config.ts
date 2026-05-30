@@ -1,3 +1,5 @@
+import { readPositiveIntegerEnv } from '../../runtime/env'
+
 const defaultAccessExpiresInSeconds = 900
 const defaultRefreshExpiresInSeconds = 604800
 const defaultLoginFailureMaxAttempts = 5
@@ -17,20 +19,6 @@ export type AuthConfig = {
   secureCookies: boolean
 }
 
-function readPositiveInteger(value: string | undefined, fallback: number, name: string) {
-  const rawValue = value?.trim()
-
-  if (!rawValue) {
-    return fallback
-  }
-
-  if (!/^[1-9]\d*$/.test(rawValue)) {
-    throw new Error(`${name} 必须是正整数`)
-  }
-
-  return Number(rawValue)
-}
-
 export function readAuthConfig(env = process.env): AuthConfig {
   const isProduction = env.NODE_ENV === 'production'
   const accessSecret = env.JWT_ACCESS_SECRET ?? (isProduction ? undefined : developmentAccessSecret)
@@ -48,30 +36,30 @@ export function readAuthConfig(env = process.env): AuthConfig {
   return {
     accessSecret,
     refreshSecret,
-    accessExpiresInSeconds: readPositiveInteger(
-      env.JWT_ACCESS_EXPIRES_IN_SECONDS,
-      defaultAccessExpiresInSeconds,
+    accessExpiresInSeconds: readPositiveIntegerEnv(
+      env,
       'JWT_ACCESS_EXPIRES_IN_SECONDS',
+      defaultAccessExpiresInSeconds,
     ),
-    refreshExpiresInSeconds: readPositiveInteger(
-      env.JWT_REFRESH_EXPIRES_IN_SECONDS,
-      defaultRefreshExpiresInSeconds,
+    refreshExpiresInSeconds: readPositiveIntegerEnv(
+      env,
       'JWT_REFRESH_EXPIRES_IN_SECONDS',
+      defaultRefreshExpiresInSeconds,
     ),
-    loginFailureMaxAttempts: readPositiveInteger(
-      env.AUTH_LOGIN_FAILURE_MAX_ATTEMPTS,
-      defaultLoginFailureMaxAttempts,
+    loginFailureMaxAttempts: readPositiveIntegerEnv(
+      env,
       'AUTH_LOGIN_FAILURE_MAX_ATTEMPTS',
+      defaultLoginFailureMaxAttempts,
     ),
-    loginFailureWindowSeconds: readPositiveInteger(
-      env.AUTH_LOGIN_FAILURE_WINDOW_SECONDS,
-      defaultLoginFailureWindowSeconds,
+    loginFailureWindowSeconds: readPositiveIntegerEnv(
+      env,
       'AUTH_LOGIN_FAILURE_WINDOW_SECONDS',
+      defaultLoginFailureWindowSeconds,
     ),
-    loginFailureLockSeconds: readPositiveInteger(
-      env.AUTH_LOGIN_FAILURE_LOCK_SECONDS,
-      defaultLoginFailureLockSeconds,
+    loginFailureLockSeconds: readPositiveIntegerEnv(
+      env,
       'AUTH_LOGIN_FAILURE_LOCK_SECONDS',
+      defaultLoginFailureLockSeconds,
     ),
     secureCookies: isProduction,
   }

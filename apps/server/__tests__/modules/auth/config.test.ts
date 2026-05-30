@@ -22,12 +22,12 @@ describe('auth config', () => {
     expect(
       readAuthConfig({
         NODE_ENV: 'test',
-        AUTH_LOGIN_FAILURE_MAX_ATTEMPTS: '7',
+        AUTH_LOGIN_FAILURE_MAX_ATTEMPTS: '1e3',
         AUTH_LOGIN_FAILURE_WINDOW_SECONDS: '300',
         AUTH_LOGIN_FAILURE_LOCK_SECONDS: '600',
       }),
     ).toMatchObject({
-      loginFailureMaxAttempts: 7,
+      loginFailureMaxAttempts: 1000,
       loginFailureWindowSeconds: 300,
       loginFailureLockSeconds: 600,
     })
@@ -64,7 +64,14 @@ describe('auth config', () => {
     expect(() =>
       readAuthConfig({
         NODE_ENV: 'test',
-        AUTH_LOGIN_FAILURE_MAX_ATTEMPTS: '1e3',
+        AUTH_LOGIN_FAILURE_MAX_ATTEMPTS: '0',
+      }),
+    ).toThrow('AUTH_LOGIN_FAILURE_MAX_ATTEMPTS 必须是正整数')
+
+    expect(() =>
+      readAuthConfig({
+        NODE_ENV: 'test',
+        AUTH_LOGIN_FAILURE_MAX_ATTEMPTS: '1.5',
       }),
     ).toThrow('AUTH_LOGIN_FAILURE_MAX_ATTEMPTS 必须是正整数')
   })

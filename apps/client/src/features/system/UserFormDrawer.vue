@@ -194,6 +194,11 @@ function handleAvatarUploadError(error: unknown) {
   formError.value = getSystemErrorMessage(error, '上传用户头像失败')
 }
 
+function handleAvatarUploaded(avatarId: string, handleChange: (value: string | null) => void) {
+  formError.value = null
+  handleChange(avatarId)
+}
+
 watch(
   () => [show.value, props.userId] as const,
   ([isVisible]) => {
@@ -278,11 +283,11 @@ function toDepartmentIds(value: Array<string | number> | null) {
               <div class="flex justify-start pt-2 md:justify-end">
                 <UserAvatarUpload
                   data-test="user-avatar-upload"
-                  :avatar-id="state.value"
+                  :avatar-id="state.value ?? null"
                   :nickname="form.state.values.nickname"
                   :username="form.state.values.username"
                   :size="80"
-                  @uploaded="field.handleChange"
+                  @uploaded="(avatarId) => handleAvatarUploaded(avatarId, field.handleChange)"
                   @error="handleAvatarUploadError"
                 />
               </div>

@@ -237,6 +237,19 @@ describe('UserFormDrawer', () => {
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
 
+  it('clears avatar upload error after a successful upload', async () => {
+    const wrapper = mountDrawer({ userId: null })
+    await flushPromises()
+
+    wrapper.getComponent({ name: 'UserAvatarUpload' }).vm.$emit('error', new Error('upload failed'))
+    await flushPromises()
+    expect(wrapper.text()).toContain('上传用户头像失败')
+
+    await wrapper.get('[data-test="user-avatar-upload"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('上传用户头像失败')
+  })
+
   it('keeps create draft values when the form query refreshes', async () => {
     createUserMock.mockResolvedValue(userCreateResponse)
 

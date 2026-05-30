@@ -2,7 +2,11 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ATTACHMENT_DISPOSITION_INLINE, ATTACHMENT_USAGE_AVATAR } from '@rev30/contracts'
+import {
+  ATTACHMENT_DISPOSITION_INLINE,
+  ATTACHMENT_USAGE_AVATAR,
+  type AttachmentListResponse,
+} from '@rev30/contracts'
 import { createApp } from '../../../src/app'
 import {
   ATTACHMENT_MAX_SIZE_BYTES,
@@ -118,6 +122,52 @@ describe('attachment routes integration', () => {
     expect(contentResponse.headers.get('content-length')).toBe(String(pngBytes.byteLength))
     expect(contentResponse.headers.get('x-content-type-options')).toBe('nosniff')
     expect(contentBody).toEqual(pngBytes)
+  })
+
+  it('lists active attachments with uploader summaries and keeps soft-deleted attachments out', async () => {
+    const { app, authenticated } = await createAttachmentIntegrationFixture()
+    const form = new FormData()
+
+    form.set('file', new File([pngBytes], 'avatar.png', { type: 'image/png' }))
+
+    const uploadResponse = await app.request(`/api/attachments?usage=${ATTACHMENT_USAGE_AVATAR}`, {
+      method: 'POST',
+      body: form,
+      headers: authenticated.authHeaders,
+    })
+    const uploaded = (await uploadResponse.json()) as { id: string }
+
+    const listResponse = await app.request(
+      `/api/attachments?usage=${ATTACHMENT_USAGE_AVATAR}&keyword=avatar`,
+      {
+        headers: authenticated.authHeaders,
+      },
+    )
+    const listBody = (await listResponse.json()) as AttachmentListResponse
+
+    expect(listResponse.status).toBe(200)
+    expect(listBody.total).toBe(1)
+    expect(listBody.list[0]).toMatchObject({
+      id: uploaded.id,
+      originalName: 'avatar.png',
+      usage: ATTACHMENT_USAGE_AVATAR,
+      createdBy: {
+        id: authenticated.userId,
+      },
+    })
+
+    const deleteResponse = await app.request(`/api/attachments/${uploaded.id}`, {
+      method: 'DELETE',
+      headers: authenticated.authHeaders,
+    })
+    expect(deleteResponse.status).toBe(204)
+
+    const afterDeleteResponse = await app.request('/api/attachments', {
+      headers: authenticated.authHeaders,
+    })
+    const afterDeleteBody = (await afterDeleteResponse.json()) as AttachmentListResponse
+
+    expect(afterDeleteBody.list).not.toContainEqual(expect.objectContaining({ id: uploaded.id }))
   })
 
   it('rejects uploads above the global attachment size limit', async () => {

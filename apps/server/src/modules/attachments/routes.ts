@@ -1,5 +1,8 @@
 import {
+  type AttachmentListQuery,
   attachmentSchema,
+  attachmentListQuerySchema,
+  attachmentListResponseSchema,
   attachmentSignedUrlInputSchema,
   attachmentSignedUrlSchema,
   attachmentUsageSchema,
@@ -27,6 +30,9 @@ const attachmentUploadQuerySchema = z.object({
 const attachmentContentQuerySchema = z.object({
   token: z.string().trim().min(1),
 })
+const attachmentListRequestQuerySchema = attachmentListQuerySchema
+  .optional()
+  .transform((query) => query ?? attachmentListQuerySchema.parse({}))
 
 const attachmentIdValidator = zValidator('param', attachmentIdParamSchema, (result, c) => {
   if (!result.success) {
@@ -63,6 +69,15 @@ const attachmentContentQueryValidator = zValidator(
     }
   },
 )
+const attachmentListQueryValidator = zValidator(
+  'query',
+  attachmentListRequestQuerySchema,
+  (result, c) => {
+    if (!result.success) {
+      return c.json({ message: '查询参数无效' }, 400)
+    }
+  },
+)
 
 function attachmentErrorResponse(error: unknown, c: Context) {
   if (
@@ -91,6 +106,16 @@ export function createAttachmentRoutes(database: Db) {
   app.onError((error, c) => attachmentErrorResponse(error, c))
 
   return app
+    .get(
+      '/',
+      requireAccess('content:attachment:list'),
+      attachmentListQueryValidator,
+      async (c) => {
+        const query: AttachmentListQuery = c.req.valid('query')
+
+        return c.json(attachmentListResponseSchema.parse(await service.list(query)))
+      },
+    )
     .post('/', attachmentUploadQueryValidator, async (c) => {
       const { usage } = c.req.valid('query')
       const attachment = await handleAttachmentUpload(c.req.raw, (file) =>

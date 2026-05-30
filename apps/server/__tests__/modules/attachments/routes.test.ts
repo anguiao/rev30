@@ -70,6 +70,7 @@ const mocks = vi.hoisted(() => {
     createSignedUrl: vi.fn(),
     delete: vi.fn(),
     get: vi.fn(),
+    list: vi.fn(),
     readContent: vi.fn(),
     upload: vi.fn(),
   }
@@ -116,6 +117,21 @@ describe('attachment routes', () => {
       await readStreamBytes(input.body)
 
       return attachment
+    })
+    mocks.service.list.mockResolvedValue({
+      list: [
+        {
+          ...attachment,
+          createdBy: {
+            id: currentUser.id,
+            username: currentUser.username,
+            nickname: currentUser.nickname,
+          },
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20,
     })
     mocks.service.get.mockResolvedValue(attachment)
     mocks.service.createSignedUrl.mockResolvedValue(signedUrl)
@@ -214,6 +230,32 @@ describe('attachment routes', () => {
     expect(signedUrlResponse.status).toBe(200)
     expect(mocks.service.createSignedUrl).toHaveBeenCalledWith(attachmentId, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
+    })
+  })
+
+  it('lists attachments with filters and requires list access', async () => {
+    const app = createAttachmentTestApp()
+
+    const forbiddenResponse = await app.request('/api/attachments')
+    expect(forbiddenResponse.status).toBe(403)
+    expect(mocks.service.list).not.toHaveBeenCalled()
+
+    mocks.authState.accessCodes = ['content:attachment:list']
+    const response = await app.request(
+      `/api/attachments?page=2&pageSize=5&usage=${ATTACHMENT_USAGE_AVATAR}&keyword=avatar`,
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      total: 1,
+      page: 1,
+      pageSize: 20,
+    })
+    expect(mocks.service.list).toHaveBeenCalledWith({
+      page: 2,
+      pageSize: 5,
+      usage: ATTACHMENT_USAGE_AVATAR,
+      keyword: 'avatar',
     })
   })
 

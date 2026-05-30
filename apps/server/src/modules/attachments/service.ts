@@ -5,13 +5,14 @@ import { contentType } from 'mime-types'
 import {
   ATTACHMENT_DISPOSITION_ATTACHMENT,
   type AttachmentDisposition,
+  type AttachmentListQuery,
   type AttachmentUsage,
 } from '@rev30/contracts'
 import type { Db } from '../../db'
 import { logger } from '../../runtime/logger'
 import { readAttachmentConfig } from './config'
 import { AttachmentNotFoundError } from './errors'
-import { toAttachment } from './mapper'
+import { toAttachment, toAttachmentListItem } from './mapper'
 import {
   resolveContentDisposition,
   resolveAttachmentFileType,
@@ -61,6 +62,15 @@ export function createAttachmentService(database: Db) {
   const repository = createAttachmentRepository(database)
 
   return {
+    async list(query: AttachmentListQuery) {
+      const result = await repository.list(query)
+
+      return {
+        ...result,
+        list: result.list.map(toAttachmentListItem),
+      }
+    },
+
     async upload(input: {
       body: AsyncIterable<Uint8Array>
       originalName: string

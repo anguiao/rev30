@@ -92,10 +92,10 @@ const {
       departments,
       roles,
       formValues: {
-      ...pick(user, ['username', 'nickname', 'email', 'phone', 'status']),
-      avatarId: user.avatarId,
-      departmentIds: user.departments.map((department) => department.id),
-      roleIds: user.roles.map((role) => role.id),
+        ...pick(user, ['username', 'nickname', 'email', 'phone', 'status']),
+        avatarId: user.avatarId,
+        departmentIds: user.departments.map((department) => department.id),
+        roleIds: user.roles.map((role) => role.id),
       },
     }
   },

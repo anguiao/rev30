@@ -945,12 +945,12 @@ describe('system request helpers', () => {
 
   it('parses create user responses and temporary passwords', async () => {
     const responseBody = {
-    user: {
-      id: '22222222-2222-4222-8222-222222222222',
-      username: 'ada',
-      nickname: 'Ada',
-      avatarId: null,
-      email: null,
+      user: {
+        id: '22222222-2222-4222-8222-222222222222',
+        username: 'ada',
+        nickname: 'Ada',
+        avatarId: null,
+        email: null,
         phone: null,
         status: USER_STATUS_ENABLED,
         builtIn: false,
@@ -1127,12 +1127,12 @@ describe('system request helpers', () => {
       .fn()
       .mockResolvedValueOnce(
         new Response(
-        JSON.stringify({
-          id: '22222222-2222-4222-8222-222222222222',
-          username: 'ada',
-          nickname: 'Ada',
-          avatarId: null,
-          email: null,
+          JSON.stringify({
+            id: '22222222-2222-4222-8222-222222222222',
+            username: 'ada',
+            nickname: 'Ada',
+            avatarId: null,
+            email: null,
             phone: null,
             status: USER_STATUS_ENABLED,
             builtIn: false,
@@ -1145,12 +1145,12 @@ describe('system request helpers', () => {
       )
       .mockResolvedValueOnce(
         new Response(
-        JSON.stringify({
-          id: '22222222-2222-4222-8222-222222222222',
-          username: 'ada',
-          nickname: 'Ada Lovelace',
-          avatarId: null,
-          email: 'ada@example.com',
+          JSON.stringify({
+            id: '22222222-2222-4222-8222-222222222222',
+            username: 'ada',
+            nickname: 'Ada Lovelace',
+            avatarId: null,
+            email: 'ada@example.com',
             phone: null,
             status: USER_STATUS_ENABLED,
             builtIn: false,

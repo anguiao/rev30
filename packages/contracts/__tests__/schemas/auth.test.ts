@@ -111,6 +111,19 @@ describe('auth schemas', () => {
 
   it('parses current user profile updates without username', () => {
     const avatarId = '6a4e9b86-e4ce-43d7-89f8-49ad0c3f92c4'
+
+    expect(
+      authProfileUpdateSchema.parse({
+        nickname: 'Ada',
+        email: '',
+        phone: '13800138000',
+      }),
+    ).toEqual({
+      nickname: 'Ada',
+      email: null,
+      phone: '13800138000',
+    })
+
     const result = authProfileUpdateSchema.parse({
       nickname: 'Ada',
       avatarId,
@@ -124,6 +137,7 @@ describe('auth schemas', () => {
       email: null,
       phone: '13800138000',
     })
+
     expect(() =>
       authProfileUpdateSchema.parse({
         username: 'ada',

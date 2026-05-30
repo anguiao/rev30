@@ -32,7 +32,7 @@ export const authProfileUpdateSchema = userCreateSchema
     phone: true,
   })
   .extend({
-    avatarId: userAvatarIdSchema.nullable(),
+    avatarId: userAvatarIdSchema.nullable().optional(),
   })
   .strict()
 

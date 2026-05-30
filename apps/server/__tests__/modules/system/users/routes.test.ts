@@ -18,6 +18,7 @@ const user = {
   id: userId,
   username: 'ada',
   nickname: 'Ada Lovelace',
+  avatarId: null,
   email: null,
   phone: null,
   status: USER_STATUS_ENABLED,
@@ -144,6 +145,7 @@ describe('user routes', () => {
     const createBody = {
       username: 'ada',
       nickname: 'Ada Lovelace',
+      avatarId: null,
       email: null,
       phone: null,
       departmentIds: [],

@@ -134,6 +134,13 @@
       "when": 1780045120781,
       "tag": "0018_add_attachments",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780159471892,
+      "tag": "0019_add_user_avatar_attachments",
+      "breakpoints": true
     }
   ]
 }

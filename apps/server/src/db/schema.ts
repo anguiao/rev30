@@ -70,6 +70,7 @@ export const systemUsers = pgTable(
     id: uuid('id').primaryKey(),
     username: text('username').notNull(),
     nickname: text('nickname').notNull(),
+    avatarId: uuid('avatar_id').references(() => attachments.id),
     email: text('email'),
     phone: text('phone'),
     status: smallint('status').notNull().default(USER_STATUS_ENABLED),
@@ -86,6 +87,7 @@ export const systemUsers = pgTable(
     uniqueIndex('system_users_phone_unique')
       .on(table.phone)
       .where(sql`${table.deletedAt} IS NULL`),
+    index('system_users_avatar_id_idx').on(table.avatarId),
   ],
 )
 

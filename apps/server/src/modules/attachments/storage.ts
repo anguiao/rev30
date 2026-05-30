@@ -3,7 +3,6 @@ import { createReadStream, createWriteStream } from 'node:fs'
 import { mkdir, rename, rm, stat, unlink } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { Readable, Transform } from 'node:stream'
-import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import { pipeline } from 'node:stream/promises'
 
 export type AttachmentPutResult = {
@@ -17,11 +16,7 @@ export type AttachmentGetResult = {
 }
 
 export interface AttachmentStorage {
-  put(input: {
-    key: string
-    body: ReadableStream<Uint8Array>
-    expectedSize: number
-  }): Promise<AttachmentPutResult>
+  put(input: { key: string; body: AsyncIterable<Uint8Array> }): Promise<AttachmentPutResult>
 
   get(key: string): Promise<AttachmentGetResult>
 
@@ -80,11 +75,7 @@ export class LocalAttachmentStorage implements AttachmentStorage {
     return targetPath
   }
 
-  async put(input: {
-    key: string
-    body: ReadableStream<Uint8Array>
-    expectedSize: number
-  }): Promise<AttachmentPutResult> {
+  async put(input: { key: string; body: AsyncIterable<Uint8Array> }): Promise<AttachmentPutResult> {
     const targetPath = this.resolveKey(input.key)
     const targetDir = dirname(targetPath)
     const tempPath = `${targetPath}.${randomUUID()}.tmp`
@@ -94,16 +85,12 @@ export class LocalAttachmentStorage implements AttachmentStorage {
 
     try {
       await pipeline(
-        Readable.fromWeb(input.body as unknown as NodeReadableStream<Uint8Array>),
+        Readable.from(input.body, { objectMode: false }),
         hashing.stream,
         createWriteStream(tempPath),
       )
 
       const result = hashing.digest()
-
-      if (result.size !== input.expectedSize) {
-        throw new Error('附件写入大小不一致')
-      }
 
       await rename(tempPath, targetPath)
 

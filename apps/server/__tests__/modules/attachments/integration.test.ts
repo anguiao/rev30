@@ -4,6 +4,10 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ATTACHMENT_DISPOSITION_INLINE, ATTACHMENT_USAGE_AVATAR } from '@rev30/contracts'
 import { createApp } from '../../../src/app'
+import {
+  ATTACHMENT_MAX_SIZE_BYTES,
+  ATTACHMENT_MAX_SIZE_MESSAGE,
+} from '../../../src/modules/attachments/policy'
 import { createSystemAccessFixture } from '../../helpers/auth'
 import { createTestDb } from '../../helpers/db'
 
@@ -19,6 +23,26 @@ async function createTempRoot() {
   return root
 }
 
+async function createAttachmentIntegrationFixture() {
+  const database = await createTestDb()
+  const storageDir = await createTempRoot()
+
+  vi.stubEnv('ATTACHMENT_STORAGE_DIR', storageDir)
+  vi.stubEnv('ATTACHMENT_SIGNING_SECRET', 'integration-attachment-secret')
+  vi.stubEnv('ATTACHMENT_SIGNED_URL_TTL_SECONDS', '300')
+
+  const app = createApp(database)
+  const authenticated = await createSystemAccessFixture(database, {
+    admin: true,
+    usernamePrefix: 'attachment-integration-user',
+  })
+
+  return {
+    app,
+    authenticated,
+  }
+}
+
 afterEach(async () => {
   vi.unstubAllEnvs()
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })))
@@ -26,23 +50,12 @@ afterEach(async () => {
 
 describe('attachment routes integration', () => {
   it('uploads metadata, creates signed urls, and serves signed content without auth', async () => {
-    const database = await createTestDb()
-    const storageDir = await createTempRoot()
-
-    vi.stubEnv('ATTACHMENT_STORAGE_DIR', storageDir)
-    vi.stubEnv('ATTACHMENT_SIGNING_SECRET', 'integration-attachment-secret')
-    vi.stubEnv('ATTACHMENT_SIGNED_URL_TTL_SECONDS', '300')
-
-    const app = createApp(database)
-    const authenticated = await createSystemAccessFixture(database, {
-      usernamePrefix: 'attachment-integration-user',
-    })
+    const { app, authenticated } = await createAttachmentIntegrationFixture()
     const form = new FormData()
 
     form.set('file', new File([pngBytes], 'avatar.png', { type: 'image/png' }))
-    form.set('usage', ATTACHMENT_USAGE_AVATAR)
 
-    const uploadResponse = await app.request('/api/attachments', {
+    const uploadResponse = await app.request(`/api/attachments?usage=${ATTACHMENT_USAGE_AVATAR}`, {
       method: 'POST',
       body: form,
       headers: authenticated.authHeaders,
@@ -96,8 +109,7 @@ describe('attachment routes integration', () => {
       expiresAt: expect.any(String),
     })
 
-    const signedUrl = new URL(signed.url)
-    const contentResponse = await app.request(`${signedUrl.pathname}${signedUrl.search}`)
+    const contentResponse = await app.request(signed.url)
     const contentBody = new Uint8Array(await contentResponse.arrayBuffer())
 
     expect(contentResponse.status).toBe(200)
@@ -106,5 +118,30 @@ describe('attachment routes integration', () => {
     expect(contentResponse.headers.get('content-length')).toBe(String(pngBytes.byteLength))
     expect(contentResponse.headers.get('x-content-type-options')).toBe('nosniff')
     expect(contentBody).toEqual(pngBytes)
+  })
+
+  it('rejects uploads above the global attachment size limit', async () => {
+    const { app, authenticated } = await createAttachmentIntegrationFixture()
+    const form = new FormData()
+
+    form.set(
+      'file',
+      new File(
+        [pngBytes, new Uint8Array(ATTACHMENT_MAX_SIZE_BYTES - pngBytes.byteLength + 1)],
+        'avatar.png',
+        { type: 'image/png' },
+      ),
+    )
+
+    const response = await app.request(`/api/attachments?usage=${ATTACHMENT_USAGE_AVATAR}`, {
+      method: 'POST',
+      body: form,
+      headers: authenticated.authHeaders,
+    })
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      message: ATTACHMENT_MAX_SIZE_MESSAGE,
+    })
   })
 })

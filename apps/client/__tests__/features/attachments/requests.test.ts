@@ -49,8 +49,13 @@ describe('attachment request helpers', () => {
     const call = expectFetchCall(fetchMock, 0, {
       method: 'POST',
       pathname: '/api/attachments',
+      query: {
+        usage: ATTACHMENT_USAGE_AVATAR,
+      },
     })
     expect(call.init.body).toBeInstanceOf(FormData)
+    expect((call.init.body as FormData).get('file')).toBe(file)
+    expect((call.init.body as FormData).has('usage')).toBe(false)
   })
 
   it('gets metadata and creates signed URLs', async () => {
@@ -83,10 +88,9 @@ describe('attachment request helpers', () => {
   it('deletes attachments and parses errors', async () => {
     const fetchMock = createFetchMock(
       emptyResponse(),
-      jsonResponse({ field: 'file', message: '不支持的文件类型' }, { status: 400 }),
+      jsonResponse({ message: '不支持的文件类型' }, { status: 400 }),
     )
     const expectedError: Partial<AttachmentRequestError> = {
-      field: 'file',
       message: '不支持的文件类型',
       status: 400,
     }

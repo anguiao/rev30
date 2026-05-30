@@ -60,9 +60,8 @@ describe('app auth boundaries', () => {
     })
 
     form.set('file', file)
-    form.set('usage', 'avatar')
 
-    const response = await app.request('/api/attachments', {
+    const response = await app.request('/api/attachments?usage=avatar', {
       method: 'POST',
       body: form,
     })

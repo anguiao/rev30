@@ -1,109 +1,55 @@
 import { describe, expect, it } from 'vitest'
+import { ATTACHMENT_DISPOSITION_ATTACHMENT, ATTACHMENT_DISPOSITION_INLINE } from '@rev30/contracts'
 import {
-  ATTACHMENT_DISPOSITION_ATTACHMENT,
-  ATTACHMENT_DISPOSITION_INLINE,
-  ATTACHMENT_USAGE_AVATAR,
-  ATTACHMENT_USAGE_GENERAL,
-  ATTACHMENT_USAGE_RICH_TEXT,
-} from '@rev30/contracts'
-import {
-  detectAttachmentFileType,
+  ATTACHMENT_MAX_SIZE_BYTES,
+  ATTACHMENT_MAX_SIZE_MESSAGE,
+  resolveAttachmentFileType,
   resolveContentDisposition,
-  validateAttachmentUpload,
+  validateAttachmentUploadMimeType,
+  validateAttachmentUploadSize,
 } from '../../../src/modules/attachments/policy'
 
-const pngBytes = new Uint8Array([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
-])
-const pdfBytes = new TextEncoder().encode('%PDF-1.7\n')
-const plainBytes = new TextEncoder().encode('name,email\nAda,ada@example.com\n')
-const unknownBytes = new Uint8Array([0x00, 0x7f, 0x80, 0x2a, 0xff, 0x10])
-
 describe('attachment policy', () => {
-  it('detects binary files by magic bytes', async () => {
-    await expect(detectAttachmentFileType(pngBytes, 'avatar.bin')).resolves.toMatchObject({
+  it('uses detected binary file types', () => {
+    expect(resolveAttachmentFileType({ ext: 'png', mime: 'image/png' }, 'avatar.bin')).toEqual({
       extension: 'png',
       mimeType: 'image/png',
     })
-    await expect(detectAttachmentFileType(pdfBytes, 'document.bin')).resolves.toMatchObject({
+    expect(
+      resolveAttachmentFileType({ ext: 'pdf', mime: 'application/pdf' }, 'document.bin'),
+    ).toEqual({
       extension: 'pdf',
       mimeType: 'application/pdf',
     })
   })
 
-  it('falls back to filename lookup for text-like files', async () => {
-    await expect(detectAttachmentFileType(plainBytes, 'users.csv')).resolves.toMatchObject({
+  it('falls back to filename lookup for text-like files', () => {
+    expect(resolveAttachmentFileType(undefined, 'users.csv')).toEqual({
       extension: 'csv',
       mimeType: 'text/csv',
     })
+    expect(resolveAttachmentFileType(undefined, 'notes.txt')).toEqual({
+      extension: 'txt',
+      mimeType: 'text/plain',
+    })
   })
 
-  it('rejects unknown bytes disguised as binary document extensions', async () => {
-    await expect(detectAttachmentFileType(unknownBytes, 'report.docx')).rejects.toThrow(
-      '不支持的文件类型',
-    )
-    await expect(detectAttachmentFileType(unknownBytes, 'archive.zip')).rejects.toThrow(
-      '不支持的文件类型',
-    )
-    await expect(detectAttachmentFileType(unknownBytes, 'file.pdf')).rejects.toThrow(
-      '不支持的文件类型',
-    )
+  it('rejects unknown binary document extensions', () => {
+    expect(() => resolveAttachmentFileType(undefined, 'report.docx')).toThrow('不支持的文件类型')
+    expect(() => resolveAttachmentFileType(undefined, 'archive.zip')).toThrow('不支持的文件类型')
+    expect(() => resolveAttachmentFileType(undefined, 'file.pdf')).toThrow('不支持的文件类型')
   })
 
-  it('rejects risky markup content disguised as text-like files', async () => {
-    await expect(
-      detectAttachmentFileType(new TextEncoder().encode('  <html><body>x</body></html>'), 'x.txt'),
-    ).rejects.toThrow('不支持的文件类型')
-    await expect(
-      detectAttachmentFileType(new TextEncoder().encode('\n<?xml version="1.0"?>'), 'x.csv'),
-    ).rejects.toThrow('不支持的文件类型')
-    await expect(
-      detectAttachmentFileType(
-        new TextEncoder().encode('\t<svg xmlns="http://www.w3.org/2000/svg">'),
-        'x.txt',
-      ),
-    ).rejects.toThrow('不支持的文件类型')
-  })
-
-  it('validates upload limits by usage', () => {
-    expect(() =>
-      validateAttachmentUpload({
-        usage: ATTACHMENT_USAGE_GENERAL,
-        mimeType: 'application/pdf',
-        size: 20 * 1024 * 1024,
-      }),
-    ).not.toThrow()
-    expect(() =>
-      validateAttachmentUpload({
-        usage: ATTACHMENT_USAGE_AVATAR,
-        mimeType: 'image/png',
-        size: 5 * 1024 * 1024,
-      }),
-    ).not.toThrow()
-    expect(() =>
-      validateAttachmentUpload({
-        usage: ATTACHMENT_USAGE_RICH_TEXT,
-        mimeType: 'image/png',
-        size: 5 * 1024 * 1024 + 1,
-      }),
-    ).toThrow('图片不能超过 5MB')
+  it('validates upload limits globally', () => {
+    expect(() => validateAttachmentUploadSize(ATTACHMENT_MAX_SIZE_BYTES)).not.toThrow()
+    expect(() => validateAttachmentUploadSize(ATTACHMENT_MAX_SIZE_BYTES + 1)).toThrow(
+      ATTACHMENT_MAX_SIZE_MESSAGE,
+    )
   })
 
   it('rejects svg and html uploads', () => {
-    expect(() =>
-      validateAttachmentUpload({
-        usage: ATTACHMENT_USAGE_AVATAR,
-        mimeType: 'image/svg+xml',
-        size: 1024,
-      }),
-    ).toThrow('不支持的文件类型')
-    expect(() =>
-      validateAttachmentUpload({
-        usage: ATTACHMENT_USAGE_GENERAL,
-        mimeType: 'text/html',
-        size: 1024,
-      }),
-    ).toThrow('不支持的文件类型')
+    expect(() => validateAttachmentUploadMimeType('image/svg+xml')).toThrow('不支持的文件类型')
+    expect(() => validateAttachmentUploadMimeType('text/html')).toThrow('不支持的文件类型')
   })
 
   it('allows inline only for raster images and PDF files', () => {

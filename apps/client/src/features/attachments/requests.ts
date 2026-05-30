@@ -1,13 +1,12 @@
 import {
+  ATTACHMENT_DISPOSITION_ATTACHMENT,
   attachmentSchema,
-  attachmentSignedUrlInputSchema,
   attachmentSignedUrlSchema,
   errorResponseSchema,
   type Attachment,
   type AttachmentSignedUrl,
   type AttachmentSignedUrlInput,
   type AttachmentUsage,
-  type ErrorResponse,
 } from '@rev30/contracts'
 import type { z } from 'zod'
 import { api } from '../../api'
@@ -16,7 +15,6 @@ export class AttachmentRequestError extends Error {
   constructor(
     public readonly status: number,
     message: string,
-    public readonly field?: ErrorResponse['field'],
   ) {
     super(message)
     this.name = 'AttachmentRequestError'
@@ -30,7 +28,6 @@ async function parseAttachmentError(response: Response): Promise<AttachmentReque
     return new AttachmentRequestError(
       response.status,
       result.success ? result.data.message : '请求失败',
-      result.success ? result.data.field : undefined,
     )
   } catch {
     return new AttachmentRequestError(response.status, '请求失败')
@@ -55,13 +52,23 @@ export async function uploadAttachment(
     usage: AttachmentUsage
   },
 ): Promise<Attachment> {
+  const form = new FormData()
+
+  form.set('file', file)
+
   return parseAttachmentResponse(
-    await api.attachments.$post({
-      form: {
-        file,
-        usage: input.usage,
+    await api.attachments.$post(
+      {
+        query: {
+          usage: input.usage,
+        },
       },
-    }),
+      {
+        init: {
+          body: form,
+        },
+      },
+    ),
     attachmentSchema,
   )
 }
@@ -77,19 +84,12 @@ export async function getAttachment(id: string): Promise<Attachment> {
 
 export async function createAttachmentSignedUrl(
   id: string,
-  input: AttachmentSignedUrlInput = attachmentSignedUrlInputSchema.parse({}),
+  input: AttachmentSignedUrlInput = { disposition: ATTACHMENT_DISPOSITION_ATTACHMENT },
 ): Promise<AttachmentSignedUrl> {
-  // The server route parses raw JSON manually to normalize malformed-body errors,
-  // so Hono cannot infer the json input type for this handler.
-  const requestSignedUrl = api.attachments[':id']['signed-url'].$post as unknown as (input: {
-    param: { id: string }
-    json: AttachmentSignedUrlInput
-  }) => Promise<Response>
-
   return parseAttachmentResponse(
-    await requestSignedUrl({
-      json: attachmentSignedUrlInputSchema.parse(input),
+    await api.attachments[':id']['signed-url'].$post({
       param: { id },
+      json: input,
     }),
     attachmentSignedUrlSchema,
   )

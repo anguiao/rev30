@@ -1,26 +1,21 @@
-import { FormFieldError } from '../../core/errors'
-
-export class AttachmentMissingFileError extends FormFieldError<'file'> {
-  constructor() {
-    super('请选择文件', 'file')
-  }
-}
-
-export class AttachmentInvalidUsageError extends FormFieldError<'usage'> {
-  constructor() {
-    super('上传用途无效', 'usage')
-  }
-}
-
-export class AttachmentFileTooLargeError extends FormFieldError<'file'> {
+export class AttachmentUploadRequestError extends Error {
   constructor(message: string) {
-    super(message, 'file')
+    super(message)
+    this.name = new.target.name
   }
 }
 
-export class AttachmentTypeUnsupportedError extends FormFieldError<'file'> {
+export class AttachmentFileTooLargeError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = new.target.name
+  }
+}
+
+export class AttachmentTypeUnsupportedError extends Error {
   constructor() {
-    super('不支持的文件类型', 'file')
+    super('不支持的文件类型')
+    this.name = new.target.name
   }
 }
 

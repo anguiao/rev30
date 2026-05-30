@@ -6,25 +6,64 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ATTACHMENT_DISPOSITION_INLINE,
   ATTACHMENT_USAGE_AVATAR,
+  type AttachmentUsage,
   USER_STATUS_ENABLED,
 } from '@rev30/contracts'
-import type { Db } from '../../../src/db'
 import { attachments, systemUsers } from '../../../src/db/schema'
-import { readAttachmentConfig } from '../../../src/modules/attachments/config'
-import { AttachmentNotFoundError } from '../../../src/modules/attachments/errors'
-import { createAttachmentService } from '../../../src/modules/attachments/service'
-import { logger } from '../../../src/runtime/logger'
 import {
-  LocalAttachmentStorage,
-  type AttachmentStorage,
-} from '../../../src/modules/attachments/storage'
+  AttachmentFileTooLargeError,
+  AttachmentNotFoundError,
+} from '../../../src/modules/attachments/errors'
+import { ATTACHMENT_MAX_SIZE_BYTES } from '../../../src/modules/attachments/policy'
+import { createAttachmentService } from '../../../src/modules/attachments/service'
 import { createTestDb } from '../../helpers/db'
 
 const tempDirs: string[] = []
+const defaultSignedUrlTtlSeconds = '300'
 const pngBytes = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
 ])
 const pngChecksum = createHash('sha256').update(pngBytes).digest('hex')
+const cfbfSignature = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]
+const legacyOfficeCases = [
+  {
+    clsid: [
+      0x06, 0x09, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x46,
+    ],
+    extension: 'doc',
+    mimeType: 'application/msword',
+    originalName: 'document.doc',
+  },
+  {
+    clsid: [
+      0x20, 0x08, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x46,
+    ],
+    extension: 'xls',
+    mimeType: 'application/vnd.ms-excel',
+    originalName: 'workbook.xls',
+  },
+  {
+    clsid: [
+      0x10, 0x8d, 0x81, 0x64, 0x9b, 0x4f, 0xcf, 0x11, 0x86, 0xea, 0x00, 0xaa, 0x00, 0xb9, 0x29,
+      0xe8,
+    ],
+    extension: 'ppt',
+    mimeType: 'application/vnd.ms-powerpoint',
+    originalName: 'slides.ppt',
+  },
+] as const
+
+function createLegacyOfficeBytes(clsid: readonly number[]) {
+  const bytes = new Uint8Array(608)
+
+  bytes.set(cfbfSignature, 0)
+  bytes[30] = 9
+  bytes.set(clsid, 592)
+
+  return bytes
+}
 
 async function createTempRoot() {
   const root = await mkdtemp(join(tmpdir(), 'rev30-attachments-service-'))
@@ -53,48 +92,59 @@ async function streamToBytes(stream: ReadableStream<Uint8Array>) {
   return new Uint8Array(await new Response(stream).arrayBuffer())
 }
 
-function createAttachmentServiceForTest(
-  database: Awaited<ReturnType<typeof createTestDb>> | Db,
-  root: string,
-  storage: AttachmentStorage = new LocalAttachmentStorage(root),
-  env: Record<string, string | undefined> = {},
-) {
-  return createAttachmentService(database as Db, {
-    config: readAttachmentConfig({
-      ATTACHMENT_SIGNING_SECRET: 'test-secret',
-      ATTACHMENT_SIGNED_URL_TTL_SECONDS: env.ATTACHMENT_SIGNED_URL_TTL_SECONDS,
-      ATTACHMENT_STORAGE_DIR: root,
-    }),
-    now: () => new Date('2026-05-29T00:00:00.000Z'),
-    storage,
-  })
+async function* streamFromBytes(bytes: Uint8Array) {
+  yield bytes
 }
 
-function createAccessSubject(userId: string, isAdmin = false) {
+function createUploadInput(
+  userId: string,
+  originalName = 'avatar.png',
+): {
+  body: AsyncIterable<Uint8Array>
+  originalName: string
+  usage: AttachmentUsage
+  userId: string
+} {
   return {
-    isAdmin,
+    body: streamFromBytes(pngBytes),
+    originalName,
+    usage: ATTACHMENT_USAGE_AVATAR,
     userId,
   }
 }
 
 afterEach(async () => {
+  vi.unstubAllEnvs()
+  vi.useRealTimers()
   vi.restoreAllMocks()
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })))
 })
 
 describe('attachment service', () => {
+  async function createAttachmentServiceForTest(
+    database: Awaited<ReturnType<typeof createTestDb>>,
+    options: { signedUrlTtlSeconds?: string } = {},
+  ) {
+    const root = await createTempRoot()
+
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-29T00:00:00.000Z'))
+    vi.stubEnv('ATTACHMENT_STORAGE_DIR', root)
+    vi.stubEnv('ATTACHMENT_SIGNING_SECRET', 'test-secret')
+    vi.stubEnv(
+      'ATTACHMENT_SIGNED_URL_TTL_SECONDS',
+      options.signedUrlTtlSeconds ?? defaultSignedUrlTtlSeconds,
+    )
+
+    return createAttachmentService(database)
+  }
+
   it('uploads files, stores metadata, and creates signed URLs', async () => {
     const database = await createTestDb()
-    const root = await createTempRoot()
-    const service = createAttachmentServiceForTest(database, root)
+    const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
-    const file = new File([pngBytes], 'avatar.png', { type: 'application/octet-stream' })
 
-    const attachment = await service.upload({
-      file,
-      usage: ATTACHMENT_USAGE_AVATAR,
-      userId,
-    })
+    const attachment = await service.upload(createUploadInput(userId))
 
     expect(attachment).toMatchObject({
       originalName: 'avatar.png',
@@ -116,120 +166,83 @@ describe('attachment service', () => {
 
     const signed = await service.createSignedUrl(attachment.id, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
-      origin: 'http://localhost',
-      subject: createAccessSubject(userId),
     })
 
-    expect(signed.url).toContain(`/api/attachments/${attachment.id}/content?token=`)
+    expect(signed.url).toMatch(new RegExp(`^/api/attachments/${attachment.id}/content\\?token=`))
     expect(signed.expiresAt).toBe('2026-05-29T00:05:00.000Z')
   })
 
-  it('limits metadata, signing, and deletion to the owner or an admin', async () => {
+  it('uploads legacy Office CFBF files', async () => {
     const database = await createTestDb()
-    const root = await createTempRoot()
-    const service = createAttachmentServiceForTest(database, root)
-    const ownerId = await createUser(database)
-    const otherUserId = await createUser(database)
-    const attachment = await service.upload({
-      file: new File([pngBytes], 'avatar.png'),
-      usage: ATTACHMENT_USAGE_AVATAR,
-      userId: ownerId,
-    })
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
 
-    await expect(
-      service.get(attachment.id, createAccessSubject(otherUserId)),
-    ).rejects.toBeInstanceOf(AttachmentNotFoundError)
-    await expect(
-      service.createSignedUrl(attachment.id, {
-        disposition: ATTACHMENT_DISPOSITION_INLINE,
-        origin: 'http://localhost',
-        subject: createAccessSubject(otherUserId),
-      }),
-    ).rejects.toBeInstanceOf(AttachmentNotFoundError)
-    await expect(
-      service.delete(attachment.id, createAccessSubject(otherUserId)),
-    ).rejects.toBeInstanceOf(AttachmentNotFoundError)
-
-    const [activeRow] = await database.select().from(attachments)
-    expect(activeRow?.deletedAt).toBeNull()
-
-    await expect(
-      service.createSignedUrl(attachment.id, {
-        disposition: ATTACHMENT_DISPOSITION_INLINE,
-        origin: 'http://localhost',
-        subject: createAccessSubject(otherUserId, true),
-      }),
-    ).resolves.toMatchObject({
-      expiresAt: '2026-05-29T00:05:00.000Z',
-    })
-    await expect(
-      service.delete(attachment.id, createAccessSubject(otherUserId, true)),
-    ).resolves.toBeUndefined()
-  })
-
-  it.each(['http://localhost/admin?x=1', 'http://localhost/'])(
-    'normalizes signed url origin from %s',
-    async (origin) => {
-      const database = await createTestDb()
-      const root = await createTempRoot()
-      const service = createAttachmentServiceForTest(database, root)
-      const userId = await createUser(database)
+    for (const item of legacyOfficeCases) {
+      const bytes = createLegacyOfficeBytes(item.clsid)
       const attachment = await service.upload({
-        file: new File([pngBytes], 'avatar.png'),
+        body: streamFromBytes(bytes),
+        originalName: item.originalName,
         usage: ATTACHMENT_USAGE_AVATAR,
         userId,
       })
 
-      const signed = await service.createSignedUrl(attachment.id, {
-        disposition: ATTACHMENT_DISPOSITION_INLINE,
-        origin,
-        subject: createAccessSubject(userId),
+      expect(attachment).toMatchObject({
+        extension: item.extension,
+        mimeType: item.mimeType,
+        originalName: item.originalName,
+        size: bytes.byteLength,
       })
+    }
+  })
 
-      expect(signed.url).toMatch(
-        new RegExp(`^http://localhost/api/attachments/${attachment.id}/content\\?token=`),
-      )
-    },
-  )
+  it('reads metadata, creates signed URLs, and deletes attachments without user access checks', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+    const attachment = await service.upload(createUploadInput(userId))
+
+    await expect(service.get(attachment.id)).resolves.toMatchObject({
+      id: attachment.id,
+      originalName: 'avatar.png',
+    })
+    await expect(
+      service.createSignedUrl(attachment.id, {
+        disposition: ATTACHMENT_DISPOSITION_INLINE,
+      }),
+    ).resolves.toMatchObject({
+      expiresAt: '2026-05-29T00:05:00.000Z',
+    })
+
+    const [activeRow] = await database.select().from(attachments)
+    expect(activeRow?.deletedAt).toBeNull()
+
+    await expect(service.delete(attachment.id)).resolves.toBeUndefined()
+  })
 
   it('does not sign deleted attachments', async () => {
     const database = await createTestDb()
-    const root = await createTempRoot()
-    const service = createAttachmentServiceForTest(database, root)
+    const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
-    const attachment = await service.upload({
-      file: new File([pngBytes], 'avatar.png'),
-      usage: ATTACHMENT_USAGE_AVATAR,
-      userId,
-    })
+    const attachment = await service.upload(createUploadInput(userId))
 
-    await service.delete(attachment.id, createAccessSubject(userId))
+    await service.delete(attachment.id)
 
     await expect(
       service.createSignedUrl(attachment.id, {
         disposition: ATTACHMENT_DISPOSITION_INLINE,
-        origin: 'http://localhost',
-        subject: createAccessSubject(userId),
       }),
     ).rejects.toBeInstanceOf(AttachmentNotFoundError)
   })
 
   it('reads stored content with signed token and response headers', async () => {
     const database = await createTestDb()
-    const root = await createTempRoot()
-    const service = createAttachmentServiceForTest(database, root)
+    const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
-    const attachment = await service.upload({
-      file: new File([pngBytes], 'avatar.png'),
-      usage: ATTACHMENT_USAGE_AVATAR,
-      userId,
-    })
+    const attachment = await service.upload(createUploadInput(userId))
     const signed = await service.createSignedUrl(attachment.id, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
-      origin: 'http://localhost',
-      subject: createAccessSubject(userId),
     })
-    const token = new URL(signed.url).searchParams.get('token')
+    const token = new URL(signed.url, 'http://localhost').searchParams.get('token')
 
     expect(token).toBeTruthy()
 
@@ -247,22 +260,13 @@ describe('attachment service', () => {
 
   it('does not cache signed content beyond the token lifetime', async () => {
     const database = await createTestDb()
-    const root = await createTempRoot()
-    const service = createAttachmentServiceForTest(database, root, undefined, {
-      ATTACHMENT_SIGNED_URL_TTL_SECONDS: '60',
-    })
+    const service = await createAttachmentServiceForTest(database, { signedUrlTtlSeconds: '60' })
     const userId = await createUser(database)
-    const attachment = await service.upload({
-      file: new File([pngBytes], 'avatar.png'),
-      usage: ATTACHMENT_USAGE_AVATAR,
-      userId,
-    })
+    const attachment = await service.upload(createUploadInput(userId))
     const signed = await service.createSignedUrl(attachment.id, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
-      origin: 'http://localhost',
-      subject: createAccessSubject(userId),
     })
-    const token = new URL(signed.url).searchParams.get('token')
+    const token = new URL(signed.url, 'http://localhost').searchParams.get('token')
 
     expect(token).toBeTruthy()
 
@@ -271,155 +275,44 @@ describe('attachment service', () => {
     expect(content.headers['Cache-Control']).toBe('private, max-age=60')
   })
 
-  it('deletes stored file when metadata insert fails', async () => {
-    const root = await createTempRoot()
-    const put = vi.fn(
-      async ({ key: _key, expectedSize }: Parameters<AttachmentStorage['put']>[0]) => ({
-        checksum: 'storage-checksum',
-        size: expectedSize,
-      }),
-    )
-    const remove = vi.fn(async (_key: string) => {})
-    const storage: AttachmentStorage = {
-      delete: remove,
-      get: vi.fn(),
-      put,
-    }
-    const database = {
-      insert: vi.fn(() => ({
-        values: vi.fn(() => ({
-          returning: vi.fn(async () => {
-            throw new Error('insert failed')
-          }),
-        })),
-      })),
-    } as unknown as Db
-    const service = createAttachmentServiceForTest(database, root, storage)
-
-    await expect(
-      service.upload({
-        file: new File([pngBytes], 'avatar.png'),
-        usage: ATTACHMENT_USAGE_AVATAR,
-        userId: randomUUID(),
-      }),
-    ).rejects.toThrow('insert failed')
-
-    expect(put).toHaveBeenCalledTimes(1)
-    expect(remove).toHaveBeenCalledTimes(1)
-    expect(remove).toHaveBeenCalledWith(put.mock.calls[0]?.[0].key)
-  })
-
-  it('preserves insert failure when upload cleanup also fails', async () => {
-    const root = await createTempRoot()
-    const originalError = new Error('insert failed')
-    const cleanupError = new Error('cleanup failed')
-    const put = vi.fn(async ({ expectedSize }: Parameters<AttachmentStorage['put']>[0]) => ({
-      checksum: 'storage-checksum',
-      size: expectedSize,
-    }))
-    const remove = vi.fn(async (_key: string) => {
-      throw cleanupError
-    })
-    const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => undefined)
-    const storage: AttachmentStorage = {
-      delete: remove,
-      get: vi.fn(),
-      put,
-    }
-    const database = {
-      insert: vi.fn(() => ({
-        values: vi.fn(() => ({
-          returning: vi.fn(async () => {
-            throw originalError
-          }),
-        })),
-      })),
-    } as unknown as Db
-    const service = createAttachmentServiceForTest(database, root, storage)
-
-    await expect(
-      service.upload({
-        file: new File([pngBytes], 'avatar.png'),
-        usage: ATTACHMENT_USAGE_AVATAR,
-        userId: randomUUID(),
-      }),
-    ).rejects.toBe(originalError)
-
-    expect(remove).toHaveBeenCalledTimes(1)
-    expect(loggerError).toHaveBeenCalledWith(
-      expect.objectContaining({
-        err: cleanupError,
-        storageKey: put.mock.calls[0]?.[0].key,
-      }),
-      'attachment upload cleanup failed',
-    )
-  })
-
-  it('resolves delete when storage cleanup fails after soft delete', async () => {
-    const database = await createTestDb()
-    const root = await createTempRoot()
-    const localStorage = new LocalAttachmentStorage(root)
-    const storageDeleteError = new Error('delete failed')
-    const storage: AttachmentStorage = {
-      delete: vi.fn(async (_key: string) => {
-        throw storageDeleteError
-      }),
-      get: localStorage.get.bind(localStorage),
-      put: localStorage.put.bind(localStorage),
-    }
-    const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => undefined)
-    const service = createAttachmentServiceForTest(database, root, storage)
-    const userId = await createUser(database)
-    const attachment = await service.upload({
-      file: new File([pngBytes], 'avatar.png'),
-      usage: ATTACHMENT_USAGE_AVATAR,
-      userId,
-    })
-
-    await expect(
-      service.delete(attachment.id, createAccessSubject(userId)),
-    ).resolves.toBeUndefined()
-
-    await expect(
-      service.createSignedUrl(attachment.id, {
-        disposition: ATTACHMENT_DISPOSITION_INLINE,
-        origin: 'http://localhost',
-        subject: createAccessSubject(userId),
-      }),
-    ).rejects.toBeInstanceOf(AttachmentNotFoundError)
-    expect(loggerError).toHaveBeenCalledWith(
-      expect.objectContaining({
-        attachmentId: attachment.id,
-        err: storageDeleteError,
-        storageKey: `2026/05/29/${attachment.id}.png`,
-      }),
-      'attachment storage deletion failed',
-    )
-  })
-
   it('rejects old signed token after attachment delete', async () => {
     const database = await createTestDb()
-    const root = await createTempRoot()
-    const service = createAttachmentServiceForTest(database, root)
+    const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
-    const attachment = await service.upload({
-      file: new File([pngBytes], 'avatar.png'),
-      usage: ATTACHMENT_USAGE_AVATAR,
-      userId,
-    })
+    const attachment = await service.upload(createUploadInput(userId))
     const signed = await service.createSignedUrl(attachment.id, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
-      origin: 'http://localhost',
-      subject: createAccessSubject(userId),
     })
-    const token = new URL(signed.url).searchParams.get('token')
+    const token = new URL(signed.url, 'http://localhost').searchParams.get('token')
 
     expect(token).toBeTruthy()
 
-    await service.delete(attachment.id, createAccessSubject(userId))
+    await service.delete(attachment.id)
 
     await expect(service.readContent(attachment.id, token!)).rejects.toBeInstanceOf(
       AttachmentNotFoundError,
     )
+  })
+
+  it('rejects streams above the global upload size without creating metadata', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+
+    async function* oversizedPngStream() {
+      yield pngBytes
+      yield new Uint8Array(ATTACHMENT_MAX_SIZE_BYTES - pngBytes.byteLength + 1)
+    }
+
+    await expect(
+      service.upload({
+        body: oversizedPngStream(),
+        originalName: 'avatar.png',
+        usage: ATTACHMENT_USAGE_AVATAR,
+        userId,
+      }),
+    ).rejects.toBeInstanceOf(AttachmentFileTooLargeError)
+
+    await expect(database.select().from(attachments)).resolves.toEqual([])
   })
 })

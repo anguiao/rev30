@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto'
+import { detectCfbf } from '@file-type/cfbf'
+import { fileTypeStream } from 'file-type'
 import { contentType } from 'mime-types'
 import {
   ATTACHMENT_DISPOSITION_ATTACHMENT,
@@ -7,32 +9,21 @@ import {
 } from '@rev30/contracts'
 import type { Db } from '../../db'
 import { logger } from '../../runtime/logger'
-import type { AttachmentConfig } from './config'
 import { readAttachmentConfig } from './config'
 import { AttachmentNotFoundError } from './errors'
 import { toAttachment } from './mapper'
 import {
-  detectAttachmentFileType,
   resolveContentDisposition,
-  validateAttachmentUpload,
+  resolveAttachmentFileType,
+  validateAttachmentUploadMimeType,
 } from './policy'
 import { createAttachmentRepository } from './repository'
 import { createAttachmentReadToken, verifyAttachmentReadToken } from './signing'
-import { LocalAttachmentStorage, type AttachmentStorage } from './storage'
+import { LocalAttachmentStorage } from './storage'
+import { limitAttachmentBodySize, toReadableStream } from './stream'
 
 const storageProvider = 'local'
-const detectionPrefixBytes = 4100
-
-type ServiceOptions = {
-  config?: AttachmentConfig
-  now?: () => Date
-  storage?: AttachmentStorage
-}
-
-export type AttachmentAccessSubject = {
-  isAdmin: boolean
-  userId: string
-}
+const fileTypeDetectors = [detectCfbf]
 
 function padDatePart(value: number) {
   return String(value).padStart(2, '0')
@@ -47,22 +38,8 @@ function createStorageKey(id: string, extension: string, now: Date) {
   ].join('/')
 }
 
-async function readDetectionPrefix(file: File) {
-  return new Uint8Array(await file.slice(0, detectionPrefixBytes).arrayBuffer())
-}
-
 function createDownloadFilename(name: string) {
   return name.replace(/["\r\n]/g, '_')
-}
-
-function createContentDispositionHeader(disposition: AttachmentDisposition, filename: string) {
-  return `${disposition}; filename="${createDownloadFilename(filename)}"`
-}
-
-function assertCanAccessAttachment(row: { createdBy: string }, subject: AttachmentAccessSubject) {
-  if (!subject.isAdmin && row.createdBy !== subject.userId) {
-    throw new AttachmentNotFoundError()
-  }
 }
 
 function createCacheControlHeader(expiresAt: Date, requestedAt: Date) {
@@ -74,32 +51,35 @@ function createCacheControlHeader(expiresAt: Date, requestedAt: Date) {
   return `private, max-age=${Math.min(300, remainingSeconds)}`
 }
 
-export function createAttachmentService(database: Db, options: ServiceOptions = {}) {
-  const config = options.config ?? readAttachmentConfig()
-  const now = options.now ?? (() => new Date())
-  const storage = options.storage ?? new LocalAttachmentStorage(config.storageDir)
+function createContentDispositionHeader(disposition: AttachmentDisposition, filename: string) {
+  return `${disposition}; filename="${createDownloadFilename(filename)}"`
+}
+
+export function createAttachmentService(database: Db) {
+  const config = readAttachmentConfig()
+  const storage = new LocalAttachmentStorage(config.storageDir)
   const repository = createAttachmentRepository(database)
 
   return {
-    async upload(input: { file: File; usage: AttachmentUsage; userId: string }) {
-      const detected = await detectAttachmentFileType(
-        await readDetectionPrefix(input.file),
-        input.file.name,
-      )
-
-      validateAttachmentUpload({
-        usage: input.usage,
-        mimeType: detected.mimeType,
-        size: input.file.size,
+    async upload(input: {
+      body: AsyncIterable<Uint8Array>
+      originalName: string
+      usage: AttachmentUsage
+      userId: string
+    }) {
+      const body = await fileTypeStream(toReadableStream(input.body), {
+        customDetectors: fileTypeDetectors,
       })
+      const detected = resolveAttachmentFileType(body.fileType, input.originalName)
 
-      const createdAt = now()
+      validateAttachmentUploadMimeType(detected.mimeType)
+
+      const createdAt = new Date()
       const id = randomUUID()
       const storageKey = createStorageKey(id, detected.extension, createdAt)
       const written = await storage.put({
         key: storageKey,
-        body: input.file.stream() as ReadableStream<Uint8Array>,
-        expectedSize: input.file.size,
+        body: limitAttachmentBodySize(body),
       })
 
       try {
@@ -108,7 +88,7 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
             id,
             storageProvider,
             storageKey,
-            originalName: input.file.name,
+            originalName: input.originalName,
             mimeType: detected.mimeType,
             extension: detected.extension,
             size: written.size,
@@ -135,14 +115,12 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
       }
     },
 
-    async get(id: string, subject: AttachmentAccessSubject) {
+    async get(id: string) {
       const row = await repository.findActiveById(id)
 
       if (!row) {
         throw new AttachmentNotFoundError()
       }
-
-      assertCanAccessAttachment(row, subject)
 
       return toAttachment(row)
     },
@@ -151,8 +129,6 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
       id: string,
       input: {
         disposition?: AttachmentDisposition
-        origin: string
-        subject: AttachmentAccessSubject
       },
     ) {
       const row = await repository.findActiveById(id)
@@ -161,9 +137,7 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
         throw new AttachmentNotFoundError()
       }
 
-      assertCanAccessAttachment(row, input.subject)
-
-      const expiresAt = new Date(now().getTime() + config.signedUrlTtlSeconds * 1000)
+      const expiresAt = new Date(Date.now() + config.signedUrlTtlSeconds * 1000)
       const disposition = input.disposition ?? ATTACHMENT_DISPOSITION_ATTACHMENT
       const token = createAttachmentReadToken(
         {
@@ -173,16 +147,14 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
         },
         config.signingSecret,
       )
-      const origin = new URL(input.origin).origin
-
       return {
-        url: `${origin}/api/attachments/${id}/content?token=${encodeURIComponent(token)}`,
+        url: `/api/attachments/${id}/content?token=${encodeURIComponent(token)}`,
         expiresAt: expiresAt.toISOString(),
       }
     },
 
     async readContent(id: string, token: string) {
-      const requestedAt = now()
+      const requestedAt = new Date()
       const payload = verifyAttachmentReadToken(token, {
         attachmentId: id,
         now: requestedAt,
@@ -210,16 +182,14 @@ export function createAttachmentService(database: Db, options: ServiceOptions = 
       }
     },
 
-    async delete(id: string, subject: AttachmentAccessSubject) {
+    async delete(id: string) {
       const row = await repository.findActiveById(id)
 
       if (!row) {
         throw new AttachmentNotFoundError()
       }
 
-      assertCanAccessAttachment(row, subject)
-
-      const deleted = await repository.softDelete(id, now())
+      const deleted = await repository.softDelete(id, new Date())
 
       if (!deleted) {
         throw new AttachmentNotFoundError()

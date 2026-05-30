@@ -15,8 +15,13 @@ async function createTempRoot() {
   return root
 }
 
-function streamFromText(text: string) {
-  return new Blob([text]).stream() as ReadableStream<Uint8Array>
+async function* bodyFromText(text: string) {
+  yield new TextEncoder().encode(text)
+}
+
+async function* bodyWithError() {
+  yield new Uint8Array([1, 2, 3])
+  throw new Error('stream failed')
 }
 
 async function streamToText(stream: ReadableStream<Uint8Array>) {
@@ -41,8 +46,7 @@ describe('LocalAttachmentStorage', () => {
 
     const result = await storage.put({
       key: '2026/05/29/example.txt',
-      body: streamFromText('hello attachment'),
-      expectedSize: 16,
+      body: bodyFromText('hello attachment'),
     })
 
     expect(result).toEqual({
@@ -59,17 +63,16 @@ describe('LocalAttachmentStorage', () => {
     await expect(streamToText(stored.body)).resolves.toBe('hello attachment')
   })
 
-  it('removes temporary files when stream size does not match expected size', async () => {
+  it('removes temporary files when stream writing fails', async () => {
     const root = await createTempRoot()
     const storage = new LocalAttachmentStorage(root)
 
     await expect(
       storage.put({
         key: '2026/05/29/broken.txt',
-        body: streamFromText('short'),
-        expectedSize: 10,
+        body: bodyWithError(),
       }),
-    ).rejects.toThrow('附件写入大小不一致')
+    ).rejects.toThrow('stream failed')
 
     await assertNoTmpFiles(root)
     await expect(readFile(join(root, '2026/05/29/broken.txt'))).rejects.toThrow()
@@ -95,8 +98,7 @@ describe('LocalAttachmentStorage', () => {
         await expect(
           storage.put({
             key,
-            body: streamFromText('bad'),
-            expectedSize: 3,
+            body: bodyFromText('bad'),
           }),
         ).rejects.toThrow('附件存储路径无效')
       }),
@@ -109,8 +111,7 @@ describe('LocalAttachmentStorage', () => {
 
     await storage.put({
       key: '2026/05/29/delete-me.txt',
-      body: streamFromText('delete'),
-      expectedSize: 6,
+      body: bodyFromText('delete'),
     })
     await storage.delete('2026/05/29/delete-me.txt')
 

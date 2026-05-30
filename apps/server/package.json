@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.4.6",
+    "@file-type/cfbf": "^0.2.2",
     "@hono/node-server": "^2.0.4",
     "@hono/zod-validator": "^0.8.0",
     "@iconify/json": "^2.2.478",
@@ -31,6 +32,8 @@
     "@rev30/contracts": "workspace:*",
     "@rev30/rich-text": "workspace:*",
     "@rev30/utils": "workspace:*",
+    "busboy": "^1.6.0",
+    "bytes": "^3.1.2",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "file-type": "^22.0.1",
@@ -42,6 +45,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/busboy": "^1.5.4",
+    "@types/bytes": "^3.1.5",
     "@types/mime-types": "^3.0.1",
     "drizzle-kit": "^0.31.10",
     "tsup": "^8.5.1",

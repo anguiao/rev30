@@ -70,7 +70,7 @@ export const systemUsers = pgTable(
     id: uuid('id').primaryKey(),
     username: text('username').notNull(),
     nickname: text('nickname').notNull(),
-    avatarId: uuid('avatar_id').references(() => attachments.id),
+    avatarId: uuid('avatar_id').references((): AnyPgColumn => attachments.id),
     email: text('email'),
     phone: text('phone'),
     status: smallint('status').notNull().default(USER_STATUS_ENABLED),
@@ -236,7 +236,7 @@ export const attachments = pgTable(
     checksum: text('checksum'),
     createdBy: uuid('created_by')
       .notNull()
-      .references(() => systemUsers.id),
+      .references((): AnyPgColumn => systemUsers.id),
     createdAt: createdAtColumn(),
     deletedAt: deletedAtColumn(),
   },

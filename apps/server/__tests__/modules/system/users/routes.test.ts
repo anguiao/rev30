@@ -188,6 +188,38 @@ describe('user routes', () => {
     expect(mocks.service.update).toHaveBeenCalledWith(userId, { nickname: 'Updated Ada' })
   })
 
+  it('delegates avatar ids in create and update requests', async () => {
+    const app = createTestApp()
+    const avatarId = '44444444-4444-4444-8444-444444444444'
+
+    const createResponse = await app.request('/api/system/users', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: 'avatar-user',
+        nickname: 'Avatar User',
+        avatarId,
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(createResponse.status).toBe(201)
+    expect(mocks.service.create).toHaveBeenCalledWith({
+      username: 'avatar-user',
+      nickname: 'Avatar User',
+      avatarId,
+      status: USER_STATUS_ENABLED,
+    })
+
+    const updateResponse = await app.request(`/api/system/users/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ avatarId: null }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(updateResponse.status).toBe(200)
+    expect(mocks.service.update).toHaveBeenCalledWith(userId, { avatarId: null })
+  })
+
   it('delegates reset-password requests by id', async () => {
     const app = createTestApp()
 

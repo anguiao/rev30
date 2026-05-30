@@ -16,6 +16,7 @@ import { requireAccess } from '../../../middleware/access'
 import {
   BuiltInUserMutationError,
   UserConflictError,
+  UserInvalidAvatarError,
   UserInvalidDepartmentError,
   UserInvalidRoleError,
   UserNotFoundError,
@@ -70,6 +71,16 @@ function userErrorResponse(error: unknown, c: Context) {
 
   if (error instanceof UserNotFoundError) {
     return c.json({ message: error.message }, 404)
+  }
+
+  if (error instanceof UserInvalidAvatarError) {
+    return c.json(
+      {
+        field: error.field,
+        message: error.message,
+      },
+      400,
+    )
   }
 
   if (error instanceof UserInvalidDepartmentError || error instanceof UserInvalidRoleError) {

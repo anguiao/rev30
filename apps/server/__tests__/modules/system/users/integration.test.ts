@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import {
+  ATTACHMENT_USAGE_AVATAR,
   ROLE_STATUS_ENABLED,
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
@@ -15,6 +16,7 @@ import {
   type UserStatus,
 } from '@rev30/contracts'
 import {
+  attachments,
   authPasswordCredentials,
   authRefreshTokens,
   systemDepartments,
@@ -60,6 +62,7 @@ async function createUser(
   body: {
     username: string
     nickname: string
+    avatarId?: string | null
     email?: string | null
     phone?: string | null
     status?: UserStatus
@@ -133,6 +136,35 @@ async function createRole(
   }
 
   return role
+}
+
+async function createAvatarAttachment(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  createdBy: string,
+) {
+  const id = randomUUID()
+  const now = new Date('2026-05-30T00:00:00.000Z')
+  const [attachment] = await database
+    .insert(attachments)
+    .values({
+      id,
+      storageProvider: 'local',
+      storageKey: `2026/05/30/${id}.png`,
+      originalName: 'avatar.png',
+      mimeType: 'image/png',
+      extension: 'png',
+      size: 128,
+      usage: ATTACHMENT_USAGE_AVATAR,
+      createdBy,
+      createdAt: now,
+    })
+    .returning()
+
+  if (!attachment) {
+    throw new Error('Expected avatar attachment')
+  }
+
+  return attachment
 }
 
 describe('user routes', () => {
@@ -238,6 +270,31 @@ describe('user routes', () => {
       body: {
         field: 'roleIds',
         message: '角色不存在',
+      },
+    })
+  })
+
+  it('returns a field error when avatar ids do not exist', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+
+    const response = await app.request(
+      '/api/system/users',
+      jsonRequest(
+        {
+          username: 'invalid-avatar-user',
+          nickname: 'Invalid Avatar User',
+          avatarId: '11111111-1111-4111-8111-111111111111',
+        },
+        { method: 'POST' },
+      ),
+    )
+
+    await expectJsonResponse(response, {
+      status: 400,
+      body: {
+        field: 'avatarId',
+        message: '头像不存在',
       },
     })
   })
@@ -349,6 +406,42 @@ describe('user routes', () => {
       departments: [],
       roles: [],
     })
+  })
+
+  it('creates, lists, details, and updates users with avatar ids', async () => {
+    const database = await createTestDb()
+    const fixture = await createSystemAccessFixture(database, {
+      admin: true,
+      usernamePrefix: 'avatar-admin',
+    })
+    const app = await createTestApp(database, fixture.authHeaders)
+    const avatar = await createAvatarAttachment(database, fixture.userId)
+
+    const { body: created } = await createUser(app, {
+      username: 'avatar-user',
+      nickname: 'Avatar User',
+      avatarId: avatar.id,
+    })
+
+    expect(created.avatarId).toBe(avatar.id)
+
+    const detailResponse = await app.request(`/api/system/users/${created.id}`)
+    const detailBody = (await detailResponse.json()) as User
+    expect(detailBody.avatarId).toBe(avatar.id)
+
+    const listResponse = await app.request('/api/system/users?keyword=avatar-user')
+    const listBody = (await listResponse.json()) as UserListResponse
+    expect(listBody.list[0]?.avatarId).toBe(avatar.id)
+
+    const updateResponse = await app.request(`/api/system/users/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ avatarId: null }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const updateBody = (await updateResponse.json()) as User
+
+    expect(updateResponse.status).toBe(200)
+    expect(updateBody.avatarId).toBeNull()
   })
 
   it('filters paginated users by department and role assignments', async () => {

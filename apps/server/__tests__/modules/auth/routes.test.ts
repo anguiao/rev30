@@ -8,12 +8,13 @@ import {
   AuthInvalidRefreshTokenError,
 } from '../../../src/modules/auth/errors'
 import { createAuthRoutes } from '../../../src/modules/auth/routes'
-import { UserConflictError } from '../../../src/modules/system/users/errors'
+import { UserConflictError, UserInvalidAvatarError } from '../../../src/modules/system/users/errors'
 
 const authUser = {
   id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
   username: 'ada',
   nickname: 'Ada Lovelace',
+  avatarId: null,
   email: null,
   phone: null,
   status: 1,
@@ -39,6 +40,7 @@ const mocks = vi.hoisted(() => {
       id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
       username: 'ada',
       nickname: 'Ada Lovelace',
+      avatarId: null,
       email: null,
       phone: null,
       status: 1,
@@ -101,6 +103,7 @@ describe('auth routes', () => {
     mocks.service.updateProfile.mockResolvedValue({
       ...authUser,
       nickname: 'Updated Nickname',
+      avatarId: null,
       email: 'updated@example.com',
     })
     mocks.service.updatePassword.mockResolvedValue(undefined)
@@ -246,6 +249,7 @@ describe('auth routes', () => {
       method: 'PATCH',
       body: JSON.stringify({
         nickname: 'Updated Nickname',
+        avatarId: null,
         email: 'updated@example.com',
         phone: null,
       }),
@@ -255,7 +259,32 @@ describe('auth routes', () => {
     expect(profileResponse.status).toBe(200)
     expect(mocks.service.updateProfile).toHaveBeenCalledWith(authUser.id, {
       nickname: 'Updated Nickname',
+      avatarId: null,
       email: 'updated@example.com',
+      phone: null,
+    })
+  })
+
+  it('delegates profile avatar updates', async () => {
+    const app = createTestApp()
+    const avatarId = '44444444-4444-4444-8444-444444444444'
+
+    const response = await app.request('/api/auth/me/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        nickname: 'Ada Avatar',
+        avatarId,
+        email: null,
+        phone: null,
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(200)
+    expect(mocks.service.updateProfile).toHaveBeenCalledWith(authUser.id, {
+      nickname: 'Ada Avatar',
+      avatarId,
+      email: null,
       phone: null,
     })
   })
@@ -335,6 +364,28 @@ describe('auth routes', () => {
     expect(await conflictResponse.json()).toEqual({
       field: 'email',
       message: '邮箱已存在',
+    })
+  })
+
+  it('maps profile avatar errors to route responses', async () => {
+    const app = createTestApp()
+
+    mocks.service.updateProfile.mockRejectedValueOnce(new UserInvalidAvatarError())
+    const response = await app.request('/api/auth/me/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        nickname: 'Ada Avatar',
+        avatarId: '11111111-1111-4111-8111-111111111111',
+        email: null,
+        phone: null,
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      field: 'avatarId',
+      message: '头像不存在',
     })
   })
 

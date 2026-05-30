@@ -11,7 +11,7 @@ import { Hono, type Context } from 'hono'
 import type { ZodType } from 'zod'
 import type { Db } from '../../db'
 import { createAuthMiddleware } from '../../middleware/auth'
-import { UserConflictError } from '../system/users/errors'
+import { UserConflictError, UserInvalidAvatarError } from '../system/users/errors'
 import { clearRefreshTokenCookie, getRefreshTokenCookie, setRefreshTokenCookie } from './cookies'
 import { readAuthConfig } from './config'
 import {
@@ -42,6 +42,16 @@ function authErrorResponse(error: unknown, c: Context) {
         message: error.message,
       },
       409,
+    )
+  }
+
+  if (error instanceof UserInvalidAvatarError) {
+    return c.json(
+      {
+        field: error.field,
+        message: error.message,
+      },
+      400,
     )
   }
 

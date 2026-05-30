@@ -48,6 +48,12 @@ export class UserInvalidRoleError extends FormFieldError<'roleIds'> {
   }
 }
 
+export class UserInvalidAvatarError extends FormFieldError<'avatarId'> {
+  constructor() {
+    super('头像不存在', 'avatarId')
+  }
+}
+
 export class BuiltInUserMutationError extends Error {
   constructor(action: 'edit' | 'delete') {
     super(action === 'edit' ? '内置用户不能编辑' : '内置用户不能删除')

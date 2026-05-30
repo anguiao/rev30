@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { sign } from 'hono/jwt'
 import {
+  ATTACHMENT_USAGE_AVATAR,
   AUTH_ACTION_HEADER,
   AUTH_ACTION_REFRESH,
   RESOURCE_TYPE_ACTION,
@@ -12,8 +13,10 @@ import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
   type AuthTokenResponse,
+  type User,
 } from '@rev30/contracts'
 import {
+  attachments,
   authPasswordCredentials,
   authRefreshTokens,
   authLoginAttemptBuckets,
@@ -960,6 +963,7 @@ describe('auth routes', () => {
       method: 'PATCH',
       body: JSON.stringify({
         nickname: 'Updated Nickname',
+        avatarId: null,
         email: 'updated@example.com',
         phone: '',
       }),
@@ -976,6 +980,71 @@ describe('auth routes', () => {
       nickname: 'Updated Nickname',
       email: 'updated@example.com',
       phone: null,
+    })
+  })
+
+  it('updates current user avatar ids through profile updates', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await createLoggedInAccount(app, database)
+    const avatarId = randomUUID()
+    const now = new Date('2026-05-30T00:00:00.000Z')
+
+    await database.insert(attachments).values({
+      id: avatarId,
+      storageProvider: 'local',
+      storageKey: `2026/05/30/${avatarId}.png`,
+      originalName: 'avatar.png',
+      mimeType: 'image/png',
+      extension: 'png',
+      size: 128,
+      usage: ATTACHMENT_USAGE_AVATAR,
+      createdBy: registered.user.id,
+      createdAt: now,
+    })
+
+    const response = await app.request('/api/auth/me/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        nickname: 'Avatar Profile',
+        avatarId,
+        email: null,
+        phone: null,
+      }),
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken}`,
+        'content-type': 'application/json',
+      },
+    })
+    const body = (await response.json()) as User
+
+    expect(response.status).toBe(200)
+    expect(body.avatarId).toBe(avatarId)
+  })
+
+  it('returns a field error when current user avatar ids do not exist', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await createLoggedInAccount(app, database)
+
+    const response = await app.request('/api/auth/me/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        nickname: 'Invalid Avatar',
+        avatarId: '11111111-1111-4111-8111-111111111111',
+        email: null,
+        phone: null,
+      }),
+      headers: {
+        authorization: `Bearer ${registered.body.accessToken}`,
+        'content-type': 'application/json',
+      },
+    })
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      field: 'avatarId',
+      message: '头像不存在',
     })
   })
 

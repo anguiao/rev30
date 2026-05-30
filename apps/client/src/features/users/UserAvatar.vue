@@ -23,8 +23,20 @@ const signed = useAttachmentUrl(() => props.avatarId, {
   disposition: ATTACHMENT_DISPOSITION_INLINE,
 })
 
-const displayName = computed(() => props.nickname || props.username || '?')
-const initial = computed(() => displayName.value.trim().charAt(0).toUpperCase() || '?')
+const displayName = computed(() => {
+  const trimmedNickname = (props.nickname ?? '').trim()
+  if (trimmedNickname !== '') {
+    return trimmedNickname
+  }
+
+  const trimmedUsername = (props.username ?? '').trim()
+  if (trimmedUsername !== '') {
+    return trimmedUsername
+  }
+
+  return '?'
+})
+const initial = computed(() => displayName.value.charAt(0).toUpperCase())
 const imageUrl = computed(() => {
   if (imageFailed.value || signed.error.value !== null) return null
 

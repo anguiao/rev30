@@ -44,6 +44,17 @@ describe('UserAvatar', () => {
     expect(createAttachmentSignedUrlMock).not.toHaveBeenCalled()
   })
 
+  it('falls back to username when nickname is blank', () => {
+    const wrapper = mountAvatar({
+      avatarId: null,
+      nickname: '   ',
+      username: 'grace',
+    })
+
+    expect(wrapper.text()).toContain('G')
+    expect(createAttachmentSignedUrlMock).not.toHaveBeenCalled()
+  })
+
   it('renders signed avatar images when available', async () => {
     const wrapper = mountAvatar({
       avatarId: '11111111-1111-4111-8111-111111111111',

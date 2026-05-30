@@ -17,6 +17,7 @@ import {
   updateMyPassword,
   updateMyProfile,
 } from '../../features/auth'
+import { UserAvatarUpload } from '../../features/users'
 import AdminLayout from '../../components/admin/AdminLayout.vue'
 import { useAuthStore } from '../../stores/auth'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
@@ -43,10 +44,7 @@ const { isLoading: isProfileSubmitting, ...profileMutation } = useMutation({
 })
 
 const profileForm = useForm({
-  defaultValues: {
-    ...pick(currentUser.value, ['nickname', 'email', 'phone']),
-    avatarId: currentUser.value.avatarId,
-  } as AuthProfileUpdateInput,
+  defaultValues: pick(currentUser.value, ['nickname', 'avatarId', 'email', 'phone']) as AuthProfileUpdateInput,
   validators: {
     onChange: authProfileUpdateSchema,
     onSubmit: authProfileUpdateSchema,
@@ -59,10 +57,7 @@ const profileForm = useForm({
       const user = await profileMutation.mutateAsync(input)
       auth.setUser(user)
 
-      profileForm.reset({
-        ...pick(user, ['nickname', 'email', 'phone']),
-        avatarId: user.avatarId,
-      })
+      profileForm.reset(pick(user, ['nickname', 'avatarId', 'email', 'phone']))
       message.success('保存个人信息成功')
     } catch (error) {
       if (
@@ -76,6 +71,15 @@ const profileForm = useForm({
     }
   },
 })
+
+function handleAvatarUploadError(error: unknown) {
+  profileFormError.value = getAuthErrorMessage(error, '上传头像失败')
+}
+
+function handleAvatarUploaded(avatarId: string, handleChange: (value: string | null) => void) {
+  profileFormError.value = null
+  handleChange(avatarId)
+}
 
 const passwordFormError = ref<string | null>(null)
 
@@ -140,27 +144,45 @@ const passwordForm = useForm({
             </NAlert>
 
             <NForm data-test="account-profile-form" @submit.prevent="profileForm.handleSubmit()">
-              <NFormItem label="用户名">
-                <NInput
-                  data-test="account-profile-username"
-                  :value="currentUser.username"
-                  autocomplete="username"
-                  disabled
-                />
-              </NFormItem>
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
+                <div class="space-y-0">
+                  <NFormItem label="用户名">
+                    <NInput
+                      data-test="account-profile-username"
+                      :value="currentUser.username"
+                      autocomplete="username"
+                      disabled
+                    />
+                  </NFormItem>
 
-              <profileForm.Field name="nickname" v-slot="{ field, state }">
-                <NFormItem label="昵称" v-bind="formItemValidationProps(state.meta)">
-                  <NInput
-                    data-test="account-profile-nickname"
-                    :value="state.value"
-                    autocomplete="name"
-                    placeholder="请输入昵称"
-                    @blur="field.handleBlur"
-                    @update:value="field.handleChange"
-                  />
-                </NFormItem>
-              </profileForm.Field>
+                  <profileForm.Field name="nickname" v-slot="{ field, state }">
+                    <NFormItem label="昵称" v-bind="formItemValidationProps(state.meta)">
+                      <NInput
+                        data-test="account-profile-nickname"
+                        :value="state.value"
+                        autocomplete="name"
+                        placeholder="请输入昵称"
+                        @blur="field.handleBlur"
+                        @update:value="field.handleChange"
+                      />
+                    </NFormItem>
+                  </profileForm.Field>
+                </div>
+
+                <profileForm.Field name="avatarId" v-slot="{ field, state }">
+                  <div class="flex justify-start pt-2 md:justify-end">
+                    <UserAvatarUpload
+                      data-test="account-avatar-upload"
+                      :avatar-id="state.value ?? null"
+                      :nickname="profileForm.state.values.nickname"
+                      :username="currentUser.username"
+                      :size="80"
+                      @uploaded="(avatarId) => handleAvatarUploaded(avatarId, field.handleChange)"
+                      @error="handleAvatarUploadError"
+                    />
+                  </div>
+                </profileForm.Field>
+              </div>
 
               <profileForm.Field name="email" v-slot="{ field, state }">
                 <NFormItem label="邮箱" v-bind="formItemValidationProps(state.meta)">

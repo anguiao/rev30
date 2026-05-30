@@ -28,6 +28,15 @@ vi.mock('@iconify/vue', () => ({
   }),
 }))
 
+vi.mock('../../../src/features/users', () => ({
+  UserAvatar: {
+    name: 'UserAvatar',
+    props: ['avatarId', 'nickname', 'username', 'size'],
+    template:
+      '<span data-test="sidebar-user-avatar" :title="nickname || username">{{ avatarId || username }}</span>',
+  },
+}))
+
 const logoutMock = vi.mocked(logout)
 const systemMenuId = 'f905f4dc-c43f-41a8-b6fc-d381f291331a'
 const usersMenuId = '83d85ddf-9ebf-4f62-af9f-368af6d0d2a5'
@@ -214,6 +223,7 @@ describe('admin layout', () => {
     expect(wrapper.text()).toContain('系统管理')
     expect(wrapper.text()).toContain('指南')
     expect(wrapper.get('a[href="/system/users"]').text()).toContain('系统用户')
+    expect(wrapper.find('[data-test="sidebar-user-avatar"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/system/audit-log"]').exists()).toBe(false)
 
     const externalLink = wrapper.get('a[href="https://example.com/docs"]')
@@ -243,6 +253,9 @@ describe('admin layout', () => {
     expect(wrapper.find('[data-test="admin-sidebar-user"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="theme-mode-trigger"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="admin-logout"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="sidebar-user-avatar"]').attributes('title')).toBe(
+      session.user.nickname,
+    )
     expect(localStorage.getItem(adminSidebarCollapsedStorageKey)).toBe('true')
   })
 

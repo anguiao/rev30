@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { NButton } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import { logout } from '../../../features/auth'
+import { UserAvatar } from '../../../features/users'
 import { useAuthStore } from '../../../stores/auth'
 import ThemeModeSwitch from '../../common/ThemeModeSwitch.vue'
 
@@ -48,6 +49,15 @@ async function navigateToAccountSettings() {
       :class="collapsed ? 'flex flex-col items-center gap-3 px-3 pt-4' : 'px-5 pt-4'"
     >
       <template v-if="collapsed">
+        <UserAvatar
+          v-if="user"
+          data-test="sidebar-user-avatar"
+          :avatar-id="user.avatarId"
+          :nickname="user.nickname"
+          :username="user.username"
+          :size="36"
+          :title="user.nickname"
+        />
         <ThemeModeSwitch />
         <NButton
           data-test="admin-announcements"
@@ -92,6 +102,14 @@ async function navigateToAccountSettings() {
       </template>
       <template v-else>
         <div class="mb-4 flex items-center justify-between">
+          <UserAvatar
+            v-if="user"
+            data-test="sidebar-user-avatar"
+            :avatar-id="user.avatarId"
+            :nickname="user.nickname"
+            :username="user.username"
+            :size="36"
+          />
           <div class="min-w-0 flex-1 space-y-0.5">
             <p data-test="admin-sidebar-user" class="truncate text-sm font-medium">
               {{ user?.nickname ?? '' }}

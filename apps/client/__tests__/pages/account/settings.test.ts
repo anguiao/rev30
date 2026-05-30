@@ -47,6 +47,21 @@ vi.mock('@iconify/vue', () => ({
   },
 }))
 
+vi.mock('../../../src/features/users', () => ({
+  UserAvatar: {
+    name: 'UserAvatar',
+    props: ['avatarId', 'nickname', 'username', 'size'],
+    template: '<span data-test="sidebar-user-avatar">{{ avatarId || nickname || username }}</span>',
+  },
+  UserAvatarUpload: {
+    name: 'UserAvatarUpload',
+    props: ['avatarId', 'nickname', 'username', 'size'],
+    emits: ['uploaded', 'error'],
+    template:
+      '<button data-test="account-avatar-upload" @click="$emit(`uploaded`, `66666666-6666-4666-8666-666666666666`)">{{ avatarId }}</button>',
+  },
+}))
+
 const updateMyProfileMock = vi.mocked(updateMyProfile)
 const updateMyPasswordMock = vi.mocked(updateMyPassword)
 
@@ -92,7 +107,7 @@ describe('account settings page', () => {
       nickname: 'Ada Byron',
       email: 'ada@example.com',
       phone: '18888888888',
-      avatarId: null,
+      avatarId: '66666666-6666-4666-8666-666666666666',
       updatedAt: '2026-05-02T00:00:00.000Z',
     }
     updateMyProfileMock.mockResolvedValue(updatedUser)
@@ -102,6 +117,7 @@ describe('account settings page', () => {
     await wrapper.find('[data-test="account-profile-nickname"] input').setValue('Ada Byron')
     await wrapper.find('[data-test="account-profile-email"] input').setValue('ada@example.com')
     await wrapper.find('[data-test="account-profile-phone"] input').setValue('18888888888')
+    await wrapper.get('[data-test="account-avatar-upload"]').trigger('click')
     await submitForm(
       wrapper,
       '[data-test="account-profile-form"]',
@@ -111,9 +127,9 @@ describe('account settings page', () => {
     expect(updateMyProfileMock).toHaveBeenCalledOnce()
     expect(updateMyProfileMock).toHaveBeenCalledWith({
       nickname: 'Ada Byron',
+      avatarId: '66666666-6666-4666-8666-666666666666',
       email: 'ada@example.com',
       phone: '18888888888',
-      avatarId: null,
     })
     expect(auth.user).toEqual(updatedUser)
     expect(wrapper.get('[data-test="admin-sidebar-user"]').text()).toContain('Ada Byron')

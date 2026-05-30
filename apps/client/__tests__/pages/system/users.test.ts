@@ -51,6 +51,13 @@ vi.mock('../../../src/features/system/UserFormDrawer.vue', () => ({
     },
   }),
 }))
+vi.mock('../../../src/features/users', () => ({
+  UserAvatar: {
+    name: 'UserAvatar',
+    props: ['avatarId', 'nickname', 'username', 'size'],
+    template: '<span data-test="user-avatar">{{ avatarId || username }}</span>',
+  },
+}))
 
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
@@ -69,6 +76,7 @@ const resetUserPasswordMock = vi.mocked(resetUserPassword)
 
 const departmentFilterId = '11111111-1111-4111-8111-111111111111'
 const roleFilterId = '22222222-2222-4222-8222-222222222222'
+const avatarId = '66666666-6666-4666-8666-666666666666'
 
 const departmentFilterOptions: DepartmentTreeOptionsResponse = [
   {
@@ -96,7 +104,7 @@ const userListResponse: UserListResponse = {
       id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
       username: 'ada',
       nickname: 'Ada Lovelace',
-      avatarId: null,
+      avatarId,
       email: 'ada@example.com',
       phone: null,
       status: USER_STATUS_ENABLED,
@@ -239,6 +247,8 @@ describe('users page', () => {
     expect(wrapper.text()).toContain('ada@example.com')
     expect(wrapper.text()).toContain('研发中心')
     expect(wrapper.text()).toContain('管理员')
+    expect(wrapper.findAll('[data-test="user-avatar"]')).toHaveLength(2)
+    expect(wrapper.text()).toContain(avatarId)
     expect(wrapper.text()).toContain('grace')
     expect(wrapper.text()).toContain('Grace Hopper')
     expect(wrapper.text()).toContain('13800138000')

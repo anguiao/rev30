@@ -26,6 +26,7 @@ import type {
 } from '@rev30/contracts'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import UserFormDrawer from '../../../features/system/UserFormDrawer.vue'
+import { UserAvatar } from '../../../features/users'
 import {
   STATUS_FILTER_ALL,
   deleteUser,
@@ -269,7 +270,17 @@ const columns: DataTableColumns<UserListItem> = [
   {
     title: '用户名',
     key: 'username',
-    width: 140,
+    minWidth: 180,
+    render: (user) =>
+      h('div', { class: 'flex items-center gap-3' }, [
+        h(UserAvatar, {
+          avatarId: user.avatarId,
+          nickname: user.nickname,
+          username: user.username,
+          size: 32,
+        }),
+        h('span', { class: 'min-w-0 truncate' }, user.username),
+      ]),
   },
   {
     title: '昵称',

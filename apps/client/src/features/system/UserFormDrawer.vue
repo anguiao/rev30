@@ -33,6 +33,7 @@ import {
   updateUser,
   getSystemErrorMessage,
 } from '.'
+import { UserAvatarUpload } from '../users'
 import { statusSelectOptions } from './labels'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
 import { toSelectOptions, toTreeOptions } from '../../utils/ui'
@@ -92,8 +93,7 @@ const {
       departments,
       roles,
       formValues: {
-        ...pick(user, ['username', 'nickname', 'email', 'phone', 'status']),
-        avatarId: user.avatarId,
+        ...pick(user, ['username', 'nickname', 'avatarId', 'email', 'phone', 'status']),
         departmentIds: user.departments.map((department) => department.id),
         roleIds: user.roles.map((role) => role.id),
       },
@@ -190,6 +190,10 @@ function handleSubmit() {
   void form.handleSubmit()
 }
 
+function handleAvatarUploadError(error: unknown) {
+  formError.value = getSystemErrorMessage(error, '上传用户头像失败')
+}
+
 watch(
   () => [show.value, props.userId] as const,
   ([isVisible]) => {
@@ -243,29 +247,47 @@ function toDepartmentIds(value: Array<string | number> | null) {
         </NAlert>
 
         <NForm @submit.prevent="handleSubmit">
-          <form.Field name="username" v-slot="{ field, state }">
-            <NFormItem label="用户名" v-bind="formItemValidationProps(state.meta)">
-              <NInput
-                data-test="user-form-username"
-                :value="state.value"
-                placeholder="请输入用户名"
-                @blur="field.handleBlur"
-                @update:value="field.handleChange"
-              />
-            </NFormItem>
-          </form.Field>
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
+            <div class="space-y-0">
+              <form.Field name="username" v-slot="{ field, state }">
+                <NFormItem label="用户名" v-bind="formItemValidationProps(state.meta)">
+                  <NInput
+                    data-test="user-form-username"
+                    :value="state.value"
+                    placeholder="请输入用户名"
+                    @blur="field.handleBlur"
+                    @update:value="field.handleChange"
+                  />
+                </NFormItem>
+              </form.Field>
 
-          <form.Field name="nickname" v-slot="{ field, state }">
-            <NFormItem label="昵称" v-bind="formItemValidationProps(state.meta)">
-              <NInput
-                data-test="user-form-nickname"
-                :value="state.value"
-                placeholder="请输入昵称"
-                @blur="field.handleBlur"
-                @update:value="field.handleChange"
-              />
-            </NFormItem>
-          </form.Field>
+              <form.Field name="nickname" v-slot="{ field, state }">
+                <NFormItem label="昵称" v-bind="formItemValidationProps(state.meta)">
+                  <NInput
+                    data-test="user-form-nickname"
+                    :value="state.value"
+                    placeholder="请输入昵称"
+                    @blur="field.handleBlur"
+                    @update:value="field.handleChange"
+                  />
+                </NFormItem>
+              </form.Field>
+            </div>
+
+            <form.Field name="avatarId" v-slot="{ field, state }">
+              <div class="flex justify-start pt-2 md:justify-end">
+                <UserAvatarUpload
+                  data-test="user-avatar-upload"
+                  :avatar-id="state.value"
+                  :nickname="form.state.values.nickname"
+                  :username="form.state.values.username"
+                  :size="80"
+                  @uploaded="field.handleChange"
+                  @error="handleAvatarUploadError"
+                />
+              </div>
+            </form.Field>
+          </div>
 
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <form.Field name="email" v-slot="{ field, state }">

@@ -33,6 +33,15 @@ vi.mock('../../../src/features/system', async (importOriginal) => ({
   getUser: vi.fn(),
   updateUser: vi.fn(),
 }))
+vi.mock('../../../src/features/users', () => ({
+  UserAvatarUpload: {
+    name: 'UserAvatarUpload',
+    props: ['avatarId', 'nickname', 'username', 'size'],
+    emits: ['uploaded', 'error'],
+    template:
+      '<button data-test="user-avatar-upload" @click="$emit(`uploaded`, `66666666-6666-4666-8666-666666666666`)">{{ avatarId }}</button>',
+  },
+}))
 
 const createUserMock = vi.mocked(createUser)
 const getDepartmentTreeOptionsMock = vi.mocked(getDepartmentTreeOptions)
@@ -45,6 +54,7 @@ const roleId = '22222222-2222-4222-8222-222222222222'
 const secondRoleId = '33333333-3333-4333-8333-333333333333'
 const departmentId = '44444444-4444-4444-8444-444444444444'
 const secondDepartmentId = '55555555-5555-4555-8555-555555555555'
+const avatarId = '66666666-6666-4666-8666-666666666666'
 
 const departmentTreeResponse: DepartmentTreeNode[] = [
   {
@@ -210,12 +220,13 @@ describe('UserFormDrawer', () => {
 
     await wrapper.get('[data-test="user-form-username"] input').setValue('new-user')
     await wrapper.get('[data-test="user-form-nickname"] input').setValue('New User')
+    await wrapper.get('[data-test="user-avatar-upload"]').trigger('click')
     await submitForm(wrapper)
 
     expect(createUserMock).toHaveBeenCalledWith({
       username: 'new-user',
       nickname: 'New User',
-      avatarId: null,
+      avatarId,
       email: null,
       phone: null,
       status: USER_STATUS_ENABLED,
@@ -268,8 +279,12 @@ describe('UserFormDrawer', () => {
   })
 
   it('loads user detail, departments and roles and submits updated fields', async () => {
-    getUserMock.mockResolvedValue(userResponse)
-    updateUserMock.mockResolvedValue(userResponse)
+    const userResponseWithAvatar: User = {
+      ...userResponse,
+      avatarId,
+    }
+    getUserMock.mockResolvedValue(userResponseWithAvatar)
+    updateUserMock.mockResolvedValue(userResponseWithAvatar)
 
     const wrapper = mountDrawer()
     await flushPromises()
@@ -278,6 +293,9 @@ describe('UserFormDrawer', () => {
     expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith([departmentId])
     expect(getRoleOptionsMock).toHaveBeenCalledWith([roleId])
     expect(getUserMock).toHaveBeenCalledWith(userId)
+    expect(wrapper.get('[data-test="user-avatar-upload"]').text()).toContain(
+      userResponseWithAvatar.avatarId ?? '',
+    )
     const departmentTreeSelect = wrapper.getComponent(NTreeSelect)
 
     await wrapper.get('[data-test="user-form-nickname"] input').setValue('Ada Lovelace')
@@ -293,7 +311,7 @@ describe('UserFormDrawer', () => {
     expect(updateUserMock).toHaveBeenCalledWith(userId, {
       username: 'ada',
       nickname: 'Ada Lovelace',
-      avatarId: null,
+      avatarId: userResponseWithAvatar.avatarId,
       email: 'ada@example.com',
       phone: '13800138000',
       status: USER_STATUS_ENABLED,

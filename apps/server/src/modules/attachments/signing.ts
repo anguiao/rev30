@@ -1,15 +1,22 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { attachmentDispositionSchema, type AttachmentDisposition } from '@rev30/contracts'
 import { z } from 'zod'
-import { AttachmentSignedUrlInvalidError } from './errors'
+import { AttachmentContentUrlInvalidError, AttachmentUploadUrlInvalidError } from './errors'
 
-const tokenPayloadSchema = z.object({
+const uploadTokenPayloadSchema = z.object({
+  uploadId: z.uuid(),
+  expiresAt: z.iso.datetime(),
+})
+
+type UploadTokenPayload = z.infer<typeof uploadTokenPayloadSchema>
+
+const contentTokenPayloadSchema = z.object({
   attachmentId: z.uuid(),
   disposition: attachmentDispositionSchema,
   expiresAt: z.iso.datetime(),
 })
 
-type TokenPayload = z.infer<typeof tokenPayloadSchema>
+type ContentTokenPayload = z.infer<typeof contentTokenPayloadSchema>
 
 function encode(value: string) {
   return Buffer.from(value, 'utf8').toString('base64url')
@@ -32,15 +39,76 @@ function signaturesMatch(actual: string, expected: string) {
   )
 }
 
-function parsePayload(encodedPayload: string) {
+export function createAttachmentUploadToken(
+  input: {
+    uploadId: string
+    expiresAt: Date
+  },
+  secret: string,
+) {
+  const payload: UploadTokenPayload = {
+    uploadId: input.uploadId,
+    expiresAt: input.expiresAt.toISOString(),
+  }
+  const encodedPayload = encode(JSON.stringify(payload))
+  const signature = signPayload(encodedPayload, secret)
+
+  return `${encodedPayload}.${signature}`
+}
+
+export function verifyAttachmentUploadToken(
+  token: string,
+  options: {
+    now: Date
+    secret: string
+    uploadId: string
+  },
+) {
+  const parts = token.split('.')
+
+  if (parts.length !== 2) {
+    throw new AttachmentUploadUrlInvalidError()
+  }
+
+  const [encodedPayload, signature] = parts
+
+  if (!encodedPayload || !signature) {
+    throw new AttachmentUploadUrlInvalidError()
+  }
+
+  const expectedSignature = signPayload(encodedPayload, options.secret)
+
+  if (!signaturesMatch(signature, expectedSignature)) {
+    throw new AttachmentUploadUrlInvalidError()
+  }
+
+  let payload: unknown
+
   try {
-    return JSON.parse(decode(encodedPayload))
+    payload = JSON.parse(decode(encodedPayload))
   } catch {
-    throw new AttachmentSignedUrlInvalidError()
+    throw new AttachmentUploadUrlInvalidError()
+  }
+
+  const result = uploadTokenPayloadSchema.safeParse(payload)
+
+  if (!result.success || result.data.uploadId !== options.uploadId) {
+    throw new AttachmentUploadUrlInvalidError()
+  }
+
+  const expiresAt = new Date(result.data.expiresAt)
+
+  if (expiresAt.getTime() <= options.now.getTime()) {
+    throw new AttachmentUploadUrlInvalidError()
+  }
+
+  return {
+    uploadId: result.data.uploadId,
+    expiresAt,
   }
 }
 
-export function createAttachmentReadToken(
+export function createAttachmentContentToken(
   input: {
     attachmentId: string
     disposition: AttachmentDisposition
@@ -48,7 +116,7 @@ export function createAttachmentReadToken(
   },
   secret: string,
 ) {
-  const payload: TokenPayload = {
+  const payload: ContentTokenPayload = {
     attachmentId: input.attachmentId,
     disposition: input.disposition,
     expiresAt: input.expiresAt.toISOString(),
@@ -59,7 +127,7 @@ export function createAttachmentReadToken(
   return `${encodedPayload}.${signature}`
 }
 
-export function verifyAttachmentReadToken(
+export function verifyAttachmentContentToken(
   token: string,
   options: {
     attachmentId: string
@@ -70,31 +138,39 @@ export function verifyAttachmentReadToken(
   const parts = token.split('.')
 
   if (parts.length !== 2) {
-    throw new AttachmentSignedUrlInvalidError()
+    throw new AttachmentContentUrlInvalidError()
   }
 
   const [encodedPayload, signature] = parts
 
   if (!encodedPayload || !signature) {
-    throw new AttachmentSignedUrlInvalidError()
+    throw new AttachmentContentUrlInvalidError()
   }
 
   const expectedSignature = signPayload(encodedPayload, options.secret)
 
   if (!signaturesMatch(signature, expectedSignature)) {
-    throw new AttachmentSignedUrlInvalidError()
+    throw new AttachmentContentUrlInvalidError()
   }
 
-  const result = tokenPayloadSchema.safeParse(parsePayload(encodedPayload))
+  let payload: unknown
+
+  try {
+    payload = JSON.parse(decode(encodedPayload))
+  } catch {
+    throw new AttachmentContentUrlInvalidError()
+  }
+
+  const result = contentTokenPayloadSchema.safeParse(payload)
 
   if (!result.success || result.data.attachmentId !== options.attachmentId) {
-    throw new AttachmentSignedUrlInvalidError()
+    throw new AttachmentContentUrlInvalidError()
   }
 
   const expiresAt = new Date(result.data.expiresAt)
 
   if (expiresAt.getTime() <= options.now.getTime()) {
-    throw new AttachmentSignedUrlInvalidError()
+    throw new AttachmentContentUrlInvalidError()
   }
 
   return {

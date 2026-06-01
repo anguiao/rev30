@@ -3,41 +3,97 @@ import { ATTACHMENT_DISPOSITION_ATTACHMENT, ATTACHMENT_DISPOSITION_INLINE } from
 import {
   ATTACHMENT_MAX_SIZE_BYTES,
   ATTACHMENT_MAX_SIZE_MESSAGE,
-  resolveAttachmentFileType,
+  acceptAttachmentUploadType,
+  getAttachmentFilenameType,
   resolveContentDisposition,
   validateAttachmentUploadMimeType,
   validateAttachmentUploadSize,
 } from '../../../src/modules/attachments/policy'
 
 describe('attachment policy', () => {
-  it('uses detected binary file types', () => {
-    expect(resolveAttachmentFileType({ ext: 'png', mime: 'image/png' }, 'avatar.bin')).toEqual({
-      extension: 'png',
-      mimeType: 'image/png',
+  function filenameType(originalName: string) {
+    return getAttachmentFilenameType(originalName)
+  }
+
+  it('resolves filename file types from normalized extensions', () => {
+    expect(getAttachmentFilenameType('Avatar.JPEG')).toEqual({
+      extension: 'jpeg',
+      mimeType: 'image/jpeg',
     })
-    expect(
-      resolveAttachmentFileType({ ext: 'pdf', mime: 'application/pdf' }, 'document.bin'),
-    ).toEqual({
+    expect(getAttachmentFilenameType('report.PDF')).toEqual({
       extension: 'pdf',
       mimeType: 'application/pdf',
     })
   })
 
+  it('uses detected MIME types while preserving filename extensions', () => {
+    expect(
+      acceptAttachmentUploadType(filenameType('avatar.png'), {
+        extension: 'png',
+        mimeType: 'image/png',
+      }),
+    ).toEqual({
+      extension: 'png',
+      mimeType: 'image/png',
+    })
+    expect(
+      acceptAttachmentUploadType(filenameType('avatar.jpeg'), {
+        extension: 'jpg',
+        mimeType: 'image/jpeg',
+      }),
+    ).toEqual({
+      extension: 'jpeg',
+      mimeType: 'image/jpeg',
+    })
+    expect(
+      acceptAttachmentUploadType(filenameType('document.pdf'), {
+        extension: 'pdf',
+        mimeType: 'application/pdf',
+      }),
+    ).toEqual({ extension: 'pdf', mimeType: 'application/pdf' })
+  })
+
+  it('rejects files whose detected MIME does not match the filename extension', () => {
+    expect(() =>
+      acceptAttachmentUploadType(filenameType('avatar.png'), {
+        extension: 'jpg',
+        mimeType: 'image/jpeg',
+      }),
+    ).toThrow('不支持的文件类型')
+    expect(() =>
+      acceptAttachmentUploadType(filenameType('avatar.jpeg'), {
+        extension: 'png',
+        mimeType: 'image/png',
+      }),
+    ).toThrow('不支持的文件类型')
+  })
+
   it('falls back to filename lookup for text-like files', () => {
-    expect(resolveAttachmentFileType(undefined, 'users.csv')).toEqual({
+    expect(acceptAttachmentUploadType(filenameType('users.csv'), null)).toEqual({
       extension: 'csv',
       mimeType: 'text/csv',
     })
-    expect(resolveAttachmentFileType(undefined, 'notes.txt')).toEqual({
+    expect(acceptAttachmentUploadType(filenameType('notes.txt'), null)).toEqual({
       extension: 'txt',
       mimeType: 'text/plain',
     })
   })
 
   it('rejects unknown binary document extensions', () => {
-    expect(() => resolveAttachmentFileType(undefined, 'report.docx')).toThrow('不支持的文件类型')
-    expect(() => resolveAttachmentFileType(undefined, 'archive.zip')).toThrow('不支持的文件类型')
-    expect(() => resolveAttachmentFileType(undefined, 'file.pdf')).toThrow('不支持的文件类型')
+    expect(getAttachmentFilenameType('report.docx')).toEqual({
+      extension: 'docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    })
+    expect(() => acceptAttachmentUploadType(filenameType('report.docx'), null)).toThrow(
+      '不支持的文件类型',
+    )
+    expect(() => acceptAttachmentUploadType(filenameType('archive.zip'), null)).toThrow(
+      '不支持的文件类型',
+    )
+    expect(() => acceptAttachmentUploadType(filenameType('file.pdf'), null)).toThrow(
+      '不支持的文件类型',
+    )
+    expect(() => getAttachmentFilenameType('avatar.bin')).toThrow('不支持的文件类型')
   })
 
   it('validates upload limits globally', () => {

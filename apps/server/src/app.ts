@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import type { Db } from './db'
 import { createAuthMiddleware } from './middleware/auth'
 import { createRequestLogger } from './middleware/logger'
-import { createAttachmentContentRoutes, createAttachmentRoutes } from './modules/attachments/routes'
+import { createAttachmentRoutes } from './modules/attachments/routes'
 import { createAuthRoutes } from './modules/auth/routes'
 import { createContentRoutes } from './modules/content/routes'
 import { healthRoutes } from './modules/health/routes'
@@ -15,16 +15,12 @@ export function createApiRoutes(database: Db) {
 
   return new Hono()
     .route('/', healthRoutes)
-    .route('/auth', createAuthRoutes(database))
-    .route('/icons/search', createIconSearchRoutes(database))
+    .route('/auth', createAuthRoutes(database, authMiddleware))
+    .route('/icons/search', createIconSearchRoutes(authMiddleware))
     .route('/icons', iconRoutes)
-    .route('/attachments', createAttachmentContentRoutes(database))
-    .use('/attachments/*', authMiddleware)
-    .route('/attachments', createAttachmentRoutes(database))
-    .use('/system/*', authMiddleware)
-    .route('/system', createSystemRoutes(database))
-    .use('/content/*', authMiddleware)
-    .route('/content', createContentRoutes(database))
+    .route('/attachments', createAttachmentRoutes(database, authMiddleware))
+    .route('/system', createSystemRoutes(database, authMiddleware))
+    .route('/content', createContentRoutes(database, authMiddleware))
 }
 
 export function createApp(database: Db) {

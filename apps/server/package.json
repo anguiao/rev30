@@ -32,7 +32,6 @@
     "@rev30/contracts": "workspace:*",
     "@rev30/rich-text": "workspace:*",
     "@rev30/utils": "workspace:*",
-    "busboy": "^1.6.0",
     "bytes": "^3.1.2",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
@@ -45,7 +44,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/busboy": "^1.5.4",
     "@types/bytes": "^3.1.5",
     "@types/mime-types": "^3.0.1",
     "drizzle-kit": "^0.31.10",

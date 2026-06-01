@@ -1,6 +1,6 @@
 import { extname } from 'node:path'
 import bytes from 'bytes'
-import type { FileTypeResult } from 'file-type'
+import { lookup } from 'mime-types'
 import {
   ATTACHMENT_DISPOSITION_ATTACHMENT,
   ATTACHMENT_DISPOSITION_INLINE,
@@ -29,32 +29,53 @@ const textFallbackMimeTypes: Record<string, string> = {
   csv: 'text/csv',
 }
 
-export type DetectedAttachmentType = {
+export type AttachmentFileType = {
   extension: string
   mimeType: string
 }
 
-export function resolveAttachmentFileType(
-  detected: FileTypeResult | undefined,
-  originalName: string,
-): DetectedAttachmentType {
-  if (detected) {
-    return {
-      extension: detected.ext,
-      mimeType: detected.mime,
-    }
-  }
-
+export function getAttachmentFilenameType(originalName: string): AttachmentFileType {
   const extension = extensionFromName(originalName)
-  const mimeType = textFallbackMimeTypes[extension]
+  const mimeType = mimeTypeFromExtension(extension)
 
   if (!mimeType) {
     throw new AttachmentTypeUnsupportedError()
   }
 
+  validateAttachmentUploadMimeType(mimeType)
+
   return {
     extension,
     mimeType,
+  }
+}
+
+export function acceptAttachmentUploadType(
+  filenameType: AttachmentFileType,
+  detectedType: AttachmentFileType | null,
+): AttachmentFileType {
+  if (detectedType) {
+    validateAttachmentUploadMimeType(detectedType.mimeType)
+
+    if (detectedType.mimeType !== filenameType.mimeType) {
+      throw new AttachmentTypeUnsupportedError()
+    }
+
+    return {
+      extension: filenameType.extension,
+      mimeType: detectedType.mimeType,
+    }
+  }
+
+  const textFallbackMimeType = textFallbackMimeTypes[filenameType.extension]
+
+  if (!textFallbackMimeType) {
+    throw new AttachmentTypeUnsupportedError()
+  }
+
+  return {
+    extension: filenameType.extension,
+    mimeType: textFallbackMimeType,
   }
 }
 
@@ -103,4 +124,10 @@ function extensionFromName(name: string) {
 
 function normalizeExtension(extension: string) {
   return extension.replace(/^\./, '').trim().toLowerCase()
+}
+
+function mimeTypeFromExtension(extension: string) {
+  const mimeType = textFallbackMimeTypes[extension] ?? lookup(extension)
+
+  return mimeType || null
 }

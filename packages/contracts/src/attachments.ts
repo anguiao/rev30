@@ -35,15 +35,15 @@ export const attachmentSchema = z.object({
 const optionalUsageQuerySchema = optionalQueryValue(attachmentUsageSchema)
 const optionalKeywordSchema = optionalTrimmedQueryString()
 
-export const attachmentListQuerySchema = paginationQuerySchema.extend({
-  usage: optionalUsageQuerySchema,
-  keyword: optionalKeywordSchema,
-})
-
 export const attachmentCreatedBySchema = z.object({
   id: z.uuid('上传人 ID 无效'),
   username: nonBlankString(),
   nickname: nonBlankString(),
+})
+
+export const attachmentListQuerySchema = paginationQuerySchema.extend({
+  usage: optionalUsageQuerySchema,
+  keyword: optionalKeywordSchema,
 })
 
 export const attachmentListItemSchema = attachmentSchema.extend({
@@ -57,7 +57,32 @@ export const attachmentListResponseSchema = z.object({
   pageSize: z.number().int().min(1),
 })
 
-export const attachmentSignedUrlInputSchema = z
+export const attachmentTransferRequestSchema = z.object({
+  url: nonBlankString(),
+  method: z.enum(['GET', 'PUT']),
+  headers: z.record(z.string(), z.string()),
+  expiresAt: z.iso.datetime(),
+})
+
+export const attachmentUploadSessionCreateInputSchema = z
+  .object({
+    originalName: nonBlankString(),
+    usage: attachmentUsageSchema,
+    size: z.number().int().min(0),
+    contentType: nonBlankString().optional(),
+  })
+  .strict()
+
+export const attachmentUploadSessionSchema = z.object({
+  uploadId: z.uuid('上传会话 ID 无效'),
+  request: attachmentTransferRequestSchema.extend({
+    method: z.literal('PUT'),
+  }),
+})
+
+export const attachmentUploadSessionCompleteInputSchema = z.object({}).strict().default({})
+
+export const attachmentContentUrlInputSchema = z
   .object({
     disposition: attachmentDispositionSchema.default(ATTACHMENT_DISPOSITION_ATTACHMENT),
   })
@@ -66,17 +91,26 @@ export const attachmentSignedUrlInputSchema = z
     disposition: ATTACHMENT_DISPOSITION_ATTACHMENT,
   })
 
-export const attachmentSignedUrlSchema = z.object({
-  url: nonBlankString(),
-  expiresAt: z.iso.datetime(),
+export const attachmentContentUrlSchema = z.object({
+  request: attachmentTransferRequestSchema.extend({
+    method: z.literal('GET'),
+  }),
 })
 
 export type AttachmentUsage = z.infer<typeof attachmentUsageSchema>
 export type AttachmentDisposition = z.infer<typeof attachmentDispositionSchema>
 export type Attachment = z.infer<typeof attachmentSchema>
-export type AttachmentSignedUrlInput = z.infer<typeof attachmentSignedUrlInputSchema>
-export type AttachmentSignedUrl = z.infer<typeof attachmentSignedUrlSchema>
-export type AttachmentListQuery = z.infer<typeof attachmentListQuerySchema>
 export type AttachmentCreatedBy = z.infer<typeof attachmentCreatedBySchema>
+export type AttachmentListQuery = z.infer<typeof attachmentListQuerySchema>
 export type AttachmentListItem = z.infer<typeof attachmentListItemSchema>
 export type AttachmentListResponse = z.infer<typeof attachmentListResponseSchema>
+export type AttachmentTransferRequest = z.infer<typeof attachmentTransferRequestSchema>
+export type AttachmentUploadSessionCreateInput = z.infer<
+  typeof attachmentUploadSessionCreateInputSchema
+>
+export type AttachmentUploadSession = z.infer<typeof attachmentUploadSessionSchema>
+export type AttachmentUploadSessionCompleteInput = z.infer<
+  typeof attachmentUploadSessionCompleteInputSchema
+>
+export type AttachmentContentUrlInput = z.infer<typeof attachmentContentUrlInputSchema>
+export type AttachmentContentUrl = z.infer<typeof attachmentContentUrlSchema>

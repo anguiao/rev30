@@ -28,6 +28,7 @@ import {
   systemUsers,
 } from '../../../src/db/schema'
 import { createTestDb } from '../../helpers/db'
+import { createAuthMiddleware } from '../../../src/middleware/auth'
 import { hashPassword, verifyPassword } from '../../../src/modules/auth/password'
 import { createAuthRoutes } from '../../../src/modules/auth/routes'
 import { createAuthRepository } from '../../../src/modules/auth/repository'
@@ -69,7 +70,7 @@ type AccountInput = {
 const now = new Date('2026-05-06T00:00:00.000Z')
 
 function createTestApp(database: TestDatabase) {
-  return new Hono().route('/api/auth', createAuthRoutes(database))
+  return new Hono().route('/api/auth', createAuthRoutes(database, createAuthMiddleware(database)))
 }
 
 function getRefreshTokenCookie(response: Response) {

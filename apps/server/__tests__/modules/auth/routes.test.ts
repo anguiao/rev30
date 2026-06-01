@@ -57,7 +57,6 @@ const mocks = vi.hoisted(() => {
 
   return {
     authMiddleware,
-    createAuthMiddleware: vi.fn(() => authMiddleware),
     createAuthService: vi.fn(() => service),
     service,
   }
@@ -67,12 +66,8 @@ vi.mock('../../../src/modules/auth/service', () => ({
   createAuthService: mocks.createAuthService,
 }))
 
-vi.mock('../../../src/middleware/auth', () => ({
-  createAuthMiddleware: mocks.createAuthMiddleware,
-}))
-
 function createTestApp() {
-  return new Hono().route('/api/auth', createAuthRoutes({} as never))
+  return new Hono().route('/api/auth', createAuthRoutes({} as never, mocks.authMiddleware))
 }
 
 function createSession(refreshToken: string) {
@@ -96,7 +91,6 @@ describe('auth routes', () => {
     vi.clearAllMocks()
     Object.values(mocks.service).forEach((mock) => mock.mockReset())
     mocks.createAuthService.mockReturnValue(mocks.service)
-    mocks.createAuthMiddleware.mockReturnValue(mocks.authMiddleware)
     mocks.service.login.mockResolvedValue(createSession('login-refresh-token'))
     mocks.service.refresh.mockResolvedValue(createSession('rotated-refresh-token'))
     mocks.service.logout.mockResolvedValue(undefined)

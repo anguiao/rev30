@@ -2,11 +2,15 @@ import { Hono } from 'hono'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
+import { createAuthMiddleware } from '../../../../src/middleware/auth'
 import { createIconSearchRoutes } from '../../../../src/modules/icons/search/routes'
 import * as iconSearchService from '../../../../src/modules/icons/search/service'
 
 function createIconSearchTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
-  return new Hono().route('/api/icons/search', createIconSearchRoutes(database))
+  return new Hono().route(
+    '/api/icons/search',
+    createIconSearchRoutes(createAuthMiddleware(database)),
+  )
 }
 
 describe('icon search routes', () => {

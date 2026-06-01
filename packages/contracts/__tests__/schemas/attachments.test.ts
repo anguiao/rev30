@@ -5,11 +5,15 @@ import {
   ATTACHMENT_USAGE_AVATAR,
   ATTACHMENT_USAGE_GENERAL,
   ATTACHMENT_USAGE_RICH_TEXT,
+  attachmentContentUrlInputSchema,
+  attachmentContentUrlSchema,
   attachmentListQuerySchema,
   attachmentListResponseSchema,
   attachmentSchema,
-  attachmentSignedUrlInputSchema,
-  attachmentSignedUrlSchema,
+  attachmentTransferRequestSchema,
+  attachmentUploadSessionCompleteInputSchema,
+  attachmentUploadSessionCreateInputSchema,
+  attachmentUploadSessionSchema,
   attachmentUsageSchema,
 } from '../../src/attachments'
 
@@ -92,12 +96,12 @@ describe('attachment schemas', () => {
     expect(attachmentUsageSchema.safeParse('rich-text-image').success).toBe(false)
   })
 
-  it('defaults signed URL disposition to attachment', () => {
-    expect(attachmentSignedUrlInputSchema.parse({})).toEqual({
+  it('defaults content URL disposition to attachment', () => {
+    expect(attachmentContentUrlInputSchema.parse({})).toEqual({
       disposition: ATTACHMENT_DISPOSITION_ATTACHMENT,
     })
     expect(
-      attachmentSignedUrlInputSchema.parse({
+      attachmentContentUrlInputSchema.parse({
         disposition: ATTACHMENT_DISPOSITION_INLINE,
       }),
     ).toEqual({
@@ -105,8 +109,8 @@ describe('attachment schemas', () => {
     })
   })
 
-  it('rejects unknown fields for signed URL input', () => {
-    const result = attachmentSignedUrlInputSchema.safeParse({
+  it('rejects unknown fields for content URL input', () => {
+    const result = attachmentContentUrlInputSchema.safeParse({
       dispostion: ATTACHMENT_DISPOSITION_INLINE,
     })
 
@@ -151,23 +155,88 @@ describe('attachment schemas', () => {
     ).toBe(false)
   })
 
-  it('rejects blank signed URL response url', () => {
+  it('rejects blank transfer request url', () => {
     expect(
-      attachmentSignedUrlSchema.safeParse({
+      attachmentTransferRequestSchema.safeParse({
         url: '   ',
+        method: 'GET',
+        headers: {},
         expiresAt: '2026-05-29T00:05:00.000Z',
       }).success,
     ).toBe(false)
   })
 
-  it('accepts signed URL responses', () => {
+  it('accepts content URL responses', () => {
     expect(
-      attachmentSignedUrlSchema.parse({
-        url: '/api/attachments/11111111-1111-4111-8111-111111111111/content?token=abc',
-        expiresAt: '2026-05-29T00:05:00.000Z',
+      attachmentContentUrlSchema.parse({
+        request: {
+          url: '/api/attachments/11111111-1111-4111-8111-111111111111/content?token=abc',
+          method: 'GET',
+          headers: {},
+          expiresAt: '2026-05-29T00:05:00.000Z',
+        },
       }),
     ).toMatchObject({
-      expiresAt: '2026-05-29T00:05:00.000Z',
+      request: {
+        method: 'GET',
+        expiresAt: '2026-05-29T00:05:00.000Z',
+      },
     })
+  })
+
+  it('accepts upload session requests and responses', () => {
+    expect(
+      attachmentUploadSessionCreateInputSchema.parse({
+        originalName: 'avatar.png',
+        usage: ATTACHMENT_USAGE_AVATAR,
+        size: 12345,
+        contentType: 'image/png',
+      }),
+    ).toEqual({
+      originalName: 'avatar.png',
+      usage: ATTACHMENT_USAGE_AVATAR,
+      size: 12345,
+      contentType: 'image/png',
+    })
+
+    expect(
+      attachmentUploadSessionSchema.parse({
+        uploadId: '11111111-1111-4111-8111-111111111111',
+        request: {
+          url: '/api/attachments/uploads/11111111-1111-4111-8111-111111111111/content?token=abc',
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'image/png',
+          },
+          expiresAt: '2026-05-29T00:05:00.000Z',
+        },
+      }),
+    ).toMatchObject({
+      request: {
+        method: 'PUT',
+        expiresAt: '2026-05-29T00:05:00.000Z',
+      },
+    })
+  })
+
+  it('validates upload session input shape', () => {
+    expect(
+      attachmentUploadSessionCreateInputSchema.safeParse({
+        originalName: 'avatar.png',
+        usage: ATTACHMENT_USAGE_AVATAR,
+        size: -1,
+      }).success,
+    ).toBe(false)
+
+    expect(
+      attachmentUploadSessionCreateInputSchema.safeParse({
+        originalName: 'avatar.png',
+        usage: ATTACHMENT_USAGE_AVATAR,
+        size: 1,
+        extra: true,
+      }).success,
+    ).toBe(false)
+
+    expect(attachmentUploadSessionCompleteInputSchema.parse({})).toEqual({})
   })
 })

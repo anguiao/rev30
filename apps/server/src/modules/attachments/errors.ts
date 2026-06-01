@@ -26,7 +26,28 @@ export class AttachmentNotFoundError extends Error {
   }
 }
 
-export class AttachmentSignedUrlInvalidError extends Error {
+export class AttachmentUploadUrlInvalidError extends Error {
+  constructor() {
+    super('上传链接已失效')
+    this.name = new.target.name
+  }
+}
+
+export class AttachmentUploadSessionInvalidError extends Error {
+  constructor() {
+    super('上传会话已失效')
+    this.name = new.target.name
+  }
+}
+
+export class AttachmentUploadSessionNotReadyError extends Error {
+  constructor() {
+    super('文件尚未上传')
+    this.name = new.target.name
+  }
+}
+
+export class AttachmentContentUrlInvalidError extends Error {
   constructor() {
     super('附件链接已失效')
     this.name = new.target.name

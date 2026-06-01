@@ -6,10 +6,10 @@ import {
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   AttachmentRequestError,
-  createAttachmentSignedUrl,
   deleteAttachment,
   getAttachment,
   listAttachments,
+  resolveAttachmentUrl,
   uploadAttachment,
 } from '../../../src/features/attachments'
 import { useAuthStore } from '../../../src/stores/auth'
@@ -40,50 +40,93 @@ beforeEach(() => {
 })
 
 describe('attachment request helpers', () => {
-  it('uploads files with FormData and parses metadata', async () => {
-    const fetchMock = createFetchMock(jsonResponse(attachment, { status: 201 }))
+  it('uploads files through upload sessions and parses metadata', async () => {
+    const fetchMock = createFetchMock(
+      jsonResponse(
+        {
+          uploadId: attachmentId,
+          request: {
+            url: `/api/attachments/uploads/${attachmentId}/content?token=upload-token`,
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'image/png',
+            },
+            expiresAt: '2026-05-29T00:05:00.000Z',
+          },
+        },
+        { status: 201 },
+      ),
+      emptyResponse(),
+      jsonResponse(attachment, { status: 201 }),
+    )
     const file = new File(['png'], 'avatar.png', { type: 'image/png' })
 
     const result = await uploadAttachment(file, { usage: ATTACHMENT_USAGE_AVATAR })
 
-    expect(result).toEqual(attachment)
-    const call = expectFetchCall(fetchMock, 0, {
+    expect(result).toEqual({ id: attachment.id })
+    expectFetchCall(fetchMock, 0, {
       method: 'POST',
-      pathname: '/api/attachments',
+      pathname: '/api/attachments/uploads',
+    })
+    expectJsonBody(fetchMock, 0, {
+      originalName: 'avatar.png',
+      usage: ATTACHMENT_USAGE_AVATAR,
+      size: 3,
+      contentType: 'image/png',
+    })
+
+    const uploadCall = expectFetchCall(fetchMock, 1, {
+      method: 'PUT',
+      pathname: `/api/attachments/uploads/${attachmentId}/content`,
       query: {
-        usage: ATTACHMENT_USAGE_AVATAR,
+        token: 'upload-token',
       },
     })
-    expect(call.init.body).toBeInstanceOf(FormData)
-    expect((call.init.body as FormData).get('file')).toBe(file)
-    expect((call.init.body as FormData).has('usage')).toBe(false)
+    expect(uploadCall.init.body).toBe(file)
+    expect(uploadCall.headers.get('content-type')).toBe('image/png')
+
+    expectFetchCall(fetchMock, 2, {
+      method: 'POST',
+      pathname: `/api/attachments/uploads/${attachmentId}/complete`,
+    })
+    expectJsonBody(fetchMock, 2, {})
   })
 
-  it('gets metadata and creates signed URLs', async () => {
-    const fetchMock = createFetchMock(
-      jsonResponse(attachment),
-      jsonResponse({
-        url: `/api/attachments/${attachmentId}/content?token=token`,
-        expiresAt: '2026-05-29T00:05:00.000Z',
-      }),
-    )
+  it('gets metadata', async () => {
+    const fetchMock = createFetchMock(jsonResponse(attachment))
 
     await expect(getAttachment(attachmentId)).resolves.toEqual(attachment)
-    await expect(
-      createAttachmentSignedUrl(attachmentId, { disposition: ATTACHMENT_DISPOSITION_INLINE }),
-    ).resolves.toMatchObject({
-      expiresAt: '2026-05-29T00:05:00.000Z',
-    })
 
     expectFetchCall(fetchMock, 0, {
       method: 'GET',
       pathname: `/api/attachments/${attachmentId}`,
     })
-    expectFetchCall(fetchMock, 1, {
-      method: 'POST',
-      pathname: `/api/attachments/${attachmentId}/signed-url`,
+  })
+
+  it('resolves content URLs for direct use', async () => {
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        request: {
+          url: `/api/attachments/${attachmentId}/content?token=token`,
+          method: 'GET',
+          headers: {},
+          expiresAt: '2026-05-29T00:05:00.000Z',
+        },
+      }),
+    )
+
+    await expect(
+      resolveAttachmentUrl(attachmentId, { disposition: ATTACHMENT_DISPOSITION_INLINE }),
+    ).resolves.toEqual({
+      url: `/api/attachments/${attachmentId}/content?token=token`,
+      expiresAt: '2026-05-29T00:05:00.000Z',
     })
-    expectJsonBody(fetchMock, 1, { disposition: ATTACHMENT_DISPOSITION_INLINE })
+
+    expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: `/api/attachments/${attachmentId}/content-url`,
+    })
+    expectJsonBody(fetchMock, 0, { disposition: ATTACHMENT_DISPOSITION_INLINE })
   })
 
   it('lists attachment resources with filters', async () => {
@@ -147,6 +190,10 @@ describe('attachment request helpers', () => {
     expectFetchCall(fetchMock, 0, {
       method: 'DELETE',
       pathname: `/api/attachments/${attachmentId}`,
+    })
+    expectFetchCall(fetchMock, 1, {
+      method: 'POST',
+      pathname: '/api/attachments/uploads',
     })
   })
 })

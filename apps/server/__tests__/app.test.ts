@@ -54,27 +54,29 @@ describe('app auth boundaries', () => {
 
   it('requires authentication for attachment upload route', async () => {
     const app = createApp(createUnusedDatabase())
-    const form = new FormData()
-    const file = new File([Uint8Array.from([0x89, 0x50, 0x4e, 0x47])], 'avatar.png', {
-      type: 'image/png',
-    })
 
-    form.set('file', file)
-
-    const response = await app.request('/api/attachments?usage=avatar', {
+    const response = await app.request('/api/attachments/uploads', {
       method: 'POST',
-      body: form,
+      body: JSON.stringify({
+        originalName: 'avatar.png',
+        usage: 'avatar',
+        size: 4,
+        contentType: 'image/png',
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
     })
 
     expect(response.status).toBe(401)
     expect(await response.json()).toEqual({ message: '未授权' })
   })
 
-  it('requires authentication for attachment signed-url route', async () => {
+  it('requires authentication for attachment content-url route', async () => {
     const app = createApp(createUnusedDatabase())
 
     const response = await app.request(
-      '/api/attachments/11111111-1111-4111-8111-111111111111/signed-url',
+      '/api/attachments/11111111-1111-4111-8111-111111111111/content-url',
       {
         method: 'POST',
         body: JSON.stringify({

@@ -2,14 +2,14 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { PiniaColada } from '@pinia/colada'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import UserAvatar from '../../../src/features/users/UserAvatar.vue'
-import { createAttachmentSignedUrl } from '../../../src/features/attachments'
+import { resolveAttachmentUrl } from '../../../src/features/attachments'
 import { createTestPinia, disposeActiveTestPinia } from '../../helpers/pinia'
 
 vi.mock('../../../src/features/attachments/requests', () => ({
-  createAttachmentSignedUrl: vi.fn(),
+  resolveAttachmentUrl: vi.fn(),
 }))
 
-const createAttachmentSignedUrlMock = vi.mocked(createAttachmentSignedUrl)
+const resolveAttachmentUrlMock = vi.mocked(resolveAttachmentUrl)
 
 function mountAvatar(props: InstanceType<typeof UserAvatar>['$props']) {
   return mount(UserAvatar, {
@@ -22,8 +22,8 @@ function mountAvatar(props: InstanceType<typeof UserAvatar>['$props']) {
 
 describe('UserAvatar', () => {
   beforeEach(() => {
-    createAttachmentSignedUrlMock.mockReset()
-    createAttachmentSignedUrlMock.mockResolvedValue({
+    resolveAttachmentUrlMock.mockReset()
+    resolveAttachmentUrlMock.mockResolvedValue({
       url: '/api/attachments/avatar/content?token=token',
       expiresAt: '2026-05-30T00:05:00.000Z',
     })
@@ -41,7 +41,7 @@ describe('UserAvatar', () => {
     })
 
     expect(wrapper.text()).toContain('A')
-    expect(createAttachmentSignedUrlMock).not.toHaveBeenCalled()
+    expect(resolveAttachmentUrlMock).not.toHaveBeenCalled()
   })
 
   it('falls back to username when nickname is blank', () => {
@@ -52,7 +52,7 @@ describe('UserAvatar', () => {
     })
 
     expect(wrapper.text()).toContain('G')
-    expect(createAttachmentSignedUrlMock).not.toHaveBeenCalled()
+    expect(resolveAttachmentUrlMock).not.toHaveBeenCalled()
   })
 
   it('renders signed avatar images when available', async () => {
@@ -69,7 +69,7 @@ describe('UserAvatar', () => {
   })
 
   it('falls back to initials when signing or image loading fails', async () => {
-    createAttachmentSignedUrlMock.mockRejectedValueOnce(new Error('gone'))
+    resolveAttachmentUrlMock.mockRejectedValueOnce(new Error('gone'))
     const wrapper = mountAvatar({
       avatarId: '11111111-1111-4111-8111-111111111111',
       nickname: 'Grace Hopper',
@@ -80,7 +80,7 @@ describe('UserAvatar', () => {
 
     expect(wrapper.text()).toContain('G')
 
-    createAttachmentSignedUrlMock.mockResolvedValueOnce({
+    resolveAttachmentUrlMock.mockResolvedValueOnce({
       url: '/api/attachments/avatar/content?token=token',
       expiresAt: '2026-05-30T00:05:00.000Z',
     })

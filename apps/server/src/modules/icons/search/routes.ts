@@ -1,8 +1,7 @@
 import { iconSearchQuerySchema } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
-import { Hono } from 'hono'
-import type { Db } from '../../../db'
-import { createAuthMiddleware } from '../../../middleware/auth'
+import { Hono, type MiddlewareHandler } from 'hono'
+import type { AuthEnv } from '../../../middleware/auth'
 import { searchIcons } from './service'
 
 const iconSearchQueryValidator = zValidator('query', iconSearchQuerySchema, (result, c) => {
@@ -11,13 +10,11 @@ const iconSearchQueryValidator = zValidator('query', iconSearchQuerySchema, (res
   }
 })
 
-export function createIconSearchRoutes(database: Db) {
-  return new Hono()
-    .use('*', createAuthMiddleware(database))
-    .get('/', iconSearchQueryValidator, async (c) => {
-      const query = c.req.valid('query')
-      const result = await searchIcons(query)
+export function createIconSearchRoutes(authMiddleware: MiddlewareHandler<AuthEnv>) {
+  return new Hono().use('*', authMiddleware).get('/', iconSearchQueryValidator, async (c) => {
+    const query = c.req.valid('query')
+    const result = await searchIcons(query)
 
-      return c.json(result)
-    })
+    return c.json(result)
+  })
 }

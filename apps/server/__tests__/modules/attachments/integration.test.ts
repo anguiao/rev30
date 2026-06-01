@@ -33,7 +33,7 @@ async function createAttachmentIntegrationFixture() {
 
   vi.stubEnv('ATTACHMENT_STORAGE_DIR', storageDir)
   vi.stubEnv('ATTACHMENT_SIGNING_SECRET', 'integration-attachment-secret')
-  vi.stubEnv('ATTACHMENT_SIGNED_URL_TTL_SECONDS', '300')
+  vi.stubEnv('ATTACHMENT_CONTENT_URL_TTL_SECONDS', '300')
 
   const app = createApp(database)
   const authenticated = await createSystemAccessFixture(database, {
@@ -47,24 +47,78 @@ async function createAttachmentIntegrationFixture() {
   }
 }
 
+async function uploadAttachmentThroughSession(
+  app: ReturnType<typeof createApp>,
+  authenticated: Awaited<ReturnType<typeof createSystemAccessFixture>>,
+  input: {
+    bytes: Uint8Array
+    contentType: string
+    originalName: string
+    usage: string
+  },
+) {
+  const sessionResponse = await app.request('/api/attachments/uploads', {
+    method: 'POST',
+    body: JSON.stringify({
+      originalName: input.originalName,
+      usage: input.usage,
+      size: input.bytes.byteLength,
+      contentType: input.contentType,
+    }),
+    headers: {
+      ...authenticated.authHeaders,
+      'content-type': 'application/json',
+    },
+  })
+  const session = (await sessionResponse.json()) as {
+    request: {
+      url: string
+    }
+    uploadId: string
+  }
+
+  expect(sessionResponse.status).toBe(201)
+
+  const uploadResponse = await app.request(session.request.url, {
+    method: 'PUT',
+    body: new File([input.bytes], input.originalName, { type: input.contentType }),
+  })
+
+  expect(uploadResponse.status).toBe(204)
+
+  const completeResponse = await app.request(
+    `/api/attachments/uploads/${session.uploadId}/complete`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+      headers: {
+        ...authenticated.authHeaders,
+        'content-type': 'application/json',
+      },
+    },
+  )
+
+  return {
+    completeResponse,
+    session,
+  }
+}
+
 afterEach(async () => {
   vi.unstubAllEnvs()
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })))
 })
 
 describe('attachment routes integration', () => {
-  it('uploads metadata, creates signed urls, and serves signed content without auth', async () => {
+  it('uploads metadata, creates content urls, and serves content without auth', async () => {
     const { app, authenticated } = await createAttachmentIntegrationFixture()
-    const form = new FormData()
-
-    form.set('file', new File([pngBytes], 'avatar.png', { type: 'image/png' }))
-
-    const uploadResponse = await app.request(`/api/attachments?usage=${ATTACHMENT_USAGE_AVATAR}`, {
-      method: 'POST',
-      body: form,
-      headers: authenticated.authHeaders,
+    const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
+      bytes: pngBytes,
+      contentType: 'image/png',
+      originalName: 'avatar.png',
+      usage: ATTACHMENT_USAGE_AVATAR,
     })
-    const uploaded = (await uploadResponse.json()) as {
+    const uploaded = (await completeResponse.json()) as {
       createdAt: string
       extension: string
       id: string
@@ -74,7 +128,7 @@ describe('attachment routes integration', () => {
       usage: string
     }
 
-    expect(uploadResponse.status).toBe(201)
+    expect(completeResponse.status).toBe(201)
     expect(uploaded).toMatchObject({
       id: expect.any(String),
       originalName: 'avatar.png',
@@ -92,7 +146,7 @@ describe('attachment routes integration', () => {
     expect(metadataResponse.status).toBe(200)
     expect(await metadataResponse.json()).toEqual(uploaded)
 
-    const signedUrlResponse = await app.request(`/api/attachments/${uploaded.id}/signed-url`, {
+    const contentUrlResponse = await app.request(`/api/attachments/${uploaded.id}/content-url`, {
       method: 'POST',
       body: JSON.stringify({
         disposition: ATTACHMENT_DISPOSITION_INLINE,
@@ -102,18 +156,24 @@ describe('attachment routes integration', () => {
         'content-type': 'application/json',
       },
     })
-    const signed = (await signedUrlResponse.json()) as {
-      expiresAt: string
-      url: string
+    const content = (await contentUrlResponse.json()) as {
+      request: {
+        expiresAt: string
+        url: string
+      }
     }
 
-    expect(signedUrlResponse.status).toBe(200)
-    expect(signed).toEqual({
-      url: expect.stringContaining(`/api/attachments/${uploaded.id}/content?token=`),
-      expiresAt: expect.any(String),
+    expect(contentUrlResponse.status).toBe(200)
+    expect(content).toEqual({
+      request: {
+        url: expect.stringContaining(`/api/attachments/${uploaded.id}/content?token=`),
+        method: 'GET',
+        headers: {},
+        expiresAt: expect.any(String),
+      },
     })
 
-    const contentResponse = await app.request(signed.url)
+    const contentResponse = await app.request(content.request.url)
     const contentBody = new Uint8Array(await contentResponse.arrayBuffer())
 
     expect(contentResponse.status).toBe(200)
@@ -126,16 +186,13 @@ describe('attachment routes integration', () => {
 
   it('lists active attachments with uploader summaries and keeps soft-deleted attachments out', async () => {
     const { app, authenticated } = await createAttachmentIntegrationFixture()
-    const form = new FormData()
-
-    form.set('file', new File([pngBytes], 'avatar.png', { type: 'image/png' }))
-
-    const uploadResponse = await app.request(`/api/attachments?usage=${ATTACHMENT_USAGE_AVATAR}`, {
-      method: 'POST',
-      body: form,
-      headers: authenticated.authHeaders,
+    const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
+      bytes: pngBytes,
+      contentType: 'image/png',
+      originalName: 'avatar.png',
+      usage: ATTACHMENT_USAGE_AVATAR,
     })
-    const uploaded = (await uploadResponse.json()) as { id: string }
+    const uploaded = (await completeResponse.json()) as { id: string }
 
     const listResponse = await app.request(
       `/api/attachments?usage=${ATTACHMENT_USAGE_AVATAR}&keyword=avatar`,
@@ -172,21 +229,18 @@ describe('attachment routes integration', () => {
 
   it('rejects uploads above the global attachment size limit', async () => {
     const { app, authenticated } = await createAttachmentIntegrationFixture()
-    const form = new FormData()
-
-    form.set(
-      'file',
-      new File(
-        [pngBytes, new Uint8Array(ATTACHMENT_MAX_SIZE_BYTES - pngBytes.byteLength + 1)],
-        'avatar.png',
-        { type: 'image/png' },
-      ),
-    )
-
-    const response = await app.request(`/api/attachments?usage=${ATTACHMENT_USAGE_AVATAR}`, {
+    const response = await app.request('/api/attachments/uploads', {
       method: 'POST',
-      body: form,
-      headers: authenticated.authHeaders,
+      body: JSON.stringify({
+        originalName: 'avatar.png',
+        usage: ATTACHMENT_USAGE_AVATAR,
+        size: ATTACHMENT_MAX_SIZE_BYTES + 1,
+        contentType: 'image/png',
+      }),
+      headers: {
+        ...authenticated.authHeaders,
+        'content-type': 'application/json',
+      },
     })
 
     expect(response.status).toBe(400)

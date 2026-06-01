@@ -7,10 +7,10 @@ import {
   authProfileUpdateSchema,
 } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
-import { Hono, type Context } from 'hono'
+import { Hono, type Context, type MiddlewareHandler } from 'hono'
 import type { ZodType } from 'zod'
 import type { Db } from '../../db'
-import { createAuthMiddleware } from '../../middleware/auth'
+import type { AuthEnv } from '../../middleware/auth'
 import { UserConflictError, UserInvalidAvatarError } from '../system/users/errors'
 import { clearRefreshTokenCookie, getRefreshTokenCookie, setRefreshTokenCookie } from './cookies'
 import { readAuthConfig } from './config'
@@ -80,7 +80,7 @@ function authErrorResponse(error: unknown, c: Context) {
   throw error
 }
 
-export function createAuthRoutes(database: Db) {
+export function createAuthRoutes(database: Db, authMiddleware: MiddlewareHandler<AuthEnv>) {
   const config = readAuthConfig()
   const service = createAuthService(database, config)
   const app = new Hono()
@@ -111,28 +111,25 @@ export function createAuthRoutes(database: Db) {
 
       return c.body(null, 204)
     })
-    .get('/me', createAuthMiddleware(database), (c) =>
+    .use('/me', authMiddleware)
+    .use('/me/*', authMiddleware)
+    .get('/me', (c) =>
       c.json({
         user: c.get('currentUser'),
         accessCodes: c.get('accessCodes'),
         menus: c.get('menus'),
       }),
     )
-    .patch('/me/profile', createAuthMiddleware(database), profileUpdateBodyValidator, async (c) => {
+    .patch('/me/profile', profileUpdateBodyValidator, async (c) => {
       const body: AuthProfileUpdateInput = c.req.valid('json')
 
       return c.json(await service.updateProfile(c.get('currentUser').id, body))
     })
-    .patch(
-      '/me/password',
-      createAuthMiddleware(database),
-      passwordUpdateBodyValidator,
-      async (c) => {
-        const body: AuthPasswordUpdateInput = c.req.valid('json')
+    .patch('/me/password', passwordUpdateBodyValidator, async (c) => {
+      const body: AuthPasswordUpdateInput = c.req.valid('json')
 
-        await service.updatePassword(c.get('currentUser').id, body, getRefreshTokenCookie(c))
+      await service.updatePassword(c.get('currentUser').id, body, getRefreshTokenCookie(c))
 
-        return c.body(null, 204)
-      },
-    )
+      return c.body(null, 204)
+    })
 }

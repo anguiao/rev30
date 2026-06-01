@@ -2,9 +2,9 @@ import { ATTACHMENT_DISPOSITION_ATTACHMENT, type AttachmentDisposition } from '@
 import { useQuery } from '@pinia/colada'
 import { useTimeoutFn } from '@vueuse/core'
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
-import { createAttachmentSignedUrl } from './requests'
+import { resolveAttachmentUrl } from './requests'
 
-const signedUrlRefreshLeadMs = 30_000
+const contentUrlRefreshLeadMs = 30_000
 
 type UseAttachmentUrlOptions = {
   disposition?: MaybeRefOrGetter<AttachmentDisposition | undefined>
@@ -29,25 +29,25 @@ export function useAttachmentUrl(
     isLoading: rawLoading,
     refetch,
   } = useQuery({
-    key: () => ['attachments', 'signed-url', attachmentId.value, disposition.value],
+    key: () => ['attachments', 'content-url', attachmentId.value, disposition.value],
     enabled: isEnabled,
     staleTime: 30_000,
     gcTime: 60_000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     query: () =>
-      createAttachmentSignedUrl(attachmentId.value!, {
+      resolveAttachmentUrl(attachmentId.value!, {
         disposition: disposition.value,
       }),
   })
 
-  const signedUrl = computed(() => {
+  const contentUrl = computed(() => {
     if (!isEnabled.value || rawLoading.value || rawError.value !== null) return null
 
     return data.value ?? null
   })
-  const expiresAt = computed(() => signedUrl.value?.expiresAt ?? null)
-  const url = computed(() => signedUrl.value?.url ?? null)
+  const expiresAt = computed(() => contentUrl.value?.expiresAt ?? null)
+  const url = computed(() => contentUrl.value?.url ?? null)
   const error = computed(() => (isEnabled.value ? rawError.value : null))
   const isLoading = computed(() => isEnabled.value && rawLoading.value)
 
@@ -67,7 +67,7 @@ export function useAttachmentUrl(
 
       if (!nextExpiresAt) return
 
-      const delay = Date.parse(nextExpiresAt) - Date.now() - signedUrlRefreshLeadMs
+      const delay = Date.parse(nextExpiresAt) - Date.now() - contentUrlRefreshLeadMs
 
       if (delay <= 0) return
 

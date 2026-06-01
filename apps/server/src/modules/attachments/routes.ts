@@ -1,14 +1,16 @@
 import {
   type AttachmentListQuery,
   attachmentSchema,
+  attachmentContentUrlInputSchema,
+  attachmentContentUrlSchema,
   attachmentListQuerySchema,
   attachmentListResponseSchema,
-  attachmentSignedUrlInputSchema,
-  attachmentSignedUrlSchema,
-  attachmentUsageSchema,
+  attachmentUploadSessionCompleteInputSchema,
+  attachmentUploadSessionCreateInputSchema,
+  attachmentUploadSessionSchema,
 } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
-import { Hono, type Context } from 'hono'
+import { Hono, type Context, type MiddlewareHandler } from 'hono'
 import { z } from 'zod'
 import type { Db } from '../../db'
 import { requireAccess } from '../../middleware/access'
@@ -16,16 +18,18 @@ import type { AuthEnv } from '../../middleware/auth'
 import {
   AttachmentFileTooLargeError,
   AttachmentNotFoundError,
-  AttachmentSignedUrlInvalidError,
+  AttachmentContentUrlInvalidError,
   AttachmentTypeUnsupportedError,
+  AttachmentUploadSessionInvalidError,
+  AttachmentUploadSessionNotReadyError,
+  AttachmentUploadUrlInvalidError,
   AttachmentUploadRequestError,
 } from './errors'
 import { createAttachmentService } from './service'
-import { handleAttachmentUpload } from './upload'
 
 const attachmentIdParamSchema = attachmentSchema.pick({ id: true })
-const attachmentUploadQuerySchema = z.object({
-  usage: attachmentUsageSchema,
+const attachmentUploadSessionIdParamSchema = z.object({
+  uploadId: z.uuid(),
 })
 const attachmentContentQuerySchema = z.object({
   token: z.string().trim().min(1),
@@ -40,9 +44,9 @@ const attachmentIdValidator = zValidator('param', attachmentIdParamSchema, (resu
   }
 })
 
-const attachmentSignedUrlBodyValidator = zValidator(
+const attachmentContentUrlBodyValidator = zValidator(
   'json',
-  attachmentSignedUrlInputSchema,
+  attachmentContentUrlInputSchema,
   (result, c) => {
     if (!result.success) {
       return c.json({ message: '请求体无效' }, 400)
@@ -50,12 +54,32 @@ const attachmentSignedUrlBodyValidator = zValidator(
   },
 )
 
-const attachmentUploadQueryValidator = zValidator(
-  'query',
-  attachmentUploadQuerySchema,
+const attachmentUploadSessionIdValidator = zValidator(
+  'param',
+  attachmentUploadSessionIdParamSchema,
   (result, c) => {
     if (!result.success) {
-      return c.json({ message: '上传用途无效' }, 400)
+      return c.json({ message: '上传会话 ID 无效' }, 400)
+    }
+  },
+)
+
+const attachmentUploadSessionCreateBodyValidator = zValidator(
+  'json',
+  attachmentUploadSessionCreateInputSchema,
+  (result, c) => {
+    if (!result.success) {
+      return c.json({ message: '请求体无效' }, 400)
+    }
+  },
+)
+
+const attachmentUploadSessionCompleteBodyValidator = zValidator(
+  'json',
+  attachmentUploadSessionCompleteInputSchema,
+  (result, c) => {
+    if (!result.success) {
+      return c.json({ message: '请求体无效' }, 400)
     }
   },
 )
@@ -88,8 +112,19 @@ function attachmentErrorResponse(error: unknown, c: Context) {
     return c.json({ message: error.message }, 400)
   }
 
-  if (error instanceof AttachmentSignedUrlInvalidError) {
+  if (error instanceof AttachmentUploadUrlInvalidError) {
     return c.json({ message: error.message }, 403)
+  }
+
+  if (error instanceof AttachmentContentUrlInvalidError) {
+    return c.json({ message: error.message }, 403)
+  }
+
+  if (
+    error instanceof AttachmentUploadSessionInvalidError ||
+    error instanceof AttachmentUploadSessionNotReadyError
+  ) {
+    return c.json({ message: error.message }, 400)
   }
 
   if (error instanceof AttachmentNotFoundError) {
@@ -99,48 +134,88 @@ function attachmentErrorResponse(error: unknown, c: Context) {
   throw error
 }
 
-export function createAttachmentRoutes(database: Db) {
+export function createAttachmentRoutes(database: Db, authMiddleware: MiddlewareHandler<AuthEnv>) {
   const service = createAttachmentService(database)
   const app = new Hono<AuthEnv>()
 
   app.onError((error, c) => attachmentErrorResponse(error, c))
 
   return app
+    .put(
+      '/uploads/:uploadId/content',
+      attachmentUploadSessionIdValidator,
+      attachmentContentQueryValidator,
+      async (c) => {
+        const { uploadId } = c.req.valid('param')
+        const { token } = c.req.valid('query')
+
+        await service.uploadSessionContent({
+          body: c.req.raw.body,
+          token,
+          uploadId,
+        })
+
+        return c.body(null, 204)
+      },
+    )
+    .get('/:id/content', attachmentIdValidator, attachmentContentQueryValidator, async (c) => {
+      const { id } = c.req.valid('param')
+      const { token } = c.req.valid('query')
+      const content = await service.readContent(id, token)
+
+      return c.newResponse(content.body, 200, content.headers)
+    })
+    .use('*', authMiddleware)
     .get('/', requireAccess('content:attachment:list'), attachmentListQueryValidator, async (c) => {
       const query: AttachmentListQuery = c.req.valid('query')
 
       return c.json(attachmentListResponseSchema.parse(await service.list(query)))
     })
-    .post('/', attachmentUploadQueryValidator, async (c) => {
-      const { usage } = c.req.valid('query')
-      const attachment = await handleAttachmentUpload(c.req.raw, (file) =>
-        service.upload({
-          body: file.body,
-          originalName: file.originalName,
-          usage,
-          userId: c.get('currentUser').id,
-        }),
-      )
+    .post('/uploads', attachmentUploadSessionCreateBodyValidator, async (c) => {
+      const body = c.req.valid('json')
+      const session = await service.createUploadSession({
+        ...body,
+        userId: c.get('currentUser').id,
+      })
 
-      return c.json(attachmentSchema.parse(attachment), 201)
+      return c.json(attachmentUploadSessionSchema.parse(session), 201)
     })
+    .post(
+      '/uploads/:uploadId/complete',
+      attachmentUploadSessionIdValidator,
+      attachmentUploadSessionCompleteBodyValidator,
+      async (c) => {
+        const { uploadId } = c.req.valid('param')
+        const attachment = await service.completeUploadSession({
+          uploadId,
+          userId: c.get('currentUser').id,
+        })
+
+        return c.json(attachmentSchema.parse(attachment), 201)
+      },
+    )
     .get('/:id', requireAccess('content:attachment:list'), attachmentIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
       return c.json(attachmentSchema.parse(await service.get(id)))
     })
-    .post('/:id/signed-url', attachmentIdValidator, attachmentSignedUrlBodyValidator, async (c) => {
-      const { id } = c.req.valid('param')
-      const body = c.req.valid('json')
+    .post(
+      '/:id/content-url',
+      attachmentIdValidator,
+      attachmentContentUrlBodyValidator,
+      async (c) => {
+        const { id } = c.req.valid('param')
+        const body = c.req.valid('json')
 
-      return c.json(
-        attachmentSignedUrlSchema.parse(
-          await service.createSignedUrl(id, {
-            disposition: body.disposition,
-          }),
-        ),
-      )
-    })
+        return c.json(
+          attachmentContentUrlSchema.parse(
+            await service.createContentUrl(id, {
+              disposition: body.disposition,
+            }),
+          ),
+        )
+      },
+    )
     .delete(
       '/:id',
       requireAccess('content:attachment:delete'),
@@ -153,24 +228,4 @@ export function createAttachmentRoutes(database: Db) {
         return c.body(null, 204)
       },
     )
-}
-
-export function createAttachmentContentRoutes(database: Db) {
-  const service = createAttachmentService(database)
-  const app = new Hono()
-
-  app.onError((error, c) => attachmentErrorResponse(error, c))
-
-  return app.get(
-    '/:id/content',
-    attachmentIdValidator,
-    attachmentContentQueryValidator,
-    async (c) => {
-      const { id } = c.req.valid('param')
-      const { token } = c.req.valid('query')
-      const content = await service.readContent(id, token)
-
-      return c.newResponse(content.body, 200, content.headers)
-    },
-  )
 }

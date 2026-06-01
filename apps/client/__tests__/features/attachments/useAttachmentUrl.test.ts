@@ -3,16 +3,23 @@ import { PiniaColada } from '@pinia/colada'
 import { ATTACHMENT_DISPOSITION_INLINE } from '@rev30/contracts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, nextTick, ref } from 'vue'
-import { createAttachmentSignedUrl, useAttachmentUrl } from '../../../src/features/attachments'
+import { resolveAttachmentUrl, useAttachmentUrl } from '../../../src/features/attachments'
 import { createTestPinia } from '../../helpers/pinia'
 
 vi.mock('../../../src/features/attachments/requests', () => ({
-  createAttachmentSignedUrl: vi.fn(),
+  resolveAttachmentUrl: vi.fn(),
 }))
 
-const createAttachmentSignedUrlMock = vi.mocked(createAttachmentSignedUrl)
-type SignedUrlResult = { url: string; expiresAt: string }
+const resolveAttachmentUrlMock = vi.mocked(resolveAttachmentUrl)
+type ResolvedUrlResult = { expiresAt: string; url: string }
 let pinia: ReturnType<typeof createTestPinia>
+
+function resolveUrl(url: string, expiresAt: string): ResolvedUrlResult {
+  return {
+    expiresAt,
+    url,
+  }
+}
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
@@ -40,11 +47,10 @@ async function flushAttachmentUrl() {
 
 beforeEach(() => {
   pinia = createTestPinia()
-  createAttachmentSignedUrlMock.mockReset()
-  createAttachmentSignedUrlMock.mockResolvedValue({
-    url: '/api/attachments/1/content?token=token',
-    expiresAt: '2026-05-29T00:05:00.000Z',
-  })
+  resolveAttachmentUrlMock.mockReset()
+  resolveAttachmentUrlMock.mockResolvedValue(
+    resolveUrl('/api/attachments/1/content?token=token', '2026-05-29T00:05:00.000Z'),
+  )
 })
 
 afterEach(() => {
@@ -52,7 +58,7 @@ afterEach(() => {
 })
 
 describe('useAttachmentUrl', () => {
-  it('fetches signed URLs when enabled and id is present', async () => {
+  it('fetches content URLs when enabled and id is present', async () => {
     const wrapper = mountUseAttachmentUrl(
       () =>
         useAttachmentUrl(ref('11111111-1111-4111-8111-111111111111'), {
@@ -63,25 +69,22 @@ describe('useAttachmentUrl', () => {
 
     await flushAttachmentUrl()
 
-    expect(createAttachmentSignedUrlMock).toHaveBeenCalledWith(
-      '11111111-1111-4111-8111-111111111111',
-      { disposition: ATTACHMENT_DISPOSITION_INLINE },
-    )
+    expect(resolveAttachmentUrlMock).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111', {
+      disposition: ATTACHMENT_DISPOSITION_INLINE,
+    })
     expect(wrapper.text()).toBe('/api/attachments/1/content?token=token')
   })
 
-  it('refreshes signed URLs before expiration', async () => {
+  it('refreshes content URLs before expiration', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-29T00:00:00.000Z'))
-    createAttachmentSignedUrlMock
-      .mockResolvedValueOnce({
-        url: '/api/attachments/1/content?token=first',
-        expiresAt: '2026-05-29T00:05:00.000Z',
-      })
-      .mockResolvedValueOnce({
-        url: '/api/attachments/1/content?token=second',
-        expiresAt: '2026-05-29T00:10:00.000Z',
-      })
+    resolveAttachmentUrlMock
+      .mockResolvedValueOnce(
+        resolveUrl('/api/attachments/1/content?token=first', '2026-05-29T00:05:00.000Z'),
+      )
+      .mockResolvedValueOnce(
+        resolveUrl('/api/attachments/1/content?token=second', '2026-05-29T00:10:00.000Z'),
+      )
 
     const wrapper = mountUseAttachmentUrl(
       () => useAttachmentUrl(ref('11111111-1111-4111-8111-111111111111')),
@@ -91,15 +94,15 @@ describe('useAttachmentUrl', () => {
     await flushAttachmentUrl()
 
     expect(wrapper.text()).toBe('/api/attachments/1/content?token=first')
-    expect(createAttachmentSignedUrlMock).toHaveBeenCalledTimes(1)
+    expect(resolveAttachmentUrlMock).toHaveBeenCalledTimes(1)
 
     await vi.advanceTimersByTimeAsync(269_999)
-    expect(createAttachmentSignedUrlMock).toHaveBeenCalledTimes(1)
+    expect(resolveAttachmentUrlMock).toHaveBeenCalledTimes(1)
 
     await vi.advanceTimersByTimeAsync(1)
     await flushAttachmentUrl()
 
-    expect(createAttachmentSignedUrlMock).toHaveBeenCalledTimes(2)
+    expect(resolveAttachmentUrlMock).toHaveBeenCalledTimes(2)
     expect(wrapper.text()).toBe('/api/attachments/1/content?token=second')
   })
 
@@ -115,13 +118,13 @@ describe('useAttachmentUrl', () => {
     )
 
     await nextTick()
-    expect(createAttachmentSignedUrlMock).not.toHaveBeenCalled()
+    expect(resolveAttachmentUrlMock).not.toHaveBeenCalled()
     expect(wrapper.text()).toBe('')
 
     enabled.value = true
     await flushAttachmentUrl()
 
-    expect(createAttachmentSignedUrlMock).toHaveBeenCalledOnce()
+    expect(resolveAttachmentUrlMock).toHaveBeenCalledOnce()
     expect(wrapper.text()).toBe('/api/attachments/1/content?token=token')
 
     enabled.value = false
@@ -130,10 +133,10 @@ describe('useAttachmentUrl', () => {
     expect(wrapper.text()).toBe('')
   })
 
-  it('ignores stale signed-url result after becoming disabled', async () => {
+  it('ignores stale content-url result after becoming disabled', async () => {
     const enabled = ref(true)
-    const pending = createDeferred<SignedUrlResult>()
-    createAttachmentSignedUrlMock.mockImplementationOnce(() => pending.promise)
+    const pending = createDeferred<ResolvedUrlResult>()
+    resolveAttachmentUrlMock.mockImplementationOnce(() => pending.promise)
 
     const wrapper = mountUseAttachmentUrl(
       () =>
@@ -144,7 +147,7 @@ describe('useAttachmentUrl', () => {
     )
 
     await nextTick()
-    expect(createAttachmentSignedUrlMock).toHaveBeenCalledOnce()
+    expect(resolveAttachmentUrlMock).toHaveBeenCalledOnce()
     expect(wrapper.text()).toContain('true')
 
     enabled.value = false
@@ -152,10 +155,9 @@ describe('useAttachmentUrl', () => {
 
     expect(wrapper.text()).toBe('||false')
 
-    pending.resolve({
-      url: '/api/attachments/stale/content?token=stale',
-      expiresAt: '2026-05-29T01:00:00.000Z',
-    })
+    pending.resolve(
+      resolveUrl('/api/attachments/stale/content?token=stale', '2026-05-29T01:00:00.000Z'),
+    )
     await flushAttachmentUrl()
 
     expect(wrapper.text()).toBe('||false')
@@ -163,28 +165,26 @@ describe('useAttachmentUrl', () => {
 
   it('ignores stale result when id changes during pending request', async () => {
     const id = ref('11111111-1111-4111-8111-111111111111')
-    const oldRequest = createDeferred<SignedUrlResult>()
-    createAttachmentSignedUrlMock.mockImplementationOnce(() => oldRequest.promise)
-    createAttachmentSignedUrlMock.mockResolvedValueOnce({
-      url: '/api/attachments/new/content?token=new',
-      expiresAt: '2026-05-29T02:00:00.000Z',
-    })
+    const oldRequest = createDeferred<ResolvedUrlResult>()
+    resolveAttachmentUrlMock.mockImplementationOnce(() => oldRequest.promise)
+    resolveAttachmentUrlMock.mockResolvedValueOnce(
+      resolveUrl('/api/attachments/new/content?token=new', '2026-05-29T02:00:00.000Z'),
+    )
 
     const wrapper = mountUseAttachmentUrl(() => useAttachmentUrl(id), '<span>{{ url }}</span>')
 
     await nextTick()
-    expect(createAttachmentSignedUrlMock).toHaveBeenCalledTimes(1)
+    expect(resolveAttachmentUrlMock).toHaveBeenCalledTimes(1)
 
     id.value = '22222222-2222-4222-8222-222222222222'
     await flushAttachmentUrl()
 
-    expect(createAttachmentSignedUrlMock).toHaveBeenCalledTimes(2)
+    expect(resolveAttachmentUrlMock).toHaveBeenCalledTimes(2)
     expect(wrapper.text()).toBe('/api/attachments/new/content?token=new')
 
-    oldRequest.resolve({
-      url: '/api/attachments/old/content?token=old',
-      expiresAt: '2026-05-29T03:00:00.000Z',
-    })
+    oldRequest.resolve(
+      resolveUrl('/api/attachments/old/content?token=old', '2026-05-29T03:00:00.000Z'),
+    )
     await flushAttachmentUrl()
 
     expect(wrapper.text()).toBe('/api/attachments/new/content?token=new')
@@ -192,10 +192,10 @@ describe('useAttachmentUrl', () => {
 
   it('clears current URL while loading next id and ignores stale previous response', async () => {
     const id = ref('11111111-1111-4111-8111-111111111111')
-    const requestA = createDeferred<SignedUrlResult>()
-    const requestB = createDeferred<SignedUrlResult>()
+    const requestA = createDeferred<ResolvedUrlResult>()
+    const requestB = createDeferred<ResolvedUrlResult>()
 
-    createAttachmentSignedUrlMock
+    resolveAttachmentUrlMock
       .mockImplementationOnce(() => requestA.promise)
       .mockImplementationOnce(() => requestB.promise)
 
@@ -207,10 +207,7 @@ describe('useAttachmentUrl', () => {
     await nextTick()
     expect(wrapper.text()).toBe('||true')
 
-    requestA.resolve({
-      url: '/api/attachments/a/content?token=a',
-      expiresAt: '2026-05-29T04:00:00.000Z',
-    })
+    requestA.resolve(resolveUrl('/api/attachments/a/content?token=a', '2026-05-29T04:00:00.000Z'))
     await flushAttachmentUrl()
 
     expect(wrapper.text()).toBe('/api/attachments/a/content?token=a|2026-05-29T04:00:00.000Z|false')
@@ -220,20 +217,17 @@ describe('useAttachmentUrl', () => {
 
     expect(wrapper.text()).toBe('||true')
 
-    requestB.resolve({
-      url: '/api/attachments/b/content?token=b',
-      expiresAt: '2026-05-29T05:00:00.000Z',
-    })
+    requestB.resolve(resolveUrl('/api/attachments/b/content?token=b', '2026-05-29T05:00:00.000Z'))
     await flushAttachmentUrl()
 
     expect(wrapper.text()).toBe('/api/attachments/b/content?token=b|2026-05-29T05:00:00.000Z|false')
   })
 
-  it('clears URL and exposes error when signed-url request rejects', async () => {
+  it('clears URL and exposes error when content-url request rejects', async () => {
     const id = ref('11111111-1111-4111-8111-111111111111')
-    const first = createDeferred<SignedUrlResult>()
-    const failed = createDeferred<SignedUrlResult>()
-    createAttachmentSignedUrlMock
+    const first = createDeferred<ResolvedUrlResult>()
+    const failed = createDeferred<ResolvedUrlResult>()
+    resolveAttachmentUrlMock
       .mockImplementationOnce(() => first.promise)
       .mockImplementationOnce(() => failed.promise)
 
@@ -243,10 +237,7 @@ describe('useAttachmentUrl', () => {
     )
 
     await nextTick()
-    first.resolve({
-      url: '/api/attachments/a/content?token=a',
-      expiresAt: '2026-05-29T06:00:00.000Z',
-    })
+    first.resolve(resolveUrl('/api/attachments/a/content?token=a', '2026-05-29T06:00:00.000Z'))
     await flushAttachmentUrl()
     expect(wrapper.text()).toBe(
       '/api/attachments/a/content?token=a|2026-05-29T06:00:00.000Z|false|',

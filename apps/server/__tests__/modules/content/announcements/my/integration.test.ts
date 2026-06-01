@@ -30,6 +30,7 @@ import {
   systemUserDepartments,
   systemUserRoles,
 } from '../../../../../src/db/schema'
+import { createAuthMiddleware } from '../../../../../src/middleware/auth'
 import { createContentRoutes } from '../../../../../src/modules/content/routes'
 import {
   createProtectedContentRouteTestApp,
@@ -69,7 +70,7 @@ async function createTestApp(database: TestDatabase) {
   const app = createProtectedContentRouteTestApp(
     database,
     '/api/content',
-    createContentRoutes(database),
+    createContentRoutes(database, createAuthMiddleware(database)),
     fixture.authHeaders,
   )
 

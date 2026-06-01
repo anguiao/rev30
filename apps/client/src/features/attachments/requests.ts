@@ -1,14 +1,16 @@
 import {
   ATTACHMENT_DISPOSITION_ATTACHMENT,
+  attachmentContentUrlSchema,
   attachmentListResponseSchema,
   attachmentSchema,
-  attachmentSignedUrlSchema,
+  attachmentUploadSessionSchema,
   errorResponseSchema,
   type Attachment,
-  type AttachmentSignedUrl,
-  type AttachmentSignedUrlInput,
+  type AttachmentContentUrl,
+  type AttachmentContentUrlInput,
   type AttachmentListQuery,
   type AttachmentListResponse,
+  type AttachmentUploadSession,
   type AttachmentUsage,
 } from '@rev30/contracts'
 import type { z } from 'zod'
@@ -50,31 +52,66 @@ export function getAttachmentErrorMessage(error: unknown, fallback: string) {
   return error instanceof AttachmentRequestError ? error.message : fallback
 }
 
+async function createAttachmentUploadSession(
+  file: File,
+  input: {
+    usage: AttachmentUsage
+  },
+): Promise<AttachmentUploadSession> {
+  const contentType = file.type.trim()
+
+  return parseAttachmentResponse(
+    await api.attachments['uploads'].$post({
+      json: {
+        originalName: file.name,
+        usage: input.usage,
+        size: file.size,
+        ...(contentType ? { contentType } : {}),
+      },
+    }),
+    attachmentUploadSessionSchema,
+  )
+}
+
+async function uploadAttachmentContent(session: AttachmentUploadSession, file: File) {
+  const response = await fetch(session.request.url, {
+    method: session.request.method,
+    headers: session.request.headers,
+    body: file,
+  })
+
+  if (!response.ok) {
+    throw await parseAttachmentError(response)
+  }
+}
+
+async function completeAttachmentUploadSession(uploadId: string): Promise<Attachment> {
+  return parseAttachmentResponse(
+    await api.attachments['uploads'][':uploadId'].complete.$post({
+      param: {
+        uploadId,
+      },
+      json: {},
+    }),
+    attachmentSchema,
+  )
+}
+
 export async function uploadAttachment(
   file: File,
   input: {
     usage: AttachmentUsage
   },
-): Promise<Attachment> {
-  const form = new FormData()
+) {
+  const session = await createAttachmentUploadSession(file, input)
 
-  form.set('file', file)
+  await uploadAttachmentContent(session, file)
 
-  return parseAttachmentResponse(
-    await api.attachments.$post(
-      {
-        query: {
-          usage: input.usage,
-        },
-      },
-      {
-        init: {
-          body: form,
-        },
-      },
-    ),
-    attachmentSchema,
-  )
+  const attachment = await completeAttachmentUploadSession(session.uploadId)
+
+  return {
+    id: attachment.id,
+  }
 }
 
 export async function getAttachment(id: string): Promise<Attachment> {
@@ -95,17 +132,29 @@ export async function listAttachments(query: AttachmentListQuery): Promise<Attac
   )
 }
 
-export async function createAttachmentSignedUrl(
+async function createAttachmentContentUrl(
   id: string,
-  input: AttachmentSignedUrlInput = { disposition: ATTACHMENT_DISPOSITION_ATTACHMENT },
-): Promise<AttachmentSignedUrl> {
+  input: AttachmentContentUrlInput = { disposition: ATTACHMENT_DISPOSITION_ATTACHMENT },
+): Promise<AttachmentContentUrl> {
   return parseAttachmentResponse(
-    await api.attachments[':id']['signed-url'].$post({
+    await api.attachments[':id']['content-url'].$post({
       param: { id },
       json: input,
     }),
-    attachmentSignedUrlSchema,
+    attachmentContentUrlSchema,
   )
+}
+
+export async function resolveAttachmentUrl(
+  id: string,
+  input: AttachmentContentUrlInput = { disposition: ATTACHMENT_DISPOSITION_ATTACHMENT },
+) {
+  const contentUrl = await createAttachmentContentUrl(id, input)
+
+  return {
+    expiresAt: contentUrl.request.expiresAt,
+    url: contentUrl.request.url,
+  }
 }
 
 export async function deleteAttachment(id: string): Promise<void> {

@@ -5,8 +5,9 @@ describe('attachment config', () => {
   it('uses development defaults in non-production environments', () => {
     expect(readAttachmentConfig({ NODE_ENV: 'test' })).toEqual({
       signingSecret: 'rev30-development-attachment-signing-secret',
-      signedUrlTtlSeconds: 300,
+      contentUrlTtlSeconds: 300,
       storageDir: '.attachments/dev',
+      uploadSessionTtlSeconds: 300,
     })
   })
 
@@ -27,29 +28,45 @@ describe('attachment config', () => {
       readAttachmentConfig({
         NODE_ENV: 'production',
         ATTACHMENT_SIGNING_SECRET: '  signing-secret  ',
-        ATTACHMENT_SIGNED_URL_TTL_SECONDS: '1e2',
+        ATTACHMENT_CONTENT_URL_TTL_SECONDS: '1e2',
         ATTACHMENT_STORAGE_DIR: '/tmp/attachments',
+        ATTACHMENT_UPLOAD_SESSION_TTL_SECONDS: '120',
       }),
     ).toEqual({
       signingSecret: 'signing-secret',
-      signedUrlTtlSeconds: 100,
+      contentUrlTtlSeconds: 100,
       storageDir: '/tmp/attachments',
+      uploadSessionTtlSeconds: 120,
     })
   })
 
-  it('rejects invalid signed url ttl', () => {
+  it('rejects invalid content url ttl', () => {
     expect(() =>
       readAttachmentConfig({
         NODE_ENV: 'test',
-        ATTACHMENT_SIGNED_URL_TTL_SECONDS: 'abc',
+        ATTACHMENT_CONTENT_URL_TTL_SECONDS: 'abc',
       }),
-    ).toThrow('ATTACHMENT_SIGNED_URL_TTL_SECONDS 必须是正整数')
+    ).toThrow('ATTACHMENT_CONTENT_URL_TTL_SECONDS 必须是正整数')
 
     expect(() =>
       readAttachmentConfig({
         NODE_ENV: 'test',
-        ATTACHMENT_SIGNED_URL_TTL_SECONDS: '30',
+        ATTACHMENT_CONTENT_URL_TTL_SECONDS: '30',
       }),
-    ).toThrow('ATTACHMENT_SIGNED_URL_TTL_SECONDS 不能小于 60')
+    ).toThrow('ATTACHMENT_CONTENT_URL_TTL_SECONDS 不能小于 60')
+
+    expect(() =>
+      readAttachmentConfig({
+        NODE_ENV: 'test',
+        ATTACHMENT_UPLOAD_SESSION_TTL_SECONDS: 'abc',
+      }),
+    ).toThrow('ATTACHMENT_UPLOAD_SESSION_TTL_SECONDS 必须是正整数')
+
+    expect(() =>
+      readAttachmentConfig({
+        NODE_ENV: 'test',
+        ATTACHMENT_UPLOAD_SESSION_TTL_SECONDS: '30',
+      }),
+    ).toThrow('ATTACHMENT_UPLOAD_SESSION_TTL_SECONDS 不能小于 60')
   })
 })

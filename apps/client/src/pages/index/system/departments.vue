@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue'
-import { useQuery } from '@pinia/colada'
+import { useQuery, useQueryCache } from '@pinia/colada'
 import type { ButtonProps, DataTableColumns, DataTableRowKey } from 'naive-ui'
 import {
   NAlert,
@@ -36,6 +36,7 @@ const pageTitle = useAdminPageTitle('组织部门')
 
 const message = useMessage()
 const dialog = useDialog()
+const queryCache = useQueryCache()
 
 type DepartmentFilters = {
   keyword: string
@@ -60,7 +61,6 @@ const {
   data: departmentTree,
   error: departmentTreeError,
   isLoading,
-  refetch: refetchDepartments,
 } = useQuery({
   key: () => ['system', 'departments', 'tree'],
   placeholderData: () => emptyDepartmentTree,
@@ -123,9 +123,15 @@ function openDepartmentFormDrawer(
   selectedParentDepartmentId.value = parentId
   isDepartmentDrawerVisible.value = true
 }
+async function invalidateDepartmentTreeQuery() {
+  await queryCache.invalidateQueries({
+    key: ['system', 'departments', 'tree'],
+    exact: true,
+  })
+}
 async function handleDepartmentSaved() {
   message.success('保存组织部门成功')
-  await refetchDepartments()
+  await invalidateDepartmentTreeQuery()
 }
 
 function confirmDeleteDepartment(department: DepartmentTreeNode) {
@@ -149,7 +155,7 @@ function confirmDeleteDepartment(department: DepartmentTreeNode) {
         await deleteDepartment(department.id)
 
         message.success('删除组织部门成功')
-        await refetchDepartments()
+        await invalidateDepartmentTreeQuery()
       } catch (error) {
         message.error(getSystemErrorMessage(error, '删除组织部门失败'))
         return false

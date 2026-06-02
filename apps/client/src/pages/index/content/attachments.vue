@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import bytes from 'bytes'
-import { computed, defineComponent, h, ref, watch, type PropType } from 'vue'
+import { computed, h, ref } from 'vue'
 import { useQuery, useQueryCache } from '@pinia/colada'
 import type { ButtonProps, DataTableColumns } from 'naive-ui'
 import {
@@ -16,96 +16,25 @@ import {
   useMessage,
 } from 'naive-ui'
 import {
-  ATTACHMENT_DISPOSITION_INLINE,
-  ATTACHMENT_USAGE_AVATAR,
-  ATTACHMENT_USAGE_GENERAL,
-  ATTACHMENT_USAGE_RICH_TEXT,
   type AttachmentListItem,
   type AttachmentListQuery,
   type AttachmentListResponse,
-  type AttachmentUsage,
 } from '@rev30/contracts'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
-import { formatDateTime } from '../../../features/content'
 import {
+  ATTACHMENT_USAGE_FILTER_ALL,
+  attachmentUsageFilterOptions,
+  attachmentUsageLabels,
+  formatDateTime,
+  type AttachmentUsageFilter,
+} from '../../../features/content'
+import {
+  AttachmentPreviewCell,
   deleteAttachment,
   getAttachmentErrorMessage,
   listAttachments,
-  useAttachmentUrl,
 } from '../../../features/attachments'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
-
-const ATTACHMENT_USAGE_FILTER_ALL = 'all'
-
-type AttachmentUsageFilter = AttachmentUsage | typeof ATTACHMENT_USAGE_FILTER_ALL
-
-const attachmentUsageLabels = {
-  [ATTACHMENT_USAGE_GENERAL]: '通用',
-  [ATTACHMENT_USAGE_AVATAR]: '头像',
-  [ATTACHMENT_USAGE_RICH_TEXT]: '富文本',
-} as const satisfies Record<AttachmentUsage, string>
-
-const attachmentUsageFilterOptions: Array<{ label: string; value: AttachmentUsageFilter }> = [
-  { label: '全部', value: ATTACHMENT_USAGE_FILTER_ALL },
-  { label: attachmentUsageLabels[ATTACHMENT_USAGE_GENERAL], value: ATTACHMENT_USAGE_GENERAL },
-  { label: attachmentUsageLabels[ATTACHMENT_USAGE_AVATAR], value: ATTACHMENT_USAGE_AVATAR },
-  { label: attachmentUsageLabels[ATTACHMENT_USAGE_RICH_TEXT], value: ATTACHMENT_USAGE_RICH_TEXT },
-]
-
-function formatUploader(attachment: AttachmentListItem) {
-  return `${attachment.createdBy.nickname} (${attachment.createdBy.username})`
-}
-
-const AttachmentPreview = defineComponent({
-  name: 'AttachmentPreview',
-  props: {
-    attachment: {
-      type: Object as PropType<AttachmentListItem>,
-      required: true,
-    },
-  },
-  setup(props) {
-    const imageFailed = ref(false)
-    const isImage = computed(() => props.attachment.mimeType.startsWith('image/'))
-    const image = useAttachmentUrl(() => props.attachment.id, {
-      disposition: ATTACHMENT_DISPOSITION_INLINE,
-      enabled: isImage,
-    })
-    const previewUrl = computed(() => {
-      if (!isImage.value || imageFailed.value || image.error.value !== null) return null
-
-      return image.url.value
-    })
-    const iconClass = computed(() =>
-      isImage.value ? 'i-[lucide--image] text-stone-500 dark:text-zinc-400' : 'i-[lucide--file]',
-    )
-
-    watch(
-      () => props.attachment.id,
-      () => {
-        imageFailed.value = false
-      },
-    )
-
-    return () =>
-      previewUrl.value === null
-        ? h('span', {
-            'data-test': 'attachments-preview-icon',
-            class: `inline-block size-5 ${iconClass.value}`,
-            'aria-hidden': 'true',
-          })
-        : h('img', {
-            'data-test': 'attachments-preview-image',
-            src: previewUrl.value,
-            alt: props.attachment.originalName,
-            class:
-              'block size-10 rounded border border-stone-200 object-cover dark:border-zinc-700',
-            onError: () => {
-              imageFailed.value = true
-            },
-          })
-  },
-})
 
 const pageTitle = useAdminPageTitle('附件资源')
 
@@ -134,6 +63,7 @@ const {
   key: () => [
     'content',
     'attachments',
+    'list',
     query.value.page,
     query.value.pageSize,
     query.value.keyword ?? '',
@@ -170,9 +100,9 @@ function handleReset() {
   }
 }
 
-async function invalidateAttachmentQueries() {
+async function invalidateAttachmentListQueries() {
   await queryCache.invalidateQueries({
-    key: ['content', 'attachments'],
+    key: ['content', 'attachments', 'list'],
   })
 }
 
@@ -193,7 +123,7 @@ function confirmDeleteAttachment(attachment: AttachmentListItem) {
         await deleteAttachment(attachment.id)
 
         message.success('删除附件成功')
-        await invalidateAttachmentQueries()
+        await invalidateAttachmentListQueries()
       } catch (error) {
         message.error(getAttachmentErrorMessage(error, '删除附件失败'))
         return false
@@ -202,12 +132,16 @@ function confirmDeleteAttachment(attachment: AttachmentListItem) {
   })
 }
 
+function formatUploader(attachment: AttachmentListItem) {
+  return `${attachment.createdBy.nickname} (${attachment.createdBy.username})`
+}
+
 const columns: DataTableColumns<AttachmentListItem> = [
   {
     title: '预览',
     key: 'preview',
     width: 90,
-    render: (attachment) => h(AttachmentPreview, { attachment }),
+    render: (attachment) => h(AttachmentPreviewCell, { attachment }),
   },
   {
     title: '文件名',

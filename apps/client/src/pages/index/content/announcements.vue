@@ -6,7 +6,6 @@ import {
   NAlert,
   NButton,
   NDataTable,
-  NEllipsis,
   NForm,
   NFormItem,
   NInput,
@@ -18,13 +17,10 @@ import {
 } from 'naive-ui'
 import type { ButtonProps } from 'naive-ui'
 import {
-  ANNOUNCEMENT_STATUS_ARCHIVED,
-  ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_STATUS_PUBLISHED,
   type AnnouncementListItem,
   type AnnouncementListQuery,
   type AnnouncementListResponse,
-  type AnnouncementStatus,
 } from '@rev30/contracts'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import AnnouncementFormDrawer from '../../../features/content/AnnouncementFormDrawer.vue'
@@ -32,8 +28,10 @@ import {
   ANNOUNCEMENT_PINNED_FILTER_ALL,
   ANNOUNCEMENT_STATUS_FILTER_ALL,
   ANNOUNCEMENT_TYPE_FILTER_ALL,
+  announcementPinnedFilterOptions,
   announcementStatusFilterOptions,
   announcementStatusLabels,
+  announcementStatusTagTypes,
   announcementTypeFilterOptions,
   announcementTypeLabels,
   archiveAnnouncement,
@@ -42,24 +40,11 @@ import {
   listAnnouncements,
   publishAnnouncement,
   deleteAnnouncement,
+  type AnnouncementPinnedFilter,
   type AnnouncementStatusFilter,
   type AnnouncementTypeFilter,
 } from '../../../features/content'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
-
-const announcementStatusTagTypes = {
-  [ANNOUNCEMENT_STATUS_DRAFT]: 'warning',
-  [ANNOUNCEMENT_STATUS_PUBLISHED]: 'success',
-  [ANNOUNCEMENT_STATUS_ARCHIVED]: 'default',
-} as const satisfies Record<AnnouncementStatus, 'default' | 'success' | 'warning'>
-
-type AnnouncementPinnedSelectValue = typeof ANNOUNCEMENT_PINNED_FILTER_ALL | 'true' | 'false'
-
-const pinnedSelectOptions: Array<{ label: string; value: AnnouncementPinnedSelectValue }> = [
-  { label: '全部', value: ANNOUNCEMENT_PINNED_FILTER_ALL },
-  { label: '是', value: 'true' },
-  { label: '否', value: 'false' },
-]
 
 const pageTitle = useAdminPageTitle('通知公告')
 
@@ -70,7 +55,7 @@ const queryCache = useQueryCache()
 const keyword = ref('')
 const type = ref<AnnouncementTypeFilter>(ANNOUNCEMENT_TYPE_FILTER_ALL)
 const status = ref<AnnouncementStatusFilter>(ANNOUNCEMENT_STATUS_FILTER_ALL)
-const pinned = ref<AnnouncementPinnedSelectValue>(ANNOUNCEMENT_PINNED_FILTER_ALL)
+const pinned = ref<AnnouncementPinnedFilter>(ANNOUNCEMENT_PINNED_FILTER_ALL)
 const query = ref<AnnouncementListQuery>({
   page: 1,
   pageSize: 20,
@@ -90,6 +75,7 @@ const {
   key: () => [
     'content',
     'announcements',
+    'list',
     query.value.page,
     query.value.pageSize,
     query.value.keyword ?? '',
@@ -142,7 +128,7 @@ function openAnnouncementFormDrawer(announcementId: string | null = null) {
 
 async function invalidateAnnouncementListQueries() {
   await queryCache.invalidateQueries({
-    key: ['content', 'announcements'],
+    key: ['content', 'announcements', 'list'],
   })
 }
 
@@ -280,17 +266,10 @@ const columns: DataTableColumns<AnnouncementListItem> = [
     title: '摘要',
     key: 'summary',
     minWidth: 220,
-    render: (announcement) =>
-      h(
-        NEllipsis,
-        {
-          lineClamp: 1,
-          tooltip: {
-            width: 360,
-          },
-        },
-        () => announcement.summary ?? '-',
-      ),
+    ellipsis: {
+      tooltip: true,
+    },
+    render: (announcement) => announcement.summary ?? '-',
   },
   {
     title: '发布时间',
@@ -397,7 +376,7 @@ const columns: DataTableColumns<AnnouncementListItem> = [
           <NSelect
             v-model:value="pinned"
             data-test="announcements-pinned"
-            :options="pinnedSelectOptions"
+            :options="announcementPinnedFilterOptions"
             placeholder="全部"
             class="w-40!"
           />

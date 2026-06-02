@@ -7,7 +7,7 @@ import {
   type User,
 } from '@rev30/contracts'
 import type { Db } from '../../db'
-import { toUserConflictError } from '../system/users/errors'
+import { toUserConflictError, toUserInvalidAvatarError } from '../system/users/errors'
 import { toUser } from '../system/users/mapper'
 import type { AuthConfig } from './config'
 import {
@@ -26,7 +26,7 @@ import { createTokenPair, verifyAccessToken, verifyRefreshToken } from './tokens
 const dummyPasswordHash =
   'scrypt$rev30-auth-dummy-salt$gqCTp4XOR3Xf1LvfHOITCoogF-vpgXvmPkOuxWGr-ChkgWkyXG0_Zf19YMXZ_Oy3mXaxJAVa2LGtlr8sJPJDjA'
 
-async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
+async function withUserWriteConstraints<T>(operation: () => Promise<T>) {
   try {
     return await operation()
   } catch (error) {
@@ -34,6 +34,12 @@ async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
 
     if (uniqueConflict) {
       throw uniqueConflict
+    }
+
+    const invalidAvatar = toUserInvalidAvatarError(error)
+
+    if (invalidAvatar) {
+      throw invalidAvatar
     }
 
     throw error
@@ -191,7 +197,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
     },
 
     async updateProfile(userId: string, input: AuthProfileUpdateInput) {
-      const updated = await withUserUniqueConflict(() =>
+      const updated = await withUserWriteConstraints(() =>
         repository.updateUserProfile(userId, input),
       )
 

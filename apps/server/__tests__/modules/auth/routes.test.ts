@@ -361,7 +361,7 @@ describe('auth routes', () => {
     })
   })
 
-  it('maps profile avatar errors to route responses', async () => {
+  it('maps profile avatar errors to generic bad request responses', async () => {
     const app = createTestApp()
 
     mocks.service.updateProfile.mockRejectedValueOnce(new UserInvalidAvatarError())
@@ -378,8 +378,7 @@ describe('auth routes', () => {
 
     expect(response.status).toBe(400)
     expect(await response.json()).toEqual({
-      field: 'avatarId',
-      message: '头像不存在',
+      message: '请求体无效',
     })
   })
 

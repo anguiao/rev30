@@ -8,11 +8,16 @@ import type {
 } from '@rev30/contracts'
 import type { Db } from '../../../db'
 import { generateTemporaryPassword, hashPassword } from '../../auth/password'
-import { BuiltInUserMutationError, toUserConflictError, UserNotFoundError } from './errors'
+import {
+  BuiltInUserMutationError,
+  toUserConflictError,
+  toUserInvalidAvatarError,
+  UserNotFoundError,
+} from './errors'
 import { toUser, toUserOption } from './mapper'
 import { createUserRepository } from './repository'
 
-async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
+async function withUserWriteConstraints<T>(operation: () => Promise<T>) {
   try {
     return await operation()
   } catch (error) {
@@ -20,6 +25,12 @@ async function withUserUniqueConflict<T>(operation: () => Promise<T>) {
 
     if (uniqueConflict) {
       throw uniqueConflict
+    }
+
+    const invalidAvatar = toUserInvalidAvatarError(error)
+
+    if (invalidAvatar) {
+      throw invalidAvatar
     }
 
     throw error
@@ -56,7 +67,7 @@ export function createUserService(database: Db) {
     async create(input: UserCreateInput): Promise<UserCreateResponse> {
       const temporaryPassword = generateTemporaryPassword()
       const passwordHash = await hashPassword(temporaryPassword)
-      const created = await withUserUniqueConflict(() => repository.create(input, passwordHash))
+      const created = await withUserWriteConstraints(() => repository.create(input, passwordHash))
 
       return {
         user: toUser(created.user, created.departments, created.roles),
@@ -100,7 +111,7 @@ export function createUserService(database: Db) {
         throw new BuiltInUserMutationError('edit')
       }
 
-      const updated = await withUserUniqueConflict(() => repository.update(id, input))
+      const updated = await withUserWriteConstraints(() => repository.update(id, input))
 
       if (!updated) {
         throw new UserNotFoundError()

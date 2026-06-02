@@ -191,12 +191,7 @@ function handleSubmit() {
 }
 
 function handleAvatarUploadError(error: unknown) {
-  formError.value = getSystemErrorMessage(error, '上传用户头像失败')
-}
-
-function handleAvatarUploaded(avatarId: string, handleChange: (value: string | null) => void) {
-  formError.value = null
-  handleChange(avatarId)
+  setServerFieldError(form, 'avatarId', getSystemErrorMessage(error, '上传用户头像失败'))
 }
 
 watch(
@@ -280,17 +275,19 @@ function toDepartmentIds(value: Array<string | number> | null) {
             </div>
 
             <form.Field name="avatarId" v-slot="{ field, state }">
-              <div class="flex justify-start pt-2 md:justify-end">
-                <UserAvatarUpload
-                  data-test="user-avatar-upload"
-                  :avatar-id="state.value ?? null"
-                  :nickname="form.state.values.nickname"
-                  :username="form.state.values.username"
-                  :size="80"
-                  @uploaded="(avatarId) => handleAvatarUploaded(avatarId, field.handleChange)"
-                  @error="handleAvatarUploadError"
-                />
-              </div>
+              <NFormItem v-bind="formItemValidationProps(state.meta)">
+                <div class="flex justify-start md:justify-end">
+                  <UserAvatarUpload
+                    data-test="user-avatar-upload"
+                    :avatar-id="state.value ?? null"
+                    :nickname="form.state.values.nickname"
+                    :username="form.state.values.username"
+                    :size="120"
+                    @uploaded="field.handleChange"
+                    @error="handleAvatarUploadError"
+                  />
+                </div>
+              </NFormItem>
             </form.Field>
           </div>
 

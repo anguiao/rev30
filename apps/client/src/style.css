@@ -38,6 +38,10 @@
 }
 
 @layer components {
+  .n-base-icon {
+    box-sizing: content-box;
+  }
+
   .n-tree-select-menu .n-tree-node-content {
     overflow: hidden;
   }

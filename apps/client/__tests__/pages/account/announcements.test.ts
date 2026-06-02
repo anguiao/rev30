@@ -8,7 +8,7 @@ import {
 } from '@rev30/contracts'
 import { NPagination } from 'naive-ui'
 import { defineComponent, h } from 'vue'
-import AccountAnnouncementsPage from '../../../src/pages/account/announcements.vue'
+import AccountAnnouncementsPage from '../../../src/pages/index/account/announcements.vue'
 import { listMyAnnouncements } from '../../../src/features/content'
 import {
   disposeActiveTestPinia,

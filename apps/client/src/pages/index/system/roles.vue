@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue'
-import { useQuery } from '@pinia/colada'
+import { useQuery, useQueryCache } from '@pinia/colada'
 import type { DataTableColumns } from 'naive-ui'
 import {
   NAlert,
@@ -41,6 +41,7 @@ const pageTitle = useAdminPageTitle('系统角色')
 
 const message = useMessage()
 const dialog = useDialog()
+const queryCache = useQueryCache()
 
 const keyword = ref('')
 const status = ref<StatusFilter>(STATUS_FILTER_ALL)
@@ -59,11 +60,11 @@ const {
   data: rolesResponse,
   error: rolesError,
   isLoading,
-  refetch: refetchRoles,
 } = useQuery({
   key: () => [
     'system',
     'roles',
+    'list',
     query.value.page,
     query.value.pageSize,
     query.value.keyword ?? '',
@@ -104,9 +105,14 @@ function openRoleFormDrawer(roleId: string | null = null) {
   editingRoleId.value = roleId
   isRoleDrawerVisible.value = true
 }
+async function invalidateRoleListQueries() {
+  await queryCache.invalidateQueries({
+    key: ['system', 'roles', 'list'],
+  })
+}
 async function handleRoleSaved() {
   message.success('保存系统角色成功')
-  await refetchRoles()
+  await invalidateRoleListQueries()
 }
 
 function confirmDeleteRole(role: RoleListItem) {
@@ -126,7 +132,7 @@ function confirmDeleteRole(role: RoleListItem) {
         await deleteRole(role.id)
 
         message.success('删除系统角色成功')
-        await refetchRoles()
+        await invalidateRoleListQueries()
       } catch (error) {
         message.error(getSystemErrorMessage(error, '删除系统角色失败'))
         return false

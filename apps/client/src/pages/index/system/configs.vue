@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue'
-import { useQuery } from '@pinia/colada'
+import { useQuery, useQueryCache } from '@pinia/colada'
 import type { DataTableColumns } from 'naive-ui'
 import {
   NAlert,
   NButton,
   NDataTable,
-  NEllipsis,
   NForm,
   NFormItem,
   NInput,
@@ -41,6 +40,7 @@ const pageTitle = useAdminPageTitle('系统配置')
 
 const message = useMessage()
 const dialog = useDialog()
+const queryCache = useQueryCache()
 
 const keyword = ref('')
 const groupCode = ref('')
@@ -61,11 +61,11 @@ const {
   data: configsResponse,
   error: configsError,
   isLoading,
-  refetch: refetchConfigs,
 } = useQuery({
   key: () => [
     'system',
     'configs',
+    'list',
     query.value.page,
     query.value.pageSize,
     query.value.keyword ?? '',
@@ -113,9 +113,14 @@ function openConfigFormDrawer(configId: string | null = null) {
   editingConfigId.value = configId
   isConfigDrawerVisible.value = true
 }
+async function invalidateConfigListQueries() {
+  await queryCache.invalidateQueries({
+    key: ['system', 'configs', 'list'],
+  })
+}
 async function handleConfigSaved() {
   message.success('保存系统配置成功')
-  await refetchConfigs()
+  await invalidateConfigListQueries()
 }
 
 function confirmDeleteConfig(config: ConfigListItem) {
@@ -135,7 +140,7 @@ function confirmDeleteConfig(config: ConfigListItem) {
         await deleteConfig(config.id)
 
         message.success('删除系统配置成功')
-        await refetchConfigs()
+        await invalidateConfigListQueries()
       } catch (error) {
         message.error(getSystemErrorMessage(error, '删除系统配置失败'))
         return false
@@ -170,17 +175,10 @@ const columns: DataTableColumns<ConfigListItem> = [
     title: '配置值',
     key: 'value',
     minWidth: 220,
-    render: (config) =>
-      h(
-        NEllipsis,
-        {
-          lineClamp: 1,
-          tooltip: {
-            width: 360,
-          },
-        },
-        () => config.value,
-      ),
+    ellipsis: {
+      tooltip: true,
+    },
+    render: (config) => config.value,
   },
   {
     title: '状态',

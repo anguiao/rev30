@@ -9,19 +9,27 @@ import {
   ANNOUNCEMENT_TYPE_NOTICE,
   ANNOUNCEMENT_VISIBILITY_ALL,
   ANNOUNCEMENT_VISIBILITY_TARGETED,
+  ATTACHMENT_USAGE_AVATAR,
+  ATTACHMENT_USAGE_GENERAL,
+  ATTACHMENT_USAGE_RICH_TEXT,
   type AnnouncementStatus,
   type AnnouncementTargetType,
   type AnnouncementType,
   type AnnouncementVisibility,
+  type AttachmentUsage,
 } from '@rev30/contracts'
 
 export const ANNOUNCEMENT_TYPE_FILTER_ALL = 'all'
 export const ANNOUNCEMENT_STATUS_FILTER_ALL = 'all'
 export const ANNOUNCEMENT_PINNED_FILTER_ALL = 'all'
+export const ATTACHMENT_USAGE_FILTER_ALL = 'all'
 
 export type AnnouncementTypeFilter = AnnouncementType | typeof ANNOUNCEMENT_TYPE_FILTER_ALL
 export type AnnouncementStatusFilter = AnnouncementStatus | typeof ANNOUNCEMENT_STATUS_FILTER_ALL
-export type AnnouncementPinnedFilter = boolean | typeof ANNOUNCEMENT_PINNED_FILTER_ALL
+export type AnnouncementPinnedFilter = typeof ANNOUNCEMENT_PINNED_FILTER_ALL | 'true' | 'false'
+export type AttachmentUsageFilter = AttachmentUsage | typeof ATTACHMENT_USAGE_FILTER_ALL
+
+type AnnouncementStatusTagType = 'default' | 'success' | 'warning'
 
 export const announcementTypeLabels = {
   [ANNOUNCEMENT_TYPE_NOTICE]: '通知',
@@ -68,6 +76,12 @@ export const announcementStatusFilterOptions: Array<{
   value: AnnouncementStatusFilter
 }> = [{ label: '全部', value: ANNOUNCEMENT_STATUS_FILTER_ALL }, ...announcementStatusSelectOptions]
 
+export const announcementStatusTagTypes = {
+  [ANNOUNCEMENT_STATUS_DRAFT]: 'warning',
+  [ANNOUNCEMENT_STATUS_PUBLISHED]: 'success',
+  [ANNOUNCEMENT_STATUS_ARCHIVED]: 'default',
+} as const satisfies Record<AnnouncementStatus, AnnouncementStatusTagType>
+
 export const announcementVisibilityLabels = {
   [ANNOUNCEMENT_VISIBILITY_TARGETED]: '指定可见对象',
   [ANNOUNCEMENT_VISIBILITY_ALL]: '全员可见',
@@ -93,11 +107,31 @@ export const announcementTargetTypeLabels = {
   [ANNOUNCEMENT_TARGET_TYPE_ROLE]: '角色',
 } as const satisfies Record<AnnouncementTargetType, string>
 
-export const pinnedFilterOptions: Array<{ label: string; value: AnnouncementPinnedFilter }> = [
+export const announcementPinnedFilterOptions: Array<{
+  label: string
+  value: AnnouncementPinnedFilter
+}> = [
   { label: '全部', value: ANNOUNCEMENT_PINNED_FILTER_ALL },
-  { label: '是', value: true },
-  { label: '否', value: false },
+  { label: '是', value: 'true' },
+  { label: '否', value: 'false' },
 ]
+
+export const attachmentUsageLabels = {
+  [ATTACHMENT_USAGE_GENERAL]: '通用',
+  [ATTACHMENT_USAGE_AVATAR]: '头像',
+  [ATTACHMENT_USAGE_RICH_TEXT]: '富文本',
+} as const satisfies Record<AttachmentUsage, string>
+
+export const attachmentUsageSelectOptions: Array<{ label: string; value: AttachmentUsage }> = [
+  { label: attachmentUsageLabels[ATTACHMENT_USAGE_GENERAL], value: ATTACHMENT_USAGE_GENERAL },
+  { label: attachmentUsageLabels[ATTACHMENT_USAGE_AVATAR], value: ATTACHMENT_USAGE_AVATAR },
+  { label: attachmentUsageLabels[ATTACHMENT_USAGE_RICH_TEXT], value: ATTACHMENT_USAGE_RICH_TEXT },
+]
+
+export const attachmentUsageFilterOptions: Array<{
+  label: string
+  value: AttachmentUsageFilter
+}> = [{ label: '全部', value: ATTACHMENT_USAGE_FILTER_ALL }, ...attachmentUsageSelectOptions]
 
 const dateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
   year: 'numeric',

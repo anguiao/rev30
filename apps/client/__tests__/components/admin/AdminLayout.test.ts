@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import type { AuthTokenResponse } from '@rev30/contracts'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
+import { NConfigProvider, NDialogProvider, dateZhCN, zhCN } from 'naive-ui'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AdminLayout from '../../../src/components/admin/AdminLayout.vue'
@@ -181,14 +182,35 @@ async function mountLayout(options?: { initialPath?: string; authSession?: AuthT
   await router.push(options?.initialPath ?? '/system/users')
   await router.isReady()
 
-  const wrapper = mount(AdminLayout, {
-    slots: {
-      default: '<section data-test="layout-content">Content</section>',
+  const wrapper = mount(
+    defineComponent({
+      components: {
+        AdminLayout,
+        NConfigProvider,
+        NDialogProvider,
+      },
+      setup() {
+        return {
+          dateZhCN,
+          zhCN,
+        }
+      },
+      template: `
+        <NConfigProvider :date-locale="dateZhCN" :locale="zhCN">
+          <NDialogProvider>
+            <AdminLayout>
+              <section data-test="layout-content">Content</section>
+            </AdminLayout>
+          </NDialogProvider>
+        </NConfigProvider>
+      `,
+    }),
+    {
+      global: {
+        plugins: [pinia, PiniaColada, router],
+      },
     },
-    global: {
-      plugins: [pinia, PiniaColada, router],
-    },
-  })
+  )
 
   return { router, wrapper }
 }
@@ -200,6 +222,7 @@ describe('admin layout', () => {
     document.documentElement.style.colorScheme = ''
     stubPreferredDark(false)
     logoutMock.mockReset()
+    document.body.innerHTML = ''
   })
 
   afterEach(() => {
@@ -363,9 +386,41 @@ describe('admin layout', () => {
     await wrapper.get('[data-test="admin-logout"]').trigger('click')
     await flushPromises()
 
+    expect(logoutMock).not.toHaveBeenCalled()
+
+    const confirmButton = document.body.querySelector(
+      '[data-test="admin-logout-confirm"]',
+    ) as HTMLButtonElement | null
+
+    expect(confirmButton).not.toBeNull()
+
+    confirmButton?.click()
+    await flushPromises()
+
     expect(logoutMock).toHaveBeenCalledTimes(1)
     expect(auth.isAuthenticated).toBe(false)
     expect(router.currentRoute.value.fullPath).toBe('/login')
+  })
+
+  it('keeps the session when logout confirmation is cancelled', async () => {
+    const { router, wrapper } = await mountLayout()
+    const auth = useAuthStore()
+
+    await wrapper.get('[data-test="admin-logout"]').trigger('click')
+    await flushPromises()
+
+    const cancelButton = document.body.querySelector(
+      '[data-test="admin-logout-cancel"]',
+    ) as HTMLButtonElement | null
+
+    expect(cancelButton).not.toBeNull()
+
+    cancelButton?.click()
+    await flushPromises()
+
+    expect(logoutMock).not.toHaveBeenCalled()
+    expect(auth.isAuthenticated).toBe(true)
+    expect(router.currentRoute.value.fullPath).toBe('/system/users')
   })
 
   it('clears auth session and navigates to login when logout fails', async () => {
@@ -374,6 +429,15 @@ describe('admin layout', () => {
     const auth = useAuthStore()
 
     await wrapper.get('[data-test="admin-logout"]').trigger('click')
+    await flushPromises()
+
+    const confirmButton = document.body.querySelector(
+      '[data-test="admin-logout-confirm"]',
+    ) as HTMLButtonElement | null
+
+    expect(confirmButton).not.toBeNull()
+
+    confirmButton?.click()
     await flushPromises()
 
     expect(logoutMock).toHaveBeenCalledTimes(1)

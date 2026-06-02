@@ -23,9 +23,9 @@ export type UserUniqueField = (typeof userUniqueFields)[number]
 export const userUniqueFieldSchema = z.enum(userUniqueFields)
 
 const userIdSchema = z.uuid('用户 ID 无效')
-export const userAvatarIdSchema = z.uuid('头像 ID 无效')
 const userNameSchema = nonBlankString('请输入用户名')
-const userNicknameSchema = nonBlankString('请输入昵称')
+export const userNicknameSchema = nonBlankString('请输入昵称')
+export const userAvatarIdSchema = z.uuid('头像 ID 无效')
 export const contactInputSchema = optionalNullableString()
 
 const optionalKeywordSchema = optionalTrimmedQueryString()

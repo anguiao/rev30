@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import type { AuthProfileUpdateInput } from '@rev30/contracts'
 import { and, eq, gt, isNull, lte, ne, or, sql } from 'drizzle-orm'
-import type { Db, DbReader } from '../../db'
+import type { Db } from '../../db'
 import {
-  attachments,
   authLoginAttemptBuckets,
   authPasswordCredentials,
   authRefreshTokens,
@@ -11,7 +10,6 @@ import {
 } from '../../db/schema'
 import { findDepartmentSummariesByUserId } from '../system/departments/repository'
 import { findRoleSummariesByUserId } from '../system/roles/repository'
-import { UserInvalidAvatarError } from '../system/users/errors'
 
 type RecordLoginFailureInput = {
   username: string
@@ -19,22 +17,6 @@ type RecordLoginFailureInput = {
   maxAttempts: number
   windowSeconds: number
   lockSeconds: number
-}
-
-async function ensureAvatarExistsOrThrow(executor: DbReader, avatarId: string | null | undefined) {
-  if (avatarId == null) {
-    return
-  }
-
-  const rows = await executor
-    .select({ id: attachments.id })
-    .from(attachments)
-    .where(eq(attachments.id, avatarId))
-    .limit(1)
-
-  if (rows.length === 0) {
-    throw new UserInvalidAvatarError()
-  }
 }
 
 export function createAuthRepository(database: Db) {
@@ -85,8 +67,6 @@ export function createAuthRepository(database: Db) {
 
     async updateUserProfile(userId: string, input: AuthProfileUpdateInput) {
       return await database.transaction(async (tx) => {
-        await ensureAvatarExistsOrThrow(tx, input.avatarId)
-
         const [updated] = await tx
           .update(systemUsers)
           .set({

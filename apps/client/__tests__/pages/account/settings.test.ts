@@ -4,7 +4,8 @@ import type { User } from '@rev30/contracts'
 import { h } from 'vue'
 import { useAuthStore } from '../../../src/stores/auth'
 import { updateMyPassword, updateMyProfile } from '../../../src/features/auth/requests'
-import AccountSettingsPage from '../../../src/pages/account/settings.vue'
+import AdminPage from '../../../src/pages/index.vue'
+import AccountSettingsPage from '../../../src/pages/index/account/settings.vue'
 import {
   disposeActiveTestPinia,
   mountAuthRoute,
@@ -69,8 +70,11 @@ async function mountAccountSettingsPage() {
   return mountAuthRoute(
     '/account/settings',
     [
-      { path: '/', component: { template: '<main>Home</main>' } },
-      { path: '/account/settings', component: AccountSettingsPage },
+      {
+        path: '/',
+        component: AdminPage,
+        children: [{ path: 'account/settings', component: AccountSettingsPage }],
+      },
     ],
     session,
   )
@@ -168,6 +172,27 @@ describe('account settings page', () => {
     expect(nicknameFormItem?.textContent).not.toContain('用户名不可修改')
     expect(emailFormItem?.textContent).not.toContain('用户名不可修改')
     expect(phoneFormItem?.textContent).not.toContain('用户名不可修改')
+  })
+
+  it('renders avatar upload errors on the avatar field', async () => {
+    const { wrapper } = await mountAccountSettingsPage()
+
+    wrapper.getComponent({ name: 'UserAvatarUpload' }).vm.$emit('error', new Error('upload failed'))
+    await flushPromises()
+
+    let avatarFormItem = wrapper
+      .get('[data-test="account-avatar-upload"]')
+      .element.closest('.n-form-item')
+    expect(avatarFormItem?.textContent).toContain('上传头像失败')
+    expect(wrapper.find('.n-alert').exists()).toBe(false)
+
+    await wrapper.get('[data-test="account-avatar-upload"]').trigger('click')
+    await flushPromises()
+
+    avatarFormItem = wrapper
+      .get('[data-test="account-avatar-upload"]')
+      .element.closest('.n-form-item')
+    expect(avatarFormItem?.textContent).not.toContain('上传头像失败')
   })
 
   it('renders a field error on current password failures', async () => {

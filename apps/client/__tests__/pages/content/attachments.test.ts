@@ -1,7 +1,7 @@
 import bytes from 'bytes'
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NPagination, NSelect } from 'naive-ui'
+import { NImage, NPagination, NSelect } from 'naive-ui'
 import {
   ATTACHMENT_USAGE_AVATAR,
   ATTACHMENT_USAGE_GENERAL,
@@ -10,11 +10,8 @@ import {
   type AuthTokenResponse,
 } from '@rev30/contracts'
 import { computed } from 'vue'
-import {
-  deleteAttachment,
-  listAttachments,
-  useAttachmentUrl,
-} from '../../../src/features/attachments'
+import { deleteAttachment, listAttachments } from '../../../src/features/attachments'
+import { useAttachmentUrl } from '../../../src/features/attachments/useAttachmentUrl'
 import AttachmentsPage from '../../../src/pages/index/content/attachments.vue'
 import {
   disposeActiveTestPinia,
@@ -27,6 +24,9 @@ vi.mock('../../../src/features/attachments', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/attachments')>()),
   deleteAttachment: vi.fn(),
   listAttachments: vi.fn(),
+}))
+
+vi.mock('../../../src/features/attachments/useAttachmentUrl', () => ({
   useAttachmentUrl: vi.fn(),
 }))
 
@@ -121,9 +121,11 @@ describe('attachments page', () => {
     expect(wrapper.text()).toContain(
       `${avatarAttachment.createdBy.nickname} (${avatarAttachment.createdBy.username})`,
     )
-    expect(wrapper.find('[data-test="attachments-preview-image"]').attributes('src')).toBe(
-      'https://cdn.example.com/avatar.png',
-    )
+    expect(wrapper.getComponent(NImage).props()).toMatchObject({
+      src: 'https://cdn.example.com/avatar.png',
+      previewSrc: 'https://cdn.example.com/avatar.png',
+      objectFit: 'cover',
+    })
   })
 
   it('searches by keyword and usage', async () => {

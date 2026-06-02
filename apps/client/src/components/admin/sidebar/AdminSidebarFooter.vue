@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useMutation } from '@pinia/colada'
 import { storeToRefs } from 'pinia'
-import { NButton } from 'naive-ui'
+import { NButton, useDialog, type ButtonProps } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import { logout } from '../../../features/auth'
 import { UserAvatar } from '../../../features/users'
@@ -16,6 +16,8 @@ const router = useRouter()
 const auth = useAuthStore()
 const { user } = storeToRefs(auth)
 
+const dialog = useDialog()
+
 const { isLoading: isLoggingOut, ...logoutMutation } = useMutation({
   mutation: () => logout(),
   async onSettled() {
@@ -24,8 +26,28 @@ const { isLoading: isLoggingOut, ...logoutMutation } = useMutation({
   },
 })
 
-function handleLogout() {
-  logoutMutation.mutate()
+function confirmLogout() {
+  const logoutPositiveButtonProps: ButtonProps & Record<string, unknown> = {
+    type: 'error',
+    'data-test': 'admin-logout-confirm',
+  }
+  const logoutNegativeButtonProps: ButtonProps & Record<string, unknown> = {
+    'data-test': 'admin-logout-cancel',
+  }
+
+  if (isLoggingOut.value) return
+
+  dialog.warning({
+    title: '确认退出登录',
+    content: '确定退出当前账号吗？',
+    positiveText: '退出登录',
+    negativeText: '取消',
+    positiveButtonProps: logoutPositiveButtonProps,
+    negativeButtonProps: logoutNegativeButtonProps,
+    onPositiveClick() {
+      logoutMutation.mutate()
+    },
+  })
 }
 
 async function navigateToAnnouncements() {
@@ -49,15 +71,23 @@ async function navigateToAccountSettings() {
       :class="collapsed ? 'flex flex-col items-center gap-3 px-3 pt-4' : 'px-5 pt-4'"
     >
       <template v-if="collapsed">
-        <UserAvatar
+        <button
           v-if="user"
-          data-test="sidebar-user-avatar"
-          :avatar-id="user.avatarId"
-          :nickname="user.nickname"
-          :username="user.username"
-          :size="36"
-          :title="user.nickname"
-        />
+          data-test="admin-account-settings"
+          type="button"
+          class="inline-flex cursor-pointer rounded-full border-0 bg-transparent p-0 text-current transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          aria-label="个人设置"
+          title="个人设置"
+          @click="navigateToAccountSettings"
+        >
+          <UserAvatar
+            data-test="sidebar-user-avatar"
+            :avatar-id="user.avatarId"
+            :nickname="user.nickname"
+            :username="user.username"
+            :size="32"
+          />
+        </button>
         <ThemeModeSwitch />
         <NButton
           data-test="admin-announcements"
@@ -73,19 +103,6 @@ async function navigateToAccountSettings() {
           </template>
         </NButton>
         <NButton
-          data-test="admin-account-settings"
-          circle
-          quaternary
-          type="default"
-          aria-label="个人设置"
-          title="个人设置"
-          @click="navigateToAccountSettings"
-        >
-          <template #icon>
-            <span class="i-[lucide--user-cog] inline-block size-4" aria-hidden="true" />
-          </template>
-        </NButton>
-        <NButton
           data-test="admin-logout"
           circle
           quaternary
@@ -93,7 +110,7 @@ async function navigateToAccountSettings() {
           :loading="isLoggingOut"
           aria-label="退出登录"
           title="退出登录"
-          @click="handleLogout"
+          @click="confirmLogout"
         >
           <template #icon>
             <span class="i-[lucide--log-out] inline-block size-4" aria-hidden="true" />
@@ -101,24 +118,33 @@ async function navigateToAccountSettings() {
         </NButton>
       </template>
       <template v-else>
-        <div class="mb-4 flex items-center justify-between">
-          <UserAvatar
+        <div class="mb-4 flex items-center justify-between gap-2">
+          <button
             v-if="user"
-            data-test="sidebar-user-avatar"
-            :avatar-id="user.avatarId"
-            :nickname="user.nickname"
-            :username="user.username"
-            :size="36"
-          />
-          <div class="min-w-0 flex-1 space-y-0.5">
-            <p data-test="admin-sidebar-user" class="truncate text-sm font-medium">
-              {{ user?.nickname ?? '' }}
-            </p>
-            <p class="truncate text-xs text-stone-500 dark:text-zinc-400">
-              {{ user?.username ?? '' }}
-            </p>
-          </div>
-          <div class="ml-3 flex shrink-0 items-center">
+            data-test="admin-account-settings"
+            type="button"
+            class="-ml-2 flex min-w-0 flex-1 cursor-pointer items-center rounded-md border-0 bg-transparent px-2 py-2 text-left text-current transition-colors hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-primary dark:hover:bg-zinc-800"
+            aria-label="个人设置"
+            title="个人设置"
+            @click="navigateToAccountSettings"
+          >
+            <UserAvatar
+              data-test="sidebar-user-avatar"
+              :avatar-id="user.avatarId"
+              :nickname="user.nickname"
+              :username="user.username"
+              :size="40"
+            />
+            <div class="ml-2 min-w-0 flex-1 space-y-0.5">
+              <p data-test="admin-sidebar-user" class="truncate text-sm font-medium">
+                {{ user.nickname }}
+              </p>
+              <p class="truncate text-xs text-stone-500 dark:text-zinc-400">
+                {{ user.username }}
+              </p>
+            </div>
+          </button>
+          <div class="flex shrink-0 items-center">
             <ThemeModeSwitch />
             <NButton
               data-test="admin-announcements"
@@ -133,19 +159,6 @@ async function navigateToAccountSettings() {
                 <span class="i-[lucide--megaphone] inline-block size-4" aria-hidden="true" />
               </template>
             </NButton>
-            <NButton
-              data-test="admin-account-settings"
-              circle
-              quaternary
-              type="default"
-              aria-label="个人设置"
-              title="个人设置"
-              @click="navigateToAccountSettings"
-            >
-              <template #icon>
-                <span class="i-[lucide--user-cog] inline-block size-4" aria-hidden="true" />
-              </template>
-            </NButton>
           </div>
         </div>
         <NButton
@@ -155,7 +168,7 @@ async function navigateToAccountSettings() {
           tertiary
           type="default"
           :loading="isLoggingOut"
-          @click="handleLogout"
+          @click="confirmLogout"
         >
           退出登录
         </NButton>

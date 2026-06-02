@@ -1,7 +1,7 @@
 import { useQueryCache } from '@pinia/colada'
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NDataTable, NEllipsis, NPagination, NSelect } from 'naive-ui'
+import { NDataTable, NPagination, NSelect } from 'naive-ui'
 import {
   CONFIG_STATUS_DISABLED,
   CONFIG_STATUS_ENABLED,
@@ -138,17 +138,14 @@ describe('configs page', () => {
 
     const columns = wrapper.getComponent(NDataTable).props('columns') as Array<{
       key?: string
-      render?: (row: ConfigListItem) => ReturnType<typeof h>
+      ellipsis?: unknown
+      render?: (row: ConfigListItem) => unknown
     }>
     const valueColumn = columns.find((column) => column.key === 'value')
 
     expect(valueColumn?.render).toBeTypeOf('function')
-    const vnode = valueColumn!.render!(baseConfig)
-    expect(vnode.type).toBe(NEllipsis)
-    expect(vnode.props).toMatchObject({
-      lineClamp: 1,
-      tooltip: { width: 360 },
-    })
+    expect(valueColumn?.ellipsis).toMatchObject({ tooltip: true })
+    expect(valueColumn!.render!(baseConfig)).toBe(baseConfig.value)
   })
 
   it('searches and resets filters without issuing duplicate requests', async () => {
@@ -182,7 +179,17 @@ describe('configs page', () => {
     })
 
     const queryCache = useQueryCache()
-    const initialQueryEntry = queryCache.get(['system', 'configs', 1, 20, '', '', null, null])
+    const initialQueryEntry = queryCache.get([
+      'system',
+      'configs',
+      'list',
+      1,
+      20,
+      '',
+      '',
+      null,
+      null,
+    ])
     if (initialQueryEntry !== undefined) {
       queryCache.remove(initialQueryEntry)
     }

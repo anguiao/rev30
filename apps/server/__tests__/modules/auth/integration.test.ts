@@ -1023,7 +1023,7 @@ describe('auth routes', () => {
     expect(body.avatarId).toBe(avatarId)
   })
 
-  it('returns a field error when current user avatar ids do not exist', async () => {
+  it('returns bad request when current user avatar ids do not exist', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
     const registered = await createLoggedInAccount(app, database)
@@ -1044,8 +1044,7 @@ describe('auth routes', () => {
 
     expect(response.status).toBe(400)
     expect(await response.json()).toEqual({
-      field: 'avatarId',
-      message: '头像不存在',
+      message: '请求体无效',
     })
   })
 

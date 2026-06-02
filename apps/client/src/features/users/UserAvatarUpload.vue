@@ -37,6 +37,18 @@ const imageUrl = computed(() => {
   return signed.url.value
 })
 const hasImage = computed(() => imageUrl.value !== null)
+const avatarStyle = computed(() => ({
+  width: `${props.size}px`,
+  height: `${props.size}px`,
+}))
+const plusIconStyle = computed(() => {
+  const iconSize = Math.max(20, Math.round(props.size * 0.25))
+
+  return {
+    width: `${iconSize}px`,
+    height: `${iconSize}px`,
+  }
+})
 
 async function uploadFile(file: File) {
   isUploading.value = true
@@ -85,8 +97,8 @@ watch(
   >
     <button
       type="button"
-      class="group relative inline-flex items-center justify-center rounded-full border border-stone-200 bg-stone-50 text-primary transition hover:border-primary dark:border-zinc-700 dark:bg-zinc-900"
-      :style="{ width: `${size}px`, height: `${size}px` }"
+      class="group relative inline-flex items-center justify-center rounded-full border-2 border-stone-200 bg-stone-50 text-primary transition hover:border-primary-hover focus-visible:border-primary-hover focus-visible:outline-none dark:border-zinc-700 dark:bg-zinc-900"
+      :style="avatarStyle"
       :aria-label="label"
       :disabled="isUploading"
       :aria-busy="isUploading"
@@ -99,13 +111,18 @@ watch(
         class="size-full rounded-full object-cover"
         @error="imageFailed = true"
       />
-      <span v-else class="i-[lucide--plus] size-5" aria-hidden="true" />
+      <span
+        v-else
+        class="i-[lucide--plus] inline-block"
+        :style="plusIconStyle"
+        aria-hidden="true"
+      />
       <span
         v-if="hasImage"
-        class="absolute inset-0 hidden items-center justify-center rounded-full bg-white/45 text-stone-900 group-hover:flex dark:bg-zinc-900/35 dark:text-white"
+        class="absolute inset-0 hidden items-center justify-center rounded-full bg-white/45 text-primary-hover group-hover:flex dark:bg-zinc-900/35 dark:text-white"
         aria-hidden="true"
       >
-        <span class="i-[lucide--plus] size-5" />
+        <span class="i-[lucide--plus] inline-block" :style="plusIconStyle" />
       </span>
     </button>
   </NUpload>

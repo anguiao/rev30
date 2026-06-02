@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue'
-import { useQuery } from '@pinia/colada'
+import { useQuery, useQueryCache } from '@pinia/colada'
 import { useClipboard } from '@vueuse/core'
 import type { DataTableColumns } from 'naive-ui'
 import {
@@ -52,6 +52,7 @@ const pageTitle = useAdminPageTitle('系统用户')
 
 const message = useMessage()
 const dialog = useDialog()
+const queryCache = useQueryCache()
 
 const keyword = ref('')
 const status = ref<StatusFilter>(STATUS_FILTER_ALL)
@@ -72,11 +73,11 @@ const {
   data: usersResponse,
   error: usersError,
   isLoading,
-  refetch: refetchUsers,
 } = useQuery({
   key: () => [
     'system',
     'users',
+    'list',
     query.value.page,
     query.value.pageSize,
     query.value.keyword ?? '',
@@ -146,9 +147,14 @@ function openUserFormDrawer(userId: string | null = null) {
   editingUserId.value = userId
   isUserDrawerVisible.value = true
 }
+async function invalidateUserListQueries() {
+  await queryCache.invalidateQueries({
+    key: ['system', 'users', 'list'],
+  })
+}
 async function handleUserSaved(result?: UserCreateResponse) {
   message.success('保存系统用户成功')
-  await refetchUsers()
+  await invalidateUserListQueries()
 
   if (result !== undefined) {
     showTemporaryPasswordDialog(
@@ -175,7 +181,7 @@ function confirmDeleteUser(user: UserListItem) {
         await deleteUser(user.id)
 
         message.success('删除系统用户成功')
-        await refetchUsers()
+        await invalidateUserListQueries()
       } catch (error) {
         message.error(getSystemErrorMessage(error, '删除系统用户失败'))
         return false

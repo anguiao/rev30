@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { NAvatar } from 'naive-ui'
 import { ATTACHMENT_DISPOSITION_INLINE } from '@rev30/contracts'
 import { useAttachmentUrl } from '../attachments'
 
@@ -9,12 +8,12 @@ const props = withDefaults(
     avatarId: string | null
     nickname?: string | null
     username?: string | null
-    size?: number | 'small' | 'medium' | 'large'
+    size?: number
   }>(),
   {
     nickname: null,
     username: null,
-    size: 'medium',
+    size: 34,
   },
 )
 
@@ -24,17 +23,7 @@ const signed = useAttachmentUrl(() => props.avatarId, {
 })
 
 const displayName = computed(() => {
-  const trimmedNickname = (props.nickname ?? '').trim()
-  if (trimmedNickname !== '') {
-    return trimmedNickname
-  }
-
-  const trimmedUsername = (props.username ?? '').trim()
-  if (trimmedUsername !== '') {
-    return trimmedUsername
-  }
-
-  return '?'
+  return props.nickname?.trim() || props.username?.trim() || '?'
 })
 const initial = computed(() => displayName.value.charAt(0).toUpperCase())
 const imageUrl = computed(() => {
@@ -42,14 +31,11 @@ const imageUrl = computed(() => {
 
   return signed.url.value
 })
-
-const avatarProps = computed(() =>
-  imageUrl.value === null
-    ? {}
-    : {
-        src: imageUrl.value,
-      },
-)
+const avatarStyle = computed(() => ({
+  width: `${props.size}px`,
+  height: `${props.size}px`,
+  fontSize: `${Math.max(12, Math.round(props.size * 0.45))}px`,
+}))
 
 watch(
   () => props.avatarId,
@@ -60,13 +46,18 @@ watch(
 </script>
 
 <template>
-  <NAvatar
-    v-bind="avatarProps"
-    round
-    :size="size"
-    class="bg-primary-muted! text-primary!"
-    @error="imageFailed = true"
+  <span
+    class="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-muted leading-none font-medium text-primary"
+    :style="avatarStyle"
+    :aria-label="displayName"
   >
-    <span v-if="imageUrl === null">{{ initial }}</span>
-  </NAvatar>
+    <img
+      v-if="imageUrl !== null"
+      :src="imageUrl"
+      alt=""
+      class="size-full object-cover"
+      @error="imageFailed = true"
+    />
+    <span v-else>{{ initial }}</span>
+  </span>
 </template>

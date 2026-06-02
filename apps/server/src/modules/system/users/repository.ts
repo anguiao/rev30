@@ -9,7 +9,6 @@ import {
 import { and, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
 import {
-  attachments,
   authPasswordCredentials,
   authRefreshTokens,
   systemDepartments,
@@ -23,7 +22,7 @@ import {
   lockActiveDepartmentsByIds,
 } from '../departments/repository'
 import { findRoleSummariesByUserIds, lockActiveRolesByIds } from '../roles/repository'
-import { UserInvalidAvatarError, UserInvalidDepartmentError, UserInvalidRoleError } from './errors'
+import { UserInvalidDepartmentError, UserInvalidRoleError } from './errors'
 import type { UserOptionRow } from './mapper'
 
 const userOptionColumns = {
@@ -68,22 +67,6 @@ async function lockActiveRoleIdsOrThrow(executor: DbReader, ids: string[]) {
 
   if (rows.length !== new Set(ids).size) {
     throw new UserInvalidRoleError()
-  }
-}
-
-async function ensureAvatarExistsOrThrow(executor: DbReader, avatarId: string | null | undefined) {
-  if (avatarId == null) {
-    return
-  }
-
-  const rows = await executor
-    .select({ id: attachments.id })
-    .from(attachments)
-    .where(eq(attachments.id, avatarId))
-    .limit(1)
-
-  if (rows.length === 0) {
-    throw new UserInvalidAvatarError()
   }
 }
 
@@ -216,7 +199,6 @@ export function createUserRepository(database: Db) {
         await Promise.all([
           lockActiveDepartmentIdsOrThrow(tx, departmentIds),
           lockActiveRoleIdsOrThrow(tx, roleIds),
-          ensureAvatarExistsOrThrow(tx, userInput.avatarId),
         ])
 
         const [created] = await tx
@@ -323,10 +305,6 @@ export function createUserRepository(database: Db) {
 
         if (roleIds !== undefined) {
           await lockActiveRoleIdsOrThrow(tx, roleIds)
-        }
-
-        if (userInput.avatarId !== undefined) {
-          await ensureAvatarExistsOrThrow(tx, userInput.avatarId)
         }
 
         const userUpdateValues = Object.values(userInput).some((value) => value !== undefined)

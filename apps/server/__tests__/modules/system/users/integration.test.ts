@@ -274,7 +274,7 @@ describe('user routes', () => {
     })
   })
 
-  it('returns a field error when avatar ids do not exist', async () => {
+  it('returns bad request when avatar ids do not exist', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
 
@@ -293,8 +293,7 @@ describe('user routes', () => {
     await expectJsonResponse(response, {
       status: 400,
       body: {
-        field: 'avatarId',
-        message: '头像不存在',
+        message: '请求体无效',
       },
     })
   })
@@ -432,6 +431,15 @@ describe('user routes', () => {
     const listResponse = await app.request('/api/system/users?keyword=avatar-user')
     const listBody = (await listResponse.json()) as UserListResponse
     expect(listBody.list[0]?.avatarId).toBe(avatar.id)
+
+    await database
+      .update(attachments)
+      .set({ deletedAt: new Date('2026-05-31T00:00:00.000Z') })
+      .where(eq(attachments.id, avatar.id))
+
+    const softDeletedAvatarDetailResponse = await app.request(`/api/system/users/${created.id}`)
+    const softDeletedAvatarDetailBody = (await softDeletedAvatarDetailResponse.json()) as User
+    expect(softDeletedAvatarDetailBody.avatarId).toBe(avatar.id)
 
     const updateResponse = await app.request(`/api/system/users/${created.id}`, {
       method: 'PATCH',

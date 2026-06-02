@@ -204,6 +204,7 @@ describe('announcements page', () => {
     const initialQueryEntry = queryCache.get([
       'content',
       'announcements',
+      'list',
       1,
       20,
       '',

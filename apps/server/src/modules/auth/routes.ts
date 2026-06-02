@@ -46,13 +46,7 @@ function authErrorResponse(error: unknown, c: Context) {
   }
 
   if (error instanceof UserInvalidAvatarError) {
-    return c.json(
-      {
-        field: error.field,
-        message: error.message,
-      },
-      400,
-    )
+    return c.json({ message: '请求体无效' }, 400)
   }
 
   if (error instanceof AuthInvalidCurrentPasswordError) {

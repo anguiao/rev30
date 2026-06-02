@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue'
-import { useQuery } from '@pinia/colada'
+import { useQuery, useQueryCache } from '@pinia/colada'
 import type { ButtonProps, DataTableColumns, DataTableRowKey, SelectOption } from 'naive-ui'
 import {
   NAlert,
@@ -44,6 +44,7 @@ const pageTitle = useAdminPageTitle('权限资源')
 
 const message = useMessage()
 const dialog = useDialog()
+const queryCache = useQueryCache()
 
 type ResourceTypeFilter = ResourceType | 'all'
 
@@ -74,7 +75,6 @@ const {
   data: resourceTree,
   error: resourceTreeError,
   isLoading,
-  refetch: refetchResources,
 } = useQuery({
   key: () => ['system', 'resources', 'tree'],
   placeholderData: () => emptyResourceTree,
@@ -141,9 +141,15 @@ function openResourceFormDrawer(resourceId: string | null = null, parentId: stri
   selectedParentResourceId.value = parentId
   isResourceDrawerVisible.value = true
 }
+async function invalidateResourceTreeQuery() {
+  await queryCache.invalidateQueries({
+    key: ['system', 'resources', 'tree'],
+    exact: true,
+  })
+}
 async function handleResourceSaved() {
   message.success('保存权限资源成功')
-  await refetchResources()
+  await invalidateResourceTreeQuery()
 }
 
 function confirmDeleteResource(resource: ResourceTreeNode) {
@@ -167,7 +173,7 @@ function confirmDeleteResource(resource: ResourceTreeNode) {
         await deleteResource(resource.id)
 
         message.success('删除权限资源成功')
-        await refetchResources()
+        await invalidateResourceTreeQuery()
       } catch (error) {
         message.error(getSystemErrorMessage(error, '删除权限资源失败'))
         return false

@@ -243,11 +243,16 @@ describe('UserFormDrawer', () => {
 
     wrapper.getComponent({ name: 'UserAvatarUpload' }).vm.$emit('error', new Error('upload failed'))
     await flushPromises()
-    expect(wrapper.text()).toContain('上传用户头像失败')
+    let avatarFormItem = wrapper
+      .get('[data-test="user-avatar-upload"]')
+      .element.closest('.n-form-item')
+    expect(avatarFormItem?.textContent).toContain('上传用户头像失败')
+    expect(wrapper.find('.n-alert').exists()).toBe(false)
 
     await wrapper.get('[data-test="user-avatar-upload"]').trigger('click')
     await flushPromises()
-    expect(wrapper.text()).not.toContain('上传用户头像失败')
+    avatarFormItem = wrapper.get('[data-test="user-avatar-upload"]').element.closest('.n-form-item')
+    expect(avatarFormItem?.textContent).not.toContain('上传用户头像失败')
   })
 
   it('keeps create draft values when the form query refreshes', async () => {

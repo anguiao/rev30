@@ -1,6 +1,11 @@
 import { z } from 'zod'
 import { passwordInputSchema } from './common/inputs'
-import { userAvatarIdSchema, userCreateSchema, userSchema } from './system/users'
+import {
+  contactInputSchema,
+  userAvatarIdSchema,
+  userNicknameSchema,
+  userSchema,
+} from './system/users'
 import { resourceTreeNodeSchema } from './system/resources'
 
 export const AUTH_ACTION_HEADER = 'Auth-Action'
@@ -25,14 +30,12 @@ export const authTokenResponseSchema = authSessionResponseSchema.extend({
   expiresIn: z.number().int().positive(),
 })
 
-export const authProfileUpdateSchema = userCreateSchema
-  .pick({
-    nickname: true,
-    email: true,
-    phone: true,
-  })
-  .extend({
+export const authProfileUpdateSchema = z
+  .object({
+    nickname: userNicknameSchema,
     avatarId: userAvatarIdSchema.nullable().optional(),
+    email: contactInputSchema,
+    phone: contactInputSchema,
   })
   .strict()
 

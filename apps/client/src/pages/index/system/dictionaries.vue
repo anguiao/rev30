@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue'
-import { useQuery } from '@pinia/colada'
+import { useQuery, useQueryCache } from '@pinia/colada'
 import type { DataTableColumns } from 'naive-ui'
 import {
   NAlert,
@@ -40,6 +40,7 @@ const pageTitle = useAdminPageTitle('数据字典')
 
 const message = useMessage()
 const dialog = useDialog()
+const queryCache = useQueryCache()
 
 const keyword = ref('')
 const status = ref<StatusFilter>(STATUS_FILTER_ALL)
@@ -58,11 +59,11 @@ const {
   data: dictionariesResponse,
   error: dictionariesError,
   isLoading,
-  refetch: refetchDictionaries,
 } = useQuery({
   key: () => [
     'system',
     'dictionaries',
+    'list',
     query.value.page,
     query.value.pageSize,
     query.value.keyword ?? '',
@@ -105,9 +106,14 @@ function openDictionaryFormDrawer(dictionaryId: string | null = null) {
   editingDictionaryId.value = dictionaryId
   isDictionaryDrawerVisible.value = true
 }
+async function invalidateDictionaryListQueries() {
+  await queryCache.invalidateQueries({
+    key: ['system', 'dictionaries', 'list'],
+  })
+}
 async function handleDictionarySaved() {
   message.success('保存数据字典成功')
-  await refetchDictionaries()
+  await invalidateDictionaryListQueries()
 }
 
 function confirmDeleteDictionary(dictionary: DictionaryListItem) {
@@ -127,7 +133,7 @@ function confirmDeleteDictionary(dictionary: DictionaryListItem) {
         await deleteDictionary(dictionary.id)
 
         message.success('删除数据字典成功')
-        await refetchDictionaries()
+        await invalidateDictionaryListQueries()
       } catch (error) {
         message.error(getSystemErrorMessage(error, '删除数据字典失败'))
         return false

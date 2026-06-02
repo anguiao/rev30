@@ -154,7 +154,7 @@ describe('dictionaries page', () => {
     })
 
     const queryCache = useQueryCache()
-    const initialQueryEntry = queryCache.get(['system', 'dictionaries', 1, 20, '', null])
+    const initialQueryEntry = queryCache.get(['system', 'dictionaries', 'list', 1, 20, '', null])
     if (initialQueryEntry !== undefined) {
       queryCache.remove(initialQueryEntry)
     }

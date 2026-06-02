@@ -434,9 +434,7 @@ describe('attachment routes', () => {
   it('maps unsupported signed URL requests for authenticated attachments', async () => {
     mocks.authState.accessCodes = ['content:attachment:list']
     const app = createAttachmentTestApp()
-    mocks.service.createContentUrl.mockRejectedValueOnce(
-      new AttachmentContentUrlUnsupportedError(),
-    )
+    mocks.service.createContentUrl.mockRejectedValueOnce(new AttachmentContentUrlUnsupportedError())
 
     const response = await app.request(`/api/attachments/${attachmentId}/content-url`, {
       method: 'POST',

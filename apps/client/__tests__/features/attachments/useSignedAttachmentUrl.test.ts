@@ -3,7 +3,10 @@ import { PiniaColada } from '@pinia/colada'
 import { ATTACHMENT_DISPOSITION_INLINE } from '@rev30/contracts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, nextTick, ref } from 'vue'
-import { resolveSignedAttachmentUrl, useSignedAttachmentUrl } from '../../../src/features/attachments'
+import {
+  resolveSignedAttachmentUrl,
+  useSignedAttachmentUrl,
+} from '../../../src/features/attachments'
 import { createTestPinia } from '../../helpers/pinia'
 
 vi.mock('../../../src/features/attachments/requests', () => ({

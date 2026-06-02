@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { NUpload, type UploadCustomRequestOptions } from 'naive-ui'
-import { ATTACHMENT_DISPOSITION_INLINE, ATTACHMENT_USAGE_AVATAR } from '@rev30/contracts'
-import { uploadAttachment, useAttachmentUrl } from '../attachments'
+import { getAttachmentContentUrl, uploadAttachment } from '../attachments'
 
 const props = withDefaults(
   defineProps<{
@@ -26,15 +25,10 @@ const emit = defineEmits<{
 const imageFailed = ref(false)
 const isUploading = ref(false)
 const label = computed(() => (props.avatarId === null ? '上传头像' : '更换头像'))
-const signed = useAttachmentUrl(() => props.avatarId, {
-  disposition: ATTACHMENT_DISPOSITION_INLINE,
-})
 const imageUrl = computed(() => {
-  if (props.avatarId === null || imageFailed.value || signed.error.value !== null) {
-    return null
-  }
+  if (props.avatarId === null || imageFailed.value) return null
 
-  return signed.url.value
+  return getAttachmentContentUrl(props.avatarId)
 })
 const hasImage = computed(() => imageUrl.value !== null)
 const avatarStyle = computed(() => ({
@@ -54,7 +48,10 @@ async function uploadFile(file: File) {
   isUploading.value = true
 
   try {
-    const attachment = await uploadAttachment(file, { usage: ATTACHMENT_USAGE_AVATAR })
+    const attachment = await uploadAttachment(file, {
+      usage: 'avatar',
+      readPolicy: 'authenticated',
+    })
     emit('uploaded', attachment.id)
   } catch (error) {
     emit('error', error)

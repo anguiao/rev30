@@ -2,18 +2,18 @@ import { ATTACHMENT_DISPOSITION_ATTACHMENT, type AttachmentDisposition } from '@
 import { useQuery } from '@pinia/colada'
 import { useTimeoutFn } from '@vueuse/core'
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
-import { resolveAttachmentUrl } from './requests'
+import { resolveSignedAttachmentUrl } from './requests'
 
 const contentUrlRefreshLeadMs = 30_000
 
-type UseAttachmentUrlOptions = {
+type UseSignedAttachmentUrlOptions = {
   disposition?: MaybeRefOrGetter<AttachmentDisposition | undefined>
   enabled?: MaybeRefOrGetter<boolean | undefined>
 }
 
-export function useAttachmentUrl(
+export function useSignedAttachmentUrl(
   id: MaybeRefOrGetter<string | null | undefined>,
-  options: UseAttachmentUrlOptions = {},
+  options: UseSignedAttachmentUrlOptions = {},
 ) {
   const attachmentId = computed(() => toValue(id) || null)
   const disposition = computed(
@@ -36,7 +36,7 @@ export function useAttachmentUrl(
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     query: () =>
-      resolveAttachmentUrl(attachmentId.value!, {
+      resolveSignedAttachmentUrl(attachmentId.value!, {
         disposition: disposition.value,
       }),
   })

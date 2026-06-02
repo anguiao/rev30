@@ -11,7 +11,7 @@ import {
 } from '@rev30/contracts'
 import { computed } from 'vue'
 import { deleteAttachment, listAttachments } from '../../../src/features/attachments'
-import { useAttachmentUrl } from '../../../src/features/attachments/useAttachmentUrl'
+import { useSignedAttachmentUrl } from '../../../src/features/attachments/useSignedAttachmentUrl'
 import AttachmentsPage from '../../../src/pages/index/content/attachments.vue'
 import {
   disposeActiveTestPinia,
@@ -26,13 +26,13 @@ vi.mock('../../../src/features/attachments', async (importOriginal) => ({
   listAttachments: vi.fn(),
 }))
 
-vi.mock('../../../src/features/attachments/useAttachmentUrl', () => ({
-  useAttachmentUrl: vi.fn(),
+vi.mock('../../../src/features/attachments/useSignedAttachmentUrl', () => ({
+  useSignedAttachmentUrl: vi.fn(),
 }))
 
 const deleteAttachmentMock = vi.mocked(deleteAttachment)
 const listAttachmentsMock = vi.mocked(listAttachments)
-const useAttachmentUrlMock = vi.mocked(useAttachmentUrl)
+const useSignedAttachmentUrlMock = vi.mocked(useSignedAttachmentUrl)
 
 const authSession: AuthTokenResponse = {
   ...session,
@@ -88,8 +88,8 @@ describe('attachments page', () => {
   beforeEach(() => {
     deleteAttachmentMock.mockReset()
     listAttachmentsMock.mockReset()
-    useAttachmentUrlMock.mockReset()
-    useAttachmentUrlMock.mockReturnValue({
+    useSignedAttachmentUrlMock.mockReset()
+    useSignedAttachmentUrlMock.mockReturnValue({
       url: computed(() => 'https://cdn.example.com/avatar.png'),
       expiresAt: computed(() => '2026-05-21T01:00:00.000Z'),
       error: computed(() => null),

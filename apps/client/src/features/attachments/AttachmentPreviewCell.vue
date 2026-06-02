@@ -2,7 +2,7 @@
 import { ATTACHMENT_DISPOSITION_INLINE, type AttachmentListItem } from '@rev30/contracts'
 import { NImage } from 'naive-ui'
 import { computed, ref, watch } from 'vue'
-import { useAttachmentUrl } from './useAttachmentUrl'
+import { useSignedAttachmentUrl } from './useSignedAttachmentUrl'
 
 const props = defineProps<{
   attachment: AttachmentListItem
@@ -10,7 +10,7 @@ const props = defineProps<{
 
 const imageFailed = ref(false)
 const isImage = computed(() => props.attachment.mimeType.startsWith('image/'))
-const image = useAttachmentUrl(() => props.attachment.id, {
+const image = useSignedAttachmentUrl(() => props.attachment.id, {
   disposition: ATTACHMENT_DISPOSITION_INLINE,
   enabled: isImage,
 })

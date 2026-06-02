@@ -1,15 +1,12 @@
-import {
-  ATTACHMENT_DISPOSITION_INLINE,
-  ATTACHMENT_USAGE_AVATAR,
-  type Attachment,
-} from '@rev30/contracts'
+import { ATTACHMENT_DISPOSITION_INLINE, type Attachment } from '@rev30/contracts'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   AttachmentRequestError,
   deleteAttachment,
   getAttachment,
+  getAttachmentContentUrl,
   listAttachments,
-  resolveAttachmentUrl,
+  resolveSignedAttachmentUrl,
   uploadAttachment,
 } from '../../../src/features/attachments'
 import { useAuthStore } from '../../../src/stores/auth'
@@ -30,7 +27,8 @@ const attachment: Attachment = {
   mimeType: 'image/png',
   extension: 'png',
   size: 128,
-  usage: ATTACHMENT_USAGE_AVATAR,
+  usage: 'avatar',
+  readPolicy: 'authenticated',
   createdAt: '2026-05-29T00:00:00.000Z',
 }
 
@@ -61,7 +59,10 @@ describe('attachment request helpers', () => {
     )
     const file = new File(['png'], 'avatar.png', { type: 'image/png' })
 
-    const result = await uploadAttachment(file, { usage: ATTACHMENT_USAGE_AVATAR })
+    const result = await uploadAttachment(file, {
+      usage: 'avatar',
+      readPolicy: 'authenticated',
+    })
 
     expect(result).toEqual({ id: attachment.id })
     expectFetchCall(fetchMock, 0, {
@@ -70,7 +71,8 @@ describe('attachment request helpers', () => {
     })
     expectJsonBody(fetchMock, 0, {
       originalName: 'avatar.png',
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
+      readPolicy: 'authenticated',
       size: 3,
       contentType: 'image/png',
     })
@@ -103,7 +105,13 @@ describe('attachment request helpers', () => {
     })
   })
 
-  it('resolves content URLs for direct use', async () => {
+  it('builds stable attachment content URLs', () => {
+    expect(getAttachmentContentUrl('11111111-1111-4111-8111-111111111111')).toBe(
+      '/api/attachments/11111111-1111-4111-8111-111111111111/content',
+    )
+  })
+
+  it('resolves signed content URLs for direct use', async () => {
     const fetchMock = createFetchMock(
       jsonResponse({
         request: {
@@ -116,7 +124,7 @@ describe('attachment request helpers', () => {
     )
 
     await expect(
-      resolveAttachmentUrl(attachmentId, { disposition: ATTACHMENT_DISPOSITION_INLINE }),
+      resolveSignedAttachmentUrl(attachmentId, { disposition: ATTACHMENT_DISPOSITION_INLINE }),
     ).resolves.toEqual({
       url: `/api/attachments/${attachmentId}/content?token=token`,
       expiresAt: '2026-05-29T00:05:00.000Z',
@@ -152,7 +160,7 @@ describe('attachment request helpers', () => {
       listAttachments({
         page: 2,
         pageSize: 10,
-        usage: ATTACHMENT_USAGE_AVATAR,
+        usage: 'avatar',
         keyword: 'avatar',
       }),
     ).resolves.toMatchObject({
@@ -166,7 +174,7 @@ describe('attachment request helpers', () => {
       query: {
         page: '2',
         pageSize: '10',
-        usage: ATTACHMENT_USAGE_AVATAR,
+        usage: 'avatar',
         keyword: 'avatar',
       },
     })
@@ -184,7 +192,7 @@ describe('attachment request helpers', () => {
 
     await expect(deleteAttachment(attachmentId)).resolves.toBeUndefined()
     await expect(
-      uploadAttachment(new File(['bad'], 'bad.svg'), { usage: ATTACHMENT_USAGE_AVATAR }),
+      uploadAttachment(new File(['bad'], 'bad.svg'), { usage: 'avatar' }),
     ).rejects.toMatchObject(expectedError)
 
     expectFetchCall(fetchMock, 0, {

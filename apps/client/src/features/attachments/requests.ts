@@ -10,8 +10,8 @@ import {
   type AttachmentContentUrlInput,
   type AttachmentListQuery,
   type AttachmentListResponse,
+  type AttachmentReadPolicy,
   type AttachmentUploadSession,
-  type AttachmentUsage,
 } from '@rev30/contracts'
 import type { z } from 'zod'
 import { api } from '../../api'
@@ -55,7 +55,8 @@ export function getAttachmentErrorMessage(error: unknown, fallback: string) {
 async function createAttachmentUploadSession(
   file: File,
   input: {
-    usage: AttachmentUsage
+    usage: string
+    readPolicy?: AttachmentReadPolicy
   },
 ): Promise<AttachmentUploadSession> {
   const contentType = file.type.trim()
@@ -65,6 +66,7 @@ async function createAttachmentUploadSession(
       json: {
         originalName: file.name,
         usage: input.usage,
+        readPolicy: input.readPolicy,
         size: file.size,
         ...(contentType ? { contentType } : {}),
       },
@@ -100,7 +102,8 @@ async function completeAttachmentUploadSession(uploadId: string): Promise<Attach
 export async function uploadAttachment(
   file: File,
   input: {
-    usage: AttachmentUsage
+    usage: string
+    readPolicy?: AttachmentReadPolicy
   },
 ) {
   const session = await createAttachmentUploadSession(file, input)
@@ -145,7 +148,11 @@ async function createAttachmentContentUrl(
   )
 }
 
-export async function resolveAttachmentUrl(
+export function getAttachmentContentUrl(id: string) {
+  return `/api/attachments/${encodeURIComponent(id)}/content`
+}
+
+export async function resolveSignedAttachmentUrl(
   id: string,
   input: AttachmentContentUrlInput = { disposition: ATTACHMENT_DISPOSITION_ATTACHMENT },
 ) {

@@ -1,17 +1,13 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { PiniaColada } from '@pinia/colada'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ATTACHMENT_USAGE_AVATAR } from '@rev30/contracts'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import UserAvatarUpload from '../../../src/features/users/UserAvatarUpload.vue'
-import { resolveAttachmentUrl, uploadAttachment } from '../../../src/features/attachments'
-import { createTestPinia, disposeActiveTestPinia } from '../../helpers/pinia'
+import { uploadAttachment } from '../../../src/features/attachments'
 
-vi.mock('../../../src/features/attachments/requests', () => ({
-  resolveAttachmentUrl: vi.fn(),
+vi.mock('../../../src/features/attachments/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/attachments/requests')>()),
   uploadAttachment: vi.fn(),
 }))
 
-const resolveAttachmentUrlMock = vi.mocked(resolveAttachmentUrl)
 const uploadAttachmentMock = vi.mocked(uploadAttachment)
 
 function mountUpload(props = { avatarId: null as string | null }) {
@@ -21,27 +17,15 @@ function mountUpload(props = { avatarId: null as string | null }) {
       username: 'ada',
       ...props,
     },
-    global: {
-      plugins: [createTestPinia(), PiniaColada],
-    },
   })
 }
 
 describe('UserAvatarUpload', () => {
   beforeEach(() => {
-    resolveAttachmentUrlMock.mockReset()
     uploadAttachmentMock.mockReset()
-    resolveAttachmentUrlMock.mockResolvedValue({
-      url: '/api/attachments/avatar/content?token=token',
-      expiresAt: '2026-05-30T00:05:00.000Z',
-    })
     uploadAttachmentMock.mockResolvedValue({
       id: '33333333-3333-4333-8333-333333333333',
     })
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
   })
 
   it('shows a plus icon for empty or failed avatar states', async () => {
@@ -49,9 +33,11 @@ describe('UserAvatarUpload', () => {
     expect(emptyWrapper.find('.i-\\[lucide--plus\\]').exists()).toBe(true)
     expect(emptyWrapper.text()).not.toContain('A')
 
-    resolveAttachmentUrlMock.mockRejectedValueOnce(new Error('gone'))
     const failedWrapper = mountUpload({ avatarId: '11111111-1111-4111-8111-111111111111' })
-    await flushPromises()
+    expect(failedWrapper.get('img').attributes('src')).toBe(
+      '/api/attachments/11111111-1111-4111-8111-111111111111/content',
+    )
+    await failedWrapper.get('img').trigger('error')
 
     expect(failedWrapper.find('.i-\\[lucide--plus\\]').exists()).toBe(true)
     expect(failedWrapper.text()).not.toContain('A')
@@ -65,7 +51,10 @@ describe('UserAvatarUpload', () => {
     await exposed.uploadFile(file)
     await flushPromises()
 
-    expect(uploadAttachmentMock).toHaveBeenCalledWith(file, { usage: ATTACHMENT_USAGE_AVATAR })
+    expect(uploadAttachmentMock).toHaveBeenCalledWith(file, {
+      usage: 'avatar',
+      readPolicy: 'authenticated',
+    })
     expect(wrapper.emitted('uploaded')).toEqual([['33333333-3333-4333-8333-333333333333']])
 
     uploadAttachmentMock.mockRejectedValueOnce(new Error('upload failed'))

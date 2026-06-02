@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ATTACHMENT_DISPOSITION_INLINE } from '@rev30/contracts'
-import { useAttachmentUrl } from '../attachments'
+import { getAttachmentContentUrl } from '../attachments'
 
 const props = withDefaults(
   defineProps<{
@@ -18,18 +17,15 @@ const props = withDefaults(
 )
 
 const imageFailed = ref(false)
-const signed = useAttachmentUrl(() => props.avatarId, {
-  disposition: ATTACHMENT_DISPOSITION_INLINE,
-})
 
 const displayName = computed(() => {
   return props.nickname?.trim() || props.username?.trim() || '?'
 })
 const initial = computed(() => displayName.value.charAt(0).toUpperCase())
 const imageUrl = computed(() => {
-  if (imageFailed.value || signed.error.value !== null) return null
+  if (props.avatarId === null || imageFailed.value) return null
 
-  return signed.url.value
+  return getAttachmentContentUrl(props.avatarId)
 })
 const avatarStyle = computed(() => ({
   width: `${props.size}px`,

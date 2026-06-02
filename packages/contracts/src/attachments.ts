@@ -8,7 +8,7 @@ export const ATTACHMENT_READ_POLICY_AUTHENTICATED = 'authenticated'
 
 export const attachmentReadPolicySchema = z.enum(
   [ATTACHMENT_READ_POLICY_SIGNED, ATTACHMENT_READ_POLICY_AUTHENTICATED],
-  '读取策略无效',
+  '访问方式无效',
 )
 
 export const attachmentUsageSchema = nonBlankString('上传用途无效')

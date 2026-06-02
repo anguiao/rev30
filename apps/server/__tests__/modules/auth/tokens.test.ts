@@ -6,10 +6,8 @@ import {
   AuthInvalidAccessTokenError,
 } from '../../../src/modules/auth/errors'
 import {
-  createAttachmentToken,
   createTokenPair,
   hashRefreshTokenId,
-  verifyAttachmentToken,
   verifyAccessToken,
   verifyRefreshToken,
 } from '../../../src/modules/auth/tokens'
@@ -45,30 +43,6 @@ describe('auth token helpers', () => {
       refreshTokenHash: pair.refreshTokenHash,
     })
     await expect(verifyAccessToken(pair.refreshToken, config)).rejects.toThrow('访问令牌无效')
-  })
-
-  it('creates and verifies attachment read tokens', async () => {
-    const userId = '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7'
-    const token = await createAttachmentToken(userId, config)
-
-    await expect(verifyAttachmentToken(token, config)).resolves.toEqual({ userId })
-    await expect(
-      verifyAttachmentToken((await createTokenPair(userId, config)).accessToken, config),
-    ).rejects.toThrow('附件读取令牌无效')
-  })
-
-  it('rejects attachment read tokens without expiration', async () => {
-    const token = await sign(
-      {
-        sub: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-        type: 'attachment-read',
-        iat: 1,
-      },
-      config.attachmentSecret,
-      'HS256',
-    )
-
-    await expect(verifyAttachmentToken(token, config)).rejects.toThrow('附件读取令牌无效')
   })
 
   it('distinguishes expired access tokens from invalid access tokens', async () => {

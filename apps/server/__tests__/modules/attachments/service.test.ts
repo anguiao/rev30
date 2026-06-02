@@ -7,6 +7,7 @@ import {
   ATTACHMENT_DISPOSITION_INLINE,
   ATTACHMENT_READ_POLICY_AUTHENTICATED,
   ATTACHMENT_READ_POLICY_SIGNED,
+  USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
 } from '@rev30/contracts'
 import { attachments, systemUsers } from '../../../src/db/schema'
@@ -22,6 +23,8 @@ import {
 } from '../../../src/modules/attachments/errors'
 import { ATTACHMENT_MAX_SIZE_BYTES } from '../../../src/modules/attachments/policy'
 import { createAttachmentService } from '../../../src/modules/attachments/service'
+import { createAttachmentAccessToken } from '../../../src/modules/attachments/access-token'
+import { readAuthConfig } from '../../../src/modules/auth/config'
 import { createTestDb } from '../../helpers/db'
 
 const tempDirs: string[] = []
@@ -83,7 +86,10 @@ async function createTempRoot() {
   return root
 }
 
-async function createUser(database: Awaited<ReturnType<typeof createTestDb>>) {
+async function createUser(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  status = USER_STATUS_ENABLED,
+) {
   const userId = randomUUID()
   const now = new Date('2026-05-29T00:00:00.000Z')
 
@@ -91,7 +97,7 @@ async function createUser(database: Awaited<ReturnType<typeof createTestDb>>) {
     id: userId,
     username: `attachment-service-user-${randomUUID()}`,
     nickname: 'Attachment Service User',
-    status: USER_STATUS_ENABLED,
+    status,
     createdAt: now,
     updatedAt: now,
   })
@@ -113,6 +119,10 @@ function getUploadToken(url: string) {
   expect(token).toBeTruthy()
 
   return token!
+}
+
+function createAttachmentReadToken(userId: string) {
+  return createAttachmentAccessToken(userId, readAuthConfig())
 }
 
 afterEach(async () => {
@@ -432,10 +442,11 @@ describe('attachment service', () => {
       userId,
       readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
     })
+    const attachmentReadToken = await createAttachmentReadToken(userId)
 
     const content = await service.readContent(attachment.id, {
       signedToken: 'stale-signed-token',
-      verifyAuthenticatedRead: async () => ({ userId }),
+      attachmentReadToken,
     })
 
     expect(await streamToBytes(content.body)).toEqual(pngBytes)
@@ -456,11 +467,27 @@ describe('attachment service', () => {
       readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
     })
 
+    await expect(service.readContent(attachment.id, {})).rejects.toBeInstanceOf(
+      AttachmentContentUnauthorizedError,
+    )
+  })
+
+  it('rejects authenticated content when the token user is disabled', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+    const disabledUserId = await createUser(database, USER_STATUS_DISABLED)
+    const attachment = await createAttachmentViaSession(service, {
+      bytes: pngBytes,
+      originalName: 'avatar.png',
+      userId,
+      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+    })
+    const attachmentReadToken = await createAttachmentReadToken(disabledUserId)
+
     await expect(
       service.readContent(attachment.id, {
-        verifyAuthenticatedRead: async () => {
-          throw new AttachmentContentUnauthorizedError()
-        },
+        attachmentReadToken,
       }),
     ).rejects.toBeInstanceOf(AttachmentContentUnauthorizedError)
   })
@@ -474,11 +501,9 @@ describe('attachment service', () => {
       userId,
     })
 
-    await expect(
-      service.readContent(attachmentId, {
-        verifyAuthenticatedRead: async () => ({ userId }),
-      }),
-    ).rejects.toBeInstanceOf(AttachmentContentUrlInvalidError)
+    await expect(service.readContent(attachmentId, {})).rejects.toBeInstanceOf(
+      AttachmentContentUrlInvalidError,
+    )
   })
 
   it('rejects unauthorized authenticated content before reading storage', async () => {
@@ -492,9 +517,7 @@ describe('attachment service', () => {
 
     await expect(
       service.readContent(attachmentId, {
-        verifyAuthenticatedRead: async () => {
-          throw new AttachmentContentUnauthorizedError()
-        },
+        attachmentReadToken: 'invalid-token',
       }),
     ).rejects.toBeInstanceOf(AttachmentContentUnauthorizedError)
   })
@@ -588,7 +611,6 @@ describe('attachment service', () => {
 
     const content = await service.readContent(attachment.id, {
       signedToken: token!,
-      verifyAuthenticatedRead: async () => ({ userId }),
     })
 
     expect(await streamToBytes(content.body)).toEqual(pngBytes)
@@ -619,7 +641,6 @@ describe('attachment service', () => {
 
     const content = await service.readContent(attachment.id, {
       signedToken: token!,
-      verifyAuthenticatedRead: async () => ({ userId }),
     })
 
     expect(content.headers['Cache-Control']).toBe('private, max-age=60')
@@ -646,7 +667,6 @@ describe('attachment service', () => {
     await expect(
       service.readContent(attachment.id, {
         signedToken: token!,
-        verifyAuthenticatedRead: async () => ({ userId }),
       }),
     ).rejects.toBeInstanceOf(AttachmentNotFoundError)
   })

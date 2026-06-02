@@ -15,16 +15,17 @@ const props = defineProps<{
 
 const imageFailed = ref(false)
 const isImage = computed(() => props.attachment.mimeType.startsWith('image/'))
-const usesAuthenticatedUrl = computed(
-  () => props.attachment.readPolicy === ATTACHMENT_READ_POLICY_AUTHENTICATED,
-)
 const signedImage = useSignedAttachmentUrl(() => props.attachment.id, {
   disposition: ATTACHMENT_DISPOSITION_INLINE,
-  enabled: computed(() => isImage.value && !usesAuthenticatedUrl.value),
+  enabled: computed(
+    () => isImage.value && props.attachment.readPolicy !== ATTACHMENT_READ_POLICY_AUTHENTICATED,
+  ),
 })
 const previewUrl = computed(() => {
   if (!isImage.value || imageFailed.value) return null
-  if (usesAuthenticatedUrl.value) return getAttachmentContentUrl(props.attachment.id)
+  if (props.attachment.readPolicy === ATTACHMENT_READ_POLICY_AUTHENTICATED) {
+    return getAttachmentContentUrl(props.attachment.id)
+  }
   if (signedImage.error.value !== null) return null
 
   return signedImage.url.value

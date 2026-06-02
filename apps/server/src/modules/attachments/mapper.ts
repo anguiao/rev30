@@ -15,7 +15,7 @@ export function toAttachment(row: AttachmentRow): Attachment {
     extension: row.extension,
     size: row.size,
     usage: row.usage as Attachment['usage'],
-    readPolicy: row.readPolicy,
+    readPolicy: row.readPolicy as Attachment['readPolicy'],
     createdAt: row.createdAt.toISOString(),
   }
 }

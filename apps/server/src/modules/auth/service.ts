@@ -12,7 +12,6 @@ import { toUser } from '../system/users/mapper'
 import type { AuthConfig } from './config'
 import {
   AuthAccessTokenExpiredError,
-  AuthInvalidAttachmentTokenError,
   AuthInvalidCredentialsError,
   AuthInvalidCurrentPasswordError,
   AuthLoginRateLimitedError,
@@ -22,13 +21,7 @@ import {
 import { hashPassword, verifyPassword } from './password'
 import { createAuthRepository } from './repository'
 import { createUserAccessService } from './access'
-import {
-  createAttachmentToken,
-  createTokenPair,
-  verifyAccessToken,
-  verifyAttachmentToken,
-  verifyRefreshToken,
-} from './tokens'
+import { createTokenPair, verifyAccessToken, verifyRefreshToken } from './tokens'
 
 const dummyPasswordHash =
   'scrypt$rev30-auth-dummy-salt$gqCTp4XOR3Xf1LvfHOITCoogF-vpgXvmPkOuxWGr-ChkgWkyXG0_Zf19YMXZ_Oy3mXaxJAVa2LGtlr8sJPJDjA'
@@ -82,14 +75,12 @@ export function createAuthService(database: Db, config: AuthConfig) {
 
   async function createAuthSession(
     user: User,
-  ): Promise<AuthTokenResponse & { refreshToken: string; attachmentToken: string }> {
+  ): Promise<AuthTokenResponse & { refreshToken: string }> {
     const access = await accessService.resolveUserAccess(user.id)
     const tokens = await createTokenResponse(user.id)
-    const attachmentToken = await createAttachmentToken(user.id, config)
 
     return {
       ...tokens,
-      attachmentToken,
       user,
       accessCodes: access.accessCodes,
       menus: access.menus,
@@ -203,21 +194,6 @@ export function createAuthService(database: Db, config: AuthConfig) {
         menus: access.menus,
         isAdmin: access.isAdmin,
       }
-    },
-
-    async verifyAttachmentReadToken(token: string | undefined) {
-      if (!token) {
-        throw new AuthInvalidAttachmentTokenError()
-      }
-
-      const verified = await verifyAttachmentToken(token, config)
-      const account = await repository.findActiveUserById(verified.userId)
-
-      if (!account || account.user.status !== USER_STATUS_ENABLED) {
-        throw new AuthInvalidAttachmentTokenError()
-      }
-
-      return { userId: verified.userId }
     },
 
     async updateProfile(userId: string, input: AuthProfileUpdateInput) {

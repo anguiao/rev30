@@ -11,14 +11,13 @@ import { Hono, type Context, type MiddlewareHandler } from 'hono'
 import type { ZodType } from 'zod'
 import type { Db } from '../../db'
 import type { AuthEnv } from '../../middleware/auth'
-import { UserConflictError, UserInvalidAvatarError } from '../system/users/errors'
 import {
-  clearAttachmentTokenCookie,
-  clearRefreshTokenCookie,
-  getRefreshTokenCookie,
-  setAttachmentTokenCookie,
-  setRefreshTokenCookie,
-} from './cookies'
+  clearAttachmentAccessTokenCookie,
+  createAttachmentAccessToken,
+  setAttachmentAccessTokenCookie,
+} from '../attachments/access-token'
+import { UserConflictError, UserInvalidAvatarError } from '../system/users/errors'
+import { clearRefreshTokenCookie, getRefreshTokenCookie, setRefreshTokenCookie } from './cookies'
 import { readAuthConfig } from './config'
 import {
   AuthInvalidCredentialsError,
@@ -90,19 +89,20 @@ export function createAuthRoutes(database: Db, authMiddleware: MiddlewareHandler
   return app
     .post('/login', loginBodyValidator, async (c) => {
       const body: AuthLoginInput = c.req.valid('json')
-      const { refreshToken, attachmentToken, ...session } = await service.login(body)
+      const { refreshToken, ...session } = await service.login(body)
+      const attachmentAccessToken = await createAttachmentAccessToken(session.user.id, config)
 
       setRefreshTokenCookie(c, refreshToken, config)
-      setAttachmentTokenCookie(c, attachmentToken, config)
+      setAttachmentAccessTokenCookie(c, attachmentAccessToken, config)
 
       return c.json(session)
     })
     .post('/refresh', async (c) => {
-      const { refreshToken, attachmentToken, ...session } = await service.refresh(
-        getRefreshTokenCookie(c),
-      )
+      const { refreshToken, ...session } = await service.refresh(getRefreshTokenCookie(c))
+      const attachmentAccessToken = await createAttachmentAccessToken(session.user.id, config)
+
       setRefreshTokenCookie(c, refreshToken, config)
-      setAttachmentTokenCookie(c, attachmentToken, config)
+      setAttachmentAccessTokenCookie(c, attachmentAccessToken, config)
 
       return c.json(session)
     })
@@ -111,7 +111,7 @@ export function createAuthRoutes(database: Db, authMiddleware: MiddlewareHandler
         await service.logout(getRefreshTokenCookie(c))
       } finally {
         clearRefreshTokenCookie(c)
-        clearAttachmentTokenCookie(c)
+        clearAttachmentAccessTokenCookie(c)
       }
 
       return c.body(null, 204)

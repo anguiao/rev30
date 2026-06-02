@@ -74,7 +74,6 @@ function createSession(refreshToken: string) {
   return {
     accessToken: `${refreshToken}-access-token`,
     refreshToken,
-    attachmentToken: `${refreshToken}-attachment-token`,
     tokenType: 'Bearer' as const,
     expiresIn: 900,
     user: authUser,

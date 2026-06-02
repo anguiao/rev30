@@ -335,7 +335,7 @@ describe('attachment routes', () => {
       attachmentId,
       expect.objectContaining({
         signedToken: 'signed-token',
-        verifyAuthenticatedRead: expect.any(Function),
+        attachmentReadToken: undefined,
       }),
     )
   })
@@ -360,7 +360,7 @@ describe('attachment routes', () => {
       attachmentId,
       expect.objectContaining({
         signedToken: undefined,
-        verifyAuthenticatedRead: expect.any(Function),
+        attachmentReadToken: 'attachment-cookie-token',
       }),
     )
   })
@@ -385,7 +385,7 @@ describe('attachment routes', () => {
       attachmentId,
       expect.objectContaining({
         signedToken: '',
-        verifyAuthenticatedRead: expect.any(Function),
+        attachmentReadToken: 'attachment-cookie-token',
       }),
     )
   })

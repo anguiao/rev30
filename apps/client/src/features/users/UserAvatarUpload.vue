@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ATTACHMENT_READ_POLICY_AUTHENTICATED } from '@rev30/contracts'
 import { computed, ref, watch } from 'vue'
 import { NUpload, type UploadCustomRequestOptions } from 'naive-ui'
 import { getAttachmentContentUrl, uploadAttachment } from '../attachments'
@@ -50,7 +51,7 @@ async function uploadFile(file: File) {
   try {
     const attachment = await uploadAttachment(file, {
       usage: 'avatar',
-      readPolicy: 'authenticated',
+      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
     })
     emit('uploaded', attachment.id)
   } catch (error) {

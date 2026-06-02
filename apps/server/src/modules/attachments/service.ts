@@ -13,8 +13,11 @@ import {
 } from '@rev30/contracts'
 import type { Db } from '../../db'
 import { logger } from '../../runtime/logger'
+import { readAuthConfig } from '../auth/config'
+import { verifyAttachmentAccessToken } from './access-token'
 import { readAttachmentConfig } from './config'
 import {
+  AttachmentContentUnauthorizedError,
   AttachmentContentUrlInvalidError,
   AttachmentContentUrlUnsupportedError,
   AttachmentNotFoundError,
@@ -117,6 +120,7 @@ function isExpired(expiresAt: Date, now: Date) {
 
 export function createAttachmentService(database: Db) {
   const config = readAttachmentConfig()
+  const authConfig = readAuthConfig()
   const storage = new LocalAttachmentStorage(config.storageDir)
   const repository = createAttachmentRepository(database)
   const uploadSessions = new Map<string, UploadSession>()
@@ -337,8 +341,8 @@ export function createAttachmentService(database: Db) {
     async readContent(
       id: string,
       input: {
+        attachmentReadToken?: string | undefined
         signedToken?: string | undefined
-        verifyAuthenticatedRead: () => Promise<{ userId: string }>
       },
     ) {
       const requestedAt = new Date()
@@ -349,7 +353,17 @@ export function createAttachmentService(database: Db) {
       }
 
       if (row.readPolicy === ATTACHMENT_READ_POLICY_AUTHENTICATED) {
-        await input.verifyAuthenticatedRead()
+        if (!input.attachmentReadToken) {
+          throw new AttachmentContentUnauthorizedError()
+        }
+
+        const verified = await verifyAttachmentAccessToken(input.attachmentReadToken, authConfig)
+        const user = await repository.findActiveUserById(verified.userId)
+
+        if (!user) {
+          throw new AttachmentContentUnauthorizedError()
+        }
+
         const stored = await storage.get(row.storageKey)
 
         return createContentResponse(row, stored, {

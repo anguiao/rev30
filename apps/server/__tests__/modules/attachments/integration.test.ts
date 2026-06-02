@@ -1,13 +1,17 @@
+import { randomUUID } from 'node:crypto'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ATTACHMENT_DISPOSITION_INLINE,
-  ATTACHMENT_USAGE_AVATAR,
+  USER_STATUS_ENABLED,
+  type AuthTokenResponse,
   type AttachmentListResponse,
 } from '@rev30/contracts'
 import { createApp } from '../../../src/app'
+import { authPasswordCredentials, systemUsers } from '../../../src/db/schema'
+import { hashPassword } from '../../../src/modules/auth/password'
 import {
   ATTACHMENT_MAX_SIZE_BYTES,
   ATTACHMENT_MAX_SIZE_MESSAGE,
@@ -19,6 +23,9 @@ const tempDirs: string[] = []
 const pngBytes = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
 ])
+const pngFile = new File([pngBytes], 'avatar.png', { type: 'image/png' })
+
+type TestDatabase = Awaited<ReturnType<typeof createTestDb>>
 
 async function createTempRoot() {
   const root = await mkdtemp(join(tmpdir(), 'rev30-attachments-routes-'))
@@ -44,6 +51,55 @@ async function createAttachmentIntegrationFixture() {
   return {
     app,
     authenticated,
+    database,
+  }
+}
+
+async function createPasswordAccount(database: TestDatabase) {
+  const username = `attachment-token-user-${randomUUID()}`
+
+  const [user] = await database
+    .insert(systemUsers)
+    .values({
+      id: randomUUID(),
+      username,
+      nickname: 'Attachment Token User',
+      email: null,
+      phone: null,
+      status: USER_STATUS_ENABLED,
+      createdAt: new Date('2026-05-06T00:00:00.000Z'),
+      updatedAt: new Date('2026-05-06T00:00:00.000Z'),
+    })
+    .returning()
+
+  if (!user) {
+    throw new Error('Expected attachment token user')
+  }
+
+  await database.insert(authPasswordCredentials).values({
+    userId: user.id,
+    passwordHash: await hashPassword('secret-password'),
+  })
+
+  return username
+}
+
+async function login(app: ReturnType<typeof createApp>, database: TestDatabase) {
+  const username = await createPasswordAccount(database)
+  const response = await app.request('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({
+      username,
+      password: 'secret-password',
+    }),
+    headers: {
+      'content-type': 'application/json',
+    },
+  })
+
+  return {
+    body: (await response.json()) as AuthTokenResponse,
+    response,
   }
 }
 
@@ -104,6 +160,62 @@ async function uploadAttachmentThroughSession(
   }
 }
 
+async function uploadAttachmentViaSession(
+  app: ReturnType<typeof createApp>,
+  input: {
+    accessToken: string
+    usage: string
+    readPolicy: 'signed' | 'authenticated'
+    file: File
+  },
+) {
+  const sessionResponse = await app.request('/api/attachments/uploads', {
+    method: 'POST',
+    body: JSON.stringify({
+      originalName: input.file.name,
+      usage: input.usage,
+      readPolicy: input.readPolicy,
+      size: input.file.size,
+      contentType: input.file.type,
+    }),
+    headers: {
+      authorization: `Bearer ${input.accessToken}`,
+      'content-type': 'application/json',
+    },
+  })
+  const session = (await sessionResponse.json()) as {
+    request: {
+      url: string
+    }
+    uploadId: string
+  }
+
+  expect(sessionResponse.status).toBe(201)
+
+  const uploadResponse = await app.request(session.request.url, {
+    method: 'PUT',
+    body: input.file,
+  })
+
+  expect(uploadResponse.status).toBe(204)
+
+  const completeResponse = await app.request(
+    `/api/attachments/uploads/${session.uploadId}/complete`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+      headers: {
+        authorization: `Bearer ${input.accessToken}`,
+        'content-type': 'application/json',
+      },
+    },
+  )
+
+  expect(completeResponse.status).toBe(201)
+
+  return (await completeResponse.json()) as { id: string }
+}
+
 afterEach(async () => {
   vi.unstubAllEnvs()
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })))
@@ -116,7 +228,7 @@ describe('attachment routes integration', () => {
       bytes: pngBytes,
       contentType: 'image/png',
       originalName: 'avatar.png',
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
     })
     const uploaded = (await completeResponse.json()) as {
       createdAt: string
@@ -135,7 +247,7 @@ describe('attachment routes integration', () => {
       mimeType: 'image/png',
       extension: 'png',
       size: pngBytes.byteLength,
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
       createdAt: expect.any(String),
     })
 
@@ -190,16 +302,13 @@ describe('attachment routes integration', () => {
       bytes: pngBytes,
       contentType: 'image/png',
       originalName: 'avatar.png',
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
     })
     const uploaded = (await completeResponse.json()) as { id: string }
 
-    const listResponse = await app.request(
-      `/api/attachments?usage=${ATTACHMENT_USAGE_AVATAR}&keyword=avatar`,
-      {
-        headers: authenticated.authHeaders,
-      },
-    )
+    const listResponse = await app.request('/api/attachments?usage=avatar&keyword=avatar', {
+      headers: authenticated.authHeaders,
+    })
     const listBody = (await listResponse.json()) as AttachmentListResponse
 
     expect(listResponse.status).toBe(200)
@@ -207,7 +316,7 @@ describe('attachment routes integration', () => {
     expect(listBody.list[0]).toMatchObject({
       id: uploaded.id,
       originalName: 'avatar.png',
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
       createdBy: {
         id: authenticated.userId,
       },
@@ -233,7 +342,7 @@ describe('attachment routes integration', () => {
       method: 'POST',
       body: JSON.stringify({
         originalName: 'avatar.png',
-        usage: ATTACHMENT_USAGE_AVATAR,
+        usage: 'avatar',
         size: ATTACHMENT_MAX_SIZE_BYTES + 1,
         contentType: 'image/png',
       }),
@@ -247,5 +356,45 @@ describe('attachment routes integration', () => {
     expect(await response.json()).toEqual({
       message: ATTACHMENT_MAX_SIZE_MESSAGE,
     })
+  })
+
+  it('reads authenticated attachment content through the attachment token cookie', async () => {
+    const { app, database } = await createAttachmentIntegrationFixture()
+    const loggedIn = await login(app, database)
+    const setCookie = loggedIn.response.headers.get('set-cookie') ?? ''
+    const attachmentToken = setCookie.match(/attachment_token=([^;]+)/)?.[1]
+
+    expect(attachmentToken).toBeTruthy()
+
+    const uploaded = await uploadAttachmentViaSession(app, {
+      accessToken: loggedIn.body.accessToken,
+      usage: 'avatar',
+      readPolicy: 'authenticated',
+      file: pngFile,
+    })
+
+    const response = await app.request(`/api/attachments/${uploaded.id}/content`, {
+      headers: {
+        cookie: `attachment_token=${attachmentToken}`,
+      },
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('cache-control')).toBe('private, max-age=300')
+  })
+
+  it('rejects authenticated attachment content without the attachment token cookie', async () => {
+    const { app, database } = await createAttachmentIntegrationFixture()
+    const loggedIn = await login(app, database)
+    const uploaded = await uploadAttachmentViaSession(app, {
+      accessToken: loggedIn.body.accessToken,
+      usage: 'avatar',
+      readPolicy: 'authenticated',
+      file: pngFile,
+    })
+
+    const response = await app.request(`/api/attachments/${uploaded.id}/content`)
+
+    expect(response.status).toBe(401)
   })
 })

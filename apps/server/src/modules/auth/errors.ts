@@ -21,6 +21,13 @@ export class AuthInvalidRefreshTokenError extends Error {
   }
 }
 
+export class AuthInvalidAttachmentTokenError extends Error {
+  constructor() {
+    super('附件读取令牌无效')
+    this.name = new.target.name
+  }
+}
+
 export class AuthInvalidAccessTokenError extends Error {
   constructor() {
     super('访问令牌无效')

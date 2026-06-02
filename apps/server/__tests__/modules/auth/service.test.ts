@@ -46,8 +46,10 @@ vi.mock('../../../src/modules/auth/access', () => ({
 const config: AuthConfig = {
   accessSecret: 'test-access-secret',
   refreshSecret: 'test-refresh-secret',
+  attachmentSecret: 'test-attachment-secret',
   accessExpiresInSeconds: 900,
   refreshExpiresInSeconds: 604800,
+  attachmentExpiresInSeconds: 86400,
   secureCookies: false,
   loginFailureMaxAttempts: 5,
   loginFailureWindowSeconds: 900,

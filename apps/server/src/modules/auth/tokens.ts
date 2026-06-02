@@ -3,6 +3,7 @@ import { sign, verify } from 'hono/jwt'
 import type { AuthConfig } from './config'
 import {
   AuthAccessTokenExpiredError,
+  AuthInvalidAttachmentTokenError,
   AuthInvalidAccessTokenError,
   AuthInvalidRefreshTokenError,
 } from './errors'
@@ -97,5 +98,35 @@ export async function verifyRefreshToken(token: string, config: AuthConfig) {
     }
   } catch {
     throw new AuthInvalidRefreshTokenError()
+  }
+}
+
+export async function createAttachmentToken(userId: string, config: AuthConfig) {
+  const issuedAt = nowInSeconds()
+
+  return sign(
+    {
+      sub: userId,
+      type: 'attachment-read',
+      iat: issuedAt,
+      exp: issuedAt + config.attachmentExpiresInSeconds,
+    },
+    config.attachmentSecret,
+    'HS256',
+  )
+}
+
+export async function verifyAttachmentToken(token: string, config: AuthConfig) {
+  try {
+    const payload = (await verify(token, config.attachmentSecret, 'HS256')) as JwtPayload
+    const userId = readSubject(payload)
+
+    if (!userId || payload.type !== 'attachment-read' || typeof payload.exp !== 'number') {
+      throw new AuthInvalidAttachmentTokenError()
+    }
+
+    return { userId }
+  } catch {
+    throw new AuthInvalidAttachmentTokenError()
   }
 }

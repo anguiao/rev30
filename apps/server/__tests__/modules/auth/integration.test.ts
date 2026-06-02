@@ -4,7 +4,6 @@ import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { sign } from 'hono/jwt'
 import {
-  ATTACHMENT_USAGE_AVATAR,
   AUTH_ACTION_HEADER,
   AUTH_ACTION_REFRESH,
   RESOURCE_TYPE_ACTION,
@@ -245,6 +244,7 @@ describe('auth routes', () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get('set-cookie')).toContain('refresh_token=')
+    expect(response.headers.get('set-cookie')).toContain('attachment_token=')
     expect(body).toMatchObject({
       tokenType: 'Bearer',
       expiresIn: 900,
@@ -257,6 +257,7 @@ describe('auth routes', () => {
     expect(body.accessCodes).toEqual([])
     expect(body.menus).toEqual([])
     expect(body).not.toHaveProperty('refreshToken')
+    expect(body).not.toHaveProperty('attachmentToken')
   })
 
   it('returns a uniform credentials error for wrong passwords and disabled users', async () => {
@@ -834,7 +835,9 @@ describe('auth routes', () => {
 
     expect(refreshResponse.status).toBe(200)
     expect(refreshResponse.headers.get('set-cookie')).toContain('refresh_token=')
+    expect(refreshResponse.headers.get('set-cookie')).toContain('attachment_token=')
     expect(refreshBody).not.toHaveProperty('refreshToken')
+    expect(refreshBody).not.toHaveProperty('attachmentToken')
     expect(refreshBody.accessCodes).toEqual([])
     expect(refreshBody.menus).toEqual([])
     expect(newRefreshToken).toEqual(expect.any(String))
@@ -891,7 +894,9 @@ describe('auth routes', () => {
 
     expect(logoutResponse.status).toBe(204)
     expect(logoutResponse.headers.get('set-cookie')).toContain('refresh_token=')
+    expect(logoutResponse.headers.get('set-cookie')).toContain('attachment_token=')
     expect(logoutResponse.headers.get('set-cookie')).toContain('Max-Age=0')
+    expect(logoutResponse.headers.get('set-cookie')).toContain('Path=/api/attachments')
 
     const refreshResponse = await app.request('/api/auth/refresh', {
       method: 'POST',
@@ -999,7 +1004,7 @@ describe('auth routes', () => {
       mimeType: 'image/png',
       extension: 'png',
       size: 128,
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
       createdBy: registered.user.id,
       createdAt: now,
     })

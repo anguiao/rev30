@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import {
-  ATTACHMENT_USAGE_AVATAR,
   ROLE_STATUS_ENABLED,
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
@@ -154,7 +153,7 @@ async function createAvatarAttachment(
       mimeType: 'image/png',
       extension: 'png',
       size: 128,
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
       createdBy,
       createdAt: now,
     })

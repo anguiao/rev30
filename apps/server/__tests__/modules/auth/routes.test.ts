@@ -74,6 +74,7 @@ function createSession(refreshToken: string) {
   return {
     accessToken: `${refreshToken}-access-token`,
     refreshToken,
+    attachmentToken: `${refreshToken}-attachment-token`,
     tokenType: 'Bearer' as const,
     expiresIn: 900,
     user: authUser,
@@ -135,7 +136,9 @@ describe('auth routes', () => {
 
     expect(loginResponse.status).toBe(200)
     expect(loginResponse.headers.get('set-cookie')).toContain('refresh_token=')
+    expect(loginResponse.headers.get('set-cookie')).toContain('attachment_token=')
     expect(loginBody).not.toHaveProperty('refreshToken')
+    expect(loginBody).not.toHaveProperty('attachmentToken')
     expect(mocks.service.login).toHaveBeenCalledWith({
       username: 'ada',
       password: 'secret-password',
@@ -153,7 +156,9 @@ describe('auth routes', () => {
 
     expect(refreshResponse.status).toBe(200)
     expect(refreshResponse.headers.get('set-cookie')).toContain('refresh_token=')
+    expect(refreshResponse.headers.get('set-cookie')).toContain('attachment_token=')
     expect(refreshBody).not.toHaveProperty('refreshToken')
+    expect(refreshBody).not.toHaveProperty('attachmentToken')
     expect(mocks.service.refresh).toHaveBeenCalledWith('old-refresh-token')
   })
 
@@ -170,7 +175,9 @@ describe('auth routes', () => {
 
       expect(response.status).toBe(500)
       expect(response.headers.get('set-cookie')).toContain('refresh_token=')
+      expect(response.headers.get('set-cookie')).toContain('attachment_token=')
       expect(response.headers.get('set-cookie')).toContain('Max-Age=0')
+      expect(response.headers.get('set-cookie')).toContain('Path=/api/attachments')
       expect(mocks.service.logout).toHaveBeenCalledWith('current-refresh-token')
     } finally {
       consoleError.mockRestore()
@@ -202,7 +209,9 @@ describe('auth routes', () => {
 
     expect(emptyLogoutResponse.status).toBe(204)
     expect(emptyLogoutResponse.headers.get('set-cookie')).toContain('refresh_token=')
+    expect(emptyLogoutResponse.headers.get('set-cookie')).toContain('attachment_token=')
     expect(emptyLogoutResponse.headers.get('set-cookie')).toContain('Max-Age=0')
+    expect(emptyLogoutResponse.headers.get('set-cookie')).toContain('Path=/api/attachments')
     expect(mocks.service.logout).toHaveBeenCalledWith(undefined)
   })
 

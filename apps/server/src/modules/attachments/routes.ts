@@ -15,6 +15,10 @@ import { z } from 'zod'
 import type { Db } from '../../db'
 import { requireAccess } from '../../middleware/access'
 import type { AuthEnv } from '../../middleware/auth'
+import { getAttachmentTokenCookie } from '../auth/cookies'
+import { readAuthConfig } from '../auth/config'
+import { AuthInvalidAttachmentTokenError } from '../auth/errors'
+import { createAuthService } from '../auth/service'
 import {
   AttachmentContentUnauthorizedError,
   AttachmentContentUrlUnsupportedError,
@@ -154,6 +158,7 @@ function attachmentErrorResponse(error: unknown, c: Context) {
 
 export function createAttachmentRoutes(database: Db, authMiddleware: MiddlewareHandler<AuthEnv>) {
   const service = createAttachmentService(database)
+  const authService = createAuthService(database, readAuthConfig())
   const app = new Hono<AuthEnv>()
 
   app.onError((error, c) => attachmentErrorResponse(error, c))
@@ -182,7 +187,15 @@ export function createAttachmentRoutes(database: Db, authMiddleware: MiddlewareH
       const content = await service.readContent(id, {
         signedToken: token,
         verifyAuthenticatedRead: async () => {
-          throw new AttachmentContentUnauthorizedError()
+          try {
+            return await authService.verifyAttachmentReadToken(getAttachmentTokenCookie(c))
+          } catch (error) {
+            if (error instanceof AuthInvalidAttachmentTokenError) {
+              throw new AttachmentContentUnauthorizedError()
+            }
+
+            throw error
+          }
         },
       })
 

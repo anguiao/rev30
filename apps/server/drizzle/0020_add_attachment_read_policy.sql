@@ -1,0 +1,1 @@
+ALTER TABLE "attachments" ADD COLUMN "read_policy" text DEFAULT 'signed' NOT NULL;

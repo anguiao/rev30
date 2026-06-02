@@ -5,11 +5,15 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ATTACHMENT_DISPOSITION_INLINE,
-  ATTACHMENT_USAGE_AVATAR,
+  ATTACHMENT_READ_POLICY_AUTHENTICATED,
+  ATTACHMENT_READ_POLICY_SIGNED,
   USER_STATUS_ENABLED,
 } from '@rev30/contracts'
 import { attachments, systemUsers } from '../../../src/db/schema'
 import {
+  AttachmentContentUnauthorizedError,
+  AttachmentContentUrlInvalidError,
+  AttachmentContentUrlUnsupportedError,
   AttachmentFileTooLargeError,
   AttachmentNotFoundError,
   AttachmentTypeUnsupportedError,
@@ -143,11 +147,14 @@ describe('attachment service', () => {
       bytes: Uint8Array
       originalName: string
       userId: string
+      usage?: string
+      readPolicy?: 'signed' | 'authenticated'
     },
   ) {
     const session = await service.createUploadSession({
       originalName: input.originalName,
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: input.usage ?? 'avatar',
+      readPolicy: input.readPolicy ?? ATTACHMENT_READ_POLICY_SIGNED,
       size: input.bytes.byteLength,
       userId: input.userId,
     })
@@ -165,6 +172,34 @@ describe('attachment service', () => {
     })
   }
 
+  async function createAttachmentWithMissingStorage(
+    database: Awaited<ReturnType<typeof createTestDb>>,
+    input: {
+      readPolicy: 'signed' | 'authenticated'
+      userId: string
+    },
+  ) {
+    const id = randomUUID()
+    const now = new Date('2026-05-29T00:00:00.000Z')
+
+    await database.insert(attachments).values({
+      id,
+      storageProvider: 'local',
+      storageKey: `missing/${id}.png`,
+      originalName: 'avatar.png',
+      mimeType: 'image/png',
+      extension: 'png',
+      size: pngBytes.byteLength,
+      usage: 'avatar',
+      readPolicy: input.readPolicy,
+      checksum: pngChecksum,
+      createdBy: input.userId,
+      createdAt: now,
+    })
+
+    return id
+  }
+
   it('creates upload sessions, accepts authorized uploads, and completes metadata', async () => {
     const database = await createTestDb()
     const service = await createAttachmentServiceForTest(database)
@@ -172,7 +207,8 @@ describe('attachment service', () => {
 
     const session = await service.createUploadSession({
       originalName: 'avatar.png',
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
+      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
       size: pngBytes.byteLength,
       contentType: 'image/png',
       userId,
@@ -206,7 +242,8 @@ describe('attachment service', () => {
       mimeType: 'image/png',
       extension: 'png',
       size: pngBytes.byteLength,
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
+      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
     })
 
     const [row] = await database.select().from(attachments)
@@ -226,7 +263,8 @@ describe('attachment service', () => {
     const userId = await createUser(database)
     const session = await service.createUploadSession({
       originalName: 'avatar.png',
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
+      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
       size: pngBytes.byteLength,
       userId,
     })
@@ -280,7 +318,8 @@ describe('attachment service', () => {
     const userId = await createUser(database)
     const session = await service.createUploadSession({
       originalName: 'avatar.png',
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
+      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
       size: jpegBytes.byteLength,
       userId,
     })
@@ -313,7 +352,8 @@ describe('attachment service', () => {
       mimeType: 'image/png',
       extension: 'png',
       size: pngBytes.byteLength,
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
+      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
     })
 
     const [row] = await database.select().from(attachments)
@@ -338,6 +378,125 @@ describe('attachment service', () => {
     expect(access.request.url).toMatch(
       new RegExp(`^/api/attachments/${attachment.id}/content\\?token=`),
     )
+  })
+
+  it('stores authenticated read policy from upload sessions', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+
+    const attachment = await createAttachmentViaSession(service, {
+      bytes: pngBytes,
+      originalName: 'avatar.png',
+      userId,
+      usage: 'avatar',
+      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+    })
+
+    expect(attachment).toMatchObject({
+      usage: 'avatar',
+      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+    })
+
+    const [row] = await database.select().from(attachments)
+    expect(row).toMatchObject({
+      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+    })
+  })
+
+  it('rejects signed URL creation for authenticated attachments', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+    const attachment = await createAttachmentViaSession(service, {
+      bytes: pngBytes,
+      originalName: 'avatar.png',
+      userId,
+      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+    })
+
+    await expect(
+      service.createContentUrl(attachment.id, {
+        disposition: ATTACHMENT_DISPOSITION_INLINE,
+      }),
+    ).rejects.toBeInstanceOf(AttachmentContentUrlUnsupportedError)
+  })
+
+  it('reads authenticated content with a verified attachment-token user', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+    const attachment = await createAttachmentViaSession(service, {
+      bytes: pngBytes,
+      originalName: 'avatar.png',
+      userId,
+      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+    })
+
+    const content = await service.readContent(attachment.id, {
+      signedToken: 'stale-signed-token',
+      verifyAuthenticatedRead: async () => ({ userId }),
+    })
+
+    expect(await streamToBytes(content.body)).toEqual(pngBytes)
+    expect(content.headers).toMatchObject({
+      'Cache-Control': 'private, max-age=300',
+      'Content-Disposition': 'inline; filename="avatar.png"',
+    })
+  })
+
+  it('rejects authenticated content without a verified attachment token', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+    const attachment = await createAttachmentViaSession(service, {
+      bytes: pngBytes,
+      originalName: 'avatar.png',
+      userId,
+      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+    })
+
+    await expect(
+      service.readContent(attachment.id, {
+        verifyAuthenticatedRead: async () => {
+          throw new AttachmentContentUnauthorizedError()
+        },
+      }),
+    ).rejects.toBeInstanceOf(AttachmentContentUnauthorizedError)
+  })
+
+  it('rejects signed content without a token before reading storage', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+    const attachmentId = await createAttachmentWithMissingStorage(database, {
+      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+      userId,
+    })
+
+    await expect(
+      service.readContent(attachmentId, {
+        verifyAuthenticatedRead: async () => ({ userId }),
+      }),
+    ).rejects.toBeInstanceOf(AttachmentContentUrlInvalidError)
+  })
+
+  it('rejects unauthorized authenticated content before reading storage', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+    const attachmentId = await createAttachmentWithMissingStorage(database, {
+      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+      userId,
+    })
+
+    await expect(
+      service.readContent(attachmentId, {
+        verifyAuthenticatedRead: async () => {
+          throw new AttachmentContentUnauthorizedError()
+        },
+      }),
+    ).rejects.toBeInstanceOf(AttachmentContentUnauthorizedError)
   })
 
   it('uploads legacy Office CFBF files', async () => {
@@ -427,7 +586,10 @@ describe('attachment service', () => {
 
     expect(token).toBeTruthy()
 
-    const content = await service.readContent(attachment.id, token!)
+    const content = await service.readContent(attachment.id, {
+      signedToken: token!,
+      verifyAuthenticatedRead: async () => ({ userId }),
+    })
 
     expect(await streamToBytes(content.body)).toEqual(pngBytes)
     expect(content.headers).toEqual({
@@ -455,7 +617,10 @@ describe('attachment service', () => {
 
     expect(token).toBeTruthy()
 
-    const content = await service.readContent(attachment.id, token!)
+    const content = await service.readContent(attachment.id, {
+      signedToken: token!,
+      verifyAuthenticatedRead: async () => ({ userId }),
+    })
 
     expect(content.headers['Cache-Control']).toBe('private, max-age=60')
   })
@@ -478,9 +643,12 @@ describe('attachment service', () => {
 
     await service.delete(attachment.id)
 
-    await expect(service.readContent(attachment.id, token!)).rejects.toBeInstanceOf(
-      AttachmentNotFoundError,
-    )
+    await expect(
+      service.readContent(attachment.id, {
+        signedToken: token!,
+        verifyAuthenticatedRead: async () => ({ userId }),
+      }),
+    ).rejects.toBeInstanceOf(AttachmentNotFoundError)
   })
 
   it('rejects streams above the global upload size without creating metadata', async () => {
@@ -495,7 +663,8 @@ describe('attachment service', () => {
 
     const session = await service.createUploadSession({
       originalName: 'avatar.png',
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
+      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
       size: ATTACHMENT_MAX_SIZE_BYTES,
       userId,
     })

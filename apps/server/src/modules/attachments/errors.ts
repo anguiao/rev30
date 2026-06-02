@@ -53,3 +53,17 @@ export class AttachmentContentUrlInvalidError extends Error {
     this.name = new.target.name
   }
 }
+
+export class AttachmentContentUrlUnsupportedError extends Error {
+  constructor() {
+    super('附件不支持短期读取链接')
+    this.name = new.target.name
+  }
+}
+
+export class AttachmentContentUnauthorizedError extends Error {
+  constructor() {
+    super('未授权')
+    this.name = new.target.name
+  }
+}

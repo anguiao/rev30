@@ -1,15 +1,13 @@
 import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ATTACHMENT_DISPOSITION_INLINE } from '@rev30/contracts'
 import {
-  ATTACHMENT_DISPOSITION_INLINE,
-  ATTACHMENT_USAGE_AVATAR,
-  ATTACHMENT_USAGE_GENERAL,
-} from '@rev30/contracts'
-import {
+  AttachmentContentUnauthorizedError,
   AttachmentFileTooLargeError,
   AttachmentNotFoundError,
   AttachmentContentUrlInvalidError,
+  AttachmentContentUrlUnsupportedError,
   AttachmentTypeUnsupportedError,
   AttachmentUploadSessionInvalidError,
   AttachmentUploadSessionNotReadyError,
@@ -38,7 +36,8 @@ const attachment = {
   mimeType: 'image/png',
   extension: 'png',
   size: 16,
-  usage: ATTACHMENT_USAGE_AVATAR,
+  usage: 'avatar',
+  readPolicy: 'signed',
   createdAt: '2026-05-29T00:00:00.000Z',
 }
 
@@ -181,7 +180,7 @@ describe('attachment routes', () => {
       method: 'POST',
       body: JSON.stringify({
         originalName: 'avatar.png',
-        usage: ATTACHMENT_USAGE_AVATAR,
+        usage: 'avatar',
         size: 4,
         contentType: 'image/png',
       }),
@@ -193,7 +192,8 @@ describe('attachment routes', () => {
     expect(await sessionResponse.json()).toEqual(uploadSession)
     expect(mocks.service.createUploadSession).toHaveBeenCalledWith({
       originalName: 'avatar.png',
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
+      readPolicy: 'signed',
       size: 4,
       contentType: 'image/png',
       userId: currentUser.id,
@@ -299,7 +299,7 @@ describe('attachment routes', () => {
 
     mocks.authState.accessCodes = ['content:attachment:list']
     const response = await app.request(
-      `/api/attachments?page=2&pageSize=5&usage=${ATTACHMENT_USAGE_AVATAR}&keyword=avatar`,
+      '/api/attachments?page=2&pageSize=5&usage=avatar&keyword=avatar',
     )
 
     expect(response.status).toBe(200)
@@ -311,7 +311,7 @@ describe('attachment routes', () => {
     expect(mocks.service.list).toHaveBeenCalledWith({
       page: 2,
       pageSize: 5,
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
       keyword: 'avatar',
     })
   })
@@ -331,17 +331,48 @@ describe('attachment routes', () => {
     expect(response.headers.get('content-length')).toBe('4')
     expect(response.headers.get('x-content-type-options')).toBe('nosniff')
     expect(mocks.authMiddleware).not.toHaveBeenCalled()
-    expect(mocks.service.readContent).toHaveBeenCalledWith(attachmentId, 'signed-token')
+    expect(mocks.service.readContent).toHaveBeenCalledWith(
+      attachmentId,
+      expect.objectContaining({
+        signedToken: 'signed-token',
+        verifyAuthenticatedRead: expect.any(Function),
+      }),
+    )
   })
 
-  it('validates upload sessions, request bodies, ids, and content and upload tokens before service calls', async () => {
+  it('passes optional signed and authenticated read credentials to content reads', async () => {
+    const app = createAttachmentTestApp()
+    mocks.service.readContent.mockResolvedValueOnce({
+      body: new ReadableStream(),
+      headers: {
+        'Content-Type': 'image/png',
+      },
+    })
+
+    const response = await app.request(`/api/attachments/${attachmentId}/content`, {
+      headers: {
+        cookie: 'attachment_token=attachment-cookie-token',
+      },
+    })
+
+    expect(response.status).toBe(200)
+    expect(mocks.service.readContent).toHaveBeenCalledWith(
+      attachmentId,
+      expect.objectContaining({
+        signedToken: undefined,
+        verifyAuthenticatedRead: expect.any(Function),
+      }),
+    )
+  })
+
+  it('validates upload sessions, request bodies, ids, and upload tokens before service calls', async () => {
     const app = createAttachmentTestApp()
 
     const invalidCreateResponse = await app.request('/api/attachments/uploads', {
       method: 'POST',
       body: JSON.stringify({
         originalName: 'avatar.png',
-        usage: ATTACHMENT_USAGE_AVATAR,
+        usage: 'avatar',
       }),
       headers: {
         'content-type': 'application/json',
@@ -384,13 +415,6 @@ describe('attachment routes', () => {
     expect(await invalidBodyResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.createContentUrl).not.toHaveBeenCalled()
 
-    const missingTokenResponse = await app.request(`/api/attachments/${attachmentId}/content`)
-    expect(missingTokenResponse.status).toBe(400)
-    expect(await missingTokenResponse.json()).toEqual({
-      message: '附件链接已失效',
-    })
-    expect(mocks.service.readContent).not.toHaveBeenCalled()
-
     const missingUploadTokenResponse = await app.request(
       `/api/attachments/uploads/${attachmentId}/content`,
       {
@@ -407,6 +431,32 @@ describe('attachment routes', () => {
     expect(mocks.service.uploadSessionContent).not.toHaveBeenCalled()
   })
 
+  it('maps unsupported signed URL requests for authenticated attachments', async () => {
+    mocks.authState.accessCodes = ['content:attachment:list']
+    const app = createAttachmentTestApp()
+    mocks.service.createContentUrl.mockRejectedValueOnce(
+      new AttachmentContentUrlUnsupportedError(),
+    )
+
+    const response = await app.request(`/api/attachments/${attachmentId}/content-url`, {
+      method: 'POST',
+      body: JSON.stringify({ disposition: ATTACHMENT_DISPOSITION_INLINE }),
+    })
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ message: '附件不支持短期读取链接' })
+  })
+
+  it('maps unauthorized authenticated content reads to 401', async () => {
+    const app = createAttachmentTestApp()
+    mocks.service.readContent.mockRejectedValueOnce(new AttachmentContentUnauthorizedError())
+
+    const response = await app.request(`/api/attachments/${attachmentId}/content`)
+
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ message: '未授权' })
+  })
+
   it('maps attachment domain errors to route responses', async () => {
     mocks.authState.accessCodes = ['content:attachment:list']
     const app = createAttachmentTestApp()
@@ -418,7 +468,7 @@ describe('attachment routes', () => {
       method: 'POST',
       body: JSON.stringify({
         originalName: 'avatar.png',
-        usage: ATTACHMENT_USAGE_GENERAL,
+        usage: 'general',
         size: 4,
       }),
       headers: {
@@ -505,7 +555,7 @@ describe('attachment routes', () => {
     const invalidSignedTokenResponse = await app.request(
       `/api/attachments/${attachmentId}/content?token=expired-token`,
     )
-    expect(invalidSignedTokenResponse.status).toBe(403)
+    expect(invalidSignedTokenResponse.status).toBe(401)
     expect(await readJson(invalidSignedTokenResponse)).toEqual({
       message: '附件链接已失效',
     })

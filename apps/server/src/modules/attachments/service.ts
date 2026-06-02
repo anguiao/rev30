@@ -4,20 +4,25 @@ import { fileTypeStream } from 'file-type'
 import { contentType } from 'mime-types'
 import {
   ATTACHMENT_DISPOSITION_ATTACHMENT,
+  ATTACHMENT_DISPOSITION_INLINE,
   type AttachmentDisposition,
   type AttachmentListQuery,
+  ATTACHMENT_READ_POLICY_AUTHENTICATED,
+  ATTACHMENT_READ_POLICY_SIGNED,
   type AttachmentUploadSessionCreateInput,
 } from '@rev30/contracts'
 import type { Db } from '../../db'
 import { logger } from '../../runtime/logger'
 import { readAttachmentConfig } from './config'
 import {
+  AttachmentContentUrlInvalidError,
+  AttachmentContentUrlUnsupportedError,
   AttachmentNotFoundError,
   AttachmentUploadRequestError,
   AttachmentUploadSessionInvalidError,
   AttachmentUploadSessionNotReadyError,
 } from './errors'
-import { toAttachment, toAttachmentListItem } from './mapper'
+import { type AttachmentRow, toAttachment, toAttachmentListItem } from './mapper'
 import {
   type AttachmentFileType,
   acceptAttachmentUploadType,
@@ -84,6 +89,28 @@ function createContentDispositionHeader(disposition: AttachmentDisposition, file
   return `${disposition}; filename="${createDownloadFilename(filename)}"`
 }
 
+function createContentResponse(
+  row: AttachmentRow,
+  stored: Awaited<ReturnType<LocalAttachmentStorage['get']>>,
+  input: {
+    cacheControl: string
+    disposition: AttachmentDisposition
+  },
+) {
+  const disposition = resolveContentDisposition(input.disposition, row.mimeType)
+
+  return {
+    body: stored.body,
+    headers: {
+      'Cache-Control': input.cacheControl,
+      'Content-Disposition': createContentDispositionHeader(disposition, row.originalName),
+      'Content-Length': String(stored.size),
+      'Content-Type': contentType(row.mimeType) || row.mimeType,
+      'X-Content-Type-Options': 'nosniff',
+    },
+  }
+}
+
 function isExpired(expiresAt: Date, now: Date) {
   return expiresAt.getTime() <= now.getTime()
 }
@@ -133,6 +160,7 @@ export function createAttachmentService(database: Db) {
         expiresAt,
         filenameType,
         originalName: input.originalName,
+        readPolicy: input.readPolicy,
         size: input.size,
         storageKey,
         uploadId,
@@ -232,6 +260,7 @@ export function createAttachmentService(database: Db) {
           extension: session.storedContent.extension,
           size: session.storedContent.size,
           usage: session.usage,
+          readPolicy: session.readPolicy,
           checksum: session.storedContent.checksum,
           createdBy: session.userId,
           createdAt: session.storedContent.storedAt,
@@ -281,6 +310,10 @@ export function createAttachmentService(database: Db) {
         throw new AttachmentNotFoundError()
       }
 
+      if (row.readPolicy !== ATTACHMENT_READ_POLICY_SIGNED) {
+        throw new AttachmentContentUrlUnsupportedError()
+      }
+
       const expiresAt = new Date(Date.now() + config.contentUrlTtlSeconds * 1000)
       const disposition = input.disposition ?? ATTACHMENT_DISPOSITION_ATTACHMENT
       const token = createAttachmentContentToken(
@@ -301,33 +334,45 @@ export function createAttachmentService(database: Db) {
       }
     },
 
-    async readContent(id: string, token: string) {
+    async readContent(
+      id: string,
+      input: {
+        signedToken?: string | undefined
+        verifyAuthenticatedRead: () => Promise<{ userId: string }>
+      },
+    ) {
       const requestedAt = new Date()
-      const payload = verifyAttachmentContentToken(token, {
-        attachmentId: id,
-        now: requestedAt,
-        secret: config.signingSecret,
-      })
       const row = await repository.findActiveById(id)
 
       if (!row) {
         throw new AttachmentNotFoundError()
       }
 
-      const stored = await storage.get(row.storageKey)
-      const disposition = resolveContentDisposition(payload.disposition, row.mimeType)
-      const resolvedContentType = contentType(row.mimeType) || row.mimeType
+      if (row.readPolicy === ATTACHMENT_READ_POLICY_AUTHENTICATED) {
+        await input.verifyAuthenticatedRead()
+        const stored = await storage.get(row.storageKey)
 
-      return {
-        body: stored.body,
-        headers: {
-          'Cache-Control': createCacheControlHeader(payload.expiresAt, requestedAt),
-          'Content-Disposition': createContentDispositionHeader(disposition, row.originalName),
-          'Content-Length': String(stored.size),
-          'Content-Type': resolvedContentType,
-          'X-Content-Type-Options': 'nosniff',
-        },
+        return createContentResponse(row, stored, {
+          cacheControl: 'private, max-age=300',
+          disposition: ATTACHMENT_DISPOSITION_INLINE,
+        })
       }
+
+      if (!input.signedToken) {
+        throw new AttachmentContentUrlInvalidError()
+      }
+
+      const payload = verifyAttachmentContentToken(input.signedToken, {
+        attachmentId: id,
+        now: requestedAt,
+        secret: config.signingSecret,
+      })
+      const stored = await storage.get(row.storageKey)
+
+      return createContentResponse(row, stored, {
+        cacheControl: createCacheControlHeader(payload.expiresAt, requestedAt),
+        disposition: payload.disposition,
+      })
     },
 
     async delete(id: string) {

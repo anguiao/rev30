@@ -16,6 +16,8 @@ import { sql } from 'drizzle-orm'
 import {
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_VISIBILITY_TARGETED,
+  ATTACHMENT_READ_POLICY_AUTHENTICATED,
+  ATTACHMENT_READ_POLICY_SIGNED,
   CONFIG_STATUS_ENABLED,
   DEPARTMENT_STATUS_ENABLED,
   DICTIONARY_STATUS_ENABLED,
@@ -233,6 +235,11 @@ export const attachments = pgTable(
     extension: text('extension').notNull(),
     size: integer('size').notNull(),
     usage: text('usage').notNull(),
+    readPolicy: text('read_policy', {
+      enum: [ATTACHMENT_READ_POLICY_SIGNED, ATTACHMENT_READ_POLICY_AUTHENTICATED],
+    })
+      .notNull()
+      .default(ATTACHMENT_READ_POLICY_SIGNED),
     checksum: text('checksum'),
     createdBy: uuid('created_by')
       .notNull()

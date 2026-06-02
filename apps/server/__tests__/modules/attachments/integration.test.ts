@@ -378,9 +378,16 @@ describe('attachment routes integration', () => {
         cookie: `attachment_token=${attachmentToken}`,
       },
     })
+    const blankTokenResponse = await app.request(`/api/attachments/${uploaded.id}/content?token=`, {
+      headers: {
+        cookie: `attachment_token=${attachmentToken}`,
+      },
+    })
 
     expect(response.status).toBe(200)
     expect(response.headers.get('cache-control')).toBe('private, max-age=300')
+    expect(blankTokenResponse.status).toBe(200)
+    expect(blankTokenResponse.headers.get('cache-control')).toBe('private, max-age=300')
   })
 
   it('rejects authenticated attachment content without the attachment token cookie', async () => {

@@ -365,6 +365,31 @@ describe('attachment routes', () => {
     )
   })
 
+  it('passes blank content tokens through for policy-driven reads', async () => {
+    const app = createAttachmentTestApp()
+    mocks.service.readContent.mockResolvedValueOnce({
+      body: new ReadableStream(),
+      headers: {
+        'Content-Type': 'image/png',
+      },
+    })
+
+    const response = await app.request(`/api/attachments/${attachmentId}/content?token=`, {
+      headers: {
+        cookie: 'attachment_token=attachment-cookie-token',
+      },
+    })
+
+    expect(response.status).toBe(200)
+    expect(mocks.service.readContent).toHaveBeenCalledWith(
+      attachmentId,
+      expect.objectContaining({
+        signedToken: '',
+        verifyAuthenticatedRead: expect.any(Function),
+      }),
+    )
+  })
+
   it('validates upload sessions, request bodies, ids, and upload tokens before service calls', async () => {
     const app = createAttachmentTestApp()
 

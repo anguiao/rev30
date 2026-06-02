@@ -38,7 +38,7 @@ const attachmentUploadSessionIdParamSchema = z.object({
   uploadId: z.uuid(),
 })
 const attachmentContentQuerySchema = z.object({
-  token: z.string().trim().min(1).optional(),
+  token: z.string().trim().optional(),
 })
 const attachmentUploadContentQuerySchema = z.object({
   token: z.string().trim().min(1),

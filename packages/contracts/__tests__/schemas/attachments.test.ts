@@ -2,13 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   ATTACHMENT_DISPOSITION_ATTACHMENT,
   ATTACHMENT_DISPOSITION_INLINE,
-  ATTACHMENT_USAGE_AVATAR,
-  ATTACHMENT_USAGE_GENERAL,
-  ATTACHMENT_USAGE_RICH_TEXT,
   attachmentContentUrlInputSchema,
   attachmentContentUrlSchema,
   attachmentListQuerySchema,
   attachmentListResponseSchema,
+  attachmentReadPolicySchema,
   attachmentSchema,
   attachmentTransferRequestSchema,
   attachmentUploadSessionCompleteInputSchema,
@@ -23,13 +21,13 @@ describe('attachment schemas', () => {
       attachmentListQuerySchema.parse({
         page: '2',
         pageSize: '10',
-        usage: ATTACHMENT_USAGE_AVATAR,
+        usage: 'avatar',
         keyword: ' avatar.png ',
       }),
     ).toEqual({
       page: 2,
       pageSize: 10,
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
       keyword: 'avatar.png',
     })
 
@@ -41,7 +39,8 @@ describe('attachment schemas', () => {
           mimeType: 'image/png',
           extension: 'png',
           size: 12345,
-          usage: ATTACHMENT_USAGE_AVATAR,
+          usage: 'avatar',
+          readPolicy: 'signed',
           createdBy: {
             id: '22222222-2222-4222-8222-222222222222',
             username: 'ada',
@@ -67,6 +66,7 @@ describe('attachment schemas', () => {
             nickname: 'Ada Lovelace',
           },
           originalName: 'avatar.png',
+          readPolicy: 'signed',
         },
       ],
     })
@@ -80,20 +80,29 @@ describe('attachment schemas', () => {
         mimeType: 'image/png',
         extension: 'png',
         size: 12345,
-        usage: ATTACHMENT_USAGE_AVATAR,
+        usage: 'avatar',
+        readPolicy: 'signed',
         createdAt: '2026-05-29T00:00:00.000Z',
       }),
     ).toMatchObject({
       originalName: 'avatar.png',
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
+      readPolicy: 'signed',
     })
   })
 
-  it('exports supported upload usages', () => {
-    expect(attachmentUsageSchema.parse(ATTACHMENT_USAGE_GENERAL)).toBe(ATTACHMENT_USAGE_GENERAL)
-    expect(attachmentUsageSchema.parse(ATTACHMENT_USAGE_AVATAR)).toBe(ATTACHMENT_USAGE_AVATAR)
-    expect(attachmentUsageSchema.parse(ATTACHMENT_USAGE_RICH_TEXT)).toBe(ATTACHMENT_USAGE_RICH_TEXT)
-    expect(attachmentUsageSchema.safeParse('rich-text-image').success).toBe(false)
+  it('accepts arbitrary non-blank attachment usages', () => {
+    expect(attachmentUsageSchema.parse('general')).toBe('general')
+    expect(attachmentUsageSchema.parse('avatar')).toBe('avatar')
+    expect(attachmentUsageSchema.parse('rich-text-image')).toBe('rich-text-image')
+    expect(attachmentUsageSchema.safeParse('').success).toBe(false)
+    expect(attachmentUsageSchema.safeParse('   ').success).toBe(false)
+  })
+
+  it('parses attachment read policies', () => {
+    expect(attachmentReadPolicySchema.parse('signed')).toBe('signed')
+    expect(attachmentReadPolicySchema.parse('authenticated')).toBe('authenticated')
+    expect(attachmentReadPolicySchema.safeParse('public').success).toBe(false)
   })
 
   it('defaults content URL disposition to attachment', () => {
@@ -125,7 +134,8 @@ describe('attachment schemas', () => {
         mimeType: 'image/png',
         extension: 'png',
         size: 123,
-        usage: ATTACHMENT_USAGE_AVATAR,
+        usage: 'avatar',
+        readPolicy: 'signed',
         createdAt: '2026-05-29T00:00:00.000Z',
       }).success,
     ).toBe(false)
@@ -137,7 +147,8 @@ describe('attachment schemas', () => {
         mimeType: '',
         extension: 'png',
         size: 123,
-        usage: ATTACHMENT_USAGE_AVATAR,
+        usage: 'avatar',
+        readPolicy: 'signed',
         createdAt: '2026-05-29T00:00:00.000Z',
       }).success,
     ).toBe(false)
@@ -149,7 +160,8 @@ describe('attachment schemas', () => {
         mimeType: 'image/png',
         extension: ' ',
         size: 123,
-        usage: ATTACHMENT_USAGE_AVATAR,
+        usage: 'avatar',
+        readPolicy: 'signed',
         createdAt: '2026-05-29T00:00:00.000Z',
       }).success,
     ).toBe(false)
@@ -188,15 +200,28 @@ describe('attachment schemas', () => {
     expect(
       attachmentUploadSessionCreateInputSchema.parse({
         originalName: 'avatar.png',
-        usage: ATTACHMENT_USAGE_AVATAR,
+        usage: 'avatar',
         size: 12345,
         contentType: 'image/png',
       }),
     ).toEqual({
       originalName: 'avatar.png',
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'avatar',
+      readPolicy: 'signed',
       size: 12345,
       contentType: 'image/png',
+    })
+
+    expect(
+      attachmentUploadSessionCreateInputSchema.parse({
+        originalName: 'editor-image.png',
+        usage: 'rich-text-image',
+        readPolicy: 'authenticated',
+        size: 12345,
+      }),
+    ).toMatchObject({
+      usage: 'rich-text-image',
+      readPolicy: 'authenticated',
     })
 
     expect(
@@ -223,7 +248,7 @@ describe('attachment schemas', () => {
     expect(
       attachmentUploadSessionCreateInputSchema.safeParse({
         originalName: 'avatar.png',
-        usage: ATTACHMENT_USAGE_AVATAR,
+        usage: 'avatar',
         size: -1,
       }).success,
     ).toBe(false)
@@ -231,7 +256,7 @@ describe('attachment schemas', () => {
     expect(
       attachmentUploadSessionCreateInputSchema.safeParse({
         originalName: 'avatar.png',
-        usage: ATTACHMENT_USAGE_AVATAR,
+        usage: 'avatar',
         size: 1,
         extra: true,
       }).success,

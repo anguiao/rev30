@@ -3,14 +3,15 @@ import { nonBlankString } from './common/inputs'
 import { paginationQuerySchema } from './common/pagination'
 import { optionalQueryValue, optionalTrimmedQueryString } from './query'
 
-export const ATTACHMENT_USAGE_GENERAL = 'general'
-export const ATTACHMENT_USAGE_AVATAR = 'avatar'
-export const ATTACHMENT_USAGE_RICH_TEXT = 'rich-text'
+export const ATTACHMENT_READ_POLICY_SIGNED = 'signed'
+export const ATTACHMENT_READ_POLICY_AUTHENTICATED = 'authenticated'
 
-export const attachmentUsageSchema = z.enum(
-  [ATTACHMENT_USAGE_GENERAL, ATTACHMENT_USAGE_AVATAR, ATTACHMENT_USAGE_RICH_TEXT],
-  '上传用途无效',
+export const attachmentReadPolicySchema = z.enum(
+  [ATTACHMENT_READ_POLICY_SIGNED, ATTACHMENT_READ_POLICY_AUTHENTICATED],
+  '读取策略无效',
 )
+
+export const attachmentUsageSchema = nonBlankString('上传用途无效')
 
 export const ATTACHMENT_DISPOSITION_INLINE = 'inline'
 export const ATTACHMENT_DISPOSITION_ATTACHMENT = 'attachment'
@@ -29,6 +30,7 @@ export const attachmentSchema = z.object({
   extension: nonBlankString(),
   size: z.number().int().min(0),
   usage: attachmentUsageSchema,
+  readPolicy: attachmentReadPolicySchema,
   createdAt: z.iso.datetime(),
 })
 
@@ -68,6 +70,7 @@ export const attachmentUploadSessionCreateInputSchema = z
   .object({
     originalName: nonBlankString(),
     usage: attachmentUsageSchema,
+    readPolicy: attachmentReadPolicySchema.default(ATTACHMENT_READ_POLICY_SIGNED),
     size: z.number().int().min(0),
     contentType: nonBlankString().optional(),
   })
@@ -98,6 +101,7 @@ export const attachmentContentUrlSchema = z.object({
 })
 
 export type AttachmentUsage = z.infer<typeof attachmentUsageSchema>
+export type AttachmentReadPolicy = z.infer<typeof attachmentReadPolicySchema>
 export type AttachmentDisposition = z.infer<typeof attachmentDispositionSchema>
 export type Attachment = z.infer<typeof attachmentSchema>
 export type AttachmentCreatedBy = z.infer<typeof attachmentCreatedBySchema>

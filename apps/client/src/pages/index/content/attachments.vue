@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import bytes from 'bytes'
-import { computed, h, ref } from 'vue'
+import { computed, h, nextTick, ref } from 'vue'
 import { useQuery, useQueryCache } from '@pinia/colada'
 import type { ButtonProps, DataTableColumns } from 'naive-ui'
 import {
@@ -11,7 +11,6 @@ import {
   NFormItem,
   NInput,
   NPagination,
-  NSelect,
   useDialog,
   useMessage,
 } from 'naive-ui'
@@ -21,13 +20,7 @@ import {
   type AttachmentListResponse,
 } from '@rev30/contracts'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
-import {
-  ATTACHMENT_USAGE_FILTER_ALL,
-  attachmentUsageFilterOptions,
-  attachmentUsageLabels,
-  formatDateTime,
-  type AttachmentUsageFilter,
-} from '../../../features/content'
+import { formatDateTime } from '../../../features/content'
 import {
   AttachmentPreviewCell,
   deleteAttachment,
@@ -43,7 +36,7 @@ const dialog = useDialog()
 const queryCache = useQueryCache()
 
 const keyword = ref('')
-const usage = ref<AttachmentUsageFilter>(ATTACHMENT_USAGE_FILTER_ALL)
+const usage = ref('')
 const query = ref<AttachmentListQuery>({
   page: 1,
   pageSize: 20,
@@ -67,7 +60,7 @@ const {
     query.value.page,
     query.value.pageSize,
     query.value.keyword ?? '',
-    query.value.usage ?? ATTACHMENT_USAGE_FILTER_ALL,
+    query.value.usage ?? '',
   ],
   placeholderData: () => emptyAttachmentsData,
   query: () => listAttachments(query.value),
@@ -82,22 +75,25 @@ const loadErrorMessage = computed(() =>
 
 function handleSearch() {
   const nextKeyword = keyword.value.trim()
+  const nextUsage = usage.value.trim()
 
   query.value = {
     page: 1,
     pageSize: query.value.pageSize,
     ...(nextKeyword.length > 0 ? { keyword: nextKeyword } : {}),
-    ...(usage.value !== ATTACHMENT_USAGE_FILTER_ALL ? { usage: usage.value } : {}),
+    ...(nextUsage.length > 0 ? { usage: nextUsage } : {}),
   } satisfies AttachmentListQuery
 }
 
-function handleReset() {
+async function handleReset() {
   keyword.value = ''
-  usage.value = ATTACHMENT_USAGE_FILTER_ALL
+  usage.value = ''
   query.value = {
     page: 1,
     pageSize: query.value.pageSize,
   }
+  await nextTick()
+  await invalidateAttachmentListQueries()
 }
 
 async function invalidateAttachmentListQueries() {
@@ -162,8 +158,7 @@ const columns: DataTableColumns<AttachmentListItem> = [
   {
     title: '用途',
     key: 'usage',
-    width: 110,
-    render: (attachment) => attachmentUsageLabels[attachment.usage],
+    width: 140,
   },
   {
     title: '上传人',
@@ -219,12 +214,12 @@ const columns: DataTableColumns<AttachmentListItem> = [
           />
         </NFormItem>
         <NFormItem label="用途">
-          <NSelect
+          <NInput
             v-model:value="usage"
             data-test="attachments-usage"
-            :options="attachmentUsageFilterOptions"
-            placeholder="全部"
-            class="w-40!"
+            clearable
+            placeholder="请输入用途"
+            class="w-48!"
           />
         </NFormItem>
         <div class="flex gap-2">

@@ -9,25 +9,19 @@ import {
   ANNOUNCEMENT_TYPE_NOTICE,
   ANNOUNCEMENT_VISIBILITY_ALL,
   ANNOUNCEMENT_VISIBILITY_TARGETED,
-  ATTACHMENT_USAGE_AVATAR,
-  ATTACHMENT_USAGE_GENERAL,
-  ATTACHMENT_USAGE_RICH_TEXT,
   type AnnouncementStatus,
   type AnnouncementTargetType,
   type AnnouncementType,
   type AnnouncementVisibility,
-  type AttachmentUsage,
 } from '@rev30/contracts'
 
 export const ANNOUNCEMENT_TYPE_FILTER_ALL = 'all'
 export const ANNOUNCEMENT_STATUS_FILTER_ALL = 'all'
 export const ANNOUNCEMENT_PINNED_FILTER_ALL = 'all'
-export const ATTACHMENT_USAGE_FILTER_ALL = 'all'
 
 export type AnnouncementTypeFilter = AnnouncementType | typeof ANNOUNCEMENT_TYPE_FILTER_ALL
 export type AnnouncementStatusFilter = AnnouncementStatus | typeof ANNOUNCEMENT_STATUS_FILTER_ALL
 export type AnnouncementPinnedFilter = typeof ANNOUNCEMENT_PINNED_FILTER_ALL | 'true' | 'false'
-export type AttachmentUsageFilter = AttachmentUsage | typeof ATTACHMENT_USAGE_FILTER_ALL
 
 type AnnouncementStatusTagType = 'default' | 'success' | 'warning'
 
@@ -115,23 +109,6 @@ export const announcementPinnedFilterOptions: Array<{
   { label: '是', value: 'true' },
   { label: '否', value: 'false' },
 ]
-
-export const attachmentUsageLabels = {
-  [ATTACHMENT_USAGE_GENERAL]: '通用',
-  [ATTACHMENT_USAGE_AVATAR]: '头像',
-  [ATTACHMENT_USAGE_RICH_TEXT]: '富文本',
-} as const satisfies Record<AttachmentUsage, string>
-
-export const attachmentUsageSelectOptions: Array<{ label: string; value: AttachmentUsage }> = [
-  { label: attachmentUsageLabels[ATTACHMENT_USAGE_GENERAL], value: ATTACHMENT_USAGE_GENERAL },
-  { label: attachmentUsageLabels[ATTACHMENT_USAGE_AVATAR], value: ATTACHMENT_USAGE_AVATAR },
-  { label: attachmentUsageLabels[ATTACHMENT_USAGE_RICH_TEXT], value: ATTACHMENT_USAGE_RICH_TEXT },
-]
-
-export const attachmentUsageFilterOptions: Array<{
-  label: string
-  value: AttachmentUsageFilter
-}> = [{ label: '全部', value: ATTACHMENT_USAGE_FILTER_ALL }, ...attachmentUsageSelectOptions]
 
 const dateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
   year: 'numeric',

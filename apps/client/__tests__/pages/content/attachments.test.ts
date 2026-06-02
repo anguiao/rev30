@@ -1,16 +1,18 @@
 import bytes from 'bytes'
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NImage, NPagination, NSelect } from 'naive-ui'
+import { NImage, NPagination } from 'naive-ui'
 import {
-  ATTACHMENT_USAGE_AVATAR,
-  ATTACHMENT_USAGE_GENERAL,
   type AttachmentListItem,
   type AttachmentListResponse,
   type AuthTokenResponse,
 } from '@rev30/contracts'
 import { computed } from 'vue'
-import { deleteAttachment, listAttachments } from '../../../src/features/attachments'
+import {
+  deleteAttachment,
+  getAttachmentContentUrl,
+  listAttachments,
+} from '../../../src/features/attachments'
 import { useSignedAttachmentUrl } from '../../../src/features/attachments/useSignedAttachmentUrl'
 import AttachmentsPage from '../../../src/pages/index/content/attachments.vue'
 import {
@@ -39,38 +41,40 @@ const authSession: AuthTokenResponse = {
   accessCodes: ['content:attachment:list', 'content:attachment:delete'],
 }
 
-const avatarAttachment: AttachmentListItem = {
+const authenticatedImage: AttachmentListItem = {
   id: '11111111-1111-4111-8111-111111111111',
   originalName: 'avatar.png',
   mimeType: 'image/png',
   extension: 'png',
-  size: 2048,
-  usage: ATTACHMENT_USAGE_AVATAR,
-  createdAt: '2026-05-21T00:00:00.000Z',
+  size: 123,
+  usage: 'avatar',
+  readPolicy: 'authenticated',
+  createdAt: '2026-06-02T00:00:00.000Z',
   createdBy: {
-    id: '21111111-1111-4111-8111-111111111111',
+    id: '22222222-2222-4222-8222-222222222222',
     username: 'ada',
-    nickname: 'Ada Lovelace',
+    nickname: 'Ada',
   },
 }
 
-const generalAttachment: AttachmentListItem = {
+const signedImage: AttachmentListItem = {
   id: '22222222-2222-4111-8111-111111111112',
-  originalName: 'document.pdf',
-  mimeType: 'application/pdf',
-  extension: 'pdf',
+  originalName: 'report.png',
+  mimeType: 'image/png',
+  extension: 'png',
   size: 1024,
-  usage: ATTACHMENT_USAGE_GENERAL,
+  usage: 'custom-report',
+  readPolicy: 'signed',
   createdAt: '2026-05-22T00:00:00.000Z',
   createdBy: {
-    id: '22222222-1111-4111-8111-111111111111',
+    id: '33333333-3333-4333-8333-333333333333',
     username: 'linus',
     nickname: 'Linus',
   },
 }
 
 const attachmentsResponse: AttachmentListResponse = {
-  list: [avatarAttachment, generalAttachment],
+  list: [authenticatedImage, signedImage],
   total: 2,
   page: 1,
   pageSize: 20,
@@ -115,16 +119,35 @@ describe('attachments page', () => {
 
     expect(listAttachmentsMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
     expect(wrapper.text()).toContain('附件资源')
-    expect(wrapper.text()).toContain(avatarAttachment.originalName)
-    expect(wrapper.text()).toContain(avatarAttachment.mimeType)
-    expect(wrapper.text()).toContain(bytes.format(2048))
+    expect(wrapper.text()).toContain(authenticatedImage.originalName)
+    expect(wrapper.text()).toContain(authenticatedImage.mimeType)
+    expect(wrapper.text()).toContain(bytes.format(123))
+    expect(wrapper.text()).toContain('custom-report')
     expect(wrapper.text()).toContain(
-      `${avatarAttachment.createdBy.nickname} (${avatarAttachment.createdBy.username})`,
+      `${authenticatedImage.createdBy.nickname} (${authenticatedImage.createdBy.username})`,
     )
-    expect(wrapper.getComponent(NImage).props()).toMatchObject({
-      src: 'https://cdn.example.com/avatar.png',
-      previewSrc: 'https://cdn.example.com/avatar.png',
-      objectFit: 'cover',
+    const imageProps = wrapper.findAllComponents(NImage).map((image) => image.props())
+
+    expect(getAttachmentContentUrl(authenticatedImage.id)).toBe(
+      `/api/attachments/${authenticatedImage.id}/content`,
+    )
+    expect(imageProps).toContainEqual(
+      expect.objectContaining({
+        src: getAttachmentContentUrl(authenticatedImage.id),
+        previewSrc: getAttachmentContentUrl(authenticatedImage.id),
+        objectFit: 'cover',
+      }),
+    )
+    expect(imageProps).toContainEqual(
+      expect.objectContaining({
+        src: 'https://cdn.example.com/avatar.png',
+        previewSrc: 'https://cdn.example.com/avatar.png',
+        objectFit: 'cover',
+      }),
+    )
+    expect(useSignedAttachmentUrlMock).toHaveBeenCalledWith(expect.any(Function), {
+      disposition: 'inline',
+      enabled: expect.any(Object),
     })
   })
 
@@ -134,20 +157,29 @@ describe('attachments page', () => {
     await flushPromises()
 
     await wrapper.find('[data-test="attachments-keyword"] input').setValue('  avatar  ')
-    wrapper
-      .get('[data-test="attachments-usage"]')
-      .getComponent(NSelect)
-      .vm.$emit('update:value', ATTACHMENT_USAGE_AVATAR)
-    await flushPromises()
+    const usageInput = wrapper.find('[data-test="attachments-usage"] input')
+    expect(usageInput.exists()).toBe(true)
+    await usageInput.setValue('custom-report')
     await wrapper.get('[data-test="attachments-search"]').trigger('click')
     await flushPromises()
 
-    expect(listAttachmentsMock).toHaveBeenLastCalledWith({
-      page: 1,
-      pageSize: 20,
-      keyword: 'avatar',
-      usage: ATTACHMENT_USAGE_AVATAR,
-    })
+    expect(listAttachmentsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        page: 1,
+        pageSize: 20,
+        keyword: 'avatar',
+        usage: 'custom-report',
+      }),
+    )
+
+    await wrapper.find('[data-test="attachments-reset"]').trigger('click')
+    await flushPromises()
+
+    expect(listAttachmentsMock).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({
+        usage: expect.any(String),
+      }),
+    )
   })
 
   it('deletes after confirmation and refreshes list', async () => {
@@ -167,7 +199,7 @@ describe('attachments page', () => {
     confirmButton?.click()
     await flushPromises()
 
-    expect(deleteAttachmentMock).toHaveBeenCalledWith(avatarAttachment.id)
+    expect(deleteAttachmentMock).toHaveBeenCalledWith(authenticatedImage.id)
     expect(listAttachmentsMock).toHaveBeenCalledTimes(2)
     expect(listAttachmentsMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
   })
@@ -178,11 +210,9 @@ describe('attachments page', () => {
     await flushPromises()
 
     await wrapper.find('[data-test="attachments-keyword"] input').setValue('  avatar  ')
-    wrapper
-      .get('[data-test="attachments-usage"]')
-      .getComponent(NSelect)
-      .vm.$emit('update:value', ATTACHMENT_USAGE_AVATAR)
-    await flushPromises()
+    const usageInput = wrapper.find('[data-test="attachments-usage"] input')
+    expect(usageInput.exists()).toBe(true)
+    await usageInput.setValue('custom-report')
     await wrapper.get('[data-test="attachments-search"]').trigger('click')
     await flushPromises()
 
@@ -193,7 +223,7 @@ describe('attachments page', () => {
       page: 2,
       pageSize: 20,
       keyword: 'avatar',
-      usage: ATTACHMENT_USAGE_AVATAR,
+      usage: 'custom-report',
     })
   })
 })

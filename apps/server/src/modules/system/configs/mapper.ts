@@ -1,4 +1,5 @@
 import type { Config, ConfigListItem } from '@rev30/contracts'
+import { toIsoDateTime } from '@rev30/utils'
 import { systemConfigs } from '../../../db/schema'
 
 export type ConfigRow = typeof systemConfigs.$inferSelect
@@ -14,8 +15,8 @@ export function toConfig(row: ConfigRow): Config {
     description: row.description,
     status: row.status as Config['status'],
     sortOrder: row.sortOrder,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    createdAt: toIsoDateTime(row.createdAt),
+    updatedAt: toIsoDateTime(row.updatedAt),
   }
 }
 

@@ -109,15 +109,3 @@ export const announcementPinnedFilterOptions: Array<{
   { label: '是', value: 'true' },
   { label: '否', value: 'false' },
 ]
-
-const dateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
-export function formatDateTime(value: string) {
-  return dateTimeFormatter.format(new Date(value))
-}

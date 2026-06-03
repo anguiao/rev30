@@ -21,12 +21,12 @@ import type {
   DictionaryListQuery,
   DictionaryListResponse,
 } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import DictionaryFormDrawer from '../../../features/system/DictionaryFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
   deleteDictionary,
-  formatDateTime,
   getSystemErrorMessage,
   listDictionaries,
   statusFilterOptions,
@@ -181,7 +181,7 @@ const columns: DataTableColumns<DictionaryListItem> = [
     title: '更新时间',
     key: 'updatedAt',
     minWidth: 160,
-    render: (dictionary) => formatDateTime(dictionary.updatedAt),
+    render: (dictionary) => formatDisplayDateTime(dictionary.updatedAt),
   },
   {
     title: '操作',

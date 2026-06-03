@@ -1,4 +1,5 @@
 import type { AnnouncementMyDetail, AnnouncementMyListItem } from '@rev30/contracts'
+import { toIsoDateTime } from '@rev30/utils'
 import { contentAnnouncements } from '../../../../db/schema'
 
 export type AnnouncementRow = typeof contentAnnouncements.$inferSelect
@@ -8,7 +9,7 @@ function toPublishedAtString(row: AnnouncementRow) {
     throw new Error('Expected published announcement')
   }
 
-  return row.publishedAt.toISOString()
+  return toIsoDateTime(row.publishedAt)
 }
 
 export function toMyAnnouncementListItem(row: AnnouncementRow): AnnouncementMyListItem {

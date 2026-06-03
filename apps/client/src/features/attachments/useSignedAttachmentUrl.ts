@@ -1,4 +1,5 @@
 import { ATTACHMENT_DISPOSITION_ATTACHMENT, type AttachmentDisposition } from '@rev30/contracts'
+import { millisecondsUntil } from '@rev30/utils'
 import { useQuery } from '@pinia/colada'
 import { useTimeoutFn } from '@vueuse/core'
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
@@ -67,7 +68,7 @@ export function useSignedAttachmentUrl(
 
       if (!nextExpiresAt) return
 
-      const delay = Date.parse(nextExpiresAt) - Date.now() - contentUrlRefreshLeadMs
+      const delay = millisecondsUntil(nextExpiresAt) - contentUrlRefreshLeadMs
 
       if (delay <= 0) return
 

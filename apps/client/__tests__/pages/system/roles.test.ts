@@ -7,13 +7,9 @@ import {
   ROLE_STATUS_ENABLED,
   type RoleListResponse,
 } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
-import {
-  deleteRole,
-  formatDateTime,
-  listRoles,
-  SystemRequestError,
-} from '../../../src/features/system'
+import { deleteRole, listRoles, SystemRequestError } from '../../../src/features/system'
 import RolesPage from '../../../src/pages/index/system/roles.vue'
 import {
   disposeActiveTestPinia,
@@ -123,8 +119,8 @@ describe('roles page', () => {
     expect(wrapper.text()).toContain('admin')
     expect(wrapper.text()).toContain('审计员')
     expect(wrapper.text()).toContain('auditor')
-    expect(wrapper.text()).toContain(formatDateTime('2026-05-01T00:00:00.000Z'))
-    expect(wrapper.text()).toContain(formatDateTime('2026-05-02T00:00:00.000Z'))
+    expect(wrapper.text()).toContain(formatDisplayDateTime('2026-05-01T00:00:00.000Z'))
+    expect(wrapper.text()).toContain(formatDisplayDateTime('2026-05-02T00:00:00.000Z'))
     expect(wrapper.text()).toContain('12')
     expect(wrapper.text()).toContain('3')
     expect(wrapper.text()).toContain('1')

@@ -22,6 +22,7 @@ import {
   type AnnouncementListQuery,
   type AnnouncementListResponse,
 } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import AnnouncementFormDrawer from '../../../features/content/AnnouncementFormDrawer.vue'
 import {
@@ -35,7 +36,6 @@ import {
   announcementTypeFilterOptions,
   announcementTypeLabels,
   archiveAnnouncement,
-  formatDateTime,
   getContentErrorMessage,
   listAnnouncements,
   publishAnnouncement,
@@ -276,13 +276,13 @@ const columns: DataTableColumns<AnnouncementListItem> = [
     key: 'publishedAt',
     minWidth: 160,
     render: (announcement) =>
-      announcement.publishedAt === null ? '-' : formatDateTime(announcement.publishedAt),
+      announcement.publishedAt === null ? '-' : formatDisplayDateTime(announcement.publishedAt),
   },
   {
     title: '更新时间',
     key: 'updatedAt',
     minWidth: 160,
-    render: (announcement) => formatDateTime(announcement.updatedAt),
+    render: (announcement) => formatDisplayDateTime(announcement.updatedAt),
   },
   {
     title: '操作',

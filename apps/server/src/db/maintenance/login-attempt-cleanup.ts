@@ -1,3 +1,4 @@
+import { subMilliseconds } from '@rev30/utils'
 import { and, isNotNull, isNull, lte, or } from 'drizzle-orm'
 import { logger } from '../../runtime/logger'
 import type { Db } from '../index'
@@ -36,7 +37,7 @@ export async function cleanupAuthLoginAttemptBuckets(
   database: Db,
   retentionMs: number,
 ): Promise<number> {
-  const cutoff = new Date(Date.now() - retentionMs)
+  const cutoff = subMilliseconds(new Date(), retentionMs)
   const deleted = await database
     .delete(authLoginAttemptBuckets)
     .where(

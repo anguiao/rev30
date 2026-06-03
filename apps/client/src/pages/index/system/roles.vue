@@ -22,12 +22,12 @@ import {
   type RoleListQuery,
   type RoleListResponse,
 } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import RoleFormDrawer from '../../../features/system/RoleFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
   deleteRole,
-  formatDateTime,
   getSystemErrorMessage,
   listRoles,
   statusFilterOptions,
@@ -180,7 +180,7 @@ const columns: DataTableColumns<RoleListItem> = [
     title: '创建时间',
     key: 'createdAt',
     minWidth: 160,
-    render: (role) => formatDateTime(role.createdAt),
+    render: (role) => formatDisplayDateTime(role.createdAt),
   },
   {
     title: '操作',

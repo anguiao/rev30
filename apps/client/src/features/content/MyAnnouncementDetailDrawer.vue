@@ -2,13 +2,9 @@
 import { computed } from 'vue'
 import { useQuery } from '@pinia/colada'
 import { type AnnouncementMyListItem } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import { NAlert, NDrawer, NDrawerContent, NEmpty, NSpin, NTag } from 'naive-ui'
-import {
-  announcementTypeLabels,
-  formatDateTime,
-  getContentErrorMessage,
-  getMyAnnouncement,
-} from '.'
+import { announcementTypeLabels, getContentErrorMessage, getMyAnnouncement } from '.'
 
 const props = defineProps<{
   announcement: AnnouncementMyListItem
@@ -63,7 +59,7 @@ const visibleDetail = computed(() => (show.value ? (detail.value ?? null) : null
           <div class="flex flex-wrap items-center gap-2 text-sm text-stone-500 dark:text-zinc-400">
             <NTag v-if="visibleDetail.pinned" type="warning" :bordered="false">置顶</NTag>
             <span>
-              {{ formatDateTime(visibleDetail.publishedAt) }}
+              {{ formatDisplayDateTime(visibleDetail.publishedAt) }}
             </span>
           </div>
 

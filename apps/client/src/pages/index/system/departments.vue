@@ -15,13 +15,18 @@ import {
   useMessage,
 } from 'naive-ui'
 import type { DepartmentTreeNode } from '@rev30/contracts'
-import { filterTree, getTreeNodeCount, isLeafInTree, treeToArray } from '@rev30/utils'
+import {
+  filterTree,
+  formatDisplayDateTime,
+  getTreeNodeCount,
+  isLeafInTree,
+  treeToArray,
+} from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import DepartmentFormDrawer from '../../../features/system/DepartmentFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
   deleteDepartment,
-  formatDateTime,
   getDepartmentTree,
   getSystemErrorMessage,
   statusFilterOptions,
@@ -210,7 +215,7 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
     title: '创建时间',
     key: 'createdAt',
     minWidth: 180,
-    render: (department) => formatDateTime(department.createdAt),
+    render: (department) => formatDisplayDateTime(department.createdAt),
   },
   {
     title: '操作',

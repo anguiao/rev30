@@ -24,13 +24,13 @@ import type {
   UserListQuery,
   UserListResponse,
 } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import UserFormDrawer from '../../../features/system/UserFormDrawer.vue'
 import { UserAvatar } from '../../../features/users'
 import {
   STATUS_FILTER_ALL,
   deleteUser,
-  formatDateTime,
   getDepartmentTreeOptions,
   getRoleOptions,
   getSystemErrorMessage,
@@ -329,7 +329,7 @@ const columns: DataTableColumns<UserListItem> = [
     title: '创建时间',
     key: 'createdAt',
     minWidth: 160,
-    render: (user) => formatDateTime(user.createdAt),
+    render: (user) => formatDisplayDateTime(user.createdAt),
   },
   {
     title: '操作',

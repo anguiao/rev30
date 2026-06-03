@@ -7,12 +7,9 @@ import {
   type AnnouncementMyDetail,
   type AnnouncementMyListItem,
 } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import MyAnnouncementDetailDrawer from '../../../src/features/content/MyAnnouncementDetailDrawer.vue'
-import {
-  announcementTypeLabels,
-  formatDateTime,
-  getMyAnnouncement,
-} from '../../../src/features/content'
+import { announcementTypeLabels, getMyAnnouncement } from '../../../src/features/content'
 
 vi.mock('../../../src/features/content', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/content')>()),
@@ -74,7 +71,7 @@ describe('MyAnnouncementDetailDrawer', () => {
     expect(bodyText).toContain('置顶')
     expect(bodyText).toContain(detail.title)
     expect(bodyText).toContain(detail.summary ?? '')
-    expect(bodyText).toContain(formatDateTime(detail.publishedAt))
+    expect(bodyText).toContain(formatDisplayDateTime(detail.publishedAt))
     expect(bodyText).toContain('第一段内容')
     expect(bodyText).toContain('第二段内容')
     expect(

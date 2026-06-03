@@ -11,12 +11,8 @@ import {
   RESOURCE_TYPE_MENU,
   type ResourceTreeNode,
 } from '@rev30/contracts'
-import {
-  deleteResource,
-  formatDateTime,
-  getResourceTree,
-  SystemRequestError,
-} from '../../../src/features/system'
+import { formatDisplayDateTime } from '@rev30/utils'
+import { deleteResource, getResourceTree, SystemRequestError } from '../../../src/features/system'
 import ResourcesPage from '../../../src/pages/index/system/resources.vue'
 import {
   disposeActiveTestPinia,
@@ -151,7 +147,7 @@ describe('resources page', () => {
     expect(wrapper.text()).toContain('操作')
     expect(wrapper.text()).toContain('否')
     expect(wrapper.text()).toContain('是')
-    expect(wrapper.text()).toContain(formatDateTime('2026-05-01T00:00:00.000Z'))
+    expect(wrapper.text()).toContain(formatDisplayDateTime('2026-05-01T00:00:00.000Z'))
     const table = wrapper.getComponent(NDataTable)
     expect(table.props('pagination')).toBe(false)
     expect(table.props('expandedRowKeys')).toEqual([

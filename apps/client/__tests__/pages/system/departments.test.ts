@@ -7,9 +7,9 @@ import {
   DEPARTMENT_STATUS_ENABLED,
   type DepartmentTreeNode,
 } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import {
   deleteDepartment,
-  formatDateTime,
   getDepartmentTree,
   SystemRequestError,
 } from '../../../src/features/system'
@@ -129,7 +129,7 @@ describe('departments page', () => {
     expect(wrapper.text()).toContain('共 2 个')
     expect(wrapper.text()).toContain('研发中心')
     expect(wrapper.text()).toContain('ENG')
-    expect(wrapper.text()).toContain(formatDateTime('2026-05-01T00:00:00.000Z'))
+    expect(wrapper.text()).toContain(formatDisplayDateTime('2026-05-01T00:00:00.000Z'))
     const table = wrapper.getComponent(NDataTable)
     const treeData = table.props('data') as DepartmentTreeNode[]
     expect(treeData).toHaveLength(1)
@@ -143,8 +143,8 @@ describe('departments page', () => {
     table.vm.$emit('update:expandedRowKeys', [])
     await flushPromises()
     expect(wrapper.getComponent(NDataTable).props('expandedRowKeys')).toEqual([])
-    expect(formatDateTime(treeData[0]!.children[0]!.createdAt)).toBe(
-      formatDateTime('2026-05-02T00:00:00.000Z'),
+    expect(formatDisplayDateTime(treeData[0]!.children[0]!.createdAt)).toBe(
+      formatDisplayDateTime('2026-05-02T00:00:00.000Z'),
     )
     expect(wrapper.findComponent(NPagination).exists()).toBe(false)
   })

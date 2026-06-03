@@ -1,4 +1,5 @@
 import type { Announcement, AnnouncementListItem } from '@rev30/contracts'
+import { toIsoDateTime } from '@rev30/utils'
 import { contentAnnouncements } from '../../../db/schema'
 
 export type AnnouncementRow = typeof contentAnnouncements.$inferSelect
@@ -19,9 +20,9 @@ export function toAnnouncement(
     targets,
     status: row.status as Announcement['status'],
     pinned: row.pinned,
-    publishedAt: row.publishedAt?.toISOString() ?? null,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    publishedAt: row.publishedAt ? toIsoDateTime(row.publishedAt) : null,
+    createdAt: toIsoDateTime(row.createdAt),
+    updatedAt: toIsoDateTime(row.updatedAt),
   }
 }
 

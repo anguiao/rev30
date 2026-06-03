@@ -4,6 +4,7 @@ import type {
   DictionaryListItem,
   DictionaryType,
 } from '@rev30/contracts'
+import { toIsoDateTime } from '@rev30/utils'
 import { systemDictionaryItems, systemDictionaryTypes } from '../../../db/schema'
 
 export type DictionaryTypeRow = typeof systemDictionaryTypes.$inferSelect
@@ -24,8 +25,8 @@ export function toDictionaryType(row: DictionaryTypeRow): DictionaryType {
     description: row.description,
     status: row.status as DictionaryType['status'],
     sortOrder: row.sortOrder,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    createdAt: toIsoDateTime(row.createdAt),
+    updatedAt: toIsoDateTime(row.updatedAt),
   }
 }
 
@@ -38,8 +39,8 @@ export function toDictionaryItem(row: DictionaryItemRow): DictionaryItem {
     description: row.description,
     status: row.status as DictionaryItem['status'],
     sortOrder: row.sortOrder,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    createdAt: toIsoDateTime(row.createdAt),
+    updatedAt: toIsoDateTime(row.updatedAt),
   }
 }
 

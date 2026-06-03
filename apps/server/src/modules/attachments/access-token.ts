@@ -1,4 +1,5 @@
 import type { Context } from 'hono'
+import { toUnixTimeSeconds } from '@rev30/utils'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
 import type { AuthConfig } from '../auth/config'
@@ -11,10 +12,6 @@ type AttachmentAccessTokenConfig = Pick<
 type JwtPayload = Awaited<ReturnType<typeof verify>>
 
 export const attachmentAccessTokenCookieName = 'attachment_token'
-
-function nowInSeconds() {
-  return Math.floor(Date.now() / 1000)
-}
 
 function readSubject(payload: JwtPayload) {
   return typeof payload.sub === 'string' ? payload.sub : undefined
@@ -48,7 +45,7 @@ export async function createAttachmentAccessToken(
   userId: string,
   config: AttachmentAccessTokenConfig,
 ) {
-  const issuedAt = nowInSeconds()
+  const issuedAt = toUnixTimeSeconds(new Date())
 
   return sign(
     {

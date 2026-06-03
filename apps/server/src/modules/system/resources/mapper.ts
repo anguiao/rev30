@@ -1,5 +1,5 @@
 import type { Resource, ResourceTreeNode, ResourceTreeOption } from '@rev30/contracts'
-import { arrayToTree } from '@rev30/utils'
+import { arrayToTree, toIsoDateTime } from '@rev30/utils'
 import { systemResources } from '../../../db/schema'
 
 export type ResourceRow = typeof systemResources.$inferSelect
@@ -19,8 +19,8 @@ export function toResource(row: ResourceRow): Resource {
     hidden: row.hidden,
     status: row.status as Resource['status'],
     sortOrder: row.sortOrder,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    createdAt: toIsoDateTime(row.createdAt),
+    updatedAt: toIsoDateTime(row.updatedAt),
   }
 }
 

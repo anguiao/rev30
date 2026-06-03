@@ -17,6 +17,7 @@ import {
 } from 'naive-ui'
 import type { ButtonProps } from 'naive-ui'
 import type { ConfigListItem, ConfigListQuery, ConfigListResponse } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import ConfigFormDrawer from '../../../features/system/ConfigFormDrawer.vue'
 import {
@@ -25,7 +26,6 @@ import {
   configValueTypeFilterOptions,
   configValueTypeLabels,
   deleteConfig,
-  formatDateTime,
   getSystemErrorMessage,
   listConfigs,
   statusFilterOptions,
@@ -198,7 +198,7 @@ const columns: DataTableColumns<ConfigListItem> = [
     title: '更新时间',
     key: 'updatedAt',
     minWidth: 160,
-    render: (config) => formatDateTime(config.updatedAt),
+    render: (config) => formatDisplayDateTime(config.updatedAt),
   },
   {
     title: '操作',

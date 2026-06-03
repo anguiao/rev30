@@ -11,6 +11,7 @@ import {
   ATTACHMENT_READ_POLICY_SIGNED,
   type AttachmentUploadSessionCreateInput,
 } from '@rev30/contracts'
+import { addSeconds, isExpiredAt, millisecondsBetween, toIsoDateTime } from '@rev30/utils'
 import type { Db } from '../../db'
 import { logger } from '../../runtime/logger'
 import { readAuthConfig } from '../auth/config'
@@ -65,12 +66,12 @@ function padDatePart(value: number) {
   return String(value).padStart(2, '0')
 }
 
-function createUploadSessionStorageKey(uploadId: string, extension: string, now: Date) {
+function createUploadSessionStorageKey(uploadId: string, extension: string, createdAt: Date) {
   return [
     'uploads',
-    String(now.getUTCFullYear()),
-    padDatePart(now.getUTCMonth() + 1),
-    padDatePart(now.getUTCDate()),
+    String(createdAt.getUTCFullYear()),
+    padDatePart(createdAt.getUTCMonth() + 1),
+    padDatePart(createdAt.getUTCDate()),
     `${uploadId}.${extension}`,
   ].join('/')
 }
@@ -82,7 +83,7 @@ function createDownloadFilename(name: string) {
 function createCacheControlHeader(expiresAt: Date, requestedAt: Date) {
   const remainingSeconds = Math.max(
     0,
-    Math.floor((expiresAt.getTime() - requestedAt.getTime()) / 1000),
+    Math.floor(millisecondsBetween(expiresAt, requestedAt) / 1000),
   )
 
   return `private, max-age=${Math.min(300, remainingSeconds)}`
@@ -114,10 +115,6 @@ function createContentResponse(
   }
 }
 
-function isExpired(expiresAt: Date, now: Date) {
-  return expiresAt.getTime() <= now.getTime()
-}
-
 export function createAttachmentService(database: Db) {
   const config = readAttachmentConfig()
   const authConfig = readAuthConfig()
@@ -128,7 +125,7 @@ export function createAttachmentService(database: Db) {
   function getActiveUploadSession(uploadId: string, now: Date) {
     const session = uploadSessions.get(uploadId)
 
-    if (!session || isExpired(session.expiresAt, now)) {
+    if (!session || isExpiredAt(session.expiresAt, now)) {
       if (session) {
         uploadSessions.delete(uploadId)
       }
@@ -154,7 +151,7 @@ export function createAttachmentService(database: Db) {
 
       const createdAt = new Date()
       const uploadId = randomUUID()
-      const expiresAt = new Date(createdAt.getTime() + config.uploadSessionTtlSeconds * 1000)
+      const expiresAt = addSeconds(createdAt, config.uploadSessionTtlSeconds)
       const contentType = input.contentType?.trim()
       const filenameType = getAttachmentFilenameType(input.originalName)
       const storageKey = createUploadSessionStorageKey(uploadId, filenameType.extension, createdAt)
@@ -187,7 +184,7 @@ export function createAttachmentService(database: Db) {
           url: `/api/attachments/uploads/${uploadId}/content?token=${encodeURIComponent(token)}`,
           method: 'PUT' as const,
           headers: contentType ? { 'Content-Type': contentType } : {},
-          expiresAt: expiresAt.toISOString(),
+          expiresAt: toIsoDateTime(expiresAt),
         },
       }
     },
@@ -318,7 +315,7 @@ export function createAttachmentService(database: Db) {
         throw new AttachmentContentUrlUnsupportedError()
       }
 
-      const expiresAt = new Date(Date.now() + config.contentUrlTtlSeconds * 1000)
+      const expiresAt = addSeconds(new Date(), config.contentUrlTtlSeconds)
       const disposition = input.disposition ?? ATTACHMENT_DISPOSITION_ATTACHMENT
       const token = createAttachmentContentToken(
         {
@@ -333,7 +330,7 @@ export function createAttachmentService(database: Db) {
           url: `/api/attachments/${id}/content?token=${encodeURIComponent(token)}`,
           method: 'GET' as const,
           headers: {},
-          expiresAt: expiresAt.toISOString(),
+          expiresAt: toIsoDateTime(expiresAt),
         },
       }
     },

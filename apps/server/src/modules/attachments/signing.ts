@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { attachmentDispositionSchema, type AttachmentDisposition } from '@rev30/contracts'
+import { isExpiredAt, parseIsoDateTime, toIsoDateTime } from '@rev30/utils'
 import { z } from 'zod'
 import { AttachmentContentUrlInvalidError, AttachmentUploadUrlInvalidError } from './errors'
 
@@ -48,7 +49,7 @@ export function createAttachmentUploadToken(
 ) {
   const payload: UploadTokenPayload = {
     uploadId: input.uploadId,
-    expiresAt: input.expiresAt.toISOString(),
+    expiresAt: toIsoDateTime(input.expiresAt),
   }
   const encodedPayload = encode(JSON.stringify(payload))
   const signature = signPayload(encodedPayload, secret)
@@ -96,9 +97,9 @@ export function verifyAttachmentUploadToken(
     throw new AttachmentUploadUrlInvalidError()
   }
 
-  const expiresAt = new Date(result.data.expiresAt)
+  const expiresAt = parseIsoDateTime(result.data.expiresAt)
 
-  if (expiresAt.getTime() <= options.now.getTime()) {
+  if (isExpiredAt(expiresAt, options.now)) {
     throw new AttachmentUploadUrlInvalidError()
   }
 
@@ -119,7 +120,7 @@ export function createAttachmentContentToken(
   const payload: ContentTokenPayload = {
     attachmentId: input.attachmentId,
     disposition: input.disposition,
-    expiresAt: input.expiresAt.toISOString(),
+    expiresAt: toIsoDateTime(input.expiresAt),
   }
   const encodedPayload = encode(JSON.stringify(payload))
   const signature = signPayload(encodedPayload, secret)
@@ -167,9 +168,9 @@ export function verifyAttachmentContentToken(
     throw new AttachmentContentUrlInvalidError()
   }
 
-  const expiresAt = new Date(result.data.expiresAt)
+  const expiresAt = parseIsoDateTime(result.data.expiresAt)
 
-  if (expiresAt.getTime() <= options.now.getTime()) {
+  if (isExpiredAt(expiresAt, options.now)) {
     throw new AttachmentContentUrlInvalidError()
   }
 

@@ -11,13 +11,9 @@ import {
   type ConfigListItem,
   type ConfigListResponse,
 } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
-import {
-  deleteConfig,
-  formatDateTime,
-  listConfigs,
-  SystemRequestError,
-} from '../../../src/features/system'
+import { deleteConfig, listConfigs, SystemRequestError } from '../../../src/features/system'
 import ConfigsPage from '../../../src/pages/index/system/configs.vue'
 import {
   disposeActiveTestPinia,
@@ -126,7 +122,7 @@ describe('configs page', () => {
     expect(wrapper.text()).toContain(baseConfig.key)
     expect(wrapper.text()).toContain('字符串')
     expect(wrapper.text()).toContain(baseConfig.value)
-    expect(wrapper.text()).toContain(formatDateTime(baseConfig.updatedAt))
+    expect(wrapper.text()).toContain(formatDisplayDateTime(baseConfig.updatedAt))
     expect(wrapper.getComponent(NDataTable).props('pagination')).toBe(false)
     expect(wrapper.findComponent(NPagination).exists()).toBe(true)
   })

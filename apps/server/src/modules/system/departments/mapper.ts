@@ -1,5 +1,5 @@
 import type { Department, DepartmentTreeNode, DepartmentTreeOption } from '@rev30/contracts'
-import { arrayToTree } from '@rev30/utils'
+import { arrayToTree, toIsoDateTime } from '@rev30/utils'
 import { systemDepartments } from '../../../db/schema'
 
 export type DepartmentRow = typeof systemDepartments.$inferSelect
@@ -16,8 +16,8 @@ export function toDepartment(row: DepartmentRow): Department {
     code: row.code,
     status: row.status as Department['status'],
     sortOrder: row.sortOrder,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    createdAt: toIsoDateTime(row.createdAt),
+    updatedAt: toIsoDateTime(row.updatedAt),
   }
 }
 

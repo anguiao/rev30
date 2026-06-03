@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
+import { fromUnixTimeSeconds, toUnixTimeSeconds } from '@rev30/utils'
 import { sign, verify } from 'hono/jwt'
 import type { AuthConfig } from './config'
 import {
@@ -9,10 +10,6 @@ import {
 
 type JwtPayload = Awaited<ReturnType<typeof verify>>
 
-function nowInSeconds() {
-  return Math.floor(Date.now() / 1000)
-}
-
 function readSubject(payload: JwtPayload) {
   return typeof payload.sub === 'string' ? payload.sub : undefined
 }
@@ -22,7 +19,7 @@ export function hashRefreshTokenId(refreshTokenId: string) {
 }
 
 export async function createTokenPair(userId: string, config: AuthConfig) {
-  const issuedAt = nowInSeconds()
+  const issuedAt = toUnixTimeSeconds(new Date())
   const accessExpiresAt = issuedAt + config.accessExpiresInSeconds
   const refreshExpiresAt = issuedAt + config.refreshExpiresInSeconds
   const refreshTokenId = randomUUID()
@@ -54,7 +51,7 @@ export async function createTokenPair(userId: string, config: AuthConfig) {
     refreshToken,
     refreshTokenId,
     refreshTokenHash,
-    refreshExpiresAt: new Date(refreshExpiresAt * 1000),
+    refreshExpiresAt: fromUnixTimeSeconds(refreshExpiresAt),
     accessExpiresIn: config.accessExpiresInSeconds,
   }
 }
@@ -74,7 +71,7 @@ export async function verifyAccessToken(token: string, config: AuthConfig) {
     throw new AuthInvalidAccessTokenError()
   }
 
-  if (payload.exp <= nowInSeconds()) {
+  if (payload.exp <= toUnixTimeSeconds(new Date())) {
     throw new AuthAccessTokenExpiredError()
   }
 

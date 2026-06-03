@@ -13,12 +13,12 @@ import {
   type AnnouncementListResponse,
   type AuthTokenResponse,
 } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
 import {
   archiveAnnouncement,
   ContentRequestError,
   deleteAnnouncement,
-  formatDateTime,
   listAnnouncements,
   publishAnnouncement,
 } from '../../../src/features/content'
@@ -162,8 +162,8 @@ describe('announcements page', () => {
     expect(wrapper.text()).toContain('通知')
     expect(wrapper.text()).toContain('草稿')
     expect(wrapper.text()).toContain('置顶')
-    expect(wrapper.text()).toContain(formatDateTime(publishedAnnouncement.publishedAt!))
-    expect(wrapper.text()).toContain(formatDateTime(archivedAnnouncement.updatedAt))
+    expect(wrapper.text()).toContain(formatDisplayDateTime(publishedAnnouncement.publishedAt!))
+    expect(wrapper.text()).toContain(formatDisplayDateTime(archivedAnnouncement.updatedAt))
     expect(wrapper.getComponent(NDataTable).props('pagination')).toBe(false)
     expect(wrapper.findComponent(NPagination).exists()).toBe(true)
   })

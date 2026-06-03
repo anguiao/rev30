@@ -10,10 +10,10 @@ import {
   type UserListResponse,
   type UserResetPasswordResponse,
 } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
 import {
   deleteUser,
-  formatDateTime,
   getDepartmentTreeOptions,
   getRoleOptions,
   listUsers,
@@ -254,7 +254,7 @@ describe('users page', () => {
     expect(wrapper.text()).toContain('13800138000')
     expect(wrapper.text()).toContain('平台架构、数据治理等 3 个')
     expect(wrapper.text()).toContain('审计员、访客')
-    expect(wrapper.text()).toContain(formatDateTime('2026-05-01T00:00:00.000Z'))
+    expect(wrapper.text()).toContain(formatDisplayDateTime('2026-05-01T00:00:00.000Z'))
   })
 
   it('shows a server load error when users cannot be loaded', async () => {

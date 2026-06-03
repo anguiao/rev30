@@ -19,8 +19,8 @@ import {
   type AttachmentListQuery,
   type AttachmentListResponse,
 } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
-import { formatDateTime } from '../../../features/content'
 import {
   AttachmentPreviewCell,
   deleteAttachment,
@@ -170,7 +170,7 @@ const columns: DataTableColumns<AttachmentListItem> = [
     title: '上传时间',
     key: 'createdAt',
     minWidth: 180,
-    render: (attachment) => formatDateTime(attachment.createdAt),
+    render: (attachment) => formatDisplayDateTime(attachment.createdAt),
   },
   {
     title: '操作',

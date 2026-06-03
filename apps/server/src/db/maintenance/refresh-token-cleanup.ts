@@ -1,3 +1,4 @@
+import { subMilliseconds } from '@rev30/utils'
 import { and, isNotNull, lte, or } from 'drizzle-orm'
 import { logger } from '../../runtime/logger'
 import type { Db } from '../index'
@@ -37,7 +38,7 @@ export async function cleanupAuthRefreshTokens(
   revokedRetentionMs: number,
 ): Promise<number> {
   const now = new Date()
-  const revokedCutoff = new Date(now.getTime() - revokedRetentionMs)
+  const revokedCutoff = subMilliseconds(now, revokedRetentionMs)
   const deleted = await database
     .delete(authRefreshTokens)
     .where(

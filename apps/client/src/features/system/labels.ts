@@ -70,15 +70,3 @@ export const resourceTypeLabels = {
   [RESOURCE_TYPE_EXTERNAL]: '外链',
   [RESOURCE_TYPE_ACTION]: '操作',
 } as const satisfies Record<ResourceType, string>
-
-const dateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
-export function formatDateTime(value: string) {
-  return dateTimeFormatter.format(new Date(value))
-}

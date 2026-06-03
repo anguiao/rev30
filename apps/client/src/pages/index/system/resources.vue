@@ -22,13 +22,18 @@ import {
   type ResourceTreeNode,
   type ResourceType,
 } from '@rev30/contracts'
-import { filterTree, getTreeNodeCount, isLeafInTree, treeToArray } from '@rev30/utils'
+import {
+  filterTree,
+  formatDisplayDateTime,
+  getTreeNodeCount,
+  isLeafInTree,
+  treeToArray,
+} from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import ResourceFormDrawer from '../../../features/system/ResourceFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
   deleteResource,
-  formatDateTime,
   getResourceTree,
   getSystemErrorMessage,
   resourceTypeLabels,
@@ -262,7 +267,7 @@ const columns: DataTableColumns<ResourceTreeNode> = [
     title: '创建时间',
     key: 'createdAt',
     minWidth: 180,
-    render: (resource) => formatDateTime(resource.createdAt),
+    render: (resource) => formatDisplayDateTime(resource.createdAt),
   },
   {
     title: '操作',

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { AuthProfileUpdateInput } from '@rev30/contracts'
+import { addSeconds, subSeconds } from '@rev30/utils'
 import { and, eq, gt, isNull, lte, ne, or, sql } from 'drizzle-orm'
 import type { Db } from '../../db'
 import {
@@ -125,8 +126,8 @@ export function createAuthRepository(database: Db) {
     },
 
     async recordLoginFailure(input: RecordLoginFailureInput) {
-      const windowCutoff = new Date(input.now.getTime() - input.windowSeconds * 1000)
-      const lockUntil = new Date(input.now.getTime() + input.lockSeconds * 1000)
+      const windowCutoff = subSeconds(input.now, input.windowSeconds)
+      const lockUntil = addSeconds(input.now, input.lockSeconds)
       const activeLockSql = sql`(
         ${authLoginAttemptBuckets.lockedUntil} is not null
         and ${authLoginAttemptBuckets.lockedUntil} > ${input.now}

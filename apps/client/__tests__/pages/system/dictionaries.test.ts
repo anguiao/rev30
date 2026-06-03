@@ -8,10 +8,10 @@ import {
   type DictionaryListItem,
   type DictionaryListResponse,
 } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
 import {
   deleteDictionary,
-  formatDateTime,
   listDictionaries,
   SystemRequestError,
 } from '../../../src/features/system'
@@ -126,7 +126,7 @@ describe('dictionaries page', () => {
     expect(wrapper.text()).toContain(baseDictionary.code)
     expect(wrapper.text()).toContain(baseDictionary.name)
     expect(wrapper.text()).toContain('3')
-    expect(wrapper.text()).toContain(formatDateTime(baseDictionary.updatedAt))
+    expect(wrapper.text()).toContain(formatDisplayDateTime(baseDictionary.updatedAt))
     expect(wrapper.getComponent(NDataTable).props('pagination')).toBe(false)
     expect(wrapper.findComponent(NPagination).exists()).toBe(true)
   })

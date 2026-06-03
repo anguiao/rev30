@@ -1,4 +1,5 @@
 import type { DepartmentSummary, RoleSummary, User, UserOption } from '@rev30/contracts'
+import { toIsoDateTime } from '@rev30/utils'
 import { systemUsers } from '../../../db/schema'
 
 export type UserRow = typeof systemUsers.$inferSelect
@@ -20,8 +21,8 @@ export function toUser(
     builtIn: user.builtIn,
     departments,
     roles,
-    createdAt: user.createdAt.toISOString(),
-    updatedAt: user.updatedAt.toISOString(),
+    createdAt: toIsoDateTime(user.createdAt),
+    updatedAt: toIsoDateTime(user.updatedAt),
   }
 }
 

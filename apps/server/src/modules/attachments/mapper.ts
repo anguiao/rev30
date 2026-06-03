@@ -1,4 +1,5 @@
 import type { Attachment, AttachmentListItem } from '@rev30/contracts'
+import { toIsoDateTime } from '@rev30/utils'
 import { attachments, systemUsers } from '../../db/schema'
 
 export type AttachmentRow = typeof attachments.$inferSelect
@@ -16,7 +17,7 @@ export function toAttachment(row: AttachmentRow): Attachment {
     size: row.size,
     usage: row.usage as Attachment['usage'],
     readPolicy: row.readPolicy as Attachment['readPolicy'],
-    createdAt: row.createdAt.toISOString(),
+    createdAt: toIsoDateTime(row.createdAt),
   }
 }
 

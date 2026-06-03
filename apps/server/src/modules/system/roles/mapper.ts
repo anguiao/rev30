@@ -1,4 +1,5 @@
 import type { Role, RoleListItem, RoleOption, RoleResource, RoleSummary } from '@rev30/contracts'
+import { toIsoDateTime } from '@rev30/utils'
 import { systemRoles } from '../../../db/schema'
 
 export type RoleRow = typeof systemRoles.$inferSelect
@@ -24,8 +25,8 @@ export function toRoleListItem(row: RoleRow & { userCount: number }): RoleListIt
     status: row.status as Role['status'],
     sortOrder: row.sortOrder,
     userCount: row.userCount,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    createdAt: toIsoDateTime(row.createdAt),
+    updatedAt: toIsoDateTime(row.updatedAt),
   }
 }
 
@@ -35,8 +36,8 @@ export function toRole(row: RoleRow, resources: RoleResource[]): Role {
     status: row.status as Role['status'],
     sortOrder: row.sortOrder,
     resources,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    createdAt: toIsoDateTime(row.createdAt),
+    updatedAt: toIsoDateTime(row.updatedAt),
   }
 }
 

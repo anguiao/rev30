@@ -9,6 +9,7 @@ import {
   type AnnouncementMyListResponse,
   type AnnouncementType,
 } from '@rev30/contracts'
+import { formatDisplayDateTime } from '@rev30/utils'
 import {
   NAlert,
   NButton,
@@ -29,7 +30,6 @@ import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import MyAnnouncementDetailDrawer from '../../../features/content/MyAnnouncementDetailDrawer.vue'
 import {
   announcementTypeLabels,
-  formatDateTime,
   getContentErrorMessage,
   listMyAnnouncements,
 } from '../../../features/content'
@@ -201,7 +201,7 @@ function openAnnouncementDetail(announcement: AnnouncementMyListItem) {
                 <template #header-extra>
                   <div class="ml-4 flex shrink-0 items-center gap-3">
                     <span class="text-sm text-stone-500 dark:text-zinc-400">
-                      {{ formatDateTime(announcement.publishedAt) }}
+                      {{ formatDisplayDateTime(announcement.publishedAt) }}
                     </span>
                     <NButton
                       data-test="my-announcements-detail"

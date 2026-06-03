@@ -1,7 +1,6 @@
 export {
   STATUS_FILTER_ALL,
   CONFIG_VALUE_TYPE_FILTER_ALL,
-  formatDateTime,
   resourceTypeLabels,
   configValueTypeFilterOptions,
   configValueTypeLabels,

@@ -1,2 +1,0 @@
-CREATE INDEX "auth_refresh_tokens_expires_at_idx" ON "auth_refresh_tokens" USING btree ("expires_at");--> statement-breakpoint
-CREATE INDEX "auth_refresh_tokens_revoked_at_idx" ON "auth_refresh_tokens" USING btree ("revoked_at");

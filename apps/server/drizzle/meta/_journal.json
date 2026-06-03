@@ -5,148 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1777455884121,
-      "tag": "0000_add_system_users",
+      "when": 1780455247283,
+      "tag": "0000_baseline",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1777566885859,
-      "tag": "0001_add_auth",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1777815511999,
-      "tag": "0002_add_departments",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1777875702388,
-      "tag": "0003_add_system_resources",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1777888730841,
-      "tag": "0004_add_roles",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1778054400000,
-      "tag": "0005_seed_resource_access",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1778140800000,
-      "tag": "0006_add_user_built_in",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1778227200000,
-      "tag": "0007_add_user_password_account",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1778313600000,
-      "tag": "0008_update_system_resource_labels",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1778634585290,
-      "tag": "0009_rename_system_tables",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1778640412001,
-      "tag": "0010_add_auth_refresh_token_cleanup_indexes",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1778772692273,
-      "tag": "0011_add_auth_login_attempt_buckets",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "7",
-      "when": 1779097234404,
-      "tag": "0012_add_system_configs",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "7",
-      "when": 1779263002634,
-      "tag": "0013_use_active_unique_indexes",
-      "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "7",
-      "when": 1779283895316,
-      "tag": "0014_add_data_dictionaries",
-      "breakpoints": true
-    },
-    {
-      "idx": 15,
-      "version": "7",
-      "when": 1779415083000,
-      "tag": "0015_update_dictionary_resource_icon",
-      "breakpoints": true
-    },
-    {
-      "idx": 16,
-      "version": "7",
-      "when": 1779523200000,
-      "tag": "0016_add_content_announcements",
-      "breakpoints": true
-    },
-    {
-      "idx": 17,
-      "version": "7",
-      "when": 1779703632931,
-      "tag": "0017_add_announcement_visibility_display",
-      "breakpoints": true
-    },
-    {
-      "idx": 18,
-      "version": "7",
-      "when": 1780045120781,
-      "tag": "0018_add_attachments",
-      "breakpoints": true
-    },
-    {
-      "idx": 19,
-      "version": "7",
-      "when": 1780159471892,
-      "tag": "0019_add_user_avatar_attachments",
-      "breakpoints": true
-    },
-    {
-      "idx": 20,
-      "version": "7",
-      "when": 1780387940899,
-      "tag": "0020_add_attachment_read_policy",
+      "when": 1780455247284,
+      "tag": "0001_seed_initial_access",
       "breakpoints": true
     }
   ]

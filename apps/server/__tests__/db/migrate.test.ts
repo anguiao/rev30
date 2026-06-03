@@ -1,30 +1,69 @@
 import { randomUUID } from 'node:crypto'
-import { PGlite } from '@electric-sql/pglite'
-import { drizzle } from 'drizzle-orm/pglite'
-import { afterEach, describe, expect, it } from 'vitest'
-import { copyFile, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { and, eq, isNull } from 'drizzle-orm'
-import { join } from 'node:path'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { PGlite } from '@electric-sql/pglite'
 import {
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_VISIBILITY_TARGETED,
+  ATTACHMENT_READ_POLICY_SIGNED,
   type TiptapDocument,
 } from '@rev30/contracts'
+import { eq, inArray } from 'drizzle-orm'
+import { drizzle } from 'drizzle-orm/pglite'
+import { afterEach, describe, expect, it } from 'vitest'
 import { createDb } from '../../src/db/index'
 import { migratePGlite } from '../../src/db/migrate'
 import {
+  attachments,
+  authLoginAttemptBuckets,
+  contentAnnouncementTargets,
   contentAnnouncements,
   systemConfigs,
   systemResources,
+  systemRoles,
   systemUsers,
 } from '../../src/db/schema'
 import * as schema from '../../src/db/schema'
 
 const originalNodeEnv = process.env.NODE_ENV
 const originalPgliteDataDir = process.env.PGLITE_DATA_DIR
-const packagedMigrationsDir = join(process.cwd(), 'drizzle')
 const tempDirs: string[] = []
+
+const expectedTableNames = [
+  'attachments',
+  'auth_login_attempt_buckets',
+  'auth_password_credentials',
+  'auth_refresh_tokens',
+  'content_announcement_targets',
+  'content_announcements',
+  'system_configs',
+  'system_departments',
+  'system_dictionary_items',
+  'system_dictionary_types',
+  'system_resources',
+  'system_role_resources',
+  'system_roles',
+  'system_user_departments',
+  'system_user_roles',
+  'system_users',
+]
+
+const expectedResourceCodes = [
+  'system',
+  'system:user',
+  'system:user:list',
+  'system:user:reset-password',
+  'system:department',
+  'system:role',
+  'system:resource',
+  'system:config',
+  'system:dictionary',
+  'content',
+  'content:announcement',
+  'content:attachment',
+  'content:attachment:list',
+]
 
 async function createTempDir() {
   const directory = await mkdtemp(join(tmpdir(), 'rev30-pglite-'))
@@ -43,45 +82,6 @@ function restoreEnv(key: 'NODE_ENV' | 'PGLITE_DATA_DIR', value: string | undefin
   process.env[key] = value
 }
 
-async function createMigrationFixture(maxMigrationIndex: number) {
-  const fixtureDir = join(await createTempDir(), 'migrations')
-  const metaDir = join(fixtureDir, 'meta')
-
-  await mkdir(metaDir, { recursive: true })
-
-  const journalPath = join(packagedMigrationsDir, 'meta', '_journal.json')
-  const journal = JSON.parse(await readFile(journalPath, 'utf8')) as {
-    version: string
-    dialect: string
-    entries: Array<{ idx: number; tag: string }>
-  }
-
-  await writeFile(
-    join(metaDir, '_journal.json'),
-    `${JSON.stringify(
-      {
-        ...journal,
-        entries: journal.entries.filter((entry) => entry.idx <= maxMigrationIndex),
-      },
-      null,
-      2,
-    )}\n`,
-  )
-
-  await Promise.all(
-    journal.entries
-      .filter((entry) => entry.idx <= maxMigrationIndex)
-      .map((entry) =>
-        copyFile(
-          join(packagedMigrationsDir, `${entry.tag}.sql`),
-          join(fixtureDir, `${entry.tag}.sql`),
-        ),
-      ),
-  )
-
-  return fixtureDir
-}
-
 describe('PGlite migration runner', () => {
   afterEach(async () => {
     restoreEnv('NODE_ENV', originalNodeEnv)
@@ -92,7 +92,7 @@ describe('PGlite migration runner', () => {
     )
   })
 
-  it('applies packaged migrations to a fresh PGlite database', async () => {
+  it('applies the baseline migration to a fresh PGlite database', async () => {
     const client = new PGlite()
 
     try {
@@ -100,6 +100,46 @@ describe('PGlite migration runner', () => {
 
       const database = drizzle(client, { schema })
       const now = new Date()
+      const tableNames = await client.query<{ table_name: string }>(
+        `
+          select table_name
+          from information_schema.tables
+          where table_schema = 'public'
+            and table_type = 'BASE TABLE'
+            and table_name <> '__drizzle_migrations'
+        `,
+      )
+      const resources = await database
+        .select({
+          code: systemResources.code,
+          icon: systemResources.icon,
+          name: systemResources.name,
+          path: systemResources.path,
+        })
+        .from(systemResources)
+        .where(inArray(systemResources.code, expectedResourceCodes))
+      const [adminRole] = await database
+        .select()
+        .from(systemRoles)
+        .where(eq(systemRoles.code, 'admin'))
+
+      expect(new Set(tableNames.rows.map((row) => row.table_name))).toEqual(
+        new Set(expectedTableNames),
+      )
+      expect(new Set(resources.map((resource) => resource.code))).toEqual(
+        new Set(expectedResourceCodes),
+      )
+      expect(resources.find((resource) => resource.code === 'system:dictionary')).toMatchObject({
+        icon: 'lucide:book-open-text',
+        name: '数据字典',
+        path: '/system/dictionaries',
+      })
+      expect(adminRole).toMatchObject({
+        code: 'admin',
+        name: 'Administrator',
+        status: 1,
+      })
+
       const [createdUser] = await database
         .insert(systemUsers)
         .values({
@@ -110,25 +150,12 @@ describe('PGlite migration runner', () => {
           updatedAt: now,
         })
         .returning()
-      const [systemResource] = await database
-        .select()
-        .from(systemResources)
-        .where(eq(systemResources.code, 'system'))
 
-      expect(createdUser?.builtIn).toBe(false)
-      expect(systemResource).toMatchObject({
-        code: 'system',
-        name: '系统管理',
-      })
+      if (!createdUser) {
+        throw new Error('Expected migrated user')
+      }
 
-      await client.query(
-        `
-          insert into "auth_login_attempt_buckets"
-            ("username", "failed_count", "window_started_at", "last_failed_at", "created_at", "updated_at")
-          values
-            ('migrated-login-attempt', 1, now(), now(), now(), now())
-        `,
-      )
+      expect(createdUser.builtIn).toBe(false)
 
       const [createdConfig] = await database
         .insert(systemConfigs)
@@ -144,10 +171,6 @@ describe('PGlite migration runner', () => {
           updatedAt: now,
         })
         .returning()
-      const [configMenu] = await database
-        .select()
-        .from(systemResources)
-        .where(eq(systemResources.code, 'system:config'))
 
       expect(createdConfig).toMatchObject({
         groupCode: 'site',
@@ -155,10 +178,14 @@ describe('PGlite migration runner', () => {
         valueType: 'string',
         value: 'Rev30',
       })
-      expect(configMenu).toMatchObject({
-        code: 'system:config',
-        name: '系统配置',
-        path: '/system/configs',
+
+      await database.insert(authLoginAttemptBuckets).values({
+        username: 'migrated-login-attempt',
+        failedCount: 1,
+        windowStartedAt: now,
+        lastFailedAt: now,
+        createdAt: now,
+        updatedAt: now,
       })
 
       const announcementId = randomUUID()
@@ -183,10 +210,13 @@ describe('PGlite migration runner', () => {
           updatedAt: now,
         })
         .returning()
-      const [contentMenu] = await database
-        .select()
-        .from(systemResources)
-        .where(eq(systemResources.code, 'content:announcement'))
+
+      await database.insert(contentAnnouncementTargets).values({
+        announcementId,
+        targetId: createdUser.id,
+        targetType: 'user',
+        createdAt: now,
+      })
 
       expect(createdAnnouncement).toMatchObject({
         id: announcementId,
@@ -202,228 +232,28 @@ describe('PGlite migration runner', () => {
         createdAt: now,
         updatedAt: now,
       })
-      expect(contentMenu).toMatchObject({
-        code: 'content:announcement',
-        name: '通知公告',
-        path: '/content/announcements',
-      })
-    } finally {
-      await client.close()
-    }
-  }, 10_000)
 
-  it('migrates announcement resources with soft-deleted parent resources present', async () => {
-    const client = new PGlite()
-
-    try {
-      const partialMigrationsDir = await createMigrationFixture(15)
-
-      await migratePGlite(client, partialMigrationsDir)
-
-      const database = drizzle(client, { schema })
-      const now = new Date()
-      const activeContentId = randomUUID()
-
-      await database.insert(systemResources).values([
-        {
+      const [createdAttachment] = await database
+        .insert(attachments)
+        .values({
           id: randomUUID(),
-          type: 'directory',
-          name: '内容管理(旧)',
-          code: 'content',
-          openTarget: 'self',
-          icon: 'lucide:layout-list',
-          hidden: false,
-          status: 1,
-          sortOrder: 90,
+          storageProvider: 'local',
+          storageKey: 'migration-test/attachment.txt',
+          originalName: 'attachment.txt',
+          mimeType: 'text/plain',
+          extension: '.txt',
+          size: 12,
+          usage: 'migration-test',
+          createdBy: createdUser.id,
           createdAt: now,
-          updatedAt: now,
-          deletedAt: now,
-        },
-        {
-          id: activeContentId,
-          type: 'directory',
-          name: '内容管理',
-          code: 'content',
-          openTarget: 'self',
-          icon: 'lucide:layout-list',
-          hidden: false,
-          status: 1,
-          sortOrder: 100,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: randomUUID(),
-          parentId: activeContentId,
-          type: 'menu',
-          name: '通知公告(旧)',
-          code: 'content:announcement',
-          path: '/legacy/announcements',
-          openTarget: 'self',
-          icon: 'lucide:megaphone',
-          hidden: false,
-          status: 1,
-          sortOrder: 5,
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: now,
-        },
-      ])
+        })
+        .returning()
 
-      const fullMigrationsDir = await createMigrationFixture(16)
-
-      await migratePGlite(client, fullMigrationsDir)
-
-      const [contentMenu] = await database
-        .select()
-        .from(systemResources)
-        .where(
-          and(eq(systemResources.code, 'content:announcement'), isNull(systemResources.deletedAt)),
-        )
-      const [contentAnnouncementListAction] = await database
-        .select()
-        .from(systemResources)
-        .where(
-          and(
-            eq(systemResources.code, 'content:announcement:list'),
-            isNull(systemResources.deletedAt),
-          ),
-        )
-
-      expect(contentMenu).toMatchObject({
-        code: 'content:announcement',
-        parentId: activeContentId,
-        path: '/content/announcements',
-      })
-      expect(contentAnnouncementListAction).toMatchObject({
-        code: 'content:announcement:list',
-        parentId: contentMenu?.id,
-      })
+      expect(createdAttachment?.readPolicy).toBe(ATTACHMENT_READ_POLICY_SIGNED)
     } finally {
       await client.close()
     }
-  }, 10_000)
-
-  it('backfills announcement html and keeps existing announcements visible', async () => {
-    const client = new PGlite()
-
-    try {
-      const partialMigrationsDir = await createMigrationFixture(16)
-
-      await migratePGlite(client, partialMigrationsDir)
-      await client.exec(`
-        INSERT INTO "content_announcements"
-          ("id", "type", "title", "content_json", "content_text", "status", "created_at", "updated_at")
-        VALUES (
-          '11111111-1111-4111-8111-111111111111',
-          'notice',
-          '历史通知',
-          $json$
-          {
-            "type": "doc",
-            "content": [
-              {
-                "type": "heading",
-                "attrs": { "level": 2 },
-                "content": [{ "type": "text", "text": "维护安排" }]
-              },
-              {
-                "type": "paragraph",
-                "content": [
-                  { "type": "text", "text": "请查看 " },
-                  {
-                    "type": "text",
-                    "text": "详情",
-                    "marks": [
-                      {
-                        "type": "link",
-                        "attrs": {
-                          "href": "https://example.com/details",
-                          "target": "_blank"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-          $json$::jsonb,
-          '维护安排 请查看 详情',
-          'published',
-          now(),
-          now()
-        );
-      `)
-
-      const fullMigrationsDir = await createMigrationFixture(17)
-
-      await migratePGlite(client, fullMigrationsDir)
-
-      const result = await client.query<{
-        content_html: string
-        visibility: string
-      }>(`
-        SELECT "content_html", "visibility"
-        FROM "content_announcements"
-        WHERE "id" = '11111111-1111-4111-8111-111111111111'
-      `)
-
-      expect(result.rows[0]).toEqual({
-        content_html:
-          '<h2>维护安排</h2><p>请查看 <a href="https://example.com/details" target="_blank" rel="noopener noreferrer">详情</a></p>',
-        visibility: 'all',
-      })
-    } finally {
-      await client.close()
-    }
-  }, 10_000)
-
-  it('adds announcement visibility columns and target table columns through migrations', async () => {
-    const client = new PGlite()
-
-    try {
-      await migratePGlite(client)
-
-      const announcementColumns = await client.query<{
-        column_name: string
-      }>(
-        `
-          select column_name
-          from information_schema.columns
-          where table_schema = 'public'
-            and table_name = 'content_announcements'
-            and column_name in ('content_html', 'visibility')
-          order by column_name
-        `,
-      )
-      const targetColumns = await client.query<{
-        column_name: string
-      }>(
-        `
-          select column_name
-          from information_schema.columns
-          where table_schema = 'public'
-            and table_name = 'content_announcement_targets'
-            and column_name in ('announcement_id', 'created_at', 'target_id', 'target_type')
-          order by column_name
-        `,
-      )
-
-      expect(announcementColumns.rows.map((row) => row.column_name)).toEqual([
-        'content_html',
-        'visibility',
-      ])
-      expect(targetColumns.rows.map((row) => row.column_name)).toEqual([
-        'announcement_id',
-        'created_at',
-        'target_id',
-        'target_type',
-      ])
-    } finally {
-      await client.close()
-    }
-  }, 10_000)
+  })
 
   it('migrates development PGlite databases before returning from createDb', async () => {
     const dataDir = join(await createTempDir(), 'dev')

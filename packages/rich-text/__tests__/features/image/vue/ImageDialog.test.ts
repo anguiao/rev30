@@ -27,6 +27,33 @@ function mockImageSize(width = 800, height = 450) {
   )
 }
 
+function mockDelayedImageSize(width = 800, height = 450) {
+  const images: Array<{ onload: (() => void) | null }> = []
+
+  vi.stubGlobal(
+    'Image',
+    class {
+      naturalWidth = width
+      naturalHeight = height
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+
+      set src(_value: string) {
+        images.push(this)
+      }
+    },
+  )
+
+  return {
+    async load() {
+      for (const image of images) {
+        image.onload?.()
+      }
+      await flushPromises()
+    },
+  }
+}
+
 function createEditor(content = '<p>维护通知</p>') {
   const element = document.createElement('div')
   document.body.appendChild(element)
@@ -157,5 +184,35 @@ describe('ImageToolbarControl', () => {
         },
       ],
     })
+  })
+
+  it('normalizes dimensions entered before natural size finishes loading', async () => {
+    const image = mockDelayedImageSize(1000, 500)
+    const upload = vi.fn(async (file: File) => ({
+      src: `/api/attachments/${file.name}/content`,
+      alt: file.name,
+    }))
+    const editor = createEditor()
+    const wrapper = mountControl(editor, upload)
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await chooseFile(wrapper, new File(['image'], 'cover.png', { type: 'image/png' }))
+    await wrapper.get('[data-test="rich-text-image-width"] input').setValue('600')
+    await wrapper.get('[data-test="rich-text-image-height"] input').setValue('100')
+    await image.load()
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.getJSON().content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'image',
+          attrs: expect.objectContaining({
+            width: 600,
+            height: 300,
+          }),
+        }),
+      ]),
+    )
   })
 })

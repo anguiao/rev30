@@ -28,19 +28,25 @@ const width = ref<number | null>(null)
 const height = ref<number | null>(null)
 const naturalWidth = ref<number | null>(null)
 const naturalHeight = ref<number | null>(null)
+const originalAspectRatio = ref<number | null>(null)
+const isSizeLoadFailed = ref(false)
 const isUploading = ref(false)
 const isLoadingSize = ref(false)
 
 const aspectRatio = computed(() =>
-  naturalWidth.value !== null && naturalHeight.value !== null
+  naturalWidth.value !== null &&
+  naturalHeight.value !== null &&
+  naturalWidth.value > 0 &&
+  naturalHeight.value > 0
     ? naturalWidth.value / naturalHeight.value
-    : null,
+    : originalAspectRatio.value,
 )
 const canConfirm = computed(
   () =>
     previewSrc.value !== '' &&
     isPositiveInteger(width.value) &&
     isPositiveInteger(height.value) &&
+    (aspectRatio.value !== null || canConfirmAfterSizeLoadFailure()) &&
     !isUploading.value &&
     !isLoadingSize.value,
 )
@@ -73,6 +79,8 @@ function initializeInsertState() {
   height.value = null
   naturalWidth.value = null
   naturalHeight.value = null
+  originalAspectRatio.value = null
+  isSizeLoadFailed.value = false
 }
 
 function initializeEditState(attrs: RichTextImageAttrs) {
@@ -83,25 +91,34 @@ function initializeEditState(attrs: RichTextImageAttrs) {
   height.value = attrs.height ?? null
   naturalWidth.value = null
   naturalHeight.value = null
+  originalAspectRatio.value =
+    isPositiveInteger(width.value) && isPositiveInteger(height.value)
+      ? width.value / height.value
+      : null
+  isSizeLoadFailed.value = false
   void loadSize(attrs.src)
 }
 
 async function loadSize(src: string) {
   isLoadingSize.value = true
+  isSizeLoadFailed.value = false
 
   try {
     const size = await loadImageNaturalSize(src)
     naturalWidth.value = size.width
     naturalHeight.value = size.height
 
-    if (width.value === null || height.value === null) {
-      resetSize()
-    }
+    normalizeSize()
   } catch (error) {
+    isSizeLoadFailed.value = true
     emit('error', error)
   } finally {
     isLoadingSize.value = false
   }
+}
+
+function canConfirmAfterSizeLoadFailure() {
+  return props.mode === 'edit' && isSizeLoadFailed.value
 }
 
 function resetSize() {
@@ -111,6 +128,24 @@ function resetSize() {
 
   width.value = naturalWidth.value
   height.value = naturalHeight.value
+}
+
+function normalizeSize() {
+  if (aspectRatio.value === null) {
+    return
+  }
+
+  if (isPositiveInteger(width.value)) {
+    setWidth(width.value)
+    return
+  }
+
+  if (isPositiveInteger(height.value)) {
+    setHeight(height.value)
+    return
+  }
+
+  resetSize()
 }
 
 function setWidth(value: number | null) {
@@ -144,6 +179,8 @@ async function handleFileChange(event: Event) {
     height.value = null
     naturalWidth.value = null
     naturalHeight.value = null
+    originalAspectRatio.value = null
+    isSizeLoadFailed.value = false
     await loadSize(uploaded.src)
   } catch (error) {
     emit('error', error)

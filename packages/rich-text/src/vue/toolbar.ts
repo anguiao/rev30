@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/core'
-import type { Component, ComponentInstance } from 'vue'
+import { markRaw, type Component, type ComponentInstance } from 'vue'
 
 export type RichTextIconClass = `i-[${string}--${string}]`
 
@@ -93,7 +93,7 @@ export function richTextToolbarComponent<TComponent extends Component>(
   return {
     type: 'component',
     key: control.key,
-    component: control.component,
+    component: markRaw(control.component),
     props: control.props as Record<string, unknown>,
   }
 }

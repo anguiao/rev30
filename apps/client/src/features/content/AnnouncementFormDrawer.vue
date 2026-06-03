@@ -18,6 +18,7 @@ import {
   NTreeSelect,
 } from 'naive-ui'
 import {
+  ATTACHMENT_READ_POLICY_AUTHENTICATED,
   ANNOUNCEMENT_STATUS_PUBLISHED,
   ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
   ANNOUNCEMENT_TARGET_TYPE_ROLE,
@@ -37,7 +38,7 @@ import {
   type AnnouncementVisibility,
   type TiptapDocument,
 } from '@rev30/contracts'
-import { compactRichTextEditorPreset } from '@rev30/rich-text/vue/presets'
+import { createCompactRichTextEditorPreset } from '@rev30/rich-text/vue/presets'
 import { RichTextEditor } from '@rev30/rich-text/vue'
 import {
   ContentRequestError,
@@ -46,6 +47,11 @@ import {
   getContentErrorMessage,
   updateAnnouncement,
 } from '.'
+import {
+  getAttachmentContentUrl,
+  getAttachmentErrorMessage,
+  uploadAttachment,
+} from '../attachments'
 import { getDepartmentTreeOptions, getRoleOptions, getUserOptions } from '../system'
 import { announcementTypeSelectOptions, announcementVisibilityOptions } from './labels'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
@@ -83,6 +89,18 @@ const defaultFormValues: AnnouncementFormInput = {
 
 const queryCache = useQueryCache()
 const drawerSessionId = ref(0)
+
+async function uploadAnnouncementRichTextImage(file: File) {
+  const attachment = await uploadAttachment(file, {
+    usage: 'announcement-content-image',
+    readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+  })
+
+  return {
+    src: getAttachmentContentUrl(attachment.id),
+    alt: file.name,
+  }
+}
 
 const {
   data: formData,
@@ -171,6 +189,15 @@ const loadError = computed(() =>
 )
 
 const formError = ref<string | null>(null)
+const richTextEditorPreset = createCompactRichTextEditorPreset({
+  image: {
+    accept: 'image/*',
+    upload: uploadAnnouncementRichTextImage,
+    onError(error) {
+      formError.value = getAttachmentErrorMessage(error, '上传图片失败')
+    },
+  },
+})
 
 const form = useForm({
   defaultValues: defaultFormValues,
@@ -405,7 +432,7 @@ watch(
               <RichTextEditor
                 :disabled="isLoading || isSaving"
                 :model-value="state.value"
-                :preset="compactRichTextEditorPreset"
+                :preset="richTextEditorPreset"
                 @blur="field.handleBlur"
                 @update:model-value="
                   (value) => {

@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  ATTACHMENT_READ_POLICY_AUTHENTICATED,
   ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
   ANNOUNCEMENT_TARGET_TYPE_ROLE,
   ANNOUNCEMENT_TARGET_TYPE_USER,
@@ -27,17 +28,28 @@ import {
   updateAnnouncement,
 } from '../../../src/features/content'
 import {
+  getAttachmentContentUrl,
+  getAttachmentErrorMessage,
+  uploadAttachment,
+} from '../../../src/features/attachments'
+import {
   getDepartmentTreeOptions,
   getRoleOptions,
   getUserOptions,
 } from '../../../src/features/system'
 import AnnouncementFormDrawer from '../../../src/features/content/AnnouncementFormDrawer.vue'
 
-vi.mock('@rev30/rich-text/vue/presets', () => ({
-  compactRichTextEditorPreset: {
+const { createCompactRichTextEditorPresetMock } = vi.hoisted(() => ({
+  createCompactRichTextEditorPresetMock: vi.fn((options) => ({
     key: 'compact',
     features: [],
-  },
+    toolbar: null,
+    options,
+  })),
+}))
+
+vi.mock('@rev30/rich-text/vue/presets', () => ({
+  createCompactRichTextEditorPreset: createCompactRichTextEditorPresetMock,
 }))
 
 vi.mock('@rev30/rich-text/vue', () => ({
@@ -89,6 +101,13 @@ vi.mock('../../../src/features/content', async (importOriginal) => ({
   updateAnnouncement: vi.fn(),
 }))
 
+vi.mock('../../../src/features/attachments', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/attachments')>()),
+  uploadAttachment: vi.fn(),
+  getAttachmentContentUrl: vi.fn((id: string) => `/api/attachments/${id}/content`),
+  getAttachmentErrorMessage: vi.fn((_error: unknown, fallback: string) => fallback),
+}))
+
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   getDepartmentTreeOptions: vi.fn(),
@@ -99,6 +118,9 @@ vi.mock('../../../src/features/system', async (importOriginal) => ({
 const createAnnouncementMock = vi.mocked(createAnnouncement)
 const getAnnouncementMock = vi.mocked(getAnnouncement)
 const updateAnnouncementMock = vi.mocked(updateAnnouncement)
+const uploadAttachmentMock = vi.mocked(uploadAttachment)
+const getAttachmentContentUrlMock = vi.mocked(getAttachmentContentUrl)
+const getAttachmentErrorMessageMock = vi.mocked(getAttachmentErrorMessage)
 const getDepartmentTreeOptionsMock = vi.mocked(getDepartmentTreeOptions)
 const getRoleOptionsMock = vi.mocked(getRoleOptions)
 const getUserOptionsMock = vi.mocked(getUserOptions)
@@ -233,9 +255,13 @@ function getTestComponent(wrapper: ReturnType<typeof mount>, testId: string): an
 
 describe('AnnouncementFormDrawer', () => {
   beforeEach(() => {
+    createCompactRichTextEditorPresetMock.mockClear()
     createAnnouncementMock.mockReset()
     getAnnouncementMock.mockReset()
     updateAnnouncementMock.mockReset()
+    uploadAttachmentMock.mockReset()
+    getAttachmentContentUrlMock.mockClear()
+    getAttachmentErrorMessageMock.mockClear()
     getDepartmentTreeOptionsMock.mockReset()
     getRoleOptionsMock.mockReset()
     getUserOptionsMock.mockReset()
@@ -243,6 +269,45 @@ describe('AnnouncementFormDrawer', () => {
     getDepartmentTreeOptionsMock.mockResolvedValue(departmentOptionsResponse)
     getRoleOptionsMock.mockResolvedValue(roleOptionsResponse)
     getUserOptionsMock.mockResolvedValue(userOptionsResponse)
+  })
+
+  it('configures rich text image uploads as authenticated announcement attachments', async () => {
+    uploadAttachmentMock.mockResolvedValue({ id: '55555555-5555-4555-8555-555555555555' })
+
+    mountDrawer()
+    await flushPromises()
+
+    const imageOptions = createCompactRichTextEditorPresetMock.mock.calls[0]?.[0].image
+    const result = await imageOptions.upload(
+      new File(['image'], 'cover.png', { type: 'image/png' }),
+    )
+
+    expect(uploadAttachmentMock).toHaveBeenCalledWith(expect.any(File), {
+      usage: 'announcement-content-image',
+      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+    })
+    expect(getAttachmentContentUrlMock).toHaveBeenCalledWith(
+      '55555555-5555-4555-8555-555555555555',
+    )
+    expect(result).toEqual({
+      src: '/api/attachments/55555555-5555-4555-8555-555555555555/content',
+      alt: 'cover.png',
+    })
+  })
+
+  it('shows attachment upload errors through the form error alert', async () => {
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    const imageOptions = createCompactRichTextEditorPresetMock.mock.calls[0]?.[0].image
+    imageOptions.onError(new Error('bad'))
+    await flushPromises()
+
+    expect(getAttachmentErrorMessageMock).toHaveBeenCalledWith(
+      expect.any(Error),
+      '上传图片失败',
+    )
+    expect(wrapper.text()).toContain('上传图片失败')
   })
 
   it('shows create drawer title', async () => {

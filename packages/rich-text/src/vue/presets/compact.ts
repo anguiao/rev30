@@ -9,47 +9,64 @@ import { headingCommands } from '../../features/heading/vue'
 import { historyCommands } from '../../features/history/vue'
 import { highlightToolbarControl } from '../../features/highlight/vue'
 import { horizontalRuleCommand } from '../../features/horizontal-rule/vue'
+import {
+  imageToolbarControl,
+  type RichTextImageUploadOptions,
+} from '../../features/image/vue'
 import { italicCommand } from '../../features/italic/vue'
 import { linkToolbarControl } from '../../features/link/vue'
 import { listCommands } from '../../features/list/vue'
 import { underlineCommand } from '../../features/underline/vue'
 import { compactRichTextPreset } from '../../presets'
-import { defineRichTextEditorPreset } from './types'
+import { defineRichTextEditorPreset, type RichTextEditorPreset } from './types'
 
-export const compactRichTextToolbar = defineRichTextToolbar([
-  { key: 'history', controls: historyCommands.map(button) },
-  {
-    key: 'marks',
-    controls: [
-      button(boldCommand),
-      button(italicCommand),
-      button(underlineCommand),
-      highlightToolbarControl,
-      linkToolbarControl,
-    ],
-  },
-  {
-    key: 'blocks',
-    controls: [
-      dropdown({
-        key: 'heading',
-        label: '标题',
-        icon: 'i-[lucide--heading]',
-        commands: headingCommands,
-      }),
-      dropdown({
-        key: 'list',
-        label: '列表',
-        icon: 'i-[lucide--list]',
-        commands: listCommands,
-      }),
-      button(blockquoteCommand),
-    ],
-  },
-  { key: 'insert', controls: [button(horizontalRuleCommand)] },
-])
+export interface CompactRichTextEditorPresetOptions {
+  image: RichTextImageUploadOptions
+}
 
-export const compactRichTextEditorPreset = defineRichTextEditorPreset({
-  ...compactRichTextPreset,
-  toolbar: compactRichTextToolbar,
-})
+function createCompactRichTextToolbar(options: CompactRichTextEditorPresetOptions) {
+  return defineRichTextToolbar([
+    { key: 'history', controls: historyCommands.map(button) },
+    {
+      key: 'marks',
+      controls: [
+        button(boldCommand),
+        button(italicCommand),
+        button(underlineCommand),
+        highlightToolbarControl,
+        linkToolbarControl,
+      ],
+    },
+    {
+      key: 'blocks',
+      controls: [
+        dropdown({
+          key: 'heading',
+          label: '标题',
+          icon: 'i-[lucide--heading]',
+          commands: headingCommands,
+        }),
+        dropdown({
+          key: 'list',
+          label: '列表',
+          icon: 'i-[lucide--list]',
+          commands: listCommands,
+        }),
+        button(blockquoteCommand),
+      ],
+    },
+    {
+      key: 'insert',
+      controls: [button(horizontalRuleCommand), imageToolbarControl(options.image)],
+    },
+  ])
+}
+
+export function createCompactRichTextEditorPreset(
+  options: CompactRichTextEditorPresetOptions,
+): RichTextEditorPreset {
+  return defineRichTextEditorPreset({
+    ...compactRichTextPreset,
+    toolbar: createCompactRichTextToolbar(options),
+  })
+}

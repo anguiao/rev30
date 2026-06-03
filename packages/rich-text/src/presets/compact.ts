@@ -6,6 +6,7 @@ import { headingFeature } from '../features/heading/shared'
 import { historyFeature } from '../features/history/shared'
 import { highlightFeature } from '../features/highlight/shared'
 import { horizontalRuleFeature } from '../features/horizontal-rule/shared'
+import { imageFeature } from '../features/image/shared'
 import { italicFeature } from '../features/italic/shared'
 import { linkFeature } from '../features/link/shared'
 import { listFeature } from '../features/list/shared'
@@ -25,5 +26,6 @@ export const compactRichTextPreset = defineRichTextPreset({
     blockquoteFeature,
     listFeature,
     horizontalRuleFeature,
+    imageFeature,
   ],
 })

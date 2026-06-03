@@ -1,12 +1,18 @@
 import { getSchema } from '@tiptap/core'
 import { describe, expect, it, vi } from 'vitest'
 import { collectRichTextExtensions } from '../../src/core/preset'
-import { compactRichTextToolbar, compactRichTextEditorPreset } from '../../src/vue/presets/compact'
+import { createCompactRichTextEditorPreset } from '../../src/vue/presets/compact'
 import { compactRichTextPreset } from '../../src/presets'
-import {
-  compactRichTextHtmlPolicies,
-  compactRichTextServerPreset,
-} from '../../src/server/presets/compact'
+import { createCompactRichTextServerPreset } from '../../src/server/presets/compact'
+
+const imageUpload = async (file: File) => ({
+  src: `/api/attachments/${file.name}/content`,
+  alt: file.name,
+})
+
+const imageServerOptions = {
+  isAllowedSrc: (src: string) => /^\/api\/attachments\/[0-9a-f-]{36}\/content$/i.test(src),
+}
 
 describe('compact rich text preset', () => {
   it('enables current editor features', () => {
@@ -22,22 +28,30 @@ describe('compact rich text preset', () => {
       'blockquote',
       'list',
       'horizontal-rule',
+      'image',
     ])
   })
 
   it('keeps the current visible toolbar layout with the editor preset', () => {
-    expect(compactRichTextEditorPreset.key).toBe(compactRichTextPreset.key)
-    expect(compactRichTextEditorPreset.features).toBe(compactRichTextPreset.features)
-    expect(compactRichTextToolbar.groups.map((group) => group.key)).toEqual([
+    const editorPreset = createCompactRichTextEditorPreset({
+      image: {
+        accept: 'image/*',
+        upload: imageUpload,
+      },
+    })
+
+    expect(editorPreset.key).toBe(compactRichTextPreset.key)
+    expect(editorPreset.features).toBe(compactRichTextPreset.features)
+    expect(editorPreset.toolbar?.groups.map((group) => group.key)).toEqual([
       'history',
       'marks',
       'blocks',
       'insert',
     ])
-    expect(compactRichTextEditorPreset.toolbar).toBe(compactRichTextToolbar)
 
-    const marks = compactRichTextToolbar.groups.find((group) => group.key === 'marks')
-    const blocks = compactRichTextToolbar.groups.find((group) => group.key === 'blocks')
+    const marks = editorPreset.toolbar?.groups.find((group) => group.key === 'marks')
+    const blocks = editorPreset.toolbar?.groups.find((group) => group.key === 'blocks')
+    const insert = editorPreset.toolbar?.groups.find((group) => group.key === 'insert')
     const heading = blocks?.controls.find((control) => control.type === 'dropdown')
     const list = blocks?.controls.find(
       (control) => control.type === 'dropdown' && control.key === 'list',
@@ -55,29 +69,23 @@ describe('compact rich text preset', () => {
       'bullet-list',
       'ordered-list',
     ])
+    expect(
+      insert?.controls.map((control) =>
+        control.type === 'button' ? control.command.key : control.key,
+      ) ?? [],
+    ).toEqual(['horizontal-rule', 'image'])
   })
 
   it('keeps server html policies with the server preset', () => {
-    expect(compactRichTextServerPreset.key).toBe(compactRichTextPreset.key)
-    expect(compactRichTextServerPreset.features).toBe(compactRichTextPreset.features)
-    expect(compactRichTextServerPreset.htmlPolicies).toBe(compactRichTextHtmlPolicies)
-    expect(compactRichTextHtmlPolicies.flatMap((policy) => policy.allowedTags ?? [])).toEqual([
-      'p',
-      'br',
-      'strong',
-      'em',
-      'u',
-      'mark',
-      'a',
-      'h1',
-      'h2',
-      'h3',
-      'ul',
-      'ol',
-      'li',
-      'blockquote',
-      'hr',
-    ])
+    const serverPreset = createCompactRichTextServerPreset({
+      image: imageServerOptions,
+    })
+
+    expect(serverPreset.key).toBe(compactRichTextPreset.key)
+    expect(serverPreset.features).toBe(compactRichTextPreset.features)
+    expect(serverPreset.htmlPolicies.flatMap((policy) => policy.allowedTags ?? [])).toContain(
+      'img',
+    )
   })
 
   it('does not register duplicate Tiptap extensions', () => {

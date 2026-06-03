@@ -17,6 +17,8 @@ defineProps<ImageToolbarControlProps>()
     data-test="rich-text-image"
     quaternary
     size="small"
+    title="图片"
+    aria-label="图片"
     :disabled="disabled || editor === null"
   >
     <span class="i-[lucide--image]" aria-hidden="true" />

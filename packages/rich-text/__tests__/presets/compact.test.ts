@@ -83,9 +83,24 @@ describe('compact rich text preset', () => {
 
     expect(serverPreset.key).toBe(compactRichTextPreset.key)
     expect(serverPreset.features).toBe(compactRichTextPreset.features)
-    expect(serverPreset.htmlPolicies.flatMap((policy) => policy.allowedTags ?? [])).toContain(
+    expect(serverPreset.htmlPolicies.flatMap((policy) => policy.allowedTags ?? [])).toEqual([
+      'p',
+      'br',
+      'strong',
+      'em',
+      'u',
+      'mark',
+      'a',
+      'h1',
+      'h2',
+      'h3',
+      'ul',
+      'ol',
+      'li',
+      'blockquote',
+      'hr',
       'img',
-    )
+    ])
   })
 
   it('does not register duplicate Tiptap extensions', () => {

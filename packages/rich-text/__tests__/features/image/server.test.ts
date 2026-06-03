@@ -77,4 +77,17 @@ describe('image html policy', () => {
       style: 'max-width: 100%; height: auto',
     })
   })
+
+  it.each([
+    `<img src="${attachmentSrc}" alt="示意图" height="360" style="height: 360px">`,
+    `<img src="${attachmentSrc}" alt="示意图" width="0" height="360" style="width: 0px; height: 360px">`,
+  ])('drops height when width is missing or invalid: %s', (html) => {
+    const sanitized = sanitizeRichTextHtml(html, [imagePolicy])
+
+    expect(getImageAttributes(sanitized)).toEqual({
+      src: attachmentSrc,
+      alt: '示意图',
+      style: 'max-width: 100%; height: auto',
+    })
+  })
 })

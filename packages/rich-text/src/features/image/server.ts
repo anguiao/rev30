@@ -20,6 +20,13 @@ function buildImageStyle(width: string | undefined) {
     : `width: ${width}px; max-width: 100%; height: auto`
 }
 
+function normalizeImageDimensions(attribs: Record<string, string>) {
+  const width = normalizeDimension(attribs.width)
+  const height = width === undefined ? undefined : normalizeDimension(attribs.height)
+
+  return { width, height }
+}
+
 export function createImageHtmlPolicy(options: RichTextImageServerOptions): RichTextHtmlPolicy {
   const transformImage: sanitizeHtml.Transformer = (tagName, attribs) => {
     const src = attribs.src?.trim() ?? ''
@@ -28,8 +35,7 @@ export function createImageHtmlPolicy(options: RichTextImageServerOptions): Rich
       throw new RichTextContentInvalidError()
     }
 
-    const width = normalizeDimension(attribs.width)
-    const height = normalizeDimension(attribs.height)
+    const { width, height } = normalizeImageDimensions(attribs)
 
     return {
       tagName,

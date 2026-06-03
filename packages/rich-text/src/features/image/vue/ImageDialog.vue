@@ -191,6 +191,10 @@ function setHeight(value: number | null) {
 }
 
 async function handleFileChange(event: Event) {
+  if (props.mode !== 'insert') {
+    return
+  }
+
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) {
@@ -258,6 +262,7 @@ function confirm() {
     <NSpin :show="isUploading || isLoadingSize">
       <div class="flex flex-col gap-3">
         <input
+          v-if="mode === 'insert'"
           data-test="rich-text-image-file"
           type="file"
           :accept="accept"

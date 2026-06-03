@@ -371,6 +371,43 @@ describe('ImageToolbarControl', () => {
     })
   })
 
+  it('does not allow uploading a replacement while editing an existing image', async () => {
+    mockImageSize(1000, 500)
+    const upload = vi.fn(async (file: File) => ({
+      src: `/api/attachments/${file.name}/content`,
+      alt: file.name,
+    }))
+    const editor = createEditor(
+      '<img src="/api/attachments/cover/content" alt="旧说明" width="500" height="250" />',
+    )
+    editor.commands.setNodeSelection(0)
+    const wrapper = mountControl(editor, upload)
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+
+    expect(wrapper.find('[data-test="rich-text-image-file"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="rich-text-image-alt"] input').setValue('编辑说明')
+    await wrapper.get('[data-test="rich-text-image-width"] input').setValue('600')
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).not.toHaveBeenCalled()
+    expect(editor.getJSON()).toMatchObject({
+      content: [
+        {
+          type: 'image',
+          attrs: {
+            src: '/api/attachments/cover/content',
+            alt: '编辑说明',
+            width: 600,
+            height: 300,
+          },
+        },
+      ],
+    })
+  })
+
   it('clears alt when an existing image description is cleared', async () => {
     mockImageSize(1000, 500)
     const editor = createEditor(

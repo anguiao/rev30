@@ -21,6 +21,13 @@ function imageStyle(width: number | null) {
     : `width: ${width}px; max-width: 100%; height: auto`
 }
 
+function normalizeImageDimensions(attributes: Record<string, unknown>) {
+  const width = normalizeDimension(attributes.width)
+  const height = width === null ? null : normalizeDimension(attributes.height)
+
+  return { width, height }
+}
+
 export const imageFeature = defineRichTextFeature({
   key: 'image',
   extension: () =>
@@ -43,15 +50,14 @@ export const imageFeature = defineRichTextFeature({
             default: null,
             parseHTML: (element) => normalizeDimension(element.getAttribute('height')),
             renderHTML: (attributes) => {
-              const height = normalizeDimension(attributes.height)
+              const { height } = normalizeImageDimensions(attributes as Record<string, unknown>)
               return height === null ? {} : { height }
             },
           },
         }
       },
       renderHTML({ HTMLAttributes }) {
-        const width = normalizeDimension(HTMLAttributes.width)
-        const height = normalizeDimension(HTMLAttributes.height)
+        const { width, height } = normalizeImageDimensions(HTMLAttributes)
 
         return [
           'img',

@@ -20,9 +20,9 @@ import type {
 
 declare module 'vue-router' {
   interface TypesConfig {
-    ParamParsers:
-      | never
+    _ParamParsers: {}
     RouteNamedMap: import('vue-router/auto-routes').RouteNamedMap
+    _RouteFileInfoMap: import('vue-router/auto-routes')._RouteFileInfoMap
   }
 }
 
@@ -142,11 +142,15 @@ declare module 'vue-router/auto-routes' {
         | '/system/users'
       views:
         | 'default'
+      pathParamNames:
+        | never
     }
     'src/pages/index/account/announcements.vue': {
       routes:
         | '/account/announcements'
       views:
+        | never
+      pathParamNames:
         | never
     }
     'src/pages/index/account/settings.vue': {
@@ -154,11 +158,15 @@ declare module 'vue-router/auto-routes' {
         | '/account/settings'
       views:
         | never
+      pathParamNames:
+        | never
     }
     'src/pages/index/content/announcements.vue': {
       routes:
         | '/content/announcements'
       views:
+        | never
+      pathParamNames:
         | never
     }
     'src/pages/index/content/attachments.vue': {
@@ -166,11 +174,15 @@ declare module 'vue-router/auto-routes' {
         | '/content/attachments'
       views:
         | never
+      pathParamNames:
+        | never
     }
     'src/pages/index/system/configs.vue': {
       routes:
         | '/system/configs'
       views:
+        | never
+      pathParamNames:
         | never
     }
     'src/pages/index/system/departments.vue': {
@@ -178,11 +190,15 @@ declare module 'vue-router/auto-routes' {
         | '/system/departments'
       views:
         | never
+      pathParamNames:
+        | never
     }
     'src/pages/index/system/dictionaries.vue': {
       routes:
         | '/system/dictionaries'
       views:
+        | never
+      pathParamNames:
         | never
     }
     'src/pages/index/system/resources.vue': {
@@ -190,11 +206,15 @@ declare module 'vue-router/auto-routes' {
         | '/system/resources'
       views:
         | never
+      pathParamNames:
+        | never
     }
     'src/pages/index/system/roles.vue': {
       routes:
         | '/system/roles'
       views:
+        | never
+      pathParamNames:
         | never
     }
     'src/pages/index/system/users.vue': {
@@ -202,17 +222,23 @@ declare module 'vue-router/auto-routes' {
         | '/system/users'
       views:
         | never
+      pathParamNames:
+        | never
     }
     'src/pages/403.vue': {
       routes:
         | '/403'
       views:
         | never
+      pathParamNames:
+        | never
     }
     'src/pages/login.vue': {
       routes:
         | '/login'
       views:
+        | never
+      pathParamNames:
         | never
     }
   }

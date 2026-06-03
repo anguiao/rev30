@@ -18,16 +18,16 @@
     "format:check": "oxfmt --check ."
   },
   "devDependencies": {
-    "@types/node": "^24.12.3",
-    "oxfmt": "^0.51.0",
-    "oxlint": "^1.66.0",
+    "@types/node": "^24.12.4",
+    "oxfmt": "^0.53.0",
+    "oxlint": "^1.68.0",
     "oxlint-tsgolint": "^0.23.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.8"
   },
   "engines": {
     "node": ">=24 <25",
     "pnpm": ">=11 <12"
   },
-  "packageManager": "pnpm@11.3.0"
+  "packageManager": "pnpm@11.5.1"
 }

@@ -220,6 +220,41 @@ describe('ImageToolbarControl', () => {
     expect(JSON.stringify(editor.getJSON())).not.toContain('"image"')
   })
 
+  it('clears the insert candidate when a newer file upload fails', async () => {
+    mockImageSize()
+    const uploadError = new Error('Upload failed')
+    const upload = vi.fn((file: File) =>
+      file.name === 'first.png'
+        ? Promise.resolve({
+            src: '/api/attachments/first.png/content',
+            alt: 'first.png',
+          })
+        : Promise.reject(uploadError),
+    )
+    const onError = vi.fn()
+    const editor = createEditor()
+    const wrapper = mountControl(editor, upload, onError)
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await chooseFile(wrapper, new File(['first'], 'first.png', { type: 'image/png' }))
+    expect(
+      wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
+    ).toBeUndefined()
+
+    await chooseFile(wrapper, new File(['second'], 'second.png', { type: 'image/png' }))
+    await flushPromises()
+
+    expect(onError).toHaveBeenCalledWith(uploadError)
+    expect(
+      wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
+    ).toBeDefined()
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(JSON.stringify(editor.getJSON())).not.toContain('first.png')
+    expect(JSON.stringify(editor.getJSON())).not.toContain('"image"')
+  })
+
   it('reports natural size errors and keeps insert confirmation disabled', async () => {
     mockImageSizeFailure()
     const onError = vi.fn()

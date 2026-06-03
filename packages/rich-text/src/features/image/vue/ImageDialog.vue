@@ -81,9 +81,7 @@ function invalidateAsyncRequests() {
   sizeLoadRequestId += 1
 }
 
-function initializeInsertState() {
-  invalidateAsyncRequests()
-  selectedFileName.value = ''
+function clearImageCandidate() {
   previewSrc.value = ''
   alt.value = ''
   width.value = null
@@ -92,6 +90,12 @@ function initializeInsertState() {
   naturalHeight.value = null
   originalAspectRatio.value = null
   isSizeLoadFailed.value = false
+}
+
+function initializeInsertState() {
+  invalidateAsyncRequests()
+  selectedFileName.value = ''
+  clearImageCandidate()
 }
 
 function initializeEditState(attrs: RichTextImageAttrs) {
@@ -197,6 +201,9 @@ async function handleFileChange(event: Event) {
   uploadRequestId = requestId
   sizeLoadRequestId += 1
   isLoadingSize.value = false
+  if (props.mode === 'insert') {
+    clearImageCandidate()
+  }
   selectedFileName.value = file.name
   isUploading.value = true
   try {

@@ -196,6 +196,7 @@ async function handleFileChange(event: Event) {
   const requestId = uploadRequestId + 1
   uploadRequestId = requestId
   sizeLoadRequestId += 1
+  isLoadingSize.value = false
   selectedFileName.value = file.name
   isUploading.value = true
   try {
@@ -235,12 +236,9 @@ function confirm() {
   const trimmedAlt = alt.value.trim()
   const attrs: RichTextImageAttrs = {
     src: previewSrc.value,
+    alt: trimmedAlt,
     width: width.value,
     height: height.value,
-  }
-
-  if (trimmedAlt) {
-    attrs.alt = trimmedAlt
   }
 
   emit('confirm', attrs)

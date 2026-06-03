@@ -3,6 +3,7 @@ import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { Editor } from '@tiptap/vue-3'
 import { flushPromises, mount } from '@vue/test-utils'
+import { NSpin } from 'naive-ui'
 import { markRaw } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { imageFeature } from '../../../../src/features/image/shared'
@@ -63,6 +64,20 @@ function mockDelayedImageSize(width = 800, height = 450) {
       await flushPromises()
     },
   }
+}
+
+function mockStalledImageSize() {
+  vi.stubGlobal(
+    'Image',
+    class {
+      naturalWidth = 0
+      naturalHeight = 0
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+
+      set src(_value: string) {}
+    },
+  )
 }
 
 function mockImageSizeFailure() {
@@ -227,6 +242,32 @@ describe('ImageToolbarControl', () => {
     expect(JSON.stringify(editor.getJSON())).not.toContain('"image"')
   })
 
+  it('clears stale size loading when a newer file upload fails', async () => {
+    mockStalledImageSize()
+    const uploadError = new Error('Upload failed')
+    const upload = vi.fn((file: File) =>
+      file.name === 'first.png'
+        ? Promise.resolve({
+            src: '/api/attachments/first.png/content',
+            alt: 'first.png',
+          })
+        : Promise.reject(uploadError),
+    )
+    const onError = vi.fn()
+    const editor = createEditor()
+    const wrapper = mountControl(editor, upload, onError)
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await chooseFile(wrapper, new File(['first'], 'first.png', { type: 'image/png' }))
+    expect(wrapper.findComponent(NSpin).props('show')).toBe(true)
+
+    await chooseFile(wrapper, new File(['second'], 'second.png', { type: 'image/png' }))
+    await flushPromises()
+
+    expect(onError).toHaveBeenCalledWith(uploadError)
+    expect(wrapper.findComponent(NSpin).props('show')).toBe(false)
+  })
+
   it('ignores stale upload results after another file is selected', async () => {
     mockImageSize()
     const firstUpload = deferred<{ src: string; alt: string }>()
@@ -293,6 +334,57 @@ describe('ImageToolbarControl', () => {
         },
       ],
     })
+  })
+
+  it('clears alt when an existing image description is cleared', async () => {
+    mockImageSize(1000, 500)
+    const editor = createEditor(
+      '<img src="/api/attachments/cover/content" alt="旧说明" width="500" height="250" />',
+    )
+    editor.commands.setNodeSelection(0)
+    const wrapper = mountControl(editor)
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-image-alt"] input').setValue('')
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.getJSON()).toMatchObject({
+      content: [
+        {
+          type: 'image',
+          attrs: {
+            alt: '',
+          },
+        },
+      ],
+    })
+  })
+
+  it('does not keep image title attrs when parsing or updating images', async () => {
+    const editor = createEditor(
+      '<img src="/api/attachments/cover/content" alt="说明" title="标题" width="500" height="250" />',
+    )
+    editor.commands.setNodeSelection(0)
+
+    expect(editor.getAttributes('image')).not.toHaveProperty('title')
+    expect(editor.getJSON()).toMatchObject({
+      content: [
+        {
+          type: 'image',
+          attrs: expect.not.objectContaining({
+            title: expect.anything(),
+          }),
+        },
+      ],
+    })
+
+    editor.commands.updateAttributes('image', { title: '新标题', alt: '新说明' })
+
+    expect(editor.getAttributes('image')).toMatchObject({
+      alt: '新说明',
+    })
+    expect(editor.getAttributes('image')).not.toHaveProperty('title')
   })
 
   it('normalizes dimensions entered before natural size finishes loading', async () => {

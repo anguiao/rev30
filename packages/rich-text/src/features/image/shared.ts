@@ -26,8 +26,11 @@ export const imageFeature = defineRichTextFeature({
   extension: () =>
     Image.extend({
       addAttributes() {
+        const parentAttributes = { ...this.parent?.() }
+        delete (parentAttributes as Record<string, unknown>).title
+
         return {
-          ...this.parent?.(),
+          ...parentAttributes,
           width: {
             default: null,
             parseHTML: (element) => normalizeDimension(element.getAttribute('width')),

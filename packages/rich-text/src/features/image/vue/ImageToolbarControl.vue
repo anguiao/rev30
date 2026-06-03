@@ -2,8 +2,8 @@
 import { NButton } from 'naive-ui'
 import { computed, ref } from 'vue'
 import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
+import { insertRichTextImage, updateRichTextImage } from '../commands'
 import type { RichTextImageAttrs } from '../shared'
-import { insertRichTextImage, updateRichTextImage } from '../vue.js'
 import ImageDialog from './ImageDialog.vue'
 
 interface ImageToolbarControlProps extends RichTextToolbarControlInjectedProps {

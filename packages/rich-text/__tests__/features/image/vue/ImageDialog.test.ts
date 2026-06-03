@@ -11,6 +11,17 @@ import ImageToolbarControl from '../../../../src/features/image/vue/ImageToolbar
 const editors: Editor[] = []
 const wrappers: Array<ReturnType<typeof mount>> = []
 
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, resolve, reject }
+}
+
 function mockImageSize(width = 800, height = 450) {
   vi.stubGlobal(
     'Image',
@@ -54,6 +65,22 @@ function mockDelayedImageSize(width = 800, height = 450) {
   }
 }
 
+function mockImageSizeFailure() {
+  vi.stubGlobal(
+    'Image',
+    class {
+      naturalWidth = 0
+      naturalHeight = 0
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+
+      set src(_value: string) {
+        queueMicrotask(() => this.onerror?.())
+      }
+    },
+  )
+}
+
 function createEditor(content = '<p>维护通知</p>') {
   const element = document.createElement('div')
   document.body.appendChild(element)
@@ -74,7 +101,7 @@ function createEditor(content = '<p>维护通知</p>') {
   return editor
 }
 
-function mountControl(editor: Editor, upload = vi.fn()) {
+function mountControl(editor: Editor, upload = vi.fn(), onError = vi.fn()) {
   const wrapper = mount(ImageToolbarControl, {
     global: {
       stubs: {
@@ -86,6 +113,7 @@ function mountControl(editor: Editor, upload = vi.fn()) {
       disabled: false,
       accept: 'image/*',
       upload,
+      onError,
     },
   })
   wrappers.push(wrapper)
@@ -156,6 +184,87 @@ describe('ImageToolbarControl', () => {
     await flushPromises()
 
     expect(JSON.stringify(editor.getJSON())).not.toContain('"image"')
+  })
+
+  it('reports upload errors and does not insert an image', async () => {
+    mockImageSize()
+    const uploadError = new Error('Upload failed')
+    const upload = vi.fn(async () => {
+      throw uploadError
+    })
+    const onError = vi.fn()
+    const editor = createEditor()
+    const wrapper = mountControl(editor, upload, onError)
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await chooseFile(wrapper, new File(['image'], 'broken.png', { type: 'image/png' }))
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(onError).toHaveBeenCalledWith(uploadError)
+    expect(JSON.stringify(editor.getJSON())).not.toContain('"image"')
+  })
+
+  it('reports natural size errors and keeps insert confirmation disabled', async () => {
+    mockImageSizeFailure()
+    const onError = vi.fn()
+    const editor = createEditor()
+    const wrapper = mountControl(
+      editor,
+      vi.fn(async () => ({ src: '/api/attachments/broken/content', alt: 'broken.png' })),
+      onError,
+    )
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await chooseFile(wrapper, new File(['image'], 'broken.png', { type: 'image/png' }))
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(onError).toHaveBeenCalledWith(expect.any(Error))
+    expect(
+      wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
+    ).toBeDefined()
+    expect(JSON.stringify(editor.getJSON())).not.toContain('"image"')
+  })
+
+  it('ignores stale upload results after another file is selected', async () => {
+    mockImageSize()
+    const firstUpload = deferred<{ src: string; alt: string }>()
+    const upload = vi.fn((file: File) =>
+      file.name === 'first.png'
+        ? firstUpload.promise
+        : Promise.resolve({
+            src: `/api/attachments/${file.name}/content`,
+            alt: file.name,
+          }),
+    )
+    const editor = createEditor()
+    const wrapper = mountControl(editor, upload)
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await chooseFile(wrapper, new File(['first'], 'first.png', { type: 'image/png' }))
+    await chooseFile(wrapper, new File(['second'], 'second.png', { type: 'image/png' }))
+
+    firstUpload.resolve({
+      src: '/api/attachments/first.png/content',
+      alt: 'first.png',
+    })
+    await flushPromises()
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.getJSON().content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'image',
+          attrs: expect.objectContaining({
+            src: '/api/attachments/second.png/content',
+            alt: 'second.png',
+          }),
+        }),
+      ]),
+    )
+    expect(JSON.stringify(editor.getJSON())).not.toContain('first.png')
   })
 
   it('updates existing image attrs in edit mode with a fixed ratio', async () => {

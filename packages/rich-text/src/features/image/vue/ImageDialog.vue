@@ -32,6 +32,8 @@ const originalAspectRatio = ref<number | null>(null)
 const isSizeLoadFailed = ref(false)
 const isUploading = ref(false)
 const isLoadingSize = ref(false)
+let uploadRequestId = 0
+let sizeLoadRequestId = 0
 
 const aspectRatio = computed(() =>
   naturalWidth.value !== null &&
@@ -55,6 +57,9 @@ watch(
   () => props.show,
   (show) => {
     if (!show) {
+      invalidateAsyncRequests()
+      isUploading.value = false
+      isLoadingSize.value = false
       return
     }
 
@@ -71,7 +76,13 @@ function isPositiveInteger(value: number | null): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0
 }
 
+function invalidateAsyncRequests() {
+  uploadRequestId += 1
+  sizeLoadRequestId += 1
+}
+
 function initializeInsertState() {
+  invalidateAsyncRequests()
   selectedFileName.value = ''
   previewSrc.value = ''
   alt.value = ''
@@ -84,6 +95,7 @@ function initializeInsertState() {
 }
 
 function initializeEditState(attrs: RichTextImageAttrs) {
+  invalidateAsyncRequests()
   selectedFileName.value = ''
   previewSrc.value = attrs.src
   alt.value = attrs.alt ?? ''
@@ -100,20 +112,32 @@ function initializeEditState(attrs: RichTextImageAttrs) {
 }
 
 async function loadSize(src: string) {
+  const requestId = sizeLoadRequestId + 1
+  sizeLoadRequestId = requestId
   isLoadingSize.value = true
   isSizeLoadFailed.value = false
 
   try {
     const size = await loadImageNaturalSize(src)
+    if (requestId !== sizeLoadRequestId) {
+      return
+    }
+
     naturalWidth.value = size.width
     naturalHeight.value = size.height
 
     normalizeSize()
   } catch (error) {
+    if (requestId !== sizeLoadRequestId) {
+      return
+    }
+
     isSizeLoadFailed.value = true
     emit('error', error)
   } finally {
-    isLoadingSize.value = false
+    if (requestId === sizeLoadRequestId) {
+      isLoadingSize.value = false
+    }
   }
 }
 
@@ -169,10 +193,17 @@ async function handleFileChange(event: Event) {
     return
   }
 
+  const requestId = uploadRequestId + 1
+  uploadRequestId = requestId
+  sizeLoadRequestId += 1
   selectedFileName.value = file.name
   isUploading.value = true
   try {
     const uploaded = await props.upload(file)
+    if (requestId !== uploadRequestId) {
+      return
+    }
+
     previewSrc.value = uploaded.src
     alt.value = uploaded.alt ?? file.name
     width.value = null
@@ -183,10 +214,16 @@ async function handleFileChange(event: Event) {
     isSizeLoadFailed.value = false
     await loadSize(uploaded.src)
   } catch (error) {
+    if (requestId !== uploadRequestId) {
+      return
+    }
+
     emit('error', error)
   } finally {
-    isUploading.value = false
-    input.value = ''
+    if (requestId === uploadRequestId) {
+      isUploading.value = false
+      input.value = ''
+    }
   }
 }
 

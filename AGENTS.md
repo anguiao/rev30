@@ -21,6 +21,7 @@
 
 - 完整验证：`pnpm check`
 - 按需单跑：`pnpm typecheck`、`pnpm test`、`pnpm lint:check`
+- 定向运行 Vitest 时，使用 `pnpm --filter <pkg> test <package-relative-test-file>`，不要在 `test` 后添加 `--`。
 
 ## 常用开发命令
 

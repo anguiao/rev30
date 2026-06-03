@@ -286,9 +286,7 @@ describe('AnnouncementFormDrawer', () => {
       usage: 'announcement-content-image',
       readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
     })
-    expect(getAttachmentContentUrlMock).toHaveBeenCalledWith(
-      '55555555-5555-4555-8555-555555555555',
-    )
+    expect(getAttachmentContentUrlMock).toHaveBeenCalledWith('55555555-5555-4555-8555-555555555555')
     expect(result).toEqual({
       src: '/api/attachments/55555555-5555-4555-8555-555555555555/content',
       alt: 'cover.png',
@@ -303,10 +301,7 @@ describe('AnnouncementFormDrawer', () => {
     imageOptions.onError(new Error('bad'))
     await flushPromises()
 
-    expect(getAttachmentErrorMessageMock).toHaveBeenCalledWith(
-      expect.any(Error),
-      '上传图片失败',
-    )
+    expect(getAttachmentErrorMessageMock).toHaveBeenCalledWith(expect.any(Error), '上传图片失败')
     expect(wrapper.text()).toContain('上传图片失败')
   })
 

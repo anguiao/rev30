@@ -93,10 +93,7 @@ describe('deriveRichTextContent', () => {
     })
 
     expect(() =>
-      deriveRichTextContent(
-        { type: 'doc', content: [{ type: 'paragraph' }] },
-        compactServerPreset,
-      ),
+      deriveRichTextContent({ type: 'doc', content: [{ type: 'paragraph' }] }, compactServerPreset),
     ).toThrow(RichTextContentInvalidError)
 
     expect(() =>

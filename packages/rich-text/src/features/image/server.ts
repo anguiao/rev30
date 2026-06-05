@@ -1,30 +1,10 @@
 import type sanitizeHtml from 'sanitize-html'
 import { RichTextContentInvalidError } from '../../server/errors'
 import type { RichTextHtmlPolicy } from '../../server/policy'
+import { buildImageStyle, normalizeImageSize } from './dimensions'
 
 export interface RichTextImageServerOptions {
   isAllowedSrc: (src: string) => boolean
-}
-
-function normalizeDimension(value: string | undefined) {
-  if (!value) return undefined
-
-  const numberValue = Number(value)
-
-  return Number.isInteger(numberValue) && numberValue > 0 ? String(numberValue) : undefined
-}
-
-function buildImageStyle(width: string | undefined) {
-  return width === undefined
-    ? 'max-width: 100%; height: auto'
-    : `width: ${width}px; max-width: 100%; height: auto`
-}
-
-function normalizeImageDimensions(attribs: Record<string, string>) {
-  const width = normalizeDimension(attribs.width)
-  const height = width === undefined ? undefined : normalizeDimension(attribs.height)
-
-  return { width, height }
 }
 
 export function createImageHtmlPolicy(options: RichTextImageServerOptions): RichTextHtmlPolicy {
@@ -35,15 +15,15 @@ export function createImageHtmlPolicy(options: RichTextImageServerOptions): Rich
       throw new RichTextContentInvalidError()
     }
 
-    const { width, height } = normalizeImageDimensions(attribs)
+    const { width, height } = normalizeImageSize(attribs)
 
     return {
       tagName,
       attribs: {
         src,
         ...(attribs.alt ? { alt: attribs.alt } : {}),
-        ...(width ? { width } : {}),
-        ...(height ? { height } : {}),
+        ...(width === null ? {} : { width: String(width) }),
+        ...(height === null ? {} : { height: String(height) }),
         style: buildImageStyle(width),
       },
     }

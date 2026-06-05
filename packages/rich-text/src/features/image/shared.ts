@@ -1,6 +1,7 @@
 import { mergeAttributes } from '@tiptap/core'
 import Image from '@tiptap/extension-image'
 import { defineRichTextFeature } from '../../core/feature'
+import { buildImageStyle, normalizeImageDimension, normalizeImageSize } from './dimensions'
 
 export interface RichTextImageAttrs {
   src: string
@@ -9,62 +10,43 @@ export interface RichTextImageAttrs {
   height?: number
 }
 
-function normalizeDimension(value: unknown) {
-  const numberValue = typeof value === 'number' ? value : Number(value)
-
-  return Number.isInteger(numberValue) && numberValue > 0 ? numberValue : null
-}
-
-function imageStyle(width: number | null) {
-  return width === null
-    ? 'max-width: 100%; height: auto'
-    : `width: ${width}px; max-width: 100%; height: auto`
-}
-
-function normalizeImageDimensions(attributes: Record<string, unknown>) {
-  const width = normalizeDimension(attributes.width)
-  const height = width === null ? null : normalizeDimension(attributes.height)
-
-  return { width, height }
-}
-
 export const imageFeature = defineRichTextFeature({
   key: 'image',
   extension: () =>
     Image.extend({
       addAttributes() {
         const parentAttributes = { ...this.parent?.() }
-        delete (parentAttributes as Record<string, unknown>).title
+        delete parentAttributes.title
 
         return {
           ...parentAttributes,
           width: {
             default: null,
-            parseHTML: (element) => normalizeDimension(element.getAttribute('width')),
+            parseHTML: (element) => normalizeImageDimension(element.getAttribute('width')),
             renderHTML: (attributes) => {
-              const width = normalizeDimension(attributes.width)
+              const { width } = normalizeImageSize(attributes)
               return width === null ? {} : { width }
             },
           },
           height: {
             default: null,
-            parseHTML: (element) => normalizeDimension(element.getAttribute('height')),
+            parseHTML: (element) => normalizeImageDimension(element.getAttribute('height')),
             renderHTML: (attributes) => {
-              const { height } = normalizeImageDimensions(attributes as Record<string, unknown>)
+              const { height } = normalizeImageSize(attributes)
               return height === null ? {} : { height }
             },
           },
         }
       },
       renderHTML({ HTMLAttributes }) {
-        const { width, height } = normalizeImageDimensions(HTMLAttributes)
+        const { width, height } = normalizeImageSize(HTMLAttributes)
 
         return [
           'img',
           mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
             ...(width === null ? { width: null } : { width }),
             ...(height === null ? { height: null } : { height }),
-            style: imageStyle(width),
+            style: buildImageStyle(width),
           }),
         ]
       },

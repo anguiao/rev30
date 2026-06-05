@@ -9,7 +9,10 @@ import { headingCommands } from '../../features/heading/vue'
 import { historyCommands } from '../../features/history/vue'
 import { highlightToolbarControl } from '../../features/highlight/vue'
 import { horizontalRuleCommand } from '../../features/horizontal-rule/vue'
-import { imageToolbarControl, type RichTextImageUploadOptions } from '../../features/image/vue'
+import {
+  createImageToolbarControl,
+  type RichTextImageUploadOptions,
+} from '../../features/image/vue'
 import { italicCommand } from '../../features/italic/vue'
 import { linkToolbarControl } from '../../features/link/vue'
 import { listCommands } from '../../features/list/vue'
@@ -54,7 +57,7 @@ function createCompactRichTextToolbar(options: CompactRichTextEditorPresetOption
     },
     {
       key: 'insert',
-      controls: [button(horizontalRuleCommand), imageToolbarControl(options.image)],
+      controls: [button(horizontalRuleCommand), createImageToolbarControl(options.image)],
     },
   ])
 }

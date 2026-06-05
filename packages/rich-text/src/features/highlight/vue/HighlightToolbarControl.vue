@@ -81,7 +81,7 @@ function clearHighlight() {
         @click="applyColor(color.value)"
       >
         <span
-          class="inline-block size-4 rounded-sm border border-(--app-input-border-color)"
+          class="inline-block size-4 rounded-sm border border-input-border"
           :style="{ backgroundColor: color.value }"
           aria-hidden="true"
         />

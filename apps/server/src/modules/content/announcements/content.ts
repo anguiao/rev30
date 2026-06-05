@@ -1,14 +1,21 @@
 import { createCompactRichTextServerPreset } from '@rev30/rich-text/server/presets'
 import { deriveRichTextContent, RichTextContentInvalidError } from '@rev30/rich-text/server'
+import { z } from 'zod'
 import { AnnouncementContentInvalidError } from './errors'
 
-const attachmentContentUrlPattern =
-  /^\/api\/attachments\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/content$/i
+const attachmentContentUrlPattern = /^\/api\/attachments\/(?<attachmentId>[^/]+)\/content$/
+const attachmentContentIdSchema = z.uuid()
+
+function isAllowedAttachmentContentUrl(src: string) {
+  const attachmentId = attachmentContentUrlPattern.exec(src)?.groups?.attachmentId
+
+  return attachmentContentIdSchema.safeParse(attachmentId).success
+}
 
 const announcementRichTextServerPreset = createCompactRichTextServerPreset({
   image: {
     isAllowedSrc(src) {
-      return attachmentContentUrlPattern.test(src)
+      return isAllowedAttachmentContentUrl(src)
     },
   },
 })

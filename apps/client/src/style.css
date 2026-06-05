@@ -21,8 +21,12 @@
   --color-primary-suppl: var(--app-primary-color-suppl);
   --color-primary-muted: color-mix(in srgb, var(--app-primary-color) 16%, transparent);
   --color-primary-selection: color-mix(in srgb, var(--app-primary-color) 24%, transparent);
+  --color-input: var(--app-input-color);
+  --color-input-focus: var(--app-input-color-focus);
+  --color-input-border: var(--app-input-border-color);
   --color-input-hover-border: var(--app-input-border-hover-color);
   --color-input-focus-border: var(--app-input-border-focus-color);
+  --color-input-divider: var(--app-input-divider-color);
   --shadow-input-focus: var(--app-input-box-shadow-focus);
 }
 

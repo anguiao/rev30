@@ -1,27 +1,32 @@
 <script setup lang="ts">
+import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
+import type { RichTextImageAttrs } from '../shared'
 import { NButton } from 'naive-ui'
 import { computed, ref } from 'vue'
-import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
-import { insertRichTextImage, updateRichTextImage } from '../commands'
-import type { RichTextImageAttrs } from '../shared'
 import ImageDialog from './ImageDialog.vue'
 
 interface ImageToolbarControlProps extends RichTextToolbarControlInjectedProps {
   accept?: string
-  upload: (file: File) => Promise<Pick<RichTextImageAttrs, 'src' | 'alt'>>
+  upload: (file: File) => Promise<Pick<RichTextImageAttrs, 'src'>>
   onError?: (error: unknown) => void
 }
 
-const props = defineProps<ImageToolbarControlProps>()
+const props = withDefaults(defineProps<ImageToolbarControlProps>(), {
+  disabled: false,
+})
 
-const showDialog = ref(false)
-const isEditMode = computed(() => props.editor?.isActive('image') ?? false)
+const isDisabled = computed(() => props.disabled || !props.editor)
+const isActive = computed(() => props.editor?.isActive('image') ?? false)
+
+const buttonLabel = computed(() => (isActive.value ? '编辑图片' : '图片'))
 const currentAttrs = computed(() =>
-  isEditMode.value ? (props.editor?.getAttributes('image') as RichTextImageAttrs) : null,
+  isActive.value ? (props.editor?.getAttributes('image') as RichTextImageAttrs) : undefined,
 )
 
+const showDialog = ref(false)
+
 function openDialog() {
-  if (props.disabled || props.editor === null) {
+  if (isDisabled.value) {
     return
   }
 
@@ -33,12 +38,12 @@ function handleConfirm(attrs: RichTextImageAttrs) {
     return
   }
 
-  if (isEditMode.value) {
-    updateRichTextImage(props.editor, attrs)
+  if (isActive.value) {
+    props.editor.chain().focus().updateAttributes('image', attrs).run()
     return
   }
 
-  insertRichTextImage(props.editor, attrs)
+  props.editor.chain().focus().insertContent({ type: 'image', attrs }).run()
 }
 
 function handleError(error: unknown) {
@@ -49,13 +54,16 @@ function handleError(error: unknown) {
 <template>
   <NButton
     data-test="rich-text-image"
-    quaternary
+    :data-active="isActive ? 'true' : undefined"
+    :disabled="isDisabled"
     size="small"
-    title="图片"
-    aria-label="图片"
-    :disabled="disabled || editor === null"
-    :data-active="isEditMode ? 'true' : undefined"
-    :aria-pressed="isEditMode"
+    style="--n-padding: 0 6px"
+    :type="isActive ? 'primary' : 'default'"
+    :secondary="isActive"
+    :quaternary="!isActive"
+    :title="buttonLabel"
+    :aria-label="buttonLabel"
+    :aria-pressed="isActive"
     @mousedown.prevent
     @click="openDialog"
   >
@@ -63,10 +71,9 @@ function handleError(error: unknown) {
   </NButton>
   <ImageDialog
     v-model:show="showDialog"
-    :mode="isEditMode ? 'edit' : 'insert'"
-    :accept="accept"
+    :existing-attrs="currentAttrs"
     :upload="upload"
-    :initial-attrs="currentAttrs"
+    :accept="accept"
     @confirm="handleConfirm"
     @error="handleError"
   />

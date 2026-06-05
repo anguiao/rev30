@@ -38,17 +38,14 @@ const { editor } = useRichTextEditor({
 <template>
   <div
     data-test="rich-text-editor"
-    class="w-full overflow-hidden rounded-ui border border-(--app-input-border-color) bg-(--app-input-color) transition-[background-color,border-color,box-shadow] duration-300"
+    class="w-full overflow-hidden rounded-ui border border-input-border bg-input transition-[background-color,border-color,box-shadow] duration-300"
     :class="
       disabled
         ? ''
-        : 'focus-within:border-input-focus-border focus-within:bg-(--app-input-color-focus) focus-within:shadow-input-focus hover:border-input-hover-border'
+        : 'focus-within:border-input-focus-border focus-within:bg-input-focus focus-within:shadow-input-focus hover:border-input-hover-border'
     "
   >
-    <div
-      v-if="activeToolbar"
-      class="flex flex-wrap gap-1 border-b border-(--app-input-divider-color) px-2 py-1"
-    >
+    <div v-if="activeToolbar" class="flex flex-wrap gap-1 border-b border-input-divider px-2 py-1">
       <RichTextToolbar :editor="editor" :toolbar="activeToolbar" :disabled="disabled" />
     </div>
 
@@ -76,5 +73,11 @@ const { editor } = useRichTextEditor({
     0 -0.2em 0 var(--rich-text-selection-color),
     0 0.2em 0 var(--rich-text-selection-color);
   -webkit-box-decoration-break: clone;
+}
+
+:deep(.ProseMirror img.ProseMirror-selectednode) {
+  border-radius: var(--radius-ui);
+  outline: 1px solid var(--color-primary-hover);
+  outline-offset: 2px;
 }
 </style>

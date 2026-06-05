@@ -9,6 +9,8 @@ const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
 })
 
 const isDisabled = computed(() => props.disabled || !props.editor)
+const isActive = computed(() => props.editor?.isActive('link') ?? false)
+
 const isEditorFocused = computed(() => {
   const editor = props.editor
 
@@ -18,7 +20,6 @@ const isEditorFocused = computed(() => {
 
   return Boolean(editor.state) && editor.isFocused
 })
-const isActive = computed(() => props.editor?.isActive('link') ?? false)
 
 const showPopover = ref(false)
 const popoverMode = ref<'create' | 'edit'>('create')

@@ -23,7 +23,7 @@ const groups = computed(() => props.toolbar.groups.filter((group) => group.contr
     <div
       data-test="rich-text-toolbar-group"
       class="flex items-center gap-1"
-      :class="index === 0 ? undefined : 'border-l border-(--app-input-divider-color) pl-1'"
+      :class="index === 0 ? undefined : 'border-l border-input-divider pl-1'"
     >
       <RichTextToolbarControl
         v-for="control in group.controls"

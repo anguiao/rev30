@@ -25,13 +25,10 @@ import {
   ContentRequestError,
   createAnnouncement,
   getAnnouncement,
+  getContentErrorMessage,
   updateAnnouncement,
 } from '../../../src/features/content'
-import {
-  getAttachmentContentUrl,
-  getAttachmentErrorMessage,
-  uploadAttachment,
-} from '../../../src/features/attachments'
+import { getAttachmentContentUrl, uploadAttachment } from '../../../src/features/attachments'
 import {
   getDepartmentTreeOptions,
   getRoleOptions,
@@ -98,6 +95,7 @@ vi.mock('../../../src/features/content', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/content')>()),
   createAnnouncement: vi.fn(),
   getAnnouncement: vi.fn(),
+  getContentErrorMessage: vi.fn((_error: unknown, fallback: string) => fallback),
   updateAnnouncement: vi.fn(),
 }))
 
@@ -105,7 +103,6 @@ vi.mock('../../../src/features/attachments', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/attachments')>()),
   uploadAttachment: vi.fn(),
   getAttachmentContentUrl: vi.fn((id: string) => `/api/attachments/${id}/content`),
-  getAttachmentErrorMessage: vi.fn((_error: unknown, fallback: string) => fallback),
 }))
 
 vi.mock('../../../src/features/system', async (importOriginal) => ({
@@ -117,10 +114,10 @@ vi.mock('../../../src/features/system', async (importOriginal) => ({
 
 const createAnnouncementMock = vi.mocked(createAnnouncement)
 const getAnnouncementMock = vi.mocked(getAnnouncement)
+const getContentErrorMessageMock = vi.mocked(getContentErrorMessage)
 const updateAnnouncementMock = vi.mocked(updateAnnouncement)
 const uploadAttachmentMock = vi.mocked(uploadAttachment)
 const getAttachmentContentUrlMock = vi.mocked(getAttachmentContentUrl)
-const getAttachmentErrorMessageMock = vi.mocked(getAttachmentErrorMessage)
 const getDepartmentTreeOptionsMock = vi.mocked(getDepartmentTreeOptions)
 const getRoleOptionsMock = vi.mocked(getRoleOptions)
 const getUserOptionsMock = vi.mocked(getUserOptions)
@@ -258,10 +255,10 @@ describe('AnnouncementFormDrawer', () => {
     createCompactRichTextEditorPresetMock.mockClear()
     createAnnouncementMock.mockReset()
     getAnnouncementMock.mockReset()
+    getContentErrorMessageMock.mockClear()
     updateAnnouncementMock.mockReset()
     uploadAttachmentMock.mockReset()
     getAttachmentContentUrlMock.mockClear()
-    getAttachmentErrorMessageMock.mockClear()
     getDepartmentTreeOptionsMock.mockReset()
     getRoleOptionsMock.mockReset()
     getUserOptionsMock.mockReset()
@@ -289,11 +286,10 @@ describe('AnnouncementFormDrawer', () => {
     expect(getAttachmentContentUrlMock).toHaveBeenCalledWith('55555555-5555-4555-8555-555555555555')
     expect(result).toEqual({
       src: '/api/attachments/55555555-5555-4555-8555-555555555555/content',
-      alt: 'cover.png',
     })
   })
 
-  it('shows attachment upload errors through the form error alert', async () => {
+  it('shows rich text image errors through the form error alert', async () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
@@ -301,7 +297,7 @@ describe('AnnouncementFormDrawer', () => {
     imageOptions.onError(new Error('bad'))
     await flushPromises()
 
-    expect(getAttachmentErrorMessageMock).toHaveBeenCalledWith(expect.any(Error), '上传图片失败')
+    expect(getContentErrorMessageMock).toHaveBeenCalledWith(expect.any(Error), '上传图片失败')
     expect(wrapper.text()).toContain('上传图片失败')
   })
 

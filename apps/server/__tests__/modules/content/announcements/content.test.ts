@@ -46,6 +46,44 @@ describe('announcement content helpers', () => {
     )
   })
 
+  it('allows attachment image UUID versions accepted by zod', () => {
+    const src = '/api/attachments/018f6e6a-7a7b-7c7d-8e8f-111111111111/content'
+
+    expect(
+      deriveAnnouncementContent({
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] },
+          {
+            type: 'image',
+            attrs: {
+              src,
+              alt: '示意图',
+            },
+          },
+        ],
+      }).html,
+    ).toContain(`src="${src}"`)
+  })
+
+  it('rejects attachment image sources with invalid UUIDs', () => {
+    expect(() =>
+      deriveAnnouncementContent({
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] },
+          {
+            type: 'image',
+            attrs: {
+              src: '/api/attachments/not-a-uuid/content',
+              alt: '示意图',
+            },
+          },
+        ],
+      }),
+    ).toThrow(AnnouncementContentInvalidError)
+  })
+
   it('rejects external announcement images', () => {
     expect(() =>
       deriveAnnouncementContent({

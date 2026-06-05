@@ -47,11 +47,7 @@ import {
   getContentErrorMessage,
   updateAnnouncement,
 } from '.'
-import {
-  getAttachmentContentUrl,
-  getAttachmentErrorMessage,
-  uploadAttachment,
-} from '../attachments'
+import { getAttachmentContentUrl, uploadAttachment } from '../attachments'
 import { getDepartmentTreeOptions, getRoleOptions, getUserOptions } from '../system'
 import { announcementTypeSelectOptions, announcementVisibilityOptions } from './labels'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
@@ -89,18 +85,6 @@ const defaultFormValues: AnnouncementFormInput = {
 
 const queryCache = useQueryCache()
 const drawerSessionId = ref(0)
-
-async function uploadAnnouncementRichTextImage(file: File) {
-  const attachment = await uploadAttachment(file, {
-    usage: 'announcement-content-image',
-    readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
-  })
-
-  return {
-    src: getAttachmentContentUrl(attachment.id),
-    alt: file.name,
-  }
-}
 
 const {
   data: formData,
@@ -189,12 +173,22 @@ const loadError = computed(() =>
 )
 
 const formError = ref<string | null>(null)
+
+async function uploadAnnouncementRichTextImage(file: File) {
+  const attachment = await uploadAttachment(file, {
+    usage: 'announcement-content-image',
+    readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+  })
+
+  return {
+    src: getAttachmentContentUrl(attachment.id),
+  }
+}
 const richTextEditorPreset = createCompactRichTextEditorPreset({
   image: {
-    accept: 'image/*',
     upload: uploadAnnouncementRichTextImage,
     onError(error) {
-      formError.value = getAttachmentErrorMessage(error, '上传图片失败')
+      formError.value = getContentErrorMessage(error, '上传图片失败')
     },
   },
 })

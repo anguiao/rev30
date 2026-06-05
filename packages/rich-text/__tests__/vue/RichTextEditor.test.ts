@@ -35,7 +35,6 @@ const compactEditorPreset = createCompactRichTextEditorPreset({
     accept: 'image/*',
     upload: async (file) => ({
       src: `/api/attachments/${file.name}/content`,
-      alt: file.name,
     }),
   },
 })

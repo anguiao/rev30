@@ -7,7 +7,6 @@ import { createCompactRichTextServerPreset } from '../../src/server/presets/comp
 
 const imageUpload = async (file: File) => ({
   src: `/api/attachments/${file.name}/content`,
-  alt: file.name,
 })
 
 const imageServerOptions = {

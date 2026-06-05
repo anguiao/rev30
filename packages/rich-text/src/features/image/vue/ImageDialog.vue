@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import type { RichTextImageAttrs } from '../shared'
-import { NButton, NFormItem, NInput, NInputNumber, NModal, NSpin } from 'naive-ui'
+import { NButton, NFormItem, NImage, NInput, NInputNumber, NModal, NSpin } from 'naive-ui'
+import { useFileDialog, useObjectUrl } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
-import { loadImageNaturalSize } from './image-size'
 
-type DialogMode = 'insert' | 'edit'
-type ImageUpload = (file: File) => Promise<Pick<RichTextImageAttrs, 'src' | 'alt'>>
-
-const props = defineProps<{
-  show: boolean
-  mode: DialogMode
-  accept?: string | undefined
-  upload: ImageUpload
-  initialAttrs?: RichTextImageAttrs | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    show: boolean
+    accept?: string | undefined
+    upload: (file: File) => Promise<Pick<RichTextImageAttrs, 'src'>>
+    existingAttrs?: RichTextImageAttrs | undefined
+  }>(),
+  {
+    accept: 'image/*',
+  },
+)
 
 const emit = defineEmits<{
   'update:show': [value: boolean]
@@ -21,132 +22,162 @@ const emit = defineEmits<{
   error: [error: unknown]
 }>()
 
-const selectedFileName = ref('')
-const previewSrc = ref('')
+const isExistingImage = computed(() => props.existingAttrs !== undefined)
+
+const selectedFile = ref<File | null>(null)
+const hasSelectedFile = computed(() => selectedFile.value !== null)
+const localPreviewSrc = useObjectUrl(selectedFile)
+
+const {
+  open: openFileDialog,
+  reset: resetFileDialog,
+  onChange: onFileDialogChange,
+} = useFileDialog({
+  multiple: false,
+  reset: true,
+})
+onFileDialogChange((files) => {
+  const file = files?.item(0)
+  if (file === null || file === undefined) {
+    return
+  }
+
+  selectedFile.value = file
+  resetImageState()
+})
+
+const src = ref('')
 const alt = ref('')
 const width = ref<number | null>(null)
 const height = ref<number | null>(null)
 const naturalWidth = ref<number | null>(null)
 const naturalHeight = ref<number | null>(null)
-const originalAspectRatio = ref<number | null>(null)
-const isSizeLoadFailed = ref(false)
-const isUploading = ref(false)
-const isLoadingSize = ref(false)
-let uploadRequestId = 0
-let sizeLoadRequestId = 0
-
 const aspectRatio = computed(() =>
-  naturalWidth.value !== null &&
-  naturalHeight.value !== null &&
-  naturalWidth.value > 0 &&
-  naturalHeight.value > 0
-    ? naturalWidth.value / naturalHeight.value
-    : originalAspectRatio.value,
-)
-const canConfirm = computed(
-  () =>
-    previewSrc.value !== '' &&
-    isPositiveInteger(width.value) &&
-    isPositiveInteger(height.value) &&
-    (aspectRatio.value !== null || canConfirmAfterSizeLoadFailure()) &&
-    !isUploading.value &&
-    !isLoadingSize.value,
+  naturalWidth.value === null || naturalHeight.value === null
+    ? null
+    : naturalWidth.value / naturalHeight.value,
 )
 
-watch(
-  () => props.show,
-  (show) => {
-    if (!show) {
-      invalidateAsyncRequests()
-      isUploading.value = false
-      isLoadingSize.value = false
-      return
-    }
-
-    if (props.mode === 'edit' && props.initialAttrs) {
-      initializeEditState(props.initialAttrs)
-      return
-    }
-
-    initializeInsertState()
-  },
+const isUploading = ref(false)
+const isImageReady = computed(
+  () => src.value !== '' && naturalWidth.value !== null && naturalHeight.value !== null,
 )
 
-function isPositiveInteger(value: number | null): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value > 0
+const displayPreviewSrc = computed(() => src.value || localPreviewSrc.value || '')
+const selectButtonLabel = computed(() => (hasSelectedFile.value ? '重新选择' : '选择图片'))
+const uploadButtonLabel = computed(() => {
+  if (isUploading.value) {
+    return '上传中'
+  }
+
+  if (src.value !== '') {
+    return '已上传'
+  }
+
+  return '上传图片'
+})
+
+const canApply = computed(() => isImageReady.value && width.value !== null && height.value !== null)
+
+function handleApply() {
+  if (width.value === null || height.value === null) {
+    return
+  }
+
+  emit('confirm', {
+    src: src.value,
+    alt: alt.value,
+    width: width.value,
+    height: height.value,
+  })
+  emit('update:show', false)
 }
 
-function invalidateAsyncRequests() {
-  uploadRequestId += 1
-  sizeLoadRequestId += 1
+function initializeDialog() {
+  const attrs = props.existingAttrs
+  if (attrs === undefined) {
+    return
+  }
+
+  src.value = attrs.src
+  alt.value = attrs.alt ?? ''
+  width.value = attrs.width ?? null
+  height.value = attrs.height ?? null
 }
 
-function clearImageCandidate() {
-  previewSrc.value = ''
+function resetDialog() {
+  resetFileDialog()
+  selectedFile.value = null
+  resetImageState()
+  isUploading.value = false
+}
+
+function resetImageState() {
+  src.value = ''
   alt.value = ''
   width.value = null
   height.value = null
   naturalWidth.value = null
   naturalHeight.value = null
-  originalAspectRatio.value = null
-  isSizeLoadFailed.value = false
 }
 
-function initializeInsertState() {
-  invalidateAsyncRequests()
-  selectedFileName.value = ''
-  clearImageCandidate()
-}
+watch(
+  () => props.show,
+  (show) => {
+    resetDialog()
 
-function initializeEditState(attrs: RichTextImageAttrs) {
-  invalidateAsyncRequests()
-  selectedFileName.value = ''
-  previewSrc.value = attrs.src
-  alt.value = attrs.alt ?? ''
-  width.value = attrs.width ?? null
-  height.value = attrs.height ?? null
-  naturalWidth.value = null
-  naturalHeight.value = null
-  originalAspectRatio.value =
-    isPositiveInteger(width.value) && isPositiveInteger(height.value)
-      ? width.value / height.value
-      : null
-  isSizeLoadFailed.value = false
-  void loadSize(attrs.src)
-}
+    if (show) {
+      initializeDialog()
+    }
+  },
+)
 
-async function loadSize(src: string) {
-  const requestId = sizeLoadRequestId + 1
-  sizeLoadRequestId = requestId
-  isLoadingSize.value = true
-  isSizeLoadFailed.value = false
+async function uploadImageFile() {
+  const file = selectedFile.value
+  if (file === null) {
+    return
+  }
 
+  isUploading.value = true
   try {
-    const size = await loadImageNaturalSize(src)
-    if (requestId !== sizeLoadRequestId) {
-      return
-    }
-
-    naturalWidth.value = size.width
-    naturalHeight.value = size.height
-
-    normalizeSize()
+    const uploaded = await props.upload(file)
+    src.value = uploaded.src
+    alt.value = file.name
+    selectedFile.value = null
   } catch (error) {
-    if (requestId !== sizeLoadRequestId) {
-      return
-    }
-
-    isSizeLoadFailed.value = true
     emit('error', error)
   } finally {
-    if (requestId === sizeLoadRequestId) {
-      isLoadingSize.value = false
-    }
+    isUploading.value = false
   }
 }
 
-function canConfirmAfterSizeLoadFailure() {
-  return props.mode === 'edit' && isSizeLoadFailed.value
+function handleImageLoad(event: Event) {
+  const image = event.target
+  if (!(image instanceof HTMLImageElement) || image.getAttribute('src') !== src.value) {
+    return
+  }
+
+  if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+    emit('error', new Error('图片尺寸无效'))
+    return
+  }
+
+  naturalWidth.value = image.naturalWidth
+  naturalHeight.value = image.naturalHeight
+
+  if (width.value === null && height.value === null) {
+    width.value = image.naturalWidth
+    height.value = image.naturalHeight
+  }
+}
+
+function handleImageError(event: Event) {
+  const image = event.target
+  if (!(image instanceof HTMLImageElement) || image.getAttribute('src') !== src.value) {
+    return
+  }
+
+  emit('error', new Error('图片加载失败'))
 }
 
 function resetSize() {
@@ -158,152 +189,115 @@ function resetSize() {
   height.value = naturalHeight.value
 }
 
-function normalizeSize() {
-  if (aspectRatio.value === null) {
-    return
-  }
-
-  if (isPositiveInteger(width.value)) {
-    setWidth(width.value)
-    return
-  }
-
-  if (isPositiveInteger(height.value)) {
-    setHeight(height.value)
-    return
-  }
-
-  resetSize()
-}
-
-function setWidth(value: number | null) {
+function updateWidth(value: number | null) {
   width.value = value
   if (value !== null && aspectRatio.value !== null) {
     height.value = Math.round(value / aspectRatio.value)
   }
 }
 
-function setHeight(value: number | null) {
+function updateHeight(value: number | null) {
   height.value = value
   if (value !== null && aspectRatio.value !== null) {
     width.value = Math.round(value * aspectRatio.value)
   }
 }
-
-async function handleFileChange(event: Event) {
-  if (props.mode !== 'insert') {
-    return
-  }
-
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) {
-    return
-  }
-
-  const requestId = uploadRequestId + 1
-  uploadRequestId = requestId
-  sizeLoadRequestId += 1
-  isLoadingSize.value = false
-  if (props.mode === 'insert') {
-    clearImageCandidate()
-  }
-  selectedFileName.value = file.name
-  isUploading.value = true
-  try {
-    const uploaded = await props.upload(file)
-    if (requestId !== uploadRequestId) {
-      return
-    }
-
-    previewSrc.value = uploaded.src
-    alt.value = uploaded.alt ?? file.name
-    width.value = null
-    height.value = null
-    naturalWidth.value = null
-    naturalHeight.value = null
-    originalAspectRatio.value = null
-    isSizeLoadFailed.value = false
-    await loadSize(uploaded.src)
-  } catch (error) {
-    if (requestId !== uploadRequestId) {
-      return
-    }
-
-    emit('error', error)
-  } finally {
-    if (requestId === uploadRequestId) {
-      isUploading.value = false
-      input.value = ''
-    }
-  }
-}
-
-function confirm() {
-  if (!canConfirm.value || width.value === null || height.value === null) {
-    return
-  }
-
-  const trimmedAlt = alt.value.trim()
-  const attrs: RichTextImageAttrs = {
-    src: previewSrc.value,
-    alt: trimmedAlt,
-    width: width.value,
-    height: height.value,
-  }
-
-  emit('confirm', attrs)
-  emit('update:show', false)
-}
 </script>
 
 <template>
-  <NModal :show="show" preset="card" title="图片" @update:show="emit('update:show', $event)">
-    <NSpin :show="isUploading || isLoadingSize">
+  <NModal
+    :show="show"
+    preset="card"
+    title="图片"
+    class="w-[calc(100vw-32px)] max-w-lg"
+    @update:show="emit('update:show', $event)"
+  >
+    <NSpin :show="isUploading">
       <div class="flex flex-col gap-3">
-        <input
-          v-if="mode === 'insert'"
-          data-test="rich-text-image-file"
-          type="file"
-          :accept="accept"
-          @change="handleFileChange"
-        />
-        <div v-if="selectedFileName" class="text-xs opacity-70">{{ selectedFileName }}</div>
-
-        <img
-          v-if="previewSrc"
+        <NImage
+          v-if="displayPreviewSrc"
           data-test="rich-text-image-preview"
-          class="max-h-64 max-w-full object-contain"
-          :src="previewSrc"
+          class="max-w-full"
+          :img-props="{ class: 'block max-h-28 max-w-full' }"
+          :src="displayPreviewSrc"
           :alt="alt"
+          @load="handleImageLoad"
+          @error="handleImageError"
         />
+        <div
+          v-else
+          data-test="rich-text-image-preview-area"
+          class="flex size-28 items-center justify-center rounded-ui border border-input-border bg-input"
+        >
+          <span class="i-[lucide--image] text-2xl opacity-20" aria-hidden="true" />
+        </div>
+
+        <div v-if="!isExistingImage" data-test="rich-text-image-upload" class="flex w-fit gap-2">
+          <NButton
+            data-test="rich-text-image-file"
+            class="flex-1"
+            :disabled="isUploading"
+            @click="openFileDialog({ accept })"
+          >
+            <template #icon>
+              <span class="i-[lucide--image-plus]" aria-hidden="true" />
+            </template>
+            {{ selectButtonLabel }}
+          </NButton>
+          <NButton
+            data-test="rich-text-image-upload-action"
+            type="primary"
+            secondary
+            :loading="isUploading"
+            :disabled="!hasSelectedFile || isUploading"
+            @click.stop="uploadImageFile"
+          >
+            <template v-if="src" #icon>
+              <span class="i-[lucide--check]" aria-hidden="true" />
+            </template>
+            {{ uploadButtonLabel }}
+          </NButton>
+        </div>
 
         <NFormItem label="图片说明">
-          <NInput data-test="rich-text-image-alt" :value="alt" @update:value="alt = $event" />
+          <NInput
+            data-test="rich-text-image-alt"
+            :disabled="!isImageReady"
+            :value="alt"
+            @update:value="alt = $event"
+          />
         </NFormItem>
 
         <div class="grid grid-cols-2 gap-3">
           <NFormItem label="宽度">
             <NInputNumber
               data-test="rich-text-image-width"
+              :disabled="!isImageReady"
               :value="width"
               :min="1"
-              @update:value="setWidth"
+              @update:value="updateWidth"
             />
           </NFormItem>
 
           <NFormItem label="高度">
             <NInputNumber
               data-test="rich-text-image-height"
+              :disabled="!isImageReady"
               :value="height"
               :min="1"
-              @update:value="setHeight"
+              @update:value="updateHeight"
             />
           </NFormItem>
         </div>
 
         <div class="flex justify-between gap-2">
-          <NButton data-test="rich-text-image-reset-size" @click="resetSize">重置尺寸</NButton>
+          <NButton
+            data-test="rich-text-image-reset-size"
+            :disabled="!isImageReady"
+            @click="resetSize"
+          >
+            重置尺寸
+          </NButton>
 
           <div class="flex gap-2">
             <NButton data-test="rich-text-image-cancel" @click="emit('update:show', false)">
@@ -312,8 +306,8 @@ function confirm() {
             <NButton
               data-test="rich-text-image-confirm"
               type="primary"
-              :disabled="!canConfirm"
-              @click="confirm"
+              :disabled="!canApply"
+              @click="handleApply"
             >
               确定
             </NButton>

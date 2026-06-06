@@ -23,12 +23,12 @@ import {
   treeToArray,
 } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { getErrorMessage } from '../../../utils/error'
 import DepartmentFormDrawer from '../../../features/system/DepartmentFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
   deleteDepartment,
   getDepartmentTree,
-  getSystemErrorMessage,
   statusFilterOptions,
   statusLabels,
   statusTagTypes,
@@ -94,7 +94,7 @@ const rawTree = computed(() => departmentTree.value ?? emptyDepartmentTree)
 const loadErrorMessage = computed(() =>
   departmentTreeError.value === null
     ? ''
-    : getSystemErrorMessage(departmentTreeError.value, '加载组织部门失败'),
+    : getErrorMessage(departmentTreeError.value, '加载组织部门失败'),
 )
 
 const rows = computed(() => {
@@ -162,7 +162,7 @@ function confirmDeleteDepartment(department: DepartmentTreeNode) {
         message.success('删除组织部门成功')
         await invalidateDepartmentTreeQuery()
       } catch (error) {
-        message.error(getSystemErrorMessage(error, '删除组织部门失败'))
+        message.error(getErrorMessage(error, '删除组织部门失败'))
         return false
       }
     },

@@ -24,6 +24,7 @@ import {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { getErrorMessage } from '../../../utils/error'
 import AnnouncementFormDrawer from '../../../features/content/AnnouncementFormDrawer.vue'
 import {
   ANNOUNCEMENT_PINNED_FILTER_ALL,
@@ -36,7 +37,6 @@ import {
   announcementTypeFilterOptions,
   announcementTypeLabels,
   archiveAnnouncement,
-  getContentErrorMessage,
   listAnnouncements,
   publishAnnouncement,
   deleteAnnouncement,
@@ -116,7 +116,7 @@ const announcementsData = computed(() => announcementsResponse.value ?? emptyAnn
 const loadErrorMessage = computed(() =>
   announcementsError.value === null
     ? ''
-    : getContentErrorMessage(announcementsError.value, '加载通知公告失败'),
+    : getErrorMessage(announcementsError.value, '加载通知公告失败'),
 )
 
 const isAnnouncementDrawerVisible = ref(false)
@@ -156,7 +156,7 @@ function confirmPublishAnnouncement(announcement: AnnouncementListItem) {
         message.success('发布通知公告成功')
         await invalidateAnnouncementListQueries()
       } catch (error) {
-        message.error(getContentErrorMessage(error, '发布通知公告失败'))
+        message.error(getErrorMessage(error, '发布通知公告失败'))
         return false
       }
     },
@@ -182,7 +182,7 @@ function confirmArchiveAnnouncement(announcement: AnnouncementListItem) {
         message.success('归档通知公告成功')
         await invalidateAnnouncementListQueries()
       } catch (error) {
-        message.error(getContentErrorMessage(error, '归档通知公告失败'))
+        message.error(getErrorMessage(error, '归档通知公告失败'))
         return false
       }
     },
@@ -208,7 +208,7 @@ function confirmDeleteAnnouncement(announcement: AnnouncementListItem) {
         message.success('删除通知公告成功')
         await invalidateAnnouncementListQueries()
       } catch (error) {
-        message.error(getContentErrorMessage(error, '删除通知公告失败'))
+        message.error(getErrorMessage(error, '删除通知公告失败'))
         return false
       }
     },

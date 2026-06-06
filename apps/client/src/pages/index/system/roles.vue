@@ -24,11 +24,11 @@ import {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { getErrorMessage } from '../../../utils/error'
 import RoleFormDrawer from '../../../features/system/RoleFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
   deleteRole,
-  getSystemErrorMessage,
   listRoles,
   statusFilterOptions,
   statusLabels,
@@ -96,7 +96,7 @@ function handleReset() {
 
 const rolesData = computed(() => rolesResponse.value ?? emptyRolesData)
 const loadErrorMessage = computed(() =>
-  rolesError.value === null ? '' : getSystemErrorMessage(rolesError.value, '加载系统角色失败'),
+  rolesError.value === null ? '' : getErrorMessage(rolesError.value, '加载系统角色失败'),
 )
 
 const isRoleDrawerVisible = ref(false)
@@ -134,7 +134,7 @@ function confirmDeleteRole(role: RoleListItem) {
         message.success('删除系统角色成功')
         await invalidateRoleListQueries()
       } catch (error) {
-        message.error(getSystemErrorMessage(error, '删除系统角色失败'))
+        message.error(getErrorMessage(error, '删除系统角色失败'))
         return false
       }
     },

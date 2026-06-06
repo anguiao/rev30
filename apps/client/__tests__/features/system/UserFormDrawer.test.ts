@@ -1,6 +1,7 @@
 import { PiniaColada, useQueryCache } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiRequestError } from '../../../src/utils/request'
 import { NSelect, NTreeSelect } from 'naive-ui'
 import {
   DEPARTMENT_STATUS_DISABLED,
@@ -19,7 +20,6 @@ import {
   getDepartmentTreeOptions,
   getRoleOptions,
   getUser,
-  SystemRequestError,
   updateUser,
 } from '../../../src/features/system'
 import UserFormDrawer from '../../../src/features/system/UserFormDrawer.vue'
@@ -246,13 +246,13 @@ describe('UserFormDrawer', () => {
     let avatarFormItem = wrapper
       .get('[data-test="user-avatar-upload"]')
       .element.closest('.n-form-item')
-    expect(avatarFormItem?.textContent).toContain('上传用户头像失败')
+    expect(avatarFormItem?.textContent).toContain('upload failed')
     expect(wrapper.find('.n-alert').exists()).toBe(false)
 
     await wrapper.get('[data-test="user-avatar-upload"]').trigger('click')
     await flushPromises()
     avatarFormItem = wrapper.get('[data-test="user-avatar-upload"]').element.closest('.n-form-item')
-    expect(avatarFormItem?.textContent).not.toContain('上传用户头像失败')
+    expect(avatarFormItem?.textContent).not.toContain('upload failed')
   })
 
   it('keeps create draft values when the form query refreshes', async () => {
@@ -284,7 +284,7 @@ describe('UserFormDrawer', () => {
     const wrapper = mountDrawer({ userId: null })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('加载系统用户信息失败')
+    expect(wrapper.text()).toContain('network')
     expect(wrapper.get('[data-test="user-form-submit"]').attributes('disabled')).toBeDefined()
 
     await wrapper.get('[data-test="user-form-username"] input').setValue('blocked-user')
@@ -370,7 +370,7 @@ describe('UserFormDrawer', () => {
 
   it('shows a field-level error when the username is already used', async () => {
     getUserMock.mockResolvedValue(userResponse)
-    updateUserMock.mockRejectedValue(new SystemRequestError(409, '用户名已存在', 'username'))
+    updateUserMock.mockRejectedValue(new ApiRequestError(409, '用户名已存在', 'username'))
 
     const wrapper = mountDrawer()
     await flushPromises()
@@ -429,7 +429,7 @@ describe('UserFormDrawer', () => {
     await wrapper.get('[data-test="user-form-username"] input').setValue('fresh-user')
     await wrapper.get('[data-test="user-form-nickname"] input').setValue('新会话')
 
-    pendingCreate.reject(new SystemRequestError(400, '旧会话错误', 'username'))
+    pendingCreate.reject(new ApiRequestError(400, '旧会话错误', 'username'))
     await flushPromises()
 
     const usernameFieldContainer = wrapper

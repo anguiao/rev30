@@ -1,6 +1,7 @@
 import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiRequestError } from '../../../src/utils/request'
 import { NInputNumber, NSelect } from 'naive-ui'
 import {
   DEPARTMENT_STATUS_DISABLED,
@@ -12,7 +13,6 @@ import {
   createDepartment,
   getDepartment,
   getDepartmentTreeOptions,
-  SystemRequestError,
   updateDepartment,
 } from '../../../src/features/system'
 import DepartmentFormDrawer from '../../../src/features/system/DepartmentFormDrawer.vue'
@@ -243,7 +243,7 @@ describe('DepartmentFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('加载组织部门信息失败')
+    expect(wrapper.text()).toContain('network')
     expect(wrapper.get('[data-test="department-form-submit"]').attributes('disabled')).toBeDefined()
 
     await wrapper.get('[data-test="department-form-name"] input').setValue('异常部门')
@@ -494,7 +494,7 @@ describe('DepartmentFormDrawer', () => {
   })
 
   it('shows a field-level server error when create fails', async () => {
-    createDepartmentMock.mockRejectedValue(new SystemRequestError(409, '编码已存在', 'code'))
+    createDepartmentMock.mockRejectedValue(new ApiRequestError(409, '编码已存在', 'code'))
 
     const wrapper = mountDrawer({
       show: true,
@@ -545,7 +545,7 @@ describe('DepartmentFormDrawer', () => {
     await wrapper.get('[data-test="department-form-name"] input').setValue('新会话')
     await wrapper.get('[data-test="department-form-code"] input').setValue('fresh-dept')
 
-    pendingCreate.reject(new SystemRequestError(400, '旧会话错误', 'code'))
+    pendingCreate.reject(new ApiRequestError(400, '旧会话错误', 'code'))
     await flushPromises()
 
     const codeFieldContainer = wrapper

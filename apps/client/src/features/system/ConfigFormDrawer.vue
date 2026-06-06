@@ -26,9 +26,11 @@ import {
   type ConfigValueType,
   configUpdateSchema,
 } from '@rev30/contracts'
-import { SystemRequestError, createConfig, getConfig, getSystemErrorMessage, updateConfig } from '.'
+import { createConfig, getConfig, updateConfig } from '.'
 import { configValueTypeSelectOptions, statusSelectOptions } from './labels'
+import { getErrorMessage } from '../../utils/error'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
+import { ApiRequestError } from '../../utils/request'
 
 const props = defineProps<{
   configId: string | null
@@ -89,7 +91,7 @@ const {
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
-    : getSystemErrorMessage(formLoadError.value, '加载系统配置信息失败'),
+    : getErrorMessage(formLoadError.value, '加载系统配置信息失败'),
 )
 
 const formError = ref<string | null>(null)
@@ -141,14 +143,11 @@ const { isLoading: isSaving, ...saveConfigMutation } = useMutation({
       return
     }
 
-    if (
-      error instanceof SystemRequestError &&
-      setServerFieldError(form, error.field, error.message)
-    ) {
+    if (error instanceof ApiRequestError && setServerFieldError(form, error.field, error.message)) {
       return
     }
 
-    formError.value = getSystemErrorMessage(error, '保存系统配置失败')
+    formError.value = getErrorMessage(error, '保存系统配置失败')
   },
 })
 

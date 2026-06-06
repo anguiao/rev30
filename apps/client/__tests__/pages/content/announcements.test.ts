@@ -1,6 +1,7 @@
 import { useQueryCache } from '@pinia/colada'
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiRequestError } from '../../../src/utils/request'
 import { NDataTable, NPagination, NSelect } from 'naive-ui'
 import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
@@ -17,7 +18,6 @@ import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
 import {
   archiveAnnouncement,
-  ContentRequestError,
   deleteAnnouncement,
   listAnnouncements,
   publishAnnouncement,
@@ -386,7 +386,7 @@ describe('announcements page', () => {
 
   it('shows backend error and keeps list untouched when publish fails', async () => {
     listAnnouncementsMock.mockResolvedValue(announcementsResponse)
-    publishAnnouncementMock.mockRejectedValue(new ContentRequestError(409, '当前状态不能发布'))
+    publishAnnouncementMock.mockRejectedValue(new ApiRequestError(409, '当前状态不能发布'))
     const { wrapper } = await mountAnnouncementsPage()
     await flushPromises()
 

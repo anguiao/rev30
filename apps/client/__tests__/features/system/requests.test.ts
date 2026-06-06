@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getErrorMessage } from '../../../src/utils/error'
+import { ApiRequestError } from '../../../src/utils/request'
 import {
   CONFIG_STATUS_ENABLED,
   CONFIG_VALUE_TYPE_STRING,
@@ -35,7 +37,6 @@ import {
   getDepartmentTree,
   getDepartmentTreeOptions,
   resetUserPassword,
-  SystemRequestError,
   updateDepartment,
   getResourceTree,
   getResourceTreeOptions,
@@ -47,7 +48,6 @@ import {
   deleteDictionary,
   getDictionaryOptions,
   searchIcons,
-  getSystemErrorMessage,
   listRoles,
   listUsers,
   updateResource,
@@ -657,11 +657,11 @@ describe('system request helpers', () => {
     })
   })
 
-  it('formats unknown request errors with a fallback message', () => {
-    expect(
-      getSystemErrorMessage(new SystemRequestError(400, '请求体无效'), '加载系统用户失败'),
-    ).toBe('请求体无效')
-    expect(getSystemErrorMessage(new Error('boom'), '加载系统用户失败')).toBe('加载系统用户失败')
+  it('formats request and plain error messages', () => {
+    expect(getErrorMessage(new ApiRequestError(400, '请求体无效'), '加载系统用户失败')).toBe(
+      '请求体无效',
+    )
+    expect(getErrorMessage(new Error('boom'), '加载系统用户失败')).toBe('boom')
   })
 
   it('parses system errors with field names', async () => {
@@ -702,7 +702,7 @@ describe('system request helpers', () => {
       sortOrder: 0,
     })
 
-    await expect(promise).rejects.toBeInstanceOf(SystemRequestError)
+    await expect(promise).rejects.toBeInstanceOf(ApiRequestError)
     await expect(promise).rejects.toMatchObject({
       status: 409,
       field: 'code',

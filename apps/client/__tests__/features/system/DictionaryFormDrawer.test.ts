@@ -2,18 +2,14 @@ import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiRequestError } from '../../../src/utils/request'
 import { NInputNumber, NSelect } from 'naive-ui'
 import {
   DICTIONARY_STATUS_DISABLED,
   DICTIONARY_STATUS_ENABLED,
   type DictionaryDetail,
 } from '@rev30/contracts'
-import {
-  createDictionary,
-  getDictionary,
-  SystemRequestError,
-  updateDictionary,
-} from '../../../src/features/system'
+import { createDictionary, getDictionary, updateDictionary } from '../../../src/features/system'
 import DictionaryFormDrawer from '../../../src/features/system/DictionaryFormDrawer.vue'
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
@@ -404,7 +400,7 @@ describe('DictionaryFormDrawer', () => {
   })
 
   it('shows server field error on code field', async () => {
-    createDictionaryMock.mockRejectedValue(new SystemRequestError(400, '字典编码已存在', 'code'))
+    createDictionaryMock.mockRejectedValue(new ApiRequestError(400, '字典编码已存在', 'code'))
 
     const wrapper = mountDrawer()
     await flushPromises()
@@ -425,7 +421,7 @@ describe('DictionaryFormDrawer', () => {
   })
 
   it('shows server field error near items editor when field is items', async () => {
-    createDictionaryMock.mockRejectedValue(new SystemRequestError(400, '字典项值不能重复', 'items'))
+    createDictionaryMock.mockRejectedValue(new ApiRequestError(400, '字典项值不能重复', 'items'))
 
     const wrapper = mountDrawer()
     await flushPromises()
@@ -463,7 +459,7 @@ describe('DictionaryFormDrawer', () => {
     await wrapper.get('[data-test="dictionary-form-code"] input').setValue('fresh_code')
     await wrapper.get('[data-test="dictionary-form-name"] input').setValue('新会话')
 
-    pendingCreate.reject(new SystemRequestError(400, '旧会话错误', 'code'))
+    pendingCreate.reject(new ApiRequestError(400, '旧会话错误', 'code'))
     await flushPromises()
 
     const codeFieldContainer = wrapper

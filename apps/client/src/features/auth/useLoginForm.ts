@@ -3,9 +3,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMutation } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
 import { authLoginSchema, type AuthLoginInput } from '@rev30/contracts'
-import { getAuthErrorMessage, login } from './requests'
+import { login } from './requests'
 import { resolveRedirectTarget } from '../../router/redirect'
 import { useAuthStore } from '../../stores/auth'
+import { getErrorMessage } from '../../utils/error'
 
 export function useLoginForm() {
   const route = useRoute()
@@ -36,7 +37,7 @@ export function useLoginForm() {
         auth.setSession(session)
         await router.push(resolveRedirectTarget(route.query.redirect))
       } catch (error) {
-        formError.value = getAuthErrorMessage(error, '登录失败，请稍后再试')
+        formError.value = getErrorMessage(error, '登录失败，请稍后再试')
       }
     },
   })

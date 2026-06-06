@@ -19,6 +19,7 @@ import type { ButtonProps } from 'naive-ui'
 import type { ConfigListItem, ConfigListQuery, ConfigListResponse } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { getErrorMessage } from '../../../utils/error'
 import ConfigFormDrawer from '../../../features/system/ConfigFormDrawer.vue'
 import {
   CONFIG_VALUE_TYPE_FILTER_ALL,
@@ -26,7 +27,6 @@ import {
   configValueTypeFilterOptions,
   configValueTypeLabels,
   deleteConfig,
-  getSystemErrorMessage,
   listConfigs,
   statusFilterOptions,
   statusLabels,
@@ -104,7 +104,7 @@ function handleReset() {
 
 const configsData = computed(() => configsResponse.value ?? emptyConfigsData)
 const loadErrorMessage = computed(() =>
-  configsError.value === null ? '' : getSystemErrorMessage(configsError.value, '加载系统配置失败'),
+  configsError.value === null ? '' : getErrorMessage(configsError.value, '加载系统配置失败'),
 )
 
 const isConfigDrawerVisible = ref(false)
@@ -142,7 +142,7 @@ function confirmDeleteConfig(config: ConfigListItem) {
         message.success('删除系统配置成功')
         await invalidateConfigListQueries()
       } catch (error) {
-        message.error(getSystemErrorMessage(error, '删除系统配置失败'))
+        message.error(getErrorMessage(error, '删除系统配置失败'))
         return false
       }
     },

@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiRequestError } from '../../../src/utils/request'
 import { NInputNumber, NSelect } from 'naive-ui'
 import {
   RESOURCE_OPEN_TARGET_BLANK,
@@ -20,7 +21,6 @@ import {
   createResource,
   getResource,
   getResourceTreeOptions,
-  SystemRequestError,
   updateResource,
 } from '../../../src/features/system'
 import ResourceFormDrawer from '../../../src/features/system/ResourceFormDrawer.vue'
@@ -315,7 +315,7 @@ describe('ResourceFormDrawer', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('加载权限资源信息失败')
+    expect(wrapper.text()).toContain('network')
     expect(wrapper.get('[data-test="resource-form-submit"]').attributes('disabled')).toBeDefined()
 
     await wrapper.get('[data-test="resource-form-name"] input').setValue('异常资源')
@@ -522,7 +522,7 @@ describe('ResourceFormDrawer', () => {
   })
 
   it('shows a field-level server error when create fails', async () => {
-    createResourceMock.mockRejectedValue(new SystemRequestError(409, '权限编码已存在', 'code'))
+    createResourceMock.mockRejectedValue(new ApiRequestError(409, '权限编码已存在', 'code'))
 
     const wrapper = mountDrawer()
     await flushPromises()
@@ -569,7 +569,7 @@ describe('ResourceFormDrawer', () => {
     await wrapper.get('[data-test="resource-form-name"] input').setValue('新会话')
     await wrapper.get('[data-test="resource-form-code"] input').setValue('fresh-resource')
 
-    pendingCreate.reject(new SystemRequestError(400, '旧会话错误', 'code'))
+    pendingCreate.reject(new ApiRequestError(400, '旧会话错误', 'code'))
     await flushPromises()
 
     const codeFieldContainer = wrapper

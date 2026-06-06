@@ -12,7 +12,6 @@ export {
 } from './labels'
 export type { ConfigValueTypeFilter, StatusFilter, SystemStatus } from './labels'
 export {
-  SystemRequestError,
   createDepartment,
   createConfig,
   createDictionary,
@@ -35,7 +34,6 @@ export {
   getResourceTree,
   getResourceTreeOptions,
   resetUserPassword,
-  getSystemErrorMessage,
   getRole,
   getUser,
   getRoleOptions,

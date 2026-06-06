@@ -1,8 +1,6 @@
 import {
   authTokenResponseSchema,
-  errorResponseSchema,
   type AuthLoginInput,
-  type ErrorResponse,
   type AuthTokenResponse,
   type AuthProfileUpdateInput,
   type AuthPasswordUpdateInput,
@@ -10,49 +8,14 @@ import {
   userSchema,
 } from '@rev30/contracts'
 import { api } from '../../api'
-import type { ZodType } from 'zod'
-
-export class AuthRequestError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-    public readonly field?: ErrorResponse['field'],
-  ) {
-    super(message)
-    this.name = 'AuthRequestError'
-  }
-}
-
-export async function parseAuthError(response: Response): Promise<AuthRequestError> {
-  try {
-    const result = errorResponseSchema.safeParse(await response.json())
-
-    return result.success
-      ? new AuthRequestError(response.status, result.data.message, result.data.field)
-      : new AuthRequestError(response.status, '请求失败')
-  } catch {
-    return new AuthRequestError(response.status, '请求失败')
-  }
-}
-
-async function parseAuthResponse<T>(response: Response, schema: ZodType<T>): Promise<T> {
-  if (!response.ok) {
-    throw await parseAuthError(response)
-  }
-
-  return schema.parse(await response.json())
-}
-
-export function getAuthErrorMessage(error: unknown, fallback: string) {
-  return error instanceof AuthRequestError ? error.message : fallback
-}
+import { assertApiResponseOk, parseApiResponse } from '../../utils/request'
 
 export async function login(input: AuthLoginInput): Promise<AuthTokenResponse> {
-  return parseAuthResponse(await api.auth.login.$post({ json: input }), authTokenResponseSchema)
+  return parseApiResponse(await api.auth.login.$post({ json: input }), authTokenResponseSchema)
 }
 
 export async function refreshSession(): Promise<AuthTokenResponse> {
-  return parseAuthResponse(await api.auth.refresh.$post(), authTokenResponseSchema)
+  return parseApiResponse(await api.auth.refresh.$post(), authTokenResponseSchema)
 }
 
 export async function logout(): Promise<void> {
@@ -60,13 +23,9 @@ export async function logout(): Promise<void> {
 }
 
 export async function updateMyProfile(input: AuthProfileUpdateInput): Promise<User> {
-  return parseAuthResponse(await api.auth.me.profile.$patch({ json: input }), userSchema)
+  return parseApiResponse(await api.auth.me.profile.$patch({ json: input }), userSchema)
 }
 
 export async function updateMyPassword(input: AuthPasswordUpdateInput): Promise<void> {
-  const response = await api.auth.me.password.$patch({ json: input })
-
-  if (!response.ok) {
-    throw await parseAuthError(response)
-  }
+  await assertApiResponseOk(await api.auth.me.password.$patch({ json: input }))
 }

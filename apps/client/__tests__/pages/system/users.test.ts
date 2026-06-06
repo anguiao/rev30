@@ -1,5 +1,6 @@
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiRequestError } from '../../../src/utils/request'
 import { NPagination, NSelect, NTreeSelect } from 'naive-ui'
 import {
   USER_STATUS_DISABLED,
@@ -18,7 +19,6 @@ import {
   getRoleOptions,
   listUsers,
   resetUserPassword,
-  SystemRequestError,
 } from '../../../src/features/system'
 import UsersPage from '../../../src/pages/index/system/users.vue'
 import {
@@ -258,7 +258,7 @@ describe('users page', () => {
   })
 
   it('shows a server load error when users cannot be loaded', async () => {
-    listUsersMock.mockRejectedValue(new SystemRequestError(500, '加载用户列表失败'))
+    listUsersMock.mockRejectedValue(new ApiRequestError(500, '加载用户列表失败'))
     const { wrapper } = await mountUsersPage()
     await flushPromises()
 
@@ -266,14 +266,13 @@ describe('users page', () => {
     expect(wrapper.text()).toContain('加载用户列表失败')
   })
 
-  it('shows a fallback load error for unexpected user load errors', async () => {
+  it('shows a plain load error for unexpected user load errors', async () => {
     listUsersMock.mockRejectedValue(new Error('network down'))
     const { wrapper } = await mountUsersPage()
     await flushPromises()
 
     expect(listUsersMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
-    expect(wrapper.text()).toContain('加载系统用户失败')
-    expect(wrapper.text()).not.toContain('network down')
+    expect(wrapper.text()).toContain('network down')
   })
 
   it('shows create and row actions according to permissions', async () => {

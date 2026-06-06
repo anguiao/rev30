@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '../../../src/stores/auth'
 import { login } from '../../../src/features/auth/requests'
 import LoginPage from '../../../src/pages/login.vue'
+import { ApiRequestError } from '../../../src/utils/request'
 import {
   disposeActiveTestPinia,
   mountAuthRoute,
@@ -10,23 +11,8 @@ import {
   stubPreferredDark,
   triggerBrowserSubmit,
 } from '../../helpers/auth'
-const { MockAuthRequestError } = vi.hoisted(() => ({
-  MockAuthRequestError: class MockAuthRequestError extends Error {
-    constructor(
-      public readonly status: number,
-      message: string,
-      public readonly field?: string,
-    ) {
-      super(message)
-      this.name = 'AuthRequestError'
-    }
-  },
-}))
 
 vi.mock('../../../src/features/auth/requests', () => ({
-  AuthRequestError: MockAuthRequestError,
-  getAuthErrorMessage: (error: unknown, fallback: string) =>
-    error instanceof MockAuthRequestError ? error.message : fallback,
   login: vi.fn(),
 }))
 
@@ -111,7 +97,7 @@ describe('login page', () => {
   })
 
   it('shows an invalid credentials error without storing a session', async () => {
-    loginMock.mockRejectedValue(new MockAuthRequestError(401, '用户名或密码错误'))
+    loginMock.mockRejectedValue(new ApiRequestError(401, '用户名或密码错误'))
     const { router, wrapper } = await mountLoginPage()
 
     await wrapper.find('[data-test="login-username"] input').setValue('ada')
@@ -127,7 +113,7 @@ describe('login page', () => {
   })
 
   it('shows the server message for login rate limit errors', async () => {
-    loginMock.mockRejectedValue(new MockAuthRequestError(429, '登录失败次数过多，请稍后再试'))
+    loginMock.mockRejectedValue(new ApiRequestError(429, '登录失败次数过多，请稍后再试'))
     const { router, wrapper } = await mountLoginPage()
 
     await wrapper.find('[data-test="login-username"] input').setValue('ada')
@@ -142,7 +128,7 @@ describe('login page', () => {
     expect(wrapper.text()).toContain('登录失败次数过多，请稍后再试')
   })
 
-  it('shows a stable fallback error for unexpected login failures', async () => {
+  it('shows a plain error message for unexpected login failures', async () => {
     loginMock.mockRejectedValue(new Error('network'))
     const { wrapper } = await mountLoginPage()
 
@@ -152,7 +138,7 @@ describe('login page', () => {
     await flushPromises()
 
     expect(loginMock).toHaveBeenCalledOnce()
-    expect(wrapper.text()).toContain('登录失败，请稍后再试')
+    expect(wrapper.text()).toContain('network')
   })
 
   it('calls login once when the browser submits the login form from the submit button', async () => {

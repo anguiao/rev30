@@ -2,6 +2,7 @@ import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiRequestError } from '../../../src/utils/request'
 import { NInputNumber, NSelect, NSwitch } from 'naive-ui'
 import {
   CONFIG_STATUS_ENABLED,
@@ -10,12 +11,7 @@ import {
   CONFIG_VALUE_TYPE_STRING,
   type Config,
 } from '@rev30/contracts'
-import {
-  createConfig,
-  getConfig,
-  SystemRequestError,
-  updateConfig,
-} from '../../../src/features/system'
+import { createConfig, getConfig, updateConfig } from '../../../src/features/system'
 import ConfigFormDrawer from '../../../src/features/system/ConfigFormDrawer.vue'
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
@@ -241,12 +237,12 @@ describe('ConfigFormDrawer', () => {
     const wrapper = mountDrawer({ show: true, configId })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('加载系统配置信息失败')
+    expect(wrapper.text()).toContain('network')
     expect(wrapper.get('[data-test="config-form-submit"]').attributes('disabled')).toBeDefined()
   })
 
   it('shows server field errors on value', async () => {
-    createConfigMock.mockRejectedValue(new SystemRequestError(400, '配置值必须是有限数字', 'value'))
+    createConfigMock.mockRejectedValue(new ApiRequestError(400, '配置值必须是有限数字', 'value'))
 
     const wrapper = mountDrawer()
     await flushPromises()
@@ -288,7 +284,7 @@ describe('ConfigFormDrawer', () => {
     await wrapper.get('[data-test="config-form-key"] input').setValue('site.subtitle')
     await wrapper.get('[data-test="config-form-name"] input').setValue('新会话')
 
-    pendingCreate.reject(new SystemRequestError(400, '旧会话错误', 'key'))
+    pendingCreate.reject(new ApiRequestError(400, '旧会话错误', 'key'))
     await flushPromises()
 
     const keyFieldContainer = wrapper

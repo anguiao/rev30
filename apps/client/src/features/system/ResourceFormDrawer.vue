@@ -30,17 +30,12 @@ import {
   type ResourceType,
   resourceUpdateSchema,
 } from '@rev30/contracts'
-import {
-  SystemRequestError,
-  createResource,
-  getResource,
-  getResourceTreeOptions,
-  getSystemErrorMessage,
-  updateResource,
-} from '.'
+import { createResource, getResource, getResourceTreeOptions, updateResource } from '.'
 import ResourceIconPicker from './ResourceIconPicker.vue'
 import { resourceTypeLabels, statusSelectOptions } from './labels'
+import { getErrorMessage } from '../../utils/error'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
+import { ApiRequestError } from '../../utils/request'
 import { toTreeOptions } from '../../utils/ui'
 
 const props = defineProps<{
@@ -147,7 +142,7 @@ const resourceTreeOptions = computed(() => {
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
-    : getSystemErrorMessage(formLoadError.value, '加载权限资源信息失败'),
+    : getErrorMessage(formLoadError.value, '加载权限资源信息失败'),
 )
 
 const formError = ref<string | null>(null)
@@ -224,14 +219,11 @@ const { isLoading: isSaving, ...saveResourceMutation } = useMutation({
       return
     }
 
-    if (
-      error instanceof SystemRequestError &&
-      setServerFieldError(form, error.field, error.message)
-    ) {
+    if (error instanceof ApiRequestError && setServerFieldError(form, error.field, error.message)) {
       return
     }
 
-    formError.value = getSystemErrorMessage(error, '保存权限资源失败')
+    formError.value = getErrorMessage(error, '保存权限资源失败')
   },
 })
 

@@ -21,19 +21,15 @@ import {
   dictionaryUpdateSchema,
   type DictionaryFormInput,
 } from '@rev30/contracts'
-import {
-  SystemRequestError,
-  createDictionary,
-  getDictionary,
-  getSystemErrorMessage,
-  updateDictionary,
-} from '.'
+import { createDictionary, getDictionary, updateDictionary } from '.'
 import { statusSelectOptions } from './labels'
+import { getErrorMessage } from '../../utils/error'
 import {
   formItemValidationFeedback,
   formItemValidationProps,
   setServerFieldError,
 } from '../../utils/form'
+import { ApiRequestError } from '../../utils/request'
 
 const props = defineProps<{
   dictionaryId: string | null
@@ -108,7 +104,7 @@ const {
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
-    : getSystemErrorMessage(formLoadError.value, '加载数据字典信息失败'),
+    : getErrorMessage(formLoadError.value, '加载数据字典信息失败'),
 )
 
 const formError = ref<string | null>(null)
@@ -164,14 +160,11 @@ const { isLoading: isSaving, ...saveDictionaryMutation } = useMutation({
       return
     }
 
-    if (
-      error instanceof SystemRequestError &&
-      setServerFieldError(form, error.field, error.message)
-    ) {
+    if (error instanceof ApiRequestError && setServerFieldError(form, error.field, error.message)) {
       return
     }
 
-    formError.value = getSystemErrorMessage(error, '保存数据字典失败')
+    formError.value = getErrorMessage(error, '保存数据字典失败')
   },
 })
 

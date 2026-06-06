@@ -30,12 +30,12 @@ import {
   treeToArray,
 } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { getErrorMessage } from '../../../utils/error'
 import ResourceFormDrawer from '../../../features/system/ResourceFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
   deleteResource,
   getResourceTree,
-  getSystemErrorMessage,
   resourceTypeLabels,
   statusFilterOptions,
   statusLabels,
@@ -111,7 +111,7 @@ const rawTree = computed(() => resourceTree.value ?? emptyResourceTree)
 const loadErrorMessage = computed(() =>
   resourceTreeError.value === null
     ? ''
-    : getSystemErrorMessage(resourceTreeError.value, '加载权限资源失败'),
+    : getErrorMessage(resourceTreeError.value, '加载权限资源失败'),
 )
 
 const rows = computed(() => {
@@ -180,7 +180,7 @@ function confirmDeleteResource(resource: ResourceTreeNode) {
         message.success('删除权限资源成功')
         await invalidateResourceTreeQuery()
       } catch (error) {
-        message.error(getSystemErrorMessage(error, '删除权限资源失败'))
+        message.error(getErrorMessage(error, '删除权限资源失败'))
         return false
       }
     },

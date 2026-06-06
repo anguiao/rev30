@@ -1,5 +1,6 @@
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiRequestError } from '../../../src/utils/request'
 import { defineComponent, h } from 'vue'
 import { NDataTable, NPagination, NSelect } from 'naive-ui'
 import {
@@ -8,11 +9,7 @@ import {
   type DepartmentTreeNode,
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
-import {
-  deleteDepartment,
-  getDepartmentTree,
-  SystemRequestError,
-} from '../../../src/features/system'
+import { deleteDepartment, getDepartmentTree } from '../../../src/features/system'
 import DepartmentsPage from '../../../src/pages/index/system/departments.vue'
 import {
   disposeActiveTestPinia,
@@ -150,7 +147,7 @@ describe('departments page', () => {
   })
 
   it('shows a server load error when departments cannot be loaded', async () => {
-    getDepartmentTreeMock.mockRejectedValue(new SystemRequestError(500, '加载部门树失败'))
+    getDepartmentTreeMock.mockRejectedValue(new ApiRequestError(500, '加载部门树失败'))
     const { wrapper } = await mountDepartmentsPage()
     await flushPromises()
 
@@ -158,14 +155,13 @@ describe('departments page', () => {
     expect(wrapper.text()).toContain('加载部门树失败')
   })
 
-  it('shows a fallback load error for unexpected department load errors', async () => {
+  it('shows a plain load error for unexpected department load errors', async () => {
     getDepartmentTreeMock.mockRejectedValue(new Error('network down'))
     const { wrapper } = await mountDepartmentsPage()
     await flushPromises()
 
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('加载组织部门失败')
-    expect(wrapper.text()).not.toContain('network down')
+    expect(wrapper.text()).toContain('network down')
   })
 
   it('shows create and row actions according to permissions', async () => {
@@ -309,9 +305,7 @@ describe('departments page', () => {
 
   it('keeps delete dialog open when deleting department fails', async () => {
     getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
-    deleteDepartmentMock.mockRejectedValue(
-      new SystemRequestError(409, '部门存在关联用户，不能删除'),
-    )
+    deleteDepartmentMock.mockRejectedValue(new ApiRequestError(409, '部门存在关联用户，不能删除'))
     const { wrapper } = await mountDepartmentsPage(['system:department:delete'])
     await flushPromises()
 

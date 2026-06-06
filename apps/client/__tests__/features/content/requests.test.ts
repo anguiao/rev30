@@ -7,8 +7,8 @@ import {
   type AnnouncementUpdateInput,
 } from '@rev30/contracts'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { ApiRequestError } from '../../../src/utils/request'
 import {
-  ContentRequestError,
   archiveAnnouncement,
   createAnnouncement,
   deleteAnnouncement,
@@ -311,7 +311,7 @@ describe('content request helpers', () => {
 
     const failedCreate = createAnnouncement(createInput)
 
-    await expect(failedCreate).rejects.toBeInstanceOf(ContentRequestError)
+    await expect(failedCreate).rejects.toBeInstanceOf(ApiRequestError)
     await expect(failedCreate).rejects.toMatchObject({
       status: 400,
       field: 'contentJson',
@@ -334,7 +334,7 @@ describe('content request helpers', () => {
 
     const failedCreate = createAnnouncement(createInput)
 
-    await expect(failedCreate).rejects.toBeInstanceOf(ContentRequestError)
+    await expect(failedCreate).rejects.toBeInstanceOf(ApiRequestError)
     await expect(failedCreate).rejects.toMatchObject({
       status: 400,
       field: 'targets',
@@ -357,7 +357,7 @@ describe('content request helpers', () => {
 
     const failedGet = getAnnouncement(announcementId)
 
-    await expect(failedGet).rejects.toBeInstanceOf(ContentRequestError)
+    await expect(failedGet).rejects.toBeInstanceOf(ApiRequestError)
     await expect(failedGet).rejects.toMatchObject({
       status: 500,
       message: '请求失败',

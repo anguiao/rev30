@@ -1,6 +1,7 @@
 import { useQueryCache } from '@pinia/colada'
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiRequestError } from '../../../src/utils/request'
 import { NDataTable, NPagination, NSelect } from 'naive-ui'
 import {
   CONFIG_STATUS_DISABLED,
@@ -13,7 +14,7 @@ import {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
-import { deleteConfig, listConfigs, SystemRequestError } from '../../../src/features/system'
+import { deleteConfig, listConfigs } from '../../../src/features/system'
 import ConfigsPage from '../../../src/pages/index/system/configs.vue'
 import {
   disposeActiveTestPinia,
@@ -218,20 +219,19 @@ describe('configs page', () => {
   })
 
   it('shows a server load error when configs cannot be loaded', async () => {
-    listConfigsMock.mockRejectedValueOnce(new SystemRequestError(500, '加载配置失败'))
+    listConfigsMock.mockRejectedValueOnce(new ApiRequestError(500, '加载配置失败'))
     const { wrapper: serverErrorWrapper } = await mountConfigsPage()
     await flushPromises()
 
     expect(serverErrorWrapper.text()).toContain('加载配置失败')
   })
 
-  it('shows a fallback load error for unexpected config load errors', async () => {
+  it('shows a plain load error for unexpected config load errors', async () => {
     listConfigsMock.mockRejectedValueOnce(new Error('network down'))
     const { wrapper: fallbackErrorWrapper } = await mountConfigsPage()
     await flushPromises()
 
-    expect(fallbackErrorWrapper.text()).toContain('加载系统配置失败')
-    expect(fallbackErrorWrapper.text()).not.toContain('network down')
+    expect(fallbackErrorWrapper.text()).toContain('network down')
   })
 
   it('shows create and row actions according to permissions', async () => {

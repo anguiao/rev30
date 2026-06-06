@@ -11,15 +11,12 @@ import {
 } from '@rev30/contracts'
 import { NAlert, NButton, NForm, NFormItem, NInput, useMessage } from 'naive-ui'
 import { omit, pick } from 'lodash-es'
-import {
-  AuthRequestError,
-  getAuthErrorMessage,
-  updateMyPassword,
-  updateMyProfile,
-} from '../../../features/auth'
+import { updateMyPassword, updateMyProfile } from '../../../features/auth'
 import { UserAvatarUpload } from '../../../features/users'
 import { useAuthStore } from '../../../stores/auth'
+import { getErrorMessage } from '../../../utils/error'
 import { formItemValidationProps, setServerFieldError } from '../../../utils/form'
+import { ApiRequestError } from '../../../utils/request'
 
 const authPasswordUpdateFormSchema = authPasswordUpdateSchema
   .safeExtend({
@@ -65,19 +62,19 @@ const profileForm = useForm({
       message.success('保存个人信息成功')
     } catch (error) {
       if (
-        error instanceof AuthRequestError &&
+        error instanceof ApiRequestError &&
         setServerFieldError(profileForm, error.field, error.message)
       ) {
         return
       }
 
-      profileFormError.value = getAuthErrorMessage(error, '保存个人信息失败')
+      profileFormError.value = getErrorMessage(error, '保存个人信息失败')
     }
   },
 })
 
 function handleAvatarUploadError(error: unknown) {
-  setServerFieldError(profileForm, 'avatarId', getAuthErrorMessage(error, '上传头像失败'))
+  setServerFieldError(profileForm, 'avatarId', getErrorMessage(error, '上传头像失败'))
 }
 
 const passwordFormError = ref<string | null>(null)
@@ -107,14 +104,14 @@ const passwordForm = useForm({
       message.success('修改密码成功')
     } catch (error) {
       if (
-        error instanceof AuthRequestError &&
+        error instanceof ApiRequestError &&
         error.status === 400 &&
         setServerFieldError(passwordForm, error.field, error.message)
       ) {
         return
       }
 
-      passwordFormError.value = getAuthErrorMessage(error, '修改密码失败')
+      passwordFormError.value = getErrorMessage(error, '修改密码失败')
     }
   },
 })

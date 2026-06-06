@@ -4,7 +4,6 @@ import {
   attachmentListResponseSchema,
   attachmentSchema,
   attachmentUploadSessionSchema,
-  errorResponseSchema,
   type Attachment,
   type AttachmentContentUrl,
   type AttachmentContentUrlInput,
@@ -13,44 +12,8 @@ import {
   type AttachmentReadPolicy,
   type AttachmentUploadSession,
 } from '@rev30/contracts'
-import type { z } from 'zod'
 import { api } from '../../api'
-import { normalizeRequestQuery } from '../../utils/request'
-
-export class AttachmentRequestError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-  ) {
-    super(message)
-    this.name = 'AttachmentRequestError'
-  }
-}
-
-async function parseAttachmentError(response: Response): Promise<AttachmentRequestError> {
-  try {
-    const result = errorResponseSchema.safeParse(await response.json())
-
-    return new AttachmentRequestError(
-      response.status,
-      result.success ? result.data.message : '请求失败',
-    )
-  } catch {
-    return new AttachmentRequestError(response.status, '请求失败')
-  }
-}
-
-async function parseAttachmentResponse<T>(response: Response, schema: z.ZodType<T>): Promise<T> {
-  if (!response.ok) {
-    throw await parseAttachmentError(response)
-  }
-
-  return schema.parse(await response.json())
-}
-
-export function getAttachmentErrorMessage(error: unknown, fallback: string) {
-  return error instanceof AttachmentRequestError ? error.message : fallback
-}
+import { assertApiResponseOk, normalizeRequestQuery, parseApiResponse } from '../../utils/request'
 
 async function createAttachmentUploadSession(
   file: File,
@@ -61,7 +24,7 @@ async function createAttachmentUploadSession(
 ): Promise<AttachmentUploadSession> {
   const contentType = file.type.trim()
 
-  return parseAttachmentResponse(
+  return parseApiResponse(
     await api.attachments['uploads'].$post({
       json: {
         originalName: file.name,
@@ -82,13 +45,11 @@ async function uploadAttachmentContent(session: AttachmentUploadSession, file: F
     body: file,
   })
 
-  if (!response.ok) {
-    throw await parseAttachmentError(response)
-  }
+  await assertApiResponseOk(response)
 }
 
 async function completeAttachmentUploadSession(uploadId: string): Promise<Attachment> {
-  return parseAttachmentResponse(
+  return parseApiResponse(
     await api.attachments['uploads'][':uploadId'].complete.$post({
       param: {
         uploadId,
@@ -118,7 +79,7 @@ export async function uploadAttachment(
 }
 
 export async function getAttachment(id: string): Promise<Attachment> {
-  return parseAttachmentResponse(
+  return parseApiResponse(
     await api.attachments[':id'].$get({
       param: { id },
     }),
@@ -127,7 +88,7 @@ export async function getAttachment(id: string): Promise<Attachment> {
 }
 
 export async function listAttachments(query: AttachmentListQuery): Promise<AttachmentListResponse> {
-  return parseAttachmentResponse(
+  return parseApiResponse(
     await api.attachments.$get({
       query: normalizeRequestQuery(query),
     }),
@@ -139,7 +100,7 @@ async function createAttachmentContentUrl(
   id: string,
   input: AttachmentContentUrlInput = { disposition: ATTACHMENT_DISPOSITION_ATTACHMENT },
 ): Promise<AttachmentContentUrl> {
-  return parseAttachmentResponse(
+  return parseApiResponse(
     await api.attachments[':id']['content-url'].$post({
       param: { id },
       json: input,
@@ -165,11 +126,9 @@ export async function resolveSignedAttachmentUrl(
 }
 
 export async function deleteAttachment(id: string): Promise<void> {
-  const response = await api.attachments[':id'].$delete({
-    param: { id },
-  })
-
-  if (!response.ok) {
-    throw await parseAttachmentError(response)
-  }
+  await assertApiResponseOk(
+    await api.attachments[':id'].$delete({
+      param: { id },
+    }),
+  )
 }

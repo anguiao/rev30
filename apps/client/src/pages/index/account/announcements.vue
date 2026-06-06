@@ -27,12 +27,9 @@ import {
   NThing,
 } from 'naive-ui'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { getErrorMessage } from '../../../utils/error'
 import MyAnnouncementDetailDrawer from '../../../features/content/MyAnnouncementDetailDrawer.vue'
-import {
-  announcementTypeLabels,
-  getContentErrorMessage,
-  listMyAnnouncements,
-} from '../../../features/content'
+import { announcementTypeLabels, listMyAnnouncements } from '../../../features/content'
 
 const pageTitle = useAdminPageTitle('通知公告')
 
@@ -119,7 +116,7 @@ const announcementsData = computed(() => announcementsResponse.value ?? emptyAnn
 const loadErrorMessage = computed(() =>
   announcementsError.value === null
     ? ''
-    : getContentErrorMessage(announcementsError.value, '加载通知公告失败'),
+    : getErrorMessage(announcementsError.value, '加载通知公告失败'),
 )
 
 const isDetailDrawerVisible = ref(false)

@@ -1,6 +1,7 @@
 import { useQueryCache } from '@pinia/colada'
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiRequestError } from '../../../src/utils/request'
 import { NDataTable, NPagination, NSelect } from 'naive-ui'
 import {
   DICTIONARY_STATUS_DISABLED,
@@ -10,11 +11,7 @@ import {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
-import {
-  deleteDictionary,
-  listDictionaries,
-  SystemRequestError,
-} from '../../../src/features/system'
+import { deleteDictionary, listDictionaries } from '../../../src/features/system'
 import DictionariesPage from '../../../src/pages/index/system/dictionaries.vue'
 import {
   disposeActiveTestPinia,
@@ -283,7 +280,7 @@ describe('dictionaries page', () => {
 
   it('keeps delete dialog open and shows system error message when delete fails', async () => {
     listDictionariesMock.mockResolvedValue(dictionariesResponse)
-    deleteDictionaryMock.mockRejectedValue(new SystemRequestError(409, '字典已被引用，不能删除'))
+    deleteDictionaryMock.mockRejectedValue(new ApiRequestError(409, '字典已被引用，不能删除'))
     const { wrapper } = await mountDictionariesPage(['system:dictionary:delete'])
     await flushPromises()
 

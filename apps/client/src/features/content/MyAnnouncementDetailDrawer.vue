@@ -4,7 +4,8 @@ import { useQuery } from '@pinia/colada'
 import { type AnnouncementMyListItem } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { NAlert, NDrawer, NDrawerContent, NEmpty, NSpin, NTag } from 'naive-ui'
-import { announcementTypeLabels, getContentErrorMessage, getMyAnnouncement } from '.'
+import { announcementTypeLabels, getMyAnnouncement } from '.'
+import { getErrorMessage } from '../../utils/error'
 
 const props = defineProps<{
   announcement: AnnouncementMyListItem
@@ -27,7 +28,7 @@ const {
 const loadError = computed(() =>
   isLoading.value || detailLoadError.value === null
     ? null
-    : getContentErrorMessage(detailLoadError.value, '加载通知公告详情失败'),
+    : getErrorMessage(detailLoadError.value, '加载通知公告详情失败'),
 )
 
 const visibleDetail = computed(() => (show.value ? (detail.value ?? null) : null))

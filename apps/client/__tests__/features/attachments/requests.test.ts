@@ -1,7 +1,7 @@
 import { ATTACHMENT_DISPOSITION_INLINE, type Attachment } from '@rev30/contracts'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { ApiRequestError } from '../../../src/utils/request'
 import {
-  AttachmentRequestError,
   deleteAttachment,
   getAttachment,
   getAttachmentContentUrl,
@@ -185,7 +185,7 @@ describe('attachment request helpers', () => {
       emptyResponse(),
       jsonResponse({ message: '不支持的文件类型' }, { status: 400 }),
     )
-    const expectedError: Partial<AttachmentRequestError> = {
+    const expectedError: Partial<ApiRequestError> = {
       message: '不支持的文件类型',
       status: 400,
     }

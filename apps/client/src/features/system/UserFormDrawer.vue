@@ -24,18 +24,12 @@ import {
   userFormSchema,
   userUpdateSchema,
 } from '@rev30/contracts'
-import {
-  SystemRequestError,
-  createUser,
-  getDepartmentTreeOptions,
-  getRoleOptions,
-  getUser,
-  updateUser,
-  getSystemErrorMessage,
-} from '.'
+import { createUser, getDepartmentTreeOptions, getRoleOptions, getUser, updateUser } from '.'
 import { UserAvatarUpload } from '../users'
 import { statusSelectOptions } from './labels'
+import { getErrorMessage } from '../../utils/error'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
+import { ApiRequestError } from '../../utils/request'
 import { toSelectOptions, toTreeOptions } from '../../utils/ui'
 
 const props = defineProps<{
@@ -116,7 +110,7 @@ const roleOptions = computed(() =>
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
-    : getSystemErrorMessage(formLoadError.value, '加载系统用户信息失败'),
+    : getErrorMessage(formLoadError.value, '加载系统用户信息失败'),
 )
 
 const formError = ref<string | null>(null)
@@ -171,14 +165,11 @@ const { isLoading: isSaving, ...saveUserMutation } = useMutation({
       return
     }
 
-    if (
-      error instanceof SystemRequestError &&
-      setServerFieldError(form, error.field, error.message)
-    ) {
+    if (error instanceof ApiRequestError && setServerFieldError(form, error.field, error.message)) {
       return
     }
 
-    formError.value = getSystemErrorMessage(error, '保存系统用户失败')
+    formError.value = getErrorMessage(error, '保存系统用户失败')
   },
 })
 
@@ -191,7 +182,7 @@ function handleSubmit() {
 }
 
 function handleAvatarUploadError(error: unknown) {
-  setServerFieldError(form, 'avatarId', getSystemErrorMessage(error, '上传用户头像失败'))
+  setServerFieldError(form, 'avatarId', getErrorMessage(error, '上传用户头像失败'))
 }
 
 watch(

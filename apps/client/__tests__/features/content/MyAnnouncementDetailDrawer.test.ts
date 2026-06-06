@@ -108,7 +108,7 @@ describe('MyAnnouncementDetailDrawer', () => {
 
     const bodyText = document.body.textContent ?? ''
 
-    expect(bodyText).toContain('加载通知公告详情失败')
+    expect(bodyText).toContain('load failed')
     expect(bodyText).not.toContain('暂无详情')
   })
 })

@@ -40,17 +40,13 @@ import {
 } from '@rev30/contracts'
 import { createCompactRichTextEditorPreset } from '@rev30/rich-text/vue/presets'
 import { RichTextEditor } from '@rev30/rich-text/vue'
-import {
-  ContentRequestError,
-  createAnnouncement,
-  getAnnouncement,
-  getContentErrorMessage,
-  updateAnnouncement,
-} from '.'
+import { createAnnouncement, getAnnouncement, updateAnnouncement } from '.'
 import { getAttachmentContentUrl, uploadAttachment } from '../attachments'
 import { getDepartmentTreeOptions, getRoleOptions, getUserOptions } from '../system'
 import { announcementTypeSelectOptions, announcementVisibilityOptions } from './labels'
+import { getErrorMessage } from '../../utils/error'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
+import { ApiRequestError } from '../../utils/request'
 import { toSelectOptions, toTreeOptions } from '../../utils/ui'
 
 const props = defineProps<{
@@ -169,7 +165,7 @@ const isPublishedAnnouncement = computed(
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
-    : getContentErrorMessage(formLoadError.value, '加载通知公告信息失败'),
+    : getErrorMessage(formLoadError.value, '加载通知公告信息失败'),
 )
 
 const formError = ref<string | null>(null)
@@ -188,7 +184,7 @@ const richTextEditorPreset = createCompactRichTextEditorPreset({
   image: {
     upload: uploadAnnouncementRichTextImage,
     onError(error) {
-      formError.value = getContentErrorMessage(error, '上传图片失败')
+      formError.value = getErrorMessage(error, '上传图片失败')
     },
   },
 })
@@ -257,14 +253,11 @@ const { isLoading: isSaving, ...saveAnnouncementMutation } = useMutation({
       return
     }
 
-    if (
-      error instanceof ContentRequestError &&
-      setServerFieldError(form, error.field, error.message)
-    ) {
+    if (error instanceof ApiRequestError && setServerFieldError(form, error.field, error.message)) {
       return
     }
 
-    formError.value = getContentErrorMessage(error, '保存通知公告失败')
+    formError.value = getErrorMessage(error, '保存通知公告失败')
   },
 })
 

@@ -22,16 +22,11 @@ import {
   type DepartmentFormInput,
   departmentUpdateSchema,
 } from '@rev30/contracts'
-import {
-  SystemRequestError,
-  createDepartment,
-  getDepartment,
-  getDepartmentTreeOptions,
-  getSystemErrorMessage,
-  updateDepartment,
-} from '.'
+import { createDepartment, getDepartment, getDepartmentTreeOptions, updateDepartment } from '.'
 import { statusSelectOptions } from './labels'
+import { getErrorMessage } from '../../utils/error'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
+import { ApiRequestError } from '../../utils/request'
 import { toTreeOptions } from '../../utils/ui'
 
 const props = defineProps<{
@@ -108,7 +103,7 @@ const departmentTreeOptions = computed(() => {
 const loadError = computed(() =>
   isLoading.value || formLoadError.value === null
     ? null
-    : getSystemErrorMessage(formLoadError.value, '加载组织部门信息失败'),
+    : getErrorMessage(formLoadError.value, '加载组织部门信息失败'),
 )
 
 const formError = ref<string | null>(null)
@@ -176,14 +171,11 @@ const { isLoading: isSaving, ...saveDepartmentMutation } = useMutation({
       return
     }
 
-    if (
-      error instanceof SystemRequestError &&
-      setServerFieldError(form, error.field, error.message)
-    ) {
+    if (error instanceof ApiRequestError && setServerFieldError(form, error.field, error.message)) {
       return
     }
 
-    formError.value = getSystemErrorMessage(error, '保存组织部门失败')
+    formError.value = getErrorMessage(error, '保存组织部门失败')
   },
 })
 

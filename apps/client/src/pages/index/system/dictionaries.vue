@@ -23,11 +23,11 @@ import type {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { getErrorMessage } from '../../../utils/error'
 import DictionaryFormDrawer from '../../../features/system/DictionaryFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
   deleteDictionary,
-  getSystemErrorMessage,
   listDictionaries,
   statusFilterOptions,
   statusLabels,
@@ -97,7 +97,7 @@ const dictionariesData = computed(() => dictionariesResponse.value ?? emptyDicti
 const loadErrorMessage = computed(() =>
   dictionariesError.value === null
     ? ''
-    : getSystemErrorMessage(dictionariesError.value, '加载数据字典失败'),
+    : getErrorMessage(dictionariesError.value, '加载数据字典失败'),
 )
 
 const isDictionaryDrawerVisible = ref(false)
@@ -135,7 +135,7 @@ function confirmDeleteDictionary(dictionary: DictionaryListItem) {
         message.success('删除数据字典成功')
         await invalidateDictionaryListQueries()
       } catch (error) {
-        message.error(getSystemErrorMessage(error, '删除数据字典失败'))
+        message.error(getErrorMessage(error, '删除数据字典失败'))
         return false
       }
     },

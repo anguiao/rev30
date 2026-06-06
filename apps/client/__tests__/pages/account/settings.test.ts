@@ -6,29 +6,15 @@ import { useAuthStore } from '../../../src/stores/auth'
 import { updateMyPassword, updateMyProfile } from '../../../src/features/auth/requests'
 import AdminPage from '../../../src/pages/index.vue'
 import AccountSettingsPage from '../../../src/pages/index/account/settings.vue'
+import { ApiRequestError } from '../../../src/utils/request'
 import {
   disposeActiveTestPinia,
   mountAuthRoute,
   session,
   stubPreferredDark,
 } from '../../helpers/auth'
-const { MockAuthRequestError } = vi.hoisted(() => ({
-  MockAuthRequestError: class MockAuthRequestError extends Error {
-    constructor(
-      public readonly status: number,
-      message: string,
-      public readonly field?: string,
-    ) {
-      super(message)
-      this.name = 'AuthRequestError'
-    }
-  },
-}))
 
 vi.mock('../../../src/features/auth/requests', () => ({
-  AuthRequestError: MockAuthRequestError,
-  getAuthErrorMessage: (error: unknown, fallback: string) =>
-    error instanceof MockAuthRequestError ? error.message : fallback,
   updateMyPassword: vi.fn(),
   updateMyProfile: vi.fn(),
 }))
@@ -145,9 +131,7 @@ describe('account settings page', () => {
   })
 
   it('shows unsupported profile field errors as a global error', async () => {
-    updateMyProfileMock.mockRejectedValue(
-      new MockAuthRequestError(400, '用户名不可修改', 'username'),
-    )
+    updateMyProfileMock.mockRejectedValue(new ApiRequestError(400, '用户名不可修改', 'username'))
     const { wrapper } = await mountAccountSettingsPage()
 
     await wrapper.find('[data-test="account-profile-nickname"] input').setValue('Ada Byron')
@@ -183,7 +167,7 @@ describe('account settings page', () => {
     let avatarFormItem = wrapper
       .get('[data-test="account-avatar-upload"]')
       .element.closest('.n-form-item')
-    expect(avatarFormItem?.textContent).toContain('上传头像失败')
+    expect(avatarFormItem?.textContent).toContain('upload failed')
     expect(wrapper.find('.n-alert').exists()).toBe(false)
 
     await wrapper.get('[data-test="account-avatar-upload"]').trigger('click')
@@ -192,12 +176,12 @@ describe('account settings page', () => {
     avatarFormItem = wrapper
       .get('[data-test="account-avatar-upload"]')
       .element.closest('.n-form-item')
-    expect(avatarFormItem?.textContent).not.toContain('上传头像失败')
+    expect(avatarFormItem?.textContent).not.toContain('upload failed')
   })
 
   it('renders a field error on current password failures', async () => {
     updateMyPasswordMock.mockRejectedValue(
-      new MockAuthRequestError(400, '当前密码错误', 'currentPassword'),
+      new ApiRequestError(400, '当前密码错误', 'currentPassword'),
     )
     const { wrapper } = await mountAccountSettingsPage()
 

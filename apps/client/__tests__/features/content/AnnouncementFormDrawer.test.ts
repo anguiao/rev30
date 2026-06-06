@@ -3,6 +3,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getErrorMessage } from '../../../src/utils/error'
+import { ApiRequestError } from '../../../src/utils/request'
 import {
   ATTACHMENT_READ_POLICY_AUTHENTICATED,
   ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
@@ -22,10 +24,8 @@ import {
   type UserOptionsResponse,
 } from '@rev30/contracts'
 import {
-  ContentRequestError,
   createAnnouncement,
   getAnnouncement,
-  getContentErrorMessage,
   updateAnnouncement,
 } from '../../../src/features/content'
 import { getAttachmentContentUrl, uploadAttachment } from '../../../src/features/attachments'
@@ -95,8 +95,11 @@ vi.mock('../../../src/features/content', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/content')>()),
   createAnnouncement: vi.fn(),
   getAnnouncement: vi.fn(),
-  getContentErrorMessage: vi.fn((_error: unknown, fallback: string) => fallback),
   updateAnnouncement: vi.fn(),
+}))
+
+vi.mock('../../../src/utils/error', () => ({
+  getErrorMessage: vi.fn((_error: unknown, fallback: string) => fallback),
 }))
 
 vi.mock('../../../src/features/attachments', async (importOriginal) => ({
@@ -114,7 +117,7 @@ vi.mock('../../../src/features/system', async (importOriginal) => ({
 
 const createAnnouncementMock = vi.mocked(createAnnouncement)
 const getAnnouncementMock = vi.mocked(getAnnouncement)
-const getContentErrorMessageMock = vi.mocked(getContentErrorMessage)
+const getErrorMessageMock = vi.mocked(getErrorMessage)
 const updateAnnouncementMock = vi.mocked(updateAnnouncement)
 const uploadAttachmentMock = vi.mocked(uploadAttachment)
 const getAttachmentContentUrlMock = vi.mocked(getAttachmentContentUrl)
@@ -255,7 +258,7 @@ describe('AnnouncementFormDrawer', () => {
     createCompactRichTextEditorPresetMock.mockClear()
     createAnnouncementMock.mockReset()
     getAnnouncementMock.mockReset()
-    getContentErrorMessageMock.mockClear()
+    getErrorMessageMock.mockClear()
     updateAnnouncementMock.mockReset()
     uploadAttachmentMock.mockReset()
     getAttachmentContentUrlMock.mockClear()
@@ -297,7 +300,7 @@ describe('AnnouncementFormDrawer', () => {
     imageOptions.onError(new Error('bad'))
     await flushPromises()
 
-    expect(getContentErrorMessageMock).toHaveBeenCalledWith(expect.any(Error), '上传图片失败')
+    expect(getErrorMessageMock).toHaveBeenCalledWith(expect.any(Error), '上传图片失败')
     expect(wrapper.text()).toContain('上传图片失败')
   })
 
@@ -585,9 +588,7 @@ describe('AnnouncementFormDrawer', () => {
   })
 
   it('shows server field errors on content form item', async () => {
-    createAnnouncementMock.mockRejectedValue(
-      new ContentRequestError(400, '请输入正文', 'contentJson'),
-    )
+    createAnnouncementMock.mockRejectedValue(new ApiRequestError(400, '请输入正文', 'contentJson'))
 
     const wrapper = mountDrawer()
     await flushPromises()
@@ -636,9 +637,7 @@ describe('AnnouncementFormDrawer', () => {
   })
 
   it('clears content server field errors when content changes in the same session', async () => {
-    createAnnouncementMock.mockRejectedValue(
-      new ContentRequestError(400, '请输入正文', 'contentJson'),
-    )
+    createAnnouncementMock.mockRejectedValue(new ApiRequestError(400, '请输入正文', 'contentJson'))
 
     const wrapper = mountDrawer()
     await flushPromises()
@@ -655,9 +654,7 @@ describe('AnnouncementFormDrawer', () => {
   })
 
   it('clears old server field errors when opening a new session', async () => {
-    createAnnouncementMock.mockRejectedValue(
-      new ContentRequestError(400, '请输入正文', 'contentJson'),
-    )
+    createAnnouncementMock.mockRejectedValue(new ApiRequestError(400, '请输入正文', 'contentJson'))
 
     const wrapper = mountDrawer()
     await flushPromises()

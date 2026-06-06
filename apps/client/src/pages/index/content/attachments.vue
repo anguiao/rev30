@@ -21,10 +21,10 @@ import {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { getErrorMessage } from '../../../utils/error'
 import {
   AttachmentPreviewCell,
   deleteAttachment,
-  getAttachmentErrorMessage,
   listAttachments,
 } from '../../../features/attachments'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
@@ -70,7 +70,7 @@ const attachmentsData = computed(() => attachmentsResponse.value ?? emptyAttachm
 const loadErrorMessage = computed(() =>
   attachmentsError.value === null
     ? ''
-    : getAttachmentErrorMessage(attachmentsError.value, '加载附件资源失败'),
+    : getErrorMessage(attachmentsError.value, '加载附件资源失败'),
 )
 
 function handleSearch() {
@@ -121,7 +121,7 @@ function confirmDeleteAttachment(attachment: AttachmentListItem) {
         message.success('删除附件成功')
         await invalidateAttachmentListQueries()
       } catch (error) {
-        message.error(getAttachmentErrorMessage(error, '删除附件失败'))
+        message.error(getErrorMessage(error, '删除附件失败'))
         return false
       }
     },

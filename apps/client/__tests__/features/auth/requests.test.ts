@@ -1,13 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { getErrorMessage } from '../../../src/utils/error'
+import { ApiRequestError, parseApiError } from '../../../src/utils/request'
 import { USER_STATUS_ENABLED } from '@rev30/contracts'
-import {
-  AuthRequestError,
-  getAuthErrorMessage,
-  logout,
-  parseAuthError,
-  updateMyPassword,
-  updateMyProfile,
-} from '../../../src/features/auth/requests'
+import { logout, updateMyPassword, updateMyProfile } from '../../../src/features/auth/requests'
 import {
   createFetchMock,
   emptyResponse,
@@ -24,7 +19,7 @@ describe('auth requests', () => {
 
   it('maps auth error responses to a typed error', async () => {
     await expect(
-      parseAuthError(
+      parseApiError(
         new Response(JSON.stringify({ field: 'username', message: 'username already exists' }), {
           status: 409,
         }),
@@ -38,7 +33,7 @@ describe('auth requests', () => {
 
   it('falls back when auth error responses violate the shared schema', async () => {
     await expect(
-      parseAuthError(
+      parseApiError(
         new Response(JSON.stringify({ field: 123, message: 123 }), {
           status: 409,
         }),
@@ -51,14 +46,14 @@ describe('auth requests', () => {
   })
 
   it('keeps a stable message when the server response is not json', async () => {
-    await expect(parseAuthError(new Response('nope', { status: 500 }))).resolves.toMatchObject({
+    await expect(parseApiError(new Response('nope', { status: 500 }))).resolves.toMatchObject({
       status: 500,
       message: '请求失败',
     })
   })
 
-  it('exposes status and field on AuthRequestError', () => {
-    const error = new AuthRequestError(401, 'Invalid username or password')
+  it('exposes status and field on ApiRequestError', () => {
+    const error = new ApiRequestError(401, 'Invalid username or password')
 
     expect(error.status).toBe(401)
     expect(error.message).toBe('Invalid username or password')
@@ -187,7 +182,7 @@ describe('auth requests', () => {
     })
   })
 
-  it('reuses parseAuthError for profile and password request failures', async () => {
+  it('reuses parseApiError for profile and password request failures', async () => {
     createFetchMock(
       jsonResponse(
         {
@@ -210,10 +205,9 @@ describe('auth requests', () => {
     })
   })
 
-  it('extracts auth error messages and falls back for unknown errors', async () => {
-    expect(getAuthErrorMessage(new AuthRequestError(401, '会话已过期'), '操作失败')).toBe(
-      '会话已过期',
-    )
-    expect(getAuthErrorMessage(new Error('boom'), '操作失败')).toBe('操作失败')
+  it('extracts error messages and falls back when no message is available', async () => {
+    expect(getErrorMessage(new ApiRequestError(401, '会话已过期'), '操作失败')).toBe('会话已过期')
+    expect(getErrorMessage(new Error('boom'), '操作失败')).toBe('boom')
+    expect(getErrorMessage(null, '操作失败')).toBe('操作失败')
   })
 })

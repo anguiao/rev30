@@ -1,5 +1,6 @@
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiRequestError } from '../../../src/utils/request'
 import { NPagination, NSelect } from 'naive-ui'
 import {
   BUILT_IN_ADMIN_ROLE_CODE,
@@ -9,7 +10,7 @@ import {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
-import { deleteRole, listRoles, SystemRequestError } from '../../../src/features/system'
+import { deleteRole, listRoles } from '../../../src/features/system'
 import RolesPage from '../../../src/pages/index/system/roles.vue'
 import {
   disposeActiveTestPinia,
@@ -127,7 +128,7 @@ describe('roles page', () => {
   })
 
   it('shows a server load error when roles cannot be loaded', async () => {
-    listRolesMock.mockRejectedValue(new SystemRequestError(500, '加载角色列表失败'))
+    listRolesMock.mockRejectedValue(new ApiRequestError(500, '加载角色列表失败'))
     const { wrapper } = await mountRolesPage()
     await flushPromises()
 
@@ -135,14 +136,13 @@ describe('roles page', () => {
     expect(wrapper.text()).toContain('加载角色列表失败')
   })
 
-  it('shows a fallback load error for unexpected role load errors', async () => {
+  it('shows a plain load error for unexpected role load errors', async () => {
     listRolesMock.mockRejectedValue(new Error('network down'))
     const { wrapper } = await mountRolesPage()
     await flushPromises()
 
     expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
-    expect(wrapper.text()).toContain('加载系统角色失败')
-    expect(wrapper.text()).not.toContain('network down')
+    expect(wrapper.text()).toContain('network down')
   })
 
   it('shows create and row actions according to permissions', async () => {

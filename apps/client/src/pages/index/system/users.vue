@@ -26,6 +26,7 @@ import type {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { getErrorMessage } from '../../../utils/error'
 import UserFormDrawer from '../../../features/system/UserFormDrawer.vue'
 import { UserAvatar } from '../../../features/users'
 import {
@@ -33,7 +34,6 @@ import {
   deleteUser,
   getDepartmentTreeOptions,
   getRoleOptions,
-  getSystemErrorMessage,
   listUsers,
   resetUserPassword,
   statusFilterOptions,
@@ -138,7 +138,7 @@ function handleReset() {
 
 const usersData = computed(() => usersResponse.value ?? emptyUsersData)
 const loadErrorMessage = computed(() =>
-  usersError.value === null ? '' : getSystemErrorMessage(usersError.value, '加载系统用户失败'),
+  usersError.value === null ? '' : getErrorMessage(usersError.value, '加载系统用户失败'),
 )
 
 const isUserDrawerVisible = ref(false)
@@ -183,7 +183,7 @@ function confirmDeleteUser(user: UserListItem) {
         message.success('删除系统用户成功')
         await invalidateUserListQueries()
       } catch (error) {
-        message.error(getSystemErrorMessage(error, '删除系统用户失败'))
+        message.error(getErrorMessage(error, '删除系统用户失败'))
         return false
       }
     },
@@ -206,7 +206,7 @@ function confirmResetUserPassword(user: UserListItem) {
         const result = await resetUserPassword(user.id)
         showTemporaryPasswordDialog(user.nickname || user.username, result.temporaryPassword)
       } catch (error) {
-        message.error(getSystemErrorMessage(error, '重置密码失败'))
+        message.error(getErrorMessage(error, '重置密码失败'))
         return false
       }
     },

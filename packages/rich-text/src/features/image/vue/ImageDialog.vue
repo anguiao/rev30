@@ -1,19 +1,16 @@
 <script setup lang="ts">
 import type { RichTextImageAttrs } from '../shared'
 import { NButton, NFormItem, NImage, NInput, NInputNumber, NModal, NSpin } from 'naive-ui'
-import { useFileDialog, useObjectUrl } from '@vueuse/core'
+import { useDropZone, useEventListener, useFileDialog, useObjectUrl } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
     show: boolean
-    accept?: string | undefined
     upload: (file: File) => Promise<Pick<RichTextImageAttrs, 'src'>>
     existingAttrs?: RichTextImageAttrs | undefined
   }>(),
-  {
-    accept: 'image/*',
-  },
+  {},
 )
 
 const emit = defineEmits<{
@@ -28,11 +25,20 @@ const selectedFile = ref<File | null>(null)
 const hasSelectedFile = computed(() => selectedFile.value !== null)
 const localPreviewSrc = useObjectUrl(selectedFile)
 
+const isUploading = ref(false)
+const canSelectFile = computed(() => props.show && !isExistingImage.value && !isUploading.value)
+
+function selectLocalImageFile(file: File) {
+  selectedFile.value = file
+  resetImageState()
+}
+
 const {
   open: openFileDialog,
   reset: resetFileDialog,
   onChange: onFileDialogChange,
 } = useFileDialog({
+  accept: 'image/*',
   multiple: false,
   reset: true,
 })
@@ -42,8 +48,48 @@ onFileDialogChange((files) => {
     return
   }
 
-  selectedFile.value = file
-  resetImageState()
+  selectLocalImageFile(file)
+})
+
+const dropZoneRef = ref<HTMLElement | null>(null)
+const { isOverDropZone } = useDropZone(dropZoneRef, {
+  multiple: false,
+  preventDefaultForUnhandled: true,
+  checkValidity: () => canSelectFile.value,
+  onDrop(files) {
+    const file = files?.[0]
+    if (file === undefined) {
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      return
+    }
+
+    selectLocalImageFile(file)
+  },
+})
+
+useEventListener(window, 'paste', (event) => {
+  const target = event.target
+  if (
+    !canSelectFile.value ||
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    (target instanceof HTMLElement && target.isContentEditable)
+  ) {
+    return
+  }
+
+  const file = event.clipboardData?.files?.item(0)
+  if (file === null || file === undefined) {
+    return
+  }
+  if (!file.type.startsWith('image/')) {
+    return
+  }
+
+  event.preventDefault()
+  selectLocalImageFile(file)
 })
 
 const src = ref('')
@@ -58,7 +104,6 @@ const aspectRatio = computed(() =>
     : naturalWidth.value / naturalHeight.value,
 )
 
-const isUploading = ref(false)
 const isImageReady = computed(
   () => src.value !== '' && naturalWidth.value !== null && naturalHeight.value !== null,
 )
@@ -214,8 +259,33 @@ function updateHeight(value: number | null) {
   >
     <NSpin :show="isUploading">
       <div class="flex flex-col gap-3">
+        <div
+          v-if="!isExistingImage"
+          ref="dropZoneRef"
+          data-test="rich-text-image-drop-zone"
+          class="flex w-fit rounded-ui transition-[outline-color,outline-width]"
+          :class="isOverDropZone ? 'outline-2 outline-offset-2 outline-primary outline-solid' : ''"
+        >
+          <NImage
+            v-if="displayPreviewSrc"
+            data-test="rich-text-image-preview"
+            class="max-w-full"
+            :img-props="{ class: 'block max-h-28 max-w-full' }"
+            :src="displayPreviewSrc"
+            :alt="alt"
+            @load="handleImageLoad"
+            @error="handleImageError"
+          />
+          <div
+            v-else
+            data-test="rich-text-image-preview-area"
+            class="flex size-28 items-center justify-center rounded-ui border border-input-border bg-input"
+          >
+            <span class="i-[lucide--image] text-2xl opacity-20" aria-hidden="true" />
+          </div>
+        </div>
         <NImage
-          v-if="displayPreviewSrc"
+          v-else-if="displayPreviewSrc"
           data-test="rich-text-image-preview"
           class="max-w-full"
           :img-props="{ class: 'block max-h-28 max-w-full' }"
@@ -236,8 +306,8 @@ function updateHeight(value: number | null) {
           <NButton
             data-test="rich-text-image-file"
             class="flex-1"
-            :disabled="isUploading"
-            @click="openFileDialog({ accept })"
+            :disabled="!canSelectFile"
+            @click="openFileDialog()"
           >
             <template #icon>
               <span class="i-[lucide--image-plus]" aria-hidden="true" />

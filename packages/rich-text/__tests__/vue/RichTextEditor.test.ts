@@ -32,7 +32,6 @@ const toolbarDataTests = [
 
 const compactEditorPreset = createCompactRichTextEditorPreset({
   image: {
-    accept: 'image/*',
     upload: async (file) => ({
       src: `/api/attachments/${file.name}/content`,
     }),

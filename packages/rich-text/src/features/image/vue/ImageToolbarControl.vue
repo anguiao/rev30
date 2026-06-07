@@ -6,7 +6,6 @@ import { computed, ref } from 'vue'
 import ImageDialog from './ImageDialog.vue'
 
 interface ImageToolbarControlProps extends RichTextToolbarControlInjectedProps {
-  accept?: string
   upload: (file: File) => Promise<Pick<RichTextImageAttrs, 'src'>>
   onError?: (error: unknown) => void
 }
@@ -73,7 +72,6 @@ function handleError(error: unknown) {
     v-model:show="showDialog"
     :existing-attrs="currentAttrs"
     :upload="upload"
-    :accept="accept"
     @confirm="handleConfirm"
     @error="handleError"
   />

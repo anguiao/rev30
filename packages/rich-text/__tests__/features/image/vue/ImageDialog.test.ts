@@ -10,11 +10,28 @@ import { imageFeature } from '../../../../src/features/image/shared'
 import ImageToolbarControl from '../../../../src/features/image/vue/ImageToolbarControl.vue'
 
 type FileDialogChangeHandler = (files: FileList | null) => void
+type FileDialogOptions = {
+  accept?: string
+  multiple?: boolean
+  reset?: boolean
+}
+type DropZoneOptions = {
+  onDrop?: (files: File[] | null, event: DragEvent) => void
+}
+type PasteHandler = (event: ClipboardEvent) => void
 
 const fileDialog = vi.hoisted(() => ({
+  options: [] as FileDialogOptions[],
   changeHandlers: [] as FileDialogChangeHandler[],
   open: vi.fn(),
   reset: vi.fn(),
+}))
+const dropZone = vi.hoisted(() => ({
+  options: [] as DropZoneOptions[],
+  isOverDropZone: { value: false },
+}))
+const eventListeners = vi.hoisted(() => ({
+  pasteHandlers: [] as PasteHandler[],
 }))
 
 vi.mock('@vueuse/core', async (importOriginal) => {
@@ -22,14 +39,33 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 
   return {
     ...vueuse,
-    useFileDialog: vi.fn(() => ({
-      files: { value: null },
-      open: fileDialog.open,
-      reset: fileDialog.reset,
-      onChange: (handler: FileDialogChangeHandler) => {
-        fileDialog.changeHandlers.push(handler)
-      },
-    })),
+    useDropZone: vi.fn((_target: unknown, options: DropZoneOptions) => {
+      dropZone.options.push(options)
+
+      return {
+        files: { value: null },
+        isOverDropZone: dropZone.isOverDropZone,
+      }
+    }),
+    useEventListener: vi.fn((_target: unknown, event: string, handler: PasteHandler) => {
+      if (event === 'paste') {
+        eventListeners.pasteHandlers.push(handler)
+      }
+
+      return vi.fn()
+    }),
+    useFileDialog: vi.fn((options: FileDialogOptions) => {
+      fileDialog.options.push(options)
+
+      return {
+        files: { value: null },
+        open: fileDialog.open,
+        reset: fileDialog.reset,
+        onChange: (handler: FileDialogChangeHandler) => {
+          fileDialog.changeHandlers.push(handler)
+        },
+      }
+    }),
   }
 })
 
@@ -87,11 +123,29 @@ function mountControl(editor: Editor, upload = vi.fn(), onError = vi.fn()) {
   return wrapper
 }
 
-function createFileList(file: File) {
+function createFileList(...files: File[]) {
+  return Object.assign(files, {
+    item: (index: number) => files[index] ?? null,
+  }) as unknown as FileList
+}
+
+function createDataTransferItems(...files: File[]) {
+  const items = files.map((file) => ({
+    kind: 'file',
+    type: file.type,
+    getAsFile: () => file,
+  }))
+
+  return Object.assign(items, {
+    item: (index: number) => items[index] ?? null,
+  }) as unknown as DataTransferItemList
+}
+
+function createClipboardData(...files: File[]) {
   return {
-    length: 1,
-    item: (index: number) => (index === 0 ? file : null),
-  } as FileList
+    files: createFileList(...files),
+    items: createDataTransferItems(...files),
+  } as DataTransfer
 }
 
 async function chooseFile(_wrapper: ReturnType<typeof mount>, file: File) {
@@ -102,6 +156,33 @@ async function chooseFile(_wrapper: ReturnType<typeof mount>, file: File) {
 
   onChange(createFileList(file))
   await flushPromises()
+}
+
+async function dropFiles(files: File[]) {
+  const onDrop = dropZone.options.at(-1)?.onDrop
+  if (onDrop === undefined) {
+    throw new Error('Drop zone handler is not registered')
+  }
+
+  onDrop(files, new Event('drop') as DragEvent)
+  await flushPromises()
+}
+
+async function pasteFiles(files: File[], target: EventTarget | null) {
+  const onPaste = eventListeners.pasteHandlers.at(-1)
+  if (onPaste === undefined) {
+    throw new Error('Paste handler is not registered')
+  }
+
+  const preventDefault = vi.fn()
+  onPaste({
+    clipboardData: createClipboardData(...files),
+    preventDefault,
+    target,
+  } as unknown as ClipboardEvent)
+  await flushPromises()
+
+  return { preventDefault }
 }
 
 async function uploadSelectedFile(wrapper: ReturnType<typeof mount>) {
@@ -137,8 +218,12 @@ describe('ImageToolbarControl', () => {
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
     fileDialog.changeHandlers.length = 0
+    fileDialog.options.length = 0
     fileDialog.open.mockClear()
     fileDialog.reset.mockClear()
+    dropZone.options.length = 0
+    dropZone.isOverDropZone.value = false
+    eventListeners.pasteHandlers.length = 0
   })
 
   it('uploads the selected file manually and inserts the image after confirmation', async () => {
@@ -149,8 +234,13 @@ describe('ImageToolbarControl', () => {
     const wrapper = mountControl(editor, upload)
 
     await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    expect(fileDialog.options.at(-1)).toMatchObject({
+      accept: 'image/*',
+      multiple: false,
+      reset: true,
+    })
     await wrapper.get('[data-test="rich-text-image-file"]').trigger('click')
-    expect(fileDialog.open).toHaveBeenCalledWith({ accept: 'image/*' })
+    expect(fileDialog.open).toHaveBeenCalledWith()
     await chooseFile(wrapper, new File(['image'], 'cover.png', { type: 'image/png' }))
     expect(upload).not.toHaveBeenCalled()
     await loadPreviewImage(wrapper)
@@ -198,6 +288,66 @@ describe('ImageToolbarControl', () => {
 
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:cover')
     expect(wrapper.getComponent(NImage).props('src')).toBe('/api/attachments/cover.png/content')
+  })
+
+  it('uses dropped images as insert candidates without uploading immediately', async () => {
+    const upload = vi.fn(async (file: File) => ({
+      src: `/api/attachments/${file.name}/content`,
+    }))
+    const editor = createEditor()
+    const wrapper = mountControl(editor, upload)
+    const imageFile = new File(['image'], 'dropped.png', { type: 'image/png' })
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await dropFiles([imageFile, new File(['text'], 'note.txt', { type: 'text/plain' })])
+
+    expect(upload).not.toHaveBeenCalled()
+    expect(
+      wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
+    ).toBeUndefined()
+
+    await uploadSelectedFile(wrapper)
+
+    expect(upload).toHaveBeenCalledWith(imageFile)
+  })
+
+  it('uses pasted images as insert candidates when the insert dialog is open', async () => {
+    const upload = vi.fn(async (file: File) => ({
+      src: `/api/attachments/${file.name}/content`,
+    }))
+    const editor = createEditor()
+    const wrapper = mountControl(editor, upload)
+    const imageFile = new File(['image'], 'pasted.png', { type: 'image/png' })
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    const { preventDefault } = await pasteFiles(
+      [imageFile],
+      wrapper.get('[data-test="rich-text-image-drop-zone"]').element,
+    )
+
+    expect(preventDefault).toHaveBeenCalledOnce()
+    expect(upload).not.toHaveBeenCalled()
+
+    await uploadSelectedFile(wrapper)
+
+    expect(upload).toHaveBeenCalledWith(imageFile)
+  })
+
+  it('does not handle pasted images from dialog input fields', async () => {
+    const upload = vi.fn(async () => ({ src: '/api/attachments/pasted/content' }))
+    const editor = createEditor()
+    const wrapper = mountControl(editor, upload)
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    const { preventDefault } = await pasteFiles(
+      [new File(['image'], 'pasted.png', { type: 'image/png' })],
+      wrapper.get('[data-test="rich-text-image-alt"] input').element,
+    )
+
+    expect(preventDefault).not.toHaveBeenCalled()
+    expect(
+      wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
+    ).toBeDefined()
   })
 
   it('keeps insert dialog cancellation from uploading or changing the editor', async () => {
@@ -395,6 +545,7 @@ describe('ImageToolbarControl', () => {
     await loadPreviewImage(wrapper, 1000, 500)
 
     expect(wrapper.find('[data-test="rich-text-image-file"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="rich-text-image-drop-zone"]').exists()).toBe(false)
 
     await wrapper.get('[data-test="rich-text-image-alt"] input').setValue('编辑说明')
     await wrapper.get('[data-test="rich-text-image-width"] input').setValue('600')

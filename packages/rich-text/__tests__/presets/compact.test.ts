@@ -34,7 +34,6 @@ describe('compact rich text preset', () => {
   it('keeps the current visible toolbar layout with the editor preset', () => {
     const editorPreset = createCompactRichTextEditorPreset({
       image: {
-        accept: 'image/*',
         upload: imageUpload,
       },
     })

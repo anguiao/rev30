@@ -3,7 +3,6 @@ import { richTextToolbarComponent } from '../../vue/toolbar'
 import ImageToolbarControl from './vue/ImageToolbarControl.vue'
 
 export interface RichTextImageUploadOptions {
-  accept?: string
   upload: (file: File) => Promise<Pick<RichTextImageAttrs, 'src'>>
   onError?: (error: unknown) => void
 }

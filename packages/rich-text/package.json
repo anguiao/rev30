@@ -58,19 +58,19 @@
     "@tiptap/html": "^3.26.0",
     "@tiptap/pm": "^3.26.0",
     "@tiptap/vue-3": "^3.26.0",
-    "@vueuse/core": "^14.3.0",
-    "naive-ui": "^2.44.1",
+    "@vueuse/core": "catalog:",
+    "naive-ui": "catalog:",
     "sanitize-html": "^2.17.4",
-    "vue": "^3.5.35",
-    "zod": "^4.4.3"
+    "vue": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/sanitize-html": "^2.16.1",
-    "@vitejs/plugin-vue": "^6.0.7",
-    "@vue/test-utils": "^2.4.11",
-    "happy-dom": "^20.10.2",
-    "vite": "^8.0.16",
-    "vitest": "^4.1.8",
-    "vue-tsc": "^3.3.3"
+    "@vitejs/plugin-vue": "catalog:",
+    "@vue/test-utils": "catalog:",
+    "happy-dom": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vue-tsc": "catalog:"
   }
 }

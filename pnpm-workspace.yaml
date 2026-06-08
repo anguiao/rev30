@@ -1,6 +1,23 @@
 packages:
   - apps/*
   - packages/*
+
+catalog:
+  '@iconify/json': ^2.2.483
+  '@types/bytes': ^3.1.5
+  '@vitejs/plugin-vue': ^6.0.7
+  '@vue/test-utils': ^2.4.11
+  '@vueuse/core': ^14.3.0
+  bytes: ^3.1.2
+  happy-dom: ^20.10.2
+  hono: ^4.12.23
+  naive-ui: ^2.44.1
+  vite: ^8.0.16
+  vitest: ^4.1.8
+  vue: ^3.5.35
+  vue-tsc: ^3.3.3
+  zod: ^4.4.3
+
 allowBuilds:
   esbuild: true
   vue-demi: true

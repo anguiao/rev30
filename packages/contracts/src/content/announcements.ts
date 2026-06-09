@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import {
-  hasNonBlankRichText,
+  hasRichTextContent,
   richTextDocumentSchema,
   type RichTextDocument,
 } from '@rev30/rich-text/schema'
@@ -92,7 +92,7 @@ const announcementContentDocumentSchema = z.custom<RichTextDocument>(
 )
 
 const announcementContentJsonInputSchema = announcementContentDocumentSchema.refine(
-  hasNonBlankRichText,
+  hasRichTextContent,
   {
     message: '请输入正文',
   },

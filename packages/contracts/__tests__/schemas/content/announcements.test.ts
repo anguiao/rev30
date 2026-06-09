@@ -33,6 +33,18 @@ const contentJson = {
     },
   ],
 }
+const imageOnlyContentJson = {
+  type: 'doc',
+  content: [
+    {
+      type: 'image',
+      attrs: {
+        src: '/api/attachments/11111111-1111-4111-8111-111111111111/content',
+        alt: '示意图',
+      },
+    },
+  ],
+}
 
 describe('announcement schemas', () => {
   it('accepts detail and list response shapes', () => {
@@ -250,6 +262,18 @@ describe('announcement schemas', () => {
       }),
     ).toMatchObject({
       contentJson,
+    })
+  })
+
+  it('accepts image-only announcement content input', () => {
+    expect(
+      announcementCreateSchema.parse({
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '图片通知',
+        contentJson: imageOnlyContentJson,
+      }),
+    ).toMatchObject({
+      contentJson: imageOnlyContentJson,
     })
   })
 

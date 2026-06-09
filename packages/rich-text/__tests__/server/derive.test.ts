@@ -83,6 +83,37 @@ describe('deriveRichTextContent', () => {
     )
   })
 
+  it('derives html from media-only rich text content', async () => {
+    const { deriveRichTextContent } = await loadServerHelpers()
+    const { createCompactRichTextServerPreset } = await import('../../src/server/presets')
+    const compactServerPreset = createCompactRichTextServerPreset({
+      image: {
+        isAllowedSrc: (src) => /^\/api\/attachments\/[0-9a-f-]{36}\/content$/i.test(src),
+      },
+    })
+
+    const content = deriveRichTextContent(
+      {
+        type: 'doc',
+        content: [
+          {
+            type: 'image',
+            attrs: {
+              src: '/api/attachments/11111111-1111-4111-8111-111111111111/content',
+              alt: '示意图',
+            },
+          },
+        ],
+      },
+      compactServerPreset,
+    )
+
+    expect(content.text).toBe('')
+    expect(content.html).toContain(
+      '<img src="/api/attachments/11111111-1111-4111-8111-111111111111/content" alt="示意图"',
+    )
+  })
+
   it('rejects empty and unsupported node types', async () => {
     const { RichTextContentInvalidError, deriveRichTextContent } = await loadServerHelpers()
     const { createCompactRichTextServerPreset } = await import('../../src/server/presets')

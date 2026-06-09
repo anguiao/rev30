@@ -46,6 +46,26 @@ describe('announcement content helpers', () => {
     )
   })
 
+  it('allows image-only announcement content', () => {
+    expect(
+      deriveAnnouncementContent({
+        type: 'doc',
+        content: [
+          {
+            type: 'image',
+            attrs: {
+              src: '/api/attachments/11111111-1111-4111-8111-111111111111/content',
+              alt: '示意图',
+            },
+          },
+        ],
+      }),
+    ).toEqual({
+      text: '',
+      html: '<img src="/api/attachments/11111111-1111-4111-8111-111111111111/content" alt="示意图" style="max-width:100%;height:auto" />',
+    })
+  })
+
   it('allows attachment image UUID versions accepted by zod', () => {
     const src = '/api/attachments/018f6e6a-7a7b-7c7d-8e8f-111111111111/content'
 

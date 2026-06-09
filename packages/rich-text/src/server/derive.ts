@@ -3,6 +3,7 @@ import { getSchema } from '@tiptap/core'
 import { generateHTML } from '@tiptap/html/server'
 import { Node as ProseMirrorNode, type Schema } from '@tiptap/pm/model'
 import { collectRichTextExtensions } from '../core/preset'
+import { hasRichTextContent } from '../schema'
 import { RichTextContentInvalidError } from './errors'
 import type { RichTextHtmlPolicy } from './policy'
 import type { RichTextServerPreset } from './presets/types'
@@ -46,7 +47,7 @@ export function deriveRichTextContent(contentJson: unknown, preset: RichTextServ
 
   const text = document.textBetween(0, document.content.size, '\n\n').trim()
 
-  if (text.length === 0) {
+  if (!hasRichTextContent(document.toJSON())) {
     throw new RichTextContentInvalidError()
   }
 

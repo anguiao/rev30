@@ -1,5 +1,4 @@
-import type sanitizeHtml from 'sanitize-html'
-import type { RichTextHtmlPolicy } from '../../server/policy'
+import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
 import { highlightColors } from './colors'
 
 const highlightColorSet = new Set<string>(highlightColors)
@@ -30,7 +29,7 @@ function buildHighlightStyle(color: string) {
   return `background-color: ${color}; color: inherit`
 }
 
-const transformMark: sanitizeHtml.Transformer = (tagName, attribs) => {
+const transformMark: RichTextTagTransform = ({ tagName, attribs }) => {
   const color =
     normalizeHighlightColor(attribs['data-color']) ??
     normalizeHighlightColor(getInlineStyleValue(attribs.style, 'background-color'))
@@ -63,6 +62,6 @@ export const highlightHtmlPolicy: RichTextHtmlPolicy = {
     },
   },
   transformTags: {
-    mark: transformMark,
+    mark: [transformMark],
   },
 }

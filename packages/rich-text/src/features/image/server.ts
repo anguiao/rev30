@@ -1,6 +1,5 @@
-import type sanitizeHtml from 'sanitize-html'
 import { RichTextContentInvalidError } from '../../server/errors'
-import type { RichTextHtmlPolicy } from '../../server/policy'
+import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
 import { buildImageStyle, normalizeImageSize } from './dimensions'
 
 export interface RichTextImageServerOptions {
@@ -8,7 +7,7 @@ export interface RichTextImageServerOptions {
 }
 
 export function createImageHtmlPolicy(options: RichTextImageServerOptions): RichTextHtmlPolicy {
-  const transformImage: sanitizeHtml.Transformer = (tagName, attribs) => {
+  const transformImage: RichTextTagTransform = ({ tagName, attribs }) => {
     const src = attribs.src?.trim() ?? ''
 
     if (!options.isAllowedSrc(src)) {
@@ -42,7 +41,7 @@ export function createImageHtmlPolicy(options: RichTextImageServerOptions): Rich
       },
     },
     transformTags: {
-      img: transformImage,
+      img: [transformImage],
     },
   }
 }

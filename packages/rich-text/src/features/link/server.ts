@@ -1,8 +1,7 @@
-import type sanitizeHtml from 'sanitize-html'
-import type { RichTextHtmlPolicy } from '../../server/policy'
+import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
 import { normalizeLinkHref } from './href'
 
-const transformAnchor: sanitizeHtml.Transformer = (tagName, attribs) => {
+const transformAnchor: RichTextTagTransform = ({ tagName, attribs }) => {
   const href = normalizeLinkHref(attribs.href ?? '')
 
   return {
@@ -22,6 +21,6 @@ export const linkHtmlPolicy: RichTextHtmlPolicy = {
   },
   allowedSchemes: ['http', 'https', 'mailto', 'tel'],
   transformTags: {
-    a: transformAnchor,
+    a: [transformAnchor],
   },
 }

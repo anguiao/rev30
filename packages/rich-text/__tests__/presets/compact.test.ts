@@ -24,6 +24,7 @@ describe('compact rich text preset', () => {
       'strike',
       'highlight',
       'link',
+      'remove-format',
       'heading',
       'blockquote',
       'list',
@@ -60,7 +61,15 @@ describe('compact rich text preset', () => {
       marks?.controls.map((control) =>
         control.type === 'button' ? control.command.key : control.key,
       ) ?? [],
-    ).toEqual(['bold', 'italic', 'underline', 'strike', 'highlight', 'link'])
+    ).toEqual([
+      'bold',
+      'italic',
+      'underline',
+      'strike',
+      'highlight',
+      'link',
+      'remove-format',
+    ])
     expect(
       heading?.type === 'dropdown' ? heading.commands.map((command) => command.key) : [],
     ).toEqual(['heading-1', 'heading-2', 'heading-3'])

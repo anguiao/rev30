@@ -16,6 +16,7 @@ import {
 import { italicCommand } from '../../features/italic/vue'
 import { linkToolbarControl } from '../../features/link/vue'
 import { listCommands } from '../../features/list/vue'
+import { strikeCommand } from '../../features/strike/vue'
 import { underlineCommand } from '../../features/underline/vue'
 import { compactRichTextPreset } from '../../presets'
 import { defineRichTextEditorPreset, type RichTextEditorPreset } from './types'
@@ -33,6 +34,7 @@ function createCompactRichTextToolbar(options: CompactRichTextEditorPresetOption
         button(boldCommand),
         button(italicCommand),
         button(underlineCommand),
+        button(strikeCommand),
         highlightToolbarControl,
         linkToolbarControl,
       ],

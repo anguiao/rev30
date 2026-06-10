@@ -8,6 +8,7 @@ import { createImageHtmlPolicy, type RichTextImageServerOptions } from '../../fe
 import { italicHtmlPolicy } from '../../features/italic/server'
 import { linkHtmlPolicy } from '../../features/link/server'
 import { listHtmlPolicy } from '../../features/list/server'
+import { strikeHtmlPolicy } from '../../features/strike/server'
 import { underlineHtmlPolicy } from '../../features/underline/server'
 import { compactRichTextPreset } from '../../presets'
 import { defineRichTextServerPreset, type RichTextServerPreset } from './types'
@@ -22,6 +23,7 @@ function createCompactRichTextHtmlPolicies(options: CompactRichTextServerPresetO
     boldHtmlPolicy,
     italicHtmlPolicy,
     underlineHtmlPolicy,
+    strikeHtmlPolicy,
     highlightHtmlPolicy,
     linkHtmlPolicy,
     headingHtmlPolicy,

@@ -10,6 +10,7 @@ import { imageFeature } from '../features/image/shared'
 import { italicFeature } from '../features/italic/shared'
 import { linkFeature } from '../features/link/shared'
 import { listFeature } from '../features/list/shared'
+import { strikeFeature } from '../features/strike/shared'
 import { underlineFeature } from '../features/underline/shared'
 
 export const compactRichTextPreset = defineRichTextPreset({
@@ -20,6 +21,7 @@ export const compactRichTextPreset = defineRichTextPreset({
     boldFeature,
     italicFeature,
     underlineFeature,
+    strikeFeature,
     highlightFeature,
     linkFeature,
     headingFeature,

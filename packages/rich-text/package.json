@@ -52,6 +52,7 @@
     "@tiptap/extension-list-item": "^3.26.0",
     "@tiptap/extension-ordered-list": "^3.26.0",
     "@tiptap/extension-paragraph": "^3.26.0",
+    "@tiptap/extension-strike": "^3.26.0",
     "@tiptap/extension-text": "^3.26.0",
     "@tiptap/extension-underline": "^3.26.0",
     "@tiptap/extensions": "^3.26.0",

@@ -26,6 +26,7 @@ describe('compact rich text preset', () => {
       'link',
       'remove-format',
       'heading',
+      'text-align',
       'blockquote',
       'list',
       'horizontal-rule',
@@ -53,6 +54,9 @@ describe('compact rich text preset', () => {
     const blocks = editorPreset.toolbar?.groups.find((group) => group.key === 'blocks')
     const insert = editorPreset.toolbar?.groups.find((group) => group.key === 'insert')
     const heading = blocks?.controls.find((control) => control.type === 'dropdown')
+    const textAlign = blocks?.controls.find(
+      (control) => control.type === 'dropdown' && control.key === 'text-align',
+    )
     const list = blocks?.controls.find(
       (control) => control.type === 'dropdown' && control.key === 'list',
     )
@@ -73,6 +77,9 @@ describe('compact rich text preset', () => {
     expect(
       heading?.type === 'dropdown' ? heading.commands.map((command) => command.key) : [],
     ).toEqual(['heading-1', 'heading-2', 'heading-3'])
+    expect(
+      textAlign?.type === 'dropdown' ? textAlign.commands.map((command) => command.key) : [],
+    ).toEqual(['text-align-left', 'text-align-center', 'text-align-right'])
     expect(list?.type === 'dropdown' ? list.commands.map((command) => command.key) : []).toEqual([
       'bullet-list',
       'ordered-list',

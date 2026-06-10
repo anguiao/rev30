@@ -12,6 +12,7 @@ import { linkFeature } from '../features/link/shared'
 import { listFeature } from '../features/list/shared'
 import { removeFormatFeature } from '../features/remove-format/shared'
 import { strikeFeature } from '../features/strike/shared'
+import { textAlignFeature } from '../features/text-align/shared'
 import { underlineFeature } from '../features/underline/shared'
 
 export const compactRichTextPreset = defineRichTextPreset({
@@ -27,6 +28,7 @@ export const compactRichTextPreset = defineRichTextPreset({
     linkFeature,
     removeFormatFeature,
     headingFeature,
+    textAlignFeature,
     blockquoteFeature,
     listFeature,
     horizontalRuleFeature,

@@ -18,6 +18,7 @@ import { linkToolbarControl } from '../../features/link/vue'
 import { listCommands } from '../../features/list/vue'
 import { removeFormatCommand } from '../../features/remove-format/vue'
 import { strikeCommand } from '../../features/strike/vue'
+import { textAlignCommands } from '../../features/text-align/vue'
 import { underlineCommand } from '../../features/underline/vue'
 import { compactRichTextPreset } from '../../presets'
 import { defineRichTextEditorPreset, type RichTextEditorPreset } from './types'
@@ -49,6 +50,12 @@ function createCompactRichTextToolbar(options: CompactRichTextEditorPresetOption
           label: '标题',
           icon: 'i-[lucide--heading]',
           commands: headingCommands,
+        }),
+        dropdown({
+          key: 'text-align',
+          label: '对齐',
+          icon: 'i-[lucide--align-left]',
+          commands: textAlignCommands,
         }),
         dropdown({
           key: 'list',

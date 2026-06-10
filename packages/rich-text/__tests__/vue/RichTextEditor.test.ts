@@ -19,9 +19,12 @@ const toolbarDataTests = [
   'rich-text-bold',
   'rich-text-italic',
   'rich-text-underline',
+  'rich-text-strike',
   'rich-text-highlight',
   'rich-text-link',
+  'rich-text-remove-format',
   'rich-text-heading',
+  'rich-text-text-align',
   'rich-text-list',
   'rich-text-blockquote',
   'rich-text-horizontal-rule',
@@ -98,7 +101,7 @@ describe('RichTextEditor', () => {
     for (const dataTest of toolbarDataTests) {
       expect(wrapper.find(`[data-test="${dataTest}"]`).exists()).toBe(true)
     }
-    expect(wrapper.findAllComponents(NDropdown)).toHaveLength(2)
+    expect(wrapper.findAllComponents(NDropdown)).toHaveLength(3)
     expect(editable.text()).toContain('维护通知')
   })
 

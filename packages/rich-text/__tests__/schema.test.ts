@@ -52,6 +52,12 @@ describe('rich text schema helpers', () => {
     expect(
       hasRichTextContent({
         type: 'doc',
+        content: [{ type: 'paragraph', attrs: { textAlign: 'center' } }],
+      }),
+    ).toBe(false)
+    expect(
+      hasRichTextContent({
+        type: 'doc',
         content: [{ type: 'horizontalRule' }],
       }),
     ).toBe(false)

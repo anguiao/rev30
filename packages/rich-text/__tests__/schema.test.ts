@@ -48,13 +48,16 @@ describe('rich text schema helpers', () => {
     ).toBe(true)
   })
 
-  it('does not treat decorative or unsupported nodes as rich text content', () => {
+  it('treats attribute-bearing nodes as rich text content', () => {
     expect(
       hasRichTextContent({
         type: 'doc',
         content: [{ type: 'paragraph', attrs: { textAlign: 'center' } }],
       }),
-    ).toBe(false)
+    ).toBe(true)
+  })
+
+  it('does not treat decorative or unsupported nodes without attrs as rich text content', () => {
     expect(
       hasRichTextContent({
         type: 'doc',

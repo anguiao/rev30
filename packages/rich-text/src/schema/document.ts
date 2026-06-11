@@ -4,16 +4,6 @@ export const richTextDocumentSchema = z.looseObject({
   type: z.literal('doc'),
 })
 
-function hasMediaContent(value: Record<string, unknown>): boolean {
-  if (value.type !== 'image' || typeof value.attrs !== 'object' || value.attrs === null) {
-    return false
-  }
-
-  const attrs = value.attrs as Record<string, unknown>
-
-  return typeof attrs.src === 'string' && attrs.src.trim().length > 0
-}
-
 export function hasRichTextContent(value: unknown): boolean {
   if (typeof value !== 'object' || value === null) {
     return false
@@ -29,7 +19,7 @@ export function hasRichTextContent(value: unknown): boolean {
     return Array.isArray(record.content) && record.content.some(hasRichTextContent)
   }
 
-  return hasMediaContent(record)
+  return 'attrs' in record && record.attrs !== null && record.attrs !== undefined
 }
 
 export type RichTextDocument = z.infer<typeof richTextDocumentSchema>

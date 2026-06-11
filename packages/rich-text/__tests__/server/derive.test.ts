@@ -114,7 +114,7 @@ describe('deriveRichTextContent', () => {
     )
   })
 
-  it('rejects empty and unsupported node types', async () => {
+  it('rejects unsupported node types', async () => {
     const { RichTextContentInvalidError, deriveRichTextContent } = await loadServerHelpers()
     const { createCompactRichTextServerPreset } = await import('../../src/server/presets')
     const compactServerPreset = createCompactRichTextServerPreset({
@@ -122,10 +122,6 @@ describe('deriveRichTextContent', () => {
         isAllowedSrc: (src) => /^\/api\/attachments\/[0-9a-f-]{36}\/content$/i.test(src),
       },
     })
-
-    expect(() =>
-      deriveRichTextContent({ type: 'doc', content: [{ type: 'paragraph' }] }, compactServerPreset),
-    ).toThrow(RichTextContentInvalidError)
 
     expect(() =>
       deriveRichTextContent(

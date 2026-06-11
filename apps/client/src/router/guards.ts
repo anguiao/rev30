@@ -2,6 +2,7 @@ import type { ResourceTreeNode } from '@rev30/contracts'
 import type { RouteLocationNormalized, Router } from 'vue-router'
 import { refreshSession } from '../features/auth/requests'
 import { useAuthStore } from '../stores/auth'
+import { ApiRequestError } from '../utils/request'
 import { resolveRedirectTarget } from './redirect'
 
 export const authRoutes = new Set(['/login'])
@@ -48,9 +49,13 @@ async function restoreSessionIfNeeded() {
 
   try {
     auth.setSession(await refreshSession())
-  } catch {
+    auth.markReady()
+  } catch (error) {
+    if (!(error instanceof ApiRequestError) || error.status !== 401) {
+      throw error
+    }
+
     auth.clearSession()
-  } finally {
     auth.markReady()
   }
 }

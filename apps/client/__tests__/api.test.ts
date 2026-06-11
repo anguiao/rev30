@@ -244,7 +244,7 @@ describe('authFetch', () => {
     )
   })
 
-  it('clears the current session and logs out when refresh fails', async () => {
+  it('clears the current session and logs out when refresh is unauthorized', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -275,6 +275,37 @@ describe('authFetch', () => {
     )
     expect(fetchMock).toHaveBeenLastCalledWith(
       '/api/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    )
+  })
+
+  it('keeps the current session when refresh fails transiently', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: '未授权' }), {
+          status: 401,
+          headers: {
+            [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
+          },
+        }),
+      )
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+    vi.stubGlobal('fetch', fetchMock)
+    const auth = useAuthStore()
+    auth.setSession(session)
+
+    const response = await authFetch('/api/system/users')
+
+    expect(response.status).toBe(401)
+    expect(auth.accessToken).toBe('access-token')
+    expect(auth.user).toEqual(session.user)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/auth/refresh',
       expect.objectContaining({
         method: 'POST',
       }),

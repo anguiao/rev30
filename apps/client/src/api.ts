@@ -44,13 +44,15 @@ async function requestRefreshedSession() {
   try {
     const response = await internalApi.auth.refresh.$post()
 
-    if (!response.ok) {
+    if (response.status === 401) {
       return null
     }
 
+    if (!response.ok) {
+      throw new Error('Failed to refresh session')
+    }
+
     return authTokenResponseSchema.parse(await response.json())
-  } catch {
-    return null
   } finally {
     refreshedSessionPromise = null
   }
@@ -88,7 +90,13 @@ async function resolveRetryAccessToken(accessToken: string) {
     return auth.accessToken
   }
 
-  const refreshedSession = await getRefreshedSession()
+  let refreshedSession: AuthTokenResponse | null
+
+  try {
+    refreshedSession = await getRefreshedSession()
+  } catch {
+    return auth.accessToken !== accessToken ? auth.accessToken : null
+  }
 
   if (auth.accessToken !== accessToken) {
     return auth.accessToken

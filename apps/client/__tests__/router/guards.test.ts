@@ -11,6 +11,7 @@ import {
 import { useAuthStore } from '../../src/stores/auth'
 import { refreshSession } from '../../src/features/auth/requests'
 import { installAuthGuards } from '../../src/router/guards'
+import { ApiRequestError } from '../../src/utils/request'
 
 vi.mock('../../src/features/auth/requests', () => ({
   refreshSession: vi.fn(),
@@ -141,7 +142,7 @@ describe('auth guards', () => {
   })
 
   it('redirects unauthenticated users from admin pages to login with redirect query', async () => {
-    refreshSessionMock.mockRejectedValue(new Error('refresh failed'))
+    refreshSessionMock.mockRejectedValue(new ApiRequestError(401, 'refresh failed'))
     const router = createTestRouter()
 
     await router.push('/system/users')
@@ -156,7 +157,7 @@ describe('auth guards', () => {
   })
 
   it('redirects unauthenticated users from account settings to login with redirect query', async () => {
-    refreshSessionMock.mockRejectedValue(new Error('refresh failed'))
+    refreshSessionMock.mockRejectedValue(new ApiRequestError(401, 'refresh failed'))
     const router = createTestRouter()
 
     await router.push('/account/settings')
@@ -168,6 +169,20 @@ describe('auth guards', () => {
     expect(auth.isReady).toBe(true)
     expect(router.currentRoute.value.path).toBe('/login')
     expect(router.currentRoute.value.query).toEqual({ redirect: '/account/settings' })
+  })
+
+  it('keeps the session unready when cold restore fails transiently', async () => {
+    refreshSessionMock.mockRejectedValue(new Error('refresh failed'))
+    const router = createTestRouter()
+
+    await expect(router.push('/system/users')).rejects.toThrow('refresh failed')
+
+    const auth = useAuthStore()
+
+    expect(refreshSessionMock).toHaveBeenCalledOnce()
+    expect(auth.isAuthenticated).toBe(false)
+    expect(auth.isReady).toBe(false)
+    expect(router.currentRoute.value.path).not.toBe('/login')
   })
 
   it('redirects authenticated users away from auth pages', async () => {

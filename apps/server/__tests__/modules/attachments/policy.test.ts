@@ -26,7 +26,7 @@ describe('attachment policy', () => {
     })
   })
 
-  it('uses detected MIME types while preserving filename extensions', () => {
+  it('uses detected MIME types and extensions', () => {
     expect(
       acceptAttachmentUploadType(filenameType('avatar.png'), {
         extension: 'png',
@@ -42,7 +42,7 @@ describe('attachment policy', () => {
         mimeType: 'image/jpeg',
       }),
     ).toEqual({
-      extension: 'jpeg',
+      extension: 'jpg',
       mimeType: 'image/jpeg',
     })
     expect(
@@ -53,19 +53,34 @@ describe('attachment policy', () => {
     ).toEqual({ extension: 'pdf', mimeType: 'application/pdf' })
   })
 
-  it('rejects files whose detected MIME does not match the filename extension', () => {
-    expect(() =>
+  it('uses detected extensions when detected MIME does not match the filename extension', () => {
+    expect(
       acceptAttachmentUploadType(filenameType('avatar.png'), {
         extension: 'jpg',
         mimeType: 'image/jpeg',
       }),
-    ).toThrow('不支持的文件类型')
-    expect(() =>
+    ).toEqual({
+      extension: 'jpg',
+      mimeType: 'image/jpeg',
+    })
+    expect(
       acceptAttachmentUploadType(filenameType('avatar.jpeg'), {
         extension: 'png',
         mimeType: 'image/png',
       }),
-    ).toThrow('不支持的文件类型')
+    ).toEqual({
+      extension: 'png',
+      mimeType: 'image/png',
+    })
+    expect(
+      acceptAttachmentUploadType(filenameType('avatar.bin'), {
+        extension: 'png',
+        mimeType: 'image/png',
+      }),
+    ).toEqual({
+      extension: 'png',
+      mimeType: 'image/png',
+    })
   })
 
   it('falls back to filename lookup for text-like files', () => {
@@ -93,7 +108,7 @@ describe('attachment policy', () => {
     expect(() => acceptAttachmentUploadType(filenameType('file.pdf'), null)).toThrow(
       '不支持的文件类型',
     )
-    expect(() => getAttachmentFilenameType('avatar.bin')).toThrow('不支持的文件类型')
+    expect(getAttachmentFilenameType('avatar.bin')).toBeNull()
   })
 
   it('validates upload limits globally', () => {

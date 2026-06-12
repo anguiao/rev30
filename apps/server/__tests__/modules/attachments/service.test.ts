@@ -38,6 +38,8 @@ const jpegBytes = new Uint8Array([
   0x00, 0x48, 0x00, 0x00, 0xff, 0xd9,
 ])
 const jpegChecksum = createHash('sha256').update(jpegBytes).digest('hex')
+const textBytes = new TextEncoder().encode('hello')
+const textChecksum = createHash('sha256').update(textBytes).digest('hex')
 const cfbfSignature = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]
 const legacyOfficeCases = [
   {
@@ -296,7 +298,7 @@ describe('attachment service', () => {
     ).rejects.toBeInstanceOf(AttachmentUploadSessionInvalidError)
   })
 
-  it('preserves compatible filename extensions when detected MIME matches', async () => {
+  it('uses detected extensions when detected MIME matches', async () => {
     const database = await createTestDb()
     const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
@@ -310,40 +312,152 @@ describe('attachment service', () => {
     expect(attachment).toMatchObject({
       originalName: 'avatar.JPEG',
       mimeType: 'image/jpeg',
-      extension: 'jpeg',
+      extension: 'jpg',
       size: jpegBytes.byteLength,
     })
 
     const [row] = await database.select().from(attachments)
     expect(row).toMatchObject({
       id: attachment.id,
-      storageKey: `uploads/2026/05/29/${attachment.id}.jpeg`,
+      storageKey: `uploads/2026/05/29/${attachment.id}.jpg`,
       checksum: jpegChecksum,
     })
   })
 
-  it('rejects uploads whose detected MIME does not match the filename extension', async () => {
+  it('stores detected MIME and extension when upload content differs from the original name', async () => {
     const database = await createTestDb()
     const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
-    const session = await service.createUploadSession({
+
+    const attachment = await createAttachmentViaSession(service, {
+      bytes: jpegBytes,
       originalName: 'avatar.png',
+      userId,
+    })
+
+    expect(attachment).toMatchObject({
+      originalName: 'avatar.png',
+      mimeType: 'image/jpeg',
+      extension: 'jpg',
+      size: jpegBytes.byteLength,
+    })
+
+    const [row] = await database.select().from(attachments)
+    expect(row).toMatchObject({
+      id: attachment.id,
+      storageKey: `uploads/2026/05/29/${attachment.id}.jpg`,
+      checksum: jpegChecksum,
+    })
+
+    const access = await service.createContentUrl(attachment.id, {
+      disposition: ATTACHMENT_DISPOSITION_INLINE,
+    })
+    const token = new URL(access.request.url, 'http://localhost').searchParams.get('token')
+
+    expect(token).toBeTruthy()
+
+    const content = await service.readContent(attachment.id, {
+      signedToken: token!,
+    })
+
+    expect(content.headers).toMatchObject({
+      'Content-Disposition': 'inline; filename="avatar.jpg"',
+      'Content-Type': 'image/jpeg',
+    })
+  })
+
+  it('accepts detected content when the original filename extension is unsupported', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+
+    const attachment = await createAttachmentViaSession(service, {
+      bytes: pngBytes,
+      originalName: 'avatar.bin',
+      userId,
+    })
+
+    expect(attachment).toMatchObject({
+      originalName: 'avatar.bin',
+      mimeType: 'image/png',
+      extension: 'png',
+      size: pngBytes.byteLength,
+    })
+
+    const [row] = await database.select().from(attachments)
+    expect(row).toMatchObject({
+      id: attachment.id,
+      storageKey: `uploads/2026/05/29/${attachment.id}.png`,
+      checksum: pngChecksum,
+    })
+  })
+
+  it('rejects uploads without a detected type or a text filename fallback', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+    const bytes = Uint8Array.from([0x01, 0x02, 0x03])
+    const session = await service.createUploadSession({
+      originalName: 'report.docx',
       usage: 'avatar',
       readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
-      size: jpegBytes.byteLength,
+      size: bytes.byteLength,
       userId,
     })
     const token = getUploadToken(session.request.url)
 
     await expect(
       service.uploadSessionContent({
-        body: streamFromBytes(jpegBytes),
+        body: streamFromBytes(bytes),
         token,
         uploadId: session.uploadId,
       }),
     ).rejects.toBeInstanceOf(AttachmentTypeUnsupportedError)
 
     await expect(database.select().from(attachments)).resolves.toEqual([])
+  })
+
+  it('falls back to text filename types when content detection has no result', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+
+    const attachment = await createAttachmentViaSession(service, {
+      bytes: textBytes,
+      originalName: 'notes.txt',
+      userId,
+    })
+
+    expect(attachment).toMatchObject({
+      originalName: 'notes.txt',
+      mimeType: 'text/plain',
+      extension: 'txt',
+      size: textBytes.byteLength,
+    })
+
+    const [row] = await database.select().from(attachments)
+    expect(row).toMatchObject({
+      id: attachment.id,
+      storageKey: `uploads/2026/05/29/${attachment.id}.txt`,
+      checksum: textChecksum,
+    })
+
+    const accessUrl = await service.createContentUrl(attachment.id, {
+      disposition: ATTACHMENT_DISPOSITION_INLINE,
+    })
+    const token = new URL(accessUrl.request.url, 'http://localhost').searchParams.get('token')
+
+    expect(token).toBeTruthy()
+
+    const content = await service.readContent(attachment.id, {
+      signedToken: token!,
+    })
+
+    expect(await streamToBytes(content.body)).toEqual(textBytes)
+    expect(content.headers).toMatchObject({
+      'Content-Disposition': 'attachment; filename="notes.txt"',
+      'Content-Type': 'text/plain; charset=utf-8',
+    })
   })
 
   it('stores metadata and creates content URLs after upload sessions complete', async () => {

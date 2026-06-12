@@ -34,15 +34,13 @@ export type AttachmentFileType = {
   mimeType: string
 }
 
-export function getAttachmentFilenameType(originalName: string): AttachmentFileType {
+export function getAttachmentFilenameType(originalName: string): AttachmentFileType | null {
   const extension = extensionFromName(originalName)
   const mimeType = mimeTypeFromExtension(extension)
 
-  if (!mimeType) {
-    throw new AttachmentTypeUnsupportedError()
+  if (!mimeType || !isSupportedUploadMime(mimeType)) {
+    return null
   }
-
-  validateAttachmentUploadMimeType(mimeType)
 
   return {
     extension,
@@ -51,20 +49,21 @@ export function getAttachmentFilenameType(originalName: string): AttachmentFileT
 }
 
 export function acceptAttachmentUploadType(
-  filenameType: AttachmentFileType,
+  filenameType: AttachmentFileType | null,
   detectedType: AttachmentFileType | null,
 ): AttachmentFileType {
   if (detectedType) {
     validateAttachmentUploadMimeType(detectedType.mimeType)
-
-    if (detectedType.mimeType !== filenameType.mimeType) {
-      throw new AttachmentTypeUnsupportedError()
-    }
+    const detectedExtension = normalizeExtension(detectedType.extension)
 
     return {
-      extension: filenameType.extension,
+      extension: detectedExtension,
       mimeType: detectedType.mimeType,
     }
+  }
+
+  if (!filenameType) {
+    throw new AttachmentTypeUnsupportedError()
   }
 
   const textFallbackMimeType = textFallbackMimeTypes[filenameType.extension]

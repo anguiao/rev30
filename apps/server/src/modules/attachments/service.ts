@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { extname } from 'node:path'
 import { detectCfbf } from '@file-type/cfbf'
 import { fileTypeStream } from 'file-type'
 import { contentType } from 'mime-types'
@@ -49,14 +50,13 @@ const fileTypeDetectors = [detectCfbf]
 
 type StoredUploadContent = AttachmentFileType &
   AttachmentPutResult & {
+    storageKey: string
     storedAt: Date
   }
 
 type UploadSession = AttachmentUploadSessionCreateInput & {
   createdAt: Date
   expiresAt: Date
-  filenameType: AttachmentFileType
-  storageKey: string
   uploadId: string
   storedContent?: StoredUploadContent
   userId: string
@@ -80,6 +80,19 @@ function createDownloadFilename(name: string) {
   return name.replace(/["\r\n]/g, '_')
 }
 
+function createTypedDownloadFilename(name: string, extension: string) {
+  const filename = createDownloadFilename(name)
+  const currentExtension = extname(filename)
+
+  if (currentExtension.replace(/^\./, '').toLowerCase() === extension) {
+    return filename
+  }
+
+  const basename = currentExtension ? filename.slice(0, -currentExtension.length) : filename
+
+  return `${basename}.${extension}`
+}
+
 function createCacheControlHeader(expiresAt: Date, requestedAt: Date) {
   const remainingSeconds = Math.max(
     0,
@@ -89,8 +102,14 @@ function createCacheControlHeader(expiresAt: Date, requestedAt: Date) {
   return `private, max-age=${Math.min(300, remainingSeconds)}`
 }
 
-function createContentDispositionHeader(disposition: AttachmentDisposition, filename: string) {
-  return `${disposition}; filename="${createDownloadFilename(filename)}"`
+function createContentDispositionHeader(
+  disposition: AttachmentDisposition,
+  input: {
+    extension: string
+    filename: string
+  },
+) {
+  return `${disposition}; filename="${createTypedDownloadFilename(input.filename, input.extension)}"`
 }
 
 function createContentResponse(
@@ -107,7 +126,10 @@ function createContentResponse(
     body: stored.body,
     headers: {
       'Cache-Control': input.cacheControl,
-      'Content-Disposition': createContentDispositionHeader(disposition, row.originalName),
+      'Content-Disposition': createContentDispositionHeader(disposition, {
+        extension: row.extension,
+        filename: row.originalName,
+      }),
       'Content-Length': String(stored.size),
       'Content-Type': contentType(row.mimeType) || row.mimeType,
       'X-Content-Type-Options': 'nosniff',
@@ -153,17 +175,13 @@ export function createAttachmentService(database: Db) {
       const uploadId = randomUUID()
       const expiresAt = addSeconds(createdAt, config.uploadSessionTtlSeconds)
       const contentType = input.contentType?.trim()
-      const filenameType = getAttachmentFilenameType(input.originalName)
-      const storageKey = createUploadSessionStorageKey(uploadId, filenameType.extension, createdAt)
       const session: UploadSession = {
         ...(contentType ? { contentType } : {}),
         createdAt,
         expiresAt,
-        filenameType,
         originalName: input.originalName,
         readPolicy: input.readPolicy,
         size: input.size,
-        storageKey,
         uploadId,
         usage: input.usage,
         userId: input.userId,
@@ -212,7 +230,7 @@ export function createAttachmentService(database: Db) {
         customDetectors: fileTypeDetectors,
       })
       const accepted = acceptAttachmentUploadType(
-        session.filenameType,
+        getAttachmentFilenameType(session.originalName),
         body.fileType
           ? {
               extension: body.fileType.ext,
@@ -220,14 +238,19 @@ export function createAttachmentService(database: Db) {
             }
           : null,
       )
+      const storageKey = createUploadSessionStorageKey(
+        session.uploadId,
+        accepted.extension,
+        session.createdAt,
+      )
 
       const written = await storage.put({
-        key: session.storageKey,
+        key: storageKey,
         body: limitAttachmentBodySize(body),
       })
 
       if (written.size !== session.size) {
-        await storage.delete(session.storageKey)
+        await storage.delete(storageKey)
         throw new AttachmentUploadRequestError('文件大小与上传会话不一致')
       }
 
@@ -236,6 +259,7 @@ export function createAttachmentService(database: Db) {
         extension: accepted.extension,
         mimeType: accepted.mimeType,
         size: written.size,
+        storageKey,
         storedAt: new Date(),
       }
     },
@@ -255,7 +279,7 @@ export function createAttachmentService(database: Db) {
         const created = await repository.create({
           id: session.uploadId,
           storageProvider,
-          storageKey: session.storageKey,
+          storageKey: session.storedContent.storageKey,
           originalName: session.originalName,
           mimeType: session.storedContent.mimeType,
           extension: session.storedContent.extension,
@@ -274,12 +298,12 @@ export function createAttachmentService(database: Db) {
         uploadSessions.delete(session.uploadId)
 
         try {
-          await storage.delete(session.storageKey)
+          await storage.delete(session.storedContent.storageKey)
         } catch (cleanupError) {
           logger.error(
             {
               err: cleanupError,
-              storageKey: session.storageKey,
+              storageKey: session.storedContent.storageKey,
             },
             'attachment upload session cleanup failed',
           )

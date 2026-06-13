@@ -41,7 +41,7 @@ import {
 import { createCompactRichTextEditorPreset } from '@rev30/rich-text/vue/presets'
 import { RichTextEditor } from '@rev30/rich-text/vue'
 import { createAnnouncement, getAnnouncement, updateAnnouncement } from '.'
-import { getAttachmentContentUrl, uploadAttachment } from '../attachments'
+import { compressImageFile, getAttachmentContentUrl, uploadAttachment } from '../attachments'
 import { getDepartmentTreeOptions, getRoleOptions, getUserOptions } from '../system'
 import { announcementTypeSelectOptions, announcementVisibilityOptions } from './labels'
 import { getErrorMessage } from '../../utils/error'
@@ -171,7 +171,11 @@ const loadError = computed(() =>
 const formError = ref<string | null>(null)
 
 async function uploadAnnouncementRichTextImage(file: File) {
-  const attachment = await uploadAttachment(file, {
+  const compressedFile = await compressImageFile(file, {
+    maxDimension: 1920,
+    quality: 0.86,
+  })
+  const attachment = await uploadAttachment(compressedFile, {
     usage: 'announcement-content-image',
     readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
   })

@@ -28,7 +28,11 @@ import {
   getAnnouncement,
   updateAnnouncement,
 } from '../../../src/features/content'
-import { getAttachmentContentUrl, uploadAttachment } from '../../../src/features/attachments'
+import {
+  compressImageFile,
+  getAttachmentContentUrl,
+  uploadAttachment,
+} from '../../../src/features/attachments'
 import {
   getDepartmentTreeOptions,
   getRoleOptions,
@@ -104,6 +108,7 @@ vi.mock('../../../src/utils/error', () => ({
 
 vi.mock('../../../src/features/attachments', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/attachments')>()),
+  compressImageFile: vi.fn((file: File) => file),
   uploadAttachment: vi.fn(),
   getAttachmentContentUrl: vi.fn((id: string) => `/api/attachments/${id}/content`),
 }))
@@ -119,6 +124,7 @@ const createAnnouncementMock = vi.mocked(createAnnouncement)
 const getAnnouncementMock = vi.mocked(getAnnouncement)
 const getErrorMessageMock = vi.mocked(getErrorMessage)
 const updateAnnouncementMock = vi.mocked(updateAnnouncement)
+const compressImageFileMock = vi.mocked(compressImageFile)
 const uploadAttachmentMock = vi.mocked(uploadAttachment)
 const getAttachmentContentUrlMock = vi.mocked(getAttachmentContentUrl)
 const getDepartmentTreeOptionsMock = vi.mocked(getDepartmentTreeOptions)
@@ -260,6 +266,8 @@ describe('AnnouncementFormDrawer', () => {
     getAnnouncementMock.mockReset()
     getErrorMessageMock.mockClear()
     updateAnnouncementMock.mockReset()
+    compressImageFileMock.mockReset()
+    compressImageFileMock.mockImplementation(async (file) => file)
     uploadAttachmentMock.mockReset()
     getAttachmentContentUrlMock.mockClear()
     getDepartmentTreeOptionsMock.mockReset()
@@ -273,16 +281,21 @@ describe('AnnouncementFormDrawer', () => {
 
   it('configures rich text image uploads as authenticated announcement attachments', async () => {
     uploadAttachmentMock.mockResolvedValue({ id: '55555555-5555-4555-8555-555555555555' })
+    const file = new File(['image'], 'cover.png', { type: 'image/png' })
+    const compressedFile = new File(['webp'], 'cover.webp', { type: 'image/webp' })
+    compressImageFileMock.mockResolvedValueOnce(compressedFile)
 
     mountDrawer()
     await flushPromises()
 
     const imageOptions = createCompactRichTextEditorPresetMock.mock.calls[0]?.[0].image
-    const result = await imageOptions.upload(
-      new File(['image'], 'cover.png', { type: 'image/png' }),
-    )
+    const result = await imageOptions.upload(file)
 
-    expect(uploadAttachmentMock).toHaveBeenCalledWith(expect.any(File), {
+    expect(compressImageFileMock).toHaveBeenCalledWith(file, {
+      maxDimension: 1920,
+      quality: 0.86,
+    })
+    expect(uploadAttachmentMock).toHaveBeenCalledWith(compressedFile, {
       usage: 'announcement-content-image',
       readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
     })

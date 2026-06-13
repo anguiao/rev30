@@ -1,13 +1,19 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import UserAvatarUpload from '../../../src/features/users/UserAvatarUpload.vue'
-import { uploadAttachment } from '../../../src/features/attachments'
+import { compressImageFile, uploadAttachment } from '../../../src/features/attachments'
+
+vi.mock('../../../src/features/attachments/imageCompression', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/attachments/imageCompression')>()),
+  compressImageFile: vi.fn((file: File) => file),
+}))
 
 vi.mock('../../../src/features/attachments/requests', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/attachments/requests')>()),
   uploadAttachment: vi.fn(),
 }))
 
+const compressImageFileMock = vi.mocked(compressImageFile)
 const uploadAttachmentMock = vi.mocked(uploadAttachment)
 
 function mountUpload(props = { avatarId: null as string | null }) {
@@ -22,6 +28,8 @@ function mountUpload(props = { avatarId: null as string | null }) {
 
 describe('UserAvatarUpload', () => {
   beforeEach(() => {
+    compressImageFileMock.mockReset()
+    compressImageFileMock.mockImplementation(async (file) => file)
     uploadAttachmentMock.mockReset()
     uploadAttachmentMock.mockResolvedValue({
       id: '33333333-3333-4333-8333-333333333333',
@@ -46,12 +54,18 @@ describe('UserAvatarUpload', () => {
   it('emits uploaded avatar ids and upload errors', async () => {
     const wrapper = mountUpload({ avatarId: null })
     const file = new File(['png'], 'avatar.png', { type: 'image/png' })
+    const compressedFile = new File(['webp'], 'avatar.webp', { type: 'image/webp' })
     const exposed = wrapper.vm as unknown as { uploadFile: (file: File) => Promise<void> }
+    compressImageFileMock.mockResolvedValueOnce(compressedFile)
 
     await exposed.uploadFile(file)
     await flushPromises()
 
-    expect(uploadAttachmentMock).toHaveBeenCalledWith(file, {
+    expect(compressImageFileMock).toHaveBeenCalledWith(file, {
+      maxDimension: 512,
+      quality: 0.82,
+    })
+    expect(uploadAttachmentMock).toHaveBeenCalledWith(compressedFile, {
       usage: 'avatar',
       readPolicy: 'authenticated',
     })

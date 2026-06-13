@@ -2,7 +2,7 @@
 import { ATTACHMENT_READ_POLICY_AUTHENTICATED } from '@rev30/contracts'
 import { computed, ref, watch } from 'vue'
 import { NUpload, type UploadCustomRequestOptions } from 'naive-ui'
-import { getAttachmentContentUrl, uploadAttachment } from '../attachments'
+import { compressImageFile, getAttachmentContentUrl, uploadAttachment } from '../attachments'
 
 const props = withDefaults(
   defineProps<{
@@ -49,7 +49,11 @@ async function uploadFile(file: File) {
   isUploading.value = true
 
   try {
-    const attachment = await uploadAttachment(file, {
+    const compressedFile = await compressImageFile(file, {
+      maxDimension: 512,
+      quality: 0.82,
+    })
+    const attachment = await uploadAttachment(compressedFile, {
       usage: 'avatar',
       readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
     })

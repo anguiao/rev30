@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import type {
   AnnouncementTarget,
   AnnouncementCreateInput,
@@ -262,7 +261,6 @@ export function createAnnouncementRepository(database: Db) {
         const [created] = await tx
           .insert(contentAnnouncements)
           .values({
-            id: randomUUID(),
             ...announcementInput,
             contentText: content.text,
             contentHtml: content.html,

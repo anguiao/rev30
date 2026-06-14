@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import {
   DEPARTMENT_STATUS_ENABLED,
   type DepartmentCreateInput,
@@ -287,13 +286,7 @@ export function createDepartmentRepository(database: Db) {
           throw new DepartmentInvalidParentError()
         }
 
-        const [created] = await tx
-          .insert(systemDepartments)
-          .values({
-            id: randomUUID(),
-            ...input,
-          })
-          .returning()
+        const [created] = await tx.insert(systemDepartments).values(input).returning()
 
         if (!created) {
           throw new Error('创建部门失败')

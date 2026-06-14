@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import {
   USER_STATUS_ENABLED,
   type UserCreateInput,
@@ -201,13 +200,7 @@ export function createUserRepository(database: Db) {
           lockActiveRoleIdsOrThrow(tx, roleIds),
         ])
 
-        const [created] = await tx
-          .insert(systemUsers)
-          .values({
-            id: randomUUID(),
-            ...userInput,
-          })
-          .returning()
+        const [created] = await tx.insert(systemUsers).values(userInput).returning()
 
         if (!created) {
           throw new Error('创建用户失败')

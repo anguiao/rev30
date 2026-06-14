@@ -277,7 +277,6 @@ export function createAttachmentService(database: Db) {
 
       try {
         const created = await repository.create({
-          id: session.uploadId,
           storageProvider,
           storageKey: session.storedContent.storageKey,
           originalName: session.originalName,

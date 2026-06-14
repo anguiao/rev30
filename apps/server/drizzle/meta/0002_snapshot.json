@@ -1,6 +1,6 @@
 {
-  "id": "fbe00a2d-2c4e-4a0f-995c-b7f7802f9a96",
-  "prevId": "9fcd6efc-6a0f-403c-831f-6bce26e5a85b",
+  "id": "b4d85c49-b975-4d6b-8503-d770f4162a54",
+  "prevId": "fbe00a2d-2c4e-4a0f-995c-b7f7802f9a96",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -12,7 +12,8 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "uuidv7()"
         },
         "storage_provider": {
           "name": "storage_provider",
@@ -338,7 +339,8 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "uuidv7()"
         },
         "user_id": {
           "name": "user_id",
@@ -556,7 +558,8 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "uuidv7()"
         },
         "type": {
           "name": "type",
@@ -734,7 +737,8 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "uuidv7()"
         },
         "group_code": {
           "name": "group_code",
@@ -885,7 +889,8 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "uuidv7()"
         },
         "parent_id": {
           "name": "parent_id",
@@ -1013,7 +1018,8 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "uuidv7()"
         },
         "type_id": {
           "name": "type_id",
@@ -1153,7 +1159,8 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "uuidv7()"
         },
         "code": {
           "name": "code",
@@ -1256,7 +1263,8 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "uuidv7()"
         },
         "parent_id": {
           "name": "parent_id",
@@ -1509,7 +1517,8 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "uuidv7()"
         },
         "name": {
           "name": "name",
@@ -1750,7 +1759,8 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "uuidv7()"
         },
         "username": {
           "name": "username",

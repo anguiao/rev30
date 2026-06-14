@@ -248,8 +248,11 @@ describe('attachment service', () => {
       userId,
     })
 
+    expect(attachment.id).not.toBe(session.uploadId)
+    expect(attachment.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    )
     expect(attachment).toMatchObject({
-      id: session.uploadId,
       originalName: 'avatar.png',
       mimeType: 'image/png',
       extension: 'png',
@@ -260,7 +263,7 @@ describe('attachment service', () => {
 
     const [row] = await database.select().from(attachments)
     expect(row).toMatchObject({
-      id: session.uploadId,
+      id: attachment.id,
       storageProvider: 'local',
       storageKey: `uploads/2026/05/29/${session.uploadId}.png`,
       size: pngBytes.byteLength,
@@ -319,9 +322,9 @@ describe('attachment service', () => {
     const [row] = await database.select().from(attachments)
     expect(row).toMatchObject({
       id: attachment.id,
-      storageKey: `uploads/2026/05/29/${attachment.id}.jpg`,
       checksum: jpegChecksum,
     })
+    expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.jpg$/)
   })
 
   it('stores detected MIME and extension when upload content differs from the original name', async () => {
@@ -345,9 +348,9 @@ describe('attachment service', () => {
     const [row] = await database.select().from(attachments)
     expect(row).toMatchObject({
       id: attachment.id,
-      storageKey: `uploads/2026/05/29/${attachment.id}.jpg`,
       checksum: jpegChecksum,
     })
+    expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.jpg$/)
 
     const access = await service.createContentUrl(attachment.id, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
@@ -387,9 +390,9 @@ describe('attachment service', () => {
     const [row] = await database.select().from(attachments)
     expect(row).toMatchObject({
       id: attachment.id,
-      storageKey: `uploads/2026/05/29/${attachment.id}.png`,
       checksum: pngChecksum,
     })
+    expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.png$/)
   })
 
   it('rejects uploads without a detected type or a text filename fallback', async () => {
@@ -438,9 +441,9 @@ describe('attachment service', () => {
     const [row] = await database.select().from(attachments)
     expect(row).toMatchObject({
       id: attachment.id,
-      storageKey: `uploads/2026/05/29/${attachment.id}.txt`,
       checksum: textChecksum,
     })
+    expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.txt$/)
 
     const accessUrl = await service.createContentUrl(attachment.id, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
@@ -484,11 +487,11 @@ describe('attachment service', () => {
     expect(row).toMatchObject({
       id: attachment.id,
       storageProvider: 'local',
-      storageKey: `uploads/2026/05/29/${attachment.id}.png`,
       size: pngBytes.byteLength,
       checksum: pngChecksum,
       createdBy: userId,
     })
+    expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.png$/)
 
     const access = await service.createContentUrl(attachment.id, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,

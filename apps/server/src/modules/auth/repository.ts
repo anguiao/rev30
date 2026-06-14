@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import type { AuthProfileUpdateInput } from '@rev30/contracts'
 import { addSeconds, subSeconds } from '@rev30/utils'
 import { and, eq, gt, isNull, lte, ne, or, sql } from 'drizzle-orm'
@@ -236,7 +235,6 @@ export function createAuthRepository(database: Db) {
       const [created] = await database
         .insert(authRefreshTokens)
         .values({
-          id: randomUUID(),
           userId: input.userId,
           tokenHash: input.tokenHash,
           expiresAt: input.expiresAt,

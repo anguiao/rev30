@@ -205,7 +205,6 @@ export function createDictionaryRepository(database: Db) {
         const [created] = await tx
           .insert(systemDictionaryTypes)
           .values({
-            id: randomUUID(),
             ...dictionaryInput,
           })
           .returning()
@@ -217,7 +216,6 @@ export function createDictionaryRepository(database: Db) {
         if (items.length > 0) {
           await tx.insert(systemDictionaryItems).values(
             items.map((item) => ({
-              id: randomUUID(),
               typeId: created.id,
               ...item,
             })),
@@ -346,7 +344,6 @@ export function createDictionaryRepository(database: Db) {
         if (createItems.length > 0) {
           await tx.insert(systemDictionaryItems).values(
             createItems.map((item) => ({
-              id: randomUUID(),
               typeId: id,
               label: item.label,
               value: item.value,

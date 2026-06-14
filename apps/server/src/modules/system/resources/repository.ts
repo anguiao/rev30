@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import {
   RESOURCE_STATUS_ENABLED,
   type ResourceCreateInput,
@@ -227,13 +226,7 @@ export function createResourceRepository(database: Db) {
           throw new ResourceInvalidParentError()
         }
 
-        const [created] = await tx
-          .insert(systemResources)
-          .values({
-            id: randomUUID(),
-            ...input,
-          })
-          .returning()
+        const [created] = await tx.insert(systemResources).values(input).returning()
 
         if (!created) {
           throw new Error('创建资源失败')

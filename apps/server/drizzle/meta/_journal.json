@@ -15,6 +15,13 @@
       "when": 1780455247284,
       "tag": "0001_seed_initial_access",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781425127517,
+      "tag": "0002_use_uuid_v7_defaults",
+      "breakpoints": true
     }
   ]
 }

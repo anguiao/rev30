@@ -1,5 +1,4 @@
 import 'dotenv/config'
-import { randomUUID } from 'node:crypto'
 import {
   ROLE_STATUS_ENABLED,
   USER_STATUS_ENABLED,
@@ -50,7 +49,6 @@ export async function bootstrapAdminUser(database: Db, input: BootstrapAdminInpu
     const [upsertedUser] = await tx
       .insert(systemUsers)
       .values({
-        id: randomUUID(),
         username: input.username,
         nickname: input.nickname,
         email: input.email ?? null,

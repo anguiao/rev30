@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import type { ConfigCreateInput, ConfigListQuery, ConfigUpdateInput } from '@rev30/contracts'
 import { and, asc, count, eq, ilike, isNull, or } from 'drizzle-orm'
 import type { Db } from '../../../db'
@@ -67,13 +66,7 @@ export function createConfigRepository(database: Db) {
     },
 
     async create(input: ConfigCreateInput) {
-      const [created] = await database
-        .insert(systemConfigs)
-        .values({
-          id: randomUUID(),
-          ...input,
-        })
-        .returning()
+      const [created] = await database.insert(systemConfigs).values(input).returning()
 
       if (!created) {
         throw new Error('创建系统配置失败')

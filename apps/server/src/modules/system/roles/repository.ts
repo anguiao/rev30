@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import {
   ROLE_STATUS_ENABLED,
   type RoleCreateInput,
@@ -284,13 +283,7 @@ export function createRoleRepository(database: Db) {
       return await database.transaction(async (tx) => {
         await lockValidResourceIdsOrThrow(tx, resourceIds)
 
-        const [created] = await tx
-          .insert(systemRoles)
-          .values({
-            id: randomUUID(),
-            ...roleInput,
-          })
-          .returning()
+        const [created] = await tx.insert(systemRoles).values(roleInput).returning()
 
         if (!created) {
           throw new Error('创建角色失败')

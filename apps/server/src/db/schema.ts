@@ -65,10 +65,16 @@ function createdTimestamp() {
   }
 }
 
+function uuidPrimaryKeyColumn() {
+  return uuid('id')
+    .primaryKey()
+    .default(sql`uuidv7()`)
+}
+
 export const systemUsers = pgTable(
   'system_users',
   {
-    id: uuid('id').primaryKey(),
+    id: uuidPrimaryKeyColumn(),
     username: text('username').notNull(),
     nickname: text('nickname').notNull(),
     avatarId: uuid('avatar_id').references((): AnyPgColumn => attachments.id),
@@ -95,7 +101,7 @@ export const systemUsers = pgTable(
 export const systemDepartments = pgTable(
   'system_departments',
   {
-    id: uuid('id').primaryKey(),
+    id: uuidPrimaryKeyColumn(),
     parentId: uuid('parent_id').references((): AnyPgColumn => systemDepartments.id),
     name: text('name').notNull(),
     code: text('code').notNull(),
@@ -115,7 +121,7 @@ export const systemDepartments = pgTable(
 export const systemResources = pgTable(
   'system_resources',
   {
-    id: uuid('id').primaryKey(),
+    id: uuidPrimaryKeyColumn(),
     parentId: uuid('parent_id').references((): AnyPgColumn => systemResources.id),
     type: text('type').notNull(),
     name: text('name').notNull(),
@@ -142,7 +148,7 @@ export const systemResources = pgTable(
 export const systemRoles = pgTable(
   'system_roles',
   {
-    id: uuid('id').primaryKey(),
+    id: uuidPrimaryKeyColumn(),
     name: text('name').notNull(),
     code: text('code').notNull(),
     status: smallint('status').notNull().default(ROLE_STATUS_ENABLED),
@@ -160,7 +166,7 @@ export const systemRoles = pgTable(
 export const systemConfigs = pgTable(
   'system_configs',
   {
-    id: uuid('id').primaryKey(),
+    id: uuidPrimaryKeyColumn(),
     groupCode: text('group_code').notNull(),
     key: text('key').notNull(),
     name: text('name').notNull(),
@@ -184,7 +190,7 @@ export const systemConfigs = pgTable(
 export const systemDictionaryTypes = pgTable(
   'system_dictionary_types',
   {
-    id: uuid('id').primaryKey(),
+    id: uuidPrimaryKeyColumn(),
     code: text('code').notNull(),
     name: text('name').notNull(),
     description: text('description'),
@@ -203,7 +209,7 @@ export const systemDictionaryTypes = pgTable(
 export const systemDictionaryItems = pgTable(
   'system_dictionary_items',
   {
-    id: uuid('id').primaryKey(),
+    id: uuidPrimaryKeyColumn(),
     typeId: uuid('type_id')
       .notNull()
       .references(() => systemDictionaryTypes.id),
@@ -226,7 +232,7 @@ export const systemDictionaryItems = pgTable(
 export const attachments = pgTable(
   'attachments',
   {
-    id: uuid('id').primaryKey(),
+    id: uuidPrimaryKeyColumn(),
     storageProvider: text('storage_provider').notNull(),
     storageKey: text('storage_key').notNull(),
     originalName: text('original_name').notNull(),
@@ -319,7 +325,7 @@ export const authPasswordCredentials = pgTable('auth_password_credentials', {
 export const authRefreshTokens = pgTable(
   'auth_refresh_tokens',
   {
-    id: uuid('id').primaryKey(),
+    id: uuidPrimaryKeyColumn(),
     userId: uuid('user_id')
       .notNull()
       .references(() => systemUsers.id),
@@ -355,7 +361,7 @@ export const authLoginAttemptBuckets = pgTable(
 export const contentAnnouncements = pgTable(
   'content_announcements',
   {
-    id: uuid('id').primaryKey(),
+    id: uuidPrimaryKeyColumn(),
     type: text('type').notNull(),
     title: text('title').notNull(),
     summary: text('summary'),

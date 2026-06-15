@@ -1,26 +1,15 @@
 import type { IconifyJSON } from '@iconify/types'
 import { Hono } from 'hono'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { iconRoutes } from '../../../src/modules/icons/routes'
-import * as iconService from '../../../src/modules/icons/service'
+import { describe, expect, it } from 'vitest'
+import { createApp } from '../../../src/app'
+import { customIconSetIcons, customIconSets } from '../../../src/db/schema'
+import { createIconRoutes } from '../../../src/modules/icons/routes'
+import { createTestDb } from '../../helpers/db'
 
-function createIconTestApp() {
-  return new Hono().route('/api/icons', iconRoutes)
-}
+async function createIconTestApp() {
+  const database = await createTestDb()
 
-const lucideSubset: IconifyJSON = {
-  prefix: 'lucide',
-  icons: {
-    moon: {
-      body: '<path d="moon" />',
-    },
-    sun: {
-      body: '<path d="sun" />',
-    },
-  },
-  aliases: {},
-  width: 24,
-  height: 24,
+  return new Hono().route('/api/icons', createIconRoutes(database))
 }
 
 function expectHeaderList(response: Response, name: string, values: string[]) {
@@ -54,13 +43,8 @@ function expectIconHeaders(response: Response, options: { preflight?: boolean } 
 }
 
 describe('icon routes', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
   it('returns requested Iconify JSON without authentication', async () => {
-    const getIconSubsetSpy = vi.spyOn(iconService, 'getIconSubset').mockResolvedValue(lucideSubset)
-    const app = createIconTestApp()
+    const app = await createIconTestApp()
 
     const response = await app.request('/api/icons/lucide.json?icons=sun,moon')
     const body = (await response.json()) as IconifyJSON
@@ -68,27 +52,58 @@ describe('icon routes', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toContain('application/json')
     expectIconHeaders(response)
-    expect(getIconSubsetSpy).toHaveBeenCalledWith('lucide', ['sun', 'moon'])
     expect(body.prefix).toBe('lucide')
     expect(body.width).toBe(24)
     expect(body.height).toBe(24)
     expect(body.aliases).toEqual({})
     expect(Object.keys(body.icons).sort()).toEqual(['moon', 'sun'])
-    expect(body.icons.sun?.body).toContain('sun')
-    expect(body.icons.moon?.body).toContain('moon')
     expect(body.icons.home).toBeUndefined()
     expect(body.not_found).toBeUndefined()
   })
 
-  it('returns not_found for missing icons while keeping found icons', async () => {
-    vi.spyOn(iconService, 'getIconSubset').mockResolvedValue({
-      ...lucideSubset,
-      icons: {
-        sun: lucideSubset.icons.sun!,
-      },
-      not_found: ['not-a-real-icon'],
+  it('returns custom Iconify JSON for active custom icons', async () => {
+    const database = await createTestDb()
+    const [set] = await database
+      .insert(customIconSets)
+      .values({
+        prefix: 'acme',
+        name: 'Acme Icons',
+        description: null,
+      })
+      .returning()
+
+    await database.insert(customIconSetIcons).values({
+      setId: set!.id,
+      name: 'logo',
+      body: '<path d="logo" />',
+      width: 24,
+      height: 24,
+      palette: false,
     })
-    const app = createIconTestApp()
+
+    const app = createApp(database)
+
+    const response = await app.request('/api/icons/acme.json?icons=logo,missing')
+    const body = (await response.json()) as IconifyJSON
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('cache-control')).toBe('no-cache')
+    expect(body).toEqual({
+      prefix: 'acme',
+      icons: {
+        logo: {
+          body: '<path d="logo" />',
+          width: 24,
+          height: 24,
+        },
+      },
+      aliases: {},
+      not_found: ['missing'],
+    })
+  })
+
+  it('returns not_found for missing icons while keeping found icons', async () => {
+    const app = await createIconTestApp()
 
     const response = await app.request('/api/icons/lucide.json?icons=sun,not-a-real-icon')
     const body = (await response.json()) as IconifyJSON
@@ -100,12 +115,7 @@ describe('icon routes', () => {
   })
 
   it('returns empty icons and not_found when every requested icon is missing', async () => {
-    vi.spyOn(iconService, 'getIconSubset').mockResolvedValue({
-      ...lucideSubset,
-      icons: {},
-      not_found: ['not-a-real-icon'],
-    })
-    const app = createIconTestApp()
+    const app = await createIconTestApp()
 
     const response = await app.request('/api/icons/lucide.json?icons=not-a-real-icon')
     const body = (await response.json()) as IconifyJSON
@@ -119,25 +129,18 @@ describe('icon routes', () => {
   })
 
   it('treats an empty icon name as not_found', async () => {
-    const getIconSubsetSpy = vi.spyOn(iconService, 'getIconSubset').mockResolvedValue({
-      ...lucideSubset,
-      icons: {},
-      not_found: [''],
-    })
-    const app = createIconTestApp()
+    const app = await createIconTestApp()
 
     const response = await app.request('/api/icons/lucide.json?icons=')
     const body = (await response.json()) as IconifyJSON
 
     expect(response.status).toBe(200)
-    expect(getIconSubsetSpy).toHaveBeenCalledWith('lucide', [''])
     expect(body.icons).toEqual({})
     expect(body.not_found).toEqual([''])
   })
 
   it('returns text 404 for missing collections, missing icons parameter, and invalid prefixes', async () => {
-    vi.spyOn(iconService, 'getIconSubset').mockResolvedValue(null)
-    const app = createIconTestApp()
+    const app = await createIconTestApp()
 
     const missingCollection = await app.request('/api/icons/not-a-prefix.json?icons=sun')
     expect(missingCollection.status).toBe(404)
@@ -156,8 +159,7 @@ describe('icon routes', () => {
   })
 
   it('returns text 404 for malicious icon data queries', async () => {
-    const getIconSubsetSpy = vi.spyOn(iconService, 'getIconSubset').mockResolvedValue(lucideSubset)
-    const app = createIconTestApp()
+    const app = await createIconTestApp()
 
     const overlongIcons = await app.request(`/api/icons/lucide.json?icons=${'a'.repeat(501)}`)
     const malformedIcons = await app.request('/api/icons/lucide.json?icons=sun,../secret')
@@ -166,11 +168,10 @@ describe('icon routes', () => {
     expect(await overlongIcons.text()).toBe('404')
     expect(malformedIcons.status).toBe(404)
     expect(await malformedIcons.text()).toBe('404')
-    expect(getIconSubsetSpy).not.toHaveBeenCalled()
   })
 
   it('returns CORS headers for OPTIONS requests', async () => {
-    const app = createIconTestApp()
+    const app = await createIconTestApp()
 
     const response = await app.request('/api/icons/lucide.json?icons=sun', {
       method: 'OPTIONS',
@@ -182,8 +183,7 @@ describe('icon routes', () => {
   })
 
   it('pretty prints JSON when pretty has a non-empty value', async () => {
-    vi.spyOn(iconService, 'getIconSubset').mockResolvedValue(lucideSubset)
-    const app = createIconTestApp()
+    const app = await createIconTestApp()
 
     const prettyOne = await app.request('/api/icons/lucide.json?icons=sun&pretty=1')
     const prettyTrue = await app.request('/api/icons/lucide.json?icons=sun&pretty=true')

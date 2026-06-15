@@ -1,9 +1,19 @@
 import { iconifyIconNamePartPatternSource, type IconSearchItem } from '@rev30/contracts'
 import { lookupCollection } from '@iconify/json'
+import { and, asc, eq, isNull } from 'drizzle-orm'
 import { AsyncFzf, asyncExtendedMatch, byLengthAsc, byStartAsc } from 'fzf'
+import type { Db } from '../../../db'
+import { customIconSetIcons, customIconSets } from '../../../db/schema'
 import { preferredIconPrefixes, recommendedIconNames } from './config'
 import { loadIconCollections } from './collections'
 import type { SearchIndex } from './types'
+
+export type CustomSearchItem = {
+  prefix: string
+  name: string
+  collection: string
+  palette: boolean
+}
 
 let searchIndexPromise: Promise<SearchIndex> | null = null
 let searchIndexIdleTimer: ReturnType<typeof setTimeout> | null = null
@@ -218,4 +228,92 @@ export async function getSearchIndex(): Promise<SearchIndex> {
   refreshSearchIndexIdleTimer(indexPromise)
 
   return index
+}
+
+export async function buildCustomSearchItems(database: Db): Promise<CustomSearchItem[]> {
+  return await database
+    .select({
+      prefix: customIconSets.prefix,
+      name: customIconSetIcons.name,
+      collection: customIconSets.name,
+      palette: customIconSetIcons.palette,
+    })
+    .from(customIconSetIcons)
+    .innerJoin(customIconSets, eq(customIconSetIcons.setId, customIconSets.id))
+    .where(and(isNull(customIconSets.deletedAt), isNull(customIconSetIcons.deletedAt)))
+    .orderBy(asc(customIconSets.prefix), asc(customIconSetIcons.name))
+}
+
+export function buildCustomSearchIndex(customItems: CustomSearchItem[]): SearchIndex {
+  const all: number[] = []
+  const prefixIds: number[] = []
+  const prefixes: string[] = []
+  const prefixIndexes = new Map<string, number>()
+  const names: string[] = []
+  const collectionIds: number[] = []
+  const collections: string[] = []
+  const collectionIndexes = new Map<string, number>()
+  const palettes: boolean[] = []
+  const tokenBuckets = new Map<string, number[]>()
+  const preferredByPrefix = new Map<string, Map<string, number>>()
+
+  for (const item of customItems) {
+    let prefixId = prefixIndexes.get(item.prefix)
+    let collectionId = collectionIndexes.get(item.collection)
+
+    if (prefixId === undefined) {
+      prefixId = prefixes.length
+      prefixIndexes.set(item.prefix, prefixId)
+      prefixes.push(item.prefix)
+    }
+
+    if (collectionId === undefined) {
+      collectionId = collections.length
+      collectionIndexes.set(item.collection, collectionId)
+      collections.push(item.collection)
+    }
+
+    const id = names.length
+    all.push(id)
+    prefixIds.push(prefixId)
+    names.push(item.name)
+    collectionIds.push(collectionId)
+    palettes.push(item.palette)
+    addItemToTokenBuckets(tokenBuckets, id, item.prefix, item.name)
+
+    if (preferredIconPrefixes.has(item.prefix)) {
+      const prefixItems = preferredByPrefix.get(item.prefix)
+
+      if (prefixItems) {
+        prefixItems.set(item.name, id)
+      } else {
+        preferredByPrefix.set(item.prefix, new Map([[item.name, id]]))
+      }
+    }
+  }
+
+  const finderOptions = {
+    selector: (id: number) => names[id]!,
+    tiebreakers: [byStartAsc, byLengthAsc],
+    limit: Math.min(all.length, 400),
+  }
+
+  return {
+    all,
+    prefixIds,
+    prefixes,
+    names,
+    collectionIds,
+    collections,
+    palettes,
+    recommended: [],
+    tokenBuckets,
+    searchTokens: [...tokenBuckets.keys()],
+    preferredByPrefix,
+    fastFinder: new AsyncFzf(all, finderOptions),
+    extendedFinder: new AsyncFzf(all, {
+      ...finderOptions,
+      match: asyncExtendedMatch,
+    }),
+  }
 }

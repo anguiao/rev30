@@ -1,4 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { SearchIndex } from '../../../../src/modules/icons/search/types'
+
+type SearchIndexModule = typeof import('../../../../src/modules/icons/search/search-index') & {
+  buildCustomSearchIndex?: (
+    items: Array<{ collection: string; name: string; palette: boolean; prefix: string }>,
+  ) => SearchIndex
+  mergeSearchItems?: unknown
+}
 
 const mocks = vi.hoisted(() => ({
   getIconSubset: vi.fn(),
@@ -122,5 +130,31 @@ describe('icon search index lifecycle', () => {
 
     expect(mocks.getIconSubset).toHaveBeenCalledWith('lucide', ['users'])
     expect(mocks.lookupCollection).not.toHaveBeenCalled()
+  })
+
+  it('builds custom keyword search on a custom-only index', async () => {
+    const searchIndex =
+      (await import('../../../../src/modules/icons/search/search-index')) as SearchIndexModule
+
+    expect(searchIndex.mergeSearchItems).toBeUndefined()
+    expect(searchIndex.buildCustomSearchIndex).toBeTypeOf('function')
+
+    const builtinIndex = await searchIndex.getSearchIndex()
+    const customIndex = searchIndex.buildCustomSearchIndex!([
+      {
+        prefix: 'acme',
+        name: 'logo',
+        collection: 'Acme Icons',
+        palette: false,
+      },
+    ])
+
+    expect(customIndex.all).toEqual([0])
+    expect(customIndex.prefixes).toEqual(['acme'])
+    expect(customIndex.names).toEqual(['logo'])
+    expect(customIndex.collections).toEqual(['Acme Icons'])
+    expect(customIndex.palettes).toEqual([false])
+    expect(customIndex.recommended).toEqual([])
+    expect(customIndex.all).not.toHaveLength(builtinIndex.all.length + 1)
   })
 })

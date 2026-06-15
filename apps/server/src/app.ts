@@ -7,6 +7,7 @@ import { createAuthRoutes } from './modules/auth/routes'
 import { createContentRoutes } from './modules/content/routes'
 import { healthRoutes } from './modules/health/routes'
 import { iconRoutes } from './modules/icons/routes'
+import { createIconSetRoutes } from './modules/icons/sets/routes'
 import { createIconSearchRoutes } from './modules/icons/search/routes'
 import { createSystemRoutes } from './modules/system/routes'
 
@@ -16,6 +17,7 @@ export function createApiRoutes(database: Db) {
   return new Hono()
     .route('/', healthRoutes)
     .route('/auth', createAuthRoutes(database, authMiddleware))
+    .route('/icon-sets', createIconSetRoutes(database, authMiddleware))
     .route('/icons/search', createIconSearchRoutes(authMiddleware))
     .route('/icons', iconRoutes)
     .route('/attachments', createAttachmentRoutes(database, authMiddleware))

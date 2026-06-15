@@ -401,3 +401,41 @@ export const contentAnnouncementTargets = pgTable(
     index('content_announcement_targets_target_idx').on(table.targetType, table.targetId),
   ],
 )
+
+export const customIconSets = pgTable(
+  'custom_icon_sets',
+  {
+    id: uuidPrimaryKeyColumn(),
+    prefix: text('prefix').notNull(),
+    name: text('name').notNull(),
+    description: text('description'),
+    ...auditTimestamps(),
+  },
+  (table) => [
+    uniqueIndex('custom_icon_sets_prefix_active_unique')
+      .on(table.prefix)
+      .where(sql`${table.deletedAt} IS NULL`),
+  ],
+)
+
+export const customIconSetIcons = pgTable(
+  'custom_icon_set_icons',
+  {
+    id: uuidPrimaryKeyColumn(),
+    setId: uuid('set_id')
+      .notNull()
+      .references(() => customIconSets.id),
+    name: text('name').notNull(),
+    body: text('body').notNull(),
+    width: integer('width').notNull(),
+    height: integer('height').notNull(),
+    palette: boolean('palette').notNull().default(false),
+    ...auditTimestamps(),
+  },
+  (table) => [
+    uniqueIndex('custom_icon_set_icons_set_name_active_unique')
+      .on(table.setId, table.name)
+      .where(sql`${table.deletedAt} IS NULL`),
+    index('custom_icon_set_icons_set_id_idx').on(table.setId),
+  ],
+)

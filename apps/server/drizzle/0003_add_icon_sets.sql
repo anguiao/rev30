@@ -29,7 +29,7 @@ CREATE UNIQUE INDEX "custom_icon_sets_prefix_active_unique" ON "custom_icon_sets
 INSERT INTO "system_resources"
   ("id", "parent_id", "type", "name", "code", "path", "external_url", "open_target", "icon", "hidden", "status", "sort_order", "created_at", "updated_at")
 VALUES
-  ('10000000-0000-4000-8000-000000000109', '10000000-0000-4000-8000-000000000100', 'menu', '图标库', 'content:icon-set', '/content/icon-sets', NULL, 'self', 'lucide:icons', false, 1, 30, now(), now());
+  ('10000000-0000-4000-8000-000000000109', '10000000-0000-4000-8000-000000000100', 'menu', '图标库', 'content:icon-set', '/content/icon-sets', NULL, 'self', 'lucide:shapes', false, 1, 30, now(), now());
 --> statement-breakpoint
 INSERT INTO "system_resources"
   ("id", "parent_id", "type", "name", "code", "path", "external_url", "open_target", "icon", "hidden", "status", "sort_order", "created_at", "updated_at")

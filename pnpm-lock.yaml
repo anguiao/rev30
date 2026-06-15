@@ -180,6 +180,9 @@ importers:
       '@iconify/json':
         specifier: 'catalog:'
         version: 2.2.483
+      '@iconify/tools':
+        specifier: ^5.0.12
+        version: 5.0.12
       '@iconify/types':
         specifier: ^2.0.0
         version: 2.0.0

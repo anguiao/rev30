@@ -31,7 +31,7 @@ import {
   type IconSetListQuery,
   type IconSetRenameIconInput,
 } from '@rev30/contracts'
-import { api } from '../../api'
+import { api, authFetch } from '../../api'
 import { assertApiResponseOk, normalizeRequestQuery, parseApiResponse } from '../../utils/request'
 
 export async function listAnnouncements(
@@ -226,4 +226,21 @@ export async function deleteCustomIcon(prefix: string, name: string): Promise<vo
 
 export function getCustomIconSetExportUrl(prefix: string) {
   return `/api/icon-sets/custom/${encodeURIComponent(prefix)}/export`
+}
+
+function getResponseFilename(response: Response, fallback: string) {
+  const contentDisposition = response.headers.get('content-disposition')
+  const filename = contentDisposition?.match(/filename="([^"]+)"/)?.[1]
+
+  return filename ?? fallback
+}
+
+export async function exportCustomIconSet(prefix: string) {
+  const response = await authFetch(getCustomIconSetExportUrl(prefix))
+  await assertApiResponseOk(response)
+
+  return {
+    blob: await response.blob(),
+    filename: getResponseFilename(response, `${prefix}.json`),
+  }
 }

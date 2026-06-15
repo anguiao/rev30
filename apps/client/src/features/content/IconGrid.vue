@@ -2,10 +2,18 @@
 import { NButton, NTooltip } from 'naive-ui'
 import type { CustomIconItem, IconSetRenderableIcon } from '@rev30/contracts'
 
-const props = defineProps<{
-  icons: Array<IconSetRenderableIcon | CustomIconItem>
-  editable: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    icons: Array<IconSetRenderableIcon | CustomIconItem>
+    editable: boolean
+    canRename?: boolean
+    canDelete?: boolean
+  }>(),
+  {
+    canRename: true,
+    canDelete: true,
+  },
+)
 
 const emit = defineEmits<{
   copy: [icon: string]
@@ -22,7 +30,7 @@ function handleCopy(icon: string) {
 }
 
 function handleRename(icon: IconSetRenderableIcon | CustomIconItem) {
-  if (!props.editable) {
+  if (!props.editable || !props.canRename) {
     return
   }
 
@@ -30,7 +38,7 @@ function handleRename(icon: IconSetRenderableIcon | CustomIconItem) {
 }
 
 function handleDelete(icon: IconSetRenderableIcon | CustomIconItem) {
-  if (!props.editable) {
+  if (!props.editable || !props.canDelete) {
     return
   }
 
@@ -100,7 +108,7 @@ function handleDelete(icon: IconSetRenderableIcon | CustomIconItem) {
           复制
         </NTooltip>
 
-        <NTooltip trigger="hover">
+        <NTooltip v-if="canRename" trigger="hover">
           <template #trigger>
             <NButton
               quaternary
@@ -115,7 +123,7 @@ function handleDelete(icon: IconSetRenderableIcon | CustomIconItem) {
           重命名
         </NTooltip>
 
-        <NTooltip trigger="hover">
+        <NTooltip v-if="canDelete" trigger="hover">
           <template #trigger>
             <NButton
               quaternary

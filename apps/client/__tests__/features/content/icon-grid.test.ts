@@ -75,4 +75,22 @@ describe('IconGrid', () => {
     expect(wrapper.emitted('rename')).toEqual([[customIcons[0]]])
     expect(wrapper.emitted('delete')).toEqual([[customIcons[0]]])
   })
+
+  it('keeps copy available while hiding restricted editable actions', async () => {
+    const wrapper = mount(IconGrid, {
+      props: {
+        icons: customIcons,
+        editable: true,
+        canRename: false,
+        canDelete: false,
+      },
+    })
+
+    const copyButton = wrapper.get('button[aria-label="复制图标"]')
+    await copyButton.trigger('click')
+
+    expect(wrapper.find('button[aria-label="重命名图标"]').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="删除图标"]').exists()).toBe(false)
+    expect(wrapper.emitted('copy')).toEqual([['acme:logo']])
+  })
 })

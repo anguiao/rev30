@@ -12,8 +12,9 @@ import {
   archiveAnnouncement,
   createAnnouncement,
   deleteAnnouncement,
-  getMyAnnouncement,
+  exportCustomIconSet,
   getAnnouncement,
+  getMyAnnouncement,
   listAnnouncements,
   listMyAnnouncements,
   publishAnnouncement,
@@ -298,6 +299,44 @@ describe('content request helpers', () => {
     expectFetchCall(fetchMock, 0, {
       method: 'DELETE',
       pathname: `/api/content/announcements/${announcementId}`,
+    })
+  })
+
+  it('exports custom icon sets through authenticated fetch', async () => {
+    const fetchMock = createFetchMock(
+      new Response('{"prefix":"acme","icons":{}}', {
+        headers: {
+          'content-disposition': 'attachment; filename="acme.json"',
+          'content-type': 'application/json',
+        },
+      }),
+    )
+    useAuthStore().accessToken = 'access-token'
+
+    const result = await exportCustomIconSet('acme')
+    const call = expectFetchCall(fetchMock, 0, {
+      pathname: '/api/icon-sets/custom/acme/export',
+    })
+
+    expect(call.headers.get('authorization')).toBe('Bearer access-token')
+    expect(result.filename).toBe('acme.json')
+    expect(await result.blob.text()).toBe('{"prefix":"acme","icons":{}}')
+  })
+
+  it('returns export errors when response json contains message', async () => {
+    createFetchMock(
+      new Response(JSON.stringify({ message: '无权导出图标集' }), {
+        status: 403,
+      }),
+    )
+    useAuthStore().accessToken = 'access-token'
+
+    const failedExport = exportCustomIconSet('acme')
+
+    await expect(failedExport).rejects.toBeInstanceOf(ApiRequestError)
+    await expect(failedExport).rejects.toMatchObject({
+      status: 403,
+      message: '无权导出图标集',
     })
   })
 

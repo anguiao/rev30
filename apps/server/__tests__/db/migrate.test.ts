@@ -37,6 +37,8 @@ const expectedTableNames = [
   'auth_refresh_tokens',
   'content_announcement_targets',
   'content_announcements',
+  'custom_icon_set_icons',
+  'custom_icon_sets',
   'system_configs',
   'system_departments',
   'system_dictionary_items',
@@ -63,6 +65,12 @@ const expectedResourceCodes = [
   'content:announcement',
   'content:attachment',
   'content:attachment:list',
+  'content:icon-set',
+  'content:icon-set:list',
+  'content:icon-set:create',
+  'content:icon-set:update',
+  'content:icon-set:delete',
+  'content:icon-set:export',
 ]
 
 async function createTempDir() {

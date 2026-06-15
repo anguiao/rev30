@@ -36,7 +36,7 @@ const isSaving = ref(false)
 const drawerSessionId = ref(0)
 
 const isEditing = computed(() => props.editingSet !== null)
-const drawerTitle = computed(() => (isEditing.value ? '编辑图标集' : '新增图标集'))
+const drawerTitle = computed(() => (isEditing.value ? '编辑图标集' : '创建图标集'))
 
 function resetForm() {
   form.prefix = props.editingSet?.prefix ?? ''

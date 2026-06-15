@@ -59,6 +59,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/content/icon-sets': RouteRecordInfo<
+      '/content/icon-sets',
+      '/content/icon-sets',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/system/configs': RouteRecordInfo<
       '/system/configs',
       '/system/configs',
@@ -134,6 +141,7 @@ declare module 'vue-router/auto-routes' {
         | '/account/settings'
         | '/content/announcements'
         | '/content/attachments'
+        | '/content/icon-sets'
         | '/system/configs'
         | '/system/departments'
         | '/system/dictionaries'
@@ -172,6 +180,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/index/content/attachments.vue': {
       routes:
         | '/content/attachments'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/index/content/icon-sets.vue': {
+      routes:
+        | '/content/icon-sets'
       views:
         | never
       pathParamNames:

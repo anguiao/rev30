@@ -11,6 +11,7 @@ import {
   NRadioGroup,
   NText,
   NUpload,
+  NUploadDragger,
   type UploadFileInfo,
 } from 'naive-ui'
 import type { CustomIconDuplicateStrategy, CustomIconUploadResponse } from '@rev30/contracts'
@@ -137,7 +138,14 @@ watch(
               :default-upload="false"
               :file-list="fileList"
               @update:file-list="(files) => (fileList = files)"
-            />
+            >
+              <NUploadDragger>
+                <div class="flex flex-col items-center gap-2 py-8 text-stone-500 dark:text-zinc-400">
+                  <span class="i-[lucide--upload] text-2xl" aria-hidden="true" />
+                  <span class="text-sm">选择 SVG 文件</span>
+                </div>
+              </NUploadDragger>
+            </NUpload>
           </NFormItem>
 
           <div

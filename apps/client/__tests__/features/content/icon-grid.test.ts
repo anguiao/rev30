@@ -61,7 +61,9 @@ describe('IconGrid', () => {
     })
 
     const item = wrapper.get('[data-test="icon-grid-item"]')
+    expect(item.classes()).toContain('h-24')
     expect(item.attributes('role')).toBeUndefined()
+    expect(wrapper.get('[data-test="icon-grid-actions"]').classes()).not.toContain('absolute')
 
     const renameButton = wrapper.get('button[aria-label="重命名图标"]')
     await renameButton.trigger('click')

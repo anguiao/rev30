@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, type HTMLAttributes } from 'vue'
+import { watchDebounced } from '@vueuse/core'
 import { useQuery, useQueryCache } from '@pinia/colada'
 import type { ButtonProps } from 'naive-ui'
 import {
@@ -57,6 +58,7 @@ type IconSetsTab = 'builtin' | 'custom'
 const activeTab = ref<IconSetsTab>('builtin')
 const builtinTabProps = { 'data-test': 'icon-sets-tab-builtin' } as unknown as HTMLAttributes
 const customTabProps = { 'data-test': 'icon-sets-tab-custom' } as unknown as HTMLAttributes
+const filterDebounceMs = 250
 
 const builtinSetKeyword = ref('')
 const builtinIconKeyword = ref('')
@@ -196,6 +198,11 @@ const builtinSetsData = computed(() => builtinSetsResponse.value ?? emptyBuiltin
 const builtinIconsData = computed(() => builtinIconsResponse.value ?? emptyBuiltinIconsData)
 const customSetsData = computed(() => customSetsResponse.value ?? emptyCustomSetsData)
 const customIconsData = computed(() => customIconsResponse.value ?? emptyCustomIconsData)
+const selectedBuiltinSet = computed(
+  () =>
+    builtinSetsData.value.list.find((iconSet) => iconSet.prefix === selectedBuiltinPrefix.value) ??
+    null,
+)
 const selectedCustomSet = computed(
   () =>
     customSetsData.value.list.find((iconSet) => iconSet.prefix === selectedCustomPrefix.value) ??
@@ -250,18 +257,6 @@ function toIconQuery(
   } as IconSetIconListQuery
 }
 
-function searchBuiltinSets() {
-  builtinSetQuery.value = toSetQuery(builtinSetKeyword.value, builtinSetQuery.value.pageSize)
-}
-
-function resetBuiltinSets() {
-  builtinSetKeyword.value = ''
-  builtinSetQuery.value = {
-    page: 1,
-    pageSize: builtinSetQuery.value.pageSize,
-  } as IconSetListQuery
-}
-
 function selectBuiltinSet(iconSet: BuiltinIconSetItem | null) {
   selectedBuiltinPrefix.value = iconSet?.prefix ?? null
   builtinIconQuery.value = toIconQuery(
@@ -271,56 +266,50 @@ function selectBuiltinSet(iconSet: BuiltinIconSetItem | null) {
   )
 }
 
-function searchBuiltinIcons() {
-  builtinIconQuery.value = toIconQuery(
-    builtinIconKeyword.value,
-    builtinIconQuery.value.pageSize,
-    selectedBuiltinPrefix.value,
-  )
-}
+watchDebounced(
+  builtinSetKeyword,
+  () => {
+    builtinSetQuery.value = toSetQuery(builtinSetKeyword.value, builtinSetQuery.value.pageSize)
+  },
+  { debounce: filterDebounceMs },
+)
 
-function resetBuiltinIcons() {
-  builtinIconKeyword.value = ''
-  builtinIconQuery.value = toIconQuery(
-    '',
-    builtinIconQuery.value.pageSize,
-    selectedBuiltinPrefix.value,
-  )
-}
+watchDebounced(
+  builtinIconKeyword,
+  () => {
+    builtinIconQuery.value = toIconQuery(
+      builtinIconKeyword.value,
+      builtinIconQuery.value.pageSize,
+      selectedBuiltinPrefix.value,
+    )
+  },
+  { debounce: filterDebounceMs },
+)
 
-function searchCustomSets() {
-  customSetQuery.value = toSetQuery(customSetKeyword.value, customSetQuery.value.pageSize)
-}
+watchDebounced(
+  customSetKeyword,
+  () => {
+    customSetQuery.value = toSetQuery(customSetKeyword.value, customSetQuery.value.pageSize)
+  },
+  { debounce: filterDebounceMs },
+)
 
-function resetCustomSets() {
-  customSetKeyword.value = ''
-  customSetQuery.value = {
-    page: 1,
-    pageSize: customSetQuery.value.pageSize,
-  } as IconSetListQuery
-}
+watchDebounced(
+  customIconKeyword,
+  () => {
+    customIconQuery.value = toIconQuery(
+      customIconKeyword.value,
+      customIconQuery.value.pageSize,
+      selectedCustomPrefix.value,
+    )
+  },
+  { debounce: filterDebounceMs },
+)
 
 function selectCustomSet(iconSet: CustomIconSet | null) {
   selectedCustomPrefix.value = iconSet?.prefix ?? null
   customIconQuery.value = toIconQuery(
     customIconKeyword.value,
-    customIconQuery.value.pageSize,
-    selectedCustomPrefix.value,
-  )
-}
-
-function searchCustomIcons() {
-  customIconQuery.value = toIconQuery(
-    customIconKeyword.value,
-    customIconQuery.value.pageSize,
-    selectedCustomPrefix.value,
-  )
-}
-
-function resetCustomIcons() {
-  customIconKeyword.value = ''
-  customIconQuery.value = toIconQuery(
-    '',
     customIconQuery.value.pageSize,
     selectedCustomPrefix.value,
   )
@@ -507,41 +496,30 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
     <NTabs v-model:value="activeTab" type="line" animated>
       <NTabPane name="builtin" tab="内置图标" :tab-props="builtinTabProps">
         <div class="space-y-5 pt-4">
-          <section
-            class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <NForm
-              inline
-              label-placement="left"
-              :show-feedback="false"
-              class="items-center gap-y-3"
-            >
-              <NFormItem label="图标集">
-                <NInput
-                  v-model:value="builtinSetKeyword"
-                  clearable
-                  placeholder="请输入图标集关键词"
-                  class="w-64!"
-                />
-              </NFormItem>
-              <div class="flex gap-2">
-                <NButton type="primary" @click="searchBuiltinSets">查询</NButton>
-                <NButton @click="resetBuiltinSets">重置</NButton>
-              </div>
-            </NForm>
-          </section>
-
           <NAlert v-if="builtinSetErrorMessage" type="error">{{ builtinSetErrorMessage }}</NAlert>
           <NAlert v-if="builtinIconErrorMessage" type="error">{{ builtinIconErrorMessage }}</NAlert>
 
           <section class="grid gap-5 xl:grid-cols-[20rem_minmax(0,1fr)]">
-            <div class="space-y-3">
-              <div class="flex items-center justify-between">
-                <div class="text-sm font-medium text-stone-900 dark:text-zinc-100">内置图标集</div>
-                <div class="text-xs text-stone-500 dark:text-zinc-400">
-                  共 {{ builtinSetsData.total }} 个
+            <aside
+              class="space-y-3 rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <div class="text-sm font-medium text-stone-900 dark:text-zinc-100">
+                    内置图标集
+                  </div>
+                  <div class="mt-1 text-xs text-stone-500 dark:text-zinc-400">
+                    共 {{ builtinSetsData.total }} 个
+                  </div>
                 </div>
               </div>
+
+              <NInput
+                v-model:value="builtinSetKeyword"
+                data-test="builtin-icon-set-filter"
+                clearable
+                placeholder="筛选图标集"
+              />
 
               <NSpin :show="isLoadingBuiltinSets">
                 <div class="space-y-2">
@@ -593,32 +571,32 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                   size="small"
                 />
               </div>
-            </div>
+            </aside>
 
-            <div class="space-y-4">
-              <section
-                class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+            <section class="min-w-0 space-y-4">
+              <div
+                class="flex flex-col gap-3 rounded-ui border border-stone-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900"
               >
-                <NForm
-                  inline
-                  label-placement="left"
-                  :show-feedback="false"
-                  class="items-center gap-y-3"
-                >
-                  <NFormItem label="图标">
-                    <NInput
-                      v-model:value="builtinIconKeyword"
-                      clearable
-                      placeholder="请输入图标关键词"
-                      class="w-64!"
-                    />
-                  </NFormItem>
-                  <div class="flex gap-2">
-                    <NButton type="primary" @click="searchBuiltinIcons">查询</NButton>
-                    <NButton @click="resetBuiltinIcons">重置</NButton>
+                <div>
+                  <div class="text-sm font-medium text-stone-900 dark:text-zinc-100">内置图标</div>
+                  <div class="mt-1 text-xs text-stone-500 dark:text-zinc-400">
+                    <template v-if="selectedBuiltinSet">
+                      {{ selectedBuiltinSet.name }} / {{ selectedBuiltinSet.prefix }}
+                    </template>
+                    <template v-else>
+                      {{ selectedBuiltinPrefix ?? '全部内置图标集' }}
+                    </template>
                   </div>
-                </NForm>
-              </section>
+                </div>
+
+                <NInput
+                  v-model:value="builtinIconKeyword"
+                  data-test="builtin-icon-filter"
+                  clearable
+                  placeholder="筛选图标"
+                  class="w-full sm:w-72!"
+                />
+              </div>
 
               <NSpin :show="isLoadingBuiltinIcons">
                 <IconGrid
@@ -637,77 +615,46 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                   :item-count="builtinIconsData.total"
                 />
               </div>
-            </div>
+            </section>
           </section>
         </div>
       </NTabPane>
 
       <NTabPane name="custom" tab="自定义图标" :tab-props="customTabProps">
         <div class="space-y-5 pt-4">
-          <header class="flex items-center justify-end gap-2">
-            <NButton
-              v-can="'content:icon-set:create'"
-              data-test="custom-icon-set-create"
-              type="primary"
-              @click="openCreateCustomSetDrawer"
-            >
-              创建图标集
-            </NButton>
-            <NButton
-              v-can="'content:icon-set:create'"
-              data-test="custom-icon-set-upload"
-              :disabled="selectedCustomPrefix === null"
-              @click="openUploadDrawer"
-            >
-              上传 SVG
-            </NButton>
-            <NButton
-              v-can="'content:icon-set:export'"
-              data-test="custom-icon-set-export"
-              :disabled="selectedCustomPrefix === null"
-              @click="exportSelectedCustomSet"
-            >
-              导出 JSON
-            </NButton>
-          </header>
-
-          <section
-            class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <NForm
-              inline
-              label-placement="left"
-              :show-feedback="false"
-              class="items-center gap-y-3"
-            >
-              <NFormItem label="图标集">
-                <NInput
-                  v-model:value="customSetKeyword"
-                  clearable
-                  placeholder="请输入图标集关键词"
-                  class="w-64!"
-                />
-              </NFormItem>
-              <div class="flex gap-2">
-                <NButton type="primary" @click="searchCustomSets">查询</NButton>
-                <NButton @click="resetCustomSets">重置</NButton>
-              </div>
-            </NForm>
-          </section>
-
           <NAlert v-if="customSetErrorMessage" type="error">{{ customSetErrorMessage }}</NAlert>
           <NAlert v-if="customIconErrorMessage" type="error">{{ customIconErrorMessage }}</NAlert>
 
           <section class="grid gap-5 xl:grid-cols-[20rem_minmax(0,1fr)]">
-            <div class="space-y-3">
-              <div class="flex items-center justify-between">
-                <div class="text-sm font-medium text-stone-900 dark:text-zinc-100">
-                  自定义图标集
+            <aside
+              class="space-y-3 rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <div class="text-sm font-medium text-stone-900 dark:text-zinc-100">
+                    自定义图标集
+                  </div>
+                  <div class="mt-1 text-xs text-stone-500 dark:text-zinc-400">
+                    共 {{ customSetsData.total }} 个
+                  </div>
                 </div>
-                <div class="text-xs text-stone-500 dark:text-zinc-400">
-                  共 {{ customSetsData.total }} 个
-                </div>
+                <NButton
+                  v-can="'content:icon-set:create'"
+                  data-test="custom-icon-set-create"
+                  type="primary"
+                  size="small"
+                  @click="openCreateCustomSetDrawer"
+                >
+                  创建图标集
+                </NButton>
               </div>
+
+              <NInput
+                v-model:value="customSetKeyword"
+                data-test="custom-icon-set-filter"
+                clearable
+                placeholder="筛选图标集"
+              />
 
               <NSpin :show="isLoadingCustomSets">
                 <div class="space-y-2">
@@ -755,7 +702,7 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                       </div>
                     </button>
 
-                    <div class="flex items-center gap-2 px-3 py-2">
+                    <div class="flex items-center gap-2 px-3 pt-1 pb-3">
                       <NButton
                         v-can="'content:icon-set:update'"
                         text
@@ -789,35 +736,49 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                   size="small"
                 />
               </div>
-            </div>
+            </aside>
 
-            <div class="space-y-4">
-              <section
-                class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+            <section class="min-w-0 space-y-4">
+              <div
+                class="flex flex-col gap-3 rounded-ui border border-stone-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between dark:border-zinc-800 dark:bg-zinc-900"
               >
-                <NForm
-                  inline
-                  label-placement="left"
-                  :show-feedback="false"
-                  class="items-center gap-y-3"
-                >
-                  <NFormItem label="图标">
-                    <NInput
-                      v-model:value="customIconKeyword"
-                      clearable
-                      placeholder="请输入图标关键词"
-                      class="w-64!"
-                    />
-                  </NFormItem>
-                  <div class="flex gap-2">
-                    <NButton type="primary" @click="searchCustomIcons">查询</NButton>
-                    <NButton @click="resetCustomIcons">重置</NButton>
+                <div>
+                  <div class="text-sm font-medium text-stone-900 dark:text-zinc-100">
+                    自定义图标
                   </div>
-                </NForm>
-              </section>
+                  <div class="mt-1 text-xs text-stone-500 dark:text-zinc-400">
+                    <template v-if="selectedCustomSet">
+                      {{ selectedCustomSet.name }} / {{ selectedCustomSet.prefix }}
+                    </template>
+                    <template v-else>全部自定义图标集</template>
+                  </div>
+                </div>
 
-              <div v-if="selectedCustomSet" class="text-sm text-stone-500 dark:text-zinc-400">
-                当前图标集：{{ selectedCustomSet.name }}
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <NInput
+                    v-model:value="customIconKeyword"
+                    data-test="custom-icon-filter"
+                    clearable
+                    placeholder="筛选图标"
+                    class="w-full sm:w-72!"
+                  />
+                  <NButton
+                    v-can="'content:icon-set:create'"
+                    data-test="custom-icon-set-upload"
+                    :disabled="selectedCustomPrefix === null"
+                    @click="openUploadDrawer"
+                  >
+                    上传 SVG
+                  </NButton>
+                  <NButton
+                    v-can="'content:icon-set:export'"
+                    data-test="custom-icon-set-export"
+                    :disabled="selectedCustomPrefix === null"
+                    @click="exportSelectedCustomSet"
+                  >
+                    导出 JSON
+                  </NButton>
+                </div>
               </div>
 
               <NSpin :show="isLoadingCustomIcons">
@@ -841,7 +802,7 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                   :item-count="customIconsData.total"
                 />
               </div>
-            </div>
+            </section>
           </section>
         </div>
       </NTabPane>

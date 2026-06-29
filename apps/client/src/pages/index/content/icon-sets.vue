@@ -499,9 +499,9 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
           <NAlert v-if="builtinSetErrorMessage" type="error">{{ builtinSetErrorMessage }}</NAlert>
           <NAlert v-if="builtinIconErrorMessage" type="error">{{ builtinIconErrorMessage }}</NAlert>
 
-          <section class="grid gap-5 xl:grid-cols-[20rem_minmax(0,1fr)]">
+          <section class="grid gap-5 xl:grid-cols-[16rem_minmax(0,1fr)]">
             <aside
-              class="space-y-3 rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+              class="space-y-3 rounded-ui border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
             >
               <div class="flex items-center justify-between gap-3">
                 <div>
@@ -522,18 +522,21 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
               />
 
               <NSpin :show="isLoadingBuiltinSets">
-                <div class="space-y-2">
+                <div class="space-y-1">
                   <button
                     type="button"
-                    class="w-full rounded-md border px-3 py-2 text-left text-sm transition-colors"
+                    class="w-full rounded-md px-3 py-2 text-left transition-colors"
                     :class="
                       selectedBuiltinPrefix === null
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-stone-200 bg-white text-stone-700 hover:border-primary dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200'
+                        ? 'bg-primary/5 text-primary'
+                        : 'text-stone-700 hover:bg-stone-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
                     "
                     @click="selectBuiltinSet(null)"
                   >
-                    全部内置
+                    <div class="truncate text-sm font-medium">全部内置</div>
+                    <div class="mt-0.5 text-xs text-stone-500 dark:text-zinc-400">
+                      {{ builtinSetsData.total }} 个图标集
+                    </div>
                   </button>
 
                   <button
@@ -541,21 +544,19 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                     :key="iconSet.prefix"
                     data-test="builtin-icon-set"
                     type="button"
-                    class="w-full rounded-md border px-3 py-2 text-left transition-colors"
+                    class="w-full rounded-md px-3 py-2 text-left transition-colors"
                     :class="
                       selectedBuiltinPrefix === iconSet.prefix
-                        ? 'border-primary bg-primary/5'
-                        : 'border-stone-200 bg-white hover:border-primary dark:border-zinc-800 dark:bg-zinc-950'
+                        ? 'bg-primary/5'
+                        : 'hover:bg-stone-50 dark:hover:bg-zinc-800'
                     "
                     @click="selectBuiltinSet(iconSet)"
                   >
-                    <div class="flex items-center justify-between gap-3">
-                      <span class="truncate text-sm font-medium text-stone-900 dark:text-zinc-100">
-                        {{ iconSet.name }}
-                      </span>
-                      <span class="shrink-0 text-xs text-stone-500 dark:text-zinc-400">
-                        {{ iconSet.total }}
-                      </span>
+                    <div class="truncate text-sm font-medium text-stone-900 dark:text-zinc-100">
+                      {{ iconSet.name }}
+                    </div>
+                    <div class="mt-0.5 text-xs text-stone-500 dark:text-zinc-400">
+                      {{ iconSet.total }} 个图标
                     </div>
                   </button>
 
@@ -603,6 +604,7 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                   v-if="builtinIconsData.list.length > 0"
                   :icons="builtinIconsData.list"
                   :editable="false"
+                  :show-set-name="selectedBuiltinPrefix === null"
                   @copy="copyIcon"
                 />
                 <NEmpty v-else />
@@ -625,9 +627,9 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
           <NAlert v-if="customSetErrorMessage" type="error">{{ customSetErrorMessage }}</NAlert>
           <NAlert v-if="customIconErrorMessage" type="error">{{ customIconErrorMessage }}</NAlert>
 
-          <section class="grid gap-5 xl:grid-cols-[20rem_minmax(0,1fr)]">
+          <section class="grid gap-5 xl:grid-cols-[16rem_minmax(0,1fr)]">
             <aside
-              class="space-y-3 rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+              class="space-y-3 rounded-ui border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
             >
               <div class="flex items-center justify-between gap-3">
                 <div>
@@ -657,56 +659,52 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
               />
 
               <NSpin :show="isLoadingCustomSets">
-                <div class="space-y-2">
+                <div class="space-y-1">
                   <button
                     type="button"
-                    class="w-full rounded-md border px-3 py-2 text-left text-sm transition-colors"
+                    class="w-full rounded-md px-3 py-2 text-left transition-colors"
                     :class="
                       selectedCustomPrefix === null
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-stone-200 bg-white text-stone-700 hover:border-primary dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200'
+                        ? 'bg-primary/5 text-primary'
+                        : 'text-stone-700 hover:bg-stone-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
                     "
                     @click="selectCustomSet(null)"
                   >
-                    全部自定义
+                    <div class="truncate text-sm font-medium">全部自定义</div>
+                    <div class="mt-0.5 text-xs text-stone-500 dark:text-zinc-400">
+                      {{ customSetsData.total }} 个图标集
+                    </div>
                   </button>
 
                   <div
                     v-for="iconSet in customSetsData.list"
                     :key="iconSet.prefix"
-                    class="rounded-md border transition-colors"
+                    class="rounded-md transition-colors"
                     :class="
                       selectedCustomPrefix === iconSet.prefix
-                        ? 'border-primary bg-primary/5'
-                        : 'border-stone-200 bg-white hover:border-primary dark:border-zinc-800 dark:bg-zinc-950'
+                        ? 'bg-primary/5'
+                        : 'hover:bg-stone-50 dark:hover:bg-zinc-800'
                     "
                   >
                     <button
                       type="button"
                       data-test="custom-icon-set"
-                      class="w-full px-3 pt-3 text-left"
+                      class="w-full px-3 pt-2 text-left"
                       @click="selectCustomSet(iconSet)"
                     >
-                      <div class="flex items-center justify-between gap-3">
-                        <span
-                          class="truncate text-sm font-medium text-stone-900 dark:text-zinc-100"
-                        >
-                          {{ iconSet.name }}
-                        </span>
-                        <span class="shrink-0 text-xs text-stone-500 dark:text-zinc-400">
-                          {{ iconSet.iconCount }}
-                        </span>
+                      <div class="truncate text-sm font-medium text-stone-900 dark:text-zinc-100">
+                        {{ iconSet.name }}
                       </div>
-                      <div class="mt-1 truncate text-xs text-stone-500 dark:text-zinc-400">
-                        {{ iconSet.prefix }}
+                      <div class="mt-0.5 truncate text-xs text-stone-500 dark:text-zinc-400">
+                        {{ iconSet.iconCount }} 个图标 / {{ iconSet.prefix }}
                       </div>
                     </button>
 
-                    <div class="flex items-center gap-2 px-3 pt-1 pb-3">
+                    <div class="flex items-center gap-2 px-3 pt-0.5 pb-2">
                       <NButton
                         v-can="'content:icon-set:update'"
                         text
-                        size="small"
+                        size="tiny"
                         type="primary"
                         @click.stop="openEditCustomSetDrawer(iconSet)"
                       >
@@ -715,7 +713,7 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                       <NButton
                         v-can="'content:icon-set:delete'"
                         text
-                        size="small"
+                        size="tiny"
                         type="error"
                         @click.stop="confirmDeleteCustomSet(iconSet)"
                       >
@@ -786,6 +784,7 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                   v-if="customIconsData.list.length > 0"
                   :icons="customIconsData.list"
                   :editable="true"
+                  :show-set-name="selectedCustomPrefix === null"
                   :can-rename="canRenameCustomIcon"
                   :can-delete="canDeleteCustomIcon"
                   @copy="copyIcon"

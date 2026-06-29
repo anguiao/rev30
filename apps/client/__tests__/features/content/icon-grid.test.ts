@@ -39,17 +39,33 @@ describe('IconGrid', () => {
     })
 
     const item = wrapper.get('[data-test="icon-grid-item"]')
-    expect(item.classes()).toContain('w-44')
-    expect(item.classes()).toContain('h-22')
+    expect(item.classes()).toContain('w-28')
+    expect(item.classes()).toContain('h-28')
     expect(item.attributes('aria-label')).toBe('复制图标 acme:logo')
 
     const svg = item.get('svg')
     expect(svg.attributes('viewBox')).toBe('0 0 24 24')
     expect(wrapper.get('[data-test="icon-grid-name"]').text()).toBe('logo')
+    expect(wrapper.get('[data-test="icon-grid-name"]').attributes('title')).toBe('acme:logo')
+    expect(wrapper.find('[data-test="icon-grid-set"]').exists()).toBe(false)
 
     await item.trigger('click')
 
     expect(wrapper.emitted('copy')).toEqual([['acme:logo']])
+  })
+
+  it('can show icon set names for mixed icon set views', () => {
+    const wrapper = mount(IconGrid, {
+      props: {
+        icons,
+        editable: false,
+        showSetName: true,
+      },
+    })
+
+    const setName = wrapper.get('[data-test="icon-grid-set"]')
+    expect(setName.text()).toBe('Acme Icons')
+    expect(setName.attributes('title')).toBe('Acme Icons')
   })
 
   it('uses explicit action buttons in editable mode without emitting copy from rename or delete', async () => {
@@ -61,7 +77,7 @@ describe('IconGrid', () => {
     })
 
     const item = wrapper.get('[data-test="icon-grid-item"]')
-    expect(item.classes()).toContain('h-24')
+    expect(item.classes()).toContain('h-32')
     expect(item.attributes('role')).toBeUndefined()
     expect(wrapper.get('[data-test="icon-grid-actions"]').classes()).not.toContain('absolute')
 

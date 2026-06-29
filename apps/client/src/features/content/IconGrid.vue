@@ -6,10 +6,12 @@ const props = withDefaults(
   defineProps<{
     icons: Array<IconSetRenderableIcon | CustomIconItem>
     editable: boolean
+    showSetName?: boolean
     canRename?: boolean
     canDelete?: boolean
   }>(),
   {
+    showSetName: false,
     canRename: true,
     canDelete: true,
   },
@@ -47,7 +49,7 @@ function handleDelete(icon: IconSetRenderableIcon | CustomIconItem) {
 </script>
 
 <template>
-  <div class="grid grid-cols-[repeat(auto-fill,11rem)] gap-3">
+  <div class="grid grid-cols-[repeat(auto-fill,7rem)] gap-2">
     <component
       :is="editable ? 'div' : 'button'"
       v-for="icon in icons"
@@ -55,16 +57,16 @@ function handleDelete(icon: IconSetRenderableIcon | CustomIconItem) {
       data-test="icon-grid-item"
       :type="editable ? undefined : 'button'"
       :aria-label="editable ? undefined : `复制图标 ${icon.icon}`"
-      class="w-44 rounded-md border border-stone-200 bg-white p-3 text-left transition-colors hover:border-primary hover:bg-stone-50 focus-visible:border-primary focus-visible:bg-stone-50 focus-visible:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900 dark:focus-visible:bg-zinc-900"
-      :class="editable ? 'flex h-24 flex-col' : 'flex h-22 items-start gap-3'"
+      class="group w-28 overflow-hidden rounded-md border border-transparent bg-transparent p-2 transition-colors hover:border-primary/60 hover:bg-stone-50 focus-visible:border-primary focus-visible:bg-stone-50 focus-visible:outline-none dark:hover:bg-zinc-900 dark:focus-visible:bg-zinc-900"
+      :class="editable ? 'flex h-32 flex-col' : 'flex h-28 flex-col items-center justify-center'"
       @click="editable ? undefined : handleCopy(icon.icon)"
     >
-      <div class="flex min-w-0 items-start gap-3">
+      <div class="flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-1">
         <div
-          class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-stone-200 bg-stone-50 p-2 dark:border-zinc-700 dark:bg-zinc-900"
+          class="flex size-12 shrink-0 items-center justify-center text-stone-700 transition-colors group-hover:text-primary dark:text-zinc-200"
         >
           <svg
-            class="h-full w-full text-stone-700 dark:text-zinc-200"
+            class="size-8"
             :viewBox="getViewBox(icon.width, icon.height)"
             fill="currentColor"
             aria-hidden="true"
@@ -74,28 +76,34 @@ function handleDelete(icon: IconSetRenderableIcon | CustomIconItem) {
           </svg>
         </div>
 
-        <div class="min-w-0 flex-1 pt-1">
-          <div class="text-xs text-stone-500 dark:text-zinc-400">
-            {{ icon.setName }}
-          </div>
-          <NTooltip trigger="hover">
-            <template #trigger>
-              <div
-                data-test="icon-grid-name"
-                class="mt-1 max-w-full truncate text-sm font-medium text-stone-900 dark:text-zinc-100"
-              >
-                {{ icon.name }}
-              </div>
-            </template>
-            {{ icon.icon }}
-          </NTooltip>
+        <div class="w-full min-w-0 shrink-0">
+          <span
+            data-test="icon-grid-name"
+            class="flex w-full min-w-0 justify-center overflow-hidden text-xs leading-4 font-medium text-stone-700 dark:text-zinc-200"
+            :title="icon.icon"
+          >
+            <span class="block max-w-full min-w-0 truncate text-left">
+              {{ icon.name }}
+            </span>
+          </span>
+
+          <span
+            v-if="showSetName"
+            data-test="icon-grid-set"
+            class="mt-0.5 flex w-full min-w-0 justify-center overflow-hidden text-[11px] leading-4 text-stone-400 dark:text-zinc-500"
+            :title="icon.setName"
+          >
+            <span class="block max-w-full min-w-0 truncate text-left">
+              {{ icon.setName }}
+            </span>
+          </span>
         </div>
       </div>
 
       <div
         v-if="editable"
         data-test="icon-grid-actions"
-        class="mt-1 flex items-center justify-end gap-1"
+        class="mt-0.5 flex items-center justify-center gap-0.5"
       >
         <NTooltip trigger="hover">
           <template #trigger>

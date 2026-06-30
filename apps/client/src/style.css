@@ -32,8 +32,13 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     text-autospace: normal;
     text-rendering: optimizeLegibility;
+  }
+
+  .dark {
+    color-scheme: dark;
   }
 
   body {

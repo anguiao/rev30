@@ -58,8 +58,6 @@ const builtinIconSetsResponse: BuiltinIconSetListResponse = {
     },
   ],
   total: 1,
-  page: 1,
-  pageSize: 20,
 }
 
 const builtinIconsResponse: BuiltinIconListResponse = {
@@ -82,8 +80,6 @@ const builtinIconsResponse: BuiltinIconListResponse = {
 const emptyCustomIconSetsResponse: CustomIconSetListResponse = {
   list: [],
   total: 0,
-  page: 1,
-  pageSize: 20,
 }
 
 const emptyCustomIconsResponse: CustomIconListResponse = {
@@ -105,8 +101,6 @@ const customIconSetsResponse: CustomIconSetListResponse = {
     },
   ],
   total: 1,
-  page: 1,
-  pageSize: 20,
 }
 
 const customIconsResponse: CustomIconListResponse = {
@@ -126,6 +120,22 @@ const customIconsResponse: CustomIconListResponse = {
   total: 1,
   page: 1,
   pageSize: 80,
+}
+
+function setElementScrollMetrics(
+  element: Element,
+  metrics: {
+    scrollTop: number
+    clientHeight: number
+    scrollHeight: number
+  },
+) {
+  for (const [key, value] of Object.entries(metrics)) {
+    Object.defineProperty(element, key, {
+      configurable: true,
+      value,
+    })
+  }
 }
 
 async function mountIconSetsPage(nextSession: AuthTokenResponse = authSession) {
@@ -193,10 +203,52 @@ describe('icon sets page', () => {
     expect(listCustomIconSetsMock).toHaveBeenCalled()
     expect(listCustomIconsMock).toHaveBeenCalled()
 
-    await wrapper.get('[data-test="custom-icon-set-create"]').trigger('click')
+    const createButton = wrapper.get('[data-test="custom-icon-set-create"]')
+    await createButton.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('创建图标集')
+    expect(document.body.textContent).toContain('创建图标集')
+  })
+
+  it('loads the next built-in icon page when the icon grid scrolls near the bottom', async () => {
+    listBuiltinIconsMock
+      .mockResolvedValueOnce({
+        ...builtinIconsResponse,
+        total: 81,
+      })
+      .mockResolvedValueOnce({
+        ...builtinIconsResponse,
+        list: [
+          {
+            icon: 'lucide:moon',
+            prefix: 'lucide',
+            name: 'moon',
+            setName: 'Lucide',
+            body: '<path d="M12 3a9 9 0 1 0 9 9" />',
+            width: 24,
+            height: 24,
+          },
+        ],
+        total: 81,
+        page: 2,
+      })
+
+    const { wrapper } = await mountIconSetsPage()
+    await flushPromises()
+
+    const scrollPanel = wrapper.get('[data-test="builtin-icon-scroll"] .n-scrollbar-container')
+    setElementScrollMetrics(scrollPanel.element, {
+      scrollTop: 900,
+      clientHeight: 300,
+      scrollHeight: 1100,
+    })
+
+    await scrollPanel.trigger('scroll')
+    await flushPromises()
+
+    expect(listBuiltinIconsMock).toHaveBeenLastCalledWith({ page: 2, pageSize: 80 })
+    expect(wrapper.get('[data-test="icon-grid-item"]').text()).toContain('sun')
+    expect(wrapper.text()).toContain('moon')
   })
 
   it('hides custom icon rename and delete actions without update or delete permission', async () => {

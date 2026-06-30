@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, type HTMLAttributes } from 'vue'
 import { watchDebounced } from '@vueuse/core'
-import { useQuery, useQueryCache } from '@pinia/colada'
+import { useInfiniteQuery, useQuery, useQueryCache } from '@pinia/colada'
 import type { ButtonProps } from 'naive-ui'
 import {
   NAlert,
@@ -9,12 +9,13 @@ import {
   NEmpty,
   NForm,
   NFormItem,
+  NInfiniteScroll,
   NInput,
   NModal,
-  NPagination,
   NSpin,
   NTabPane,
   NTabs,
+  NTooltip,
   useDialog,
   useMessage,
 } from 'naive-ui'
@@ -59,13 +60,13 @@ const activeTab = ref<IconSetsTab>('builtin')
 const builtinTabProps = { 'data-test': 'icon-sets-tab-builtin' } as unknown as HTMLAttributes
 const customTabProps = { 'data-test': 'icon-sets-tab-custom' } as unknown as HTMLAttributes
 const filterDebounceMs = 250
+const iconScrollLoadOffset = 160
 
 const builtinSetKeyword = ref('')
 const builtinIconKeyword = ref('')
 const builtinSetQuery = ref<IconSetListQuery>({
-  page: 1,
-  pageSize: 20,
-} as IconSetListQuery)
+  keyword: undefined,
+})
 const builtinIconQuery = ref<IconSetIconListQuery>({
   page: 1,
   pageSize: 80,
@@ -75,9 +76,8 @@ const selectedBuiltinPrefix = ref<string | null>(null)
 const customSetKeyword = ref('')
 const customIconKeyword = ref('')
 const customSetQuery = ref<IconSetListQuery>({
-  page: 1,
-  pageSize: 20,
-} as IconSetListQuery)
+  keyword: undefined,
+})
 const customIconQuery = ref<IconSetIconListQuery>({
   page: 1,
   pageSize: 80,
@@ -94,26 +94,10 @@ const isRenamingIcon = ref(false)
 const emptyBuiltinSetsData: BuiltinIconSetListResponse = {
   list: [],
   total: 0,
-  page: 1,
-  pageSize: builtinSetQuery.value.pageSize,
-}
-const emptyBuiltinIconsData: BuiltinIconListResponse = {
-  list: [],
-  total: 0,
-  page: 1,
-  pageSize: builtinIconQuery.value.pageSize,
 }
 const emptyCustomSetsData: CustomIconSetListResponse = {
   list: [],
   total: 0,
-  page: 1,
-  pageSize: customSetQuery.value.pageSize,
-}
-const emptyCustomIconsData: CustomIconListResponse = {
-  list: [],
-  total: 0,
-  page: 1,
-  pageSize: customIconQuery.value.pageSize,
 }
 
 const {
@@ -121,38 +105,10 @@ const {
   error: builtinSetsError,
   isLoading: isLoadingBuiltinSets,
 } = useQuery({
-  key: () => [
-    'content',
-    'icon-sets',
-    'builtin',
-    'sets',
-    builtinSetQuery.value.page,
-    builtinSetQuery.value.pageSize,
-    builtinSetQuery.value.keyword ?? '',
-  ],
+  key: () => ['content', 'icon-sets', 'builtin', 'sets', builtinSetQuery.value.keyword ?? ''],
   enabled: () => activeTab.value === 'builtin',
   placeholderData: () => emptyBuiltinSetsData,
   query: () => listBuiltinIconSets(builtinSetQuery.value),
-})
-
-const {
-  data: builtinIconsResponse,
-  error: builtinIconsError,
-  isLoading: isLoadingBuiltinIcons,
-} = useQuery({
-  key: () => [
-    'content',
-    'icon-sets',
-    'builtin',
-    'icons',
-    builtinIconQuery.value.page,
-    builtinIconQuery.value.pageSize,
-    builtinIconQuery.value.keyword ?? '',
-    builtinIconQuery.value.prefix ?? '',
-  ],
-  enabled: () => activeTab.value === 'builtin',
-  placeholderData: () => emptyBuiltinIconsData,
-  query: () => listBuiltinIcons(builtinIconQuery.value),
 })
 
 const {
@@ -160,44 +116,74 @@ const {
   error: customSetsError,
   isLoading: isLoadingCustomSets,
 } = useQuery({
-  key: () => [
-    'content',
-    'icon-sets',
-    'custom',
-    'sets',
-    customSetQuery.value.page,
-    customSetQuery.value.pageSize,
-    customSetQuery.value.keyword ?? '',
-  ],
+  key: () => ['content', 'icon-sets', 'custom', 'sets', customSetQuery.value.keyword ?? ''],
   enabled: () => activeTab.value === 'custom',
   placeholderData: () => emptyCustomSetsData,
   query: () => listCustomIconSets(customSetQuery.value),
 })
 
 const {
+  data: builtinIconsResponse,
+  error: builtinIconsError,
+  isLoading: isLoadingBuiltinIcons,
+  hasNextPage: hasNextBuiltinIconPage,
+  loadNextPage: loadNextBuiltinIconPage,
+} = useInfiniteQuery<BuiltinIconListResponse, Error, number>({
+  key: () => [
+    'content',
+    'icon-sets',
+    'builtin',
+    'icons',
+    builtinIconQuery.value.pageSize,
+    builtinIconQuery.value.keyword ?? '',
+    builtinIconQuery.value.prefix ?? '',
+  ],
+  enabled: () => activeTab.value === 'builtin',
+  initialPageParam: 1,
+  query: ({ pageParam }) =>
+    listBuiltinIcons({
+      ...builtinIconQuery.value,
+      page: pageParam,
+    }),
+  getNextPageParam: (lastPage) =>
+    lastPage.page * lastPage.pageSize >= lastPage.total ? null : lastPage.page + 1,
+})
+
+const {
   data: customIconsResponse,
   error: customIconsError,
   isLoading: isLoadingCustomIcons,
-} = useQuery({
+  hasNextPage: hasNextCustomIconPage,
+  loadNextPage: loadNextCustomIconPage,
+} = useInfiniteQuery<CustomIconListResponse, Error, number>({
   key: () => [
     'content',
     'icon-sets',
     'custom',
     'icons',
-    customIconQuery.value.page,
     customIconQuery.value.pageSize,
     customIconQuery.value.keyword ?? '',
     customIconQuery.value.prefix ?? '',
   ],
   enabled: () => activeTab.value === 'custom',
-  placeholderData: () => emptyCustomIconsData,
-  query: () => listCustomIcons(customIconQuery.value),
+  initialPageParam: 1,
+  query: ({ pageParam }) =>
+    listCustomIcons({
+      ...customIconQuery.value,
+      page: pageParam,
+    }),
+  getNextPageParam: (lastPage) =>
+    lastPage.page * lastPage.pageSize >= lastPage.total ? null : lastPage.page + 1,
 })
 
 const builtinSetsData = computed(() => builtinSetsResponse.value ?? emptyBuiltinSetsData)
-const builtinIconsData = computed(() => builtinIconsResponse.value ?? emptyBuiltinIconsData)
+const builtinIcons = computed(() =>
+  (builtinIconsResponse.value?.pages ?? []).flatMap((page) => page.list),
+)
 const customSetsData = computed(() => customSetsResponse.value ?? emptyCustomSetsData)
-const customIconsData = computed(() => customIconsResponse.value ?? emptyCustomIconsData)
+const customIcons = computed(() =>
+  (customIconsResponse.value?.pages ?? []).flatMap((page) => page.list),
+)
 const selectedBuiltinSet = computed(
   () =>
     builtinSetsData.value.list.find((iconSet) => iconSet.prefix === selectedBuiltinPrefix.value) ??
@@ -210,6 +196,14 @@ const selectedCustomSet = computed(
 )
 const canRenameCustomIcon = computed(() => auth.can('content:icon-set:update'))
 const canDeleteCustomIcon = computed(() => auth.can('content:icon-set:delete'))
+const builtinIconPanelKey = computed(
+  () =>
+    `${builtinIconQuery.value.prefix ?? '__all__'}:${builtinIconQuery.value.keyword ?? ''}:${builtinIconQuery.value.pageSize}`,
+)
+const customIconPanelKey = computed(
+  () =>
+    `${customIconQuery.value.prefix ?? '__all__'}:${customIconQuery.value.keyword ?? ''}:${customIconQuery.value.pageSize}`,
+)
 
 const builtinSetErrorMessage = computed(() =>
   builtinSetsError.value === null
@@ -232,14 +226,12 @@ const customIconErrorMessage = computed(() =>
     : getErrorMessage(customIconsError.value, '加载自定义图标失败'),
 )
 
-function toSetQuery(keyword: string, pageSize: number): IconSetListQuery {
+function toSetQuery(keyword: string): IconSetListQuery {
   const nextKeyword = keyword.trim()
 
   return {
-    page: 1,
-    pageSize,
-    ...(nextKeyword.length > 0 ? { keyword: nextKeyword } : {}),
-  } as IconSetListQuery
+    keyword: nextKeyword.length > 0 ? nextKeyword : undefined,
+  }
 }
 
 function toIconQuery(
@@ -257,8 +249,7 @@ function toIconQuery(
   } as IconSetIconListQuery
 }
 
-function selectBuiltinSet(iconSet: BuiltinIconSetItem | null) {
-  selectedBuiltinPrefix.value = iconSet?.prefix ?? null
+function updateBuiltinIconQuery() {
   builtinIconQuery.value = toIconQuery(
     builtinIconKeyword.value,
     builtinIconQuery.value.pageSize,
@@ -266,48 +257,7 @@ function selectBuiltinSet(iconSet: BuiltinIconSetItem | null) {
   )
 }
 
-watchDebounced(
-  builtinSetKeyword,
-  () => {
-    builtinSetQuery.value = toSetQuery(builtinSetKeyword.value, builtinSetQuery.value.pageSize)
-  },
-  { debounce: filterDebounceMs },
-)
-
-watchDebounced(
-  builtinIconKeyword,
-  () => {
-    builtinIconQuery.value = toIconQuery(
-      builtinIconKeyword.value,
-      builtinIconQuery.value.pageSize,
-      selectedBuiltinPrefix.value,
-    )
-  },
-  { debounce: filterDebounceMs },
-)
-
-watchDebounced(
-  customSetKeyword,
-  () => {
-    customSetQuery.value = toSetQuery(customSetKeyword.value, customSetQuery.value.pageSize)
-  },
-  { debounce: filterDebounceMs },
-)
-
-watchDebounced(
-  customIconKeyword,
-  () => {
-    customIconQuery.value = toIconQuery(
-      customIconKeyword.value,
-      customIconQuery.value.pageSize,
-      selectedCustomPrefix.value,
-    )
-  },
-  { debounce: filterDebounceMs },
-)
-
-function selectCustomSet(iconSet: CustomIconSet | null) {
-  selectedCustomPrefix.value = iconSet?.prefix ?? null
+function updateCustomIconQuery() {
   customIconQuery.value = toIconQuery(
     customIconKeyword.value,
     customIconQuery.value.pageSize,
@@ -315,9 +265,67 @@ function selectCustomSet(iconSet: CustomIconSet | null) {
   )
 }
 
+async function loadMoreBuiltinIcons() {
+  if (isLoadingBuiltinIcons.value || !hasNextBuiltinIconPage.value) {
+    return
+  }
+
+  await loadNextBuiltinIconPage({ cancelRefetch: false })
+}
+
+async function loadMoreCustomIcons() {
+  if (isLoadingCustomIcons.value || !hasNextCustomIconPage.value) {
+    return
+  }
+
+  await loadNextCustomIconPage({ cancelRefetch: false })
+}
+
+function selectBuiltinSet(iconSet: BuiltinIconSetItem | null) {
+  selectedBuiltinPrefix.value = iconSet?.prefix ?? null
+  updateBuiltinIconQuery()
+}
+
+watchDebounced(
+  builtinSetKeyword,
+  () => {
+    builtinSetQuery.value = toSetQuery(builtinSetKeyword.value)
+  },
+  { debounce: filterDebounceMs },
+)
+
+watchDebounced(
+  builtinIconKeyword,
+  () => {
+    updateBuiltinIconQuery()
+  },
+  { debounce: filterDebounceMs },
+)
+
+watchDebounced(
+  customSetKeyword,
+  () => {
+    customSetQuery.value = toSetQuery(customSetKeyword.value)
+  },
+  { debounce: filterDebounceMs },
+)
+
+watchDebounced(
+  customIconKeyword,
+  () => {
+    updateCustomIconQuery()
+  },
+  { debounce: filterDebounceMs },
+)
+
+function selectCustomSet(iconSet: CustomIconSet | null) {
+  selectedCustomPrefix.value = iconSet?.prefix ?? null
+  updateCustomIconQuery()
+}
+
 async function invalidateCustomIconSetQueries() {
   await queryCache.invalidateQueries({
-    key: ['content', 'icon-sets', 'custom'],
+    key: ['content', 'icon-sets', 'custom', 'sets'],
   })
 }
 
@@ -344,13 +352,10 @@ function openEditCustomSetDrawer(iconSet: CustomIconSet) {
 
 async function handleCustomSetSaved(iconSet: CustomIconSet) {
   selectedCustomPrefix.value = iconSet.prefix
-  customIconQuery.value = toIconQuery(
-    customIconKeyword.value,
-    customIconQuery.value.pageSize,
-    selectedCustomPrefix.value,
-  )
+  updateCustomIconQuery()
   message.success('保存图标集成功')
   await invalidateCustomIconSetQueries()
+  await invalidateCustomIconQueries()
 }
 
 function openUploadDrawer() {
@@ -380,6 +385,7 @@ function downloadFile(blob: Blob, filename: string) {
 async function handleIconsUploaded() {
   message.success('上传图标成功')
   await invalidateCustomIconSetQueries()
+  await invalidateCustomIconQueries()
 }
 
 async function exportSelectedCustomSet() {
@@ -415,15 +421,12 @@ function confirmDeleteCustomSet(iconSet: CustomIconSet) {
 
         if (selectedCustomPrefix.value === iconSet.prefix) {
           selectedCustomPrefix.value = null
-          customIconQuery.value = toIconQuery(
-            customIconKeyword.value,
-            customIconQuery.value.pageSize,
-            null,
-          )
         }
 
         message.success('删除图标集成功')
         await invalidateCustomIconSetQueries()
+        updateCustomIconQuery()
+        await invalidateCustomIconQueries()
       } catch (error) {
         message.error(getErrorMessage(error, '删除图标集失败'))
         return false
@@ -478,6 +481,7 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
 
         message.success('删除图标成功')
         await invalidateCustomIconSetQueries()
+        await invalidateCustomIconQueries()
       } catch (error) {
         message.error(getErrorMessage(error, '删除图标失败'))
         return false
@@ -488,7 +492,7 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
 </script>
 
 <template>
-  <main class="space-y-5">
+  <main>
     <header>
       <h1 class="text-xl font-semibold">{{ pageTitle }}</h1>
     </header>
@@ -499,9 +503,11 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
           <NAlert v-if="builtinSetErrorMessage" type="error">{{ builtinSetErrorMessage }}</NAlert>
           <NAlert v-if="builtinIconErrorMessage" type="error">{{ builtinIconErrorMessage }}</NAlert>
 
-          <section class="grid gap-5 xl:grid-cols-[16rem_minmax(0,1fr)]">
+          <section
+            class="grid min-h-0 gap-5 xl:h-[calc(100vh-12rem)] xl:grid-cols-[15rem_minmax(0,1fr)]"
+          >
             <aside
-              class="space-y-3 rounded-ui border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
+              class="flex max-h-[calc(100vh-12rem)] min-h-0 flex-col gap-2 rounded-ui border border-stone-200 bg-white p-3 xl:h-full xl:max-h-none dark:border-zinc-800 dark:bg-zinc-900"
             >
               <div class="flex items-center justify-between gap-3">
                 <div>
@@ -521,62 +527,55 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                 placeholder="筛选图标集"
               />
 
-              <NSpin :show="isLoadingBuiltinSets">
-                <div class="space-y-1">
-                  <button
-                    type="button"
-                    class="w-full rounded-md px-3 py-2 text-left transition-colors"
-                    :class="
-                      selectedBuiltinPrefix === null
-                        ? 'bg-primary/5 text-primary'
-                        : 'text-stone-700 hover:bg-stone-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
-                    "
-                    @click="selectBuiltinSet(null)"
-                  >
-                    <div class="truncate text-sm font-medium">全部内置</div>
-                    <div class="mt-0.5 text-xs text-stone-500 dark:text-zinc-400">
-                      {{ builtinSetsData.total }} 个图标集
-                    </div>
-                  </button>
+              <div class="min-h-0 flex-1 overflow-y-auto pr-1">
+                <NSpin :show="isLoadingBuiltinSets">
+                  <div class="space-y-0.5">
+                    <button
+                      type="button"
+                      class="w-full rounded-ui px-2.5 py-1.5 text-left transition-colors"
+                      :class="
+                        selectedBuiltinPrefix === null
+                          ? 'bg-primary/5 text-primary'
+                          : 'text-stone-700 hover:bg-stone-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
+                      "
+                      @click="selectBuiltinSet(null)"
+                    >
+                      <div class="truncate text-sm font-medium">全部内置</div>
+                      <div class="mt-0.5 text-xs text-stone-500 dark:text-zinc-400">
+                        {{ builtinSetsData.total }} 个图标集
+                      </div>
+                    </button>
 
-                  <button
-                    v-for="iconSet in builtinSetsData.list"
-                    :key="iconSet.prefix"
-                    data-test="builtin-icon-set"
-                    type="button"
-                    class="w-full rounded-md px-3 py-2 text-left transition-colors"
-                    :class="
-                      selectedBuiltinPrefix === iconSet.prefix
-                        ? 'bg-primary/5'
-                        : 'hover:bg-stone-50 dark:hover:bg-zinc-800'
-                    "
-                    @click="selectBuiltinSet(iconSet)"
-                  >
-                    <div class="truncate text-sm font-medium text-stone-900 dark:text-zinc-100">
-                      {{ iconSet.name }}
-                    </div>
-                    <div class="mt-0.5 text-xs text-stone-500 dark:text-zinc-400">
-                      {{ iconSet.total }} 个图标
-                    </div>
-                  </button>
-
-                  <NEmpty v-if="builtinSetsData.list.length === 0" size="small" />
-                </div>
-              </NSpin>
-
-              <div class="flex justify-end">
-                <NPagination
-                  v-model:page="builtinSetQuery.page"
-                  :page-size="builtinSetQuery.pageSize"
-                  :item-count="builtinSetsData.total"
-                  size="small"
-                />
+                    <button
+                      v-for="iconSet in builtinSetsData.list"
+                      :key="iconSet.prefix"
+                      data-test="builtin-icon-set"
+                      type="button"
+                      class="w-full rounded-ui px-2.5 py-1.5 text-left transition-colors"
+                      :class="
+                        selectedBuiltinPrefix === iconSet.prefix
+                          ? 'bg-primary/5'
+                          : 'hover:bg-stone-50 dark:hover:bg-zinc-800'
+                      "
+                      @click="selectBuiltinSet(iconSet)"
+                    >
+                      <div class="truncate text-sm font-medium text-stone-900 dark:text-zinc-100">
+                        {{ iconSet.name }}
+                      </div>
+                      <div class="mt-0.5 text-xs text-stone-500 dark:text-zinc-400">
+                        {{ iconSet.total }} 个图标
+                      </div>
+                    </button>
+                  </div>
+                </NSpin>
               </div>
             </aside>
 
-            <section class="min-w-0 space-y-4">
+            <section
+              class="flex min-h-0 flex-col rounded-ui border border-stone-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+            >
               <div
-                class="flex flex-col gap-3 rounded-ui border border-stone-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900"
+                class="flex shrink-0 flex-col gap-3 border-b border-stone-100 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800"
               >
                 <div>
                   <div class="text-sm font-medium text-stone-900 dark:text-zinc-100">内置图标</div>
@@ -599,24 +598,33 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                 />
               </div>
 
-              <NSpin :show="isLoadingBuiltinIcons">
-                <IconGrid
-                  v-if="builtinIconsData.list.length > 0"
-                  :icons="builtinIconsData.list"
-                  :editable="false"
-                  :show-set-name="selectedBuiltinPrefix === null"
-                  @copy="copyIcon"
-                />
-                <NEmpty v-else />
-              </NSpin>
+              <NInfiniteScroll
+                :key="builtinIconPanelKey"
+                data-test="builtin-icon-scroll"
+                class="min-h-0 flex-1"
+                :distance="iconScrollLoadOffset"
+                :scrollbar-props="{ contentClass: 'p-4' }"
+                @load="loadMoreBuiltinIcons"
+              >
+                <NSpin :show="isLoadingBuiltinIcons && builtinIcons.length === 0">
+                  <IconGrid
+                    v-if="builtinIcons.length > 0"
+                    :icons="builtinIcons"
+                    :editable="false"
+                    :show-set-name="selectedBuiltinPrefix === null"
+                    @copy="copyIcon"
+                  />
+                  <NEmpty v-else-if="!isLoadingBuiltinIcons" />
+                  <div v-else class="h-40" />
+                </NSpin>
 
-              <div class="flex justify-end">
-                <NPagination
-                  v-model:page="builtinIconQuery.page"
-                  :page-size="builtinIconQuery.pageSize"
-                  :item-count="builtinIconsData.total"
-                />
-              </div>
+                <div
+                  v-if="isLoadingBuiltinIcons && builtinIcons.length > 0"
+                  class="flex justify-center py-4"
+                >
+                  <NSpin size="small" />
+                </div>
+              </NInfiniteScroll>
             </section>
           </section>
         </div>
@@ -627,9 +635,11 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
           <NAlert v-if="customSetErrorMessage" type="error">{{ customSetErrorMessage }}</NAlert>
           <NAlert v-if="customIconErrorMessage" type="error">{{ customIconErrorMessage }}</NAlert>
 
-          <section class="grid gap-5 xl:grid-cols-[16rem_minmax(0,1fr)]">
+          <section
+            class="grid min-h-0 gap-5 xl:h-[calc(100vh-12rem)] xl:grid-cols-[15rem_minmax(0,1fr)]"
+          >
             <aside
-              class="space-y-3 rounded-ui border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
+              class="flex max-h-[calc(100vh-12rem)] min-h-0 flex-col gap-2 rounded-ui border border-stone-200 bg-white p-3 xl:h-full xl:max-h-none dark:border-zinc-800 dark:bg-zinc-900"
             >
               <div class="flex items-center justify-between gap-3">
                 <div>
@@ -647,7 +657,10 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                   size="small"
                   @click="openCreateCustomSetDrawer"
                 >
-                  创建图标集
+                  <template #icon>
+                    <span class="i-[lucide--plus]" aria-hidden="true" />
+                  </template>
+                  创建
                 </NButton>
               </div>
 
@@ -658,87 +671,97 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                 placeholder="筛选图标集"
               />
 
-              <NSpin :show="isLoadingCustomSets">
-                <div class="space-y-1">
-                  <button
-                    type="button"
-                    class="w-full rounded-md px-3 py-2 text-left transition-colors"
-                    :class="
-                      selectedCustomPrefix === null
-                        ? 'bg-primary/5 text-primary'
-                        : 'text-stone-700 hover:bg-stone-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
-                    "
-                    @click="selectCustomSet(null)"
-                  >
-                    <div class="truncate text-sm font-medium">全部自定义</div>
-                    <div class="mt-0.5 text-xs text-stone-500 dark:text-zinc-400">
-                      {{ customSetsData.total }} 个图标集
-                    </div>
-                  </button>
-
-                  <div
-                    v-for="iconSet in customSetsData.list"
-                    :key="iconSet.prefix"
-                    class="rounded-md transition-colors"
-                    :class="
-                      selectedCustomPrefix === iconSet.prefix
-                        ? 'bg-primary/5'
-                        : 'hover:bg-stone-50 dark:hover:bg-zinc-800'
-                    "
-                  >
+              <div class="min-h-0 flex-1 overflow-y-auto pr-1">
+                <NSpin :show="isLoadingCustomSets">
+                  <div class="space-y-0.5">
                     <button
                       type="button"
-                      data-test="custom-icon-set"
-                      class="w-full px-3 pt-2 text-left"
-                      @click="selectCustomSet(iconSet)"
+                      class="w-full rounded-ui px-2.5 py-1.5 text-left transition-colors"
+                      :class="
+                        selectedCustomPrefix === null
+                          ? 'bg-primary/5 text-primary'
+                          : 'text-stone-700 hover:bg-stone-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
+                      "
+                      @click="selectCustomSet(null)"
                     >
-                      <div class="truncate text-sm font-medium text-stone-900 dark:text-zinc-100">
-                        {{ iconSet.name }}
-                      </div>
-                      <div class="mt-0.5 truncate text-xs text-stone-500 dark:text-zinc-400">
-                        {{ iconSet.iconCount }} 个图标 / {{ iconSet.prefix }}
+                      <div class="truncate text-sm font-medium">全部自定义</div>
+                      <div class="mt-0.5 text-xs text-stone-500 dark:text-zinc-400">
+                        {{ customSetsData.total }} 个图标集
                       </div>
                     </button>
 
-                    <div class="flex items-center gap-2 px-3 pt-0.5 pb-2">
-                      <NButton
-                        v-can="'content:icon-set:update'"
-                        text
-                        size="tiny"
-                        type="primary"
-                        @click.stop="openEditCustomSetDrawer(iconSet)"
-                      >
-                        编辑
-                      </NButton>
-                      <NButton
-                        v-can="'content:icon-set:delete'"
-                        text
-                        size="tiny"
-                        type="error"
-                        @click.stop="confirmDeleteCustomSet(iconSet)"
-                      >
-                        删除
-                      </NButton>
+                    <div
+                      v-for="iconSet in customSetsData.list"
+                      :key="iconSet.prefix"
+                      class="rounded-ui px-2.5 py-1.5 transition-colors"
+                      :class="
+                        selectedCustomPrefix === iconSet.prefix
+                          ? 'bg-primary/5'
+                          : 'hover:bg-stone-50 dark:hover:bg-zinc-800'
+                      "
+                    >
+                      <div class="flex min-w-0 items-start justify-between gap-1">
+                        <button
+                          type="button"
+                          data-test="custom-icon-set"
+                          class="min-w-0 flex-1 text-left"
+                          @click="selectCustomSet(iconSet)"
+                        >
+                          <div
+                            class="truncate text-sm font-medium text-stone-900 dark:text-zinc-100"
+                          >
+                            {{ iconSet.name }}
+                          </div>
+                          <div class="mt-0.5 truncate text-xs text-stone-500 dark:text-zinc-400">
+                            {{ iconSet.iconCount }} 个图标 / {{ iconSet.prefix }}
+                          </div>
+                        </button>
+
+                        <div class="flex shrink-0 items-center">
+                          <NTooltip trigger="hover">
+                            <template #trigger>
+                              <NButton
+                                v-can="'content:icon-set:update'"
+                                quaternary
+                                circle
+                                size="tiny"
+                                aria-label="编辑图标集"
+                                @click.stop="openEditCustomSetDrawer(iconSet)"
+                              >
+                                <span class="i-[lucide--pencil-line] text-xs" aria-hidden="true" />
+                              </NButton>
+                            </template>
+                            编辑
+                          </NTooltip>
+
+                          <NTooltip trigger="hover">
+                            <template #trigger>
+                              <NButton
+                                v-can="'content:icon-set:delete'"
+                                quaternary
+                                circle
+                                size="tiny"
+                                aria-label="删除图标集"
+                                @click.stop="confirmDeleteCustomSet(iconSet)"
+                              >
+                                <span class="i-[lucide--trash-2] text-xs" aria-hidden="true" />
+                              </NButton>
+                            </template>
+                            删除
+                          </NTooltip>
+                        </div>
+                      </div>
                     </div>
                   </div>
-
-                  <NEmpty v-if="customSetsData.list.length === 0" size="small" />
-                </div>
-              </NSpin>
-
-              <div class="flex justify-end">
-                <NPagination
-                  v-model:page="customSetQuery.page"
-                  :page-size="customSetQuery.pageSize"
-                  :item-count="customSetsData.total"
-                  size="small"
-                />
+                </NSpin>
               </div>
             </aside>
 
-            <section class="min-w-0 space-y-4">
+            <section
+              class="flex min-h-0 flex-col rounded-ui border border-stone-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+            >
               <div
-                class="flex flex-col gap-3 rounded-ui border border-stone-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between dark:border-zinc-800 dark:bg-zinc-900"
+                class="flex shrink-0 flex-col gap-3 border-b border-stone-100 p-4 lg:flex-row lg:items-center lg:justify-between dark:border-zinc-800"
               >
                 <div>
                   <div class="text-sm font-medium text-stone-900 dark:text-zinc-100">
@@ -752,7 +775,7 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                   </div>
                 </div>
 
-                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
                   <NInput
                     v-model:value="customIconKeyword"
                     data-test="custom-icon-filter"
@@ -760,47 +783,68 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                     placeholder="筛选图标"
                     class="w-full sm:w-72!"
                   />
-                  <NButton
-                    v-can="'content:icon-set:create'"
-                    data-test="custom-icon-set-upload"
-                    :disabled="selectedCustomPrefix === null"
-                    @click="openUploadDrawer"
+                  <div
+                    class="flex items-center gap-1 sm:border-l sm:border-stone-200 sm:pl-2 dark:sm:border-zinc-800"
                   >
-                    上传 SVG
-                  </NButton>
-                  <NButton
-                    v-can="'content:icon-set:export'"
-                    data-test="custom-icon-set-export"
-                    :disabled="selectedCustomPrefix === null"
-                    @click="exportSelectedCustomSet"
-                  >
-                    导出 JSON
-                  </NButton>
+                    <NButton
+                      v-can="'content:icon-set:create'"
+                      data-test="custom-icon-set-upload"
+                      type="primary"
+                      :disabled="selectedCustomPrefix === null"
+                      @click="openUploadDrawer"
+                    >
+                      <template #icon>
+                        <span class="i-[lucide--upload]" aria-hidden="true" />
+                      </template>
+                      上传
+                    </NButton>
+                    <NButton
+                      v-can="'content:icon-set:export'"
+                      data-test="custom-icon-set-export"
+                      tertiary
+                      :disabled="selectedCustomPrefix === null"
+                      @click="exportSelectedCustomSet"
+                    >
+                      <template #icon>
+                        <span class="i-[lucide--download]" aria-hidden="true" />
+                      </template>
+                      导出
+                    </NButton>
+                  </div>
                 </div>
               </div>
 
-              <NSpin :show="isLoadingCustomIcons">
-                <IconGrid
-                  v-if="customIconsData.list.length > 0"
-                  :icons="customIconsData.list"
-                  :editable="true"
-                  :show-set-name="selectedCustomPrefix === null"
-                  :can-rename="canRenameCustomIcon"
-                  :can-delete="canDeleteCustomIcon"
-                  @copy="copyIcon"
-                  @rename="openRenameIconModal"
-                  @delete="confirmDeleteCustomIcon"
-                />
-                <NEmpty v-else />
-              </NSpin>
+              <NInfiniteScroll
+                :key="customIconPanelKey"
+                data-test="custom-icon-scroll"
+                class="min-h-0 flex-1"
+                :distance="iconScrollLoadOffset"
+                :scrollbar-props="{ contentClass: 'p-4' }"
+                @load="loadMoreCustomIcons"
+              >
+                <NSpin :show="isLoadingCustomIcons && customIcons.length === 0">
+                  <IconGrid
+                    v-if="customIcons.length > 0"
+                    :icons="customIcons"
+                    :editable="true"
+                    :show-set-name="selectedCustomPrefix === null"
+                    :can-rename="canRenameCustomIcon"
+                    :can-delete="canDeleteCustomIcon"
+                    @copy="copyIcon"
+                    @rename="openRenameIconModal"
+                    @delete="confirmDeleteCustomIcon"
+                  />
+                  <NEmpty v-else-if="!isLoadingCustomIcons" />
+                  <div v-else class="h-40" />
+                </NSpin>
 
-              <div class="flex justify-end">
-                <NPagination
-                  v-model:page="customIconQuery.page"
-                  :page-size="customIconQuery.pageSize"
-                  :item-count="customIconsData.total"
-                />
-              </div>
+                <div
+                  v-if="isLoadingCustomIcons && customIcons.length > 0"
+                  class="flex justify-center py-4"
+                >
+                  <NSpin size="small" />
+                </div>
+              </NInfiniteScroll>
             </section>
           </section>
         </div>

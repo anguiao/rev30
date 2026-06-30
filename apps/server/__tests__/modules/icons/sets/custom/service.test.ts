@@ -36,7 +36,7 @@ describe('custom icon set service', () => {
       iconCount: 0,
     })
 
-    const list = await service.list({ keyword: undefined, page: 1, pageSize: 20 })
+    const list = await service.list({ keyword: undefined })
 
     expect(list.total).toBe(1)
     expect(list.list[0]).toMatchObject({
@@ -58,9 +58,7 @@ describe('custom icon set service', () => {
 
     await service.delete('acme')
     await expect(service.get('acme')).rejects.toBeInstanceOf(CustomIconSetNotFoundError)
-    await expect(
-      service.list({ keyword: undefined, page: 1, pageSize: 20 }),
-    ).resolves.toMatchObject({
+    await expect(service.list({ keyword: undefined })).resolves.toMatchObject({
       total: 0,
       list: [],
     })

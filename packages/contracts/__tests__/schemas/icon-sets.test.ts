@@ -24,8 +24,6 @@ describe('icon set schemas', () => {
   it('parses icon set list query defaults', () => {
     expect(iconSetListQuerySchema.parse({})).toEqual({
       keyword: undefined,
-      page: 1,
-      pageSize: 20,
     })
   })
 
@@ -103,8 +101,6 @@ describe('icon set schemas', () => {
           },
         ],
         total: 1,
-        page: 1,
-        pageSize: 20,
       }),
     ).toEqual({
       list: [
@@ -115,8 +111,6 @@ describe('icon set schemas', () => {
         },
       ],
       total: 1,
-      page: 1,
-      pageSize: 20,
     })
 
     expect(
@@ -186,8 +180,6 @@ describe('icon set schemas', () => {
           },
         ],
         total: 1,
-        page: 1,
-        pageSize: 20,
       }),
     ).toEqual({
       list: [
@@ -201,8 +193,6 @@ describe('icon set schemas', () => {
         },
       ],
       total: 1,
-      page: 1,
-      pageSize: 20,
     })
 
     expect(

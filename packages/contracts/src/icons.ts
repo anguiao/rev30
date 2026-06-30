@@ -70,7 +70,6 @@ export const iconSearchResponseSchema = z.object({
 const iconSetPrefixPattern = new RegExp(`^${iconifyIconNamePartPatternSource}$`)
 const iconSetKeywordMaxLength = 120
 const iconSetPageSizeMax = 100
-const iconSetListPageSizeDefault = 20
 const iconSetIconPageSizeDefault = 80
 const customIconSetNameMaxLength = 80
 const customIconSetDescriptionMaxLength = 300
@@ -105,12 +104,11 @@ const iconSetKeywordSchema = z
 
 const iconSetListQueryBaseSchema = z.object({
   keyword: iconSetKeywordSchema,
-  page: pageSchema(1),
-  pageSize: pageSizeSchema(iconSetListPageSizeDefault),
 })
 
 const iconSetIconListQueryBaseSchema = iconSetListQueryBaseSchema.extend({
   prefix: iconSetPrefixSchema.optional(),
+  page: pageSchema(1),
   pageSize: pageSizeSchema(iconSetIconPageSizeDefault),
 })
 
@@ -129,13 +127,9 @@ const customIconSetUpdateDescriptionSchema = z
   ])
   .optional()
 
-export const iconSetListQuerySchema = iconSetListQueryBaseSchema.transform(
-  ({ keyword, page, pageSize }) => ({
-    keyword,
-    page,
-    pageSize,
-  }),
-)
+export const iconSetListQuerySchema = iconSetListQueryBaseSchema.transform(({ keyword }) => ({
+  keyword,
+}))
 
 export const iconSetIconListQuerySchema = iconSetIconListQueryBaseSchema.transform(
   ({ keyword, prefix, page, pageSize }) => ({
@@ -163,8 +157,6 @@ export const builtinIconSetItemSchema = z.object({
 export const builtinIconSetListResponseSchema = z.object({
   list: builtinIconSetItemSchema.array(),
   total: z.number().int().min(0),
-  page: z.number().int().min(1),
-  pageSize: z.number().int().min(1),
 })
 
 export const iconSetRenderableIconSchema = z.object({
@@ -196,8 +188,6 @@ export const customIconSetSchema = z.object({
 export const customIconSetListResponseSchema = z.object({
   list: customIconSetSchema.array(),
   total: z.number().int().min(0),
-  page: z.number().int().min(1),
-  pageSize: z.number().int().min(1),
 })
 
 export const customIconItemSchema = iconSetRenderableIconSchema.extend({

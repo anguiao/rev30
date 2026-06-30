@@ -175,10 +175,8 @@ export async function listBuiltinIconSets(
     .sort((left, right) => left.prefix.localeCompare(right.prefix))
 
   return {
-    list: paginate(list, query.page, query.pageSize),
+    list,
     total: list.length,
-    page: query.page,
-    pageSize: query.pageSize,
   }
 }
 

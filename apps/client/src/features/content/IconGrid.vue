@@ -57,7 +57,7 @@ function handleDelete(icon: IconSetRenderableIcon | CustomIconItem) {
       data-test="icon-grid-item"
       :type="editable ? undefined : 'button'"
       :aria-label="editable ? undefined : `复制图标 ${icon.icon}`"
-      class="group w-28 overflow-hidden rounded-md border border-transparent bg-transparent p-2 transition-colors hover:border-primary/60 hover:bg-stone-50 focus-visible:border-primary focus-visible:bg-stone-50 focus-visible:outline-none dark:hover:bg-zinc-900 dark:focus-visible:bg-zinc-900"
+      class="group w-28 overflow-hidden rounded-ui border border-transparent bg-transparent p-2 transition-colors hover:border-primary/60 hover:bg-stone-50 focus-visible:border-primary focus-visible:bg-stone-50 focus-visible:outline-none dark:hover:bg-zinc-900 dark:focus-visible:bg-zinc-900"
       :class="editable ? 'flex h-32 flex-col' : 'flex h-28 flex-col items-center justify-center'"
       @click="editable ? undefined : handleCopy(icon.icon)"
     >

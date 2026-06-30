@@ -80,7 +80,7 @@ async function findActiveIconById(executor: DbReader, id: string): Promise<IconR
 export function createCustomIconSetRepository(database: Db) {
   return {
     async listSets(query: IconSetListQuery) {
-      const { page, pageSize, keyword } = query
+      const { keyword } = query
       const keywordFilter = keyword ? `%${keyword}%` : undefined
       const where = and(
         isNull(customIconSets.deletedAt),
@@ -102,9 +102,7 @@ export function createCustomIconSetRepository(database: Db) {
             desc(customIconSets.updatedAt),
             desc(customIconSets.createdAt),
             asc(customIconSets.prefix),
-          )
-          .limit(pageSize)
-          .offset((page - 1) * pageSize),
+          ),
         database
           .select({
             total: count(),
@@ -122,8 +120,6 @@ export function createCustomIconSetRepository(database: Db) {
       return {
         list,
         total: totalRows[0]?.total ?? 0,
-        page,
-        pageSize,
       }
     },
 

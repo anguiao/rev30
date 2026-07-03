@@ -301,20 +301,23 @@ watch(
             </NFormItem>
           </form.Field>
 
-          <div class="flex justify-end gap-3">
-            <NButton @click="show = false">取消</NButton>
-            <NButton
-              data-test="department-form-submit"
-              type="primary"
-              attr-type="submit"
-              :disabled="isLoading || isSaving || !!loadError"
-              :loading="isSaving"
-            >
-              保存
-            </NButton>
-          </div>
         </NForm>
       </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <NButton @click="show = false">取消</NButton>
+          <NButton
+            data-test="department-form-submit"
+            type="primary"
+            :disabled="isLoading || isSaving || !!loadError"
+            :loading="isSaving"
+            @click="handleSubmit"
+          >
+            保存
+          </NButton>
+        </div>
+      </template>
     </NDrawerContent>
   </NDrawer>
 </template>

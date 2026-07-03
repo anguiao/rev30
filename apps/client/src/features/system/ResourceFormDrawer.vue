@@ -437,20 +437,23 @@ watch(
             </NFormItem>
           </form.Field>
 
-          <div class="flex justify-end gap-3">
-            <NButton @click="show = false">取消</NButton>
-            <NButton
-              data-test="resource-form-submit"
-              type="primary"
-              attr-type="submit"
-              :loading="isSaving"
-              :disabled="isLoading || isSaving || !!loadError"
-            >
-              保存
-            </NButton>
-          </div>
         </NForm>
       </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <NButton @click="show = false">取消</NButton>
+          <NButton
+            data-test="resource-form-submit"
+            type="primary"
+            :loading="isSaving"
+            :disabled="isLoading || isSaving || !!loadError"
+            @click="handleSubmit"
+          >
+            保存
+          </NButton>
+        </div>
+      </template>
     </NDrawerContent>
   </NDrawer>
 </template>

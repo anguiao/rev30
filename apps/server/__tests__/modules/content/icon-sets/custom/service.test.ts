@@ -5,10 +5,10 @@ import {
   CustomIconNotFoundError,
   CustomIconSetConflictError,
   CustomIconSetNotFoundError,
-} from '../../../../../src/modules/icons/sets/custom/errors'
-import { createCustomIconSetRepository } from '../../../../../src/modules/icons/sets/custom/repository'
-import { createCustomIconSetService } from '../../../../../src/modules/icons/sets/custom/service'
-import { parseSvgIcon } from '../../../../../src/modules/icons/sets/custom/svg'
+} from '../../../../../src/modules/content/icon-sets/custom/errors'
+import { createCustomIconSetRepository } from '../../../../../src/modules/content/icon-sets/custom/repository'
+import { createCustomIconSetService } from '../../../../../src/modules/content/icon-sets/custom/service'
+import { parseSvgIcon } from '../../../../../src/modules/content/icon-sets/custom/svg'
 
 function svg(size: number, body: string) {
   return `<svg viewBox="0 0 ${size} ${size}">${body}</svg>`
@@ -169,6 +169,19 @@ describe('custom icon set service', () => {
     expect(exported).toMatchObject({
       prefix: 'acme',
       aliases: {},
+      info: {
+        name: 'Acme Icons',
+        total: 1,
+        author: {
+          name: 'Rev30',
+        },
+        license: {
+          title: 'Custom',
+        },
+        samples: ['brand'],
+        palette: false,
+      },
+      lastModified: expect.any(Number),
       icons: {
         brand: {
           width: 24,
@@ -234,6 +247,13 @@ describe('custom icon set service', () => {
       service.create({
         prefix: 'acme',
         name: 'Duplicate Prefix',
+        description: null,
+      }),
+    ).rejects.toBeInstanceOf(CustomIconSetConflictError)
+    await expect(
+      service.create({
+        prefix: 'lucide',
+        name: 'Builtin Prefix',
         description: null,
       }),
     ).rejects.toBeInstanceOf(CustomIconSetConflictError)

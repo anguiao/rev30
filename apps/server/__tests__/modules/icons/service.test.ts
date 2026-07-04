@@ -1,6 +1,6 @@
 import type { IconifyJSON } from '@iconify/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getIconSubset } from '../../../src/modules/icons/service'
+import { getBuiltinIconSubset } from '../../../src/modules/icons/service'
 
 const lucideIconSet: IconifyJSON = {
   prefix: 'lucide',
@@ -23,22 +23,32 @@ const lucideIconSet: IconifyJSON = {
 
 const mocks = vi.hoisted(() => ({
   lookupCollection: vi.fn(),
+  lookupCollections: vi.fn(),
 }))
 
 vi.mock('@iconify/json', () => ({
   lookupCollection: mocks.lookupCollection,
+  lookupCollections: mocks.lookupCollections,
 }))
 
 describe('icon service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.lookupCollections.mockResolvedValue({
+      lucide: {
+        name: 'Lucide',
+      },
+      'cache-test': {
+        name: 'Cache Test',
+      },
+    })
     mocks.lookupCollection.mockImplementation(async (prefix: string) =>
       prefix === 'lucide' ? lucideIconSet : null,
     )
   })
 
   it('returns requested Iconify JSON subsets with stable aliases', async () => {
-    const body = await getIconSubset('lucide', ['sun', 'moon'])
+    const body = await getBuiltinIconSubset('lucide', ['sun', 'moon'])
 
     expect(body).toMatchObject({
       prefix: 'lucide',
@@ -53,14 +63,14 @@ describe('icon service', () => {
   })
 
   it('reports missing icon names while keeping found icons', async () => {
-    const body = await getIconSubset('lucide', ['sun', 'not-a-real-icon'])
+    const body = await getBuiltinIconSubset('lucide', ['sun', 'not-a-real-icon'])
 
     expect(Object.keys(body?.icons ?? {})).toEqual(['sun'])
     expect(body?.not_found).toEqual(['not-a-real-icon'])
   })
 
   it('returns empty icons and not_found when every requested icon is missing', async () => {
-    const body = await getIconSubset('lucide', ['not-a-real-icon'])
+    const body = await getBuiltinIconSubset('lucide', ['not-a-real-icon'])
 
     expect(body?.icons).toEqual({})
     expect(body?.aliases).toEqual({})
@@ -68,14 +78,14 @@ describe('icon service', () => {
   })
 
   it('treats an empty icon name as not_found', async () => {
-    const body = await getIconSubset('lucide', [''])
+    const body = await getBuiltinIconSubset('lucide', [''])
 
     expect(body?.icons).toEqual({})
     expect(body?.not_found).toEqual([''])
   })
 
   it('keeps alias parents when caching single icon subsets', async () => {
-    const body = await getIconSubset('lucide', ['day'])
+    const body = await getBuiltinIconSubset('lucide', ['day'])
 
     expect(body?.icons.sun?.body).toContain('sun')
     expect(body?.aliases?.day).toEqual({ parent: 'sun' })
@@ -96,9 +106,9 @@ describe('icon service', () => {
       prefix === 'cache-test' ? cacheTestIconSet : null,
     )
 
-    const first = await getIconSubset('cache-test', ['cached'])
+    const first = await getBuiltinIconSubset('cache-test', ['cached'])
     mocks.lookupCollection.mockClear()
-    const second = await getIconSubset('cache-test', ['cached'])
+    const second = await getBuiltinIconSubset('cache-test', ['cached'])
 
     expect(first?.icons.cached?.body).toContain('cached')
     expect(second?.icons.cached?.body).toContain('cached')
@@ -106,6 +116,6 @@ describe('icon service', () => {
   })
 
   it('returns null for missing collections', async () => {
-    await expect(getIconSubset('not-a-prefix', ['sun'])).resolves.toBeNull()
+    await expect(getBuiltinIconSubset('not-a-prefix', ['sun'])).resolves.toBeNull()
   })
 })

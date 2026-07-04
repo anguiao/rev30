@@ -16,6 +16,7 @@ import {
   listCustomIcons,
 } from '../../../src/features/content'
 import IconSetsPage from '../../../src/pages/index/content/icon-sets.vue'
+import { saveFile } from '../../../src/utils/download'
 import {
   disposeActiveTestPinia,
   mountAuthRoute,
@@ -32,11 +33,16 @@ vi.mock('../../../src/features/content', async (importOriginal) => ({
   exportCustomIconSet: vi.fn(),
 }))
 
+vi.mock('../../../src/utils/download', () => ({
+  saveFile: vi.fn(),
+}))
+
 const listBuiltinIconSetsMock = vi.mocked(listBuiltinIconSets)
 const listBuiltinIconsMock = vi.mocked(listBuiltinIcons)
 const listCustomIconSetsMock = vi.mocked(listCustomIconSets)
 const listCustomIconsMock = vi.mocked(listCustomIcons)
 const exportCustomIconSetMock = vi.mocked(exportCustomIconSet)
+const saveFileMock = vi.mocked(saveFile)
 
 const authSession: AuthTokenResponse = {
   ...session,
@@ -159,6 +165,7 @@ describe('icon sets page', () => {
     listCustomIconSetsMock.mockReset()
     listCustomIconsMock.mockReset()
     exportCustomIconSetMock.mockReset()
+    saveFileMock.mockReset()
 
     listBuiltinIconSetsMock.mockResolvedValue(builtinIconSetsResponse)
     listBuiltinIconsMock.mockResolvedValue(builtinIconsResponse)
@@ -263,7 +270,8 @@ describe('icon sets page', () => {
     await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
     await flushPromises()
 
-    wrapper.get('button[aria-label="复制图标"]')
+    wrapper.get('button[aria-label="复制图标名称"]')
+    wrapper.get('button[aria-label="复制 SVG"]')
     expect(wrapper.find('button[aria-label="重命名图标"]').exists()).toBe(false)
     expect(wrapper.find('button[aria-label="删除图标"]').exists()).toBe(false)
   })
@@ -271,25 +279,6 @@ describe('icon sets page', () => {
   it('downloads custom icon set export through authenticated request', async () => {
     listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
     listCustomIconsMock.mockResolvedValue(customIconsResponse)
-    const createObjectURL = vi.fn(() => 'blob:icon-set')
-    const revokeObjectURL = vi.fn()
-    vi.stubGlobal('URL', {
-      ...URL,
-      createObjectURL,
-      revokeObjectURL,
-    })
-    const click = vi.fn()
-    const originalCreateElement = document.createElement.bind(document)
-
-    vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
-      const element = originalCreateElement(tagName)
-
-      if (tagName === 'a') {
-        vi.spyOn(element, 'click').mockImplementation(click)
-      }
-
-      return element
-    })
 
     const { wrapper } = await mountIconSetsPage()
     await flushPromises()
@@ -302,8 +291,6 @@ describe('icon sets page', () => {
     await flushPromises()
 
     expect(exportCustomIconSetMock).toHaveBeenCalledWith('acme')
-    expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob))
-    expect(click).toHaveBeenCalled()
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:icon-set')
+    expect(saveFileMock).toHaveBeenCalledWith(expect.any(Blob), 'acme.json')
   })
 })

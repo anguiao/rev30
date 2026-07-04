@@ -9,21 +9,28 @@ import type {
   IconSetRenameIconInput,
 } from '@rev30/contracts'
 import type { Db } from '../../../../db'
+import { loadIconCollections } from '../../../icons/search/collections'
 import {
   CustomIconConflictError,
   CustomIconNotFoundError,
   CustomIconSetConflictError,
   CustomIconSetNotFoundError,
+  CustomSvgInvalidError,
 } from './errors'
 import { exportCustomIconSet } from './export'
 import { mapCustomIcon, mapCustomIconSet } from './mapper'
 import { createCustomIconSetRepository } from './repository'
 import { parseSvgIcon } from './svg'
 
-export type CustomIconUploadFile = { filename: string; content: string }
-export type CustomIconUploadInput = {
+type CustomIconUploadInput = {
   duplicateStrategy: CustomIconDuplicateStrategy
-  files: CustomIconUploadFile[]
+  files: Array<{ filename: string; content: string }>
+}
+
+async function hasBuiltinPrefix(prefix: string) {
+  const collections = await loadIconCollections()
+
+  return collections[prefix] !== undefined
 }
 
 export function createCustomIconSetService(database: Db) {
@@ -60,7 +67,10 @@ export function createCustomIconSetService(database: Db) {
     },
 
     async create(input: CustomIconSetCreateInput) {
-      if (await repository.hasCustomPrefix(input.prefix)) {
+      if (
+        (await repository.hasCustomPrefix(input.prefix)) ||
+        (await hasBuiltinPrefix(input.prefix))
+      ) {
         throw new CustomIconSetConflictError()
       }
 
@@ -121,7 +131,7 @@ export function createCustomIconSetService(database: Db) {
           }
 
           if (existing) {
-            const updated = await repository.replaceIcon(set, existing.id, parsed)
+            const updated = await repository.replaceIcon(existing.id, parsed)
 
             if (!updated) {
               throw new CustomIconNotFoundError()
@@ -146,19 +156,30 @@ export function createCustomIconSetService(database: Db) {
             }
 
             if (existing) {
-              const updated = await repository.replaceIcon(set, existing.id, parsed)
+              const updated = await repository.replaceIcon(existing.id, parsed)
 
               if (updated) {
                 replaced.push(mapCustomIcon(updated))
                 continue
               }
             }
+
+            failed.push({
+              sourceFilename: file.filename,
+              message: error.message,
+            })
+            continue
           }
 
-          failed.push({
-            sourceFilename: file.filename,
-            message: error instanceof Error ? error.message : 'SVG 无效',
-          })
+          if (error instanceof CustomSvgInvalidError) {
+            failed.push({
+              sourceFilename: file.filename,
+              message: error.message,
+            })
+            continue
+          }
+
+          throw error
         }
       }
 
@@ -172,11 +193,6 @@ export function createCustomIconSetService(database: Db) {
 
     async renameIcon(prefix: string, oldName: string, input: IconSetRenameIconInput) {
       const set = await getSetOrThrow(prefix)
-      const existing = await repository.findIcon(set.id, oldName)
-
-      if (!existing) {
-        throw new CustomIconNotFoundError()
-      }
 
       if (input.name !== oldName && (await repository.findIcon(set.id, input.name))) {
         throw new CustomIconConflictError()
@@ -201,10 +217,10 @@ export function createCustomIconSetService(database: Db) {
     },
 
     async exportIconSet(prefix: string) {
-      await getSetOrThrow(prefix)
-      const icons = (await repository.listAllIconsForExport(prefix)).map(mapCustomIcon)
+      const set = await getSetOrThrow(prefix)
+      const icons = await repository.listAllIconsForExport(prefix)
 
-      return exportCustomIconSet(prefix, icons)
+      return exportCustomIconSet(set, icons)
     },
   }
 }

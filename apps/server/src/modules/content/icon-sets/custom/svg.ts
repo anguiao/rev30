@@ -4,25 +4,20 @@ import { basename } from 'node:path/posix'
 import { CustomSvgInvalidError } from './errors'
 
 const iconNamePattern = new RegExp(`^${iconifyIconNamePartPatternSource}$`)
-const preserveColorSvgoPlugins = [
-  'cleanupAttrs',
-  'mergeStyles',
-  'inlineStyles',
-  'removeComments',
-  'removeUselessDefs',
-  'removeEditorsNSData',
-  'removeEmptyAttrs',
-  'removeEmptyContainers',
-  'convertStyleToAttrs',
-  'removeUnknownsAndDefaults',
-  'removeNonInheritableGroupAttrs',
-  'removeUnusedNS',
-  'cleanupNumericValues',
-  'cleanupListOfValues',
-  'collapseGroups',
-  'sortDefsChildren',
-  'sortAttrs',
-  'removeUselessStrokeAndFill',
+const customIconSvgoPlugins = [
+  {
+    name: 'preset-default',
+    params: {
+      overrides: {
+        cleanupIds: false,
+        convertColors: false,
+        mergePaths: false,
+        moveElemsAttrsToGroup: false,
+        moveGroupAttrsToElems: false,
+        removeHiddenElems: false,
+      },
+    },
+  },
 ] as const
 
 export type ParsedSvgIcon = {
@@ -33,15 +28,7 @@ export type ParsedSvgIcon = {
   palette: boolean
 }
 
-function hasPathTraversal(filename: string) {
-  return filename.split('/').includes('..')
-}
-
 export function normalizeSvgIconName(filename: string) {
-  if (hasPathTraversal(filename)) {
-    throw new Error('图标名称无效')
-  }
-
   const name = basename(filename)
     .replace(/\.svg$/i, '')
     .trim()
@@ -51,45 +38,23 @@ export function normalizeSvgIconName(filename: string) {
     .replace(/^-|-$/g, '')
 
   if (!iconNamePattern.test(name)) {
-    throw new Error('图标名称无效')
+    throw new CustomSvgInvalidError('图标名称无效')
   }
 
   return name
 }
 
-function isUrlColor(color: unknown) {
-  if (typeof color === 'string') {
-    return color.trim().toLowerCase().startsWith('url(')
-  }
-
-  return (
-    typeof color === 'object' &&
-    color !== null &&
-    'type' in color &&
-    color.type === 'function' &&
-    'func' in color &&
-    color.func === 'url'
-  )
-}
-
-function isParsedColor(color: unknown): Parameters<typeof isEmptyColor>[0] {
-  return color as Parameters<typeof isEmptyColor>[0]
-}
-
-function isMeaningfulColor(color: unknown) {
-  return typeof color === 'string' || !isEmptyColor(isParsedColor(color))
-}
-
 function detectPalette(svg: SVG) {
-  const colors = parseColors(svg).colors.filter(isMeaningfulColor)
+  const colors = parseColors(svg).colors.filter(
+    (color) => typeof color === 'string' || !isEmptyColor(color),
+  )
 
-  return colors.some(isUrlColor) || colors.length > 1
+  return colors.length > 1
 }
 
 export async function parseSvgIcon(filename: string, content: string): Promise<ParsedSvgIcon> {
-  const name = normalizeSvgIconName(filename)
-
   try {
+    const name = normalizeSvgIconName(filename)
     const svg = new SVG(content)
 
     cleanupSVG(svg)
@@ -103,7 +68,7 @@ export async function parseSvgIcon(filename: string, content: string): Promise<P
       })
     }
 
-    runSVGO(svg, { plugins: [...preserveColorSvgoPlugins] })
+    runSVGO(svg, { plugins: [...customIconSvgoPlugins] })
     const icon = svg.getIcon()
 
     if (icon.body.trim() === '') {
@@ -117,7 +82,11 @@ export async function parseSvgIcon(filename: string, content: string): Promise<P
       height: icon.height ?? 16,
       palette,
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof CustomSvgInvalidError) {
+      throw error
+    }
+
     throw new CustomSvgInvalidError()
   }
 }

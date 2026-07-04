@@ -354,7 +354,6 @@ function toDepartmentIds(value: Array<string | number> | null) {
               />
             </NFormItem>
           </form.Field>
-
         </NForm>
       </div>
 

@@ -5,17 +5,22 @@ import { cors } from 'hono/cors'
 import type { Db } from '../../db'
 import { createIconDataService } from './service'
 
-const iconDataCacheControl = 'public, max-age=604800, min-refresh=604800, immutable'
-const customIconDataCacheControl = 'no-cache'
+const builtinIconDataCacheControl = 'public, max-age=604800, min-refresh=604800, immutable'
+const customIconDataCacheControl = 'public, max-age=3600'
+const missingIconDataCacheControl = 'public, max-age=60'
 
 const iconParamValidator = zValidator('param', iconDataParamSchema, (result, c) => {
   if (!result.success) {
+    c.header('cache-control', missingIconDataCacheControl)
+
     return c.text('404', 404)
   }
 })
 
 const iconQueryValidator = zValidator('query', iconDataQuerySchema, (result, c) => {
   if (!result.success) {
+    c.header('cache-control', missingIconDataCacheControl)
+
     return c.text('404', 404)
   }
 })
@@ -26,7 +31,6 @@ export function createIconRoutes(database: Db) {
   return new Hono()
     .use('*', (c, next) => {
       c.header('cross-origin-resource-policy', 'cross-origin')
-      c.header('cache-control', iconDataCacheControl)
 
       return next()
     })
@@ -45,13 +49,15 @@ export function createIconRoutes(database: Db) {
       const result = await service.getIconSubset(prefix, icons)
 
       if (!result) {
+        c.header('cache-control', missingIconDataCacheControl)
+
         return c.text('404', 404)
       }
 
-      if (result.source === 'custom') {
-        c.header('cache-control', customIconDataCacheControl)
-      }
-
+      c.header(
+        'cache-control',
+        result.source === 'custom' ? customIconDataCacheControl : builtinIconDataCacheControl,
+      )
       c.header('content-type', 'application/json; charset=utf-8')
 
       return c.body(JSON.stringify(result.subset, null, pretty ? 4 : undefined), 200)

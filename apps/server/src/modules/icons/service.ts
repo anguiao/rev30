@@ -4,64 +4,56 @@ import { getIcons } from '@iconify/utils'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import type { Db } from '../../db'
 import { customIconSetIcons, customIconSets } from '../../db/schema'
+import { loadIconCollections } from './search/collections'
 
 type IconSubsetEnvelope = Omit<IconifyJSON, 'aliases'> & {
   aliases: NonNullable<IconifyJSON['aliases']>
 }
-type IconSubsetSource = 'builtin' | 'custom'
 type IconSubsetResult = {
-  source: IconSubsetSource
+  source: 'builtin' | 'custom'
   subset: IconifyJSON
 }
 
-const iconSubsetCacheLimit = 2000
-const iconSetDefaultKeys = ['width', 'height', 'left', 'top', 'lastModified'] as const
-const iconSubsetCache = new Map<string, Promise<IconifyJSON>>()
+const builtinIconSubsetCacheLimit = 2000
+const builtinIconSetDefaultKeys = ['width', 'height', 'left', 'top', 'lastModified'] as const
+const builtinIconSubsetCache = new Map<string, Promise<IconifyJSON>>()
 
 function getIconCacheKey(prefix: string, name: string): string {
   return `${prefix}:${name}`
 }
 
-function readIconSubsetCache(key: string): Promise<IconifyJSON> | undefined {
-  const subsetPromise = iconSubsetCache.get(key)
+function readBuiltinIconSubsetCache(key: string): Promise<IconifyJSON> | undefined {
+  const subsetPromise = builtinIconSubsetCache.get(key)
 
   if (!subsetPromise) {
     return undefined
   }
 
-  iconSubsetCache.delete(key)
-  iconSubsetCache.set(key, subsetPromise)
+  builtinIconSubsetCache.delete(key)
+  builtinIconSubsetCache.set(key, subsetPromise)
 
   return subsetPromise
 }
 
-function rememberIconSubset(key: string, subsetPromise: Promise<IconifyJSON>) {
-  if (iconSubsetCache.has(key)) {
-    iconSubsetCache.delete(key)
+function rememberBuiltinIconSubset(key: string, subsetPromise: Promise<IconifyJSON>) {
+  if (builtinIconSubsetCache.has(key)) {
+    builtinIconSubsetCache.delete(key)
   }
 
-  iconSubsetCache.set(key, subsetPromise)
+  builtinIconSubsetCache.set(key, subsetPromise)
 
-  if (iconSubsetCache.size <= iconSubsetCacheLimit) {
+  if (builtinIconSubsetCache.size <= builtinIconSubsetCacheLimit) {
     return
   }
 
-  const oldestKey = iconSubsetCache.keys().next().value
+  const oldestKey = builtinIconSubsetCache.keys().next().value
 
   if (oldestKey !== undefined) {
-    iconSubsetCache.delete(oldestKey)
+    builtinIconSubsetCache.delete(oldestKey)
   }
 }
 
-async function loadIconSet(prefix: string): Promise<IconifyJSON | null> {
-  try {
-    return await lookupCollection(prefix)
-  } catch {
-    return null
-  }
-}
-
-function getSingleIconSubset(iconSet: IconifyJSON, name: string): IconifyJSON {
+function getSingleBuiltinIconSubset(iconSet: IconifyJSON, name: string): IconifyJSON {
   return (
     getIcons(iconSet, [name], true) ?? {
       prefix: iconSet.prefix,
@@ -72,8 +64,11 @@ function getSingleIconSubset(iconSet: IconifyJSON, name: string): IconifyJSON {
   )
 }
 
-async function loadSingleIconSubset(iconSet: IconifyJSON, name: string): Promise<IconifyJSON> {
-  const subset = getSingleIconSubset(iconSet, name)
+async function loadSingleBuiltinIconSubset(
+  iconSet: IconifyJSON,
+  name: string,
+): Promise<IconifyJSON> {
+  const subset = getSingleBuiltinIconSubset(iconSet, name)
 
   return {
     ...subset,
@@ -106,7 +101,7 @@ function copyIconSetDefaults(iconSet?: IconifyJSON): Partial<IconifyJSON> {
 
   const defaults: Partial<IconifyJSON> = {}
 
-  for (const key of iconSetDefaultKeys) {
+  for (const key of builtinIconSetDefaultKeys) {
     if (iconSet[key] !== undefined) {
       defaults[key] = iconSet[key]
     }
@@ -115,13 +110,16 @@ function copyIconSetDefaults(iconSet?: IconifyJSON): Partial<IconifyJSON> {
   return defaults
 }
 
-export async function getIconSubset(prefix: string, names: string[]): Promise<IconifyJSON | null> {
+export async function getBuiltinIconSubset(
+  prefix: string,
+  names: string[],
+): Promise<IconifyJSON | null> {
   const cachedSubsets = new Map<string, IconifyJSON>()
   const uncachedNames = new Set<string>()
 
   for (const name of names) {
     const cacheKey = getIconCacheKey(prefix, name)
-    const cachedSubsetPromise = readIconSubsetCache(cacheKey)
+    const cachedSubsetPromise = readBuiltinIconSubsetCache(cacheKey)
 
     if (!cachedSubsetPromise) {
       uncachedNames.add(name)
@@ -135,22 +133,22 @@ export async function getIconSubset(prefix: string, names: string[]): Promise<Ic
   let iconSet: IconifyJSON | undefined
 
   if (uncachedNames.size > 0) {
-    const loadedIconSet = await loadIconSet(prefix)
+    const collections = await loadIconCollections()
 
-    if (!loadedIconSet) {
+    if (!collections[prefix]) {
       return null
     }
 
-    iconSet = loadedIconSet
+    iconSet = await lookupCollection(prefix)
 
     for (const name of uncachedNames) {
       const cacheKey = getIconCacheKey(prefix, name)
-      const subsetPromise = loadSingleIconSubset(iconSet, name).catch((error) => {
-        iconSubsetCache.delete(cacheKey)
+      const subsetPromise = loadSingleBuiltinIconSubset(iconSet, name).catch((error) => {
+        builtinIconSubsetCache.delete(cacheKey)
         throw error
       })
 
-      rememberIconSubset(cacheKey, subsetPromise)
+      rememberBuiltinIconSubset(cacheKey, subsetPromise)
       const subset = await subsetPromise
       cachedSubsets.set(name, subset)
     }
@@ -169,7 +167,7 @@ export async function getIconSubset(prefix: string, names: string[]): Promise<Ic
   return subset
 }
 
-async function getCustomIconSubset(
+export async function getCustomIconSubset(
   database: Db,
   prefix: string,
   names: string[],
@@ -227,7 +225,7 @@ async function getCustomIconSubset(
 export function createIconDataService(database: Db) {
   return {
     async getIconSubset(prefix: string, names: string[]): Promise<IconSubsetResult | null> {
-      const builtinSubset = await getIconSubset(prefix, names)
+      const builtinSubset = await getBuiltinIconSubset(prefix, names)
 
       if (builtinSubset) {
         return {

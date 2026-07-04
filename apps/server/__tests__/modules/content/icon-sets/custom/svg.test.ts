@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { CustomSvgInvalidError } from '../../../../../src/modules/icons/sets/custom/errors'
+import { CustomSvgInvalidError } from '../../../../../src/modules/content/icon-sets/custom/errors'
 import {
   normalizeSvgIconName,
   parseSvgIcon,
-} from '../../../../../src/modules/icons/sets/custom/svg'
+} from '../../../../../src/modules/content/icon-sets/custom/svg'
 
 describe('custom icon SVG parser', () => {
   it('normalizes upload filenames into icon names', () => {
@@ -12,8 +12,10 @@ describe('custom icon SVG parser', () => {
     expect(normalizeSvgIconName('24px/Home.svg')).toBe('home')
   })
 
-  it('rejects path traversal filenames', () => {
-    expect(() => normalizeSvgIconName('../bad.svg')).toThrow('图标名称无效')
+  it('reports invalid upload filenames', async () => {
+    await expect(
+      parseSvgIcon('Bad!.svg', '<svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z" /></svg>'),
+    ).rejects.toThrow('图标名称无效')
   })
 
   it('parses single color SVGs as currentColor icons', async () => {

@@ -378,7 +378,6 @@ watch(
             <NFormItem label="类型" v-bind="formItemValidationProps(state.meta)">
               <NSelect
                 data-test="announcement-form-type"
-                :disabled="isLoading || isSaving"
                 :options="announcementTypeSelectOptions"
                 :value="state.value"
                 @blur="field.handleBlur"
@@ -391,7 +390,6 @@ watch(
             <NFormItem label="标题" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="announcement-form-title"
-                :disabled="isLoading || isSaving"
                 :value="state.value"
                 placeholder="请输入标题"
                 @blur="field.handleBlur"
@@ -404,7 +402,6 @@ watch(
             <NFormItem label="摘要" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="announcement-form-summary"
-                :disabled="isLoading || isSaving"
                 :value="state.value ?? ''"
                 type="textarea"
                 placeholder="请输入摘要"
@@ -421,7 +418,6 @@ watch(
               v-bind="formItemValidationProps(state.meta)"
             >
               <RichTextEditor
-                :disabled="isLoading || isSaving"
                 :model-value="state.value"
                 :preset="richTextEditorPreset"
                 @blur="field.handleBlur"
@@ -439,7 +435,6 @@ watch(
             <NFormItem label="可见范围" v-bind="formItemValidationProps(state.meta)">
               <NRadioGroup
                 data-test="announcement-form-visibility"
-                :disabled="isLoading || isSaving"
                 :value="state.value"
                 @update:value="handleVisibilityChange"
               >
@@ -472,7 +467,6 @@ watch(
               <div class="w-full space-y-2">
                 <NSelect
                   data-test="announcement-form-target-users"
-                  :disabled="isLoading || isSaving"
                   :options="userOptions"
                   :value="getTargetIds(state.value ?? [], ANNOUNCEMENT_TARGET_TYPE_USER)"
                   multiple
@@ -485,7 +479,6 @@ watch(
 
                 <NTreeSelect
                   data-test="announcement-form-target-departments"
-                  :disabled="isLoading || isSaving"
                   multiple
                   checkable
                   clearable
@@ -502,7 +495,6 @@ watch(
 
                 <NSelect
                   data-test="announcement-form-target-roles"
-                  :disabled="isLoading || isSaving"
                   :options="roleOptions"
                   :value="getTargetIds(state.value ?? [], ANNOUNCEMENT_TARGET_TYPE_ROLE)"
                   multiple
@@ -520,7 +512,6 @@ watch(
             <NFormItem label="置顶展示" v-bind="formItemValidationProps(state.meta)">
               <NSwitch
                 data-test="announcement-form-pinned"
-                :disabled="isLoading || isSaving"
                 :value="state.value"
                 @blur="field.handleBlur"
                 @update:value="field.handleChange"

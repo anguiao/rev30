@@ -1,19 +1,19 @@
 import {
   customIconDuplicateStrategySchema,
+  customIconParamSchema,
   customIconSetCreateSchema,
   customIconSetUpdateSchema,
   iconSetIconListQuerySchema,
   iconSetListQuerySchema,
   iconSetPrefixParamSchema,
   iconSetRenameIconSchema,
-  iconSetSvgIconNameParamSchema,
 } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
+import { z } from 'zod'
 import type { Db } from '../../../../db'
 import { requireAccess } from '../../../../middleware/access'
 import type { AuthEnv } from '../../../../middleware/auth'
-import { loadIconCollections } from '../../search/collections'
 import {
   CustomIconConflictError,
   CustomIconNotFoundError,
@@ -22,11 +22,6 @@ import {
   CustomSvgInvalidError,
 } from './errors'
 import { createCustomIconSetService } from './service'
-
-const iconSetParamSchema = iconSetPrefixParamSchema
-const customIconParamSchema = iconSetPrefixParamSchema.extend({
-  name: iconSetSvgIconNameParamSchema.shape.name,
-})
 
 const iconSetListQueryValidator = zValidator('query', iconSetListQuerySchema, (result, c) => {
   if (!result.success) {
@@ -62,7 +57,7 @@ const iconSetRenameBodyValidator = zValidator('json', iconSetRenameIconSchema, (
   }
 })
 
-const iconSetParamValidator = zValidator('param', iconSetParamSchema, (result, c) => {
+const iconSetParamValidator = zValidator('param', iconSetPrefixParamSchema, (result, c) => {
   if (!result.success) {
     return c.json({ message: '图标集参数无效' }, 400)
   }
@@ -71,6 +66,25 @@ const iconSetParamValidator = zValidator('param', iconSetParamSchema, (result, c
 const customIconParamValidator = zValidator('param', customIconParamSchema, (result, c) => {
   if (!result.success) {
     return c.json({ message: '图标参数无效' }, 400)
+  }
+})
+
+const uploadFileSchema = z.instanceof(File)
+
+const iconUploadFormSchema = z.object({
+  duplicateStrategy: z.preprocess(
+    (value) => (value === undefined || value === '' ? 'skip' : value),
+    customIconDuplicateStrategySchema,
+  ),
+  files: z
+    .union([uploadFileSchema, uploadFileSchema.array()])
+    .transform((value) => (Array.isArray(value) ? value : [value]))
+    .pipe(uploadFileSchema.array().min(1)),
+})
+
+const iconUploadFormValidator = zValidator('form', iconUploadFormSchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ message: '请求体无效' }, 400)
   }
 })
 
@@ -90,61 +104,6 @@ function customIconErrorResponse(error: unknown, c: Context) {
   throw error
 }
 
-function isFormRequest(contentType: string | undefined) {
-  if (!contentType) {
-    return false
-  }
-
-  const normalizedContentType = contentType.toLowerCase()
-
-  return (
-    normalizedContentType.startsWith('multipart/form-data') ||
-    normalizedContentType.startsWith('application/x-www-form-urlencoded')
-  )
-}
-
-async function parseUploadInput(formData: FormData) {
-  const rawDuplicateStrategy = formData.get('duplicateStrategy')
-  const duplicateStrategyResult = customIconDuplicateStrategySchema.safeParse(
-    typeof rawDuplicateStrategy === 'string' && rawDuplicateStrategy !== ''
-      ? rawDuplicateStrategy
-      : 'skip',
-  )
-
-  if (!duplicateStrategyResult.success) {
-    return {
-      error: { message: '请求体无效' } as const,
-    }
-  }
-
-  const fileEntries = formData.getAll('files')
-  const files = fileEntries.filter((entry): entry is File => entry instanceof File)
-
-  if (files.length !== fileEntries.length) {
-    return {
-      error: { message: '请求体无效' } as const,
-    }
-  }
-
-  return {
-    data: {
-      duplicateStrategy: duplicateStrategyResult.data,
-      files: await Promise.all(
-        files.map(async (file) => ({
-          filename: file.name,
-          content: await file.text(),
-        })),
-      ),
-    },
-  }
-}
-
-async function hasBuiltinPrefix(prefix: string) {
-  const collections = await loadIconCollections()
-
-  return collections[prefix] !== undefined
-}
-
 export function createCustomIconSetRoutes(database: Db) {
   const service = createCustomIconSetService(database)
   const app = new Hono<AuthEnv>()
@@ -156,13 +115,7 @@ export function createCustomIconSetRoutes(database: Db) {
       return c.json(await service.list(c.req.valid('query')))
     })
     .post('/', requireAccess('content:icon-set:create'), iconSetCreateBodyValidator, async (c) => {
-      const body = c.req.valid('json')
-
-      if (await hasBuiltinPrefix(body.prefix)) {
-        return c.json({ message: '图标集前缀已存在' }, 409)
-      }
-
-      return c.json(await service.create(body), 201)
+      return c.json(await service.create(c.req.valid('json')), 201)
     })
     .get(
       '/icons',
@@ -176,28 +129,23 @@ export function createCustomIconSetRoutes(database: Db) {
       '/:prefix/icons',
       requireAccess('content:icon-set:create'),
       iconSetParamValidator,
+      iconUploadFormValidator,
       async (c) => {
         const { prefix } = c.req.valid('param')
+        const form = c.req.valid('form')
+        const files = await Promise.all(
+          form.files.map(async (file) => ({
+            filename: file.name,
+            content: await file.text(),
+          })),
+        )
 
-        if (!isFormRequest(c.req.header('content-type'))) {
-          return c.json({ message: '请求体无效' }, 400)
-        }
-
-        let formData: FormData
-
-        try {
-          formData = await c.req.formData()
-        } catch {
-          return c.json({ message: '请求体无效' }, 400)
-        }
-
-        const parsed = await parseUploadInput(formData)
-
-        if ('error' in parsed) {
-          return c.json(parsed.error, 400)
-        }
-
-        return c.json(await service.uploadIcons(prefix, parsed.data))
+        return c.json(
+          await service.uploadIcons(prefix, {
+            duplicateStrategy: form.duplicateStrategy,
+            files,
+          }),
+        )
       },
     )
     .patch(

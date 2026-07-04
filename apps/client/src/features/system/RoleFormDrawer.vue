@@ -287,7 +287,6 @@ const resourceIdsSchema = computed(() =>
               />
             </NFormItem>
           </form.Field>
-
         </NForm>
       </div>
 

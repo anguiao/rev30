@@ -30,18 +30,18 @@ const customIcons: CustomIconListResponse['list'] = [
 ]
 
 describe('IconGrid', () => {
-  it('renders fixed grid items and emits copy when clicking an icon', async () => {
+  it('renders fixed grid items and emits copy actions from explicit buttons', async () => {
     const wrapper = mount(IconGrid, {
       props: {
         icons,
-        editable: false,
+        scope: 'single',
       },
     })
 
     const item = wrapper.get('[data-test="icon-grid-item"]')
     expect(item.classes()).toContain('w-28')
-    expect(item.classes()).toContain('h-28')
-    expect(item.attributes('aria-label')).toBe('复制图标 acme:logo')
+    expect(item.classes()).toContain('h-32')
+    expect(item.attributes('aria-label')).toBeUndefined()
 
     const svg = item.get('svg')
     expect(svg.attributes('viewBox')).toBe('0 0 24 24')
@@ -50,16 +50,24 @@ describe('IconGrid', () => {
     expect(wrapper.find('[data-test="icon-grid-set"]').exists()).toBe(false)
 
     await item.trigger('click')
+    expect(wrapper.emitted('copy')).toBeUndefined()
+
+    await wrapper.get('button[aria-label="复制图标名称"]').trigger('click')
+    await wrapper.get('button[aria-label="复制 SVG"]').trigger('click')
 
     expect(wrapper.emitted('copy')).toEqual([['acme:logo']])
+    expect(wrapper.emitted('copySvg')).toEqual([
+      [
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M0 0h24v24H0z" /></svg>',
+      ],
+    ])
   })
 
   it('can show icon set names for mixed icon set views', () => {
     const wrapper = mount(IconGrid, {
       props: {
         icons,
-        editable: false,
-        showSetName: true,
+        scope: 'all',
       },
     })
 
@@ -68,11 +76,13 @@ describe('IconGrid', () => {
     expect(setName.attributes('title')).toBe('Acme Icons')
   })
 
-  it('uses explicit action buttons in editable mode without emitting copy from rename or delete', async () => {
+  it('uses explicit action buttons without emitting copy from rename or delete', async () => {
     const wrapper = mount(IconGrid, {
       props: {
         icons: customIcons,
-        editable: true,
+        scope: 'single',
+        renamable: true,
+        deletable: true,
       },
     })
 
@@ -90,23 +100,23 @@ describe('IconGrid', () => {
     await deleteButton.trigger('keydown.enter')
 
     expect(wrapper.emitted('copy')).toBeUndefined()
+    expect(wrapper.emitted('copySvg')).toBeUndefined()
     expect(wrapper.emitted('rename')).toEqual([[customIcons[0]]])
     expect(wrapper.emitted('delete')).toEqual([[customIcons[0]]])
   })
 
-  it('keeps copy available while hiding restricted editable actions', async () => {
+  it('keeps copy actions available while hiding unavailable item actions', async () => {
     const wrapper = mount(IconGrid, {
       props: {
         icons: customIcons,
-        editable: true,
-        canRename: false,
-        canDelete: false,
+        scope: 'single',
       },
     })
 
-    const copyButton = wrapper.get('button[aria-label="复制图标"]')
+    const copyButton = wrapper.get('button[aria-label="复制图标名称"]')
     await copyButton.trigger('click')
 
+    wrapper.get('button[aria-label="复制 SVG"]')
     expect(wrapper.find('button[aria-label="重命名图标"]').exists()).toBe(false)
     expect(wrapper.find('button[aria-label="删除图标"]').exists()).toBe(false)
     expect(wrapper.emitted('copy')).toEqual([['acme:logo']])

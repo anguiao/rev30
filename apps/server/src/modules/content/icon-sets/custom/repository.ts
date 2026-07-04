@@ -5,12 +5,27 @@ import type {
   IconSetListQuery,
   IconSetRenameIconInput,
 } from '@rev30/contracts'
-import { and, asc, count, desc, eq, ilike, isNull, or } from 'drizzle-orm'
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../../db'
 import { customIconSetIcons, customIconSets } from '../../../../db/schema'
 import { toCustomIconConflictError } from './errors'
 import type { IconRow, SetRow } from './mapper'
 import type { ParsedSvgIcon } from './svg'
+
+const customIconColumns = {
+  id: customIconSetIcons.id,
+  setId: customIconSetIcons.setId,
+  name: customIconSetIcons.name,
+  body: customIconSetIcons.body,
+  width: customIconSetIcons.width,
+  height: customIconSetIcons.height,
+  palette: customIconSetIcons.palette,
+  createdAt: customIconSetIcons.createdAt,
+  updatedAt: customIconSetIcons.updatedAt,
+  deletedAt: customIconSetIcons.deletedAt,
+  prefix: customIconSets.prefix,
+  setName: customIconSets.name,
+} satisfies Record<keyof IconRow, unknown>
 
 async function withCustomIconConflictTranslation<T>(operation: () => Promise<T>) {
   try {
@@ -49,20 +64,7 @@ async function countActiveIcons(executor: DbReader, setId: string) {
 
 async function findActiveIconById(executor: DbReader, id: string): Promise<IconRow | undefined> {
   const [row] = await executor
-    .select({
-      id: customIconSetIcons.id,
-      setId: customIconSetIcons.setId,
-      name: customIconSetIcons.name,
-      body: customIconSetIcons.body,
-      width: customIconSetIcons.width,
-      height: customIconSetIcons.height,
-      palette: customIconSetIcons.palette,
-      createdAt: customIconSetIcons.createdAt,
-      updatedAt: customIconSetIcons.updatedAt,
-      deletedAt: customIconSetIcons.deletedAt,
-      prefix: customIconSets.prefix,
-      setName: customIconSets.name,
-    })
+    .select(customIconColumns)
     .from(customIconSetIcons)
     .innerJoin(customIconSets, eq(customIconSetIcons.setId, customIconSets.id))
     .where(
@@ -110,12 +112,28 @@ export function createCustomIconSetRepository(database: Db) {
           .from(customIconSets)
           .where(where),
       ])
-      const list = await Promise.all(
-        rows.map(async (row) => ({
-          ...row,
-          iconCount: await countActiveIcons(database, row.id),
-        })),
-      )
+      const setIds = rows.map((row) => row.id)
+      const iconCountRows =
+        setIds.length === 0
+          ? []
+          : await database
+              .select({
+                setId: customIconSetIcons.setId,
+                total: count(),
+              })
+              .from(customIconSetIcons)
+              .where(
+                and(
+                  inArray(customIconSetIcons.setId, setIds),
+                  isNull(customIconSetIcons.deletedAt),
+                ),
+              )
+              .groupBy(customIconSetIcons.setId)
+      const iconCounts = new Map(iconCountRows.map((row) => [row.setId, row.total]))
+      const list = rows.map((row) => ({
+        ...row,
+        iconCount: iconCounts.get(row.id) ?? 0,
+      }))
 
       return {
         list,
@@ -224,24 +242,9 @@ export function createCustomIconSetRepository(database: Db) {
             )
           : undefined,
       )
-      const baseSelect = {
-        id: customIconSetIcons.id,
-        setId: customIconSetIcons.setId,
-        name: customIconSetIcons.name,
-        body: customIconSetIcons.body,
-        width: customIconSetIcons.width,
-        height: customIconSetIcons.height,
-        palette: customIconSetIcons.palette,
-        createdAt: customIconSetIcons.createdAt,
-        updatedAt: customIconSetIcons.updatedAt,
-        deletedAt: customIconSetIcons.deletedAt,
-        prefix: customIconSets.prefix,
-        setName: customIconSets.name,
-      }
-
       const [list, totalRows] = await Promise.all([
         database
-          .select(baseSelect)
+          .select(customIconColumns)
           .from(customIconSetIcons)
           .innerJoin(customIconSets, eq(customIconSetIcons.setId, customIconSets.id))
           .where(where)
@@ -267,20 +270,7 @@ export function createCustomIconSetRepository(database: Db) {
 
     async listAllIconsForExport(prefix: string) {
       return await database
-        .select({
-          id: customIconSetIcons.id,
-          setId: customIconSetIcons.setId,
-          name: customIconSetIcons.name,
-          body: customIconSetIcons.body,
-          width: customIconSetIcons.width,
-          height: customIconSetIcons.height,
-          palette: customIconSetIcons.palette,
-          createdAt: customIconSetIcons.createdAt,
-          updatedAt: customIconSetIcons.updatedAt,
-          deletedAt: customIconSetIcons.deletedAt,
-          prefix: customIconSets.prefix,
-          setName: customIconSets.name,
-        })
+        .select(customIconColumns)
         .from(customIconSetIcons)
         .innerJoin(customIconSets, eq(customIconSetIcons.setId, customIconSets.id))
         .where(
@@ -337,7 +327,7 @@ export function createCustomIconSetRepository(database: Db) {
       return row
     },
 
-    async replaceIcon(_set: SetRow, iconId: string, parsed: ParsedSvgIcon) {
+    async replaceIcon(iconId: string, parsed: ParsedSvgIcon) {
       const [updated] = await withCustomIconConflictTranslation(() =>
         database
           .update(customIconSetIcons)

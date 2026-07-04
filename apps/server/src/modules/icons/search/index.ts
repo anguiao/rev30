@@ -1,1 +1,1 @@
-export { searchIcons } from './service'
+export { createIconSearchService } from './service'

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
+import { useMutation } from '@pinia/colada'
 import {
   NAlert,
   NButton,
@@ -28,50 +29,35 @@ const emit = defineEmits<{
   uploaded: [result: CustomIconUploadResponse]
 }>()
 
-const duplicateStrategy = ref<CustomIconDuplicateStrategy>('skip')
-const fileList = ref<UploadFileInfo[]>([])
-const uploadError = ref<string | null>(null)
-const uploadResult = ref<CustomIconUploadResponse | null>(null)
-const isUploading = ref(false)
 const drawerSessionId = ref(0)
 
-const selectedFiles = computed(() =>
-  fileList.value.map((item) => item.file).filter((file): file is File => file instanceof File),
-)
-const canSubmit = computed(
-  () => props.prefix !== null && selectedFiles.value.length > 0 && !isUploading.value,
-)
+const duplicateStrategy = ref<CustomIconDuplicateStrategy>('skip')
+const fileList = ref<UploadFileInfo[]>([])
 
-function resetState() {
-  duplicateStrategy.value = 'skip'
-  fileList.value = []
-  uploadError.value = null
-  uploadResult.value = null
-  isUploading.value = false
-}
+const uploadError = ref<string | null>(null)
+const uploadResult = ref<CustomIconUploadResponse | null>(null)
 
-function isCurrentDrawerSession(sessionId: number, prefix: string | null) {
-  return show.value && drawerSessionId.value === sessionId && props.prefix === prefix
-}
-
-async function handleSubmit() {
-  if (props.prefix === null || !canSubmit.value) {
-    return
-  }
-
-  uploadError.value = null
-  uploadResult.value = null
-  const sessionId = drawerSessionId.value
-  const prefix = props.prefix
-  isUploading.value = true
-
-  try {
-    const result = await uploadCustomIcons(prefix, {
-      duplicateStrategy: duplicateStrategy.value,
-      files: selectedFiles.value,
-    })
-
-    if (!isCurrentDrawerSession(sessionId, prefix)) {
+const { isLoading: isUploading, ...uploadMutation } = useMutation({
+  onMutate(): { sessionId: number } {
+    return {
+      sessionId: drawerSessionId.value,
+    }
+  },
+  mutation: ({
+    prefix,
+    duplicateStrategy,
+    files,
+  }: {
+    prefix: string
+    duplicateStrategy: CustomIconDuplicateStrategy
+    files: File[]
+  }) =>
+    uploadCustomIcons(prefix, {
+      duplicateStrategy,
+      files,
+    }),
+  onSuccess(result, { prefix }, { sessionId }) {
+    if (!show.value || props.prefix !== prefix || sessionId !== drawerSessionId.value) {
       return
     }
 
@@ -81,26 +67,46 @@ async function handleSubmit() {
     if (result.failed.length === 0 && result.skipped.length === 0) {
       show.value = false
     }
-  } catch (error) {
-    if (isCurrentDrawerSession(sessionId, prefix)) {
-      uploadError.value = getErrorMessage(error, '上传图标失败')
+  },
+  onError(error, { prefix }, { sessionId }) {
+    if (!show.value || props.prefix !== prefix || sessionId !== drawerSessionId.value) {
+      return
     }
-  } finally {
-    if (isCurrentDrawerSession(sessionId, prefix)) {
-      isUploading.value = false
-    }
+
+    uploadError.value = getErrorMessage(error, '上传图标失败')
+  },
+})
+
+function handleSubmit() {
+  const prefix = props.prefix
+  const files = fileList.value.map((item) => item.file).filter((file) => file instanceof File)
+
+  if (prefix === null || files.length === 0 || isUploading.value) {
+    return
   }
+
+  uploadError.value = null
+  uploadResult.value = null
+  uploadMutation.mutate({
+    prefix,
+    duplicateStrategy: duplicateStrategy.value,
+    files,
+  })
 }
 
 watch(
   () => [show.value, props.prefix] as const,
-  (isVisible) => {
-    if (!isVisible[0]) {
+  ([isVisible]) => {
+    if (!isVisible) {
       return
     }
 
     drawerSessionId.value += 1
-    resetState()
+    duplicateStrategy.value = 'skip'
+    fileList.value = []
+    uploadError.value = null
+    uploadResult.value = null
+    uploadMutation.reset()
   },
   {
     immediate: true,
@@ -136,11 +142,12 @@ watch(
               accept=".svg,image/svg+xml"
               multiple
               :default-upload="false"
-              :file-list="fileList"
-              @update:file-list="(files) => (fileList = files)"
+              v-model:file-list="fileList"
             >
               <NUploadDragger>
-                <div class="flex flex-col items-center gap-2 py-8 text-stone-500 dark:text-zinc-400">
+                <div
+                  class="flex flex-col items-center gap-2 py-8 text-stone-500 dark:text-zinc-400"
+                >
                   <span class="i-[lucide--upload] text-2xl" aria-hidden="true" />
                   <span class="text-sm">选择 SVG 文件</span>
                 </div>
@@ -160,19 +167,21 @@ watch(
               <NText>失败 {{ uploadResult.failed.length }}</NText>
             </div>
           </div>
-
-          <div class="mt-6 flex justify-end">
-            <NButton
-              type="primary"
-              :disabled="!canSubmit"
-              :loading="isUploading"
-              @click="handleSubmit"
-            >
-              上传
-            </NButton>
-          </div>
         </NForm>
       </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <NButton
+            type="primary"
+            :disabled="isUploading"
+            :loading="isUploading"
+            @click="handleSubmit"
+          >
+            上传
+          </NButton>
+        </div>
+      </template>
     </NDrawerContent>
   </NDrawer>
 </template>

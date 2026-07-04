@@ -1,3 +1,4 @@
+import type { IconSearchItem } from '@rev30/contracts'
 import { AsyncFzf, asyncExtendedMatch, byLengthAsc, byStartAsc } from 'fzf'
 import { deprioritizedIconPrefixes, preferredIconPrefixes } from './config'
 import { getPrefix } from './search-index'
@@ -6,19 +7,18 @@ import type { ExpandedSearch, SearchIndex } from './types'
 const minimumFuzzyCandidateLength = 3
 const fuzzyCandidatePattern = /^[a-z0-9-]+$/
 
-export function scoreSearchItem(index: SearchIndex, id: number, search: ExpandedSearch): number {
+export function scoreIconSearchItem(item: IconSearchItem, expandedSearch: ExpandedSearch): number {
   let score = 0
-  const prefix = getPrefix(index, id)
-  const name = index.names[id]!
-  const palette = index.palettes[id]!
-  const hasDirectTokens = search.tokens.length > 0
+  const prefix = item.prefix.toLowerCase()
+  const name = item.name.toLowerCase()
+  const hasDirectTokens = expandedSearch.tokens.length > 0
   const preferredAliasExactScore = hasDirectTokens ? 450 : 5000
   const aliasExactScore = hasDirectTokens ? 350 : 3000
   const aliasPrefixScore = hasDirectTokens ? 120 : 520
   const aliasContainsScore = hasDirectTokens ? 20 : 60
 
-  for (const aliasToken of search.aliasTokens) {
-    if (aliasToken === search.normalizedKeyword) {
+  for (const aliasToken of expandedSearch.aliasTokens) {
+    if (aliasToken === expandedSearch.normalizedKeyword) {
       continue
     }
 
@@ -27,11 +27,11 @@ export function scoreSearchItem(index: SearchIndex, id: number, search: Expanded
     }
   }
 
-  if (name === search.normalizedKeyword) {
+  if (name === expandedSearch.normalizedKeyword) {
     score += 10000
   }
 
-  for (const token of search.tokens) {
+  for (const token of expandedSearch.tokens) {
     if (name === token) {
       score += 6000
       continue
@@ -57,13 +57,13 @@ export function scoreSearchItem(index: SearchIndex, id: number, search: Expanded
     }
   }
 
-  for (const aliasToken of search.aliasTokens) {
-    if (aliasToken !== search.normalizedKeyword && name === aliasToken) {
+  for (const aliasToken of expandedSearch.aliasTokens) {
+    if (aliasToken !== expandedSearch.normalizedKeyword && name === aliasToken) {
       score += aliasExactScore
       continue
     }
 
-    if (aliasToken !== search.normalizedKeyword && name.startsWith(`${aliasToken}-`)) {
+    if (aliasToken !== expandedSearch.normalizedKeyword && name.startsWith(`${aliasToken}-`)) {
       score += aliasPrefixScore
       continue
     }
@@ -75,7 +75,7 @@ export function scoreSearchItem(index: SearchIndex, id: number, search: Expanded
 
   score += preferredIconPrefixes.get(prefix) ?? 0
 
-  if (!palette) {
+  if (!item.palette) {
     score += 24
   } else {
     score -= 12
@@ -116,11 +116,11 @@ function matchesCharactersInOrder(value: string, keyword: string): boolean {
   return false
 }
 
-function collectRecallPool(index: SearchIndex, search: ExpandedSearch): number[] {
+function collectRecallPool(index: SearchIndex, expandedSearch: ExpandedSearch): number[] {
   const uniqueItems = new Set<number>()
   const matchedTokens = new Set<string>()
 
-  for (const candidate of search.candidates) {
+  for (const candidate of expandedSearch.candidates) {
     const exactTokenBucket = index.tokenBuckets.get(candidate)
     let matchedLiteralToken = false
 
@@ -168,14 +168,14 @@ function collectRecallPool(index: SearchIndex, search: ExpandedSearch): number[]
 
 export async function recallCandidates(
   index: SearchIndex,
-  search: ExpandedSearch,
+  expandedSearch: ExpandedSearch,
   limit: number,
 ): Promise<number[]> {
-  if (search.candidates.length === 0) {
+  if (expandedSearch.candidates.length === 0) {
     return []
   }
 
-  const recallPool = collectRecallPool(index, search)
+  const recallPool = collectRecallPool(index, expandedSearch)
   const finderOptions = {
     selector: (id: number) => index.names[id]!,
     tiebreakers: [byStartAsc, byLengthAsc],
@@ -199,7 +199,7 @@ export async function recallCandidates(
       continue
     }
 
-    for (const token of search.tokens) {
+    for (const token of expandedSearch.tokens) {
       if (getPrefix(index, id) === token) {
         uniqueItems.add(id)
         break
@@ -208,9 +208,9 @@ export async function recallCandidates(
   }
 
   const foundItems =
-    search.candidates.length === 1
-      ? await fastFinder.find(search.candidates[0]!)
-      : await extendedFinder.find(search.candidates.join(' | '))
+    expandedSearch.candidates.length === 1
+      ? await fastFinder.find(expandedSearch.candidates[0]!)
+      : await extendedFinder.find(expandedSearch.candidates.join(' | '))
 
   for (const entry of foundItems) {
     if (uniqueItems.has(entry.item)) {
@@ -220,8 +220,8 @@ export async function recallCandidates(
     uniqueItems.add(entry.item)
   }
 
-  if (search.aliasTokens.size > 0) {
-    for (const aliasToken of search.aliasTokens) {
+  if (expandedSearch.aliasTokens.size > 0) {
+    for (const aliasToken of expandedSearch.aliasTokens) {
       for (const prefix of preferredIconPrefixes.keys()) {
         const id = index.preferredByPrefix.get(prefix)?.get(aliasToken)
 

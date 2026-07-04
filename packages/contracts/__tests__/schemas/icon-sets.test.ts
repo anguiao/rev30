@@ -1,23 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import {
-  builtinIconListResponseSchema,
-  builtinIconSetListResponseSchema,
-  customIconDuplicateStrategySchema,
-  customIconItemSchema,
-  customIconListResponseSchema,
-  customIconSetCreateSchema,
-  customIconSetListResponseSchema,
-  customIconSetSchema,
-  customIconSetUpdateSchema,
-  customIconUploadResponseSchema,
   iconSetIconListQuerySchema,
   iconSetListQuerySchema,
   iconSetPrefixParamSchema,
+  iconSetIconItemSchema,
+  builtinIconSetListResponseSchema,
+  builtinIconListResponseSchema,
+  customIconSetSchema,
+  customIconSetListResponseSchema,
+  customIconParamSchema,
+  customIconItemSchema,
+  customIconListResponseSchema,
+  customIconSetFormSchema,
+  customIconSetCreateSchema,
+  customIconSetUpdateSchema,
+  customIconDuplicateStrategySchema,
   iconSetRenameIconSchema,
-  iconSetRenderableIconSchema,
-  iconSetSvgIconNameParamSchema,
-  customIconUploadFailedSchema,
   customIconUploadSkippedSchema,
+  customIconUploadFailedSchema,
+  customIconUploadResponseSchema,
 } from '../../src/icons'
 
 describe('icon set schemas', () => {
@@ -48,17 +49,32 @@ describe('icon set schemas', () => {
       prefix: 'brand-icons',
     })
 
-    expect(iconSetSvgIconNameParamSchema.parse({ name: 'user-add' })).toEqual({
+    expect(customIconParamSchema.parse({ prefix: 'brand-icons', name: 'user-add' })).toEqual({
+      prefix: 'brand-icons',
       name: 'user-add',
     })
   })
 
   it('rejects invalid icon set route params', () => {
     expect(iconSetPrefixParamSchema.safeParse({ prefix: 'Lucide' }).success).toBe(false)
-    expect(iconSetSvgIconNameParamSchema.safeParse({ name: '../user' }).success).toBe(false)
+    expect(
+      customIconParamSchema.safeParse({ prefix: 'brand-icons', name: '../user' }).success,
+    ).toBe(false)
   })
 
   it('validates custom icon set create and update inputs', () => {
+    expect(
+      customIconSetFormSchema.parse({
+        prefix: 'brand-icons',
+        name: 'Brand Icons',
+        description: '',
+      }),
+    ).toEqual({
+      prefix: 'brand-icons',
+      name: 'Brand Icons',
+      description: null,
+    })
+
     expect(
       customIconSetCreateSchema.parse({
         prefix: 'brand-icons',
@@ -244,7 +260,7 @@ describe('icon set schemas', () => {
     })
 
     expect(
-      iconSetRenderableIconSchema.parse({
+      iconSetIconItemSchema.parse({
         icon: 'brand-icons:user-add',
         prefix: 'brand-icons',
         name: 'user-add',

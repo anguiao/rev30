@@ -32,7 +32,7 @@ describe('icon set routes', () => {
     })
     const app = createApp(database)
 
-    const response = await app.request('/api/icon-sets/builtin?keyword=lucide', {
+    const response = await app.request('/api/content/icon-sets/builtin?keyword=lucide', {
       headers: authenticated.authHeaders,
     })
 
@@ -49,9 +49,12 @@ describe('icon set routes', () => {
     })
     const app = createApp(database)
 
-    const response = await app.request('/api/icon-sets/builtin/icons?prefix=lucide&keyword=sun', {
-      headers: authenticated.authHeaders,
-    })
+    const response = await app.request(
+      '/api/content/icon-sets/builtin/icons?prefix=lucide&keyword=sun',
+      {
+        headers: authenticated.authHeaders,
+      },
+    )
 
     expect(response.status).toBe(200)
     const body = (await response.json()) as BuiltinIconListResponse
@@ -116,7 +119,8 @@ describe('icon set routes', () => {
       lookupCollection: lookupCollectionMock,
     }))
 
-    const { listBuiltinIcons } = await import('../../../../src/modules/icons/sets/builtin/service')
+    const { listBuiltinIcons } =
+      await import('../../../../src/modules/content/icon-sets/builtin/service')
 
     const pageOne = await listBuiltinIcons({
       keyword: undefined,
@@ -162,7 +166,7 @@ describe('icon set routes', () => {
     })
     const app = createApp(database)
 
-    const createResponse = await app.request('/api/icon-sets/custom', {
+    const createResponse = await app.request('/api/content/icon-sets/custom', {
       method: 'POST',
       headers: {
         ...authenticated.authHeaders,
@@ -180,17 +184,17 @@ describe('icon set routes', () => {
       'files',
       new File([createSvg(24, createRect('#000'))], 'Logo.svg', { type: 'image/svg+xml' }),
     )
-    const uploadResponse = await app.request('/api/icon-sets/custom/acme/icons', {
+    const uploadResponse = await app.request('/api/content/icon-sets/custom/acme/icons', {
       method: 'POST',
       headers: authenticated.authHeaders,
       body: formData,
     })
 
-    const listResponse = await app.request('/api/icon-sets/custom/icons?prefix=acme', {
+    const listResponse = await app.request('/api/content/icon-sets/custom/icons?prefix=acme', {
       headers: authenticated.authHeaders,
     })
 
-    const exportResponse = await app.request('/api/icon-sets/custom/acme/export', {
+    const exportResponse = await app.request('/api/content/icon-sets/custom/acme/export', {
       headers: authenticated.authHeaders,
     })
 
@@ -246,7 +250,7 @@ describe('icon set routes', () => {
     })
     const app = createApp(database)
 
-    const response = await app.request('/api/icon-sets/custom', {
+    const response = await app.request('/api/content/icon-sets/custom', {
       method: 'POST',
       headers: {
         ...authenticated.authHeaders,
@@ -271,7 +275,7 @@ describe('icon set routes', () => {
     })
     const app = createApp(database)
 
-    const anonymousResponse = await app.request('/api/icon-sets/builtin?keyword=lucide')
+    const anonymousResponse = await app.request('/api/content/icon-sets/builtin?keyword=lucide')
 
     const formData = new FormData()
     formData.set('duplicateStrategy', 'overwrite')
@@ -279,7 +283,7 @@ describe('icon set routes', () => {
       'files',
       new File([createSvg(24, createRect('#000'))], 'Logo.svg', { type: 'image/svg+xml' }),
     )
-    const invalidResponse = await app.request('/api/icon-sets/custom/acme/icons', {
+    const invalidResponse = await app.request('/api/content/icon-sets/custom/acme/icons', {
       method: 'POST',
       headers: authenticated.authHeaders,
       body: formData,
@@ -299,7 +303,7 @@ describe('icon set routes', () => {
     })
     const app = createApp(database)
 
-    const response = await app.request('/api/icon-sets/custom/acme/icons', {
+    const response = await app.request('/api/content/icon-sets/custom/acme/icons', {
       method: 'POST',
       headers: {
         ...authenticated.authHeaders,
@@ -324,7 +328,7 @@ describe('icon set routes', () => {
     })
     const app = createApp(database)
 
-    await app.request('/api/icon-sets/custom', {
+    await app.request('/api/content/icon-sets/custom', {
       method: 'POST',
       headers: {
         ...manager.authHeaders,
@@ -337,7 +341,7 @@ describe('icon set routes', () => {
       }),
     })
 
-    const createResponse = await app.request('/api/icon-sets/custom', {
+    const createResponse = await app.request('/api/content/icon-sets/custom', {
       method: 'POST',
       headers: {
         ...listOnly.authHeaders,
@@ -349,7 +353,7 @@ describe('icon set routes', () => {
         description: null,
       }),
     })
-    const exportResponse = await app.request('/api/icon-sets/custom/acme-export/export', {
+    const exportResponse = await app.request('/api/content/icon-sets/custom/acme-export/export', {
       headers: listOnly.authHeaders,
     })
 

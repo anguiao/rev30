@@ -1,23 +1,13 @@
 import { iconifyIconNamePartPatternSource, type IconSearchItem } from '@rev30/contracts'
 import { lookupCollection } from '@iconify/json'
-import { and, asc, eq, isNull } from 'drizzle-orm'
 import { AsyncFzf, asyncExtendedMatch, byLengthAsc, byStartAsc } from 'fzf'
-import type { Db } from '../../../db'
-import { customIconSetIcons, customIconSets } from '../../../db/schema'
 import { preferredIconPrefixes, recommendedIconNames } from './config'
 import { loadIconCollections } from './collections'
 import type { SearchIndex } from './types'
 
-export type CustomSearchItem = {
-  prefix: string
-  name: string
-  collection: string
-  palette: boolean
-}
-
-let searchIndexPromise: Promise<SearchIndex> | null = null
-let searchIndexIdleTimer: ReturnType<typeof setTimeout> | null = null
-let searchIndexIdlePromise: Promise<SearchIndex> | null = null
+let builtinSearchIndexPromise: Promise<SearchIndex> | null = null
+let builtinSearchIndexIdleTimer: ReturnType<typeof setTimeout> | null = null
+let builtinSearchIndexIdlePromise: Promise<SearchIndex> | null = null
 
 const defaultSearchIndexIdleTtlMs = 15 * 60 * 1000
 const maxTimerDelayMs = 2 ** 31 - 1
@@ -49,7 +39,7 @@ function toIconName(index: SearchIndex, id: number): string {
   return `${getPrefix(index, id)}:${index.names[id]}`
 }
 
-export function toResponseItem(index: SearchIndex, id: number): IconSearchItem {
+export function toBuiltinIconSearchItem(index: SearchIndex, id: number): IconSearchItem {
   return {
     icon: toIconName(index, id),
     prefix: getPrefix(index, id),
@@ -93,7 +83,7 @@ function addItemToTokenBuckets(
   }
 }
 
-async function buildSearchIndex(): Promise<SearchIndex> {
+async function buildBuiltinSearchIndex(): Promise<SearchIndex> {
   const collections = await loadIconCollections()
   const all: number[] = []
   const prefixIds: number[] = []
@@ -187,133 +177,45 @@ async function buildSearchIndex(): Promise<SearchIndex> {
   }
 }
 
-function refreshSearchIndexIdleTimer(indexPromise: Promise<SearchIndex>) {
+function refreshBuiltinSearchIndexIdleTimer(indexPromise: Promise<SearchIndex>) {
   if (searchIndexIdleTtlMs <= 0) {
     return
   }
 
-  if (searchIndexIdleTimer && searchIndexIdlePromise === indexPromise) {
-    searchIndexIdleTimer.refresh()
+  if (builtinSearchIndexIdleTimer && builtinSearchIndexIdlePromise === indexPromise) {
+    builtinSearchIndexIdleTimer.refresh()
     return
   }
 
-  if (searchIndexIdleTimer) {
-    clearTimeout(searchIndexIdleTimer)
+  if (builtinSearchIndexIdleTimer) {
+    clearTimeout(builtinSearchIndexIdleTimer)
   }
 
-  searchIndexIdlePromise = indexPromise
-  searchIndexIdleTimer = setTimeout(() => {
-    if (searchIndexPromise === indexPromise) {
-      searchIndexPromise = null
+  builtinSearchIndexIdlePromise = indexPromise
+  builtinSearchIndexIdleTimer = setTimeout(() => {
+    if (builtinSearchIndexPromise === indexPromise) {
+      builtinSearchIndexPromise = null
     }
 
-    if (searchIndexIdlePromise === indexPromise) {
-      searchIndexIdlePromise = null
-      searchIndexIdleTimer = null
+    if (builtinSearchIndexIdlePromise === indexPromise) {
+      builtinSearchIndexIdlePromise = null
+      builtinSearchIndexIdleTimer = null
     }
   }, searchIndexIdleTtlMs)
-  searchIndexIdleTimer.unref()
+  builtinSearchIndexIdleTimer.unref()
 }
 
-export async function getSearchIndex(): Promise<SearchIndex> {
-  if (!searchIndexPromise) {
-    searchIndexPromise = buildSearchIndex().catch((error) => {
-      searchIndexPromise = null
+export async function getBuiltinSearchIndex(): Promise<SearchIndex> {
+  if (!builtinSearchIndexPromise) {
+    builtinSearchIndexPromise = buildBuiltinSearchIndex().catch((error) => {
+      builtinSearchIndexPromise = null
       throw error
     })
   }
 
-  const indexPromise = searchIndexPromise
+  const indexPromise = builtinSearchIndexPromise
   const index = await indexPromise
-  refreshSearchIndexIdleTimer(indexPromise)
+  refreshBuiltinSearchIndexIdleTimer(indexPromise)
 
   return index
-}
-
-export async function buildCustomSearchItems(database: Db): Promise<CustomSearchItem[]> {
-  return await database
-    .select({
-      prefix: customIconSets.prefix,
-      name: customIconSetIcons.name,
-      collection: customIconSets.name,
-      palette: customIconSetIcons.palette,
-    })
-    .from(customIconSetIcons)
-    .innerJoin(customIconSets, eq(customIconSetIcons.setId, customIconSets.id))
-    .where(and(isNull(customIconSets.deletedAt), isNull(customIconSetIcons.deletedAt)))
-    .orderBy(asc(customIconSets.prefix), asc(customIconSetIcons.name))
-}
-
-export function buildCustomSearchIndex(customItems: CustomSearchItem[]): SearchIndex {
-  const all: number[] = []
-  const prefixIds: number[] = []
-  const prefixes: string[] = []
-  const prefixIndexes = new Map<string, number>()
-  const names: string[] = []
-  const collectionIds: number[] = []
-  const collections: string[] = []
-  const collectionIndexes = new Map<string, number>()
-  const palettes: boolean[] = []
-  const tokenBuckets = new Map<string, number[]>()
-  const preferredByPrefix = new Map<string, Map<string, number>>()
-
-  for (const item of customItems) {
-    let prefixId = prefixIndexes.get(item.prefix)
-    let collectionId = collectionIndexes.get(item.collection)
-
-    if (prefixId === undefined) {
-      prefixId = prefixes.length
-      prefixIndexes.set(item.prefix, prefixId)
-      prefixes.push(item.prefix)
-    }
-
-    if (collectionId === undefined) {
-      collectionId = collections.length
-      collectionIndexes.set(item.collection, collectionId)
-      collections.push(item.collection)
-    }
-
-    const id = names.length
-    all.push(id)
-    prefixIds.push(prefixId)
-    names.push(item.name)
-    collectionIds.push(collectionId)
-    palettes.push(item.palette)
-    addItemToTokenBuckets(tokenBuckets, id, item.prefix, item.name)
-
-    if (preferredIconPrefixes.has(item.prefix)) {
-      const prefixItems = preferredByPrefix.get(item.prefix)
-
-      if (prefixItems) {
-        prefixItems.set(item.name, id)
-      } else {
-        preferredByPrefix.set(item.prefix, new Map([[item.name, id]]))
-      }
-    }
-  }
-
-  const finderOptions = {
-    selector: (id: number) => names[id]!,
-    tiebreakers: [byStartAsc, byLengthAsc],
-    limit: Math.min(all.length, 400),
-  }
-
-  return {
-    all,
-    prefixIds,
-    prefixes,
-    names,
-    collectionIds,
-    collections,
-    palettes,
-    recommended: [],
-    tokenBuckets,
-    searchTokens: [...tokenBuckets.keys()],
-    preferredByPrefix,
-    fastFinder: new AsyncFzf(all, finderOptions),
-    extendedFinder: new AsyncFzf(all, {
-      ...finderOptions,
-      match: asyncExtendedMatch,
-    }),
-  }
 }

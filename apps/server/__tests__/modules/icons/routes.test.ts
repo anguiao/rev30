@@ -6,6 +6,10 @@ import { customIconSetIcons, customIconSets } from '../../../src/db/schema'
 import { createIconRoutes } from '../../../src/modules/icons/routes'
 import { createTestDb } from '../../helpers/db'
 
+const builtinIconDataCacheControl = 'public, max-age=604800, min-refresh=604800, immutable'
+const customIconDataCacheControl = 'public, max-age=3600'
+const missingIconDataCacheControl = 'public, max-age=60'
+
 async function createIconTestApp() {
   const database = await createTestDb()
 
@@ -37,9 +41,10 @@ function expectIconHeaders(response: Response, options: { preflight?: boolean } 
   }
 
   expect(response.headers.get('cross-origin-resource-policy')).toBe('cross-origin')
-  expect(response.headers.get('cache-control')).toBe(
-    'public, max-age=604800, min-refresh=604800, immutable',
-  )
+}
+
+function expectIconCacheControl(response: Response, cacheControl: string) {
+  expect(response.headers.get('cache-control')).toBe(cacheControl)
 }
 
 describe('icon routes', () => {
@@ -52,6 +57,7 @@ describe('icon routes', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toContain('application/json')
     expectIconHeaders(response)
+    expectIconCacheControl(response, builtinIconDataCacheControl)
     expect(body.prefix).toBe('lucide')
     expect(body.width).toBe(24)
     expect(body.height).toBe(24)
@@ -87,7 +93,8 @@ describe('icon routes', () => {
     const body = (await response.json()) as IconifyJSON
 
     expect(response.status).toBe(200)
-    expect(response.headers.get('cache-control')).toBe('no-cache')
+    expectIconHeaders(response)
+    expectIconCacheControl(response, customIconDataCacheControl)
     expect(body).toEqual({
       prefix: 'acme',
       icons: {
@@ -110,6 +117,7 @@ describe('icon routes', () => {
 
     expect(response.status).toBe(200)
     expectIconHeaders(response)
+    expectIconCacheControl(response, builtinIconDataCacheControl)
     expect(Object.keys(body.icons)).toEqual(['sun'])
     expect(body.not_found).toEqual(['not-a-real-icon'])
   })
@@ -122,6 +130,7 @@ describe('icon routes', () => {
 
     expect(response.status).toBe(200)
     expectIconHeaders(response)
+    expectIconCacheControl(response, builtinIconDataCacheControl)
     expect(body.prefix).toBe('lucide')
     expect(body.icons).toEqual({})
     expect(body.aliases).toEqual({})
@@ -135,6 +144,8 @@ describe('icon routes', () => {
     const body = (await response.json()) as IconifyJSON
 
     expect(response.status).toBe(200)
+    expectIconHeaders(response)
+    expectIconCacheControl(response, builtinIconDataCacheControl)
     expect(body.icons).toEqual({})
     expect(body.not_found).toEqual([''])
   })
@@ -146,15 +157,20 @@ describe('icon routes', () => {
     expect(missingCollection.status).toBe(404)
     expect(missingCollection.headers.get('content-type')).toContain('text/plain')
     expectIconHeaders(missingCollection)
+    expectIconCacheControl(missingCollection, missingIconDataCacheControl)
     expect(await missingCollection.text()).toBe('404')
 
     const missingIcons = await app.request('/api/icons/lucide.json')
     expect(missingIcons.status).toBe(404)
     expect(missingIcons.headers.get('content-type')).toContain('text/plain')
+    expectIconHeaders(missingIcons)
+    expectIconCacheControl(missingIcons, missingIconDataCacheControl)
     expect(await missingIcons.text()).toBe('404')
 
     const invalidPrefix = await app.request('/api/icons/Invalid.json?icons=sun')
     expect(invalidPrefix.status).toBe(404)
+    expectIconHeaders(invalidPrefix)
+    expectIconCacheControl(invalidPrefix, missingIconDataCacheControl)
     expect(await invalidPrefix.text()).toBe('404')
   })
 
@@ -165,8 +181,10 @@ describe('icon routes', () => {
     const malformedIcons = await app.request('/api/icons/lucide.json?icons=sun,../secret')
 
     expect(overlongIcons.status).toBe(404)
+    expectIconCacheControl(overlongIcons, missingIconDataCacheControl)
     expect(await overlongIcons.text()).toBe('404')
     expect(malformedIcons.status).toBe(404)
+    expectIconCacheControl(malformedIcons, missingIconDataCacheControl)
     expect(await malformedIcons.text()).toBe('404')
   })
 

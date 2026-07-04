@@ -5,6 +5,7 @@ import {
   type AnnouncementCreateInput,
   type AnnouncementMyDetail,
   type AnnouncementUpdateInput,
+  type CustomIconSet,
 } from '@rev30/contracts'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
@@ -14,6 +15,7 @@ import {
   deleteAnnouncement,
   exportCustomIconSet,
   getAnnouncement,
+  getCustomIconSet,
   getMyAnnouncement,
   listAnnouncements,
   listMyAnnouncements,
@@ -72,6 +74,15 @@ const createInput: AnnouncementCreateInput = {
 
 const updateInput: AnnouncementUpdateInput = {
   title: '维护通知（更新）',
+}
+
+const customIconSetResponse: CustomIconSet = {
+  prefix: 'acme',
+  name: 'Acme Icons',
+  description: null,
+  iconCount: 2,
+  createdAt: '2026-06-15T00:00:00.000Z',
+  updatedAt: '2026-06-15T01:00:00.000Z',
 }
 
 beforeEach(() => {
@@ -302,6 +313,20 @@ describe('content request helpers', () => {
     })
   })
 
+  it('gets custom icon set detail and parses response', async () => {
+    const fetchMock = createFetchMock(jsonResponse(customIconSetResponse))
+    useAuthStore().accessToken = 'access-token'
+
+    const result = await getCustomIconSet('acme')
+
+    expect(result).toEqual(customIconSetResponse)
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/content/icon-sets/custom/acme',
+    })
+  })
+
   it('exports custom icon sets through authenticated fetch', async () => {
     const fetchMock = createFetchMock(
       new Response('{"prefix":"acme","icons":{}}', {
@@ -315,7 +340,7 @@ describe('content request helpers', () => {
 
     const result = await exportCustomIconSet('acme')
     const call = expectFetchCall(fetchMock, 0, {
-      pathname: '/api/icon-sets/custom/acme/export',
+      pathname: '/api/content/icon-sets/custom/acme/export',
     })
 
     expect(call.headers.get('authorization')).toBe('Bearer access-token')

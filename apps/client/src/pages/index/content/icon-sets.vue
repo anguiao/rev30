@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, type HTMLAttributes } from 'vue'
-import { watchDebounced } from '@vueuse/core'
-import { useInfiniteQuery, useQuery, useQueryCache } from '@pinia/colada'
+import { refDebounced } from '@vueuse/core'
+import { useInfiniteQuery, useMutation, useQuery, useQueryCache } from '@pinia/colada'
 import type { ButtonProps } from 'naive-ui'
 import {
   NAlert,
@@ -15,20 +15,15 @@ import {
   NSpin,
   NTabPane,
   NTabs,
-  NTooltip,
   useDialog,
   useMessage,
 } from 'naive-ui'
 import type {
   BuiltinIconListResponse,
   BuiltinIconSetItem,
-  BuiltinIconSetListResponse,
-  CustomIconItem,
   CustomIconListResponse,
   CustomIconSet,
-  CustomIconSetListResponse,
-  IconSetIconListQuery,
-  IconSetListQuery,
+  IconItem,
 } from '@rev30/contracts'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import { getErrorMessage } from '../../../utils/error'
@@ -46,6 +41,7 @@ import {
   renameCustomIcon,
 } from '../../../features/content'
 import { useAuthStore } from '../../../stores/auth'
+import { saveFile } from '../../../utils/download'
 
 const pageTitle = useAdminPageTitle('图标库')
 
@@ -61,65 +57,52 @@ const builtinTabProps = { 'data-test': 'icon-sets-tab-builtin' } as unknown as H
 const customTabProps = { 'data-test': 'icon-sets-tab-custom' } as unknown as HTMLAttributes
 const filterDebounceMs = 250
 const iconScrollLoadOffset = 160
+const iconListPageSize = 80
+
+const emptyIconSetListData = {
+  list: [],
+  total: 0,
+}
+
+async function copyIcon(icon: string) {
+  await navigator.clipboard.writeText(icon)
+  message.success('已复制图标名称')
+}
+
+async function copySvg(svg: string) {
+  await navigator.clipboard.writeText(svg)
+  message.success('已复制 SVG')
+}
 
 const builtinSetKeyword = ref('')
 const builtinIconKeyword = ref('')
-const builtinSetQuery = ref<IconSetListQuery>({
-  keyword: undefined,
-})
-const builtinIconQuery = ref<IconSetIconListQuery>({
-  page: 1,
-  pageSize: 80,
-} as IconSetIconListQuery)
+const builtinSetQueryKeyword = refDebounced(
+  computed(() => {
+    const keyword = builtinSetKeyword.value.trim()
+
+    return keyword.length > 0 ? keyword : undefined
+  }),
+  filterDebounceMs,
+)
+const builtinIconQueryKeyword = refDebounced(
+  computed(() => {
+    const keyword = builtinIconKeyword.value.trim()
+
+    return keyword.length > 0 ? keyword : undefined
+  }),
+  filterDebounceMs,
+)
 const selectedBuiltinPrefix = ref<string | null>(null)
-
-const customSetKeyword = ref('')
-const customIconKeyword = ref('')
-const customSetQuery = ref<IconSetListQuery>({
-  keyword: undefined,
-})
-const customIconQuery = ref<IconSetIconListQuery>({
-  page: 1,
-  pageSize: 80,
-} as IconSetIconListQuery)
-const selectedCustomPrefix = ref<string | null>(null)
-
-const isIconSetDrawerVisible = ref(false)
-const editingCustomSet = ref<CustomIconSet | null>(null)
-const isUploadDrawerVisible = ref(false)
-const renamingIcon = ref<CustomIconItem | null>(null)
-const renameIconName = ref('')
-const isRenamingIcon = ref(false)
-
-const emptyBuiltinSetsData: BuiltinIconSetListResponse = {
-  list: [],
-  total: 0,
-}
-const emptyCustomSetsData: CustomIconSetListResponse = {
-  list: [],
-  total: 0,
-}
 
 const {
   data: builtinSetsResponse,
   error: builtinSetsError,
   isLoading: isLoadingBuiltinSets,
 } = useQuery({
-  key: () => ['content', 'icon-sets', 'builtin', 'sets', builtinSetQuery.value.keyword ?? ''],
+  key: () => ['content', 'icon-sets', 'builtin', 'sets', builtinSetQueryKeyword.value ?? ''],
   enabled: () => activeTab.value === 'builtin',
-  placeholderData: () => emptyBuiltinSetsData,
-  query: () => listBuiltinIconSets(builtinSetQuery.value),
-})
-
-const {
-  data: customSetsResponse,
-  error: customSetsError,
-  isLoading: isLoadingCustomSets,
-} = useQuery({
-  key: () => ['content', 'icon-sets', 'custom', 'sets', customSetQuery.value.keyword ?? ''],
-  enabled: () => activeTab.value === 'custom',
-  placeholderData: () => emptyCustomSetsData,
-  query: () => listCustomIconSets(customSetQuery.value),
+  placeholderData: () => emptyIconSetListData,
+  query: () => listBuiltinIconSets({ keyword: builtinSetQueryKeyword.value }),
 })
 
 const {
@@ -134,19 +117,88 @@ const {
     'icon-sets',
     'builtin',
     'icons',
-    builtinIconQuery.value.pageSize,
-    builtinIconQuery.value.keyword ?? '',
-    builtinIconQuery.value.prefix ?? '',
+    iconListPageSize,
+    builtinIconQueryKeyword.value ?? '',
+    selectedBuiltinPrefix.value ?? '',
   ],
   enabled: () => activeTab.value === 'builtin',
   initialPageParam: 1,
   query: ({ pageParam }) =>
     listBuiltinIcons({
-      ...builtinIconQuery.value,
       page: pageParam,
+      pageSize: iconListPageSize,
+      keyword: builtinIconQueryKeyword.value,
+      prefix: selectedBuiltinPrefix.value ?? undefined,
     }),
   getNextPageParam: (lastPage) =>
     lastPage.page * lastPage.pageSize >= lastPage.total ? null : lastPage.page + 1,
+})
+
+const builtinSetsData = computed(() => builtinSetsResponse.value ?? emptyIconSetListData)
+const builtinIcons = computed(() =>
+  (builtinIconsResponse.value?.pages ?? []).flatMap((page) => page.list),
+)
+const selectedBuiltinSet = computed(
+  () =>
+    builtinSetsData.value.list.find((iconSet) => iconSet.prefix === selectedBuiltinPrefix.value) ??
+    null,
+)
+const builtinIconScrollKey = computed(
+  () =>
+    `${selectedBuiltinPrefix.value ?? '__all__'}:${builtinIconQueryKeyword.value ?? ''}:${iconListPageSize}`,
+)
+const builtinSetErrorMessage = computed(() =>
+  builtinSetsError.value === null
+    ? ''
+    : getErrorMessage(builtinSetsError.value, '加载内置图标集失败'),
+)
+const builtinIconErrorMessage = computed(() =>
+  builtinIconsError.value === null
+    ? ''
+    : getErrorMessage(builtinIconsError.value, '加载内置图标失败'),
+)
+
+function selectBuiltinSet(iconSet: BuiltinIconSetItem | null) {
+  selectedBuiltinPrefix.value = iconSet?.prefix ?? null
+}
+
+async function loadMoreBuiltinIcons() {
+  if (isLoadingBuiltinIcons.value || !hasNextBuiltinIconPage.value) {
+    return
+  }
+
+  await loadNextBuiltinIconPage({ cancelRefetch: false })
+}
+
+const customSetKeyword = ref('')
+const customIconKeyword = ref('')
+const customSetQueryKeyword = refDebounced(
+  computed(() => {
+    const keyword = customSetKeyword.value.trim()
+
+    return keyword.length > 0 ? keyword : undefined
+  }),
+  filterDebounceMs,
+)
+const customIconQueryKeyword = refDebounced(
+  computed(() => {
+    const keyword = customIconKeyword.value.trim()
+
+    return keyword.length > 0 ? keyword : undefined
+  }),
+  filterDebounceMs,
+)
+const selectedCustomPrefix = ref<string | null>(null)
+
+const {
+  data: customSetsResponse,
+  error: customSetsError,
+  isLoading: isLoadingCustomSets,
+} = useQuery({
+  key: () => ['content', 'icon-sets', 'custom', 'sets', customSetQueryKeyword.value ?? ''],
+  enabled: () => activeTab.value === 'custom',
+  placeholderData: () => emptyIconSetListData,
+  query: () => listCustomIconSets({ keyword: customSetQueryKeyword.value }),
 })
 
 const {
@@ -161,59 +213,35 @@ const {
     'icon-sets',
     'custom',
     'icons',
-    customIconQuery.value.pageSize,
-    customIconQuery.value.keyword ?? '',
-    customIconQuery.value.prefix ?? '',
+    iconListPageSize,
+    customIconQueryKeyword.value ?? '',
+    selectedCustomPrefix.value ?? '',
   ],
   enabled: () => activeTab.value === 'custom',
   initialPageParam: 1,
   query: ({ pageParam }) =>
     listCustomIcons({
-      ...customIconQuery.value,
       page: pageParam,
+      pageSize: iconListPageSize,
+      keyword: customIconQueryKeyword.value,
+      prefix: selectedCustomPrefix.value ?? undefined,
     }),
   getNextPageParam: (lastPage) =>
     lastPage.page * lastPage.pageSize >= lastPage.total ? null : lastPage.page + 1,
 })
 
-const builtinSetsData = computed(() => builtinSetsResponse.value ?? emptyBuiltinSetsData)
-const builtinIcons = computed(() =>
-  (builtinIconsResponse.value?.pages ?? []).flatMap((page) => page.list),
-)
-const customSetsData = computed(() => customSetsResponse.value ?? emptyCustomSetsData)
+const customSetsData = computed(() => customSetsResponse.value ?? emptyIconSetListData)
 const customIcons = computed(() =>
   (customIconsResponse.value?.pages ?? []).flatMap((page) => page.list),
-)
-const selectedBuiltinSet = computed(
-  () =>
-    builtinSetsData.value.list.find((iconSet) => iconSet.prefix === selectedBuiltinPrefix.value) ??
-    null,
 )
 const selectedCustomSet = computed(
   () =>
     customSetsData.value.list.find((iconSet) => iconSet.prefix === selectedCustomPrefix.value) ??
     null,
 )
-const canRenameCustomIcon = computed(() => auth.can('content:icon-set:update'))
-const canDeleteCustomIcon = computed(() => auth.can('content:icon-set:delete'))
-const builtinIconPanelKey = computed(
+const customIconScrollKey = computed(
   () =>
-    `${builtinIconQuery.value.prefix ?? '__all__'}:${builtinIconQuery.value.keyword ?? ''}:${builtinIconQuery.value.pageSize}`,
-)
-const customIconPanelKey = computed(
-  () =>
-    `${customIconQuery.value.prefix ?? '__all__'}:${customIconQuery.value.keyword ?? ''}:${customIconQuery.value.pageSize}`,
-)
-
-const builtinSetErrorMessage = computed(() =>
-  builtinSetsError.value === null
-    ? ''
-    : getErrorMessage(builtinSetsError.value, '加载内置图标集失败'),
-)
-const builtinIconErrorMessage = computed(() =>
-  builtinIconsError.value === null
-    ? ''
-    : getErrorMessage(builtinIconsError.value, '加载内置图标失败'),
+    `${selectedCustomPrefix.value ?? '__all__'}:${customIconQueryKeyword.value ?? ''}:${iconListPageSize}`,
 )
 const customSetErrorMessage = computed(() =>
   customSetsError.value === null
@@ -226,51 +254,8 @@ const customIconErrorMessage = computed(() =>
     : getErrorMessage(customIconsError.value, '加载自定义图标失败'),
 )
 
-function toSetQuery(keyword: string): IconSetListQuery {
-  const nextKeyword = keyword.trim()
-
-  return {
-    keyword: nextKeyword.length > 0 ? nextKeyword : undefined,
-  }
-}
-
-function toIconQuery(
-  keyword: string,
-  pageSize: number,
-  prefix: string | null,
-): IconSetIconListQuery {
-  const nextKeyword = keyword.trim()
-
-  return {
-    page: 1,
-    pageSize,
-    ...(nextKeyword.length > 0 ? { keyword: nextKeyword } : {}),
-    ...(prefix === null ? {} : { prefix }),
-  } as IconSetIconListQuery
-}
-
-function updateBuiltinIconQuery() {
-  builtinIconQuery.value = toIconQuery(
-    builtinIconKeyword.value,
-    builtinIconQuery.value.pageSize,
-    selectedBuiltinPrefix.value,
-  )
-}
-
-function updateCustomIconQuery() {
-  customIconQuery.value = toIconQuery(
-    customIconKeyword.value,
-    customIconQuery.value.pageSize,
-    selectedCustomPrefix.value,
-  )
-}
-
-async function loadMoreBuiltinIcons() {
-  if (isLoadingBuiltinIcons.value || !hasNextBuiltinIconPage.value) {
-    return
-  }
-
-  await loadNextBuiltinIconPage({ cancelRefetch: false })
+function selectCustomSet(iconSet: CustomIconSet | null) {
+  selectedCustomPrefix.value = iconSet?.prefix ?? null
 }
 
 async function loadMoreCustomIcons() {
@@ -279,48 +264,6 @@ async function loadMoreCustomIcons() {
   }
 
   await loadNextCustomIconPage({ cancelRefetch: false })
-}
-
-function selectBuiltinSet(iconSet: BuiltinIconSetItem | null) {
-  selectedBuiltinPrefix.value = iconSet?.prefix ?? null
-  updateBuiltinIconQuery()
-}
-
-watchDebounced(
-  builtinSetKeyword,
-  () => {
-    builtinSetQuery.value = toSetQuery(builtinSetKeyword.value)
-  },
-  { debounce: filterDebounceMs },
-)
-
-watchDebounced(
-  builtinIconKeyword,
-  () => {
-    updateBuiltinIconQuery()
-  },
-  { debounce: filterDebounceMs },
-)
-
-watchDebounced(
-  customSetKeyword,
-  () => {
-    customSetQuery.value = toSetQuery(customSetKeyword.value)
-  },
-  { debounce: filterDebounceMs },
-)
-
-watchDebounced(
-  customIconKeyword,
-  () => {
-    updateCustomIconQuery()
-  },
-  { debounce: filterDebounceMs },
-)
-
-function selectCustomSet(iconSet: CustomIconSet | null) {
-  selectedCustomPrefix.value = iconSet?.prefix ?? null
-  updateCustomIconQuery()
 }
 
 async function invalidateCustomIconSetQueries() {
@@ -335,72 +278,22 @@ async function invalidateCustomIconQueries() {
   })
 }
 
-async function copyIcon(icon: string) {
-  await navigator.clipboard.writeText(icon)
-  message.success('已复制图标名称')
-}
+const canRenameCustomIcon = computed(() => auth.can('content:icon-set:update'))
+const canDeleteCustomIcon = computed(() => auth.can('content:icon-set:delete'))
 
+const isIconSetDrawerVisible = ref(false)
+const editingCustomPrefix = ref<string | null>(null)
 function openCreateCustomSetDrawer() {
-  editingCustomSet.value = null
+  editingCustomPrefix.value = null
   isIconSetDrawerVisible.value = true
 }
-
 function openEditCustomSetDrawer(iconSet: CustomIconSet) {
-  editingCustomSet.value = iconSet
+  editingCustomPrefix.value = iconSet.prefix
   isIconSetDrawerVisible.value = true
 }
-
-async function handleCustomSetSaved(iconSet: CustomIconSet) {
-  selectedCustomPrefix.value = iconSet.prefix
-  updateCustomIconQuery()
+async function handleCustomSetSaved() {
   message.success('保存图标集成功')
   await invalidateCustomIconSetQueries()
-  await invalidateCustomIconQueries()
-}
-
-function openUploadDrawer() {
-  if (selectedCustomPrefix.value === null) {
-    message.warning('请先选择自定义图标集')
-    return
-  }
-
-  isUploadDrawerVisible.value = true
-}
-
-function downloadFile(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.append(link)
-
-  try {
-    link.click()
-  } finally {
-    link.remove()
-    URL.revokeObjectURL(url)
-  }
-}
-
-async function handleIconsUploaded() {
-  message.success('上传图标成功')
-  await invalidateCustomIconSetQueries()
-  await invalidateCustomIconQueries()
-}
-
-async function exportSelectedCustomSet() {
-  if (selectedCustomPrefix.value === null) {
-    message.warning('请先选择自定义图标集')
-    return
-  }
-
-  try {
-    const file = await exportCustomIconSet(selectedCustomPrefix.value)
-    downloadFile(file.blob, file.filename)
-    message.success('导出图标集成功')
-  } catch (error) {
-    message.error(getErrorMessage(error, '导出图标集失败'))
-  }
 }
 
 function confirmDeleteCustomSet(iconSet: CustomIconSet) {
@@ -425,7 +318,6 @@ function confirmDeleteCustomSet(iconSet: CustomIconSet) {
 
         message.success('删除图标集成功')
         await invalidateCustomIconSetQueries()
-        updateCustomIconQuery()
         await invalidateCustomIconQueries()
       } catch (error) {
         message.error(getErrorMessage(error, '删除图标集失败'))
@@ -435,12 +327,55 @@ function confirmDeleteCustomSet(iconSet: CustomIconSet) {
   })
 }
 
-function openRenameIconModal(icon: CustomIconItem) {
+const isUploadDrawerVisible = ref(false)
+function openUploadDrawer() {
+  if (selectedCustomPrefix.value === null) {
+    message.warning('请先选择自定义图标集')
+    return
+  }
+
+  isUploadDrawerVisible.value = true
+}
+async function handleIconsUploaded() {
+  message.success('上传图标成功')
+  await invalidateCustomIconSetQueries()
+  await invalidateCustomIconQueries()
+}
+
+async function exportSelectedCustomSet() {
+  if (selectedCustomPrefix.value === null) {
+    message.warning('请先选择自定义图标集')
+    return
+  }
+
+  try {
+    const file = await exportCustomIconSet(selectedCustomPrefix.value)
+    saveFile(file.blob, file.filename)
+    message.success('导出图标集成功')
+  } catch (error) {
+    message.error(getErrorMessage(error, '导出图标集失败'))
+  }
+}
+
+const renamingIcon = ref<IconItem | null>(null)
+const renameIconName = ref('')
+const { isLoading: isRenamingIcon, ...renameIconMutation } = useMutation({
+  mutation: ({ icon, name }: { icon: IconItem; name: string }) =>
+    renameCustomIcon(icon.prefix, icon.name, { name }),
+  async onSuccess() {
+    message.success('重命名图标成功')
+    renamingIcon.value = null
+    await invalidateCustomIconQueries()
+  },
+  onError(error) {
+    message.error(getErrorMessage(error, '重命名图标失败'))
+  },
+})
+function openRenameIconModal(icon: IconItem) {
   renamingIcon.value = icon
   renameIconName.value = icon.name
 }
-
-async function submitRenameIcon() {
+function submitRenameIcon() {
   const icon = renamingIcon.value
   const nextName = renameIconName.value.trim()
 
@@ -448,22 +383,10 @@ async function submitRenameIcon() {
     return
   }
 
-  isRenamingIcon.value = true
-
-  try {
-    await renameCustomIcon(icon.prefix, icon.name, { name: nextName })
-
-    message.success('重命名图标成功')
-    renamingIcon.value = null
-    await invalidateCustomIconQueries()
-  } catch (error) {
-    message.error(getErrorMessage(error, '重命名图标失败'))
-  } finally {
-    isRenamingIcon.value = false
-  }
+  renameIconMutation.mutate({ icon, name: nextName })
 }
 
-function confirmDeleteCustomIcon(icon: CustomIconItem) {
+function confirmDeleteCustomIcon(icon: IconItem) {
   const positiveButtonProps: ButtonProps & Record<string, unknown> = {
     type: 'error',
     'data-test': 'custom-icon-delete-confirm',
@@ -599,7 +522,7 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
               </div>
 
               <NInfiniteScroll
-                :key="builtinIconPanelKey"
+                :key="builtinIconScrollKey"
                 data-test="builtin-icon-scroll"
                 class="min-h-0 flex-1"
                 :distance="iconScrollLoadOffset"
@@ -610,9 +533,9 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                   <IconGrid
                     v-if="builtinIcons.length > 0"
                     :icons="builtinIcons"
-                    :editable="false"
-                    :show-set-name="selectedBuiltinPrefix === null"
+                    :scope="selectedBuiltinPrefix === null ? 'all' : 'single'"
                     @copy="copyIcon"
+                    @copy-svg="copySvg"
                   />
                   <NEmpty v-else-if="!isLoadingBuiltinIcons" />
                   <div v-else class="h-40" />
@@ -718,37 +641,29 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                         </button>
 
                         <div class="flex shrink-0 items-center">
-                          <NTooltip trigger="hover">
-                            <template #trigger>
-                              <NButton
-                                v-can="'content:icon-set:update'"
-                                quaternary
-                                circle
-                                size="tiny"
-                                aria-label="编辑图标集"
-                                @click.stop="openEditCustomSetDrawer(iconSet)"
-                              >
-                                <span class="i-[lucide--pencil-line] text-xs" aria-hidden="true" />
-                              </NButton>
-                            </template>
-                            编辑
-                          </NTooltip>
+                          <NButton
+                            v-can="'content:icon-set:update'"
+                            quaternary
+                            circle
+                            size="tiny"
+                            title="编辑"
+                            aria-label="编辑图标集"
+                            @click.stop="openEditCustomSetDrawer(iconSet)"
+                          >
+                            <span class="i-[lucide--pencil-line] text-xs" aria-hidden="true" />
+                          </NButton>
 
-                          <NTooltip trigger="hover">
-                            <template #trigger>
-                              <NButton
-                                v-can="'content:icon-set:delete'"
-                                quaternary
-                                circle
-                                size="tiny"
-                                aria-label="删除图标集"
-                                @click.stop="confirmDeleteCustomSet(iconSet)"
-                              >
-                                <span class="i-[lucide--trash-2] text-xs" aria-hidden="true" />
-                              </NButton>
-                            </template>
-                            删除
-                          </NTooltip>
+                          <NButton
+                            v-can="'content:icon-set:delete'"
+                            quaternary
+                            circle
+                            size="tiny"
+                            title="删除"
+                            aria-label="删除图标集"
+                            @click.stop="confirmDeleteCustomSet(iconSet)"
+                          >
+                            <span class="i-[lucide--trash-2] text-xs" aria-hidden="true" />
+                          </NButton>
                         </div>
                       </div>
                     </div>
@@ -815,7 +730,7 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
               </div>
 
               <NInfiniteScroll
-                :key="customIconPanelKey"
+                :key="customIconScrollKey"
                 data-test="custom-icon-scroll"
                 class="min-h-0 flex-1"
                 :distance="iconScrollLoadOffset"
@@ -826,11 +741,11 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
                   <IconGrid
                     v-if="customIcons.length > 0"
                     :icons="customIcons"
-                    :editable="true"
-                    :show-set-name="selectedCustomPrefix === null"
-                    :can-rename="canRenameCustomIcon"
-                    :can-delete="canDeleteCustomIcon"
+                    :scope="selectedCustomPrefix === null ? 'all' : 'single'"
+                    :renamable="canRenameCustomIcon"
+                    :deletable="canDeleteCustomIcon"
                     @copy="copyIcon"
+                    @copy-svg="copySvg"
                     @rename="openRenameIconModal"
                     @delete="confirmDeleteCustomIcon"
                   />
@@ -853,7 +768,7 @@ function confirmDeleteCustomIcon(icon: CustomIconItem) {
 
     <IconSetFormDrawer
       v-model:show="isIconSetDrawerVisible"
-      :editing-set="editingCustomSet"
+      :prefix="editingCustomPrefix"
       @saved="handleCustomSetSaved"
     />
 

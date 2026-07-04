@@ -31,7 +31,7 @@ import {
   type IconSetListQuery,
   type IconSetRenameIconInput,
 } from '@rev30/contracts'
-import { api, authFetch } from '../../api'
+import { api } from '../../api'
 import { assertApiResponseOk, normalizeRequestQuery, parseApiResponse } from '../../utils/request'
 
 export async function listAnnouncements(
@@ -103,7 +103,7 @@ export async function listBuiltinIconSets(
   query: IconSetListQuery,
 ): Promise<BuiltinIconSetListResponse> {
   return parseApiResponse(
-    await api['icon-sets'].builtin.$get({
+    await api.content['icon-sets'].builtin.$get({
       query: normalizeRequestQuery(query),
     }),
     builtinIconSetListResponseSchema,
@@ -114,7 +114,7 @@ export async function listBuiltinIcons(
   query: IconSetIconListQuery,
 ): Promise<BuiltinIconListResponse> {
   return parseApiResponse(
-    await api['icon-sets'].builtin.icons.$get({
+    await api.content['icon-sets'].builtin.icons.$get({
       query: normalizeRequestQuery(query),
     }),
     builtinIconListResponseSchema,
@@ -125,16 +125,25 @@ export async function listCustomIconSets(
   query: IconSetListQuery,
 ): Promise<CustomIconSetListResponse> {
   return parseApiResponse(
-    await api['icon-sets'].custom.$get({
+    await api.content['icon-sets'].custom.$get({
       query: normalizeRequestQuery(query),
     }),
     customIconSetListResponseSchema,
   )
 }
 
+export async function getCustomIconSet(prefix: string): Promise<CustomIconSet> {
+  return parseApiResponse(
+    await api.content['icon-sets'].custom[':prefix'].$get({
+      param: { prefix },
+    }),
+    customIconSetSchema,
+  )
+}
+
 export async function createCustomIconSet(input: CustomIconSetCreateInput): Promise<CustomIconSet> {
   return parseApiResponse(
-    await api['icon-sets'].custom.$post({
+    await api.content['icon-sets'].custom.$post({
       json: input,
     }),
     customIconSetSchema,
@@ -146,7 +155,7 @@ export async function updateCustomIconSet(
   input: CustomIconSetUpdateInput,
 ): Promise<CustomIconSet> {
   return parseApiResponse(
-    await api['icon-sets'].custom[':prefix'].$patch({
+    await api.content['icon-sets'].custom[':prefix'].$patch({
       param: { prefix },
       json: input,
     }),
@@ -156,7 +165,7 @@ export async function updateCustomIconSet(
 
 export async function deleteCustomIconSet(prefix: string): Promise<void> {
   await assertApiResponseOk(
-    await api['icon-sets'].custom[':prefix'].$delete({
+    await api.content['icon-sets'].custom[':prefix'].$delete({
       param: { prefix },
     }),
   )
@@ -166,7 +175,7 @@ export async function listCustomIcons(
   query: IconSetIconListQuery,
 ): Promise<CustomIconListResponse> {
   return parseApiResponse(
-    await api['icon-sets'].custom.icons.$get({
+    await api.content['icon-sets'].custom.icons.$get({
       query: normalizeRequestQuery(query),
     }),
     customIconListResponseSchema,
@@ -180,24 +189,14 @@ export async function uploadCustomIcons(
     files: File[]
   },
 ): Promise<CustomIconUploadResponse> {
-  const formData = new FormData()
-  formData.set('duplicateStrategy', input.duplicateStrategy)
-
-  for (const file of input.files) {
-    formData.append('files', file)
-  }
-
   return parseApiResponse(
-    await api['icon-sets'].custom[':prefix'].icons.$post(
-      {
-        param: { prefix },
+    await api.content['icon-sets'].custom[':prefix'].icons.$post({
+      param: { prefix },
+      form: {
+        duplicateStrategy: input.duplicateStrategy,
+        files: input.files,
       },
-      {
-        init: {
-          body: formData,
-        },
-      },
-    ),
+    }),
     customIconUploadResponseSchema,
   )
 }
@@ -208,7 +207,7 @@ export async function renameCustomIcon(
   input: IconSetRenameIconInput,
 ): Promise<CustomIconItem> {
   return parseApiResponse(
-    await api['icon-sets'].custom[':prefix'].icons[':name'].$patch({
+    await api.content['icon-sets'].custom[':prefix'].icons[':name'].$patch({
       param: { prefix, name },
       json: input,
     }),
@@ -218,29 +217,23 @@ export async function renameCustomIcon(
 
 export async function deleteCustomIcon(prefix: string, name: string): Promise<void> {
   await assertApiResponseOk(
-    await api['icon-sets'].custom[':prefix'].icons[':name'].$delete({
+    await api.content['icon-sets'].custom[':prefix'].icons[':name'].$delete({
       param: { prefix, name },
     }),
   )
 }
 
-export function getCustomIconSetExportUrl(prefix: string) {
-  return `/api/icon-sets/custom/${encodeURIComponent(prefix)}/export`
-}
-
-function getResponseFilename(response: Response, fallback: string) {
-  const contentDisposition = response.headers.get('content-disposition')
-  const filename = contentDisposition?.match(/filename="([^"]+)"/)?.[1]
-
-  return filename ?? fallback
-}
-
 export async function exportCustomIconSet(prefix: string) {
-  const response = await authFetch(getCustomIconSetExportUrl(prefix))
+  const response = await api.content['icon-sets'].custom[':prefix'].export.$get({
+    param: { prefix },
+  })
   await assertApiResponseOk(response)
+
+  const contentDisposition = response.headers.get('content-disposition')
+  const filename = contentDisposition?.match(/filename="([^"]+)"/)?.[1] ?? `${prefix}.json`
 
   return {
     blob: await response.blob(),
-    filename: getResponseFilename(response, `${prefix}.json`),
+    filename,
   }
 }

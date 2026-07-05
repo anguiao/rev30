@@ -22,9 +22,9 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.5.1",
+    "@electric-sql/pglite": "^0.5.4",
     "@file-type/cfbf": "^0.2.2",
-    "@hono/node-server": "^2.0.4",
+    "@hono/node-server": "^2.0.8",
     "@hono/zod-validator": "^0.8.0",
     "@iconify/json": "catalog:",
     "@iconify/tools": "^5.0.12",
@@ -49,6 +49,6 @@
     "@types/mime-types": "^3.0.1",
     "drizzle-kit": "^0.31.10",
     "tsup": "^8.5.1",
-    "tsx": "^4.22.4"
+    "tsx": "^4.23.0"
   }
 }

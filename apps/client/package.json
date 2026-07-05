@@ -32,17 +32,17 @@
     "@iconify/json": "catalog:",
     "@iconify/tailwind4": "^1.2.3",
     "@rev30/server": "workspace:*",
-    "@tailwindcss/typography": "^0.5.19",
-    "@tailwindcss/vite": "^4.3.0",
+    "@tailwindcss/typography": "^0.5.20",
+    "@tailwindcss/vite": "^4.3.2",
     "@types/bytes": "catalog:",
     "@types/file-saver": "^2.0.7",
     "@types/lodash-es": "^4.17.12",
     "@vitejs/plugin-vue": "catalog:",
     "@vue/test-utils": "catalog:",
     "happy-dom": "catalog:",
-    "tailwindcss": "^4.3.0",
+    "tailwindcss": "^4.3.2",
     "vite": "catalog:",
-    "vite-plugin-vue-devtools": "^8.1.2",
+    "vite-plugin-vue-devtools": "^8.1.5",
     "vue-tsc": "catalog:"
   }
 }

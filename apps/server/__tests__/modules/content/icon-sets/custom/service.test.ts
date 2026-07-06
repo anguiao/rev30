@@ -144,9 +144,9 @@ describe('custom icon set service', () => {
     })
 
     await expect(
-      service.listIcons({ keyword: undefined, prefix: 'acme', page: 1, pageSize: 80 }),
+      service.listIcons({ keyword: undefined, prefix: 'acme', cursor: undefined, pageSize: 80 }),
     ).resolves.toMatchObject({
-      total: 1,
+      nextCursor: null,
       list: [
         {
           icon: 'acme:logo',
@@ -193,9 +193,9 @@ describe('custom icon set service', () => {
 
     await service.deleteIcon('acme', 'brand')
     await expect(
-      service.listIcons({ keyword: undefined, prefix: 'acme', page: 1, pageSize: 80 }),
+      service.listIcons({ keyword: undefined, prefix: 'acme', cursor: undefined, pageSize: 80 }),
     ).resolves.toMatchObject({
-      total: 0,
+      nextCursor: null,
       list: [],
     })
   })

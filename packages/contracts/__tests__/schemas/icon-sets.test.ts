@@ -33,13 +33,13 @@ describe('icon set schemas', () => {
       iconSetIconListQuerySchema.parse({
         keyword: ' user ',
         prefix: 'lucide',
-        page: '2',
+        cursor: 'lucide:user-add',
         pageSize: '80',
       }),
     ).toEqual({
       keyword: 'user',
       prefix: 'lucide',
-      page: 2,
+      cursor: 'lucide:user-add',
       pageSize: 80,
     })
   })
@@ -142,8 +142,7 @@ describe('icon set schemas', () => {
             height: 24,
           },
         ],
-        total: 1,
-        page: 1,
+        nextCursor: null,
         pageSize: 80,
       }),
     ).toEqual({
@@ -158,8 +157,7 @@ describe('icon set schemas', () => {
           height: 24,
         },
       ],
-      total: 1,
-      page: 1,
+      nextCursor: null,
       pageSize: 80,
     })
   })
@@ -226,8 +224,7 @@ describe('icon set schemas', () => {
             updatedAt: '2026-06-15T01:00:00.000Z',
           },
         ],
-        total: 1,
-        page: 1,
+        nextCursor: null,
         pageSize: 80,
       }),
     ).toEqual({
@@ -244,8 +241,7 @@ describe('icon set schemas', () => {
           updatedAt: '2026-06-15T01:00:00.000Z',
         },
       ],
-      total: 1,
-      page: 1,
+      nextCursor: null,
       pageSize: 80,
     })
   })

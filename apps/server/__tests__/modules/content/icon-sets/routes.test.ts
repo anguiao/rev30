@@ -64,7 +64,7 @@ describe('icon set routes', () => {
     expect(typeof body.list[0]?.height).toBe('number')
   })
 
-  it('uses metadata totals and excludes aliases for global browsing without a keyword', async () => {
+  it('uses cursor pagination and excludes aliases for global browsing without a keyword', async () => {
     vi.resetModules()
     const loadIconCollectionsMock = vi.fn().mockResolvedValue({
       alpha: {
@@ -125,28 +125,22 @@ describe('icon set routes', () => {
     const pageOne = await listBuiltinIcons({
       keyword: undefined,
       prefix: undefined,
-      page: 1,
+      cursor: undefined,
       pageSize: 1,
     })
 
-    expect(pageOne.total).toBe(2)
+    expect(pageOne.nextCursor).toBe('alpha:real')
     expect(pageOne.list.map((item) => item.icon)).toEqual(['alpha:real'])
-    expect(lookupCollectionMock).toHaveBeenCalledTimes(1)
-    expect(lookupCollectionMock).toHaveBeenNthCalledWith(1, 'alpha')
-
-    lookupCollectionMock.mockClear()
 
     const pageTwo = await listBuiltinIcons({
       keyword: undefined,
       prefix: undefined,
-      page: 2,
+      cursor: pageOne.nextCursor ?? undefined,
       pageSize: 1,
     })
 
-    expect(pageTwo.total).toBe(2)
+    expect(pageTwo.nextCursor).toBeNull()
     expect(pageTwo.list.map((item) => item.icon)).toEqual(['beta:second'])
-    expect(lookupCollectionMock).toHaveBeenCalledTimes(1)
-    expect(lookupCollectionMock).toHaveBeenNthCalledWith(1, 'beta')
 
     vi.doUnmock('../../../../src/modules/icons/search/collections')
     vi.doUnmock('@iconify/json')

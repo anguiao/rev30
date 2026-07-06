@@ -5,9 +5,10 @@ import type {
   IconSetListQuery,
   IconSetRenameIconInput,
 } from '@rev30/contracts'
-import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, ilike, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../../db'
 import { customIconSetIcons, customIconSets } from '../../../../db/schema'
+import { formatIconCursor, parseIconCursor } from '../cursor'
 import { toCustomIconConflictError } from './errors'
 import type { IconRow, SetRow } from './mapper'
 import type { ParsedSvgIcon } from './svg'
@@ -228,12 +229,24 @@ export function createCustomIconSetRepository(database: Db) {
     },
 
     async listIcons(query: IconSetIconListQuery) {
-      const { page, pageSize, keyword, prefix } = query
+      const { pageSize, keyword, prefix } = query
       const keywordFilter = keyword ? `%${keyword}%` : undefined
+      const cursor = parseIconCursor(query.cursor)
+      const cursorFilter =
+        cursor && (!prefix || cursor.prefix === prefix)
+          ? or(
+              gt(customIconSets.prefix, cursor.prefix),
+              and(
+                eq(customIconSets.prefix, cursor.prefix),
+                gt(customIconSetIcons.name, cursor.name),
+              ),
+            )
+          : undefined
       const where = and(
         isNull(customIconSets.deletedAt),
         isNull(customIconSetIcons.deletedAt),
         prefix ? eq(customIconSets.prefix, prefix) : undefined,
+        cursorFilter,
         keywordFilter
           ? or(
               ilike(customIconSets.prefix, keywordFilter),
@@ -242,28 +255,22 @@ export function createCustomIconSetRepository(database: Db) {
             )
           : undefined,
       )
-      const [list, totalRows] = await Promise.all([
-        database
-          .select(customIconColumns)
-          .from(customIconSetIcons)
-          .innerJoin(customIconSets, eq(customIconSetIcons.setId, customIconSets.id))
-          .where(where)
-          .orderBy(asc(customIconSets.prefix), asc(customIconSetIcons.name))
-          .limit(pageSize)
-          .offset((page - 1) * pageSize),
-        database
-          .select({
-            total: count(),
-          })
-          .from(customIconSetIcons)
-          .innerJoin(customIconSets, eq(customIconSetIcons.setId, customIconSets.id))
-          .where(where),
-      ])
+      const rows = await database
+        .select(customIconColumns)
+        .from(customIconSetIcons)
+        .innerJoin(customIconSets, eq(customIconSetIcons.setId, customIconSets.id))
+        .where(where)
+        .orderBy(asc(customIconSets.prefix), asc(customIconSetIcons.name))
+        .limit(pageSize + 1)
+      const list = rows.slice(0, pageSize)
+      const lastItem = list.at(-1)
 
       return {
         list,
-        total: totalRows[0]?.total ?? 0,
-        page,
+        nextCursor:
+          rows.length > pageSize && lastItem
+            ? formatIconCursor(lastItem.prefix, lastItem.name)
+            : null,
         pageSize,
       }
     },

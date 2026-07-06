@@ -78,8 +78,7 @@ const builtinIconsResponse: BuiltinIconListResponse = {
       height: 24,
     },
   ],
-  total: 1,
-  page: 1,
+  nextCursor: null,
   pageSize: 80,
 }
 
@@ -90,8 +89,7 @@ const emptyCustomIconSetsResponse: CustomIconSetListResponse = {
 
 const emptyCustomIconsResponse: CustomIconListResponse = {
   list: [],
-  total: 0,
-  page: 1,
+  nextCursor: null,
   pageSize: 80,
 }
 
@@ -123,8 +121,7 @@ const customIconsResponse: CustomIconListResponse = {
       updatedAt: '2026-06-15T00:00:00.000Z',
     },
   ],
-  total: 1,
-  page: 1,
+  nextCursor: null,
   pageSize: 80,
 }
 
@@ -202,7 +199,7 @@ describe('icon sets page', () => {
     expect(wrapper.get('[data-test="builtin-icon-set"]').text()).toContain('Lucide')
     expect(wrapper.get('[data-test="icon-grid-item"]').text()).toContain('sun')
     expect(wrapper.get('[data-test="icon-grid-name"]').text()).toContain('sun')
-    expect(listBuiltinIconsMock).toHaveBeenCalledWith({ page: 1, pageSize: 80 })
+    expect(listBuiltinIconsMock).toHaveBeenCalledWith({ cursor: undefined, pageSize: 80 })
 
     await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
     await flushPromises()
@@ -221,7 +218,7 @@ describe('icon sets page', () => {
     listBuiltinIconsMock
       .mockResolvedValueOnce({
         ...builtinIconsResponse,
-        total: 81,
+        nextCursor: 'lucide:sun',
       })
       .mockResolvedValueOnce({
         ...builtinIconsResponse,
@@ -236,8 +233,7 @@ describe('icon sets page', () => {
             height: 24,
           },
         ],
-        total: 81,
-        page: 2,
+        nextCursor: null,
       })
 
     const { wrapper } = await mountIconSetsPage()
@@ -253,7 +249,10 @@ describe('icon sets page', () => {
     await scrollPanel.trigger('scroll')
     await flushPromises()
 
-    expect(listBuiltinIconsMock).toHaveBeenLastCalledWith({ page: 2, pageSize: 80 })
+    expect(listBuiltinIconsMock).toHaveBeenLastCalledWith({
+      cursor: 'lucide:sun',
+      pageSize: 80,
+    })
     expect(wrapper.get('[data-test="icon-grid-item"]').text()).toContain('sun')
     expect(wrapper.text()).toContain('moon')
   })

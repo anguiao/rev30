@@ -111,7 +111,7 @@ const {
   isLoading: isLoadingBuiltinIcons,
   hasNextPage: hasNextBuiltinIconPage,
   loadNextPage: loadNextBuiltinIconPage,
-} = useInfiniteQuery<BuiltinIconListResponse, Error, number>({
+} = useInfiniteQuery<BuiltinIconListResponse, Error, string | null>({
   key: () => [
     'content',
     'icon-sets',
@@ -122,16 +122,15 @@ const {
     selectedBuiltinPrefix.value ?? '',
   ],
   enabled: () => activeTab.value === 'builtin',
-  initialPageParam: 1,
+  initialPageParam: null,
   query: ({ pageParam }) =>
     listBuiltinIcons({
-      page: pageParam,
+      cursor: pageParam ?? undefined,
       pageSize: iconListPageSize,
       keyword: builtinIconQueryKeyword.value,
       prefix: selectedBuiltinPrefix.value ?? undefined,
     }),
-  getNextPageParam: (lastPage) =>
-    lastPage.page * lastPage.pageSize >= lastPage.total ? null : lastPage.page + 1,
+  getNextPageParam: (lastPage) => lastPage.nextCursor,
 })
 
 const builtinSetsData = computed(() => builtinSetsResponse.value ?? emptyIconSetListData)
@@ -207,7 +206,7 @@ const {
   isLoading: isLoadingCustomIcons,
   hasNextPage: hasNextCustomIconPage,
   loadNextPage: loadNextCustomIconPage,
-} = useInfiniteQuery<CustomIconListResponse, Error, number>({
+} = useInfiniteQuery<CustomIconListResponse, Error, string | null>({
   key: () => [
     'content',
     'icon-sets',
@@ -218,16 +217,15 @@ const {
     selectedCustomPrefix.value ?? '',
   ],
   enabled: () => activeTab.value === 'custom',
-  initialPageParam: 1,
+  initialPageParam: null,
   query: ({ pageParam }) =>
     listCustomIcons({
-      page: pageParam,
+      cursor: pageParam ?? undefined,
       pageSize: iconListPageSize,
       keyword: customIconQueryKeyword.value,
       prefix: selectedCustomPrefix.value ?? undefined,
     }),
-  getNextPageParam: (lastPage) =>
-    lastPage.page * lastPage.pageSize >= lastPage.total ? null : lastPage.page + 1,
+  getNextPageParam: (lastPage) => lastPage.nextCursor,
 })
 
 const customSetsData = computed(() => customSetsResponse.value ?? emptyIconSetListData)

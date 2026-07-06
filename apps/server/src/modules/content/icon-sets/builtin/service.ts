@@ -9,6 +9,7 @@ import type {
 } from '@rev30/contracts'
 import { getIconData } from '@iconify/utils'
 import { type IconCollections, loadIconCollections } from '../../../icons/search/collections'
+import { formatIconCursor, parseIconCursor, type IconCursor } from '../cursor'
 
 function matchesKeyword(value: string, keyword?: string) {
   if (!keyword) {
@@ -38,48 +39,74 @@ function mapIconSetIconItem(iconSet: IconifyJSON, name: string) {
   return row
 }
 
+function getCursorPrefixIndex(prefixes: string[], cursor?: IconCursor) {
+  if (!cursor) {
+    return 0
+  }
+
+  const index = prefixes.indexOf(cursor.prefix)
+
+  return index >= 0 ? index : 0
+}
+
+function getCursorNameIndex(names: string[], prefix: string, cursor?: IconCursor) {
+  if (cursor?.prefix !== prefix) {
+    return 0
+  }
+
+  const index = names.indexOf(cursor.name)
+
+  return index >= 0 ? index + 1 : 0
+}
+
+function toCursorListResponse(collectedItems: IconSetIconItem[], pageSize: number) {
+  const pageList = collectedItems.slice(0, pageSize)
+  const lastItem = pageList.at(-1)
+
+  return {
+    list: pageList,
+    nextCursor:
+      collectedItems.length > pageSize && lastItem
+        ? formatIconCursor(lastItem.prefix, lastItem.name)
+        : null,
+    pageSize,
+  }
+}
+
 async function listSingleSetIcons(
   prefix: string,
   query: IconSetIconListQuery,
 ): Promise<BuiltinIconListResponse> {
   const iconSet = await lookupCollection(prefix)
   const names = Object.keys(iconSet.icons).sort((left, right) => left.localeCompare(right))
-  const offset = (query.page - 1) * query.pageSize
+  const cursor = parseIconCursor(query.cursor)
+  const startIndex = getCursorNameIndex(names, prefix, cursor)
   const list = names
-    .slice(offset, offset + query.pageSize)
+    .slice(startIndex, startIndex + query.pageSize + 1)
     .map((name) => mapIconSetIconItem(iconSet, name))
     .filter((item): item is IconSetIconItem => item !== undefined)
 
-  return {
-    list,
-    total: names.length,
-    page: query.page,
-    pageSize: query.pageSize,
-  }
+  return toCursorListResponse(list, query.pageSize)
 }
 
 async function listAllSetIcons(
   query: IconSetIconListQuery,
   collections: IconCollections,
 ): Promise<BuiltinIconListResponse> {
-  const offset = (query.page - 1) * query.pageSize
   const list: IconSetIconItem[] = []
   const collectionEntries = Object.entries(collections)
-  const total = collectionEntries.reduce((sum, [, collection]) => sum + (collection.total ?? 0), 0)
-  let skipped = offset
+  const cursor = parseIconCursor(query.cursor)
+  const startPrefixIndex = getCursorPrefixIndex(
+    collectionEntries.map(([prefix]) => prefix),
+    cursor,
+  )
 
-  for (const [prefix, collection] of collectionEntries) {
-    const collectionTotal = collection.total ?? 0
-
-    if (skipped >= collectionTotal) {
-      skipped -= collectionTotal
-      continue
-    }
-
+  for (const [prefix] of collectionEntries.slice(startPrefixIndex)) {
     const iconSet = await lookupCollection(prefix)
     const names = Object.keys(iconSet.icons).sort((left, right) => left.localeCompare(right))
+    const startNameIndex = getCursorNameIndex(names, prefix, cursor)
 
-    for (let index = skipped; index < names.length; index += 1) {
+    for (let index = startNameIndex; index < names.length; index += 1) {
       const name = names[index]
 
       if (!name) {
@@ -94,25 +121,13 @@ async function listAllSetIcons(
 
       list.push(row)
 
-      if (list.length >= query.pageSize) {
-        return {
-          list,
-          total,
-          page: query.page,
-          pageSize: query.pageSize,
-        }
+      if (list.length > query.pageSize) {
+        return toCursorListResponse(list, query.pageSize)
       }
     }
-
-    skipped = 0
   }
 
-  return {
-    list,
-    total,
-    page: query.page,
-    pageSize: query.pageSize,
-  }
+  return toCursorListResponse(list, query.pageSize)
 }
 
 async function searchIcons(
@@ -121,17 +136,25 @@ async function searchIcons(
   collections: IconCollections,
 ): Promise<BuiltinIconListResponse> {
   const prefixes = query.prefix ? [query.prefix] : Object.keys(collections)
-  const offset = (query.page - 1) * query.pageSize
   const list: IconSetIconItem[] = []
-  let total = 0
+  const cursor = parseIconCursor(query.cursor)
+  const startPrefixIndex = getCursorPrefixIndex(prefixes, cursor)
 
-  for (const prefix of prefixes) {
+  for (const prefix of prefixes.slice(startPrefixIndex)) {
     const iconSet = await lookupCollection(prefix)
     const names = [
       ...new Set([...Object.keys(iconSet.icons), ...Object.keys(iconSet.aliases ?? {})]),
     ].sort((left, right) => left.localeCompare(right))
 
-    for (const name of names) {
+    const startNameIndex = getCursorNameIndex(names, prefix, cursor)
+
+    for (let index = startNameIndex; index < names.length; index += 1) {
+      const name = names[index]
+
+      if (!name) {
+        continue
+      }
+
       const fullName = `${prefix}:${name}`
 
       if (!matchesKeyword(name, keyword) && !matchesKeyword(fullName, keyword)) {
@@ -144,22 +167,15 @@ async function searchIcons(
         continue
       }
 
-      total += 1
-
-      if (total <= offset || list.length >= query.pageSize) {
-        continue
-      }
-
       list.push(row)
+
+      if (list.length > query.pageSize) {
+        return toCursorListResponse(list, query.pageSize)
+      }
     }
   }
 
-  return {
-    list,
-    total,
-    page: query.page,
-    pageSize: query.pageSize,
-  }
+  return toCursorListResponse(list, query.pageSize)
 }
 
 export async function listBuiltinIconSets(
@@ -190,8 +206,7 @@ export async function listBuiltinIcons(
   if (query.prefix && !collections[query.prefix]) {
     return {
       list: [],
-      total: 0,
-      page: query.page,
+      nextCursor: null,
       pageSize: query.pageSize,
     }
   }

@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { pageSchema, pageSizeSchema } from './common/pagination'
+import { pageSizeSchema } from './common/pagination'
 import { hasAnyDefinedValue } from './common/refinements'
-import { optionalTrimmedQueryString } from './query'
+import { optionalQueryValue, optionalTrimmedQueryString } from './query'
 
 const iconFileExtension = '.json'
 export const iconifyIconNamePartPatternSource = '[a-z0-9]+(?:-[a-z0-9]+)*'
@@ -74,6 +74,9 @@ const iconSetPrefixSchema = z.string().regex(iconSetPrefixPattern, '图标集前
 const iconSetNameSchema = z.string().regex(iconSetPrefixPattern, '图标名称无效')
 
 const iconSetKeywordSchema = optionalTrimmedQueryString()
+const iconSetIconCursorSchema = optionalQueryValue(
+  z.string().trim().regex(iconifyIconNamePattern, '分页游标无效'),
+)
 
 const customIconSetNameInputSchema = z
   .string()
@@ -96,7 +99,7 @@ export const iconSetListQuerySchema = z.object({
 export const iconSetIconListQuerySchema = z.object({
   keyword: iconSetKeywordSchema,
   prefix: iconSetPrefixSchema.optional(),
-  page: pageSchema.default(1),
+  cursor: iconSetIconCursorSchema,
   pageSize: pageSizeSchema.default(iconSetIconPageSizeDefault),
 })
 
@@ -129,8 +132,7 @@ export const builtinIconSetListResponseSchema = z.object({
 
 export const builtinIconListResponseSchema = z.object({
   list: iconSetIconItemSchema.array(),
-  total: z.number().int().min(0),
-  page: z.number().int().min(1),
+  nextCursor: z.string().regex(iconifyIconNamePattern, '分页游标无效').nullable(),
   pageSize: z.number().int().min(1),
 })
 
@@ -159,8 +161,7 @@ export const customIconItemSchema = iconItemSchema.extend({
 
 export const customIconListResponseSchema = z.object({
   list: customIconItemSchema.array(),
-  total: z.number().int().min(0),
-  page: z.number().int().min(1),
+  nextCursor: z.string().regex(iconifyIconNamePattern, '分页游标无效').nullable(),
   pageSize: z.number().int().min(1),
 })
 

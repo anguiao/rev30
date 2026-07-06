@@ -498,15 +498,12 @@ function confirmDeleteCustomIcon(icon: IconItem) {
               <div
                 class="flex shrink-0 flex-col gap-3 border-b border-stone-100 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800"
               >
-                <div>
-                  <div class="text-sm font-medium text-stone-900 dark:text-zinc-100">内置图标</div>
-                  <div class="mt-1 text-xs text-stone-500 dark:text-zinc-400">
-                    <template v-if="selectedBuiltinSet">
-                      {{ selectedBuiltinSet.name }} / {{ selectedBuiltinSet.prefix }}
-                    </template>
-                    <template v-else>
-                      {{ selectedBuiltinPrefix ?? '全部内置图标集' }}
-                    </template>
+                <div class="min-w-0">
+                  <div class="truncate text-sm font-medium text-stone-900 dark:text-zinc-100">
+                    {{ selectedBuiltinSet?.name ?? '全部内置图标集' }}
+                  </div>
+                  <div class="mt-1 truncate text-xs text-stone-500 dark:text-zinc-400">
+                    {{ selectedBuiltinSet?.prefix ?? `${builtinSetsData.total} 个图标集` }}
                   </div>
                 </div>
 
@@ -676,15 +673,12 @@ function confirmDeleteCustomIcon(icon: IconItem) {
               <div
                 class="flex shrink-0 flex-col gap-3 border-b border-stone-100 p-4 lg:flex-row lg:items-center lg:justify-between dark:border-zinc-800"
               >
-                <div>
-                  <div class="text-sm font-medium text-stone-900 dark:text-zinc-100">
-                    自定义图标
+                <div class="min-w-0">
+                  <div class="truncate text-sm font-medium text-stone-900 dark:text-zinc-100">
+                    {{ selectedCustomSet?.name ?? '全部自定义图标集' }}
                   </div>
-                  <div class="mt-1 text-xs text-stone-500 dark:text-zinc-400">
-                    <template v-if="selectedCustomSet">
-                      {{ selectedCustomSet.name }} / {{ selectedCustomSet.prefix }}
-                    </template>
-                    <template v-else>全部自定义图标集</template>
+                  <div class="mt-1 truncate text-xs text-stone-500 dark:text-zinc-400">
+                    {{ selectedCustomSet?.prefix ?? `${customSetsData.total} 个图标集` }}
                   </div>
                 </div>
 

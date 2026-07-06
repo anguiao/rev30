@@ -1,8 +1,6 @@
-import { subMilliseconds } from '@rev30/utils'
-import { and, isNotNull, isNull, lte, or } from 'drizzle-orm'
-import { logger } from '../../runtime/logger'
-import type { Db } from '../index'
-import { authLoginAttemptBuckets } from '../schema'
+import type { Db } from '../db'
+import { cleanupAuthLoginAttemptBuckets } from '../modules/auth/cleanup'
+import { logger } from '../runtime/logger'
 import type { MaintenanceWorker } from './types'
 
 const defaultLoginAttemptCleanupIntervalMs = 6 * 60 * 60 * 1000
@@ -31,30 +29,6 @@ function readLoginAttemptRetentionMs() {
   }
 
   return value
-}
-
-export async function cleanupAuthLoginAttemptBuckets(
-  database: Db,
-  retentionMs: number,
-): Promise<number> {
-  const cutoff = subMilliseconds(new Date(), retentionMs)
-  const deleted = await database
-    .delete(authLoginAttemptBuckets)
-    .where(
-      or(
-        and(
-          isNull(authLoginAttemptBuckets.lockedUntil),
-          lte(authLoginAttemptBuckets.windowStartedAt, cutoff),
-        ),
-        and(
-          isNotNull(authLoginAttemptBuckets.lockedUntil),
-          lte(authLoginAttemptBuckets.lockedUntil, cutoff),
-        ),
-      ),
-    )
-    .returning()
-
-  return deleted.length
 }
 
 export function startAuthLoginAttemptCleanup(database: Db): MaintenanceWorker {

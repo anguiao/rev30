@@ -2,20 +2,18 @@ import { randomUUID } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { authLoginAttemptBuckets, authRefreshTokens, systemUsers } from '../../src/db/schema'
-import {
-  cleanupAuthRefreshTokens,
-  startAuthRefreshTokenCleanup,
-} from '../../src/db/maintenance/refresh-token-cleanup'
+import { startAppMaintenance } from '../../src/maintenance'
+import { startAuthLoginAttemptCleanup } from '../../src/maintenance/auth-login-attempt-cleanup'
+import { startAuthRefreshTokenCleanup } from '../../src/maintenance/auth-refresh-token-cleanup'
 import {
   cleanupAuthLoginAttemptBuckets,
-  startAuthLoginAttemptCleanup,
-} from '../../src/db/maintenance/login-attempt-cleanup'
-import { startDbMaintenance } from '../../src/db/maintenance'
+  cleanupAuthRefreshTokens,
+} from '../../src/modules/auth/cleanup'
 import { createTestDb } from '../helpers/db'
 
 const hourMs = 60 * 60 * 1000
 
-describe('database maintenance', () => {
+describe('auth maintenance', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.unstubAllEnvs()
@@ -253,7 +251,7 @@ describe('database maintenance', () => {
     } as never
 
     expect(() => {
-      startDbMaintenance(database)
+      startAppMaintenance(database)
     }).toThrow('AUTH_LOGIN_ATTEMPT_RETENTION_MS 必须是 0 或正整数毫秒值')
 
     await vi.advanceTimersByTimeAsync(0)

@@ -1,13 +1,13 @@
-import type { Db } from '../index'
-import { startAuthRefreshTokenCleanup } from './refresh-token-cleanup'
-import { startAuthLoginAttemptCleanup } from './login-attempt-cleanup'
+import type { Db } from '../db'
+import { startAuthLoginAttemptCleanup } from './auth-login-attempt-cleanup'
+import { startAuthRefreshTokenCleanup } from './auth-refresh-token-cleanup'
 import type { MaintenanceWorker } from './types'
 
-export type DbMaintenance = {
+export type AppMaintenance = {
   stop: () => Promise<void>
 }
 
-export function startDbMaintenance(database: Db): DbMaintenance {
+export function startAppMaintenance(database: Db): AppMaintenance {
   const workers: MaintenanceWorker[] = []
 
   try {

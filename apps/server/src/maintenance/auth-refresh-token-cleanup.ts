@@ -1,8 +1,6 @@
-import { subMilliseconds } from '@rev30/utils'
-import { and, isNotNull, lte, or } from 'drizzle-orm'
-import { logger } from '../../runtime/logger'
-import type { Db } from '../index'
-import { authRefreshTokens } from '../schema'
+import type { Db } from '../db'
+import { cleanupAuthRefreshTokens } from '../modules/auth/cleanup'
+import { logger } from '../runtime/logger'
 import type { MaintenanceWorker } from './types'
 
 const defaultRefreshTokenCleanupIntervalMs = 6 * 60 * 60 * 1000
@@ -31,28 +29,6 @@ function readRevokedRefreshTokenRetentionMs() {
   }
 
   return value
-}
-
-export async function cleanupAuthRefreshTokens(
-  database: Db,
-  revokedRetentionMs: number,
-): Promise<number> {
-  const now = new Date()
-  const revokedCutoff = subMilliseconds(now, revokedRetentionMs)
-  const deleted = await database
-    .delete(authRefreshTokens)
-    .where(
-      or(
-        lte(authRefreshTokens.expiresAt, now),
-        and(
-          isNotNull(authRefreshTokens.revokedAt),
-          lte(authRefreshTokens.revokedAt, revokedCutoff),
-        ),
-      ),
-    )
-    .returning()
-
-  return deleted.length
 }
 
 export function startAuthRefreshTokenCleanup(database: Db): MaintenanceWorker {

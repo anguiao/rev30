@@ -3,7 +3,6 @@ import { drizzle as drizzlePglite } from 'drizzle-orm/pglite'
 import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js'
 import { mkdir } from 'node:fs/promises'
 import postgres from 'postgres'
-import { startDbMaintenance } from './maintenance'
 import { migratePGlite } from './migrate'
 import * as schema from './schema'
 
@@ -18,11 +17,9 @@ export async function createDb() {
     const client = postgres(databaseUrl)
 
     const db = drizzlePostgres(client, { schema })
-    const maintenance = startDbMaintenance(db)
 
     return {
       close: async () => {
-        await maintenance.stop()
         await client.end({ timeout: 5 })
       },
       db,
@@ -38,11 +35,9 @@ export async function createDb() {
   await migratePGlite(client)
 
   const db = drizzlePglite(client, { schema })
-  const maintenance = startDbMaintenance(db)
 
   return {
     close: async () => {
-      await maintenance.stop()
       await client.close()
     },
     db,

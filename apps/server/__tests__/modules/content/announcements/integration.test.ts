@@ -23,8 +23,8 @@ import { and, eq, isNull } from 'drizzle-orm'
 import type { Hono } from 'hono'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  contentAnnouncements,
-  contentAnnouncementTargets,
+  announcements,
+  announcementTargets,
   systemDepartments,
   systemRoles,
   systemUsers,
@@ -270,8 +270,8 @@ describe('announcement routes', () => {
 
     const createdTargetRows = await database
       .select()
-      .from(contentAnnouncementTargets)
-      .where(eq(contentAnnouncementTargets.announcementId, createResponse.body.id))
+      .from(announcementTargets)
+      .where(eq(announcementTargets.announcementId, createResponse.body.id))
     expect(createdTargetRows).toHaveLength(2)
     expect(
       createdTargetRows.map((row) => ({
@@ -310,8 +310,8 @@ describe('announcement routes', () => {
 
     const updatedTargetRows = await database
       .select()
-      .from(contentAnnouncementTargets)
-      .where(eq(contentAnnouncementTargets.announcementId, createResponse.body.id))
+      .from(announcementTargets)
+      .where(eq(announcementTargets.announcementId, createResponse.body.id))
     expect(updatedTargetRows).toHaveLength(1)
     expect(updatedTargetRows[0]).toMatchObject({
       announcementId: createResponse.body.id,
@@ -324,7 +324,7 @@ describe('announcement routes', () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
     const announcementId = randomUUID()
-    await database.insert(contentAnnouncements).values({
+    await database.insert(announcements).values({
       id: announcementId,
       type: ANNOUNCEMENT_TYPE_NOTICE,
       title: '空可见对象草稿',
@@ -429,8 +429,8 @@ describe('announcement routes', () => {
 
     const targetRows = await database
       .select()
-      .from(contentAnnouncementTargets)
-      .where(eq(contentAnnouncementTargets.announcementId, created.id))
+      .from(announcementTargets)
+      .where(eq(announcementTargets.announcementId, created.id))
     expect(targetRows).toHaveLength(0)
   })
 
@@ -451,8 +451,8 @@ describe('announcement routes', () => {
 
     const targetRows = await database
       .select()
-      .from(contentAnnouncementTargets)
-      .where(eq(contentAnnouncementTargets.announcementId, created.id))
+      .from(announcementTargets)
+      .where(eq(announcementTargets.announcementId, created.id))
     expect(targetRows).toHaveLength(0)
   })
 
@@ -509,8 +509,8 @@ describe('announcement routes', () => {
 
     const [announcement] = await database
       .select()
-      .from(contentAnnouncements)
-      .where(eq(contentAnnouncements.id, created.id))
+      .from(announcements)
+      .where(eq(announcements.id, created.id))
 
     expect(announcement?.status).toBe(ANNOUNCEMENT_STATUS_DRAFT)
   })
@@ -617,7 +617,7 @@ describe('announcement routes', () => {
     const app = await createTestApp(database)
     const now = new Date('2026-05-18T10:00:00.000Z')
 
-    await database.insert(contentAnnouncements).values([
+    await database.insert(announcements).values([
       {
         id: randomUUID(),
         type: ANNOUNCEMENT_TYPE_NOTICE,
@@ -739,7 +739,7 @@ describe('announcement routes', () => {
     const sharedPublishedAt = new Date('2026-05-18T08:00:00.000Z')
     const sharedUpdatedAt = new Date('2026-05-18T09:00:00.000Z')
 
-    await database.insert(contentAnnouncements).values([
+    await database.insert(announcements).values([
       {
         id: '11111111-1111-4111-8111-111111111111',
         type: ANNOUNCEMENT_TYPE_NOTICE,
@@ -837,8 +837,8 @@ describe('announcement routes', () => {
 
     const [deleted] = await database
       .select()
-      .from(contentAnnouncements)
-      .where(eq(contentAnnouncements.id, created.id))
+      .from(announcements)
+      .where(eq(announcements.id, created.id))
     expect(deleted?.deletedAt).toEqual(expect.any(Date))
 
     const listResponse = await app.request('/api/content/announcements?page=1&pageSize=10')
@@ -848,8 +848,8 @@ describe('announcement routes', () => {
 
     const [activeRow] = await database
       .select()
-      .from(contentAnnouncements)
-      .where(and(eq(contentAnnouncements.id, created.id), isNull(contentAnnouncements.deletedAt)))
+      .from(announcements)
+      .where(and(eq(announcements.id, created.id), isNull(announcements.deletedAt)))
     expect(activeRow).toBeUndefined()
   })
 })

@@ -12,8 +12,8 @@ import {
 import { and, count, desc, eq, exists, ilike, isNull, or } from 'drizzle-orm'
 import type { Db } from '../../../../db'
 import {
-  contentAnnouncements,
-  contentAnnouncementTargets,
+  announcements,
+  announcementTargets,
   systemDepartments,
   systemRoles,
   systemUserDepartments,
@@ -23,11 +23,11 @@ import type { AnnouncementRow } from './mapper'
 
 function announcementSortOrder() {
   return [
-    desc(contentAnnouncements.pinned),
-    desc(contentAnnouncements.publishedAt),
-    desc(contentAnnouncements.updatedAt),
-    desc(contentAnnouncements.createdAt),
-    desc(contentAnnouncements.id),
+    desc(announcements.pinned),
+    desc(announcements.publishedAt),
+    desc(announcements.updatedAt),
+    desc(announcements.createdAt),
+    desc(announcements.id),
   ] as const
 }
 
@@ -35,11 +35,11 @@ export function createMyAnnouncementRepository(database: Db) {
   function buildVisibilityFilter(currentUser: User) {
     const targetFilters = [
       and(
-        eq(contentAnnouncementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_USER),
-        eq(contentAnnouncementTargets.targetId, currentUser.id),
+        eq(announcementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_USER),
+        eq(announcementTargets.targetId, currentUser.id),
       ),
       and(
-        eq(contentAnnouncementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT),
+        eq(announcementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT),
         exists(
           database
             .select({
@@ -53,7 +53,7 @@ export function createMyAnnouncementRepository(database: Db) {
             .where(
               and(
                 eq(systemUserDepartments.userId, currentUser.id),
-                eq(systemUserDepartments.departmentId, contentAnnouncementTargets.targetId),
+                eq(systemUserDepartments.departmentId, announcementTargets.targetId),
                 eq(systemDepartments.status, DEPARTMENT_STATUS_ENABLED),
                 isNull(systemDepartments.deletedAt),
               ),
@@ -61,7 +61,7 @@ export function createMyAnnouncementRepository(database: Db) {
         ),
       ),
       and(
-        eq(contentAnnouncementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_ROLE),
+        eq(announcementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_ROLE),
         exists(
           database
             .select({
@@ -72,7 +72,7 @@ export function createMyAnnouncementRepository(database: Db) {
             .where(
               and(
                 eq(systemUserRoles.userId, currentUser.id),
-                eq(systemUserRoles.roleId, contentAnnouncementTargets.targetId),
+                eq(systemUserRoles.roleId, announcementTargets.targetId),
                 eq(systemRoles.status, ROLE_STATUS_ENABLED),
                 isNull(systemRoles.deletedAt),
               ),
@@ -82,20 +82,17 @@ export function createMyAnnouncementRepository(database: Db) {
     ]
 
     return or(
-      eq(contentAnnouncements.visibility, ANNOUNCEMENT_VISIBILITY_ALL),
+      eq(announcements.visibility, ANNOUNCEMENT_VISIBILITY_ALL),
       and(
-        eq(contentAnnouncements.visibility, ANNOUNCEMENT_VISIBILITY_TARGETED),
+        eq(announcements.visibility, ANNOUNCEMENT_VISIBILITY_TARGETED),
         exists(
           database
             .select({
-              announcementId: contentAnnouncementTargets.announcementId,
+              announcementId: announcementTargets.announcementId,
             })
-            .from(contentAnnouncementTargets)
+            .from(announcementTargets)
             .where(
-              and(
-                eq(contentAnnouncementTargets.announcementId, contentAnnouncements.id),
-                or(...targetFilters),
-              ),
+              and(eq(announcementTargets.announcementId, announcements.id), or(...targetFilters)),
             ),
         ),
       ),
@@ -109,14 +106,14 @@ export function createMyAnnouncementRepository(database: Db) {
     const keywordFilter = query?.keyword ? `%${query.keyword}%` : undefined
 
     return [
-      isNull(contentAnnouncements.deletedAt),
-      eq(contentAnnouncements.status, ANNOUNCEMENT_STATUS_PUBLISHED),
-      query?.type === undefined ? undefined : eq(contentAnnouncements.type, query.type),
+      isNull(announcements.deletedAt),
+      eq(announcements.status, ANNOUNCEMENT_STATUS_PUBLISHED),
+      query?.type === undefined ? undefined : eq(announcements.type, query.type),
       keywordFilter
         ? or(
-            ilike(contentAnnouncements.title, keywordFilter),
-            ilike(contentAnnouncements.summary, keywordFilter),
-            ilike(contentAnnouncements.contentText, keywordFilter),
+            ilike(announcements.title, keywordFilter),
+            ilike(announcements.summary, keywordFilter),
+            ilike(announcements.contentText, keywordFilter),
           )
         : undefined,
       buildVisibilityFilter(currentUser),
@@ -131,7 +128,7 @@ export function createMyAnnouncementRepository(database: Db) {
       const [list, totalRows] = await Promise.all([
         database
           .select()
-          .from(contentAnnouncements)
+          .from(announcements)
           .where(where)
           .orderBy(...announcementSortOrder())
           .limit(pageSize)
@@ -140,7 +137,7 @@ export function createMyAnnouncementRepository(database: Db) {
           .select({
             total: count(),
           })
-          .from(contentAnnouncements)
+          .from(announcements)
           .where(where),
       ])
 
@@ -155,8 +152,8 @@ export function createMyAnnouncementRepository(database: Db) {
     async findById(currentUser: User, id: string): Promise<AnnouncementRow | undefined> {
       const [row] = await database
         .select()
-        .from(contentAnnouncements)
-        .where(and(eq(contentAnnouncements.id, id), ...buildFilters(currentUser)))
+        .from(announcements)
+        .where(and(eq(announcements.id, id), ...buildFilters(currentUser)))
         .limit(1)
 
       return row

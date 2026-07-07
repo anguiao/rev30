@@ -17,8 +17,8 @@ import { migratePGlite } from '../../src/db/migrate'
 import {
   attachments,
   authLoginAttemptBuckets,
-  contentAnnouncementTargets,
-  contentAnnouncements,
+  announcementTargets,
+  announcements,
   systemConfigs,
   systemResources,
   systemRoles,
@@ -35,8 +35,8 @@ const expectedTableNames = [
   'auth_login_attempt_buckets',
   'auth_password_credentials',
   'auth_refresh_tokens',
-  'content_announcement_targets',
-  'content_announcements',
+  'announcement_targets',
+  'announcements',
   'custom_icon_set_icons',
   'custom_icon_sets',
   'system_configs',
@@ -202,7 +202,7 @@ describe('PGlite migration runner', () => {
         content: [{ type: 'paragraph', content: [{ type: 'text', text: '今晚维护' }] }],
       }
       const [createdAnnouncement] = await database
-        .insert(contentAnnouncements)
+        .insert(announcements)
         .values({
           id: announcementId,
           type: 'notice',
@@ -219,7 +219,7 @@ describe('PGlite migration runner', () => {
         })
         .returning()
 
-      await database.insert(contentAnnouncementTargets).values({
+      await database.insert(announcementTargets).values({
         announcementId,
         targetId: createdUser.id,
         targetType: 'user',

@@ -458,8 +458,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.content_announcement_targets": {
-      "name": "content_announcement_targets",
+    "public.announcement_targets": {
+      "name": "announcement_targets",
       "schema": "",
       "columns": {
         "announcement_id": {
@@ -489,8 +489,8 @@
         }
       },
       "indexes": {
-        "content_announcement_targets_announcement_id_idx": {
-          "name": "content_announcement_targets_announcement_id_idx",
+        "announcement_targets_announcement_id_idx": {
+          "name": "announcement_targets_announcement_id_idx",
           "columns": [
             {
               "expression": "announcement_id",
@@ -504,8 +504,8 @@
           "method": "btree",
           "with": {}
         },
-        "content_announcement_targets_target_idx": {
-          "name": "content_announcement_targets_target_idx",
+        "announcement_targets_target_idx": {
+          "name": "announcement_targets_target_idx",
           "columns": [
             {
               "expression": "target_type",
@@ -527,10 +527,10 @@
         }
       },
       "foreignKeys": {
-        "content_announcement_targets_announcement_id_content_announcements_id_fk": {
-          "name": "content_announcement_targets_announcement_id_content_announcements_id_fk",
-          "tableFrom": "content_announcement_targets",
-          "tableTo": "content_announcements",
+        "announcement_targets_announcement_id_announcements_id_fk": {
+          "name": "announcement_targets_announcement_id_announcements_id_fk",
+          "tableFrom": "announcement_targets",
+          "tableTo": "announcements",
           "columnsFrom": ["announcement_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -538,8 +538,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "content_announcement_targets_announcement_id_target_type_target_id_pk": {
-          "name": "content_announcement_targets_announcement_id_target_type_target_id_pk",
+        "announcement_targets_announcement_id_target_type_target_id_pk": {
+          "name": "announcement_targets_announcement_id_target_type_target_id_pk",
           "columns": ["announcement_id", "target_type", "target_id"]
         }
       },
@@ -548,8 +548,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.content_announcements": {
-      "name": "content_announcements",
+    "public.announcements": {
+      "name": "announcements",
       "schema": "",
       "columns": {
         "id": {
@@ -643,8 +643,8 @@
         }
       },
       "indexes": {
-        "content_announcements_type_idx": {
-          "name": "content_announcements_type_idx",
+        "announcements_type_idx": {
+          "name": "announcements_type_idx",
           "columns": [
             {
               "expression": "type",
@@ -658,8 +658,8 @@
           "method": "btree",
           "with": {}
         },
-        "content_announcements_visibility_idx": {
-          "name": "content_announcements_visibility_idx",
+        "announcements_visibility_idx": {
+          "name": "announcements_visibility_idx",
           "columns": [
             {
               "expression": "visibility",
@@ -673,8 +673,8 @@
           "method": "btree",
           "with": {}
         },
-        "content_announcements_status_idx": {
-          "name": "content_announcements_status_idx",
+        "announcements_status_idx": {
+          "name": "announcements_status_idx",
           "columns": [
             {
               "expression": "status",
@@ -688,8 +688,8 @@
           "method": "btree",
           "with": {}
         },
-        "content_announcements_pinned_idx": {
-          "name": "content_announcements_pinned_idx",
+        "announcements_pinned_idx": {
+          "name": "announcements_pinned_idx",
           "columns": [
             {
               "expression": "pinned",
@@ -703,8 +703,8 @@
           "method": "btree",
           "with": {}
         },
-        "content_announcements_published_at_idx": {
-          "name": "content_announcements_published_at_idx",
+        "announcements_published_at_idx": {
+          "name": "announcements_published_at_idx",
           "columns": [
             {
               "expression": "published_at",

@@ -358,8 +358,8 @@ export const authLoginAttemptBuckets = pgTable(
   ],
 )
 
-export const contentAnnouncements = pgTable(
-  'content_announcements',
+export const announcements = pgTable(
+  'announcements',
   {
     id: uuidPrimaryKeyColumn(),
     type: text('type').notNull(),
@@ -375,20 +375,20 @@ export const contentAnnouncements = pgTable(
     ...auditTimestamps(),
   },
   (table) => [
-    index('content_announcements_type_idx').on(table.type),
-    index('content_announcements_visibility_idx').on(table.visibility),
-    index('content_announcements_status_idx').on(table.status),
-    index('content_announcements_pinned_idx').on(table.pinned),
-    index('content_announcements_published_at_idx').on(table.publishedAt),
+    index('announcements_type_idx').on(table.type),
+    index('announcements_visibility_idx').on(table.visibility),
+    index('announcements_status_idx').on(table.status),
+    index('announcements_pinned_idx').on(table.pinned),
+    index('announcements_published_at_idx').on(table.publishedAt),
   ],
 )
 
-export const contentAnnouncementTargets = pgTable(
-  'content_announcement_targets',
+export const announcementTargets = pgTable(
+  'announcement_targets',
   {
     announcementId: uuid('announcement_id')
       .notNull()
-      .references(() => contentAnnouncements.id),
+      .references(() => announcements.id),
     targetType: text('target_type').notNull(),
     targetId: uuid('target_id').notNull(),
     ...createdTimestamp(),
@@ -397,8 +397,8 @@ export const contentAnnouncementTargets = pgTable(
     primaryKey({
       columns: [table.announcementId, table.targetType, table.targetId],
     }),
-    index('content_announcement_targets_announcement_id_idx').on(table.announcementId),
-    index('content_announcement_targets_target_idx').on(table.targetType, table.targetId),
+    index('announcement_targets_announcement_id_idx').on(table.announcementId),
+    index('announcement_targets_target_idx').on(table.targetType, table.targetId),
   ],
 )
 

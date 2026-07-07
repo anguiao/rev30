@@ -23,8 +23,8 @@ import {
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import {
-  contentAnnouncements,
-  contentAnnouncementTargets,
+  announcements,
+  announcementTargets,
   systemDepartments,
   systemRoles,
   systemUserDepartments,
@@ -82,7 +82,7 @@ async function insertAnnouncement(database: TestDatabase, input: InsertAnnouncem
   const contentText = input.contentText ?? input.title
   const contentHtml = input.contentHtml ?? `<p>${contentText}</p>`
 
-  await database.insert(contentAnnouncements).values({
+  await database.insert(announcements).values({
     id: announcementId,
     type: input.type ?? ANNOUNCEMENT_TYPE_NOTICE,
     title: input.title,
@@ -103,7 +103,7 @@ async function insertAnnouncement(database: TestDatabase, input: InsertAnnouncem
   })
 
   if (input.targets && input.targets.length > 0) {
-    await database.insert(contentAnnouncementTargets).values(
+    await database.insert(announcementTargets).values(
       input.targets.map((target) => ({
         announcementId,
         targetType: target.targetType,
@@ -535,12 +535,12 @@ describe('my announcement integration', () => {
 
     const rows = await database
       .select()
-      .from(contentAnnouncementTargets)
+      .from(announcementTargets)
       .where(
         and(
-          eq(contentAnnouncementTargets.announcementId, announcementId),
-          eq(contentAnnouncementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_USER),
-          eq(contentAnnouncementTargets.targetId, fixture.userId),
+          eq(announcementTargets.announcementId, announcementId),
+          eq(announcementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_USER),
+          eq(announcementTargets.targetId, fixture.userId),
         ),
       )
 

@@ -1,8 +1,8 @@
 import type { AnnouncementMyDetail, AnnouncementMyListItem } from '@rev30/contracts'
 import { toIsoDateTime } from '@rev30/utils'
-import { contentAnnouncements } from '../../../../db/schema'
+import { announcements } from '../../../../db/schema'
 
-export type AnnouncementRow = typeof contentAnnouncements.$inferSelect
+export type AnnouncementRow = typeof announcements.$inferSelect
 
 function toPublishedAtString(row: AnnouncementRow) {
   if (!row.publishedAt) {

@@ -42,15 +42,15 @@ CREATE TABLE "auth_refresh_tokens" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "content_announcement_targets" (
+CREATE TABLE "announcement_targets" (
 	"announcement_id" uuid NOT NULL,
 	"target_type" text NOT NULL,
 	"target_id" uuid NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "content_announcement_targets_announcement_id_target_type_target_id_pk" PRIMARY KEY("announcement_id","target_type","target_id")
+	CONSTRAINT "announcement_targets_announcement_id_target_type_target_id_pk" PRIMARY KEY("announcement_id","target_type","target_id")
 );
 --> statement-breakpoint
-CREATE TABLE "content_announcements" (
+CREATE TABLE "announcements" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"type" text NOT NULL,
 	"title" text NOT NULL,
@@ -186,7 +186,7 @@ CREATE TABLE "system_users" (
 ALTER TABLE "attachments" ADD CONSTRAINT "attachments_created_by_system_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."system_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "auth_password_credentials" ADD CONSTRAINT "auth_password_credentials_user_id_system_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."system_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "auth_refresh_tokens" ADD CONSTRAINT "auth_refresh_tokens_user_id_system_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."system_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "content_announcement_targets" ADD CONSTRAINT "content_announcement_targets_announcement_id_content_announcements_id_fk" FOREIGN KEY ("announcement_id") REFERENCES "public"."content_announcements"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "announcement_targets" ADD CONSTRAINT "announcement_targets_announcement_id_announcements_id_fk" FOREIGN KEY ("announcement_id") REFERENCES "public"."announcements"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "system_departments" ADD CONSTRAINT "system_departments_parent_id_system_departments_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."system_departments"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "system_dictionary_items" ADD CONSTRAINT "system_dictionary_items_type_id_system_dictionary_types_id_fk" FOREIGN KEY ("type_id") REFERENCES "public"."system_dictionary_types"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "system_resources" ADD CONSTRAINT "system_resources_parent_id_system_resources_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."system_resources"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -207,13 +207,13 @@ CREATE UNIQUE INDEX "auth_refresh_tokens_token_hash_unique" ON "auth_refresh_tok
 CREATE INDEX "auth_refresh_tokens_user_id_idx" ON "auth_refresh_tokens" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "auth_refresh_tokens_expires_at_idx" ON "auth_refresh_tokens" USING btree ("expires_at");--> statement-breakpoint
 CREATE INDEX "auth_refresh_tokens_revoked_at_idx" ON "auth_refresh_tokens" USING btree ("revoked_at");--> statement-breakpoint
-CREATE INDEX "content_announcement_targets_announcement_id_idx" ON "content_announcement_targets" USING btree ("announcement_id");--> statement-breakpoint
-CREATE INDEX "content_announcement_targets_target_idx" ON "content_announcement_targets" USING btree ("target_type","target_id");--> statement-breakpoint
-CREATE INDEX "content_announcements_type_idx" ON "content_announcements" USING btree ("type");--> statement-breakpoint
-CREATE INDEX "content_announcements_visibility_idx" ON "content_announcements" USING btree ("visibility");--> statement-breakpoint
-CREATE INDEX "content_announcements_status_idx" ON "content_announcements" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "content_announcements_pinned_idx" ON "content_announcements" USING btree ("pinned");--> statement-breakpoint
-CREATE INDEX "content_announcements_published_at_idx" ON "content_announcements" USING btree ("published_at");--> statement-breakpoint
+CREATE INDEX "announcement_targets_announcement_id_idx" ON "announcement_targets" USING btree ("announcement_id");--> statement-breakpoint
+CREATE INDEX "announcement_targets_target_idx" ON "announcement_targets" USING btree ("target_type","target_id");--> statement-breakpoint
+CREATE INDEX "announcements_type_idx" ON "announcements" USING btree ("type");--> statement-breakpoint
+CREATE INDEX "announcements_visibility_idx" ON "announcements" USING btree ("visibility");--> statement-breakpoint
+CREATE INDEX "announcements_status_idx" ON "announcements" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "announcements_pinned_idx" ON "announcements" USING btree ("pinned");--> statement-breakpoint
+CREATE INDEX "announcements_published_at_idx" ON "announcements" USING btree ("published_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "system_configs_key_active_unique" ON "system_configs" USING btree ("key") WHERE "system_configs"."deleted_at" IS NULL;--> statement-breakpoint
 CREATE INDEX "system_configs_group_code_idx" ON "system_configs" USING btree ("group_code");--> statement-breakpoint
 CREATE INDEX "system_configs_value_type_idx" ON "system_configs" USING btree ("value_type");--> statement-breakpoint

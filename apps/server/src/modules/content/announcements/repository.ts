@@ -20,8 +20,8 @@ import {
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
 import {
-  contentAnnouncements,
-  contentAnnouncementTargets,
+  announcements,
+  announcementTargets,
   systemDepartments,
   systemRoles,
   systemUsers,
@@ -31,17 +31,17 @@ import { AnnouncementInvalidTargetError, AnnouncementVisibilityTargetRequiredErr
 
 function announcementSortOrder() {
   return [
-    desc(contentAnnouncements.pinned),
+    desc(announcements.pinned),
     sql`case
-      when ${contentAnnouncements.status} = ${ANNOUNCEMENT_STATUS_PUBLISHED} then 0
-      when ${contentAnnouncements.status} = ${ANNOUNCEMENT_STATUS_DRAFT} then 1
-      when ${contentAnnouncements.status} = ${ANNOUNCEMENT_STATUS_ARCHIVED} then 2
+      when ${announcements.status} = ${ANNOUNCEMENT_STATUS_PUBLISHED} then 0
+      when ${announcements.status} = ${ANNOUNCEMENT_STATUS_DRAFT} then 1
+      when ${announcements.status} = ${ANNOUNCEMENT_STATUS_ARCHIVED} then 2
       else 3
     end`,
-    desc(contentAnnouncements.publishedAt),
-    desc(contentAnnouncements.updatedAt),
-    desc(contentAnnouncements.createdAt),
-    desc(contentAnnouncements.id),
+    desc(announcements.publishedAt),
+    desc(announcements.updatedAt),
+    desc(announcements.createdAt),
+    desc(announcements.id),
   ] as const
 }
 
@@ -169,12 +169,12 @@ async function assertPublishableTargets(
 async function findTargetsByAnnouncementId(executor: DbReader, announcementId: string) {
   const rows = await executor
     .select({
-      targetType: contentAnnouncementTargets.targetType,
-      targetId: contentAnnouncementTargets.targetId,
+      targetType: announcementTargets.targetType,
+      targetId: announcementTargets.targetId,
     })
-    .from(contentAnnouncementTargets)
-    .where(eq(contentAnnouncementTargets.announcementId, announcementId))
-    .orderBy(asc(contentAnnouncementTargets.targetType), asc(contentAnnouncementTargets.targetId))
+    .from(announcementTargets)
+    .where(eq(announcementTargets.announcementId, announcementId))
+    .orderBy(asc(announcementTargets.targetType), asc(announcementTargets.targetId))
 
   return rows.map((row) => {
     return {
@@ -190,15 +190,15 @@ export function createAnnouncementRepository(database: Db) {
       const { page, pageSize, keyword, type, status, pinned } = query
       const keywordFilter = keyword ? `%${keyword}%` : undefined
       const filters = [
-        isNull(contentAnnouncements.deletedAt),
-        type === undefined ? undefined : eq(contentAnnouncements.type, type),
-        status === undefined ? undefined : eq(contentAnnouncements.status, status),
-        pinned === undefined ? undefined : eq(contentAnnouncements.pinned, pinned),
+        isNull(announcements.deletedAt),
+        type === undefined ? undefined : eq(announcements.type, type),
+        status === undefined ? undefined : eq(announcements.status, status),
+        pinned === undefined ? undefined : eq(announcements.pinned, pinned),
         keywordFilter
           ? or(
-              ilike(contentAnnouncements.title, keywordFilter),
-              ilike(contentAnnouncements.summary, keywordFilter),
-              ilike(contentAnnouncements.contentText, keywordFilter),
+              ilike(announcements.title, keywordFilter),
+              ilike(announcements.summary, keywordFilter),
+              ilike(announcements.contentText, keywordFilter),
             )
           : undefined,
       ]
@@ -207,7 +207,7 @@ export function createAnnouncementRepository(database: Db) {
       const [list, totalRows] = await Promise.all([
         database
           .select()
-          .from(contentAnnouncements)
+          .from(announcements)
           .where(where)
           .orderBy(...announcementSortOrder())
           .limit(pageSize)
@@ -216,7 +216,7 @@ export function createAnnouncementRepository(database: Db) {
           .select({
             total: count(),
           })
-          .from(contentAnnouncements)
+          .from(announcements)
           .where(where),
       ])
 
@@ -231,8 +231,8 @@ export function createAnnouncementRepository(database: Db) {
     async findActiveById(id: string) {
       const [row] = await database
         .select()
-        .from(contentAnnouncements)
-        .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
+        .from(announcements)
+        .where(and(eq(announcements.id, id), isNull(announcements.deletedAt)))
         .limit(1)
 
       if (!row) {
@@ -259,7 +259,7 @@ export function createAnnouncementRepository(database: Db) {
         }
 
         const [created] = await tx
-          .insert(contentAnnouncements)
+          .insert(announcements)
           .values({
             ...announcementInput,
             contentText: content.text,
@@ -275,7 +275,7 @@ export function createAnnouncementRepository(database: Db) {
 
         if (normalizedTargets.length > 0) {
           await tx
-            .insert(contentAnnouncementTargets)
+            .insert(announcementTargets)
             .values(buildAnnouncementTargetValues(created.id, normalizedTargets))
         }
 
@@ -296,8 +296,8 @@ export function createAnnouncementRepository(database: Db) {
       return await database.transaction(async (tx) => {
         const [existing] = await tx
           .select()
-          .from(contentAnnouncements)
-          .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
+          .from(announcements)
+          .where(and(eq(announcements.id, id), isNull(announcements.deletedAt)))
           .limit(1)
           .for('update')
 
@@ -320,7 +320,7 @@ export function createAnnouncementRepository(database: Db) {
         }
 
         const [updated] = await tx
-          .update(contentAnnouncements)
+          .update(announcements)
           .set({
             ...announcementInput,
             visibility: finalVisibility,
@@ -329,7 +329,7 @@ export function createAnnouncementRepository(database: Db) {
             status: publish ? ANNOUNCEMENT_STATUS_PUBLISHED : undefined,
             publishedAt: publish ? new Date() : undefined,
           })
-          .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
+          .where(and(eq(announcements.id, id), isNull(announcements.deletedAt)))
           .returning()
 
         if (!updated) {
@@ -338,12 +338,12 @@ export function createAnnouncementRepository(database: Db) {
 
         if (targets !== undefined || finalVisibility === ANNOUNCEMENT_VISIBILITY_ALL) {
           await tx
-            .delete(contentAnnouncementTargets)
-            .where(eq(contentAnnouncementTargets.announcementId, id))
+            .delete(announcementTargets)
+            .where(eq(announcementTargets.announcementId, id))
 
           if (finalTargets.length > 0) {
             await tx
-              .insert(contentAnnouncementTargets)
+              .insert(announcementTargets)
               .values(buildAnnouncementTargetValues(id, finalTargets))
           }
         }
@@ -359,8 +359,8 @@ export function createAnnouncementRepository(database: Db) {
       return await database.transaction(async (tx) => {
         const [existing] = await tx
           .select()
-          .from(contentAnnouncements)
-          .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
+          .from(announcements)
+          .where(and(eq(announcements.id, id), isNull(announcements.deletedAt)))
           .limit(1)
           .for('update')
 
@@ -372,8 +372,8 @@ export function createAnnouncementRepository(database: Db) {
 
         if (visibility === ANNOUNCEMENT_VISIBILITY_ALL) {
           await tx
-            .delete(contentAnnouncementTargets)
-            .where(eq(contentAnnouncementTargets.announcementId, id))
+            .delete(announcementTargets)
+            .where(eq(announcementTargets.announcementId, id))
         } else {
           const targets = await findTargetsByAnnouncementId(tx, id)
 
@@ -381,12 +381,12 @@ export function createAnnouncementRepository(database: Db) {
         }
 
         const [published] = await tx
-          .update(contentAnnouncements)
+          .update(announcements)
           .set({
             status: ANNOUNCEMENT_STATUS_PUBLISHED,
             publishedAt: new Date(),
           })
-          .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
+          .where(and(eq(announcements.id, id), isNull(announcements.deletedAt)))
           .returning()
 
         return published
@@ -395,11 +395,11 @@ export function createAnnouncementRepository(database: Db) {
 
     async archive(id: string) {
       const [archived] = await database
-        .update(contentAnnouncements)
+        .update(announcements)
         .set({
           status: ANNOUNCEMENT_STATUS_ARCHIVED,
         })
-        .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
+        .where(and(eq(announcements.id, id), isNull(announcements.deletedAt)))
         .returning()
 
       return archived
@@ -408,12 +408,12 @@ export function createAnnouncementRepository(database: Db) {
     async softDelete(id: string) {
       const now = new Date()
       const [deleted] = await database
-        .update(contentAnnouncements)
+        .update(announcements)
         .set({
           deletedAt: now,
           updatedAt: now,
         })
-        .where(and(eq(contentAnnouncements.id, id), isNull(contentAnnouncements.deletedAt)))
+        .where(and(eq(announcements.id, id), isNull(announcements.deletedAt)))
         .returning()
 
       return deleted

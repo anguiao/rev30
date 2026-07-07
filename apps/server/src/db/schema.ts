@@ -16,6 +16,7 @@ import { sql } from 'drizzle-orm'
 import {
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_VISIBILITY_TARGETED,
+  ATTACHMENT_CLEANUP_POLICY_MANUAL,
   ATTACHMENT_READ_POLICY_SIGNED,
   CONFIG_STATUS_ENABLED,
   DEPARTMENT_STATUS_ENABLED,
@@ -241,6 +242,7 @@ export const attachments = pgTable(
     size: integer('size').notNull(),
     usage: text('usage').notNull(),
     readPolicy: text('read_policy').notNull().default(ATTACHMENT_READ_POLICY_SIGNED),
+    cleanupPolicy: text('cleanup_policy').notNull().default(ATTACHMENT_CLEANUP_POLICY_MANUAL),
     checksum: text('checksum'),
     createdBy: uuid('created_by')
       .notNull()
@@ -252,7 +254,26 @@ export const attachments = pgTable(
     uniqueIndex('attachments_storage_key_unique').on(table.storageProvider, table.storageKey),
     index('attachments_created_by_created_at_idx').on(table.createdBy, table.createdAt),
     index('attachments_usage_created_at_idx').on(table.usage, table.createdAt),
+    index('attachments_cleanup_policy_created_at_idx').on(table.cleanupPolicy, table.createdAt),
     index('attachments_deleted_at_idx').on(table.deletedAt),
+  ],
+)
+
+export const attachmentReferences = pgTable(
+  'attachment_references',
+  {
+    attachmentId: uuid('attachment_id').notNull(),
+    sourceType: text('source_type').notNull(),
+    sourceId: uuid('source_id').notNull(),
+    sourceField: text('source_field').notNull(),
+    ...mutableTimestamps(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.sourceType, table.sourceId, table.sourceField, table.attachmentId],
+    }),
+    index('attachment_references_attachment_id_idx').on(table.attachmentId),
+    index('attachment_references_source_idx').on(table.sourceType, table.sourceId),
   ],
 )
 

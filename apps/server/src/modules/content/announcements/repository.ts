@@ -26,7 +26,11 @@ import {
   systemRoles,
   systemUsers,
 } from '../../../db/schema'
-import { deriveAnnouncementContent } from './content'
+import {
+  deleteAttachmentReferences,
+  refreshAttachmentReferences,
+} from '../../attachments/references'
+import { deriveAnnouncementContent, extractAnnouncementAttachmentIds } from './content'
 import { AnnouncementInvalidTargetError, AnnouncementVisibilityTargetRequiredError } from './errors'
 
 function announcementSortOrder() {
@@ -249,6 +253,7 @@ export function createAnnouncementRepository(database: Db) {
       const { publish, targets, ...announcementInput } = input
       const now = new Date()
       const content = deriveAnnouncementContent(announcementInput.contentJson)
+      const attachmentIds = extractAnnouncementAttachmentIds(announcementInput.contentJson)
       const normalizedTargets = normalizeTargetsForVisibility(input.visibility, targets)
 
       return await database.transaction(async (tx) => {
@@ -279,6 +284,16 @@ export function createAnnouncementRepository(database: Db) {
             .values(buildAnnouncementTargetValues(created.id, normalizedTargets))
         }
 
+        await refreshAttachmentReferences(
+          tx,
+          {
+            sourceType: 'announcement',
+            sourceId: created.id,
+            sourceField: 'contentJson',
+          },
+          attachmentIds,
+        )
+
         return {
           announcement: created,
           targets: normalizedTargets,
@@ -292,6 +307,10 @@ export function createAnnouncementRepository(database: Db) {
         announcementInput.contentJson === undefined
           ? undefined
           : deriveAnnouncementContent(announcementInput.contentJson)
+      const attachmentIds =
+        announcementInput.contentJson === undefined
+          ? undefined
+          : extractAnnouncementAttachmentIds(announcementInput.contentJson)
 
       return await database.transaction(async (tx) => {
         const [existing] = await tx
@@ -337,15 +356,25 @@ export function createAnnouncementRepository(database: Db) {
         }
 
         if (targets !== undefined || finalVisibility === ANNOUNCEMENT_VISIBILITY_ALL) {
-          await tx
-            .delete(announcementTargets)
-            .where(eq(announcementTargets.announcementId, id))
+          await tx.delete(announcementTargets).where(eq(announcementTargets.announcementId, id))
 
           if (finalTargets.length > 0) {
             await tx
               .insert(announcementTargets)
               .values(buildAnnouncementTargetValues(id, finalTargets))
           }
+        }
+
+        if (attachmentIds !== undefined) {
+          await refreshAttachmentReferences(
+            tx,
+            {
+              sourceType: 'announcement',
+              sourceId: id,
+              sourceField: 'contentJson',
+            },
+            attachmentIds,
+          )
         }
 
         return {
@@ -371,9 +400,7 @@ export function createAnnouncementRepository(database: Db) {
         const visibility = existing.visibility as AnnouncementVisibility
 
         if (visibility === ANNOUNCEMENT_VISIBILITY_ALL) {
-          await tx
-            .delete(announcementTargets)
-            .where(eq(announcementTargets.announcementId, id))
+          await tx.delete(announcementTargets).where(eq(announcementTargets.announcementId, id))
         } else {
           const targets = await findTargetsByAnnouncementId(tx, id)
 
@@ -407,16 +434,26 @@ export function createAnnouncementRepository(database: Db) {
 
     async softDelete(id: string) {
       const now = new Date()
-      const [deleted] = await database
-        .update(announcements)
-        .set({
-          deletedAt: now,
-          updatedAt: now,
-        })
-        .where(and(eq(announcements.id, id), isNull(announcements.deletedAt)))
-        .returning()
+      return await database.transaction(async (tx) => {
+        const [deleted] = await tx
+          .update(announcements)
+          .set({
+            deletedAt: now,
+            updatedAt: now,
+          })
+          .where(and(eq(announcements.id, id), isNull(announcements.deletedAt)))
+          .returning()
 
-      return deleted
+        if (deleted) {
+          await deleteAttachmentReferences(tx, {
+            sourceType: 'announcement',
+            sourceId: id,
+            sourceField: 'contentJson',
+          })
+        }
+
+        return deleted
+      })
     },
   }
 }

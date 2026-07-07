@@ -194,6 +194,7 @@ describe('attachment routes', () => {
       originalName: 'avatar.png',
       usage: 'avatar',
       readPolicy: 'signed',
+      cleanupPolicy: 'manual',
       size: 4,
       contentType: 'image/png',
       userId: currentUser.id,

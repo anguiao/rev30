@@ -178,6 +178,7 @@ export function createAttachmentService(database: Db) {
       const session: UploadSession = {
         ...(contentType ? { contentType } : {}),
         createdAt,
+        cleanupPolicy: input.cleanupPolicy,
         expiresAt,
         originalName: input.originalName,
         readPolicy: input.readPolicy,
@@ -285,6 +286,7 @@ export function createAttachmentService(database: Db) {
           size: session.storedContent.size,
           usage: session.usage,
           readPolicy: session.readPolicy,
+          cleanupPolicy: session.cleanupPolicy,
           checksum: session.storedContent.checksum,
           createdBy: session.userId,
           createdAt: session.storedContent.storedAt,

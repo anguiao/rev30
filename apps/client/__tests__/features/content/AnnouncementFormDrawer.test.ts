@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getErrorMessage } from '../../../src/utils/error'
 import { ApiRequestError } from '../../../src/utils/request'
 import {
+  ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
   ATTACHMENT_READ_POLICY_AUTHENTICATED,
   ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
   ANNOUNCEMENT_TARGET_TYPE_ROLE,
@@ -298,6 +299,7 @@ describe('AnnouncementFormDrawer', () => {
     expect(uploadAttachmentMock).toHaveBeenCalledWith(compressedFile, {
       usage: 'announcement-content-image',
       readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
     })
     expect(getAttachmentContentUrlMock).toHaveBeenCalledWith('55555555-5555-4555-8555-555555555555')
     expect(result).toEqual({

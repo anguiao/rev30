@@ -5,10 +5,16 @@ import { optionalQueryValue, optionalTrimmedQueryString } from './query'
 
 export const ATTACHMENT_READ_POLICY_SIGNED = 'signed'
 export const ATTACHMENT_READ_POLICY_AUTHENTICATED = 'authenticated'
+export const ATTACHMENT_CLEANUP_POLICY_MANUAL = 'manual'
+export const ATTACHMENT_CLEANUP_POLICY_UNREFERENCED = 'unreferenced'
 
 export const attachmentReadPolicySchema = z.enum(
   [ATTACHMENT_READ_POLICY_SIGNED, ATTACHMENT_READ_POLICY_AUTHENTICATED],
   '访问方式无效',
+)
+export const attachmentCleanupPolicySchema = z.enum(
+  [ATTACHMENT_CLEANUP_POLICY_MANUAL, ATTACHMENT_CLEANUP_POLICY_UNREFERENCED],
+  '清理策略无效',
 )
 
 export const attachmentUsageSchema = nonBlankString('上传用途无效')
@@ -71,6 +77,7 @@ export const attachmentUploadSessionCreateInputSchema = z
     originalName: nonBlankString(),
     usage: attachmentUsageSchema,
     readPolicy: attachmentReadPolicySchema.default(ATTACHMENT_READ_POLICY_SIGNED),
+    cleanupPolicy: attachmentCleanupPolicySchema.default(ATTACHMENT_CLEANUP_POLICY_MANUAL),
     size: z.number().int().min(0),
     contentType: nonBlankString().optional(),
   })
@@ -102,6 +109,7 @@ export const attachmentContentUrlSchema = z.object({
 
 export type AttachmentUsage = z.infer<typeof attachmentUsageSchema>
 export type AttachmentReadPolicy = z.infer<typeof attachmentReadPolicySchema>
+export type AttachmentCleanupPolicy = z.infer<typeof attachmentCleanupPolicySchema>
 export type AttachmentDisposition = z.infer<typeof attachmentDispositionSchema>
 export type Attachment = z.infer<typeof attachmentSchema>
 export type AttachmentCreatedBy = z.infer<typeof attachmentCreatedBySchema>

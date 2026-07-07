@@ -6,6 +6,7 @@ import { PGlite } from '@electric-sql/pglite'
 import {
   ANNOUNCEMENT_STATUS_DRAFT,
   ANNOUNCEMENT_VISIBILITY_TARGETED,
+  ATTACHMENT_CLEANUP_POLICY_MANUAL,
   ATTACHMENT_READ_POLICY_SIGNED,
   type TiptapDocument,
 } from '@rev30/contracts'
@@ -15,6 +16,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { createDb } from '../../src/db/index'
 import { migratePGlite } from '../../src/db/migrate'
 import {
+  attachmentReferences,
   attachments,
   authLoginAttemptBuckets,
   announcementTargets,
@@ -31,6 +33,7 @@ const originalPgliteDataDir = process.env.PGLITE_DATA_DIR
 const tempDirs: string[] = []
 
 const expectedTableNames = [
+  'attachment_references',
   'attachments',
   'auth_login_attempt_buckets',
   'auth_password_credentials',
@@ -258,6 +261,16 @@ describe('PGlite migration runner', () => {
         .returning()
 
       expect(createdAttachment?.readPolicy).toBe(ATTACHMENT_READ_POLICY_SIGNED)
+      expect(createdAttachment?.cleanupPolicy).toBe(ATTACHMENT_CLEANUP_POLICY_MANUAL)
+
+      await database.insert(attachmentReferences).values({
+        attachmentId: createdAttachment!.id,
+        sourceType: 'announcement',
+        sourceId: announcementId,
+        sourceField: 'contentJson',
+        createdAt: now,
+        updatedAt: now,
+      })
     } finally {
       await client.close()
     }

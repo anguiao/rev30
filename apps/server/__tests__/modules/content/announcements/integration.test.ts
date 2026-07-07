@@ -23,6 +23,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import type { Hono } from 'hono'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  attachmentReferences,
   announcements,
   announcementTargets,
   systemDepartments,
@@ -55,6 +56,8 @@ const createBody = {
 } as const
 
 const createBodyContentHtml = '<p>今晚维护</p>'
+const firstAttachmentId = '11111111-1111-4111-8111-111111111111'
+const secondAttachmentId = '22222222-2222-4222-8222-222222222222'
 
 async function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
   const fixture = await createSystemAccessFixture(database, {
@@ -123,6 +126,38 @@ async function createAnnouncementTargetsFixture(
     } as const,
     role: { targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE, targetId: roleId } as const,
   }
+}
+
+function imageContentJson(attachmentId: string): TiptapDocument {
+  return {
+    type: 'doc',
+    content: [
+      {
+        type: 'image',
+        attrs: {
+          src: `/api/attachments/${attachmentId}/content`,
+          alt: '示意图',
+        },
+      },
+    ],
+  }
+}
+
+async function listAnnouncementAttachmentReferences(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  announcementId: string,
+) {
+  return await database
+    .select()
+    .from(attachmentReferences)
+    .where(
+      and(
+        eq(attachmentReferences.sourceType, 'announcement'),
+        eq(attachmentReferences.sourceId, announcementId),
+        eq(attachmentReferences.sourceField, 'contentJson'),
+      ),
+    )
+    .orderBy(attachmentReferences.attachmentId)
 }
 
 afterEach(() => {
@@ -251,6 +286,46 @@ describe('announcement routes', () => {
     expect(response.status).toBe(200)
     expect(body.contentText).toBe('维护时间改到 23:00')
     expect(body.contentHtml).toContain('维护时间改到 23:00')
+  })
+
+  it('syncs attachment references when creating, updating, and deleting announcements', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: created } = await createAnnouncement(app, {
+      ...createBody,
+      contentJson: imageContentJson(firstAttachmentId),
+    })
+
+    expect(await listAnnouncementAttachmentReferences(database, created.id)).toMatchObject([
+      {
+        attachmentId: firstAttachmentId,
+        sourceField: 'contentJson',
+        sourceId: created.id,
+        sourceType: 'announcement',
+      },
+    ])
+
+    const updateResponse = await app.request(`/api/content/announcements/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        contentJson: imageContentJson(secondAttachmentId),
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(updateResponse.status).toBe(200)
+    expect(
+      (await listAnnouncementAttachmentReferences(database, created.id)).map(
+        (row) => row.attachmentId,
+      ),
+    ).toEqual([secondAttachmentId])
+
+    const deleteResponse = await app.request(`/api/content/announcements/${created.id}`, {
+      method: 'DELETE',
+    })
+
+    expect(deleteResponse.status).toBe(204)
+    expect(await listAnnouncementAttachmentReferences(database, created.id)).toEqual([])
   })
 
   it('persists visibility targets and returns them in management detail', async () => {

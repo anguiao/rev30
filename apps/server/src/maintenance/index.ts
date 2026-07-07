@@ -1,4 +1,5 @@
 import type { Db } from '../db'
+import { startAttachmentCleanup } from './attachment-cleanup'
 import { startAuthLoginAttemptCleanup } from './auth-login-attempt-cleanup'
 import { startAuthRefreshTokenCleanup } from './auth-refresh-token-cleanup'
 import type { MaintenanceWorker } from './types'
@@ -13,6 +14,7 @@ export function startAppMaintenance(database: Db): AppMaintenance {
   try {
     workers.push(startAuthRefreshTokenCleanup(database))
     workers.push(startAuthLoginAttemptCleanup(database))
+    workers.push(startAttachmentCleanup(database))
   } catch (error) {
     for (const worker of workers) {
       void worker.stop()

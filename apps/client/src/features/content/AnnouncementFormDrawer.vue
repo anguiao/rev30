@@ -18,6 +18,7 @@ import {
   NTreeSelect,
 } from 'naive-ui'
 import {
+  ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
   ATTACHMENT_READ_POLICY_AUTHENTICATED,
   ANNOUNCEMENT_STATUS_PUBLISHED,
   ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
@@ -178,6 +179,7 @@ async function uploadAnnouncementRichTextImage(file: File) {
   const attachment = await uploadAttachment(compressedFile, {
     usage: 'announcement-content-image',
     readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+    cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
   })
 
   return {

@@ -29,6 +29,20 @@
       "when": 1781514844167,
       "tag": "0003_add_icon_sets",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783327377281,
+      "tag": "0004_add_attachment_references",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783404479674,
+      "tag": "0005_add_attachment_cleanup_policy",
+      "breakpoints": true
     }
   ]
 }

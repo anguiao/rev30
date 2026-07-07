@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { authLoginAttemptBuckets, authRefreshTokens, systemUsers } from '../../src/db/schema'
 import { startAppMaintenance } from '../../src/maintenance'
+import { startAttachmentCleanup } from '../../src/maintenance/attachment-cleanup'
 import { startAuthLoginAttemptCleanup } from '../../src/maintenance/auth-login-attempt-cleanup'
 import { startAuthRefreshTokenCleanup } from '../../src/maintenance/auth-refresh-token-cleanup'
 import {
@@ -236,6 +237,29 @@ describe('auth maintenance', () => {
     expect(returning).not.toHaveBeenCalled()
   })
 
+  it('keeps attachment cleanup disabled when the interval is zero', async () => {
+    vi.useFakeTimers()
+    vi.stubEnv('ATTACHMENT_CLEANUP_INTERVAL_MS', '0')
+
+    const select = vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          orderBy: vi.fn(() => ({
+            limit: vi.fn(() => Promise.resolve([])),
+          })),
+        })),
+      })),
+    }))
+    const worker = startAttachmentCleanup({
+      select,
+    } as never)
+
+    await vi.advanceTimersByTimeAsync(0)
+    await worker.stop()
+
+    expect(select).not.toHaveBeenCalled()
+  })
+
   it('stops earlier maintenance workers when a later worker fails to start', async () => {
     vi.useFakeTimers()
     vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', '50')
@@ -253,6 +277,30 @@ describe('auth maintenance', () => {
     expect(() => {
       startAppMaintenance(database)
     }).toThrow('AUTH_LOGIN_ATTEMPT_RETENTION_MS 必须是 0 或正整数毫秒值')
+
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(returning).not.toHaveBeenCalled()
+  })
+
+  it('stops auth maintenance workers when attachment cleanup fails to start', async () => {
+    vi.useFakeTimers()
+    vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', '50')
+    vi.stubEnv('AUTH_LOGIN_ATTEMPT_CLEANUP_INTERVAL_MS', '50')
+    vi.stubEnv('ATTACHMENT_CLEANUP_RETENTION_MS', '0')
+
+    const returning = vi.fn(() => Promise.resolve([]))
+    const database = {
+      delete: vi.fn(() => ({
+        where: vi.fn(() => ({
+          returning,
+        })),
+      })),
+    } as never
+
+    expect(() => {
+      startAppMaintenance(database)
+    }).toThrow('ATTACHMENT_CLEANUP_RETENTION_MS 必须是正整数毫秒值')
 
     await vi.advanceTimersByTimeAsync(0)
 
@@ -278,6 +326,21 @@ describe('auth maintenance', () => {
 
     expect(() => startAuthRefreshTokenCleanup({} as never)).toThrow(
       'AUTH_REVOKED_REFRESH_TOKEN_RETENTION_MS 必须是 0 或正整数毫秒值',
+    )
+  })
+
+  it('fails fast for invalid attachment cleanup settings', () => {
+    vi.stubEnv('ATTACHMENT_CLEANUP_INTERVAL_MS', 'abc')
+
+    expect(() => startAttachmentCleanup({} as never)).toThrow(
+      'ATTACHMENT_CLEANUP_INTERVAL_MS 必须是 0 或正整数毫秒值',
+    )
+
+    vi.unstubAllEnvs()
+    vi.stubEnv('ATTACHMENT_CLEANUP_RETENTION_MS', '0')
+
+    expect(() => startAttachmentCleanup({} as never)).toThrow(
+      'ATTACHMENT_CLEANUP_RETENTION_MS 必须是正整数毫秒值',
     )
   })
 })

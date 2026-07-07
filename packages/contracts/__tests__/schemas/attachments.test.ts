@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ATTACHMENT_CLEANUP_POLICY_MANUAL,
+  ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
   ATTACHMENT_DISPOSITION_ATTACHMENT,
   ATTACHMENT_DISPOSITION_INLINE,
+  attachmentCleanupPolicySchema,
   attachmentContentUrlInputSchema,
   attachmentContentUrlSchema,
   attachmentListQuerySchema,
@@ -103,6 +106,16 @@ describe('attachment schemas', () => {
     expect(attachmentReadPolicySchema.parse('signed')).toBe('signed')
     expect(attachmentReadPolicySchema.parse('authenticated')).toBe('authenticated')
     expect(attachmentReadPolicySchema.safeParse('public').success).toBe(false)
+  })
+
+  it('parses attachment cleanup policies', () => {
+    expect(attachmentCleanupPolicySchema.parse(ATTACHMENT_CLEANUP_POLICY_MANUAL)).toBe(
+      ATTACHMENT_CLEANUP_POLICY_MANUAL,
+    )
+    expect(attachmentCleanupPolicySchema.parse(ATTACHMENT_CLEANUP_POLICY_UNREFERENCED)).toBe(
+      ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+    )
+    expect(attachmentCleanupPolicySchema.safeParse('auto').success).toBe(false)
   })
 
   it('defaults content URL disposition to attachment', () => {
@@ -208,6 +221,7 @@ describe('attachment schemas', () => {
       originalName: 'avatar.png',
       usage: 'avatar',
       readPolicy: 'signed',
+      cleanupPolicy: 'manual',
       size: 12345,
       contentType: 'image/png',
     })
@@ -217,11 +231,13 @@ describe('attachment schemas', () => {
         originalName: 'editor-image.png',
         usage: 'rich-text-image',
         readPolicy: 'authenticated',
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
         size: 12345,
       }),
     ).toMatchObject({
       usage: 'rich-text-image',
       readPolicy: 'authenticated',
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
     })
 
     expect(

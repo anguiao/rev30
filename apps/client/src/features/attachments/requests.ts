@@ -5,6 +5,7 @@ import {
   attachmentSchema,
   attachmentUploadSessionSchema,
   type Attachment,
+  type AttachmentCleanupPolicy,
   type AttachmentContentUrl,
   type AttachmentContentUrlInput,
   type AttachmentListQuery,
@@ -20,6 +21,7 @@ async function createAttachmentUploadSession(
   input: {
     usage: string
     readPolicy?: AttachmentReadPolicy
+    cleanupPolicy?: AttachmentCleanupPolicy
   },
 ): Promise<AttachmentUploadSession> {
   const contentType = file.type.trim()
@@ -30,6 +32,7 @@ async function createAttachmentUploadSession(
         originalName: file.name,
         usage: input.usage,
         readPolicy: input.readPolicy,
+        cleanupPolicy: input.cleanupPolicy,
         size: file.size,
         ...(contentType ? { contentType } : {}),
       },
@@ -65,6 +68,7 @@ export async function uploadAttachment(
   input: {
     usage: string
     readPolicy?: AttachmentReadPolicy
+    cleanupPolicy?: AttachmentCleanupPolicy
   },
 ) {
   const session = await createAttachmentUploadSession(file, input)

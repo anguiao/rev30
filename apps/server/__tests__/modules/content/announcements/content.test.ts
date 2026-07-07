@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { deriveAnnouncementContent } from '../../../../src/modules/content/announcements/content'
+import {
+  deriveAnnouncementContent,
+  extractAnnouncementAttachmentIds,
+} from '../../../../src/modules/content/announcements/content'
 import { AnnouncementContentInvalidError } from '../../../../src/modules/content/announcements/errors'
 
 describe('announcement content helpers', () => {
@@ -122,5 +125,38 @@ describe('announcement content helpers', () => {
         ],
       }),
     ).toThrow(AnnouncementContentInvalidError)
+  })
+
+  it('extracts unique authenticated attachment ids from image nodes', () => {
+    expect(
+      extractAnnouncementAttachmentIds({
+        type: 'doc',
+        content: [
+          {
+            type: 'image',
+            attrs: {
+              src: '/api/attachments/11111111-1111-4111-8111-111111111111/content',
+            },
+          },
+          {
+            type: 'paragraph',
+            content: [
+              {
+                type: 'image',
+                attrs: {
+                  src: '/api/attachments/22222222-2222-4222-8222-222222222222/content',
+                },
+              },
+              {
+                type: 'image',
+                attrs: {
+                  src: '/api/attachments/11111111-1111-4111-8111-111111111111/content',
+                },
+              },
+            ],
+          },
+        ],
+      }),
+    ).toEqual(['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'])
   })
 })

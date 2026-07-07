@@ -1,0 +1,2 @@
+ALTER TABLE "attachments" ADD COLUMN "cleanup_policy" text DEFAULT 'manual' NOT NULL;--> statement-breakpoint
+CREATE INDEX "attachments_cleanup_policy_created_at_idx" ON "attachments" USING btree ("cleanup_policy","created_at");

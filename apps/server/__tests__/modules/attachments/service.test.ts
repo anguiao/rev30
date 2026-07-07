@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  ATTACHMENT_CLEANUP_POLICY_MANUAL,
   ATTACHMENT_DISPOSITION_INLINE,
   ATTACHMENT_READ_POLICY_AUTHENTICATED,
   ATTACHMENT_READ_POLICY_SIGNED,
@@ -167,6 +168,7 @@ describe('attachment service', () => {
       originalName: input.originalName,
       usage: input.usage ?? 'avatar',
       readPolicy: input.readPolicy ?? ATTACHMENT_READ_POLICY_SIGNED,
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
       size: input.bytes.byteLength,
       userId: input.userId,
     })
@@ -221,6 +223,7 @@ describe('attachment service', () => {
       originalName: 'avatar.png',
       usage: 'avatar',
       readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
       size: pngBytes.byteLength,
       contentType: 'image/png',
       userId,
@@ -280,6 +283,7 @@ describe('attachment service', () => {
       originalName: 'avatar.png',
       usage: 'avatar',
       readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
       size: pngBytes.byteLength,
       userId,
     })
@@ -404,6 +408,7 @@ describe('attachment service', () => {
       originalName: 'report.docx',
       usage: 'avatar',
       readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
       size: bytes.byteLength,
       userId,
     })
@@ -802,6 +807,7 @@ describe('attachment service', () => {
       originalName: 'avatar.png',
       usage: 'avatar',
       readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
       size: ATTACHMENT_MAX_SIZE_BYTES,
       userId,
     })

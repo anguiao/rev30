@@ -6,7 +6,7 @@ import {
   type Resource,
   type ResourceTreeNode,
 } from '@rev30/contracts'
-import { and, asc, desc, eq, getTableColumns, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, getColumns, isNull } from 'drizzle-orm'
 import type { Db } from '../../db'
 import { systemRoleResources, systemRoles, systemResources, systemUserRoles } from '../../db/schema'
 import { toResourceTree, type ResourceRow } from '../system/resources/mapper'
@@ -65,7 +65,7 @@ export function createUserAccessService(database: Db) {
 
   async function listEnabledResourcesForUser(userId: string) {
     const rows = await database
-      .select(getTableColumns(systemResources))
+      .select(getColumns(systemResources))
       .from(systemUserRoles)
       .innerJoin(systemRoles, eq(systemRoles.id, systemUserRoles.roleId))
       .innerJoin(systemRoleResources, eq(systemRoleResources.roleId, systemRoles.id))

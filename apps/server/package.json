@@ -35,7 +35,7 @@
     "@rev30/utils": "workspace:*",
     "bytes": "catalog:",
     "dotenv": "^17.4.2",
-    "drizzle-orm": "^0.45.2",
+    "drizzle-orm": "rc",
     "file-type": "^22.0.1",
     "fzf": "^0.5.2",
     "hono": "catalog:",
@@ -47,7 +47,7 @@
   "devDependencies": {
     "@types/bytes": "catalog:",
     "@types/mime-types": "^3.0.1",
-    "drizzle-kit": "^0.31.10",
+    "drizzle-kit": "rc",
     "tsup": "^8.5.1",
     "tsx": "^4.23.0"
   }

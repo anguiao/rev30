@@ -1,8 +1,8 @@
 import { PGlite } from '@electric-sql/pglite'
 import { drizzle } from 'drizzle-orm/pglite'
 import { afterAll, beforeAll, onTestFinished } from 'vitest'
-import * as schema from '../../src/db/schema'
 import { migratePGlite } from '../../src/db/migrate'
+import { relations } from '../../src/db/relations'
 
 const rollbackTestTransaction = Symbol('rollback test transaction')
 
@@ -25,7 +25,7 @@ async function createMigratedTestDb() {
 
   return {
     client,
-    database: drizzle(client, { schema }),
+    database: drizzle({ client, relations }),
   }
 }
 

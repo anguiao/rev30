@@ -4,7 +4,7 @@ import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js'
 import { mkdir } from 'node:fs/promises'
 import postgres from 'postgres'
 import { migratePGlite } from './migrate'
-import * as schema from './schema'
+import { relations } from './relations'
 
 export async function createDb() {
   if (process.env.NODE_ENV === 'production') {
@@ -16,7 +16,7 @@ export async function createDb() {
 
     const client = postgres(databaseUrl)
 
-    const db = drizzlePostgres(client, { schema })
+    const db = drizzlePostgres({ client, relations })
 
     return {
       close: async () => {
@@ -34,7 +34,7 @@ export async function createDb() {
 
   await migratePGlite(client)
 
-  const db = drizzlePglite(client, { schema })
+  const db = drizzlePglite({ client, relations })
 
   return {
     close: async () => {

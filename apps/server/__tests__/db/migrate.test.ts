@@ -26,7 +26,6 @@ import {
   systemRoles,
   systemUsers,
 } from '../../src/db/schema'
-import * as schema from '../../src/db/schema'
 
 const originalNodeEnv = process.env.NODE_ENV
 const originalPgliteDataDir = process.env.PGLITE_DATA_DIR
@@ -109,7 +108,7 @@ describe('PGlite migration runner', () => {
     try {
       await migratePGlite(client)
 
-      const database = drizzle(client, { schema })
+      const database = drizzle({ client })
       const now = new Date()
       const tableNames = await client.query<{ table_name: string }>(
         `

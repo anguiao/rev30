@@ -204,7 +204,7 @@ describe('user routes', () => {
     expect(body.temporaryPassword.length).toBeGreaterThanOrEqual(8)
 
     const credential = await database.query.authPasswordCredentials.findFirst({
-      where: eq(authPasswordCredentials.userId, body.user.id),
+      where: { userId: body.user.id },
     })
     expect(credential?.mustChangePassword).toBe(true)
     expect(await verifyPassword(body.temporaryPassword, credential!.passwordHash)).toBe(true)
@@ -343,13 +343,13 @@ describe('user routes', () => {
     expect(body.temporaryPassword).toEqual(expect.any(String))
 
     const credential = await database.query.authPasswordCredentials.findFirst({
-      where: eq(authPasswordCredentials.userId, userId),
+      where: { userId },
     })
     expect(credential?.mustChangePassword).toBe(true)
     expect(await verifyPassword(body.temporaryPassword, credential!.passwordHash)).toBe(true)
 
     const sessions = await database.query.authRefreshTokens.findMany({
-      where: eq(authRefreshTokens.userId, userId),
+      where: { userId },
     })
     expect(sessions[0]?.revokedAt).toBeInstanceOf(Date)
   })

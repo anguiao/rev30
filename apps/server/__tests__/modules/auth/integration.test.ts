@@ -1096,7 +1096,7 @@ describe('auth routes', () => {
     expect(response.status).toBe(204)
 
     const credential = await database.query.authPasswordCredentials.findFirst({
-      where: eq(authPasswordCredentials.userId, registered.body.user.id),
+      where: { userId: registered.body.user.id },
     })
     expect(credential?.mustChangePassword).toBe(false)
     expect(await verifyPassword('new-password', credential!.passwordHash)).toBe(true)
@@ -1133,7 +1133,7 @@ describe('auth routes', () => {
 
     const verifiedCurrentToken = await verifyRefreshToken(currentRefreshToken, readAuthConfig())
     const sessions = await database.query.authRefreshTokens.findMany({
-      where: eq(authRefreshTokens.userId, registered.body.user.id),
+      where: { userId: registered.body.user.id },
     })
 
     expect(
@@ -1191,7 +1191,7 @@ describe('auth routes', () => {
     expect(response.status).toBe(204)
 
     const sessions = await database.query.authRefreshTokens.findMany({
-      where: eq(authRefreshTokens.userId, registered.body.user.id),
+      where: { userId: registered.body.user.id },
     })
     expect(sessions.every((session) => session.revokedAt instanceof Date)).toBe(true)
 
@@ -1241,7 +1241,7 @@ describe('auth routes', () => {
     expect(response.status).toBe(204)
 
     const sessions = await database.query.authRefreshTokens.findMany({
-      where: eq(authRefreshTokens.userId, registered.body.user.id),
+      where: { userId: registered.body.user.id },
     })
     expect(sessions.every((session) => session.revokedAt instanceof Date)).toBe(true)
 
@@ -1299,10 +1299,10 @@ describe('auth routes', () => {
       expect(response.status).toBe(500)
 
       const credential = await database.query.authPasswordCredentials.findFirst({
-        where: eq(authPasswordCredentials.userId, registered.body.user.id),
+        where: { userId: registered.body.user.id },
       })
       const sessions = await database.query.authRefreshTokens.findMany({
-        where: eq(authRefreshTokens.userId, registered.body.user.id),
+        where: { userId: registered.body.user.id },
       })
 
       expect(credential?.mustChangePassword).toBe(true)

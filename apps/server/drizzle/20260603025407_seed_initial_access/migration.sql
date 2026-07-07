@@ -55,3 +55,18 @@ INSERT INTO "system_roles"
   ("id", "name", "code", "status", "sort_order", "created_at", "updated_at")
 VALUES
   ('20000000-0000-4000-8000-000000000000', 'Administrator', 'admin', 1, 0, now(), now());
+
+--> statement-breakpoint
+INSERT INTO "system_resources"
+  ("id", "parent_id", "type", "name", "code", "path", "external_url", "open_target", "icon", "hidden", "status", "sort_order", "created_at", "updated_at")
+VALUES
+  ('10000000-0000-4000-8000-000000000109', '10000000-0000-4000-8000-000000000100', 'menu', '图标库', 'content:icon-set', '/content/icon-sets', NULL, 'self', 'lucide:shapes', false, 1, 30, now(), now());
+--> statement-breakpoint
+INSERT INTO "system_resources"
+  ("id", "parent_id", "type", "name", "code", "path", "external_url", "open_target", "icon", "hidden", "status", "sort_order", "created_at", "updated_at")
+VALUES
+  ('10000000-0000-4000-8000-000000000110', '10000000-0000-4000-8000-000000000109', 'action', '查看图标库', 'content:icon-set:list', NULL, NULL, 'self', NULL, false, 1, 10, now(), now()),
+  ('10000000-0000-4000-8000-000000000111', '10000000-0000-4000-8000-000000000109', 'action', '创建图标集', 'content:icon-set:create', NULL, NULL, 'self', NULL, false, 1, 20, now(), now()),
+  ('10000000-0000-4000-8000-000000000112', '10000000-0000-4000-8000-000000000109', 'action', '更新图标集', 'content:icon-set:update', NULL, NULL, 'self', NULL, false, 1, 30, now(), now()),
+  ('10000000-0000-4000-8000-000000000113', '10000000-0000-4000-8000-000000000109', 'action', '删除图标集', 'content:icon-set:delete', NULL, NULL, 'self', NULL, false, 1, 40, now(), now()),
+  ('10000000-0000-4000-8000-000000000114', '10000000-0000-4000-8000-000000000109', 'action', '导出图标集', 'content:icon-set:export', NULL, NULL, 'self', NULL, false, 1, 50, now(), now());

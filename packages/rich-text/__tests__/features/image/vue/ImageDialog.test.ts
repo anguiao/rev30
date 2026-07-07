@@ -113,7 +113,6 @@ function mountControl(editor: Editor, upload = vi.fn(), onError = vi.fn()) {
     props: {
       editor: markRaw(editor),
       disabled: false,
-      accept: 'image/*',
       upload,
       onError,
     },

@@ -172,10 +172,14 @@ describe('auth guards', () => {
   })
 
   it('keeps the session unready when cold restore fails transiently', async () => {
-    refreshSessionMock.mockRejectedValue(new Error('refresh failed'))
+    const refreshError = new Error('refresh failed')
+    const routerErrors: unknown[] = []
+    refreshSessionMock.mockRejectedValue(refreshError)
     const router = createTestRouter()
+    router.onError((error) => routerErrors.push(error))
 
-    await expect(router.push('/system/users')).rejects.toThrow('refresh failed')
+    await expect(router.push('/system/users')).rejects.toBe(refreshError)
+    expect(routerErrors).toEqual([refreshError])
 
     const auth = useAuthStore()
 

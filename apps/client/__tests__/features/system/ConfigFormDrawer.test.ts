@@ -101,7 +101,7 @@ describe('ConfigFormDrawer', () => {
     await flushPromises()
 
     wrapper
-      .get('[data-test="config-form-value-mode"]')
+      .get('[data-test="config-form-value-source"]')
       .getComponent(NRadioGroup)
       .vm.$emit('update:value', 'custom')
     await flushPromises()
@@ -125,7 +125,10 @@ describe('ConfigFormDrawer', () => {
     await flushPromises()
 
     expect(
-      wrapper.get('[data-test="config-form-value-mode"]').getComponent(NRadioGroup).props('value'),
+      wrapper
+        .get('[data-test="config-form-value-source"]')
+        .getComponent(NRadioGroup)
+        .props('value'),
     ).toBe('custom')
     expect(
       (wrapper.get('[data-test="config-form-custom-value"] input').element as HTMLInputElement)
@@ -181,7 +184,7 @@ describe('ConfigFormDrawer', () => {
     await flushPromises()
 
     wrapper
-      .get('[data-test="config-form-value-mode"]')
+      .get('[data-test="config-form-value-source"]')
       .getComponent(NRadioGroup)
       .vm.$emit('update:value', 'custom')
     await flushPromises()
@@ -191,6 +194,24 @@ describe('ConfigFormDrawer', () => {
     await submitForm(wrapper)
 
     expect(updateConfigMock).toHaveBeenCalledWith(configKey, { customValue: '{"enabled":true}' })
+  })
+
+  it('shows client field errors for blank custom values', async () => {
+    getConfigMock.mockResolvedValue(configResponse)
+    updateConfigMock.mockResolvedValue(configResponse)
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    wrapper
+      .get('[data-test="config-form-value-source"]')
+      .getComponent(NRadioGroup)
+      .vm.$emit('update:value', 'custom')
+    await wrapper.get('[data-test="config-form-custom-value"] input').setValue('   ')
+    await submitForm(wrapper)
+
+    expect(updateConfigMock).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('请输入自定义值')
   })
 
   it('shows server field errors on customValue', async () => {
@@ -203,7 +224,7 @@ describe('ConfigFormDrawer', () => {
     await flushPromises()
 
     wrapper
-      .get('[data-test="config-form-value-mode"]')
+      .get('[data-test="config-form-value-source"]')
       .getComponent(NRadioGroup)
       .vm.$emit('update:value', 'custom')
     await wrapper.get('[data-test="config-form-custom-value"] input').setValue('100')

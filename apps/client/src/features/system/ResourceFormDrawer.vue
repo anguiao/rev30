@@ -235,8 +235,8 @@ function handleSubmit() {
   void form.handleSubmit()
 }
 
-function handleTypeChange(type: ResourceType, onChange: (value: ResourceType) => void) {
-  onChange(type)
+function handleTypeChange(type: ResourceType) {
+  form.setFieldValue('type', type)
 
   if (type === RESOURCE_TYPE_EXTERNAL) {
     form.setFieldValue('path', null)
@@ -304,13 +304,13 @@ watch(
         </NAlert>
 
         <NForm @submit.prevent="handleSubmit">
-          <form.Field name="type" v-slot="{ field, state }">
+          <form.Field name="type" v-slot="{ state }">
             <NFormItem label="类型" v-bind="formItemValidationProps(state.meta)">
               <NSelect
                 data-test="resource-form-type"
                 :value="state.value"
                 :options="resourceTypeOptions"
-                @update:value="(value) => handleTypeChange(value, field.handleChange)"
+                @update:value="handleTypeChange"
               />
             </NFormItem>
           </form.Field>

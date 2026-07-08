@@ -1,5 +1,4 @@
 import {
-  type ConfigUpdateInput,
   configKeySchema,
   configListResponseSchema,
   configSchema,
@@ -70,7 +69,7 @@ export function createConfigRoutes(database: Db) {
       configUpdateBodyValidator,
       async (c) => {
         const { key } = c.req.valid('param')
-        const body: ConfigUpdateInput = c.req.valid('json')
+        const body = c.req.valid('json')
 
         return c.json(configSchema.parse(await service.update(key, body)))
       },

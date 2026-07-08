@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useMutation, useQuery, useQueryCache } from '@pinia/colada'
+import { useForm } from '@tanstack/vue-form'
 import {
   NAlert,
   NButton,
+  NDescriptions,
+  NDescriptionsItem,
   NDrawer,
   NDrawerContent,
   NForm,
@@ -11,24 +14,41 @@ import {
   NInput,
   NRadio,
   NRadioGroup,
+  NSpace,
+  NTag,
+  NText,
 } from 'naive-ui'
 import {
   CONFIG_VALUE_TYPE_BOOLEAN,
   CONFIG_VALUE_TYPE_JSON,
+  configCustomValueSchema,
   configUpdateSchema,
-  type Config,
   type ConfigUpdateInput,
 } from '@rev30/contracts'
+import { z } from 'zod'
 import { getConfig, updateConfig } from '.'
 import { configValueTypeLabels } from './labels'
 import { getErrorMessage } from '../../utils/error'
 import { ApiRequestError } from '../../utils/request'
+import { formItemValidationProps, setServerFieldError } from '../../utils/form'
 
-type ValueMode = 'default' | 'custom'
+const configFormSchema = z
+  .object({
+    valueSource: z.enum(['default', 'custom']),
+    customValue: z.string(),
+  })
+  .refine(
+    (value) =>
+      value.valueSource === 'default' ||
+      configCustomValueSchema.safeParse(value.customValue).success,
+    {
+      path: ['customValue'],
+      message: '请输入自定义值',
+    },
+  )
 
-const props = defineProps<{
-  configKey: string | null
-}>()
+type ConfigFormInput = z.input<typeof configFormSchema>
+type ValueSource = ConfigFormInput['valueSource']
 
 const show = defineModel<boolean>('show', { required: true })
 
@@ -36,15 +56,20 @@ const emit = defineEmits<{
   saved: []
 }>()
 
+const defaultFormValues: ConfigFormInput = {
+  valueSource: 'default',
+  customValue: '',
+}
+
+const props = defineProps<{
+  configKey: string | null
+}>()
+
 const queryCache = useQueryCache()
 const drawerSessionId = ref(0)
-const valueMode = ref<ValueMode>('default')
-const customValue = ref('')
-const customValueError = ref<string | null>(null)
-const formError = ref<string | null>(null)
 
 const {
-  data: configData,
+  data: formData,
   error: formLoadError,
   isLoading,
 } = useQuery({
@@ -56,7 +81,16 @@ const {
       return null
     }
 
-    return getConfig(configKey)
+    const config = await getConfig(configKey)
+    const valueSource: ValueSource = config.customValue === null ? 'default' : 'custom'
+
+    return {
+      config,
+      formValues: {
+        valueSource,
+        customValue: config.customValue ?? '',
+      },
+    }
   },
 })
 
@@ -65,24 +99,32 @@ const loadError = computed(() =>
     ? null
     : getErrorMessage(formLoadError.value, '加载系统配置信息失败'),
 )
-const config = computed(() => configData.value)
-const usesBooleanValue = computed(() => config.value?.valueType === CONFIG_VALUE_TYPE_BOOLEAN)
-const usesJsonValue = computed(() => config.value?.valueType === CONFIG_VALUE_TYPE_JSON)
 
-function ensureCustomDraft(configValue: Config) {
-  if (customValue.value.length > 0) {
-    return
-  }
+const formError = ref<string | null>(null)
 
-  customValue.value = configValue.customValue ?? configValue.defaultValue
-}
+const form = useForm({
+  defaultValues: defaultFormValues,
+  validators: {
+    onChange: configFormSchema,
+    onSubmit: configFormSchema,
+  },
+  onSubmit({ value }) {
+    const configKey = props.configKey
+    if (configKey === null || isLoading.value || isSaving.value || loadError.value) {
+      return
+    }
 
-function resetFormState() {
-  valueMode.value = 'default'
-  customValue.value = ''
-  customValueError.value = null
-  formError.value = null
-}
+    formError.value = null
+    saveConfigMutation.mutate({
+      configKey,
+      input: {
+        customValue: value.valueSource === 'custom' ? value.customValue : null,
+      },
+    })
+  },
+})
+
+const showsCustomValue = form.useStore((state) => state.values.valueSource === 'custom')
 
 const { isLoading: isSaving, ...saveConfigMutation } = useMutation({
   onMutate() {
@@ -109,8 +151,7 @@ const { isLoading: isSaving, ...saveConfigMutation } = useMutation({
       return
     }
 
-    if (error instanceof ApiRequestError && error.field === 'customValue') {
-      customValueError.value = error.message
+    if (error instanceof ApiRequestError && setServerFieldError(form, error.field, error.message)) {
       return
     }
 
@@ -118,34 +159,25 @@ const { isLoading: isSaving, ...saveConfigMutation } = useMutation({
   },
 })
 
-function handleValueModeChange(nextMode: ValueMode) {
-  valueMode.value = nextMode
-  customValueError.value = null
+function handleValueSourceChange(nextSource: ValueSource) {
+  form.setFieldValue('valueSource', nextSource)
 
-  if (nextMode === 'custom' && config.value !== null && config.value !== undefined) {
-    ensureCustomDraft(config.value)
-  }
-}
-
-function handleCustomValueChange(value: string) {
-  customValue.value = value
-  customValueError.value = null
-}
-
-function handleSubmit() {
-  const configKey = props.configKey
-  if (configKey === null || isLoading.value || isSaving.value || loadError.value) {
+  if (nextSource !== 'custom' || form.state.values.customValue.length > 0) {
     return
   }
 
-  formError.value = null
-  customValueError.value = null
-  saveConfigMutation.mutate({
-    configKey,
-    input: {
-      customValue: valueMode.value === 'custom' ? customValue.value : null,
-    },
-  })
+  const configValue = formData.value?.config
+  if (configValue !== undefined) {
+    form.setFieldValue('customValue', configValue.customValue ?? configValue.defaultValue)
+  }
+}
+
+function handleSubmit() {
+  if (isLoading.value || isSaving.value || loadError.value) {
+    return
+  }
+
+  void form.handleSubmit()
 }
 
 watch(
@@ -157,7 +189,8 @@ watch(
 
     drawerSessionId.value += 1
     saveConfigMutation.reset()
-    resetFormState()
+    formError.value = null
+    form.reset(defaultFormValues)
   },
   {
     immediate: true,
@@ -165,15 +198,17 @@ watch(
 )
 
 watch(
-  () => [show.value, config.value] as const,
-  ([isVisible, configValue]) => {
-    if (!isVisible || configValue === null || configValue === undefined) {
+  () => [show.value, formData.value?.formValues] as const,
+  ([isVisible, formValues]) => {
+    if (!isVisible || formValues === undefined) {
       return
     }
 
-    valueMode.value = configValue.customValue === null ? 'default' : 'custom'
-    customValue.value = configValue.customValue ?? ''
-    customValueError.value = null
+    if (form.state.isDirty || !form.state.isDefaultValue) {
+      return
+    }
+
+    form.reset(formValues)
   },
   {
     immediate: true,
@@ -193,63 +228,110 @@ watch(
           {{ formError }}
         </NAlert>
 
-        <div v-if="config" class="flex flex-col gap-2 text-sm">
-          <div>配置键：{{ config.key }}</div>
-          <div class="text-base font-medium">{{ config.name }}</div>
-          <div class="text-stone-500 dark:text-zinc-400">{{ config.description }}</div>
-          <div>值类型：{{ configValueTypeLabels[config.valueType] }}</div>
-          <div>默认值：{{ config.defaultValue }}</div>
-          <div>当前生效值：{{ config.value }}</div>
+        <div
+          v-if="formData"
+          class="rounded-ui border border-stone-200 bg-stone-50/70 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900/60"
+        >
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0">
+              <div class="text-base font-medium text-stone-900 dark:text-zinc-100">
+                {{ formData.config.name }}
+              </div>
+              <div class="mt-1 text-stone-500 dark:text-zinc-400">
+                {{ formData.config.description }}
+              </div>
+            </div>
+
+            <NSpace size="small" class="shrink-0">
+              <NTag size="small" type="info" :bordered="false">
+                {{ configValueTypeLabels[formData.config.valueType] }}
+              </NTag>
+              <NTag
+                size="small"
+                :type="formData.config.customValue === null ? 'default' : 'success'"
+                :bordered="false"
+              >
+                {{ formData.config.customValue === null ? '默认值' : '自定义值' }}
+              </NTag>
+            </NSpace>
+          </div>
+
+          <NDescriptions
+            class="mt-4 border-t border-stone-200 pt-3 dark:border-zinc-800"
+            label-placement="top"
+            :column="2"
+            size="small"
+          >
+            <NDescriptionsItem label="配置键" :span="2">
+              <NText code class="break-all">
+                {{ formData.config.key }}
+              </NText>
+            </NDescriptionsItem>
+            <NDescriptionsItem label="默认值">
+              <NText code class="break-all">
+                {{ formData.config.defaultValue }}
+              </NText>
+            </NDescriptionsItem>
+            <NDescriptionsItem label="当前生效值">
+              <NText code class="break-all">
+                {{ formData.config.value }}
+              </NText>
+            </NDescriptionsItem>
+          </NDescriptions>
         </div>
 
         <NForm @submit.prevent="handleSubmit">
-          <NFormItem label="生效方式">
-            <NRadioGroup
-              data-test="config-form-value-mode"
-              :value="valueMode"
-              @update:value="handleValueModeChange"
-            >
-              <div class="flex gap-4">
-                <NRadio value="default">默认值</NRadio>
-                <NRadio value="custom">自定义值</NRadio>
-              </div>
-            </NRadioGroup>
-          </NFormItem>
-
-          <NFormItem
-            v-if="config"
-            v-show="valueMode === 'custom'"
-            data-test="config-form-custom-value"
-            label="自定义值"
-            v-bind="
-              customValueError ? { feedback: customValueError, validationStatus: 'error' } : {}
-            "
-          >
-            <template v-if="usesBooleanValue">
-              <NRadioGroup :value="customValue" @update:value="handleCustomValueChange">
+          <form.Field name="valueSource" v-slot="{ state }">
+            <NFormItem label="来源" v-bind="formItemValidationProps(state.meta)">
+              <NRadioGroup
+                data-test="config-form-value-source"
+                :value="state.value"
+                @update:value="handleValueSourceChange"
+              >
                 <div class="flex gap-4">
-                  <NRadio value="true">true</NRadio>
-                  <NRadio value="false">false</NRadio>
+                  <NRadio value="default">默认值</NRadio>
+                  <NRadio value="custom">自定义值</NRadio>
                 </div>
               </NRadioGroup>
-            </template>
-            <template v-else-if="usesJsonValue">
-              <NInput
-                type="textarea"
-                :value="customValue"
-                :autosize="{ minRows: 5, maxRows: 10 }"
-                placeholder="请输入自定义值"
-                @update:value="handleCustomValueChange"
-              />
-            </template>
-            <template v-else>
-              <NInput
-                :value="customValue"
-                placeholder="请输入自定义值"
-                @update:value="handleCustomValueChange"
-              />
-            </template>
-          </NFormItem>
+            </NFormItem>
+          </form.Field>
+
+          <form.Field name="customValue" v-slot="{ field, state }">
+            <NFormItem
+              v-if="formData"
+              v-show="showsCustomValue"
+              data-test="config-form-custom-value"
+              label="自定义值"
+              v-bind="formItemValidationProps(state.meta)"
+            >
+              <template v-if="formData.config.valueType === CONFIG_VALUE_TYPE_BOOLEAN">
+                <NRadioGroup :value="state.value" @update:value="field.handleChange">
+                  <div class="flex gap-4">
+                    <NRadio value="true">true</NRadio>
+                    <NRadio value="false">false</NRadio>
+                  </div>
+                </NRadioGroup>
+              </template>
+              <template v-else-if="formData.config.valueType === CONFIG_VALUE_TYPE_JSON">
+                <NInput
+                  type="textarea"
+                  :value="state.value"
+                  :autosize="{ minRows: 5, maxRows: 10 }"
+                  placeholder="请输入自定义值"
+                  @blur="field.handleBlur"
+                  @update:value="field.handleChange"
+                />
+              </template>
+              <template v-else>
+                <NInput
+                  :value="state.value"
+                  placeholder="请输入自定义值"
+                  @blur="field.handleBlur"
+                  @update:value="field.handleChange"
+                />
+              </template>
+            </NFormItem>
+          </form.Field>
         </NForm>
       </div>
 

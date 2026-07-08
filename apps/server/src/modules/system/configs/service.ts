@@ -10,7 +10,7 @@ export function createConfigService(database: Db) {
 
   return {
     async list() {
-      const overrides = await repository.listByKeys(configRegistry.map((spec) => spec.key))
+      const overrides = await repository.list(configRegistry.map((spec) => spec.key))
       const overridesByKey = new Map(overrides.map((override) => [override.key, override]))
 
       return configRegistry.map((spec) => toConfig(spec, overridesByKey.get(spec.key)))
@@ -22,7 +22,7 @@ export function createConfigService(database: Db) {
         throw new ConfigNotFoundError()
       }
 
-      return toConfig(spec, await repository.findByKey(key))
+      return toConfig(spec, await repository.find(key))
     },
 
     async update(key: string, input: ConfigUpdateInput) {
@@ -32,7 +32,7 @@ export function createConfigService(database: Db) {
       }
 
       if (input.customValue === null) {
-        await repository.deleteByKey(key)
+        await repository.delete(key)
 
         return toConfig(spec, undefined)
       }

@@ -19,7 +19,7 @@ export const configKeySchema = z
   .trim()
   .regex(/^[a-z][a-zA-Z0-9]*(?:\.[a-z][a-zA-Z0-9]*)+$/, '配置键格式无效')
 
-const configValueSchema = z.string().trim().min(1, '请输入自定义值')
+export const configCustomValueSchema = z.string().trim().min(1, '请输入自定义值')
 
 export const configSchema = z.object({
   key: configKeySchema,
@@ -34,7 +34,7 @@ export const configSchema = z.object({
 export const configListResponseSchema = z.array(configSchema)
 
 export const configUpdateSchema = z.object({
-  customValue: z.union([configValueSchema, z.null()]),
+  customValue: z.union([configCustomValueSchema, z.null()]),
 })
 
 export type Config = z.infer<typeof configSchema>

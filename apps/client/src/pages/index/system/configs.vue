@@ -15,7 +15,6 @@ const pageTitle = useAdminPageTitle('系统配置')
 const message = useMessage()
 const queryCache = useQueryCache()
 
-const emptyConfigs: Config[] = []
 const keyword = ref('')
 const submittedKeyword = ref('')
 
@@ -25,9 +24,12 @@ const {
   isLoading,
 } = useQuery({
   key: () => ['system', 'configs', 'list'],
-  placeholderData: () => emptyConfigs,
+  placeholderData: () => [],
   query: () => listConfigs(),
 })
+const loadErrorMessage = computed(() =>
+  configsError.value === null ? '' : getErrorMessage(configsError.value, '加载配置失败'),
+)
 
 function handleSearch() {
   submittedKeyword.value = keyword.value.trim()
@@ -38,7 +40,7 @@ function handleReset() {
   submittedKeyword.value = ''
 }
 
-const configsData = computed(() => configsResponse.value ?? emptyConfigs)
+const configsData = computed(() => configsResponse.value ?? [])
 const filteredConfigs = computed(() => {
   const value = submittedKeyword.value.toLowerCase()
   if (!value) {
@@ -51,9 +53,6 @@ const filteredConfigs = computed(() => {
     ),
   )
 })
-const loadErrorMessage = computed(() =>
-  configsError.value === null ? '' : getErrorMessage(configsError.value, '加载配置失败'),
-)
 
 const isConfigDrawerVisible = ref(false)
 const editingConfigKey = ref<string | null>(null)

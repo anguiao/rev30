@@ -4,7 +4,7 @@ import { systemConfigOverrides } from '../../../db/schema'
 
 export function createConfigRepository(database: Db) {
   return {
-    async listByKeys(keys: readonly string[]) {
+    async list(keys: readonly string[]) {
       if (keys.length === 0) {
         return []
       }
@@ -15,7 +15,7 @@ export function createConfigRepository(database: Db) {
         .where(inArray(systemConfigOverrides.key, [...keys]))
     },
 
-    async findByKey(key: string) {
+    async find(key: string) {
       const [row] = await database
         .select()
         .from(systemConfigOverrides)
@@ -45,7 +45,7 @@ export function createConfigRepository(database: Db) {
       return row
     },
 
-    async deleteByKey(key: string) {
+    async delete(key: string) {
       await database.delete(systemConfigOverrides).where(eq(systemConfigOverrides.key, key))
     },
   }

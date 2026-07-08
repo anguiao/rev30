@@ -1,20 +1,10 @@
-import { useQueryCache } from '@pinia/colada'
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
-import { NDataTable, NPagination, NSelect } from 'naive-ui'
-import {
-  CONFIG_STATUS_DISABLED,
-  CONFIG_STATUS_ENABLED,
-  CONFIG_VALUE_TYPE_JSON,
-  CONFIG_VALUE_TYPE_NUMBER,
-  CONFIG_VALUE_TYPE_STRING,
-  type ConfigListItem,
-  type ConfigListResponse,
-} from '@rev30/contracts'
-import { formatDisplayDateTime } from '@rev30/utils'
+import { NDataTable } from 'naive-ui'
+import { CONFIG_VALUE_TYPE_NUMBER, CONFIG_VALUE_TYPE_STRING, type Config } from '@rev30/contracts'
 import { defineComponent, h } from 'vue'
-import { deleteConfig, listConfigs } from '../../../src/features/system'
+import { listConfigs } from '../../../src/features/system'
 import ConfigsPage from '../../../src/pages/index/system/configs.vue'
 import {
   disposeActiveTestPinia,
@@ -22,6 +12,7 @@ import {
   session,
   stubPreferredDark,
 } from '../../helpers/auth'
+
 vi.mock('../../../src/features/system/ConfigFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'ConfigFormDrawerStub',
@@ -30,7 +21,7 @@ vi.mock('../../../src/features/system/ConfigFormDrawer.vue', () => ({
         type: Boolean,
         required: true,
       },
-      configId: {
+      configKey: {
         type: String,
         default: null,
       },
@@ -39,7 +30,7 @@ vi.mock('../../../src/features/system/ConfigFormDrawer.vue', () => ({
     setup(props) {
       return () =>
         h('div', {
-          'data-config-id': props.configId ?? '',
+          'data-config-key': props.configKey ?? '',
           'data-show': String(props.show),
           'data-test': 'config-form-drawer',
         })
@@ -49,45 +40,40 @@ vi.mock('../../../src/features/system/ConfigFormDrawer.vue', () => ({
 
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
-  deleteConfig: vi.fn(),
   listConfigs: vi.fn(),
 }))
 
-const deleteConfigMock = vi.mocked(deleteConfig)
 const listConfigsMock = vi.mocked(listConfigs)
 
-const baseConfig: ConfigListItem = {
-  id: '11111111-1111-4111-8111-111111111111',
-  groupCode: 'site',
-  key: 'site.title',
-  name: '站点名称',
-  valueType: CONFIG_VALUE_TYPE_STRING,
-  value: 'Rev30',
-  description: '站点标题',
-  status: CONFIG_STATUS_ENABLED,
-  createdAt: '2026-05-18T01:02:03.000Z',
-  updatedAt: '2026-05-18T01:02:03.000Z',
-}
-
-const configsResponse: ConfigListResponse = {
-  list: [
-    baseConfig,
-    {
-      ...baseConfig,
-      id: '22222222-2222-4111-8111-111111111112',
-      groupCode: 'feature',
-      key: 'feature.flags',
-      name: '功能开关',
-      valueType: CONFIG_VALUE_TYPE_JSON,
-      value: '{"newDashboard":true}',
-      status: CONFIG_STATUS_DISABLED,
-      updatedAt: '2026-05-19T01:02:03.000Z',
-    },
-  ],
-  total: 2,
-  page: 1,
-  pageSize: 20,
-}
+const configs: Config[] = [
+  {
+    key: 'auth.loginFailureMaxAttempts',
+    name: '登录失败最大次数（次）',
+    description: '同一用户名在窗口期内允许的失败次数。',
+    valueType: CONFIG_VALUE_TYPE_NUMBER,
+    defaultValue: '5',
+    customValue: null,
+    value: '5',
+  },
+  {
+    key: 'attachment.contentUrlTtlSeconds',
+    name: '附件临时访问链接有效期（秒）',
+    description: '附件临时访问链接的有效秒数。',
+    valueType: CONFIG_VALUE_TYPE_NUMBER,
+    defaultValue: '300',
+    customValue: '600',
+    value: '600',
+  },
+  {
+    key: 'site.title',
+    name: '站点标题',
+    description: '后台显示标题。',
+    valueType: CONFIG_VALUE_TYPE_STRING,
+    defaultValue: 'Rev30',
+    customValue: null,
+    value: 'Rev30',
+  },
+]
 
 async function mountConfigsPage(accessCodes: string[] = session.accessCodes) {
   return mountAuthRoute('/system/configs', [{ path: '/system/configs', component: ConfigsPage }], {
@@ -98,7 +84,6 @@ async function mountConfigsPage(accessCodes: string[] = session.accessCodes) {
 
 describe('configs page', () => {
   beforeEach(() => {
-    deleteConfigMock.mockReset()
     listConfigsMock.mockReset()
     localStorage.clear()
     document.documentElement.className = ''
@@ -112,201 +97,116 @@ describe('configs page', () => {
     vi.unstubAllGlobals()
   })
 
-  it('loads and renders configs with pagination', async () => {
-    listConfigsMock.mockResolvedValue(configsResponse)
+  it('loads and renders all configs without pagination', async () => {
+    listConfigsMock.mockResolvedValue(configs)
     const { wrapper } = await mountConfigsPage()
     await flushPromises()
 
-    expect(listConfigsMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
+    expect(listConfigsMock).toHaveBeenCalledWith()
     expect(wrapper.text()).toContain('系统配置')
-    expect(wrapper.text()).toContain('共 2 个')
-    expect(wrapper.text()).toContain(baseConfig.key)
-    expect(wrapper.text()).toContain('字符串')
-    expect(wrapper.text()).toContain(baseConfig.value)
-    expect(wrapper.text()).toContain(formatDisplayDateTime(baseConfig.updatedAt))
-    expect(wrapper.getComponent(NDataTable).props('pagination')).toBe(false)
-    expect(wrapper.findComponent(NPagination).exists()).toBe(true)
+    expect(wrapper.text()).toContain('共 3 个')
+    expect(wrapper.text()).toContain('auth.loginFailureMaxAttempts')
+    expect(wrapper.text()).toContain('登录失败最大次数（次）')
+    expect(wrapper.text()).toContain('数字')
+    expect(wrapper.text()).toContain('5')
+    expect(wrapper.findComponent({ name: 'NPagination' }).exists()).toBe(false)
   })
 
-  it('renders long config values with ellipsis tooltip', async () => {
-    listConfigsMock.mockResolvedValue(configsResponse)
+  it('renders current config values with ellipsis tooltip', async () => {
+    listConfigsMock.mockResolvedValue(configs)
     const { wrapper } = await mountConfigsPage()
     await flushPromises()
 
     const columns = wrapper.getComponent(NDataTable).props('columns') as Array<{
       key?: string
       ellipsis?: unknown
-      render?: (row: ConfigListItem) => unknown
+      render?: (row: Config) => unknown
     }>
     const valueColumn = columns.find((column) => column.key === 'value')
 
     expect(valueColumn?.render).toBeTypeOf('function')
     expect(valueColumn?.ellipsis).toMatchObject({ tooltip: true })
-    expect(valueColumn!.render!(baseConfig)).toBe(baseConfig.value)
+    expect(valueColumn!.render!(configs[1]!)).toBe('600')
   })
 
-  it('searches and resets filters without issuing duplicate requests', async () => {
-    listConfigsMock.mockResolvedValue(configsResponse)
+  it('filters configs locally by keyword', async () => {
+    listConfigsMock.mockResolvedValue(configs)
     const { wrapper } = await mountConfigsPage()
     await flushPromises()
 
-    await wrapper.find('[data-test="configs-keyword"] input').setValue('  site  ')
-    await wrapper.find('[data-test="configs-group-code"] input').setValue('  base  ')
-
-    wrapper
-      .get('[data-test="configs-value-type"]')
-      .getComponent(NSelect)
-      .vm.$emit('update:value', CONFIG_VALUE_TYPE_NUMBER)
-    wrapper
-      .get('[data-test="configs-status"]')
-      .getComponent(NSelect)
-      .vm.$emit('update:value', CONFIG_STATUS_DISABLED)
-    await flushPromises()
+    await wrapper.get('[data-test="configs-keyword"] input').setValue('附件')
     await wrapper.get('[data-test="configs-search"]').trigger('click')
     await flushPromises()
-    const callCountAfterSearch = listConfigsMock.mock.calls.length
 
-    expect(listConfigsMock).toHaveBeenLastCalledWith({
-      page: 1,
-      pageSize: 20,
-      keyword: 'site',
-      groupCode: 'base',
-      valueType: CONFIG_VALUE_TYPE_NUMBER,
-      status: CONFIG_STATUS_DISABLED,
-    })
-
-    const queryCache = useQueryCache()
-    const initialQueryEntry = queryCache.get([
-      'system',
-      'configs',
-      'list',
-      1,
-      20,
-      '',
-      '',
-      null,
-      null,
-    ])
-    if (initialQueryEntry !== undefined) {
-      queryCache.remove(initialQueryEntry)
-    }
+    expect(wrapper.text()).toContain('attachment.contentUrlTtlSeconds')
+    expect(wrapper.text()).not.toContain('auth.loginFailureMaxAttempts')
+    expect(listConfigsMock).toHaveBeenCalledTimes(1)
 
     await wrapper.get('[data-test="configs-reset"]').trigger('click')
     await flushPromises()
-    await vi.waitFor(() => {
-      expect(listConfigsMock.mock.calls.length).toBe(callCountAfterSearch + 1)
-    })
-    expect(listConfigsMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
 
-    expect(
-      (wrapper.get('[data-test="configs-keyword"] input').element as HTMLInputElement).value,
-    ).toBe('')
-    expect(
-      (wrapper.get('[data-test="configs-group-code"] input').element as HTMLInputElement).value,
-    ).toBe('')
-    expect(
-      wrapper.get('[data-test="configs-value-type"]').getComponent(NSelect).props('value'),
-    ).toBe('all')
-    expect(wrapper.get('[data-test="configs-status"]').getComponent(NSelect).props('value')).toBe(
-      'all',
-    )
-
-    const callCountAfterFirstReset = listConfigsMock.mock.calls.length
-    await wrapper.get('[data-test="configs-reset"]').trigger('click')
-    await flushPromises()
-
-    expect(listConfigsMock.mock.calls.length).toBe(callCountAfterFirstReset)
+    expect(wrapper.text()).toContain('auth.loginFailureMaxAttempts')
+    expect(wrapper.text()).toContain('site.title')
+    expect(listConfigsMock).toHaveBeenCalledTimes(1)
   })
 
-  it('shows a server load error when configs cannot be loaded', async () => {
-    listConfigsMock.mockRejectedValueOnce(new ApiRequestError(500, '加载配置失败'))
-    const { wrapper: serverErrorWrapper } = await mountConfigsPage()
-    await flushPromises()
-
-    expect(serverErrorWrapper.text()).toContain('加载配置失败')
-  })
-
-  it('shows a plain load error for unexpected config load errors', async () => {
-    listConfigsMock.mockRejectedValueOnce(new Error('network down'))
-    const { wrapper: fallbackErrorWrapper } = await mountConfigsPage()
-    await flushPromises()
-
-    expect(fallbackErrorWrapper.text()).toContain('network down')
-  })
-
-  it('shows create and row actions according to permissions', async () => {
-    listConfigsMock.mockResolvedValue(configsResponse)
-    const { wrapper: unauthorizedWrapper } = await mountConfigsPage([])
-    await flushPromises()
-
-    expect(unauthorizedWrapper.find('[data-test="configs-create"]').exists()).toBe(false)
-    expect(unauthorizedWrapper.find('[data-test="configs-edit"]').exists()).toBe(false)
-    expect(unauthorizedWrapper.find('[data-test="configs-delete"]').exists()).toBe(false)
-
-    const { wrapper: authorizedWrapper } = await mountConfigsPage([
-      'system:config:create',
-      'system:config:update',
+  it('does not render create, delete, type, status, or group filters', async () => {
+    listConfigsMock.mockResolvedValue(configs)
+    const { wrapper } = await mountConfigsPage([
       'system:config:list',
+      'system:config:update',
+      'system:config:create',
       'system:config:delete',
     ])
     await flushPromises()
 
-    expect(authorizedWrapper.find('[data-test="configs-create"]').exists()).toBe(true)
-    expect(authorizedWrapper.findAll('[data-test="configs-edit"]')).toHaveLength(2)
-    expect(authorizedWrapper.findAll('[data-test="configs-delete"]')).toHaveLength(2)
+    expect(wrapper.find('[data-test="configs-create"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="configs-delete"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="configs-group-code"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="configs-value-type"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="configs-status"]').exists()).toBe(false)
   })
 
-  it('opens create and edit drawers and refreshes after save', async () => {
-    listConfigsMock.mockResolvedValue(configsResponse)
-    const { wrapper } = await mountConfigsPage([
-      'system:config:create',
-      'system:config:update',
+  it('shows edit action according to update permission', async () => {
+    listConfigsMock.mockResolvedValue(configs)
+    const { wrapper: unauthorizedWrapper } = await mountConfigsPage(['system:config:list'])
+    await flushPromises()
+
+    expect(unauthorizedWrapper.find('[data-test="configs-edit"]').exists()).toBe(false)
+
+    const { wrapper: authorizedWrapper } = await mountConfigsPage([
       'system:config:list',
+      'system:config:update',
     ])
     await flushPromises()
 
-    await wrapper.get('[data-test="configs-create"]').trigger('click')
-    await flushPromises()
+    expect(authorizedWrapper.findAll('[data-test="configs-edit"]')).toHaveLength(3)
+  })
 
-    let drawer = wrapper.get('[data-test="config-form-drawer"]')
-    expect(drawer.attributes('data-show')).toBe('true')
-    expect(drawer.attributes('data-config-id')).toBe('')
+  it('opens edit drawer by config key and refreshes after save', async () => {
+    listConfigsMock.mockResolvedValue(configs)
+    const { wrapper } = await mountConfigsPage(['system:config:list', 'system:config:update'])
+    await flushPromises()
 
     await wrapper.get('[data-test="configs-edit"]').trigger('click')
     await flushPromises()
 
-    drawer = wrapper.get('[data-test="config-form-drawer"]')
+    const drawer = wrapper.get('[data-test="config-form-drawer"]')
     expect(drawer.attributes('data-show')).toBe('true')
-    expect(drawer.attributes('data-config-id')).toBe(baseConfig.id)
+    expect(drawer.attributes('data-config-key')).toBe(configs[0]!.key)
 
     wrapper.getComponent({ name: 'ConfigFormDrawerStub' }).vm.$emit('saved')
     await flushPromises()
 
-    expect(document.body.textContent).toContain('保存系统配置成功')
+    expect(document.body.textContent).toContain('系统配置已保存')
     expect(listConfigsMock).toHaveBeenCalledTimes(2)
-    expect(listConfigsMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
   })
 
-  it('deletes configs after confirmation and refreshes list', async () => {
-    listConfigsMock.mockResolvedValue(configsResponse)
-    deleteConfigMock.mockResolvedValue(undefined)
-    const { wrapper } = await mountConfigsPage(['system:config:delete'])
+  it('shows load errors', async () => {
+    listConfigsMock.mockRejectedValueOnce(new ApiRequestError(500, '加载配置失败'))
+    const { wrapper } = await mountConfigsPage()
     await flushPromises()
 
-    await wrapper.get('[data-test="configs-delete"]').trigger('click')
-    await flushPromises()
-
-    const confirmButton = document.body.querySelector(
-      '[data-test="configs-delete-confirm"]',
-    ) as HTMLButtonElement | null
-
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
-    await flushPromises()
-
-    expect(deleteConfigMock).toHaveBeenCalledWith(baseConfig.id)
-    expect(listConfigsMock).toHaveBeenCalledTimes(2)
-    expect(listConfigsMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
+    expect(wrapper.text()).toContain('加载配置失败')
   })
 })

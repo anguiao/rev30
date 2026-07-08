@@ -1,16 +1,13 @@
 export {
   STATUS_FILTER_ALL,
-  CONFIG_VALUE_TYPE_FILTER_ALL,
   resourceTypeLabels,
-  configValueTypeFilterOptions,
   configValueTypeLabels,
-  configValueTypeSelectOptions,
   statusFilterOptions,
   statusLabels,
   statusSelectOptions,
   statusTagTypes,
 } from './labels'
-export type { ConfigValueTypeFilter, StatusFilter, SystemStatus } from './labels'
+export type { StatusFilter, SystemStatus } from './labels'
 export {
   createDepartment,
   createDictionary,

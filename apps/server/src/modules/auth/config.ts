@@ -3,9 +3,6 @@ import { readPositiveIntegerEnv } from '../../runtime/env'
 const defaultAccessExpiresInSeconds = 900
 const defaultRefreshExpiresInSeconds = 604800
 const defaultAttachmentExpiresInSeconds = 86400
-const defaultLoginFailureMaxAttempts = 5
-const defaultLoginFailureWindowSeconds = 900
-const defaultLoginFailureLockSeconds = 900
 const developmentAccessSecret = 'rev30-development-access-secret'
 const developmentRefreshSecret = 'rev30-development-refresh-secret'
 const developmentAttachmentSecret = 'rev30-development-attachment-secret'
@@ -17,9 +14,6 @@ export type AuthConfig = {
   accessExpiresInSeconds: number
   refreshExpiresInSeconds: number
   attachmentExpiresInSeconds: number
-  loginFailureMaxAttempts: number
-  loginFailureWindowSeconds: number
-  loginFailureLockSeconds: number
   secureCookies: boolean
 }
 
@@ -69,21 +63,6 @@ export function readAuthConfig(env = process.env): AuthConfig {
     ),
     refreshExpiresInSeconds,
     attachmentExpiresInSeconds,
-    loginFailureMaxAttempts: readPositiveIntegerEnv(
-      env,
-      'AUTH_LOGIN_FAILURE_MAX_ATTEMPTS',
-      defaultLoginFailureMaxAttempts,
-    ),
-    loginFailureWindowSeconds: readPositiveIntegerEnv(
-      env,
-      'AUTH_LOGIN_FAILURE_WINDOW_SECONDS',
-      defaultLoginFailureWindowSeconds,
-    ),
-    loginFailureLockSeconds: readPositiveIntegerEnv(
-      env,
-      'AUTH_LOGIN_FAILURE_LOCK_SECONDS',
-      defaultLoginFailureLockSeconds,
-    ),
     secureCookies: isProduction,
   }
 }

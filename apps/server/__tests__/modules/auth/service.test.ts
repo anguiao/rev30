@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
   return {
     createAuthRepository: vi.fn(() => repository),
     repository,
+    readNumberConfigValue: vi.fn(),
     verifyPassword: vi.fn(),
     resolveUserAccess: vi.fn(),
   }
@@ -43,6 +44,10 @@ vi.mock('../../../src/modules/auth/access', () => ({
   }),
 }))
 
+vi.mock('../../../src/modules/system/configs/values', () => ({
+  readNumberConfigValue: mocks.readNumberConfigValue,
+}))
+
 const config: AuthConfig = {
   accessSecret: 'test-access-secret',
   refreshSecret: 'test-refresh-secret',
@@ -51,9 +56,6 @@ const config: AuthConfig = {
   refreshExpiresInSeconds: 604800,
   attachmentExpiresInSeconds: 86400,
   secureCookies: false,
-  loginFailureMaxAttempts: 5,
-  loginFailureWindowSeconds: 900,
-  loginFailureLockSeconds: 900,
 }
 
 function createUserRow(status = USER_STATUS_ENABLED) {
@@ -85,6 +87,16 @@ describe('auth service', () => {
     mocks.createAuthRepository.mockClear()
     mocks.createAuthRepository.mockImplementation(() => mocks.repository)
     mocks.repository.findLoginAttemptBucketByUsername.mockResolvedValue(undefined)
+    mocks.readNumberConfigValue.mockReset()
+    mocks.readNumberConfigValue.mockImplementation(async (_database: unknown, key: string) => {
+      const values: Record<string, number> = {
+        'auth.loginFailureMaxAttempts': 5,
+        'auth.loginFailureWindowSeconds': 900,
+        'auth.loginFailureLockSeconds': 900,
+      }
+
+      return values[key]
+    })
     mocks.verifyPassword.mockResolvedValue(false)
     mocks.verifyPassword.mockClear()
     mocks.resolveUserAccess.mockResolvedValue({

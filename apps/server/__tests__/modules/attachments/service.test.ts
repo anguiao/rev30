@@ -11,7 +11,7 @@ import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
 } from '@rev30/contracts'
-import { attachments, systemUsers } from '../../../src/db/schema'
+import { attachments, systemConfigOverrides, systemUsers } from '../../../src/db/schema'
 import {
   AttachmentContentUnauthorizedError,
   AttachmentContentUrlInvalidError,
@@ -29,7 +29,6 @@ import { readAuthConfig } from '../../../src/modules/auth/config'
 import { createTestDb } from '../../helpers/db'
 
 const tempDirs: string[] = []
-const defaultContentUrlTtlSeconds = '300'
 const pngBytes = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
 ])
@@ -138,7 +137,7 @@ afterEach(async () => {
 describe('attachment service', () => {
   async function createAttachmentServiceForTest(
     database: Awaited<ReturnType<typeof createTestDb>>,
-    options: { contentUrlTtlSeconds?: string } = {},
+    options: { contentUrlTtlSeconds?: string; uploadSessionTtlSeconds?: string } = {},
   ) {
     const root = await createTempRoot()
 
@@ -146,10 +145,25 @@ describe('attachment service', () => {
     vi.setSystemTime(new Date('2026-05-29T00:00:00.000Z'))
     vi.stubEnv('ATTACHMENT_STORAGE_DIR', root)
     vi.stubEnv('ATTACHMENT_SIGNING_SECRET', 'test-secret')
-    vi.stubEnv(
-      'ATTACHMENT_CONTENT_URL_TTL_SECONDS',
-      options.contentUrlTtlSeconds ?? defaultContentUrlTtlSeconds,
-    )
+
+    const overrides = [
+      options.contentUrlTtlSeconds
+        ? {
+            key: 'attachment.contentUrlTtlSeconds',
+            value: options.contentUrlTtlSeconds,
+          }
+        : undefined,
+      options.uploadSessionTtlSeconds
+        ? {
+            key: 'attachment.uploadSessionTtlSeconds',
+            value: options.uploadSessionTtlSeconds,
+          }
+        : undefined,
+    ].filter((override): override is { key: string; value: string } => override !== undefined)
+
+    if (overrides.length > 0) {
+      await database.insert(systemConfigOverrides).values(overrides)
+    }
 
     return createAttachmentService(database)
   }
@@ -273,6 +287,25 @@ describe('attachment service', () => {
       checksum: pngChecksum,
       createdBy: userId,
     })
+  })
+
+  it('uses system config overrides for upload session expiration', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database, {
+      uploadSessionTtlSeconds: '60',
+    })
+    const userId = await createUser(database)
+
+    const session = await service.createUploadSession({
+      originalName: 'avatar.png',
+      usage: 'avatar',
+      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
+      size: pngBytes.byteLength,
+      userId,
+    })
+
+    expect(session.request.expiresAt).toBe('2026-05-29T00:01:00.000Z')
   })
 
   it('rejects completing missing or expired upload sessions', async () => {

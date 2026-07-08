@@ -16,6 +16,7 @@ import { addSeconds, isExpiredAt, millisecondsBetween, toIsoDateTime } from '@re
 import type { Db } from '../../db'
 import { logger } from '../../runtime/logger'
 import { readAuthConfig } from '../auth/config'
+import { readNumberConfigValue } from '../system/configs/values'
 import { verifyAttachmentAccessToken } from './access-token'
 import { readAttachmentConfig } from './config'
 import {
@@ -172,8 +173,12 @@ export function createAttachmentService(database: Db) {
       validateAttachmentUploadSize(input.size)
 
       const createdAt = new Date()
+      const uploadSessionTtlSeconds = await readNumberConfigValue(
+        database,
+        'attachment.uploadSessionTtlSeconds',
+      )
       const uploadId = randomUUID()
-      const expiresAt = addSeconds(createdAt, config.uploadSessionTtlSeconds)
+      const expiresAt = addSeconds(createdAt, uploadSessionTtlSeconds)
       const contentType = input.contentType?.trim()
       const session: UploadSession = {
         ...(contentType ? { contentType } : {}),
@@ -340,7 +345,11 @@ export function createAttachmentService(database: Db) {
         throw new AttachmentContentUrlUnsupportedError()
       }
 
-      const expiresAt = addSeconds(new Date(), config.contentUrlTtlSeconds)
+      const contentUrlTtlSeconds = await readNumberConfigValue(
+        database,
+        'attachment.contentUrlTtlSeconds',
+      )
+      const expiresAt = addSeconds(new Date(), contentUrlTtlSeconds)
       const disposition = input.disposition ?? ATTACHMENT_DISPOSITION_ATTACHMENT
       const token = createAttachmentContentToken(
         {

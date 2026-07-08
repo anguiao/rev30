@@ -20,6 +20,7 @@ import {
   authRefreshTokens,
   authLoginAttemptBuckets,
   systemDepartments,
+  systemConfigOverrides,
   systemRoles,
   systemResources,
   systemUserDepartments,
@@ -381,6 +382,39 @@ describe('auth routes', () => {
       .where(eq(authLoginAttemptBuckets.username, 'rate-limit-user'))
 
     expect(remainingBuckets).toHaveLength(0)
+  })
+
+  it('uses system config overrides for login failure limits without recreating routes', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+
+    await createPasswordAccount(database, {
+      username: 'dynamic-rate-limit-user',
+      password: 'secret-password',
+    })
+
+    await database.insert(systemConfigOverrides).values({
+      key: 'auth.loginFailureMaxAttempts',
+      value: '2',
+    })
+
+    for (let index = 0; index < 2; index += 1) {
+      const failed = await login(app, {
+        username: 'dynamic-rate-limit-user',
+        password: 'wrong-password',
+      })
+
+      expect(failed.response.status).toBe(401)
+      expect(failed.body).toEqual({ message: '用户名或密码错误' })
+    }
+
+    const locked = await login(app, {
+      username: 'dynamic-rate-limit-user',
+      password: 'secret-password',
+    })
+
+    expect(locked.response.status).toBe(429)
+    expect(locked.body).toEqual({ message: '登录失败次数过多，请稍后再试' })
   })
 
   it('creates a login failure bucket for a new username', async () => {

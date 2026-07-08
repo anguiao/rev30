@@ -22,6 +22,7 @@ import { hashPassword, verifyPassword } from './password'
 import { createAuthRepository } from './repository'
 import { createUserAccessService } from './access'
 import { createTokenPair, verifyAccessToken, verifyRefreshToken } from './tokens'
+import { readNumberConfigValue } from '../system/configs/values'
 
 const dummyPasswordHash =
   'scrypt$rev30-auth-dummy-salt$gqCTp4XOR3Xf1LvfHOITCoogF-vpgXvmPkOuxWGr-ChkgWkyXG0_Zf19YMXZ_Oy3mXaxJAVa2LGtlr8sJPJDjA'
@@ -50,6 +51,20 @@ function isLoginAttemptLocked(bucket: { lockedUntil: Date | null } | undefined, 
   return (
     bucket?.lockedUntil !== null && bucket?.lockedUntil !== undefined && bucket.lockedUntil > now
   )
+}
+
+async function readLoginFailureConfig(database: Db) {
+  const [maxAttempts, windowSeconds, lockSeconds] = await Promise.all([
+    readNumberConfigValue(database, 'auth.loginFailureMaxAttempts'),
+    readNumberConfigValue(database, 'auth.loginFailureWindowSeconds'),
+    readNumberConfigValue(database, 'auth.loginFailureLockSeconds'),
+  ])
+
+  return {
+    maxAttempts,
+    windowSeconds,
+    lockSeconds,
+  }
 }
 
 export function createAuthService(database: Db, config: AuthConfig) {
@@ -101,12 +116,14 @@ export function createAuthService(database: Db, config: AuthConfig) {
       const passwordMatches = await verifyPassword(input.password, passwordHash)
 
       if (!account || account.user.status !== USER_STATUS_ENABLED || !passwordMatches) {
+        const loginFailureConfig = await readLoginFailureConfig(database)
+
         await repository.recordLoginFailure({
           username: input.username,
           now,
-          maxAttempts: config.loginFailureMaxAttempts,
-          windowSeconds: config.loginFailureWindowSeconds,
-          lockSeconds: config.loginFailureLockSeconds,
+          maxAttempts: loginFailureConfig.maxAttempts,
+          windowSeconds: loginFailureConfig.windowSeconds,
+          lockSeconds: loginFailureConfig.lockSeconds,
         })
         throw new AuthInvalidCredentialsError()
       }

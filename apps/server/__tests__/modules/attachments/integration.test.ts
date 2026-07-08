@@ -40,7 +40,6 @@ async function createAttachmentIntegrationFixture() {
 
   vi.stubEnv('ATTACHMENT_STORAGE_DIR', storageDir)
   vi.stubEnv('ATTACHMENT_SIGNING_SECRET', 'integration-attachment-secret')
-  vi.stubEnv('ATTACHMENT_CONTENT_URL_TTL_SECONDS', '300')
 
   const app = createApp(database)
   const authenticated = await createSystemAccessFixture(database, {

@@ -2,7 +2,7 @@ import type { ConfigUpdateInput } from '@rev30/contracts'
 import type { Db } from '../../../db'
 import { ConfigNotFoundError } from './errors'
 import { toConfig } from './mapper'
-import { configRegistry, findConfigSpec, validateConfigValue } from './registry'
+import { configRegistry, findConfigSpec, parseConfigValue } from './registry'
 import { createConfigRepository } from './repository'
 
 export function createConfigService(database: Db) {
@@ -37,7 +37,7 @@ export function createConfigService(database: Db) {
         return toConfig(spec, undefined)
       }
 
-      validateConfigValue(spec, input.customValue)
+      void parseConfigValue(spec, input.customValue)
 
       return toConfig(spec, await repository.upsert(key, input.customValue))
     },

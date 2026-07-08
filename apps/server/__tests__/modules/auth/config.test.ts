@@ -12,29 +12,6 @@ describe('auth config', () => {
     })
   })
 
-  it('uses login failure rate limit defaults', () => {
-    expect(readAuthConfig({ NODE_ENV: 'test' })).toMatchObject({
-      loginFailureMaxAttempts: 5,
-      loginFailureWindowSeconds: 900,
-      loginFailureLockSeconds: 900,
-    })
-  })
-
-  it('reads login failure rate limit settings from env', () => {
-    expect(
-      readAuthConfig({
-        NODE_ENV: 'test',
-        AUTH_LOGIN_FAILURE_MAX_ATTEMPTS: '1e3',
-        AUTH_LOGIN_FAILURE_WINDOW_SECONDS: '300',
-        AUTH_LOGIN_FAILURE_LOCK_SECONDS: '600',
-      }),
-    ).toMatchObject({
-      loginFailureMaxAttempts: 1000,
-      loginFailureWindowSeconds: 300,
-      loginFailureLockSeconds: 600,
-    })
-  })
-
   it('requires explicit secrets in production', () => {
     expect(() => readAuthConfig({ NODE_ENV: 'production' })).toThrow(
       '生产环境必须设置 JWT_ACCESS_SECRET',
@@ -59,9 +36,6 @@ describe('auth config', () => {
       accessExpiresInSeconds: 60,
       refreshExpiresInSeconds: 120,
       attachmentExpiresInSeconds: 90,
-      loginFailureMaxAttempts: 5,
-      loginFailureWindowSeconds: 900,
-      loginFailureLockSeconds: 900,
       secureCookies: true,
     })
   })
@@ -93,15 +67,15 @@ describe('auth config', () => {
     expect(() =>
       readAuthConfig({
         NODE_ENV: 'test',
-        AUTH_LOGIN_FAILURE_MAX_ATTEMPTS: '0',
+        JWT_ACCESS_EXPIRES_IN_SECONDS: '0',
       }),
-    ).toThrow('AUTH_LOGIN_FAILURE_MAX_ATTEMPTS 必须是正整数')
+    ).toThrow('JWT_ACCESS_EXPIRES_IN_SECONDS 必须是正整数')
 
     expect(() =>
       readAuthConfig({
         NODE_ENV: 'test',
-        AUTH_LOGIN_FAILURE_MAX_ATTEMPTS: '1.5',
+        JWT_ACCESS_EXPIRES_IN_SECONDS: '1.5',
       }),
-    ).toThrow('AUTH_LOGIN_FAILURE_MAX_ATTEMPTS 必须是正整数')
+    ).toThrow('JWT_ACCESS_EXPIRES_IN_SECONDS 必须是正整数')
   })
 })

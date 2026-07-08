@@ -1,9 +1,7 @@
 import {
-  type ConfigCreateInput,
-  type ConfigListQuery,
   type ConfigUpdateInput,
-  configCreateSchema,
-  configListQuerySchema,
+  configKeySchema,
+  configListResponseSchema,
   configSchema,
   configUpdateSchema,
 } from '@rev30/contracts'
@@ -12,46 +10,26 @@ import { Hono, type Context } from 'hono'
 import { z } from 'zod'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
-import { ConfigConflictError, ConfigInvalidValueError, ConfigNotFoundError } from './errors'
+import { ConfigInvalidValueError, ConfigNotFoundError } from './errors'
 import { createConfigService } from './service'
 
-const configIdParamSchema = configSchema.pick({ id: true })
-const configListRequestQuerySchema = configListQuerySchema
-  .optional()
-  .transform((query) => query ?? configListQuerySchema.parse({}))
-
-const configIdValidator = zValidator('param', configIdParamSchema, (result, c) => {
-  if (!result.success) {
-    return c.json({ message: '配置 ID 无效' }, 400)
-  }
+const configKeyParamSchema = z.object({
+  key: configKeySchema,
 })
 
-const configListQueryValidator = zValidator('query', configListRequestQuerySchema, (result, c) => {
+const configKeyValidator = zValidator('param', configKeyParamSchema, (result, c) => {
   if (!result.success) {
-    return c.json({ message: '查询参数无效' }, 400)
-  }
-})
-
-const configCreateBodyValidator = zValidator('json', configCreateSchema, (result, c) => {
-  if (!result.success) {
-    const { fieldErrors } = z.flattenError(result.error)
-    const valueError = fieldErrors.value?.[0]
-
-    if (valueError?.startsWith('配置值必须')) {
-      return c.json({ field: 'value', message: valueError }, 400)
-    }
-
-    return c.json({ message: '请求体无效' }, 400)
+    return c.json({ message: '配置键无效' }, 400)
   }
 })
 
 const configUpdateBodyValidator = zValidator('json', configUpdateSchema, (result, c) => {
   if (!result.success) {
     const { fieldErrors } = z.flattenError(result.error)
-    const valueError = fieldErrors.value?.[0]
+    const customValueError = fieldErrors.customValue?.[0]
 
-    if (valueError?.startsWith('配置值必须')) {
-      return c.json({ field: 'value', message: valueError }, 400)
+    if (customValueError) {
+      return c.json({ field: 'customValue', message: customValueError }, 400)
     }
 
     return c.json({ message: '请求体无效' }, 400)
@@ -67,10 +45,6 @@ function configErrorResponse(error: unknown, c: Context) {
     return c.json({ message: error.message }, 404)
   }
 
-  if (error instanceof ConfigConflictError) {
-    return c.json({ field: error.field, message: error.message }, 409)
-  }
-
   throw error
 }
 
@@ -81,38 +55,24 @@ export function createConfigRoutes(database: Db) {
   app.onError((error, c) => configErrorResponse(error, c))
 
   return app
-    .get('/', requireAccess('system:config:list'), configListQueryValidator, async (c) => {
-      const query: ConfigListQuery = c.req.valid('query')
-
-      return c.json(await service.list(query))
+    .get('/', requireAccess('system:config:list'), async (c) => {
+      return c.json(configListResponseSchema.parse(await service.list()))
     })
-    .get('/:id', requireAccess('system:config:list'), configIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
+    .get('/:key', requireAccess('system:config:list'), configKeyValidator, async (c) => {
+      const { key } = c.req.valid('param')
 
-      return c.json(await service.get(id))
+      return c.json(configSchema.parse(await service.get(key)))
     })
-    .post('/', requireAccess('system:config:create'), configCreateBodyValidator, async (c) => {
-      const body: ConfigCreateInput = c.req.valid('json')
-
-      return c.json(await service.create(body), 201)
-    })
-    .patch(
-      '/:id',
+    .put(
+      '/:key',
       requireAccess('system:config:update'),
-      configIdValidator,
+      configKeyValidator,
       configUpdateBodyValidator,
       async (c) => {
-        const { id } = c.req.valid('param')
+        const { key } = c.req.valid('param')
         const body: ConfigUpdateInput = c.req.valid('json')
 
-        return c.json(await service.update(id, body))
+        return c.json(configSchema.parse(await service.update(key, body)))
       },
     )
-    .delete('/:id', requireAccess('system:config:delete'), configIdValidator, async (c) => {
-      const { id } = c.req.valid('param')
-
-      await service.delete(id)
-
-      return c.body(null, 204)
-    })
 }

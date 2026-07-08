@@ -1,6 +1,7 @@
 import {
   type AnyPgColumn,
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -18,7 +19,6 @@ import {
   ANNOUNCEMENT_VISIBILITY_TARGETED,
   ATTACHMENT_CLEANUP_POLICY_MANUAL,
   ATTACHMENT_READ_POLICY_SIGNED,
-  CONFIG_STATUS_ENABLED,
   DEPARTMENT_STATUS_ENABLED,
   DICTIONARY_STATUS_ENABLED,
   RESOURCE_OPEN_TARGET_SELF,
@@ -164,27 +164,17 @@ export const systemRoles = pgTable(
   ],
 )
 
-export const systemConfigs = pgTable(
-  'system_configs',
+export const systemConfigOverrides = pgTable(
+  'system_config_overrides',
   {
     id: uuidPrimaryKeyColumn(),
-    groupCode: text('group_code').notNull(),
     key: text('key').notNull(),
-    name: text('name').notNull(),
-    valueType: text('value_type').notNull(),
     value: text('value').notNull(),
-    description: text('description'),
-    status: smallint('status').notNull().default(CONFIG_STATUS_ENABLED),
-    sortOrder: integer('sort_order').notNull().default(0),
-    ...auditTimestamps(),
+    ...mutableTimestamps(),
   },
   (table) => [
-    uniqueIndex('system_configs_key_active_unique')
-      .on(table.key)
-      .where(sql`${table.deletedAt} IS NULL`),
-    index('system_configs_group_code_idx').on(table.groupCode),
-    index('system_configs_value_type_idx').on(table.valueType),
-    index('system_configs_status_idx').on(table.status),
+    uniqueIndex('system_config_overrides_key_unique').on(table.key),
+    check('system_config_overrides_value_non_blank_check', sql`btrim(${table.value}) <> ''`),
   ],
 )
 

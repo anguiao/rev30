@@ -1,24 +1,19 @@
-import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
-import {
-  CONFIG_STATUS_DISABLED,
-  CONFIG_STATUS_ENABLED,
-  CONFIG_VALUE_TYPE_NUMBER,
-  CONFIG_VALUE_TYPE_STRING,
-  type Config,
-  type ConfigListResponse,
-} from '@rev30/contracts'
-import { systemConfigs } from '../../../../src/db/schema'
+import { CONFIG_VALUE_TYPE_NUMBER, type Config, type ConfigListResponse } from '@rev30/contracts'
+import { systemConfigOverrides } from '../../../../src/db/schema'
+import { configRegistry } from '../../../../src/modules/system/configs/registry'
+import { createConfigRoutes } from '../../../../src/modules/system/configs/routes'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
-import { createConfigRoutes } from '../../../../src/modules/system/configs/routes'
 
 type ErrorResponse = {
   message: string
   field?: string
 }
+
+const configKey = 'auth.loginFailureMaxAttempts'
 
 async function createTestApp(
   database: Awaited<ReturnType<typeof createTestDb>>,
@@ -41,22 +36,10 @@ async function createTestApp(
   )
 }
 
-async function createConfig(
-  app: Hono,
-  body: {
-    groupCode: string
-    key: string
-    name: string
-    valueType: 'string' | 'number' | 'boolean' | 'json'
-    value: string
-    description?: string | null
-    status?: 0 | 1
-    sortOrder?: number
-  },
-) {
-  const response = await app.request('/api/system/configs', {
-    method: 'POST',
-    body: JSON.stringify(body),
+async function updateConfig(app: Hono, key: string, customValue: string | null) {
+  const response = await app.request(`/api/system/configs/${key}`, {
+    method: 'PUT',
+    body: JSON.stringify({ customValue }),
     headers: { 'content-type': 'application/json' },
   })
 
@@ -64,273 +47,130 @@ async function createConfig(
 }
 
 describe('config routes', () => {
-  it('supports create/get/list/update/delete lifecycle for configs', async () => {
+  it('lists every registry config without requiring override rows', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
 
-    const { body: created, response: createResponse } = await createConfig(app, {
-      groupCode: 'site',
-      key: 'site.title',
-      name: '站点名称',
-      valueType: CONFIG_VALUE_TYPE_STRING,
-      value: 'Rev30',
-      description: '后台显示名称',
-      sortOrder: 10,
-    })
-
-    expect(createResponse.status).toBe(201)
-    expect(created).toMatchObject({
-      groupCode: 'site',
-      key: 'site.title',
-      name: '站点名称',
-      valueType: CONFIG_VALUE_TYPE_STRING,
-      value: 'Rev30',
-      description: '后台显示名称',
-      status: CONFIG_STATUS_ENABLED,
-      sortOrder: 10,
-    })
-    expect(created.createdAt).toEqual(expect.any(String))
-    expect(created.updatedAt).toEqual(expect.any(String))
-
-    const detailResponse = await app.request(`/api/system/configs/${created.id}`)
-    const detailBody = (await detailResponse.json()) as Config
-    expect(detailResponse.status).toBe(200)
-    expect(detailBody).toMatchObject({
-      id: created.id,
-      key: 'site.title',
-      value: 'Rev30',
-      sortOrder: 10,
-    })
-
-    const listResponse = await app.request('/api/system/configs?page=1&pageSize=10')
-    const listBody = (await listResponse.json()) as ConfigListResponse
-    expect(listResponse.status).toBe(200)
-    expect(listBody.total).toBeGreaterThanOrEqual(1)
-    expect(listBody.list).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: created.id, key: 'site.title' })]),
-    )
-
-    const updateResponse = await app.request(`/api/system/configs/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        name: '站点标题',
-        status: CONFIG_STATUS_DISABLED,
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    const updateBody = (await updateResponse.json()) as Config
-    expect(updateResponse.status).toBe(200)
-    expect(updateBody).toMatchObject({
-      id: created.id,
-      name: '站点标题',
-      status: CONFIG_STATUS_DISABLED,
-    })
-
-    const deleteResponse = await app.request(`/api/system/configs/${created.id}`, {
-      method: 'DELETE',
-    })
-    expect(deleteResponse.status).toBe(204)
-
-    const [deleted] = await database
-      .select()
-      .from(systemConfigs)
-      .where(eq(systemConfigs.id, created.id))
-    expect(deleted?.deletedAt).toEqual(expect.any(Date))
-
-    const postDeleteListResponse = await app.request('/api/system/configs?page=1&pageSize=10')
-    const postDeleteListBody = (await postDeleteListResponse.json()) as ConfigListResponse
-    expect(postDeleteListResponse.status).toBe(200)
-    expect(postDeleteListBody.list.some((item) => item.id === created.id)).toBe(false)
-  })
-
-  it('returns list without sortOrder and sorts by groupCode, sortOrder, key', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const now = new Date('2026-05-18T00:00:00.000Z')
-
-    await database.insert(systemConfigs).values([
-      {
-        id: randomUUID(),
-        groupCode: 'z-group',
-        key: 'z-group.b',
-        name: 'ZB',
-        valueType: CONFIG_VALUE_TYPE_STRING,
-        value: '1',
-        sortOrder: 2,
-        status: CONFIG_STATUS_ENABLED,
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        id: randomUUID(),
-        groupCode: 'a-group',
-        key: 'a-group.b',
-        name: 'AB',
-        valueType: CONFIG_VALUE_TYPE_STRING,
-        value: '1',
-        sortOrder: 2,
-        status: CONFIG_STATUS_ENABLED,
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        id: randomUUID(),
-        groupCode: 'a-group',
-        key: 'a-group.a',
-        name: 'AA',
-        valueType: CONFIG_VALUE_TYPE_STRING,
-        value: '1',
-        sortOrder: 2,
-        status: CONFIG_STATUS_ENABLED,
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        id: randomUUID(),
-        groupCode: 'a-group',
-        key: 'a-group.z',
-        name: 'AZ',
-        valueType: CONFIG_VALUE_TYPE_STRING,
-        value: '1',
-        sortOrder: 1,
-        status: CONFIG_STATUS_ENABLED,
-        createdAt: now,
-        updatedAt: now,
-      },
-    ])
-
-    const response = await app.request('/api/system/configs?page=1&pageSize=10')
+    const response = await app.request('/api/system/configs')
     const body = (await response.json()) as ConfigListResponse
 
     expect(response.status).toBe(200)
-    expect(body.list[0]!.key).toBe('a-group.z')
-    expect(body.list[1]!.key).toBe('a-group.a')
-    expect(body.list[2]!.key).toBe('a-group.b')
-    expect(body.list[3]!.key).toBe('z-group.b')
-    expect(body.list[0]).not.toHaveProperty('sortOrder')
+    expect(body).toHaveLength(configRegistry.length)
+    expect(body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: configKey,
+          valueType: CONFIG_VALUE_TYPE_NUMBER,
+          defaultValue: '5',
+          customValue: null,
+          value: '5',
+        }),
+      ]),
+    )
   })
 
-  it('returns conflict error when creating duplicated active key', async () => {
+  it('gets a single registry config by key', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
 
-    await createConfig(app, {
-      groupCode: 'site',
-      key: 'site.title',
-      name: '站点名称',
-      valueType: CONFIG_VALUE_TYPE_STRING,
-      value: 'Rev30',
-    })
+    const response = await app.request(`/api/system/configs/${configKey}`)
+    const body = (await response.json()) as Config
 
-    const duplicateResponse = await app.request('/api/system/configs', {
-      method: 'POST',
-      body: JSON.stringify({
-        groupCode: 'site',
-        key: 'site.title',
-        name: '站点名称2',
-        valueType: CONFIG_VALUE_TYPE_STRING,
-        value: 'Rev30 2',
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(duplicateResponse.status).toBe(409)
-    expect((await duplicateResponse.json()) as ErrorResponse).toEqual({
-      field: 'key',
-      message: '配置键已存在',
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({
+      key: configKey,
+      name: '登录失败最大次数（次）',
+      customValue: null,
+      value: '5',
     })
   })
 
-  it('validates merged existing value when only updating valueType', async () => {
+  it('sets and updates a custom override value', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
-    const { body: created } = await createConfig(app, {
-      groupCode: 'site',
-      key: 'site.retry',
-      name: '重试次数',
-      valueType: CONFIG_VALUE_TYPE_STRING,
-      value: 'abc',
+
+    const { body: created, response: createResponse } = await updateConfig(app, configKey, '8')
+    expect(createResponse.status).toBe(200)
+    expect(created).toMatchObject({
+      key: configKey,
+      customValue: '8',
+      value: '8',
     })
 
-    const response = await app.request(`/api/system/configs/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ valueType: CONFIG_VALUE_TYPE_NUMBER }),
-      headers: { 'content-type': 'application/json' },
+    const [createdRow] = await database
+      .select()
+      .from(systemConfigOverrides)
+      .where(eq(systemConfigOverrides.key, configKey))
+    expect(createdRow?.value).toBe('8')
+
+    const { body: updated, response: updateResponse } = await updateConfig(app, configKey, '9')
+    expect(updateResponse.status).toBe(200)
+    expect(updated).toMatchObject({
+      key: configKey,
+      customValue: '9',
+      value: '9',
     })
 
-    expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({
-      field: 'value',
-      message: '配置值必须是有限数字',
-    })
+    const rows = await database
+      .select()
+      .from(systemConfigOverrides)
+      .where(eq(systemConfigOverrides.key, configKey))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.value).toBe('9')
   })
 
-  it('validates merged existing value when only updating value', async () => {
+  it('clears a custom value by submitting null', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
-    const { body: created } = await createConfig(app, {
-      groupCode: 'site',
-      key: 'site.maxRetry',
-      name: '最大重试次数',
-      valueType: CONFIG_VALUE_TYPE_NUMBER,
-      value: '3',
+
+    await updateConfig(app, configKey, '8')
+    const { body, response } = await updateConfig(app, configKey, null)
+
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({
+      key: configKey,
+      customValue: null,
+      value: '5',
     })
 
-    const response = await app.request(`/api/system/configs/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ value: 'abc' }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({
-      field: 'value',
-      message: '配置值必须是有限数字',
-    })
+    const rows = await database
+      .select()
+      .from(systemConfigOverrides)
+      .where(eq(systemConfigOverrides.key, configKey))
+    expect(rows).toHaveLength(0)
   })
 
-  it('allows recreating the same key after soft delete', async () => {
+  it('returns not found for unregistered config keys', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
-    const { body: first } = await createConfig(app, {
-      groupCode: 'site',
-      key: 'site.theme',
-      name: '主题',
-      valueType: CONFIG_VALUE_TYPE_STRING,
-      value: 'light',
-    })
 
-    const deleteResponse = await app.request(`/api/system/configs/${first.id}`, {
-      method: 'DELETE',
-    })
-    expect(deleteResponse.status).toBe(204)
-
-    const { body: recreated, response: recreatedResponse } = await createConfig(app, {
-      groupCode: 'site',
-      key: 'site.theme',
-      name: '主题（新）',
-      valueType: CONFIG_VALUE_TYPE_STRING,
-      value: 'dark',
-    })
-
-    expect(recreatedResponse.status).toBe(201)
-    expect(recreated.id).not.toBe(first.id)
-    expect(recreated.key).toBe('site.theme')
-  })
-
-  it('returns not-found errors for missing detail and delete', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const id = randomUUID()
-
-    const detailResponse = await app.request(`/api/system/configs/${id}`)
+    const detailResponse = await app.request('/api/system/configs/auth.unknown')
     expect(detailResponse.status).toBe(404)
     expect((await detailResponse.json()) as ErrorResponse).toEqual({ message: '配置不存在' })
 
-    const deleteResponse = await app.request(`/api/system/configs/${id}`, {
-      method: 'DELETE',
+    const updateResponse = await app.request('/api/system/configs/auth.unknown', {
+      method: 'PUT',
+      body: JSON.stringify({ customValue: '1' }),
+      headers: { 'content-type': 'application/json' },
     })
-    expect(deleteResponse.status).toBe(404)
-    expect((await deleteResponse.json()) as ErrorResponse).toEqual({ message: '配置不存在' })
+    expect(updateResponse.status).toBe(404)
+    expect((await updateResponse.json()) as ErrorResponse).toEqual({ message: '配置不存在' })
+  })
+
+  it('returns field error for invalid custom values', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+
+    const response = await app.request(`/api/system/configs/${configKey}`, {
+      method: 'PUT',
+      body: JSON.stringify({ customValue: '100' }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(400)
+    expect((await response.json()) as ErrorResponse).toEqual({
+      field: 'customValue',
+      message: '配置值必须是 1 到 20 之间的整数',
+    })
   })
 })

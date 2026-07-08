@@ -1,121 +1,45 @@
-import type {
-  ConfigCreateInput,
-  ConfigListQuery,
-  ConfigUpdateInput,
-  ConfigValueType,
-} from '@rev30/contracts'
-import {
-  CONFIG_VALUE_TYPE_BOOLEAN,
-  CONFIG_VALUE_TYPE_JSON,
-  CONFIG_VALUE_TYPE_NUMBER,
-} from '@rev30/contracts'
+import type { ConfigUpdateInput } from '@rev30/contracts'
 import type { Db } from '../../../db'
-import { ConfigInvalidValueError, ConfigNotFoundError, toConfigConflictError } from './errors'
-import { toConfig, toConfigListItem, type ConfigRow } from './mapper'
+import { ConfigNotFoundError } from './errors'
+import { toConfig } from './mapper'
+import { configRegistry, findConfigSpec, validateConfigValue } from './registry'
 import { createConfigRepository } from './repository'
-
-async function withConfigUniqueConflict<T>(operation: () => Promise<T>) {
-  try {
-    return await operation()
-  } catch (error) {
-    const uniqueConflict = toConfigConflictError(error)
-
-    if (uniqueConflict) {
-      throw uniqueConflict
-    }
-
-    throw error
-  }
-}
-
-function validateConfigValue(valueType: ConfigValueType, value: string) {
-  const trimmedValue = value.trim()
-
-  if (trimmedValue.length === 0) {
-    throw new ConfigInvalidValueError('请输入配置值')
-  }
-
-  if (valueType === CONFIG_VALUE_TYPE_NUMBER && !Number.isFinite(Number(trimmedValue))) {
-    throw new ConfigInvalidValueError('配置值必须是有限数字')
-  }
-
-  if (
-    valueType === CONFIG_VALUE_TYPE_BOOLEAN &&
-    trimmedValue !== 'true' &&
-    trimmedValue !== 'false'
-  ) {
-    throw new ConfigInvalidValueError('配置值必须是 true 或 false')
-  }
-
-  if (valueType !== CONFIG_VALUE_TYPE_JSON) {
-    return
-  }
-
-  try {
-    JSON.parse(trimmedValue)
-  } catch {
-    throw new ConfigInvalidValueError('配置值必须是合法 JSON')
-  }
-}
-
-function validateMergedValue(input: ConfigUpdateInput, existingConfig: ConfigRow) {
-  validateConfigValue(
-    (input.valueType ?? existingConfig.valueType) as ConfigValueType,
-    input.value ?? existingConfig.value,
-  )
-}
 
 export function createConfigService(database: Db) {
   const repository = createConfigRepository(database)
 
   return {
-    async list(query: ConfigListQuery) {
-      const result = await repository.list(query)
+    async list() {
+      const overrides = await repository.listByKeys(configRegistry.map((spec) => spec.key))
+      const overridesByKey = new Map(overrides.map((override) => [override.key, override]))
 
-      return {
-        ...result,
-        list: result.list.map(toConfigListItem),
-      }
+      return configRegistry.map((spec) => toConfig(spec, overridesByKey.get(spec.key)))
     },
 
-    async get(id: string) {
-      const config = await repository.findActiveById(id)
-
-      if (!config) {
+    async get(key: string) {
+      const spec = findConfigSpec(key)
+      if (!spec) {
         throw new ConfigNotFoundError()
       }
 
-      return toConfig(config)
+      return toConfig(spec, await repository.findByKey(key))
     },
 
-    async create(input: ConfigCreateInput) {
-      return toConfig(await withConfigUniqueConflict(() => repository.create(input)))
-    },
-
-    async update(id: string, input: ConfigUpdateInput) {
-      const existingConfig = await repository.findActiveById(id)
-
-      if (!existingConfig) {
+    async update(key: string, input: ConfigUpdateInput) {
+      const spec = findConfigSpec(key)
+      if (!spec) {
         throw new ConfigNotFoundError()
       }
 
-      validateMergedValue(input, existingConfig)
+      if (input.customValue === null) {
+        await repository.deleteByKey(key)
 
-      const updated = await withConfigUniqueConflict(() => repository.update(id, input))
-
-      if (!updated) {
-        throw new ConfigNotFoundError()
+        return toConfig(spec, undefined)
       }
 
-      return toConfig(updated)
-    },
+      validateConfigValue(spec, input.customValue)
 
-    async delete(id: string) {
-      const deleted = await repository.softDelete(id)
-
-      if (!deleted) {
-        throw new ConfigNotFoundError()
-      }
+      return toConfig(spec, await repository.upsert(key, input.customValue))
     },
   }
 }

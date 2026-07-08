@@ -21,7 +21,7 @@ import {
   authLoginAttemptBuckets,
   announcementTargets,
   announcements,
-  systemConfigs,
+  systemConfigOverrides,
   systemResources,
   systemRoles,
   systemUsers,
@@ -41,7 +41,7 @@ const expectedTableNames = [
   'announcements',
   'custom_icon_set_icons',
   'custom_icon_sets',
-  'system_configs',
+  'system_config_overrides',
   'system_departments',
   'system_dictionary_items',
   'system_dictionary_types',
@@ -62,6 +62,8 @@ const expectedResourceCodes = [
   'system:role',
   'system:resource',
   'system:config',
+  'system:config:list',
+  'system:config:update',
   'system:dictionary',
   'content',
   'content:announcement',
@@ -168,26 +170,37 @@ describe('PGlite migration runner', () => {
       expect(createdUser.builtIn).toBe(false)
 
       const [createdConfig] = await database
-        .insert(systemConfigs)
+        .insert(systemConfigOverrides)
         .values({
           id: randomUUID(),
-          groupCode: 'site',
-          key: 'site.title',
-          name: '站点名称',
-          valueType: 'string',
+          key: 'auth.loginFailureMaxAttempts',
           value: 'Rev30',
-          description: '后台显示名称',
           createdAt: now,
           updatedAt: now,
         })
         .returning()
 
       expect(createdConfig).toMatchObject({
-        groupCode: 'site',
-        key: 'site.title',
-        valueType: 'string',
+        key: 'auth.loginFailureMaxAttempts',
         value: 'Rev30',
       })
+
+      await expect(
+        database.insert(systemConfigOverrides).values({
+          id: randomUUID(),
+          key: 'site.title',
+          value: '   ',
+          createdAt: now,
+          updatedAt: now,
+        }),
+      ).rejects.toThrow()
+
+      const [blankConfig] = await database
+        .select()
+        .from(systemConfigOverrides)
+        .where(eq(systemConfigOverrides.key, 'site.title'))
+
+      expect(blankConfig).toBeUndefined()
 
       await database.insert(authLoginAttemptBuckets).values({
         username: 'migrated-login-attempt',

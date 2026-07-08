@@ -1,27 +1,19 @@
-import type { Config, ConfigListItem } from '@rev30/contracts'
-import { toIsoDateTime } from '@rev30/utils'
-import { systemConfigs } from '../../../db/schema'
+import type { Config } from '@rev30/contracts'
+import { systemConfigOverrides } from '../../../db/schema'
+import type { ConfigSpec } from './registry'
 
-export type ConfigRow = typeof systemConfigs.$inferSelect
+export type ConfigOverrideRow = typeof systemConfigOverrides.$inferSelect
 
-export function toConfig(row: ConfigRow): Config {
+export function toConfig(spec: ConfigSpec, override: ConfigOverrideRow | undefined): Config {
+  const customValue = override?.value ?? null
+
   return {
-    id: row.id,
-    groupCode: row.groupCode,
-    key: row.key,
-    name: row.name,
-    valueType: row.valueType as Config['valueType'],
-    value: row.value,
-    description: row.description,
-    status: row.status as Config['status'],
-    sortOrder: row.sortOrder,
-    createdAt: toIsoDateTime(row.createdAt),
-    updatedAt: toIsoDateTime(row.updatedAt),
+    key: spec.key,
+    name: spec.name,
+    description: spec.description,
+    valueType: spec.valueType,
+    defaultValue: spec.defaultValue,
+    customValue,
+    value: customValue ?? spec.defaultValue,
   }
-}
-
-export function toConfigListItem(row: ConfigRow): ConfigListItem {
-  const { sortOrder: _sortOrder, ...config } = toConfig(row)
-
-  return config
 }

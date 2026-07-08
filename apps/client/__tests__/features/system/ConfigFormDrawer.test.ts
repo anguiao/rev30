@@ -2,47 +2,35 @@ import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiRequestError } from '../../../src/utils/request'
-import { NInputNumber, NSelect, NSwitch } from 'naive-ui'
+import { NRadioGroup } from 'naive-ui'
 import {
-  CONFIG_STATUS_ENABLED,
   CONFIG_VALUE_TYPE_BOOLEAN,
   CONFIG_VALUE_TYPE_JSON,
-  CONFIG_VALUE_TYPE_STRING,
+  CONFIG_VALUE_TYPE_NUMBER,
   type Config,
 } from '@rev30/contracts'
-import { createConfig, getConfig, updateConfig } from '../../../src/features/system'
+import { configValueTypeLabels, getConfig, updateConfig } from '../../../src/features/system'
+import { ApiRequestError } from '../../../src/utils/request'
 import ConfigFormDrawer from '../../../src/features/system/ConfigFormDrawer.vue'
+
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
-  createConfig: vi.fn(),
   getConfig: vi.fn(),
   updateConfig: vi.fn(),
 }))
 
-const createConfigMock = vi.mocked(createConfig)
 const getConfigMock = vi.mocked(getConfig)
 const updateConfigMock = vi.mocked(updateConfig)
 
-const configId = '11111111-1111-4111-8111-111111111111'
+const configKey = 'auth.loginFailureMaxAttempts'
 const configResponse: Config = {
-  id: configId,
-  groupCode: 'site',
-  key: 'site.title',
-  name: '站点名称',
-  valueType: CONFIG_VALUE_TYPE_STRING,
-  value: 'Rev30',
-  description: '后台显示名称',
-  status: CONFIG_STATUS_ENABLED,
-  sortOrder: 2,
-  createdAt: '2026-05-18T00:00:00.000Z',
-  updatedAt: '2026-05-18T00:00:00.000Z',
-}
-const updatedConfigResponse: Config = {
-  ...configResponse,
-  name: '新站点名称',
-  value: 'Rev30 Admin',
-  updatedAt: '2026-05-20T00:00:00.000Z',
+  key: configKey,
+  name: '登录失败最大次数（次）',
+  description: '同一用户名在窗口期内允许的失败次数。',
+  valueType: CONFIG_VALUE_TYPE_NUMBER,
+  defaultValue: '5',
+  customValue: null,
+  value: '5',
 }
 
 function deferred<T>() {
@@ -56,7 +44,7 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
-function mountDrawer(props = { show: true, configId: null as string | null }) {
+function mountDrawer(props = { show: true, configKey }) {
   const pinia = createPinia()
   setActivePinia(pinia)
 
@@ -74,138 +62,118 @@ function mountDrawer(props = { show: true, configId: null as string | null }) {
 
 async function submitForm(wrapper: ReturnType<typeof mount>) {
   await wrapper.get('[data-test="config-form-submit"]').trigger('click')
-  await wrapper.get('form').trigger('submit')
   await flushPromises()
 }
 
 describe('ConfigFormDrawer', () => {
   beforeEach(() => {
-    createConfigMock.mockReset()
     getConfigMock.mockReset()
     updateConfigMock.mockReset()
   })
 
-  it('submits a new string config in create mode', async () => {
-    createConfigMock.mockResolvedValue(configResponse)
+  it('loads a config and submits null when using the default value', async () => {
+    getConfigMock.mockResolvedValue(configResponse)
+    updateConfigMock.mockResolvedValue(configResponse)
 
     const wrapper = mountDrawer()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('新增系统配置')
-    await wrapper.get('[data-test="config-form-group-code"] input').setValue('site')
-    await wrapper.get('[data-test="config-form-key"] input').setValue('site.title')
-    await wrapper.get('[data-test="config-form-name"] input').setValue('站点名称')
-    await wrapper.get('[data-test="config-form-value"] input').setValue('Rev30')
-    await wrapper.get('[data-test="config-form-description"] textarea').setValue('后台显示名称')
-    wrapper.getComponent(NInputNumber).vm.$emit('update:value', 2)
-    await flushPromises()
-
-    await submitForm(wrapper)
-
-    expect(createConfigMock).toHaveBeenCalledWith({
-      groupCode: 'site',
-      key: 'site.title',
-      name: '站点名称',
-      valueType: CONFIG_VALUE_TYPE_STRING,
-      value: 'Rev30',
-      description: '后台显示名称',
-      status: CONFIG_STATUS_ENABLED,
-      sortOrder: 2,
-    })
-    expect(wrapper.emitted('saved')).toHaveLength(1)
-    expect(wrapper.emitted('update:show')).toEqual([[false]])
-  })
-
-  it('loads config detail and submits updates in edit mode', async () => {
-    getConfigMock.mockResolvedValue(configResponse)
-    updateConfigMock.mockResolvedValue({ ...configResponse, name: '新站点名称' })
-
-    const wrapper = mountDrawer({ show: true, configId })
-    await flushPromises()
-
     expect(wrapper.text()).toContain('编辑系统配置')
-    expect(getConfigMock).toHaveBeenCalledWith(configId)
-    expect(
-      (wrapper.get('[data-test="config-form-key"] input').element as HTMLInputElement).value,
-    ).toBe('site.title')
+    expect(wrapper.text()).toContain(configResponse.key)
+    expect(wrapper.text()).toContain(configValueTypeLabels[configResponse.valueType])
+    expect(wrapper.text()).toContain(configResponse.name)
+    expect(wrapper.text()).toContain(configResponse.description)
+    expect(wrapper.text()).toContain(configResponse.defaultValue)
+    expect(wrapper.text()).toContain('5')
 
-    await wrapper.get('[data-test="config-form-name"] input').setValue('新站点名称')
     await submitForm(wrapper)
 
-    expect(updateConfigMock).toHaveBeenCalledWith(configId, {
-      groupCode: 'site',
-      key: 'site.title',
-      name: '新站点名称',
-      valueType: CONFIG_VALUE_TYPE_STRING,
-      value: 'Rev30',
-      description: '后台显示名称',
-      status: CONFIG_STATUS_ENABLED,
-      sortOrder: 2,
-    })
-  })
-
-  it('reloads detail when reopening the same config after save', async () => {
-    getConfigMock.mockResolvedValueOnce(configResponse).mockResolvedValueOnce(updatedConfigResponse)
-    updateConfigMock.mockResolvedValue(updatedConfigResponse)
-
-    const wrapper = mountDrawer({ show: true, configId })
-    await flushPromises()
-
-    await wrapper.get('[data-test="config-form-name"] input').setValue('新站点名称')
-    await wrapper.get('[data-test="config-form-value"] input').setValue('Rev30 Admin')
-    await submitForm(wrapper)
-
+    expect(updateConfigMock).toHaveBeenCalledWith(configKey, { customValue: null })
     expect(wrapper.emitted('saved')).toHaveLength(1)
     expect(wrapper.emitted('update:show')).toEqual([[false]])
-
-    await wrapper.setProps({ show: false, configId })
-    await flushPromises()
-    await wrapper.setProps({ show: true, configId })
-    await flushPromises()
-
-    expect(getConfigMock).toHaveBeenCalledTimes(2)
-    expect(
-      (wrapper.get('[data-test="config-form-name"] input').element as HTMLInputElement).value,
-    ).toBe(updatedConfigResponse.name)
-    expect(
-      (wrapper.get('[data-test="config-form-value"] input').element as HTMLInputElement).value,
-    ).toBe(updatedConfigResponse.value)
   })
 
-  it('uses a switch for boolean values and submits true or false strings', async () => {
-    createConfigMock.mockResolvedValue({
+  it('uses the default value as the custom draft when enabling custom value', async () => {
+    getConfigMock.mockResolvedValue(configResponse)
+    updateConfigMock.mockResolvedValue({ ...configResponse, customValue: '8', value: '8' })
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    wrapper
+      .get('[data-test="config-form-value-mode"]')
+      .getComponent(NRadioGroup)
+      .vm.$emit('update:value', 'custom')
+    await flushPromises()
+
+    expect(
+      (wrapper.get('[data-test="config-form-custom-value"] input').element as HTMLInputElement)
+        .value,
+    ).toBe('5')
+
+    await wrapper.get('[data-test="config-form-custom-value"] input').setValue('8')
+    await submitForm(wrapper)
+
+    expect(updateConfigMock).toHaveBeenCalledWith(configKey, { customValue: '8' })
+  })
+
+  it('loads existing custom value in custom mode', async () => {
+    getConfigMock.mockResolvedValue({ ...configResponse, customValue: '9', value: '9' })
+    updateConfigMock.mockResolvedValue({ ...configResponse, customValue: '9', value: '9' })
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    expect(
+      wrapper.get('[data-test="config-form-value-mode"]').getComponent(NRadioGroup).props('value'),
+    ).toBe('custom')
+    expect(
+      (wrapper.get('[data-test="config-form-custom-value"] input').element as HTMLInputElement)
+        .value,
+    ).toBe('9')
+  })
+
+  it('uses true and false radio options for boolean values', async () => {
+    getConfigMock.mockResolvedValue({
       ...configResponse,
       valueType: CONFIG_VALUE_TYPE_BOOLEAN,
+      defaultValue: 'false',
+      customValue: 'true',
       value: 'true',
+    })
+    updateConfigMock.mockResolvedValue({
+      ...configResponse,
+      valueType: CONFIG_VALUE_TYPE_BOOLEAN,
+      defaultValue: 'false',
+      customValue: 'false',
+      value: 'false',
     })
 
     const wrapper = mountDrawer()
     await flushPromises()
 
     wrapper
-      .get('[data-test="config-form-value-type"]')
-      .getComponent(NSelect)
-      .vm.$emit('update:value', CONFIG_VALUE_TYPE_BOOLEAN)
-    await flushPromises()
-    wrapper.getComponent(NSwitch).vm.$emit('update:value', true)
-    await wrapper.get('[data-test="config-form-group-code"] input').setValue('feature')
-    await wrapper.get('[data-test="config-form-key"] input').setValue('feature.enabled')
-    await wrapper.get('[data-test="config-form-name"] input').setValue('功能启用')
-
+      .get('[data-test="config-form-custom-value"]')
+      .getComponent(NRadioGroup)
+      .vm.$emit('update:value', 'false')
     await submitForm(wrapper)
 
-    expect(createConfigMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        valueType: CONFIG_VALUE_TYPE_BOOLEAN,
-        value: 'true',
-      }),
-    )
+    expect(updateConfigMock).toHaveBeenCalledWith(configKey, { customValue: 'false' })
   })
 
-  it('uses textarea for json values', async () => {
-    createConfigMock.mockResolvedValue({
+  it('uses textarea for json custom values', async () => {
+    getConfigMock.mockResolvedValue({
       ...configResponse,
       valueType: CONFIG_VALUE_TYPE_JSON,
+      defaultValue: '{"enabled":false}',
+      customValue: null,
+      value: '{"enabled":false}',
+    })
+    updateConfigMock.mockResolvedValue({
+      ...configResponse,
+      valueType: CONFIG_VALUE_TYPE_JSON,
+      defaultValue: '{"enabled":false}',
+      customValue: '{"enabled":true}',
       value: '{"enabled":true}',
     })
 
@@ -213,85 +181,63 @@ describe('ConfigFormDrawer', () => {
     await flushPromises()
 
     wrapper
-      .get('[data-test="config-form-value-type"]')
-      .getComponent(NSelect)
-      .vm.$emit('update:value', CONFIG_VALUE_TYPE_JSON)
+      .get('[data-test="config-form-value-mode"]')
+      .getComponent(NRadioGroup)
+      .vm.$emit('update:value', 'custom')
     await flushPromises()
-    await wrapper.get('[data-test="config-form-value"] textarea').setValue('{"enabled":true}')
-    await wrapper.get('[data-test="config-form-group-code"] input').setValue('feature')
-    await wrapper.get('[data-test="config-form-key"] input').setValue('feature.flags')
-    await wrapper.get('[data-test="config-form-name"] input').setValue('功能配置')
+    await wrapper
+      .get('[data-test="config-form-custom-value"] textarea')
+      .setValue('{"enabled":true}')
     await submitForm(wrapper)
 
-    expect(createConfigMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        valueType: CONFIG_VALUE_TYPE_JSON,
-        value: '{"enabled":true}',
-      }),
+    expect(updateConfigMock).toHaveBeenCalledWith(configKey, { customValue: '{"enabled":true}' })
+  })
+
+  it('shows server field errors on customValue', async () => {
+    getConfigMock.mockResolvedValue(configResponse)
+    updateConfigMock.mockRejectedValue(
+      new ApiRequestError(400, '配置值必须是 1 到 20 之间的整数', 'customValue'),
     )
-  })
-
-  it('shows load errors and disables submit in edit mode', async () => {
-    getConfigMock.mockRejectedValue(new Error('network'))
-
-    const wrapper = mountDrawer({ show: true, configId })
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('network')
-    expect(wrapper.get('[data-test="config-form-submit"]').attributes('disabled')).toBeDefined()
-  })
-
-  it('shows server field errors on value', async () => {
-    createConfigMock.mockRejectedValue(new ApiRequestError(400, '配置值必须是有限数字', 'value'))
 
     const wrapper = mountDrawer()
     await flushPromises()
 
-    await wrapper.get('[data-test="config-form-group-code"] input').setValue('site')
-    await wrapper.get('[data-test="config-form-key"] input').setValue('site.limit')
-    await wrapper.get('[data-test="config-form-name"] input').setValue('限制')
     wrapper
-      .get('[data-test="config-form-value-type"]')
-      .getComponent(NSelect)
-      .vm.$emit('update:value', 'number')
-    await wrapper.get('[data-test="config-form-value"] input').setValue('123')
+      .get('[data-test="config-form-value-mode"]')
+      .getComponent(NRadioGroup)
+      .vm.$emit('update:value', 'custom')
+    await wrapper.get('[data-test="config-form-custom-value"] input').setValue('100')
     await submitForm(wrapper)
 
-    expect(wrapper.text()).toContain('配置值必须是有限数字')
+    expect(wrapper.text()).toContain('配置值必须是 1 到 20 之间的整数')
   })
 
-  it('ignores stale mutation errors from a previous create session', async () => {
-    const pendingCreate = deferred<Config>()
-    createConfigMock.mockImplementationOnce(() => pendingCreate.promise)
+  it('ignores stale mutation errors from a previous config session', async () => {
+    const pendingUpdate = deferred<Config>()
+    getConfigMock.mockResolvedValueOnce(configResponse).mockResolvedValueOnce({
+      ...configResponse,
+      key: 'attachment.contentUrlTtlSeconds',
+      name: '附件临时访问链接有效期（秒）',
+      description: '附件临时访问链接的有效秒数。',
+      defaultValue: '300',
+      value: '300',
+    })
+    updateConfigMock.mockImplementationOnce(() => pendingUpdate.promise)
 
-    const wrapper = mountDrawer({ show: true, configId: null })
+    const wrapper = mountDrawer()
     await flushPromises()
 
-    await wrapper.get('[data-test="config-form-group-code"] input').setValue('site')
-    await wrapper.get('[data-test="config-form-key"] input').setValue('site.title')
-    await wrapper.get('[data-test="config-form-name"] input').setValue('旧会话')
-    await wrapper.get('[data-test="config-form-value"] input').setValue('Rev30')
     await submitForm(wrapper)
+    expect(updateConfigMock).toHaveBeenCalledTimes(1)
 
-    expect(createConfigMock).toHaveBeenCalledTimes(1)
-
-    await wrapper.setProps({ show: false, configId: null })
+    await wrapper.setProps({ show: false, configKey })
     await flushPromises()
-    await wrapper.setProps({ show: true, configId: null })
-    await flushPromises()
-
-    await wrapper.get('[data-test="config-form-group-code"] input').setValue('site')
-    await wrapper.get('[data-test="config-form-key"] input').setValue('site.subtitle')
-    await wrapper.get('[data-test="config-form-name"] input').setValue('新会话')
-
-    pendingCreate.reject(new ApiRequestError(400, '旧会话错误', 'key'))
+    await wrapper.setProps({ show: true, configKey: 'attachment.contentUrlTtlSeconds' })
     await flushPromises()
 
-    const keyFieldContainer = wrapper
-      .get('[data-test="config-form-key"]')
-      .element.closest('.n-form-item')
+    pendingUpdate.reject(new ApiRequestError(400, '旧会话错误', 'customValue'))
+    await flushPromises()
 
-    expect(keyFieldContainer?.textContent).not.toContain('旧会话错误')
     expect(wrapper.text()).not.toContain('旧会话错误')
     expect(wrapper.emitted('saved')).toBeUndefined()
     expect(wrapper.emitted('update:show')).toBeUndefined()

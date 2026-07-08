@@ -2,8 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getErrorMessage } from '../../../src/utils/error'
 import { ApiRequestError } from '../../../src/utils/request'
 import {
-  CONFIG_STATUS_ENABLED,
-  CONFIG_VALUE_TYPE_STRING,
   DEPARTMENT_STATUS_ENABLED,
   DICTIONARY_STATUS_ENABLED,
   type DictionaryCreateInput,
@@ -26,8 +24,6 @@ import {
   getDepartment,
   getResource,
   getRole,
-  createConfig,
-  deleteConfig,
   getConfig,
   listConfigs,
   updateConfig,
@@ -148,96 +144,62 @@ describe('system request helpers', () => {
     })
   })
 
-  it('parses list responses from the system configs endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          list: [
-            {
-              id: '11111111-1111-4111-8111-111111111111',
-              groupCode: 'site',
-              key: 'site.title',
-              name: '站点名称',
-              valueType: CONFIG_VALUE_TYPE_STRING,
-              value: 'Rev30',
-              description: '后台显示名称',
-              status: CONFIG_STATUS_ENABLED,
-              createdAt: '2026-05-18T00:00:00.000Z',
-              updatedAt: '2026-05-18T00:00:00.000Z',
-            },
-          ],
-          total: 1,
-          page: 1,
-          pageSize: 20,
-        }),
-      ),
+  it('lists registry-backed configs without query params', async () => {
+    const fetchMock = createFetchMock(
+      jsonResponse([
+        {
+          key: 'auth.loginFailureMaxAttempts',
+          name: '登录失败最大次数（次）',
+          description: '同一用户名在窗口期内允许的失败次数。',
+          valueType: 'number',
+          defaultValue: '5',
+          customValue: null,
+          value: '5',
+        },
+      ]),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
-    const result = await listConfigs({
-      page: 1,
-      pageSize: 20,
-      keyword: 'title',
-      groupCode: 'site',
-      valueType: CONFIG_VALUE_TYPE_STRING,
-      status: CONFIG_STATUS_ENABLED,
-    })
-
-    expect(result.total).toBe(1)
-    expect(result.list[0]?.key).toBe('site.title')
+    await expect(listConfigs()).resolves.toEqual([
+      expect.objectContaining({
+        key: 'auth.loginFailureMaxAttempts',
+        value: '5',
+      }),
+    ])
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/configs')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('keyword=title')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('groupCode=site')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('valueType=string')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('status=1')
+    expect(fetchMock).toHaveBeenCalledWith('/api/system/configs', expect.anything())
   })
 
-  it('gets, creates, updates, and deletes configs through system config endpoints', async () => {
-    const config = {
-      id: '11111111-1111-4111-8111-111111111111',
-      groupCode: 'site',
-      key: 'site.title',
-      name: '站点名称',
-      valueType: CONFIG_VALUE_TYPE_STRING,
-      value: 'Rev30',
-      description: null,
-      status: CONFIG_STATUS_ENABLED,
-      sortOrder: 0,
-      createdAt: '2026-05-18T00:00:00.000Z',
-      updatedAt: '2026-05-18T00:00:00.000Z',
+  it('gets and updates config custom values by key', async () => {
+    const response = {
+      key: 'auth.loginFailureMaxAttempts',
+      name: '登录失败最大次数（次）',
+      description: '同一用户名在窗口期内允许的失败次数。',
+      valueType: 'number',
+      defaultValue: '5',
+      customValue: '8',
+      value: '8',
     }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify(config)))
-      .mockResolvedValueOnce(new Response(JSON.stringify(config), { status: 201 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ ...config, name: '新站点名称' })))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(jsonResponse(response))
     useAuthStore().accessToken = 'access-token'
 
-    await expect(getConfig(config.id)).resolves.toMatchObject({ key: 'site.title' })
-    await expect(
-      createConfig({
-        groupCode: 'site',
-        key: 'site.title',
-        name: '站点名称',
-        valueType: CONFIG_VALUE_TYPE_STRING,
-        value: 'Rev30',
-        status: CONFIG_STATUS_ENABLED,
-        sortOrder: 0,
-      }),
-    ).resolves.toMatchObject({ key: 'site.title' })
-    await expect(updateConfig(config.id, { name: '新站点名称' })).resolves.toMatchObject({
-      name: '新站点名称',
-    })
-    await expect(deleteConfig(config.id)).resolves.toBeUndefined()
+    await expect(getConfig('auth.loginFailureMaxAttempts')).resolves.toEqual(response)
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/system/configs/auth.loginFailureMaxAttempts',
+      expect.anything(),
+    )
 
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(`/api/system/configs/${config.id}`)
-    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('/api/system/configs')
-    expect(String(fetchMock.mock.calls[2]?.[0])).toContain(`/api/system/configs/${config.id}`)
-    expect(String(fetchMock.mock.calls[3]?.[0])).toContain(`/api/system/configs/${config.id}`)
+    fetchMock.mockResolvedValueOnce(jsonResponse(response))
+    await expect(
+      updateConfig('auth.loginFailureMaxAttempts', { customValue: '8' }),
+    ).resolves.toEqual(response)
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/system/configs/auth.loginFailureMaxAttempts',
+      expect.objectContaining({
+        body: JSON.stringify({ customValue: '8' }),
+        method: 'PUT',
+      }),
+    )
   })
 
   it('parses user options responses from the users options endpoint', async () => {

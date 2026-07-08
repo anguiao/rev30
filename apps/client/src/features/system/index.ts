@@ -13,13 +13,11 @@ export {
 export type { ConfigValueTypeFilter, StatusFilter, SystemStatus } from './labels'
 export {
   createDepartment,
-  createConfig,
   createDictionary,
   createResource,
   createRole,
   createUser,
   deleteDepartment,
-  deleteConfig,
   deleteDictionary,
   deleteResource,
   deleteRole,

@@ -29,8 +29,6 @@ import {
   configListResponseSchema,
   configSchema,
   type Config,
-  type ConfigCreateInput,
-  type ConfigListQuery,
   type ConfigListResponse,
   type ConfigUpdateInput,
   departmentTreeOptionsResponseSchema,
@@ -223,32 +221,19 @@ export async function deleteResource(id: string): Promise<void> {
   await assertApiResponseOk(await api.system.resources[':id'].$delete({ param: { id } }))
 }
 
-export async function listConfigs(query: ConfigListQuery): Promise<ConfigListResponse> {
+export async function listConfigs(): Promise<ConfigListResponse> {
+  return parseApiResponse(await api.system.configs.$get(), configListResponseSchema)
+}
+
+export async function getConfig(key: string): Promise<Config> {
+  return parseApiResponse(await api.system.configs[':key'].$get({ param: { key } }), configSchema)
+}
+
+export async function updateConfig(key: string, input: ConfigUpdateInput): Promise<Config> {
   return parseApiResponse(
-    await api.system.configs.$get({
-      query: normalizeRequestQuery(query),
-    }),
-    configListResponseSchema,
-  )
-}
-
-export async function getConfig(id: string): Promise<Config> {
-  return parseApiResponse(await api.system.configs[':id'].$get({ param: { id } }), configSchema)
-}
-
-export async function createConfig(input: ConfigCreateInput): Promise<Config> {
-  return parseApiResponse(await api.system.configs.$post({ json: input }), configSchema)
-}
-
-export async function updateConfig(id: string, input: ConfigUpdateInput): Promise<Config> {
-  return parseApiResponse(
-    await api.system.configs[':id'].$patch({ param: { id }, json: input }),
+    await api.system.configs[':key'].$put({ param: { key }, json: input }),
     configSchema,
   )
-}
-
-export async function deleteConfig(id: string): Promise<void> {
-  await assertApiResponseOk(await api.system.configs[':id'].$delete({ param: { id } }))
 }
 
 export async function listDictionaries(

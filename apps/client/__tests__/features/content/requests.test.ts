@@ -93,7 +93,7 @@ describe('content request helpers', () => {
   it('lists announcements with query params and parses response', async () => {
     const fetchMock = createFetchMock(
       jsonResponse({
-        list: [announcementResponse],
+        list: [{ ...announcementResponse, readStats: null }],
         total: 1,
         page: 2,
         pageSize: 5,
@@ -112,6 +112,7 @@ describe('content request helpers', () => {
 
     expect(result.total).toBe(1)
     expect(result.list[0]?.id).toBe(announcementId)
+    expect(result.list[0]?.readStats).toBeNull()
     expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
       method: 'GET',

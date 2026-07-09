@@ -125,12 +125,22 @@ export const announcementSchema = z.object({
   updatedAt: z.iso.datetime(),
 })
 
-export const announcementListItemSchema = announcementSchema.omit({
-  contentJson: true,
-  contentText: true,
-  contentHtml: true,
-  targets: true,
+export const announcementReadStatsSchema = z.object({
+  recipientCount: z.number().int().min(0),
+  readCount: z.number().int().min(0),
+  unreadCount: z.number().int().min(0),
 })
+
+export const announcementListItemSchema = announcementSchema
+  .omit({
+    contentJson: true,
+    contentText: true,
+    contentHtml: true,
+    targets: true,
+  })
+  .extend({
+    readStats: announcementReadStatsSchema.nullable(),
+  })
 
 export const announcementListQuerySchema = paginationQuerySchema.extend({
   keyword: optionalKeywordSchema,
@@ -231,6 +241,7 @@ export const announcementMyListResponseSchema = z.object({
 
 export type TiptapDocument = RichTextDocument
 export type Announcement = z.infer<typeof announcementSchema>
+export type AnnouncementReadStats = z.infer<typeof announcementReadStatsSchema>
 export type AnnouncementListItem = z.infer<typeof announcementListItemSchema>
 export type AnnouncementListQuery = z.infer<typeof announcementListQuerySchema>
 export type AnnouncementVisibility = z.infer<typeof announcementVisibilitySchema>

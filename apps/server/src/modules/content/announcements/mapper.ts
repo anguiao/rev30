@@ -1,8 +1,12 @@
-import type { Announcement, AnnouncementListItem } from '@rev30/contracts'
+import type { Announcement, AnnouncementListItem, AnnouncementReadStats } from '@rev30/contracts'
 import { toIsoDateTime } from '@rev30/utils'
 import { announcements } from '../../../db/schema'
 
 export type AnnouncementRow = typeof announcements.$inferSelect
+export type AnnouncementListEntry = {
+  announcement: AnnouncementRow
+  readStats: AnnouncementReadStats | null
+}
 
 export function toAnnouncement(
   row: AnnouncementRow,
@@ -26,7 +30,8 @@ export function toAnnouncement(
   }
 }
 
-export function toAnnouncementListItem(row: AnnouncementRow): AnnouncementListItem {
+export function toAnnouncementListItem(entry: AnnouncementListEntry): AnnouncementListItem {
+  const { announcement: row, readStats } = entry
   const {
     contentJson: _contentJson,
     contentText: _contentText,
@@ -35,5 +40,8 @@ export function toAnnouncementListItem(row: AnnouncementRow): AnnouncementListIt
     ...announcement
   } = toAnnouncement(row)
 
-  return announcement
+  return {
+    ...announcement,
+    readStats,
+  }
 }

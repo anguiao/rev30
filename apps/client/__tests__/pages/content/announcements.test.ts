@@ -89,6 +89,7 @@ const draftAnnouncement: AnnouncementListItem = {
   publishedAt: null,
   createdAt: '2026-05-20T00:00:00.000Z',
   updatedAt: '2026-05-20T01:00:00.000Z',
+  readStats: null,
 }
 
 const publishedAnnouncement: AnnouncementListItem = {
@@ -102,6 +103,11 @@ const publishedAnnouncement: AnnouncementListItem = {
   publishedAt: '2026-05-21T00:00:00.000Z',
   createdAt: '2026-05-20T00:00:00.000Z',
   updatedAt: '2026-05-21T01:00:00.000Z',
+  readStats: {
+    recipientCount: 3,
+    readCount: 1,
+    unreadCount: 2,
+  },
 }
 
 const archivedAnnouncement: AnnouncementListItem = {
@@ -115,6 +121,11 @@ const archivedAnnouncement: AnnouncementListItem = {
   publishedAt: '2026-05-19T00:00:00.000Z',
   createdAt: '2026-05-18T00:00:00.000Z',
   updatedAt: '2026-05-22T01:00:00.000Z',
+  readStats: {
+    recipientCount: 2,
+    readCount: 2,
+    unreadCount: 0,
+  },
 }
 
 const announcementsResponse: AnnouncementListResponse = {
@@ -162,6 +173,8 @@ describe('announcements page', () => {
     expect(wrapper.text()).toContain('通知')
     expect(wrapper.text()).toContain('草稿')
     expect(wrapper.text()).toContain('置顶')
+    expect(wrapper.text()).toContain('1/3')
+    expect(wrapper.text()).toContain('2/2')
     expect(wrapper.text()).toContain(formatDisplayDateTime(publishedAnnouncement.publishedAt!))
     expect(wrapper.text()).toContain(formatDisplayDateTime(archivedAnnouncement.updatedAt))
     expect(wrapper.getComponent(NDataTable).props('pagination')).toBe(false)

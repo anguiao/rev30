@@ -23,6 +23,7 @@ import {
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import {
+  announcementReads,
   announcements,
   announcementTargets,
   systemDepartments,
@@ -171,6 +172,64 @@ describe('my announcement integration', () => {
       publishedAt: '2026-05-20T00:00:00.000Z',
       contentHtml: '<p>系统将于今晚维护</p>',
     })
+  })
+
+  it('marks visible announcement details as read once for the current user', async () => {
+    const database = await createTestDb()
+    const { app, fixture } = await createTestApp(database)
+    const announcementId = await insertAnnouncement(database, {
+      title: '需要阅读的通知',
+      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+    })
+
+    const firstDetailResponse = await app.request(`/api/content/announcements/my/${announcementId}`)
+    expect(firstDetailResponse.status).toBe(200)
+
+    const [createdRead] = await database
+      .select()
+      .from(announcementReads)
+      .where(
+        and(
+          eq(announcementReads.announcementId, announcementId),
+          eq(announcementReads.userId, fixture.userId),
+        ),
+      )
+
+    expect(createdRead).toMatchObject({
+      announcementId,
+      userId: fixture.userId,
+      readAt: expect.any(Date),
+    })
+
+    const originalReadAt = new Date('2026-05-19T08:00:00.000Z')
+
+    await database
+      .update(announcementReads)
+      .set({ readAt: originalReadAt })
+      .where(
+        and(
+          eq(announcementReads.announcementId, announcementId),
+          eq(announcementReads.userId, fixture.userId),
+        ),
+      )
+
+    const secondDetailResponse = await app.request(
+      `/api/content/announcements/my/${announcementId}`,
+    )
+    expect(secondDetailResponse.status).toBe(200)
+
+    const readRows = await database
+      .select()
+      .from(announcementReads)
+      .where(
+        and(
+          eq(announcementReads.announcementId, announcementId),
+          eq(announcementReads.userId, fixture.userId),
+        ),
+      )
+
+    expect(readRows).toHaveLength(1)
+    expect(readRows[0]?.readAt).toEqual(originalReadAt)
   })
 
   it('shows user-targeted announcements only to the matching user', async () => {

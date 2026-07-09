@@ -263,6 +263,15 @@ const columns: DataTableColumns<AnnouncementListItem> = [
       ),
   },
   {
+    title: '已读统计',
+    key: 'readStats',
+    width: 120,
+    render: (announcement) =>
+      announcement.readStats === null
+        ? '-'
+        : `${announcement.readStats.readCount}/${announcement.readStats.recipientCount}`,
+  },
+  {
     title: '摘要',
     key: 'summary',
     minWidth: 220,

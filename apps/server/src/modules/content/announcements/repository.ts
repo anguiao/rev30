@@ -1,4 +1,5 @@
 import type {
+  AnnouncementReadStats,
   AnnouncementTarget,
   AnnouncementCreateInput,
   AnnouncementListQuery,
@@ -20,10 +21,13 @@ import {
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
 import {
+  announcementReads,
   announcements,
   announcementTargets,
   systemDepartments,
   systemRoles,
+  systemUserDepartments,
+  systemUserRoles,
   systemUsers,
 } from '../../../db/schema'
 import {
@@ -188,6 +192,132 @@ async function findTargetsByAnnouncementId(executor: DbReader, announcementId: s
   })
 }
 
+async function findAnnouncementRecipientsByIds(executor: DbReader, announcementIds: string[]) {
+  const activeUser = and(eq(systemUsers.status, USER_STATUS_ENABLED), isNull(systemUsers.deletedAt))
+  const activeDepartment = and(
+    eq(systemDepartments.status, DEPARTMENT_STATUS_ENABLED),
+    isNull(systemDepartments.deletedAt),
+  )
+  const activeRole = and(eq(systemRoles.status, ROLE_STATUS_ENABLED), isNull(systemRoles.deletedAt))
+  const targetFilter = (targetType: AnnouncementTarget['targetType']) =>
+    and(
+      inArray(announcementTargets.announcementId, announcementIds),
+      eq(announcementTargets.targetType, targetType),
+    )
+
+  const [
+    allVisibilityRecipients,
+    userTargetRecipients,
+    departmentTargetRecipients,
+    roleTargetRecipients,
+  ] = await Promise.all([
+    executor
+      .select({
+        announcementId: announcements.id,
+        userId: systemUsers.id,
+      })
+      .from(announcements)
+      .innerJoin(systemUsers, sql`true`)
+      .where(
+        and(
+          inArray(announcements.id, announcementIds),
+          eq(announcements.visibility, ANNOUNCEMENT_VISIBILITY_ALL),
+          activeUser,
+        ),
+      ),
+    executor
+      .select({
+        announcementId: announcementTargets.announcementId,
+        userId: systemUsers.id,
+      })
+      .from(announcementTargets)
+      .innerJoin(systemUsers, and(eq(systemUsers.id, announcementTargets.targetId), activeUser))
+      .where(targetFilter(ANNOUNCEMENT_TARGET_TYPE_USER)),
+    executor
+      .select({
+        announcementId: announcementTargets.announcementId,
+        userId: systemUsers.id,
+      })
+      .from(announcementTargets)
+      .innerJoin(
+        systemUserDepartments,
+        eq(systemUserDepartments.departmentId, announcementTargets.targetId),
+      )
+      .innerJoin(
+        systemDepartments,
+        and(eq(systemDepartments.id, systemUserDepartments.departmentId), activeDepartment),
+      )
+      .innerJoin(systemUsers, and(eq(systemUsers.id, systemUserDepartments.userId), activeUser))
+      .where(targetFilter(ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT)),
+    executor
+      .select({
+        announcementId: announcementTargets.announcementId,
+        userId: systemUsers.id,
+      })
+      .from(announcementTargets)
+      .innerJoin(systemUserRoles, eq(systemUserRoles.roleId, announcementTargets.targetId))
+      .innerJoin(systemRoles, and(eq(systemRoles.id, systemUserRoles.roleId), activeRole))
+      .innerJoin(systemUsers, and(eq(systemUsers.id, systemUserRoles.userId), activeUser))
+      .where(targetFilter(ANNOUNCEMENT_TARGET_TYPE_ROLE)),
+  ])
+
+  return [
+    ...allVisibilityRecipients,
+    ...userTargetRecipients,
+    ...departmentTargetRecipients,
+    ...roleTargetRecipients,
+  ]
+}
+
+async function countAnnouncementReadStatsByIds(executor: DbReader, announcementIds: string[]) {
+  if (announcementIds.length === 0) {
+    return new Map<string, AnnouncementReadStats>()
+  }
+
+  const [recipients, readEntries] = await Promise.all([
+    findAnnouncementRecipientsByIds(executor, announcementIds),
+    executor
+      .select({
+        announcementId: announcementReads.announcementId,
+        userId: announcementReads.userId,
+      })
+      .from(announcementReads)
+      .where(inArray(announcementReads.announcementId, announcementIds)),
+  ])
+
+  const recipientsByAnnouncementId = new Map(
+    announcementIds.map((announcementId) => [announcementId, new Set<string>()]),
+  )
+  for (const recipient of recipients) {
+    recipientsByAnnouncementId.get(recipient.announcementId)?.add(recipient.userId)
+  }
+
+  const readUsersByAnnouncementId = new Map(
+    announcementIds.map((announcementId) => [announcementId, new Set<string>()]),
+  )
+  for (const readEntry of readEntries) {
+    if (recipientsByAnnouncementId.get(readEntry.announcementId)?.has(readEntry.userId)) {
+      readUsersByAnnouncementId.get(readEntry.announcementId)?.add(readEntry.userId)
+    }
+  }
+
+  return new Map(
+    announcementIds.map((announcementId) => {
+      const recipientCount = recipientsByAnnouncementId.get(announcementId)?.size ?? 0
+      const readCount = readUsersByAnnouncementId.get(announcementId)?.size ?? 0
+
+      return [
+        announcementId,
+        {
+          recipientCount,
+          readCount,
+          unreadCount: recipientCount - readCount,
+        },
+      ]
+    }),
+  )
+}
+
 export function createAnnouncementRepository(database: Db) {
   return {
     async list(query: AnnouncementListQuery) {
@@ -223,9 +353,23 @@ export function createAnnouncementRepository(database: Db) {
           .from(announcements)
           .where(where),
       ])
+      const readStatsByAnnouncementId = await countAnnouncementReadStatsByIds(
+        database,
+        list.map((announcement) => announcement.id),
+      )
 
       return {
-        list,
+        list: list.map((announcement) => ({
+          announcement,
+          readStats:
+            announcement.status === ANNOUNCEMENT_STATUS_DRAFT
+              ? null
+              : (readStatsByAnnouncementId.get(announcement.id) ?? {
+                  recipientCount: 0,
+                  readCount: 0,
+                  unreadCount: 0,
+                }),
+        })),
         total: totalRows[0]?.total ?? 0,
         page,
         pageSize,

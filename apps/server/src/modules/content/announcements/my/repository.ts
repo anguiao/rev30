@@ -12,6 +12,7 @@ import {
 import { and, count, desc, eq, exists, ilike, isNull, or } from 'drizzle-orm'
 import type { Db } from '../../../../db'
 import {
+  announcementReads,
   announcements,
   announcementTargets,
   systemDepartments,
@@ -157,6 +158,18 @@ export function createMyAnnouncementRepository(database: Db) {
         .limit(1)
 
       return row
+    },
+
+    async markRead(currentUser: User, id: string) {
+      await database
+        .insert(announcementReads)
+        .values({
+          announcementId: id,
+          userId: currentUser.id,
+        })
+        .onConflictDoNothing({
+          target: [announcementReads.announcementId, announcementReads.userId],
+        })
     },
   }
 }

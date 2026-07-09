@@ -19,6 +19,7 @@ import {
   attachmentReferences,
   attachments,
   authLoginAttemptBuckets,
+  announcementReads,
   announcementTargets,
   announcements,
   systemConfigOverrides,
@@ -37,6 +38,7 @@ const expectedTableNames = [
   'auth_login_attempt_buckets',
   'auth_password_credentials',
   'auth_refresh_tokens',
+  'announcement_reads',
   'announcement_targets',
   'announcements',
   'custom_icon_set_icons',
@@ -239,6 +241,11 @@ describe('PGlite migration runner', () => {
         targetId: createdUser.id,
         targetType: 'user',
         createdAt: now,
+      })
+      await database.insert(announcementReads).values({
+        announcementId,
+        userId: createdUser.id,
+        readAt: now,
       })
 
       expect(createdAnnouncement).toMatchObject({

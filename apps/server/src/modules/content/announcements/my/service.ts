@@ -24,6 +24,8 @@ export function createMyAnnouncementService(database: Db) {
         throw new MyAnnouncementNotFoundError()
       }
 
+      await repository.markRead(currentUser, id)
+
       return toMyAnnouncementDetail(announcement)
     },
   }

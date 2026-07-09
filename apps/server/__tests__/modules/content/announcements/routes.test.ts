@@ -52,6 +52,11 @@ const listResponse = {
       publishedAt: '2026-05-18T00:00:00.000Z',
       createdAt: '2026-05-18T00:00:00.000Z',
       updatedAt: '2026-05-18T00:00:00.000Z',
+      readStats: {
+        recipientCount: 3,
+        readCount: 1,
+        unreadCount: 2,
+      },
     },
   ],
   total: 1,

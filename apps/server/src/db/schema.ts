@@ -413,6 +413,25 @@ export const announcementTargets = pgTable(
   ],
 )
 
+export const announcementReads = pgTable(
+  'announcement_reads',
+  {
+    announcementId: uuid('announcement_id')
+      .notNull()
+      .references(() => announcements.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => systemUsers.id),
+    readAt: timestamp('read_at', timestampOptions).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.announcementId, table.userId],
+    }),
+    index('announcement_reads_user_id_idx').on(table.userId),
+  ],
+)
+
 export const customIconSets = pgTable(
   'custom_icon_sets',
   {

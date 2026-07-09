@@ -24,10 +24,13 @@ import type { Hono } from 'hono'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   attachmentReferences,
+  announcementReads,
   announcements,
   announcementTargets,
   systemDepartments,
   systemRoles,
+  systemUserDepartments,
+  systemUserRoles,
   systemUsers,
 } from '../../../../src/db/schema'
 import { AnnouncementInvalidTargetError } from '../../../../src/modules/content/announcements/errors'
@@ -205,6 +208,7 @@ describe('announcement routes', () => {
     expect(listResponse.status).toBe(200)
     const listedDraft = listBody.list.find((item) => item.id === createdDraft.id)
     expect(listedDraft).toBeDefined()
+    expect(listedDraft?.readStats).toBeNull()
     expect(listedDraft).not.toHaveProperty('contentJson')
     expect(listedDraft).not.toHaveProperty('contentText')
 
@@ -215,6 +219,101 @@ describe('announcement routes', () => {
     expect(detailBody.contentHtml).toBe(createBodyContentHtml)
     expect(detailBody.visibility).toBe(ANNOUNCEMENT_VISIBILITY_ALL)
     expect(detailBody.targets).toEqual([])
+  })
+
+  it('returns dynamic read stats for targeted announcement list items', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const recipientUserId = randomUUID()
+    const roleRecipientUserId = randomUUID()
+    const outsiderUserId = randomUUID()
+    const departmentId = randomUUID()
+    const roleId = randomUUID()
+
+    await database.insert(systemUsers).values([
+      {
+        id: recipientUserId,
+        username: `announcement-reader-${recipientUserId.slice(0, 8)}`,
+        nickname: 'Announcement Reader',
+      },
+      {
+        id: roleRecipientUserId,
+        username: `announcement-role-reader-${roleRecipientUserId.slice(0, 8)}`,
+        nickname: 'Announcement Role Reader',
+      },
+      {
+        id: outsiderUserId,
+        username: `announcement-outsider-${outsiderUserId.slice(0, 8)}`,
+        nickname: 'Announcement Outsider',
+      },
+    ])
+    await database.insert(systemDepartments).values({
+      id: departmentId,
+      name: 'Announcement Readers',
+      code: `announcement-readers-${departmentId.slice(0, 8)}`,
+    })
+    await database.insert(systemRoles).values({
+      id: roleId,
+      name: 'Announcement Reader Role',
+      code: `announcement-reader-role-${roleId.slice(0, 8)}`,
+    })
+    await database.insert(systemUserDepartments).values({
+      userId: recipientUserId,
+      departmentId,
+    })
+    await database.insert(systemUserRoles).values([
+      {
+        userId: recipientUserId,
+        roleId,
+      },
+      {
+        userId: roleRecipientUserId,
+        roleId,
+      },
+    ])
+
+    const { body: created } = await createAnnouncement(app, {
+      ...createBody,
+      title: '定向统计通知',
+      publish: true,
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
+          targetId: recipientUserId,
+        },
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+          targetId: departmentId,
+        },
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+          targetId: roleId,
+        },
+      ],
+    })
+
+    await database.insert(announcementReads).values([
+      {
+        announcementId: created.id,
+        userId: recipientUserId,
+      },
+      {
+        announcementId: created.id,
+        userId: outsiderUserId,
+      },
+    ])
+
+    const listResponse = await app.request('/api/content/announcements?page=1&pageSize=10')
+    const body = (await listResponse.json()) as AnnouncementListResponse
+    const listedAnnouncement = body.list.find((item) => item.id === created.id)
+
+    expect(listResponse.status).toBe(200)
+    expect(listedAnnouncement?.readStats).toEqual({
+      recipientCount: 2,
+      readCount: 1,
+      unreadCount: 1,
+    })
   })
 
   it('rejects creating announcements with invalid contentJson structure', async () => {

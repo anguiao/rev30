@@ -74,7 +74,10 @@ describe('announcement schemas', () => {
       contentHtml: _contentHtml,
       targets: _targets,
       ...announcementListItemInput
-    } = announcement
+    } = {
+      ...announcement,
+      readStats: null,
+    }
 
     expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty(
       'contentJson',
@@ -88,16 +91,26 @@ describe('announcement schemas', () => {
     expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty(
       'targets',
     )
+    expect(announcementListItemSchema.parse(announcementListItemInput).readStats).toBeNull()
     expect(
       announcementListResponseSchema.parse({
-        list: [announcement],
+        list: [
+          {
+            ...announcement,
+            readStats: {
+              recipientCount: 3,
+              readCount: 1,
+              unreadCount: 2,
+            },
+          },
+        ],
         total: 1,
         page: 1,
         pageSize: 20,
       }),
     ).toMatchObject({
       total: 1,
-      list: [{ title: '维护通知' }],
+      list: [{ title: '维护通知', readStats: { recipientCount: 3, readCount: 1 } }],
     })
   })
 
@@ -373,6 +386,7 @@ describe('announcement schemas', () => {
           createdAt: '2026-05-24T09:00:00.000Z',
           updatedAt: '2026-05-24T10:00:00.000Z',
           visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+          readStats: null,
         }),
       ).toMatchObject({ status })
     }

@@ -29,7 +29,7 @@
     "@iconify/json": "catalog:",
     "@iconify/tools": "^5.0.12",
     "@iconify/types": "^2.0.0",
-    "@iconify/utils": "^3.1.3",
+    "@iconify/utils": "^3.1.4",
     "@rev30/contracts": "workspace:*",
     "@rev30/rich-text": "workspace:*",
     "@rev30/utils": "workspace:*",

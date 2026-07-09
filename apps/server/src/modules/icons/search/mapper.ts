@@ -1,13 +1,13 @@
 import type { IconSearchItem } from '@rev30/contracts'
 
-export type CustomIconSearchRow = Omit<IconSearchItem, 'icon'>
+export type CustomIconSearchEntry = Omit<IconSearchItem, 'icon'>
 
-export function toCustomIconSearchItem(row: CustomIconSearchRow): IconSearchItem {
+export function toCustomIconSearchItem(entry: CustomIconSearchEntry): IconSearchItem {
   return {
-    icon: `${row.prefix}:${row.name}`,
-    prefix: row.prefix,
-    name: row.name,
-    collection: row.collection,
-    palette: row.palette,
+    icon: `${entry.prefix}:${entry.name}`,
+    prefix: entry.prefix,
+    name: entry.name,
+    collection: entry.collection,
+    palette: entry.palette,
   }
 }

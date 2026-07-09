@@ -1,9 +1,9 @@
 import type { IconifyJSON } from '@iconify/types'
-import type { IconRow, SetRow } from './mapper'
+import type { CustomIconEntry, CustomIconSetRow } from './mapper'
 
 const sampleLimit = 6
 
-function toLastModified(set: SetRow, icons: IconRow[]) {
+function toLastModified(set: CustomIconSetRow, icons: CustomIconEntry[]) {
   const latest =
     icons.length > 0
       ? Math.max(...icons.map((icon) => icon.updatedAt.getTime()))
@@ -12,7 +12,7 @@ function toLastModified(set: SetRow, icons: IconRow[]) {
   return Math.floor(latest / 1000)
 }
 
-export function exportCustomIconSet(set: SetRow, icons: IconRow[]): IconifyJSON {
+export function exportCustomIconSet(set: CustomIconSetRow, icons: CustomIconEntry[]): IconifyJSON {
   return {
     prefix: set.prefix,
     info: {

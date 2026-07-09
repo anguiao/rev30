@@ -22,14 +22,14 @@ import {
   RoleInvalidResourceError,
   RoleInvalidResourceAssignmentError,
 } from './errors'
-import type { RoleOptionRow, RoleResourceRow, RoleRow } from './mapper'
+import type { RoleOptionEntry, RoleResourceEntry, RoleRow } from './mapper'
 
 const roleOptionColumns = {
   id: systemRoles.id,
   name: systemRoles.name,
   code: systemRoles.code,
   status: systemRoles.status,
-} satisfies Record<keyof RoleOptionRow, unknown>
+} satisfies Record<keyof RoleOptionEntry, unknown>
 
 function roleSortOrder() {
   return [asc(systemRoles.sortOrder), desc(systemRoles.createdAt), desc(systemRoles.id)] as const
@@ -95,7 +95,7 @@ function buildRoleResourceValues(roleId: string, resourceIds: string[]) {
 async function findResourcesByRoleId(
   executor: DbReader,
   roleId: string,
-): Promise<RoleResourceRow[]> {
+): Promise<RoleResourceEntry[]> {
   return await executor
     .select({
       id: systemResources.id,

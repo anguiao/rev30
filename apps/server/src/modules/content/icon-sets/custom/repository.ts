@@ -10,7 +10,7 @@ import type { Db, DbReader } from '../../../../db'
 import { customIconSetIcons, customIconSets } from '../../../../db/schema'
 import { formatIconCursor, parseIconCursor } from '../cursor'
 import { toCustomIconConflictError } from './errors'
-import type { IconRow, SetRow } from './mapper'
+import type { CustomIconEntry, CustomIconSetEntry, CustomIconSetRow } from './mapper'
 import type { ParsedSvgIcon } from './svg'
 
 const customIconColumns = {
@@ -26,7 +26,7 @@ const customIconColumns = {
   deletedAt: customIconSetIcons.deletedAt,
   prefix: customIconSets.prefix,
   setName: customIconSets.name,
-} satisfies Record<keyof IconRow, unknown>
+} satisfies Record<keyof CustomIconEntry, unknown>
 
 async function withCustomIconConflictTranslation<T>(operation: () => Promise<T>) {
   try {
@@ -63,7 +63,10 @@ async function countActiveIcons(executor: DbReader, setId: string) {
   return row?.total ?? 0
 }
 
-async function findActiveIconById(executor: DbReader, id: string): Promise<IconRow | undefined> {
+async function findActiveIconById(
+  executor: DbReader,
+  id: string,
+): Promise<CustomIconEntry | undefined> {
   const [row] = await executor
     .select(customIconColumns)
     .from(customIconSetIcons)
@@ -132,7 +135,7 @@ export function createCustomIconSetRepository(database: Db) {
               .groupBy(customIconSetIcons.setId)
       const iconCounts = new Map(iconCountRows.map((row) => [row.setId, row.total]))
       const list = rows.map((row) => ({
-        ...row,
+        set: row,
         iconCount: iconCounts.get(row.id) ?? 0,
       }))
 
@@ -154,7 +157,7 @@ export function createCustomIconSetRepository(database: Db) {
       }
 
       return {
-        ...row,
+        set: row,
         iconCount: await countActiveIcons(database, row.id),
       }
     },
@@ -163,7 +166,7 @@ export function createCustomIconSetRepository(database: Db) {
       return (await findActiveSetByPrefix(database, prefix)) !== undefined
     },
 
-    async createSet(input: CustomIconSetCreateInput): Promise<SetRow & { iconCount: number }> {
+    async createSet(input: CustomIconSetCreateInput): Promise<CustomIconSetEntry> {
       const [created] = await withCustomIconConflictTranslation(() =>
         database.insert(customIconSets).values(input).returning(),
       )
@@ -173,7 +176,7 @@ export function createCustomIconSetRepository(database: Db) {
       }
 
       return {
-        ...created,
+        set: created,
         iconCount: 0,
       }
     },
@@ -192,7 +195,7 @@ export function createCustomIconSetRepository(database: Db) {
       }
 
       return {
-        ...updated,
+        set: updated,
         iconCount: await countActiveIcons(database, updated.id),
       }
     },
@@ -306,7 +309,7 @@ export function createCustomIconSetRepository(database: Db) {
       return row
     },
 
-    async createIcon(set: SetRow, parsed: ParsedSvgIcon) {
+    async createIcon(set: CustomIconSetRow, parsed: ParsedSvgIcon) {
       const [created] = await withCustomIconConflictTranslation(() =>
         database
           .insert(customIconSetIcons)

@@ -319,8 +319,8 @@ describe('custom icon set service', () => {
     })
     const parsedIcon = await parseSvgIcon('Logo.svg', svg(24, rect('#000')))
 
-    await repository.createIcon(set, parsedIcon)
-    await expect(repository.createIcon(set, parsedIcon)).rejects.toBeInstanceOf(
+    await repository.createIcon(set.set, parsedIcon)
+    await expect(repository.createIcon(set.set, parsedIcon)).rejects.toBeInstanceOf(
       CustomIconConflictError,
     )
   })

@@ -3,7 +3,7 @@ import { arrayToTree, toIsoDateTime } from '@rev30/utils'
 import { systemResources } from '../../../db/schema'
 
 export type ResourceRow = typeof systemResources.$inferSelect
-export type ResourceTreeOptionRow = Pick<ResourceRow, keyof Omit<ResourceTreeOption, 'children'>>
+export type ResourceTreeOptionEntry = Pick<ResourceRow, keyof Omit<ResourceTreeOption, 'children'>>
 
 export function toResource(row: ResourceRow): Resource {
   return {
@@ -28,18 +28,18 @@ export function toResourceTree(rows: ResourceRow[]): ResourceTreeNode[] {
   return arrayToTree(rows.map(toResource))
 }
 
-export function toResourceTreeOption(row: ResourceTreeOptionRow): ResourceTreeOption {
+export function toResourceTreeOption(entry: ResourceTreeOptionEntry): ResourceTreeOption {
   return {
-    id: row.id,
-    parentId: row.parentId,
-    type: row.type as ResourceTreeOption['type'],
-    name: row.name,
-    code: row.code,
-    status: row.status as ResourceTreeOption['status'],
+    id: entry.id,
+    parentId: entry.parentId,
+    type: entry.type as ResourceTreeOption['type'],
+    name: entry.name,
+    code: entry.code,
+    status: entry.status as ResourceTreeOption['status'],
     children: [],
   }
 }
 
-export function toResourceTreeOptions(rows: ResourceTreeOptionRow[]): ResourceTreeOption[] {
-  return arrayToTree(rows.map(toResourceTreeOption))
+export function toResourceTreeOptions(entries: ResourceTreeOptionEntry[]): ResourceTreeOption[] {
+  return arrayToTree(entries.map(toResourceTreeOption))
 }

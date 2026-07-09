@@ -3,7 +3,7 @@ import { toIsoDateTime } from '@rev30/utils'
 import { attachments, systemUsers } from '../../db/schema'
 
 export type AttachmentRow = typeof attachments.$inferSelect
-export type AttachmentListRow = {
+export type AttachmentListEntry = {
   attachment: AttachmentRow
   createdBy: Pick<typeof systemUsers.$inferSelect, 'id' | 'username' | 'nickname'>
 }
@@ -21,13 +21,13 @@ export function toAttachment(row: AttachmentRow): Attachment {
   }
 }
 
-export function toAttachmentListItem(row: AttachmentListRow): AttachmentListItem {
+export function toAttachmentListItem(entry: AttachmentListEntry): AttachmentListItem {
   return {
-    ...toAttachment(row.attachment),
+    ...toAttachment(entry.attachment),
     createdBy: {
-      id: row.createdBy.id,
-      username: row.createdBy.username,
-      nickname: row.createdBy.nickname,
+      id: entry.createdBy.id,
+      username: entry.createdBy.username,
+      nickname: entry.createdBy.nickname,
     },
   }
 }

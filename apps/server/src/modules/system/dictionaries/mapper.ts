@@ -10,11 +10,11 @@ import { systemDictionaryItems, systemDictionaryTypes } from '../../../db/schema
 export type DictionaryTypeRow = typeof systemDictionaryTypes.$inferSelect
 export type DictionaryItemRow = typeof systemDictionaryItems.$inferSelect
 
-export type DictionaryListRow = {
+export type DictionaryListEntry = {
   type: DictionaryTypeRow
   itemCount: number
 }
-export type DictionaryOptionRow = Pick<DictionaryTypeRow, 'code'> &
+export type DictionaryOptionEntry = Pick<DictionaryTypeRow, 'code'> &
   Pick<DictionaryItemRow, 'label' | 'value'>
 
 export function toDictionaryType(row: DictionaryTypeRow): DictionaryType {
@@ -44,10 +44,10 @@ export function toDictionaryItem(row: DictionaryItemRow): DictionaryItem {
   }
 }
 
-export function toDictionaryListItem(row: DictionaryListRow): DictionaryListItem {
+export function toDictionaryListItem(entry: DictionaryListEntry): DictionaryListItem {
   return {
-    ...toDictionaryType(row.type),
-    itemCount: row.itemCount,
+    ...toDictionaryType(entry.type),
+    itemCount: entry.itemCount,
   }
 }
 

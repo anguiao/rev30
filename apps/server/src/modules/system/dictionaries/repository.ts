@@ -10,7 +10,7 @@ import { and, asc, count, desc, eq, ilike, inArray, isNull, notInArray, or, sql 
 import type { Db, DbReader } from '../../../db'
 import { systemDictionaryItems, systemDictionaryTypes } from '../../../db/schema'
 import { DictionaryInvalidItemError } from './errors'
-import type { DictionaryItemRow, DictionaryListRow, DictionaryOptionRow } from './mapper'
+import type { DictionaryItemRow, DictionaryListEntry, DictionaryOptionEntry } from './mapper'
 
 function dictionaryTypeSortOrder() {
   return [
@@ -121,14 +121,14 @@ export function createDictionaryRepository(database: Db) {
       ])
 
       return {
-        list: list as DictionaryListRow[],
+        list: list as DictionaryListEntry[],
         total: totalRows[0]?.total ?? 0,
         page,
         pageSize,
       }
     },
 
-    async options(query: DictionaryOptionsQuery): Promise<DictionaryOptionRow[]> {
+    async options(query: DictionaryOptionsQuery): Promise<DictionaryOptionEntry[]> {
       const activeTypes = await database
         .select({
           id: systemDictionaryTypes.id,

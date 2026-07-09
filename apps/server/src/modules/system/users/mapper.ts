@@ -3,7 +3,7 @@ import { toIsoDateTime } from '@rev30/utils'
 import { systemUsers } from '../../../db/schema'
 
 export type UserRow = typeof systemUsers.$inferSelect
-export type UserOptionRow = Pick<UserRow, keyof UserOption>
+export type UserOptionEntry = Pick<UserRow, keyof UserOption>
 
 export function toUser(
   user: UserRow,
@@ -26,11 +26,11 @@ export function toUser(
   }
 }
 
-export function toUserOption(user: UserOptionRow): UserOption {
+export function toUserOption(entry: UserOptionEntry): UserOption {
   return {
-    id: user.id,
-    username: user.username,
-    nickname: user.nickname,
-    status: user.status as UserOption['status'],
+    id: entry.id,
+    username: entry.username,
+    nickname: entry.nickname,
+    status: entry.status as UserOption['status'],
   }
 }

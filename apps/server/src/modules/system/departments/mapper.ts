@@ -3,7 +3,7 @@ import { arrayToTree, toIsoDateTime } from '@rev30/utils'
 import { systemDepartments } from '../../../db/schema'
 
 export type DepartmentRow = typeof systemDepartments.$inferSelect
-export type DepartmentTreeOptionRow = Pick<
+export type DepartmentTreeOptionEntry = Pick<
   DepartmentRow,
   keyof Omit<DepartmentTreeOption, 'children'>
 >
@@ -25,17 +25,19 @@ export function toDepartmentTree(rows: DepartmentRow[]): DepartmentTreeNode[] {
   return arrayToTree(rows.map(toDepartment))
 }
 
-export function toDepartmentTreeOption(row: DepartmentTreeOptionRow): DepartmentTreeOption {
+export function toDepartmentTreeOption(entry: DepartmentTreeOptionEntry): DepartmentTreeOption {
   return {
-    id: row.id,
-    parentId: row.parentId,
-    name: row.name,
-    code: row.code,
-    status: row.status as DepartmentTreeOption['status'],
+    id: entry.id,
+    parentId: entry.parentId,
+    name: entry.name,
+    code: entry.code,
+    status: entry.status as DepartmentTreeOption['status'],
     children: [],
   }
 }
 
-export function toDepartmentTreeOptions(rows: DepartmentTreeOptionRow[]): DepartmentTreeOption[] {
-  return arrayToTree(rows.map(toDepartmentTreeOption))
+export function toDepartmentTreeOptions(
+  entries: DepartmentTreeOptionEntry[],
+): DepartmentTreeOption[] {
+  return arrayToTree(entries.map(toDepartmentTreeOption))
 }

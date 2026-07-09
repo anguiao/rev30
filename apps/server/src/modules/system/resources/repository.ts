@@ -14,7 +14,7 @@ import {
   ResourceInvalidParentError,
   ResourceRoleAuthorizationConflictError,
 } from './errors'
-import type { ResourceTreeOptionRow } from './mapper'
+import type { ResourceTreeOptionEntry } from './mapper'
 
 const resourceTreeOptionColumns = {
   id: systemResources.id,
@@ -23,7 +23,7 @@ const resourceTreeOptionColumns = {
   name: systemResources.name,
   code: systemResources.code,
   status: systemResources.status,
-} satisfies Record<keyof ResourceTreeOptionRow, unknown>
+} satisfies Record<keyof ResourceTreeOptionEntry, unknown>
 
 function resourceSortOrder() {
   return [
@@ -65,38 +65,40 @@ async function hasRoleAuthorizations(executor: DbReader, id: string) {
 }
 
 export function createResourceRepository(database: Db) {
-  async function fillActiveAncestors(rows: ResourceTreeOptionRow[]) {
-    const rowMap = new Map(rows.map((row) => [row.id, row]))
-    let missingParentIds = [...new Set(rows.map((row) => row.parentId).filter((id) => id !== null))]
+  async function fillActiveAncestors(entries: ResourceTreeOptionEntry[]) {
+    const entryMap = new Map(entries.map((entry) => [entry.id, entry]))
+    let missingParentIds = [
+      ...new Set(entries.map((entry) => entry.parentId).filter((id) => id !== null)),
+    ]
 
     while (missingParentIds.length > 0) {
-      const unresolvedParentIds = missingParentIds.filter((id) => !rowMap.has(id))
+      const unresolvedParentIds = missingParentIds.filter((id) => !entryMap.has(id))
 
       if (unresolvedParentIds.length === 0) {
         break
       }
 
-      const parentRows = await database
+      const parentEntries = await database
         .select(resourceTreeOptionColumns)
         .from(systemResources)
         .where(
           and(inArray(systemResources.id, unresolvedParentIds), isNull(systemResources.deletedAt)),
         )
 
-      if (parentRows.length === 0) {
+      if (parentEntries.length === 0) {
         break
       }
 
-      for (const parentRow of parentRows) {
-        rowMap.set(parentRow.id, parentRow)
+      for (const parentEntry of parentEntries) {
+        entryMap.set(parentEntry.id, parentEntry)
       }
 
       missingParentIds = [
-        ...new Set(parentRows.map((row) => row.parentId).filter((id) => id !== null)),
+        ...new Set(parentEntries.map((entry) => entry.parentId).filter((id) => id !== null)),
       ]
     }
 
-    return rowMap
+    return entryMap
   }
 
   return {
@@ -189,7 +191,7 @@ export function createResourceRepository(database: Db) {
       const includeRows = selectedRows.filter((row) => includeIdSet.has(row.id))
       const enabledRows = selectedRows.filter((row) => row.status === enabledStatus)
       const ancestorRowsMap = await fillActiveAncestors(includeRows)
-      const rowsMap = new Map<string, ResourceTreeOptionRow>()
+      const rowsMap = new Map<string, ResourceTreeOptionEntry>()
 
       for (const row of enabledRows) {
         rowsMap.set(row.id, row)

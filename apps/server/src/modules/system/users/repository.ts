@@ -22,14 +22,14 @@ import {
 } from '../departments/repository'
 import { findRoleSummariesByUserIds, lockActiveRolesByIds } from '../roles/repository'
 import { UserInvalidDepartmentError, UserInvalidRoleError } from './errors'
-import type { UserOptionRow } from './mapper'
+import type { UserOptionEntry } from './mapper'
 
 const userOptionColumns = {
   id: systemUsers.id,
   username: systemUsers.username,
   nickname: systemUsers.nickname,
   status: systemUsers.status,
-} satisfies Record<keyof UserOptionRow, unknown>
+} satisfies Record<keyof UserOptionEntry, unknown>
 
 function buildUserDepartmentValues(userId: string, departmentIds: string[]) {
   return departmentIds.map((departmentId) => ({

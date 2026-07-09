@@ -1,7 +1,7 @@
 import { and, asc, eq, ilike, isNull, or } from 'drizzle-orm'
 import type { Db } from '../../../db'
 import { customIconSetIcons, customIconSets } from '../../../db/schema'
-import type { CustomIconSearchRow } from './mapper'
+import type { CustomIconSearchEntry } from './mapper'
 import type { ExpandedSearch } from './types'
 
 const customSearchCandidateLimitFactor = 4
@@ -12,13 +12,13 @@ const customIconSearchColumns = {
   collection: customIconSets.name,
   name: customIconSetIcons.name,
   palette: customIconSetIcons.palette,
-} satisfies Record<keyof CustomIconSearchRow, unknown>
+} satisfies Record<keyof CustomIconSearchEntry, unknown>
 
 export async function resolveCustomExactIconSearch(
   database: Db,
   prefix: string,
   name: string,
-): Promise<CustomIconSearchRow[]> {
+): Promise<CustomIconSearchEntry[]> {
   const [row] = await database
     .select(customIconSearchColumns)
     .from(customIconSetIcons)
@@ -40,7 +40,7 @@ export async function searchCustomIcons(
   database: Db,
   expandedSearch: ExpandedSearch,
   limit: number,
-): Promise<CustomIconSearchRow[]> {
+): Promise<CustomIconSearchEntry[]> {
   if (expandedSearch.candidates.length === 0) {
     return []
   }

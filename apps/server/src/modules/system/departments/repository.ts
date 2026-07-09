@@ -11,7 +11,7 @@ import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-o
 import type { Db, DbReader } from '../../../db'
 import { systemDepartments, systemUserDepartments } from '../../../db/schema'
 import { DepartmentDeleteConflictError, DepartmentInvalidParentError } from './errors'
-import type { DepartmentRow, DepartmentTreeOptionRow } from './mapper'
+import type { DepartmentRow, DepartmentTreeOptionEntry } from './mapper'
 
 const departmentTreeOptionColumns = {
   id: systemDepartments.id,
@@ -19,7 +19,7 @@ const departmentTreeOptionColumns = {
   name: systemDepartments.name,
   code: systemDepartments.code,
   status: systemDepartments.status,
-} satisfies Record<keyof DepartmentTreeOptionRow, unknown>
+} satisfies Record<keyof DepartmentTreeOptionEntry, unknown>
 
 function departmentSortOrder() {
   return [
@@ -114,18 +114,20 @@ async function lockActiveDepartmentById(executor: DbReader, id: string) {
 }
 
 export function createDepartmentRepository(database: Db) {
-  async function fillActiveAncestors(rows: DepartmentTreeOptionRow[]) {
-    const rowMap = new Map(rows.map((row) => [row.id, row]))
-    let missingParentIds = [...new Set(rows.map((row) => row.parentId).filter((id) => id !== null))]
+  async function fillActiveAncestors(entries: DepartmentTreeOptionEntry[]) {
+    const entryMap = new Map(entries.map((entry) => [entry.id, entry]))
+    let missingParentIds = [
+      ...new Set(entries.map((entry) => entry.parentId).filter((id) => id !== null)),
+    ]
 
     while (missingParentIds.length > 0) {
-      const unresolvedParentIds = missingParentIds.filter((id) => !rowMap.has(id))
+      const unresolvedParentIds = missingParentIds.filter((id) => !entryMap.has(id))
 
       if (unresolvedParentIds.length === 0) {
         break
       }
 
-      const parentRows = await database
+      const parentEntries = await database
         .select(departmentTreeOptionColumns)
         .from(systemDepartments)
         .where(
@@ -135,20 +137,20 @@ export function createDepartmentRepository(database: Db) {
           ),
         )
 
-      if (parentRows.length === 0) {
+      if (parentEntries.length === 0) {
         break
       }
 
-      for (const parentRow of parentRows) {
-        rowMap.set(parentRow.id, parentRow)
+      for (const parentEntry of parentEntries) {
+        entryMap.set(parentEntry.id, parentEntry)
       }
 
       missingParentIds = [
-        ...new Set(parentRows.map((row) => row.parentId).filter((id) => id !== null)),
+        ...new Set(parentEntries.map((entry) => entry.parentId).filter((id) => id !== null)),
       ]
     }
 
-    return rowMap
+    return entryMap
   }
 
   return {
@@ -249,7 +251,7 @@ export function createDepartmentRepository(database: Db) {
       const includeRows = selectedRows.filter((row) => includeIdSet.has(row.id))
       const enabledRows = selectedRows.filter((row) => row.status === enabledStatus)
       const ancestorRowsMap = await fillActiveAncestors(includeRows)
-      const rowsMap = new Map<string, DepartmentTreeOptionRow>()
+      const rowsMap = new Map<string, DepartmentTreeOptionEntry>()
 
       for (const row of enabledRows) {
         rowsMap.set(row.id, row)

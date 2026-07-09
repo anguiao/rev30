@@ -3,8 +3,12 @@ import { toIsoDateTime } from '@rev30/utils'
 import { systemRoles } from '../../../db/schema'
 
 export type RoleRow = typeof systemRoles.$inferSelect
-export type RoleOptionRow = Pick<RoleRow, keyof RoleOption>
-export type RoleResourceRow = {
+export type RoleOptionEntry = Pick<RoleRow, keyof RoleOption>
+export type RoleListEntry = {
+  role: RoleRow
+  userCount: number
+}
+export type RoleResourceEntry = {
   id: string
   name: string
   code: string
@@ -19,14 +23,16 @@ export function toRoleSummary(row: RoleRow): RoleSummary {
   }
 }
 
-export function toRoleListItem(row: RoleRow & { userCount: number }): RoleListItem {
+export function toRoleListItem(entry: RoleListEntry): RoleListItem {
+  const { role, userCount } = entry
+
   return {
-    ...toRoleSummary(row),
-    status: row.status as Role['status'],
-    sortOrder: row.sortOrder,
-    userCount: row.userCount,
-    createdAt: toIsoDateTime(row.createdAt),
-    updatedAt: toIsoDateTime(row.updatedAt),
+    ...toRoleSummary(role),
+    status: role.status as Role['status'],
+    sortOrder: role.sortOrder,
+    userCount,
+    createdAt: toIsoDateTime(role.createdAt),
+    updatedAt: toIsoDateTime(role.updatedAt),
   }
 }
 
@@ -41,24 +47,24 @@ export function toRole(row: RoleRow, resources: RoleResource[]): Role {
   }
 }
 
-export function toRoleOption(row: RoleOptionRow): RoleOption {
+export function toRoleOption(entry: RoleOptionEntry): RoleOption {
   return {
-    id: row.id,
-    name: row.name,
-    code: row.code,
-    status: row.status as RoleOption['status'],
+    id: entry.id,
+    name: entry.name,
+    code: entry.code,
+    status: entry.status as RoleOption['status'],
   }
 }
 
-export function toRoleResource(row: RoleResourceRow): RoleResource {
+export function toRoleResource(entry: RoleResourceEntry): RoleResource {
   return {
-    id: row.id,
-    name: row.name,
-    code: row.code,
-    type: row.type as RoleResource['type'],
+    id: entry.id,
+    name: entry.name,
+    code: entry.code,
+    type: entry.type as RoleResource['type'],
   }
 }
 
-export function toRoleResources(rows: RoleResourceRow[]): RoleResource[] {
-  return rows.map(toRoleResource)
+export function toRoleResources(entries: RoleResourceEntry[]): RoleResource[] {
+  return entries.map(toRoleResource)
 }

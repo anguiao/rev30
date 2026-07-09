@@ -2,33 +2,40 @@ import type { CustomIconItem, CustomIconSet } from '@rev30/contracts'
 import { toIsoDateTime } from '@rev30/utils'
 import { customIconSetIcons, customIconSets } from '../../../../db/schema'
 
-export type SetRow = typeof customIconSets.$inferSelect
-export type IconRow = typeof customIconSetIcons.$inferSelect & {
+export type CustomIconSetRow = typeof customIconSets.$inferSelect
+export type CustomIconEntry = typeof customIconSetIcons.$inferSelect & {
   prefix: string
   setName: string
 }
 
-export function mapCustomIconSet(row: SetRow & { iconCount: number }): CustomIconSet {
+export type CustomIconSetEntry = {
+  set: CustomIconSetRow
+  iconCount: number
+}
+
+export function mapCustomIconSet(entry: CustomIconSetEntry): CustomIconSet {
+  const { set, iconCount } = entry
+
   return {
-    prefix: row.prefix,
-    name: row.name,
-    description: row.description,
-    iconCount: row.iconCount,
-    createdAt: toIsoDateTime(row.createdAt),
-    updatedAt: toIsoDateTime(row.updatedAt),
+    prefix: set.prefix,
+    name: set.name,
+    description: set.description,
+    iconCount,
+    createdAt: toIsoDateTime(set.createdAt),
+    updatedAt: toIsoDateTime(set.updatedAt),
   }
 }
 
-export function mapCustomIcon(row: IconRow): CustomIconItem {
+export function mapCustomIcon(entry: CustomIconEntry): CustomIconItem {
   return {
-    icon: `${row.prefix}:${row.name}`,
-    prefix: row.prefix,
-    name: row.name,
-    setName: row.setName,
-    body: row.body,
-    width: row.width,
-    height: row.height,
-    createdAt: toIsoDateTime(row.createdAt),
-    updatedAt: toIsoDateTime(row.updatedAt),
+    icon: `${entry.prefix}:${entry.name}`,
+    prefix: entry.prefix,
+    name: entry.name,
+    setName: entry.setName,
+    body: entry.body,
+    width: entry.width,
+    height: entry.height,
+    createdAt: toIsoDateTime(entry.createdAt),
+    updatedAt: toIsoDateTime(entry.updatedAt),
   }
 }

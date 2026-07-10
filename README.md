@@ -43,7 +43,7 @@ pnpm dev
 - 附件读取支持两种策略：普通附件默认使用短期签名内容 URL；头像和富文本媒体等资源可使用稳定的 `/api/attachments/:id/content` URL。
 - 稳定内容 URL 仍要求登录态，浏览器通过 `attachment_token` HttpOnly cookie 完成附件内容读取，不暴露 token 给前端 JS。
 - `usage` 是任意非空业务记录字符串，前端不维护全局 usage 常量、选项列表或文案映射。
-- 业务可为附件记录引用；常驻维护任务默认每 6 小时清理创建超过 7 天、`cleanupPolicy=unreferenced` 且无引用的附件。
+- 业务可为附件记录引用；常驻维护任务默认每 6 小时清理保留超过 7 天的孤儿上传文件，以及 `cleanupPolicy=unreferenced` 且无引用的附件。
 
 临时 URL 签名密钥由 `ATTACHMENT_SIGNING_SECRET` 配置，内容访问 URL 默认有效期由 `ATTACHMENT_CONTENT_URL_TTL_SECONDS` 控制，上传会话默认有效期由 `ATTACHMENT_UPLOAD_SESSION_TTL_SECONDS` 控制。
 

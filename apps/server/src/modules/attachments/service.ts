@@ -43,10 +43,14 @@ import {
   verifyAttachmentContentToken,
   verifyAttachmentUploadToken,
 } from './signing'
-import { LocalAttachmentStorage, type AttachmentPutResult } from './storage'
+import {
+  ATTACHMENT_UPLOAD_STORAGE_PREFIX,
+  type AttachmentGetResult,
+  type AttachmentPutResult,
+  createAttachmentStorage,
+} from './storage'
 import { limitAttachmentBodySize, toReadableStream } from './stream'
 
-const storageProvider = 'local'
 const fileTypeDetectors = [detectCfbf]
 
 type StoredUploadContent = AttachmentFileType &
@@ -70,7 +74,7 @@ function padDatePart(value: number) {
 
 function createUploadSessionStorageKey(uploadId: string, extension: string, createdAt: Date) {
   return [
-    'uploads',
+    ATTACHMENT_UPLOAD_STORAGE_PREFIX,
     String(createdAt.getUTCFullYear()),
     padDatePart(createdAt.getUTCMonth() + 1),
     padDatePart(createdAt.getUTCDate()),
@@ -116,7 +120,7 @@ function createContentDispositionHeader(
 
 function createContentResponse(
   row: AttachmentRow,
-  stored: Awaited<ReturnType<LocalAttachmentStorage['get']>>,
+  stored: AttachmentGetResult,
   input: {
     cacheControl: string
     disposition: AttachmentDisposition
@@ -142,7 +146,7 @@ function createContentResponse(
 export function createAttachmentService(database: Db) {
   const config = readAttachmentConfig()
   const authConfig = readAuthConfig()
-  const storage = new LocalAttachmentStorage(config.storageDir)
+  const storage = createAttachmentStorage(config)
   const repository = createAttachmentRepository(database)
   const uploadSessions = new Map<string, UploadSession>()
 
@@ -304,7 +308,7 @@ export function createAttachmentService(database: Db) {
 
       try {
         const created = await repository.create({
-          storageProvider,
+          storageProvider: storage.provider,
           storageKey: storedContent.storageKey,
           originalName: session.originalName,
           mimeType: storedContent.mimeType,

@@ -1,5 +1,10 @@
 import type { Db } from '../db'
-import { cleanupUnreferencedAttachments } from '../modules/attachments/cleanup'
+import {
+  cleanupOrphanedAttachmentUploads,
+  cleanupUnreferencedAttachments,
+} from '../modules/attachments/cleanup'
+import { readAttachmentConfig } from '../modules/attachments/config'
+import { createAttachmentStorage } from '../modules/attachments/storage'
 import { logger } from '../runtime/logger'
 import type { MaintenanceWorker } from './types'
 
@@ -34,6 +39,7 @@ function readAttachmentCleanupRetentionMs() {
 export function startAttachmentCleanup(database: Db): MaintenanceWorker {
   const intervalMs = readAttachmentCleanupIntervalMs()
   const retentionMs = readAttachmentCleanupRetentionMs()
+  const storage = createAttachmentStorage(readAttachmentConfig())
 
   let stopped = false
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -59,14 +65,26 @@ export function startAttachmentCleanup(database: Db): MaintenanceWorker {
     }
 
     try {
-      const deletedCount = await cleanupUnreferencedAttachments(database, retentionMs)
+      const deletedCount = await cleanupOrphanedAttachmentUploads(database, storage, retentionMs)
 
       if (deletedCount > 0) {
-        logger.info({ deletedCount }, 'attachment cleanup completed')
+        logger.info({ deletedCount }, 'orphaned attachment upload cleanup completed')
       }
     } catch (error) {
       if (!stopped) {
-        logger.error({ error }, 'attachment cleanup failed')
+        logger.error({ error }, 'orphaned attachment upload cleanup failed')
+      }
+    }
+
+    try {
+      const deletedCount = await cleanupUnreferencedAttachments(database, storage, retentionMs)
+
+      if (deletedCount > 0) {
+        logger.info({ deletedCount }, 'unreferenced attachment cleanup completed')
+      }
+    } catch (error) {
+      if (!stopped) {
+        logger.error({ error }, 'unreferenced attachment cleanup failed')
       }
     }
 

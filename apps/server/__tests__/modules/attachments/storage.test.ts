@@ -4,7 +4,10 @@ import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { LocalAttachmentStorage } from '../../../src/modules/attachments/storage'
+import {
+  ATTACHMENT_UPLOAD_STORAGE_PREFIX,
+  LocalAttachmentStorage,
+} from '../../../src/modules/attachments/storage'
 
 const tempDirs: string[] = []
 
@@ -43,6 +46,8 @@ describe('LocalAttachmentStorage', () => {
   it('writes streams into date partitioned directories and reads them back', async () => {
     const root = await createTempRoot()
     const storage = new LocalAttachmentStorage(root)
+
+    expect(storage.provider).toBe('local')
 
     const result = await storage.put({
       key: '2026/05/29/example.txt',
@@ -116,5 +121,32 @@ describe('LocalAttachmentStorage', () => {
     await storage.delete('2026/05/29/delete-me.txt')
 
     await expect(readFile(join(root, '2026/05/29/delete-me.txt'))).rejects.toThrow()
+  })
+
+  it('lists stored files below a prefix in stable key order', async () => {
+    const root = await createTempRoot()
+    const storage = new LocalAttachmentStorage(root)
+
+    await storage.put({
+      key: `${ATTACHMENT_UPLOAD_STORAGE_PREFIX}/2026/05/30/second.txt`,
+      body: bodyFromText('second'),
+    })
+    await storage.put({
+      key: `${ATTACHMENT_UPLOAD_STORAGE_PREFIX}/2026/05/29/first.txt`,
+      body: bodyFromText('first'),
+    })
+    await storage.put({
+      key: 'other/ignored.txt',
+      body: bodyFromText('ignored'),
+    })
+
+    const entries = await storage.list(ATTACHMENT_UPLOAD_STORAGE_PREFIX)
+
+    expect(entries.map((entry) => entry.key)).toEqual([
+      'uploads/2026/05/29/first.txt',
+      'uploads/2026/05/30/second.txt',
+    ])
+    expect(entries.every((entry) => entry.modifiedAt instanceof Date)).toBe(true)
+    await expect(storage.list('missing')).resolves.toEqual([])
   })
 })

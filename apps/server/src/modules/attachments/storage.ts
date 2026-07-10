@@ -1,9 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { createReadStream, createWriteStream } from 'node:fs'
-import { mkdir, rename, rm, stat, unlink } from 'node:fs/promises'
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
+import { mkdir, readdir, rename, rm, stat, unlink } from 'node:fs/promises'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { Readable, Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
+import type { AttachmentConfig } from './config'
+
+export const ATTACHMENT_UPLOAD_STORAGE_PREFIX = 'uploads'
 
 export type AttachmentPutResult = {
   size: number
@@ -15,12 +18,64 @@ export type AttachmentGetResult = {
   size: number
 }
 
+export type AttachmentStorageEntry = {
+  key: string
+  modifiedAt: Date
+}
+
 export interface AttachmentStorage {
+  readonly provider: string
+
   put(input: { key: string; body: AsyncIterable<Uint8Array> }): Promise<AttachmentPutResult>
 
   get(key: string): Promise<AttachmentGetResult>
 
+  list(prefix: string): Promise<AttachmentStorageEntry[]>
+
   delete(key: string): Promise<void>
+}
+
+async function listLocalFiles(
+  directoryPath: string,
+): Promise<{ modifiedAt: Date; path: string }[]> {
+  let entries
+
+  try {
+    entries = await readdir(directoryPath, { withFileTypes: true })
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return []
+    }
+
+    throw error
+  }
+
+  const files: { modifiedAt: Date; path: string }[] = []
+
+  for (const entry of entries) {
+    const entryPath = join(directoryPath, entry.name)
+
+    if (entry.isDirectory()) {
+      files.push(...(await listLocalFiles(entryPath)))
+      continue
+    }
+
+    if (!entry.isFile()) {
+      continue
+    }
+
+    try {
+      const fileStat = await stat(entryPath)
+
+      files.push({ modifiedAt: fileStat.mtime, path: entryPath })
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error
+      }
+    }
+  }
+
+  return files
 }
 
 function isInsideRoot(rootPath: string, targetPath: string) {
@@ -55,6 +110,8 @@ function createHashingTransform() {
 }
 
 export class LocalAttachmentStorage implements AttachmentStorage {
+  readonly provider = 'local'
+
   private readonly rootPath: string
 
   constructor(rootDir: string) {
@@ -111,6 +168,18 @@ export class LocalAttachmentStorage implements AttachmentStorage {
     }
   }
 
+  async list(prefix: string): Promise<AttachmentStorageEntry[]> {
+    const prefixPath = this.resolveKey(prefix)
+    const files = await listLocalFiles(prefixPath)
+
+    return files
+      .map((file) => ({
+        key: relative(this.rootPath, file.path).split(sep).join('/'),
+        modifiedAt: file.modifiedAt,
+      }))
+      .sort((first, second) => first.key.localeCompare(second.key))
+  }
+
   async delete(key: string): Promise<void> {
     const targetPath = this.resolveKey(key)
 
@@ -124,4 +193,8 @@ export class LocalAttachmentStorage implements AttachmentStorage {
       throw error
     }
   }
+}
+
+export function createAttachmentStorage(config: AttachmentConfig): AttachmentStorage {
+  return new LocalAttachmentStorage(config.storageDir)
 }

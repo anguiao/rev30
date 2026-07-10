@@ -3,6 +3,7 @@ import type {
   Announcement,
   AnnouncementListResponse,
   AnnouncementTarget,
+  AnnouncementTargetOptionsResponse,
   TiptapDocument,
 } from '@rev30/contracts'
 import {
@@ -16,6 +17,7 @@ import {
   ANNOUNCEMENT_TYPE_BULLETIN,
   ANNOUNCEMENT_TYPE_NOTICE,
   ANNOUNCEMENT_VISIBILITY_TARGETED,
+  DEPARTMENT_STATUS_DISABLED,
   ROLE_STATUS_DISABLED,
   USER_STATUS_DISABLED,
 } from '@rev30/contracts'
@@ -655,6 +657,69 @@ describe('announcement routes', () => {
       targetType: targets.department.targetType,
       targetId: targets.department.targetId,
     })
+  })
+
+  it('loads target options with announcement access and preserves disabled existing targets', async () => {
+    const database = await createTestDb()
+    const adminApp = await createTestApp(database)
+    const targets = await createAnnouncementTargetsFixture(database)
+    const { body: announcement, response: createResponse } = await createAnnouncement(adminApp, {
+      ...createBody,
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [targets.user, targets.department, targets.role],
+    })
+    expect(createResponse.status).toBe(201)
+
+    await database
+      .update(systemUsers)
+      .set({ status: USER_STATUS_DISABLED })
+      .where(eq(systemUsers.id, targets.user.targetId))
+    await database
+      .update(systemDepartments)
+      .set({ status: DEPARTMENT_STATUS_DISABLED })
+      .where(eq(systemDepartments.id, targets.department.targetId))
+    await database
+      .update(systemRoles)
+      .set({ status: ROLE_STATUS_DISABLED })
+      .where(eq(systemRoles.id, targets.role.targetId))
+
+    const fixture = await createSystemAccessFixture(database, {
+      accessCodes: ['content:announcement:list'],
+      usernamePrefix: 'announcement-target-options-reader',
+    })
+    const app = createProtectedContentRouteTestApp(
+      database,
+      '/api/content/announcements',
+      createAnnouncementRoutes(database),
+      fixture.authHeaders,
+    )
+
+    const createOptionsResponse = await app.request('/api/content/announcements/target-options')
+    const createOptions = (await createOptionsResponse.json()) as AnnouncementTargetOptionsResponse
+    expect(createOptionsResponse.status).toBe(200)
+    expect(createOptions.users.some((user) => user.id === targets.user.targetId)).toBe(false)
+    expect(
+      createOptions.departments.some((department) => department.id === targets.department.targetId),
+    ).toBe(false)
+    expect(createOptions.roles.some((role) => role.id === targets.role.targetId)).toBe(false)
+
+    const editOptionsResponse = await app.request(
+      `/api/content/announcements/target-options?announcementId=${announcement.id}`,
+    )
+    const editOptions = (await editOptionsResponse.json()) as AnnouncementTargetOptionsResponse
+    expect(editOptionsResponse.status).toBe(200)
+    expect(editOptions.users).toContainEqual(
+      expect.objectContaining({ id: targets.user.targetId, status: USER_STATUS_DISABLED }),
+    )
+    expect(editOptions.departments).toContainEqual(
+      expect.objectContaining({
+        id: targets.department.targetId,
+        status: DEPARTMENT_STATUS_DISABLED,
+      }),
+    )
+    expect(editOptions.roles).toContainEqual(
+      expect.objectContaining({ id: targets.role.targetId, status: ROLE_STATUS_DISABLED }),
+    )
   })
 
   it('rejects publishing targeted announcements without visible objects', async () => {

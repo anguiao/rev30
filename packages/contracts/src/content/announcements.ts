@@ -8,6 +8,9 @@ import { nonBlankString, optionalNullableString } from '../common/inputs'
 import { paginationQuerySchema } from '../common/pagination'
 import { hasAnyDefinedValue } from '../common/refinements'
 import { optionalQueryValue, optionalTrimmedQueryString } from '../query'
+import { departmentTreeOptionsResponseSchema } from '../system/departments'
+import { roleOptionsResponseSchema } from '../system/roles'
+import { userOptionsResponseSchema } from '../system/users'
 
 export const ANNOUNCEMENT_TYPE_NOTICE = 'notice'
 export const ANNOUNCEMENT_TYPE_BULLETIN = 'bulletin'
@@ -210,6 +213,16 @@ export const announcementListResponseSchema = z.object({
   pageSize: z.number().int().min(1),
 })
 
+export const announcementTargetOptionsQuerySchema = z.object({
+  announcementId: announcementIdSchema.optional(),
+})
+
+export const announcementTargetOptionsResponseSchema = z.object({
+  users: userOptionsResponseSchema,
+  departments: departmentTreeOptionsResponseSchema,
+  roles: roleOptionsResponseSchema,
+})
+
 export const announcementMyListQuerySchema = paginationQuerySchema.extend({
   keyword: optionalKeywordSchema,
   type: optionalTypeQuerySchema,
@@ -251,6 +264,10 @@ export type AnnouncementFormInput = z.infer<typeof announcementFormSchema>
 export type AnnouncementCreateInput = z.infer<typeof announcementCreateSchema>
 export type AnnouncementUpdateInput = z.infer<typeof announcementUpdateSchema>
 export type AnnouncementListResponse = z.infer<typeof announcementListResponseSchema>
+export type AnnouncementTargetOptionsQuery = z.infer<typeof announcementTargetOptionsQuerySchema>
+export type AnnouncementTargetOptionsResponse = z.infer<
+  typeof announcementTargetOptionsResponseSchema
+>
 export type AnnouncementMyListQuery = z.infer<typeof announcementMyListQuerySchema>
 export type AnnouncementMyListItem = z.infer<typeof announcementMyListItemSchema>
 export type AnnouncementMyDetail = z.infer<typeof announcementMyDetailSchema>

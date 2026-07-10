@@ -1,16 +1,37 @@
 import type {
   AnnouncementCreateInput,
   AnnouncementListQuery,
+  AnnouncementTarget,
+  AnnouncementTargetOptionsQuery,
+  AnnouncementTargetType,
   AnnouncementUpdateInput,
 } from '@rev30/contracts'
-import { ANNOUNCEMENT_STATUS_ARCHIVED, ANNOUNCEMENT_STATUS_DRAFT } from '@rev30/contracts'
+import {
+  ANNOUNCEMENT_STATUS_ARCHIVED,
+  ANNOUNCEMENT_STATUS_DRAFT,
+  ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+  ANNOUNCEMENT_TARGET_TYPE_ROLE,
+  ANNOUNCEMENT_TARGET_TYPE_USER,
+} from '@rev30/contracts'
 import type { Db } from '../../../db'
+import { createDepartmentService } from '../../system/departments/service'
+import { createRoleService } from '../../system/roles/service'
+import { createUserService } from '../../system/users/service'
 import { AnnouncementDraftArchiveError, AnnouncementNotFoundError } from './errors'
 import { toAnnouncement, toAnnouncementListItem } from './mapper'
 import { createAnnouncementRepository } from './repository'
 
+function getTargetIds(targets: AnnouncementTarget[], targetType: AnnouncementTargetType) {
+  return targets
+    .filter((target) => target.targetType === targetType)
+    .map((target) => target.targetId)
+}
+
 export function createAnnouncementService(database: Db) {
   const repository = createAnnouncementRepository(database)
+  const departmentService = createDepartmentService(database)
+  const roleService = createRoleService(database)
+  const userService = createUserService(database)
 
   return {
     async list(query: AnnouncementListQuery) {
@@ -30,6 +51,34 @@ export function createAnnouncementService(database: Db) {
       }
 
       return toAnnouncement(announcement.announcement, announcement.targets)
+    },
+
+    async targetOptions(query: AnnouncementTargetOptionsQuery) {
+      let targets: AnnouncementTarget[] = []
+
+      if (query.announcementId !== undefined) {
+        const announcement = await repository.findActiveById(query.announcementId)
+
+        if (!announcement) {
+          throw new AnnouncementNotFoundError()
+        }
+
+        targets = announcement.targets
+      }
+
+      const [users, departments, roles] = await Promise.all([
+        userService.options({
+          includeIds: getTargetIds(targets, ANNOUNCEMENT_TARGET_TYPE_USER),
+        }),
+        departmentService.treeOptions({
+          includeIds: getTargetIds(targets, ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT),
+        }),
+        roleService.options({
+          includeIds: getTargetIds(targets, ANNOUNCEMENT_TARGET_TYPE_ROLE),
+        }),
+      ])
+
+      return { users, departments, roles }
     },
 
     async create(input: AnnouncementCreateInput) {

@@ -41,9 +41,13 @@ import {
 } from '@rev30/contracts'
 import { createCompactRichTextEditorPreset } from '@rev30/rich-text/vue/presets'
 import { RichTextEditor } from '@rev30/rich-text/vue'
-import { createAnnouncement, getAnnouncement, updateAnnouncement } from '.'
+import {
+  createAnnouncement,
+  getAnnouncement,
+  getAnnouncementTargetOptions,
+  updateAnnouncement,
+} from '.'
 import { compressImageFile, getAttachmentContentUrl, uploadAttachment } from '../attachments'
-import { getDepartmentTreeOptions, getRoleOptions, getUserOptions } from '../system'
 import { announcementTypeSelectOptions, announcementVisibilityOptions } from './labels'
 import { getErrorMessage } from '../../utils/error'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
@@ -94,11 +98,7 @@ const {
     const announcementId = props.announcementId
 
     if (announcementId === null) {
-      const [users, departments, roles] = await Promise.all([
-        getUserOptions(),
-        getDepartmentTreeOptions(),
-        getRoleOptions(),
-      ])
+      const { users, departments, roles } = await getAnnouncementTargetOptions()
 
       return {
         users,
@@ -109,17 +109,9 @@ const {
       }
     }
 
-    const announcement = await getAnnouncement(announcementId)
-    const userTargetIds = getTargetIds(announcement.targets, ANNOUNCEMENT_TARGET_TYPE_USER)
-    const departmentTargetIds = getTargetIds(
-      announcement.targets,
-      ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
-    )
-    const roleTargetIds = getTargetIds(announcement.targets, ANNOUNCEMENT_TARGET_TYPE_ROLE)
-    const [users, departments, roles] = await Promise.all([
-      getUserOptions(userTargetIds),
-      getDepartmentTreeOptions(departmentTargetIds),
-      getRoleOptions(roleTargetIds),
+    const [announcement, { users, departments, roles }] = await Promise.all([
+      getAnnouncement(announcementId),
+      getAnnouncementTargetOptions(announcementId),
     ])
 
     return {

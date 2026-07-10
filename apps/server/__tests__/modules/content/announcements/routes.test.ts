@@ -99,6 +99,7 @@ const mocks = vi.hoisted(() => {
     get: vi.fn(),
     list: vi.fn(),
     publish: vi.fn(),
+    targetOptions: vi.fn(),
     update: vi.fn(),
   }
 
@@ -130,6 +131,11 @@ describe('announcement routes', () => {
     mocks.createAnnouncementService.mockReturnValue(mocks.service)
     mocks.service.list.mockResolvedValue(listResponse)
     mocks.service.get.mockResolvedValue(announcement)
+    mocks.service.targetOptions.mockResolvedValue({
+      users: [],
+      departments: [],
+      roles: [],
+    })
     mocks.service.create.mockResolvedValue(announcement)
     mocks.service.update.mockResolvedValue({ ...announcement, title: '维护通知（更新）' })
     mocks.service.publish.mockResolvedValue(undefined)
@@ -142,6 +148,7 @@ describe('announcement routes', () => {
 
     expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
       [
+        'content:announcement:list',
         'content:announcement:list',
         'content:announcement:list',
         'content:announcement:create',
@@ -173,6 +180,12 @@ describe('announcement routes', () => {
     const detailResponse = await app.request(`/api/content/announcements/${announcementId}`)
     expect(detailResponse.status).toBe(200)
     expect(mocks.service.get).toHaveBeenCalledWith(announcementId)
+
+    const targetOptionsResponse = await app.request(
+      `/api/content/announcements/target-options?announcementId=${announcementId}`,
+    )
+    expect(targetOptionsResponse.status).toBe(200)
+    expect(mocks.service.targetOptions).toHaveBeenCalledWith({ announcementId })
 
     const createResponse = await app.request('/api/content/announcements', {
       method: 'POST',
@@ -260,6 +273,13 @@ describe('announcement routes', () => {
     expect(idResponse.status).toBe(400)
     expect(await idResponse.json()).toEqual({ message: '通知公告 ID 无效' })
     expect(mocks.service.get).not.toHaveBeenCalled()
+
+    const targetOptionsResponse = await app.request(
+      '/api/content/announcements/target-options?announcementId=not-a-uuid',
+    )
+    expect(targetOptionsResponse.status).toBe(400)
+    expect(await targetOptionsResponse.json()).toEqual({ message: '查询参数无效' })
+    expect(mocks.service.targetOptions).not.toHaveBeenCalled()
 
     const invalidBodyResponse = await app.request('/api/content/announcements', {
       method: 'POST',

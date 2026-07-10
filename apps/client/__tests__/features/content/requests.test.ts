@@ -18,6 +18,7 @@ import {
   deleteCustomIconSet,
   exportCustomIconSet,
   getAnnouncement,
+  getAnnouncementTargetOptions,
   getCustomIconSet,
   getMyAnnouncement,
   listAnnouncements,
@@ -231,6 +232,27 @@ describe('content request helpers', () => {
     expectFetchCall(fetchMock, 0, {
       method: 'GET',
       pathname: `/api/content/announcements/${announcementId}`,
+    })
+  })
+
+  it('gets announcement target options for editing', async () => {
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        users: [],
+        departments: [],
+        roles: [],
+      }),
+    )
+    useAuthStore().accessToken = 'access-token'
+
+    const result = await getAnnouncementTargetOptions(announcementId)
+
+    expect(result).toEqual({ users: [], departments: [], roles: [] })
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/content/announcements/target-options',
+      query: { announcementId },
     })
   })
 

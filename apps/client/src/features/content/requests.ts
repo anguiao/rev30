@@ -3,6 +3,7 @@ import {
   announcementMyDetailSchema,
   announcementMyListResponseSchema,
   announcementSchema,
+  announcementTargetOptionsResponseSchema,
   builtinIconListResponseSchema,
   builtinIconSetListResponseSchema,
   customIconItemSchema,
@@ -17,6 +18,7 @@ import {
   type AnnouncementMyDetail,
   type AnnouncementMyListQuery,
   type AnnouncementMyListResponse,
+  type AnnouncementTargetOptionsResponse,
   type AnnouncementUpdateInput,
   type BuiltinIconListResponse,
   type BuiltinIconSetListResponse,
@@ -49,6 +51,17 @@ export async function getAnnouncement(id: string): Promise<Announcement> {
   return parseApiResponse(
     await api.content.announcements[':id'].$get({ param: { id } }),
     announcementSchema,
+  )
+}
+
+export async function getAnnouncementTargetOptions(
+  announcementId?: string,
+): Promise<AnnouncementTargetOptionsResponse> {
+  return parseApiResponse(
+    await api.content.announcements['target-options'].$get({
+      query: normalizeRequestQuery({ announcementId }),
+    }),
+    announcementTargetOptionsResponseSchema,
   )
 }
 

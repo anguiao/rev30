@@ -1,10 +1,12 @@
 import {
   type AnnouncementCreateInput,
   type AnnouncementListQuery,
+  type AnnouncementTargetOptionsQuery,
   type AnnouncementUpdateInput,
   announcementCreateSchema,
   announcementListQuerySchema,
   announcementSchema,
+  announcementTargetOptionsQuerySchema,
   announcementUpdateSchema,
 } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
@@ -35,6 +37,16 @@ const announcementIdValidator = zValidator('param', announcementIdParamSchema, (
 const announcementListQueryValidator = zValidator(
   'query',
   announcementListRequestQuerySchema,
+  (result, c) => {
+    if (!result.success) {
+      return c.json({ message: '查询参数无效' }, 400)
+    }
+  },
+)
+
+const announcementTargetOptionsQueryValidator = zValidator(
+  'query',
+  announcementTargetOptionsQuerySchema,
   (result, c) => {
     if (!result.success) {
       return c.json({ message: '查询参数无效' }, 400)
@@ -98,6 +110,16 @@ export function createAnnouncementRoutes(database: Db) {
         const query: AnnouncementListQuery = c.req.valid('query')
 
         return c.json(await service.list(query))
+      },
+    )
+    .get(
+      '/target-options',
+      requireAccess('content:announcement:list'),
+      announcementTargetOptionsQueryValidator,
+      async (c) => {
+        const query: AnnouncementTargetOptionsQuery = c.req.valid('query')
+
+        return c.json(await service.targetOptions(query))
       },
     )
     .get('/:id', requireAccess('content:announcement:list'), announcementIdValidator, async (c) => {

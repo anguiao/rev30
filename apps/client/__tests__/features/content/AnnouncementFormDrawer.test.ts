@@ -19,6 +19,7 @@ import {
   ROLE_STATUS_ENABLED,
   USER_STATUS_ENABLED,
   type Announcement,
+  type AnnouncementTargetOptionsResponse,
   type DepartmentTreeOptionsResponse,
   type RoleOptionsResponse,
   type UserOptionsResponse,
@@ -26,6 +27,7 @@ import {
 import {
   createAnnouncement,
   getAnnouncement,
+  getAnnouncementTargetOptions,
   updateAnnouncement,
 } from '../../../src/features/content'
 import {
@@ -33,11 +35,6 @@ import {
   getAttachmentContentUrl,
   uploadAttachment,
 } from '../../../src/features/attachments'
-import {
-  getDepartmentTreeOptions,
-  getRoleOptions,
-  getUserOptions,
-} from '../../../src/features/system'
 import AnnouncementFormDrawer from '../../../src/features/content/AnnouncementFormDrawer.vue'
 import { createTestPinia } from '../../helpers/pinia'
 
@@ -100,6 +97,7 @@ vi.mock('../../../src/features/content', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/content')>()),
   createAnnouncement: vi.fn(),
   getAnnouncement: vi.fn(),
+  getAnnouncementTargetOptions: vi.fn(),
   updateAnnouncement: vi.fn(),
 }))
 
@@ -114,23 +112,14 @@ vi.mock('../../../src/features/attachments', async (importOriginal) => ({
   getAttachmentContentUrl: vi.fn((id: string) => `/api/attachments/${id}/content`),
 }))
 
-vi.mock('../../../src/features/system', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/system')>()),
-  getDepartmentTreeOptions: vi.fn(),
-  getRoleOptions: vi.fn(),
-  getUserOptions: vi.fn(),
-}))
-
 const createAnnouncementMock = vi.mocked(createAnnouncement)
 const getAnnouncementMock = vi.mocked(getAnnouncement)
+const getAnnouncementTargetOptionsMock = vi.mocked(getAnnouncementTargetOptions)
 const getErrorMessageMock = vi.mocked(getErrorMessage)
 const updateAnnouncementMock = vi.mocked(updateAnnouncement)
 const compressImageFileMock = vi.mocked(compressImageFile)
 const uploadAttachmentMock = vi.mocked(uploadAttachment)
 const getAttachmentContentUrlMock = vi.mocked(getAttachmentContentUrl)
-const getDepartmentTreeOptionsMock = vi.mocked(getDepartmentTreeOptions)
-const getRoleOptionsMock = vi.mocked(getRoleOptions)
-const getUserOptionsMock = vi.mocked(getUserOptions)
 
 const announcementId = '11111111-1111-4111-8111-111111111111'
 const userTargetId = '22222222-2222-4222-8222-222222222222'
@@ -165,6 +154,12 @@ const roleOptionsResponse: RoleOptionsResponse = [
     status: ROLE_STATUS_ENABLED,
   },
 ]
+
+const targetOptionsResponse: AnnouncementTargetOptionsResponse = {
+  users: userOptionsResponse,
+  departments: departmentOptionsResponse,
+  roles: roleOptionsResponse,
+}
 
 const announcementResponse: Announcement = {
   id: announcementId,
@@ -264,19 +259,14 @@ describe('AnnouncementFormDrawer', () => {
     createCompactRichTextEditorPresetMock.mockClear()
     createAnnouncementMock.mockReset()
     getAnnouncementMock.mockReset()
+    getAnnouncementTargetOptionsMock.mockReset()
     getErrorMessageMock.mockClear()
     updateAnnouncementMock.mockReset()
     compressImageFileMock.mockReset()
     compressImageFileMock.mockImplementation(async (file) => file)
     uploadAttachmentMock.mockReset()
     getAttachmentContentUrlMock.mockClear()
-    getDepartmentTreeOptionsMock.mockReset()
-    getRoleOptionsMock.mockReset()
-    getUserOptionsMock.mockReset()
-
-    getDepartmentTreeOptionsMock.mockResolvedValue(departmentOptionsResponse)
-    getRoleOptionsMock.mockResolvedValue(roleOptionsResponse)
-    getUserOptionsMock.mockResolvedValue(userOptionsResponse)
+    getAnnouncementTargetOptionsMock.mockResolvedValue(targetOptionsResponse)
   })
 
   it('configures rich text image uploads as authenticated announcement attachments', async () => {
@@ -331,9 +321,7 @@ describe('AnnouncementFormDrawer', () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
-    expect(getUserOptionsMock).toHaveBeenCalledWith()
-    expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith()
-    expect(getRoleOptionsMock).toHaveBeenCalledWith()
+    expect(getAnnouncementTargetOptionsMock).toHaveBeenCalledWith()
     expect(getTestComponent(wrapper, 'announcement-form-visibility').props('value')).toBe(
       ANNOUNCEMENT_VISIBILITY_TARGETED,
     )
@@ -352,9 +340,7 @@ describe('AnnouncementFormDrawer', () => {
 
     expect(wrapper.text()).toContain('编辑通知公告')
     expect(getAnnouncementMock).toHaveBeenCalledWith(announcementId)
-    expect(getUserOptionsMock).toHaveBeenCalledWith([userTargetId])
-    expect(getDepartmentTreeOptionsMock).toHaveBeenCalledWith([departmentTargetId])
-    expect(getRoleOptionsMock).toHaveBeenCalledWith([roleTargetId])
+    expect(getAnnouncementTargetOptionsMock).toHaveBeenCalledWith(announcementId)
     expect(getTestComponent(wrapper, 'announcement-form-visibility').props('value')).toBe(
       ANNOUNCEMENT_VISIBILITY_TARGETED,
     )

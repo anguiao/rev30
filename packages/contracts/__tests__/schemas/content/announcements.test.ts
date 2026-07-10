@@ -18,6 +18,8 @@ import {
   announcementListResponseSchema,
   announcementSchema,
   announcementCreateSchema,
+  announcementTargetOptionsQuerySchema,
+  announcementTargetOptionsResponseSchema,
   announcementTargetSchema,
   announcementUpdateSchema,
 } from '../../../src/content/announcements'
@@ -112,6 +114,51 @@ describe('announcement schemas', () => {
       total: 1,
       list: [{ title: '维护通知', readStats: { recipientCount: 3, readCount: 1 } }],
     })
+  })
+
+  it('accepts announcement target options queries and responses', () => {
+    expect(announcementTargetOptionsQuerySchema.parse({})).toEqual({})
+    expect(announcementTargetOptionsQuerySchema.parse({ announcementId })).toEqual({
+      announcementId,
+    })
+    expect(
+      announcementTargetOptionsResponseSchema.parse({
+        users: [
+          {
+            id: '22222222-2222-4222-8222-222222222222',
+            username: 'ada',
+            nickname: 'Ada',
+            status: 1,
+          },
+        ],
+        departments: [
+          {
+            id: '33333333-3333-4333-8333-333333333333',
+            parentId: null,
+            name: '研发部',
+            code: 'rd',
+            status: 1,
+            children: [],
+          },
+        ],
+        roles: [
+          {
+            id: '44444444-4444-4444-8444-444444444444',
+            name: '公告管理员',
+            code: 'announcement-manager',
+            status: 1,
+          },
+        ],
+      }),
+    ).toMatchObject({
+      users: [{ username: 'ada' }],
+      departments: [{ code: 'rd' }],
+      roles: [{ code: 'announcement-manager' }],
+    })
+
+    expect(
+      announcementTargetOptionsQuerySchema.safeParse({ announcementId: 'invalid' }).success,
+    ).toBe(false)
   })
 
   it('normalizes create input defaults and blank summary', () => {

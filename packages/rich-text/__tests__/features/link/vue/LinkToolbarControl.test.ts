@@ -110,6 +110,23 @@ describe('LinkToolbarControl', () => {
     expect(remountedWrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(true)
   })
 
+  it.each([
+    ['example.com:8080/docs', 'https://example.com:8080/docs'],
+    ['/docs', '/docs'],
+    ['#details', '#details'],
+  ])('applies supported link input: %s', async (input, expectedHref) => {
+    const editor = createEditor()
+    selectEditorText(editor)
+    const wrapper = mountControl(editor)
+
+    await openPopover(wrapper)
+    await getUrlInput(wrapper).setValue(input)
+    await getUrlInput(wrapper).trigger('keydown.enter')
+    await flushPromises()
+
+    expect(editor.getAttributes('link').href).toBe(expectedHref)
+  })
+
   it('does not open automatically before the editor is focused', async () => {
     const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
     selectEditorText(editor)
@@ -193,18 +210,21 @@ describe('LinkToolbarControl', () => {
     expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
   })
 
-  it('does not write unsafe links', async () => {
-    const editor = createEditor()
-    selectEditorText(editor)
-    const wrapper = mountControl(editor)
+  it.each(['javascript:alert(1)', 'ftp://example.com', 'http:example.com'])(
+    'does not write unsafe links: %s',
+    async (href) => {
+      const editor = createEditor()
+      selectEditorText(editor)
+      const wrapper = mountControl(editor)
 
-    await openPopover(wrapper)
-    await getUrlInput(wrapper).setValue('javascript:alert(1)')
-    await getUrlInput(wrapper).trigger('keydown.enter')
-    await flushPromises()
+      await openPopover(wrapper)
+      await getUrlInput(wrapper).setValue(href)
+      await getUrlInput(wrapper).trigger('keydown.enter')
+      await flushPromises()
 
-    expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
-  })
+      expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
+    },
+  )
 
   it('does not apply protocol-relative links', async () => {
     const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')

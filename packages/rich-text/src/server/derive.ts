@@ -1,21 +1,37 @@
-import type { AnyExtension } from '@tiptap/core'
-import { getSchema } from '@tiptap/core'
+import type { AnyExtension, JSONContent, TextSerializer } from '@tiptap/core'
+import { getSchema, getText, getTextSerializersFromSchema } from '@tiptap/core'
 import { generateHTML } from '@tiptap/html/server'
 import { Node as ProseMirrorNode, type Schema } from '@tiptap/pm/model'
 import { collectRichTextExtensions } from '../core/preset'
-import { hasRichTextContent } from '../schema'
+import { hasRichTextContent, type RichTextDocument } from '../schema'
 import { RichTextContentInvalidError } from './errors'
-import type { RichTextHtmlPolicy } from './policy'
 import type { RichTextServerPreset } from './presets/types'
-import { sanitizeRichTextHtml } from './sanitize'
+import { createRichTextHtmlSanitizer } from './sanitize'
 
 interface RichTextServerRuntime {
   schema: Schema
   extensions: AnyExtension[]
-  htmlPolicies: RichTextHtmlPolicy[]
+  textSerializers: Record<string, TextSerializer>
+  sanitizeHtml: (html: string) => string
 }
 
 const serverRuntimeCache = new WeakMap<RichTextServerPreset, RichTextServerRuntime>()
+
+function normalizeDocumentJson(node: JSONContent) {
+  if (
+    node.type === 'image' &&
+    node.attrs !== undefined &&
+    (node.attrs.width === null || node.attrs.width === undefined) &&
+    node.attrs.height !== null &&
+    node.attrs.height !== undefined
+  ) {
+    node.attrs.height = null
+  }
+
+  for (const child of node.content ?? []) {
+    normalizeDocumentJson(child)
+  }
+}
 
 function getServerRuntime(preset: RichTextServerPreset): RichTextServerRuntime {
   const cachedRuntime = serverRuntimeCache.get(preset)
@@ -25,10 +41,12 @@ function getServerRuntime(preset: RichTextServerPreset): RichTextServerRuntime {
   }
 
   const extensions = collectRichTextExtensions(preset)
+  const schema = getSchema(extensions)
   const runtime = {
-    schema: getSchema(extensions),
+    schema,
     extensions,
-    htmlPolicies: preset.htmlPolicies,
+    textSerializers: getTextSerializersFromSchema(schema),
+    sanitizeHtml: createRichTextHtmlSanitizer(preset.htmlPolicies),
   }
   serverRuntimeCache.set(preset, runtime)
 
@@ -41,20 +59,29 @@ export function deriveRichTextContent(contentJson: unknown, preset: RichTextServ
 
   try {
     document = ProseMirrorNode.fromJSON(runtime.schema, contentJson)
+
+    if (document.type !== runtime.schema.topNodeType) {
+      throw new RangeError('Rich text content must use the schema top node')
+    }
+
+    document.check()
   } catch {
     throw new RichTextContentInvalidError()
   }
 
-  const text = document.textBetween(0, document.content.size, '\n\n').trim()
+  const json = document.toJSON() as JSONContent & RichTextDocument
+  normalizeDocumentJson(json)
+  const text = getText(document, { textSerializers: runtime.textSerializers }).trim()
 
-  if (!hasRichTextContent(document.toJSON())) {
+  if (!hasRichTextContent(json)) {
     throw new RichTextContentInvalidError()
   }
 
-  const html = generateHTML(document.toJSON(), runtime.extensions)
+  const html = generateHTML(json, runtime.extensions)
 
   return {
+    json,
     text,
-    html: sanitizeRichTextHtml(html, runtime.htmlPolicies),
+    html: runtime.sanitizeHtml(html),
   }
 }

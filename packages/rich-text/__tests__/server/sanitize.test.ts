@@ -1,8 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import type { RichTextHtmlPolicy } from '../../src/server/policy'
-import { sanitizeRichTextHtml } from '../../src/server/sanitize'
+import { createRichTextHtmlSanitizer, sanitizeRichTextHtml } from '../../src/server/sanitize'
 
 describe('sanitizeRichTextHtml', () => {
+  it('compiles policies when creating a reusable sanitizer', () => {
+    const policy: RichTextHtmlPolicy = {
+      allowedTags: ['p'],
+    }
+    const sanitize = createRichTextHtmlSanitizer([policy])
+
+    policy.allowedTags?.push('strong')
+
+    expect(sanitize('<p>正文</p><strong>强调</strong>')).toBe('<p>正文</p>强调')
+    expect(sanitizeRichTextHtml('<p>正文</p><strong>强调</strong>', [policy])).toBe(
+      '<p>正文</p><strong>强调</strong>',
+    )
+  })
+
   it('composes transforms targeting the same tag in policy order', () => {
     const trimLinkPolicy: RichTextHtmlPolicy = {
       allowedTags: ['a'],

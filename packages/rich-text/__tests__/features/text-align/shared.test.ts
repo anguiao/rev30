@@ -35,4 +35,29 @@ describe('text align feature', () => {
       ],
     })
   })
+
+  it.each(['left', 'center', 'right', null])('accepts the supported alignment: %s', (textAlign) => {
+    const editor = createEditor()
+
+    expect(() =>
+      editor.schema.nodeFromJSON({
+        type: 'paragraph',
+        attrs: { textAlign },
+      }),
+    ).not.toThrow()
+  })
+
+  it.each(['justify', 'left; position: fixed', 1, {}])(
+    'rejects an unsupported alignment: %s',
+    (textAlign) => {
+      const editor = createEditor()
+
+      expect(() =>
+        editor.schema.nodeFromJSON({
+          type: 'paragraph',
+          attrs: { textAlign },
+        }),
+      ).toThrow()
+    },
+  )
 })

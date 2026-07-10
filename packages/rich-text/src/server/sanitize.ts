@@ -76,6 +76,12 @@ function mergeRichTextHtmlPolicies(policies: RichTextHtmlPolicy[]): sanitizeHtml
   }
 }
 
+export function createRichTextHtmlSanitizer(policies: RichTextHtmlPolicy[]) {
+  const options = mergeRichTextHtmlPolicies(policies)
+
+  return (html: string) => sanitizeHtml(html, options)
+}
+
 export function sanitizeRichTextHtml(html: string, policies: RichTextHtmlPolicy[]) {
   return sanitizeHtml(html, mergeRichTextHtmlPolicies(policies))
 }

@@ -244,7 +244,16 @@ describe('announcement routes', () => {
     const detailResponse = await app.request(`/api/content/announcements/${createdDraft.id}`)
     const detailBody = (await detailResponse.json()) as Announcement
     expect(detailResponse.status).toBe(200)
-    expect(detailBody.contentJson).toEqual(createBody.contentJson)
+    expect(detailBody.contentJson).toEqual({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: { textAlign: null },
+          content: [{ type: 'text', text: '今晚维护' }],
+        },
+      ],
+    })
     expect(detailBody.contentHtml).toBe(createBodyContentHtml)
     expect(detailBody.visibility).toBe(ANNOUNCEMENT_VISIBILITY_ALL)
     expect(detailBody.targets).toEqual([])
@@ -520,6 +529,68 @@ describe('announcement routes', () => {
     expect(response.status).toBe(200)
     expect(body.contentText).toBe('维护时间改到 23:00')
     expect(body.contentHtml).toContain('维护时间改到 23:00')
+  })
+
+  it('persists schema-canonical content json when creating and updating announcements', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const { body: created, response: createResponse } = await createAnnouncement(app, {
+      ...createBody,
+      contentJson: {
+        type: 'doc',
+        unsupported: 'root',
+        content: [
+          {
+            type: 'paragraph',
+            attrs: { unsupported: 'paragraph' },
+            content: [{ type: 'text', text: '创建内容' }],
+          },
+        ],
+      },
+    })
+
+    expect(createResponse.status).toBe(201)
+    expect(created.contentJson).toEqual({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: { textAlign: null },
+          content: [{ type: 'text', text: '创建内容' }],
+        },
+      ],
+    })
+
+    const updateResponse = await app.request(`/api/content/announcements/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        contentJson: {
+          type: 'doc',
+          unsupported: 'root',
+          content: [
+            {
+              type: 'heading',
+              attrs: { level: 2, unsupported: 'heading' },
+              content: [{ type: 'text', text: '更新内容' }],
+            },
+          ],
+        },
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const updated = (await updateResponse.json()) as Announcement
+
+    expect(updateResponse.status).toBe(200)
+    expect(updated.contentJson).toEqual({
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { textAlign: null, level: 2 },
+          content: [{ type: 'text', text: '更新内容' }],
+        },
+      ],
+    })
   })
 
   it('syncs attachment references when creating, updating, and deleting announcements', async () => {

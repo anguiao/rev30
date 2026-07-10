@@ -57,7 +57,7 @@ describe('link feature', () => {
     })
   })
 
-  it.each(['ftp://example.com', '//example.com'])(
+  it.each(['ftp://example.com', '//example.com', 'http:example.com'])(
     'does not link unsupported URL pasted over selected text: %s',
     (url) => {
       const editor = createEditor()
@@ -67,4 +67,75 @@ describe('link feature', () => {
       expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
     },
   )
+
+  it('links bare hosts with ports pasted over selected text', () => {
+    const editor = createEditor()
+    selectEditorText(editor)
+
+    expect(pasteTextOverSelection(editor, 'example.com:8080/docs')).toBe(true)
+
+    expect(editor.getAttributes('link').href).toBe('https://example.com:8080/docs')
+  })
+
+  it.each(['/docs', '#details'])('allows same-site href values: %s', (href) => {
+    const editor = createEditor()
+    selectEditorText(editor)
+
+    expect(editor.commands.setLink({ href })).toBe(true)
+    expect(editor.getAttributes('link').href).toBe(href)
+  })
+
+  it('rejects unsafe href values during document validation', () => {
+    const editor = createEditor()
+    const link = editor.schema.mark('link', { href: 'javascript:alert(1)' })
+    const text = editor.schema.text('维护通知', [link])
+    const paragraph = editor.schema.node('paragraph', null, text)
+    const document = editor.schema.node('doc', null, paragraph)
+
+    expect(() => document.check()).toThrow('Invalid link href')
+  })
+
+  it('does not persist presentation attributes on link marks', () => {
+    const editor = createEditor()
+    const document = editor.schema.nodeFromJSON({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://example.com',
+                    target: '_self',
+                    rel: 'author',
+                    class: 'custom-link',
+                    title: 'Example',
+                  },
+                },
+              ],
+              text: '维护通知',
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(document.toJSON()).toMatchObject({
+      content: [
+        {
+          content: [
+            {
+              marks: [{ type: 'link', attrs: { href: 'https://example.com' } }],
+            },
+          ],
+        },
+      ],
+    })
+    expect(JSON.stringify(document.toJSON())).not.toContain('custom-link')
+    expect(JSON.stringify(document.toJSON())).not.toContain('author')
+  })
 })

@@ -41,4 +41,49 @@ describe('image feature shared rendering', () => {
     expect(html).toContain('height="360"')
     expect(html).toMatch(/style="width: 640px; max-width: 100%; height: auto;?"/)
   })
+
+  it('accepts valid image attributes from JSON', () => {
+    const editor = createEditor('<p>维护通知</p>')
+
+    expect(() =>
+      editor.schema.nodeFromJSON({
+        type: 'image',
+        attrs: {
+          src: '/api/attachments/cover/content',
+          alt: '说明',
+          width: 640,
+          height: 360,
+        },
+      }),
+    ).not.toThrow()
+  })
+
+  it.each([
+    { name: 'src', value: null },
+    { name: 'src', value: 1 },
+    { name: 'alt', value: 1 },
+    { name: 'width', value: '640' },
+    { name: 'width', value: 0 },
+    { name: 'width', value: -1 },
+    { name: 'width', value: 1.5 },
+    { name: 'height', value: '360' },
+    { name: 'height', value: 0 },
+    { name: 'height', value: -1 },
+    { name: 'height', value: 1.5 },
+  ])('rejects an invalid $name attribute: $value', ({ name, value }) => {
+    const editor = createEditor('<p>维护通知</p>')
+
+    expect(() =>
+      editor.schema.nodeFromJSON({
+        type: 'image',
+        attrs: {
+          src: '/api/attachments/cover/content',
+          alt: null,
+          width: null,
+          height: null,
+          [name]: value,
+        },
+      }),
+    ).toThrow()
+  })
 })

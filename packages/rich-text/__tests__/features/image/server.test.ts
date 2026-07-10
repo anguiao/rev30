@@ -65,6 +65,12 @@ describe('image html policy', () => {
     ).toThrow(RichTextContentInvalidError)
   })
 
+  it('rejects internal image sources with surrounding whitespace', () => {
+    expect(() =>
+      sanitizeRichTextHtml(`<img src=" ${attachmentSrc} " alt="示意图" />`, [imagePolicy]),
+    ).toThrow(RichTextContentInvalidError)
+  })
+
   it('drops invalid dimensions and keeps overflow protection', () => {
     const sanitized = sanitizeRichTextHtml(
       `<img src="${attachmentSrc}" alt="示意图" width="0" height="-1" style="width: 9999px">`,

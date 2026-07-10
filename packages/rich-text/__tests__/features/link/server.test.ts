@@ -40,12 +40,23 @@ describe('link html policy', () => {
     expect(attributes.rel).toBe('noopener noreferrer nofollow')
   })
 
-  it('normalizes href values without explicit protocol', () => {
-    const sanitized = sanitizeRichTextHtml('<a href="example.com">示例</a>', [linkHtmlPolicy])
+  it.each([
+    ['example.com', 'https://example.com'],
+    ['example.com:8080/docs', 'https://example.com:8080/docs'],
+  ])('normalizes href values without explicit protocol: %s', (href, expectedHref) => {
+    const sanitized = sanitizeRichTextHtml(`<a href="${href}">示例</a>`, [linkHtmlPolicy])
 
     const attributes = getAnchorAttributes(sanitized)
 
-    expect(attributes.href).toBe('https://example.com')
+    expect(attributes.href).toBe(expectedHref)
+  })
+
+  it.each(['/docs', '#details'])('keeps same-site href values: %s', (href) => {
+    const sanitized = sanitizeRichTextHtml(`<a href="${href}">示例</a>`, [linkHtmlPolicy])
+
+    const attributes = getAnchorAttributes(sanitized)
+
+    expect(attributes.href).toBe(href)
   })
 
   it('removes dangerous href values while keeping forced safe attributes', () => {
@@ -61,14 +72,26 @@ describe('link html policy', () => {
     expect(sanitized).not.toContain('javascript:')
   })
 
-  it('removes protocol-relative href values', () => {
-    const sanitized = sanitizeRichTextHtml('<a href="//example.com">示例</a>', [linkHtmlPolicy])
+  it('removes unsupported absolute schemes', () => {
+    const sanitized = sanitizeRichTextHtml('<a href="ftp://example.com">示例</a>', [linkHtmlPolicy])
 
     const attributes = getAnchorAttributes(sanitized)
 
     expect(attributes.href).toBeUndefined()
-    expect(sanitized).not.toContain('//example.com')
+    expect(sanitized).not.toContain('ftp:')
   })
+
+  it.each(['//example.com', '/\\example.com'])(
+    'removes protocol-relative href values: %s',
+    (href) => {
+      const sanitized = sanitizeRichTextHtml(`<a href="${href}">示例</a>`, [linkHtmlPolicy])
+
+      const attributes = getAnchorAttributes(sanitized)
+
+      expect(attributes.href).toBeUndefined()
+      expect(sanitized).not.toContain(href)
+    },
+  )
 
   it('allows mail and telephone links', () => {
     const sanitized = sanitizeRichTextHtml(

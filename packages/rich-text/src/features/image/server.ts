@@ -8,7 +8,7 @@ export interface RichTextImageServerOptions {
 
 export function createImageHtmlPolicy(options: RichTextImageServerOptions): RichTextHtmlPolicy {
   const transformImage: RichTextTagTransform = ({ tagName, attribs }) => {
-    const src = attribs.src?.trim() ?? ''
+    const src = attribs.src ?? ''
 
     if (!options.isAllowedSrc(src)) {
       throw new RichTextContentInvalidError()

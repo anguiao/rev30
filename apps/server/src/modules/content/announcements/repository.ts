@@ -412,7 +412,7 @@ export function createAnnouncementRepository(database: Db) {
       const { publish, targets, ...announcementInput } = input
       const now = new Date()
       const content = deriveAnnouncementContent(announcementInput.contentJson)
-      const attachmentIds = extractAnnouncementAttachmentIds(announcementInput.contentJson)
+      const attachmentIds = extractAnnouncementAttachmentIds(content.json)
       const normalizedTargets = normalizeTargetsForVisibility(input.visibility, targets)
 
       return await database.transaction(async (tx) => {
@@ -426,6 +426,7 @@ export function createAnnouncementRepository(database: Db) {
           .insert(announcements)
           .values({
             ...announcementInput,
+            contentJson: content.json,
             contentText: content.text,
             contentHtml: content.html,
             status: publish ? ANNOUNCEMENT_STATUS_PUBLISHED : ANNOUNCEMENT_STATUS_DRAFT,
@@ -459,9 +460,7 @@ export function createAnnouncementRepository(database: Db) {
           ? undefined
           : deriveAnnouncementContent(announcementInput.contentJson)
       const attachmentIds =
-        announcementInput.contentJson === undefined
-          ? undefined
-          : extractAnnouncementAttachmentIds(announcementInput.contentJson)
+        content === undefined ? undefined : extractAnnouncementAttachmentIds(content.json)
 
       return await database.transaction(async (tx) => {
         const [existing] = await tx
@@ -494,6 +493,7 @@ export function createAnnouncementRepository(database: Db) {
           .set({
             ...announcementInput,
             visibility: finalVisibility,
+            contentJson: content?.json,
             contentText: content?.text,
             contentHtml: content?.html,
             status: publish ? ANNOUNCEMENT_STATUS_PUBLISHED : undefined,

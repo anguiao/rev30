@@ -13,6 +13,16 @@ describe('announcement content helpers', () => {
         content: [{ type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] }],
       }),
     ).toEqual({
+      json: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            attrs: { textAlign: null },
+            content: [{ type: 'text', text: '维护通知' }],
+          },
+        ],
+      },
       text: '维护通知',
       html: '<p>维护通知</p>',
     })
@@ -64,9 +74,40 @@ describe('announcement content helpers', () => {
         ],
       }),
     ).toEqual({
+      json: {
+        type: 'doc',
+        content: [
+          {
+            type: 'image',
+            attrs: {
+              src: '/api/attachments/11111111-1111-4111-8111-111111111111/content',
+              alt: '示意图',
+              width: null,
+              height: null,
+            },
+          },
+        ],
+      },
       text: '',
       html: '<img src="/api/attachments/11111111-1111-4111-8111-111111111111/content" alt="示意图" style="max-width:100%;height:auto" />',
     })
+  })
+
+  it('rejects attachment image sources with surrounding whitespace', () => {
+    expect(() =>
+      deriveAnnouncementContent({
+        type: 'doc',
+        content: [
+          {
+            type: 'image',
+            attrs: {
+              src: ' /api/attachments/11111111-1111-4111-8111-111111111111/content ',
+              alt: '示意图',
+            },
+          },
+        ],
+      }),
+    ).toThrow(AnnouncementContentInvalidError)
   })
 
   it('allows attachment image UUID versions accepted by zod', () => {

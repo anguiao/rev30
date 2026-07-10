@@ -10,6 +10,12 @@ export interface RichTextImageAttrs {
   height?: number
 }
 
+function validateImageDimension(value: unknown) {
+  if (value !== null && (typeof value !== 'number' || !Number.isInteger(value) || value <= 0)) {
+    throw new RangeError('Invalid image dimension')
+  }
+}
+
 export const imageFeature = defineRichTextFeature({
   key: 'image',
   extension: () =>
@@ -20,8 +26,17 @@ export const imageFeature = defineRichTextFeature({
 
         return {
           ...parentAttributes,
+          src: {
+            ...parentAttributes.src,
+            validate: 'string',
+          },
+          alt: {
+            ...parentAttributes.alt,
+            validate: 'string|null',
+          },
           width: {
             default: null,
+            validate: validateImageDimension,
             parseHTML: (element) => normalizeImageDimension(element.getAttribute('width')),
             renderHTML: (attributes) => {
               const { width } = normalizeImageSize(attributes)
@@ -30,6 +45,7 @@ export const imageFeature = defineRichTextFeature({
           },
           height: {
             default: null,
+            validate: validateImageDimension,
             parseHTML: (element) => normalizeImageDimension(element.getAttribute('height')),
             renderHTML: (attributes) => {
               const { height } = normalizeImageSize(attributes)

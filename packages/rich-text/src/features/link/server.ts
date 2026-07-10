@@ -1,8 +1,9 @@
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
-import { normalizeLinkHref } from './href'
+import { isAllowedLinkHref, linkAllowedSchemes, normalizeLinkHref } from './href'
 
 const transformAnchor: RichTextTagTransform = ({ tagName, attribs }) => {
-  const href = normalizeLinkHref(attribs.href ?? '')
+  const normalizedHref = normalizeLinkHref(attribs.href ?? '')
+  const href = isAllowedLinkHref(normalizedHref) ? normalizedHref : ''
 
   return {
     tagName,
@@ -19,7 +20,7 @@ export const linkHtmlPolicy: RichTextHtmlPolicy = {
   allowedAttributes: {
     a: ['href', 'target', 'rel'],
   },
-  allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+  allowedSchemes: [...linkAllowedSchemes],
   transformTags: {
     a: [transformAnchor],
   },

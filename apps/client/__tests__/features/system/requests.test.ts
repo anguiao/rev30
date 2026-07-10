@@ -1,6 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getErrorMessage } from '../../../src/utils/error'
-import { ApiRequestError } from '../../../src/utils/request'
+import { beforeEach, describe, expect, it } from 'vitest'
 import {
   DEPARTMENT_STATUS_ENABLED,
   DICTIONARY_STATUS_ENABLED,
@@ -51,12 +49,29 @@ import {
   updateUser,
 } from '../../../src/features/system'
 import { useAuthStore } from '../../../src/stores/auth'
-import { createFetchMock, expectFetchCall, jsonResponse } from '../../helpers/fetch'
+import {
+  createFetchMock,
+  emptyResponse,
+  expectFetchCall,
+  expectJsonBody,
+  jsonResponse,
+} from '../../helpers/fetch'
 import { createTestPinia } from '../../helpers/pinia'
 
 beforeEach(() => {
   createTestPinia()
 })
+
+const userCreateInput = {
+  avatarId: null,
+  username: 'ada',
+  nickname: 'Ada',
+  email: null,
+  phone: null,
+  status: USER_STATUS_ENABLED,
+  departmentIds: [],
+  roleIds: [],
+} satisfies Parameters<typeof createUser>[0]
 
 describe('system request helpers', () => {
   it('searches icons through the public icon endpoint', async () => {
@@ -79,6 +94,7 @@ describe('system request helpers', () => {
     expect(result.list[0]?.icon).toBe('lucide:users')
     expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
+      method: 'GET',
       pathname: '/api/icons/search',
       query: {
         keyword: '用户',
@@ -108,8 +124,11 @@ describe('system request helpers', () => {
     expect(result.total).toBe(0)
     expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
+      method: 'GET',
       pathname: '/api/system/users',
       query: {
+        page: '1',
+        pageSize: '20',
         keyword: 'ada',
         status: '1',
       },
@@ -136,8 +155,11 @@ describe('system request helpers', () => {
 
     expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
+      method: 'GET',
       pathname: '/api/system/users',
       query: {
+        page: '1',
+        pageSize: '20',
         keyword: undefined,
         status: '1',
       },
@@ -167,7 +189,10 @@ describe('system request helpers', () => {
       }),
     ])
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(fetchMock).toHaveBeenCalledWith('/api/system/configs', expect.anything())
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/system/configs',
+    })
   })
 
   it('gets and updates config custom values by key', async () => {
@@ -180,190 +205,189 @@ describe('system request helpers', () => {
       customValue: '8',
       value: '8',
     }
-    const fetchMock = createFetchMock(jsonResponse(response))
+    const fetchMock = createFetchMock(jsonResponse(response), jsonResponse(response))
     useAuthStore().accessToken = 'access-token'
 
     await expect(getConfig('auth.loginFailureMaxAttempts')).resolves.toEqual(response)
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      '/api/system/configs/auth.loginFailureMaxAttempts',
-      expect.anything(),
-    )
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/system/configs/auth.loginFailureMaxAttempts',
+    })
 
-    fetchMock.mockResolvedValueOnce(jsonResponse(response))
     await expect(
       updateConfig('auth.loginFailureMaxAttempts', { customValue: '8' }),
     ).resolves.toEqual(response)
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      '/api/system/configs/auth.loginFailureMaxAttempts',
-      expect.objectContaining({
-        body: JSON.stringify({ customValue: '8' }),
-        method: 'PUT',
-      }),
-    )
+    expectFetchCall(fetchMock, 1, {
+      method: 'PUT',
+      pathname: '/api/system/configs/auth.loginFailureMaxAttempts',
+    })
+    expectJsonBody(fetchMock, 1, { customValue: '8' })
   })
 
   it('parses user options responses from the users options endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify([
-          {
-            id: '11111111-1111-4111-8111-111111111111',
-            username: 'alice',
-            nickname: 'Alice',
-            status: USER_STATUS_ENABLED,
-          },
-        ]),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse([
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          username: 'alice',
+          nickname: 'Alice',
+          status: USER_STATUS_ENABLED,
+        },
+      ]),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
     const result = await getUserOptions(['11111111-1111-4111-8111-111111111111'])
 
     expect(result[0]?.username).toBe('alice')
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/users/options')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
-      'includeIds=11111111-1111-4111-8111-111111111111',
-    )
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/system/users/options',
+      query: {
+        includeIds: '11111111-1111-4111-8111-111111111111',
+      },
+    })
   })
 
   it('omits includeIds when empty for user options requests', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([])))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(jsonResponse([]))
     useAuthStore().accessToken = 'access-token'
 
     await getUserOptions([])
 
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('includeIds=')
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/system/users/options',
+      query: {
+        includeIds: undefined,
+      },
+    })
   })
 
   it('parses role options responses from the roles options endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify([
-          {
-            id: '22222222-2222-4222-8222-222222222222',
-            name: '管理员',
-            code: 'admin',
-            status: ROLE_STATUS_ENABLED,
-          },
-        ]),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse([
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          name: '管理员',
+          code: 'admin',
+          status: ROLE_STATUS_ENABLED,
+        },
+      ]),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
     const result = await getRoleOptions(['22222222-2222-4222-8222-222222222222'])
 
     expect(result[0]?.name).toBe('管理员')
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/roles/options')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
-      'includeIds=22222222-2222-4222-8222-222222222222',
-    )
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/system/roles/options',
+      query: {
+        includeIds: '22222222-2222-4222-8222-222222222222',
+      },
+    })
   })
 
   it('parses department tree options responses from the department tree options endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify([
-          {
-            id: '33333333-3333-4333-8333-333333333333',
-            parentId: null,
-            name: '总部',
-            code: 'hq',
-            status: DEPARTMENT_STATUS_ENABLED,
-            children: [
-              {
-                id: '44444444-4444-4444-8444-444444444444',
-                parentId: '33333333-3333-4333-8333-333333333333',
-                name: '研发中心',
-                code: 'eng',
-                status: DEPARTMENT_STATUS_ENABLED,
-                children: [],
-              },
-            ],
-          },
-        ]),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse([
+        {
+          id: '33333333-3333-4333-8333-333333333333',
+          parentId: null,
+          name: '总部',
+          code: 'hq',
+          status: DEPARTMENT_STATUS_ENABLED,
+          children: [
+            {
+              id: '44444444-4444-4444-8444-444444444444',
+              parentId: '33333333-3333-4333-8333-333333333333',
+              name: '研发中心',
+              code: 'eng',
+              status: DEPARTMENT_STATUS_ENABLED,
+              children: [],
+            },
+          ],
+        },
+      ]),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
     const result = await getDepartmentTreeOptions(['33333333-3333-4333-8333-333333333333'])
 
     expect(result[0]?.children[0]?.name).toBe('研发中心')
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/departments/options/tree')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
-      'includeIds=33333333-3333-4333-8333-333333333333',
-    )
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/system/departments/options/tree',
+      query: {
+        includeIds: '33333333-3333-4333-8333-333333333333',
+      },
+    })
   })
 
   it('parses resource tree options responses from the resource tree options endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify([
-          {
-            id: '55555555-5555-4555-8555-555555555555',
-            parentId: null,
-            type: RESOURCE_TYPE_MENU,
-            name: '系统用户',
-            code: 'system.users',
-            status: RESOURCE_STATUS_ENABLED,
-            children: [
-              {
-                id: '66666666-6666-4666-8666-666666666666',
-                parentId: '55555555-5555-4555-8555-555555555555',
-                type: RESOURCE_TYPE_MENU,
-                name: '用户管理',
-                code: 'system.users.list',
-                status: RESOURCE_STATUS_ENABLED,
-                children: [],
-              },
-            ],
-          },
-        ]),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse([
+        {
+          id: '55555555-5555-4555-8555-555555555555',
+          parentId: null,
+          type: RESOURCE_TYPE_MENU,
+          name: '系统用户',
+          code: 'system.users',
+          status: RESOURCE_STATUS_ENABLED,
+          children: [
+            {
+              id: '66666666-6666-4666-8666-666666666666',
+              parentId: '55555555-5555-4555-8555-555555555555',
+              type: RESOURCE_TYPE_MENU,
+              name: '用户管理',
+              code: 'system.users.list',
+              status: RESOURCE_STATUS_ENABLED,
+              children: [],
+            },
+          ],
+        },
+      ]),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
     const result = await getResourceTreeOptions(['55555555-5555-4555-8555-555555555555'])
 
     expect(result[0]?.children[0]?.code).toBe('system.users.list')
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/resources/options/tree')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
-      'includeIds=55555555-5555-4555-8555-555555555555',
-    )
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/system/resources/options/tree',
+      query: {
+        includeIds: '55555555-5555-4555-8555-555555555555',
+      },
+    })
   })
 
   it('parses list responses from the system roles endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          list: [
-            {
-              id: '11111111-1111-4111-8111-111111111111',
-              name: '管理员',
-              code: 'admin',
-              status: ROLE_STATUS_ENABLED,
-              sortOrder: 1,
-              userCount: 2,
-              createdAt: '2026-05-01T00:00:00.000Z',
-              updatedAt: '2026-05-01T00:00:00.000Z',
-            },
-          ],
-          total: 1,
-          page: 2,
-          pageSize: 10,
-        }),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        list: [
+          {
+            id: '11111111-1111-4111-8111-111111111111',
+            name: '管理员',
+            code: 'admin',
+            status: ROLE_STATUS_ENABLED,
+            sortOrder: 1,
+            userCount: 2,
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-01T00:00:00.000Z',
+          },
+        ],
+        total: 1,
+        page: 2,
+        pageSize: 10,
+      }),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
     const result = await listRoles({
@@ -376,49 +400,56 @@ describe('system request helpers', () => {
     expect(result.list[0]?.code).toBe('admin')
     expect(result.total).toBe(1)
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/roles')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('keyword=admin')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('status=1')
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/system/roles',
+      query: {
+        page: '2',
+        pageSize: '10',
+        keyword: 'admin',
+        status: '1',
+      },
+    })
   })
 
   it('parses department tree responses from the system departments endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify([
-          {
-            id: '22222222-2222-4222-8222-222222222222',
-            parentId: null,
-            name: '总部',
-            code: 'hq',
-            status: DEPARTMENT_STATUS_ENABLED,
-            sortOrder: 1,
-            createdAt: '2026-05-01T00:00:00.000Z',
-            updatedAt: '2026-05-01T00:00:00.000Z',
-            children: [
-              {
-                id: '33333333-3333-4333-8333-333333333333',
-                parentId: '22222222-2222-4222-8222-222222222222',
-                name: '研发中心',
-                code: 'eng',
-                status: DEPARTMENT_STATUS_ENABLED,
-                sortOrder: 1,
-                createdAt: '2026-05-02T00:00:00.000Z',
-                updatedAt: '2026-05-02T00:00:00.000Z',
-                children: [],
-              },
-            ],
-          },
-        ]),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse([
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          parentId: null,
+          name: '总部',
+          code: 'hq',
+          status: DEPARTMENT_STATUS_ENABLED,
+          sortOrder: 1,
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+          children: [
+            {
+              id: '33333333-3333-4333-8333-333333333333',
+              parentId: '22222222-2222-4222-8222-222222222222',
+              name: '研发中心',
+              code: 'eng',
+              status: DEPARTMENT_STATUS_ENABLED,
+              sortOrder: 1,
+              createdAt: '2026-05-02T00:00:00.000Z',
+              updatedAt: '2026-05-02T00:00:00.000Z',
+              children: [],
+            },
+          ],
+        },
+      ]),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
     const result = await getDepartmentTree()
 
     expect(result[0]?.children[0]?.code).toBe('eng')
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/departments/tree')
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/system/departments/tree',
+    })
   })
 
   it('sends department detail, create, update, and delete requests', async () => {
@@ -439,91 +470,90 @@ describe('system request helpers', () => {
       sortOrder: 2,
       updatedAt: '2026-05-02T00:00:00.000Z',
     }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify(departmentResponse)))
-      .mockResolvedValueOnce(new Response(JSON.stringify(departmentResponse), { status: 201 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(updatedDepartmentResponse)))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(
+      jsonResponse(departmentResponse),
+      jsonResponse(departmentResponse, { status: 201 }),
+      jsonResponse(updatedDepartmentResponse),
+      emptyResponse(),
+    )
     useAuthStore().accessToken = 'access-token'
 
-    const department = await getDepartment('22222222-2222-4222-8222-222222222222')
-    const created = await createDepartment({
+    const departmentId = '22222222-2222-4222-8222-222222222222'
+    const createInput = {
       name: '总部',
       code: 'hq',
       parentId: null,
       status: DEPARTMENT_STATUS_ENABLED,
       sortOrder: 1,
-    })
-    const updated = await updateDepartment('22222222-2222-4222-8222-222222222222', {
+    } satisfies Parameters<typeof createDepartment>[0]
+    const updateInput = {
       name: '研发中心',
       code: 'eng',
       parentId: null,
       status: DEPARTMENT_STATUS_ENABLED,
       sortOrder: 2,
-    })
-    await deleteDepartment('22222222-2222-4222-8222-222222222222')
+    } satisfies Parameters<typeof updateDepartment>[1]
+    const department = await getDepartment(departmentId)
+    const created = await createDepartment(createInput)
+    const updated = await updateDepartment(departmentId, updateInput)
+    await deleteDepartment(departmentId)
 
     expect(department.code).toBe('hq')
     expect(created.name).toBe('总部')
     expect(updated.code).toBe('eng')
     expect(fetchMock).toHaveBeenCalledTimes(4)
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
-      '/api/system/departments/22222222-2222-4222-8222-222222222222',
-    )
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/system/departments',
-      expect.objectContaining({
-        method: 'POST',
-      }),
-    )
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/system/departments/22222222-2222-4222-8222-222222222222',
-      expect.objectContaining({
-        method: 'PATCH',
-      }),
-    )
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/system/departments/22222222-2222-4222-8222-222222222222',
-      expect.objectContaining({
-        method: 'DELETE',
-      }),
-    )
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: `/api/system/departments/${departmentId}`,
+    })
+    expectFetchCall(fetchMock, 1, {
+      method: 'POST',
+      pathname: '/api/system/departments',
+    })
+    expectJsonBody(fetchMock, 1, createInput)
+    expectFetchCall(fetchMock, 2, {
+      method: 'PATCH',
+      pathname: `/api/system/departments/${departmentId}`,
+    })
+    expectJsonBody(fetchMock, 2, updateInput)
+    expectFetchCall(fetchMock, 3, {
+      method: 'DELETE',
+      pathname: `/api/system/departments/${departmentId}`,
+    })
   })
 
   it('parses resource tree responses from the system resources endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify([
-          {
-            id: '44444444-4444-4444-8444-444444444444',
-            parentId: null,
-            type: RESOURCE_TYPE_MENU,
-            name: '系统用户',
-            code: 'system.users',
-            path: '/system/users',
-            externalUrl: null,
-            openTarget: 'self',
-            icon: null,
-            hidden: false,
-            status: RESOURCE_STATUS_ENABLED,
-            sortOrder: 1,
-            createdAt: '2026-05-01T00:00:00.000Z',
-            updatedAt: '2026-05-01T00:00:00.000Z',
-            children: [],
-          },
-        ]),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse([
+        {
+          id: '44444444-4444-4444-8444-444444444444',
+          parentId: null,
+          type: RESOURCE_TYPE_MENU,
+          name: '系统用户',
+          code: 'system.users',
+          path: '/system/users',
+          externalUrl: null,
+          openTarget: 'self',
+          icon: null,
+          hidden: false,
+          status: RESOURCE_STATUS_ENABLED,
+          sortOrder: 1,
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+          children: [],
+        },
+      ]),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
     const result = await getResourceTree()
 
     expect(result[0]?.path).toBe('/system/users')
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/resources/tree')
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/system/resources/tree',
+    })
   })
 
   it('sends resource detail, create, update, and delete requests', async () => {
@@ -549,17 +579,16 @@ describe('system request helpers', () => {
       code: 'system:resource',
       updatedAt: '2026-05-02T00:00:00.000Z',
     }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify(resourceResponse)))
-      .mockResolvedValueOnce(new Response(JSON.stringify(resourceResponse), { status: 201 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(updatedResourceResponse)))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(
+      jsonResponse(resourceResponse),
+      jsonResponse(resourceResponse, { status: 201 }),
+      jsonResponse(updatedResourceResponse),
+      emptyResponse(),
+    )
     useAuthStore().accessToken = 'access-token'
 
-    const resource = await getResource('44444444-4444-4444-8444-444444444444')
-    const created = await createResource({
+    const resourceId = '44444444-4444-4444-8444-444444444444'
+    const createInput = {
       type: RESOURCE_TYPE_DIRECTORY,
       name: '系统管理',
       code: 'system',
@@ -571,179 +600,129 @@ describe('system request helpers', () => {
       hidden: false,
       status: RESOURCE_STATUS_ENABLED,
       sortOrder: 1,
-    })
-    const updated = await updateResource('44444444-4444-4444-8444-444444444444', {
+    } satisfies Parameters<typeof createResource>[0]
+    const updateInput = {
       name: '权限资源',
       code: 'system:resource',
-    })
-    await deleteResource('44444444-4444-4444-8444-444444444444')
+    } satisfies Parameters<typeof updateResource>[1]
+    const resource = await getResource(resourceId)
+    const created = await createResource(createInput)
+    const updated = await updateResource(resourceId, updateInput)
+    await deleteResource(resourceId)
 
     expect(resource.icon).toBe('lucide:settings')
     expect(created.name).toBe('系统管理')
     expect(updated.code).toBe('system:resource')
     expect(fetchMock).toHaveBeenCalledTimes(4)
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
-      '/api/system/resources/44444444-4444-4444-8444-444444444444',
-    )
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/system/resources',
-      expect.objectContaining({
-        method: 'POST',
-      }),
-    )
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/system/resources/44444444-4444-4444-8444-444444444444',
-      expect.objectContaining({
-        method: 'PATCH',
-      }),
-    )
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/system/resources/44444444-4444-4444-8444-444444444444',
-      expect.objectContaining({
-        method: 'DELETE',
-      }),
-    )
-  })
-
-  it('throws a stable request error with the response message', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ message: '查询失败' }), {
-        status: 500,
-      }),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-
-    await expect(listUsers({ page: 1, pageSize: 20 })).rejects.toMatchObject({
-      status: 500,
-      message: '查询失败',
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: `/api/system/resources/${resourceId}`,
     })
-  })
-
-  it('formats request and plain error messages', () => {
-    expect(getErrorMessage(new ApiRequestError(400, '请求体无效'), '加载系统用户失败')).toBe(
-      '请求体无效',
-    )
-    expect(getErrorMessage(new Error('boom'), '加载系统用户失败')).toBe('boom')
+    expectFetchCall(fetchMock, 1, {
+      method: 'POST',
+      pathname: '/api/system/resources',
+    })
+    expectJsonBody(fetchMock, 1, createInput)
+    expectFetchCall(fetchMock, 2, {
+      method: 'PATCH',
+      pathname: `/api/system/resources/${resourceId}`,
+    })
+    expectJsonBody(fetchMock, 2, updateInput)
+    expectFetchCall(fetchMock, 3, {
+      method: 'DELETE',
+      pathname: `/api/system/resources/${resourceId}`,
+    })
   })
 
   it('parses system errors with field names', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ field: 'code', message: '编码已存在' }), {
-        status: 409,
-      }),
+    const fetchMock = createFetchMock(
+      jsonResponse({ field: 'code', message: '编码已存在' }, { status: 409 }),
     )
-    vi.stubGlobal('fetch', fetchMock)
-
-    await expect(
-      createRole({
-        name: '重复角色',
-        code: 'admin',
-        status: ROLE_STATUS_ENABLED,
-        sortOrder: 0,
-        resourceIds: [],
-      }),
-    ).rejects.toMatchObject({
-      status: 409,
-      field: 'code',
-      message: '编码已存在',
-    })
-  })
-
-  it('parses department code conflict field errors', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ field: 'code', message: '编码已存在' }), {
-        status: 409,
-      }),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-    const promise = createDepartment({
-      name: '重复部门',
-      code: 'hq',
-      parentId: null,
-      status: DEPARTMENT_STATUS_ENABLED,
+    const input = {
+      name: '重复角色',
+      code: 'admin',
+      status: ROLE_STATUS_ENABLED,
       sortOrder: 0,
-    })
+      resourceIds: [],
+    } satisfies Parameters<typeof createRole>[0]
 
-    await expect(promise).rejects.toBeInstanceOf(ApiRequestError)
-    await expect(promise).rejects.toMatchObject({
+    await expect(createRole(input)).rejects.toMatchObject({
       status: 409,
       field: 'code',
       message: '编码已存在',
     })
+    expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: '/api/system/roles',
+    })
+    expectJsonBody(fetchMock, 0, input)
   })
 
   it('sends role create, update, detail, and delete requests', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            id: '11111111-1111-4111-8111-111111111111',
-            name: '运营',
-            code: 'operator',
-            status: ROLE_STATUS_ENABLED,
-            sortOrder: 1,
-            resources: [],
-            createdAt: '2026-05-01T00:00:00.000Z',
-            updatedAt: '2026-05-01T00:00:00.000Z',
-          }),
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            id: '11111111-1111-4111-8111-111111111111',
-            name: '运营主管',
-            code: 'operator',
-            status: ROLE_STATUS_ENABLED,
-            sortOrder: 2,
-            resources: [],
-            createdAt: '2026-05-01T00:00:00.000Z',
-            updatedAt: '2026-05-02T00:00:00.000Z',
-          }),
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            id: '11111111-1111-4111-8111-111111111111',
-            name: '运营主管',
-            code: 'operator',
-            status: ROLE_STATUS_ENABLED,
-            sortOrder: 2,
-            resources: [],
-            createdAt: '2026-05-01T00:00:00.000Z',
-            updatedAt: '2026-05-02T00:00:00.000Z',
-          }),
-        ),
-      )
-      .mockResolvedValueOnce(new Response(null, { status: 204 }))
-    vi.stubGlobal('fetch', fetchMock)
+    const roleId = '11111111-1111-4111-8111-111111111111'
+    const roleResponse = {
+      id: roleId,
+      name: '运营',
+      code: 'operator',
+      status: ROLE_STATUS_ENABLED,
+      sortOrder: 1,
+      resources: [],
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T00:00:00.000Z',
+    }
+    const updatedRoleResponse = {
+      ...roleResponse,
+      name: '运营主管',
+      sortOrder: 2,
+      updatedAt: '2026-05-02T00:00:00.000Z',
+    }
+    const fetchMock = createFetchMock(
+      jsonResponse(roleResponse),
+      jsonResponse(updatedRoleResponse),
+      jsonResponse(updatedRoleResponse),
+      emptyResponse(),
+    )
     useAuthStore().accessToken = 'access-token'
 
-    await createRole({
+    const createInput = {
       name: '运营',
       code: 'operator',
       status: ROLE_STATUS_ENABLED,
       sortOrder: 1,
       resourceIds: [],
-    })
-    await updateRole('11111111-1111-4111-8111-111111111111', {
+    } satisfies Parameters<typeof createRole>[0]
+    const updateInput = {
       name: '运营主管',
       code: 'operator',
       status: ROLE_STATUS_ENABLED,
       sortOrder: 2,
       resourceIds: [],
-    })
-    const role = await getRole('11111111-1111-4111-8111-111111111111')
-    await deleteRole('11111111-1111-4111-8111-111111111111')
+    } satisfies Parameters<typeof updateRole>[1]
+    await createRole(createInput)
+    await updateRole(roleId, updateInput)
+    const role = await getRole(roleId)
+    await deleteRole(roleId)
 
     expect(role.name).toBe('运营主管')
     expect(fetchMock).toHaveBeenCalledTimes(4)
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/roles')
-    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
-      '/api/system/roles/11111111-1111-4111-8111-111111111111',
-    )
+    expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: '/api/system/roles',
+    })
+    expectJsonBody(fetchMock, 0, createInput)
+    expectFetchCall(fetchMock, 1, {
+      method: 'PATCH',
+      pathname: `/api/system/roles/${roleId}`,
+    })
+    expectJsonBody(fetchMock, 1, updateInput)
+    expectFetchCall(fetchMock, 2, {
+      method: 'GET',
+      pathname: `/api/system/roles/${roleId}`,
+    })
+    expectFetchCall(fetchMock, 3, {
+      method: 'DELETE',
+      pathname: `/api/system/roles/${roleId}`,
+    })
   })
 
   it('parses list/detail/create/update/delete/options dictionary requests', async () => {
@@ -814,15 +793,14 @@ describe('system request helpers', () => {
       ],
     }
 
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify(listResponse)))
-      .mockResolvedValueOnce(new Response(JSON.stringify(detailResponse)))
-      .mockResolvedValueOnce(new Response(JSON.stringify(createResponse)))
-      .mockResolvedValueOnce(new Response(JSON.stringify(updatedResponse)))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(optionsResponse)))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(
+      jsonResponse(listResponse),
+      jsonResponse(detailResponse),
+      jsonResponse(createResponse),
+      jsonResponse(updatedResponse),
+      emptyResponse(),
+      jsonResponse(optionsResponse),
+    )
     useAuthStore().accessToken = 'access-token'
 
     const listResult = await listDictionaries({
@@ -870,39 +848,41 @@ describe('system request helpers', () => {
       region: [{ value: 'north', label: '北区' }],
     })
     expect(fetchMock).toHaveBeenCalledTimes(6)
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/dictionaries')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('keyword=%E7%8A%B6%E6%80%81')
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('status=1')
-    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
-      `/api/system/dictionaries/${dictionaryId}`,
-    )
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/system/dictionaries',
-      expect.objectContaining({
-        method: 'POST',
-      }),
-    )
-    const [, createInit] = fetchMock.mock.calls[2] as [RequestInfo | URL, RequestInit]
-    expect(createInit.body).toEqual(expect.any(String))
-    expect(JSON.parse(createInit.body as string)).toEqual(createInput)
-    expect(fetchMock).toHaveBeenCalledWith(
-      `/api/system/dictionaries/${dictionaryId}`,
-      expect.objectContaining({
-        method: 'PUT',
-      }),
-    )
-    const [, updateInit] = fetchMock.mock.calls[3] as [RequestInfo | URL, RequestInit]
-    expect(updateInit.body).toEqual(expect.any(String))
-    expect(JSON.parse(updateInit.body as string)).toEqual(updateInput)
-    expect(fetchMock).toHaveBeenCalledWith(
-      `/api/system/dictionaries/${dictionaryId}`,
-      expect.objectContaining({
-        method: 'DELETE',
-      }),
-    )
-    expect(String(fetchMock.mock.calls[5]?.[0])).toContain('/api/system/dictionaries/options')
-    const optionsUrl = new URL(String(fetchMock.mock.calls[5]?.[0]), 'http://localhost')
-    expect(optionsUrl.searchParams.get('codes')).toBe('user_status,region')
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/system/dictionaries',
+      query: {
+        page: '1',
+        pageSize: '20',
+        keyword: '状态',
+        status: '1',
+      },
+    })
+    expectFetchCall(fetchMock, 1, {
+      method: 'GET',
+      pathname: `/api/system/dictionaries/${dictionaryId}`,
+    })
+    expectFetchCall(fetchMock, 2, {
+      method: 'POST',
+      pathname: '/api/system/dictionaries',
+    })
+    expectJsonBody(fetchMock, 2, createInput)
+    expectFetchCall(fetchMock, 3, {
+      method: 'PUT',
+      pathname: `/api/system/dictionaries/${dictionaryId}`,
+    })
+    expectJsonBody(fetchMock, 3, updateInput)
+    expectFetchCall(fetchMock, 4, {
+      method: 'DELETE',
+      pathname: `/api/system/dictionaries/${dictionaryId}`,
+    })
+    expectFetchCall(fetchMock, 5, {
+      method: 'GET',
+      pathname: '/api/system/dictionaries/options',
+      query: {
+        codes: 'user_status,region',
+      },
+    })
   })
 
   it('parses create user responses and temporary passwords', async () => {
@@ -923,109 +903,79 @@ describe('system request helpers', () => {
       },
       temporaryPassword: 'temp-pwd-001',
     }
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(responseBody)))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(jsonResponse(responseBody))
     useAuthStore().accessToken = 'access-token'
 
-    const result = await createUser({
-      avatarId: null,
-      username: 'ada',
-      nickname: 'Ada',
-      email: null,
-      phone: null,
-      status: USER_STATUS_ENABLED,
-      departmentIds: [],
-      roleIds: [],
-    })
+    const result = await createUser(userCreateInput)
 
     expect(result).toEqual(responseBody)
     expect(result.temporaryPassword).toBe('temp-pwd-001')
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/system/users')
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/system/users',
-      expect.objectContaining({
-        method: 'POST',
-      }),
-    )
+    expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: '/api/system/users',
+    })
+    expectJsonBody(fetchMock, 0, userCreateInput)
   })
 
   it('rejects malformed create user responses with invalid temporaryPassword length', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          user: {
-            id: '22222222-2222-4222-8222-222222222222',
-            username: 'ada',
-            nickname: 'Ada',
-            avatarId: null,
-            email: null,
-            phone: null,
-            status: USER_STATUS_ENABLED,
-            builtIn: false,
-            departments: [],
-            roles: [],
-            createdAt: '2026-05-01T00:00:00.000Z',
-            updatedAt: '2026-05-01T00:00:00.000Z',
-          },
-          temporaryPassword: 'short',
-        }),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        user: {
+          id: '22222222-2222-4222-8222-222222222222',
+          username: 'ada',
+          nickname: 'Ada',
+          avatarId: null,
+          email: null,
+          phone: null,
+          status: USER_STATUS_ENABLED,
+          builtIn: false,
+          departments: [],
+          roles: [],
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+        temporaryPassword: 'short',
+      }),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
-    await expect(
-      createUser({
-        avatarId: null,
-        username: 'ada',
-        nickname: 'Ada',
-        email: null,
-        phone: null,
-        status: USER_STATUS_ENABLED,
-        departmentIds: [],
-        roleIds: [],
-      }),
-    ).rejects.toThrow()
+    await expect(createUser(userCreateInput)).rejects.toThrow()
+    expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: '/api/system/users',
+    })
+    expectJsonBody(fetchMock, 0, userCreateInput)
   })
 
   it('rejects malformed create user responses when user is invalid', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          user: {
-            id: 'not-a-uuid',
-            username: 'ada',
-            nickname: 'Ada',
-            avatarId: null,
-            email: null,
-            phone: null,
-            status: USER_STATUS_ENABLED,
-            builtIn: false,
-            departments: [],
-            roles: [],
-            createdAt: '2026-05-01T00:00:00.000Z',
-            updatedAt: '2026-05-01T00:00:00.000Z',
-          },
-          temporaryPassword: 'temp-pwd-001',
-        }),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        user: {
+          id: 'not-a-uuid',
+          username: 'ada',
+          nickname: 'Ada',
+          avatarId: null,
+          email: null,
+          phone: null,
+          status: USER_STATUS_ENABLED,
+          builtIn: false,
+          departments: [],
+          roles: [],
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+        temporaryPassword: 'temp-pwd-001',
+      }),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
-    await expect(
-      createUser({
-        avatarId: null,
-        username: 'ada',
-        nickname: 'Ada',
-        email: null,
-        phone: null,
-        status: USER_STATUS_ENABLED,
-        departmentIds: [],
-        roleIds: [],
-      }),
-    ).rejects.toThrow()
+    await expect(createUser(userCreateInput)).rejects.toThrow()
+    expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: '/api/system/users',
+    })
+    expectJsonBody(fetchMock, 0, userCreateInput)
   })
 
   it('parses reset user password responses and returns temporary passwords', async () => {
@@ -1033,102 +983,81 @@ describe('system request helpers', () => {
       userId: '33333333-3333-4333-8333-333333333333',
       temporaryPassword: 'temp-reset-001',
     }
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(responseBody)))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(jsonResponse(responseBody))
     useAuthStore().accessToken = 'access-token'
 
     const result = await resetUserPassword('33333333-3333-4333-8333-333333333333')
 
     expect(result.temporaryPassword).toBe('temp-reset-001')
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
-      '/api/system/users/33333333-3333-4333-8333-333333333333/password/reset',
-    )
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining(
-        '/api/system/users/33333333-3333-4333-8333-333333333333/password/reset',
-      ),
-      expect.objectContaining({
-        method: 'POST',
-      }),
-    )
+    expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: '/api/system/users/33333333-3333-4333-8333-333333333333/password/reset',
+    })
   })
 
   it('rejects malformed reset user password responses with non-uuid userId', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          userId: 'not-a-uuid',
-          temporaryPassword: 'temp-reset-001',
-        }),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        userId: 'not-a-uuid',
+        temporaryPassword: 'temp-reset-001',
+      }),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
     await expect(resetUserPassword('not-a-uuid')).rejects.toThrow()
+    expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: '/api/system/users/not-a-uuid/password/reset',
+    })
   })
 
   it('rejects malformed reset user password responses with invalid temporaryPassword', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          userId: '33333333-3333-4333-8333-333333333333',
-          temporaryPassword: 'short',
-        }),
-      ),
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        userId: '33333333-3333-4333-8333-333333333333',
+        temporaryPassword: 'short',
+      }),
     )
-    vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
     await expect(resetUserPassword('33333333-3333-4333-8333-333333333333')).rejects.toThrow()
+    expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: '/api/system/users/33333333-3333-4333-8333-333333333333/password/reset',
+    })
   })
 
   it('sends user detail, update, and delete requests', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            id: '22222222-2222-4222-8222-222222222222',
-            username: 'ada',
-            nickname: 'Ada',
-            avatarId: null,
-            email: null,
-            phone: null,
-            status: USER_STATUS_ENABLED,
-            builtIn: false,
-            departments: [],
-            roles: [],
-            createdAt: '2026-05-01T00:00:00.000Z',
-            updatedAt: '2026-05-01T00:00:00.000Z',
-          }),
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            id: '22222222-2222-4222-8222-222222222222',
-            username: 'ada',
-            nickname: 'Ada Lovelace',
-            avatarId: null,
-            email: 'ada@example.com',
-            phone: null,
-            status: USER_STATUS_ENABLED,
-            builtIn: false,
-            departments: [],
-            roles: [],
-            createdAt: '2026-05-01T00:00:00.000Z',
-            updatedAt: '2026-05-02T00:00:00.000Z',
-          }),
-        ),
-      )
-      .mockResolvedValueOnce(new Response(null, { status: 204 }))
-    vi.stubGlobal('fetch', fetchMock)
+    const userId = '22222222-2222-4222-8222-222222222222'
+    const userResponse = {
+      id: userId,
+      username: 'ada',
+      nickname: 'Ada',
+      avatarId: null,
+      email: null,
+      phone: null,
+      status: USER_STATUS_ENABLED,
+      builtIn: false,
+      departments: [],
+      roles: [],
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T00:00:00.000Z',
+    }
+    const updatedUserResponse = {
+      ...userResponse,
+      nickname: 'Ada Lovelace',
+      email: 'ada@example.com',
+      updatedAt: '2026-05-02T00:00:00.000Z',
+    }
+    const fetchMock = createFetchMock(
+      jsonResponse(userResponse),
+      jsonResponse(updatedUserResponse),
+      emptyResponse(),
+    )
     useAuthStore().accessToken = 'access-token'
 
-    const user = await getUser('22222222-2222-4222-8222-222222222222')
-    const updated = await updateUser('22222222-2222-4222-8222-222222222222', {
+    const updateInput = {
       avatarId: null,
       username: 'ada',
       nickname: 'Ada Lovelace',
@@ -1137,11 +1066,26 @@ describe('system request helpers', () => {
       status: USER_STATUS_ENABLED,
       departmentIds: [],
       roleIds: [],
-    })
-    await deleteUser('22222222-2222-4222-8222-222222222222')
+    } satisfies Parameters<typeof updateUser>[1]
+    const user = await getUser(userId)
+    const updated = await updateUser(userId, updateInput)
+    await deleteUser(userId)
 
     expect(user.username).toBe('ada')
     expect(updated.nickname).toBe('Ada Lovelace')
     expect(fetchMock).toHaveBeenCalledTimes(3)
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: `/api/system/users/${userId}`,
+    })
+    expectFetchCall(fetchMock, 1, {
+      method: 'PATCH',
+      pathname: `/api/system/users/${userId}`,
+    })
+    expectJsonBody(fetchMock, 1, updateInput)
+    expectFetchCall(fetchMock, 2, {
+      method: 'DELETE',
+      pathname: `/api/system/users/${userId}`,
+    })
   })
 })

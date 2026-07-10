@@ -1,4 +1,3 @@
-import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -12,6 +11,7 @@ import { useAuthStore } from '../../src/stores/auth'
 import { refreshSession } from '../../src/features/auth/requests'
 import { installAuthGuards } from '../../src/router/guards'
 import { ApiRequestError } from '../../src/utils/request'
+import { createTestPinia } from '../helpers/pinia'
 
 vi.mock('../../src/features/auth/requests', () => ({
   refreshSession: vi.fn(),
@@ -105,7 +105,7 @@ function createTestRouter() {
 
 describe('auth guards', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
+    createTestPinia()
     refreshSessionMock.mockReset()
   })
 

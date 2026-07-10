@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
 import type { AuthTokenResponse } from '@rev30/contracts'
 import { USER_STATUS_ENABLED } from '@rev30/contracts'
 import { useAuthStore } from '../../src/stores/auth'
+import { createTestPinia } from '../helpers/pinia'
 
 const session: AuthTokenResponse = {
   accessToken: 'access-token',
@@ -81,7 +81,7 @@ const session: AuthTokenResponse = {
 
 describe('auth store', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
+    createTestPinia()
   })
 
   it('stores the access token, current user, access codes, and menus from a session response', () => {

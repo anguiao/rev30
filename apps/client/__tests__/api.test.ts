@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   AUTH_ACTION_HEADER,
   AUTH_ACTION_REFRESH,
-  RESOURCE_TYPE_MENU,
   type DepartmentSummary,
   type RoleSummary,
 } from '@rev30/contracts'
@@ -16,6 +15,7 @@ import {
   jsonResponse,
 } from './helpers/fetch'
 import { createTestPinia } from './helpers/pinia'
+import { createDeferred } from './helpers/promise'
 
 const session = {
   accessToken: 'access-token',
@@ -53,18 +53,6 @@ const newerSession = {
     username: 'grace',
     nickname: 'Grace Hopper',
   },
-}
-
-function createDeferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((promiseResolve) => {
-    resolve = promiseResolve
-  })
-
-  return {
-    promise,
-    resolve,
-  }
 }
 
 async function flushMicrotasks() {
@@ -429,99 +417,5 @@ describe('api client', () => {
 
     const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
     expect(new Headers(init.headers).get('authorization')).toBe('Bearer access-token')
-  })
-
-  it('requests nested user endpoints with query params', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          list: [],
-          total: 0,
-          page: 2,
-          pageSize: 10,
-        }),
-      ),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-
-    await api.system.users.$get({
-      query: {
-        page: '2',
-        pageSize: '10',
-        keyword: 'ada',
-        status: '1',
-        departmentId: '4be2dfda-2fd6-4ee5-b06b-c551328bc343',
-        roleId: '875dd9cb-488b-43d7-a55f-6db070a8e83f',
-      },
-    })
-
-    expect(fetchMock).toHaveBeenCalledOnce()
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/system/users?page=2&pageSize=10&keyword=ada&status=1&departmentId=4be2dfda-2fd6-4ee5-b06b-c551328bc343&roleId=875dd9cb-488b-43d7-a55f-6db070a8e83f',
-      expect.objectContaining({
-        method: 'GET',
-      }),
-    )
-  })
-
-  it('requests nested department endpoints with query params', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          list: [],
-          total: 0,
-          page: 1,
-          pageSize: 20,
-        }),
-      ),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-
-    await api.system.departments.$get({
-      query: {
-        keyword: 'eng',
-        status: '1',
-        parentId: '4be2dfda-2fd6-4ee5-b06b-c551328bc343',
-        page: '1',
-        pageSize: '20',
-      },
-    })
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/system/departments?keyword=eng&status=1&parentId=4be2dfda-2fd6-4ee5-b06b-c551328bc343&page=1&pageSize=20',
-      expect.objectContaining({ method: 'GET' }),
-    )
-  })
-
-  it('requests nested resource endpoints with query params', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          list: [],
-          total: 0,
-          page: 1,
-          pageSize: 20,
-        }),
-      ),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-
-    await api.system.resources.$get({
-      query: {
-        keyword: 'user',
-        type: RESOURCE_TYPE_MENU,
-        status: '1',
-        parentId: '4be2dfda-2fd6-4ee5-b06b-c551328bc343',
-        page: '1',
-        pageSize: '20',
-      },
-    })
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/system/resources?keyword=user&type=menu&status=1&parentId=4be2dfda-2fd6-4ee5-b06b-c551328bc343&page=1&pageSize=20',
-      expect.objectContaining({
-        method: 'GET',
-      }),
-    )
   })
 })

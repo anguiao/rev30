@@ -187,4 +187,15 @@ describe('tree utils', () => {
       normalizeTreeCheckedKeys(tree, ['root', 'engineering'], ['root', 'engineering', 'platform']),
     ).toEqual(['root', 'engineering'])
   })
+
+  it('normalizes numeric checked keys against string node ids', () => {
+    const numericTree = arrayToTree([
+      {
+        id: '1',
+        parentId: null,
+      },
+    ])
+
+    expect(normalizeTreeCheckedKeys(numericTree, [1], [])).toEqual(['1'])
+  })
 })

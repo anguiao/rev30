@@ -1,11 +1,10 @@
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '../../../src/stores/auth'
 import { login } from '../../../src/features/auth/requests'
 import LoginPage from '../../../src/pages/login.vue'
 import { ApiRequestError } from '../../../src/utils/request'
 import {
-  disposeActiveTestPinia,
   mountAuthRoute,
   session,
   stubPreferredDark,
@@ -29,15 +28,7 @@ async function mountLoginPage(path = '/login') {
 describe('login page', () => {
   beforeEach(() => {
     loginMock.mockReset()
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
     stubPreferredDark(false)
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-    vi.unstubAllGlobals()
   })
 
   it('blocks invalid login submissions with field feedback without calling login', async () => {

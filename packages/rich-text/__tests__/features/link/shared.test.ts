@@ -1,20 +1,16 @@
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
-import { Editor } from '@tiptap/vue-3'
 import { Fragment, Slice } from '@tiptap/pm/model'
-import { afterEach, describe, expect, it } from 'vitest'
+import type { Editor } from '@tiptap/vue-3'
+import { describe, expect, it } from 'vitest'
 import { linkFeature } from '../../../src/features/link/shared'
-
-const editors: Editor[] = []
+import { createTestEditor } from '../../helpers/editor'
 
 function createEditor() {
-  const element = document.createElement('div')
-  document.body.appendChild(element)
   const linkExtension = linkFeature.extension()
 
-  const editor = new Editor({
-    element,
+  return createTestEditor({
     extensions: [
       Document,
       Paragraph,
@@ -23,9 +19,6 @@ function createEditor() {
     ],
     content: '<p>维护通知</p>',
   })
-  editors.push(editor)
-
-  return editor
 }
 
 function selectEditorText(editor: Editor) {
@@ -44,14 +37,6 @@ function pasteTextOverSelection(editor: Editor, text: string) {
 }
 
 describe('link feature', () => {
-  afterEach(() => {
-    document.body.innerHTML = ''
-
-    while (editors.length > 0) {
-      editors.pop()?.destroy()
-    }
-  })
-
   it('links allowed URLs pasted over selected text', () => {
     const editor = createEditor()
     selectEditorText(editor)

@@ -1,5 +1,5 @@
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
 import { defineComponent, h } from 'vue'
 import { NDataTable, NPagination, NSelect } from 'naive-ui'
@@ -11,12 +11,7 @@ import {
 import { formatDisplayDateTime } from '@rev30/utils'
 import { deleteDepartment, getDepartmentTree } from '../../../src/features/system'
 import DepartmentsPage from '../../../src/pages/index/system/departments.vue'
-import {
-  disposeActiveTestPinia,
-  mountAuthRoute,
-  session,
-  stubPreferredDark,
-} from '../../helpers/auth'
+import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 vi.mock('../../../src/features/system/DepartmentFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'DepartmentFormDrawerStub',
@@ -99,15 +94,7 @@ describe('departments page', () => {
   beforeEach(() => {
     deleteDepartmentMock.mockReset()
     getDepartmentTreeMock.mockReset()
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
     stubPreferredDark(false)
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-    vi.unstubAllGlobals()
   })
 
   it('loads and renders a department tree without pagination', async () => {

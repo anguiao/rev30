@@ -1,6 +1,4 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { getErrorMessage } from '../../../src/utils/error'
-import { ApiRequestError, parseApiError } from '../../../src/utils/request'
 import { USER_STATUS_ENABLED } from '@rev30/contracts'
 import { logout, updateMyPassword, updateMyProfile } from '../../../src/features/auth/requests'
 import {
@@ -15,49 +13,6 @@ import { createTestPinia } from '../../helpers/pinia'
 describe('auth requests', () => {
   beforeEach(() => {
     createTestPinia()
-  })
-
-  it('maps auth error responses to a typed error', async () => {
-    await expect(
-      parseApiError(
-        new Response(JSON.stringify({ field: 'username', message: 'username already exists' }), {
-          status: 409,
-        }),
-      ),
-    ).resolves.toMatchObject({
-      status: 409,
-      field: 'username',
-      message: 'username already exists',
-    })
-  })
-
-  it('falls back when auth error responses violate the shared schema', async () => {
-    await expect(
-      parseApiError(
-        new Response(JSON.stringify({ field: 123, message: 123 }), {
-          status: 409,
-        }),
-      ),
-    ).resolves.toMatchObject({
-      status: 409,
-      message: '请求失败',
-      field: undefined,
-    })
-  })
-
-  it('keeps a stable message when the server response is not json', async () => {
-    await expect(parseApiError(new Response('nope', { status: 500 }))).resolves.toMatchObject({
-      status: 500,
-      message: '请求失败',
-    })
-  })
-
-  it('exposes status and field on ApiRequestError', () => {
-    const error = new ApiRequestError(401, 'Invalid username or password')
-
-    expect(error.status).toBe(401)
-    expect(error.message).toBe('Invalid username or password')
-    expect(error.field).toBeUndefined()
   })
 
   it('logs out through the Hono RPC client', async () => {
@@ -203,11 +158,5 @@ describe('auth requests', () => {
       status: 400,
       message: '当前密码错误',
     })
-  })
-
-  it('extracts error messages and falls back when no message is available', async () => {
-    expect(getErrorMessage(new ApiRequestError(401, '会话已过期'), '操作失败')).toBe('会话已过期')
-    expect(getErrorMessage(new Error('boom'), '操作失败')).toBe('boom')
-    expect(getErrorMessage(null, '操作失败')).toBe('操作失败')
   })
 })

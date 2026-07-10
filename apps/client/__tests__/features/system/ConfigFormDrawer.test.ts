@@ -1,6 +1,5 @@
 import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NRadioGroup } from 'naive-ui'
 import {
@@ -12,6 +11,8 @@ import {
 import { configValueTypeLabels, getConfig, updateConfig } from '../../../src/features/system'
 import { ApiRequestError } from '../../../src/utils/request'
 import ConfigFormDrawer from '../../../src/features/system/ConfigFormDrawer.vue'
+import { createTestPinia } from '../../helpers/pinia'
+import { createDeferred } from '../../helpers/promise'
 
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
@@ -33,20 +34,8 @@ const configResponse: Config = {
   value: '5',
 }
 
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((promiseResolve, promiseReject) => {
-    resolve = promiseResolve
-    reject = promiseReject
-  })
-
-  return { promise, resolve, reject }
-}
-
 function mountDrawer(props = { show: true, configKey }) {
-  const pinia = createPinia()
-  setActivePinia(pinia)
+  const pinia = createTestPinia()
 
   return mount(ConfigFormDrawer, {
     props,
@@ -234,7 +223,7 @@ describe('ConfigFormDrawer', () => {
   })
 
   it('ignores stale mutation errors from a previous config session', async () => {
-    const pendingUpdate = deferred<Config>()
+    const pendingUpdate = createDeferred<Config>()
     getConfigMock.mockResolvedValueOnce(configResponse).mockResolvedValueOnce({
       ...configResponse,
       key: 'attachment.contentUrlTtlSeconds',

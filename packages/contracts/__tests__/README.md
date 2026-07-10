@@ -1,5 +1,5 @@
 # contracts 测试边界
 
-- `schemas/*.test.ts`：共享 API 契约测试，验证请求、响应和错误结构的运行时解析与规范化，不重复覆盖前后端调用流程。
-- `schemas/system/*.test.ts`：系统管理领域契约测试，覆盖表单输入、列表查询、树结构响应、权限资源授权和字段级校验消息。
-- `helpers/*`：测试辅助函数，集中放置 schema 错误文本和稳定测试 ID 等跨文件夹具。
+- `schemas/*`：验证公开请求、响应和表单 schema 的解析、默认值、规范化、边界值及领域错误，不重复测试 Zod 自身行为。
+- 失败场景通过 `helpers/schema.ts#expectZodIssue` 直接断言 issue 的 `message` 和必要的 `path`，不要依赖 `z.prettifyError` 的展示格式。
+- 大型领域测试按 query、input、response 语义组织 describe/用例；只有在文件职责确实独立时才拆文件，避免为减行增加重复导入成本。

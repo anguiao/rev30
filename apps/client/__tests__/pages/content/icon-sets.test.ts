@@ -1,5 +1,5 @@
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   AuthTokenResponse,
   BuiltinIconListResponse,
@@ -9,28 +9,57 @@ import type {
 } from '@rev30/contracts'
 import AdminPage from '../../../src/pages/index.vue'
 import {
+  deleteCustomIconSet,
   exportCustomIconSet,
   listBuiltinIconSets,
   listBuiltinIcons,
   listCustomIconSets,
   listCustomIcons,
+  renameCustomIcon,
 } from '../../../src/features/content'
 import IconSetsPage from '../../../src/pages/index/content/icon-sets.vue'
 import { saveFile } from '../../../src/utils/download'
-import {
-  disposeActiveTestPinia,
-  mountAuthRoute,
-  session,
-  stubPreferredDark,
-} from '../../helpers/auth'
+import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
+
+vi.mock('../../../src/features/content/IconSetFormDrawer.vue', () => ({
+  default: {
+    name: 'IconSetFormDrawerStub',
+    props: ['show', 'prefix'],
+    emits: ['update:show', 'saved'],
+    template: `
+      <div
+        data-test="icon-set-form-drawer"
+        :data-show="show"
+        :data-prefix="prefix ?? ''"
+      >
+        {{ show ? (prefix === null ? '创建图标集' : '编辑图标集') : '' }}
+      </div>
+    `,
+  },
+}))
+
+vi.mock('../../../src/features/content/IconUploadDrawer.vue', () => ({
+  default: {
+    name: 'IconUploadDrawerStub',
+    props: ['show', 'prefix'],
+    emits: ['update:show', 'uploaded'],
+    template: `
+      <div data-test="icon-upload-drawer" :data-show="show" :data-prefix="prefix ?? ''">
+        {{ show ? '上传 SVG 图标' : '' }}
+      </div>
+    `,
+  },
+}))
 
 vi.mock('../../../src/features/content', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/content')>()),
+  deleteCustomIconSet: vi.fn(),
   listBuiltinIconSets: vi.fn(),
   listBuiltinIcons: vi.fn(),
   listCustomIconSets: vi.fn(),
   listCustomIcons: vi.fn(),
   exportCustomIconSet: vi.fn(),
+  renameCustomIcon: vi.fn(),
 }))
 
 vi.mock('../../../src/utils/download', () => ({
@@ -41,7 +70,9 @@ const listBuiltinIconSetsMock = vi.mocked(listBuiltinIconSets)
 const listBuiltinIconsMock = vi.mocked(listBuiltinIcons)
 const listCustomIconSetsMock = vi.mocked(listCustomIconSets)
 const listCustomIconsMock = vi.mocked(listCustomIcons)
+const deleteCustomIconSetMock = vi.mocked(deleteCustomIconSet)
 const exportCustomIconSetMock = vi.mocked(exportCustomIconSet)
+const renameCustomIconMock = vi.mocked(renameCustomIcon)
 const saveFileMock = vi.mocked(saveFile)
 
 const authSession: AuthTokenResponse = {
@@ -155,13 +186,24 @@ async function mountIconSetsPage(nextSession: AuthTokenResponse = authSession) {
   )
 }
 
+function getBodyButton(label: string) {
+  const button = Array.from(document.body.querySelectorAll('button')).find(
+    (candidate) => candidate.textContent?.trim() === label,
+  )
+
+  expect(button).toBeDefined()
+  return button!
+}
+
 describe('icon sets page', () => {
   beforeEach(() => {
+    deleteCustomIconSetMock.mockReset()
     listBuiltinIconSetsMock.mockReset()
     listBuiltinIconsMock.mockReset()
     listCustomIconSetsMock.mockReset()
     listCustomIconsMock.mockReset()
     exportCustomIconSetMock.mockReset()
+    renameCustomIconMock.mockReset()
     saveFileMock.mockReset()
 
     listBuiltinIconSetsMock.mockResolvedValue(builtinIconSetsResponse)
@@ -179,16 +221,7 @@ describe('icon sets page', () => {
         writeText: vi.fn().mockResolvedValue(undefined),
       },
     })
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
-    document.body.innerHTML = ''
     stubPreferredDark(false)
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-    vi.unstubAllGlobals()
   })
 
   it('loads built-in icons and opens custom icon set creation', async () => {
@@ -211,7 +244,37 @@ describe('icon sets page', () => {
     await createButton.trigger('click')
     await flushPromises()
 
-    expect(document.body.textContent).toContain('创建图标集')
+    const drawer = wrapper.get('[data-test="icon-set-form-drawer"]')
+    expect(drawer.attributes('data-show')).toBe('true')
+    expect(drawer.attributes('data-prefix')).toBe('')
+    expect(drawer.text()).toBe('创建图标集')
+  })
+
+  it('opens edit and upload drawers with the selected custom icon set prefix', async () => {
+    listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
+    listCustomIconsMock.mockResolvedValue(customIconsResponse)
+    const { wrapper } = await mountIconSetsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('button[aria-label="编辑图标集"]').trigger('click')
+    await flushPromises()
+
+    const formDrawer = wrapper.get('[data-test="icon-set-form-drawer"]')
+    expect(formDrawer.attributes('data-show')).toBe('true')
+    expect(formDrawer.attributes('data-prefix')).toBe('acme')
+    expect(formDrawer.text()).toBe('编辑图标集')
+
+    await wrapper.get('[data-test="custom-icon-set"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-test="custom-icon-set-upload"]').trigger('click')
+    await flushPromises()
+
+    const uploadDrawer = wrapper.get('[data-test="icon-upload-drawer"]')
+    expect(uploadDrawer.attributes('data-show')).toBe('true')
+    expect(uploadDrawer.attributes('data-prefix')).toBe('acme')
+    expect(uploadDrawer.text()).toBe('上传 SVG 图标')
   })
 
   it('loads the next built-in icon page when the icon grid scrolls near the bottom', async () => {
@@ -273,6 +336,78 @@ describe('icon sets page', () => {
     wrapper.get('button[aria-label="复制 SVG"]')
     expect(wrapper.find('button[aria-label="重命名图标"]').exists()).toBe(false)
     expect(wrapper.find('button[aria-label="删除图标"]').exists()).toBe(false)
+  })
+
+  it('renames a custom icon and renders the refreshed icon list', async () => {
+    const renamedIcon = {
+      ...customIconsResponse.list[0]!,
+      icon: 'acme:mark',
+      name: 'mark',
+    }
+    listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
+    listCustomIconsMock
+      .mockResolvedValueOnce(customIconsResponse)
+      .mockResolvedValue({ ...customIconsResponse, list: [renamedIcon] })
+    renameCustomIconMock.mockResolvedValue(renamedIcon)
+    const { wrapper } = await mountIconSetsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('button[aria-label="重命名图标"]').trigger('click')
+    await flushPromises()
+
+    const input = document.body.querySelector(
+      'input[placeholder="请输入图标名称"]',
+    ) as HTMLInputElement | null
+    expect(input).not.toBeNull()
+    input!.value = '  mark  '
+    input!.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushPromises()
+    getBodyButton('保存').click()
+    await flushPromises()
+
+    expect(renameCustomIconMock).toHaveBeenCalledWith('acme', 'logo', { name: 'mark' })
+    expect(document.body.textContent).toContain('重命名图标成功')
+    expect(wrapper.text()).toContain('mark')
+  })
+
+  it('keeps icon set deletion available after failure and refreshes after success', async () => {
+    listCustomIconSetsMock
+      .mockResolvedValueOnce(customIconSetsResponse)
+      .mockResolvedValue(emptyCustomIconSetsResponse)
+    listCustomIconsMock.mockResolvedValue(customIconsResponse)
+    deleteCustomIconSetMock
+      .mockRejectedValueOnce(new Error('删除请求失败'))
+      .mockResolvedValueOnce(undefined)
+    const { wrapper } = await mountIconSetsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-test="custom-icon-set"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('button[aria-label="删除图标集"]').trigger('click')
+    await flushPromises()
+
+    expect(document.body.textContent).toContain('确定删除自定义图标集“Acme Icons”吗？')
+    getBodyButton('删除').click()
+    await flushPromises()
+
+    expect(deleteCustomIconSetMock).toHaveBeenCalledOnce()
+    expect(document.body.textContent).toContain('删除请求失败')
+    expect(
+      document.body.querySelector('[data-test="custom-icon-set-delete-confirm"]'),
+    ).not.toBeNull()
+
+    getBodyButton('删除').click()
+    await flushPromises()
+
+    expect(deleteCustomIconSetMock).toHaveBeenCalledTimes(2)
+    expect(deleteCustomIconSetMock).toHaveBeenLastCalledWith('acme')
+    expect(document.body.textContent).toContain('删除图标集成功')
+    expect(wrapper.find('[data-test="custom-icon-set"]').exists()).toBe(false)
+    expect(listCustomIconSetsMock).toHaveBeenCalledTimes(2)
   })
 
   it('downloads custom icon set export through authenticated request', async () => {

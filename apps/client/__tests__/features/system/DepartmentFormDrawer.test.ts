@@ -16,7 +16,8 @@ import {
   updateDepartment,
 } from '../../../src/features/system'
 import DepartmentFormDrawer from '../../../src/features/system/DepartmentFormDrawer.vue'
-import { createPinia, setActivePinia } from 'pinia'
+import { createTestPinia } from '../../helpers/pinia'
+import { createDeferred } from '../../helpers/promise'
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   createDepartment: vi.fn(),
@@ -137,21 +138,6 @@ const siblingDepartmentResponse: Department = {
   updatedAt: '2026-05-04T00:00:00.000Z',
 }
 
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((promiseResolve, promiseReject) => {
-    resolve = promiseResolve
-    reject = promiseReject
-  })
-
-  return {
-    promise,
-    resolve,
-    reject,
-  }
-}
-
 function mountDrawer(
   props: {
     show?: boolean
@@ -159,8 +145,7 @@ function mountDrawer(
     parentId?: string | null
   } = {},
 ) {
-  const pinia = createPinia()
-  setActivePinia(pinia)
+  const pinia = createTestPinia()
 
   return mount(DepartmentFormDrawer, {
     props: {
@@ -180,7 +165,6 @@ function mountDrawer(
 
 async function submitForm(wrapper: ReturnType<typeof mount>) {
   await wrapper.get('[data-test="department-form-submit"]').trigger('click')
-  await wrapper.get('form').trigger('submit')
   await flushPromises()
 }
 
@@ -332,8 +316,8 @@ describe('DepartmentFormDrawer', () => {
   })
 
   it('keeps the original parent cached for a stale create load after switching parents', async () => {
-    const firstTreeLoad = deferred<DepartmentTreeNode[]>()
-    const secondTreeLoad = deferred<DepartmentTreeNode[]>()
+    const firstTreeLoad = createDeferred<DepartmentTreeNode[]>()
+    const secondTreeLoad = createDeferred<DepartmentTreeNode[]>()
     let treeLoadCount = 0
     createDepartmentMock.mockResolvedValue({
       ...childDepartmentResponse,
@@ -513,7 +497,7 @@ describe('DepartmentFormDrawer', () => {
   })
 
   it('ignores stale mutation errors from a previous create session', async () => {
-    const pendingCreate = deferred<Department>()
+    const pendingCreate = createDeferred<Department>()
     createDepartmentMock.mockImplementationOnce(() => pendingCreate.promise)
 
     const wrapper = mountDrawer({
@@ -559,7 +543,7 @@ describe('DepartmentFormDrawer', () => {
   })
 
   it('does not submit while switching to another department that is still loading', async () => {
-    const pendingDepartmentLoad = deferred<Department>()
+    const pendingDepartmentLoad = createDeferred<Department>()
 
     getDepartmentMock.mockImplementation((id: string) => {
       if (id === childDepartmentId) {
@@ -597,7 +581,7 @@ describe('DepartmentFormDrawer', () => {
   })
 
   it('does not close or emit saved when a stale create save resolves after parent switch', async () => {
-    const pendingSave = deferred<Department>()
+    const pendingSave = createDeferred<Department>()
 
     createDepartmentMock.mockImplementation(() => pendingSave.promise)
 

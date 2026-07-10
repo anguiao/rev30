@@ -1,5 +1,5 @@
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
 import { NPagination, NSelect } from 'naive-ui'
 import {
@@ -12,12 +12,7 @@ import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
 import { deleteRole, listRoles } from '../../../src/features/system'
 import RolesPage from '../../../src/pages/index/system/roles.vue'
-import {
-  disposeActiveTestPinia,
-  mountAuthRoute,
-  session,
-  stubPreferredDark,
-} from '../../helpers/auth'
+import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 vi.mock('../../../src/features/system/RoleFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'RoleFormDrawerStub',
@@ -96,16 +91,7 @@ describe('roles page', () => {
   beforeEach(() => {
     deleteRoleMock.mockReset()
     listRolesMock.mockReset()
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
-    document.body.innerHTML = ''
     stubPreferredDark(false)
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-    vi.unstubAllGlobals()
   })
 
   it('loads and renders roles', async () => {

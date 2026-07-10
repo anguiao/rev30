@@ -1,19 +1,16 @@
 import { createPinia, disposePinia, setActivePinia, type Pinia } from 'pinia'
 
-let activeTestPinia: Pinia | undefined
+const activeTestPiniaInstances = new Set<Pinia>()
 
 export function createTestPinia() {
-  activeTestPinia = createPinia()
-  setActivePinia(activeTestPinia)
+  const pinia = createPinia()
+  activeTestPiniaInstances.add(pinia)
+  setActivePinia(pinia)
 
-  return activeTestPinia
+  return pinia
 }
 
 export function disposeActiveTestPinia() {
-  if (activeTestPinia === undefined) {
-    return
-  }
-
-  disposePinia(activeTestPinia)
-  activeTestPinia = undefined
+  activeTestPiniaInstances.forEach(disposePinia)
+  activeTestPiniaInstances.clear()
 }

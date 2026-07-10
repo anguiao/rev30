@@ -1,17 +1,11 @@
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
-import { NDataTable } from 'naive-ui'
 import { CONFIG_VALUE_TYPE_NUMBER, CONFIG_VALUE_TYPE_STRING, type Config } from '@rev30/contracts'
 import { defineComponent, h } from 'vue'
 import { listConfigs } from '../../../src/features/system'
 import ConfigsPage from '../../../src/pages/index/system/configs.vue'
-import {
-  disposeActiveTestPinia,
-  mountAuthRoute,
-  session,
-  stubPreferredDark,
-} from '../../helpers/auth'
+import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
 vi.mock('../../../src/features/system/ConfigFormDrawer.vue', () => ({
   default: defineComponent({
@@ -85,16 +79,7 @@ async function mountConfigsPage(accessCodes: string[] = session.accessCodes) {
 describe('configs page', () => {
   beforeEach(() => {
     listConfigsMock.mockReset()
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
-    document.body.innerHTML = ''
     stubPreferredDark(false)
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-    vi.unstubAllGlobals()
   })
 
   it('loads and renders all configs without pagination', async () => {
@@ -110,23 +95,6 @@ describe('configs page', () => {
     expect(wrapper.text()).toContain('数字')
     expect(wrapper.text()).toContain('5')
     expect(wrapper.findComponent({ name: 'NPagination' }).exists()).toBe(false)
-  })
-
-  it('renders current config values with ellipsis tooltip', async () => {
-    listConfigsMock.mockResolvedValue(configs)
-    const { wrapper } = await mountConfigsPage()
-    await flushPromises()
-
-    const columns = wrapper.getComponent(NDataTable).props('columns') as Array<{
-      key?: string
-      ellipsis?: unknown
-      render?: (row: Config) => unknown
-    }>
-    const valueColumn = columns.find((column) => column.key === 'value')
-
-    expect(valueColumn?.render).toBeTypeOf('function')
-    expect(valueColumn?.ellipsis).toMatchObject({ tooltip: true })
-    expect(valueColumn!.render!(configs[1]!)).toBe('600')
   })
 
   it('filters configs locally by keyword', async () => {

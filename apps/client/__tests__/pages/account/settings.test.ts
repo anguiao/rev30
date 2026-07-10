@@ -1,5 +1,5 @@
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { User } from '@rev30/contracts'
 import { h } from 'vue'
 import { useAuthStore } from '../../../src/stores/auth'
@@ -7,12 +7,7 @@ import { updateMyPassword, updateMyProfile } from '../../../src/features/auth/re
 import AdminPage from '../../../src/pages/index.vue'
 import AccountSettingsPage from '../../../src/pages/index/account/settings.vue'
 import { ApiRequestError } from '../../../src/utils/request'
-import {
-  disposeActiveTestPinia,
-  mountAuthRoute,
-  session,
-  stubPreferredDark,
-} from '../../helpers/auth'
+import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
 vi.mock('../../../src/features/auth/requests', () => ({
   updateMyPassword: vi.fn(),
@@ -80,15 +75,7 @@ describe('account settings page', () => {
   beforeEach(() => {
     updateMyProfileMock.mockReset()
     updateMyPasswordMock.mockReset()
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
     stubPreferredDark(false)
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-    vi.unstubAllGlobals()
   })
 
   it('updates my profile, refreshes the auth user, and renders the new nickname', async () => {

@@ -12,7 +12,7 @@ import {
   userUpdateSchema,
   userSchema,
 } from '../../../src'
-import { prettifyZodError, testUuid } from '../../helpers/schema'
+import { expectZodIssue, testUuid } from '../../helpers/schema'
 
 describe('user schemas', () => {
   it('parses includeIds as comma-separated user ids and deduplicates values', () => {
@@ -39,10 +39,7 @@ describe('user schemas', () => {
       includeIds: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7, invalid-uuid',
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('用户 ID 无效')
-    }
+    expectZodIssue(result, { message: '用户 ID 无效' })
   })
 
   it('accepts lightweight user options response', () => {
@@ -209,10 +206,7 @@ describe('user schemas', () => {
       status: 2,
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('用户状态无效')
-    }
+    expectZodIssue(result, { message: '用户状态无效' })
   })
 
   it('parses list query strings into pagination and status values', () => {
@@ -256,23 +250,15 @@ describe('user schemas', () => {
       roleId: 'also-invalid',
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      const message = prettifyZodError(result)
-
-      expect(message).toContain('部门 ID 无效')
-      expect(message).toContain('角色 ID 无效')
-    }
+    expectZodIssue(result, { message: '部门 ID 无效' })
+    expectZodIssue(result, { message: '角色 ID 无效' })
   })
 
   it('requires at least one field for updates', () => {
     for (const input of [{}, { email: undefined }, { status: undefined }]) {
       const result = userUpdateSchema.safeParse(input)
 
-      expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(prettifyZodError(result)).toContain('至少修改一个字段')
-      }
+      expectZodIssue(result, { message: '至少修改一个字段' })
     }
 
     expect(userUpdateSchema.parse({ phone: null })).toEqual({ phone: null })
@@ -310,10 +296,7 @@ describe('user schemas', () => {
       departmentIds: [duplicateDepartmentId, duplicateDepartmentId],
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('部门不能重复')
-    }
+    expectZodIssue(result, { message: '部门不能重复' })
   })
 
   it('rejects excessive department ids on user input', () => {
@@ -323,10 +306,7 @@ describe('user schemas', () => {
       departmentIds: Array.from({ length: 51 }, (_, index) => testUuid(index + 1)),
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('用户部门不能超过 50 个')
-    }
+    expectZodIssue(result, { message: '用户部门不能超过 50 个' })
   })
 
   it('reports schema messages for invalid user input fields', () => {
@@ -344,19 +324,13 @@ describe('user schemas', () => {
       updatedAt: '2026-04-29T08:00:00.000Z',
     })
 
-    expect(invalidUser.success).toBe(false)
-    if (!invalidUser.success) {
-      expect(prettifyZodError(invalidUser)).toContain('用户 ID 无效')
-    }
+    expectZodIssue(invalidUser, { message: '用户 ID 无效' })
 
     const invalidQuery = userListQuerySchema.safeParse({
       page: '0',
     })
 
-    expect(invalidQuery.success).toBe(false)
-    if (!invalidQuery.success) {
-      expect(prettifyZodError(invalidQuery)).toContain('页码不能小于 1')
-    }
+    expectZodIssue(invalidQuery, { message: '页码不能小于 1' })
   })
 
   it('requires user responses to include role summaries', () => {
@@ -424,10 +398,7 @@ describe('user schemas', () => {
       roleIds: [duplicateRoleId, duplicateRoleId],
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('角色不能重复')
-    }
+    expectZodIssue(result, { message: '角色不能重复' })
   })
 
   it('rejects excessive role ids on user input', () => {
@@ -437,10 +408,7 @@ describe('user schemas', () => {
       roleIds: Array.from({ length: 51 }, (_, index) => testUuid(index + 1)),
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('用户角色不能超过 50 个')
-    }
+    expectZodIssue(result, { message: '用户角色不能超过 50 个' })
   })
 
   it('parses user create responses with a one-time temporary password', () => {

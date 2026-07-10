@@ -1,15 +1,14 @@
 import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { AuthTokenResponse } from '@rev30/contracts'
-import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
 import { NConfigProvider, NDialogProvider, dateZhCN, zhCN } from 'naive-ui'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AdminLayout from '../../../src/components/admin/AdminLayout.vue'
 import { logout } from '../../../src/features/auth'
 import { useAuthStore } from '../../../src/stores/auth'
-import { session, stubPreferredDark } from '../../helpers/auth'
+import { createTestPinia, session, stubPreferredDark } from '../../helpers/auth'
 vi.mock('../../../src/features/auth', () => ({
   logout: vi.fn(),
 }))
@@ -161,8 +160,7 @@ function createMenuSession(): AuthTokenResponse {
 }
 
 async function mountLayout(options?: { initialPath?: string; authSession?: AuthTokenResponse }) {
-  const pinia = createPinia()
-  setActivePinia(pinia)
+  const pinia = createTestPinia()
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -217,16 +215,8 @@ async function mountLayout(options?: { initialPath?: string; authSession?: AuthT
 
 describe('admin layout', () => {
   beforeEach(() => {
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
     stubPreferredDark(false)
     logoutMock.mockReset()
-    document.body.innerHTML = ''
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
   })
 
   it('renders navigation, branding, user summary, and content slot', async () => {

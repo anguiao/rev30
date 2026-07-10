@@ -1,6 +1,6 @@
 import { useQueryCache } from '@pinia/colada'
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
 import { NDataTable, NPagination, NSelect } from 'naive-ui'
 import {
@@ -23,12 +23,7 @@ import {
   publishAnnouncement,
 } from '../../../src/features/content'
 import AnnouncementsPage from '../../../src/pages/index/content/announcements.vue'
-import {
-  disposeActiveTestPinia,
-  mountAuthRoute,
-  session,
-  stubPreferredDark,
-} from '../../helpers/auth'
+import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
 vi.mock('../../../src/features/content/AnnouncementFormDrawer.vue', () => ({
   default: defineComponent({
@@ -149,16 +144,7 @@ describe('announcements page', () => {
     deleteAnnouncementMock.mockReset()
     listAnnouncementsMock.mockReset()
     publishAnnouncementMock.mockReset()
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
-    document.body.innerHTML = ''
     stubPreferredDark(false)
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-    vi.unstubAllGlobals()
   })
 
   it('loads and renders announcements with tags and pagination', async () => {

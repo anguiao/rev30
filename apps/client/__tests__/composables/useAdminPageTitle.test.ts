@@ -1,8 +1,8 @@
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { defineComponent } from 'vue'
 import { useAdminPageTitle } from '../../src/composables/useAdminPageTitle'
-import { disposeActiveTestPinia, mountAuthRoute, session } from '../helpers/auth'
+import { mountAuthRoute, session } from '../helpers/auth'
 const TestPage = defineComponent({
   setup() {
     const title = useAdminPageTitle('Fallback Title')
@@ -15,10 +15,6 @@ const TestPage = defineComponent({
 })
 
 describe('useAdminPageTitle', () => {
-  afterEach(() => {
-    disposeActiveTestPinia()
-  })
-
   it('uses the current matched menu name from the auth session', async () => {
     const { wrapper } = await mountAuthRoute(
       '/system/users',

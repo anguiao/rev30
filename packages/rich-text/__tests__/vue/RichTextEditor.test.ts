@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { NDropdown } from 'naive-ui'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
 import { baseFeature } from '../../src/features/base/shared'
 import { boldFeature } from '../../src/features/bold/shared'
@@ -49,12 +49,8 @@ const noHeadingEditorPreset = defineRichTextEditorPreset({
   ...noHeadingPreset,
 })
 
-const wrappers: Array<ReturnType<typeof mount>> = []
-
 function mountRichTextEditor(props: InstanceType<typeof RichTextEditor>['$props']) {
-  const wrapper = mount(RichTextEditor, { props })
-  wrappers.push(wrapper)
-  return wrapper
+  return mount(RichTextEditor, { props })
 }
 
 async function getEditable(wrapper: ReturnType<typeof mount>) {
@@ -82,12 +78,6 @@ async function selectDropdownCommand(wrapper: ReturnType<typeof mount>, commandK
 }
 
 describe('RichTextEditor', () => {
-  afterEach(() => {
-    while (wrappers.length > 0) {
-      wrappers.pop()?.unmount()
-    }
-  })
-
   it('renders editor content and compact toolbar buttons', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,

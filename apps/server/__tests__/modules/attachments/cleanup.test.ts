@@ -9,6 +9,63 @@ import { createTestDb } from '../../helpers/db'
 
 const dayMs = 24 * 60 * 60 * 1000
 
+function runBeforeQuery<T extends object>(query: T, beforeQuery: () => Promise<void>): T {
+  return new Proxy(query, {
+    get(target, property) {
+      if (property === 'then') {
+        const then = Reflect.get(target, property, target) as (
+          onFulfilled: (value: unknown) => unknown,
+          onRejected: (reason: unknown) => unknown,
+        ) => unknown
+
+        return async (
+          onFulfilled: (value: unknown) => unknown,
+          onRejected: (reason: unknown) => unknown,
+        ) => {
+          try {
+            await beforeQuery()
+            return then.call(target, onFulfilled, onRejected)
+          } catch (error) {
+            return onRejected(error)
+          }
+        }
+      }
+
+      const value = Reflect.get(target, property, target)
+
+      if (typeof value !== 'function') {
+        return value
+      }
+
+      return (...args: unknown[]) => {
+        const result = Reflect.apply(value, target, args)
+
+        return result !== null && typeof result === 'object'
+          ? runBeforeQuery(result, beforeQuery)
+          : result
+      }
+    },
+  })
+}
+
+function createDatabaseWithBeforeUpdate(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  beforeUpdate: () => Promise<void>,
+) {
+  return new Proxy(database, {
+    get(target, property, receiver) {
+      if (property === 'update') {
+        return ((table: typeof attachments) =>
+          runBeforeQuery(database.update(table), beforeUpdate)) as typeof database.update
+      }
+
+      const value = Reflect.get(target, property, receiver)
+
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  })
+}
+
 afterEach(() => {
   vi.useRealTimers()
 })
@@ -135,20 +192,22 @@ describe('attachment cleanup', () => {
       cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
     })
 
-    await refreshAttachmentReferences(
-      database,
-      {
+    let insertedReference = false
+    const racedDatabase = createDatabaseWithBeforeUpdate(database, async () => {
+      insertedReference = true
+      await database.insert(attachmentReferences).values({
+        attachmentId,
         sourceType: 'announcement',
         sourceId: randomUUID(),
         sourceField: 'contentJson',
-      },
-      [attachmentId],
-    )
+      })
+    })
 
-    await expect(cleanupUnreferencedAttachments(database, 7 * dayMs)).resolves.toBe(0)
+    await expect(cleanupUnreferencedAttachments(racedDatabase, 7 * dayMs)).resolves.toBe(0)
 
     const [row] = await database.select().from(attachments).where(eq(attachments.id, attachmentId))
 
+    expect(insertedReference).toBe(true)
     expect(row?.deletedAt).toBeNull()
   })
 })

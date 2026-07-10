@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ATTACHMENT_CLEANUP_POLICY_MANUAL,
@@ -19,13 +20,16 @@ import {
   AttachmentFileTooLargeError,
   AttachmentNotFoundError,
   AttachmentTypeUnsupportedError,
+  AttachmentUploadRequestError,
   AttachmentUploadSessionInvalidError,
   AttachmentUploadSessionNotReadyError,
 } from '../../../src/modules/attachments/errors'
 import { ATTACHMENT_MAX_SIZE_BYTES } from '../../../src/modules/attachments/policy'
 import { createAttachmentService } from '../../../src/modules/attachments/service'
+import { LocalAttachmentStorage } from '../../../src/modules/attachments/storage'
 import { createAttachmentAccessToken } from '../../../src/modules/attachments/access-token'
 import { readAuthConfig } from '../../../src/modules/auth/config'
+import { logger } from '../../../src/runtime/logger'
 import { createTestDb } from '../../helpers/db'
 
 const tempDirs: string[] = []
@@ -127,6 +131,56 @@ function createAttachmentReadToken(userId: string) {
   return createAttachmentAccessToken(userId, readAuthConfig())
 }
 
+function getStoredFilePath(storageKey: string) {
+  return join(process.env.ATTACHMENT_STORAGE_DIR!, storageKey)
+}
+
+function rejectQuery<T extends object>(query: T, error: Error): T {
+  return new Proxy(query, {
+    get(target, property) {
+      if (property === 'then') {
+        return (
+          _onFulfilled: (value: unknown) => unknown,
+          onRejected: (reason: unknown) => unknown,
+        ) => onRejected(error)
+      }
+
+      const value = Reflect.get(target, property, target)
+
+      if (typeof value !== 'function') {
+        return value
+      }
+
+      return (...args: unknown[]) => {
+        const result = Reflect.apply(value, target, args)
+
+        return result !== null && typeof result === 'object' ? rejectQuery(result, error) : result
+      }
+    },
+  })
+}
+
+function createDatabaseWithAttachmentInsertFailure(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  error: Error,
+) {
+  return new Proxy(database, {
+    get(target, property, receiver) {
+      if (property === 'insert') {
+        return ((table: typeof attachments) => {
+          const query = database.insert(table)
+
+          return table === attachments ? rejectQuery(query, error) : query
+        }) as typeof database.insert
+      }
+
+      const value = Reflect.get(target, property, receiver)
+
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  })
+}
+
 afterEach(async () => {
   vi.unstubAllEnvs()
   vi.useRealTimers()
@@ -168,7 +222,7 @@ describe('attachment service', () => {
     return createAttachmentService(database)
   }
 
-  async function createAttachmentViaSession(
+  async function createStoredUploadSession(
     service: ReturnType<typeof createAttachmentService>,
     input: {
       bytes: Uint8Array
@@ -193,6 +247,15 @@ describe('attachment service', () => {
       token,
       uploadId: session.uploadId,
     })
+
+    return session
+  }
+
+  async function createAttachmentViaSession(
+    service: ReturnType<typeof createAttachmentService>,
+    input: Parameters<typeof createStoredUploadSession>[1],
+  ) {
+    const session = await createStoredUploadSession(service, input)
 
     return service.completeUploadSession({
       uploadId: session.uploadId,
@@ -330,6 +393,96 @@ describe('attachment service', () => {
 
     vi.setSystemTime(new Date('2026-05-29T00:05:00.000Z'))
 
+    await expect(
+      service.completeUploadSession({
+        uploadId: session.uploadId,
+        userId,
+      }),
+    ).rejects.toBeInstanceOf(AttachmentUploadSessionInvalidError)
+  })
+
+  it('allows only the upload session owner to complete stored content', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const ownerId = await createUser(database)
+    const otherUserId = await createUser(database)
+    const session = await createStoredUploadSession(service, {
+      bytes: pngBytes,
+      originalName: 'avatar.png',
+      userId: ownerId,
+    })
+
+    await expect(
+      service.completeUploadSession({
+        uploadId: session.uploadId,
+        userId: otherUserId,
+      }),
+    ).rejects.toBeInstanceOf(AttachmentUploadSessionInvalidError)
+
+    const completed = await service.completeUploadSession({
+      uploadId: session.uploadId,
+      userId: ownerId,
+    })
+
+    expect(completed).toMatchObject({
+      originalName: 'avatar.png',
+    })
+    await expect(
+      database.select().from(attachments).where(eq(attachments.id, completed.id)),
+    ).resolves.toMatchObject([{ createdBy: ownerId }])
+  })
+
+  it('removes stored content when uploaded size does not match the session', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+    const session = await service.createUploadSession({
+      originalName: 'avatar.png',
+      usage: 'avatar',
+      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
+      size: pngBytes.byteLength + 1,
+      userId,
+    })
+    const token = getUploadToken(session.request.url)
+    const storedFilePath = getStoredFilePath(`uploads/2026/05/29/${session.uploadId}.png`)
+
+    await expect(
+      service.uploadSessionContent({
+        body: streamFromBytes(pngBytes),
+        token,
+        uploadId: session.uploadId,
+      }),
+    ).rejects.toBeInstanceOf(AttachmentUploadRequestError)
+
+    await expect(database.select().from(attachments)).resolves.toEqual([])
+    await expect(readFile(storedFilePath)).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('cleans up stored content and the session when metadata creation fails', async () => {
+    const database = await createTestDb()
+    const userId = await createUser(database)
+    const metadataError = new Error('metadata creation failed')
+    const service = await createAttachmentServiceForTest(
+      createDatabaseWithAttachmentInsertFailure(database, metadataError),
+    )
+    const session = await createStoredUploadSession(service, {
+      bytes: pngBytes,
+      originalName: 'avatar.png',
+      userId,
+    })
+    const storageKey = `uploads/2026/05/29/${session.uploadId}.png`
+    const storedFilePath = getStoredFilePath(storageKey)
+
+    await expect(
+      service.completeUploadSession({
+        uploadId: session.uploadId,
+        userId,
+      }),
+    ).rejects.toBe(metadataError)
+
+    await expect(readFile(storedFilePath)).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(database.select().from(attachments)).resolves.toEqual([])
     await expect(
       service.completeUploadSession({
         uploadId: session.uploadId,
@@ -726,7 +879,59 @@ describe('attachment service', () => {
     const [activeRow] = await database.select().from(attachments)
     expect(activeRow?.deletedAt).toBeNull()
 
+    const storedFilePath = getStoredFilePath(activeRow!.storageKey)
+    expect(new Uint8Array(await readFile(storedFilePath))).toEqual(pngBytes)
+
     await expect(service.delete(attachment.id)).resolves.toBeUndefined()
+
+    const [deletedRow] = await database
+      .select()
+      .from(attachments)
+      .where(eq(attachments.id, attachment.id))
+
+    expect(deletedRow?.deletedAt).toBeInstanceOf(Date)
+    await expect(readFile(storedFilePath)).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('keeps attachments soft deleted and logs when storage deletion fails', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+    const attachment = await createAttachmentViaSession(service, {
+      bytes: pngBytes,
+      originalName: 'avatar.png',
+      userId,
+    })
+    const [activeRow] = await database
+      .select()
+      .from(attachments)
+      .where(eq(attachments.id, attachment.id))
+    const storageError = new Error('storage delete failed')
+    const deleteStoredFile = vi
+      .spyOn(LocalAttachmentStorage.prototype, 'delete')
+      .mockRejectedValueOnce(storageError)
+    const logError = vi.spyOn(logger, 'error').mockImplementation(() => {})
+
+    await expect(service.delete(attachment.id)).resolves.toBeUndefined()
+
+    const [deletedRow] = await database
+      .select()
+      .from(attachments)
+      .where(eq(attachments.id, attachment.id))
+
+    expect(deletedRow?.deletedAt).toBeInstanceOf(Date)
+    expect(deleteStoredFile).toHaveBeenCalledWith(activeRow!.storageKey)
+    expect(logError).toHaveBeenCalledWith(
+      {
+        attachmentId: attachment.id,
+        err: storageError,
+        storageKey: activeRow!.storageKey,
+      },
+      'attachment storage deletion failed',
+    )
+    expect(new Uint8Array(await readFile(getStoredFilePath(activeRow!.storageKey)))).toEqual(
+      pngBytes,
+    )
   })
 
   it('does not create content URLs for deleted attachments', async () => {

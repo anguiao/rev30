@@ -1,7 +1,6 @@
 import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ANNOUNCEMENT_TYPE_BULLETIN,
   type AnnouncementMyDetail,
@@ -10,6 +9,7 @@ import {
 import { formatDisplayDateTime } from '@rev30/utils'
 import MyAnnouncementDetailDrawer from '../../../src/features/content/MyAnnouncementDetailDrawer.vue'
 import { announcementTypeLabels, getMyAnnouncement } from '../../../src/features/content'
+import { createTestPinia } from '../../helpers/pinia'
 
 vi.mock('../../../src/features/content', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/content')>()),
@@ -35,8 +35,7 @@ const detail: AnnouncementMyDetail = {
 }
 
 function mountDrawer(props = { show: true, announcement }) {
-  const pinia = createPinia()
-  setActivePinia(pinia)
+  const pinia = createTestPinia()
 
   return mount(MyAnnouncementDetailDrawer, {
     props,
@@ -54,10 +53,6 @@ describe('MyAnnouncementDetailDrawer', () => {
   beforeEach(() => {
     getMyAnnouncementMock.mockReset()
     getMyAnnouncementMock.mockResolvedValue(detail)
-  })
-
-  afterEach(() => {
-    document.body.innerHTML = ''
   })
 
   it('loads and renders the announcement detail content, tags, and html body', async () => {

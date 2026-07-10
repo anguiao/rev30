@@ -8,6 +8,7 @@ import {
   useSignedAttachmentUrl,
 } from '../../../src/features/attachments'
 import { createTestPinia } from '../../helpers/pinia'
+import { createDeferred } from '../../helpers/promise'
 
 vi.mock('../../../src/features/attachments/requests', () => ({
   resolveSignedAttachmentUrl: vi.fn(),
@@ -22,16 +23,6 @@ function resolveUrl(url: string, expiresAt: string): ResolvedUrlResult {
     expiresAt,
     url,
   }
-}
-
-function createDeferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((innerResolve, innerReject) => {
-    resolve = innerResolve
-    reject = innerReject
-  })
-  return { promise, reject, resolve }
 }
 
 function mountUseSignedAttachmentUrl(

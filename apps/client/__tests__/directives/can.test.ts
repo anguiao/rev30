@@ -1,10 +1,10 @@
 import { mount } from '@vue/test-utils'
 import type { AuthTokenResponse } from '@rev30/contracts'
 import { defineComponent, nextTick, ref } from 'vue'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { useAuthStore } from '../../src/stores/auth'
 import { canDirective } from '../../src/directives/can'
-import { createTestPinia, disposeActiveTestPinia, session } from '../helpers/auth'
+import { createTestPinia, session } from '../helpers/auth'
 function mountProtectedButton(template: string, authSession: AuthTokenResponse = session) {
   const pinia = createTestPinia()
   const auth = useAuthStore(pinia)
@@ -28,14 +28,6 @@ function mountProtectedButton(template: string, authSession: AuthTokenResponse =
 }
 
 describe('v-can directive', () => {
-  beforeEach(() => {
-    disposeActiveTestPinia()
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-  })
-
   it('keeps elements when the user has the required string code', () => {
     const { wrapper } = mountProtectedButton(
       '<div><button data-test="protected" v-can="\'system:user:create\'">Create</button></div>',

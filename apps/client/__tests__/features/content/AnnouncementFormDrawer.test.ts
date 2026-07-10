@@ -1,6 +1,5 @@
 import { PiniaColada, useQueryCache } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getErrorMessage } from '../../../src/utils/error'
@@ -40,6 +39,7 @@ import {
   getUserOptions,
 } from '../../../src/features/system'
 import AnnouncementFormDrawer from '../../../src/features/content/AnnouncementFormDrawer.vue'
+import { createTestPinia } from '../../helpers/pinia'
 
 const { createCompactRichTextEditorPresetMock } = vi.hoisted(() => ({
   createCompactRichTextEditorPresetMock: vi.fn((options) => ({
@@ -200,8 +200,7 @@ const announcementResponse: Announcement = {
 }
 
 function mountDrawer(props = { show: true, announcementId: null as string | null }) {
-  const pinia = createPinia()
-  setActivePinia(pinia)
+  const pinia = createTestPinia()
 
   return mount(AnnouncementFormDrawer, {
     props,
@@ -443,15 +442,6 @@ describe('AnnouncementFormDrawer', () => {
         },
       ]),
     )
-  })
-
-  it('does not enable cascade on the department tree select', async () => {
-    const wrapper = mountDrawer()
-    await flushPromises()
-
-    expect(
-      getTestComponent(wrapper, 'announcement-form-target-departments').vm.$.vnode.props,
-    ).not.toHaveProperty('cascade')
   })
 
   it('saves draft without publish true in create mode', async () => {

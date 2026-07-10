@@ -239,7 +239,7 @@ describe('auth routes', () => {
     const database = await createTestDb()
     const app = createTestApp(database)
 
-    await createLoggedInAccount(app, database)
+    await createPasswordAccount(database)
     const { body: responseBody, response } = await login(app)
     const body = responseBody as AuthTokenResponse
 
@@ -265,7 +265,7 @@ describe('auth routes', () => {
     const database = await createTestDb()
     const app = createTestApp(database)
 
-    const registered = await createLoggedInAccount(app, database)
+    const account = await createPasswordAccount(database)
     const wrongPassword = await login(app, {
       password: 'wrong-password',
     })
@@ -280,7 +280,7 @@ describe('auth routes', () => {
       .set({
         status: USER_STATUS_DISABLED,
       })
-      .where(eq(systemUsers.id, registered.body.user.id))
+      .where(eq(systemUsers.id, account.id))
 
     const disabled = await login(app)
 
@@ -697,7 +697,7 @@ describe('auth routes', () => {
   it('returns role summaries on login', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database, {
+    const account = await createPasswordAccount(database, {
       username: 'role-login-user',
       nickname: 'Role Login User',
       password: 'secret-password',
@@ -720,7 +720,7 @@ describe('auth routes', () => {
     }
 
     await database.insert(systemUserRoles).values({
-      userId: registered.body.user.id,
+      userId: account.id,
       roleId: role.id,
       createdAt: now,
     })
@@ -752,7 +752,7 @@ describe('auth routes', () => {
   it('returns admin access codes and menus on login', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database, {
+    const account = await createPasswordAccount(database, {
       username: 'admin-login',
       nickname: 'Admin Login',
       password: 'secret-password',
@@ -826,7 +826,7 @@ describe('auth routes', () => {
     })
 
     await database.insert(systemUserRoles).values({
-      userId: registered.body.user.id,
+      userId: account.id,
       roleId: adminRole.id,
       createdAt: now,
     })
@@ -889,6 +889,62 @@ describe('auth routes', () => {
     expect(reuseBody).toEqual({
       message: '刷新令牌无效',
     })
+  })
+
+  it('atomically consumes a refresh token when concurrent requests race', async () => {
+    const database = await createTestDb()
+    const app = createTestApp(database)
+    const registered = await createLoggedInAccount(app, database)
+    const oldRefreshToken = requireRefreshToken(registered.refreshToken)
+    const refresh = () =>
+      app.request('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${oldRefreshToken}`,
+        },
+      })
+
+    const responses = await Promise.all([refresh(), refresh()])
+
+    expect(
+      responses.map((response) => response.status).sort((left, right) => left - right),
+    ).toEqual([200, 401])
+
+    const successResponse = responses.find((response) => response.status === 200)
+    const unauthorizedResponse = responses.find((response) => response.status === 401)
+
+    if (!successResponse || !unauthorizedResponse) {
+      throw new Error('Expected one successful and one unauthorized refresh response')
+    }
+
+    const newRefreshToken = requireRefreshToken(getRefreshTokenCookie(successResponse))
+    const config = readAuthConfig()
+    const [oldToken, newToken] = await Promise.all([
+      verifyRefreshToken(oldRefreshToken, config),
+      verifyRefreshToken(newRefreshToken, config),
+    ])
+    const sessions = await database
+      .select()
+      .from(authRefreshTokens)
+      .where(eq(authRefreshTokens.userId, registered.user.id))
+    const activeSessions = sessions.filter(
+      (session) => session.revokedAt === null && session.expiresAt > new Date(),
+    )
+
+    expect(await unauthorizedResponse.json()).toEqual({ message: '刷新令牌无效' })
+    expect(newRefreshToken).not.toBe(oldRefreshToken)
+    expect(sessions).toHaveLength(2)
+    expect(
+      sessions.find((session) => session.tokenHash === oldToken.refreshTokenHash),
+    ).toMatchObject({
+      revokedAt: expect.any(Date),
+    })
+    expect(activeSessions).toMatchObject([
+      {
+        tokenHash: newToken.refreshTokenHash,
+        revokedAt: null,
+      },
+    ])
   })
 
   it('refreshes from the refresh cookie when no body token is provided', async () => {
@@ -1348,10 +1404,10 @@ describe('auth routes', () => {
     }
   })
 
-  it('returns department summaries from login me and refresh for associated users', async () => {
+  it('returns updated department summaries from login and existing-session me and refresh', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database)
+    const existingSession = await createLoggedInAccount(app, database)
     const departmentId = randomUUID()
     const now = new Date()
 
@@ -1363,19 +1419,20 @@ describe('auth routes', () => {
       updatedAt: now,
     })
     await database.insert(systemUserDepartments).values({
-      userId: registered.body.user.id,
+      userId: existingSession.user.id,
       departmentId,
       createdAt: now,
     })
 
     const loggedIn = await login(app)
+    const loggedInBody = loggedIn.body as AuthTokenResponse
 
     expect(loggedIn.response.status).toBe(200)
-    expect((loggedIn.body as AuthTokenResponse).accessCodes).toEqual([])
-    expect((loggedIn.body as AuthTokenResponse).menus).toEqual([])
-    expect(loggedIn.body).toMatchObject({
+    expect(loggedInBody.accessCodes).toEqual([])
+    expect(loggedInBody.menus).toEqual([])
+    expect(loggedInBody).toMatchObject({
       user: {
-        id: registered.body.user.id,
+        id: existingSession.user.id,
         departments: [
           {
             id: departmentId,
@@ -1389,7 +1446,7 @@ describe('auth routes', () => {
 
     const meResponse = await app.request('/api/auth/me', {
       headers: {
-        authorization: `Bearer ${registered.body.accessToken}`,
+        authorization: `Bearer ${existingSession.body.accessToken}`,
       },
     })
     const meBody = await meResponse.json()
@@ -1397,7 +1454,7 @@ describe('auth routes', () => {
     expect(meResponse.status).toBe(200)
     expect(meBody).toMatchObject({
       user: {
-        id: registered.body.user.id,
+        id: existingSession.user.id,
         departments: [
           {
             id: departmentId,
@@ -1414,7 +1471,7 @@ describe('auth routes', () => {
     const refreshResponse = await app.request('/api/auth/refresh', {
       method: 'POST',
       headers: {
-        cookie: `refresh_token=${registered.refreshToken}`,
+        cookie: `refresh_token=${existingSession.refreshToken}`,
       },
     })
     const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
@@ -1422,7 +1479,7 @@ describe('auth routes', () => {
     expect(refreshResponse.status).toBe(200)
     expect(refreshBody).toMatchObject({
       user: {
-        id: registered.body.user.id,
+        id: existingSession.user.id,
         departments: [
           {
             id: departmentId,
@@ -1494,10 +1551,9 @@ describe('auth routes', () => {
   it('marks expired access tokens as refreshable for current user requests', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database)
     const expiredAccessToken = await sign(
       {
-        sub: registered.body.user.id,
+        sub: '11111111-1111-4111-8111-111111111111',
         type: 'access',
         iat: 1,
         exp: 2,

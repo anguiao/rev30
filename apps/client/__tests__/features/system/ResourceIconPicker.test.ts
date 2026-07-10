@@ -1,11 +1,11 @@
 import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NInput, NPopover } from 'naive-ui'
 import ResourceIconPicker from '../../../src/features/system/ResourceIconPicker.vue'
 import { searchIcons } from '../../../src/features/system'
+import { createTestPinia } from '../../helpers/pinia'
 
 vi.mock('@iconify/vue', () => ({
   Icon: defineComponent({
@@ -37,8 +37,7 @@ type IconSearchList = Array<{
 }>
 
 function mountPicker(value: string | null = null) {
-  const pinia = createPinia()
-  setActivePinia(pinia)
+  const pinia = createTestPinia()
 
   return mount(ResourceIconPicker, {
     props: { value },

@@ -316,6 +316,67 @@ describe('announcement routes', () => {
     })
   })
 
+  it('counts only active users in read stats for all-visible announcements', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const activeUserId = randomUUID()
+    const disabledUserId = randomUUID()
+    const deletedUserId = randomUUID()
+
+    await database.insert(systemUsers).values([
+      {
+        id: activeUserId,
+        username: `announcement-active-reader-${activeUserId.slice(0, 8)}`,
+        nickname: 'Active Announcement Reader',
+      },
+      {
+        id: disabledUserId,
+        username: `announcement-disabled-reader-${disabledUserId.slice(0, 8)}`,
+        nickname: 'Disabled Announcement Reader',
+        status: USER_STATUS_DISABLED,
+      },
+      {
+        id: deletedUserId,
+        username: `announcement-deleted-reader-${deletedUserId.slice(0, 8)}`,
+        nickname: 'Deleted Announcement Reader',
+        deletedAt: new Date('2026-05-19T00:00:00.000Z'),
+      },
+    ])
+
+    const { body: created } = await createAnnouncement(app, {
+      ...createBody,
+      title: '全员统计通知',
+      publish: true,
+      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+    })
+
+    await database.insert(announcementReads).values([
+      {
+        announcementId: created.id,
+        userId: activeUserId,
+      },
+      {
+        announcementId: created.id,
+        userId: disabledUserId,
+      },
+      {
+        announcementId: created.id,
+        userId: deletedUserId,
+      },
+    ])
+
+    const listResponse = await app.request('/api/content/announcements?page=1&pageSize=10')
+    const body = (await listResponse.json()) as AnnouncementListResponse
+    const listedAnnouncement = body.list.find((item) => item.id === created.id)
+
+    expect(listResponse.status).toBe(200)
+    expect(listedAnnouncement?.readStats).toEqual({
+      recipientCount: 2,
+      readCount: 1,
+      unreadCount: 1,
+    })
+  })
+
   it('rejects creating announcements with invalid contentJson structure', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)

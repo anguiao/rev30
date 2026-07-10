@@ -9,7 +9,7 @@ import {
   configSchema,
   configUpdateSchema,
 } from '../../../src/system/configs'
-import { prettifyZodError } from '../../helpers/schema'
+import { expectZodIssue } from '../../helpers/schema'
 
 const config = {
   key: 'auth.loginFailureMaxAttempts',
@@ -48,10 +48,7 @@ describe('config schemas', () => {
   it('rejects blank custom values', () => {
     const result = configUpdateSchema.safeParse({ customValue: '   ' })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('请输入自定义值')
-    }
+    expectZodIssue(result, { message: '请输入自定义值' })
   })
 
   it('validates config keys with dot-separated names', () => {

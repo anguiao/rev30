@@ -1,7 +1,22 @@
-import { z } from 'zod'
+import { expect } from 'vitest'
+import type { z } from 'zod'
 
-export function prettifyZodError(result: { success: false; error: z.ZodError }) {
-  return z.prettifyError(result.error)
+export function expectZodIssue(
+  result: z.ZodSafeParseResult<unknown>,
+  expected: {
+    message: string
+    path?: PropertyKey[]
+  },
+) {
+  expect(result.success).toBe(false)
+
+  if (result.success) {
+    throw new Error('Expected schema parsing to fail')
+  }
+
+  expect(result.error.issues).toContainEqual(expect.objectContaining(expected))
+
+  return result.error
 }
 
 export function testUuid(index: number) {

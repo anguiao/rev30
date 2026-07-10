@@ -15,7 +15,7 @@ import {
   type DictionaryFormInput,
   type DictionaryListResponse,
 } from '../../../src/system/dictionaries'
-import { prettifyZodError } from '../../helpers/schema'
+import { expectZodIssue } from '../../helpers/schema'
 
 describe('dictionary schemas', () => {
   it('accepts dictionary detail, list response and options response', () => {
@@ -315,10 +315,7 @@ describe('dictionary schemas', () => {
       code: 'Gender',
       name: '性别',
     })
-    expect(upperCaseCode.success).toBe(false)
-    if (!upperCaseCode.success) {
-      expect(prettifyZodError(upperCaseCode)).toContain('字典编码格式无效')
-    }
+    expectZodIssue(upperCaseCode, { message: '字典编码格式无效' })
 
     const blankCode = dictionaryCreateSchema.safeParse({
       code: '  ',
@@ -330,19 +327,13 @@ describe('dictionary schemas', () => {
       code: 'order,status',
       name: '订单状态',
     })
-    expect(codeWithComma.success).toBe(false)
-    if (!codeWithComma.success) {
-      expect(prettifyZodError(codeWithComma)).toContain('字典编码格式无效')
-    }
+    expectZodIssue(codeWithComma, { message: '字典编码格式无效' })
 
     const invalidChars = dictionaryCreateSchema.safeParse({
       code: 'order-status!',
       name: '订单状态',
     })
-    expect(invalidChars.success).toBe(false)
-    if (!invalidChars.success) {
-      expect(prettifyZodError(invalidChars)).toContain('字典编码格式无效')
-    }
+    expectZodIssue(invalidChars, { message: '字典编码格式无效' })
   })
 
   it('validates dictionary item value and forbids comma', () => {
@@ -438,10 +429,7 @@ describe('dictionary schemas', () => {
       createdAt: '2026-05-04T08:00:00.000Z',
       updatedAt: '2026-05-04T08:00:00.000Z',
     })
-    expect(commaValue.success).toBe(false)
-    if (!commaValue.success) {
-      expect(prettifyZodError(commaValue)).toContain('字典项值不能包含逗号')
-    }
+    expectZodIssue(commaValue, { message: '字典项值不能包含逗号' })
   })
 
   it('requires unique dictionary item values for create and update payloads', () => {
@@ -460,11 +448,8 @@ describe('dictionary schemas', () => {
       ],
     })
 
-    expect(duplicateCreate.success).toBe(false)
-    if (!duplicateCreate.success) {
-      expect(duplicateCreate.error.issues.some((issue) => issue.path[0] === 'items')).toBe(true)
-      expect(prettifyZodError(duplicateCreate)).toContain('字典项值不能重复')
-    }
+    const createError = expectZodIssue(duplicateCreate, { message: '字典项值不能重复' })
+    expect(createError.issues.some((issue) => issue.path[0] === 'items')).toBe(true)
 
     const duplicateUpdate = dictionaryUpdateSchema.safeParse({
       code: 'gender',
@@ -487,11 +472,8 @@ describe('dictionary schemas', () => {
       ],
     })
 
-    expect(duplicateUpdate.success).toBe(false)
-    if (!duplicateUpdate.success) {
-      expect(duplicateUpdate.error.issues.some((issue) => issue.path[0] === 'items')).toBe(true)
-      expect(prettifyZodError(duplicateUpdate)).toContain('字典项值不能重复')
-    }
+    const updateError = expectZodIssue(duplicateUpdate, { message: '字典项值不能重复' })
+    expect(updateError.issues.some((issue) => issue.path[0] === 'items')).toBe(true)
   })
 
   it('parses list query values and normalizes filters', () => {
@@ -522,10 +504,7 @@ describe('dictionary schemas', () => {
     const invalidCodes = dictionaryOptionsQuerySchema.safeParse({
       codes: 'Gender',
     })
-    expect(invalidCodes.success).toBe(false)
-    if (!invalidCodes.success) {
-      expect(prettifyZodError(invalidCodes)).toContain('字典编码格式无效')
-    }
+    expectZodIssue(invalidCodes, { message: '字典编码格式无效' })
 
     const blankCodes = dictionaryOptionsQuerySchema.safeParse({
       codes: '',

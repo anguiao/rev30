@@ -6,7 +6,7 @@ import {
   authProfileUpdateSchema,
   authTokenResponseSchema,
 } from '../../src/auth'
-import { prettifyZodError } from '../helpers/schema'
+import { expectZodIssue } from '../helpers/schema'
 
 describe('auth schemas', () => {
   it('parses short login passwords without enforcing password policy', () => {
@@ -27,10 +27,7 @@ describe('auth schemas', () => {
       password: '   ',
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('请输入密码')
-    }
+    expectZodIssue(result, { message: '请输入密码' })
   })
 
   it('rejects blank login usernames with a schema message', () => {
@@ -39,10 +36,7 @@ describe('auth schemas', () => {
       password: 'secret-password',
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('请输入用户名')
-    }
+    expectZodIssue(result, { message: '请输入用户名' })
   })
 
   it('parses username and password login input', () => {

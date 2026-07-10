@@ -1,5 +1,5 @@
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
 import { defineComponent, h } from 'vue'
 import { NDataTable, NPagination, NSelect } from 'naive-ui'
@@ -15,12 +15,7 @@ import {
 import { formatDisplayDateTime } from '@rev30/utils'
 import { deleteResource, getResourceTree } from '../../../src/features/system'
 import ResourcesPage from '../../../src/pages/index/system/resources.vue'
-import {
-  disposeActiveTestPinia,
-  mountAuthRoute,
-  session,
-  stubPreferredDark,
-} from '../../helpers/auth'
+import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 vi.mock('../../../src/features/system/ResourceFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'ResourceFormDrawerStub',
@@ -121,15 +116,7 @@ describe('resources page', () => {
   beforeEach(() => {
     deleteResourceMock.mockReset()
     getResourceTreeMock.mockReset()
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
     stubPreferredDark(false)
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-    vi.unstubAllGlobals()
   })
 
   it('loads and renders a resource tree without pagination', async () => {

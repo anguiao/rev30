@@ -1,4 +1,6 @@
+import { enableAutoUnmount } from '@vue/test-utils'
 import { afterEach, vi } from 'vitest'
+import { resetThemeDom } from './helpers/dom'
 import { disposeActiveTestPinia } from './helpers/pinia'
 
 vi.mock('@iconify/vue', async () => {
@@ -29,8 +31,11 @@ vi.mock('@iconify/vue', async () => {
   }
 })
 
+enableAutoUnmount(afterEach)
+
 afterEach(() => {
   disposeActiveTestPinia()
+  resetThemeDom()
   Reflect.deleteProperty(navigator, 'clipboard')
   document.body.innerHTML = ''
 })

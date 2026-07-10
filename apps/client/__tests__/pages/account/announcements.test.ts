@@ -1,5 +1,5 @@
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ANNOUNCEMENT_TYPE_BULLETIN,
   ANNOUNCEMENT_TYPE_NOTICE,
@@ -10,12 +10,7 @@ import { NPagination } from 'naive-ui'
 import { defineComponent, h } from 'vue'
 import AccountAnnouncementsPage from '../../../src/pages/index/account/announcements.vue'
 import { listMyAnnouncements } from '../../../src/features/content'
-import {
-  disposeActiveTestPinia,
-  mountAuthRoute,
-  session,
-  stubPreferredDark,
-} from '../../helpers/auth'
+import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
 vi.mock('../../../src/features/content/MyAnnouncementDetailDrawer.vue', () => ({
   default: defineComponent({
@@ -90,16 +85,7 @@ describe('account announcements page', () => {
   beforeEach(() => {
     listMyAnnouncementsMock.mockReset()
     listMyAnnouncementsMock.mockResolvedValue(listResponse)
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
-    document.body.innerHTML = ''
     stubPreferredDark(false)
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-    vi.unstubAllGlobals()
   })
 
   it('loads notice announcements by default', async () => {

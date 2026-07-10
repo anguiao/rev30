@@ -15,7 +15,7 @@ import {
   roleUpdateSchema,
 } from '../../../src/system/roles'
 import { RESOURCE_TYPE_ACTION, RESOURCE_TYPE_MENU } from '../../../src/system/resources'
-import { prettifyZodError, testUuid } from '../../helpers/schema'
+import { expectZodIssue, testUuid } from '../../helpers/schema'
 
 describe('role schemas', () => {
   it('parses includeIds as comma-separated role ids and deduplicates values', () => {
@@ -42,10 +42,7 @@ describe('role schemas', () => {
       includeIds: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7, invalid-uuid',
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('角色 ID 无效')
-    }
+    expectZodIssue(result, { message: '角色 ID 无效' })
   })
 
   it('accepts lightweight role options response', () => {
@@ -189,10 +186,7 @@ describe('role schemas', () => {
       resourceIds: [resourceId, resourceId],
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('资源不能重复')
-    }
+    expectZodIssue(result, { message: '资源不能重复' })
   })
 
   it('rejects excessive resource ids on role input', () => {
@@ -202,10 +196,7 @@ describe('role schemas', () => {
       resourceIds: Array.from({ length: 501 }, (_, index) => testUuid(index + 1)),
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('权限资源不能超过 500 个')
-    }
+    expectZodIssue(result, { message: '权限资源不能超过 500 个' })
   })
 
   it('rejects resource ids that omit required parent resources', () => {
@@ -223,27 +214,20 @@ describe('role schemas', () => {
     expect(schema.parse([systemId, userMenuId])).toEqual([systemId, userMenuId])
 
     const missingDirectParent = schema.safeParse([listUserId])
-    expect(missingDirectParent.success).toBe(false)
-    if (!missingDirectParent.success) {
-      expect(prettifyZodError(missingDirectParent)).toContain(
-        '子级权限资源需要包含所有上级权限资源',
-      )
-    }
+    expectZodIssue(missingDirectParent, {
+      message: '子级权限资源需要包含所有上级权限资源',
+    })
 
     const missingRootParent = schema.safeParse([userMenuId, listUserId, createUserId])
-    expect(missingRootParent.success).toBe(false)
-    if (!missingRootParent.success) {
-      expect(prettifyZodError(missingRootParent)).toContain('子级权限资源需要包含所有上级权限资源')
-    }
+    expectZodIssue(missingRootParent, {
+      message: '子级权限资源需要包含所有上级权限资源',
+    })
   })
 
   it('requires at least one role update field', () => {
     const result = roleUpdateSchema.safeParse({})
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('至少修改一个字段')
-    }
+    expectZodIssue(result, { message: '至少修改一个字段' })
   })
 
   it('parses role list query strings into pagination and filters', () => {

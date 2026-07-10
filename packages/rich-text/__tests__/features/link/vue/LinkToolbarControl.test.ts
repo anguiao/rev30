@@ -1,24 +1,19 @@
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
-import { Editor } from '@tiptap/vue-3'
 import { flushPromises, mount } from '@vue/test-utils'
+import type { Editor } from '@tiptap/vue-3'
 import { NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import LinkToolbarControl from '../../../../src/features/link/vue/LinkToolbarControl.vue'
 import { linkFeature } from '../../../../src/features/link/shared'
-
-const editors: Editor[] = []
-const wrappers: Array<ReturnType<typeof mount>> = []
+import { createTestEditor } from '../../../helpers/editor'
 
 function createEditor(content = '<p>维护通知</p>') {
-  const element = document.createElement('div')
-  document.body.appendChild(element)
   const linkExtension = linkFeature.extension()
 
-  const editor = new Editor({
-    element,
+  return createTestEditor({
     extensions: [
       Document,
       Paragraph,
@@ -27,13 +22,10 @@ function createEditor(content = '<p>维护通知</p>') {
     ],
     content,
   })
-  editors.push(editor)
-
-  return editor
 }
 
 function mountControl(editor: Editor | null, disabled = false) {
-  const wrapper = mount(LinkToolbarControl, {
+  return mount(LinkToolbarControl, {
     global: {
       stubs: {
         teleport: true,
@@ -44,9 +36,6 @@ function mountControl(editor: Editor | null, disabled = false) {
       disabled,
     },
   })
-  wrappers.push(wrapper)
-
-  return wrapper
 }
 
 function selectEditorText(editor: Editor) {
@@ -82,16 +71,7 @@ async function focusEditor(editor: Editor) {
 
 describe('LinkToolbarControl', () => {
   afterEach(() => {
-    while (wrappers.length > 0) {
-      wrappers.pop()?.unmount()
-    }
-
-    document.body.innerHTML = ''
     vi.restoreAllMocks()
-
-    while (editors.length > 0) {
-      editors.pop()?.destroy()
-    }
   })
 
   it('applies a normalized link and pre-fills from the current selection href', async () => {

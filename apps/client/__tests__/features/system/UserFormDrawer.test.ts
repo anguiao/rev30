@@ -23,7 +23,8 @@ import {
   updateUser,
 } from '../../../src/features/system'
 import UserFormDrawer from '../../../src/features/system/UserFormDrawer.vue'
-import { createPinia, setActivePinia } from 'pinia'
+import { createTestPinia } from '../../helpers/pinia'
+import { createDeferred } from '../../helpers/promise'
 
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
@@ -143,24 +144,8 @@ const updatedUserResponse: User = {
   updatedAt: '2026-05-20T00:00:00.000Z',
 }
 
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((promiseResolve, promiseReject) => {
-    resolve = promiseResolve
-    reject = promiseReject
-  })
-
-  return {
-    promise,
-    resolve,
-    reject,
-  }
-}
-
 function mountDrawer(props?: { show?: boolean; userId?: string | null }) {
-  const pinia = createPinia()
-  setActivePinia(pinia)
+  const pinia = createTestPinia()
 
   return mount(UserFormDrawer, {
     props: {
@@ -191,7 +176,6 @@ async function refetchUserForm(wrapper: ReturnType<typeof mount>, currentUserId:
 
 async function submitForm(wrapper: ReturnType<typeof mount>) {
   await wrapper.get('[data-test="user-form-submit"]').trigger('click')
-  await wrapper.get('form').trigger('submit')
   await flushPromises()
 }
 
@@ -409,7 +393,7 @@ describe('UserFormDrawer', () => {
   })
 
   it('ignores stale mutation errors from a previous create session', async () => {
-    const pendingCreate = deferred<UserCreateResponse>()
+    const pendingCreate = createDeferred<UserCreateResponse>()
     createUserMock.mockImplementationOnce(() => pendingCreate.promise)
 
     const wrapper = mountDrawer({ userId: null })

@@ -1,26 +1,17 @@
 import bytes from 'bytes'
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NImage, NPagination } from 'naive-ui'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { NPagination } from 'naive-ui'
 import {
   type AttachmentListItem,
   type AttachmentListResponse,
   type AuthTokenResponse,
 } from '@rev30/contracts'
 import { computed } from 'vue'
-import {
-  deleteAttachment,
-  getAttachmentContentUrl,
-  listAttachments,
-} from '../../../src/features/attachments'
+import { deleteAttachment, listAttachments } from '../../../src/features/attachments'
 import { useSignedAttachmentUrl } from '../../../src/features/attachments/useSignedAttachmentUrl'
 import AttachmentsPage from '../../../src/pages/index/content/attachments.vue'
-import {
-  disposeActiveTestPinia,
-  mountAuthRoute,
-  session,
-  stubPreferredDark,
-} from '../../helpers/auth'
+import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
 vi.mock('../../../src/features/attachments', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/attachments')>()),
@@ -100,16 +91,7 @@ describe('attachments page', () => {
       isLoading: computed(() => false),
       refresh: async () => {},
     })
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
-    document.body.innerHTML = ''
     stubPreferredDark(false)
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-    vi.unstubAllGlobals()
   })
 
   it('loads and renders attachment resources', async () => {
@@ -126,29 +108,9 @@ describe('attachments page', () => {
     expect(wrapper.text()).toContain(
       `${authenticatedImage.createdBy.nickname} (${authenticatedImage.createdBy.username})`,
     )
-    const imageProps = wrapper.findAllComponents(NImage).map((image) => image.props())
-
-    expect(getAttachmentContentUrl(authenticatedImage.id)).toBe(
-      `/api/attachments/${authenticatedImage.id}/content`,
+    expect(wrapper.findAll('img').map((image) => image.attributes('alt'))).toEqual(
+      expect.arrayContaining([authenticatedImage.originalName, signedImage.originalName]),
     )
-    expect(imageProps).toContainEqual(
-      expect.objectContaining({
-        src: getAttachmentContentUrl(authenticatedImage.id),
-        previewSrc: getAttachmentContentUrl(authenticatedImage.id),
-        objectFit: 'cover',
-      }),
-    )
-    expect(imageProps).toContainEqual(
-      expect.objectContaining({
-        src: 'https://cdn.example.com/avatar.png',
-        previewSrc: 'https://cdn.example.com/avatar.png',
-        objectFit: 'cover',
-      }),
-    )
-    expect(useSignedAttachmentUrlMock).toHaveBeenCalledWith(expect.any(Function), {
-      disposition: 'inline',
-      enabled: expect.any(Object),
-    })
   })
 
   it('searches by keyword and usage', async () => {

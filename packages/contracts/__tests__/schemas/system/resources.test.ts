@@ -19,7 +19,7 @@ import {
   resourceUpdateSchema,
 } from '../../../src/system/resources'
 import type { Resource } from '../../../src/system/resources'
-import { prettifyZodError } from '../../helpers/schema'
+import { expectZodIssue } from '../../helpers/schema'
 
 describe('resource schemas', () => {
   it('parses includeIds as comma-separated resource ids and deduplicates values', () => {
@@ -48,10 +48,7 @@ describe('resource schemas', () => {
       includeIds: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7, invalid-uuid',
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('资源 ID 无效')
-    }
+    expectZodIssue(result, { message: '资源 ID 无效' })
   })
 
   it('accepts recursive lightweight resource tree options responses', () => {
@@ -210,20 +207,14 @@ describe('resource schemas', () => {
       type: RESOURCE_TYPE_MENU,
     })
 
-    expect(missingMenuPath.success).toBe(false)
-    if (!missingMenuPath.success) {
-      expect(prettifyZodError(missingMenuPath)).toContain('内部菜单路径不能为空')
-    }
+    expectZodIssue(missingMenuPath, { message: '内部菜单路径不能为空' })
 
     const missingExternalUrl = resourceFormSchema.safeParse({
       ...baseFormInput,
       type: RESOURCE_TYPE_EXTERNAL,
     })
 
-    expect(missingExternalUrl.success).toBe(false)
-    if (!missingExternalUrl.success) {
-      expect(prettifyZodError(missingExternalUrl)).toContain('外链地址不能为空')
-    }
+    expectZodIssue(missingExternalUrl, { message: '外链地址不能为空' })
 
     const invalidExternalUrl = resourceFormSchema.safeParse({
       ...baseFormInput,
@@ -231,10 +222,7 @@ describe('resource schemas', () => {
       externalUrl: 'not-a-url',
     })
 
-    expect(invalidExternalUrl.success).toBe(false)
-    if (!invalidExternalUrl.success) {
-      expect(prettifyZodError(invalidExternalUrl)).toContain('外链地址无效')
-    }
+    expectZodIssue(invalidExternalUrl, { message: '外链地址无效' })
 
     expect(
       resourceFormSchema.parse({
@@ -435,19 +423,13 @@ describe('resource schemas', () => {
       icon: 'i-[lucide--users]',
     })
 
-    expect(createResult.success).toBe(false)
-    if (!createResult.success) {
-      expect(prettifyZodError(createResult)).toContain('图标名称无效')
-    }
+    expectZodIssue(createResult, { message: '图标名称无效' })
 
     const updateResult = resourceUpdateSchema.safeParse({
       icon: 'i-[lucide--users]',
     })
 
-    expect(updateResult.success).toBe(false)
-    if (!updateResult.success) {
-      expect(prettifyZodError(updateResult)).toContain('图标名称无效')
-    }
+    expectZodIssue(updateResult, { message: '图标名称无效' })
   })
 
   it('normalizes ignored external links for menu, directory, and action resources', () => {
@@ -525,10 +507,7 @@ describe('resource schemas', () => {
   it('requires at least one resource update field', () => {
     const result = resourceUpdateSchema.safeParse({})
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('至少修改一个字段')
-    }
+    expectZodIssue(result, { message: '至少修改一个字段' })
   })
 
   it('defers omitted-type externalUrl validation and validates explicit external updates', () => {

@@ -1,13 +1,14 @@
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
-import { Editor } from '@tiptap/vue-3'
 import { flushPromises, mount } from '@vue/test-utils'
+import type { Editor } from '@tiptap/vue-3'
 import { NImage, NSpin } from 'naive-ui'
 import { markRaw } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { imageFeature } from '../../../../src/features/image/shared'
 import ImageToolbarControl from '../../../../src/features/image/vue/ImageToolbarControl.vue'
+import { createTestEditor } from '../../../helpers/editor'
 
 type FileDialogChangeHandler = (files: FileList | null) => void
 type FileDialogOptions = {
@@ -69,9 +70,6 @@ vi.mock('@vueuse/core', async (importOriginal) => {
   }
 })
 
-const editors: Editor[] = []
-const wrappers: Array<ReturnType<typeof mount>> = []
-
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void
   let reject!: (reason?: unknown) => void
@@ -84,12 +82,9 @@ function deferred<T>() {
 }
 
 function createEditor(content = '<p>维护通知</p>') {
-  const element = document.createElement('div')
-  document.body.appendChild(element)
   const extension = imageFeature.extension()
 
-  const editor = new Editor({
-    element,
+  return createTestEditor({
     extensions: [
       Document,
       Paragraph,
@@ -98,13 +93,10 @@ function createEditor(content = '<p>维护通知</p>') {
     ],
     content,
   })
-  editors.push(editor)
-
-  return editor
 }
 
 function mountControl(editor: Editor, upload = vi.fn(), onError = vi.fn()) {
-  const wrapper = mount(ImageToolbarControl, {
+  return mount(ImageToolbarControl, {
     global: {
       stubs: {
         teleport: true,
@@ -117,9 +109,6 @@ function mountControl(editor: Editor, upload = vi.fn(), onError = vi.fn()) {
       onError,
     },
   })
-  wrappers.push(wrapper)
-
-  return wrapper
 }
 
 function createFileList(...files: File[]) {
@@ -211,10 +200,6 @@ async function failPreviewImage(wrapper: ReturnType<typeof mount>) {
 
 describe('ImageToolbarControl', () => {
   afterEach(() => {
-    while (wrappers.length > 0) wrappers.pop()?.unmount()
-    while (editors.length > 0) editors.pop()?.destroy()
-    document.body.innerHTML = ''
-    vi.unstubAllGlobals()
     vi.restoreAllMocks()
     fileDialog.changeHandlers.length = 0
     fileDialog.options.length = 0

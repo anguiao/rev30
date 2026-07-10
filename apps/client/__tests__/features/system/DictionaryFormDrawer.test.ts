@@ -1,6 +1,5 @@
 import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
 import { NInputNumber, NSelect } from 'naive-ui'
@@ -11,6 +10,8 @@ import {
 } from '@rev30/contracts'
 import { createDictionary, getDictionary, updateDictionary } from '../../../src/features/system'
 import DictionaryFormDrawer from '../../../src/features/system/DictionaryFormDrawer.vue'
+import { createTestPinia } from '../../helpers/pinia'
+import { createDeferred } from '../../helpers/promise'
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   createDictionary: vi.fn(),
@@ -92,20 +93,8 @@ const updatedDictionaryDetail: DictionaryDetail = {
   ],
 }
 
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((promiseResolve, promiseReject) => {
-    resolve = promiseResolve
-    reject = promiseReject
-  })
-
-  return { promise, resolve, reject }
-}
-
 function mountDrawer(props = { show: true, dictionaryId: null as string | null }) {
-  const pinia = createPinia()
-  setActivePinia(pinia)
+  const pinia = createTestPinia()
 
   return mount(DictionaryFormDrawer, {
     props,
@@ -150,7 +139,6 @@ async function confirmRemoveItem(wrapper: ReturnType<typeof mount>, index: numbe
 
 async function submitForm(wrapper: ReturnType<typeof mount>) {
   await wrapper.get('[data-test="dictionary-form-submit"]').trigger('click')
-  await wrapper.get('form').trigger('submit')
   await flushPromises()
 }
 
@@ -215,7 +203,8 @@ describe('DictionaryFormDrawer', () => {
       .vm.$emit('update:value', 2)
     await flushPromises()
 
-    await submitForm(wrapper)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
 
     expect(createDictionaryMock).toHaveBeenCalledWith({
       code: 'order_status',
@@ -439,7 +428,7 @@ describe('DictionaryFormDrawer', () => {
   })
 
   it('ignores stale mutation errors from a previous create session', async () => {
-    const pendingCreate = deferred<DictionaryDetail>()
+    const pendingCreate = createDeferred<DictionaryDetail>()
     createDictionaryMock.mockImplementationOnce(() => pendingCreate.promise)
 
     const wrapper = mountDrawer()

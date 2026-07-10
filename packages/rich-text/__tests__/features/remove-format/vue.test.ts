@@ -1,17 +1,11 @@
-import { Editor } from '@tiptap/vue-3'
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { collectRichTextExtensions } from '../../../src/core/preset'
 import { removeFormatCommand } from '../../../src/features/remove-format/vue'
 import { compactRichTextPreset } from '../../../src/presets'
-
-const editors: Editor[] = []
+import { createTestEditor } from '../../helpers/editor'
 
 function createEditor() {
-  const element = document.createElement('div')
-  document.body.appendChild(element)
-
-  const editor = new Editor({
-    element,
+  return createTestEditor({
     extensions: collectRichTextExtensions(compactRichTextPreset),
     content: {
       type: 'doc',
@@ -37,20 +31,9 @@ function createEditor() {
       ],
     },
   })
-  editors.push(editor)
-
-  return editor
 }
 
 describe('remove format command', () => {
-  afterEach(() => {
-    document.body.innerHTML = ''
-
-    while (editors.length > 0) {
-      editors.pop()?.destroy()
-    }
-  })
-
   it('removes inline marks and resets text blocks', () => {
     const editor = createEditor()
 

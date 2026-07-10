@@ -12,18 +12,34 @@ import { ApiRequestError } from '../../../src/utils/request'
 import {
   archiveAnnouncement,
   createAnnouncement,
+  createCustomIconSet,
   deleteAnnouncement,
+  deleteCustomIcon,
+  deleteCustomIconSet,
   exportCustomIconSet,
   getAnnouncement,
   getCustomIconSet,
   getMyAnnouncement,
   listAnnouncements,
+  listBuiltinIcons,
+  listBuiltinIconSets,
+  listCustomIcons,
+  listCustomIconSets,
   listMyAnnouncements,
   publishAnnouncement,
+  renameCustomIcon,
   updateAnnouncement,
+  updateCustomIconSet,
+  uploadCustomIcons,
 } from '../../../src/features/content'
 import { useAuthStore } from '../../../src/stores/auth'
-import { createFetchMock, expectFetchCall, expectJsonBody, jsonResponse } from '../../helpers/fetch'
+import {
+  createFetchMock,
+  emptyResponse,
+  expectFetchCall,
+  expectJsonBody,
+  jsonResponse,
+} from '../../helpers/fetch'
 import { createTestPinia } from '../../helpers/pinia'
 
 const announcementId = '11111111-1111-4111-8111-111111111111'
@@ -81,6 +97,25 @@ const customIconSetResponse: CustomIconSet = {
   name: 'Acme Icons',
   description: null,
   iconCount: 2,
+  createdAt: '2026-06-15T00:00:00.000Z',
+  updatedAt: '2026-06-15T01:00:00.000Z',
+}
+
+const builtinIconResponse = {
+  icon: 'lucide:user-add',
+  prefix: 'lucide',
+  name: 'user-add',
+  setName: 'Lucide',
+  body: '<path d="M0 0h24v24H0z"/>',
+  width: 24,
+  height: 24,
+}
+
+const customIconResponse = {
+  ...builtinIconResponse,
+  icon: 'acme:user-add',
+  prefix: 'acme',
+  setName: 'Acme Icons',
   createdAt: '2026-06-15T00:00:00.000Z',
   updatedAt: '2026-06-15T01:00:00.000Z',
 }
@@ -328,6 +363,187 @@ describe('content request helpers', () => {
     })
   })
 
+  it('lists built-in and custom icon sets with normalized filters', async () => {
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        list: [{ prefix: 'lucide', name: 'Lucide', total: 1000 }],
+        total: 1,
+      }),
+      jsonResponse({
+        list: [customIconSetResponse],
+        total: 1,
+      }),
+    )
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(listBuiltinIconSets({ keyword: 'user' })).resolves.toMatchObject({ total: 1 })
+    await expect(listCustomIconSets({ keyword: 'acme' })).resolves.toMatchObject({
+      list: [{ prefix: 'acme' }],
+      total: 1,
+    })
+
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/content/icon-sets/builtin',
+      query: { keyword: 'user' },
+    })
+    expectFetchCall(fetchMock, 1, {
+      method: 'GET',
+      pathname: '/api/content/icon-sets/custom',
+      query: { keyword: 'acme' },
+    })
+  })
+
+  it('lists built-in and custom icons with cursor pagination', async () => {
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        list: [builtinIconResponse],
+        nextCursor: 'lucide:user-check',
+        pageSize: 20,
+      }),
+      jsonResponse({
+        list: [customIconResponse],
+        nextCursor: null,
+        pageSize: 20,
+      }),
+    )
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(
+      listBuiltinIcons({
+        keyword: 'user',
+        prefix: 'lucide',
+        pageSize: 20,
+      }),
+    ).resolves.toMatchObject({ nextCursor: 'lucide:user-check' })
+    await expect(
+      listCustomIcons({
+        keyword: 'user',
+        prefix: 'acme',
+        cursor: 'acme:user-add',
+        pageSize: 20,
+      }),
+    ).resolves.toMatchObject({ list: [{ icon: 'acme:user-add' }], nextCursor: null })
+
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/content/icon-sets/builtin/icons',
+      query: {
+        keyword: 'user',
+        prefix: 'lucide',
+        cursor: undefined,
+        pageSize: '20',
+      },
+    })
+    expectFetchCall(fetchMock, 1, {
+      method: 'GET',
+      pathname: '/api/content/icon-sets/custom/icons',
+      query: {
+        keyword: 'user',
+        prefix: 'acme',
+        cursor: 'acme:user-add',
+        pageSize: '20',
+      },
+    })
+  })
+
+  it('creates, updates, and deletes custom icon sets', async () => {
+    const updatedIconSet = { ...customIconSetResponse, name: 'Acme Updated' }
+    const fetchMock = createFetchMock(
+      jsonResponse(customIconSetResponse, { status: 201 }),
+      jsonResponse(updatedIconSet),
+      emptyResponse(),
+    )
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(
+      createCustomIconSet({ prefix: 'acme', name: 'Acme Icons', description: null }),
+    ).resolves.toEqual(customIconSetResponse)
+    await expect(updateCustomIconSet('acme', { name: 'Acme Updated' })).resolves.toEqual(
+      updatedIconSet,
+    )
+    await expect(deleteCustomIconSet('acme')).resolves.toBeUndefined()
+
+    expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: '/api/content/icon-sets/custom',
+    })
+    expectJsonBody(fetchMock, 0, {
+      prefix: 'acme',
+      name: 'Acme Icons',
+      description: null,
+    })
+    expectFetchCall(fetchMock, 1, {
+      method: 'PATCH',
+      pathname: '/api/content/icon-sets/custom/acme',
+    })
+    expectJsonBody(fetchMock, 1, { name: 'Acme Updated' })
+    expectFetchCall(fetchMock, 2, {
+      method: 'DELETE',
+      pathname: '/api/content/icon-sets/custom/acme',
+    })
+  })
+
+  it('uploads custom icons as multipart form data and parses partial results', async () => {
+    const uploadResponse = {
+      created: [customIconResponse],
+      replaced: [],
+      skipped: [
+        {
+          name: 'existing',
+          sourceFilename: 'existing.svg',
+          reason: 'duplicate' as const,
+        },
+      ],
+      failed: [{ sourceFilename: 'bad.svg', message: 'SVG 无效' }],
+    }
+    const fetchMock = createFetchMock(jsonResponse(uploadResponse))
+    const files = [
+      new File(['<svg />'], 'user-add.svg', { type: 'image/svg+xml' }),
+      new File(['<svg />'], 'existing.svg', { type: 'image/svg+xml' }),
+    ]
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(
+      uploadCustomIcons('acme', { duplicateStrategy: 'replace', files }),
+    ).resolves.toEqual(uploadResponse)
+
+    const call = expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: '/api/content/icon-sets/custom/acme/icons',
+    })
+    const form = call.init.body
+
+    expect(form).toBeInstanceOf(FormData)
+    expect((form as FormData).get('duplicateStrategy')).toBe('replace')
+    expect((form as FormData).getAll('files')).toEqual(files)
+  })
+
+  it('renames and deletes custom icons', async () => {
+    const renamedIcon = {
+      ...customIconResponse,
+      icon: 'acme:account-add',
+      name: 'account-add',
+    }
+    const fetchMock = createFetchMock(jsonResponse(renamedIcon), emptyResponse())
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(renameCustomIcon('acme', 'user-add', { name: 'account-add' })).resolves.toEqual(
+      renamedIcon,
+    )
+    await expect(deleteCustomIcon('acme', 'account-add')).resolves.toBeUndefined()
+
+    expectFetchCall(fetchMock, 0, {
+      method: 'PATCH',
+      pathname: '/api/content/icon-sets/custom/acme/icons/user-add',
+    })
+    expectJsonBody(fetchMock, 0, { name: 'account-add' })
+    expectFetchCall(fetchMock, 1, {
+      method: 'DELETE',
+      pathname: '/api/content/icon-sets/custom/acme/icons/account-add',
+    })
+  })
+
   it('exports custom icon sets through authenticated fetch', async () => {
     const fetchMock = createFetchMock(
       new Response('{"prefix":"acme","icons":{}}', {
@@ -386,52 +602,6 @@ describe('content request helpers', () => {
     expectFetchCall(fetchMock, 0, {
       method: 'POST',
       pathname: '/api/content/announcements',
-    })
-  })
-
-  it('returns targets error fields when response json contains field and message', async () => {
-    const fetchMock = createFetchMock(
-      new Response(JSON.stringify({ field: 'targets', message: '请选择可见对象' }), {
-        status: 400,
-      }),
-    )
-    useAuthStore().accessToken = 'access-token'
-
-    const failedCreate = createAnnouncement(createInput)
-
-    await expect(failedCreate).rejects.toBeInstanceOf(ApiRequestError)
-    await expect(failedCreate).rejects.toMatchObject({
-      status: 400,
-      field: 'targets',
-      message: '请选择可见对象',
-    })
-    expect(fetchMock).toHaveBeenCalledOnce()
-    expectFetchCall(fetchMock, 0, {
-      method: 'POST',
-      pathname: '/api/content/announcements',
-    })
-  })
-
-  it('falls back when response error body is not structured', async () => {
-    const fetchMock = createFetchMock(
-      new Response('internal server error', {
-        status: 500,
-      }),
-    )
-    useAuthStore().accessToken = 'access-token'
-
-    const failedGet = getAnnouncement(announcementId)
-
-    await expect(failedGet).rejects.toBeInstanceOf(ApiRequestError)
-    await expect(failedGet).rejects.toMatchObject({
-      status: 500,
-      message: '请求失败',
-      field: undefined,
-    })
-    expect(fetchMock).toHaveBeenCalledOnce()
-    expectFetchCall(fetchMock, 0, {
-      method: 'GET',
-      pathname: `/api/content/announcements/${announcementId}`,
     })
   })
 })

@@ -10,7 +10,7 @@ import {
   departmentSchema,
   departmentUpdateSchema,
 } from '../../../src/system/departments'
-import { prettifyZodError } from '../../helpers/schema'
+import { expectZodIssue } from '../../helpers/schema'
 
 describe('department schemas', () => {
   it('parses includeIds as comma-separated department ids and deduplicates values', () => {
@@ -41,10 +41,7 @@ describe('department schemas', () => {
       includeIds: 'a1f5aa2c-4f1a-4d39-9ca6-6f4f2b7c8a4a, invalid-uuid',
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('部门 ID 无效')
-    }
+    expectZodIssue(result, { message: '部门 ID 无效' })
   })
 
   it('accepts recursive lightweight department tree options responses', () => {
@@ -201,9 +198,6 @@ describe('department schemas', () => {
   it('requires at least one field for updates', () => {
     const result = departmentUpdateSchema.safeParse({})
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('至少修改一个字段')
-    }
+    expectZodIssue(result, { message: '至少修改一个字段' })
   })
 })

@@ -1,5 +1,5 @@
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
 import { NPagination, NSelect, NTreeSelect } from 'naive-ui'
 import {
@@ -21,12 +21,7 @@ import {
   resetUserPassword,
 } from '../../../src/features/system'
 import UsersPage from '../../../src/pages/index/system/users.vue'
-import {
-  disposeActiveTestPinia,
-  mountAuthRoute,
-  session,
-  stubPreferredDark,
-} from '../../helpers/auth'
+import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 vi.mock('../../../src/features/system/UserFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'UserFormDrawerStub',
@@ -221,17 +216,7 @@ describe('users page', () => {
     resetUserPasswordMock.mockReset()
     getDepartmentTreeOptionsMock.mockResolvedValue(departmentFilterOptions)
     getRoleOptionsMock.mockResolvedValue(roleFilterOptions)
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
-    document.body.innerHTML = ''
     stubPreferredDark(false)
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-    vi.unstubAllGlobals()
-    Reflect.deleteProperty(navigator, 'clipboard')
   })
 
   it('loads and renders users with departments and roles', async () => {

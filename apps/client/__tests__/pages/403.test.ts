@@ -1,9 +1,9 @@
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { logout } from '../../src/features/auth'
 import ForbiddenPage from '../../src/pages/403.vue'
 import { useAuthStore } from '../../src/stores/auth'
-import { disposeActiveTestPinia, mountAuthRoute, session, stubPreferredDark } from '../helpers/auth'
+import { mountAuthRoute, session, stubPreferredDark } from '../helpers/auth'
 vi.mock('../../src/features/auth', () => ({
   logout: vi.fn(),
 }))
@@ -24,15 +24,7 @@ async function mountForbiddenPage() {
 describe('forbidden page', () => {
   beforeEach(() => {
     logoutMock.mockReset()
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
     stubPreferredDark(false)
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-    vi.unstubAllGlobals()
   })
 
   it('renders the no access result page', async () => {

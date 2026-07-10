@@ -2,35 +2,26 @@ import Highlight from '@tiptap/extension-highlight'
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
-import { Editor } from '@tiptap/vue-3'
 import { flushPromises, mount } from '@vue/test-utils'
+import type { Editor } from '@tiptap/vue-3'
 import { NButton } from 'naive-ui'
 import { markRaw } from 'vue'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { highlightColorOptions } from '../../../../src/features/highlight/colors'
 import HighlightToolbarControl from '../../../../src/features/highlight/vue/HighlightToolbarControl.vue'
-
-const editors: Editor[] = []
-const wrappers: Array<ReturnType<typeof mount>> = []
+import { createTestEditor } from '../../../helpers/editor'
 const yellow = highlightColorOptions[0]
 const blue = highlightColorOptions[2]
 
 function createEditor(content = '<p>维护通知</p>') {
-  const element = document.createElement('div')
-  document.body.appendChild(element)
-
-  const editor = new Editor({
-    element,
+  return createTestEditor({
     extensions: [Document, Paragraph, Text, Highlight.configure({ multicolor: true })],
     content,
   })
-  editors.push(editor)
-
-  return editor
 }
 
 function mountControl(editor: Editor, disabled = false) {
-  const wrapper = mount(HighlightToolbarControl, {
+  return mount(HighlightToolbarControl, {
     global: {
       stubs: {
         teleport: true,
@@ -42,9 +33,6 @@ function mountControl(editor: Editor, disabled = false) {
       colors: [...highlightColorOptions],
     },
   })
-  wrappers.push(wrapper)
-
-  return wrapper
 }
 
 function selectEditorText(editor: Editor) {
@@ -75,18 +63,6 @@ function getButtonComponent(wrapper: ReturnType<typeof mount>, dataTest: string)
 }
 
 describe('HighlightToolbarControl', () => {
-  afterEach(() => {
-    while (wrappers.length > 0) {
-      wrappers.pop()?.unmount()
-    }
-
-    document.body.innerHTML = ''
-
-    while (editors.length > 0) {
-      editors.pop()?.destroy()
-    }
-  })
-
   it('sets and clears a palette highlight color', async () => {
     const editor = createEditor()
     selectEditorText(editor)

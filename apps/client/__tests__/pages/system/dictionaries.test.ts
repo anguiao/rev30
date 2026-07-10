@@ -1,6 +1,6 @@
 import { useQueryCache } from '@pinia/colada'
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
 import { NDataTable, NPagination, NSelect } from 'naive-ui'
 import {
@@ -13,12 +13,7 @@ import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
 import { deleteDictionary, listDictionaries } from '../../../src/features/system'
 import DictionariesPage from '../../../src/pages/index/system/dictionaries.vue'
-import {
-  disposeActiveTestPinia,
-  mountAuthRoute,
-  session,
-  stubPreferredDark,
-} from '../../helpers/auth'
+import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 vi.mock('../../../src/features/system/DictionaryFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'DictionaryFormDrawerStub',
@@ -100,16 +95,7 @@ describe('dictionaries page', () => {
   beforeEach(() => {
     deleteDictionaryMock.mockReset()
     listDictionariesMock.mockReset()
-    localStorage.clear()
-    document.documentElement.className = ''
-    document.documentElement.style.colorScheme = ''
-    document.body.innerHTML = ''
     stubPreferredDark(false)
-  })
-
-  afterEach(() => {
-    disposeActiveTestPinia()
-    vi.unstubAllGlobals()
   })
 
   it('loads and renders dictionary list with pagination', async () => {

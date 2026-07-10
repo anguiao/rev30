@@ -1,19 +1,14 @@
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
-import { Editor } from '@tiptap/vue-3'
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { imageFeature } from '../../../src/features/image/shared'
-
-const editors: Editor[] = []
+import { createTestEditor } from '../../helpers/editor'
 
 function createEditor(content: string) {
-  const element = document.createElement('div')
-  document.body.appendChild(element)
   const extension = imageFeature.extension()
 
-  const editor = new Editor({
-    element,
+  return createTestEditor({
     extensions: [
       Document,
       Paragraph,
@@ -22,20 +17,9 @@ function createEditor(content: string) {
     ],
     content,
   })
-  editors.push(editor)
-
-  return editor
 }
 
 describe('image feature shared rendering', () => {
-  afterEach(() => {
-    document.body.innerHTML = ''
-
-    while (editors.length > 0) {
-      editors.pop()?.destroy()
-    }
-  })
-
   it('drops isolated height when width is missing', () => {
     const editor = createEditor(
       '<img src="/api/attachments/cover/content" alt="说明" height="360" />',

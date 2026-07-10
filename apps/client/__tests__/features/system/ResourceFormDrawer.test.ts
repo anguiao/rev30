@@ -1,6 +1,5 @@
 import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
@@ -24,6 +23,8 @@ import {
   updateResource,
 } from '../../../src/features/system'
 import ResourceFormDrawer from '../../../src/features/system/ResourceFormDrawer.vue'
+import { createTestPinia } from '../../helpers/pinia'
+import { createDeferred } from '../../helpers/promise'
 vi.mock('../../../src/features/system/ResourceIconPicker.vue', () => ({
   default: defineComponent({
     name: 'ResourceIconPickerStub',
@@ -192,21 +193,6 @@ const updatedMenuResourceResponse: Resource = {
   updatedAt: '2026-05-20T00:00:00.000Z',
 }
 
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((promiseResolve, promiseReject) => {
-    resolve = promiseResolve
-    reject = promiseReject
-  })
-
-  return {
-    promise,
-    resolve,
-    reject,
-  }
-}
-
 function mountDrawer(
   props: {
     show?: boolean
@@ -214,8 +200,7 @@ function mountDrawer(
     parentId?: string | null
   } = {},
 ) {
-  const pinia = createPinia()
-  setActivePinia(pinia)
+  const pinia = createTestPinia()
 
   return mount(ResourceFormDrawer, {
     props: {
@@ -235,7 +220,6 @@ function mountDrawer(
 
 async function submitForm(wrapper: ReturnType<typeof mount>) {
   await wrapper.get('[data-test="resource-form-submit"]').trigger('click')
-  await wrapper.get('form').trigger('submit')
   await flushPromises()
 }
 
@@ -537,7 +521,7 @@ describe('ResourceFormDrawer', () => {
   })
 
   it('ignores stale mutation errors from a previous create session', async () => {
-    const pendingCreate = deferred<Resource>()
+    const pendingCreate = createDeferred<Resource>()
     createResourceMock.mockImplementationOnce(() => pendingCreate.promise)
 
     const wrapper = mountDrawer({

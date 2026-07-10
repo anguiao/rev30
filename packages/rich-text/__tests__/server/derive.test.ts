@@ -1,16 +1,14 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { RichTextContentInvalidError, deriveRichTextContent } from '../../src/server'
+import { createCompactRichTextServerPreset } from '../../src/server/presets'
 
-async function loadServerHelpers() {
-  vi.resetModules()
-
-  return await import('../../src/server')
+function createServerPreset() {
+  return createCompactRichTextServerPreset({
+    image: {
+      isAllowedSrc: (src) => /^\/api\/attachments\/[0-9a-f-]{36}\/content$/i.test(src),
+    },
+  })
 }
-
-afterEach(() => {
-  vi.doUnmock('@tiptap/html')
-  vi.doUnmock('@tiptap/html/server')
-  vi.resetModules()
-})
 
 describe('deriveRichTextContent', () => {
   it('uses the server tiptap html entry instead of the browser entry', async () => {
@@ -18,35 +16,27 @@ describe('deriveRichTextContent', () => {
     const serverGenerateHtml = vi.fn(() => '<p>维护通知</p>')
     vi.doMock('@tiptap/html/server', () => ({ generateHTML: serverGenerateHtml }))
 
-    const { deriveRichTextContent } = await import('../../src/server')
-    const { createCompactRichTextServerPreset } = await import('../../src/server/presets')
-    const compactServerPreset = createCompactRichTextServerPreset({
-      image: {
-        isAllowedSrc: (src) => /^\/api\/attachments\/[0-9a-f-]{36}\/content$/i.test(src),
-      },
-    })
+    try {
+      const { deriveRichTextContent: deriveRichTextContentWithMock } =
+        await import('../../src/server')
 
-    expect(
-      deriveRichTextContent(
-        {
-          type: 'doc',
-          content: [{ type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] }],
-        },
-        compactServerPreset,
-      ).html,
-    ).toBe('<p>维护通知</p>')
-    expect(serverGenerateHtml).toHaveBeenCalledOnce()
+      expect(
+        deriveRichTextContentWithMock(
+          {
+            type: 'doc',
+            content: [{ type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] }],
+          },
+          createServerPreset(),
+        ).html,
+      ).toBe('<p>维护通知</p>')
+      expect(serverGenerateHtml).toHaveBeenCalledOnce()
+    } finally {
+      vi.doUnmock('@tiptap/html/server')
+      vi.resetModules()
+    }
   })
 
-  it('derives sanitized html from supported tiptap json', async () => {
-    const { deriveRichTextContent } = await loadServerHelpers()
-    const { createCompactRichTextServerPreset } = await import('../../src/server/presets')
-    const compactServerPreset = createCompactRichTextServerPreset({
-      image: {
-        isAllowedSrc: (src) => /^\/api\/attachments\/[0-9a-f-]{36}\/content$/i.test(src),
-      },
-    })
-
+  it('derives sanitized html from supported tiptap json', () => {
     const content = deriveRichTextContent(
       {
         type: 'doc',
@@ -72,7 +62,7 @@ describe('deriveRichTextContent', () => {
           },
         ],
       },
-      compactServerPreset,
+      createServerPreset(),
     )
 
     expect(content.text).toBe('维护通知\n\n请留意 发布时间\n\n更多内容见 文档')
@@ -83,15 +73,7 @@ describe('deriveRichTextContent', () => {
     )
   })
 
-  it('derives html from media-only rich text content', async () => {
-    const { deriveRichTextContent } = await loadServerHelpers()
-    const { createCompactRichTextServerPreset } = await import('../../src/server/presets')
-    const compactServerPreset = createCompactRichTextServerPreset({
-      image: {
-        isAllowedSrc: (src) => /^\/api\/attachments\/[0-9a-f-]{36}\/content$/i.test(src),
-      },
-    })
-
+  it('derives html from media-only rich text content', () => {
     const content = deriveRichTextContent(
       {
         type: 'doc',
@@ -105,7 +87,7 @@ describe('deriveRichTextContent', () => {
           },
         ],
       },
-      compactServerPreset,
+      createServerPreset(),
     )
 
     expect(content.text).toBe('')
@@ -114,22 +96,14 @@ describe('deriveRichTextContent', () => {
     )
   })
 
-  it('rejects unsupported node types', async () => {
-    const { RichTextContentInvalidError, deriveRichTextContent } = await loadServerHelpers()
-    const { createCompactRichTextServerPreset } = await import('../../src/server/presets')
-    const compactServerPreset = createCompactRichTextServerPreset({
-      image: {
-        isAllowedSrc: (src) => /^\/api\/attachments\/[0-9a-f-]{36}\/content$/i.test(src),
-      },
-    })
-
+  it('rejects unsupported node types', () => {
     expect(() =>
       deriveRichTextContent(
         {
           type: 'doc',
           content: [{ type: 'unsupportedBlock', content: [{ type: 'text', text: 'x' }] }],
         },
-        compactServerPreset,
+        createServerPreset(),
       ),
     ).toThrow(RichTextContentInvalidError)
   })

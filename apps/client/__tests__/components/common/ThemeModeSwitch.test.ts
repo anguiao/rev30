@@ -3,7 +3,7 @@ import { NDropdown } from 'naive-ui'
 import { beforeEach, describe, expect, it } from 'vitest'
 import ThemeModeSwitch from '../../../src/components/common/ThemeModeSwitch.vue'
 import { createTestPinia } from '../../helpers/pinia'
-import { resetThemeDom, stubPreferredDark } from '../../helpers/dom'
+import { stubPreferredDark } from '../../helpers/dom'
 
 async function selectThemeMode(wrapper: ReturnType<typeof mount>, value: string) {
   wrapper.findComponent(NDropdown).vm.$emit('select', value)
@@ -12,7 +12,6 @@ async function selectThemeMode(wrapper: ReturnType<typeof mount>, value: string)
 
 describe('theme mode switch', () => {
   beforeEach(() => {
-    resetThemeDom()
     stubPreferredDark(false)
   })
 

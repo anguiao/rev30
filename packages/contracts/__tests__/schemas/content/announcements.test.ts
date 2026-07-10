@@ -21,7 +21,7 @@ import {
   announcementTargetSchema,
   announcementUpdateSchema,
 } from '../../../src/content/announcements'
-import { prettifyZodError } from '../../helpers/schema'
+import { expectZodIssue } from '../../helpers/schema'
 
 const announcementId = '11111111-1111-4111-8111-111111111111'
 const contentJson = {
@@ -192,11 +192,7 @@ describe('announcement schemas', () => {
     })
 
     for (const result of [formResult, createResult, updateResult]) {
-      expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(prettifyZodError(result)).toContain('请选择可见对象')
-        expect(result.error.issues[0]?.path).toEqual(['targets'])
-      }
+      expectZodIssue(result, { message: '请选择可见对象', path: ['targets'] })
     }
   })
 
@@ -227,10 +223,7 @@ describe('announcement schemas', () => {
       contentJson: { type: 'paragraph' },
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('正文格式无效')
-    }
+    expectZodIssue(result, { message: '正文格式无效' })
   })
 
   it('requires non-empty announcement content input', () => {
@@ -244,10 +237,7 @@ describe('announcement schemas', () => {
       targets: [],
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('请输入正文')
-    }
+    expectZodIssue(result, { message: '请输入正文' })
   })
 
   it('rejects whitespace-only announcement content input', () => {
@@ -260,10 +250,7 @@ describe('announcement schemas', () => {
       },
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('请输入正文')
-    }
+    expectZodIssue(result, { message: '请输入正文' })
   })
 
   it('accepts non-empty announcement content documents', () => {
@@ -320,16 +307,10 @@ describe('announcement schemas', () => {
     })
 
     const result = announcementUpdateSchema.safeParse({})
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('至少修改一个字段')
-    }
+    expectZodIssue(result, { message: '至少修改一个字段' })
 
     const publishFalseOnlyResult = announcementUpdateSchema.safeParse({ publish: false })
-    expect(publishFalseOnlyResult.success).toBe(false)
-    if (!publishFalseOnlyResult.success) {
-      expect(prettifyZodError(publishFalseOnlyResult)).toContain('至少修改一个字段')
-    }
+    expectZodIssue(publishFalseOnlyResult, { message: '至少修改一个字段' })
   })
 
   it('parses list query filters', () => {
@@ -359,13 +340,9 @@ describe('announcement schemas', () => {
       pinned: 'yes',
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      const error = prettifyZodError(result)
-      expect(error).toContain('类型无效')
-      expect(error).toContain('状态无效')
-      expect(error).toContain('置顶筛选无效')
-    }
+    expectZodIssue(result, { message: '类型无效' })
+    expectZodIssue(result, { message: '状态无效' })
+    expectZodIssue(result, { message: '置顶筛选无效' })
   })
 
   it('accepts all lifecycle statuses in responses', () => {
@@ -470,14 +447,9 @@ describe('announcement schemas', () => {
       ],
     })
 
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(prettifyZodError(result)).toContain('可见对象不能重复')
-      const duplicateIssue = result.error.issues.find(
-        (issue) => issue.message === '可见对象不能重复',
-      )
-      expect(duplicateIssue?.path).toContain(1)
-    }
+    const error = expectZodIssue(result, { message: '可见对象不能重复' })
+    const duplicateIssue = error.issues.find((issue) => issue.message === '可见对象不能重复')
+    expect(duplicateIssue?.path).toContain(1)
   })
 
   it('parses my announcement list query with normalized page size type and trimmed keyword', () => {

@@ -20,7 +20,8 @@ import {
   updateRole,
 } from '../../../src/features/system'
 import RoleFormDrawer from '../../../src/features/system/RoleFormDrawer.vue'
-import { createPinia, setActivePinia } from 'pinia'
+import { createTestPinia } from '../../helpers/pinia'
+import { createDeferred } from '../../helpers/promise'
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
   createRole: vi.fn(),
@@ -149,24 +150,8 @@ const secondRoleResponse: Role = {
   updatedAt: '2026-05-01T00:00:00.000Z',
 }
 
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((promiseResolve, promiseReject) => {
-    resolve = promiseResolve
-    reject = promiseReject
-  })
-
-  return {
-    promise,
-    resolve,
-    reject,
-  }
-}
-
 function mountDrawer(props = { show: true, roleId: null as string | null }) {
-  const pinia = createPinia()
-  setActivePinia(pinia)
+  const pinia = createTestPinia()
 
   return mount(RoleFormDrawer, {
     props,
@@ -182,7 +167,6 @@ function mountDrawer(props = { show: true, roleId: null as string | null }) {
 
 async function submitForm(wrapper: ReturnType<typeof mount>) {
   await wrapper.get('[data-test="role-form-submit"]').trigger('click')
-  await wrapper.get('form').trigger('submit')
   await flushPromises()
 }
 
@@ -469,7 +453,7 @@ describe('RoleFormDrawer', () => {
   })
 
   it('ignores stale mutation errors from a previous create session', async () => {
-    const pendingCreate = deferred<Role>()
+    const pendingCreate = createDeferred<Role>()
     createRoleMock.mockImplementationOnce(() => pendingCreate.promise)
 
     const wrapper = mountDrawer()
@@ -515,8 +499,8 @@ describe('RoleFormDrawer', () => {
   })
 
   it('ignores stale role load responses after switching to another role', async () => {
-    const firstRoleRequest = deferred<Role>()
-    const secondRoleRequest = deferred<Role>()
+    const firstRoleRequest = createDeferred<Role>()
+    const secondRoleRequest = createDeferred<Role>()
 
     getRoleMock.mockImplementation((id: string) => {
       if (id === roleId) {
@@ -573,7 +557,7 @@ describe('RoleFormDrawer', () => {
   })
 
   it('does not emit saved or close the current drawer when a stale save resolves', async () => {
-    const pendingSave = deferred<Role>()
+    const pendingSave = createDeferred<Role>()
 
     getRoleMock.mockImplementation((id: string) => {
       if (id === roleId) {
@@ -637,7 +621,7 @@ describe('RoleFormDrawer', () => {
   })
 
   it('does not submit while switching to a role that is still loading', async () => {
-    const pendingRoleLoad = deferred<Role>()
+    const pendingRoleLoad = createDeferred<Role>()
 
     getRoleMock.mockImplementation((id: string) => {
       if (id === roleId) {

@@ -57,7 +57,7 @@ describe('link feature', () => {
     })
   })
 
-  it.each(['ftp://example.com', '//example.com', 'http:example.com'])(
+  it.each(['ftp://example.com', '//example.com', 'example.com:8080/docs'])(
     'does not link unsupported URL pasted over selected text: %s',
     (url) => {
       const editor = createEditor()
@@ -68,22 +68,16 @@ describe('link feature', () => {
     },
   )
 
-  it('links bare hosts with ports pasted over selected text', () => {
-    const editor = createEditor()
-    selectEditorText(editor)
+  it.each(['/docs', './docs', '../docs', '#details', '?page=1', 'example.com:8080/docs'])(
+    'rejects unsupported href values: %s',
+    (href) => {
+      const editor = createEditor()
+      selectEditorText(editor)
 
-    expect(pasteTextOverSelection(editor, 'example.com:8080/docs')).toBe(true)
-
-    expect(editor.getAttributes('link').href).toBe('https://example.com:8080/docs')
-  })
-
-  it.each(['/docs', '#details'])('allows same-site href values: %s', (href) => {
-    const editor = createEditor()
-    selectEditorText(editor)
-
-    expect(editor.commands.setLink({ href })).toBe(true)
-    expect(editor.getAttributes('link').href).toBe(href)
-  })
+      expect(editor.commands.setLink({ href })).toBe(false)
+      expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
+    },
+  )
 
   it('rejects unsafe href values during document validation', () => {
     const editor = createEditor()

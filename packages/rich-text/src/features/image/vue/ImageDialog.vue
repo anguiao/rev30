@@ -2,12 +2,12 @@
 import type { RichTextImageAttrs } from '../shared'
 import { NButton, NFormItem, NImage, NInput, NInputNumber, NModal, NSpin } from 'naive-ui'
 import { useDropZone, useEventListener, useFileDialog, useObjectUrl } from '@vueuse/core'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
     show: boolean
-    upload: (file: File) => Promise<Pick<RichTextImageAttrs, 'src'>>
+    upload: (file: File) => Promise<{ src: string }>
     existingAttrs?: RichTextImageAttrs | undefined
   }>(),
   {},
@@ -25,8 +25,8 @@ const selectedFile = ref<File | null>(null)
 const hasSelectedFile = computed(() => selectedFile.value !== null)
 const localPreviewSrc = useObjectUrl(selectedFile)
 
-const isUploading = ref(false)
-let uploadGeneration = 0
+const activeUpload = shallowRef<Promise<{ src: string }> | null>(null)
+const isUploading = computed(() => activeUpload.value !== null)
 const canSelectFile = computed(() => props.show && !isExistingImage.value && !isUploading.value)
 
 function selectLocalImageFile(file: File) {
@@ -152,11 +152,10 @@ function initializeDialog() {
 }
 
 function resetDialog() {
-  uploadGeneration += 1
+  activeUpload.value = null
   resetFileDialog()
   selectedFile.value = null
   resetImageState()
-  isUploading.value = false
 }
 
 function resetImageState() {
@@ -185,11 +184,11 @@ async function uploadImageFile() {
     return
   }
 
-  const generation = ++uploadGeneration
-  isUploading.value = true
+  const upload = props.upload(file)
+  activeUpload.value = upload
   try {
-    const uploaded = await props.upload(file)
-    if (generation !== uploadGeneration) {
+    const uploaded = await upload
+    if (activeUpload.value !== upload) {
       return
     }
 
@@ -197,14 +196,14 @@ async function uploadImageFile() {
     alt.value = file.name
     selectedFile.value = null
   } catch (error) {
-    if (generation !== uploadGeneration) {
+    if (activeUpload.value !== upload) {
       return
     }
 
     emit('error', error)
   } finally {
-    if (generation === uploadGeneration) {
-      isUploading.value = false
+    if (activeUpload.value === upload) {
+      activeUpload.value = null
     }
   }
 }

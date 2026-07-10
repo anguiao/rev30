@@ -3,10 +3,10 @@ import Heading from '@tiptap/extension-heading'
 import { defineRichTextFeature } from '../../core/feature'
 
 const headingLevels = [1, 2, 3] as const
-const headingLevelSet = new Set<unknown>(headingLevels)
+const headingLevelSet = new Set<number>(headingLevels)
 
 function validateHeadingLevel(value: unknown) {
-  if (!headingLevelSet.has(value)) {
+  if (typeof value !== 'number' || !headingLevelSet.has(value)) {
     throw new RangeError('Unsupported heading level')
   }
 }

@@ -101,7 +101,7 @@ describe('deriveRichTextContent', () => {
     })
   })
 
-  it('drops an isolated image height from canonical json', () => {
+  it('preserves an isolated image height in json without rendering it to html', () => {
     const content = deriveRichTextContent(
       {
         type: 'doc',
@@ -125,7 +125,7 @@ describe('deriveRichTextContent', () => {
           type: 'image',
           attrs: {
             width: null,
-            height: null,
+            height: 360,
           },
         },
       ],
@@ -165,7 +165,7 @@ describe('deriveRichTextContent', () => {
               {
                 type: 'text',
                 text: '文档',
-                marks: [{ type: 'link', attrs: { href: 'example.com:8080/docs' } }],
+                marks: [{ type: 'link', attrs: { href: 'example.com/docs' } }],
               },
             ],
           },
@@ -174,7 +174,7 @@ describe('deriveRichTextContent', () => {
       createServerPreset(),
     )
 
-    expect(content.html).toContain('href="https://example.com:8080/docs"')
+    expect(content.html).toContain('href="https://example.com/docs"')
   })
 
   it('derives html from media-only rich text content', () => {

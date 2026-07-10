@@ -6,7 +6,7 @@ import { computed, ref } from 'vue'
 import ImageDialog from './ImageDialog.vue'
 
 interface ImageToolbarControlProps extends RichTextToolbarControlInjectedProps {
-  upload: (file: File) => Promise<Pick<RichTextImageAttrs, 'src'>>
+  upload: (file: File) => Promise<{ src: string }>
   onError?: (error: unknown) => void
 }
 

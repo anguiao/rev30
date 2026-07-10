@@ -2,7 +2,7 @@
 import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import { NButton, NInput, NPopover } from 'naive-ui'
 import { computed, ref, watch } from 'vue'
-import { isAllowedLinkHref, normalizeLinkHref } from '../href'
+import { normalizeLinkHref } from '../href'
 
 const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
   disabled: false,
@@ -41,15 +41,7 @@ const inputHrefState = computed(() => {
     rawHref,
     normalizedHref,
     isEmpty: rawHref === '',
-    isAllowed: normalizedHref !== '' && isAllowedLinkHref(normalizedHref),
-  }
-})
-const openHrefState = computed(() => {
-  const href = inputHrefState.value.normalizedHref
-
-  return {
-    href,
-    isAllowed: href !== '' && isAllowedLinkHref(href),
+    isAllowed: normalizedHref !== '',
   }
 })
 
@@ -61,7 +53,7 @@ const inputStatusProps = computed(() =>
 const canApply = computed(
   () => !isDisabled.value && (inputHrefState.value.isEmpty || inputHrefState.value.isAllowed),
 )
-const canOpen = computed(() => !isDisabled.value && openHrefState.value.isAllowed)
+const canOpen = computed(() => !isDisabled.value && inputHrefState.value.isAllowed)
 const canRemove = computed(() => popoverMode.value === 'edit')
 
 watch(
@@ -144,7 +136,7 @@ function openLink() {
     return
   }
 
-  window.open(openHrefState.value.href, '_blank', 'noopener,noreferrer')
+  window.open(inputHrefState.value.normalizedHref, '_blank', 'noopener,noreferrer')
 }
 </script>
 

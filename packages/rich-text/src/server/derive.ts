@@ -17,22 +17,6 @@ interface RichTextServerRuntime {
 
 const serverRuntimeCache = new WeakMap<RichTextServerPreset, RichTextServerRuntime>()
 
-function normalizeDocumentJson(node: JSONContent) {
-  if (
-    node.type === 'image' &&
-    node.attrs !== undefined &&
-    (node.attrs.width === null || node.attrs.width === undefined) &&
-    node.attrs.height !== null &&
-    node.attrs.height !== undefined
-  ) {
-    node.attrs.height = null
-  }
-
-  for (const child of node.content ?? []) {
-    normalizeDocumentJson(child)
-  }
-}
-
 function getServerRuntime(preset: RichTextServerPreset): RichTextServerRuntime {
   const cachedRuntime = serverRuntimeCache.get(preset)
 
@@ -70,7 +54,6 @@ export function deriveRichTextContent(contentJson: unknown, preset: RichTextServ
   }
 
   const json = document.toJSON() as JSONContent & RichTextDocument
-  normalizeDocumentJson(json)
   const text = getText(document, { textSerializers: runtime.textSerializers }).trim()
 
   if (!hasRichTextContent(json)) {

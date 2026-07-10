@@ -3,10 +3,10 @@ import { defineRichTextFeature } from '../../core/feature'
 import { textAlignments } from './alignments'
 
 const textAlignTypes = ['heading', 'paragraph']
-const textAlignmentSet = new Set<unknown>(textAlignments)
+const textAlignmentSet = new Set<string>(textAlignments)
 
 function validateTextAlignment(value: unknown) {
-  if (value !== null && !textAlignmentSet.has(value)) {
+  if (value !== null && (typeof value !== 'string' || !textAlignmentSet.has(value))) {
     throw new RangeError('Unsupported text alignment')
   }
 }

@@ -1,6 +1,6 @@
 import Link from '@tiptap/extension-link'
 import { defineRichTextFeature } from '../../core/feature'
-import { isAllowedLinkHref, linkDefaultProtocol, normalizeLinkHref } from './href'
+import { linkDefaultProtocol, normalizeLinkHref } from './href'
 
 const ValidatedLink = Link.extend({
   addAttributes() {
@@ -12,7 +12,7 @@ const ValidatedLink = Link.extend({
           if (
             typeof value !== 'string' ||
             value !== value.trim() ||
-            !isAllowedLinkHref(normalizeLinkHref(value))
+            normalizeLinkHref(value) === ''
           ) {
             throw new RangeError('Invalid link href')
           }
@@ -34,12 +34,8 @@ export const linkFeature = defineRichTextFeature({
       isAllowedUri: (url, ctx) => {
         const normalizedHref = normalizeLinkHref(url, ctx.defaultProtocol)
 
-        if (!ctx.defaultValidate(normalizedHref)) {
-          return false
-        }
-
-        return isAllowedLinkHref(normalizedHref)
+        return normalizedHref !== '' && ctx.defaultValidate(normalizedHref)
       },
-      shouldAutoLink: (url) => isAllowedLinkHref(normalizeLinkHref(url)),
+      shouldAutoLink: (url) => normalizeLinkHref(url) !== '',
     }),
 })

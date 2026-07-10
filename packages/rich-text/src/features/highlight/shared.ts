@@ -3,10 +3,10 @@ import { Highlight } from '@tiptap/extension-highlight'
 import { defineRichTextFeature } from '../../core/feature'
 import { highlightColors } from './colors'
 
-const highlightColorSet = new Set<unknown>(highlightColors)
+const highlightColorSet = new Set<string>(highlightColors)
 
 function validateHighlightColor(value: unknown) {
-  if (value !== null && !highlightColorSet.has(value)) {
+  if (value !== null && (typeof value !== 'string' || !highlightColorSet.has(value))) {
     throw new RangeError('Unsupported highlight color')
   }
 }

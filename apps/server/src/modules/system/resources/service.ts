@@ -1,28 +1,12 @@
 import {
-  RESOURCE_OPEN_TARGET_BLANK,
-  RESOURCE_OPEN_TARGET_SELF,
-  RESOURCE_TYPE_ACTION,
-  RESOURCE_TYPE_DIRECTORY,
-  RESOURCE_TYPE_EXTERNAL,
-  RESOURCE_TYPE_MENU,
-  type Resource,
   type ResourceCreateInput,
   type ResourceListQuery,
   type ResourceTreeOptionsQuery,
   type ResourceUpdateInput,
-  resourceExternalUrlSchema,
 } from '@rev30/contracts'
 import type { Db } from '../../../db'
-import {
-  ResourceDeleteConflictError,
-  ResourceInvalidParentError,
-  ResourceRoleAuthorizationConflictError,
-  ResourceInvalidTypeFieldsError,
-  ResourceMoveConflictError,
-  ResourceNotFoundError,
-  toResourceConflictError,
-} from './errors'
-import { toResource, toResourceTree, toResourceTreeOptions, type ResourceRow } from './mapper'
+import { ResourceNotFoundError, toResourceConflictError } from './errors'
+import { toResource, toResourceTree, toResourceTreeOptions } from './mapper'
 import { createResourceRepository } from './repository'
 
 async function withResourceUniqueConflict<T>(operation: () => Promise<T>) {
@@ -39,128 +23,8 @@ async function withResourceUniqueConflict<T>(operation: () => Promise<T>) {
   }
 }
 
-function normalizeExternalUrl(externalUrl: string) {
-  const normalizedExternalUrl = externalUrl.trim()
-  const urlResult = resourceExternalUrlSchema.safeParse(normalizedExternalUrl)
-
-  if (!urlResult.success) {
-    throw new ResourceInvalidTypeFieldsError('外链地址无效', 'externalUrl')
-  }
-
-  return normalizedExternalUrl
-}
-
-function normalizeCreateTypeFields(input: ResourceCreateInput): ResourceCreateInput {
-  const next: ResourceCreateInput = { ...input }
-
-  if (input.type === RESOURCE_TYPE_MENU) {
-    if (input.path === null) {
-      throw new ResourceInvalidTypeFieldsError('内部菜单路径不能为空', 'path')
-    }
-
-    next.path = input.path
-    next.externalUrl = null
-    next.openTarget = input.openTarget ?? RESOURCE_OPEN_TARGET_SELF
-  }
-
-  if (input.type === RESOURCE_TYPE_EXTERNAL) {
-    if (input.externalUrl === null) {
-      throw new ResourceInvalidTypeFieldsError('外链地址不能为空', 'externalUrl')
-    }
-
-    next.path = null
-    next.externalUrl = normalizeExternalUrl(input.externalUrl)
-    next.openTarget = input.openTarget ?? RESOURCE_OPEN_TARGET_BLANK
-  }
-
-  if (input.type === RESOURCE_TYPE_DIRECTORY || input.type === RESOURCE_TYPE_ACTION) {
-    next.path = null
-    next.externalUrl = null
-    next.openTarget = RESOURCE_OPEN_TARGET_SELF
-  }
-
-  return next
-}
-
-function normalizeUpdateTypeFields(
-  input: ResourceUpdateInput,
-  existing: ResourceRow,
-): ResourceUpdateInput {
-  const type = input.type ?? (existing.type as Resource['type'])
-  const existingType = existing.type as Resource['type']
-  const next: ResourceUpdateInput = { ...input }
-  const path = input.path !== undefined ? input.path : existing.path
-  const externalUrl = input.externalUrl !== undefined ? input.externalUrl : existing.externalUrl
-
-  if (type === RESOURCE_TYPE_MENU) {
-    if (path === null) {
-      throw new ResourceInvalidTypeFieldsError('内部菜单路径不能为空', 'path')
-    }
-
-    next.path = path
-    next.externalUrl = null
-
-    if (input.openTarget !== undefined) {
-      next.openTarget = input.openTarget
-    } else if (existingType !== RESOURCE_TYPE_MENU) {
-      next.openTarget = RESOURCE_OPEN_TARGET_SELF
-    }
-  }
-
-  if (type === RESOURCE_TYPE_EXTERNAL) {
-    if (externalUrl === null) {
-      throw new ResourceInvalidTypeFieldsError('外链地址不能为空', 'externalUrl')
-    }
-
-    next.path = null
-    next.externalUrl = normalizeExternalUrl(externalUrl)
-
-    if (input.openTarget !== undefined) {
-      next.openTarget = input.openTarget
-    } else if (existingType !== RESOURCE_TYPE_EXTERNAL) {
-      next.openTarget = RESOURCE_OPEN_TARGET_BLANK
-    }
-  }
-
-  if (type === RESOURCE_TYPE_DIRECTORY || type === RESOURCE_TYPE_ACTION) {
-    next.path = null
-    next.externalUrl = null
-    next.openTarget = RESOURCE_OPEN_TARGET_SELF
-  }
-
-  return next
-}
-
 export function createResourceService(database: Db) {
   const repository = createResourceRepository(database)
-
-  async function validateParent(parentId: string) {
-    const parent = await repository.findActiveById(parentId)
-
-    if (!parent) {
-      throw new ResourceInvalidParentError()
-    }
-  }
-
-  async function isSelfOrDescendant(id: string, parentId: string) {
-    let currentParentId: string | null = parentId
-
-    while (currentParentId) {
-      if (currentParentId === id) {
-        return true
-      }
-
-      const currentParent = await repository.findActiveById(currentParentId)
-
-      if (!currentParent) {
-        return false
-      }
-
-      currentParentId = currentParent.parentId
-    }
-
-    return false
-  }
 
   return {
     async list(query: ResourceListQuery) {
@@ -195,40 +59,11 @@ export function createResourceService(database: Db) {
     },
 
     async create(input: ResourceCreateInput) {
-      if (input.parentId !== null) {
-        await validateParent(input.parentId)
-      }
-
-      const normalizedInput = normalizeCreateTypeFields(input)
-
-      return toResource(await withResourceUniqueConflict(() => repository.create(normalizedInput)))
+      return toResource(await withResourceUniqueConflict(() => repository.create(input)))
     },
 
     async update(id: string, input: ResourceUpdateInput) {
-      const existingResource = await repository.findActiveById(id)
-
-      if (!existingResource) {
-        throw new ResourceNotFoundError()
-      }
-
-      if (input.parentId !== undefined) {
-        if (input.parentId === id) {
-          throw new ResourceMoveConflictError()
-        }
-
-        if (input.parentId !== null) {
-          await validateParent(input.parentId)
-
-          const selfOrDescendant = await isSelfOrDescendant(id, input.parentId)
-
-          if (selfOrDescendant) {
-            throw new ResourceMoveConflictError()
-          }
-        }
-      }
-
-      const normalizedInput = normalizeUpdateTypeFields(input, existingResource)
-      const updated = await withResourceUniqueConflict(() => repository.update(id, normalizedInput))
+      const updated = await withResourceUniqueConflict(() => repository.update(id, input))
 
       if (!updated) {
         throw new ResourceNotFoundError()
@@ -238,20 +73,6 @@ export function createResourceService(database: Db) {
     },
 
     async delete(id: string) {
-      const existingResource = await repository.findActiveById(id)
-
-      if (!existingResource) {
-        throw new ResourceNotFoundError()
-      }
-
-      if (await repository.hasActiveChildren(id)) {
-        throw new ResourceDeleteConflictError()
-      }
-
-      if (await repository.hasRoleAuthorizations(id)) {
-        throw new ResourceRoleAuthorizationConflictError()
-      }
-
       const deleted = await repository.softDelete(id)
 
       if (!deleted) {

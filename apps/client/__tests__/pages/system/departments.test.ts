@@ -133,6 +133,31 @@ describe('departments page', () => {
     expect(wrapper.findComponent(NPagination).exists()).toBe(false)
   })
 
+  it('preserves collapsed rows across refreshes and removes missing expanded keys', async () => {
+    const removedChild = departmentTreeResponse[0]!.children[0]!
+    const remainingChild = departmentTreeResponse[0]!.children[1]!
+    getDepartmentTreeMock.mockResolvedValueOnce(departmentTreeResponse).mockResolvedValueOnce([
+      {
+        ...departmentTreeResponse[0]!,
+        children: [remainingChild],
+      },
+    ])
+    const { wrapper } = await mountDepartmentsPage()
+    await flushPromises()
+
+    wrapper
+      .getComponent(NDataTable)
+      .vm.$emit('update:expandedRowKeys', [departmentTreeResponse[0]!.id, removedChild.id])
+    await flushPromises()
+    wrapper.getComponent({ name: 'DepartmentFormDrawerStub' }).vm.$emit('saved')
+    await flushPromises()
+
+    expect(getDepartmentTreeMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.getComponent(NDataTable).props('expandedRowKeys')).toEqual([
+      departmentTreeResponse[0]!.id,
+    ])
+  })
+
   it('shows a server load error when departments cannot be loaded', async () => {
     getDepartmentTreeMock.mockRejectedValue(new ApiRequestError(500, '加载部门树失败'))
     const { wrapper } = await mountDepartmentsPage()

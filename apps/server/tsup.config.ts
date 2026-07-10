@@ -6,5 +6,5 @@ export default defineConfig({
   format: ['esm'],
   outDir: 'dist',
   platform: 'node',
-  target: 'node20',
+  target: 'node24',
 })

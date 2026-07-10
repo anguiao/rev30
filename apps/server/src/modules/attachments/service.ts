@@ -58,6 +58,7 @@ type StoredUploadContent = AttachmentFileType &
 type UploadSession = AttachmentUploadSessionCreateInput & {
   createdAt: Date
   expiresAt: Date
+  state: 'pending' | 'uploading' | 'stored' | 'completing'
   uploadId: string
   storedContent?: StoredUploadContent
   userId: string
@@ -188,6 +189,7 @@ export function createAttachmentService(database: Db) {
         originalName: input.originalName,
         readPolicy: input.readPolicy,
         size: input.size,
+        state: 'pending',
         uploadId,
         usage: input.usage,
         userId: input.userId,
@@ -232,41 +234,53 @@ export function createAttachmentService(database: Db) {
         throw new AttachmentUploadRequestError('请选择文件')
       }
 
-      const body = await fileTypeStream(toReadableStream(input.body), {
-        customDetectors: fileTypeDetectors,
-      })
-      const accepted = acceptAttachmentUploadType(
-        getAttachmentFilenameType(session.originalName),
-        body.fileType
-          ? {
-              extension: body.fileType.ext,
-              mimeType: body.fileType.mime,
-            }
-          : null,
-      )
-      const storageKey = createUploadSessionStorageKey(
-        session.uploadId,
-        accepted.extension,
-        session.createdAt,
-      )
-
-      const written = await storage.put({
-        key: storageKey,
-        body: limitAttachmentBodySize(body),
-      })
-
-      if (written.size !== session.size) {
-        await storage.delete(storageKey)
-        throw new AttachmentUploadRequestError('文件大小与上传会话不一致')
+      if (session.state !== 'pending') {
+        throw new AttachmentUploadSessionInvalidError()
       }
 
-      session.storedContent = {
-        checksum: written.checksum,
-        extension: accepted.extension,
-        mimeType: accepted.mimeType,
-        size: written.size,
-        storageKey,
-        storedAt: new Date(),
+      session.state = 'uploading'
+
+      try {
+        const body = await fileTypeStream(toReadableStream(input.body), {
+          customDetectors: fileTypeDetectors,
+        })
+        const accepted = acceptAttachmentUploadType(
+          getAttachmentFilenameType(session.originalName),
+          body.fileType
+            ? {
+                extension: body.fileType.ext,
+                mimeType: body.fileType.mime,
+              }
+            : null,
+        )
+        const storageKey = createUploadSessionStorageKey(
+          session.uploadId,
+          accepted.extension,
+          session.createdAt,
+        )
+
+        const written = await storage.put({
+          key: storageKey,
+          body: limitAttachmentBodySize(body),
+        })
+
+        if (written.size !== session.size) {
+          await storage.delete(storageKey)
+          throw new AttachmentUploadRequestError('文件大小与上传会话不一致')
+        }
+
+        session.storedContent = {
+          checksum: written.checksum,
+          extension: accepted.extension,
+          mimeType: accepted.mimeType,
+          size: written.size,
+          storageKey,
+          storedAt: new Date(),
+        }
+        session.state = 'stored'
+      } catch (error) {
+        session.state = 'pending'
+        throw error
       }
     },
 
@@ -277,24 +291,31 @@ export function createAttachmentService(database: Db) {
         throw new AttachmentUploadSessionInvalidError()
       }
 
-      if (!session.storedContent) {
+      if (session.state === 'pending' || session.state === 'uploading') {
         throw new AttachmentUploadSessionNotReadyError()
       }
+
+      if (session.state !== 'stored' || !session.storedContent) {
+        throw new AttachmentUploadSessionInvalidError()
+      }
+
+      const storedContent = session.storedContent
+      session.state = 'completing'
 
       try {
         const created = await repository.create({
           storageProvider,
-          storageKey: session.storedContent.storageKey,
+          storageKey: storedContent.storageKey,
           originalName: session.originalName,
-          mimeType: session.storedContent.mimeType,
-          extension: session.storedContent.extension,
-          size: session.storedContent.size,
+          mimeType: storedContent.mimeType,
+          extension: storedContent.extension,
+          size: storedContent.size,
           usage: session.usage,
           readPolicy: session.readPolicy,
           cleanupPolicy: session.cleanupPolicy,
-          checksum: session.storedContent.checksum,
+          checksum: storedContent.checksum,
           createdBy: session.userId,
-          createdAt: session.storedContent.storedAt,
+          createdAt: storedContent.storedAt,
         })
 
         uploadSessions.delete(session.uploadId)
@@ -304,12 +325,12 @@ export function createAttachmentService(database: Db) {
         uploadSessions.delete(session.uploadId)
 
         try {
-          await storage.delete(session.storedContent.storageKey)
+          await storage.delete(storedContent.storageKey)
         } catch (cleanupError) {
           logger.error(
             {
               err: cleanupError,
-              storageKey: session.storedContent.storageKey,
+              storageKey: storedContent.storageKey,
             },
             'attachment upload session cleanup failed',
           )

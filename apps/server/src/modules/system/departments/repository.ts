@@ -10,7 +10,11 @@ import {
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
 import { systemDepartments, systemUserDepartments } from '../../../db/schema'
-import { DepartmentDeleteConflictError, DepartmentInvalidParentError } from './errors'
+import {
+  DepartmentDeleteConflictError,
+  DepartmentInvalidParentError,
+  DepartmentMoveConflictError,
+} from './errors'
 import type { DepartmentRow, DepartmentTreeOptionEntry } from './mapper'
 
 const departmentTreeOptionColumns = {
@@ -111,6 +115,85 @@ async function lockActiveDepartmentById(executor: DbReader, id: string) {
   const rows = await lockActiveDepartmentsByIds(executor, [id])
 
   return rows[0]
+}
+
+async function findActiveDepartmentParentChain(executor: DbReader, parentId: string) {
+  const rows: DepartmentRow[] = []
+  const visitedIds = new Set<string>()
+  let currentId: string | null = parentId
+
+  while (currentId && !visitedIds.has(currentId)) {
+    visitedIds.add(currentId)
+
+    const [row] = await executor
+      .select()
+      .from(systemDepartments)
+      .where(and(eq(systemDepartments.id, currentId), isNull(systemDepartments.deletedAt)))
+      .limit(1)
+
+    if (!row) {
+      break
+    }
+
+    rows.push(row)
+    currentId = row.parentId
+  }
+
+  return rows
+}
+
+async function lockDepartmentForUpdate(
+  executor: DbReader,
+  id: string,
+  parentId: string | null | undefined,
+) {
+  const candidateParentRows =
+    parentId === undefined || parentId === null
+      ? []
+      : await findActiveDepartmentParentChain(executor, parentId)
+  const lockedRows = await lockActiveDepartmentsByIds(executor, [
+    id,
+    ...candidateParentRows.map((row) => row.id),
+  ])
+  const rowsById = new Map(lockedRows.map((row) => [row.id, row]))
+  const department = rowsById.get(id)
+
+  if (!department || parentId === undefined || parentId === null) {
+    return department
+  }
+
+  if (!rowsById.has(parentId)) {
+    throw new DepartmentInvalidParentError()
+  }
+
+  for (const candidateParent of candidateParentRows) {
+    const lockedParent = rowsById.get(candidateParent.id)
+
+    if (!lockedParent || lockedParent.parentId !== candidateParent.parentId) {
+      throw new DepartmentMoveConflictError()
+    }
+  }
+
+  const visitedIds = new Set<string>()
+  let currentId: string | null = parentId
+
+  while (currentId) {
+    if (currentId === id || visitedIds.has(currentId)) {
+      throw new DepartmentMoveConflictError()
+    }
+
+    visitedIds.add(currentId)
+
+    const current = rowsById.get(currentId)
+
+    if (!current) {
+      break
+    }
+
+    currentId = current.parentId
+  }
+
+  return department
 }
 
 export function createDepartmentRepository(database: Db) {
@@ -274,14 +357,6 @@ export function createDepartmentRepository(database: Db) {
         .orderBy(...departmentSortOrder())
     },
 
-    async hasActiveChildren(id: string) {
-      return await hasActiveChildren(database, id)
-    },
-
-    async hasUsers(id: string) {
-      return await hasUsers(database, id)
-    },
-
     async create(input: DepartmentCreateInput) {
       return await database.transaction(async (tx) => {
         if (input.parentId !== null && !(await lockActiveDepartmentById(tx, input.parentId))) {
@@ -300,12 +375,10 @@ export function createDepartmentRepository(database: Db) {
 
     async update(id: string, input: DepartmentUpdateInput) {
       return await database.transaction(async (tx) => {
-        if (
-          input.parentId !== undefined &&
-          input.parentId !== null &&
-          !(await lockActiveDepartmentById(tx, input.parentId))
-        ) {
-          throw new DepartmentInvalidParentError()
+        const department = await lockDepartmentForUpdate(tx, id, input.parentId)
+
+        if (!department) {
+          return undefined
         }
 
         const [updated] = await tx

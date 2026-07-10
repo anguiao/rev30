@@ -9,59 +9,32 @@ import { createTestDb } from '../../helpers/db'
 
 const dayMs = 24 * 60 * 60 * 1000
 
-function runBeforeQuery<T extends object>(query: T, beforeQuery: () => Promise<void>): T {
-  return new Proxy(query, {
-    get(target, property) {
-      if (property === 'then') {
-        const then = Reflect.get(target, property, target) as (
-          onFulfilled: (value: unknown) => unknown,
-          onRejected: (reason: unknown) => unknown,
-        ) => unknown
+function createDatabaseWithBeforeTransaction(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  beforeTransaction: () => Promise<void>,
+) {
+  let called = false
 
-        return async (
-          onFulfilled: (value: unknown) => unknown,
-          onRejected: (reason: unknown) => unknown,
-        ) => {
-          try {
-            await beforeQuery()
-            return then.call(target, onFulfilled, onRejected)
-          } catch (error) {
-            return onRejected(error)
-          }
-        }
-      }
-
-      const value = Reflect.get(target, property, target)
+  return new Proxy(database, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver)
 
       if (typeof value !== 'function') {
         return value
       }
 
-      return (...args: unknown[]) => {
-        const result = Reflect.apply(value, target, args)
-
-        return result !== null && typeof result === 'object'
-          ? runBeforeQuery(result, beforeQuery)
-          : result
-      }
-    },
-  })
-}
-
-function createDatabaseWithBeforeUpdate(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  beforeUpdate: () => Promise<void>,
-) {
-  return new Proxy(database, {
-    get(target, property, receiver) {
-      if (property === 'update') {
-        return ((table: typeof attachments) =>
-          runBeforeQuery(database.update(table), beforeUpdate)) as typeof database.update
+      if (property !== 'transaction') {
+        return value.bind(target)
       }
 
-      const value = Reflect.get(target, property, receiver)
+      return async (...args: unknown[]) => {
+        if (!called) {
+          called = true
+          await beforeTransaction()
+        }
 
-      return typeof value === 'function' ? value.bind(target) : value
+        return await Reflect.apply(value, target, args)
+      }
     },
   })
 }
@@ -193,7 +166,7 @@ describe('attachment cleanup', () => {
     })
 
     let insertedReference = false
-    const racedDatabase = createDatabaseWithBeforeUpdate(database, async () => {
+    const racedDatabase = createDatabaseWithBeforeTransaction(database, async () => {
       insertedReference = true
       await database.insert(attachmentReferences).values({
         attachmentId,

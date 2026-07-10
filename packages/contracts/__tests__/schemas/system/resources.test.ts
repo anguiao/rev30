@@ -224,6 +224,20 @@ describe('resource schemas', () => {
 
     expectZodIssue(invalidExternalUrl, { message: '外链地址无效' })
 
+    for (const externalUrl of [
+      'javascript:alert(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'file:///tmp/rev30',
+    ]) {
+      const unsupportedExternalUrl = resourceFormSchema.safeParse({
+        ...baseFormInput,
+        type: RESOURCE_TYPE_EXTERNAL,
+        externalUrl,
+      })
+
+      expectZodIssue(unsupportedExternalUrl, { message: '外链地址无效' })
+    }
+
     expect(
       resourceFormSchema.parse({
         ...baseFormInput,

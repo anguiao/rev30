@@ -5,13 +5,7 @@ import type {
   DepartmentUpdateInput,
 } from '@rev30/contracts'
 import type { Db } from '../../../db'
-import {
-  DepartmentDeleteConflictError,
-  DepartmentInvalidParentError,
-  DepartmentMoveConflictError,
-  DepartmentNotFoundError,
-  toDepartmentConflictError,
-} from './errors'
+import { DepartmentNotFoundError, toDepartmentConflictError } from './errors'
 import { toDepartment, toDepartmentTree, toDepartmentTreeOptions } from './mapper'
 import { createDepartmentRepository } from './repository'
 
@@ -31,34 +25,6 @@ async function withDepartmentUniqueConflict<T>(operation: () => Promise<T>) {
 
 export function createDepartmentService(database: Db) {
   const repository = createDepartmentRepository(database)
-
-  async function validateParent(parentId: string) {
-    const parent = await repository.findActiveById(parentId)
-
-    if (!parent) {
-      throw new DepartmentInvalidParentError()
-    }
-  }
-
-  async function isSelfOrDescendant(id: string, parentId: string) {
-    let currentParentId: string | null = parentId
-
-    while (currentParentId) {
-      if (currentParentId === id) {
-        return true
-      }
-
-      const currentParent = await repository.findActiveById(currentParentId)
-
-      if (!currentParent) {
-        return false
-      }
-
-      currentParentId = currentParent.parentId
-    }
-
-    return false
-  }
 
   return {
     async list(query: DepartmentListQuery) {
@@ -93,36 +59,10 @@ export function createDepartmentService(database: Db) {
     },
 
     async create(input: DepartmentCreateInput) {
-      if (input.parentId !== null) {
-        await validateParent(input.parentId)
-      }
-
       return toDepartment(await withDepartmentUniqueConflict(() => repository.create(input)))
     },
 
     async update(id: string, input: DepartmentUpdateInput) {
-      const existingDepartment = await repository.findActiveById(id)
-
-      if (!existingDepartment) {
-        throw new DepartmentNotFoundError()
-      }
-
-      if (input.parentId !== undefined) {
-        if (input.parentId === id) {
-          throw new DepartmentMoveConflictError()
-        }
-
-        if (input.parentId !== null) {
-          await validateParent(input.parentId)
-
-          const selfOrDescendant = await isSelfOrDescendant(id, input.parentId)
-
-          if (selfOrDescendant) {
-            throw new DepartmentMoveConflictError()
-          }
-        }
-      }
-
       const updated = await withDepartmentUniqueConflict(() => repository.update(id, input))
 
       if (!updated) {
@@ -133,20 +73,6 @@ export function createDepartmentService(database: Db) {
     },
 
     async delete(id: string) {
-      const existingDepartment = await repository.findActiveById(id)
-
-      if (!existingDepartment) {
-        throw new DepartmentNotFoundError()
-      }
-
-      if (await repository.hasActiveChildren(id)) {
-        throw new DepartmentDeleteConflictError('部门存在子部门，不能删除')
-      }
-
-      if (await repository.hasUsers(id)) {
-        throw new DepartmentDeleteConflictError('部门存在关联用户，不能删除')
-      }
-
       const deleted = await repository.softDelete(id)
 
       if (!deleted) {

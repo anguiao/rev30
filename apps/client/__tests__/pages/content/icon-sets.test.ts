@@ -250,6 +250,34 @@ describe('icon sets page', () => {
     expect(drawer.text()).toBe('创建图标集')
   })
 
+  it('keeps the selected built-in icon set when filtering hides it', async () => {
+    listBuiltinIconSetsMock
+      .mockResolvedValueOnce(builtinIconSetsResponse)
+      .mockResolvedValueOnce({ list: [], total: 0 })
+    const { wrapper } = await mountIconSetsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="builtin-icon-set"]').trigger('click')
+    await flushPromises()
+    expect(listBuiltinIconsMock).toHaveBeenLastCalledWith({
+      cursor: undefined,
+      pageSize: 80,
+      prefix: 'lucide',
+    })
+
+    await wrapper.find('[data-test="builtin-icon-set-filter"] input').setValue('missing')
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="builtin-icon-set"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Lucide')
+    expect(listBuiltinIconsMock).toHaveBeenLastCalledWith({
+      cursor: undefined,
+      pageSize: 80,
+      prefix: 'lucide',
+    })
+  })
+
   it('opens edit and upload drawers with the selected custom icon set prefix', async () => {
     listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
     listCustomIconsMock.mockResolvedValue(customIconsResponse)
@@ -275,6 +303,32 @@ describe('icon sets page', () => {
     expect(uploadDrawer.attributes('data-show')).toBe('true')
     expect(uploadDrawer.attributes('data-prefix')).toBe('acme')
     expect(uploadDrawer.text()).toBe('上传 SVG 图标')
+  })
+
+  it('preserves custom icon browser state across tab switches', async () => {
+    listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
+    listCustomIconsMock.mockResolvedValue(customIconsResponse)
+    const { wrapper } = await mountIconSetsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-test="custom-icon-set"]').trigger('click')
+    await wrapper.find('[data-test="custom-icon-filter"] input').setValue('logo')
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="icon-upload-drawer"]').attributes('data-prefix')).toBe('acme')
+
+    await wrapper.get('[data-test="icon-sets-tab-builtin"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
+    await flushPromises()
+
+    expect(
+      wrapper.find<HTMLInputElement>('[data-test="custom-icon-filter"] input').element.value,
+    ).toBe('logo')
+    expect(wrapper.get('[data-test="icon-upload-drawer"]').attributes('data-prefix')).toBe('acme')
   })
 
   it('loads the next built-in icon page when the icon grid scrolls near the bottom', async () => {

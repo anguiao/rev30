@@ -5,6 +5,7 @@ import type { Db } from '../../db'
 import { attachmentReferences, attachments } from '../../db/schema'
 import { logger } from '../../runtime/logger'
 import { readAttachmentConfig } from './config'
+import { lockActiveAttachmentsByIds } from './references'
 import { LocalAttachmentStorage } from './storage'
 
 function unreferencedAttachmentCondition() {
@@ -39,19 +40,43 @@ export async function cleanupUnreferencedAttachments(
   let deletedCount = 0
 
   for (const candidate of candidates) {
-    const [deleted] = await database
-      .update(attachments)
-      .set({ deletedAt: new Date() })
-      .where(
-        and(
-          eq(attachments.id, candidate.id),
-          isNull(attachments.deletedAt),
-          eq(attachments.cleanupPolicy, ATTACHMENT_CLEANUP_POLICY_UNREFERENCED),
-          lte(attachments.createdAt, cutoff),
-          unreferencedAttachmentCondition(),
-        ),
-      )
-      .returning()
+    const deleted = await database.transaction(async (tx) => {
+      const [locked] = await lockActiveAttachmentsByIds(tx, [candidate.id])
+
+      if (
+        !locked ||
+        locked.cleanupPolicy !== ATTACHMENT_CLEANUP_POLICY_UNREFERENCED ||
+        locked.createdAt.getTime() > cutoff.getTime()
+      ) {
+        return undefined
+      }
+
+      const [reference] = await tx
+        .select({ attachmentId: attachmentReferences.attachmentId })
+        .from(attachmentReferences)
+        .where(eq(attachmentReferences.attachmentId, candidate.id))
+        .limit(1)
+
+      if (reference) {
+        return undefined
+      }
+
+      const [deleted] = await tx
+        .update(attachments)
+        .set({ deletedAt: new Date() })
+        .where(
+          and(
+            eq(attachments.id, candidate.id),
+            isNull(attachments.deletedAt),
+            eq(attachments.cleanupPolicy, ATTACHMENT_CLEANUP_POLICY_UNREFERENCED),
+            lte(attachments.createdAt, cutoff),
+            unreferencedAttachmentCondition(),
+          ),
+        )
+        .returning()
+
+      return deleted
+    })
 
     if (!deleted) {
       continue

@@ -26,6 +26,13 @@ export class AttachmentNotFoundError extends Error {
   }
 }
 
+export class AttachmentReferenceTargetInvalidError extends Error {
+  constructor() {
+    super('引用的附件不存在')
+    this.name = new.target.name
+  }
+}
+
 export class AttachmentUploadUrlInvalidError extends Error {
   constructor() {
     super('上传链接已失效')

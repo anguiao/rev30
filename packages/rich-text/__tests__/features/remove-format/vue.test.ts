@@ -34,7 +34,7 @@ function createEditor() {
 }
 
 describe('remove format command', () => {
-  it('removes inline marks and resets text blocks', () => {
+  it('removes inline marks without changing block structure', () => {
     const editor = createEditor()
 
     editor.commands.selectAll()
@@ -43,8 +43,73 @@ describe('remove format command', () => {
     expect(editor.getJSON()).toMatchObject({
       content: [
         {
-          type: 'paragraph',
+          type: 'heading',
+          attrs: { level: 2 },
           content: [{ type: 'text', text: '维护通知' }],
+        },
+      ],
+    })
+    expect(JSON.stringify(editor.getJSON())).not.toContain('"marks"')
+  })
+
+  it('preserves nested list and blockquote structure', () => {
+    const editor = createTestEditor({
+      extensions: collectRichTextExtensions(compactRichTextPreset),
+      content: {
+        type: 'doc',
+        content: [
+          {
+            type: 'blockquote',
+            content: [
+              {
+                type: 'bulletList',
+                content: [
+                  {
+                    type: 'listItem',
+                    content: [
+                      {
+                        type: 'paragraph',
+                        content: [
+                          {
+                            type: 'text',
+                            text: '维护通知',
+                            marks: [{ type: 'bold' }],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    })
+
+    editor.commands.selectAll()
+
+    expect(removeFormatCommand.run(editor)).toBe(true)
+    expect(editor.getJSON()).toMatchObject({
+      content: [
+        {
+          type: 'blockquote',
+          content: [
+            {
+              type: 'bulletList',
+              content: [
+                {
+                  type: 'listItem',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: '维护通知' }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
         },
       ],
     })

@@ -2,19 +2,16 @@
 import { computed } from 'vue'
 import { useMutation } from '@pinia/colada'
 import { NButton } from 'naive-ui'
-import { useRouter } from 'vue-router'
 import { logout } from '../features/auth'
 import ErrorPage from '../features/error/ErrorPage.vue'
 import { useAuthStore } from '../stores/auth'
 
-const router = useRouter()
 const auth = useAuthStore()
 
 const logoutMutation = useMutation({
   mutation: () => logout(),
-  async onSettled() {
+  onSettled() {
     auth.clearSession()
-    await router.push('/login')
   },
 })
 

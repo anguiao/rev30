@@ -20,9 +20,8 @@ const dialog = useDialog()
 
 const { isLoading: isLoggingOut, ...logoutMutation } = useMutation({
   mutation: () => logout(),
-  async onSettled() {
+  onSettled() {
     auth.clearSession()
-    await router.replace('/login')
   },
 })
 

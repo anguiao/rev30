@@ -368,7 +368,7 @@ describe('admin layout', () => {
     expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('审计日志')
   })
 
-  it('logs out, clears auth session, and navigates to login', async () => {
+  it('logs out and clears the auth session', async () => {
     logoutMock.mockResolvedValue(undefined)
     const { router, wrapper } = await mountLayout()
     const auth = useAuthStore()
@@ -389,7 +389,7 @@ describe('admin layout', () => {
 
     expect(logoutMock).toHaveBeenCalledTimes(1)
     expect(auth.isAuthenticated).toBe(false)
-    expect(router.currentRoute.value.fullPath).toBe('/login')
+    expect(router.currentRoute.value.fullPath).toBe('/system/users')
   })
 
   it('keeps the session when logout confirmation is cancelled', async () => {
@@ -413,7 +413,7 @@ describe('admin layout', () => {
     expect(router.currentRoute.value.fullPath).toBe('/system/users')
   })
 
-  it('clears auth session and navigates to login when logout fails', async () => {
+  it('clears the auth session when logout fails', async () => {
     logoutMock.mockRejectedValue(new Error('network'))
     const { router, wrapper } = await mountLayout()
     const auth = useAuthStore()
@@ -432,6 +432,6 @@ describe('admin layout', () => {
 
     expect(logoutMock).toHaveBeenCalledTimes(1)
     expect(auth.isAuthenticated).toBe(false)
-    expect(router.currentRoute.value.fullPath).toBe('/login')
+    expect(router.currentRoute.value.fullPath).toBe('/system/users')
   })
 })

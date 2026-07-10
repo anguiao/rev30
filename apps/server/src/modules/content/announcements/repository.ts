@@ -18,8 +18,21 @@ import {
   ROLE_STATUS_ENABLED,
   USER_STATUS_ENABLED,
 } from '@rev30/contracts'
-import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
-import type { Db, DbReader } from '../../../db'
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNull,
+  or,
+  sql,
+} from 'drizzle-orm'
+import { unionAll } from 'drizzle-orm/pg-core'
+import type { Db, DbExecutor, DbReader } from '../../../db'
 import {
   announcementReads,
   announcements,
@@ -34,8 +47,13 @@ import {
   deleteAttachmentReferences,
   refreshAttachmentReferences,
 } from '../../attachments/references'
+import { AttachmentReferenceTargetInvalidError } from '../../attachments/errors'
 import { deriveAnnouncementContent, extractAnnouncementAttachmentIds } from './content'
-import { AnnouncementInvalidTargetError, AnnouncementVisibilityTargetRequiredError } from './errors'
+import {
+  AnnouncementContentInvalidError,
+  AnnouncementInvalidTargetError,
+  AnnouncementVisibilityTargetRequiredError,
+} from './errors'
 
 function announcementSortOrder() {
   return [
@@ -174,6 +192,30 @@ async function assertPublishableTargets(
   await assertValidTargets(executor, targets)
 }
 
+async function refreshAnnouncementAttachmentReferences(
+  executor: DbExecutor,
+  announcementId: string,
+  attachmentIds: string[],
+) {
+  try {
+    await refreshAttachmentReferences(
+      executor,
+      {
+        sourceType: 'announcement',
+        sourceId: announcementId,
+        sourceField: 'contentJson',
+      },
+      attachmentIds,
+    )
+  } catch (error) {
+    if (error instanceof AttachmentReferenceTargetInvalidError) {
+      throw new AnnouncementContentInvalidError()
+    }
+
+    throw error
+  }
+}
+
 async function findTargetsByAnnouncementId(executor: DbReader, announcementId: string) {
   const rows = await executor
     .select({
@@ -192,7 +234,7 @@ async function findTargetsByAnnouncementId(executor: DbReader, announcementId: s
   })
 }
 
-async function findAnnouncementRecipientsByIds(executor: DbReader, announcementIds: string[]) {
+function selectAnnouncementRecipients(executor: DbReader, announcementIds: string[]) {
   const activeUser = and(eq(systemUsers.status, USER_STATUS_ENABLED), isNull(systemUsers.deletedAt))
   const activeDepartment = and(
     eq(systemDepartments.status, DEPARTMENT_STATUS_ENABLED),
@@ -205,16 +247,11 @@ async function findAnnouncementRecipientsByIds(executor: DbReader, announcementI
       eq(announcementTargets.targetType, targetType),
     )
 
-  const [
-    allVisibilityRecipients,
-    userTargetRecipients,
-    departmentTargetRecipients,
-    roleTargetRecipients,
-  ] = await Promise.all([
+  return unionAll(
     executor
       .select({
-        announcementId: announcements.id,
-        userId: systemUsers.id,
+        announcementId: sql<string>`${announcements.id}`.as('announcement_id'),
+        userId: sql<string>`${systemUsers.id}`.as('recipient_user_id'),
       })
       .from(announcements)
       .innerJoin(systemUsers, sql`true`)
@@ -227,16 +264,16 @@ async function findAnnouncementRecipientsByIds(executor: DbReader, announcementI
       ),
     executor
       .select({
-        announcementId: announcementTargets.announcementId,
-        userId: systemUsers.id,
+        announcementId: sql<string>`${announcementTargets.announcementId}`.as('announcement_id'),
+        userId: sql<string>`${systemUsers.id}`.as('recipient_user_id'),
       })
       .from(announcementTargets)
       .innerJoin(systemUsers, and(eq(systemUsers.id, announcementTargets.targetId), activeUser))
       .where(targetFilter(ANNOUNCEMENT_TARGET_TYPE_USER)),
     executor
       .select({
-        announcementId: announcementTargets.announcementId,
-        userId: systemUsers.id,
+        announcementId: sql<string>`${announcementTargets.announcementId}`.as('announcement_id'),
+        userId: sql<string>`${systemUsers.id}`.as('recipient_user_id'),
       })
       .from(announcementTargets)
       .innerJoin(
@@ -251,22 +288,15 @@ async function findAnnouncementRecipientsByIds(executor: DbReader, announcementI
       .where(targetFilter(ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT)),
     executor
       .select({
-        announcementId: announcementTargets.announcementId,
-        userId: systemUsers.id,
+        announcementId: sql<string>`${announcementTargets.announcementId}`.as('announcement_id'),
+        userId: sql<string>`${systemUsers.id}`.as('recipient_user_id'),
       })
       .from(announcementTargets)
       .innerJoin(systemUserRoles, eq(systemUserRoles.roleId, announcementTargets.targetId))
       .innerJoin(systemRoles, and(eq(systemRoles.id, systemUserRoles.roleId), activeRole))
       .innerJoin(systemUsers, and(eq(systemUsers.id, systemUserRoles.userId), activeUser))
       .where(targetFilter(ANNOUNCEMENT_TARGET_TYPE_ROLE)),
-  ])
-
-  return [
-    ...allVisibilityRecipients,
-    ...userTargetRecipients,
-    ...departmentTargetRecipients,
-    ...roleTargetRecipients,
-  ]
+  ).as('announcement_recipients')
 }
 
 async function countAnnouncementReadStatsByIds(executor: DbReader, announcementIds: string[]) {
@@ -274,48 +304,33 @@ async function countAnnouncementReadStatsByIds(executor: DbReader, announcementI
     return new Map<string, AnnouncementReadStats>()
   }
 
-  const [recipients, readEntries] = await Promise.all([
-    findAnnouncementRecipientsByIds(executor, announcementIds),
-    executor
-      .select({
-        announcementId: announcementReads.announcementId,
-        userId: announcementReads.userId,
-      })
-      .from(announcementReads)
-      .where(inArray(announcementReads.announcementId, announcementIds)),
-  ])
+  const recipients = selectAnnouncementRecipients(executor, announcementIds)
+  const rows = await executor
+    .select({
+      announcementId: recipients.announcementId,
+      recipientCount: countDistinct(recipients.userId),
+      readCount: countDistinct(announcementReads.userId),
+    })
+    .from(recipients)
+    .leftJoin(
+      announcementReads,
+      and(
+        eq(announcementReads.announcementId, recipients.announcementId),
+        eq(announcementReads.userId, recipients.userId),
+      ),
+    )
+    .groupBy(recipients.announcementId)
+  const statsByAnnouncementId = new Map<string, AnnouncementReadStats>()
 
-  const recipientsByAnnouncementId = new Map(
-    announcementIds.map((announcementId) => [announcementId, new Set<string>()]),
-  )
-  for (const recipient of recipients) {
-    recipientsByAnnouncementId.get(recipient.announcementId)?.add(recipient.userId)
+  for (const row of rows) {
+    statsByAnnouncementId.set(row.announcementId, {
+      recipientCount: row.recipientCount,
+      readCount: row.readCount,
+      unreadCount: row.recipientCount - row.readCount,
+    })
   }
 
-  const readUsersByAnnouncementId = new Map(
-    announcementIds.map((announcementId) => [announcementId, new Set<string>()]),
-  )
-  for (const readEntry of readEntries) {
-    if (recipientsByAnnouncementId.get(readEntry.announcementId)?.has(readEntry.userId)) {
-      readUsersByAnnouncementId.get(readEntry.announcementId)?.add(readEntry.userId)
-    }
-  }
-
-  return new Map(
-    announcementIds.map((announcementId) => {
-      const recipientCount = recipientsByAnnouncementId.get(announcementId)?.size ?? 0
-      const readCount = readUsersByAnnouncementId.get(announcementId)?.size ?? 0
-
-      return [
-        announcementId,
-        {
-          recipientCount,
-          readCount,
-          unreadCount: recipientCount - readCount,
-        },
-      ]
-    }),
-  )
+  return statsByAnnouncementId
 }
 
 export function createAnnouncementRepository(database: Db) {
@@ -428,15 +443,7 @@ export function createAnnouncementRepository(database: Db) {
             .values(buildAnnouncementTargetValues(created.id, normalizedTargets))
         }
 
-        await refreshAttachmentReferences(
-          tx,
-          {
-            sourceType: 'announcement',
-            sourceId: created.id,
-            sourceField: 'contentJson',
-          },
-          attachmentIds,
-        )
+        await refreshAnnouncementAttachmentReferences(tx, created.id, attachmentIds)
 
         return {
           announcement: created,
@@ -510,15 +517,7 @@ export function createAnnouncementRepository(database: Db) {
         }
 
         if (attachmentIds !== undefined) {
-          await refreshAttachmentReferences(
-            tx,
-            {
-              sourceType: 'announcement',
-              sourceId: id,
-              sourceField: 'contentJson',
-            },
-            attachmentIds,
-          )
+          await refreshAnnouncementAttachmentReferences(tx, id, attachmentIds)
         }
 
         return {

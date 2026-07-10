@@ -151,6 +151,31 @@ describe('resources page', () => {
     expect(wrapper.findComponent(NPagination).exists()).toBe(false)
   })
 
+  it('preserves collapsed rows across refreshes and removes missing expanded keys', async () => {
+    const remainingChild = resourceTreeResponse[0]!.children[0]!
+    const removedChild = resourceTreeResponse[0]!.children[1]!
+    getResourceTreeMock.mockResolvedValueOnce(resourceTreeResponse).mockResolvedValueOnce([
+      {
+        ...resourceTreeResponse[0]!,
+        children: [remainingChild],
+      },
+    ])
+    const { wrapper } = await mountResourcesPage()
+    await flushPromises()
+
+    wrapper
+      .getComponent(NDataTable)
+      .vm.$emit('update:expandedRowKeys', [resourceTreeResponse[0]!.id, removedChild.id])
+    await flushPromises()
+    wrapper.getComponent({ name: 'ResourceFormDrawerStub' }).vm.$emit('saved')
+    await flushPromises()
+
+    expect(getResourceTreeMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.getComponent(NDataTable).props('expandedRowKeys')).toEqual([
+      resourceTreeResponse[0]!.id,
+    ])
+  })
+
   it('shows a server load error when resources cannot be loaded', async () => {
     getResourceTreeMock.mockRejectedValue(new ApiRequestError(500, '加载资源树失败'))
     const { wrapper } = await mountResourcesPage()

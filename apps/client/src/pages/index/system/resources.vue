@@ -188,12 +188,21 @@ function confirmDeleteResource(resource: ResourceTreeNode) {
 }
 
 const expandedRowKeys = ref<DataTableRowKey[]>([])
+const hasInitializedExpandedRows = ref(false)
 watch(
-  rows,
-  (nextRows) => {
-    expandedRowKeys.value = treeToArray(nextRows).map((node) => node.id)
+  rawTree,
+  (nextTree) => {
+    const availableKeys = new Set(treeToArray(nextTree).map((node) => node.id))
+
+    if (!hasInitializedExpandedRows.value) {
+      expandedRowKeys.value = [...availableKeys]
+      hasInitializedExpandedRows.value = true
+      return
+    }
+
+    expandedRowKeys.value = expandedRowKeys.value.filter((key) => availableKeys.has(String(key)))
   },
-  { immediate: true },
+  { immediate: rawTree.value.length > 0 },
 )
 function handleUpdateExpandedRowKeys(keys: DataTableRowKey[]) {
   expandedRowKeys.value = keys

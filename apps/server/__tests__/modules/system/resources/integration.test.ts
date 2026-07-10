@@ -199,6 +199,22 @@ describe('resource routes', () => {
       field: 'externalUrl',
       message: '外链地址无效',
     })
+
+    const unsupportedExternalUrlResponse = await app.request('/api/system/resources', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: RESOURCE_TYPE_EXTERNAL,
+        name: 'Unsafe Docs',
+        code: 'test-system:unsafe-docs',
+        externalUrl: 'javascript:alert(1)',
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(unsupportedExternalUrlResponse.status).toBe(400)
+    expect((await unsupportedExternalUrlResponse.json()) as ErrorResponse).toEqual({
+      field: 'externalUrl',
+      message: '外链地址无效',
+    })
   })
 
   it('filters resource lists by keyword, type, status, and parent id', async () => {

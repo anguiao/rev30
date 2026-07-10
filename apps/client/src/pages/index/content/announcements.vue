@@ -302,7 +302,13 @@ const columns: DataTableColumns<AnnouncementListItem> = [
       renderTableActions([
         renderTableActionButton({
           label: '编辑',
-          accessCode: ['content:announcement:update', 'content:announcement:list'],
+          accessCode: [
+            'content:announcement:update',
+            'content:announcement:list',
+            'system:user:list',
+            'system:department:list',
+            'system:role:list',
+          ],
           testId: 'announcements-edit',
           onClick: () => openAnnouncementFormDrawer(announcement.id),
         }),
@@ -341,7 +347,12 @@ const columns: DataTableColumns<AnnouncementListItem> = [
         </p>
       </div>
       <NButton
-        v-can="'content:announcement:create'"
+        v-can="[
+          'content:announcement:create',
+          'system:user:list',
+          'system:department:list',
+          'system:role:list',
+        ]"
         data-test="announcements-create"
         type="primary"
         @click="openAnnouncementFormDrawer()"

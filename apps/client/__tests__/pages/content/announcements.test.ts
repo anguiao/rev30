@@ -70,6 +70,9 @@ const authSession: AuthTokenResponse = {
     'content:announcement:create',
     'content:announcement:update',
     'content:announcement:delete',
+    'system:user:list',
+    'system:department:list',
+    'system:role:list',
   ],
 }
 
@@ -290,6 +293,22 @@ describe('announcements page', () => {
     expect(unauthorizedWrapper.find('[data-test="announcements-publish"]').exists()).toBe(false)
     expect(unauthorizedWrapper.find('[data-test="announcements-archive"]').exists()).toBe(false)
     expect(unauthorizedWrapper.find('[data-test="announcements-delete"]').exists()).toBe(false)
+
+    const { wrapper: announcementOnlyWrapper } = await mountAnnouncementsPage({
+      ...authSession,
+      accessCodes: [
+        'content:announcement:list',
+        'content:announcement:create',
+        'content:announcement:update',
+        'content:announcement:delete',
+      ],
+    })
+    await flushPromises()
+
+    expect(announcementOnlyWrapper.find('[data-test="announcements-create"]').exists()).toBe(false)
+    expect(announcementOnlyWrapper.find('[data-test="announcements-edit"]').exists()).toBe(false)
+    expect(announcementOnlyWrapper.find('[data-test="announcements-publish"]').exists()).toBe(true)
+    expect(announcementOnlyWrapper.find('[data-test="announcements-delete"]').exists()).toBe(true)
 
     const { wrapper: authorizedWrapper } = await mountAnnouncementsPage()
     await flushPromises()

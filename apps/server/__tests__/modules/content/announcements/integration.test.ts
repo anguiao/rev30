@@ -24,6 +24,7 @@ import type { Hono } from 'hono'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   attachmentReferences,
+  attachments,
   announcementReads,
   announcements,
   announcementTargets,
@@ -129,6 +130,32 @@ async function createAnnouncementTargetsFixture(
     } as const,
     role: { targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE, targetId: roleId } as const,
   }
+}
+
+async function createAnnouncementAttachmentFixtures(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  attachmentIds: string[],
+) {
+  const userId = randomUUID()
+
+  await database.insert(systemUsers).values({
+    id: userId,
+    username: `announcement-attachment-user-${userId.slice(0, 8)}`,
+    nickname: 'Announcement Attachment User',
+  })
+  await database.insert(attachments).values(
+    attachmentIds.map((id) => ({
+      id,
+      storageProvider: 'local',
+      storageKey: `announcements/${id}.png`,
+      originalName: `${id}.png`,
+      mimeType: 'image/png',
+      extension: 'png',
+      size: 1,
+      usage: 'announcement-content-image',
+      createdBy: userId,
+    })),
+  )
 }
 
 function imageContentJson(attachmentId: string): TiptapDocument {
@@ -316,6 +343,51 @@ describe('announcement routes', () => {
     })
   })
 
+  it('returns zero read stats when a targeted announcement no longer has active recipients', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const recipientUserId = randomUUID()
+
+    await database.insert(systemUsers).values({
+      id: recipientUserId,
+      username: `announcement-former-reader-${recipientUserId.slice(0, 8)}`,
+      nickname: 'Former Announcement Reader',
+    })
+
+    const { body: created } = await createAnnouncement(app, {
+      ...createBody,
+      title: '无当前收件人通知',
+      publish: true,
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      targets: [
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
+          targetId: recipientUserId,
+        },
+      ],
+    })
+
+    await database.insert(announcementReads).values({
+      announcementId: created.id,
+      userId: recipientUserId,
+    })
+    await database
+      .update(systemUsers)
+      .set({ status: USER_STATUS_DISABLED })
+      .where(eq(systemUsers.id, recipientUserId))
+
+    const listResponse = await app.request('/api/content/announcements?page=1&pageSize=10')
+    const body = (await listResponse.json()) as AnnouncementListResponse
+    const listedAnnouncement = body.list.find((item) => item.id === created.id)
+
+    expect(listResponse.status).toBe(200)
+    expect(listedAnnouncement?.readStats).toEqual({
+      recipientCount: 0,
+      readCount: 0,
+      unreadCount: 0,
+    })
+  })
+
   it('counts only active users in read stats for all-visible announcements', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
@@ -451,6 +523,9 @@ describe('announcement routes', () => {
   it('syncs attachment references when creating, updating, and deleting announcements', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
+
+    await createAnnouncementAttachmentFixtures(database, [firstAttachmentId, secondAttachmentId])
+
     const { body: created } = await createAnnouncement(app, {
       ...createBody,
       contentJson: imageContentJson(firstAttachmentId),
@@ -486,6 +561,33 @@ describe('announcement routes', () => {
 
     expect(deleteResponse.status).toBe(204)
     expect(await listAnnouncementAttachmentReferences(database, created.id)).toEqual([])
+  })
+
+  it('rejects content that references a soft-deleted attachment', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+
+    await createAnnouncementAttachmentFixtures(database, [firstAttachmentId])
+    await database
+      .update(attachments)
+      .set({ deletedAt: new Date() })
+      .where(eq(attachments.id, firstAttachmentId))
+
+    const response = await app.request('/api/content/announcements', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...createBody,
+        contentJson: imageContentJson(firstAttachmentId),
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(400)
+    expect((await response.json()) as ErrorResponse).toEqual({
+      field: 'contentJson',
+      message: '正文格式无效',
+    })
+    await expect(database.select().from(announcements)).resolves.toEqual([])
   })
 
   it('persists visibility targets and returns them in management detail', async () => {

@@ -352,6 +352,96 @@ describe('attachment service', () => {
     })
   })
 
+  it('allows only one concurrent upload request to store session content', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+    const session = await service.createUploadSession({
+      originalName: 'avatar.png',
+      usage: 'avatar',
+      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
+      size: pngBytes.byteLength,
+      userId,
+    })
+    const token = getUploadToken(session.request.url)
+    const [firstUpload, secondUpload] = await Promise.allSettled([
+      service.uploadSessionContent({
+        body: streamFromBytes(pngBytes),
+        token,
+        uploadId: session.uploadId,
+      }),
+      service.uploadSessionContent({
+        body: streamFromBytes(pngBytes),
+        token,
+        uploadId: session.uploadId,
+      }),
+    ])
+
+    expect(firstUpload.status).toBe('fulfilled')
+    expect(secondUpload).toMatchObject({
+      status: 'rejected',
+      reason: expect.any(AttachmentUploadSessionInvalidError),
+    })
+    await expect(
+      service.uploadSessionContent({
+        body: streamFromBytes(pngBytes),
+        token,
+        uploadId: session.uploadId,
+      }),
+    ).rejects.toBeInstanceOf(AttachmentUploadSessionInvalidError)
+
+    const attachment = await service.completeUploadSession({
+      uploadId: session.uploadId,
+      userId,
+    })
+    const [row] = await database.select().from(attachments).where(eq(attachments.id, attachment.id))
+
+    expect(row).toBeDefined()
+    expect(new Uint8Array(await readFile(getStoredFilePath(row!.storageKey)))).toEqual(pngBytes)
+  })
+
+  it('allows only one concurrent completion and keeps the created attachment readable', async () => {
+    const database = await createTestDb()
+    const service = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+    const session = await createStoredUploadSession(service, {
+      bytes: pngBytes,
+      originalName: 'avatar.png',
+      userId,
+    })
+    const [firstCompletion, secondCompletion] = await Promise.allSettled([
+      service.completeUploadSession({
+        uploadId: session.uploadId,
+        userId,
+      }),
+      service.completeUploadSession({
+        uploadId: session.uploadId,
+        userId,
+      }),
+    ])
+
+    expect(firstCompletion.status).toBe('fulfilled')
+    expect(secondCompletion).toMatchObject({
+      status: 'rejected',
+      reason: expect.any(AttachmentUploadSessionInvalidError),
+    })
+
+    if (firstCompletion.status !== 'fulfilled') {
+      throw firstCompletion.reason
+    }
+
+    const access = await service.createContentUrl(firstCompletion.value.id, {
+      disposition: ATTACHMENT_DISPOSITION_INLINE,
+    })
+    const content = await service.readContent(firstCompletion.value.id, {
+      signedToken: getUploadToken(access.request.url),
+    })
+
+    expect(await streamToBytes(content.body)).toEqual(pngBytes)
+    await expect(database.select().from(attachments)).resolves.toHaveLength(1)
+  })
+
   it('uses system config overrides for upload session expiration', async () => {
     const database = await createTestDb()
     const service = await createAttachmentServiceForTest(database, {

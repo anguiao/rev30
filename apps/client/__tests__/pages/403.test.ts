@@ -35,7 +35,7 @@ describe('forbidden page', () => {
     expect(wrapper.get('[data-test="forbidden-logout"]').text()).toContain('退出登录')
   })
 
-  it('logs out, clears auth session, and navigates to login', async () => {
+  it('logs out and clears the auth session', async () => {
     logoutMock.mockResolvedValue(undefined)
     const { router, wrapper } = await mountForbiddenPage()
     const auth = useAuthStore()
@@ -45,6 +45,6 @@ describe('forbidden page', () => {
 
     expect(logoutMock).toHaveBeenCalledTimes(1)
     expect(auth.isAuthenticated).toBe(false)
-    expect(router.currentRoute.value.fullPath).toBe('/login')
+    expect(router.currentRoute.value.fullPath).toBe('/403')
   })
 })

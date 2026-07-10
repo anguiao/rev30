@@ -1,10 +1,18 @@
 import {
+  RESOURCE_OPEN_TARGET_BLANK,
+  RESOURCE_OPEN_TARGET_SELF,
   RESOURCE_STATUS_ENABLED,
+  RESOURCE_TYPE_ACTION,
+  RESOURCE_TYPE_DIRECTORY,
+  RESOURCE_TYPE_EXTERNAL,
+  RESOURCE_TYPE_MENU,
+  type Resource,
   type ResourceCreateInput,
   type ResourceListQuery,
   type ResourceStatus,
   type ResourceTreeOptionsQuery,
   type ResourceUpdateInput,
+  resourceExternalUrlSchema,
 } from '@rev30/contracts'
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
@@ -12,9 +20,11 @@ import { systemRoleResources, systemResources } from '../../../db/schema'
 import {
   ResourceDeleteConflictError,
   ResourceInvalidParentError,
+  ResourceInvalidTypeFieldsError,
+  ResourceMoveConflictError,
   ResourceRoleAuthorizationConflictError,
 } from './errors'
-import type { ResourceTreeOptionEntry } from './mapper'
+import type { ResourceRow, ResourceTreeOptionEntry } from './mapper'
 
 const resourceTreeOptionColumns = {
   id: systemResources.id,
@@ -33,15 +43,30 @@ function resourceSortOrder() {
   ] as const
 }
 
-async function lockActiveResourceById(executor: DbReader, id: string) {
-  const [row] = await executor
-    .select()
-    .from(systemResources)
-    .where(and(eq(systemResources.id, id), isNull(systemResources.deletedAt)))
-    .limit(1)
-    .for('update')
+async function lockActiveResourcesByIds(executor: DbReader, ids: string[]) {
+  const rows: ResourceRow[] = []
+  const sortedIds = [...new Set(ids)].sort()
 
-  return row
+  for (const id of sortedIds) {
+    const [row] = await executor
+      .select()
+      .from(systemResources)
+      .where(and(eq(systemResources.id, id), isNull(systemResources.deletedAt)))
+      .limit(1)
+      .for('update')
+
+    if (row) {
+      rows.push(row)
+    }
+  }
+
+  return rows
+}
+
+async function lockActiveResourceById(executor: DbReader, id: string) {
+  const rows = await lockActiveResourcesByIds(executor, [id])
+
+  return rows[0]
 }
 
 async function hasActiveChildren(executor: DbReader, id: string) {
@@ -62,6 +87,177 @@ async function hasRoleAuthorizations(executor: DbReader, id: string) {
     .limit(1)
 
   return rows.length > 0
+}
+
+function normalizeExternalUrl(externalUrl: string) {
+  const normalizedExternalUrl = externalUrl.trim()
+  const urlResult = resourceExternalUrlSchema.safeParse(normalizedExternalUrl)
+
+  if (!urlResult.success) {
+    throw new ResourceInvalidTypeFieldsError('外链地址无效', 'externalUrl')
+  }
+
+  return normalizedExternalUrl
+}
+
+function normalizeCreateTypeFields(input: ResourceCreateInput): ResourceCreateInput {
+  const next: ResourceCreateInput = { ...input }
+
+  if (input.type === RESOURCE_TYPE_MENU) {
+    if (input.path === null) {
+      throw new ResourceInvalidTypeFieldsError('内部菜单路径不能为空', 'path')
+    }
+
+    next.path = input.path
+    next.externalUrl = null
+    next.openTarget = input.openTarget ?? RESOURCE_OPEN_TARGET_SELF
+  }
+
+  if (input.type === RESOURCE_TYPE_EXTERNAL) {
+    if (input.externalUrl === null) {
+      throw new ResourceInvalidTypeFieldsError('外链地址不能为空', 'externalUrl')
+    }
+
+    next.path = null
+    next.externalUrl = normalizeExternalUrl(input.externalUrl)
+    next.openTarget = input.openTarget ?? RESOURCE_OPEN_TARGET_BLANK
+  }
+
+  if (input.type === RESOURCE_TYPE_DIRECTORY || input.type === RESOURCE_TYPE_ACTION) {
+    next.path = null
+    next.externalUrl = null
+    next.openTarget = RESOURCE_OPEN_TARGET_SELF
+  }
+
+  return next
+}
+
+function normalizeUpdateTypeFields(
+  input: ResourceUpdateInput,
+  existing: ResourceRow,
+): ResourceUpdateInput {
+  const type = input.type ?? (existing.type as Resource['type'])
+  const existingType = existing.type as Resource['type']
+  const next: ResourceUpdateInput = { ...input }
+  const path = input.path !== undefined ? input.path : existing.path
+  const externalUrl = input.externalUrl !== undefined ? input.externalUrl : existing.externalUrl
+
+  if (type === RESOURCE_TYPE_MENU) {
+    if (path === null) {
+      throw new ResourceInvalidTypeFieldsError('内部菜单路径不能为空', 'path')
+    }
+
+    next.path = path
+    next.externalUrl = null
+
+    if (input.openTarget !== undefined) {
+      next.openTarget = input.openTarget
+    } else if (existingType !== RESOURCE_TYPE_MENU) {
+      next.openTarget = RESOURCE_OPEN_TARGET_SELF
+    }
+  }
+
+  if (type === RESOURCE_TYPE_EXTERNAL) {
+    if (externalUrl === null) {
+      throw new ResourceInvalidTypeFieldsError('外链地址不能为空', 'externalUrl')
+    }
+
+    next.path = null
+    next.externalUrl = normalizeExternalUrl(externalUrl)
+
+    if (input.openTarget !== undefined) {
+      next.openTarget = input.openTarget
+    } else if (existingType !== RESOURCE_TYPE_EXTERNAL) {
+      next.openTarget = RESOURCE_OPEN_TARGET_BLANK
+    }
+  }
+
+  if (type === RESOURCE_TYPE_DIRECTORY || type === RESOURCE_TYPE_ACTION) {
+    next.path = null
+    next.externalUrl = null
+    next.openTarget = RESOURCE_OPEN_TARGET_SELF
+  }
+
+  return next
+}
+
+async function findActiveResourceParentChain(executor: DbReader, parentId: string) {
+  const rows: ResourceRow[] = []
+  const visitedIds = new Set<string>()
+  let currentId: string | null = parentId
+
+  while (currentId && !visitedIds.has(currentId)) {
+    visitedIds.add(currentId)
+
+    const [row] = await executor
+      .select()
+      .from(systemResources)
+      .where(and(eq(systemResources.id, currentId), isNull(systemResources.deletedAt)))
+      .limit(1)
+
+    if (!row) {
+      break
+    }
+
+    rows.push(row)
+    currentId = row.parentId
+  }
+
+  return rows
+}
+
+async function lockResourceForUpdate(
+  executor: DbReader,
+  id: string,
+  parentId: string | null | undefined,
+) {
+  const candidateParentRows =
+    parentId === undefined || parentId === null
+      ? []
+      : await findActiveResourceParentChain(executor, parentId)
+  const lockedRows = await lockActiveResourcesByIds(executor, [
+    id,
+    ...candidateParentRows.map((row) => row.id),
+  ])
+  const rowsById = new Map(lockedRows.map((row) => [row.id, row]))
+  const resource = rowsById.get(id)
+
+  if (!resource || parentId === undefined || parentId === null) {
+    return resource
+  }
+
+  if (!rowsById.has(parentId)) {
+    throw new ResourceInvalidParentError()
+  }
+
+  for (const candidateParent of candidateParentRows) {
+    const lockedParent = rowsById.get(candidateParent.id)
+
+    if (!lockedParent || lockedParent.parentId !== candidateParent.parentId) {
+      throw new ResourceMoveConflictError()
+    }
+  }
+
+  const visitedIds = new Set<string>()
+  let currentId: string | null = parentId
+
+  while (currentId) {
+    if (currentId === id || visitedIds.has(currentId)) {
+      throw new ResourceMoveConflictError()
+    }
+
+    visitedIds.add(currentId)
+
+    const current = rowsById.get(currentId)
+
+    if (!current) {
+      break
+    }
+
+    currentId = current.parentId
+  }
+
+  return resource
 }
 
 export function createResourceRepository(database: Db) {
@@ -214,21 +410,15 @@ export function createResourceRepository(database: Db) {
         .orderBy(...resourceSortOrder())
     },
 
-    async hasActiveChildren(id: string) {
-      return await hasActiveChildren(database, id)
-    },
-
-    async hasRoleAuthorizations(id: string) {
-      return await hasRoleAuthorizations(database, id)
-    },
-
     async create(input: ResourceCreateInput) {
       return await database.transaction(async (tx) => {
         if (input.parentId !== null && !(await lockActiveResourceById(tx, input.parentId))) {
           throw new ResourceInvalidParentError()
         }
 
-        const [created] = await tx.insert(systemResources).values(input).returning()
+        const normalizedInput = normalizeCreateTypeFields(input)
+
+        const [created] = await tx.insert(systemResources).values(normalizedInput).returning()
 
         if (!created) {
           throw new Error('创建资源失败')
@@ -240,17 +430,17 @@ export function createResourceRepository(database: Db) {
 
     async update(id: string, input: ResourceUpdateInput) {
       return await database.transaction(async (tx) => {
-        if (
-          input.parentId !== undefined &&
-          input.parentId !== null &&
-          !(await lockActiveResourceById(tx, input.parentId))
-        ) {
-          throw new ResourceInvalidParentError()
+        const resource = await lockResourceForUpdate(tx, id, input.parentId)
+
+        if (!resource) {
+          return undefined
         }
+
+        const normalizedInput = normalizeUpdateTypeFields(input, resource)
 
         const [updated] = await tx
           .update(systemResources)
-          .set(input)
+          .set(normalizedInput)
           .where(and(eq(systemResources.id, id), isNull(systemResources.deletedAt)))
           .returning()
 

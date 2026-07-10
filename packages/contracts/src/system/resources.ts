@@ -46,7 +46,10 @@ export const iconifyIconNameSchema = z.string().trim().regex(iconifyIconNamePatt
 const iconInputSchema = optionalNullableString().pipe(
   z.union([iconifyIconNameSchema, z.null()]).optional(),
 )
-export const resourceExternalUrlSchema = z.url({ error: '外链地址无效' })
+export const resourceExternalUrlSchema = z.url({
+  error: '外链地址无效',
+  protocol: /^https?$/,
+})
 
 export const resourceSchema = z.object({
   id: resourceIdSchema,

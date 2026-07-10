@@ -26,6 +26,7 @@ const hasSelectedFile = computed(() => selectedFile.value !== null)
 const localPreviewSrc = useObjectUrl(selectedFile)
 
 const isUploading = ref(false)
+let uploadGeneration = 0
 const canSelectFile = computed(() => props.show && !isExistingImage.value && !isUploading.value)
 
 function selectLocalImageFile(file: File) {
@@ -151,6 +152,7 @@ function initializeDialog() {
 }
 
 function resetDialog() {
+  uploadGeneration += 1
   resetFileDialog()
   selectedFile.value = null
   resetImageState()
@@ -183,16 +185,27 @@ async function uploadImageFile() {
     return
   }
 
+  const generation = ++uploadGeneration
   isUploading.value = true
   try {
     const uploaded = await props.upload(file)
+    if (generation !== uploadGeneration) {
+      return
+    }
+
     src.value = uploaded.src
     alt.value = file.name
     selectedFile.value = null
   } catch (error) {
+    if (generation !== uploadGeneration) {
+      return
+    }
+
     emit('error', error)
   } finally {
-    isUploading.value = false
+    if (generation === uploadGeneration) {
+      isUploading.value = false
+    }
   }
 }
 
@@ -213,6 +226,10 @@ function handleImageLoad(event: Event) {
   if (width.value === null && height.value === null) {
     width.value = image.naturalWidth
     height.value = image.naturalHeight
+  } else if (width.value !== null && height.value === null) {
+    height.value = Math.max(1, Math.round((width.value * image.naturalHeight) / image.naturalWidth))
+  } else if (width.value === null && height.value !== null) {
+    width.value = Math.max(1, Math.round((height.value * image.naturalWidth) / image.naturalHeight))
   }
 }
 
@@ -237,14 +254,14 @@ function resetSize() {
 function updateWidth(value: number | null) {
   width.value = value
   if (value !== null && aspectRatio.value !== null) {
-    height.value = Math.round(value / aspectRatio.value)
+    height.value = Math.max(1, Math.round(value / aspectRatio.value))
   }
 }
 
 function updateHeight(value: number | null) {
   height.value = value
   if (value !== null && aspectRatio.value !== null) {
-    width.value = Math.round(value * aspectRatio.value)
+    width.value = Math.max(1, Math.round(value * aspectRatio.value))
   }
 }
 </script>

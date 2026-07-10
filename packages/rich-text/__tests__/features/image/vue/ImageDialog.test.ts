@@ -473,6 +473,57 @@ describe('ImageToolbarControl', () => {
     ).toBeDefined()
   })
 
+  it('does not let an earlier upload overwrite a newer dialog upload', async () => {
+    const firstUpload = deferred<{ src: string }>()
+    const secondUpload = deferred<{ src: string }>()
+    const upload = vi.fn((file: File) =>
+      file.name === 'first.png' ? firstUpload.promise : secondUpload.promise,
+    )
+    const editor = createEditor()
+    const wrapper = mountControl(editor, upload)
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await chooseFile(wrapper, new File(['first'], 'first.png', { type: 'image/png' }))
+    await uploadSelectedFile(wrapper)
+    await wrapper.get('[data-test="rich-text-image-cancel"]').trigger('click')
+    await flushPromises()
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await chooseFile(wrapper, new File(['second'], 'second.png', { type: 'image/png' }))
+    await uploadSelectedFile(wrapper)
+    secondUpload.resolve({ src: '/api/attachments/second.png/content' })
+    await flushPromises()
+
+    expect(wrapper.getComponent(NImage).props('src')).toBe('/api/attachments/second.png/content')
+
+    firstUpload.resolve({ src: '/api/attachments/first.png/content' })
+    await flushPromises()
+
+    expect(wrapper.getComponent(NImage).props('src')).toBe('/api/attachments/second.png/content')
+  })
+
+  it('ignores upload errors after the dialog closes', async () => {
+    const pendingUpload = deferred<{ src: string }>()
+    const onError = vi.fn()
+    const editor = createEditor()
+    const wrapper = mountControl(
+      editor,
+      vi.fn(() => pendingUpload.promise),
+      onError,
+    )
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await chooseFile(wrapper, new File(['image'], 'cover.png', { type: 'image/png' }))
+    await uploadSelectedFile(wrapper)
+    await wrapper.get('[data-test="rich-text-image-cancel"]').trigger('click')
+    await flushPromises()
+
+    pendingUpload.reject(new Error('Upload failed'))
+    await flushPromises()
+
+    expect(onError).not.toHaveBeenCalled()
+  })
+
   it('updates existing image attrs with a fixed ratio', async () => {
     const editor = createEditor(
       '<img src="/api/attachments/cover/content" alt="旧说明" width="500" height="250" />',
@@ -495,6 +546,84 @@ describe('ImageToolbarControl', () => {
             alt: '新说明',
             width: 600,
             height: 300,
+          },
+        },
+      ],
+    })
+  })
+
+  it('fills a missing existing image height from its natural ratio', async () => {
+    const editor = createEditor(
+      '<img src="/api/attachments/cover/content" alt="说明" width="500" />',
+    )
+    editor.commands.setNodeSelection(0)
+    const wrapper = mountControl(editor)
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await loadPreviewImage(wrapper, 1000, 500)
+
+    expect(
+      wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
+    ).toBeUndefined()
+
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.getJSON()).toMatchObject({
+      content: [
+        {
+          type: 'image',
+          attrs: {
+            width: 500,
+            height: 250,
+          },
+        },
+      ],
+    })
+  })
+
+  it('fills a missing existing image width from its natural ratio', async () => {
+    const editor = createEditor(
+      '<img src="/api/attachments/cover/content" alt="说明" height="250" />',
+    )
+    editor.commands.setNodeSelection(0)
+    const wrapper = mountControl(editor)
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await loadPreviewImage(wrapper, 1000, 500)
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.getJSON()).toMatchObject({
+      content: [
+        {
+          type: 'image',
+          attrs: {
+            width: 500,
+            height: 250,
+          },
+        },
+      ],
+    })
+  })
+
+  it('keeps calculated image dimensions positive for extreme aspect ratios', async () => {
+    const editor = createEditor('<img src="/api/attachments/cover/content" alt="说明" width="1" />')
+    editor.commands.setNodeSelection(0)
+    const wrapper = mountControl(editor)
+
+    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await loadPreviewImage(wrapper, 1000, 1)
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.getJSON()).toMatchObject({
+      content: [
+        {
+          type: 'image',
+          attrs: {
+            width: 1,
+            height: 1,
           },
         },
       ],

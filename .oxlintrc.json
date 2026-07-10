@@ -4,6 +4,9 @@
   "options": {
     "typeAware": true
   },
+  "rules": {
+    "typescript/no-deprecated": "error"
+  },
   "env": {
     "browser": true,
     "es2022": true,

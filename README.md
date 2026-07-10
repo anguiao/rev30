@@ -61,7 +61,6 @@ pnpm test
 pnpm typecheck
 pnpm lint:check
 pnpm format:check
-pnpm check:deprecated
 pnpm build
 pnpm --filter @rev30/server db:bootstrap
 pnpm --filter @rev30/server db:generate

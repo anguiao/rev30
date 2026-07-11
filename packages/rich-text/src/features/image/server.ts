@@ -53,5 +53,7 @@ export function createImageHtmlPolicy(options: RichTextImageServerOptions): Rich
 }
 
 export function createImageServerFeature(options: RichTextImageServerOptions) {
-  return defineRichTextServerFeature(imageFeature, createImageHtmlPolicy(options))
+  return defineRichTextServerFeature(imageFeature, {
+    htmlPolicy: createImageHtmlPolicy(options),
+  })
 }

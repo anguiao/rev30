@@ -101,6 +101,9 @@ importers:
       file-saver:
         specifier: ^2.0.5
         version: 2.0.5
+      highlight.js:
+        specifier: ^11.11.1
+        version: 11.11.1
       hono:
         specifier: 'catalog:'
         version: 4.12.28
@@ -280,6 +283,9 @@ importers:
       '@tiptap/extension-code-block':
         specifier: ^3.27.3
         version: 3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)
+      '@tiptap/extension-code-block-lowlight':
+        specifier: ^3.27.3
+        version: 3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/extension-code-block@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)(highlight.js@11.11.1)(lowlight@3.3.0)
       '@tiptap/extension-document':
         specifier: ^3.27.3
         version: 3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))
@@ -346,6 +352,12 @@ importers:
       '@vueuse/core':
         specifier: 'catalog:'
         version: 14.3.0(vue@3.5.39(typescript@6.0.3))
+      highlight.js:
+        specifier: ^11.11.1
+        version: 11.11.1
+      lowlight:
+        specifier: ^3.3.0
+        version: 3.3.0
       naive-ui:
         specifier: 'catalog:'
         version: 2.44.1(vue@3.5.39(typescript@6.0.3))
@@ -1826,6 +1838,15 @@ packages:
     peerDependencies:
       '@tiptap/extension-list': 3.27.3
 
+  '@tiptap/extension-code-block-lowlight@3.27.3':
+    resolution: {integrity: sha512-+Ibv7ifuLVq634Rssbc41mRREm9R7uW3R1PC1A0jarqGLtzpn5xbDec5V/l/x91PKBWq1vFRv7RCOrwTqUPw+g==}
+    peerDependencies:
+      '@tiptap/core': 3.27.3
+      '@tiptap/extension-code-block': 3.27.3
+      '@tiptap/pm': 3.27.3
+      highlight.js: ^11
+      lowlight: ^2 || ^3
+
   '@tiptap/extension-code-block@3.27.3':
     resolution: {integrity: sha512-3CVnzkpGoqqI5KaXI9l9PMwLkx34SYY63tpeo0I0QjDk4LU+JTAQDTPJFSwB4zTsHZ7ZFMU0jjasFOZ1kZRVgw==}
     peerDependencies:
@@ -1986,6 +2007,9 @@ packages:
   '@types/file-saver@2.0.7':
     resolution: {integrity: sha512-dNKVfHd/jk0SkR/exKGj2ggkB45MAkzvWCaqLUUgkyjITkGNzH8H+yUwr+BLJUBjZOe9w8X3wgmXhZDRg1ED6A==}
 
+  '@types/hast@3.0.5':
+    resolution: {integrity: sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==}
+
   '@types/jsesc@2.5.1':
     resolution: {integrity: sha512-9VN+6yxLOPLOav+7PwjZbxiID2bVaeq0ED4qSQmdQTdjnXJSaCVKTR58t15oqH1H5t8Ng2ZX1SabJVoN9Q34bw==}
 
@@ -2009,6 +2033,9 @@ packages:
 
   '@types/sanitize-html@2.16.1':
     resolution: {integrity: sha512-n9wjs8bCOTyN/ynwD8s/nTcTreIHB1vf31vhLMGqUPNHaweKC4/fAl4Dj+hUlCTKYgm4P3k83fmiFfzkZ6sgMA==}
+
+  '@types/unist@3.0.3':
+    resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
 
   '@types/web-bluetooth@0.0.21':
     resolution: {integrity: sha512-oIQLCGWtcFZy2JW77j9k8nHzAOpqMHLQejDA48XXMWH6tjCQHz5RCFz1bzsmROyL6PUm+LLnUiI4BCn221inxA==}
@@ -2398,9 +2425,16 @@ packages:
     resolution: {integrity: sha512-N+MeXYoqr3pOgn8xfyRPREN7gHakLYjhsHhWGT3fWAiL4IkAt0iDw14QiiEm2bE30c5XX5q0FtAA3CK5f9/BUg==}
     engines: {node: '>=12'}
 
+  dequal@2.0.3:
+    resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
+    engines: {node: '>=6'}
+
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
+
+  devlop@1.1.0:
+    resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
   dom-serializer@2.0.0:
     resolution: {integrity: sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg==}
@@ -2890,6 +2924,9 @@ packages:
 
   lodash@4.18.1:
     resolution: {integrity: sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==}
+
+  lowlight@3.3.0:
+    resolution: {integrity: sha512-0JNhgFoPvP6U6lE/UdVsSq99tn6DhjjpAj5MxG49ewd2mOBVtwWYIT8ClyABhq198aXXODMU6Ox8DrGy/CpTZQ==}
 
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
@@ -4681,6 +4718,14 @@ snapshots:
     dependencies:
       '@tiptap/extension-list': 3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)
 
+  '@tiptap/extension-code-block-lowlight@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/extension-code-block@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)(highlight.js@11.11.1)(lowlight@3.3.0)':
+    dependencies:
+      '@tiptap/core': 3.27.3(@tiptap/pm@3.27.3)
+      '@tiptap/extension-code-block': 3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)
+      '@tiptap/pm': 3.27.3
+      highlight.js: 11.11.1
+      lowlight: 3.3.0
+
   '@tiptap/extension-code-block@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)':
     dependencies:
       '@tiptap/core': 3.27.3(@tiptap/pm@3.27.3)
@@ -4837,6 +4882,10 @@ snapshots:
 
   '@types/file-saver@2.0.7': {}
 
+  '@types/hast@3.0.5':
+    dependencies:
+      '@types/unist': 3.0.3
+
   '@types/jsesc@2.5.1': {}
 
   '@types/lodash-es@4.17.12':
@@ -4863,6 +4912,8 @@ snapshots:
   '@types/sanitize-html@2.16.1':
     dependencies:
       htmlparser2: 10.1.0
+
+  '@types/unist@3.0.3': {}
 
   '@types/web-bluetooth@0.0.21': {}
 
@@ -5289,7 +5340,13 @@ snapshots:
 
   define-lazy-prop@3.0.0: {}
 
+  dequal@2.0.3: {}
+
   detect-libc@2.1.2: {}
+
+  devlop@1.1.0:
+    dependencies:
+      dequal: 2.0.3
 
   dom-serializer@2.0.0:
     dependencies:
@@ -5658,6 +5715,12 @@ snapshots:
   lodash-es@4.18.1: {}
 
   lodash@4.18.1: {}
+
+  lowlight@3.3.0:
+    dependencies:
+      '@types/hast': 3.0.5
+      devlop: 1.1.0
+      highlight.js: 11.11.1
 
   lru-cache@10.4.3: {}
 

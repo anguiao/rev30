@@ -68,7 +68,6 @@ export const highlightHtmlPolicy: RichTextHtmlPolicy = {
   },
 }
 
-export const highlightServerFeature = defineRichTextServerFeature(
-  highlightFeature,
-  highlightHtmlPolicy,
-)
+export const highlightServerFeature = defineRichTextServerFeature(highlightFeature, {
+  htmlPolicy: highlightHtmlPolicy,
+})

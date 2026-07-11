@@ -5,6 +5,7 @@ import type { RichTextDemoPreviewResponse } from '@rev30/contracts'
 import AdminPage from '../../../src/pages/index.vue'
 import RichTextDemoPage from '../../../src/pages/index/demos/rich-text.vue'
 import { createRichTextDemoImageDataUrl, previewRichTextDemo } from '../../../src/features/demos'
+import { useThemeStore } from '../../../src/stores/theme'
 import { mountAuthRoute, session } from '../../helpers/auth'
 
 const { createAllRichTextEditorPresetMock } = vi.hoisted(() => ({
@@ -35,7 +36,14 @@ vi.mock('@rev30/rich-text/vue', () => ({
             onClick: () =>
               emit('update:modelValue', {
                 type: 'doc',
-                content: [{ type: 'paragraph', content: [{ type: 'text', text: '组件演示' }] }],
+                content: [
+                  { type: 'paragraph', content: [{ type: 'text', text: '组件演示' }] },
+                  {
+                    type: 'codeBlock',
+                    attrs: { language: 'typescript' },
+                    content: [{ type: 'text', text: 'const ready = true' }],
+                  },
+                ],
               }),
           },
           'editor',
@@ -44,7 +52,16 @@ vi.mock('@rev30/rich-text/vue', () => ({
   }),
 }))
 
-vi.mock('../../../src/features/demos', () => ({
+vi.mock('highlight.js/styles/github.css?raw', () => ({
+  default: '.hljs { color: light; }',
+}))
+
+vi.mock('highlight.js/styles/github-dark.css?raw', () => ({
+  default: '.hljs { color: dark; }',
+}))
+
+vi.mock('../../../src/features/demos', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/demos')>()),
   createRichTextDemoImageDataUrl: vi.fn(),
   previewRichTextDemo: vi.fn(),
 }))
@@ -55,10 +72,18 @@ const previewRichTextDemoMock = vi.mocked(previewRichTextDemo)
 const previewResponse: RichTextDemoPreviewResponse = {
   contentJson: {
     type: 'doc',
-    content: [{ type: 'paragraph', content: [{ type: 'text', text: '组件演示' }] }],
+    content: [
+      { type: 'paragraph', content: [{ type: 'text', text: '组件演示' }] },
+      {
+        type: 'codeBlock',
+        attrs: { language: 'typescript' },
+        content: [{ type: 'text', text: 'const ready = true' }],
+      },
+    ],
   },
-  contentText: '组件演示',
-  contentHtml: '<p><strong>组件演示</strong></p>',
+  contentText: '组件演示\n\nconst ready = true',
+  contentHtml:
+    '<p><strong>组件演示</strong></p><pre><code class="language-typescript">const ready = true</code></pre>',
 }
 
 async function mountPage() {
@@ -102,6 +127,7 @@ describe('rich text demo page', () => {
     expect(wrapper.get('[data-test="rich-text-demo-rendered"]').html()).toContain(
       '<strong>组件演示</strong>',
     )
+    expect(wrapper.get('[data-test="rich-text-demo-rendered"] .hljs-keyword').text()).toBe('const')
     expect(wrapper.get('[data-test="rich-text-demo-json"]').text()).toContain('组件演示')
   })
 
@@ -119,5 +145,25 @@ describe('rich text demo page', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-test="rich-text-demo-error"]').text()).toBe('图片过大')
+  })
+
+  it('loads highlight themes for the resolved mode while the page is mounted', async () => {
+    const { wrapper } = await mountPage()
+    const theme = useThemeStore()
+    const highlightTheme = document.head.querySelector<HTMLStyleElement>(
+      '#rich-text-demo-highlight-theme',
+    )
+
+    theme.setMode('light')
+    await flushPromises()
+    expect(highlightTheme?.textContent).toBe('.hljs { color: light; }')
+
+    theme.setMode('dark')
+    await flushPromises()
+
+    expect(highlightTheme?.textContent).toBe('.hljs { color: dark; }')
+
+    wrapper.unmount()
+    expect(document.head.querySelector('#rich-text-demo-highlight-theme')).toBeNull()
   })
 })

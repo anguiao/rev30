@@ -62,8 +62,9 @@ export function collectRichTextEditorExtensions(
     preset.editorFeatures.map((editorFeature) => [editorFeature.feature, editorFeature]),
   )
 
-  return preset.features.flatMap((feature) => [
-    ...(feature.documentExtensions?.() ?? []),
-    ...(editorFeatureByFeature.get(feature)?.extensions?.() ?? []),
-  ])
+  return preset.features.flatMap((feature) => {
+    const editorFeature = editorFeatureByFeature.get(feature)
+
+    return [...(feature.documentExtensions?.() ?? []), ...(editorFeature?.extensions?.() ?? [])]
+  })
 }

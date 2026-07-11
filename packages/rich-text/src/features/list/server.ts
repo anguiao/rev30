@@ -6,4 +6,6 @@ export const listHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['ul', 'ol', 'li'],
 }
 
-export const listServerFeature = defineRichTextServerFeature(listFeature, listHtmlPolicy)
+export const listServerFeature = defineRichTextServerFeature(listFeature, {
+  htmlPolicy: listHtmlPolicy,
+})

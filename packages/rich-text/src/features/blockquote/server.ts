@@ -6,7 +6,6 @@ export const blockquoteHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['blockquote'],
 }
 
-export const blockquoteServerFeature = defineRichTextServerFeature(
-  blockquoteFeature,
-  blockquoteHtmlPolicy,
-)
+export const blockquoteServerFeature = defineRichTextServerFeature(blockquoteFeature, {
+  htmlPolicy: blockquoteHtmlPolicy,
+})

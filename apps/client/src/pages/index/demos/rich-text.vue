@@ -6,7 +6,11 @@ import { hasRichTextContent } from '@rev30/rich-text/schema'
 import { RichTextEditor } from '@rev30/rich-text/vue'
 import { createAllRichTextEditorPreset } from '@rev30/rich-text/vue/presets/all'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
-import { createRichTextDemoImageDataUrl, previewRichTextDemo } from '../../../features/demos'
+import {
+  createRichTextDemoImageDataUrl,
+  previewRichTextDemo,
+  useRichTextCodeHighlight,
+} from '../../../features/demos'
 import { getErrorMessage } from '../../../utils/error'
 
 function createEmptyDocument(): TiptapDocument {
@@ -17,10 +21,8 @@ function createEmptyDocument(): TiptapDocument {
 }
 
 const pageTitle = useAdminPageTitle('富文本')
+
 const contentJson = ref<TiptapDocument>(createEmptyDocument())
-const previewResult = ref<RichTextDemoPreviewResponse | null>(null)
-const previewError = ref<string | null>(null)
-const isPreviewing = ref(false)
 
 const editorPreset = createAllRichTextEditorPreset({
   image: {
@@ -33,11 +35,6 @@ const editorPreset = createAllRichTextEditorPreset({
   },
 })
 
-const canPreview = computed(() => !isPreviewing.value && hasRichTextContent(contentJson.value))
-const formattedContentJson = computed(() =>
-  previewResult.value === null ? '' : JSON.stringify(previewResult.value.contentJson, null, 2),
-)
-
 function updateContentJson(value: TiptapDocument) {
   contentJson.value = value
   previewResult.value = null
@@ -47,6 +44,17 @@ function updateContentJson(value: TiptapDocument) {
 function clearContent() {
   updateContentJson(createEmptyDocument())
 }
+
+const previewResult = ref<RichTextDemoPreviewResponse | null>(null)
+const previewError = ref<string | null>(null)
+const isPreviewing = ref(false)
+const previewContainer = ref<HTMLElement | null>(null)
+const { highlightCode } = useRichTextCodeHighlight(previewContainer)
+
+const canPreview = computed(() => !isPreviewing.value && hasRichTextContent(contentJson.value))
+const formattedContentJson = computed(() =>
+  previewResult.value === null ? '' : JSON.stringify(previewResult.value.contentJson, null, 2),
+)
 
 async function generatePreview() {
   if (!canPreview.value) {
@@ -58,6 +66,7 @@ async function generatePreview() {
 
   try {
     previewResult.value = await previewRichTextDemo({ contentJson: contentJson.value })
+    await highlightCode()
   } catch (error) {
     previewResult.value = null
     previewError.value = getErrorMessage(error, '生成服务端预览失败')
@@ -112,8 +121,9 @@ async function generatePreview() {
         <h2 class="mb-4 font-medium">渲染结果</h2>
         <div
           v-if="previewResult"
+          ref="previewContainer"
           data-test="rich-text-demo-rendered"
-          class="prose prose-sm max-w-none dark:prose-invert"
+          class="rich-text-demo-rendered prose prose-sm max-w-none dark:prose-invert"
           v-html="previewResult.contentHtml"
         />
         <NEmpty v-else description="生成服务端预览后显示" class="py-16" />
@@ -147,3 +157,10 @@ async function generatePreview() {
     </section>
   </main>
 </template>
+
+<style scoped>
+.rich-text-demo-rendered :deep(pre code.hljs) {
+  padding: 0;
+  background: transparent;
+}
+</style>

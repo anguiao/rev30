@@ -6,4 +6,6 @@ export const italicHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['em'],
 }
 
-export const italicServerFeature = defineRichTextServerFeature(italicFeature, italicHtmlPolicy)
+export const italicServerFeature = defineRichTextServerFeature(italicFeature, {
+  htmlPolicy: italicHtmlPolicy,
+})

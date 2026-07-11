@@ -96,7 +96,7 @@ describe('RichTextEditor', () => {
     for (const dataTest of toolbarDataTests) {
       expect(wrapper.find(`[data-test="${dataTest}"]`).exists()).toBe(true)
     }
-    expect(wrapper.findAllComponents(NDropdown)).toHaveLength(3)
+    expect(wrapper.findAllComponents(NDropdown)).toHaveLength(4)
     expect(editable.text()).toContain('维护通知')
   })
 
@@ -193,6 +193,49 @@ describe('RichTextEditor', () => {
     await vi.waitFor(() => {
       expect(wrapper.get('[data-test="rich-text-list"]').attributes('data-active')).toBe('true')
       expect(wrapper.get('[data-test="rich-text-list"]').attributes('title')).toBe('无序列表')
+    })
+  })
+
+  it('creates, configures, and exits code blocks from the language dropdown', async () => {
+    const wrapper = mountRichTextEditor({
+      modelValue: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'const ready = true' }],
+          },
+        ],
+      },
+      preset: allEditorPreset,
+    })
+
+    await getEditable(wrapper)
+    await selectDropdownCommand(wrapper, 'code-block-language-typescript')
+
+    await vi.waitFor(() => {
+      expect(wrapper.get('[data-test="rich-text-code-block"]').attributes('data-active')).toBe(
+        'true',
+      )
+      expect(wrapper.get('[data-test="rich-text-code-block"]').attributes('title')).toBe(
+        '代码块：TypeScript',
+      )
+      expect(wrapper.get('.ProseMirror code').classes()).toContain('language-typescript')
+      expect(wrapper.get('.ProseMirror .hljs-keyword').text()).toBe('const')
+    })
+
+    await selectDropdownCommand(wrapper, 'code-block-auto')
+    await vi.waitFor(() => {
+      expect(wrapper.get('[data-test="rich-text-code-block"]').attributes('title')).toBe(
+        '代码块：自动检测',
+      )
+      expect(wrapper.get('.ProseMirror code').classes()).not.toContain('language-typescript')
+    })
+
+    await selectDropdownCommand(wrapper, 'code-block-paragraph')
+    await vi.waitFor(() => {
+      expect(wrapper.find('.ProseMirror pre').exists()).toBe(false)
+      expect(wrapper.get('.ProseMirror p').text()).toBe('const ready = true')
     })
   })
 

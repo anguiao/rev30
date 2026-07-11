@@ -2,14 +2,19 @@ import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { describe, expect, it } from 'vitest'
-import { codeBlockAction } from '../../../src/features/code-block/editor'
+import {
+  codeBlockAction,
+  codeBlockEditorFeature,
+  setCodeBlockLanguageAction,
+} from '../../../src/features/code-block/editor'
+import { codeBlockLanguageOptions } from '../../../src/features/code-block/languages'
 import { codeBlockFeature } from '../../../src/features/code-block/shared'
-import { codeBlockToolbarItem } from '../../../src/features/code-block/vue'
+import { codeBlockToolbarControl } from '../../../src/features/code-block/vue'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor(content: string | object = '<p>const ready = true</p>') {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, ...codeBlockFeature.documentExtensions!()],
+    extensions: [Document, Paragraph, Text, ...codeBlockEditorFeature.extensions!()],
     content,
   })
 }
@@ -25,11 +30,12 @@ describe('code block feature', () => {
       content: [
         {
           type: 'codeBlock',
+          attrs: { language: null },
           content: [{ type: 'text', text: 'const ready = true' }],
         },
       ],
     })
-    expect(editor.getHTML()).toBe('<pre><code>const ready = true</code></pre>')
+    expect(editor.getHTML()).toBe('<pre class="hljs"><code>const ready = true</code></pre>')
   })
 
   it('keeps the native Mod-Alt-c shortcut', () => {
@@ -39,46 +45,60 @@ describe('code block feature', () => {
     expect(editor.isActive('codeBlock')).toBe(true)
   })
 
-  it('drops unsupported language metadata from editor commands and json', () => {
+  it('stores the selected language and highlights the editable code', () => {
     const editor = createEditor()
 
-    expect(editor.commands.setCodeBlock({ language: 'typescript' })).toBe(true)
+    expect(setCodeBlockLanguageAction.run(editor, 'typescript')).toBe(true)
     expect(editor.getJSON()).toMatchObject({
-      content: [{ type: 'codeBlock', content: [{ type: 'text', text: 'const ready = true' }] }],
-    })
-    expect(editor.getJSON().content?.[0]).not.toHaveProperty('attrs')
-    expect(editor.getHTML()).toBe('<pre><code>const ready = true</code></pre>')
-
-    expect(
-      editor.schema
-        .nodeFromJSON({
+      content: [
+        {
           type: 'codeBlock',
           attrs: { language: 'typescript' },
           content: [{ type: 'text', text: 'const ready = true' }],
-        })
-        .toJSON(),
-    ).toEqual({
-      type: 'codeBlock',
-      content: [{ type: 'text', text: 'const ready = true' }],
+        },
+      ],
     })
+    expect(editor.getHTML()).toBe(
+      '<pre class="hljs"><code class="language-typescript">const ready = true</code></pre>',
+    )
+    expect(editor.view.dom.querySelector('.hljs-keyword')?.textContent).toBe('const')
+
+    expect(setCodeBlockLanguageAction.run(editor, null)).toBe(true)
+    expect(editor.getJSON().content?.[0]?.attrs).toEqual({ language: null })
+    expect(editor.getHTML()).toBe('<pre class="hljs"><code>const ready = true</code></pre>')
   })
 
-  it('does not import language metadata from HTML', () => {
+  it('normalizes language aliases imported from HTML', () => {
+    const editor = createEditor('<pre><code class="language-ts">const ready = true</code></pre>')
+
+    expect(editor.getJSON()).toMatchObject({
+      content: [{ type: 'codeBlock', attrs: { language: 'typescript' } }],
+    })
+    expect(editor.getHTML()).toBe(
+      '<pre class="hljs"><code class="language-typescript">const ready = true</code></pre>',
+    )
+    expect(editor.view.dom.querySelector('.hljs-keyword')?.textContent).toBe('const')
+  })
+
+  it('removes unsupported languages imported from HTML', () => {
     const editor = createEditor(
-      '<pre><code class="language-typescript">const ready = true</code></pre>',
+      '<pre><code class="language-unknown">const ready = true</code></pre>',
     )
 
     expect(editor.getJSON()).toMatchObject({
-      content: [{ type: 'codeBlock' }],
+      content: [{ type: 'codeBlock', attrs: { language: null } }],
     })
-    expect(editor.getJSON().content?.[0]).not.toHaveProperty('attrs')
+    expect(editor.getHTML()).toBe('<pre class="hljs"><code>const ready = true</code></pre>')
   })
 
-  it('provides the Chinese toolbar entry', () => {
-    expect(codeBlockToolbarItem).toMatchObject({
-      action: codeBlockAction,
-      label: '代码块',
-      icon: 'i-[lucide--square-code]',
+  it('provides the language toolbar control', () => {
+    expect(codeBlockToolbarControl).toMatchObject({
+      type: 'component',
+      feature: codeBlockFeature,
+      key: 'code-block',
+      props: {
+        languages: codeBlockLanguageOptions,
+      },
     })
   })
 })

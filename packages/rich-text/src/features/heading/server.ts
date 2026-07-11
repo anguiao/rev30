@@ -6,4 +6,6 @@ export const headingHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['h1', 'h2', 'h3'],
 }
 
-export const headingServerFeature = defineRichTextServerFeature(headingFeature, headingHtmlPolicy)
+export const headingServerFeature = defineRichTextServerFeature(headingFeature, {
+  htmlPolicy: headingHtmlPolicy,
+})

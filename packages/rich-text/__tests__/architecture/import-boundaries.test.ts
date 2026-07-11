@@ -111,6 +111,15 @@ function isEditorModule(id: string) {
   )
 }
 
+function isCodeBlockHighlighterModule(id: string) {
+  return (
+    id.endsWith('/packages/rich-text/src/features/code-block/lowlight.ts') ||
+    id.includes('/node_modules/@tiptap/extension-code-block-lowlight/') ||
+    id.includes('/node_modules/highlight.js/') ||
+    id.includes('/node_modules/lowlight/')
+  )
+}
+
 function isServerModule(id: string) {
   return (
     id.includes('/packages/rich-text/src/server/') ||
@@ -141,7 +150,8 @@ describe('rich text import boundaries', () => {
         export * from '@rev30/rich-text/server/presets/compact'
       `,
     })
-    const isForbidden = (id: string) => isVueModule(id) || isEditorModule(id)
+    const isForbidden = (id: string) =>
+      isVueModule(id) || isEditorModule(id) || isCodeBlockHighlighterModule(id)
 
     expect(
       findModules(

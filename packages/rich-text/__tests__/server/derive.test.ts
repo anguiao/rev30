@@ -87,6 +87,7 @@ describe('deriveRichTextContent', () => {
           },
           {
             type: 'codeBlock',
+            attrs: { language: 'typescript' },
             content: [{ type: 'text', text: 'const ready = true\nconsole.log(ready)' }],
           },
         ],
@@ -96,7 +97,27 @@ describe('deriveRichTextContent', () => {
 
     expect(content.text).toBe('运行 pnpm check\n\nconst ready = true\nconsole.log(ready)')
     expect(content.html).toContain('<p>运行 <code>pnpm check</code></p>')
-    expect(content.html).toContain('<pre><code>const ready = true\nconsole.log(ready)</code></pre>')
+    expect(content.html).toContain(
+      '<pre><code class="language-typescript">const ready = true\nconsole.log(ready)</code></pre>',
+    )
+  })
+
+  it.each(['ts', 'unknown'])('rejects non-canonical code block language "%s"', (language) => {
+    expect(() =>
+      deriveRichTextContent(
+        {
+          type: 'doc',
+          content: [
+            {
+              type: 'codeBlock',
+              attrs: { language },
+              content: [{ type: 'text', text: 'const ready = true' }],
+            },
+          ],
+        },
+        createServerPreset(),
+      ),
+    ).toThrow(RichTextContentInvalidError)
   })
 
   it('returns schema-canonical json', () => {

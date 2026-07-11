@@ -6,4 +6,6 @@ export const boldHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['strong'],
 }
 
-export const boldServerFeature = defineRichTextServerFeature(boldFeature, boldHtmlPolicy)
+export const boldServerFeature = defineRichTextServerFeature(boldFeature, {
+  htmlPolicy: boldHtmlPolicy,
+})

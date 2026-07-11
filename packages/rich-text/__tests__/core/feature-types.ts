@@ -82,7 +82,7 @@ const editorPreset = defineRichTextEditorPreset(preset, { editorFeatures })
 // @ts-expect-error Defined editor preset implementations are immutable.
 editorPreset.editorFeatures.push(editorFeature)
 
-const baseServerFeature = defineRichTextServerFeature(baseFeature, {})
+const baseServerFeature = defineRichTextServerFeature(baseFeature, { htmlPolicy: {} })
 const serverPreset = defineRichTextServerPreset(preset, [baseServerFeature])
 
 // @ts-expect-error Defined server preset implementations are immutable.

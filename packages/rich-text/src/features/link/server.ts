@@ -27,4 +27,6 @@ export const linkHtmlPolicy: RichTextHtmlPolicy = {
   },
 }
 
-export const linkServerFeature = defineRichTextServerFeature(linkFeature, linkHtmlPolicy)
+export const linkServerFeature = defineRichTextServerFeature(linkFeature, {
+  htmlPolicy: linkHtmlPolicy,
+})

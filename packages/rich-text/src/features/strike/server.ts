@@ -6,4 +6,6 @@ export const strikeHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['s'],
 }
 
-export const strikeServerFeature = defineRichTextServerFeature(strikeFeature, strikeHtmlPolicy)
+export const strikeServerFeature = defineRichTextServerFeature(strikeFeature, {
+  htmlPolicy: strikeHtmlPolicy,
+})

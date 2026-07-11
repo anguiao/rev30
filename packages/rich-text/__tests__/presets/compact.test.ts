@@ -1,11 +1,11 @@
 import { getSchema } from '@tiptap/core'
 import { describe, expect, it, vi } from 'vitest'
-import { collectRichTextDocumentExtensions } from '../../src/core/preset'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
 import { allRichTextPreset } from '../../src/presets/all'
 import { compactRichTextPreset } from '../../src/presets/compact'
 import { createAllRichTextServerPreset } from '../../src/server/presets/all'
 import { compactRichTextServerPreset } from '../../src/server/presets/compact'
+import { collectRichTextServerExtensions } from '../../src/server/feature'
 import type { RichTextToolbarControlConfig } from '../../src/vue/toolbar'
 import { createAllRichTextEditorPreset } from '../../src/vue/presets/all'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
@@ -192,7 +192,7 @@ describe('all rich text preset', () => {
       'image',
     ])
     expect(
-      collectRichTextDocumentExtensions(allServerPreset).map((extension) => extension.name),
+      collectRichTextServerExtensions(allServerPreset).map((extension) => extension.name),
     ).toEqual([
       'doc',
       'paragraph',
@@ -310,7 +310,7 @@ describe('compact rich text preset', () => {
       'list',
     ])
     expect(
-      collectRichTextDocumentExtensions(compactRichTextServerPreset).map(
+      collectRichTextServerExtensions(compactRichTextServerPreset).map(
         (extension) => extension.name,
       ),
     ).toEqual([

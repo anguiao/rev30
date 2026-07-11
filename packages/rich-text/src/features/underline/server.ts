@@ -6,7 +6,6 @@ export const underlineHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['u'],
 }
 
-export const underlineServerFeature = defineRichTextServerFeature(
-  underlineFeature,
-  underlineHtmlPolicy,
-)
+export const underlineServerFeature = defineRichTextServerFeature(underlineFeature, {
+  htmlPolicy: underlineHtmlPolicy,
+})

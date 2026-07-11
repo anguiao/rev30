@@ -11,7 +11,10 @@ import {
   collectRichTextEditorExtensions,
   defineRichTextEditorFeature,
 } from '../../src/editor/feature'
-import { defineRichTextServerFeature } from '../../src/server/feature'
+import {
+  collectRichTextServerExtensions,
+  defineRichTextServerFeature,
+} from '../../src/server/feature'
 import { defineRichTextServerPreset } from '../../src/server/presets/types'
 import {
   defineRichTextToolbar,
@@ -109,7 +112,7 @@ describe('rich text feature model', () => {
     })
     const editorImplementation = defineRichTextEditorFeature(editorFeature, {})
     const serverImplementation = defineRichTextServerFeature(serverFeature, {
-      allowedTags: ['server-feature'],
+      htmlPolicy: { allowedTags: ['server-feature'] },
     })
 
     expect(() => defineRichTextEditorPreset(preset, { editorFeatures: [] })).toThrow(
@@ -184,7 +187,7 @@ describe('rich text feature model', () => {
     expect(() => defineRichTextEditorFeature(serverOnlyFeature, {})).toThrow(
       'Rich text feature "server-only" does not declare the editor implementation',
     )
-    expect(() => defineRichTextServerFeature(editorOnlyFeature, {})).toThrow(
+    expect(() => defineRichTextServerFeature(editorOnlyFeature, { htmlPolicy: {} })).toThrow(
       'Rich text feature "editor-only" does not declare the server implementation',
     )
   })
@@ -337,9 +340,10 @@ describe('rich text feature model', () => {
     ).toThrow('Rich text toolbar dropdown "mixed" mixes multiple features')
   })
 
-  it('collects shared and editor extensions in canonical feature order', () => {
+  it('collects runtime extensions in canonical feature order', () => {
     const firstDocumentExtension = Extension.create({ name: 'first-document' })
     const firstEditorExtension = Extension.create({ name: 'first-editor' })
+    const firstServerExtension = Extension.create({ name: 'first-server' })
     const secondDocumentExtension = Extension.create({ name: 'second-document' })
     const firstFeature = defineRichTextFeature({
       key: 'first',
@@ -363,6 +367,15 @@ describe('rich text feature model', () => {
     const editorPreset = defineRichTextEditorPreset(preset, {
       editorFeatures: [firstEditorFeature],
     })
+    const firstServerFeature = defineRichTextServerFeature(firstFeature, {
+      htmlPolicy: {},
+      extensions: () => [firstServerExtension],
+    })
+    const secondServerFeature = defineRichTextServerFeature(secondFeature, { htmlPolicy: {} })
+    const serverPreset = defineRichTextServerPreset(preset, [
+      firstServerFeature,
+      secondServerFeature,
+    ])
 
     expect(collectRichTextDocumentExtensions(preset).map((extension) => extension.name)).toEqual([
       'first-document',
@@ -371,6 +384,9 @@ describe('rich text feature model', () => {
     expect(
       collectRichTextEditorExtensions(editorPreset).map((extension) => extension.name),
     ).toEqual(['first-document', 'first-editor', 'second-document'])
+    expect(
+      collectRichTextServerExtensions(serverPreset).map((extension) => extension.name),
+    ).toEqual(['first-document', 'first-server', 'second-document'])
   })
 
   it('snapshots and freezes server policies before they enter a cached preset', () => {
@@ -383,7 +399,7 @@ describe('rich text feature model', () => {
     const allowedAttributes = { p: ['class'] }
     const allowedSchemesByTag = { img: ['data'] }
     const policy = { allowedTags, allowedAttributes, allowedSchemesByTag }
-    const serverFeature = defineRichTextServerFeature(feature, policy)
+    const serverFeature = defineRichTextServerFeature(feature, { htmlPolicy: policy })
     const preset = defineRichTextPreset({ key: 'policy-test', features: [feature] })
     const serverPreset = defineRichTextServerPreset(preset, [serverFeature])
 

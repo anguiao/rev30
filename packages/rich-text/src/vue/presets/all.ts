@@ -4,7 +4,7 @@ import { blockquoteToolbarItem } from '../../features/blockquote/vue'
 import { boldEditorFeature } from '../../features/bold/editor'
 import { boldToolbarItem } from '../../features/bold/vue'
 import { codeBlockEditorFeature } from '../../features/code-block/editor'
-import { codeBlockToolbarItem } from '../../features/code-block/vue'
+import { codeBlockToolbarControl } from '../../features/code-block/vue'
 import { headingEditorFeature } from '../../features/heading/editor'
 import { headingToolbarItems } from '../../features/heading/vue'
 import { highlightEditorFeature } from '../../features/highlight/editor'
@@ -104,7 +104,7 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
           items: listToolbarItems,
         }),
         button(blockquoteToolbarItem),
-        button(codeBlockToolbarItem),
+        codeBlockToolbarControl,
       ],
     },
     {

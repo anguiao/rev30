@@ -6,7 +6,6 @@ export const horizontalRuleHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['hr'],
 }
 
-export const horizontalRuleServerFeature = defineRichTextServerFeature(
-  horizontalRuleFeature,
-  horizontalRuleHtmlPolicy,
-)
+export const horizontalRuleServerFeature = defineRichTextServerFeature(horizontalRuleFeature, {
+  htmlPolicy: horizontalRuleHtmlPolicy,
+})

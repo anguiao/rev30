@@ -54,7 +54,6 @@ export const textAlignHtmlPolicy: RichTextHtmlPolicy = {
   transformTags: Object.fromEntries(textAlignTags.map((tag) => [tag, [transformTextBlock]])),
 }
 
-export const textAlignServerFeature = defineRichTextServerFeature(
-  textAlignFeature,
-  textAlignHtmlPolicy,
-)
+export const textAlignServerFeature = defineRichTextServerFeature(textAlignFeature, {
+  htmlPolicy: textAlignHtmlPolicy,
+})

@@ -1,7 +1,13 @@
-import { defineRichTextToolbarItem } from '../../vue/toolbar'
-import { codeBlockAction } from './editor'
+import { richTextToolbarComponent } from '../../vue/toolbar'
+import { codeBlockLanguageOptions } from './languages'
+import { codeBlockFeature } from './shared'
+import CodeBlockToolbarControl from './vue/CodeBlockToolbarControl.vue'
 
-export const codeBlockToolbarItem = defineRichTextToolbarItem(codeBlockAction, {
-  label: '代码块',
-  icon: 'i-[lucide--square-code]',
+export const codeBlockToolbarControl = richTextToolbarComponent({
+  feature: codeBlockFeature,
+  key: codeBlockFeature.key,
+  component: CodeBlockToolbarControl,
+  props: {
+    languages: codeBlockLanguageOptions,
+  },
 })

@@ -6,7 +6,6 @@ export const inlineCodeHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['code'],
 }
 
-export const inlineCodeServerFeature = defineRichTextServerFeature(
-  inlineCodeFeature,
-  inlineCodeHtmlPolicy,
-)
+export const inlineCodeServerFeature = defineRichTextServerFeature(inlineCodeFeature, {
+  htmlPolicy: inlineCodeHtmlPolicy,
+})

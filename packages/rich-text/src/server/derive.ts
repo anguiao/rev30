@@ -11,6 +11,7 @@ import { createRichTextHtmlSanitizer } from './sanitize'
 interface RichTextServerRuntime {
   schema: Schema
   extensions: AnyExtension[]
+  documentValidators: ((document: ProseMirrorNode) => void)[]
   textSerializers: Record<string, TextSerializer>
   sanitizeHtml: (html: string) => string
 }
@@ -26,9 +27,17 @@ function getServerRuntime(preset: RichTextServerPreset): RichTextServerRuntime {
 
   const extensions = collectRichTextServerExtensions(preset)
   const schema = getSchema(extensions)
+  const serverFeatureByFeature = new Map(
+    preset.serverFeatures.map((serverFeature) => [serverFeature.feature, serverFeature]),
+  )
   const runtime = {
     schema,
     extensions,
+    documentValidators: preset.features.flatMap((feature) => {
+      const validator = serverFeatureByFeature.get(feature)?.validateDocument
+
+      return validator ? [validator] : []
+    }),
     textSerializers: getTextSerializersFromSchema(schema),
     sanitizeHtml: createRichTextHtmlSanitizer(preset.htmlPolicies),
   }
@@ -49,6 +58,10 @@ export function deriveRichTextContent(contentJson: unknown, preset: RichTextServ
     }
 
     document.check()
+
+    for (const validateDocument of runtime.documentValidators) {
+      validateDocument(document)
+    }
   } catch {
     throw new RichTextContentInvalidError()
   }

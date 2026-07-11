@@ -75,6 +75,23 @@ const { editor } = useRichTextEditor({
   -webkit-box-decoration-break: clone;
 }
 
+:deep(.ProseMirror .tableWrapper) {
+  overflow-x: auto;
+}
+
+:deep(.ProseMirror .selectedCell) {
+  position: relative;
+}
+
+:deep(.ProseMirror .selectedCell::after) {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background-color: var(--rich-text-selection-color);
+  content: '';
+  pointer-events: none;
+}
+
 :deep(.ProseMirror img.ProseMirror-selectednode) {
   border-radius: var(--radius-ui);
   outline: 1px solid var(--color-primary-hover);

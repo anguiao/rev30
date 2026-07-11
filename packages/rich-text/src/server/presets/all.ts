@@ -14,6 +14,7 @@ import { italicServerFeature } from '../../features/italic/server'
 import { linkServerFeature } from '../../features/link/server'
 import { listServerFeature } from '../../features/list/server'
 import { strikeServerFeature } from '../../features/strike/server'
+import { tableServerFeature } from '../../features/table/server'
 import { textAlignServerFeature } from '../../features/text-align/server'
 import { textStyleServerFeature } from '../../features/text-style/server'
 import { underlineServerFeature } from '../../features/underline/server'
@@ -38,6 +39,7 @@ export function createAllRichTextServerPreset(options: AllRichTextServerPresetOp
     headingServerFeature,
     textAlignServerFeature,
     listServerFeature,
+    tableServerFeature,
     blockquoteServerFeature,
     codeBlockServerFeature,
     horizontalRuleServerFeature,

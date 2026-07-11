@@ -37,6 +37,7 @@ const toolbarDataTests = [
   'rich-text-blockquote',
   'rich-text-code-block',
   'rich-text-horizontal-rule',
+  'rich-text-table',
   'rich-text-image',
   'rich-text-undo',
   'rich-text-redo',

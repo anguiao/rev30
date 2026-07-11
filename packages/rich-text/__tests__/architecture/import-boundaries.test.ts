@@ -132,6 +132,17 @@ function isTextStyleModule(id: string) {
   return id.includes('/node_modules/@tiptap/extension-text-style/')
 }
 
+function isTableModule(id: string) {
+  return id.includes('/node_modules/@tiptap/extension-table/')
+}
+
+function isUnusedTableModule(id: string) {
+  return (
+    id.includes('/node_modules/@tiptap/extension-table/dist/kit/') ||
+    id.endsWith('/node_modules/@tiptap/extension-table/dist/index.js')
+  )
+}
+
 function isServerModule(id: string) {
   return (
     id.includes('/packages/rich-text/src/server/') ||
@@ -166,7 +177,8 @@ describe('rich text import boundaries', () => {
       isVueModule(id) ||
       isEditorModule(id) ||
       isCodeBlockHighlighterModule(id) ||
-      isUnusedTextStyleModule(id)
+      isUnusedTextStyleModule(id) ||
+      isTableModule(id)
 
     expect(
       findModules(
@@ -211,6 +223,8 @@ describe('rich text import boundaries', () => {
       findModules(graph.bundled, isUnusedTextStyleModule),
       'bundled text style modules',
     ).toEqual([])
+    expect(findModules(graph.loaded, isUnusedTableModule), 'loaded table modules').toEqual([])
+    expect(findModules(graph.bundled, isUnusedTableModule), 'bundled table modules').toEqual([])
   }, 30_000)
 
   it('does not load all-only features through public compact preset entries', async () => {
@@ -248,6 +262,8 @@ describe('rich text import boundaries', () => {
       findModules(graph.bundled, isTextStyleModule),
       'bundled compact text style modules',
     ).toEqual([])
+    expect(findModules(graph.loaded, isTableModule), 'loaded compact table modules').toEqual([])
+    expect(findModules(graph.bundled, isTableModule), 'bundled compact table modules').toEqual([])
   }, 30_000)
 
   it('does not load unselected features for a minimal preset', async () => {
@@ -293,5 +309,7 @@ describe('rich text import boundaries', () => {
       findModules(graph.bundled, isTextStyleModule),
       'bundled minimal text style modules',
     ).toEqual([])
+    expect(findModules(graph.loaded, isTableModule), 'loaded minimal table modules').toEqual([])
+    expect(findModules(graph.bundled, isTableModule), 'bundled minimal table modules').toEqual([])
   }, 30_000)
 })

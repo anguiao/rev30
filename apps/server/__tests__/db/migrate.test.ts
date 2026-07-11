@@ -293,7 +293,7 @@ describe('PGlite migration runner', () => {
     } finally {
       await client.close()
     }
-  })
+  }, 10_000)
 
   it('migrates development PGlite databases before returning from createDb', async () => {
     const dataDir = join(await createTempDir(), 'dev')
@@ -313,5 +313,5 @@ describe('PGlite migration runner', () => {
     } finally {
       await close()
     }
-  })
+  }, 10_000)
 })

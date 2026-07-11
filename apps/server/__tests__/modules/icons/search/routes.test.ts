@@ -1,10 +1,28 @@
 import { Hono } from 'hono'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
 import { customIconSetIcons, customIconSets } from '../../../../src/db/schema'
 import { createAuthMiddleware } from '../../../../src/middleware/auth'
 import { createIconSearchRoutes } from '../../../../src/modules/icons/search/routes'
+
+vi.mock('@iconify/json', () => ({
+  lookupCollections: vi.fn(async () => ({
+    lucide: {
+      name: 'Lucide',
+      palette: false,
+    },
+  })),
+  lookupCollection: vi.fn(async () => ({
+    prefix: 'lucide',
+    icons: {
+      users: {
+        body: '<path d="users" />',
+      },
+    },
+    aliases: {},
+  })),
+}))
 
 function createIconSearchTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
   return new Hono().route(

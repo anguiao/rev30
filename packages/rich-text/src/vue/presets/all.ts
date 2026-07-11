@@ -3,6 +3,8 @@ import { blockquoteEditorFeature } from '../../features/blockquote/editor'
 import { blockquoteToolbarItem } from '../../features/blockquote/vue'
 import { boldEditorFeature } from '../../features/bold/editor'
 import { boldToolbarItem } from '../../features/bold/vue'
+import { codeBlockEditorFeature } from '../../features/code-block/editor'
+import { codeBlockToolbarItem } from '../../features/code-block/vue'
 import { headingEditorFeature } from '../../features/heading/editor'
 import { headingToolbarItems } from '../../features/heading/vue'
 import { highlightEditorFeature } from '../../features/highlight/editor'
@@ -16,6 +18,8 @@ import {
   createImageToolbarControl,
   type RichTextImageUploadOptions,
 } from '../../features/image/vue'
+import { inlineCodeEditorFeature } from '../../features/inline-code/editor'
+import { inlineCodeToolbarItem } from '../../features/inline-code/vue'
 import { italicEditorFeature } from '../../features/italic/editor'
 import { italicToolbarItem } from '../../features/italic/vue'
 import { linkEditorFeature } from '../../features/link/editor'
@@ -49,12 +53,14 @@ const allEditorFeatures = [
   italicEditorFeature,
   underlineEditorFeature,
   strikeEditorFeature,
+  inlineCodeEditorFeature,
   highlightEditorFeature,
   linkEditorFeature,
   removeFormatEditorFeature,
   headingEditorFeature,
   textAlignEditorFeature,
   blockquoteEditorFeature,
+  codeBlockEditorFeature,
   listEditorFeature,
   horizontalRuleEditorFeature,
   imageEditorFeature,
@@ -70,6 +76,7 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
         button(italicToolbarItem),
         button(underlineToolbarItem),
         button(strikeToolbarItem),
+        button(inlineCodeToolbarItem),
         highlightToolbarControl,
         linkToolbarControl,
         button(removeFormatToolbarItem),
@@ -97,6 +104,7 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
           items: listToolbarItems,
         }),
         button(blockquoteToolbarItem),
+        button(codeBlockToolbarItem),
       ],
     },
     {

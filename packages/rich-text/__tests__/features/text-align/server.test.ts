@@ -10,18 +10,20 @@ describe('text align html policy', () => {
   it('keeps supported text alignment on paragraphs and headings', () => {
     expect(
       sanitizeRichTextHtml(
-        '<p style="text-align: center; color: red">居中</p><h2 style="text-align: right">右对齐</h2>',
+        '<p style="text-align: center; color: red">居中</p><h2 style="text-align: right">右对齐</h2><p style="text-align: justify">两端对齐</p>',
         policies,
       ),
-    ).toBe('<p style="text-align:center">居中</p><h2 style="text-align:right">右对齐</h2>')
+    ).toBe(
+      '<p style="text-align:center">居中</p><h2 style="text-align:right">右对齐</h2><p style="text-align:justify">两端对齐</p>',
+    )
   })
 
   it('removes unsupported text alignment styles', () => {
     expect(
       sanitizeRichTextHtml(
-        '<p style="text-align: justify">两端对齐</p><h1 style="position: fixed">标题</h1>',
+        '<p style="text-align: start">起始对齐</p><h1 style="position: fixed">标题</h1>',
         policies,
       ),
-    ).toBe('<p>两端对齐</p><h1>标题</h1>')
+    ).toBe('<p>起始对齐</p><h1>标题</h1>')
   })
 })

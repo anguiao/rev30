@@ -2,6 +2,7 @@ export const textAlignOptions = [
   { key: 'left', label: '左对齐', value: 'left', icon: 'i-[lucide--align-left]' },
   { key: 'center', label: '居中对齐', value: 'center', icon: 'i-[lucide--align-center]' },
   { key: 'right', label: '右对齐', value: 'right', icon: 'i-[lucide--align-right]' },
+  { key: 'justify', label: '两端对齐', value: 'justify', icon: 'i-[lucide--align-justify]' },
 ] as const
 
 export type TextAlignment = (typeof textAlignOptions)[number]['value']

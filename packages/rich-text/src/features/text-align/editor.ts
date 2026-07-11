@@ -24,6 +24,13 @@ export const textAlignActions = [
       editor.isActive('paragraph', { textAlign: 'right' }) ||
       editor.isActive('heading', { textAlign: 'right' }),
   }),
+  defineRichTextAction(textAlignFeature, {
+    key: 'text-align-justify',
+    run: (editor) => editor.chain().focus().setTextAlign('justify').run(),
+    isActive: (editor) =>
+      editor.isActive('paragraph', { textAlign: 'justify' }) ||
+      editor.isActive('heading', { textAlign: 'justify' }),
+  }),
 ] as const
 
 export const textAlignEditorFeature = defineRichTextEditorFeature(textAlignFeature, {

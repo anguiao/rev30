@@ -32,7 +32,7 @@ import {
   sql,
 } from 'drizzle-orm'
 import { unionAll } from 'drizzle-orm/pg-core'
-import type { Db, DbExecutor, DbReader } from '../../../db'
+import type { Db, DbReader } from '../../../db'
 import {
   announcementReads,
   announcements,
@@ -43,17 +43,8 @@ import {
   systemUserRoles,
   systemUsers,
 } from '../../../db/schema'
-import {
-  deleteAttachmentReferences,
-  refreshAttachmentReferences,
-} from '../../attachments/references'
-import { AttachmentReferenceTargetInvalidError } from '../../attachments/errors'
-import { deriveAnnouncementContent, extractAnnouncementAttachmentIds } from './content'
-import {
-  AnnouncementContentInvalidError,
-  AnnouncementInvalidTargetError,
-  AnnouncementVisibilityTargetRequiredError,
-} from './errors'
+import { deriveAnnouncementContent } from './content'
+import { AnnouncementInvalidTargetError, AnnouncementVisibilityTargetRequiredError } from './errors'
 
 function announcementSortOrder() {
   return [
@@ -190,30 +181,6 @@ async function assertPublishableTargets(
   }
 
   await assertValidTargets(executor, targets)
-}
-
-async function refreshAnnouncementAttachmentReferences(
-  executor: DbExecutor,
-  announcementId: string,
-  attachmentIds: string[],
-) {
-  try {
-    await refreshAttachmentReferences(
-      executor,
-      {
-        sourceType: 'announcement',
-        sourceId: announcementId,
-        sourceField: 'contentJson',
-      },
-      attachmentIds,
-    )
-  } catch (error) {
-    if (error instanceof AttachmentReferenceTargetInvalidError) {
-      throw new AnnouncementContentInvalidError()
-    }
-
-    throw error
-  }
 }
 
 async function findTargetsByAnnouncementId(executor: DbReader, announcementId: string) {
@@ -412,7 +379,6 @@ export function createAnnouncementRepository(database: Db) {
       const { publish, targets, ...announcementInput } = input
       const now = new Date()
       const content = deriveAnnouncementContent(announcementInput.contentJson)
-      const attachmentIds = extractAnnouncementAttachmentIds(content.json)
       const normalizedTargets = normalizeTargetsForVisibility(input.visibility, targets)
 
       return await database.transaction(async (tx) => {
@@ -444,8 +410,6 @@ export function createAnnouncementRepository(database: Db) {
             .values(buildAnnouncementTargetValues(created.id, normalizedTargets))
         }
 
-        await refreshAnnouncementAttachmentReferences(tx, created.id, attachmentIds)
-
         return {
           announcement: created,
           targets: normalizedTargets,
@@ -459,8 +423,6 @@ export function createAnnouncementRepository(database: Db) {
         announcementInput.contentJson === undefined
           ? undefined
           : deriveAnnouncementContent(announcementInput.contentJson)
-      const attachmentIds =
-        content === undefined ? undefined : extractAnnouncementAttachmentIds(content.json)
 
       return await database.transaction(async (tx) => {
         const [existing] = await tx
@@ -514,10 +476,6 @@ export function createAnnouncementRepository(database: Db) {
               .insert(announcementTargets)
               .values(buildAnnouncementTargetValues(id, finalTargets))
           }
-        }
-
-        if (attachmentIds !== undefined) {
-          await refreshAnnouncementAttachmentReferences(tx, id, attachmentIds)
         }
 
         return {
@@ -577,26 +535,16 @@ export function createAnnouncementRepository(database: Db) {
 
     async softDelete(id: string) {
       const now = new Date()
-      return await database.transaction(async (tx) => {
-        const [deleted] = await tx
-          .update(announcements)
-          .set({
-            deletedAt: now,
-            updatedAt: now,
-          })
-          .where(and(eq(announcements.id, id), isNull(announcements.deletedAt)))
-          .returning()
+      const [deleted] = await database
+        .update(announcements)
+        .set({
+          deletedAt: now,
+          updatedAt: now,
+        })
+        .where(and(eq(announcements.id, id), isNull(announcements.deletedAt)))
+        .returning()
 
-        if (deleted) {
-          await deleteAttachmentReferences(tx, {
-            sourceType: 'announcement',
-            sourceId: id,
-            sourceField: 'contentJson',
-          })
-        }
-
-        return deleted
-      })
+      return deleted
     },
   }
 }

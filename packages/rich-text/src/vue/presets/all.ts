@@ -30,6 +30,8 @@ import { listEditorFeature } from '../../features/list/editor'
 import { listToolbarItems } from '../../features/list/vue'
 import { removeFormatEditorFeature } from '../../features/remove-format/editor'
 import { removeFormatToolbarItem } from '../../features/remove-format/vue'
+import { searchReplaceEditorFeature } from '../../features/search-replace/editor'
+import { searchReplaceToolbarControl } from '../../features/search-replace/vue'
 import { strikeEditorFeature } from '../../features/strike/editor'
 import { strikeToolbarItem } from '../../features/strike/vue'
 import { tableEditorFeature } from '../../features/table/editor'
@@ -56,6 +58,7 @@ const allEditorFeatures = [
   baseEditorFeature,
   historyEditorFeature,
   characterCountEditorFeature,
+  searchReplaceEditorFeature,
   boldEditorFeature,
   italicEditorFeature,
   underlineEditorFeature,
@@ -77,7 +80,10 @@ const allEditorFeatures = [
 
 function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
   return defineRichTextToolbar([
-    { key: 'history', controls: historyToolbarItems.map(button) },
+    {
+      key: 'history',
+      controls: [...historyToolbarItems.map(button), searchReplaceToolbarControl],
+    },
     {
       key: 'marks',
       controls: [

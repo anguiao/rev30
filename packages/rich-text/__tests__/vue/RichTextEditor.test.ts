@@ -41,6 +41,7 @@ const toolbarDataTests = [
   'rich-text-image',
   'rich-text-undo',
   'rich-text-redo',
+  'rich-text-search-replace',
   'rich-text-character-count',
 ]
 

@@ -22,6 +22,7 @@ const allFeatureKeys = [
   'base',
   'history',
   'character-count',
+  'search-replace',
   'bold',
   'italic',
   'underline',
@@ -105,6 +106,7 @@ describe('all rich text preset', () => {
       'selection',
       'undoRedo',
       'characterCount',
+      'searchReplace',
       'bold',
       'italic',
       'underline',
@@ -159,7 +161,11 @@ describe('all rich text preset', () => {
       (control) => control.type === 'dropdown' && control.key === 'list',
     )
 
-    expect(history?.controls.map(getToolbarControlKey) ?? []).toEqual(['undo', 'redo'])
+    expect(history?.controls.map(getToolbarControlKey) ?? []).toEqual([
+      'undo',
+      'redo',
+      'search-replace',
+    ])
     expect(marks?.controls.map(getToolbarControlKey) ?? []).toEqual([
       'bold',
       'italic',

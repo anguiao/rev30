@@ -14,6 +14,7 @@ import { italicFeature } from '../features/italic/shared'
 import { linkFeature } from '../features/link/shared'
 import { listFeature } from '../features/list/shared'
 import { removeFormatFeature } from '../features/remove-format/shared'
+import { searchReplaceFeature } from '../features/search-replace/shared'
 import { strikeFeature } from '../features/strike/shared'
 import { tableFeature } from '../features/table/shared'
 import { textAlignFeature } from '../features/text-align/shared'
@@ -26,6 +27,7 @@ export const allRichTextPreset = defineRichTextPreset({
     baseFeature,
     historyFeature,
     characterCountFeature,
+    searchReplaceFeature,
     boldFeature,
     italicFeature,
     underlineFeature,

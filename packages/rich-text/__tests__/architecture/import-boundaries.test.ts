@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 interface BuildGraph {
   loaded: Set<string>
   bundled: Set<string>
+  css: string
 }
 
 interface BuildGraphOptions {
@@ -69,13 +70,19 @@ async function collectBuildGraph(options: BuildGraphOptions): Promise<BuildGraph
   })
 
   const bundled = new Set<string>()
+  const css: string[] = []
   for (const output of Array.isArray(result) ? result : [result]) {
     if (!('output' in output)) {
       throw new Error('Unexpected Vite watch result while collecting the rich text build graph')
     }
 
     for (const item of output.output) {
-      if (item.type !== 'chunk') {
+      if (item.type === 'asset') {
+        if (item.fileName.endsWith('.css')) {
+          css.push(
+            typeof item.source === 'string' ? item.source : new TextDecoder().decode(item.source),
+          )
+        }
         continue
       }
 
@@ -85,7 +92,7 @@ async function collectBuildGraph(options: BuildGraphOptions): Promise<BuildGraph
     }
   }
 
-  return { loaded, bundled }
+  return { loaded, bundled, css: css.join('\n') }
 }
 
 function findModules(ids: Iterable<string>, predicate: (id: string) => boolean) {
@@ -145,6 +152,10 @@ function isUnusedTableModule(id: string) {
 
 function isCharacterCountModule(id: string) {
   return id.includes('/node_modules/@tiptap/extensions/dist/character-count/')
+}
+
+function isSearchReplaceModule(id: string) {
+  return id.includes('/packages/rich-text/src/features/search-replace/')
 }
 
 function isServerModule(id: string) {
@@ -230,14 +241,21 @@ describe('rich text import boundaries', () => {
     ).toEqual([])
     expect(findModules(graph.loaded, isUnusedTableModule), 'loaded table modules').toEqual([])
     expect(findModules(graph.bundled, isUnusedTableModule), 'bundled table modules').toEqual([])
+    expect(graph.css, 'bundled all search match styles').toContain('.rich-text-search-match {')
+    expect(graph.css, 'bundled all current search match styles').toContain(
+      'rich-text-search-match-current',
+    )
   }, 30_000)
 
   it('does not load all-only features through public compact preset entries', async () => {
     const graph = await collectBuildGraph({
       virtualSource: `
+        import { RichTextEditor } from '@rev30/rich-text/vue'
         export { compactRichTextPreset } from '@rev30/rich-text/presets/compact'
         export { compactRichTextServerPreset } from '@rev30/rich-text/server/presets/compact'
         export { compactRichTextEditorPreset } from '@rev30/rich-text/vue/presets/compact'
+
+        globalThis.__richTextEditorBoundaryTest = RichTextEditor
       `,
       vue: true,
     })
@@ -253,6 +271,13 @@ describe('rich text import boundaries', () => {
       ),
       'resolved compact preset package exports',
     ).toHaveLength(3)
+    expect(
+      findModules(graph.loaded, (id) =>
+        id.endsWith('/packages/rich-text/src/vue/RichTextEditor.vue'),
+      ),
+      'resolved shared rich text editor',
+    ).toHaveLength(1)
+    expect(graph.css.length, 'bundled compact editor styles').toBeGreaterThan(0)
     expect(collectFeatureKeys(graph.loaded), 'loaded compact preset features').toEqual(
       compactFeatureKeys,
     )
@@ -277,6 +302,20 @@ describe('rich text import boundaries', () => {
       findModules(graph.bundled, isCharacterCountModule),
       'bundled compact character count modules',
     ).toEqual([])
+    expect(
+      findModules(graph.loaded, isSearchReplaceModule),
+      'loaded compact search replace modules',
+    ).toEqual([])
+    expect(
+      findModules(graph.bundled, isSearchReplaceModule),
+      'bundled compact search replace modules',
+    ).toEqual([])
+    expect(graph.css, 'bundled compact search match styles').not.toContain(
+      '.rich-text-search-match {',
+    )
+    expect(graph.css, 'bundled compact current search match styles').not.toContain(
+      'rich-text-search-match-current',
+    )
   }, 30_000)
 
   it('does not load unselected features for a minimal preset', async () => {
@@ -331,6 +370,14 @@ describe('rich text import boundaries', () => {
     expect(
       findModules(graph.bundled, isCharacterCountModule),
       'bundled minimal character count modules',
+    ).toEqual([])
+    expect(
+      findModules(graph.loaded, isSearchReplaceModule),
+      'loaded minimal search replace modules',
+    ).toEqual([])
+    expect(
+      findModules(graph.bundled, isSearchReplaceModule),
+      'bundled minimal search replace modules',
     ).toEqual([])
   }, 30_000)
 })

@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RichTextContentInvalidError, deriveRichTextContent } from '../../src/server'
-import { createCompactRichTextServerPreset } from '../../src/server/presets'
+import { createAllRichTextServerPreset } from '../../src/server/presets/all'
 
 function createServerPreset() {
-  return createCompactRichTextServerPreset({
+  return createAllRichTextServerPreset({
     image: {
       isAllowedSrc: (src) => /^\/api\/attachments\/[0-9a-f-]{36}\/content$/i.test(src),
     },

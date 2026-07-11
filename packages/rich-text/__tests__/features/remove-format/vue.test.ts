@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../../src/editor/feature'
 import { removeFormatAction } from '../../../src/features/remove-format/editor'
-import { createCompactRichTextEditorPreset } from '../../../src/vue/presets'
+import { createAllRichTextEditorPreset } from '../../../src/vue/presets/all'
 import { createTestEditor } from '../../helpers/editor'
 
-const preset = createCompactRichTextEditorPreset({
+const preset = createAllRichTextEditorPreset({
   image: {
     upload: async () => ({ src: '/api/attachments/image/content' }),
   },

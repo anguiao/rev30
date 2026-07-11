@@ -39,7 +39,7 @@ import {
   type AnnouncementVisibility,
   type TiptapDocument,
 } from '@rev30/contracts'
-import { createCompactRichTextEditorPreset } from '@rev30/rich-text/vue/presets'
+import { createAllRichTextEditorPreset } from '@rev30/rich-text/vue/presets/all'
 import { RichTextEditor } from '@rev30/rich-text/vue'
 import {
   createAnnouncement,
@@ -178,7 +178,7 @@ async function uploadAnnouncementRichTextImage(file: File) {
     src: getAttachmentContentUrl(attachment.id),
   }
 }
-const richTextEditorPreset = createCompactRichTextEditorPreset({
+const richTextEditorPreset = createAllRichTextEditorPreset({
   image: {
     upload: uploadAnnouncementRichTextImage,
     onError(error) {

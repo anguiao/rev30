@@ -2,10 +2,13 @@ import { getSchema } from '@tiptap/core'
 import { describe, expect, it, vi } from 'vitest'
 import { collectRichTextDocumentExtensions } from '../../src/core/preset'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
-import { compactRichTextPreset } from '../../src/presets'
-import { createCompactRichTextServerPreset } from '../../src/server/presets/compact'
+import { allRichTextPreset } from '../../src/presets/all'
+import { compactRichTextPreset } from '../../src/presets/compact'
+import { createAllRichTextServerPreset } from '../../src/server/presets/all'
+import { compactRichTextServerPreset } from '../../src/server/presets/compact'
 import type { RichTextToolbarControlConfig } from '../../src/vue/toolbar'
-import { createCompactRichTextEditorPreset } from '../../src/vue/presets/compact'
+import { createAllRichTextEditorPreset } from '../../src/vue/presets/all'
+import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 
 const imageUpload = async (file: File) => ({
   src: `/api/attachments/${file.name}/content`,
@@ -15,7 +18,7 @@ const imageServerOptions = {
   isAllowedSrc: (src: string) => /^\/api\/attachments\/[0-9a-f-]{36}\/content$/i.test(src),
 }
 
-const compactFeatureKeys = [
+const allFeatureKeys = [
   'base',
   'history',
   'bold',
@@ -33,29 +36,60 @@ const compactFeatureKeys = [
   'image',
 ]
 
+const compactFeatureKeys = ['base', 'history', 'bold', 'italic', 'link', 'heading', 'list']
+
+const allEditorPreset = createAllRichTextEditorPreset({
+  image: {
+    upload: imageUpload,
+  },
+})
+
+const allServerPreset = createAllRichTextServerPreset({
+  image: imageServerOptions,
+})
+
 function getToolbarControlKey(control: RichTextToolbarControlConfig) {
   return control.type === 'button' ? control.item.action.key : control.key
 }
 
-describe('compact rich text preset', () => {
-  it('enables current editor features', () => {
-    expect(compactRichTextPreset.features.map((feature) => feature.key)).toEqual(compactFeatureKeys)
+function expectNoDuplicateTiptapExtensions(
+  preset: Parameters<typeof collectRichTextEditorExtensions>[0],
+) {
+  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+  try {
+    getSchema(collectRichTextEditorExtensions(preset))
+
+    expect(
+      warnSpy.mock.calls.some(
+        ([message]) =>
+          typeof message === 'string' && message.includes('Duplicate extension names found'),
+      ),
+    ).toBe(false)
+  } finally {
+    warnSpy.mockRestore()
+  }
+}
+
+describe('all rich text preset', () => {
+  it('enables every current built-in feature', () => {
+    expect(allRichTextPreset.features.map((feature) => feature.key)).toEqual(allFeatureKeys)
+  })
+
+  it('contains every compact feature by canonical identity', () => {
+    expect(
+      compactRichTextPreset.features.every((feature) =>
+        allRichTextPreset.features.includes(feature),
+      ),
+    ).toBe(true)
   })
 
   it('keeps editor implementations and extension order with the editor preset', () => {
-    const editorPreset = createCompactRichTextEditorPreset({
-      image: {
-        upload: imageUpload,
-      },
-    })
-
-    expect(editorPreset.key).toBe(compactRichTextPreset.key)
-    expect(editorPreset.features).toBe(compactRichTextPreset.features)
-    expect(editorPreset.editorFeatures.map(({ feature }) => feature.key)).toEqual(
-      compactFeatureKeys,
-    )
+    expect(allEditorPreset.key).toBe(allRichTextPreset.key)
+    expect(allEditorPreset.features).toBe(allRichTextPreset.features)
+    expect(allEditorPreset.editorFeatures.map(({ feature }) => feature.key)).toEqual(allFeatureKeys)
     expect(
-      collectRichTextEditorExtensions(editorPreset).map((extension) => extension.name),
+      collectRichTextEditorExtensions(allEditorPreset).map((extension) => extension.name),
     ).toEqual([
       'doc',
       'paragraph',
@@ -82,24 +116,18 @@ describe('compact rich text preset', () => {
     ])
   })
 
-  it('keeps the current visible toolbar layout with the editor preset', () => {
-    const editorPreset = createCompactRichTextEditorPreset({
-      image: {
-        upload: imageUpload,
-      },
-    })
-
-    expect(editorPreset.toolbar?.groups.map((group) => group.key)).toEqual([
+  it('keeps the complete visible toolbar layout with the editor preset', () => {
+    expect(allEditorPreset.toolbar?.groups.map((group) => group.key)).toEqual([
       'history',
       'marks',
       'blocks',
       'insert',
     ])
 
-    const history = editorPreset.toolbar?.groups.find((group) => group.key === 'history')
-    const marks = editorPreset.toolbar?.groups.find((group) => group.key === 'marks')
-    const blocks = editorPreset.toolbar?.groups.find((group) => group.key === 'blocks')
-    const insert = editorPreset.toolbar?.groups.find((group) => group.key === 'insert')
+    const history = allEditorPreset.toolbar?.groups.find((group) => group.key === 'history')
+    const marks = allEditorPreset.toolbar?.groups.find((group) => group.key === 'marks')
+    const blocks = allEditorPreset.toolbar?.groups.find((group) => group.key === 'blocks')
+    const insert = allEditorPreset.toolbar?.groups.find((group) => group.key === 'insert')
     const heading = blocks?.controls.find((control) => control.type === 'dropdown')
     const textAlign = blocks?.controls.find(
       (control) => control.type === 'dropdown' && control.key === 'text-align',
@@ -138,13 +166,9 @@ describe('compact rich text preset', () => {
   })
 
   it('keeps server implementations, document extensions, and html policy order', () => {
-    const serverPreset = createCompactRichTextServerPreset({
-      image: imageServerOptions,
-    })
-
-    expect(serverPreset.key).toBe(compactRichTextPreset.key)
-    expect(serverPreset.features).toBe(compactRichTextPreset.features)
-    expect(serverPreset.serverFeatures.map(({ feature }) => feature.key)).toEqual([
+    expect(allServerPreset.key).toBe(allRichTextPreset.key)
+    expect(allServerPreset.features).toBe(allRichTextPreset.features)
+    expect(allServerPreset.serverFeatures.map(({ feature }) => feature.key)).toEqual([
       'base',
       'bold',
       'italic',
@@ -160,7 +184,7 @@ describe('compact rich text preset', () => {
       'image',
     ])
     expect(
-      collectRichTextDocumentExtensions(serverPreset).map((extension) => extension.name),
+      collectRichTextDocumentExtensions(allServerPreset).map((extension) => extension.name),
     ).toEqual([
       'doc',
       'paragraph',
@@ -181,7 +205,7 @@ describe('compact rich text preset', () => {
       'horizontalRule',
       'image',
     ])
-    expect(serverPreset.htmlPolicies.flatMap((policy) => policy.allowedTags ?? [])).toEqual([
+    expect(allServerPreset.htmlPolicies.flatMap((policy) => policy.allowedTags ?? [])).toEqual([
       'p',
       'br',
       'strong',
@@ -203,24 +227,98 @@ describe('compact rich text preset', () => {
   })
 
   it('does not register duplicate Tiptap extensions', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const editorPreset = createCompactRichTextEditorPreset({
-      image: {
-        upload: imageUpload,
-      },
-    })
+    expectNoDuplicateTiptapExtensions(allEditorPreset)
+  })
+})
 
-    try {
-      getSchema(collectRichTextEditorExtensions(editorPreset))
+describe('compact rich text preset', () => {
+  it('keeps the selected lightweight feature set', () => {
+    expect(compactRichTextPreset.features.map((feature) => feature.key)).toEqual(compactFeatureKeys)
+  })
 
-      expect(
-        warnSpy.mock.calls.some(
-          ([message]) =>
-            typeof message === 'string' && message.includes('Duplicate extension names found'),
-        ),
-      ).toBe(false)
-    } finally {
-      warnSpy.mockRestore()
-    }
+  it('keeps editor implementations and extension order with the editor preset', () => {
+    expect(compactRichTextEditorPreset.key).toBe(compactRichTextPreset.key)
+    expect(compactRichTextEditorPreset.features).toBe(compactRichTextPreset.features)
+    expect(compactRichTextEditorPreset.editorFeatures.map(({ feature }) => feature.key)).toEqual(
+      compactFeatureKeys,
+    )
+    expect(
+      collectRichTextEditorExtensions(compactRichTextEditorPreset).map(
+        (extension) => extension.name,
+      ),
+    ).toEqual([
+      'doc',
+      'paragraph',
+      'text',
+      'hardBreak',
+      'dropCursor',
+      'gapCursor',
+      'selection',
+      'undoRedo',
+      'bold',
+      'italic',
+      'link',
+      'heading',
+      'bulletList',
+      'orderedList',
+      'listItem',
+    ])
+  })
+
+  it('keeps the lightweight visible toolbar layout with the editor preset', () => {
+    expect(compactRichTextEditorPreset.toolbar?.groups.map((group) => group.key)).toEqual([
+      'history',
+      'marks',
+      'blocks',
+    ])
+
+    const history = compactRichTextEditorPreset.toolbar?.groups.find(
+      (group) => group.key === 'history',
+    )
+    const marks = compactRichTextEditorPreset.toolbar?.groups.find((group) => group.key === 'marks')
+    const blocks = compactRichTextEditorPreset.toolbar?.groups.find(
+      (group) => group.key === 'blocks',
+    )
+
+    expect(history?.controls.map(getToolbarControlKey) ?? []).toEqual(['undo', 'redo'])
+    expect(marks?.controls.map(getToolbarControlKey) ?? []).toEqual(['bold', 'italic', 'link'])
+    expect(blocks?.controls.map(getToolbarControlKey) ?? []).toEqual(['heading', 'list'])
+  })
+
+  it('keeps server implementations, document extensions, and html policy order', () => {
+    expect(compactRichTextServerPreset.key).toBe(compactRichTextPreset.key)
+    expect(compactRichTextServerPreset.features).toBe(compactRichTextPreset.features)
+    expect(compactRichTextServerPreset.serverFeatures.map(({ feature }) => feature.key)).toEqual([
+      'base',
+      'bold',
+      'italic',
+      'link',
+      'heading',
+      'list',
+    ])
+    expect(
+      collectRichTextDocumentExtensions(compactRichTextServerPreset).map(
+        (extension) => extension.name,
+      ),
+    ).toEqual([
+      'doc',
+      'paragraph',
+      'text',
+      'hardBreak',
+      'bold',
+      'italic',
+      'link',
+      'heading',
+      'bulletList',
+      'orderedList',
+      'listItem',
+    ])
+    expect(
+      compactRichTextServerPreset.htmlPolicies.flatMap((policy) => policy.allowedTags ?? []),
+    ).toEqual(['p', 'br', 'strong', 'em', 'a', 'h1', 'h2', 'h3', 'ul', 'ol', 'li'])
+  })
+
+  it('does not register duplicate Tiptap extensions', () => {
+    expectNoDuplicateTiptapExtensions(compactRichTextEditorPreset)
   })
 })

@@ -10,14 +10,16 @@ import {
 import { imageFeature } from '../../src/features/image/shared'
 import { defineRichTextServerFeature } from '../../src/server/feature'
 import {
-  createCompactRichTextServerPreset,
-  type CompactRichTextServerPresetOptions,
-} from '../../src/server/presets'
+  createAllRichTextServerPreset,
+  type AllRichTextServerPresetOptions,
+} from '../../src/server/presets/all'
+import { compactRichTextServerPreset } from '../../src/server/presets/compact'
 import { defineRichTextServerPreset } from '../../src/server/presets/types'
 import {
-  createCompactRichTextEditorPreset,
-  type CompactRichTextEditorPresetOptions,
-} from '../../src/vue/presets'
+  createAllRichTextEditorPreset,
+  type AllRichTextEditorPresetOptions,
+} from '../../src/vue/presets/all'
+import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
 
 const baseFeature = defineRichTextFeature({
@@ -93,9 +95,13 @@ const imageServerFeature = createImageServerFeature({
 })
 
 expectTypeOf(imageServerFeature.feature).toEqualTypeOf<typeof imageFeature>()
-expectTypeOf(createCompactRichTextEditorPreset)
+expectTypeOf(createAllRichTextEditorPreset)
   .parameter(0)
-  .toEqualTypeOf<CompactRichTextEditorPresetOptions>()
-expectTypeOf(createCompactRichTextServerPreset)
+  .toEqualTypeOf<AllRichTextEditorPresetOptions>()
+expectTypeOf(createAllRichTextServerPreset)
   .parameter(0)
-  .toEqualTypeOf<CompactRichTextServerPresetOptions>()
+  .toEqualTypeOf<AllRichTextServerPresetOptions>()
+expectTypeOf<ReturnType<typeof createAllRichTextEditorPreset>['key']>().toEqualTypeOf<'all'>()
+expectTypeOf<ReturnType<typeof createAllRichTextServerPreset>['key']>().toEqualTypeOf<'all'>()
+expectTypeOf(compactRichTextEditorPreset.key).toEqualTypeOf<'compact'>()
+expectTypeOf(compactRichTextServerPreset.key).toEqualTypeOf<'compact'>()

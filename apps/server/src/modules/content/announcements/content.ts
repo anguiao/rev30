@@ -1,4 +1,4 @@
-import { createCompactRichTextServerPreset } from '@rev30/rich-text/server/presets'
+import { createAllRichTextServerPreset } from '@rev30/rich-text/server/presets/all'
 import { deriveRichTextContent, RichTextContentInvalidError } from '@rev30/rich-text/server'
 import { z } from 'zod'
 import { AnnouncementContentInvalidError } from './errors'
@@ -35,7 +35,7 @@ function collectAnnouncementAttachmentIds(node: unknown, attachmentIds: Set<stri
   }
 }
 
-const announcementRichTextServerPreset = createCompactRichTextServerPreset({
+const announcementRichTextServerPreset = createAllRichTextServerPreset({
   image: {
     isAllowedSrc(src) {
       return getAttachmentIdFromImageSrc(src) !== null

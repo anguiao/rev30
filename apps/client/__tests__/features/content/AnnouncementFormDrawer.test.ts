@@ -38,17 +38,17 @@ import {
 import AnnouncementFormDrawer from '../../../src/features/content/AnnouncementFormDrawer.vue'
 import { createTestPinia } from '../../helpers/pinia'
 
-const { createCompactRichTextEditorPresetMock } = vi.hoisted(() => ({
-  createCompactRichTextEditorPresetMock: vi.fn((options) => ({
-    key: 'compact',
+const { createAllRichTextEditorPresetMock } = vi.hoisted(() => ({
+  createAllRichTextEditorPresetMock: vi.fn((options) => ({
+    key: 'all',
     features: [],
     toolbar: null,
     options,
   })),
 }))
 
-vi.mock('@rev30/rich-text/vue/presets', () => ({
-  createCompactRichTextEditorPreset: createCompactRichTextEditorPresetMock,
+vi.mock('@rev30/rich-text/vue/presets/all', () => ({
+  createAllRichTextEditorPreset: createAllRichTextEditorPresetMock,
 }))
 
 vi.mock('@rev30/rich-text/vue', () => ({
@@ -256,7 +256,7 @@ function getTestComponent(wrapper: ReturnType<typeof mount>, testId: string): an
 
 describe('AnnouncementFormDrawer', () => {
   beforeEach(() => {
-    createCompactRichTextEditorPresetMock.mockClear()
+    createAllRichTextEditorPresetMock.mockClear()
     createAnnouncementMock.mockReset()
     getAnnouncementMock.mockReset()
     getAnnouncementTargetOptionsMock.mockReset()
@@ -278,7 +278,7 @@ describe('AnnouncementFormDrawer', () => {
     mountDrawer()
     await flushPromises()
 
-    const imageOptions = createCompactRichTextEditorPresetMock.mock.calls[0]?.[0].image
+    const imageOptions = createAllRichTextEditorPresetMock.mock.calls[0]?.[0].image
     const result = await imageOptions.upload(file)
 
     expect(compressImageFileMock).toHaveBeenCalledWith(file, {
@@ -300,7 +300,7 @@ describe('AnnouncementFormDrawer', () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
-    const imageOptions = createCompactRichTextEditorPresetMock.mock.calls[0]?.[0].image
+    const imageOptions = createAllRichTextEditorPresetMock.mock.calls[0]?.[0].image
     imageOptions.onError(new Error('bad'))
     await flushPromises()
 

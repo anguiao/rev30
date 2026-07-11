@@ -137,7 +137,8 @@ describe('rich text import boundaries', () => {
     const graph = await collectBuildGraph({
       virtualSource: `
         export * from '@rev30/rich-text/server'
-        export * from '@rev30/rich-text/server/presets'
+        export * from '@rev30/rich-text/server/presets/all'
+        export * from '@rev30/rich-text/server/presets/compact'
       `,
     })
     const isForbidden = (id: string) => isVueModule(id) || isEditorModule(id)
@@ -147,10 +148,11 @@ describe('rich text import boundaries', () => {
         graph.loaded,
         (id) =>
           id.endsWith('/packages/rich-text/src/server/index.ts') ||
-          id.endsWith('/packages/rich-text/src/server/presets/index.ts'),
+          id.endsWith('/packages/rich-text/src/server/presets/all.ts') ||
+          id.endsWith('/packages/rich-text/src/server/presets/compact.ts'),
       ),
       'resolved server package exports',
-    ).toHaveLength(2)
+    ).toHaveLength(3)
     expect(findModules(graph.loaded, isForbidden), 'loaded server module graph').toEqual([])
     expect(findModules(graph.bundled, isForbidden), 'bundled server module graph').toEqual([])
   }, 30_000)
@@ -159,7 +161,8 @@ describe('rich text import boundaries', () => {
     const graph = await collectBuildGraph({
       virtualSource: `
         export * from '@rev30/rich-text/vue'
-        export * from '@rev30/rich-text/vue/presets'
+        export * from '@rev30/rich-text/vue/presets/all'
+        export * from '@rev30/rich-text/vue/presets/compact'
       `,
       vue: true,
     })
@@ -169,12 +172,42 @@ describe('rich text import boundaries', () => {
         graph.loaded,
         (id) =>
           id.endsWith('/packages/rich-text/src/vue/index.ts') ||
-          id.endsWith('/packages/rich-text/src/vue/presets/index.ts'),
+          id.endsWith('/packages/rich-text/src/vue/presets/all.ts') ||
+          id.endsWith('/packages/rich-text/src/vue/presets/compact.ts'),
       ),
       'resolved Vue package exports',
-    ).toHaveLength(2)
+    ).toHaveLength(3)
     expect(findModules(graph.loaded, isServerModule), 'loaded editor module graph').toEqual([])
     expect(findModules(graph.bundled, isServerModule), 'bundled editor module graph').toEqual([])
+  }, 30_000)
+
+  it('does not load all-only features through public compact preset entries', async () => {
+    const graph = await collectBuildGraph({
+      virtualSource: `
+        export { compactRichTextPreset } from '@rev30/rich-text/presets/compact'
+        export { compactRichTextServerPreset } from '@rev30/rich-text/server/presets/compact'
+        export { compactRichTextEditorPreset } from '@rev30/rich-text/vue/presets/compact'
+      `,
+      vue: true,
+    })
+    const compactFeatureKeys = ['base', 'bold', 'heading', 'history', 'italic', 'link', 'list']
+
+    expect(
+      findModules(
+        graph.loaded,
+        (id) =>
+          id.endsWith('/packages/rich-text/src/presets/compact.ts') ||
+          id.endsWith('/packages/rich-text/src/server/presets/compact.ts') ||
+          id.endsWith('/packages/rich-text/src/vue/presets/compact.ts'),
+      ),
+      'resolved compact preset package exports',
+    ).toHaveLength(3)
+    expect(collectFeatureKeys(graph.loaded), 'loaded compact preset features').toEqual(
+      compactFeatureKeys,
+    )
+    expect(collectFeatureKeys(graph.bundled), 'bundled compact preset features').toEqual(
+      compactFeatureKeys,
+    )
   }, 30_000)
 
   it('does not load unselected features for a minimal preset', async () => {

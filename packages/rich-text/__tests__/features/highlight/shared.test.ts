@@ -7,15 +7,8 @@ import { highlightFeature } from '../../../src/features/highlight/shared'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor() {
-  const extension = highlightFeature.extension()
-
   return createTestEditor({
-    extensions: [
-      Document,
-      Paragraph,
-      Text,
-      ...(Array.isArray(extension) ? extension : [extension]),
-    ],
+    extensions: [Document, Paragraph, Text, ...highlightFeature.documentExtensions!()],
     content: '<p>维护通知</p>',
   })
 }

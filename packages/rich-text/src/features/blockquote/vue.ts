@@ -1,10 +1,7 @@
-import { defineRichTextCommand } from '../../vue/toolbar'
-import { blockquoteFeature } from './shared'
+import { defineRichTextToolbarItem } from '../../vue/toolbar'
+import { blockquoteAction } from './editor'
 
-export const blockquoteCommand = defineRichTextCommand({
-  key: blockquoteFeature.key,
+export const blockquoteToolbarItem = defineRichTextToolbarItem(blockquoteAction, {
   label: '引用',
   icon: 'i-[lucide--quote]',
-  run: (editor) => editor.chain().focus().toggleBlockquote().run(),
-  isActive: (editor) => editor.isActive('blockquote'),
 })

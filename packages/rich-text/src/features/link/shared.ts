@@ -24,7 +24,9 @@ const ValidatedLink = Link.extend({
 
 export const linkFeature = defineRichTextFeature({
   key: 'link',
-  extension: () =>
+  editorImplementation: true,
+  serverImplementation: true,
+  documentExtensions: () => [
     ValidatedLink.configure({
       openOnClick: false,
       enableClickSelection: true,
@@ -38,4 +40,5 @@ export const linkFeature = defineRichTextFeature({
       },
       shouldAutoLink: (url) => normalizeLinkHref(url) !== '',
     }),
+  ],
 })

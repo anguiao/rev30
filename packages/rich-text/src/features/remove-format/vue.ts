@@ -1,9 +1,7 @@
-import { defineRichTextCommand } from '../../vue/toolbar'
-import { removeFormatFeature } from './shared'
+import { defineRichTextToolbarItem } from '../../vue/toolbar'
+import { removeFormatAction } from './editor'
 
-export const removeFormatCommand = defineRichTextCommand({
-  key: removeFormatFeature.key,
+export const removeFormatToolbarItem = defineRichTextToolbarItem(removeFormatAction, {
   label: '清除格式',
   icon: 'i-[lucide--eraser]',
-  run: (editor) => editor.chain().focus().unsetAllMarks().run(),
 })

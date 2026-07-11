@@ -3,9 +3,57 @@ import type sanitizeHtml from 'sanitize-html'
 export type RichTextTagTransform = (input: sanitizeHtml.Tag) => sanitizeHtml.Tag
 
 export interface RichTextHtmlPolicy {
-  allowedTags?: sanitizeHtml.IDefaults['allowedTags']
-  allowedAttributes?: sanitizeHtml.IDefaults['allowedAttributes']
-  allowedSchemes?: sanitizeHtml.IDefaults['allowedSchemes']
-  allowedStyles?: sanitizeHtml.IOptions['allowedStyles']
-  transformTags?: Record<string, RichTextTagTransform[]>
+  readonly allowedTags?: readonly string[]
+  readonly allowedAttributes?: Readonly<Record<string, readonly sanitizeHtml.AllowedAttribute[]>>
+  readonly allowedSchemes?: readonly string[]
+  readonly allowedStyles?: Readonly<Record<string, Readonly<Record<string, readonly RegExp[]>>>>
+  readonly transformTags?: Readonly<Record<string, readonly RichTextTagTransform[]>>
+}
+
+export function freezeRichTextHtmlPolicy(policy: RichTextHtmlPolicy): RichTextHtmlPolicy {
+  const allowedAttributes = policy.allowedAttributes
+    ? Object.freeze(
+        Object.fromEntries(
+          Object.entries(policy.allowedAttributes).map(([tag, attributes]) => [
+            tag,
+            Object.freeze([...attributes]),
+          ]),
+        ),
+      )
+    : undefined
+  const allowedStyles = policy.allowedStyles
+    ? Object.freeze(
+        Object.fromEntries(
+          Object.entries(policy.allowedStyles).map(([tag, properties]) => [
+            tag,
+            Object.freeze(
+              Object.fromEntries(
+                Object.entries(properties).map(([property, patterns]) => [
+                  property,
+                  Object.freeze([...patterns]),
+                ]),
+              ),
+            ),
+          ]),
+        ),
+      )
+    : undefined
+  const transformTags = policy.transformTags
+    ? Object.freeze(
+        Object.fromEntries(
+          Object.entries(policy.transformTags).map(([tag, transforms]) => [
+            tag,
+            Object.freeze([...transforms]),
+          ]),
+        ),
+      )
+    : undefined
+
+  return Object.freeze({
+    ...(policy.allowedTags ? { allowedTags: Object.freeze([...policy.allowedTags]) } : {}),
+    ...(allowedAttributes ? { allowedAttributes } : {}),
+    ...(policy.allowedSchemes ? { allowedSchemes: Object.freeze([...policy.allowedSchemes]) } : {}),
+    ...(allowedStyles ? { allowedStyles } : {}),
+    ...(transformTags ? { transformTags } : {}),
+  })
 }

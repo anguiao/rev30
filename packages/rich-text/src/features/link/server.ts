@@ -1,5 +1,7 @@
+import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
 import { linkAllowedSchemes, normalizeLinkHref } from './href'
+import { linkFeature } from './shared'
 
 const transformAnchor: RichTextTagTransform = ({ tagName, attribs }) => {
   const href = normalizeLinkHref(attribs.href ?? '')
@@ -24,3 +26,5 @@ export const linkHtmlPolicy: RichTextHtmlPolicy = {
     a: [transformAnchor],
   },
 }
+
+export const linkServerFeature = defineRichTextServerFeature(linkFeature, linkHtmlPolicy)

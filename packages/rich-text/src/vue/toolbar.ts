@@ -1,29 +1,34 @@
 import type { Editor } from '@tiptap/core'
 import { markRaw, type Component, type ComponentInstance } from 'vue'
+import type { RichTextFeature } from '../core/feature'
+import type { RichTextAction } from '../editor/action'
 
 export type RichTextIconClass = `i-[${string}--${string}]`
 
-export interface RichTextCommand {
-  key: string
-  label: string
-  icon: RichTextIconClass
-  run: (editor: Editor) => boolean
-  isActive?: (editor: Editor) => boolean
-  isDisabled?: (editor: Editor) => boolean
+type RichTextToolbarAction = RichTextAction<RichTextFeature, string, []>
+
+export interface RichTextToolbarItem<Action extends RichTextToolbarAction = RichTextToolbarAction> {
+  readonly action: Action
+  readonly label: string
+  readonly icon: RichTextIconClass
 }
 
 export interface RichTextToolbarButtonControl {
-  type: 'button'
-  command: RichTextCommand
+  readonly type: 'button'
+  readonly item: RichTextToolbarItem
 }
 
 export interface RichTextToolbarDropdownControl {
-  type: 'dropdown'
-  key: string
-  label: string
-  icon: RichTextIconClass
-  commands: RichTextCommand[]
-  getActiveCommand?: (editor: Editor, commands: RichTextCommand[]) => RichTextCommand | undefined
+  readonly type: 'dropdown'
+  readonly key: string
+  readonly feature: RichTextFeature
+  readonly label: string
+  readonly icon: RichTextIconClass
+  readonly items: readonly RichTextToolbarItem[]
+  readonly getActiveItem?: (
+    editor: Editor,
+    items: readonly RichTextToolbarItem[],
+  ) => RichTextToolbarItem | undefined
 }
 
 export interface RichTextToolbarControlInjectedProps {
@@ -37,16 +42,18 @@ type RichTextToolbarComponentProps<TComponent extends Component> = Omit<
 >
 
 type RichTextToolbarComponentControlOptions<TComponent extends Component> = {
-  key: string
-  component: TComponent
-  props: RichTextToolbarComponentProps<TComponent>
+  readonly feature: RichTextFeature
+  readonly key: string
+  readonly component: TComponent
+  readonly props: RichTextToolbarComponentProps<TComponent>
 }
 
 export interface RichTextToolbarComponentControl {
-  type: 'component'
-  key: string
-  component: Component
-  props: Record<string, unknown>
+  readonly type: 'component'
+  readonly feature: RichTextFeature
+  readonly key: string
+  readonly component: Component
+  readonly props: Readonly<Record<string, unknown>>
 }
 
 export type RichTextToolbarControlConfig =
@@ -55,52 +62,96 @@ export type RichTextToolbarControlConfig =
   | RichTextToolbarComponentControl
 
 export interface RichTextToolbarGroup {
-  key: string
-  controls: RichTextToolbarControlConfig[]
+  readonly key: string
+  readonly controls: readonly RichTextToolbarControlConfig[]
 }
 
 export interface RichTextToolbarConfig {
-  groups: RichTextToolbarGroup[]
+  readonly groups: readonly RichTextToolbarGroup[]
 }
 
-export function defineRichTextCommand(command: RichTextCommand): RichTextCommand {
-  return command
+export function defineRichTextToolbarItem<const Action extends RichTextToolbarAction>(
+  action: Action,
+  item: Omit<RichTextToolbarItem<Action>, 'action'>,
+): RichTextToolbarItem<Action> {
+  return Object.freeze({
+    action,
+    ...item,
+  })
 }
 
-export function defineRichTextToolbar(groups: RichTextToolbarGroup[]): RichTextToolbarConfig {
-  return { groups }
+export function defineRichTextToolbar(
+  groups: readonly RichTextToolbarGroup[],
+): RichTextToolbarConfig {
+  const frozenGroups = Object.freeze(
+    groups.map((group) =>
+      Object.freeze({
+        ...group,
+        controls: Object.freeze([...group.controls]),
+      }),
+    ),
+  )
+
+  return Object.freeze({ groups: frozenGroups })
 }
 
-export function richTextToolbarButton(command: RichTextCommand): RichTextToolbarButtonControl {
-  return {
+export function richTextToolbarButton(item: RichTextToolbarItem): RichTextToolbarButtonControl {
+  return Object.freeze({
     type: 'button',
-    command,
-  }
+    item,
+  })
 }
 
 export function richTextToolbarDropdown(
-  control: Omit<RichTextToolbarDropdownControl, 'type'>,
+  control: Omit<RichTextToolbarDropdownControl, 'type' | 'feature'>,
 ): RichTextToolbarDropdownControl {
-  return {
-    type: 'dropdown',
-    ...control,
+  const items = Object.freeze([...control.items])
+  const feature = items[0]?.action.feature
+
+  if (!feature) {
+    throw new Error(`Rich text toolbar dropdown "${control.key}" must contain at least one item`)
   }
+
+  for (const item of items) {
+    if (item.action.feature !== feature) {
+      throw new Error(`Rich text toolbar dropdown "${control.key}" mixes multiple features`)
+    }
+  }
+
+  return Object.freeze({
+    ...control,
+    type: 'dropdown',
+    feature,
+    items,
+  })
 }
 
 export function richTextToolbarComponent<TComponent extends Component>(
   control: RichTextToolbarComponentControlOptions<TComponent>,
 ): RichTextToolbarComponentControl {
-  return {
+  return Object.freeze({
     type: 'component',
+    feature: control.feature,
     key: control.key,
     component: markRaw(control.component),
-    props: control.props as Record<string, unknown>,
-  }
+    props: Object.freeze({ ...control.props } as Record<string, unknown>),
+  })
 }
 
-export function getActiveRichTextCommand(
+export function getRichTextToolbarControlFeature(control: RichTextToolbarControlConfig) {
+  return control.type === 'button' ? control.item.action.feature : control.feature
+}
+
+export function getActiveRichTextToolbarItem(
   editor: Editor,
-  commands: RichTextCommand[],
-): RichTextCommand | undefined {
-  return commands.find((command) => command.isActive?.(editor))
+  items: readonly RichTextToolbarItem[],
+): RichTextToolbarItem | undefined {
+  return items.find((item) => item.action.isActive?.(editor))
+}
+
+export function isRichTextActionDisabled(
+  action: Pick<RichTextToolbarAction, 'canRun'>,
+  editor: Editor,
+) {
+  return !(action.canRun?.(editor) ?? true)
 }

@@ -7,15 +7,13 @@ import { textAlignFeature } from '../../../src/features/text-align/shared'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor() {
-  const textAlignExtension = textAlignFeature.extension()
-
   return createTestEditor({
     extensions: [
       Document,
       Paragraph,
       Heading.configure({ levels: [1, 2, 3] }),
       Text,
-      ...(Array.isArray(textAlignExtension) ? textAlignExtension : [textAlignExtension]),
+      ...textAlignFeature.documentExtensions!(),
     ],
     content: '<h2>维护通知</h2><p>请留意发布时间</p>',
   })

@@ -1,16 +1,13 @@
-import { defineRichTextCommand } from '../../vue/toolbar'
+import { defineRichTextToolbarItem } from '../../vue/toolbar'
+import { historyActions } from './editor'
 
-export const historyCommands = [
-  defineRichTextCommand({
-    key: 'undo',
+export const historyToolbarItems = [
+  defineRichTextToolbarItem(historyActions[0], {
     label: '撤销',
     icon: 'i-[lucide--undo-2]',
-    run: (editor) => editor.chain().focus().undo().run(),
   }),
-  defineRichTextCommand({
-    key: 'redo',
+  defineRichTextToolbarItem(historyActions[1], {
     label: '重做',
     icon: 'i-[lucide--redo-2]',
-    run: (editor) => editor.chain().focus().redo().run(),
   }),
-]
+] as const

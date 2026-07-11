@@ -1,9 +1,12 @@
 import { highlightColorOptions } from '../../src/features/highlight/colors'
+import { highlightFeature } from '../../src/features/highlight/shared'
 import HighlightToolbarControl from '../../src/features/highlight/vue/HighlightToolbarControl.vue'
+import { linkFeature } from '../../src/features/link/shared'
 import LinkToolbarControl from '../../src/features/link/vue/LinkToolbarControl.vue'
 import { richTextToolbarComponent } from '../../src/vue/toolbar'
 
 richTextToolbarComponent({
+  feature: highlightFeature,
   key: 'highlight',
   component: HighlightToolbarControl,
   props: {
@@ -12,12 +15,14 @@ richTextToolbarComponent({
 })
 
 richTextToolbarComponent({
+  feature: linkFeature,
   key: 'link',
   component: LinkToolbarControl,
   props: {},
 })
 
 richTextToolbarComponent({
+  feature: highlightFeature,
   key: 'highlight',
   component: HighlightToolbarControl,
   // @ts-expect-error Required component props should be provided.
@@ -25,6 +30,7 @@ richTextToolbarComponent({
 })
 
 richTextToolbarComponent({
+  feature: highlightFeature,
   key: 'highlight',
   component: HighlightToolbarControl,
   props: {
@@ -35,6 +41,7 @@ richTextToolbarComponent({
 })
 
 richTextToolbarComponent({
+  feature: linkFeature,
   key: 'link',
   component: LinkToolbarControl,
   props: {

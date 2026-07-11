@@ -1,5 +1,7 @@
 import TextAlign from '@tiptap/extension-text-align'
 import { defineRichTextFeature } from '../../core/feature'
+import { baseFeature } from '../base/shared'
+import { headingFeature } from '../heading/shared'
 import { textAlignments } from './alignments'
 
 const textAlignTypes = ['heading', 'paragraph']
@@ -28,10 +30,14 @@ const RichTextTextAlign = TextAlign.extend({
 
 export const textAlignFeature = defineRichTextFeature({
   key: 'text-align',
-  extension: () =>
+  editorImplementation: true,
+  serverImplementation: true,
+  dependencies: [baseFeature, headingFeature],
+  documentExtensions: () => [
     RichTextTextAlign.configure({
       types: textAlignTypes,
       alignments: [...textAlignments],
       defaultAlignment: null,
     }),
+  ],
 })

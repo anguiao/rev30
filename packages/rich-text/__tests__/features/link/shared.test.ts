@@ -8,15 +8,8 @@ import { linkFeature } from '../../../src/features/link/shared'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor() {
-  const linkExtension = linkFeature.extension()
-
   return createTestEditor({
-    extensions: [
-      Document,
-      Paragraph,
-      Text,
-      ...(Array.isArray(linkExtension) ? linkExtension : [linkExtension]),
-    ],
+    extensions: [Document, Paragraph, Text, ...linkFeature.documentExtensions!()],
     content: '<p>维护通知</p>',
   })
 }

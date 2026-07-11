@@ -82,15 +82,8 @@ function deferred<T>() {
 }
 
 function createEditor(content = '<p>维护通知</p>') {
-  const extension = imageFeature.extension()
-
   return createTestEditor({
-    extensions: [
-      Document,
-      Paragraph,
-      Text,
-      ...(Array.isArray(extension) ? extension : [extension]),
-    ],
+    extensions: [Document, Paragraph, Text, ...imageFeature.documentExtensions!()],
     content,
   })
 }
@@ -111,10 +104,10 @@ function mountControl(editor: Editor, upload = vi.fn(), onError = vi.fn()) {
   })
 }
 
-function createFileList(...files: File[]) {
+function createFileList(...files: File[]): FileList {
   return Object.assign(files, {
     item: (index: number) => files[index] ?? null,
-  }) as unknown as FileList
+  })
 }
 
 function createDataTransferItems(...files: File[]) {
@@ -124,6 +117,7 @@ function createDataTransferItems(...files: File[]) {
     getAsFile: () => file,
   }))
 
+  // Partial DOM mock with only the fields used by the component.
   return Object.assign(items, {
     item: (index: number) => items[index] ?? null,
   }) as unknown as DataTransferItemList
@@ -163,6 +157,7 @@ async function pasteFiles(files: File[], target: EventTarget | null) {
   }
 
   const preventDefault = vi.fn()
+  // Partial DOM mock with only the fields used by the paste handler.
   onPaste({
     clipboardData: createClipboardData(...files),
     preventDefault,

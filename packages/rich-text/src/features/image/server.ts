@@ -1,6 +1,8 @@
 import { RichTextContentInvalidError } from '../../server/errors'
+import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
 import { buildImageStyle, normalizeImageSize } from './dimensions'
+import { imageFeature } from './shared'
 
 export interface RichTextImageServerOptions {
   isAllowedSrc: (src: string) => boolean
@@ -44,4 +46,8 @@ export function createImageHtmlPolicy(options: RichTextImageServerOptions): Rich
       img: [transformImage],
     },
   }
+}
+
+export function createImageServerFeature(options: RichTextImageServerOptions) {
+  return defineRichTextServerFeature(imageFeature, createImageHtmlPolicy(options))
 }

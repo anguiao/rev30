@@ -3,5 +3,7 @@ import { defineRichTextFeature } from '../../core/feature'
 
 export const italicFeature = defineRichTextFeature({
   key: 'italic',
-  extension: () => Italic,
+  editorImplementation: true,
+  serverImplementation: true,
+  documentExtensions: () => [Italic],
 })

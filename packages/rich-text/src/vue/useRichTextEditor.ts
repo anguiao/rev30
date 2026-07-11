@@ -1,12 +1,13 @@
 import { Editor } from '@tiptap/vue-3'
 import { onBeforeUnmount, shallowRef, watch, type Ref } from 'vue'
-import { collectRichTextExtensions, type RichTextPreset } from '../core/preset'
+import { collectRichTextEditorExtensions } from '../editor/feature'
 import type { RichTextDocument } from '../schema'
+import type { RichTextEditorPreset } from './presets/types'
 
 interface UseRichTextEditorOptions {
   modelValue: Ref<RichTextDocument>
   disabled: Ref<boolean>
-  preset: Ref<RichTextPreset>
+  preset: Ref<RichTextEditorPreset>
   onUpdate: (value: RichTextDocument) => void
   onBlur: () => void
 }
@@ -16,11 +17,15 @@ export function useRichTextEditor(options: UseRichTextEditorOptions) {
     return JSON.stringify(a) === JSON.stringify(b)
   }
 
-  function createEditor(content: RichTextDocument, editable: boolean, preset: RichTextPreset) {
+  function createEditor(
+    content: RichTextDocument,
+    editable: boolean,
+    preset: RichTextEditorPreset,
+  ) {
     return new Editor({
       content,
       editable,
-      extensions: collectRichTextExtensions(preset),
+      extensions: collectRichTextEditorExtensions(preset),
       onBlur() {
         options.onBlur()
       },

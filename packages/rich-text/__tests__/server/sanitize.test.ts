@@ -4,7 +4,7 @@ import { createRichTextHtmlSanitizer, sanitizeRichTextHtml } from '../../src/ser
 
 describe('sanitizeRichTextHtml', () => {
   it('compiles policies when creating a reusable sanitizer', () => {
-    const policy: RichTextHtmlPolicy = {
+    const policy = {
       allowedTags: ['p'],
     }
     const sanitize = createRichTextHtmlSanitizer([policy])

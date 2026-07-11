@@ -1,9 +1,7 @@
-import { defineRichTextCommand } from '../../vue/toolbar'
-import { horizontalRuleFeature } from './shared'
+import { defineRichTextToolbarItem } from '../../vue/toolbar'
+import { horizontalRuleAction } from './editor'
 
-export const horizontalRuleCommand = defineRichTextCommand({
-  key: horizontalRuleFeature.key,
+export const horizontalRuleToolbarItem = defineRichTextToolbarItem(horizontalRuleAction, {
   label: '分割线',
   icon: 'i-[lucide--minus]',
-  run: (editor) => editor.chain().focus().setHorizontalRule().run(),
 })

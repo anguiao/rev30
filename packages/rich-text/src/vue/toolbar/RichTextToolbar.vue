@@ -27,7 +27,7 @@ const groups = computed(() => props.toolbar.groups.filter((group) => group.contr
     >
       <RichTextToolbarControl
         v-for="control in group.controls"
-        :key="control.type === 'button' ? control.command.key : control.key"
+        :key="control.type === 'button' ? control.item.action.key : control.key"
         :control="control"
         :editor="editor"
         :disabled="disabled"

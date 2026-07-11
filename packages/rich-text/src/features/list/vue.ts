@@ -1,18 +1,13 @@
-import { defineRichTextCommand } from '../../vue/toolbar'
+import { defineRichTextToolbarItem } from '../../vue/toolbar'
+import { listActions } from './editor'
 
-export const listCommands = [
-  defineRichTextCommand({
-    key: 'bullet-list',
+export const listToolbarItems = [
+  defineRichTextToolbarItem(listActions[0], {
     label: '无序列表',
     icon: 'i-[lucide--list]',
-    run: (editor) => editor.chain().focus().toggleBulletList().run(),
-    isActive: (editor) => editor.isActive('bulletList'),
   }),
-  defineRichTextCommand({
-    key: 'ordered-list',
+  defineRichTextToolbarItem(listActions[1], {
     label: '有序列表',
     icon: 'i-[lucide--list-ordered]',
-    run: (editor) => editor.chain().focus().toggleOrderedList().run(),
-    isActive: (editor) => editor.isActive('orderedList'),
   }),
-]
+] as const

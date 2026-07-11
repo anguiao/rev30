@@ -1,10 +1,7 @@
-import { defineRichTextCommand } from '../../vue/toolbar'
-import { italicFeature } from './shared'
+import { defineRichTextToolbarItem } from '../../vue/toolbar'
+import { italicAction } from './editor'
 
-export const italicCommand = defineRichTextCommand({
-  key: italicFeature.key,
+export const italicToolbarItem = defineRichTextToolbarItem(italicAction, {
   label: '斜体',
   icon: 'i-[lucide--italic]',
-  run: (editor) => editor.chain().focus().toggleItalic().run(),
-  isActive: (editor) => editor.isActive('italic'),
 })

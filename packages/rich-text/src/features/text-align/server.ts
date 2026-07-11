@@ -1,5 +1,7 @@
+import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
 import { textAlignments, type TextAlignment } from './alignments'
+import { textAlignFeature } from './shared'
 
 const textAlignTags = ['p', 'h1', 'h2', 'h3'] as const
 const textAlignSet = new Set<string>(textAlignments)
@@ -51,3 +53,8 @@ export const textAlignHtmlPolicy: RichTextHtmlPolicy = {
   ),
   transformTags: Object.fromEntries(textAlignTags.map((tag) => [tag, [transformTextBlock]])),
 }
+
+export const textAlignServerFeature = defineRichTextServerFeature(
+  textAlignFeature,
+  textAlignHtmlPolicy,
+)

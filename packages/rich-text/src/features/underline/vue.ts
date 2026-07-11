@@ -1,10 +1,7 @@
-import { defineRichTextCommand } from '../../vue/toolbar'
-import { underlineFeature } from './shared'
+import { defineRichTextToolbarItem } from '../../vue/toolbar'
+import { underlineAction } from './editor'
 
-export const underlineCommand = defineRichTextCommand({
-  key: underlineFeature.key,
+export const underlineToolbarItem = defineRichTextToolbarItem(underlineAction, {
   label: '下划线',
   icon: 'i-[lucide--underline]',
-  run: (editor) => editor.chain().focus().toggleUnderline().run(),
-  isActive: (editor) => editor.isActive('underline'),
 })

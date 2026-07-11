@@ -2,6 +2,7 @@
 import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import { NButton, NInput, NPopover } from 'naive-ui'
 import { computed, ref, watch } from 'vue'
+import { setLinkAction, unsetLinkAction } from '../editor'
 import { normalizeLinkHref } from '../href'
 
 const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
@@ -106,18 +107,13 @@ function applyLink() {
   }
 
   if (inputHrefState.value.isEmpty) {
-    props.editor.chain().focus().extendMarkRange('link').unsetLink().run()
+    unsetLinkAction.run(props.editor)
     url.value = ''
     popoverMode.value = 'create'
     return
   }
 
-  props.editor
-    .chain()
-    .focus()
-    .extendMarkRange('link')
-    .setLink({ href: inputHrefState.value.normalizedHref })
-    .run()
+  setLinkAction.run(props.editor, inputHrefState.value.normalizedHref)
   url.value = inputHrefState.value.normalizedHref
 }
 
@@ -126,7 +122,7 @@ function removeLink() {
     return
   }
 
-  props.editor.chain().focus().extendMarkRange('link').unsetLink().run()
+  unsetLinkAction.run(props.editor)
   url.value = ''
   popoverMode.value = 'create'
 }

@@ -1,12 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { collectRichTextExtensions } from '../../../src/core/preset'
-import { removeFormatCommand } from '../../../src/features/remove-format/vue'
-import { compactRichTextPreset } from '../../../src/presets'
+import { collectRichTextEditorExtensions } from '../../../src/editor/feature'
+import { removeFormatAction } from '../../../src/features/remove-format/editor'
+import { createCompactRichTextEditorPreset } from '../../../src/vue/presets'
 import { createTestEditor } from '../../helpers/editor'
+
+const preset = createCompactRichTextEditorPreset({
+  image: {
+    upload: async () => ({ src: '/api/attachments/image/content' }),
+  },
+})
+
+function collectExtensions() {
+  return collectRichTextEditorExtensions(preset)
+}
 
 function createEditor() {
   return createTestEditor({
-    extensions: collectRichTextExtensions(compactRichTextPreset),
+    extensions: collectExtensions(),
     content: {
       type: 'doc',
       content: [
@@ -39,7 +49,7 @@ describe('remove format command', () => {
 
     editor.commands.selectAll()
 
-    expect(removeFormatCommand.run(editor)).toBe(true)
+    expect(removeFormatAction.run(editor)).toBe(true)
     expect(editor.getJSON()).toMatchObject({
       content: [
         {
@@ -54,7 +64,7 @@ describe('remove format command', () => {
 
   it('preserves nested list and blockquote structure', () => {
     const editor = createTestEditor({
-      extensions: collectRichTextExtensions(compactRichTextPreset),
+      extensions: collectExtensions(),
       content: {
         type: 'doc',
         content: [
@@ -89,7 +99,7 @@ describe('remove format command', () => {
 
     editor.commands.selectAll()
 
-    expect(removeFormatCommand.run(editor)).toBe(true)
+    expect(removeFormatAction.run(editor)).toBe(true)
     expect(editor.getJSON()).toMatchObject({
       content: [
         {

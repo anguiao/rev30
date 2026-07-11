@@ -5,10 +5,8 @@ import { headingFeature } from '../../../src/features/heading/shared'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor() {
-  const extension = headingFeature.extension()
-
   return createTestEditor({
-    extensions: [Document, Text, ...(Array.isArray(extension) ? extension : [extension])],
+    extensions: [Document, Text, ...headingFeature.documentExtensions!()],
     content: '<h1>维护通知</h1>',
   })
 }

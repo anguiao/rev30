@@ -27,8 +27,11 @@ const RichTextHighlight = Highlight.extend({
 
 export const highlightFeature = defineRichTextFeature({
   key: 'highlight',
-  extension: () =>
+  editorImplementation: true,
+  serverImplementation: true,
+  documentExtensions: () => [
     RichTextHighlight.configure({
       multicolor: true,
     }),
+  ],
 })

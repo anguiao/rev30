@@ -2,8 +2,11 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { NDropdown } from 'naive-ui'
 import { describe, expect, it, vi } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
+import { baseEditorFeature } from '../../src/features/base/editor'
 import { baseFeature } from '../../src/features/base/shared'
+import { boldEditorFeature } from '../../src/features/bold/editor'
 import { boldFeature } from '../../src/features/bold/shared'
+import { historyEditorFeature } from '../../src/features/history/editor'
 import { historyFeature } from '../../src/features/history/shared'
 import RichTextEditor from '../../src/vue/RichTextEditor.vue'
 import type { RichTextDocument } from '../../src/schema'
@@ -45,8 +48,8 @@ const noHeadingPreset = defineRichTextPreset({
   key: 'no-heading',
   features: [baseFeature, boldFeature, historyFeature],
 })
-const noHeadingEditorPreset = defineRichTextEditorPreset({
-  ...noHeadingPreset,
+const noHeadingEditorPreset = defineRichTextEditorPreset(noHeadingPreset, {
+  editorFeatures: [baseEditorFeature, boldEditorFeature, historyEditorFeature],
 })
 
 function mountRichTextEditor(props: InstanceType<typeof RichTextEditor>['$props']) {

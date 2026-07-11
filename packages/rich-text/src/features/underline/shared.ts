@@ -3,5 +3,7 @@ import { defineRichTextFeature } from '../../core/feature'
 
 export const underlineFeature = defineRichTextFeature({
   key: 'underline',
-  extension: () => Underline,
+  editorImplementation: true,
+  serverImplementation: true,
+  documentExtensions: () => [Underline],
 })

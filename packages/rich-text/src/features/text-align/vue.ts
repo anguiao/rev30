@@ -1,14 +1,10 @@
-import { defineRichTextCommand } from '../../vue/toolbar'
+import { defineRichTextToolbarItem } from '../../vue/toolbar'
 import { textAlignOptions } from './alignments'
+import { textAlignActions } from './editor'
 
-export const textAlignCommands = textAlignOptions.map((alignment) =>
-  defineRichTextCommand({
-    key: `text-align-${alignment.key}`,
+export const textAlignToolbarItems = textAlignOptions.map((alignment, index) =>
+  defineRichTextToolbarItem(textAlignActions[index]!, {
     label: alignment.label,
     icon: alignment.icon,
-    run: (editor) => editor.chain().focus().setTextAlign(alignment.value).run(),
-    isActive: (editor) =>
-      editor.isActive('paragraph', { textAlign: alignment.value }) ||
-      editor.isActive('heading', { textAlign: alignment.value }),
   }),
 )

@@ -4,8 +4,9 @@ import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
 import { computed, h } from 'vue'
 import {
-  getActiveRichTextCommand,
-  type RichTextCommand,
+  getActiveRichTextToolbarItem,
+  isRichTextActionDisabled,
+  type RichTextToolbarItem,
   type RichTextToolbarDropdownControl,
 } from '../toolbar'
 
@@ -20,62 +21,60 @@ const props = withDefaults(
   },
 )
 
-function isCommandDisabled(command: RichTextCommand) {
+function isItemDisabled(item: RichTextToolbarItem) {
   if (props.disabled || !props.editor) {
     return true
   }
 
-  return command.isDisabled?.(props.editor) ?? false
+  return isRichTextActionDisabled(item.action, props.editor)
 }
 
-const activeCommand = computed(() => {
+const activeItem = computed(() => {
   if (!props.editor) {
     return undefined
   }
 
   return (
-    props.control.getActiveCommand?.(props.editor, props.control.commands) ??
-    getActiveRichTextCommand(props.editor, props.control.commands)
+    props.control.getActiveItem?.(props.editor, props.control.items) ??
+    getActiveRichTextToolbarItem(props.editor, props.control.items)
   )
 })
 
-const isActive = computed(() => activeCommand.value !== undefined)
+const isActive = computed(() => activeItem.value !== undefined)
 
 const isDisabled = computed(
   () =>
-    props.disabled ||
-    !props.editor ||
-    props.control.commands.every((command) => isCommandDisabled(command)),
+    props.disabled || !props.editor || props.control.items.every((item) => isItemDisabled(item)),
 )
 
-const triggerLabel = computed(() => activeCommand.value?.label ?? props.control.label)
-const triggerIcon = computed(() => activeCommand.value?.icon ?? props.control.icon)
+const triggerLabel = computed(() => activeItem.value?.label ?? props.control.label)
+const triggerIcon = computed(() => activeItem.value?.icon ?? props.control.icon)
 const buttonType = computed(() => (isActive.value ? 'primary' : 'default'))
 
 const options = computed<DropdownOption[]>(() =>
-  props.control.commands.map((command) => {
-    const active = activeCommand.value?.key === command.key
+  props.control.items.map((item) => {
+    const active = activeItem.value?.action.key === item.action.key
 
     return {
-      key: command.key,
-      label: command.label,
-      disabled: isCommandDisabled(command),
+      key: item.action.key,
+      label: item.label,
+      disabled: isItemDisabled(item),
       icon: () =>
         h('span', {
-          class: [command.icon, 'inline-block size-4', active ? 'text-primary' : undefined],
+          class: [item.icon, 'inline-block size-4', active ? 'text-primary' : undefined],
           'aria-hidden': 'true',
         }),
       props: {
-        'data-test': `rich-text-${props.control.key}-${command.key}`,
+        'data-test': `rich-text-${props.control.key}-${item.action.key}`,
         'data-active': active ? 'true' : undefined,
-        'aria-pressed': command.isActive ? active : undefined,
+        'aria-pressed': item.action.isActive ? active : undefined,
       },
     }
   }),
 )
 
 function renderLabel(option: DropdownOption) {
-  const active = activeCommand.value?.key === option.key
+  const active = activeItem.value?.action.key === option.key
 
   return h('span', { class: 'flex min-w-24 items-center justify-between gap-4' }, [
     h('span', option.label as string),
@@ -93,12 +92,12 @@ function handleSelect(key: string | number) {
     return
   }
 
-  const command = props.control.commands.find((item) => item.key === key)
-  if (!command || isCommandDisabled(command)) {
+  const item = props.control.items.find((item) => item.action.key === key)
+  if (!item || isItemDisabled(item)) {
     return
   }
 
-  command.run(props.editor)
+  item.action.run(props.editor)
 }
 </script>
 

@@ -1,5 +1,7 @@
+import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
 import { highlightColors } from './colors'
+import { highlightFeature } from './shared'
 
 const highlightColorSet = new Set<string>(highlightColors)
 
@@ -65,3 +67,8 @@ export const highlightHtmlPolicy: RichTextHtmlPolicy = {
     mark: [transformMark],
   },
 }
+
+export const highlightServerFeature = defineRichTextServerFeature(
+  highlightFeature,
+  highlightHtmlPolicy,
+)

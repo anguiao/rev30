@@ -1,8 +1,8 @@
 import sanitizeHtml from 'sanitize-html'
-import type { RichTextHtmlPolicy } from './policy'
+import type { RichTextHtmlPolicy, RichTextTagTransform } from './policy'
 
 const defaultAllowedSchemes = ['http', 'https', 'mailto', 'tel']
-type RichTextTagTransformPipelines = NonNullable<RichTextHtmlPolicy['transformTags']>
+type RichTextTagTransformPipelines = Readonly<Record<string, readonly RichTextTagTransform[]>>
 
 function toSanitizeHtmlTransformTags(transformTags: RichTextTagTransformPipelines) {
   const sanitizeTransformTags: NonNullable<sanitizeHtml.IOptions['transformTags']> = {}
@@ -18,11 +18,11 @@ function toSanitizeHtmlTransformTags(transformTags: RichTextTagTransformPipeline
   return sanitizeTransformTags
 }
 
-function mergeRichTextHtmlPolicies(policies: RichTextHtmlPolicy[]): sanitizeHtml.IOptions {
+function mergeRichTextHtmlPolicies(policies: readonly RichTextHtmlPolicy[]): sanitizeHtml.IOptions {
   const allowedTags = new Set<string>()
   const allowedSchemes = new Set(defaultAllowedSchemes)
   const allowedAttributes: sanitizeHtml.IDefaults['allowedAttributes'] = {}
-  const transformTags: RichTextTagTransformPipelines = {}
+  const transformTags: Record<string, RichTextTagTransform[]> = {}
   const allowedStyles: NonNullable<sanitizeHtml.IOptions['allowedStyles']> = {}
 
   for (const policy of policies) {
@@ -76,12 +76,12 @@ function mergeRichTextHtmlPolicies(policies: RichTextHtmlPolicy[]): sanitizeHtml
   }
 }
 
-export function createRichTextHtmlSanitizer(policies: RichTextHtmlPolicy[]) {
+export function createRichTextHtmlSanitizer(policies: readonly RichTextHtmlPolicy[]) {
   const options = mergeRichTextHtmlPolicies(policies)
 
   return (html: string) => sanitizeHtml(html, options)
 }
 
-export function sanitizeRichTextHtml(html: string, policies: RichTextHtmlPolicy[]) {
+export function sanitizeRichTextHtml(html: string, policies: readonly RichTextHtmlPolicy[]) {
   return sanitizeHtml(html, mergeRichTextHtmlPolicies(policies))
 }

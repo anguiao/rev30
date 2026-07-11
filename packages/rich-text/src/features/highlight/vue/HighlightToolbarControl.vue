@@ -3,6 +3,7 @@ import type { HighlightColorOption } from '../colors'
 import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import { NButton, NPopover } from 'naive-ui'
 import { computed } from 'vue'
+import { setHighlightAction, unsetHighlightAction } from '../editor'
 
 interface HighlightToolbarControlProps extends RichTextToolbarControlInjectedProps {
   colors: readonly HighlightColorOption[]
@@ -25,12 +26,12 @@ const selectedColorKey = computed(
   () => props.colors.find((color) => color.value.toLowerCase() === currentColor.value)?.key ?? null,
 )
 
-function applyColor(color: string) {
+function applyColor(color: HighlightColorOption['value']) {
   if (isDisabled.value || !props.editor) {
     return
   }
 
-  props.editor.commands.setHighlight({ color })
+  setHighlightAction.run(props.editor, color)
 }
 
 function clearHighlight() {
@@ -38,7 +39,7 @@ function clearHighlight() {
     return
   }
 
-  props.editor.commands.unsetHighlight()
+  unsetHighlightAction.run(props.editor)
 }
 </script>
 

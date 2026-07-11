@@ -3,6 +3,7 @@ import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import type { RichTextImageAttrs } from '../shared'
 import { NButton } from 'naive-ui'
 import { computed, ref } from 'vue'
+import { insertImageAction, updateImageAction } from '../editor'
 import ImageDialog from './ImageDialog.vue'
 
 interface ImageToolbarControlProps extends RichTextToolbarControlInjectedProps {
@@ -38,11 +39,11 @@ function handleConfirm(attrs: RichTextImageAttrs) {
   }
 
   if (isActive.value) {
-    props.editor.chain().focus().updateAttributes('image', attrs).run()
+    updateImageAction.run(props.editor, attrs)
     return
   }
 
-  props.editor.chain().focus().insertContent({ type: 'image', attrs }).run()
+  insertImageAction.run(props.editor, attrs)
 }
 
 function handleError(error: unknown) {

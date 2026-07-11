@@ -1,4 +1,5 @@
 import { richTextToolbarComponent } from '../../vue/toolbar'
+import { imageFeature } from './shared'
 import ImageToolbarControl from './vue/ImageToolbarControl.vue'
 
 export interface RichTextImageUploadOptions {
@@ -8,6 +9,7 @@ export interface RichTextImageUploadOptions {
 
 export function createImageToolbarControl(options: RichTextImageUploadOptions) {
   return richTextToolbarComponent({
+    feature: imageFeature,
     key: 'image',
     component: ImageToolbarControl,
     props: options,

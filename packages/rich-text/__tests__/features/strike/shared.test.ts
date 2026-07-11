@@ -6,15 +6,8 @@ import { strikeFeature } from '../../../src/features/strike/shared'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor() {
-  const strikeExtension = strikeFeature.extension()
-
   return createTestEditor({
-    extensions: [
-      Document,
-      Paragraph,
-      Text,
-      ...(Array.isArray(strikeExtension) ? strikeExtension : [strikeExtension]),
-    ],
+    extensions: [Document, Paragraph, Text, ...strikeFeature.documentExtensions!()],
     content: '<p>维护通知</p>',
   })
 }

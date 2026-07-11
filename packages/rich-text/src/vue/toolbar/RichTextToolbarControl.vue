@@ -14,7 +14,7 @@ defineProps<{
 <template>
   <RichTextToolbarButton
     v-if="control.type === 'button'"
-    :command="control.command"
+    :item="control.item"
     :editor="editor"
     :disabled="disabled"
   />

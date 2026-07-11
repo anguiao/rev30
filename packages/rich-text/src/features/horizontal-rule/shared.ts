@@ -3,5 +3,7 @@ import { defineRichTextFeature } from '../../core/feature'
 
 export const horizontalRuleFeature = defineRichTextFeature({
   key: 'horizontal-rule',
-  extension: () => HorizontalRule,
+  editorImplementation: true,
+  serverImplementation: true,
+  documentExtensions: () => [HorizontalRule],
 })

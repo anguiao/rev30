@@ -2,6 +2,8 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
 
 const nodeTestFiles = [
+  '__tests__/architecture/*.test.ts',
+  '__tests__/core/*.test.ts',
   '__tests__/features/*/server.test.ts',
   '__tests__/presets/compact.test.ts',
   '__tests__/schema.test.ts',

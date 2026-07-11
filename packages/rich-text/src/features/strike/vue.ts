@@ -1,10 +1,7 @@
-import { defineRichTextCommand } from '../../vue/toolbar'
-import { strikeFeature } from './shared'
+import { defineRichTextToolbarItem } from '../../vue/toolbar'
+import { strikeAction } from './editor'
 
-export const strikeCommand = defineRichTextCommand({
-  key: strikeFeature.key,
+export const strikeToolbarItem = defineRichTextToolbarItem(strikeAction, {
   label: '删除线',
   icon: 'i-[lucide--strikethrough]',
-  run: (editor) => editor.chain().focus().toggleStrike().run(),
-  isActive: (editor) => editor.isActive('strike'),
 })

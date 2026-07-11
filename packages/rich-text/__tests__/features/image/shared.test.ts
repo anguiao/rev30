@@ -6,15 +6,8 @@ import { imageFeature } from '../../../src/features/image/shared'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor(content: string) {
-  const extension = imageFeature.extension()
-
   return createTestEditor({
-    extensions: [
-      Document,
-      Paragraph,
-      Text,
-      ...(Array.isArray(extension) ? extension : [extension]),
-    ],
+    extensions: [Document, Paragraph, Text, ...imageFeature.documentExtensions!()],
     content,
   })
 }

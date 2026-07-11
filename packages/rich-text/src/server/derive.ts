@@ -2,7 +2,7 @@ import type { AnyExtension, JSONContent, TextSerializer } from '@tiptap/core'
 import { getSchema, getText, getTextSerializersFromSchema } from '@tiptap/core'
 import { generateHTML } from '@tiptap/html/server'
 import { Node as ProseMirrorNode, type Schema } from '@tiptap/pm/model'
-import { collectRichTextExtensions } from '../core/preset'
+import { collectRichTextDocumentExtensions } from '../core/preset'
 import { hasRichTextContent, type RichTextDocument } from '../schema'
 import { RichTextContentInvalidError } from './errors'
 import type { RichTextServerPreset } from './presets/types'
@@ -24,7 +24,7 @@ function getServerRuntime(preset: RichTextServerPreset): RichTextServerRuntime {
     return cachedRuntime
   }
 
-  const extensions = collectRichTextExtensions(preset)
+  const extensions = collectRichTextDocumentExtensions(preset)
   const schema = getSchema(extensions)
   const runtime = {
     schema,

@@ -18,7 +18,9 @@ function validateImageDimension(value: unknown) {
 
 export const imageFeature = defineRichTextFeature({
   key: 'image',
-  extension: () =>
+  editorImplementation: true,
+  serverImplementation: true,
+  documentExtensions: () => [
     Image.extend({
       addAttributes() {
         const parentAttributes = { ...this.parent?.() }
@@ -67,4 +69,5 @@ export const imageFeature = defineRichTextFeature({
         ]
       },
     }),
+  ],
 })

@@ -3,5 +3,7 @@ import { defineRichTextFeature } from '../../core/feature'
 
 export const blockquoteFeature = defineRichTextFeature({
   key: 'blockquote',
-  extension: () => Blockquote,
+  editorImplementation: true,
+  serverImplementation: true,
+  documentExtensions: () => [Blockquote],
 })

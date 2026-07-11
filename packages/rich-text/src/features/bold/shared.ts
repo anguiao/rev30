@@ -3,5 +3,7 @@ import { defineRichTextFeature } from '../../core/feature'
 
 export const boldFeature = defineRichTextFeature({
   key: 'bold',
-  extension: () => Bold,
+  editorImplementation: true,
+  serverImplementation: true,
+  documentExtensions: () => [Bold],
 })

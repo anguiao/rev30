@@ -3,5 +3,7 @@ import { defineRichTextFeature } from '../../core/feature'
 
 export const strikeFeature = defineRichTextFeature({
   key: 'strike',
-  extension: () => Strike,
+  editorImplementation: true,
+  serverImplementation: true,
+  documentExtensions: () => [Strike],
 })

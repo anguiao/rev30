@@ -27,6 +27,7 @@ const allFeatureKeys = [
   'strike',
   'inline-code',
   'highlight',
+  'text-style',
   'link',
   'remove-format',
   'heading',
@@ -107,6 +108,11 @@ describe('all rich text preset', () => {
       'strike',
       'code',
       'highlight',
+      'textStyle',
+      'color',
+      'fontFamily',
+      'fontSize',
+      'lineHeight',
       'link',
       'heading',
       'textAlign',
@@ -124,12 +130,14 @@ describe('all rich text preset', () => {
     expect(allEditorPreset.toolbar?.groups.map((group) => group.key)).toEqual([
       'history',
       'marks',
+      'text-style',
       'blocks',
       'insert',
     ])
 
     const history = allEditorPreset.toolbar?.groups.find((group) => group.key === 'history')
     const marks = allEditorPreset.toolbar?.groups.find((group) => group.key === 'marks')
+    const textStyle = allEditorPreset.toolbar?.groups.find((group) => group.key === 'text-style')
     const blocks = allEditorPreset.toolbar?.groups.find((group) => group.key === 'blocks')
     const insert = allEditorPreset.toolbar?.groups.find((group) => group.key === 'insert')
     const heading = blocks?.controls.find((control) => control.type === 'dropdown')
@@ -151,6 +159,7 @@ describe('all rich text preset', () => {
       'link',
       'remove-format',
     ])
+    expect(textStyle?.controls.map(getToolbarControlKey) ?? []).toEqual(['text-style'])
     expect(
       heading?.type === 'dropdown' ? heading.items.map((item) => item.action.key) : [],
     ).toEqual(['heading-1', 'heading-2', 'heading-3'])
@@ -182,6 +191,7 @@ describe('all rich text preset', () => {
       'strike',
       'inline-code',
       'highlight',
+      'text-style',
       'link',
       'heading',
       'text-align',
@@ -204,6 +214,11 @@ describe('all rich text preset', () => {
       'strike',
       'code',
       'highlight',
+      'textStyle',
+      'color',
+      'fontFamily',
+      'fontSize',
+      'lineHeight',
       'link',
       'heading',
       'textAlign',
@@ -224,6 +239,7 @@ describe('all rich text preset', () => {
       's',
       'code',
       'mark',
+      'span',
       'a',
       'h1',
       'h2',

@@ -102,6 +102,65 @@ describe('deriveRichTextContent', () => {
     )
   })
 
+  it('derives text styles across json, text, and html', () => {
+    const content = deriveRichTextContent(
+      {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: '默认文字 ' },
+              {
+                type: 'text',
+                text: '强调内容',
+                marks: [
+                  {
+                    type: 'textStyle',
+                    attrs: {
+                      color: '#3b82f6',
+                      fontFamily: 'serif',
+                      fontSize: '18pt',
+                      lineHeight: '1.5',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      createServerPreset(),
+    )
+
+    expect(content.text).toBe('默认文字 强调内容')
+    expect(content.json).toMatchObject({
+      content: [
+        {
+          content: [
+            {},
+            {
+              marks: [
+                {
+                  type: 'textStyle',
+                  attrs: {
+                    color: '#3b82f6',
+                    fontFamily: 'serif',
+                    fontSize: '18pt',
+                    lineHeight: '1.5',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+    expect(content.html).toContain(
+      '<span style="color:#3b82f6;font-family:serif;font-size:18pt;line-height:1.5">强调内容</span>',
+    )
+  })
+
   it.each(['ts', 'unknown'])('rejects non-canonical code block language "%s"', (language) => {
     expect(() =>
       deriveRichTextContent(

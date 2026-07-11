@@ -32,6 +32,8 @@ import { strikeEditorFeature } from '../../features/strike/editor'
 import { strikeToolbarItem } from '../../features/strike/vue'
 import { textAlignEditorFeature } from '../../features/text-align/editor'
 import { textAlignToolbarItems } from '../../features/text-align/vue'
+import { textStyleEditorFeature } from '../../features/text-style/editor'
+import { textStyleToolbarControl } from '../../features/text-style/vue'
 import { underlineEditorFeature } from '../../features/underline/editor'
 import { underlineToolbarItem } from '../../features/underline/vue'
 import { allRichTextPreset } from '../../presets/all'
@@ -55,6 +57,7 @@ const allEditorFeatures = [
   strikeEditorFeature,
   inlineCodeEditorFeature,
   highlightEditorFeature,
+  textStyleEditorFeature,
   linkEditorFeature,
   removeFormatEditorFeature,
   headingEditorFeature,
@@ -82,6 +85,7 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
         button(removeFormatToolbarItem),
       ],
     },
+    { key: 'text-style', controls: [textStyleToolbarControl] },
     {
       key: 'blocks',
       controls: [

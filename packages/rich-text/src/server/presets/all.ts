@@ -15,6 +15,7 @@ import { linkServerFeature } from '../../features/link/server'
 import { listServerFeature } from '../../features/list/server'
 import { strikeServerFeature } from '../../features/strike/server'
 import { textAlignServerFeature } from '../../features/text-align/server'
+import { textStyleServerFeature } from '../../features/text-style/server'
 import { underlineServerFeature } from '../../features/underline/server'
 import { allRichTextPreset } from '../../presets/all'
 import { defineRichTextServerPreset } from './types'
@@ -32,6 +33,7 @@ export function createAllRichTextServerPreset(options: AllRichTextServerPresetOp
     strikeServerFeature,
     inlineCodeServerFeature,
     highlightServerFeature,
+    textStyleServerFeature,
     linkServerFeature,
     headingServerFeature,
     textAlignServerFeature,

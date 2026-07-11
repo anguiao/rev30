@@ -120,6 +120,18 @@ function isCodeBlockHighlighterModule(id: string) {
   )
 }
 
+function isUnusedTextStyleModule(id: string) {
+  return (
+    id.includes('/node_modules/@tiptap/extension-text-style/dist/background-color/') ||
+    id.includes('/node_modules/@tiptap/extension-text-style/dist/text-style-kit/') ||
+    id.endsWith('/node_modules/@tiptap/extension-text-style/dist/index.js')
+  )
+}
+
+function isTextStyleModule(id: string) {
+  return id.includes('/node_modules/@tiptap/extension-text-style/')
+}
+
 function isServerModule(id: string) {
   return (
     id.includes('/packages/rich-text/src/server/') ||
@@ -151,7 +163,10 @@ describe('rich text import boundaries', () => {
       `,
     })
     const isForbidden = (id: string) =>
-      isVueModule(id) || isEditorModule(id) || isCodeBlockHighlighterModule(id)
+      isVueModule(id) ||
+      isEditorModule(id) ||
+      isCodeBlockHighlighterModule(id) ||
+      isUnusedTextStyleModule(id)
 
     expect(
       findModules(
@@ -189,6 +204,13 @@ describe('rich text import boundaries', () => {
     ).toHaveLength(3)
     expect(findModules(graph.loaded, isServerModule), 'loaded editor module graph').toEqual([])
     expect(findModules(graph.bundled, isServerModule), 'bundled editor module graph').toEqual([])
+    expect(findModules(graph.loaded, isUnusedTextStyleModule), 'loaded text style modules').toEqual(
+      [],
+    )
+    expect(
+      findModules(graph.bundled, isUnusedTextStyleModule),
+      'bundled text style modules',
+    ).toEqual([])
   }, 30_000)
 
   it('does not load all-only features through public compact preset entries', async () => {
@@ -218,6 +240,14 @@ describe('rich text import boundaries', () => {
     expect(collectFeatureKeys(graph.bundled), 'bundled compact preset features').toEqual(
       compactFeatureKeys,
     )
+    expect(
+      findModules(graph.loaded, isTextStyleModule),
+      'loaded compact text style modules',
+    ).toEqual([])
+    expect(
+      findModules(graph.bundled, isTextStyleModule),
+      'bundled compact text style modules',
+    ).toEqual([])
   }, 30_000)
 
   it('does not load unselected features for a minimal preset', async () => {
@@ -255,5 +285,13 @@ describe('rich text import boundaries', () => {
       'base',
       'bold',
     ])
+    expect(
+      findModules(graph.loaded, isTextStyleModule),
+      'loaded minimal text style modules',
+    ).toEqual([])
+    expect(
+      findModules(graph.bundled, isTextStyleModule),
+      'bundled minimal text style modules',
+    ).toEqual([])
   }, 30_000)
 })

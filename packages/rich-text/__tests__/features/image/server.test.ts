@@ -65,6 +65,18 @@ describe('image html policy', () => {
     ).toThrow(RichTextContentInvalidError)
   })
 
+  it('allows configured data images without enabling data links', () => {
+    const dataSrc = 'data:image/png;base64,aGVsbG8='
+    const dataImagePolicy = createImageHtmlPolicy({
+      allowedSrcSchemes: ['data'],
+      isAllowedSrc: (src) => src === dataSrc,
+    })
+
+    expect(
+      sanitizeRichTextHtml(`<img src="${dataSrc}" alt="base64" />`, [dataImagePolicy]),
+    ).toContain(`src="${dataSrc}"`)
+  })
+
   it('rejects internal image sources with surrounding whitespace', () => {
     expect(() =>
       sanitizeRichTextHtml(`<img src=" ${attachmentSrc} " alt="示意图" />`, [imagePolicy]),

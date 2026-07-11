@@ -6,6 +6,7 @@ import { imageFeature } from './shared'
 
 export interface RichTextImageServerOptions {
   isAllowedSrc: (src: string) => boolean
+  allowedSrcSchemes?: readonly string[]
 }
 
 export function createImageHtmlPolicy(options: RichTextImageServerOptions): RichTextHtmlPolicy {
@@ -32,6 +33,9 @@ export function createImageHtmlPolicy(options: RichTextImageServerOptions): Rich
 
   return {
     allowedTags: ['img'],
+    ...(options.allowedSrcSchemes
+      ? { allowedSchemesByTag: { img: options.allowedSrcSchemes } }
+      : {}),
     allowedAttributes: {
       img: ['src', 'alt', 'width', 'height', 'style'],
     },

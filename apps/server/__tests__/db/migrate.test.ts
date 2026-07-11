@@ -77,6 +77,9 @@ const expectedResourceCodes = [
   'content:icon-set:update',
   'content:icon-set:delete',
   'content:icon-set:export',
+  'demo',
+  'demo:rich-text',
+  'demo:rich-text:preview',
 ]
 
 async function createTempDir() {
@@ -147,6 +150,16 @@ describe('PGlite migration runner', () => {
         icon: 'lucide:book-open-text',
         name: '数据字典',
         path: '/system/dictionaries',
+      })
+      expect(resources.find((resource) => resource.code === 'demo:rich-text')).toMatchObject({
+        icon: 'lucide:file-pen-line',
+        name: '富文本',
+        path: '/demos/rich-text',
+      })
+      expect(resources.find((resource) => resource.code === 'demo')).toMatchObject({
+        icon: 'lucide:layout-template',
+        name: '组件演示',
+        path: null,
       })
       expect(adminRole).toMatchObject({
         code: 'admin',

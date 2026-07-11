@@ -5,6 +5,7 @@ import { createRequestLogger } from './middleware/logger'
 import { createAttachmentRoutes } from './modules/attachments/routes'
 import { createAuthRoutes } from './modules/auth/routes'
 import { createContentRoutes } from './modules/content/routes'
+import { createDemoRoutes } from './modules/demos/routes'
 import { healthRoutes } from './modules/health/routes'
 import { createIconRoutes } from './modules/icons/routes'
 import { createIconSearchRoutes } from './modules/icons/search/routes'
@@ -21,6 +22,7 @@ export function createApiRoutes(database: Db) {
     .route('/attachments', createAttachmentRoutes(database, authMiddleware))
     .route('/system', createSystemRoutes(database, authMiddleware))
     .route('/content', createContentRoutes(database, authMiddleware))
+    .route('/demos', createDemoRoutes(authMiddleware))
 }
 
 export function createApp(database: Db) {

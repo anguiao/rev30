@@ -62,4 +62,25 @@ describe('sanitizeRichTextHtml', () => {
       ]),
     ).toBe('<a href="https://example.com" target="_blank" rel="noopener noreferrer">Example</a>')
   })
+
+  it('scopes additional URL schemes to the configured tag', () => {
+    const policy: RichTextHtmlPolicy = {
+      allowedTags: ['a', 'img'],
+      allowedAttributes: {
+        a: ['href'],
+        img: ['src'],
+      },
+      allowedSchemesByTag: {
+        img: ['data'],
+      },
+    }
+    const dataUrl = 'data:image/png;base64,aGVsbG8='
+
+    expect(
+      sanitizeRichTextHtml(
+        `<img src="${dataUrl}" /><a href="data:text/html;base64,aGVsbG8=">Link</a>`,
+        [policy],
+      ),
+    ).toBe(`<img src="${dataUrl}" /><a>Link</a>`)
+  })
 })

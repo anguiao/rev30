@@ -6,6 +6,7 @@ export interface RichTextHtmlPolicy {
   readonly allowedTags?: readonly string[]
   readonly allowedAttributes?: Readonly<Record<string, readonly sanitizeHtml.AllowedAttribute[]>>
   readonly allowedSchemes?: readonly string[]
+  readonly allowedSchemesByTag?: Readonly<Record<string, readonly string[]>>
   readonly allowedStyles?: Readonly<Record<string, Readonly<Record<string, readonly RegExp[]>>>>
   readonly transformTags?: Readonly<Record<string, readonly RichTextTagTransform[]>>
 }
@@ -38,6 +39,16 @@ export function freezeRichTextHtmlPolicy(policy: RichTextHtmlPolicy): RichTextHt
         ),
       )
     : undefined
+  const allowedSchemesByTag = policy.allowedSchemesByTag
+    ? Object.freeze(
+        Object.fromEntries(
+          Object.entries(policy.allowedSchemesByTag).map(([tag, schemes]) => [
+            tag,
+            Object.freeze([...schemes]),
+          ]),
+        ),
+      )
+    : undefined
   const transformTags = policy.transformTags
     ? Object.freeze(
         Object.fromEntries(
@@ -53,6 +64,7 @@ export function freezeRichTextHtmlPolicy(policy: RichTextHtmlPolicy): RichTextHt
     ...(policy.allowedTags ? { allowedTags: Object.freeze([...policy.allowedTags]) } : {}),
     ...(allowedAttributes ? { allowedAttributes } : {}),
     ...(policy.allowedSchemes ? { allowedSchemes: Object.freeze([...policy.allowedSchemes]) } : {}),
+    ...(allowedSchemesByTag ? { allowedSchemesByTag } : {}),
     ...(allowedStyles ? { allowedStyles } : {}),
     ...(transformTags ? { transformTags } : {}),
   })

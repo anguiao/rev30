@@ -21,6 +21,7 @@ function toSanitizeHtmlTransformTags(transformTags: RichTextTagTransformPipeline
 function mergeRichTextHtmlPolicies(policies: readonly RichTextHtmlPolicy[]): sanitizeHtml.IOptions {
   const allowedTags = new Set<string>()
   const allowedSchemes = new Set(defaultAllowedSchemes)
+  const allowedSchemesByTag: Record<string, Set<string>> = {}
   const allowedAttributes: sanitizeHtml.IDefaults['allowedAttributes'] = {}
   const transformTags: Record<string, RichTextTagTransform[]> = {}
   const allowedStyles: NonNullable<sanitizeHtml.IOptions['allowedStyles']> = {}
@@ -32,6 +33,14 @@ function mergeRichTextHtmlPolicies(policies: readonly RichTextHtmlPolicy[]): san
 
     for (const scheme of policy.allowedSchemes ?? []) {
       allowedSchemes.add(scheme)
+    }
+
+    for (const [tag, schemes] of Object.entries(policy.allowedSchemesByTag ?? {})) {
+      const current = (allowedSchemesByTag[tag] ??= new Set())
+
+      for (const scheme of schemes) {
+        current.add(scheme)
+      }
     }
 
     for (const [tag, attributes] of Object.entries(policy.allowedAttributes ?? {})) {
@@ -70,6 +79,9 @@ function mergeRichTextHtmlPolicies(policies: readonly RichTextHtmlPolicy[]): san
     allowedTags: [...allowedTags],
     allowedAttributes,
     allowedSchemes: [...allowedSchemes],
+    allowedSchemesByTag: Object.fromEntries(
+      Object.entries(allowedSchemesByTag).map(([tag, schemes]) => [tag, [...schemes]]),
+    ),
     allowedStyles,
     allowProtocolRelative: false,
     transformTags: toSanitizeHtmlTransformTags(transformTags),

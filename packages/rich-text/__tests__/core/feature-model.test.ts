@@ -381,22 +381,27 @@ describe('rich text feature model', () => {
     })
     const allowedTags = ['p']
     const allowedAttributes = { p: ['class'] }
-    const policy = { allowedTags, allowedAttributes }
+    const allowedSchemesByTag = { img: ['data'] }
+    const policy = { allowedTags, allowedAttributes, allowedSchemesByTag }
     const serverFeature = defineRichTextServerFeature(feature, policy)
     const preset = defineRichTextPreset({ key: 'policy-test', features: [feature] })
     const serverPreset = defineRichTextServerPreset(preset, [serverFeature])
 
     allowedTags.push('script')
     allowedAttributes.p.push('style')
+    allowedSchemesByTag.img.push('javascript')
 
     expect(serverPreset.htmlPolicies[0]).toEqual({
       allowedTags: ['p'],
       allowedAttributes: { p: ['class'] },
+      allowedSchemesByTag: { img: ['data'] },
     })
     expect(Object.isFrozen(serverFeature.htmlPolicy)).toBe(true)
     expect(Object.isFrozen(serverFeature.htmlPolicy.allowedTags)).toBe(true)
     expect(Object.isFrozen(serverFeature.htmlPolicy.allowedAttributes)).toBe(true)
     expect(Object.isFrozen(serverFeature.htmlPolicy.allowedAttributes?.p)).toBe(true)
+    expect(Object.isFrozen(serverFeature.htmlPolicy.allowedSchemesByTag)).toBe(true)
+    expect(Object.isFrozen(serverFeature.htmlPolicy.allowedSchemesByTag?.img)).toBe(true)
   })
 
   it('returns frozen copies for mutable definition arrays', () => {

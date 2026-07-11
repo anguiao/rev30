@@ -143,6 +143,10 @@ function isUnusedTableModule(id: string) {
   )
 }
 
+function isCharacterCountModule(id: string) {
+  return id.includes('/node_modules/@tiptap/extensions/dist/character-count/')
+}
+
 function isServerModule(id: string) {
   return (
     id.includes('/packages/rich-text/src/server/') ||
@@ -178,7 +182,8 @@ describe('rich text import boundaries', () => {
       isEditorModule(id) ||
       isCodeBlockHighlighterModule(id) ||
       isUnusedTextStyleModule(id) ||
-      isTableModule(id)
+      isTableModule(id) ||
+      isCharacterCountModule(id)
 
     expect(
       findModules(
@@ -264,6 +269,14 @@ describe('rich text import boundaries', () => {
     ).toEqual([])
     expect(findModules(graph.loaded, isTableModule), 'loaded compact table modules').toEqual([])
     expect(findModules(graph.bundled, isTableModule), 'bundled compact table modules').toEqual([])
+    expect(
+      findModules(graph.loaded, isCharacterCountModule),
+      'loaded compact character count modules',
+    ).toEqual([])
+    expect(
+      findModules(graph.bundled, isCharacterCountModule),
+      'bundled compact character count modules',
+    ).toEqual([])
   }, 30_000)
 
   it('does not load unselected features for a minimal preset', async () => {
@@ -311,5 +324,13 @@ describe('rich text import boundaries', () => {
     ).toEqual([])
     expect(findModules(graph.loaded, isTableModule), 'loaded minimal table modules').toEqual([])
     expect(findModules(graph.bundled, isTableModule), 'bundled minimal table modules').toEqual([])
+    expect(
+      findModules(graph.loaded, isCharacterCountModule),
+      'loaded minimal character count modules',
+    ).toEqual([])
+    expect(
+      findModules(graph.bundled, isCharacterCountModule),
+      'bundled minimal character count modules',
+    ).toEqual([])
   }, 30_000)
 })

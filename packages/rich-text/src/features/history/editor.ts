@@ -1,4 +1,4 @@
-import { UndoRedo } from '@tiptap/extensions'
+import { UndoRedo } from '@tiptap/extensions/undo-redo'
 import { defineRichTextAction } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import { historyFeature } from './shared'

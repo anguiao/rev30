@@ -21,6 +21,7 @@ const imageServerOptions = {
 const allFeatureKeys = [
   'base',
   'history',
+  'character-count',
   'bold',
   'italic',
   'underline',
@@ -103,6 +104,7 @@ describe('all rich text preset', () => {
       'gapCursor',
       'selection',
       'undoRedo',
+      'characterCount',
       'bold',
       'italic',
       'underline',
@@ -138,6 +140,7 @@ describe('all rich text preset', () => {
       'text-style',
       'blocks',
       'insert',
+      'character-count',
     ])
 
     const history = allEditorPreset.toolbar?.groups.find((group) => group.key === 'history')
@@ -145,6 +148,9 @@ describe('all rich text preset', () => {
     const textStyle = allEditorPreset.toolbar?.groups.find((group) => group.key === 'text-style')
     const blocks = allEditorPreset.toolbar?.groups.find((group) => group.key === 'blocks')
     const insert = allEditorPreset.toolbar?.groups.find((group) => group.key === 'insert')
+    const characterCount = allEditorPreset.toolbar?.groups.find(
+      (group) => group.key === 'character-count',
+    )
     const heading = blocks?.controls.find((control) => control.type === 'dropdown')
     const textAlign = blocks?.controls.find(
       (control) => control.type === 'dropdown' && control.key === 'text-align',
@@ -187,6 +193,7 @@ describe('all rich text preset', () => {
       'table',
       'image',
     ])
+    expect(characterCount?.controls.map(getToolbarControlKey) ?? []).toEqual(['character-count'])
   })
 
   it('keeps server implementations, document extensions, and html policy order', () => {

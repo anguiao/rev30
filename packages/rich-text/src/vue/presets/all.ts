@@ -3,6 +3,8 @@ import { blockquoteEditorFeature } from '../../features/blockquote/editor'
 import { blockquoteToolbarItem } from '../../features/blockquote/vue'
 import { boldEditorFeature } from '../../features/bold/editor'
 import { boldToolbarItem } from '../../features/bold/vue'
+import { characterCountEditorFeature } from '../../features/character-count/editor'
+import { characterCountToolbarControl } from '../../features/character-count/vue'
 import { codeBlockEditorFeature } from '../../features/code-block/editor'
 import { codeBlockToolbarControl } from '../../features/code-block/vue'
 import { headingEditorFeature } from '../../features/heading/editor'
@@ -53,6 +55,7 @@ export interface AllRichTextEditorPresetOptions {
 const allEditorFeatures = [
   baseEditorFeature,
   historyEditorFeature,
+  characterCountEditorFeature,
   boldEditorFeature,
   italicEditorFeature,
   underlineEditorFeature,
@@ -122,6 +125,7 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
         createImageToolbarControl(options.image),
       ],
     },
+    { key: 'character-count', controls: [characterCountToolbarControl] },
   ])
 }
 

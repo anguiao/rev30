@@ -2,6 +2,7 @@ import { defineRichTextPreset } from '../core/preset'
 import { baseFeature } from '../features/base/shared'
 import { blockquoteFeature } from '../features/blockquote/shared'
 import { boldFeature } from '../features/bold/shared'
+import { characterCountFeature } from '../features/character-count/shared'
 import { codeBlockFeature } from '../features/code-block/shared'
 import { headingFeature } from '../features/heading/shared'
 import { historyFeature } from '../features/history/shared'
@@ -24,6 +25,7 @@ export const allRichTextPreset = defineRichTextPreset({
   features: [
     baseFeature,
     historyFeature,
+    characterCountFeature,
     boldFeature,
     italicFeature,
     underlineFeature,

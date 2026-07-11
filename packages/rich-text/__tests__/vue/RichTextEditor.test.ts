@@ -41,6 +41,7 @@ const toolbarDataTests = [
   'rich-text-image',
   'rich-text-undo',
   'rich-text-redo',
+  'rich-text-character-count',
 ]
 
 const allEditorPreset = createAllRichTextEditorPreset({
@@ -97,7 +98,7 @@ describe('RichTextEditor', () => {
     const editable = await getEditable(wrapper)
 
     expect(wrapper.find('[data-test="rich-text-editor"]').exists()).toBe(true)
-    expect(wrapper.findAll('[data-test="rich-text-toolbar-group"]')).toHaveLength(5)
+    expect(wrapper.findAll('[data-test="rich-text-toolbar-group"]')).toHaveLength(6)
     for (const dataTest of toolbarDataTests) {
       expect(wrapper.find(`[data-test="${dataTest}"]`).exists()).toBe(true)
     }

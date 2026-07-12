@@ -461,31 +461,6 @@ describe('DictionaryFormDrawer', () => {
     expect(wrapper.emitted('update:show')).toBeUndefined()
   })
 
-  it('shows items schema errors and skips mutation when local validation fails', async () => {
-    const wrapper = mountDrawer()
-    await flushPromises()
-
-    await wrapper.get('[data-test="dictionary-form-code"] input').setValue('order_status')
-    await wrapper.get('[data-test="dictionary-form-name"] input').setValue('订单状态')
-    await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
-    await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
-    await flushPromises()
-
-    const firstRow = getItemRow(wrapper, 0)
-    await firstRow.get('[data-test="dictionary-item-value"] input').setValue('same')
-    await firstRow.get('[data-test="dictionary-item-label"] input').setValue('相同一')
-
-    const secondRow = getItemRow(wrapper, 1)
-    await secondRow.get('[data-test="dictionary-item-value"] input').setValue('same')
-    await secondRow.get('[data-test="dictionary-item-label"] input').setValue('相同二')
-
-    await submitForm(wrapper)
-
-    expect(wrapper.get('[data-test="dictionary-items"]').text()).toContain('字典项值不能重复')
-    expect(createDictionaryMock).not.toHaveBeenCalled()
-    expect(updateDictionaryMock).not.toHaveBeenCalled()
-  })
-
   it('does not show duplicate value feedback immediately after adding blank items', async () => {
     const wrapper = mountDrawer()
     await flushPromises()

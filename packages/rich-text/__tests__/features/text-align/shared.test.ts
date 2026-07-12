@@ -1,3 +1,4 @@
+import { getSchema } from '@tiptap/core'
 import Document from '@tiptap/extension-document'
 import Heading from '@tiptap/extension-heading'
 import Paragraph from '@tiptap/extension-paragraph'
@@ -6,15 +7,18 @@ import { describe, expect, it } from 'vitest'
 import { textAlignFeature } from '../../../src/features/text-align/shared'
 import { createTestEditor } from '../../helpers/editor'
 
+const extensions = [
+  Document,
+  Paragraph,
+  Heading.configure({ levels: [1, 2, 3] }),
+  Text,
+  ...textAlignFeature.documentExtensions!(),
+]
+const schema = getSchema(extensions)
+
 function createEditor() {
   return createTestEditor({
-    extensions: [
-      Document,
-      Paragraph,
-      Heading.configure({ levels: [1, 2, 3] }),
-      Text,
-      ...textAlignFeature.documentExtensions!(),
-    ],
+    extensions,
     content: '<h2>维护通知</h2><p>请留意发布时间</p>',
   })
 }
@@ -37,10 +41,8 @@ describe('text align feature', () => {
   it.each(['left', 'center', 'right', 'justify', null])(
     'accepts the supported alignment: %s',
     (textAlign) => {
-      const editor = createEditor()
-
       expect(() =>
-        editor.schema.nodeFromJSON({
+        schema.nodeFromJSON({
           type: 'paragraph',
           attrs: { textAlign },
         }),
@@ -51,10 +53,8 @@ describe('text align feature', () => {
   it.each(['start', 'left; position: fixed', 1, {}])(
     'rejects an unsupported alignment: %s',
     (textAlign) => {
-      const editor = createEditor()
-
       expect(() =>
-        editor.schema.nodeFromJSON({
+        schema.nodeFromJSON({
           type: 'paragraph',
           attrs: { textAlign },
         }),

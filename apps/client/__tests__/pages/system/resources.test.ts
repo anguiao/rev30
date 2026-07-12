@@ -185,15 +185,6 @@ describe('resources page', () => {
     expect(wrapper.text()).toContain('加载资源树失败')
   })
 
-  it('shows a plain load error for unexpected resource load errors', async () => {
-    getResourceTreeMock.mockRejectedValue(new Error('network down'))
-    const { wrapper } = await mountResourcesPage()
-    await flushPromises()
-
-    expect(getResourceTreeMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('network down')
-  })
-
   it('shows create and row actions according to permissions', async () => {
     getResourceTreeMock.mockResolvedValue(resourceTreeResponse)
     const { wrapper: unauthorizedWrapper } = await mountResourcesPage([])

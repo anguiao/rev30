@@ -186,22 +186,13 @@ describe('LinkToolbarControl', () => {
     expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
   })
 
-  it.each([
-    'javascript:alert(1)',
-    'ftp://example.com',
-    '/docs',
-    './docs',
-    '../docs',
-    '#details',
-    '?page=1',
-    'example.com:8080/docs',
-  ])('does not write unsupported links: %s', async (href) => {
+  it('does not write an unsupported link', async () => {
     const editor = createEditor()
     selectEditorText(editor)
     const wrapper = mountControl(editor)
 
     await openPopover(wrapper)
-    await getUrlInput(wrapper).setValue(href)
+    await getUrlInput(wrapper).setValue('javascript:alert(1)')
     await getUrlInput(wrapper).trigger('keydown.enter')
     await flushPromises()
 

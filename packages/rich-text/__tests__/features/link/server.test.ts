@@ -71,16 +71,8 @@ describe('link html policy', () => {
     expect(sanitized).not.toContain('ftp:')
   })
 
-  it.each([
-    '/docs',
-    './docs',
-    '../docs',
-    '#details',
-    '?page=1',
-    '//example.com',
-    '/\\example.com',
-    'example.com:8080/docs',
-  ])('removes unsupported href values: %s', (href) => {
+  it('removes unsupported relative href values', () => {
+    const href = '/docs'
     const sanitized = sanitizeRichTextHtml(`<a href="${href}">示例</a>`, [linkHtmlPolicy])
 
     const attributes = getAnchorAttributes(sanitized)

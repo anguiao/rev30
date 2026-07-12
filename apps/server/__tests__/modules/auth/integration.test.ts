@@ -58,9 +58,10 @@ type ResourceInsert = {
 
 type TestDatabase = Awaited<ReturnType<typeof createTestDb>>
 type TestTransaction = Parameters<Parameters<TestDatabase['transaction']>[0]>[0]
+type FixturePassword = 'old-password' | 'secret-password'
 type AccountInput = {
   username?: string
-  password?: string
+  password?: FixturePassword
   nickname?: string
   email?: string | null
   phone?: string | null
@@ -68,6 +69,10 @@ type AccountInput = {
 }
 
 const now = new Date('2026-05-06T00:00:00.000Z')
+const fixturePasswordHashPromises: Record<FixturePassword, Promise<string>> = {
+  'old-password': hashPassword('old-password'),
+  'secret-password': hashPassword('secret-password'),
+}
 
 function createTestApp(database: TestDatabase) {
   return new Hono().route('/api/auth', createAuthRoutes(database, createAuthMiddleware(database)))
@@ -104,6 +109,7 @@ async function createResource(database: TestDatabase, input: ResourceInsert) {
 }
 
 async function createPasswordAccount(database: TestDatabase, input: AccountInput = {}) {
+  const password = input.password ?? 'secret-password'
   const [user] = await database
     .insert(systemUsers)
     .values({
@@ -124,7 +130,7 @@ async function createPasswordAccount(database: TestDatabase, input: AccountInput
 
   await database.insert(authPasswordCredentials).values({
     userId: user.id,
-    passwordHash: await hashPassword(input.password ?? 'secret-password'),
+    passwordHash: await fixturePasswordHashPromises[password],
   })
 
   return user

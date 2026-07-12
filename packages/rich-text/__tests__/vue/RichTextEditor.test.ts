@@ -110,7 +110,7 @@ describe('RichTextEditor', () => {
   it('emits updated Tiptap JSON when content changes', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,
-      preset: allEditorPreset,
+      preset: noHeadingEditorPreset,
     })
 
     const editable = await getEditable(wrapper)
@@ -127,7 +127,7 @@ describe('RichTextEditor', () => {
   it('syncs external modelValue changes into the editor DOM', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,
-      preset: allEditorPreset,
+      preset: noHeadingEditorPreset,
     })
 
     await getEditable(wrapper)
@@ -157,7 +157,7 @@ describe('RichTextEditor', () => {
   it('toggles editor editability when disabled changes', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,
-      preset: allEditorPreset,
+      preset: noHeadingEditorPreset,
     })
 
     await getEditable(wrapper)

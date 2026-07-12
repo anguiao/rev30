@@ -124,6 +124,9 @@ describe('resource routes', () => {
       type: RESOURCE_TYPE_DIRECTORY,
       name: 'System',
       code: 'test-system',
+      path: '/stale-directory-path',
+      externalUrl: 'https://example.com/system',
+      openTarget: RESOURCE_OPEN_TARGET_BLANK,
     })
 
     const { body: menu } = await createResource(app, {
@@ -140,12 +143,25 @@ describe('resource routes', () => {
       code: 'test-system:docs',
       externalUrl: 'https://example.com/docs',
     })
+    const { body: externalWithStaleFields } = await createResource(app, {
+      type: RESOURCE_TYPE_EXTERNAL,
+      name: 'Self-targeted Docs',
+      code: 'test-system:self-targeted-docs',
+      path: '/stale-path',
+      externalUrl: 'https://example.com/self-targeted-docs',
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
+    })
     const { body: action } = await createResource(app, {
       type: RESOURCE_TYPE_ACTION,
       name: 'Export Users',
       code: 'test-system:user:export',
     })
 
+    expect(root).toMatchObject({
+      path: null,
+      externalUrl: null,
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
+    })
     expect(menu).toMatchObject({
       parentId: root.id,
       path: '/system/users',
@@ -157,6 +173,11 @@ describe('resource routes', () => {
       path: null,
       externalUrl: 'https://example.com/docs',
       openTarget: RESOURCE_OPEN_TARGET_BLANK,
+    })
+    expect(externalWithStaleFields).toMatchObject({
+      path: null,
+      externalUrl: 'https://example.com/self-targeted-docs',
+      openTarget: RESOURCE_OPEN_TARGET_SELF,
     })
     expect(action).toMatchObject({
       parentId: null,
@@ -519,6 +540,12 @@ describe('resource routes', () => {
       parentId: root.id,
       path: '/system/users',
     })
+    const { body: grandchild } = await createResource(app, {
+      type: RESOURCE_TYPE_ACTION,
+      name: 'Export Users',
+      code: 'test-system:user:export',
+      parentId: child.id,
+    })
 
     const updateResponse = await app.request(`/api/system/resources/${child.id}`, {
       method: 'PATCH',
@@ -526,8 +553,7 @@ describe('resource routes', () => {
         type: RESOURCE_TYPE_EXTERNAL,
         name: 'User Docs',
         code: 'test-system:user-docs',
-        externalUrl: 'https://example.com/users',
-        openTarget: RESOURCE_OPEN_TARGET_BLANK,
+        externalUrl: ' https://example.com/users ',
         sortOrder: 20,
       }),
       headers: { 'content-type': 'application/json' },
@@ -556,13 +582,20 @@ describe('resource routes', () => {
 
     const descendantMoveResponse = await app.request(`/api/system/resources/${root.id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ parentId: child.id }),
+      body: JSON.stringify({ parentId: grandchild.id }),
       headers: { 'content-type': 'application/json' },
     })
     expect(descendantMoveResponse.status).toBe(409)
     expect(await descendantMoveResponse.json()).toEqual({
       message: '不能移动到自己或子级权限资源下',
     })
+
+    const rootDetailResponse = await app.request(`/api/system/resources/${root.id}`)
+
+    expect(rootDetailResponse.status).toBe(200)
+    expect(await rootDetailResponse.json()).toEqual(
+      expect.objectContaining({ id: root.id, parentId: null }),
+    )
   })
 
   it('defaults open target to blank when updating a resource to an external link', async () => {

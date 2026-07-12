@@ -1,3 +1,4 @@
+import { getSchema } from '@tiptap/core'
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
@@ -6,6 +7,8 @@ import { baseFeature } from '../../../src/features/base/shared'
 import { tableEditorFeature } from '../../../src/features/table/editor'
 import { tableFeature } from '../../../src/features/table/shared'
 import { createTestEditor } from '../../helpers/editor'
+
+const schema = getSchema([Document, Paragraph, Text, ...tableEditorFeature.extensions!()])
 
 function createEditor(content: string | object = '<p>维护通知</p>') {
   return createTestEditor({
@@ -32,10 +35,8 @@ describe('table feature', () => {
   })
 
   it('accepts canonical cell attributes from JSON', () => {
-    const editor = createEditor()
-
     expect(() =>
-      editor.schema.nodeFromJSON({
+      schema.nodeFromJSON({
         type: 'tableCell',
         attrs: { colspan: 2, rowspan: 3, colwidth: null, align: null },
         content: [{ type: 'paragraph' }],
@@ -55,10 +56,8 @@ describe('table feature', () => {
     ['colwidth', [120]],
     ['align', 'center'],
   ] as const)('rejects an invalid %s attribute: %s', (attribute, value) => {
-    const editor = createEditor()
-
     expect(() =>
-      editor.schema.nodeFromJSON({
+      schema.nodeFromJSON({
         type: 'tableCell',
         attrs: {
           colspan: 1,

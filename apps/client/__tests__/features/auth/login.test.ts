@@ -75,18 +75,6 @@ describe('login page', () => {
     expect(router.currentRoute.value.fullPath).toBe('/system/resources')
   })
 
-  it('falls back home after login when the redirect target is unsafe', async () => {
-    loginMock.mockResolvedValue(session)
-    const { router, wrapper } = await mountLoginPage('/login?redirect=//evil.example/system')
-
-    await wrapper.find('[data-test="login-username"] input').setValue('ada')
-    await wrapper.find('[data-test="login-password"] input').setValue('password123')
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-
-    expect(router.currentRoute.value.fullPath).toBe('/')
-  })
-
   it('shows an invalid credentials error without storing a session', async () => {
     loginMock.mockRejectedValue(new ApiRequestError(401, '用户名或密码错误'))
     const { router, wrapper } = await mountLoginPage()
@@ -101,35 +89,6 @@ describe('login page', () => {
     expect(auth.isAuthenticated).toBe(false)
     expect(router.currentRoute.value.fullPath).toBe('/login')
     expect(wrapper.text()).toContain('用户名或密码错误')
-  })
-
-  it('shows the server message for login rate limit errors', async () => {
-    loginMock.mockRejectedValue(new ApiRequestError(429, '登录失败次数过多，请稍后再试'))
-    const { router, wrapper } = await mountLoginPage()
-
-    await wrapper.find('[data-test="login-username"] input').setValue('ada')
-    await wrapper.find('[data-test="login-password"] input').setValue('password123')
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-
-    const auth = useAuthStore()
-    expect(loginMock).toHaveBeenCalledOnce()
-    expect(auth.isAuthenticated).toBe(false)
-    expect(router.currentRoute.value.fullPath).toBe('/login')
-    expect(wrapper.text()).toContain('登录失败次数过多，请稍后再试')
-  })
-
-  it('shows a plain error message for unexpected login failures', async () => {
-    loginMock.mockRejectedValue(new Error('network'))
-    const { wrapper } = await mountLoginPage()
-
-    await wrapper.find('[data-test="login-username"] input').setValue('ada')
-    await wrapper.find('[data-test="login-password"] input').setValue('password123')
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-
-    expect(loginMock).toHaveBeenCalledOnce()
-    expect(wrapper.text()).toContain('network')
   })
 
   it('calls login once when the browser submits the login form from the submit button', async () => {

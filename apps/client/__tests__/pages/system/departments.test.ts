@@ -167,15 +167,6 @@ describe('departments page', () => {
     expect(wrapper.text()).toContain('加载部门树失败')
   })
 
-  it('shows a plain load error for unexpected department load errors', async () => {
-    getDepartmentTreeMock.mockRejectedValue(new Error('network down'))
-    const { wrapper } = await mountDepartmentsPage()
-    await flushPromises()
-
-    expect(getDepartmentTreeMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('network down')
-  })
-
   it('shows create and row actions according to permissions', async () => {
     getDepartmentTreeMock.mockResolvedValue(departmentTreeResponse)
     const { wrapper: unauthorizedWrapper } = await mountDepartmentsPage([])

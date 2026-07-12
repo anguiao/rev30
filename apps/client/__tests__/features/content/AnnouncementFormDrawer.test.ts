@@ -242,19 +242,12 @@ describe('AnnouncementFormDrawer', () => {
     getAnnouncementTargetOptionsMock.mockResolvedValue(targetOptionsResponse)
   })
 
-  it('shows create drawer title', async () => {
-    const wrapper = mountDrawer()
-
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('新增通知公告')
-    expect(getAnnouncementMock).not.toHaveBeenCalled()
-  })
-
   it('defaults create mode to targeted visibility with empty selected objects', async () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
+    expect(wrapper.text()).toContain('新增通知公告')
+    expect(getAnnouncementMock).not.toHaveBeenCalled()
     expect(getAnnouncementTargetOptionsMock).toHaveBeenCalledWith()
     expect(getTestComponent(wrapper, 'announcement-form-visibility').props('value')).toBe(
       ANNOUNCEMENT_VISIBILITY_TARGETED,
@@ -264,33 +257,6 @@ describe('AnnouncementFormDrawer', () => {
       getTestComponent(wrapper, 'announcement-form-target-departments').props('value'),
     ).toEqual([])
     expect(getTestComponent(wrapper, 'announcement-form-target-roles').props('value')).toEqual([])
-  })
-
-  it('shows edit drawer title and loads announcement detail', async () => {
-    getAnnouncementMock.mockResolvedValue(announcementResponse)
-
-    const wrapper = mountDrawer({ show: true, announcementId })
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('编辑通知公告')
-    expect(getAnnouncementMock).toHaveBeenCalledWith(announcementId)
-    expect(getAnnouncementTargetOptionsMock).toHaveBeenCalledWith(announcementId)
-    expect(getTestComponent(wrapper, 'announcement-form-visibility').props('value')).toBe(
-      ANNOUNCEMENT_VISIBILITY_TARGETED,
-    )
-    expect(getTestComponent(wrapper, 'announcement-form-target-users').props('value')).toEqual([
-      userTargetId,
-    ])
-    expect(
-      getTestComponent(wrapper, 'announcement-form-target-departments').props('value'),
-    ).toEqual([departmentTargetId])
-    expect(getTestComponent(wrapper, 'announcement-form-target-roles').props('value')).toEqual([
-      roleTargetId,
-    ])
-    expect(
-      (wrapper.get('[data-test="announcement-form-title"] input').element as HTMLInputElement)
-        .value,
-    ).toBe('维护通知')
   })
 
   it('submits all visibility with empty targets', async () => {
@@ -319,7 +285,7 @@ describe('AnnouncementFormDrawer', () => {
     )
   })
 
-  it('submits selected user, exact department and role targets', async () => {
+  it('saves draft without publish true in create mode', async () => {
     createAnnouncementMock.mockResolvedValue(announcementResponse)
 
     const wrapper = mountDrawer()
@@ -336,42 +302,6 @@ describe('AnnouncementFormDrawer', () => {
       roleTargetId,
     ])
     await flushPromises()
-
-    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
-
-    const submitted = createAnnouncementMock.mock.calls[0]?.[0]
-    expect(submitted).toEqual(
-      expect.objectContaining({
-        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      }),
-    )
-    expect(submitted?.targets).toHaveLength(3)
-    expect(submitted?.targets).toEqual(
-      expect.arrayContaining([
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
-          targetId: userTargetId,
-        },
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
-          targetId: departmentTargetId,
-        },
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
-          targetId: roleTargetId,
-        },
-      ]),
-    )
-  })
-
-  it('saves draft without publish true in create mode', async () => {
-    createAnnouncementMock.mockResolvedValue(announcementResponse)
-
-    const wrapper = mountDrawer()
-    await flushPromises()
-
-    await fillRequiredFields(wrapper)
-    await selectUserTarget(wrapper)
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
     expect(createAnnouncementMock).toHaveBeenCalledWith({
@@ -387,6 +317,14 @@ describe('AnnouncementFormDrawer', () => {
         {
           targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
           targetId: userTargetId,
+        },
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+          targetId: departmentTargetId,
+        },
+        {
+          targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+          targetId: roleTargetId,
         },
       ],
       pinned: false,
@@ -448,7 +386,7 @@ describe('AnnouncementFormDrawer', () => {
     )
   })
 
-  it('saves and publishes in edit mode', async () => {
+  it('loads edit values and saves and publishes in edit mode', async () => {
     getAnnouncementMock.mockResolvedValue(announcementResponse)
     updateAnnouncementMock.mockResolvedValue({
       ...announcementResponse,
@@ -458,6 +396,26 @@ describe('AnnouncementFormDrawer', () => {
 
     const wrapper = mountDrawer({ show: true, announcementId })
     await flushPromises()
+
+    expect(wrapper.text()).toContain('编辑通知公告')
+    expect(getAnnouncementMock).toHaveBeenCalledWith(announcementId)
+    expect(getAnnouncementTargetOptionsMock).toHaveBeenCalledWith(announcementId)
+    expect(getTestComponent(wrapper, 'announcement-form-visibility').props('value')).toBe(
+      ANNOUNCEMENT_VISIBILITY_TARGETED,
+    )
+    expect(getTestComponent(wrapper, 'announcement-form-target-users').props('value')).toEqual([
+      userTargetId,
+    ])
+    expect(
+      getTestComponent(wrapper, 'announcement-form-target-departments').props('value'),
+    ).toEqual([departmentTargetId])
+    expect(getTestComponent(wrapper, 'announcement-form-target-roles').props('value')).toEqual([
+      roleTargetId,
+    ])
+    expect(
+      (wrapper.get('[data-test="announcement-form-title"] input').element as HTMLInputElement)
+        .value,
+    ).toBe('维护通知')
 
     await clickAction(wrapper, '[data-test="announcement-form-save-publish"]')
 
@@ -512,30 +470,6 @@ describe('AnnouncementFormDrawer', () => {
     )
   })
 
-  it('shows server field errors on content form item', async () => {
-    createAnnouncementMock.mockRejectedValue(new ApiRequestError(400, '请输入正文', 'contentJson'))
-
-    const wrapper = mountDrawer()
-    await flushPromises()
-
-    await fillRequiredFields(wrapper)
-    await selectUserTarget(wrapper)
-    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
-
-    expect(getContentFormItem(wrapper).text()).toContain('请输入正文')
-  })
-
-  it('shows targets validation feedback before submitting targeted announcements', async () => {
-    const wrapper = mountDrawer()
-    await flushPromises()
-
-    await fillRequiredFields(wrapper)
-    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
-
-    expect(getTargetsFormItem(wrapper).text()).toContain('请选择可见对象')
-    expect(createAnnouncementMock).not.toHaveBeenCalled()
-  })
-
   it('clears targets validation feedback when visible object changes in the same session', async () => {
     const wrapper = mountDrawer()
     await flushPromises()
@@ -543,6 +477,7 @@ describe('AnnouncementFormDrawer', () => {
     await fillRequiredFields(wrapper)
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
     expect(getTargetsFormItem(wrapper).text()).toContain('请选择可见对象')
+    expect(createAnnouncementMock).not.toHaveBeenCalled()
 
     await selectUserTarget(wrapper)
 

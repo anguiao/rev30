@@ -188,10 +188,21 @@ describe('announcements page', () => {
     await flushPromises()
     await wrapper.get('[data-test="announcements-search"]').trigger('click')
     await flushPromises()
-    const callCountAfterSearch = listAnnouncementsMock.mock.calls.length
 
     expect(listAnnouncementsMock).toHaveBeenLastCalledWith({
       page: 1,
+      pageSize: 20,
+      keyword: '维护通知',
+      type: ANNOUNCEMENT_TYPE_NOTICE,
+      status: ANNOUNCEMENT_STATUS_DRAFT,
+      pinned: true,
+    })
+
+    wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
+    await flushPromises()
+
+    expect(listAnnouncementsMock).toHaveBeenLastCalledWith({
+      page: 2,
       pageSize: 20,
       keyword: '维护通知',
       type: ANNOUNCEMENT_TYPE_NOTICE,
@@ -215,10 +226,11 @@ describe('announcements page', () => {
       queryCache.remove(initialQueryEntry)
     }
 
+    const callCountBeforeReset = listAnnouncementsMock.mock.calls.length
     await wrapper.get('[data-test="announcements-reset"]').trigger('click')
     await flushPromises()
     await vi.waitFor(() => {
-      expect(listAnnouncementsMock.mock.calls.length).toBe(callCountAfterSearch + 1)
+      expect(listAnnouncementsMock.mock.calls.length).toBe(callCountBeforeReset + 1)
     })
     expect(listAnnouncementsMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
 
@@ -240,41 +252,6 @@ describe('announcements page', () => {
     await flushPromises()
 
     expect(listAnnouncementsMock.mock.calls.length).toBe(callCountAfterFirstReset)
-  })
-
-  it('keeps applied filters when changing page after search', async () => {
-    listAnnouncementsMock.mockResolvedValue(announcementsResponse)
-    const { wrapper } = await mountAnnouncementsPage()
-    await flushPromises()
-
-    await wrapper.find('[data-test="announcements-keyword"] input').setValue('  维护通知  ')
-    wrapper
-      .get('[data-test="announcements-type"]')
-      .getComponent(NSelect)
-      .vm.$emit('update:value', ANNOUNCEMENT_TYPE_NOTICE)
-    wrapper
-      .get('[data-test="announcements-status"]')
-      .getComponent(NSelect)
-      .vm.$emit('update:value', ANNOUNCEMENT_STATUS_DRAFT)
-    wrapper
-      .get('[data-test="announcements-pinned"]')
-      .getComponent(NSelect)
-      .vm.$emit('update:value', 'true')
-    await flushPromises()
-    await wrapper.get('[data-test="announcements-search"]').trigger('click')
-    await flushPromises()
-
-    wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
-    await flushPromises()
-
-    expect(listAnnouncementsMock).toHaveBeenLastCalledWith({
-      page: 2,
-      pageSize: 20,
-      keyword: '维护通知',
-      type: ANNOUNCEMENT_TYPE_NOTICE,
-      status: ANNOUNCEMENT_STATUS_DRAFT,
-      pinned: true,
-    })
   })
 
   it('shows create and row actions according to permissions', async () => {

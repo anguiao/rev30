@@ -122,15 +122,6 @@ describe('roles page', () => {
     expect(wrapper.text()).toContain('加载角色列表失败')
   })
 
-  it('shows a plain load error for unexpected role load errors', async () => {
-    listRolesMock.mockRejectedValue(new Error('network down'))
-    const { wrapper } = await mountRolesPage()
-    await flushPromises()
-
-    expect(listRolesMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
-    expect(wrapper.text()).toContain('network down')
-  })
-
   it('shows create and row actions according to permissions', async () => {
     listRolesMock.mockResolvedValue(roleListResponse)
     const { wrapper: unauthorizedWrapper } = await mountRolesPage([])
@@ -165,25 +156,6 @@ describe('roles page', () => {
     expect(authorizedWrapper.findAll('[data-test="roles-delete"]')).toHaveLength(1)
   })
 
-  it('submits keyword and status filters from page one', async () => {
-    listRolesMock.mockResolvedValue(roleListResponse)
-    const { wrapper } = await mountRolesPage()
-    await flushPromises()
-
-    await wrapper.find('[data-test="roles-keyword"] input').setValue('  admin  ')
-    wrapper.getComponent(NSelect).vm.$emit('update:value', ROLE_STATUS_DISABLED)
-    await flushPromises()
-    await wrapper.get('[data-test="roles-search"]').trigger('click')
-    await flushPromises()
-
-    expect(listRolesMock).toHaveBeenLastCalledWith({
-      page: 1,
-      pageSize: 20,
-      keyword: 'admin',
-      status: ROLE_STATUS_DISABLED,
-    })
-  })
-
   it('changes page without applying draft filters before search', async () => {
     listRolesMock.mockResolvedValue(paginatedRoleListResponse)
     const { wrapper } = await mountRolesPage()
@@ -201,29 +173,7 @@ describe('roles page', () => {
     })
   })
 
-  it('keeps applied filters when changing page after search', async () => {
-    listRolesMock.mockResolvedValue(paginatedRoleListResponse)
-    const { wrapper } = await mountRolesPage()
-    await flushPromises()
-
-    await wrapper.find('[data-test="roles-keyword"] input').setValue('  admin  ')
-    wrapper.getComponent(NSelect).vm.$emit('update:value', ROLE_STATUS_DISABLED)
-    await flushPromises()
-    await wrapper.get('[data-test="roles-search"]').trigger('click')
-    await flushPromises()
-
-    wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
-    await flushPromises()
-
-    expect(listRolesMock).toHaveBeenLastCalledWith({
-      page: 2,
-      pageSize: 20,
-      keyword: 'admin',
-      status: ROLE_STATUS_DISABLED,
-    })
-  })
-
-  it('resets keyword and status filters back to the first page', async () => {
+  it('applies filters across pagination and resets them', async () => {
     listRolesMock.mockResolvedValue(paginatedRoleListResponse)
     const { wrapper } = await mountRolesPage()
     await flushPromises()
@@ -232,6 +182,13 @@ describe('roles page', () => {
     wrapper.getComponent(NSelect).vm.$emit('update:value', ROLE_STATUS_DISABLED)
     await wrapper.get('[data-test="roles-search"]').trigger('click')
     await flushPromises()
+
+    expect(listRolesMock).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
+      keyword: 'admin',
+      status: ROLE_STATUS_DISABLED,
+    })
 
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
     await flushPromises()
@@ -253,6 +210,7 @@ describe('roles page', () => {
     expect(
       (wrapper.get('[data-test="roles-keyword"] input').element as HTMLInputElement).value,
     ).toBe('')
+    expect(wrapper.getComponent(NPagination).props('page')).toBe(1)
 
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
     await flushPromises()

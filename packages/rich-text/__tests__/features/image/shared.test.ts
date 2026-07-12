@@ -1,9 +1,12 @@
+import { getSchema } from '@tiptap/core'
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { describe, expect, it } from 'vitest'
 import { imageFeature } from '../../../src/features/image/shared'
 import { createTestEditor } from '../../helpers/editor'
+
+const schema = getSchema([Document, Paragraph, Text, ...imageFeature.documentExtensions!()])
 
 function createEditor(content: string) {
   return createTestEditor({
@@ -36,10 +39,8 @@ describe('image feature shared rendering', () => {
   })
 
   it('accepts valid image attributes from JSON', () => {
-    const editor = createEditor('<p>维护通知</p>')
-
     expect(() =>
-      editor.schema.nodeFromJSON({
+      schema.nodeFromJSON({
         type: 'image',
         attrs: {
           src: '/api/attachments/cover/content',
@@ -64,10 +65,8 @@ describe('image feature shared rendering', () => {
     { name: 'height', value: -1 },
     { name: 'height', value: 1.5 },
   ])('rejects an invalid $name attribute: $value', ({ name, value }) => {
-    const editor = createEditor('<p>维护通知</p>')
-
     expect(() =>
-      editor.schema.nodeFromJSON({
+      schema.nodeFromJSON({
         type: 'image',
         attrs: {
           src: '/api/attachments/cover/content',
@@ -78,5 +77,31 @@ describe('image feature shared rendering', () => {
         },
       }),
     ).toThrow()
+  })
+
+  it('does not keep image title attrs when parsing or updating images', () => {
+    const editor = createEditor(
+      '<img src="/api/attachments/cover/content" alt="说明" title="标题" width="500" height="250" />',
+    )
+    editor.commands.setNodeSelection(0)
+
+    expect(editor.getAttributes('image')).not.toHaveProperty('title')
+    expect(editor.getJSON()).toMatchObject({
+      content: [
+        {
+          type: 'image',
+          attrs: expect.not.objectContaining({
+            title: expect.anything(),
+          }),
+        },
+      ],
+    })
+
+    editor.commands.updateAttributes('image', { title: '新标题', alt: '新说明' })
+
+    expect(editor.getAttributes('image')).toMatchObject({
+      alt: '新说明',
+    })
+    expect(editor.getAttributes('image')).not.toHaveProperty('title')
   })
 })

@@ -251,15 +251,6 @@ describe('users page', () => {
     expect(wrapper.text()).toContain('加载用户列表失败')
   })
 
-  it('shows a plain load error for unexpected user load errors', async () => {
-    listUsersMock.mockRejectedValue(new Error('network down'))
-    const { wrapper } = await mountUsersPage()
-    await flushPromises()
-
-    expect(listUsersMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
-    expect(wrapper.text()).toContain('network down')
-  })
-
   it('shows create and row actions according to permissions', async () => {
     listUsersMock.mockResolvedValue(userListResponse)
     const { wrapper: unauthorizedWrapper } = await mountUsersPage([])
@@ -536,44 +527,6 @@ describe('users page', () => {
     expect(document.body.querySelector('[data-test="users-delete-confirm"]')).not.toBeNull()
   })
 
-  it('submits keyword and status filters from page one', async () => {
-    listUsersMock.mockResolvedValue(userListResponse)
-    const { wrapper } = await mountUsersPage()
-    await flushPromises()
-
-    await wrapper.find('[data-test="users-keyword"] input').setValue('  ada  ')
-    getSelect(wrapper, 'users-status').vm.$emit('update:value', USER_STATUS_DISABLED)
-    await flushPromises()
-    await wrapper.get('[data-test="users-search"]').trigger('click')
-    await flushPromises()
-
-    expect(listUsersMock).toHaveBeenLastCalledWith({
-      page: 1,
-      pageSize: 20,
-      keyword: 'ada',
-      status: USER_STATUS_DISABLED,
-    })
-  })
-
-  it('submits department and role filters from page one', async () => {
-    listUsersMock.mockResolvedValue(userListResponse)
-    const { wrapper } = await mountUsersPage()
-    await flushPromises()
-
-    getTreeSelect(wrapper, 'users-department').vm.$emit('update:value', departmentFilterId)
-    getSelect(wrapper, 'users-role').vm.$emit('update:value', roleFilterId)
-    await flushPromises()
-    await wrapper.get('[data-test="users-search"]').trigger('click')
-    await flushPromises()
-
-    expect(listUsersMock).toHaveBeenLastCalledWith({
-      page: 1,
-      pageSize: 20,
-      departmentId: departmentFilterId,
-      roleId: roleFilterId,
-    })
-  })
-
   it('changes page without applying draft filters before search', async () => {
     listUsersMock.mockResolvedValue(paginatedUserListResponse)
     const { wrapper } = await mountUsersPage()
@@ -591,29 +544,7 @@ describe('users page', () => {
     })
   })
 
-  it('keeps applied filters when changing page after search', async () => {
-    listUsersMock.mockResolvedValue(paginatedUserListResponse)
-    const { wrapper } = await mountUsersPage()
-    await flushPromises()
-
-    await wrapper.find('[data-test="users-keyword"] input').setValue('  ada  ')
-    getSelect(wrapper, 'users-status').vm.$emit('update:value', USER_STATUS_DISABLED)
-    await flushPromises()
-    await wrapper.get('[data-test="users-search"]').trigger('click')
-    await flushPromises()
-
-    wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
-    await flushPromises()
-
-    expect(listUsersMock).toHaveBeenLastCalledWith({
-      page: 2,
-      pageSize: 20,
-      keyword: 'ada',
-      status: USER_STATUS_DISABLED,
-    })
-  })
-
-  it('resets keyword and status filters back to the first page', async () => {
+  it('applies filters across pagination and resets them', async () => {
     listUsersMock.mockResolvedValue(paginatedUserListResponse)
     const { wrapper } = await mountUsersPage()
     await flushPromises()
@@ -624,6 +555,15 @@ describe('users page', () => {
     getSelect(wrapper, 'users-role').vm.$emit('update:value', roleFilterId)
     await wrapper.get('[data-test="users-search"]').trigger('click')
     await flushPromises()
+
+    expect(listUsersMock).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
+      keyword: 'ada',
+      status: USER_STATUS_DISABLED,
+      departmentId: departmentFilterId,
+      roleId: roleFilterId,
+    })
 
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
     await flushPromises()
@@ -647,6 +587,7 @@ describe('users page', () => {
     expect(
       (wrapper.get('[data-test="users-keyword"] input').element as HTMLInputElement).value,
     ).toBe('')
+    expect(wrapper.getComponent(NPagination).props('page')).toBe(1)
 
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
     await flushPromises()

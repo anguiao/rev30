@@ -1,3 +1,4 @@
+import { getSchema } from '@tiptap/core'
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
@@ -12,9 +13,12 @@ import { textStyleFeature } from '../../../src/features/text-style/shared'
 import { baseFeature } from '../../../src/features/base/shared'
 import { createTestEditor } from '../../helpers/editor'
 
+const extensions = [Document, Paragraph, Text, ...textStyleFeature.documentExtensions!()]
+const schema = getSchema(extensions)
+
 function createEditor(content: string | object = '<p>维护通知</p>') {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, ...textStyleFeature.documentExtensions!()],
+    extensions,
     content,
   })
 }
@@ -46,10 +50,8 @@ describe('text style feature', () => {
     ['fontSize', null],
     ['lineHeight', null],
   ] as const)('accepts the supported %s value: %s', (attribute, value) => {
-    const editor = createEditor()
-
     expect(() =>
-      editor.schema.markFromJSON({ type: 'textStyle', attrs: { [attribute]: value } }),
+      schema.markFromJSON({ type: 'textStyle', attrs: { [attribute]: value } }),
     ).not.toThrow()
   })
 
@@ -65,10 +67,8 @@ describe('text style feature', () => {
     ['color', 1],
     ['fontSize', {}],
   ] as const)('rejects an unsupported %s value: %s', (attribute, value) => {
-    const editor = createEditor()
-
     expect(() =>
-      editor.schema.markFromJSON({ type: 'textStyle', attrs: { [attribute]: value } }),
+      schema.markFromJSON({ type: 'textStyle', attrs: { [attribute]: value } }),
     ).toThrow()
   })
 

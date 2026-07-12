@@ -374,6 +374,11 @@ describe('department routes', () => {
       code: 'engineering',
       parentId: root.id,
     })
+    const { body: grandchild } = await createDepartment(app, {
+      name: 'Platform',
+      code: 'platform',
+      parentId: child.id,
+    })
 
     const updateResponse = await app.request(`/api/system/departments/${child.id}`, {
       method: 'PATCH',
@@ -405,12 +410,19 @@ describe('department routes', () => {
 
     const descendantMoveResponse = await app.request(`/api/system/departments/${root.id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ parentId: child.id }),
+      body: JSON.stringify({ parentId: grandchild.id }),
       headers: { 'content-type': 'application/json' },
     })
 
     expect(descendantMoveResponse.status).toBe(409)
     expect(await descendantMoveResponse.json()).toEqual({ message: '不能移动到自己或子部门下' })
+
+    const rootDetailResponse = await app.request(`/api/system/departments/${root.id}`)
+
+    expect(rootDetailResponse.status).toBe(200)
+    expect(await rootDetailResponse.json()).toEqual(
+      expect.objectContaining({ id: root.id, parentId: null }),
+    )
   })
 
   it('rejects duplicate department codes on create and update', async () => {

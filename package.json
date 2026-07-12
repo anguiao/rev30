@@ -9,7 +9,7 @@
     "dev:server": "pnpm --filter @rev30/server dev",
     "build": "pnpm -r build",
     "check": "pnpm format:check && pnpm lint:check && pnpm typecheck && pnpm test && pnpm build",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm -r --no-sort typecheck",
     "test": "pnpm -r test",
     "lint": "oxlint --fix .",
     "lint:check": "oxlint .",

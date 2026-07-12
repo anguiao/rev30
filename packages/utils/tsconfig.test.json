@@ -1,9 +1,11 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
+    "incremental": true,
     "noEmit": true,
     "paths": null,
-    "rootDir": "."
+    "rootDir": ".",
+    "tsBuildInfoFile": "node_modules/.cache/tsconfig.test.tsbuildinfo"
   },
   "include": ["__tests__/**/*.ts"],
   "exclude": []

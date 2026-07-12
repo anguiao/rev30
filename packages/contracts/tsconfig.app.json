@@ -1,10 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "incremental": true,
     "lib": ["ES2023"],
     "outDir": "dist",
     "paths": null,
-    "rootDir": "src"
+    "rootDir": "src",
+    "tsBuildInfoFile": "node_modules/.cache/tsconfig.app.tsbuildinfo"
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts"]

@@ -1,8 +1,10 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
+    "incremental": true,
     "noEmit": true,
-    "paths": null
+    "paths": null,
+    "tsBuildInfoFile": "node_modules/.cache/tsconfig.test.tsbuildinfo"
   },
   "include": ["vitest.config.ts", "__tests__/**/*.ts"],
   "exclude": []

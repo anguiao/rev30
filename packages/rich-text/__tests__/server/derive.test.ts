@@ -11,10 +11,10 @@ function createServerPreset() {
 }
 
 describe('deriveRichTextContent', () => {
-  it('uses the server tiptap html entry instead of the browser entry', async () => {
+  it('renders the validated ProseMirror document with the static renderer', async () => {
     vi.resetModules()
-    const serverGenerateHtml = vi.fn(() => '<p>维护通知</p>')
-    vi.doMock('@tiptap/html/server', () => ({ generateHTML: serverGenerateHtml }))
+    const renderToHTMLString = vi.fn((_options: unknown) => '<p>维护通知</p>')
+    vi.doMock('@tiptap/static-renderer/pm/html-string', () => ({ renderToHTMLString }))
 
     try {
       const { deriveRichTextContent: deriveRichTextContentWithMock } =
@@ -29,9 +29,14 @@ describe('deriveRichTextContent', () => {
           createServerPreset(),
         ).html,
       ).toBe('<p>维护通知</p>')
-      expect(serverGenerateHtml).toHaveBeenCalledOnce()
+      expect(renderToHTMLString).toHaveBeenCalledOnce()
+      expect(renderToHTMLString).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.objectContaining({ type: expect.objectContaining({ name: 'doc' }) }),
+        }),
+      )
     } finally {
-      vi.doUnmock('@tiptap/html/server')
+      vi.doUnmock('@tiptap/static-renderer/pm/html-string')
       vi.resetModules()
     }
   })

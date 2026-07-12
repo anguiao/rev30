@@ -31,7 +31,7 @@ describe('announcement content helpers', () => {
         ],
       },
       text: '维护通知',
-      html: '<h2><strong><em>维护通知</em></strong></h2>',
+      html: '<h2><em><strong>维护通知</strong></em></h2>',
     })
   })
 

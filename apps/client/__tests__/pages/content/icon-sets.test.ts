@@ -266,8 +266,9 @@ describe('icon sets page', () => {
     })
 
     await wrapper.find('[data-test="builtin-icon-set-filter"] input').setValue('missing')
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    await flushPromises()
+    await vi.waitFor(() => {
+      expect(listBuiltinIconSetsMock).toHaveBeenCalledWith({ keyword: 'missing' })
+    })
 
     expect(wrapper.find('[data-test="builtin-icon-set"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('Lucide')
@@ -315,8 +316,14 @@ describe('icon sets page', () => {
     await flushPromises()
     await wrapper.get('[data-test="custom-icon-set"]').trigger('click')
     await wrapper.find('[data-test="custom-icon-filter"] input').setValue('logo')
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    await flushPromises()
+    await vi.waitFor(() => {
+      expect(listCustomIconsMock).toHaveBeenCalledWith({
+        cursor: undefined,
+        pageSize: 80,
+        keyword: 'logo',
+        prefix: 'acme',
+      })
+    })
 
     expect(wrapper.get('[data-test="icon-upload-drawer"]').attributes('data-prefix')).toBe('acme')
 
@@ -386,8 +393,8 @@ describe('icon sets page', () => {
     await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
     await flushPromises()
 
-    wrapper.get('button[aria-label="复制图标名称"]')
-    wrapper.get('button[aria-label="复制 SVG"]')
+    expect(wrapper.find('button[aria-label="复制图标名称"]').exists()).toBe(true)
+    expect(wrapper.find('button[aria-label="复制 SVG"]').exists()).toBe(true)
     expect(wrapper.find('button[aria-label="重命名图标"]').exists()).toBe(false)
     expect(wrapper.find('button[aria-label="删除图标"]').exists()).toBe(false)
   })

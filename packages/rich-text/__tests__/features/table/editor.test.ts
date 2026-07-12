@@ -76,14 +76,12 @@ describe('table editor feature', () => {
     ])
   })
 
-  it('inserts and edits a table while rejecting nested insertion', () => {
+  it('inserts a table and applies row, column, header, and delete actions', () => {
     const editor = createEditor()
     const options = { rows: 2, cols: 2, withHeaderRow: true } as const
 
     expect(insertTableAction.canRun?.(editor, options)).toBe(true)
     expect(insertTableAction.run(editor, options)).toBe(true)
-    expect(insertTableAction.canRun?.(editor, options)).toBe(false)
-    expect(insertTableAction.run(editor, options)).toBe(false)
     expect(getTable(editor).childCount).toBe(2)
     expect(getTable(editor).firstChild?.firstChild?.type.name).toBe('tableHeader')
     expect(editor.getHTML()).not.toContain('colgroup')
@@ -103,6 +101,15 @@ describe('table editor feature', () => {
 
     expect(deleteTableAction.run(editor)).toBe(true)
     expect(editor.isActive('table')).toBe(false)
+  })
+
+  it('rejects inserting a nested table', () => {
+    const editor = createEditor()
+    const options = { rows: 2, cols: 2, withHeaderRow: true } as const
+
+    expect(insertTableAction.run(editor, options)).toBe(true)
+    expect(insertTableAction.canRun?.(editor, options)).toBe(false)
+    expect(insertTableAction.run(editor, options)).toBe(false)
   })
 
   it('merges and splits an explicit cell selection', () => {

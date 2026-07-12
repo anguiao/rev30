@@ -254,13 +254,16 @@ describe('user schemas', () => {
     expectZodIssue(result, { message: '角色 ID 无效' })
   })
 
-  it('requires at least one field for updates', () => {
-    for (const input of [{}, { email: undefined }, { status: undefined }]) {
+  it.each([{}, { email: undefined }, { status: undefined }])(
+    'rejects an update with no defined fields: %j',
+    (input) => {
       const result = userUpdateSchema.safeParse(input)
 
       expectZodIssue(result, { message: '至少修改一个字段' })
-    }
+    },
+  )
 
+  it('accepts a nullable user update field', () => {
     expect(userUpdateSchema.parse({ phone: null })).toEqual({ phone: null })
   })
 

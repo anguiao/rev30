@@ -66,22 +66,31 @@ describe('config routes', () => {
     )
   })
 
-  it('delegates list, detail, and update requests', async () => {
+  it('delegates config list requests to the service', async () => {
     const app = createTestApp()
 
     const listResponse = await app.request('/api/system/configs')
+
     expect(listResponse.status).toBe(200)
     expect(mocks.service.list).toHaveBeenCalledWith()
+  })
 
+  it('delegates config detail requests to the service', async () => {
+    const app = createTestApp()
     const detailResponse = await app.request(`/api/system/configs/${configKey}`)
+
     expect(detailResponse.status).toBe(200)
     expect(mocks.service.get).toHaveBeenCalledWith(configKey)
+  })
 
+  it('delegates config update requests to the service', async () => {
+    const app = createTestApp()
     const updateResponse = await app.request(`/api/system/configs/${configKey}`, {
       method: 'PUT',
       body: JSON.stringify({ customValue: '8' }),
       headers: { 'content-type': 'application/json' },
     })
+
     expect(updateResponse.status).toBe(200)
     expect(mocks.service.update).toHaveBeenCalledWith(configKey, { customValue: '8' })
   })

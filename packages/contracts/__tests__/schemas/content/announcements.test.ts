@@ -215,8 +215,8 @@ describe('announcement schemas', () => {
     })
   })
 
-  it('requires visible objects for targeted visibility form inputs', () => {
-    const formResult = announcementFormSchema.safeParse({
+  it('requires visible objects for targeted visibility form input', () => {
+    const result = announcementFormSchema.safeParse({
       type: ANNOUNCEMENT_TYPE_NOTICE,
       title: '维护通知',
       summary: null,
@@ -226,21 +226,29 @@ describe('announcement schemas', () => {
       pinned: false,
       publish: false,
     })
-    const createResult = announcementCreateSchema.safeParse({
+
+    expectZodIssue(result, { message: '请选择可见对象', path: ['targets'] })
+  })
+
+  it('requires visible objects for targeted visibility create input', () => {
+    const result = announcementCreateSchema.safeParse({
       type: ANNOUNCEMENT_TYPE_NOTICE,
       title: '维护通知',
       contentJson,
       visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
       targets: [],
     })
-    const updateResult = announcementUpdateSchema.safeParse({
+
+    expectZodIssue(result, { message: '请选择可见对象', path: ['targets'] })
+  })
+
+  it('requires visible objects for targeted visibility update input', () => {
+    const result = announcementUpdateSchema.safeParse({
       visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
       targets: [],
     })
 
-    for (const result of [formResult, createResult, updateResult]) {
-      expectZodIssue(result, { message: '请选择可见对象', path: ['targets'] })
-    }
+    expectZodIssue(result, { message: '请选择可见对象', path: ['targets'] })
   })
 
   it('allows create input to publish immediately', () => {
@@ -380,24 +388,19 @@ describe('announcement schemas', () => {
     })
   })
 
-  it('rejects invalid type, status, and pinned filters', () => {
-    const result = announcementListQuerySchema.safeParse({
-      type: 'news',
-      status: 'enabled',
-      pinned: 'yes',
-    })
+  it.each([
+    ['type', { type: 'news' }, '类型无效'],
+    ['status', { status: 'enabled' }, '状态无效'],
+    ['pinned', { pinned: 'yes' }, '置顶筛选无效'],
+  ])('rejects invalid %s filters', (_field, input, message) => {
+    const result = announcementListQuerySchema.safeParse(input)
 
-    expectZodIssue(result, { message: '类型无效' })
-    expectZodIssue(result, { message: '状态无效' })
-    expectZodIssue(result, { message: '置顶筛选无效' })
+    expectZodIssue(result, { message })
   })
 
-  it('accepts all lifecycle statuses in responses', () => {
-    for (const status of [
-      ANNOUNCEMENT_STATUS_DRAFT,
-      ANNOUNCEMENT_STATUS_PUBLISHED,
-      ANNOUNCEMENT_STATUS_ARCHIVED,
-    ]) {
+  it.each([ANNOUNCEMENT_STATUS_DRAFT, ANNOUNCEMENT_STATUS_PUBLISHED, ANNOUNCEMENT_STATUS_ARCHIVED])(
+    'accepts lifecycle status %s in responses',
+    (status) => {
       expect(
         announcementListItemSchema.parse({
           id: announcementId,
@@ -413,8 +416,8 @@ describe('announcement schemas', () => {
           readStats: null,
         }),
       ).toMatchObject({ status })
-    }
-  })
+    },
+  )
 
   it('ignores blank pinned query and keeps default pagination', () => {
     const parsed = announcementListQuerySchema.parse({ pinned: '   ' })

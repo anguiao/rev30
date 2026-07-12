@@ -51,16 +51,20 @@ describe('config schemas', () => {
     expectZodIssue(result, { message: '请输入自定义值' })
   })
 
-  it('validates config keys with dot-separated names', () => {
+  it('accepts config keys with dot-separated names', () => {
     expect(configKeySchema.parse('attachment.contentUrlTtlSeconds')).toBe(
       'attachment.contentUrlTtlSeconds',
     )
-
-    for (const invalidKey of ['auth', 'Auth.login', 'auth..login', 'auth/login']) {
-      const result = configKeySchema.safeParse(invalidKey)
-      expect(result.success).toBe(false)
-    }
   })
+
+  it.each(['auth', 'Auth.login', 'auth..login', 'auth/login'])(
+    'rejects invalid config key %s',
+    (invalidKey) => {
+      const result = configKeySchema.safeParse(invalidKey)
+
+      expect(result.success).toBe(false)
+    },
+  )
 
   it('keeps supported value type constants', () => {
     expect([

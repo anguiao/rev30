@@ -56,6 +56,21 @@ async function createTestApp(
   )
 }
 
+async function createUserCreateAccessApp() {
+  const database = await createTestDb()
+  const fixture = await createSystemAccessFixture(database, {
+    accessCodes: ['system:user:create'],
+  })
+  const app = createProtectedSystemRouteTestApp(
+    database,
+    '/api/system/users',
+    createUserRoutes(database),
+    fixture.authHeaders,
+  )
+
+  return app
+}
+
 async function createUser(
   app: Hono,
   body: {
@@ -210,19 +225,10 @@ describe('user routes', () => {
     expect(await verifyPassword(body.temporaryPassword, credential!.passwordHash)).toBe(true)
   })
 
-  it('returns field errors when create user relations are invalid', async () => {
-    const database = await createTestDb()
-    const fixture = await createSystemAccessFixture(database, {
-      accessCodes: ['system:user:create'],
-    })
-    const app = createProtectedSystemRouteTestApp(
-      database,
-      '/api/system/users',
-      createUserRoutes(database),
-      fixture.authHeaders,
-    )
+  it('returns a field error when a department relation does not exist', async () => {
+    const app = await createUserCreateAccessApp()
 
-    const departmentResponse = await app.request(
+    const response = await app.request(
       '/api/system/users',
       jsonRequest(
         {
@@ -239,15 +245,19 @@ describe('user routes', () => {
         },
       ),
     )
-    await expectJsonResponse(departmentResponse, {
+    await expectJsonResponse(response, {
       status: 400,
       body: {
         field: 'departmentIds',
         message: '部门不存在',
       },
     })
+  })
 
-    const roleResponse = await app.request(
+  it('returns a field error when a role relation does not exist', async () => {
+    const app = await createUserCreateAccessApp()
+
+    const response = await app.request(
       '/api/system/users',
       jsonRequest(
         {
@@ -264,7 +274,7 @@ describe('user routes', () => {
         },
       ),
     )
-    await expectJsonResponse(roleResponse, {
+    await expectJsonResponse(response, {
       status: 400,
       body: {
         field: 'roleIds',

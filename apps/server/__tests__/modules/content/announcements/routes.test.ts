@@ -89,6 +89,7 @@ const createBodyWithTargets = {
     },
   ],
 }
+const jsonHeaders = { 'content-type': 'application/json' }
 
 const mocks = vi.hoisted(() => {
   const accessMiddleware = vi.fn(async (_c: Context, next: Next) => next())
@@ -160,9 +161,8 @@ describe('announcement routes', () => {
     )
   })
 
-  it('parses list query and delegates CRUD actions to the announcement service', async () => {
+  it('parses list query and delegates to the announcement service', async () => {
     const app = createTestApp()
-    const headers = { 'content-type': 'application/json' }
 
     const listResponse = await app.request(
       '/api/content/announcements?page=2&pageSize=5&keyword=维护&type=notice&status=published&pinned=true',
@@ -176,22 +176,34 @@ describe('announcement routes', () => {
       status: 'published',
       pinned: true,
     })
+  })
 
+  it('delegates announcement detail requests to the service', async () => {
+    const app = createTestApp()
     const detailResponse = await app.request(`/api/content/announcements/${announcementId}`)
+
     expect(detailResponse.status).toBe(200)
     expect(mocks.service.get).toHaveBeenCalledWith(announcementId)
+  })
 
+  it('delegates target option requests to the service', async () => {
+    const app = createTestApp()
     const targetOptionsResponse = await app.request(
       `/api/content/announcements/target-options?announcementId=${announcementId}`,
     )
+
     expect(targetOptionsResponse.status).toBe(200)
     expect(mocks.service.targetOptions).toHaveBeenCalledWith({ announcementId })
+  })
 
+  it('normalizes default announcement create fields before delegation', async () => {
+    const app = createTestApp()
     const createResponse = await app.request('/api/content/announcements', {
       method: 'POST',
       body: JSON.stringify(createBody),
-      headers,
+      headers: jsonHeaders,
     })
+
     expect(createResponse.status).toBe(201)
     expect(mocks.service.create).toHaveBeenCalledWith({
       ...createBody,
@@ -199,26 +211,37 @@ describe('announcement routes', () => {
       visibility: ANNOUNCEMENT_VISIBILITY_ALL,
       targets: [],
     })
+  })
 
+  it('preserves targeted announcement create fields before delegation', async () => {
+    const app = createTestApp()
     const createTargetsResponse = await app.request('/api/content/announcements', {
       method: 'POST',
       body: JSON.stringify(createBodyWithTargets),
-      headers,
+      headers: jsonHeaders,
     })
+
     expect(createTargetsResponse.status).toBe(201)
     expect(mocks.service.create).toHaveBeenCalledWith({
       ...createBodyWithTargets,
       publish: false,
     })
+  })
 
+  it('delegates announcement title updates to the service', async () => {
+    const app = createTestApp()
     const updateResponse = await app.request(`/api/content/announcements/${announcementId}`, {
       method: 'PATCH',
       body: JSON.stringify({ title: '维护通知（更新）' }),
-      headers,
+      headers: jsonHeaders,
     })
+
     expect(updateResponse.status).toBe(200)
     expect(mocks.service.update).toHaveBeenCalledWith(announcementId, { title: '维护通知（更新）' })
+  })
 
+  it('delegates targeted announcement updates to the service', async () => {
+    const app = createTestApp()
     const updateTargetsResponse = await app.request(
       `/api/content/announcements/${announcementId}`,
       {
@@ -227,33 +250,45 @@ describe('announcement routes', () => {
           visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
           targets: createBodyWithTargets.targets,
         }),
-        headers,
+        headers: jsonHeaders,
       },
     )
+
     expect(updateTargetsResponse.status).toBe(200)
     expect(mocks.service.update).toHaveBeenCalledWith(announcementId, {
       visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
       targets: createBodyWithTargets.targets,
     })
+  })
 
+  it('delegates publish requests to the service', async () => {
+    const app = createTestApp()
     const publishResponse = await app.request(
       `/api/content/announcements/${announcementId}/publish`,
       {
         method: 'POST',
       },
     )
+
     expect(publishResponse.status).toBe(204)
     expect(mocks.service.publish).toHaveBeenCalledWith(announcementId)
+  })
 
+  it('delegates archive requests to the service', async () => {
+    const app = createTestApp()
     const archiveResponse = await app.request(
       `/api/content/announcements/${announcementId}/archive`,
       {
         method: 'POST',
       },
     )
+
     expect(archiveResponse.status).toBe(204)
     expect(mocks.service.archive).toHaveBeenCalledWith(announcementId)
+  })
 
+  it('delegates delete requests to the service', async () => {
+    const app = createTestApp()
     const deleteResponse = await app.request(`/api/content/announcements/${announcementId}`, {
       method: 'DELETE',
     })

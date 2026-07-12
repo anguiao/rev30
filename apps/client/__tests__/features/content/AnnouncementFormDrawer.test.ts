@@ -228,8 +228,15 @@ function getTargetsFormItem(wrapper: ReturnType<typeof mount>) {
   return wrapper.get('[data-test="announcement-form-targets-item"]')
 }
 
-function getTestComponent(wrapper: ReturnType<typeof mount>, testId: string): any {
-  return wrapper.getComponent(`[data-test="${testId}"]`)
+type TestComponentWrapper = {
+  vm: {
+    $emit: (event: string, ...args: unknown[]) => void
+  }
+  props: (name: string) => unknown
+}
+
+function getTestComponent(wrapper: ReturnType<typeof mount>, testId: string) {
+  return wrapper.getComponent(`[data-test="${testId}"]`) as unknown as TestComponentWrapper
 }
 
 describe('AnnouncementFormDrawer', () => {

@@ -73,6 +73,223 @@ const userCreateInput = {
   roleIds: [],
 } satisfies Parameters<typeof createUser>[0]
 
+const dictionaryId = '11111111-1111-4111-8111-111111111111'
+const dictionaryItemId = '11111111-1111-4111-8111-111111111112'
+const dictionaryListResponse = {
+  list: [
+    {
+      id: dictionaryId,
+      code: 'user_status',
+      name: '用户状态',
+      description: '用户状态字典',
+      status: DICTIONARY_STATUS_ENABLED,
+      sortOrder: 1,
+      itemCount: 2,
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T00:00:00.000Z',
+    },
+  ],
+  total: 1,
+  page: 1,
+  pageSize: 20,
+}
+const dictionaryDetailResponse = {
+  id: dictionaryId,
+  code: 'user_status',
+  name: '用户状态',
+  description: '用户状态字典',
+  status: DICTIONARY_STATUS_ENABLED,
+  sortOrder: 1,
+  createdAt: '2026-05-01T00:00:00.000Z',
+  updatedAt: '2026-05-01T00:00:00.000Z',
+  items: [
+    {
+      id: dictionaryItemId,
+      typeId: dictionaryId,
+      label: '启用',
+      value: 'enabled',
+      description: null,
+      status: DICTIONARY_STATUS_ENABLED,
+      sortOrder: 0,
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T00:00:00.000Z',
+    },
+  ],
+}
+const dictionaryCreateInput: DictionaryCreateInput = {
+  code: 'region',
+  name: '地区',
+  description: null,
+  status: 1,
+  sortOrder: 0,
+  items: [],
+}
+const dictionaryCreateResponse = {
+  ...dictionaryDetailResponse,
+  id: '11111111-1111-4111-8111-111111111113',
+  name: '地区',
+  code: 'region',
+}
+const dictionaryUpdateInput: DictionaryUpdateInput = {
+  code: 'user_status',
+  name: '地区字典',
+  description: null,
+  status: 1,
+  sortOrder: 1,
+  items: [
+    {
+      id: dictionaryItemId,
+      label: '启用',
+      value: 'enabled',
+      description: null,
+      status: 1,
+      sortOrder: 0,
+    },
+  ],
+}
+const dictionaryUpdateResponse = {
+  ...dictionaryCreateResponse,
+  name: '地区字典',
+}
+const dictionaryOptionsResponse = {
+  user_status: [{ value: 'enabled', label: '启用' }],
+  region: [{ value: 'north', label: '北区' }],
+}
+const roleRequestId = '11111111-1111-4111-8111-111111111111'
+const roleRequestResponse = {
+  id: roleRequestId,
+  name: '运营',
+  code: 'operator',
+  status: ROLE_STATUS_ENABLED,
+  sortOrder: 1,
+  resources: [],
+  createdAt: '2026-05-01T00:00:00.000Z',
+  updatedAt: '2026-05-01T00:00:00.000Z',
+}
+const updatedRoleRequestResponse = {
+  ...roleRequestResponse,
+  name: '运营主管',
+  sortOrder: 2,
+  updatedAt: '2026-05-02T00:00:00.000Z',
+}
+const roleCreateInput = {
+  name: '运营',
+  code: 'operator',
+  status: ROLE_STATUS_ENABLED,
+  sortOrder: 1,
+  resourceIds: [],
+} satisfies Parameters<typeof createRole>[0]
+const roleUpdateInput = {
+  name: '运营主管',
+  code: 'operator',
+  status: ROLE_STATUS_ENABLED,
+  sortOrder: 2,
+  resourceIds: [],
+} satisfies Parameters<typeof updateRole>[1]
+const departmentRequestId = '22222222-2222-4222-8222-222222222222'
+const departmentRequestResponse = {
+  id: departmentRequestId,
+  parentId: null,
+  name: '总部',
+  code: 'hq',
+  status: DEPARTMENT_STATUS_ENABLED,
+  sortOrder: 1,
+  createdAt: '2026-05-01T00:00:00.000Z',
+  updatedAt: '2026-05-01T00:00:00.000Z',
+}
+const updatedDepartmentRequestResponse = {
+  ...departmentRequestResponse,
+  name: '研发中心',
+  code: 'eng',
+  sortOrder: 2,
+  updatedAt: '2026-05-02T00:00:00.000Z',
+}
+const departmentCreateInput = {
+  name: '总部',
+  code: 'hq',
+  parentId: null,
+  status: DEPARTMENT_STATUS_ENABLED,
+  sortOrder: 1,
+} satisfies Parameters<typeof createDepartment>[0]
+const departmentUpdateInput = {
+  name: '研发中心',
+  code: 'eng',
+  parentId: null,
+  status: DEPARTMENT_STATUS_ENABLED,
+  sortOrder: 2,
+} satisfies Parameters<typeof updateDepartment>[1]
+const resourceRequestId = '44444444-4444-4444-8444-444444444444'
+const resourceRequestResponse = {
+  id: resourceRequestId,
+  parentId: null,
+  type: RESOURCE_TYPE_DIRECTORY,
+  name: '系统管理',
+  code: 'system',
+  path: null,
+  externalUrl: null,
+  openTarget: RESOURCE_OPEN_TARGET_SELF,
+  icon: 'lucide:settings',
+  hidden: false,
+  status: RESOURCE_STATUS_ENABLED,
+  sortOrder: 1,
+  createdAt: '2026-05-01T00:00:00.000Z',
+  updatedAt: '2026-05-01T00:00:00.000Z',
+}
+const updatedResourceRequestResponse = {
+  ...resourceRequestResponse,
+  name: '权限资源',
+  code: 'system:resource',
+  updatedAt: '2026-05-02T00:00:00.000Z',
+}
+const resourceCreateInput = {
+  type: RESOURCE_TYPE_DIRECTORY,
+  name: '系统管理',
+  code: 'system',
+  parentId: null,
+  path: null,
+  externalUrl: null,
+  openTarget: RESOURCE_OPEN_TARGET_SELF,
+  icon: 'lucide:settings',
+  hidden: false,
+  status: RESOURCE_STATUS_ENABLED,
+  sortOrder: 1,
+} satisfies Parameters<typeof createResource>[0]
+const resourceUpdateInput = {
+  name: '权限资源',
+  code: 'system:resource',
+} satisfies Parameters<typeof updateResource>[1]
+const userRequestId = '22222222-2222-2222-8222-222222222222'
+const userRequestResponse = {
+  id: userRequestId,
+  username: 'ada',
+  nickname: 'Ada',
+  avatarId: null,
+  email: null,
+  phone: null,
+  status: USER_STATUS_ENABLED,
+  builtIn: false,
+  departments: [],
+  roles: [],
+  createdAt: '2026-05-01T00:00:00.000Z',
+  updatedAt: '2026-05-01T00:00:00.000Z',
+}
+const updatedUserRequestResponse = {
+  ...userRequestResponse,
+  nickname: 'Ada Lovelace',
+  email: 'ada@example.com',
+  updatedAt: '2026-05-02T00:00:00.000Z',
+}
+const userUpdateInput = {
+  avatarId: null,
+  username: 'ada',
+  nickname: 'Ada Lovelace',
+  email: 'ada@example.com',
+  phone: null,
+  status: USER_STATUS_ENABLED,
+  departmentIds: [],
+  roleIds: [],
+} satisfies Parameters<typeof updateUser>[1]
+
 describe('system request helpers', () => {
   it('searches icons through the public icon endpoint', async () => {
     const fetchMock = createFetchMock(
@@ -452,73 +669,61 @@ describe('system request helpers', () => {
     })
   })
 
-  it('sends department detail, create, update, and delete requests', async () => {
-    const departmentResponse = {
-      id: '22222222-2222-4222-8222-222222222222',
-      parentId: null,
-      name: '总部',
-      code: 'hq',
-      status: DEPARTMENT_STATUS_ENABLED,
-      sortOrder: 1,
-      createdAt: '2026-05-01T00:00:00.000Z',
-      updatedAt: '2026-05-01T00:00:00.000Z',
-    }
-    const updatedDepartmentResponse = {
-      ...departmentResponse,
-      name: '研发中心',
-      code: 'eng',
-      sortOrder: 2,
-      updatedAt: '2026-05-02T00:00:00.000Z',
-    }
-    const fetchMock = createFetchMock(
-      jsonResponse(departmentResponse),
-      jsonResponse(departmentResponse, { status: 201 }),
-      jsonResponse(updatedDepartmentResponse),
-      emptyResponse(),
-    )
+  it('parses a department detail response', async () => {
+    const fetchMock = createFetchMock(jsonResponse(departmentRequestResponse))
     useAuthStore().accessToken = 'access-token'
 
-    const departmentId = '22222222-2222-4222-8222-222222222222'
-    const createInput = {
-      name: '总部',
-      code: 'hq',
-      parentId: null,
-      status: DEPARTMENT_STATUS_ENABLED,
-      sortOrder: 1,
-    } satisfies Parameters<typeof createDepartment>[0]
-    const updateInput = {
-      name: '研发中心',
-      code: 'eng',
-      parentId: null,
-      status: DEPARTMENT_STATUS_ENABLED,
-      sortOrder: 2,
-    } satisfies Parameters<typeof updateDepartment>[1]
-    const department = await getDepartment(departmentId)
-    const created = await createDepartment(createInput)
-    const updated = await updateDepartment(departmentId, updateInput)
-    await deleteDepartment(departmentId)
+    await expect(getDepartment(departmentRequestId)).resolves.toEqual(departmentRequestResponse)
 
-    expect(department.code).toBe('hq')
-    expect(created.name).toBe('总部')
-    expect(updated.code).toBe('eng')
-    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
       method: 'GET',
-      pathname: `/api/system/departments/${departmentId}`,
+      pathname: `/api/system/departments/${departmentRequestId}`,
     })
-    expectFetchCall(fetchMock, 1, {
+  })
+
+  it('sends department create input and parses the created department', async () => {
+    const fetchMock = createFetchMock(jsonResponse(departmentRequestResponse, { status: 201 }))
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(createDepartment(departmentCreateInput)).resolves.toEqual(
+      departmentRequestResponse,
+    )
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'POST',
       pathname: '/api/system/departments',
     })
-    expectJsonBody(fetchMock, 1, createInput)
-    expectFetchCall(fetchMock, 2, {
+    expectJsonBody(fetchMock, 0, departmentCreateInput)
+  })
+
+  it('sends department update input and parses the updated department', async () => {
+    const fetchMock = createFetchMock(jsonResponse(updatedDepartmentRequestResponse))
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(updateDepartment(departmentRequestId, departmentUpdateInput)).resolves.toEqual(
+      updatedDepartmentRequestResponse,
+    )
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'PATCH',
-      pathname: `/api/system/departments/${departmentId}`,
+      pathname: `/api/system/departments/${departmentRequestId}`,
     })
-    expectJsonBody(fetchMock, 2, updateInput)
-    expectFetchCall(fetchMock, 3, {
+    expectJsonBody(fetchMock, 0, departmentUpdateInput)
+  })
+
+  it('deletes a department with an empty response', async () => {
+    const fetchMock = createFetchMock(emptyResponse())
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(deleteDepartment(departmentRequestId)).resolves.toBeUndefined()
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'DELETE',
-      pathname: `/api/system/departments/${departmentId}`,
+      pathname: `/api/system/departments/${departmentRequestId}`,
     })
   })
 
@@ -556,81 +761,59 @@ describe('system request helpers', () => {
     })
   })
 
-  it('sends resource detail, create, update, and delete requests', async () => {
-    const resourceResponse = {
-      id: '44444444-4444-4444-8444-444444444444',
-      parentId: null,
-      type: RESOURCE_TYPE_DIRECTORY,
-      name: '系统管理',
-      code: 'system',
-      path: null,
-      externalUrl: null,
-      openTarget: RESOURCE_OPEN_TARGET_SELF,
-      icon: 'lucide:settings',
-      hidden: false,
-      status: RESOURCE_STATUS_ENABLED,
-      sortOrder: 1,
-      createdAt: '2026-05-01T00:00:00.000Z',
-      updatedAt: '2026-05-01T00:00:00.000Z',
-    }
-    const updatedResourceResponse = {
-      ...resourceResponse,
-      name: '权限资源',
-      code: 'system:resource',
-      updatedAt: '2026-05-02T00:00:00.000Z',
-    }
-    const fetchMock = createFetchMock(
-      jsonResponse(resourceResponse),
-      jsonResponse(resourceResponse, { status: 201 }),
-      jsonResponse(updatedResourceResponse),
-      emptyResponse(),
-    )
+  it('parses a resource detail response', async () => {
+    const fetchMock = createFetchMock(jsonResponse(resourceRequestResponse))
     useAuthStore().accessToken = 'access-token'
 
-    const resourceId = '44444444-4444-4444-8444-444444444444'
-    const createInput = {
-      type: RESOURCE_TYPE_DIRECTORY,
-      name: '系统管理',
-      code: 'system',
-      parentId: null,
-      path: null,
-      externalUrl: null,
-      openTarget: RESOURCE_OPEN_TARGET_SELF,
-      icon: 'lucide:settings',
-      hidden: false,
-      status: RESOURCE_STATUS_ENABLED,
-      sortOrder: 1,
-    } satisfies Parameters<typeof createResource>[0]
-    const updateInput = {
-      name: '权限资源',
-      code: 'system:resource',
-    } satisfies Parameters<typeof updateResource>[1]
-    const resource = await getResource(resourceId)
-    const created = await createResource(createInput)
-    const updated = await updateResource(resourceId, updateInput)
-    await deleteResource(resourceId)
+    await expect(getResource(resourceRequestId)).resolves.toEqual(resourceRequestResponse)
 
-    expect(resource.icon).toBe('lucide:settings')
-    expect(created.name).toBe('系统管理')
-    expect(updated.code).toBe('system:resource')
-    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
       method: 'GET',
-      pathname: `/api/system/resources/${resourceId}`,
+      pathname: `/api/system/resources/${resourceRequestId}`,
     })
-    expectFetchCall(fetchMock, 1, {
+  })
+
+  it('sends resource create input and parses the created resource', async () => {
+    const fetchMock = createFetchMock(jsonResponse(resourceRequestResponse, { status: 201 }))
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(createResource(resourceCreateInput)).resolves.toEqual(resourceRequestResponse)
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'POST',
       pathname: '/api/system/resources',
     })
-    expectJsonBody(fetchMock, 1, createInput)
-    expectFetchCall(fetchMock, 2, {
+    expectJsonBody(fetchMock, 0, resourceCreateInput)
+  })
+
+  it('sends resource update input and parses the updated resource', async () => {
+    const fetchMock = createFetchMock(jsonResponse(updatedResourceRequestResponse))
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(updateResource(resourceRequestId, resourceUpdateInput)).resolves.toEqual(
+      updatedResourceRequestResponse,
+    )
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'PATCH',
-      pathname: `/api/system/resources/${resourceId}`,
+      pathname: `/api/system/resources/${resourceRequestId}`,
     })
-    expectJsonBody(fetchMock, 2, updateInput)
-    expectFetchCall(fetchMock, 3, {
+    expectJsonBody(fetchMock, 0, resourceUpdateInput)
+  })
+
+  it('deletes a resource with an empty response', async () => {
+    const fetchMock = createFetchMock(emptyResponse())
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(deleteResource(resourceRequestId)).resolves.toBeUndefined()
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'DELETE',
-      pathname: `/api/system/resources/${resourceId}`,
+      pathname: `/api/system/resources/${resourceRequestId}`,
     })
   })
 
@@ -658,149 +841,64 @@ describe('system request helpers', () => {
     expectJsonBody(fetchMock, 0, input)
   })
 
-  it('sends role create, update, detail, and delete requests', async () => {
-    const roleId = '11111111-1111-4111-8111-111111111111'
-    const roleResponse = {
-      id: roleId,
-      name: '运营',
-      code: 'operator',
-      status: ROLE_STATUS_ENABLED,
-      sortOrder: 1,
-      resources: [],
-      createdAt: '2026-05-01T00:00:00.000Z',
-      updatedAt: '2026-05-01T00:00:00.000Z',
-    }
-    const updatedRoleResponse = {
-      ...roleResponse,
-      name: '运营主管',
-      sortOrder: 2,
-      updatedAt: '2026-05-02T00:00:00.000Z',
-    }
-    const fetchMock = createFetchMock(
-      jsonResponse(roleResponse),
-      jsonResponse(updatedRoleResponse),
-      jsonResponse(updatedRoleResponse),
-      emptyResponse(),
-    )
+  it('sends role create input and parses the created role', async () => {
+    const fetchMock = createFetchMock(jsonResponse(roleRequestResponse))
     useAuthStore().accessToken = 'access-token'
 
-    const createInput = {
-      name: '运营',
-      code: 'operator',
-      status: ROLE_STATUS_ENABLED,
-      sortOrder: 1,
-      resourceIds: [],
-    } satisfies Parameters<typeof createRole>[0]
-    const updateInput = {
-      name: '运营主管',
-      code: 'operator',
-      status: ROLE_STATUS_ENABLED,
-      sortOrder: 2,
-      resourceIds: [],
-    } satisfies Parameters<typeof updateRole>[1]
-    await createRole(createInput)
-    await updateRole(roleId, updateInput)
-    const role = await getRole(roleId)
-    await deleteRole(roleId)
+    await expect(createRole(roleCreateInput)).resolves.toEqual(roleRequestResponse)
 
-    expect(role.name).toBe('运营主管')
-    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
       method: 'POST',
       pathname: '/api/system/roles',
     })
-    expectJsonBody(fetchMock, 0, createInput)
-    expectFetchCall(fetchMock, 1, {
+    expectJsonBody(fetchMock, 0, roleCreateInput)
+  })
+
+  it('sends role update input and parses the updated role', async () => {
+    const fetchMock = createFetchMock(jsonResponse(updatedRoleRequestResponse))
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(updateRole(roleRequestId, roleUpdateInput)).resolves.toEqual(
+      updatedRoleRequestResponse,
+    )
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'PATCH',
-      pathname: `/api/system/roles/${roleId}`,
+      pathname: `/api/system/roles/${roleRequestId}`,
     })
-    expectJsonBody(fetchMock, 1, updateInput)
-    expectFetchCall(fetchMock, 2, {
+    expectJsonBody(fetchMock, 0, roleUpdateInput)
+  })
+
+  it('parses a role detail response', async () => {
+    const fetchMock = createFetchMock(jsonResponse(updatedRoleRequestResponse))
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(getRole(roleRequestId)).resolves.toEqual(updatedRoleRequestResponse)
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'GET',
-      pathname: `/api/system/roles/${roleId}`,
-    })
-    expectFetchCall(fetchMock, 3, {
-      method: 'DELETE',
-      pathname: `/api/system/roles/${roleId}`,
+      pathname: `/api/system/roles/${roleRequestId}`,
     })
   })
 
-  it('parses list/detail/create/update/delete/options dictionary requests', async () => {
-    const dictionaryId = '11111111-1111-4111-8111-111111111111'
-    const listResponse = {
-      list: [
-        {
-          id: dictionaryId,
-          code: 'user_status',
-          name: '用户状态',
-          description: '用户状态字典',
-          status: DICTIONARY_STATUS_ENABLED,
-          sortOrder: 1,
-          itemCount: 2,
-          createdAt: '2026-05-01T00:00:00.000Z',
-          updatedAt: '2026-05-01T00:00:00.000Z',
-        },
-      ],
-      total: 1,
-      page: 1,
-      pageSize: 20,
-    }
-    const detailResponse = {
-      id: dictionaryId,
-      code: 'user_status',
-      name: '用户状态',
-      description: '用户状态字典',
-      status: DICTIONARY_STATUS_ENABLED,
-      sortOrder: 1,
-      createdAt: '2026-05-01T00:00:00.000Z',
-      updatedAt: '2026-05-01T00:00:00.000Z',
-      items: [
-        {
-          id: '11111111-1111-4111-8111-111111111112',
-          typeId: dictionaryId,
-          label: '启用',
-          value: 'enabled',
-          description: null,
-          status: DICTIONARY_STATUS_ENABLED,
-          sortOrder: 0,
-          createdAt: '2026-05-01T00:00:00.000Z',
-          updatedAt: '2026-05-01T00:00:00.000Z',
-        },
-      ],
-    }
-    const createResponse = {
-      ...detailResponse,
-      id: '11111111-1111-4111-8111-111111111113',
-      name: '地区',
-      code: 'region',
-    }
-    const updatedResponse = {
-      ...createResponse,
-      name: '地区字典',
-    }
-    const optionsResponse = {
-      user_status: [
-        {
-          value: 'enabled',
-          label: '启用',
-        },
-      ],
-      region: [
-        {
-          value: 'north',
-          label: '北区',
-        },
-      ],
-    }
+  it('deletes a role with an empty response', async () => {
+    const fetchMock = createFetchMock(emptyResponse())
+    useAuthStore().accessToken = 'access-token'
 
-    const fetchMock = createFetchMock(
-      jsonResponse(listResponse),
-      jsonResponse(detailResponse),
-      jsonResponse(createResponse),
-      jsonResponse(updatedResponse),
-      emptyResponse(),
-      jsonResponse(optionsResponse),
-    )
+    await expect(deleteRole(roleRequestId)).resolves.toBeUndefined()
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
+      method: 'DELETE',
+      pathname: `/api/system/roles/${roleRequestId}`,
+    })
+  })
+
+  it('parses dictionary list responses and query params', async () => {
+    const fetchMock = createFetchMock(jsonResponse(dictionaryListResponse))
     useAuthStore().accessToken = 'access-token'
 
     const listResult = await listDictionaries({
@@ -809,45 +907,10 @@ describe('system request helpers', () => {
       keyword: '状态',
       status: DICTIONARY_STATUS_ENABLED,
     })
-    const detailResult = await getDictionary(dictionaryId)
-    const createInput: DictionaryCreateInput = {
-      code: 'region',
-      name: '地区',
-      description: null,
-      status: 1,
-      sortOrder: 0,
-      items: [],
-    }
-    await createDictionary(createInput)
-    const updateInput: DictionaryUpdateInput = {
-      code: 'user_status',
-      name: '地区字典',
-      description: null,
-      status: 1,
-      sortOrder: 1,
-      items: [
-        {
-          id: '11111111-1111-4111-8111-111111111112',
-          label: '启用',
-          value: 'enabled',
-          description: null,
-          status: 1,
-          sortOrder: 0,
-        },
-      ],
-    }
-    await updateDictionary(dictionaryId, updateInput)
-    await deleteDictionary(dictionaryId)
-    const optionsResult = await getDictionaryOptions(['user_status', 'region'])
 
     expect(listResult.total).toBe(1)
     expect(listResult.list[0]?.code).toBe('user_status')
-    expect(detailResult.code).toBe('user_status')
-    expect(optionsResult).toMatchObject({
-      user_status: [{ value: 'enabled', label: '启用' }],
-      region: [{ value: 'north', label: '北区' }],
-    })
-    expect(fetchMock).toHaveBeenCalledTimes(6)
+    expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
       method: 'GET',
       pathname: '/api/system/dictionaries',
@@ -858,25 +921,74 @@ describe('system request helpers', () => {
         status: '1',
       },
     })
-    expectFetchCall(fetchMock, 1, {
+  })
+
+  it('parses a dictionary detail response', async () => {
+    const fetchMock = createFetchMock(jsonResponse(dictionaryDetailResponse))
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(getDictionary(dictionaryId)).resolves.toEqual(dictionaryDetailResponse)
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'GET',
       pathname: `/api/system/dictionaries/${dictionaryId}`,
     })
-    expectFetchCall(fetchMock, 2, {
+  })
+
+  it('sends dictionary create input and parses the created dictionary', async () => {
+    const fetchMock = createFetchMock(jsonResponse(dictionaryCreateResponse))
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(createDictionary(dictionaryCreateInput)).resolves.toEqual(dictionaryCreateResponse)
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'POST',
       pathname: '/api/system/dictionaries',
     })
-    expectJsonBody(fetchMock, 2, createInput)
-    expectFetchCall(fetchMock, 3, {
+    expectJsonBody(fetchMock, 0, dictionaryCreateInput)
+  })
+
+  it('sends dictionary update input and parses the updated dictionary', async () => {
+    const fetchMock = createFetchMock(jsonResponse(dictionaryUpdateResponse))
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(updateDictionary(dictionaryId, dictionaryUpdateInput)).resolves.toEqual(
+      dictionaryUpdateResponse,
+    )
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'PUT',
       pathname: `/api/system/dictionaries/${dictionaryId}`,
     })
-    expectJsonBody(fetchMock, 3, updateInput)
-    expectFetchCall(fetchMock, 4, {
+    expectJsonBody(fetchMock, 0, dictionaryUpdateInput)
+  })
+
+  it('deletes a dictionary with an empty response', async () => {
+    const fetchMock = createFetchMock(emptyResponse())
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(deleteDictionary(dictionaryId)).resolves.toBeUndefined()
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'DELETE',
       pathname: `/api/system/dictionaries/${dictionaryId}`,
     })
-    expectFetchCall(fetchMock, 5, {
+  })
+
+  it('parses dictionary options and encodes requested codes', async () => {
+    const fetchMock = createFetchMock(jsonResponse(dictionaryOptionsResponse))
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(getDictionaryOptions(['user_status', 'region'])).resolves.toEqual(
+      dictionaryOptionsResponse,
+    )
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'GET',
       pathname: '/api/system/dictionaries/options',
       query: {
@@ -1028,64 +1140,45 @@ describe('system request helpers', () => {
     })
   })
 
-  it('sends user detail, update, and delete requests', async () => {
-    const userId = '22222222-2222-4222-8222-222222222222'
-    const userResponse = {
-      id: userId,
-      username: 'ada',
-      nickname: 'Ada',
-      avatarId: null,
-      email: null,
-      phone: null,
-      status: USER_STATUS_ENABLED,
-      builtIn: false,
-      departments: [],
-      roles: [],
-      createdAt: '2026-05-01T00:00:00.000Z',
-      updatedAt: '2026-05-01T00:00:00.000Z',
-    }
-    const updatedUserResponse = {
-      ...userResponse,
-      nickname: 'Ada Lovelace',
-      email: 'ada@example.com',
-      updatedAt: '2026-05-02T00:00:00.000Z',
-    }
-    const fetchMock = createFetchMock(
-      jsonResponse(userResponse),
-      jsonResponse(updatedUserResponse),
-      emptyResponse(),
-    )
+  it('parses a user detail response', async () => {
+    const fetchMock = createFetchMock(jsonResponse(userRequestResponse))
     useAuthStore().accessToken = 'access-token'
 
-    const updateInput = {
-      avatarId: null,
-      username: 'ada',
-      nickname: 'Ada Lovelace',
-      email: 'ada@example.com',
-      phone: null,
-      status: USER_STATUS_ENABLED,
-      departmentIds: [],
-      roleIds: [],
-    } satisfies Parameters<typeof updateUser>[1]
-    const user = await getUser(userId)
-    const updated = await updateUser(userId, updateInput)
-    await deleteUser(userId)
+    await expect(getUser(userRequestId)).resolves.toEqual(userRequestResponse)
 
-    expect(user.username).toBe('ada')
-    expect(updated.nickname).toBe('Ada Lovelace')
-    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
       method: 'GET',
-      pathname: `/api/system/users/${userId}`,
+      pathname: `/api/system/users/${userRequestId}`,
     })
-    expectFetchCall(fetchMock, 1, {
+  })
+
+  it('sends user update input and parses the updated user', async () => {
+    const fetchMock = createFetchMock(jsonResponse(updatedUserRequestResponse))
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(updateUser(userRequestId, userUpdateInput)).resolves.toEqual(
+      updatedUserRequestResponse,
+    )
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'PATCH',
-      pathname: `/api/system/users/${userId}`,
+      pathname: `/api/system/users/${userRequestId}`,
     })
-    expectJsonBody(fetchMock, 1, updateInput)
-    expectFetchCall(fetchMock, 2, {
+    expectJsonBody(fetchMock, 0, userUpdateInput)
+  })
+
+  it('deletes a user with an empty response', async () => {
+    const fetchMock = createFetchMock(emptyResponse())
+    useAuthStore().accessToken = 'access-token'
+
+    await expect(deleteUser(userRequestId)).resolves.toBeUndefined()
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
       method: 'DELETE',
-      pathname: `/api/system/users/${userId}`,
+      pathname: `/api/system/users/${userRequestId}`,
     })
   })
 })

@@ -13,54 +13,80 @@ import {
   dictionaryOptionsResponseSchema,
   dictionaryUpdateSchema,
   type DictionaryFormInput,
-  type DictionaryListResponse,
 } from '../../../src/system/dictionaries'
 import { expectZodIssue } from '../../helpers/schema'
 
-describe('dictionary schemas', () => {
-  it('accepts dictionary detail, list response and options response', () => {
-    const dictionary = {
-      id: '11111111-1111-4111-8111-111111111111',
-      code: 'gender',
-      name: '性别',
+const dictionaryDetail = {
+  id: '11111111-1111-4111-8111-111111111111',
+  code: 'gender',
+  name: '性别',
+  description: null,
+  status: DICTIONARY_STATUS_ENABLED,
+  sortOrder: 1,
+  createdAt: '2026-05-04T08:00:00.000Z',
+  updatedAt: '2026-05-04T08:00:00.000Z',
+  items: [
+    {
+      id: '11111111-1111-4111-8111-111111111112',
+      typeId: '11111111-1111-4111-8111-111111111111',
+      label: '男',
+      value: 'male',
       description: null,
       status: DICTIONARY_STATUS_ENABLED,
+      sortOrder: 0,
+      createdAt: '2026-05-04T08:00:00.000Z',
+      updatedAt: '2026-05-04T08:00:00.000Z',
+    },
+    {
+      id: '11111111-1111-4111-8111-111111111113',
+      typeId: '11111111-1111-4111-8111-111111111111',
+      label: '女',
+      value: 'female',
+      description: '女性',
+      status: DICTIONARY_STATUS_DISABLED,
       sortOrder: 1,
       createdAt: '2026-05-04T08:00:00.000Z',
       updatedAt: '2026-05-04T08:00:00.000Z',
-      items: [
-        {
-          id: '11111111-1111-4111-8111-111111111112',
-          typeId: '11111111-1111-4111-8111-111111111111',
-          label: '男',
-          value: 'male',
-          description: null,
-          status: DICTIONARY_STATUS_ENABLED,
-          sortOrder: 0,
-          createdAt: '2026-05-04T08:00:00.000Z',
-          updatedAt: '2026-05-04T08:00:00.000Z',
-        },
-        {
-          id: '11111111-1111-4111-8111-111111111113',
-          typeId: '11111111-1111-4111-8111-111111111111',
-          label: '女',
-          value: 'female',
-          description: '女性',
-          status: DICTIONARY_STATUS_DISABLED,
-          sortOrder: 1,
-          createdAt: '2026-05-04T08:00:00.000Z',
-          updatedAt: '2026-05-04T08:00:00.000Z',
-        },
-      ],
-    }
+    },
+  ],
+}
+const dictionaryListResponse = {
+  list: [
+    {
+      id: dictionaryDetail.id,
+      code: dictionaryDetail.code,
+      name: dictionaryDetail.name,
+      description: dictionaryDetail.description,
+      status: dictionaryDetail.status,
+      sortOrder: dictionaryDetail.sortOrder,
+      itemCount: 2,
+      createdAt: dictionaryDetail.createdAt,
+      updatedAt: dictionaryDetail.updatedAt,
+    },
+  ],
+  total: 1,
+  page: 1,
+  pageSize: 20,
+}
+const dictionaryOptionsResponse = {
+  gender: [
+    { label: '男', value: 'male' },
+    { label: '女', value: 'female' },
+  ],
+  user_status: [{ label: '待审核', value: 'pending-payment' }],
+}
 
-    expect(dictionaryDetailSchema.parse(dictionary)).toMatchObject({
+describe('dictionary schemas', () => {
+  it('accepts dictionary detail responses with item details', () => {
+    expect(dictionaryDetailSchema.parse(dictionaryDetail)).toMatchObject({
       code: 'gender',
       items: [{ label: '男' }, { label: '女' }],
     })
+  })
 
-    const missingItemFields = dictionaryDetailSchema.safeParse({
-      ...dictionary,
+  it('rejects dictionary detail items without timestamps or type ids', () => {
+    const result = dictionaryDetailSchema.safeParse({
+      ...dictionaryDetail,
       items: [
         {
           id: '11111111-1111-4111-8111-111111111112',
@@ -73,69 +99,36 @@ describe('dictionary schemas', () => {
       ],
     })
 
-    expect(missingItemFields.success).toBe(false)
+    expect(result.success).toBe(false)
+  })
 
-    const missingTypeDescription = dictionaryDetailSchema.safeParse({
-      ...dictionary,
+  it('rejects dictionary details without descriptions', () => {
+    const result = dictionaryDetailSchema.safeParse({
+      ...dictionaryDetail,
       description: undefined,
     })
-    expect(missingTypeDescription.success).toBe(false)
+    expect(result.success).toBe(false)
+  })
 
-    expect(
-      dictionaryListResponseSchema.parse({
-        list: [
-          {
-            id: dictionary.id,
-            code: dictionary.code,
-            name: dictionary.name,
-            description: dictionary.description,
-            status: dictionary.status,
-            sortOrder: dictionary.sortOrder,
-            itemCount: 2,
-            createdAt: dictionary.createdAt,
-            updatedAt: dictionary.updatedAt,
-          },
-        ],
-        total: 1,
-        page: 1,
-        pageSize: 20,
-      }),
-    ).toMatchObject({
+  it('accepts paginated dictionary list responses', () => {
+    expect(dictionaryListResponseSchema.parse(dictionaryListResponse)).toMatchObject({
       total: 1,
       list: [{ itemCount: 2, code: 'gender' }],
     })
+  })
 
-    const listResponse: DictionaryListResponse = {
+  it('rejects dictionary list items without descriptions', () => {
+    const result = dictionaryListResponseSchema.safeParse({
       list: [
         {
-          id: '11111111-1111-4111-8111-111111111111',
-          code: 'gender',
-          name: '性别',
-          description: null,
-          status: DICTIONARY_STATUS_ENABLED,
-          sortOrder: 0,
+          id: dictionaryDetail.id,
+          code: dictionaryDetail.code,
+          name: dictionaryDetail.name,
+          status: dictionaryDetail.status,
+          sortOrder: dictionaryDetail.sortOrder,
           itemCount: 2,
-          createdAt: '2026-05-04T08:00:00.000Z',
-          updatedAt: '2026-05-04T08:00:00.000Z',
-        },
-      ],
-      total: 1,
-      page: 1,
-      pageSize: 20,
-    }
-    expect(listResponse.total).toBe(1)
-
-    const missingListDescription = dictionaryListResponseSchema.safeParse({
-      list: [
-        {
-          id: '11111111-1111-4111-8111-111111111111',
-          code: 'gender',
-          name: '性别',
-          status: DICTIONARY_STATUS_ENABLED,
-          sortOrder: 0,
-          itemCount: 2,
-          createdAt: '2026-05-04T08:00:00.000Z',
-          updatedAt: '2026-05-04T08:00:00.000Z',
+          createdAt: dictionaryDetail.createdAt,
+          updatedAt: dictionaryDetail.updatedAt,
         },
       ],
       total: 1,
@@ -143,34 +136,13 @@ describe('dictionary schemas', () => {
       pageSize: 20,
     })
 
-    expect(missingListDescription.success).toBe(false)
+    expect(result.success).toBe(false)
+  })
 
-    expect(
-      dictionaryOptionsResponseSchema.parse({
-        gender: [
-          {
-            label: '男',
-            value: 'male',
-          },
-          {
-            label: '女',
-            value: 'female',
-          },
-        ],
-        user_status: [
-          {
-            label: '待审核',
-            value: 'pending-payment',
-          },
-        ],
-      }),
-    ).toMatchObject({
-      gender: [
-        { label: '男', value: 'male' },
-        { label: '女', value: 'female' },
-      ],
-      user_status: [{ label: '待审核', value: 'pending-payment' }],
-    })
+  it('accepts dictionary options grouped by code', () => {
+    expect(dictionaryOptionsResponseSchema.parse(dictionaryOptionsResponse)).toEqual(
+      dictionaryOptionsResponse,
+    )
   })
 
   it('defaults dictionary create status and sortOrder and normalizes blank description', () => {

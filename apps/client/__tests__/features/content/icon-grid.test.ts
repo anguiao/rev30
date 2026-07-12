@@ -116,7 +116,7 @@ describe('IconGrid', () => {
     const copyButton = wrapper.get('button[aria-label="复制图标名称"]')
     await copyButton.trigger('click')
 
-    wrapper.get('button[aria-label="复制 SVG"]')
+    expect(wrapper.find('button[aria-label="复制 SVG"]').exists()).toBe(true)
     expect(wrapper.find('button[aria-label="重命名图标"]').exists()).toBe(false)
     expect(wrapper.find('button[aria-label="删除图标"]').exists()).toBe(false)
     expect(wrapper.emitted('copy')).toEqual([['acme:logo']])

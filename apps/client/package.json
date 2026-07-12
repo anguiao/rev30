@@ -16,7 +16,7 @@
     "@rev30/contracts": "workspace:*",
     "@rev30/rich-text": "workspace:*",
     "@rev30/utils": "workspace:*",
-    "@tanstack/vue-form": "^1.33.0",
+    "@tanstack/vue-form": "^1.33.1",
     "@vueuse/core": "catalog:",
     "bytes": "catalog:",
     "file-saver": "^2.0.5",

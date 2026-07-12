@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.app.json",
+    "build": "tsc -p tsconfig.app.json --noEmit",
     "test": "vitest run --pool=threads",
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.test.json"
   },

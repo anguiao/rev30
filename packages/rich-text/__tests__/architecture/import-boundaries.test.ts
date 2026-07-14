@@ -120,7 +120,6 @@ function isEditorModule(id: string) {
 
 function isCodeBlockHighlighterModule(id: string) {
   return (
-    id.endsWith('/packages/rich-text/src/features/code-block/lowlight.ts') ||
     id.includes('/node_modules/@tiptap/extension-code-block-lowlight/') ||
     id.includes('/node_modules/highlight.js/') ||
     id.includes('/node_modules/lowlight/')

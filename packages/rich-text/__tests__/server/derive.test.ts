@@ -103,7 +103,7 @@ describe('deriveRichTextContent', () => {
     expect(content.text).toBe('运行 pnpm check\n\nconst ready = true\nconsole.log(ready)')
     expect(content.html).toContain('<p>运行 <code>pnpm check</code></p>')
     expect(content.html).toContain(
-      '<pre><code class="language-typescript">const ready = true\nconsole.log(ready)</code></pre>',
+      '<pre class="rich-text-code-block" style="background-color:light-dark(#f5f5f4, #09090b)"><code class="language-typescript" style="padding:0;background:transparent">const ready = true\nconsole.log(ready)</code></pre>',
     )
   })
 
@@ -244,7 +244,7 @@ describe('deriveRichTextContent', () => {
     )
   })
 
-  it.each(['ts', 'unknown'])('rejects non-canonical code block language "%s"', (language) => {
+  it('rejects invalid code block languages', () => {
     expect(() =>
       deriveRichTextContent(
         {
@@ -252,7 +252,7 @@ describe('deriveRichTextContent', () => {
           content: [
             {
               type: 'codeBlock',
-              attrs: { language },
+              attrs: { language: '-bash' },
               content: [{ type: 'text', text: 'const ready = true' }],
             },
           ],

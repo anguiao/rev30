@@ -36,6 +36,7 @@ const toolbarDataTests = [
   'rich-text-list',
   'rich-text-blockquote',
   'rich-text-code-block',
+  'rich-text-code-block-language',
   'rich-text-horizontal-rule',
   'rich-text-table',
   'rich-text-image',
@@ -203,7 +204,7 @@ describe('RichTextEditor', () => {
     })
   })
 
-  it('creates, configures, and exits code blocks from the language dropdown', async () => {
+  it('creates, configures, and exits code blocks with a split button', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: {
         type: 'doc',
@@ -218,31 +219,72 @@ describe('RichTextEditor', () => {
     })
 
     await getEditable(wrapper)
-    await selectDropdownCommand(wrapper, 'code-block-language-typescript')
+    const codeBlockButton = wrapper.get('[data-test="rich-text-code-block"]')
+    const languageDropdown = wrapper.findAllComponents(NDropdown).find((component) => {
+      const options = component.props('options') as Array<{ key: string | number }>
+
+      return options.some((option) => option.key === 'typescript')
+    })
+
+    expect(languageDropdown?.props('disabled')).toBe(true)
+    await codeBlockButton.trigger('click')
 
     await vi.waitFor(() => {
-      expect(wrapper.get('[data-test="rich-text-code-block"]').attributes('data-active')).toBe(
-        'true',
-      )
-      expect(wrapper.get('[data-test="rich-text-code-block"]').attributes('title')).toBe(
-        '代码块：TypeScript',
-      )
+      expect(codeBlockButton.attributes('data-active')).toBe('true')
+      expect(languageDropdown?.props('disabled')).toBe(false)
+      expect(wrapper.find('.ProseMirror pre').exists()).toBe(true)
+    })
+
+    await selectDropdownCommand(wrapper, 'typescript')
+
+    await vi.waitFor(() => {
       expect(wrapper.get('.ProseMirror code').classes()).toContain('language-typescript')
       expect(wrapper.get('.ProseMirror .hljs-keyword').text()).toBe('const')
     })
 
-    await selectDropdownCommand(wrapper, 'code-block-auto')
+    await selectDropdownCommand(wrapper, 'plaintext')
+
     await vi.waitFor(() => {
-      expect(wrapper.get('[data-test="rich-text-code-block"]').attributes('title')).toBe(
-        '代码块：自动检测',
-      )
       expect(wrapper.get('.ProseMirror code').classes()).not.toContain('language-typescript')
     })
 
-    await selectDropdownCommand(wrapper, 'code-block-paragraph')
+    await codeBlockButton.trigger('click')
+
     await vi.waitFor(() => {
       expect(wrapper.find('.ProseMirror pre').exists()).toBe(false)
       expect(wrapper.get('.ProseMirror p').text()).toBe('const ready = true')
+    })
+  })
+
+  it('creates a paragraph after a trailing code block when clicking editor whitespace', async () => {
+    const wrapper = mountRichTextEditor({
+      modelValue: {
+        type: 'doc',
+        content: [
+          {
+            type: 'codeBlock',
+            attrs: { language: null },
+            content: [{ type: 'text', text: 'const ready = true' }],
+          },
+        ],
+      },
+      preset: allEditorPreset,
+    })
+
+    const editable = await getEditable(wrapper)
+    const codeBlock = editable.get('pre')
+    codeBlock.element.getBoundingClientRect = () => ({ bottom: 100 }) as DOMRect
+
+    await editable.trigger('click', { clientY: 120 })
+
+    await vi.waitFor(() => {
+      expect(editable.findAll(':scope > *').map((node) => node.element.tagName)).toEqual([
+        'PRE',
+        'P',
+      ])
+      expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toMatchObject({
+        content: [{ type: 'codeBlock' }, { type: 'paragraph' }],
+      })
     })
   })
 

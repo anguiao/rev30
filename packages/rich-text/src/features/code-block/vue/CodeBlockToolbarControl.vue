@@ -1,152 +1,135 @@
 <script setup lang="ts">
 import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
-import type { CodeBlockLanguageOption } from '../languages'
-import type { DropdownDividerOption, DropdownOption } from 'naive-ui'
-import { NButton, NDropdown } from 'naive-ui'
+import type { DropdownOption } from 'naive-ui'
+import { NButton, NButtonGroup, NDropdown } from 'naive-ui'
 import { computed, h } from 'vue'
 import { codeBlockAction, setCodeBlockLanguageAction } from '../editor'
-import { normalizeCodeBlockLanguage } from '../languages'
 
 interface CodeBlockToolbarControlProps extends RichTextToolbarControlInjectedProps {
-  languages: readonly CodeBlockLanguageOption[]
+  languages: readonly {
+    readonly label: string
+    readonly value: string
+  }[]
 }
 
 const props = withDefaults(defineProps<CodeBlockToolbarControlProps>(), {
   disabled: false,
 })
 
-const automaticKey = 'code-block-auto'
-const paragraphKey = 'code-block-paragraph'
-const languageKeyPrefix = 'code-block-language-'
-
 const isActive = computed(() => props.editor?.isActive('codeBlock') ?? false)
 const isDisabled = computed(
   () => props.disabled || !props.editor || !(codeBlockAction.canRun?.(props.editor) ?? true),
 )
 
-const currentLanguage = computed(() =>
-  normalizeCodeBlockLanguage(props.editor?.getAttributes('codeBlock').language),
-)
-const currentLanguageLabel = computed(
-  () =>
-    props.languages.find((language) => language.value === currentLanguage.value)?.label ??
-    '自动检测',
-)
-const selectedKey = computed(() => {
-  if (!isActive.value) {
+const isCaretInsideCodeBlock = computed(() => {
+  const editor = props.editor
+
+  if (!editor) {
+    return false
+  }
+
+  const { selection } = editor.state
+
+  return selection.empty && selection.$from.parent.type.name === 'codeBlock'
+})
+
+const currentLanguageOption = computed(() => {
+  const editor = props.editor
+
+  if (!editor || !isCaretInsideCodeBlock.value) {
     return null
   }
 
-  return currentLanguage.value === null
-    ? automaticKey
-    : `${languageKeyPrefix}${currentLanguage.value}`
-})
-const triggerLabel = computed(() =>
-  isActive.value ? `代码块：${currentLanguageLabel.value}` : '代码块',
-)
+  const language = editor.getAttributes('codeBlock').language ?? 'plaintext'
 
-function renderSelectionIcon(selected: boolean) {
-  return () =>
-    h('span', {
-      class: ['inline-block size-4', selected ? 'i-[lucide--check] text-primary' : undefined],
-      'aria-hidden': 'true',
-    })
+  return props.languages.find((option) => option.value === language) ?? null
+})
+const languageButtonLabel = computed(() =>
+  currentLanguageOption.value ? `代码语言：${currentLanguageOption.value.label}` : '代码语言',
+)
+const buttonType = computed(() => (isActive.value ? 'primary' : 'default'))
+
+function toggleCodeBlock() {
+  if (!isDisabled.value && props.editor) {
+    codeBlockAction.run(props.editor)
+  }
 }
 
-const options = computed<(DropdownOption | DropdownDividerOption)[]>(() => [
-  {
-    key: automaticKey,
-    label: '自动检测',
-    icon: renderSelectionIcon(selectedKey.value === automaticKey),
-    props: {
-      'data-test': 'rich-text-code-block-auto',
-      'data-active': selectedKey.value === automaticKey ? 'true' : undefined,
-      'aria-pressed': selectedKey.value === automaticKey,
-    },
-  },
-  ...props.languages.map((language) => {
-    const key = `${languageKeyPrefix}${language.value}`
+const isLanguageControlDisabled = computed(
+  () => props.disabled || !props.editor || !isCaretInsideCodeBlock.value,
+)
+const options = computed<DropdownOption[]>(() =>
+  props.languages.map((language) => {
+    const active = currentLanguageOption.value?.value === language.value
 
     return {
-      key,
+      key: language.value,
       label: language.label,
-      icon: renderSelectionIcon(selectedKey.value === key),
+      icon: () =>
+        h('span', {
+          class: ['inline-block size-4', active ? 'i-[lucide--check] text-primary' : undefined],
+          'aria-hidden': 'true',
+        }),
       props: {
-        'data-test': key.replace('code-block-', 'rich-text-code-block-'),
-        'data-active': selectedKey.value === key ? 'true' : undefined,
-        'aria-pressed': selectedKey.value === key,
+        'data-test': `rich-text-code-block-language-${language.value}`,
+        'data-active': active ? 'true' : undefined,
+        'aria-pressed': active,
       },
     }
   }),
-  ...(isActive.value
-    ? [
-        { key: 'code-block-divider', type: 'divider' as const },
-        {
-          key: paragraphKey,
-          label: '转为正文',
-          icon: () =>
-            h('span', {
-              class: 'i-[lucide--pilcrow] inline-block size-4',
-              'aria-hidden': 'true',
-            }),
-          props: {
-            'data-test': 'rich-text-code-block-paragraph',
-            'aria-pressed': false,
-          },
-        },
-      ]
-    : []),
-])
+)
 
-function handleSelect(key: string | number) {
-  if (isDisabled.value || !props.editor) {
+function setLanguage(value: string) {
+  const editor = props.editor
+  const option = props.languages.find((language) => language.value === value)
+
+  if (!editor || isLanguageControlDisabled.value || !option) {
     return
   }
 
-  if (key === paragraphKey) {
-    codeBlockAction.run(props.editor)
-    return
-  }
-
-  if (key === automaticKey) {
-    setCodeBlockLanguageAction.run(props.editor, null)
-    return
-  }
-
-  const language = props.languages.find(
-    (option) => `${languageKeyPrefix}${option.value}` === key,
-  )?.value
-
-  if (language) {
-    setCodeBlockLanguageAction.run(props.editor, language)
-  }
+  setCodeBlockLanguageAction.run(editor, option.value === 'plaintext' ? null : option.value)
 }
 </script>
 
 <template>
-  <NDropdown
-    trigger="click"
-    placement="bottom-start"
-    :options="options"
-    :disabled="isDisabled"
-    @select="handleSelect"
-  >
+  <NButtonGroup size="small">
     <NButton
       data-test="rich-text-code-block"
       :data-active="isActive ? 'true' : undefined"
       :disabled="isDisabled"
-      size="small"
       style="--n-padding: 0 6px"
-      :type="isActive ? 'primary' : 'default'"
+      :type="buttonType"
       :secondary="isActive"
       :quaternary="!isActive"
-      :title="triggerLabel"
-      :aria-label="triggerLabel"
+      title="代码块"
+      aria-label="代码块"
       :aria-pressed="isActive"
-      @mousedown.prevent
+      @click="toggleCodeBlock"
     >
       <span class="i-[lucide--square-code]" aria-hidden="true" />
-      <span class="ml-0.5 i-[lucide--chevron-down] text-xs" aria-hidden="true" />
     </NButton>
-  </NDropdown>
+
+    <NDropdown
+      trigger="click"
+      placement="bottom-start"
+      scrollable
+      :options="options"
+      :disabled="isLanguageControlDisabled"
+      @select="setLanguage"
+    >
+      <NButton
+        data-test="rich-text-code-block-language"
+        :disabled="isLanguageControlDisabled"
+        style="--n-padding: 0 4px"
+        :type="buttonType"
+        :secondary="isActive"
+        :quaternary="!isActive"
+        :title="languageButtonLabel"
+        :aria-label="languageButtonLabel"
+        @mousedown.prevent
+      >
+        <span class="i-[lucide--chevron-down] text-xs" aria-hidden="true" />
+      </NButton>
+    </NDropdown>
+  </NButtonGroup>
 </template>

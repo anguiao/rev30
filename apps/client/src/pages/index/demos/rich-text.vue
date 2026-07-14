@@ -157,10 +157,3 @@ async function generatePreview() {
     </section>
   </main>
 </template>
-
-<style scoped>
-.rich-text-demo-rendered :deep(pre code.hljs) {
-  padding: 0;
-  background: transparent;
-}
-</style>

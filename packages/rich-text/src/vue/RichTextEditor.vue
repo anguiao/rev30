@@ -58,6 +58,10 @@ const { editor } = useRichTextEditor({
 </template>
 
 <style scoped>
+:deep(.ProseMirror pre.rich-text-code-block) {
+  background-color: light-dark(#f5f5f4, #09090b);
+}
+
 :deep(.ProseMirror) {
   --rich-text-selection-color: color-mix(in srgb, var(--app-primary-color) 24%, transparent);
 }

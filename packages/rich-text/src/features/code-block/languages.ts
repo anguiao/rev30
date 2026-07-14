@@ -1,51 +1,19 @@
-export const codeBlockLanguageOptions = [
-  { value: 'plaintext', label: '纯文本' },
-  { value: 'typescript', label: 'TypeScript' },
-  { value: 'javascript', label: 'JavaScript' },
-  { value: 'json', label: 'JSON' },
-  { value: 'html', label: 'HTML' },
-  { value: 'css', label: 'CSS' },
-  { value: 'bash', label: 'Bash' },
-  { value: 'sql', label: 'SQL' },
-  { value: 'markdown', label: 'Markdown' },
-  { value: 'yaml', label: 'YAML' },
-] as const
-
-export type CodeBlockLanguageOption = (typeof codeBlockLanguageOptions)[number]
-export type CodeBlockLanguage = CodeBlockLanguageOption['value']
-
-export const codeBlockLanguageAliases: Readonly<Record<string, CodeBlockLanguage>> = Object.freeze({
-  text: 'plaintext',
-  txt: 'plaintext',
-  ts: 'typescript',
-  js: 'javascript',
-  xml: 'html',
-  sh: 'bash',
-  shell: 'bash',
-  md: 'markdown',
-  yml: 'yaml',
-})
-
 interface CodeBlockHtmlElement {
   readonly firstElementChild: {
     readonly classList: Iterable<string>
   } | null
 }
 
-const codeBlockLanguageSet = new Set<string>(codeBlockLanguageOptions.map((option) => option.value))
+const codeBlockLanguagePattern = /^[a-z0-9][a-z0-9+#._-]*$/
 
-export function normalizeCodeBlockLanguage(value: unknown): CodeBlockLanguage | null {
+export function normalizeCodeBlockLanguage(value: unknown): string | null {
   if (typeof value !== 'string') {
     return null
   }
 
   const normalized = value.trim().toLowerCase()
 
-  if (codeBlockLanguageSet.has(normalized)) {
-    return normalized as CodeBlockLanguage
-  }
-
-  return codeBlockLanguageAliases[normalized] ?? null
+  return codeBlockLanguagePattern.test(normalized) ? normalized : null
 }
 
 export function createCodeBlockLanguageAttribute() {

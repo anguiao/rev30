@@ -204,6 +204,33 @@ describe('RichTextEditor', () => {
     })
   })
 
+  it('updates undo and redo button availability with editor history', async () => {
+    const wrapper = mountRichTextEditor({
+      modelValue: contentJson,
+      preset: allEditorPreset,
+    })
+
+    const editable = await getEditable(wrapper)
+    const undoButton = wrapper.get('[data-test="rich-text-undo"]')
+    const redoButton = wrapper.get('[data-test="rich-text-redo"]')
+
+    expect(undoButton.attributes('disabled')).toBeDefined()
+    expect(redoButton.attributes('disabled')).toBeDefined()
+
+    editable.element.innerHTML = '<p>新的通知</p>'
+    await editable.trigger('input')
+
+    await vi.waitFor(() => {
+      expect(undoButton.attributes('disabled')).toBeUndefined()
+    })
+
+    await undoButton.trigger('click')
+
+    await vi.waitFor(() => {
+      expect(redoButton.attributes('disabled')).toBeUndefined()
+    })
+  })
+
   it('creates, configures, and exits code blocks with a split button', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: {

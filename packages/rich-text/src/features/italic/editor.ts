@@ -8,6 +8,4 @@ export const italicAction = defineRichTextAction(italicFeature, {
   isActive: (editor) => editor.isActive('italic'),
 })
 
-export const italicEditorFeature = defineRichTextEditorFeature(italicFeature, {
-  actions: [italicAction],
-})
+export const italicEditorFeature = defineRichTextEditorFeature(italicFeature, {})

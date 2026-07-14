@@ -17,31 +17,18 @@ export interface RichTextEditorPreset<
 
 function validateToolbarControl(
   preset: RichTextPreset,
-  editorFeatureByFeature: ReadonlyMap<RichTextEditorFeature['feature'], RichTextEditorFeature>,
+  editorFeatures: readonly RichTextEditorFeature[],
   control: RichTextToolbarControlConfig,
 ) {
   const feature = getRichTextToolbarControlFeature(control)
-  const editorFeature = editorFeatureByFeature.get(feature)
 
-  if (!editorFeature || !preset.features.includes(feature)) {
+  if (
+    !preset.features.includes(feature) ||
+    !editorFeatures.some((editorFeature) => editorFeature.feature === feature)
+  ) {
     throw new Error(
       `Rich text preset "${preset.key}" has a toolbar control for unknown feature "${feature.key}"`,
     )
-  }
-
-  const actions =
-    control.type === 'button'
-      ? [control.item.action]
-      : control.type === 'dropdown'
-        ? control.items.map((item) => item.action)
-        : []
-
-  for (const action of actions) {
-    if (!editorFeature.actions.includes(action)) {
-      throw new Error(
-        `Rich text toolbar action "${action.key}" is not registered by feature "${feature.key}"`,
-      )
-    }
   }
 }
 
@@ -60,13 +47,9 @@ export function defineRichTextEditorPreset<
   validateRichTextFeatureImplementations(preset, 'editor', editorFeatures)
 
   if (options.toolbar) {
-    const editorFeatureByFeature = new Map(
-      editorFeatures.map((editorFeature) => [editorFeature.feature, editorFeature]),
-    )
-
     for (const group of options.toolbar.groups) {
       for (const control of group.controls) {
-        validateToolbarControl(preset, editorFeatureByFeature, control)
+        validateToolbarControl(preset, editorFeatures, control)
       }
     }
   }

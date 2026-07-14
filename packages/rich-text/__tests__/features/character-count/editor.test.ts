@@ -25,10 +25,9 @@ describe('character count editor feature', () => {
     expect(countRichTextGraphemes(text)).toBe(count)
   })
 
-  it('provides the configured character count extension without actions', () => {
+  it('provides the configured character count extension', () => {
     const extensions = characterCountEditorFeature.extensions!()
 
-    expect(characterCountEditorFeature.actions).toEqual([])
     expect(extensions.map((extension) => extension.name)).toEqual(['characterCount'])
     expect(extensions[0]?.options).toMatchObject({
       limit: null,

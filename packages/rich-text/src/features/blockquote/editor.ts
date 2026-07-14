@@ -8,6 +8,4 @@ export const blockquoteAction = defineRichTextAction(blockquoteFeature, {
   isActive: (editor) => editor.isActive('blockquote'),
 })
 
-export const blockquoteEditorFeature = defineRichTextEditorFeature(blockquoteFeature, {
-  actions: [blockquoteAction],
-})
+export const blockquoteEditorFeature = defineRichTextEditorFeature(blockquoteFeature, {})

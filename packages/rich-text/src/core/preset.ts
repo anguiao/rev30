@@ -1,4 +1,3 @@
-import type { AnyExtension } from '@tiptap/core'
 import type { RichTextFeature } from './feature'
 
 export interface RichTextPreset<
@@ -11,7 +10,6 @@ export interface RichTextPreset<
 
 function validateRichTextPreset(preset: RichTextPreset) {
   const featureKeys = new Set<string>()
-  const features = new Set(preset.features)
 
   for (const feature of preset.features) {
     if (featureKeys.has(feature.key)) {
@@ -19,40 +17,6 @@ function validateRichTextPreset(preset: RichTextPreset) {
     }
 
     featureKeys.add(feature.key)
-
-    for (const dependency of feature.dependencies) {
-      if (!features.has(dependency)) {
-        throw new Error(
-          `Rich text preset "${preset.key}" is missing dependency "${dependency.key}" for feature "${feature.key}"`,
-        )
-      }
-    }
-  }
-
-  const visiting = new Set<RichTextFeature>()
-  const visited = new Set<RichTextFeature>()
-
-  function visit(feature: RichTextFeature) {
-    if (visiting.has(feature)) {
-      throw new Error(
-        `Rich text preset "${preset.key}" has a dependency cycle at feature "${feature.key}"`,
-      )
-    }
-
-    if (visited.has(feature)) {
-      return
-    }
-
-    visiting.add(feature)
-    for (const dependency of feature.dependencies) {
-      visit(dependency)
-    }
-    visiting.delete(feature)
-    visited.add(feature)
-  }
-
-  for (const feature of preset.features) {
-    visit(feature)
   }
 }
 
@@ -67,8 +31,4 @@ export function defineRichTextPreset<
     ...preset,
     features,
   })
-}
-
-export function collectRichTextDocumentExtensions(preset: RichTextPreset): AnyExtension[] {
-  return preset.features.flatMap((feature) => feature.documentExtensions?.() ?? [])
 }

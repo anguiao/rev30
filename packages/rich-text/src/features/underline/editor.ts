@@ -8,6 +8,4 @@ export const underlineAction = defineRichTextAction(underlineFeature, {
   isActive: (editor) => editor.isActive('underline'),
 })
 
-export const underlineEditorFeature = defineRichTextEditorFeature(underlineFeature, {
-  actions: [underlineAction],
-})
+export const underlineEditorFeature = defineRichTextEditorFeature(underlineFeature, {})

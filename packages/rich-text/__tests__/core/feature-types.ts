@@ -1,5 +1,5 @@
 import { expectTypeOf } from 'vitest'
-import { defineRichTextFeature, type RichTextFeature } from '../../src/core/feature'
+import { defineRichTextFeature } from '../../src/core/feature'
 import { defineRichTextPreset } from '../../src/core/preset'
 import { defineRichTextAction } from '../../src/editor/action'
 import { defineRichTextEditorFeature } from '../../src/editor/feature'
@@ -28,44 +28,29 @@ const baseFeature = defineRichTextFeature({
   serverImplementation: true,
 })
 
-const dependencies = [baseFeature]
 const dependentFeature = defineRichTextFeature({
   key: 'dependent',
   editorImplementation: true,
   serverImplementation: false,
-  dependencies,
 })
 
 expectTypeOf(dependentFeature.key).toEqualTypeOf<'dependent'>()
-expectTypeOf(dependentFeature.dependencies).toEqualTypeOf<readonly RichTextFeature[]>()
-
-// @ts-expect-error Defined feature dependencies are immutable.
-dependentFeature.dependencies.push(baseFeature)
 
 const action = defineRichTextAction(dependentFeature, {
   key: 'toggle-dependent',
   run: () => true,
 })
-const actions = [action]
-const editorFeature = defineRichTextEditorFeature(dependentFeature, { actions })
-const otherFeature = defineRichTextFeature({
-  key: 'other',
-  editorImplementation: true,
-  serverImplementation: false,
+const actionWithArgument = defineRichTextAction(dependentFeature, {
+  key: 'set-dependent',
+  run: (_editor, value: string) => value.length > 0,
+  canRun: (_editor, value: string) => value.length > 0,
 })
-const otherAction = defineRichTextAction(otherFeature, {
-  key: 'toggle-other',
-  run: () => true,
-})
+const editorFeature = defineRichTextEditorFeature(dependentFeature, {})
 
 expectTypeOf(action.feature).toEqualTypeOf<typeof dependentFeature>()
 expectTypeOf(action.key).toEqualTypeOf<'toggle-dependent'>()
-
-// @ts-expect-error Defined editor feature actions are immutable.
-editorFeature.actions.push(action)
-
-// @ts-expect-error An action cannot be registered by a feature with another key.
-defineRichTextEditorFeature(dependentFeature, { actions: [otherAction] })
+expectTypeOf(actionWithArgument.run).parameter(1).toEqualTypeOf<string>()
+expectTypeOf(editorFeature.feature).toEqualTypeOf<typeof dependentFeature>()
 
 const mutableFeatures = [baseFeature, dependentFeature]
 const preset = defineRichTextPreset({

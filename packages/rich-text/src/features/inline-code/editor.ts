@@ -9,6 +9,4 @@ export const inlineCodeAction = defineRichTextAction(inlineCodeFeature, {
   canRun: (editor) => editor.can().chain().focus().toggleCode().run(),
 })
 
-export const inlineCodeEditorFeature = defineRichTextEditorFeature(inlineCodeFeature, {
-  actions: [inlineCodeAction],
-})
+export const inlineCodeEditorFeature = defineRichTextEditorFeature(inlineCodeFeature, {})

@@ -8,6 +8,4 @@ export const strikeAction = defineRichTextAction(strikeFeature, {
   isActive: (editor) => editor.isActive('strike'),
 })
 
-export const strikeEditorFeature = defineRichTextEditorFeature(strikeFeature, {
-  actions: [strikeAction],
-})
+export const strikeEditorFeature = defineRichTextEditorFeature(strikeFeature, {})

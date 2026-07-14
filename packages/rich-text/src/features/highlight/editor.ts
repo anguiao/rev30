@@ -13,6 +13,4 @@ export const unsetHighlightAction = defineRichTextAction(highlightFeature, {
   run: (editor) => editor.commands.unsetHighlight(),
 })
 
-export const highlightEditorFeature = defineRichTextEditorFeature(highlightFeature, {
-  actions: [setHighlightAction, unsetHighlightAction],
-})
+export const highlightEditorFeature = defineRichTextEditorFeature(highlightFeature, {})

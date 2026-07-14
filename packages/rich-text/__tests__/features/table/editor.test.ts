@@ -60,22 +60,6 @@ function createTableDocument(rowCount: number, columnCount: number) {
 }
 
 describe('table editor feature', () => {
-  it('exposes the eleven direct table actions', () => {
-    expect(tableEditorFeature.actions).toEqual([
-      insertTableAction,
-      addTableRowBeforeAction,
-      addTableRowAfterAction,
-      deleteTableRowAction,
-      addTableColumnBeforeAction,
-      addTableColumnAfterAction,
-      deleteTableColumnAction,
-      deleteTableAction,
-      mergeTableCellsAction,
-      splitTableCellAction,
-      toggleTableHeaderRowAction,
-    ])
-  })
-
   it('inserts a table and applies row, column, header, and delete actions', () => {
     const editor = createEditor()
     const options = { rows: 2, cols: 2, withHeaderRow: true } as const

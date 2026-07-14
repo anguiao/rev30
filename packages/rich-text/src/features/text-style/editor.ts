@@ -58,15 +58,4 @@ export const unsetLineHeightAction = defineRichTextAction(textStyleFeature, {
   canRun: (editor) => editor.can().chain().focus().unsetLineHeight().run(),
 })
 
-export const textStyleEditorFeature = defineRichTextEditorFeature(textStyleFeature, {
-  actions: [
-    setTextColorAction,
-    unsetTextColorAction,
-    setFontFamilyAction,
-    unsetFontFamilyAction,
-    setFontSizeAction,
-    unsetFontSizeAction,
-    setLineHeightAction,
-    unsetLineHeightAction,
-  ],
-})
+export const textStyleEditorFeature = defineRichTextEditorFeature(textStyleFeature, {})

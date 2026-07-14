@@ -7,7 +7,6 @@ import {
   setFontSizeAction,
   setLineHeightAction,
   setTextColorAction,
-  textStyleEditorFeature,
   unsetFontFamilyAction,
   unsetFontSizeAction,
   unsetLineHeightAction,
@@ -31,19 +30,6 @@ function selectText(editor: ReturnType<typeof createEditor>) {
 }
 
 describe('text style editor feature', () => {
-  it('exposes the eight direct actions', () => {
-    expect(textStyleEditorFeature.actions).toEqual([
-      setTextColorAction,
-      unsetTextColorAction,
-      setFontFamilyAction,
-      unsetFontFamilyAction,
-      setFontSizeAction,
-      unsetFontSizeAction,
-      setLineHeightAction,
-      unsetLineHeightAction,
-    ])
-  })
-
   it('combines and removes the four styles on one span', () => {
     const editor = createEditor()
     selectText(editor)

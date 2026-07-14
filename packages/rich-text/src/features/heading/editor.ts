@@ -20,6 +20,4 @@ export const headingActions = [
   }),
 ] as const
 
-export const headingEditorFeature = defineRichTextEditorFeature(headingFeature, {
-  actions: headingActions,
-})
+export const headingEditorFeature = defineRichTextEditorFeature(headingFeature, {})

@@ -3,9 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   defineRichTextFeature,
   validateRichTextFeatureImplementations,
-  type RichTextFeature,
 } from '../../src/core/feature'
-import { collectRichTextDocumentExtensions, defineRichTextPreset } from '../../src/core/preset'
+import { defineRichTextPreset } from '../../src/core/preset'
 import { defineRichTextAction } from '../../src/editor/action'
 import {
   collectRichTextEditorExtensions,
@@ -43,56 +42,6 @@ describe('rich text feature model', () => {
         features: [firstFeature, secondFeature],
       }),
     ).toThrow('Rich text preset "duplicate-test" has a duplicate feature: "duplicate"')
-  })
-
-  it('rejects missing feature dependencies', () => {
-    const dependencyFeature = defineRichTextFeature({
-      key: 'dependency',
-      editorImplementation: false,
-      serverImplementation: false,
-    })
-    const dependentFeature = defineRichTextFeature({
-      key: 'dependent',
-      editorImplementation: false,
-      serverImplementation: false,
-      dependencies: [dependencyFeature],
-    })
-
-    expect(() =>
-      defineRichTextPreset({
-        key: 'dependency-test',
-        features: [dependentFeature],
-      }),
-    ).toThrow(
-      'Rich text preset "dependency-test" is missing dependency "dependency" for feature "dependent"',
-    )
-  })
-
-  it('rejects dependency cycles', () => {
-    const firstDependencies: RichTextFeature[] = []
-    const secondDependencies: RichTextFeature[] = []
-    const firstFeature: RichTextFeature<'first'> = {
-      key: 'first',
-      editorImplementation: false,
-      serverImplementation: false,
-      dependencies: firstDependencies,
-    }
-    const secondFeature: RichTextFeature<'second'> = {
-      key: 'second',
-      editorImplementation: false,
-      serverImplementation: false,
-      dependencies: secondDependencies,
-    }
-
-    firstDependencies.push(secondFeature)
-    secondDependencies.push(firstFeature)
-
-    expect(() =>
-      defineRichTextPreset({
-        key: 'cycle-test',
-        features: [firstFeature, secondFeature],
-      }),
-    ).toThrow('Rich text preset "cycle-test" has a dependency cycle at feature "first"')
   })
 
   it('requires exactly one implementation for each declared runtime implementation', () => {
@@ -192,46 +141,7 @@ describe('rich text feature model', () => {
     )
   })
 
-  it('rejects actions bound to another feature or using a duplicate key', () => {
-    const firstFeature = defineRichTextFeature({
-      key: 'first-action-feature',
-      editorImplementation: true,
-      serverImplementation: false,
-    })
-    const secondFeature = defineRichTextFeature({
-      key: 'second-action-feature',
-      editorImplementation: true,
-      serverImplementation: false,
-    })
-    const firstAction = defineRichTextAction(firstFeature, {
-      key: 'toggle',
-      run: () => true,
-    })
-    const duplicateAction = defineRichTextAction(firstFeature, {
-      key: 'toggle',
-      run: () => true,
-    })
-    const foreignAction = defineRichTextAction(secondFeature, {
-      key: 'foreign',
-      run: () => true,
-    })
-
-    expect(() =>
-      defineRichTextEditorFeature(firstFeature, {
-        actions: [
-          // @ts-expect-error Deliberately verifies the runtime guard against foreign actions.
-          foreignAction,
-        ],
-      }),
-    ).toThrow('Rich text action "foreign" does not belong to feature "first-action-feature"')
-    expect(() =>
-      defineRichTextEditorFeature(firstFeature, {
-        actions: [firstAction, duplicateAction],
-      }),
-    ).toThrow('Rich text feature "first-action-feature" has a duplicate action: "toggle"')
-  })
-
-  it('validates toolbar feature and action registration', () => {
+  it('rejects toolbar controls for foreign features', () => {
     const feature = defineRichTextFeature({
       key: 'toolbar-feature',
       editorImplementation: true,
@@ -242,43 +152,12 @@ describe('rich text feature model', () => {
       editorImplementation: true,
       serverImplementation: false,
     })
-    const registeredAction = defineRichTextAction(feature, {
-      key: 'registered',
-      run: () => true,
-    })
-    const unregisteredAction = defineRichTextAction(feature, {
-      key: 'unregistered',
-      run: () => true,
-    })
     const otherAction = defineRichTextAction(otherFeature, {
       key: 'other',
       run: () => true,
     })
     const preset = defineRichTextPreset({ key: 'toolbar-test', features: [feature] })
-    const editorFeature = defineRichTextEditorFeature(feature, {
-      actions: [registeredAction],
-    })
-
-    expect(() =>
-      defineRichTextEditorPreset(preset, {
-        editorFeatures: [editorFeature],
-        toolbar: defineRichTextToolbar([
-          {
-            key: 'test',
-            controls: [
-              richTextToolbarButton(
-                defineRichTextToolbarItem(unregisteredAction, {
-                  label: '未注册',
-                  icon: 'i-[lucide--circle]',
-                }),
-              ),
-            ],
-          },
-        ]),
-      }),
-    ).toThrow(
-      'Rich text toolbar action "unregistered" is not registered by feature "toolbar-feature"',
-    )
+    const editorFeature = defineRichTextEditorFeature(feature, {})
 
     expect(() =>
       defineRichTextEditorPreset(preset, {
@@ -377,10 +256,6 @@ describe('rich text feature model', () => {
       secondServerFeature,
     ])
 
-    expect(collectRichTextDocumentExtensions(preset).map((extension) => extension.name)).toEqual([
-      'first-document',
-      'second-document',
-    ])
     expect(
       collectRichTextEditorExtensions(editorPreset).map((extension) => extension.name),
     ).toEqual(['first-document', 'first-editor', 'second-document'])
@@ -421,12 +296,10 @@ describe('rich text feature model', () => {
   })
 
   it('returns frozen copies for mutable definition arrays', () => {
-    const dependencies: RichTextFeature[] = []
     const feature = defineRichTextFeature({
       key: 'frozen',
       editorImplementation: false,
       serverImplementation: false,
-      dependencies,
     })
     const features = [feature]
     const preset = defineRichTextPreset({
@@ -434,13 +307,10 @@ describe('rich text feature model', () => {
       features,
     })
 
-    expect(feature.dependencies).not.toBe(dependencies)
     expect(preset.features).not.toBe(features)
     expect(Object.isFrozen(feature)).toBe(true)
-    expect(Object.isFrozen(feature.dependencies)).toBe(true)
     expect(Object.isFrozen(preset)).toBe(true)
     expect(Object.isFrozen(preset.features)).toBe(true)
-    expect(Object.isFrozen(dependencies)).toBe(false)
     expect(Object.isFrozen(features)).toBe(false)
   })
 })

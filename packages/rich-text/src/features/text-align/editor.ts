@@ -33,6 +33,4 @@ export const textAlignActions = [
   }),
 ] as const
 
-export const textAlignEditorFeature = defineRichTextEditorFeature(textAlignFeature, {
-  actions: textAlignActions,
-})
+export const textAlignEditorFeature = defineRichTextEditorFeature(textAlignFeature, {})

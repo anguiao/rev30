@@ -5,7 +5,6 @@ import { FontSize } from '@tiptap/extension-text-style/font-size'
 import { LineHeight } from '@tiptap/extension-text-style/line-height'
 import { TextStyle } from '@tiptap/extension-text-style/text-style'
 import { defineRichTextFeature } from '../../core/feature'
-import { baseFeature } from '../base/shared'
 import { fontFamilies, fontSizes, lineHeights, textColors } from './options'
 
 type TextStyleElement = Parameters<typeof getStyleProperty>[0]
@@ -168,7 +167,6 @@ export const textStyleFeature = defineRichTextFeature({
   key: 'text-style',
   editorImplementation: true,
   serverImplementation: true,
-  dependencies: [baseFeature],
   documentExtensions: () => [
     RichTextTextStyle,
     RichTextColor,

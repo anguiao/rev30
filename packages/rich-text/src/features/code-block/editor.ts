@@ -37,6 +37,5 @@ export const setCodeBlockLanguageAction = defineRichTextAction(codeBlockFeature,
 })
 
 export const codeBlockEditorFeature = defineRichTextEditorFeature(codeBlockFeature, {
-  actions: [codeBlockAction, setCodeBlockLanguageAction],
   extensions: () => [RichTextCodeBlockLowlight],
 })

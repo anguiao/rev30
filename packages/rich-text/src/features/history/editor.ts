@@ -15,6 +15,5 @@ export const historyActions = [
 ] as const
 
 export const historyEditorFeature = defineRichTextEditorFeature(historyFeature, {
-  actions: historyActions,
   extensions: () => [UndoRedo],
 })

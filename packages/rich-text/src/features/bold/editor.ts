@@ -8,6 +8,4 @@ export const boldAction = defineRichTextAction(boldFeature, {
   isActive: (editor) => editor.isActive('bold'),
 })
 
-export const boldEditorFeature = defineRichTextEditorFeature(boldFeature, {
-  actions: [boldAction],
-})
+export const boldEditorFeature = defineRichTextEditorFeature(boldFeature, {})

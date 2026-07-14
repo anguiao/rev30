@@ -3,7 +3,6 @@ import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { describe, expect, it } from 'vitest'
-import { baseFeature } from '../../../src/features/base/shared'
 import { tableEditorFeature } from '../../../src/features/table/editor'
 import { tableFeature } from '../../../src/features/table/shared'
 import { createTestEditor } from '../../helpers/editor'
@@ -23,7 +22,6 @@ describe('table feature', () => {
       key: 'table',
       editorImplementation: true,
       serverImplementation: true,
-      dependencies: [baseFeature],
     })
     expect(tableFeature.documentExtensions).toBeUndefined()
     expect(tableEditorFeature.extensions!().map((extension) => extension.name)).toEqual([

@@ -1,7 +1,6 @@
 import type { Attributes } from '@tiptap/core'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { defineRichTextFeature } from '../../core/feature'
-import { baseFeature } from '../base/shared'
 
 export type RichTextTableInsertDimension = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
 
@@ -116,5 +115,4 @@ export const tableFeature = defineRichTextFeature({
   key: 'table',
   editorImplementation: true,
   serverImplementation: true,
-  dependencies: [baseFeature],
 })

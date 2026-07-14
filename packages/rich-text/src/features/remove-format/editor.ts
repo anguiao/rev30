@@ -7,6 +7,4 @@ export const removeFormatAction = defineRichTextAction(removeFormatFeature, {
   run: (editor) => editor.chain().focus().unsetAllMarks().run(),
 })
 
-export const removeFormatEditorFeature = defineRichTextEditorFeature(removeFormatFeature, {
-  actions: [removeFormatAction],
-})
+export const removeFormatEditorFeature = defineRichTextEditorFeature(removeFormatFeature, {})

@@ -14,6 +14,4 @@ export const updateImageAction = defineRichTextAction(imageFeature, {
     editor.chain().focus().updateAttributes('image', attrs).run(),
 })
 
-export const imageEditorFeature = defineRichTextEditorFeature(imageFeature, {
-  actions: [insertImageAction, updateImageAction],
-})
+export const imageEditorFeature = defineRichTextEditorFeature(imageFeature, {})

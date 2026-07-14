@@ -7,6 +7,4 @@ export const horizontalRuleAction = defineRichTextAction(horizontalRuleFeature, 
   run: (editor) => editor.chain().focus().setHorizontalRule().run(),
 })
 
-export const horizontalRuleEditorFeature = defineRichTextEditorFeature(horizontalRuleFeature, {
-  actions: [horizontalRuleAction],
-})
+export const horizontalRuleEditorFeature = defineRichTextEditorFeature(horizontalRuleFeature, {})

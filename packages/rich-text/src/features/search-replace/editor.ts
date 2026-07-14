@@ -467,16 +467,5 @@ export const clearSearchReplaceAction = defineRichTextAction(searchReplaceFeatur
 })
 
 export const searchReplaceEditorFeature = defineRichTextEditorFeature(searchReplaceFeature, {
-  actions: [
-    openSearchReplaceAction,
-    closeSearchReplaceAction,
-    setSearchReplaceQueryAction,
-    setSearchReplaceCaseSensitiveAction,
-    goToNextSearchMatchAction,
-    goToPreviousSearchMatchAction,
-    replaceCurrentSearchMatchAction,
-    replaceAllSearchMatchesAction,
-    clearSearchReplaceAction,
-  ],
   extensions: () => [SearchReplace],
 })

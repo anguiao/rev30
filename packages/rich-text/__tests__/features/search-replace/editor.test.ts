@@ -73,18 +73,7 @@ function dispatchModF(editor: ReturnType<typeof createEditor>) {
 }
 
 describe('search replace editor feature', () => {
-  it('exposes the direct surface-neutral actions and extension', () => {
-    expect(searchReplaceEditorFeature.actions).toEqual([
-      openSearchReplaceAction,
-      closeSearchReplaceAction,
-      setSearchReplaceQueryAction,
-      setSearchReplaceCaseSensitiveAction,
-      goToNextSearchMatchAction,
-      goToPreviousSearchMatchAction,
-      replaceCurrentSearchMatchAction,
-      replaceAllSearchMatchesAction,
-      clearSearchReplaceAction,
-    ])
+  it('provides the search-replace extension', () => {
     expect(searchReplaceEditorFeature.extensions!().map((extension) => extension.name)).toEqual([
       'searchReplace',
     ])

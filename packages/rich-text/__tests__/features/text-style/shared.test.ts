@@ -10,7 +10,6 @@ import {
   textColors,
 } from '../../../src/features/text-style/options'
 import { textStyleFeature } from '../../../src/features/text-style/shared'
-import { baseFeature } from '../../../src/features/base/shared'
 import { createTestEditor } from '../../helpers/editor'
 
 const extensions = [Document, Paragraph, Text, ...textStyleFeature.documentExtensions!()]
@@ -29,7 +28,6 @@ describe('text style feature', () => {
       key: 'text-style',
       editorImplementation: true,
       serverImplementation: true,
-      dependencies: [baseFeature],
     })
     expect(textStyleFeature.documentExtensions!().map((extension) => extension.name)).toEqual([
       'textStyle',

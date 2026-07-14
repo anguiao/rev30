@@ -159,18 +159,5 @@ export const toggleTableHeaderRowAction = defineRichTextAction(tableFeature, {
 })
 
 export const tableEditorFeature = defineRichTextEditorFeature(tableFeature, {
-  actions: [
-    insertTableAction,
-    addTableRowBeforeAction,
-    addTableRowAfterAction,
-    deleteTableRowAction,
-    addTableColumnBeforeAction,
-    addTableColumnAfterAction,
-    deleteTableColumnAction,
-    deleteTableAction,
-    mergeTableCellsAction,
-    splitTableCellAction,
-    toggleTableHeaderRowAction,
-  ],
   extensions: () => [RichTextTable, RichTextTableCell, RichTextTableHeader, TableRow],
 })

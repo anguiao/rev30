@@ -6,7 +6,6 @@ export interface RichTextFeature<Key extends string = string> {
   readonly key: Key
   readonly editorImplementation: boolean
   readonly serverImplementation: boolean
-  readonly dependencies: readonly RichTextFeature[]
   readonly documentExtensions?: () => readonly AnyExtension[]
 }
 
@@ -15,16 +14,9 @@ export interface RichTextFeatureImplementation {
 }
 
 export function defineRichTextFeature<const Key extends string>(
-  feature: Omit<RichTextFeature<Key>, 'dependencies'> & {
-    readonly dependencies?: readonly RichTextFeature[]
-  },
+  feature: RichTextFeature<Key>,
 ): RichTextFeature<Key> {
-  const dependencies = Object.freeze([...(feature.dependencies ?? [])])
-
-  return Object.freeze({
-    ...feature,
-    dependencies,
-  })
+  return Object.freeze({ ...feature })
 }
 
 export function validateRichTextFeatureImplementations(

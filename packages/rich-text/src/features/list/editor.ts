@@ -15,6 +15,4 @@ export const listActions = [
   }),
 ] as const
 
-export const listEditorFeature = defineRichTextEditorFeature(listFeature, {
-  actions: listActions,
-})
+export const listEditorFeature = defineRichTextEditorFeature(listFeature, {})

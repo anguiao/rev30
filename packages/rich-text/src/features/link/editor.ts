@@ -21,6 +21,4 @@ export const unsetLinkAction = defineRichTextAction(linkFeature, {
   run: (editor) => editor.chain().focus().extendMarkRange('link').unsetLink().run(),
 })
 
-export const linkEditorFeature = defineRichTextEditorFeature(linkFeature, {
-  actions: [setLinkAction, unsetLinkAction],
-})
+export const linkEditorFeature = defineRichTextEditorFeature(linkFeature, {})

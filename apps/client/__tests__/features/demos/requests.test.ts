@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { RichTextDemoPreviewResponse } from '@rev30/contracts'
-import { previewRichTextDemo } from '../../../src/features/demos'
+import { generateRichTextPreview } from '../../../src/features/demos'
 import { useAuthStore } from '../../../src/stores/auth'
 import { createFetchMock, expectFetchCall, expectJsonBody, jsonResponse } from '../../helpers/fetch'
 import { createTestPinia } from '../../helpers/pinia'
@@ -23,7 +23,7 @@ describe('demo request helpers', () => {
     const fetchMock = createFetchMock(jsonResponse(previewResponse))
     useAuthStore().accessToken = 'access-token'
 
-    const result = await previewRichTextDemo({ contentJson: previewResponse.contentJson })
+    const result = await generateRichTextPreview({ contentJson: previewResponse.contentJson })
 
     expect(result).toEqual(previewResponse)
     expectFetchCall(fetchMock, 0, {

@@ -6,7 +6,7 @@ import {
 import { api } from '../../api'
 import { parseApiResponse } from '../../utils/request'
 
-export async function previewRichTextDemo(
+export async function generateRichTextPreview(
   input: RichTextDemoPreviewInput,
 ): Promise<RichTextDemoPreviewResponse> {
   return parseApiResponse(

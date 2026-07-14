@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useMutation } from '@pinia/colada'
 import { NAlert, NButton, NEmpty, NTabPane, NTabs } from 'naive-ui'
-import type { RichTextDemoPreviewResponse, TiptapDocument } from '@rev30/contracts'
-import { hasRichTextContent } from '@rev30/rich-text/schema'
+import { hasRichTextContent, type RichTextDocument } from '@rev30/rich-text/schema'
 import { RichTextEditor } from '@rev30/rich-text/vue'
 import { createAllRichTextEditorPreset } from '@rev30/rich-text/vue/presets/all'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import {
   createRichTextDemoImageDataUrl,
-  previewRichTextDemo,
+  generateRichTextPreview,
   useRichTextCodeHighlight,
 } from '../../../features/demos'
 import { getErrorMessage } from '../../../utils/error'
 
-function createEmptyDocument(): TiptapDocument {
+function createEmptyDocument(): RichTextDocument {
   return {
     type: 'doc',
     content: [{ type: 'paragraph' }],
@@ -22,7 +22,9 @@ function createEmptyDocument(): TiptapDocument {
 
 const pageTitle = useAdminPageTitle('富文本')
 
-const contentJson = ref<TiptapDocument>(createEmptyDocument())
+const contentJson = ref<RichTextDocument>(createEmptyDocument())
+
+const imageError = ref<string | null>(null)
 
 const editorPreset = createAllRichTextEditorPreset({
   image: {
@@ -30,49 +32,53 @@ const editorPreset = createAllRichTextEditorPreset({
       return { src: await createRichTextDemoImageDataUrl(file) }
     },
     onError(error) {
-      previewError.value = getErrorMessage(error, '处理图片失败')
+      imageError.value = getErrorMessage(error, '处理图片失败')
     },
   },
 })
 
-function updateContentJson(value: TiptapDocument) {
+const {
+  data: previewData,
+  error: previewMutationError,
+  isLoading: isPreviewing,
+  ...previewMutation
+} = useMutation({
+  mutation: generateRichTextPreview,
+})
+watch(previewData, (result) => {
+  if (result) {
+    void highlightCode()
+  }
+})
+
+const previewError = computed(
+  () =>
+    imageError.value ??
+    (previewMutationError.value
+      ? getErrorMessage(previewMutationError.value, '生成服务端预览失败')
+      : null),
+)
+
+const previewContainer = ref<HTMLElement | null>(null)
+const { highlightCode } = useRichTextCodeHighlight(previewContainer)
+
+const formattedContentJson = computed(() =>
+  previewData.value ? JSON.stringify(previewData.value.contentJson, null, 2) : '',
+)
+
+function updateContentJson(value: RichTextDocument) {
   contentJson.value = value
-  previewResult.value = null
-  previewError.value = null
+  imageError.value = null
+  previewMutation.reset()
 }
 
 function clearContent() {
   updateContentJson(createEmptyDocument())
 }
 
-const previewResult = ref<RichTextDemoPreviewResponse | null>(null)
-const previewError = ref<string | null>(null)
-const isPreviewing = ref(false)
-const previewContainer = ref<HTMLElement | null>(null)
-const { highlightCode } = useRichTextCodeHighlight(previewContainer)
-
-const canPreview = computed(() => !isPreviewing.value && hasRichTextContent(contentJson.value))
-const formattedContentJson = computed(() =>
-  previewResult.value === null ? '' : JSON.stringify(previewResult.value.contentJson, null, 2),
-)
-
-async function generatePreview() {
-  if (!canPreview.value) {
-    return
-  }
-
-  isPreviewing.value = true
-  previewError.value = null
-
-  try {
-    previewResult.value = await previewRichTextDemo({ contentJson: contentJson.value })
-    await highlightCode()
-  } catch (error) {
-    previewResult.value = null
-    previewError.value = getErrorMessage(error, '生成服务端预览失败')
-  } finally {
-    isPreviewing.value = false
-  }
+function generatePreview() {
+  imageError.value = null
+  previewMutation.mutate({ contentJson: contentJson.value })
 }
 </script>
 
@@ -88,72 +94,69 @@ async function generatePreview() {
     </NAlert>
 
     <section
-      class="space-y-4 rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+      class="grid min-h-0 gap-5 xl:h-[calc(100vh-12rem)] xl:grid-cols-[minmax(0,3fr)_minmax(22rem,2fr)]"
     >
-      <RichTextEditor
-        :model-value="contentJson"
-        :preset="editorPreset"
-        :min-height="320"
-        @update:model-value="updateContentJson"
-      />
-
-      <div class="flex flex-wrap justify-end gap-2">
-        <NButton data-test="rich-text-demo-clear" :disabled="isPreviewing" @click="clearContent">
-          清空
-        </NButton>
-        <NButton
-          v-can="'demo:rich-text:preview'"
-          data-test="rich-text-demo-preview"
-          type="primary"
-          :loading="isPreviewing"
-          :disabled="!canPreview"
-          @click="generatePreview"
-        >
-          服务端预览
-        </NButton>
-      </div>
-    </section>
-
-    <section class="grid gap-5 xl:grid-cols-2">
-      <div
-        class="min-h-72 rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-      >
-        <h2 class="mb-4 font-medium">渲染结果</h2>
-        <div
-          v-if="previewResult"
-          ref="previewContainer"
-          data-test="rich-text-demo-rendered"
-          class="rich-text-demo-rendered prose prose-sm max-w-none dark:prose-invert"
-          v-html="previewResult.contentHtml"
+      <div class="flex min-h-0 min-w-0 flex-col gap-4 xl:h-full">
+        <RichTextEditor
+          :model-value="contentJson"
+          :preset="editorPreset"
+          :min-height="320"
+          class="min-h-0 flex-1"
+          @update:model-value="updateContentJson"
         />
-        <NEmpty v-else description="生成服务端预览后显示" class="py-16" />
+
+        <div class="flex flex-wrap justify-end gap-2">
+          <NButton data-test="rich-text-demo-clear" :disabled="isPreviewing" @click="clearContent">
+            清空
+          </NButton>
+          <NButton
+            v-can="'demo:rich-text:preview'"
+            data-test="rich-text-demo-preview"
+            type="primary"
+            :loading="isPreviewing"
+            :disabled="isPreviewing || !hasRichTextContent(contentJson)"
+            @click="generatePreview"
+          >
+            服务端预览
+          </NButton>
+        </div>
       </div>
 
-      <div
-        class="min-h-72 rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+      <NTabs
+        class="min-h-0 min-w-0 xl:h-full"
+        pane-wrapper-class="min-h-0 flex-1"
+        pane-class="box-border h-full min-h-0 overflow-auto"
+        type="line"
+        animated
+        default-value="rendered"
       >
-        <h2 class="mb-2 font-medium">派生结果</h2>
-        <NTabs type="line" animated>
-          <NTabPane name="json" tab="JSON">
-            <pre
-              data-test="rich-text-demo-json"
-              class="max-h-96 overflow-auto rounded-ui bg-stone-100 p-3 text-xs break-all whitespace-pre-wrap dark:bg-zinc-950"
-              >{{ formattedContentJson || '生成服务端预览后显示' }}</pre>
-          </NTabPane>
-          <NTabPane name="html" tab="HTML">
-            <pre
-              data-test="rich-text-demo-html"
-              class="max-h-96 overflow-auto rounded-ui bg-stone-100 p-3 text-xs break-all whitespace-pre-wrap dark:bg-zinc-950"
-              >{{ previewResult?.contentHtml || '生成服务端预览后显示' }}</pre>
-          </NTabPane>
-          <NTabPane name="text" tab="纯文本">
-            <pre
-              data-test="rich-text-demo-text"
-              class="max-h-96 overflow-auto rounded-ui bg-stone-100 p-3 text-sm whitespace-pre-wrap dark:bg-zinc-950"
-              >{{ previewResult?.contentText || '生成服务端预览后显示' }}</pre>
-          </NTabPane>
-        </NTabs>
-      </div>
+        <NTabPane name="rendered" tab="渲染" display-directive="show">
+          <div
+            v-if="previewData"
+            ref="previewContainer"
+            data-test="rich-text-demo-rendered"
+            class="rich-text-demo-rendered prose prose-sm max-w-none dark:prose-invert"
+            v-html="previewData.contentHtml"
+          />
+          <NEmpty v-else description="生成服务端预览后显示" class="py-16" />
+        </NTabPane>
+        <NTabPane name="json" tab="JSON">
+          <NEmpty v-if="!previewData" description="生成服务端预览后显示" class="py-16" />
+          <pre
+            v-else
+            data-test="rich-text-demo-json"
+            class="rounded-ui bg-stone-100 p-3 text-xs break-all whitespace-pre-wrap dark:bg-zinc-950"
+            >{{ formattedContentJson }}</pre>
+        </NTabPane>
+        <NTabPane name="html" tab="HTML">
+          <NEmpty v-if="!previewData" description="生成服务端预览后显示" class="py-16" />
+          <pre
+            v-else
+            data-test="rich-text-demo-html"
+            class="rounded-ui bg-stone-100 p-3 text-xs break-all whitespace-pre-wrap dark:bg-zinc-950"
+            >{{ previewData.contentHtml }}</pre>
+        </NTabPane>
+      </NTabs>
     </section>
   </main>
 </template>

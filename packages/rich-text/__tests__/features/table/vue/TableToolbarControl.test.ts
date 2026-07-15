@@ -20,40 +20,24 @@ function createEditor(
   })
 }
 
-function createTableEditor() {
+function createTableEditor(rowCount = 2, columnCount = 2) {
   const editor = createEditor({
     type: 'doc',
     content: [
       {
         type: 'table',
-        content: [
-          {
-            type: 'tableRow',
+        content: Array.from({ length: rowCount }, (_, rowIndex) => ({
+          type: 'tableRow',
+          content: Array.from({ length: columnCount }, (_, columnIndex) => ({
+            type: 'tableCell',
             content: [
               {
-                type: 'tableCell',
-                content: [{ type: 'paragraph', content: [{ type: 'text', text: 'A' }] }],
-              },
-              {
-                type: 'tableCell',
-                content: [{ type: 'paragraph', content: [{ type: 'text', text: 'B' }] }],
+                type: 'paragraph',
+                content: [{ type: 'text', text: `${rowIndex}-${columnIndex}` }],
               },
             ],
-          },
-          {
-            type: 'tableRow',
-            content: [
-              {
-                type: 'tableCell',
-                content: [{ type: 'paragraph', content: [{ type: 'text', text: 'C' }] }],
-              },
-              {
-                type: 'tableCell',
-                content: [{ type: 'paragraph', content: [{ type: 'text', text: 'D' }] }],
-              },
-            ],
-          },
-        ],
+          })),
+        })),
       },
       { type: 'paragraph', content: [{ type: 'text', text: '表格后' }] },
     ],
@@ -216,6 +200,37 @@ describe('TableToolbarControl', () => {
 
     expect(findTable(editor)).toBeUndefined()
     expect(isPopoverOpen(wrapper)).toBe(false)
+  })
+
+  it('refreshes row and column availability after document-only transactions', async () => {
+    const rowEditor = createTableEditor(99, 1)
+    const rowWrapper = mountControl(rowEditor)
+
+    await openPopover(rowWrapper, 'rich-text-table-actions')
+    const addRowButton = getButtonComponent(rowWrapper, 'rich-text-table-add-table-row-after')
+    expect(addRowButton.props('disabled')).toBe(false)
+
+    addRowButton.vm.$emit('click')
+    await flushPromises()
+
+    expect(findTable(rowEditor)?.content).toHaveLength(100)
+    expect(addRowButton.props('disabled')).toBe(true)
+
+    const columnEditor = createTableEditor(1, 99)
+    const columnWrapper = mountControl(columnEditor)
+
+    await openPopover(columnWrapper, 'rich-text-table-actions')
+    const addColumnButton = getButtonComponent(
+      columnWrapper,
+      'rich-text-table-add-table-column-after',
+    )
+    expect(addColumnButton.props('disabled')).toBe(false)
+
+    addColumnButton.vm.$emit('click')
+    await flushPromises()
+
+    expect(findTable(columnEditor)?.content?.[0]?.content).toHaveLength(100)
+    expect(addColumnButton.props('disabled')).toBe(true)
   })
 
   it('disables the control without an editor and closes it when disabled', async () => {

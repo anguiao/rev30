@@ -9,17 +9,16 @@ const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
   disabled: false,
 })
 
-const isDisabled = computed(() => props.disabled || !props.editor)
-const isActive = computed(() => props.editor?.isActive('link') ?? false)
+const editor = props.editor
+const isDisabled = computed(() => props.disabled || !editor)
+const isActive = computed(() => editor?.isActive('link') ?? false)
 
 const isEditorFocused = computed(() => {
-  const editor = props.editor
-
   if (!editor) {
     return false
   }
 
-  return Boolean(editor.state) && editor.isFocused
+  return editor.state ? editor.isFocused : false
 })
 
 const showPopover = ref(false)
@@ -29,7 +28,7 @@ const url = ref('')
 const dismissedHref = ref<string | null>(null)
 
 const currentHref = computed(() => {
-  const href = props.editor?.getAttributes('link').href
+  const href = editor?.getAttributes('link').href
 
   return typeof href === 'string' ? href : ''
 })
@@ -102,27 +101,27 @@ function togglePopover() {
 }
 
 function applyLink() {
-  if (!canApply.value || !props.editor) {
+  if (!canApply.value || !editor) {
     return
   }
 
   if (inputHrefState.value.isEmpty) {
-    unsetLinkAction.run(props.editor)
+    unsetLinkAction.run(editor)
     url.value = ''
     popoverMode.value = 'create'
     return
   }
 
-  setLinkAction.run(props.editor, inputHrefState.value.normalizedHref)
+  setLinkAction.run(editor, inputHrefState.value.normalizedHref)
   url.value = inputHrefState.value.normalizedHref
 }
 
 function removeLink() {
-  if (isDisabled.value || !props.editor) {
+  if (isDisabled.value || !editor) {
     return
   }
 
-  unsetLinkAction.run(props.editor)
+  unsetLinkAction.run(editor)
   url.value = ''
   popoverMode.value = 'create'
 }

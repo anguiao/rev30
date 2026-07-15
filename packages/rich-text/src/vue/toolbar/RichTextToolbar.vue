@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
-import { computed } from 'vue'
 import type { RichTextToolbarConfig } from '../toolbar'
 import RichTextToolbarControl from './RichTextToolbarControl.vue'
 
@@ -15,7 +14,7 @@ const props = withDefaults(
   },
 )
 
-const groups = computed(() => props.toolbar.groups.filter((group) => group.controls.length > 0))
+const groups = props.toolbar.groups.filter((group) => group.controls.length > 0)
 </script>
 
 <template>

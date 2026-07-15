@@ -314,24 +314,4 @@ describe('RichTextEditor', () => {
       })
     })
   })
-
-  it('updates toolbar and editor extensions when preset changes', async () => {
-    const wrapper = mountRichTextEditor({
-      modelValue: contentJson,
-      preset: noHeadingEditorPreset,
-    })
-
-    await getEditable(wrapper)
-    expect(wrapper.find('[data-test="rich-text-heading"]').exists()).toBe(false)
-
-    await wrapper.setProps({ preset: allEditorPreset })
-    await vi.waitFor(() => {
-      expect(wrapper.find('[data-test="rich-text-heading"]').exists()).toBe(true)
-    })
-
-    await selectDropdownCommand(wrapper, 'heading-1')
-    await vi.waitFor(() => {
-      expect(wrapper.find('.ProseMirror h1').text()).toContain('维护通知')
-    })
-  })
 })

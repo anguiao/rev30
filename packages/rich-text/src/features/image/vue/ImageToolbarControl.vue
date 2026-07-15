@@ -15,12 +15,13 @@ const props = withDefaults(defineProps<ImageToolbarControlProps>(), {
   disabled: false,
 })
 
-const isDisabled = computed(() => props.disabled || !props.editor)
-const isActive = computed(() => props.editor?.isActive('image') ?? false)
+const editor = props.editor
+const isDisabled = computed(() => props.disabled || !editor)
+const isActive = computed(() => editor?.isActive('image') ?? false)
 
 const buttonLabel = computed(() => (isActive.value ? '编辑图片' : '图片'))
 const currentAttrs = computed(() =>
-  isActive.value ? (props.editor?.getAttributes('image') as RichTextImageAttrs) : undefined,
+  isActive.value ? (editor?.getAttributes('image') as RichTextImageAttrs) : undefined,
 )
 
 const showDialog = ref(false)
@@ -34,16 +35,16 @@ function openDialog() {
 }
 
 function handleConfirm(attrs: RichTextImageAttrs) {
-  if (!props.editor) {
+  if (!editor) {
     return
   }
 
   if (isActive.value) {
-    updateImageAction.run(props.editor, attrs)
+    updateImageAction.run(editor, attrs)
     return
   }
 
-  insertImageAction.run(props.editor, attrs)
+  insertImageAction.run(editor, attrs)
 }
 
 function handleError(error: unknown) {

@@ -7,7 +7,7 @@ import type { RichTextEditorPreset } from './presets/types'
 interface UseRichTextEditorOptions {
   modelValue: Ref<RichTextDocument>
   disabled: Ref<boolean>
-  preset: Ref<RichTextEditorPreset>
+  preset: RichTextEditorPreset
   onUpdate: (value: RichTextDocument) => void
   onBlur: () => void
 }
@@ -17,15 +17,11 @@ export function useRichTextEditor(options: UseRichTextEditorOptions) {
     return JSON.stringify(a) === JSON.stringify(b)
   }
 
-  function createEditor(
-    content: RichTextDocument,
-    editable: boolean,
-    preset: RichTextEditorPreset,
-  ) {
+  function createEditor(content: RichTextDocument, editable: boolean) {
     return new Editor({
       content,
       editable,
-      extensions: collectRichTextEditorExtensions(preset),
+      extensions: collectRichTextEditorExtensions(options.preset),
       onBlur() {
         options.onBlur()
       },
@@ -40,40 +36,27 @@ export function useRichTextEditor(options: UseRichTextEditorOptions) {
     })
   }
 
-  const editor = shallowRef(
-    createEditor(options.modelValue.value, !options.disabled.value, options.preset.value),
-  )
+  const editor = shallowRef(createEditor(options.modelValue.value, !options.disabled.value))
 
   watch(options.disabled, (disabled) => {
-    editor.value?.setEditable(!disabled)
+    editor.value.setEditable(!disabled)
   })
 
   watch(
     options.modelValue,
     (value) => {
-      const currentValue = editor.value?.getJSON()
+      const currentValue = editor.value.getJSON()
       if (isSameContent(currentValue, value)) {
         return
       }
 
-      editor.value?.commands.setContent(value, { emitUpdate: false })
+      editor.value.commands.setContent(value, { emitUpdate: false })
     },
     { deep: true },
   )
 
-  watch(options.preset, (preset) => {
-    const currentEditor = editor.value
-    const content =
-      (currentEditor?.getJSON() as RichTextDocument | undefined) ?? options.modelValue.value
-    const editable = currentEditor?.isEditable ?? !options.disabled.value
-
-    const nextEditor = createEditor(content, editable, preset)
-    editor.value = nextEditor
-    currentEditor?.destroy()
-  })
-
   onBeforeUnmount(() => {
-    editor.value?.destroy()
+    editor.value.destroy()
   })
 
   return {

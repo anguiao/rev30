@@ -16,14 +16,13 @@ const props = withDefaults(defineProps<CodeBlockToolbarControlProps>(), {
   disabled: false,
 })
 
-const isActive = computed(() => props.editor?.isActive('codeBlock') ?? false)
+const editor = props.editor
+const isActive = computed(() => editor?.isActive('codeBlock') ?? false)
 const isDisabled = computed(
-  () => props.disabled || !props.editor || !(codeBlockAction.canRun?.(props.editor) ?? true),
+  () => props.disabled || !editor || !(codeBlockAction.canRun?.(editor) ?? true),
 )
 
 const isCaretInsideCodeBlock = computed(() => {
-  const editor = props.editor
-
   if (!editor) {
     return false
   }
@@ -34,8 +33,6 @@ const isCaretInsideCodeBlock = computed(() => {
 })
 
 const currentLanguageOption = computed(() => {
-  const editor = props.editor
-
   if (!editor || !isCaretInsideCodeBlock.value) {
     return null
   }
@@ -50,13 +47,13 @@ const languageButtonLabel = computed(() =>
 const buttonType = computed(() => (isActive.value ? 'primary' : 'default'))
 
 function toggleCodeBlock() {
-  if (!isDisabled.value && props.editor) {
-    codeBlockAction.run(props.editor)
+  if (!isDisabled.value && editor) {
+    codeBlockAction.run(editor)
   }
 }
 
 const isLanguageControlDisabled = computed(
-  () => props.disabled || !props.editor || !isCaretInsideCodeBlock.value,
+  () => props.disabled || !editor || !isCaretInsideCodeBlock.value,
 )
 const options = computed<DropdownOption[]>(() =>
   props.languages.map((language) => {
@@ -80,7 +77,6 @@ const options = computed<DropdownOption[]>(() =>
 )
 
 function setLanguage(value: string) {
-  const editor = props.editor
   const option = props.languages.find((language) => language.value === value)
 
   if (!editor || isLanguageControlDisabled.value || !option) {

@@ -2,7 +2,7 @@
 import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import type { RichTextInsertTableOptions, RichTextTableInsertDimension } from '../shared'
 import { NButton, NCheckbox, NInputNumber, NPopover } from 'naive-ui'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   addTableColumnAfterAction,
   addTableColumnBeforeAction,
@@ -21,12 +21,12 @@ const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
   disabled: false,
 })
 
+const editor = props.editor
 const rows = ref<number | null>(3)
 const columns = ref<number | null>(3)
 const withHeaderRow = ref(true)
 const showPopover = ref(false)
 const popoverMode = ref<'insert' | 'edit'>('insert')
-const editorRevision = ref(0)
 
 const tableActionGroups = [
   {
@@ -63,11 +63,8 @@ const tableActionGroups = [
 
 type TableAction = (typeof tableActionGroups)[number]['actions'][number]['action']
 
-const isUnavailable = computed(() => props.disabled || !props.editor)
-const isInTable = computed(() => {
-  void editorRevision.value
-  return props.editor?.isActive('table') ?? false
-})
+const isUnavailable = computed(() => props.disabled || !editor)
+const isInTable = computed(() => editor?.isActive('table') ?? false)
 
 function isInsertDimension(value: number | null): value is RichTextTableInsertDimension {
   return value !== null && Number.isInteger(value) && value >= 1 && value <= 10
@@ -86,8 +83,6 @@ const insertOptions = computed<RichTextInsertTableOptions | null>(() => {
 })
 
 const canInsert = computed(() => {
-  void editorRevision.value
-  const editor = props.editor
   const options = insertOptions.value
 
   return (
@@ -102,31 +97,11 @@ function closePopover() {
   showPopover.value = false
 }
 
-function handleEditorSelectionUpdate() {
-  editorRevision.value += 1
-
-  if (
-    showPopover.value &&
-    popoverMode.value === 'edit' &&
-    !(props.editor?.isActive('table') ?? false)
-  ) {
+watch(isInTable, (inTable) => {
+  if (showPopover.value && popoverMode.value === 'edit' && !inTable) {
     closePopover()
   }
-}
-
-watch(
-  () => props.editor,
-  (editor, previousEditor) => {
-    previousEditor?.off('selectionUpdate', handleEditorSelectionUpdate)
-    editor?.on('selectionUpdate', handleEditorSelectionUpdate)
-    editorRevision.value += 1
-
-    if (!editor) {
-      closePopover()
-    }
-  },
-  { immediate: true },
-)
+})
 
 watch(
   () => props.disabled,
@@ -136,10 +111,6 @@ watch(
     }
   },
 )
-
-onBeforeUnmount(() => {
-  props.editor?.off('selectionUpdate', handleEditorSelectionUpdate)
-})
 
 function togglePopover() {
   if (isUnavailable.value) {
@@ -156,7 +127,6 @@ function togglePopover() {
 }
 
 function insertTable() {
-  const editor = props.editor
   const options = insertOptions.value
 
   if (!editor || !options || !canInsert.value) {
@@ -168,15 +138,10 @@ function insertTable() {
 }
 
 function canRun(action: TableAction) {
-  void editorRevision.value
-  const editor = props.editor
-
   return !isUnavailable.value && !!editor && (action.canRun?.(editor) ?? true)
 }
 
 function runAction(action: TableAction) {
-  const editor = props.editor
-
   if (!editor || !canRun(action)) {
     return
   }

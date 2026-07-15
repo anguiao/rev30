@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { EditorContent } from '@tiptap/vue-3'
-import { computed, toRef } from 'vue'
+import { toRef } from 'vue'
 import type { RichTextDocument } from '../schema'
 import type { RichTextEditorPreset } from './presets/types'
 import RichTextToolbar from './toolbar/RichTextToolbar.vue'
@@ -24,12 +24,13 @@ const emit = defineEmits<{
   blur: []
 }>()
 
-const activeToolbar = computed(() => props.preset.toolbar)
+const preset = props.preset
+const activeToolbar = preset.toolbar
 
 const { editor } = useRichTextEditor({
   modelValue: toRef(props, 'modelValue'),
   disabled: toRef(props, 'disabled'),
-  preset: toRef(props, 'preset'),
+  preset,
   onUpdate: (value) => emit('update:modelValue', value),
   onBlur: () => emit('blur'),
 })

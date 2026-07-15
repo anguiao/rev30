@@ -15,30 +15,32 @@ const props = withDefaults(
   },
 )
 
+const editor = props.editor
+
 const isDisabled = computed(() => {
-  if (props.disabled || !props.editor) {
+  if (props.disabled || !editor) {
     return true
   }
 
-  return isRichTextActionDisabled(props.item.action, props.editor)
+  return isRichTextActionDisabled(props.item.action, editor)
 })
 
 const isActive = computed(() => {
-  if (!props.editor) {
+  if (!editor) {
     return false
   }
 
-  return props.item.action.isActive?.(props.editor) ?? false
+  return props.item.action.isActive?.(editor) ?? false
 })
 
 const buttonType = computed(() => (isActive.value ? 'primary' : 'default'))
 
 function handleClick() {
-  if (isDisabled.value || !props.editor) {
+  if (isDisabled.value || !editor) {
     return
   }
 
-  props.item.action.run(props.editor)
+  props.item.action.run(editor)
 }
 </script>
 

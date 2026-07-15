@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import type { EditorEvents } from '@tiptap/core'
 import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import type { InputInst } from 'naive-ui'
 import { NButton, NCheckbox, NInput, NPopover } from 'naive-ui'
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import {
   closeSearchReplaceAction,
   getSearchReplaceState,
@@ -12,33 +11,32 @@ import {
   openSearchReplaceAction,
   replaceAllSearchMatchesAction,
   replaceCurrentSearchMatchAction,
-  searchReplacePluginKey,
   setSearchReplaceCaseSensitiveAction,
   setSearchReplaceQueryAction,
 } from '../editor'
+import type { RichTextSearchReplaceState } from '../editor'
 
 const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
   disabled: false,
 })
 
+const editor = props.editor
 const searchInput = ref<InputInst | null>(null)
 const replacement = ref('')
-const editorRevision = ref(0)
-
-const isUnavailable = computed(() => props.disabled || !props.editor)
-const searchState = computed(() => {
-  void editorRevision.value
-
-  return props.editor
-    ? getSearchReplaceState(props.editor)
+const isEditable = ref(editor?.isEditable ?? false)
+const searchState = shallowRef<RichTextSearchReplaceState>(
+  editor
+    ? getSearchReplaceState(editor)
     : {
         active: false,
         query: '',
         caseSensitive: false,
         matches: [],
         currentIndex: -1,
-      }
-})
+      },
+)
+
+const isUnavailable = computed(() => props.disabled || !editor || !isEditable.value)
 const hasMatches = computed(() => searchState.value.matches.length > 0)
 const hasActiveMatch = computed(
   () =>
@@ -51,8 +49,6 @@ const matchPositionLabel = computed(() => {
   return total === 0 ? '0/0' : `${searchState.value.currentIndex + 1}/${total}`
 })
 const canOpenPanel = computed(() => {
-  const editor = props.editor
-
   return !isUnavailable.value && !!editor && (openSearchReplaceAction.canRun?.(editor) ?? true)
 })
 const isTriggerDisabled = computed(
@@ -63,24 +59,23 @@ function focusSearchInput() {
   void nextTick(() => searchInput.value?.focus())
 }
 
-function handleTransaction({ transaction }: EditorEvents['transaction']) {
-  editorRevision.value += 1
-
-  if (transaction.getMeta(searchReplacePluginKey)?.type === 'open') {
-    focusSearchInput()
+function syncSearchState() {
+  if (editor) {
+    searchState.value = getSearchReplaceState(editor)
   }
 }
 
-watch(
-  () => props.editor,
-  (editor, previousEditor) => {
-    previousEditor?.off('transaction', handleTransaction)
-    editor?.on('transaction', handleTransaction)
-    replacement.value = ''
-    editorRevision.value += 1
-  },
-  { immediate: true },
-)
+function handleEditorUpdate() {
+  isEditable.value = editor?.isEditable ?? false
+
+  if (editor && !editor.isEditable && getSearchReplaceState(editor).active) {
+    closeSearchReplaceAction.run(editor)
+  }
+}
+
+handleEditorUpdate()
+editor?.on('transaction', syncSearchState)
+editor?.on('update', handleEditorUpdate)
 
 watch(
   [() => searchState.value.active, searchInput],
@@ -95,28 +90,27 @@ watch(
 watch(
   () => props.disabled,
   (disabled) => {
-    if (disabled && searchState.value.active && props.editor) {
-      closeSearchReplaceAction.run(props.editor)
+    if (disabled && searchState.value.active && editor) {
+      closeSearchReplaceAction.run(editor)
     }
   },
   { immediate: true },
 )
 
 onBeforeUnmount(() => {
-  props.editor?.off('transaction', handleTransaction)
+  editor?.off('transaction', syncSearchState)
+  editor?.off('update', handleEditorUpdate)
 })
 
 function openPanel() {
-  if (!canOpenPanel.value || !props.editor) {
+  if (!canOpenPanel.value || !editor) {
     return
   }
 
-  openSearchReplaceAction.run(props.editor)
+  openSearchReplaceAction.run(editor)
 }
 
 function closePanel(restoreEditorFocus = false) {
-  const editor = props.editor
-
   if (!editor) {
     return
   }
@@ -138,40 +132,40 @@ function togglePanel() {
 }
 
 function setQuery(query: string) {
-  if (props.editor) {
-    setSearchReplaceQueryAction.run(props.editor, query)
+  if (editor) {
+    setSearchReplaceQueryAction.run(editor, query)
   }
 }
 
 function setCaseSensitive(caseSensitive: boolean) {
-  if (props.editor) {
-    setSearchReplaceCaseSensitiveAction.run(props.editor, caseSensitive)
+  if (editor) {
+    setSearchReplaceCaseSensitiveAction.run(editor, caseSensitive)
   }
 }
 
 function goToPreviousMatch() {
-  if (hasMatches.value && props.editor) {
-    goToPreviousSearchMatchAction.run(props.editor)
+  if (hasMatches.value && editor) {
+    goToPreviousSearchMatchAction.run(editor)
     focusSearchInput()
   }
 }
 
 function goToNextMatch() {
-  if (hasMatches.value && props.editor) {
-    goToNextSearchMatchAction.run(props.editor)
+  if (hasMatches.value && editor) {
+    goToNextSearchMatchAction.run(editor)
     focusSearchInput()
   }
 }
 
 function replaceCurrentMatch() {
-  if (hasActiveMatch.value && props.editor) {
-    replaceCurrentSearchMatchAction.run(props.editor, replacement.value)
+  if (!isUnavailable.value && hasActiveMatch.value && editor) {
+    replaceCurrentSearchMatchAction.run(editor, replacement.value)
   }
 }
 
 function replaceAllMatches() {
-  if (hasMatches.value && props.editor) {
-    replaceAllSearchMatchesAction.run(props.editor, replacement.value)
+  if (!isUnavailable.value && hasMatches.value && editor) {
+    replaceAllSearchMatchesAction.run(editor, replacement.value)
   }
 }
 

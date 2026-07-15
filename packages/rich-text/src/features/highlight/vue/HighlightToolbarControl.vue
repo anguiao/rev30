@@ -13,11 +13,12 @@ const props = withDefaults(defineProps<HighlightToolbarControlProps>(), {
   disabled: false,
 })
 
-const isDisabled = computed(() => props.disabled || !props.editor)
-const isActive = computed(() => props.editor?.isActive('highlight') ?? false)
+const editor = props.editor
+const isDisabled = computed(() => props.disabled || !editor)
+const isActive = computed(() => editor?.isActive('highlight') ?? false)
 
 const currentColor = computed(() => {
-  const color = props.editor?.getAttributes('highlight').color
+  const color = editor?.getAttributes('highlight').color
 
   return typeof color === 'string' ? color.trim().toLowerCase() : null
 })
@@ -27,19 +28,19 @@ const selectedColorKey = computed(
 )
 
 function applyColor(color: HighlightColorOption['value']) {
-  if (isDisabled.value || !props.editor) {
+  if (isDisabled.value || !editor) {
     return
   }
 
-  setHighlightAction.run(props.editor, color)
+  setHighlightAction.run(editor, color)
 }
 
 function clearHighlight() {
-  if (isDisabled.value || !props.editor) {
+  if (isDisabled.value || !editor) {
     return
   }
 
-  unsetHighlightAction.run(props.editor)
+  unsetHighlightAction.run(editor)
 }
 </script>
 

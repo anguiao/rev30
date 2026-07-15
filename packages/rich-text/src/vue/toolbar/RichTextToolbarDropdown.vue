@@ -21,30 +21,31 @@ const props = withDefaults(
   },
 )
 
+const editor = props.editor
+
 function isItemDisabled(item: RichTextToolbarItem) {
-  if (props.disabled || !props.editor) {
+  if (props.disabled || !editor) {
     return true
   }
 
-  return isRichTextActionDisabled(item.action, props.editor)
+  return isRichTextActionDisabled(item.action, editor)
 }
 
 const activeItem = computed(() => {
-  if (!props.editor) {
+  if (!editor) {
     return undefined
   }
 
   return (
-    props.control.getActiveItem?.(props.editor, props.control.items) ??
-    getActiveRichTextToolbarItem(props.editor, props.control.items)
+    props.control.getActiveItem?.(editor, props.control.items) ??
+    getActiveRichTextToolbarItem(editor, props.control.items)
   )
 })
 
 const isActive = computed(() => activeItem.value !== undefined)
 
 const isDisabled = computed(
-  () =>
-    props.disabled || !props.editor || props.control.items.every((item) => isItemDisabled(item)),
+  () => props.disabled || !editor || props.control.items.every((item) => isItemDisabled(item)),
 )
 
 const triggerLabel = computed(() => activeItem.value?.label ?? props.control.label)
@@ -88,7 +89,7 @@ function renderLabel(option: DropdownOption) {
 }
 
 function handleSelect(key: string | number) {
-  if (!props.editor) {
+  if (!editor) {
     return
   }
 
@@ -97,7 +98,7 @@ function handleSelect(key: string | number) {
     return
   }
 
-  item.action.run(props.editor)
+  item.action.run(editor)
 }
 </script>
 

@@ -1,40 +1,14 @@
 <script setup lang="ts">
-import type { EditorEvents } from '@tiptap/core'
 import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed } from 'vue'
 
 const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
   disabled: false,
 })
 
-const characterCount = ref(0)
-const isUnavailable = computed(() => props.disabled || !props.editor)
-
-function updateCharacterCount() {
-  characterCount.value = props.editor?.storage.characterCount.characters() ?? 0
-}
-
-function handleTransaction({ transaction, appendedTransactions }: EditorEvents['transaction']) {
-  if (!transaction.docChanged && !appendedTransactions.some(({ docChanged }) => docChanged)) {
-    return
-  }
-
-  updateCharacterCount()
-}
-
-watch(
-  () => props.editor,
-  (editor, previousEditor) => {
-    previousEditor?.off('transaction', handleTransaction)
-    editor?.on('transaction', handleTransaction)
-    updateCharacterCount()
-  },
-  { immediate: true },
-)
-
-onBeforeUnmount(() => {
-  props.editor?.off('transaction', handleTransaction)
-})
+const editor = props.editor
+const characterCount = computed(() => editor?.storage.characterCount.characters() ?? 0)
+const isUnavailable = computed(() => props.disabled || !editor)
 </script>
 
 <template>

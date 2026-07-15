@@ -5,7 +5,7 @@ import { common, createLowlight } from 'lowlight'
 import { defineRichTextAction } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import { createCodeBlockLanguageAttribute } from './languages'
-import { codeBlockFeature, richTextCodeBlockClass, richTextCodeBlockCodeStyle } from './shared'
+import { codeBlockFeature, richTextCodeBlockCodeStyle } from './shared'
 
 const codeBlockLowlight = createLowlight(common)
 codeBlockLowlight.highlightAuto = (value) => codeBlockLowlight.highlight('plaintext', value)
@@ -70,7 +70,7 @@ const RichTextCodeBlockLowlight = CodeBlockLowlight.extend({
   lowlight: codeBlockLowlight,
   defaultLanguage: 'plaintext',
   HTMLAttributes: {
-    class: `hljs ${richTextCodeBlockClass}`,
+    class: 'hljs',
   },
 })
 

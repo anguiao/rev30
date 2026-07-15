@@ -5,12 +5,6 @@ import { highlightFeature } from './shared'
 
 const highlightColorSet = new Set<string>(highlightColors)
 
-function createExactStyleValuePattern(value: string) {
-  const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-  return new RegExp(`^${escapedValue}$`, 'i')
-}
-
 function normalizeHighlightColor(value: string | undefined) {
   const normalized = value?.trim().toLowerCase()
 
@@ -59,8 +53,8 @@ export const highlightHtmlPolicy: RichTextHtmlPolicy = {
   },
   allowedStyles: {
     mark: {
-      'background-color': highlightColors.map(createExactStyleValuePattern),
-      color: [/^inherit$/],
+      'background-color': [/^.+$/],
+      color: [/^.+$/],
     },
   },
   transformTags: {

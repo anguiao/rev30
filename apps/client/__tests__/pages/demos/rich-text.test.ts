@@ -144,8 +144,7 @@ describe('rich text demo page', () => {
   it('does not auto-highlight code blocks without a language', async () => {
     generateRichTextPreviewMock.mockResolvedValue({
       ...previewResponse,
-      contentHtml:
-        '<p><strong>组件演示</strong></p><pre class="rich-text-code-block"><code>const ready = true</code></pre>',
+      contentHtml: '<p><strong>组件演示</strong></p><pre><code>const ready = true</code></pre>',
     })
     const { wrapper } = await mountPage()
 

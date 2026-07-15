@@ -6,12 +6,6 @@ import { textAlignFeature } from './shared'
 const textAlignTags = ['p', 'h1', 'h2', 'h3'] as const
 const textAlignSet = new Set<string>(textAlignments)
 
-function createExactStyleValuePattern(value: string) {
-  const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-  return new RegExp(`^${escapedValue}$`, 'i')
-}
-
 function normalizeTextAlign(value: string | undefined): TextAlignment | undefined {
   const normalized = value?.trim().toLowerCase()
 
@@ -47,7 +41,7 @@ export const textAlignHtmlPolicy: RichTextHtmlPolicy = {
     textAlignTags.map((tag) => [
       tag,
       {
-        'text-align': textAlignments.map(createExactStyleValuePattern),
+        'text-align': [/^.+$/],
       },
     ]),
   ),

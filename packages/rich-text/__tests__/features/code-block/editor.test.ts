@@ -60,7 +60,7 @@ describe('code block feature', () => {
         },
       ],
     })
-    const code = editor.view.dom.querySelector('pre.rich-text-code-block > code')
+    const code = editor.view.dom.querySelector('pre.hljs > code')
 
     expect(code?.getAttribute('style')).toBe('padding: 0px; background: transparent;')
     expect(editor.view.dom.querySelector('.hljs-keyword')).toBeNull()

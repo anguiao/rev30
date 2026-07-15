@@ -10,7 +10,7 @@ describe('code block html policy', () => {
         [codeBlockHtmlPolicy],
       ),
     ).toBe(
-      '<pre class="rich-text-code-block" style="background-color:light-dark(#f5f5f4, #09090b)"><code class="language-typescript">const ready = true</code></pre>',
+      '<pre style="background-color:light-dark(#f5f5f4, #09090b)"><code class="language-typescript">const ready = true</code></pre>',
     )
   })
 
@@ -20,7 +20,7 @@ describe('code block html policy', () => {
         codeBlockHtmlPolicy,
       ]),
     ).toBe(
-      '<pre class="rich-text-code-block" style="background-color:light-dark(#f5f5f4, #09090b)"><code class="language-c++">const ready = true</code></pre>',
+      '<pre style="background-color:light-dark(#f5f5f4, #09090b)"><code class="language-c++">const ready = true</code></pre>',
     )
 
     expect(
@@ -28,7 +28,7 @@ describe('code block html policy', () => {
         codeBlockHtmlPolicy,
       ]),
     ).toBe(
-      '<pre class="rich-text-code-block" style="background-color:light-dark(#f5f5f4, #09090b)"><code class="language-c#">const ready = true</code></pre>',
+      '<pre style="background-color:light-dark(#f5f5f4, #09090b)"><code class="language-c#">const ready = true</code></pre>',
     )
   })
 })

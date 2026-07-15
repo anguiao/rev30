@@ -3,12 +3,7 @@ import CodeBlock from '@tiptap/extension-code-block'
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
 import { createCodeBlockLanguageAttribute, normalizeCodeBlockLanguage } from './languages'
-import {
-  codeBlockFeature,
-  richTextCodeBlockClass,
-  richTextCodeBlockCodeStyle,
-  richTextCodeBlockStyle,
-} from './shared'
+import { codeBlockFeature, richTextCodeBlockCodeStyle, richTextCodeBlockStyle } from './shared'
 
 const transformCode: RichTextTagTransform = ({ tagName, attribs }) => {
   const languageClass = attribs.class
@@ -28,28 +23,23 @@ const transformCode: RichTextTagTransform = ({ tagName, attribs }) => {
 const transformCodeBlock: RichTextTagTransform = ({ tagName }) => ({
   tagName,
   attribs: {
-    class: richTextCodeBlockClass,
     style: richTextCodeBlockStyle,
   },
 })
 
-const codeBlockBackgroundPattern = /^light-dark\(\s*#f5f5f4\s*,\s*#09090b\s*\)$/i
-const codeBlockCodePaddingPattern = /^0$/i
-const codeBlockCodeBackgroundPattern = /^transparent$/i
-
 export const codeBlockHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['pre', 'code'],
   allowedAttributes: {
-    pre: ['class', 'style'],
+    pre: ['style'],
     code: ['class', 'style'],
   },
   allowedStyles: {
     pre: {
-      'background-color': [codeBlockBackgroundPattern],
+      'background-color': [/^.+$/],
     },
     code: {
-      padding: [codeBlockCodePaddingPattern],
-      background: [codeBlockCodeBackgroundPattern],
+      padding: [/^0$/i],
+      background: [/^transparent$/i],
     },
   },
   transformTags: {
@@ -80,7 +70,6 @@ const RichTextCodeBlock = CodeBlock.extend({
   },
 }).configure({
   HTMLAttributes: {
-    class: richTextCodeBlockClass,
     style: richTextCodeBlockStyle,
   },
 })

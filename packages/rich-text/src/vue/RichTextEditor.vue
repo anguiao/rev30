@@ -58,7 +58,7 @@ const { editor } = useRichTextEditor({
 </template>
 
 <style scoped>
-:deep(.ProseMirror pre.rich-text-code-block) {
+:deep(.ProseMirror pre.hljs) {
   background-color: light-dark(#f5f5f4, #09090b);
 }
 

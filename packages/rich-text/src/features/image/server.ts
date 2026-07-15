@@ -41,9 +41,9 @@ export function createImageHtmlPolicy(options: RichTextImageServerOptions): Rich
     },
     allowedStyles: {
       img: {
-        width: [/^\d+px$/],
-        'max-width': [/^100%$/],
-        height: [/^auto$/],
+        width: [/^.+$/],
+        'max-width': [/^.+$/],
+        height: [/^.+$/],
       },
     },
     transformTags: {

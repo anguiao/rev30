@@ -12,12 +12,6 @@ const textStyleProperties = ['color', 'font-family', 'font-size', 'line-height']
 
 type TextStyleProperty = (typeof textStyleProperties)[number]
 
-function createExactStyleValuePattern(value: string) {
-  const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-  return new RegExp(`^${escapedValue}$`, 'i')
-}
-
 function normalizeStyleValue(property: TextStyleProperty, value: string) {
   const normalized = value.trim().toLowerCase()
 
@@ -90,12 +84,7 @@ export const textStyleHtmlPolicy: RichTextHtmlPolicy = {
     span: ['style'],
   },
   allowedStyles: {
-    span: {
-      color: textColors.map(createExactStyleValuePattern),
-      'font-family': fontFamilies.map(createExactStyleValuePattern),
-      'font-size': fontSizes.map(createExactStyleValuePattern),
-      'line-height': lineHeights.map(createExactStyleValuePattern),
-    },
+    span: Object.fromEntries(textStyleProperties.map((property) => [property, [/^.+$/]])),
   },
   transformTags: {
     span: [transformTextStyle],

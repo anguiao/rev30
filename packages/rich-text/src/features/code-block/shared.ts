@@ -1,6 +1,5 @@
 import { defineRichTextFeature } from '../../core/feature'
 
-export const richTextCodeBlockClass = 'rich-text-code-block'
 export const richTextCodeBlockBackground = 'light-dark(#f5f5f4, #09090b)'
 export const richTextCodeBlockStyle = `background-color: ${richTextCodeBlockBackground}`
 export const richTextCodeBlockCodeStyle = 'padding: 0; background: transparent'

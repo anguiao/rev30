@@ -100,6 +100,34 @@ describe('text style feature', () => {
     })
   })
 
+  it('keeps an inherited supported style when a nested span adds an unsupported value', () => {
+    const editor = createEditor(
+      '<p><span style="color: #ef4444"><span style="color: not-a-color; font-size: 14pt">维护通知</span></span></p>',
+    )
+
+    expect(editor.getJSON()).toMatchObject({
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'textStyle',
+                  attrs: {
+                    color: '#ef4444',
+                    fontSize: '14pt',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+  })
+
   it('does not preserve an empty mark for unsupported imported styles', () => {
     const editor = createEditor(
       '<p><span style="position: fixed; font-family: Arial; font-size: 16px">维护通知</span></p>',

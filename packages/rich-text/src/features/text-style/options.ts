@@ -1,3 +1,9 @@
+export interface TextStyleOption {
+  readonly key: string
+  readonly label: string
+  readonly value: string
+}
+
 export const textStyleColorOptions = [
   { key: 'gray', label: '灰色', value: '#737373' },
   { key: 'red', label: '红色', value: '#ef4444' },
@@ -7,22 +13,20 @@ export const textStyleColorOptions = [
   { key: 'blue', label: '蓝色', value: '#3b82f6' },
   { key: 'purple', label: '紫色', value: '#a855f7' },
   { key: 'pink', label: '粉色', value: '#ec4899' },
-] as const
-
-export type TextColorOption = (typeof textStyleColorOptions)[number]
+] as const satisfies readonly TextStyleOption[]
 
 export const textColors = textStyleColorOptions.map((option) => option.value)
+export const textColorSet = new Set<string>(textColors)
 
 export const textStyleFontFamilyOptions = [
   { key: 'system', label: '系统默认', value: 'system-ui' },
   { key: 'sans', label: '无衬线', value: 'sans-serif' },
   { key: 'serif', label: '衬线', value: 'serif' },
   { key: 'monospace', label: '等宽', value: 'monospace' },
-] as const
-
-export type FontFamilyOption = (typeof textStyleFontFamilyOptions)[number]
+] as const satisfies readonly TextStyleOption[]
 
 export const fontFamilies = textStyleFontFamilyOptions.map((option) => option.value)
+export const fontFamilySet = new Set<string>(fontFamilies)
 
 export const textStyleFontSizeOptions = [
   { key: '8pt', label: '8pt', value: '8pt' },
@@ -32,11 +36,10 @@ export const textStyleFontSizeOptions = [
   { key: '18pt', label: '18pt', value: '18pt' },
   { key: '24pt', label: '24pt', value: '24pt' },
   { key: '36pt', label: '36pt', value: '36pt' },
-] as const
-
-export type FontSizeOption = (typeof textStyleFontSizeOptions)[number]
+] as const satisfies readonly TextStyleOption[]
 
 export const fontSizes = textStyleFontSizeOptions.map((option) => option.value)
+export const fontSizeSet = new Set<string>(fontSizes)
 
 export const textStyleLineHeightOptions = [
   { key: '1', label: '1', value: '1' },
@@ -46,8 +49,7 @@ export const textStyleLineHeightOptions = [
   { key: '1.4', label: '1.4', value: '1.4' },
   { key: '1.5', label: '1.5', value: '1.5' },
   { key: '2', label: '2', value: '2' },
-] as const
-
-export type LineHeightOption = (typeof textStyleLineHeightOptions)[number]
+] as const satisfies readonly TextStyleOption[]
 
 export const lineHeights = textStyleLineHeightOptions.map((option) => option.value)
+export const lineHeightSet = new Set<string>(lineHeights)

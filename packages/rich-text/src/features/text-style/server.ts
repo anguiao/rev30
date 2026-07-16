@@ -1,12 +1,7 @@
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
-import { fontFamilies, fontSizes, lineHeights, textColors } from './options'
+import { fontFamilySet, fontSizeSet, lineHeightSet, textColorSet } from './options'
 import { textStyleFeature } from './shared'
-
-const textColorSet = new Set<string>(textColors)
-const fontFamilySet = new Set<string>(fontFamilies)
-const fontSizeSet = new Set<string>(fontSizes)
-const lineHeightSet = new Set<string>(lineHeights)
 
 const textStyleProperties = ['color', 'font-family', 'font-size', 'line-height'] as const
 

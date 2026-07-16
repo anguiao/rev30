@@ -1,12 +1,12 @@
 import { defineRichTextAction } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import type { FontFamilyOption, FontSizeOption, LineHeightOption, TextColorOption } from './options'
+import type { TextStyleOption } from './options'
 import { textStyleFeature } from './shared'
 
 export const setTextColorAction = defineRichTextAction(textStyleFeature, {
   key: 'set-text-color',
-  run: (editor, color: TextColorOption['value']) => editor.chain().focus().setColor(color).run(),
-  canRun: (editor, color: TextColorOption['value']) =>
+  run: (editor, color: TextStyleOption['value']) => editor.chain().focus().setColor(color).run(),
+  canRun: (editor, color: TextStyleOption['value']) =>
     editor.can().chain().focus().setColor(color).run(),
 })
 
@@ -18,9 +18,9 @@ export const unsetTextColorAction = defineRichTextAction(textStyleFeature, {
 
 export const setFontFamilyAction = defineRichTextAction(textStyleFeature, {
   key: 'set-font-family',
-  run: (editor, fontFamily: FontFamilyOption['value']) =>
+  run: (editor, fontFamily: TextStyleOption['value']) =>
     editor.chain().focus().setFontFamily(fontFamily).run(),
-  canRun: (editor, fontFamily: FontFamilyOption['value']) =>
+  canRun: (editor, fontFamily: TextStyleOption['value']) =>
     editor.can().chain().focus().setFontFamily(fontFamily).run(),
 })
 
@@ -32,9 +32,9 @@ export const unsetFontFamilyAction = defineRichTextAction(textStyleFeature, {
 
 export const setFontSizeAction = defineRichTextAction(textStyleFeature, {
   key: 'set-font-size',
-  run: (editor, fontSize: FontSizeOption['value']) =>
+  run: (editor, fontSize: TextStyleOption['value']) =>
     editor.chain().focus().setFontSize(fontSize).run(),
-  canRun: (editor, fontSize: FontSizeOption['value']) =>
+  canRun: (editor, fontSize: TextStyleOption['value']) =>
     editor.can().chain().focus().setFontSize(fontSize).run(),
 })
 
@@ -46,9 +46,9 @@ export const unsetFontSizeAction = defineRichTextAction(textStyleFeature, {
 
 export const setLineHeightAction = defineRichTextAction(textStyleFeature, {
   key: 'set-line-height',
-  run: (editor, lineHeight: LineHeightOption['value']) =>
+  run: (editor, lineHeight: TextStyleOption['value']) =>
     editor.chain().focus().setLineHeight(lineHeight).run(),
-  canRun: (editor, lineHeight: LineHeightOption['value']) =>
+  canRun: (editor, lineHeight: TextStyleOption['value']) =>
     editor.can().chain().focus().setLineHeight(lineHeight).run(),
 })
 

@@ -17,6 +17,7 @@ import TextStyleToolbarControl from '../../../../src/features/text-style/vue/Tex
 import { createTestEditor } from '../../../helpers/editor'
 
 const red = textStyleColorOptions.find((option) => option.key === 'red')!
+const blue = textStyleColorOptions.find((option) => option.key === 'blue')!
 const serif = textStyleFontFamilyOptions.find((option) => option.key === 'serif')!
 const large = textStyleFontSizeOptions.find((option) => option.key === '18pt')!
 const spacious = textStyleLineHeightOptions.find((option) => option.key === '1.5')!
@@ -174,6 +175,64 @@ describe('TextStyleToolbarControl', () => {
     expect(wrapper.get('[data-test="rich-text-font-family"]').text()).toContain('字体')
     expect(wrapper.get('[data-test="rich-text-font-size"]').text()).toContain('字号')
     expect(wrapper.get('[data-test="rich-text-line-height"]').text()).toContain('行高')
+  })
+
+  it('uses the current text style for a range selection', () => {
+    const editor = createEditor({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: '甲',
+              marks: [
+                {
+                  type: 'textStyle',
+                  attrs: {
+                    color: red.value,
+                    fontFamily: serif.value,
+                    fontSize: large.value,
+                    lineHeight: spacious.value,
+                  },
+                },
+              ],
+            },
+            {
+              type: 'text',
+              text: '乙',
+              marks: [
+                {
+                  type: 'textStyle',
+                  attrs: {
+                    color: blue.value,
+                    fontSize: large.value,
+                    lineHeight: spacious.value,
+                  },
+                },
+              ],
+            },
+            { type: 'text', text: '丙' },
+          ],
+        },
+      ],
+    })
+    editor.commands.setTextSelection({ from: 1, to: 3 })
+    const wrapper = mountControl(editor)
+
+    expect(wrapper.get('[data-test="rich-text-text-color"]').attributes('title')).toBe(
+      `文字颜色：${red.label}`,
+    )
+    expect(wrapper.get('[data-test="rich-text-font-family"]').attributes('title')).toBe(
+      `字体：${serif.label}`,
+    )
+    expect(wrapper.get('[data-test="rich-text-font-size"]').attributes('title')).toBe(
+      `字号：${large.label}`,
+    )
+    expect(wrapper.get('[data-test="rich-text-line-height"]').attributes('title')).toBe(
+      `行高：${spacious.label}`,
+    )
   })
 
   it('disables all entries without an editor or when explicitly disabled', () => {

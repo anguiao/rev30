@@ -58,7 +58,7 @@ const { editor } = useRichTextEditor({
 
     <EditorContent
       :editor="editor"
-      class="prose prose-sm min-h-0 max-w-none flex-1 overflow-y-auto dark:prose-invert [&_.ProseMirror]:min-h-(--rich-text-editor-min-height) [&_.ProseMirror]:px-3 [&_.ProseMirror]:outline-none"
+      class="prose prose-sm min-h-0 max-w-none flex-1 overflow-y-auto dark:prose-invert"
       :style="{ '--rich-text-editor-min-height': `${minHeight}px` }"
     />
 
@@ -78,6 +78,17 @@ const { editor } = useRichTextEditor({
 
 :deep(.ProseMirror) {
   --rich-text-selection-color: color-mix(in srgb, var(--app-primary-color) 24%, transparent);
+  min-height: var(--rich-text-editor-min-height);
+  padding: 0.75rem;
+  outline: none;
+}
+
+:deep(.ProseMirror > :first-child) {
+  margin-top: 0;
+}
+
+:deep(.ProseMirror > :last-child) {
+  margin-bottom: 0;
 }
 
 :deep(.ProseMirror ::selection) {

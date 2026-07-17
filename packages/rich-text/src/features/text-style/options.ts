@@ -19,7 +19,6 @@ export const textColors = textStyleColorOptions.map((option) => option.value)
 export const textColorSet = new Set<string>(textColors)
 
 export const textStyleFontFamilyOptions = [
-  { key: 'system', label: '系统默认', value: 'system-ui' },
   { key: 'sans', label: '无衬线', value: 'sans-serif' },
   { key: 'serif', label: '衬线', value: 'serif' },
   { key: 'monospace', label: '等宽', value: 'monospace' },

@@ -5,7 +5,7 @@ import RichTextToolbarControl from './RichTextToolbarControl.vue'
 
 const props = withDefaults(
   defineProps<{
-    editor: Editor | null
+    editor: Editor
     toolbar: RichTextToolbarConfig
     disabled?: boolean
   }>(),

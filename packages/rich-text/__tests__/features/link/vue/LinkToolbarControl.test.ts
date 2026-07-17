@@ -17,7 +17,7 @@ function createEditor(content = '<p>维护通知</p>') {
   })
 }
 
-function mountControl(editor: Editor | null, disabled = false) {
+function mountControl(editor: Editor, disabled = false) {
   return mount(LinkToolbarControl, {
     global: {
       stubs: {
@@ -25,7 +25,7 @@ function mountControl(editor: Editor | null, disabled = false) {
       },
     },
     props: {
-      editor: editor ? markRaw(editor) : null,
+      editor: markRaw(editor),
       disabled,
     },
   })
@@ -273,13 +273,9 @@ describe('LinkToolbarControl', () => {
     )
   })
 
-  it('is disabled without an editor or when the disabled prop is true', () => {
-    const wrapperWithoutEditor = mountControl(null)
+  it('is disabled when the disabled prop is true', () => {
     const wrapperDisabled = mountControl(createEditor(), true)
 
-    expect(
-      wrapperWithoutEditor.get('[data-test="rich-text-link"]').attributes('disabled'),
-    ).toBeDefined()
     expect(wrapperDisabled.get('[data-test="rich-text-link"]').attributes('disabled')).toBeDefined()
   })
 })

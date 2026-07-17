@@ -7,7 +7,7 @@ import { isRichTextActionDisabled, type RichTextToolbarItem } from '../toolbar'
 const props = withDefaults(
   defineProps<{
     item: RichTextToolbarItem
-    editor: Editor | null
+    editor: Editor
     disabled?: boolean
   }>(),
   {
@@ -17,26 +17,15 @@ const props = withDefaults(
 
 const editor = props.editor
 
-const isDisabled = computed(() => {
-  if (props.disabled || !editor) {
-    return true
-  }
-
-  return isRichTextActionDisabled(props.item.action, editor)
-})
-
-const isActive = computed(() => {
-  if (!editor) {
-    return false
-  }
-
-  return props.item.action.isActive?.(editor) ?? false
-})
+const isDisabled = computed(
+  () => props.disabled || isRichTextActionDisabled(props.item.action, editor),
+)
+const isActive = computed(() => props.item.action.isActive?.(editor) ?? false)
 
 const buttonType = computed(() => (isActive.value ? 'primary' : 'default'))
 
 function handleClick() {
-  if (isDisabled.value || !editor) {
+  if (isDisabled.value) {
     return
   }
 

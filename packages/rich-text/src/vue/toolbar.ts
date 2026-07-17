@@ -32,7 +32,7 @@ export interface RichTextToolbarDropdownControl {
 }
 
 export interface RichTextToolbarControlInjectedProps {
-  editor: Editor | null
+  editor: Editor
   disabled?: boolean
 }
 

@@ -14,11 +14,10 @@ const props = withDefaults(defineProps<HighlightToolbarControlProps>(), {
 })
 
 const editor = props.editor
-const isDisabled = computed(() => props.disabled || !editor)
-const isActive = computed(() => editor?.isActive('highlight') ?? false)
+const isActive = computed(() => editor.isActive('highlight'))
 
 const currentColor = computed(() => {
-  const color = editor?.getAttributes('highlight').color
+  const color = editor.getAttributes('highlight').color
 
   return typeof color === 'string' ? color.trim().toLowerCase() : null
 })
@@ -28,7 +27,7 @@ const selectedColorKey = computed(
 )
 
 function applyColor(color: HighlightColorOption['value']) {
-  if (isDisabled.value || !editor) {
+  if (props.disabled) {
     return
   }
 
@@ -36,7 +35,7 @@ function applyColor(color: HighlightColorOption['value']) {
 }
 
 function clearHighlight() {
-  if (isDisabled.value || !editor) {
+  if (props.disabled) {
     return
   }
 
@@ -45,12 +44,12 @@ function clearHighlight() {
 </script>
 
 <template>
-  <NPopover trigger="click" placement="bottom" :disabled="isDisabled">
+  <NPopover trigger="click" placement="bottom" :disabled="disabled">
     <template #trigger>
       <NButton
         data-test="rich-text-highlight"
         :data-active="isActive ? 'true' : undefined"
-        :disabled="isDisabled"
+        :disabled="disabled"
         size="small"
         style="--n-padding: 0 6px"
         :type="isActive ? 'primary' : 'default'"

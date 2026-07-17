@@ -13,7 +13,7 @@ import {
 const props = withDefaults(
   defineProps<{
     control: RichTextToolbarDropdownControl
-    editor: Editor | null
+    editor: Editor
     disabled?: boolean
   }>(),
   {
@@ -24,28 +24,19 @@ const props = withDefaults(
 const editor = props.editor
 
 function isItemDisabled(item: RichTextToolbarItem) {
-  if (props.disabled || !editor) {
-    return true
-  }
-
-  return isRichTextActionDisabled(item.action, editor)
+  return props.disabled || isRichTextActionDisabled(item.action, editor)
 }
 
-const activeItem = computed(() => {
-  if (!editor) {
-    return undefined
-  }
-
-  return (
+const activeItem = computed(
+  () =>
     props.control.getActiveItem?.(editor, props.control.items) ??
-    getActiveRichTextToolbarItem(editor, props.control.items)
-  )
-})
+    getActiveRichTextToolbarItem(editor, props.control.items),
+)
 
 const isActive = computed(() => activeItem.value !== undefined)
 
 const isDisabled = computed(
-  () => props.disabled || !editor || props.control.items.every((item) => isItemDisabled(item)),
+  () => props.disabled || props.control.items.every((item) => isItemDisabled(item)),
 )
 
 const triggerLabel = computed(() => activeItem.value?.label ?? props.control.label)
@@ -89,10 +80,6 @@ function renderLabel(option: DropdownOption) {
 }
 
 function handleSelect(key: string | number) {
-  if (!editor) {
-    return
-  }
-
   const item = props.control.items.find((item) => item.action.key === key)
   if (!item || isItemDisabled(item)) {
     return

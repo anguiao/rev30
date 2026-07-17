@@ -18,10 +18,10 @@ function createEditor(
   })
 }
 
-function mountControl(editor: Editor | null, disabled = false) {
+function mountControl(editor: Editor, disabled = false) {
   return mount(CharacterCountToolbarControl, {
     props: {
-      editor: editor ? markRaw(editor) : null,
+      editor: markRaw(editor),
       disabled,
     },
   })
@@ -52,15 +52,10 @@ describe('CharacterCountToolbarControl', () => {
     expect(wrapper.get('[data-test="rich-text-character-count"]').text()).toBe('4 字')
   })
 
-  it('shows zero without an editor and remains visible when disabled', () => {
-    const wrapperWithoutEditor = mountControl(null)
+  it('remains visible when disabled', () => {
     const disabledWrapper = mountControl(createEditor('<p>仍然显示</p>'), true)
-    const emptyControl = wrapperWithoutEditor.get('[data-test="rich-text-character-count"]')
     const disabledControl = disabledWrapper.get('[data-test="rich-text-character-count"]')
 
-    expect(emptyControl.text()).toBe('0 字')
-    expect(emptyControl.attributes('aria-disabled')).toBe('true')
-    expect(emptyControl.classes()).toContain('opacity-50')
     expect(disabledControl.text()).toBe('4 字')
     expect(disabledControl.attributes('aria-disabled')).toBe('true')
     expect(disabledControl.classes()).toContain('opacity-50')

@@ -47,7 +47,7 @@ function createTableEditor(rowCount = 2, columnCount = 2) {
   return editor
 }
 
-function mountControl(editor: Editor | null, disabled = false) {
+function mountControl(editor: Editor, disabled = false) {
   return mount(TableToolbarControl, {
     global: {
       stubs: {
@@ -55,7 +55,7 @@ function mountControl(editor: Editor | null, disabled = false) {
       },
     },
     props: {
-      editor: editor ? markRaw(editor) : null,
+      editor: markRaw(editor),
       disabled,
     },
   })
@@ -233,13 +233,8 @@ describe('TableToolbarControl', () => {
     expect(addColumnButton.props('disabled')).toBe(true)
   })
 
-  it('disables the control without an editor and closes it when disabled', async () => {
-    const wrapperWithoutEditor = mountControl(null)
+  it('disables the control and closes it when disabled', async () => {
     const wrapper = mountControl(createEditor())
-
-    expect(
-      wrapperWithoutEditor.get('[data-test="rich-text-table"]').attributes('disabled'),
-    ).toBeDefined()
 
     await openPopover(wrapper, 'rich-text-table-insert-panel')
     await wrapper.setProps({ disabled: true })

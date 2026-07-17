@@ -14,7 +14,6 @@ import {
   setSearchReplaceCaseSensitiveAction,
   setSearchReplaceQueryAction,
 } from '../editor'
-import type { RichTextSearchReplaceState } from '../editor'
 
 const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
   disabled: false,
@@ -23,20 +22,10 @@ const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
 const editor = props.editor
 const searchInput = ref<InputInst | null>(null)
 const replacement = ref('')
-const isEditable = ref(editor?.isEditable ?? false)
-const searchState = shallowRef<RichTextSearchReplaceState>(
-  editor
-    ? getSearchReplaceState(editor)
-    : {
-        active: false,
-        query: '',
-        caseSensitive: false,
-        matches: [],
-        currentIndex: -1,
-      },
-)
+const isEditable = ref(editor.isEditable)
+const searchState = shallowRef(getSearchReplaceState(editor))
 
-const isUnavailable = computed(() => props.disabled || !editor || !isEditable.value)
+const isUnavailable = computed(() => props.disabled || !isEditable.value)
 const hasMatches = computed(() => searchState.value.matches.length > 0)
 const hasActiveMatch = computed(
   () =>
@@ -49,7 +38,7 @@ const matchPositionLabel = computed(() => {
   return total === 0 ? '0/0' : `${searchState.value.currentIndex + 1}/${total}`
 })
 const canOpenPanel = computed(() => {
-  return !isUnavailable.value && !!editor && (openSearchReplaceAction.canRun?.(editor) ?? true)
+  return !isUnavailable.value && (openSearchReplaceAction.canRun?.(editor) ?? true)
 })
 const isTriggerDisabled = computed(
   () => isUnavailable.value || (!searchState.value.active && !canOpenPanel.value),
@@ -60,22 +49,20 @@ function focusSearchInput() {
 }
 
 function syncSearchState() {
-  if (editor) {
-    searchState.value = getSearchReplaceState(editor)
-  }
+  searchState.value = getSearchReplaceState(editor)
 }
 
 function handleEditorUpdate() {
-  isEditable.value = editor?.isEditable ?? false
+  isEditable.value = editor.isEditable
 
-  if (editor && !editor.isEditable && getSearchReplaceState(editor).active) {
+  if (!editor.isEditable && getSearchReplaceState(editor).active) {
     closeSearchReplaceAction.run(editor)
   }
 }
 
 handleEditorUpdate()
-editor?.on('transaction', syncSearchState)
-editor?.on('update', handleEditorUpdate)
+editor.on('transaction', syncSearchState)
+editor.on('update', handleEditorUpdate)
 
 watch(
   [() => searchState.value.active, searchInput],
@@ -90,7 +77,7 @@ watch(
 watch(
   () => props.disabled,
   (disabled) => {
-    if (disabled && searchState.value.active && editor) {
+    if (disabled && searchState.value.active) {
       closeSearchReplaceAction.run(editor)
     }
   },
@@ -98,12 +85,12 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  editor?.off('transaction', syncSearchState)
-  editor?.off('update', handleEditorUpdate)
+  editor.off('transaction', syncSearchState)
+  editor.off('update', handleEditorUpdate)
 })
 
 function openPanel() {
-  if (!canOpenPanel.value || !editor) {
+  if (!canOpenPanel.value) {
     return
   }
 
@@ -111,10 +98,6 @@ function openPanel() {
 }
 
 function closePanel(restoreEditorFocus = false) {
-  if (!editor) {
-    return
-  }
-
   closeSearchReplaceAction.run(editor)
 
   if (restoreEditorFocus) {
@@ -132,39 +115,35 @@ function togglePanel() {
 }
 
 function setQuery(query: string) {
-  if (editor) {
-    setSearchReplaceQueryAction.run(editor, query)
-  }
+  setSearchReplaceQueryAction.run(editor, query)
 }
 
 function setCaseSensitive(caseSensitive: boolean) {
-  if (editor) {
-    setSearchReplaceCaseSensitiveAction.run(editor, caseSensitive)
-  }
+  setSearchReplaceCaseSensitiveAction.run(editor, caseSensitive)
 }
 
 function goToPreviousMatch() {
-  if (hasMatches.value && editor) {
+  if (hasMatches.value) {
     goToPreviousSearchMatchAction.run(editor)
     focusSearchInput()
   }
 }
 
 function goToNextMatch() {
-  if (hasMatches.value && editor) {
+  if (hasMatches.value) {
     goToNextSearchMatchAction.run(editor)
     focusSearchInput()
   }
 }
 
 function replaceCurrentMatch() {
-  if (!isUnavailable.value && hasActiveMatch.value && editor) {
+  if (!isUnavailable.value && hasActiveMatch.value) {
     replaceCurrentSearchMatchAction.run(editor, replacement.value)
   }
 }
 
 function replaceAllMatches() {
-  if (!isUnavailable.value && hasMatches.value && editor) {
+  if (!isUnavailable.value && hasMatches.value) {
     replaceAllSearchMatchesAction.run(editor, replacement.value)
   }
 }

@@ -6,7 +6,7 @@ import RichTextToolbarDropdown from './RichTextToolbarDropdown.vue'
 
 defineProps<{
   control: RichTextToolbarControlConfig
-  editor: Editor | null
+  editor: Editor
   disabled?: boolean
 }>()
 </script>

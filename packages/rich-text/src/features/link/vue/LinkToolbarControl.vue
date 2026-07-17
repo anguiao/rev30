@@ -10,16 +10,8 @@ const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
 })
 
 const editor = props.editor
-const isDisabled = computed(() => props.disabled || !editor)
-const isActive = computed(() => editor?.isActive('link') ?? false)
-
-const isEditorFocused = computed(() => {
-  if (!editor) {
-    return false
-  }
-
-  return editor.state ? editor.isFocused : false
-})
+const isActive = computed(() => editor.isActive('link'))
+const isEditorFocused = computed(() => (editor.state ? editor.isFocused : false))
 
 const showPopover = ref(false)
 const popoverMode = ref<'create' | 'edit'>('create')
@@ -28,7 +20,7 @@ const url = ref('')
 const dismissedHref = ref<string | null>(null)
 
 const currentHref = computed(() => {
-  const href = editor?.getAttributes('link').href
+  const href = editor.getAttributes('link').href
 
   return typeof href === 'string' ? href : ''
 })
@@ -51,13 +43,13 @@ const inputStatusProps = computed(() =>
     : {},
 )
 const canApply = computed(
-  () => !isDisabled.value && (inputHrefState.value.isEmpty || inputHrefState.value.isAllowed),
+  () => !props.disabled && (inputHrefState.value.isEmpty || inputHrefState.value.isAllowed),
 )
-const canOpen = computed(() => !isDisabled.value && inputHrefState.value.isAllowed)
+const canOpen = computed(() => !props.disabled && inputHrefState.value.isAllowed)
 const canRemove = computed(() => popoverMode.value === 'edit')
 
 watch(
-  [currentHref, isDisabled, isEditorFocused],
+  [currentHref, () => props.disabled, isEditorFocused],
   ([href, disabled, focused]) => {
     if (disabled || !href) {
       showPopover.value = false
@@ -85,7 +77,7 @@ function closePopover() {
 }
 
 function togglePopover() {
-  if (isDisabled.value) {
+  if (props.disabled) {
     return
   }
 
@@ -101,7 +93,7 @@ function togglePopover() {
 }
 
 function applyLink() {
-  if (!canApply.value || !editor) {
+  if (!canApply.value) {
     return
   }
 
@@ -117,7 +109,7 @@ function applyLink() {
 }
 
 function removeLink() {
-  if (isDisabled.value || !editor) {
+  if (props.disabled) {
     return
   }
 
@@ -140,14 +132,14 @@ function openLink() {
     :show="showPopover"
     trigger="manual"
     placement="bottom"
-    :disabled="isDisabled"
+    :disabled="disabled"
     @clickoutside="closePopover"
   >
     <template #trigger>
       <NButton
         data-test="rich-text-link"
         :data-active="isActive ? 'true' : undefined"
-        :disabled="isDisabled"
+        :disabled="disabled"
         size="small"
         style="--n-padding: 0 6px"
         :type="isActive ? 'primary' : 'default'"

@@ -63,8 +63,7 @@ const tableActionGroups = [
 
 type TableAction = (typeof tableActionGroups)[number]['actions'][number]['action']
 
-const isUnavailable = computed(() => props.disabled || !editor)
-const isInTable = computed(() => editor?.isActive('table') ?? false)
+const isInTable = computed(() => editor.isActive('table'))
 
 function isInsertDimension(value: number | null): value is RichTextTableInsertDimension {
   return value !== null && Number.isInteger(value) && value >= 1 && value <= 10
@@ -85,12 +84,7 @@ const insertOptions = computed<RichTextInsertTableOptions | null>(() => {
 const canInsert = computed(() => {
   const options = insertOptions.value
 
-  return (
-    !isUnavailable.value &&
-    !!editor &&
-    !!options &&
-    (insertTableAction.canRun?.(editor, options) ?? true)
-  )
+  return !props.disabled && !!options && (insertTableAction.canRun?.(editor, options) ?? true)
 })
 
 function closePopover() {
@@ -113,7 +107,7 @@ watch(
 )
 
 function togglePopover() {
-  if (isUnavailable.value) {
+  if (props.disabled) {
     return
   }
 
@@ -129,7 +123,7 @@ function togglePopover() {
 function insertTable() {
   const options = insertOptions.value
 
-  if (!editor || !options || !canInsert.value) {
+  if (!options || !canInsert.value) {
     return
   }
 
@@ -138,11 +132,11 @@ function insertTable() {
 }
 
 function canRun(action: TableAction) {
-  return !isUnavailable.value && !!editor && (action.canRun?.(editor) ?? true)
+  return !props.disabled && (action.canRun?.(editor) ?? true)
 }
 
 function runAction(action: TableAction) {
-  if (!editor || !canRun(action)) {
+  if (!canRun(action)) {
     return
   }
 
@@ -159,14 +153,14 @@ function runAction(action: TableAction) {
     :show="showPopover"
     trigger="manual"
     placement="bottom-start"
-    :disabled="isUnavailable"
+    :disabled="disabled"
     @clickoutside="closePopover"
   >
     <template #trigger>
       <NButton
         data-test="rich-text-table"
         :data-active="isInTable ? 'true' : undefined"
-        :disabled="isUnavailable"
+        :disabled="disabled"
         size="small"
         style="--n-padding: 0 6px"
         :type="isInTable ? 'primary' : 'default'"

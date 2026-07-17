@@ -36,14 +36,14 @@ function canRunAction<Args extends unknown[]>(
   action: RichTextAction<RichTextFeature, string, Args>,
   ...args: Args
 ) {
-  return !props.disabled && !!editor && (action.canRun?.(editor, ...args) ?? true)
+  return !props.disabled && (action.canRun?.(editor, ...args) ?? true)
 }
 
 function runAction<Args extends unknown[]>(
   action: RichTextAction<RichTextFeature, string, Args>,
   ...args: Args
 ) {
-  if (!editor || !canRunAction(action, ...args)) {
+  if (!canRunAction(action, ...args)) {
     return false
   }
 
@@ -51,7 +51,7 @@ function runAction<Args extends unknown[]>(
 }
 
 const colorControl = computed(() => {
-  const value = editor?.getAttributes('textStyle').color
+  const value = editor.getAttributes('textStyle').color
   const currentOption = props.colors.find((option) => option.value === value)
   const canReset = canRunAction(unsetTextColorAction)
   const options = props.colors.map((option) => ({
@@ -135,7 +135,7 @@ const selectControls = computed(() => {
 
   return settings.map((setting) => {
     const controlKey = getSelectControlKey(setting.attribute)
-    const value = editor?.getAttributes('textStyle')[setting.attribute]
+    const value = editor.getAttributes('textStyle')[setting.attribute]
     const currentOption = setting.options.find((option) => option.value === value)
     const canReset = canRunAction(setting.unsetAction)
     const options: DropdownOption[] = [

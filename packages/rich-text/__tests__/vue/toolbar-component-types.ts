@@ -1,9 +1,12 @@
+import type { Editor } from '@tiptap/core'
 import { highlightColorOptions } from '../../src/features/highlight/colors'
 import { highlightFeature } from '../../src/features/highlight/shared'
 import HighlightToolbarControl from '../../src/features/highlight/vue/HighlightToolbarControl.vue'
 import { linkFeature } from '../../src/features/link/shared'
 import LinkToolbarControl from '../../src/features/link/vue/LinkToolbarControl.vue'
 import { richTextToolbarComponent } from '../../src/vue/toolbar'
+
+declare const editor: Editor
 
 richTextToolbarComponent({
   feature: highlightFeature,
@@ -46,6 +49,6 @@ richTextToolbarComponent({
   component: LinkToolbarControl,
   props: {
     // @ts-expect-error Editor is injected by the toolbar renderer.
-    editor: null,
+    editor,
   },
 })

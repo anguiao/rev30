@@ -31,7 +31,7 @@ function createEditor(
   })
 }
 
-function mountControl(editor: Editor | null, disabled = false) {
+function mountControl(editor: Editor, disabled = false) {
   return mount(TextStyleToolbarControl, {
     global: {
       stubs: {
@@ -39,7 +39,7 @@ function mountControl(editor: Editor | null, disabled = false) {
       },
     },
     props: {
-      editor: editor ? markRaw(editor) : null,
+      editor: markRaw(editor),
       disabled,
       colors: [...textStyleColorOptions],
       fontFamilies: [...textStyleFontFamilyOptions],
@@ -235,8 +235,7 @@ describe('TextStyleToolbarControl', () => {
     )
   })
 
-  it('disables all entries without an editor or when explicitly disabled', () => {
-    const wrapperWithoutEditor = mountControl(null)
+  it('disables all entries when explicitly disabled', () => {
     const wrapperDisabled = mountControl(createEditor(), true)
 
     for (const dataTest of [
@@ -245,9 +244,6 @@ describe('TextStyleToolbarControl', () => {
       'rich-text-font-size',
       'rich-text-line-height',
     ]) {
-      expect(
-        wrapperWithoutEditor.get(`[data-test="${dataTest}"]`).attributes('disabled'),
-      ).toBeDefined()
       expect(wrapperDisabled.get(`[data-test="${dataTest}"]`).attributes('disabled')).toBeDefined()
     }
   })

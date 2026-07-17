@@ -21,7 +21,7 @@ function createEditor(content = '<p>Alpha alpha ALPHA</p>') {
   })
 }
 
-function mountControl(editor: Editor | null, disabled = false) {
+function mountControl(editor: Editor, disabled = false) {
   const element = document.createElement('div')
   document.body.appendChild(element)
 
@@ -33,7 +33,7 @@ function mountControl(editor: Editor | null, disabled = false) {
       },
     },
     props: {
-      editor: editor ? markRaw(editor) : null,
+      editor: markRaw(editor),
       disabled,
     },
   })
@@ -202,17 +202,13 @@ describe('SearchReplaceToolbarControl', () => {
     )
   })
 
-  it('is safe without an editor and closes when disabled', async () => {
-    const wrapperWithoutEditor = mountControl(null)
+  it('closes when disabled', async () => {
     const editor = createEditor()
     const wrapper = mountControl(editor)
     const readOnlyEditor = createEditor()
     readOnlyEditor.setEditable(false)
     const wrapperWithReadOnlyEditor = mountControl(readOnlyEditor)
 
-    expect(
-      wrapperWithoutEditor.get('[data-test="rich-text-search-replace"]').attributes('disabled'),
-    ).toBeDefined()
     expect(
       wrapperWithReadOnlyEditor
         .get('[data-test="rich-text-search-replace"]')

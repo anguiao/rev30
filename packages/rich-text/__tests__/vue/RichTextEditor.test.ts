@@ -43,7 +43,6 @@ const toolbarDataTests = [
   'rich-text-undo',
   'rich-text-redo',
   'rich-text-search-replace',
-  'rich-text-character-count',
 ]
 
 const allEditorPreset = createAllRichTextEditorPreset({
@@ -91,7 +90,7 @@ async function selectDropdownCommand(wrapper: ReturnType<typeof mount>, commandK
 }
 
 describe('RichTextEditor', () => {
-  it('renders editor content and all toolbar buttons', async () => {
+  it('renders editor content, toolbar controls, and status bar items', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,
       preset: allEditorPreset,
@@ -100,11 +99,13 @@ describe('RichTextEditor', () => {
     const editable = await getEditable(wrapper)
 
     expect(wrapper.find('[data-test="rich-text-editor"]').exists()).toBe(true)
-    expect(wrapper.findAll('[data-test="rich-text-toolbar-group"]')).toHaveLength(6)
+    expect(wrapper.findAll('[data-test="rich-text-toolbar-group"]')).toHaveLength(5)
     for (const dataTest of toolbarDataTests) {
       expect(wrapper.find(`[data-test="${dataTest}"]`).exists()).toBe(true)
     }
     expect(wrapper.findAllComponents(NDropdown)).toHaveLength(7)
+    expect(wrapper.get('[data-test="rich-text-status-bar"]').text()).toBe('4 字')
+    expect(wrapper.find('[data-test="rich-text-character-count"]').exists()).toBe(true)
     expect(editable.text()).toContain('维护通知')
   })
 
@@ -144,7 +145,7 @@ describe('RichTextEditor', () => {
     })
   })
 
-  it('does not render a toolbar when the preset has no toolbar', async () => {
+  it('does not render toolbar or status bar regions when the preset omits them', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,
       preset: noHeadingEditorPreset,
@@ -153,6 +154,7 @@ describe('RichTextEditor', () => {
     await getEditable(wrapper)
 
     expect(wrapper.find('[data-test="rich-text-toolbar-group"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="rich-text-status-bar"]').exists()).toBe(false)
   })
 
   it('toggles editor editability when disabled changes', async () => {

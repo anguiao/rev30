@@ -1,6 +1,7 @@
 import { validateRichTextFeatureImplementations } from '../../core/feature'
 import type { RichTextPreset } from '../../core/preset'
 import type { RichTextEditorFeature } from '../../editor/feature'
+import type { RichTextStatusBarConfig, RichTextStatusBarComponentItem } from '../status-bar'
 import {
   getRichTextToolbarControlFeature,
   type RichTextToolbarConfig,
@@ -13,6 +14,7 @@ export interface RichTextEditorPreset<
 > extends RichTextPreset<Preset['key'], Preset['features']> {
   readonly editorFeatures: EditorFeatures
   readonly toolbar?: RichTextToolbarConfig
+  readonly statusBar?: RichTextStatusBarConfig
 }
 
 function validateToolbarControl(
@@ -32,6 +34,21 @@ function validateToolbarControl(
   }
 }
 
+function validateStatusBarItem(
+  preset: RichTextPreset,
+  editorFeatures: readonly RichTextEditorFeature[],
+  item: RichTextStatusBarComponentItem,
+) {
+  if (
+    !preset.features.includes(item.feature) ||
+    !editorFeatures.some((editorFeature) => editorFeature.feature === item.feature)
+  ) {
+    throw new Error(
+      `Rich text preset "${preset.key}" has a status bar item for unknown feature "${item.feature.key}"`,
+    )
+  }
+}
+
 export function defineRichTextEditorPreset<
   const Preset extends RichTextPreset,
   const EditorFeatures extends readonly RichTextEditorFeature<Preset['features'][number]>[],
@@ -40,6 +57,7 @@ export function defineRichTextEditorPreset<
   options: {
     readonly editorFeatures: EditorFeatures
     readonly toolbar?: RichTextToolbarConfig
+    readonly statusBar?: RichTextStatusBarConfig
   },
 ): RichTextEditorPreset<Preset, ReadonlyArray<EditorFeatures[number]>> {
   const editorFeatures = Object.freeze([...options.editorFeatures])
@@ -54,18 +72,17 @@ export function defineRichTextEditorPreset<
     }
   }
 
-  return Object.freeze(
-    options.toolbar
-      ? {
-          key: preset.key,
-          features: preset.features,
-          editorFeatures,
-          toolbar: options.toolbar,
-        }
-      : {
-          key: preset.key,
-          features: preset.features,
-          editorFeatures,
-        },
-  )
+  if (options.statusBar) {
+    for (const item of options.statusBar.items) {
+      validateStatusBarItem(preset, editorFeatures, item)
+    }
+  }
+
+  return Object.freeze({
+    key: preset.key,
+    features: preset.features,
+    editorFeatures,
+    ...(options.toolbar ? { toolbar: options.toolbar } : {}),
+    ...(options.statusBar ? { statusBar: options.statusBar } : {}),
+  })
 }

@@ -1,12 +1,12 @@
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
-import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
+import { flushPromises, mount } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { characterCountEditorFeature } from '../../../../src/features/character-count/editor'
-import CharacterCountToolbarControl from '../../../../src/features/character-count/vue/CharacterCountToolbarControl.vue'
+import CharacterCountStatusBarItem from '../../../../src/features/character-count/vue/CharacterCountStatusBarItem.vue'
 import { createTestEditor } from '../../../helpers/editor'
 
 function createEditor(
@@ -18,30 +18,29 @@ function createEditor(
   })
 }
 
-function mountControl(editor: Editor, disabled = false) {
-  return mount(CharacterCountToolbarControl, {
+function mountItem(editor: Editor) {
+  return mount(CharacterCountStatusBarItem, {
     props: {
       editor: markRaw(editor),
-      disabled,
     },
   })
 }
 
-describe('CharacterCountToolbarControl', () => {
+describe('CharacterCountStatusBarItem', () => {
   it('shows the grapheme count for Chinese, ASCII, and emoji text', () => {
     const editor = createEditor('<p>你好A👨‍👩‍👧‍👦</p>')
-    const wrapper = mountControl(editor)
-    const control = wrapper.get('[data-test="rich-text-character-count"]')
+    const wrapper = mountItem(editor)
+    const item = wrapper.get('[data-test="rich-text-character-count"]')
 
-    expect(control.text()).toBe('4 字')
-    expect(control.attributes('title')).toBe('字符数：4')
-    expect(control.attributes('aria-label')).toBe('字符数：4')
-    expect(control.attributes('aria-live')).toBe('polite')
+    expect(item.text()).toBe('4 字')
+    expect(item.attributes('title')).toBe('字符数：4')
+    expect(item.attributes('aria-label')).toBe('字符数：4')
+    expect(item.attributes('aria-live')).toBe('polite')
   })
 
   it('updates after editor transactions', async () => {
     const editor = createEditor('<p>初始</p>')
-    const wrapper = mountControl(editor)
+    const wrapper = mountItem(editor)
 
     editor.commands.setTextSelection(2)
     await flushPromises()
@@ -50,14 +49,5 @@ describe('CharacterCountToolbarControl', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-test="rich-text-character-count"]').text()).toBe('4 字')
-  })
-
-  it('remains visible when disabled', () => {
-    const disabledWrapper = mountControl(createEditor('<p>仍然显示</p>'), true)
-    const disabledControl = disabledWrapper.get('[data-test="rich-text-character-count"]')
-
-    expect(disabledControl.text()).toBe('4 字')
-    expect(disabledControl.attributes('aria-disabled')).toBe('true')
-    expect(disabledControl.classes()).toContain('opacity-50')
   })
 })

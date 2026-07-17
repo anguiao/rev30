@@ -1,10 +1,10 @@
-import { richTextToolbarComponent } from '../../vue/toolbar'
+import { richTextStatusBarComponent } from '../../vue/status-bar'
 import { characterCountFeature } from './shared'
-import CharacterCountToolbarControl from './vue/CharacterCountToolbarControl.vue'
+import CharacterCountStatusBarItem from './vue/CharacterCountStatusBarItem.vue'
 
-export const characterCountToolbarControl = richTextToolbarComponent({
+export const characterCountStatusBarItem = richTextStatusBarComponent({
   feature: characterCountFeature,
   key: characterCountFeature.key,
-  component: CharacterCountToolbarControl,
+  component: CharacterCountStatusBarItem,
   props: {},
 })

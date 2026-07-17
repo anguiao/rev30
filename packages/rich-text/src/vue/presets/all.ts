@@ -4,7 +4,7 @@ import { blockquoteToolbarItem } from '../../features/blockquote/vue'
 import { boldEditorFeature } from '../../features/bold/editor'
 import { boldToolbarItem } from '../../features/bold/vue'
 import { characterCountEditorFeature } from '../../features/character-count/editor'
-import { characterCountToolbarControl } from '../../features/character-count/vue'
+import { characterCountStatusBarItem } from '../../features/character-count/vue'
 import { codeBlockEditorFeature } from '../../features/code-block/editor'
 import { codeBlockToolbarControl } from '../../features/code-block/vue'
 import { headingEditorFeature } from '../../features/heading/editor'
@@ -48,6 +48,7 @@ import {
   richTextToolbarButton as button,
   richTextToolbarDropdown as dropdown,
 } from '../toolbar'
+import { defineRichTextStatusBar } from '../status-bar'
 import { defineRichTextEditorPreset } from './types'
 
 export interface AllRichTextEditorPresetOptions {
@@ -131,7 +132,6 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
         createImageToolbarControl(options.image),
       ],
     },
-    { key: 'character-count', controls: [characterCountToolbarControl] },
   ])
 }
 
@@ -139,5 +139,6 @@ export function createAllRichTextEditorPreset(options: AllRichTextEditorPresetOp
   return defineRichTextEditorPreset(allRichTextPreset, {
     editorFeatures: allEditorFeatures,
     toolbar: createAllRichTextToolbar(options),
+    statusBar: defineRichTextStatusBar([characterCountStatusBarItem]),
   })
 }

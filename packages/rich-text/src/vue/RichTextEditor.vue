@@ -3,6 +3,7 @@ import { EditorContent } from '@tiptap/vue-3'
 import { toRef } from 'vue'
 import type { RichTextDocument } from '../schema'
 import type { RichTextEditorPreset } from './presets/types'
+import RichTextStatusBar from './status-bar/RichTextStatusBar.vue'
 import RichTextToolbar from './toolbar/RichTextToolbar.vue'
 import { useRichTextEditor } from './useRichTextEditor'
 
@@ -26,6 +27,7 @@ const emit = defineEmits<{
 
 const preset = props.preset
 const activeToolbar = preset.toolbar
+const activeStatusBar = preset.statusBar
 
 const { editor } = useRichTextEditor({
   modelValue: toRef(props, 'modelValue'),
@@ -39,22 +41,33 @@ const { editor } = useRichTextEditor({
 <template>
   <div
     data-test="rich-text-editor"
-    class="w-full overflow-hidden rounded-ui border border-input-border bg-input transition-[background-color,border-color,box-shadow] duration-300"
+    class="flex w-full flex-col overflow-hidden rounded-ui border border-input-border bg-input transition-[background-color,border-color,box-shadow] duration-300"
     :class="
       disabled
         ? ''
         : 'focus-within:border-input-focus-border focus-within:bg-input-focus focus-within:shadow-input-focus hover:border-input-hover-border'
     "
   >
-    <div v-if="activeToolbar" class="flex flex-wrap gap-1 border-b border-input-divider px-2 py-1">
+    <div
+      v-if="activeToolbar"
+      class="flex shrink-0 flex-wrap gap-1 border-b border-input-divider px-2 py-1"
+    >
       <RichTextToolbar :editor="editor" :toolbar="activeToolbar" :disabled="disabled" />
     </div>
 
     <EditorContent
       :editor="editor"
-      class="prose prose-sm flow-root max-w-none dark:prose-invert [&_.ProseMirror]:min-h-(--rich-text-editor-min-height) [&_.ProseMirror]:px-3 [&_.ProseMirror]:outline-none"
+      class="prose prose-sm min-h-0 max-w-none flex-1 overflow-y-auto dark:prose-invert [&_.ProseMirror]:min-h-(--rich-text-editor-min-height) [&_.ProseMirror]:px-3 [&_.ProseMirror]:outline-none"
       :style="{ '--rich-text-editor-min-height': `${minHeight}px` }"
     />
+
+    <div
+      v-if="activeStatusBar"
+      data-test="rich-text-status-bar"
+      class="text-text-3 flex min-h-8 shrink-0 items-center justify-end gap-3 border-t border-input-divider px-3 py-1 text-xs"
+    >
+      <RichTextStatusBar :editor="editor" :status-bar="activeStatusBar" />
+    </div>
   </div>
 </template>
 

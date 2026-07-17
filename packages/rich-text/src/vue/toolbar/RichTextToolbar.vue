@@ -18,8 +18,10 @@ const groups = props.toolbar.groups.filter((group) => group.controls.length > 0)
 </script>
 
 <template>
-  <template v-for="(group, index) in groups" :key="group.key">
+  <div class="flex shrink-0 flex-wrap gap-1 border-b border-input-divider px-2 py-1">
     <div
+      v-for="(group, index) in groups"
+      :key="group.key"
       data-test="rich-text-toolbar-group"
       class="flex items-center gap-1"
       :class="index === 0 ? undefined : 'border-l border-input-divider pl-1'"
@@ -32,5 +34,5 @@ const groups = props.toolbar.groups.filter((group) => group.controls.length > 0)
         :disabled="disabled"
       />
     </div>
-  </template>
+  </div>
 </template>

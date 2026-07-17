@@ -135,10 +135,15 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
   ])
 }
 
+const allRichTextStatusBar = defineRichTextStatusBar({
+  start: [],
+  end: [characterCountStatusBarItem],
+})
+
 export function createAllRichTextEditorPreset(options: AllRichTextEditorPresetOptions) {
   return defineRichTextEditorPreset(allRichTextPreset, {
     editorFeatures: allEditorFeatures,
     toolbar: createAllRichTextToolbar(options),
-    statusBar: defineRichTextStatusBar([characterCountStatusBarItem]),
+    statusBar: allRichTextStatusBar,
   })
 }

@@ -73,7 +73,7 @@ export function defineRichTextEditorPreset<
   }
 
   if (options.statusBar) {
-    for (const item of options.statusBar.items) {
+    for (const item of [...options.statusBar.start, ...options.statusBar.end]) {
       validateStatusBarItem(preset, editorFeatures, item)
     }
   }

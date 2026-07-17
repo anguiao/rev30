@@ -26,7 +26,8 @@ export interface RichTextStatusBarComponentItem {
 }
 
 export interface RichTextStatusBarConfig {
-  readonly items: readonly RichTextStatusBarComponentItem[]
+  readonly start: readonly RichTextStatusBarComponentItem[]
+  readonly end: readonly RichTextStatusBarComponentItem[]
 }
 
 export function richTextStatusBarComponent<TComponent extends Component>(
@@ -40,12 +41,13 @@ export function richTextStatusBarComponent<TComponent extends Component>(
   })
 }
 
-export function defineRichTextStatusBar(
-  items: readonly RichTextStatusBarComponentItem[],
-): RichTextStatusBarConfig {
+export function defineRichTextStatusBar({
+  start,
+  end,
+}: RichTextStatusBarConfig): RichTextStatusBarConfig {
   const itemKeys = new Set<string>()
 
-  for (const item of items) {
+  for (const item of [...start, ...end]) {
     if (itemKeys.has(item.key)) {
       throw new Error(`Rich text status bar has a duplicate item: "${item.key}"`)
     }
@@ -53,5 +55,8 @@ export function defineRichTextStatusBar(
     itemKeys.add(item.key)
   }
 
-  return Object.freeze({ items: Object.freeze([...items]) })
+  return Object.freeze({
+    start: Object.freeze([...start]),
+    end: Object.freeze([...end]),
+  })
 }

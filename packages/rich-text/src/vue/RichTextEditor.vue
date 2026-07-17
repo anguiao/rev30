@@ -48,12 +48,13 @@ const { editor } = useRichTextEditor({
         : 'focus-within:border-input-focus-border focus-within:bg-input-focus focus-within:shadow-input-focus hover:border-input-hover-border'
     "
   >
-    <div
+    <RichTextToolbar
       v-if="activeToolbar"
-      class="flex shrink-0 flex-wrap gap-1 border-b border-input-divider px-2 py-1"
-    >
-      <RichTextToolbar :editor="editor" :toolbar="activeToolbar" :disabled="disabled" />
-    </div>
+      data-test="rich-text-toolbar"
+      :editor="editor"
+      :toolbar="activeToolbar"
+      :disabled="disabled"
+    />
 
     <EditorContent
       :editor="editor"
@@ -61,13 +62,12 @@ const { editor } = useRichTextEditor({
       :style="{ '--rich-text-editor-min-height': `${minHeight}px` }"
     />
 
-    <div
+    <RichTextStatusBar
       v-if="activeStatusBar"
       data-test="rich-text-status-bar"
-      class="text-text-3 flex min-h-8 shrink-0 items-center justify-end gap-3 border-t border-input-divider px-3 py-1 text-xs"
-    >
-      <RichTextStatusBar :editor="editor" :status-bar="activeStatusBar" />
-    </div>
+      :editor="editor"
+      :status-bar="activeStatusBar"
+    />
   </div>
 </template>
 

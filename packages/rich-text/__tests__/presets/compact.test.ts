@@ -195,7 +195,8 @@ describe('all rich text preset', () => {
       'table',
       'image',
     ])
-    expect(allEditorPreset.statusBar?.items.map((item) => item.key)).toEqual(['character-count'])
+    expect(allEditorPreset.statusBar?.start.map((item) => item.key)).toEqual([])
+    expect(allEditorPreset.statusBar?.end.map((item) => item.key)).toEqual(['character-count'])
   })
 
   it('keeps server implementations, document extensions, and html policy order', () => {

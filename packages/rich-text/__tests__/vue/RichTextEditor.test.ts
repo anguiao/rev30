@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { NDropdown } from 'naive-ui'
+import { defineComponent, h } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
 import { baseEditorFeature } from '../../src/features/base/editor'
@@ -12,6 +13,7 @@ import RichTextEditor from '../../src/vue/RichTextEditor.vue'
 import type { RichTextDocument } from '../../src/schema'
 import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
 import { createAllRichTextEditorPreset } from '../../src/vue/presets/all'
+import { defineRichTextStatusBar, richTextStatusBarComponent } from '../../src/vue/status-bar'
 
 const contentJson: RichTextDocument = {
   type: 'doc',
@@ -61,6 +63,37 @@ const noHeadingEditorPreset = defineRichTextEditorPreset(noHeadingPreset, {
   editorFeatures: [baseEditorFeature, boldEditorFeature, historyEditorFeature],
 })
 
+function createStatusBarItem(key: string, label: string) {
+  return richTextStatusBarComponent({
+    feature: baseFeature,
+    key,
+    component: defineComponent({
+      props: {
+        editor: {
+          type: Object,
+          required: true,
+        },
+      },
+      setup: () => () => h('span', { 'data-test': `rich-text-${key}` }, label),
+    }),
+    props: {},
+  })
+}
+
+const statusBarStartItem = createStatusBarItem('status-start-item', '段落')
+const statusBarEndItem = createStatusBarItem('status-end-item', '状态')
+const statusBarPreset = defineRichTextPreset({
+  key: 'status-bar-layout',
+  features: [baseFeature],
+})
+const statusBarEditorPreset = defineRichTextEditorPreset(statusBarPreset, {
+  editorFeatures: [baseEditorFeature],
+  statusBar: defineRichTextStatusBar({
+    start: [statusBarStartItem],
+    end: [statusBarEndItem],
+  }),
+})
+
 function mountRichTextEditor(props: InstanceType<typeof RichTextEditor>['$props']) {
   return mount(RichTextEditor, { props })
 }
@@ -99,14 +132,41 @@ describe('RichTextEditor', () => {
     const editable = await getEditable(wrapper)
 
     expect(wrapper.find('[data-test="rich-text-editor"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="rich-text-toolbar"]').exists()).toBe(true)
     expect(wrapper.findAll('[data-test="rich-text-toolbar-group"]')).toHaveLength(5)
     for (const dataTest of toolbarDataTests) {
       expect(wrapper.find(`[data-test="${dataTest}"]`).exists()).toBe(true)
     }
     expect(wrapper.findAllComponents(NDropdown)).toHaveLength(7)
     expect(wrapper.get('[data-test="rich-text-status-bar"]').text()).toBe('4 字')
+    expect(wrapper.find('[data-test="rich-text-status-bar-start"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="rich-text-status-bar-end"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="rich-text-character-count"]').exists()).toBe(true)
     expect(editable.text()).toContain('维护通知')
+  })
+
+  it('renders status bar items in their configured regions', async () => {
+    const wrapper = mountRichTextEditor({
+      modelValue: contentJson,
+      preset: statusBarEditorPreset,
+    })
+
+    await getEditable(wrapper)
+
+    const start = wrapper.get('[data-test="rich-text-status-bar-start"]')
+    const end = wrapper.get('[data-test="rich-text-status-bar-end"]')
+
+    expect(start.get('[data-test="rich-text-status-start-item"]').text()).toBe('段落')
+    expect(end.get('[data-test="rich-text-status-end-item"]').text()).toBe('状态')
+  })
+
+  it('rejects duplicate status bar item keys across regions', () => {
+    expect(() =>
+      defineRichTextStatusBar({
+        start: [statusBarStartItem],
+        end: [statusBarStartItem],
+      }),
+    ).toThrow('Rich text status bar has a duplicate item: "status-start-item"')
   })
 
   it('emits updated Tiptap JSON when content changes', async () => {
@@ -153,6 +213,7 @@ describe('RichTextEditor', () => {
 
     await getEditable(wrapper)
 
+    expect(wrapper.find('[data-test="rich-text-toolbar"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="rich-text-toolbar-group"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="rich-text-status-bar"]').exists()).toBe(false)
   })

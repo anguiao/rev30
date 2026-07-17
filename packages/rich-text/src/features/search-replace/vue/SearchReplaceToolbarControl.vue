@@ -11,8 +11,8 @@ import {
   openSearchReplaceAction,
   replaceAllSearchMatchesAction,
   replaceCurrentSearchMatchAction,
-  setSearchReplaceCaseSensitiveAction,
-  setSearchReplaceQueryAction,
+  setSearchCaseSensitiveAction,
+  setSearchQueryAction,
 } from '../editor'
 
 const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
@@ -20,82 +20,18 @@ const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
 })
 
 const editor = props.editor
-const searchInput = ref<InputInst | null>(null)
-const replacement = ref('')
 const isEditable = ref(editor.isEditable)
-const searchState = shallowRef(getSearchReplaceState(editor))
+const isDisabled = computed(() => props.disabled || !isEditable.value)
 
-const isUnavailable = computed(() => props.disabled || !isEditable.value)
+const searchState = shallowRef(getSearchReplaceState(editor))
+const replacement = ref('')
+
 const hasMatches = computed(() => searchState.value.matches.length > 0)
-const hasActiveMatch = computed(
-  () =>
-    searchState.value.currentIndex >= 0 &&
-    searchState.value.currentIndex < searchState.value.matches.length,
-)
 const matchPositionLabel = computed(() => {
   const total = searchState.value.matches.length
 
   return total === 0 ? '0/0' : `${searchState.value.currentIndex + 1}/${total}`
 })
-const canOpenPanel = computed(() => {
-  return !isUnavailable.value && (openSearchReplaceAction.canRun?.(editor) ?? true)
-})
-const isTriggerDisabled = computed(
-  () => isUnavailable.value || (!searchState.value.active && !canOpenPanel.value),
-)
-
-function focusSearchInput() {
-  void nextTick(() => searchInput.value?.focus())
-}
-
-function syncSearchState() {
-  searchState.value = getSearchReplaceState(editor)
-}
-
-function handleEditorUpdate() {
-  isEditable.value = editor.isEditable
-
-  if (!editor.isEditable && getSearchReplaceState(editor).active) {
-    closeSearchReplaceAction.run(editor)
-  }
-}
-
-handleEditorUpdate()
-editor.on('transaction', syncSearchState)
-editor.on('update', handleEditorUpdate)
-
-watch(
-  [() => searchState.value.active, searchInput],
-  ([active, input]) => {
-    if (active && input) {
-      focusSearchInput()
-    }
-  },
-  { immediate: true },
-)
-
-watch(
-  () => props.disabled,
-  (disabled) => {
-    if (disabled && searchState.value.active) {
-      closeSearchReplaceAction.run(editor)
-    }
-  },
-  { immediate: true },
-)
-
-onBeforeUnmount(() => {
-  editor.off('transaction', syncSearchState)
-  editor.off('update', handleEditorUpdate)
-})
-
-function openPanel() {
-  if (!canOpenPanel.value) {
-    return
-  }
-
-  openSearchReplaceAction.run(editor)
-}
 
 function closePanel(restoreEditorFocus = false) {
   closeSearchReplaceAction.run(editor)
@@ -106,49 +42,60 @@ function closePanel(restoreEditorFocus = false) {
 }
 
 function togglePanel() {
-  if (searchState.value.active) {
+  if (searchState.value.isOpen) {
     closePanel(true)
     return
   }
 
-  openPanel()
+  openSearchReplaceAction.run(editor)
 }
 
+function syncSearchState() {
+  searchState.value = getSearchReplaceState(editor)
+}
+
+function handleEditorUpdate() {
+  isEditable.value = editor.isEditable
+
+  if (!isEditable.value && searchState.value.isOpen) {
+    closePanel()
+  }
+}
+
+handleEditorUpdate()
+editor.on('transaction', syncSearchState)
+editor.on('update', handleEditorUpdate)
+
+onBeforeUnmount(() => {
+  editor.off('transaction', syncSearchState)
+  editor.off('update', handleEditorUpdate)
+})
+
 function setQuery(query: string) {
-  setSearchReplaceQueryAction.run(editor, query)
+  setSearchQueryAction.run(editor, query)
 }
 
 function setCaseSensitive(caseSensitive: boolean) {
-  setSearchReplaceCaseSensitiveAction.run(editor, caseSensitive)
+  setSearchCaseSensitiveAction.run(editor, caseSensitive)
 }
 
 function goToPreviousMatch() {
-  if (hasMatches.value) {
-    goToPreviousSearchMatchAction.run(editor)
-    focusSearchInput()
-  }
+  goToPreviousSearchMatchAction.run(editor)
 }
 
 function goToNextMatch() {
-  if (hasMatches.value) {
-    goToNextSearchMatchAction.run(editor)
-    focusSearchInput()
-  }
+  goToNextSearchMatchAction.run(editor)
 }
 
 function replaceCurrentMatch() {
-  if (!isUnavailable.value && hasActiveMatch.value) {
-    replaceCurrentSearchMatchAction.run(editor, replacement.value)
-  }
+  replaceCurrentSearchMatchAction.run(editor, replacement.value)
 }
 
 function replaceAllMatches() {
-  if (!isUnavailable.value && hasMatches.value) {
-    replaceAllSearchMatchesAction.run(editor, replacement.value)
-  }
+  replaceAllSearchMatchesAction.run(editor, replacement.value)
 }
 
-function handleInputKeydown(event: KeyboardEvent) {
+function handleQueryKeydown(event: KeyboardEvent) {
   if (event.isComposing || event.key !== 'Enter') {
     return
   }
@@ -164,6 +111,22 @@ function handleInputKeydown(event: KeyboardEvent) {
   goToNextMatch()
 }
 
+function handleReplacementKeydown(event: KeyboardEvent) {
+  if (event.isComposing || event.key !== 'Enter') {
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+
+  if (event.shiftKey) {
+    goToPreviousMatch()
+    return
+  }
+
+  replaceCurrentMatch()
+}
+
 function handlePanelKeydown(event: KeyboardEvent) {
   if (event.isComposing || event.key !== 'Escape') {
     return
@@ -173,32 +136,53 @@ function handlePanelKeydown(event: KeyboardEvent) {
   event.stopPropagation()
   closePanel(true)
 }
+
+const searchInput = ref<InputInst | null>(null)
+watch(
+  () => searchState.value.isOpen,
+  (isOpen) => {
+    if (isOpen) {
+      void nextTick(() => searchInput.value?.focus())
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.disabled,
+  (disabled) => {
+    if (disabled && searchState.value.isOpen) {
+      closePanel()
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
   <NPopover
-    :show="searchState.active"
+    :show="searchState.isOpen"
     trigger="manual"
-    placement="bottom-start"
-    :disabled="isTriggerDisabled"
+    placement="top-start"
+    :disabled="isDisabled"
     @clickoutside="closePanel()"
   >
     <template #trigger>
       <NButton
         data-test="rich-text-search-replace"
-        :data-active="searchState.active ? 'true' : undefined"
-        :disabled="isTriggerDisabled"
+        :data-active="searchState.isOpen ? 'true' : undefined"
+        :disabled="isDisabled"
         size="small"
         style="--n-padding: 0 6px"
-        :type="searchState.active ? 'primary' : 'default'"
-        :secondary="searchState.active"
-        :quaternary="!searchState.active"
+        :type="searchState.isOpen ? 'primary' : 'default'"
+        :secondary="searchState.isOpen"
+        :quaternary="!searchState.isOpen"
         title="查找和替换"
         aria-label="查找和替换"
         aria-keyshortcuts="Control+F Meta+F"
         aria-haspopup="dialog"
-        :aria-expanded="searchState.active"
-        :aria-pressed="searchState.active"
+        :aria-expanded="searchState.isOpen"
+        :aria-pressed="searchState.isOpen"
         @mousedown.prevent
         @click="togglePanel"
       >
@@ -223,7 +207,7 @@ function handlePanelKeydown(event: KeyboardEvent) {
           placeholder="查找"
           aria-label="查找"
           @update:value="setQuery"
-          @keydown="handleInputKeydown"
+          @keydown="handleQueryKeydown"
         />
 
         <span
@@ -284,13 +268,13 @@ function handlePanelKeydown(event: KeyboardEvent) {
           size="small"
           placeholder="替换为"
           aria-label="替换为"
-          @keydown="handleInputKeydown"
+          @keydown="handleReplacementKeydown"
         />
 
         <NButton
           data-test="rich-text-search-replace-current"
           size="small"
-          :disabled="!hasActiveMatch"
+          :disabled="searchState.currentIndex < 0"
           @mousedown.prevent
           @click="replaceCurrentMatch"
         >
@@ -325,7 +309,8 @@ function handlePanelKeydown(event: KeyboardEvent) {
   background-color: color-mix(in srgb, var(--app-primary-color) 16%, transparent);
 }
 
-.ProseMirror .rich-text-search-match-current {
+.ProseMirror .rich-text-search-match-current,
+.ProseMirror .rich-text-search-match.rich-text-search-match-current.selection {
   background-color: color-mix(in srgb, var(--app-primary-color) 36%, transparent);
   box-shadow: inset 0 0 0 1px var(--app-primary-color);
 }

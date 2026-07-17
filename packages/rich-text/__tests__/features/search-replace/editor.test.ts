@@ -9,7 +9,6 @@ import Text from '@tiptap/extension-text'
 import { UndoRedo } from '@tiptap/extensions/undo-redo'
 import { describe, expect, it, vi } from 'vitest'
 import {
-  clearSearchReplaceAction,
   closeSearchReplaceAction,
   getSearchReplaceState,
   goToNextSearchMatchAction,
@@ -17,11 +16,9 @@ import {
   openSearchReplaceAction,
   replaceAllSearchMatchesAction,
   replaceCurrentSearchMatchAction,
-  searchReplaceCurrentMatchClass,
   searchReplaceEditorFeature,
-  searchReplaceMatchClass,
-  setSearchReplaceCaseSensitiveAction,
-  setSearchReplaceQueryAction,
+  setSearchCaseSensitiveAction,
+  setSearchQueryAction,
 } from '../../../src/features/search-replace/editor'
 import { createTestEditor } from '../../helpers/editor'
 
@@ -54,7 +51,7 @@ function createEditor(content: string | object = '<p>维护 ABC abc</p>') {
 
 function openAndSearch(editor: ReturnType<typeof createEditor>, query: string) {
   expect(openSearchReplaceAction.run(editor)).toBe(true)
-  expect(setSearchReplaceQueryAction.run(editor, query)).toBe(true)
+  expect(setSearchQueryAction.run(editor, query)).toBe(true)
   return getSearchReplaceState(editor)
 }
 
@@ -83,16 +80,16 @@ describe('search replace editor feature', () => {
     const editor = createEditor('<p>维护 ABC abc a.c</p>')
 
     expect(openAndSearch(editor, '维护').matches).toHaveLength(1)
-    expect(setSearchReplaceQueryAction.run(editor, 'abc')).toBe(true)
+    expect(setSearchQueryAction.run(editor, 'abc')).toBe(true)
     expect(getSearchReplaceState(editor)).toMatchObject({
-      active: true,
+      isOpen: true,
       query: 'abc',
       caseSensitive: false,
       currentIndex: 0,
     })
     expect(getSearchReplaceState(editor).matches).toHaveLength(2)
 
-    expect(setSearchReplaceQueryAction.run(editor, 'a.c')).toBe(true)
+    expect(setSearchQueryAction.run(editor, 'a.c')).toBe(true)
     expect(getSearchReplaceState(editor).matches).toHaveLength(1)
   })
 
@@ -101,7 +98,7 @@ describe('search replace editor feature', () => {
     const before = editor.getJSON()
 
     openAndSearch(editor, 'abc')
-    expect(setSearchReplaceCaseSensitiveAction.run(editor, true)).toBe(true)
+    expect(setSearchCaseSensitiveAction.run(editor, true)).toBe(true)
 
     expect(getSearchReplaceState(editor)).toMatchObject({
       caseSensitive: true,
@@ -138,9 +135,9 @@ describe('search replace editor feature', () => {
 
     openAndSearch(editor, '甲乙')
     expect(getSearchReplaceState(editor).matches).toEqual([])
-    setSearchReplaceQueryAction.run(editor, '乙丙')
+    setSearchQueryAction.run(editor, '乙丙')
     expect(getSearchReplaceState(editor).matches).toEqual([])
-    setSearchReplaceQueryAction.run(editor, '丙丁')
+    setSearchQueryAction.run(editor, '丙丁')
     expect(getSearchReplaceState(editor).matches).toEqual([])
   })
 
@@ -151,8 +148,8 @@ describe('search replace editor feature', () => {
     editor.on('update', onUpdate)
 
     openAndSearch(editor, 'abc')
-    expect(editor.view.dom.querySelectorAll(`.${searchReplaceMatchClass}`)).toHaveLength(2)
-    expect(editor.view.dom.querySelectorAll(`.${searchReplaceCurrentMatchClass}`)).toHaveLength(1)
+    expect(editor.view.dom.querySelectorAll('[data-search-replace-match]')).toHaveLength(2)
+    expect(editor.view.dom.querySelectorAll('[data-search-replace-current]')).toHaveLength(1)
 
     expect(goToPreviousSearchMatchAction.run(editor)).toBe(true)
     expect(getSearchReplaceState(editor).currentIndex).toBe(1)
@@ -178,6 +175,20 @@ describe('search replace editor feature', () => {
 
     expect(editor.commands.undo()).toBe(true)
     expect(editor.getHTML()).toBe('<p><strong>abc</strong> abc</p>')
+  })
+
+  it('advances after an unchanged current replacement without rewriting marks', () => {
+    const editor = createEditor(
+      '<p><strong>维</strong><em>护</em> <strong>维</strong><em>护</em></p>',
+    )
+    const before = editor.getJSON()
+
+    openAndSearch(editor, '维护')
+    expect(replaceCurrentSearchMatchAction.run(editor, '维护')).toBe(true)
+
+    expect(editor.getJSON()).toEqual(before)
+    expect(getSearchReplaceState(editor).currentIndex).toBe(1)
+    expect(editor.commands.undo()).toBe(false)
   })
 
   it('preserves a non-inclusive mark when replacing the current match', () => {
@@ -214,6 +225,32 @@ describe('search replace editor feature', () => {
     expect(editor.commands.undo()).toBe(false)
   })
 
+  it('does not rewrite marks or add an undo step when all replacements are unchanged', () => {
+    const editor = createEditor(
+      '<p><strong>维</strong><em>护</em> <em>维</em><strong>护</strong></p>',
+    )
+    const before = editor.getJSON()
+
+    openAndSearch(editor, '维护')
+    expect(replaceAllSearchMatchesAction.run(editor, '维护')).toBe(true)
+
+    expect(editor.getJSON()).toEqual(before)
+    expect(editor.commands.undo()).toBe(false)
+  })
+
+  it('does not replace content after the editor becomes read-only', () => {
+    const editor = createEditor('<p>abc abc</p>')
+
+    openAndSearch(editor, 'abc')
+    editor.setEditable(false)
+
+    expect(replaceCurrentSearchMatchAction.canRun?.(editor, 'X')).toBe(false)
+    expect(replaceCurrentSearchMatchAction.run(editor, 'X')).toBe(false)
+    expect(replaceAllSearchMatchesAction.canRun?.(editor, 'X')).toBe(false)
+    expect(replaceAllSearchMatchesAction.run(editor, 'X')).toBe(false)
+    expect(editor.getText()).toBe('abc abc')
+  })
+
   it('uses each match marks instead of unrelated stored marks when replacing all', () => {
     const editor = createEditor('<p><a href="https://example.com">abc</a> abc</p>')
 
@@ -248,24 +285,26 @@ describe('search replace editor feature', () => {
     expect(editor.getHTML()).toBe('<p>维护</p>')
   })
 
-  it('clears search state and closes while retaining query preferences', () => {
+  it('closes while retaining query preferences and clears the query', () => {
     const editor = createEditor('<p>ABC abc</p>')
 
     openAndSearch(editor, 'abc')
-    setSearchReplaceCaseSensitiveAction.run(editor, true)
+    setSearchCaseSensitiveAction.run(editor, true)
     expect(closeSearchReplaceAction.run(editor)).toBe(true)
     expect(getSearchReplaceState(editor)).toMatchObject({
-      active: false,
+      isOpen: false,
       query: 'abc',
       caseSensitive: true,
+      matches: [],
       currentIndex: -1,
     })
-    expect(editor.view.dom.querySelector(`.${searchReplaceMatchClass}`)).toBeNull()
+    expect(editor.view.dom.querySelector('[data-search-replace-match]')).toBeNull()
 
     expect(openSearchReplaceAction.run(editor)).toBe(true)
-    expect(clearSearchReplaceAction.run(editor)).toBe(true)
+    expect(getSearchReplaceState(editor).matches).toHaveLength(1)
+    expect(setSearchQueryAction.run(editor, '')).toBe(true)
     expect(getSearchReplaceState(editor)).toMatchObject({
-      active: true,
+      isOpen: true,
       query: '',
       caseSensitive: true,
       matches: [],
@@ -278,16 +317,16 @@ describe('search replace editor feature', () => {
 
     editor.view.dom.blur()
     expect(dispatchModF(editor).defaultPrevented).toBe(false)
-    expect(getSearchReplaceState(editor).active).toBe(false)
+    expect(getSearchReplaceState(editor).isOpen).toBe(false)
 
     editor.view.focus()
     const focusedEvent = dispatchModF(editor)
-    expect(getSearchReplaceState(editor).active).toBe(true)
+    expect(getSearchReplaceState(editor).isOpen).toBe(true)
     expect(focusedEvent.defaultPrevented).toBe(true)
 
-    editor.commands.closeSearchReplace()
+    closeSearchReplaceAction.run(editor)
     editor.setEditable(false)
     expect(dispatchModF(editor).defaultPrevented).toBe(false)
-    expect(getSearchReplaceState(editor).active).toBe(false)
+    expect(getSearchReplaceState(editor).isOpen).toBe(false)
   })
 })

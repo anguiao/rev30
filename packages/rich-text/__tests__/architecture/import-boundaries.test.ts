@@ -138,17 +138,6 @@ function isTextStyleModule(id: string) {
   return id.includes('/node_modules/@tiptap/extension-text-style/')
 }
 
-function isTableModule(id: string) {
-  return id.includes('/node_modules/@tiptap/extension-table/')
-}
-
-function isUnusedTableModule(id: string) {
-  return (
-    id.includes('/node_modules/@tiptap/extension-table/dist/kit/') ||
-    id.endsWith('/node_modules/@tiptap/extension-table/dist/index.js')
-  )
-}
-
 function isCharacterCountModule(id: string) {
   return id.includes('/node_modules/@tiptap/extensions/dist/character-count/')
 }
@@ -192,7 +181,6 @@ describe('rich text import boundaries', () => {
       isEditorModule(id) ||
       isCodeBlockHighlighterModule(id) ||
       isUnusedTextStyleModule(id) ||
-      isTableModule(id) ||
       isCharacterCountModule(id)
 
     expect(
@@ -238,8 +226,6 @@ describe('rich text import boundaries', () => {
       findModules(graph.bundled, isUnusedTextStyleModule),
       'bundled text style modules',
     ).toEqual([])
-    expect(findModules(graph.loaded, isUnusedTableModule), 'loaded table modules').toEqual([])
-    expect(findModules(graph.bundled, isUnusedTableModule), 'bundled table modules').toEqual([])
     expect(graph.css, 'bundled all search match styles').toContain('.rich-text-search-match {')
     expect(graph.css, 'bundled all current search match styles').toContain(
       'rich-text-search-match-current',
@@ -291,8 +277,6 @@ describe('rich text import boundaries', () => {
       findModules(graph.bundled, isTextStyleModule),
       'bundled compact text style modules',
     ).toEqual([])
-    expect(findModules(graph.loaded, isTableModule), 'loaded compact table modules').toEqual([])
-    expect(findModules(graph.bundled, isTableModule), 'bundled compact table modules').toEqual([])
     expect(
       findModules(graph.loaded, isCharacterCountModule),
       'loaded compact character count modules',
@@ -360,8 +344,6 @@ describe('rich text import boundaries', () => {
       findModules(graph.bundled, isTextStyleModule),
       'bundled minimal text style modules',
     ).toEqual([])
-    expect(findModules(graph.loaded, isTableModule), 'loaded minimal table modules').toEqual([])
-    expect(findModules(graph.bundled, isTableModule), 'bundled minimal table modules').toEqual([])
     expect(
       findModules(graph.loaded, isCharacterCountModule),
       'loaded minimal character count modules',

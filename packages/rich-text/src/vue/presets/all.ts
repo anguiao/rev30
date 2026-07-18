@@ -34,8 +34,6 @@ import { searchReplaceEditorFeature } from '../../features/search-replace/editor
 import { searchReplaceToolbarControl } from '../../features/search-replace/vue'
 import { strikeEditorFeature } from '../../features/strike/editor'
 import { strikeToolbarItem } from '../../features/strike/vue'
-import { tableEditorFeature } from '../../features/table/editor'
-import { tableToolbarControl } from '../../features/table/vue'
 import { textAlignEditorFeature } from '../../features/text-align/editor'
 import { textAlignToolbarItems } from '../../features/text-align/vue'
 import { textStyleEditorFeature } from '../../features/text-style/editor'
@@ -74,7 +72,6 @@ const allEditorFeatures = [
   blockquoteEditorFeature,
   codeBlockEditorFeature,
   listEditorFeature,
-  tableEditorFeature,
   horizontalRuleEditorFeature,
   imageEditorFeature,
 ] as const
@@ -126,11 +123,7 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
     },
     {
       key: 'insert',
-      controls: [
-        button(horizontalRuleToolbarItem),
-        tableToolbarControl,
-        createImageToolbarControl(options.image),
-      ],
+      controls: [button(horizontalRuleToolbarItem), createImageToolbarControl(options.image)],
     },
   ])
 }

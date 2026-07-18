@@ -16,7 +16,6 @@ import { listFeature } from '../features/list/shared'
 import { removeFormatFeature } from '../features/remove-format/shared'
 import { searchReplaceFeature } from '../features/search-replace/shared'
 import { strikeFeature } from '../features/strike/shared'
-import { tableFeature } from '../features/table/shared'
 import { textAlignFeature } from '../features/text-align/shared'
 import { textStyleFeature } from '../features/text-style/shared'
 import { underlineFeature } from '../features/underline/shared'
@@ -42,7 +41,6 @@ export const allRichTextPreset = defineRichTextPreset({
     blockquoteFeature,
     codeBlockFeature,
     listFeature,
-    tableFeature,
     horizontalRuleFeature,
     imageFeature,
   ],

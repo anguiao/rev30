@@ -37,7 +37,6 @@ const allFeatureKeys = [
   'blockquote',
   'code-block',
   'list',
-  'table',
   'horizontal-rule',
   'image',
 ]
@@ -126,10 +125,6 @@ describe('all rich text preset', () => {
       'bulletList',
       'orderedList',
       'listItem',
-      'table',
-      'tableCell',
-      'tableHeader',
-      'tableRow',
       'horizontalRule',
       'image',
     ])
@@ -190,11 +185,7 @@ describe('all rich text preset', () => {
       'blockquote',
       'code-block',
     ])
-    expect(insert?.controls.map(getToolbarControlKey) ?? []).toEqual([
-      'horizontal-rule',
-      'table',
-      'image',
-    ])
+    expect(insert?.controls.map(getToolbarControlKey) ?? []).toEqual(['horizontal-rule', 'image'])
     expect(allEditorPreset.statusBar?.start.map((item) => item.key)).toEqual([])
     expect(allEditorPreset.statusBar?.end.map((item) => item.key)).toEqual(['character-count'])
   })
@@ -215,7 +206,6 @@ describe('all rich text preset', () => {
       'heading',
       'text-align',
       'list',
-      'table',
       'blockquote',
       'code-block',
       'horizontal-rule',
@@ -247,10 +237,6 @@ describe('all rich text preset', () => {
       'bulletList',
       'orderedList',
       'listItem',
-      'table',
-      'tableCell',
-      'tableHeader',
-      'tableRow',
       'horizontalRule',
       'image',
     ])
@@ -271,11 +257,6 @@ describe('all rich text preset', () => {
       'ul',
       'ol',
       'li',
-      'table',
-      'tbody',
-      'tr',
-      'th',
-      'td',
       'blockquote',
       'pre',
       'code',

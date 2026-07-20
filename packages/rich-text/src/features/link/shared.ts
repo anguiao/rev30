@@ -29,7 +29,7 @@ export const linkFeature = defineRichTextFeature({
   documentExtensions: () => [
     ValidatedLink.configure({
       openOnClick: false,
-      enableClickSelection: true,
+      enableClickSelection: false,
       autolink: true,
       linkOnPaste: true,
       defaultProtocol: linkDefaultProtocol,

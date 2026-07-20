@@ -1,130 +1,62 @@
 <script setup lang="ts">
 import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
-import { NButton, NInput, NPopover } from 'naive-ui'
-import { computed, ref, watch } from 'vue'
-import { runRichTextAction } from '../../../editor/action'
-import { setLinkAction, unsetLinkAction } from '../editor'
-import { normalizeLinkHref } from '../href'
+import type { RichTextSurfaceCloseReason } from '../../../vue/surface-coordinator'
+import { useRichTextToolbarLayer } from '../../../vue/surface-coordinator'
+import { NButton, NPopover } from 'naive-ui'
+import { computed, ref } from 'vue'
+import { resolveRichTextLinkTarget } from '../target'
+import LinkEditorForm from './LinkEditorForm.vue'
+import { useRichTextLinkEditor } from './useLinkEditor'
 
 const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
   disabled: false,
 })
 
 const editor = props.editor
-const isActive = computed(() => editor.isActive('link'))
-const isEditorFocused = computed(() => (editor.state ? editor.isFocused : false))
-
 const showPopover = ref(false)
-const popoverMode = ref<'create' | 'edit'>('create')
+let toolbarLayer: ReturnType<typeof useRichTextToolbarLayer> | undefined
 
-const url = ref('')
-const dismissedHref = ref<string | null>(null)
-
-const currentHref = computed(() => {
-  const href = editor.getAttributes('link').href
-
-  return typeof href === 'string' ? href : ''
-})
-
-const inputHrefState = computed(() => {
-  const rawHref = url.value.trim()
-  const normalizedHref = normalizeLinkHref(rawHref)
-
-  return {
-    rawHref,
-    normalizedHref,
-    isEmpty: rawHref === '',
-    isAllowed: normalizedHref !== '',
-  }
-})
-
-const inputStatusProps = computed(() =>
-  !inputHrefState.value.isEmpty && !inputHrefState.value.isAllowed
-    ? { status: 'error' as const }
-    : {},
-)
-const canApply = computed(
-  () => !props.disabled && (inputHrefState.value.isEmpty || inputHrefState.value.isAllowed),
-)
-const canOpen = computed(() => !props.disabled && inputHrefState.value.isAllowed)
-const canRemove = computed(() => popoverMode.value === 'edit')
-
-watch(
-  [currentHref, () => props.disabled, isEditorFocused],
-  ([href, disabled, focused]) => {
-    if (disabled || !href) {
-      showPopover.value = false
-      popoverMode.value = 'create'
-      dismissedHref.value = null
-      return
-    }
-
-    if (focused && href !== dismissedHref.value) {
-      url.value = href
-      popoverMode.value = 'edit'
-      showPopover.value = true
-    }
+const linkEditor = useRichTextLinkEditor({
+  editor,
+  disabled: () => props.disabled,
+  onClose() {
+    showPopover.value = false
+    toolbarLayer?.release()
   },
-  { immediate: true },
-)
+})
 
-function closePopover() {
-  if (currentHref.value) {
-    dismissedHref.value = currentHref.value
+function closePopover(reason: RichTextSurfaceCloseReason) {
+  if (reason === 'cancel') {
+    linkEditor.cancel()
+    return
   }
 
-  showPopover.value = false
-  popoverMode.value = 'create'
+  linkEditor.close(reason)
 }
+
+toolbarLayer = useRichTextToolbarLayer(editor, closePopover)
+
+const isActive = computed(() => editor.isActive('link'))
+const isDisabled = computed(
+  () => props.disabled || resolveRichTextLinkTarget(editor, 'toolbar') === null,
+)
 
 function togglePopover() {
-  if (props.disabled) {
+  if (isDisabled.value) {
     return
   }
 
-  if (showPopover.value) {
-    closePopover()
+  if (linkEditor.isOpen.value) {
+    closePopover('cancel')
     return
   }
 
-  dismissedHref.value = null
-  url.value = currentHref.value
-  popoverMode.value = currentHref.value ? 'edit' : 'create'
+  if (!linkEditor.open('toolbar')) {
+    return
+  }
+
+  toolbarLayer?.claim()
   showPopover.value = true
-}
-
-function applyLink() {
-  if (!canApply.value) {
-    return
-  }
-
-  if (inputHrefState.value.isEmpty) {
-    runRichTextAction(editor, unsetLinkAction)
-    url.value = ''
-    popoverMode.value = 'create'
-    return
-  }
-
-  runRichTextAction(editor, setLinkAction, inputHrefState.value.normalizedHref)
-  url.value = inputHrefState.value.normalizedHref
-}
-
-function removeLink() {
-  if (props.disabled) {
-    return
-  }
-
-  runRichTextAction(editor, unsetLinkAction)
-  url.value = ''
-  popoverMode.value = 'create'
-}
-
-function openLink() {
-  if (!canOpen.value) {
-    return
-  }
-
-  window.open(inputHrefState.value.normalizedHref, '_blank', 'noopener,noreferrer')
 }
 </script>
 
@@ -133,14 +65,14 @@ function openLink() {
     :show="showPopover"
     trigger="manual"
     placement="bottom"
-    :disabled="disabled"
-    @clickoutside="closePopover"
+    :disabled="isDisabled"
+    @clickoutside="closePopover('outside')"
   >
     <template #trigger>
       <NButton
         data-test="rich-text-link"
         :data-active="isActive ? 'true' : undefined"
-        :disabled="disabled"
+        :disabled="isDisabled"
         size="small"
         style="--n-padding: 0 6px"
         :type="isActive ? 'primary' : 'default'"
@@ -149,6 +81,8 @@ function openLink() {
         title="链接"
         aria-label="链接"
         :aria-pressed="isActive"
+        aria-haspopup="dialog"
+        :aria-expanded="showPopover"
         @mousedown.prevent
         @click="togglePopover"
       >
@@ -156,58 +90,18 @@ function openLink() {
       </NButton>
     </template>
 
-    <div class="flex items-center gap-1">
-      <NInput
-        v-model:value="url"
-        data-test="rich-text-link-url"
-        size="small"
-        placeholder="https://example.com"
-        v-bind="inputStatusProps"
-        @keydown.enter.prevent="applyLink"
-        class="mr-1"
-      >
-        <template #suffix>
-          <NButton
-            data-test="rich-text-link-apply"
-            text
-            :disabled="!canApply"
-            title="应用链接"
-            aria-label="应用链接"
-            @mousedown.prevent
-            @click="applyLink"
-          >
-            <span class="i-[lucide--corner-down-left]" aria-hidden="true" />
-          </NButton>
-        </template>
-      </NInput>
-
-      <NButton
-        data-test="rich-text-link-open"
-        size="small"
-        style="--n-padding: 0 6px"
-        quaternary
-        :disabled="!canOpen"
-        title="新窗口打开链接"
-        aria-label="新窗口打开链接"
-        @mousedown.prevent
-        @click="openLink"
-      >
-        <span class="i-[lucide--external-link]" aria-hidden="true" />
-      </NButton>
-
-      <NButton
-        v-if="canRemove"
-        data-test="rich-text-link-remove"
-        size="small"
-        style="--n-padding: 0 6px"
-        quaternary
-        title="移除链接"
-        aria-label="移除链接"
-        @mousedown.prevent
-        @click="removeLink"
-      >
-        <span class="i-[lucide--unlink]" aria-hidden="true" />
-      </NButton>
-    </div>
+    <LinkEditorForm
+      v-if="linkEditor.isOpen.value"
+      v-model="linkEditor.draft.value"
+      :invalid="linkEditor.isInvalid.value"
+      :can-apply="linkEditor.canApply.value"
+      :can-open="linkEditor.canOpen.value"
+      :can-remove="linkEditor.canRemove.value"
+      autofocus
+      @apply="linkEditor.apply"
+      @open="linkEditor.openDraft"
+      @remove="linkEditor.remove"
+      @cancel="closePopover('cancel')"
+    />
   </NPopover>
 </template>

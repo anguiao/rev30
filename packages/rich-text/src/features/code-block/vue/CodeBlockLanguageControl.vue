@@ -1,0 +1,232 @@
+<script setup lang="ts">
+import type { RichTextQuickbarInjectedProps } from '../../../vue/quickbar'
+import { getRichTextQuickbarLayerId } from '../../../vue/quickbar'
+import {
+  markRichTextSurfaceTransactionCommand,
+  restoreRichTextSelection,
+  restoreRichTextSelectionCommand,
+} from '../../../vue/selection'
+import {
+  useRichTextTargetInvalidation,
+  useRichTextToolbarLayer,
+  type RichTextSurfaceCloseReason,
+} from '../../../vue/surface-coordinator'
+import type { DropdownOption } from 'naive-ui'
+import { NButton, NDropdown } from 'naive-ui'
+import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { setCodeBlockLanguageAction } from '../editor'
+import {
+  getRichTextCodeBlockLanguage,
+  isRichTextCodeBlockTargetValid,
+  resolveRichTextCodeBlockTarget,
+  type RichTextCodeBlockTarget,
+} from '../target'
+
+interface CodeBlockLanguageControlProps extends RichTextQuickbarInjectedProps {
+  languages: readonly {
+    readonly label: string
+    readonly value: string
+  }[]
+  surface: 'toolbar' | 'quickbar'
+  showLabel?: boolean
+}
+
+const props = withDefaults(defineProps<CodeBlockLanguageControlProps>(), {
+  disabled: false,
+  showLabel: false,
+})
+
+const emit = defineEmits<{
+  close: [reason: RichTextSurfaceCloseReason]
+}>()
+
+const editor = props.editor
+const owner = Symbol('rich-text-code-block-language')
+const layerId = getRichTextQuickbarLayerId(editor)
+const show = ref(false)
+const fixedTarget = ref<RichTextCodeBlockTarget | null>(null)
+const toolbarLayer = useRichTextToolbarLayer(editor, () => close('outside'))
+
+const currentTarget = computed(() => fixedTarget.value ?? resolveRichTextCodeBlockTarget(editor))
+const currentLanguage = computed(() =>
+  currentTarget.value ? getRichTextCodeBlockLanguage(currentTarget.value) : null,
+)
+const currentOption = computed(
+  () => props.languages.find((option) => option.value === currentLanguage.value) ?? null,
+)
+const isDisabled = computed(() => props.disabled || currentTarget.value === null)
+const buttonLabel = computed(() =>
+  currentOption.value ? `代码语言：${currentOption.value.label}` : '代码语言',
+)
+const dataTestPrefix = computed(() =>
+  props.surface === 'toolbar'
+    ? 'rich-text-code-block-language'
+    : 'rich-text-quickbar-code-block-language',
+)
+
+const options = computed<DropdownOption[]>(() =>
+  props.languages.map((language) => {
+    const active = currentLanguage.value === language.value
+
+    return {
+      key: language.value,
+      label: language.label,
+      icon: () =>
+        h('span', {
+          class: ['inline-block size-4', active ? 'i-[lucide--check] text-primary' : undefined],
+          'aria-hidden': 'true',
+        }),
+      props: {
+        'data-test': `${dataTestPrefix.value}-${language.value}`,
+        'data-active': active ? 'true' : undefined,
+        'aria-pressed': active,
+      },
+    }
+  }),
+)
+
+function close(reason: RichTextSurfaceCloseReason) {
+  if (!show.value && !fixedTarget.value) {
+    return
+  }
+
+  const target = fixedTarget.value
+  show.value = false
+  fixedTarget.value = null
+
+  if (props.surface === 'toolbar') {
+    toolbarLayer.release()
+  }
+
+  if (reason === 'cancel' && target) {
+    restoreRichTextSelection(editor, target.selection)
+  }
+
+  emit('close', reason)
+}
+
+function open() {
+  if (isDisabled.value) {
+    return
+  }
+
+  const target = resolveRichTextCodeBlockTarget(editor)
+
+  if (!target) {
+    return
+  }
+
+  fixedTarget.value = target
+
+  if (props.surface === 'toolbar') {
+    toolbarLayer.claim()
+  }
+
+  show.value = true
+}
+
+function handleShow(nextShow: boolean) {
+  if (nextShow) {
+    open()
+  } else if (show.value) {
+    close('outside')
+  }
+}
+
+function handleDocumentKeydown(event: KeyboardEvent) {
+  if (!show.value || event.isComposing || event.key !== 'Escape') {
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+  close('cancel')
+}
+
+function getMenuProps() {
+  return props.surface === 'quickbar' ? { 'data-rich-text-quickbar-subinterface': layerId } : {}
+}
+
+function setLanguage(value: string | number) {
+  const target = fixedTarget.value ?? resolveRichTextCodeBlockTarget(editor)
+  const option = props.languages.find((language) => language.value === value)
+
+  if (!target || !option || !isRichTextCodeBlockTargetValid(editor, target)) {
+    close('invalidated')
+    return
+  }
+
+  const language = option.value === 'plaintext' ? null : option.value
+  const handled = editor
+    .chain()
+    .command(restoreRichTextSelectionCommand(target.selection))
+    .command(markRichTextSurfaceTransactionCommand(owner))
+    .command(setCodeBlockLanguageAction.command(language))
+    .command(restoreRichTextSelectionCommand(target.selection))
+    .focus()
+    .run()
+
+  if (handled) {
+    close('outside')
+  }
+}
+
+useRichTextTargetInvalidation(
+  editor,
+  owner,
+  () => show.value,
+  () => close('invalidated'),
+)
+
+watch(
+  () => props.disabled,
+  (disabled) => {
+    if (disabled) {
+      close('invalidated')
+    }
+  },
+)
+
+onMounted(() => {
+  document.addEventListener('keydown', handleDocumentKeydown, true)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleDocumentKeydown, true)
+})
+
+defineExpose({
+  close,
+  focusInitialControl: () => false,
+})
+</script>
+
+<template>
+  <NDropdown
+    trigger="click"
+    placement="bottom-start"
+    scrollable
+    :show="show"
+    :options="options"
+    :menu-props="getMenuProps"
+    :disabled="isDisabled"
+    @update:show="handleShow"
+    @select="setLanguage"
+  >
+    <NButton
+      :data-test="dataTestPrefix"
+      :data-rich-text-quickbar-roving="surface === 'quickbar' ? '' : undefined"
+      :disabled="isDisabled"
+      style="--n-padding: 0 4px"
+      quaternary
+      :title="buttonLabel"
+      :aria-label="buttonLabel"
+      aria-haspopup="listbox"
+      :aria-expanded="show"
+      @mousedown.prevent
+    >
+      <span v-if="showLabel" class="mr-1 text-xs">{{ currentOption?.label ?? '纯文本' }}</span>
+      <span class="i-[lucide--chevron-down] text-xs" aria-hidden="true" />
+    </NButton>
+  </NDropdown>
+</template>

@@ -176,6 +176,7 @@ watch(
       initializeDialog()
     }
   },
+  { immediate: true },
 )
 
 async function uploadImageFile() {

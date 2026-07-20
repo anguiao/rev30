@@ -6,17 +6,18 @@ import { boldToolbarItem } from '../../features/bold/vue'
 import { characterCountEditorFeature } from '../../features/character-count/editor'
 import { characterCountStatusBarItem } from '../../features/character-count/vue'
 import { codeBlockEditorFeature } from '../../features/code-block/editor'
-import { codeBlockToolbarControl } from '../../features/code-block/vue'
+import { codeBlockQuickbar, codeBlockToolbarControl } from '../../features/code-block/vue'
 import { headingEditorFeature } from '../../features/heading/editor'
 import { headingToolbarItems } from '../../features/heading/vue'
 import { highlightEditorFeature } from '../../features/highlight/editor'
-import { highlightToolbarControl } from '../../features/highlight/vue'
+import { highlightQuickbarControl, highlightToolbarControl } from '../../features/highlight/vue'
 import { historyEditorFeature } from '../../features/history/editor'
 import { historyToolbarItems } from '../../features/history/vue'
 import { horizontalRuleEditorFeature } from '../../features/horizontal-rule/editor'
 import { horizontalRuleToolbarItem } from '../../features/horizontal-rule/vue'
 import { imageEditorFeature } from '../../features/image/editor'
 import {
+  createImageQuickbar,
   createImageToolbarControl,
   type RichTextImageUploadOptions,
 } from '../../features/image/vue'
@@ -25,7 +26,7 @@ import { inlineCodeToolbarItem } from '../../features/inline-code/vue'
 import { italicEditorFeature } from '../../features/italic/editor'
 import { italicToolbarItem } from '../../features/italic/vue'
 import { linkEditorFeature } from '../../features/link/editor'
-import { linkToolbarControl } from '../../features/link/vue'
+import { linkQuickbar, linkQuickbarControl, linkToolbarControl } from '../../features/link/vue'
 import { listEditorFeature } from '../../features/list/editor'
 import { listToolbarItems } from '../../features/list/vue'
 import { removeFormatEditorFeature } from '../../features/remove-format/editor'
@@ -41,6 +42,7 @@ import { textStyleToolbarControl } from '../../features/text-style/vue'
 import { underlineEditorFeature } from '../../features/underline/editor'
 import { underlineToolbarItem } from '../../features/underline/vue'
 import { allRichTextPreset } from '../../presets/all'
+import { defineRichTextQuickbar, richTextQuickbarAction } from '../quickbar'
 import {
   defineRichTextToolbar,
   richTextToolbarButton as button,
@@ -128,6 +130,26 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
   ])
 }
 
+function createAllRichTextQuickbar(options: AllRichTextEditorPresetOptions) {
+  return defineRichTextQuickbar({
+    text: {
+      primary: [
+        richTextQuickbarAction(boldToolbarItem),
+        richTextQuickbarAction(italicToolbarItem),
+        richTextQuickbarAction(underlineToolbarItem),
+        highlightQuickbarControl,
+        linkQuickbarControl,
+      ],
+      more: [
+        richTextQuickbarAction(strikeToolbarItem),
+        richTextQuickbarAction(inlineCodeToolbarItem),
+        richTextQuickbarAction(removeFormatToolbarItem),
+      ],
+    },
+    features: [createImageQuickbar(options.image), linkQuickbar, codeBlockQuickbar],
+  })
+}
+
 const allRichTextStatusBar = defineRichTextStatusBar({
   start: [],
   end: [characterCountStatusBarItem],
@@ -138,5 +160,6 @@ export function createAllRichTextEditorPreset(options: AllRichTextEditorPresetOp
     editorFeatures: allEditorFeatures,
     toolbar: createAllRichTextToolbar(options),
     statusBar: allRichTextStatusBar,
+    quickbar: createAllRichTextQuickbar(options),
   })
 }

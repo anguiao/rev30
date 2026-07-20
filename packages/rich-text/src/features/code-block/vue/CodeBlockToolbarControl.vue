@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
-import type { DropdownOption } from 'naive-ui'
-import { NButton, NButtonGroup, NDropdown } from 'naive-ui'
-import { computed, h } from 'vue'
 import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
-import { codeBlockAction, setCodeBlockLanguageAction } from '../editor'
+import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
+import { NButton, NButtonGroup } from 'naive-ui'
+import { computed } from 'vue'
+import { codeBlockAction } from '../editor'
+import CodeBlockLanguageControl from './CodeBlockLanguageControl.vue'
 
 interface CodeBlockToolbarControlProps extends RichTextToolbarControlInjectedProps {
   languages: readonly {
@@ -21,66 +21,10 @@ const editor = props.editor
 const isActive = computed(() => editor.isActive('codeBlock'))
 const isDisabled = computed(() => props.disabled || !canRunRichTextAction(editor, codeBlockAction))
 
-const isCaretInsideCodeBlock = computed(() => {
-  const { selection } = editor.state
-
-  return selection.empty && selection.$from.parent.type.name === 'codeBlock'
-})
-
-const currentLanguageOption = computed(() => {
-  if (!isCaretInsideCodeBlock.value) {
-    return null
-  }
-
-  const language = editor.getAttributes('codeBlock').language ?? 'plaintext'
-
-  return props.languages.find((option) => option.value === language) ?? null
-})
-const languageButtonLabel = computed(() =>
-  currentLanguageOption.value ? `代码语言：${currentLanguageOption.value.label}` : '代码语言',
-)
-const buttonType = computed(() => (isActive.value ? 'primary' : 'default'))
-
 function toggleCodeBlock() {
   if (!isDisabled.value) {
     runRichTextAction(editor, codeBlockAction)
   }
-}
-
-const isLanguageControlDisabled = computed(() => props.disabled || !isCaretInsideCodeBlock.value)
-const options = computed<DropdownOption[]>(() =>
-  props.languages.map((language) => {
-    const active = currentLanguageOption.value?.value === language.value
-
-    return {
-      key: language.value,
-      label: language.label,
-      icon: () =>
-        h('span', {
-          class: ['inline-block size-4', active ? 'i-[lucide--check] text-primary' : undefined],
-          'aria-hidden': 'true',
-        }),
-      props: {
-        'data-test': `rich-text-code-block-language-${language.value}`,
-        'data-active': active ? 'true' : undefined,
-        'aria-pressed': active,
-      },
-    }
-  }),
-)
-
-function setLanguage(value: string) {
-  const option = props.languages.find((language) => language.value === value)
-
-  if (isLanguageControlDisabled.value || !option) {
-    return
-  }
-
-  runRichTextAction(
-    editor,
-    setCodeBlockLanguageAction,
-    option.value === 'plaintext' ? null : option.value,
-  )
 }
 </script>
 
@@ -91,7 +35,7 @@ function setLanguage(value: string) {
       :data-active="isActive ? 'true' : undefined"
       :disabled="isDisabled"
       style="--n-padding: 0 6px"
-      :type="buttonType"
+      :type="isActive ? 'primary' : 'default'"
       :secondary="isActive"
       :quaternary="!isActive"
       title="代码块"
@@ -102,27 +46,11 @@ function setLanguage(value: string) {
       <span class="i-[lucide--square-code]" aria-hidden="true" />
     </NButton>
 
-    <NDropdown
-      trigger="click"
-      placement="bottom-start"
-      scrollable
-      :options="options"
-      :disabled="isLanguageControlDisabled"
-      @select="setLanguage"
-    >
-      <NButton
-        data-test="rich-text-code-block-language"
-        :disabled="isLanguageControlDisabled"
-        style="--n-padding: 0 4px"
-        :type="buttonType"
-        :secondary="isActive"
-        :quaternary="!isActive"
-        :title="languageButtonLabel"
-        :aria-label="languageButtonLabel"
-        @mousedown.prevent
-      >
-        <span class="i-[lucide--chevron-down] text-xs" aria-hidden="true" />
-      </NButton>
-    </NDropdown>
+    <CodeBlockLanguageControl
+      :editor="editor"
+      :languages="languages"
+      :disabled="disabled"
+      surface="toolbar"
+    />
   </NButtonGroup>
 </template>

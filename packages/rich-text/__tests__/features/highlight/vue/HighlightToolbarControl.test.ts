@@ -93,6 +93,10 @@ describe('HighlightToolbarControl', () => {
       false,
     )
 
+    expect(wrapper.get('[data-test="rich-text-highlight"]').attributes('aria-expanded')).toBe(
+      'false',
+    )
+    await openPopover(wrapper)
     getButtonComponent(wrapper, 'rich-text-highlight-clear').vm.$emit('click')
     await flushPromises()
 
@@ -147,6 +151,32 @@ describe('HighlightToolbarControl', () => {
     expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('data-active')).toBe(
       undefined,
     )
+  })
+
+  it('preserves stored highlight marks for a collapsed caret', async () => {
+    const editor = createEditor()
+    editor.commands.setTextSelection(2)
+    const wrapper = mountControl(editor)
+
+    await openPopover(wrapper)
+    getButtonComponent(wrapper, 'rich-text-highlight-yellow').vm.$emit('click')
+    await flushPromises()
+
+    expect(editor.state.selection).toMatchObject({ from: 2, to: 2 })
+    expect(editor.state.storedMarks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: editor.schema.marks.highlight,
+          attrs: { color: yellow.value },
+        }),
+      ]),
+    )
+
+    await openPopover(wrapper)
+    getButtonComponent(wrapper, 'rich-text-highlight-clear').vm.$emit('click')
+    await flushPromises()
+
+    expect(editor.state.storedMarks?.some(({ type }) => type.name === 'highlight')).toBe(false)
   })
 
   it('does not run commands while disabled', async () => {

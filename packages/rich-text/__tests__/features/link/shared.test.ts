@@ -119,4 +119,21 @@ describe('link feature', () => {
     expect(JSON.stringify(document.toJSON())).not.toContain('custom-link')
     expect(JSON.stringify(document.toJSON())).not.toContain('author')
   })
+
+  it('does not expand a collapsed caret when a link is clicked', () => {
+    const editor = createEditor()
+    selectEditorText(editor)
+    editor.commands.setLink({ href: 'https://example.com' })
+    editor.commands.setTextSelection(3)
+    const anchor = editor.view.dom.querySelector('a')
+
+    expect(anchor).not.toBeNull()
+
+    const event = new MouseEvent('click', { button: 0 })
+    Object.defineProperty(event, 'target', { value: anchor })
+    const handled = editor.view.someProp('handleClick', (handler) => handler(editor.view, 3, event))
+
+    expect(handled).not.toBe(true)
+    expect(editor.state.selection).toMatchObject({ from: 3, to: 3, empty: true })
+  })
 })

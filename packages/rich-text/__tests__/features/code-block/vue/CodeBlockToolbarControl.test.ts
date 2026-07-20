@@ -132,7 +132,7 @@ describe('CodeBlockToolbarControl', () => {
     })
 
     await vi.waitFor(() => {
-      expect(dropdown.props('disabled')).toBe(true)
+      expect(dropdown.props('disabled')).toBe(false)
     })
   })
 })

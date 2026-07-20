@@ -3,6 +3,7 @@ import { EditorContent } from '@tiptap/vue-3'
 import { toRef } from 'vue'
 import type { RichTextDocument } from '../schema'
 import type { RichTextEditorPreset } from './presets/types'
+import RichTextQuickbar from './quickbar/RichTextQuickbar.vue'
 import RichTextStatusBar from './status-bar/RichTextStatusBar.vue'
 import RichTextToolbar from './toolbar/RichTextToolbar.vue'
 import { useRichTextEditor } from './useRichTextEditor'
@@ -28,6 +29,7 @@ const emit = defineEmits<{
 const preset = props.preset
 const activeToolbar = preset.toolbar
 const activeStatusBar = preset.statusBar
+const activeQuickbar = preset.quickbar
 
 const { editor } = useRichTextEditor({
   modelValue: toRef(props, 'modelValue'),
@@ -56,11 +58,20 @@ const { editor } = useRichTextEditor({
       :disabled="disabled"
     />
 
-    <EditorContent
-      :editor="editor"
-      class="prose prose-sm min-h-0 max-w-none flex-1 overflow-y-auto dark:prose-invert"
-      :style="{ '--rich-text-editor-min-height': `${minHeight}px` }"
-    />
+    <div class="relative min-h-0 flex-1 overflow-y-auto">
+      <EditorContent
+        :editor="editor"
+        class="prose prose-sm max-w-none dark:prose-invert"
+        :style="{ '--rich-text-editor-min-height': `${minHeight}px` }"
+      />
+
+      <RichTextQuickbar
+        v-if="activeQuickbar"
+        :editor="editor"
+        :quickbar="activeQuickbar"
+        :disabled="disabled"
+      />
+    </div>
 
     <RichTextStatusBar
       v-if="activeStatusBar"

@@ -1,76 +1,95 @@
 <script setup lang="ts">
 import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
-import type { RichTextImageAttrs } from '../shared'
+import { useRichTextToolbarLayer } from '../../../vue/surface-coordinator'
 import { NButton } from 'naive-ui'
-import { computed, ref } from 'vue'
-import { runRichTextAction } from '../../../editor/action'
-import { insertImageAction, updateImageAction } from '../editor'
-import ImageDialog from './ImageDialog.vue'
+import { computed, ref, watch } from 'vue'
+import {
+  getRichTextImageDialogController,
+  resolveRichTextImageToolbarTarget,
+  type RichTextImageDialogOptions,
+  type RichTextImageDialogSession,
+} from './dialog-controller'
+import ImageDialogHost from './ImageDialogHost.vue'
 
-interface ImageToolbarControlProps extends RichTextToolbarControlInjectedProps {
-  upload: (file: File) => Promise<{ src: string }>
-  onError?: (error: unknown) => void
-}
+interface ImageToolbarControlProps
+  extends RichTextToolbarControlInjectedProps, RichTextImageDialogOptions {}
 
 const props = withDefaults(defineProps<ImageToolbarControlProps>(), {
   disabled: false,
 })
 
 const editor = props.editor
-const isActive = computed(() => editor.isActive('image'))
-
+const controller = getRichTextImageDialogController(editor)
+const openedSession = ref<RichTextImageDialogSession | null>(null)
+const target = computed(() => resolveRichTextImageToolbarTarget(editor))
+const isActive = computed(() => target.value?.type === 'edit')
+const isDisabled = computed(() => props.disabled || target.value === null)
 const buttonLabel = computed(() => (isActive.value ? '编辑图片' : '图片'))
-const currentAttrs = computed(() =>
-  isActive.value ? (editor.getAttributes('image') as RichTextImageAttrs) : undefined,
-)
 
-const showDialog = ref(false)
+function closeToolbarDialog() {
+  const activeSession = openedSession.value
+
+  if (activeSession) {
+    controller.close(activeSession)
+    openedSession.value = null
+  }
+
+  toolbarLayer.release()
+}
+
+const toolbarLayer = useRichTextToolbarLayer(editor, closeToolbarDialog)
 
 function openDialog() {
-  if (props.disabled) {
+  const currentTarget = target.value
+
+  if (isDisabled.value || !currentTarget) {
     return
   }
 
-  showDialog.value = true
+  toolbarLayer.claim()
+  openedSession.value = controller.open('toolbar', currentTarget, {
+    upload: props.upload,
+    ...(props.onError ? { onError: props.onError } : {}),
+  })
 }
 
-function handleConfirm(attrs: RichTextImageAttrs) {
-  if (isActive.value) {
-    runRichTextAction(editor, updateImageAction, attrs)
-    return
+watch(controller.session, (activeSession) => {
+  if (openedSession.value && activeSession !== openedSession.value) {
+    openedSession.value = null
+    toolbarLayer.release()
   }
+})
 
-  runRichTextAction(editor, insertImageAction, attrs)
-}
-
-function handleError(error: unknown) {
-  props.onError?.(error)
-}
+watch(
+  () => props.disabled,
+  (disabled) => {
+    if (disabled) {
+      closeToolbarDialog()
+    }
+  },
+)
 </script>
 
 <template>
-  <NButton
-    data-test="rich-text-image"
-    :data-active="isActive ? 'true' : undefined"
-    :disabled="disabled"
-    size="small"
-    style="--n-padding: 0 6px"
-    :type="isActive ? 'primary' : 'default'"
-    :secondary="isActive"
-    :quaternary="!isActive"
-    :title="buttonLabel"
-    :aria-label="buttonLabel"
-    :aria-pressed="isActive"
-    @mousedown.prevent
-    @click="openDialog"
-  >
-    <span class="i-[lucide--image]" aria-hidden="true" />
-  </NButton>
-  <ImageDialog
-    v-model:show="showDialog"
-    :existing-attrs="currentAttrs"
-    :upload="upload"
-    @confirm="handleConfirm"
-    @error="handleError"
-  />
+  <div class="contents">
+    <NButton
+      data-test="rich-text-image"
+      :data-active="isActive ? 'true' : undefined"
+      :disabled="isDisabled"
+      size="small"
+      style="--n-padding: 0 6px"
+      :type="isActive ? 'primary' : 'default'"
+      :secondary="isActive"
+      :quaternary="!isActive"
+      :title="buttonLabel"
+      :aria-label="buttonLabel"
+      :aria-pressed="isActive"
+      @mousedown.prevent
+      @click="openDialog"
+    >
+      <span class="i-[lucide--image]" aria-hidden="true" />
+    </NButton>
+
+    <ImageDialogHost :editor="editor" :disabled="disabled" />
+  </div>
 </template>

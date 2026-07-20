@@ -6,10 +6,11 @@ import {
   type RichTextAction,
 } from '../../../editor/action'
 import type { RichTextIconClass, RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
+import { useRichTextToolbarLayer } from '../../../vue/surface-coordinator'
 import type { TextStyleOption } from '../options'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown, NPopover } from 'naive-ui'
-import { computed, h } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 import {
   setFontFamilyAction,
   setFontSizeAction,
@@ -35,6 +36,26 @@ const props = withDefaults(defineProps<TextStyleToolbarControlProps>(), {
 type TextStyleAttribute = 'color' | 'fontFamily' | 'fontSize' | 'lineHeight'
 
 const editor = props.editor
+const activeLayer = ref<string | null>(null)
+
+function closeLayer() {
+  activeLayer.value = null
+  toolbarLayer.release()
+}
+
+const toolbarLayer = useRichTextToolbarLayer(editor, closeLayer)
+
+function handleLayerShow(key: string, show: boolean) {
+  if (!show) {
+    if (activeLayer.value === key) {
+      closeLayer()
+    }
+    return
+  }
+
+  toolbarLayer.claim()
+  activeLayer.value = key
+}
 
 function canRunAction<Args extends unknown[]>(
   action: RichTextAction<RichTextFeature, string, Args>,
@@ -52,6 +73,15 @@ function runAction<Args extends unknown[]>(
   }
 
   return runRichTextAction(editor, action, ...args)
+}
+
+function runActionAndClose<Args extends unknown[]>(
+  action: RichTextAction<RichTextFeature, string, Args>,
+  ...args: Args
+) {
+  if (runAction(action, ...args)) {
+    closeLayer()
+  }
 }
 
 const colorControl = computed(() => {
@@ -98,14 +128,14 @@ function selectOption(settings: SelectControlConfig, selectedKey: string | numbe
   const controlKey = getSelectControlKey(settings.attribute)
 
   if (selectedKey === `${controlKey}-default`) {
-    runAction(settings.unsetAction)
+    runActionAndClose(settings.unsetAction)
     return
   }
 
   const option = settings.options.find((candidate) => candidate.key === selectedKey)
 
   if (option) {
-    runAction(settings.setAction, option.value)
+    runActionAndClose(settings.setAction, option.value)
   }
 }
 
@@ -190,11 +220,26 @@ const selectControls = computed(() => {
     }
   })
 })
+
+watch(
+  () => props.disabled,
+  (disabled) => {
+    if (disabled) {
+      closeLayer()
+    }
+  },
+)
 </script>
 
 <template>
   <div class="flex items-center gap-1">
-    <NPopover trigger="click" placement="bottom-start" :disabled="colorControl.isDisabled">
+    <NPopover
+      trigger="click"
+      placement="bottom-start"
+      :show="activeLayer === 'color'"
+      :disabled="colorControl.isDisabled"
+      @update:show="handleLayerShow('color', $event)"
+    >
       <template #trigger>
         <NButton
           data-test="rich-text-text-color"
@@ -233,7 +278,7 @@ const selectControls = computed(() => {
           aria-label="默认文字颜色"
           :aria-pressed="!colorControl.value"
           @mousedown.prevent
-          @click="runAction(unsetTextColorAction)"
+          @click="runActionAndClose(unsetTextColorAction)"
         >
           <span class="i-[lucide--rotate-ccw]" aria-hidden="true" />
         </NButton>
@@ -253,7 +298,7 @@ const selectControls = computed(() => {
           :aria-label="color.label"
           :aria-pressed="color.active"
           @mousedown.prevent
-          @click="runAction(setTextColorAction, color.value)"
+          @click="runActionAndClose(setTextColorAction, color.value)"
         >
           <span
             class="inline-block size-4 rounded-sm border border-input-border"
@@ -268,9 +313,11 @@ const selectControls = computed(() => {
       v-for="control in selectControls"
       :key="control.key"
       trigger="click"
+      :show="activeLayer === control.key"
       placement="bottom-start"
       :options="control.options"
       :disabled="control.isDisabled"
+      @update:show="handleLayerShow(control.key, $event)"
       @select="control.select"
     >
       <NButton

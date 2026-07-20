@@ -1,5 +1,8 @@
+import { richTextFeatureQuickbar } from '../../vue/quickbar'
 import { richTextToolbarComponent } from '../../vue/toolbar'
 import { imageFeature } from './shared'
+import { resolveRichTextImageQuickbarTarget } from './vue/dialog-controller'
+import ImageQuickbar from './vue/ImageQuickbar.vue'
 import ImageToolbarControl from './vue/ImageToolbarControl.vue'
 
 export interface RichTextImageUploadOptions {
@@ -12,6 +15,16 @@ export function createImageToolbarControl(options: RichTextImageUploadOptions) {
     feature: imageFeature,
     key: 'image',
     component: ImageToolbarControl,
+    props: options,
+  })
+}
+
+export function createImageQuickbar(options: RichTextImageUploadOptions) {
+  return richTextFeatureQuickbar({
+    feature: imageFeature,
+    key: imageFeature.key,
+    isActive: (editor) => resolveRichTextImageQuickbarTarget(editor) !== null,
+    component: ImageQuickbar,
     props: options,
   })
 }

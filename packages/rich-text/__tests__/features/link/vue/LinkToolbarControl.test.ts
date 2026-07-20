@@ -1,18 +1,19 @@
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
+import { UndoRedo } from '@tiptap/extensions/undo-redo'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
-import { NPopover } from 'naive-ui'
+import { NInput, NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import LinkToolbarControl from '../../../../src/features/link/vue/LinkToolbarControl.vue'
 import { linkFeature } from '../../../../src/features/link/shared'
+import LinkToolbarControl from '../../../../src/features/link/vue/LinkToolbarControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
 
 function createEditor(content = '<p>维护通知</p>') {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, ...linkFeature.documentExtensions!()],
+    extensions: [Document, Paragraph, Text, UndoRedo, ...linkFeature.documentExtensions!()],
     content,
   })
 }
@@ -31,35 +32,23 @@ function mountControl(editor: Editor, disabled = false) {
   })
 }
 
-function selectEditorText(editor: Editor) {
-  editor.commands.setTextSelection({
-    from: 1,
-    to: editor.state.doc.nodeSize - 3,
-  })
-}
-
-async function openPopover(wrapper: ReturnType<typeof mount>) {
-  await flushPromises()
-  if (!isPopoverShown(wrapper)) {
-    await wrapper.get('[data-test="rich-text-link"]').trigger('click')
-  }
-  await flushPromises()
-  await vi.waitFor(() => {
-    expect(isPopoverShown(wrapper)).toBe(true)
-  })
-}
-
-function getUrlInput(wrapper: ReturnType<typeof mount>) {
-  return wrapper.get('[data-test="rich-text-link-url"] input')
-}
-
-function isPopoverShown(wrapper: ReturnType<typeof mount>) {
+function isPopoverShown(wrapper: ReturnType<typeof mountControl>) {
   return wrapper.getComponent(NPopover).props('show') === true
 }
 
-async function focusEditor(editor: Editor) {
-  editor.commands.focus()
+function getUrlInput(wrapper: ReturnType<typeof mountControl>) {
+  return wrapper.get('[data-test="rich-text-link-url"] input')
+}
+
+async function setUrl(wrapper: ReturnType<typeof mountControl>, value: string) {
+  wrapper.getComponent(NInput).vm.$emit('update:value', value)
   await flushPromises()
+}
+
+async function openPopover(wrapper: ReturnType<typeof mountControl>) {
+  await wrapper.get('[data-test="rich-text-link"]').trigger('click')
+  await flushPromises()
+  expect(isPopoverShown(wrapper)).toBe(true)
 }
 
 describe('LinkToolbarControl', () => {
@@ -67,203 +56,275 @@ describe('LinkToolbarControl', () => {
     vi.restoreAllMocks()
   })
 
-  it('applies a normalized link and pre-fills from the current selection href', async () => {
+  it('opens only on click and creates a normalized link for the exact selection', async () => {
     const editor = createEditor()
-    selectEditorText(editor)
-
+    editor.commands.setTextSelection({ from: 1, to: 3 })
+    editor.commands.focus()
     const wrapper = mountControl(editor)
+
+    await flushPromises()
+    expect(isPopoverShown(wrapper)).toBe(false)
+
     await openPopover(wrapper)
-    await getUrlInput(wrapper).setValue('example.com')
-    await getUrlInput(wrapper).trigger('keydown.enter')
+    expect(wrapper.getComponent(NInput).props('value')).toBe('')
+    expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(false)
+
+    await setUrl(wrapper, 'example.com')
+    await wrapper.get('[data-test="rich-text-link-apply"]').trigger('click')
     await flushPromises()
 
-    expect(editor.getJSON()).toMatchObject({
-      content: [
-        {
-          content: [
-            {
-              marks: [{ type: 'link', attrs: { href: 'https://example.com' } }],
-              text: '维护通知',
-            },
-          ],
-        },
-      ],
+    expect(editor.getJSON().content?.[0]?.content).toMatchObject([
+      {
+        marks: [{ type: 'link', attrs: { href: 'https://example.com' } }],
+        text: '维护',
+      },
+      { text: '通知' },
+    ])
+    expect(editor.state.selection).toMatchObject({ from: 1, to: 3 })
+    expect(isPopoverShown(wrapper)).toBe(false)
+    await vi.waitFor(() => {
+      expect(editor.isFocused).toBe(true)
     })
-
-    wrapper.unmount()
-    const remountedWrapper = mountControl(editor)
-    await openPopover(remountedWrapper)
-
-    expect(remountedWrapper.get('[data-test="rich-text-link"]').attributes('data-active')).toBe(
-      'true',
-    )
-    expect((getUrlInput(remountedWrapper).element as HTMLInputElement).value).toBe(
-      'https://example.com',
-    )
-    expect(remountedWrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(true)
   })
 
-  it('does not open automatically before the editor is focused', async () => {
+  it('does not open automatically when a focused selection enters a link', async () => {
     const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
-    selectEditorText(editor)
+    editor.commands.setTextSelection(3)
     const wrapper = mountControl(editor)
 
+    editor.commands.focus()
     await flushPromises()
 
     expect(isPopoverShown(wrapper)).toBe(false)
+    expect(wrapper.get('[data-test="rich-text-link"]').attributes('data-active')).toBe('true')
   })
 
-  it('opens automatically when the focused selection enters a link without focusing the input', async () => {
-    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
-    selectEditorText(editor)
+  it('edits the complete link while restoring the original collapsed selection', async () => {
+    const editor = createEditor('<p><a href="https://old.example">链接文本</a>末尾</p>')
+    editor.commands.setTextSelection(3)
     const wrapper = mountControl(editor)
 
-    await focusEditor(editor)
+    await openPopover(wrapper)
+    expect(wrapper.getComponent(NInput).props('value')).toBe('https://old.example')
+    expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(true)
 
-    await vi.waitFor(() => {
-      expect(isPopoverShown(wrapper)).toBe(true)
+    editor.commands.setTextSelection(6)
+    await setUrl(wrapper, 'new.example')
+    const onTransaction = vi.fn()
+    editor.on('transaction', onTransaction)
+
+    await wrapper.get('[data-test="rich-text-link-apply"]').trigger('click')
+    await flushPromises()
+
+    expect(onTransaction.mock.calls.filter(([event]) => event.transaction.docChanged)).toHaveLength(
+      1,
+    )
+    expect(editor.getJSON().content?.[0]?.content?.[0]).toMatchObject({
+      marks: [{ type: 'link', attrs: { href: 'https://new.example' } }],
+      text: '链接文本',
     })
-
-    const input = getUrlInput(wrapper).element as HTMLInputElement
-
-    expect(input.value).toBe('https://example.com')
-    expect(document.activeElement).not.toBe(input)
+    expect(editor.state.selection).toMatchObject({ from: 3, to: 3 })
+    expect(editor.commands.undo()).toBe(true)
+    expect(editor.getJSON().content?.[0]?.content?.[0]).toMatchObject({
+      marks: [{ type: 'link', attrs: { href: 'https://old.example' } }],
+      text: '链接文本',
+    })
   })
 
-  it('keeps the popover closed after a manual close while staying on the same link', async () => {
-    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
-    selectEditorText(editor)
+  it('sets and removes links only inside an exact mixed selection', async () => {
+    const editor = createEditor('<p><a href="https://old.example">链接</a>普通</p>')
+    editor.commands.setTextSelection({ from: 2, to: 5 })
     const wrapper = mountControl(editor)
 
-    await focusEditor(editor)
+    await openPopover(wrapper)
+    expect(wrapper.getComponent(NInput).props('value')).toBe('')
+    expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(true)
 
-    await vi.waitFor(() => {
-      expect(isPopoverShown(wrapper)).toBe(true)
+    await setUrl(wrapper, 'https://new.example')
+    await wrapper.get('[data-test="rich-text-link-apply"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.getJSON().content?.[0]?.content).toMatchObject([
+      {
+        text: '链',
+        marks: [{ type: 'link', attrs: { href: 'https://old.example' } }],
+      },
+      {
+        text: '接普通',
+        marks: [{ type: 'link', attrs: { href: 'https://new.example' } }],
+      },
+    ])
+    expect(editor.state.selection).toMatchObject({ from: 2, to: 5 })
+
+    await openPopover(wrapper)
+    await wrapper.get('[data-test="rich-text-link-remove"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.getJSON().content?.[0]?.content).toMatchObject([
+      {
+        text: '链',
+        marks: [{ type: 'link', attrs: { href: 'https://old.example' } }],
+      },
+      { text: '接普通' },
+    ])
+    expect(editor.state.selection).toMatchObject({ from: 2, to: 5 })
+  })
+
+  it('uses an unprefilled stored-mark mode for an ordinary collapsed caret', async () => {
+    const editor = createEditor('<p>普通文字</p>')
+    editor.commands.setTextSelection(3)
+    editor.commands.setLink({ href: 'https://stored.example' })
+    const wrapper = mountControl(editor)
+
+    await openPopover(wrapper)
+    expect(wrapper.getComponent(NInput).props('value')).toBe('')
+    expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(false)
+
+    await setUrl(wrapper, 'next.example')
+    await wrapper.get('[data-test="rich-text-link-apply"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.state.storedMarks?.find((mark) => mark.type.name === 'link')?.attrs).toEqual({
+      href: 'https://next.example',
     })
+    expect(editor.getText()).toBe('普通文字')
 
+    await openPopover(wrapper)
+    expect(wrapper.getComponent(NInput).props('value')).toBe('')
+    await wrapper.get('[data-test="rich-text-link-apply"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.state.storedMarks?.some((mark) => mark.type.name === 'link')).toBe(false)
+  })
+
+  it('disables the control for a cross-block selection', async () => {
+    const editor = createEditor('<p>第一段</p><p>第二段</p>')
+    editor.commands.setTextSelection({ from: 2, to: 7 })
+    const wrapper = mountControl(editor)
+
+    expect(wrapper.get('[data-test="rich-text-link"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('[data-test="rich-text-link"]').trigger('click')
+    expect(isPopoverShown(wrapper)).toBe(false)
+  })
+
+  it('restores selection on explicit cancel and a second trigger click', async () => {
+    const editor = createEditor('<p><a href="https://example.com">链接文本</a>末尾</p>')
+    editor.commands.setTextSelection(3)
+    const wrapper = mountControl(editor)
+
+    await openPopover(wrapper)
+    await setUrl(wrapper, 'draft.example')
+    editor.commands.setTextSelection(6)
+    await wrapper.get('[data-test="rich-text-link-cancel"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.state.selection).toMatchObject({ from: 3, to: 3 })
+    expect(editor.getHTML()).not.toContain('draft.example')
+    expect(isPopoverShown(wrapper)).toBe(false)
+
+    await openPopover(wrapper)
+    await setUrl(wrapper, 'second-draft.example')
+    editor.commands.setTextSelection(6)
     await wrapper.get('[data-test="rich-text-link"]').trigger('click')
     await flushPromises()
 
-    expect(isPopoverShown(wrapper)).toBe(false)
-
-    editor.commands.setTextSelection({ from: 1, to: 2 })
-    await flushPromises()
-
+    expect(editor.state.selection).toMatchObject({ from: 3, to: 3 })
+    expect(editor.getHTML()).not.toContain('second-draft.example')
     expect(isPopoverShown(wrapper)).toBe(false)
   })
 
-  it('keeps link actions visible while the editor blurs before the popover closes', async () => {
-    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
-    selectEditorText(editor)
+  it('abandons drafts on outside close without restoring the selection or focus', async () => {
+    const editor = createEditor('<p><a href="https://example.com">链接文本</a>末尾</p>')
+    editor.commands.setTextSelection(3)
     const wrapper = mountControl(editor)
+    const outsideButton = document.createElement('button')
+    document.body.append(outsideButton)
 
-    await focusEditor(editor)
-
-    await vi.waitFor(() => {
-      expect(isPopoverShown(wrapper)).toBe(true)
-    })
-
-    expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(true)
-
-    editor.commands.blur()
+    await openPopover(wrapper)
+    await setUrl(wrapper, 'draft.example')
+    editor.commands.setTextSelection(6)
+    outsideButton.focus()
+    wrapper.getComponent(NPopover).vm.$emit('clickoutside')
     await flushPromises()
 
-    expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(true)
+    expect(editor.state.selection).toMatchObject({ from: 6, to: 6 })
+    expect(document.activeElement).toBe(outsideButton)
+    expect(editor.getHTML()).not.toContain('draft.example')
+    expect(isPopoverShown(wrapper)).toBe(false)
+    outsideButton.remove()
   })
 
-  it('removes the current link when applying an empty input', async () => {
-    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
-    selectEditorText(editor)
+  it('closes an invalidated target without applying its draft', async () => {
+    const editor = createEditor('<p><a href="https://example.com">链接文本</a>末尾</p>')
+    editor.commands.setTextSelection(3)
     const wrapper = mountControl(editor)
 
     await openPopover(wrapper)
-    expect((getUrlInput(wrapper).element as HTMLInputElement).value).toBe('https://example.com')
-
-    await getUrlInput(wrapper).setValue('')
-    await getUrlInput(wrapper).trigger('keydown.enter')
+    await setUrl(wrapper, 'draft.example')
+    editor.commands.setTextSelection(6)
+    editor.commands.insertContent('外部')
     await flushPromises()
 
-    expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
+    expect(isPopoverShown(wrapper)).toBe(false)
+    expect(editor.getText()).toContain('外部')
+    expect(editor.getHTML()).not.toContain('draft.example')
+    expect(editor.state.selection.from).not.toBe(3)
   })
 
-  it('does not write an unsupported link', async () => {
-    const editor = createEditor()
-    selectEditorText(editor)
+  it('keeps invalid drafts open and opens normalized drafts without closing', async () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const editor = createEditor('<p>普通文字</p>')
+    editor.commands.setTextSelection({ from: 1, to: 3 })
     const wrapper = mountControl(editor)
 
     await openPopover(wrapper)
-    await getUrlInput(wrapper).setValue('javascript:alert(1)')
-    await getUrlInput(wrapper).trigger('keydown.enter')
-    await flushPromises()
+    await setUrl(wrapper, 'javascript:alert(1)')
 
-    expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
-  })
-
-  it('does not apply protocol-relative links', async () => {
-    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
-    selectEditorText(editor)
-    const wrapper = mountControl(editor)
-
-    await openPopover(wrapper)
-    await getUrlInput(wrapper).setValue('//example.com')
-    await getUrlInput(wrapper).trigger('keydown.enter')
-    await flushPromises()
-
-    expect(editor.getJSON()).toMatchObject({
-      content: [
-        {
-          content: [
-            {
-              marks: [{ type: 'link', attrs: { href: 'https://example.com' } }],
-              text: '维护通知',
-            },
-          ],
-        },
-      ],
-    })
-  })
-
-  it('opens the current input href', async () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
-    selectEditorText(editor)
-    const wrapper = mountControl(editor)
-
-    await openPopover(wrapper)
-    await wrapper.get('[data-test="rich-text-link-open"]').trigger('click')
-
-    expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
-
-    await getUrlInput(wrapper).setValue('rev30.example')
-    await wrapper.get('[data-test="rich-text-link-open"]').trigger('click')
-
-    expect(openSpy).toHaveBeenLastCalledWith(
-      'https://rev30.example',
-      '_blank',
-      'noopener,noreferrer',
-    )
-  })
-
-  it('does not open the current selection href after the input is cleared', async () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
-    selectEditorText(editor)
-    const wrapper = mountControl(editor)
-
-    await openPopover(wrapper)
-    await getUrlInput(wrapper).setValue('')
-    await wrapper.get('[data-test="rich-text-link-open"]').trigger('click')
-
+    expect(wrapper.getComponent(NInput).props('status')).toBe('error')
+    expect(wrapper.get('[data-test="rich-text-link-apply"]').attributes('disabled')).toBeDefined()
     expect(wrapper.get('[data-test="rich-text-link-open"]').attributes('disabled')).toBeDefined()
-    expect(openSpy).not.toHaveBeenCalled()
+
+    await setUrl(wrapper, 'example.com/path')
+    await wrapper.get('[data-test="rich-text-link-open"]').trigger('click')
+
+    expect(open).toHaveBeenCalledWith('https://example.com/path', '_blank', 'noopener,noreferrer')
+    expect(isPopoverShown(wrapper)).toBe(true)
   })
 
-  it('labels icon actions for assistive technology', async () => {
-    const editor = createEditor()
+  it('applies with Enter, ignores composition, and cancels with Escape', async () => {
+    const editor = createEditor('<p>普通文字</p>')
+    editor.commands.setTextSelection({ from: 1, to: 3 })
     const wrapper = mountControl(editor)
 
     await openPopover(wrapper)
+    await setUrl(wrapper, 'example.com')
+    await getUrlInput(wrapper).trigger('keydown', { key: 'Enter', isComposing: true })
+    expect(editor.getHTML()).not.toContain('href=')
+    expect(isPopoverShown(wrapper)).toBe(true)
 
+    await getUrlInput(wrapper).trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+    expect(editor.getHTML()).toContain('href="https://example.com"')
+    expect(isPopoverShown(wrapper)).toBe(false)
+
+    editor.commands.setTextSelection(2)
+    await openPopover(wrapper)
+    await setUrl(wrapper, 'draft.example')
+    editor.commands.setTextSelection(4)
+    await getUrlInput(wrapper).trigger('keydown', { key: 'Escape' })
+    await flushPromises()
+
+    expect(editor.state.selection).toMatchObject({ from: 2, to: 2 })
+    expect(editor.getHTML()).not.toContain('draft.example')
+    expect(isPopoverShown(wrapper)).toBe(false)
+  })
+
+  it('labels icon actions and honors the disabled prop', async () => {
+    const editor = createEditor()
+    editor.commands.setTextSelection({ from: 1, to: 3 })
+    const wrapper = mountControl(editor)
+
+    await openPopover(wrapper)
     expect(wrapper.get('[data-test="rich-text-link"]').attributes('aria-label')).toBe('链接')
     expect(wrapper.get('[data-test="rich-text-link-apply"]').attributes('aria-label')).toBe(
       '应用链接',
@@ -271,11 +332,11 @@ describe('LinkToolbarControl', () => {
     expect(wrapper.get('[data-test="rich-text-link-open"]').attributes('aria-label')).toBe(
       '新窗口打开链接',
     )
-  })
+    expect(wrapper.get('[data-test="rich-text-link-cancel"]').attributes('aria-label')).toBe(
+      '取消编辑链接',
+    )
 
-  it('is disabled when the disabled prop is true', () => {
-    const wrapperDisabled = mountControl(createEditor(), true)
-
-    expect(wrapperDisabled.get('[data-test="rich-text-link"]').attributes('disabled')).toBeDefined()
+    const disabledWrapper = mountControl(createEditor(), true)
+    expect(disabledWrapper.get('[data-test="rich-text-link"]').attributes('disabled')).toBeDefined()
   })
 })

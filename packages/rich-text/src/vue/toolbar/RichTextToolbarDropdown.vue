@@ -2,7 +2,7 @@
 import type { Editor } from '@tiptap/vue-3'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
-import { computed, h } from 'vue'
+import { computed, h, ref } from 'vue'
 import { runRichTextAction } from '../../editor/action'
 import {
   getActiveRichTextToolbarItem,
@@ -10,6 +10,7 @@ import {
   type RichTextToolbarItem,
   type RichTextToolbarDropdownControl,
 } from '../toolbar'
+import { useRichTextToolbarLayer } from '../surface-coordinator'
 
 const props = withDefaults(
   defineProps<{
@@ -23,6 +24,24 @@ const props = withDefaults(
 )
 
 const editor = props.editor
+const show = ref(false)
+
+function closeDropdown() {
+  show.value = false
+  toolbarLayer.release()
+}
+
+const toolbarLayer = useRichTextToolbarLayer(editor, closeDropdown)
+
+function handleShow(nextShow: boolean) {
+  if (nextShow) {
+    toolbarLayer.claim()
+    show.value = true
+    return
+  }
+
+  closeDropdown()
+}
 
 function isItemDisabled(item: RichTextToolbarItem) {
   return props.disabled || isRichTextActionDisabled(item.action, editor)
@@ -86,16 +105,20 @@ function handleSelect(key: string | number) {
     return
   }
 
-  runRichTextAction(editor, item.action)
+  if (runRichTextAction(editor, item.action)) {
+    closeDropdown()
+  }
 }
 </script>
 
 <template>
   <NDropdown
     trigger="click"
+    :show="show"
     placement="bottom-start"
     :options="options"
     :render-label="renderLabel"
+    @update:show="handleShow"
     @select="handleSelect"
   >
     <NButton
@@ -110,6 +133,7 @@ function handleSelect(key: string | number) {
       :title="triggerLabel"
       :aria-label="triggerLabel"
       :aria-pressed="isActive"
+      @mousedown.prevent
     >
       <span :class="triggerIcon" aria-hidden="true" />
       <span class="ml-0.5 i-[lucide--chevron-down] text-xs" aria-hidden="true" />

@@ -2,7 +2,7 @@ import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import type { Editor } from '@tiptap/vue-3'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import type { DropdownOption } from 'naive-ui'
 import { NButtonGroup, NDropdown } from 'naive-ui'
 import { markRaw } from 'vue'
@@ -38,8 +38,9 @@ function createEditor(firstLanguage: string | null, secondLanguage: string | nul
   })
 }
 
-function mountControl(editor: Editor) {
+function mountControl(editor: Editor, attachToDocument = false) {
   return mount(CodeBlockToolbarControl, {
+    ...(attachToDocument ? { attachTo: document.body } : undefined),
     props: {
       editor: markRaw(editor),
       languages: [...codeBlockLanguageOptions],
@@ -71,6 +72,15 @@ function findOption(wrapper: ReturnType<typeof mount>, value: string) {
   }
 
   return option
+}
+
+function getLanguageMenuId(wrapper: ReturnType<typeof mount>) {
+  const getMenuProps = wrapper.getComponent(NDropdown).props('menuProps') as () => Record<
+    string,
+    string
+  >
+
+  return getMenuProps()['data-rich-text-code-block-language-menu']
 }
 
 describe('CodeBlockToolbarControl', () => {
@@ -134,5 +144,73 @@ describe('CodeBlockToolbarControl', () => {
     await vi.waitFor(() => {
       expect(dropdown.props('disabled')).toBe(false)
     })
+  })
+
+  it('closes only the language menu that owns the Escape event', async () => {
+    const firstEditor = createEditor(null, null)
+    const secondEditor = createEditor(null, null)
+    const firstPositions = findCodeBlockTextPositions(firstEditor)
+    firstEditor.commands.setTextSelection(firstPositions[0]!)
+    secondEditor.commands.setTextSelection(findCodeBlockTextPositions(secondEditor)[0]!)
+    firstEditor.view.focus()
+    const firstWrapper = mountControl(firstEditor, true)
+    const secondWrapper = mountControl(secondEditor, true)
+
+    firstWrapper.getComponent(NDropdown).vm.$emit('update:show', true)
+    secondWrapper.getComponent(NDropdown).vm.$emit('update:show', true)
+    await flushPromises()
+
+    const firstButton = firstWrapper.get('[data-test="rich-text-code-block-language"]')
+    const secondButton = secondWrapper.get('[data-test="rich-text-code-block-language"]')
+    expect(firstButton.attributes('aria-expanded')).toBe('true')
+    expect(secondButton.attributes('aria-expanded')).toBe('true')
+    expect(getLanguageMenuId(firstWrapper)).not.toBe(getLanguageMenuId(secondWrapper))
+
+    firstEditor.commands.setTextSelection(firstPositions[1]!)
+    firstEditor.view.dom.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    )
+    await flushPromises()
+
+    expect(firstButton.attributes('aria-expanded')).toBe('false')
+    expect(secondButton.attributes('aria-expanded')).toBe('true')
+    expect(firstEditor.state.selection).toMatchObject({
+      from: firstPositions[0],
+      to: firstPositions[0],
+    })
+    expect(document.activeElement).toBe(firstEditor.view.dom)
+  })
+
+  it('isolates Escape events from teleported menus across Vue roots', async () => {
+    const firstEditor = createEditor(null, null)
+    const secondEditor = createEditor(null, null)
+    firstEditor.commands.setTextSelection(findCodeBlockTextPositions(firstEditor)[0]!)
+    secondEditor.commands.setTextSelection(findCodeBlockTextPositions(secondEditor)[0]!)
+    const firstWrapper = mountControl(firstEditor, true)
+    const secondWrapper = mountControl(secondEditor, true)
+
+    firstWrapper.getComponent(NDropdown).vm.$emit('update:show', true)
+    secondWrapper.getComponent(NDropdown).vm.$emit('update:show', true)
+    await flushPromises()
+
+    const firstMenuId = getLanguageMenuId(firstWrapper)
+    const secondMenuId = getLanguageMenuId(secondWrapper)
+    expect(firstMenuId).not.toBe(secondMenuId)
+
+    const firstMenu = document.createElement('div')
+    firstMenu.dataset.richTextCodeBlockLanguageMenu = firstMenuId
+    document.body.appendChild(firstMenu)
+    firstMenu.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    )
+    firstMenu.remove()
+    await flushPromises()
+
+    expect(
+      firstWrapper.get('[data-test="rich-text-code-block-language"]').attributes('aria-expanded'),
+    ).toBe('false')
+    expect(
+      secondWrapper.get('[data-test="rich-text-code-block-language"]').attributes('aria-expanded'),
+    ).toBe('true')
   })
 })

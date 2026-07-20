@@ -27,7 +27,7 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-function handleKeydown(event: KeyboardEvent) {
+function handleInputKeydown(event: KeyboardEvent) {
   if (event.isComposing) {
     return
   }
@@ -35,19 +35,27 @@ function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter') {
     event.preventDefault()
     emit('apply')
+  }
+}
+
+function handleFormKeydown(event: KeyboardEvent) {
+  if (event.isComposing || event.key !== 'Escape') {
     return
   }
 
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    event.stopPropagation()
-    emit('cancel')
-  }
+  event.preventDefault()
+  event.stopPropagation()
+  emit('cancel')
 }
 </script>
 
 <template>
-  <div class="flex items-center gap-1" role="group" aria-label="编辑链接">
+  <div
+    class="flex items-center gap-1"
+    role="group"
+    aria-label="编辑链接"
+    @keydown="handleFormKeydown"
+  >
     <NInput
       :value="modelValue"
       data-test="rich-text-link-url"
@@ -58,7 +66,7 @@ function handleKeydown(event: KeyboardEvent) {
       class="mr-1"
       aria-label="链接地址"
       @update:value="emit('update:modelValue', $event)"
-      @keydown="handleKeydown"
+      @keydown="handleInputKeydown"
     >
       <template #suffix>
         <NButton

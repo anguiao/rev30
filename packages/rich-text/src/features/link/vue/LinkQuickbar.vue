@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/core'
 import { NButton } from 'naive-ui'
 import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import type { RichTextSurfaceCloseReason } from '../../../vue/surface-coordinator'
+import { requestRichTextQuickbarPluginUpdate } from '../../../vue/quickbar'
 import { normalizeLinkHref } from '../href'
 import { resolveRichTextLinkTarget, type RichTextLinkTarget } from '../target'
 import LinkEditorForm from './LinkEditorForm.vue'
@@ -34,7 +35,7 @@ const linkEditor = useRichTextLinkEditor({
       return
     }
 
-    if (reason === 'success') {
+    if (reason === 'success' || reason === 'cancel') {
       syncReadonlyTarget()
       requestPositionUpdate()
     }
@@ -52,7 +53,7 @@ function syncReadonlyTarget() {
 function requestPositionUpdate() {
   void nextTick(() => {
     if (!editor.isDestroyed) {
-      editor.view.dispatch(editor.state.tr.setMeta('richTextQuickbarUpdate', true))
+      requestRichTextQuickbarPluginUpdate(editor, 'updatePosition')
     }
   })
 }
@@ -84,7 +85,7 @@ function removeReadonlyLink() {
 }
 
 function cancelEditing() {
-  emit('close', 'cancel')
+  linkEditor.cancel()
 }
 
 function close(reason: RichTextSurfaceCloseReason = 'outside') {

@@ -5,11 +5,14 @@ import { BubbleMenu } from '@tiptap/vue-3/menus'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import {
   getRichTextQuickbarLayerId,
+  requestRichTextQuickbarPluginUpdate,
   richTextQuickbarPluginKey,
   type RichTextQuickbarConfig,
 } from '../quickbar'
+import { excludeRichTextMenuWrapperFromTabOrder } from '../menu-wrapper'
 import {
   captureRichTextSelection,
+  richTextSurfaceTransactionMeta,
   restoreRichTextSelection,
   type RichTextSelectionSnapshot,
 } from '../selection'
@@ -47,7 +50,9 @@ const pinnedContext = shallowRef<RichTextQuickbarContext | null>(null)
 const dismissedSelection = ref('')
 let editorElement: HTMLElement | undefined
 let quickbarObserver: MutationObserver | undefined
+let stopMenuWrapperTabIndexSync: (() => void) | undefined
 let isClosingSurface = false
+let isRestoringPinnedSelection = false
 
 const menuOptions = {
   placement: 'top' as const,
@@ -81,9 +86,28 @@ function releasePinnedContext() {
   pinnedContext.value = null
 }
 
-function requestMenuUpdate() {
-  if (!editor.isDestroyed) {
-    editor.view.dispatch(editor.state.tr.setMeta('richTextQuickbarUpdate', true))
+function requestMenuUpdate(force?: 'show' | 'hide') {
+  const update = force ?? (shouldShow() ? 'show' : 'hide')
+  requestRichTextQuickbarPluginUpdate(editor, update)
+
+  if (update === 'show') {
+    void nextTick(() => {
+      requestRichTextQuickbarPluginUpdate(editor, 'updatePosition')
+    })
+  }
+}
+
+function restorePinnedSelectionTarget(focus = true) {
+  if (!pinnedSelection.value || editor.isDestroyed) {
+    return false
+  }
+
+  isRestoringPinnedSelection = true
+
+  try {
+    return restoreRichTextSelection(editor, pinnedSelection.value, focus)
+  } finally {
+    isRestoringPinnedSelection = false
   }
 }
 
@@ -96,9 +120,7 @@ function closeSurface(reason: RichTextSurfaceCloseReason) {
   activeSurface.value?.close?.(reason)
 
   if (reason === 'cancel') {
-    if (pinnedSelection.value) {
-      restoreRichTextSelection(editor, pinnedSelection.value)
-    } else {
+    if (!restorePinnedSelectionTarget()) {
       editor.commands.focus()
     }
 
@@ -112,7 +134,7 @@ function closeSurface(reason: RichTextSurfaceCloseReason) {
 
 function suspendSurface() {
   releasePinnedContext()
-  requestMenuUpdate()
+  requestMenuUpdate('hide')
 }
 
 const unregisterQuickbarCloser = coordinator.registerQuickbarCloser(closeSurface)
@@ -179,6 +201,10 @@ function focusInitialControl() {
 }
 
 function pinCurrentContext() {
+  if (props.disabled || coordinator.isQuickbarSuppressed.value) {
+    return false
+  }
+
   const nextContext = resolveRichTextQuickbarContext(editor, props.quickbar)
 
   if (!nextContext) {
@@ -239,7 +265,7 @@ function restorePinnedActionTarget(event: MouseEvent | KeyboardEvent) {
     target instanceof Element &&
     target.closest('[data-rich-text-quickbar-roving], [data-rich-text-quickbar-action-target]')
   ) {
-    restoreRichTextSelection(editor, pinnedSelection.value, false)
+    restorePinnedSelectionTarget(false)
   }
 }
 
@@ -294,10 +320,6 @@ function handleQuickbarKeydown(event: KeyboardEvent) {
 }
 
 function handleDocumentFocus(event: FocusEvent) {
-  if (!pinnedContext.value) {
-    return
-  }
-
   const target = event.target
 
   if (
@@ -305,27 +327,82 @@ function handleDocumentFocus(event: FocusEvent) {
     (root.value?.contains(target) === true ||
       target.closest(`[data-rich-text-quickbar-subinterface="${layerId}"]`) !== null)
   ) {
+    if (!pinnedContext.value) {
+      pinCurrentContext()
+    }
+
     return
   }
 
-  if (!(target instanceof Node) || !editor.view.dom.contains(target)) {
-    closeSurface('outside')
+  if (target instanceof Node && editor.view.dom.contains(target)) {
+    const shouldUpdate = dismissedSelection.value !== '' || pinnedContext.value !== null
+
+    dismissedSelection.value = ''
+    releasePinnedContext()
+
+    if (shouldUpdate) {
+      requestMenuUpdate()
+    }
+
+    return
   }
+
+  if (!pinnedContext.value) {
+    return
+  }
+
+  closeSurface('outside')
 }
 
 function handleEditorPointerDown() {
   if (pinnedContext.value) {
     closeSurface('outside')
   }
+
+  dismissedSelection.value = ''
+}
+
+function handleDocumentPointerDown(event: PointerEvent) {
+  const target = event.target
+
+  if (
+    !pinnedContext.value ||
+    (target instanceof Element &&
+      (root.value?.contains(target) === true ||
+        target.closest(`[data-rich-text-quickbar-subinterface="${layerId}"]`) !== null))
+  ) {
+    return
+  }
+
+  dismissedSelection.value = getSelectionSignature()
+  closeSurface('outside')
 }
 
 function handleTransaction({ transaction }: { transaction: Transaction }) {
-  if (transaction.selectionSet || transaction.docChanged) {
+  const toolbarLayerReleased = transaction.getMeta('richTextSurfaceCoordinator') === false
+  const shouldRestoreDismissedContext =
+    toolbarLayerReleased && dismissedSelection.value === getSelectionSignature()
+
+  if (transaction.selectionSet || transaction.docChanged || toolbarLayerReleased) {
     dismissedSelection.value = ''
   }
 
-  if (transaction.docChanged && pinnedContext.value) {
+  if (
+    transaction.docChanged &&
+    pinnedContext.value &&
+    transaction.getMeta(richTextSurfaceTransactionMeta) === undefined
+  ) {
     closeSurface('invalidated')
+  } else if (transaction.selectionSet && pinnedContext.value && !isRestoringPinnedSelection) {
+    restorePinnedSelectionTarget(false)
+  }
+
+  if (toolbarLayerReleased) {
+    if (shouldRestoreDismissedContext) {
+      pinCurrentContext()
+    }
+
+    void nextTick(() => requestMenuUpdate())
   }
 
   void nextTick(syncRovingTabIndex)
@@ -334,18 +411,31 @@ function handleTransaction({ transaction }: { transaction: Transaction }) {
 watch(root, (element) => {
   quickbarObserver?.disconnect()
   quickbarObserver = undefined
+  stopMenuWrapperTabIndexSync?.()
+  stopMenuWrapperTabIndexSync = undefined
 
   if (element) {
     quickbarObserver = new MutationObserver(() => void nextTick(syncRovingTabIndex))
     quickbarObserver.observe(element, { childList: true, subtree: true })
-    void nextTick(syncRovingTabIndex)
+    void nextTick(() => {
+      syncRovingTabIndex()
+
+      if (root.value === element) {
+        stopMenuWrapperTabIndexSync = excludeRichTextMenuWrapperFromTabOrder(element)
+      }
+    })
   }
+})
+
+watch([() => props.disabled, coordinator.isQuickbarSuppressed], () => requestMenuUpdate(), {
+  flush: 'sync',
 })
 
 onMounted(() => {
   editorElement = editor.view.dom
   editorElement.addEventListener('keydown', handleEditorKeydown)
   editorElement.addEventListener('mousedown', handleEditorPointerDown)
+  document.addEventListener('pointerdown', handleDocumentPointerDown, true)
   document.addEventListener('focusin', handleDocumentFocus)
   editor.on('transaction', handleTransaction)
 })
@@ -354,9 +444,12 @@ onBeforeUnmount(() => {
   unregisterQuickbarCloser()
   quickbarObserver?.disconnect()
   quickbarObserver = undefined
+  stopMenuWrapperTabIndexSync?.()
+  stopMenuWrapperTabIndexSync = undefined
   editorElement?.removeEventListener('keydown', handleEditorKeydown)
   editorElement?.removeEventListener('mousedown', handleEditorPointerDown)
   editorElement = undefined
+  document.removeEventListener('pointerdown', handleDocumentPointerDown, true)
   document.removeEventListener('focusin', handleDocumentFocus)
   editor.off('transaction', handleTransaction)
 })

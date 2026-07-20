@@ -9,6 +9,7 @@ import { markRaw } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { linkFeature } from '../../../../src/features/link/shared'
 import LinkToolbarControl from '../../../../src/features/link/vue/LinkToolbarControl.vue'
+import { getRichTextSurfaceCoordinator } from '../../../../src/vue/surface-coordinator'
 import { createTestEditor } from '../../../helpers/editor'
 
 function createEditor(content = '<p>维护通知</p>') {
@@ -295,6 +296,7 @@ describe('LinkToolbarControl', () => {
     const editor = createEditor('<p>普通文字</p>')
     editor.commands.setTextSelection({ from: 1, to: 3 })
     const wrapper = mountControl(editor)
+    const coordinator = getRichTextSurfaceCoordinator(editor)
 
     await openPopover(wrapper)
     await setUrl(wrapper, 'example.com')
@@ -311,12 +313,17 @@ describe('LinkToolbarControl', () => {
     await openPopover(wrapper)
     await setUrl(wrapper, 'draft.example')
     editor.commands.setTextSelection(4)
-    await getUrlInput(wrapper).trigger('keydown', { key: 'Escape' })
+    const openButton = wrapper.get('[data-test="rich-text-link-open"]')
+    const openButtonElement = openButton.element as HTMLElement
+    openButtonElement.focus()
+    await openButton.trigger('keydown', { key: 'Escape' })
     await flushPromises()
 
     expect(editor.state.selection).toMatchObject({ from: 2, to: 2 })
     expect(editor.getHTML()).not.toContain('draft.example')
     expect(isPopoverShown(wrapper)).toBe(false)
+    expect(editor.isFocused).toBe(true)
+    expect(coordinator.isQuickbarSuppressed.value).toBe(false)
   })
 
   it('labels icon actions and honors the disabled prop', async () => {

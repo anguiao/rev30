@@ -51,6 +51,15 @@ export interface RichTextQuickbarConfig {
 
 export const richTextQuickbarPluginKey = new PluginKey('richTextQuickbar')
 
+export function requestRichTextQuickbarPluginUpdate(
+  editor: Editor,
+  update: 'show' | 'hide' | 'updatePosition',
+) {
+  if (!editor.isDestroyed) {
+    editor.view.dispatch(editor.state.tr.setMeta(richTextQuickbarPluginKey, update))
+  }
+}
+
 const quickbarLayerIds = new WeakMap<Editor, string>()
 let nextQuickbarLayerId = 0
 

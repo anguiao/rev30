@@ -4,6 +4,7 @@ import { onClickOutside } from '@vueuse/core'
 import { NButton } from 'naive-ui'
 import { computed, nextTick, ref } from 'vue'
 import type { RichTextSurfaceCloseReason } from '../../../vue/surface-coordinator'
+import { requestRichTextQuickbarPluginUpdate } from '../../../vue/quickbar'
 import { resolveRichTextLinkTarget } from '../target'
 import LinkEditorForm from './LinkEditorForm.vue'
 import { useRichTextLinkEditor } from './useLinkEditor'
@@ -32,7 +33,7 @@ const isDisabled = computed(
 function requestPositionUpdate() {
   void nextTick(() => {
     if (!editor.isDestroyed) {
-      editor.view.dispatch(editor.state.tr.setMeta('richTextQuickbarUpdate', true))
+      requestRichTextQuickbarPluginUpdate(editor, 'updatePosition')
     }
   })
 }

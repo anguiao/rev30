@@ -19,6 +19,12 @@ const emit = defineEmits<{
 
 const control = ref<InstanceType<typeof HighlightColorControl> | null>(null)
 
+function handleClose(reason: RichTextSurfaceCloseReason) {
+  if (reason !== 'cancel') {
+    emit('close', reason)
+  }
+}
+
 defineExpose({
   close: (reason: RichTextSurfaceCloseReason) => control.value?.close(reason),
   focusInitialControl: () => control.value?.focusInitialControl() ?? false,
@@ -32,6 +38,6 @@ defineExpose({
     :colors="colors"
     :disabled="disabled"
     surface="quickbar"
-    @close="emit('close', $event)"
+    @close="handleClose"
   />
 </template>

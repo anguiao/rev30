@@ -21,6 +21,7 @@ import {
   resolveRichTextCodeBlockTarget,
   type RichTextCodeBlockTarget,
 } from '../target'
+import { createCodeBlockLanguageMenuId } from './language-menu-id'
 
 interface CodeBlockLanguageControlProps extends RichTextQuickbarInjectedProps {
   languages: readonly {
@@ -43,6 +44,8 @@ const emit = defineEmits<{
 const editor = props.editor
 const owner = Symbol('rich-text-code-block-language')
 const layerId = getRichTextQuickbarLayerId(editor)
+const menuId = createCodeBlockLanguageMenuId()
+const root = ref<HTMLElement | null>(null)
 const show = ref(false)
 const fixedTarget = ref<RichTextCodeBlockTarget | null>(null)
 const toolbarLayer = useRichTextToolbarLayer(editor, () => close('outside'))
@@ -120,6 +123,8 @@ function open() {
 
   if (props.surface === 'toolbar') {
     toolbarLayer.claim()
+  } else {
+    root.value?.querySelector<HTMLElement>(`[data-test="${dataTestPrefix.value}"]`)?.focus()
   }
 
   show.value = true
@@ -134,7 +139,17 @@ function handleShow(nextShow: boolean) {
 }
 
 function handleDocumentKeydown(event: KeyboardEvent) {
-  if (!show.value || event.isComposing || event.key !== 'Escape') {
+  const target = event.target
+
+  if (
+    !show.value ||
+    event.isComposing ||
+    event.key !== 'Escape' ||
+    !(target instanceof Element) ||
+    (root.value?.contains(target) !== true &&
+      !editor.view.dom.contains(target) &&
+      target.closest(`[data-rich-text-code-block-language-menu="${menuId}"]`) === null)
+  ) {
     return
   }
 
@@ -144,7 +159,12 @@ function handleDocumentKeydown(event: KeyboardEvent) {
 }
 
 function getMenuProps() {
-  return props.surface === 'quickbar' ? { 'data-rich-text-quickbar-subinterface': layerId } : {}
+  return {
+    'data-rich-text-code-block-language-menu': menuId,
+    ...(props.surface === 'quickbar'
+      ? { 'data-rich-text-quickbar-subinterface': layerId }
+      : undefined),
+  }
 }
 
 function setLanguage(value: string | number) {
@@ -202,31 +222,33 @@ defineExpose({
 </script>
 
 <template>
-  <NDropdown
-    trigger="click"
-    placement="bottom-start"
-    scrollable
-    :show="show"
-    :options="options"
-    :menu-props="getMenuProps"
-    :disabled="isDisabled"
-    @update:show="handleShow"
-    @select="setLanguage"
-  >
-    <NButton
-      :data-test="dataTestPrefix"
-      :data-rich-text-quickbar-roving="surface === 'quickbar' ? '' : undefined"
+  <div ref="root" class="contents">
+    <NDropdown
+      trigger="click"
+      placement="bottom-start"
+      scrollable
+      :show="show"
+      :options="options"
+      :menu-props="getMenuProps"
       :disabled="isDisabled"
-      style="--n-padding: 0 4px"
-      quaternary
-      :title="buttonLabel"
-      :aria-label="buttonLabel"
-      aria-haspopup="listbox"
-      :aria-expanded="show"
-      @mousedown.prevent
+      @update:show="handleShow"
+      @select="setLanguage"
     >
-      <span v-if="showLabel" class="mr-1 text-xs">{{ currentOption?.label ?? '纯文本' }}</span>
-      <span class="i-[lucide--chevron-down] text-xs" aria-hidden="true" />
-    </NButton>
-  </NDropdown>
+      <NButton
+        :data-test="dataTestPrefix"
+        :data-rich-text-quickbar-roving="surface === 'quickbar' ? '' : undefined"
+        :disabled="isDisabled"
+        style="--n-padding: 0 4px"
+        quaternary
+        :title="buttonLabel"
+        :aria-label="buttonLabel"
+        aria-haspopup="listbox"
+        :aria-expanded="show"
+        @mousedown.prevent
+      >
+        <span v-if="showLabel" class="mr-1 text-xs">{{ currentOption?.label ?? '纯文本' }}</span>
+        <span class="i-[lucide--chevron-down] text-xs" aria-hidden="true" />
+      </NButton>
+    </NDropdown>
+  </div>
 </template>

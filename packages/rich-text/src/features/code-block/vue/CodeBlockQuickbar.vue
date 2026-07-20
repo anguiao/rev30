@@ -61,6 +61,12 @@ function close(reason: RichTextSurfaceCloseReason) {
   languageControl.value?.close(reason)
 }
 
+function handleLanguageClose(reason: RichTextSurfaceCloseReason) {
+  if (reason !== 'cancel') {
+    emit('close', reason)
+  }
+}
+
 defineExpose({
   close,
   focusInitialControl: () => {
@@ -82,7 +88,7 @@ defineExpose({
       :disabled="disabled"
       surface="quickbar"
       show-label
-      @close="emit('close', $event)"
+      @close="handleLanguageClose"
     />
 
     <NButton

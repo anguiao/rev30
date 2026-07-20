@@ -3,7 +3,7 @@ import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
-import { NButton, NDropdown } from 'naive-ui'
+import { NButton, NDropdown, NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -14,6 +14,7 @@ import {
 } from '../../../../src/features/text-style/options'
 import { textStyleFeature } from '../../../../src/features/text-style/shared'
 import TextStyleToolbarControl from '../../../../src/features/text-style/vue/TextStyleToolbarControl.vue'
+import { getRichTextSurfaceCoordinator } from '../../../../src/vue/surface-coordinator'
 import { createTestEditor } from '../../../helpers/editor'
 
 const red = textStyleColorOptions.find((option) => option.key === 'red')!
@@ -246,5 +247,47 @@ describe('TextStyleToolbarControl', () => {
     ]) {
       expect(wrapperDisabled.get(`[data-test="${dataTest}"]`).attributes('disabled')).toBeDefined()
     }
+  })
+
+  it('closes the active layer with Escape from the editor or its trigger', async () => {
+    const editor = createEditor()
+    selectEditorText(editor)
+    editor.view.focus()
+    const wrapper = mountControl(editor)
+    const coordinator = getRichTextSurfaceCoordinator(editor)
+
+    await openColorPopover(wrapper)
+    expect(coordinator.isQuickbarSuppressed.value).toBe(true)
+
+    editor.view.dom.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    )
+    await flushPromises()
+
+    expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
+    expect(coordinator.isQuickbarSuppressed.value).toBe(false)
+    expect(editor.isFocused).toBe(true)
+
+    await openColorPopover(wrapper)
+    const trigger = wrapper.get('[data-test="rich-text-text-color"]')
+    await trigger.trigger('keydown', { key: 'Escape' })
+    await flushPromises()
+
+    expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
+    expect(coordinator.isQuickbarSuppressed.value).toBe(false)
+    expect(editor.isFocused).toBe(true)
+
+    const fontFamily = getDropdownComponent(wrapper, 'rich-text-font-family')
+    fontFamily.vm.$emit('update:show', true)
+    await flushPromises()
+    expect(fontFamily.props('show')).toBe(true)
+
+    editor.view.dom.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    )
+    await flushPromises()
+
+    expect(fontFamily.props('show')).toBe(false)
+    expect(coordinator.isQuickbarSuppressed.value).toBe(false)
   })
 })

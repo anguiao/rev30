@@ -2,7 +2,7 @@
 import type { Editor } from '@tiptap/vue-3'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
-import { computed, h, ref } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, ref } from 'vue'
 import { runRichTextAction } from '../../editor/action'
 import {
   getActiveRichTextToolbarItem,
@@ -11,6 +11,7 @@ import {
   type RichTextToolbarDropdownControl,
 } from '../toolbar'
 import { useRichTextToolbarLayer } from '../surface-coordinator'
+import { createRichTextToolbarDropdownMenuId } from './dropdown-menu-id'
 
 const props = withDefaults(
   defineProps<{
@@ -24,6 +25,8 @@ const props = withDefaults(
 )
 
 const editor = props.editor
+const menuId = createRichTextToolbarDropdownMenuId()
+const root = ref<HTMLElement | null>(null)
 const show = ref(false)
 
 function closeDropdown() {
@@ -41,6 +44,31 @@ function handleShow(nextShow: boolean) {
   }
 
   closeDropdown()
+}
+
+function getMenuProps() {
+  return { 'data-rich-text-toolbar-dropdown-menu': menuId }
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  const target = event.target
+
+  if (
+    !show.value ||
+    event.isComposing ||
+    event.key !== 'Escape' ||
+    !(target instanceof Element) ||
+    (root.value?.contains(target) !== true &&
+      !editor.view.dom.contains(target) &&
+      target.closest(`[data-rich-text-toolbar-dropdown-menu="${menuId}"]`) === null)
+  ) {
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+  closeDropdown()
+  editor.commands.focus()
 }
 
 function isItemDisabled(item: RichTextToolbarItem) {
@@ -109,34 +137,47 @@ function handleSelect(key: string | number) {
     closeDropdown()
   }
 }
+
+onMounted(() => {
+  document.addEventListener('keydown', handleKeydown, true)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleKeydown, true)
+})
 </script>
 
 <template>
-  <NDropdown
-    trigger="click"
-    :show="show"
-    placement="bottom-start"
-    :options="options"
-    :render-label="renderLabel"
-    @update:show="handleShow"
-    @select="handleSelect"
-  >
-    <NButton
-      :data-test="`rich-text-${control.key}`"
-      :data-active="isActive ? 'true' : undefined"
-      :disabled="isDisabled"
-      size="small"
-      style="--n-padding: 0 6px"
-      :type="buttonType"
-      :secondary="isActive"
-      :quaternary="!isActive"
-      :title="triggerLabel"
-      :aria-label="triggerLabel"
-      :aria-pressed="isActive"
-      @mousedown.prevent
+  <div ref="root" class="contents" @keydown.capture="handleKeydown">
+    <NDropdown
+      trigger="click"
+      :show="show"
+      placement="bottom-start"
+      :options="options"
+      :render-label="renderLabel"
+      :menu-props="getMenuProps"
+      @update:show="handleShow"
+      @select="handleSelect"
     >
-      <span :class="triggerIcon" aria-hidden="true" />
-      <span class="ml-0.5 i-[lucide--chevron-down] text-xs" aria-hidden="true" />
-    </NButton>
-  </NDropdown>
+      <NButton
+        :data-test="`rich-text-${control.key}`"
+        :data-active="isActive ? 'true' : undefined"
+        :disabled="isDisabled"
+        size="small"
+        style="--n-padding: 0 6px"
+        :type="buttonType"
+        :secondary="isActive"
+        :quaternary="!isActive"
+        :title="triggerLabel"
+        :aria-label="triggerLabel"
+        :aria-pressed="isActive"
+        aria-haspopup="menu"
+        :aria-expanded="show"
+        @mousedown.prevent
+      >
+        <span :class="triggerIcon" aria-hidden="true" />
+        <span class="ml-0.5 i-[lucide--chevron-down] text-xs" aria-hidden="true" />
+      </NButton>
+    </NDropdown>
+  </div>
 </template>

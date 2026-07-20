@@ -5,12 +5,13 @@ import {
   runRichTextAction,
   type RichTextAction,
 } from '../../../editor/action'
+import { getRichTextQuickbarLayerId } from '../../../vue/quickbar'
 import type { RichTextIconClass, RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import { useRichTextToolbarLayer } from '../../../vue/surface-coordinator'
 import type { TextStyleOption } from '../options'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown, NPopover } from 'naive-ui'
-import { computed, h, ref, watch } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   setFontFamilyAction,
   setFontSizeAction,
@@ -36,6 +37,8 @@ const props = withDefaults(defineProps<TextStyleToolbarControlProps>(), {
 type TextStyleAttribute = 'color' | 'fontFamily' | 'fontSize' | 'lineHeight'
 
 const editor = props.editor
+const layerId = getRichTextQuickbarLayerId(editor)
+const root = ref<HTMLElement | null>(null)
 const activeLayer = ref<string | null>(null)
 
 function closeLayer() {
@@ -55,6 +58,31 @@ function handleLayerShow(key: string, show: boolean) {
 
   toolbarLayer.claim()
   activeLayer.value = key
+}
+
+function getLayerMenuProps() {
+  return { 'data-rich-text-text-style-layer': layerId }
+}
+
+function handleLayerKeydown(event: KeyboardEvent) {
+  const target = event.target
+
+  if (
+    activeLayer.value === null ||
+    event.isComposing ||
+    event.key !== 'Escape' ||
+    !(target instanceof Element) ||
+    (root.value?.contains(target) !== true &&
+      !editor.view.dom.contains(target) &&
+      target.closest(`[data-rich-text-text-style-layer="${layerId}"]`) === null)
+  ) {
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+  closeLayer()
+  editor.commands.focus()
 }
 
 function canRunAction<Args extends unknown[]>(
@@ -229,15 +257,24 @@ watch(
     }
   },
 )
+
+onMounted(() => {
+  document.addEventListener('keydown', handleLayerKeydown, true)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleLayerKeydown, true)
+})
 </script>
 
 <template>
-  <div class="flex items-center gap-1">
+  <div ref="root" class="flex items-center gap-1" @keydown.capture="handleLayerKeydown">
     <NPopover
       trigger="click"
       placement="bottom-start"
       :show="activeLayer === 'color'"
       :disabled="colorControl.isDisabled"
+      :data-rich-text-text-style-layer="layerId"
       @update:show="handleLayerShow('color', $event)"
     >
       <template #trigger>
@@ -316,6 +353,7 @@ watch(
       :show="activeLayer === control.key"
       placement="bottom-start"
       :options="control.options"
+      :menu-props="getLayerMenuProps"
       :disabled="control.isDisabled"
       @update:show="handleLayerShow(control.key, $event)"
       @select="control.select"

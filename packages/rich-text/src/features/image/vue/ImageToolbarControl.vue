@@ -3,6 +3,7 @@ import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import type { RichTextImageAttrs } from '../shared'
 import { NButton } from 'naive-ui'
 import { computed, ref } from 'vue'
+import { runRichTextAction } from '../../../editor/action'
 import { insertImageAction, updateImageAction } from '../editor'
 import ImageDialog from './ImageDialog.vue'
 
@@ -35,11 +36,11 @@ function openDialog() {
 
 function handleConfirm(attrs: RichTextImageAttrs) {
   if (isActive.value) {
-    updateImageAction.run(editor, attrs)
+    runRichTextAction(editor, updateImageAction, attrs)
     return
   }
 
-  insertImageAction.run(editor, attrs)
+  runRichTextAction(editor, insertImageAction, attrs)
 }
 
 function handleError(error: unknown) {

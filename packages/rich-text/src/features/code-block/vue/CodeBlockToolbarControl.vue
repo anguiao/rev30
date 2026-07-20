@@ -3,6 +3,7 @@ import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NButtonGroup, NDropdown } from 'naive-ui'
 import { computed, h } from 'vue'
+import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
 import { codeBlockAction, setCodeBlockLanguageAction } from '../editor'
 
 interface CodeBlockToolbarControlProps extends RichTextToolbarControlInjectedProps {
@@ -18,7 +19,7 @@ const props = withDefaults(defineProps<CodeBlockToolbarControlProps>(), {
 
 const editor = props.editor
 const isActive = computed(() => editor.isActive('codeBlock'))
-const isDisabled = computed(() => props.disabled || !(codeBlockAction.canRun?.(editor) ?? true))
+const isDisabled = computed(() => props.disabled || !canRunRichTextAction(editor, codeBlockAction))
 
 const isCaretInsideCodeBlock = computed(() => {
   const { selection } = editor.state
@@ -42,7 +43,7 @@ const buttonType = computed(() => (isActive.value ? 'primary' : 'default'))
 
 function toggleCodeBlock() {
   if (!isDisabled.value) {
-    codeBlockAction.run(editor)
+    runRichTextAction(editor, codeBlockAction)
   }
 }
 
@@ -75,7 +76,11 @@ function setLanguage(value: string) {
     return
   }
 
-  setCodeBlockLanguageAction.run(editor, option.value === 'plaintext' ? null : option.value)
+  runRichTextAction(
+    editor,
+    setCodeBlockLanguageAction,
+    option.value === 'plaintext' ? null : option.value,
+  )
 }
 </script>
 

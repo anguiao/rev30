@@ -154,7 +154,7 @@ describe('rich text feature model', () => {
     })
     const otherAction = defineRichTextAction(otherFeature, {
       key: 'other',
-      run: () => true,
+      command: () => () => true,
     })
     const preset = defineRichTextPreset({ key: 'toolbar-test', features: [feature] })
     const editorFeature = defineRichTextEditorFeature(feature, {})
@@ -193,11 +193,11 @@ describe('rich text feature model', () => {
       serverImplementation: false,
     })
     const firstItem = defineRichTextToolbarItem(
-      defineRichTextAction(firstFeature, { key: 'first', run: () => true }),
+      defineRichTextAction(firstFeature, { key: 'first', command: () => () => true }),
       { label: '第一项', icon: 'i-[lucide--circle]' },
     )
     const secondItem = defineRichTextToolbarItem(
-      defineRichTextAction(secondFeature, { key: 'second', run: () => true }),
+      defineRichTextAction(secondFeature, { key: 'second', command: () => () => true }),
       { label: '第二项', icon: 'i-[lucide--circle]' },
     )
 

@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/core'
+import type { Command, Editor } from '@tiptap/core'
 import type { RichTextFeature } from '../core/feature'
 
 export interface RichTextAction<
@@ -8,9 +8,8 @@ export interface RichTextAction<
 > {
   readonly feature: Feature
   readonly key: Key
-  readonly run: (editor: Editor, ...arguments_: Arguments) => boolean
+  readonly command: (...arguments_: Arguments) => Command
   readonly isActive?: (editor: Editor, ...arguments_: Arguments) => boolean
-  readonly canRun?: (editor: Editor, ...arguments_: Arguments) => boolean
 }
 
 type RichTextActionDefinition<Key extends string, Arguments extends unknown[]> = Omit<
@@ -30,4 +29,20 @@ export function defineRichTextAction<
     feature,
     ...action,
   })
+}
+
+export function runRichTextAction<
+  Feature extends RichTextFeature,
+  Key extends string,
+  Arguments extends unknown[],
+>(editor: Editor, action: RichTextAction<Feature, Key, Arguments>, ...arguments_: Arguments) {
+  return editor.commands.command(action.command(...arguments_))
+}
+
+export function canRunRichTextAction<
+  Feature extends RichTextFeature,
+  Key extends string,
+  Arguments extends unknown[],
+>(editor: Editor, action: RichTextAction<Feature, Key, Arguments>, ...arguments_: Arguments) {
+  return editor.can().command(action.command(...arguments_))
 }

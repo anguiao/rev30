@@ -4,7 +4,10 @@ import { strikeFeature } from './shared'
 
 export const strikeAction = defineRichTextAction(strikeFeature, {
   key: strikeFeature.key,
-  run: (editor) => editor.chain().focus().toggleStrike().run(),
+  command:
+    () =>
+    ({ chain }) =>
+      chain().focus().toggleStrike().run(),
   isActive: (editor) => editor.isActive('strike'),
 })
 

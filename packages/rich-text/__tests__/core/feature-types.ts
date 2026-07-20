@@ -38,18 +38,17 @@ expectTypeOf(dependentFeature.key).toEqualTypeOf<'dependent'>()
 
 const action = defineRichTextAction(dependentFeature, {
   key: 'toggle-dependent',
-  run: () => true,
+  command: () => () => true,
 })
 const actionWithArgument = defineRichTextAction(dependentFeature, {
   key: 'set-dependent',
-  run: (_editor, value: string) => value.length > 0,
-  canRun: (_editor, value: string) => value.length > 0,
+  command: (value: string) => () => value.length > 0,
 })
 const editorFeature = defineRichTextEditorFeature(dependentFeature, {})
 
 expectTypeOf(action.feature).toEqualTypeOf<typeof dependentFeature>()
 expectTypeOf(action.key).toEqualTypeOf<'toggle-dependent'>()
-expectTypeOf(actionWithArgument.run).parameter(1).toEqualTypeOf<string>()
+expectTypeOf(actionWithArgument.command).parameter(0).toEqualTypeOf<string>()
 expectTypeOf(editorFeature.feature).toEqualTypeOf<typeof dependentFeature>()
 
 const mutableFeatures = [baseFeature, dependentFeature]

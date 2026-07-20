@@ -4,7 +4,10 @@ import { removeFormatFeature } from './shared'
 
 export const removeFormatAction = defineRichTextAction(removeFormatFeature, {
   key: removeFormatFeature.key,
-  run: (editor) => editor.chain().focus().unsetAllMarks().run(),
+  command:
+    () =>
+    ({ chain }) =>
+      chain().focus().unsetAllMarks().run(),
 })
 
 export const removeFormatEditorFeature = defineRichTextEditorFeature(removeFormatFeature, {})

@@ -1,17 +1,19 @@
 import type { Editor } from '@tiptap/core'
 import { markRaw, type Component, type ComponentInstance } from 'vue'
 import type { RichTextFeature } from '../core/feature'
-import type { RichTextAction } from '../editor/action'
+import { canRunRichTextAction } from '../editor/action'
+import {
+  defineRichTextActionItem,
+  type RichTextActionItem,
+  type RichTextActionItemAction,
+  type RichTextIconClass,
+} from './action-item'
 
-export type RichTextIconClass = `i-[${string}--${string}]`
+export type { RichTextIconClass } from './action-item'
 
-type RichTextToolbarAction = RichTextAction<RichTextFeature, string, []>
-
-export interface RichTextToolbarItem<Action extends RichTextToolbarAction = RichTextToolbarAction> {
-  readonly action: Action
-  readonly label: string
-  readonly icon: RichTextIconClass
-}
+export type RichTextToolbarItem<
+  Action extends RichTextActionItemAction = RichTextActionItemAction,
+> = RichTextActionItem<Action>
 
 export interface RichTextToolbarButtonControl {
   readonly type: 'button'
@@ -70,14 +72,11 @@ export interface RichTextToolbarConfig {
   readonly groups: readonly RichTextToolbarGroup[]
 }
 
-export function defineRichTextToolbarItem<const Action extends RichTextToolbarAction>(
+export function defineRichTextToolbarItem<const Action extends RichTextActionItemAction>(
   action: Action,
   item: Omit<RichTextToolbarItem<Action>, 'action'>,
 ): RichTextToolbarItem<Action> {
-  return Object.freeze({
-    action,
-    ...item,
-  })
+  return defineRichTextActionItem(action, item)
 }
 
 export function defineRichTextToolbar(
@@ -149,9 +148,6 @@ export function getActiveRichTextToolbarItem(
   return items.find((item) => item.action.isActive?.(editor))
 }
 
-export function isRichTextActionDisabled(
-  action: Pick<RichTextToolbarAction, 'canRun'>,
-  editor: Editor,
-) {
-  return !(action.canRun?.(editor) ?? true)
+export function isRichTextActionDisabled(action: RichTextActionItemAction, editor: Editor) {
+  return !canRunRichTextAction(editor, action)
 }

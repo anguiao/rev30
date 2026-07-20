@@ -2,6 +2,7 @@
 import type { Editor } from '@tiptap/vue-3'
 import { NButton } from 'naive-ui'
 import { computed } from 'vue'
+import { runRichTextAction } from '../../editor/action'
 import { isRichTextActionDisabled, type RichTextToolbarItem } from '../toolbar'
 
 const props = withDefaults(
@@ -29,7 +30,7 @@ function handleClick() {
     return
   }
 
-  props.item.action.run(editor)
+  runRichTextAction(editor, props.item.action)
 }
 </script>
 

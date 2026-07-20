@@ -3,6 +3,7 @@ import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import type { Editor } from '@tiptap/vue-3'
 import { describe, expect, it } from 'vitest'
+import { canRunRichTextAction, runRichTextAction } from '../../../src/editor/action'
 import {
   codeBlockAction,
   codeBlockEditorFeature,
@@ -48,8 +49,8 @@ describe('code block feature', () => {
   it('toggles a basic code block and exposes its action state', () => {
     const editor = createEditor()
 
-    expect(codeBlockAction.canRun?.(editor)).toBe(true)
-    expect(codeBlockAction.run(editor)).toBe(true)
+    expect(canRunRichTextAction(editor, codeBlockAction)).toBe(true)
+    expect(runRichTextAction(editor, codeBlockAction)).toBe(true)
     expect(codeBlockAction.isActive?.(editor)).toBe(true)
     expect(editor.getJSON()).toMatchObject({
       content: [
@@ -140,11 +141,11 @@ describe('code block feature', () => {
   it('stores the selected language and highlights the editable code', () => {
     const editor = createEditor()
 
-    expect(setCodeBlockLanguageAction.canRun?.(editor, 'typescript')).toBe(false)
-    expect(setCodeBlockLanguageAction.run(editor, 'typescript')).toBe(false)
-    expect(codeBlockAction.run(editor)).toBe(true)
-    expect(setCodeBlockLanguageAction.canRun?.(editor, 'typescript')).toBe(true)
-    expect(setCodeBlockLanguageAction.run(editor, 'typescript')).toBe(true)
+    expect(canRunRichTextAction(editor, setCodeBlockLanguageAction, 'typescript')).toBe(false)
+    expect(runRichTextAction(editor, setCodeBlockLanguageAction, 'typescript')).toBe(false)
+    expect(runRichTextAction(editor, codeBlockAction)).toBe(true)
+    expect(canRunRichTextAction(editor, setCodeBlockLanguageAction, 'typescript')).toBe(true)
+    expect(runRichTextAction(editor, setCodeBlockLanguageAction, 'typescript')).toBe(true)
     expect(editor.getJSON()).toMatchObject({
       content: [
         {
@@ -156,7 +157,7 @@ describe('code block feature', () => {
     })
     expect(editor.view.dom.querySelector('.hljs-keyword')?.textContent).toBe('const')
 
-    expect(setCodeBlockLanguageAction.run(editor, null)).toBe(true)
+    expect(runRichTextAction(editor, setCodeBlockLanguageAction, null)).toBe(true)
     expect(editor.getJSON().content?.[0]?.attrs).toEqual({ language: null })
     expect(editor.view.dom.querySelector('.hljs-keyword')).toBeNull()
   })

@@ -4,7 +4,10 @@ import { underlineFeature } from './shared'
 
 export const underlineAction = defineRichTextAction(underlineFeature, {
   key: underlineFeature.key,
-  run: (editor) => editor.chain().focus().toggleUnderline().run(),
+  command:
+    () =>
+    ({ chain }) =>
+      chain().focus().toggleUnderline().run(),
   isActive: (editor) => editor.isActive('underline'),
 })
 

@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { RichTextFeature } from '../../../core/feature'
-import type { RichTextAction } from '../../../editor/action'
+import {
+  canRunRichTextAction,
+  runRichTextAction,
+  type RichTextAction,
+} from '../../../editor/action'
 import type { RichTextIconClass, RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import type { TextStyleOption } from '../options'
 import type { DropdownOption } from 'naive-ui'
@@ -36,7 +40,7 @@ function canRunAction<Args extends unknown[]>(
   action: RichTextAction<RichTextFeature, string, Args>,
   ...args: Args
 ) {
-  return !props.disabled && (action.canRun?.(editor, ...args) ?? true)
+  return !props.disabled && canRunRichTextAction(editor, action, ...args)
 }
 
 function runAction<Args extends unknown[]>(
@@ -47,7 +51,7 @@ function runAction<Args extends unknown[]>(
     return false
   }
 
-  return action.run(editor, ...args)
+  return runRichTextAction(editor, action, ...args)
 }
 
 const colorControl = computed(() => {

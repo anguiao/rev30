@@ -3,6 +3,7 @@ import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
 import type { InputInst } from 'naive-ui'
 import { NButton, NCheckbox, NInput, NPopover } from 'naive-ui'
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { runRichTextAction } from '../../../editor/action'
 import {
   closeSearchReplaceAction,
   getSearchReplaceState,
@@ -34,7 +35,7 @@ const matchPositionLabel = computed(() => {
 })
 
 function closePanel(restoreEditorFocus = false) {
-  closeSearchReplaceAction.run(editor)
+  runRichTextAction(editor, closeSearchReplaceAction)
 
   if (restoreEditorFocus) {
     editor.commands.focus()
@@ -47,7 +48,7 @@ function togglePanel() {
     return
   }
 
-  openSearchReplaceAction.run(editor)
+  runRichTextAction(editor, openSearchReplaceAction)
 }
 
 function syncSearchState() {
@@ -72,27 +73,27 @@ onBeforeUnmount(() => {
 })
 
 function setQuery(query: string) {
-  setSearchQueryAction.run(editor, query)
+  runRichTextAction(editor, setSearchQueryAction, query)
 }
 
 function setCaseSensitive(caseSensitive: boolean) {
-  setSearchCaseSensitiveAction.run(editor, caseSensitive)
+  runRichTextAction(editor, setSearchCaseSensitiveAction, caseSensitive)
 }
 
 function goToPreviousMatch() {
-  goToPreviousSearchMatchAction.run(editor)
+  runRichTextAction(editor, goToPreviousSearchMatchAction)
 }
 
 function goToNextMatch() {
-  goToNextSearchMatchAction.run(editor)
+  runRichTextAction(editor, goToNextSearchMatchAction)
 }
 
 function replaceCurrentMatch() {
-  replaceCurrentSearchMatchAction.run(editor, replacement.value)
+  runRichTextAction(editor, replaceCurrentSearchMatchAction, replacement.value)
 }
 
 function replaceAllMatches() {
-  replaceAllSearchMatchesAction.run(editor, replacement.value)
+  runRichTextAction(editor, replaceAllSearchMatchesAction, replacement.value)
 }
 
 function handleQueryKeydown(event: KeyboardEvent) {

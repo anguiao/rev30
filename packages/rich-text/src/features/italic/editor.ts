@@ -4,7 +4,10 @@ import { italicFeature } from './shared'
 
 export const italicAction = defineRichTextAction(italicFeature, {
   key: italicFeature.key,
-  run: (editor) => editor.chain().focus().toggleItalic().run(),
+  command:
+    () =>
+    ({ chain }) =>
+      chain().focus().toggleItalic().run(),
   isActive: (editor) => editor.isActive('italic'),
 })
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { runRichTextAction } from '../../../src/editor/action'
 import { collectRichTextEditorExtensions } from '../../../src/editor/feature'
 import { removeFormatAction } from '../../../src/features/remove-format/editor'
 import { createAllRichTextEditorPreset } from '../../../src/vue/presets/all'
@@ -49,7 +50,7 @@ describe('remove format command', () => {
 
     editor.commands.selectAll()
 
-    expect(removeFormatAction.run(editor)).toBe(true)
+    expect(runRichTextAction(editor, removeFormatAction)).toBe(true)
     expect(editor.getJSON()).toMatchObject({
       content: [
         {
@@ -99,7 +100,7 @@ describe('remove format command', () => {
 
     editor.commands.selectAll()
 
-    expect(removeFormatAction.run(editor)).toBe(true)
+    expect(runRichTextAction(editor, removeFormatAction)).toBe(true)
     expect(editor.getJSON()).toMatchObject({
       content: [
         {

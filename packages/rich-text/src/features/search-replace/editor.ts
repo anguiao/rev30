@@ -1,8 +1,14 @@
 import { Extension, type Editor } from '@tiptap/core'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
-import { Plugin, PluginKey, TextSelection, type Transaction } from '@tiptap/pm/state'
+import {
+  Plugin,
+  PluginKey,
+  TextSelection,
+  type EditorState,
+  type Transaction,
+} from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
-import { defineRichTextAction } from '../../editor/action'
+import { defineRichTextAction, runRichTextAction } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import { searchReplaceFeature } from './shared'
 
@@ -170,93 +176,125 @@ function applySearchReplaceState(
 }
 
 export function getSearchReplaceState(editor: Editor): RichTextSearchReplaceState {
-  const state = searchReplacePluginKey.getState(editor.state)
+  return getSearchReplaceStateFromEditorState(editor.state)
+}
 
-  if (!state) {
+function getSearchReplaceStateFromEditorState(state: EditorState) {
+  const searchState = searchReplacePluginKey.getState(state)
+
+  if (!searchState) {
     throw new Error('The search-replace editor feature is not registered')
   }
 
-  return state
+  return searchState
 }
 
-function dispatchSearchReplaceUpdate(editor: Editor, update: SearchReplaceUpdate) {
-  editor.view.dispatch(
-    editor.state.tr.setMeta(searchReplacePluginKey, update).setMeta('addToHistory', false),
-  )
-  return true
+function setSearchReplaceUpdate(
+  transaction: Transaction,
+  update: SearchReplaceUpdate,
+  addToHistory = false,
+) {
+  transaction.setMeta(searchReplacePluginKey, update)
+
+  if (!addToHistory) {
+    transaction.setMeta('addToHistory', false)
+  }
 }
 
-function hasSearchMatches(editor: Editor) {
-  return getSearchReplaceState(editor).matches.length > 0
-}
+function goToSearchMatch(
+  state: EditorState,
+  transaction: Transaction,
+  dispatch: ((args?: unknown) => unknown) | undefined,
+  direction: 'next' | 'previous',
+) {
+  const searchState = getSearchReplaceStateFromEditorState(state)
 
-function goToSearchMatch(editor: Editor, direction: 'next' | 'previous') {
-  const state = getSearchReplaceState(editor)
-
-  if (!state.matches.length) {
+  if (!searchState.matches.length) {
     return false
   }
 
-  const offset = direction === 'next' ? 1 : -1
-  const index = (state.currentIndex + offset + state.matches.length) % state.matches.length
-  const match = state.matches[index]!
-  editor.view.dispatch(
-    editor.state.tr
-      .setSelection(TextSelection.create(editor.state.doc, match.from, match.to))
+  if (dispatch) {
+    const offset = direction === 'next' ? 1 : -1
+    const index =
+      (searchState.currentIndex + offset + searchState.matches.length) % searchState.matches.length
+    const match = searchState.matches[index]!
+    transaction
+      .setSelection(TextSelection.create(transaction.doc, match.from, match.to))
       .scrollIntoView()
-      .setMeta(searchReplacePluginKey, {
-        type: 'set-current-index',
-        currentIndex: index,
-      } satisfies SearchReplaceUpdate)
-      .setMeta('addToHistory', false),
-  )
+    setSearchReplaceUpdate(transaction, {
+      type: 'set-current-index',
+      currentIndex: index,
+    })
+  }
+
   return true
 }
 
-function replaceCurrentSearchMatch(editor: Editor, replacement: string) {
+function replaceCurrentSearchMatch(
+  editor: Editor,
+  state: EditorState,
+  transaction: Transaction,
+  dispatch: ((args?: unknown) => unknown) | undefined,
+  replacement: string,
+) {
   if (!editor.isEditable) {
     return false
   }
 
-  const state = getSearchReplaceState(editor)
-  const match = state.matches[state.currentIndex]
+  const searchState = getSearchReplaceStateFromEditorState(state)
+  const match = searchState.matches[searchState.currentIndex]
 
   if (!match) {
     return false
   }
 
-  const transaction = editor.state.tr
-  replaceSearchMatch(transaction, match, replacement)
-  transaction.setMeta(searchReplacePluginKey, {
-    type: 'refresh-matches',
-    position: match.from + replacement.length,
-  } satisfies SearchReplaceUpdate)
-  editor.view.dispatch(transaction)
+  if (dispatch) {
+    replaceSearchMatch(transaction, match, replacement)
+    setSearchReplaceUpdate(
+      transaction,
+      {
+        type: 'refresh-matches',
+        position: match.from + replacement.length,
+      },
+      true,
+    )
+  }
+
   return true
 }
 
-function replaceAllSearchMatches(editor: Editor, replacement: string) {
+function replaceAllSearchMatches(
+  editor: Editor,
+  state: EditorState,
+  transaction: Transaction,
+  dispatch: ((args?: unknown) => unknown) | undefined,
+  replacement: string,
+) {
   if (!editor.isEditable) {
     return false
   }
 
-  const state = getSearchReplaceState(editor)
+  const searchState = getSearchReplaceStateFromEditorState(state)
 
-  if (!state.matches.length) {
+  if (!searchState.matches.length) {
     return false
   }
 
-  const transaction = editor.state.tr
+  if (dispatch) {
+    for (let index = searchState.matches.length - 1; index >= 0; index--) {
+      replaceSearchMatch(transaction, searchState.matches[index]!, replacement)
+    }
 
-  for (let index = state.matches.length - 1; index >= 0; index--) {
-    replaceSearchMatch(transaction, state.matches[index]!, replacement)
+    setSearchReplaceUpdate(
+      transaction,
+      {
+        type: 'refresh-matches',
+        position: searchState.matches[0]!.from + replacement.length,
+      },
+      true,
+    )
   }
 
-  transaction.setMeta(searchReplacePluginKey, {
-    type: 'refresh-matches',
-    position: state.matches[0]!.from + replacement.length,
-  } satisfies SearchReplaceUpdate)
-  editor.view.dispatch(transaction)
   return true
 }
 
@@ -265,7 +303,8 @@ const SearchReplace = Extension.create({
 
   addKeyboardShortcuts() {
     return {
-      'Mod-f': () => this.editor.isFocused && openSearchReplaceAction.run(this.editor),
+      'Mod-f': () =>
+        this.editor.isFocused && runRichTextAction(this.editor, openSearchReplaceAction),
     }
   },
 
@@ -316,50 +355,95 @@ const SearchReplace = Extension.create({
 
 export const openSearchReplaceAction = defineRichTextAction(searchReplaceFeature, {
   key: 'open-search-replace',
-  run: (editor) => editor.isEditable && dispatchSearchReplaceUpdate(editor, { type: 'open' }),
+  command:
+    () =>
+    ({ editor, tr, dispatch }) => {
+      if (!editor.isEditable) {
+        return false
+      }
+
+      if (dispatch) {
+        setSearchReplaceUpdate(tr, { type: 'open' })
+      }
+
+      return true
+    },
   isActive: (editor) => getSearchReplaceState(editor).isOpen,
-  canRun: (editor) => editor.isEditable,
 })
 
 export const closeSearchReplaceAction = defineRichTextAction(searchReplaceFeature, {
   key: 'close-search-replace',
-  run: (editor) => dispatchSearchReplaceUpdate(editor, { type: 'close' }),
-  canRun: (editor) => getSearchReplaceState(editor).isOpen,
+  command:
+    () =>
+    ({ state, tr, dispatch }) => {
+      if (!getSearchReplaceStateFromEditorState(state).isOpen) {
+        return false
+      }
+
+      if (dispatch) {
+        setSearchReplaceUpdate(tr, { type: 'close' })
+      }
+
+      return true
+    },
 })
 
 export const setSearchQueryAction = defineRichTextAction(searchReplaceFeature, {
   key: 'set-search-query',
-  run: (editor, query: string) => dispatchSearchReplaceUpdate(editor, { type: 'set-query', query }),
+  command:
+    (query: string) =>
+    ({ tr, dispatch }) => {
+      if (dispatch) {
+        setSearchReplaceUpdate(tr, { type: 'set-query', query })
+      }
+
+      return true
+    },
 })
 
 export const setSearchCaseSensitiveAction = defineRichTextAction(searchReplaceFeature, {
   key: 'set-search-case-sensitive',
-  run: (editor, caseSensitive: boolean) =>
-    dispatchSearchReplaceUpdate(editor, { type: 'set-case-sensitive', caseSensitive }),
+  command:
+    (caseSensitive: boolean) =>
+    ({ tr, dispatch }) => {
+      if (dispatch) {
+        setSearchReplaceUpdate(tr, { type: 'set-case-sensitive', caseSensitive })
+      }
+
+      return true
+    },
 })
 
 export const goToNextSearchMatchAction = defineRichTextAction(searchReplaceFeature, {
   key: 'next-search-match',
-  run: (editor) => goToSearchMatch(editor, 'next'),
-  canRun: hasSearchMatches,
+  command:
+    () =>
+    ({ state, tr, dispatch }) =>
+      goToSearchMatch(state, tr, dispatch, 'next'),
 })
 
 export const goToPreviousSearchMatchAction = defineRichTextAction(searchReplaceFeature, {
   key: 'previous-search-match',
-  run: (editor) => goToSearchMatch(editor, 'previous'),
-  canRun: hasSearchMatches,
+  command:
+    () =>
+    ({ state, tr, dispatch }) =>
+      goToSearchMatch(state, tr, dispatch, 'previous'),
 })
 
 export const replaceCurrentSearchMatchAction = defineRichTextAction(searchReplaceFeature, {
   key: 'replace-current-search-match',
-  run: replaceCurrentSearchMatch,
-  canRun: (editor) => editor.isEditable && getSearchReplaceState(editor).currentIndex >= 0,
+  command:
+    (replacement: string) =>
+    ({ editor, state, tr, dispatch }) =>
+      replaceCurrentSearchMatch(editor, state, tr, dispatch, replacement),
 })
 
 export const replaceAllSearchMatchesAction = defineRichTextAction(searchReplaceFeature, {
   key: 'replace-all-search-matches',
-  run: replaceAllSearchMatches,
-  canRun: (editor) => editor.isEditable && hasSearchMatches(editor),
+  command:
+    (replacement: string) =>
+    ({ editor, state, tr, dispatch }) =>
+      replaceAllSearchMatches(editor, state, tr, dispatch, replacement),
 })
 
 export const searchReplaceEditorFeature = defineRichTextEditorFeature(searchReplaceFeature, {

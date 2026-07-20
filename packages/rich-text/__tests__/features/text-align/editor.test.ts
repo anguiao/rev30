@@ -3,6 +3,7 @@ import Heading from '@tiptap/extension-heading'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { describe, expect, it } from 'vitest'
+import { runRichTextAction } from '../../../src/editor/action'
 import { textAlignActions } from '../../../src/features/text-align/editor'
 import { textAlignFeature } from '../../../src/features/text-align/shared'
 import { textAlignToolbarItems } from '../../../src/features/text-align/vue'
@@ -34,7 +35,7 @@ describe('text align editor feature', () => {
       icon: 'i-[lucide--align-justify]',
     })
 
-    expect(justifyAction.run(editor)).toBe(true)
+    expect(runRichTextAction(editor, justifyAction)).toBe(true)
     expect(justifyAction.isActive?.(editor)).toBe(true)
     expect(editor.getJSON()).toMatchObject({
       content: [{ type: 'paragraph', attrs: { textAlign: 'justify' } }],

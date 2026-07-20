@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/vue-3'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
 import { computed, h } from 'vue'
+import { runRichTextAction } from '../../editor/action'
 import {
   getActiveRichTextToolbarItem,
   isRichTextActionDisabled,
@@ -85,7 +86,7 @@ function handleSelect(key: string | number) {
     return
   }
 
-  item.action.run(editor)
+  runRichTextAction(editor, item.action)
 }
 </script>
 

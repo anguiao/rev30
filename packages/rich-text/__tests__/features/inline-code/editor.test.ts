@@ -2,6 +2,7 @@ import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { describe, expect, it } from 'vitest'
+import { canRunRichTextAction, runRichTextAction } from '../../../src/editor/action'
 import { inlineCodeAction } from '../../../src/features/inline-code/editor'
 import { inlineCodeFeature } from '../../../src/features/inline-code/shared'
 import { inlineCodeToolbarItem } from '../../../src/features/inline-code/vue'
@@ -26,8 +27,8 @@ describe('inline code feature', () => {
     const editor = createEditor()
     selectText(editor)
 
-    expect(inlineCodeAction.canRun?.(editor)).toBe(true)
-    expect(inlineCodeAction.run(editor)).toBe(true)
+    expect(canRunRichTextAction(editor, inlineCodeAction)).toBe(true)
+    expect(runRichTextAction(editor, inlineCodeAction)).toBe(true)
     expect(inlineCodeAction.isActive?.(editor)).toBe(true)
     expect(editor.getJSON()).toMatchObject({
       content: [

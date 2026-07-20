@@ -6,6 +6,7 @@ import type { Editor } from '@tiptap/vue-3'
 import { NButton, NCheckbox, NInput, NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { runRichTextAction } from '../../../../src/editor/action'
 import {
   getSearchReplaceState,
   openSearchReplaceAction,
@@ -124,7 +125,7 @@ describe('SearchReplaceToolbarControl', () => {
     const editor = createEditor('<p>one one</p>')
     const wrapper = mountControl(editor)
 
-    openSearchReplaceAction.run(editor)
+    runRichTextAction(editor, openSearchReplaceAction)
     await flushPromises()
 
     const getQueryElement = () => getInputComponent(wrapper, 'rich-text-search-query').get('input')

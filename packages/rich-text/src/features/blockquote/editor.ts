@@ -4,7 +4,10 @@ import { blockquoteFeature } from './shared'
 
 export const blockquoteAction = defineRichTextAction(blockquoteFeature, {
   key: blockquoteFeature.key,
-  run: (editor) => editor.chain().focus().toggleBlockquote().run(),
+  command:
+    () =>
+    ({ chain }) =>
+      chain().focus().toggleBlockquote().run(),
   isActive: (editor) => editor.isActive('blockquote'),
 })
 

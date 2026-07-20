@@ -12,6 +12,7 @@ coverage/
 
 # Local data
 .attachments/
+.brainstorming/
 .pglite/
 .superpowers/
 .worktrees/

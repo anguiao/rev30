@@ -79,6 +79,7 @@
     "@tiptap/extensions": "^3.28.0",
     "@tiptap/pm": "^3.28.0",
     "@tiptap/static-renderer": "^3.28.0",
+    "@tiptap/suggestion": "^3.28.0",
     "@tiptap/vue-3": "^3.28.0",
     "@vueuse/core": "catalog:",
     "highlight.js": "^11.11.1",

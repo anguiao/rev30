@@ -7,6 +7,7 @@ import { createAllRichTextServerPreset } from '../../src/server/presets/all'
 import { compactRichTextServerPreset } from '../../src/server/presets/compact'
 import { collectRichTextServerExtensions } from '../../src/server/feature'
 import type { RichTextToolbarControlConfig } from '../../src/vue/toolbar'
+import { getRichTextQuickbarControlKey } from '../../src/vue/quickbar'
 import { createAllRichTextEditorPreset } from '../../src/vue/presets/all'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 
@@ -20,6 +21,7 @@ const imageServerOptions = {
 
 const allFeatureKeys = [
   'base',
+  'block-command',
   'history',
   'character-count',
   'search-replace',
@@ -103,6 +105,7 @@ describe('all rich text preset', () => {
       'dropCursor',
       'gapCursor',
       'selection',
+      'richTextSlashCommand',
       'undoRedo',
       'characterCount',
       'searchReplace',
@@ -188,6 +191,38 @@ describe('all rich text preset', () => {
     expect(insert?.controls.map(getToolbarControlKey) ?? []).toEqual(['horizontal-rule', 'image'])
     expect(allEditorPreset.statusBar?.start.map((item) => item.key)).toEqual([])
     expect(allEditorPreset.statusBar?.end.map((item) => item.key)).toEqual(['character-count'])
+  })
+
+  it('provides the full contextual quickbar and block command layout', () => {
+    expect(allEditorPreset.quickbar?.text?.primary.map(getRichTextQuickbarControlKey)).toEqual([
+      'bold',
+      'italic',
+      'underline',
+      'highlight',
+      'link',
+    ])
+    expect(allEditorPreset.quickbar?.text?.more.map(getRichTextQuickbarControlKey)).toEqual([
+      'strike',
+      'inline-code',
+      'remove-format',
+    ])
+    expect(allEditorPreset.quickbar?.features.map(({ key }) => key)).toEqual([
+      'image',
+      'link',
+      'code-block',
+    ])
+    expect(allEditorPreset.blockMenu?.groups.map(({ key }) => key)).toEqual([
+      'basic',
+      'list',
+      'insert',
+    ])
+    expect(
+      allEditorPreset.blockMenu?.groups.map((group) => group.commands.map(({ key }) => key)),
+    ).toEqual([
+      ['paragraph', 'heading-1', 'heading-2', 'heading-3', 'blockquote'],
+      ['bullet-list', 'ordered-list'],
+      ['code-block', 'horizontal-rule', 'image'],
+    ])
   })
 
   it('keeps server implementations, document extensions, and html policy order', () => {
@@ -322,6 +357,15 @@ describe('compact rich text preset', () => {
     expect(history?.controls.map(getToolbarControlKey) ?? []).toEqual(['undo', 'redo'])
     expect(marks?.controls.map(getToolbarControlKey) ?? []).toEqual(['bold', 'italic', 'link'])
     expect(blocks?.controls.map(getToolbarControlKey) ?? []).toEqual(['heading', 'list'])
+  })
+
+  it('adds only text and Link quickbars without block commands', () => {
+    expect(
+      compactRichTextEditorPreset.quickbar?.text?.primary.map(getRichTextQuickbarControlKey),
+    ).toEqual(['bold', 'italic', 'link'])
+    expect(compactRichTextEditorPreset.quickbar?.text?.more).toEqual([])
+    expect(compactRichTextEditorPreset.quickbar?.features.map(({ key }) => key)).toEqual(['link'])
+    expect(compactRichTextEditorPreset.blockMenu).toBeUndefined()
   })
 
   it('keeps server implementations, document extensions, and html policy order', () => {

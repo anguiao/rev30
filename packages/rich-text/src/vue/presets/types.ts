@@ -1,6 +1,7 @@
 import { validateRichTextFeatureImplementations, type RichTextFeature } from '../../core/feature'
 import type { RichTextPreset } from '../../core/preset'
 import type { RichTextEditorFeature } from '../../editor/feature'
+import { getRichTextBlockCommandFeature, type RichTextBlockMenuConfig } from '../block-menu'
 import {
   getRichTextQuickbarControlFeature,
   getRichTextQuickbarControlKey,
@@ -22,6 +23,7 @@ export interface RichTextEditorPreset<
   readonly toolbar?: RichTextToolbarConfig
   readonly statusBar?: RichTextStatusBarConfig
   readonly quickbar?: RichTextQuickbarConfig
+  readonly blockMenu?: RichTextBlockMenuConfig
 }
 
 function hasEditorFeature(
@@ -119,6 +121,34 @@ function validateQuickbar(
   }
 }
 
+function validateBlockMenu(
+  preset: RichTextPreset,
+  editorFeatures: readonly RichTextEditorFeature[],
+  blockMenu: RichTextBlockMenuConfig,
+) {
+  const hasBlockCommandFeature = preset.features.some((feature) => feature.key === 'block-command')
+  const hasBlockCommandEditorFeature = editorFeatures.some(
+    ({ feature }) => feature.key === 'block-command',
+  )
+
+  if (!hasBlockCommandFeature || !hasBlockCommandEditorFeature) {
+    throw new Error(
+      `Rich text preset "${preset.key}" has a block menu without the "block-command" editor feature`,
+    )
+  }
+
+  for (const group of blockMenu.groups) {
+    for (const command of group.commands) {
+      assertEditorFeature(
+        preset,
+        editorFeatures,
+        getRichTextBlockCommandFeature(command),
+        'a block command',
+      )
+    }
+  }
+}
+
 export function defineRichTextEditorPreset<
   const Preset extends RichTextPreset,
   const EditorFeatures extends readonly RichTextEditorFeature<Preset['features'][number]>[],
@@ -129,6 +159,7 @@ export function defineRichTextEditorPreset<
     readonly toolbar?: RichTextToolbarConfig
     readonly statusBar?: RichTextStatusBarConfig
     readonly quickbar?: RichTextQuickbarConfig
+    readonly blockMenu?: RichTextBlockMenuConfig
   },
 ): RichTextEditorPreset<Preset, ReadonlyArray<EditorFeatures[number]>> {
   const editorFeatures = Object.freeze([...options.editorFeatures])
@@ -153,6 +184,10 @@ export function defineRichTextEditorPreset<
     validateQuickbar(preset, editorFeatures, options.quickbar)
   }
 
+  if (options.blockMenu) {
+    validateBlockMenu(preset, editorFeatures, options.blockMenu)
+  }
+
   return Object.freeze({
     key: preset.key,
     features: preset.features,
@@ -160,5 +195,6 @@ export function defineRichTextEditorPreset<
     ...(options.toolbar ? { toolbar: options.toolbar } : {}),
     ...(options.statusBar ? { statusBar: options.statusBar } : {}),
     ...(options.quickbar ? { quickbar: options.quickbar } : {}),
+    ...(options.blockMenu ? { blockMenu: options.blockMenu } : {}),
   })
 }

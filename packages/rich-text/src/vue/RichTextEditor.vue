@@ -30,6 +30,7 @@ const preset = props.preset
 const activeToolbar = preset.toolbar
 const activeStatusBar = preset.statusBar
 const activeQuickbar = preset.quickbar
+const activeBlockMenu = preset.blockMenu
 
 const { editor } = useRichTextEditor({
   modelValue: toRef(props, 'modelValue'),
@@ -62,6 +63,7 @@ const { editor } = useRichTextEditor({
       <EditorContent
         :editor="editor"
         class="prose prose-sm max-w-none dark:prose-invert"
+        :class="activeBlockMenu ? 'rich-text-editor-with-block-menu' : undefined"
         :style="{ '--rich-text-editor-min-height': `${minHeight}px` }"
       />
 
@@ -69,6 +71,14 @@ const { editor } = useRichTextEditor({
         v-if="activeQuickbar"
         :editor="editor"
         :quickbar="activeQuickbar"
+        :disabled="disabled"
+      />
+
+      <component
+        :is="activeBlockMenu.component"
+        v-if="activeBlockMenu?.component"
+        :editor="editor"
+        :config="activeBlockMenu"
         :disabled="disabled"
       />
     </div>
@@ -92,6 +102,10 @@ const { editor } = useRichTextEditor({
   min-height: var(--rich-text-editor-min-height);
   padding: 0.75rem;
   outline: none;
+}
+
+:deep(.rich-text-editor-with-block-menu .ProseMirror) {
+  padding-left: 3.5rem;
 }
 
 :deep(.ProseMirror > :first-child) {

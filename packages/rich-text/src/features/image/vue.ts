@@ -1,7 +1,12 @@
+import { richTextBlockMenuUiCommand } from '../../vue/block-menu'
 import { richTextFeatureQuickbar } from '../../vue/quickbar'
 import { richTextToolbarComponent } from '../../vue/toolbar'
 import { imageFeature } from './shared'
-import { resolveRichTextImageQuickbarTarget } from './vue/dialog-controller'
+import {
+  getRichTextImageDialogController,
+  resolveRichTextImageAnchorTarget,
+  resolveRichTextImageQuickbarTarget,
+} from './vue/dialog-controller'
 import ImageQuickbar from './vue/ImageQuickbar.vue'
 import ImageToolbarControl from './vue/ImageToolbarControl.vue'
 
@@ -26,5 +31,25 @@ export function createImageQuickbar(options: RichTextImageUploadOptions) {
     isActive: (editor) => resolveRichTextImageQuickbarTarget(editor) !== null,
     component: ImageQuickbar,
     props: options,
+  })
+}
+
+export function createImageBlockMenuCommand(options: RichTextImageUploadOptions) {
+  return richTextBlockMenuUiCommand({
+    feature: imageFeature,
+    key: imageFeature.key,
+    label: '图片',
+    icon: 'i-[lucide--image]',
+    keywords: ['image', 'img', 'picture'],
+    run: ({ editor, source, anchor }) => {
+      const target = resolveRichTextImageAnchorTarget(editor, anchor)
+
+      if (!target) {
+        return false
+      }
+
+      getRichTextImageDialogController(editor).open(source, target, options)
+      return true
+    },
   })
 }

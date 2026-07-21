@@ -9,7 +9,7 @@ import {
   restoreRichTextSelectionCommand,
 } from '../../../vue/selection'
 import { insertImageAction, updateImageAction } from '../editor'
-import type { RichTextImageAttrs } from '../shared'
+import type { RichTextImageInput } from '../shared'
 import {
   getRichTextImageDialogController,
   isRichTextImageDialogTargetValid,
@@ -50,7 +50,7 @@ function cancel() {
   }
 }
 
-function handleConfirm(attrs: RichTextImageAttrs) {
+function handleConfirm(attrs: RichTextImageInput) {
   const activeSession = session.value
 
   if (!activeSession || !isRichTextImageDialogTargetValid(editor, activeSession.target)) {

@@ -212,6 +212,27 @@ describe('deriveRichTextContent', () => {
     })
   })
 
+  it.each([
+    {
+      name: 'a truly empty paragraph',
+      paragraph: { type: 'paragraph' },
+    },
+    {
+      name: 'a paragraph with canonical default attrs',
+      paragraph: { type: 'paragraph', attrs: { textAlign: null } },
+    },
+  ])('rejects $name instead of deriving empty text and html', ({ paragraph }) => {
+    expect(() =>
+      deriveRichTextContent(
+        {
+          type: 'doc',
+          content: [paragraph],
+        },
+        createServerPreset(),
+      ),
+    ).toThrow(RichTextContentInvalidError)
+  })
+
   it('preserves an isolated image height in json without rendering it to html', () => {
     const content = deriveRichTextContent(
       {
@@ -309,6 +330,19 @@ describe('deriveRichTextContent', () => {
     expect(content.html).toContain(
       '<img src="/api/attachments/11111111-1111-4111-8111-111111111111/content" alt="示意图"',
     )
+  })
+
+  it('derives html from a visible horizontal rule without fabricating text', () => {
+    const content = deriveRichTextContent(
+      {
+        type: 'doc',
+        content: [{ type: 'horizontalRule' }],
+      },
+      createServerPreset(),
+    )
+
+    expect(content.text).toBe('')
+    expect(content.html).toContain('<hr')
   })
 
   it('rejects unsupported node types', () => {

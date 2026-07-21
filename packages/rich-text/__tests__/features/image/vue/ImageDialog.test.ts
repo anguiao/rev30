@@ -6,7 +6,7 @@ import type { Editor } from '@tiptap/vue-3'
 import { NImage, NSpin } from 'naive-ui'
 import { markRaw } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { imageFeature, type RichTextImageAttrs } from '../../../../src/features/image/shared'
+import { imageFeature, type RichTextImageNodeAttrs } from '../../../../src/features/image/shared'
 import ImageDialog from '../../../../src/features/image/vue/ImageDialog.vue'
 import ImageToolbarControl from '../../../../src/features/image/vue/ImageToolbarControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
@@ -108,7 +108,7 @@ function mountControl(editor: Editor, upload = vi.fn(), onError = vi.fn()) {
 function mountDialog(
   upload = vi.fn(),
   onError = vi.fn(),
-  existingAttrs?: RichTextImageAttrs,
+  existingAttrs?: RichTextImageNodeAttrs,
   show = true,
 ) {
   let wrapper!: ReturnType<typeof mount>
@@ -130,7 +130,7 @@ function mountDialog(
   return wrapper
 }
 
-async function mountExistingImageDialog(existingAttrs: RichTextImageAttrs) {
+async function mountExistingImageDialog(existingAttrs: RichTextImageNodeAttrs) {
   const wrapper = mountDialog(vi.fn(), vi.fn(), existingAttrs, false)
   await wrapper.setProps({ show: true })
 
@@ -605,6 +605,7 @@ describe('ImageDialog', () => {
       src: '/api/attachments/cover/content',
       alt: '说明',
       width: 500,
+      height: null,
     })
 
     await loadPreviewImage(wrapper, 1000, 500)
@@ -626,6 +627,7 @@ describe('ImageDialog', () => {
     const wrapper = await mountExistingImageDialog({
       src: '/api/attachments/cover/content',
       alt: '说明',
+      width: null,
       height: 250,
     })
 
@@ -644,6 +646,7 @@ describe('ImageDialog', () => {
       src: '/api/attachments/cover/content',
       alt: '说明',
       width: 1,
+      height: null,
     })
 
     await loadPreviewImage(wrapper, 1000, 1)

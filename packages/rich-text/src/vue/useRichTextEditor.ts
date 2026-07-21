@@ -7,7 +7,7 @@ import type { RichTextEditorPreset } from './presets/types'
 interface UseRichTextEditorOptions {
   modelValue: Ref<RichTextDocument>
   disabled: Ref<boolean>
-  preset: RichTextEditorPreset
+  initialPreset: RichTextEditorPreset
   onUpdate: (value: RichTextDocument) => void
   onBlur: () => void
 }
@@ -21,7 +21,7 @@ export function useRichTextEditor(options: UseRichTextEditorOptions) {
     return new Editor({
       content,
       editable,
-      extensions: collectRichTextEditorExtensions(options.preset),
+      extensions: collectRichTextEditorExtensions(options.initialPreset),
       onBlur() {
         options.onBlur()
       },

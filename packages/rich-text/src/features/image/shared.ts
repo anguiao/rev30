@@ -3,12 +3,21 @@ import Image from '@tiptap/extension-image'
 import { defineRichTextFeature } from '../../core/feature'
 import { buildImageStyle, normalizeImageDimension, normalizeImageSize } from './dimensions'
 
-export interface RichTextImageAttrs {
+export interface RichTextImageInput {
   src: string
   alt?: string
   width?: number
   height?: number
 }
+
+export interface RichTextImageNodeAttrs {
+  src: string
+  alt: string | null
+  width: number | null
+  height: number | null
+}
+
+export type RichTextImageAttrsPatch = Partial<RichTextImageNodeAttrs>
 
 function validateImageDimension(value: unknown) {
   if (value !== null && (typeof value !== 'number' || !Number.isInteger(value) || value <= 0)) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RichTextImageAttrs } from '../shared'
+import type { RichTextImageInput, RichTextImageNodeAttrs } from '../shared'
 import { NButton, NFormItem, NImage, NInput, NInputNumber, NModal, NSpin } from 'naive-ui'
 import { useDropZone, useEventListener, useFileDialog, useObjectUrl } from '@vueuse/core'
 import { computed, ref, shallowRef, watch } from 'vue'
@@ -8,14 +8,14 @@ const props = withDefaults(
   defineProps<{
     show: boolean
     upload: (file: File) => Promise<{ src: string }>
-    existingAttrs?: RichTextImageAttrs | undefined
+    existingAttrs?: RichTextImageNodeAttrs | undefined
   }>(),
   {},
 )
 
 const emit = defineEmits<{
   'update:show': [value: boolean]
-  confirm: [attrs: RichTextImageAttrs]
+  confirm: [attrs: RichTextImageInput]
   error: [error: unknown]
 }>()
 

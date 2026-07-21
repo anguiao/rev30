@@ -1,7 +1,7 @@
 import { NodeSelection, type Transaction } from '@tiptap/pm/state'
 import { defineRichTextAction } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { imageFeature, type RichTextImageAttrs } from './shared'
+import { imageFeature, type RichTextImageAttrsPatch, type RichTextImageInput } from './shared'
 
 function findInsertedImagePosition(transaction: Transaction, firstStepIndex: number) {
   if (
@@ -46,7 +46,7 @@ function findInsertedImagePosition(transaction: Transaction, firstStepIndex: num
 export const insertImageAction = defineRichTextAction(imageFeature, {
   key: 'insert-image',
   command:
-    (attrs: RichTextImageAttrs) =>
+    (attrs: RichTextImageInput) =>
     ({ chain }) =>
       chain()
         .focus()
@@ -76,7 +76,7 @@ export const insertImageAction = defineRichTextAction(imageFeature, {
 export const updateImageAction = defineRichTextAction(imageFeature, {
   key: 'update-image',
   command:
-    (attrs: RichTextImageAttrs) =>
+    (attrs: RichTextImageAttrsPatch) =>
     ({ chain, tr }) => {
       if (!(tr.selection instanceof NodeSelection) || tr.selection.node.type.name !== 'image') {
         return false

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { hasRichTextContent, richTextDocumentSchema } from '../src/schema'
+import { hasRichTextContent, richTextDocumentEnvelopeSchema } from '../src/schema'
 
 describe('rich text schema helpers', () => {
   it('accepts doc-shaped Tiptap JSON', () => {
     expect(
-      richTextDocumentSchema.parse({
+      richTextDocumentEnvelopeSchema.parse({
         type: 'doc',
         content: [{ type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] }],
       }),
@@ -12,7 +12,7 @@ describe('rich text schema helpers', () => {
   })
 
   it('rejects non-doc roots', () => {
-    expect(richTextDocumentSchema.safeParse({ type: 'paragraph' }).success).toBe(false)
+    expect(richTextDocumentEnvelopeSchema.safeParse({ type: 'paragraph' }).success).toBe(false)
   })
 
   it('detects non-blank nested text', () => {
@@ -48,22 +48,25 @@ describe('rich text schema helpers', () => {
     ).toBe(true)
   })
 
-  it('treats attribute-bearing nodes as rich text content', () => {
+  it('does not treat node attrs as body content', () => {
     expect(
       hasRichTextContent({
         type: 'doc',
-        content: [{ type: 'paragraph', attrs: { textAlign: 'center' } }],
+        content: [{ type: 'paragraph', attrs: { textAlign: null } }],
       }),
-    ).toBe(true)
+    ).toBe(false)
   })
 
-  it('does not treat decorative or unsupported nodes without attrs as rich text content', () => {
+  it('treats visible horizontal rules as rich text content', () => {
     expect(
       hasRichTextContent({
         type: 'doc',
         content: [{ type: 'horizontalRule' }],
       }),
-    ).toBe(false)
+    ).toBe(true)
+  })
+
+  it('does not treat unsupported empty nodes as rich text content', () => {
     expect(
       hasRichTextContent({
         type: 'doc',

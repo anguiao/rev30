@@ -82,13 +82,31 @@ export function defineRichTextToolbarItem<const Action extends RichTextActionIte
 export function defineRichTextToolbar(
   groups: readonly RichTextToolbarGroup[],
 ): RichTextToolbarConfig {
+  const groupKeys = new Set<string>()
+  const controlKeys = new Set<string>()
   const frozenGroups = Object.freeze(
-    groups.map((group) =>
-      Object.freeze({
+    groups.map((group) => {
+      if (groupKeys.has(group.key)) {
+        throw new Error(`Rich text toolbar has a duplicate group: "${group.key}"`)
+      }
+
+      groupKeys.add(group.key)
+
+      for (const control of group.controls) {
+        const key = getRichTextToolbarControlKey(control)
+
+        if (controlKeys.has(key)) {
+          throw new Error(`Rich text toolbar has a duplicate control: "${key}"`)
+        }
+
+        controlKeys.add(key)
+      }
+
+      return Object.freeze({
         ...group,
         controls: Object.freeze([...group.controls]),
-      }),
-    ),
+      })
+    }),
   )
 
   return Object.freeze({ groups: frozenGroups })
@@ -139,6 +157,10 @@ export function richTextToolbarComponent<TComponent extends Component>(
 
 export function getRichTextToolbarControlFeature(control: RichTextToolbarControlConfig) {
   return control.type === 'button' ? control.item.action.feature : control.feature
+}
+
+export function getRichTextToolbarControlKey(control: RichTextToolbarControlConfig) {
+  return control.type === 'button' ? control.item.action.key : control.key
 }
 
 export function getActiveRichTextToolbarItem(

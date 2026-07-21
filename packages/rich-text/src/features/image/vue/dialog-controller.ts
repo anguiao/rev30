@@ -3,7 +3,7 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import { shallowReadonly, shallowRef, type Ref } from 'vue'
 import { captureRichTextSelection, type RichTextSelectionSnapshot } from '../../../vue/selection'
-import type { RichTextImageAttrs } from '../shared'
+import type { RichTextImageNodeAttrs } from '../shared'
 
 export interface RichTextImageDialogOptions {
   readonly upload: (file: File) => Promise<{ src: string }>
@@ -28,7 +28,7 @@ interface RichTextImageEditTarget {
   readonly type: 'edit'
   readonly position: number
   readonly node: ProseMirrorNode
-  readonly attrs: RichTextImageAttrs
+  readonly attrs: RichTextImageNodeAttrs
   readonly selection: RichTextSelectionSnapshot
 }
 
@@ -56,6 +56,15 @@ export interface RichTextImageDialogController {
 
 const controllers = new WeakMap<Editor, RichTextImageDialogController>()
 
+function getRichTextImageNodeAttrs(node: ProseMirrorNode): RichTextImageNodeAttrs {
+  return Object.freeze({
+    src: node.attrs.src,
+    alt: node.attrs.alt,
+    width: node.attrs.width,
+    height: node.attrs.height,
+  })
+}
+
 export function resolveRichTextImageToolbarTarget(
   editor: Editor,
 ): RichTextImageDialogTarget | null {
@@ -66,7 +75,7 @@ export function resolveRichTextImageToolbarTarget(
       type: 'edit',
       position: selection.from,
       node: selection.node,
-      attrs: Object.freeze({ ...selection.node.attrs }) as RichTextImageAttrs,
+      attrs: getRichTextImageNodeAttrs(selection.node),
       selection: captureRichTextSelection(editor),
     })
   }

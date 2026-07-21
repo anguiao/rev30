@@ -1,7 +1,6 @@
 import { validateRichTextFeatureImplementations, type RichTextFeature } from '../../core/feature'
 import type { RichTextPreset } from '../../core/preset'
 import type { RichTextServerFeature } from '../feature'
-import type { RichTextHtmlPolicy } from '../policy'
 
 export interface RichTextServerPreset<
   Key extends string = string,
@@ -9,7 +8,6 @@ export interface RichTextServerPreset<
   ServerFeatures extends readonly RichTextServerFeature[] = readonly RichTextServerFeature[],
 > extends RichTextPreset<Key, Features> {
   readonly serverFeatures: ServerFeatures
-  readonly htmlPolicies: readonly RichTextHtmlPolicy[]
 }
 
 export function defineRichTextServerPreset<
@@ -22,14 +20,10 @@ export function defineRichTextServerPreset<
   const frozenServerFeatures = Object.freeze([...serverFeatures])
 
   validateRichTextFeatureImplementations(preset, 'server', frozenServerFeatures)
-  const htmlPolicies = Object.freeze(
-    frozenServerFeatures.map((serverFeature) => serverFeature.htmlPolicy),
-  )
 
   return Object.freeze({
     key: preset.key,
     features: preset.features,
     serverFeatures: frozenServerFeatures,
-    htmlPolicies,
   })
 }

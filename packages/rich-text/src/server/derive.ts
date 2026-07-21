@@ -39,7 +39,9 @@ function getServerRuntime(preset: RichTextServerPreset): RichTextServerRuntime {
       return validator ? [validator] : []
     }),
     textSerializers: getTextSerializersFromSchema(schema),
-    sanitizeHtml: createRichTextHtmlSanitizer(preset.htmlPolicies),
+    sanitizeHtml: createRichTextHtmlSanitizer(
+      preset.serverFeatures.map((serverFeature) => serverFeature.htmlPolicy),
+    ),
   }
   serverRuntimeCache.set(preset, runtime)
 

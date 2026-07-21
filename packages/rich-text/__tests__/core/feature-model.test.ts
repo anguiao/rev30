@@ -219,6 +219,33 @@ describe('rich text feature model', () => {
     ).toThrow('Rich text toolbar dropdown "mixed" mixes multiple features')
   })
 
+  it('rejects duplicate toolbar group and control keys', () => {
+    const feature = defineRichTextFeature({
+      key: 'toolbar-duplicates',
+      editorImplementation: true,
+      serverImplementation: false,
+    })
+    const item = defineRichTextToolbarItem(
+      defineRichTextAction(feature, { key: 'duplicate-control', command: () => () => true }),
+      { label: '重复项', icon: 'i-[lucide--circle]' },
+    )
+    const control = richTextToolbarButton(item)
+
+    expect(() =>
+      defineRichTextToolbar([
+        { key: 'duplicate-group', controls: [] },
+        { key: 'duplicate-group', controls: [] },
+      ]),
+    ).toThrow('Rich text toolbar has a duplicate group: "duplicate-group"')
+
+    expect(() =>
+      defineRichTextToolbar([
+        { key: 'first', controls: [control] },
+        { key: 'second', controls: [control] },
+      ]),
+    ).toThrow('Rich text toolbar has a duplicate control: "duplicate-control"')
+  })
+
   it('collects runtime extensions in canonical feature order', () => {
     const firstDocumentExtension = Extension.create({ name: 'first-document' })
     const firstEditorExtension = Extension.create({ name: 'first-editor' })
@@ -282,7 +309,7 @@ describe('rich text feature model', () => {
     allowedAttributes.p.push('style')
     allowedSchemesByTag.img.push('javascript')
 
-    expect(serverPreset.htmlPolicies[0]).toEqual({
+    expect(serverPreset.serverFeatures[0]?.htmlPolicy).toEqual({
       allowedTags: ['p'],
       allowedAttributes: { p: ['class'] },
       allowedSchemesByTag: { img: ['data'] },

@@ -23,7 +23,7 @@ export function createImageHtmlPolicy(options: RichTextImageServerOptions): Rich
       tagName,
       attribs: {
         src,
-        ...(attribs.alt ? { alt: attribs.alt } : {}),
+        ...(Object.hasOwn(attribs, 'alt') ? { alt: attribs.alt } : {}),
         ...(width === null ? {} : { width: String(width) }),
         ...(height === null ? {} : { height: String(height) }),
         style: buildImageStyle(width),

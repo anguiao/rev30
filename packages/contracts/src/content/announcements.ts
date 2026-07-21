@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import {
   hasRichTextContent,
-  richTextDocumentSchema,
+  richTextDocumentEnvelopeSchema,
   type RichTextDocument,
 } from '@rev30/rich-text/schema'
 import { nonBlankString, optionalNullableString } from '../common/inputs'
@@ -85,10 +85,10 @@ function ensureUniqueAnnouncementTargets(
   }
 }
 
-export const tiptapDocumentSchema = richTextDocumentSchema
+export const tiptapDocumentEnvelopeSchema = richTextDocumentEnvelopeSchema
 
 const announcementContentDocumentSchema = z.custom<RichTextDocument>(
-  (value): value is RichTextDocument => tiptapDocumentSchema.safeParse(value).success,
+  (value): value is RichTextDocument => tiptapDocumentEnvelopeSchema.safeParse(value).success,
   {
     message: '正文格式无效',
   },
@@ -116,7 +116,7 @@ export const announcementSchema = z.object({
   type: announcementTypeSchema,
   title: announcementTitleSchema,
   summary: announcementSummarySchema,
-  contentJson: tiptapDocumentSchema,
+  contentJson: tiptapDocumentEnvelopeSchema,
   contentText: announcementContentTextSchema,
   contentHtml: z.string(),
   visibility: announcementVisibilitySchema,

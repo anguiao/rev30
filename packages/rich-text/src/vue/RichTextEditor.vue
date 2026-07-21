@@ -11,6 +11,7 @@ import { useRichTextEditor } from './useRichTextEditor'
 const props = withDefaults(
   defineProps<{
     modelValue: RichTextDocument
+    /** Initialization-only editor configuration. Runtime replacement is not supported. */
     preset: RichTextEditorPreset
     disabled?: boolean
     minHeight?: number
@@ -26,16 +27,16 @@ const emit = defineEmits<{
   blur: []
 }>()
 
-const preset = props.preset
-const activeToolbar = preset.toolbar
-const activeStatusBar = preset.statusBar
-const activeQuickbar = preset.quickbar
-const activeBlockMenu = preset.blockMenu
+const initialPreset = props.preset
+const activeToolbar = initialPreset.toolbar
+const activeStatusBar = initialPreset.statusBar
+const activeQuickbar = initialPreset.quickbar
+const activeBlockMenu = initialPreset.blockMenu
 
 const { editor } = useRichTextEditor({
   modelValue: toRef(props, 'modelValue'),
   disabled: toRef(props, 'disabled'),
-  preset,
+  initialPreset,
   onUpdate: (value) => emit('update:modelValue', value),
   onBlur: () => emit('blur'),
 })

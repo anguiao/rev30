@@ -49,6 +49,14 @@ describe('image html policy', () => {
     })
   })
 
+  it('preserves an explicitly empty alt and omits only an absent alt', () => {
+    const decorative = sanitizeRichTextHtml(`<img src="${attachmentSrc}" alt="" />`, [imagePolicy])
+    const unspecified = sanitizeRichTextHtml(`<img src="${attachmentSrc}" />`, [imagePolicy])
+
+    expect(getImageAttributes(decorative)).toMatchObject({ alt: '' })
+    expect(getImageAttributes(unspecified)).not.toHaveProperty('alt')
+  })
+
   it('rejects non-internal image sources', () => {
     expect(() =>
       sanitizeRichTextHtml('<img src="https://example.com/image.png" alt="外部图片" />', [

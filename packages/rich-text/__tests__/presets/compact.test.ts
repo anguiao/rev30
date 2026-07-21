@@ -275,7 +275,9 @@ describe('all rich text preset', () => {
       'horizontalRule',
       'image',
     ])
-    expect(allServerPreset.htmlPolicies.flatMap((policy) => policy.allowedTags ?? [])).toEqual([
+    expect(
+      allServerPreset.serverFeatures.flatMap(({ htmlPolicy }) => htmlPolicy.allowedTags ?? []),
+    ).toEqual([
       'p',
       'br',
       'strong',
@@ -397,7 +399,9 @@ describe('compact rich text preset', () => {
       'listItem',
     ])
     expect(
-      compactRichTextServerPreset.htmlPolicies.flatMap((policy) => policy.allowedTags ?? []),
+      compactRichTextServerPreset.serverFeatures.flatMap(
+        ({ htmlPolicy }) => htmlPolicy.allowedTags ?? [],
+      ),
     ).toEqual(['p', 'br', 'strong', 'em', 'a', 'h1', 'h2', 'h3', 'ul', 'ol', 'li'])
   })
 

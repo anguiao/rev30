@@ -10,8 +10,6 @@ export interface RichTextImageDialogOptions {
   readonly onError?: (error: unknown) => void
 }
 
-export type RichTextImageDialogSource = 'toolbar' | 'quickbar' | 'plus' | 'slash'
-
 interface RichTextImageInsertSelectionTarget {
   readonly type: 'insert-selection'
   readonly selection: RichTextSelectionSnapshot
@@ -39,7 +37,6 @@ export type RichTextImageDialogTarget =
 
 export interface RichTextImageDialogSession {
   readonly owner: symbol
-  readonly source: RichTextImageDialogSource
   readonly target: RichTextImageDialogTarget
   readonly options: RichTextImageDialogOptions
 }
@@ -47,7 +44,6 @@ export interface RichTextImageDialogSession {
 export interface RichTextImageDialogController {
   readonly session: Readonly<Ref<RichTextImageDialogSession | null>>
   open: (
-    source: RichTextImageDialogSource,
     target: RichTextImageDialogTarget,
     options: RichTextImageDialogOptions,
   ) => RichTextImageDialogSession
@@ -129,10 +125,9 @@ function createRichTextImageDialogController(): RichTextImageDialogController {
 
   return {
     session: shallowReadonly(session),
-    open(source, target, options) {
+    open(target, options) {
       const nextSession = Object.freeze({
         owner: Symbol('rich-text-image-dialog'),
-        source,
         target,
         options,
       })

@@ -2,24 +2,20 @@
 import type { Editor, Range } from '@tiptap/core'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
-  canRunRichTextBlockMenuCommand,
-  filterRichTextBlockMenu,
-  runRichTextBlockMenuCommand,
-  type RichTextBlockCommand,
-  type RichTextBlockCommandInvocation,
-  type RichTextBlockCommandSource,
-  type RichTextBlockMenuConfig,
-} from '../block-menu'
+  canRunRichTextSlashCommand,
+  filterRichTextSlashCommands,
+  runRichTextSlashCommand,
+  type RichTextSlashCommand,
+  type RichTextSlashCommandConfig,
+} from '../slash-command'
 
 const props = withDefaults(
   defineProps<{
     editor: Editor
-    config: RichTextBlockMenuConfig
-    source: RichTextBlockCommandSource
+    config: RichTextSlashCommandConfig
     listboxId: string
     query?: string
-    anchor?: number
-    queryRange?: Range
+    queryRange: Range
   }>(),
   {
     query: '',
@@ -27,46 +23,22 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  close: [reason: 'escape' | 'tab']
-  executed: [command: RichTextBlockCommand]
+  tab: []
   'active-change': [optionId: string | undefined]
 }>()
 
 const editorRevision = ref(0)
 const activeKey = ref<string>()
-const listbox = ref<HTMLElement>()
 
 const groups = computed(() => {
   void editorRevision.value
-  return filterRichTextBlockMenu(props.config, props.query)
+  return filterRichTextSlashCommands(props.config, props.query)
 })
 
 const commands = computed(() => groups.value.flatMap((group) => group.commands))
 
-function getInvocation(): RichTextBlockCommandInvocation | undefined {
-  if (props.source === 'plus') {
-    return props.anchor === undefined
-      ? undefined
-      : {
-          source: 'plus',
-          anchor: props.anchor,
-        }
-  }
-
-  return props.queryRange
-    ? {
-        source: 'slash',
-        queryRange: props.queryRange,
-      }
-    : undefined
-}
-
-function isCommandEnabled(command: RichTextBlockCommand) {
-  const invocation = getInvocation()
-
-  return (
-    invocation !== undefined && canRunRichTextBlockMenuCommand(props.editor, command, invocation)
-  )
+function isCommandEnabled(command: RichTextSlashCommand) {
+  return canRunRichTextSlashCommand(props.editor, command, props.queryRange)
 }
 
 const enabledCommands = computed(() => commands.value.filter(isCommandEnabled))
@@ -108,22 +80,12 @@ function handleEditorTransaction() {
 onMounted(() => props.editor.on('transaction', handleEditorTransaction))
 onBeforeUnmount(() => props.editor.off('transaction', handleEditorTransaction))
 
-function executeCommand(command: RichTextBlockCommand) {
-  const invocation = getInvocation()
-
-  if (!invocation || !isCommandEnabled(command)) {
+function executeCommand(command: RichTextSlashCommand) {
+  if (!isCommandEnabled(command)) {
     return false
   }
 
-  const executed = runRichTextBlockMenuCommand(props.editor, command, invocation)
-
-  if (executed) {
-    emit('executed', command)
-  } else if (props.source === 'plus') {
-    requestAnimationFrame(() => listbox.value?.focus())
-  }
-
-  return executed
+  return runRichTextSlashCommand(props.editor, command, props.queryRange)
 }
 
 function moveActiveCommand(offset: -1 | 1) {
@@ -158,11 +120,7 @@ function onKeyDown(event: KeyboardEvent) {
     const command = commands.value.find((item) => item.key === activeKey.value)
 
     if (!command) {
-      if (props.source === 'plus') {
-        event.preventDefault()
-      }
-
-      return props.source === 'plus'
+      return false
     }
 
     event.preventDefault()
@@ -172,25 +130,19 @@ function onKeyDown(event: KeyboardEvent) {
 
   if (event.key === 'Escape' || event.key === 'Esc') {
     event.preventDefault()
-    emit('close', 'escape')
     return true
   }
 
   if (event.key === 'Tab') {
-    emit('close', 'tab')
+    emit('tab')
     return false
   }
 
   return false
 }
 
-function focus() {
-  listbox.value?.focus()
-}
-
 defineExpose({
   activeOptionId,
-  focus,
   onKeyDown,
 })
 </script>
@@ -198,14 +150,10 @@ defineExpose({
 <template>
   <div
     :id="listboxId"
-    ref="listbox"
-    data-test="rich-text-block-command-list"
-    class="max-h-80 min-w-64 overflow-y-auto rounded-ui border border-input-border bg-input p-1 shadow-lg outline-none"
+    data-test="rich-text-slash-command-list"
+    class="pointer-events-auto max-h-80 min-w-64 overflow-y-auto rounded-ui border border-input-border bg-input p-1 shadow-lg outline-none"
     role="listbox"
-    aria-label="块命令"
-    :aria-activedescendant="activeOptionId"
-    :tabindex="source === 'plus' ? 0 : -1"
-    @keydown="onKeyDown"
+    aria-label="Slash 命令"
   >
     <template v-if="groups.length">
       <section
@@ -222,7 +170,7 @@ defineExpose({
           v-for="command in group.commands"
           :id="getOptionId(command.key)"
           :key="command.key"
-          :data-test="`rich-text-block-command-${command.key}`"
+          :data-test="`rich-text-slash-command-${command.key}`"
           class="flex min-h-9 items-center gap-2 rounded-ui px-2 py-1.5 text-sm transition-colors"
           :class="[
             isCommandEnabled(command) ? 'cursor-pointer' : 'cursor-not-allowed opacity-50',

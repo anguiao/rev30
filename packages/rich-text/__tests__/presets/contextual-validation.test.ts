@@ -3,20 +3,20 @@ import { describe, expect, it } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
 import { baseEditorFeature } from '../../src/features/base/editor'
 import { baseFeature } from '../../src/features/base/shared'
-import { blockCommandEditorFeature } from '../../src/features/block-command/editor'
-import { blockCommandFeature } from '../../src/features/block-command/shared'
 import { boldEditorFeature } from '../../src/features/bold/editor'
 import { boldFeature } from '../../src/features/bold/shared'
 import { boldToolbarItem } from '../../src/features/bold/vue'
 import { headingToolbarItems } from '../../src/features/heading/vue'
 import { paragraphActionItem } from '../../src/features/base/vue'
-import { defineRichTextBlockMenu, richTextBlockMenuAction } from '../../src/vue/block-menu'
+import { slashCommandEditorFeature } from '../../src/features/slash-command/editor'
+import { slashCommandFeature } from '../../src/features/slash-command/shared'
 import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
 import {
   defineRichTextQuickbar,
   richTextFeatureQuickbar,
   richTextQuickbarAction,
 } from '../../src/vue/quickbar'
+import { defineRichTextSlashCommand, richTextSlashCommandAction } from '../../src/vue/slash-command'
 
 const component = defineComponent(() => () => null)
 
@@ -73,43 +73,43 @@ describe('contextual preset validation', () => {
     ).toThrow('duplicate feature quickbar key: "bold-object"')
   })
 
-  it('requires the block-command editor feature and validates every command feature', () => {
-    const blockMenu = defineRichTextBlockMenu([
+  it('requires the slash-command editor feature and validates every command feature', () => {
+    const slashCommand = defineRichTextSlashCommand([
       {
         key: 'basic',
         label: '基础块',
-        commands: [richTextBlockMenuAction(paragraphActionItem, ['paragraph'])],
+        commands: [richTextSlashCommandAction(paragraphActionItem, ['paragraph'])],
       },
     ])
-    const presetWithoutBlockCommand = defineRichTextPreset({
-      key: 'missing-block-command',
+    const presetWithoutSlashCommand = defineRichTextPreset({
+      key: 'missing-slash-command',
       features: [baseFeature],
     })
 
     expect(() =>
-      defineRichTextEditorPreset(presetWithoutBlockCommand, {
+      defineRichTextEditorPreset(presetWithoutSlashCommand, {
         editorFeatures: [baseEditorFeature],
-        blockMenu,
+        slashCommand,
       }),
-    ).toThrow('without the "block-command" editor feature')
+    ).toThrow('without the "slash-command" editor feature')
 
     const presetWithoutHeading = defineRichTextPreset({
-      key: 'missing-block-menu-feature',
-      features: [baseFeature, blockCommandFeature],
+      key: 'missing-slash-command-feature',
+      features: [baseFeature, slashCommandFeature],
     })
-    const headingBlockMenu = defineRichTextBlockMenu([
+    const headingSlashCommand = defineRichTextSlashCommand([
       {
         key: 'basic',
         label: '基础块',
-        commands: [richTextBlockMenuAction(headingToolbarItems[0], ['h1'])],
+        commands: [richTextSlashCommandAction(headingToolbarItems[0], ['h1'])],
       },
     ])
 
     expect(() =>
       defineRichTextEditorPreset(presetWithoutHeading, {
-        editorFeatures: [baseEditorFeature, blockCommandEditorFeature],
-        blockMenu: headingBlockMenu,
+        editorFeatures: [baseEditorFeature, slashCommandEditorFeature],
+        slashCommand: headingSlashCommand,
       }),
-    ).toThrow('a block command for unknown feature "heading"')
+    ).toThrow('a slash command for unknown feature "heading"')
   })
 })

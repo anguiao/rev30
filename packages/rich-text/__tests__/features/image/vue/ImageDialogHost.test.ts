@@ -56,7 +56,7 @@ describe('ImageDialogHost', () => {
     expect(target).not.toBeNull()
 
     const wrapper = mountHost(editor)
-    getRichTextImageDialogController(editor).open('slash', target!, {
+    getRichTextImageDialogController(editor).open(target!, {
       upload: vi.fn(),
     })
     await flushPromises()
@@ -80,7 +80,7 @@ describe('ImageDialogHost', () => {
     const target = resolveRichTextImageAnchorTarget(editor, 0)
     const wrapper = mountHost(editor)
 
-    getRichTextImageDialogController(editor).open('slash', target!, {
+    getRichTextImageDialogController(editor).open(target!, {
       upload: vi.fn(),
     })
     await flushPromises()
@@ -97,7 +97,7 @@ describe('ImageDialogHost', () => {
     const target = resolveRichTextImageAnchorTarget(editor, 0)
     const wrapper = mountHost(editor)
 
-    controller.open('plus', target!, { upload: vi.fn() })
+    controller.open(target!, { upload: vi.fn() })
     await flushPromises()
     expect(wrapper.findComponent(ImageDialog).exists()).toBe(true)
 

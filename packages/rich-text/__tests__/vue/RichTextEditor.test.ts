@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { NDropdown } from 'naive-ui'
+import { NDropdown, NPopover } from 'naive-ui'
 import { defineComponent, h } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
@@ -137,6 +137,13 @@ describe('RichTextEditor', () => {
       expect(wrapper.find(`[data-test="${dataTest}"]`).exists()).toBe(true)
     }
     expect(wrapper.findAllComponents(NDropdown)).toHaveLength(7)
+    const overlayHost = wrapper.get('[data-test="rich-text-overlay-host"]').element
+    const nonModalOverlays = [
+      ...wrapper.findAllComponents(NDropdown),
+      ...wrapper.findAllComponents(NPopover),
+    ]
+    expect(nonModalOverlays.length).toBeGreaterThan(0)
+    expect(nonModalOverlays.every((overlay) => overlay.props().to === overlayHost)).toBe(true)
     expect(wrapper.get('[data-test="rich-text-status-bar"]').text()).toBe('4 字')
     expect(wrapper.find('[data-test="rich-text-status-bar-start"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="rich-text-status-bar-end"]').exists()).toBe(true)
@@ -215,6 +222,34 @@ describe('RichTextEditor', () => {
     expect(wrapper.find('[data-test="rich-text-toolbar"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="rich-text-toolbar-group"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="rich-text-status-bar"]').exists()).toBe(false)
+  })
+
+  it('emits blur only after focus leaves the complete editor interaction surface', async () => {
+    const wrapper = mountRichTextEditor({
+      modelValue: contentJson,
+      preset: allEditorPreset,
+    })
+    const editable = await getEditable(wrapper)
+    const overlayHost = wrapper.get('[data-test="rich-text-overlay-host"]')
+    const overlayButton = document.createElement('button')
+    const outsideButton = document.createElement('button')
+    overlayHost.element.appendChild(overlayButton)
+    document.body.appendChild(outsideButton)
+
+    await editable.trigger('focusout', { relatedTarget: overlayButton })
+    expect(wrapper.emitted('blur')).toBeUndefined()
+
+    overlayButton.dispatchEvent(
+      new FocusEvent('focusout', { bubbles: true, relatedTarget: editable.element }),
+    )
+    expect(wrapper.emitted('blur')).toBeUndefined()
+
+    overlayButton.dispatchEvent(
+      new FocusEvent('focusout', { bubbles: true, relatedTarget: outsideButton }),
+    )
+    expect(wrapper.emitted('blur')).toHaveLength(1)
+
+    outsideButton.remove()
   })
 
   it('toggles editor editability when disabled changes', async () => {
@@ -361,6 +396,7 @@ describe('RichTextEditor', () => {
     })
 
     const editable = await getEditable(wrapper)
+    expect(editable.element.parentElement?.classList.contains('h-full')).toBe(true)
     const codeBlock = editable.get('pre')
     codeBlock.element.getBoundingClientRect = () => ({ bottom: 100 }) as DOMRect
 

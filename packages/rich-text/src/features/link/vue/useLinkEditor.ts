@@ -9,11 +9,11 @@ import {
   watch,
   type MaybeRefOrGetter,
 } from 'vue'
-import { markRichTextSurfaceTransactionCommand } from '../../../vue/selection'
 import {
+  markRichTextSurfaceTransactionCommand,
   useRichTextTargetInvalidation,
-  type RichTextSurfaceCloseReason,
-} from '../../../vue/surface-coordinator'
+} from '../../../vue/selection'
+import { type RichTextOverlayCloseReason } from '../../../vue/overlay-state'
 import { setLinkAction, unsetLinkAction } from '../editor'
 import { normalizeLinkHref } from '../href'
 import {
@@ -23,7 +23,7 @@ import {
   type RichTextLinkTargetSurface,
 } from '../target'
 
-export type RichTextLinkEditorCloseReason = RichTextSurfaceCloseReason | 'success'
+export type RichTextLinkEditorCloseReason = RichTextOverlayCloseReason | 'success'
 
 export interface UseRichTextLinkEditorOptions {
   readonly editor: Editor

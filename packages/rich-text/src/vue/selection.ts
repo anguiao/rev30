@@ -1,6 +1,7 @@
 import type { Command, Editor } from '@tiptap/core'
 import type { Mark } from '@tiptap/pm/model'
-import type { SelectionBookmark } from '@tiptap/pm/state'
+import type { SelectionBookmark, Transaction } from '@tiptap/pm/state'
+import { onBeforeUnmount } from 'vue'
 
 export const richTextSurfaceTransactionMeta = 'richTextSurfaceTransaction'
 
@@ -64,4 +65,24 @@ export function restoreRichTextSelection(
   }
 
   return chain.run()
+}
+
+export function useRichTextTargetInvalidation(
+  editor: Editor,
+  owner: symbol,
+  isActive: () => boolean,
+  invalidate: () => void,
+) {
+  function handleTransaction({ transaction }: { transaction: Transaction }) {
+    if (
+      isActive() &&
+      transaction.docChanged &&
+      transaction.getMeta(richTextSurfaceTransactionMeta) !== owner
+    ) {
+      invalidate()
+    }
+  }
+
+  editor.on('transaction', handleTransaction)
+  onBeforeUnmount(() => editor.off('transaction', handleTransaction))
 }

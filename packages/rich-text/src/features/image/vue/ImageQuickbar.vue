@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RichTextQuickbarInjectedProps } from '../../../vue/quickbar'
-import type { RichTextSurfaceCloseReason } from '../../../vue/surface-coordinator'
+import type { RichTextOverlayCloseReason } from '../../../vue/overlay-state'
 import { NButton } from 'naive-ui'
 import { computed, ref, watch } from 'vue'
 import {
@@ -17,7 +17,7 @@ const props = withDefaults(defineProps<ImageQuickbarProps>(), {
 })
 
 const emit = defineEmits<{
-  close: [reason: RichTextSurfaceCloseReason]
+  close: [reason: RichTextOverlayCloseReason]
   suspend: []
 }>()
 
@@ -35,14 +35,14 @@ function openDialog() {
     return
   }
 
-  openedSession.value = controller.open('quickbar', currentTarget, {
+  openedSession.value = controller.open(currentTarget, {
     upload: props.upload,
     ...(props.onError ? { onError: props.onError } : {}),
   })
   emit('suspend')
 }
 
-function close(reason: RichTextSurfaceCloseReason) {
+function close(reason: RichTextOverlayCloseReason) {
   const activeSession = openedSession.value
 
   if (!activeSession) {
@@ -68,7 +68,9 @@ watch(controller.session, (activeSession) => {
 defineExpose({
   close,
   focusInitialControl: () => {
-    const button = root.value?.querySelector<HTMLElement>('[data-test="rich-text-quickbar-image"]')
+    const button = root.value?.querySelector<HTMLElement>(
+      '[data-test="rich-text-quickbar-image-download"]',
+    )
     button?.focus()
     return button !== null
   },
@@ -77,6 +79,22 @@ defineExpose({
 
 <template>
   <div ref="root" class="contents">
+    <NButton
+      tag="a"
+      data-test="rich-text-quickbar-image-download"
+      data-rich-text-quickbar-roving
+      :href="isDisabled ? undefined : target?.attrs.src"
+      download
+      :disabled="isDisabled"
+      size="small"
+      style="--n-padding: 0 6px"
+      quaternary
+      title="下载图片"
+      aria-label="下载图片"
+      @mousedown.prevent
+    >
+      <span class="i-[lucide--download]" aria-hidden="true" />
+    </NButton>
     <NButton
       data-test="rich-text-quickbar-image"
       data-rich-text-quickbar-roving

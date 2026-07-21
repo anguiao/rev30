@@ -21,7 +21,7 @@ const imageServerOptions = {
 
 const allFeatureKeys = [
   'base',
-  'block-command',
+  'slash-command',
   'history',
   'character-count',
   'search-replace',
@@ -105,6 +105,7 @@ describe('all rich text preset', () => {
       'dropCursor',
       'gapCursor',
       'selection',
+      'placeholder',
       'richTextSlashCommand',
       'undoRedo',
       'characterCount',
@@ -193,7 +194,7 @@ describe('all rich text preset', () => {
     expect(allEditorPreset.statusBar?.end.map((item) => item.key)).toEqual(['character-count'])
   })
 
-  it('provides the full contextual quickbar and block command layout', () => {
+  it('provides the full contextual quickbar and slash command layout', () => {
     expect(allEditorPreset.quickbar?.text?.primary.map(getRichTextQuickbarControlKey)).toEqual([
       'bold',
       'italic',
@@ -211,13 +212,13 @@ describe('all rich text preset', () => {
       'link',
       'code-block',
     ])
-    expect(allEditorPreset.blockMenu?.groups.map(({ key }) => key)).toEqual([
+    expect(allEditorPreset.slashCommand?.groups.map(({ key }) => key)).toEqual([
       'basic',
       'list',
       'insert',
     ])
     expect(
-      allEditorPreset.blockMenu?.groups.map((group) => group.commands.map(({ key }) => key)),
+      allEditorPreset.slashCommand?.groups.map((group) => group.commands.map(({ key }) => key)),
     ).toEqual([
       ['paragraph', 'heading-1', 'heading-2', 'heading-3', 'blockquote'],
       ['bullet-list', 'ordered-list'],
@@ -361,13 +362,13 @@ describe('compact rich text preset', () => {
     expect(blocks?.controls.map(getToolbarControlKey) ?? []).toEqual(['heading', 'list'])
   })
 
-  it('adds only text and Link quickbars without block commands', () => {
+  it('adds only text and Link quickbars without slash commands', () => {
     expect(
       compactRichTextEditorPreset.quickbar?.text?.primary.map(getRichTextQuickbarControlKey),
     ).toEqual(['bold', 'italic', 'link'])
     expect(compactRichTextEditorPreset.quickbar?.text?.more).toEqual([])
     expect(compactRichTextEditorPreset.quickbar?.features.map(({ key }) => key)).toEqual(['link'])
-    expect(compactRichTextEditorPreset.blockMenu).toBeUndefined()
+    expect(compactRichTextEditorPreset.slashCommand).toBeUndefined()
   })
 
   it('keeps server implementations, document extensions, and html policy order', () => {

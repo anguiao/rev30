@@ -1,15 +1,7 @@
 <script setup lang="ts">
-import { canRunRichTextAction } from '../../../editor/action'
 import type { RichTextQuickbarInjectedProps } from '../../../vue/quickbar'
-import {
-  markRichTextSurfaceTransactionCommand,
-  restoreRichTextSelectionCommand,
-} from '../../../vue/selection'
-import type { RichTextSurfaceCloseReason } from '../../../vue/surface-coordinator'
-import { NButton } from 'naive-ui'
-import { computed, ref } from 'vue'
-import { codeBlockAction } from '../editor'
-import { resolveRichTextCodeBlockTarget } from '../target'
+import type { RichTextOverlayCloseReason } from '../../../vue/overlay-state'
+import { ref } from 'vue'
 import CodeBlockLanguageControl from './CodeBlockLanguageControl.vue'
 
 interface CodeBlockQuickbarProps extends RichTextQuickbarInjectedProps {
@@ -24,44 +16,18 @@ const props = withDefaults(defineProps<CodeBlockQuickbarProps>(), {
 })
 
 const emit = defineEmits<{
-  close: [reason: RichTextSurfaceCloseReason]
+  close: [reason: RichTextOverlayCloseReason]
 }>()
 
 const editor = props.editor
-const owner = Symbol('rich-text-code-block-quickbar')
 const root = ref<HTMLElement | null>(null)
 const languageControl = ref<InstanceType<typeof CodeBlockLanguageControl> | null>(null)
-const target = computed(() => resolveRichTextCodeBlockTarget(editor))
-const isConvertDisabled = computed(
-  () => props.disabled || !target.value || !canRunRichTextAction(editor, codeBlockAction),
-)
 
-function convertToParagraph() {
-  const currentTarget = target.value
-
-  if (!currentTarget || isConvertDisabled.value) {
-    return
-  }
-
-  const handled = editor
-    .chain()
-    .command(restoreRichTextSelectionCommand(currentTarget.selection))
-    .command(markRichTextSurfaceTransactionCommand(owner))
-    .command(codeBlockAction.command())
-    .command(restoreRichTextSelectionCommand(currentTarget.selection))
-    .focus()
-    .run()
-
-  if (handled) {
-    emit('close', 'outside')
-  }
-}
-
-function close(reason: RichTextSurfaceCloseReason) {
+function close(reason: RichTextOverlayCloseReason) {
   languageControl.value?.close(reason)
 }
 
-function handleLanguageClose(reason: RichTextSurfaceCloseReason) {
+function handleLanguageClose(reason: RichTextOverlayCloseReason) {
   if (reason !== 'cancel') {
     emit('close', reason)
   }
@@ -80,7 +46,7 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="root" class="flex items-center gap-1">
+  <div ref="root" class="contents">
     <CodeBlockLanguageControl
       ref="languageControl"
       :editor="editor"
@@ -90,20 +56,5 @@ defineExpose({
       show-label
       @close="handleLanguageClose"
     />
-
-    <NButton
-      data-test="rich-text-quickbar-code-block-paragraph"
-      data-rich-text-quickbar-roving
-      :disabled="isConvertDisabled"
-      size="small"
-      style="--n-padding: 0 6px"
-      quaternary
-      title="转为正文"
-      aria-label="转为正文"
-      @mousedown.prevent
-      @click="convertToParagraph"
-    >
-      <span class="i-[lucide--pilcrow]" aria-hidden="true" />
-    </NButton>
   </div>
 </template>

@@ -16,22 +16,28 @@ import {
   restoreRichTextSelection,
   type RichTextSelectionSnapshot,
 } from '../selection'
-import {
-  getRichTextSurfaceCoordinator,
-  type RichTextSurfaceCloseReason,
-} from '../surface-coordinator'
+import { type RichTextOverlayCloseReason, useRichTextOverlayState } from '../overlay-state'
 import { resolveRichTextQuickbarContext, type RichTextQuickbarContext } from './context'
 import RichTextQuickbarControls from './RichTextQuickbarControls.vue'
 
 interface QuickbarSurfaceExposed {
-  close?: (reason?: RichTextSurfaceCloseReason) => void
+  close?: (reason?: RichTextOverlayCloseReason) => void
   focusInitialControl?: () => boolean
+}
+
+interface QuickbarOffsetState {
+  readonly rects: {
+    readonly reference: { readonly width: number }
+    readonly floating: { readonly width: number }
+  }
 }
 
 const props = withDefaults(
   defineProps<{
     editor: Editor
     quickbar: RichTextQuickbarConfig
+    appendTo?: HTMLElement
+    scrollTarget?: HTMLElement
     disabled?: boolean
   }>(),
   {
@@ -40,7 +46,7 @@ const props = withDefaults(
 )
 
 const editor = props.editor
-const coordinator = getRichTextSurfaceCoordinator(editor)
+const overlayState = useRichTextOverlayState()
 const layerId = getRichTextQuickbarLayerId(editor)
 const root = ref<HTMLElement | null>(null)
 const activeSurface = shallowRef<QuickbarSurfaceExposed | null>(null)
@@ -49,16 +55,8 @@ const pinnedSelection = shallowRef<RichTextSelectionSnapshot | null>(null)
 const pinnedContext = shallowRef<RichTextQuickbarContext | null>(null)
 const dismissedSelection = ref('')
 let editorElement: HTMLElement | undefined
-let quickbarObserver: MutationObserver | undefined
-let stopMenuWrapperTabIndexSync: (() => void) | undefined
 let isClosingSurface = false
 let isRestoringPinnedSelection = false
-
-const menuOptions = {
-  placement: 'top' as const,
-  offset: 8,
-  flip: true,
-}
 
 function getSelectionSignature() {
   const { selection } = editor.state
@@ -79,6 +77,13 @@ function isFocusInsideQuickbar() {
     (root.value?.contains(activeElement) === true ||
       activeElement.closest(`[data-rich-text-quickbar-subinterface="${layerId}"]`) !== null)
   )
+}
+
+function isFocusInsideEditorSurface() {
+  const activeElement = document.activeElement
+  const editorRoot = overlayState.host.value?.parentElement
+
+  return activeElement instanceof Node && editorRoot?.contains(activeElement) === true
 }
 
 function releasePinnedContext() {
@@ -103,15 +108,12 @@ function restorePinnedSelectionTarget(focus = true) {
   }
 
   isRestoringPinnedSelection = true
-
-  try {
-    return restoreRichTextSelection(editor, pinnedSelection.value, focus)
-  } finally {
-    isRestoringPinnedSelection = false
-  }
+  const restored = restoreRichTextSelection(editor, pinnedSelection.value, focus)
+  isRestoringPinnedSelection = false
+  return restored
 }
 
-function closeSurface(reason: RichTextSurfaceCloseReason) {
+function closeSurface(reason: RichTextOverlayCloseReason) {
   if (isClosingSurface) {
     return
   }
@@ -137,10 +139,10 @@ function suspendSurface() {
   requestMenuUpdate('hide')
 }
 
-const unregisterQuickbarCloser = coordinator.registerQuickbarCloser(closeSurface)
+const unregisterQuickbarCloser = overlayState.registerQuickbarCloser(closeSurface)
 
 function shouldShow() {
-  if (props.disabled || coordinator.isQuickbarSuppressed.value) {
+  if (props.disabled || overlayState.toolbarOverlayOpen.value) {
     return false
   }
 
@@ -151,12 +153,34 @@ function shouldShow() {
     return false
   }
 
-  return editor.isFocused || pinnedContext.value !== null || isFocusInsideQuickbar()
+  return (
+    editor.isFocused ||
+    pinnedContext.value !== null ||
+    isFocusInsideQuickbar() ||
+    isFocusInsideEditorSurface()
+  )
 }
 
 const activeFeature = computed(() =>
   context.value?.type === 'feature' ? context.value.feature : null,
 )
+
+const menuOptions = {
+  placement: 'top' as const,
+  offset: ({ rects }: QuickbarOffsetState) => ({
+    mainAxis: 4,
+    crossAxis:
+      activeFeature.value?.referenceAlignment === 'end'
+        ? (rects.reference.width - rects.floating.width) / 2
+        : 0,
+  }),
+  flip: true,
+  scrollTarget: props.scrollTarget ?? window,
+}
+
+function getReferencedVirtualElement() {
+  return activeFeature.value?.getReferenceElement?.(editor) ?? null
+}
 
 function getRovingButtons() {
   return Array.from(
@@ -197,11 +221,11 @@ function focusInitialControl() {
   const button = buttons.find((candidate) => candidate.dataset.active === 'true') ?? buttons[0]
   setRovingButton(button ?? null)
   button?.focus()
-  return button !== null && button !== undefined
+  return button !== undefined
 }
 
 function pinCurrentContext() {
-  if (props.disabled || coordinator.isQuickbarSuppressed.value) {
+  if (props.disabled || overlayState.toolbarOverlayOpen.value) {
     return false
   }
 
@@ -224,7 +248,7 @@ function handleEditorKeydown(event: KeyboardEvent) {
     event.key !== 'Tab' ||
     event.shiftKey ||
     !editor.isFocused ||
-    coordinator.isQuickbarSuppressed.value ||
+    overlayState.toolbarOverlayOpen.value ||
     dismissedSelection.value === getSelectionSignature()
   ) {
     return
@@ -379,11 +403,7 @@ function handleDocumentPointerDown(event: PointerEvent) {
 }
 
 function handleTransaction({ transaction }: { transaction: Transaction }) {
-  const toolbarLayerReleased = transaction.getMeta('richTextSurfaceCoordinator') === false
-  const shouldRestoreDismissedContext =
-    toolbarLayerReleased && dismissedSelection.value === getSelectionSignature()
-
-  if (transaction.selectionSet || transaction.docChanged || toolbarLayerReleased) {
+  if (transaction.selectionSet || transaction.docChanged) {
     dismissedSelection.value = ''
   }
 
@@ -397,39 +417,32 @@ function handleTransaction({ transaction }: { transaction: Transaction }) {
     restorePinnedSelectionTarget(false)
   }
 
-  if (toolbarLayerReleased) {
-    if (shouldRestoreDismissedContext) {
-      pinCurrentContext()
-    }
-
-    void nextTick(() => requestMenuUpdate())
-  }
-
   void nextTick(syncRovingTabIndex)
 }
 
 watch(root, (element) => {
-  quickbarObserver?.disconnect()
-  quickbarObserver = undefined
-  stopMenuWrapperTabIndexSync?.()
-  stopMenuWrapperTabIndexSync = undefined
-
   if (element) {
-    quickbarObserver = new MutationObserver(() => void nextTick(syncRovingTabIndex))
-    quickbarObserver.observe(element, { childList: true, subtree: true })
     void nextTick(() => {
       syncRovingTabIndex()
 
       if (root.value === element) {
-        stopMenuWrapperTabIndexSync = excludeRichTextMenuWrapperFromTabOrder(element)
+        excludeRichTextMenuWrapperFromTabOrder(element)
       }
     })
   }
 })
 
-watch([() => props.disabled, coordinator.isQuickbarSuppressed], () => requestMenuUpdate(), {
-  flush: 'sync',
-})
+watch(
+  [() => props.disabled, overlayState.toolbarOverlayOpen],
+  ([, open], [, wasOpen]) => {
+    if (wasOpen && !open) {
+      dismissedSelection.value = ''
+    }
+
+    void nextTick(() => requestMenuUpdate())
+  },
+  { flush: 'sync' },
+)
 
 onMounted(() => {
   editorElement = editor.view.dom
@@ -442,10 +455,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   unregisterQuickbarCloser()
-  quickbarObserver?.disconnect()
-  quickbarObserver = undefined
-  stopMenuWrapperTabIndexSync?.()
-  stopMenuWrapperTabIndexSync = undefined
   editorElement?.removeEventListener('keydown', handleEditorKeydown)
   editorElement?.removeEventListener('mousedown', handleEditorPointerDown)
   editorElement = undefined
@@ -459,15 +468,17 @@ onBeforeUnmount(() => {
   <BubbleMenu
     :editor="editor"
     :plugin-key="richTextQuickbarPluginKey"
+    :append-to="appendTo"
     :options="menuOptions"
     :should-show="shouldShow"
+    :get-referenced-virtual-element="getReferencedVirtualElement"
     :update-delay="0"
   >
     <div
       ref="root"
       data-test="rich-text-quickbar"
       :data-rich-text-quickbar-subinterface="layerId"
-      class="bg-popover flex items-center gap-1 rounded-ui border border-input-border p-1 shadow-lg"
+      class="pointer-events-auto flex items-center gap-1 rounded-ui border border-input-border bg-popover p-1 shadow-lg"
       role="toolbar"
       aria-label="上下文格式工具栏"
       @focusin="handleQuickbarFocus"

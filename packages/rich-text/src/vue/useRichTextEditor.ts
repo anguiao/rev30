@@ -9,7 +9,6 @@ interface UseRichTextEditorOptions {
   disabled: Ref<boolean>
   initialPreset: RichTextEditorPreset
   onUpdate: (value: RichTextDocument) => void
-  onBlur: () => void
 }
 
 export function useRichTextEditor(options: UseRichTextEditorOptions) {
@@ -22,9 +21,6 @@ export function useRichTextEditor(options: UseRichTextEditorOptions) {
       content,
       editable,
       extensions: collectRichTextEditorExtensions(options.initialPreset),
-      onBlur() {
-        options.onBlur()
-      },
       onUpdate({ editor: currentEditor }) {
         const nextValue = currentEditor.getJSON() as RichTextDocument
         if (isSameContent(nextValue, options.modelValue.value)) {

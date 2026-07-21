@@ -3,6 +3,27 @@ import { defineRichTextFeature } from '../../core/feature'
 import { linkDefaultProtocol, normalizeLinkHref } from './href'
 
 const ValidatedLink = Link.extend({
+  addKeyboardShortcuts() {
+    return {
+      ArrowRight: () => {
+        const { selection, storedMarks, tr } = this.editor.state
+        const { $from } = selection
+
+        if (!selection.empty || !$from.parent.isTextblock || $from.pos !== $from.end()) {
+          return false
+        }
+
+        const link = (storedMarks ?? $from.marks()).find((mark) => mark.type.name === this.name)
+        if (!link) {
+          return false
+        }
+
+        this.editor.view.dispatch(tr.removeStoredMark(link))
+        return true
+      },
+    }
+  },
+
   addAttributes() {
     return {
       href: {

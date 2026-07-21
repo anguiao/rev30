@@ -6,7 +6,7 @@ import { NInput } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { linkFeature } from '../../../../src/features/link/shared'
-import LinkQuickbarControl from '../../../../src/features/link/vue/LinkQuickbarControl.vue'
+import LinkControl from '../../../../src/features/link/vue/LinkControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
 
 function createEditor(content: string) {
@@ -17,9 +17,13 @@ function createEditor(content: string) {
 }
 
 function mountControl(editor: ReturnType<typeof createEditor>) {
-  return mount(LinkQuickbarControl, {
+  return mount(LinkControl, {
+    global: {
+      stubs: { teleport: true },
+    },
     props: {
       editor: markRaw(editor),
+      surface: 'text-quickbar',
     },
   })
 }
@@ -41,6 +45,9 @@ describe('LinkQuickbarControl', () => {
     await wrapper.get('[data-test="rich-text-quickbar-link"]').trigger('click')
     await flushPromises()
 
+    expect(wrapper.get('[data-test="rich-text-quickbar-link"]').attributes('aria-expanded')).toBe(
+      'true',
+    )
     expect(wrapper.getComponent(NInput).props('value')).toBe('')
     expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(false)
 

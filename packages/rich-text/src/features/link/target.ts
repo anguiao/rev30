@@ -64,9 +64,13 @@ function collectLinkRanges(editor: Editor): RichTextLinkRange[] {
 }
 
 function resolveCaretLinkRange(editor: Editor) {
-  const { selection } = editor.state
+  const { selection, storedMarks } = editor.state
 
   if (!(selection instanceof TextSelection) || !selection.empty) {
+    return null
+  }
+
+  if (storedMarks !== null && !storedMarks.some((mark) => mark.type.name === 'link')) {
     return null
   }
 

@@ -129,6 +129,14 @@ describe('rich text link target resolver', () => {
     })
   })
 
+  it('does not resolve a link after the caret exits its paragraph-end boundary', () => {
+    const editor = createEditor('<p><a href="https://example.com">链接文本</a></p>')
+    editor.commands.setTextSelection(5)
+    editor.view.dispatch(editor.state.tr.setStoredMarks([]))
+
+    expect(resolveRichTextLinkTarget(editor, 'quickbar')).toBeNull()
+  })
+
   it('rejects text blocks that do not allow link marks', () => {
     const editor = createEditor('<pre><code>const value = 1</code></pre>')
     editor.commands.setTextSelection(3)

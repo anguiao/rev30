@@ -1,4 +1,5 @@
 import { Extension, type Editor } from '@tiptap/core'
+import { Placeholder } from '@tiptap/extensions/placeholder'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state'
 import {
@@ -9,7 +10,7 @@ import {
   type SuggestionProps,
 } from '@tiptap/suggestion'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { blockCommandFeature } from './shared'
+import { slashCommandFeature } from './shared'
 
 interface RichTextSlashCommandPluginState {
   readonly active: boolean
@@ -69,7 +70,7 @@ function getRichTextSlashCommandStorage(editor: Editor) {
 function setPendingInput(storage: RichTextSlashCommandStorage, pendingInput: PendingUserInput) {
   storage.pendingInput = pendingInput
 
-  queueMicrotask(() => {
+  setTimeout(() => {
     if (storage.pendingInput === pendingInput) {
       storage.pendingInput = undefined
     }
@@ -228,6 +229,17 @@ export function isRichTextSlashCommandActive(editor: Editor) {
   return Boolean(richTextSlashCommandPluginKey.getState(editor.state)?.active)
 }
 
-export const blockCommandEditorFeature = defineRichTextEditorFeature(blockCommandFeature, {
-  extensions: () => [RichTextSlashCommand],
+export const slashCommandEditorFeature = defineRichTextEditorFeature(slashCommandFeature, {
+  extensions: () => [
+    Placeholder.configure({
+      emptyNodeClass: ({ node }) =>
+        node.type.name === 'paragraph' ? 'rich-text-slash-command-placeholder' : '',
+      includeChildren: false,
+      placeholder: ({ node }) =>
+        node.type.name === 'paragraph' ? '开始输入，或按 / 唤起命令' : '',
+      showOnlyCurrent: true,
+      showOnlyWhenEditable: true,
+    }),
+    RichTextSlashCommand,
+  ],
 })

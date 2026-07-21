@@ -12,6 +12,7 @@ const rootTokenStyle = computed(
   --app-primary-color-hover: ${themeVars.value.primaryColorHover};
   --app-primary-color-pressed: ${themeVars.value.primaryColorPressed};
   --app-primary-color-suppl: ${themeVars.value.primaryColorSuppl};
+  --app-popover-color: ${themeVars.value.popoverColor};
   --app-input-color: ${themeVars.value.inputColor};
   --app-input-color-focus: ${themeVars.value.inputColor};
   --app-input-border-color: ${themeVars.value.borderColor};

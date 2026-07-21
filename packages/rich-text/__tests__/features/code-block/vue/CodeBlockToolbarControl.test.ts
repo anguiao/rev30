@@ -11,6 +11,7 @@ import { codeBlockEditorFeature } from '../../../../src/features/code-block/edit
 import { codeBlockToolbarControl } from '../../../../src/features/code-block/vue'
 import CodeBlockToolbarControl from '../../../../src/features/code-block/vue/CodeBlockToolbarControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
+import { createTestRichTextOverlayState } from '../../../helpers/overlay'
 
 const codeBlockLanguageOptions = codeBlockToolbarControl.props.languages as readonly {
   readonly value: string
@@ -39,8 +40,11 @@ function createEditor(firstLanguage: string | null, secondLanguage: string | nul
 }
 
 function mountControl(editor: Editor, attachToDocument = false) {
+  const overlay = createTestRichTextOverlayState()
+
   return mount(CodeBlockToolbarControl, {
     ...(attachToDocument ? { attachTo: document.body } : undefined),
+    global: { provide: overlay.provide },
     props: {
       editor: markRaw(editor),
       languages: [...codeBlockLanguageOptions],

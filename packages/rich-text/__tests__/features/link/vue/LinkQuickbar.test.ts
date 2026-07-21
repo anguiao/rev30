@@ -19,6 +19,9 @@ function createEditor() {
 async function mountQuickbar(editor = createEditor()) {
   editor.commands.setTextSelection(3)
   const wrapper = mount(LinkQuickbar, {
+    global: {
+      stubs: { teleport: true },
+    },
     props: { editor: markRaw(editor) },
   })
   await flushPromises()
@@ -42,8 +45,16 @@ describe('LinkQuickbar', () => {
     await wrapper.get('[data-test="rich-text-link-edit"]').trigger('click')
     await flushPromises()
 
+    expect(wrapper.get('[data-test="rich-text-link-edit"]').attributes('aria-expanded')).toBe(
+      'true',
+    )
+    expect(wrapper.get('[data-test="rich-text-link-readonly-url"]').text()).toBe(
+      'https://example.com',
+    )
     expect(wrapper.getComponent(NInput).props('value')).toBe('https://example.com')
     expect(wrapper.find('[data-test="rich-text-link-cancel"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-test="rich-text-link-open"]')).toHaveLength(1)
+    expect(wrapper.findAll('[data-test="rich-text-link-remove"]')).toHaveLength(1)
 
     wrapper.getComponent(NInput).vm.$emit('update:value', 'javascript:alert(1)')
     await flushPromises()

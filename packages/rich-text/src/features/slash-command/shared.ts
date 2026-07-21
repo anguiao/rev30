@@ -1,7 +1,7 @@
 import { defineRichTextFeature } from '../../core/feature'
 
-export const blockCommandFeature = defineRichTextFeature({
-  key: 'block-command',
+export const slashCommandFeature = defineRichTextFeature({
+  key: 'slash-command',
   editorImplementation: true,
   serverImplementation: false,
 })

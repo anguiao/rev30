@@ -4,12 +4,14 @@ import Text from '@tiptap/extension-text'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
 import { NImage, NSpin } from 'naive-ui'
-import { markRaw } from 'vue'
+import { defineComponent, h, markRaw } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { imageFeature, type RichTextImageNodeAttrs } from '../../../../src/features/image/shared'
 import ImageDialog from '../../../../src/features/image/vue/ImageDialog.vue'
+import ImageDialogHost from '../../../../src/features/image/vue/ImageDialogHost.vue'
 import ImageToolbarControl from '../../../../src/features/image/vue/ImageToolbarControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
+import { createTestRichTextOverlayState } from '../../../helpers/overlay'
 
 type FileDialogChangeHandler = (files: FileList | null) => void
 type FileDialogOptions = {
@@ -90,17 +92,29 @@ function createEditor(content = '<p>维护通知</p>') {
 }
 
 function mountControl(editor: Editor, upload = vi.fn(), onError = vi.fn()) {
-  return mount(ImageToolbarControl, {
+  const overlay = createTestRichTextOverlayState()
+  const Harness = defineComponent({
+    setup: () => () =>
+      h('div', [
+        h(ImageToolbarControl, {
+          editor: markRaw(editor),
+          disabled: false,
+          upload,
+          onError,
+        }),
+        h(ImageDialogHost, {
+          editor: markRaw(editor),
+          disabled: false,
+        }),
+      ]),
+  })
+
+  return mount(Harness, {
     global: {
+      provide: overlay.provide,
       stubs: {
         teleport: true,
       },
-    },
-    props: {
-      editor: markRaw(editor),
-      disabled: false,
-      upload,
-      onError,
     },
   })
 }

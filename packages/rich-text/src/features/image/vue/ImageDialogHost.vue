@@ -63,7 +63,7 @@ function handleConfirm(attrs: RichTextImageInput) {
   const { target } = activeSession
   const chain = editor.chain()
 
-  if (activeSession.source === 'slash') {
+  if (target.type === 'insert-anchor') {
     chain.command(({ tr }) => {
       closeHistory(tr)
       return true

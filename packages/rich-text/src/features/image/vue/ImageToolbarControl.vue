@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
-import { useRichTextToolbarLayer } from '../../../vue/surface-coordinator'
+import { useRichTextToolbarOverlay } from '../../../vue/overlay-state'
 import { NButton } from 'naive-ui'
 import { computed, ref, watch } from 'vue'
 import {
@@ -9,7 +9,6 @@ import {
   type RichTextImageDialogOptions,
   type RichTextImageDialogSession,
 } from './dialog-controller'
-import ImageDialogHost from './ImageDialogHost.vue'
 
 interface ImageToolbarControlProps
   extends RichTextToolbarControlInjectedProps, RichTextImageDialogOptions {}
@@ -34,10 +33,10 @@ function closeToolbarDialog() {
     openedSession.value = null
   }
 
-  toolbarLayer.release()
+  toolbarOverlay.close()
 }
 
-const toolbarLayer = useRichTextToolbarLayer(editor, closeToolbarDialog)
+const toolbarOverlay = useRichTextToolbarOverlay(closeToolbarDialog)
 
 function openDialog() {
   const currentTarget = target.value
@@ -46,8 +45,8 @@ function openDialog() {
     return
   }
 
-  toolbarLayer.claim()
-  openedSession.value = controller.open('toolbar', currentTarget, {
+  toolbarOverlay.open()
+  openedSession.value = controller.open(currentTarget, {
     upload: props.upload,
     ...(props.onError ? { onError: props.onError } : {}),
   })
@@ -56,7 +55,7 @@ function openDialog() {
 watch(controller.session, (activeSession) => {
   if (openedSession.value && activeSession !== openedSession.value) {
     openedSession.value = null
-    toolbarLayer.release()
+    toolbarOverlay.close()
   }
 })
 
@@ -89,7 +88,5 @@ watch(
     >
       <span class="i-[lucide--image]" aria-hidden="true" />
     </NButton>
-
-    <ImageDialogHost :editor="editor" :disabled="disabled" />
   </div>
 </template>

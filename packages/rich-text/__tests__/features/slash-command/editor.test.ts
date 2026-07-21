@@ -7,23 +7,23 @@ import { baseFeature } from '../../../src/features/base/shared'
 import { blockquoteEditorFeature } from '../../../src/features/blockquote/editor'
 import { blockquoteFeature } from '../../../src/features/blockquote/shared'
 import {
-  blockCommandEditorFeature,
   isRichTextSlashCommandActive,
   registerRichTextSlashCommandRenderer,
-} from '../../../src/features/block-command/editor'
-import { blockCommandFeature } from '../../../src/features/block-command/shared'
+  slashCommandEditorFeature,
+} from '../../../src/features/slash-command/editor'
+import { slashCommandFeature } from '../../../src/features/slash-command/shared'
 import { createTestEditor } from '../../helpers/editor'
 
 const preset = defineRichTextPreset({
-  key: 'block-command-test',
-  features: [baseFeature, blockquoteFeature, blockCommandFeature],
+  key: 'slash-command-test',
+  features: [baseFeature, blockquoteFeature, slashCommandFeature],
 })
 
 function createEditor(content = '<p></p>') {
   return createTestEditor({
     extensions: collectRichTextEditorExtensions({
       ...preset,
-      editorFeatures: [baseEditorFeature, blockquoteEditorFeature, blockCommandEditorFeature],
+      editorFeatures: [baseEditorFeature, blockquoteEditorFeature, slashCommandEditorFeature],
     }),
     content,
   })
@@ -38,15 +38,43 @@ function typeText(editor: Editor, text: string) {
   editor.view.dispatch(editor.state.tr.insertText(text, from, to))
 }
 
-describe('block command editor feature', () => {
-  it('is editor-only and installs the slash command plugin', () => {
-    expect(blockCommandFeature).toMatchObject({
-      key: 'block-command',
+describe('slash command editor feature', () => {
+  it('is editor-only and installs the slash command extensions', () => {
+    expect(slashCommandFeature).toMatchObject({
+      key: 'slash-command',
       editorImplementation: true,
       serverImplementation: false,
     })
-    expect(blockCommandFeature.documentExtensions).toBeUndefined()
-    expect(blockCommandEditorFeature.extensions?.()).toHaveLength(1)
+    expect(slashCommandFeature.documentExtensions).toBeUndefined()
+    expect(slashCommandEditorFeature.extensions?.().map((extension) => extension.name)).toEqual([
+      'placeholder',
+      'richTextSlashCommand',
+    ])
+  })
+
+  it('hints at slash commands in the active top-level empty paragraph', async () => {
+    const editor = createEditor('<p>Existing paragraph</p>')
+
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1)
+    editor.commands.splitBlock()
+
+    const paragraph = editor.view.dom.querySelectorAll('p').item(1)
+    expect(paragraph.classList.contains('rich-text-slash-command-placeholder')).toBe(true)
+    expect(paragraph.dataset.placeholder).toBe('开始输入，或按 / 唤起命令')
+    expect(JSON.stringify(editor.getJSON())).not.toContain('开始输入，或按 / 唤起命令')
+
+    typeText(editor, 'Content')
+    expect(paragraph.classList.contains('rich-text-slash-command-placeholder')).toBe(false)
+
+    editor.commands.setContent('<blockquote><p></p></blockquote>')
+    expect(editor.view.dom.querySelector('.rich-text-slash-command-placeholder')).toBeNull()
+
+    editor.commands.setContent('<p></p>')
+    editor.setEditable(false)
+
+    await vi.waitFor(() => {
+      expect(editor.view.dom.querySelector('.rich-text-slash-command-placeholder')).toBeNull()
+    })
   })
 
   it('starts only from a directly typed slash at the start of a top-level paragraph', async () => {
@@ -98,10 +126,15 @@ describe('block command editor feature', () => {
     typeText(editor, '/')
     typeText(editor, 'none')
 
-    const backspace = new KeyboardEvent('keydown', { key: 'Backspace' })
-    editor.view.someProp('handleKeyDown', (handler) =>
-      handler(editor.view, backspace) ? true : undefined,
-    )
+    const backspace = new KeyboardEvent('keydown', {
+      key: 'Backspace',
+      bubbles: true,
+      cancelable: true,
+    })
+    Object.defineProperty(backspace, 'keyCode', { value: 8 })
+    editor.view.dom.dispatchEvent(backspace)
+    await Promise.resolve()
+
     const { from } = editor.state.selection
     editor.view.dispatch(editor.state.tr.delete(from - 1, from))
 

@@ -10,7 +10,7 @@ import {
   type RichTextToolbarItem,
   type RichTextToolbarDropdownControl,
 } from '../toolbar'
-import { useRichTextToolbarLayer } from '../surface-coordinator'
+import { useRichTextToolbarOverlay } from '../overlay-state'
 import { createRichTextToolbarDropdownMenuId } from './dropdown-menu-id'
 
 const props = withDefaults(
@@ -31,14 +31,14 @@ const show = ref(false)
 
 function closeDropdown() {
   show.value = false
-  toolbarLayer.release()
+  toolbarOverlay.close()
 }
 
-const toolbarLayer = useRichTextToolbarLayer(editor, closeDropdown)
+const toolbarOverlay = useRichTextToolbarOverlay(closeDropdown)
 
 function handleShow(nextShow: boolean) {
   if (nextShow) {
-    toolbarLayer.claim()
+    toolbarOverlay.open()
     show.value = true
     return
   }
@@ -154,6 +154,7 @@ onBeforeUnmount(() => {
       :show="show"
       placement="bottom-start"
       :options="options"
+      :to="toolbarOverlay.target.value"
       :render-label="renderLabel"
       :menu-props="getMenuProps"
       @update:show="handleShow"

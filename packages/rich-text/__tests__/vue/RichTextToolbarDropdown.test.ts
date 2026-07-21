@@ -7,10 +7,10 @@ import { NDropdown } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { paragraphActionItem } from '../../src/features/base/vue'
-import { getRichTextSurfaceCoordinator } from '../../src/vue/surface-coordinator'
 import { richTextToolbarDropdown } from '../../src/vue/toolbar'
 import RichTextToolbarDropdown from '../../src/vue/toolbar/RichTextToolbarDropdown.vue'
 import { createTestEditor } from '../helpers/editor'
+import { createTestRichTextOverlayState } from '../helpers/overlay'
 
 const control = richTextToolbarDropdown({
   key: 'block-type',
@@ -27,8 +27,10 @@ function createEditor() {
 }
 
 function mountDropdown(editor: Editor) {
+  const overlay = createTestRichTextOverlayState()
   const wrapper = mount(RichTextToolbarDropdown, {
     attachTo: document.body,
+    global: { provide: overlay.provide },
     props: {
       control,
       editor: markRaw(editor),
@@ -36,7 +38,7 @@ function mountDropdown(editor: Editor) {
   })
 
   onTestFinished(() => wrapper.unmount())
-  return wrapper
+  return Object.assign(wrapper, { overlayState: overlay.state })
 }
 
 async function openDropdown(wrapper: ReturnType<typeof mountDropdown>) {
@@ -62,8 +64,6 @@ describe('RichTextToolbarDropdown', () => {
     firstEditor.view.focus()
     const firstWrapper = mountDropdown(firstEditor)
     const secondWrapper = mountDropdown(secondEditor)
-    const firstCoordinator = getRichTextSurfaceCoordinator(firstEditor)
-    const secondCoordinator = getRichTextSurfaceCoordinator(secondEditor)
     const firstTrigger = firstWrapper.get('[data-test="rich-text-block-type"]')
     const secondTrigger = secondWrapper.get('[data-test="rich-text-block-type"]')
 
@@ -75,8 +75,8 @@ describe('RichTextToolbarDropdown', () => {
 
     expect(firstTrigger.attributes('aria-expanded')).toBe('true')
     expect(secondTrigger.attributes('aria-expanded')).toBe('true')
-    expect(firstCoordinator.isQuickbarSuppressed.value).toBe(true)
-    expect(secondCoordinator.isQuickbarSuppressed.value).toBe(true)
+    expect(firstWrapper.overlayState.toolbarOverlayOpen.value).toBe(true)
+    expect(secondWrapper.overlayState.toolbarOverlayOpen.value).toBe(true)
 
     firstEditor.view.dom.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
@@ -85,8 +85,8 @@ describe('RichTextToolbarDropdown', () => {
 
     expect(firstTrigger.attributes('aria-expanded')).toBe('false')
     expect(secondTrigger.attributes('aria-expanded')).toBe('true')
-    expect(firstCoordinator.isQuickbarSuppressed.value).toBe(false)
-    expect(secondCoordinator.isQuickbarSuppressed.value).toBe(true)
+    expect(firstWrapper.overlayState.toolbarOverlayOpen.value).toBe(false)
+    expect(secondWrapper.overlayState.toolbarOverlayOpen.value).toBe(true)
     await vi.waitFor(() => {
       expect(firstEditor.isFocused).toBe(true)
       expect(document.activeElement).toBe(firstEditor.view.dom)
@@ -100,8 +100,6 @@ describe('RichTextToolbarDropdown', () => {
     secondEditor.commands.setTextSelection(1)
     const firstWrapper = mountDropdown(firstEditor)
     const secondWrapper = mountDropdown(secondEditor)
-    const firstCoordinator = getRichTextSurfaceCoordinator(firstEditor)
-    const secondCoordinator = getRichTextSurfaceCoordinator(secondEditor)
 
     await openDropdown(firstWrapper)
     await openDropdown(secondWrapper)
@@ -125,8 +123,8 @@ describe('RichTextToolbarDropdown', () => {
     expect(
       secondWrapper.get('[data-test="rich-text-block-type"]').attributes('aria-expanded'),
     ).toBe('true')
-    expect(firstCoordinator.isQuickbarSuppressed.value).toBe(false)
-    expect(secondCoordinator.isQuickbarSuppressed.value).toBe(true)
+    expect(firstWrapper.overlayState.toolbarOverlayOpen.value).toBe(false)
+    expect(secondWrapper.overlayState.toolbarOverlayOpen.value).toBe(true)
     await vi.waitFor(() => {
       expect(firstEditor.isFocused).toBe(true)
       expect(document.activeElement).toBe(firstEditor.view.dom)

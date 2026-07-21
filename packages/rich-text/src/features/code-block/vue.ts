@@ -1,3 +1,4 @@
+import type { Editor } from '@tiptap/core'
 import { richTextToolbarComponent } from '../../vue/toolbar'
 import { richTextFeatureQuickbar } from '../../vue/quickbar'
 import { defineRichTextActionItem } from '../../vue/action-item'
@@ -40,6 +41,12 @@ export const codeBlockQuickbar = richTextFeatureQuickbar({
   feature: codeBlockFeature,
   key: codeBlockFeature.key,
   isActive: (editor) => resolveRichTextCodeBlockTarget(editor) !== null,
+  getReferenceElement: (editor: Editor) => {
+    const target = resolveRichTextCodeBlockTarget(editor)
+    const element = target ? editor.view.nodeDOM(target.position) : null
+    return element instanceof HTMLElement ? element : null
+  },
+  referenceAlignment: 'end',
   component: CodeBlockQuickbar,
   props: {
     languages: codeBlockLanguageOptions,

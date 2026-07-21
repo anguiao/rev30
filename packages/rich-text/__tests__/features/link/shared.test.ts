@@ -136,4 +136,32 @@ describe('link feature', () => {
     expect(handled).not.toBe(true)
     expect(editor.state.selection).toMatchObject({ from: 3, to: 3, empty: true })
   })
+
+  it('exits a link at the end of a paragraph without inserting a space', () => {
+    const editor = createEditor()
+    selectEditorText(editor)
+    editor.commands.setLink({ href: 'https://example.com' })
+    editor.commands.setTextSelection(5)
+    const document = editor.getJSON()
+
+    editor.view.dom.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+
+    expect(editor.getJSON()).toEqual(document)
+    expect(editor.isActive('link')).toBe(false)
+
+    editor.commands.insertContent('正文')
+    expect(editor.getJSON().content?.[0]?.content).toMatchObject([
+      {
+        text: '维护通知',
+        marks: [{ type: 'link', attrs: { href: 'https://example.com' } }],
+      },
+      { text: '正文' },
+    ])
+  })
 })

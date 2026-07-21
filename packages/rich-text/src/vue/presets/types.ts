@@ -1,13 +1,14 @@
 import { validateRichTextFeatureImplementations, type RichTextFeature } from '../../core/feature'
 import type { RichTextPreset } from '../../core/preset'
 import type { RichTextEditorFeature } from '../../editor/feature'
-import { getRichTextBlockCommandFeature, type RichTextBlockMenuConfig } from '../block-menu'
+import type { Component } from 'vue'
 import {
   getRichTextQuickbarControlFeature,
   getRichTextQuickbarControlKey,
   type RichTextQuickbarConfig,
   type RichTextQuickbarControl,
 } from '../quickbar'
+import { getRichTextSlashCommandFeature, type RichTextSlashCommandConfig } from '../slash-command'
 import type { RichTextStatusBarConfig, RichTextStatusBarComponentItem } from '../status-bar'
 import {
   getRichTextToolbarControlFeature,
@@ -23,7 +24,8 @@ export interface RichTextEditorPreset<
   readonly toolbar?: RichTextToolbarConfig
   readonly statusBar?: RichTextStatusBarConfig
   readonly quickbar?: RichTextQuickbarConfig
-  readonly blockMenu?: RichTextBlockMenuConfig
+  readonly slashCommand?: RichTextSlashCommandConfig
+  readonly host?: Component
 }
 
 function hasEditorFeature(
@@ -121,29 +123,29 @@ function validateQuickbar(
   }
 }
 
-function validateBlockMenu(
+function validateSlashCommand(
   preset: RichTextPreset,
   editorFeatures: readonly RichTextEditorFeature[],
-  blockMenu: RichTextBlockMenuConfig,
+  slashCommand: RichTextSlashCommandConfig,
 ) {
-  const hasBlockCommandFeature = preset.features.some((feature) => feature.key === 'block-command')
-  const hasBlockCommandEditorFeature = editorFeatures.some(
-    ({ feature }) => feature.key === 'block-command',
+  const hasSlashCommandFeature = preset.features.some((feature) => feature.key === 'slash-command')
+  const hasSlashCommandEditorFeature = editorFeatures.some(
+    ({ feature }) => feature.key === 'slash-command',
   )
 
-  if (!hasBlockCommandFeature || !hasBlockCommandEditorFeature) {
+  if (!hasSlashCommandFeature || !hasSlashCommandEditorFeature) {
     throw new Error(
-      `Rich text preset "${preset.key}" has a block menu without the "block-command" editor feature`,
+      `Rich text preset "${preset.key}" has slash commands without the "slash-command" editor feature`,
     )
   }
 
-  for (const group of blockMenu.groups) {
+  for (const group of slashCommand.groups) {
     for (const command of group.commands) {
       assertEditorFeature(
         preset,
         editorFeatures,
-        getRichTextBlockCommandFeature(command),
-        'a block command',
+        getRichTextSlashCommandFeature(command),
+        'a slash command',
       )
     }
   }
@@ -159,7 +161,8 @@ export function defineRichTextEditorPreset<
     readonly toolbar?: RichTextToolbarConfig
     readonly statusBar?: RichTextStatusBarConfig
     readonly quickbar?: RichTextQuickbarConfig
-    readonly blockMenu?: RichTextBlockMenuConfig
+    readonly slashCommand?: RichTextSlashCommandConfig
+    readonly host?: Component
   },
 ): RichTextEditorPreset<Preset, ReadonlyArray<EditorFeatures[number]>> {
   const editorFeatures = Object.freeze([...options.editorFeatures])
@@ -184,8 +187,8 @@ export function defineRichTextEditorPreset<
     validateQuickbar(preset, editorFeatures, options.quickbar)
   }
 
-  if (options.blockMenu) {
-    validateBlockMenu(preset, editorFeatures, options.blockMenu)
+  if (options.slashCommand) {
+    validateSlashCommand(preset, editorFeatures, options.slashCommand)
   }
 
   return Object.freeze({
@@ -195,6 +198,7 @@ export function defineRichTextEditorPreset<
     ...(options.toolbar ? { toolbar: options.toolbar } : {}),
     ...(options.statusBar ? { statusBar: options.statusBar } : {}),
     ...(options.quickbar ? { quickbar: options.quickbar } : {}),
-    ...(options.blockMenu ? { blockMenu: options.blockMenu } : {}),
+    ...(options.slashCommand ? { slashCommand: options.slashCommand } : {}),
+    ...(options.host ? { host: options.host } : {}),
   })
 }

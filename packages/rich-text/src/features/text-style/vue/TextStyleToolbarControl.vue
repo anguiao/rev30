@@ -7,7 +7,7 @@ import {
 } from '../../../editor/action'
 import { getRichTextQuickbarLayerId } from '../../../vue/quickbar'
 import type { RichTextIconClass, RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
-import { useRichTextToolbarLayer } from '../../../vue/surface-coordinator'
+import { useRichTextToolbarOverlay } from '../../../vue/overlay-state'
 import type { TextStyleOption } from '../options'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown, NPopover } from 'naive-ui'
@@ -43,10 +43,10 @@ const activeLayer = ref<string | null>(null)
 
 function closeLayer() {
   activeLayer.value = null
-  toolbarLayer.release()
+  toolbarOverlay.close()
 }
 
-const toolbarLayer = useRichTextToolbarLayer(editor, closeLayer)
+const toolbarOverlay = useRichTextToolbarOverlay(closeLayer)
 
 function handleLayerShow(key: string, show: boolean) {
   if (!show) {
@@ -56,7 +56,7 @@ function handleLayerShow(key: string, show: boolean) {
     return
   }
 
-  toolbarLayer.claim()
+  toolbarOverlay.open()
   activeLayer.value = key
 }
 
@@ -272,6 +272,7 @@ onBeforeUnmount(() => {
     <NPopover
       trigger="click"
       placement="bottom-start"
+      :to="toolbarOverlay.target.value"
       :show="activeLayer === 'color'"
       :disabled="colorControl.isDisabled"
       :data-rich-text-text-style-layer="layerId"
@@ -352,6 +353,7 @@ onBeforeUnmount(() => {
       trigger="click"
       :show="activeLayer === control.key"
       placement="bottom-start"
+      :to="toolbarOverlay.target.value"
       :options="control.options"
       :menu-props="getLayerMenuProps"
       :disabled="control.isDisabled"

@@ -7,12 +7,12 @@ import {
   restoreRichTextSelection,
   restoreRichTextSelectionCommand,
   type RichTextSelectionSnapshot,
+  useRichTextTargetInvalidation,
 } from '../../../vue/selection'
 import {
-  useRichTextTargetInvalidation,
-  useRichTextToolbarLayer,
-  type RichTextSurfaceCloseReason,
-} from '../../../vue/surface-coordinator'
+  type RichTextOverlayCloseReason,
+  useRichTextToolbarOverlay,
+} from '../../../vue/overlay-state'
 import { NButton, NPopover } from 'naive-ui'
 import { computed, nextTick, ref, watch } from 'vue'
 import { setHighlightAction, unsetHighlightAction } from '../editor'
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<HighlightColorControlProps>(), {
 })
 
 const emit = defineEmits<{
-  close: [reason: RichTextSurfaceCloseReason]
+  close: [reason: RichTextOverlayCloseReason]
 }>()
 
 const editor = props.editor
@@ -39,7 +39,7 @@ const target = ref<RichTextSelectionSnapshot | null>(null)
 const panel = ref<HTMLElement | null>(null)
 const root = ref<HTMLElement | null>(null)
 
-const toolbarLayer = useRichTextToolbarLayer(editor, () => close('outside'))
+const toolbarOverlay = useRichTextToolbarOverlay(() => close('outside'))
 
 function getHighlightColors() {
   const { doc, selection, storedMarks } = editor.state
@@ -110,7 +110,7 @@ const dataTestPrefix = computed(() =>
   props.surface === 'toolbar' ? 'rich-text-highlight' : 'rich-text-quickbar-highlight',
 )
 
-function close(reason: RichTextSurfaceCloseReason) {
+function close(reason: RichTextOverlayCloseReason) {
   if (!show.value && !target.value) {
     return
   }
@@ -120,7 +120,7 @@ function close(reason: RichTextSurfaceCloseReason) {
   target.value = null
 
   if (props.surface === 'toolbar') {
-    toolbarLayer.release()
+    toolbarOverlay.close()
   }
 
   if (reason === 'cancel' && selection) {
@@ -138,7 +138,7 @@ function open() {
   target.value = captureRichTextSelection(editor)
 
   if (props.surface === 'toolbar') {
-    toolbarLayer.claim()
+    toolbarOverlay.open()
   }
 
   show.value = true
@@ -232,6 +232,7 @@ defineExpose({
       :show="show"
       trigger="manual"
       placement="bottom"
+      :to="toolbarOverlay.target.value"
       :disabled="disabled"
       @update:show="handleShow"
       @clickoutside="close('outside')"

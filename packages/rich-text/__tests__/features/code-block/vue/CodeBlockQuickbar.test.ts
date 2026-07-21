@@ -2,7 +2,7 @@ import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { flushPromises, mount } from '@vue/test-utils'
-import { NDropdown } from 'naive-ui'
+import { NButton, NDropdown } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { codeBlockEditorFeature } from '../../../../src/features/code-block/editor'
@@ -25,6 +25,18 @@ describe('CodeBlockQuickbar', () => {
         languages: [...codeBlockLanguageOptions],
       },
     })
+
+    expect(wrapper.getComponent(NButton).props()).toMatchObject({
+      size: 'small',
+      text: true,
+      quaternary: false,
+    })
+    expect(wrapper.get('[data-test="rich-text-quickbar-code-block-language"]').text()).toContain(
+      '纯文本',
+    )
+    expect(wrapper.find('[data-test="rich-text-quickbar-code-block-paragraph"]').exists()).toBe(
+      false,
+    )
 
     wrapper.getComponent(NDropdown).vm.$emit('update:show', true)
     await flushPromises()

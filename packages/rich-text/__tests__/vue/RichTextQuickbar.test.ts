@@ -20,11 +20,19 @@ import {
 } from '../../src/vue/quickbar'
 import RichTextQuickbar from '../../src/vue/quickbar/RichTextQuickbar.vue'
 import { richTextSurfaceTransactionMeta } from '../../src/vue/selection'
-import { getRichTextSurfaceCoordinator } from '../../src/vue/surface-coordinator'
 import { createTestEditor } from '../helpers/editor'
+import { createTestRichTextOverlayState } from '../helpers/overlay'
 
 const BubbleMenuStub = defineComponent({
   props: {
+    getReferencedVirtualElement: {
+      type: Function as PropType<() => HTMLElement | null>,
+      required: true,
+    },
+    options: {
+      type: Object as PropType<Record<string, unknown>>,
+      required: true,
+    },
     shouldShow: {
       type: Function as PropType<() => boolean>,
       required: true,
@@ -46,9 +54,11 @@ function mountQuickbar(
   editor: ReturnType<typeof createTestEditor>,
   quickbar = compactRichTextEditorPreset.quickbar as RichTextQuickbarConfig,
 ) {
-  return mount(RichTextQuickbar, {
+  const overlay = createTestRichTextOverlayState()
+  const wrapper = mount(RichTextQuickbar, {
     attachTo: document.body,
     global: {
+      provide: overlay.provide,
       stubs: {
         BubbleMenu: BubbleMenuStub,
       },
@@ -58,19 +68,25 @@ function mountQuickbar(
       quickbar,
     },
   })
+
+  return Object.assign(wrapper, { overlayState: overlay.state })
 }
 
 function mountRealQuickbar(
   editor: ReturnType<typeof createTestEditor>,
   quickbar = compactRichTextEditorPreset.quickbar as RichTextQuickbarConfig,
 ) {
-  return mount(RichTextQuickbar, {
+  const overlay = createTestRichTextOverlayState()
+  const wrapper = mount(RichTextQuickbar, {
     attachTo: document.body,
+    global: { provide: overlay.provide },
     props: {
       editor: markRaw(editor),
       quickbar,
     },
   })
+
+  return Object.assign(wrapper, { overlayState: overlay.state })
 }
 
 function findCodeBlockTextPositions(editor: ReturnType<typeof createTestEditor>) {
@@ -89,6 +105,32 @@ function findCodeBlockTextPositions(editor: ReturnType<typeof createTestEditor>)
 }
 
 describe('RichTextQuickbar', () => {
+  it('owns roving tabindex and arrow navigation for simple controls', async () => {
+    const editor = createEditor()
+    editor.commands.setTextSelection({ from: 1, to: 4 })
+    editor.view.focus()
+    const wrapper = mountQuickbar(editor)
+    await flushPromises()
+
+    const controls = wrapper.findAll('[data-rich-text-quickbar-roving]')
+    expect(controls).toHaveLength(3)
+    expect(controls.map((control) => (control.element as HTMLElement).tabIndex)).toEqual([
+      0, -1, -1,
+    ])
+
+    await controls[0]!.trigger('keydown', { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(controls[1]!.element)
+    expect(controls.map((control) => (control.element as HTMLElement).tabIndex)).toEqual([
+      -1, 0, -1,
+    ])
+
+    await controls[1]!.trigger('keydown', { key: 'End' })
+    expect(document.activeElement).toBe(controls[2]!.element)
+
+    await controls[2]!.trigger('keydown', { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(controls[0]!.element)
+  })
+
   it('drives the real BubbleMenu visibility and removes its wrapper from tab order', async () => {
     const editor = createEditor()
     const wrapper = mountRealQuickbar(editor)
@@ -102,13 +144,13 @@ describe('RichTextQuickbar', () => {
       expect(element).not.toBeNull()
       return element!
     })
+    expect(quickbar.classList.contains('bg-popover')).toBe(true)
     expect(quickbar.parentElement?.tabIndex).toBe(-1)
 
-    const coordinator = getRichTextSurfaceCoordinator(editor)
-    const owner = Symbol('toolbar-test')
+    const toolbarOverlay = { close: () => undefined }
     const toolbarTrigger = document.createElement('button')
     toolbarTrigger.addEventListener('pointerdown', () => {
-      coordinator.claimToolbarLayer(owner, () => undefined)
+      wrapper.overlayState.openToolbarOverlay(toolbarOverlay)
     })
     document.body.appendChild(toolbarTrigger)
     quickbar.querySelector<HTMLElement>('button:not(:disabled)')?.focus()
@@ -118,7 +160,7 @@ describe('RichTextQuickbar', () => {
       expect(document.querySelector('[data-test="rich-text-quickbar"]')).toBeNull()
     })
 
-    coordinator.releaseToolbarLayer(owner)
+    wrapper.overlayState.closeToolbarOverlay(toolbarOverlay)
     await vi.waitFor(() => {
       expect(document.querySelector('[data-test="rich-text-quickbar"]')).not.toBeNull()
     })
@@ -159,7 +201,7 @@ describe('RichTextQuickbar', () => {
     expect(editor.state.selection).toMatchObject({ from: 5, to: 8 })
   })
 
-  it('pins a mouse-opened teleported submenu and closes it when focus leaves the layer', async () => {
+  it('opens a teleported more menu without moving focus', async () => {
     const editor = createEditor()
     editor.commands.setTextSelection({ from: 1, to: 4 })
     editor.view.focus()
@@ -172,8 +214,6 @@ describe('RichTextQuickbar', () => {
         },
       }),
     )
-    const outsideElement = document.createElement('div')
-    document.body.appendChild(outsideElement)
     await flushPromises()
 
     await wrapper.get('[data-test="rich-text-quickbar-more"]').trigger('click')
@@ -183,28 +223,46 @@ describe('RichTextQuickbar', () => {
         '[data-test="rich-text-quickbar-more-italic"]',
       )
       expect(element).not.toBeNull()
-      expect(document.activeElement).toBe(element)
+      expect(document.activeElement).toBe(editor.view.dom)
       return element!
     })
     expect(moreAction.closest('[data-rich-text-quickbar-subinterface]')).not.toBeNull()
 
-    editor.commands.setTextSelection({ from: 5, to: 8 })
-    expect(editor.state.selection).toMatchObject({ from: 1, to: 4 })
-
-    outsideElement.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    moreAction.click()
     await flushPromises()
 
-    expect(document.querySelector('[data-rich-text-quickbar-menu]')).toBeNull()
-    expect(wrapper.find('[data-test="rich-text-quickbar"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="rich-text-quickbar-more"]').attributes('aria-expanded')).toBe(
+      'false',
+    )
+    expect(editor.isActive('italic')).toBe(true)
+  })
 
+  it('anchors the code block Quickbar to the block end instead of the cursor', async () => {
+    const editor = createTestEditor({
+      extensions: [Document, Paragraph, Text, ...codeBlockEditorFeature.extensions!()],
+      content: '<pre><code>const value = 1</code></pre>',
+    })
+    const position = findCodeBlockTextPositions(editor)[0]!
+    editor.commands.setTextSelection(position)
     editor.view.focus()
+    const wrapper = mountQuickbar(editor, defineRichTextQuickbar({ features: [codeBlockQuickbar] }))
     await flushPromises()
 
-    expect(wrapper.find('[data-test="rich-text-quickbar"]').exists()).toBe(true)
+    const bubbleMenu = wrapper.getComponent(BubbleMenuStub)
+    const getReference = bubbleMenu.props('getReferencedVirtualElement')
+    const reference = getReference()
+    const offset = bubbleMenu.props('options').offset as (state: {
+      rects: { reference: { width: number }; floating: { width: number } }
+    }) => unknown
 
-    editor.commands.setTextSelection({ from: 5, to: 8 })
-    expect(editor.state.selection).toMatchObject({ from: 5, to: 8 })
-    outsideElement.remove()
+    expect(reference).toBe(editor.view.nodeDOM(position - 1))
+    expect(offset({ rects: { reference: { width: 240 }, floating: { width: 80 } } })).toEqual({
+      mainAxis: 4,
+      crossAxis: 80,
+    })
+
+    editor.commands.setTextSelection(position + 8)
+    expect(getReference()).toBe(reference)
   })
 
   it('pins a mouse-opened code language menu to its original block', async () => {

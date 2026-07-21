@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/core'
 import { NButton, NPopover } from 'naive-ui'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { canRunRichTextAction, runRichTextAction } from '../../editor/action'
 import {
   getRichTextQuickbarControlKey,
@@ -9,10 +9,10 @@ import {
   type RichTextQuickbarControl,
   type RichTextQuickbarControlsConfig,
 } from '../quickbar'
-import type { RichTextSurfaceCloseReason } from '../surface-coordinator'
+import { type RichTextOverlayCloseReason, useRichTextOverlayState } from '../overlay-state'
 
 interface QuickbarComponentSurface {
-  close?: (reason: RichTextSurfaceCloseReason) => void
+  close?: (reason: RichTextOverlayCloseReason) => void
 }
 
 const props = withDefaults(
@@ -31,13 +31,12 @@ const emit = defineEmits<{
 }>()
 
 const editor = props.editor
+const overlayState = useRichTextOverlayState()
 const layerId = getRichTextQuickbarLayerId(editor)
-const toolbar = ref<HTMLElement | null>(null)
 const moreTrigger = ref<HTMLElement | null>(null)
 const moreMenu = ref<HTMLElement | null>(null)
 const showMore = ref(false)
 const componentSurfaces = new Map<string, QuickbarComponentSurface>()
-let isClosing = false
 
 function setComponentSurface(key: string, value: unknown) {
   if (value && typeof value === 'object') {
@@ -61,45 +60,6 @@ function isActionActive(control: RichTextQuickbarControl) {
 const primaryControls = computed(() => props.controls.primary)
 const moreControls = computed(() => props.controls.more)
 
-function getRovingButtons() {
-  if (!toolbar.value) {
-    return []
-  }
-
-  return Array.from(
-    toolbar.value.querySelectorAll<HTMLElement>('[data-rich-text-quickbar-roving]:not(:disabled)'),
-  ).filter((button) => !button.closest('[data-rich-text-quickbar-menu]'))
-}
-
-function setRovingButton(button: HTMLElement | null) {
-  for (const candidate of getRovingButtons()) {
-    candidate.tabIndex = candidate === button ? 0 : -1
-  }
-}
-
-function syncRovingTabIndex() {
-  const buttons = getRovingButtons()
-  const current = buttons.find((button) => button.tabIndex === 0)
-  setRovingButton(current ?? buttons[0] ?? null)
-}
-
-function focusButton(button: HTMLElement | undefined) {
-  if (!button) {
-    return false
-  }
-
-  setRovingButton(button)
-  button.focus()
-  return true
-}
-
-function focusInitialControl() {
-  const buttons = getRovingButtons()
-  const preferred = buttons.find((button) => button.dataset.active === 'true') ?? buttons[0]
-
-  return focusButton(preferred)
-}
-
 function closeMore(restoreTriggerFocus: boolean) {
   if (!showMore.value) {
     return
@@ -118,12 +78,6 @@ function toggleMore() {
   }
 
   showMore.value = !showMore.value
-
-  if (showMore.value) {
-    void nextTick(() => {
-      moreMenu.value?.querySelector<HTMLElement>('button:not(:disabled)')?.focus()
-    })
-  }
 }
 
 function runControl(control: RichTextQuickbarControl, fromMore = false) {
@@ -138,47 +92,6 @@ function runControl(control: RichTextQuickbarControl, fromMore = false) {
   }
 }
 
-function handleToolbarKeydown(event: KeyboardEvent) {
-  if (event.isComposing) {
-    return
-  }
-
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    event.stopPropagation()
-    emit('close', 'cancel')
-    return
-  }
-
-  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-    return
-  }
-
-  const buttons = getRovingButtons()
-  const currentIndex = buttons.indexOf(event.target as HTMLElement)
-
-  if (currentIndex < 0 || buttons.length === 0) {
-    return
-  }
-
-  event.preventDefault()
-  event.stopPropagation()
-
-  if (event.key === 'Home') {
-    focusButton(buttons[0])
-    return
-  }
-
-  if (event.key === 'End') {
-    focusButton(buttons.at(-1))
-    return
-  }
-
-  const offset = event.key === 'ArrowRight' ? 1 : -1
-  const nextIndex = (currentIndex + offset + buttons.length) % buttons.length
-  focusButton(buttons[nextIndex])
-}
-
 function handleMoreKeydown(event: KeyboardEvent) {
   if (event.isComposing || event.key !== 'Escape') {
     return
@@ -189,38 +102,18 @@ function handleMoreKeydown(event: KeyboardEvent) {
   closeMore(true)
 }
 
-function handleTransaction() {
-  void nextTick(syncRovingTabIndex)
-}
-
-onMounted(() => {
-  syncRovingTabIndex()
-  editor.on('transaction', handleTransaction)
-})
-
-onBeforeUnmount(() => {
-  editor.off('transaction', handleTransaction)
-})
-
 defineExpose({
-  close: (reason: RichTextSurfaceCloseReason = 'outside') => {
-    if (isClosing) {
-      return
-    }
-
-    isClosing = true
+  close: (reason: RichTextOverlayCloseReason = 'outside') => {
     for (const surface of componentSurfaces.values()) {
       surface.close?.(reason)
     }
     closeMore(false)
-    isClosing = false
   },
-  focusInitialControl,
 })
 </script>
 
 <template>
-  <div ref="toolbar" class="flex items-center gap-1" @keydown="handleToolbarKeydown">
+  <div class="flex items-center gap-1">
     <div
       v-for="control in primaryControls"
       :key="getRichTextQuickbarControlKey(control)"
@@ -264,6 +157,7 @@ defineExpose({
         :show="showMore"
         trigger="manual"
         placement="bottom-start"
+        :to="overlayState.target.value"
         :disabled="disabled"
         @clickoutside="closeMore(false)"
       >

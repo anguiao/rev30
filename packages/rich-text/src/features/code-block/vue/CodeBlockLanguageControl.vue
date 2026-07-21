@@ -5,12 +5,12 @@ import {
   markRichTextSurfaceTransactionCommand,
   restoreRichTextSelection,
   restoreRichTextSelectionCommand,
+  useRichTextTargetInvalidation,
 } from '../../../vue/selection'
 import {
-  useRichTextTargetInvalidation,
-  useRichTextToolbarLayer,
-  type RichTextSurfaceCloseReason,
-} from '../../../vue/surface-coordinator'
+  type RichTextOverlayCloseReason,
+  useRichTextToolbarOverlay,
+} from '../../../vue/overlay-state'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
 import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -38,7 +38,7 @@ const props = withDefaults(defineProps<CodeBlockLanguageControlProps>(), {
 })
 
 const emit = defineEmits<{
-  close: [reason: RichTextSurfaceCloseReason]
+  close: [reason: RichTextOverlayCloseReason]
 }>()
 
 const editor = props.editor
@@ -48,7 +48,7 @@ const menuId = createCodeBlockLanguageMenuId()
 const root = ref<HTMLElement | null>(null)
 const show = ref(false)
 const fixedTarget = ref<RichTextCodeBlockTarget | null>(null)
-const toolbarLayer = useRichTextToolbarLayer(editor, () => close('outside'))
+const toolbarOverlay = useRichTextToolbarOverlay(() => close('outside'))
 
 const currentTarget = computed(() => fixedTarget.value ?? resolveRichTextCodeBlockTarget(editor))
 const currentLanguage = computed(() =>
@@ -88,7 +88,7 @@ const options = computed<DropdownOption[]>(() =>
   }),
 )
 
-function close(reason: RichTextSurfaceCloseReason) {
+function close(reason: RichTextOverlayCloseReason) {
   if (!show.value && !fixedTarget.value) {
     return
   }
@@ -98,7 +98,7 @@ function close(reason: RichTextSurfaceCloseReason) {
   fixedTarget.value = null
 
   if (props.surface === 'toolbar') {
-    toolbarLayer.release()
+    toolbarOverlay.close()
   }
 
   if (reason === 'cancel' && target) {
@@ -122,7 +122,7 @@ function open() {
   fixedTarget.value = target
 
   if (props.surface === 'toolbar') {
-    toolbarLayer.claim()
+    toolbarOverlay.open()
   } else {
     root.value?.querySelector<HTMLElement>(`[data-test="${dataTestPrefix.value}"]`)?.focus()
   }
@@ -229,6 +229,7 @@ defineExpose({
       scrollable
       :show="show"
       :options="options"
+      :to="toolbarOverlay.target.value"
       :menu-props="getMenuProps"
       :disabled="isDisabled"
       @update:show="handleShow"
@@ -238,8 +239,10 @@ defineExpose({
         :data-test="dataTestPrefix"
         :data-rich-text-quickbar-roving="surface === 'quickbar' ? '' : undefined"
         :disabled="isDisabled"
-        style="--n-padding: 0 4px"
-        quaternary
+        size="small"
+        :style="surface === 'toolbar' ? '--n-padding: 0 4px' : undefined"
+        :text="surface === 'quickbar'"
+        :quaternary="surface === 'toolbar'"
         :title="buttonLabel"
         :aria-label="buttonLabel"
         aria-haspopup="listbox"

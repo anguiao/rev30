@@ -1,7 +1,6 @@
 import { defineRichTextPreset } from '../core/preset'
 import { baseFeature } from '../features/base/shared'
 import { blockquoteFeature } from '../features/blockquote/shared'
-import { blockCommandFeature } from '../features/block-command/shared'
 import { boldFeature } from '../features/bold/shared'
 import { characterCountFeature } from '../features/character-count/shared'
 import { codeBlockFeature } from '../features/code-block/shared'
@@ -16,6 +15,7 @@ import { linkFeature } from '../features/link/shared'
 import { listFeature } from '../features/list/shared'
 import { removeFormatFeature } from '../features/remove-format/shared'
 import { searchReplaceFeature } from '../features/search-replace/shared'
+import { slashCommandFeature } from '../features/slash-command/shared'
 import { strikeFeature } from '../features/strike/shared'
 import { textAlignFeature } from '../features/text-align/shared'
 import { textStyleFeature } from '../features/text-style/shared'
@@ -25,7 +25,7 @@ export const allRichTextPreset = defineRichTextPreset({
   key: 'all',
   features: [
     baseFeature,
-    blockCommandFeature,
+    slashCommandFeature,
     historyFeature,
     characterCountFeature,
     searchReplaceFeature,

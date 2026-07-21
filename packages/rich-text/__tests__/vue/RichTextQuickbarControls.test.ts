@@ -33,30 +33,6 @@ function mountControls(
 }
 
 describe('RichTextQuickbarControls', () => {
-  it('uses roving tabindex and arrow navigation for simple controls', async () => {
-    const editor = createEditor()
-    const wrapper = mountControls(editor)
-    await flushPromises()
-
-    const controls = wrapper.findAll('[data-rich-text-quickbar-roving]')
-    expect(controls).toHaveLength(3)
-    expect(controls.map((control) => (control.element as HTMLElement).tabIndex)).toEqual([
-      0, -1, -1,
-    ])
-
-    await controls[0]!.trigger('keydown', { key: 'ArrowRight' })
-    expect(document.activeElement).toBe(controls[1]!.element)
-    expect(controls.map((control) => (control.element as HTMLElement).tabIndex)).toEqual([
-      -1, 0, -1,
-    ])
-
-    await controls[1]!.trigger('keydown', { key: 'End' })
-    expect(document.activeElement).toBe(controls[2]!.element)
-
-    await controls[2]!.trigger('keydown', { key: 'ArrowRight' })
-    expect(document.activeElement).toBe(controls[0]!.element)
-  })
-
   it('leaves link form arrows and Tab to the normal form focus order', async () => {
     const editor = createEditor()
     const wrapper = mountControls(editor)
@@ -91,21 +67,19 @@ describe('RichTextQuickbarControls', () => {
       more: [richTextQuickbarAction(italicToolbarItem)],
     })
 
-    await wrapper.get('[data-test="rich-text-quickbar-more"]').trigger('click')
+    const trigger = wrapper.get('[data-test="rich-text-quickbar-more"]')
+    ;(trigger.element as HTMLElement).focus()
+    await trigger.trigger('click')
     await flushPromises()
 
     const menu = wrapper.get('[data-rich-text-quickbar-menu]')
     expect(menu.attributes('data-rich-text-quickbar-subinterface')).toBe(
       getRichTextQuickbarLayerId(editor),
     )
-    expect(document.activeElement).toBe(
-      wrapper.get('[data-test="rich-text-quickbar-more-italic"]').element,
-    )
+    expect(document.activeElement).toBe(trigger.element)
 
     await menu.trigger('keydown', { key: 'Escape' })
     await flushPromises()
-    expect(wrapper.get('[data-test="rich-text-quickbar-more"]').attributes('aria-expanded')).toBe(
-      'false',
-    )
+    expect(trigger.attributes('aria-expanded')).toBe('false')
   })
 })

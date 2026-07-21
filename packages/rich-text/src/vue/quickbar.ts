@@ -40,6 +40,8 @@ export interface RichTextFeatureQuickbarConfig {
   readonly feature: RichTextFeature
   readonly key: string
   readonly isActive: (editor: Editor) => boolean
+  readonly getReferenceElement?: (editor: Editor) => HTMLElement | null
+  readonly referenceAlignment?: 'end'
   readonly component: Component
   readonly props: Readonly<Record<string, unknown>>
 }
@@ -102,6 +104,8 @@ export function richTextFeatureQuickbar<TComponent extends Component>(options: {
   readonly feature: RichTextFeature
   readonly key: string
   readonly isActive: (editor: Editor) => boolean
+  readonly getReferenceElement?: (editor: Editor) => HTMLElement | null
+  readonly referenceAlignment?: 'end'
   readonly component: TComponent
   readonly props: RichTextQuickbarComponentProps<TComponent>
 }): RichTextFeatureQuickbarConfig {
@@ -109,6 +113,8 @@ export function richTextFeatureQuickbar<TComponent extends Component>(options: {
     feature: options.feature,
     key: options.key,
     isActive: options.isActive,
+    ...(options.getReferenceElement ? { getReferenceElement: options.getReferenceElement } : {}),
+    ...(options.referenceAlignment ? { referenceAlignment: options.referenceAlignment } : {}),
     component: markRaw(options.component),
     props: Object.freeze({ ...options.props } as Record<string, unknown>),
   })

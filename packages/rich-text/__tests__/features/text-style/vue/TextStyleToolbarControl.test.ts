@@ -14,8 +14,8 @@ import {
 } from '../../../../src/features/text-style/options'
 import { textStyleFeature } from '../../../../src/features/text-style/shared'
 import TextStyleToolbarControl from '../../../../src/features/text-style/vue/TextStyleToolbarControl.vue'
-import { getRichTextSurfaceCoordinator } from '../../../../src/vue/surface-coordinator'
 import { createTestEditor } from '../../../helpers/editor'
+import { createTestRichTextOverlayState } from '../../../helpers/overlay'
 
 const red = textStyleColorOptions.find((option) => option.key === 'red')!
 const blue = textStyleColorOptions.find((option) => option.key === 'blue')!
@@ -33,8 +33,10 @@ function createEditor(
 }
 
 function mountControl(editor: Editor, disabled = false) {
-  return mount(TextStyleToolbarControl, {
+  const overlay = createTestRichTextOverlayState()
+  const wrapper = mount(TextStyleToolbarControl, {
     global: {
+      provide: overlay.provide,
       stubs: {
         teleport: true,
       },
@@ -48,6 +50,8 @@ function mountControl(editor: Editor, disabled = false) {
       lineHeights: [...textStyleLineHeightOptions],
     },
   })
+
+  return Object.assign(wrapper, { overlayState: overlay.state })
 }
 
 function selectEditorText(editor: Editor) {
@@ -254,10 +258,9 @@ describe('TextStyleToolbarControl', () => {
     selectEditorText(editor)
     editor.view.focus()
     const wrapper = mountControl(editor)
-    const coordinator = getRichTextSurfaceCoordinator(editor)
 
     await openColorPopover(wrapper)
-    expect(coordinator.isQuickbarSuppressed.value).toBe(true)
+    expect(wrapper.overlayState.toolbarOverlayOpen.value).toBe(true)
 
     editor.view.dom.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
@@ -265,7 +268,7 @@ describe('TextStyleToolbarControl', () => {
     await flushPromises()
 
     expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
-    expect(coordinator.isQuickbarSuppressed.value).toBe(false)
+    expect(wrapper.overlayState.toolbarOverlayOpen.value).toBe(false)
     expect(editor.isFocused).toBe(true)
 
     await openColorPopover(wrapper)
@@ -274,7 +277,7 @@ describe('TextStyleToolbarControl', () => {
     await flushPromises()
 
     expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
-    expect(coordinator.isQuickbarSuppressed.value).toBe(false)
+    expect(wrapper.overlayState.toolbarOverlayOpen.value).toBe(false)
     expect(editor.isFocused).toBe(true)
 
     const fontFamily = getDropdownComponent(wrapper, 'rich-text-font-family')
@@ -288,6 +291,6 @@ describe('TextStyleToolbarControl', () => {
     await flushPromises()
 
     expect(fontFamily.props('show')).toBe(false)
-    expect(coordinator.isQuickbarSuppressed.value).toBe(false)
+    expect(wrapper.overlayState.toolbarOverlayOpen.value).toBe(false)
   })
 })

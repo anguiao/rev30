@@ -8,9 +8,9 @@ import { NInput, NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { linkFeature } from '../../../../src/features/link/shared'
-import LinkToolbarControl from '../../../../src/features/link/vue/LinkToolbarControl.vue'
-import { getRichTextSurfaceCoordinator } from '../../../../src/vue/surface-coordinator'
+import LinkControl from '../../../../src/features/link/vue/LinkControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
+import { createTestRichTextOverlayState } from '../../../helpers/overlay'
 
 function createEditor(content = '<p>维护通知</p>') {
   return createTestEditor({
@@ -20,17 +20,22 @@ function createEditor(content = '<p>维护通知</p>') {
 }
 
 function mountControl(editor: Editor, disabled = false) {
-  return mount(LinkToolbarControl, {
+  const overlay = createTestRichTextOverlayState()
+  const wrapper = mount(LinkControl, {
     global: {
+      provide: overlay.provide,
       stubs: {
         teleport: true,
       },
     },
     props: {
       editor: markRaw(editor),
+      surface: 'toolbar',
       disabled,
     },
   })
+
+  return Object.assign(wrapper, { overlayState: overlay.state })
 }
 
 function isPopoverShown(wrapper: ReturnType<typeof mountControl>) {
@@ -296,7 +301,6 @@ describe('LinkToolbarControl', () => {
     const editor = createEditor('<p>普通文字</p>')
     editor.commands.setTextSelection({ from: 1, to: 3 })
     const wrapper = mountControl(editor)
-    const coordinator = getRichTextSurfaceCoordinator(editor)
 
     await openPopover(wrapper)
     await setUrl(wrapper, 'example.com')
@@ -323,7 +327,7 @@ describe('LinkToolbarControl', () => {
     expect(editor.getHTML()).not.toContain('draft.example')
     expect(isPopoverShown(wrapper)).toBe(false)
     expect(editor.isFocused).toBe(true)
-    expect(coordinator.isQuickbarSuppressed.value).toBe(false)
+    expect(wrapper.overlayState.toolbarOverlayOpen.value).toBe(false)
   })
 
   it('labels icon actions and honors the disabled prop', async () => {

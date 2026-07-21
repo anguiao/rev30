@@ -1,4 +1,4 @@
-import { defineComponent } from 'vue'
+import { defineComponent, shallowRef } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
 import { baseFeature } from '../../src/features/base/shared'
@@ -9,7 +9,7 @@ import {
   isRichTextTextQuickbarSelection,
   resolveRichTextQuickbarContext,
 } from '../../src/vue/quickbar/context'
-import { getRichTextSurfaceCoordinator } from '../../src/vue/surface-coordinator'
+import { createRichTextOverlayState } from '../../src/vue/overlay-state'
 import { createTestEditor } from '../helpers/editor'
 
 const allPreset = createAllRichTextEditorPreset({
@@ -124,29 +124,28 @@ describe('rich text quickbar context', () => {
   })
 })
 
-describe('rich text surface coordinator', () => {
-  it('keeps a newer toolbar owner active when an older owner releases late', () => {
-    const editor = createEditor('<p>context</p>')
-    const coordinator = getRichTextSurfaceCoordinator(editor)
+describe('rich text overlay state', () => {
+  it('keeps a newer toolbar overlay active when an older overlay closes late', () => {
+    const state = createRichTextOverlayState(shallowRef(null))
     const closeQuickbar = vi.fn()
     const closeFirst = vi.fn()
     const closeSecond = vi.fn()
-    const firstOwner = Symbol('first')
-    const secondOwner = Symbol('second')
+    const firstOverlay = { close: closeFirst }
+    const secondOverlay = { close: closeSecond }
 
-    coordinator.registerQuickbarCloser(closeQuickbar)
-    coordinator.claimToolbarLayer(firstOwner, closeFirst)
-    expect(coordinator.isQuickbarSuppressed.value).toBe(true)
+    state.registerQuickbarCloser(closeQuickbar)
+    state.openToolbarOverlay(firstOverlay)
+    expect(state.toolbarOverlayOpen.value).toBe(true)
 
-    coordinator.claimToolbarLayer(secondOwner, closeSecond)
+    state.openToolbarOverlay(secondOverlay)
     expect(closeFirst).toHaveBeenCalledWith('outside')
-    expect(coordinator.isQuickbarSuppressed.value).toBe(true)
+    expect(state.toolbarOverlayOpen.value).toBe(true)
 
-    coordinator.releaseToolbarLayer(firstOwner)
-    expect(coordinator.isQuickbarSuppressed.value).toBe(true)
+    state.closeToolbarOverlay(firstOverlay)
+    expect(state.toolbarOverlayOpen.value).toBe(true)
 
-    coordinator.releaseToolbarLayer(secondOwner)
-    expect(coordinator.isQuickbarSuppressed.value).toBe(false)
+    state.closeToolbarOverlay(secondOverlay)
+    expect(state.toolbarOverlayOpen.value).toBe(false)
     expect(closeQuickbar).toHaveBeenCalledTimes(2)
   })
 })

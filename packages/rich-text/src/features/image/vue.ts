@@ -1,5 +1,5 @@
-import { richTextBlockMenuUiCommand } from '../../vue/block-menu'
 import { richTextFeatureQuickbar } from '../../vue/quickbar'
+import { richTextSlashUiCommand } from '../../vue/slash-command'
 import { richTextToolbarComponent } from '../../vue/toolbar'
 import { imageFeature } from './shared'
 import {
@@ -34,21 +34,21 @@ export function createImageQuickbar(options: RichTextImageUploadOptions) {
   })
 }
 
-export function createImageBlockMenuCommand(options: RichTextImageUploadOptions) {
-  return richTextBlockMenuUiCommand({
+export function createImageSlashCommand(options: RichTextImageUploadOptions) {
+  return richTextSlashUiCommand({
     feature: imageFeature,
     key: imageFeature.key,
     label: '图片',
     icon: 'i-[lucide--image]',
     keywords: ['image', 'img', 'picture'],
-    run: ({ editor, source, anchor }) => {
+    run: ({ editor, anchor }) => {
       const target = resolveRichTextImageAnchorTarget(editor, anchor)
 
       if (!target) {
         return false
       }
 
-      getRichTextImageDialogController(editor).open(source, target, options)
+      getRichTextImageDialogController(editor).open(target, options)
       return true
     },
   })

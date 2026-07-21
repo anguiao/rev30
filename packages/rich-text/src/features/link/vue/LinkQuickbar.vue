@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/core'
 import { NButton } from 'naive-ui'
-import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
-import type { RichTextSurfaceCloseReason } from '../../../vue/surface-coordinator'
-import { requestRichTextQuickbarPluginUpdate } from '../../../vue/quickbar'
+import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import {
+  type RichTextOverlayCloseReason,
+  useRichTextOverlayState,
+} from '../../../vue/overlay-state'
+import { getRichTextQuickbarLayerId } from '../../../vue/quickbar'
 import { normalizeLinkHref } from '../href'
 import { resolveRichTextLinkTarget, type RichTextLinkTarget } from '../target'
-import LinkEditorForm from './LinkEditorForm.vue'
+import LinkEditorPopover from './LinkEditorPopover.vue'
 import { useRichTextLinkEditor } from './useLinkEditor'
 
 const props = withDefaults(
@@ -20,11 +23,13 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  close: [reason: RichTextSurfaceCloseReason]
+  close: [reason: RichTextOverlayCloseReason]
 }>()
 
 const editor = props.editor
 const root = ref<HTMLElement | null>(null)
+const layerId = getRichTextQuickbarLayerId(editor)
+const overlayState = useRichTextOverlayState()
 const readonlyTarget = shallowRef<RichTextLinkTarget | null>(null)
 const linkEditor = useRichTextLinkEditor({
   editor,
@@ -37,7 +42,6 @@ const linkEditor = useRichTextLinkEditor({
 
     if (reason === 'success' || reason === 'cancel') {
       syncReadonlyTarget()
-      requestPositionUpdate()
     }
   },
 })
@@ -50,19 +54,16 @@ function syncReadonlyTarget() {
   readonlyTarget.value = props.disabled ? null : resolveRichTextLinkTarget(editor, 'quickbar')
 }
 
-function requestPositionUpdate() {
-  void nextTick(() => {
-    if (!editor.isDestroyed) {
-      requestRichTextQuickbarPluginUpdate(editor, 'updatePosition')
-    }
-  })
-}
-
 function editLink() {
+  if (linkEditor.isOpen.value) {
+    close('cancel')
+    return
+  }
+
   const target = readonlyTarget.value
 
-  if (target && linkEditor.openTarget(target)) {
-    requestPositionUpdate()
+  if (target) {
+    linkEditor.openTarget(target)
   }
 }
 
@@ -84,11 +85,12 @@ function removeReadonlyLink() {
   linkEditor.remove()
 }
 
-function cancelEditing() {
-  linkEditor.cancel()
-}
+function close(reason: RichTextOverlayCloseReason = 'outside') {
+  if (reason === 'cancel') {
+    linkEditor.cancel()
+    return
+  }
 
-function close(reason: RichTextSurfaceCloseReason = 'outside') {
   linkEditor.close(reason)
 }
 
@@ -116,21 +118,7 @@ defineExpose({ close, focusInitialControl })
 
 <template>
   <div ref="root" class="flex items-center gap-1">
-    <LinkEditorForm
-      v-if="linkEditor.isOpen.value"
-      v-model="linkEditor.draft.value"
-      :invalid="linkEditor.isInvalid.value"
-      :can-apply="linkEditor.canApply.value"
-      :can-open="linkEditor.canOpen.value"
-      :can-remove="linkEditor.canRemove.value"
-      autofocus
-      @apply="linkEditor.apply"
-      @open="linkEditor.openDraft"
-      @remove="linkEditor.remove"
-      @cancel="cancelEditing"
-    />
-
-    <template v-else-if="readonlyTarget">
+    <template v-if="readonlyTarget">
       <span
         data-test="rich-text-link-readonly-url"
         class="max-w-64 truncate px-2 text-sm"
@@ -139,20 +127,37 @@ defineExpose({ close, focusInitialControl })
         {{ readonlyTarget.href }}
       </span>
 
-      <NButton
-        data-test="rich-text-link-edit"
-        data-rich-text-quickbar-roving
-        size="small"
-        style="--n-padding: 0 6px"
-        quaternary
+      <LinkEditorPopover
+        v-model="linkEditor.draft.value"
+        :show="linkEditor.isOpen.value"
+        :show-open="false"
+        :to="overlayState.target.value"
         :disabled="disabled"
-        title="编辑链接"
-        aria-label="编辑链接"
-        @mousedown.prevent
-        @click="editLink"
+        :invalid="linkEditor.isInvalid.value"
+        :can-apply="linkEditor.canApply.value"
+        :quickbar-layer-id="layerId"
+        @apply="linkEditor.apply"
+        @close="close"
       >
-        <span class="i-[lucide--pencil]" aria-hidden="true" />
-      </NButton>
+        <template #trigger>
+          <NButton
+            data-test="rich-text-link-edit"
+            data-rich-text-quickbar-roving
+            size="small"
+            style="--n-padding: 0 6px"
+            quaternary
+            :disabled="disabled"
+            title="编辑链接"
+            aria-label="编辑链接"
+            aria-haspopup="dialog"
+            :aria-expanded="linkEditor.isOpen.value"
+            @mousedown.prevent
+            @click="editLink"
+          >
+            <span class="i-[lucide--pencil]" aria-hidden="true" />
+          </NButton>
+        </template>
+      </LinkEditorPopover>
 
       <NButton
         data-test="rich-text-link-open"

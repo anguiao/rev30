@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RichTextQuickbarInjectedProps } from '../../../vue/quickbar'
-import type { RichTextSurfaceCloseReason } from '../../../vue/surface-coordinator'
+import type { RichTextOverlayCloseReason } from '../../../vue/overlay-state'
 import { ref } from 'vue'
 import type { HighlightColorOption } from '../colors'
 import HighlightColorControl from './HighlightColorControl.vue'
@@ -14,19 +14,19 @@ withDefaults(defineProps<HighlightQuickbarControlProps>(), {
 })
 
 const emit = defineEmits<{
-  close: [reason: RichTextSurfaceCloseReason]
+  close: [reason: RichTextOverlayCloseReason]
 }>()
 
 const control = ref<InstanceType<typeof HighlightColorControl> | null>(null)
 
-function handleClose(reason: RichTextSurfaceCloseReason) {
+function handleClose(reason: RichTextOverlayCloseReason) {
   if (reason !== 'cancel') {
     emit('close', reason)
   }
 }
 
 defineExpose({
-  close: (reason: RichTextSurfaceCloseReason) => control.value?.close(reason),
+  close: (reason: RichTextOverlayCloseReason) => control.value?.close(reason),
   focusInitialControl: () => control.value?.focusInitialControl() ?? false,
 })
 </script>

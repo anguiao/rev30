@@ -212,25 +212,17 @@ describe('deriveRichTextContent', () => {
     })
   })
 
-  it.each([
-    {
-      name: 'a truly empty paragraph',
-      paragraph: { type: 'paragraph' },
-    },
-    {
-      name: 'a paragraph with canonical default attrs',
-      paragraph: { type: 'paragraph', attrs: { textAlign: null } },
-    },
-  ])('rejects $name instead of deriving empty text and html', ({ paragraph }) => {
-    expect(() =>
-      deriveRichTextContent(
-        {
-          type: 'doc',
-          content: [paragraph],
-        },
-        createServerPreset(),
-      ),
-    ).toThrow(RichTextContentInvalidError)
+  it('derives a valid empty document', () => {
+    const content = deriveRichTextContent(
+      {
+        type: 'doc',
+        content: [{ type: 'paragraph' }],
+      },
+      createServerPreset(),
+    )
+
+    expect(content.text).toBe('')
+    expect(content.html).toBe('<p></p>')
   })
 
   it('preserves an isolated image height in json without rendering it to html', () => {

@@ -2,7 +2,7 @@ import type { AnyExtension, JSONContent, TextSerializer } from '@tiptap/core'
 import { getSchema, getText, getTextSerializersFromSchema } from '@tiptap/core'
 import { Node as ProseMirrorNode, type Schema } from '@tiptap/pm/model'
 import { renderToHTMLString } from '@tiptap/static-renderer/pm/html-string'
-import { hasRichTextContent, type RichTextDocument } from '../schema'
+import type { RichTextDocument } from '../schema'
 import { RichTextContentInvalidError } from './errors'
 import { collectRichTextServerExtensions } from './feature'
 import type { RichTextServerPreset } from './presets/types'
@@ -70,10 +70,6 @@ export function deriveRichTextContent(contentJson: unknown, preset: RichTextServ
 
   const json = document.toJSON() as JSONContent & RichTextDocument
   const text = getText(document, { textSerializers: runtime.textSerializers }).trim()
-
-  if (!hasRichTextContent(json)) {
-    throw new RichTextContentInvalidError()
-  }
 
   const html = renderToHTMLString({
     content: document,

@@ -119,7 +119,9 @@ describe('rich text demo page', () => {
     const { wrapper } = await mountPage()
 
     expect(wrapper.text()).toContain('完整富文本能力演示')
-    expect(wrapper.get('[data-test="rich-text-demo-preview"]').attributes('disabled')).toBeDefined()
+    expect(
+      wrapper.get('[data-test="rich-text-demo-preview"]').attributes('disabled'),
+    ).toBeUndefined()
 
     await wrapper.get('[data-test="rich-text-demo-editor-stub"]').trigger('click')
     await wrapper.get('[data-test="rich-text-demo-preview"]').trigger('click')

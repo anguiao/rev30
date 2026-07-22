@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useMutation } from '@pinia/colada'
 import { NAlert, NButton, NEmpty, NTabPane, NTabs } from 'naive-ui'
-import { hasRichTextContent, type RichTextDocument } from '@rev30/rich-text/schema'
+import type { RichTextDocument } from '@rev30/rich-text/schema'
 import { RichTextEditor } from '@rev30/rich-text/vue'
 import { createAllRichTextEditorPreset } from '@rev30/rich-text/vue/presets/all'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
@@ -114,7 +114,7 @@ function generatePreview() {
             data-test="rich-text-demo-preview"
             type="primary"
             :loading="isPreviewing"
-            :disabled="isPreviewing || !hasRichTextContent(contentJson)"
+            :disabled="isPreviewing"
             @click="generatePreview"
           >
             服务端预览

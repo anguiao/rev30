@@ -281,31 +281,35 @@ describe('announcement schemas', () => {
     expectZodIssue(result, { message: '正文格式无效' })
   })
 
-  it('requires non-empty announcement content input', () => {
-    const result = announcementFormSchema.safeParse({
-      type: ANNOUNCEMENT_TYPE_NOTICE,
-      title: '维护通知',
-      contentJson: { type: 'doc', content: [{ type: 'paragraph' }] },
-      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-      pinned: false,
-      publish: false,
-      targets: [],
-    })
+  it('accepts empty announcement content input', () => {
+    const contentJson = { type: 'doc' as const, content: [{ type: 'paragraph' }] }
 
-    expectZodIssue(result, { message: '请输入正文' })
+    expect(
+      announcementFormSchema.parse({
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '维护通知',
+        contentJson,
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+        pinned: false,
+        publish: false,
+        targets: [],
+      }),
+    ).toMatchObject({ contentJson })
   })
 
-  it('rejects whitespace-only announcement content input', () => {
-    const result = announcementCreateSchema.safeParse({
-      type: ANNOUNCEMENT_TYPE_NOTICE,
-      title: '维护通知',
-      contentJson: {
-        type: 'doc',
-        content: [{ type: 'paragraph', content: [{ type: 'text', text: '   ' }] }],
-      },
-    })
+  it('accepts whitespace-only announcement content input', () => {
+    const contentJson = {
+      type: 'doc' as const,
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: '   ' }] }],
+    }
 
-    expectZodIssue(result, { message: '请输入正文' })
+    expect(
+      announcementCreateSchema.parse({
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '维护通知',
+        contentJson,
+      }),
+    ).toMatchObject({ contentJson })
   })
 
   it('accepts non-empty announcement content documents', () => {

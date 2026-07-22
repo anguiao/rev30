@@ -1,9 +1,5 @@
 import { z } from 'zod'
-import {
-  hasRichTextContent,
-  richTextDocumentEnvelopeSchema,
-  type RichTextDocument,
-} from '@rev30/rich-text/schema'
+import { richTextDocumentEnvelopeSchema, type RichTextDocument } from '@rev30/rich-text/schema'
 import { nonBlankString, optionalNullableString } from '../common/inputs'
 import { paginationQuerySchema } from '../common/pagination'
 import { hasAnyDefinedValue } from '../common/refinements'
@@ -87,17 +83,10 @@ function ensureUniqueAnnouncementTargets(
 
 export const tiptapDocumentEnvelopeSchema = richTextDocumentEnvelopeSchema
 
-const announcementContentDocumentSchema = z.custom<RichTextDocument>(
+const announcementContentJsonInputSchema = z.custom<RichTextDocument>(
   (value): value is RichTextDocument => tiptapDocumentEnvelopeSchema.safeParse(value).success,
   {
     message: '正文格式无效',
-  },
-)
-
-const announcementContentJsonInputSchema = announcementContentDocumentSchema.refine(
-  hasRichTextContent,
-  {
-    message: '请输入正文',
   },
 )
 export const announcementTargetSchema = z.object({

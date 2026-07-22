@@ -151,7 +151,7 @@ defineExpose({
   <div
     :id="listboxId"
     data-test="rich-text-slash-command-list"
-    class="pointer-events-auto max-h-80 min-w-64 overflow-y-auto rounded-ui border border-input-border bg-input p-1 shadow-lg outline-none"
+    class="pointer-events-auto max-h-80 min-w-64 overflow-y-auto rounded-(--rich-text-theme-border-radius) border border-(--rich-text-theme-input-border-color) bg-(--rich-text-theme-input-color) p-1 shadow-lg outline-none"
     role="listbox"
     aria-label="Slash 命令"
   >
@@ -159,7 +159,7 @@ defineExpose({
       <section
         v-for="group in groups"
         :key="group.key"
-        class="mb-1 border-b border-input-border pb-1 last:mb-0 last:border-b-0 last:pb-0"
+        class="mb-1 border-b border-(--rich-text-theme-input-border-color) pb-1 last:mb-0 last:border-b-0 last:pb-0"
         role="presentation"
       >
         <div class="px-2 py-1 text-xs opacity-60" role="presentation">
@@ -171,10 +171,12 @@ defineExpose({
           :id="getOptionId(command.key)"
           :key="command.key"
           :data-test="`rich-text-slash-command-${command.key}`"
-          class="flex min-h-9 items-center gap-2 rounded-ui px-2 py-1.5 text-sm transition-colors"
+          class="flex min-h-9 items-center gap-2 rounded-(--rich-text-theme-border-radius) px-2 py-1.5 text-sm transition-colors"
           :class="[
             isCommandEnabled(command) ? 'cursor-pointer' : 'cursor-not-allowed opacity-50',
-            activeKey === command.key ? 'bg-primary-muted text-primary' : '',
+            activeKey === command.key
+              ? 'bg-(--rich-text-theme-primary-muted-color) text-(--rich-text-theme-primary-color)'
+              : '',
           ]"
           role="option"
           :aria-selected="activeKey === command.key"

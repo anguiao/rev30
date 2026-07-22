@@ -221,7 +221,7 @@ watch(
 
         <span
           data-test="rich-text-search-match-position"
-          class="text-text-3 min-w-10 text-center text-xs tabular-nums"
+          class="min-w-10 text-center text-xs text-(--rich-text-theme-muted-text-color) tabular-nums"
           :aria-label="`匹配位置：${matchPositionLabel}`"
           aria-live="polite"
         >
@@ -315,12 +315,12 @@ watch(
 <style>
 .ProseMirror .rich-text-search-match {
   border-radius: 2px;
-  background-color: color-mix(in srgb, var(--app-primary-color) 16%, transparent);
+  background-color: var(--rich-text-theme-primary-muted-color);
 }
 
 .ProseMirror .rich-text-search-match-current,
 .ProseMirror .rich-text-search-match.rich-text-search-match-current.selection {
-  background-color: color-mix(in srgb, var(--app-primary-color) 36%, transparent);
-  box-shadow: inset 0 0 0 1px var(--app-primary-color);
+  background-color: color-mix(in srgb, var(--rich-text-theme-primary-color) 36%, transparent);
+  box-shadow: inset 0 0 0 1px var(--rich-text-theme-primary-color);
 }
 </style>

@@ -1,0 +1,67 @@
+.rich-text-theme {
+  --rich-text-theme-border-radius: var(
+    --rich-text-border-radius,
+    var(--rich-text-default-border-radius)
+  );
+  --rich-text-theme-primary-color: var(
+    --rich-text-primary-color,
+    var(--rich-text-default-primary-color)
+  );
+  --rich-text-theme-primary-color-hover: var(
+    --rich-text-primary-color-hover,
+    var(--rich-text-default-primary-color-hover)
+  );
+  --rich-text-theme-primary-muted-color: var(
+    --rich-text-primary-muted-color,
+    color-mix(in srgb, var(--rich-text-theme-primary-color) 16%, transparent)
+  );
+  --rich-text-theme-selection-color: var(
+    --rich-text-selection-color,
+    color-mix(in srgb, var(--rich-text-theme-primary-color) 24%, transparent)
+  );
+  --rich-text-theme-popover-color: var(
+    --rich-text-popover-color,
+    var(--rich-text-default-popover-color)
+  );
+  --rich-text-theme-input-color: var(--rich-text-input-color, var(--rich-text-default-input-color));
+  --rich-text-theme-input-focus-color: var(
+    --rich-text-input-focus-color,
+    var(--rich-text-default-input-focus-color)
+  );
+  --rich-text-theme-input-border-color: var(
+    --rich-text-input-border-color,
+    var(--rich-text-default-input-border-color)
+  );
+  --rich-text-theme-input-border-hover-color: var(
+    --rich-text-input-border-hover-color,
+    var(--rich-text-default-input-border-hover-color)
+  );
+  --rich-text-theme-input-border-focus-color: var(
+    --rich-text-input-border-focus-color,
+    var(--rich-text-default-input-border-focus-color)
+  );
+  --rich-text-theme-input-divider-color: var(
+    --rich-text-input-divider-color,
+    var(--rich-text-default-input-divider-color)
+  );
+  --rich-text-theme-input-box-shadow-focus: var(
+    --rich-text-input-box-shadow-focus,
+    var(--rich-text-default-input-box-shadow-focus)
+  );
+  --rich-text-theme-muted-text-color: var(
+    --rich-text-muted-text-color,
+    var(--rich-text-default-muted-text-color)
+  );
+}
+
+.dark .rich-text-theme {
+  --rich-text-theme-input-focus-color: var(
+    --rich-text-input-focus-color,
+    color-mix(in srgb, var(--rich-text-theme-primary-color) 10%, transparent)
+  );
+  --rich-text-theme-input-border-color: var(--rich-text-input-border-color, transparent);
+  --rich-text-theme-input-box-shadow-focus: var(
+    --rich-text-input-box-shadow-focus,
+    0 0 8px 0 color-mix(in srgb, var(--rich-text-theme-primary-color) 30%, transparent)
+  );
+}

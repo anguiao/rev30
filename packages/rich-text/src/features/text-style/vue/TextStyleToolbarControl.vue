@@ -134,7 +134,10 @@ const colorControl = computed(() => {
 function renderSelectionIcon(selected: boolean) {
   return () =>
     h('span', {
-      class: ['inline-block size-4', selected ? 'i-[lucide--check] text-primary' : undefined],
+      class: [
+        'inline-block size-4',
+        selected ? 'i-[lucide--check] text-(--rich-text-theme-primary-color)' : undefined,
+      ],
       'aria-hidden': 'true',
     })
 }
@@ -294,7 +297,7 @@ onBeforeUnmount(() => {
         >
           <span class="i-[lucide--palette]" aria-hidden="true" />
           <span
-            class="ml-0.5 inline-block size-3 rounded-sm border border-input-border"
+            class="ml-0.5 inline-block size-3 rounded-sm border border-(--rich-text-theme-input-border-color)"
             :style="{ backgroundColor: colorControl.value ?? 'currentColor' }"
             aria-hidden="true"
           />
@@ -339,7 +342,7 @@ onBeforeUnmount(() => {
           @click="runActionAndClose(setTextColorAction, color.value)"
         >
           <span
-            class="inline-block size-4 rounded-sm border border-input-border"
+            class="inline-block size-4 rounded-sm border border-(--rich-text-theme-input-border-color)"
             :style="{ backgroundColor: color.value }"
             aria-hidden="true"
           />

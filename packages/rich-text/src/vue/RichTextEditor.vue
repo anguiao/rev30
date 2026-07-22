@@ -6,6 +6,7 @@ import { provideRichTextOverlayState } from './overlay-state'
 import type { RichTextEditorPreset } from './presets/types'
 import RichTextQuickbar from './quickbar/RichTextQuickbar.vue'
 import RichTextStatusBar from './status-bar/RichTextStatusBar.vue'
+import { useRichTextThemeStyle } from './theme'
 import RichTextToolbar from './toolbar/RichTextToolbar.vue'
 import { useRichTextEditor } from './useRichTextEditor'
 
@@ -37,6 +38,7 @@ const root = ref<HTMLElement | null>(null)
 const scrollTarget = ref<HTMLElement | null>(null)
 const overlayHost = ref<HTMLElement | null>(null)
 provideRichTextOverlayState(overlayHost)
+const richTextThemeStyle = useRichTextThemeStyle()
 
 const { editor } = useRichTextEditor({
   modelValue: toRef(props, 'modelValue'),
@@ -60,12 +62,13 @@ function handleFocusout(event: FocusEvent) {
   <div
     ref="root"
     data-test="rich-text-editor"
-    class="relative flex w-full flex-col overflow-visible rounded-ui border border-input-border bg-input transition-[background-color,border-color,box-shadow] duration-300"
+    class="rich-text-theme relative flex w-full flex-col overflow-visible rounded-(--rich-text-theme-border-radius) border border-(--rich-text-theme-input-border-color) bg-(--rich-text-theme-input-color) transition-[background-color,border-color,box-shadow] duration-300"
     :class="
       disabled
-        ? ''
-        : 'focus-within:border-input-focus-border focus-within:bg-input-focus focus-within:shadow-input-focus hover:border-input-hover-border'
+        ? undefined
+        : 'focus-within:border-(--rich-text-theme-input-border-focus-color) focus-within:bg-(--rich-text-theme-input-focus-color) focus-within:shadow-(--rich-text-theme-input-box-shadow-focus) hover:border-(--rich-text-theme-input-border-hover-color)'
     "
+    :style="richTextThemeStyle"
     @focusout="handleFocusout"
   >
     <RichTextToolbar
@@ -130,7 +133,6 @@ function handleFocusout(event: FocusEvent) {
 }
 
 :deep(.ProseMirror) {
-  --rich-text-selection-color: color-mix(in srgb, var(--app-primary-color) 24%, transparent);
   min-height: max(100%, var(--rich-text-editor-min-height));
   padding: 0.75rem;
   outline: none;
@@ -145,7 +147,7 @@ function handleFocusout(event: FocusEvent) {
 }
 
 :deep(.ProseMirror ::selection) {
-  background-color: var(--rich-text-selection-color);
+  background-color: var(--rich-text-theme-selection-color);
 }
 
 :deep(.ProseMirror .rich-text-slash-command-placeholder::before) {
@@ -158,17 +160,17 @@ function handleFocusout(event: FocusEvent) {
 }
 
 :deep(.ProseMirror .selection) {
-  background-color: var(--rich-text-selection-color);
+  background-color: var(--rich-text-theme-selection-color);
   box-decoration-break: clone;
   box-shadow:
-    0 -0.2em 0 var(--rich-text-selection-color),
-    0 0.2em 0 var(--rich-text-selection-color);
+    0 -0.2em 0 var(--rich-text-theme-selection-color),
+    0 0.2em 0 var(--rich-text-theme-selection-color);
   -webkit-box-decoration-break: clone;
 }
 
 :deep(.ProseMirror img.ProseMirror-selectednode) {
-  border-radius: var(--radius-ui);
-  outline: 1px solid var(--color-primary-hover);
+  border-radius: var(--rich-text-theme-border-radius);
+  outline: 1px solid var(--rich-text-theme-primary-color-hover);
   outline-offset: 2px;
 }
 </style>

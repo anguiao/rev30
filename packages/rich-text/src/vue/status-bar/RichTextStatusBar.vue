@@ -10,7 +10,7 @@ defineProps<{
 
 <template>
   <div
-    class="text-text-3 flex min-h-8 w-full min-w-0 shrink-0 items-center border-t border-input-divider px-3 py-1 text-xs whitespace-nowrap"
+    class="flex min-h-8 w-full min-w-0 shrink-0 items-center border-t border-(--rich-text-theme-input-divider-color) px-3 py-1 text-xs whitespace-nowrap text-(--rich-text-theme-muted-text-color)"
   >
     <div
       v-if="statusBar.start.length > 0"

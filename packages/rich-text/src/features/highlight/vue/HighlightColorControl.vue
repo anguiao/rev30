@@ -287,7 +287,7 @@ defineExpose({
           @click="applyColor(color.value)"
         >
           <span
-            class="inline-block size-4 rounded-sm border border-input-border"
+            class="inline-block size-4 rounded-sm border border-(--rich-text-theme-input-border-color)"
             :style="{ backgroundColor: color.value }"
             aria-hidden="true"
           />

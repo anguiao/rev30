@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { NDropdown, NPopover } from 'naive-ui'
+import { NConfigProvider, NDropdown, NPopover } from 'naive-ui'
 import { defineComponent, h } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
@@ -122,6 +122,48 @@ async function selectDropdownCommand(wrapper: ReturnType<typeof mount>, commandK
 }
 
 describe('RichTextEditor', () => {
+  it('maps Naive UI theme vars to package-scoped theme defaults', async () => {
+    const wrapper = mount(NConfigProvider, {
+      props: {
+        themeOverrides: {
+          common: {
+            borderRadius: '7px',
+            primaryColor: '#123456',
+            primaryColorHover: '#234567',
+            popoverColor: '#345678',
+            inputColor: '#456789',
+            borderColor: '#56789a',
+            dividerColor: '#6789ab',
+            textColor3: '#789abc',
+          },
+        },
+      },
+      slots: {
+        default: () =>
+          h(RichTextEditor, {
+            modelValue: contentJson,
+            preset: noHeadingEditorPreset,
+          }),
+      },
+    })
+
+    await getEditable(wrapper)
+    const editor = wrapper.get<HTMLElement>('[data-test="rich-text-editor"]')
+
+    expect(editor.classes()).toContain('rich-text-theme')
+    expect(editor.element.style.getPropertyValue('--rich-text-default-border-radius')).toBe('7px')
+    expect(editor.element.style.getPropertyValue('--rich-text-default-primary-color')).toBe(
+      '#123456',
+    )
+    expect(editor.element.style.getPropertyValue('--rich-text-default-popover-color')).toBe(
+      '#345678',
+    )
+    expect(editor.element.style.getPropertyValue('--rich-text-default-input-color')).toBe('#456789')
+    expect(editor.element.style.getPropertyValue('--rich-text-default-muted-text-color')).toBe(
+      '#789abc',
+    )
+  })
+
   it('renders editor content, toolbar controls, and status bar items', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,

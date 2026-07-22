@@ -76,7 +76,10 @@ const options = computed<DropdownOption[]>(() =>
       label: language.label,
       icon: () =>
         h('span', {
-          class: ['inline-block size-4', active ? 'i-[lucide--check] text-primary' : undefined],
+          class: [
+            'inline-block size-4',
+            active ? 'i-[lucide--check] text-(--rich-text-theme-primary-color)' : undefined,
+          ],
           'aria-hidden': 'true',
         }),
       props: {

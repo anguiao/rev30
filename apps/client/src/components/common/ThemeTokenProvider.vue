@@ -12,20 +12,6 @@ const rootTokenStyle = computed(
   --app-primary-color-hover: ${themeVars.value.primaryColorHover};
   --app-primary-color-pressed: ${themeVars.value.primaryColorPressed};
   --app-primary-color-suppl: ${themeVars.value.primaryColorSuppl};
-  --app-popover-color: ${themeVars.value.popoverColor};
-  --app-input-color: ${themeVars.value.inputColor};
-  --app-input-color-focus: ${themeVars.value.inputColor};
-  --app-input-border-color: ${themeVars.value.borderColor};
-  --app-input-divider-color: ${themeVars.value.dividerColor};
-  --app-input-border-hover-color: ${themeVars.value.primaryColorHover};
-  --app-input-border-focus-color: ${themeVars.value.primaryColorHover};
-  --app-input-box-shadow-focus: 0 0 0 2px color-mix(in srgb, ${themeVars.value.primaryColor} 20%, transparent);
-}
-
-.dark {
-  --app-input-color-focus: color-mix(in srgb, ${themeVars.value.primaryColor} 10%, transparent);
-  --app-input-border-color: transparent;
-  --app-input-box-shadow-focus: 0 0 8px 0 color-mix(in srgb, ${themeVars.value.primaryColor} 30%, transparent);
 }`,
 )
 

@@ -101,7 +101,11 @@ const options = computed<DropdownOption[]>(() =>
       disabled: isItemDisabled(item),
       icon: () =>
         h('span', {
-          class: [item.icon, 'inline-block size-4', active ? 'text-primary' : undefined],
+          class: [
+            item.icon,
+            'inline-block size-4',
+            active ? 'text-(--rich-text-theme-primary-color)' : undefined,
+          ],
           'aria-hidden': 'true',
         }),
       props: {
@@ -120,7 +124,7 @@ function renderLabel(option: DropdownOption) {
     h('span', option.label as string),
     active
       ? h('span', {
-          class: 'i-[lucide--check] inline-block size-4 text-primary',
+          class: 'i-[lucide--check] inline-block size-4 text-(--rich-text-theme-primary-color)',
           'aria-hidden': 'true',
         })
       : null,

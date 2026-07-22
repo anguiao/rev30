@@ -3,6 +3,7 @@ import type { RichTextImageInput, RichTextImageNodeAttrs } from '../shared'
 import { NButton, NFormItem, NImage, NInput, NInputNumber, NModal, NSpin } from 'naive-ui'
 import { useDropZone, useEventListener, useFileDialog, useObjectUrl } from '@vueuse/core'
 import { computed, ref, shallowRef, watch } from 'vue'
+import { useRichTextThemeStyle } from '../../../vue/theme'
 
 const props = withDefaults(
   defineProps<{
@@ -18,6 +19,8 @@ const emit = defineEmits<{
   confirm: [attrs: RichTextImageInput]
   error: [error: unknown]
 }>()
+
+const richTextThemeStyle = useRichTextThemeStyle()
 
 const isExistingImage = computed(() => props.existingAttrs !== undefined)
 
@@ -271,7 +274,8 @@ function updateHeight(value: number | null) {
     :show="show"
     preset="card"
     title="图片"
-    class="w-[calc(100vw-32px)] max-w-lg"
+    class="rich-text-theme w-[calc(100vw-32px)] max-w-lg"
+    :style="richTextThemeStyle"
     @update:show="emit('update:show', $event)"
   >
     <NSpin :show="isUploading">
@@ -280,8 +284,12 @@ function updateHeight(value: number | null) {
           v-if="!isExistingImage"
           ref="dropZoneRef"
           data-test="rich-text-image-drop-zone"
-          class="flex w-fit rounded-ui transition-[outline-color,outline-width]"
-          :class="isOverDropZone ? 'outline-2 outline-offset-2 outline-primary outline-solid' : ''"
+          class="flex w-fit rounded-(--rich-text-theme-border-radius) transition-[outline-color,outline-width]"
+          :class="
+            isOverDropZone
+              ? 'outline-2 outline-offset-2 outline-(--rich-text-theme-primary-color) outline-solid'
+              : ''
+          "
         >
           <NImage
             v-if="displayPreviewSrc"
@@ -296,7 +304,7 @@ function updateHeight(value: number | null) {
           <div
             v-else
             data-test="rich-text-image-preview-area"
-            class="flex size-28 items-center justify-center rounded-ui border border-input-border bg-input"
+            class="flex size-28 items-center justify-center rounded-(--rich-text-theme-border-radius) border border-(--rich-text-theme-input-border-color) bg-(--rich-text-theme-input-color)"
           >
             <span class="i-[lucide--image] text-2xl opacity-20" aria-hidden="true" />
           </div>
@@ -314,7 +322,7 @@ function updateHeight(value: number | null) {
         <div
           v-else
           data-test="rich-text-image-preview-area"
-          class="flex size-28 items-center justify-center rounded-ui border border-input-border bg-input"
+          class="flex size-28 items-center justify-center rounded-(--rich-text-theme-border-radius) border border-(--rich-text-theme-input-border-color) bg-(--rich-text-theme-input-color)"
         >
           <span class="i-[lucide--image] text-2xl opacity-20" aria-hidden="true" />
         </div>

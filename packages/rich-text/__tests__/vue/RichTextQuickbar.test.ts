@@ -144,7 +144,8 @@ describe('RichTextQuickbar', () => {
       expect(element).not.toBeNull()
       return element!
     })
-    expect(quickbar.classList.contains('bg-popover')).toBe(true)
+    expect(quickbar.classList.contains('bg-(--rich-text-theme-popover-color)')).toBe(true)
+    expect(quickbar.classList.contains('border-(--rich-text-theme-input-border-color)')).toBe(true)
     expect(quickbar.parentElement?.tabIndex).toBe(-1)
 
     const toolbarOverlay = { close: () => undefined }

@@ -1,10 +1,10 @@
 import type { Editor } from '@tiptap/core'
-import { richTextToolbarComponent } from '../../vue/toolbar'
-import { richTextFeatureQuickbar } from '../../vue/quickbar'
-import { codeBlockFeature } from './shared'
-import { resolveRichTextCodeBlockTarget } from './target'
-import CodeBlockToolbarControl from './vue/CodeBlockToolbarControl.vue'
-import CodeBlockQuickbar from './vue/CodeBlockQuickbar.vue'
+import { richTextToolbarComponent } from '../../../vue/toolbar'
+import { richTextFeatureQuickbar } from '../../../vue/quickbar'
+import { codeBlockFeature } from '../shared'
+import { resolveRichTextCodeBlockTarget } from '../target'
+import CodeBlockToolbarControl from './CodeBlockToolbarControl.vue'
+import CodeBlockQuickbar from './CodeBlockQuickbar.vue'
 
 export const codeBlockLanguageOptions = [
   { label: '纯文本', value: 'plaintext' },

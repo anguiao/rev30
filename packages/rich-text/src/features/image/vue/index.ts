@@ -1,15 +1,15 @@
-import { richTextFeatureQuickbar } from '../../vue/quickbar'
-import { richTextSlashUiCommand } from '../../vue/slash-command'
-import { richTextToolbarComponent } from '../../vue/toolbar'
-import { insertImageActionItem } from './editor'
-import { imageFeature } from './shared'
+import { richTextFeatureQuickbar } from '../../../vue/quickbar'
+import { richTextSlashUiCommand } from '../../../vue/slash-command'
+import { richTextToolbarComponent } from '../../../vue/toolbar'
+import { insertImageActionItem } from '../editor'
+import { imageFeature } from '../shared'
 import {
   getRichTextImageDialogController,
   resolveRichTextImageAnchorTarget,
   resolveRichTextImageQuickbarTarget,
-} from './vue/dialog-controller'
-import ImageQuickbar from './vue/ImageQuickbar.vue'
-import ImageToolbarControl from './vue/ImageToolbarControl.vue'
+} from './dialog-controller'
+import ImageQuickbar from './ImageQuickbar.vue'
+import ImageToolbarControl from './ImageToolbarControl.vue'
 
 export interface RichTextImageUploadOptions {
   upload: (file: File) => Promise<{ src: string }>

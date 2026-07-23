@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core'
 import { markRaw, type Component, type ComponentInstance } from 'vue'
-import type { RichTextFeature } from '../core/feature'
+import type { RichTextFeature } from '../../core/feature'
 
 export interface RichTextStatusBarItemInjectedProps {
   editor: Editor

@@ -1,14 +1,14 @@
 import type { Editor } from '@tiptap/core'
 import { markRaw, type Component, type ComponentInstance } from 'vue'
-import type { RichTextFeature } from '../core/feature'
+import type { RichTextFeature } from '../../core/feature'
 import {
   canRunRichTextAction,
   type RichTextAction,
   type RichTextActionItem,
   type RichTextIconClass,
-} from '../editor/action'
+} from '../../editor/action'
 
-export type { RichTextIconClass } from '../editor/action'
+export type { RichTextIconClass } from '../../editor/action'
 
 export type RichTextToolbarItem = RichTextActionItem
 

@@ -1,9 +1,9 @@
-import { richTextToolbarComponent } from '../../vue/toolbar'
-import { richTextFeatureQuickbar, richTextQuickbarComponent } from '../../vue/quickbar'
-import { linkFeature } from './shared'
-import { resolveRichTextLinkTarget } from './target'
-import LinkControl from './vue/LinkControl.vue'
-import LinkQuickbar from './vue/LinkQuickbar.vue'
+import { richTextToolbarComponent } from '../../../vue/toolbar'
+import { richTextFeatureQuickbar, richTextQuickbarComponent } from '../../../vue/quickbar'
+import { linkFeature } from '../shared'
+import { resolveRichTextLinkTarget } from '../target'
+import LinkControl from './LinkControl.vue'
+import LinkQuickbar from './LinkQuickbar.vue'
 
 export const linkToolbarControl = richTextToolbarComponent({
   feature: linkFeature,

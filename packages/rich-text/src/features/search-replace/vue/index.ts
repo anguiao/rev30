@@ -1,6 +1,6 @@
-import { richTextToolbarComponent } from '../../vue/toolbar'
-import { searchReplaceFeature } from './shared'
-import SearchReplaceToolbarControl from './vue/SearchReplaceToolbarControl.vue'
+import { richTextToolbarComponent } from '../../../vue/toolbar'
+import { searchReplaceFeature } from '../shared'
+import SearchReplaceToolbarControl from './SearchReplaceToolbarControl.vue'
 
 export const searchReplaceToolbarControl = richTextToolbarComponent({
   feature: searchReplaceFeature,

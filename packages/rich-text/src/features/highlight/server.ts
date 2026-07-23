@@ -1,5 +1,5 @@
 import { defineRichTextServerFeature } from '../../server/feature'
-import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
+import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
 import { highlightColors } from './colors'
 import { highlightFeature } from './shared'
 

@@ -1,7 +1,7 @@
 import type { AnyExtension } from '@tiptap/core'
 import type { RichTextFeature } from '../core/feature'
 import type { RichTextPreset } from '../core/preset'
-import { freezeRichTextHtmlPolicy, type RichTextHtmlPolicy } from './policy'
+import type { RichTextHtmlPolicy } from './sanitize'
 
 export interface RichTextServerFeature<Feature extends RichTextFeature = RichTextFeature> {
   readonly feature: Feature
@@ -11,19 +11,13 @@ export interface RichTextServerFeature<Feature extends RichTextFeature = RichTex
 
 export function defineRichTextServerFeature<const Feature extends RichTextFeature>(
   feature: Feature,
-  implementation: Omit<RichTextServerFeature<Feature>, 'feature' | 'htmlPolicy'> & {
-    readonly htmlPolicy: RichTextHtmlPolicy
-  },
+  implementation: Omit<RichTextServerFeature<Feature>, 'feature'>,
 ): RichTextServerFeature<Feature> {
   if (!feature.serverImplementation) {
     throw new Error(`Rich text feature "${feature.key}" does not declare the server implementation`)
   }
 
-  return Object.freeze({
-    feature,
-    ...implementation,
-    htmlPolicy: freezeRichTextHtmlPolicy(implementation.htmlPolicy),
-  })
+  return { feature, ...implementation }
 }
 
 interface RichTextServerExtensionPreset extends RichTextPreset {

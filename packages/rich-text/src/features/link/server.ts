@@ -1,5 +1,5 @@
 import { defineRichTextServerFeature } from '../../server/feature'
-import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
+import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
 import { linkAllowedSchemes, normalizeLinkHref } from './href'
 import { linkFeature } from './shared'
 

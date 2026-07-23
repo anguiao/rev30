@@ -1,5 +1,5 @@
 import { defineRichTextServerFeature } from '../../server/feature'
-import type { RichTextHtmlPolicy } from '../../server/policy'
+import type { RichTextHtmlPolicy } from '../../server/sanitize'
 import { headingFeature } from './shared'
 
 export const headingHtmlPolicy: RichTextHtmlPolicy = {

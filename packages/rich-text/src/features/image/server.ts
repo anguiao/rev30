@@ -1,6 +1,6 @@
 import { RichTextContentInvalidError } from '../../server/errors'
 import { defineRichTextServerFeature } from '../../server/feature'
-import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
+import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
 import { buildImageStyle, normalizeImageSize } from './dimensions'
 import { imageFeature } from './shared'
 

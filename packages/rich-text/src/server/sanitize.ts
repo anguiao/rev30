@@ -1,5 +1,15 @@
 import sanitizeHtml from 'sanitize-html'
-import type { RichTextHtmlPolicy, RichTextTagTransform } from './policy'
+
+export type RichTextTagTransform = (input: sanitizeHtml.Tag) => sanitizeHtml.Tag
+
+export interface RichTextHtmlPolicy {
+  readonly allowedTags?: readonly string[]
+  readonly allowedAttributes?: Readonly<Record<string, readonly sanitizeHtml.AllowedAttribute[]>>
+  readonly allowedSchemes?: readonly string[]
+  readonly allowedSchemesByTag?: Readonly<Record<string, readonly string[]>>
+  readonly allowedStyles?: Readonly<Record<string, Readonly<Record<string, readonly RegExp[]>>>>
+  readonly transformTags?: Readonly<Record<string, readonly RichTextTagTransform[]>>
+}
 
 const defaultAllowedSchemes = ['http', 'https', 'mailto', 'tel']
 type RichTextTagTransformPipelines = Readonly<Record<string, readonly RichTextTagTransform[]>>
@@ -86,12 +96,6 @@ function mergeRichTextHtmlPolicies(policies: readonly RichTextHtmlPolicy[]): san
     allowProtocolRelative: false,
     transformTags: toSanitizeHtmlTransformTags(transformTags),
   }
-}
-
-export function createRichTextHtmlSanitizer(policies: readonly RichTextHtmlPolicy[]) {
-  const options = mergeRichTextHtmlPolicies(policies)
-
-  return (html: string) => sanitizeHtml(html, options)
 }
 
 export function sanitizeRichTextHtml(html: string, policies: readonly RichTextHtmlPolicy[]) {

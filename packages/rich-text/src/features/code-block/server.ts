@@ -1,7 +1,7 @@
 import { mergeAttributes } from '@tiptap/core'
 import CodeBlock from '@tiptap/extension-code-block'
 import { defineRichTextServerFeature } from '../../server/feature'
-import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/policy'
+import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
 import { createCodeBlockLanguageAttribute, normalizeCodeBlockLanguage } from './languages'
 import { codeBlockFeature, richTextCodeBlockCodeStyle, richTextCodeBlockStyle } from './shared'
 

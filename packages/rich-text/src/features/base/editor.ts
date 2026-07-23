@@ -1,7 +1,7 @@
 import Dropcursor from '@tiptap/extension-dropcursor'
 import Gapcursor from '@tiptap/extension-gapcursor'
 import { Selection } from '@tiptap/extensions/selection'
-import { defineRichTextAction } from '../../editor/action'
+import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import { baseFeature } from './shared'
 
@@ -14,6 +14,12 @@ export const paragraphAction = defineRichTextAction(baseFeature, {
         ? chain().focus().run()
         : chain().focus().setParagraph().run(),
   isActive: (editor) => editor.isActive('paragraph'),
+})
+
+export const paragraphActionItem = defineRichTextActionItem(paragraphAction, {
+  label: '正文',
+  icon: 'i-[lucide--pilcrow]',
+  keywords: ['段落', 'text'],
 })
 
 export const baseEditorFeature = defineRichTextEditorFeature(baseFeature, {

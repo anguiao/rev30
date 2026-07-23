@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/core'
 import { PluginKey } from '@tiptap/pm/state'
 import { markRaw, type Component, type ComponentInstance } from 'vue'
 import type { RichTextFeature } from '../core/feature'
-import type { RichTextActionItem } from './action-item'
+import type { RichTextActionItem } from '../editor/action'
 
 export interface RichTextQuickbarInjectedProps {
   editor: Editor

@@ -1,5 +1,6 @@
-import { defineRichTextAction } from '../../editor/action'
+import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
+import { textAlignOptions } from './alignments'
 import { textAlignFeature } from './shared'
 
 export const textAlignActions = [
@@ -44,5 +45,12 @@ export const textAlignActions = [
       editor.isActive('heading', { textAlign: 'justify' }),
   }),
 ] as const
+
+export const textAlignActionItems = textAlignOptions.map((alignment, index) =>
+  defineRichTextActionItem(textAlignActions[index]!, {
+    label: alignment.label,
+    icon: alignment.icon,
+  }),
+)
 
 export const textAlignEditorFeature = defineRichTextEditorFeature(textAlignFeature, {})

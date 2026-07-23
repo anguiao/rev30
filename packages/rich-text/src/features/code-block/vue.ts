@@ -1,8 +1,6 @@
 import type { Editor } from '@tiptap/core'
 import { richTextToolbarComponent } from '../../vue/toolbar'
 import { richTextFeatureQuickbar } from '../../vue/quickbar'
-import { defineRichTextActionItem } from '../../vue/action-item'
-import { codeBlockAction } from './editor'
 import { codeBlockFeature } from './shared'
 import { resolveRichTextCodeBlockTarget } from './target'
 import CodeBlockToolbarControl from './vue/CodeBlockToolbarControl.vue'
@@ -22,11 +20,6 @@ export const codeBlockLanguageOptions = [
   { label: 'YAML', value: 'yaml' },
   { label: 'Bash', value: 'bash' },
 ] as const
-
-export const codeBlockActionItem = defineRichTextActionItem(codeBlockAction, {
-  label: '代码块',
-  icon: 'i-[lucide--square-code]',
-})
 
 export const codeBlockToolbarControl = richTextToolbarComponent({
   feature: codeBlockFeature,

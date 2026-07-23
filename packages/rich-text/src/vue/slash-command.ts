@@ -2,7 +2,7 @@ import type { Editor, Range } from '@tiptap/core'
 import { closeHistory } from '@tiptap/pm/history'
 import { markRaw, type Component } from 'vue'
 import type { RichTextFeature } from '../core/feature'
-import type { RichTextActionItem, RichTextIconClass } from './action-item'
+import type { RichTextActionItem, RichTextIconClass } from '../editor/action'
 
 interface RichTextSlashCommandBase {
   readonly type: 'action' | 'ui'
@@ -42,10 +42,7 @@ export interface RichTextSlashCommandConfig {
   readonly component?: Component
 }
 
-export function richTextSlashCommandAction(
-  item: RichTextActionItem,
-  keywords: readonly string[],
-): RichTextSlashActionCommand {
+export function richTextSlashCommandAction(item: RichTextActionItem): RichTextSlashActionCommand {
   return Object.freeze({
     type: 'action',
     feature: item.action.feature,
@@ -53,19 +50,26 @@ export function richTextSlashCommandAction(
     label: item.label,
     icon: item.icon,
     item,
-    keywords: Object.freeze([...keywords]),
+    keywords: item.keywords,
   })
 }
 
-export function richTextSlashUiCommand(
-  command: Omit<RichTextSlashUiCommand, 'type' | 'keywords'> & {
-    readonly keywords: readonly string[]
-  },
+export function richTextSlashUiCommand<
+  const Feature extends RichTextFeature,
+  const Key extends string,
+  Arguments extends unknown[],
+>(
+  item: RichTextActionItem<Feature, Key, Arguments>,
+  command: Pick<RichTextSlashUiCommand, 'isEnabled' | 'run'>,
 ): RichTextSlashUiCommand {
   return Object.freeze({
     ...command,
     type: 'ui',
-    keywords: Object.freeze([...command.keywords]),
+    feature: item.action.feature,
+    key: item.action.key,
+    label: item.label,
+    icon: item.icon,
+    keywords: item.keywords,
   })
 }
 
@@ -117,7 +121,7 @@ export function filterRichTextSlashCommands(config: RichTextSlashCommandConfig, 
 
   return config.groups.flatMap((group) => {
     const commands = group.commands.filter((command) => {
-      return [command.label, ...command.keywords].some((term) =>
+      return [command.label, command.key, ...command.keywords].some((term) =>
         term.toLocaleLowerCase().includes(normalizedQuery),
       )
     })

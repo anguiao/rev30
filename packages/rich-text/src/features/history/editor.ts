@@ -1,5 +1,5 @@
 import { UndoRedo } from '@tiptap/extensions/undo-redo'
-import { defineRichTextAction } from '../../editor/action'
+import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import { historyFeature } from './shared'
 
@@ -17,6 +17,17 @@ export const historyActions = [
       () =>
       ({ chain }) =>
         chain().focus().redo().run(),
+  }),
+] as const
+
+export const historyActionItems = [
+  defineRichTextActionItem(historyActions[0], {
+    label: '撤销',
+    icon: 'i-[lucide--undo-2]',
+  }),
+  defineRichTextActionItem(historyActions[1], {
+    label: '重做',
+    icon: 'i-[lucide--redo-2]',
   }),
 ] as const
 

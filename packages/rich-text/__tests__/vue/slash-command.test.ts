@@ -1,18 +1,19 @@
 import { describe, expect, it, vi } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
-import { canRunRichTextAction, defineRichTextAction } from '../../src/editor/action'
+import {
+  canRunRichTextAction,
+  defineRichTextAction,
+  defineRichTextActionItem,
+} from '../../src/editor/action'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
-import { baseEditorFeature } from '../../src/features/base/editor'
+import { baseEditorFeature, paragraphActionItem } from '../../src/features/base/editor'
 import { baseFeature } from '../../src/features/base/shared'
-import { paragraphActionItem } from '../../src/features/base/vue'
-import { headingEditorFeature } from '../../src/features/heading/editor'
+import { headingActionItems, headingEditorFeature } from '../../src/features/heading/editor'
 import { headingFeature } from '../../src/features/heading/shared'
-import { headingToolbarItems } from '../../src/features/heading/vue'
 import { historyEditorFeature } from '../../src/features/history/editor'
 import { historyFeature } from '../../src/features/history/shared'
 import { createImageSlashCommand } from '../../src/features/image/vue'
 import { getRichTextImageDialogController } from '../../src/features/image/vue/dialog-controller'
-import { defineRichTextActionItem } from '../../src/vue/action-item'
 import {
   canRunRichTextSlashCommand,
   defineRichTextSlashCommand,
@@ -37,16 +38,8 @@ function createEditor(content = '<p></p>') {
   })
 }
 
-const paragraphCommand = richTextSlashCommandAction(paragraphActionItem, [
-  '段落',
-  'paragraph',
-  'text',
-])
-const headingCommand = richTextSlashCommandAction(headingToolbarItems[0], [
-  '标题1',
-  'h1',
-  'heading1',
-])
+const paragraphCommand = richTextSlashCommandAction(paragraphActionItem)
+const headingCommand = richTextSlashCommandAction(headingActionItems[0])
 const imageCommand = createImageSlashCommand({ upload: vi.fn() })
 
 function createConfig() {
@@ -70,14 +63,13 @@ function createConfig() {
 }
 
 describe('rich text slash command model', () => {
-  it('freezes groups, commands, and keywords and rejects duplicate keys', () => {
+  it('freezes groups and commands and rejects duplicate keys', () => {
     const config = createConfig()
 
     expect(Object.isFrozen(config)).toBe(true)
     expect(Object.isFrozen(config.groups)).toBe(true)
     expect(Object.isFrozen(config.groups[0])).toBe(true)
     expect(Object.isFrozen(config.groups[0]?.commands)).toBe(true)
-    expect(Object.isFrozen(paragraphCommand.keywords)).toBe(true)
 
     expect(() =>
       defineRichTextSlashCommand([
@@ -105,7 +97,7 @@ describe('rich text slash command model', () => {
       { key: 'basic', commands: [{ key: 'heading-1' }] },
     ])
     expect(filterRichTextSlashCommands(config, 'PIC')).toMatchObject([
-      { key: 'insert', commands: [{ key: 'image' }] },
+      { key: 'insert', commands: [{ key: 'insert-image' }] },
     ])
     expect(filterRichTextSlashCommands(config, 'zhengwen')).toEqual([])
   })
@@ -147,7 +139,6 @@ describe('rich text slash command model', () => {
         label: '空段落',
         icon: 'i-[lucide--pilcrow]',
       }),
-      [],
     )
     const editor = createEditor('<p>/empty</p>')
 
@@ -170,7 +161,6 @@ describe('rich text slash command model', () => {
         label: '仅模拟',
         icon: 'i-[lucide--circle-dashed]',
       }),
-      [],
     )
     const editor = createEditor('<p>/fail</p>')
     const update = vi.fn()

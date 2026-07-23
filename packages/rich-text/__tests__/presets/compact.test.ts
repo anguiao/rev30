@@ -222,7 +222,7 @@ describe('all rich text preset', () => {
     ).toEqual([
       ['paragraph', 'heading-1', 'heading-2', 'heading-3', 'blockquote'],
       ['bullet-list', 'ordered-list'],
-      ['code-block', 'horizontal-rule', 'image'],
+      ['code-block', 'horizontal-rule', 'insert-image'],
     ])
   })
 

@@ -1,6 +1,7 @@
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
+import { defineRichTextAction, defineRichTextActionItem } from '../../src/editor/action'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
 import { baseEditorFeature } from '../../src/features/base/editor'
 import { baseFeature } from '../../src/features/base/shared'
@@ -36,12 +37,19 @@ function createUiCommand(
     keywords?: readonly string[]
   } = {},
 ) {
-  return richTextSlashUiCommand({
-    feature: baseFeature,
-    key,
-    label: key,
-    icon: 'i-[lucide--pilcrow]',
-    keywords: options.keywords ?? [],
+  const item = defineRichTextActionItem(
+    defineRichTextAction(baseFeature, {
+      key,
+      command: () => () => true,
+    }),
+    {
+      label: key,
+      icon: 'i-[lucide--pilcrow]',
+      keywords: options.keywords ?? [],
+    },
+  )
+
+  return richTextSlashUiCommand(item, {
     isEnabled: () => options.enabled ?? true,
     run: options.run ?? (() => true),
   })

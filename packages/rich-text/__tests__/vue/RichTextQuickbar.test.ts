@@ -7,10 +7,10 @@ import { defineComponent, h, markRaw, type PropType } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { defineRichTextFeature } from '../../src/core/feature'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
-import { boldToolbarItem } from '../../src/features/bold/vue'
+import { boldActionItem } from '../../src/features/bold/editor'
 import { codeBlockEditorFeature } from '../../src/features/code-block/editor'
 import { codeBlockQuickbar } from '../../src/features/code-block/vue'
-import { italicToolbarItem } from '../../src/features/italic/vue'
+import { italicActionItem } from '../../src/features/italic/editor'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 import {
   defineRichTextQuickbar,
@@ -210,8 +210,8 @@ describe('RichTextQuickbar', () => {
       editor,
       defineRichTextQuickbar({
         text: {
-          primary: [richTextQuickbarAction(boldToolbarItem)],
-          more: [richTextQuickbarAction(italicToolbarItem)],
+          primary: [richTextQuickbarAction(boldActionItem)],
+          more: [richTextQuickbarAction(italicActionItem)],
         },
       }),
     )

@@ -1,5 +1,5 @@
 import { NodeSelection, type Transaction } from '@tiptap/pm/state'
-import { defineRichTextAction } from '../../editor/action'
+import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import { imageFeature, type RichTextImageAttrsPatch, type RichTextImageInput } from './shared'
 
@@ -71,6 +71,12 @@ export const insertImageAction = defineRichTextAction(imageFeature, {
           return true
         })
         .run(),
+})
+
+export const insertImageActionItem = defineRichTextActionItem(insertImageAction, {
+  label: '图片',
+  icon: 'i-[lucide--image]',
+  keywords: ['img', 'picture'],
 })
 
 export const updateImageAction = defineRichTextAction(imageFeature, {

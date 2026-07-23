@@ -1,19 +1,16 @@
 import type { Editor } from '@tiptap/core'
 import { markRaw, type Component, type ComponentInstance } from 'vue'
 import type { RichTextFeature } from '../core/feature'
-import { canRunRichTextAction } from '../editor/action'
 import {
-  defineRichTextActionItem,
+  canRunRichTextAction,
+  type RichTextAction,
   type RichTextActionItem,
-  type RichTextActionItemAction,
   type RichTextIconClass,
-} from './action-item'
+} from '../editor/action'
 
-export type { RichTextIconClass } from './action-item'
+export type { RichTextIconClass } from '../editor/action'
 
-export type RichTextToolbarItem<
-  Action extends RichTextActionItemAction = RichTextActionItemAction,
-> = RichTextActionItem<Action>
+export type RichTextToolbarItem = RichTextActionItem
 
 export interface RichTextToolbarButtonControl {
   readonly type: 'button'
@@ -70,13 +67,6 @@ export interface RichTextToolbarGroup {
 
 export interface RichTextToolbarConfig {
   readonly groups: readonly RichTextToolbarGroup[]
-}
-
-export function defineRichTextToolbarItem<const Action extends RichTextActionItemAction>(
-  action: Action,
-  item: Omit<RichTextToolbarItem<Action>, 'action'>,
-): RichTextToolbarItem<Action> {
-  return defineRichTextActionItem(action, item)
 }
 
 export function defineRichTextToolbar(
@@ -170,6 +160,6 @@ export function getActiveRichTextToolbarItem(
   return items.find((item) => item.action.isActive?.(editor))
 }
 
-export function isRichTextActionDisabled(action: RichTextActionItemAction, editor: Editor) {
+export function isRichTextActionDisabled(action: RichTextAction, editor: Editor) {
   return !canRunRichTextAction(editor, action)
 }

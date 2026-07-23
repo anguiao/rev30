@@ -2,7 +2,7 @@ import { mergeAttributes } from '@tiptap/core'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { Plugin } from '@tiptap/pm/state'
 import { common, createLowlight } from 'lowlight'
-import { defineRichTextAction } from '../../editor/action'
+import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import { createCodeBlockLanguageAttribute } from './languages'
 import { codeBlockFeature, richTextCodeBlockCodeStyle } from './shared'
@@ -81,6 +81,12 @@ export const codeBlockAction = defineRichTextAction(codeBlockFeature, {
     ({ chain }) =>
       chain().focus().toggleCodeBlock().run(),
   isActive: (editor) => editor.isActive('codeBlock'),
+})
+
+export const codeBlockActionItem = defineRichTextActionItem(codeBlockAction, {
+  label: '代码块',
+  icon: 'i-[lucide--square-code]',
+  keywords: ['代码', 'codeblock'],
 })
 
 export const setCodeBlockLanguageAction = defineRichTextAction(codeBlockFeature, {

@@ -1,6 +1,7 @@
 import { richTextFeatureQuickbar } from '../../vue/quickbar'
 import { richTextSlashUiCommand } from '../../vue/slash-command'
 import { richTextToolbarComponent } from '../../vue/toolbar'
+import { insertImageActionItem } from './editor'
 import { imageFeature } from './shared'
 import {
   getRichTextImageDialogController,
@@ -35,12 +36,7 @@ export function createImageQuickbar(options: RichTextImageUploadOptions) {
 }
 
 export function createImageSlashCommand(options: RichTextImageUploadOptions) {
-  return richTextSlashUiCommand({
-    feature: imageFeature,
-    key: imageFeature.key,
-    label: '图片',
-    icon: 'i-[lucide--image]',
-    keywords: ['image', 'img', 'picture'],
+  return richTextSlashUiCommand(insertImageActionItem, {
     run: ({ editor, anchor }) => {
       const target = resolveRichTextImageAnchorTarget(editor, anchor)
 

@@ -1,16 +1,11 @@
 import { baseEditorFeature } from '../../features/base/editor'
-import { boldEditorFeature } from '../../features/bold/editor'
-import { boldToolbarItem } from '../../features/bold/vue'
-import { headingEditorFeature } from '../../features/heading/editor'
-import { headingToolbarItems } from '../../features/heading/vue'
-import { historyEditorFeature } from '../../features/history/editor'
-import { historyToolbarItems } from '../../features/history/vue'
-import { italicEditorFeature } from '../../features/italic/editor'
-import { italicToolbarItem } from '../../features/italic/vue'
+import { boldActionItem, boldEditorFeature } from '../../features/bold/editor'
+import { headingActionItems, headingEditorFeature } from '../../features/heading/editor'
+import { historyActionItems, historyEditorFeature } from '../../features/history/editor'
+import { italicActionItem, italicEditorFeature } from '../../features/italic/editor'
 import { linkEditorFeature } from '../../features/link/editor'
 import { linkQuickbar, linkQuickbarControl, linkToolbarControl } from '../../features/link/vue'
-import { listEditorFeature } from '../../features/list/editor'
-import { listToolbarItems } from '../../features/list/vue'
+import { listActionItems, listEditorFeature } from '../../features/list/editor'
 import { compactRichTextPreset } from '../../presets/compact'
 import {
   defineRichTextToolbar,
@@ -31,10 +26,10 @@ const compactEditorFeatures = [
 ] as const
 
 const compactRichTextToolbar = defineRichTextToolbar([
-  { key: 'history', controls: historyToolbarItems.map(button) },
+  { key: 'history', controls: historyActionItems.map(button) },
   {
     key: 'marks',
-    controls: [button(boldToolbarItem), button(italicToolbarItem), linkToolbarControl],
+    controls: [button(boldActionItem), button(italicActionItem), linkToolbarControl],
   },
   {
     key: 'blocks',
@@ -43,13 +38,13 @@ const compactRichTextToolbar = defineRichTextToolbar([
         key: 'heading',
         label: '标题',
         icon: 'i-[lucide--heading]',
-        items: headingToolbarItems,
+        items: headingActionItems,
       }),
       dropdown({
         key: 'list',
         label: '列表',
         icon: 'i-[lucide--list]',
-        items: listToolbarItems,
+        items: listActionItems,
       }),
     ],
   },
@@ -58,8 +53,8 @@ const compactRichTextToolbar = defineRichTextToolbar([
 const compactRichTextQuickbar = defineRichTextQuickbar({
   text: {
     primary: [
-      richTextQuickbarAction(boldToolbarItem),
-      richTextQuickbarAction(italicToolbarItem),
+      richTextQuickbarAction(boldActionItem),
+      richTextQuickbarAction(italicActionItem),
       linkQuickbarControl,
     ],
     more: [],

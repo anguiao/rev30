@@ -3,9 +3,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
-import { baseEditorFeature } from '../../src/features/base/editor'
+import { baseEditorFeature, paragraphActionItem } from '../../src/features/base/editor'
 import { baseFeature } from '../../src/features/base/shared'
-import { paragraphActionItem } from '../../src/features/base/vue'
 import { slashCommandEditorFeature } from '../../src/features/slash-command/editor'
 import { slashCommandFeature } from '../../src/features/slash-command/shared'
 import { defineRichTextSlashCommand, richTextSlashCommandAction } from '../../src/vue/slash-command'
@@ -21,7 +20,7 @@ const config = defineRichTextSlashCommand([
   {
     key: 'basic',
     label: '基础块',
-    commands: [richTextSlashCommandAction(paragraphActionItem, ['段落', 'paragraph', 'text'])],
+    commands: [richTextSlashCommandAction(paragraphActionItem)],
   },
 ])
 

@@ -1,6 +1,8 @@
 import type { Command, Editor } from '@tiptap/core'
 import type { RichTextFeature } from '../core/feature'
 
+export type RichTextIconClass = `i-[${string}--${string}]`
+
 export interface RichTextAction<
   Feature extends RichTextFeature = RichTextFeature,
   Key extends string = string,
@@ -10,6 +12,17 @@ export interface RichTextAction<
   readonly key: Key
   readonly command: (...arguments_: Arguments) => Command
   readonly isActive?: (editor: Editor, ...arguments_: Arguments) => boolean
+}
+
+export interface RichTextActionItem<
+  Feature extends RichTextFeature = RichTextFeature,
+  Key extends string = string,
+  Arguments extends unknown[] = [],
+> {
+  readonly action: RichTextAction<Feature, Key, Arguments>
+  readonly label: string
+  readonly icon: RichTextIconClass
+  readonly keywords: readonly string[]
 }
 
 type RichTextActionDefinition<Key extends string, Arguments extends unknown[]> = Omit<
@@ -25,10 +38,27 @@ export function defineRichTextAction<
   feature: Feature,
   action: RichTextActionDefinition<Key, Arguments>,
 ): RichTextAction<Feature, Key, Arguments> {
-  return Object.freeze({
+  return {
     feature,
     ...action,
-  })
+  }
+}
+
+export function defineRichTextActionItem<
+  const Feature extends RichTextFeature,
+  const Key extends string,
+  Arguments extends unknown[],
+>(
+  action: RichTextAction<Feature, Key, Arguments>,
+  item: Omit<RichTextActionItem<Feature, Key, Arguments>, 'action' | 'keywords'> & {
+    readonly keywords?: readonly string[]
+  },
+): RichTextActionItem<Feature, Key, Arguments> {
+  return {
+    action,
+    ...item,
+    keywords: item.keywords ?? [],
+  }
 }
 
 export function runRichTextAction<

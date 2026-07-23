@@ -1,25 +1,18 @@
-import { baseEditorFeature } from '../../features/base/editor'
-import { paragraphActionItem } from '../../features/base/vue'
-import { blockquoteEditorFeature } from '../../features/blockquote/editor'
-import { blockquoteToolbarItem } from '../../features/blockquote/vue'
-import { boldEditorFeature } from '../../features/bold/editor'
-import { boldToolbarItem } from '../../features/bold/vue'
+import { baseEditorFeature, paragraphActionItem } from '../../features/base/editor'
+import { blockquoteActionItem, blockquoteEditorFeature } from '../../features/blockquote/editor'
+import { boldActionItem, boldEditorFeature } from '../../features/bold/editor'
 import { characterCountEditorFeature } from '../../features/character-count/editor'
 import { characterCountStatusBarItem } from '../../features/character-count/vue'
-import { codeBlockEditorFeature } from '../../features/code-block/editor'
-import {
-  codeBlockActionItem,
-  codeBlockQuickbar,
-  codeBlockToolbarControl,
-} from '../../features/code-block/vue'
-import { headingEditorFeature } from '../../features/heading/editor'
-import { headingToolbarItems } from '../../features/heading/vue'
+import { codeBlockActionItem, codeBlockEditorFeature } from '../../features/code-block/editor'
+import { codeBlockQuickbar, codeBlockToolbarControl } from '../../features/code-block/vue'
+import { headingActionItems, headingEditorFeature } from '../../features/heading/editor'
 import { highlightEditorFeature } from '../../features/highlight/editor'
 import { highlightQuickbarControl, highlightToolbarControl } from '../../features/highlight/vue'
-import { historyEditorFeature } from '../../features/history/editor'
-import { historyToolbarItems } from '../../features/history/vue'
-import { horizontalRuleEditorFeature } from '../../features/horizontal-rule/editor'
-import { horizontalRuleToolbarItem } from '../../features/horizontal-rule/vue'
+import { historyActionItems, historyEditorFeature } from '../../features/history/editor'
+import {
+  horizontalRuleActionItem,
+  horizontalRuleEditorFeature,
+} from '../../features/horizontal-rule/editor'
 import { imageEditorFeature } from '../../features/image/editor'
 import {
   createImageSlashCommand,
@@ -28,27 +21,23 @@ import {
   type RichTextImageUploadOptions,
 } from '../../features/image/vue'
 import ImageDialogHost from '../../features/image/vue/ImageDialogHost.vue'
-import { inlineCodeEditorFeature } from '../../features/inline-code/editor'
-import { inlineCodeToolbarItem } from '../../features/inline-code/vue'
-import { italicEditorFeature } from '../../features/italic/editor'
-import { italicToolbarItem } from '../../features/italic/vue'
+import { inlineCodeActionItem, inlineCodeEditorFeature } from '../../features/inline-code/editor'
+import { italicActionItem, italicEditorFeature } from '../../features/italic/editor'
 import { linkEditorFeature } from '../../features/link/editor'
 import { linkQuickbar, linkQuickbarControl, linkToolbarControl } from '../../features/link/vue'
-import { listEditorFeature } from '../../features/list/editor'
-import { listToolbarItems } from '../../features/list/vue'
-import { removeFormatEditorFeature } from '../../features/remove-format/editor'
-import { removeFormatToolbarItem } from '../../features/remove-format/vue'
+import { listActionItems, listEditorFeature } from '../../features/list/editor'
+import {
+  removeFormatActionItem,
+  removeFormatEditorFeature,
+} from '../../features/remove-format/editor'
 import { searchReplaceEditorFeature } from '../../features/search-replace/editor'
 import { searchReplaceToolbarControl } from '../../features/search-replace/vue'
 import { slashCommandEditorFeature } from '../../features/slash-command/editor'
-import { strikeEditorFeature } from '../../features/strike/editor'
-import { strikeToolbarItem } from '../../features/strike/vue'
-import { textAlignEditorFeature } from '../../features/text-align/editor'
-import { textAlignToolbarItems } from '../../features/text-align/vue'
+import { strikeActionItem, strikeEditorFeature } from '../../features/strike/editor'
+import { textAlignActionItems, textAlignEditorFeature } from '../../features/text-align/editor'
 import { textStyleEditorFeature } from '../../features/text-style/editor'
 import { textStyleToolbarControl } from '../../features/text-style/vue'
-import { underlineEditorFeature } from '../../features/underline/editor'
-import { underlineToolbarItem } from '../../features/underline/vue'
+import { underlineActionItem, underlineEditorFeature } from '../../features/underline/editor'
 import { allRichTextPreset } from '../../presets/all'
 import { defineRichTextQuickbar, richTextQuickbarAction } from '../quickbar'
 import { defineRichTextSlashCommand, richTextSlashCommandAction } from '../slash-command'
@@ -93,19 +82,19 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
   return defineRichTextToolbar([
     {
       key: 'history',
-      controls: [...historyToolbarItems.map(button), searchReplaceToolbarControl],
+      controls: [...historyActionItems.map(button), searchReplaceToolbarControl],
     },
     {
       key: 'marks',
       controls: [
-        button(boldToolbarItem),
-        button(italicToolbarItem),
-        button(underlineToolbarItem),
-        button(strikeToolbarItem),
-        button(inlineCodeToolbarItem),
+        button(boldActionItem),
+        button(italicActionItem),
+        button(underlineActionItem),
+        button(strikeActionItem),
+        button(inlineCodeActionItem),
         highlightToolbarControl,
         linkToolbarControl,
-        button(removeFormatToolbarItem),
+        button(removeFormatActionItem),
       ],
     },
     { key: 'text-style', controls: [textStyleToolbarControl] },
@@ -116,27 +105,27 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
           key: 'heading',
           label: '标题',
           icon: 'i-[lucide--heading]',
-          items: headingToolbarItems,
+          items: headingActionItems,
         }),
         dropdown({
           key: 'text-align',
           label: '对齐',
           icon: 'i-[lucide--align-left]',
-          items: textAlignToolbarItems,
+          items: textAlignActionItems,
         }),
         dropdown({
           key: 'list',
           label: '列表',
           icon: 'i-[lucide--list]',
-          items: listToolbarItems,
+          items: listActionItems,
         }),
-        button(blockquoteToolbarItem),
+        button(blockquoteActionItem),
         codeBlockToolbarControl,
       ],
     },
     {
       key: 'insert',
-      controls: [button(horizontalRuleToolbarItem), createImageToolbarControl(options.image)],
+      controls: [button(horizontalRuleActionItem), createImageToolbarControl(options.image)],
     },
   ])
 }
@@ -145,16 +134,16 @@ function createAllRichTextQuickbar(options: AllRichTextEditorPresetOptions) {
   return defineRichTextQuickbar({
     text: {
       primary: [
-        richTextQuickbarAction(boldToolbarItem),
-        richTextQuickbarAction(italicToolbarItem),
-        richTextQuickbarAction(underlineToolbarItem),
+        richTextQuickbarAction(boldActionItem),
+        richTextQuickbarAction(italicActionItem),
+        richTextQuickbarAction(underlineActionItem),
         highlightQuickbarControl,
         linkQuickbarControl,
       ],
       more: [
-        richTextQuickbarAction(strikeToolbarItem),
-        richTextQuickbarAction(inlineCodeToolbarItem),
-        richTextQuickbarAction(removeFormatToolbarItem),
+        richTextQuickbarAction(strikeActionItem),
+        richTextQuickbarAction(inlineCodeActionItem),
+        richTextQuickbarAction(removeFormatActionItem),
       ],
     },
     features: [createImageQuickbar(options.image), linkQuickbar, codeBlockQuickbar],
@@ -168,43 +157,22 @@ function createAllRichTextSlashCommand(options: AllRichTextEditorPresetOptions) 
         key: 'basic',
         label: '基础块',
         commands: [
-          richTextSlashCommandAction(paragraphActionItem, ['段落', 'paragraph', 'text']),
-          richTextSlashCommandAction(headingToolbarItems[0], ['标题1', 'h1', 'heading1']),
-          richTextSlashCommandAction(headingToolbarItems[1], ['标题2', 'h2', 'heading2']),
-          richTextSlashCommandAction(headingToolbarItems[2], ['标题3', 'h3', 'heading3']),
-          richTextSlashCommandAction(blockquoteToolbarItem, ['quote', 'blockquote']),
+          richTextSlashCommandAction(paragraphActionItem),
+          ...headingActionItems.map(richTextSlashCommandAction),
+          richTextSlashCommandAction(blockquoteActionItem),
         ],
       },
       {
         key: 'list',
         label: '列表',
-        commands: [
-          richTextSlashCommandAction(listToolbarItems[0], [
-            '项目符号',
-            'bullet',
-            'unordered',
-            'ul',
-          ]),
-          richTextSlashCommandAction(listToolbarItems[1], [
-            '编号列表',
-            'numbered',
-            'ordered',
-            'ol',
-          ]),
-        ],
+        commands: listActionItems.map(richTextSlashCommandAction),
       },
       {
         key: 'insert',
         label: '插入',
         commands: [
-          richTextSlashCommandAction(codeBlockActionItem, ['代码', 'code', 'codeblock']),
-          richTextSlashCommandAction(horizontalRuleToolbarItem, [
-            '横线',
-            'divider',
-            'separator',
-            'horizontalrule',
-            'hr',
-          ]),
+          richTextSlashCommandAction(codeBlockActionItem),
+          richTextSlashCommandAction(horizontalRuleActionItem),
           createImageSlashCommand(options.image),
         ],
       },

@@ -1,6 +1,6 @@
 import type { Command, CommandProps } from '@tiptap/core'
 import { liftTarget } from '@tiptap/pm/transform'
-import { defineRichTextAction } from '../../editor/action'
+import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import { listFeature } from './shared'
 
@@ -61,6 +61,19 @@ export const listActions = [
     key: 'ordered-list',
     command: () => createToggleListCommand('ordered'),
     isActive: (editor) => editor.isActive('orderedList'),
+  }),
+] as const
+
+export const listActionItems = [
+  defineRichTextActionItem(listActions[0], {
+    label: '无序列表',
+    icon: 'i-[lucide--list]',
+    keywords: ['项目符号', 'unordered', 'ul'],
+  }),
+  defineRichTextActionItem(listActions[1], {
+    label: '有序列表',
+    icon: 'i-[lucide--list-ordered]',
+    keywords: ['编号列表', 'numbered', 'ol'],
   }),
 ] as const
 

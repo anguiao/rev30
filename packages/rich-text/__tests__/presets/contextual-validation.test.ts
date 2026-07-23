@@ -1,13 +1,11 @@
 import { defineComponent } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
-import { baseEditorFeature } from '../../src/features/base/editor'
+import { baseEditorFeature, paragraphActionItem } from '../../src/features/base/editor'
 import { baseFeature } from '../../src/features/base/shared'
-import { boldEditorFeature } from '../../src/features/bold/editor'
+import { boldActionItem, boldEditorFeature } from '../../src/features/bold/editor'
 import { boldFeature } from '../../src/features/bold/shared'
-import { boldToolbarItem } from '../../src/features/bold/vue'
-import { headingToolbarItems } from '../../src/features/heading/vue'
-import { paragraphActionItem } from '../../src/features/base/vue'
+import { headingActionItems } from '../../src/features/heading/editor'
 import { slashCommandEditorFeature } from '../../src/features/slash-command/editor'
 import { slashCommandFeature } from '../../src/features/slash-command/shared'
 import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
@@ -32,7 +30,7 @@ describe('contextual preset validation', () => {
         editorFeatures: [baseEditorFeature],
         quickbar: defineRichTextQuickbar({
           text: {
-            primary: [richTextQuickbarAction(boldToolbarItem)],
+            primary: [richTextQuickbarAction(boldActionItem)],
             more: [],
           },
         }),
@@ -58,8 +56,8 @@ describe('contextual preset validation', () => {
         editorFeatures: [baseEditorFeature, boldEditorFeature],
         quickbar: defineRichTextQuickbar({
           text: {
-            primary: [richTextQuickbarAction(boldToolbarItem)],
-            more: [richTextQuickbarAction(boldToolbarItem)],
+            primary: [richTextQuickbarAction(boldActionItem)],
+            more: [richTextQuickbarAction(boldActionItem)],
           },
         }),
       }),
@@ -78,7 +76,7 @@ describe('contextual preset validation', () => {
       {
         key: 'basic',
         label: '基础块',
-        commands: [richTextSlashCommandAction(paragraphActionItem, ['paragraph'])],
+        commands: [richTextSlashCommandAction(paragraphActionItem)],
       },
     ])
     const presetWithoutSlashCommand = defineRichTextPreset({
@@ -101,7 +99,7 @@ describe('contextual preset validation', () => {
       {
         key: 'basic',
         label: '基础块',
-        commands: [richTextSlashCommandAction(headingToolbarItems[0], ['h1'])],
+        commands: [richTextSlashCommandAction(headingActionItems[0])],
       },
     ])
 

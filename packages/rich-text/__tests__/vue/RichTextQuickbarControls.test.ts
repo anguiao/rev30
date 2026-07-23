@@ -2,8 +2,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
-import { boldToolbarItem } from '../../src/features/bold/vue'
-import { italicToolbarItem } from '../../src/features/italic/vue'
+import { boldActionItem } from '../../src/features/bold/editor'
+import { italicActionItem } from '../../src/features/italic/editor'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 import { getRichTextQuickbarLayerId, richTextQuickbarAction } from '../../src/vue/quickbar'
 import RichTextQuickbarControls from '../../src/vue/quickbar/RichTextQuickbarControls.vue'
@@ -63,8 +63,8 @@ describe('RichTextQuickbarControls', () => {
   it('marks the teleported more menu as part of the same quickbar layer', async () => {
     const editor = createEditor()
     const wrapper = mountControls(editor, {
-      primary: [richTextQuickbarAction(boldToolbarItem)],
-      more: [richTextQuickbarAction(italicToolbarItem)],
+      primary: [richTextQuickbarAction(boldActionItem)],
+      more: [richTextQuickbarAction(italicActionItem)],
     })
 
     const trigger = wrapper.get('[data-test="rich-text-quickbar-more"]')

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { canRunRichTextAction, runRichTextAction } from '../../../src/editor/action'
 import { inlineCodeAction } from '../../../src/features/inline-code/editor'
 import { inlineCodeFeature } from '../../../src/features/inline-code/shared'
-import { inlineCodeToolbarItem } from '../../../src/features/inline-code/vue'
+import { inlineCodeActionItem } from '../../../src/features/inline-code/editor'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor() {
@@ -55,8 +55,8 @@ describe('inline code feature', () => {
     expect(editor.isActive('code')).toBe(true)
   })
 
-  it('provides the Chinese toolbar entry', () => {
-    expect(inlineCodeToolbarItem).toMatchObject({
+  it('provides the Chinese action item', () => {
+    expect(inlineCodeActionItem).toMatchObject({
       action: inlineCodeAction,
       label: '行内代码',
       icon: 'i-[lucide--code]',

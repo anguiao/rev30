@@ -2,7 +2,7 @@ import { Extension } from '@tiptap/core'
 import { describe, expect, it } from 'vitest'
 import { defineRichTextFeature } from '../../src/core/feature'
 import { defineRichTextPreset } from '../../src/core/preset'
-import { defineRichTextAction } from '../../src/editor/action'
+import { defineRichTextAction, defineRichTextActionItem } from '../../src/editor/action'
 import {
   collectRichTextEditorExtensions,
   defineRichTextEditorFeature,
@@ -14,7 +14,6 @@ import {
 import { defineRichTextServerPreset } from '../../src/server/presets/types'
 import {
   defineRichTextToolbar,
-  defineRichTextToolbarItem,
   richTextToolbarButton,
   richTextToolbarDropdown,
 } from '../../src/vue/toolbar'
@@ -154,7 +153,7 @@ describe('rich text feature model', () => {
             key: 'test',
             controls: [
               richTextToolbarButton(
-                defineRichTextToolbarItem(otherAction, {
+                defineRichTextActionItem(otherAction, {
                   label: '其它',
                   icon: 'i-[lucide--circle]',
                 }),
@@ -179,11 +178,11 @@ describe('rich text feature model', () => {
       editorImplementation: true,
       serverImplementation: false,
     })
-    const firstItem = defineRichTextToolbarItem(
+    const firstItem = defineRichTextActionItem(
       defineRichTextAction(firstFeature, { key: 'first', command: () => () => true }),
       { label: '第一项', icon: 'i-[lucide--circle]' },
     )
-    const secondItem = defineRichTextToolbarItem(
+    const secondItem = defineRichTextActionItem(
       defineRichTextAction(secondFeature, { key: 'second', command: () => () => true }),
       { label: '第二项', icon: 'i-[lucide--circle]' },
     )
@@ -212,7 +211,7 @@ describe('rich text feature model', () => {
       editorImplementation: true,
       serverImplementation: false,
     })
-    const item = defineRichTextToolbarItem(
+    const item = defineRichTextActionItem(
       defineRichTextAction(feature, { key: 'duplicate-control', command: () => () => true }),
       { label: '重复项', icon: 'i-[lucide--circle]' },
     )

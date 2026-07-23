@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { runRichTextAction } from '../../../src/editor/action'
 import { textAlignActions } from '../../../src/features/text-align/editor'
 import { textAlignFeature } from '../../../src/features/text-align/shared'
-import { textAlignToolbarItems } from '../../../src/features/text-align/vue'
+import { textAlignActionItems } from '../../../src/features/text-align/editor'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor() {
@@ -23,13 +23,13 @@ function createEditor() {
 }
 
 describe('text align editor feature', () => {
-  it('exposes and runs the justify action from the Vue toolbar item', () => {
+  it('exposes and runs the justify action from its Vue action item', () => {
     const editor = createEditor()
     const justifyAction = textAlignActions[3]
-    const justifyToolbarItem = textAlignToolbarItems[3]
+    const justifyActionItem = textAlignActionItems[3]
 
     expect(justifyAction.key).toBe('text-align-justify')
-    expect(justifyToolbarItem).toMatchObject({
+    expect(justifyActionItem).toMatchObject({
       action: justifyAction,
       label: '两端对齐',
       icon: 'i-[lucide--align-justify]',

@@ -33,12 +33,12 @@ export interface RichTextStatusBarConfig {
 export function richTextStatusBarComponent<TComponent extends Component>(
   item: RichTextStatusBarComponentItemOptions<TComponent>,
 ): RichTextStatusBarComponentItem {
-  return Object.freeze({
+  return {
     feature: item.feature,
     key: item.key,
     component: markRaw(item.component),
-    props: Object.freeze({ ...item.props } as Record<string, unknown>),
-  })
+    props: { ...item.props } as Record<string, unknown>,
+  }
 }
 
 export function defineRichTextStatusBar({
@@ -55,8 +55,5 @@ export function defineRichTextStatusBar({
     itemKeys.add(item.key)
   }
 
-  return Object.freeze({
-    start: Object.freeze([...start]),
-    end: Object.freeze([...end]),
-  })
+  return { start, end }
 }

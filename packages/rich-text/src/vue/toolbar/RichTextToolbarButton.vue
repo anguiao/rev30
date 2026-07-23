@@ -2,12 +2,15 @@
 import type { Editor } from '@tiptap/vue-3'
 import { NButton } from 'naive-ui'
 import { computed } from 'vue'
-import { runRichTextAction } from '../../editor/action'
-import { isRichTextActionDisabled, type RichTextToolbarItem } from '../toolbar'
+import {
+  canRunRichTextAction,
+  runRichTextAction,
+  type RichTextActionItem,
+} from '../../editor/action'
 
 const props = withDefaults(
   defineProps<{
-    item: RichTextToolbarItem
+    item: RichTextActionItem
     editor: Editor
     disabled?: boolean
   }>(),
@@ -19,7 +22,7 @@ const props = withDefaults(
 const editor = props.editor
 
 const isDisabled = computed(
-  () => props.disabled || isRichTextActionDisabled(props.item.action, editor),
+  () => props.disabled || !canRunRichTextAction(editor, props.item.action),
 )
 const isActive = computed(() => props.item.action.isActive?.(editor) ?? false)
 

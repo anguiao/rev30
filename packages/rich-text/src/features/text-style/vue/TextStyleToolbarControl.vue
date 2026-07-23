@@ -4,9 +4,10 @@ import {
   canRunRichTextAction,
   runRichTextAction,
   type RichTextAction,
+  type RichTextIconClass,
 } from '../../../editor/action'
 import { getRichTextQuickbarLayerId } from '../../../vue/quickbar'
-import type { RichTextIconClass, RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
+import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
 import { useRichTextToolbarOverlay } from '../../../vue/overlay-state'
 import type { TextStyleOption } from '../options'
 import type { DropdownOption } from 'naive-ui'
@@ -23,7 +24,7 @@ import {
   unsetTextColorAction,
 } from '../editor'
 
-interface TextStyleToolbarControlProps extends RichTextToolbarControlInjectedProps {
+interface TextStyleToolbarControlProps extends RichTextToolbarControlProps {
   colors: readonly TextStyleOption[]
   fontFamilies: readonly TextStyleOption[]
   fontSizes: readonly TextStyleOption[]

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
+import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
 import { useRichTextToolbarOverlay } from '../../../vue/overlay-state'
 import { NButton } from 'naive-ui'
 import { computed, ref, watch } from 'vue'
@@ -11,7 +11,7 @@ import {
 } from './dialog-controller'
 
 interface ImageToolbarControlProps
-  extends RichTextToolbarControlInjectedProps, RichTextImageDialogOptions {}
+  extends RichTextToolbarControlProps, RichTextImageDialogOptions {}
 
 const props = withDefaults(defineProps<ImageToolbarControlProps>(), {
   disabled: false,

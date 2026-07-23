@@ -3,13 +3,12 @@ import type { Editor } from '@tiptap/vue-3'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
 import { computed, h, onBeforeUnmount, onMounted, ref } from 'vue'
-import { runRichTextAction } from '../../editor/action'
 import {
-  getActiveRichTextToolbarItem,
-  isRichTextActionDisabled,
-  type RichTextToolbarItem,
-  type RichTextToolbarDropdownControl,
-} from '../toolbar'
+  canRunRichTextAction,
+  runRichTextAction,
+  type RichTextActionItem,
+} from '../../editor/action'
+import type { RichTextToolbarDropdownControl } from '.'
 import { useRichTextToolbarOverlay } from '../overlay-state'
 import { createRichTextToolbarDropdownMenuId } from './dropdown-menu-id'
 
@@ -71,14 +70,14 @@ function handleKeydown(event: KeyboardEvent) {
   editor.commands.focus()
 }
 
-function isItemDisabled(item: RichTextToolbarItem) {
-  return props.disabled || isRichTextActionDisabled(item.action, editor)
+function isItemDisabled(item: RichTextActionItem) {
+  return props.disabled || !canRunRichTextAction(editor, item.action)
 }
 
 const activeItem = computed(
   () =>
     props.control.getActiveItem?.(editor, props.control.items) ??
-    getActiveRichTextToolbarItem(editor, props.control.items),
+    props.control.items.find((item) => item.action.isActive?.(editor)),
 )
 
 const isActive = computed(() => activeItem.value !== undefined)

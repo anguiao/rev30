@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
+import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
 import type { InputInst } from 'naive-ui'
 import { NButton, NCheckbox, NInput, NPopover } from 'naive-ui'
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
@@ -17,7 +17,7 @@ import {
 } from '../editor'
 import { useRichTextToolbarOverlay } from '../../../vue/overlay-state'
 
-const props = withDefaults(defineProps<RichTextToolbarControlInjectedProps>(), {
+const props = withDefaults(defineProps<RichTextToolbarControlProps>(), {
   disabled: false,
 })
 

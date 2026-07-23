@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
-import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
+import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
 import { NButton, NButtonGroup } from 'naive-ui'
 import { computed } from 'vue'
 import { codeBlockAction } from '../editor'
 import CodeBlockLanguageControl from './CodeBlockLanguageControl.vue'
 
-interface CodeBlockToolbarControlProps extends RichTextToolbarControlInjectedProps {
+interface CodeBlockToolbarControlProps extends RichTextToolbarControlProps {
   languages: readonly {
     readonly label: string
     readonly value: string

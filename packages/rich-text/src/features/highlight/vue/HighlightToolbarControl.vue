@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { RichTextToolbarControlInjectedProps } from '../../../vue/toolbar'
+import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
 import type { HighlightColorOption } from '../colors'
 import HighlightColorControl from './HighlightColorControl.vue'
 
-interface HighlightToolbarControlProps extends RichTextToolbarControlInjectedProps {
+interface HighlightToolbarControlProps extends RichTextToolbarControlProps {
   colors: readonly HighlightColorOption[]
 }
 

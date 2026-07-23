@@ -10,11 +10,7 @@ import {
 } from '../quickbar'
 import { getRichTextSlashCommandFeature, type RichTextSlashCommandConfig } from '../slash-command'
 import type { RichTextStatusBarConfig, RichTextStatusBarComponentItem } from '../status-bar'
-import {
-  getRichTextToolbarControlFeature,
-  type RichTextToolbarConfig,
-  type RichTextToolbarControlConfig,
-} from '../toolbar'
+import { type RichTextToolbarConfig, type RichTextToolbarControlConfig } from '../toolbar'
 
 export interface RichTextEditorPreset<
   Preset extends RichTextPreset = RichTextPreset,
@@ -57,9 +53,7 @@ function validateToolbarControl(
   editorFeatures: readonly RichTextEditorFeature[],
   control: RichTextToolbarControlConfig,
 ) {
-  const feature = getRichTextToolbarControlFeature(control)
-
-  assertEditorFeature(preset, editorFeatures, feature, 'a toolbar control')
+  assertEditorFeature(preset, editorFeatures, control.feature, 'a toolbar control')
 }
 
 function validateStatusBarItem(

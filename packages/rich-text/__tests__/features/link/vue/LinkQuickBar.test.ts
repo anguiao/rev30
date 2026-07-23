@@ -6,7 +6,7 @@ import { NInput } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { linkFeature } from '../../../../src/features/link/shared'
-import LinkQuickbar from '../../../../src/features/link/vue/LinkQuickbar.vue'
+import LinkQuickBar from '../../../../src/features/link/vue/LinkQuickBar.vue'
 import { createTestEditor } from '../../../helpers/editor'
 
 function createEditor() {
@@ -16,9 +16,9 @@ function createEditor() {
   })
 }
 
-async function mountQuickbar(editor = createEditor()) {
+async function mountQuickBar(editor = createEditor()) {
   editor.commands.setTextSelection(3)
-  const wrapper = mount(LinkQuickbar, {
+  const wrapper = mount(LinkQuickBar, {
     global: {
       stubs: { teleport: true },
     },
@@ -28,9 +28,9 @@ async function mountQuickbar(editor = createEditor()) {
   return { editor, wrapper }
 }
 
-describe('LinkQuickbar', () => {
+describe('LinkQuickBar', () => {
   it('starts read-only and enters the shared URL editor explicitly', async () => {
-    const { editor, wrapper } = await mountQuickbar()
+    const { editor, wrapper } = await mountQuickBar()
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
 
     expect(wrapper.get('[data-test="rich-text-link-readonly-url"]').text()).toBe(
@@ -78,7 +78,7 @@ describe('LinkQuickbar', () => {
   })
 
   it('removes the complete link and restores the collapsed selection', async () => {
-    const { editor, wrapper } = await mountQuickbar()
+    const { editor, wrapper } = await mountQuickBar()
     const onTransaction = vi.fn()
     editor.on('transaction', onTransaction)
 
@@ -94,7 +94,7 @@ describe('LinkQuickbar', () => {
   })
 
   it('returns to a refreshed read-only state after editing', async () => {
-    const { editor, wrapper } = await mountQuickbar()
+    const { editor, wrapper } = await mountQuickBar()
 
     await wrapper.get('[data-test="rich-text-link-edit"]').trigger('click')
     wrapper.getComponent(NInput).vm.$emit('update:value', 'updated.example')
@@ -109,7 +109,7 @@ describe('LinkQuickbar', () => {
   })
 
   it('abandons an editing draft after an external document change', async () => {
-    const { editor, wrapper } = await mountQuickbar()
+    const { editor, wrapper } = await mountQuickBar()
 
     await wrapper.get('[data-test="rich-text-link-edit"]').trigger('click')
     wrapper.getComponent(NInput).vm.$emit('update:value', 'https://draft.example')

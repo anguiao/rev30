@@ -4,10 +4,10 @@ import { boldActionItem, boldEditorFeature } from '../../features/bold/editor'
 import { characterCountEditorFeature } from '../../features/character-count/editor'
 import { characterCountStatusBarItem } from '../../features/character-count/vue'
 import { codeBlockActionItem, codeBlockEditorFeature } from '../../features/code-block/editor'
-import { codeBlockQuickbar, codeBlockToolbarControl } from '../../features/code-block/vue'
+import { codeBlockQuickBar, codeBlockToolbarControl } from '../../features/code-block/vue'
 import { headingActionItems, headingEditorFeature } from '../../features/heading/editor'
 import { highlightEditorFeature } from '../../features/highlight/editor'
-import { highlightQuickbarControl, highlightToolbarControl } from '../../features/highlight/vue'
+import { highlightQuickBarControl, highlightToolbarControl } from '../../features/highlight/vue'
 import { historyActionItems, historyEditorFeature } from '../../features/history/editor'
 import {
   horizontalRuleActionItem,
@@ -16,7 +16,7 @@ import {
 import { imageEditorFeature } from '../../features/image/editor'
 import {
   createImageSlashCommand,
-  createImageQuickbar,
+  createImageQuickBar,
   createImageToolbarControl,
   type RichTextImageUploadOptions,
 } from '../../features/image/vue'
@@ -24,7 +24,7 @@ import ImageDialogHost from '../../features/image/vue/ImageDialogHost.vue'
 import { inlineCodeActionItem, inlineCodeEditorFeature } from '../../features/inline-code/editor'
 import { italicActionItem, italicEditorFeature } from '../../features/italic/editor'
 import { linkEditorFeature } from '../../features/link/editor'
-import { linkQuickbar, linkQuickbarControl, linkToolbarControl } from '../../features/link/vue'
+import { linkQuickBar, linkQuickBarControl, linkToolbarControl } from '../../features/link/vue'
 import { listActionItems, listEditorFeature } from '../../features/list/editor'
 import {
   removeFormatActionItem,
@@ -39,7 +39,7 @@ import { textStyleEditorFeature } from '../../features/text-style/editor'
 import { textStyleToolbarControl } from '../../features/text-style/vue'
 import { underlineActionItem, underlineEditorFeature } from '../../features/underline/editor'
 import { allRichTextPreset } from '../../presets/all'
-import { defineRichTextQuickbar, richTextQuickbarAction } from '../quickbar'
+import { defineRichTextQuickBar, richTextQuickBarAction } from '../quick-bar'
 import { defineRichTextSlashCommand, richTextSlashCommandAction } from '../slash-command'
 import RichTextSlashCommandMenu from '../slash-command/RichTextSlashCommandMenu.vue'
 import {
@@ -130,23 +130,23 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
   ])
 }
 
-function createAllRichTextQuickbar(options: AllRichTextEditorPresetOptions) {
-  return defineRichTextQuickbar({
-    text: {
-      primary: [
-        richTextQuickbarAction(boldActionItem),
-        richTextQuickbarAction(italicActionItem),
-        richTextQuickbarAction(underlineActionItem),
-        highlightQuickbarControl,
-        linkQuickbarControl,
+function createAllRichTextQuickBar(options: AllRichTextEditorPresetOptions) {
+  return defineRichTextQuickBar({
+    textControls: {
+      main: [
+        richTextQuickBarAction(boldActionItem),
+        richTextQuickBarAction(italicActionItem),
+        richTextQuickBarAction(underlineActionItem),
+        highlightQuickBarControl,
+        linkQuickBarControl,
       ],
       more: [
-        richTextQuickbarAction(strikeActionItem),
-        richTextQuickbarAction(inlineCodeActionItem),
-        richTextQuickbarAction(removeFormatActionItem),
+        richTextQuickBarAction(strikeActionItem),
+        richTextQuickBarAction(inlineCodeActionItem),
+        richTextQuickBarAction(removeFormatActionItem),
       ],
     },
-    features: [createImageQuickbar(options.image), linkQuickbar, codeBlockQuickbar],
+    featureBars: [createImageQuickBar(options.image), linkQuickBar, codeBlockQuickBar],
   })
 }
 
@@ -191,7 +191,7 @@ export function createAllRichTextEditorPreset(options: AllRichTextEditorPresetOp
     editorFeatures: allEditorFeatures,
     toolbar: createAllRichTextToolbar(options),
     statusBar: allRichTextStatusBar,
-    quickbar: createAllRichTextQuickbar(options),
+    quickBar: createAllRichTextQuickBar(options),
     slashCommand: createAllRichTextSlashCommand(options),
     host: ImageDialogHost,
   })

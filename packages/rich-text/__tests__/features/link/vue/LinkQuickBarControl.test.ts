@@ -23,7 +23,7 @@ function mountControl(editor: ReturnType<typeof createEditor>) {
     },
     props: {
       editor: markRaw(editor),
-      surface: 'text-quickbar',
+      surface: 'text-quick-bar',
     },
   })
 }
@@ -33,19 +33,19 @@ async function setUrl(wrapper: ReturnType<typeof mountControl>, value: string) {
   await flushPromises()
 }
 
-describe('LinkQuickbarControl', () => {
+describe('LinkQuickBarControl', () => {
   it('creates a link for the exact single-block text selection', async () => {
     const editor = createEditor('<p>普通文字</p>')
     editor.commands.setTextSelection({ from: 2, to: 4 })
     const wrapper = mountControl(editor)
 
     expect(
-      wrapper.get('[data-test="rich-text-quickbar-link"]').attributes('disabled'),
+      wrapper.get('[data-test="rich-text-quick-bar-link"]').attributes('disabled'),
     ).toBeUndefined()
-    await wrapper.get('[data-test="rich-text-quickbar-link"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-quick-bar-link"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.get('[data-test="rich-text-quickbar-link"]').attributes('aria-expanded')).toBe(
+    expect(wrapper.get('[data-test="rich-text-quick-bar-link"]').attributes('aria-expanded')).toBe(
       'true',
     )
     expect(wrapper.getComponent(NInput).props('value')).toBe('')
@@ -73,7 +73,7 @@ describe('LinkQuickbarControl', () => {
     editor.commands.setTextSelection({ from: 2, to: 4 })
     const wrapper = mountControl(editor)
 
-    await wrapper.get('[data-test="rich-text-quickbar-link"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-quick-bar-link"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.getComponent(NInput).props('value')).toBe('https://old.example')
@@ -93,7 +93,7 @@ describe('LinkQuickbarControl', () => {
     editor.commands.setTextSelection({ from: 2, to: 7 })
     const wrapper = mountControl(editor)
 
-    const button = wrapper.get('[data-test="rich-text-quickbar-link"]')
+    const button = wrapper.get('[data-test="rich-text-quick-bar-link"]')
     expect(button.attributes('disabled')).toBeDefined()
     await button.trigger('click')
     expect(wrapper.find('[data-test="rich-text-link-url"]').exists()).toBe(false)
@@ -104,7 +104,7 @@ describe('LinkQuickbarControl', () => {
     editor.commands.setTextSelection({ from: 1, to: 3 })
     const wrapper = mountControl(editor)
 
-    await wrapper.get('[data-test="rich-text-quickbar-link"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-quick-bar-link"]').trigger('click')
     await setUrl(wrapper, 'draft.example')
     editor.commands.setTextSelection(5)
     await wrapper.get('[data-test="rich-text-link-url"] input').trigger('keydown', {
@@ -115,7 +115,7 @@ describe('LinkQuickbarControl', () => {
     expect(editor.state.selection).toMatchObject({ from: 1, to: 3 })
     expect(editor.getHTML()).not.toContain('draft.example')
 
-    await wrapper.get('[data-test="rich-text-quickbar-link"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-quick-bar-link"]').trigger('click')
     await setUrl(wrapper, 'outside.example')
     editor.commands.setTextSelection(5)
     ;(wrapper.vm as unknown as { close: (reason: 'outside') => void }).close('outside')

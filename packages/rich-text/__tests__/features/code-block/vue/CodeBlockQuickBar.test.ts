@@ -7,18 +7,18 @@ import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { codeBlockEditorFeature } from '../../../../src/features/code-block/editor'
 import { codeBlockLanguageOptions } from '../../../../src/features/code-block/vue'
-import CodeBlockQuickbar from '../../../../src/features/code-block/vue/CodeBlockQuickbar.vue'
+import CodeBlockQuickBar from '../../../../src/features/code-block/vue/CodeBlockQuickBar.vue'
 import { createTestEditor } from '../../../helpers/editor'
 
-describe('CodeBlockQuickbar', () => {
-  it('closes only its language menu on Escape and restores the Quickbar target', async () => {
+describe('CodeBlockQuickBar', () => {
+  it('closes only its language menu on Escape and restores the QuickBar target', async () => {
     const editor = createTestEditor({
       extensions: [Document, Paragraph, Text, ...codeBlockEditorFeature.extensions!()],
       content: '<pre><code>const first = 1</code></pre><pre><code>const second = 2</code></pre>',
     })
     editor.commands.setTextSelection(1)
     editor.view.focus()
-    const wrapper = mount(CodeBlockQuickbar, {
+    const wrapper = mount(CodeBlockQuickBar, {
       attachTo: document.body,
       props: {
         editor: markRaw(editor),
@@ -31,10 +31,10 @@ describe('CodeBlockQuickbar', () => {
       text: true,
       quaternary: false,
     })
-    expect(wrapper.get('[data-test="rich-text-quickbar-code-block-language"]').text()).toContain(
+    expect(wrapper.get('[data-test="rich-text-quick-bar-code-block-language"]').text()).toContain(
       '纯文本',
     )
-    expect(wrapper.find('[data-test="rich-text-quickbar-code-block-paragraph"]').exists()).toBe(
+    expect(wrapper.find('[data-test="rich-text-quick-bar-code-block-paragraph"]').exists()).toBe(
       false,
     )
 
@@ -49,7 +49,7 @@ describe('CodeBlockQuickbar', () => {
     expect(wrapper.emitted('close')).toBeUndefined()
     expect(
       wrapper
-        .get('[data-test="rich-text-quickbar-code-block-language"]')
+        .get('[data-test="rich-text-quick-bar-code-block-language"]')
         .attributes('aria-expanded'),
     ).toBe('false')
     expect(editor.state.selection).toMatchObject({ from: 1, to: 1 })

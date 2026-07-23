@@ -6,7 +6,7 @@ import {
   type RichTextOverlayCloseReason,
   useRichTextOverlayState,
 } from '../../../vue/overlay-state'
-import { getRichTextQuickbarLayerId } from '../../../vue/quickbar'
+import { getRichTextQuickBarLayerId } from '../../../vue/quick-bar'
 import { normalizeLinkHref } from '../href'
 import { resolveRichTextLinkTarget, type RichTextLinkTarget } from '../target'
 import LinkEditorPopover from './LinkEditorPopover.vue'
@@ -28,7 +28,7 @@ const emit = defineEmits<{
 
 const editor = props.editor
 const root = ref<HTMLElement | null>(null)
-const layerId = getRichTextQuickbarLayerId(editor)
+const layerId = getRichTextQuickBarLayerId(editor)
 const overlayState = useRichTextOverlayState()
 const readonlyTarget = shallowRef<RichTextLinkTarget | null>(null)
 const linkEditor = useRichTextLinkEditor({
@@ -51,7 +51,7 @@ function syncReadonlyTarget() {
     return
   }
 
-  readonlyTarget.value = props.disabled ? null : resolveRichTextLinkTarget(editor, 'quickbar')
+  readonlyTarget.value = props.disabled ? null : resolveRichTextLinkTarget(editor, 'quick-bar')
 }
 
 function editLink() {
@@ -135,14 +135,14 @@ defineExpose({ close, focusInitialControl })
         :disabled="disabled"
         :invalid="linkEditor.isInvalid.value"
         :can-apply="linkEditor.canApply.value"
-        :quickbar-layer-id="layerId"
+        :quick-bar-layer-id="layerId"
         @apply="linkEditor.apply"
         @close="close"
       >
         <template #trigger>
           <NButton
             data-test="rich-text-link-edit"
-            data-rich-text-quickbar-roving
+            data-rich-text-quick-bar-roving
             size="small"
             style="--n-padding: 0 6px"
             quaternary
@@ -161,7 +161,7 @@ defineExpose({ close, focusInitialControl })
 
       <NButton
         data-test="rich-text-link-open"
-        data-rich-text-quickbar-roving
+        data-rich-text-quick-bar-roving
         size="small"
         style="--n-padding: 0 6px"
         quaternary
@@ -176,7 +176,7 @@ defineExpose({ close, focusInitialControl })
 
       <NButton
         data-test="rich-text-link-remove"
-        data-rich-text-quickbar-roving
+        data-rich-text-quick-bar-roving
         size="small"
         style="--n-padding: 0 6px"
         quaternary

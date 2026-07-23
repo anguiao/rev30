@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { RichTextQuickbarInjectedProps } from '../../../vue/quickbar'
-import { getRichTextQuickbarLayerId } from '../../../vue/quickbar'
+import type { RichTextQuickBarComponentProps } from '../../../vue/quick-bar'
+import { getRichTextQuickBarLayerId } from '../../../vue/quick-bar'
 import {
   captureRichTextSelection,
   markRichTextSurfaceTransactionCommand,
@@ -18,9 +18,9 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { setHighlightAction, unsetHighlightAction } from '../editor'
 import type { HighlightColorOption } from '../colors'
 
-interface HighlightColorControlProps extends RichTextQuickbarInjectedProps {
+interface HighlightColorControlProps extends RichTextQuickBarComponentProps {
   colors: readonly HighlightColorOption[]
-  surface: 'toolbar' | 'quickbar'
+  surface: 'toolbar' | 'quick-bar'
 }
 
 const props = withDefaults(defineProps<HighlightColorControlProps>(), {
@@ -33,7 +33,7 @@ const emit = defineEmits<{
 
 const editor = props.editor
 const owner = Symbol('rich-text-highlight-control')
-const layerId = getRichTextQuickbarLayerId(editor)
+const layerId = getRichTextQuickBarLayerId(editor)
 const show = ref(false)
 const target = ref<RichTextSelectionSnapshot | null>(null)
 const panel = ref<HTMLElement | null>(null)
@@ -107,7 +107,7 @@ const isDisabled = computed(
     (props.colors.every((color) => isColorDisabled(color.value)) && isClearDisabled.value),
 )
 const dataTestPrefix = computed(() =>
-  props.surface === 'toolbar' ? 'rich-text-highlight' : 'rich-text-quickbar-highlight',
+  props.surface === 'toolbar' ? 'rich-text-highlight' : 'rich-text-quick-bar-highlight',
 )
 
 function close(reason: RichTextOverlayCloseReason) {
@@ -241,7 +241,7 @@ defineExpose({
         <NButton
           :data-test="dataTestPrefix"
           :data-active="isActive ? 'true' : undefined"
-          :data-rich-text-quickbar-roving="surface === 'quickbar' ? '' : undefined"
+          :data-rich-text-quick-bar-roving="surface === 'quick-bar' ? '' : undefined"
           :disabled="isDisabled"
           size="small"
           style="--n-padding: 0 6px"
@@ -262,7 +262,7 @@ defineExpose({
 
       <div
         ref="panel"
-        :data-rich-text-quickbar-subinterface="surface === 'quickbar' ? layerId : undefined"
+        :data-rich-text-quick-bar-subinterface="surface === 'quick-bar' ? layerId : undefined"
         class="flex items-center gap-1"
         role="menu"
         aria-label="高亮颜色"

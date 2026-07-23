@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import type { RichTextQuickbarInjectedProps } from '../../../vue/quickbar'
+import type { RichTextQuickBarComponentProps } from '../../../vue/quick-bar'
 import type { RichTextOverlayCloseReason } from '../../../vue/overlay-state'
 import { ref } from 'vue'
 import CodeBlockLanguageControl from './CodeBlockLanguageControl.vue'
 
-interface CodeBlockQuickbarProps extends RichTextQuickbarInjectedProps {
+interface CodeBlockQuickBarProps extends RichTextQuickBarComponentProps {
   languages: readonly {
     readonly label: string
     readonly value: string
   }[]
 }
 
-const props = withDefaults(defineProps<CodeBlockQuickbarProps>(), {
+const props = withDefaults(defineProps<CodeBlockQuickBarProps>(), {
   disabled: false,
 })
 
@@ -37,7 +37,7 @@ defineExpose({
   close,
   focusInitialControl: () => {
     const button = root.value?.querySelector<HTMLElement>(
-      '[data-test="rich-text-quickbar-code-block-language"]',
+      '[data-test="rich-text-quick-bar-code-block-language"]',
     )
     button?.focus()
     return button !== null
@@ -52,7 +52,7 @@ defineExpose({
       :editor="editor"
       :languages="languages"
       :disabled="disabled"
-      surface="quickbar"
+      surface="quick-bar"
       show-label
       @close="handleLanguageClose"
     />

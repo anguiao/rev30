@@ -6,18 +6,18 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { highlightColorOptions } from '../../../../src/features/highlight/colors'
-import HighlightQuickbarControl from '../../../../src/features/highlight/vue/HighlightQuickbarControl.vue'
+import HighlightQuickBarControl from '../../../../src/features/highlight/vue/HighlightQuickBarControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
 
-describe('HighlightQuickbarControl', () => {
-  it('closes only its color menu on Escape and restores the Quickbar target', async () => {
+describe('HighlightQuickBarControl', () => {
+  it('closes only its color menu on Escape and restores the QuickBar target', async () => {
     const editor = createTestEditor({
       extensions: [Document, Paragraph, Text, Highlight.configure({ multicolor: true })],
       content: '<p>维护通知</p>',
     })
     editor.commands.setTextSelection({ from: 1, to: 3 })
     editor.view.focus()
-    const wrapper = mount(HighlightQuickbarControl, {
+    const wrapper = mount(HighlightQuickBarControl, {
       attachTo: document.body,
       props: {
         editor: markRaw(editor),
@@ -25,12 +25,12 @@ describe('HighlightQuickbarControl', () => {
       },
     })
 
-    await wrapper.get('[data-test="rich-text-quickbar-highlight"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-quick-bar-highlight"]').trigger('click')
     await flushPromises()
     editor.commands.setTextSelection(5)
 
     const color = document.querySelector<HTMLElement>(
-      '[data-test="rich-text-quickbar-highlight-yellow"]',
+      '[data-test="rich-text-quick-bar-highlight-yellow"]',
     )
     expect(color).not.toBeNull()
     color!.dispatchEvent(
@@ -40,7 +40,7 @@ describe('HighlightQuickbarControl', () => {
 
     expect(wrapper.emitted('close')).toBeUndefined()
     expect(
-      wrapper.get('[data-test="rich-text-quickbar-highlight"]').attributes('aria-expanded'),
+      wrapper.get('[data-test="rich-text-quick-bar-highlight"]').attributes('aria-expanded'),
     ).toBe('false')
     expect(editor.state.selection).toMatchObject({ from: 1, to: 3 })
     expect(document.activeElement).toBe(editor.view.dom)

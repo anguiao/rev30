@@ -2,12 +2,7 @@ import { validateRichTextFeatureImplementations, type RichTextFeature } from '..
 import type { RichTextPreset } from '../../core/preset'
 import type { RichTextEditorFeature } from '../../editor/feature'
 import type { Component } from 'vue'
-import {
-  getRichTextQuickbarControlFeature,
-  getRichTextQuickbarControlKey,
-  type RichTextQuickbarConfig,
-  type RichTextQuickbarControl,
-} from '../quickbar'
+import type { RichTextQuickBarConfig, RichTextQuickBarControl } from '../quick-bar'
 import { getRichTextSlashCommandFeature, type RichTextSlashCommandConfig } from '../slash-command'
 import type { RichTextStatusBarConfig, RichTextStatusBarComponentItem } from '../status-bar'
 import { type RichTextToolbarConfig, type RichTextToolbarControlConfig } from '../toolbar'
@@ -19,7 +14,7 @@ export interface RichTextEditorPreset<
   readonly editorFeatures: EditorFeatures
   readonly toolbar?: RichTextToolbarConfig
   readonly statusBar?: RichTextStatusBarConfig
-  readonly quickbar?: RichTextQuickbarConfig
+  readonly quickBar?: RichTextQuickBarConfig
   readonly slashCommand?: RichTextSlashCommandConfig
   readonly host?: Component
 }
@@ -64,56 +59,28 @@ function validateStatusBarItem(
   assertEditorFeature(preset, editorFeatures, item.feature, 'a status bar item')
 }
 
-function validateQuickbarControl(
+function validateQuickBarControl(
   preset: RichTextPreset,
   editorFeatures: readonly RichTextEditorFeature[],
-  control: RichTextQuickbarControl,
+  control: RichTextQuickBarControl,
 ) {
-  assertEditorFeature(
-    preset,
-    editorFeatures,
-    getRichTextQuickbarControlFeature(control),
-    'a quickbar control',
-  )
+  assertEditorFeature(preset, editorFeatures, control.feature, 'a quick bar control')
 }
 
-function validateQuickbar(
+function validateQuickBar(
   preset: RichTextPreset,
   editorFeatures: readonly RichTextEditorFeature[],
-  quickbar: RichTextQuickbarConfig,
+  quickBar: RichTextQuickBarConfig,
 ) {
-  const controlKeys = new Set<string>()
-
-  for (const control of [...(quickbar.text?.primary ?? []), ...(quickbar.text?.more ?? [])]) {
-    const key = getRichTextQuickbarControlKey(control)
-
-    if (controlKeys.has(key)) {
-      throw new Error(`Rich text preset "${preset.key}" has a duplicate quickbar control: "${key}"`)
-    }
-
-    controlKeys.add(key)
-    validateQuickbarControl(preset, editorFeatures, control)
+  for (const control of [
+    ...(quickBar.textControls?.main ?? []),
+    ...(quickBar.textControls?.more ?? []),
+  ]) {
+    validateQuickBarControl(preset, editorFeatures, control)
   }
 
-  const featureKeys = new Set<string>()
-  const features = new Set<RichTextFeature>()
-
-  for (const featureQuickbar of quickbar.features) {
-    if (featureKeys.has(featureQuickbar.key)) {
-      throw new Error(
-        `Rich text preset "${preset.key}" has a duplicate feature quickbar key: "${featureQuickbar.key}"`,
-      )
-    }
-
-    if (features.has(featureQuickbar.feature)) {
-      throw new Error(
-        `Rich text preset "${preset.key}" has a duplicate feature quickbar: "${featureQuickbar.feature.key}"`,
-      )
-    }
-
-    featureKeys.add(featureQuickbar.key)
-    features.add(featureQuickbar.feature)
-    assertEditorFeature(preset, editorFeatures, featureQuickbar.feature, 'a feature quickbar')
+  for (const featureQuickBar of quickBar.featureBars) {
+    assertEditorFeature(preset, editorFeatures, featureQuickBar.feature, 'a feature quick bar')
   }
 }
 
@@ -154,7 +121,7 @@ export function defineRichTextEditorPreset<
     readonly editorFeatures: EditorFeatures
     readonly toolbar?: RichTextToolbarConfig
     readonly statusBar?: RichTextStatusBarConfig
-    readonly quickbar?: RichTextQuickbarConfig
+    readonly quickBar?: RichTextQuickBarConfig
     readonly slashCommand?: RichTextSlashCommandConfig
     readonly host?: Component
   },
@@ -177,8 +144,8 @@ export function defineRichTextEditorPreset<
     }
   }
 
-  if (options.quickbar) {
-    validateQuickbar(preset, editorFeatures, options.quickbar)
+  if (options.quickBar) {
+    validateQuickBar(preset, editorFeatures, options.quickBar)
   }
 
   if (options.slashCommand) {
@@ -191,7 +158,7 @@ export function defineRichTextEditorPreset<
     editorFeatures,
     ...(options.toolbar ? { toolbar: options.toolbar } : {}),
     ...(options.statusBar ? { statusBar: options.statusBar } : {}),
-    ...(options.quickbar ? { quickbar: options.quickbar } : {}),
+    ...(options.quickBar ? { quickBar: options.quickBar } : {}),
     ...(options.slashCommand ? { slashCommand: options.slashCommand } : {}),
     ...(options.host ? { host: options.host } : {}),
   })

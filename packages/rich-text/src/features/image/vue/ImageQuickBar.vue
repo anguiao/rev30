@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import type { RichTextQuickbarInjectedProps } from '../../../vue/quickbar'
+import type { RichTextQuickBarComponentProps } from '../../../vue/quick-bar'
 import type { RichTextOverlayCloseReason } from '../../../vue/overlay-state'
 import { NButton } from 'naive-ui'
 import { computed, ref, watch } from 'vue'
 import {
   getRichTextImageDialogController,
-  resolveRichTextImageQuickbarTarget,
+  resolveRichTextImageQuickBarTarget,
   type RichTextImageDialogOptions,
   type RichTextImageDialogSession,
 } from './dialog-controller'
 
-interface ImageQuickbarProps extends RichTextQuickbarInjectedProps, RichTextImageDialogOptions {}
+interface ImageQuickBarProps extends RichTextQuickBarComponentProps, RichTextImageDialogOptions {}
 
-const props = withDefaults(defineProps<ImageQuickbarProps>(), {
+const props = withDefaults(defineProps<ImageQuickBarProps>(), {
   disabled: false,
 })
 
@@ -25,7 +25,7 @@ const editor = props.editor
 const root = ref<HTMLElement | null>(null)
 const controller = getRichTextImageDialogController(editor)
 const openedSession = ref<RichTextImageDialogSession | null>(null)
-const target = computed(() => resolveRichTextImageQuickbarTarget(editor))
+const target = computed(() => resolveRichTextImageQuickBarTarget(editor))
 const isDisabled = computed(() => props.disabled || target.value === null)
 
 function openDialog() {
@@ -69,7 +69,7 @@ defineExpose({
   close,
   focusInitialControl: () => {
     const button = root.value?.querySelector<HTMLElement>(
-      '[data-test="rich-text-quickbar-image-download"]',
+      '[data-test="rich-text-quick-bar-image-download"]',
     )
     button?.focus()
     return button !== null
@@ -81,8 +81,8 @@ defineExpose({
   <div ref="root" class="contents">
     <NButton
       tag="a"
-      data-test="rich-text-quickbar-image-download"
-      data-rich-text-quickbar-roving
+      data-test="rich-text-quick-bar-image-download"
+      data-rich-text-quick-bar-roving
       :href="isDisabled ? undefined : target?.attrs.src"
       download
       :disabled="isDisabled"
@@ -96,8 +96,8 @@ defineExpose({
       <span class="i-[lucide--download]" aria-hidden="true" />
     </NButton>
     <NButton
-      data-test="rich-text-quickbar-image"
-      data-rich-text-quickbar-roving
+      data-test="rich-text-quick-bar-image"
+      data-rich-text-quick-bar-roving
       :disabled="isDisabled"
       size="small"
       style="--n-padding: 0 6px"

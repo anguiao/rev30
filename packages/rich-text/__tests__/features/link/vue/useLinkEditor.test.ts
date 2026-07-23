@@ -47,7 +47,7 @@ describe('useRichTextLinkEditor', () => {
     editor.commands.setTextSelection({ from: 2, to: 4 })
     const { controller, onClose } = await mountLinkEditor(editor)
 
-    expect(controller.open('text-quickbar')).toBe(true)
+    expect(controller.open('text-quick-bar')).toBe(true)
     expect(controller.target.value).toMatchObject({
       mode: 'edit',
       range: { from: 1, to: 5 },
@@ -85,7 +85,7 @@ describe('useRichTextLinkEditor', () => {
     editor.commands.setTextSelection({ from: 2, to: 5 })
     const { controller } = await mountLinkEditor(editor)
 
-    expect(controller.open('text-quickbar')).toBe(true)
+    expect(controller.open('text-quick-bar')).toBe(true)
     expect(controller.target.value).toMatchObject({
       mode: 'set',
       range: { from: 2, to: 5 },
@@ -106,7 +106,7 @@ describe('useRichTextLinkEditor', () => {
     ])
     expect(editor.state.selection).toMatchObject({ from: 2, to: 5 })
 
-    expect(controller.open('text-quickbar')).toBe(true)
+    expect(controller.open('text-quick-bar')).toBe(true)
     expect(controller.remove()).toBe(true)
     expect(editor.getJSON().content?.[0]?.content).toMatchObject([
       {
@@ -123,7 +123,7 @@ describe('useRichTextLinkEditor', () => {
     const { controller, onClose } = await mountLinkEditor(editor)
     const before = editor.getJSON()
 
-    expect(controller.open('text-quickbar')).toBe(true)
+    expect(controller.open('text-quick-bar')).toBe(true)
     expect(controller.target.value?.mode).toBe('create')
     expect(controller.apply()).toBe(true)
     expect(editor.getJSON()).toEqual(before)
@@ -155,7 +155,7 @@ describe('useRichTextLinkEditor', () => {
     const { controller } = await mountLinkEditor(editor)
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
 
-    expect(controller.open('text-quickbar')).toBe(true)
+    expect(controller.open('text-quick-bar')).toBe(true)
     controller.draft.value = 'javascript:alert(1)'
 
     expect(controller.isInvalid.value).toBe(true)
@@ -175,7 +175,7 @@ describe('useRichTextLinkEditor', () => {
     editor.commands.setTextSelection({ from: 1, to: 3 })
     const { controller, onClose } = await mountLinkEditor(editor)
 
-    expect(controller.open('text-quickbar')).toBe(true)
+    expect(controller.open('text-quick-bar')).toBe(true)
     editor.commands.setTextSelection(7)
     expect(controller.cancel()).toBe(true)
     expect(editor.state.selection).toMatchObject({ from: 1, to: 3 })
@@ -184,14 +184,14 @@ describe('useRichTextLinkEditor', () => {
     })
     expect(onClose).toHaveBeenLastCalledWith('cancel')
 
-    expect(controller.open('text-quickbar')).toBe(true)
+    expect(controller.open('text-quick-bar')).toBe(true)
     editor.commands.setTextSelection(7)
     controller.closeFromOutside()
     expect(editor.state.selection).toMatchObject({ from: 7, to: 7 })
     expect(onClose).toHaveBeenLastCalledWith('outside')
 
     editor.commands.setTextSelection({ from: 1, to: 3 })
-    expect(controller.open('text-quickbar')).toBe(true)
+    expect(controller.open('text-quick-bar')).toBe(true)
     controller.draft.value = 'https://draft.example'
     editor.view.dispatch(editor.state.tr.setMeta('selection-only-test', true))
     expect(controller.isOpen.value).toBe(true)

@@ -3,7 +3,7 @@ import type { Mark, Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
 import { captureRichTextSelection, type RichTextSelectionSnapshot } from '../../vue/selection'
 
-export type RichTextLinkTargetSurface = 'quickbar' | 'text-quickbar' | 'toolbar'
+export type RichTextLinkTargetSurface = 'quick-bar' | 'text-quick-bar' | 'toolbar'
 
 export type RichTextLinkTargetMode = 'edit' | 'create' | 'set' | 'stored'
 
@@ -175,7 +175,7 @@ export function resolveRichTextLinkTarget(
   }
 
   if (!selection.empty) {
-    return surface === 'quickbar' ? null : resolveTextSelectionTarget(editor)
+    return surface === 'quick-bar' ? null : resolveTextSelectionTarget(editor)
   }
 
   const linkRange = resolveCaretLinkRange(editor)

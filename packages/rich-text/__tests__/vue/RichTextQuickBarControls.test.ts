@@ -5,9 +5,11 @@ import { collectRichTextEditorExtensions } from '../../src/editor/feature'
 import { boldActionItem } from '../../src/features/bold/editor'
 import { italicActionItem } from '../../src/features/italic/editor'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
-import { getRichTextQuickbarLayerId, richTextQuickbarAction } from '../../src/vue/quickbar'
-import RichTextQuickbarControls from '../../src/vue/quickbar/RichTextQuickbarControls.vue'
+import { richTextQuickBarAction } from '../../src/vue/quick-bar'
+import RichTextQuickBarControls from '../../src/vue/quick-bar/RichTextQuickBarControls.vue'
 import { createTestEditor } from '../helpers/editor'
+
+const compactTextControls = compactRichTextEditorPreset.quickBar!.textControls!
 
 function createEditor() {
   const editor = createTestEditor({
@@ -18,11 +20,8 @@ function createEditor() {
   return editor
 }
 
-function mountControls(
-  editor: ReturnType<typeof createEditor>,
-  controls = compactRichTextEditorPreset.quickbar!.text!,
-) {
-  return mount(RichTextQuickbarControls, {
+function mountControls(editor: ReturnType<typeof createEditor>, controls = compactTextControls) {
+  return mount(RichTextQuickBarControls, {
     attachTo: document.body,
     global: { stubs: { teleport: true } },
     props: {
@@ -32,12 +31,12 @@ function mountControls(
   })
 }
 
-describe('RichTextQuickbarControls', () => {
+describe('RichTextQuickBarControls', () => {
   it('leaves link form arrows and Tab to the normal form focus order', async () => {
     const editor = createEditor()
     const wrapper = mountControls(editor)
 
-    await wrapper.get('[data-test="rich-text-quickbar-link"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-quick-bar-link"]').trigger('click')
     await flushPromises()
 
     const input = wrapper.get('[data-test="rich-text-link-url"] input')
@@ -52,34 +51,30 @@ describe('RichTextQuickbarControls', () => {
     expect(
       wrapper
         .get('[data-test="rich-text-link-apply"]')
-        .attributes('data-rich-text-quickbar-roving'),
+        .attributes('data-rich-text-quick-bar-roving'),
     ).toBeUndefined()
-
-    ;(wrapper.vm as unknown as { close: (reason: 'outside') => void }).close('outside')
-    await flushPromises()
-    expect(wrapper.find('[data-test="rich-text-link-url"]').exists()).toBe(false)
   })
 
-  it('marks the teleported more menu as part of the same quickbar layer', async () => {
+  it('closes the inline more menu with Escape while preserving trigger focus', async () => {
     const editor = createEditor()
     const wrapper = mountControls(editor, {
-      primary: [richTextQuickbarAction(boldActionItem)],
-      more: [richTextQuickbarAction(italicActionItem)],
+      main: [richTextQuickBarAction(boldActionItem)],
+      more: [richTextQuickBarAction(italicActionItem)],
     })
 
-    const trigger = wrapper.get('[data-test="rich-text-quickbar-more"]')
+    const trigger = wrapper.get('[data-test="rich-text-quick-bar-more"]')
     ;(trigger.element as HTMLElement).focus()
     await trigger.trigger('click')
     await flushPromises()
 
-    const menu = wrapper.get('[data-rich-text-quickbar-menu]')
-    expect(menu.attributes('data-rich-text-quickbar-subinterface')).toBe(
-      getRichTextQuickbarLayerId(editor),
-    )
-    expect(document.activeElement).toBe(trigger.element)
+    const menu = wrapper.get('[role="menu"]')
+    const menuItem = wrapper.get('[data-test="rich-text-quick-bar-more-italic"]')
+    ;(menuItem.element as HTMLElement).focus()
+    expect(document.activeElement).toBe(menuItem.element)
 
     await menu.trigger('keydown', { key: 'Escape' })
     await flushPromises()
     expect(trigger.attributes('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(trigger.element)
   })
 })

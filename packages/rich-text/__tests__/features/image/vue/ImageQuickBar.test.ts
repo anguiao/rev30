@@ -5,10 +5,10 @@ import { mount } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { imageFeature } from '../../../../src/features/image/shared'
-import ImageQuickbar from '../../../../src/features/image/vue/ImageQuickbar.vue'
+import ImageQuickBar from '../../../../src/features/image/vue/ImageQuickBar.vue'
 import { createTestEditor } from '../../../helpers/editor'
 
-describe('ImageQuickbar', () => {
+describe('ImageQuickBar', () => {
   it('offers native download before editing', () => {
     const src = '/uploads/image.png'
     const editor = createTestEditor({
@@ -17,19 +17,19 @@ describe('ImageQuickbar', () => {
     })
     editor.commands.setNodeSelection(0)
 
-    const wrapper = mount(ImageQuickbar, {
+    const wrapper = mount(ImageQuickBar, {
       attachTo: document.body,
       props: {
         editor: markRaw(editor),
         upload: async () => ({ src }),
       },
     })
-    const controls = wrapper.findAll('[data-rich-text-quickbar-roving]')
+    const controls = wrapper.findAll('[data-rich-text-quick-bar-roving]')
     const download = controls[0]!
 
     expect(controls.map((control) => control.attributes('data-test'))).toEqual([
-      'rich-text-quickbar-image-download',
-      'rich-text-quickbar-image',
+      'rich-text-quick-bar-image-download',
+      'rich-text-quick-bar-image',
     ])
     expect(download.element.tagName).toBe('A')
     expect(download.attributes('href')).toBe(src)

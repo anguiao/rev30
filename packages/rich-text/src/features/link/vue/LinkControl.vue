@@ -6,12 +6,12 @@ import {
   type RichTextOverlayCloseReason,
   useRichTextToolbarOverlay,
 } from '../../../vue/overlay-state'
-import { getRichTextQuickbarLayerId } from '../../../vue/quickbar'
+import { getRichTextQuickBarLayerId } from '../../../vue/quick-bar'
 import { resolveRichTextLinkTarget, type RichTextLinkTargetSurface } from '../target'
 import LinkEditorPopover from './LinkEditorPopover.vue'
 import { useRichTextLinkEditor } from './useLinkEditor'
 
-type LinkControlSurface = Extract<RichTextLinkTargetSurface, 'text-quickbar' | 'toolbar'>
+type LinkControlSurface = Extract<RichTextLinkTargetSurface, 'text-quick-bar' | 'toolbar'>
 
 const props = withDefaults(
   defineProps<{
@@ -26,7 +26,7 @@ const props = withDefaults(
 
 const editor = props.editor
 const root = ref<HTMLElement | null>(null)
-const layerId = getRichTextQuickbarLayerId(editor)
+const layerId = getRichTextQuickBarLayerId(editor)
 const toolbarOverlay = useRichTextToolbarOverlay(close)
 const linkEditor = useRichTextLinkEditor({
   editor,
@@ -43,7 +43,7 @@ const isDisabled = computed(
     (!linkEditor.isOpen.value && resolveRichTextLinkTarget(editor, props.surface) === null),
 )
 const dataTest = computed(() =>
-  props.surface === 'toolbar' ? 'rich-text-link' : 'rich-text-quickbar-link',
+  props.surface === 'toolbar' ? 'rich-text-link' : 'rich-text-quick-bar-link',
 )
 
 function toggleEditor() {
@@ -91,7 +91,7 @@ defineExpose({ close, focusInitialControl })
       :can-apply="linkEditor.canApply.value"
       :can-open="linkEditor.canOpen.value"
       :can-remove="linkEditor.canRemove.value"
-      :quickbar-layer-id="surface === 'text-quickbar' ? layerId : undefined"
+      :quick-bar-layer-id="surface === 'text-quick-bar' ? layerId : undefined"
       @apply="linkEditor.apply"
       @open="linkEditor.openDraft"
       @remove="linkEditor.remove"
@@ -100,7 +100,7 @@ defineExpose({ close, focusInitialControl })
       <template #trigger>
         <NButton
           :data-test="dataTest"
-          :data-rich-text-quickbar-roving="surface === 'text-quickbar' ? '' : undefined"
+          :data-rich-text-quick-bar-roving="surface === 'text-quick-bar' ? '' : undefined"
           :data-active="editor.isActive('link') ? 'true' : undefined"
           :disabled="isDisabled"
           size="small"

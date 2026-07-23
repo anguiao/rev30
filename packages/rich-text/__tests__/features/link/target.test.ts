@@ -31,7 +31,7 @@ describe('rich text link target resolver', () => {
     for (const position of [1, 3, 5]) {
       editor.commands.setTextSelection(position)
 
-      expect(resolveRichTextLinkTarget(editor, 'quickbar')).toMatchObject({
+      expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toMatchObject({
         mode: 'edit',
         range: { from: 1, to: 5 },
         href: 'https://example.com',
@@ -47,7 +47,7 @@ describe('rich text link target resolver', () => {
     )
     editor.commands.setTextSelection(3)
 
-    expect(resolveRichTextLinkTarget(editor, 'quickbar')).toMatchObject({
+    expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toMatchObject({
       mode: 'edit',
       range: { from: 1, to: 5 },
       href: 'https://example.com',
@@ -60,7 +60,7 @@ describe('rich text link target resolver', () => {
     )
     editor.commands.setTextSelection(2)
 
-    expect(resolveRichTextLinkTarget(editor, 'quickbar')).toBeNull()
+    expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toBeNull()
     expect(resolveRichTextLinkTarget(editor, 'toolbar')).toMatchObject({
       mode: 'stored',
       range: { from: 2, to: 2 },
@@ -73,21 +73,21 @@ describe('rich text link target resolver', () => {
     const editor = createEditor('<p><a href="https://example.com">链接文本</a>普通文字</p>')
     editor.commands.setTextSelection({ from: 2, to: 4 })
 
-    expect(resolveRichTextLinkTarget(editor, 'text-quickbar')).toMatchObject({
+    expect(resolveRichTextLinkTarget(editor, 'text-quick-bar')).toMatchObject({
       mode: 'edit',
       range: { from: 1, to: 5 },
       href: 'https://example.com',
       hasLinkMarks: true,
       selection: { from: 2, to: 4, empty: false },
     })
-    expect(resolveRichTextLinkTarget(editor, 'quickbar')).toBeNull()
+    expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toBeNull()
   })
 
   it('keeps exact ranges for plain and mixed single-block selections', () => {
     const editor = createEditor('<p><a href="https://example.com">链接</a>普通文字</p>')
 
     editor.commands.setTextSelection({ from: 3, to: 7 })
-    expect(resolveRichTextLinkTarget(editor, 'text-quickbar')).toMatchObject({
+    expect(resolveRichTextLinkTarget(editor, 'text-quick-bar')).toMatchObject({
       mode: 'create',
       range: { from: 3, to: 7 },
       href: '',
@@ -95,7 +95,7 @@ describe('rich text link target resolver', () => {
     })
 
     editor.commands.setTextSelection({ from: 2, to: 5 })
-    expect(resolveRichTextLinkTarget(editor, 'text-quickbar')).toMatchObject({
+    expect(resolveRichTextLinkTarget(editor, 'text-quick-bar')).toMatchObject({
       mode: 'set',
       range: { from: 2, to: 5 },
       href: '',
@@ -107,11 +107,11 @@ describe('rich text link target resolver', () => {
     const editor = createEditor('<p>第一段</p><p>第二段<br>末尾</p>')
 
     editor.commands.setTextSelection({ from: 2, to: 7 })
-    expect(resolveRichTextLinkTarget(editor, 'text-quickbar')).toBeNull()
+    expect(resolveRichTextLinkTarget(editor, 'text-quick-bar')).toBeNull()
     expect(resolveRichTextLinkTarget(editor, 'toolbar')).toBeNull()
 
     editor.commands.setTextSelection({ from: 6, to: 10 })
-    expect(resolveRichTextLinkTarget(editor, 'text-quickbar')).toBeNull()
+    expect(resolveRichTextLinkTarget(editor, 'text-quick-bar')).toBeNull()
   })
 
   it('uses stored mode for a collapsed toolbar target without actual link text', () => {
@@ -119,7 +119,7 @@ describe('rich text link target resolver', () => {
     editor.commands.setTextSelection(3)
     editor.commands.setLink({ href: 'https://stored.example' })
 
-    expect(resolveRichTextLinkTarget(editor, 'quickbar')).toBeNull()
+    expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toBeNull()
     expect(resolveRichTextLinkTarget(editor, 'toolbar')).toMatchObject({
       mode: 'stored',
       range: { from: 3, to: 3 },
@@ -134,15 +134,15 @@ describe('rich text link target resolver', () => {
     editor.commands.setTextSelection(5)
     editor.view.dispatch(editor.state.tr.setStoredMarks([]))
 
-    expect(resolveRichTextLinkTarget(editor, 'quickbar')).toBeNull()
+    expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toBeNull()
   })
 
   it('rejects text blocks that do not allow link marks', () => {
     const editor = createEditor('<pre><code>const value = 1</code></pre>')
     editor.commands.setTextSelection(3)
 
-    expect(resolveRichTextLinkTarget(editor, 'quickbar')).toBeNull()
-    expect(resolveRichTextLinkTarget(editor, 'text-quickbar')).toBeNull()
+    expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toBeNull()
+    expect(resolveRichTextLinkTarget(editor, 'text-quick-bar')).toBeNull()
     expect(resolveRichTextLinkTarget(editor, 'toolbar')).toBeNull()
   })
 })

@@ -18,7 +18,7 @@ export interface RichTextToolbarOverlay {
 
 export function createRichTextOverlayState(host: Ref<HTMLElement | null>) {
   const activeToolbarOverlay = shallowRef<RichTextToolbarOverlay | null>(null)
-  let quickbarCloser: RichTextOverlayCloser | null = null
+  let quickBarCloser: RichTextOverlayCloser | null = null
 
   function openToolbarOverlay(overlay: RichTextToolbarOverlay) {
     if (activeToolbarOverlay.value === overlay) {
@@ -27,7 +27,7 @@ export function createRichTextOverlayState(host: Ref<HTMLElement | null>) {
 
     const previousOverlay = activeToolbarOverlay.value
     activeToolbarOverlay.value = overlay
-    quickbarCloser?.('outside')
+    quickBarCloser?.('outside')
     previousOverlay?.close('outside')
   }
 
@@ -37,12 +37,12 @@ export function createRichTextOverlayState(host: Ref<HTMLElement | null>) {
     }
   }
 
-  function registerQuickbarCloser(close: RichTextOverlayCloser) {
-    quickbarCloser = close
+  function registerQuickBarCloser(close: RichTextOverlayCloser) {
+    quickBarCloser = close
 
     return () => {
-      if (quickbarCloser === close) {
-        quickbarCloser = null
+      if (quickBarCloser === close) {
+        quickBarCloser = null
       }
     }
   }
@@ -53,7 +53,7 @@ export function createRichTextOverlayState(host: Ref<HTMLElement | null>) {
     toolbarOverlayOpen: computed(() => activeToolbarOverlay.value !== null),
     openToolbarOverlay,
     closeToolbarOverlay,
-    registerQuickbarCloser,
+    registerQuickBarCloser,
   }
 }
 

@@ -6,7 +6,7 @@ import {
   type RichTextAction,
   type RichTextIconClass,
 } from '../../../editor/action'
-import { getRichTextQuickbarLayerId } from '../../../vue/quickbar'
+import { getRichTextQuickBarLayerId } from '../../../vue/quick-bar'
 import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
 import { useRichTextToolbarOverlay } from '../../../vue/overlay-state'
 import type { TextStyleOption } from '../options'
@@ -38,7 +38,7 @@ const props = withDefaults(defineProps<TextStyleToolbarControlProps>(), {
 type TextStyleAttribute = 'color' | 'fontFamily' | 'fontSize' | 'lineHeight'
 
 const editor = props.editor
-const layerId = getRichTextQuickbarLayerId(editor)
+const layerId = getRichTextQuickBarLayerId(editor)
 const root = ref<HTMLElement | null>(null)
 const activeLayer = ref<string | null>(null)
 

@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import type { RichTextQuickbarInjectedProps } from '../../../vue/quickbar'
+import type { RichTextQuickBarComponentProps } from '../../../vue/quick-bar'
 import type { RichTextOverlayCloseReason } from '../../../vue/overlay-state'
 import { ref } from 'vue'
 import type { HighlightColorOption } from '../colors'
 import HighlightColorControl from './HighlightColorControl.vue'
 
-interface HighlightQuickbarControlProps extends RichTextQuickbarInjectedProps {
+interface HighlightQuickBarControlProps extends RichTextQuickBarComponentProps {
   colors: readonly HighlightColorOption[]
 }
 
-withDefaults(defineProps<HighlightQuickbarControlProps>(), {
+withDefaults(defineProps<HighlightQuickBarControlProps>(), {
   disabled: false,
 })
 
@@ -37,7 +37,7 @@ defineExpose({
     :editor="editor"
     :colors="colors"
     :disabled="disabled"
-    surface="quickbar"
+    surface="quick-bar"
     @close="handleClose"
   />
 </template>

@@ -4,7 +4,7 @@ import { headingActionItems, headingEditorFeature } from '../../features/heading
 import { historyActionItems, historyEditorFeature } from '../../features/history/editor'
 import { italicActionItem, italicEditorFeature } from '../../features/italic/editor'
 import { linkEditorFeature } from '../../features/link/editor'
-import { linkQuickbar, linkQuickbarControl, linkToolbarControl } from '../../features/link/vue'
+import { linkQuickBar, linkQuickBarControl, linkToolbarControl } from '../../features/link/vue'
 import { listActionItems, listEditorFeature } from '../../features/list/editor'
 import { compactRichTextPreset } from '../../presets/compact'
 import {
@@ -12,7 +12,7 @@ import {
   richTextToolbarButton as button,
   richTextToolbarDropdown as dropdown,
 } from '../toolbar'
-import { defineRichTextQuickbar, richTextQuickbarAction } from '../quickbar'
+import { defineRichTextQuickBar, richTextQuickBarAction } from '../quick-bar'
 import { defineRichTextEditorPreset } from './types'
 
 const compactEditorFeatures = [
@@ -50,20 +50,20 @@ const compactRichTextToolbar = defineRichTextToolbar([
   },
 ])
 
-const compactRichTextQuickbar = defineRichTextQuickbar({
-  text: {
-    primary: [
-      richTextQuickbarAction(boldActionItem),
-      richTextQuickbarAction(italicActionItem),
-      linkQuickbarControl,
+const compactRichTextQuickBar = defineRichTextQuickBar({
+  textControls: {
+    main: [
+      richTextQuickBarAction(boldActionItem),
+      richTextQuickBarAction(italicActionItem),
+      linkQuickBarControl,
     ],
     more: [],
   },
-  features: [linkQuickbar],
+  featureBars: [linkQuickBar],
 })
 
 export const compactRichTextEditorPreset = defineRichTextEditorPreset(compactRichTextPreset, {
   editorFeatures: compactEditorFeatures,
   toolbar: compactRichTextToolbar,
-  quickbar: compactRichTextQuickbar,
+  quickBar: compactRichTextQuickBar,
 })

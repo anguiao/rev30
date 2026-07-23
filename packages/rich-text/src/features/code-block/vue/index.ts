@@ -1,10 +1,10 @@
 import type { Editor } from '@tiptap/core'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
-import { richTextFeatureQuickbar } from '../../../vue/quickbar'
+import { richTextFeatureQuickBar } from '../../../vue/quick-bar'
 import { codeBlockFeature } from '../shared'
 import { resolveRichTextCodeBlockTarget } from '../target'
 import CodeBlockToolbarControl from './CodeBlockToolbarControl.vue'
-import CodeBlockQuickbar from './CodeBlockQuickbar.vue'
+import CodeBlockQuickBar from './CodeBlockQuickBar.vue'
 
 export const codeBlockLanguageOptions = [
   { label: '纯文本', value: 'plaintext' },
@@ -30,17 +30,16 @@ export const codeBlockToolbarControl = richTextToolbarComponent({
   },
 })
 
-export const codeBlockQuickbar = richTextFeatureQuickbar({
+export const codeBlockQuickBar = richTextFeatureQuickBar({
   feature: codeBlockFeature,
-  key: codeBlockFeature.key,
   isActive: (editor) => resolveRichTextCodeBlockTarget(editor) !== null,
-  getReferenceElement: (editor: Editor) => {
+  getAnchorElement: (editor: Editor) => {
     const target = resolveRichTextCodeBlockTarget(editor)
     const element = target ? editor.view.nodeDOM(target.position) : null
     return element instanceof HTMLElement ? element : null
   },
-  referenceAlignment: 'end',
-  component: CodeBlockQuickbar,
+  anchorAlignment: 'end',
+  component: CodeBlockQuickBar,
   props: {
     languages: codeBlockLanguageOptions,
   },

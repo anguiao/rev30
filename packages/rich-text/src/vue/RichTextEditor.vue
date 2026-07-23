@@ -4,7 +4,7 @@ import { ref, toRef } from 'vue'
 import type { RichTextDocument } from '../schema'
 import { provideRichTextOverlayState } from './overlay-state'
 import type { RichTextEditorPreset } from './presets/types'
-import RichTextQuickbar from './quickbar/RichTextQuickbar.vue'
+import RichTextQuickBar from './quick-bar/RichTextQuickBar.vue'
 import RichTextStatusBar from './status-bar/RichTextStatusBar.vue'
 import { useRichTextThemeStyle } from './theme'
 import RichTextToolbar from './toolbar/RichTextToolbar.vue'
@@ -32,7 +32,7 @@ const emit = defineEmits<{
 const initialPreset = props.preset
 const activeToolbar = initialPreset.toolbar
 const activeStatusBar = initialPreset.statusBar
-const activeQuickbar = initialPreset.quickbar
+const activeQuickBar = initialPreset.quickBar
 const activeSlashCommand = initialPreset.slashCommand
 const root = ref<HTMLElement | null>(null)
 const scrollTarget = ref<HTMLElement | null>(null)
@@ -86,13 +86,12 @@ function handleFocusout(event: FocusEvent) {
         :style="{ '--rich-text-editor-min-height': `${minHeight}px` }"
       />
 
-      <RichTextQuickbar
-        v-if="activeQuickbar && overlayHost && scrollTarget"
+      <RichTextQuickBar
+        v-if="activeQuickBar && overlayHost && scrollTarget && !disabled"
         :editor="editor"
-        :quickbar="activeQuickbar"
+        :quick-bar="activeQuickBar"
         :append-to="overlayHost"
-        :scroll-target="scrollTarget"
-        :disabled="disabled"
+        :scroll-container="scrollTarget"
       />
 
       <component

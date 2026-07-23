@@ -7,7 +7,6 @@ import { createAllRichTextServerPreset } from '../../src/server/presets/all'
 import { compactRichTextServerPreset } from '../../src/server/presets/compact'
 import { collectRichTextServerExtensions } from '../../src/server/feature'
 import type { RichTextToolbarControlConfig } from '../../src/vue/toolbar'
-import { getRichTextQuickbarControlKey } from '../../src/vue/quickbar'
 import { createAllRichTextEditorPreset } from '../../src/vue/presets/all'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 
@@ -194,20 +193,20 @@ describe('all rich text preset', () => {
     expect(allEditorPreset.statusBar?.end.map((item) => item.key)).toEqual(['character-count'])
   })
 
-  it('provides the full contextual quickbar and slash command layout', () => {
-    expect(allEditorPreset.quickbar?.text?.primary.map(getRichTextQuickbarControlKey)).toEqual([
+  it('provides the full contextual quick bar and slash command layout', () => {
+    expect(allEditorPreset.quickBar?.textControls?.main.map((control) => control.key)).toEqual([
       'bold',
       'italic',
       'underline',
       'highlight',
       'link',
     ])
-    expect(allEditorPreset.quickbar?.text?.more.map(getRichTextQuickbarControlKey)).toEqual([
+    expect(allEditorPreset.quickBar?.textControls?.more.map((control) => control.key)).toEqual([
       'strike',
       'inline-code',
       'remove-format',
     ])
-    expect(allEditorPreset.quickbar?.features.map(({ key }) => key)).toEqual([
+    expect(allEditorPreset.quickBar?.featureBars.map(({ feature }) => feature.key)).toEqual([
       'image',
       'link',
       'code-block',
@@ -362,12 +361,14 @@ describe('compact rich text preset', () => {
     expect(blocks?.controls.map(getToolbarControlKey) ?? []).toEqual(['heading', 'list'])
   })
 
-  it('adds only text and Link quickbars without slash commands', () => {
+  it('adds only text and Link quick bars without slash commands', () => {
     expect(
-      compactRichTextEditorPreset.quickbar?.text?.primary.map(getRichTextQuickbarControlKey),
+      compactRichTextEditorPreset.quickBar?.textControls?.main.map((control) => control.key),
     ).toEqual(['bold', 'italic', 'link'])
-    expect(compactRichTextEditorPreset.quickbar?.text?.more).toEqual([])
-    expect(compactRichTextEditorPreset.quickbar?.features.map(({ key }) => key)).toEqual(['link'])
+    expect(compactRichTextEditorPreset.quickBar?.textControls?.more).toEqual([])
+    expect(
+      compactRichTextEditorPreset.quickBar?.featureBars.map(({ feature }) => feature.key),
+    ).toEqual(['link'])
     expect(compactRichTextEditorPreset.slashCommand).toBeUndefined()
   })
 

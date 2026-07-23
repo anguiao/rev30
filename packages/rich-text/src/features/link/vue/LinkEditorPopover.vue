@@ -13,7 +13,7 @@ const props = withDefaults(
     canApply?: boolean
     canOpen?: boolean
     canRemove?: boolean
-    quickbarLayerId?: string | undefined
+    quickBarLayerId?: string | undefined
   }>(),
   {
     disabled: false,
@@ -69,7 +69,7 @@ function handleFormKeydown(event: KeyboardEvent) {
 
     <div
       v-if="show"
-      :data-rich-text-quickbar-subinterface="quickbarLayerId"
+      :data-rich-text-quick-bar-subinterface="quickBarLayerId"
       class="flex items-center gap-1"
       role="group"
       aria-label="编辑链接"

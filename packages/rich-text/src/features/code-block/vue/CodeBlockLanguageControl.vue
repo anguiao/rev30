@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { RichTextQuickbarInjectedProps } from '../../../vue/quickbar'
-import { getRichTextQuickbarLayerId } from '../../../vue/quickbar'
+import type { RichTextQuickBarComponentProps } from '../../../vue/quick-bar'
+import { getRichTextQuickBarLayerId } from '../../../vue/quick-bar'
 import {
   markRichTextSurfaceTransactionCommand,
   restoreRichTextSelection,
@@ -23,12 +23,12 @@ import {
 } from '../target'
 import { createCodeBlockLanguageMenuId } from './language-menu-id'
 
-interface CodeBlockLanguageControlProps extends RichTextQuickbarInjectedProps {
+interface CodeBlockLanguageControlProps extends RichTextQuickBarComponentProps {
   languages: readonly {
     readonly label: string
     readonly value: string
   }[]
-  surface: 'toolbar' | 'quickbar'
+  surface: 'toolbar' | 'quick-bar'
   showLabel?: boolean
 }
 
@@ -43,7 +43,7 @@ const emit = defineEmits<{
 
 const editor = props.editor
 const owner = Symbol('rich-text-code-block-language')
-const layerId = getRichTextQuickbarLayerId(editor)
+const layerId = getRichTextQuickBarLayerId(editor)
 const menuId = createCodeBlockLanguageMenuId()
 const root = ref<HTMLElement | null>(null)
 const show = ref(false)
@@ -64,7 +64,7 @@ const buttonLabel = computed(() =>
 const dataTestPrefix = computed(() =>
   props.surface === 'toolbar'
     ? 'rich-text-code-block-language'
-    : 'rich-text-quickbar-code-block-language',
+    : 'rich-text-quick-bar-code-block-language',
 )
 
 const options = computed<DropdownOption[]>(() =>
@@ -164,8 +164,8 @@ function handleDocumentKeydown(event: KeyboardEvent) {
 function getMenuProps() {
   return {
     'data-rich-text-code-block-language-menu': menuId,
-    ...(props.surface === 'quickbar'
-      ? { 'data-rich-text-quickbar-subinterface': layerId }
+    ...(props.surface === 'quick-bar'
+      ? { 'data-rich-text-quick-bar-subinterface': layerId }
       : undefined),
   }
 }
@@ -240,11 +240,11 @@ defineExpose({
     >
       <NButton
         :data-test="dataTestPrefix"
-        :data-rich-text-quickbar-roving="surface === 'quickbar' ? '' : undefined"
+        :data-rich-text-quick-bar-roving="surface === 'quick-bar' ? '' : undefined"
         :disabled="isDisabled"
         size="small"
         :style="surface === 'toolbar' ? '--n-padding: 0 4px' : undefined"
-        :text="surface === 'quickbar'"
+        :text="surface === 'quick-bar'"
         :quaternary="surface === 'toolbar'"
         :title="buttonLabel"
         :aria-label="buttonLabel"

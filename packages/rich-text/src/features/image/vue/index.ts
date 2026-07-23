@@ -1,4 +1,4 @@
-import { richTextFeatureQuickbar } from '../../../vue/quickbar'
+import { richTextFeatureQuickBar } from '../../../vue/quick-bar'
 import { richTextSlashUiCommand } from '../../../vue/slash-command'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
 import { insertImageActionItem } from '../editor'
@@ -6,9 +6,9 @@ import { imageFeature } from '../shared'
 import {
   getRichTextImageDialogController,
   resolveRichTextImageAnchorTarget,
-  resolveRichTextImageQuickbarTarget,
+  resolveRichTextImageQuickBarTarget,
 } from './dialog-controller'
-import ImageQuickbar from './ImageQuickbar.vue'
+import ImageQuickBar from './ImageQuickBar.vue'
 import ImageToolbarControl from './ImageToolbarControl.vue'
 
 export interface RichTextImageUploadOptions {
@@ -25,12 +25,11 @@ export function createImageToolbarControl(options: RichTextImageUploadOptions) {
   })
 }
 
-export function createImageQuickbar(options: RichTextImageUploadOptions) {
-  return richTextFeatureQuickbar({
+export function createImageQuickBar(options: RichTextImageUploadOptions) {
+  return richTextFeatureQuickBar({
     feature: imageFeature,
-    key: imageFeature.key,
-    isActive: (editor) => resolveRichTextImageQuickbarTarget(editor) !== null,
-    component: ImageQuickbar,
+    isActive: (editor) => resolveRichTextImageQuickBarTarget(editor) !== null,
+    component: ImageQuickBar,
     props: options,
   })
 }

@@ -86,7 +86,7 @@ export function resolveRichTextImageToolbarTarget(
   return null
 }
 
-export function resolveRichTextImageQuickbarTarget(editor: Editor) {
+export function resolveRichTextImageQuickBarTarget(editor: Editor) {
   const target = resolveRichTextImageToolbarTarget(editor)
 
   return target?.type === 'edit' ? target : null

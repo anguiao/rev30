@@ -1,15 +1,9 @@
 import type { AnyExtension } from '@tiptap/core'
-import {
-  validateRichTextFeatureImplementations,
-  type RichTextFeature,
-  type RichTextFeatureImplementation,
-} from '../core/feature'
+import type { RichTextFeature } from '../core/feature'
 import type { RichTextPreset } from '../core/preset'
 import { freezeRichTextHtmlPolicy, type RichTextHtmlPolicy } from './policy'
 
-export interface RichTextServerFeature<
-  Feature extends RichTextFeature = RichTextFeature,
-> extends RichTextFeatureImplementation {
+export interface RichTextServerFeature<Feature extends RichTextFeature = RichTextFeature> {
   readonly feature: Feature
   readonly htmlPolicy: RichTextHtmlPolicy
   readonly extensions?: () => readonly AnyExtension[]
@@ -39,8 +33,6 @@ interface RichTextServerExtensionPreset extends RichTextPreset {
 export function collectRichTextServerExtensions(
   preset: RichTextServerExtensionPreset,
 ): AnyExtension[] {
-  validateRichTextFeatureImplementations(preset, 'server', preset.serverFeatures)
-
   const serverFeatureByFeature = new Map<RichTextFeature, RichTextServerFeature>(
     preset.serverFeatures.map((serverFeature) => [serverFeature.feature, serverFeature]),
   )

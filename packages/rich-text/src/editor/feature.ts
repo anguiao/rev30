@@ -1,14 +1,8 @@
 import type { AnyExtension } from '@tiptap/core'
-import {
-  validateRichTextFeatureImplementations,
-  type RichTextFeature,
-  type RichTextFeatureImplementation,
-} from '../core/feature'
+import type { RichTextFeature } from '../core/feature'
 import type { RichTextPreset } from '../core/preset'
 
-export interface RichTextEditorFeature<
-  Feature extends RichTextFeature = RichTextFeature,
-> extends RichTextFeatureImplementation {
+export interface RichTextEditorFeature<Feature extends RichTextFeature = RichTextFeature> {
   readonly feature: Feature
   readonly extensions?: () => readonly AnyExtension[]
 }
@@ -34,8 +28,6 @@ interface RichTextEditorExtensionPreset extends RichTextPreset {
 export function collectRichTextEditorExtensions(
   preset: RichTextEditorExtensionPreset,
 ): AnyExtension[] {
-  validateRichTextFeatureImplementations(preset, 'editor', preset.editorFeatures)
-
   const editorFeatureByFeature = new Map<RichTextFeature, RichTextEditorFeature>(
     preset.editorFeatures.map((editorFeature) => [editorFeature.feature, editorFeature]),
   )

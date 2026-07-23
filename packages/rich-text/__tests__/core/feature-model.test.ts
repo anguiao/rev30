@@ -1,9 +1,6 @@
 import { Extension } from '@tiptap/core'
 import { describe, expect, it } from 'vitest'
-import {
-  defineRichTextFeature,
-  validateRichTextFeatureImplementations,
-} from '../../src/core/feature'
+import { defineRichTextFeature } from '../../src/core/feature'
 import { defineRichTextPreset } from '../../src/core/preset'
 import { defineRichTextAction } from '../../src/editor/action'
 import {
@@ -44,7 +41,7 @@ describe('rich text feature model', () => {
     ).toThrow('Rich text preset "duplicate-test" has a duplicate feature: "duplicate"')
   })
 
-  it('requires exactly one implementation for each declared runtime implementation', () => {
+  it('requires exactly one implementation for each declared editor or server implementation', () => {
     const editorFeature = defineRichTextFeature({
       key: 'editor-feature',
       editorImplementation: true,
@@ -56,7 +53,7 @@ describe('rich text feature model', () => {
       serverImplementation: true,
     })
     const preset = defineRichTextPreset({
-      key: 'runtime-test',
+      key: 'implementation-test',
       features: [editorFeature, serverFeature],
     })
     const editorImplementation = defineRichTextEditorFeature(editorFeature, {})
@@ -65,24 +62,24 @@ describe('rich text feature model', () => {
     })
 
     expect(() => defineRichTextEditorPreset(preset, { editorFeatures: [] })).toThrow(
-      'Rich text preset "runtime-test" is missing the editor feature implementation: "editor-feature"',
+      'Rich text preset "implementation-test" is missing the editor feature implementation: "editor-feature"',
     )
     expect(() =>
       defineRichTextEditorPreset(preset, {
         editorFeatures: [editorImplementation, editorImplementation],
       }),
     ).toThrow(
-      'Rich text preset "runtime-test" has duplicate editor feature implementations: "editor-feature"',
+      'Rich text preset "implementation-test" has duplicate editor feature implementations: "editor-feature"',
     )
 
     expect(() => defineRichTextServerPreset(preset, [serverImplementation])).not.toThrow()
     expect(() => defineRichTextServerPreset(preset, [])).toThrow(
-      'Rich text preset "runtime-test" is missing the server feature implementation: "server-feature"',
+      'Rich text preset "implementation-test" is missing the server feature implementation: "server-feature"',
     )
     expect(() =>
       defineRichTextServerPreset(preset, [serverImplementation, serverImplementation]),
     ).toThrow(
-      'Rich text preset "runtime-test" has duplicate server feature implementations: "server-feature"',
+      'Rich text preset "implementation-test" has duplicate server feature implementations: "server-feature"',
     )
   })
 
@@ -123,16 +120,6 @@ describe('rich text feature model', () => {
       editorImplementation: true,
       serverImplementation: false,
     })
-    const preset = defineRichTextPreset({
-      key: 'unsupported-runtime-test',
-      features: [serverOnlyFeature],
-    })
-
-    expect(() =>
-      validateRichTextFeatureImplementations(preset, 'editor', [{ feature: serverOnlyFeature }]),
-    ).toThrow(
-      'Rich text feature "server-only" does not declare the editor implementation in preset "unsupported-runtime-test"',
-    )
     expect(() => defineRichTextEditorFeature(serverOnlyFeature, {})).toThrow(
       'Rich text feature "server-only" does not declare the editor implementation',
     )

@@ -25,10 +25,5 @@ export function defineRichTextPreset<
   const Features extends readonly RichTextFeature[],
 >(preset: RichTextPreset<Key, Features>): RichTextPreset<Key, ReadonlyArray<Features[number]>> {
   validateRichTextPreset(preset)
-  const features = Object.freeze([...preset.features])
-
-  return Object.freeze({
-    ...preset,
-    features,
-  })
+  return preset
 }

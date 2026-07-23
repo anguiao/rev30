@@ -17,13 +17,11 @@ export function defineRichTextServerPreset<
   preset: Preset,
   serverFeatures: ServerFeatures,
 ): RichTextServerPreset<Preset['key'], Preset['features'], ReadonlyArray<ServerFeatures[number]>> {
-  const frozenServerFeatures = Object.freeze([...serverFeatures])
+  validateRichTextFeatureImplementations(preset, 'server', serverFeatures)
 
-  validateRichTextFeatureImplementations(preset, 'server', frozenServerFeatures)
-
-  return Object.freeze({
+  return {
     key: preset.key,
     features: preset.features,
-    serverFeatures: frozenServerFeatures,
-  })
+    serverFeatures,
+  }
 }

@@ -10,7 +10,7 @@ export interface RichTextFeature<Key extends string = string> {
 export function defineRichTextFeature<const Key extends string>(
   feature: RichTextFeature<Key>,
 ): RichTextFeature<Key> {
-  return Object.freeze({ ...feature })
+  return feature
 }
 
 export function validateRichTextFeatureImplementations(

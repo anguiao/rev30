@@ -277,23 +277,4 @@ describe('rich text feature model', () => {
       collectRichTextServerExtensions(serverPreset).map((extension) => extension.name),
     ).toEqual(['first-document', 'first-server', 'second-document'])
   })
-
-  it('returns frozen copies for mutable definition arrays', () => {
-    const feature = defineRichTextFeature({
-      key: 'frozen',
-      editorImplementation: false,
-      serverImplementation: false,
-    })
-    const features = [feature]
-    const preset = defineRichTextPreset({
-      key: 'frozen-test',
-      features,
-    })
-
-    expect(preset.features).not.toBe(features)
-    expect(Object.isFrozen(feature)).toBe(true)
-    expect(Object.isFrozen(preset)).toBe(true)
-    expect(Object.isFrozen(preset.features)).toBe(true)
-    expect(Object.isFrozen(features)).toBe(false)
-  })
 })

@@ -15,10 +15,10 @@ export function defineRichTextEditorFeature<const Feature extends RichTextFeatur
     throw new Error(`Rich text feature "${feature.key}" does not declare the editor implementation`)
   }
 
-  return Object.freeze({
+  return {
     feature,
     ...implementation,
-  })
+  }
 }
 
 interface RichTextEditorExtensionPreset extends RichTextPreset {

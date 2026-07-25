@@ -3,10 +3,11 @@ import type { BubbleMenuPluginProps } from '@tiptap/extension-bubble-menu'
 import { PluginKey, type Transaction } from '@tiptap/pm/state'
 import type { Editor } from '@tiptap/vue-3'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
+import { useEventListener } from '@vueuse/core'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { RichTextQuickBarConfig } from '.'
 import { resolveRichTextQuickBar, type RichTextQuickBarMatch } from './resolve'
-import RichTextQuickBarControls from './RichTextQuickBarControls.vue'
+import RichTextTextQuickBar from './RichTextTextQuickBar.vue'
 
 const props = defineProps<{
   editor: Editor
@@ -181,6 +182,9 @@ function handleEditorTransaction({ transaction }: { transaction: Transaction }) 
 editor.on('focus', handleEditorFocus)
 editor.on('transaction', handleEditorTransaction)
 
+useEventListener(() => editor.view.dom, 'keydown', handleEditorTab)
+useEventListener(() => editor.view.dom, 'focusout', handleFocusOut)
+
 watch(
   activeQuickBar,
   (quickBar) => {
@@ -193,9 +197,6 @@ watch(
 )
 
 onMounted(() => {
-  editor.view.dom.addEventListener('keydown', handleEditorTab)
-  editor.view.dom.addEventListener('focusout', handleFocusOut)
-
   void nextTick(() => {
     // Tiptap sets the BubbleMenu root tabindex to 0 when registering its plugin.
     if (root.value?.parentElement) {
@@ -205,11 +206,6 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  if (!editor.isDestroyed) {
-    editor.view.dom.removeEventListener('keydown', handleEditorTab)
-    editor.view.dom.removeEventListener('focusout', handleFocusOut)
-  }
-
   editor.off('focus', handleEditorFocus)
   editor.off('transaction', handleEditorTransaction)
 })
@@ -243,7 +239,7 @@ onBeforeUnmount(() => {
         @close="updateBubbleMenuPosition"
       />
 
-      <RichTextQuickBarControls
+      <RichTextTextQuickBar
         v-else-if="textControls"
         :editor="editor"
         :controls="textControls"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
-import type { RichTextToolbarControlConfig } from '../toolbar'
+import type { RichTextToolbarControlConfig } from '.'
 import RichTextToolbarButton from './RichTextToolbarButton.vue'
 import RichTextToolbarDropdown from './RichTextToolbarDropdown.vue'
 

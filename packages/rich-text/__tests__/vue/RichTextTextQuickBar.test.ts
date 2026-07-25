@@ -6,7 +6,7 @@ import { boldActionItem } from '../../src/features/bold/editor'
 import { italicActionItem } from '../../src/features/italic/editor'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 import { richTextQuickBarAction } from '../../src/vue/quick-bar'
-import RichTextQuickBarControls from '../../src/vue/quick-bar/RichTextQuickBarControls.vue'
+import RichTextTextQuickBar from '../../src/vue/quick-bar/RichTextTextQuickBar.vue'
 import { createTestEditor } from '../helpers/editor'
 
 const compactTextControls = compactRichTextEditorPreset.quickBar!.textControls!
@@ -21,9 +21,8 @@ function createEditor() {
 }
 
 function mountControls(editor: ReturnType<typeof createEditor>, controls = compactTextControls) {
-  return mount(RichTextQuickBarControls, {
+  return mount(RichTextTextQuickBar, {
     attachTo: document.body,
-    global: { stubs: { teleport: true } },
     props: {
       editor: markRaw(editor),
       controls,
@@ -31,7 +30,7 @@ function mountControls(editor: ReturnType<typeof createEditor>, controls = compa
   })
 }
 
-describe('RichTextQuickBarControls', () => {
+describe('RichTextTextQuickBar', () => {
   it('leaves link form arrows and Tab to the normal form focus order', async () => {
     const editor = createEditor()
     const wrapper = mountControls(editor)

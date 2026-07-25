@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Editor } from '@tiptap/core'
+import type { Editor } from '@tiptap/vue-3'
 import { NButton, NPopover } from 'naive-ui'
 import { computed, nextTick, ref } from 'vue'
 import { canRunRichTextAction, runRichTextAction } from '../../editor/action'

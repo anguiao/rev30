@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
-import type { RichTextStatusBarConfig } from '../status-bar'
+import type { RichTextStatusBarConfig } from '.'
 
 defineProps<{
   editor: Editor

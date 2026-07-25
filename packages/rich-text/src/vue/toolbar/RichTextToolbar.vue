@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
-import type { RichTextToolbarConfig } from '../toolbar'
+import type { RichTextToolbarConfig } from '.'
 import RichTextToolbarControl from './RichTextToolbarControl.vue'
 
 const props = withDefaults(

@@ -6,7 +6,6 @@ import { compactRichTextPreset } from '../../src/presets/compact'
 import { createAllRichTextServerPreset } from '../../src/server/presets/all'
 import { compactRichTextServerPreset } from '../../src/server/presets/compact'
 import { collectRichTextServerExtensions } from '../../src/server/feature'
-import type { RichTextToolbarControlConfig } from '../../src/vue/toolbar'
 import { createAllRichTextEditorPreset } from '../../src/vue/presets/all'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 
@@ -20,7 +19,6 @@ const imageServerOptions = {
 
 const allFeatureKeys = [
   'base',
-  'slash-command',
   'history',
   'character-count',
   'search-replace',
@@ -53,10 +51,6 @@ const allEditorPreset = createAllRichTextEditorPreset({
 const allServerPreset = createAllRichTextServerPreset({
   image: imageServerOptions,
 })
-
-function getToolbarControlKey(control: RichTextToolbarControlConfig) {
-  return control.type === 'button' ? control.item.action.key : control.key
-}
 
 function expectNoDuplicateTiptapExtensions(
   preset: Parameters<typeof collectRichTextEditorExtensions>[0],
@@ -104,8 +98,6 @@ describe('all rich text preset', () => {
       'dropCursor',
       'gapCursor',
       'selection',
-      'placeholder',
-      'richTextSlashCommand',
       'undoRedo',
       'characterCount',
       'searchReplace',
@@ -155,12 +147,12 @@ describe('all rich text preset', () => {
       (control) => control.type === 'dropdown' && control.key === 'list',
     )
 
-    expect(history?.controls.map(getToolbarControlKey) ?? []).toEqual([
+    expect(history?.controls.map((control) => control.key) ?? []).toEqual([
       'undo',
       'redo',
       'search-replace',
     ])
-    expect(marks?.controls.map(getToolbarControlKey) ?? []).toEqual([
+    expect(marks?.controls.map((control) => control.key) ?? []).toEqual([
       'bold',
       'italic',
       'underline',
@@ -170,7 +162,7 @@ describe('all rich text preset', () => {
       'link',
       'remove-format',
     ])
-    expect(textStyle?.controls.map(getToolbarControlKey) ?? []).toEqual(['text-style'])
+    expect(textStyle?.controls.map((control) => control.key) ?? []).toEqual(['text-style'])
     expect(
       heading?.type === 'dropdown' ? heading.items.map((item) => item.action.key) : [],
     ).toEqual(['heading-1', 'heading-2', 'heading-3'])
@@ -181,48 +173,49 @@ describe('all rich text preset', () => {
       'bullet-list',
       'ordered-list',
     ])
-    expect(blocks?.controls.map(getToolbarControlKey) ?? []).toEqual([
+    expect(blocks?.controls.map((control) => control.key) ?? []).toEqual([
       'heading',
       'text-align',
       'list',
       'blockquote',
       'code-block',
     ])
-    expect(insert?.controls.map(getToolbarControlKey) ?? []).toEqual(['horizontal-rule', 'image'])
+    expect(insert?.controls.map((control) => control.key) ?? []).toEqual([
+      'horizontal-rule',
+      'image',
+    ])
     expect(allEditorPreset.statusBar?.start.map((item) => item.key)).toEqual([])
     expect(allEditorPreset.statusBar?.end.map((item) => item.key)).toEqual(['character-count'])
   })
 
   it('provides the full contextual quick bar and slash command layout', () => {
-    expect(allEditorPreset.quickBar?.textControls?.main.map((control) => control.key)).toEqual([
+    const textControls = allEditorPreset.quickBar?.textControls
+
+    expect(textControls?.main.map((control) => control.key)).toEqual([
       'bold',
       'italic',
       'underline',
       'highlight',
       'link',
     ])
-    expect(allEditorPreset.quickBar?.textControls?.more.map((control) => control.key)).toEqual([
+    expect(textControls?.more.map((control) => control.key)).toEqual([
       'strike',
       'inline-code',
       'remove-format',
     ])
-    expect(allEditorPreset.quickBar?.featureBars.map(({ feature }) => feature.key)).toEqual([
+    expect(allEditorPreset.quickBar?.featureBars.map((quickBar) => quickBar.feature.key)).toEqual([
       'image',
       'link',
       'code-block',
     ])
-    expect(allEditorPreset.slashCommand?.groups.map(({ key }) => key)).toEqual([
-      'basic',
-      'list',
-      'insert',
-    ])
-    expect(
-      allEditorPreset.slashCommand?.groups.map((group) => group.commands.map(({ key }) => key)),
-    ).toEqual([
-      ['paragraph', 'heading-1', 'heading-2', 'heading-3', 'blockquote'],
-      ['bullet-list', 'ordered-list'],
-      ['code-block', 'horizontal-rule', 'insert-image'],
-    ])
+    expect(allEditorPreset.slashMenu?.map(({ key }) => key)).toEqual(['basic', 'list', 'insert'])
+    expect(allEditorPreset.slashMenu?.map((group) => group.commands.map(({ key }) => key))).toEqual(
+      [
+        ['paragraph', 'heading-1', 'heading-2', 'heading-3', 'blockquote'],
+        ['bullet-list', 'ordered-list'],
+        ['code-block', 'horizontal-rule', 'insert-image'],
+      ],
+    )
   })
 
   it('keeps server implementations, document extensions, and html policy order', () => {
@@ -240,9 +233,9 @@ describe('all rich text preset', () => {
       'link',
       'heading',
       'text-align',
-      'list',
       'blockquote',
       'code-block',
+      'list',
       'horizontal-rule',
       'image',
     ])
@@ -291,12 +284,12 @@ describe('all rich text preset', () => {
       'h1',
       'h2',
       'h3',
-      'ul',
-      'ol',
-      'li',
       'blockquote',
       'pre',
       'code',
+      'ul',
+      'ol',
+      'li',
       'hr',
       'img',
     ])
@@ -356,20 +349,26 @@ describe('compact rich text preset', () => {
       (group) => group.key === 'blocks',
     )
 
-    expect(history?.controls.map(getToolbarControlKey) ?? []).toEqual(['undo', 'redo'])
-    expect(marks?.controls.map(getToolbarControlKey) ?? []).toEqual(['bold', 'italic', 'link'])
-    expect(blocks?.controls.map(getToolbarControlKey) ?? []).toEqual(['heading', 'list'])
+    expect(history?.controls.map((control) => control.key) ?? []).toEqual(['undo', 'redo'])
+    expect(marks?.controls.map((control) => control.key) ?? []).toEqual(['bold', 'italic', 'link'])
+    expect(blocks?.controls.map((control) => control.key) ?? []).toEqual(['heading', 'list'])
   })
 
-  it('adds only text and Link quick bars without slash commands', () => {
+  it('adds compact quick bars and slash commands', () => {
+    const textControls = compactRichTextEditorPreset.quickBar?.textControls
+
+    expect(textControls?.main.map((control) => control.key)).toEqual(['bold', 'italic', 'link'])
+    expect(textControls?.more).toEqual([])
     expect(
-      compactRichTextEditorPreset.quickBar?.textControls?.main.map((control) => control.key),
-    ).toEqual(['bold', 'italic', 'link'])
-    expect(compactRichTextEditorPreset.quickBar?.textControls?.more).toEqual([])
-    expect(
-      compactRichTextEditorPreset.quickBar?.featureBars.map(({ feature }) => feature.key),
+      compactRichTextEditorPreset.quickBar?.featureBars.map((quickBar) => quickBar.feature.key),
     ).toEqual(['link'])
-    expect(compactRichTextEditorPreset.slashCommand).toBeUndefined()
+    expect(compactRichTextEditorPreset.slashMenu?.map(({ key }) => key)).toEqual(['basic', 'list'])
+    expect(
+      compactRichTextEditorPreset.slashMenu?.map((group) => group.commands.map(({ key }) => key)),
+    ).toEqual([
+      ['paragraph', 'heading-1', 'heading-2', 'heading-3'],
+      ['bullet-list', 'ordered-list'],
+    ])
   })
 
   it('keeps server implementations, document extensions, and html policy order', () => {

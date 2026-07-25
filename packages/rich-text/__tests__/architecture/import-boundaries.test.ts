@@ -168,7 +168,7 @@ function collectFeatureKeys(ids: Iterable<string>) {
 }
 
 describe('rich text import boundaries', () => {
-  it('keeps Vue and editor runtime modules out of server entries', async () => {
+  it('keeps Vue and editor-only modules out of server entries', async () => {
     const graph = await collectBuildGraph({
       virtualSource: `
         export * from '@rev30/rich-text/server'
@@ -197,7 +197,7 @@ describe('rich text import boundaries', () => {
     expect(findModules(graph.bundled, isForbidden), 'bundled server module graph').toEqual([])
   }, 30_000)
 
-  it('keeps server runtime modules out of editor entries', async () => {
+  it('keeps server-only modules out of editor entries', async () => {
     const graph = await collectBuildGraph({
       virtualSource: `
         export * from '@rev30/rich-text/vue'

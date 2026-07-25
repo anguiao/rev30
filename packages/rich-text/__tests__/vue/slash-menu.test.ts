@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { flushPromises } from '@vue/test-utils'
 import { defineRichTextPreset } from '../../src/core/preset'
 import {
   canRunRichTextAction,
@@ -13,18 +14,17 @@ import { headingFeature } from '../../src/features/heading/shared'
 import { historyEditorFeature } from '../../src/features/history/editor'
 import { historyFeature } from '../../src/features/history/shared'
 import { createImageSlashCommand } from '../../src/features/image/vue'
-import { getRichTextImageDialogController } from '../../src/features/image/vue/dialog-controller'
 import {
   canRunRichTextSlashCommand,
-  defineRichTextSlashCommand,
-  filterRichTextSlashCommands,
-  richTextSlashCommandAction,
+  defineRichTextSlashMenu,
+  filterRichTextSlashMenu,
+  richTextSlashCommand,
   runRichTextSlashCommand,
-} from '../../src/vue/slash-command'
+} from '../../src/vue/slash-menu'
 import { createTestEditor } from '../helpers/editor'
 
 const preset = defineRichTextPreset({
-  key: 'slash-command-test',
+  key: 'slash-menu-test',
   features: [baseFeature, historyFeature, headingFeature],
 })
 
@@ -38,12 +38,14 @@ function createEditor(content = '<p></p>') {
   })
 }
 
-const paragraphCommand = richTextSlashCommandAction(paragraphActionItem)
-const headingCommand = richTextSlashCommandAction(headingActionItems[0])
-const imageCommand = createImageSlashCommand({ upload: vi.fn() })
+const paragraphCommand = richTextSlashCommand(paragraphActionItem)
+const headingCommand = richTextSlashCommand(headingActionItems[0])
+const imageCommand = createImageSlashCommand({
+  upload: async () => ({ src: '/uploads/image.png' }),
+})
 
-function createConfig() {
-  return defineRichTextSlashCommand([
+function createGroups() {
+  return defineRichTextSlashMenu([
     {
       key: 'basic',
       label: '基础块',
@@ -62,44 +64,43 @@ function createConfig() {
   ])
 }
 
-describe('rich text slash command model', () => {
-  it('freezes groups and commands and rejects duplicate keys', () => {
-    const config = createConfig()
-
-    expect(Object.isFrozen(config)).toBe(true)
-    expect(Object.isFrozen(config.groups)).toBe(true)
-    expect(Object.isFrozen(config.groups[0])).toBe(true)
-    expect(Object.isFrozen(config.groups[0]?.commands)).toBe(true)
-
+describe('rich text slash menu model', () => {
+  it('rejects duplicate group and command keys', () => {
     expect(() =>
-      defineRichTextSlashCommand([
+      defineRichTextSlashMenu([
         { key: 'same', label: '一', commands: [paragraphCommand] },
         { key: 'same', label: '二', commands: [headingCommand] },
       ]),
     ).toThrow('duplicate group: "same"')
 
     expect(() =>
-      defineRichTextSlashCommand([
+      defineRichTextSlashMenu([
         { key: 'one', label: '一', commands: [paragraphCommand] },
         { key: 'two', label: '二', commands: [paragraphCommand] },
       ]),
     ).toThrow('duplicate command: "paragraph"')
   })
 
-  it('filters labels and fixed keywords by case-insensitive inclusion without reordering', () => {
-    const config = createConfig()
+  it('filters labels, keys, and feature keywords by case-insensitive inclusion without reordering', () => {
+    const groups = createGroups()
 
-    expect(filterRichTextSlashCommands(config, '')).toEqual(config.groups)
-    expect(filterRichTextSlashCommands(config, '正')).toMatchObject([
+    expect(filterRichTextSlashMenu(groups, '')).toBe(groups)
+    expect(filterRichTextSlashMenu(groups, '正')).toMatchObject([
       { key: 'basic', commands: [{ key: 'paragraph' }] },
     ])
-    expect(filterRichTextSlashCommands(config, 'ADING')).toMatchObject([
+    expect(filterRichTextSlashMenu(groups, 'PARA')).toMatchObject([
+      { key: 'basic', commands: [{ key: 'paragraph' }] },
+    ])
+    expect(filterRichTextSlashMenu(groups, 'h1')).toMatchObject([
       { key: 'basic', commands: [{ key: 'heading-1' }] },
     ])
-    expect(filterRichTextSlashCommands(config, 'PIC')).toMatchObject([
+    expect(filterRichTextSlashMenu(groups, 'ADING')).toMatchObject([
+      { key: 'basic', commands: [{ key: 'heading-1' }] },
+    ])
+    expect(filterRichTextSlashMenu(groups, 'PIC')).toMatchObject([
       { key: 'insert', commands: [{ key: 'insert-image' }] },
     ])
-    expect(filterRichTextSlashCommands(config, 'zhengwen')).toEqual([])
+    expect(filterRichTextSlashMenu(groups, 'zhengwen')).toEqual([])
   })
 
   it('deletes a slash query and runs an action in one transaction with one-step undo', () => {
@@ -134,7 +135,7 @@ describe('rich text slash command model', () => {
         ({ tr }) =>
           tr.doc.textContent === '',
     })
-    const emptyParagraphCommand = richTextSlashCommandAction(
+    const emptyParagraphCommand = richTextSlashCommand(
       defineRichTextActionItem(emptyParagraphAction, {
         label: '空段落',
         icon: 'i-[lucide--pilcrow]',
@@ -156,7 +157,7 @@ describe('rich text slash command model', () => {
         ({ dispatch }) =>
           dispatch === undefined,
     })
-    const simulatedOnlyCommand = richTextSlashCommandAction(
+    const simulatedOnlyCommand = richTextSlashCommand(
       defineRichTextActionItem(simulatedOnlyAction, {
         label: '仅模拟',
         icon: 'i-[lucide--circle-dashed]',
@@ -176,7 +177,7 @@ describe('rich text slash command model', () => {
     expect(update).not.toHaveBeenCalled()
   })
 
-  it('deletes an image query before opening the dialog against the empty paragraph anchor', () => {
+  it('deletes an image query before opening the insert dialog', async () => {
     const editor = createEditor()
     const update = vi.fn()
 
@@ -184,12 +185,11 @@ describe('rich text slash command model', () => {
     editor.on('update', update)
 
     expect(runRichTextSlashCommand(editor, imageCommand, { from: 1, to: 4 })).toBe(true)
+    await flushPromises()
+
     expect(editor.getJSON()).toMatchObject({ content: [{ type: 'paragraph' }] })
     expect(update).toHaveBeenCalledOnce()
-    expect(getRichTextImageDialogController(editor).session.value?.target).toMatchObject({
-      type: 'insert-anchor',
-      anchor: 0,
-    })
+    expect(document.querySelector('[data-test="rich-text-image-cancel"]')).not.toBeNull()
 
     expect(editor.commands.undo()).toBe(true)
     expect(editor.getText()).toBe('/图片')

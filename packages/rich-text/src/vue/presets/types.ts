@@ -2,9 +2,9 @@ import { validateRichTextFeatureImplementations, type RichTextFeature } from '..
 import type { RichTextPreset } from '../../core/preset'
 import type { RichTextEditorFeature } from '../../editor/feature'
 import type { RichTextQuickBarConfig, RichTextQuickBarControl } from '../quick-bar'
-import { getRichTextSlashCommandFeature, type RichTextSlashCommandConfig } from '../slash-command'
+import type { RichTextSlashMenuGroup } from '../slash-menu'
 import type { RichTextStatusBarConfig, RichTextStatusBarComponentItem } from '../status-bar'
-import { type RichTextToolbarConfig, type RichTextToolbarControlConfig } from '../toolbar'
+import type { RichTextToolbarConfig, RichTextToolbarControlConfig } from '../toolbar'
 
 export interface RichTextEditorPreset<
   Preset extends RichTextPreset = RichTextPreset,
@@ -14,18 +14,7 @@ export interface RichTextEditorPreset<
   readonly toolbar?: RichTextToolbarConfig
   readonly statusBar?: RichTextStatusBarConfig
   readonly quickBar?: RichTextQuickBarConfig
-  readonly slashCommand?: RichTextSlashCommandConfig
-}
-
-function hasEditorFeature(
-  preset: RichTextPreset,
-  editorFeatures: readonly RichTextEditorFeature[],
-  feature: RichTextFeature,
-) {
-  return (
-    preset.features.includes(feature) &&
-    editorFeatures.some((editorFeature) => editorFeature.feature === feature)
-  )
+  readonly slashMenu?: readonly RichTextSlashMenuGroup[]
 }
 
 function assertEditorFeature(
@@ -34,7 +23,7 @@ function assertEditorFeature(
   feature: RichTextFeature,
   surface: string,
 ) {
-  if (!hasEditorFeature(preset, editorFeatures, feature)) {
+  if (!editorFeatures.some((editorFeature) => editorFeature.feature === feature)) {
     throw new Error(
       `Rich text preset "${preset.key}" has ${surface} for unknown feature "${feature.key}"`,
     )
@@ -82,30 +71,14 @@ function validateQuickBar(
   }
 }
 
-function validateSlashCommand(
+function validateSlashMenu(
   preset: RichTextPreset,
   editorFeatures: readonly RichTextEditorFeature[],
-  slashCommand: RichTextSlashCommandConfig,
+  groups: readonly RichTextSlashMenuGroup[],
 ) {
-  const hasSlashCommandFeature = preset.features.some((feature) => feature.key === 'slash-command')
-  const hasSlashCommandEditorFeature = editorFeatures.some(
-    ({ feature }) => feature.key === 'slash-command',
-  )
-
-  if (!hasSlashCommandFeature || !hasSlashCommandEditorFeature) {
-    throw new Error(
-      `Rich text preset "${preset.key}" has slash commands without the "slash-command" editor feature`,
-    )
-  }
-
-  for (const group of slashCommand.groups) {
+  for (const group of groups) {
     for (const command of group.commands) {
-      assertEditorFeature(
-        preset,
-        editorFeatures,
-        getRichTextSlashCommandFeature(command),
-        'a slash command',
-      )
+      assertEditorFeature(preset, editorFeatures, command.feature, 'a slash command')
     }
   }
 }
@@ -120,10 +93,10 @@ export function defineRichTextEditorPreset<
     readonly toolbar?: RichTextToolbarConfig
     readonly statusBar?: RichTextStatusBarConfig
     readonly quickBar?: RichTextQuickBarConfig
-    readonly slashCommand?: RichTextSlashCommandConfig
+    readonly slashMenu?: readonly RichTextSlashMenuGroup[]
   },
 ): RichTextEditorPreset<Preset, ReadonlyArray<EditorFeatures[number]>> {
-  const editorFeatures = Object.freeze([...options.editorFeatures])
+  const { editorFeatures } = options
 
   validateRichTextFeatureImplementations(preset, 'editor', editorFeatures)
 
@@ -145,17 +118,17 @@ export function defineRichTextEditorPreset<
     validateQuickBar(preset, editorFeatures, options.quickBar)
   }
 
-  if (options.slashCommand) {
-    validateSlashCommand(preset, editorFeatures, options.slashCommand)
+  if (options.slashMenu) {
+    validateSlashMenu(preset, editorFeatures, options.slashMenu)
   }
 
-  return Object.freeze({
+  return {
     key: preset.key,
     features: preset.features,
     editorFeatures,
     ...(options.toolbar ? { toolbar: options.toolbar } : {}),
     ...(options.statusBar ? { statusBar: options.statusBar } : {}),
     ...(options.quickBar ? { quickBar: options.quickBar } : {}),
-    ...(options.slashCommand ? { slashCommand: options.slashCommand } : {}),
-  })
+    ...(options.slashMenu ? { slashMenu: options.slashMenu } : {}),
+  }
 }

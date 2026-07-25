@@ -232,7 +232,7 @@ describe('rich text feature model', () => {
     ).toThrow('Rich text toolbar has a duplicate control: "duplicate-control"')
   })
 
-  it('collects runtime extensions in canonical feature order', () => {
+  it('collects extensions in canonical feature order', () => {
     const firstDocumentExtension = Extension.create({ name: 'first-document' })
     const firstEditorExtension = Extension.create({ name: 'first-editor' })
     const firstServerExtension = Extension.create({ name: 'first-server' })
@@ -265,8 +265,8 @@ describe('rich text feature model', () => {
     })
     const secondServerFeature = defineRichTextServerFeature(secondFeature, { htmlPolicy: {} })
     const serverPreset = defineRichTextServerPreset(preset, [
-      firstServerFeature,
       secondServerFeature,
+      firstServerFeature,
     ])
 
     expect(

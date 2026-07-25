@@ -37,9 +37,9 @@ export function createAllRichTextServerPreset(options: AllRichTextServerPresetOp
     linkServerFeature,
     headingServerFeature,
     textAlignServerFeature,
-    listServerFeature,
     blockquoteServerFeature,
     codeBlockServerFeature,
+    listServerFeature,
     horizontalRuleServerFeature,
     createImageServerFeature(options.image),
   ])

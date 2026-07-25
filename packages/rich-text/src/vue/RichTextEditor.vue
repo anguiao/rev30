@@ -5,6 +5,7 @@ import { collectRichTextEditorExtensions } from '../editor/feature'
 import type { RichTextDocument } from '../schema'
 import type { RichTextEditorPreset } from './presets/types'
 import RichTextQuickBar from './quick-bar/RichTextQuickBar.vue'
+import RichTextSlashMenu from './slash-menu/RichTextSlashMenu.vue'
 import RichTextStatusBar from './status-bar/RichTextStatusBar.vue'
 import { useRichTextThemeStyle } from './theme'
 import RichTextToolbar from './toolbar/RichTextToolbar.vue'
@@ -28,8 +29,9 @@ const emit = defineEmits<{
 }>()
 
 const root = ref<HTMLElement | null>(null)
-const scrollContainer = ref<HTMLElement | null>(null)
 const richTextThemeStyle = useRichTextThemeStyle()
+
+const scrollContainer = ref<HTMLElement | null>(null)
 
 const preset = props.preset
 const editor = new Editor({
@@ -102,20 +104,18 @@ function handleFocusout(event: FocusEvent) {
       />
 
       <RichTextQuickBar
-        v-if="preset.quickBar && root && scrollContainer && !disabled"
+        v-if="preset.quickBar && !disabled && root && scrollContainer"
         :editor="editor"
         :quick-bar="preset.quickBar"
-        :append-to="root"
         :scroll-container="scrollContainer"
+        :append-to="root"
       />
 
-      <component
-        :is="preset.slashCommand?.component"
-        v-if="preset.slashCommand?.component && root"
+      <RichTextSlashMenu
+        v-if="preset.slashMenu && !disabled && root"
         :editor="editor"
-        :config="preset.slashCommand"
+        :slash-menu="preset.slashMenu"
         :append-to="root"
-        :disabled="disabled"
       />
     </div>
 
@@ -151,7 +151,7 @@ function handleFocusout(event: FocusEvent) {
   background-color: var(--rich-text-theme-selection-color);
 }
 
-:deep(.ProseMirror .rich-text-slash-command-placeholder::before) {
+:deep(.ProseMirror .rich-text-slash-menu-placeholder::before) {
   float: left;
   height: 0;
   content: attr(data-placeholder);

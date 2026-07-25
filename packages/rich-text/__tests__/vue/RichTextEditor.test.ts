@@ -13,11 +13,17 @@ import RichTextEditor from '../../src/vue/RichTextEditor.vue'
 import type { RichTextDocument } from '../../src/schema'
 import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
 import { createAllRichTextEditorPreset } from '../../src/vue/presets/all'
+import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 import { defineRichTextStatusBar, richTextStatusBarComponent } from '../../src/vue/status-bar'
 
 const contentJson: RichTextDocument = {
   type: 'doc',
   content: [{ type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] }],
+}
+
+const emptyContentJson: RichTextDocument = {
+  type: 'doc',
+  content: [{ type: 'paragraph' }],
 }
 
 const toolbarDataTests = [
@@ -257,6 +263,19 @@ describe('RichTextEditor', () => {
     expect(wrapper.find('[data-test="rich-text-toolbar"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="rich-text-toolbar-group"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="rich-text-status-bar"]').exists()).toBe(false)
+  })
+
+  it('shows the slash command hint for the compact preset', async () => {
+    const wrapper = mountRichTextEditor({
+      modelValue: emptyContentJson,
+      preset: compactRichTextEditorPreset,
+    })
+
+    await getEditable(wrapper)
+
+    const paragraph = wrapper.get('.ProseMirror p')
+    expect(paragraph.classes()).toContain('rich-text-slash-menu-placeholder')
+    expect(paragraph.attributes('data-placeholder')).toBe('开始输入，或按 / 唤起命令')
   })
 
   it('emits blur only after focus leaves the complete editor interaction surface', async () => {

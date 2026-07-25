@@ -31,7 +31,6 @@ import {
 } from '../../features/remove-format/editor'
 import { searchReplaceEditorFeature } from '../../features/search-replace/editor'
 import { searchReplaceToolbarControl } from '../../features/search-replace/vue'
-import { slashCommandEditorFeature } from '../../features/slash-command/editor'
 import { strikeActionItem, strikeEditorFeature } from '../../features/strike/editor'
 import { textAlignActionItems, textAlignEditorFeature } from '../../features/text-align/editor'
 import { textStyleEditorFeature } from '../../features/text-style/editor'
@@ -39,8 +38,7 @@ import { textStyleToolbarControl } from '../../features/text-style/vue'
 import { underlineActionItem, underlineEditorFeature } from '../../features/underline/editor'
 import { allRichTextPreset } from '../../presets/all'
 import { defineRichTextQuickBar, richTextQuickBarAction } from '../quick-bar'
-import { defineRichTextSlashCommand, richTextSlashCommandAction } from '../slash-command'
-import RichTextSlashCommandMenu from '../slash-command/RichTextSlashCommandMenu.vue'
+import { defineRichTextSlashMenu, richTextSlashCommand } from '../slash-menu'
 import {
   defineRichTextToolbar,
   richTextToolbarButton as button,
@@ -55,7 +53,6 @@ export interface AllRichTextEditorPresetOptions {
 
 const allEditorFeatures = [
   baseEditorFeature,
-  slashCommandEditorFeature,
   historyEditorFeature,
   characterCountEditorFeature,
   searchReplaceEditorFeature,
@@ -149,35 +146,32 @@ function createAllRichTextQuickBar(options: AllRichTextEditorPresetOptions) {
   })
 }
 
-function createAllRichTextSlashCommand(options: AllRichTextEditorPresetOptions) {
-  return defineRichTextSlashCommand(
-    [
-      {
-        key: 'basic',
-        label: '基础块',
-        commands: [
-          richTextSlashCommandAction(paragraphActionItem),
-          ...headingActionItems.map(richTextSlashCommandAction),
-          richTextSlashCommandAction(blockquoteActionItem),
-        ],
-      },
-      {
-        key: 'list',
-        label: '列表',
-        commands: listActionItems.map(richTextSlashCommandAction),
-      },
-      {
-        key: 'insert',
-        label: '插入',
-        commands: [
-          richTextSlashCommandAction(codeBlockActionItem),
-          richTextSlashCommandAction(horizontalRuleActionItem),
-          createImageSlashCommand(options.image),
-        ],
-      },
-    ],
-    RichTextSlashCommandMenu,
-  )
+function createAllRichTextSlashMenu(options: AllRichTextEditorPresetOptions) {
+  return defineRichTextSlashMenu([
+    {
+      key: 'basic',
+      label: '基础块',
+      commands: [
+        richTextSlashCommand(paragraphActionItem),
+        ...headingActionItems.map((item) => richTextSlashCommand(item)),
+        richTextSlashCommand(blockquoteActionItem),
+      ],
+    },
+    {
+      key: 'list',
+      label: '列表',
+      commands: listActionItems.map((item) => richTextSlashCommand(item)),
+    },
+    {
+      key: 'insert',
+      label: '插入',
+      commands: [
+        richTextSlashCommand(codeBlockActionItem),
+        richTextSlashCommand(horizontalRuleActionItem),
+        createImageSlashCommand(options.image),
+      ],
+    },
+  ])
 }
 
 const allRichTextStatusBar = defineRichTextStatusBar({
@@ -191,6 +185,6 @@ export function createAllRichTextEditorPreset(options: AllRichTextEditorPresetOp
     toolbar: createAllRichTextToolbar(options),
     statusBar: allRichTextStatusBar,
     quickBar: createAllRichTextQuickBar(options),
-    slashCommand: createAllRichTextSlashCommand(options),
+    slashMenu: createAllRichTextSlashMenu(options),
   })
 }

@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core'
 import { VueRenderer } from '@tiptap/vue-3'
 import { richTextFeatureQuickBar } from '../../../vue/quick-bar'
-import { richTextSlashUiCommand } from '../../../vue/slash-command'
+import { richTextSlashCommand } from '../../../vue/slash-menu'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
 import {
   canInsertImage,
@@ -11,10 +11,6 @@ import {
   updateImageAction,
 } from '../editor'
 import { imageFeature, type RichTextImageInput } from '../shared'
-import {
-  getRichTextImageDialogController,
-  resolveRichTextImageAnchorTarget,
-} from './dialog-controller'
 import ImageDialog from './ImageDialog.vue'
 import ImageQuickBar from './ImageQuickBar.vue'
 import ImageToolbarControl from './ImageToolbarControl.vue'
@@ -88,16 +84,5 @@ export function createImageQuickBar(options: RichTextImageUploadOptions) {
 }
 
 export function createImageSlashCommand(options: RichTextImageUploadOptions) {
-  return richTextSlashUiCommand(insertImageActionItem, {
-    run: ({ editor, anchor }) => {
-      const target = resolveRichTextImageAnchorTarget(editor, anchor)
-
-      if (!target) {
-        return false
-      }
-
-      getRichTextImageDialogController(editor).open(target, options)
-      return true
-    },
-  })
+  return richTextSlashCommand(insertImageActionItem, (editor) => openImageDialog(editor, options))
 }

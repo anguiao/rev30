@@ -1,18 +1,17 @@
 <script setup lang="ts">
-import { EditorContent } from '@tiptap/vue-3'
-import { ref, toRef } from 'vue'
+import { Editor, EditorContent } from '@tiptap/vue-3'
+import { onUnmounted, ref, watch } from 'vue'
+import { collectRichTextEditorExtensions } from '../editor/feature'
 import type { RichTextDocument } from '../schema'
 import type { RichTextEditorPreset } from './presets/types'
 import RichTextQuickBar from './quick-bar/RichTextQuickBar.vue'
 import RichTextStatusBar from './status-bar/RichTextStatusBar.vue'
 import { useRichTextThemeStyle } from './theme'
 import RichTextToolbar from './toolbar/RichTextToolbar.vue'
-import { useRichTextEditor } from './useRichTextEditor'
 
 const props = withDefaults(
   defineProps<{
     modelValue: RichTextDocument
-    /** Initialization-only editor configuration. Runtime replacement is not supported. */
     preset: RichTextEditorPreset
     disabled?: boolean
     minHeight?: number
@@ -28,21 +27,40 @@ const emit = defineEmits<{
   blur: []
 }>()
 
-const initialPreset = props.preset
-const activeToolbar = initialPreset.toolbar
-const activeStatusBar = initialPreset.statusBar
-const activeQuickBar = initialPreset.quickBar
-const activeSlashCommand = initialPreset.slashCommand
 const root = ref<HTMLElement | null>(null)
-const scrollTarget = ref<HTMLElement | null>(null)
+const scrollContainer = ref<HTMLElement | null>(null)
 const richTextThemeStyle = useRichTextThemeStyle()
 
-const { editor } = useRichTextEditor({
-  modelValue: toRef(props, 'modelValue'),
-  disabled: toRef(props, 'disabled'),
-  initialPreset,
-  onUpdate: (value) => emit('update:modelValue', value),
+const preset = props.preset
+const editor = new Editor({
+  content: props.modelValue,
+  editable: !props.disabled,
+  extensions: collectRichTextEditorExtensions(preset),
+  onUpdate({ editor: currentEditor }) {
+    emit('update:modelValue', currentEditor.getJSON())
+  },
 })
+
+onUnmounted(() => editor.destroy())
+
+watch(
+  () => props.disabled,
+  (disabled) => editor.setEditable(!disabled, false),
+)
+
+watch(
+  () => props.modelValue,
+  (value) => {
+    const document = editor.schema.nodeFromJSON(value)
+
+    if (editor.state.doc.eq(document)) {
+      return
+    }
+
+    editor.commands.setContent(document, { emitUpdate: false })
+  },
+  { deep: true },
+)
 
 function handleFocusout(event: FocusEvent) {
   const nextTarget = event.relatedTarget
@@ -69,14 +87,14 @@ function handleFocusout(event: FocusEvent) {
     @focusout="handleFocusout"
   >
     <RichTextToolbar
-      v-if="activeToolbar"
+      v-if="preset.toolbar"
       data-test="rich-text-toolbar"
       :editor="editor"
-      :toolbar="activeToolbar"
+      :toolbar="preset.toolbar"
       :disabled="disabled"
     />
 
-    <div ref="scrollTarget" class="relative min-h-0 flex-1 overflow-y-auto">
+    <div ref="scrollContainer" class="relative min-h-0 flex-1 overflow-y-auto">
       <EditorContent
         :editor="editor"
         class="prose prose-sm h-full max-w-none dark:prose-invert"
@@ -84,28 +102,28 @@ function handleFocusout(event: FocusEvent) {
       />
 
       <RichTextQuickBar
-        v-if="activeQuickBar && root && scrollTarget && !disabled"
+        v-if="preset.quickBar && root && scrollContainer && !disabled"
         :editor="editor"
-        :quick-bar="activeQuickBar"
+        :quick-bar="preset.quickBar"
         :append-to="root"
-        :scroll-container="scrollTarget"
+        :scroll-container="scrollContainer"
       />
 
       <component
-        :is="activeSlashCommand.component"
-        v-if="activeSlashCommand?.component && root"
+        :is="preset.slashCommand?.component"
+        v-if="preset.slashCommand?.component && root"
         :editor="editor"
-        :config="activeSlashCommand"
+        :config="preset.slashCommand"
         :append-to="root"
         :disabled="disabled"
       />
     </div>
 
     <RichTextStatusBar
-      v-if="activeStatusBar"
+      v-if="preset.statusBar"
       data-test="rich-text-status-bar"
       :editor="editor"
-      :status-bar="activeStatusBar"
+      :status-bar="preset.statusBar"
     />
   </div>
 </template>

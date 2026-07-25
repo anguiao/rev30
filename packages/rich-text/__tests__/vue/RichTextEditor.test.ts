@@ -305,6 +305,8 @@ describe('RichTextEditor', () => {
     await vi.waitFor(() => {
       expect(wrapper.get('.ProseMirror').attributes('contenteditable')).toBe('true')
     })
+
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })
 
   it('reflects active formatting states in toolbar buttons', async () => {

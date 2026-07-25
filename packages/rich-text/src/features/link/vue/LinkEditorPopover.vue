@@ -1,19 +1,16 @@
 <script setup lang="ts">
 import { NButton, NInput, NPopover } from 'naive-ui'
-import type { RichTextOverlayCloseReason } from '../../../vue/overlay-state'
 
 const props = withDefaults(
   defineProps<{
     show: boolean
     showOpen: boolean
-    to: HTMLElement | false
     modelValue: string
     disabled?: boolean
     invalid?: boolean
     canApply?: boolean
     canOpen?: boolean
     canRemove?: boolean
-    quickBarLayerId?: string | undefined
   }>(),
   {
     disabled: false,
@@ -29,7 +26,8 @@ const emit = defineEmits<{
   apply: []
   open: []
   remove: []
-  close: [reason: RichTextOverlayCloseReason]
+  close: []
+  cancel: []
 }>()
 
 function handleInputKeydown(event: KeyboardEvent) {
@@ -50,7 +48,7 @@ function handleFormKeydown(event: KeyboardEvent) {
 
   event.preventDefault()
   event.stopPropagation()
-  emit('close', 'cancel')
+  emit('cancel')
 }
 </script>
 
@@ -59,9 +57,9 @@ function handleFormKeydown(event: KeyboardEvent) {
     :show="show"
     trigger="manual"
     placement="bottom"
-    :to="to"
+    :to="false"
     :disabled="disabled"
-    @clickoutside="emit('close', 'outside')"
+    @clickoutside="emit('close')"
   >
     <template #trigger>
       <slot name="trigger" />
@@ -69,7 +67,6 @@ function handleFormKeydown(event: KeyboardEvent) {
 
     <div
       v-if="show"
-      :data-rich-text-quick-bar-subinterface="quickBarLayerId"
       class="flex items-center gap-1"
       role="group"
       aria-label="编辑链接"
@@ -139,7 +136,7 @@ function handleFormKeydown(event: KeyboardEvent) {
         title="取消"
         aria-label="取消编辑链接"
         @mousedown.prevent
-        @click="emit('close', 'cancel')"
+        @click="emit('cancel')"
       >
         <span class="i-[lucide--x]" aria-hidden="true" />
       </NButton>

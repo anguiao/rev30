@@ -2,15 +2,13 @@
 import type { Editor } from '@tiptap/vue-3'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
-import { computed, h, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, h, ref } from 'vue'
 import {
   canRunRichTextAction,
   runRichTextAction,
   type RichTextActionItem,
 } from '../../editor/action'
 import type { RichTextToolbarDropdownControl } from '.'
-import { useRichTextToolbarOverlay } from '../overlay-state'
-import { createRichTextToolbarDropdownMenuId } from './dropdown-menu-id'
 
 const props = withDefaults(
   defineProps<{
@@ -24,51 +22,7 @@ const props = withDefaults(
 )
 
 const editor = props.editor
-const menuId = createRichTextToolbarDropdownMenuId()
-const root = ref<HTMLElement | null>(null)
 const show = ref(false)
-
-function closeDropdown() {
-  show.value = false
-  toolbarOverlay.close()
-}
-
-const toolbarOverlay = useRichTextToolbarOverlay(closeDropdown)
-
-function handleShow(nextShow: boolean) {
-  if (nextShow) {
-    toolbarOverlay.open()
-    show.value = true
-    return
-  }
-
-  closeDropdown()
-}
-
-function getMenuProps() {
-  return { 'data-rich-text-toolbar-dropdown-menu': menuId }
-}
-
-function handleKeydown(event: KeyboardEvent) {
-  const target = event.target
-
-  if (
-    !show.value ||
-    event.isComposing ||
-    event.key !== 'Escape' ||
-    !(target instanceof Element) ||
-    (root.value?.contains(target) !== true &&
-      !editor.view.dom.contains(target) &&
-      target.closest(`[data-rich-text-toolbar-dropdown-menu="${menuId}"]`) === null)
-  ) {
-    return
-  }
-
-  event.preventDefault()
-  event.stopPropagation()
-  closeDropdown()
-  editor.commands.focus()
-}
 
 function isItemDisabled(item: RichTextActionItem) {
   return props.disabled || !canRunRichTextAction(editor, item.action)
@@ -82,13 +36,10 @@ const activeItem = computed(
 
 const isActive = computed(() => activeItem.value !== undefined)
 
-const isDisabled = computed(
-  () => props.disabled || props.control.items.every((item) => isItemDisabled(item)),
-)
+const isDisabled = computed(() => props.control.items.every((item) => isItemDisabled(item)))
 
 const triggerLabel = computed(() => activeItem.value?.label ?? props.control.label)
 const triggerIcon = computed(() => activeItem.value?.icon ?? props.control.icon)
-const buttonType = computed(() => (isActive.value ? 'primary' : 'default'))
 
 const options = computed<DropdownOption[]>(() =>
   props.control.items.map((item) => {
@@ -132,35 +83,21 @@ function renderLabel(option: DropdownOption) {
 
 function handleSelect(key: string | number) {
   const item = props.control.items.find((item) => item.action.key === key)
-  if (!item || isItemDisabled(item)) {
-    return
-  }
-
-  if (runRichTextAction(editor, item.action)) {
-    closeDropdown()
+  if (item) {
+    runRichTextAction(editor, item.action)
   }
 }
-
-onMounted(() => {
-  document.addEventListener('keydown', handleKeydown, true)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', handleKeydown, true)
-})
 </script>
 
 <template>
-  <div ref="root" class="contents" @keydown.capture="handleKeydown">
+  <div class="contents">
     <NDropdown
       trigger="click"
-      :show="show"
+      v-model:show="show"
       placement="bottom-start"
       :options="options"
-      :to="toolbarOverlay.target.value"
+      :to="false"
       :render-label="renderLabel"
-      :menu-props="getMenuProps"
-      @update:show="handleShow"
       @select="handleSelect"
     >
       <NButton
@@ -169,7 +106,7 @@ onBeforeUnmount(() => {
         :disabled="isDisabled"
         size="small"
         style="--n-padding: 0 6px"
-        :type="buttonType"
+        :type="isActive ? 'primary' : 'default'"
         :secondary="isActive"
         :quaternary="!isActive"
         :title="triggerLabel"
@@ -177,7 +114,6 @@ onBeforeUnmount(() => {
         :aria-pressed="isActive"
         aria-haspopup="menu"
         :aria-expanded="show"
-        @mousedown.prevent
       >
         <span :class="triggerIcon" aria-hidden="true" />
         <span class="ml-0.5 i-[lucide--chevron-down] text-xs" aria-hidden="true" />

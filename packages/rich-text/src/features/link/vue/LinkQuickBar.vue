@@ -1,49 +1,18 @@
 <script setup lang="ts">
-import type { Editor } from '@tiptap/core'
 import { NButton } from 'naive-ui'
-import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
-import {
-  type RichTextOverlayCloseReason,
-  useRichTextOverlayState,
-} from '../../../vue/overlay-state'
-import { getRichTextQuickBarLayerId } from '../../../vue/quick-bar'
+import { shallowRef, watchEffect } from 'vue'
+import type { RichTextQuickBarComponentProps } from '../../../vue/quick-bar'
 import { normalizeLinkHref } from '../href'
 import { resolveRichTextLinkTarget, type RichTextLinkTarget } from '../target'
 import LinkEditorPopover from './LinkEditorPopover.vue'
 import { useRichTextLinkEditor } from './useLinkEditor'
 
-const props = withDefaults(
-  defineProps<{
-    editor: Editor
-    disabled?: boolean
-  }>(),
-  {
-    disabled: false,
-  },
-)
-
-const emit = defineEmits<{
-  close: [reason: RichTextOverlayCloseReason]
-}>()
+const props = defineProps<RichTextQuickBarComponentProps>()
 
 const editor = props.editor
-const root = ref<HTMLElement | null>(null)
-const layerId = getRichTextQuickBarLayerId(editor)
-const overlayState = useRichTextOverlayState()
 const readonlyTarget = shallowRef<RichTextLinkTarget | null>(null)
 const linkEditor = useRichTextLinkEditor({
   editor,
-  disabled: () => props.disabled,
-  onClose(reason) {
-    if (reason === 'invalidated') {
-      emit('close', reason)
-      return
-    }
-
-    if (reason === 'success' || reason === 'cancel') {
-      syncReadonlyTarget()
-    }
-  },
 })
 
 function syncReadonlyTarget() {
@@ -51,12 +20,12 @@ function syncReadonlyTarget() {
     return
   }
 
-  readonlyTarget.value = props.disabled ? null : resolveRichTextLinkTarget(editor, 'quick-bar')
+  readonlyTarget.value = resolveRichTextLinkTarget(editor, 'quick-bar')
 }
 
 function editLink() {
   if (linkEditor.isOpen.value) {
-    close('cancel')
+    linkEditor.cancel()
     return
   }
 
@@ -69,7 +38,7 @@ function editLink() {
 
 function openReadonlyLink() {
   const href = normalizeLinkHref(readonlyTarget.value?.href ?? '')
-  if (!href || props.disabled) {
+  if (!href) {
     return
   }
 
@@ -85,39 +54,11 @@ function removeReadonlyLink() {
   linkEditor.remove()
 }
 
-function close(reason: RichTextOverlayCloseReason = 'outside') {
-  if (reason === 'cancel') {
-    linkEditor.cancel()
-    return
-  }
-
-  linkEditor.close(reason)
-}
-
-function focusInitialControl() {
-  const control = root.value?.querySelector<HTMLElement>('input, button:not(:disabled)')
-  control?.focus()
-  return control !== null && control !== undefined
-}
-
-function handleTransaction() {
-  syncReadonlyTarget()
-}
-
-onMounted(() => {
-  syncReadonlyTarget()
-  editor.on('transaction', handleTransaction)
-})
-
-onBeforeUnmount(() => {
-  editor.off('transaction', handleTransaction)
-})
-
-defineExpose({ close, focusInitialControl })
+watchEffect(syncReadonlyTarget)
 </script>
 
 <template>
-  <div ref="root" class="flex items-center gap-1">
+  <div class="flex items-center gap-1">
     <template v-if="readonlyTarget">
       <span
         data-test="rich-text-link-readonly-url"
@@ -131,13 +72,11 @@ defineExpose({ close, focusInitialControl })
         v-model="linkEditor.draft.value"
         :show="linkEditor.isOpen.value"
         :show-open="false"
-        :to="overlayState.target.value"
-        :disabled="disabled"
         :invalid="linkEditor.isInvalid.value"
         :can-apply="linkEditor.canApply.value"
-        :quick-bar-layer-id="layerId"
         @apply="linkEditor.apply"
-        @close="close"
+        @close="linkEditor.close"
+        @cancel="linkEditor.cancel"
       >
         <template #trigger>
           <NButton
@@ -146,7 +85,6 @@ defineExpose({ close, focusInitialControl })
             size="small"
             style="--n-padding: 0 6px"
             quaternary
-            :disabled="disabled"
             title="编辑链接"
             aria-label="编辑链接"
             aria-haspopup="dialog"
@@ -165,7 +103,6 @@ defineExpose({ close, focusInitialControl })
         size="small"
         style="--n-padding: 0 6px"
         quaternary
-        :disabled="disabled"
         title="新窗口打开链接"
         aria-label="新窗口打开链接"
         @mousedown.prevent
@@ -180,7 +117,6 @@ defineExpose({ close, focusInitialControl })
         size="small"
         style="--n-padding: 0 6px"
         quaternary
-        :disabled="disabled"
         title="移除链接"
         aria-label="移除链接"
         @mousedown.prevent

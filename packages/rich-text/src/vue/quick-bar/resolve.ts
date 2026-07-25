@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/core'
+import type { Editor } from '@tiptap/vue-3'
 import type { Selection } from '@tiptap/pm/state'
 import { TextSelection } from '@tiptap/pm/state'
 import type { RichTextFeatureQuickBar, RichTextQuickBarConfig, RichTextQuickBarControls } from '.'

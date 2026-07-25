@@ -1,17 +1,21 @@
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
-import { flushPromises, mount } from '@vue/test-utils'
+import { closeHistory } from '@tiptap/pm/history'
+import { NodeSelection } from '@tiptap/pm/state'
+import { UndoRedo } from '@tiptap/extensions/undo-redo'
+import { DOMWrapper, flushPromises, mount, type BaseWrapper } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
 import { NImage, NSpin } from 'naive-ui'
-import { defineComponent, h, markRaw } from 'vue'
+import { markRaw } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { imageFeature, type RichTextImageNodeAttrs } from '../../../../src/features/image/shared'
+import {
+  createImageToolbarControl,
+  type RichTextImageUploadOptions,
+} from '../../../../src/features/image/vue'
 import ImageDialog from '../../../../src/features/image/vue/ImageDialog.vue'
-import ImageDialogHost from '../../../../src/features/image/vue/ImageDialogHost.vue'
-import ImageToolbarControl from '../../../../src/features/image/vue/ImageToolbarControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
-import { createTestRichTextOverlayState } from '../../../helpers/overlay'
 
 type FileDialogChangeHandler = (files: FileList | null) => void
 type FileDialogOptions = {
@@ -37,6 +41,13 @@ const dropZone = vi.hoisted(() => ({
 const eventListeners = vi.hoisted(() => ({
   pasteHandlers: [] as PasteHandler[],
 }))
+
+const imageAttrs = {
+  src: '/images/context.png',
+  alt: '上下文图片',
+  width: 640,
+  height: 360,
+}
 
 vi.mock('@vueuse/core', async (importOriginal) => {
   const vueuse = await importOriginal<typeof import('@vueuse/core')>()
@@ -91,64 +102,57 @@ function createEditor(content = '<p>维护通知</p>') {
   })
 }
 
-function mountControl(editor: Editor, upload = vi.fn(), onError = vi.fn()) {
-  const overlay = createTestRichTextOverlayState()
-  const Harness = defineComponent({
-    setup: () => () =>
-      h('div', [
-        h(ImageToolbarControl, {
-          editor: markRaw(editor),
-          disabled: false,
-          upload,
-          onError,
-        }),
-        h(ImageDialogHost, {
-          editor: markRaw(editor),
-          disabled: false,
-        }),
-      ]),
-  })
+function mountControl(
+  editor: Editor,
+  upload: RichTextImageUploadOptions['upload'] = vi.fn(),
+  onError: NonNullable<RichTextImageUploadOptions['onError']> = vi.fn(),
+) {
+  const control = createImageToolbarControl({ upload, onError })
 
-  return mount(Harness, {
-    global: {
-      provide: overlay.provide,
-      stubs: {
-        teleport: true,
-      },
+  return mount(control.component, {
+    props: {
+      ...control.props,
+      editor: markRaw(editor),
+      disabled: false,
     },
   })
 }
 
-function mountDialog(
-  upload = vi.fn(),
-  onError = vi.fn(),
-  existingAttrs?: RichTextImageNodeAttrs,
-  show = true,
-) {
-  let wrapper!: ReturnType<typeof mount>
-  wrapper = mount(ImageDialog, {
+function createHistoryEditor(content = '<p>/图片</p>') {
+  return createTestEditor({
+    extensions: [Document, Paragraph, Text, UndoRedo, ...imageFeature.documentExtensions!()],
+    content,
+  })
+}
+
+function deleteSlashQuery(editor: ReturnType<typeof createHistoryEditor>) {
+  return editor
+    .chain()
+    .command(({ tr }) => {
+      closeHistory(tr)
+      return true
+    })
+    .deleteRange({ from: 1, to: 4 })
+    .run()
+}
+
+function mountDialog(upload = vi.fn(), onError = vi.fn(), image?: RichTextImageNodeAttrs) {
+  return mount(ImageDialog, {
     global: {
       stubs: {
         teleport: true,
       },
     },
     props: {
-      show,
       upload,
       onError,
-      existingAttrs,
-      'onUpdate:show': (show: boolean) => wrapper.setProps({ show }),
+      image,
     },
   })
-
-  return wrapper
 }
 
-async function mountExistingImageDialog(existingAttrs: RichTextImageNodeAttrs) {
-  const wrapper = mountDialog(vi.fn(), vi.fn(), existingAttrs, false)
-  await wrapper.setProps({ show: true })
-
-  return wrapper
+function mountEditDialog(image: RichTextImageNodeAttrs) {
+  return mountDialog(vi.fn(), vi.fn(), image)
 }
 
 function createFileList(...files: File[]): FileList {
@@ -177,7 +181,7 @@ function createClipboardData(...files: File[]) {
   } as DataTransfer
 }
 
-async function chooseFile(_wrapper: ReturnType<typeof mount>, file: File) {
+async function chooseFile(_wrapper: BaseWrapper<Node>, file: File) {
   const onChange = fileDialog.changeHandlers.at(-1)
   if (onChange === undefined) {
     throw new Error('File dialog change handler is not registered')
@@ -215,12 +219,12 @@ async function pasteFiles(files: File[], target: EventTarget | null) {
   return { preventDefault }
 }
 
-async function uploadSelectedFile(wrapper: ReturnType<typeof mount>) {
+async function uploadSelectedFile(wrapper: BaseWrapper<Node>) {
   await wrapper.get('[data-test="rich-text-image-upload-action"]').trigger('click')
   await flushPromises()
 }
 
-async function loadPreviewImage(wrapper: ReturnType<typeof mount>, width = 800, height = 450) {
+async function loadPreviewImage(wrapper: BaseWrapper<Node>, width = 800, height = 450) {
   const image = wrapper.get('[data-test="rich-text-image-preview"] img')
   Object.defineProperty(image.element, 'naturalWidth', {
     configurable: true,
@@ -235,7 +239,7 @@ async function loadPreviewImage(wrapper: ReturnType<typeof mount>, width = 800, 
   await flushPromises()
 }
 
-async function failPreviewImage(wrapper: ReturnType<typeof mount>) {
+async function failPreviewImage(wrapper: BaseWrapper<Node>) {
   await wrapper.get('[data-test="rich-text-image-preview"] img').trigger('error')
   await flushPromises()
 }
@@ -257,26 +261,27 @@ describe('ImageToolbarControl', () => {
       src: `/api/attachments/${file.name}/content`,
     }))
     const editor = createEditor()
-    const wrapper = mountControl(editor, upload)
+    const toolbar = mountControl(editor, upload)
 
-    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
+    await toolbar.get('[data-test="rich-text-image"]').trigger('click')
+    await flushPromises()
+    const dialog = new DOMWrapper(document.body)
+
     expect(fileDialog.options.at(-1)).toMatchObject({
       accept: 'image/*',
       multiple: false,
       reset: true,
     })
-    await wrapper.get('[data-test="rich-text-image-file"]').trigger('click')
+    await dialog.get('[data-test="rich-text-image-file"]').trigger('click')
     expect(fileDialog.open).toHaveBeenCalledWith()
-    await chooseFile(wrapper, new File(['image'], 'cover.png', { type: 'image/png' }))
+    await chooseFile(dialog, new File(['image'], 'cover.png', { type: 'image/png' }))
     expect(upload).not.toHaveBeenCalled()
-    await loadPreviewImage(wrapper)
-    expect(
-      wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
-    ).toBeDefined()
+    await loadPreviewImage(dialog)
+    expect(dialog.get('[data-test="rich-text-image-confirm"]').attributes('disabled')).toBeDefined()
 
-    await uploadSelectedFile(wrapper)
-    await loadPreviewImage(wrapper)
-    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await uploadSelectedFile(dialog)
+    await loadPreviewImage(dialog)
+    await dialog.get('[data-test="rich-text-image-confirm"]').trigger('click')
     await flushPromises()
 
     expect(upload).toHaveBeenCalledOnce()
@@ -317,17 +322,19 @@ describe('ImageToolbarControl', () => {
       '<img src="/api/attachments/cover/content" alt="旧说明" width="500" height="250" />',
     )
     editor.commands.setNodeSelection(0)
-    const wrapper = mountControl(editor, upload)
+    const toolbar = mountControl(editor, upload)
 
-    await wrapper.get('[data-test="rich-text-image"]').trigger('click')
-    await loadPreviewImage(wrapper, 1000, 500)
+    await toolbar.get('[data-test="rich-text-image"]').trigger('click')
+    await flushPromises()
+    const dialog = new DOMWrapper(document.body)
+    await loadPreviewImage(dialog, 1000, 500)
 
-    expect(wrapper.find('[data-test="rich-text-image-file"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="rich-text-image-drop-zone"]').exists()).toBe(false)
+    expect(dialog.find('[data-test="rich-text-image-file"]').exists()).toBe(false)
+    expect(dialog.find('[data-test="rich-text-image-drop-zone"]').exists()).toBe(false)
 
-    await wrapper.get('[data-test="rich-text-image-alt"] input').setValue('编辑说明')
-    await wrapper.get('[data-test="rich-text-image-width"] input').setValue('600')
-    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await dialog.get('[data-test="rich-text-image-alt"] input').setValue('编辑说明')
+    await dialog.get('[data-test="rich-text-image-width"] input').setValue('600')
+    await dialog.get('[data-test="rich-text-image-confirm"]').trigger('click')
     await flushPromises()
 
     expect(upload).not.toHaveBeenCalled()
@@ -344,6 +351,86 @@ describe('ImageToolbarControl', () => {
         },
       ],
     })
+  })
+
+  it('ignores upload errors after cancellation', async () => {
+    const pendingUpload = deferred<{ src: string }>()
+    const onError = vi.fn()
+    const editor = createEditor()
+    const toolbar = mountControl(
+      editor,
+      vi.fn(() => pendingUpload.promise),
+      onError,
+    )
+
+    await toolbar.get('[data-test="rich-text-image"]').trigger('click')
+    await flushPromises()
+    const dialog = new DOMWrapper(document.body)
+    await chooseFile(dialog, new File(['image'], 'cover.png', { type: 'image/png' }))
+    await uploadSelectedFile(dialog)
+    await dialog.get('[data-test="rich-text-image-cancel"]').trigger('click')
+    await flushPromises()
+
+    expect(document.querySelector('[data-test="rich-text-image-cancel"]')).toBeNull()
+
+    pendingUpload.reject(new Error('Upload failed'))
+    await flushPromises()
+
+    expect(onError).not.toHaveBeenCalled()
+  })
+
+  it('keeps slash deletion and confirmed insertion as two history events', async () => {
+    const editor = createHistoryEditor()
+    expect(deleteSlashQuery(editor)).toBe(true)
+
+    const toolbar = mountControl(editor, async () => ({ src: imageAttrs.src }))
+    await toolbar.get('[data-test="rich-text-image"]').trigger('click')
+    await flushPromises()
+
+    const dialog = new DOMWrapper(document.body)
+    await chooseFile(dialog, new File(['image'], 'context.png', { type: 'image/png' }))
+    await uploadSelectedFile(dialog)
+    await loadPreviewImage(dialog, imageAttrs.width, imageAttrs.height)
+    await dialog.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.state.selection).toBeInstanceOf(NodeSelection)
+    expect(editor.state.doc.firstChild?.type.name).toBe('image')
+
+    expect(editor.commands.undo()).toBe(true)
+    expect(editor.getJSON()).toMatchObject({ content: [{ type: 'paragraph' }] })
+
+    expect(editor.commands.undo()).toBe(true)
+    expect(editor.getText()).toBe('/图片')
+  })
+
+  it('cancels slash insertion without adding a second history event', async () => {
+    const editor = createHistoryEditor()
+    expect(deleteSlashQuery(editor)).toBe(true)
+
+    const toolbar = mountControl(editor)
+    await toolbar.get('[data-test="rich-text-image"]').trigger('click')
+    await flushPromises()
+
+    await new DOMWrapper(document.body).get('[data-test="rich-text-image-cancel"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.commands.undo()).toBe(true)
+    expect(editor.getText()).toBe('/图片')
+  })
+
+  it('closes the dialog when its editor is destroyed', async () => {
+    const editor = createEditor()
+
+    const toolbar = mountControl(editor)
+    await toolbar.get('[data-test="rich-text-image"]').trigger('click')
+    await flushPromises()
+    expect(document.querySelector('[data-test="rich-text-image-cancel"]')).not.toBeNull()
+
+    editor.destroy()
+    await flushPromises()
+
+    expect(document.querySelector('[data-test="rich-text-image-cancel"]')).toBeNull()
   })
 })
 
@@ -431,7 +518,7 @@ describe('ImageDialog', () => {
 
     expect(upload).not.toHaveBeenCalled()
     expect(wrapper.emitted('confirm')).toBeUndefined()
-    expect(wrapper.emitted('update:show')?.at(-1)).toEqual([false])
+    expect(wrapper.emitted('cancel')?.at(-1)).toEqual([])
   })
 
   it('reports upload errors and does not confirm an image', async () => {
@@ -546,54 +633,8 @@ describe('ImageDialog', () => {
     ).toBeDefined()
   })
 
-  it('does not let an earlier upload overwrite a newer dialog upload', async () => {
-    const firstUpload = deferred<{ src: string }>()
-    const secondUpload = deferred<{ src: string }>()
-    const upload = vi.fn((file: File) =>
-      file.name === 'first.png' ? firstUpload.promise : secondUpload.promise,
-    )
-    const wrapper = mountDialog(upload)
-
-    await chooseFile(wrapper, new File(['first'], 'first.png', { type: 'image/png' }))
-    await uploadSelectedFile(wrapper)
-    await wrapper.get('[data-test="rich-text-image-cancel"]').trigger('click')
-    await flushPromises()
-
-    await wrapper.setProps({ show: true })
-    await chooseFile(wrapper, new File(['second'], 'second.png', { type: 'image/png' }))
-    await uploadSelectedFile(wrapper)
-    secondUpload.resolve({ src: '/api/attachments/second.png/content' })
-    await flushPromises()
-
-    expect(wrapper.getComponent(NImage).props('src')).toBe('/api/attachments/second.png/content')
-
-    firstUpload.resolve({ src: '/api/attachments/first.png/content' })
-    await flushPromises()
-
-    expect(wrapper.getComponent(NImage).props('src')).toBe('/api/attachments/second.png/content')
-  })
-
-  it('ignores upload errors after the dialog closes', async () => {
-    const pendingUpload = deferred<{ src: string }>()
-    const onError = vi.fn()
-    const wrapper = mountDialog(
-      vi.fn(() => pendingUpload.promise),
-      onError,
-    )
-
-    await chooseFile(wrapper, new File(['image'], 'cover.png', { type: 'image/png' }))
-    await uploadSelectedFile(wrapper)
-    await wrapper.get('[data-test="rich-text-image-cancel"]').trigger('click')
-    await flushPromises()
-
-    pendingUpload.reject(new Error('Upload failed'))
-    await flushPromises()
-
-    expect(onError).not.toHaveBeenCalled()
-  })
-
   it('updates existing image attrs with a fixed ratio', async () => {
-    const wrapper = await mountExistingImageDialog({
+    const wrapper = mountEditDialog({
       src: '/api/attachments/cover/content',
       alt: '旧说明',
       width: 500,
@@ -615,7 +656,7 @@ describe('ImageDialog', () => {
   })
 
   it('fills a missing existing image height from its natural ratio', async () => {
-    const wrapper = await mountExistingImageDialog({
+    const wrapper = mountEditDialog({
       src: '/api/attachments/cover/content',
       alt: '说明',
       width: 500,
@@ -638,7 +679,7 @@ describe('ImageDialog', () => {
   })
 
   it('fills a missing existing image width from its natural ratio', async () => {
-    const wrapper = await mountExistingImageDialog({
+    const wrapper = mountEditDialog({
       src: '/api/attachments/cover/content',
       alt: '说明',
       width: null,
@@ -656,7 +697,7 @@ describe('ImageDialog', () => {
   })
 
   it('keeps calculated image dimensions positive for extreme aspect ratios', async () => {
-    const wrapper = await mountExistingImageDialog({
+    const wrapper = mountEditDialog({
       src: '/api/attachments/cover/content',
       alt: '说明',
       width: 1,
@@ -674,7 +715,7 @@ describe('ImageDialog', () => {
   })
 
   it('clears alt when an existing image description is cleared', async () => {
-    const wrapper = await mountExistingImageDialog({
+    const wrapper = mountEditDialog({
       src: '/api/attachments/cover/content',
       alt: '旧说明',
       width: 500,

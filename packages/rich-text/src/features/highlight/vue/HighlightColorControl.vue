@@ -1,26 +1,15 @@
 <script setup lang="ts">
-import type { RichTextQuickBarComponentProps } from '../../../vue/quick-bar'
-import { getRichTextQuickBarLayerId } from '../../../vue/quick-bar'
-import {
-  captureRichTextSelection,
-  markRichTextSurfaceTransactionCommand,
-  restoreRichTextSelection,
-  restoreRichTextSelectionCommand,
-  type RichTextSelectionSnapshot,
-  useRichTextTargetInvalidation,
-} from '../../../vue/selection'
-import {
-  type RichTextOverlayCloseReason,
-  useRichTextToolbarOverlay,
-} from '../../../vue/overlay-state'
+import type { Editor } from '@tiptap/vue-3'
 import { NButton, NPopover } from 'naive-ui'
 import { computed, nextTick, ref, watch } from 'vue'
 import { setHighlightAction, unsetHighlightAction } from '../editor'
 import type { HighlightColorOption } from '../colors'
 
-interface HighlightColorControlProps extends RichTextQuickBarComponentProps {
+interface HighlightColorControlProps {
+  editor: Editor
   colors: readonly HighlightColorOption[]
   surface: 'toolbar' | 'quick-bar'
+  disabled?: boolean
 }
 
 const props = withDefaults(defineProps<HighlightColorControlProps>(), {
@@ -28,18 +17,12 @@ const props = withDefaults(defineProps<HighlightColorControlProps>(), {
 })
 
 const emit = defineEmits<{
-  close: [reason: RichTextOverlayCloseReason]
+  close: []
 }>()
 
 const editor = props.editor
-const owner = Symbol('rich-text-highlight-control')
-const layerId = getRichTextQuickBarLayerId(editor)
 const show = ref(false)
-const target = ref<RichTextSelectionSnapshot | null>(null)
 const panel = ref<HTMLElement | null>(null)
-const root = ref<HTMLElement | null>(null)
-
-const toolbarOverlay = useRichTextToolbarOverlay(() => close('outside'))
 
 function getHighlightColors() {
   const { doc, selection, storedMarks } = editor.state
@@ -80,27 +63,19 @@ const selectedColorKey = computed(() => {
   const [color] = activeColors.value
   return props.colors.find((option) => option.value.toLowerCase() === color)?.key ?? null
 })
-function canRunTargetedAction(command: ReturnType<typeof setHighlightAction.command>) {
+function canRunAction(command: ReturnType<typeof setHighlightAction.command>) {
   if (props.disabled) {
     return false
   }
 
-  const selection = target.value ?? captureRichTextSelection(editor)
-
-  return editor
-    .can()
-    .chain()
-    .command(restoreRichTextSelectionCommand(selection))
-    .command(command)
-    .command(restoreRichTextSelectionCommand(selection))
-    .run()
+  return editor.can().command(command)
 }
 
 function isColorDisabled(color: HighlightColorOption['value']) {
-  return !canRunTargetedAction(setHighlightAction.command(color))
+  return !canRunAction(setHighlightAction.command(color))
 }
 
-const isClearDisabled = computed(() => !canRunTargetedAction(unsetHighlightAction.command()))
+const isClearDisabled = computed(() => !canRunAction(unsetHighlightAction.command()))
 const isDisabled = computed(
   () =>
     props.disabled ||
@@ -110,35 +85,27 @@ const dataTestPrefix = computed(() =>
   props.surface === 'toolbar' ? 'rich-text-highlight' : 'rich-text-quick-bar-highlight',
 )
 
-function close(reason: RichTextOverlayCloseReason) {
-  if (!show.value && !target.value) {
+function close() {
+  if (!show.value) {
     return
   }
 
-  const selection = target.value
   show.value = false
-  target.value = null
+  emit('close')
+}
 
-  if (props.surface === 'toolbar') {
-    toolbarOverlay.close()
+function cancel() {
+  if (!show.value) {
+    return
   }
 
-  if (reason === 'cancel' && selection) {
-    restoreRichTextSelection(editor, selection)
-  }
-
-  emit('close', reason)
+  show.value = false
+  editor.commands.focus()
 }
 
 function open() {
   if (isDisabled.value) {
     return
-  }
-
-  target.value = captureRichTextSelection(editor)
-
-  if (props.surface === 'toolbar') {
-    toolbarOverlay.open()
   }
 
   show.value = true
@@ -147,38 +114,35 @@ function open() {
 
 function toggle() {
   if (show.value) {
-    close('cancel')
+    cancel()
   } else {
     open()
   }
 }
 
-function runTargetedAction(command: ReturnType<typeof setHighlightAction.command>) {
-  const selection = target.value
+function handleTriggerMousedown(event: MouseEvent) {
+  if (props.surface === 'quick-bar') {
+    event.preventDefault()
+  }
+}
 
-  if (!selection || props.disabled) {
+function runAction(command: ReturnType<typeof setHighlightAction.command>) {
+  if (props.disabled) {
     return false
   }
 
-  return editor
-    .chain()
-    .command(restoreRichTextSelectionCommand(selection))
-    .command(markRichTextSurfaceTransactionCommand(owner))
-    .command(command)
-    .command(restoreRichTextSelectionCommand(selection, true))
-    .focus()
-    .run()
+  return editor.commands.command(command)
 }
 
 function applyColor(color: HighlightColorOption['value']) {
-  if (runTargetedAction(setHighlightAction.command(color))) {
-    close('outside')
+  if (runAction(setHighlightAction.command(color))) {
+    close()
   }
 }
 
 function clearHighlight() {
-  if (runTargetedAction(unsetHighlightAction.command())) {
-    close('outside')
+  if (runAction(unsetHighlightAction.command())) {
+    close()
   }
 }
 
@@ -186,7 +150,7 @@ function handleShow(nextShow: boolean) {
   if (nextShow) {
     open()
   } else if (show.value) {
-    close('outside')
+    close()
   }
 }
 
@@ -197,45 +161,29 @@ function handleKeydown(event: KeyboardEvent) {
 
   event.preventDefault()
   event.stopPropagation()
-  close('cancel')
+  cancel()
 }
-
-useRichTextTargetInvalidation(
-  editor,
-  owner,
-  () => show.value,
-  () => close('invalidated'),
-)
 
 watch(
   () => props.disabled,
   (disabled) => {
     if (disabled) {
-      close('invalidated')
+      close()
     }
   },
 )
-
-defineExpose({
-  close,
-  focusInitialControl: () => {
-    const button = root.value?.querySelector<HTMLElement>(`[data-test="${dataTestPrefix.value}"]`)
-    button?.focus()
-    return button !== null
-  },
-})
 </script>
 
 <template>
-  <div ref="root" class="contents">
+  <div class="contents">
     <NPopover
       :show="show"
       trigger="manual"
       placement="bottom"
-      :to="toolbarOverlay.target.value"
+      :to="false"
       :disabled="disabled"
       @update:show="handleShow"
-      @clickoutside="close('outside')"
+      @clickoutside="close"
     >
       <template #trigger>
         <NButton
@@ -253,7 +201,7 @@ defineExpose({
           :aria-pressed="isActive"
           aria-haspopup="menu"
           :aria-expanded="show"
-          @mousedown.prevent
+          @mousedown="handleTriggerMousedown"
           @click="toggle"
         >
           <span class="i-[lucide--highlighter]" aria-hidden="true" />
@@ -262,7 +210,6 @@ defineExpose({
 
       <div
         ref="panel"
-        :data-rich-text-quick-bar-subinterface="surface === 'quick-bar' ? layerId : undefined"
         class="flex items-center gap-1"
         role="menu"
         aria-label="高亮颜色"

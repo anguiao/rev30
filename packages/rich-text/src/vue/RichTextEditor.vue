@@ -2,7 +2,6 @@
 import { EditorContent } from '@tiptap/vue-3'
 import { ref, toRef } from 'vue'
 import type { RichTextDocument } from '../schema'
-import { provideRichTextOverlayState } from './overlay-state'
 import type { RichTextEditorPreset } from './presets/types'
 import RichTextQuickBar from './quick-bar/RichTextQuickBar.vue'
 import RichTextStatusBar from './status-bar/RichTextStatusBar.vue'
@@ -36,8 +35,6 @@ const activeQuickBar = initialPreset.quickBar
 const activeSlashCommand = initialPreset.slashCommand
 const root = ref<HTMLElement | null>(null)
 const scrollTarget = ref<HTMLElement | null>(null)
-const overlayHost = ref<HTMLElement | null>(null)
-provideRichTextOverlayState(overlayHost)
 const richTextThemeStyle = useRichTextThemeStyle()
 
 const { editor } = useRichTextEditor({
@@ -87,35 +84,22 @@ function handleFocusout(event: FocusEvent) {
       />
 
       <RichTextQuickBar
-        v-if="activeQuickBar && overlayHost && scrollTarget && !disabled"
+        v-if="activeQuickBar && root && scrollTarget && !disabled"
         :editor="editor"
         :quick-bar="activeQuickBar"
-        :append-to="overlayHost"
+        :append-to="root"
         :scroll-container="scrollTarget"
       />
 
       <component
         :is="activeSlashCommand.component"
-        v-if="activeSlashCommand?.component && overlayHost"
+        v-if="activeSlashCommand?.component && root"
         :editor="editor"
         :config="activeSlashCommand"
-        :append-to="overlayHost"
+        :append-to="root"
         :disabled="disabled"
       />
     </div>
-
-    <div
-      ref="overlayHost"
-      data-test="rich-text-overlay-host"
-      class="pointer-events-none absolute inset-0"
-    />
-
-    <component
-      :is="initialPreset.host"
-      v-if="initialPreset.host"
-      :editor="editor"
-      :disabled="disabled"
-    />
 
     <RichTextStatusBar
       v-if="activeStatusBar"

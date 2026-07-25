@@ -1,16 +1,15 @@
-import type { Editor } from '@tiptap/core'
+import type { Editor } from '@tiptap/vue-3'
 import { markRaw, type Component, type ComponentInstance } from 'vue'
 import type { RichTextFeature } from '../../core/feature'
 import type { RichTextActionItem } from '../../editor/action'
 
 export interface RichTextQuickBarComponentProps {
   editor: Editor
-  disabled?: boolean
 }
 
 type RichTextQuickBarConfiguredProps<TComponent extends Component> = Omit<
   ComponentInstance<TComponent>['$props'],
-  keyof RichTextQuickBarComponentProps
+  keyof RichTextQuickBarComponentProps | 'disabled'
 >
 
 interface RichTextQuickBarControlBase {
@@ -51,22 +50,6 @@ export interface RichTextFeatureQuickBar {
 export interface RichTextQuickBarConfig {
   readonly textControls?: RichTextQuickBarControls
   readonly featureBars: readonly RichTextFeatureQuickBar[]
-}
-
-const quickBarLayerIds = new WeakMap<Editor, string>()
-let nextQuickBarLayerId = 0
-
-export function getRichTextQuickBarLayerId(editor: Editor) {
-  const existing = quickBarLayerIds.get(editor)
-
-  if (existing) {
-    return existing
-  }
-
-  nextQuickBarLayerId += 1
-  const id = `rich-text-quick-bar-${nextQuickBarLayerId}`
-  quickBarLayerIds.set(editor, id)
-  return id
 }
 
 export function richTextQuickBarAction(item: RichTextActionItem): RichTextQuickBarActionControl {

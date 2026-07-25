@@ -1,92 +1,48 @@
 <script setup lang="ts">
+import type { Editor } from '@tiptap/vue-3'
 import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
-import { useRichTextToolbarOverlay } from '../../../vue/overlay-state'
 import { NButton } from 'naive-ui'
-import { computed, ref, watch } from 'vue'
-import {
-  getRichTextImageDialogController,
-  resolveRichTextImageToolbarTarget,
-  type RichTextImageDialogOptions,
-  type RichTextImageDialogSession,
-} from './dialog-controller'
+import { computed } from 'vue'
+import { canInsertImage, getSelectedImageAttrs } from '../editor'
 
-interface ImageToolbarControlProps
-  extends RichTextToolbarControlProps, RichTextImageDialogOptions {}
+interface ImageToolbarControlProps extends RichTextToolbarControlProps {
+  openDialog: (editor: Editor) => boolean
+}
 
 const props = withDefaults(defineProps<ImageToolbarControlProps>(), {
   disabled: false,
 })
 
 const editor = props.editor
-const controller = getRichTextImageDialogController(editor)
-const openedSession = ref<RichTextImageDialogSession | null>(null)
-const target = computed(() => resolveRichTextImageToolbarTarget(editor))
-const isActive = computed(() => target.value?.type === 'edit')
-const isDisabled = computed(() => props.disabled || target.value === null)
+const selectedImage = computed(() => getSelectedImageAttrs(editor))
+const isActive = computed(() => selectedImage.value !== null)
+const isDisabled = computed(() => props.disabled || (!isActive.value && !canInsertImage(editor)))
 const buttonLabel = computed(() => (isActive.value ? '编辑图片' : '图片'))
 
-function closeToolbarDialog() {
-  const activeSession = openedSession.value
-
-  if (activeSession) {
-    controller.close(activeSession)
-    openedSession.value = null
-  }
-
-  toolbarOverlay.close()
-}
-
-const toolbarOverlay = useRichTextToolbarOverlay(closeToolbarDialog)
-
-function openDialog() {
-  const currentTarget = target.value
-
-  if (isDisabled.value || !currentTarget) {
+function handleClick() {
+  if (isDisabled.value) {
     return
   }
 
-  toolbarOverlay.open()
-  openedSession.value = controller.open(currentTarget, {
-    upload: props.upload,
-    ...(props.onError ? { onError: props.onError } : {}),
-  })
+  props.openDialog(editor)
 }
-
-watch(controller.session, (activeSession) => {
-  if (openedSession.value && activeSession !== openedSession.value) {
-    openedSession.value = null
-    toolbarOverlay.close()
-  }
-})
-
-watch(
-  () => props.disabled,
-  (disabled) => {
-    if (disabled) {
-      closeToolbarDialog()
-    }
-  },
-)
 </script>
 
 <template>
-  <div class="contents">
-    <NButton
-      data-test="rich-text-image"
-      :data-active="isActive ? 'true' : undefined"
-      :disabled="isDisabled"
-      size="small"
-      style="--n-padding: 0 6px"
-      :type="isActive ? 'primary' : 'default'"
-      :secondary="isActive"
-      :quaternary="!isActive"
-      :title="buttonLabel"
-      :aria-label="buttonLabel"
-      :aria-pressed="isActive"
-      @mousedown.prevent
-      @click="openDialog"
-    >
-      <span class="i-[lucide--image]" aria-hidden="true" />
-    </NButton>
-  </div>
+  <NButton
+    data-test="rich-text-image"
+    :data-active="isActive ? 'true' : undefined"
+    :disabled="isDisabled"
+    size="small"
+    style="--n-padding: 0 6px"
+    :type="isActive ? 'primary' : 'default'"
+    :secondary="isActive"
+    :quaternary="!isActive"
+    :title="buttonLabel"
+    :aria-label="buttonLabel"
+    :aria-pressed="isActive"
+    @click="handleClick"
+  >
+    <span class="i-[lucide--image]" aria-hidden="true" />
+  </NButton>
 </template>

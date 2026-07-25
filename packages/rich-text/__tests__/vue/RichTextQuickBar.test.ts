@@ -12,6 +12,8 @@ import { collectRichTextEditorExtensions } from '../../src/editor/feature'
 import { boldActionItem } from '../../src/features/bold/editor'
 import { codeBlockEditorFeature } from '../../src/features/code-block/editor'
 import { codeBlockQuickBar } from '../../src/features/code-block/vue'
+import { imageFeature } from '../../src/features/image/shared'
+import { createImageQuickBar } from '../../src/features/image/vue'
 import { italicActionItem } from '../../src/features/italic/editor'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 import {
@@ -402,5 +404,34 @@ describe('RichTextQuickBar', () => {
 
     expect(editor.getJSON().content?.[0]?.attrs).toEqual({ language: 'typescript' })
     expect(editor.getJSON().content?.[1]?.attrs).toEqual({ language: null })
+  })
+
+  it('hides when an image dialog takes focus', async () => {
+    const editor = createTestEditor({
+      extensions: [Document, Paragraph, Text, ...imageFeature.documentExtensions!()],
+      content: '<img src="/uploads/image.png">',
+    })
+    editor.commands.setNodeSelection(0)
+    editor.view.focus()
+    const wrapper = mountQuickBar(
+      editor,
+      defineRichTextQuickBar({
+        featureBars: [
+          createImageQuickBar({
+            upload: async () => ({ src: '/uploads/image.png' }),
+          }),
+        ],
+      }),
+    )
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="rich-text-quick-bar"]').exists()).toBe(true)
+
+    await wrapper.get('[data-test="rich-text-quick-bar-image"]').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(document.querySelector('[data-test="rich-text-image-cancel"]')).not.toBeNull()
+      expect(wrapper.find('[data-test="rich-text-quick-bar"]').exists()).toBe(false)
+    })
   })
 })

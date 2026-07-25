@@ -1,7 +1,33 @@
-import { NodeSelection, type Transaction } from '@tiptap/pm/state'
+import type { Editor } from '@tiptap/core'
+import { closeHistory } from '@tiptap/pm/history'
+import { NodeSelection, TextSelection, type Transaction } from '@tiptap/pm/state'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { imageFeature, type RichTextImageAttrsPatch, type RichTextImageInput } from './shared'
+import {
+  imageFeature,
+  type RichTextImageAttrsPatch,
+  type RichTextImageInput,
+  type RichTextImageNodeAttrs,
+} from './shared'
+
+export function getSelectedImageAttrs(editor: Editor): RichTextImageNodeAttrs | null {
+  const { selection } = editor.state
+
+  if (!(selection instanceof NodeSelection) || selection.node.type.name !== 'image') {
+    return null
+  }
+
+  return {
+    src: selection.node.attrs.src,
+    alt: selection.node.attrs.alt,
+    width: selection.node.attrs.width,
+    height: selection.node.attrs.height,
+  }
+}
+
+export function canInsertImage(editor: Editor) {
+  return editor.state.selection instanceof TextSelection && editor.state.selection.empty
+}
 
 function findInsertedImagePosition(transaction: Transaction, firstStepIndex: number) {
   if (
@@ -51,6 +77,7 @@ export const insertImageAction = defineRichTextAction(imageFeature, {
       chain()
         .focus()
         .command(({ commands, tr, dispatch }) => {
+          closeHistory(tr)
           const firstStepIndex = tr.steps.length
 
           if (!commands.insertContent({ type: 'image', attrs })) {

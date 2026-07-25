@@ -1,7 +1,6 @@
 import type { Editor, Range } from '@tiptap/core'
-import type { Mark, Node as ProseMirrorNode } from '@tiptap/pm/model'
+import type { Mark } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
-import { captureRichTextSelection, type RichTextSelectionSnapshot } from '../../vue/selection'
 
 export type RichTextLinkTargetSurface = 'quick-bar' | 'text-quick-bar' | 'toolbar'
 
@@ -15,10 +14,6 @@ export interface RichTextLinkTarget {
   readonly mode: RichTextLinkTargetMode
   readonly range: Range
   readonly href: string
-  readonly hasLinkMarks: boolean
-  readonly document: ProseMirrorNode
-  readonly selection: RichTextSelectionSnapshot
-  readonly storedMarks: readonly Mark[] | null
 }
 
 function getLinkHref(mark: Mark | undefined) {
@@ -111,22 +106,8 @@ function isPlainTextSelection(editor: Editor) {
   return containsText && !containsUnsupportedInlineContent
 }
 
-function createTarget(
-  editor: Editor,
-  mode: RichTextLinkTargetMode,
-  range: Range,
-  href = '',
-  hasLinkMarks = false,
-): RichTextLinkTarget {
-  return Object.freeze({
-    mode,
-    range: Object.freeze({ ...range }),
-    href,
-    hasLinkMarks,
-    document: editor.state.doc,
-    selection: captureRichTextSelection(editor),
-    storedMarks: editor.state.storedMarks ? Object.freeze([...editor.state.storedMarks]) : null,
-  })
+function createTarget(mode: RichTextLinkTargetMode, range: Range, href = ''): RichTextLinkTarget {
+  return { mode, range, href }
 }
 
 function resolveTextSelectionTarget(editor: Editor) {
@@ -144,11 +125,9 @@ function resolveTextSelectionTarget(editor: Editor) {
 
   if (containingRange) {
     return createTarget(
-      editor,
       'edit',
       { from: containingRange.from, to: containingRange.to },
       containingRange.href,
-      true,
     )
   }
 
@@ -156,7 +135,7 @@ function resolveTextSelectionTarget(editor: Editor) {
     (range) => range.from < selection.to && selection.from < range.to,
   )
 
-  return createTarget(editor, hasLinkMarks ? 'set' : 'create', selectedRange, '', hasLinkMarks)
+  return createTarget(hasLinkMarks ? 'set' : 'create', selectedRange)
 }
 
 export function resolveRichTextLinkTarget(
@@ -180,22 +159,12 @@ export function resolveRichTextLinkTarget(
 
   const linkRange = resolveCaretLinkRange(editor)
   if (linkRange) {
-    return createTarget(
-      editor,
-      'edit',
-      { from: linkRange.from, to: linkRange.to },
-      linkRange.href,
-      true,
-    )
+    return createTarget('edit', { from: linkRange.from, to: linkRange.to }, linkRange.href)
   }
 
   if (surface !== 'toolbar' || !selection.$from.parent.isTextblock) {
     return null
   }
 
-  return createTarget(editor, 'stored', { from: selection.from, to: selection.to })
-}
-
-export function isRichTextLinkTargetValid(editor: Editor, target: RichTextLinkTarget) {
-  return editor.state.doc === target.document
+  return createTarget('stored', { from: selection.from, to: selection.to })
 }

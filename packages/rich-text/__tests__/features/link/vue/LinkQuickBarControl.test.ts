@@ -2,7 +2,7 @@ import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { flushPromises, mount } from '@vue/test-utils'
-import { NInput } from 'naive-ui'
+import { NInput, NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { linkFeature } from '../../../../src/features/link/shared'
@@ -18,9 +18,6 @@ function createEditor(content: string) {
 
 function mountControl(editor: ReturnType<typeof createEditor>) {
   return mount(LinkControl, {
-    global: {
-      stubs: { teleport: true },
-    },
     props: {
       editor: markRaw(editor),
       surface: 'text-quick-bar',
@@ -51,7 +48,6 @@ describe('LinkQuickBarControl', () => {
     expect(wrapper.getComponent(NInput).props('value')).toBe('')
     expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(false)
 
-    editor.commands.setTextSelection(5)
     await setUrl(wrapper, 'example.com')
     await wrapper.get('[data-test="rich-text-link-apply"]').trigger('click')
     await flushPromises()
@@ -99,14 +95,13 @@ describe('LinkQuickBarControl', () => {
     expect(wrapper.find('[data-test="rich-text-link-url"]').exists()).toBe(false)
   })
 
-  it('restores its fixed selection on Escape and keeps a new selection on outside close', async () => {
+  it('abandons drafts on Escape and outside close', async () => {
     const editor = createEditor('<p>普通文字末尾</p>')
     editor.commands.setTextSelection({ from: 1, to: 3 })
     const wrapper = mountControl(editor)
 
     await wrapper.get('[data-test="rich-text-quick-bar-link"]').trigger('click')
     await setUrl(wrapper, 'draft.example')
-    editor.commands.setTextSelection(5)
     await wrapper.get('[data-test="rich-text-link-url"] input').trigger('keydown', {
       key: 'Escape',
     })
@@ -117,11 +112,10 @@ describe('LinkQuickBarControl', () => {
 
     await wrapper.get('[data-test="rich-text-quick-bar-link"]').trigger('click')
     await setUrl(wrapper, 'outside.example')
-    editor.commands.setTextSelection(5)
-    ;(wrapper.vm as unknown as { close: (reason: 'outside') => void }).close('outside')
+    wrapper.getComponent(NPopover).vm.$emit('clickoutside')
     await flushPromises()
 
-    expect(editor.state.selection).toMatchObject({ from: 5, to: 5 })
+    expect(editor.state.selection).toMatchObject({ from: 1, to: 3 })
     expect(editor.getHTML()).not.toContain('outside.example')
   })
 })

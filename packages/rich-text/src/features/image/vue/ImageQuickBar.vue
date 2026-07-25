@@ -1,89 +1,36 @@
 <script setup lang="ts">
+import type { Editor } from '@tiptap/vue-3'
 import type { RichTextQuickBarComponentProps } from '../../../vue/quick-bar'
-import type { RichTextOverlayCloseReason } from '../../../vue/overlay-state'
 import { NButton } from 'naive-ui'
-import { computed, ref, watch } from 'vue'
-import {
-  getRichTextImageDialogController,
-  resolveRichTextImageQuickBarTarget,
-  type RichTextImageDialogOptions,
-  type RichTextImageDialogSession,
-} from './dialog-controller'
+import { computed } from 'vue'
+import { getSelectedImageAttrs } from '../editor'
 
-interface ImageQuickBarProps extends RichTextQuickBarComponentProps, RichTextImageDialogOptions {}
+interface ImageQuickBarProps extends RichTextQuickBarComponentProps {
+  openDialog: (editor: Editor) => boolean
+}
 
-const props = withDefaults(defineProps<ImageQuickBarProps>(), {
-  disabled: false,
-})
-
-const emit = defineEmits<{
-  close: [reason: RichTextOverlayCloseReason]
-  suspend: []
-}>()
+const props = defineProps<ImageQuickBarProps>()
 
 const editor = props.editor
-const root = ref<HTMLElement | null>(null)
-const controller = getRichTextImageDialogController(editor)
-const openedSession = ref<RichTextImageDialogSession | null>(null)
-const target = computed(() => resolveRichTextImageQuickBarTarget(editor))
-const isDisabled = computed(() => props.disabled || target.value === null)
+const selectedImage = computed(() => getSelectedImageAttrs(editor))
+const isDisabled = computed(() => selectedImage.value === null)
 
-function openDialog() {
-  const currentTarget = target.value
-
-  if (isDisabled.value || !currentTarget) {
+function handleEdit() {
+  if (isDisabled.value) {
     return
   }
 
-  openedSession.value = controller.open(currentTarget, {
-    upload: props.upload,
-    ...(props.onError ? { onError: props.onError } : {}),
-  })
-  emit('suspend')
+  props.openDialog(editor)
 }
-
-function close(reason: RichTextOverlayCloseReason) {
-  const activeSession = openedSession.value
-
-  if (!activeSession) {
-    return
-  }
-
-  controller.close(activeSession)
-  openedSession.value = null
-
-  if (reason === 'cancel') {
-    editor.commands.setNodeSelection(activeSession.target.selection.from)
-    editor.commands.focus()
-  }
-}
-
-watch(controller.session, (activeSession) => {
-  if (openedSession.value && activeSession !== openedSession.value) {
-    openedSession.value = null
-    emit('close', 'outside')
-  }
-})
-
-defineExpose({
-  close,
-  focusInitialControl: () => {
-    const button = root.value?.querySelector<HTMLElement>(
-      '[data-test="rich-text-quick-bar-image-download"]',
-    )
-    button?.focus()
-    return button !== null
-  },
-})
 </script>
 
 <template>
-  <div ref="root" class="contents">
+  <div class="contents">
     <NButton
       tag="a"
       data-test="rich-text-quick-bar-image-download"
       data-rich-text-quick-bar-roving
-      :href="isDisabled ? undefined : target?.attrs.src"
+      :href="isDisabled ? undefined : selectedImage?.src"
       download
       :disabled="isDisabled"
       size="small"
@@ -105,7 +52,7 @@ defineExpose({
       title="编辑图片"
       aria-label="编辑图片"
       @mousedown.prevent
-      @click="openDialog"
+      @click="handleEdit"
     >
       <span class="i-[lucide--pencil]" aria-hidden="true" />
     </NButton>

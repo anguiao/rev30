@@ -35,8 +35,6 @@ describe('rich text link target resolver', () => {
         mode: 'edit',
         range: { from: 1, to: 5 },
         href: 'https://example.com',
-        hasLinkMarks: true,
-        selection: { from: position, to: position, empty: true },
       })
     }
   })
@@ -65,7 +63,6 @@ describe('rich text link target resolver', () => {
       mode: 'stored',
       range: { from: 2, to: 2 },
       href: '',
-      hasLinkMarks: false,
     })
   })
 
@@ -77,8 +74,6 @@ describe('rich text link target resolver', () => {
       mode: 'edit',
       range: { from: 1, to: 5 },
       href: 'https://example.com',
-      hasLinkMarks: true,
-      selection: { from: 2, to: 4, empty: false },
     })
     expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toBeNull()
   })
@@ -91,7 +86,6 @@ describe('rich text link target resolver', () => {
       mode: 'create',
       range: { from: 3, to: 7 },
       href: '',
-      hasLinkMarks: false,
     })
 
     editor.commands.setTextSelection({ from: 2, to: 5 })
@@ -99,7 +93,6 @@ describe('rich text link target resolver', () => {
       mode: 'set',
       range: { from: 2, to: 5 },
       href: '',
-      hasLinkMarks: true,
     })
   })
 
@@ -124,8 +117,6 @@ describe('rich text link target resolver', () => {
       mode: 'stored',
       range: { from: 3, to: 3 },
       href: '',
-      hasLinkMarks: false,
-      selection: { from: 3, to: 3, empty: true },
     })
   })
 

@@ -20,7 +20,6 @@ import {
   createImageToolbarControl,
   type RichTextImageUploadOptions,
 } from '../../features/image/vue'
-import ImageDialogHost from '../../features/image/vue/ImageDialogHost.vue'
 import { inlineCodeActionItem, inlineCodeEditorFeature } from '../../features/inline-code/editor'
 import { italicActionItem, italicEditorFeature } from '../../features/italic/editor'
 import { linkEditorFeature } from '../../features/link/editor'
@@ -193,6 +192,5 @@ export function createAllRichTextEditorPreset(options: AllRichTextEditorPresetOp
     statusBar: allRichTextStatusBar,
     quickBar: createAllRichTextQuickBar(options),
     slashCommand: createAllRichTextSlashCommand(options),
-    host: ImageDialogHost,
   })
 }

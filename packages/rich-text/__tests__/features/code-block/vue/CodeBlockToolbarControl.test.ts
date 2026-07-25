@@ -11,7 +11,6 @@ import { codeBlockEditorFeature } from '../../../../src/features/code-block/edit
 import { codeBlockToolbarControl } from '../../../../src/features/code-block/vue'
 import CodeBlockToolbarControl from '../../../../src/features/code-block/vue/CodeBlockToolbarControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
-import { createTestRichTextOverlayState } from '../../../helpers/overlay'
 
 const codeBlockLanguageOptions = codeBlockToolbarControl.props.languages as readonly {
   readonly value: string
@@ -40,11 +39,8 @@ function createEditor(firstLanguage: string | null, secondLanguage: string | nul
 }
 
 function mountControl(editor: Editor, attachToDocument = false) {
-  const overlay = createTestRichTextOverlayState()
-
   return mount(CodeBlockToolbarControl, {
     ...(attachToDocument ? { attachTo: document.body } : undefined),
-    global: { provide: overlay.provide },
     props: {
       editor: markRaw(editor),
       languages: [...codeBlockLanguageOptions],
@@ -76,15 +72,6 @@ function findOption(wrapper: ReturnType<typeof mount>, value: string) {
   }
 
   return option
-}
-
-function getLanguageMenuId(wrapper: ReturnType<typeof mount>) {
-  const getMenuProps = wrapper.getComponent(NDropdown).props('menuProps') as () => Record<
-    string,
-    string
-  >
-
-  return getMenuProps()['data-rich-text-code-block-language-menu']
 }
 
 describe('CodeBlockToolbarControl', () => {
@@ -168,9 +155,7 @@ describe('CodeBlockToolbarControl', () => {
     const secondButton = secondWrapper.get('[data-test="rich-text-code-block-language"]')
     expect(firstButton.attributes('aria-expanded')).toBe('true')
     expect(secondButton.attributes('aria-expanded')).toBe('true')
-    expect(getLanguageMenuId(firstWrapper)).not.toBe(getLanguageMenuId(secondWrapper))
 
-    firstEditor.commands.setTextSelection(firstPositions[1]!)
     firstEditor.view.dom.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
     )
@@ -185,7 +170,7 @@ describe('CodeBlockToolbarControl', () => {
     expect(document.activeElement).toBe(firstEditor.view.dom)
   })
 
-  it('isolates Escape events from teleported menus across Vue roots', async () => {
+  it('isolates Escape events from inline menus across Vue roots', async () => {
     const firstEditor = createEditor(null, null)
     const secondEditor = createEditor(null, null)
     firstEditor.commands.setTextSelection(findCodeBlockTextPositions(firstEditor)[0]!)
@@ -197,17 +182,11 @@ describe('CodeBlockToolbarControl', () => {
     secondWrapper.getComponent(NDropdown).vm.$emit('update:show', true)
     await flushPromises()
 
-    const firstMenuId = getLanguageMenuId(firstWrapper)
-    const secondMenuId = getLanguageMenuId(secondWrapper)
-    expect(firstMenuId).not.toBe(secondMenuId)
-
-    const firstMenu = document.createElement('div')
-    firstMenu.dataset.richTextCodeBlockLanguageMenu = firstMenuId
-    document.body.appendChild(firstMenu)
-    firstMenu.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
-    )
-    firstMenu.remove()
+    firstWrapper
+      .get('[data-test="rich-text-code-block-language-plaintext"]')
+      .element.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+      )
     await flushPromises()
 
     expect(

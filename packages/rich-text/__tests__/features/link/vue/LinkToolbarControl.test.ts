@@ -10,7 +10,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { linkFeature } from '../../../../src/features/link/shared'
 import LinkControl from '../../../../src/features/link/vue/LinkControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
-import { createTestRichTextOverlayState } from '../../../helpers/overlay'
 
 function createEditor(content = '<p>维护通知</p>') {
   return createTestEditor({
@@ -20,22 +19,13 @@ function createEditor(content = '<p>维护通知</p>') {
 }
 
 function mountControl(editor: Editor, disabled = false) {
-  const overlay = createTestRichTextOverlayState()
-  const wrapper = mount(LinkControl, {
-    global: {
-      provide: overlay.provide,
-      stubs: {
-        teleport: true,
-      },
-    },
+  return mount(LinkControl, {
     props: {
       editor: markRaw(editor),
       surface: 'toolbar',
       disabled,
     },
   })
-
-  return Object.assign(wrapper, { overlayState: overlay.state })
 }
 
 function isPopoverShown(wrapper: ReturnType<typeof mountControl>) {
@@ -105,7 +95,7 @@ describe('LinkToolbarControl', () => {
     expect(wrapper.get('[data-test="rich-text-link"]').attributes('data-active')).toBe('true')
   })
 
-  it('edits the complete link while restoring the original collapsed selection', async () => {
+  it('edits the complete link without moving the collapsed selection', async () => {
     const editor = createEditor('<p><a href="https://old.example">链接文本</a>末尾</p>')
     editor.commands.setTextSelection(3)
     const wrapper = mountControl(editor)
@@ -114,7 +104,6 @@ describe('LinkToolbarControl', () => {
     expect(wrapper.getComponent(NInput).props('value')).toBe('https://old.example')
     expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(true)
 
-    editor.commands.setTextSelection(6)
     await setUrl(wrapper, 'new.example')
     const onTransaction = vi.fn()
     editor.on('transaction', onTransaction)
@@ -213,14 +202,13 @@ describe('LinkToolbarControl', () => {
     expect(isPopoverShown(wrapper)).toBe(false)
   })
 
-  it('restores selection on explicit cancel and a second trigger click', async () => {
+  it('abandons drafts on explicit cancel and a second trigger click', async () => {
     const editor = createEditor('<p><a href="https://example.com">链接文本</a>末尾</p>')
     editor.commands.setTextSelection(3)
     const wrapper = mountControl(editor)
 
     await openPopover(wrapper)
     await setUrl(wrapper, 'draft.example')
-    editor.commands.setTextSelection(6)
     await wrapper.get('[data-test="rich-text-link-cancel"]').trigger('click')
     await flushPromises()
 
@@ -230,7 +218,6 @@ describe('LinkToolbarControl', () => {
 
     await openPopover(wrapper)
     await setUrl(wrapper, 'second-draft.example')
-    editor.commands.setTextSelection(6)
     await wrapper.get('[data-test="rich-text-link"]').trigger('click')
     await flushPromises()
 
@@ -239,7 +226,7 @@ describe('LinkToolbarControl', () => {
     expect(isPopoverShown(wrapper)).toBe(false)
   })
 
-  it('abandons drafts on outside close without restoring the selection or focus', async () => {
+  it('abandons drafts on outside close without stealing focus', async () => {
     const editor = createEditor('<p><a href="https://example.com">链接文本</a>末尾</p>')
     editor.commands.setTextSelection(3)
     const wrapper = mountControl(editor)
@@ -248,33 +235,15 @@ describe('LinkToolbarControl', () => {
 
     await openPopover(wrapper)
     await setUrl(wrapper, 'draft.example')
-    editor.commands.setTextSelection(6)
     outsideButton.focus()
     wrapper.getComponent(NPopover).vm.$emit('clickoutside')
     await flushPromises()
 
-    expect(editor.state.selection).toMatchObject({ from: 6, to: 6 })
+    expect(editor.state.selection).toMatchObject({ from: 3, to: 3 })
     expect(document.activeElement).toBe(outsideButton)
     expect(editor.getHTML()).not.toContain('draft.example')
     expect(isPopoverShown(wrapper)).toBe(false)
     outsideButton.remove()
-  })
-
-  it('closes an invalidated target without applying its draft', async () => {
-    const editor = createEditor('<p><a href="https://example.com">链接文本</a>末尾</p>')
-    editor.commands.setTextSelection(3)
-    const wrapper = mountControl(editor)
-
-    await openPopover(wrapper)
-    await setUrl(wrapper, 'draft.example')
-    editor.commands.setTextSelection(6)
-    editor.commands.insertContent('外部')
-    await flushPromises()
-
-    expect(isPopoverShown(wrapper)).toBe(false)
-    expect(editor.getText()).toContain('外部')
-    expect(editor.getHTML()).not.toContain('draft.example')
-    expect(editor.state.selection.from).not.toBe(3)
   })
 
   it('keeps invalid drafts open and opens normalized drafts without closing', async () => {
@@ -316,7 +285,6 @@ describe('LinkToolbarControl', () => {
     editor.commands.setTextSelection(2)
     await openPopover(wrapper)
     await setUrl(wrapper, 'draft.example')
-    editor.commands.setTextSelection(4)
     const openButton = wrapper.get('[data-test="rich-text-link-open"]')
     const openButtonElement = openButton.element as HTMLElement
     openButtonElement.focus()
@@ -327,7 +295,6 @@ describe('LinkToolbarControl', () => {
     expect(editor.getHTML()).not.toContain('draft.example')
     expect(isPopoverShown(wrapper)).toBe(false)
     expect(editor.isFocused).toBe(true)
-    expect(wrapper.overlayState.toolbarOverlayOpen.value).toBe(false)
   })
 
   it('labels icon actions and honors the disabled prop', async () => {

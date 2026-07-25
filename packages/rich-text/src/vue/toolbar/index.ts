@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/core'
+import type { Editor } from '@tiptap/vue-3'
 import { markRaw, type Component, type ComponentInstance } from 'vue'
 import type { RichTextFeature } from '../../core/feature'
 import type { RichTextActionItem, RichTextIconClass } from '../../editor/action'

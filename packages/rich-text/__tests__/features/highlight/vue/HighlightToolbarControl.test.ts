@@ -22,11 +22,6 @@ function createEditor(content = '<p>维护通知</p>') {
 
 function mountControl(editor: Editor, disabled = false) {
   return mount(HighlightToolbarControl, {
-    global: {
-      stubs: {
-        teleport: true,
-      },
-    },
     props: {
       editor: markRaw(editor),
       disabled,

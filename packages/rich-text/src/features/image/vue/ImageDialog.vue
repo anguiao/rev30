@@ -2,27 +2,23 @@
 import type { RichTextImageInput, RichTextImageNodeAttrs } from '../shared'
 import { NButton, NFormItem, NImage, NInput, NInputNumber, NModal, NSpin } from 'naive-ui'
 import { useDropZone, useEventListener, useFileDialog, useObjectUrl } from '@vueuse/core'
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
 import { useRichTextThemeStyle } from '../../../vue/theme'
 
-const props = withDefaults(
-  defineProps<{
-    show: boolean
-    upload: (file: File) => Promise<{ src: string }>
-    existingAttrs?: RichTextImageNodeAttrs | undefined
-  }>(),
-  {},
-)
+const props = defineProps<{
+  upload: (file: File) => Promise<{ src: string }>
+  image?: RichTextImageNodeAttrs | undefined
+}>()
 
 const emit = defineEmits<{
-  'update:show': [value: boolean]
+  cancel: []
   confirm: [attrs: RichTextImageInput]
   error: [error: unknown]
 }>()
 
 const richTextThemeStyle = useRichTextThemeStyle()
 
-const isExistingImage = computed(() => props.existingAttrs !== undefined)
+const isEditing = props.image !== undefined
 
 const selectedFile = ref<File | null>(null)
 const hasSelectedFile = computed(() => selectedFile.value !== null)
@@ -30,18 +26,14 @@ const localPreviewSrc = useObjectUrl(selectedFile)
 
 const activeUpload = shallowRef<Promise<{ src: string }> | null>(null)
 const isUploading = computed(() => activeUpload.value !== null)
-const canSelectFile = computed(() => props.show && !isExistingImage.value && !isUploading.value)
+const canSelectFile = computed(() => !isEditing && !isUploading.value)
 
 function selectLocalImageFile(file: File) {
   selectedFile.value = file
   resetImageState()
 }
 
-const {
-  open: openFileDialog,
-  reset: resetFileDialog,
-  onChange: onFileDialogChange,
-} = useFileDialog({
+const { open: openFileDialog, onChange: onFileDialogChange } = useFileDialog({
   accept: 'image/*',
   multiple: false,
   reset: true,
@@ -96,10 +88,10 @@ useEventListener(window, 'paste', (event) => {
   selectLocalImageFile(file)
 })
 
-const src = ref('')
-const alt = ref('')
-const width = ref<number | null>(null)
-const height = ref<number | null>(null)
+const src = ref(props.image?.src ?? '')
+const alt = ref(props.image?.alt ?? '')
+const width = ref<number | null>(props.image?.width ?? null)
+const height = ref<number | null>(props.image?.height ?? null)
 const naturalWidth = ref<number | null>(null)
 const naturalHeight = ref<number | null>(null)
 const aspectRatio = computed(() =>
@@ -139,26 +131,6 @@ function handleApply() {
     width: width.value,
     height: height.value,
   })
-  emit('update:show', false)
-}
-
-function initializeDialog() {
-  const attrs = props.existingAttrs
-  if (attrs === undefined) {
-    return
-  }
-
-  src.value = attrs.src
-  alt.value = attrs.alt ?? ''
-  width.value = attrs.width ?? null
-  height.value = attrs.height ?? null
-}
-
-function resetDialog() {
-  activeUpload.value = null
-  resetFileDialog()
-  selectedFile.value = null
-  resetImageState()
 }
 
 function resetImageState() {
@@ -170,17 +142,9 @@ function resetImageState() {
   naturalHeight.value = null
 }
 
-watch(
-  () => props.show,
-  (show) => {
-    resetDialog()
-
-    if (show) {
-      initializeDialog()
-    }
-  },
-  { immediate: true },
-)
+onBeforeUnmount(() => {
+  activeUpload.value = null
+})
 
 async function uploadImageFile() {
   const file = selectedFile.value
@@ -271,17 +235,17 @@ function updateHeight(value: number | null) {
 
 <template>
   <NModal
-    :show="show"
+    :show="true"
     preset="card"
     title="图片"
     class="rich-text-theme w-[calc(100vw-32px)] max-w-lg"
     :style="richTextThemeStyle"
-    @update:show="emit('update:show', $event)"
+    @update:show="!$event && emit('cancel')"
   >
     <NSpin :show="isUploading">
       <div class="flex flex-col gap-3">
         <div
-          v-if="!isExistingImage"
+          v-if="!isEditing"
           ref="dropZoneRef"
           data-test="rich-text-image-drop-zone"
           class="flex w-fit rounded-(--rich-text-theme-border-radius) transition-[outline-color,outline-width]"
@@ -327,7 +291,7 @@ function updateHeight(value: number | null) {
           <span class="i-[lucide--image] text-2xl opacity-20" aria-hidden="true" />
         </div>
 
-        <div v-if="!isExistingImage" data-test="rich-text-image-upload" class="flex w-fit gap-2">
+        <div v-if="!isEditing" data-test="rich-text-image-upload" class="flex w-fit gap-2">
           <NButton
             data-test="rich-text-image-file"
             class="flex-1"
@@ -395,9 +359,7 @@ function updateHeight(value: number | null) {
           </NButton>
 
           <div class="flex gap-2">
-            <NButton data-test="rich-text-image-cancel" @click="emit('update:show', false)">
-              取消
-            </NButton>
+            <NButton data-test="rich-text-image-cancel" @click="emit('cancel')"> 取消 </NButton>
             <NButton
               data-test="rich-text-image-confirm"
               type="primary"

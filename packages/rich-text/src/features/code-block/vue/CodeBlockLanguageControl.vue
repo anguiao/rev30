@@ -1,34 +1,18 @@
 <script setup lang="ts">
-import type { RichTextQuickBarComponentProps } from '../../../vue/quick-bar'
-import { getRichTextQuickBarLayerId } from '../../../vue/quick-bar'
-import {
-  markRichTextSurfaceTransactionCommand,
-  restoreRichTextSelection,
-  restoreRichTextSelectionCommand,
-  useRichTextTargetInvalidation,
-} from '../../../vue/selection'
-import {
-  type RichTextOverlayCloseReason,
-  useRichTextToolbarOverlay,
-} from '../../../vue/overlay-state'
+import type { Editor } from '@tiptap/vue-3'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
 import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { setCodeBlockLanguageAction } from '../editor'
-import {
-  getRichTextCodeBlockLanguage,
-  isRichTextCodeBlockTargetValid,
-  resolveRichTextCodeBlockTarget,
-  type RichTextCodeBlockTarget,
-} from '../target'
-import { createCodeBlockLanguageMenuId } from './language-menu-id'
+import { getSelectedCodeBlock, setCodeBlockLanguageAction } from '../editor'
 
-interface CodeBlockLanguageControlProps extends RichTextQuickBarComponentProps {
+interface CodeBlockLanguageControlProps {
+  editor: Editor
   languages: readonly {
     readonly label: string
     readonly value: string
   }[]
   surface: 'toolbar' | 'quick-bar'
+  disabled?: boolean
   showLabel?: boolean
 }
 
@@ -38,26 +22,28 @@ const props = withDefaults(defineProps<CodeBlockLanguageControlProps>(), {
 })
 
 const emit = defineEmits<{
-  close: [reason: RichTextOverlayCloseReason]
+  close: []
 }>()
 
 const editor = props.editor
-const owner = Symbol('rich-text-code-block-language')
-const layerId = getRichTextQuickBarLayerId(editor)
-const menuId = createCodeBlockLanguageMenuId()
 const root = ref<HTMLElement | null>(null)
 const show = ref(false)
-const fixedTarget = ref<RichTextCodeBlockTarget | null>(null)
-const toolbarOverlay = useRichTextToolbarOverlay(() => close('outside'))
 
-const currentTarget = computed(() => fixedTarget.value ?? resolveRichTextCodeBlockTarget(editor))
-const currentLanguage = computed(() =>
-  currentTarget.value ? getRichTextCodeBlockLanguage(currentTarget.value) : null,
-)
+const currentCodeBlock = computed(() => getSelectedCodeBlock(editor))
+const currentLanguage = computed(() => {
+  const codeBlock = currentCodeBlock.value
+  const language = codeBlock?.node.attrs.language
+
+  if (!codeBlock) {
+    return null
+  }
+
+  return typeof language === 'string' && language ? language : 'plaintext'
+})
 const currentOption = computed(
   () => props.languages.find((option) => option.value === currentLanguage.value) ?? null,
 )
-const isDisabled = computed(() => props.disabled || currentTarget.value === null)
+const isDisabled = computed(() => props.disabled || currentCodeBlock.value === null)
 const buttonLabel = computed(() =>
   currentOption.value ? `代码语言：${currentOption.value.label}` : '代码语言',
 )
@@ -91,24 +77,22 @@ const options = computed<DropdownOption[]>(() =>
   }),
 )
 
-function close(reason: RichTextOverlayCloseReason) {
-  if (!show.value && !fixedTarget.value) {
+function close() {
+  if (!show.value) {
     return
   }
 
-  const target = fixedTarget.value
   show.value = false
-  fixedTarget.value = null
+  emit('close')
+}
 
-  if (props.surface === 'toolbar') {
-    toolbarOverlay.close()
+function cancel() {
+  if (!show.value) {
+    return
   }
 
-  if (reason === 'cancel' && target) {
-    restoreRichTextSelection(editor, target.selection)
-  }
-
-  emit('close', reason)
+  show.value = false
+  editor.commands.focus()
 }
 
 function open() {
@@ -116,17 +100,7 @@ function open() {
     return
   }
 
-  const target = resolveRichTextCodeBlockTarget(editor)
-
-  if (!target) {
-    return
-  }
-
-  fixedTarget.value = target
-
-  if (props.surface === 'toolbar') {
-    toolbarOverlay.open()
-  } else {
+  if (props.surface === 'quick-bar') {
     root.value?.querySelector<HTMLElement>(`[data-test="${dataTestPrefix.value}"]`)?.focus()
   }
 
@@ -137,7 +111,13 @@ function handleShow(nextShow: boolean) {
   if (nextShow) {
     open()
   } else if (show.value) {
-    close('outside')
+    close()
+  }
+}
+
+function handleTriggerMousedown(event: MouseEvent) {
+  if (props.surface === 'quick-bar') {
+    event.preventDefault()
   }
 }
 
@@ -149,63 +129,38 @@ function handleDocumentKeydown(event: KeyboardEvent) {
     event.isComposing ||
     event.key !== 'Escape' ||
     !(target instanceof Element) ||
-    (root.value?.contains(target) !== true &&
-      !editor.view.dom.contains(target) &&
-      target.closest(`[data-rich-text-code-block-language-menu="${menuId}"]`) === null)
+    (root.value?.contains(target) !== true && !editor.view.dom.contains(target))
   ) {
     return
   }
 
   event.preventDefault()
   event.stopPropagation()
-  close('cancel')
-}
-
-function getMenuProps() {
-  return {
-    'data-rich-text-code-block-language-menu': menuId,
-    ...(props.surface === 'quick-bar'
-      ? { 'data-rich-text-quick-bar-subinterface': layerId }
-      : undefined),
-  }
+  cancel()
 }
 
 function setLanguage(value: string | number) {
-  const target = fixedTarget.value ?? resolveRichTextCodeBlockTarget(editor)
+  const codeBlock = getSelectedCodeBlock(editor)
   const option = props.languages.find((language) => language.value === value)
 
-  if (!target || !option || !isRichTextCodeBlockTargetValid(editor, target)) {
-    close('invalidated')
+  if (!codeBlock || !option) {
+    close()
     return
   }
 
   const language = option.value === 'plaintext' ? null : option.value
-  const handled = editor
-    .chain()
-    .command(restoreRichTextSelectionCommand(target.selection))
-    .command(markRichTextSurfaceTransactionCommand(owner))
-    .command(setCodeBlockLanguageAction.command(language))
-    .command(restoreRichTextSelectionCommand(target.selection))
-    .focus()
-    .run()
+  const handled = editor.commands.command(setCodeBlockLanguageAction.command(language))
 
   if (handled) {
-    close('outside')
+    close()
   }
 }
-
-useRichTextTargetInvalidation(
-  editor,
-  owner,
-  () => show.value,
-  () => close('invalidated'),
-)
 
 watch(
   () => props.disabled,
   (disabled) => {
     if (disabled) {
-      close('invalidated')
+      close()
     }
   },
 )
@@ -217,11 +172,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleDocumentKeydown, true)
 })
-
-defineExpose({
-  close,
-  focusInitialControl: () => false,
-})
 </script>
 
 <template>
@@ -232,8 +182,7 @@ defineExpose({
       scrollable
       :show="show"
       :options="options"
-      :to="toolbarOverlay.target.value"
-      :menu-props="getMenuProps"
+      :to="false"
       :disabled="isDisabled"
       @update:show="handleShow"
       @select="setLanguage"
@@ -250,7 +199,7 @@ defineExpose({
         :aria-label="buttonLabel"
         aria-haspopup="listbox"
         :aria-expanded="show"
-        @mousedown.prevent
+        @mousedown="handleTriggerMousedown"
       >
         <span v-if="showLabel" class="mr-1 text-xs">{{ currentOption?.label ?? '纯文本' }}</span>
         <span class="i-[lucide--chevron-down] text-xs" aria-hidden="true" />

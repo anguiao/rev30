@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { Editor } from '@tiptap/core'
 import type { BubbleMenuPluginProps } from '@tiptap/extension-bubble-menu'
 import { PluginKey, type Transaction } from '@tiptap/pm/state'
+import type { Editor } from '@tiptap/vue-3'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { RichTextQuickBarConfig } from '.'
@@ -241,7 +241,6 @@ onBeforeUnmount(() => {
         v-bind="featureQuickBar.props"
         :editor="editor"
         @close="updateBubbleMenuPosition"
-        @suspend="hideBubbleMenu"
       />
 
       <RichTextQuickBarControls

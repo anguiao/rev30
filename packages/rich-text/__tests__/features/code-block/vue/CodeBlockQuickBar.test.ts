@@ -11,7 +11,7 @@ import CodeBlockQuickBar from '../../../../src/features/code-block/vue/CodeBlock
 import { createTestEditor } from '../../../helpers/editor'
 
 describe('CodeBlockQuickBar', () => {
-  it('closes only its language menu on Escape and restores the QuickBar target', async () => {
+  it('closes only its language menu on Escape', async () => {
     const editor = createTestEditor({
       extensions: [Document, Paragraph, Text, ...codeBlockEditorFeature.extensions!()],
       content: '<pre><code>const first = 1</code></pre><pre><code>const second = 2</code></pre>',
@@ -40,7 +40,6 @@ describe('CodeBlockQuickBar', () => {
 
     wrapper.getComponent(NDropdown).vm.$emit('update:show', true)
     await flushPromises()
-    editor.commands.setTextSelection(18)
     editor.view.dom.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
     )

@@ -4,11 +4,9 @@ import {
   canRunRichTextAction,
   runRichTextAction,
   type RichTextAction,
-  type RichTextIconClass,
 } from '../../../editor/action'
-import { getRichTextQuickBarLayerId } from '../../../vue/quick-bar'
+import type { RichTextIconClass } from '../../../editor/action'
 import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
-import { useRichTextToolbarOverlay } from '../../../vue/overlay-state'
 import type { TextStyleOption } from '../options'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown, NPopover } from 'naive-ui'
@@ -38,16 +36,12 @@ const props = withDefaults(defineProps<TextStyleToolbarControlProps>(), {
 type TextStyleAttribute = 'color' | 'fontFamily' | 'fontSize' | 'lineHeight'
 
 const editor = props.editor
-const layerId = getRichTextQuickBarLayerId(editor)
 const root = ref<HTMLElement | null>(null)
 const activeLayer = ref<string | null>(null)
 
 function closeLayer() {
   activeLayer.value = null
-  toolbarOverlay.close()
 }
-
-const toolbarOverlay = useRichTextToolbarOverlay(closeLayer)
 
 function handleLayerShow(key: string, show: boolean) {
   if (!show) {
@@ -57,12 +51,7 @@ function handleLayerShow(key: string, show: boolean) {
     return
   }
 
-  toolbarOverlay.open()
   activeLayer.value = key
-}
-
-function getLayerMenuProps() {
-  return { 'data-rich-text-text-style-layer': layerId }
 }
 
 function handleLayerKeydown(event: KeyboardEvent) {
@@ -73,9 +62,7 @@ function handleLayerKeydown(event: KeyboardEvent) {
     event.isComposing ||
     event.key !== 'Escape' ||
     !(target instanceof Element) ||
-    (root.value?.contains(target) !== true &&
-      !editor.view.dom.contains(target) &&
-      target.closest(`[data-rich-text-text-style-layer="${layerId}"]`) === null)
+    (root.value?.contains(target) !== true && !editor.view.dom.contains(target))
   ) {
     return
   }
@@ -276,10 +263,9 @@ onBeforeUnmount(() => {
     <NPopover
       trigger="click"
       placement="bottom-start"
-      :to="toolbarOverlay.target.value"
+      :to="false"
       :show="activeLayer === 'color'"
       :disabled="colorControl.isDisabled"
-      :data-rich-text-text-style-layer="layerId"
       @update:show="handleLayerShow('color', $event)"
     >
       <template #trigger>
@@ -294,7 +280,6 @@ onBeforeUnmount(() => {
           :title="colorControl.title"
           :aria-label="colorControl.title"
           :aria-pressed="!!colorControl.value"
-          @mousedown.prevent
         >
           <span class="i-[lucide--palette]" aria-hidden="true" />
           <span
@@ -357,9 +342,8 @@ onBeforeUnmount(() => {
       trigger="click"
       :show="activeLayer === control.key"
       placement="bottom-start"
-      :to="toolbarOverlay.target.value"
+      :to="false"
       :options="control.options"
-      :menu-props="getLayerMenuProps"
       :disabled="control.isDisabled"
       @update:show="handleLayerShow(control.key, $event)"
       @select="control.select"
@@ -376,7 +360,6 @@ onBeforeUnmount(() => {
         :title="control.title"
         :aria-label="control.title"
         :aria-pressed="!!control.value"
-        @mousedown.prevent
       >
         <span :class="control.icon" aria-hidden="true" />
         <span class="ml-1 min-w-0 truncate">{{ control.label }}</span>

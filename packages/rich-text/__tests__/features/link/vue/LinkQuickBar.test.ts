@@ -19,9 +19,6 @@ function createEditor() {
 async function mountQuickBar(editor = createEditor()) {
   editor.commands.setTextSelection(3)
   const wrapper = mount(LinkQuickBar, {
-    global: {
-      stubs: { teleport: true },
-    },
     props: { editor: markRaw(editor) },
   })
   await flushPromises()
@@ -62,7 +59,6 @@ describe('LinkQuickBar', () => {
     expect(wrapper.get('[data-test="rich-text-link-apply"]').attributes('disabled')).toBeDefined()
 
     wrapper.getComponent(NInput).vm.$emit('update:value', 'https://draft.example')
-    editor.commands.setTextSelection(6)
     await wrapper.get('[data-test="rich-text-link-cancel"]').trigger('keydown', {
       key: 'Escape',
     })
@@ -77,7 +73,7 @@ describe('LinkQuickBar', () => {
     expect(document.activeElement).toBe(editor.view.dom)
   })
 
-  it('removes the complete link and restores the collapsed selection', async () => {
+  it('removes the complete link without moving the collapsed selection', async () => {
     const { editor, wrapper } = await mountQuickBar()
     const onTransaction = vi.fn()
     editor.on('transaction', onTransaction)
@@ -106,21 +102,5 @@ describe('LinkQuickBar', () => {
       'https://updated.example',
     )
     expect(editor.state.selection).toMatchObject({ from: 3, to: 3 })
-  })
-
-  it('abandons an editing draft after an external document change', async () => {
-    const { editor, wrapper } = await mountQuickBar()
-
-    await wrapper.get('[data-test="rich-text-link-edit"]').trigger('click')
-    wrapper.getComponent(NInput).vm.$emit('update:value', 'https://draft.example')
-    await flushPromises()
-
-    editor.commands.insertContent('外部')
-    await flushPromises()
-
-    expect(wrapper.emitted('close')?.at(-1)).toEqual(['invalidated'])
-    expect(wrapper.find('[data-test="rich-text-link-url"]').exists()).toBe(false)
-    expect(editor.getText()).toContain('外部')
-    expect(editor.getHTML()).not.toContain('draft.example')
   })
 })

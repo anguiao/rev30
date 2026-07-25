@@ -10,7 +10,6 @@ import { linkFeature } from '../../../../src/features/link/shared'
 import {
   useRichTextLinkEditor,
   type RichTextLinkEditor,
-  type RichTextLinkEditorCloseReason,
 } from '../../../../src/features/link/vue/useLinkEditor'
 import { createTestEditor } from '../../../helpers/editor'
 
@@ -22,7 +21,7 @@ function createEditor(content: string) {
 }
 
 async function mountLinkEditor(editor: Editor) {
-  const onClose = vi.fn<(reason: RichTextLinkEditorCloseReason) => void>()
+  const onClose = vi.fn<() => void>()
   let controller: RichTextLinkEditor | undefined
   const Harness = defineComponent({
     setup() {
@@ -42,7 +41,7 @@ async function mountLinkEditor(editor: Editor) {
 }
 
 describe('useRichTextLinkEditor', () => {
-  it('edits a complete link and restores the original selection in one transaction', async () => {
+  it('edits a complete link without changing the current selection', async () => {
     const editor = createEditor('<p><a href="https://old.example">链接文本</a>末尾</p>')
     editor.commands.setTextSelection({ from: 2, to: 4 })
     const { controller, onClose } = await mountLinkEditor(editor)
@@ -54,7 +53,6 @@ describe('useRichTextLinkEditor', () => {
     })
     expect(controller.draft.value).toBe('https://old.example')
 
-    editor.commands.setTextSelection(6)
     controller.draft.value = 'new.example'
     const onTransaction = vi.fn()
     editor.on('transaction', onTransaction)
@@ -64,7 +62,7 @@ describe('useRichTextLinkEditor', () => {
     expect(onTransaction).toHaveBeenCalledTimes(1)
     expect(onTransaction.mock.calls[0]?.[0].transaction).toMatchObject({
       docChanged: true,
-      selectionSet: true,
+      selectionSet: false,
     })
     expect(editor.state.selection).toMatchObject({ from: 2, to: 4 })
     expect(editor.getJSON().content?.[0]?.content?.[0]).toMatchObject({
@@ -72,7 +70,7 @@ describe('useRichTextLinkEditor', () => {
       marks: [{ type: 'link', attrs: { href: 'https://new.example' } }],
     })
     expect(controller.isOpen.value).toBe(false)
-    expect(onClose).toHaveBeenLastCalledWith('success')
+    expect(onClose).toHaveBeenCalledOnce()
 
     expect(editor.commands.undo()).toBe(true)
     expect(editor.getJSON().content?.[0]?.content?.[0]).toMatchObject({
@@ -89,7 +87,6 @@ describe('useRichTextLinkEditor', () => {
     expect(controller.target.value).toMatchObject({
       mode: 'set',
       range: { from: 2, to: 5 },
-      hasLinkMarks: true,
     })
 
     controller.draft.value = 'https://new.example'
@@ -128,7 +125,7 @@ describe('useRichTextLinkEditor', () => {
     expect(controller.apply()).toBe(true)
     expect(editor.getJSON()).toEqual(before)
     expect(editor.state.selection).toMatchObject({ from: 1, to: 3 })
-    expect(onClose).toHaveBeenLastCalledWith('success')
+    expect(onClose).toHaveBeenCalledOnce()
 
     editor.commands.setTextSelection(3)
     editor.commands.setLink({ href: 'https://stored.example' })
@@ -170,37 +167,22 @@ describe('useRichTextLinkEditor', () => {
     expect(controller.isOpen.value).toBe(true)
   })
 
-  it('distinguishes cancel, outside, and invalidated close behavior', async () => {
+  it('restores focus only when cancelled', async () => {
     const editor = createEditor('<p>第一段</p><p>第二段</p>')
     editor.commands.setTextSelection({ from: 1, to: 3 })
     const { controller, onClose } = await mountLinkEditor(editor)
 
     expect(controller.open('text-quick-bar')).toBe(true)
-    editor.commands.setTextSelection(7)
     expect(controller.cancel()).toBe(true)
     expect(editor.state.selection).toMatchObject({ from: 1, to: 3 })
     await vi.waitFor(() => {
       expect(editor.isFocused).toBe(true)
     })
-    expect(onClose).toHaveBeenLastCalledWith('cancel')
+    expect(onClose).toHaveBeenCalledOnce()
 
     expect(controller.open('text-quick-bar')).toBe(true)
-    editor.commands.setTextSelection(7)
-    controller.closeFromOutside()
-    expect(editor.state.selection).toMatchObject({ from: 7, to: 7 })
-    expect(onClose).toHaveBeenLastCalledWith('outside')
-
-    editor.commands.setTextSelection({ from: 1, to: 3 })
-    expect(controller.open('text-quick-bar')).toBe(true)
-    controller.draft.value = 'https://draft.example'
-    editor.view.dispatch(editor.state.tr.setMeta('selection-only-test', true))
-    expect(controller.isOpen.value).toBe(true)
-
-    editor.commands.insertContent('外部更新')
-    expect(controller.isOpen.value).toBe(false)
-    expect(controller.draft.value).toBe('')
-    expect(onClose).toHaveBeenLastCalledWith('invalidated')
-    expect(controller.apply()).toBe(false)
-    expect(editor.getText()).toContain('外部更新')
+    controller.close()
+    expect(editor.state.selection).toMatchObject({ from: 1, to: 3 })
+    expect(onClose).toHaveBeenCalledTimes(2)
   })
 })

@@ -28,11 +28,6 @@ function mountControl(editor: Editor, disabled = false) {
 
   const wrapper = mount(SearchReplaceToolbarControl, {
     attachTo: element,
-    global: {
-      stubs: {
-        teleport: true,
-      },
-    },
     props: {
       editor: markRaw(editor),
       disabled,

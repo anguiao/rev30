@@ -10,7 +10,7 @@ import HighlightQuickBarControl from '../../../../src/features/highlight/vue/Hig
 import { createTestEditor } from '../../../helpers/editor'
 
 describe('HighlightQuickBarControl', () => {
-  it('closes only its color menu on Escape and restores the QuickBar target', async () => {
+  it('closes only its color menu on Escape', async () => {
     const editor = createTestEditor({
       extensions: [Document, Paragraph, Text, Highlight.configure({ multicolor: true })],
       content: '<p>维护通知</p>',
@@ -27,8 +27,6 @@ describe('HighlightQuickBarControl', () => {
 
     await wrapper.get('[data-test="rich-text-quick-bar-highlight"]').trigger('click')
     await flushPromises()
-    editor.commands.setTextSelection(5)
-
     const color = document.querySelector<HTMLElement>(
       '[data-test="rich-text-quick-bar-highlight-yellow"]',
     )

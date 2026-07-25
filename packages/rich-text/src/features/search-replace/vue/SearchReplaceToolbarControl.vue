@@ -15,7 +15,6 @@ import {
   setSearchCaseSensitiveAction,
   setSearchQueryAction,
 } from '../editor'
-import { useRichTextToolbarOverlay } from '../../../vue/overlay-state'
 
 const props = withDefaults(defineProps<RichTextToolbarControlProps>(), {
   disabled: false,
@@ -37,14 +36,11 @@ const matchPositionLabel = computed(() => {
 
 function closePanel(restoreEditorFocus = false) {
   runRichTextAction(editor, closeSearchReplaceAction)
-  toolbarOverlay.close()
 
   if (restoreEditorFocus) {
     editor.commands.focus()
   }
 }
-
-const toolbarOverlay = useRichTextToolbarOverlay(() => closePanel(false))
 
 function togglePanel() {
   if (searchState.value.isOpen) {
@@ -147,10 +143,7 @@ watch(
   () => searchState.value.isOpen,
   (isOpen) => {
     if (isOpen) {
-      toolbarOverlay.open()
       void nextTick(() => searchInput.value?.focus())
-    } else {
-      toolbarOverlay.close()
     }
   },
   { immediate: true },
@@ -172,7 +165,7 @@ watch(
     :show="searchState.isOpen"
     trigger="manual"
     placement="top-start"
-    :to="toolbarOverlay.target.value"
+    :to="false"
     :disabled="isDisabled"
     @clickoutside="closePanel()"
   >
@@ -192,7 +185,6 @@ watch(
         aria-haspopup="dialog"
         :aria-expanded="searchState.isOpen"
         :aria-pressed="searchState.isOpen"
-        @mousedown.prevent
         @click="togglePanel"
       >
         <span class="i-[lucide--search]" aria-hidden="true" />

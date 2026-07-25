@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { NConfigProvider, NDropdown, NPopover } from 'naive-ui'
+import { NConfigProvider, NDropdown } from 'naive-ui'
 import { defineComponent, h } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
@@ -179,13 +179,6 @@ describe('RichTextEditor', () => {
       expect(wrapper.find(`[data-test="${dataTest}"]`).exists()).toBe(true)
     }
     expect(wrapper.findAllComponents(NDropdown)).toHaveLength(7)
-    const overlayHost = wrapper.get('[data-test="rich-text-overlay-host"]').element
-    const nonModalOverlays = [
-      ...wrapper.findAllComponents(NDropdown),
-      ...wrapper.findAllComponents(NPopover),
-    ]
-    expect(nonModalOverlays.length).toBeGreaterThan(0)
-    expect(nonModalOverlays.every((overlay) => overlay.props().to === overlayHost)).toBe(true)
     expect(wrapper.get('[data-test="rich-text-status-bar"]').text()).toBe('4 字')
     expect(wrapper.find('[data-test="rich-text-status-bar-start"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="rich-text-status-bar-end"]').exists()).toBe(true)
@@ -272,10 +265,10 @@ describe('RichTextEditor', () => {
       preset: allEditorPreset,
     })
     const editable = await getEditable(wrapper)
-    const overlayHost = wrapper.get('[data-test="rich-text-overlay-host"]')
+    const editorRoot = wrapper.get('[data-test="rich-text-editor"]')
     const overlayButton = document.createElement('button')
     const outsideButton = document.createElement('button')
-    overlayHost.element.appendChild(overlayButton)
+    editorRoot.element.appendChild(overlayButton)
     document.body.appendChild(outsideButton)
 
     await editable.trigger('focusout', { relatedTarget: overlayButton })

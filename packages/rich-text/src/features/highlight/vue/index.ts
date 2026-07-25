@@ -1,5 +1,5 @@
-import { richTextToolbarComponent } from '../../../vue/toolbar'
 import { richTextQuickBarComponent } from '../../../vue/quick-bar'
+import { richTextToolbarComponent } from '../../../vue/toolbar'
 import { highlightColorOptions } from '../colors'
 import { highlightFeature } from '../shared'
 import HighlightToolbarControl from './HighlightToolbarControl.vue'

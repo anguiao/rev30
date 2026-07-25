@@ -1,5 +1,5 @@
-import type { Command, Editor } from '@tiptap/core'
-import { TextSelection } from '@tiptap/pm/state'
+import type { Command } from '@tiptap/core'
+import type { Editor } from '@tiptap/vue-3'
 import {
   computed,
   onBeforeUnmount,
@@ -9,70 +9,22 @@ import {
   watch,
   type MaybeRefOrGetter,
 } from 'vue'
-import {
-  markRichTextSurfaceTransactionCommand,
-  useRichTextTargetInvalidation,
-} from '../../../vue/selection'
-import { type RichTextOverlayCloseReason } from '../../../vue/overlay-state'
 import { setLinkAction, unsetLinkAction } from '../editor'
 import { normalizeLinkHref } from '../href'
 import {
-  isRichTextLinkTargetValid,
   resolveRichTextLinkTarget,
   type RichTextLinkTarget,
   type RichTextLinkTargetSurface,
 } from '../target'
 
-export type RichTextLinkEditorCloseReason = RichTextOverlayCloseReason | 'success'
-
 export interface UseRichTextLinkEditorOptions {
   readonly editor: Editor
   readonly disabled?: MaybeRefOrGetter<boolean>
-  readonly onClose?: (reason: RichTextLinkEditorCloseReason) => void
-}
-
-function setLinkTargetSelectionCommand(target: RichTextLinkTarget): Command {
-  return ({ dispatch, tr }) => {
-    if (dispatch) {
-      tr.setSelection(TextSelection.create(tr.doc, target.range.from, target.range.to))
-      tr.setStoredMarks(target.storedMarks)
-    }
-
-    return true
-  }
-}
-
-function restoreLinkTargetSelectionCommand(target: RichTextLinkTarget): Command {
-  return ({ dispatch, tr }) => {
-    if (!dispatch) {
-      return true
-    }
-
-    const storedMarks = tr.storedMarks
-    tr.setSelection(target.selection.bookmark.map(tr.mapping).resolve(tr.doc))
-
-    if (target.selection.empty) {
-      tr.setStoredMarks(storedMarks)
-    }
-
-    return true
-  }
-}
-
-function restoreOriginalLinkTargetSelectionCommand(target: RichTextLinkTarget): Command {
-  return ({ dispatch, tr }) => {
-    if (dispatch) {
-      tr.setSelection(target.selection.bookmark.map(tr.mapping).resolve(tr.doc))
-      tr.setStoredMarks(target.storedMarks)
-    }
-
-    return true
-  }
+  readonly onClose?: () => void
 }
 
 export function useRichTextLinkEditor(options: UseRichTextLinkEditorOptions) {
   const editor = options.editor
-  const owner = Symbol('rich-text-link-editor')
   const target = shallowRef<RichTextLinkTarget | null>(null)
   const draft = ref('')
   const isDisabled = computed(
@@ -86,38 +38,34 @@ export function useRichTextLinkEditor(options: UseRichTextLinkEditorOptions) {
   const canOpen = computed(
     () => !isDisabled.value && trimmedDraft.value !== '' && normalizedDraft.value !== '',
   )
-  const canRemove = computed(() => !isDisabled.value && target.value?.hasLinkMarks === true)
+  const canRemove = computed(
+    () => !isDisabled.value && (target.value?.mode === 'edit' || target.value?.mode === 'set'),
+  )
 
   function reset() {
     target.value = null
     draft.value = ''
   }
 
-  function close(reason: RichTextLinkEditorCloseReason) {
+  function close() {
     if (!target.value) {
       return
     }
 
     reset()
-    options.onClose?.(reason)
+    options.onClose?.()
   }
-
-  function invalidate() {
-    close('invalidated')
-  }
-
-  useRichTextTargetInvalidation(editor, owner, () => target.value !== null, invalidate)
 
   watch(isDisabled, (disabled) => {
     if (disabled) {
-      invalidate()
+      close()
     }
   })
 
   onBeforeUnmount(reset)
 
   function openTarget(nextTarget: RichTextLinkTarget) {
-    if (isDisabled.value || !isRichTextLinkTargetValid(editor, nextTarget)) {
+    if (isDisabled.value) {
       return false
     }
 
@@ -137,24 +85,16 @@ export function useRichTextLinkEditor(options: UseRichTextLinkEditorOptions) {
       return false
     }
 
-    if (!isRichTextLinkTargetValid(editor, currentTarget)) {
-      invalidate()
-      return false
-    }
-
-    const chain = editor
-      .chain()
-      .command(markRichTextSurfaceTransactionCommand(owner))
-      .command(setLinkTargetSelectionCommand(currentTarget))
+    const chain = editor.chain()
 
     if (command) {
       chain.command(command)
     }
 
-    const handled = chain.command(restoreLinkTargetSelectionCommand(currentTarget)).focus().run()
+    const handled = chain.focus().run()
 
     if (handled) {
-      close('success')
+      close()
     }
 
     return handled
@@ -169,40 +109,28 @@ export function useRichTextLinkEditor(options: UseRichTextLinkEditorOptions) {
     if (trimmedDraft.value === '') {
       return currentTarget.mode === 'create'
         ? runTargetCommand()
-        : runTargetCommand(unsetLinkAction.command())
+        : runTargetCommand(unsetLinkAction.command(currentTarget.range))
     }
 
-    return runTargetCommand(setLinkAction.command(normalizedDraft.value))
+    return runTargetCommand(setLinkAction.command(normalizedDraft.value, currentTarget.range))
   }
 
   function remove() {
-    return canRemove.value ? runTargetCommand(unsetLinkAction.command()) : false
+    const currentTarget = target.value
+    return canRemove.value && currentTarget
+      ? runTargetCommand(unsetLinkAction.command(currentTarget.range))
+      : false
   }
 
   function cancel() {
-    const currentTarget = target.value
-    if (!currentTarget) {
+    if (!target.value) {
       return false
     }
 
-    if (!isRichTextLinkTargetValid(editor, currentTarget)) {
-      invalidate()
-      return false
-    }
+    const handled = editor.commands.focus()
 
-    const handled = editor
-      .chain()
-      .command(markRichTextSurfaceTransactionCommand(owner))
-      .command(restoreOriginalLinkTargetSelectionCommand(currentTarget))
-      .focus()
-      .run()
-
-    close('cancel')
+    close()
     return handled
-  }
-
-  function closeFromOutside() {
-    close('outside')
   }
 
   function openDraft() {
@@ -215,7 +143,6 @@ export function useRichTextLinkEditor(options: UseRichTextLinkEditorOptions) {
   }
 
   return {
-    owner,
     target,
     draft,
     isOpen: computed(() => target.value !== null),
@@ -231,8 +158,6 @@ export function useRichTextLinkEditor(options: UseRichTextLinkEditorOptions) {
     remove,
     cancel,
     close,
-    closeFromOutside,
-    invalidate,
     openDraft,
   }
 }

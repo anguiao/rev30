@@ -1,6 +1,7 @@
-import { mergeAttributes } from '@tiptap/core'
+import { mergeAttributes, type Editor } from '@tiptap/core'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
-import { Plugin } from '@tiptap/pm/state'
+import type { ResolvedPos } from '@tiptap/pm/model'
+import { Plugin, TextSelection } from '@tiptap/pm/state'
 import { common, createLowlight } from 'lowlight'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
@@ -9,6 +10,40 @@ import { codeBlockFeature, richTextCodeBlockCodeStyle } from './shared'
 
 const codeBlockLowlight = createLowlight(common)
 codeBlockLowlight.highlightAuto = (value) => codeBlockLowlight.highlight('plaintext', value)
+
+function findCodeBlock($position: ResolvedPos) {
+  for (let depth = $position.depth; depth > 0; depth--) {
+    const node = $position.node(depth)
+
+    if (node.type.name === 'codeBlock') {
+      return {
+        position: $position.before(depth),
+        node,
+      }
+    }
+  }
+
+  return null
+}
+
+export function getSelectedCodeBlock(editor: Editor) {
+  const { selection } = editor.state
+
+  if (!(selection instanceof TextSelection)) {
+    return null
+  }
+
+  const codeBlock = findCodeBlock(selection.$from)
+
+  if (!codeBlock) {
+    return null
+  }
+
+  const contentFrom = codeBlock.position + 1
+  const contentTo = contentFrom + codeBlock.node.content.size
+
+  return selection.from >= contentFrom && selection.to <= contentTo ? codeBlock : null
+}
 
 const RichTextCodeBlockLowlight = CodeBlockLowlight.extend({
   addAttributes() {

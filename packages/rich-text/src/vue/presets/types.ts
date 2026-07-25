@@ -1,7 +1,6 @@
 import { validateRichTextFeatureImplementations, type RichTextFeature } from '../../core/feature'
 import type { RichTextPreset } from '../../core/preset'
 import type { RichTextEditorFeature } from '../../editor/feature'
-import type { Component } from 'vue'
 import type { RichTextQuickBarConfig, RichTextQuickBarControl } from '../quick-bar'
 import { getRichTextSlashCommandFeature, type RichTextSlashCommandConfig } from '../slash-command'
 import type { RichTextStatusBarConfig, RichTextStatusBarComponentItem } from '../status-bar'
@@ -16,7 +15,6 @@ export interface RichTextEditorPreset<
   readonly statusBar?: RichTextStatusBarConfig
   readonly quickBar?: RichTextQuickBarConfig
   readonly slashCommand?: RichTextSlashCommandConfig
-  readonly host?: Component
 }
 
 function hasEditorFeature(
@@ -123,7 +121,6 @@ export function defineRichTextEditorPreset<
     readonly statusBar?: RichTextStatusBarConfig
     readonly quickBar?: RichTextQuickBarConfig
     readonly slashCommand?: RichTextSlashCommandConfig
-    readonly host?: Component
   },
 ): RichTextEditorPreset<Preset, ReadonlyArray<EditorFeatures[number]>> {
   const editorFeatures = Object.freeze([...options.editorFeatures])
@@ -160,6 +157,5 @@ export function defineRichTextEditorPreset<
     ...(options.statusBar ? { statusBar: options.statusBar } : {}),
     ...(options.quickBar ? { quickBar: options.quickBar } : {}),
     ...(options.slashCommand ? { slashCommand: options.slashCommand } : {}),
-    ...(options.host ? { host: options.host } : {}),
   })
 }

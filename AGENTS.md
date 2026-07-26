@@ -17,6 +17,11 @@
 - 提交信息使用英文，遵循不带 scope 的 Conventional Commits，并保持与历史提交一致的 `type: subject` 格式。
 - 当用户可见功能、目录结构或项目概览发生明显变化时，按需更新 `README.md`。
 
+## 设计文档
+
+- 设计 spec 统一放在 `docs/specs`，文件名使用 `YYYY-MM-DD-<topic>-design.md`。
+- spec 在实现期间作为设计依据并随任务同步，任务完成后冻结为决策记录，现行行为以代码和测试为准。
+
 ## 常用验证
 
 - 完整验证：`pnpm check`

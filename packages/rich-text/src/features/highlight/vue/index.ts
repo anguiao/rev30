@@ -1,22 +1,16 @@
 import { richTextQuickBarComponent } from '../../../vue/quick-bar'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
-import { highlightColorOptions } from '../colors'
 import { highlightFeature } from '../shared'
-import HighlightToolbarControl from './HighlightToolbarControl.vue'
-import HighlightQuickBarControl from './HighlightQuickBarControl.vue'
+import HighlightControl from './HighlightControl.vue'
 
 export const highlightToolbarControl = richTextToolbarComponent({
   feature: highlightFeature,
-  component: HighlightToolbarControl,
-  props: {
-    colors: highlightColorOptions,
-  },
+  component: HighlightControl,
+  props: {},
 })
 
 export const highlightQuickBarControl = richTextQuickBarComponent({
   feature: highlightFeature,
-  component: HighlightQuickBarControl,
-  props: {
-    colors: highlightColorOptions,
-  },
+  component: HighlightControl,
+  props: {},
 })

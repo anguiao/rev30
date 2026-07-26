@@ -5,6 +5,6 @@ export const highlightColorOptions = [
   { key: 'pink', label: '粉色', value: 'rgba(236, 72, 153, 0.28)' },
 ] as const
 
-export type HighlightColorOption = (typeof highlightColorOptions)[number]
+export type HighlightColor = (typeof highlightColorOptions)[number]['value']
 
 export const highlightColors = highlightColorOptions.map((color) => color.value)

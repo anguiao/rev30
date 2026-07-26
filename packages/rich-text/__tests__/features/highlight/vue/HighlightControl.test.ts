@@ -4,11 +4,11 @@ import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
-import { NButton } from 'naive-ui'
+import { NButton, NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { highlightColorOptions } from '../../../../src/features/highlight/colors'
-import HighlightToolbarControl from '../../../../src/features/highlight/vue/HighlightToolbarControl.vue'
+import HighlightControl from '../../../../src/features/highlight/vue/HighlightControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
 const yellow = highlightColorOptions[0]
 const blue = highlightColorOptions[2]
@@ -21,11 +21,10 @@ function createEditor(content = '<p>维护通知</p>') {
 }
 
 function mountControl(editor: Editor, disabled = false) {
-  return mount(HighlightToolbarControl, {
+  return mount(HighlightControl, {
     props: {
       editor: markRaw(editor),
       disabled,
-      colors: [...highlightColorOptions],
     },
   })
 }
@@ -57,7 +56,7 @@ function getButtonComponent(wrapper: ReturnType<typeof mount>, dataTest: string)
   return button
 }
 
-describe('HighlightToolbarControl', () => {
+describe('HighlightControl', () => {
   it('sets and clears a palette highlight color', async () => {
     const editor = createEditor()
     selectEditorText(editor)
@@ -88,9 +87,7 @@ describe('HighlightToolbarControl', () => {
       false,
     )
 
-    expect(wrapper.get('[data-test="rich-text-highlight"]').attributes('aria-expanded')).toBe(
-      'false',
-    )
+    expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
     await openPopover(wrapper)
     getButtonComponent(wrapper, 'rich-text-highlight-clear').vm.$emit('click')
     await flushPromises()
@@ -148,6 +145,37 @@ describe('HighlightToolbarControl', () => {
     )
   })
 
+  it('distinguishes mixed and partially highlighted selections', async () => {
+    const editor = createEditor(
+      `<p><mark data-color="${yellow.value}" style="background-color: ${yellow.value}; color: inherit">黄</mark><mark data-color="${blue.value}" style="background-color: ${blue.value}; color: inherit">蓝</mark>无</p>`,
+    )
+    editor.commands.setTextSelection({ from: 1, to: 3 })
+    const wrapper = mountControl(editor)
+
+    await openPopover(wrapper)
+
+    expect(wrapper.get('[data-test="rich-text-highlight"]').attributes('data-active')).toBe('true')
+    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('data-active')).toBe(
+      undefined,
+    )
+    expect(wrapper.get('[data-test="rich-text-highlight-blue"]').attributes('data-active')).toBe(
+      undefined,
+    )
+
+    editor.commands.setTextSelection({ from: 1, to: 4 })
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="rich-text-highlight"]').attributes('data-active')).toBe(
+      undefined,
+    )
+    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('data-active')).toBe(
+      undefined,
+    )
+    expect(wrapper.get('[data-test="rich-text-highlight-blue"]').attributes('data-active')).toBe(
+      undefined,
+    )
+  })
+
   it('preserves stored highlight marks for a collapsed caret', async () => {
     const editor = createEditor()
     editor.commands.setTextSelection(2)
@@ -172,6 +200,30 @@ describe('HighlightToolbarControl', () => {
     await flushPromises()
 
     expect(editor.state.storedMarks?.some(({ type }) => type.name === 'highlight')).toBe(false)
+  })
+
+  it('closes only its color menu on Escape', async () => {
+    const editor = createEditor()
+    editor.commands.setTextSelection({ from: 1, to: 3 })
+    editor.view.focus()
+    const wrapper = mount(HighlightControl, {
+      attachTo: document.body,
+      props: {
+        editor: markRaw(editor),
+      },
+    })
+
+    await openPopover(wrapper)
+    const color = wrapper.get('[data-test="rich-text-highlight-yellow"]')
+    color.element.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    )
+    await flushPromises()
+
+    expect(wrapper.emitted('close')).toBeUndefined()
+    expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
+    expect(editor.state.selection).toMatchObject({ from: 1, to: 3 })
+    expect(document.activeElement).toBe(wrapper.get('[data-test="rich-text-highlight"]').element)
   })
 
   it('does not run commands while disabled', async () => {

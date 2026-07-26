@@ -4,26 +4,28 @@ import { defineRichTextEditorFeature } from '../../editor/feature'
 import { normalizeLinkHref } from './href'
 import { linkFeature } from './shared'
 
-function updateLinkRange(range: Range, href?: string): Command {
-  return ({ dispatch, tr }) => {
-    const link = tr.doc.type.schema.marks.link
+function setLinkMark(range: Range, href: string | null): Command {
+  return ({ dispatch, state, tr }) => {
+    const link = state.schema.marks.link
 
     if (!link) {
       return false
     }
 
-    if (dispatch) {
-      if (range.from === range.to) {
-        if (href) {
-          tr.addStoredMark(link.create({ href }))
-        } else {
-          tr.removeStoredMark(link)
-        }
-      } else if (href) {
-        tr.addMark(range.from, range.to, link.create({ href }))
+    if (!dispatch) {
+      return true
+    }
+
+    if (range.from === range.to) {
+      if (href !== null) {
+        tr.addStoredMark(link.create({ href }))
       } else {
-        tr.removeMark(range.from, range.to, link)
+        tr.removeStoredMark(link)
       }
+    } else if (href !== null) {
+      tr.addMark(range.from, range.to, link.create({ href }))
+    } else {
+      tr.removeMark(range.from, range.to, link)
     }
 
     return true
@@ -36,7 +38,7 @@ export const setLinkAction = defineRichTextAction(linkFeature, {
     const normalizedHref = normalizeLinkHref(href)
 
     return ({ chain }) =>
-      normalizedHref ? chain().focus().command(updateLinkRange(range, normalizedHref)).run() : false
+      normalizedHref ? chain().focus().command(setLinkMark(range, normalizedHref)).run() : false
   },
 })
 
@@ -45,7 +47,7 @@ export const unsetLinkAction = defineRichTextAction(linkFeature, {
   command:
     (range: Range) =>
     ({ chain }) =>
-      chain().focus().command(updateLinkRange(range)).run(),
+      chain().focus().command(setLinkMark(range, null)).run(),
 })
 
 export const linkEditorFeature = defineRichTextEditorFeature(linkFeature, {})

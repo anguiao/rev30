@@ -1,25 +1,28 @@
 import { richTextFeatureQuickBar, richTextQuickBarComponent } from '../../../vue/quick-bar'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
+import { resolveLinkRange } from '../range'
 import { linkFeature } from '../shared'
-import { resolveRichTextLinkTarget } from '../target'
 import LinkControl from './LinkControl.vue'
 import LinkQuickBar from './LinkQuickBar.vue'
 
 export const linkToolbarControl = richTextToolbarComponent({
   feature: linkFeature,
   component: LinkControl,
-  props: { surface: 'toolbar' },
+  props: {},
 })
 
 export const linkQuickBarControl = richTextQuickBarComponent({
   feature: linkFeature,
   component: LinkControl,
-  props: { surface: 'text-quick-bar' },
+  props: {},
 })
 
 export const linkQuickBar = richTextFeatureQuickBar({
   feature: linkFeature,
-  isActive: (editor) => resolveRichTextLinkTarget(editor, 'quick-bar') !== null,
+  isActive: (editor) => {
+    const range = resolveLinkRange(editor)
+    return editor.state.selection.empty && Boolean(range?.href)
+  },
   component: LinkQuickBar,
   props: {},
 })

@@ -10,10 +10,6 @@ const props = defineProps<{
   controls: RichTextQuickBarControls
 }>()
 
-const emit = defineEmits<{
-  close: []
-}>()
-
 const editor = props.editor
 
 const showMore = ref(false)
@@ -39,7 +35,7 @@ function runMoreControl(control: RichTextQuickBarActionControl) {
   showMore.value = false
 }
 
-function handleMoreKeydown(event: KeyboardEvent) {
+function handleMoreEscape(event: KeyboardEvent) {
   if (event.isComposing || event.key !== 'Escape') {
     return
   }
@@ -74,13 +70,7 @@ function handleMoreKeydown(event: KeyboardEvent) {
         <span :class="control.item.icon" aria-hidden="true" />
       </NButton>
 
-      <component
-        :is="control.component"
-        v-else
-        v-bind="control.props"
-        :editor="editor"
-        @close="emit('close')"
-      />
+      <component :is="control.component" v-else v-bind="control.props" :editor="editor" />
     </div>
 
     <div v-if="moreControls.length > 0" ref="moreTrigger">
@@ -102,7 +92,6 @@ function handleMoreKeydown(event: KeyboardEvent) {
             title="更多"
             aria-label="更多"
             aria-haspopup="menu"
-            :aria-expanded="showMore"
             @mousedown.prevent
             @click="showMore = !showMore"
           >
@@ -114,7 +103,7 @@ function handleMoreKeydown(event: KeyboardEvent) {
           class="flex items-center gap-1"
           role="menu"
           aria-label="更多格式"
-          @keydown="handleMoreKeydown"
+          @keydown="handleMoreEscape"
         >
           <template v-for="control in moreControls" :key="control.key">
             <NButton
@@ -137,13 +126,7 @@ function handleMoreKeydown(event: KeyboardEvent) {
               <span :class="control.item.icon" aria-hidden="true" />
             </NButton>
 
-            <component
-              :is="control.component"
-              v-else
-              v-bind="control.props"
-              :editor="editor"
-              @close="emit('close')"
-            />
+            <component :is="control.component" v-else v-bind="control.props" :editor="editor" />
           </template>
         </div>
       </NPopover>

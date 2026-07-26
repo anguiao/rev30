@@ -4,23 +4,27 @@ import { linkDefaultProtocol, normalizeLinkHref } from './href'
 
 const ValidatedLink = Link.extend({
   addKeyboardShortcuts() {
+    const exitLink = (boundary: 'start' | 'end') => {
+      const { selection, storedMarks, tr } = this.editor.state
+      const { $from } = selection
+      const boundaryPosition = boundary === 'start' ? $from.start() : $from.end()
+
+      if (!selection.empty || !$from.parent.isTextblock || $from.pos !== boundaryPosition) {
+        return false
+      }
+
+      const link = (storedMarks ?? $from.marks()).find((mark) => mark.type.name === this.name)
+      if (!link) {
+        return false
+      }
+
+      this.editor.view.dispatch(tr.removeStoredMark(link))
+      return true
+    }
+
     return {
-      ArrowRight: () => {
-        const { selection, storedMarks, tr } = this.editor.state
-        const { $from } = selection
-
-        if (!selection.empty || !$from.parent.isTextblock || $from.pos !== $from.end()) {
-          return false
-        }
-
-        const link = (storedMarks ?? $from.marks()).find((mark) => mark.type.name === this.name)
-        if (!link) {
-          return false
-        }
-
-        this.editor.view.dispatch(tr.removeStoredMark(link))
-        return true
-      },
+      ArrowLeft: () => exitLink('start'),
+      ArrowRight: () => exitLink('end'),
     }
   },
 

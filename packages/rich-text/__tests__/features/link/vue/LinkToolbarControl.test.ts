@@ -22,7 +22,6 @@ function mountControl(editor: Editor, disabled = false) {
   return mount(LinkControl, {
     props: {
       editor: markRaw(editor),
-      surface: 'toolbar',
       disabled,
     },
   })
@@ -236,7 +235,7 @@ describe('LinkToolbarControl', () => {
     await openPopover(wrapper)
     await setUrl(wrapper, 'draft.example')
     outsideButton.focus()
-    wrapper.getComponent(NPopover).vm.$emit('clickoutside')
+    wrapper.getComponent(NPopover).vm.$emit('update:show', false)
     await flushPromises()
 
     expect(editor.state.selection).toMatchObject({ from: 3, to: 3 })

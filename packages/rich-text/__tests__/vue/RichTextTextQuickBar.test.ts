@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
@@ -35,7 +36,7 @@ describe('RichTextTextQuickBar', () => {
     const editor = createEditor()
     const wrapper = mountControls(editor)
 
-    await wrapper.get('[data-test="rich-text-quick-bar-link"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-link"]').trigger('click')
     await flushPromises()
 
     const input = wrapper.get('[data-test="rich-text-link-url"] input')
@@ -73,7 +74,7 @@ describe('RichTextTextQuickBar', () => {
 
     await menu.trigger('keydown', { key: 'Escape' })
     await flushPromises()
-    expect(trigger.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
     expect(document.activeElement).toBe(trigger.element)
   })
 })

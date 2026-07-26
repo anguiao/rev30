@@ -56,6 +56,12 @@ function updateBubbleMenuPosition() {
   editor.commands.setMeta(quickBarPluginKey, 'updatePosition')
 }
 
+function dismissQuickBar() {
+  editor.view.focus()
+  isDismissed.value = true
+  hideBubbleMenu()
+}
+
 function isInsideQuickBar(target: EventTarget | null) {
   return target instanceof Node && root.value?.contains(target) === true
 }
@@ -123,9 +129,7 @@ function handleQuickBarKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
     event.preventDefault()
     event.stopPropagation()
-    editor.view.focus()
-    isDismissed.value = true
-    hideBubbleMenu()
+    dismissQuickBar()
     return
   }
 
@@ -236,15 +240,10 @@ onBeforeUnmount(() => {
         v-if="featureQuickBar"
         v-bind="featureQuickBar.props"
         :editor="editor"
-        @close="updateBubbleMenuPosition"
+        @dismiss="dismissQuickBar"
       />
 
-      <RichTextTextQuickBar
-        v-else-if="textControls"
-        :editor="editor"
-        :controls="textControls"
-        @close="updateBubbleMenuPosition"
-      />
+      <RichTextTextQuickBar v-else-if="textControls" :editor="editor" :controls="textControls" />
     </div>
   </BubbleMenu>
 </template>

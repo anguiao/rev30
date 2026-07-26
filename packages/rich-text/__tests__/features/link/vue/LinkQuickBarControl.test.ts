@@ -20,7 +20,6 @@ function mountControl(editor: ReturnType<typeof createEditor>) {
   return mount(LinkControl, {
     props: {
       editor: markRaw(editor),
-      surface: 'text-quick-bar',
     },
   })
 }
@@ -36,15 +35,10 @@ describe('LinkQuickBarControl', () => {
     editor.commands.setTextSelection({ from: 2, to: 4 })
     const wrapper = mountControl(editor)
 
-    expect(
-      wrapper.get('[data-test="rich-text-quick-bar-link"]').attributes('disabled'),
-    ).toBeUndefined()
-    await wrapper.get('[data-test="rich-text-quick-bar-link"]').trigger('click')
+    expect(wrapper.get('[data-test="rich-text-link"]').attributes('disabled')).toBeUndefined()
+    await wrapper.get('[data-test="rich-text-link"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.get('[data-test="rich-text-quick-bar-link"]').attributes('aria-expanded')).toBe(
-      'true',
-    )
     expect(wrapper.getComponent(NInput).props('value')).toBe('')
     expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(false)
 
@@ -69,7 +63,7 @@ describe('LinkQuickBarControl', () => {
     editor.commands.setTextSelection({ from: 2, to: 4 })
     const wrapper = mountControl(editor)
 
-    await wrapper.get('[data-test="rich-text-quick-bar-link"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-link"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.getComponent(NInput).props('value')).toBe('https://old.example')
@@ -89,7 +83,7 @@ describe('LinkQuickBarControl', () => {
     editor.commands.setTextSelection({ from: 2, to: 7 })
     const wrapper = mountControl(editor)
 
-    const button = wrapper.get('[data-test="rich-text-quick-bar-link"]')
+    const button = wrapper.get('[data-test="rich-text-link"]')
     expect(button.attributes('disabled')).toBeDefined()
     await button.trigger('click')
     expect(wrapper.find('[data-test="rich-text-link-url"]').exists()).toBe(false)
@@ -100,7 +94,7 @@ describe('LinkQuickBarControl', () => {
     editor.commands.setTextSelection({ from: 1, to: 3 })
     const wrapper = mountControl(editor)
 
-    await wrapper.get('[data-test="rich-text-quick-bar-link"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-link"]').trigger('click')
     await setUrl(wrapper, 'draft.example')
     await wrapper.get('[data-test="rich-text-link-url"] input').trigger('keydown', {
       key: 'Escape',
@@ -110,9 +104,9 @@ describe('LinkQuickBarControl', () => {
     expect(editor.state.selection).toMatchObject({ from: 1, to: 3 })
     expect(editor.getHTML()).not.toContain('draft.example')
 
-    await wrapper.get('[data-test="rich-text-quick-bar-link"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-link"]').trigger('click')
     await setUrl(wrapper, 'outside.example')
-    wrapper.getComponent(NPopover).vm.$emit('clickoutside')
+    wrapper.getComponent(NPopover).vm.$emit('update:show', false)
     await flushPromises()
 
     expect(editor.state.selection).toMatchObject({ from: 1, to: 3 })

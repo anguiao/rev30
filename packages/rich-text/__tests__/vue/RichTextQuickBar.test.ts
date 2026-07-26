@@ -5,7 +5,7 @@ import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { PluginKey, type Transaction } from '@tiptap/pm/state'
 import { flushPromises, mount } from '@vue/test-utils'
-import { NDropdown } from 'naive-ui'
+import { NDropdown, NPopover } from 'naive-ui'
 import { defineComponent, h, markRaw, onBeforeUnmount, onMounted, ref, type PropType } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
@@ -15,6 +15,8 @@ import { codeBlockQuickBar } from '../../src/features/code-block/vue'
 import { imageFeature } from '../../src/features/image/shared'
 import { createImageQuickBar } from '../../src/features/image/vue'
 import { italicActionItem } from '../../src/features/italic/editor'
+import { linkFeature } from '../../src/features/link/shared'
+import { linkQuickBar } from '../../src/features/link/vue'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 import {
   defineRichTextQuickBar,
@@ -240,9 +242,7 @@ describe('RichTextQuickBar', () => {
     expect(quickBar.parentElement?.tabIndex).toBe(-1)
 
     await wrapper.get('[data-test="rich-text-quick-bar-more"]').trigger('click')
-    expect(wrapper.get('[data-test="rich-text-quick-bar-more"]').attributes('aria-expanded')).toBe(
-      'true',
-    )
+    expect(wrapper.getComponent(NPopover).props('show')).toBe(true)
 
     const toolbarTrigger = document.createElement('button')
     document.body.appendChild(toolbarTrigger)
@@ -257,9 +257,7 @@ describe('RichTextQuickBar', () => {
     await vi.waitFor(() => {
       expect(document.querySelector('[data-test="rich-text-quick-bar"]')).not.toBeNull()
     })
-    expect(wrapper.get('[data-test="rich-text-quick-bar-more"]').attributes('aria-expanded')).toBe(
-      'false',
-    )
+    expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
     toolbarTrigger.remove()
   })
 
@@ -305,6 +303,32 @@ describe('RichTextQuickBar', () => {
     })
   })
 
+  it('dismisses the link Quick Bar when link editing ends', async () => {
+    const editor = createTestEditor({
+      extensions: [Document, Paragraph, Text, ...linkFeature.documentExtensions!()],
+      content: '<p><a href="https://example.com">linked text</a></p>',
+    })
+    editor.commands.setTextSelection(3)
+    editor.view.focus()
+    const wrapper = mountQuickBar(editor, defineRichTextQuickBar({ featureBars: [linkQuickBar] }))
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="rich-text-link-url"]').exists()).toBe(true)
+
+    await wrapper.get('[data-test="rich-text-link-cancel"]').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(editor.view.dom)
+      expect(wrapper.find('[data-test="rich-text-quick-bar"]').exists()).toBe(false)
+    })
+
+    editor.commands.setTextSelection(4)
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-test="rich-text-link-url"]').exists()).toBe(true)
+    })
+  })
+
   it('opens an inline more menu without moving focus', async () => {
     const editor = createEditor()
     editor.commands.setTextSelection({ from: 1, to: 4 })
@@ -335,9 +359,7 @@ describe('RichTextQuickBar', () => {
     moreAction.click()
     await flushPromises()
 
-    expect(wrapper.get('[data-test="rich-text-quick-bar-more"]').attributes('aria-expanded')).toBe(
-      'false',
-    )
+    expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
     expect(editor.isActive('italic')).toBe(true)
   })
 

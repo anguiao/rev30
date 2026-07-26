@@ -16,7 +16,7 @@ richTextToolbarComponent({
 richTextToolbarComponent({
   feature: linkFeature,
   component: LinkControl,
-  props: { surface: 'toolbar' },
+  props: {},
 })
 
 richTextToolbarComponent({
@@ -32,7 +32,6 @@ richTextToolbarComponent({
   feature: linkFeature,
   component: LinkControl,
   props: {
-    surface: 'toolbar',
     // @ts-expect-error Editor is injected by the toolbar renderer.
     editor,
   },

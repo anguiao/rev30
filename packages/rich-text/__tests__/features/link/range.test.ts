@@ -5,8 +5,8 @@ import HardBreak from '@tiptap/extension-hard-break'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { describe, expect, it } from 'vitest'
+import { resolveLinkRange } from '../../../src/features/link/range'
 import { linkFeature } from '../../../src/features/link/shared'
-import { resolveRichTextLinkTarget } from '../../../src/features/link/target'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor(content: string) {
@@ -24,16 +24,16 @@ function createEditor(content: string) {
   })
 }
 
-describe('rich text link target resolver', () => {
+describe('rich text link range resolver', () => {
   it('resolves the unique continuous link beside a collapsed caret', () => {
     const editor = createEditor('<p><a href="https://example.com">链接文本</a>普通文字</p>')
 
     for (const position of [1, 3, 5]) {
       editor.commands.setTextSelection(position)
 
-      expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toMatchObject({
-        mode: 'edit',
-        range: { from: 1, to: 5 },
+      expect(resolveLinkRange(editor)).toEqual({
+        from: 1,
+        to: 5,
         href: 'https://example.com',
       })
     }
@@ -45,9 +45,9 @@ describe('rich text link target resolver', () => {
     )
     editor.commands.setTextSelection(3)
 
-    expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toMatchObject({
-      mode: 'edit',
-      range: { from: 1, to: 5 },
+    expect(resolveLinkRange(editor)).toEqual({
+      from: 1,
+      to: 5,
       href: 'https://example.com',
     })
   })
@@ -58,10 +58,9 @@ describe('rich text link target resolver', () => {
     )
     editor.commands.setTextSelection(2)
 
-    expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toBeNull()
-    expect(resolveRichTextLinkTarget(editor, 'toolbar')).toMatchObject({
-      mode: 'stored',
-      range: { from: 2, to: 2 },
+    expect(resolveLinkRange(editor)).toEqual({
+      from: 2,
+      to: 2,
       href: '',
     })
   })
@@ -70,28 +69,27 @@ describe('rich text link target resolver', () => {
     const editor = createEditor('<p><a href="https://example.com">链接文本</a>普通文字</p>')
     editor.commands.setTextSelection({ from: 2, to: 4 })
 
-    expect(resolveRichTextLinkTarget(editor, 'text-quick-bar')).toMatchObject({
-      mode: 'edit',
-      range: { from: 1, to: 5 },
+    expect(resolveLinkRange(editor)).toEqual({
+      from: 1,
+      to: 5,
       href: 'https://example.com',
     })
-    expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toBeNull()
   })
 
   it('keeps exact ranges for plain and mixed single-block selections', () => {
     const editor = createEditor('<p><a href="https://example.com">链接</a>普通文字</p>')
 
     editor.commands.setTextSelection({ from: 3, to: 7 })
-    expect(resolveRichTextLinkTarget(editor, 'text-quick-bar')).toMatchObject({
-      mode: 'create',
-      range: { from: 3, to: 7 },
+    expect(resolveLinkRange(editor)).toEqual({
+      from: 3,
+      to: 7,
       href: '',
     })
 
     editor.commands.setTextSelection({ from: 2, to: 5 })
-    expect(resolveRichTextLinkTarget(editor, 'text-quick-bar')).toMatchObject({
-      mode: 'set',
-      range: { from: 2, to: 5 },
+    expect(resolveLinkRange(editor)).toEqual({
+      from: 2,
+      to: 5,
       href: '',
     })
   })
@@ -100,22 +98,20 @@ describe('rich text link target resolver', () => {
     const editor = createEditor('<p>第一段</p><p>第二段<br>末尾</p>')
 
     editor.commands.setTextSelection({ from: 2, to: 7 })
-    expect(resolveRichTextLinkTarget(editor, 'text-quick-bar')).toBeNull()
-    expect(resolveRichTextLinkTarget(editor, 'toolbar')).toBeNull()
+    expect(resolveLinkRange(editor)).toBeNull()
 
     editor.commands.setTextSelection({ from: 6, to: 10 })
-    expect(resolveRichTextLinkTarget(editor, 'text-quick-bar')).toBeNull()
+    expect(resolveLinkRange(editor)).toBeNull()
   })
 
-  it('uses stored mode for a collapsed toolbar target without actual link text', () => {
+  it('uses a collapsed range without prefilled href for stored link marks', () => {
     const editor = createEditor('<p>普通文字</p>')
     editor.commands.setTextSelection(3)
     editor.commands.setLink({ href: 'https://stored.example' })
 
-    expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toBeNull()
-    expect(resolveRichTextLinkTarget(editor, 'toolbar')).toMatchObject({
-      mode: 'stored',
-      range: { from: 3, to: 3 },
+    expect(resolveLinkRange(editor)).toEqual({
+      from: 3,
+      to: 3,
       href: '',
     })
   })
@@ -125,15 +121,17 @@ describe('rich text link target resolver', () => {
     editor.commands.setTextSelection(5)
     editor.view.dispatch(editor.state.tr.setStoredMarks([]))
 
-    expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toBeNull()
+    expect(resolveLinkRange(editor)).toEqual({
+      from: 5,
+      to: 5,
+      href: '',
+    })
   })
 
   it('rejects text blocks that do not allow link marks', () => {
     const editor = createEditor('<pre><code>const value = 1</code></pre>')
     editor.commands.setTextSelection(3)
 
-    expect(resolveRichTextLinkTarget(editor, 'quick-bar')).toBeNull()
-    expect(resolveRichTextLinkTarget(editor, 'text-quick-bar')).toBeNull()
-    expect(resolveRichTextLinkTarget(editor, 'toolbar')).toBeNull()
+    expect(resolveLinkRange(editor)).toBeNull()
   })
 })

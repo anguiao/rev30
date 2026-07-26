@@ -2,16 +2,12 @@
 import type { Editor } from '@tiptap/vue-3'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
-import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, h, ref } from 'vue'
+import { runRichTextAction } from '../../../editor/action'
 import { getSelectedCodeBlock, setCodeBlockLanguageAction } from '../editor'
 
 interface CodeBlockLanguageControlProps {
   editor: Editor
-  languages: readonly {
-    readonly label: string
-    readonly value: string
-  }[]
-  surface: 'toolbar' | 'quick-bar'
   disabled?: boolean
   showLabel?: boolean
 }
@@ -21,40 +17,48 @@ const props = withDefaults(defineProps<CodeBlockLanguageControlProps>(), {
   showLabel: false,
 })
 
-const emit = defineEmits<{
-  close: []
-}>()
-
 const editor = props.editor
 const root = ref<HTMLElement | null>(null)
 const show = ref(false)
 
-const currentCodeBlock = computed(() => getSelectedCodeBlock(editor))
+const languages = [
+  { label: '纯文本', value: 'plaintext' },
+  { label: 'TypeScript / JavaScript', value: 'typescript' },
+  { label: 'HTML', value: 'xml' },
+  { label: 'CSS', value: 'css' },
+  { label: 'Java', value: 'java' },
+  { label: 'Python', value: 'python' },
+  { label: 'Rust', value: 'rust' },
+  { label: 'JSON', value: 'json' },
+  { label: 'SQL', value: 'sql' },
+  { label: 'Markdown', value: 'markdown' },
+  { label: 'YAML', value: 'yaml' },
+  { label: 'Bash', value: 'bash' },
+] as const
+
+const currentCodeBlock = computed(() => getSelectedCodeBlock(editor.state.selection))
+const isDisabled = computed(() => props.disabled || currentCodeBlock.value === null)
+
 const currentLanguage = computed(() => {
   const codeBlock = currentCodeBlock.value
-  const language = codeBlock?.node.attrs.language
 
   if (!codeBlock) {
     return null
   }
 
-  return typeof language === 'string' && language ? language : 'plaintext'
+  return codeBlock.node.attrs.language ?? 'plaintext'
 })
-const currentOption = computed(
-  () => props.languages.find((option) => option.value === currentLanguage.value) ?? null,
+const languageLabel = computed(
+  () =>
+    languages.find((option) => option.value === currentLanguage.value)?.label ??
+    currentLanguage.value,
 )
-const isDisabled = computed(() => props.disabled || currentCodeBlock.value === null)
 const buttonLabel = computed(() =>
-  currentOption.value ? `代码语言：${currentOption.value.label}` : '代码语言',
-)
-const dataTestPrefix = computed(() =>
-  props.surface === 'toolbar'
-    ? 'rich-text-code-block-language'
-    : 'rich-text-quick-bar-code-block-language',
+  languageLabel.value ? `代码语言：${languageLabel.value}` : '代码语言',
 )
 
 const options = computed<DropdownOption[]>(() =>
-  props.languages.map((language) => {
+  languages.map((language) => {
     const active = currentLanguage.value === language.value
 
     return {
@@ -69,7 +73,7 @@ const options = computed<DropdownOption[]>(() =>
           'aria-hidden': 'true',
         }),
       props: {
-        'data-test': `${dataTestPrefix.value}-${language.value}`,
+        'data-test': `rich-text-code-block-language-${language.value}`,
         'data-active': active ? 'true' : undefined,
         'aria-pressed': active,
       },
@@ -77,105 +81,39 @@ const options = computed<DropdownOption[]>(() =>
   }),
 )
 
-function close() {
-  if (!show.value) {
-    return
-  }
-
-  show.value = false
-  emit('close')
-}
-
-function cancel() {
-  if (!show.value) {
-    return
-  }
-
-  show.value = false
-  editor.commands.focus()
-}
-
-function open() {
-  if (isDisabled.value) {
-    return
-  }
-
-  if (props.surface === 'quick-bar') {
-    root.value?.querySelector<HTMLElement>(`[data-test="${dataTestPrefix.value}"]`)?.focus()
-  }
-
-  show.value = true
-}
-
 function handleShow(nextShow: boolean) {
+  show.value = nextShow
+
   if (nextShow) {
-    open()
-  } else if (show.value) {
-    close()
+    root.value?.querySelector<HTMLElement>('button')?.focus()
   }
 }
 
-function handleTriggerMousedown(event: MouseEvent) {
-  if (props.surface === 'quick-bar') {
-    event.preventDefault()
-  }
-}
-
-function handleDocumentKeydown(event: KeyboardEvent) {
-  const target = event.target
-
-  if (
-    !show.value ||
-    event.isComposing ||
-    event.key !== 'Escape' ||
-    !(target instanceof Element) ||
-    (root.value?.contains(target) !== true && !editor.view.dom.contains(target))
-  ) {
+function handleEscape(event: KeyboardEvent) {
+  if (!show.value || event.isComposing || event.key !== 'Escape') {
     return
   }
 
   event.preventDefault()
   event.stopPropagation()
-  cancel()
+  show.value = false
+  editor.commands.focus()
 }
 
-function setLanguage(value: string | number) {
-  const codeBlock = getSelectedCodeBlock(editor)
-  const option = props.languages.find((language) => language.value === value)
+function handleSelect(value: string) {
+  const option = languages.find((language) => language.value === value)
 
-  if (!codeBlock || !option) {
-    close()
+  if (!option) {
     return
   }
 
   const language = option.value === 'plaintext' ? null : option.value
-  const handled = editor.commands.command(setCodeBlockLanguageAction.command(language))
-
-  if (handled) {
-    close()
-  }
+  runRichTextAction(editor, setCodeBlockLanguageAction, language)
 }
-
-watch(
-  () => props.disabled,
-  (disabled) => {
-    if (disabled) {
-      close()
-    }
-  },
-)
-
-onMounted(() => {
-  document.addEventListener('keydown', handleDocumentKeydown, true)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', handleDocumentKeydown, true)
-})
 </script>
 
 <template>
-  <div ref="root" class="contents">
+  <div ref="root" class="contents" @keydown.capture="handleEscape">
     <NDropdown
       trigger="click"
       placement="bottom-start"
@@ -185,23 +123,21 @@ onBeforeUnmount(() => {
       :to="false"
       :disabled="isDisabled"
       @update:show="handleShow"
-      @select="setLanguage"
+      @select="handleSelect"
     >
       <NButton
-        :data-test="dataTestPrefix"
-        :data-rich-text-quick-bar-roving="surface === 'quick-bar' ? '' : undefined"
+        data-test="rich-text-code-block-language"
+        data-rich-text-quick-bar-roving
         :disabled="isDisabled"
         size="small"
-        :style="surface === 'toolbar' ? '--n-padding: 0 4px' : undefined"
-        :text="surface === 'quick-bar'"
-        :quaternary="surface === 'toolbar'"
+        style="--n-padding: 0 6px"
+        quaternary
         :title="buttonLabel"
         :aria-label="buttonLabel"
         aria-haspopup="listbox"
-        :aria-expanded="show"
-        @mousedown="handleTriggerMousedown"
+        @mousedown.prevent
       >
-        <span v-if="showLabel" class="mr-1 text-xs">{{ currentOption?.label ?? '纯文本' }}</span>
+        <span v-if="showLabel" class="mr-1 text-xs">{{ languageLabel }}</span>
         <span class="i-[lucide--chevron-down] text-xs" aria-hidden="true" />
       </NButton>
     </NDropdown>

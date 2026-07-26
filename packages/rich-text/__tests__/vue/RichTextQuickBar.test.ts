@@ -408,14 +408,13 @@ describe('RichTextQuickBar', () => {
     )
     await flushPromises()
 
-    const trigger = wrapper.get('[data-test="rich-text-quick-bar-code-block-language"]')
+    const trigger = wrapper.get('[data-test="rich-text-code-block-language"]')
     await trigger.trigger('click')
     await flushPromises()
 
-    expect(trigger.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.getComponent(NDropdown).props('show')).toBe(true)
     expect(document.activeElement).toBe(trigger.element)
 
-    expect(trigger.attributes('aria-expanded')).toBe('true')
     expect(editor.state.selection).toMatchObject({
       from: positions[0],
       to: positions[0],
@@ -426,6 +425,7 @@ describe('RichTextQuickBar', () => {
 
     expect(editor.getJSON().content?.[0]?.attrs).toEqual({ language: 'typescript' })
     expect(editor.getJSON().content?.[1]?.attrs).toEqual({ language: null })
+    expect(wrapper.find('[data-test="rich-text-quick-bar"]').exists()).toBe(true)
   })
 
   it('hides when an image dialog takes focus', async () => {

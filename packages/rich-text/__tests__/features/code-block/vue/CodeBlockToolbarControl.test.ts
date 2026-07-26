@@ -8,14 +8,8 @@ import { NButtonGroup, NDropdown } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { codeBlockEditorFeature } from '../../../../src/features/code-block/editor'
-import { codeBlockToolbarControl } from '../../../../src/features/code-block/vue'
 import CodeBlockToolbarControl from '../../../../src/features/code-block/vue/CodeBlockToolbarControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
-
-const codeBlockLanguageOptions = codeBlockToolbarControl.props.languages as readonly {
-  readonly value: string
-  readonly label: string
-}[]
 
 function createEditor(firstLanguage: string | null, secondLanguage: string | null) {
   return createTestEditor({
@@ -43,7 +37,6 @@ function mountControl(editor: Editor, attachToDocument = false) {
     ...(attachToDocument ? { attachTo: document.body } : undefined),
     props: {
       editor: markRaw(editor),
-      languages: [...codeBlockLanguageOptions],
     },
   })
 }
@@ -152,17 +145,14 @@ describe('CodeBlockToolbarControl', () => {
     await flushPromises()
 
     const firstButton = firstWrapper.get('[data-test="rich-text-code-block-language"]')
-    const secondButton = secondWrapper.get('[data-test="rich-text-code-block-language"]')
-    expect(firstButton.attributes('aria-expanded')).toBe('true')
-    expect(secondButton.attributes('aria-expanded')).toBe('true')
+    expect(firstWrapper.getComponent(NDropdown).props('show')).toBe(true)
+    expect(secondWrapper.getComponent(NDropdown).props('show')).toBe(true)
 
-    firstEditor.view.dom.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
-    )
+    await firstButton.trigger('keydown', { key: 'Escape' })
     await flushPromises()
 
-    expect(firstButton.attributes('aria-expanded')).toBe('false')
-    expect(secondButton.attributes('aria-expanded')).toBe('true')
+    expect(firstWrapper.getComponent(NDropdown).props('show')).toBe(false)
+    expect(secondWrapper.getComponent(NDropdown).props('show')).toBe(true)
     expect(firstEditor.state.selection).toMatchObject({
       from: firstPositions[0],
       to: firstPositions[0],
@@ -189,11 +179,7 @@ describe('CodeBlockToolbarControl', () => {
       )
     await flushPromises()
 
-    expect(
-      firstWrapper.get('[data-test="rich-text-code-block-language"]').attributes('aria-expanded'),
-    ).toBe('false')
-    expect(
-      secondWrapper.get('[data-test="rich-text-code-block-language"]').attributes('aria-expanded'),
-    ).toBe('true')
+    expect(firstWrapper.getComponent(NDropdown).props('show')).toBe(false)
+    expect(secondWrapper.getComponent(NDropdown).props('show')).toBe(true)
   })
 })

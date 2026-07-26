@@ -6,14 +6,7 @@ import { computed } from 'vue'
 import { codeBlockAction } from '../editor'
 import CodeBlockLanguageControl from './CodeBlockLanguageControl.vue'
 
-interface CodeBlockToolbarControlProps extends RichTextToolbarControlProps {
-  languages: readonly {
-    readonly label: string
-    readonly value: string
-  }[]
-}
-
-const props = withDefaults(defineProps<CodeBlockToolbarControlProps>(), {
+const props = withDefaults(defineProps<RichTextToolbarControlProps>(), {
   disabled: false,
 })
 
@@ -21,10 +14,8 @@ const editor = props.editor
 const isActive = computed(() => editor.isActive('codeBlock'))
 const isDisabled = computed(() => props.disabled || !canRunRichTextAction(editor, codeBlockAction))
 
-function toggleCodeBlock() {
-  if (!isDisabled.value) {
-    runRichTextAction(editor, codeBlockAction)
-  }
+function handleToggle() {
+  runRichTextAction(editor, codeBlockAction)
 }
 </script>
 
@@ -41,16 +32,11 @@ function toggleCodeBlock() {
       title="代码块"
       aria-label="代码块"
       :aria-pressed="isActive"
-      @click="toggleCodeBlock"
+      @click="handleToggle"
     >
       <span class="i-[lucide--square-code]" aria-hidden="true" />
     </NButton>
 
-    <CodeBlockLanguageControl
-      :editor="editor"
-      :languages="languages"
-      :disabled="disabled"
-      surface="toolbar"
-    />
+    <CodeBlockLanguageControl :editor="editor" :disabled="disabled" />
   </NButtonGroup>
 </template>

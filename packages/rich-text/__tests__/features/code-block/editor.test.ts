@@ -9,8 +9,6 @@ import {
   codeBlockEditorFeature,
   setCodeBlockLanguageAction,
 } from '../../../src/features/code-block/editor'
-import { codeBlockFeature } from '../../../src/features/code-block/shared'
-import { codeBlockToolbarControl } from '../../../src/features/code-block/vue'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor(content: string | object = '<p>const ready = true</p>') {
@@ -160,34 +158,5 @@ describe('code block feature', () => {
     expect(runRichTextAction(editor, setCodeBlockLanguageAction, null)).toBe(true)
     expect(editor.getJSON().content?.[0]?.attrs).toEqual({ language: null })
     expect(editor.view.dom.querySelector('.hljs-keyword')).toBeNull()
-  })
-
-  it('provides a split toolbar control for the feature', () => {
-    const languageOptions = codeBlockToolbarControl.props.languages
-
-    expect(languageOptions).toEqual([
-      { label: '纯文本', value: 'plaintext' },
-      { label: 'TypeScript / JavaScript', value: 'typescript' },
-      { label: 'HTML', value: 'xml' },
-      { label: 'CSS', value: 'css' },
-      { label: 'Java', value: 'java' },
-      { label: 'Python', value: 'python' },
-      { label: 'Rust', value: 'rust' },
-      { label: 'JSON', value: 'json' },
-      { label: 'SQL', value: 'sql' },
-      { label: 'Markdown', value: 'markdown' },
-      { label: 'YAML', value: 'yaml' },
-      { label: 'Bash', value: 'bash' },
-    ])
-    expect(codeBlockToolbarControl).toMatchObject({
-      type: 'component',
-      feature: codeBlockFeature,
-      key: 'code-block',
-      props: {
-        languages: languageOptions,
-      },
-    })
-    expect(codeBlockAction.feature).toBe(codeBlockToolbarControl.feature)
-    expect(setCodeBlockLanguageAction.feature).toBe(codeBlockToolbarControl.feature)
   })
 })

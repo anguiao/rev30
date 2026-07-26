@@ -1,8 +1,4 @@
-interface CodeBlockHtmlElement {
-  readonly firstElementChild: {
-    readonly classList: Iterable<string>
-  } | null
-}
+import type { Attribute } from '@tiptap/core'
 
 const codeBlockLanguagePattern = /^[a-z0-9][a-z0-9+#._-]*$/
 
@@ -16,10 +12,10 @@ export function normalizeCodeBlockLanguage(value: unknown): string | null {
   return codeBlockLanguagePattern.test(normalized) ? normalized : null
 }
 
-export function createCodeBlockLanguageAttribute() {
+export function createCodeBlockLanguageAttribute(): Attribute {
   return {
     default: null,
-    parseHTML(element: CodeBlockHtmlElement) {
+    parseHTML(element) {
       const languageClass = [...(element.firstElementChild?.classList ?? [])].find((className) =>
         className.startsWith('language-'),
       )
@@ -28,7 +24,7 @@ export function createCodeBlockLanguageAttribute() {
     },
     rendered: false,
     validate(value: unknown) {
-      if (value !== null && normalizeCodeBlockLanguage(value) !== value) {
+      if (normalizeCodeBlockLanguage(value) !== value) {
         throw new RangeError('Code block language must be canonical')
       }
     },

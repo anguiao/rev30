@@ -1,7 +1,6 @@
-import { mergeAttributes, type Editor } from '@tiptap/core'
+import { mergeAttributes } from '@tiptap/core'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
-import type { ResolvedPos } from '@tiptap/pm/model'
-import { Plugin, TextSelection } from '@tiptap/pm/state'
+import { Plugin, TextSelection, type Selection } from '@tiptap/pm/state'
 import { common, createLowlight } from 'lowlight'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
@@ -9,43 +8,25 @@ import { createCodeBlockLanguageAttribute } from './languages'
 import { codeBlockFeature, richTextCodeBlockCodeStyle } from './shared'
 
 const codeBlockLowlight = createLowlight(common)
+// Keep missing or unsupported languages unhighlighted instead of auto-detecting them.
 codeBlockLowlight.highlightAuto = (value) => codeBlockLowlight.highlight('plaintext', value)
 
-function findCodeBlock($position: ResolvedPos) {
-  for (let depth = $position.depth; depth > 0; depth--) {
-    const node = $position.node(depth)
-
-    if (node.type.name === 'codeBlock') {
-      return {
-        position: $position.before(depth),
-        node,
-      }
-    }
-  }
-
-  return null
-}
-
-export function getSelectedCodeBlock(editor: Editor) {
-  const { selection } = editor.state
-
-  if (!(selection instanceof TextSelection)) {
+export function getSelectedCodeBlock(selection: Selection) {
+  if (
+    !(selection instanceof TextSelection) ||
+    selection.$from.parent.type.name !== 'codeBlock' ||
+    !selection.$from.sameParent(selection.$to)
+  ) {
     return null
   }
 
-  const codeBlock = findCodeBlock(selection.$from)
-
-  if (!codeBlock) {
-    return null
+  return {
+    position: selection.$from.before(),
+    node: selection.$from.parent,
   }
-
-  const contentFrom = codeBlock.position + 1
-  const contentTo = contentFrom + codeBlock.node.content.size
-
-  return selection.from >= contentFrom && selection.to <= contentTo ? codeBlock : null
 }
 
-const RichTextCodeBlockLowlight = CodeBlockLowlight.extend({
+const RichTextCodeBlock = CodeBlockLowlight.extend({
   addAttributes() {
     return { language: createCodeBlockLanguageAttribute() }
   },
@@ -59,16 +40,17 @@ const RichTextCodeBlockLowlight = CodeBlockLowlight.extend({
         props: {
           handleDOMEvents: {
             click(view, event) {
-              const lastElement = view.dom.lastElementChild
-
               if (
                 !editor.isEditable ||
-                event.button !== 0 ||
                 event.target !== view.dom ||
-                view.state.doc.lastChild?.type !== codeBlockType ||
-                !lastElement ||
-                event.clientY <= lastElement.getBoundingClientRect().bottom
+                view.state.doc.lastChild?.type !== codeBlockType
               ) {
+                return false
+              }
+
+              const lastElement = view.dom.lastElementChild
+
+              if (!lastElement || event.clientY <= lastElement.getBoundingClientRect().bottom) {
                 return false
               }
 
@@ -103,7 +85,6 @@ const RichTextCodeBlockLowlight = CodeBlockLowlight.extend({
   },
 }).configure({
   lowlight: codeBlockLowlight,
-  defaultLanguage: 'plaintext',
   HTMLAttributes: {
     class: 'hljs',
   },
@@ -133,5 +114,5 @@ export const setCodeBlockLanguageAction = defineRichTextAction(codeBlockFeature,
 })
 
 export const codeBlockEditorFeature = defineRichTextEditorFeature(codeBlockFeature, {
-  extensions: () => [RichTextCodeBlockLowlight],
+  extensions: () => [RichTextCodeBlock],
 })

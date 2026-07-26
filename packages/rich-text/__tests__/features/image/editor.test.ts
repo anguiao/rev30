@@ -48,7 +48,7 @@ describe('image editor actions', () => {
     expect(editor.getHTML()).toBe('<p></p><p>后续正文</p>')
   })
 
-  it('updates and reselects the image in one transaction', () => {
+  it('updates the selected image in one transaction', () => {
     const editor = createEditor({
       type: 'doc',
       content: [{ type: 'image', attrs: imageAttrs }, { type: 'paragraph' }],
@@ -63,7 +63,6 @@ describe('image editor actions', () => {
     expect(onTransaction).toHaveBeenCalledTimes(1)
     expect(onTransaction.mock.calls[0]?.[0].transaction).toMatchObject({
       docChanged: true,
-      selectionSet: true,
     })
     expect(editor.state.selection).toBeInstanceOf(NodeSelection)
     expect((editor.state.selection as NodeSelection).node.attrs).toMatchObject(updatedAttrs)

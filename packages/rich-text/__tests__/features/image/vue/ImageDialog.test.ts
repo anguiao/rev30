@@ -9,7 +9,8 @@ import type { Editor } from '@tiptap/vue-3'
 import { NImage, NSpin } from 'naive-ui'
 import { markRaw } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { imageFeature, type RichTextImageNodeAttrs } from '../../../../src/features/image/shared'
+import type { RichTextImageAttrs } from '../../../../src/features/image/editor'
+import { imageFeature } from '../../../../src/features/image/shared'
 import {
   createImageToolbarControl,
   type RichTextImageUploadOptions,
@@ -136,7 +137,7 @@ function deleteSlashQuery(editor: ReturnType<typeof createHistoryEditor>) {
     .run()
 }
 
-function mountDialog(upload = vi.fn(), onError = vi.fn(), image?: RichTextImageNodeAttrs) {
+function mountDialog(upload = vi.fn(), onError = vi.fn(), image?: RichTextImageAttrs) {
   return mount(ImageDialog, {
     global: {
       stubs: {
@@ -151,7 +152,7 @@ function mountDialog(upload = vi.fn(), onError = vi.fn(), image?: RichTextImageN
   })
 }
 
-function mountEditDialog(image: RichTextImageNodeAttrs) {
+function mountEditDialog(image: RichTextImageAttrs) {
   return mountDialog(vi.fn(), vi.fn(), image)
 }
 
@@ -300,6 +301,30 @@ describe('ImageToolbarControl', () => {
     )
   })
 
+  it('replaces the selected text when inserting an image', async () => {
+    const editor = createEditor('<p>replace</p>')
+    editor.commands.setTextSelection({ from: 1, to: 8 })
+    const toolbar = mountControl(editor, async () => ({
+      src: '/api/attachments/replacement/content',
+    }))
+    const button = toolbar.get('[data-test="rich-text-image"]')
+
+    expect(button.attributes('disabled')).toBeUndefined()
+    await button.trigger('click')
+    await flushPromises()
+
+    const dialog = new DOMWrapper(document.body)
+    await chooseFile(dialog, new File(['image'], 'replacement.png', { type: 'image/png' }))
+    await uploadSelectedFile(dialog)
+    await loadPreviewImage(dialog)
+    await dialog.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.getText()).not.toContain('replace')
+    expect(editor.state.doc.firstChild?.type.name).toBe('image')
+    expect(editor.state.selection).toBeInstanceOf(NodeSelection)
+  })
+
   it('marks the image toolbar button as active when an image is selected', () => {
     const editor = createEditor(
       '<img src="/api/attachments/cover/content" alt="旧说明" width="500" height="250" />',
@@ -333,7 +358,9 @@ describe('ImageToolbarControl', () => {
     expect(dialog.find('[data-test="rich-text-image-drop-zone"]').exists()).toBe(false)
 
     await dialog.get('[data-test="rich-text-image-alt"] input').setValue('编辑说明')
-    await dialog.get('[data-test="rich-text-image-width"] input').setValue('600')
+    const widthInput = dialog.get('[data-test="rich-text-image-width"] input')
+    await widthInput.setValue('600')
+    await widthInput.trigger('blur')
     await dialog.get('[data-test="rich-text-image-confirm"]').trigger('click')
     await flushPromises()
 
@@ -643,7 +670,9 @@ describe('ImageDialog', () => {
 
     await loadPreviewImage(wrapper, 1000, 500)
     await wrapper.get('[data-test="rich-text-image-alt"] input').setValue('新说明')
-    await wrapper.get('[data-test="rich-text-image-width"] input').setValue('600')
+    const widthInput = wrapper.get('[data-test="rich-text-image-width"] input')
+    await widthInput.setValue('600')
+    await widthInput.trigger('blur')
     await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
     await flushPromises()
 
@@ -749,7 +778,9 @@ describe('ImageDialog', () => {
     ).toBeDefined()
 
     await loadPreviewImage(wrapper, 1000, 500)
-    await wrapper.get('[data-test="rich-text-image-width"] input').setValue('600')
+    const widthInput = wrapper.get('[data-test="rich-text-image-width"] input')
+    await widthInput.setValue('600')
+    await widthInput.trigger('blur')
     await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
     await flushPromises()
 

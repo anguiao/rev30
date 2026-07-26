@@ -3,10 +3,10 @@ import type { Editor } from '@tiptap/vue-3'
 import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
 import { NButton } from 'naive-ui'
 import { computed } from 'vue'
-import { canInsertImage, getSelectedImageAttrs } from '../editor'
+import { getSelectedImageAttrs } from '../editor'
 
 interface ImageToolbarControlProps extends RichTextToolbarControlProps {
-  openDialog: (editor: Editor) => boolean
+  openDialog: (editor: Editor) => void
 }
 
 const props = withDefaults(defineProps<ImageToolbarControlProps>(), {
@@ -14,25 +14,15 @@ const props = withDefaults(defineProps<ImageToolbarControlProps>(), {
 })
 
 const editor = props.editor
-const selectedImage = computed(() => getSelectedImageAttrs(editor))
-const isActive = computed(() => selectedImage.value !== null)
-const isDisabled = computed(() => props.disabled || (!isActive.value && !canInsertImage(editor)))
+const isActive = computed(() => getSelectedImageAttrs(editor.state.selection) !== null)
 const buttonLabel = computed(() => (isActive.value ? '编辑图片' : '图片'))
-
-function handleClick() {
-  if (isDisabled.value) {
-    return
-  }
-
-  props.openDialog(editor)
-}
 </script>
 
 <template>
   <NButton
     data-test="rich-text-image"
     :data-active="isActive ? 'true' : undefined"
-    :disabled="isDisabled"
+    :disabled="disabled"
     size="small"
     style="--n-padding: 0 6px"
     :type="isActive ? 'primary' : 'default'"
@@ -41,7 +31,7 @@ function handleClick() {
     :title="buttonLabel"
     :aria-label="buttonLabel"
     :aria-pressed="isActive"
-    @click="handleClick"
+    @click="openDialog(editor)"
   >
     <span class="i-[lucide--image]" aria-hidden="true" />
   </NButton>

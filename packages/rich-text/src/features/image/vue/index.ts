@@ -1,16 +1,17 @@
 import type { Editor } from '@tiptap/core'
 import { VueRenderer } from '@tiptap/vue-3'
+import { runRichTextAction } from '../../../editor/action'
 import { richTextFeatureQuickBar } from '../../../vue/quick-bar'
 import { richTextSlashCommand } from '../../../vue/slash-menu'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
 import {
-  canInsertImage,
   getSelectedImageAttrs,
   insertImageAction,
   insertImageActionItem,
+  type RichTextImageAttrs,
   updateImageAction,
 } from '../editor'
-import { imageFeature, type RichTextImageInput } from '../shared'
+import { imageFeature } from '../shared'
 import ImageDialog from './ImageDialog.vue'
 import ImageQuickBar from './ImageQuickBar.vue'
 import ImageToolbarControl from './ImageToolbarControl.vue'
@@ -21,12 +22,7 @@ export interface RichTextImageUploadOptions {
 }
 
 function openImageDialog(editor: Editor, options: RichTextImageUploadOptions) {
-  const image = getSelectedImageAttrs(editor)
-
-  if (image === null && !canInsertImage(editor)) {
-    return false
-  }
-
+  const image = getSelectedImageAttrs(editor.state.selection)
   const action = image === null ? insertImageAction : updateImageAction
   let renderer: VueRenderer
 
@@ -40,8 +36,8 @@ function openImageDialog(editor: Editor, options: RichTextImageUploadOptions) {
     editor.commands.focus()
   }
 
-  function confirmDialog(attrs: RichTextImageInput) {
-    if (editor.commands.command(action.command(attrs))) {
+  function confirmDialog(attrs: RichTextImageAttrs) {
+    if (runRichTextAction(editor, action, attrs)) {
       closeDialog()
     }
   }
@@ -57,8 +53,6 @@ function openImageDialog(editor: Editor, options: RichTextImageUploadOptions) {
     },
   })
   editor.on('destroy', closeDialog)
-
-  return true
 }
 
 export function createImageToolbarControl(options: RichTextImageUploadOptions) {
@@ -74,7 +68,7 @@ export function createImageToolbarControl(options: RichTextImageUploadOptions) {
 export function createImageQuickBar(options: RichTextImageUploadOptions) {
   return richTextFeatureQuickBar({
     feature: imageFeature,
-    isActive: (editor) => getSelectedImageAttrs(editor) !== null,
+    isActive: (editor) => getSelectedImageAttrs(editor.state.selection) !== null,
     component: ImageQuickBar,
     props: {
       openDialog: (editor) => openImageDialog(editor, options),

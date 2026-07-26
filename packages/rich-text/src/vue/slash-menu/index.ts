@@ -21,11 +21,11 @@ export interface RichTextSlashMenuGroup {
 export function richTextSlashCommand(item: RichTextActionItem): RichTextSlashCommand
 export function richTextSlashCommand<Arguments extends unknown[]>(
   item: RichTextActionItem<RichTextFeature, string, Arguments>,
-  run: (editor: Editor) => boolean,
+  run: (editor: Editor) => void,
 ): RichTextSlashCommand
 export function richTextSlashCommand(
   item: RichTextActionItem,
-  run?: (editor: Editor) => boolean,
+  run?: (editor: Editor) => void,
 ): RichTextSlashCommand {
   return {
     feature: item.action.feature,
@@ -35,7 +35,11 @@ export function richTextSlashCommand(
     keywords: item.keywords,
     command: run
       ? ({ editor, dispatch }) => {
-          return dispatch ? run(editor) : true
+          if (dispatch) {
+            run(editor)
+          }
+
+          return true
         }
       : item.action.command(),
   }

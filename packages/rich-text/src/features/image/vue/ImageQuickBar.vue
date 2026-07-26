@@ -6,22 +6,13 @@ import { computed } from 'vue'
 import { getSelectedImageAttrs } from '../editor'
 
 interface ImageQuickBarProps extends RichTextQuickBarComponentProps {
-  openDialog: (editor: Editor) => boolean
+  openDialog: (editor: Editor) => void
 }
 
 const props = defineProps<ImageQuickBarProps>()
 
 const editor = props.editor
-const selectedImage = computed(() => getSelectedImageAttrs(editor))
-const isDisabled = computed(() => selectedImage.value === null)
-
-function handleEdit() {
-  if (isDisabled.value) {
-    return
-  }
-
-  props.openDialog(editor)
-}
+const image = computed(() => getSelectedImageAttrs(editor.state.selection))
 </script>
 
 <template>
@@ -30,9 +21,8 @@ function handleEdit() {
       tag="a"
       data-test="rich-text-quick-bar-image-download"
       data-rich-text-quick-bar-roving
-      :href="isDisabled ? undefined : selectedImage?.src"
+      :href="image?.src"
       download
-      :disabled="isDisabled"
       size="small"
       style="--n-padding: 0 6px"
       quaternary
@@ -45,14 +35,13 @@ function handleEdit() {
     <NButton
       data-test="rich-text-quick-bar-image"
       data-rich-text-quick-bar-roving
-      :disabled="isDisabled"
       size="small"
       style="--n-padding: 0 6px"
       quaternary
       title="编辑图片"
       aria-label="编辑图片"
       @mousedown.prevent
-      @click="handleEdit"
+      @click="openDialog(editor)"
     >
       <span class="i-[lucide--pencil]" aria-hidden="true" />
     </NButton>

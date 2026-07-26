@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RichTextImageInput, RichTextImageNodeAttrs } from '../shared'
+import type { RichTextImageAttrs } from '../editor'
 import { NButton, NFormItem, NImage, NInput, NInputNumber, NModal, NSpin } from 'naive-ui'
 import { useDropZone, useEventListener, useFileDialog, useObjectUrl } from '@vueuse/core'
 import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
@@ -7,12 +7,12 @@ import { useRichTextThemeStyle } from '../../../vue/theme'
 
 const props = defineProps<{
   upload: (file: File) => Promise<{ src: string }>
-  image?: RichTextImageNodeAttrs | undefined
+  image?: RichTextImageAttrs | undefined
 }>()
 
 const emit = defineEmits<{
   cancel: []
-  confirm: [attrs: RichTextImageInput]
+  confirm: [attrs: RichTextImageAttrs]
   error: [error: unknown]
 }>()
 
@@ -240,7 +240,7 @@ function updateHeight(value: number | null) {
     title="图片"
     class="rich-text-theme w-[calc(100vw-32px)] max-w-lg"
     :style="richTextThemeStyle"
-    @update:show="!$event && emit('cancel')"
+    @update:show="emit('cancel')"
   >
     <NSpin :show="isUploading">
       <div class="flex flex-col gap-3">
@@ -334,6 +334,7 @@ function updateHeight(value: number | null) {
               :disabled="!isImageReady"
               :value="width"
               :min="1"
+              :precision="0"
               @update:value="updateWidth"
             />
           </NFormItem>
@@ -344,6 +345,7 @@ function updateHeight(value: number | null) {
               :disabled="!isImageReady"
               :value="height"
               :min="1"
+              :precision="0"
               @update:value="updateHeight"
             />
           </NFormItem>

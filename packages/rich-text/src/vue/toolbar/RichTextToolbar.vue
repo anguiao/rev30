@@ -32,7 +32,7 @@ const groups = props.toolbar.groups.filter((group) => group.controls.length > 0)
     >
       <RichTextToolbarControl
         v-for="control in group.controls"
-        :key="control.type === 'button' ? control.item.action.key : control.key"
+        :key="control.key"
         :control="control"
         :editor="editor"
         :disabled="disabled"

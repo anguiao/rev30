@@ -7,7 +7,6 @@ import HighlightQuickBarControl from './HighlightQuickBarControl.vue'
 
 export const highlightToolbarControl = richTextToolbarComponent({
   feature: highlightFeature,
-  key: 'highlight',
   component: HighlightToolbarControl,
   props: {
     colors: highlightColorOptions,
@@ -16,7 +15,6 @@ export const highlightToolbarControl = richTextToolbarComponent({
 
 export const highlightQuickBarControl = richTextQuickBarComponent({
   feature: highlightFeature,
-  key: 'highlight',
   component: HighlightQuickBarControl,
   props: {
     colors: highlightColorOptions,

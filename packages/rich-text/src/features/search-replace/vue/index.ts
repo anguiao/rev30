@@ -4,7 +4,6 @@ import SearchReplaceToolbarControl from './SearchReplaceToolbarControl.vue'
 
 export const searchReplaceToolbarControl = richTextToolbarComponent({
   feature: searchReplaceFeature,
-  key: searchReplaceFeature.key,
   component: SearchReplaceToolbarControl,
   props: {},
 })

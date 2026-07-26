@@ -10,7 +10,6 @@ declare const editor: Editor
 
 richTextToolbarComponent({
   feature: highlightFeature,
-  key: 'highlight',
   component: HighlightToolbarControl,
   props: {
     colors: highlightColorOptions,
@@ -19,14 +18,12 @@ richTextToolbarComponent({
 
 richTextToolbarComponent({
   feature: linkFeature,
-  key: 'link',
   component: LinkControl,
   props: { surface: 'toolbar' },
 })
 
 richTextToolbarComponent({
   feature: highlightFeature,
-  key: 'highlight',
   component: HighlightToolbarControl,
   // @ts-expect-error Required component props should be provided.
   props: {},
@@ -34,7 +31,6 @@ richTextToolbarComponent({
 
 richTextToolbarComponent({
   feature: highlightFeature,
-  key: 'highlight',
   component: HighlightToolbarControl,
   props: {
     colors: highlightColorOptions,
@@ -45,7 +41,6 @@ richTextToolbarComponent({
 
 richTextToolbarComponent({
   feature: linkFeature,
-  key: 'link',
   component: LinkControl,
   props: {
     surface: 'toolbar',

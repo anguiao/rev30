@@ -63,14 +63,13 @@ export function richTextQuickBarAction(item: RichTextActionItem): RichTextQuickB
 
 export function richTextQuickBarComponent<TComponent extends Component>(options: {
   readonly feature: RichTextFeature
-  readonly key: string
   readonly component: TComponent
   readonly props: RichTextQuickBarConfiguredProps<TComponent>
 }): RichTextQuickBarComponentControl {
   return {
     type: 'component',
     feature: options.feature,
-    key: options.key,
+    key: options.feature.key,
     component: markRaw(options.component),
     props: { ...options.props } as Record<string, unknown>,
   }

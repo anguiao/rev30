@@ -22,7 +22,6 @@ export const codeBlockLanguageOptions = [
 
 export const codeBlockToolbarControl = richTextToolbarComponent({
   feature: codeBlockFeature,
-  key: codeBlockFeature.key,
   component: CodeBlockToolbarControl,
   props: {
     languages: codeBlockLanguageOptions,

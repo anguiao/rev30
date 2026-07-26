@@ -7,14 +7,12 @@ import LinkQuickBar from './LinkQuickBar.vue'
 
 export const linkToolbarControl = richTextToolbarComponent({
   feature: linkFeature,
-  key: 'link',
   component: LinkControl,
   props: { surface: 'toolbar' },
 })
 
 export const linkQuickBarControl = richTextQuickBarComponent({
   feature: linkFeature,
-  key: 'link',
   component: LinkControl,
   props: { surface: 'text-quick-bar' },
 })

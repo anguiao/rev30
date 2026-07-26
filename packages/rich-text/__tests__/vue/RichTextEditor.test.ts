@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { NConfigProvider, NDropdown } from 'naive-ui'
 import { defineComponent, h } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
+import type { RichTextFeature } from '../../src/core/feature'
 import { defineRichTextPreset } from '../../src/core/preset'
 import { baseEditorFeature } from '../../src/features/base/editor'
 import { baseFeature } from '../../src/features/base/shared'
@@ -68,10 +69,9 @@ const noHeadingEditorPreset = defineRichTextEditorPreset(noHeadingPreset, {
   editorFeatures: [baseEditorFeature, boldEditorFeature, historyEditorFeature],
 })
 
-function createStatusBarItem(key: string, label: string) {
+function createStatusBarItem(feature: RichTextFeature, label: string) {
   return richTextStatusBarComponent({
-    feature: baseFeature,
-    key,
+    feature,
     component: defineComponent({
       props: {
         editor: {
@@ -79,20 +79,20 @@ function createStatusBarItem(key: string, label: string) {
           required: true,
         },
       },
-      setup: () => () => h('span', { 'data-test': `rich-text-${key}` }, label),
+      setup: () => () => h('span', { 'data-test': `rich-text-${feature.key}` }, label),
     }),
     props: {},
   })
 }
 
-const statusBarStartItem = createStatusBarItem('status-start-item', '段落')
-const statusBarEndItem = createStatusBarItem('status-end-item', '状态')
+const statusBarStartItem = createStatusBarItem(baseFeature, 'Paragraph')
+const statusBarEndItem = createStatusBarItem(boldFeature, 'Status')
 const statusBarPreset = defineRichTextPreset({
   key: 'status-bar-layout',
-  features: [baseFeature],
+  features: [baseFeature, boldFeature],
 })
 const statusBarEditorPreset = defineRichTextEditorPreset(statusBarPreset, {
-  editorFeatures: [baseEditorFeature],
+  editorFeatures: [baseEditorFeature, boldEditorFeature],
   statusBar: defineRichTextStatusBar({
     start: [statusBarStartItem],
     end: [statusBarEndItem],
@@ -203,8 +203,8 @@ describe('RichTextEditor', () => {
     const start = wrapper.get('[data-test="rich-text-status-bar-start"]')
     const end = wrapper.get('[data-test="rich-text-status-bar-end"]')
 
-    expect(start.get('[data-test="rich-text-status-start-item"]').text()).toBe('段落')
-    expect(end.get('[data-test="rich-text-status-end-item"]').text()).toBe('状态')
+    expect(start.get('[data-test="rich-text-base"]').text()).toBe('Paragraph')
+    expect(end.get('[data-test="rich-text-bold"]').text()).toBe('Status')
   })
 
   it('rejects duplicate status bar item keys across regions', () => {
@@ -213,7 +213,7 @@ describe('RichTextEditor', () => {
         start: [statusBarStartItem],
         end: [statusBarStartItem],
       }),
-    ).toThrow('Rich text status bar has a duplicate item: "status-start-item"')
+    ).toThrow('Rich text status bar has a duplicate item: "base"')
   })
 
   it('emits updated Tiptap JSON when content changes', async () => {

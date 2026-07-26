@@ -10,7 +10,6 @@ import TextStyleToolbarControl from './TextStyleToolbarControl.vue'
 
 export const textStyleToolbarControl = richTextToolbarComponent({
   feature: textStyleFeature,
-  key: textStyleFeature.key,
   component: TextStyleToolbarControl,
   props: {
     colors: textStyleColorOptions,

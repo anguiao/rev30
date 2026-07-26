@@ -37,7 +37,6 @@ type RichTextToolbarComponentProps<TComponent extends Component> = Omit<
 
 type RichTextToolbarComponentControlOptions<TComponent extends Component> = {
   readonly feature: RichTextFeature
-  readonly key: string
   readonly component: TComponent
   readonly props: RichTextToolbarComponentProps<TComponent>
 }
@@ -124,7 +123,7 @@ export function richTextToolbarComponent<TComponent extends Component>(
   return {
     type: 'component',
     feature: control.feature,
-    key: control.key,
+    key: control.feature.key,
     component: markRaw(control.component),
     props: { ...control.props } as Record<string, unknown>,
   }

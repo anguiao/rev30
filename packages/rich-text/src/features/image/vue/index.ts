@@ -64,7 +64,6 @@ function openImageDialog(editor: Editor, options: RichTextImageUploadOptions) {
 export function createImageToolbarControl(options: RichTextImageUploadOptions) {
   return richTextToolbarComponent({
     feature: imageFeature,
-    key: 'image',
     component: ImageToolbarControl,
     props: {
       openDialog: (editor) => openImageDialog(editor, options),

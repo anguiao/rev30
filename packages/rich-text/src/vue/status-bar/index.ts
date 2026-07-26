@@ -13,7 +13,6 @@ type RichTextStatusBarComponentProps<TComponent extends Component> = Omit<
 
 type RichTextStatusBarComponentItemOptions<TComponent extends Component> = {
   readonly feature: RichTextFeature
-  readonly key: string
   readonly component: TComponent
   readonly props: RichTextStatusBarComponentProps<TComponent>
 }
@@ -35,7 +34,7 @@ export function richTextStatusBarComponent<TComponent extends Component>(
 ): RichTextStatusBarComponentItem {
   return {
     feature: item.feature,
-    key: item.key,
+    key: item.feature.key,
     component: markRaw(item.component),
     props: { ...item.props } as Record<string, unknown>,
   }

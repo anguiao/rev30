@@ -11,8 +11,6 @@ export function countRichTextGraphemes(text: string) {
 export const characterCountEditorFeature = defineRichTextEditorFeature(characterCountFeature, {
   extensions: () => [
     CharacterCount.configure({
-      limit: null,
-      mode: 'textSize',
       textCounter: countRichTextGraphemes,
     }),
   ],

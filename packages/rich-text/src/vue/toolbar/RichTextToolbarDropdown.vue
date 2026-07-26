@@ -2,7 +2,7 @@
 import type { Editor } from '@tiptap/vue-3'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
-import { computed, h, ref } from 'vue'
+import { computed, h } from 'vue'
 import {
   canRunRichTextAction,
   runRichTextAction,
@@ -22,7 +22,6 @@ const props = withDefaults(
 )
 
 const editor = props.editor
-const show = ref(false)
 
 function isItemDisabled(item: RichTextActionItem) {
   return props.disabled || !canRunRichTextAction(editor, item.action)
@@ -93,7 +92,6 @@ function handleSelect(key: string | number) {
   <div class="contents">
     <NDropdown
       trigger="click"
-      v-model:show="show"
       placement="bottom-start"
       :options="options"
       :to="false"
@@ -113,7 +111,6 @@ function handleSelect(key: string | number) {
         :aria-label="triggerLabel"
         :aria-pressed="isActive"
         aria-haspopup="menu"
-        :aria-expanded="show"
       >
         <span :class="triggerIcon" aria-hidden="true" />
         <span class="ml-0.5 i-[lucide--chevron-down] text-xs" aria-hidden="true" />

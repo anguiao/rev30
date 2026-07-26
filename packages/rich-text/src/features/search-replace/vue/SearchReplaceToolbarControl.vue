@@ -21,8 +21,6 @@ const props = withDefaults(defineProps<RichTextToolbarControlProps>(), {
 })
 
 const editor = props.editor
-const isEditable = ref(editor.isEditable)
-const isDisabled = computed(() => props.disabled || !isEditable.value)
 
 const searchState = shallowRef(getSearchReplaceState(editor))
 const replacement = ref('')
@@ -34,17 +32,18 @@ const matchPositionLabel = computed(() => {
   return total === 0 ? '0/0' : `${searchState.value.currentIndex + 1}/${total}`
 })
 
-function closePanel(restoreEditorFocus = false) {
+function closePanel() {
   runRichTextAction(editor, closeSearchReplaceAction)
+}
 
-  if (restoreEditorFocus) {
-    editor.commands.focus()
-  }
+function closePanelAndFocusEditor() {
+  closePanel()
+  editor.commands.focus()
 }
 
 function togglePanel() {
   if (searchState.value.isOpen) {
-    closePanel(true)
+    closePanelAndFocusEditor()
     return
   }
 
@@ -55,21 +54,10 @@ function syncSearchState() {
   searchState.value = getSearchReplaceState(editor)
 }
 
-function handleEditorUpdate() {
-  isEditable.value = editor.isEditable
-
-  if (!isEditable.value && searchState.value.isOpen) {
-    closePanel()
-  }
-}
-
-handleEditorUpdate()
 editor.on('transaction', syncSearchState)
-editor.on('update', handleEditorUpdate)
 
 onBeforeUnmount(() => {
   editor.off('transaction', syncSearchState)
-  editor.off('update', handleEditorUpdate)
 })
 
 function setQuery(query: string) {
@@ -96,7 +84,7 @@ function replaceAllMatches() {
   runRichTextAction(editor, replaceAllSearchMatchesAction, replacement.value)
 }
 
-function handleQueryKeydown(event: KeyboardEvent) {
+function handleQueryEnter(event: KeyboardEvent) {
   if (event.isComposing || event.key !== 'Enter') {
     return
   }
@@ -112,7 +100,7 @@ function handleQueryKeydown(event: KeyboardEvent) {
   goToNextMatch()
 }
 
-function handleReplacementKeydown(event: KeyboardEvent) {
+function handleReplacementEnter(event: KeyboardEvent) {
   if (event.isComposing || event.key !== 'Enter') {
     return
   }
@@ -128,14 +116,14 @@ function handleReplacementKeydown(event: KeyboardEvent) {
   replaceCurrentMatch()
 }
 
-function handlePanelKeydown(event: KeyboardEvent) {
+function handleEscape(event: KeyboardEvent) {
   if (event.isComposing || event.key !== 'Escape') {
     return
   }
 
   event.preventDefault()
   event.stopPropagation()
-  closePanel(true)
+  closePanelAndFocusEditor()
 }
 
 const searchInput = ref<InputInst | null>(null)
@@ -146,7 +134,6 @@ watch(
       void nextTick(() => searchInput.value?.focus())
     }
   },
-  { immediate: true },
 )
 
 watch(
@@ -156,7 +143,6 @@ watch(
       closePanel()
     }
   },
-  { immediate: true },
 )
 </script>
 
@@ -166,14 +152,14 @@ watch(
     trigger="manual"
     placement="top-start"
     :to="false"
-    :disabled="isDisabled"
+    :disabled="disabled"
     @clickoutside="closePanel()"
   >
     <template #trigger>
       <NButton
         data-test="rich-text-search-replace"
         :data-active="searchState.isOpen ? 'true' : undefined"
-        :disabled="isDisabled"
+        :disabled="disabled"
         size="small"
         style="--n-padding: 0 6px"
         :type="searchState.isOpen ? 'primary' : 'default'"
@@ -183,8 +169,6 @@ watch(
         aria-label="查找和替换"
         aria-keyshortcuts="Control+F Meta+F"
         aria-haspopup="dialog"
-        :aria-expanded="searchState.isOpen"
-        :aria-pressed="searchState.isOpen"
         @click="togglePanel"
       >
         <span class="i-[lucide--search]" aria-hidden="true" />
@@ -196,7 +180,7 @@ watch(
       class="w-96 space-y-2"
       role="dialog"
       aria-label="查找和替换"
-      @keydown="handlePanelKeydown"
+      @keydown="handleEscape"
     >
       <div class="flex items-center gap-1">
         <NInput
@@ -208,7 +192,7 @@ watch(
           placeholder="查找"
           aria-label="查找"
           @update:value="setQuery"
-          @keydown="handleQueryKeydown"
+          @keydown="handleQueryEnter"
         />
 
         <span
@@ -256,7 +240,7 @@ watch(
           title="关闭"
           aria-label="关闭查找和替换"
           @mousedown.prevent
-          @click="closePanel(true)"
+          @click="closePanelAndFocusEditor"
         >
           <span class="i-[lucide--x]" aria-hidden="true" />
         </NButton>
@@ -269,7 +253,7 @@ watch(
           size="small"
           placeholder="替换为"
           aria-label="替换为"
-          @keydown="handleReplacementKeydown"
+          @keydown="handleReplacementEnter"
         />
 
         <NButton

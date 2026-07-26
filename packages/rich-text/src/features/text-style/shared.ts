@@ -1,13 +1,11 @@
-import type { Attribute } from '@tiptap/core'
 import { Color } from '@tiptap/extension-text-style/color'
 import { FontFamily } from '@tiptap/extension-text-style/font-family'
 import { FontSize } from '@tiptap/extension-text-style/font-size'
 import { LineHeight } from '@tiptap/extension-text-style/line-height'
 import { TextStyle } from '@tiptap/extension-text-style/text-style'
+import type { TagParseRule } from '@tiptap/pm/model'
 import { defineRichTextFeature } from '../../core/feature'
 import { fontFamilySet, fontSizeSet, lineHeightSet, textColorSet } from './options'
-
-type TextStyleElement = Parameters<NonNullable<Attribute['parseHTML']>>[0]
 
 function validateTextStyleAttribute(
   value: unknown,
@@ -20,11 +18,11 @@ function validateTextStyleAttribute(
 }
 
 function getSupportedStyleProperty(
-  element: TextStyleElement,
+  style: string | null,
   property: string,
   supportedValues: ReadonlySet<string>,
 ) {
-  const declarations = element.getAttribute('style')?.split(';') ?? []
+  const declarations = style?.split(';') ?? []
 
   for (let index = declarations.length - 1; index >= 0; index -= 1) {
     const declaration = declarations[index]!
@@ -47,12 +45,12 @@ function getSupportedStyleProperty(
   return null
 }
 
-function hasSupportedTextStyle(element: TextStyleElement) {
+function hasSupportedTextStyle(style: string | null) {
   return [
-    getSupportedStyleProperty(element, 'color', textColorSet),
-    getSupportedStyleProperty(element, 'font-family', fontFamilySet),
-    getSupportedStyleProperty(element, 'font-size', fontSizeSet),
-    getSupportedStyleProperty(element, 'line-height', lineHeightSet),
+    getSupportedStyleProperty(style, 'color', textColorSet),
+    getSupportedStyleProperty(style, 'font-family', fontFamilySet),
+    getSupportedStyleProperty(style, 'font-size', fontSizeSet),
+    getSupportedStyleProperty(style, 'line-height', lineHeightSet),
   ].some((value) => value !== null)
 }
 
@@ -68,16 +66,16 @@ const RichTextTextStyle = TextStyle.extend({
       return [
         {
           ...rule,
-          getAttrs: (element: TextStyleElement) => {
+          getAttrs: (element) => {
             const attributes = getAttrs ? getAttrs(element) : null
 
             if (attributes === false) {
               return false
             }
 
-            return hasSupportedTextStyle(element) ? attributes : false
+            return hasSupportedTextStyle(element.getAttribute('style')) ? attributes : false
           },
-        },
+        } satisfies TagParseRule,
       ]
     })
   },
@@ -91,7 +89,8 @@ const RichTextColor = Color.extend({
         ...attributeGroup.attributes,
         color: {
           ...attributeGroup.attributes.color,
-          parseHTML: (element) => getSupportedStyleProperty(element, 'color', textColorSet),
+          parseHTML: (element) =>
+            getSupportedStyleProperty(element.getAttribute('style'), 'color', textColorSet),
           validate: (value: unknown) => validateTextStyleAttribute(value, textColorSet, 'color'),
         },
       },
@@ -107,7 +106,8 @@ const RichTextFontFamily = FontFamily.extend({
         ...attributeGroup.attributes,
         fontFamily: {
           ...attributeGroup.attributes.fontFamily,
-          parseHTML: (element) => getSupportedStyleProperty(element, 'font-family', fontFamilySet),
+          parseHTML: (element) =>
+            getSupportedStyleProperty(element.getAttribute('style'), 'font-family', fontFamilySet),
           validate: (value: unknown) =>
             validateTextStyleAttribute(value, fontFamilySet, 'font family'),
         },
@@ -124,7 +124,8 @@ const RichTextFontSize = FontSize.extend({
         ...attributeGroup.attributes,
         fontSize: {
           ...attributeGroup.attributes.fontSize,
-          parseHTML: (element) => getSupportedStyleProperty(element, 'font-size', fontSizeSet),
+          parseHTML: (element) =>
+            getSupportedStyleProperty(element.getAttribute('style'), 'font-size', fontSizeSet),
           validate: (value: unknown) => validateTextStyleAttribute(value, fontSizeSet, 'font size'),
         },
       },
@@ -140,7 +141,8 @@ const RichTextLineHeight = LineHeight.extend({
         ...attributeGroup.attributes,
         lineHeight: {
           ...attributeGroup.attributes.lineHeight,
-          parseHTML: (element) => getSupportedStyleProperty(element, 'line-height', lineHeightSet),
+          parseHTML: (element) =>
+            getSupportedStyleProperty(element.getAttribute('style'), 'line-height', lineHeightSet),
           validate: (value: unknown) =>
             validateTextStyleAttribute(value, lineHeightSet, 'line height'),
         },

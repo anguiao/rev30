@@ -38,7 +38,7 @@ onMounted(() => {
       onExit: () => {
         suggestion.value = undefined
       },
-      onKeyDown: ({ event }) => handleKeyDown(event),
+      onKeyDown: ({ event }) => handleKeydown(event),
     },
     props.appendTo,
   )
@@ -82,7 +82,7 @@ function moveActiveCommand(offset: -1 | 1) {
   document.getElementById(getOptionId(nextCommand.key))?.scrollIntoView({ block: 'nearest' })
 }
 
-function handleKeyDown(event: KeyboardEvent) {
+function handleKeydown(event: KeyboardEvent) {
   if (event.isComposing || props.editor.view.composing) {
     return false
   }

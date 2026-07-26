@@ -243,20 +243,16 @@ describe('TextStyleToolbarControl', () => {
     }
   })
 
-  it('closes the active layer with Escape from the editor or its trigger', async () => {
+  it('closes the color popover after selection and with Escape', async () => {
     const editor = createEditor()
     selectEditorText(editor)
-    editor.view.focus()
     const wrapper = mountControl(editor)
 
     await openColorPopover(wrapper)
-    editor.view.dom.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
-    )
+    getButtonComponent(wrapper, `rich-text-text-color-${red.key}`).vm.$emit('click')
     await flushPromises()
 
     expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
-    expect(editor.isFocused).toBe(true)
 
     await openColorPopover(wrapper)
     const trigger = wrapper.get('[data-test="rich-text-text-color"]')
@@ -264,18 +260,5 @@ describe('TextStyleToolbarControl', () => {
     await flushPromises()
 
     expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
-    expect(editor.isFocused).toBe(true)
-
-    const fontFamily = getDropdownComponent(wrapper, 'rich-text-font-family')
-    fontFamily.vm.$emit('update:show', true)
-    await flushPromises()
-    expect(fontFamily.props('show')).toBe(true)
-
-    editor.view.dom.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
-    )
-    await flushPromises()
-
-    expect(fontFamily.props('show')).toBe(false)
   })
 })

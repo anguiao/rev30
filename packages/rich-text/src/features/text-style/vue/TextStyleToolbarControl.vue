@@ -10,7 +10,7 @@ import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
 import type { TextStyleOption } from '../options'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown, NPopover } from 'naive-ui'
-import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, h, ref } from 'vue'
 import {
   setFontFamilyAction,
   setFontSizeAction,
@@ -33,44 +33,17 @@ const props = withDefaults(defineProps<TextStyleToolbarControlProps>(), {
   disabled: false,
 })
 
-type TextStyleAttribute = 'color' | 'fontFamily' | 'fontSize' | 'lineHeight'
-
 const editor = props.editor
-const root = ref<HTMLElement | null>(null)
-const activeLayer = ref<string | null>(null)
+const showColor = ref(false)
 
-function closeLayer() {
-  activeLayer.value = null
-}
-
-function handleLayerShow(key: string, show: boolean) {
-  if (!show) {
-    if (activeLayer.value === key) {
-      closeLayer()
-    }
-    return
-  }
-
-  activeLayer.value = key
-}
-
-function handleLayerKeydown(event: KeyboardEvent) {
-  const target = event.target
-
-  if (
-    activeLayer.value === null ||
-    event.isComposing ||
-    event.key !== 'Escape' ||
-    !(target instanceof Element) ||
-    (root.value?.contains(target) !== true && !editor.view.dom.contains(target))
-  ) {
+function handleEscape(event: KeyboardEvent) {
+  if (!showColor.value || event.key !== 'Escape') {
     return
   }
 
   event.preventDefault()
   event.stopPropagation()
-  closeLayer()
-  editor.commands.focus()
+  showColor.value = false
 }
 
 function canRunAction<Args extends unknown[]>(
@@ -80,24 +53,14 @@ function canRunAction<Args extends unknown[]>(
   return !props.disabled && canRunRichTextAction(editor, action, ...args)
 }
 
-function runAction<Args extends unknown[]>(
-  action: RichTextAction<RichTextFeature, string, Args>,
-  ...args: Args
-) {
-  if (!canRunAction(action, ...args)) {
-    return false
-  }
-
-  return runRichTextAction(editor, action, ...args)
+function setColor(value: string) {
+  runRichTextAction(editor, setTextColorAction, value)
+  showColor.value = false
 }
 
-function runActionAndClose<Args extends unknown[]>(
-  action: RichTextAction<RichTextFeature, string, Args>,
-  ...args: Args
-) {
-  if (runAction(action, ...args)) {
-    closeLayer()
-  }
+function resetColor() {
+  runRichTextAction(editor, unsetTextColorAction)
+  showColor.value = false
 }
 
 const colorControl = computed(() => {
@@ -131,36 +94,32 @@ function renderSelectionIcon(selected: boolean) {
 }
 
 interface SelectControlConfig {
+  readonly key: string
   readonly label: string
   readonly icon: RichTextIconClass
-  readonly attribute: Exclude<TextStyleAttribute, 'color'>
+  readonly attribute: 'fontFamily' | 'fontSize' | 'lineHeight'
   readonly options: readonly TextStyleOption[]
   readonly setAction: RichTextAction<RichTextFeature, string, [value: string]>
   readonly unsetAction: RichTextAction
 }
 
-function getSelectControlKey(attribute: SelectControlConfig['attribute']) {
-  return attribute.replace(/[A-Z]/g, (character) => `-${character.toLowerCase()}`)
-}
-
 function selectOption(settings: SelectControlConfig, selectedKey: string | number) {
-  const controlKey = getSelectControlKey(settings.attribute)
-
-  if (selectedKey === `${controlKey}-default`) {
-    runActionAndClose(settings.unsetAction)
+  if (selectedKey === `${settings.key}-default`) {
+    runRichTextAction(editor, settings.unsetAction)
     return
   }
 
   const option = settings.options.find((candidate) => candidate.key === selectedKey)
 
   if (option) {
-    runActionAndClose(settings.setAction, option.value)
+    runRichTextAction(editor, settings.setAction, option.value)
   }
 }
 
 const selectControls = computed(() => {
   const settings: SelectControlConfig[] = [
     {
+      key: 'font-family',
       label: '字体',
       icon: 'i-[lucide--type]',
       attribute: 'fontFamily',
@@ -169,6 +128,7 @@ const selectControls = computed(() => {
       unsetAction: unsetFontFamilyAction,
     },
     {
+      key: 'font-size',
       label: '字号',
       icon: 'i-[lucide--a-large-small]',
       attribute: 'fontSize',
@@ -177,6 +137,7 @@ const selectControls = computed(() => {
       unsetAction: unsetFontSizeAction,
     },
     {
+      key: 'line-height',
       label: '行高',
       icon: 'i-[lucide--move-vertical]',
       attribute: 'lineHeight',
@@ -187,18 +148,17 @@ const selectControls = computed(() => {
   ]
 
   return settings.map((setting) => {
-    const controlKey = getSelectControlKey(setting.attribute)
     const value = editor.getAttributes('textStyle')[setting.attribute]
     const currentOption = setting.options.find((option) => option.value === value)
     const canReset = canRunAction(setting.unsetAction)
     const options: DropdownOption[] = [
       {
-        key: `${controlKey}-default`,
+        key: `${setting.key}-default`,
         label: '默认',
         disabled: !canReset,
         icon: renderSelectionIcon(!value),
         props: {
-          'data-test': `rich-text-${controlKey}-default`,
+          'data-test': `rich-text-${setting.key}-default`,
           'data-active': !value ? 'true' : undefined,
           'aria-pressed': !value,
         },
@@ -216,7 +176,7 @@ const selectControls = computed(() => {
           disabled,
           icon: renderSelectionIcon(active),
           props: {
-            'data-test': `rich-text-${controlKey}-${option.key}`,
+            'data-test': `rich-text-${setting.key}-${option.key}`,
             'data-active': active ? 'true' : undefined,
             'aria-pressed': active,
           },
@@ -228,7 +188,7 @@ const selectControls = computed(() => {
     const title = `${setting.label}：${currentOption?.label ?? '默认'}`
 
     return {
-      key: controlKey,
+      key: setting.key,
       icon: setting.icon,
       options,
       isDisabled,
@@ -239,34 +199,16 @@ const selectControls = computed(() => {
     }
   })
 })
-
-watch(
-  () => props.disabled,
-  (disabled) => {
-    if (disabled) {
-      closeLayer()
-    }
-  },
-)
-
-onMounted(() => {
-  document.addEventListener('keydown', handleLayerKeydown, true)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', handleLayerKeydown, true)
-})
 </script>
 
 <template>
-  <div ref="root" class="flex items-center gap-1" @keydown.capture="handleLayerKeydown">
+  <div class="flex items-center gap-1" @keydown.capture="handleEscape">
     <NPopover
+      v-model:show="showColor"
       trigger="click"
       placement="bottom-start"
       :to="false"
-      :show="activeLayer === 'color'"
       :disabled="colorControl.isDisabled"
-      @update:show="handleLayerShow('color', $event)"
     >
       <template #trigger>
         <NButton
@@ -304,8 +246,7 @@ onBeforeUnmount(() => {
           title="默认文字颜色"
           aria-label="默认文字颜色"
           :aria-pressed="!colorControl.value"
-          @mousedown.prevent
-          @click="runActionAndClose(unsetTextColorAction)"
+          @click="resetColor"
         >
           <span class="i-[lucide--rotate-ccw]" aria-hidden="true" />
         </NButton>
@@ -324,8 +265,7 @@ onBeforeUnmount(() => {
           :title="color.label"
           :aria-label="color.label"
           :aria-pressed="color.active"
-          @mousedown.prevent
-          @click="runActionAndClose(setTextColorAction, color.value)"
+          @click="setColor(color.value)"
         >
           <span
             class="inline-block size-4 rounded-sm border border-(--rich-text-theme-input-border-color)"
@@ -340,12 +280,10 @@ onBeforeUnmount(() => {
       v-for="control in selectControls"
       :key="control.key"
       trigger="click"
-      :show="activeLayer === control.key"
       placement="bottom-start"
       :to="false"
       :options="control.options"
       :disabled="control.isDisabled"
-      @update:show="handleLayerShow(control.key, $event)"
       @select="control.select"
     >
       <NButton

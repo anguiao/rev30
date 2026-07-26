@@ -183,9 +183,6 @@ describe('SearchReplaceToolbarControl', () => {
     expect(wrapper.get('[data-test="rich-text-search-replace"]').attributes('aria-haspopup')).toBe(
       'dialog',
     )
-    expect(wrapper.get('[data-test="rich-text-search-replace"]').attributes('aria-expanded')).toBe(
-      'false',
-    )
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ...modifier }))
     await flushPromises()
@@ -204,9 +201,6 @@ describe('SearchReplaceToolbarControl', () => {
 
     expect(event.defaultPrevented).toBe(true)
     expect(isPopoverOpen(wrapper)).toBe(true)
-    expect(wrapper.get('[data-test="rich-text-search-replace"]').attributes('aria-expanded')).toBe(
-      'true',
-    )
     expect(wrapper.get('[data-test="rich-text-search-replace-panel"]').attributes('role')).toBe(
       'dialog',
     )
@@ -215,15 +209,6 @@ describe('SearchReplaceToolbarControl', () => {
   it('closes when disabled', async () => {
     const editor = createEditor()
     const wrapper = mountControl(editor)
-    const readOnlyEditor = createEditor()
-    readOnlyEditor.setEditable(false)
-    const wrapperWithReadOnlyEditor = mountControl(readOnlyEditor)
-
-    expect(
-      wrapperWithReadOnlyEditor
-        .get('[data-test="rich-text-search-replace"]')
-        .attributes('disabled'),
-    ).toBeDefined()
 
     await openPanel(wrapper)
     await wrapper.setProps({ disabled: true })
@@ -234,27 +219,5 @@ describe('SearchReplaceToolbarControl', () => {
     ).toBeDefined()
     expect(isPopoverOpen(wrapper)).toBe(false)
     expect(getSearchReplaceState(editor).isOpen).toBe(false)
-  })
-
-  it('closes without changing content when an active editor becomes read-only', async () => {
-    const editor = createEditor('<p>abc</p>')
-    const wrapper = mountControl(editor)
-
-    await openPanel(wrapper)
-    getInputComponent(wrapper, 'rich-text-search-query').vm.$emit('update:value', 'abc')
-    getInputComponent(wrapper, 'rich-text-search-replacement').vm.$emit('update:value', 'X')
-    await flushPromises()
-
-    editor.setEditable(false)
-    await flushPromises()
-
-    await vi.waitFor(() => {
-      expect(isPopoverOpen(wrapper)).toBe(false)
-    })
-    expect(
-      wrapper.get('[data-test="rich-text-search-replace"]').attributes('disabled'),
-    ).toBeDefined()
-    expect(getSearchReplaceState(editor).isOpen).toBe(false)
-    expect(editor.getText()).toBe('abc')
   })
 })

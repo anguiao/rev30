@@ -187,6 +187,7 @@ describe('all rich text preset', () => {
     ])
     expect(insert?.controls.map((control) => control.key) ?? []).toEqual([
       'horizontal-rule',
+      'table',
       'image',
     ])
     expect(allEditorPreset.statusBar?.start.map((item) => item.key)).toEqual([])
@@ -207,13 +208,14 @@ describe('all rich text preset', () => {
       'image',
       'link',
       'code-block',
+      'table',
     ])
     expect(allEditorPreset.slashMenu?.map(({ key }) => key)).toEqual(['basic', 'list', 'insert'])
     expect(allEditorPreset.slashMenu?.map((group) => group.commands.map(({ key }) => key))).toEqual(
       [
         ['paragraph', 'heading-1', 'heading-2', 'heading-3', 'blockquote'],
         ['bullet-list', 'ordered-list'],
-        ['code-block', 'horizontal-rule', 'insert-image'],
+        ['code-block', 'horizontal-rule', 'table', 'insert-image'],
       ],
     )
   })

@@ -15,6 +15,7 @@ export function registerRichTextSlashMenu(
   editor: Editor,
   renderer: ReturnType<NonNullable<SuggestionOptions['render']>>,
   container: HTMLElement,
+  allow?: SuggestionOptions['allow'],
 ) {
   const viewPlugin = new Plugin({
     key: richTextSlashMenuViewPluginKey,
@@ -63,6 +64,7 @@ export function registerRichTextSlashMenu(
     placement: 'bottom-start',
     offset: { mainAxis: 8 },
     container,
+    ...(allow ? { allow } : {}),
     render: () => renderer,
   })
 

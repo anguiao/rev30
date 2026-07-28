@@ -36,6 +36,8 @@ import { textAlignActionItems, textAlignEditorFeature } from '../../features/tex
 import { textStyleEditorFeature } from '../../features/text-style/editor'
 import { textStyleToolbarControl } from '../../features/text-style/vue'
 import { tableEditorFeature } from '../../features/table/editor'
+import { tableQuickBar, tableSlashCommand, tableToolbarControl } from '../../features/table/vue'
+import { resolveRichTextTableContext } from '../../features/table/editor'
 import { underlineActionItem, underlineEditorFeature } from '../../features/underline/editor'
 import { allRichTextPreset } from '../../presets/all'
 import { defineRichTextQuickBar, richTextQuickBarAction } from '../quick-bar'
@@ -123,7 +125,11 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
     },
     {
       key: 'insert',
-      controls: [button(horizontalRuleActionItem), createImageToolbarControl(options.image)],
+      controls: [
+        button(horizontalRuleActionItem),
+        tableToolbarControl,
+        createImageToolbarControl(options.image),
+      ],
     },
   ])
 }
@@ -137,7 +143,12 @@ function createAllRichTextQuickBar(options: AllRichTextEditorPresetOptions) {
       highlightQuickBarControl,
       linkQuickBarControl,
     ],
-    featureBars: [createImageQuickBar(options.image), linkQuickBar, codeBlockQuickBar],
+    featureBars: [
+      createImageQuickBar(options.image),
+      linkQuickBar,
+      codeBlockQuickBar,
+      tableQuickBar,
+    ],
   })
 }
 
@@ -163,6 +174,7 @@ function createAllRichTextSlashMenu(options: AllRichTextEditorPresetOptions) {
       commands: [
         richTextSlashCommand(codeBlockActionItem),
         richTextSlashCommand(horizontalRuleActionItem),
+        tableSlashCommand,
         createImageSlashCommand(options.image),
       ],
     },
@@ -181,5 +193,6 @@ export function createAllRichTextEditorPreset(options: AllRichTextEditorPresetOp
     statusBar: allRichTextStatusBar,
     quickBar: createAllRichTextQuickBar(options),
     slashMenu: createAllRichTextSlashMenu(options),
+    slashMenuAllow: ({ state }) => resolveRichTextTableContext(state.selection) === null,
   })
 }

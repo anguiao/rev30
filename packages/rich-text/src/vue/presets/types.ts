@@ -5,6 +5,7 @@ import type { RichTextQuickBarConfig, RichTextQuickBarControl } from '../quick-b
 import type { RichTextSlashMenuGroup } from '../slash-menu'
 import type { RichTextStatusBarConfig, RichTextStatusBarComponentItem } from '../status-bar'
 import type { RichTextToolbarConfig, RichTextToolbarControlConfig } from '../toolbar'
+import type { SuggestionOptions } from '@tiptap/suggestion'
 
 export interface RichTextEditorPreset<
   Preset extends RichTextPreset = RichTextPreset,
@@ -15,6 +16,7 @@ export interface RichTextEditorPreset<
   readonly statusBar?: RichTextStatusBarConfig
   readonly quickBar?: RichTextQuickBarConfig
   readonly slashMenu?: readonly RichTextSlashMenuGroup[]
+  readonly slashMenuAllow?: SuggestionOptions['allow']
 }
 
 function assertEditorFeature(
@@ -91,6 +93,7 @@ export function defineRichTextEditorPreset<
     readonly statusBar?: RichTextStatusBarConfig
     readonly quickBar?: RichTextQuickBarConfig
     readonly slashMenu?: readonly RichTextSlashMenuGroup[]
+    readonly slashMenuAllow?: SuggestionOptions['allow']
   },
 ): RichTextEditorPreset<Preset, ReadonlyArray<EditorFeatures[number]>> {
   const { editorFeatures } = options
@@ -127,5 +130,6 @@ export function defineRichTextEditorPreset<
     ...(options.statusBar ? { statusBar: options.statusBar } : {}),
     ...(options.quickBar ? { quickBar: options.quickBar } : {}),
     ...(options.slashMenu ? { slashMenu: options.slashMenu } : {}),
+    ...(options.slashMenuAllow ? { slashMenuAllow: options.slashMenuAllow } : {}),
   }
 }

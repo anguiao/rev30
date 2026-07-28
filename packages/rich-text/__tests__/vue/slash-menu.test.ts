@@ -14,6 +14,9 @@ import { headingFeature } from '../../src/features/heading/shared'
 import { historyEditorFeature } from '../../src/features/history/editor'
 import { historyFeature } from '../../src/features/history/shared'
 import { createImageSlashCommand } from '../../src/features/image/vue'
+import { tableEditorFeature } from '../../src/features/table/editor'
+import { tableFeature } from '../../src/features/table/shared'
+import { tableSlashCommand } from '../../src/features/table/vue'
 import {
   canRunRichTextSlashCommand,
   defineRichTextSlashMenu,
@@ -193,5 +196,30 @@ describe('rich text slash menu model', () => {
 
     expect(editor.commands.undo()).toBe(true)
     expect(editor.getText()).toBe('/图片')
+  })
+
+  it('inserts a fixed 3x3 table in one transaction and restores the slash query with one undo', () => {
+    const tablePreset = defineRichTextPreset({
+      key: 'table-slash-test',
+      features: [baseFeature, historyFeature, tableFeature],
+    })
+    const editor = createTestEditor({
+      extensions: collectRichTextEditorExtensions({
+        ...tablePreset,
+        editorFeatures: [baseEditorFeature, historyEditorFeature, tableEditorFeature],
+      }),
+      content: '<p>/表格</p>',
+    })
+    const update = vi.fn()
+    editor.on('update', update)
+
+    expect(runRichTextSlashCommand(editor, tableSlashCommand, { from: 1, to: 4 })).toBe(true)
+    expect(update).toHaveBeenCalledOnce()
+    expect(editor.getJSON()).toMatchObject({ content: [{ type: 'table' }] })
+    expect(editor.state.doc.firstChild?.childCount).toBe(3)
+    expect(editor.state.doc.firstChild?.firstChild?.childCount).toBe(3)
+
+    expect(editor.commands.undo()).toBe(true)
+    expect(editor.getText()).toBe('/表格')
   })
 })

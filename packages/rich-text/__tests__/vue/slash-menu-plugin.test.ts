@@ -6,6 +6,9 @@ import { baseEditorFeature } from '../../src/features/base/editor'
 import { baseFeature } from '../../src/features/base/shared'
 import { blockquoteEditorFeature } from '../../src/features/blockquote/editor'
 import { blockquoteFeature } from '../../src/features/blockquote/shared'
+import { tableEditorFeature } from '../../src/features/table/editor'
+import { tableFeature } from '../../src/features/table/shared'
+import { resolveRichTextTableContext } from '../../src/features/table/editor'
 import { registerRichTextSlashMenu } from '../../src/vue/slash-menu/plugin'
 import { createTestEditor } from '../helpers/editor'
 
@@ -162,5 +165,33 @@ describe('slash menu input', () => {
 
     pasteEditor.view.dispatch(pasteEditor.state.tr.insertText('/').setMeta('uiEvent', 'paste'))
     await vi.waitFor(() => expect(pasteStart).toHaveBeenCalledOnce())
+  })
+
+  it('does not start inside table cells while keeping ordinary slash input intact', async () => {
+    const tablePreset = defineRichTextPreset({
+      key: 'slash-table-test',
+      features: [baseFeature, tableFeature],
+    })
+    const onStart = vi.fn()
+    const editor = createTestEditor({
+      extensions: collectRichTextEditorExtensions({
+        ...tablePreset,
+        editorFeatures: [baseEditorFeature, tableEditorFeature],
+      }),
+      content: '<p></p>',
+    })
+
+    registerRichTextSlashMenu(
+      editor,
+      { onStart },
+      document.body,
+      ({ state }) => resolveRichTextTableContext(state.selection) === null,
+    )
+    editor.commands.insertTable({ rows: 1, cols: 1, withHeaderRow: true })
+    editor.commands.insertContent('/')
+
+    await Promise.resolve()
+    expect(editor.getText()).toContain('/')
+    expect(onStart).not.toHaveBeenCalled()
   })
 })

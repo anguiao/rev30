@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
 import { baseFeature } from '../../src/features/base/shared'
 import { boldFeature } from '../../src/features/bold/shared'
+import { tableFeature } from '../../src/features/table/shared'
 import { createAllRichTextEditorPreset } from '../../src/vue/presets/all'
 import { defineRichTextQuickBar, richTextFeatureQuickBar } from '../../src/vue/quick-bar'
 import { resolveRichTextQuickBar } from '../../src/vue/quick-bar/resolve'
@@ -83,6 +84,23 @@ describe('rich text quick bar resolution', () => {
     const textEditor = createEditor('<p>plain text</p>')
     textEditor.commands.setTextSelection({ from: 1, to: 6 })
     expect(resolveRichTextQuickBar(textEditor, allPreset.quickBar!)).toEqual({
+      type: 'text',
+      controls: allPreset.quickBar!.textControls,
+    })
+  })
+
+  it('selects the table Quick Bar for a collapsed cell cursor and CellSelection only', () => {
+    const tableEditor = createEditor(
+      '<table><tr><th><p>单元格</p></th><td><p>其它</p></td></tr></table>',
+    )
+    tableEditor.commands.setTextSelection(3)
+    expect(resolveRichTextQuickBar(tableEditor, allPreset.quickBar!)).toMatchObject({
+      type: 'feature',
+      quickBar: { feature: { key: tableFeature.key } },
+    })
+
+    tableEditor.commands.setTextSelection({ from: 3, to: 5 })
+    expect(resolveRichTextQuickBar(tableEditor, allPreset.quickBar!)).toEqual({
       type: 'text',
       controls: allPreset.quickBar!.textControls,
     })

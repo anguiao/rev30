@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SuggestionProps } from '@tiptap/suggestion'
+import type { SuggestionOptions, SuggestionProps } from '@tiptap/suggestion'
 import type { Editor } from '@tiptap/vue-3'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useId, watch } from 'vue'
 import { exitRichTextSlashMenu, registerRichTextSlashMenu } from './plugin'
@@ -15,6 +15,7 @@ const props = defineProps<{
   editor: Editor
   slashMenu: readonly RichTextSlashMenuGroup[]
   appendTo: HTMLElement
+  allow?: SuggestionOptions['allow']
 }>()
 
 const listboxId = `rich-text-slash-menu-${useId()}`
@@ -41,6 +42,7 @@ onMounted(() => {
       onKeyDown: ({ event }) => handleKeydown(event),
     },
     props.appendTo,
+    props.allow,
   )
 })
 

@@ -172,6 +172,21 @@ describe('SearchReplaceToolbarControl', () => {
     expect(wrapper.get('[data-test="rich-text-search-match-position"]').text()).toBe('1/1')
   })
 
+  it('restores the toolbar trigger when a trigger-opened panel is cancelled', async () => {
+    const editor = createEditor()
+    const wrapper = mountControl(editor)
+    const trigger = wrapper.get('[data-test="rich-text-search-replace"]')
+
+    await openPanel(wrapper)
+    await getInputComponent(wrapper, 'rich-text-search-query')
+      .get('input')
+      .trigger('keydown', { key: 'Escape' })
+    await flushPromises()
+
+    expect(isPopoverOpen(wrapper)).toBe(false)
+    expect(document.activeElement).toBe(trigger.element)
+  })
+
   it('opens from Mod-f only while the editor is focused', async () => {
     const editor = createEditor()
     const wrapper = mountControl(editor)

@@ -24,6 +24,7 @@ const editor = props.editor
 
 const searchState = shallowRef(getSearchReplaceState(editor))
 const replacement = ref('')
+const focusOrigin = ref<HTMLElement | null>(null)
 
 const hasMatches = computed(() => searchState.value.matches.length > 0)
 const matchPositionLabel = computed(() => {
@@ -36,14 +37,17 @@ function closePanel() {
   runRichTextAction(editor, closeSearchReplaceAction)
 }
 
-function closePanelAndFocusEditor() {
+function closePanelAndRestoreFocus() {
+  const target = focusOrigin.value ?? editor.view.dom
   closePanel()
-  editor.commands.focus()
+  void nextTick(() => target.focus())
 }
 
-function togglePanel() {
+function togglePanel(event: MouseEvent) {
+  focusOrigin.value = event.currentTarget as HTMLElement
+
   if (searchState.value.isOpen) {
-    closePanelAndFocusEditor()
+    closePanelAndRestoreFocus()
     return
   }
 
@@ -123,7 +127,7 @@ function handleEscape(event: KeyboardEvent) {
 
   event.preventDefault()
   event.stopPropagation()
-  closePanelAndFocusEditor()
+  closePanelAndRestoreFocus()
 }
 
 const searchInput = ref<InputInst | null>(null)
@@ -132,6 +136,8 @@ watch(
   (isOpen) => {
     if (isOpen) {
       void nextTick(() => searchInput.value?.focus())
+    } else {
+      focusOrigin.value = null
     }
   },
 )
@@ -153,11 +159,12 @@ watch(
     placement="top-start"
     :to="false"
     :disabled="disabled"
-    @clickoutside="closePanel()"
+    @clickoutside="closePanel"
   >
     <template #trigger>
       <NButton
         data-test="rich-text-search-replace"
+        data-rich-text-toolbar-item="search-replace"
         :data-active="searchState.isOpen ? 'true' : undefined"
         :disabled="disabled"
         size="small"
@@ -169,6 +176,7 @@ watch(
         aria-label="查找和替换"
         aria-keyshortcuts="Control+F Meta+F"
         aria-haspopup="dialog"
+        :aria-expanded="searchState.isOpen"
         @click="togglePanel"
       >
         <span class="i-[lucide--search]" aria-hidden="true" />
@@ -240,7 +248,7 @@ watch(
           title="关闭"
           aria-label="关闭查找和替换"
           @mousedown.prevent
-          @click="closePanelAndFocusEditor"
+          @click="closePanelAndRestoreFocus"
         >
           <span class="i-[lucide--x]" aria-hidden="true" />
         </NButton>

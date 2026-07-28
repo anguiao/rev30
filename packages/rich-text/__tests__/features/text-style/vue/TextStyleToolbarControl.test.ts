@@ -31,8 +31,9 @@ function createEditor(
   })
 }
 
-function mountControl(editor: Editor, disabled = false) {
+function mountControl(editor: Editor, disabled = false, attachTo?: Element) {
   return mount(TextStyleToolbarControl, {
+    ...(attachTo ? { attachTo } : {}),
     props: {
       editor: markRaw(editor),
       disabled,
@@ -241,6 +242,70 @@ describe('TextStyleToolbarControl', () => {
     ]) {
       expect(wrapperDisabled.get(`[data-test="${dataTest}"]`).attributes('disabled')).toBeDefined()
     }
+  })
+
+  it('keeps vertical palette navigation aligned with visual columns', async () => {
+    const editor = createEditor()
+    selectEditorText(editor)
+    const wrapper = mountControl(editor, false, document.body)
+
+    await openColorPopover(wrapper)
+    const defaultColor = wrapper.get<HTMLElement>('[data-test="rich-text-text-color-default"]')
+    const gray = wrapper.get<HTMLElement>('[data-test="rich-text-text-color-gray"]')
+    const amber = wrapper.get<HTMLElement>('[data-test="rich-text-text-color-amber"]')
+    const green = wrapper.get<HTMLElement>('[data-test="rich-text-text-color-green"]')
+    const blue = wrapper.get<HTMLElement>('[data-test="rich-text-text-color-blue"]')
+
+    defaultColor.element.setAttribute('disabled', '')
+    gray.element.focus()
+
+    await gray.trigger('keydown', { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(blue.element)
+
+    await blue.trigger('keydown', { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(gray.element)
+
+    green.element.focus()
+    await green.trigger('keydown', { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(green.element)
+
+    amber.element.focus()
+    await amber.trigger('keydown', { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(amber.element)
+
+    wrapper.unmount()
+  })
+
+  it('scopes focus and Escape handling to each select menu', async () => {
+    const editor = createEditor()
+    selectEditorText(editor)
+    const wrapper = mountControl(editor, false, document.body)
+    const fontFamilyDropdown = getDropdownComponent(wrapper, 'rich-text-font-family')
+    const fontSizeDropdown = getDropdownComponent(wrapper, 'rich-text-font-size')
+
+    fontFamilyDropdown.vm.$emit('update:show', true)
+    await flushPromises()
+
+    expect(document.activeElement?.closest('[role="menu"]')?.getAttribute('aria-label')).toBe(
+      '字体',
+    )
+
+    fontSizeDropdown.vm.$emit('update:show', true)
+    await flushPromises()
+
+    const fontSizeItem = document.activeElement as HTMLElement
+    expect(fontSizeItem.closest('[role="menu"]')?.getAttribute('aria-label')).toBe('字号')
+
+    fontSizeItem.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    )
+    await flushPromises()
+
+    expect(fontSizeDropdown.props('show')).toBe(false)
+    expect(fontFamilyDropdown.props('show')).toBe(true)
+    expect(document.activeElement).toBe(wrapper.get('[data-test="rich-text-font-size"]').element)
+
+    wrapper.unmount()
   })
 
   it('closes the color popover after selection and with Escape', async () => {

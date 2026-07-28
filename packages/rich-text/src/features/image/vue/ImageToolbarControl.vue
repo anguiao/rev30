@@ -21,6 +21,7 @@ const buttonLabel = computed(() => (isActive.value ? '编辑图片' : '图片'))
 <template>
   <NButton
     data-test="rich-text-image"
+    data-rich-text-toolbar-item="image"
     :data-active="isActive ? 'true' : undefined"
     :disabled="disabled"
     size="small"

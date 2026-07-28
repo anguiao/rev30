@@ -128,20 +128,13 @@ function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
 
 function createAllRichTextQuickBar(options: AllRichTextEditorPresetOptions) {
   return defineRichTextQuickBar({
-    textControls: {
-      main: [
-        richTextQuickBarAction(boldActionItem),
-        richTextQuickBarAction(italicActionItem),
-        richTextQuickBarAction(underlineActionItem),
-        highlightQuickBarControl,
-        linkQuickBarControl,
-      ],
-      more: [
-        richTextQuickBarAction(strikeActionItem),
-        richTextQuickBarAction(inlineCodeActionItem),
-        richTextQuickBarAction(removeFormatActionItem),
-      ],
-    },
+    textControls: [
+      richTextQuickBarAction(boldActionItem),
+      richTextQuickBarAction(italicActionItem),
+      richTextQuickBarAction(underlineActionItem),
+      highlightQuickBarControl,
+      linkQuickBarControl,
+    ],
     featureBars: [createImageQuickBar(options.image), linkQuickBar, codeBlockQuickBar],
   })
 }

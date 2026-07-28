@@ -2,9 +2,10 @@
 import type { Editor } from '@tiptap/vue-3'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
-import { computed, h, ref } from 'vue'
+import { computed, h, nextTick, ref } from 'vue'
 import { runRichTextAction } from '../../../editor/action'
 import { getSelectedCodeBlock, setCodeBlockLanguageAction } from '../editor'
+import { focusRichTextMenuItem, handleRichTextMenuKeydown } from '../../../vue/interactions/focus'
 
 interface CodeBlockLanguageControlProps {
   editor: Editor
@@ -74,6 +75,7 @@ const options = computed<DropdownOption[]>(() =>
         }),
       props: {
         'data-test': `rich-text-code-block-language-${language.value}`,
+        role: 'menuitem',
         'data-active': active ? 'true' : undefined,
         'aria-pressed': active,
       },
@@ -85,19 +87,52 @@ function handleShow(nextShow: boolean) {
   show.value = nextShow
 
   if (nextShow) {
-    root.value?.querySelector<HTMLElement>('button')?.focus()
+    void nextTick(() => focusRichTextMenuItem(root.value, 'active'))
   }
 }
 
+function handleTriggerKeydown(event: KeyboardEvent) {
+  if (
+    event.defaultPrevented ||
+    event.isComposing ||
+    isDisabled.value ||
+    !['ArrowDown', 'ArrowUp'].includes(event.key)
+  ) {
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+  show.value = true
+  void nextTick(() =>
+    focusRichTextMenuItem(root.value, event.key === 'ArrowUp' ? 'last' : 'active'),
+  )
+}
+
 function handleEscape(event: KeyboardEvent) {
-  if (!show.value || event.isComposing || event.key !== 'Escape') {
+  if (event.defaultPrevented || !show.value || event.isComposing || event.key !== 'Escape') {
     return
   }
 
   event.preventDefault()
   event.stopPropagation()
   show.value = false
-  editor.commands.focus()
+
+  const triggerElement = root.value?.querySelector<HTMLElement>('[data-rich-text-toolbar-item]')
+  void nextTick(() => triggerElement?.focus())
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  if (show.value) {
+    handleRichTextMenuKeydown(event, {
+      trigger: root.value?.querySelector<HTMLElement>('[data-rich-text-toolbar-item]') ?? null,
+      close: () => {
+        show.value = false
+      },
+    })
+  }
+
+  handleEscape(event)
 }
 
 function handleSelect(value: string) {
@@ -113,7 +148,7 @@ function handleSelect(value: string) {
 </script>
 
 <template>
-  <div ref="root" class="contents" @keydown.capture="handleEscape">
+  <div ref="root" class="contents" @keydown.capture="handleKeydown">
     <NDropdown
       trigger="click"
       placement="bottom-start"
@@ -121,21 +156,23 @@ function handleSelect(value: string) {
       :show="show"
       :options="options"
       :to="false"
+      :menu-props="() => ({ role: 'menu', 'aria-label': '代码语言' })"
       :disabled="isDisabled"
       @update:show="handleShow"
       @select="handleSelect"
     >
       <NButton
         data-test="rich-text-code-block-language"
-        data-rich-text-quick-bar-roving
+        data-rich-text-toolbar-item="code-block-language"
         :disabled="isDisabled"
         size="small"
         style="--n-padding: 0 6px"
         quaternary
         :title="buttonLabel"
         :aria-label="buttonLabel"
-        aria-haspopup="listbox"
-        @mousedown.prevent
+        aria-haspopup="menu"
+        :aria-expanded="show"
+        @keydown="handleTriggerKeydown"
       >
         <span v-if="showLabel" class="mr-1 text-xs">{{ languageLabel }}</span>
         <span class="i-[lucide--chevron-down] text-xs" aria-hidden="true" />

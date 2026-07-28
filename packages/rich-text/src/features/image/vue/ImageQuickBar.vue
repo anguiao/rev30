@@ -20,7 +20,7 @@ const image = computed(() => getSelectedImageAttrs(editor.state.selection))
     <NButton
       tag="a"
       data-test="rich-text-quick-bar-image-download"
-      data-rich-text-quick-bar-roving
+      data-rich-text-toolbar-item="image-download"
       :href="image?.src"
       download
       size="small"
@@ -28,19 +28,17 @@ const image = computed(() => getSelectedImageAttrs(editor.state.selection))
       quaternary
       title="下载图片"
       aria-label="下载图片"
-      @mousedown.prevent
     >
       <span class="i-[lucide--download]" aria-hidden="true" />
     </NButton>
     <NButton
       data-test="rich-text-quick-bar-image"
-      data-rich-text-quick-bar-roving
+      data-rich-text-toolbar-item="image-edit"
       size="small"
       style="--n-padding: 0 6px"
       quaternary
       title="编辑图片"
       aria-label="编辑图片"
-      @mousedown.prevent
       @click="openDialog(editor)"
     >
       <span class="i-[lucide--pencil]" aria-hidden="true" />

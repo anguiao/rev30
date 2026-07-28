@@ -59,10 +59,7 @@ function validateQuickBar(
   editorFeatures: readonly RichTextEditorFeature[],
   quickBar: RichTextQuickBarConfig,
 ) {
-  for (const control of [
-    ...(quickBar.textControls?.main ?? []),
-    ...(quickBar.textControls?.more ?? []),
-  ]) {
+  for (const control of quickBar.textControls ?? []) {
     validateQuickBarControl(preset, editorFeatures, control)
   }
 

@@ -19,10 +19,7 @@ describe('contextual configuration validation', () => {
       defineRichTextEditorPreset(preset, {
         editorFeatures: [baseEditorFeature],
         quickBar: defineRichTextQuickBar({
-          textControls: {
-            main: [richTextQuickBarAction(boldActionItem)],
-            more: [],
-          },
+          textControls: [richTextQuickBarAction(boldActionItem)],
         }),
       }),
     ).toThrow('a quick bar control for unknown feature "bold"')
@@ -31,10 +28,10 @@ describe('contextual configuration validation', () => {
   it('rejects duplicate text quick bar controls', () => {
     expect(() =>
       defineRichTextQuickBar({
-        textControls: {
-          main: [richTextQuickBarAction(boldActionItem)],
-          more: [richTextQuickBarAction(boldActionItem)],
-        },
+        textControls: [
+          richTextQuickBarAction(boldActionItem),
+          richTextQuickBarAction(boldActionItem),
+        ],
       }),
     ).toThrow('duplicate control: "bold"')
   })

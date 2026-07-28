@@ -145,6 +145,36 @@ describe('HighlightControl', () => {
     )
   })
 
+  it('navigates the palette with arrows, Home, and End', async () => {
+    const editor = createEditor()
+    selectEditorText(editor)
+    const wrapper = mount(HighlightControl, {
+      attachTo: document.body,
+      props: {
+        editor: markRaw(editor),
+      },
+    })
+
+    await openPopover(wrapper)
+    const items = wrapper.findAll<HTMLElement>('[data-rich-text-palette-item]')
+    expect(document.activeElement).toBe(items[0]!.element)
+
+    await items[0]!.trigger('keydown', { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(items[1]!.element)
+
+    await items[1]!.trigger('keydown', { key: 'End' })
+    expect(document.activeElement).toBe(items.at(-1)!.element)
+
+    await items.at(-1)!.trigger('keydown', { key: 'Home' })
+    expect(document.activeElement).toBe(items[0]!.element)
+
+    await items[0]!.trigger('keydown', { key: 'Escape' })
+    const trigger = wrapper.get('[data-test="rich-text-highlight"]')
+    await trigger.trigger('keydown', { key: 'ArrowUp' })
+    await flushPromises()
+    expect(document.activeElement).toBe(items.at(-1)!.element)
+  })
+
   it('distinguishes mixed and partially highlighted selections', async () => {
     const editor = createEditor(
       `<p><mark data-color="${yellow.value}" style="background-color: ${yellow.value}; color: inherit">黄</mark><mark data-color="${blue.value}" style="background-color: ${blue.value}; color: inherit">蓝</mark>无</p>`,

@@ -157,7 +157,7 @@ describe('CodeBlockToolbarControl', () => {
       from: firstPositions[0],
       to: firstPositions[0],
     })
-    expect(document.activeElement).toBe(firstEditor.view.dom)
+    expect(document.activeElement).toBe(firstButton.element)
   })
 
   it('isolates Escape events from inline menus across Vue roots', async () => {

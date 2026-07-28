@@ -46,12 +46,12 @@ async function openPopover(wrapper: ReturnType<typeof mountControl>) {
   expect(isPopoverShown(wrapper)).toBe(true)
 }
 
-describe('LinkToolbarControl', () => {
+describe('LinkControl', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  it('opens only on click and creates a normalized link for the exact selection', async () => {
+  it('opens on click and creates a normalized link for the exact selection', async () => {
     const editor = createEditor()
     editor.commands.setTextSelection({ from: 1, to: 3 })
     editor.commands.focus()
@@ -82,16 +82,21 @@ describe('LinkToolbarControl', () => {
     })
   })
 
-  it('does not open automatically when a focused selection enters a link', async () => {
-    const editor = createEditor('<p><a href="https://example.com">维护通知</a></p>')
+  it('does not open automatically when a focused caret enters a link', async () => {
+    const editor = createEditor('<p>plain <a href="https://example.com">link</a></p>')
     editor.commands.setTextSelection(3)
     const wrapper = mountControl(editor)
 
     editor.commands.focus()
     await flushPromises()
+    expect(isPopoverShown(wrapper)).toBe(false)
+
+    editor.commands.setTextSelection(8)
+    await flushPromises()
 
     expect(isPopoverShown(wrapper)).toBe(false)
     expect(wrapper.get('[data-test="rich-text-link"]').attributes('data-active')).toBe('true')
+    expect(document.activeElement).toBe(editor.view.dom)
   })
 
   it('edits the complete link without moving the collapsed selection', async () => {
@@ -245,8 +250,7 @@ describe('LinkToolbarControl', () => {
     outsideButton.remove()
   })
 
-  it('keeps invalid drafts open and opens normalized drafts without closing', async () => {
-    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+  it('keeps invalid drafts open', async () => {
     const editor = createEditor('<p>普通文字</p>')
     editor.commands.setTextSelection({ from: 1, to: 3 })
     const wrapper = mountControl(editor)
@@ -256,12 +260,8 @@ describe('LinkToolbarControl', () => {
 
     expect(wrapper.getComponent(NInput).props('status')).toBe('error')
     expect(wrapper.get('[data-test="rich-text-link-apply"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.get('[data-test="rich-text-link-open"]').attributes('disabled')).toBeDefined()
 
-    await setUrl(wrapper, 'example.com/path')
-    await wrapper.get('[data-test="rich-text-link-open"]').trigger('click')
-
-    expect(open).toHaveBeenCalledWith('https://example.com/path', '_blank', 'noopener,noreferrer')
+    await wrapper.get('form').trigger('submit')
     expect(isPopoverShown(wrapper)).toBe(true)
   })
 
@@ -284,10 +284,7 @@ describe('LinkToolbarControl', () => {
     editor.commands.setTextSelection(2)
     await openPopover(wrapper)
     await setUrl(wrapper, 'draft.example')
-    const openButton = wrapper.get('[data-test="rich-text-link-open"]')
-    const openButtonElement = openButton.element as HTMLElement
-    openButtonElement.focus()
-    await openButton.trigger('keydown', { key: 'Escape' })
+    await wrapper.get('[data-test="rich-text-link-cancel"]').trigger('keydown', { key: 'Escape' })
     await flushPromises()
 
     expect(editor.state.selection).toMatchObject({ from: 2, to: 2 })
@@ -306,14 +303,15 @@ describe('LinkToolbarControl', () => {
     expect(wrapper.get('[data-test="rich-text-link-apply"]').attributes('aria-label')).toBe(
       '应用链接',
     )
-    expect(wrapper.get('[data-test="rich-text-link-open"]').attributes('aria-label')).toBe(
-      '新窗口打开链接',
-    )
+    const applyMouseDown = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    wrapper.get('[data-test="rich-text-link-apply"]').element.dispatchEvent(applyMouseDown)
+    expect(applyMouseDown.defaultPrevented).toBe(true)
     expect(wrapper.get('[data-test="rich-text-link-cancel"]').attributes('aria-label')).toBe(
       '取消编辑链接',
     )
 
     const disabledWrapper = mountControl(createEditor(), true)
     expect(disabledWrapper.get('[data-test="rich-text-link"]').attributes('disabled')).toBeDefined()
+    expect(disabledWrapper.find('[data-test="rich-text-link-url"]').exists()).toBe(false)
   })
 })

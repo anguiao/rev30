@@ -37,9 +37,8 @@ function openImageDialog(editor: Editor, options: RichTextImageUploadOptions) {
   }
 
   function confirmDialog(attrs: RichTextImageAttrs) {
-    if (runRichTextAction(editor, action, attrs)) {
-      closeDialog()
-    }
+    runRichTextAction(editor, action, attrs)
+    closeDialog()
   }
 
   renderer = new VueRenderer(ImageDialog, {

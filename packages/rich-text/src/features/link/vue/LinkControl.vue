@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
 import { NButton, NPopover } from 'naive-ui'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { resolveLinkRange } from '../range'
 import LinkEditor from './LinkEditor.vue'
 
@@ -16,46 +16,66 @@ const props = withDefaults(
 )
 
 const editor = props.editor
+const root = ref<HTMLElement | null>(null)
 const show = ref(false)
+
 const range = computed(() => resolveLinkRange(editor))
 const isActive = computed(() => editor.isActive('link'))
 const isDisabled = computed(() => props.disabled || range.value === null)
+
+function closeLinkEditor() {
+  show.value = false
+}
+
+function cancelLinkEditor() {
+  closeLinkEditor()
+
+  void nextTick(() =>
+    root.value?.querySelector<HTMLElement>('[data-rich-text-toolbar-item]')?.focus(),
+  )
+}
 </script>
 
 <template>
-  <NPopover
-    v-model:show="show"
-    trigger="click"
-    placement="bottom-start"
-    :to="false"
-    :disabled="isDisabled"
-  >
-    <template #trigger>
-      <NButton
-        data-test="rich-text-link"
-        data-rich-text-quick-bar-roving
-        :data-active="isActive ? 'true' : undefined"
-        :disabled="isDisabled"
-        size="small"
-        style="--n-padding: 0 6px"
-        :type="isActive ? 'primary' : 'default'"
-        :secondary="isActive"
-        :quaternary="!isActive"
-        title="链接"
-        aria-label="链接"
-        :aria-pressed="isActive"
-      >
-        <span class="i-[lucide--link]" aria-hidden="true" />
-      </NButton>
-    </template>
+  <div ref="root" class="contents">
+    <NPopover
+      v-model:show="show"
+      trigger="click"
+      placement="bottom-start"
+      :to="false"
+      :disabled="isDisabled"
+    >
+      <template #trigger>
+        <slot name="trigger" :disabled="isDisabled" :show="show">
+          <NButton
+            data-test="rich-text-link"
+            data-rich-text-toolbar-item="link"
+            :data-active="isActive ? 'true' : undefined"
+            :disabled="isDisabled"
+            size="small"
+            style="--n-padding: 0 6px"
+            :type="isActive ? 'primary' : 'default'"
+            :secondary="isActive"
+            :quaternary="!isActive"
+            title="链接"
+            aria-label="链接"
+            :aria-pressed="isActive"
+            aria-haspopup="dialog"
+            :aria-expanded="show"
+          >
+            <span class="i-[lucide--link]" aria-hidden="true" />
+          </NButton>
+        </slot>
+      </template>
 
-    <LinkEditor
-      v-if="show && range"
-      :editor="editor"
-      :range="range"
-      :disabled="disabled"
-      autofocus
-      @close="show = false"
-    />
-  </NPopover>
+      <LinkEditor
+        v-if="show && range && !disabled"
+        :key="`${range.from}:${range.to}`"
+        :editor="editor"
+        :range="range"
+        @confirm="closeLinkEditor"
+        @cancel="cancelLinkEditor"
+      />
+    </NPopover>
+  </div>
 </template>

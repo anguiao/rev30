@@ -41,7 +41,9 @@ describe('CodeBlockLanguageControl', () => {
 
     expect(wrapper.getComponent(NDropdown).props('show')).toBe(false)
     expect(editor.state.selection).toMatchObject({ from: 1, to: 1 })
-    expect(document.activeElement).toBe(editor.view.dom)
+    expect(document.activeElement).toBe(
+      wrapper.get('[data-test="rich-text-code-block-language"]').element,
+    )
   })
 
   it('shows a valid language that is not in the language menu', () => {

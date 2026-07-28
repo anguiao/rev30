@@ -191,17 +191,12 @@ describe('all rich text preset', () => {
   it('provides the full contextual quick bar and slash command layout', () => {
     const textControls = allEditorPreset.quickBar?.textControls
 
-    expect(textControls?.main.map((control) => control.key)).toEqual([
+    expect(textControls?.map((control) => control.key)).toEqual([
       'bold',
       'italic',
       'underline',
       'highlight',
       'link',
-    ])
-    expect(textControls?.more.map((control) => control.key)).toEqual([
-      'strike',
-      'inline-code',
-      'remove-format',
     ])
     expect(allEditorPreset.quickBar?.featureBars.map((quickBar) => quickBar.feature.key)).toEqual([
       'image',
@@ -357,8 +352,7 @@ describe('compact rich text preset', () => {
   it('adds compact quick bars and slash commands', () => {
     const textControls = compactRichTextEditorPreset.quickBar?.textControls
 
-    expect(textControls?.main.map((control) => control.key)).toEqual(['bold', 'italic', 'link'])
-    expect(textControls?.more).toEqual([])
+    expect(textControls?.map((control) => control.key)).toEqual(['bold', 'italic', 'link'])
     expect(
       compactRichTextEditorPreset.quickBar?.featureBars.map((quickBar) => quickBar.feature.key),
     ).toEqual(['link'])

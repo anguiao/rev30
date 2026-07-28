@@ -2,12 +2,13 @@
 import type { Editor } from '@tiptap/vue-3'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
-import { computed, h } from 'vue'
+import { computed, h, nextTick, ref } from 'vue'
 import {
   canRunRichTextAction,
   runRichTextAction,
   type RichTextActionItem,
 } from '../../editor/action'
+import { focusRichTextMenuItem, handleRichTextMenuKeydown } from '../interactions/focus'
 import type { RichTextToolbarDropdownControl } from '.'
 
 const props = withDefaults(
@@ -22,6 +23,8 @@ const props = withDefaults(
 )
 
 const editor = props.editor
+const root = ref<HTMLElement | null>(null)
+const show = ref(false)
 
 function isItemDisabled(item: RichTextActionItem) {
   return props.disabled || !canRunRichTextAction(editor, item.action)
@@ -59,8 +62,10 @@ const options = computed<DropdownOption[]>(() =>
         }),
       props: {
         'data-test': `rich-text-${props.control.key}-${item.action.key}`,
+        role: 'menuitem',
         'data-active': active ? 'true' : undefined,
         'aria-pressed': item.action.isActive ? active : undefined,
+        'aria-disabled': isItemDisabled(item) ? 'true' : undefined,
       },
     }
   }),
@@ -86,20 +91,59 @@ function handleSelect(key: string | number) {
     runRichTextAction(editor, item.action)
   }
 }
+
+function handleShow(nextShow: boolean) {
+  show.value = nextShow
+
+  if (nextShow) {
+    void nextTick(() => focusRichTextMenuItem(root.value, 'active'))
+  }
+}
+
+function handleTriggerKeydown(event: KeyboardEvent) {
+  if (
+    event.defaultPrevented ||
+    event.isComposing ||
+    isDisabled.value ||
+    !['ArrowDown', 'ArrowUp'].includes(event.key)
+  ) {
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+  show.value = true
+  void nextTick(() =>
+    focusRichTextMenuItem(root.value, event.key === 'ArrowUp' ? 'last' : 'active'),
+  )
+}
+
+function handleMenuKeydown(event: KeyboardEvent) {
+  handleRichTextMenuKeydown(event, {
+    trigger: root.value?.querySelector<HTMLElement>('[data-rich-text-toolbar-item]') ?? null,
+    close: () => {
+      show.value = false
+    },
+  })
+}
 </script>
 
 <template>
-  <div class="contents">
+  <div ref="root" class="contents" @keydown.capture="handleMenuKeydown">
     <NDropdown
       trigger="click"
       placement="bottom-start"
+      :show="show"
       :options="options"
       :to="false"
+      :menu-props="() => ({ role: 'menu', 'aria-label': control.label })"
       :render-label="renderLabel"
+      @update:show="handleShow"
       @select="handleSelect"
     >
       <NButton
         :data-test="`rich-text-${control.key}`"
+        :data-rich-text-toolbar-item="control.key"
         :data-active="isActive ? 'true' : undefined"
         :disabled="isDisabled"
         size="small"
@@ -111,6 +155,8 @@ function handleSelect(key: string | number) {
         :aria-label="triggerLabel"
         :aria-pressed="isActive"
         aria-haspopup="menu"
+        :aria-expanded="show"
+        @keydown="handleTriggerKeydown"
       >
         <span :class="triggerIcon" aria-hidden="true" />
         <span class="ml-0.5 i-[lucide--chevron-down] text-xs" aria-hidden="true" />

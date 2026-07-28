@@ -3,6 +3,10 @@ import type { Editor } from '@tiptap/vue-3'
 import { NButton, NPopover } from 'naive-ui'
 import { computed, nextTick, ref } from 'vue'
 import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
+import {
+  focusRichTextPaletteItem,
+  handleRichTextPaletteKeydown,
+} from '../../../vue/interactions/focus'
 import { setHighlightAction, unsetHighlightAction } from '../editor'
 import { highlightColorOptions, type HighlightColor } from '../colors'
 
@@ -51,19 +55,47 @@ function clearHighlight() {
 
 function handleShow(isOpen: boolean) {
   if (isOpen) {
-    void nextTick(() => panel.value?.querySelector<HTMLElement>('button:not(:disabled)')?.focus())
+    void nextTick(() => focusRichTextPaletteItem(panel.value, 'active'))
   }
 }
 
+function handleTriggerKeydown(event: KeyboardEvent) {
+  if (
+    event.defaultPrevented ||
+    event.isComposing ||
+    isDisabled.value ||
+    !['ArrowDown', 'ArrowUp'].includes(event.key)
+  ) {
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+  show.value = true
+  void nextTick(() =>
+    focusRichTextPaletteItem(panel.value, event.key === 'ArrowUp' ? 'last' : 'active'),
+  )
+}
+
 function handleEscape(event: KeyboardEvent) {
-  if (event.isComposing || event.key !== 'Escape') {
+  if (event.defaultPrevented || event.isComposing || event.key !== 'Escape') {
     return
   }
 
   event.preventDefault()
   event.stopPropagation()
   show.value = false
-  void nextTick(() => root.value?.querySelector<HTMLElement>('button')?.focus())
+  void nextTick(() =>
+    root.value?.querySelector<HTMLElement>('[data-rich-text-toolbar-item="highlight"]')?.focus(),
+  )
+}
+
+function handlePanelKeydown(event: KeyboardEvent) {
+  handleEscape(event)
+  handleRichTextPaletteKeydown(event, {
+    root: panel.value,
+    columns: highlightColorOptions.length + 1,
+  })
 }
 </script>
 
@@ -81,7 +113,7 @@ function handleEscape(event: KeyboardEvent) {
         <NButton
           data-test="rich-text-highlight"
           :data-active="isActive ? 'true' : undefined"
-          data-rich-text-quick-bar-roving
+          data-rich-text-toolbar-item="highlight"
           :disabled="isDisabled"
           size="small"
           style="--n-padding: 0 6px"
@@ -91,6 +123,8 @@ function handleEscape(event: KeyboardEvent) {
           title="高亮"
           aria-label="高亮"
           :aria-pressed="isActive"
+          :aria-expanded="show"
+          @keydown="handleTriggerKeydown"
         >
           <span class="i-[lucide--highlighter]" aria-hidden="true" />
         </NButton>
@@ -101,12 +135,13 @@ function handleEscape(event: KeyboardEvent) {
         class="flex items-center gap-1"
         role="group"
         aria-label="高亮颜色"
-        @keydown="handleEscape"
+        @keydown="handlePanelKeydown"
       >
         <NButton
           v-for="color in highlightColorOptions"
           :key="color.key"
           :data-test="`rich-text-highlight-${color.key}`"
+          data-rich-text-palette-item
           :data-active="selectedColorKey === color.key ? 'true' : undefined"
           :disabled="!canApplyColor(color.value)"
           size="small"
@@ -128,6 +163,7 @@ function handleEscape(event: KeyboardEvent) {
 
         <NButton
           data-test="rich-text-highlight-clear"
+          data-rich-text-palette-item
           :disabled="!canClear"
           size="small"
           style="--n-padding: 0 6px"

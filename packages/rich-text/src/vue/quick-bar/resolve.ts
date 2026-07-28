@@ -57,7 +57,7 @@ export function resolveRichTextQuickBar(
     }
   }
 
-  if (quickBar.textControls && isTextQuickBarSelection(editor.state.selection)) {
+  if (quickBar.textControls?.length && isTextQuickBarSelection(editor.state.selection)) {
     return {
       type: 'text',
       controls: quickBar.textControls,

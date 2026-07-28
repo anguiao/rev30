@@ -27,7 +27,7 @@ describe('ImageQuickBar', () => {
         editor: markRaw(editor),
       },
     })
-    const controls = wrapper.findAll('[data-rich-text-quick-bar-roving]')
+    const controls = wrapper.findAll('[data-rich-text-toolbar-item]')
     const download = controls[0]!
 
     expect(controls.map((control) => control.attributes('data-test'))).toEqual([

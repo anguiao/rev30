@@ -52,14 +52,11 @@ const compactRichTextToolbar = defineRichTextToolbar([
 ])
 
 const compactRichTextQuickBar = defineRichTextQuickBar({
-  textControls: {
-    main: [
-      richTextQuickBarAction(boldActionItem),
-      richTextQuickBarAction(italicActionItem),
-      linkQuickBarControl,
-    ],
-    more: [],
-  },
+  textControls: [
+    richTextQuickBarAction(boldActionItem),
+    richTextQuickBarAction(italicActionItem),
+    linkQuickBarControl,
+  ],
   featureBars: [linkQuickBar],
 })
 

@@ -33,10 +33,7 @@ export type RichTextQuickBarControl =
   | RichTextQuickBarActionControl
   | RichTextQuickBarComponentControl
 
-export interface RichTextQuickBarControls {
-  readonly main: readonly RichTextQuickBarControl[]
-  readonly more: readonly RichTextQuickBarControl[]
-}
+export type RichTextQuickBarControls = readonly RichTextQuickBarControl[]
 
 export interface RichTextFeatureQuickBar {
   readonly feature: RichTextFeature
@@ -99,10 +96,7 @@ export function defineRichTextQuickBar(options: {
 }): RichTextQuickBarConfig {
   const controlKeys = new Set<string>()
 
-  for (const control of [
-    ...(options.textControls?.main ?? []),
-    ...(options.textControls?.more ?? []),
-  ]) {
+  for (const control of options.textControls ?? []) {
     if (controlKeys.has(control.key)) {
       throw new Error(`Rich text quick bar has a duplicate control: "${control.key}"`)
     }

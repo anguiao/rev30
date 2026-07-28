@@ -6,6 +6,7 @@ import { BubbleMenu } from '@tiptap/vue-3/menus'
 import { useEventListener } from '@vueuse/core'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { RichTextQuickBarConfig } from '.'
+import { useRichTextRovingFocus } from '../interactions/focus'
 import { resolveRichTextQuickBar, type RichTextQuickBarMatch } from './resolve'
 import RichTextTextQuickBar from './RichTextTextQuickBar.vue'
 
@@ -18,8 +19,6 @@ const props = defineProps<{
 
 const editor = props.editor
 const root = ref<HTMLElement | null>(null)
-const rovingItemSelector =
-  '[data-rich-text-quick-bar-roving]:not(:disabled):not([disabled]):not([aria-disabled="true"])'
 const isDismissed = ref(false)
 
 const quickBarPluginKey = new PluginKey('richTextQuickBar')
@@ -52,10 +51,6 @@ function hideBubbleMenu() {
   editor.commands.setMeta(quickBarPluginKey, 'hide')
 }
 
-function updateBubbleMenuPosition() {
-  editor.commands.setMeta(quickBarPluginKey, 'updatePosition')
-}
-
 function dismissQuickBar() {
   editor.view.focus()
   isDismissed.value = true
@@ -78,24 +73,7 @@ function getAnchorElement() {
   return featureQuickBar.value?.getAnchorElement?.(editor) ?? null
 }
 
-function getRovingItems() {
-  return Array.from(root.value?.querySelectorAll<HTMLElement>(rovingItemSelector) ?? [])
-}
-
-function setTabbableItem(item: HTMLElement) {
-  for (const candidate of getRovingItems()) {
-    candidate.tabIndex = candidate === item ? 0 : -1
-  }
-}
-
-function syncRovingTabIndex() {
-  const items = getRovingItems()
-  const item = items.find((candidate) => candidate.tabIndex === 0) ?? items[0]
-
-  if (item) {
-    setTabbableItem(item)
-  }
-}
+const rovingFocus = useRichTextRovingFocus(root)
 
 function handleEditorTab(event: KeyboardEvent) {
   if (event.defaultPrevented || event.isComposing || event.key !== 'Tab' || event.shiftKey) {
@@ -106,65 +84,30 @@ function handleEditorTab(event: KeyboardEvent) {
     return
   }
 
-  const items = getRovingItems()
-  const item = items.find((candidate) => candidate.dataset.active === 'true') ?? items[0]
+  const entered = rovingFocus.focusEntry()
 
-  if (!item) {
+  if (!entered) {
     return
   }
 
-  item.focus()
   event.preventDefault()
 }
 
-function handleEditorFocus() {
-  isDismissed.value = false
-}
-
 function handleQuickBarKeydown(event: KeyboardEvent) {
-  if (event.isComposing) {
+  rovingFocus.handleKeydown(event)
+
+  if (
+    event.defaultPrevented ||
+    event.isComposing ||
+    event.key !== 'Escape' ||
+    !rovingFocus.containsItem(event.target)
+  ) {
     return
   }
 
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    event.stopPropagation()
-    dismissQuickBar()
-    return
-  }
-
-  if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-    const items = getRovingItems()
-    const currentIndex = items.indexOf(event.target as HTMLElement)
-
-    if (currentIndex >= 0) {
-      event.preventDefault()
-      event.stopPropagation()
-
-      let nextIndex: number
-
-      if (event.key === 'Home') {
-        nextIndex = 0
-      } else if (event.key === 'End') {
-        nextIndex = items.length - 1
-      } else {
-        const offset = event.key === 'ArrowRight' ? 1 : -1
-        nextIndex = (currentIndex + offset + items.length) % items.length
-      }
-
-      items[nextIndex]!.focus()
-    }
-
-    return
-  }
-}
-
-function handleQuickBarFocusIn(event: FocusEvent) {
-  const target = event.target
-
-  if (target instanceof HTMLElement && target.matches(rovingItemSelector)) {
-    setTabbableItem(target)
-  }
+  event.preventDefault()
+  event.stopPropagation()
+  dismissQuickBar()
 }
 
 function handleFocusOut(event: FocusEvent) {
@@ -177,14 +120,23 @@ function handleFocusOut(event: FocusEvent) {
   hideBubbleMenu()
 }
 
-function handleEditorTransaction({ transaction }: { transaction: Transaction }) {
+function handleEditorFocus() {
+  isDismissed.value = false
+}
+
+function restoreQuickBarOnEditorChange({ transaction }: { transaction: Transaction }) {
   if (transaction.selectionSet || transaction.docChanged) {
     isDismissed.value = false
   }
 }
 
 editor.on('focus', handleEditorFocus)
-editor.on('transaction', handleEditorTransaction)
+editor.on('transaction', restoreQuickBarOnEditorChange)
+
+onBeforeUnmount(() => {
+  editor.off('focus', handleEditorFocus)
+  editor.off('transaction', restoreQuickBarOnEditorChange)
+})
 
 useEventListener(() => editor.view.dom, 'keydown', handleEditorTab)
 useEventListener(() => editor.view.dom, 'focusout', handleFocusOut)
@@ -192,10 +144,11 @@ useEventListener(() => editor.view.dom, 'focusout', handleFocusOut)
 watch(
   activeQuickBar,
   (quickBar) => {
-    if (quickBar) {
-      syncRovingTabIndex()
-      updateBubbleMenuPosition()
+    if (!quickBar) {
+      return
     }
+
+    editor.commands.setMeta(quickBarPluginKey, 'updatePosition')
   },
   { flush: 'post' },
 )
@@ -207,11 +160,6 @@ onMounted(() => {
       root.value.parentElement.tabIndex = -1
     }
   })
-})
-
-onBeforeUnmount(() => {
-  editor.off('focus', handleEditorFocus)
-  editor.off('transaction', handleEditorTransaction)
 })
 </script>
 
@@ -227,11 +175,13 @@ onBeforeUnmount(() => {
   >
     <div
       ref="root"
+      data-rich-text-toolbar-root
       data-test="rich-text-quick-bar"
       class="pointer-events-auto flex items-center gap-1 rounded-(--rich-text-theme-border-radius) border border-(--rich-text-theme-input-border-color) bg-(--rich-text-theme-popover-color) p-1 shadow-lg"
       role="toolbar"
       aria-label="上下文格式工具栏"
-      @focusin="handleQuickBarFocusIn"
+      aria-orientation="horizontal"
+      @focusin="rovingFocus.handleFocusIn"
       @focusout="handleFocusOut"
       @keydown="handleQuickBarKeydown"
     >
@@ -240,7 +190,6 @@ onBeforeUnmount(() => {
         v-if="featureQuickBar"
         v-bind="featureQuickBar.props"
         :editor="editor"
-        @dismiss="dismissQuickBar"
       />
 
       <RichTextTextQuickBar v-else-if="textControls" :editor="editor" :controls="textControls" />

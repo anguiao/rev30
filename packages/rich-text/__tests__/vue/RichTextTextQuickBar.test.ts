@@ -1,12 +1,8 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
-import { boldActionItem } from '../../src/features/bold/editor'
-import { italicActionItem } from '../../src/features/italic/editor'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
-import { richTextQuickBarAction } from '../../src/vue/quick-bar'
 import RichTextTextQuickBar from '../../src/vue/quick-bar/RichTextTextQuickBar.vue'
 import { createTestEditor } from '../helpers/editor'
 
@@ -21,12 +17,12 @@ function createEditor() {
   return editor
 }
 
-function mountControls(editor: ReturnType<typeof createEditor>, controls = compactTextControls) {
+function mountControls(editor: ReturnType<typeof createEditor>) {
   return mount(RichTextTextQuickBar, {
     attachTo: document.body,
     props: {
       editor: markRaw(editor),
-      controls,
+      controls: compactTextControls,
     },
   })
 }
@@ -42,39 +38,17 @@ describe('RichTextTextQuickBar', () => {
     const input = wrapper.get('[data-test="rich-text-link-url"] input')
     const arrow = new KeyboardEvent('keydown', { key: 'ArrowLeft', cancelable: true })
     const tab = new KeyboardEvent('keydown', { key: 'Tab', cancelable: true })
+    const commandMouseDown = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
 
     input.element.dispatchEvent(arrow)
     input.element.dispatchEvent(tab)
+    wrapper.get('[data-test="rich-text-quick-bar-bold"]').element.dispatchEvent(commandMouseDown)
 
     expect(arrow.defaultPrevented).toBe(false)
     expect(tab.defaultPrevented).toBe(false)
+    expect(commandMouseDown.defaultPrevented).toBe(false)
     expect(
-      wrapper
-        .get('[data-test="rich-text-link-apply"]')
-        .attributes('data-rich-text-quick-bar-roving'),
+      wrapper.get('[data-test="rich-text-link-apply"]').attributes('data-rich-text-toolbar-item'),
     ).toBeUndefined()
-  })
-
-  it('closes the inline more menu with Escape while preserving trigger focus', async () => {
-    const editor = createEditor()
-    const wrapper = mountControls(editor, {
-      main: [richTextQuickBarAction(boldActionItem)],
-      more: [richTextQuickBarAction(italicActionItem)],
-    })
-
-    const trigger = wrapper.get('[data-test="rich-text-quick-bar-more"]')
-    ;(trigger.element as HTMLElement).focus()
-    await trigger.trigger('click')
-    await flushPromises()
-
-    const menu = wrapper.get('[role="menu"]')
-    const menuItem = wrapper.get('[data-test="rich-text-quick-bar-more-italic"]')
-    ;(menuItem.element as HTMLElement).focus()
-    expect(document.activeElement).toBe(menuItem.element)
-
-    await menu.trigger('keydown', { key: 'Escape' })
-    await flushPromises()
-    expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
-    expect(document.activeElement).toBe(trigger.element)
   })
 })

@@ -50,7 +50,7 @@ describe('rich text quick bar resolution', () => {
     })
   })
 
-  it('selects Link, CodeBlock, Image, and plain text quick bars from the all preset', () => {
+  it('selects the link Quick Bar for a collapsed caret inside a link', () => {
     const linkEditor = createEditor('<p><a href="https://example.com">link</a> text</p>')
     linkEditor.commands.setTextSelection(2)
     expect(resolveRichTextQuickBar(linkEditor, allPreset.quickBar!)).toMatchObject({
@@ -59,7 +59,9 @@ describe('rich text quick bar resolution', () => {
         feature: { key: 'link' },
       },
     })
+  })
 
+  it('selects CodeBlock, Image, and plain text quick bars from the all preset', () => {
     const codeEditor = createEditor('<pre><code>const value = 1</code></pre>')
     codeEditor.commands.setTextSelection(2)
     expect(resolveRichTextQuickBar(codeEditor, allPreset.quickBar!)).toMatchObject({

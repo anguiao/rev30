@@ -5,7 +5,7 @@ import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { PluginKey, type Transaction } from '@tiptap/pm/state'
 import { flushPromises, mount } from '@vue/test-utils'
-import { NDropdown, NPopover } from 'naive-ui'
+import { NDropdown } from 'naive-ui'
 import { defineComponent, h, markRaw, onBeforeUnmount, onMounted, ref, type PropType } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
@@ -14,9 +14,8 @@ import { codeBlockEditorFeature } from '../../src/features/code-block/editor'
 import { codeBlockQuickBar } from '../../src/features/code-block/vue'
 import { imageFeature } from '../../src/features/image/shared'
 import { createImageQuickBar } from '../../src/features/image/vue'
+import { historyActionItems } from '../../src/features/history/editor'
 import { italicActionItem } from '../../src/features/italic/editor'
-import { linkFeature } from '../../src/features/link/shared'
-import { linkQuickBar } from '../../src/features/link/vue'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 import {
   defineRichTextQuickBar,
@@ -168,7 +167,11 @@ describe('RichTextQuickBar', () => {
     const wrapper = mountQuickBar(editor)
     await flushPromises()
 
-    const controls = wrapper.findAll('[data-rich-text-quick-bar-roving]')
+    const quickBar = wrapper.get('[data-test="rich-text-quick-bar"]')
+    expect(quickBar.attributes('role')).toBe('toolbar')
+    expect(quickBar.attributes('aria-orientation')).toBe('horizontal')
+
+    const controls = wrapper.findAll('[data-rich-text-toolbar-item]')
     expect(controls).toHaveLength(3)
     expect(controls.map((control) => (control.element as HTMLElement).tabIndex)).toEqual([
       0, -1, -1,
@@ -187,6 +190,31 @@ describe('RichTextQuickBar', () => {
     expect(document.activeElement).toBe(controls[0]!.element)
   })
 
+  it('includes native link controls in roving navigation', async () => {
+    const editor = createTestEditor({
+      extensions: collectRichTextEditorExtensions(compactRichTextEditorPreset),
+      content: '<p><a href="https://example.com">link</a> text</p>',
+    })
+    editor.commands.setTextSelection(2)
+    editor.view.focus()
+    const wrapper = mountQuickBar(editor)
+    await flushPromises()
+
+    const open = wrapper.get('[data-test="rich-text-quick-bar-link-open"]')
+    const edit = wrapper.get('[data-test="rich-text-quick-bar-link-edit"]')
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+
+    editor.view.dom.dispatchEvent(tab)
+    expect(tab.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(open.element)
+
+    await open.trigger('keydown', { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(edit.element)
+
+    await edit.trigger('keydown', { key: 'ArrowLeft' })
+    expect(document.activeElement).toBe(open.element)
+  })
+
   it('skips disabled items during roving navigation', async () => {
     const editor = createEditor()
     editor.commands.setTextSelection({ from: 1, to: 4 })
@@ -194,14 +222,14 @@ describe('RichTextQuickBar', () => {
     const wrapper = mountQuickBar(editor)
     await flushPromises()
 
-    const controls = wrapper.findAll<HTMLElement>('[data-rich-text-quick-bar-roving]')
+    const controls = wrapper.findAll<HTMLElement>('[data-rich-text-toolbar-item]')
     const disabledLink = document.createElement('a')
-    disabledLink.dataset.richTextQuickBarRoving = ''
+    disabledLink.dataset.richTextToolbarItem = ''
     disabledLink.setAttribute('disabled', '')
     disabledLink.tabIndex = 0
 
     const ariaDisabledItem = document.createElement('div')
-    ariaDisabledItem.dataset.richTextQuickBarRoving = ''
+    ariaDisabledItem.dataset.richTextToolbarItem = ''
     ariaDisabledItem.setAttribute('aria-disabled', 'true')
     ariaDisabledItem.tabIndex = 0
 
@@ -218,13 +246,10 @@ describe('RichTextQuickBar', () => {
 
   it('drives the real BubbleMenu visibility and removes its wrapper from tab order', async () => {
     const editor = createEditor()
-    const wrapper = mountRealQuickBar(
+    mountRealQuickBar(
       editor,
       defineRichTextQuickBar({
-        textControls: {
-          main: [richTextQuickBarAction(boldActionItem)],
-          more: [richTextQuickBarAction(italicActionItem)],
-        },
+        textControls: [richTextQuickBarAction(boldActionItem)],
       }),
     )
     await flushPromises()
@@ -241,9 +266,6 @@ describe('RichTextQuickBar', () => {
     expect(quickBar.classList.contains('border-(--rich-text-theme-input-border-color)')).toBe(true)
     expect(quickBar.parentElement?.tabIndex).toBe(-1)
 
-    await wrapper.get('[data-test="rich-text-quick-bar-more"]').trigger('click')
-    expect(wrapper.getComponent(NPopover).props('show')).toBe(true)
-
     const toolbarTrigger = document.createElement('button')
     document.body.appendChild(toolbarTrigger)
     toolbarTrigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
@@ -257,7 +279,6 @@ describe('RichTextQuickBar', () => {
     await vi.waitFor(() => {
       expect(document.querySelector('[data-test="rich-text-quick-bar"]')).not.toBeNull()
     })
-    expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
     toolbarTrigger.remove()
   })
 
@@ -278,6 +299,99 @@ describe('RichTextQuickBar', () => {
 
     expect(editor.state.selection).toMatchObject({ from: 1, to: 4 })
     expect(document.activeElement).toBe(firstControl.element)
+
+    editor.view.focus()
+    const reverseTab = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    editor.view.dom.dispatchEvent(reverseTab)
+    expect(reverseTab.defaultPrevented).toBe(false)
+  })
+
+  it('does not intercept editor Tab when every command item is unavailable', async () => {
+    const editor = createEditor()
+    editor.commands.setTextSelection({ from: 1, to: 4 })
+    editor.view.focus()
+    mountQuickBar(
+      editor,
+      defineRichTextQuickBar({
+        textControls: [richTextQuickBarAction(historyActionItems[0])],
+      }),
+    )
+    await flushPromises()
+
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+    editor.view.dom.dispatchEvent(tab)
+    expect(tab.defaultPrevented).toBe(false)
+  })
+
+  it('prefers an active command initially, then remembers focus across entries', async () => {
+    const editor = createEditor()
+    editor.commands.setTextSelection({ from: 1, to: 4 })
+    editor.commands.toggleItalic()
+    editor.view.focus()
+    const wrapper = mountQuickBar(
+      editor,
+      defineRichTextQuickBar({
+        textControls: [
+          richTextQuickBarAction(boldActionItem),
+          richTextQuickBarAction(italicActionItem),
+        ],
+      }),
+    )
+    await flushPromises()
+
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+    editor.view.dom.dispatchEvent(tab)
+    const italic = wrapper.get('[data-test="rich-text-quick-bar-italic"]')
+    expect(document.activeElement).toBe(italic.element)
+
+    const bold = wrapper.get('[data-test="rich-text-quick-bar-bold"]')
+    await italic.trigger('keydown', { key: 'ArrowLeft' })
+    editor.view.focus()
+    editor.view.dom.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }),
+    )
+    expect(document.activeElement).toBe(bold.element)
+  })
+
+  it('keeps the remembered command when the selection moves', async () => {
+    const editor = createTestEditor({
+      extensions: collectRichTextEditorExtensions(compactRichTextEditorPreset),
+      content: '<p><strong>one</strong> <em>two</em></p>',
+    })
+    const wrapper = mountQuickBar(
+      editor,
+      defineRichTextQuickBar({
+        textControls: [
+          richTextQuickBarAction(boldActionItem),
+          richTextQuickBarAction(italicActionItem),
+        ],
+      }),
+    )
+
+    editor.commands.setTextSelection({ from: 1, to: 4 })
+    editor.view.focus()
+    await flushPromises()
+    editor.view.dom.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }),
+    )
+    expect(document.activeElement).toBe(
+      wrapper.get('[data-test="rich-text-quick-bar-bold"]').element,
+    )
+
+    editor.view.focus()
+    editor.commands.setTextSelection({ from: 5, to: 8 })
+    await flushPromises()
+    editor.view.dom.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }),
+    )
+    expect(document.activeElement).toBe(
+      wrapper.get('[data-test="rich-text-quick-bar-bold"]').element,
+    )
   })
 
   it('dismisses with Escape until the editor context changes', async () => {
@@ -301,66 +415,6 @@ describe('RichTextQuickBar', () => {
     await vi.waitFor(() => {
       expect(wrapper.find('[data-test="rich-text-quick-bar"]').exists()).toBe(true)
     })
-  })
-
-  it('dismisses the link Quick Bar when link editing ends', async () => {
-    const editor = createTestEditor({
-      extensions: [Document, Paragraph, Text, ...linkFeature.documentExtensions!()],
-      content: '<p><a href="https://example.com">linked text</a></p>',
-    })
-    editor.commands.setTextSelection(3)
-    editor.view.focus()
-    const wrapper = mountQuickBar(editor, defineRichTextQuickBar({ featureBars: [linkQuickBar] }))
-    await flushPromises()
-
-    expect(wrapper.find('[data-test="rich-text-link-url"]').exists()).toBe(true)
-
-    await wrapper.get('[data-test="rich-text-link-cancel"]').trigger('click')
-
-    await vi.waitFor(() => {
-      expect(document.activeElement).toBe(editor.view.dom)
-      expect(wrapper.find('[data-test="rich-text-quick-bar"]').exists()).toBe(false)
-    })
-
-    editor.commands.setTextSelection(4)
-
-    await vi.waitFor(() => {
-      expect(wrapper.find('[data-test="rich-text-link-url"]').exists()).toBe(true)
-    })
-  })
-
-  it('opens an inline more menu without moving focus', async () => {
-    const editor = createEditor()
-    editor.commands.setTextSelection({ from: 1, to: 4 })
-    editor.view.focus()
-    const wrapper = mountQuickBar(
-      editor,
-      defineRichTextQuickBar({
-        textControls: {
-          main: [richTextQuickBarAction(boldActionItem)],
-          more: [richTextQuickBarAction(italicActionItem)],
-        },
-      }),
-    )
-    await flushPromises()
-
-    await wrapper.get('[data-test="rich-text-quick-bar-more"]').trigger('click')
-
-    const moreAction = await vi.waitFor(() => {
-      const element = document.querySelector<HTMLElement>(
-        '[data-test="rich-text-quick-bar-more-italic"]',
-      )
-      expect(element).not.toBeNull()
-      expect(document.activeElement).toBe(editor.view.dom)
-      return element!
-    })
-    expect(wrapper.get('[data-test="rich-text-quick-bar"]').element.contains(moreAction)).toBe(true)
-
-    moreAction.click()
-    await flushPromises()
-
-    expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
-    expect(editor.isActive('italic')).toBe(true)
   })
 
   it('anchors the code block Quick Bar to the block end instead of the cursor', async () => {
@@ -413,7 +467,9 @@ describe('RichTextQuickBar', () => {
     await flushPromises()
 
     expect(wrapper.getComponent(NDropdown).props('show')).toBe(true)
-    expect(document.activeElement).toBe(trigger.element)
+    expect(document.activeElement).toBe(
+      document.querySelector('[data-test="rich-text-code-block-language-plaintext"]'),
+    )
 
     expect(editor.state.selection).toMatchObject({
       from: positions[0],
@@ -449,7 +505,18 @@ describe('RichTextQuickBar', () => {
 
     expect(wrapper.find('[data-test="rich-text-quick-bar"]').exists()).toBe(true)
 
-    await wrapper.get('[data-test="rich-text-quick-bar-image"]').trigger('click')
+    const download = wrapper.get('[data-test="rich-text-quick-bar-image-download"]')
+    const edit = wrapper.get('[data-test="rich-text-quick-bar-image"]')
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+
+    editor.view.dom.dispatchEvent(tab)
+    expect(tab.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(download.element)
+
+    await download.trigger('keydown', { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(edit.element)
+
+    await edit.trigger('click')
 
     await vi.waitFor(() => {
       expect(document.querySelector('[data-test="rich-text-image-cancel"]')).not.toBeNull()

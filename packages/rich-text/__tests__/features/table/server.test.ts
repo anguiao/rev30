@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { createTableHtmlPolicy } from '../../../src/features/table/server'
 import { RichTextContentInvalidError, deriveRichTextContent } from '../../../src/server'
+import { sanitizeRichTextHtml } from '../../../src/server/sanitize'
 import { createAllRichTextServerPreset } from '../../../src/server/presets/all'
 
 const preset = createAllRichTextServerPreset({
@@ -176,5 +178,23 @@ describe('table server feature', () => {
     expect(() => deriveRichTextContent({ type: 'doc', content: [table(rows)] }, preset)).toThrow(
       RichTextContentInvalidError,
     )
+  })
+
+  it('normalizes the table wrapper and keeps only renderer table attributes', () => {
+    const html = sanitizeRichTextHtml(
+      '<div class="evil" style="overflow-x: scroll; color: red" tabindex="9" role="button" onclick="alert(1)"><table style="width: 120px; color: red" data-table="evil"><tbody><tr><td colspan="0" rowspan="2" colwidth="20,30" style="text-align: justify; color: red">内容</td></tr></tbody></table></div>',
+      [createTableHtmlPolicy()],
+    )
+
+    expect(html).toContain(
+      '<div class="tableWrapper" style="overflow-x:auto" tabindex="0" role="region" aria-label="可横向滚动的表格">',
+    )
+    expect(html).toContain('<table style="width:120px">')
+    expect(html).toContain('<td rowspan="2" colwidth="20,30">内容</td>')
+    expect(html).not.toContain('evil')
+    expect(html).not.toContain('onclick')
+    expect(html).not.toContain('colspan="0"')
+    expect(html).not.toContain('overflow-x:scroll')
+    expect(html).not.toContain('color:red')
   })
 })

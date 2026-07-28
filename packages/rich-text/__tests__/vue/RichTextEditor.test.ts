@@ -47,6 +47,7 @@ const toolbarDataTests = [
   'rich-text-code-block',
   'rich-text-code-block-language',
   'rich-text-horizontal-rule',
+  'rich-text-table',
   'rich-text-image',
   'rich-text-undo',
   'rich-text-redo',
@@ -190,6 +191,49 @@ describe('RichTextEditor', () => {
     expect(wrapper.find('[data-test="rich-text-status-bar-end"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="rich-text-character-count"]').exists()).toBe(true)
     expect(editable.text()).toContain('维护通知')
+  })
+
+  it('renders table semantics inside the responsive table wrapper', async () => {
+    const wrapper = mountRichTextEditor({
+      modelValue: {
+        type: 'doc',
+        content: [
+          {
+            type: 'table',
+            content: [
+              {
+                type: 'tableRow',
+                content: [
+                  {
+                    type: 'tableHeader',
+                    attrs: { colspan: 1, rowspan: 1, colwidth: null, align: null },
+                    content: [{ type: 'paragraph', attrs: { textAlign: null } }],
+                  },
+                ],
+              },
+              {
+                type: 'tableRow',
+                content: [
+                  {
+                    type: 'tableCell',
+                    attrs: { colspan: 1, rowspan: 1, colwidth: null, align: null },
+                    content: [{ type: 'paragraph', attrs: { textAlign: null } }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      preset: allEditorPreset,
+    })
+
+    await getEditable(wrapper)
+
+    expect(wrapper.find('.ProseMirror .tableWrapper').exists()).toBe(true)
+    expect(wrapper.find('.ProseMirror .tableWrapper table').exists()).toBe(true)
+    expect(wrapper.find('.ProseMirror .tableWrapper th').exists()).toBe(true)
+    expect(wrapper.find('.ProseMirror .tableWrapper td').exists()).toBe(true)
   })
 
   it('renders status bar items in their configured regions', async () => {

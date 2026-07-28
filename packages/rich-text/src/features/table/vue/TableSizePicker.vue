@@ -35,6 +35,10 @@ function isCellActive(cellRows: number, cellColumns: number) {
   return cellRows === rows.value && cellColumns === columns.value
 }
 
+function isCellHighlighted(cellRows: number, cellColumns: number) {
+  return cellRows <= rows.value && cellColumns <= columns.value
+}
+
 function handleCellFocus(cellRows: number, cellColumns: number) {
   setSize(cellRows, cellColumns)
 }
@@ -130,16 +134,22 @@ defineExpose({ open })
           role="gridcell"
           data-rich-text-palette-item
           :data-rich-text-table-size="`${cellRow}x${cellColumn}`"
+          :data-rich-text-table-size-highlighted="
+            isCellHighlighted(cellRow, cellColumn) ? 'true' : undefined
+          "
           :data-active="isCellActive(cellRow, cellColumn) ? 'true' : undefined"
           :tabindex="isCellActive(cellRow, cellColumn) ? 0 : -1"
           :aria-label="getCellLabel(cellRow, cellColumn)"
           :aria-selected="isCellActive(cellRow, cellColumn)"
           class="m-px flex size-6 items-center justify-center rounded-sm border border-(--rich-text-theme-input-border-color) text-xs hover:bg-(--rich-text-theme-primary-muted-color)"
-          :class="
+          :class="[
+            isCellHighlighted(cellRow, cellColumn)
+              ? 'bg-(--rich-text-theme-primary-muted-color)'
+              : undefined,
             isCellActive(cellRow, cellColumn)
-              ? 'bg-(--rich-text-theme-primary-muted-color) text-(--rich-text-theme-primary-color)'
-              : undefined
-          "
+              ? 'text-(--rich-text-theme-primary-color)'
+              : undefined,
+          ]"
           @focus="handleCellFocus(cellRow, cellColumn)"
           @mouseenter="handleCellFocus(cellRow, cellColumn)"
           @keydown="handleCellEnter($event, cellRow, cellColumn)"

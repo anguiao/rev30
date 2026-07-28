@@ -96,7 +96,7 @@ function handleFocusout(event: FocusEvent) {
       :disabled="disabled"
     />
 
-    <div ref="scrollContainer" class="relative min-h-0 flex-1 overflow-y-auto">
+    <div ref="scrollContainer" class="relative min-h-0 min-w-0 flex-1 overflow-y-auto">
       <EditorContent
         :editor="editor"
         class="prose prose-sm h-full max-w-none dark:prose-invert"
@@ -174,5 +174,54 @@ function handleFocusout(event: FocusEvent) {
   border-radius: var(--rich-text-theme-border-radius);
   outline: 1px solid var(--rich-text-theme-primary-color-hover);
   outline-offset: 2px;
+}
+
+:deep(.ProseMirror .tableWrapper) {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+:deep(.ProseMirror .tableWrapper:focus-visible) {
+  outline: 2px solid var(--rich-text-theme-primary-color);
+  outline-offset: 2px;
+}
+
+:deep(.ProseMirror .tableWrapper > table) {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+:deep(.ProseMirror .tableWrapper th),
+:deep(.ProseMirror .tableWrapper td) {
+  position: relative;
+  min-width: 96px;
+  border: 1px solid var(--rich-text-theme-input-border-color);
+  padding: 0.5rem 0.625rem;
+  text-align: inherit;
+  vertical-align: top;
+}
+
+:deep(.ProseMirror .tableWrapper th) {
+  font-weight: 600;
+}
+
+:deep(.ProseMirror .tableWrapper th > p),
+:deep(.ProseMirror .tableWrapper td > p) {
+  margin: 0;
+}
+
+:deep(.ProseMirror .tableWrapper .selectedCell::after) {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-color: var(--rich-text-theme-selection-color);
+  content: '';
+  pointer-events: none;
+}
+
+:deep(.ProseMirror .tableWrapper .selectedCell > *) {
+  position: relative;
+  z-index: 1;
 }
 </style>

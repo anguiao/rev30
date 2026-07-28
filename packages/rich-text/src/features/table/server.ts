@@ -5,7 +5,7 @@ import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sani
 import { TABLE_MAX_LOGICAL_POSITIONS, tableFeature } from './shared'
 
 const pixelValuePattern = /^\s*\d+(?:\.\d+)?px\s*$/
-const positiveIntegerPattern = /^\d+$/
+const positiveIntegerPattern = /^[1-9]\d*$/
 const colwidthPattern = /^-?\d+(?:\.\d+)?(?:,-?\d+(?:\.\d+)?)*$/
 
 function getTableWidth(table: ProseMirrorNode) {

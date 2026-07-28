@@ -4,7 +4,7 @@ import { richTextToolbarComponent } from '../../../vue/toolbar'
 import type { RichTextSlashCommand } from '../../../vue/slash-menu'
 import { insertTableAction } from '../editor'
 import { resolveRichTextTableContext, getRichTextTableWrapperElement } from '../editor'
-import { tableFeature } from '../shared'
+import { TABLE_SLASH_INSERT_COLUMNS, TABLE_SLASH_INSERT_ROWS, tableFeature } from '../shared'
 import TableQuickBar from './TableQuickBar.vue'
 import TableToolbarControl from './TableToolbarControl.vue'
 
@@ -37,7 +37,7 @@ const tableSlashCommandConfig: RichTextSlashCommand = {
   label: '表格',
   icon: 'i-[lucide--table-2]',
   keywords: ['table'],
-  command: insertTableAction.command(3, 3),
+  command: insertTableAction.command(TABLE_SLASH_INSERT_ROWS, TABLE_SLASH_INSERT_COLUMNS),
 }
 
 export const tableSlashCommand = tableSlashCommandConfig

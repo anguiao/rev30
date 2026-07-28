@@ -35,6 +35,12 @@ describe('table size picker and toolbar control', () => {
     await cells[2 * 8 + 3]!.trigger('mouseenter')
     expect(wrapper.get('[data-test="rich-text-table-size-label"]').text()).toContain('4 列 × 3 行')
     expect(wrapper.get('[data-rich-text-table-size="3x4"]').attributes('data-active')).toBe('true')
+    expect(wrapper.findAll('[data-rich-text-table-size-highlighted="true"]')).toHaveLength(12)
+    expect(
+      wrapper
+        .get('[data-rich-text-table-size="4x5"]')
+        .attributes('data-rich-text-table-size-highlighted'),
+    ).toBeUndefined()
 
     await wrapper.get('[data-rich-text-table-size="3x4"]').trigger('click')
     await flushPromises()

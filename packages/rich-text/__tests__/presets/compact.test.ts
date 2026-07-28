@@ -38,6 +38,7 @@ const allFeatureKeys = [
   'list',
   'horizontal-rule',
   'image',
+  'table',
 ]
 
 const compactFeatureKeys = ['base', 'history', 'bold', 'italic', 'link', 'heading', 'list']
@@ -122,6 +123,10 @@ describe('all rich text preset', () => {
       'listItem',
       'horizontalRule',
       'image',
+      'table',
+      'tableRow',
+      'tableCell',
+      'tableHeader',
     ])
   })
 
@@ -233,6 +238,7 @@ describe('all rich text preset', () => {
       'list',
       'horizontal-rule',
       'image',
+      'table',
     ])
     expect(
       collectRichTextServerExtensions(allServerPreset).map((extension) => extension.name),
@@ -262,6 +268,10 @@ describe('all rich text preset', () => {
       'listItem',
       'horizontalRule',
       'image',
+      'table',
+      'tableRow',
+      'tableCell',
+      'tableHeader',
     ])
     expect(
       allServerPreset.serverFeatures.flatMap(({ htmlPolicy }) => htmlPolicy.allowedTags ?? []),
@@ -287,6 +297,14 @@ describe('all rich text preset', () => {
       'li',
       'hr',
       'img',
+      'div',
+      'table',
+      'colgroup',
+      'col',
+      'tbody',
+      'tr',
+      'th',
+      'td',
     ])
   })
 

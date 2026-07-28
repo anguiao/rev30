@@ -20,6 +20,14 @@ export function deriveRichTextContent(contentJson: unknown, preset: RichTextServ
     }
 
     document.check()
+
+    const serverFeatureByFeature = new Map(
+      preset.serverFeatures.map((serverFeature) => [serverFeature.feature, serverFeature]),
+    )
+
+    for (const feature of preset.features) {
+      serverFeatureByFeature.get(feature)?.validateDocument?.(document)
+    }
   } catch {
     throw new RichTextContentInvalidError()
   }

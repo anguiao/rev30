@@ -1,4 +1,5 @@
 import type { AnyExtension } from '@tiptap/core'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import type { RichTextFeature } from '../core/feature'
 import type { RichTextPreset } from '../core/preset'
 import type { RichTextHtmlPolicy } from './sanitize'
@@ -7,6 +8,7 @@ export interface RichTextServerFeature<Feature extends RichTextFeature = RichTex
   readonly feature: Feature
   readonly htmlPolicy: RichTextHtmlPolicy
   readonly extensions?: () => readonly AnyExtension[]
+  readonly validateDocument?: (document: ProseMirrorNode) => void
 }
 
 export function defineRichTextServerFeature<const Feature extends RichTextFeature>(

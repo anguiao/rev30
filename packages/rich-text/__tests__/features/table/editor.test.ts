@@ -1,0 +1,184 @@
+import Document from '@tiptap/extension-document'
+import Paragraph from '@tiptap/extension-paragraph'
+import Text from '@tiptap/extension-text'
+import { CellSelection } from '@tiptap/pm/tables'
+import { UndoRedo } from '@tiptap/extensions/undo-redo'
+import { describe, expect, it } from 'vitest'
+import { canRunRichTextAction, runRichTextAction } from '../../../src/editor/action'
+import {
+  addColumnAfterAction,
+  addColumnBeforeAction,
+  addRowAfterAction,
+  addRowBeforeAction,
+  deleteColumnAction,
+  deleteRowAction,
+  deleteTableAction,
+  insertTableAction,
+  resolveRichTextTableContext,
+  tableEditorFeature,
+  toggleHeaderRowAction,
+} from '../../../src/features/table/editor'
+import { createTableExtensions } from '../../../src/features/table/shared'
+import { createTestEditor } from '../../helpers/editor'
+
+function createEditor(content: string | object = '<p>前后</p>') {
+  return createTestEditor({
+    extensions: [Document, Paragraph, Text, UndoRedo, ...createTableExtensions()],
+    content,
+  })
+}
+
+function getTable(editor: ReturnType<typeof createEditor>) {
+  const table = editor.state.doc.firstChild
+
+  if (!table || table.type.name !== 'table') {
+    throw new Error('Expected a table')
+  }
+
+  return table
+}
+
+describe('table editor actions', () => {
+  it('declares the editor implementation and inserts requested sizes with a header row', () => {
+    expect(tableEditorFeature.feature.key).toBe('table')
+
+    const editor = createEditor()
+    expect(runRichTextAction(editor, insertTableAction, 3, 3)).toBe(true)
+
+    const table = getTable(editor)
+    expect(table.childCount).toBe(3)
+    expect(table.firstChild?.childCount).toBe(3)
+    expect(table.firstChild?.firstChild?.type.name).toBe('tableHeader')
+    expect(table.child(1).firstChild?.type.name).toBe('tableCell')
+    expect(editor.state.selection.$from.parent.type.name).toBe('paragraph')
+    expect(editor.state.selection.$from.node(-1).type.name).toBe('tableHeader')
+  })
+
+  it('splits a paragraph around an inserted table without adding placeholder blocks', () => {
+    const editor = createEditor('<p>前缀后缀</p>')
+    editor.commands.setTextSelection({ from: 3, to: 3 })
+
+    expect(runRichTextAction(editor, insertTableAction, 1, 1)).toBe(true)
+    expect(editor.getJSON()).toMatchObject({
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: '前缀' }] },
+        { type: 'table' },
+        { type: 'paragraph', content: [{ type: 'text', text: '后缀' }] },
+      ],
+    })
+  })
+
+  it('rejects non-empty selections outside tables and nested insertion inside a cell', () => {
+    const editor = createEditor('<p>前缀后缀</p>')
+    editor.commands.setTextSelection({ from: 2, to: 4 })
+    expect(canRunRichTextAction(editor, insertTableAction, 1, 1)).toBe(false)
+    expect(runRichTextAction(editor, insertTableAction, 1, 1)).toBe(false)
+
+    editor.commands.setTextSelection({ from: 1, to: 1 })
+    expect(runRichTextAction(editor, insertTableAction, 1, 1)).toBe(true)
+    expect(resolveRichTextTableContext(editor.state.selection)).not.toBeNull()
+    expect(canRunRichTextAction(editor, insertTableAction, 1, 1)).toBe(false)
+  })
+
+  it('adds and deletes rows and columns through the native table commands', () => {
+    const editor = createEditor()
+    runRichTextAction(editor, insertTableAction, 2, 2)
+
+    expect(runRichTextAction(editor, addRowBeforeAction)).toBe(true)
+    expect(getTable(editor).childCount).toBe(3)
+    expect(runRichTextAction(editor, addRowAfterAction)).toBe(true)
+    expect(getTable(editor).childCount).toBe(4)
+    expect(runRichTextAction(editor, addColumnBeforeAction)).toBe(true)
+    expect(getTable(editor).firstChild?.childCount).toBe(3)
+    expect(runRichTextAction(editor, addColumnAfterAction)).toBe(true)
+    expect(getTable(editor).firstChild?.childCount).toBe(4)
+
+    expect(runRichTextAction(editor, deleteRowAction)).toBe(true)
+    expect(getTable(editor).childCount).toBe(3)
+    expect(runRichTextAction(editor, deleteColumnAction)).toBe(true)
+    expect(getTable(editor).firstChild?.childCount).toBe(3)
+  })
+
+  it('disables deleting the final row or column without deleting the table', () => {
+    const editor = createEditor()
+    runRichTextAction(editor, insertTableAction, 1, 1)
+
+    expect(canRunRichTextAction(editor, deleteRowAction)).toBe(false)
+    expect(canRunRichTextAction(editor, deleteColumnAction)).toBe(false)
+    expect(canRunRichTextAction(editor, deleteTableAction)).toBe(true)
+    expect(runRichTextAction(editor, deleteTableAction)).toBe(true)
+    expect(editor.getJSON()).toMatchObject({ content: [{ type: 'paragraph' }] })
+  })
+
+  it('toggles only the first row header semantics and preserves other header cells', () => {
+    const editor = createEditor({
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            {
+              type: 'tableRow',
+              content: [
+                { type: 'tableCell', content: [{ type: 'paragraph' }] },
+                { type: 'tableCell', content: [{ type: 'paragraph' }] },
+              ],
+            },
+            {
+              type: 'tableRow',
+              content: [
+                { type: 'tableHeader', content: [{ type: 'paragraph' }] },
+                { type: 'tableCell', content: [{ type: 'paragraph' }] },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(toggleHeaderRowAction.isActive?.(editor)).toBe(false)
+    expect(runRichTextAction(editor, toggleHeaderRowAction)).toBe(true)
+    expect(toggleHeaderRowAction.isActive?.(editor)).toBe(true)
+    expect(getTable(editor).firstChild?.firstChild?.type.name).toBe('tableHeader')
+    expect(getTable(editor).child(1).firstChild?.type.name).toBe('tableHeader')
+
+    expect(runRichTextAction(editor, toggleHeaderRowAction)).toBe(true)
+    expect(toggleHeaderRowAction.isActive?.(editor)).toBe(false)
+    expect(getTable(editor).child(1).firstChild?.type.name).toBe('tableHeader')
+  })
+
+  it('resolves cursor, text, and complete cell selection contexts', () => {
+    const editor = createEditor()
+    runRichTextAction(editor, insertTableAction, 2, 2)
+
+    const cursorContext = resolveRichTextTableContext(editor.state.selection)
+    expect(cursorContext?.selectionType).toBe('cursor')
+    expect(cursorContext?.tableNode.type.name).toBe('table')
+
+    const cell = cursorContext?.cellPosition
+    if (cell === undefined) {
+      throw new Error('Expected a cell position')
+    }
+
+    editor.commands.setTextSelection({ from: cell + 2, to: cell + 3 })
+    expect(resolveRichTextTableContext(editor.state.selection)?.selectionType).toBe('text')
+
+    const table = getTable(editor)
+    const firstCellPosition = editor.state.doc.resolve(cell)
+    const secondCellPosition = editor.state.doc.resolve(
+      cell + table.firstChild!.firstChild!.nodeSize,
+    )
+    editor.view.dispatch(
+      editor.state.tr.setSelection(new CellSelection(firstCellPosition, secondCellPosition)),
+    )
+    expect(resolveRichTextTableContext(editor.state.selection)?.selectionType).toBe('cell')
+  })
+
+  it('keeps native table keyboard navigation and history undo available', () => {
+    const editor = createEditor()
+    runRichTextAction(editor, insertTableAction, 1, 1)
+    expect(editor.commands.goToNextCell()).toBe(false)
+    expect(editor.commands.undo()).toBe(true)
+    expect(editor.getJSON()).toMatchObject({ content: [{ type: 'paragraph' }] })
+  })
+})

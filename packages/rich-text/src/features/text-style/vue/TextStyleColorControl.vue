@@ -122,7 +122,7 @@ function handleKeydown(event: KeyboardEvent) {
         >
           <span class="i-[lucide--palette]" aria-hidden="true" />
           <span
-            class="ml-0.5 inline-block size-3 rounded-sm border border-(--rich-text-theme-input-border-color)"
+            class="ml-0.5 inline-block size-3 rounded-sm border border-stone-200 dark:border-zinc-500/60"
             :style="{ backgroundColor: currentColor ?? 'currentColor' }"
             aria-hidden="true"
           />
@@ -167,7 +167,7 @@ function handleKeydown(event: KeyboardEvent) {
           @click="setColor(option.value)"
         >
           <span
-            class="inline-block size-4 rounded-sm border border-(--rich-text-theme-input-border-color)"
+            class="inline-block size-4 rounded-sm border border-stone-200 dark:border-zinc-500/60"
             :style="{ backgroundColor: option.value }"
             aria-hidden="true"
           />

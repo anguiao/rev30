@@ -155,7 +155,7 @@ function handlePanelKeydown(event: KeyboardEvent) {
           @click="applyColor(color.value)"
         >
           <span
-            class="inline-block size-4 rounded-sm border border-(--rich-text-theme-input-border-color)"
+            class="inline-block size-4 rounded-sm border border-stone-200 dark:border-zinc-500/60"
             :style="{ backgroundColor: color.value }"
             aria-hidden="true"
           />

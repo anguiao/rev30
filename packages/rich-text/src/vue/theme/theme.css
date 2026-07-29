@@ -11,6 +11,7 @@
     --rich-text-primary-color-hover,
     var(--rich-text-default-primary-color-hover)
   );
+  --rich-text-theme-error-color: var(--rich-text-error-color, var(--rich-text-default-error-color));
   --rich-text-theme-primary-muted-color: var(
     --rich-text-primary-muted-color,
     color-mix(in srgb, var(--rich-text-theme-primary-color) 16%, transparent)
@@ -47,6 +48,14 @@
   --rich-text-theme-input-box-shadow-focus: var(
     --rich-text-input-box-shadow-focus,
     var(--rich-text-default-input-box-shadow-focus)
+  );
+  --rich-text-theme-table-border-color: var(
+    --rich-text-table-border-color,
+    var(--rich-text-default-table-border-color)
+  );
+  --rich-text-theme-table-header-color: var(
+    --rich-text-table-header-color,
+    var(--rich-text-default-table-header-color)
   );
   --rich-text-theme-muted-text-color: var(
     --rich-text-muted-text-color,

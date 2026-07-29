@@ -9,6 +9,7 @@ export function useRichTextThemeStyle() {
     '--rich-text-default-border-radius': themeVars.value.borderRadius,
     '--rich-text-default-primary-color': themeVars.value.primaryColor,
     '--rich-text-default-primary-color-hover': themeVars.value.primaryColorHover,
+    '--rich-text-default-error-color': themeVars.value.errorColor,
     '--rich-text-default-popover-color': themeVars.value.popoverColor,
     '--rich-text-default-input-color': themeVars.value.inputColor,
     '--rich-text-default-input-focus-color': themeVars.value.inputColor,
@@ -17,6 +18,8 @@ export function useRichTextThemeStyle() {
     '--rich-text-default-input-border-focus-color': themeVars.value.primaryColorHover,
     '--rich-text-default-input-divider-color': themeVars.value.dividerColor,
     '--rich-text-default-input-box-shadow-focus': `0 0 0 2px color-mix(in srgb, ${themeVars.value.primaryColor} 20%, transparent)`,
+    '--rich-text-default-table-border-color': themeVars.value.dividerColor,
+    '--rich-text-default-table-header-color': themeVars.value.tableHeaderColor,
     '--rich-text-default-muted-text-color': themeVars.value.textColor3,
   }))
 }

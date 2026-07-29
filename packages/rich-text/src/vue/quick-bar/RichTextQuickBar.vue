@@ -177,7 +177,7 @@ onMounted(() => {
       ref="root"
       data-rich-text-toolbar-root
       data-test="rich-text-quick-bar"
-      class="pointer-events-auto flex items-center gap-1 rounded-(--rich-text-theme-border-radius) border border-(--rich-text-theme-input-border-color) bg-(--rich-text-theme-popover-color) p-1 shadow-lg"
+      class="pointer-events-auto flex items-center gap-1 rounded-(--rich-text-theme-border-radius) bg-(--rich-text-theme-popover-color) p-1 shadow-lg"
       role="toolbar"
       aria-label="上下文格式工具栏"
       aria-orientation="horizontal"

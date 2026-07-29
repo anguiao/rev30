@@ -176,9 +176,19 @@ function handleFocusout(event: FocusEvent) {
 }
 
 :deep(.ProseMirror .tableWrapper) {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
   max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-x: contain;
+}
+
+:deep(.ProseMirror > .tableWrapper:first-child) {
+  margin-top: 0;
+}
+
+:deep(.ProseMirror > .tableWrapper:last-child) {
+  margin-bottom: 0;
 }
 
 :deep(.ProseMirror .tableWrapper:focus-visible) {
@@ -187,7 +197,10 @@ function handleFocusout(event: FocusEvent) {
 }
 
 :deep(.ProseMirror .tableWrapper > table) {
+  margin-top: 0;
+  margin-bottom: 0;
   width: 100%;
+  border: 1px solid var(--rich-text-theme-table-border-color);
   border-collapse: collapse;
 }
 
@@ -195,13 +208,14 @@ function handleFocusout(event: FocusEvent) {
 :deep(.ProseMirror .tableWrapper td) {
   position: relative;
   min-width: 96px;
-  border: 1px solid var(--rich-text-theme-input-border-color);
+  border: 1px solid var(--rich-text-theme-table-border-color);
   padding: 0.5rem 0.625rem;
   text-align: inherit;
   vertical-align: top;
 }
 
 :deep(.ProseMirror .tableWrapper th) {
+  background-color: var(--rich-text-theme-table-header-color);
   font-weight: 600;
 }
 

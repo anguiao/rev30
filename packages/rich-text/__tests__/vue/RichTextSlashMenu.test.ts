@@ -123,10 +123,16 @@ describe('RichTextSlashMenu', () => {
     })
 
     const listbox = document.querySelector<HTMLElement>('[data-test="rich-text-slash-menu"]')
+    const group = listbox?.querySelector('section')
 
     expect(document.activeElement).toBe(editor.view.dom)
     expect(editorRoot.contains(listbox)).toBe(true)
     expect(listbox?.classList.contains('pointer-events-auto')).toBe(true)
+    expect(listbox?.classList.contains('bg-(--rich-text-theme-popover-color)')).toBe(true)
+    expect(listbox?.classList.contains('bg-(--rich-text-theme-input-color)')).toBe(false)
+    expect(listbox?.classList.contains('border')).toBe(false)
+    expect(group?.classList.contains('border-stone-200')).toBe(true)
+    expect(group?.classList.contains('dark:border-zinc-500/60')).toBe(true)
     expect(editor.view.dom.getAttribute('aria-controls')).toBe(listbox?.id)
     expect(editor.view.dom.getAttribute('aria-expanded')).toBe('true')
     await vi.waitFor(() => {

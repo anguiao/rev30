@@ -185,7 +185,7 @@ watch(activeKey, (commandKey) => {
       :id="listboxId"
       ref="root"
       data-test="rich-text-slash-menu"
-      class="pointer-events-auto max-h-80 min-w-64 overflow-y-auto rounded-(--rich-text-theme-border-radius) border border-(--rich-text-theme-input-border-color) bg-(--rich-text-theme-input-color) p-1 shadow-lg outline-none"
+      class="pointer-events-auto max-h-80 min-w-64 overflow-y-auto rounded-(--rich-text-theme-border-radius) bg-(--rich-text-theme-popover-color) p-1 shadow-lg outline-none"
       role="listbox"
       aria-label="Slash 命令"
     >
@@ -193,7 +193,7 @@ watch(activeKey, (commandKey) => {
         <section
           v-for="group in filteredGroups"
           :key="group.key"
-          class="mb-1 border-b border-(--rich-text-theme-input-border-color) pb-1 last:mb-0 last:border-b-0 last:pb-0"
+          class="mb-1 border-b border-stone-200 pb-1 last:mb-0 last:border-b-0 last:pb-0 dark:border-zinc-500/60"
           role="presentation"
         >
           <div class="px-2 py-1 text-xs opacity-60" role="presentation">

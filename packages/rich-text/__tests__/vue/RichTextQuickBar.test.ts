@@ -263,7 +263,7 @@ describe('RichTextQuickBar', () => {
       return element!
     })
     expect(quickBar.classList.contains('bg-(--rich-text-theme-popover-color)')).toBe(true)
-    expect(quickBar.classList.contains('border-(--rich-text-theme-input-border-color)')).toBe(true)
+    expect(quickBar.classList.contains('border')).toBe(false)
     expect(quickBar.parentElement?.tabIndex).toBe(-1)
 
     const toolbarTrigger = document.createElement('button')

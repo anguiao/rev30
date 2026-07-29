@@ -5,5 +5,5 @@ export const blockquoteFeature = defineRichTextFeature({
   key: 'blockquote',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [Blockquote],
+  sharedExtensions: () => [Blockquote],
 })

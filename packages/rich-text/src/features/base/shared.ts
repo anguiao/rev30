@@ -8,5 +8,5 @@ export const baseFeature = defineRichTextFeature({
   key: 'base',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [Document, Paragraph, Text, HardBreak],
+  sharedExtensions: () => [Document, Paragraph, Text, HardBreak],
 })

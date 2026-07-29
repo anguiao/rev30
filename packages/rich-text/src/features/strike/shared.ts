@@ -5,5 +5,5 @@ export const strikeFeature = defineRichTextFeature({
   key: 'strike',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [Strike],
+  sharedExtensions: () => [Strike],
 })

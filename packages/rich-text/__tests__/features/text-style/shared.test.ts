@@ -12,7 +12,7 @@ import {
 import { textStyleFeature } from '../../../src/features/text-style/shared'
 import { createTestEditor } from '../../helpers/editor'
 
-const extensions = [Document, Paragraph, Text, ...textStyleFeature.documentExtensions!()]
+const extensions = [Document, Paragraph, Text, ...textStyleFeature.sharedExtensions!()]
 const schema = getSchema(extensions)
 
 function createEditor(content: string | object = '<p>维护通知</p>') {
@@ -29,7 +29,7 @@ describe('text style feature', () => {
       editorImplementation: true,
       serverImplementation: true,
     })
-    expect(textStyleFeature.documentExtensions!().map((extension) => extension.name)).toEqual([
+    expect(textStyleFeature.sharedExtensions!().map((extension) => extension.name)).toEqual([
       'textStyle',
       'color',
       'fontFamily',

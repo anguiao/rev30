@@ -30,7 +30,7 @@ export const textAlignFeature = defineRichTextFeature({
   key: 'text-align',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [
+  sharedExtensions: () => [
     RichTextTextAlign.configure({
       types: textAlignTypes,
       alignments: [...textAlignments],

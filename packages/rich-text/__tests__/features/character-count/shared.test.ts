@@ -8,6 +8,6 @@ describe('character count feature', () => {
       editorImplementation: true,
       serverImplementation: false,
     })
-    expect(characterCountFeature.documentExtensions).toBeUndefined()
+    expect(characterCountFeature.sharedExtensions).toBeUndefined()
   })
 })

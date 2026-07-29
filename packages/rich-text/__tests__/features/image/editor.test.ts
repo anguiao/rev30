@@ -18,7 +18,7 @@ const imageAttrs = {
 
 function createEditor(content: string | object = '<p></p><p>后续正文</p>') {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, UndoRedo, ...imageFeature.documentExtensions!()],
+    extensions: [Document, Paragraph, Text, UndoRedo, ...imageFeature.sharedExtensions!()],
     content,
   })
 }

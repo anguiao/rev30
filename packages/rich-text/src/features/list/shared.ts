@@ -7,5 +7,5 @@ export const listFeature = defineRichTextFeature({
   key: 'list',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [BulletList, OrderedList, ListItem],
+  sharedExtensions: () => [BulletList, OrderedList, ListItem],
 })

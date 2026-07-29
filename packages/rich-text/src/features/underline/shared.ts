@@ -5,5 +5,5 @@ export const underlineFeature = defineRichTextFeature({
   key: 'underline',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [Underline],
+  sharedExtensions: () => [Underline],
 })

@@ -5,5 +5,5 @@ export const horizontalRuleFeature = defineRichTextFeature({
   key: 'horizontal-rule',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [HorizontalRule],
+  sharedExtensions: () => [HorizontalRule],
 })

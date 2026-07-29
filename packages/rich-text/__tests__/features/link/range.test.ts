@@ -18,7 +18,7 @@ function createEditor(content: string) {
       Bold,
       CodeBlock,
       HardBreak,
-      ...linkFeature.documentExtensions!(),
+      ...linkFeature.sharedExtensions!(),
     ],
     content,
   })

@@ -5,5 +5,5 @@ export const italicFeature = defineRichTextFeature({
   key: 'italic',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [Italic],
+  sharedExtensions: () => [Italic],
 })

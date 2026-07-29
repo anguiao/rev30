@@ -16,7 +16,7 @@ function createEditor() {
       Paragraph,
       Heading.configure({ levels: [1, 2, 3] }),
       Text,
-      ...textAlignFeature.documentExtensions!(),
+      ...textAlignFeature.sharedExtensions!(),
     ],
     content: '<p>维护通知</p>',
   })

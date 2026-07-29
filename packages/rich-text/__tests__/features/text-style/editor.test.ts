@@ -18,7 +18,7 @@ import { createTestEditor } from '../../helpers/editor'
 
 function createEditor() {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, ...textStyleFeature.documentExtensions!()],
+    extensions: [Document, Paragraph, Text, ...textStyleFeature.sharedExtensions!()],
     content: '<p>维护通知</p>',
   })
 }

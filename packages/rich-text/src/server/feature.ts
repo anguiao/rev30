@@ -34,7 +34,7 @@ export function collectRichTextServerExtensions(
   )
 
   return preset.features.flatMap((feature) => [
-    ...(feature.documentExtensions?.() ?? []),
+    ...(feature.sharedExtensions?.() ?? []),
     ...(serverFeatureByFeature.get(feature)?.extensions?.() ?? []),
   ])
 }

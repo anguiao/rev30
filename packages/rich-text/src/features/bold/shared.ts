@@ -5,5 +5,5 @@ export const boldFeature = defineRichTextFeature({
   key: 'bold',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [Bold],
+  sharedExtensions: () => [Bold],
 })

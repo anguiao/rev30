@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { highlightColorOptions } from '../../../src/features/highlight/colors'
 import { highlightFeature } from '../../../src/features/highlight/shared'
 
-const schema = getSchema([Document, Paragraph, Text, ...highlightFeature.documentExtensions!()])
+const schema = getSchema([Document, Paragraph, Text, ...highlightFeature.sharedExtensions!()])
 
 describe('highlight feature', () => {
   it.each([...highlightColorOptions.map((option) => option.value), null])(

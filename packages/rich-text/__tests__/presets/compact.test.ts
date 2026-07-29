@@ -220,7 +220,7 @@ describe('all rich text preset', () => {
     )
   })
 
-  it('keeps server implementations, document extensions, and html policy order', () => {
+  it('keeps server implementations, shared extensions, and html policy order', () => {
     expect(allServerPreset.key).toBe(allRichTextPreset.key)
     expect(allServerPreset.features).toBe(allRichTextPreset.features)
     expect(allServerPreset.serverFeatures.map(({ feature }) => feature.key)).toEqual([
@@ -385,7 +385,7 @@ describe('compact rich text preset', () => {
     ])
   })
 
-  it('keeps server implementations, document extensions, and html policy order', () => {
+  it('keeps server implementations, shared extensions, and html policy order', () => {
     expect(compactRichTextServerPreset.key).toBe(compactRichTextPreset.key)
     expect(compactRichTextServerPreset.features).toBe(compactRichTextPreset.features)
     expect(compactRichTextServerPreset.serverFeatures.map(({ feature }) => feature.key)).toEqual([

@@ -10,7 +10,7 @@ import { createTestEditor } from '../../helpers/editor'
 
 function createEditor() {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, ...inlineCodeFeature.documentExtensions!()],
+    extensions: [Document, Paragraph, Text, ...inlineCodeFeature.sharedExtensions!()],
     content: '<p>pnpm check</p>',
   })
 }

@@ -5,5 +5,5 @@ export const inlineCodeFeature = defineRichTextFeature({
   key: 'inline-code',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [Code],
+  sharedExtensions: () => [Code],
 })

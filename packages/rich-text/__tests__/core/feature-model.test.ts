@@ -233,21 +233,21 @@ describe('rich text feature model', () => {
   })
 
   it('collects extensions in canonical feature order', () => {
-    const firstDocumentExtension = Extension.create({ name: 'first-document' })
+    const firstSharedExtension = Extension.create({ name: 'first-shared' })
     const firstEditorExtension = Extension.create({ name: 'first-editor' })
     const firstServerExtension = Extension.create({ name: 'first-server' })
-    const secondDocumentExtension = Extension.create({ name: 'second-document' })
+    const secondSharedExtension = Extension.create({ name: 'second-shared' })
     const firstFeature = defineRichTextFeature({
       key: 'first',
       editorImplementation: true,
       serverImplementation: true,
-      documentExtensions: () => [firstDocumentExtension],
+      sharedExtensions: () => [firstSharedExtension],
     })
     const secondFeature = defineRichTextFeature({
       key: 'second',
       editorImplementation: false,
       serverImplementation: true,
-      documentExtensions: () => [secondDocumentExtension],
+      sharedExtensions: () => [secondSharedExtension],
     })
     const preset = defineRichTextPreset({
       key: 'extension-test',
@@ -271,9 +271,9 @@ describe('rich text feature model', () => {
 
     expect(
       collectRichTextEditorExtensions(editorPreset).map((extension) => extension.name),
-    ).toEqual(['first-document', 'first-editor', 'second-document'])
+    ).toEqual(['first-shared', 'first-editor', 'second-shared'])
     expect(
       collectRichTextServerExtensions(serverPreset).map((extension) => extension.name),
-    ).toEqual(['first-document', 'first-server', 'second-document'])
+    ).toEqual(['first-shared', 'first-server', 'second-shared'])
   })
 })

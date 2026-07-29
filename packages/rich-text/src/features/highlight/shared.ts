@@ -29,7 +29,7 @@ export const highlightFeature = defineRichTextFeature({
   key: 'highlight',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [
+  sharedExtensions: () => [
     RichTextHighlight.configure({
       multicolor: true,
     }),

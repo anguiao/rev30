@@ -4,7 +4,7 @@ export interface RichTextFeature<Key extends string = string> {
   readonly key: Key
   readonly editorImplementation: boolean
   readonly serverImplementation: boolean
-  readonly documentExtensions?: () => readonly AnyExtension[]
+  readonly sharedExtensions?: () => readonly AnyExtension[]
 }
 
 export function defineRichTextFeature<const Key extends string>(

@@ -12,7 +12,7 @@ const extensions = [
   Paragraph,
   Heading.configure({ levels: [1, 2, 3] }),
   Text,
-  ...textAlignFeature.documentExtensions!(),
+  ...textAlignFeature.sharedExtensions!(),
 ]
 const schema = getSchema(extensions)
 

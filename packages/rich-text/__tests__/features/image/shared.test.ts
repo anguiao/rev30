@@ -6,11 +6,11 @@ import { describe, expect, it } from 'vitest'
 import { imageFeature } from '../../../src/features/image/shared'
 import { createTestEditor } from '../../helpers/editor'
 
-const schema = getSchema([Document, Paragraph, Text, ...imageFeature.documentExtensions!()])
+const schema = getSchema([Document, Paragraph, Text, ...imageFeature.sharedExtensions!()])
 
 function createEditor(content: string) {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, ...imageFeature.documentExtensions!()],
+    extensions: [Document, Paragraph, Text, ...imageFeature.sharedExtensions!()],
     content,
   })
 }

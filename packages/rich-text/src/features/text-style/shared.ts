@@ -155,7 +155,7 @@ export const textStyleFeature = defineRichTextFeature({
   key: 'text-style',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [
+  sharedExtensions: () => [
     RichTextTextStyle,
     RichTextColor,
     RichTextFontFamily,

@@ -13,7 +13,7 @@ import { createTestEditor } from '../../../helpers/editor'
 
 function createEditor(content = '<p>维护通知</p>') {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, UndoRedo, ...linkFeature.documentExtensions!()],
+    extensions: [Document, Paragraph, Text, UndoRedo, ...linkFeature.sharedExtensions!()],
     content,
   })
 }

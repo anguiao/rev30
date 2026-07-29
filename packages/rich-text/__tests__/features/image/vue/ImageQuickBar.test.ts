@@ -12,7 +12,7 @@ describe('ImageQuickBar', () => {
   it('offers native download and opens the shared image dialog for editing', async () => {
     const src = '/uploads/image.png'
     const editor = createTestEditor({
-      extensions: [Document, Paragraph, Text, ...imageFeature.documentExtensions!()],
+      extensions: [Document, Paragraph, Text, ...imageFeature.sharedExtensions!()],
       content: `<img src="${src}">`,
     })
     editor.commands.setNodeSelection(0)

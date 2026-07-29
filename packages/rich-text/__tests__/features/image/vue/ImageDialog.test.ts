@@ -98,7 +98,7 @@ function deferred<T>() {
 
 function createEditor(content = '<p>维护通知</p>') {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, ...imageFeature.documentExtensions!()],
+    extensions: [Document, Paragraph, Text, ...imageFeature.sharedExtensions!()],
     content,
   })
 }
@@ -121,7 +121,7 @@ function mountControl(
 
 function createHistoryEditor(content = '<p>/图片</p>') {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, UndoRedo, ...imageFeature.documentExtensions!()],
+    extensions: [Document, Paragraph, Text, UndoRedo, ...imageFeature.sharedExtensions!()],
     content,
   })
 }

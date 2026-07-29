@@ -109,5 +109,5 @@ export const tableFeature = defineRichTextFeature({
   key: 'table',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: createTableExtensions,
+  sharedExtensions: createTableExtensions,
 })

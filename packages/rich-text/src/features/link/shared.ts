@@ -51,7 +51,7 @@ export const linkFeature = defineRichTextFeature({
   key: 'link',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [
+  sharedExtensions: () => [
     ValidatedLink.configure({
       openOnClick: false,
       enableClickSelection: false,

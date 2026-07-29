@@ -486,7 +486,7 @@ describe('RichTextQuickBar', () => {
 
   it('hides when an image dialog takes focus', async () => {
     const editor = createTestEditor({
-      extensions: [Document, Paragraph, Text, ...imageFeature.documentExtensions!()],
+      extensions: [Document, Paragraph, Text, ...imageFeature.sharedExtensions!()],
       content: '<img src="/uploads/image.png">',
     })
     editor.commands.setNodeSelection(0)

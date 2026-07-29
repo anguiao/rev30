@@ -4,7 +4,7 @@ import Text from '@tiptap/extension-text'
 import { describe, expect, it } from 'vitest'
 import { headingFeature } from '../../../src/features/heading/shared'
 
-const schema = getSchema([Document, Text, ...headingFeature.documentExtensions!()])
+const schema = getSchema([Document, Text, ...headingFeature.sharedExtensions!()])
 
 describe('heading feature', () => {
   it.each([1, 2, 3])('accepts the supported heading level: %s', (level) => {

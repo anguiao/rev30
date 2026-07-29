@@ -29,5 +29,5 @@ export const headingFeature = defineRichTextFeature({
   key: 'heading',
   editorImplementation: true,
   serverImplementation: true,
-  documentExtensions: () => [RichTextHeading.configure({ levels: [...headingLevels] })],
+  sharedExtensions: () => [RichTextHeading.configure({ levels: [...headingLevels] })],
 })

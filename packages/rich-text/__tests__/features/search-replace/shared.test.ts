@@ -8,6 +8,6 @@ describe('search replace feature', () => {
       editorImplementation: true,
       serverImplementation: false,
     })
-    expect(searchReplaceFeature.documentExtensions).toBeUndefined()
+    expect(searchReplaceFeature.sharedExtensions).toBeUndefined()
   })
 })

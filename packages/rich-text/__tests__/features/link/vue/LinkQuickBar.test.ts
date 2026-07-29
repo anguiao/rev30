@@ -11,7 +11,7 @@ import { createTestEditor } from '../../../helpers/editor'
 
 function createEditor(content = '<p><a href="https://example.com">链接文本</a>末尾</p>') {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, ...linkFeature.documentExtensions!()],
+    extensions: [Document, Paragraph, Text, ...linkFeature.sharedExtensions!()],
     content,
   })
 }

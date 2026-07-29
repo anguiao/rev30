@@ -26,7 +26,7 @@ function createEditor(
   content: NonNullable<ConstructorParameters<typeof Editor>[0]>['content'] = '<p>维护通知</p>',
 ) {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, ...textStyleFeature.documentExtensions!()],
+    extensions: [Document, Paragraph, Text, ...textStyleFeature.sharedExtensions!()],
     content,
   })
 }

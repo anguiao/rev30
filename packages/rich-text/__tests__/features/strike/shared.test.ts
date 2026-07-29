@@ -7,7 +7,7 @@ import { createTestEditor } from '../../helpers/editor'
 
 function createEditor() {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, ...strikeFeature.documentExtensions!()],
+    extensions: [Document, Paragraph, Text, ...strikeFeature.sharedExtensions!()],
     content: '<p>维护通知</p>',
   })
 }

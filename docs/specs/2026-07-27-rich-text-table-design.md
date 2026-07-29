@@ -147,23 +147,27 @@ Table Toolbar Control 在当前 selection 完全位于同一张表格时显示�
 - 切换首行表头。
 - 删除整张表格。
 
-结构菜单复用现有 Menu focus helper：
+结构操作使用单个 Naive UI `NDropdown`。“行”“列”使用普通 option 的 `children` 打开原生二级菜单；之后使用分隔线区分表格级操作，并在顶层依次提供首行表头命令和“删除表格”。“删除表格”的文字与图标统一使用危险色，删除行、删除列保持普通色。
+
+首行表头使用命令式文案而不是 checkbox 状态：当前启用时显示“取消首行表头”，未启用时显示“设置首行表头”。该能力只出现在完整 Toolbar 菜单中。
+
+结构下拉复用现有 Menu focus helper：
 
 - 点击、`Enter`、`Space` 或 `ArrowDown` 打开后优先聚焦 active 项，否则聚焦第一个 enabled 项。
 - `ArrowUp` 打开后聚焦最后一个 enabled 项。
-- `ArrowUp`/`ArrowDown`、`Home`、`End` 在 enabled menu items 间导航，`Enter`/`Space` 执行。
+- `ArrowUp`/`ArrowDown`、`Home`、`End` 在当前菜单层级的 enabled items 间导航。
+- `ArrowRight`、`Enter` 或 `Space` 从“行”“列”进入对应子菜单，`ArrowLeft` 返回父级；`Enter`/`Space` 在叶子项上执行操作。
 - `Escape` 关闭并恢复 Table trigger；`Tab`/`Shift+Tab` 关闭菜单但保留浏览器默认导航。
 
-Table Quick Bar 提供同一组能力的紧凑入口：
+Table Quick Bar 提供高频结构操作的紧凑入口：
 
-- “行”菜单：上方新增、下方新增、删除行。
-- “列”菜单：左侧新增、右侧新增、删除列。
-- 首行表头切换按钮。
-- 删除表格按钮。
+- “行”`NDropdown`：上方新增、下方新增、删除行三个平铺选项。
+- “列”`NDropdown`：左侧新增、右侧新增、删除列三个平铺选项。
+- 独立的危险色“删除表格”按钮。
 
-四个入口分别作为现有 Quick Bar root 管理的 roving items。指针将焦点移入 Quick Bar 后，可以使用 `ArrowLeft`/`ArrowRight`、`Home` 和 `End` 导航；行列子菜单复用与顶部结构菜单相同的 Menu focus helper。子菜单先消费 `Escape` 并恢复自身 trigger，只有外层收到未被子菜单消费的 `Escape` 时才 dismiss Table Quick Bar。
+三个入口分别作为现有 Quick Bar root 管理的 roving items。指针将焦点移入 Quick Bar 后，可以使用 `ArrowLeft`/`ArrowRight`、`Home` 和 `End` 导航；行列下拉统一从 trigger 下方展开并复用与顶部结构下拉相同的 Menu focus helper。局部下拉先消费 `Escape` 并恢复自身 trigger，只有外层收到未被下拉消费的 `Escape` 时才 dismiss Table Quick Bar。
 
-顶部菜单和 Quick Bar 复用完全相同的 actions、label、icon、active 与 disabled 解析，不复制命令逻辑。
+顶部菜单和 Quick Bar 对同一操作复用相同的 actions、label、icon 与 disabled 解析，不复制命令逻辑；首行表头只保留在完整 Toolbar 中。
 
 删除规则沿用 Tiptap Tables 的命令语义：
 
@@ -176,7 +180,7 @@ Table Quick Bar 提供同一组能力的紧凑入口：
 表头与结构操作直接沿用 Tiptap 的单元格类型和命令语义：
 
 - 新建表格仍通过 `withHeaderRow: true` 创建首行表头。
-- “首行表头”control 直接使用 Tiptap `toggleHeaderRow`，不引入表格级 header 状态。
+- 动态首行表头命令直接使用 Tiptap `toggleHeaderRow`，不引入表格级 header 状态。
 - 新增或删除行列时不迁移、提升或规范化 `tableHeader`。例如在现有表头行上方插入普通行后，原有 header cells 可以随文档结构移动到第二行。
 - 外部内容已有的首列表头或其它合法 header cells 同样随 Tiptap 结构命令处理；初版不维持“表头必须始终位于第一行或第一列”的额外不变量。
 
@@ -241,7 +245,7 @@ Quick Bar 只接管未被 editor keymap 消费的普通 `Tab`。Table keymap 会
 
 ### 键盘交互采用：复用现有统一焦点基础设施
 
-Table trigger、结构菜单、尺寸 Palette 和 Quick Bar controls 分别接入当前 Toolbar、Menu、Palette 与 Quick Bar 已有的焦点契约。Table 组件只维护行列尺寸、context 和 popup 显隐等 feature-local 状态，不实现第二套 roving focus、菜单导航或快捷键。
+Table trigger、结构下拉、尺寸 Palette 和 Quick Bar controls 分别接入当前 Toolbar、Menu、Palette 与 Quick Bar 已有的焦点契约。Table 组件只维护行列尺寸、context 和 popup 显隐等 feature-local 状态，不实现第二套 roving focus、菜单导航或快捷键。
 
 未采用另外两种方式：
 
@@ -261,6 +265,8 @@ packages/rich-text/src/features/table/
 ├── server.ts
 └── vue/
     ├── index.ts
+    ├── dropdown.ts
+    ├── TableActionDropdown.vue
     ├── TableQuickBar.vue
     ├── TableSizePicker.vue
     └── TableToolbarControl.vue
@@ -269,8 +275,10 @@ packages/rich-text/src/features/table/
 - `shared.ts` 定义 `tableFeature`、固定尺寸与列宽常量，以及编辑器和服务端共用的 Table extension factory。
 - `editor.ts` 定义 selection/table context resolver、Table actions、action items 和 `tableEditorFeature`。
 - `server.ts` 定义 `tableServerFeature`、Table 几何校验与 HTML policy。
+- `vue/dropdown.ts` 将共享 Table action items 转换为 Naive UI dropdown options，并统一 active、disabled 与菜单项语义。
+- `vue/TableActionDropdown.vue` 实现 Quick Bar 行列入口共用的平铺 `NDropdown`。
 - `vue/TableSizePicker.vue` 只负责尺寸选择、指针和键盘交互。
-- `vue/TableToolbarControl.vue` 根据当前 context 在尺寸选择器与完整结构菜单之间切换。
+- `vue/TableToolbarControl.vue` 根据当前 context 在尺寸选择器与原生多级完整结构下拉之间切换。
 - `vue/TableQuickBar.vue` 渲染紧凑结构 controls。
 - `vue/index.ts` 组合 toolbar control、feature Quick Bar 和 Slash command。
 
@@ -368,7 +376,7 @@ Toolbar 在表格内即使用结构上下文；Quick Bar 在此基础上再应�
 Table Toolbar Control 是一个 component control：
 
 - 表格外根据 `insertTableAction` 的 `can()` 状态决定是否可打开尺寸选择器。
-- 表格内打开结构菜单，并逐项读取对应 action 的 active/disabled 状态。
+- 表格内打开多级结构下拉，“行”“列”通过 NDropdown 原生 `children` 进入二级菜单，首行表头和删除表格作为顶层命令，并逐项读取对应 action 的状态。
 - 非空 selection 位于表格外时 disabled。
 - action 成功后关闭当前 popover/dropdown；失败时保持当前界面，不修改内容。
 - trigger 暴露稳定的 Table toolbar item key、active/disabled 和 popup ARIA 状态，由 `RichTextToolbar` 统一管理 roving focus 与 `Alt+F10`。
@@ -381,7 +389,7 @@ Table Vue components 只复用现有焦点基础设施：
 
 - Table Toolbar trigger 和 Table Quick Bar controls 使用 `data-rich-text-toolbar-item`，分别由已有 `RichTextToolbar` 与 `RichTextQuickBar` root 管理 roving focus、焦点记忆和外层 `Escape`。
 - Table Size Picker 的格子使用现有 Palette item 契约，并调用 `focusRichTextPaletteItem` 与 `handleRichTextPaletteKeydown`；唯一 tab stop 和尺寸高亮仍是 Table picker 的局部状态。
-- 顶部结构菜单及 Quick Bar 的行列子菜单调用 `focusRichTextMenuItem` 与 `handleRichTextMenuKeydown`。
+- 顶部多级结构下拉及 Quick Bar 的两个平铺下拉调用 `focusRichTextMenuItem` 与 `handleRichTextMenuKeydown`；顶部结构下拉额外沿用 NDropdown 的级联键盘状态处理 `ArrowLeft` 返回父级。
 - popup 使用 `to=false` 保持在对应组件树内，使焦点仍属于 RichTextEditor 组合控件。
 - action 成功后由 action 聚焦 editor；popup 只关闭自身。`Escape` 关闭局部 popup 时恢复 trigger，不提前覆盖外层焦点语义。
 
@@ -461,6 +469,14 @@ policy 只接受静态 renderer 产生的表格结构：
 `96px` 是 editor 与静态 HTML 的有效渲染下限，不是 persisted `colwidth` 的数据下限。外部合法 JSON 中较小的数字宽度保持原值，Tiptap 渲染时应用 `cellMinWidth`；服务端不因其低于 96 而拒绝或改写 canonical JSON。
 
 编辑器内由 `RichTextEditor.vue` 的 scoped styles 设置 wrapper、table、cell 和 selection 样式；服务端 HTML wrapper 使用经过 sanitize 的内联 `overflow-x:auto` 保证独立渲染时仍可滚动。表格的文字排版继续沿用现有 `prose`/`dark:prose-invert`。
+
+编辑器将 Typography 原本位于 table 上的 `1.5rem` 上下间距移到 `.tableWrapper`，内部 table 的上下 margin 为零；文档首个或末个 block 是表格时，对应外侧 margin 仍为零。间距位于 Quick Bar 锚点外部，因此 Table Quick Bar 与可见表格上边缘保持统一的浮层 offset。该调整只存在于编辑器 scoped styles，不改变静态 HTML。
+
+表格视觉使用以下主题变量：
+
+- table 和 cell 共用 `--rich-text-theme-table-border-color`，默认映射到 Naive UI `dividerColor`。
+- `th` 使用 `--rich-text-theme-table-header-color` 作为底色，默认映射到 Naive UI `tableHeaderColor`，配合加粗文字明确区分表头与普通单元格。
+- 表格边框和表头底色分别允许通过 `--rich-text-table-border-color` 和 `--rich-text-table-header-color` 覆盖。
 
 完整单元格 selection 使用 `.selectedCell::after` 覆盖层：
 
@@ -605,10 +621,11 @@ contentJson
 - 验证 Table trigger 参与顶部 Toolbar 的稳定 item key、active/disabled、roving focus 和 `Alt+F10` 入口。
 - 验证 `ArrowDown`/`ArrowUp` 打开尺寸选择器后分别聚焦 1×1/8×8。
 - 验证尺寸选择器唯一 tab stop、四方向键、`Home`/`End`、`Enter`/`Space`、`Escape` 和未被消费的 `Tab`/`Shift+Tab`。
-- 验证 Table Toolbar Control 在表格外显示尺寸选择器，在表格内显示完整结构菜单。
-- 验证结构菜单与行列子菜单的焦点进入、enabled item 导航、`Escape` 恢复 trigger 和 `Tab` 关闭行为。
+- 验证 Table Toolbar Control 在表格外显示尺寸选择器，在表格内显示“行”“列”原生级联子菜单、动态首行表头命令和顶层删除操作。
+- 验证顶部结构下拉的二级菜单进入/返回，以及顶部结构下拉与 Quick Bar 两个平铺下拉的焦点进入、enabled item 导航、`Escape` 恢复 trigger 和 `Tab` 关闭行为。
 - 验证 Toolbar 与 Table Quick Bar 使用同一 actions 和 disabled 状态。
-- 验证 Table Quick Bar 的四个 controls 能被外层 roving focus 发现，子菜单 `Escape` 不会提前 dismiss 外层 Quick Bar。
+- 验证首行表头命令根据当前状态显示“取消首行表头”或“设置首行表头”，并只出现在 Toolbar。
+- 验证 Table Quick Bar 的行、列和危险色删除三个 controls 能被外层 roving focus 发现，局部下拉 `Escape` 不会提前 dismiss 外层 Quick Bar。
 - 验证折叠单元格光标和 `CellSelection` 显示 Table Quick Bar，非空单元格文字 selection 显示普通文字 Quick Bar。
 - 验证 Link、Table 与普通文字 Quick Bar 的优先级，以及任意时刻只显示一种模式。
 - 验证 Table Quick Bar 锚定 `.tableWrapper`，表格 context 失效、editor disabled 或粗指针环境时隐藏。
@@ -638,7 +655,7 @@ contentJson
 - 现有 Slash 命令顺序除新增 Table 项外保持不变。
 - `compact` editor/server/schema 测试继续通过。
 - 定向运行 `@rev30/rich-text` 测试与 typecheck。
-- 对尺寸选择器、结构菜单、selection 和横向滚动做浏览器交互检查。
+- 检查尺寸选择器、多级结构下拉、Quick Bar 行列下拉与删除按钮、selection 和横向滚动交互。
 - 最终运行完整 `pnpm check`。
 
 ## 验收标准

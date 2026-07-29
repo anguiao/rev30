@@ -31,18 +31,13 @@ export const tableQuickBar = richTextFeatureQuickBar({
   anchorAlignment: 'end',
 })
 
-const tableSlashCommandConfig: RichTextSlashCommand = {
+export const tableSlashCommand: RichTextSlashCommand = {
   feature: tableFeature,
   key: 'table',
   label: '表格',
   icon: 'i-[lucide--table-2]',
   keywords: ['table'],
   command: insertTableAction.command(TABLE_SLASH_INSERT_ROWS, TABLE_SLASH_INSERT_COLUMNS),
-}
-
-export const tableSlashCommand = tableSlashCommandConfig
-export function createTableSlashCommand() {
-  return tableSlashCommandConfig
 }
 
 export { default as TableQuickBar } from './TableQuickBar.vue'

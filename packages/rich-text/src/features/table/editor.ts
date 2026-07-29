@@ -261,7 +261,7 @@ export const deleteColumnActionItem = defineRichTextActionItem(deleteColumnActio
 })
 
 export const toggleHeaderRowActionItem = defineRichTextActionItem(toggleHeaderRowAction, {
-  label: '首行表头',
+  label: '首行作为表头',
   icon: 'i-[lucide--table-2]',
 })
 

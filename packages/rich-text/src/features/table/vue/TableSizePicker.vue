@@ -19,6 +19,7 @@ const editor = props.editor
 const panel = ref<HTMLElement | null>(null)
 const rows = ref(1)
 const columns = ref(1)
+let closeOnFocusout = false
 
 const sizeLabel = computed(() => `${columns.value} 列 × ${rows.value} 行`)
 
@@ -90,18 +91,25 @@ function handlePanelKeydown(event: KeyboardEvent) {
     columns: TABLE_SIZE_PICKER_MAX_COLUMNS,
   })
 
-  if (!event.defaultPrevented && event.key === 'Tab') {
-    queueMicrotask(() => {
-      if (props.onEscape) {
-        props.onEscape()
-      } else {
-        props.onClose()
-      }
-    })
+  if (!event.defaultPrevented && !event.isComposing && event.key === 'Tab') {
+    closeOnFocusout = true
   }
 }
 
+function handlePanelFocusout(event: FocusEvent) {
+  if (
+    !closeOnFocusout ||
+    (event.relatedTarget instanceof Node && panel.value?.contains(event.relatedTarget))
+  ) {
+    return
+  }
+
+  closeOnFocusout = false
+  props.onClose()
+}
+
 function open(entry: 'first' | 'last') {
+  closeOnFocusout = false
   setSize(
     entry === 'first' ? 1 : TABLE_SIZE_PICKER_MAX_ROWS,
     entry === 'first' ? 1 : TABLE_SIZE_PICKER_MAX_COLUMNS,
@@ -116,10 +124,11 @@ defineExpose({ open })
   <div
     ref="panel"
     data-test="rich-text-table-size-picker"
-    class="min-w-64 rounded-(--rich-text-theme-border-radius) p-2"
+    class="w-fit rounded-(--rich-text-theme-border-radius) p-2"
     role="group"
     aria-label="表格尺寸"
     @keydown="handlePanelKeydown"
+    @focusout="handlePanelFocusout"
   >
     <div class="mb-2 flex items-center justify-between gap-3 text-sm">
       <span>插入表格</span>
@@ -141,7 +150,7 @@ defineExpose({ open })
           :tabindex="isCellActive(cellRow, cellColumn) ? 0 : -1"
           :aria-label="getCellLabel(cellRow, cellColumn)"
           :aria-selected="isCellActive(cellRow, cellColumn)"
-          class="m-px flex size-6 items-center justify-center rounded-sm border border-(--rich-text-theme-input-border-color) text-xs hover:bg-(--rich-text-theme-primary-muted-color)"
+          class="m-px flex size-6 items-center justify-center rounded-sm border border-stone-200 text-xs hover:bg-(--rich-text-theme-primary-muted-color) dark:border-zinc-500/60"
           :class="[
             isCellHighlighted(cellRow, cellColumn)
               ? 'bg-(--rich-text-theme-primary-muted-color)'

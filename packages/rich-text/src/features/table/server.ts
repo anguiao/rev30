@@ -1,9 +1,12 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { TableMap } from '@tiptap/pm/tables'
+import { RichTextDocumentInvalidError } from '../../server/errors'
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
-import { TABLE_MAX_LOGICAL_POSITIONS, tableFeature } from './shared'
+import { tableFeature } from './shared'
 
+const TABLE_MAX_LOGICAL_POSITIONS_PER_TABLE = 10_000
+const TABLE_MAX_LOGICAL_POSITIONS_PER_DOCUMENT = 100_000
 const pixelValuePattern = /^\s*\d+(?:\.\d+)?px\s*$/
 const positiveIntegerPattern = /^[1-9]\d*$/
 const colwidthPattern = /^-?\d+(?:\.\d+)?(?:,-?\d+(?:\.\d+)?)*$/
@@ -40,25 +43,46 @@ function getTableWidth(table: ProseMirrorNode) {
   return width
 }
 
-function validateTable(table: ProseMirrorNode) {
+function getTableLogicalPositions(table: ProseMirrorNode) {
   const width = getTableWidth(table)
   const logicalPositions = width * table.childCount
 
-  if (!Number.isSafeInteger(logicalPositions) || logicalPositions > TABLE_MAX_LOGICAL_POSITIONS) {
-    throw new RangeError('Table exceeds the logical grid resource limit')
+  if (
+    !Number.isSafeInteger(logicalPositions) ||
+    logicalPositions > TABLE_MAX_LOGICAL_POSITIONS_PER_TABLE
+  ) {
+    throw new RichTextDocumentInvalidError('Table exceeds the logical grid resource limit')
   }
 
+  return logicalPositions
+}
+
+function assertTableGeometry(table: ProseMirrorNode) {
   const tableMap = TableMap.get(table)
 
   if (tableMap.problems?.length) {
-    throw new RangeError('Table geometry is invalid')
+    throw new RichTextDocumentInvalidError('Table geometry is invalid')
   }
 }
 
-export function validateTableDocument(document: ProseMirrorNode) {
+export function assertTableDocument(document: ProseMirrorNode) {
+  let documentLogicalPositions = 0
+
   document.descendants((node) => {
     if (node.type.name === 'table') {
-      validateTable(node)
+      const tableLogicalPositions = getTableLogicalPositions(node)
+
+      if (
+        tableLogicalPositions >
+        TABLE_MAX_LOGICAL_POSITIONS_PER_DOCUMENT - documentLogicalPositions
+      ) {
+        throw new RichTextDocumentInvalidError(
+          'Tables exceed the document-wide logical grid resource limit',
+        )
+      }
+
+      documentLogicalPositions += tableLogicalPositions
+      assertTableGeometry(node)
     }
 
     return true
@@ -137,5 +161,5 @@ export function createTableHtmlPolicy(): RichTextHtmlPolicy {
 
 export const tableServerFeature = defineRichTextServerFeature(tableFeature, {
   htmlPolicy: createTableHtmlPolicy(),
-  validateDocument: validateTableDocument,
+  assertDocument: assertTableDocument,
 })

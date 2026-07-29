@@ -421,15 +421,15 @@ interface RichTextServerFeature {
   readonly feature: RichTextFeature
   readonly htmlPolicy: RichTextHtmlPolicy
   readonly extensions?: () => readonly AnyExtension[]
-  readonly validateDocument?: (document: ProseMirrorNode) => void
+  readonly assertDocument?: (document: ProseMirrorNode) => void
 }
 ```
 
-`deriveRichTextContent` 在 schema 构造与 `document.check()` 成功后，按 preset 的 feature 顺序调用各 server feature 的 `validateDocument`：
+`deriveRichTextContent` 在 schema 构造与 `document.check()` 成功后，调用各 server feature 的 `assertDocument`：
 
-- Table server feature 使用该 hook 先执行逻辑网格资源上限预检查，再执行 `TableMap` 几何完整性校验。
+- Table server feature 使用该 hook 先执行逻辑网格资源上限预检查，再执行 `TableMap` 几何完整性校验。单张表格最多包含 10,000 个逻辑位置，整篇文档中的所有表格累计最多包含 100,000 个逻辑位置；两层限制都在对应的 `TableMap` 构造前检查。
 - hook 只做校验，不规范化或修改文档。
-- hook 抛出的错误与 schema 构造、`document.check()` 错误一起转换为现有 `RichTextContentInvalidError`。
+- hook 通过抛出包内的 `RichTextDocumentInvalidError` 表示文档非法；`deriveRichTextContent` 将其转换为 `RichTextContentInvalidError`，并通过 `cause` 保留具体校验原因，其它异常原样向外传播。
 - 该类型与定义 helper 保持包内使用，不从 `@rev30/rich-text/server` 公共入口导出。
 - 初版只有 Table 使用该 hook；通用派生逻辑不识别或硬编码 Table 节点。
 

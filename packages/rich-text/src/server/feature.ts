@@ -8,7 +8,7 @@ export interface RichTextServerFeature<Feature extends RichTextFeature = RichTex
   readonly feature: Feature
   readonly htmlPolicy: RichTextHtmlPolicy
   readonly extensions?: () => readonly AnyExtension[]
-  readonly validateDocument?: (document: ProseMirrorNode) => void
+  readonly assertDocument?: (document: ProseMirrorNode) => void
 }
 
 export function defineRichTextServerFeature<const Feature extends RichTextFeature>(
@@ -29,12 +29,12 @@ interface RichTextServerExtensionPreset extends RichTextPreset {
 export function collectRichTextServerExtensions(
   preset: RichTextServerExtensionPreset,
 ): AnyExtension[] {
-  const serverFeatureByFeature = new Map<RichTextFeature, RichTextServerFeature>(
-    preset.serverFeatures.map((serverFeature) => [serverFeature.feature, serverFeature]),
+  const serverImplementationByFeature = new Map<RichTextFeature, RichTextServerFeature>(
+    preset.serverFeatures.map((implementation) => [implementation.feature, implementation]),
   )
 
   return preset.features.flatMap((feature) => [
     ...(feature.sharedExtensions?.() ?? []),
-    ...(serverFeatureByFeature.get(feature)?.extensions?.() ?? []),
+    ...(serverImplementationByFeature.get(feature)?.extensions?.() ?? []),
   ])
 }

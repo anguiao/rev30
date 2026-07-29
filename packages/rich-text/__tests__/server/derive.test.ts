@@ -41,6 +41,35 @@ describe('deriveRichTextContent', () => {
     }
   })
 
+  it('does not mask unexpected document assertion errors', () => {
+    class UnexpectedDocumentAssertionError extends Error {}
+
+    const preset = createServerPreset()
+    const failingPreset = {
+      ...preset,
+      serverFeatures: preset.serverFeatures.map((serverFeature, index) =>
+        index === 0
+          ? {
+              ...serverFeature,
+              assertDocument: () => {
+                throw new UnexpectedDocumentAssertionError()
+              },
+            }
+          : serverFeature,
+      ),
+    }
+
+    expect(() =>
+      deriveRichTextContent(
+        {
+          type: 'doc',
+          content: [{ type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] }],
+        },
+        failingPreset,
+      ),
+    ).toThrow(UnexpectedDocumentAssertionError)
+  })
+
   it('derives sanitized html from supported tiptap json', () => {
     const content = deriveRichTextContent(
       {

@@ -7,7 +7,6 @@ export const TABLE_SIZE_PICKER_MAX_COLUMNS = 8
 export const TABLE_SLASH_INSERT_ROWS = 3
 export const TABLE_SLASH_INSERT_COLUMNS = 3
 export const TABLE_CELL_MIN_WIDTH = 96
-export const TABLE_MAX_LOGICAL_POSITIONS = 10_000
 
 function validatePositiveInteger(value: unknown) {
   if (!Number.isSafeInteger(value) || (value as number) <= 0) {

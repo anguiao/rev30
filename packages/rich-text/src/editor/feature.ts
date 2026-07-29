@@ -28,13 +28,16 @@ interface RichTextEditorExtensionPreset extends RichTextPreset {
 export function collectRichTextEditorExtensions(
   preset: RichTextEditorExtensionPreset,
 ): AnyExtension[] {
-  const editorFeatureByFeature = new Map<RichTextFeature, RichTextEditorFeature>(
-    preset.editorFeatures.map((editorFeature) => [editorFeature.feature, editorFeature]),
+  const editorImplementationByFeature = new Map<RichTextFeature, RichTextEditorFeature>(
+    preset.editorFeatures.map((implementation) => [implementation.feature, implementation]),
   )
 
   return preset.features.flatMap((feature) => {
-    const editorFeature = editorFeatureByFeature.get(feature)
+    const editorImplementation = editorImplementationByFeature.get(feature)
 
-    return [...(feature.sharedExtensions?.() ?? []), ...(editorFeature?.extensions?.() ?? [])]
+    return [
+      ...(feature.sharedExtensions?.() ?? []),
+      ...(editorImplementation?.extensions?.() ?? []),
+    ]
   })
 }

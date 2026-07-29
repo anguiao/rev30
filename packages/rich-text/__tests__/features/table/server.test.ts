@@ -2,6 +2,7 @@ import { TableMap } from '@tiptap/pm/tables'
 import { describe, expect, it, vi } from 'vitest'
 import { createTableHtmlPolicy } from '../../../src/features/table/server'
 import { RichTextContentInvalidError, deriveRichTextContent } from '../../../src/server'
+import { RichTextDocumentInvalidError } from '../../../src/server/errors'
 import { sanitizeRichTextHtml } from '../../../src/server/sanitize'
 import { createAllRichTextServerPreset } from '../../../src/server/presets/all'
 
@@ -10,6 +11,8 @@ const preset = createAllRichTextServerPreset({
     isAllowedSrc: () => true,
   },
 })
+const tableLogicalPositionLimit = 10_000
+const maximumTableCountAtLogicalPositionLimit = 10
 
 function cell(type: 'tableCell' | 'tableHeader' = 'tableCell', text = '') {
   return {
@@ -27,6 +30,23 @@ function cell(type: 'tableCell' | 'tableHeader' = 'tableCell', text = '') {
 
 function table(rows: unknown[][]) {
   return { type: 'table', content: rows.map((content) => ({ type: 'tableRow', content })) }
+}
+
+function expectDocumentInvalidError(run: () => void, message: string) {
+  let thrown: unknown
+
+  try {
+    run()
+  } catch (error) {
+    thrown = error
+  }
+
+  expect(thrown).toBeInstanceOf(RichTextContentInvalidError)
+
+  const cause = (thrown as RichTextContentInvalidError).cause
+
+  expect(cause).toBeInstanceOf(RichTextDocumentInvalidError)
+  expect(cause).toMatchObject({ message })
 }
 
 describe('table server feature', () => {
@@ -168,17 +188,48 @@ describe('table server feature', () => {
     ],
     ['zero-width row', table([[]])],
   ])('rejects geometrically invalid tables: %s', (_name, content) => {
-    expect(() => deriveRichTextContent({ type: 'doc', content: [content] }, preset)).toThrow(
-      RichTextContentInvalidError,
+    expectDocumentInvalidError(
+      () => deriveRichTextContent({ type: 'doc', content: [content] }, preset),
+      'Table geometry is invalid',
     )
   })
 
   it('rejects a table that exceeds the logical grid resource limit before mapping', () => {
     const rows = Array.from({ length: 101 }, () => Array.from({ length: 100 }, () => cell()))
 
-    expect(() => deriveRichTextContent({ type: 'doc', content: [table(rows)] }, preset)).toThrow(
-      RichTextContentInvalidError,
+    expectDocumentInvalidError(
+      () => deriveRichTextContent({ type: 'doc', content: [table(rows)] }, preset),
+      'Table exceeds the logical grid resource limit',
     )
+  })
+
+  it('rejects tables that collectively exceed the document resource limit before mapping', () => {
+    const tableMapGet = vi.spyOn(TableMap, 'get')
+    const maximumTable = table([
+      [
+        {
+          ...cell(),
+          attrs: {
+            colspan: tableLogicalPositionLimit,
+            rowspan: 1,
+            colwidth: null,
+            align: null,
+          },
+        },
+      ],
+    ])
+    const tables = Array.from(
+      { length: maximumTableCountAtLogicalPositionLimit + 1 },
+      () => maximumTable,
+    )
+
+    expectDocumentInvalidError(
+      () => deriveRichTextContent({ type: 'doc', content: tables }, preset),
+      'Tables exceed the document-wide logical grid resource limit',
+    )
+    expect(tableMapGet).toHaveBeenCalledTimes(maximumTableCountAtLogicalPositionLimit)
+
+    tableMapGet.mockRestore()
   })
 
   it('counts active rowspans before constructing a TableMap', () => {

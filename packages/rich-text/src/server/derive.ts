@@ -2,7 +2,7 @@ import { getSchema, getText, getTextSerializersFromSchema } from '@tiptap/core'
 import { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { renderToHTMLString } from '@tiptap/static-renderer/pm/html-string'
 import type { RichTextDocument } from '../schema'
-import { RichTextContentInvalidError } from './errors'
+import { RichTextContentInvalidError, RichTextDocumentInvalidError } from './errors'
 import { collectRichTextServerExtensions } from './feature'
 import type { RichTextServerPreset } from './presets/types'
 import { sanitizeRichTextHtml } from './sanitize'
@@ -20,16 +20,20 @@ export function deriveRichTextContent(contentJson: unknown, preset: RichTextServ
     }
 
     document.check()
+  } catch (cause) {
+    throw new RichTextContentInvalidError({ cause })
+  }
 
-    const serverFeatureByFeature = new Map(
-      preset.serverFeatures.map((serverFeature) => [serverFeature.feature, serverFeature]),
-    )
-
-    for (const feature of preset.features) {
-      serverFeatureByFeature.get(feature)?.validateDocument?.(document)
+  try {
+    for (const { assertDocument } of preset.serverFeatures) {
+      assertDocument?.(document)
     }
-  } catch {
-    throw new RichTextContentInvalidError()
+  } catch (cause) {
+    if (cause instanceof RichTextDocumentInvalidError) {
+      throw new RichTextContentInvalidError({ cause })
+    }
+
+    throw cause
   }
 
   const json: RichTextDocument = document.toJSON()

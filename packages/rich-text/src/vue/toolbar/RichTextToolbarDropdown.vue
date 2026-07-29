@@ -2,13 +2,13 @@
 import type { Editor } from '@tiptap/vue-3'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
-import { computed, h, nextTick, ref } from 'vue'
+import { computed, h } from 'vue'
 import {
   canRunRichTextAction,
   runRichTextAction,
   type RichTextActionItem,
 } from '../../editor/action'
-import { focusRichTextMenuItem, handleRichTextMenuKeydown } from '../interactions/focus'
+import { useRichTextDropdownTrigger } from '../interactions/dropdown'
 import type { RichTextToolbarDropdownControl } from '.'
 
 const props = withDefaults(
@@ -23,8 +23,6 @@ const props = withDefaults(
 )
 
 const editor = props.editor
-const root = ref<HTMLElement | null>(null)
-const show = ref(false)
 
 function isItemDisabled(item: RichTextActionItem) {
   return props.disabled || !canRunRichTextAction(editor, item.action)
@@ -39,6 +37,7 @@ const activeItem = computed(
 const isActive = computed(() => activeItem.value !== undefined)
 
 const isDisabled = computed(() => props.control.items.every((item) => isItemDisabled(item)))
+const { show, handleTriggerKeydown } = useRichTextDropdownTrigger(isDisabled)
 
 const triggerLabel = computed(() => activeItem.value?.label ?? props.control.label)
 const triggerIcon = computed(() => activeItem.value?.icon ?? props.control.icon)
@@ -91,54 +90,18 @@ function handleSelect(key: string | number) {
     runRichTextAction(editor, item.action)
   }
 }
-
-function handleShow(nextShow: boolean) {
-  show.value = nextShow
-
-  if (nextShow) {
-    void nextTick(() => focusRichTextMenuItem(root.value, 'active'))
-  }
-}
-
-function handleTriggerKeydown(event: KeyboardEvent) {
-  if (
-    event.defaultPrevented ||
-    event.isComposing ||
-    isDisabled.value ||
-    !['ArrowDown', 'ArrowUp'].includes(event.key)
-  ) {
-    return
-  }
-
-  event.preventDefault()
-  event.stopPropagation()
-  show.value = true
-  void nextTick(() =>
-    focusRichTextMenuItem(root.value, event.key === 'ArrowUp' ? 'last' : 'active'),
-  )
-}
-
-function handleMenuKeydown(event: KeyboardEvent) {
-  handleRichTextMenuKeydown(event, {
-    trigger: root.value?.querySelector<HTMLElement>('[data-rich-text-toolbar-item]') ?? null,
-    close: () => {
-      show.value = false
-    },
-  })
-}
 </script>
 
 <template>
-  <div ref="root" class="contents" @keydown.capture="handleMenuKeydown">
+  <div class="contents">
     <NDropdown
+      v-model:show="show"
       trigger="click"
       placement="bottom-start"
-      :show="show"
       :options="options"
       :to="false"
       :menu-props="() => ({ role: 'menu', 'aria-label': control.label })"
       :render-label="renderLabel"
-      @update:show="handleShow"
       @select="handleSelect"
     >
       <NButton

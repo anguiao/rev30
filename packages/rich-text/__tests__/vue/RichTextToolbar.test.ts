@@ -89,7 +89,7 @@ describe('RichTextToolbar', () => {
     expect(wrapper.find('[role="toolbar"]').exists()).toBe(true)
   })
 
-  it('keeps dropdown menu items out of toolbar roving and restores the trigger on Escape', async () => {
+  it('uses dropdown keyboard state without moving focus into toolbar menus', async () => {
     const editor = createEditor()
     const wrapper = mountToolbar(editor)
     await flushPromises()
@@ -101,20 +101,34 @@ describe('RichTextToolbar', () => {
     })
 
     expect(dropdown).toBeDefined()
-    dropdown!.vm.$emit('update:show', true)
+    trigger.element.focus()
+    await trigger.trigger('click')
     await flushPromises()
 
     const menu = document.querySelector<HTMLElement>('[role="menu"]')
-    const menuItem = menu?.querySelector<HTMLElement>('[role="menuitem"]')
+    const firstOption = wrapper.get<HTMLElement>('[data-test="rich-text-heading-heading-1"]')
     expect(menu).not.toBeNull()
     expect(menu?.querySelector('[data-rich-text-toolbar-item]')).toBeNull()
-    expect(document.activeElement).toBe(menuItem)
-    trigger.element.removeAttribute('data-test')
+    expect(document.activeElement).toBe(trigger.element)
+
+    const arrowDown = new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    })
+    trigger.element.dispatchEvent(arrowDown)
+    await flushPromises()
+
+    expect(arrowDown.defaultPrevented).toBe(true)
+    expect(firstOption.classes()).toContain('n-dropdown-option-body--pending')
+    expect(document.activeElement).toBe(trigger.element)
 
     const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
-    menuItem!.dispatchEvent(escape)
+    trigger.element.dispatchEvent(escape)
     await flushPromises()
+
     expect(escape.defaultPrevented).toBe(true)
+    expect(dropdown!.props('show')).toBe(false)
     expect(document.activeElement).toBe(trigger.element)
   })
 

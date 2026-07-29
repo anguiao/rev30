@@ -276,34 +276,44 @@ describe('TextStyleToolbarControl', () => {
     wrapper.unmount()
   })
 
-  it('scopes focus and Escape handling to each select menu', async () => {
+  it('uses dropdown keyboard state without moving DOM focus', async () => {
     const editor = createEditor()
     selectEditorText(editor)
     const wrapper = mountControl(editor, false, document.body)
-    const fontFamilyDropdown = getDropdownComponent(wrapper, 'rich-text-font-family')
     const fontSizeDropdown = getDropdownComponent(wrapper, 'rich-text-font-size')
+    const trigger = wrapper.get<HTMLElement>('[data-test="rich-text-font-size"]')
 
-    fontFamilyDropdown.vm.$emit('update:show', true)
+    trigger.element.focus()
+    await trigger.trigger('click')
     await flushPromises()
 
-    expect(document.activeElement?.closest('[role="menu"]')?.getAttribute('aria-label')).toBe(
-      '字体',
-    )
-
-    fontSizeDropdown.vm.$emit('update:show', true)
+    const arrowDown = new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    })
+    trigger.element.dispatchEvent(arrowDown)
     await flushPromises()
 
-    const fontSizeItem = document.activeElement as HTMLElement
-    expect(fontSizeItem.closest('[role="menu"]')?.getAttribute('aria-label')).toBe('字号')
+    expect(arrowDown.defaultPrevented).toBe(true)
+    expect(
+      wrapper
+        .get<HTMLElement>('[role="menuitem"].n-dropdown-option-body--pending')
+        .attributes('data-test'),
+    ).toMatch(/^rich-text-font-size-/)
+    expect(document.activeElement).toBe(trigger.element)
 
-    fontSizeItem.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
-    )
+    const escape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    })
+    trigger.element.dispatchEvent(escape)
     await flushPromises()
 
+    expect(escape.defaultPrevented).toBe(true)
     expect(fontSizeDropdown.props('show')).toBe(false)
-    expect(fontFamilyDropdown.props('show')).toBe(true)
-    expect(document.activeElement).toBe(wrapper.get('[data-test="rich-text-font-size"]').element)
+    expect(document.activeElement).toBe(trigger.element)
 
     wrapper.unmount()
   })

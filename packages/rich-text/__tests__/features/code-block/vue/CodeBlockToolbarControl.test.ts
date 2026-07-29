@@ -2,7 +2,7 @@ import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import type { Editor } from '@tiptap/vue-3'
-import { flushPromises, mount } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import type { DropdownOption } from 'naive-ui'
 import { NButtonGroup, NDropdown } from 'naive-ui'
 import { markRaw } from 'vue'
@@ -128,58 +128,5 @@ describe('CodeBlockToolbarControl', () => {
     await vi.waitFor(() => {
       expect(dropdown.props('disabled')).toBe(false)
     })
-  })
-
-  it('closes only the language menu that owns the Escape event', async () => {
-    const firstEditor = createEditor(null, null)
-    const secondEditor = createEditor(null, null)
-    const firstPositions = findCodeBlockTextPositions(firstEditor)
-    firstEditor.commands.setTextSelection(firstPositions[0]!)
-    secondEditor.commands.setTextSelection(findCodeBlockTextPositions(secondEditor)[0]!)
-    firstEditor.view.focus()
-    const firstWrapper = mountControl(firstEditor, true)
-    const secondWrapper = mountControl(secondEditor, true)
-
-    firstWrapper.getComponent(NDropdown).vm.$emit('update:show', true)
-    secondWrapper.getComponent(NDropdown).vm.$emit('update:show', true)
-    await flushPromises()
-
-    const firstButton = firstWrapper.get('[data-test="rich-text-code-block-language"]')
-    expect(firstWrapper.getComponent(NDropdown).props('show')).toBe(true)
-    expect(secondWrapper.getComponent(NDropdown).props('show')).toBe(true)
-
-    await firstButton.trigger('keydown', { key: 'Escape' })
-    await flushPromises()
-
-    expect(firstWrapper.getComponent(NDropdown).props('show')).toBe(false)
-    expect(secondWrapper.getComponent(NDropdown).props('show')).toBe(true)
-    expect(firstEditor.state.selection).toMatchObject({
-      from: firstPositions[0],
-      to: firstPositions[0],
-    })
-    expect(document.activeElement).toBe(firstButton.element)
-  })
-
-  it('isolates Escape events from inline menus across Vue roots', async () => {
-    const firstEditor = createEditor(null, null)
-    const secondEditor = createEditor(null, null)
-    firstEditor.commands.setTextSelection(findCodeBlockTextPositions(firstEditor)[0]!)
-    secondEditor.commands.setTextSelection(findCodeBlockTextPositions(secondEditor)[0]!)
-    const firstWrapper = mountControl(firstEditor, true)
-    const secondWrapper = mountControl(secondEditor, true)
-
-    firstWrapper.getComponent(NDropdown).vm.$emit('update:show', true)
-    secondWrapper.getComponent(NDropdown).vm.$emit('update:show', true)
-    await flushPromises()
-
-    firstWrapper
-      .get('[data-test="rich-text-code-block-language-plaintext"]')
-      .element.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
-      )
-    await flushPromises()
-
-    expect(firstWrapper.getComponent(NDropdown).props('show')).toBe(false)
-    expect(secondWrapper.getComponent(NDropdown).props('show')).toBe(true)
   })
 })

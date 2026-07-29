@@ -462,14 +462,13 @@ describe('RichTextQuickBar', () => {
     )
     await flushPromises()
 
-    const trigger = wrapper.get('[data-test="rich-text-code-block-language"]')
+    const trigger = wrapper.get<HTMLElement>('[data-test="rich-text-code-block-language"]')
+    trigger.element.focus()
     await trigger.trigger('click')
     await flushPromises()
 
     expect(wrapper.getComponent(NDropdown).props('show')).toBe(true)
-    expect(document.activeElement).toBe(
-      document.querySelector('[data-test="rich-text-code-block-language-plaintext"]'),
-    )
+    expect(document.activeElement).toBe(trigger.element)
 
     expect(editor.state.selection).toMatchObject({
       from: positions[0],

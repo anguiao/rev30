@@ -10,7 +10,7 @@ import CodeBlockLanguageControl from '../../../../src/features/code-block/vue/Co
 import { createTestEditor } from '../../../helpers/editor'
 
 describe('CodeBlockLanguageControl', () => {
-  it('closes only its language menu on Escape', async () => {
+  it('keeps focus on its trigger when closing the language menu with Escape', async () => {
     const editor = createTestEditor({
       extensions: [Document, Paragraph, Text, ...codeBlockEditorFeature.extensions!()],
       content: '<pre><code>const first = 1</code></pre><pre><code>const second = 2</code></pre>',
@@ -34,16 +34,14 @@ describe('CodeBlockLanguageControl', () => {
 
     wrapper.getComponent(NDropdown).vm.$emit('update:show', true)
     await flushPromises()
-    await wrapper
-      .get('[data-test="rich-text-code-block-language"]')
-      .trigger('keydown', { key: 'Escape' })
+    const trigger = wrapper.get<HTMLElement>('[data-test="rich-text-code-block-language"]')
+    trigger.element.focus()
+    await trigger.trigger('keydown', { key: 'Escape' })
     await flushPromises()
 
     expect(wrapper.getComponent(NDropdown).props('show')).toBe(false)
     expect(editor.state.selection).toMatchObject({ from: 1, to: 1 })
-    expect(document.activeElement).toBe(
-      wrapper.get('[data-test="rich-text-code-block-language"]').element,
-    )
+    expect(document.activeElement).toBe(trigger.element)
   })
 
   it('shows a valid language that is not in the language menu', () => {

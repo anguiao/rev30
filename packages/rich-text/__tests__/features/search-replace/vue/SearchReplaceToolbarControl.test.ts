@@ -70,9 +70,20 @@ function isPopoverOpen(wrapper: ReturnType<typeof mount>) {
   return wrapper.getComponent(NPopover).props('show') === true
 }
 
+async function waitForPopoverState(wrapper: ReturnType<typeof mount>, open: boolean) {
+  await vi.waitFor(() => {
+    expect(isPopoverOpen(wrapper)).toBe(open)
+  })
+}
+
+async function waitForMatchPosition(wrapper: ReturnType<typeof mount>, position: string) {
+  await vi.waitFor(() => {
+    expect(wrapper.get('[data-test="rich-text-search-match-position"]').text()).toBe(position)
+  })
+}
+
 async function openPanel(wrapper: ReturnType<typeof mount>) {
   await wrapper.get('[data-test="rich-text-search-replace"]').trigger('click')
-  await flushPromises()
 
   await vi.waitFor(() => {
     expect(wrapper.find('[data-test="rich-text-search-replace-panel"]').exists()).toBe(true)
@@ -89,30 +100,26 @@ describe('SearchReplaceToolbarControl', () => {
     await openPanel(wrapper)
     const queryInput = getInputComponent(wrapper, 'rich-text-search-query')
     queryInput.vm.$emit('update:value', 'alpha')
-    await flushPromises()
 
-    expect(wrapper.get('[data-test="rich-text-search-match-position"]').text()).toBe('1/3')
+    await waitForMatchPosition(wrapper, '1/3')
     expect(update).not.toHaveBeenCalled()
 
     getButtonComponent(wrapper, 'rich-text-search-next').vm.$emit('click')
-    await flushPromises()
 
-    expect(wrapper.get('[data-test="rich-text-search-match-position"]').text()).toBe('2/3')
+    await waitForMatchPosition(wrapper, '2/3')
     expect(update).not.toHaveBeenCalled()
 
     wrapper.getComponent(NCheckbox).vm.$emit('update:checked', true)
-    await flushPromises()
 
-    expect(wrapper.get('[data-test="rich-text-search-match-position"]').text()).toBe('1/1')
+    await waitForMatchPosition(wrapper, '1/1')
 
     const replacementInput = getInputComponent(wrapper, 'rich-text-search-replacement')
     replacementInput.vm.$emit('update:value', 'beta')
     getButtonComponent(wrapper, 'rich-text-search-replace-current').vm.$emit('click')
-    await flushPromises()
 
     expect(editor.getText()).toBe('Alpha beta ALPHA')
     expect(update).toHaveBeenCalledTimes(1)
-    expect(wrapper.get('[data-test="rich-text-search-match-position"]').text()).toBe('0/0')
+    await waitForMatchPosition(wrapper, '0/0')
     expect(isPopoverOpen(wrapper)).toBe(true)
   })
 
@@ -121,34 +128,32 @@ describe('SearchReplaceToolbarControl', () => {
     const wrapper = mountControl(editor)
 
     runRichTextAction(editor, openSearchReplaceAction)
-    await flushPromises()
 
     const getQueryElement = () => getInputComponent(wrapper, 'rich-text-search-query').get('input')
 
-    expect(isPopoverOpen(wrapper)).toBe(true)
-    expect(document.activeElement).toBe(getQueryElement().element)
+    await waitForPopoverState(wrapper, true)
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(getQueryElement().element)
+    })
 
     getInputComponent(wrapper, 'rich-text-search-query').vm.$emit('update:value', 'one')
-    await flushPromises()
-    expect(wrapper.get('[data-test="rich-text-search-match-position"]').text()).toBe('1/2')
+    await waitForMatchPosition(wrapper, '1/2')
 
     await getQueryElement().trigger('keydown', { key: 'Enter' })
-    await flushPromises()
-    expect(wrapper.get('[data-test="rich-text-search-match-position"]').text()).toBe('2/2')
+    await waitForMatchPosition(wrapper, '2/2')
 
     await getQueryElement().trigger('keydown', { key: 'Enter', shiftKey: true })
-    await flushPromises()
-    expect(wrapper.get('[data-test="rich-text-search-match-position"]').text()).toBe('1/2')
+    await waitForMatchPosition(wrapper, '1/2')
 
     await getQueryElement().trigger('keydown', { key: 'Escape', isComposing: true })
-    await flushPromises()
     expect(isPopoverOpen(wrapper)).toBe(true)
 
     await getQueryElement().trigger('keydown', { key: 'Escape' })
-    await flushPromises()
 
-    expect(isPopoverOpen(wrapper)).toBe(false)
-    expect(editor.isFocused).toBe(true)
+    await waitForPopoverState(wrapper, false)
+    await vi.waitFor(() => {
+      expect(editor.isFocused).toBe(true)
+    })
   })
 
   it('replaces with Enter and navigates backward with Shift-Enter in the replacement input', async () => {
@@ -159,17 +164,14 @@ describe('SearchReplaceToolbarControl', () => {
     getInputComponent(wrapper, 'rich-text-search-query').vm.$emit('update:value', 'one')
     const replacementInput = getInputComponent(wrapper, 'rich-text-search-replacement')
     replacementInput.vm.$emit('update:value', 'two')
-    await flushPromises()
 
     await replacementInput.get('input').trigger('keydown', { key: 'Enter', shiftKey: true })
-    await flushPromises()
     expect(editor.getText()).toBe('one one')
-    expect(wrapper.get('[data-test="rich-text-search-match-position"]').text()).toBe('2/2')
+    await waitForMatchPosition(wrapper, '2/2')
 
     await replacementInput.get('input').trigger('keydown', { key: 'Enter' })
-    await flushPromises()
     expect(editor.getText()).toBe('one two')
-    expect(wrapper.get('[data-test="rich-text-search-match-position"]').text()).toBe('1/1')
+    await waitForMatchPosition(wrapper, '1/1')
   })
 
   it('restores the toolbar trigger when a trigger-opened panel is cancelled', async () => {
@@ -181,9 +183,8 @@ describe('SearchReplaceToolbarControl', () => {
     await getInputComponent(wrapper, 'rich-text-search-query')
       .get('input')
       .trigger('keydown', { key: 'Escape' })
-    await flushPromises()
 
-    expect(isPopoverOpen(wrapper)).toBe(false)
+    await waitForPopoverState(wrapper, false)
     expect(document.activeElement).toBe(trigger.element)
   })
 
@@ -212,10 +213,9 @@ describe('SearchReplaceToolbarControl', () => {
       cancelable: true,
     })
     editor.view.dom.dispatchEvent(event)
-    await flushPromises()
 
     expect(event.defaultPrevented).toBe(true)
-    expect(isPopoverOpen(wrapper)).toBe(true)
+    await waitForPopoverState(wrapper, true)
     expect(wrapper.get('[data-test="rich-text-search-replace-panel"]').attributes('role')).toBe(
       'dialog',
     )
@@ -227,12 +227,11 @@ describe('SearchReplaceToolbarControl', () => {
 
     await openPanel(wrapper)
     await wrapper.setProps({ disabled: true })
-    await flushPromises()
 
     expect(
       wrapper.get('[data-test="rich-text-search-replace"]').attributes('disabled'),
     ).toBeDefined()
-    expect(isPopoverOpen(wrapper)).toBe(false)
+    await waitForPopoverState(wrapper, false)
     expect(getSearchReplaceState(editor).isOpen).toBe(false)
   })
 })

@@ -2,7 +2,7 @@
 import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
 import type { InputInst } from 'naive-ui'
 import { NButton, NCheckbox, NInput, NPopover } from 'naive-ui'
-import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { runRichTextAction } from '../../../editor/action'
 import {
   closeSearchReplaceAction,
@@ -22,7 +22,7 @@ const props = withDefaults(defineProps<RichTextToolbarControlProps>(), {
 
 const editor = props.editor
 
-const searchState = shallowRef(getSearchReplaceState(editor))
+const searchState = computed(() => getSearchReplaceState(editor))
 const replacement = ref('')
 const focusOrigin = ref<HTMLElement | null>(null)
 
@@ -53,16 +53,6 @@ function togglePanel(event: MouseEvent) {
 
   runRichTextAction(editor, openSearchReplaceAction)
 }
-
-function syncSearchState() {
-  searchState.value = getSearchReplaceState(editor)
-}
-
-editor.on('transaction', syncSearchState)
-
-onBeforeUnmount(() => {
-  editor.off('transaction', syncSearchState)
-})
 
 function setQuery(query: string) {
   runRichTextAction(editor, setSearchQueryAction, query)

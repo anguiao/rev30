@@ -4,12 +4,21 @@ import { RichTextDocumentInvalidError } from '../../server/errors'
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
 import { tableFeature } from './shared'
+import {
+  buildRichTextTableCellStyle,
+  buildRichTextTableHeaderStyle,
+  buildRichTextTableStyle,
+  richTextTableWrapperStyle,
+} from './styles'
 
 const TABLE_MAX_LOGICAL_POSITIONS_PER_TABLE = 10_000
 const TABLE_MAX_LOGICAL_POSITIONS_PER_DOCUMENT = 100_000
 const pixelValuePattern = /^\s*\d+(?:\.\d+)?px\s*$/
 const positiveIntegerPattern = /^[1-9]\d*$/
 const colwidthPattern = /^-?\d+(?:\.\d+)?(?:,-?\d+(?:\.\d+)?)*$/
+const cellAlignments = new Set(['left', 'center', 'right'] as const)
+
+type CellAlignment = 'left' | 'center' | 'right'
 
 function getTableWidth(table: ProseMirrorNode) {
   let width = 0
@@ -89,6 +98,46 @@ export function assertTableDocument(document: ProseMirrorNode) {
   })
 }
 
+function getInlineStyleValue(style: string | undefined, property: string) {
+  let value: string | undefined
+
+  for (const declaration of style?.split(';') ?? []) {
+    const separator = declaration.indexOf(':')
+
+    if (separator === -1 || declaration.slice(0, separator).trim().toLowerCase() !== property) {
+      continue
+    }
+
+    value = declaration.slice(separator + 1).trim()
+  }
+
+  return value
+}
+
+function normalizePixelValue(value: string | undefined) {
+  return value && pixelValuePattern.test(value) ? value.trim() : undefined
+}
+
+function normalizeCellAlignment(value: string | undefined): CellAlignment | undefined {
+  const normalized = value?.trim().toLowerCase()
+
+  return normalized && cellAlignments.has(normalized as CellAlignment)
+    ? (normalized as CellAlignment)
+    : undefined
+}
+
+const normalizeTable: RichTextTagTransform = ({ tagName, attribs }) => {
+  const width = normalizePixelValue(getInlineStyleValue(attribs.style, 'width'))
+  const minWidth = normalizePixelValue(getInlineStyleValue(attribs.style, 'min-width'))
+
+  return {
+    tagName,
+    attribs: {
+      style: buildRichTextTableStyle(width, minWidth),
+    },
+  }
+}
+
 function normalizeCellAttributes({ tagName, attribs }: Parameters<RichTextTagTransform>[0]) {
   const nextAttributes: Record<string, string> = {}
 
@@ -104,9 +153,12 @@ function normalizeCellAttributes({ tagName, attribs }: Parameters<RichTextTagTra
     nextAttributes.colwidth = attribs.colwidth
   }
 
-  if (attribs.style) {
-    nextAttributes.style = attribs.style
-  }
+  const textAlign = normalizeCellAlignment(getInlineStyleValue(attribs.style, 'text-align'))
+
+  nextAttributes.style =
+    tagName === 'th'
+      ? buildRichTextTableHeaderStyle(textAlign)
+      : buildRichTextTableCellStyle(textAlign)
 
   return { tagName, attribs: nextAttributes }
 }
@@ -115,7 +167,7 @@ const normalizeTableWrapper: RichTextTagTransform = ({ tagName }) => ({
   tagName,
   attribs: {
     class: 'tableWrapper',
-    style: 'overflow-x: auto',
+    style: richTextTableWrapperStyle,
     tabindex: '0',
     role: 'region',
     'aria-label': '可横向滚动的表格',
@@ -134,25 +186,40 @@ export function createTableHtmlPolicy(): RichTextHtmlPolicy {
     },
     allowedStyles: {
       div: {
+        'max-width': [/^\s*100%\s*$/],
         'overflow-x': [/^\s*auto\s*$/],
+        'overscroll-behavior-x': [/^\s*contain\s*$/],
       },
       table: {
-        width: [pixelValuePattern],
+        width: [/^\s*(?:100%|\d+(?:\.\d+)?px)\s*$/],
         'min-width': [pixelValuePattern],
+        border: [/^.+$/],
+        'border-collapse': [/^\s*collapse\s*$/],
       },
       col: {
         width: [pixelValuePattern],
         'min-width': [pixelValuePattern],
       },
       th: {
-        'text-align': [/^\s*(?:left|center|right)\s*$/],
+        'min-width': [pixelValuePattern],
+        border: [/^.+$/],
+        padding: [/^\s*0\.5rem 0\.625rem\s*$/],
+        'text-align': [/^\s*(?:inherit|left|center|right)\s*$/],
+        'vertical-align': [/^\s*top\s*$/],
+        'background-color': [/^.+$/],
+        'font-weight': [/^\s*600\s*$/],
       },
       td: {
-        'text-align': [/^\s*(?:left|center|right)\s*$/],
+        'min-width': [pixelValuePattern],
+        border: [/^.+$/],
+        padding: [/^\s*0\.5rem 0\.625rem\s*$/],
+        'text-align': [/^\s*(?:inherit|left|center|right)\s*$/],
+        'vertical-align': [/^\s*top\s*$/],
       },
     },
     transformTags: {
       div: [normalizeTableWrapper],
+      table: [normalizeTable],
       th: [normalizeCellAttributes],
       td: [normalizeCellAttributes],
     },

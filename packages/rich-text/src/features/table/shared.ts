@@ -1,12 +1,17 @@
 import type { Attributes } from '@tiptap/core'
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table'
 import { defineRichTextFeature } from '../../core/feature'
+import {
+  richTextTableCellStyle,
+  richTextTableHeaderStyle,
+  richTextTableStyle,
+  TABLE_CELL_MIN_WIDTH,
+} from './styles'
 
 export const TABLE_SIZE_PICKER_MAX_ROWS = 8
 export const TABLE_SIZE_PICKER_MAX_COLUMNS = 8
 export const TABLE_SLASH_INSERT_ROWS = 3
 export const TABLE_SLASH_INSERT_COLUMNS = 3
-export const TABLE_CELL_MIN_WIDTH = 96
 
 function validatePositiveInteger(value: unknown) {
   if (!Number.isSafeInteger(value) || (value as number) <= 0) {
@@ -97,10 +102,21 @@ export function createTableExtensions() {
       resizable: false,
       renderWrapper: true,
       cellMinWidth: TABLE_CELL_MIN_WIDTH,
+      HTMLAttributes: {
+        style: richTextTableStyle,
+      },
     }),
     TableRow.extend({}),
-    RichTextTableCell.extend({}),
-    RichTextTableHeader.extend({}),
+    RichTextTableCell.configure({
+      HTMLAttributes: {
+        style: richTextTableCellStyle,
+      },
+    }),
+    RichTextTableHeader.configure({
+      HTMLAttributes: {
+        style: richTextTableHeaderStyle,
+      },
+    }),
   ] as const
 }
 

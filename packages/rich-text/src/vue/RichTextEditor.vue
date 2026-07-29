@@ -200,23 +200,11 @@ function handleFocusout(event: FocusEvent) {
   margin-top: 0;
   margin-bottom: 0;
   width: 100%;
-  border: 1px solid var(--rich-text-theme-table-border-color);
-  border-collapse: collapse;
 }
 
 :deep(.ProseMirror .tableWrapper th),
 :deep(.ProseMirror .tableWrapper td) {
   position: relative;
-  min-width: 96px;
-  border: 1px solid var(--rich-text-theme-table-border-color);
-  padding: 0.5rem 0.625rem;
-  text-align: inherit;
-  vertical-align: top;
-}
-
-:deep(.ProseMirror .tableWrapper th) {
-  background-color: var(--rich-text-theme-table-header-color);
-  font-weight: 600;
 }
 
 :deep(.ProseMirror .tableWrapper th > p),

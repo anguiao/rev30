@@ -76,13 +76,20 @@ describe('table server feature', () => {
       ],
     })
     expect(content.text).toBe('姓名\n\n\n\n状态\n\n\n\n\n\n张三\n\n\n\n正常')
-    expect(content.html).toContain('<div class="tableWrapper"')
-    expect(content.html).toContain('overflow-x:auto')
+    expect(content.html).toContain(
+      '<div class="tableWrapper" style="max-width:100%;overflow-x:auto;overscroll-behavior-x:contain"',
+    )
     expect(content.html).toContain('role="region"')
-    expect(content.html).toContain('<table')
+    expect(content.html).toContain(
+      '<table style="width:100%;min-width:192px;border:1px solid var(--rich-text-theme-table-border-color, var(--rich-text-table-border-color, light-dark(#e7e5e4, #3f3f46)));border-collapse:collapse">',
+    )
     expect(content.html).toContain('<colgroup>')
-    expect(content.html).toContain('<th')
-    expect(content.html).toContain('<td')
+    expect(content.html).toContain(
+      'padding:0.5rem 0.625rem;text-align:inherit;vertical-align:top;background-color:var(--rich-text-theme-table-header-color, var(--rich-text-table-header-color, light-dark(#f5f5f4, #18181b)));font-weight:600',
+    )
+    expect(content.html).toContain(
+      'padding:0.5rem 0.625rem;text-align:inherit;vertical-align:top"><p>张三</p>',
+    )
   })
 
   it('accepts inline marks, hard breaks, paragraph attributes, and legal cell attributes', () => {
@@ -130,6 +137,7 @@ describe('table server feature', () => {
       attrs: { colspan: 2, colwidth: [20, 30], align: 'right' },
     })
     expect(content.html).toContain('text-align:center')
+    expect(content.html).toContain('text-align:right')
     expect(content.html).toContain('width:96px')
   })
 
@@ -263,19 +271,26 @@ describe('table server feature', () => {
 
   it('normalizes the table wrapper and keeps only renderer table attributes', () => {
     const html = sanitizeRichTextHtml(
-      '<div class="evil" style="overflow-x: scroll; color: red" tabindex="9" role="button" onclick="alert(1)"><table style="width: 120px; color: red" data-table="evil"><tbody><tr><td colspan="0" rowspan="2" colwidth="20,30" style="text-align: justify; color: red">内容</td></tr></tbody></table></div>',
+      '<div class="evil" style="overflow-x: scroll; color: red" tabindex="9" role="button" onclick="alert(1)"><table style="width: 120px; border: 99px solid red; border-collapse: separate; color: red" data-table="evil"><tbody><tr><td colspan="0" rowspan="2" colwidth="20,30" style="min-width: 1px; border: 99px solid red; padding: 9rem; text-align: justify; vertical-align: bottom; color: red">内容</td></tr></tbody></table></div>',
       [createTableHtmlPolicy()],
     )
 
     expect(html).toContain(
-      '<div class="tableWrapper" style="overflow-x:auto" tabindex="0" role="region" aria-label="可横向滚动的表格">',
+      '<div class="tableWrapper" style="max-width:100%;overflow-x:auto;overscroll-behavior-x:contain" tabindex="0" role="region" aria-label="可横向滚动的表格">',
     )
-    expect(html).toContain('<table style="width:120px">')
-    expect(html).toContain('<td rowspan="2" colwidth="20,30">内容</td>')
+    expect(html).toContain(
+      '<table style="width:120px;border:1px solid var(--rich-text-theme-table-border-color, var(--rich-text-table-border-color, light-dark(#e7e5e4, #3f3f46)));border-collapse:collapse">',
+    )
+    expect(html).toContain(
+      '<td rowspan="2" colwidth="20,30" style="min-width:96px;border:1px solid var(--rich-text-theme-table-border-color, var(--rich-text-table-border-color, light-dark(#e7e5e4, #3f3f46)));padding:0.5rem 0.625rem;text-align:inherit;vertical-align:top">内容</td>',
+    )
     expect(html).not.toContain('evil')
     expect(html).not.toContain('onclick')
     expect(html).not.toContain('colspan="0"')
     expect(html).not.toContain('overflow-x:scroll')
+    expect(html).not.toContain('99px')
+    expect(html).not.toContain('9rem')
+    expect(html).not.toContain('vertical-align:bottom')
     expect(html).not.toContain('color:red')
   })
 })

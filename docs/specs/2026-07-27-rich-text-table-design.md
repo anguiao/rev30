@@ -446,10 +446,10 @@ Table HTML policy 增加以下标签：
 
 policy 只接受静态 renderer 产生的表格结构：
 
-- wrapper transform 将 `div` 规范化为精确的 `class="tableWrapper"`，注入 `overflow-x: auto`，并设置固定的 `tabindex="0"`、`role="region"` 与“可横向滚动的表格”可访问名称。
-- `table` 只允许 renderer 产生的 `width` 或 `min-width` 像素样式。
+- wrapper transform 将 `div` 规范化为精确的 `class="tableWrapper"`，注入 `max-width: 100%`、`overflow-x: auto` 和 `overscroll-behavior-x: contain`，并设置固定的 `tabindex="0"`、`role="region"` 与“可横向滚动的表格”可访问名称。
+- `table` 只从 renderer 样式中读取合法的像素 `width` 或 `min-width`，再重建由 Table feature 控制的宽度、边框和 `border-collapse` 样式；未持久化完整列宽时使用 `width: 100%`。
 - `col` 只允许 `width` 或 `min-width` 像素样式。
-- `td` 和 `th` 只保留合法正整数的 `colspan`、`rowspan`，renderer 产生的 `colwidth` 数字列表，以及值为 `left`、`center` 或 `right` 的 `text-align` 样式；不额外允许 renderer 不会产生的 `data-colwidth`。
+- `td` 和 `th` 只保留合法正整数的 `colspan`、`rowspan`，renderer 产生的 `colwidth` 数字列表，以及值为 `left`、`center` 或 `right` 的 `text-align`；单元格的最小宽度、边框、内边距和垂直对齐由 policy 重建，`th` 额外重建表头底色和字重。不额外允许 renderer 不会产生的 `data-colwidth`。
 - 不允许事件属性、任意 class、其它 style 或其它表格属性。
 
 服务端始终先用 schema 从 JSON 构造并执行 `document.check()`，再执行逻辑网格资源预检查与 `TableMap` 几何完整性检查，最后执行静态渲染和 sanitize。HTML policy 不用于接受任意外部 HTML。
@@ -468,14 +468,14 @@ policy 只接受静态 renderer 产生的表格结构：
 
 `96px` 是 editor 与静态 HTML 的有效渲染下限，不是 persisted `colwidth` 的数据下限。外部合法 JSON 中较小的数字宽度保持原值，Tiptap 渲染时应用 `cellMinWidth`；服务端不因其低于 96 而拒绝或改写 canonical JSON。
 
-编辑器内由 `RichTextEditor.vue` 的 scoped styles 设置 wrapper、table、cell 和 selection 样式；服务端 HTML wrapper 使用经过 sanitize 的内联 `overflow-x:auto` 保证独立渲染时仍可滚动。表格的文字排版继续沿用现有 `prose`/`dark:prose-invert`。
+Table shared extension 通过统一的样式构造函数为 `table`、`td` 和 `th` 输出基础内联样式，服务端 HTML policy 使用同一组构造函数重建规范样式，保证编辑器和独立 HTML 渲染具有一致的边框、单元格内边距、对齐和表头视觉。wrapper 的响应式约束由服务端 transform 注入；编辑器中的 wrapper 滚动、焦点、selection 和单元格定位等交互样式继续由 `RichTextEditor.vue` 的 scoped styles 控制。表格内的文字排版继续沿用现有 `prose`/`dark:prose-invert`。
 
 编辑器将 Typography 原本位于 table 上的 `1.5rem` 上下间距移到 `.tableWrapper`，内部 table 的上下 margin 为零；文档首个或末个 block 是表格时，对应外侧 margin 仍为零。间距位于 Quick Bar 锚点外部，因此 Table Quick Bar 与可见表格上边缘保持统一的浮层 offset。该调整只存在于编辑器 scoped styles，不改变静态 HTML。
 
 表格视觉使用以下主题变量：
 
-- table 和 cell 共用 `--rich-text-theme-table-border-color`，默认映射到 Naive UI `dividerColor`。
-- `th` 使用 `--rich-text-theme-table-header-color` 作为底色，默认映射到 Naive UI `tableHeaderColor`，配合加粗文字明确区分表头与普通单元格。
+- table 和 cell 优先使用 `--rich-text-theme-table-border-color`；编辑器中默认映射到 Naive UI `dividerColor`，独立 HTML 中缺少编辑器主题变量时使用明暗模式中性色 fallback。
+- `th` 优先使用 `--rich-text-theme-table-header-color`；编辑器中默认映射到 Naive UI `tableHeaderColor`，独立 HTML 中使用明暗模式中性色 fallback，并配合加粗文字明确区分表头与普通单元格。
 - 表格边框和表头底色分别允许通过 `--rich-text-table-border-color` 和 `--rich-text-table-header-color` 覆盖。
 
 完整单元格 selection 使用 `.selectedCell::after` 覆盖层：
@@ -639,8 +639,9 @@ contentJson
 - 验证 `deriveRichTextContent` 在 `document.check()` 后按 feature 顺序执行文档校验 hook，并将 hook 错误映射为 `RichTextContentInvalidError`。
 - 验证合法 Table JSON 能派生规范化 JSON、Tiptap 默认块分隔形式的纯文本和语义化 HTML。
 - 验证静态 HTML 包含 `.tableWrapper`、`table`、`colgroup`、`tbody`、`th` 和 `td`。
-- 验证 wrapper 的横向滚动样式、固定键盘访问属性与 table/col 的合法像素宽度被保留。
-- 验证任意 wrapper class、事件属性、非法 style 和非法 span/colwidth 属性被清理或规范化。
+- 验证静态 HTML 携带由 Table feature 控制的 wrapper 响应式约束、table 边框与折叠规则、cell 最小宽度/边框/内边距，以及表头底色和字重。
+- 验证 wrapper 的固定键盘访问属性与 table/col 的合法像素宽度被保留。
+- 验证任意 wrapper class、事件属性、非法 style 和非法 span/colwidth 属性被清理；外部输入的边框、内边距、垂直对齐等基础视觉样式被规范值覆盖。
 - 验证合法 `colspan`、`rowspan`、列宽属性和单元格 `align` 可以跨 JSON 与 HTML 保留，但没有对应编辑 UI。
 - 验证低于 96 的合法 persisted `colwidth` 不被拒绝或改写，渲染后的有效列宽仍不低于 96px。
 - 验证段落级 `textAlign` 覆盖继承自单元格 `align` 的对齐。
@@ -672,7 +673,7 @@ contentJson
 - 宽表格保持 96px 最小列宽，并在 wrapper 内横向滚动。
 - 用户可通过默认 Tab 导航和 GapCursor 退出表格，不依赖额外 Table 交互。
 - 单元格内的 `Tab`/`Shift+Tab` 不进入 Table Quick Bar，键盘用户可通过 `Alt+F10` 到达完整的顶部 Table control。
-- 编辑器和服务端使用相同 schema，服务端输出安全且语义化的 Table HTML。
+- 编辑器和服务端使用相同 schema 与基础表格样式，服务端输出安全、语义化且可独立渲染的 Table HTML。
 - 服务端额外拒绝 `document.check()` 无法识别的非法表格几何结构，不静默修复外部 Table JSON。
 - `compact` preset、公开 Vue API、服务端接口、contracts 和数据库均不受影响。
 

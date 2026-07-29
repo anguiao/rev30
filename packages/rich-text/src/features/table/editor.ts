@@ -11,10 +11,8 @@ export type RichTextTableSelectionType = 'cursor' | 'text' | 'cell'
 export interface RichTextTableContext {
   readonly tableNode: ProseMirrorNode
   readonly tablePosition: number
-  readonly tablePos: number
   readonly selectionType: RichTextTableSelectionType
   readonly cellPosition?: number
-  readonly selectedCellPositions?: readonly number[]
 }
 
 interface TablePositionContext {
@@ -60,15 +58,12 @@ function findCellSelectionTable(selection: CellSelection): RichTextTableContext 
   }
 
   const tablePosition = $anchorCell.before($anchorCell.depth - 1)
-  const selectedCellPositions = selection.ranges.map((range) => range.$from.before())
 
   return {
     tableNode,
     tablePosition,
-    tablePos: tablePosition,
     selectionType: 'cell',
     cellPosition: $anchorCell.pos,
-    selectedCellPositions,
   }
 }
 
@@ -102,7 +97,6 @@ export function resolveRichTextTableContext(selection: Selection): RichTextTable
   return {
     tableNode: from.tableNode,
     tablePosition: from.tablePosition,
-    tablePos: from.tablePosition,
     selectionType,
     cellPosition: from.cellPosition,
   }
@@ -178,7 +172,7 @@ function defineTableStructureAction(
     | 'addColumnAfter'
     | 'deleteColumn'
     | 'deleteTable',
-  canRun?: (table: ProseMirrorNode) => boolean,
+  canRun?: (context: RichTextTableContext, selection: Selection) => boolean,
 ) {
   return defineRichTextAction(tableFeature, {
     key,
@@ -187,7 +181,7 @@ function defineTableStructureAction(
       ({ chain, state }) => {
         const context = resolveRichTextTableContext(state.selection)
 
-        if (!context || (canRun && !canRun(context.tableNode))) {
+        if (!context || (canRun && !canRun(context, state.selection))) {
           return false
         }
 
@@ -201,7 +195,9 @@ export const addRowAfterAction = defineTableStructureAction('add-row-after', 'ad
 export const deleteRowAction = defineTableStructureAction(
   'delete-row',
   'deleteRow',
-  (table) => table.childCount > 1,
+  (context, selection) =>
+    context.tableNode.childCount > 1 &&
+    !(selection instanceof CellSelection && selection.isColSelection()),
 )
 export const addColumnBeforeAction = defineTableStructureAction(
   'add-column-before',
@@ -211,7 +207,9 @@ export const addColumnAfterAction = defineTableStructureAction('add-column-after
 export const deleteColumnAction = defineTableStructureAction(
   'delete-column',
   'deleteColumn',
-  (table) => TableMap.get(table).width > 1,
+  (context, selection) =>
+    TableMap.get(context.tableNode).width > 1 &&
+    !(selection instanceof CellSelection && selection.isRowSelection()),
 )
 export const deleteTableAction = defineTableStructureAction('delete-table', 'deleteTable')
 

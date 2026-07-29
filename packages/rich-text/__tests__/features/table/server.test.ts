@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { TableMap } from '@tiptap/pm/tables'
+import { describe, expect, it, vi } from 'vitest'
 import { createTableHtmlPolicy } from '../../../src/features/table/server'
 import { RichTextContentInvalidError, deriveRichTextContent } from '../../../src/server'
 import { sanitizeRichTextHtml } from '../../../src/server/sanitize'
@@ -178,6 +179,35 @@ describe('table server feature', () => {
     expect(() => deriveRichTextContent({ type: 'doc', content: [table(rows)] }, preset)).toThrow(
       RichTextContentInvalidError,
     )
+  })
+
+  it('counts active rowspans before constructing a TableMap', () => {
+    const tableMapGet = vi.spyOn(TableMap, 'get')
+    const oversizedTable = table([
+      [
+        {
+          ...cell(),
+          attrs: { colspan: 4000, rowspan: 2, colwidth: null, align: null },
+        },
+        {
+          ...cell(),
+          attrs: { colspan: 1000, rowspan: 1, colwidth: null, align: null },
+        },
+      ],
+      [
+        {
+          ...cell(),
+          attrs: { colspan: 5000, rowspan: 1, colwidth: null, align: null },
+        },
+      ],
+    ])
+
+    expect(() => deriveRichTextContent({ type: 'doc', content: [oversizedTable] }, preset)).toThrow(
+      RichTextContentInvalidError,
+    )
+    expect(tableMapGet).not.toHaveBeenCalled()
+
+    tableMapGet.mockRestore()
   })
 
   it('normalizes the table wrapper and keeps only renderer table attributes', () => {

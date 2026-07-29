@@ -1,7 +1,7 @@
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
-import { CellSelection } from '@tiptap/pm/tables'
+import { CellSelection, TableMap } from '@tiptap/pm/tables'
 import { UndoRedo } from '@tiptap/extensions/undo-redo'
 import { describe, expect, it } from 'vitest'
 import { canRunRichTextAction, runRichTextAction } from '../../../src/editor/action'
@@ -108,6 +108,32 @@ describe('table editor actions', () => {
     expect(canRunRichTextAction(editor, deleteTableAction)).toBe(true)
     expect(runRichTextAction(editor, deleteTableAction)).toBe(true)
     expect(editor.getJSON()).toMatchObject({ content: [{ type: 'paragraph' }] })
+  })
+
+  it('disables row and column deletion when a CellSelection covers the whole table', () => {
+    const editor = createEditor()
+    runRichTextAction(editor, insertTableAction, 2, 2)
+
+    const context = resolveRichTextTableContext(editor.state.selection)
+    if (!context) {
+      throw new Error('Expected a table context')
+    }
+
+    const tableMap = TableMap.get(context.tableNode)
+    const tableStart = context.tablePosition + 1
+    const firstCell = editor.state.doc.resolve(tableStart + tableMap.map[0]!)
+    const lastCell = editor.state.doc.resolve(tableStart + tableMap.map.at(-1)!)
+    const selection = new CellSelection(firstCell, lastCell)
+    editor.view.dispatch(editor.state.tr.setSelection(selection))
+
+    expect(selection.isRowSelection()).toBe(true)
+    expect(selection.isColSelection()).toBe(true)
+    expect(canRunRichTextAction(editor, deleteRowAction)).toBe(false)
+    expect(canRunRichTextAction(editor, deleteColumnAction)).toBe(false)
+    expect(runRichTextAction(editor, deleteRowAction)).toBe(false)
+    expect(runRichTextAction(editor, deleteColumnAction)).toBe(false)
+    expect(getTable(editor).childCount).toBe(2)
+    expect(TableMap.get(getTable(editor)).width).toBe(2)
   })
 
   it('toggles only the first row header semantics and preserves other header cells', () => {

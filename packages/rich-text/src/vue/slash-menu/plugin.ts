@@ -11,11 +11,24 @@ import {
 const richTextSlashMenuViewPluginKey = new PluginKey('richTextSlashMenuView')
 const richTextSlashMenuPluginKey = new PluginKey('richTextSlashMenu')
 
+const allowRichTextSlashMenu: NonNullable<SuggestionOptions['allow']> = ({ state }) => {
+  const { $from } = state.selection
+
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    const tableRole = $from.node(depth).type.spec.tableRole
+
+    if (tableRole === 'cell' || tableRole === 'header_cell') {
+      return false
+    }
+  }
+
+  return true
+}
+
 export function registerRichTextSlashMenu(
   editor: Editor,
   renderer: ReturnType<NonNullable<SuggestionOptions['render']>>,
   container: HTMLElement,
-  allow?: SuggestionOptions['allow'],
 ) {
   const viewPlugin = new Plugin({
     key: richTextSlashMenuViewPluginKey,
@@ -64,7 +77,7 @@ export function registerRichTextSlashMenu(
     placement: 'bottom-start',
     offset: { mainAxis: 8 },
     container,
-    ...(allow ? { allow } : {}),
+    allow: allowRichTextSlashMenu,
     render: () => renderer,
   })
 

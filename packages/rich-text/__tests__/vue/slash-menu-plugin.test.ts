@@ -8,7 +8,6 @@ import { blockquoteEditorFeature } from '../../src/features/blockquote/editor'
 import { blockquoteFeature } from '../../src/features/blockquote/shared'
 import { tableEditorFeature } from '../../src/features/table/editor'
 import { tableFeature } from '../../src/features/table/shared'
-import { resolveRichTextTableContext } from '../../src/features/table/editor'
 import { registerRichTextSlashMenu } from '../../src/vue/slash-menu/plugin'
 import { createTestEditor } from '../helpers/editor'
 
@@ -181,12 +180,7 @@ describe('slash menu input', () => {
       content: '<p></p>',
     })
 
-    registerRichTextSlashMenu(
-      editor,
-      { onStart },
-      document.body,
-      ({ state }) => resolveRichTextTableContext(state.selection) === null,
-    )
+    registerRichTextSlashMenu(editor, { onStart }, document.body)
     editor.commands.insertTable({ rows: 1, cols: 1, withHeaderRow: true })
     editor.commands.insertContent('/')
 

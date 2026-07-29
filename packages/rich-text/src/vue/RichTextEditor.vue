@@ -116,7 +116,6 @@ function handleFocusout(event: FocusEvent) {
         :editor="editor"
         :slash-menu="preset.slashMenu"
         :append-to="root"
-        :allow="preset.slashMenuAllow"
       />
     </div>
 

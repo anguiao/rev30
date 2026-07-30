@@ -40,7 +40,7 @@ function createCommand(
   const item = defineRichTextActionItem(
     defineRichTextAction(baseFeature, {
       key,
-      command: () => () => true,
+      command: () => true,
     }),
     {
       label: key,

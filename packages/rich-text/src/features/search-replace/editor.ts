@@ -355,95 +355,77 @@ const SearchReplace = Extension.create({
 
 export const openSearchReplaceAction = defineRichTextAction(searchReplaceFeature, {
   key: 'open-search-replace',
-  command:
-    () =>
-    ({ editor, tr, dispatch }) => {
-      if (!editor.isEditable) {
-        return false
-      }
+  command: ({ editor, tr, dispatch }) => {
+    if (!editor.isEditable) {
+      return false
+    }
 
-      if (dispatch) {
-        setSearchReplaceUpdate(tr, { type: 'open' })
-      }
+    if (dispatch) {
+      setSearchReplaceUpdate(tr, { type: 'open' })
+    }
 
-      return true
-    },
+    return true
+  },
   isActive: (editor) => getSearchReplaceState(editor).isOpen,
 })
 
 export const closeSearchReplaceAction = defineRichTextAction(searchReplaceFeature, {
   key: 'close-search-replace',
-  command:
-    () =>
-    ({ state, tr, dispatch }) => {
-      if (!getSearchReplaceStateFromEditorState(state).isOpen) {
-        return false
-      }
+  command: ({ state, tr, dispatch }) => {
+    if (!getSearchReplaceStateFromEditorState(state).isOpen) {
+      return false
+    }
 
-      if (dispatch) {
-        setSearchReplaceUpdate(tr, { type: 'close' })
-      }
+    if (dispatch) {
+      setSearchReplaceUpdate(tr, { type: 'close' })
+    }
 
-      return true
-    },
+    return true
+  },
 })
 
 export const setSearchQueryAction = defineRichTextAction(searchReplaceFeature, {
   key: 'set-search-query',
-  command:
-    (query: string) =>
-    ({ tr, dispatch }) => {
-      if (dispatch) {
-        setSearchReplaceUpdate(tr, { type: 'set-query', query })
-      }
+  command: ({ tr, dispatch }, query: string) => {
+    if (dispatch) {
+      setSearchReplaceUpdate(tr, { type: 'set-query', query })
+    }
 
-      return true
-    },
+    return true
+  },
 })
 
 export const setSearchCaseSensitiveAction = defineRichTextAction(searchReplaceFeature, {
   key: 'set-search-case-sensitive',
-  command:
-    (caseSensitive: boolean) =>
-    ({ tr, dispatch }) => {
-      if (dispatch) {
-        setSearchReplaceUpdate(tr, { type: 'set-case-sensitive', caseSensitive })
-      }
+  command: ({ tr, dispatch }, caseSensitive: boolean) => {
+    if (dispatch) {
+      setSearchReplaceUpdate(tr, { type: 'set-case-sensitive', caseSensitive })
+    }
 
-      return true
-    },
+    return true
+  },
 })
 
 export const goToNextSearchMatchAction = defineRichTextAction(searchReplaceFeature, {
   key: 'next-search-match',
-  command:
-    () =>
-    ({ state, tr, dispatch }) =>
-      goToSearchMatch(state, tr, dispatch, 'next'),
+  command: ({ state, tr, dispatch }) => goToSearchMatch(state, tr, dispatch, 'next'),
 })
 
 export const goToPreviousSearchMatchAction = defineRichTextAction(searchReplaceFeature, {
   key: 'previous-search-match',
-  command:
-    () =>
-    ({ state, tr, dispatch }) =>
-      goToSearchMatch(state, tr, dispatch, 'previous'),
+  command: ({ state, tr, dispatch }) => goToSearchMatch(state, tr, dispatch, 'previous'),
 })
 
 export const replaceCurrentSearchMatchAction = defineRichTextAction(searchReplaceFeature, {
   key: 'replace-current-search-match',
-  command:
-    (replacement: string) =>
-    ({ editor, state, tr, dispatch }) =>
-      replaceCurrentSearchMatch(editor, state, tr, dispatch, replacement),
+  command: ({ editor, state, tr, dispatch }, replacement: string) =>
+    replaceCurrentSearchMatch(editor, state, tr, dispatch, replacement),
 })
 
 export const replaceAllSearchMatchesAction = defineRichTextAction(searchReplaceFeature, {
   key: 'replace-all-search-matches',
-  command:
-    (replacement: string) =>
-    ({ editor, state, tr, dispatch }) =>
-      replaceAllSearchMatches(editor, state, tr, dispatch, replacement),
+  command: ({ editor, state, tr, dispatch }, replacement: string) =>
+    replaceAllSearchMatches(editor, state, tr, dispatch, replacement),
 })
 
 export const searchReplaceEditorFeature = defineRichTextEditorFeature(searchReplaceFeature, {

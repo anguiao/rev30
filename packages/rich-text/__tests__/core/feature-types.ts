@@ -1,7 +1,8 @@
+import type { CommandProps } from '@tiptap/core'
 import { expectTypeOf } from 'vitest'
 import { defineRichTextFeature } from '../../src/core/feature'
 import { defineRichTextPreset } from '../../src/core/preset'
-import { defineRichTextAction } from '../../src/editor/action'
+import { defineRichTextAction, defineRichTextActionItem } from '../../src/editor/action'
 import { defineRichTextEditorFeature } from '../../src/editor/feature'
 import {
   createImageServerFeature,
@@ -21,6 +22,7 @@ import {
 } from '../../src/vue/presets/all'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
+import { richTextSlashCommand } from '../../src/vue/slash-menu'
 
 const baseFeature = defineRichTextFeature({
   key: 'base',
@@ -38,18 +40,30 @@ expectTypeOf(dependentFeature.key).toEqualTypeOf<'dependent'>()
 
 const action = defineRichTextAction(dependentFeature, {
   key: 'toggle-dependent',
-  command: () => () => true,
+  command: () => true,
 })
 const actionWithArgument = defineRichTextAction(dependentFeature, {
   key: 'set-dependent',
-  command: (value: string) => () => value.length > 0,
+  command: (_props, value: string) => value.length > 0,
 })
 const editorFeature = defineRichTextEditorFeature(dependentFeature, {})
 
 expectTypeOf(action.feature).toEqualTypeOf<typeof dependentFeature>()
 expectTypeOf(action.key).toEqualTypeOf<'toggle-dependent'>()
-expectTypeOf(actionWithArgument.command).parameter(0).toEqualTypeOf<string>()
+expectTypeOf(action.command).parameter(0).toEqualTypeOf<CommandProps>()
+expectTypeOf(action.command).returns.toEqualTypeOf<boolean>()
+expectTypeOf(actionWithArgument.command).parameter(0).toEqualTypeOf<CommandProps>()
+expectTypeOf(actionWithArgument.command).parameter(1).toEqualTypeOf<string>()
 expectTypeOf(editorFeature.feature).toEqualTypeOf<typeof dependentFeature>()
+
+const actionWithArgumentItem = defineRichTextActionItem(actionWithArgument, {
+  label: '设置依赖',
+  icon: 'i-[lucide--circle]',
+})
+
+// @ts-expect-error Parameterized actions require a custom slash command runner.
+richTextSlashCommand(actionWithArgumentItem)
+richTextSlashCommand(actionWithArgumentItem, () => {})
 
 const mutableFeatures = [baseFeature, dependentFeature]
 const preset = defineRichTextPreset({

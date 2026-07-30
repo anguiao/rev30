@@ -80,7 +80,7 @@ describe('image editor actions', () => {
       editor
         .chain()
         .deleteRange({ from: 1, to: 4 })
-        .command(insertImageAction.command(imageAttrs))
+        .command((props) => insertImageAction.command(props, imageAttrs))
         .run(),
     ).toBe(true)
 

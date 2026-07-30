@@ -26,16 +26,14 @@ export function getSelectedImageAttrs(selection: Selection): RichTextImageAttrs 
 
 export const insertImageAction = defineRichTextAction(imageFeature, {
   key: 'insert-image',
-  command:
-    (attrs: RichTextImageAttrs) =>
-    ({ chain }) =>
-      chain()
-        .focus()
-        .command(({ commands, tr }) => {
-          closeHistory(tr)
-          return commands.insertContent({ type: 'image', attrs })
-        })
-        .run(),
+  command: ({ chain }, attrs: RichTextImageAttrs) =>
+    chain()
+      .focus()
+      .command(({ commands, tr }) => {
+        closeHistory(tr)
+        return commands.insertContent({ type: 'image', attrs })
+      })
+      .run(),
 })
 
 export const insertImageActionItem = defineRichTextActionItem(insertImageAction, {
@@ -46,15 +44,13 @@ export const insertImageActionItem = defineRichTextActionItem(insertImageAction,
 
 export const updateImageAction = defineRichTextAction(imageFeature, {
   key: 'update-image',
-  command:
-    (attrs: Partial<RichTextImageAttrs>) =>
-    ({ chain, tr }) => {
-      if (!(tr.selection instanceof NodeSelection) || tr.selection.node.type.name !== 'image') {
-        return false
-      }
+  command: ({ chain, tr }, attrs: Partial<RichTextImageAttrs>) => {
+    if (!(tr.selection instanceof NodeSelection) || tr.selection.node.type.name !== 'image') {
+      return false
+    }
 
-      return chain().focus().updateAttributes('image', attrs).run()
-    },
+    return chain().focus().updateAttributes('image', attrs).run()
+  },
 })
 
 export const imageEditorFeature = defineRichTextEditorFeature(imageFeature, {})

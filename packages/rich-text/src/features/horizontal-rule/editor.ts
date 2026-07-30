@@ -4,10 +4,7 @@ import { horizontalRuleFeature } from './shared'
 
 export const horizontalRuleAction = defineRichTextAction(horizontalRuleFeature, {
   key: horizontalRuleFeature.key,
-  command:
-    () =>
-    ({ chain }) =>
-      chain().focus().setHorizontalRule().run(),
+  command: ({ chain }) => chain().focus().setHorizontalRule().run(),
 })
 
 export const horizontalRuleActionItem = defineRichTextActionItem(horizontalRuleAction, {

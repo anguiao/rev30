@@ -7,12 +7,10 @@ import { baseFeature } from './shared'
 
 export const paragraphAction = defineRichTextAction(baseFeature, {
   key: 'paragraph',
-  command:
-    () =>
-    ({ chain, state }) =>
-      state.selection.$from.parent.type.name === 'paragraph'
-        ? chain().focus().run()
-        : chain().focus().setParagraph().run(),
+  command: ({ chain, state }) =>
+    state.selection.$from.parent.type.name === 'paragraph'
+      ? chain().focus().run()
+      : chain().focus().setParagraph().run(),
   isActive: (editor) => editor.isActive('paragraph'),
 })
 

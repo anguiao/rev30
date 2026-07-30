@@ -133,10 +133,7 @@ describe('rich text slash menu model', () => {
   it('simulates slash enabled state after deleting the query', () => {
     const emptyParagraphAction = defineRichTextAction(baseFeature, {
       key: 'empty-paragraph-only',
-      command:
-        () =>
-        ({ tr }) =>
-          tr.doc.textContent === '',
+      command: ({ tr }) => tr.doc.textContent === '',
     })
     const emptyParagraphCommand = richTextSlashCommand(
       defineRichTextActionItem(emptyParagraphAction, {
@@ -155,10 +152,7 @@ describe('rich text slash menu model', () => {
   it('keeps the slash query when an action fails after its enabled simulation', () => {
     const simulatedOnlyAction = defineRichTextAction(baseFeature, {
       key: 'simulated-only',
-      command:
-        () =>
-        ({ dispatch }) =>
-          dispatch === undefined,
+      command: ({ dispatch }) => dispatch === undefined,
     })
     const simulatedOnlyCommand = richTextSlashCommand(
       defineRichTextActionItem(simulatedOnlyAction, {

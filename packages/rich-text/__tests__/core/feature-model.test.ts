@@ -140,7 +140,7 @@ describe('rich text feature model', () => {
     })
     const otherAction = defineRichTextAction(otherFeature, {
       key: 'other',
-      command: () => () => true,
+      command: () => true,
     })
     const preset = defineRichTextPreset({ key: 'toolbar-test', features: [feature] })
     const editorFeature = defineRichTextEditorFeature(feature, {})
@@ -179,11 +179,11 @@ describe('rich text feature model', () => {
       serverImplementation: false,
     })
     const firstItem = defineRichTextActionItem(
-      defineRichTextAction(firstFeature, { key: 'first', command: () => () => true }),
+      defineRichTextAction(firstFeature, { key: 'first', command: () => true }),
       { label: '第一项', icon: 'i-[lucide--circle]' },
     )
     const secondItem = defineRichTextActionItem(
-      defineRichTextAction(secondFeature, { key: 'second', command: () => () => true }),
+      defineRichTextAction(secondFeature, { key: 'second', command: () => true }),
       { label: '第二项', icon: 'i-[lucide--circle]' },
     )
 
@@ -212,7 +212,7 @@ describe('rich text feature model', () => {
       serverImplementation: false,
     })
     const item = defineRichTextActionItem(
-      defineRichTextAction(feature, { key: 'duplicate-control', command: () => () => true }),
+      defineRichTextAction(feature, { key: 'duplicate-control', command: () => true }),
       { label: '重复项', icon: 'i-[lucide--circle]' },
     )
     const control = richTextToolbarButton(item)

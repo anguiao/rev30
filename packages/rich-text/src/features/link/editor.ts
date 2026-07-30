@@ -34,20 +34,18 @@ function setLinkMark(range: Range, href: string | null): Command {
 
 export const setLinkAction = defineRichTextAction(linkFeature, {
   key: 'set-link',
-  command(href: string, range: Range) {
+  command({ chain }, href: string, range: Range) {
     const normalizedHref = normalizeLinkHref(href)
 
-    return ({ chain }) =>
-      normalizedHref ? chain().focus().command(setLinkMark(range, normalizedHref)).run() : false
+    return normalizedHref
+      ? chain().focus().command(setLinkMark(range, normalizedHref)).run()
+      : false
   },
 })
 
 export const unsetLinkAction = defineRichTextAction(linkFeature, {
   key: 'unset-link',
-  command:
-    (range: Range) =>
-    ({ chain }) =>
-      chain().focus().command(setLinkMark(range, null)).run(),
+  command: ({ chain }, range: Range) => chain().focus().command(setLinkMark(range, null)).run(),
 })
 
 export const linkEditorFeature = defineRichTextEditorFeature(linkFeature, {})

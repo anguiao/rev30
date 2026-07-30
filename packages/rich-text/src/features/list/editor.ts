@@ -1,4 +1,4 @@
-import type { Command, CommandProps } from '@tiptap/core'
+import type { CommandProps } from '@tiptap/core'
 import { liftTarget } from '@tiptap/pm/transform'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
@@ -33,33 +33,31 @@ function simulateClearNodes({ state, tr }: Pick<CommandProps, 'state' | 'tr'>) {
   }
 }
 
-function createToggleListCommand(type: 'bullet' | 'ordered'): Command {
-  return ({ chain, dispatch, state, tr }) => {
-    const toggleList = () => {
-      const chainedCommands = chain().focus()
-      return type === 'bullet'
-        ? chainedCommands.toggleBulletList().run()
-        : chainedCommands.toggleOrderedList().run()
-    }
-
-    if (dispatch || toggleList()) {
-      return dispatch ? toggleList() : true
-    }
-
-    simulateClearNodes({ state, tr })
-    return toggleList()
+function toggleList({ chain, dispatch, state, tr }: CommandProps, type: 'bullet' | 'ordered') {
+  const runToggle = () => {
+    const chainedCommands = chain().focus()
+    return type === 'bullet'
+      ? chainedCommands.toggleBulletList().run()
+      : chainedCommands.toggleOrderedList().run()
   }
+
+  if (dispatch || runToggle()) {
+    return dispatch ? runToggle() : true
+  }
+
+  simulateClearNodes({ state, tr })
+  return runToggle()
 }
 
 export const listActions = [
   defineRichTextAction(listFeature, {
     key: 'bullet-list',
-    command: () => createToggleListCommand('bullet'),
+    command: (props) => toggleList(props, 'bullet'),
     isActive: (editor) => editor.isActive('bulletList'),
   }),
   defineRichTextAction(listFeature, {
     key: 'ordered-list',
-    command: () => createToggleListCommand('ordered'),
+    command: (props) => toggleList(props, 'ordered'),
     isActive: (editor) => editor.isActive('orderedList'),
   }),
 ] as const

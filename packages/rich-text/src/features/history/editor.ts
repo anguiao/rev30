@@ -6,17 +6,11 @@ import { historyFeature } from './shared'
 export const historyActions = [
   defineRichTextAction(historyFeature, {
     key: 'undo',
-    command:
-      () =>
-      ({ chain }) =>
-        chain().focus().undo().run(),
+    command: ({ chain }) => chain().focus().undo().run(),
   }),
   defineRichTextAction(historyFeature, {
     key: 'redo',
-    command:
-      () =>
-      ({ chain }) =>
-        chain().focus().redo().run(),
+    command: ({ chain }) => chain().focus().redo().run(),
   }),
 ] as const
 

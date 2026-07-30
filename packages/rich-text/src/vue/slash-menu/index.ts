@@ -41,7 +41,7 @@ export function richTextSlashCommand(
 
           return true
         }
-      : item.action.command(),
+      : (props) => item.action.command(props),
   }
 }
 

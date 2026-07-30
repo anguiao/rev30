@@ -92,10 +92,7 @@ const RichTextCodeBlock = CodeBlockLowlight.extend({
 
 export const codeBlockAction = defineRichTextAction(codeBlockFeature, {
   key: codeBlockFeature.key,
-  command:
-    () =>
-    ({ chain }) =>
-      chain().focus().toggleCodeBlock().run(),
+  command: ({ chain }) => chain().focus().toggleCodeBlock().run(),
   isActive: (editor) => editor.isActive('codeBlock'),
 })
 
@@ -107,10 +104,8 @@ export const codeBlockActionItem = defineRichTextActionItem(codeBlockAction, {
 
 export const setCodeBlockLanguageAction = defineRichTextAction(codeBlockFeature, {
   key: 'set-code-block-language',
-  command:
-    (language: string | null) =>
-    ({ chain }) =>
-      chain().focus().updateAttributes('codeBlock', { language }).run(),
+  command: ({ chain }, language: string | null) =>
+    chain().focus().updateAttributes('codeBlock', { language }).run(),
 })
 
 export const codeBlockEditorFeature = defineRichTextEditorFeature(codeBlockFeature, {

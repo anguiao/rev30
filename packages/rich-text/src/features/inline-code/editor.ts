@@ -4,10 +4,7 @@ import { inlineCodeFeature } from './shared'
 
 export const inlineCodeAction = defineRichTextAction(inlineCodeFeature, {
   key: inlineCodeFeature.key,
-  command:
-    () =>
-    ({ chain }) =>
-      chain().focus().toggleCode().run(),
+  command: ({ chain }) => chain().focus().toggleCode().run(),
   isActive: (editor) => editor.isActive('code'),
 })
 

@@ -36,108 +36,84 @@ function canInsertTable(selection: Selection, rows: number, columns: number) {
 
 export const insertTableAction = defineRichTextAction(tableFeature, {
   key: 'insert-table',
-  command:
-    (rows: number, columns: number) =>
-    ({ chain, state }) => {
-      if (!canInsertTable(state.selection, rows, columns)) {
-        return false
-      }
+  command: ({ chain, state }, rows: number, columns: number) => {
+    if (!canInsertTable(state.selection, rows, columns)) {
+      return false
+    }
 
-      return chain().focus().insertTable({ rows, cols: columns, withHeaderRow: true }).run()
-    },
+    return chain().focus().insertTable({ rows, cols: columns, withHeaderRow: true }).run()
+  },
 })
 
 export const tableAction = defineRichTextAction(tableFeature, {
   key: tableFeature.key,
-  command: () => insertTableAction.command(DEFAULT_TABLE_ROWS, DEFAULT_TABLE_COLUMNS),
+  command: (props) => insertTableAction.command(props, DEFAULT_TABLE_ROWS, DEFAULT_TABLE_COLUMNS),
 })
 
 export const addRowBeforeAction = defineRichTextAction(tableFeature, {
   key: 'add-row-before',
-  command:
-    () =>
-    ({ chain }) =>
-      chain().focus().addRowBefore().run(),
+  command: ({ chain }) => chain().focus().addRowBefore().run(),
 })
 
 export const addRowAfterAction = defineRichTextAction(tableFeature, {
   key: 'add-row-after',
-  command:
-    () =>
-    ({ chain }) =>
-      chain().focus().addRowAfter().run(),
+  command: ({ chain }) => chain().focus().addRowAfter().run(),
 })
 
 export const deleteRowAction = defineRichTextAction(tableFeature, {
   key: 'delete-row',
-  command:
-    () =>
-    ({ chain, state }) => {
-      const { selection } = state
-      const table = getSelectedTable(selection)
+  command: ({ chain, state }) => {
+    const { selection } = state
+    const table = getSelectedTable(selection)
 
-      if (
-        !table ||
-        table.node.childCount <= 1 ||
-        (selection instanceof CellSelection && selection.isColSelection())
-      ) {
-        return false
-      }
+    if (
+      !table ||
+      table.node.childCount <= 1 ||
+      (selection instanceof CellSelection && selection.isColSelection())
+    ) {
+      return false
+    }
 
-      return chain().focus().deleteRow().run()
-    },
+    return chain().focus().deleteRow().run()
+  },
 })
 
 export const addColumnBeforeAction = defineRichTextAction(tableFeature, {
   key: 'add-column-before',
-  command:
-    () =>
-    ({ chain }) =>
-      chain().focus().addColumnBefore().run(),
+  command: ({ chain }) => chain().focus().addColumnBefore().run(),
 })
 
 export const addColumnAfterAction = defineRichTextAction(tableFeature, {
   key: 'add-column-after',
-  command:
-    () =>
-    ({ chain }) =>
-      chain().focus().addColumnAfter().run(),
+  command: ({ chain }) => chain().focus().addColumnAfter().run(),
 })
 
 export const deleteColumnAction = defineRichTextAction(tableFeature, {
   key: 'delete-column',
-  command:
-    () =>
-    ({ chain, state }) => {
-      const { selection } = state
-      const table = getSelectedTable(selection)
+  command: ({ chain, state }) => {
+    const { selection } = state
+    const table = getSelectedTable(selection)
 
-      if (
-        !table ||
-        TableMap.get(table.node).width <= 1 ||
-        (selection instanceof CellSelection && selection.isRowSelection())
-      ) {
-        return false
-      }
+    if (
+      !table ||
+      TableMap.get(table.node).width <= 1 ||
+      (selection instanceof CellSelection && selection.isRowSelection())
+    ) {
+      return false
+    }
 
-      return chain().focus().deleteColumn().run()
-    },
+    return chain().focus().deleteColumn().run()
+  },
 })
 
 export const deleteTableAction = defineRichTextAction(tableFeature, {
   key: 'delete-table',
-  command:
-    () =>
-    ({ chain }) =>
-      chain().focus().deleteTable().run(),
+  command: ({ chain }) => chain().focus().deleteTable().run(),
 })
 
 export const toggleHeaderRowAction = defineRichTextAction(tableFeature, {
   key: 'toggle-header-row',
-  command:
-    () =>
-    ({ chain }) =>
-      chain().focus().toggleHeaderRow().run(),
+  command: ({ chain }) => chain().focus().toggleHeaderRow().run(),
   isActive: (editor) => {
     const table = getSelectedTable(editor.state.selection)
     return table ? rowIsHeader(TableMap.get(table.node), table.node, 0) : false

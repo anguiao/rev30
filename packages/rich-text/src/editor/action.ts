@@ -1,4 +1,4 @@
-import type { Command, Editor } from '@tiptap/core'
+import type { CommandProps, Editor } from '@tiptap/core'
 import type { RichTextFeature } from '../core/feature'
 
 export type RichTextIconClass = `i-[${string}--${string}]`
@@ -10,7 +10,7 @@ export interface RichTextAction<
 > {
   readonly feature: Feature
   readonly key: Key
-  readonly command: (...arguments_: Arguments) => Command
+  readonly command: (props: CommandProps, ...arguments_: Arguments) => boolean
   readonly isActive?: (editor: Editor, ...arguments_: Arguments) => boolean
 }
 
@@ -66,7 +66,7 @@ export function runRichTextAction<
   Key extends string,
   Arguments extends unknown[],
 >(editor: Editor, action: RichTextAction<Feature, Key, Arguments>, ...arguments_: Arguments) {
-  return editor.commands.command(action.command(...arguments_))
+  return editor.commands.command((props) => action.command(props, ...arguments_))
 }
 
 export function canRunRichTextAction<
@@ -74,5 +74,5 @@ export function canRunRichTextAction<
   Key extends string,
   Arguments extends unknown[],
 >(editor: Editor, action: RichTextAction<Feature, Key, Arguments>, ...arguments_: Arguments) {
-  return editor.can().command(action.command(...arguments_))
+  return editor.can().command((props) => action.command(props, ...arguments_))
 }

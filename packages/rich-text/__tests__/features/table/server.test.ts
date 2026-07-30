@@ -1,6 +1,6 @@
 import { TableMap } from '@tiptap/pm/tables'
 import { describe, expect, it, vi } from 'vitest'
-import { createTableHtmlPolicy } from '../../../src/features/table/server'
+import { tableHtmlPolicy } from '../../../src/features/table/server'
 import { RichTextContentInvalidError, deriveRichTextContent } from '../../../src/server'
 import { RichTextDocumentInvalidError } from '../../../src/server/errors'
 import { sanitizeRichTextHtml } from '../../../src/server/sanitize'
@@ -11,8 +11,8 @@ const preset = createAllRichTextServerPreset({
     isAllowedSrc: () => true,
   },
 })
-const tableLogicalPositionLimit = 10_000
-const maximumTableCountAtLogicalPositionLimit = 10
+const tableGridSlotLimit = 10_000
+const maximumTableCountAtGridSlotLimit = 10
 
 function cell(type: 'tableCell' | 'tableHeader' = 'tableCell', text = '') {
   return {
@@ -202,12 +202,12 @@ describe('table server feature', () => {
     )
   })
 
-  it('rejects a table that exceeds the logical grid resource limit before mapping', () => {
+  it('rejects a table that exceeds the grid slot limit before mapping', () => {
     const rows = Array.from({ length: 101 }, () => Array.from({ length: 100 }, () => cell()))
 
     expectDocumentInvalidError(
       () => deriveRichTextContent({ type: 'doc', content: [table(rows)] }, preset),
-      'Table exceeds the logical grid resource limit',
+      'Table exceeds the grid slot limit',
     )
   })
 
@@ -218,7 +218,7 @@ describe('table server feature', () => {
         {
           ...cell(),
           attrs: {
-            colspan: tableLogicalPositionLimit,
+            colspan: tableGridSlotLimit,
             rowspan: 1,
             colwidth: null,
             align: null,
@@ -226,16 +226,13 @@ describe('table server feature', () => {
         },
       ],
     ])
-    const tables = Array.from(
-      { length: maximumTableCountAtLogicalPositionLimit + 1 },
-      () => maximumTable,
-    )
+    const tables = Array.from({ length: maximumTableCountAtGridSlotLimit + 1 }, () => maximumTable)
 
     expectDocumentInvalidError(
       () => deriveRichTextContent({ type: 'doc', content: tables }, preset),
-      'Tables exceed the document-wide logical grid resource limit',
+      'Tables exceed the document-wide grid slot limit',
     )
-    expect(tableMapGet).toHaveBeenCalledTimes(maximumTableCountAtLogicalPositionLimit)
+    expect(tableMapGet).toHaveBeenCalledTimes(maximumTableCountAtGridSlotLimit)
 
     tableMapGet.mockRestore()
   })
@@ -272,7 +269,7 @@ describe('table server feature', () => {
   it('normalizes the table wrapper and keeps only renderer table attributes', () => {
     const html = sanitizeRichTextHtml(
       '<div class="evil" style="overflow-x: scroll; color: red" tabindex="9" role="button" onclick="alert(1)"><table style="width: 120px; border: 99px solid red; border-collapse: separate; color: red" data-table="evil"><tbody><tr><td colspan="0" rowspan="2" colwidth="20,30" style="min-width: 1px; border: 99px solid red; padding: 9rem; text-align: justify; vertical-align: bottom; color: red">内容</td></tr></tbody></table></div>',
-      [createTableHtmlPolicy()],
+      [tableHtmlPolicy],
     )
 
     expect(html).toContain(

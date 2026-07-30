@@ -2,7 +2,11 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { TableMap } from '@tiptap/pm/tables'
 import { RichTextDocumentInvalidError } from '../../server/errors'
 import { defineRichTextServerFeature } from '../../server/feature'
-import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
+import {
+  getInlineStyleValue,
+  type RichTextHtmlPolicy,
+  type RichTextTagTransform,
+} from '../../server/sanitize'
 import { tableFeature } from './shared'
 import {
   buildRichTextTableCellStyle,
@@ -11,59 +15,61 @@ import {
   richTextTableWrapperStyle,
 } from './styles'
 
-const TABLE_MAX_LOGICAL_POSITIONS_PER_TABLE = 10_000
-const TABLE_MAX_LOGICAL_POSITIONS_PER_DOCUMENT = 100_000
+const TABLE_MAX_GRID_SLOTS_PER_TABLE = 10_000
+const TABLE_MAX_GRID_SLOTS_PER_DOCUMENT = 100_000
+
 const pixelValuePattern = /^\s*\d+(?:\.\d+)?px\s*$/
 const positiveIntegerPattern = /^[1-9]\d*$/
 const colwidthPattern = /^-?\d+(?:\.\d+)?(?:,-?\d+(?:\.\d+)?)*$/
-const cellAlignments = new Set(['left', 'center', 'right'] as const)
 
-type CellAlignment = 'left' | 'center' | 'right'
+function getTableGridSlotCount(table: ProseMirrorNode) {
+  const rowCount = table.childCount
+  const maximumAllowedColumnCount = Math.floor(TABLE_MAX_GRID_SLOTS_PER_TABLE / rowCount)
+  const rowspanColumnCountsByEndRow = new Map<number, number>()
+  let activeRowspanColumnCount = 0
+  let maximumRowColumnCount = 0
 
-function getTableWidth(table: ProseMirrorNode) {
-  let width = 0
-  const activeRowspans: Array<{ endRow: number; colspan: number }> = []
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+    activeRowspanColumnCount -= rowspanColumnCountsByEndRow.get(rowIndex) ?? 0
+    rowspanColumnCountsByEndRow.delete(rowIndex)
 
-  for (let row = 0; row < table.childCount; row += 1) {
-    let rowWidth = 0
-
-    for (const span of activeRowspans) {
-      if (span.endRow > row) {
-        rowWidth += span.colspan
-      }
+    if (activeRowspanColumnCount > maximumAllowedColumnCount) {
+      throw new RichTextDocumentInvalidError('Table exceeds the grid slot limit')
     }
 
-    const rowNode = table.child(row)
+    let rowColumnCount = activeRowspanColumnCount
+    const row = table.child(rowIndex)
 
-    for (let index = 0; index < rowNode.childCount; index += 1) {
-      const cell = rowNode.child(index)
-      const { colspan, rowspan } = cell.attrs as { colspan: number; rowspan: number }
+    for (let cellIndex = 0; cellIndex < row.childCount; cellIndex += 1) {
+      const { colspan, rowspan } = row.child(cellIndex).attrs as {
+        colspan: number
+        rowspan: number
+      }
 
-      rowWidth += colspan
+      if (colspan > maximumAllowedColumnCount - rowColumnCount) {
+        throw new RichTextDocumentInvalidError('Table exceeds the grid slot limit')
+      }
+
+      rowColumnCount += colspan
 
       if (rowspan > 1) {
-        activeRowspans.push({ endRow: row + rowspan, colspan })
+        activeRowspanColumnCount += colspan
+
+        if (rowspan < rowCount - rowIndex) {
+          const endRowIndex = rowIndex + rowspan
+
+          rowspanColumnCountsByEndRow.set(
+            endRowIndex,
+            (rowspanColumnCountsByEndRow.get(endRowIndex) ?? 0) + colspan,
+          )
+        }
       }
     }
 
-    width = Math.max(width, rowWidth)
+    maximumRowColumnCount = Math.max(maximumRowColumnCount, rowColumnCount)
   }
 
-  return width
-}
-
-function getTableLogicalPositions(table: ProseMirrorNode) {
-  const width = getTableWidth(table)
-  const logicalPositions = width * table.childCount
-
-  if (
-    !Number.isSafeInteger(logicalPositions) ||
-    logicalPositions > TABLE_MAX_LOGICAL_POSITIONS_PER_TABLE
-  ) {
-    throw new RichTextDocumentInvalidError('Table exceeds the logical grid resource limit')
-  }
-
-  return logicalPositions
+  return maximumRowColumnCount * rowCount
 }
 
 function assertTableGeometry(table: ProseMirrorNode) {
@@ -74,55 +80,34 @@ function assertTableGeometry(table: ProseMirrorNode) {
   }
 }
 
-export function assertTableDocument(document: ProseMirrorNode) {
-  let documentLogicalPositions = 0
+function assertTableDocument(document: ProseMirrorNode) {
+  let documentTableGridSlotCount = 0
 
   document.descendants((node) => {
-    if (node.type.name === 'table') {
-      const tableLogicalPositions = getTableLogicalPositions(node)
-
-      if (
-        tableLogicalPositions >
-        TABLE_MAX_LOGICAL_POSITIONS_PER_DOCUMENT - documentLogicalPositions
-      ) {
-        throw new RichTextDocumentInvalidError(
-          'Tables exceed the document-wide logical grid resource limit',
-        )
-      }
-
-      documentLogicalPositions += tableLogicalPositions
-      assertTableGeometry(node)
+    if (node.type.name !== 'table') {
+      return
     }
 
-    return true
+    documentTableGridSlotCount += getTableGridSlotCount(node)
+
+    if (documentTableGridSlotCount > TABLE_MAX_GRID_SLOTS_PER_DOCUMENT) {
+      throw new RichTextDocumentInvalidError('Tables exceed the document-wide grid slot limit')
+    }
+
+    assertTableGeometry(node)
+    return false
   })
-}
-
-function getInlineStyleValue(style: string | undefined, property: string) {
-  let value: string | undefined
-
-  for (const declaration of style?.split(';') ?? []) {
-    const separator = declaration.indexOf(':')
-
-    if (separator === -1 || declaration.slice(0, separator).trim().toLowerCase() !== property) {
-      continue
-    }
-
-    value = declaration.slice(separator + 1).trim()
-  }
-
-  return value
 }
 
 function normalizePixelValue(value: string | undefined) {
   return value && pixelValuePattern.test(value) ? value.trim() : undefined
 }
 
-function normalizeCellAlignment(value: string | undefined): CellAlignment | undefined {
+function normalizeCellAlignment(value: string | undefined) {
   const normalized = value?.trim().toLowerCase()
 
-  return normalized && cellAlignments.has(normalized as CellAlignment)
-    ? (normalized as CellAlignment)
+  return normalized === 'left' || normalized === 'center' || normalized === 'right'
+    ? normalized
     : undefined
 }
 
@@ -174,59 +159,57 @@ const normalizeTableWrapper: RichTextTagTransform = ({ tagName }) => ({
   },
 })
 
-export function createTableHtmlPolicy(): RichTextHtmlPolicy {
-  return {
-    allowedTags: ['div', 'table', 'colgroup', 'col', 'tbody', 'tr', 'th', 'td'],
-    allowedAttributes: {
-      div: ['class', 'style', 'tabindex', 'role', 'aria-label'],
-      table: ['style'],
-      col: ['style'],
-      th: ['colspan', 'rowspan', 'colwidth', 'style'],
-      td: ['colspan', 'rowspan', 'colwidth', 'style'],
+export const tableHtmlPolicy: RichTextHtmlPolicy = {
+  allowedTags: ['div', 'table', 'colgroup', 'col', 'tbody', 'tr', 'th', 'td'],
+  allowedAttributes: {
+    div: ['class', 'style', 'tabindex', 'role', 'aria-label'],
+    table: ['style'],
+    col: ['style'],
+    th: ['colspan', 'rowspan', 'colwidth', 'style'],
+    td: ['colspan', 'rowspan', 'colwidth', 'style'],
+  },
+  allowedStyles: {
+    div: {
+      'max-width': [/^\s*100%\s*$/],
+      'overflow-x': [/^\s*auto\s*$/],
+      'overscroll-behavior-x': [/^\s*contain\s*$/],
     },
-    allowedStyles: {
-      div: {
-        'max-width': [/^\s*100%\s*$/],
-        'overflow-x': [/^\s*auto\s*$/],
-        'overscroll-behavior-x': [/^\s*contain\s*$/],
-      },
-      table: {
-        width: [/^\s*(?:100%|\d+(?:\.\d+)?px)\s*$/],
-        'min-width': [pixelValuePattern],
-        border: [/^.+$/],
-        'border-collapse': [/^\s*collapse\s*$/],
-      },
-      col: {
-        width: [pixelValuePattern],
-        'min-width': [pixelValuePattern],
-      },
-      th: {
-        'min-width': [pixelValuePattern],
-        border: [/^.+$/],
-        padding: [/^\s*0\.5rem 0\.625rem\s*$/],
-        'text-align': [/^\s*(?:inherit|left|center|right)\s*$/],
-        'vertical-align': [/^\s*top\s*$/],
-        'background-color': [/^.+$/],
-        'font-weight': [/^\s*600\s*$/],
-      },
-      td: {
-        'min-width': [pixelValuePattern],
-        border: [/^.+$/],
-        padding: [/^\s*0\.5rem 0\.625rem\s*$/],
-        'text-align': [/^\s*(?:inherit|left|center|right)\s*$/],
-        'vertical-align': [/^\s*top\s*$/],
-      },
+    table: {
+      width: [/^\s*(?:100%|\d+(?:\.\d+)?px)\s*$/],
+      'min-width': [pixelValuePattern],
+      border: [/^.+$/],
+      'border-collapse': [/^\s*collapse\s*$/],
     },
-    transformTags: {
-      div: [normalizeTableWrapper],
-      table: [normalizeTable],
-      th: [normalizeCellAttributes],
-      td: [normalizeCellAttributes],
+    col: {
+      width: [pixelValuePattern],
+      'min-width': [pixelValuePattern],
     },
-  }
+    th: {
+      'min-width': [pixelValuePattern],
+      border: [/^.+$/],
+      padding: [/^\s*0\.5rem 0\.625rem\s*$/],
+      'text-align': [/^\s*(?:inherit|left|center|right)\s*$/],
+      'vertical-align': [/^\s*top\s*$/],
+      'background-color': [/^.+$/],
+      'font-weight': [/^\s*600\s*$/],
+    },
+    td: {
+      'min-width': [pixelValuePattern],
+      border: [/^.+$/],
+      padding: [/^\s*0\.5rem 0\.625rem\s*$/],
+      'text-align': [/^\s*(?:inherit|left|center|right)\s*$/],
+      'vertical-align': [/^\s*top\s*$/],
+    },
+  },
+  transformTags: {
+    div: [normalizeTableWrapper],
+    table: [normalizeTable],
+    th: [normalizeCellAttributes],
+    td: [normalizeCellAttributes],
+  },
 }
 
 export const tableServerFeature = defineRichTextServerFeature(tableFeature, {
-  htmlPolicy: createTableHtmlPolicy(),
+  htmlPolicy: tableHtmlPolicy,
   assertDocument: assertTableDocument,
 })

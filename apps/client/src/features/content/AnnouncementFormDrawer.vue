@@ -344,7 +344,6 @@ watch(
           <form.Field name="type" v-slot="{ field, state }">
             <NFormItem label="类型" v-bind="formItemValidationProps(state.meta)">
               <NSelect
-                data-test="announcement-form-type"
                 :options="announcementTypeSelectOptions"
                 :value="state.value"
                 @blur="field.handleBlur"
@@ -368,7 +367,6 @@ watch(
           <form.Field name="summary" v-slot="{ field, state }">
             <NFormItem label="摘要" v-bind="formItemValidationProps(state.meta)">
               <NInput
-                data-test="announcement-form-summary"
                 :value="state.value ?? ''"
                 type="textarea"
                 placeholder="请输入摘要"
@@ -478,7 +476,6 @@ watch(
           <form.Field name="pinned" v-slot="{ field, state }">
             <NFormItem label="置顶展示" v-bind="formItemValidationProps(state.meta)">
               <NSwitch
-                data-test="announcement-form-pinned"
                 :value="state.value"
                 @blur="field.handleBlur"
                 @update:value="field.handleChange"
@@ -490,7 +487,7 @@ watch(
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <NButton data-test="announcement-form-cancel" @click="show = false"> 取消 </NButton>
+          <NButton @click="show = false"> 取消 </NButton>
           <NButton
             v-if="isPublishedAnnouncement"
             data-test="announcement-form-save"

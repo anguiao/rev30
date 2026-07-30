@@ -75,10 +75,11 @@ describe('CodeBlockToolbarControl', () => {
     const dropdown = wrapper.getComponent(NDropdown)
 
     expect(wrapper.getComponent(NButtonGroup).props('size')).toBe('small')
-    expect(wrapper.get('[data-test="rich-text-code-block"]').attributes('data-active')).toBe('true')
+    expect(wrapper.get('[data-test="rich-text-code-block"]').attributes('aria-pressed')).toBe(
+      'true',
+    )
     expect(dropdown.props('disabled')).toBe(false)
     expect(findOption(wrapper, 'plaintext').props).toMatchObject({
-      'data-active': 'true',
       'aria-pressed': true,
     })
 
@@ -106,7 +107,6 @@ describe('CodeBlockToolbarControl', () => {
     await vi.waitFor(() => {
       expect(dropdown.props('disabled')).toBe(false)
       expect(findOption(wrapper, 'typescript').props).toMatchObject({
-        'data-active': 'true',
         'aria-pressed': true,
       })
     })

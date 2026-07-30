@@ -168,14 +168,15 @@ function queryTemporaryPasswordDialog() {
   return (
     dialogs.find(
       (dialog) =>
-        dialog.style.display !== 'none' && dialog.querySelector('[data-test="temporary-password"]'),
+        dialog.style.display !== 'none' &&
+        dialog.querySelector('[data-test="users-temporary-password"]'),
     ) ?? null
   )
 }
 
 function getTemporaryPasswordInput() {
   return queryTemporaryPasswordDialog()?.querySelector(
-    '[data-test="temporary-password"] input',
+    '[data-test="users-temporary-password"] input',
   ) as HTMLInputElement | null
 }
 
@@ -463,7 +464,7 @@ describe('users page', () => {
     confirmButton?.click()
     await flushPromises()
 
-    const copyButton = getTemporaryPasswordButton('temporary-password-copy')
+    const copyButton = getTemporaryPasswordButton('users-temporary-password-copy')
     expect(copyButton).not.toBeNull()
 
     copyButton?.click()

@@ -45,7 +45,7 @@ describe('table size picker and toolbar control', () => {
 
     await cells[2 * 8 + 3]!.trigger('mouseenter')
     expect(wrapper.get('[data-test="rich-text-table-size-label"]').text()).toContain('3 行 × 4 列')
-    expect(wrapper.get('[aria-label="3 行 4 列"]').attributes('data-active')).toBe('true')
+    expect(wrapper.get('[aria-label="3 行 4 列"]').attributes('aria-selected')).toBe('true')
     expect(
       cells.filter((cell) => cell.classes().includes('bg-(--rich-text-theme-primary-muted-color)')),
     ).toHaveLength(12)
@@ -71,7 +71,7 @@ describe('table size picker and toolbar control', () => {
     })
     const trigger = wrapper.get('[data-test="rich-text-table"]')
 
-    expect(trigger.attributes('data-active')).toBeUndefined()
+    expect(trigger.attributes('aria-pressed')).toBe('false')
     await trigger.trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-test="rich-text-table-size-picker"]').exists()).toBe(true)
@@ -81,7 +81,7 @@ describe('table size picker and toolbar control', () => {
     expect(getSelectedTable(editor.state.selection)).not.toBeNull()
     const activeTrigger = await vi.waitFor(() => {
       const trigger = wrapper.get('[data-test="rich-text-table"]')
-      expect(trigger.attributes('data-active')).toBe('true')
+      expect(trigger.attributes('aria-pressed')).toBe('true')
       return trigger
     })
 

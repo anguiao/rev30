@@ -207,10 +207,6 @@ describe('RoleFormDrawer', () => {
         ],
       },
     ])
-    expect(wrapper.get('[data-test="role-form-resources"]').attributes('data-test')).toBe(
-      'role-form-resources',
-    )
-
     await wrapper.get('[data-test="role-form-name"] input').setValue('运营')
     await wrapper.get('[data-test="role-form-code"] input').setValue('operator')
     wrapper.getComponent(NInputNumber).vm.$emit('update:value', 2)

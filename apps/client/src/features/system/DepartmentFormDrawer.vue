@@ -263,7 +263,6 @@ watch(
           <form.Field name="parentId" v-slot="{ field, state }">
             <NFormItem label="上级" v-bind="formItemValidationProps(state.meta)">
               <NTreeSelect
-                data-test="department-form-parent"
                 clearable
                 filterable
                 default-expand-all
@@ -278,7 +277,6 @@ watch(
           <form.Field name="status" v-slot="{ field, state }">
             <NFormItem label="状态" v-bind="formItemValidationProps(state.meta)">
               <NSelect
-                data-test="department-form-status"
                 :value="state.value"
                 :options="statusSelectOptions"
                 @update:value="field.handleChange"
@@ -289,7 +287,6 @@ watch(
           <form.Field name="sortOrder" v-slot="{ field, state }">
             <NFormItem label="排序" v-bind="formItemValidationProps(state.meta)">
               <NInputNumber
-                data-test="department-form-sort-order"
                 class="w-full"
                 :value="state.value"
                 :precision="0"

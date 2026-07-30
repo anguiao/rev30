@@ -50,7 +50,6 @@ function cancelLinkEditor() {
           <NButton
             data-test="rich-text-link"
             data-rich-text-toolbar-item="link"
-            :data-active="isActive ? 'true' : undefined"
             :disabled="isDisabled"
             size="small"
             style="--n-padding: 0 6px"

@@ -245,7 +245,7 @@ function showTemporaryPasswordDialog(username: string, temporaryPassword: string
         ),
         h('div', { class: 'flex items-center gap-3' }, [
           h(NInput, {
-            'data-test': 'temporary-password',
+            'data-test': 'users-temporary-password',
             class: 'min-w-0 flex-1',
             readonly: true,
             value: temporaryPassword,
@@ -253,7 +253,7 @@ function showTemporaryPasswordDialog(username: string, temporaryPassword: string
           h(
             NButton,
             {
-              'data-test': 'temporary-password-copy',
+              'data-test': 'users-temporary-password-copy',
               class: 'w-24!',
               onClick: () => copy(temporaryPassword),
             },

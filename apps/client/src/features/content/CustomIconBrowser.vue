@@ -263,7 +263,6 @@ function submitRenameIcon() {
 function confirmDeleteIcon(icon: IconItem) {
   const positiveButtonProps: ButtonProps & Record<string, unknown> = {
     type: 'error',
-    'data-test': 'custom-icon-delete-confirm',
   }
 
   dialog.warning({
@@ -328,12 +327,7 @@ async function copySvg(svg: string) {
           </NButton>
         </div>
 
-        <NInput
-          v-model:value="setKeyword"
-          data-test="custom-icon-set-filter"
-          clearable
-          placeholder="筛选图标集"
-        />
+        <NInput v-model:value="setKeyword" clearable placeholder="筛选图标集" />
 
         <div class="min-h-0 flex-1 overflow-y-auto pr-1">
           <NSpin :show="isLoadingSets">
@@ -467,7 +461,6 @@ async function copySvg(svg: string) {
 
         <NInfiniteScroll
           :key="iconScrollKey"
-          data-test="custom-icon-scroll"
           class="min-h-0 flex-1"
           :distance="iconScrollLoadOffset"
           :scrollbar-props="{ contentClass: 'p-4' }"

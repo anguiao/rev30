@@ -142,12 +142,7 @@ const passwordForm = useForm({
             <div class="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
               <div class="space-y-0">
                 <NFormItem label="用户名">
-                  <NInput
-                    data-test="account-profile-username"
-                    :value="currentUser.username"
-                    autocomplete="username"
-                    disabled
-                  />
+                  <NInput :value="currentUser.username" autocomplete="username" disabled />
                 </NFormItem>
 
                 <profileForm.Field name="nickname" v-slot="{ field, state }">

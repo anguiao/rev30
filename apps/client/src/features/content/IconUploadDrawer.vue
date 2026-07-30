@@ -125,7 +125,6 @@ watch(
         <NForm @submit.prevent="handleSubmit">
           <NFormItem label="重复图标">
             <NRadioGroup
-              data-test="icon-upload-duplicate-strategy"
               :value="duplicateStrategy"
               @update:value="(value) => (duplicateStrategy = value)"
             >
@@ -138,7 +137,6 @@ watch(
 
           <NFormItem label="SVG 文件">
             <NUpload
-              data-test="icon-upload-files"
               accept=".svg,image/svg+xml"
               multiple
               :default-upload="false"

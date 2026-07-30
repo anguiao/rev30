@@ -30,9 +30,9 @@ describe('ImageQuickBar', () => {
     const controls = wrapper.findAll('[data-rich-text-toolbar-item]')
     const download = controls[0]!
 
-    expect(controls.map((control) => control.attributes('data-test'))).toEqual([
-      'rich-text-quick-bar-image-download',
-      'rich-text-quick-bar-image',
+    expect(controls.map((control) => control.attributes('aria-label'))).toEqual([
+      '下载图片',
+      '编辑图片',
     ])
     expect(download.element.tagName).toBe('A')
     expect(download.attributes('href')).toBe(src)

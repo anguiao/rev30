@@ -27,7 +27,6 @@ function isActionActive(control: RichTextQuickBarActionControl) {
         v-if="control.type === 'action'"
         :data-rich-text-toolbar-item="control.item.action.key"
         :data-test="`rich-text-quick-bar-${control.item.action.key}`"
-        :data-active="isActionActive(control) ? 'true' : undefined"
         :disabled="isActionDisabled(control)"
         size="small"
         style="--n-padding: 0 6px"

@@ -298,7 +298,6 @@ function toDepartmentIds(value: Array<string | number> | null) {
             <form.Field name="phone" v-slot="{ field, state }">
               <NFormItem label="手机号" v-bind="formItemValidationProps(state.meta)">
                 <NInput
-                  data-test="user-form-phone"
                   :value="state.value ?? ''"
                   placeholder="可选"
                   @blur="field.handleBlur"
@@ -311,7 +310,6 @@ function toDepartmentIds(value: Array<string | number> | null) {
           <form.Field name="status" v-slot="{ field, state }">
             <NFormItem label="状态" v-bind="formItemValidationProps(state.meta)">
               <NSelect
-                data-test="user-form-status"
                 :value="state.value"
                 :options="statusSelectOptions"
                 @update:value="field.handleChange"
@@ -322,7 +320,6 @@ function toDepartmentIds(value: Array<string | number> | null) {
           <form.Field name="departmentIds" v-slot="{ field, state }">
             <NFormItem label="所属部门" v-bind="formItemValidationProps(state.meta)">
               <NTreeSelect
-                data-test="user-form-departments"
                 multiple
                 checkable
                 clearable

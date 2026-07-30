@@ -75,7 +75,6 @@ const options = computed<DropdownOption[]>(() =>
       props: {
         'data-test': `rich-text-code-block-language-${language.value}`,
         role: 'menuitem',
-        'data-active': active ? 'true' : undefined,
         'aria-pressed': active,
       },
     }

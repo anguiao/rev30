@@ -41,7 +41,6 @@ function handleClick() {
   <NButton
     :data-test="`rich-text-${item.action.key}`"
     :data-rich-text-toolbar-item="item.action.key"
-    :data-active="isActive ? 'true' : undefined"
     :disabled="isDisabled"
     size="small"
     style="--n-padding: 0 6px"

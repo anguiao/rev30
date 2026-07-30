@@ -155,7 +155,6 @@ watch(
       <NButton
         data-test="rich-text-search-replace"
         data-rich-text-toolbar-item="search-replace"
-        :data-active="searchState.isOpen ? 'true' : undefined"
         :disabled="disabled"
         size="small"
         style="--n-padding: 0 6px"
@@ -203,7 +202,6 @@ watch(
         </span>
 
         <NButton
-          data-test="rich-text-search-previous"
           size="small"
           style="--n-padding: 0 6px"
           quaternary
@@ -231,7 +229,6 @@ watch(
         </NButton>
 
         <NButton
-          data-test="rich-text-search-close"
           size="small"
           style="--n-padding: 0 6px"
           quaternary
@@ -264,22 +261,12 @@ watch(
           替换
         </NButton>
 
-        <NButton
-          data-test="rich-text-search-replace-all"
-          size="small"
-          :disabled="!hasMatches"
-          @mousedown.prevent
-          @click="replaceAllMatches"
-        >
+        <NButton size="small" :disabled="!hasMatches" @mousedown.prevent @click="replaceAllMatches">
           全部替换
         </NButton>
       </div>
 
-      <NCheckbox
-        :checked="searchState.caseSensitive"
-        data-test="rich-text-search-case-sensitive"
-        @update:checked="setCaseSensitive"
-      >
+      <NCheckbox :checked="searchState.caseSensitive" @update:checked="setCaseSensitive">
         区分大小写
       </NCheckbox>
     </div>

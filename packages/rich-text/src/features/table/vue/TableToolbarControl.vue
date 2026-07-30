@@ -163,7 +163,6 @@ watch(isActive, closePopup)
       <NButton
         data-test="rich-text-table"
         data-rich-text-toolbar-item="table"
-        data-active="true"
         :disabled="isDisabled"
         size="small"
         style="--n-padding: 0 6px"

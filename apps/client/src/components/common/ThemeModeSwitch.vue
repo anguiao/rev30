@@ -46,7 +46,6 @@ function handleSelect(value: string | number) {
     >
       <template #icon>
         <span
-          data-test="theme-mode-trigger-icon"
           class="inline-block size-3.5 shrink-0"
           :class="currentThemeOption.icon"
           aria-hidden="true"

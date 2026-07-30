@@ -105,7 +105,6 @@ function handleKeydown(event: KeyboardEvent) {
         <NButton
           data-test="rich-text-text-color"
           data-rich-text-toolbar-item="text-color"
-          :data-active="currentColor ? 'true' : undefined"
           :disabled="isDisabled"
           class="justify-start!"
           size="small"
@@ -131,7 +130,6 @@ function handleKeydown(event: KeyboardEvent) {
         <NButton
           data-test="rich-text-text-color-default"
           data-rich-text-grid-item
-          :data-active="!currentColor ? 'true' : undefined"
           :disabled="!canReset"
           size="small"
           style="--n-padding: 0 6px"
@@ -151,7 +149,6 @@ function handleKeydown(event: KeyboardEvent) {
           :key="option.key"
           :data-test="`rich-text-text-color-${option.key}`"
           data-rich-text-grid-item
-          :data-active="option.active ? 'true' : undefined"
           :disabled="option.disabled"
           size="small"
           style="--n-padding: 0 6px"

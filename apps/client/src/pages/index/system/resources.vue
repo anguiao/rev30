@@ -354,7 +354,6 @@ const columns: DataTableColumns<ResourceTreeNode> = [
         <NFormItem label="状态">
           <NSelect
             v-model:value="filters.status"
-            data-test="resources-status"
             :options="statusFilterOptions"
             placeholder="全部"
             class="w-40!"

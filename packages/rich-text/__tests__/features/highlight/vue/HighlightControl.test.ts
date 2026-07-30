@@ -78,7 +78,7 @@ describe('HighlightControl', () => {
         },
       ],
     })
-    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('data-active')).toBe(
+    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
       'true',
     )
     expect(getButtonComponent(wrapper, 'rich-text-highlight-yellow').props('type')).toBe('primary')
@@ -93,8 +93,8 @@ describe('HighlightControl', () => {
     await flushPromises()
 
     expect(JSON.stringify(editor.getJSON())).not.toContain('highlight')
-    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('data-active')).toBe(
-      undefined,
+    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
+      'false',
     )
     expect(getButtonComponent(wrapper, 'rich-text-highlight-yellow').props('type')).toBe('default')
     expect(getButtonComponent(wrapper, 'rich-text-highlight-yellow').props('secondary')).toBe(false)
@@ -110,7 +110,7 @@ describe('HighlightControl', () => {
 
     await openPopover(wrapper)
 
-    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('data-active')).toBe(
+    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
       'true',
     )
 
@@ -118,12 +118,12 @@ describe('HighlightControl', () => {
     await flushPromises()
 
     await vi.waitFor(() => {
-      expect(wrapper.get('[data-test="rich-text-highlight-blue"]').attributes('data-active')).toBe(
+      expect(wrapper.get('[data-test="rich-text-highlight-blue"]').attributes('aria-pressed')).toBe(
         'true',
       )
     })
-    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('data-active')).toBe(
-      undefined,
+    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
+      'false',
     )
     expect(getButtonComponent(wrapper, 'rich-text-highlight-blue').props('type')).toBe('primary')
   })
@@ -137,11 +137,11 @@ describe('HighlightControl', () => {
 
     await openPopover(wrapper)
 
-    expect(wrapper.get('[data-test="rich-text-highlight-blue"]').attributes('data-active')).toBe(
+    expect(wrapper.get('[data-test="rich-text-highlight-blue"]').attributes('aria-pressed')).toBe(
       'true',
     )
-    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('data-active')).toBe(
-      undefined,
+    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
+      'false',
     )
   })
 
@@ -184,25 +184,25 @@ describe('HighlightControl', () => {
 
     await openPopover(wrapper)
 
-    expect(wrapper.get('[data-test="rich-text-highlight"]').attributes('data-active')).toBe('true')
-    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('data-active')).toBe(
-      undefined,
+    expect(wrapper.get('[data-test="rich-text-highlight"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
+      'false',
     )
-    expect(wrapper.get('[data-test="rich-text-highlight-blue"]').attributes('data-active')).toBe(
-      undefined,
+    expect(wrapper.get('[data-test="rich-text-highlight-blue"]').attributes('aria-pressed')).toBe(
+      'false',
     )
 
     editor.commands.setTextSelection({ from: 1, to: 4 })
     await flushPromises()
 
-    expect(wrapper.get('[data-test="rich-text-highlight"]').attributes('data-active')).toBe(
-      undefined,
+    expect(wrapper.get('[data-test="rich-text-highlight"]').attributes('aria-pressed')).toBe(
+      'false',
     )
-    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('data-active')).toBe(
-      undefined,
+    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
+      'false',
     )
-    expect(wrapper.get('[data-test="rich-text-highlight-blue"]').attributes('data-active')).toBe(
-      undefined,
+    expect(wrapper.get('[data-test="rich-text-highlight-blue"]').attributes('aria-pressed')).toBe(
+      'false',
     )
   })
 

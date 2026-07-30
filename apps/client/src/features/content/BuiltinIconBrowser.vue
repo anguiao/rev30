@@ -209,7 +209,6 @@ async function copySvg(svg: string) {
 
           <NInput
             v-model:value="iconKeyword"
-            data-test="builtin-icon-filter"
             clearable
             placeholder="筛选图标"
             class="w-full sm:w-72!"

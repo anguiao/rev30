@@ -155,7 +155,9 @@ describe('TextStyleToolbarControl', () => {
     editor.commands.setTextSelection({ from: 1, to: 2 })
     const wrapper = mountControl(editor)
 
-    expect(wrapper.get('[data-test="rich-text-text-color"]').attributes('data-active')).toBe('true')
+    expect(wrapper.get('[data-test="rich-text-text-color"]').attributes('aria-pressed')).toBe(
+      'true',
+    )
     expect(wrapper.get('[data-test="rich-text-font-family"]').text()).toContain(serif.label)
     expect(wrapper.get('[data-test="rich-text-font-size"]').text()).toContain(large.label)
     expect(wrapper.get('[data-test="rich-text-line-height"]').text()).toContain(spacious.label)
@@ -164,8 +166,8 @@ describe('TextStyleToolbarControl', () => {
     await flushPromises()
 
     await vi.waitFor(() => {
-      expect(wrapper.get('[data-test="rich-text-text-color"]').attributes('data-active')).toBe(
-        undefined,
+      expect(wrapper.get('[data-test="rich-text-text-color"]').attributes('aria-pressed')).toBe(
+        'false',
       )
     })
     expect(wrapper.get('[data-test="rich-text-font-family"]').text()).toContain('字体')
@@ -297,10 +299,8 @@ describe('TextStyleToolbarControl', () => {
 
     expect(arrowDown.defaultPrevented).toBe(true)
     expect(
-      wrapper
-        .get<HTMLElement>('[role="menuitem"].n-dropdown-option-body--pending')
-        .attributes('data-test'),
-    ).toMatch(/^rich-text-font-size-/)
+      wrapper.get<HTMLElement>('[role="menuitem"].n-dropdown-option-body--pending').text(),
+    ).toBe('默认')
     expect(document.activeElement).toBe(trigger.element)
 
     const escape = new KeyboardEvent('keydown', {

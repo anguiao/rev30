@@ -18,9 +18,8 @@ function handleToggleCollapsed() {
 </script>
 
 <template>
-  <header data-test="admin-sidebar-header" class="relative mb-6 h-20">
+  <header class="relative mb-6 h-20">
     <div
-      data-test="admin-sidebar-header-content"
       class="flex h-full"
       :class="
         collapsed ? 'flex-col items-center gap-2 px-3' : 'items-start justify-between gap-3 px-5'
@@ -48,7 +47,6 @@ function handleToggleCollapsed() {
             @click="handleToggleCollapsed"
           >
             <span
-              data-test="admin-sidebar-toggle-icon"
               class="inline-block"
               :class="
                 collapsed
@@ -63,7 +61,6 @@ function handleToggleCollapsed() {
       </NTooltip>
     </div>
     <div
-      data-test="admin-sidebar-header-separator"
       class="absolute bottom-0 border-b border-stone-200 dark:border-zinc-800"
       :class="collapsed ? 'right-3 left-3' : 'right-5 left-5'"
     />

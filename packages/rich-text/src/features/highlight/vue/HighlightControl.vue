@@ -109,7 +109,6 @@ function handlePanelKeydown(event: KeyboardEvent) {
       <template #trigger>
         <NButton
           data-test="rich-text-highlight"
-          :data-active="isActive ? 'true' : undefined"
           data-rich-text-toolbar-item="highlight"
           :disabled="isDisabled"
           size="small"
@@ -139,7 +138,6 @@ function handlePanelKeydown(event: KeyboardEvent) {
           :key="color.key"
           :data-test="`rich-text-highlight-${color.key}`"
           data-rich-text-grid-item
-          :data-active="selectedColorKey === color.key ? 'true' : undefined"
           :disabled="!canApplyColor(color.value)"
           size="small"
           style="--n-padding: 0 6px"

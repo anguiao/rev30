@@ -394,21 +394,19 @@ describe('RichTextEditor', () => {
 
     await selectDropdownCommand(wrapper, 'heading-2')
     await vi.waitFor(() => {
-      expect(wrapper.get('[data-test="rich-text-heading"]').attributes('data-active')).toBe('true')
       expect(wrapper.get('[data-test="rich-text-heading"]').attributes('aria-pressed')).toBe('true')
       expect(wrapper.get('[data-test="rich-text-heading"]').attributes('title')).toBe('二级标题')
     })
-    expect(wrapper.get('[data-test="rich-text-list"]').attributes('data-active')).toBe(undefined)
+    expect(wrapper.get('[data-test="rich-text-list"]').attributes('aria-pressed')).toBe('false')
 
     await wrapper.get('[data-test="rich-text-bold"]').trigger('click')
     await vi.waitFor(() => {
-      expect(wrapper.get('[data-test="rich-text-bold"]').attributes('data-active')).toBe('true')
       expect(wrapper.get('[data-test="rich-text-bold"]').attributes('aria-pressed')).toBe('true')
     })
 
     await selectDropdownCommand(wrapper, 'bullet-list')
     await vi.waitFor(() => {
-      expect(wrapper.get('[data-test="rich-text-list"]').attributes('data-active')).toBe('true')
+      expect(wrapper.get('[data-test="rich-text-list"]').attributes('aria-pressed')).toBe('true')
       expect(wrapper.get('[data-test="rich-text-list"]').attributes('title')).toBe('无序列表')
     })
   })
@@ -466,7 +464,7 @@ describe('RichTextEditor', () => {
     await codeBlockButton.trigger('click')
 
     await vi.waitFor(() => {
-      expect(codeBlockButton.attributes('data-active')).toBe('true')
+      expect(codeBlockButton.attributes('aria-pressed')).toBe('true')
       expect(languageDropdown?.props('disabled')).toBe(false)
       expect(wrapper.find('.ProseMirror pre').exists()).toBe(true)
     })

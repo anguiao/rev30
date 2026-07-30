@@ -83,7 +83,6 @@ function handlePanelKeydown(event: KeyboardEvent) {
           type="button"
           role="gridcell"
           data-rich-text-grid-item
-          :data-active="isCellActive(cellRow, cellColumn) ? 'true' : undefined"
           :tabindex="isCellActive(cellRow, cellColumn) ? 0 : -1"
           :aria-label="`${cellRow} 行 ${cellColumn} 列`"
           :aria-selected="isCellActive(cellRow, cellColumn)"

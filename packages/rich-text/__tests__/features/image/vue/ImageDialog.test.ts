@@ -333,7 +333,7 @@ describe('ImageToolbarControl', () => {
     const wrapper = mountControl(editor)
     const button = wrapper.get('[data-test="rich-text-image"]')
 
-    expect(button.attributes('data-active')).toBe('true')
+    expect(button.attributes('aria-pressed')).toBe('true')
     expect(button.attributes('aria-pressed')).toBe('true')
     expect(button.attributes('title')).toBe('编辑图片')
     expect(button.attributes('aria-label')).toBe('编辑图片')

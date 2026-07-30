@@ -34,7 +34,6 @@ const range = computed(() => resolveLinkRange(editor))
         <NButton
           data-test="rich-text-quick-bar-link-edit"
           data-rich-text-toolbar-item="link-edit"
-          :data-active="show ? 'true' : undefined"
           :disabled="disabled"
           size="small"
           style="--n-padding: 0 6px"

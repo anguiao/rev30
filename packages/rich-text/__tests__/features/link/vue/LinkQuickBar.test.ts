@@ -36,9 +36,9 @@ describe('LinkQuickBar', () => {
     const edit = controls[1]!
     const editElement = edit.element as HTMLElement
 
-    expect(controls.map((control) => control.attributes('data-test'))).toEqual([
-      'rich-text-quick-bar-link-open',
-      'rich-text-quick-bar-link-edit',
+    expect(controls.map((control) => control.attributes('aria-label'))).toEqual([
+      '新窗口打开链接',
+      '编辑链接',
     ])
     expect(open.element.tagName).toBe('A')
     expect(open.attributes('href')).toBe('https://example.com')

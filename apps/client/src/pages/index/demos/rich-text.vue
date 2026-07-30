@@ -106,9 +106,7 @@ function generatePreview() {
         />
 
         <div class="flex flex-wrap justify-end gap-2">
-          <NButton data-test="rich-text-demo-clear" :disabled="isPreviewing" @click="clearContent">
-            清空
-          </NButton>
+          <NButton :disabled="isPreviewing" @click="clearContent"> 清空 </NButton>
           <NButton
             v-can="'demo:rich-text:preview'"
             data-test="rich-text-demo-preview"
@@ -152,7 +150,6 @@ function generatePreview() {
           <NEmpty v-if="!previewData" description="生成服务端预览后显示" class="py-16" />
           <pre
             v-else
-            data-test="rich-text-demo-html"
             class="rounded-ui bg-stone-100 p-3 text-xs break-all whitespace-pre-wrap dark:bg-zinc-950"
             >{{ previewData.contentHtml }}</pre>
         </NTabPane>

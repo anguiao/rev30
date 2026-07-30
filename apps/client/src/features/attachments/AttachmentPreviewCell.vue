@@ -45,7 +45,6 @@ watch(
 <template>
   <NImage
     v-if="previewUrl !== null"
-    data-test="attachments-preview-image"
     :src="previewUrl"
     :preview-src="previewUrl"
     :alt="attachment.originalName"

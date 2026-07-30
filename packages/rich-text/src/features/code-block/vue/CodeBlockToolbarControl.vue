@@ -24,7 +24,6 @@ function handleToggle() {
     <NButton
       data-test="rich-text-code-block"
       data-rich-text-toolbar-item="code-block"
-      :data-active="isActive ? 'true' : undefined"
       :disabled="isDisabled"
       style="--n-padding: 0 6px"
       :type="isActive ? 'primary' : 'default'"

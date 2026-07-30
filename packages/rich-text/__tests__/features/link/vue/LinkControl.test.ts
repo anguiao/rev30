@@ -95,7 +95,7 @@ describe('LinkControl', () => {
     await flushPromises()
 
     expect(isPopoverShown(wrapper)).toBe(false)
-    expect(wrapper.get('[data-test="rich-text-link"]').attributes('data-active')).toBe('true')
+    expect(wrapper.get('[data-test="rich-text-link"]').attributes('aria-pressed')).toBe('true')
     expect(document.activeElement).toBe(editor.view.dom)
   })
 

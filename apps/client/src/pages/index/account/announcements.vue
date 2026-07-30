@@ -136,13 +136,7 @@ function openAnnouncementDetail(announcement: AnnouncementMyListItem) {
     <section
       class="rounded-ui border border-stone-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <NTabs
-        data-test="my-announcements-tabs"
-        type="line"
-        :value="activeType"
-        animated
-        @update:value="handleTypeChange"
-      >
+      <NTabs type="line" :value="activeType" animated @update:value="handleTypeChange">
         <NTabPane name="notice" tab="通知" />
         <NTabPane name="bulletin" tab="公告" />
       </NTabs>
@@ -201,7 +195,6 @@ function openAnnouncementDetail(announcement: AnnouncementMyListItem) {
                       {{ formatDisplayDateTime(announcement.publishedAt) }}
                     </span>
                     <NButton
-                      data-test="my-announcements-detail"
                       quaternary
                       size="small"
                       @click.stop="openAnnouncementDetail(announcement)"

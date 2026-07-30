@@ -240,7 +240,6 @@ const resourceIdsSchema = computed(() =>
           <form.Field name="status" v-slot="{ field, state }">
             <NFormItem label="状态" v-bind="formItemValidationProps(state.meta)">
               <NSelect
-                data-test="role-form-status"
                 :value="state.value"
                 :options="statusSelectOptions"
                 @update:value="field.handleChange"
@@ -251,7 +250,6 @@ const resourceIdsSchema = computed(() =>
           <form.Field name="sortOrder" v-slot="{ field, state }">
             <NFormItem label="排序" v-bind="formItemValidationProps(state.meta)">
               <NInputNumber
-                data-test="role-form-sort-order"
                 class="w-full"
                 :value="state.value"
                 :precision="0"

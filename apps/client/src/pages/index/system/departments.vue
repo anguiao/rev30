@@ -291,7 +291,6 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
         <NFormItem label="状态">
           <NSelect
             v-model:value="filters.status"
-            data-test="departments-status"
             :options="statusFilterOptions"
             placeholder="全部"
             class="w-40!"

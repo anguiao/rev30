@@ -222,7 +222,7 @@ watch(
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <NButton data-test="icon-set-form-cancel" @click="show = false"> 取消 </NButton>
+          <NButton @click="show = false"> 取消 </NButton>
           <NButton
             data-test="icon-set-form-submit"
             type="primary"

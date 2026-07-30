@@ -61,14 +61,10 @@ async function navigateToAccountSettings() {
 <template>
   <footer class="shrink-0" :class="collapsed ? 'mt-4' : ''">
     <div
-      data-test="admin-sidebar-footer-separator"
       class="border-t border-stone-200 dark:border-zinc-800"
       :class="collapsed ? 'mx-3' : 'mx-5'"
     />
-    <div
-      data-test="admin-sidebar-footer-content"
-      :class="collapsed ? 'flex flex-col items-center gap-3 px-3 pt-4' : 'px-5 pt-4'"
-    >
+    <div :class="collapsed ? 'flex flex-col items-center gap-3 px-3 pt-4' : 'px-5 pt-4'">
       <template v-if="collapsed">
         <button
           v-if="user"
@@ -80,7 +76,7 @@ async function navigateToAccountSettings() {
           @click="navigateToAccountSettings"
         >
           <UserAvatar
-            data-test="sidebar-user-avatar"
+            data-test="admin-sidebar-user-avatar"
             :avatar-id="user.avatarId"
             :nickname="user.nickname"
             :username="user.username"
@@ -128,7 +124,7 @@ async function navigateToAccountSettings() {
             @click="navigateToAccountSettings"
           >
             <UserAvatar
-              data-test="sidebar-user-avatar"
+              data-test="admin-sidebar-user-avatar"
               :avatar-id="user.avatarId"
               :nickname="user.nickname"
               :username="user.username"

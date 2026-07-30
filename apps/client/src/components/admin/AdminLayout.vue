@@ -25,7 +25,6 @@ const shellStyle = computed(() => ({
 <template>
   <div class="min-h-screen bg-stone-50 text-stone-900 dark:bg-zinc-950 dark:text-zinc-100">
     <div
-      data-test="admin-shell"
       class="mx-auto grid min-h-screen min-w-0 grid-cols-[var(--admin-sidebar-width)_minmax(0,1fr)] transition-[grid-template-columns] duration-200 ease-out"
       :style="shellStyle"
     >

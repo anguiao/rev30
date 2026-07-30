@@ -36,12 +36,8 @@ describe('TableQuickBar', () => {
     })
 
     expect(
-      wrapper.findAll('[data-rich-text-toolbar-item]').map((item) => item.attributes('data-test')),
-    ).toEqual([
-      'rich-text-quick-bar-table-rows',
-      'rich-text-quick-bar-table-columns',
-      'rich-text-quick-bar-table-delete',
-    ])
+      wrapper.findAll('[data-rich-text-toolbar-item]').map((item) => item.attributes('aria-label')),
+    ).toEqual(['行操作', '列操作', '删除表格'])
     expect(
       wrapper.get('[data-test="rich-text-quick-bar-table-rows"]').attributes('role'),
     ).toBeUndefined()
@@ -74,7 +70,7 @@ describe('TableQuickBar', () => {
 
     const deleteButton = wrapper
       .findAllComponents(NButton)
-      .find((button) => button.attributes('data-test') === 'rich-text-quick-bar-table-delete')
+      .find((button) => button.attributes('aria-label') === '删除表格')
     expect(deleteButton?.props('type')).toBe('error')
     expect(deleteButton?.attributes('title')).toBe('删除表格')
     await wrapper.get('[data-test="rich-text-quick-bar-table-delete"]').trigger('click')

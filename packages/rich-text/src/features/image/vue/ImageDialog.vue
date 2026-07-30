@@ -267,7 +267,6 @@ function updateHeight(value: number | null) {
           />
           <div
             v-else
-            data-test="rich-text-image-preview-area"
             class="flex size-28 items-center justify-center rounded-(--rich-text-theme-border-radius) border border-(--rich-text-theme-input-border-color) bg-(--rich-text-theme-input-color)"
           >
             <span class="i-[lucide--image] text-2xl opacity-20" aria-hidden="true" />
@@ -285,7 +284,6 @@ function updateHeight(value: number | null) {
         />
         <div
           v-else
-          data-test="rich-text-image-preview-area"
           class="flex size-28 items-center justify-center rounded-(--rich-text-theme-border-radius) border border-(--rich-text-theme-input-border-color) bg-(--rich-text-theme-input-color)"
         >
           <span class="i-[lucide--image] text-2xl opacity-20" aria-hidden="true" />
@@ -341,7 +339,6 @@ function updateHeight(value: number | null) {
 
           <NFormItem label="高度">
             <NInputNumber
-              data-test="rich-text-image-height"
               :disabled="!isImageReady"
               :value="height"
               :min="1"
@@ -352,13 +349,7 @@ function updateHeight(value: number | null) {
         </div>
 
         <div class="flex justify-between gap-2">
-          <NButton
-            data-test="rich-text-image-reset-size"
-            :disabled="!isImageReady"
-            @click="resetSize"
-          >
-            重置尺寸
-          </NButton>
+          <NButton :disabled="!isImageReady" @click="resetSize"> 重置尺寸 </NButton>
 
           <div class="flex gap-2">
             <NButton data-test="rich-text-image-cancel" @click="emit('cancel')"> 取消 </NButton>

@@ -55,7 +55,6 @@ const dropdownOptions = computed<DropdownOption[]>(() => [
     props: {
       'data-test': `rich-text-${props.config.key}-default`,
       role: 'menuitem',
-      'data-active': !currentValue.value ? 'true' : undefined,
       'aria-pressed': !currentValue.value,
       'aria-disabled': !canReset.value,
     },
@@ -76,7 +75,6 @@ const dropdownOptions = computed<DropdownOption[]>(() => [
       props: {
         'data-test': `rich-text-${props.config.key}-${option.key}`,
         role: 'menuitem',
-        'data-active': active ? 'true' : undefined,
         'aria-pressed': active,
         'aria-disabled': disabled,
       },
@@ -122,7 +120,6 @@ function handleSelect(key: string | number) {
       <NButton
         :data-test="`rich-text-${config.key}`"
         :data-rich-text-toolbar-item="config.key"
-        :data-active="currentValue ? 'true' : undefined"
         :disabled="isDisabled"
         class="justify-start! [&_.n-button\_\_content]:w-full"
         :class="config.key === 'font-family' ? 'w-24!' : 'w-18!'"

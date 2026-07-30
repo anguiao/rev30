@@ -342,7 +342,6 @@ watch(
           <form.Field name="parentId" v-slot="{ field, state }">
             <NFormItem label="上级" v-bind="formItemValidationProps(state.meta)">
               <NTreeSelect
-                data-test="resource-form-parent"
                 clearable
                 filterable
                 default-expand-all
@@ -381,7 +380,6 @@ watch(
           <form.Field v-if="showsOpenTarget" name="openTarget" v-slot="{ field, state }">
             <NFormItem label="打开方式" v-bind="formItemValidationProps(state.meta)">
               <NSelect
-                data-test="resource-form-open-target"
                 :value="state.value ?? null"
                 :options="openTargetOptions"
                 @update:value="field.handleChange"
@@ -402,18 +400,13 @@ watch(
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <form.Field name="hidden" v-slot="{ field, state }">
               <NFormItem label="隐藏" v-bind="formItemValidationProps(state.meta)">
-                <NSwitch
-                  data-test="resource-form-hidden"
-                  :value="state.value"
-                  @update:value="field.handleChange"
-                />
+                <NSwitch :value="state.value" @update:value="field.handleChange" />
               </NFormItem>
             </form.Field>
 
             <form.Field name="status" v-slot="{ field, state }">
               <NFormItem label="状态" v-bind="formItemValidationProps(state.meta)">
                 <NSelect
-                  data-test="resource-form-status"
                   :value="state.value"
                   :options="statusSelectOptions"
                   @update:value="field.handleChange"
@@ -425,7 +418,6 @@ watch(
           <form.Field name="sortOrder" v-slot="{ field, state }">
             <NFormItem label="排序" v-bind="formItemValidationProps(state.meta)">
               <NInputNumber
-                data-test="resource-form-sort-order"
                 class="w-full"
                 :value="state.value"
                 :precision="0"

@@ -62,7 +62,6 @@ const options = computed<DropdownOption[]>(() =>
       props: {
         'data-test': `rich-text-${props.control.key}-${item.action.key}`,
         role: 'menuitem',
-        'data-active': active ? 'true' : undefined,
         'aria-pressed': item.action.isActive ? active : undefined,
         'aria-disabled': isItemDisabled(item) ? 'true' : undefined,
       },
@@ -107,7 +106,6 @@ function handleSelect(key: string | number) {
       <NButton
         :data-test="`rich-text-${control.key}`"
         :data-rich-text-toolbar-item="control.key"
-        :data-active="isActive ? 'true' : undefined"
         :disabled="isDisabled"
         size="small"
         style="--n-padding: 0 6px"

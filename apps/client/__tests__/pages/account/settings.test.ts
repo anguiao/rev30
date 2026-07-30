@@ -33,7 +33,7 @@ vi.mock('../../../src/features/users', () => ({
   UserAvatar: {
     name: 'UserAvatar',
     props: ['avatarId', 'nickname', 'username', 'size'],
-    template: '<span data-test="sidebar-user-avatar">{{ avatarId || nickname || username }}</span>',
+    template: '<span>{{ avatarId || nickname || username }}</span>',
   },
   UserAvatarUpload: {
     name: 'UserAvatarUpload',

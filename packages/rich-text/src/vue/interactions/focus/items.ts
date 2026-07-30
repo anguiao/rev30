@@ -11,7 +11,9 @@ export function isFocusItemEnabled(item: HTMLElement) {
 }
 
 export function isFocusItemActive(item: HTMLElement) {
-  return item.dataset.active === 'true'
+  return (
+    item.getAttribute('aria-pressed') === 'true' || item.getAttribute('aria-selected') === 'true'
+  )
 }
 
 export function focusEntryItem(items: readonly HTMLElement[], entry: FocusEntry) {

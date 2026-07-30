@@ -242,7 +242,6 @@ const columns: DataTableColumns<RoleListItem> = [
         <NFormItem label="状态">
           <NSelect
             v-model:value="status"
-            data-test="roles-status"
             :options="statusFilterOptions"
             placeholder="全部"
             class="w-40!"

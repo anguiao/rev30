@@ -11,3 +11,13 @@
 - `helpers/fetch.ts`：统一构造 fetch mock、JSON/空响应和 URL/body 断言，避免在请求测试里重复手写字符串匹配。
 - `helpers/promise.ts`：统一构造可控 Promise，只用于异步竞态和 stale response 场景。
 - `helpers/pinia.ts`、`helpers/dom.ts`：集中管理测试 Pinia、主题 DOM 和 `matchMedia` 夹具；页面测试优先复用这些 helper。
+
+## DOM 定位约定
+
+- 优先使用用户可感知的语义定位目标，例如元素角色、可访问名称、表单标签、可见文本、链接地址和原生控件类型。文案或可访问名称本身属于行为契约时，测试应在其变化后失败。
+- `data-test` 只用于语义不足、同名目标难以区分、Naive UI 复合控件、重复表格操作或传送弹层等无法稳定定位的场景；它只负责找到目标，不表达或断言业务状态。
+- 找到目标后，通过可见结果、表单值、`disabled`、`aria-pressed`、`aria-selected`、`aria-expanded` 等真实语义断言状态。不要让 `data-test` 随状态变化，也不要直接断言它的值。
+- 不要为了替代 `data-test` 添加虚假的 ARIA 属性。控件确实缺少可访问语义时，应将其作为用户可见行为一并完善。
+- `data-test` 使用 kebab-case，按 `<feature-or-component>-<part-or-action>` 命名。动态后缀只能来自稳定的内部枚举或 action key，不包含状态、翻译文案、数组下标、数据库 ID 或用户输入。
+- 单个控件的定位器在当前查询作用域内保持唯一；重复列表项可以共享定位器，再通过可见内容或局部作用域筛选。只有传送到组件外部的弹层才查询 `document.body`。
+- 测试定位器按需添加，不为未来用例预留，也不放在纯布局容器、分隔线或装饰图标上。项目统一使用 `data-test`，并保留在生产 DOM 中；测试不得把它当作安全边界或公开兼容性契约。

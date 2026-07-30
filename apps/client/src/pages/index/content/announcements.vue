@@ -303,27 +303,27 @@ const columns: DataTableColumns<AnnouncementListItem> = [
         renderTableActionButton({
           label: '编辑',
           accessCode: ['content:announcement:update', 'content:announcement:list'],
-          testId: 'announcements-edit',
+          dataTest: 'announcements-edit',
           onClick: () => openAnnouncementFormDrawer(announcement.id),
         }),
         announcement.status === ANNOUNCEMENT_STATUS_PUBLISHED
           ? renderTableActionButton({
               label: '归档',
               accessCode: ['content:announcement:update', 'content:announcement:list'],
-              testId: 'announcements-archive',
+              dataTest: 'announcements-archive',
               onClick: () => confirmArchiveAnnouncement(announcement),
             })
           : renderTableActionButton({
               label: '发布',
               accessCode: ['content:announcement:update', 'content:announcement:list'],
-              testId: 'announcements-publish',
+              dataTest: 'announcements-publish',
               onClick: () => confirmPublishAnnouncement(announcement),
             }),
         renderTableActionButton({
           label: '删除',
           accessCode: 'content:announcement:delete',
           type: 'error',
-          testId: 'announcements-delete',
+          dataTest: 'announcements-delete',
           onClick: () => confirmDeleteAnnouncement(announcement),
         }),
       ]),

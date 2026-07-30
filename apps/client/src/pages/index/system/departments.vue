@@ -236,20 +236,20 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
         renderTableActionButton({
           label: '新增下级',
           accessCode: 'system:department:create',
-          testId: 'departments-create-child',
+          dataTest: 'departments-create-child',
           onClick: () => openDepartmentFormDrawer(null, department.id),
         }),
         renderTableActionButton({
           label: '编辑',
           accessCode: ['system:department:update', 'system:department:list'],
-          testId: 'departments-edit',
+          dataTest: 'departments-edit',
           onClick: () => openDepartmentFormDrawer(department.id),
         }),
         renderTableActionButton({
           label: '删除',
           accessCode: 'system:department:delete',
           type: 'error',
-          testId: 'departments-delete',
+          dataTest: 'departments-delete',
           disabled: !isLeafInTree(rawTree.value, department.id),
           onClick: () => confirmDeleteDepartment(department),
         }),

@@ -180,28 +180,28 @@ function getTemporaryPasswordInput() {
   ) as HTMLInputElement | null
 }
 
-function getTemporaryPasswordButton(testId: string) {
-  return document.body.querySelector(`[data-test="${testId}"]`) as HTMLButtonElement | null
+function getTemporaryPasswordButton(dataTest: string) {
+  return document.body.querySelector(`[data-test="${dataTest}"]`) as HTMLButtonElement | null
 }
 
 function getTemporaryPasswordCloseButton() {
   return queryTemporaryPasswordDialog()?.querySelector('.n-dialog__close') as HTMLElement | null
 }
 
-function getSelect(wrapper: VueWrapper, testId: string) {
+function getSelect(wrapper: VueWrapper, dataTest: string) {
   const select = wrapper
     .findAllComponents(NSelect)
-    .find((componentWrapper) => componentWrapper.attributes('data-test') === testId)
+    .find((componentWrapper) => componentWrapper.attributes('data-test') === dataTest)
 
   expect(select).toBeDefined()
 
   return select!
 }
 
-function getTreeSelect(wrapper: VueWrapper, testId: string) {
+function getTreeSelect(wrapper: VueWrapper, dataTest: string) {
   const select = wrapper
     .findAllComponents(NTreeSelect)
-    .find((componentWrapper) => componentWrapper.attributes('data-test') === testId)
+    .find((componentWrapper) => componentWrapper.attributes('data-test') === dataTest)
 
   expect(select).toBeDefined()
 

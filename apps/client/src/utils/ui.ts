@@ -6,7 +6,7 @@ type TableActionOptions = {
   label: string
   accessCode: string | string[]
   type?: ButtonProps['type']
-  testId?: string
+  dataTest?: string
   disabled?: boolean
   onClick?: () => void
 }
@@ -38,7 +38,7 @@ export function renderTableActionButton({
   label,
   accessCode,
   type = 'primary',
-  testId,
+  dataTest,
   disabled = false,
   onClick,
 }: TableActionOptions) {
@@ -56,7 +56,7 @@ export function renderTableActionButton({
       size: 'small',
       type,
       disabled,
-      ...(testId === undefined ? {} : { 'data-test': testId }),
+      ...(dataTest === undefined ? {} : { 'data-test': dataTest }),
       ...(onClick === undefined ? {} : { onClick }),
     },
     () => label,

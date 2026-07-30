@@ -223,10 +223,10 @@ async function submitForm(wrapper: ReturnType<typeof mount>) {
   await flushPromises()
 }
 
-function getSelect(wrapper: ReturnType<typeof mount>, testId: string) {
+function getSelect(wrapper: ReturnType<typeof mount>, dataTest: string) {
   const select = wrapper
     .findAllComponents(NSelect)
-    .find((componentWrapper) => componentWrapper.attributes('data-test') === testId)
+    .find((componentWrapper) => componentWrapper.attributes('data-test') === dataTest)
 
   expect(select).toBeDefined()
 

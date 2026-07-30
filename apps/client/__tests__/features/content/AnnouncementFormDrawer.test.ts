@@ -235,8 +235,8 @@ type TestComponentWrapper = {
   props: (name: string) => unknown
 }
 
-function getTestComponent(wrapper: ReturnType<typeof mount>, testId: string) {
-  return wrapper.getComponent(`[data-test="${testId}"]`) as unknown as TestComponentWrapper
+function getTestComponent(wrapper: ReturnType<typeof mount>, dataTest: string) {
+  return wrapper.getComponent(`[data-test="${dataTest}"]`) as unknown as TestComponentWrapper
 }
 
 describe('AnnouncementFormDrawer', () => {

@@ -193,14 +193,14 @@ const columns: DataTableColumns<DictionaryListItem> = [
         renderTableActionButton({
           label: '编辑',
           accessCode: ['system:dictionary:update', 'system:dictionary:list'],
-          testId: 'dictionaries-edit',
+          dataTest: 'dictionaries-edit',
           onClick: () => openDictionaryFormDrawer(dictionary.id),
         }),
         renderTableActionButton({
           label: '删除',
           accessCode: 'system:dictionary:delete',
           type: 'error',
-          testId: 'dictionaries-delete',
+          dataTest: 'dictionaries-delete',
           onClick: () => confirmDeleteDictionary(dictionary),
         }),
       ]),

@@ -105,7 +105,7 @@ const columns: DataTableColumns<Config> = [
         renderTableActionButton({
           label: '编辑',
           accessCode: ['system:config:update', 'system:config:list'],
-          testId: 'configs-edit',
+          dataTest: 'configs-edit',
           onClick: () => openConfigFormDrawer(config.key),
         }),
       ]),

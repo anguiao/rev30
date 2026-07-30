@@ -183,7 +183,7 @@ const columns: DataTableColumns<AttachmentListItem> = [
           label: '删除',
           accessCode: 'content:attachment:delete',
           type: 'error',
-          testId: 'attachments-delete',
+          dataTest: 'attachments-delete',
           onClick: () => confirmDeleteAttachment(attachment),
         }),
       ]),

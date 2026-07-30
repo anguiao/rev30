@@ -289,21 +289,21 @@ const columns: DataTableColumns<ResourceTreeNode> = [
           ? renderTableActionButton({
               label: '新增下级',
               accessCode: 'system:resource:create',
-              testId: 'resources-create-child',
+              dataTest: 'resources-create-child',
               onClick: () => openResourceFormDrawer(null, resource.id),
             })
           : null,
         renderTableActionButton({
           label: '编辑',
           accessCode: ['system:resource:update', 'system:resource:list'],
-          testId: 'resources-edit',
+          dataTest: 'resources-edit',
           onClick: () => openResourceFormDrawer(resource.id),
         }),
         renderTableActionButton({
           label: '删除',
           accessCode: 'system:resource:delete',
           type: 'error',
-          testId: 'resources-delete',
+          dataTest: 'resources-delete',
           disabled: !isLeafInTree(rawTree.value, resource.id),
           onClick: () => confirmDeleteResource(resource),
         }),

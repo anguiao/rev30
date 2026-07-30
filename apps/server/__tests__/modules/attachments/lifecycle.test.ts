@@ -5,9 +5,15 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ATTACHMENT_CLEANUP_POLICY_UNREFERENCED } from '@rev30/contracts'
 import { and, eq } from 'drizzle-orm'
-import { attachmentReferences, attachments, systemUsers } from '../../../src/db/schema'
+import {
+  attachmentReferences,
+  attachments,
+  attachmentUploadSessions,
+  systemUsers,
+} from '../../../src/db/schema'
 import { AttachmentReferenceTargetInvalidError } from '../../../src/modules/attachments/errors'
 import {
+  cleanupExpiredAttachmentUploadSessions,
   cleanupOrphanedAttachmentUploads,
   cleanupUnreferencedAttachments,
 } from '../../../src/modules/attachments/cleanup'
@@ -17,6 +23,7 @@ import {
   refreshAttachmentReferences,
   type AttachmentReferenceSource,
 } from '../../../src/modules/attachments/references'
+import { createAttachmentRepository } from '../../../src/modules/attachments/repository'
 import { LocalAttachmentStorage } from '../../../src/modules/attachments/storage'
 import { createTestDb } from '../../helpers/db'
 
@@ -70,6 +77,117 @@ function createDatabaseWithBeforeTransaction(
 
         return await Reflect.apply(value, target, args)
       }
+    },
+  })
+}
+
+function createDatabaseWithStorageKeyHandoff(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  handoff: () => Promise<void>,
+) {
+  let completeHandoff: (() => void) | undefined
+  let failHandoff: ((reason: unknown) => void) | undefined
+  let handoffStarted = false
+  const handoffCompleted = new Promise<void>((resolve, reject) => {
+    completeHandoff = resolve
+    failHandoff = reject
+  })
+
+  async function runHandoff() {
+    if (handoffStarted) {
+      return handoffCompleted
+    }
+
+    handoffStarted = true
+
+    try {
+      await handoff()
+      completeHandoff!()
+    } catch (error) {
+      failHandoff!(error)
+      throw error
+    }
+  }
+
+  function wrapQuery<T extends object>(query: T): T {
+    return new Proxy(query, {
+      get(target, property) {
+        const value = Reflect.get(target, property, target)
+
+        if (property === 'then' && typeof value === 'function') {
+          const toSql = Reflect.get(target, 'toSQL', target)
+          const querySql =
+            typeof toSql === 'function'
+              ? (Reflect.apply(toSql, target, []) as { sql: string }).sql
+              : ''
+          const readsAttachments = querySql.includes('"attachments"')
+          const readsUploadSessions = querySql.includes('"attachment_upload_sessions"')
+
+          if (!readsAttachments && !readsUploadSessions) {
+            return value.bind(target)
+          }
+
+          const execute = () =>
+            new Promise<unknown>((resolve, reject) => {
+              Reflect.apply(value, target, [resolve, reject])
+            })
+
+          return (
+            onFulfilled?: (result: unknown) => unknown,
+            onRejected?: (reason: unknown) => unknown,
+          ) => {
+            const result = (async () => {
+              if (readsAttachments && readsUploadSessions) {
+                const rows = await execute()
+
+                await runHandoff()
+
+                return rows
+              }
+
+              if (readsAttachments) {
+                const rows = await execute()
+
+                await runHandoff()
+
+                return rows
+              }
+
+              await handoffCompleted
+
+              return execute()
+            })()
+
+            return result.then(onFulfilled, onRejected)
+          }
+        }
+
+        if (typeof value !== 'function') {
+          return value
+        }
+
+        return (...args: unknown[]) => {
+          const result = Reflect.apply(value, target, args)
+
+          return result !== null && typeof result === 'object' ? wrapQuery(result) : result
+        }
+      },
+    })
+  }
+
+  return new Proxy(database, {
+    get(target, property) {
+      const value = Reflect.get(target, property, target)
+
+      if (property === 'select' && typeof value === 'function') {
+        return (...args: unknown[]) => {
+          const query = Reflect.apply(value, target, args)
+
+          return wrapQuery(query as object)
+        }
+      }
+
+      return typeof value === 'function' ? value.bind(target) : value
     },
   })
 }
@@ -134,7 +252,7 @@ describe('attachment cleanup', () => {
     await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })))
   })
 
-  it('deletes only old upload files without attachment metadata', async () => {
+  it('deletes old upload files unless an active attachment or upload session owns them', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
 
@@ -148,6 +266,10 @@ describe('attachment cleanup', () => {
     const oldTempKey = 'uploads/2026/06/28/interrupted.png.session.tmp'
     const recentOrphanKey = 'uploads/2026/07/05/recent.png'
     const persistedKey = 'uploads/2026/06/28/persisted.png'
+    const activeUploadKey = 'uploads/2026/06/28/active-session.png'
+    const activeWritingUploadId = randomUUID()
+    const activeWritingKey = `uploads/2026/06/28/${activeWritingUploadId}.png`
+    const activeWritingTempKey = `${activeWritingKey}.${randomUUID()}.tmp`
 
     await writeStoredFile(storage, root, oldOrphanKey, oldModifiedAt)
     await writeStoredFile(storage, root, oldTempKey, oldModifiedAt)
@@ -162,12 +284,195 @@ describe('attachment cleanup', () => {
       .update(attachments)
       .set({ deletedAt: new Date() })
       .where(eq(attachments.id, persistedAttachmentId))
+    await database.insert(attachmentUploadSessions).values({
+      originalName: 'active-session.png',
+      expectedSize: 1,
+      usage: 'cleanup',
+      state: 'stored',
+      storageProvider: storage.provider,
+      storageKey: activeUploadKey,
+      mimeType: 'image/png',
+      extension: 'png',
+      storedSize: 1,
+      checksum: 'checksum',
+      storedAt: oldModifiedAt,
+      createdBy: userId,
+      createdAt: oldModifiedAt,
+      updatedAt: oldModifiedAt,
+      expiresAt: new Date(Date.now() + dayMs),
+    })
+    await database.insert(attachmentUploadSessions).values({
+      id: activeWritingUploadId,
+      originalName: 'active-writing.png',
+      expectedSize: 1,
+      usage: 'cleanup',
+      state: 'uploading',
+      createdBy: userId,
+      createdAt: oldModifiedAt,
+      updatedAt: oldModifiedAt,
+      expiresAt: new Date(Date.now() + dayMs),
+    })
+    await writeStoredFile(storage, root, activeUploadKey, oldModifiedAt)
+    await writeStoredFile(storage, root, activeWritingKey, oldModifiedAt)
+    await writeStoredFile(storage, root, activeWritingTempKey, oldModifiedAt)
 
-    await expect(cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs)).resolves.toBe(2)
+    await expect(cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs)).resolves.toBe(3)
     await expect(storage.get(oldOrphanKey)).rejects.toThrow()
     await expect(storage.get(oldTempKey)).rejects.toThrow()
     await expect(storage.get(recentOrphanKey)).resolves.toBeDefined()
-    await expect(storage.get(persistedKey)).resolves.toBeDefined()
+    await expect(storage.get(persistedKey)).rejects.toThrow()
+    await expect(storage.get(activeUploadKey)).resolves.toBeDefined()
+    await expect(storage.get(activeWritingKey)).resolves.toBeDefined()
+    await expect(storage.get(activeWritingTempKey)).resolves.toBeDefined()
+  })
+
+  it('removes expired upload sessions and eventually cleans interrupted upload files', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
+
+    const database = await createTestDb()
+    const userId = await createUser(database)
+    const root = await createTempRoot()
+    const storage = new LocalAttachmentStorage(root)
+    const expiredCreatedAt = new Date(Date.now() - 10 * dayMs)
+    const expiredAt = new Date(Date.now() - 8 * dayMs)
+    const storedAt = new Date(Date.now() - 9 * dayMs)
+    const activeCreatedAt = new Date()
+    const interruptedUploadId = randomUUID()
+    const storedUploadId = randomUUID()
+    const expiredPendingUploadId = randomUUID()
+    const activeUploadId = randomUUID()
+    const interruptedStorageKey = `uploads/2026/06/26/${interruptedUploadId}.png`
+    const storedStorageKey = `uploads/2026/06/26/${storedUploadId}.png`
+
+    await database.insert(attachmentUploadSessions).values([
+      {
+        id: expiredPendingUploadId,
+        originalName: 'pending.png',
+        expectedSize: 1,
+        usage: 'cleanup',
+        state: 'pending',
+        createdBy: userId,
+        createdAt: expiredCreatedAt,
+        updatedAt: expiredCreatedAt,
+        expiresAt: expiredAt,
+      },
+      {
+        id: interruptedUploadId,
+        originalName: 'interrupted.png',
+        expectedSize: 1,
+        usage: 'cleanup',
+        state: 'uploading',
+        createdBy: userId,
+        createdAt: expiredCreatedAt,
+        updatedAt: storedAt,
+        expiresAt: expiredAt,
+      },
+      {
+        id: storedUploadId,
+        originalName: 'stored.png',
+        expectedSize: 1,
+        usage: 'cleanup',
+        state: 'stored',
+        storageProvider: storage.provider,
+        storageKey: storedStorageKey,
+        mimeType: 'image/png',
+        extension: 'png',
+        storedSize: 1,
+        checksum: 'checksum',
+        storedAt,
+        createdBy: userId,
+        createdAt: expiredCreatedAt,
+        updatedAt: storedAt,
+        expiresAt: expiredAt,
+      },
+      {
+        id: activeUploadId,
+        originalName: 'active.png',
+        expectedSize: 1,
+        usage: 'cleanup',
+        state: 'pending',
+        createdBy: userId,
+        createdAt: activeCreatedAt,
+        updatedAt: activeCreatedAt,
+        expiresAt: new Date(Date.now() + dayMs),
+      },
+    ])
+    await writeStoredFile(storage, root, interruptedStorageKey, expiredAt)
+    await writeStoredFile(storage, root, storedStorageKey, storedAt)
+
+    await expect(cleanupExpiredAttachmentUploadSessions(database, storage)).resolves.toBe(3)
+    await expect(storage.get(storedStorageKey)).rejects.toThrow()
+    await expect(storage.get(interruptedStorageKey)).resolves.toBeDefined()
+
+    await expect(cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs)).resolves.toBe(1)
+    await expect(storage.get(interruptedStorageKey)).rejects.toThrow()
+    await expect(database.select().from(attachmentUploadSessions)).resolves.toMatchObject([
+      {
+        id: activeUploadId,
+        state: 'pending',
+      },
+    ])
+  })
+
+  it('keeps storage across expiry while a stored session is handed off to attachment metadata', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
+
+    const database = await createTestDb()
+    const userId = await createUser(database)
+    const root = await createTempRoot()
+    const storage = new LocalAttachmentStorage(root)
+    const uploadId = randomUUID()
+    const storageKey = `uploads/2026/06/28/${uploadId}.png`
+    const storedAt = new Date(Date.now() - 8 * dayMs)
+    const expiresAt = new Date(Date.now() - 1_000)
+    const completionRequestedAt = new Date(Date.now() - 2_000)
+
+    await database.insert(attachmentUploadSessions).values({
+      id: uploadId,
+      originalName: 'handoff.png',
+      expectedSize: 1,
+      usage: 'cleanup',
+      state: 'stored',
+      storageProvider: storage.provider,
+      storageKey,
+      mimeType: 'image/png',
+      extension: 'png',
+      storedSize: 1,
+      checksum: 'checksum',
+      storedAt,
+      createdBy: userId,
+      createdAt: storedAt,
+      updatedAt: storedAt,
+      expiresAt,
+    })
+    await writeStoredFile(storage, root, storageKey, storedAt)
+
+    let attachmentId: string | undefined
+    const racedDatabase = createDatabaseWithStorageKeyHandoff(database, async () => {
+      const created = await createAttachmentRepository(database).completeUploadSession(
+        uploadId,
+        userId,
+        completionRequestedAt,
+      )
+
+      expect(created).toBeDefined()
+      attachmentId = created!.id
+    })
+
+    await expect(cleanupOrphanedAttachmentUploads(racedDatabase, storage, 7 * dayMs)).resolves.toBe(
+      0,
+    )
+    await expect(storage.get(storageKey)).resolves.toBeDefined()
+    await expect(database.select().from(attachmentUploadSessions)).resolves.toEqual([])
+    await expect(
+      database.select().from(attachments).where(eq(attachments.id, attachmentId!)),
+    ).resolves.toMatchObject([
+      {
+        storageKey,
+      },
+    ])
   })
 
   it('soft deletes only old unreferenced attachments with unreferenced cleanup policy', async () => {

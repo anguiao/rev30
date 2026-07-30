@@ -12,7 +12,12 @@ import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
 } from '@rev30/contracts'
-import { attachments, systemConfigOverrides, systemUsers } from '../../../src/db/schema'
+import {
+  attachments,
+  attachmentUploadSessions,
+  systemConfigOverrides,
+  systemUsers,
+} from '../../../src/db/schema'
 import {
   AttachmentContentUnauthorizedError,
   AttachmentContentUrlInvalidError,
@@ -135,43 +140,16 @@ function getStoredFilePath(storageKey: string) {
   return join(process.env.ATTACHMENT_STORAGE_DIR!, storageKey)
 }
 
-function rejectQuery<T extends object>(query: T, error: Error): T {
-  return new Proxy(query, {
-    get(target, property) {
-      if (property === 'then') {
-        return (
-          _onFulfilled: (value: unknown) => unknown,
-          onRejected: (reason: unknown) => unknown,
-        ) => onRejected(error)
-      }
-
-      const value = Reflect.get(target, property, target)
-
-      if (typeof value !== 'function') {
-        return value
-      }
-
-      return (...args: unknown[]) => {
-        const result = Reflect.apply(value, target, args)
-
-        return result !== null && typeof result === 'object' ? rejectQuery(result, error) : result
-      }
-    },
-  })
-}
-
-function createDatabaseWithAttachmentInsertFailure(
+function createDatabaseWithAttachmentTransactionFailure(
   database: Awaited<ReturnType<typeof createTestDb>>,
   error: Error,
 ) {
   return new Proxy(database, {
     get(target, property, receiver) {
-      if (property === 'insert') {
-        return ((table: typeof attachments) => {
-          const query = database.insert(table)
-
-          return table === attachments ? rejectQuery(query, error) : query
-        }) as typeof database.insert
+      if (property === 'transaction') {
+        return async () => {
+          throw error
+        }
       }
 
       const value = Reflect.get(target, property, receiver)
@@ -350,6 +328,62 @@ describe('attachment service', () => {
       checksum: pngChecksum,
       createdBy: userId,
     })
+    await expect(database.select().from(attachmentUploadSessions)).resolves.toEqual([])
+  })
+
+  it('persists upload progress across attachment service instances', async () => {
+    const database = await createTestDb()
+    const creatingService = await createAttachmentServiceForTest(database)
+    const userId = await createUser(database)
+    const session = await creatingService.createUploadSession({
+      originalName: 'avatar.png',
+      usage: 'avatar',
+      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
+      size: pngBytes.byteLength,
+      userId,
+    })
+    const [pendingSession] = await database
+      .select()
+      .from(attachmentUploadSessions)
+      .where(eq(attachmentUploadSessions.id, session.uploadId))
+
+    expect(pendingSession).toMatchObject({
+      createdBy: userId,
+      expectedSize: pngBytes.byteLength,
+      state: 'pending',
+    })
+
+    const uploadingService = createAttachmentService(database)
+
+    await uploadingService.uploadSessionContent({
+      body: streamFromBytes(pngBytes),
+      token: getUploadToken(session.request.url),
+      uploadId: session.uploadId,
+    })
+
+    const [storedSession] = await database
+      .select()
+      .from(attachmentUploadSessions)
+      .where(eq(attachmentUploadSessions.id, session.uploadId))
+
+    expect(storedSession).toMatchObject({
+      checksum: pngChecksum,
+      state: 'stored',
+      storageKey: `uploads/2026/05/29/${session.uploadId}.png`,
+    })
+
+    const completingService = createAttachmentService(database)
+    const attachment = await completingService.completeUploadSession({
+      uploadId: session.uploadId,
+      userId,
+    })
+
+    expect(attachment).toMatchObject({
+      originalName: 'avatar.png',
+      size: pngBytes.byteLength,
+    })
+    await expect(database.select().from(attachmentUploadSessions)).resolves.toEqual([])
   })
 
   it('allows only one concurrent upload request to store session content', async () => {
@@ -549,12 +583,12 @@ describe('attachment service', () => {
     await expect(readFile(storedFilePath)).rejects.toMatchObject({ code: 'ENOENT' })
   })
 
-  it('cleans up stored content and the session when metadata creation fails', async () => {
+  it('keeps stored content and the session retryable when metadata creation fails', async () => {
     const database = await createTestDb()
     const userId = await createUser(database)
     const metadataError = new Error('metadata creation failed')
     const service = await createAttachmentServiceForTest(
-      createDatabaseWithAttachmentInsertFailure(database, metadataError),
+      createDatabaseWithAttachmentTransactionFailure(database, metadataError),
     )
     const session = await createStoredUploadSession(service, {
       bytes: pngBytes,
@@ -571,14 +605,31 @@ describe('attachment service', () => {
       }),
     ).rejects.toBe(metadataError)
 
-    await expect(readFile(storedFilePath)).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(new Uint8Array(await readFile(storedFilePath))).toEqual(pngBytes)
     await expect(database.select().from(attachments)).resolves.toEqual([])
     await expect(
-      service.completeUploadSession({
-        uploadId: session.uploadId,
-        userId,
-      }),
-    ).rejects.toBeInstanceOf(AttachmentUploadSessionInvalidError)
+      database
+        .select()
+        .from(attachmentUploadSessions)
+        .where(eq(attachmentUploadSessions.id, session.uploadId)),
+    ).resolves.toMatchObject([
+      {
+        state: 'stored',
+        storageKey,
+      },
+    ])
+
+    const attachment = await createAttachmentService(database).completeUploadSession({
+      uploadId: session.uploadId,
+      userId,
+    })
+
+    expect(attachment).toMatchObject({
+      originalName: 'avatar.png',
+      size: pngBytes.byteLength,
+    })
+    await expect(database.select().from(attachmentUploadSessions)).resolves.toEqual([])
+    expect(new Uint8Array(await readFile(storedFilePath))).toEqual(pngBytes)
   })
 
   it('uses detected extensions when detected MIME matches', async () => {

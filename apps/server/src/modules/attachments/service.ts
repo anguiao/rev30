@@ -12,7 +12,7 @@ import {
   ATTACHMENT_READ_POLICY_SIGNED,
   type AttachmentUploadSessionCreateInput,
 } from '@rev30/contracts'
-import { addSeconds, isExpiredAt, millisecondsBetween, toIsoDateTime } from '@rev30/utils'
+import { addSeconds, millisecondsBetween, toIsoDateTime } from '@rev30/utils'
 import type { Db } from '../../db'
 import { logger } from '../../runtime/logger'
 import { readAuthConfig } from '../auth/config'
@@ -30,10 +30,9 @@ import {
 } from './errors'
 import { type AttachmentRow, toAttachment, toAttachmentListItem } from './mapper'
 import {
-  type AttachmentFileType,
   acceptAttachmentUploadType,
-  resolveContentDisposition,
   getAttachmentFilenameType,
+  resolveContentDisposition,
   validateAttachmentUploadSize,
 } from './policy'
 import { createAttachmentRepository } from './repository'
@@ -46,27 +45,11 @@ import {
 import {
   ATTACHMENT_UPLOAD_STORAGE_PREFIX,
   type AttachmentGetResult,
-  type AttachmentPutResult,
   createAttachmentStorage,
 } from './storage'
 import { limitAttachmentBodySize, toReadableStream } from './stream'
 
 const fileTypeDetectors = [detectCfbf]
-
-type StoredUploadContent = AttachmentFileType &
-  AttachmentPutResult & {
-    storageKey: string
-    storedAt: Date
-  }
-
-type UploadSession = AttachmentUploadSessionCreateInput & {
-  createdAt: Date
-  expiresAt: Date
-  state: 'pending' | 'uploading' | 'stored' | 'completing'
-  uploadId: string
-  storedContent?: StoredUploadContent
-  userId: string
-}
 
 function padDatePart(value: number) {
   return String(value).padStart(2, '0')
@@ -148,21 +131,6 @@ export function createAttachmentService(database: Db) {
   const authConfig = readAuthConfig()
   const storage = createAttachmentStorage(config)
   const repository = createAttachmentRepository(database)
-  const uploadSessions = new Map<string, UploadSession>()
-
-  function getActiveUploadSession(uploadId: string, now: Date) {
-    const session = uploadSessions.get(uploadId)
-
-    if (!session || isExpiredAt(session.expiresAt, now)) {
-      if (session) {
-        uploadSessions.delete(uploadId)
-      }
-
-      throw new AttachmentUploadSessionInvalidError()
-    }
-
-    return session
-  }
 
   return {
     async list(query: AttachmentListQuery) {
@@ -185,19 +153,19 @@ export function createAttachmentService(database: Db) {
       const uploadId = randomUUID()
       const expiresAt = addSeconds(createdAt, uploadSessionTtlSeconds)
       const contentType = input.contentType?.trim()
-      const session: UploadSession = {
-        ...(contentType ? { contentType } : {}),
+      await repository.createUploadSession({
+        id: uploadId,
         createdAt,
         cleanupPolicy: input.cleanupPolicy,
+        createdBy: input.userId,
+        expectedSize: input.size,
         expiresAt,
         originalName: input.originalName,
         readPolicy: input.readPolicy,
-        size: input.size,
         state: 'pending',
-        uploadId,
+        updatedAt: createdAt,
         usage: input.usage,
-        userId: input.userId,
-      }
+      })
       const token = createAttachmentUploadToken(
         {
           uploadId,
@@ -205,8 +173,6 @@ export function createAttachmentService(database: Db) {
         },
         config.signingSecret,
       )
-
-      uploadSessions.set(uploadId, session)
 
       return {
         uploadId,
@@ -232,17 +198,15 @@ export function createAttachmentService(database: Db) {
         uploadId: input.uploadId,
       })
 
-      const session = getActiveUploadSession(input.uploadId, requestedAt)
-
       if (!input.body) {
         throw new AttachmentUploadRequestError('请选择文件')
       }
 
-      if (session.state !== 'pending') {
+      const session = await repository.claimPendingUploadSession(input.uploadId, requestedAt)
+
+      if (!session) {
         throw new AttachmentUploadSessionInvalidError()
       }
-
-      session.state = 'uploading'
 
       try {
         const body = await fileTypeStream(toReadableStream(input.body), {
@@ -258,7 +222,7 @@ export function createAttachmentService(database: Db) {
             : null,
         )
         const storageKey = createUploadSessionStorageKey(
-          session.uploadId,
+          session.id,
           accepted.extension,
           session.createdAt,
         )
@@ -268,80 +232,50 @@ export function createAttachmentService(database: Db) {
           body: limitAttachmentBodySize(body),
         })
 
-        if (written.size !== session.size) {
+        if (written.size !== session.expectedSize) {
           await storage.delete(storageKey)
           throw new AttachmentUploadRequestError('文件大小与上传会话不一致')
         }
 
-        session.storedContent = {
+        const storedAt = new Date()
+        const stored = await repository.storeUploadSessionContent(session.id, {
           checksum: written.checksum,
           extension: accepted.extension,
           mimeType: accepted.mimeType,
           size: written.size,
           storageKey,
-          storedAt: new Date(),
+          storageProvider: storage.provider,
+          storedAt,
+        })
+
+        if (!stored) {
+          throw new AttachmentUploadSessionInvalidError()
         }
-        session.state = 'stored'
       } catch (error) {
-        session.state = 'pending'
+        await repository.resetUploadingUploadSession(session.id, new Date())
         throw error
       }
     },
 
     async completeUploadSession(input: { uploadId: string; userId: string }) {
-      const session = getActiveUploadSession(input.uploadId, new Date())
+      const requestedAt = new Date()
+      const session = await repository.findActiveUploadSession(input.uploadId, requestedAt)
 
-      if (session.userId !== input.userId) {
+      if (!session || session.createdBy !== input.userId) {
         throw new AttachmentUploadSessionInvalidError()
       }
 
-      if (session.state === 'pending' || session.state === 'uploading') {
+      if (session.state !== 'stored') {
         throw new AttachmentUploadSessionNotReadyError()
       }
 
-      if (session.state !== 'stored' || !session.storedContent) {
+      const created = await repository.completeUploadSession(session.id, input.userId, requestedAt)
+
+      if (!created) {
         throw new AttachmentUploadSessionInvalidError()
       }
 
-      const storedContent = session.storedContent
-      session.state = 'completing'
-
-      try {
-        const created = await repository.create({
-          storageProvider: storage.provider,
-          storageKey: storedContent.storageKey,
-          originalName: session.originalName,
-          mimeType: storedContent.mimeType,
-          extension: storedContent.extension,
-          size: storedContent.size,
-          usage: session.usage,
-          readPolicy: session.readPolicy,
-          cleanupPolicy: session.cleanupPolicy,
-          checksum: storedContent.checksum,
-          createdBy: session.userId,
-          createdAt: storedContent.storedAt,
-        })
-
-        uploadSessions.delete(session.uploadId)
-
-        return toAttachment(created)
-      } catch (error) {
-        uploadSessions.delete(session.uploadId)
-
-        try {
-          await storage.delete(storedContent.storageKey)
-        } catch (cleanupError) {
-          logger.error(
-            {
-              err: cleanupError,
-              storageKey: storedContent.storageKey,
-            },
-            'attachment upload session cleanup failed',
-          )
-        }
-
-        throw error
-      }
+      return toAttachment(created)
     },
 
     async get(id: string) {

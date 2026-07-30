@@ -1,8 +1,9 @@
 import { ATTACHMENT_CLEANUP_POLICY_UNREFERENCED } from '@rev30/contracts'
 import { subMilliseconds } from '@rev30/utils'
 import { and, asc, eq, isNull, like, lte, sql } from 'drizzle-orm'
+import { unionAll } from 'drizzle-orm/pg-core'
 import type { Db } from '../../db'
-import { attachmentReferences, attachments } from '../../db/schema'
+import { attachmentReferences, attachments, attachmentUploadSessions } from '../../db/schema'
 import { logger } from '../../runtime/logger'
 import { lockActiveAttachmentsByIds } from './references'
 import { ATTACHMENT_UPLOAD_STORAGE_PREFIX, type AttachmentStorage } from './storage'
@@ -13,6 +14,13 @@ function unreferencedAttachmentCondition() {
     from ${attachmentReferences}
     where ${attachmentReferences.attachmentId} = ${attachments.id}
   )`
+}
+
+function getUploadIdFromUploadStorageKey(storageKey: string) {
+  const filename = storageKey.slice(storageKey.lastIndexOf('/') + 1)
+  const extensionSeparator = filename.indexOf('.')
+
+  return extensionSeparator === -1 ? filename : filename.slice(0, extensionSeparator)
 }
 
 export async function cleanupOrphanedAttachmentUploads(
@@ -29,20 +37,40 @@ export async function cleanupOrphanedAttachmentUploads(
     return 0
   }
 
-  const persistedRows = await database
-    .select({ storageKey: attachments.storageKey })
-    .from(attachments)
-    .where(
-      and(
-        eq(attachments.storageProvider, storage.provider),
-        like(attachments.storageKey, `${ATTACHMENT_UPLOAD_STORAGE_PREFIX}/%`),
+  const persistedRows = await unionAll(
+    database
+      .select({
+        storageKey: sql<string | null>`${attachments.storageKey}`.as('storage_key'),
+        uploadId: sql<string | null>`null::uuid`.as('upload_id'),
+      })
+      .from(attachments)
+      .where(
+        and(
+          eq(attachments.storageProvider, storage.provider),
+          like(attachments.storageKey, `${ATTACHMENT_UPLOAD_STORAGE_PREFIX}/%`),
+          isNull(attachments.deletedAt),
+        ),
       ),
-    )
-  const persistedStorageKeys = new Set(persistedRows.map((row) => row.storageKey))
+    database
+      .select({
+        storageKey: sql<string | null>`${attachmentUploadSessions.storageKey}`.as('storage_key'),
+        uploadId: sql<string | null>`${attachmentUploadSessions.id}`.as('upload_id'),
+      })
+      .from(attachmentUploadSessions),
+  )
+  const persistedStorageKeys = new Set(
+    persistedRows.flatMap((row) => (row.storageKey ? [row.storageKey] : [])),
+  )
+  const activeUploadIds = new Set(
+    persistedRows.flatMap((row) => (row.uploadId ? [row.uploadId] : [])),
+  )
   let deletedCount = 0
 
   for (const candidate of candidates) {
-    if (persistedStorageKeys.has(candidate.key)) {
+    if (
+      persistedStorageKeys.has(candidate.key) ||
+      activeUploadIds.has(getUploadIdFromUploadStorageKey(candidate.key))
+    ) {
       continue
     }
 
@@ -61,6 +89,37 @@ export async function cleanupOrphanedAttachmentUploads(
   }
 
   return deletedCount
+}
+
+export async function cleanupExpiredAttachmentUploadSessions(
+  database: Db,
+  storage: AttachmentStorage,
+): Promise<number> {
+  const expiredSessions = await database
+    .delete(attachmentUploadSessions)
+    .where(lte(attachmentUploadSessions.expiresAt, new Date()))
+    .returning()
+
+  for (const session of expiredSessions) {
+    if (!session.storageKey || session.storageProvider !== storage.provider) {
+      continue
+    }
+
+    try {
+      await storage.delete(session.storageKey)
+    } catch (error) {
+      logger.error(
+        {
+          err: error,
+          storageKey: session.storageKey,
+          uploadId: session.id,
+        },
+        'expired attachment upload session deletion failed',
+      )
+    }
+  }
+
+  return expiredSessions.length
 }
 
 export async function cleanupUnreferencedAttachments(

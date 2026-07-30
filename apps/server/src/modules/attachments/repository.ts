@@ -1,22 +1,12 @@
 import { USER_STATUS_ENABLED, type AttachmentListQuery } from '@rev30/contracts'
-import { and, count, desc, eq, ilike, isNull, or } from 'drizzle-orm'
+import { and, count, desc, eq, gt, ilike, isNull, or } from 'drizzle-orm'
 import type { Db } from '../../db'
-import { attachments, systemUsers } from '../../db/schema'
+import { attachments, attachmentUploadSessions, systemUsers } from '../../db/schema'
 
-export type AttachmentCreateRecord = typeof attachments.$inferInsert
+export type AttachmentUploadSessionCreateRecord = typeof attachmentUploadSessions.$inferInsert
 
 export function createAttachmentRepository(database: Db) {
   return {
-    async create(input: AttachmentCreateRecord) {
-      const [created] = await database.insert(attachments).values(input).returning()
-
-      if (!created) {
-        throw new Error('创建附件失败')
-      }
-
-      return created
-    },
-
     async findActiveById(id: string) {
       const [row] = await database
         .select()
@@ -94,6 +84,142 @@ export function createAttachmentRepository(database: Db) {
         .returning()
 
       return deleted
+    },
+
+    async createUploadSession(input: AttachmentUploadSessionCreateRecord) {
+      const [created] = await database.insert(attachmentUploadSessions).values(input).returning()
+
+      if (!created) {
+        throw new Error('创建附件上传会话失败')
+      }
+
+      return created
+    },
+
+    async findActiveUploadSession(id: string, requestedAt: Date) {
+      const [row] = await database
+        .select()
+        .from(attachmentUploadSessions)
+        .where(
+          and(
+            eq(attachmentUploadSessions.id, id),
+            gt(attachmentUploadSessions.expiresAt, requestedAt),
+          ),
+        )
+        .limit(1)
+
+      return row
+    },
+
+    async claimPendingUploadSession(id: string, requestedAt: Date) {
+      const [claimed] = await database
+        .update(attachmentUploadSessions)
+        .set({
+          state: 'uploading',
+          updatedAt: requestedAt,
+        })
+        .where(
+          and(
+            eq(attachmentUploadSessions.id, id),
+            eq(attachmentUploadSessions.state, 'pending'),
+            gt(attachmentUploadSessions.expiresAt, requestedAt),
+          ),
+        )
+        .returning()
+
+      return claimed
+    },
+
+    async resetUploadingUploadSession(id: string, updatedAt: Date) {
+      const [reset] = await database
+        .update(attachmentUploadSessions)
+        .set({
+          state: 'pending',
+          updatedAt,
+        })
+        .where(
+          and(eq(attachmentUploadSessions.id, id), eq(attachmentUploadSessions.state, 'uploading')),
+        )
+        .returning()
+
+      return reset
+    },
+
+    async storeUploadSessionContent(
+      id: string,
+      input: {
+        checksum: string
+        extension: string
+        mimeType: string
+        size: number
+        storageKey: string
+        storageProvider: string
+        storedAt: Date
+      },
+    ) {
+      const [stored] = await database
+        .update(attachmentUploadSessions)
+        .set({
+          checksum: input.checksum,
+          extension: input.extension,
+          mimeType: input.mimeType,
+          state: 'stored',
+          storageKey: input.storageKey,
+          storageProvider: input.storageProvider,
+          storedAt: input.storedAt,
+          storedSize: input.size,
+          updatedAt: input.storedAt,
+        })
+        .where(
+          and(eq(attachmentUploadSessions.id, id), eq(attachmentUploadSessions.state, 'uploading')),
+        )
+        .returning()
+
+      return stored
+    },
+
+    async completeUploadSession(id: string, userId: string, requestedAt: Date) {
+      return database.transaction(async (tx) => {
+        const [session] = await tx
+          .delete(attachmentUploadSessions)
+          .where(
+            and(
+              eq(attachmentUploadSessions.id, id),
+              eq(attachmentUploadSessions.createdBy, userId),
+              eq(attachmentUploadSessions.state, 'stored'),
+              gt(attachmentUploadSessions.expiresAt, requestedAt),
+            ),
+          )
+          .returning()
+
+        if (!session) {
+          return undefined
+        }
+
+        const [created] = await tx
+          .insert(attachments)
+          .values({
+            checksum: session.checksum!,
+            cleanupPolicy: session.cleanupPolicy,
+            createdAt: session.storedAt!,
+            createdBy: session.createdBy,
+            extension: session.extension!,
+            mimeType: session.mimeType!,
+            originalName: session.originalName,
+            readPolicy: session.readPolicy,
+            size: session.storedSize!,
+            storageKey: session.storageKey!,
+            storageProvider: session.storageProvider!,
+            usage: session.usage,
+          })
+          .returning()
+
+        if (!created) {
+          throw new Error('创建附件失败')
+        }
+
+        return created
+      })
     },
   }
 }

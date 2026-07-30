@@ -249,6 +249,74 @@ export const attachments = pgTable(
   ],
 )
 
+export const attachmentUploadSessions = pgTable(
+  'attachment_upload_sessions',
+  {
+    id: uuidPrimaryKeyColumn(),
+    originalName: text('original_name').notNull(),
+    expectedSize: integer('expected_size').notNull(),
+    usage: text('usage').notNull(),
+    readPolicy: text('read_policy').notNull().default(ATTACHMENT_READ_POLICY_SIGNED),
+    cleanupPolicy: text('cleanup_policy').notNull().default(ATTACHMENT_CLEANUP_POLICY_MANUAL),
+    state: text('state', { enum: ['pending', 'uploading', 'stored'] })
+      .notNull()
+      .default('pending'),
+    storageProvider: text('storage_provider'),
+    storageKey: text('storage_key'),
+    mimeType: text('mime_type'),
+    extension: text('extension'),
+    storedSize: integer('stored_size'),
+    checksum: text('checksum'),
+    storedAt: timestamp('stored_at', timestampOptions),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references((): AnyPgColumn => systemUsers.id),
+    expiresAt: timestamp('expires_at', timestampOptions).notNull(),
+    ...mutableTimestamps(),
+  },
+  (table) => [
+    check(
+      'attachment_upload_sessions_state_check',
+      sql`${table.state} IN ('pending', 'uploading', 'stored')`,
+    ),
+    check(
+      'attachment_upload_sessions_expected_size_non_negative_check',
+      sql`${table.expectedSize} >= 0`,
+    ),
+    check(
+      'attachment_upload_sessions_expiration_check',
+      sql`${table.expiresAt} > ${table.createdAt}`,
+    ),
+    check(
+      'attachment_upload_sessions_storage_state_check',
+      sql`(
+        ${table.state} IN ('pending', 'uploading')
+        AND ${table.storageProvider} IS NULL
+        AND ${table.storageKey} IS NULL
+        AND ${table.mimeType} IS NULL
+        AND ${table.extension} IS NULL
+        AND ${table.storedSize} IS NULL
+        AND ${table.checksum} IS NULL
+        AND ${table.storedAt} IS NULL
+      ) OR (
+        ${table.state} = 'stored'
+        AND ${table.storageProvider} IS NOT NULL
+        AND ${table.storageKey} IS NOT NULL
+        AND ${table.mimeType} IS NOT NULL
+        AND ${table.extension} IS NOT NULL
+        AND ${table.storedSize} IS NOT NULL
+        AND ${table.storedSize} >= 0
+        AND ${table.checksum} IS NOT NULL
+        AND ${table.storedAt} IS NOT NULL
+      )`,
+    ),
+    uniqueIndex('attachment_upload_sessions_storage_key_unique')
+      .on(table.storageProvider, table.storageKey)
+      .where(sql`${table.storageKey} IS NOT NULL`),
+    index('attachment_upload_sessions_expires_at_idx').on(table.expiresAt),
+  ],
+)
+
 export const attachmentReferences = pgTable(
   'attachment_references',
   {

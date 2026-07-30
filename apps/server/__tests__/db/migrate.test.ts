@@ -34,6 +34,7 @@ const tempDirs: string[] = []
 
 const expectedTableNames = [
   'attachment_references',
+  'attachment_upload_sessions',
   'attachments',
   'auth_login_attempt_buckets',
   'auth_password_credentials',

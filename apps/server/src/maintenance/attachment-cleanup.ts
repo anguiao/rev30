@@ -1,5 +1,6 @@
 import type { Db } from '../db'
 import {
+  cleanupExpiredAttachmentUploadSessions,
   cleanupOrphanedAttachmentUploads,
   cleanupUnreferencedAttachments,
 } from '../modules/attachments/cleanup'
@@ -62,6 +63,18 @@ export function startAttachmentCleanup(database: Db): MaintenanceWorker {
   async function run() {
     if (stopped) {
       return
+    }
+
+    try {
+      const deletedCount = await cleanupExpiredAttachmentUploadSessions(database, storage)
+
+      if (deletedCount > 0) {
+        logger.info({ deletedCount }, 'expired attachment upload session cleanup completed')
+      }
+    } catch (error) {
+      if (!stopped) {
+        logger.error({ error }, 'expired attachment upload session cleanup failed')
+      }
     }
 
     try {

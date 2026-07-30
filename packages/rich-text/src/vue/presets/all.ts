@@ -35,8 +35,8 @@ import { strikeActionItem, strikeEditorFeature } from '../../features/strike/edi
 import { textAlignActionItems, textAlignEditorFeature } from '../../features/text-align/editor'
 import { textStyleEditorFeature } from '../../features/text-style/editor'
 import { textStyleToolbarControl } from '../../features/text-style/vue'
-import { tableEditorFeature } from '../../features/table/editor'
-import { tableQuickBar, tableSlashCommand, tableToolbarControl } from '../../features/table/vue'
+import { tableActionItem, tableEditorFeature } from '../../features/table/editor'
+import { tableQuickBar, tableToolbarControl } from '../../features/table/vue'
 import { underlineActionItem, underlineEditorFeature } from '../../features/underline/editor'
 import { allRichTextPreset } from '../../presets/all'
 import { defineRichTextQuickBar, richTextQuickBarAction } from '../quick-bar'
@@ -173,7 +173,7 @@ function createAllRichTextSlashMenu(options: AllRichTextEditorPresetOptions) {
       commands: [
         richTextSlashCommand(codeBlockActionItem),
         richTextSlashCommand(horizontalRuleActionItem),
-        tableSlashCommand,
+        richTextSlashCommand(tableActionItem),
         createImageSlashCommand(options.image),
       ],
     },

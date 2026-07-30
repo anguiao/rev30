@@ -1,132 +1,24 @@
-import type { Editor } from '@tiptap/core'
-import type { Node as ProseMirrorNode, ResolvedPos } from '@tiptap/pm/model'
-import { CellSelection, TableMap } from '@tiptap/pm/tables'
-import { TextSelection, type Selection } from '@tiptap/pm/state'
+import { cellAround, CellSelection, findTable, rowIsHeader, TableMap } from '@tiptap/pm/tables'
+import type { Selection } from '@tiptap/pm/state'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import { tableFeature } from './shared'
 
-export type RichTextTableSelectionType = 'cursor' | 'text' | 'cell'
+const DEFAULT_TABLE_ROWS = 3
+const DEFAULT_TABLE_COLUMNS = 3
 
-export interface RichTextTableContext {
-  readonly tableNode: ProseMirrorNode
-  readonly tablePosition: number
-  readonly selectionType: RichTextTableSelectionType
-  readonly cellPosition?: number
-}
+export function getSelectedTable(selection: Selection) {
+  const isCellSelection = selection instanceof CellSelection
+  const fromCell = isCellSelection ? selection.$anchorCell : cellAround(selection.$from)
+  const toCell = isCellSelection ? selection.$headCell : cellAround(selection.$to)
 
-interface TablePositionContext {
-  readonly tableNode: ProseMirrorNode
-  readonly tablePosition: number
-  readonly cellPosition: number
-}
-
-function findTablePosition($pos: ResolvedPos): TablePositionContext | null {
-  let cellDepth = -1
-  let tableDepth = -1
-
-  for (let depth = $pos.depth; depth > 0; depth -= 1) {
-    const node = $pos.node(depth)
-
-    if (cellDepth < 0 && (node.type.name === 'tableCell' || node.type.name === 'tableHeader')) {
-      cellDepth = depth
-    }
-
-    if (node.type.name === 'table') {
-      tableDepth = depth
-      break
-    }
-  }
-
-  if (cellDepth < 0 || tableDepth < 0) {
+  if (!fromCell || !toCell) {
     return null
   }
 
-  return {
-    tableNode: $pos.node(tableDepth),
-    tablePosition: $pos.before(tableDepth),
-    cellPosition: $pos.before(cellDepth),
-  }
-}
+  const table = findTable(fromCell)
 
-function findCellSelectionTable(selection: CellSelection): RichTextTableContext | null {
-  const { $anchorCell, $headCell } = selection
-  const tableNode = $anchorCell.node(-1)
-
-  if (tableNode.type.name !== 'table' || tableNode !== $headCell.node(-1)) {
-    return null
-  }
-
-  const tablePosition = $anchorCell.before($anchorCell.depth - 1)
-
-  return {
-    tableNode,
-    tablePosition,
-    selectionType: 'cell',
-    cellPosition: $anchorCell.pos,
-  }
-}
-
-function isTextSelection(selection: Selection): selection is TextSelection {
-  return selection instanceof TextSelection
-}
-
-export function resolveRichTextTableContext(selection: Selection): RichTextTableContext | null {
-  if (selection instanceof CellSelection) {
-    return findCellSelectionTable(selection)
-  }
-
-  const from = findTablePosition(selection.$from)
-
-  if (!from) {
-    return null
-  }
-
-  const to = findTablePosition(selection.$to)
-
-  if (!to || to.tableNode !== from.tableNode) {
-    return null
-  }
-
-  const selectionType = isTextSelection(selection)
-    ? selection.empty
-      ? 'cursor'
-      : 'text'
-    : 'cursor'
-
-  return {
-    tableNode: from.tableNode,
-    tablePosition: from.tablePosition,
-    selectionType,
-    cellPosition: from.cellPosition,
-  }
-}
-
-export const resolveTableContext = resolveRichTextTableContext
-
-export function getRichTextTableWrapperElement(
-  editor: Editor,
-  context: Pick<RichTextTableContext, 'tablePosition'>,
-) {
-  const nodeDOM = editor.view.nodeDOM(context.tablePosition)
-
-  if (!(nodeDOM instanceof HTMLElement)) {
-    return null
-  }
-
-  return nodeDOM.matches('.tableWrapper') ? nodeDOM : nodeDOM.closest<HTMLElement>('.tableWrapper')
-}
-
-export function isRichTextTableHeaderRow(table: ProseMirrorNode) {
-  const firstRow = table.firstChild
-
-  return Boolean(
-    firstRow &&
-    firstRow.childCount > 0 &&
-    Array.from({ length: firstRow.childCount }, (_, index) => firstRow.child(index)).every(
-      (cell) => cell.type.name === 'tableHeader',
-    ),
-  )
+  return table && findTable(toCell)?.node === table.node ? table : null
 }
 
 function isPositiveTableSize(value: number) {
@@ -138,7 +30,7 @@ function canInsertTable(selection: Selection, rows: number, columns: number) {
     isPositiveTableSize(rows) &&
     isPositiveTableSize(columns) &&
     selection.empty &&
-    resolveRichTextTableContext(selection) === null
+    getSelectedTable(selection) === null
   )
 }
 
@@ -155,79 +47,107 @@ export const insertTableAction = defineRichTextAction(tableFeature, {
     },
 })
 
-function defineTableStructureAction(
-  key:
-    | 'add-row-before'
-    | 'add-row-after'
-    | 'delete-row'
-    | 'add-column-before'
-    | 'add-column-after'
-    | 'delete-column'
-    | 'delete-table',
-  commandName:
-    | 'addRowBefore'
-    | 'addRowAfter'
-    | 'deleteRow'
-    | 'addColumnBefore'
-    | 'addColumnAfter'
-    | 'deleteColumn'
-    | 'deleteTable',
-  canRun?: (context: RichTextTableContext, selection: Selection) => boolean,
-) {
-  return defineRichTextAction(tableFeature, {
-    key,
-    command:
-      () =>
-      ({ chain, state }) => {
-        const context = resolveRichTextTableContext(state.selection)
+export const tableAction = defineRichTextAction(tableFeature, {
+  key: tableFeature.key,
+  command: () => insertTableAction.command(DEFAULT_TABLE_ROWS, DEFAULT_TABLE_COLUMNS),
+})
 
-        if (!context || (canRun && !canRun(context, state.selection))) {
-          return false
-        }
+export const addRowBeforeAction = defineRichTextAction(tableFeature, {
+  key: 'add-row-before',
+  command:
+    () =>
+    ({ chain }) =>
+      chain().focus().addRowBefore().run(),
+})
 
-        return chain().focus()[commandName]().run()
-      },
-  })
-}
+export const addRowAfterAction = defineRichTextAction(tableFeature, {
+  key: 'add-row-after',
+  command:
+    () =>
+    ({ chain }) =>
+      chain().focus().addRowAfter().run(),
+})
 
-export const addRowBeforeAction = defineTableStructureAction('add-row-before', 'addRowBefore')
-export const addRowAfterAction = defineTableStructureAction('add-row-after', 'addRowAfter')
-export const deleteRowAction = defineTableStructureAction(
-  'delete-row',
-  'deleteRow',
-  (context, selection) =>
-    context.tableNode.childCount > 1 &&
-    !(selection instanceof CellSelection && selection.isColSelection()),
-)
-export const addColumnBeforeAction = defineTableStructureAction(
-  'add-column-before',
-  'addColumnBefore',
-)
-export const addColumnAfterAction = defineTableStructureAction('add-column-after', 'addColumnAfter')
-export const deleteColumnAction = defineTableStructureAction(
-  'delete-column',
-  'deleteColumn',
-  (context, selection) =>
-    TableMap.get(context.tableNode).width > 1 &&
-    !(selection instanceof CellSelection && selection.isRowSelection()),
-)
-export const deleteTableAction = defineTableStructureAction('delete-table', 'deleteTable')
+export const deleteRowAction = defineRichTextAction(tableFeature, {
+  key: 'delete-row',
+  command:
+    () =>
+    ({ chain, state }) => {
+      const { selection } = state
+      const table = getSelectedTable(selection)
+
+      if (
+        !table ||
+        table.node.childCount <= 1 ||
+        (selection instanceof CellSelection && selection.isColSelection())
+      ) {
+        return false
+      }
+
+      return chain().focus().deleteRow().run()
+    },
+})
+
+export const addColumnBeforeAction = defineRichTextAction(tableFeature, {
+  key: 'add-column-before',
+  command:
+    () =>
+    ({ chain }) =>
+      chain().focus().addColumnBefore().run(),
+})
+
+export const addColumnAfterAction = defineRichTextAction(tableFeature, {
+  key: 'add-column-after',
+  command:
+    () =>
+    ({ chain }) =>
+      chain().focus().addColumnAfter().run(),
+})
+
+export const deleteColumnAction = defineRichTextAction(tableFeature, {
+  key: 'delete-column',
+  command:
+    () =>
+    ({ chain, state }) => {
+      const { selection } = state
+      const table = getSelectedTable(selection)
+
+      if (
+        !table ||
+        TableMap.get(table.node).width <= 1 ||
+        (selection instanceof CellSelection && selection.isRowSelection())
+      ) {
+        return false
+      }
+
+      return chain().focus().deleteColumn().run()
+    },
+})
+
+export const deleteTableAction = defineRichTextAction(tableFeature, {
+  key: 'delete-table',
+  command:
+    () =>
+    ({ chain }) =>
+      chain().focus().deleteTable().run(),
+})
 
 export const toggleHeaderRowAction = defineRichTextAction(tableFeature, {
   key: 'toggle-header-row',
   command:
     () =>
-    ({ chain, state }) => {
-      if (!resolveRichTextTableContext(state.selection)) {
-        return false
-      }
-
-      return chain().focus().toggleHeaderRow().run()
-    },
+    ({ chain }) =>
+      chain().focus().toggleHeaderRow().run(),
   isActive: (editor) => {
-    const context = resolveRichTextTableContext(editor.state.selection)
-    return context ? isRichTextTableHeaderRow(context.tableNode) : false
+    const table = getSelectedTable(editor.state.selection)
+    return table ? rowIsHeader(TableMap.get(table.node), table.node, 0) : false
   },
+})
+
+export const tableActionItem = defineRichTextActionItem(tableAction, {
+  label: '表格',
+  icon: 'i-[lucide--table-2]',
+  keywords: ['table'],
 })
 
 export const addRowBeforeActionItem = defineRichTextActionItem(addRowBeforeAction, {

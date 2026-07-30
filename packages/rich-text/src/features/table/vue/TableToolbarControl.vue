@@ -1,31 +1,24 @@
 <script setup lang="ts">
 import type { DropdownDividerOption, DropdownOption } from 'naive-ui'
 import { NButton, NDropdown, NPopover } from 'naive-ui'
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, h, nextTick, ref, watch } from 'vue'
 import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
-import { focusRichTextMenuItem, handleRichTextMenuKeydown } from '../../../vue/interactions/focus'
+import { useRichTextDropdownTrigger } from '../../../vue/interactions/dropdown'
+import { focusRichTextGridItem } from '../../../vue/interactions/focus'
 import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
 import {
-  deleteTableAction,
   deleteTableActionItem,
+  getSelectedTable,
   insertTableAction,
-  resolveRichTextTableContext,
   toggleHeaderRowActionItem,
 } from '../editor'
-import TableSizePicker from './TableSizePicker.vue'
+import TableToolbarSizePicker from './TableToolbarSizePicker.vue'
 import {
-  createTableDropdownCommandOption,
   createTableDropdownOption,
-  createTableDropdownOptions,
-  createTableDropdownSubmenu,
-  findTableActionItem,
-  getTableDropdownNodeProps,
-  tableActionItems,
   tableColumnActionItems,
   tableRowActionItems,
+  type TableActionDropdownOption,
 } from './dropdown'
-
-type TableStructureDropdownOption = DropdownOption | DropdownDividerOption
 
 const props = withDefaults(defineProps<RichTextToolbarControlProps>(), {
   disabled: false,
@@ -33,56 +26,53 @@ const props = withDefaults(defineProps<RichTextToolbarControlProps>(), {
 
 const editor = props.editor
 const root = ref<HTMLElement | null>(null)
-const sizePicker = ref<InstanceType<typeof TableSizePicker> | null>(null)
-const showSizePicker = ref(false)
-const showStructureMenu = ref(false)
-const version = ref(0)
-let closeStructureOnFocusout = false
-let structureSelectSucceeded: boolean | null = null
-let structureFocusTimer: ReturnType<typeof setTimeout> | undefined
-let submenuFocusTimer: ReturnType<typeof setTimeout> | undefined
-let pendingStructureFocus: 'active' | 'last' | undefined
 
-const context = computed(() => {
-  void version.value
-  return resolveRichTextTableContext(editor.state.selection)
-})
+const isActive = computed(() => getSelectedTable(editor.state.selection) !== null)
+const isDisabled = computed(
+  () =>
+    props.disabled || (!isActive.value && !canRunRichTextAction(editor, insertTableAction, 1, 1)),
+)
 
-const isActive = computed(() => context.value !== null)
-const isDisabled = computed(() => {
-  void version.value
-
-  if (props.disabled) {
-    return true
+function createSubmenu(key: string, label: string, icon: string, children: DropdownOption[]) {
+  return {
+    key,
+    label,
+    icon: () =>
+      h('span', {
+        class: [icon, 'inline-block size-4'],
+        'aria-hidden': 'true',
+      }),
+    children,
+    props: {
+      'data-test': `rich-text-table-menu-${key}`,
+      role: 'menuitem',
+      tabindex: -1,
+      'aria-haspopup': 'menu' as const,
+    },
   }
+}
 
-  return context.value
-    ? !canRunRichTextAction(editor, deleteTableAction)
-    : !canRunRichTextAction(editor, insertTableAction, 1, 1)
-})
-const buttonLabel = computed(() => (isActive.value ? '表格操作' : '表格'))
-const structureOptions = computed<TableStructureDropdownOption[]>(() => {
-  void version.value
+const options = computed<(DropdownOption | DropdownDividerOption)[]>(() => {
   const headerActive = toggleHeaderRowActionItem.action.isActive?.(editor) ?? false
 
   return [
-    createTableDropdownSubmenu(
+    createSubmenu(
       'table-row-actions',
       '行',
       'i-[lucide--rows-3]',
-      createTableDropdownOptions(editor, tableRowActionItems),
+      tableRowActionItems.map((item) => createTableDropdownOption(editor, item)),
     ),
-    createTableDropdownSubmenu(
+    createSubmenu(
       'table-column-actions',
       '列',
       'i-[lucide--columns-3]',
-      createTableDropdownOptions(editor, tableColumnActionItems),
+      tableColumnActionItems.map((item) => createTableDropdownOption(editor, item)),
     ),
     {
       type: 'divider',
       key: 'table-level-divider',
     },
-    createTableDropdownCommandOption(
+    createTableDropdownOption(
       editor,
       toggleHeaderRowActionItem,
       headerActive ? '取消首行表头' : '设置首行表头',
@@ -91,155 +81,55 @@ const structureOptions = computed<TableStructureDropdownOption[]>(() => {
   ]
 })
 
-function sync() {
-  version.value += 1
+function handleSelect(_key: string | number, option: DropdownOption) {
+  const { action } = option as TableActionDropdownOption
+  runRichTextAction(editor, action)
 }
 
-function getTrigger() {
-  return root.value?.querySelector<HTMLElement>('[data-rich-text-toolbar-item="table"]') ?? null
-}
-
-function closePopup() {
-  clearTimeout(structureFocusTimer)
-  clearTimeout(submenuFocusTimer)
-  structureFocusTimer = undefined
-  submenuFocusTimer = undefined
-  pendingStructureFocus = undefined
-  closeStructureOnFocusout = false
-  structureSelectSucceeded = null
-  showSizePicker.value = false
-  showStructureMenu.value = false
-}
-
-function restoreTrigger() {
-  getTrigger()?.focus()
-  closePopup()
-}
-
-function focusStructureMenu(entry: 'active' | 'last') {
-  clearTimeout(structureFocusTimer)
-  pendingStructureFocus = entry
-  void nextTick(() => {
-    if (!showStructureMenu.value || pendingStructureFocus !== entry) {
-      return
-    }
-
-    structureFocusTimer = setTimeout(() => {
-      if (showStructureMenu.value && pendingStructureFocus === entry) {
-        focusRichTextMenuItem(root.value, entry)
-      }
-    })
-  })
-}
-
-function getSubmenuParent(menu: HTMLElement | null) {
-  return menu?.parentElement?.closest<HTMLElement>('[data-rich-text-table-submenu]') ?? null
-}
-
-function focusStructureSubmenu(item: HTMLElement) {
-  const optionBody = item.querySelector<HTMLElement>('.rich-text-table-option-body')
-  optionBody?.dispatchEvent(new MouseEvent('mouseenter'))
-
-  clearTimeout(submenuFocusTimer)
-  void nextTick(() => {
-    submenuFocusTimer = setTimeout(() => {
-      if (!showStructureMenu.value || !item.isConnected) {
-        return
-      }
-
-      const submenu = item.querySelector<HTMLElement>('[role="menu"]')
-      focusRichTextMenuItem(submenu, 'first')
-
-      const focusedItem =
-        document.activeElement instanceof HTMLElement ? document.activeElement : null
-      focusedItem
-        ?.querySelector<HTMLElement>('.rich-text-table-option-body')
-        ?.dispatchEvent(new MouseEvent('mouseenter'))
-    })
-  })
-}
-
-function focusStructureParent(item: HTMLElement) {
-  clearTimeout(submenuFocusTimer)
-  submenuFocusTimer = setTimeout(() => {
-    if (showStructureMenu.value && item.isConnected) {
-      item.focus()
-    }
-  })
-}
-
-function getStructureMenuProps(option?: DropdownOption) {
-  const labels: Record<string, string> = {
-    'table-row-actions': '行操作',
-    'table-column-actions': '列操作',
-  }
-  const key = option?.key === undefined ? undefined : String(option.key)
+function getMenuProps(option?: DropdownOption) {
+  const label = typeof option?.label === 'string' ? option.label : '表格'
 
   return {
     role: 'menu',
-    'aria-label': (key && labels[key]) || '表格结构操作',
+    'aria-label': `${label}操作`,
   }
 }
 
-function openSizePicker(entry: 'active' | 'last' = 'active') {
+const showSizePicker = ref(false)
+
+const { show: showMenu, handleTriggerKeydown: handleMenuTriggerKeydown } =
+  useRichTextDropdownTrigger(isDisabled)
+
+function openSizePicker(entry: 'first' | 'last') {
   if (isDisabled.value) {
     return
   }
 
   showSizePicker.value = true
   void nextTick(() => {
-    sizePicker.value?.open(entry === 'last' ? 'last' : 'first')
+    focusRichTextGridItem(root.value, entry)
   })
 }
 
-function openStructureMenu(entry: 'active' | 'last' = 'active') {
-  if (isDisabled.value) {
-    return
-  }
-
-  showStructureMenu.value = true
-  focusStructureMenu(entry)
+function closePopup() {
+  showSizePicker.value = false
+  showMenu.value = false
 }
 
-function handleSizePickerShow(nextShow: boolean) {
-  if (nextShow) {
-    openSizePicker()
-  } else {
-    showSizePicker.value = false
-  }
+function cancelSizePicker() {
+  closePopup()
+  root.value?.querySelector<HTMLElement>('[data-rich-text-toolbar-item="table"]')?.focus()
 }
 
-function handleStructureShow(nextShow: boolean) {
-  if (!nextShow && structureSelectSucceeded === false) {
-    structureSelectSucceeded = null
-    return
-  }
-
-  structureSelectSucceeded = null
-  closeStructureOnFocusout = false
-  showStructureMenu.value = nextShow
-
-  if (nextShow) {
-    focusStructureMenu('active')
-  } else {
-    clearTimeout(structureFocusTimer)
-    clearTimeout(submenuFocusTimer)
-    structureFocusTimer = undefined
-    submenuFocusTimer = undefined
-    pendingStructureFocus = undefined
+function handleSizePickerVisibilityChange(visible: boolean) {
+  if (visible) {
+    void nextTick(() => {
+      focusRichTextGridItem(root.value, 'first')
+    })
   }
 }
 
-function runStructureAction(key: string | number) {
-  const item = findTableActionItem(tableActionItems, key)
-  return item ? runRichTextAction(editor, item.action) : false
-}
-
-function handleStructureSelect(key: string | number) {
-  structureSelectSucceeded = runStructureAction(key)
-}
-
-function handleTriggerKeydown(event: KeyboardEvent) {
+function handleSizePickerTriggerKeydown(event: KeyboardEvent) {
   if (
     event.defaultPrevented ||
     event.isComposing ||
@@ -251,121 +141,24 @@ function handleTriggerKeydown(event: KeyboardEvent) {
 
   event.preventDefault()
   event.stopPropagation()
-  const entry = event.key === 'ArrowUp' ? 'last' : 'active'
-
-  if (context.value) {
-    openStructureMenu(entry)
-  } else {
-    openSizePicker(entry)
-  }
+  openSizePicker(event.key === 'ArrowUp' ? 'last' : 'first')
 }
 
-function handleStructureKeydown(event: KeyboardEvent) {
-  if (!showStructureMenu.value || event.defaultPrevented || event.isComposing) {
-    return
-  }
-
-  if (event.key === 'Tab') {
-    closeStructureOnFocusout = true
-    return
-  }
-
-  const menuItem =
-    event.target instanceof Element
-      ? event.target.closest<HTMLElement>(
-          '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]',
-        )
-      : null
-  const actionItem = menuItem?.matches('[data-rich-text-table-action]') ? menuItem : null
-  const submenuItem = menuItem?.matches('[data-rich-text-table-submenu]') ? menuItem : null
-
-  if (actionItem && ['Enter', ' '].includes(event.key)) {
-    event.preventDefault()
-    event.stopPropagation()
-
-    if (runStructureAction(actionItem.dataset.richTextTableAction!)) {
-      showStructureMenu.value = false
-    }
-    return
-  }
-
-  if (submenuItem && ['ArrowRight', 'Enter', ' '].includes(event.key)) {
-    event.preventDefault()
-    event.stopPropagation()
-    focusStructureSubmenu(submenuItem)
-    return
-  }
-
-  if (event.key === 'ArrowLeft') {
-    const menu =
-      event.target instanceof Element ? event.target.closest<HTMLElement>('[role="menu"]') : null
-    const parent = getSubmenuParent(menu)
-
-    if (parent) {
-      focusStructureParent(parent)
-      return
-    }
-
-    event.preventDefault()
-    event.stopPropagation()
-    return
-  }
-
-  handleRichTextMenuKeydown(event, {
-    trigger: getTrigger(),
-    close: () => {
-      showStructureMenu.value = false
-    },
-  })
-}
-
-function handleStructureFocusout(event: FocusEvent) {
-  if (
-    !closeStructureOnFocusout ||
-    (event.relatedTarget instanceof Node && root.value?.contains(event.relatedTarget))
-  ) {
-    return
-  }
-
-  closeStructureOnFocusout = false
-  showStructureMenu.value = false
-}
-
-watch(context, (nextContext) => {
-  if ((showSizePicker.value && nextContext) || (showStructureMenu.value && !nextContext)) {
-    closePopup()
-  }
-})
-
-editor.on('transaction', sync)
-onBeforeUnmount(() => {
-  clearTimeout(structureFocusTimer)
-  clearTimeout(submenuFocusTimer)
-  pendingStructureFocus = undefined
-  editor.off('transaction', sync)
-})
+watch(isActive, closePopup)
 </script>
 
 <template>
-  <div
-    ref="root"
-    class="contents"
-    @keydown="handleStructureKeydown"
-    @focusout="handleStructureFocusout"
-  >
+  <div ref="root" class="contents">
     <NDropdown
       v-if="isActive"
+      v-model:show="showMenu"
       trigger="click"
       placement="bottom-start"
-      :show="showStructureMenu"
-      :options="structureOptions"
-      :node-props="getTableDropdownNodeProps"
+      :options="options"
       :disabled="isDisabled"
-      :keyboard="true"
       :to="false"
-      :menu-props="getStructureMenuProps"
-      @update:show="handleStructureShow"
-      @select="handleStructureSelect"
+      :menu-props="getMenuProps"
+      @select="handleSelect"
     >
       <NButton
         data-test="rich-text-table"
@@ -376,12 +169,12 @@ onBeforeUnmount(() => {
         style="--n-padding: 0 6px"
         type="primary"
         secondary
-        :title="buttonLabel"
-        :aria-label="buttonLabel"
+        title="表格操作"
+        aria-label="表格操作"
         aria-pressed="true"
         aria-haspopup="menu"
-        :aria-expanded="showStructureMenu"
-        @keydown="handleTriggerKeydown"
+        :aria-expanded="showMenu"
+        @keydown="handleMenuTriggerKeydown"
       >
         <span class="i-[lucide--table-2]" aria-hidden="true" />
       </NButton>
@@ -389,12 +182,12 @@ onBeforeUnmount(() => {
 
     <NPopover
       v-else
+      v-model:show="showSizePicker"
       trigger="click"
       placement="bottom-start"
-      :show="showSizePicker"
       :disabled="isDisabled"
       :to="false"
-      @update:show="handleSizePickerShow"
+      @update:show="handleSizePickerVisibilityChange"
     >
       <template #trigger>
         <NButton
@@ -404,23 +197,18 @@ onBeforeUnmount(() => {
           size="small"
           style="--n-padding: 0 6px"
           quaternary
-          :title="buttonLabel"
-          :aria-label="buttonLabel"
+          title="表格"
+          aria-label="表格"
           aria-pressed="false"
           aria-haspopup="dialog"
           :aria-expanded="showSizePicker"
-          @keydown="handleTriggerKeydown"
+          @keydown="handleSizePickerTriggerKeydown"
         >
           <span class="i-[lucide--table-2]" aria-hidden="true" />
         </NButton>
       </template>
 
-      <TableSizePicker
-        ref="sizePicker"
-        :editor="editor"
-        :on-close="closePopup"
-        :on-escape="restoreTrigger"
-      />
+      <TableToolbarSizePicker :editor="editor" @close="closePopup" @cancel="cancelSizePicker" />
     </NPopover>
   </div>
 </template>

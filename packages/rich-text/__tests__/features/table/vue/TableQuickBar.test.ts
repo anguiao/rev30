@@ -8,15 +8,15 @@ import { markRaw } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { runRichTextAction } from '../../../../src/editor/action'
 import { insertTableAction } from '../../../../src/features/table/editor'
+import { tableFeature } from '../../../../src/features/table/shared'
 import { tableQuickBar } from '../../../../src/features/table/vue'
-import { createTableExtensions } from '../../../../src/features/table/shared'
 import { defineRichTextQuickBar } from '../../../../src/vue/quick-bar'
 import RichTextQuickBar from '../../../../src/vue/quick-bar/RichTextQuickBar.vue'
 import { createTestEditor } from '../../../helpers/editor'
 
 function createEditor() {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, ...createTableExtensions()],
+    extensions: [Document, Paragraph, Text, ...tableFeature.sharedExtensions!()],
     content: '<p></p>',
   })
 }
@@ -68,10 +68,7 @@ describe('TableQuickBar', () => {
 
     await wrapper.get('[data-test="rich-text-quick-bar-table-rows"]').trigger('click')
     await flushPromises()
-    await wrapper
-      .get('[data-test="rich-text-table-menu-add-row-after"]')
-      .get('.rich-text-table-option-body')
-      .trigger('click')
+    await wrapper.get('[data-test="rich-text-table-menu-add-row-after"]').trigger('click')
     await flushPromises()
     expect(editor.state.doc.firstChild?.childCount).toBe(3)
 
@@ -106,20 +103,15 @@ describe('TableQuickBar', () => {
       return trigger
     })
     rowTrigger.element.focus()
-    await rowTrigger.trigger('keydown', { key: 'ArrowDown' })
+    await rowTrigger.trigger('click')
     await flushPromises()
-
-    const firstRowAction = wrapper.get<HTMLElement>(
-      '[data-test="rich-text-table-menu-add-row-before"]',
-    )
-    await vi.waitFor(() => expect(document.activeElement).toBe(firstRowAction.element))
 
     const escape = new KeyboardEvent('keydown', {
       key: 'Escape',
       bubbles: true,
       cancelable: true,
     })
-    firstRowAction.element.dispatchEvent(escape)
+    rowTrigger.element.dispatchEvent(escape)
     await flushPromises()
 
     expect(escape.defaultPrevented).toBe(true)
@@ -142,18 +134,15 @@ describe('TableQuickBar', () => {
     document.body.appendChild(outside)
 
     rowTrigger.element.focus()
-    await rowTrigger.trigger('keydown', { key: 'ArrowDown' })
-    const firstRowAction = wrapper.get<HTMLElement>(
-      '[data-test="rich-text-table-menu-add-row-before"]',
-    )
-    await vi.waitFor(() => expect(document.activeElement).toBe(firstRowAction.element))
+    await rowTrigger.trigger('click')
+    await flushPromises()
 
     const tab = new KeyboardEvent('keydown', {
       key: 'Tab',
       bubbles: true,
       cancelable: true,
     })
-    firstRowAction.element.dispatchEvent(tab)
+    rowTrigger.element.dispatchEvent(tab)
     outside.focus()
 
     await vi.waitFor(() => expect(dropdown.props('show')).toBe(false))

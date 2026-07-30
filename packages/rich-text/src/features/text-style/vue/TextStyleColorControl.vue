@@ -3,10 +3,7 @@ import type { Editor } from '@tiptap/vue-3'
 import { NButton, NPopover } from 'naive-ui'
 import { computed, nextTick, ref } from 'vue'
 import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
-import {
-  focusRichTextPaletteItem,
-  handleRichTextPaletteKeydown,
-} from '../../../vue/interactions/focus'
+import { focusRichTextGridItem, handleRichTextGridKeydown } from '../../../vue/interactions/focus'
 import { setTextColorAction, unsetTextColorAction } from '../editor'
 import type { TextStyleOption } from '../options'
 
@@ -55,7 +52,7 @@ function resetColor() {
 
 function handleShow(isOpen: boolean) {
   if (isOpen) {
-    void nextTick(() => focusRichTextPaletteItem(panel.value, 'active'))
+    void nextTick(() => focusRichTextGridItem(panel.value, 'active'))
   }
 }
 
@@ -73,7 +70,7 @@ function handleTriggerKeydown(event: KeyboardEvent) {
   event.stopPropagation()
   show.value = true
   void nextTick(() =>
-    focusRichTextPaletteItem(panel.value, event.key === 'ArrowUp' ? 'last' : 'active'),
+    focusRichTextGridItem(panel.value, event.key === 'ArrowUp' ? 'last' : 'active'),
   )
 }
 
@@ -90,7 +87,7 @@ function handleEscape(event: KeyboardEvent) {
 
 function handleKeydown(event: KeyboardEvent) {
   handleEscape(event)
-  handleRichTextPaletteKeydown(event, { root: panel.value, columns: 5 })
+  handleRichTextGridKeydown(event, { root: panel.value, columns: 5 })
 }
 </script>
 
@@ -133,7 +130,7 @@ function handleKeydown(event: KeyboardEvent) {
       <div ref="panel" class="grid grid-cols-5 gap-1" role="group" aria-label="文字颜色">
         <NButton
           data-test="rich-text-text-color-default"
-          data-rich-text-palette-item
+          data-rich-text-grid-item
           :data-active="!currentColor ? 'true' : undefined"
           :disabled="!canReset"
           size="small"
@@ -153,7 +150,7 @@ function handleKeydown(event: KeyboardEvent) {
           v-for="option in colorOptions"
           :key="option.key"
           :data-test="`rich-text-text-color-${option.key}`"
-          data-rich-text-palette-item
+          data-rich-text-grid-item
           :data-active="option.active ? 'true' : undefined"
           :disabled="option.disabled"
           size="small"

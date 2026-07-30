@@ -156,7 +156,7 @@ describe('HighlightControl', () => {
     })
 
     await openPopover(wrapper)
-    const items = wrapper.findAll<HTMLElement>('[data-rich-text-palette-item]')
+    const items = wrapper.findAll<HTMLElement>('[data-rich-text-grid-item]')
     expect(document.activeElement).toBe(items[0]!.element)
 
     await items[0]!.trigger('keydown', { key: 'ArrowRight' })

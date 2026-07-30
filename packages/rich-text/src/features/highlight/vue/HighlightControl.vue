@@ -3,10 +3,7 @@ import type { Editor } from '@tiptap/vue-3'
 import { NButton, NPopover } from 'naive-ui'
 import { computed, nextTick, ref } from 'vue'
 import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
-import {
-  focusRichTextPaletteItem,
-  handleRichTextPaletteKeydown,
-} from '../../../vue/interactions/focus'
+import { focusRichTextGridItem, handleRichTextGridKeydown } from '../../../vue/interactions/focus'
 import { setHighlightAction, unsetHighlightAction } from '../editor'
 import { highlightColorOptions, type HighlightColor } from '../colors'
 
@@ -55,7 +52,7 @@ function clearHighlight() {
 
 function handleShow(isOpen: boolean) {
   if (isOpen) {
-    void nextTick(() => focusRichTextPaletteItem(panel.value, 'active'))
+    void nextTick(() => focusRichTextGridItem(panel.value, 'active'))
   }
 }
 
@@ -73,7 +70,7 @@ function handleTriggerKeydown(event: KeyboardEvent) {
   event.stopPropagation()
   show.value = true
   void nextTick(() =>
-    focusRichTextPaletteItem(panel.value, event.key === 'ArrowUp' ? 'last' : 'active'),
+    focusRichTextGridItem(panel.value, event.key === 'ArrowUp' ? 'last' : 'active'),
   )
 }
 
@@ -92,7 +89,7 @@ function handleEscape(event: KeyboardEvent) {
 
 function handlePanelKeydown(event: KeyboardEvent) {
   handleEscape(event)
-  handleRichTextPaletteKeydown(event, {
+  handleRichTextGridKeydown(event, {
     root: panel.value,
     columns: highlightColorOptions.length + 1,
   })
@@ -141,7 +138,7 @@ function handlePanelKeydown(event: KeyboardEvent) {
           v-for="color in highlightColorOptions"
           :key="color.key"
           :data-test="`rich-text-highlight-${color.key}`"
-          data-rich-text-palette-item
+          data-rich-text-grid-item
           :data-active="selectedColorKey === color.key ? 'true' : undefined"
           :disabled="!canApplyColor(color.value)"
           size="small"
@@ -163,7 +160,7 @@ function handlePanelKeydown(event: KeyboardEvent) {
 
         <NButton
           data-test="rich-text-highlight-clear"
-          data-rich-text-palette-item
+          data-rich-text-grid-item
           :disabled="!canClear"
           size="small"
           style="--n-padding: 0 6px"

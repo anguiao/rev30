@@ -14,9 +14,8 @@ import { headingFeature } from '../../src/features/heading/shared'
 import { historyEditorFeature } from '../../src/features/history/editor'
 import { historyFeature } from '../../src/features/history/shared'
 import { createImageSlashCommand } from '../../src/features/image/vue'
-import { tableEditorFeature } from '../../src/features/table/editor'
+import { tableActionItem, tableEditorFeature } from '../../src/features/table/editor'
 import { tableFeature } from '../../src/features/table/shared'
-import { tableSlashCommand } from '../../src/features/table/vue'
 import {
   canRunRichTextSlashCommand,
   defineRichTextSlashMenu,
@@ -43,6 +42,7 @@ function createEditor(content = '<p></p>') {
 
 const paragraphCommand = richTextSlashCommand(paragraphActionItem)
 const headingCommand = richTextSlashCommand(headingActionItems[0])
+const tableCommand = richTextSlashCommand(tableActionItem)
 const imageCommand = createImageSlashCommand({
   upload: async () => ({ src: '/uploads/image.png' }),
 })
@@ -213,7 +213,7 @@ describe('rich text slash menu model', () => {
     const update = vi.fn()
     editor.on('update', update)
 
-    expect(runRichTextSlashCommand(editor, tableSlashCommand, { from: 1, to: 4 })).toBe(true)
+    expect(runRichTextSlashCommand(editor, tableCommand, { from: 1, to: 4 })).toBe(true)
     expect(update).toHaveBeenCalledOnce()
     expect(editor.getJSON()).toMatchObject({ content: [{ type: 'table' }] })
     expect(editor.state.doc.firstChild?.childCount).toBe(3)

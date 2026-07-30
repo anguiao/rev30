@@ -1,3 +1,2 @@
-export { focusRichTextMenuItem, handleRichTextMenuKeydown } from './popup-menu'
-export { focusRichTextPaletteItem, handleRichTextPaletteKeydown } from './palette'
+export { focusRichTextGridItem, handleRichTextGridKeydown } from './grid'
 export { useRichTextRovingFocus } from './roving'

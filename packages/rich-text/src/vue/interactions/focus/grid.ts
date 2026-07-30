@@ -1,9 +1,9 @@
 import { focusEntryItem, isFocusItemEnabled, type FocusEntry } from './items'
 
-const paletteItemSelector = '[data-rich-text-palette-item]'
+const gridItemSelector = '[data-rich-text-grid-item]'
 
-function getPaletteItems(root: HTMLElement | null) {
-  return Array.from(root?.querySelectorAll<HTMLElement>(paletteItemSelector) ?? [])
+function getGridItems(root: HTMLElement | null) {
+  return Array.from(root?.querySelectorAll<HTMLElement>(gridItemSelector) ?? [])
 }
 
 function getAdjacentItem(items: readonly HTMLElement[], item: HTMLElement, offset: -1 | 1) {
@@ -11,11 +11,11 @@ function getAdjacentItem(items: readonly HTMLElement[], item: HTMLElement, offse
   return items[(currentIndex + offset + items.length) % items.length]!
 }
 
-export function focusRichTextPaletteItem(root: HTMLElement | null, entry: FocusEntry) {
-  focusEntryItem(getPaletteItems(root).filter(isFocusItemEnabled), entry)
+export function focusRichTextGridItem(root: HTMLElement | null, entry: FocusEntry) {
+  focusEntryItem(getGridItems(root).filter(isFocusItemEnabled), entry)
 }
 
-export function handleRichTextPaletteKeydown(
+export function handleRichTextGridKeydown(
   event: KeyboardEvent,
   options: { root: HTMLElement | null; columns: number },
 ) {
@@ -23,9 +23,9 @@ export function handleRichTextPaletteKeydown(
     return
   }
 
-  const items = getPaletteItems(options.root)
+  const items = getGridItems(options.root)
   const target =
-    event.target instanceof Element ? event.target.closest<HTMLElement>(paletteItemSelector) : null
+    event.target instanceof Element ? event.target.closest<HTMLElement>(gridItemSelector) : null
   const currentIndex = target ? items.indexOf(target) : -1
 
   if (!target || currentIndex < 0 || !isFocusItemEnabled(target)) {

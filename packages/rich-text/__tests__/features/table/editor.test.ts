@@ -13,17 +13,17 @@ import {
   deleteColumnAction,
   deleteRowAction,
   deleteTableAction,
+  getSelectedTable,
   insertTableAction,
-  resolveRichTextTableContext,
   tableEditorFeature,
   toggleHeaderRowAction,
 } from '../../../src/features/table/editor'
-import { createTableExtensions } from '../../../src/features/table/shared'
+import { tableFeature } from '../../../src/features/table/shared'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor(content: string | object = '<p>前后</p>') {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, UndoRedo, ...createTableExtensions()],
+    extensions: [Document, Paragraph, Text, UndoRedo, ...tableFeature.sharedExtensions!()],
     content,
   })
 }
@@ -76,7 +76,7 @@ describe('table editor actions', () => {
 
     editor.commands.setTextSelection({ from: 1, to: 1 })
     expect(runRichTextAction(editor, insertTableAction, 1, 1)).toBe(true)
-    expect(resolveRichTextTableContext(editor.state.selection)).not.toBeNull()
+    expect(getSelectedTable(editor.state.selection)).not.toBeNull()
     expect(canRunRichTextAction(editor, insertTableAction, 1, 1)).toBe(false)
   })
 
@@ -114,13 +114,13 @@ describe('table editor actions', () => {
     const editor = createEditor()
     runRichTextAction(editor, insertTableAction, 2, 2)
 
-    const context = resolveRichTextTableContext(editor.state.selection)
-    if (!context) {
-      throw new Error('Expected a table context')
+    const table = getSelectedTable(editor.state.selection)
+    if (!table) {
+      throw new Error('Expected a selected table')
     }
 
-    const tableMap = TableMap.get(context.tableNode)
-    const tableStart = context.tablePosition + 1
+    const tableMap = TableMap.get(table.node)
+    const tableStart = table.pos + 1
     const firstCell = editor.state.doc.resolve(tableStart + tableMap.map[0]!)
     const lastCell = editor.state.doc.resolve(tableStart + tableMap.map.at(-1)!)
     const selection = new CellSelection(firstCell, lastCell)
@@ -173,31 +173,28 @@ describe('table editor actions', () => {
     expect(getTable(editor).child(1).firstChild?.type.name).toBe('tableHeader')
   })
 
-  it('resolves cursor, text, and complete cell selection contexts', () => {
+  it('finds the table for cursor, text, and cell selections', () => {
     const editor = createEditor()
     runRichTextAction(editor, insertTableAction, 2, 2)
 
-    const cursorContext = resolveRichTextTableContext(editor.state.selection)
-    expect(cursorContext?.selectionType).toBe('cursor')
-    expect(cursorContext?.tableNode.type.name).toBe('table')
+    const table = getSelectedTable(editor.state.selection)
+    expect(table?.node.type.name).toBe('table')
 
-    const cell = cursorContext?.cellPosition
-    if (cell === undefined) {
-      throw new Error('Expected a cell position')
+    if (!table) {
+      throw new Error('Expected a selected table')
     }
 
-    editor.commands.setTextSelection({ from: cell + 2, to: cell + 3 })
-    expect(resolveRichTextTableContext(editor.state.selection)?.selectionType).toBe('text')
+    const tableMap = TableMap.get(table.node)
+    const tableStart = table.pos + 1
+    const firstCellPosition = tableStart + tableMap.map[0]!
 
-    const table = getTable(editor)
-    const firstCellPosition = editor.state.doc.resolve(cell)
-    const secondCellPosition = editor.state.doc.resolve(
-      cell + table.firstChild!.firstChild!.nodeSize,
-    )
-    editor.view.dispatch(
-      editor.state.tr.setSelection(new CellSelection(firstCellPosition, secondCellPosition)),
-    )
-    expect(resolveRichTextTableContext(editor.state.selection)?.selectionType).toBe('cell')
+    editor.commands.setTextSelection({ from: firstCellPosition + 2, to: firstCellPosition + 3 })
+    expect(getSelectedTable(editor.state.selection)).not.toBeNull()
+
+    const firstCell = editor.state.doc.resolve(firstCellPosition)
+    const secondCell = editor.state.doc.resolve(tableStart + tableMap.map[1]!)
+    editor.view.dispatch(editor.state.tr.setSelection(new CellSelection(firstCell, secondCell)))
+    expect(getSelectedTable(editor.state.selection)).not.toBeNull()
   })
 
   it('keeps native table keyboard navigation and history undo available', () => {

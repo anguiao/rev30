@@ -185,7 +185,7 @@ watch(activeKey, (commandKey) => {
       :id="listboxId"
       ref="root"
       data-test="rich-text-slash-menu"
-      class="pointer-events-auto max-h-80 min-w-64 overflow-y-auto rounded-(--rich-text-theme-border-radius) bg-(--rich-text-theme-popover-color) p-1 shadow-lg outline-none"
+      class="pointer-events-auto max-h-80 min-w-64 overflow-y-auto rounded-(--rich-text-theme-border-radius) border border-(--rich-text-theme-input-border-color) bg-(--rich-text-theme-popover-color) p-1 shadow-lg outline-none"
       role="listbox"
       aria-label="Slash 命令"
     >

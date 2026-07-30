@@ -6,6 +6,8 @@ import { baseEditorFeature } from '../../src/features/base/editor'
 import { baseFeature } from '../../src/features/base/shared'
 import { blockquoteEditorFeature } from '../../src/features/blockquote/editor'
 import { blockquoteFeature } from '../../src/features/blockquote/shared'
+import { codeBlockEditorFeature } from '../../src/features/code-block/editor'
+import { codeBlockFeature } from '../../src/features/code-block/shared'
 import { tableEditorFeature } from '../../src/features/table/editor'
 import { tableFeature } from '../../src/features/table/shared'
 import { registerRichTextSlashMenu } from '../../src/vue/slash-menu/plugin'
@@ -13,7 +15,7 @@ import { createTestEditor } from '../helpers/editor'
 
 const preset = defineRichTextPreset({
   key: 'slash-menu-test',
-  features: [baseFeature, blockquoteFeature],
+  features: [baseFeature, blockquoteFeature, codeBlockFeature],
 })
 
 type SlashMenuRenderer = Parameters<typeof registerRichTextSlashMenu>[1]
@@ -22,7 +24,7 @@ function createEditor(content = '<p></p>', renderer: SlashMenuRenderer = {}) {
   const editor = createTestEditor({
     extensions: collectRichTextEditorExtensions({
       ...preset,
-      editorFeatures: [baseEditorFeature, blockquoteEditorFeature],
+      editorFeatures: [baseEditorFeature, blockquoteEditorFeature, codeBlockEditorFeature],
     }),
     content,
   })
@@ -77,6 +79,23 @@ describe('slash menu input', () => {
       range: { from: 1, to: 2 },
     })
   })
+
+  it.each([
+    ['a blockquote', '<blockquote><p></p></blockquote>'],
+    ['a code block', '<pre><code></code></pre>'],
+  ])(
+    'does not start inside %s while keeping ordinary slash input intact',
+    async (_name, content) => {
+      const onStart = vi.fn()
+      const editor = createEditor(content, { onStart })
+
+      typeText(editor, '/')
+
+      await Promise.resolve()
+      expect(editor.getText()).toContain('/')
+      expect(onStart).not.toHaveBeenCalled()
+    },
+  )
 
   it('keeps a session synchronized with matching document replacements', async () => {
     const onUpdate = vi.fn()
@@ -166,26 +185,32 @@ describe('slash menu input', () => {
     await vi.waitFor(() => expect(pasteStart).toHaveBeenCalledOnce())
   })
 
-  it('does not start inside table cells while keeping ordinary slash input intact', async () => {
-    const tablePreset = defineRichTextPreset({
-      key: 'slash-table-test',
-      features: [baseFeature, tableFeature],
-    })
-    const onStart = vi.fn()
-    const editor = createTestEditor({
-      extensions: collectRichTextEditorExtensions({
-        ...tablePreset,
-        editorFeatures: [baseEditorFeature, tableEditorFeature],
-      }),
-      content: '<p></p>',
-    })
+  it.each([
+    ['a table header', true],
+    ['a table cell', false],
+  ])(
+    'does not start inside %s while keeping ordinary slash input intact',
+    async (_name, withHeaderRow) => {
+      const tablePreset = defineRichTextPreset({
+        key: 'slash-table-test',
+        features: [baseFeature, tableFeature],
+      })
+      const onStart = vi.fn()
+      const editor = createTestEditor({
+        extensions: collectRichTextEditorExtensions({
+          ...tablePreset,
+          editorFeatures: [baseEditorFeature, tableEditorFeature],
+        }),
+        content: '<p></p>',
+      })
 
-    registerRichTextSlashMenu(editor, { onStart }, document.body)
-    editor.commands.insertTable({ rows: 1, cols: 1, withHeaderRow: true })
-    editor.commands.insertContent('/')
+      registerRichTextSlashMenu(editor, { onStart }, document.body)
+      editor.commands.insertTable({ rows: 1, cols: 1, withHeaderRow })
+      editor.commands.insertContent('/')
 
-    await Promise.resolve()
-    expect(editor.getText()).toContain('/')
-    expect(onStart).not.toHaveBeenCalled()
-  })
+      await Promise.resolve()
+      expect(editor.getText()).toContain('/')
+      expect(onStart).not.toHaveBeenCalled()
+    },
+  )
 })

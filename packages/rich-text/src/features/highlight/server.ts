@@ -1,5 +1,9 @@
 import { defineRichTextServerFeature } from '../../server/feature'
-import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
+import {
+  getInlineStyleValue,
+  type RichTextHtmlPolicy,
+  type RichTextTagTransform,
+} from '../../server/sanitize'
 import { highlightColors } from './colors'
 import { highlightFeature } from './shared'
 
@@ -9,16 +13,6 @@ function normalizeHighlightColor(value: string | undefined) {
   const normalized = value?.trim().toLowerCase()
 
   return normalized && highlightColorSet.has(normalized) ? normalized : undefined
-}
-
-function getInlineStyleValue(style: string | undefined, property: 'background-color' | 'color') {
-  if (!style) {
-    return undefined
-  }
-
-  const match = new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`, 'i').exec(style)
-
-  return match?.[1]?.trim()
 }
 
 function buildHighlightStyle(color: string) {

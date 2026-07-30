@@ -1,5 +1,9 @@
 import { defineRichTextServerFeature } from '../../server/feature'
-import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
+import {
+  getInlineStyleValue,
+  type RichTextHtmlPolicy,
+  type RichTextTagTransform,
+} from '../../server/sanitize'
 import { textAlignments, type TextAlignment } from './alignments'
 import { textAlignFeature } from './shared'
 
@@ -10,16 +14,6 @@ function normalizeTextAlign(value: string | undefined): TextAlignment | undefine
   const normalized = value?.trim().toLowerCase()
 
   return normalized && textAlignSet.has(normalized) ? (normalized as TextAlignment) : undefined
-}
-
-function getInlineStyleValue(style: string | undefined, property: 'text-align') {
-  if (!style) {
-    return undefined
-  }
-
-  const match = new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`, 'i').exec(style)
-
-  return match?.[1]?.trim()
 }
 
 function buildTextAlignStyle(alignment: TextAlignment) {

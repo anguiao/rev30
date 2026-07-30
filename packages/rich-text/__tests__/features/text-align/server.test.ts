@@ -34,6 +34,12 @@ describe('text align html policy', () => {
     ).toBe('<p>起始对齐</p><h1>标题</h1>')
   })
 
+  it('uses the last declaration for a repeated style property', () => {
+    expect(
+      sanitizeRichTextHtml('<p style="text-align: left; text-align: right">右对齐</p>', policies),
+    ).toBe('<p style="text-align:right">右对齐</p>')
+  })
+
   it('preserves transformed styles when another policy allows styles on the same tag', () => {
     expect(
       sanitizeRichTextHtml('<p style="text-align: center">居中</p>', [

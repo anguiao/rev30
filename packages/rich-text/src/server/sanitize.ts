@@ -28,6 +28,22 @@ function toSanitizeHtmlTransformTags(transformTags: RichTextTagTransformPipeline
   return sanitizeTransformTags
 }
 
+export function getInlineStyleValue(style: string | undefined, property: string) {
+  let value: string | undefined
+
+  for (const declaration of style?.split(';') ?? []) {
+    const separator = declaration.indexOf(':')
+
+    if (separator === -1 || declaration.slice(0, separator).trim().toLowerCase() !== property) {
+      continue
+    }
+
+    value = declaration.slice(separator + 1).trim()
+  }
+
+  return value
+}
+
 function mergeRichTextHtmlPolicies(policies: readonly RichTextHtmlPolicy[]): sanitizeHtml.IOptions {
   const allowedTags = new Set<string>()
   const allowedSchemes = new Set(defaultAllowedSchemes)

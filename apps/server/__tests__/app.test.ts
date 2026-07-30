@@ -75,6 +75,22 @@ const protectedAttachmentRoutes: Array<{
 ]
 
 describe('app auth boundaries', () => {
+  it('rejects oversized JSON bodies before route parsing', async () => {
+    const app = createApp(createUnusedDatabase())
+
+    const response = await app.request('/api/attachments/uploads', {
+      method: 'POST',
+      body: '{}',
+      headers: {
+        'content-length': String(5 * 1024 * 1024 + 1),
+        'content-type': 'application/json',
+      },
+    })
+
+    expect(response.status).toBe(413)
+    expect(await response.json()).toEqual({ message: '请求体过大' })
+  })
+
   it.each(protectedAppRoutes)('requires authentication for $name', async ({ path }) => {
     const app = createApp(createUnusedDatabase())
 

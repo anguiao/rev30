@@ -7,9 +7,9 @@ import {
 import { RichTextContentInvalidError } from '@rev30/rich-text/server'
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
-import { bodyLimit } from 'hono/body-limit'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
+import { createBodyLimit } from '../../../middleware/body-limit'
 import { deriveRichTextDemoContent } from './content'
 
 const previewBodyValidator = zValidator('json', richTextDemoPreviewInputSchema, (result, c) => {
@@ -31,10 +31,7 @@ export const richTextDemoRoutes = new Hono<AuthEnv>()
   .post(
     '/preview',
     requireAccess('demo:rich-text:preview'),
-    bodyLimit({
-      maxSize: RICH_TEXT_DEMO_PREVIEW_MAX_BODY_SIZE_BYTES,
-      onError: (c) => c.json({ message: '请求体过大' }, 413),
-    }),
+    createBodyLimit(RICH_TEXT_DEMO_PREVIEW_MAX_BODY_SIZE_BYTES),
     previewBodyValidator,
     (c) => {
       const body: RichTextDemoPreviewInput = c.req.valid('json')

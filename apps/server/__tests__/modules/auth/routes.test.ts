@@ -144,6 +144,35 @@ describe('auth routes', () => {
     })
   })
 
+  it('rejects oversized login bodies before parsing JSON', async () => {
+    const app = createTestApp()
+
+    const declaredOversizedResponse = await app.request('/api/auth/login', {
+      method: 'POST',
+      body: '{}',
+      headers: {
+        'content-length': String(16 * 1024 + 1),
+        'content-type': 'application/json',
+      },
+    })
+    const streamedOversizedResponse = await app.request('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: 'a'.repeat(16 * 1024),
+        password: 'secret-password',
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+
+    expect(declaredOversizedResponse.status).toBe(413)
+    expect(await declaredOversizedResponse.json()).toEqual({ message: '请求体过大' })
+    expect(streamedOversizedResponse.status).toBe(413)
+    expect(await streamedOversizedResponse.json()).toEqual({ message: '请求体过大' })
+    expect(mocks.service.login).not.toHaveBeenCalled()
+  })
+
   it('delegates refresh requests while keeping refresh tokens in cookies only', async () => {
     const app = createTestApp()
 

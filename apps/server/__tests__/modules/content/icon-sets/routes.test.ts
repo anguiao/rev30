@@ -310,6 +310,27 @@ describe('icon set routes', () => {
     expect(await response.json()).toEqual({ message: '请求体无效' })
   })
 
+  it('rejects oversized custom icon upload bodies', async () => {
+    const database = await createTestDb()
+    const authenticated = await createSystemAccessFixture(database, {
+      accessCodes: ['content:icon-set:create'],
+      usernamePrefix: 'icon-set-upload-limit-user',
+    })
+    const app = createApp(database)
+
+    const oversizedRequestResponse = await app.request('/api/content/icon-sets/custom/acme/icons', {
+      method: 'POST',
+      headers: {
+        ...authenticated.authHeaders,
+        'content-type': 'application/octet-stream',
+      },
+      body: 'x'.repeat(5 * 1024 * 1024 + 1),
+    })
+
+    expect(oversizedRequestResponse.status).toBe(413)
+    expect(await oversizedRequestResponse.json()).toEqual({ message: '请求体过大' })
+  })
+
   it('rejects create and export operations for users without the required access', async () => {
     const database = await createTestDb()
     const manager = await createSystemAccessFixture(database, {

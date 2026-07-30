@@ -14,6 +14,7 @@ import { z } from 'zod'
 import type { Db } from '../../../../db'
 import { requireAccess } from '../../../../middleware/access'
 import type { AuthEnv } from '../../../../middleware/auth'
+import { createBodyLimit } from '../../../../middleware/body-limit'
 import {
   CustomIconConflictError,
   CustomIconNotFoundError,
@@ -70,6 +71,7 @@ const customIconParamValidator = zValidator('param', customIconParamSchema, (res
 })
 
 const uploadFileSchema = z.instanceof(File)
+const customIconUploadBodyLimit = createBodyLimit(5 * 1024 * 1024)
 
 const iconUploadFormSchema = z.object({
   duplicateStrategy: z.preprocess(
@@ -129,6 +131,7 @@ export function createCustomIconSetRoutes(database: Db) {
       '/:prefix/icons',
       requireAccess('content:icon-set:create'),
       iconSetParamValidator,
+      customIconUploadBodyLimit,
       iconUploadFormValidator,
       async (c) => {
         const { prefix } = c.req.valid('param')

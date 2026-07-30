@@ -11,6 +11,7 @@ import { Hono, type Context, type MiddlewareHandler } from 'hono'
 import type { ZodType } from 'zod'
 import type { Db } from '../../db'
 import type { AuthEnv } from '../../middleware/auth'
+import { createBodyLimit } from '../../middleware/body-limit'
 import {
   clearAttachmentAccessTokenCookie,
   createAttachmentAccessToken,
@@ -38,6 +39,8 @@ const jsonBodyValidator = <T extends ZodType>(schema: T) =>
 const loginBodyValidator = jsonBodyValidator(authLoginSchema)
 const profileUpdateBodyValidator = jsonBodyValidator(authProfileUpdateSchema)
 const passwordUpdateBodyValidator = jsonBodyValidator(authPasswordUpdateSchema)
+
+const authJsonBodyLimit = createBodyLimit(16 * 1024)
 
 function authErrorResponse(error: unknown, c: Context) {
   if (error instanceof UserConflictError) {
@@ -87,7 +90,7 @@ export function createAuthRoutes(database: Db, authMiddleware: MiddlewareHandler
   app.onError((error, c) => authErrorResponse(error, c))
 
   return app
-    .post('/login', loginBodyValidator, async (c) => {
+    .post('/login', authJsonBodyLimit, loginBodyValidator, async (c) => {
       const body: AuthLoginInput = c.req.valid('json')
       const { refreshToken, ...session } = await service.login(body)
       const attachmentAccessToken = await createAttachmentAccessToken(session.user.id, config)
@@ -125,12 +128,12 @@ export function createAuthRoutes(database: Db, authMiddleware: MiddlewareHandler
         menus: c.get('menus'),
       }),
     )
-    .patch('/me/profile', profileUpdateBodyValidator, async (c) => {
+    .patch('/me/profile', authJsonBodyLimit, profileUpdateBodyValidator, async (c) => {
       const body: AuthProfileUpdateInput = c.req.valid('json')
 
       return c.json(await service.updateProfile(c.get('currentUser').id, body))
     })
-    .patch('/me/password', passwordUpdateBodyValidator, async (c) => {
+    .patch('/me/password', authJsonBodyLimit, passwordUpdateBodyValidator, async (c) => {
       const body: AuthPasswordUpdateInput = c.req.valid('json')
 
       await service.updatePassword(c.get('currentUser').id, body, getRefreshTokenCookie(c))

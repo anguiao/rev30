@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { Db } from './db'
 import { createAuthMiddleware } from './middleware/auth'
+import { createJsonBodyLimit } from './middleware/body-limit'
 import { createRequestLogger } from './middleware/logger'
 import { createAttachmentRoutes } from './modules/attachments/routes'
 import { createAuthRoutes } from './modules/auth/routes'
@@ -12,9 +13,11 @@ import { createIconSearchRoutes } from './modules/icons/search/routes'
 import { createSystemRoutes } from './modules/system/routes'
 
 export function createApiRoutes(database: Db) {
+  const apiJsonBodyLimit = createJsonBodyLimit(5 * 1024 * 1024)
   const authMiddleware = createAuthMiddleware(database)
 
   return new Hono()
+    .use('*', apiJsonBodyLimit)
     .route('/', healthRoutes)
     .route('/auth', createAuthRoutes(database, authMiddleware))
     .route('/icons/search', createIconSearchRoutes(database, authMiddleware))

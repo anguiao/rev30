@@ -1,7 +1,7 @@
 import { getSchema } from '@tiptap/core'
 import { describe, expect, it } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../../src/editor/feature'
-import { tableFeature, createTableExtensions } from '../../../src/features/table/shared'
+import { tableFeature } from '../../../src/features/table/shared'
 import { allRichTextPreset } from '../../../src/presets/all'
 import { createAllRichTextEditorPreset } from '../../../src/vue/presets/all'
 
@@ -15,7 +15,7 @@ describe('table shared feature', () => {
       serverImplementation: true,
     })
 
-    const extensions = createTableExtensions()
+    const extensions = tableFeature.sharedExtensions!()
 
     expect(extensions.map((extension) => extension.name)).toEqual([
       'table',
@@ -23,11 +23,11 @@ describe('table shared feature', () => {
       'tableCell',
       'tableHeader',
     ])
-    expect(extensions[0].options.HTMLAttributes.style).toContain('border-collapse: collapse')
-    expect(extensions[2].options.HTMLAttributes.style).toContain('padding: 0.5rem 0.625rem')
-    expect(extensions[3].options.HTMLAttributes.style).toContain('font-weight: 600')
-    expect(createTableExtensions()).not.toBe(extensions)
-    expect(createTableExtensions()[0]).not.toBe(extensions[0])
+    expect(extensions[0]!.options.HTMLAttributes.style).toContain('border-collapse: collapse')
+    expect(extensions[2]!.options.HTMLAttributes.style).toContain('padding: 0.5rem 0.625rem')
+    expect(extensions[3]!.options.HTMLAttributes.style).toContain('font-weight: 600')
+    expect(tableFeature.sharedExtensions!()).not.toBe(extensions)
+    expect(tableFeature.sharedExtensions!()[0]).not.toBe(extensions[0])
   })
 
   it('uses paragraph-only cells, a wrapped non-resizable table, and strict cell attributes', () => {

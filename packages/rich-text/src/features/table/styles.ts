@@ -36,7 +36,3 @@ export function buildRichTextTableHeaderStyle(textAlign: TableCellTextAlign = 'i
     'font-weight: 600',
   ].join('; ')
 }
-
-export const richTextTableStyle = buildRichTextTableStyle()
-export const richTextTableCellStyle = buildRichTextTableCellStyle()
-export const richTextTableHeaderStyle = buildRichTextTableHeaderStyle()

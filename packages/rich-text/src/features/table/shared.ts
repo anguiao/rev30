@@ -2,16 +2,11 @@ import type { Attributes } from '@tiptap/core'
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table'
 import { defineRichTextFeature } from '../../core/feature'
 import {
-  richTextTableCellStyle,
-  richTextTableHeaderStyle,
-  richTextTableStyle,
+  buildRichTextTableCellStyle,
+  buildRichTextTableHeaderStyle,
+  buildRichTextTableStyle,
   TABLE_CELL_MIN_WIDTH,
 } from './styles'
-
-export const TABLE_SIZE_PICKER_MAX_ROWS = 8
-export const TABLE_SIZE_PICKER_MAX_COLUMNS = 8
-export const TABLE_SLASH_INSERT_ROWS = 3
-export const TABLE_SLASH_INSERT_COLUMNS = 3
 
 function validatePositiveInteger(value: unknown) {
   if (!Number.isSafeInteger(value) || (value as number) <= 0) {
@@ -37,8 +32,6 @@ function validateCellAlign(value: unknown) {
     throw new RangeError('Unsupported table cell alignment')
   }
 }
-
-const RichTextTable = Table.extend({})
 
 const RichTextTableCell = TableCell.extend({
   content: 'paragraph+',
@@ -96,33 +89,29 @@ const RichTextTableHeader = TableHeader.extend({
   },
 })
 
-export function createTableExtensions() {
-  return [
-    RichTextTable.configure({
-      resizable: false,
-      renderWrapper: true,
-      cellMinWidth: TABLE_CELL_MIN_WIDTH,
-      HTMLAttributes: {
-        style: richTextTableStyle,
-      },
-    }),
-    TableRow.extend({}),
-    RichTextTableCell.configure({
-      HTMLAttributes: {
-        style: richTextTableCellStyle,
-      },
-    }),
-    RichTextTableHeader.configure({
-      HTMLAttributes: {
-        style: richTextTableHeaderStyle,
-      },
-    }),
-  ] as const
-}
-
 export const tableFeature = defineRichTextFeature({
   key: 'table',
   editorImplementation: true,
   serverImplementation: true,
-  sharedExtensions: createTableExtensions,
+  sharedExtensions: () => [
+    Table.configure({
+      resizable: false,
+      renderWrapper: true,
+      cellMinWidth: TABLE_CELL_MIN_WIDTH,
+      HTMLAttributes: {
+        style: buildRichTextTableStyle(),
+      },
+    }),
+    TableRow,
+    RichTextTableCell.configure({
+      HTMLAttributes: {
+        style: buildRichTextTableCellStyle(),
+      },
+    }),
+    RichTextTableHeader.configure({
+      HTMLAttributes: {
+        style: buildRichTextTableHeaderStyle(),
+      },
+    }),
+  ],
 })

@@ -12,6 +12,12 @@ const nodeTestFiles = [
 
 export default mergeConfig(viteConfig, {
   test: {
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['src/**/*.{ts,vue}'],
+      exclude: ['src/**/*.d.ts'],
+    },
     projects: [
       {
         extends: true,

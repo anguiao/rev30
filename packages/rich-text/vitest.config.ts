@@ -14,6 +14,12 @@ const nodeTestFiles = [
 export default defineConfig({
   plugins: [vue()],
   test: {
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['src/**/*.{ts,vue}'],
+      exclude: ['src/**/*.d.ts'],
+    },
     projects: [
       {
         extends: true,

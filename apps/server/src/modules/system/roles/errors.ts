@@ -50,6 +50,13 @@ export class BuiltInAdminRoleMutationError extends Error {
   }
 }
 
+export class RoleMutationForbiddenError extends Error {
+  constructor() {
+    super('不能管理超出自身权限范围的角色')
+    this.name = 'RoleMutationForbiddenError'
+  }
+}
+
 export function toRoleConflictError(error: unknown) {
   const cause = error instanceof DrizzleQueryError ? error.cause : error
 

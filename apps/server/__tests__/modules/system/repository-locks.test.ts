@@ -166,6 +166,7 @@ describe('system repository locks', () => {
         departmentIds: [departmentId],
       },
       'password-hash',
+      { accessCodes: [], isAdmin: true },
     )
 
     expect(events.indexOf('lock:update')).toBeGreaterThanOrEqual(0)

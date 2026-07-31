@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { Hono } from 'hono'
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import {
   RESOURCE_OPEN_TARGET_BLANK,
   RESOURCE_OPEN_TARGET_SELF,
@@ -115,6 +115,165 @@ describe('resource routes', () => {
     expect(listBody.list).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: body.id, code: 'test-system' })]),
     )
+  })
+
+  it('limits non-admin resource mutations to the actor access scope', async () => {
+    const database = await createTestDb()
+    const actor = await createSystemAccessFixture(database, {
+      accessCodes: [
+        'system',
+        'system:user',
+        'system:user:list',
+        'system:user:create',
+        'system:user:update',
+        'system:user:delete',
+        'system:user:reset-password',
+        'system:resource:create',
+        'system:resource:update',
+        'system:resource:delete',
+      ],
+      usernamePrefix: 'limited-resource-manager',
+    })
+    const app = await createTestApp(database, actor.authHeaders)
+    const resources = await database
+      .select()
+      .from(systemResources)
+      .where(
+        inArray(systemResources.code, [
+          'system',
+          'system:user',
+          'system:user:list',
+          'system:resource',
+          'system:config:update',
+        ]),
+      )
+    const resourcesByCode = new Map(resources.map((resource) => [resource.code, resource]))
+    const systemRoot = resourcesByCode.get('system')
+    const userMenu = resourcesByCode.get('system:user')
+    const userList = resourcesByCode.get('system:user:list')
+    const resourceMenu = resourcesByCode.get('system:resource')
+    const configUpdate = resourcesByCode.get('system:config:update')
+
+    if (!systemRoot || !userMenu || !userList || !resourceMenu || !configUpdate) {
+      throw new Error('Expected seeded resources')
+    }
+
+    const scopedCreate = await createResource(app, {
+      type: RESOURCE_TYPE_ACTION,
+      name: 'Scoped Custom Action',
+      code: 'system:user:scoped-custom',
+      parentId: userMenu.id,
+    })
+    expect(scopedCreate.response.status).toBe(201)
+
+    const rootCreate = await app.request('/api/system/resources', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: RESOURCE_TYPE_DIRECTORY,
+        name: 'Unauthorized Root',
+        code: 'unauthorized-root',
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(rootCreate.status).toBe(403)
+
+    const incompleteParentSubtreeCreate = await app.request('/api/system/resources', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: RESOURCE_TYPE_ACTION,
+        name: 'Incomplete Parent Subtree Child',
+        code: 'system:incomplete-parent-subtree-child',
+        parentId: systemRoot.id,
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(incompleteParentSubtreeCreate.status).toBe(403)
+
+    const outOfScopeCreate = await app.request('/api/system/resources', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: RESOURCE_TYPE_ACTION,
+        name: 'Out-of-scope Child',
+        code: 'system:resource:out-of-scope-child',
+        parentId: resourceMenu.id,
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(outOfScopeCreate.status).toBe(403)
+
+    const missingParentCreate = await app.request('/api/system/resources', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: RESOURCE_TYPE_ACTION,
+        name: 'Missing Parent',
+        code: 'missing-parent-child',
+        parentId: randomUUID(),
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(missingParentCreate.status).toBe(400)
+    expect(await missingParentCreate.json()).toEqual({ message: '上级权限资源不存在' })
+
+    const scopedUpdate = await app.request(`/api/system/resources/${userList.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        name: 'Scoped List Users',
+        code: userList.code,
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(scopedUpdate.status).toBe(200)
+
+    const codeChange = await app.request(`/api/system/resources/${userList.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ code: 'system:user:list-renamed' }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(codeChange.status).toBe(403)
+    expect(await codeChange.json()).toEqual({ message: '非管理员不能修改权限编码' })
+
+    for (const parentId of [null, systemRoot.id, resourceMenu.id]) {
+      const response = await app.request(`/api/system/resources/${userList.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ parentId }),
+        headers: { 'content-type': 'application/json' },
+      })
+      expect(response.status).toBe(403)
+    }
+
+    const outOfScopeUpdate = await app.request(`/api/system/resources/${configUpdate.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name: 'Unauthorized Update' }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(outOfScopeUpdate.status).toBe(403)
+
+    const outOfScopeDelete = await app.request(`/api/system/resources/${configUpdate.id}`, {
+      method: 'DELETE',
+    })
+    expect(outOfScopeDelete.status).toBe(403)
+
+    for (const body of [
+      { status: RESOURCE_STATUS_DISABLED },
+      { type: RESOURCE_TYPE_ACTION },
+      { parentId: userMenu.id },
+    ]) {
+      const response = await app.request(`/api/system/resources/${systemRoot.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+        headers: { 'content-type': 'application/json' },
+      })
+
+      expect(response.status).toBe(403)
+      expect(await response.json()).toEqual({
+        message: '不能管理超出自身权限范围的资源',
+      })
+    }
+
+    const ancestorDelete = await app.request(`/api/system/resources/${systemRoot.id}`, {
+      method: 'DELETE',
+    })
+    expect(ancestorDelete.status).toBe(403)
   })
 
   it('creates typed menus, external links, and action permission points', async () => {

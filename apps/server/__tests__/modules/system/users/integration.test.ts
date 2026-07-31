@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { Hono } from 'hono'
 import {
+  BUILT_IN_ADMIN_ROLE_CODE,
+  ROLE_STATUS_DISABLED,
   ROLE_STATUS_ENABLED,
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
@@ -19,7 +21,9 @@ import {
   authPasswordCredentials,
   authRefreshTokens,
   systemDepartments,
+  systemRoleResources,
   systemRoles,
+  systemResources,
   systemUserDepartments,
   systemUserRoles,
   systemUsers,
@@ -152,6 +156,31 @@ async function createRole(
   return role
 }
 
+async function assignResourcesToRole(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  roleId: string,
+  resourceCodes: string[],
+) {
+  const resources = await database
+    .select({
+      id: systemResources.id,
+      code: systemResources.code,
+    })
+    .from(systemResources)
+    .where(inArray(systemResources.code, resourceCodes))
+
+  if (resources.length !== resourceCodes.length) {
+    throw new Error('Expected seeded resources')
+  }
+
+  await database.insert(systemRoleResources).values(
+    resources.map((resource) => ({
+      roleId,
+      resourceId: resource.id,
+    })),
+  )
+}
+
 async function createAvatarAttachment(
   database: Awaited<ReturnType<typeof createTestDb>>,
   createdBy: string,
@@ -281,6 +310,226 @@ describe('user routes', () => {
         message: '角色不存在',
       },
     })
+  })
+
+  it('limits non-admin role assignments to the actor access scope', async () => {
+    const database = await createTestDb()
+    const actor = await createSystemAccessFixture(database, {
+      accessCodes: ['system:user:create', 'system:user:update', 'system:user:list'],
+      usernamePrefix: 'limited-user-manager',
+    })
+    const app = await createTestApp(database, actor.authHeaders)
+    const adminApp = await createTestApp(database)
+    const scopedRole = await createRole(database, {
+      name: 'Scoped Viewer',
+      code: 'scoped-viewer',
+    })
+    const disabledScopedRole = await createRole(database, {
+      name: 'Disabled Scoped Viewer',
+      code: 'disabled-scoped-viewer',
+      status: ROLE_STATUS_DISABLED,
+    })
+    const privilegedRole = await createRole(database, {
+      name: 'Resource Administrator',
+      code: 'resource-administrator',
+    })
+    const disabledPrivilegedRole = await createRole(database, {
+      name: 'Disabled Resource Administrator',
+      code: 'disabled-resource-administrator',
+      status: ROLE_STATUS_DISABLED,
+    })
+    const deletedRole = await createRole(database, {
+      name: 'Deleted Role',
+      code: 'limited-manager-deleted-role',
+      deletedAt: new Date(),
+    })
+
+    await assignResourcesToRole(database, scopedRole.id, ['system:user:list'])
+    await assignResourcesToRole(database, disabledScopedRole.id, ['system:user:list'])
+    await assignResourcesToRole(database, privilegedRole.id, ['system:resource:delete'])
+    await assignResourcesToRole(database, disabledPrivilegedRole.id, ['system:resource:delete'])
+
+    const [adminRole] = await database
+      .select()
+      .from(systemRoles)
+      .where(eq(systemRoles.code, BUILT_IN_ADMIN_ROLE_CODE))
+
+    if (!adminRole) {
+      throw new Error('Expected built-in admin role')
+    }
+
+    for (const [username, roleId] of [
+      ['scoped-role-user', scopedRole.id],
+      ['disabled-scoped-role-user', disabledScopedRole.id],
+    ] as const) {
+      const response = await app.request(
+        '/api/system/users',
+        jsonRequest(
+          {
+            username,
+            nickname: username,
+            roleIds: [roleId],
+          },
+          { method: 'POST' },
+        ),
+      )
+
+      expect(response.status).toBe(201)
+    }
+
+    for (const [username, roleId] of [
+      ['admin-role-user', adminRole.id],
+      ['privileged-role-user', privilegedRole.id],
+      ['disabled-privileged-role-user', disabledPrivilegedRole.id],
+    ] as const) {
+      const response = await app.request(
+        '/api/system/users',
+        jsonRequest(
+          {
+            username,
+            nickname: username,
+            roleIds: [roleId],
+          },
+          { method: 'POST' },
+        ),
+      )
+
+      await expectJsonResponse(response, {
+        status: 403,
+        body: { message: '不能授予超出自身权限范围的角色' },
+      })
+    }
+
+    const { body: updateTarget } = await createUser(adminApp, {
+      username: 'role-scope-update-target',
+      nickname: 'Role Scope Update Target',
+    })
+    const scopedUpdate = await app.request(`/api/system/users/${updateTarget.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ roleIds: [scopedRole.id] }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(scopedUpdate.status).toBe(200)
+
+    const privilegedUpdate = await app.request(`/api/system/users/${updateTarget.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ roleIds: [privilegedRole.id] }),
+      headers: { 'content-type': 'application/json' },
+    })
+    await expectJsonResponse(privilegedUpdate, {
+      status: 403,
+      body: { message: '不能授予超出自身权限范围的角色' },
+    })
+
+    for (const roleIds of [[randomUUID()], [deletedRole.id], [scopedRole.id, scopedRole.id]]) {
+      const response = await app.request(
+        '/api/system/users',
+        jsonRequest(
+          {
+            username: `invalid-scope-role-${randomUUID()}`,
+            nickname: 'Invalid Scope Role',
+            roleIds,
+          },
+          { method: 'POST' },
+        ),
+      )
+
+      expect(response.status).toBe(400)
+    }
+
+    const adminResponse = await adminApp.request(
+      '/api/system/users',
+      jsonRequest(
+        {
+          username: 'admin-unrestricted-role-user',
+          nickname: 'Admin Unrestricted Role User',
+          roleIds: [adminRole.id, privilegedRole.id],
+        },
+        { method: 'POST' },
+      ),
+    )
+    expect(adminResponse.status).toBe(201)
+  })
+
+  it('prevents non-admins from taking over users above their access scope', async () => {
+    const database = await createTestDb()
+    const adminApp = await createTestApp(database)
+    const actor = await createSystemAccessFixture(database, {
+      accessCodes: ['system:user:update', 'system:user:delete', 'system:user:reset-password'],
+      usernamePrefix: 'limited-account-manager',
+    })
+    const app = await createTestApp(database, actor.authHeaders)
+    const privilegedRole = await createRole(database, {
+      name: 'Privileged Ordinary Role',
+      code: 'privileged-ordinary-role',
+    })
+    await assignResourcesToRole(database, privilegedRole.id, ['system:resource:delete'])
+
+    const [adminRole] = await database
+      .select()
+      .from(systemRoles)
+      .where(eq(systemRoles.code, BUILT_IN_ADMIN_ROLE_CODE))
+
+    if (!adminRole) {
+      throw new Error('Expected built-in admin role')
+    }
+
+    const { body: adminTarget } = await createUser(adminApp, {
+      username: 'non-built-in-admin-target',
+      nickname: 'Non-built-in Admin Target',
+      roleIds: [adminRole.id],
+    })
+    const { body: privilegedTarget } = await createUser(adminApp, {
+      username: 'privileged-ordinary-target',
+      nickname: 'Privileged Ordinary Target',
+      roleIds: [privilegedRole.id],
+    })
+
+    for (const target of [adminTarget, privilegedTarget]) {
+      const updateResponse = await app.request(`/api/system/users/${target.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ nickname: 'Taken Over' }),
+        headers: { 'content-type': 'application/json' },
+      })
+      await expectJsonResponse(updateResponse, {
+        status: 403,
+        body: { message: '不能操作超出自身权限范围的用户' },
+      })
+
+      const resetResponse = await app.request(`/api/system/users/${target.id}/password/reset`, {
+        method: 'POST',
+      })
+      await expectJsonResponse(resetResponse, {
+        status: 403,
+        body: { message: '不能操作超出自身权限范围的用户' },
+      })
+
+      const deleteResponse = await app.request(`/api/system/users/${target.id}`, {
+        method: 'DELETE',
+      })
+      await expectJsonResponse(deleteResponse, {
+        status: 403,
+        body: { message: '不能操作超出自身权限范围的用户' },
+      })
+    }
+
+    const adminUpdateResponse = await adminApp.request(`/api/system/users/${adminTarget.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ nickname: 'Admin Managed' }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(adminUpdateResponse.status).toBe(200)
+
+    const adminResetResponse = await adminApp.request(
+      `/api/system/users/${adminTarget.id}/password/reset`,
+      { method: 'POST' },
+    )
+    expect(adminResetResponse.status).toBe(200)
+
+    const adminDeleteResponse = await adminApp.request(`/api/system/users/${adminTarget.id}`, {
+      method: 'DELETE',
+    })
+    expect(adminDeleteResponse.status).toBe(204)
   })
 
   it('returns bad request when avatar ids do not exist', async () => {

@@ -1,19 +1,15 @@
-import type {
-  UserCreateInput,
-  UserCreateResponse,
-  UserListQuery,
-  UserOptionsQuery,
-  UserResetPasswordResponse,
-  UserUpdateInput,
+import {
+  type UserCreateInput,
+  type UserCreateResponse,
+  type UserListQuery,
+  type UserOptionsQuery,
+  type UserResetPasswordResponse,
+  type UserUpdateInput,
 } from '@rev30/contracts'
 import type { Db } from '../../../db'
+import type { UserAccess } from '../../auth/access'
 import { generateTemporaryPassword, hashPassword } from '../../auth/password'
-import {
-  BuiltInUserMutationError,
-  toUserConflictError,
-  toUserInvalidAvatarError,
-  UserNotFoundError,
-} from './errors'
+import { toUserConflictError, toUserInvalidAvatarError, UserNotFoundError } from './errors'
 import { toUser, toUserOption } from './mapper'
 import { createUserRepository } from './repository'
 
@@ -64,10 +60,12 @@ export function createUserService(database: Db) {
       return (await repository.options(query)).map(toUserOption)
     },
 
-    async create(input: UserCreateInput): Promise<UserCreateResponse> {
+    async create(input: UserCreateInput, access: UserAccess): Promise<UserCreateResponse> {
       const temporaryPassword = generateTemporaryPassword()
       const passwordHash = await hashPassword(temporaryPassword)
-      const created = await withUserWriteConstraints(() => repository.create(input, passwordHash))
+      const created = await withUserWriteConstraints(() =>
+        repository.create(input, passwordHash, access),
+      )
 
       return {
         user: toUser(created.user, created.departments, created.roles),
@@ -75,20 +73,10 @@ export function createUserService(database: Db) {
       }
     },
 
-    async resetPassword(id: string): Promise<UserResetPasswordResponse> {
-      const existing = await repository.findActiveById(id)
-
-      if (!existing) {
-        throw new UserNotFoundError()
-      }
-
-      if (existing.user.builtIn) {
-        throw new BuiltInUserMutationError('edit')
-      }
-
+    async resetPassword(id: string, access: UserAccess): Promise<UserResetPasswordResponse> {
       const temporaryPassword = generateTemporaryPassword()
       const passwordHash = await hashPassword(temporaryPassword)
-      const updated = await repository.resetPassword(id, passwordHash)
+      const updated = await repository.resetPassword(id, passwordHash, access)
 
       if (!updated) {
         throw new UserNotFoundError()
@@ -100,18 +88,8 @@ export function createUserService(database: Db) {
       }
     },
 
-    async update(id: string, input: UserUpdateInput) {
-      const existing = await repository.findActiveById(id)
-
-      if (!existing) {
-        throw new UserNotFoundError()
-      }
-
-      if (existing.user.builtIn) {
-        throw new BuiltInUserMutationError('edit')
-      }
-
-      const updated = await withUserWriteConstraints(() => repository.update(id, input))
+    async update(id: string, input: UserUpdateInput, access: UserAccess) {
+      const updated = await withUserWriteConstraints(() => repository.update(id, input, access))
 
       if (!updated) {
         throw new UserNotFoundError()
@@ -120,18 +98,8 @@ export function createUserService(database: Db) {
       return toUser(updated.user, updated.departments, updated.roles)
     },
 
-    async delete(id: string) {
-      const existing = await repository.findActiveById(id)
-
-      if (!existing) {
-        throw new UserNotFoundError()
-      }
-
-      if (existing.user.builtIn) {
-        throw new BuiltInUserMutationError('delete')
-      }
-
-      const deleted = await repository.softDelete(id)
+    async delete(id: string, access: UserAccess) {
+      const deleted = await repository.softDelete(id, access)
 
       if (!deleted) {
         throw new UserNotFoundError()

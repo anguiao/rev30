@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { Hono } from 'hono'
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import {
   BUILT_IN_ADMIN_ROLE_CODE,
+  RESOURCE_STATUS_DISABLED,
+  RESOURCE_STATUS_ENABLED,
   RESOURCE_TYPE_ACTION,
   RESOURCE_TYPE_DIRECTORY,
   ROLE_STATUS_DISABLED,
@@ -12,6 +14,7 @@ import {
   type RoleListResponse,
   type RoleOptionsResponse,
   type RoleStatus,
+  type ResourceStatus,
 } from '@rev30/contracts'
 import {
   systemRoleResources,
@@ -57,6 +60,7 @@ async function createResource(
     type?: 'directory' | 'menu' | 'external' | 'action'
     parentId?: string | null
     sortOrder?: number
+    status?: ResourceStatus
     deletedAt?: Date | null
   },
 ) {
@@ -70,6 +74,7 @@ async function createResource(
       code: input.code,
       type: input.type ?? RESOURCE_TYPE_DIRECTORY,
       sortOrder: input.sortOrder ?? 0,
+      status: input.status ?? RESOURCE_STATUS_ENABLED,
       deletedAt: input.deletedAt ?? null,
       createdAt: now,
       updatedAt: now,
@@ -81,6 +86,26 @@ async function createResource(
   }
 
   return resource
+}
+
+async function findResourceIdsByCodes(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  codes: string[],
+) {
+  const resources = await database
+    .select({
+      id: systemResources.id,
+      code: systemResources.code,
+    })
+    .from(systemResources)
+    .where(inArray(systemResources.code, codes))
+  const idsByCode = new Map(resources.map((resource) => [resource.code, resource.id]))
+
+  if (idsByCode.size !== codes.length) {
+    throw new Error('Expected seeded resources')
+  }
+
+  return codes.map((code) => idsByCode.get(code)!)
 }
 
 async function createRole(
@@ -147,6 +172,150 @@ describe('role routes', () => {
         type: RESOURCE_TYPE_ACTION,
       },
     ])
+  })
+
+  it('limits non-admin role management to the actor access scope', async () => {
+    const database = await createTestDb()
+    const adminApp = await createTestApp(database)
+    const actor = await createSystemAccessFixture(database, {
+      accessCodes: [
+        'system',
+        'system:user',
+        'system:user:list',
+        'system:role:create',
+        'system:role:update',
+        'system:role:delete',
+      ],
+      usernamePrefix: 'limited-role-manager',
+    })
+    const app = await createTestApp(database, actor.authHeaders)
+    const scopedResourceIds = await findResourceIdsByCodes(database, [
+      'system',
+      'system:user',
+      'system:user:list',
+    ])
+    const privilegedResourceIds = await findResourceIdsByCodes(database, [
+      'system',
+      'system:resource',
+      'system:resource:delete',
+    ])
+    const disabledResource = await createResource(database, {
+      name: 'Disabled Resource',
+      code: 'disabled-role-resource',
+      status: RESOURCE_STATUS_DISABLED,
+    })
+    const deletedResource = await createResource(database, {
+      name: 'Deleted Resource',
+      code: 'deleted-role-resource',
+      deletedAt: new Date(),
+    })
+
+    const scopedRole = await createRole(app, {
+      name: 'Scoped Role',
+      code: 'scoped-role',
+      resourceIds: scopedResourceIds,
+    })
+    expect(scopedRole.response.status).toBe(201)
+
+    const disabledScopedRole = await createRole(app, {
+      name: 'Disabled Scoped Role',
+      code: 'disabled-scoped-role',
+      status: ROLE_STATUS_DISABLED,
+      resourceIds: scopedResourceIds,
+    })
+    expect(disabledScopedRole.response.status).toBe(201)
+
+    for (const [name, code, resourceIds] of [
+      ['Privileged Role', 'privileged-role', privilegedResourceIds],
+      ['Disabled Resource Role', 'disabled-resource-role', [disabledResource.id]],
+    ] as const) {
+      const response = await app.request('/api/system/roles', {
+        method: 'POST',
+        body: JSON.stringify({ name, code, resourceIds }),
+        headers: { 'content-type': 'application/json' },
+      })
+
+      expect(response.status).toBe(403)
+      expect(await response.json()).toEqual({
+        message: '不能管理超出自身权限范围的角色',
+      })
+    }
+
+    const disabledPrivilegedResponse = await app.request('/api/system/roles', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Disabled Privileged Role',
+        code: 'disabled-privileged-role',
+        status: ROLE_STATUS_DISABLED,
+        resourceIds: privilegedResourceIds,
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(disabledPrivilegedResponse.status).toBe(403)
+
+    for (const resourceIds of [
+      [randomUUID()],
+      [deletedResource.id],
+      [scopedResourceIds[0], scopedResourceIds[0]],
+    ]) {
+      const response = await app.request('/api/system/roles', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: `Invalid Role ${randomUUID()}`,
+          code: `invalid-role-${randomUUID()}`,
+          resourceIds,
+        }),
+        headers: { 'content-type': 'application/json' },
+      })
+
+      expect(response.status).toBe(400)
+    }
+
+    const privilegedUpdate = await app.request(`/api/system/roles/${scopedRole.body.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ resourceIds: privilegedResourceIds }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(privilegedUpdate.status).toBe(403)
+    expect(await privilegedUpdate.json()).toEqual({
+      message: '不能管理超出自身权限范围的角色',
+    })
+
+    const adminCreated = await createRole(adminApp, {
+      name: 'Admin Managed Privileged Role',
+      code: 'admin-managed-privileged-role',
+      resourceIds: privilegedResourceIds,
+    })
+    expect(adminCreated.response.status).toBe(201)
+
+    const outOfScopeUpdate = await app.request(`/api/system/roles/${adminCreated.body.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name: 'Unauthorized Rename' }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(outOfScopeUpdate.status).toBe(403)
+
+    const outOfScopeDelete = await app.request(`/api/system/roles/${adminCreated.body.id}`, {
+      method: 'DELETE',
+    })
+    expect(outOfScopeDelete.status).toBe(403)
+
+    const scopedDelete = await app.request(`/api/system/roles/${scopedRole.body.id}`, {
+      method: 'DELETE',
+    })
+    expect(scopedDelete.status).toBe(204)
+
+    const adminUpdate = await adminApp.request(`/api/system/roles/${adminCreated.body.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name: 'Admin Renamed Privileged Role' }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(adminUpdate.status).toBe(200)
+
+    const adminDelete = await adminApp.request(`/api/system/roles/${adminCreated.body.id}`, {
+      method: 'DELETE',
+    })
+    expect(adminDelete.status).toBe(204)
   })
 
   it('lists roles with userCount only and supports keyword/status with non-deleted user counting', async () => {

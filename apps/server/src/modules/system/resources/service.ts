@@ -5,6 +5,7 @@ import {
   type ResourceUpdateInput,
 } from '@rev30/contracts'
 import type { Db } from '../../../db'
+import type { UserAccess } from '../../auth/access'
 import { ResourceNotFoundError, toResourceConflictError } from './errors'
 import { toResource, toResourceTree, toResourceTreeOptions } from './mapper'
 import { createResourceRepository } from './repository'
@@ -58,12 +59,12 @@ export function createResourceService(database: Db) {
       return toResource(resource)
     },
 
-    async create(input: ResourceCreateInput) {
-      return toResource(await withResourceUniqueConflict(() => repository.create(input)))
+    async create(input: ResourceCreateInput, access: UserAccess) {
+      return toResource(await withResourceUniqueConflict(() => repository.create(input, access)))
     },
 
-    async update(id: string, input: ResourceUpdateInput) {
-      const updated = await withResourceUniqueConflict(() => repository.update(id, input))
+    async update(id: string, input: ResourceUpdateInput, access: UserAccess) {
+      const updated = await withResourceUniqueConflict(() => repository.update(id, input, access))
 
       if (!updated) {
         throw new ResourceNotFoundError()
@@ -72,8 +73,8 @@ export function createResourceService(database: Db) {
       return toResource(updated)
     },
 
-    async delete(id: string) {
-      const deleted = await repository.softDelete(id)
+    async delete(id: string, access: UserAccess) {
+      const deleted = await repository.softDelete(id, access)
 
       if (!deleted) {
         throw new ResourceNotFoundError()

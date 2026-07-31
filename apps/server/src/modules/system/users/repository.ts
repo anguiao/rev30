@@ -1,4 +1,5 @@
 import {
+  BUILT_IN_ADMIN_ROLE_CODE,
   USER_STATUS_ENABLED,
   type UserCreateInput,
   type UserListQuery,
@@ -16,12 +17,22 @@ import {
   systemUserRoles,
   systemUsers,
 } from '../../../db/schema'
+import type { UserAccess } from '../../auth/access'
 import {
   findDepartmentSummariesByUserIds,
   lockActiveDepartmentsByIds,
 } from '../departments/repository'
-import { findRoleSummariesByUserIds, lockActiveRolesByIds } from '../roles/repository'
-import { UserInvalidDepartmentError, UserInvalidRoleError } from './errors'
+import {
+  findRoleAccessScopesByIds,
+  findRoleSummariesByUserIds,
+  lockActiveRolesByIds,
+} from '../roles/repository'
+import {
+  BuiltInUserMutationError,
+  UserInvalidDepartmentError,
+  UserInvalidRoleError,
+  UserMutationForbiddenError,
+} from './errors'
 import type { UserOptionEntry } from './mapper'
 
 const userOptionColumns = {
@@ -59,7 +70,7 @@ async function lockActiveDepartmentIdsOrThrow(executor: DbReader, ids: string[])
 
 async function lockActiveRoleIdsOrThrow(executor: DbReader, ids: string[]) {
   if (ids.length === 0) {
-    return
+    return []
   }
 
   const rows = await lockActiveRolesByIds(executor, ids)
@@ -67,6 +78,61 @@ async function lockActiveRoleIdsOrThrow(executor: DbReader, ids: string[]) {
   if (rows.length !== new Set(ids).size) {
     throw new UserInvalidRoleError()
   }
+
+  return rows
+}
+
+async function lockActiveUserById(executor: DbReader, id: string) {
+  const [user] = await executor
+    .select()
+    .from(systemUsers)
+    .where(and(eq(systemUsers.id, id), isNull(systemUsers.deletedAt)))
+    .limit(1)
+    .for('update')
+
+  return user
+}
+
+async function assertRoleIdsWithinAccessScope(
+  executor: DbReader,
+  roleIds: string[],
+  access: UserAccess,
+  forbiddenReason: 'role-assignment' | 'user-access',
+) {
+  if (access.isAdmin || roleIds.length === 0) {
+    return
+  }
+
+  const roleScopes = await findRoleAccessScopesByIds(executor, roleIds)
+  const allowedCodes = new Set(access.accessCodes)
+  const exceedsAccessScope = roleScopes.some(
+    (role) =>
+      role.code === BUILT_IN_ADMIN_ROLE_CODE ||
+      role.resourceCodes.some((resourceCode) => !allowedCodes.has(resourceCode)),
+  )
+
+  if (exceedsAccessScope) {
+    throw new UserMutationForbiddenError(forbiddenReason)
+  }
+}
+
+async function assertUserWithinAccessScope(executor: DbReader, userId: string, access: UserAccess) {
+  if (access.isAdmin) {
+    return
+  }
+
+  const roleRows = await executor
+    .select({ roleId: systemRoles.id })
+    .from(systemUserRoles)
+    .innerJoin(systemRoles, eq(systemRoles.id, systemUserRoles.roleId))
+    .where(and(eq(systemUserRoles.userId, userId), isNull(systemRoles.deletedAt)))
+
+  await assertRoleIdsWithinAccessScope(
+    executor,
+    roleRows.map((role) => role.roleId),
+    access,
+    'user-access',
+  )
 }
 
 export function createUserRepository(database: Db) {
@@ -191,7 +257,7 @@ export function createUserRepository(database: Db) {
       }
     },
 
-    async create(input: UserCreateInput, passwordHash: string) {
+    async create(input: UserCreateInput, passwordHash: string, access: UserAccess) {
       const { departmentIds = [], roleIds = [], ...userInput } = input
 
       return await database.transaction(async (tx) => {
@@ -199,6 +265,7 @@ export function createUserRepository(database: Db) {
           lockActiveDepartmentIdsOrThrow(tx, departmentIds),
           lockActiveRoleIdsOrThrow(tx, roleIds),
         ])
+        await assertRoleIdsWithinAccessScope(tx, roleIds, access, 'role-assignment')
 
         const [created] = await tx.insert(systemUsers).values(userInput).returning()
 
@@ -235,20 +302,21 @@ export function createUserRepository(database: Db) {
       })
     },
 
-    async resetPassword(id: string, passwordHash: string) {
+    async resetPassword(id: string, passwordHash: string, access: UserAccess) {
       const now = new Date()
 
       return await database.transaction(async (tx) => {
-        const existingRows = await tx
-          .select()
-          .from(systemUsers)
-          .where(and(eq(systemUsers.id, id), isNull(systemUsers.deletedAt)))
-          .limit(1)
-        const existingUser = existingRows[0]
+        const existingUser = await lockActiveUserById(tx, id)
 
         if (!existingUser) {
           return undefined
         }
+
+        if (existingUser.builtIn) {
+          throw new BuiltInUserMutationError('edit')
+        }
+
+        await assertUserWithinAccessScope(tx, id, access)
 
         await tx
           .insert(authPasswordCredentials)
@@ -277,20 +345,21 @@ export function createUserRepository(database: Db) {
       })
     },
 
-    async update(id: string, input: UserUpdateInput) {
+    async update(id: string, input: UserUpdateInput, access: UserAccess) {
       const { departmentIds, roleIds, ...userInput } = input
 
       return await database.transaction(async (tx) => {
-        const existingRows = await tx
-          .select()
-          .from(systemUsers)
-          .where(and(eq(systemUsers.id, id), isNull(systemUsers.deletedAt)))
-          .limit(1)
-        const existingUser = existingRows[0]
+        const existingUser = await lockActiveUserById(tx, id)
 
         if (!existingUser) {
           return undefined
         }
+
+        if (existingUser.builtIn) {
+          throw new BuiltInUserMutationError('edit')
+        }
+
+        await assertUserWithinAccessScope(tx, id, access)
 
         if (departmentIds !== undefined) {
           await lockActiveDepartmentIdsOrThrow(tx, departmentIds)
@@ -298,6 +367,7 @@ export function createUserRepository(database: Db) {
 
         if (roleIds !== undefined) {
           await lockActiveRoleIdsOrThrow(tx, roleIds)
+          await assertRoleIdsWithinAccessScope(tx, roleIds, access, 'role-assignment')
         }
 
         const userUpdateValues = Object.values(userInput).some((value) => value !== undefined)
@@ -344,10 +414,22 @@ export function createUserRepository(database: Db) {
       })
     },
 
-    async softDelete(id: string) {
+    async softDelete(id: string, access: UserAccess) {
       const now = new Date()
 
       return await database.transaction(async (tx) => {
+        const existingUser = await lockActiveUserById(tx, id)
+
+        if (!existingUser) {
+          return undefined
+        }
+
+        if (existingUser.builtIn) {
+          throw new BuiltInUserMutationError('delete')
+        }
+
+        await assertUserWithinAccessScope(tx, id, access)
+
         const [deleted] = await tx
           .update(systemUsers)
           .set({

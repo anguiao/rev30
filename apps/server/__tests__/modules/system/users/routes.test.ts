@@ -1,19 +1,25 @@
 import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { USER_STATUS_ENABLED } from '@rev30/contracts'
+import { USER_STATUS_ENABLED, type User } from '@rev30/contracts'
+import type { AuthEnv } from '../../../../src/middleware/auth'
 import { createUserRoutes } from '../../../../src/modules/system/users/routes'
 import {
   BuiltInUserMutationError,
   UserConflictError,
   UserInvalidDepartmentError,
   UserInvalidRoleError,
+  UserMutationForbiddenError,
   UserNotFoundError,
 } from '../../../../src/modules/system/users/errors'
 
 const userId = '11111111-1111-4111-8111-111111111111'
 const departmentId = '22222222-2222-4222-8222-222222222222'
 const roleId = '33333333-3333-4333-8333-333333333333'
+const userAccess = {
+  accessCodes: ['system:user:create', 'system:user:update'],
+  isAdmin: false,
+}
 const user = {
   id: userId,
   username: 'ada',
@@ -27,7 +33,7 @@ const user = {
   roles: [],
   createdAt: '2026-05-06T00:00:00.000Z',
   updatedAt: '2026-05-06T00:00:00.000Z',
-}
+} satisfies User
 
 const mocks = vi.hoisted(() => {
   const accessMiddleware = vi.fn(async (_c: Context, next: Next) => next())
@@ -58,7 +64,14 @@ vi.mock('../../../../src/modules/system/users/service', () => ({
 }))
 
 function createTestApp() {
-  return new Hono().route('/api/system/users', createUserRoutes({} as never))
+  return new Hono<AuthEnv>()
+    .use('*', async (c, next) => {
+      c.set('currentUser', user)
+      c.set('accessCodes', userAccess.accessCodes)
+      c.set('isAdmin', userAccess.isAdmin)
+      await next()
+    })
+    .route('/api/system/users', createUserRoutes({} as never))
 }
 
 describe('user routes', () => {
@@ -162,10 +175,13 @@ describe('user routes', () => {
       user,
       temporaryPassword: 'temporary-password',
     })
-    expect(mocks.service.create).toHaveBeenCalledWith({
-      ...createBody,
-      status: USER_STATUS_ENABLED,
-    })
+    expect(mocks.service.create).toHaveBeenCalledWith(
+      {
+        ...createBody,
+        status: USER_STATUS_ENABLED,
+      },
+      userAccess,
+    )
   })
 
   it('delegates detail requests by id', async () => {
@@ -185,7 +201,11 @@ describe('user routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(updateResponse.status).toBe(200)
-    expect(mocks.service.update).toHaveBeenCalledWith(userId, { nickname: 'Updated Ada' })
+    expect(mocks.service.update).toHaveBeenCalledWith(
+      userId,
+      { nickname: 'Updated Ada' },
+      userAccess,
+    )
   })
 
   it('delegates avatar ids in create and update requests', async () => {
@@ -203,12 +223,15 @@ describe('user routes', () => {
     })
 
     expect(createResponse.status).toBe(201)
-    expect(mocks.service.create).toHaveBeenCalledWith({
-      username: 'avatar-user',
-      nickname: 'Avatar User',
-      avatarId,
-      status: USER_STATUS_ENABLED,
-    })
+    expect(mocks.service.create).toHaveBeenCalledWith(
+      {
+        username: 'avatar-user',
+        nickname: 'Avatar User',
+        avatarId,
+        status: USER_STATUS_ENABLED,
+      },
+      userAccess,
+    )
 
     const updateResponse = await app.request(`/api/system/users/${userId}`, {
       method: 'PATCH',
@@ -217,7 +240,7 @@ describe('user routes', () => {
     })
 
     expect(updateResponse.status).toBe(200)
-    expect(mocks.service.update).toHaveBeenCalledWith(userId, { avatarId: null })
+    expect(mocks.service.update).toHaveBeenCalledWith(userId, { avatarId: null }, userAccess)
   })
 
   it('delegates reset-password requests by id', async () => {
@@ -227,7 +250,7 @@ describe('user routes', () => {
       method: 'POST',
     })
     expect(resetResponse.status).toBe(200)
-    expect(mocks.service.resetPassword).toHaveBeenCalledWith(userId)
+    expect(mocks.service.resetPassword).toHaveBeenCalledWith(userId, userAccess)
   })
 
   it('delegates delete requests by id', async () => {
@@ -237,7 +260,7 @@ describe('user routes', () => {
       method: 'DELETE',
     })
     expect(deleteResponse.status).toBe(204)
-    expect(mocks.service.delete).toHaveBeenCalledWith(userId)
+    expect(mocks.service.delete).toHaveBeenCalledWith(userId, userAccess)
   })
 
   it('returns query validation errors before calling the user service', async () => {
@@ -389,5 +412,19 @@ describe('user routes', () => {
     })
     expect(builtInResponse.status).toBe(409)
     expect(await builtInResponse.json()).toEqual({ message: '内置用户不能删除' })
+  })
+
+  it('maps forbidden user mutations to route responses', async () => {
+    const app = createTestApp()
+
+    mocks.service.update.mockRejectedValueOnce(new UserMutationForbiddenError('user-access'))
+    const response = await app.request(`/api/system/users/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ nickname: 'Blocked Update' }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ message: '不能操作超出自身权限范围的用户' })
   })
 })

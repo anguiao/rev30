@@ -1,17 +1,12 @@
 import {
-  BUILT_IN_ADMIN_ROLE_CODE,
   type RoleCreateInput,
   type RoleListQuery,
   type RoleOptionsQuery,
   type RoleUpdateInput,
 } from '@rev30/contracts'
 import type { Db } from '../../../db'
-import {
-  BuiltInAdminRoleMutationError,
-  RoleDeleteConflictError,
-  RoleNotFoundError,
-  toRoleConflictError,
-} from './errors'
+import type { UserAccess } from '../../auth/access'
+import { RoleNotFoundError, toRoleConflictError } from './errors'
 import { toRole, toRoleListItem, toRoleOption, toRoleResources } from './mapper'
 import { createRoleRepository } from './repository'
 
@@ -58,24 +53,14 @@ export function createRoleService(database: Db) {
       return (await repository.options(query)).map(toRoleOption)
     },
 
-    async create(input: RoleCreateInput) {
-      const created = await withRoleUniqueConflict(() => repository.create(input))
+    async create(input: RoleCreateInput, access: UserAccess) {
+      const created = await withRoleUniqueConflict(() => repository.create(input, access))
 
       return toRole(created.role, toRoleResources(created.resources))
     },
 
-    async update(id: string, input: RoleUpdateInput) {
-      const existingRole = await repository.findActiveById(id)
-
-      if (!existingRole) {
-        throw new RoleNotFoundError()
-      }
-
-      if (existingRole.code === BUILT_IN_ADMIN_ROLE_CODE) {
-        throw new BuiltInAdminRoleMutationError('edit')
-      }
-
-      const updated = await withRoleUniqueConflict(() => repository.update(id, input))
+    async update(id: string, input: RoleUpdateInput, access: UserAccess) {
+      const updated = await withRoleUniqueConflict(() => repository.update(id, input, access))
 
       if (!updated) {
         throw new RoleNotFoundError()
@@ -84,22 +69,8 @@ export function createRoleService(database: Db) {
       return toRole(updated.role, toRoleResources(updated.resources))
     },
 
-    async delete(id: string) {
-      const existingRole = await repository.findActiveById(id)
-
-      if (!existingRole) {
-        throw new RoleNotFoundError()
-      }
-
-      if (existingRole.code === BUILT_IN_ADMIN_ROLE_CODE) {
-        throw new BuiltInAdminRoleMutationError('delete')
-      }
-
-      if (await repository.hasUsers(id)) {
-        throw new RoleDeleteConflictError()
-      }
-
-      const deleted = await repository.softDelete(id)
+    async delete(id: string, access: UserAccess) {
+      const deleted = await repository.softDelete(id, access)
 
       if (!deleted) {
         throw new RoleNotFoundError()

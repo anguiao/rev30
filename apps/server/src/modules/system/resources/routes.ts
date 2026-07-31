@@ -13,6 +13,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
+import type { AuthEnv } from '../../../middleware/auth'
 import {
   ResourceConflictError,
   ResourceDeleteConflictError,
@@ -20,6 +21,7 @@ import {
   ResourceRoleAuthorizationConflictError,
   ResourceInvalidTypeFieldsError,
   ResourceMoveConflictError,
+  ResourceMutationForbiddenError,
   ResourceNotFoundError,
 } from './errors'
 import { createResourceService } from './service'
@@ -89,12 +91,16 @@ function resourceErrorResponse(error: unknown, c: Context) {
     return c.json({ message: error.message }, 409)
   }
 
+  if (error instanceof ResourceMutationForbiddenError) {
+    return c.json({ message: error.message }, 403)
+  }
+
   throw error
 }
 
 export function createResourceRoutes(database: Db) {
   const service = createResourceService(database)
-  const app = new Hono()
+  const app = new Hono<AuthEnv>()
 
   app.onError((error, c) => resourceErrorResponse(error, c))
 
@@ -123,7 +129,13 @@ export function createResourceRoutes(database: Db) {
     .post('/', requireAccess('system:resource:create'), resourceCreateBodyValidator, async (c) => {
       const body: ResourceCreateInput = c.req.valid('json')
 
-      return c.json(await service.create(body), 201)
+      return c.json(
+        await service.create(body, {
+          accessCodes: c.get('accessCodes'),
+          isAdmin: c.get('isAdmin'),
+        }),
+        201,
+      )
     })
     .patch(
       '/:id',
@@ -134,13 +146,21 @@ export function createResourceRoutes(database: Db) {
         const { id } = c.req.valid('param')
         const body: ResourceUpdateInput = c.req.valid('json')
 
-        return c.json(await service.update(id, body))
+        return c.json(
+          await service.update(id, body, {
+            accessCodes: c.get('accessCodes'),
+            isAdmin: c.get('isAdmin'),
+          }),
+        )
       },
     )
     .delete('/:id', requireAccess('system:resource:delete'), resourceIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
-      await service.delete(id)
+      await service.delete(id, {
+        accessCodes: c.get('accessCodes'),
+        isAdmin: c.get('isAdmin'),
+      })
 
       return c.body(null, 204)
     })

@@ -15,6 +15,8 @@ export type ResolvedUserAccess = Pick<AuthSessionResponse, 'accessCodes' | 'menu
   isAdmin: boolean
 }
 
+export type UserAccess = Pick<ResolvedUserAccess, 'accessCodes' | 'isAdmin'>
+
 function resourceOrder() {
   return [
     asc(systemResources.sortOrder),

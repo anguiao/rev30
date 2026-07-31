@@ -1,19 +1,45 @@
 import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { RESOURCE_TYPE_ACTION, ROLE_STATUS_ENABLED } from '@rev30/contracts'
+import {
+  RESOURCE_TYPE_ACTION,
+  ROLE_STATUS_ENABLED,
+  USER_STATUS_ENABLED,
+  type User,
+} from '@rev30/contracts'
+import type { AuthEnv } from '../../../../src/middleware/auth'
 import {
   BuiltInAdminRoleMutationError,
   RoleConflictError,
   RoleDeleteConflictError,
   RoleInvalidResourceAssignmentError,
   RoleInvalidResourceError,
+  RoleMutationForbiddenError,
   RoleNotFoundError,
 } from '../../../../src/modules/system/roles/errors'
 import { createRoleRoutes } from '../../../../src/modules/system/roles/routes'
 
 const roleId = '33333333-3333-4333-8333-333333333333'
 const resourceId = '44444444-4444-4444-8444-444444444444'
+const actorId = '55555555-5555-4555-8555-555555555555'
+const userAccess = {
+  accessCodes: ['system:role:create', 'system:role:update'],
+  isAdmin: false,
+}
+const actor = {
+  id: actorId,
+  username: 'role-manager',
+  nickname: 'Role Manager',
+  avatarId: null,
+  email: null,
+  phone: null,
+  status: USER_STATUS_ENABLED,
+  builtIn: false,
+  departments: [],
+  roles: [],
+  createdAt: '2026-05-06T00:00:00.000Z',
+  updatedAt: '2026-05-06T00:00:00.000Z',
+} satisfies User
 const role = {
   id: roleId,
   name: 'Administrator',
@@ -60,7 +86,14 @@ vi.mock('../../../../src/modules/system/roles/service', () => ({
 }))
 
 function createTestApp() {
-  return new Hono().route('/api/system/roles', createRoleRoutes({} as never))
+  return new Hono<AuthEnv>()
+    .use('*', async (c, next) => {
+      c.set('currentUser', actor)
+      c.set('accessCodes', userAccess.accessCodes)
+      c.set('isAdmin', userAccess.isAdmin)
+      await next()
+    })
+    .route('/api/system/roles', createRoleRoutes({} as never))
 }
 
 describe('role routes', () => {
@@ -160,13 +193,16 @@ describe('role routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(createResponse.status).toBe(201)
-    expect(mocks.service.create).toHaveBeenCalledWith({
-      name: 'Administrator',
-      code: 'test-admin',
-      resourceIds: [resourceId],
-      status: ROLE_STATUS_ENABLED,
-      sortOrder: 0,
-    })
+    expect(mocks.service.create).toHaveBeenCalledWith(
+      {
+        name: 'Administrator',
+        code: 'test-admin',
+        resourceIds: [resourceId],
+        status: ROLE_STATUS_ENABLED,
+        sortOrder: 0,
+      },
+      userAccess,
+    )
   })
 
   it('delegates update requests by id', async () => {
@@ -178,9 +214,13 @@ describe('role routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(updateResponse.status).toBe(200)
-    expect(mocks.service.update).toHaveBeenCalledWith(roleId, {
-      name: 'Updated Administrator',
-    })
+    expect(mocks.service.update).toHaveBeenCalledWith(
+      roleId,
+      {
+        name: 'Updated Administrator',
+      },
+      userAccess,
+    )
   })
 
   it('delegates delete requests by id', async () => {
@@ -190,7 +230,7 @@ describe('role routes', () => {
       method: 'DELETE',
     })
     expect(deleteResponse.status).toBe(204)
-    expect(mocks.service.delete).toHaveBeenCalledWith(roleId)
+    expect(mocks.service.delete).toHaveBeenCalledWith(roleId, userAccess)
   })
 
   it('returns query validation errors before calling the role service', async () => {
@@ -318,5 +358,22 @@ describe('role routes', () => {
     })
     expect(deleteResponse.status).toBe(409)
     expect(await deleteResponse.json()).toEqual({ message: '角色存在关联用户，不能删除' })
+  })
+
+  it('maps forbidden role mutations to route responses', async () => {
+    const app = createTestApp()
+
+    mocks.service.create.mockRejectedValueOnce(new RoleMutationForbiddenError())
+    const response = await app.request('/api/system/roles', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Privileged Role',
+        code: 'privileged-role',
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ message: '不能管理超出自身权限范围的角色' })
   })
 })

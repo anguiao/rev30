@@ -7,13 +7,17 @@ import {
   RESOURCE_STATUS_ENABLED,
   RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_MENU,
+  USER_STATUS_ENABLED,
+  type User,
 } from '@rev30/contracts'
+import type { AuthEnv } from '../../../../src/middleware/auth'
 import {
   ResourceConflictError,
   ResourceDeleteConflictError,
   ResourceInvalidParentError,
   ResourceInvalidTypeFieldsError,
   ResourceMoveConflictError,
+  ResourceMutationForbiddenError,
   ResourceNotFoundError,
   ResourceRoleAuthorizationConflictError,
 } from '../../../../src/modules/system/resources/errors'
@@ -21,6 +25,25 @@ import { createResourceRoutes } from '../../../../src/modules/system/resources/r
 
 const resourceId = '55555555-5555-4555-8555-555555555555'
 const parentId = '66666666-6666-4666-8666-666666666666'
+const actorId = '77777777-7777-4777-8777-777777777777'
+const userAccess = {
+  accessCodes: ['system:resource:create', 'system:resource:update'],
+  isAdmin: false,
+}
+const actor = {
+  id: actorId,
+  username: 'resource-manager',
+  nickname: 'Resource Manager',
+  avatarId: null,
+  email: null,
+  phone: null,
+  status: USER_STATUS_ENABLED,
+  builtIn: false,
+  departments: [],
+  roles: [],
+  createdAt: '2026-05-06T00:00:00.000Z',
+  updatedAt: '2026-05-06T00:00:00.000Z',
+} satisfies User
 const resource = {
   id: resourceId,
   parentId: null,
@@ -67,7 +90,14 @@ vi.mock('../../../../src/modules/system/resources/service', () => ({
 }))
 
 function createTestApp() {
-  return new Hono().route('/api/system/resources', createResourceRoutes({} as never))
+  return new Hono<AuthEnv>()
+    .use('*', async (c, next) => {
+      c.set('currentUser', actor)
+      c.set('accessCodes', userAccess.accessCodes)
+      c.set('isAdmin', userAccess.isAdmin)
+      await next()
+    })
+    .route('/api/system/resources', createResourceRoutes({} as never))
 }
 
 describe('resource routes', () => {
@@ -179,19 +209,22 @@ describe('resource routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(createResponse.status).toBe(201)
-    expect(mocks.service.create).toHaveBeenCalledWith({
-      type: RESOURCE_TYPE_DIRECTORY,
-      name: 'System',
-      code: 'test-system',
-      parentId: null,
-      path: null,
-      externalUrl: null,
-      openTarget: RESOURCE_OPEN_TARGET_SELF,
-      icon: null,
-      hidden: false,
-      status: RESOURCE_STATUS_ENABLED,
-      sortOrder: 0,
-    })
+    expect(mocks.service.create).toHaveBeenCalledWith(
+      {
+        type: RESOURCE_TYPE_DIRECTORY,
+        name: 'System',
+        code: 'test-system',
+        parentId: null,
+        path: null,
+        externalUrl: null,
+        openTarget: RESOURCE_OPEN_TARGET_SELF,
+        icon: null,
+        hidden: false,
+        status: RESOURCE_STATUS_ENABLED,
+        sortOrder: 0,
+      },
+      userAccess,
+    )
   })
 
   it('delegates update requests by id', async () => {
@@ -203,7 +236,7 @@ describe('resource routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(updateResponse.status).toBe(200)
-    expect(mocks.service.update).toHaveBeenCalledWith(resourceId, { name: 'Settings' })
+    expect(mocks.service.update).toHaveBeenCalledWith(resourceId, { name: 'Settings' }, userAccess)
   })
 
   it('delegates delete requests by id', async () => {
@@ -213,7 +246,7 @@ describe('resource routes', () => {
       method: 'DELETE',
     })
     expect(deleteResponse.status).toBe(204)
-    expect(mocks.service.delete).toHaveBeenCalledWith(resourceId)
+    expect(mocks.service.delete).toHaveBeenCalledWith(resourceId, userAccess)
   })
 
   it('returns query validation errors before calling the resource service', async () => {
@@ -345,6 +378,32 @@ describe('resource routes', () => {
     expect(roleAuthorizationResponse.status).toBe(409)
     expect(await roleAuthorizationResponse.json()).toEqual({
       message: '权限资源存在角色授权，不能删除',
+    })
+  })
+
+  it('maps forbidden resource mutations to route responses', async () => {
+    const app = createTestApp()
+
+    mocks.service.update.mockRejectedValueOnce(new ResourceMutationForbiddenError('code'))
+    const response = await app.request(`/api/system/resources/${resourceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ code: 'system:user:delete' }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ message: '非管理员不能修改权限编码' })
+
+    mocks.service.update.mockRejectedValueOnce(new ResourceMutationForbiddenError('access-scope'))
+    const subtreeResponse = await app.request(`/api/system/resources/${resourceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: RESOURCE_STATUS_DISABLED }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(subtreeResponse.status).toBe(403)
+    expect(await subtreeResponse.json()).toEqual({
+      message: '不能管理超出自身权限范围的资源',
     })
   })
 })

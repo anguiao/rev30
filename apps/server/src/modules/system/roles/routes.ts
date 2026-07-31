@@ -13,12 +13,14 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
+import type { AuthEnv } from '../../../middleware/auth'
 import {
   BuiltInAdminRoleMutationError,
   RoleConflictError,
   RoleDeleteConflictError,
   RoleInvalidResourceError,
   RoleInvalidResourceAssignmentError,
+  RoleMutationForbiddenError,
   RoleNotFoundError,
 } from './errors'
 import { createRoleService } from './service'
@@ -79,12 +81,16 @@ function roleErrorResponse(error: unknown, c: Context) {
     return c.json({ message: error.message }, 409)
   }
 
+  if (error instanceof RoleMutationForbiddenError) {
+    return c.json({ message: error.message }, 403)
+  }
+
   throw error
 }
 
 export function createRoleRoutes(database: Db) {
   const service = createRoleService(database)
-  const app = new Hono()
+  const app = new Hono<AuthEnv>()
 
   app.onError((error, c) => roleErrorResponse(error, c))
 
@@ -107,7 +113,13 @@ export function createRoleRoutes(database: Db) {
     .post('/', requireAccess('system:role:create'), roleCreateBodyValidator, async (c) => {
       const body: RoleCreateInput = c.req.valid('json')
 
-      return c.json(await service.create(body), 201)
+      return c.json(
+        await service.create(body, {
+          accessCodes: c.get('accessCodes'),
+          isAdmin: c.get('isAdmin'),
+        }),
+        201,
+      )
     })
     .patch(
       '/:id',
@@ -118,13 +130,21 @@ export function createRoleRoutes(database: Db) {
         const { id } = c.req.valid('param')
         const body: RoleUpdateInput = c.req.valid('json')
 
-        return c.json(await service.update(id, body))
+        return c.json(
+          await service.update(id, body, {
+            accessCodes: c.get('accessCodes'),
+            isAdmin: c.get('isAdmin'),
+          }),
+        )
       },
     )
     .delete('/:id', requireAccess('system:role:delete'), roleIdValidator, async (c) => {
       const { id } = c.req.valid('param')
 
-      await service.delete(id)
+      await service.delete(id, {
+        accessCodes: c.get('accessCodes'),
+        isAdmin: c.get('isAdmin'),
+      })
 
       return c.body(null, 204)
     })

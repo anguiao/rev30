@@ -17,11 +17,13 @@ import {
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
 import { systemRoleResources, systemResources } from '../../../db/schema'
+import type { UserAccess } from '../../auth/access'
 import {
   ResourceDeleteConflictError,
   ResourceInvalidParentError,
   ResourceInvalidTypeFieldsError,
   ResourceMoveConflictError,
+  ResourceMutationForbiddenError,
   ResourceRoleAuthorizationConflictError,
 } from './errors'
 import type { ResourceRow, ResourceTreeOptionEntry } from './mapper'
@@ -67,6 +69,61 @@ async function lockActiveResourceById(executor: DbReader, id: string) {
   const rows = await lockActiveResourcesByIds(executor, [id])
 
   return rows[0]
+}
+
+async function lockActiveResourceSubtree(executor: DbReader, id: string) {
+  const root = await lockActiveResourceById(executor, id)
+
+  if (!root) {
+    return []
+  }
+
+  const rows = [root]
+  const visitedIds = new Set([root.id])
+  let parentIds = [root.id]
+
+  while (parentIds.length > 0) {
+    const childCandidates = await executor
+      .select({ id: systemResources.id })
+      .from(systemResources)
+      .where(and(inArray(systemResources.parentId, parentIds), isNull(systemResources.deletedAt)))
+    const candidateIds = childCandidates
+      .map((child) => child.id)
+      .filter((childId) => !visitedIds.has(childId))
+
+    if (candidateIds.length === 0) {
+      break
+    }
+
+    const parentIdSet = new Set(parentIds)
+    const children = (await lockActiveResourcesByIds(executor, candidateIds)).filter(
+      (child) => child.parentId !== null && parentIdSet.has(child.parentId),
+    )
+
+    for (const child of children) {
+      visitedIds.add(child.id)
+      rows.push(child)
+    }
+
+    parentIds = children.map((child) => child.id)
+  }
+
+  return rows
+}
+
+function assertResourcesWithinAccessScope(
+  resources: readonly Pick<ResourceRow, 'code'>[],
+  access: UserAccess,
+) {
+  if (access.isAdmin) {
+    return
+  }
+
+  const allowedCodes = new Set(access.accessCodes)
+
+  if (resources.some((resource) => !allowedCodes.has(resource.code))) {
+    throw new ResourceMutationForbiddenError('access-scope')
+  }
 }
 
 async function hasActiveChildren(executor: DbReader, id: string) {
@@ -410,10 +467,20 @@ export function createResourceRepository(database: Db) {
         .orderBy(...resourceSortOrder())
     },
 
-    async create(input: ResourceCreateInput) {
+    async create(input: ResourceCreateInput, access: UserAccess) {
       return await database.transaction(async (tx) => {
-        if (input.parentId !== null && !(await lockActiveResourceById(tx, input.parentId))) {
-          throw new ResourceInvalidParentError()
+        if (input.parentId === null) {
+          if (!access.isAdmin) {
+            throw new ResourceMutationForbiddenError('access-scope')
+          }
+        } else {
+          const parentSubtree = await lockActiveResourceSubtree(tx, input.parentId)
+
+          if (parentSubtree.length === 0) {
+            throw new ResourceInvalidParentError()
+          }
+
+          assertResourcesWithinAccessScope(parentSubtree, access)
         }
 
         const normalizedInput = normalizeCreateTypeFields(input)
@@ -428,12 +495,41 @@ export function createResourceRepository(database: Db) {
       })
     },
 
-    async update(id: string, input: ResourceUpdateInput) {
+    async update(id: string, input: ResourceUpdateInput, access: UserAccess) {
       return await database.transaction(async (tx) => {
+        const subtree = await lockActiveResourceSubtree(tx, id)
+        const existing = subtree[0]
+
+        if (!existing) {
+          return undefined
+        }
+
+        assertResourcesWithinAccessScope(subtree, access)
+
+        if (!access.isAdmin && input.code !== undefined && input.code !== existing.code) {
+          throw new ResourceMutationForbiddenError('code')
+        }
+
         const resource = await lockResourceForUpdate(tx, id, input.parentId)
 
         if (!resource) {
           return undefined
+        }
+
+        if (input.parentId !== undefined && input.parentId !== resource.parentId) {
+          if (input.parentId === null) {
+            if (!access.isAdmin) {
+              throw new ResourceMutationForbiddenError('access-scope')
+            }
+          } else {
+            const parentSubtree = await lockActiveResourceSubtree(tx, input.parentId)
+
+            if (parentSubtree.length === 0) {
+              throw new ResourceInvalidParentError()
+            }
+
+            assertResourcesWithinAccessScope(parentSubtree, access)
+          }
         }
 
         const normalizedInput = normalizeUpdateTypeFields(input, resource)
@@ -448,15 +544,18 @@ export function createResourceRepository(database: Db) {
       })
     },
 
-    async softDelete(id: string) {
+    async softDelete(id: string, access: UserAccess) {
       const now = new Date()
 
       return await database.transaction(async (tx) => {
-        const resource = await lockActiveResourceById(tx, id)
+        const subtree = await lockActiveResourceSubtree(tx, id)
+        const resource = subtree[0]
 
         if (!resource) {
           return undefined
         }
+
+        assertResourcesWithinAccessScope(subtree, access)
 
         if (await hasActiveChildren(tx, id)) {
           throw new ResourceDeleteConflictError()

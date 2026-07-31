@@ -52,6 +52,13 @@ export class ResourceRoleAuthorizationConflictError extends Error {
   }
 }
 
+export class ResourceMutationForbiddenError extends Error {
+  constructor(reason: 'access-scope' | 'code') {
+    super(reason === 'code' ? '非管理员不能修改权限编码' : '不能管理超出自身权限范围的资源')
+    this.name = 'ResourceMutationForbiddenError'
+  }
+}
+
 export class ResourceInvalidTypeFieldsError extends FormFieldError<'path' | 'externalUrl'> {
   constructor(message: string, field: 'path' | 'externalUrl') {
     super(message, field)

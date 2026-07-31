@@ -1,4 +1,5 @@
 import {
+  BUILT_IN_ADMIN_ROLE_CODE,
   ROLE_STATUS_ENABLED,
   type RoleCreateInput,
   type RoleListQuery,
@@ -17,10 +18,13 @@ import {
   systemUserRoles,
   systemUsers,
 } from '../../../db/schema'
+import type { UserAccess } from '../../auth/access'
 import {
+  BuiltInAdminRoleMutationError,
   RoleDeleteConflictError,
   RoleInvalidResourceError,
   RoleInvalidResourceAssignmentError,
+  RoleMutationForbiddenError,
 } from './errors'
 import type { RoleOptionEntry, RoleResourceEntry, RoleRow } from './mapper'
 
@@ -67,7 +71,7 @@ async function lockActiveResourcesByIds(executor: DbReader, ids: string[]) {
 
 async function lockValidResourceIdsOrThrow(executor: DbReader, ids: string[]) {
   if (ids.length === 0) {
-    return
+    return []
   }
 
   const uniqueIds = [...new Set(ids)]
@@ -83,6 +87,8 @@ async function lockValidResourceIdsOrThrow(executor: DbReader, ids: string[]) {
     const { formErrors } = z.flattenError(resourceIdsResult.error)
     throw new RoleInvalidResourceAssignmentError(formErrors.join('，'))
   }
+
+  return rows
 }
 
 function buildRoleResourceValues(roleId: string, resourceIds: string[]) {
@@ -111,6 +117,40 @@ async function findResourcesByRoleId(
       desc(systemResources.createdAt),
       desc(systemResources.id),
     )
+}
+
+export async function findRoleAccessScopesByIds(executor: DbReader, ids: string[]) {
+  if (ids.length === 0) {
+    return []
+  }
+
+  const roles = await executor
+    .select({
+      id: systemRoles.id,
+      code: systemRoles.code,
+    })
+    .from(systemRoles)
+    .where(and(inArray(systemRoles.id, ids), isNull(systemRoles.deletedAt)))
+  const resources = await executor
+    .select({
+      roleId: systemRoleResources.roleId,
+      code: systemResources.code,
+    })
+    .from(systemRoleResources)
+    .innerJoin(systemResources, eq(systemResources.id, systemRoleResources.resourceId))
+    .where(and(inArray(systemRoleResources.roleId, ids), isNull(systemResources.deletedAt)))
+  const resourceCodesByRoleId = new Map<string, string[]>()
+
+  for (const resource of resources) {
+    const codes = resourceCodesByRoleId.get(resource.roleId) ?? []
+    codes.push(resource.code)
+    resourceCodesByRoleId.set(resource.roleId, codes)
+  }
+
+  return roles.map((role) => ({
+    ...role,
+    resourceCodes: resourceCodesByRoleId.get(role.id) ?? [],
+  }))
 }
 
 export async function lockActiveRolesByIds(executor: DbReader, ids: string[]) {
@@ -175,6 +215,25 @@ async function lockActiveRoleById(executor: DbReader, id: string) {
   const rows = await lockActiveRolesByIds(executor, [id])
 
   return rows[0]
+}
+
+function assertRoleWithinAccessScope(
+  roleCode: string,
+  resources: readonly Pick<typeof systemResources.$inferSelect, 'code'>[],
+  access: UserAccess,
+) {
+  if (access.isAdmin) {
+    return
+  }
+
+  const allowedCodes = new Set(access.accessCodes)
+
+  if (
+    roleCode === BUILT_IN_ADMIN_ROLE_CODE ||
+    resources.some((resource) => !allowedCodes.has(resource.code))
+  ) {
+    throw new RoleMutationForbiddenError()
+  }
 }
 
 export function createRoleRepository(database: Db) {
@@ -273,15 +332,12 @@ export function createRoleRepository(database: Db) {
       return await findResourcesByRoleId(database, roleId)
     },
 
-    async hasUsers(id: string) {
-      return await hasUsers(database, id)
-    },
-
-    async create(input: RoleCreateInput) {
+    async create(input: RoleCreateInput, access: UserAccess) {
       const { resourceIds = [], ...roleInput } = input
 
       return await database.transaction(async (tx) => {
-        await lockValidResourceIdsOrThrow(tx, resourceIds)
+        const resources = await lockValidResourceIdsOrThrow(tx, resourceIds)
+        assertRoleWithinAccessScope(input.code, resources, access)
 
         const [created] = await tx.insert(systemRoles).values(roleInput).returning()
 
@@ -302,12 +358,27 @@ export function createRoleRepository(database: Db) {
       })
     },
 
-    async update(id: string, input: RoleUpdateInput) {
+    async update(id: string, input: RoleUpdateInput, access: UserAccess) {
       const { resourceIds, ...roleInput } = input
 
       return await database.transaction(async (tx) => {
+        const existingRole = await lockActiveRoleById(tx, id)
+
+        if (!existingRole) {
+          return undefined
+        }
+
+        if (existingRole.code === BUILT_IN_ADMIN_ROLE_CODE) {
+          throw new BuiltInAdminRoleMutationError('edit')
+        }
+
+        const existingResources = await findResourcesByRoleId(tx, id)
+        assertRoleWithinAccessScope(existingRole.code, existingResources, access)
+        assertRoleWithinAccessScope(input.code ?? existingRole.code, [], access)
+
         if (resourceIds !== undefined) {
-          await lockValidResourceIdsOrThrow(tx, resourceIds)
+          const resources = await lockValidResourceIdsOrThrow(tx, resourceIds)
+          assertRoleWithinAccessScope(input.code ?? existingRole.code, resources, access)
         }
 
         const roleUpdateValues = Object.values(roleInput).some((value) => value !== undefined)
@@ -340,7 +411,7 @@ export function createRoleRepository(database: Db) {
       })
     },
 
-    async softDelete(id: string) {
+    async softDelete(id: string, access: UserAccess) {
       const now = new Date()
 
       return await database.transaction(async (tx) => {
@@ -349,6 +420,13 @@ export function createRoleRepository(database: Db) {
         if (!role) {
           return undefined
         }
+
+        if (role.code === BUILT_IN_ADMIN_ROLE_CODE) {
+          throw new BuiltInAdminRoleMutationError('delete')
+        }
+
+        const resources = await findResourcesByRoleId(tx, id)
+        assertRoleWithinAccessScope(role.code, resources, access)
 
         if (await hasUsers(tx, id)) {
           throw new RoleDeleteConflictError()

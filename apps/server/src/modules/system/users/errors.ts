@@ -66,6 +66,17 @@ export class BuiltInUserMutationError extends Error {
   }
 }
 
+export class UserMutationForbiddenError extends Error {
+  constructor(reason: 'role-assignment' | 'user-access') {
+    super(
+      reason === 'user-access'
+        ? '不能操作超出自身权限范围的用户'
+        : '不能授予超出自身权限范围的角色',
+    )
+    this.name = 'UserMutationForbiddenError'
+  }
+}
+
 function getDatabaseError(error: unknown) {
   const cause = error instanceof DrizzleQueryError ? error.cause : error
 

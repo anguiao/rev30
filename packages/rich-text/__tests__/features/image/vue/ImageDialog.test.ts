@@ -6,8 +6,7 @@ import { NodeSelection } from '@tiptap/pm/state'
 import { UndoRedo } from '@tiptap/extensions/undo-redo'
 import { DOMWrapper, flushPromises, mount, type BaseWrapper } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
-import { NImage, NSpin } from 'naive-ui'
-import { markRaw } from 'vue'
+import { markRaw, nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { RichTextImageAttrs } from '../../../../src/features/image/editor'
 import { imageFeature } from '../../../../src/features/image/shared'
@@ -189,7 +188,7 @@ async function chooseFile(_wrapper: BaseWrapper<Node>, file: File) {
   }
 
   onChange(createFileList(file))
-  await flushPromises()
+  await nextTick()
 }
 
 async function dropFiles(files: File[]) {
@@ -199,7 +198,7 @@ async function dropFiles(files: File[]) {
   }
 
   onDrop(files, new Event('drop') as DragEvent)
-  await flushPromises()
+  await nextTick()
 }
 
 async function pasteFiles(files: File[], target: EventTarget | null) {
@@ -215,7 +214,7 @@ async function pasteFiles(files: File[], target: EventTarget | null) {
     preventDefault,
     target,
   } as unknown as ClipboardEvent)
-  await flushPromises()
+  await nextTick()
 
   return { preventDefault }
 }
@@ -237,12 +236,14 @@ async function loadPreviewImage(wrapper: BaseWrapper<Node>, width = 800, height 
   })
 
   await image.trigger('load')
-  await flushPromises()
 }
 
 async function failPreviewImage(wrapper: BaseWrapper<Node>) {
   await wrapper.get('[data-test="rich-text-image-preview"] img').trigger('error')
-  await flushPromises()
+}
+
+function getPreviewImageSrc(wrapper: BaseWrapper<Node>) {
+  return wrapper.get('[data-test="rich-text-image-preview"] img').attributes('src')
 }
 
 afterEach(() => {
@@ -333,7 +334,6 @@ describe('ImageToolbarControl', () => {
     const wrapper = mountControl(editor)
     const button = wrapper.get('[data-test="rich-text-image"]')
 
-    expect(button.attributes('aria-pressed')).toBe('true')
     expect(button.attributes('aria-pressed')).toBe('true')
     expect(button.attributes('title')).toBe('编辑图片')
     expect(button.attributes('aria-label')).toBe('编辑图片')
@@ -473,12 +473,12 @@ describe('ImageDialog', () => {
     await chooseFile(wrapper, new File(['image'], 'cover.png', { type: 'image/png' }))
 
     expect(createObjectUrl).toHaveBeenCalledOnce()
-    expect(wrapper.getComponent(NImage).props('src')).toBe('blob:cover')
+    expect(getPreviewImageSrc(wrapper)).toBe('blob:cover')
 
     await uploadSelectedFile(wrapper)
 
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:cover')
-    expect(wrapper.getComponent(NImage).props('src')).toBe('/api/attachments/cover.png/content')
+    expect(getPreviewImageSrc(wrapper)).toBe('/api/attachments/cover.png/content')
   })
 
   it('uses dropped images as insert candidates without uploading immediately', async () => {
@@ -650,7 +650,6 @@ describe('ImageDialog', () => {
     })
     await flushPromises()
 
-    expect(wrapper.findComponent(NSpin).props('show')).toBe(false)
     expect(wrapper.get('[data-test="rich-text-image-file"]').attributes('disabled')).toBeUndefined()
     expect(
       wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),

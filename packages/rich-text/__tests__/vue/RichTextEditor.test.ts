@@ -16,6 +16,7 @@ import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
 import { createAllRichTextEditorPreset } from '../../src/vue/presets/all'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
 import { defineRichTextStatusBar, richTextStatusBarComponent } from '../../src/vue/status-bar'
+import { appendTestElement } from '../helpers/editor'
 
 const contentJson: RichTextDocument = {
   type: 'doc',
@@ -106,9 +107,7 @@ function mountRichTextEditor(props: InstanceType<typeof RichTextEditor>['$props'
 
 async function getEditable(wrapper: ReturnType<typeof mount>) {
   await flushPromises()
-  await vi.waitFor(() => {
-    expect(wrapper.find('.ProseMirror[contenteditable="true"]').exists()).toBe(true)
-  })
+  expect(wrapper.find('.ProseMirror[contenteditable="true"]').exists()).toBe(true)
 
   return wrapper.get('.ProseMirror[contenteditable="true"]')
 }
@@ -342,9 +341,8 @@ describe('RichTextEditor', () => {
     const editable = await getEditable(wrapper)
     const editorRoot = wrapper.get('[data-test="rich-text-editor"]')
     const overlayButton = document.createElement('button')
-    const outsideButton = document.createElement('button')
+    const outsideButton = appendTestElement('button')
     editorRoot.element.appendChild(overlayButton)
-    document.body.appendChild(outsideButton)
 
     await editable.trigger('focusout', { relatedTarget: overlayButton })
     expect(wrapper.emitted('blur')).toBeUndefined()
@@ -358,8 +356,6 @@ describe('RichTextEditor', () => {
       new FocusEvent('focusout', { bubbles: true, relatedTarget: outsideButton }),
     )
     expect(wrapper.emitted('blur')).toHaveLength(1)
-
-    outsideButton.remove()
   })
 
   it('toggles editor editability when disabled changes', async () => {

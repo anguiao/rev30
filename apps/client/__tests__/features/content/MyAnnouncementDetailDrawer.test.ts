@@ -1,4 +1,3 @@
-import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -9,7 +8,7 @@ import {
 import { formatDisplayDateTime } from '@rev30/utils'
 import MyAnnouncementDetailDrawer from '../../../src/features/content/MyAnnouncementDetailDrawer.vue'
 import { announcementTypeLabels, getMyAnnouncement } from '../../../src/features/content'
-import { createTestPinia } from '../../helpers/pinia'
+import { createTestQueryHarness } from '../../helpers/colada'
 
 vi.mock('../../../src/features/content', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/content')>()),
@@ -35,13 +34,13 @@ const detail: AnnouncementMyDetail = {
 }
 
 function mountDrawer(props = { show: true, announcement }) {
-  const pinia = createTestPinia()
+  const { plugins } = createTestQueryHarness()
 
   return mount(MyAnnouncementDetailDrawer, {
     props,
     attachTo: document.body,
     global: {
-      plugins: [pinia, PiniaColada],
+      plugins,
       stubs: {
         teleport: true,
       },

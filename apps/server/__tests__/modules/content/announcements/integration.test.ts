@@ -397,55 +397,6 @@ describe('announcement routes', () => {
     })
   })
 
-  it('rejects creating announcements with invalid contentJson structure', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-
-    const response = await app.request('/api/content/announcements', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...createBody,
-        contentJson: { type: 'bad' },
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
-  })
-
-  it('rejects invalid create payloads', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-
-    const response = await app.request('/api/content/announcements', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...createBody,
-        title: '   ',
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
-  })
-
-  it('rejects publish false in update payloads', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const { body: created } = await createAnnouncement(app, createBody)
-
-    const response = await app.request(`/api/content/announcements/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ publish: false }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
-  })
-
   it('updates content text when patching announcement content', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)

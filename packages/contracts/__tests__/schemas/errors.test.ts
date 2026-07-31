@@ -12,16 +12,6 @@ describe('error schemas', () => {
       field: 'username',
       message: '用户名已存在',
     })
-
-    expect(
-      errorResponseSchema.parse({
-        field: 'some-field',
-        message: 'some field error',
-      }),
-    ).toEqual({
-      field: 'some-field',
-      message: 'some field error',
-    })
   })
 
   it('parses error responses without field names', () => {

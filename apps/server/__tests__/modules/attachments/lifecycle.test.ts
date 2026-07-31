@@ -5,12 +5,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ATTACHMENT_CLEANUP_POLICY_UNREFERENCED } from '@rev30/contracts'
 import { and, eq } from 'drizzle-orm'
-import {
-  attachmentReferences,
-  attachments,
-  attachmentUploadSessions,
-  systemUsers,
-} from '../../../src/db/schema'
+import { attachmentReferences, attachments, attachmentUploadSessions } from '../../../src/db/schema'
 import { AttachmentReferenceTargetInvalidError } from '../../../src/modules/attachments/errors'
 import {
   cleanupExpiredAttachmentUploadSessions,
@@ -26,6 +21,7 @@ import {
 import { createAttachmentRepository } from '../../../src/modules/attachments/repository'
 import { LocalAttachmentStorage } from '../../../src/modules/attachments/storage'
 import { createTestDb } from '../../helpers/db'
+import { createSystemUserFixture } from '../../helpers/system'
 
 const dayMs = 24 * 60 * 60 * 1000
 const tempDirs: string[] = []
@@ -195,13 +191,13 @@ function createDatabaseWithStorageKeyHandoff(
 async function createUser(database: Awaited<ReturnType<typeof createTestDb>>) {
   const userId = randomUUID()
 
-  await database.insert(systemUsers).values({
+  const user = await createSystemUserFixture(database, {
     id: userId,
     username: `attachment-cleanup-user-${userId.slice(0, 8)}`,
     nickname: 'Attachment Cleanup User',
   })
 
-  return userId
+  return user.id
 }
 
 async function createAttachment(
@@ -626,7 +622,7 @@ async function createAttachmentRows(
 ) {
   const userId = randomUUID()
 
-  await database.insert(systemUsers).values({
+  await createSystemUserFixture(database, {
     id: userId,
     username: `attachment-reference-user-${userId.slice(0, 8)}`,
     nickname: 'Attachment Reference User',

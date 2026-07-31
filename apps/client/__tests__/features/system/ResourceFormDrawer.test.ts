@@ -1,4 +1,3 @@
-import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -23,7 +22,7 @@ import {
   updateResource,
 } from '../../../src/features/system'
 import ResourceFormDrawer from '../../../src/features/system/ResourceFormDrawer.vue'
-import { createTestPinia } from '../../helpers/pinia'
+import { createTestQueryHarness } from '../../helpers/colada'
 import { createDeferred } from '../../helpers/promise'
 vi.mock('../../../src/features/system/ResourceIconPicker.vue', () => ({
   default: defineComponent({
@@ -200,7 +199,7 @@ function mountDrawer(
     parentId?: string | null
   } = {},
 ) {
-  const pinia = createTestPinia()
+  const { plugins } = createTestQueryHarness()
 
   return mount(ResourceFormDrawer, {
     props: {
@@ -210,7 +209,7 @@ function mountDrawer(
     },
     attachTo: document.body,
     global: {
-      plugins: [pinia, PiniaColada],
+      plugins,
       stubs: {
         teleport: true,
       },

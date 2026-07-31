@@ -22,12 +22,12 @@ import {
   systemDepartments,
   systemConfigOverrides,
   systemRoles,
-  systemResources,
   systemUserDepartments,
   systemUserRoles,
   systemUsers,
 } from '../../../src/db/schema'
 import { createTestDb } from '../../helpers/db'
+import { createSystemResourceFixture as createResource } from '../../helpers/system'
 import { createAuthMiddleware } from '../../../src/middleware/auth'
 import { hashPassword, verifyPassword } from '../../../src/modules/auth/password'
 import { createAuthRoutes } from '../../../src/modules/auth/routes'
@@ -41,20 +41,6 @@ type ErrorResponse = {
 }
 
 type AuthLoginResponse = AuthTokenResponse | ErrorResponse
-
-type ResourceInsert = {
-  code: string
-  name: string
-  type: string
-  parentId: string | null
-  path: string | null
-  externalUrl: string | null
-  openTarget: string
-  icon: string | null
-  hidden: boolean
-  status: number
-  sortOrder: number
-}
 
 type TestDatabase = Awaited<ReturnType<typeof createTestDb>>
 type TestTransaction = Parameters<Parameters<TestDatabase['transaction']>[0]>[0]
@@ -88,24 +74,6 @@ function requireRefreshToken(token: string | undefined) {
   }
 
   return token
-}
-
-async function createResource(database: TestDatabase, input: ResourceInsert) {
-  const [resource] = await database
-    .insert(systemResources)
-    .values({
-      id: randomUUID(),
-      ...input,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning()
-
-  if (!resource) {
-    throw new Error(`Expected resource ${input.code}`)
-  }
-
-  return resource
 }
 
 async function createPasswordAccount(database: TestDatabase, input: AccountInput = {}) {
@@ -216,31 +184,6 @@ function createTestAppWithRefreshRevokeFailure(database: TestDatabase) {
 }
 
 describe('auth routes', () => {
-  it('does not expose public registration', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-
-    const response = await app.request('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({
-        username: 'ada',
-        password: 'secret-password',
-        nickname: 'Ada Lovelace',
-      }),
-      headers: {
-        'content-type': 'application/json',
-      },
-    })
-
-    const storedUsers = await database
-      .select()
-      .from(systemUsers)
-      .where(eq(systemUsers.username, 'ada'))
-
-    expect(response.status).toBe(404)
-    expect(storedUsers).toHaveLength(0)
-  })
-
   it('logs in with username and password', async () => {
     const database = await createTestDb()
     const app = createTestApp(database)

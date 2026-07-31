@@ -5,7 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
 import { NButton, NCheckbox, NInput, NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
-import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { runRichTextAction } from '../../../../src/editor/action'
 import {
   getSearchReplaceState,
@@ -13,7 +13,7 @@ import {
   searchReplaceEditorFeature,
 } from '../../../../src/features/search-replace/editor'
 import SearchReplaceToolbarControl from '../../../../src/features/search-replace/vue/SearchReplaceToolbarControl.vue'
-import { createTestEditor } from '../../../helpers/editor'
+import { appendTestElement, createTestEditor } from '../../../helpers/editor'
 
 function createEditor(content = '<p>Alpha alpha ALPHA</p>') {
   return createTestEditor({
@@ -23,23 +23,15 @@ function createEditor(content = '<p>Alpha alpha ALPHA</p>') {
 }
 
 function mountControl(editor: Editor, disabled = false) {
-  const element = document.createElement('div')
-  document.body.appendChild(element)
+  const element = appendTestElement('div')
 
-  const wrapper = mount(SearchReplaceToolbarControl, {
+  return mount(SearchReplaceToolbarControl, {
     attachTo: element,
     props: {
       editor: markRaw(editor),
       disabled,
     },
   })
-
-  onTestFinished(() => {
-    wrapper.unmount()
-    element.remove()
-  })
-
-  return wrapper
 }
 
 function getButtonComponent(wrapper: ReturnType<typeof mount>, dataTest: string) {

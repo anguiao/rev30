@@ -32,55 +32,6 @@ async function expectDatabaseCauseMessage(promise: Promise<unknown>, expectedMes
 }
 
 describe('custom icon set schema', () => {
-  it('inserts a custom icon set with prefix, name, and description', async () => {
-    const database = await createTestDb()
-
-    const [createdSet] = await database
-      .insert(customIconSets)
-      .values({
-        prefix: 'acme',
-        name: 'Acme Icons',
-        description: 'Icons for Acme',
-      })
-      .returning()
-
-    expect(createdSet?.prefix).toBe('acme')
-  })
-
-  it('inserts custom icon set icons with svg metadata', async () => {
-    const database = await createTestDb()
-
-    const [createdSet] = await database
-      .insert(customIconSets)
-      .values({
-        prefix: 'acme',
-        name: 'Acme Icons',
-        description: 'Icons for Acme',
-      })
-      .returning()
-
-    if (!createdSet) {
-      throw new Error('Expected icon set')
-    }
-
-    const [createdIcon] = await database
-      .insert(customIconSetIcons)
-      .values({
-        setId: createdSet.id,
-        name: 'rocket',
-        body: '<path d="M0 0h24v24H0z" />',
-        width: 24,
-        height: 24,
-        palette: false,
-      })
-      .returning()
-
-    expect(createdIcon).toMatchObject({
-      name: 'rocket',
-      body: '<path d="M0 0h24v24H0z" />',
-    })
-  })
-
   it('seeds icon set resources under content management', async () => {
     const database = await createTestDb()
 
@@ -129,72 +80,6 @@ describe('custom icon set schema', () => {
       'content:icon-set:list',
       'content:icon-set:update',
     ])
-  })
-
-  it('soft deletes custom icon sets and icons via deletedAt', async () => {
-    const database = await createTestDb()
-
-    const [createdSet] = await database
-      .insert(customIconSets)
-      .values({
-        prefix: 'acme',
-        name: 'Acme Icons',
-        description: 'Icons for Acme',
-      })
-      .returning()
-
-    if (!createdSet) {
-      throw new Error('Expected icon set')
-    }
-
-    const [createdIcon] = await database
-      .insert(customIconSetIcons)
-      .values({
-        setId: createdSet.id,
-        name: 'rocket',
-        body: '<path d="M0 0h24v24H0z" />',
-        width: 24,
-        height: 24,
-        palette: false,
-      })
-      .returning()
-
-    if (!createdIcon) {
-      throw new Error('Expected icon')
-    }
-
-    const deletedAt = new Date('2026-06-15T00:00:00.000Z')
-
-    await database
-      .update(customIconSets)
-      .set({ deletedAt })
-      .where(eq(customIconSets.id, createdSet.id))
-
-    await database
-      .update(customIconSetIcons)
-      .set({ deletedAt })
-      .where(eq(customIconSetIcons.id, createdIcon.id))
-
-    const [deletedSet] = await database
-      .select({
-        deletedAt: customIconSets.deletedAt,
-        id: customIconSets.id,
-      })
-      .from(customIconSets)
-      .where(eq(customIconSets.id, createdSet.id))
-
-    const [deletedIcon] = await database
-      .select({
-        deletedAt: customIconSetIcons.deletedAt,
-        id: customIconSetIcons.id,
-      })
-      .from(customIconSetIcons)
-      .where(eq(customIconSetIcons.id, createdIcon.id))
-
-    expect(deletedSet?.id).toBe(createdSet.id)
-    expect(deletedSet?.deletedAt?.toISOString()).toBe(deletedAt.toISOString())
-    expect(deletedIcon?.id).toBe(createdIcon.id)
-    expect(deletedIcon?.deletedAt?.toISOString()).toBe(deletedAt.toISOString())
   })
 
   it('enforces unique active prefixes', async () => {

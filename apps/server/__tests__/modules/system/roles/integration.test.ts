@@ -5,7 +5,6 @@ import { eq, inArray } from 'drizzle-orm'
 import {
   BUILT_IN_ADMIN_ROLE_CODE,
   RESOURCE_STATUS_DISABLED,
-  RESOURCE_STATUS_ENABLED,
   RESOURCE_TYPE_ACTION,
   RESOURCE_TYPE_DIRECTORY,
   ROLE_STATUS_DISABLED,
@@ -14,7 +13,6 @@ import {
   type RoleListResponse,
   type RoleOptionsResponse,
   type RoleStatus,
-  type ResourceStatus,
 } from '@rev30/contracts'
 import {
   systemRoleResources,
@@ -25,6 +23,7 @@ import {
 } from '../../../../src/db/schema'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
+import { createSystemResourceFixture as createResource } from '../../../helpers/system'
 import { createRoleRoutes } from '../../../../src/modules/system/roles/routes'
 
 type ErrorResponse = {
@@ -50,42 +49,6 @@ async function createTestApp(
     createRoleRoutes(database),
     headers,
   )
-}
-
-async function createResource(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  input: {
-    name: string
-    code: string
-    type?: 'directory' | 'menu' | 'external' | 'action'
-    parentId?: string | null
-    sortOrder?: number
-    status?: ResourceStatus
-    deletedAt?: Date | null
-  },
-) {
-  const now = new Date()
-  const [resource] = await database
-    .insert(systemResources)
-    .values({
-      id: randomUUID(),
-      parentId: input.parentId ?? null,
-      name: input.name,
-      code: input.code,
-      type: input.type ?? RESOURCE_TYPE_DIRECTORY,
-      sortOrder: input.sortOrder ?? 0,
-      status: input.status ?? RESOURCE_STATUS_ENABLED,
-      deletedAt: input.deletedAt ?? null,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning()
-
-  if (!resource) {
-    throw new Error('Expected resource')
-  }
-
-  return resource
 }
 
 async function findResourceIdsByCodes(

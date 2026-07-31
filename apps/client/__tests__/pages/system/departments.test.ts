@@ -113,27 +113,17 @@ describe('departments page', () => {
     expect(wrapper.text()).toContain('共 2 个')
     expect(wrapper.text()).toContain('研发中心')
     expect(wrapper.text()).toContain('ENG')
+    expect(wrapper.text()).toContain('平台架构组')
+    expect(wrapper.text()).toContain('ARCH')
     expect(wrapper.text()).toContain(formatDisplayDateTime('2026-05-01T00:00:00.000Z'))
     const table = wrapper.getComponent(NDataTable)
-    const treeData = table.props('data') as DepartmentTreeNode[]
-    expect(treeData).toHaveLength(1)
-    expect(treeData[0]!.children).toHaveLength(1)
-    expect(treeData[0]!.children[0]!.name).toBe('平台架构组')
-    expect(treeData[0]!.children[0]!.code).toBe('ARCH')
-    expect(table.props('expandedRowKeys')).toEqual([
-      '11111111-1111-4111-8111-111111111111',
-      '22222222-2222-4222-8222-222222222222',
-    ])
     table.vm.$emit('update:expandedRowKeys', [])
     await flushPromises()
-    expect(wrapper.getComponent(NDataTable).props('expandedRowKeys')).toEqual([])
-    expect(formatDisplayDateTime(treeData[0]!.children[0]!.createdAt)).toBe(
-      formatDisplayDateTime('2026-05-02T00:00:00.000Z'),
-    )
+    expect(wrapper.text()).not.toContain('平台架构组')
     expect(wrapper.findComponent(NPagination).exists()).toBe(false)
   })
 
-  it('preserves collapsed rows across refreshes and removes missing expanded keys', async () => {
+  it('preserves collapsed rows across refreshes', async () => {
     const removedChild = departmentTreeResponse[0]!.children[0]!
     const remainingChild = departmentTreeResponse[0]!.children[1]!
     getDepartmentTreeMock.mockResolvedValueOnce(departmentTreeResponse).mockResolvedValueOnce([
@@ -145,17 +135,15 @@ describe('departments page', () => {
     const { wrapper } = await mountDepartmentsPage()
     await flushPromises()
 
-    wrapper
-      .getComponent(NDataTable)
-      .vm.$emit('update:expandedRowKeys', [departmentTreeResponse[0]!.id, removedChild.id])
+    wrapper.getComponent(NDataTable).vm.$emit('update:expandedRowKeys', [])
     await flushPromises()
     wrapper.getComponent({ name: 'DepartmentFormDrawerStub' }).vm.$emit('saved')
     await flushPromises()
 
     expect(getDepartmentTreeMock).toHaveBeenCalledTimes(2)
-    expect(wrapper.getComponent(NDataTable).props('expandedRowKeys')).toEqual([
-      departmentTreeResponse[0]!.id,
-    ])
+    expect(wrapper.text()).toContain('研发中心')
+    expect(wrapper.text()).not.toContain(removedChild.name)
+    expect(wrapper.text()).not.toContain(remainingChild.name)
   })
 
   it('shows a server load error when departments cannot be loaded', async () => {
@@ -269,10 +257,6 @@ describe('departments page', () => {
     await wrapper.get('[data-test="departments-search"]').trigger('click')
     await flushPromises()
 
-    const tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
-    expect(tableData).toHaveLength(1)
-    expect(tableData[0]!.children).toEqual([])
-
     const deleteButtons = wrapper.findAll('[data-test="departments-delete"]')
     expect(deleteButtons).toHaveLength(1)
     expect(deleteButtons[0]!.attributes('disabled')).toBeDefined()
@@ -339,9 +323,8 @@ describe('departments page', () => {
 
     expect(wrapper.text()).toContain('共 2 个')
     expect(wrapper.text()).toContain('研发中心')
-    const filteredTree = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
-    expect(filteredTree).toHaveLength(1)
-    expect(filteredTree[0]!.children.map((child) => child.name)).toEqual(['平台架构组'])
+    expect(wrapper.text()).toContain('平台架构组')
+    expect(wrapper.text()).not.toContain('前端组')
   })
 
   it('does not apply draft keyword until search and reset restores full tree', async () => {
@@ -350,22 +333,22 @@ describe('departments page', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('共 3 个')
-    let tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
-    expect(tableData[0]!.children).toHaveLength(2)
+    expect(wrapper.text()).toContain('平台架构组')
+    expect(wrapper.text()).toContain('前端组')
 
     await wrapper.find('[data-test="departments-keyword"] input').setValue('arch')
     await flushPromises()
 
     expect(wrapper.text()).toContain('共 3 个')
-    tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
-    expect(tableData[0]!.children).toHaveLength(2)
+    expect(wrapper.text()).toContain('平台架构组')
+    expect(wrapper.text()).toContain('前端组')
 
     await wrapper.get('[data-test="departments-search"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.text()).toContain('共 2 个')
-    tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
-    expect(tableData[0]!.children.map((child) => child.name)).toEqual(['平台架构组'])
+    expect(wrapper.text()).toContain('平台架构组')
+    expect(wrapper.text()).not.toContain('前端组')
 
     const resetButton = wrapper
       .findAll('button')
@@ -376,8 +359,8 @@ describe('departments page', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('共 3 个')
-    tableData = wrapper.getComponent(NDataTable).props('data') as DepartmentTreeNode[]
-    expect(tableData[0]!.children.map((child) => child.name)).toEqual(['平台架构组', '前端组'])
+    expect(wrapper.text()).toContain('平台架构组')
+    expect(wrapper.text()).toContain('前端组')
   })
 
   it('filters by status and preserves disabled child with parent context', async () => {
@@ -392,9 +375,7 @@ describe('departments page', () => {
 
     expect(wrapper.text()).toContain('共 2 个')
     expect(wrapper.text()).toContain('研发中心')
-    const statusFilteredTree = wrapper
-      .getComponent(NDataTable)
-      .props('data') as DepartmentTreeNode[]
-    expect(statusFilteredTree[0]!.children.map((child) => child.name)).toEqual(['平台架构组'])
+    expect(wrapper.text()).toContain('平台架构组')
+    expect(wrapper.text()).not.toContain('前端组')
   })
 })

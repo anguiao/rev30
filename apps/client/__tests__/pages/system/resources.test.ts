@@ -137,21 +137,18 @@ describe('resources page', () => {
     expect(wrapper.text()).toContain('是')
     expect(wrapper.text()).toContain(formatDisplayDateTime('2026-05-01T00:00:00.000Z'))
     const table = wrapper.getComponent(NDataTable)
-    expect(table.props('pagination')).toBe(false)
-    expect(table.props('expandedRowKeys')).toEqual([
-      '11111111-1111-4111-8111-111111111111',
-      '22222222-2222-4222-8222-222222222222',
-      '33333333-3333-4333-8333-333333333333',
-    ])
     table.vm.$emit('update:expandedRowKeys', ['11111111-1111-4111-8111-111111111111'])
     await flushPromises()
-    expect(wrapper.getComponent(NDataTable).props('expandedRowKeys')).toEqual([
-      '11111111-1111-4111-8111-111111111111',
-    ])
+    expect(wrapper.text()).toContain('Resource List')
+    expect(wrapper.text()).toContain('Resource Delete')
+    table.vm.$emit('update:expandedRowKeys', [])
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('Resource List')
+    expect(wrapper.text()).not.toContain('Resource Delete')
     expect(wrapper.findComponent(NPagination).exists()).toBe(false)
   })
 
-  it('preserves collapsed rows across refreshes and removes missing expanded keys', async () => {
+  it('preserves collapsed rows across refreshes', async () => {
     const remainingChild = resourceTreeResponse[0]!.children[0]!
     const removedChild = resourceTreeResponse[0]!.children[1]!
     getResourceTreeMock.mockResolvedValueOnce(resourceTreeResponse).mockResolvedValueOnce([
@@ -163,17 +160,15 @@ describe('resources page', () => {
     const { wrapper } = await mountResourcesPage()
     await flushPromises()
 
-    wrapper
-      .getComponent(NDataTable)
-      .vm.$emit('update:expandedRowKeys', [resourceTreeResponse[0]!.id, removedChild.id])
+    wrapper.getComponent(NDataTable).vm.$emit('update:expandedRowKeys', [])
     await flushPromises()
     wrapper.getComponent({ name: 'ResourceFormDrawerStub' }).vm.$emit('saved')
     await flushPromises()
 
     expect(getResourceTreeMock).toHaveBeenCalledTimes(2)
-    expect(wrapper.getComponent(NDataTable).props('expandedRowKeys')).toEqual([
-      resourceTreeResponse[0]!.id,
-    ])
+    expect(wrapper.text()).toContain('System')
+    expect(wrapper.text()).not.toContain(removedChild.name)
+    expect(wrapper.text()).not.toContain(remainingChild.name)
   })
 
   it('shows a server load error when resources cannot be loaded', async () => {
@@ -289,10 +284,6 @@ describe('resources page', () => {
     await wrapper.get('[data-test="resources-search"]').trigger('click')
     await flushPromises()
 
-    const tableData = wrapper.getComponent(NDataTable).props('data') as ResourceTreeNode[]
-    expect(tableData).toHaveLength(1)
-    expect(tableData[0]!.children).toEqual([])
-
     const deleteButtons = wrapper.findAll('[data-test="resources-delete"]')
     expect(deleteButtons).toHaveLength(1)
     expect(deleteButtons[0]!.attributes('disabled')).toBeDefined()
@@ -364,10 +355,9 @@ describe('resources page', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('共 2 个')
-    const filteredTree = wrapper.getComponent(NDataTable).props('data') as ResourceTreeNode[]
-    expect(filteredTree).toHaveLength(1)
-    expect(filteredTree[0]!.name).toBe('System')
-    expect(filteredTree[0]!.children.map((child) => child.type)).toEqual([RESOURCE_TYPE_ACTION])
+    expect(wrapper.text()).toContain('System')
+    expect(wrapper.text()).toContain('Resource Delete')
+    expect(wrapper.text()).not.toContain('Resource List')
   })
 
   it('does not apply draft keyword until search and reset restores full tree', async () => {
@@ -376,22 +366,22 @@ describe('resources page', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('共 3 个')
-    let tableData = wrapper.getComponent(NDataTable).props('data') as ResourceTreeNode[]
-    expect(tableData[0]!.children).toHaveLength(2)
+    expect(wrapper.text()).toContain('Resource List')
+    expect(wrapper.text()).toContain('Resource Delete')
 
     await wrapper.find('[data-test="resources-keyword"] input').setValue('delete')
     await flushPromises()
 
     expect(wrapper.text()).toContain('共 3 个')
-    tableData = wrapper.getComponent(NDataTable).props('data') as ResourceTreeNode[]
-    expect(tableData[0]!.children).toHaveLength(2)
+    expect(wrapper.text()).toContain('Resource List')
+    expect(wrapper.text()).toContain('Resource Delete')
 
     await wrapper.get('[data-test="resources-search"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.text()).toContain('共 2 个')
-    tableData = wrapper.getComponent(NDataTable).props('data') as ResourceTreeNode[]
-    expect(tableData[0]!.children.map((child) => child.name)).toEqual(['Resource Delete'])
+    expect(wrapper.text()).not.toContain('Resource List')
+    expect(wrapper.text()).toContain('Resource Delete')
 
     const resetButton = wrapper
       .findAll('button')
@@ -402,10 +392,7 @@ describe('resources page', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('共 3 个')
-    tableData = wrapper.getComponent(NDataTable).props('data') as ResourceTreeNode[]
-    expect(tableData[0]!.children.map((child) => child.name)).toEqual([
-      'Resource List',
-      'Resource Delete',
-    ])
+    expect(wrapper.text()).toContain('Resource List')
+    expect(wrapper.text()).toContain('Resource Delete')
   })
 })

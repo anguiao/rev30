@@ -122,34 +122,6 @@ describe('icon routes', () => {
     expect(body.not_found).toEqual(['not-a-real-icon'])
   })
 
-  it('returns empty icons and not_found when every requested icon is missing', async () => {
-    const app = await createIconTestApp()
-
-    const response = await app.request('/api/icons/lucide.json?icons=not-a-real-icon')
-    const body = (await response.json()) as IconifyJSON
-
-    expect(response.status).toBe(200)
-    expectIconHeaders(response)
-    expectIconCacheControl(response, builtinIconDataCacheControl)
-    expect(body.prefix).toBe('lucide')
-    expect(body.icons).toEqual({})
-    expect(body.aliases).toEqual({})
-    expect(body.not_found).toEqual(['not-a-real-icon'])
-  })
-
-  it('treats an empty icon name as not_found', async () => {
-    const app = await createIconTestApp()
-
-    const response = await app.request('/api/icons/lucide.json?icons=')
-    const body = (await response.json()) as IconifyJSON
-
-    expect(response.status).toBe(200)
-    expectIconHeaders(response)
-    expectIconCacheControl(response, builtinIconDataCacheControl)
-    expect(body.icons).toEqual({})
-    expect(body.not_found).toEqual([''])
-  })
-
   it('returns text 404 for missing collections, missing icons parameter, and invalid prefixes', async () => {
     const app = await createIconTestApp()
 

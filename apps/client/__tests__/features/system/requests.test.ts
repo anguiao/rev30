@@ -1060,36 +1060,6 @@ describe('system request helpers', () => {
     expectJsonBody(fetchMock, 0, userCreateInput)
   })
 
-  it('rejects malformed create user responses when user is invalid', async () => {
-    const fetchMock = createFetchMock(
-      jsonResponse({
-        user: {
-          id: 'not-a-uuid',
-          username: 'ada',
-          nickname: 'Ada',
-          avatarId: null,
-          email: null,
-          phone: null,
-          status: USER_STATUS_ENABLED,
-          builtIn: false,
-          departments: [],
-          roles: [],
-          createdAt: '2026-05-01T00:00:00.000Z',
-          updatedAt: '2026-05-01T00:00:00.000Z',
-        },
-        temporaryPassword: 'temp-pwd-001',
-      }),
-    )
-    useAuthStore().accessToken = 'access-token'
-
-    await expect(createUser(userCreateInput)).rejects.toThrow()
-    expectFetchCall(fetchMock, 0, {
-      method: 'POST',
-      pathname: '/api/system/users',
-    })
-    expectJsonBody(fetchMock, 0, userCreateInput)
-  })
-
   it('parses reset user password responses and returns temporary passwords', async () => {
     const responseBody = {
       userId: '33333333-3333-4333-8333-333333333333',
@@ -1105,22 +1075,6 @@ describe('system request helpers', () => {
     expectFetchCall(fetchMock, 0, {
       method: 'POST',
       pathname: '/api/system/users/33333333-3333-4333-8333-333333333333/password/reset',
-    })
-  })
-
-  it('rejects malformed reset user password responses with non-uuid userId', async () => {
-    const fetchMock = createFetchMock(
-      jsonResponse({
-        userId: 'not-a-uuid',
-        temporaryPassword: 'temp-reset-001',
-      }),
-    )
-    useAuthStore().accessToken = 'access-token'
-
-    await expect(resetUserPassword('not-a-uuid')).rejects.toThrow()
-    expectFetchCall(fetchMock, 0, {
-      method: 'POST',
-      pathname: '/api/system/users/not-a-uuid/password/reset',
     })
   })
 

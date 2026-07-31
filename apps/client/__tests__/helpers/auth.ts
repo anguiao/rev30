@@ -1,4 +1,3 @@
-import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { NConfigProvider, NDialogProvider, NMessageProvider, dateZhCN, zhCN } from 'naive-ui'
 import { defineComponent } from 'vue'
@@ -7,7 +6,7 @@ import type { AuthTokenResponse } from '@rev30/contracts'
 import { USER_STATUS_ENABLED } from '@rev30/contracts'
 import { canDirective } from '../../src/directives/can'
 import { useAuthStore } from '../../src/stores/auth'
-import { createTestPinia } from './pinia'
+import { createTestQueryHarness } from './colada'
 export { resetThemeDom, stubPreferredDark } from './dom'
 export { createTestPinia, disposeActiveTestPinia } from './pinia'
 
@@ -77,7 +76,7 @@ export async function mountAuthRoute(
   router: ReturnType<typeof createRouter>
   wrapper: ReturnType<typeof mount>
 }> {
-  const pinia = createTestPinia()
+  const { pinia, plugins } = createTestQueryHarness()
   const auth = useAuthStore(pinia)
 
   if (authSession !== undefined) {
@@ -117,7 +116,7 @@ export async function mountAuthRoute(
     }),
     {
       global: {
-        plugins: [pinia, PiniaColada, router],
+        plugins: [...plugins, router],
         directives: {
           can: canDirective,
         },

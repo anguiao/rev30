@@ -23,7 +23,7 @@ import {
   type RichTextQuickBarConfig,
 } from '../../src/vue/quick-bar'
 import RichTextQuickBar from '../../src/vue/quick-bar/RichTextQuickBar.vue'
-import { createTestEditor } from '../helpers/editor'
+import { appendTestElement, createTestEditor } from '../helpers/editor'
 
 const BubbleMenuStub = defineComponent({
   props: {
@@ -267,8 +267,7 @@ describe('RichTextQuickBar', () => {
     expect(quickBar.classList.contains('border-(--rich-text-theme-input-border-color)')).toBe(true)
     expect(quickBar.parentElement?.tabIndex).toBe(-1)
 
-    const toolbarTrigger = document.createElement('button')
-    document.body.appendChild(toolbarTrigger)
+    const toolbarTrigger = appendTestElement('button')
     toolbarTrigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
     toolbarTrigger.focus()
 
@@ -280,7 +279,6 @@ describe('RichTextQuickBar', () => {
     await vi.waitFor(() => {
       expect(document.querySelector('[data-test="rich-text-quick-bar"]')).not.toBeNull()
     })
-    toolbarTrigger.remove()
   })
 
   it('moves Tab focus from the editor into the Quick Bar', async () => {

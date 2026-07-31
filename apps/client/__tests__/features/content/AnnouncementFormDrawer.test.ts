@@ -1,4 +1,3 @@
-import { PiniaColada, useQueryCache } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -29,7 +28,7 @@ import {
   updateAnnouncement,
 } from '../../../src/features/content'
 import AnnouncementFormDrawer from '../../../src/features/content/AnnouncementFormDrawer.vue'
-import { createTestPinia } from '../../helpers/pinia'
+import { createTestQueryHarness } from '../../helpers/colada'
 
 vi.mock('@rev30/rich-text/vue/presets/compact', () => ({
   compactRichTextEditorPreset: {
@@ -172,23 +171,38 @@ const announcementResponse: Announcement = {
   updatedAt: '2026-05-20T00:00:00.000Z',
 }
 
-function mountDrawer(props = { show: true, announcementId: null as string | null }) {
-  const pinia = createTestPinia()
+const queryCaches = new WeakMap<
+  object,
+  ReturnType<ReturnType<typeof createTestQueryHarness>['getQueryCache']>
+>()
 
-  return mount(AnnouncementFormDrawer, {
+function mountDrawer(props = { show: true, announcementId: null as string | null }) {
+  const queryHarness = createTestQueryHarness()
+
+  const wrapper = mount(AnnouncementFormDrawer, {
     props,
     attachTo: document.body,
     global: {
-      plugins: [pinia, PiniaColada],
+      plugins: queryHarness.plugins,
       stubs: {
         teleport: true,
       },
     },
   })
+
+  queryCaches.set(wrapper, queryHarness.getQueryCache())
+
+  return wrapper
 }
 
 function getQueryCache(wrapper: ReturnType<typeof mount>) {
-  return wrapper.vm.$.appContext.app.runWithContext(() => useQueryCache())
+  const queryCache = queryCaches.get(wrapper)
+
+  if (!queryCache) {
+    throw new Error('Expected a query cache for the mounted announcement form drawer')
+  }
+
+  return queryCache
 }
 
 async function refetchAnnouncementForm(

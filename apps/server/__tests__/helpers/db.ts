@@ -29,7 +29,7 @@ async function createMigratedTestDb() {
   }
 }
 
-type TestDatabase = Awaited<ReturnType<typeof createMigratedTestDb>>['database']
+export type TestDatabase = Awaited<ReturnType<typeof createMigratedTestDb>>['database']
 
 const migratedTestDbPromise = createMigratedTestDb()
 

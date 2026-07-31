@@ -2,7 +2,7 @@ import type { Editor as CoreEditor } from '@tiptap/core'
 import type { Editor } from '@tiptap/vue-3'
 import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
 import { defineRichTextAction, defineRichTextActionItem } from '../../src/editor/action'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
@@ -15,7 +15,7 @@ import {
   type RichTextSlashMenuGroup,
 } from '../../src/vue/slash-menu'
 import RichTextSlashMenu from '../../src/vue/slash-menu/RichTextSlashMenu.vue'
-import { createTestEditor } from '../helpers/editor'
+import { appendTestElement, createTestEditor } from '../helpers/editor'
 
 const preset = defineRichTextPreset({
   key: 'slash-menu-test',
@@ -108,11 +108,9 @@ async function mountSlashMenu(
 describe('RichTextSlashMenu', () => {
   it('mounts the same command list for slash while the editor retains focus and ARIA ownership', async () => {
     const editor = createEditor()
-    const editorRoot = document.createElement('div')
+    const editorRoot = appendTestElement('div')
 
-    document.body.append(editorRoot)
     editorRoot.append(editor.view.dom)
-    onTestFinished(() => editorRoot.remove())
 
     await mountSlashMenu(editor, groups, editorRoot)
     editor.view.focus()

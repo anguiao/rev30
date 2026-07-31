@@ -16,7 +16,6 @@ import {
   attachments,
   attachmentUploadSessions,
   systemConfigOverrides,
-  systemUsers,
 } from '../../../src/db/schema'
 import {
   AttachmentContentUnauthorizedError,
@@ -36,6 +35,7 @@ import { createAttachmentAccessToken } from '../../../src/modules/attachments/ac
 import { readAuthConfig } from '../../../src/modules/auth/config'
 import { logger } from '../../../src/runtime/logger'
 import { createTestDb } from '../../helpers/db'
+import { createSystemUserFixture } from '../../helpers/system'
 
 const tempDirs: string[] = []
 const pngBytes = new Uint8Array([
@@ -101,19 +101,13 @@ async function createUser(
   database: Awaited<ReturnType<typeof createTestDb>>,
   status = USER_STATUS_ENABLED,
 ) {
-  const userId = randomUUID()
-  const now = new Date('2026-05-29T00:00:00.000Z')
-
-  await database.insert(systemUsers).values({
-    id: userId,
+  const user = await createSystemUserFixture(database, {
     username: `attachment-service-user-${randomUUID()}`,
     nickname: 'Attachment Service User',
     status,
-    createdAt: now,
-    updatedAt: now,
   })
 
-  return userId
+  return user.id
 }
 
 async function streamToBytes(stream: ReadableStream<Uint8Array>) {

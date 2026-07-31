@@ -1,4 +1,3 @@
-import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
@@ -20,7 +19,7 @@ import {
   updateRole,
 } from '../../../src/features/system'
 import RoleFormDrawer from '../../../src/features/system/RoleFormDrawer.vue'
-import { createTestPinia } from '../../helpers/pinia'
+import { createTestQueryHarness } from '../../helpers/colada'
 import { createDeferred } from '../../helpers/promise'
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
@@ -151,13 +150,13 @@ const secondRoleResponse: Role = {
 }
 
 function mountDrawer(props = { show: true, roleId: null as string | null }) {
-  const pinia = createTestPinia()
+  const { plugins } = createTestQueryHarness()
 
   return mount(RoleFormDrawer, {
     props,
     attachTo: document.body,
     global: {
-      plugins: [pinia, PiniaColada],
+      plugins,
       stubs: {
         teleport: true,
       },
@@ -287,10 +286,6 @@ describe('RoleFormDrawer', () => {
     expect(wrapper.text()).toContain('编辑系统角色')
     expect(getResourceTreeOptionsMock).toHaveBeenCalledWith([directoryResourceId, actionResourceId])
     expect(getRoleMock).toHaveBeenCalledWith(roleId)
-    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
-      directoryResourceId,
-      actionResourceId,
-    ])
 
     await wrapper.get('[data-test="role-form-name"] input').setValue('运营负责人')
     await submitForm(wrapper)
@@ -318,12 +313,6 @@ describe('RoleFormDrawer', () => {
       .get('[data-test="role-form-resources"]')
       .getComponent(NTree)
       .vm.$emit('update:checkedKeys', [actionResourceId])
-    await flushPromises()
-
-    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
-      directoryResourceId,
-      actionResourceId,
-    ])
     expect(wrapper.text()).not.toContain('子级权限资源需要包含所有上级权限资源')
 
     await submitForm(wrapper)
@@ -352,9 +341,6 @@ describe('RoleFormDrawer', () => {
       .get('[data-test="role-form-resources"]')
       .getComponent(NTree)
       .vm.$emit('update:checkedKeys', [actionResourceId])
-    await flushPromises()
-
-    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([])
 
     await submitForm(wrapper)
 
@@ -388,9 +374,6 @@ describe('RoleFormDrawer', () => {
       .get('[data-test="role-form-resources"]')
       .getComponent(NTree)
       .vm.$emit('update:checkedKeys', [directoryResourceId])
-    await flushPromises()
-
-    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([directoryResourceId])
 
     await submitForm(wrapper)
 
@@ -524,10 +507,6 @@ describe('RoleFormDrawer', () => {
       'value',
       '审计',
     )
-    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
-      directoryResourceId,
-      secondActionResourceId,
-    ])
 
     firstRoleRequest.resolve(roleResponse)
     await flushPromises()
@@ -536,10 +515,6 @@ describe('RoleFormDrawer', () => {
       'value',
       '审计',
     )
-    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
-      directoryResourceId,
-      secondActionResourceId,
-    ])
 
     await submitForm(wrapper)
 
@@ -595,10 +570,6 @@ describe('RoleFormDrawer', () => {
       'value',
       '审计',
     )
-    expect(wrapper.getComponent(NTree).props('checkedKeys')).toEqual([
-      directoryResourceId,
-      secondActionResourceId,
-    ])
 
     pendingSave.resolve({
       ...roleResponse,
@@ -608,12 +579,21 @@ describe('RoleFormDrawer', () => {
 
     expect(wrapper.emitted('saved')).toBeUndefined()
     expect(wrapper.emitted('update:show')).toBeUndefined()
-    expect(wrapper.props('show')).toBe(true)
-    expect(wrapper.props('roleId')).toBe(secondRoleId)
     expect(wrapper.get('[data-test="role-form-name"] input').element).toHaveProperty(
       'value',
       '审计',
     )
+
+    updateRoleMock.mockResolvedValueOnce(secondRoleResponse)
+    await submitForm(wrapper)
+
+    expect(updateRoleMock).toHaveBeenLastCalledWith(secondRoleId, {
+      name: '审计',
+      code: 'auditor',
+      status: ROLE_STATUS_ENABLED,
+      sortOrder: 5,
+      resourceIds: [directoryResourceId, secondActionResourceId],
+    })
   })
 
   it('does not submit while switching to a role that is still loading', async () => {

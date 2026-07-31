@@ -4,12 +4,12 @@ import Text from '@tiptap/extension-text'
 import { UndoRedo } from '@tiptap/extensions/undo-redo'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
-import { NInput, NPopover } from 'naive-ui'
+import { NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { linkFeature } from '../../../../src/features/link/shared'
 import LinkControl from '../../../../src/features/link/vue/LinkControl.vue'
-import { createTestEditor } from '../../../helpers/editor'
+import { appendTestElement, createTestEditor } from '../../../helpers/editor'
 
 function createEditor(content = '<p>维护通知</p>') {
   return createTestEditor({
@@ -28,7 +28,7 @@ function mountControl(editor: Editor, disabled = false) {
 }
 
 function isPopoverShown(wrapper: ReturnType<typeof mountControl>) {
-  return wrapper.getComponent(NPopover).props('show') === true
+  return wrapper.get('[data-test="rich-text-link"]').attributes('aria-expanded') === 'true'
 }
 
 function getUrlInput(wrapper: ReturnType<typeof mountControl>) {
@@ -36,8 +36,7 @@ function getUrlInput(wrapper: ReturnType<typeof mountControl>) {
 }
 
 async function setUrl(wrapper: ReturnType<typeof mountControl>, value: string) {
-  wrapper.getComponent(NInput).vm.$emit('update:value', value)
-  await flushPromises()
+  await getUrlInput(wrapper).setValue(value)
 }
 
 async function openPopover(wrapper: ReturnType<typeof mountControl>) {
@@ -61,7 +60,7 @@ describe('LinkControl', () => {
     expect(isPopoverShown(wrapper)).toBe(false)
 
     await openPopover(wrapper)
-    expect(wrapper.getComponent(NInput).props('value')).toBe('')
+    expect(getUrlInput(wrapper).element).toHaveProperty('value', '')
     expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(false)
 
     await setUrl(wrapper, 'example.com')
@@ -105,7 +104,7 @@ describe('LinkControl', () => {
     const wrapper = mountControl(editor)
 
     await openPopover(wrapper)
-    expect(wrapper.getComponent(NInput).props('value')).toBe('https://old.example')
+    expect(getUrlInput(wrapper).element).toHaveProperty('value', 'https://old.example')
     expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(true)
 
     await setUrl(wrapper, 'new.example')
@@ -136,7 +135,7 @@ describe('LinkControl', () => {
     const wrapper = mountControl(editor)
 
     await openPopover(wrapper)
-    expect(wrapper.getComponent(NInput).props('value')).toBe('')
+    expect(getUrlInput(wrapper).element).toHaveProperty('value', '')
     expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(true)
 
     await setUrl(wrapper, 'https://new.example')
@@ -176,7 +175,7 @@ describe('LinkControl', () => {
     const wrapper = mountControl(editor)
 
     await openPopover(wrapper)
-    expect(wrapper.getComponent(NInput).props('value')).toBe('')
+    expect(getUrlInput(wrapper).element).toHaveProperty('value', '')
     expect(wrapper.find('[data-test="rich-text-link-remove"]').exists()).toBe(false)
 
     await setUrl(wrapper, 'next.example')
@@ -189,7 +188,7 @@ describe('LinkControl', () => {
     expect(editor.getText()).toBe('普通文字')
 
     await openPopover(wrapper)
-    expect(wrapper.getComponent(NInput).props('value')).toBe('')
+    expect(getUrlInput(wrapper).element).toHaveProperty('value', '')
     await wrapper.get('[data-test="rich-text-link-apply"]').trigger('click')
     await flushPromises()
 
@@ -234,8 +233,7 @@ describe('LinkControl', () => {
     const editor = createEditor('<p><a href="https://example.com">链接文本</a>末尾</p>')
     editor.commands.setTextSelection(3)
     const wrapper = mountControl(editor)
-    const outsideButton = document.createElement('button')
-    document.body.append(outsideButton)
+    const outsideButton = appendTestElement('button')
 
     await openPopover(wrapper)
     await setUrl(wrapper, 'draft.example')
@@ -247,7 +245,6 @@ describe('LinkControl', () => {
     expect(document.activeElement).toBe(outsideButton)
     expect(editor.getHTML()).not.toContain('draft.example')
     expect(isPopoverShown(wrapper)).toBe(false)
-    outsideButton.remove()
   })
 
   it('keeps invalid drafts open', async () => {
@@ -258,7 +255,6 @@ describe('LinkControl', () => {
     await openPopover(wrapper)
     await setUrl(wrapper, 'javascript:alert(1)')
 
-    expect(wrapper.getComponent(NInput).props('status')).toBe('error')
     expect(wrapper.get('[data-test="rich-text-link-apply"]').attributes('disabled')).toBeDefined()
 
     await wrapper.get('form').trigger('submit')

@@ -1,5 +1,4 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { PiniaColada } from '@pinia/colada'
 import { ATTACHMENT_DISPOSITION_INLINE } from '@rev30/contracts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, nextTick, ref } from 'vue'
@@ -7,7 +6,7 @@ import {
   resolveSignedAttachmentUrl,
   useSignedAttachmentUrl,
 } from '../../../src/features/attachments'
-import { createTestPinia } from '../../helpers/pinia'
+import { createTestQueryHarness } from '../../helpers/colada'
 import { createDeferred } from '../../helpers/promise'
 
 vi.mock('../../../src/features/attachments/requests', () => ({
@@ -16,7 +15,6 @@ vi.mock('../../../src/features/attachments/requests', () => ({
 
 const resolveSignedAttachmentUrlMock = vi.mocked(resolveSignedAttachmentUrl)
 type ResolvedUrlResult = { expiresAt: string; url: string }
-let pinia: ReturnType<typeof createTestPinia>
 
 function resolveUrl(url: string, expiresAt: string): ResolvedUrlResult {
   return {
@@ -29,9 +27,11 @@ function mountUseSignedAttachmentUrl(
   setup: () => ReturnType<typeof useSignedAttachmentUrl>,
   template: string,
 ) {
+  const { plugins } = createTestQueryHarness()
+
   return mount(defineComponent({ setup, template }), {
     global: {
-      plugins: [pinia, PiniaColada],
+      plugins,
     },
   })
 }
@@ -43,7 +43,6 @@ async function flushAttachmentUrl() {
 }
 
 beforeEach(() => {
-  pinia = createTestPinia()
   resolveSignedAttachmentUrlMock.mockReset()
   resolveSignedAttachmentUrlMock.mockResolvedValue(
     resolveUrl('/api/attachments/1/content?token=token', '2026-05-29T00:05:00.000Z'),

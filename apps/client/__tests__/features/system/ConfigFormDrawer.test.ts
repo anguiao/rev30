@@ -1,4 +1,3 @@
-import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NRadioGroup } from 'naive-ui'
@@ -11,7 +10,7 @@ import {
 import { configValueTypeLabels, getConfig, updateConfig } from '../../../src/features/system'
 import { ApiRequestError } from '../../../src/utils/request'
 import ConfigFormDrawer from '../../../src/features/system/ConfigFormDrawer.vue'
-import { createTestPinia } from '../../helpers/pinia'
+import { createTestQueryHarness } from '../../helpers/colada'
 import { createDeferred } from '../../helpers/promise'
 
 vi.mock('../../../src/features/system', async (importOriginal) => ({
@@ -35,13 +34,13 @@ const configResponse: Config = {
 }
 
 function mountDrawer(props = { show: true, configKey }) {
-  const pinia = createTestPinia()
+  const { plugins } = createTestQueryHarness()
 
   return mount(ConfigFormDrawer, {
     props,
     attachTo: document.body,
     global: {
-      plugins: [pinia, PiniaColada],
+      plugins,
       stubs: {
         teleport: true,
       },

@@ -1,11 +1,10 @@
-import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NRadioGroup, NUpload, type UploadFileInfo } from 'naive-ui'
 import type { CustomIconItem, CustomIconUploadResponse } from '@rev30/contracts'
 import { uploadCustomIcons } from '../../../src/features/content/requests'
 import IconUploadDrawer from '../../../src/features/content/IconUploadDrawer.vue'
-import { createTestPinia } from '../../helpers/pinia'
+import { createTestQueryHarness } from '../../helpers/colada'
 import { createDeferred } from '../../helpers/promise'
 
 vi.mock('../../../src/features/content/requests', async (importOriginal) => ({
@@ -40,13 +39,13 @@ function createUploadResult(
 }
 
 function mountDrawer(props = { show: true, prefix: 'acme' as string | null }) {
-  const pinia = createTestPinia()
+  const { plugins } = createTestQueryHarness()
 
   return mount(IconUploadDrawer, {
     props,
     attachTo: document.body,
     global: {
-      plugins: [pinia, PiniaColada],
+      plugins,
       stubs: {
         teleport: true,
       },

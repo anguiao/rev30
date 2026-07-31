@@ -60,6 +60,7 @@ pnpm dev
 pnpm dev:server
 pnpm dev:client
 pnpm test
+pnpm coverage
 pnpm typecheck
 pnpm lint:check
 pnpm format:check
@@ -68,3 +69,5 @@ pnpm --filter @rev30/server db:bootstrap
 pnpm --filter @rev30/server db:generate
 pnpm --filter @rev30/server db:migrate
 ```
+
+`pnpm coverage` 会串行生成五个测试 package 各自的 V8 终端摘要和 HTML 报告；覆盖率用于诊断盲区，不设置全局门槛，也不包含在 `pnpm check` 中。单包可使用 `pnpm --filter <pkg> coverage`，定向测试使用 `pnpm --filter <pkg> test <package-relative-test-file>`。

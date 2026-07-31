@@ -171,12 +171,11 @@ describe('form helpers', () => {
     await flushPromises()
 
     expect(getFormItemFeedback(wrapper, '用户名')).toBe('请输入用户名')
-    wrapper.unmount()
   })
 
   it('sets a server field error on a real TanStack Form instance', () => {
     let serverError: unknown
-    const wrapper = mount(
+    mount(
       defineComponent({
         setup() {
           const form = useForm({
@@ -200,12 +199,11 @@ describe('form helpers', () => {
     )
 
     expect(serverError).toBe('username already exists')
-    wrapper.unmount()
   })
 
   it('clears a server field error when the edited field validates again', async () => {
     let serverErrorAfterChange: unknown = 'not-cleared'
-    const wrapper = mount(
+    mount(
       defineComponent({
         setup() {
           const form = useForm({
@@ -230,6 +228,5 @@ describe('form helpers', () => {
     )
 
     expect(serverErrorAfterChange).toBeUndefined()
-    wrapper.unmount()
   })
 })

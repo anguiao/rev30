@@ -5,12 +5,11 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ATTACHMENT_DISPOSITION_INLINE,
-  USER_STATUS_ENABLED,
   type AuthTokenResponse,
   type AttachmentListResponse,
 } from '@rev30/contracts'
 import { createApp } from '../../../src/app'
-import { authPasswordCredentials, systemUsers } from '../../../src/db/schema'
+import { authPasswordCredentials } from '../../../src/db/schema'
 import { hashPassword } from '../../../src/modules/auth/password'
 import {
   ATTACHMENT_MAX_SIZE_BYTES,
@@ -18,6 +17,7 @@ import {
 } from '../../../src/modules/attachments/policy'
 import { createSystemAccessFixture } from '../../helpers/auth'
 import { createTestDb } from '../../helpers/db'
+import { createSystemUserFixture } from '../../helpers/system'
 
 const tempDirs: string[] = []
 const pngBytes = new Uint8Array([
@@ -57,23 +57,12 @@ async function createAttachmentIntegrationFixture() {
 async function createPasswordAccount(database: TestDatabase) {
   const username = `attachment-token-user-${randomUUID()}`
 
-  const [user] = await database
-    .insert(systemUsers)
-    .values({
-      id: randomUUID(),
-      username,
-      nickname: 'Attachment Token User',
-      email: null,
-      phone: null,
-      status: USER_STATUS_ENABLED,
-      createdAt: new Date('2026-05-06T00:00:00.000Z'),
-      updatedAt: new Date('2026-05-06T00:00:00.000Z'),
-    })
-    .returning()
-
-  if (!user) {
-    throw new Error('Expected attachment token user')
-  }
+  const user = await createSystemUserFixture(database, {
+    username,
+    nickname: 'Attachment Token User',
+    email: null,
+    phone: null,
+  })
 
   await database.insert(authPasswordCredentials).values({
     userId: user.id,

@@ -1,4 +1,3 @@
-import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { AuthTokenResponse } from '@rev30/contracts'
 import { defineComponent, h } from 'vue'
@@ -8,7 +7,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AdminLayout from '../../../src/components/admin/AdminLayout.vue'
 import { logout } from '../../../src/features/auth'
 import { useAuthStore } from '../../../src/stores/auth'
-import { createTestPinia, session, stubPreferredDark } from '../../helpers/auth'
+import { session, stubPreferredDark } from '../../helpers/auth'
+import { createTestQueryHarness } from '../../helpers/colada'
 vi.mock('../../../src/features/auth', () => ({
   logout: vi.fn(),
 }))
@@ -160,7 +160,7 @@ function createMenuSession(): AuthTokenResponse {
 }
 
 async function mountLayout(options?: { initialPath?: string; authSession?: AuthTokenResponse }) {
-  const pinia = createTestPinia()
+  const { plugins } = createTestQueryHarness()
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -205,7 +205,7 @@ async function mountLayout(options?: { initialPath?: string; authSession?: AuthT
     }),
     {
       global: {
-        plugins: [pinia, PiniaColada, router],
+        plugins: [...plugins, router],
       },
     },
   )

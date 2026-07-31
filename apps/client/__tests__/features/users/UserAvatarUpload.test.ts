@@ -51,34 +51,7 @@ describe('UserAvatarUpload', () => {
     expect(failedWrapper.text()).not.toContain('A')
   })
 
-  it('emits uploaded avatar ids and upload errors', async () => {
-    const wrapper = mountUpload({ avatarId: null })
-    const file = new File(['png'], 'avatar.png', { type: 'image/png' })
-    const compressedFile = new File(['webp'], 'avatar.webp', { type: 'image/webp' })
-    const exposed = wrapper.vm as unknown as { uploadFile: (file: File) => Promise<void> }
-    compressImageFileMock.mockResolvedValueOnce(compressedFile)
-
-    await exposed.uploadFile(file)
-    await flushPromises()
-
-    expect(compressImageFileMock).toHaveBeenCalledWith(file, {
-      maxDimension: 512,
-      quality: 0.82,
-    })
-    expect(uploadAttachmentMock).toHaveBeenCalledWith(compressedFile, {
-      usage: 'avatar',
-      readPolicy: 'authenticated',
-    })
-    expect(wrapper.emitted('uploaded')).toEqual([['33333333-3333-4333-8333-333333333333']])
-
-    uploadAttachmentMock.mockRejectedValueOnce(new Error('upload failed'))
-    await expect(exposed.uploadFile(file)).rejects.toThrow('upload failed')
-    await flushPromises()
-
-    expect(wrapper.emitted('error')?.[0]?.[0]).toBeInstanceOf(Error)
-  })
-
-  it('supports repeated uploads through real customRequest flow', async () => {
+  it('compresses files and supports repeated uploads through the file input', async () => {
     const wrapper = mountUpload({ avatarId: null })
     const input = wrapper.get('input[type="file"]')
     const button = wrapper.get('button')
@@ -116,6 +89,14 @@ describe('UserAvatarUpload', () => {
     await firstSubmit
     await flushPromises()
 
+    expect(compressImageFileMock).toHaveBeenCalledWith(fileOne, {
+      maxDimension: 512,
+      quality: 0.82,
+    })
+    expect(uploadAttachmentMock).toHaveBeenCalledWith(fileOne, {
+      usage: 'avatar',
+      readPolicy: 'authenticated',
+    })
     expect(button.attributes('disabled')).toBeUndefined()
     expect(button.attributes('aria-busy')).toBe('false')
 

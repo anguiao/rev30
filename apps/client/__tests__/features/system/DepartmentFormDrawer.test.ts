@@ -1,4 +1,3 @@
-import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
@@ -16,7 +15,7 @@ import {
   updateDepartment,
 } from '../../../src/features/system'
 import DepartmentFormDrawer from '../../../src/features/system/DepartmentFormDrawer.vue'
-import { createTestPinia } from '../../helpers/pinia'
+import { createTestQueryHarness } from '../../helpers/colada'
 import { createDeferred } from '../../helpers/promise'
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
@@ -145,7 +144,7 @@ function mountDrawer(
     parentId?: string | null
   } = {},
 ) {
-  const pinia = createTestPinia()
+  const { plugins } = createTestQueryHarness()
 
   return mount(DepartmentFormDrawer, {
     props: {
@@ -155,7 +154,7 @@ function mountDrawer(
     },
     attachTo: document.body,
     global: {
-      plugins: [pinia, PiniaColada],
+      plugins,
       stubs: {
         teleport: true,
       },

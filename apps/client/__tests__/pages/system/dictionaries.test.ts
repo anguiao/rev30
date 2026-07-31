@@ -1,8 +1,7 @@
-import { useQueryCache } from '@pinia/colada'
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
-import { NDataTable, NPagination, NSelect } from 'naive-ui'
+import { NPagination, NSelect } from 'naive-ui'
 import {
   DICTIONARY_STATUS_DISABLED,
   DICTIONARY_STATUS_ENABLED,
@@ -110,12 +109,18 @@ describe('dictionaries page', () => {
     expect(wrapper.text()).toContain(baseDictionary.name)
     expect(wrapper.text()).toContain('3')
     expect(wrapper.text()).toContain(formatDisplayDateTime(baseDictionary.updatedAt))
-    expect(wrapper.getComponent(NDataTable).props('pagination')).toBe(false)
     expect(wrapper.findComponent(NPagination).exists()).toBe(true)
   })
 
   it('filters by keyword and status, and reset avoids duplicate requests', async () => {
-    listDictionariesMock.mockResolvedValue(dictionariesResponse)
+    listDictionariesMock
+      .mockResolvedValueOnce(dictionariesResponse)
+      .mockResolvedValueOnce({
+        ...dictionariesResponse,
+        list: [dictionariesResponse.list[1]!],
+        total: 1,
+      })
+      .mockResolvedValue(dictionariesResponse)
     const { wrapper } = await mountDictionariesPage()
     await flushPromises()
 
@@ -127,7 +132,6 @@ describe('dictionaries page', () => {
     await flushPromises()
     await wrapper.get('[data-test="dictionaries-search"]').trigger('click')
     await flushPromises()
-    const callCountAfterSearch = listDictionariesMock.mock.calls.length
 
     expect(listDictionariesMock).toHaveBeenLastCalledWith({
       page: 1,
@@ -135,19 +139,13 @@ describe('dictionaries page', () => {
       keyword: 'order',
       status: DICTIONARY_STATUS_DISABLED,
     })
-
-    const queryCache = useQueryCache()
-    const initialQueryEntry = queryCache.get(['system', 'dictionaries', 'list', 1, 20, '', null])
-    if (initialQueryEntry !== undefined) {
-      queryCache.remove(initialQueryEntry)
-    }
+    expect(wrapper.text()).toContain('用户等级')
+    expect(wrapper.text()).not.toContain('订单状态')
 
     await wrapper.get('[data-test="dictionaries-reset"]').trigger('click')
     await flushPromises()
-    await vi.waitFor(() => {
-      expect(listDictionariesMock.mock.calls.length).toBe(callCountAfterSearch + 1)
-    })
-    expect(listDictionariesMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
+    expect(wrapper.text()).toContain('订单状态')
+    expect(wrapper.text()).toContain('用户等级')
 
     expect(
       (wrapper.get('[data-test="dictionaries-keyword"] input').element as HTMLInputElement).value,

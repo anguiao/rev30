@@ -4,7 +4,6 @@ import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
-import { NButton, NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { highlightColorOptions } from '../../../../src/features/highlight/colors'
@@ -44,18 +43,6 @@ async function openPopover(wrapper: ReturnType<typeof mount>) {
   })
 }
 
-function getButtonComponent(wrapper: ReturnType<typeof mount>, dataTest: string) {
-  const button = wrapper.findAllComponents(NButton).find((component) => {
-    return component.attributes('data-test') === dataTest
-  })
-
-  if (!button) {
-    throw new Error(`Button not found: ${dataTest}`)
-  }
-
-  return button
-}
-
 describe('HighlightControl', () => {
   it('sets and clears a palette highlight color', async () => {
     const editor = createEditor()
@@ -63,7 +50,7 @@ describe('HighlightControl', () => {
     const wrapper = mountControl(editor)
 
     await openPopover(wrapper)
-    getButtonComponent(wrapper, 'rich-text-highlight-yellow').vm.$emit('click')
+    await wrapper.get('[data-test="rich-text-highlight-yellow"]').trigger('click')
     await flushPromises()
 
     expect(editor.getJSON()).toMatchObject({
@@ -81,24 +68,17 @@ describe('HighlightControl', () => {
     expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
       'true',
     )
-    expect(getButtonComponent(wrapper, 'rich-text-highlight-yellow').props('type')).toBe('primary')
-    expect(getButtonComponent(wrapper, 'rich-text-highlight-yellow').props('secondary')).toBe(true)
-    expect(getButtonComponent(wrapper, 'rich-text-highlight-yellow').props('quaternary')).toBe(
-      false,
+    expect(wrapper.get('[data-test="rich-text-highlight"]').attributes('aria-expanded')).toBe(
+      'false',
     )
-
-    expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
     await openPopover(wrapper)
-    getButtonComponent(wrapper, 'rich-text-highlight-clear').vm.$emit('click')
+    await wrapper.get('[data-test="rich-text-highlight-clear"]').trigger('click')
     await flushPromises()
 
     expect(JSON.stringify(editor.getJSON())).not.toContain('highlight')
     expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
       'false',
     )
-    expect(getButtonComponent(wrapper, 'rich-text-highlight-yellow').props('type')).toBe('default')
-    expect(getButtonComponent(wrapper, 'rich-text-highlight-yellow').props('secondary')).toBe(false)
-    expect(getButtonComponent(wrapper, 'rich-text-highlight-yellow').props('quaternary')).toBe(true)
   })
 
   it('updates the selected palette color when the editor selection changes', async () => {
@@ -125,7 +105,6 @@ describe('HighlightControl', () => {
     expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
       'false',
     )
-    expect(getButtonComponent(wrapper, 'rich-text-highlight-blue').props('type')).toBe('primary')
   })
 
   it('marks the current palette color as selected', async () => {
@@ -212,7 +191,7 @@ describe('HighlightControl', () => {
     const wrapper = mountControl(editor)
 
     await openPopover(wrapper)
-    getButtonComponent(wrapper, 'rich-text-highlight-yellow').vm.$emit('click')
+    await wrapper.get('[data-test="rich-text-highlight-yellow"]').trigger('click')
     await flushPromises()
 
     expect(editor.state.selection).toMatchObject({ from: 2, to: 2 })
@@ -226,7 +205,7 @@ describe('HighlightControl', () => {
     )
 
     await openPopover(wrapper)
-    getButtonComponent(wrapper, 'rich-text-highlight-clear').vm.$emit('click')
+    await wrapper.get('[data-test="rich-text-highlight-clear"]').trigger('click')
     await flushPromises()
 
     expect(editor.state.storedMarks?.some(({ type }) => type.name === 'highlight')).toBe(false)
@@ -251,7 +230,9 @@ describe('HighlightControl', () => {
     await flushPromises()
 
     expect(wrapper.emitted('close')).toBeUndefined()
-    expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
+    expect(wrapper.get('[data-test="rich-text-highlight"]').attributes('aria-expanded')).toBe(
+      'false',
+    )
     expect(editor.state.selection).toMatchObject({ from: 1, to: 3 })
     expect(document.activeElement).toBe(wrapper.get('[data-test="rich-text-highlight"]').element)
   })

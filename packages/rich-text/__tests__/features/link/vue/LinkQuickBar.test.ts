@@ -2,7 +2,6 @@ import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { flushPromises, mount } from '@vue/test-utils'
-import { NInput, NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { linkFeature } from '../../../../src/features/link/shared'
@@ -51,15 +50,15 @@ describe('LinkQuickBar', () => {
     await flushPromises()
 
     const input = wrapper.get('[data-test="rich-text-link-url"] input')
-    expect(wrapper.getComponent(NInput).props('value')).toBe('https://example.com')
+    expect(input.element).toHaveProperty('value', 'https://example.com')
     expect(document.activeElement).toBe(input.element)
 
-    wrapper.getComponent(NInput).vm.$emit('update:value', 'draft.example')
+    await input.setValue('draft.example')
     await input.trigger('keydown', { key: 'Escape' })
     await flushPromises()
 
     expect(editor.getHTML()).toContain('href="https://example.com"')
-    expect(wrapper.getComponent(NPopover).props('show')).toBe(false)
+    expect(edit.attributes('aria-expanded')).toBe('false')
     expect(document.activeElement).toBe(editElement)
   })
 

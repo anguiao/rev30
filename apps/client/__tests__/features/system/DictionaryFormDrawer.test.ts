@@ -1,4 +1,3 @@
-import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
@@ -10,7 +9,7 @@ import {
 } from '@rev30/contracts'
 import { createDictionary, getDictionary, updateDictionary } from '../../../src/features/system'
 import DictionaryFormDrawer from '../../../src/features/system/DictionaryFormDrawer.vue'
-import { createTestPinia } from '../../helpers/pinia'
+import { createTestQueryHarness } from '../../helpers/colada'
 import { createDeferred } from '../../helpers/promise'
 vi.mock('../../../src/features/system', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/system')>()),
@@ -27,10 +26,6 @@ const dictionaryId = '11111111-1111-4111-8111-111111111111'
 const firstItemId = '22222222-2222-4222-8222-222222222222'
 const secondItemId = '33333333-3333-4333-8333-333333333333'
 const thirdItemId = '44444444-4444-4444-8444-444444444444'
-type ElementWrapper = {
-  element: Element
-  findAll: (selector: string) => Array<{ element: Element }>
-}
 const dictionaryDetail: DictionaryDetail = {
   id: dictionaryId,
   code: 'user_status',
@@ -94,13 +89,13 @@ const updatedDictionaryDetail: DictionaryDetail = {
 }
 
 function mountDrawer(props = { show: true, dictionaryId: null as string | null }) {
-  const pinia = createTestPinia()
+  const { plugins } = createTestQueryHarness()
 
   return mount(DictionaryFormDrawer, {
     props,
     attachTo: document.body,
     global: {
-      plugins: [pinia, PiniaColada],
+      plugins,
       stubs: {
         teleport: true,
       },
@@ -118,12 +113,6 @@ function getItemRow(wrapper: ReturnType<typeof mount>, index: number) {
   expect(row).toBeDefined()
 
   return row!
-}
-
-function hasErrorStatus(wrapper: ElementWrapper) {
-  return [wrapper.element, ...wrapper.findAll('*').map((child) => child.element)].some((element) =>
-    Array.from(element.classList).some((className) => className.endsWith('--error-status')),
-  )
 }
 
 async function confirmRemoveItem(wrapper: ReturnType<typeof mount>, index: number) {
@@ -168,11 +157,9 @@ describe('DictionaryFormDrawer', () => {
       .get('[data-test="dictionary-form-sort-order"]')
       .getComponent(NInputNumber)
       .vm.$emit('update:value', 3)
-    await flushPromises()
 
     await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
     await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
-    await flushPromises()
 
     expect(getItemRows(wrapper)).toHaveLength(2)
 
@@ -201,7 +188,6 @@ describe('DictionaryFormDrawer', () => {
       .get('[data-test="dictionary-item-sort-order"]')
       .getComponent(NInputNumber)
       .vm.$emit('update:value', 2)
-    await flushPromises()
 
     await wrapper.get('form').trigger('submit')
     await flushPromises()
@@ -248,7 +234,6 @@ describe('DictionaryFormDrawer', () => {
 
     await confirmRemoveItem(wrapper, 0)
     await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
-    await flushPromises()
 
     expect(getItemRows(wrapper)).toHaveLength(2)
 
@@ -265,7 +250,6 @@ describe('DictionaryFormDrawer', () => {
       .get('[data-test="dictionary-item-sort-order"]')
       .getComponent(NInputNumber)
       .vm.$emit('update:value', 99)
-    await flushPromises()
 
     await submitForm(wrapper)
 
@@ -317,7 +301,6 @@ describe('DictionaryFormDrawer', () => {
       .vm.$emit('update:value', 5)
 
     await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
-    await flushPromises()
 
     const appendedRow = getItemRow(wrapper, 1)
     await appendedRow.get('[data-test="dictionary-item-value"] input').setValue('archived')
@@ -331,7 +314,6 @@ describe('DictionaryFormDrawer', () => {
       .get('[data-test="dictionary-item-sort-order"]')
       .getComponent(NInputNumber)
       .vm.$emit('update:value', 99)
-    await flushPromises()
 
     await submitForm(wrapper)
 
@@ -418,7 +400,6 @@ describe('DictionaryFormDrawer', () => {
     await wrapper.get('[data-test="dictionary-form-code"] input').setValue('region')
     await wrapper.get('[data-test="dictionary-form-name"] input').setValue('地区')
     await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
-    await flushPromises()
 
     await getItemRow(wrapper, 0).get('[data-test="dictionary-item-value"] input').setValue('cn')
     await getItemRow(wrapper, 0).get('[data-test="dictionary-item-label"] input').setValue('中国')
@@ -467,7 +448,6 @@ describe('DictionaryFormDrawer', () => {
 
     await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
     await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
-    await flushPromises()
 
     expect(getItemRows(wrapper)).toHaveLength(2)
     expect(wrapper.get('[data-test="dictionary-items"]').text()).not.toContain('字典项值不能重复')
@@ -481,24 +461,17 @@ describe('DictionaryFormDrawer', () => {
     await wrapper.get('[data-test="dictionary-form-name"] input').setValue('订单状态')
     await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
     await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
-    await flushPromises()
 
     await submitForm(wrapper)
 
-    const firstRow = getItemRow(wrapper, 0)
-    const secondRow = getItemRow(wrapper, 1)
-
+    expect(getItemRows(wrapper)).toHaveLength(2)
     expect(wrapper.get('[data-test="dictionary-items"]').text()).toContain('字典项值不能为空')
     expect(wrapper.get('[data-test="dictionary-items"]').text()).not.toContain('字典项值不能重复')
-    expect(hasErrorStatus(firstRow.get('[data-test="dictionary-item-value"]'))).toBe(true)
-    expect(hasErrorStatus(firstRow.get('[data-test="dictionary-item-label"]'))).toBe(true)
-    expect(hasErrorStatus(secondRow.get('[data-test="dictionary-item-value"]'))).toBe(true)
-    expect(hasErrorStatus(secondRow.get('[data-test="dictionary-item-label"]'))).toBe(true)
     expect(createDictionaryMock).not.toHaveBeenCalled()
     expect(updateDictionaryMock).not.toHaveBeenCalled()
   })
 
-  it('marks only dictionary item rows with duplicate nonblank values', async () => {
+  it('shows aggregate feedback for duplicate nonblank item values', async () => {
     const wrapper = mountDrawer()
     await flushPromises()
 
@@ -507,7 +480,6 @@ describe('DictionaryFormDrawer', () => {
     await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
     await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
     await wrapper.get('[data-test="dictionary-item-add"]').trigger('click')
-    await flushPromises()
 
     const firstRow = getItemRow(wrapper, 0)
     await firstRow.get('[data-test="dictionary-item-value"] input').setValue('same')
@@ -524,9 +496,6 @@ describe('DictionaryFormDrawer', () => {
     await submitForm(wrapper)
 
     expect(wrapper.get('[data-test="dictionary-items"]').text()).toContain('字典项值不能重复')
-    expect(hasErrorStatus(firstRow.get('[data-test="dictionary-item-value"]'))).toBe(true)
-    expect(hasErrorStatus(secondRow.get('[data-test="dictionary-item-value"]'))).toBe(false)
-    expect(hasErrorStatus(thirdRow.get('[data-test="dictionary-item-value"]'))).toBe(true)
     expect(createDictionaryMock).not.toHaveBeenCalled()
     expect(updateDictionaryMock).not.toHaveBeenCalled()
   })

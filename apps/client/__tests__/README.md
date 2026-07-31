@@ -9,8 +9,19 @@
 - `vitest.config.ts`：请求、路由守卫、auth store 和不依赖 DOM 的纯工具测试归入 `node` project，其余测试归入 `dom` project；两个 project 都继承 Vite 配置，测试文件不再单独声明 `@vitest-environment`。
 - `setup.node.ts`、`setup.ts`：分别清理 Node 测试 Pinia，以及 happy-dom 测试 Pinia、主题 DOM、clipboard 和临时 body 内容；全局 stub 由 Vitest 配置统一还原。
 - `helpers/fetch.ts`：统一构造 fetch mock、JSON/空响应和 URL/body 断言，避免在请求测试里重复手写字符串匹配。
+- `helpers/colada.ts`：显式组装当前测试所需的 Pinia Colada 与 query cache；页面和 Drawer 不读取 Vue app context 私有状态。
 - `helpers/promise.ts`：统一构造可控 Promise，只用于异步竞态和 stale response 场景。
 - `helpers/pinia.ts`、`helpers/dom.ts`：集中管理测试 Pinia、主题 DOM 和 `matchMedia` 夹具；页面测试优先复用这些 helper。
+
+## 运行方式
+
+```bash
+pnpm --filter @rev30/client test
+pnpm --filter @rev30/client test __tests__/pages/system/users.test.ts
+pnpm --filter @rev30/client coverage
+```
+
+覆盖率用于发现未加载入口和分支盲区，不设置百分比门槛，也不属于 `pnpm check`。HTML 报告生成在 `apps/client/coverage/`。
 
 ## DOM 定位约定
 

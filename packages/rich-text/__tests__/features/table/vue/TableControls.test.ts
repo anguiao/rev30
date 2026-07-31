@@ -11,7 +11,7 @@ import { tableFeature } from '../../../../src/features/table/shared'
 import TableToolbarSizePicker from '../../../../src/features/table/vue/TableToolbarSizePicker.vue'
 import TableToolbarControl from '../../../../src/features/table/vue/TableToolbarControl.vue'
 import { runRichTextAction } from '../../../../src/editor/action'
-import { createTestEditor } from '../../../helpers/editor'
+import { appendTestElement, createTestEditor } from '../../../helpers/editor'
 
 function createEditor(content: string | object = '<p>正文</p>') {
   return createTestEditor({
@@ -173,8 +173,7 @@ describe('table size picker and toolbar control', () => {
       props: { editor: markRaw(editor) },
     })
     const trigger = wrapper.get('[data-test="rich-text-table"]')
-    const outside = document.createElement('button')
-    document.body.appendChild(outside)
+    const outside = appendTestElement('button')
 
     await trigger.trigger('keydown', { key: 'ArrowDown' })
     await flushPromises()
@@ -192,8 +191,6 @@ describe('table size picker and toolbar control', () => {
 
     expect(tab.defaultPrevented).toBe(false)
     expect(document.activeElement).toBe(outside)
-
-    outside.remove()
   })
 
   it('uses the dropdown keyboard navigation and preserves native Tab focus', async () => {
@@ -205,8 +202,7 @@ describe('table size picker and toolbar control', () => {
       props: { editor: markRaw(editor) },
     })
     const trigger = wrapper.get<HTMLElement>('[data-test="rich-text-table"]')
-    const outside = document.createElement('button')
-    document.body.appendChild(outside)
+    const outside = appendTestElement('button')
 
     expect(trigger.attributes('aria-haspopup')).toBe('menu')
     trigger.element.focus()
@@ -280,7 +276,5 @@ describe('table size picker and toolbar control', () => {
 
     expect(tab.defaultPrevented).toBe(false)
     expect(document.activeElement).toBe(outside)
-
-    outside.remove()
   })
 })

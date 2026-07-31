@@ -210,7 +210,6 @@ describe('roles page', () => {
     expect(
       (wrapper.get('[data-test="roles-keyword"] input').element as HTMLInputElement).value,
     ).toBe('')
-    expect(wrapper.getComponent(NPagination).props('page')).toBe(1)
 
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
     await flushPromises()

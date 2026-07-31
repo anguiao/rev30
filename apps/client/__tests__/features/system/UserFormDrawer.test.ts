@@ -1,4 +1,3 @@
-import { PiniaColada, useQueryCache } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
@@ -23,7 +22,7 @@ import {
   updateUser,
 } from '../../../src/features/system'
 import UserFormDrawer from '../../../src/features/system/UserFormDrawer.vue'
-import { createTestPinia } from '../../helpers/pinia'
+import { createTestQueryHarness } from '../../helpers/colada'
 import { createDeferred } from '../../helpers/promise'
 
 vi.mock('../../../src/features/system', async (importOriginal) => ({
@@ -144,26 +143,41 @@ const updatedUserResponse: User = {
   updatedAt: '2026-05-20T00:00:00.000Z',
 }
 
-function mountDrawer(props?: { show?: boolean; userId?: string | null }) {
-  const pinia = createTestPinia()
+const queryCaches = new WeakMap<
+  object,
+  ReturnType<ReturnType<typeof createTestQueryHarness>['getQueryCache']>
+>()
 
-  return mount(UserFormDrawer, {
+function mountDrawer(props?: { show?: boolean; userId?: string | null }) {
+  const queryHarness = createTestQueryHarness()
+
+  const wrapper = mount(UserFormDrawer, {
     props: {
       show: props?.show ?? true,
       userId: props === undefined || !('userId' in props) ? userId : props.userId,
     },
     attachTo: document.body,
     global: {
-      plugins: [pinia, PiniaColada],
+      plugins: queryHarness.plugins,
       stubs: {
         teleport: true,
       },
     },
   })
+
+  queryCaches.set(wrapper, queryHarness.getQueryCache())
+
+  return wrapper
 }
 
 function getQueryCache(wrapper: ReturnType<typeof mount>) {
-  return wrapper.vm.$.appContext.app.runWithContext(() => useQueryCache())
+  const queryCache = queryCaches.get(wrapper)
+
+  if (!queryCache) {
+    throw new Error('Expected a query cache for the mounted user form drawer')
+  }
+
+  return queryCache
 }
 
 async function refetchUserForm(wrapper: ReturnType<typeof mount>, currentUserId: string | null) {

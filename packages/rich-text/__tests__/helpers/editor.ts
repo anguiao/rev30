@@ -3,6 +3,15 @@ import { onTestFinished } from 'vitest'
 
 type TestEditorOptions = NonNullable<ConstructorParameters<typeof Editor>[0]>
 
+export function appendTestElement<K extends keyof HTMLElementTagNameMap>(tagName: K) {
+  const element = document.createElement(tagName)
+  document.body.appendChild(element)
+
+  onTestFinished(() => element.remove())
+
+  return element
+}
+
 export function createTestEditor(options: TestEditorOptions) {
   const element = document.createElement('div')
   document.body.appendChild(element)

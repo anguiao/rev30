@@ -275,12 +275,13 @@ describe('auth routes', () => {
 
   it('delegates profile updates for the authenticated user', async () => {
     const app = createTestApp()
+    const avatarId = '44444444-4444-4444-8444-444444444444'
 
     const profileResponse = await app.request('/api/auth/me/profile', {
       method: 'PATCH',
       body: JSON.stringify({
         nickname: 'Updated Nickname',
-        avatarId: null,
+        avatarId,
         email: 'updated@example.com',
         phone: null,
       }),
@@ -290,32 +291,8 @@ describe('auth routes', () => {
     expect(profileResponse.status).toBe(200)
     expect(mocks.service.updateProfile).toHaveBeenCalledWith(authUser.id, {
       nickname: 'Updated Nickname',
-      avatarId: null,
-      email: 'updated@example.com',
-      phone: null,
-    })
-  })
-
-  it('delegates profile avatar updates', async () => {
-    const app = createTestApp()
-    const avatarId = '44444444-4444-4444-8444-444444444444'
-
-    const response = await app.request('/api/auth/me/profile', {
-      method: 'PATCH',
-      body: JSON.stringify({
-        nickname: 'Ada Avatar',
-        avatarId,
-        email: null,
-        phone: null,
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(response.status).toBe(200)
-    expect(mocks.service.updateProfile).toHaveBeenCalledWith(authUser.id, {
-      nickname: 'Ada Avatar',
       avatarId,
-      email: null,
+      email: 'updated@example.com',
       phone: null,
     })
   })

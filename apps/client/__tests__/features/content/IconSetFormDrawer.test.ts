@@ -1,4 +1,3 @@
-import { PiniaColada } from '@pinia/colada'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CustomIconSet } from '@rev30/contracts'
@@ -9,7 +8,7 @@ import {
 } from '../../../src/features/content/requests'
 import IconSetFormDrawer from '../../../src/features/content/IconSetFormDrawer.vue'
 import { ApiRequestError } from '../../../src/utils/request'
-import { createTestPinia } from '../../helpers/pinia'
+import { createTestQueryHarness } from '../../helpers/colada'
 import { createDeferred } from '../../helpers/promise'
 
 vi.mock('../../../src/features/content/requests', async (importOriginal) => ({
@@ -42,13 +41,13 @@ const novaIconSet: CustomIconSet = {
 }
 
 function mountDrawer(props = { show: true, prefix: null as string | null }) {
-  const pinia = createTestPinia()
+  const { plugins } = createTestQueryHarness()
 
   return mount(IconSetFormDrawer, {
     props,
     attachTo: document.body,
     global: {
-      plugins: [pinia, PiniaColada],
+      plugins,
       stubs: {
         teleport: true,
       },
@@ -310,13 +309,19 @@ describe('IconSetFormDrawer', () => {
     pendingUpdate.resolve({ ...acmeIconSet, name: 'Acme Updated' })
     await flushPromises()
 
-    expect(wrapper.props('show')).toBe(true)
-    expect(wrapper.props('prefix')).toBe(novaIconSet.prefix)
     expect(wrapper.get('[data-test="icon-set-form-name"] input').element).toHaveProperty(
       'value',
       novaIconSet.name,
     )
     expect(wrapper.emitted('saved')).toBeUndefined()
     expect(wrapper.emitted('update:show')).toBeUndefined()
+
+    updateCustomIconSetMock.mockResolvedValueOnce(novaIconSet)
+    await submitForm(wrapper)
+
+    expect(updateCustomIconSetMock).toHaveBeenLastCalledWith(novaIconSet.prefix, {
+      name: novaIconSet.name,
+      description: null,
+    })
   })
 })

@@ -5,10 +5,8 @@ import { Hono } from 'hono'
 import {
   BUILT_IN_ADMIN_ROLE_CODE,
   ROLE_STATUS_DISABLED,
-  ROLE_STATUS_ENABLED,
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
-  type RoleStatus,
   type User,
   type UserCreateResponse,
   type UserListResponse,
@@ -20,7 +18,6 @@ import {
   attachments,
   authPasswordCredentials,
   authRefreshTokens,
-  systemDepartments,
   systemRoleResources,
   systemRoles,
   systemResources,
@@ -31,6 +28,10 @@ import {
 import { hashPassword, verifyPassword } from '../../../../src/modules/auth/password'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { createTestDb } from '../../../helpers/db'
+import {
+  createSystemDepartmentFixture as createDepartment,
+  createSystemRoleFixture as createRole,
+} from '../../../helpers/system'
 import { createUserRoutes } from '../../../../src/modules/system/users/routes'
 import { expectJsonResponse, jsonRequest, responseJson } from '../../../helpers/http'
 
@@ -97,63 +98,6 @@ async function createUser(
     response,
     temporaryPassword: responseBody.temporaryPassword,
   }
-}
-
-async function createDepartment(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  input: { name: string; code: string; sortOrder?: number; deletedAt?: Date | null },
-) {
-  const now = new Date()
-  const [department] = await database
-    .insert(systemDepartments)
-    .values({
-      id: randomUUID(),
-      name: input.name,
-      code: input.code,
-      sortOrder: input.sortOrder ?? 0,
-      deletedAt: input.deletedAt ?? null,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning()
-
-  if (!department) {
-    throw new Error('Expected department')
-  }
-
-  return department
-}
-
-async function createRole(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  input: {
-    name: string
-    code: string
-    status?: RoleStatus
-    sortOrder?: number
-    deletedAt?: Date | null
-  },
-) {
-  const now = new Date()
-  const [role] = await database
-    .insert(systemRoles)
-    .values({
-      id: randomUUID(),
-      name: input.name,
-      code: input.code,
-      status: input.status ?? ROLE_STATUS_ENABLED,
-      sortOrder: input.sortOrder ?? 0,
-      deletedAt: input.deletedAt ?? null,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning()
-
-  if (!role) {
-    throw new Error('Expected role')
-  }
-
-  return role
 }
 
 async function assignResourcesToRole(

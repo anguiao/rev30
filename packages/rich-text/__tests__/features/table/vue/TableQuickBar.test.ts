@@ -12,7 +12,7 @@ import { tableFeature } from '../../../../src/features/table/shared'
 import { tableQuickBar } from '../../../../src/features/table/vue'
 import { defineRichTextQuickBar } from '../../../../src/vue/quick-bar'
 import RichTextQuickBar from '../../../../src/vue/quick-bar/RichTextQuickBar.vue'
-import { createTestEditor } from '../../../helpers/editor'
+import { appendTestElement, createTestEditor } from '../../../helpers/editor'
 
 function createEditor() {
   return createTestEditor({
@@ -126,8 +126,7 @@ describe('TableQuickBar', () => {
     })
     const rowTrigger = wrapper.get<HTMLElement>('[data-test="rich-text-quick-bar-table-rows"]')
     const dropdown = wrapper.findAllComponents(NDropdown)[0]!
-    const outside = document.createElement('button')
-    document.body.appendChild(outside)
+    const outside = appendTestElement('button')
 
     rowTrigger.element.focus()
     await rowTrigger.trigger('click')
@@ -144,7 +143,5 @@ describe('TableQuickBar', () => {
     await vi.waitFor(() => expect(dropdown.props('show')).toBe(false))
     expect(tab.defaultPrevented).toBe(false)
     expect(document.activeElement).toBe(outside)
-
-    outside.remove()
   })
 })

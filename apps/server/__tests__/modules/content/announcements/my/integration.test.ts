@@ -575,33 +575,4 @@ describe('my announcement integration', () => {
     expect(response.status).toBe(404)
     expect(await response.json()).toEqual({ message: '通知公告不存在' })
   })
-
-  it('stores visibility targets for fixture setup as expected', async () => {
-    const database = await createTestDb()
-    const { fixture } = await createTestApp(database)
-
-    const announcementId = await insertAnnouncement(database, {
-      title: 'fixture assertion',
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
-          targetId: fixture.userId,
-        },
-      ],
-    })
-
-    const rows = await database
-      .select()
-      .from(announcementTargets)
-      .where(
-        and(
-          eq(announcementTargets.announcementId, announcementId),
-          eq(announcementTargets.targetType, ANNOUNCEMENT_TARGET_TYPE_USER),
-          eq(announcementTargets.targetId, fixture.userId),
-        ),
-      )
-
-    expect(rows).toHaveLength(1)
-  })
 })

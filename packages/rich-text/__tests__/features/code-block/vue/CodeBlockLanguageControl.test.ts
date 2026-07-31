@@ -2,7 +2,7 @@ import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { flushPromises, mount } from '@vue/test-utils'
-import { NButton, NDropdown } from 'naive-ui'
+import { NDropdown } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { codeBlockEditorFeature } from '../../../../src/features/code-block/editor'
@@ -25,11 +25,6 @@ describe('CodeBlockLanguageControl', () => {
       },
     })
 
-    expect(wrapper.getComponent(NButton).props()).toMatchObject({
-      size: 'small',
-      text: false,
-      quaternary: true,
-    })
     expect(wrapper.get('[data-test="rich-text-code-block-language"]').text()).toContain('纯文本')
 
     wrapper.getComponent(NDropdown).vm.$emit('update:show', true)
@@ -39,7 +34,7 @@ describe('CodeBlockLanguageControl', () => {
     await trigger.trigger('keydown', { key: 'Escape' })
     await flushPromises()
 
-    expect(wrapper.getComponent(NDropdown).props('show')).toBe(false)
+    expect(trigger.attributes('aria-expanded')).toBe('false')
     expect(editor.state.selection).toMatchObject({ from: 1, to: 1 })
     expect(document.activeElement).toBe(trigger.element)
   })

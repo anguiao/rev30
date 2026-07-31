@@ -1,8 +1,7 @@
-import { useQueryCache } from '@pinia/colada'
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
-import { NDataTable, NPagination, NSelect } from 'naive-ui'
+import { NPagination, NSelect } from 'naive-ui'
 import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
   ANNOUNCEMENT_STATUS_DRAFT,
@@ -130,6 +129,12 @@ const announcementsResponse: AnnouncementListResponse = {
   pageSize: 20,
 }
 
+const filteredAnnouncementsResponse: AnnouncementListResponse = {
+  ...announcementsResponse,
+  list: [draftAnnouncement],
+  total: 1,
+}
+
 async function mountAnnouncementsPage(nextSession: AuthTokenResponse = authSession) {
   return mountAuthRoute(
     '/content/announcements',
@@ -163,12 +168,15 @@ describe('announcements page', () => {
     expect(wrapper.text()).toContain('2/2')
     expect(wrapper.text()).toContain(formatDisplayDateTime(publishedAnnouncement.publishedAt!))
     expect(wrapper.text()).toContain(formatDisplayDateTime(archivedAnnouncement.updatedAt))
-    expect(wrapper.getComponent(NDataTable).props('pagination')).toBe(false)
     expect(wrapper.findComponent(NPagination).exists()).toBe(true)
   })
 
   it('searches with trimmed keyword and selected filters, and reset returns default query', async () => {
-    listAnnouncementsMock.mockResolvedValue(announcementsResponse)
+    listAnnouncementsMock
+      .mockResolvedValueOnce(announcementsResponse)
+      .mockResolvedValueOnce(filteredAnnouncementsResponse)
+      .mockResolvedValueOnce({ ...filteredAnnouncementsResponse, page: 2 })
+      .mockResolvedValue(announcementsResponse)
     const { wrapper } = await mountAnnouncementsPage()
     await flushPromises()
 
@@ -197,6 +205,8 @@ describe('announcements page', () => {
       status: ANNOUNCEMENT_STATUS_DRAFT,
       pinned: true,
     })
+    expect(wrapper.text()).toContain(draftAnnouncement.title)
+    expect(wrapper.text()).not.toContain(publishedAnnouncement.title)
 
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
     await flushPromises()
@@ -210,42 +220,18 @@ describe('announcements page', () => {
       pinned: true,
     })
 
-    const queryCache = useQueryCache()
-    const initialQueryEntry = queryCache.get([
-      'content',
-      'announcements',
-      'list',
-      1,
-      20,
-      '',
-      'all',
-      'all',
-      'all',
-    ])
-    if (initialQueryEntry !== undefined) {
-      queryCache.remove(initialQueryEntry)
-    }
-
-    const callCountBeforeReset = listAnnouncementsMock.mock.calls.length
     await wrapper.get('[data-test="announcements-reset"]').trigger('click')
     await flushPromises()
-    await vi.waitFor(() => {
-      expect(listAnnouncementsMock.mock.calls.length).toBe(callCountBeforeReset + 1)
-    })
-    expect(listAnnouncementsMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
 
     expect(
       (wrapper.get('[data-test="announcements-keyword"] input').element as HTMLInputElement).value,
     ).toBe('')
-    expect(
-      wrapper.get('[data-test="announcements-type"]').getComponent(NSelect).props('value'),
-    ).toBe('all')
-    expect(
-      wrapper.get('[data-test="announcements-status"]').getComponent(NSelect).props('value'),
-    ).toBe('all')
-    expect(
-      wrapper.get('[data-test="announcements-pinned"]').getComponent(NSelect).props('value'),
-    ).toBe('all')
+    expect(wrapper.get('[data-test="announcements-type"]').text()).toContain('全部')
+    expect(wrapper.get('[data-test="announcements-status"]').text()).toContain('全部')
+    expect(wrapper.get('[data-test="announcements-pinned"]').text()).toContain('全部')
+    expect(wrapper.text()).toContain(draftAnnouncement.title)
+    expect(wrapper.text()).toContain(publishedAnnouncement.title)
+    expect(wrapper.text()).toContain(archivedAnnouncement.title)
 
     const callCountAfterFirstReset = listAnnouncementsMock.mock.calls.length
     await wrapper.get('[data-test="announcements-reset"]').trigger('click')

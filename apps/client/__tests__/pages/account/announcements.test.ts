@@ -1,4 +1,4 @@
-import { flushPromises } from '@vue/test-utils'
+import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ANNOUNCEMENT_TYPE_BULLETIN,
@@ -6,7 +6,7 @@ import {
   type AnnouncementMyListItem,
   type AnnouncementMyListResponse,
 } from '@rev30/contracts'
-import { NPagination } from 'naive-ui'
+import { NPagination, NTabs } from 'naive-ui'
 import { defineComponent, h } from 'vue'
 import AccountAnnouncementsPage from '../../../src/pages/index/account/announcements.vue'
 import { listMyAnnouncements } from '../../../src/features/content'
@@ -81,6 +81,17 @@ async function mountAnnouncementsPage() {
   )
 }
 
+function getAnnouncementTypeTab(wrapper: VueWrapper, label: string) {
+  const tab = wrapper
+    .getComponent(NTabs)
+    .findAll('span')
+    .find((candidate) => candidate.text() === label)
+
+  expect(tab).toBeDefined()
+
+  return tab!
+}
+
 describe('account announcements page', () => {
   beforeEach(() => {
     listMyAnnouncementsMock.mockReset()
@@ -103,11 +114,7 @@ describe('account announcements page', () => {
     const { wrapper } = await mountAnnouncementsPage()
     await flushPromises()
 
-    const bulletinTab = wrapper.findAll('.n-tabs-tab').find((tab) => tab.text() === '公告')
-
-    expect(bulletinTab).toBeDefined()
-
-    await bulletinTab!.trigger('click')
+    await getAnnouncementTypeTab(wrapper, '公告').trigger('click')
     await flushPromises()
 
     expect(listMyAnnouncementsMock).toHaveBeenLastCalledWith({
@@ -141,11 +148,7 @@ describe('account announcements page', () => {
     await wrapper.get('[data-test="my-announcements-search"]').trigger('click')
     await flushPromises()
 
-    const bulletinTab = wrapper.findAll('.n-tabs-tab').find((tab) => tab.text() === '公告')
-
-    expect(bulletinTab).toBeDefined()
-
-    await bulletinTab!.trigger('click')
+    await getAnnouncementTypeTab(wrapper, '公告').trigger('click')
     await flushPromises()
 
     const bulletinKeywordInput = wrapper.find('[data-test="my-announcements-keyword"] input')
@@ -169,11 +172,7 @@ describe('account announcements page', () => {
       keyword: '版本',
     })
 
-    const noticeTab = wrapper.findAll('.n-tabs-tab').find((tab) => tab.text() === '通知')
-
-    expect(noticeTab).toBeDefined()
-
-    await noticeTab!.trigger('click')
+    await getAnnouncementTypeTab(wrapper, '通知').trigger('click')
     await flushPromises()
 
     const noticeKeywordInput = wrapper.find('[data-test="my-announcements-keyword"] input')

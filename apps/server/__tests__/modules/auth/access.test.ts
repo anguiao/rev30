@@ -15,91 +15,25 @@ import {
   systemRoles,
   systemResources,
   systemUserRoles,
-  systemUsers,
 } from '../../../src/db/schema'
 import { createTestDb } from '../../helpers/db'
+import {
+  createSystemResourceFixture as createResource,
+  createSystemRoleFixture,
+  createSystemUserFixture,
+} from '../../helpers/system'
 import { createUserAccessService } from '../../../src/modules/auth/access'
-
-type ResourceInsertInput = {
-  code: string
-  name: string
-  type: string
-  parentId: string | null
-  path: string | null
-  externalUrl: string | null
-  openTarget: string
-  icon: string | null
-  hidden: boolean
-  status: number
-  sortOrder: number
-}
 
 const now = new Date('2026-05-06T00:00:00.000Z')
 
-async function createUser(database: Awaited<ReturnType<typeof createTestDb>>, username: string) {
-  const [user] = await database
-    .insert(systemUsers)
-    .values({
-      id: randomUUID(),
-      username,
-      nickname: `${username} Nickname`,
-      status: 1,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning()
-
-  if (!user) {
-    throw new Error('Expected user')
-  }
-
-  return user
-}
-
 async function createRole(database: Awaited<ReturnType<typeof createTestDb>>, code: string) {
-  const [role] = await database
-    .insert(systemRoles)
-    .values({
-      id: randomUUID(),
-      name: code,
-      code,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning()
-
-  if (!role) {
-    throw new Error('Expected role')
-  }
-
-  return role
-}
-
-async function createResource(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  input: ResourceInsertInput,
-) {
-  const [resource] = await database
-    .insert(systemResources)
-    .values({
-      id: randomUUID(),
-      ...input,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning()
-
-  if (!resource) {
-    throw new Error(`Expected resource ${input.code}`)
-  }
-
-  return resource
+  return createSystemRoleFixture(database, { name: code, code })
 }
 
 describe('user access service', () => {
   it('collects access codes and menus from enabled roles and resources', async () => {
     const database = await createTestDb()
-    const user = await createUser(database, 'ada')
+    const user = await createSystemUserFixture(database, { username: 'ada' })
     const operatorRole = await createRole(database, 'operator')
     const auditRole = await createRole(database, 'auditor')
     const prefix = randomUUID()
@@ -187,7 +121,7 @@ describe('user access service', () => {
 
   it('ignores disabled roles and disabled resources', async () => {
     const database = await createTestDb()
-    const user = await createUser(database, 'disabled-access')
+    const user = await createSystemUserFixture(database, { username: 'disabled-access' })
     const role = await createRole(database, 'disabled-role')
     const prefix = randomUUID()
     const userList = await createResource(database, {
@@ -239,7 +173,7 @@ describe('user access service', () => {
 
   it('grants all enabled resources to enabled admin roles without role resource bindings', async () => {
     const database = await createTestDb()
-    const user = await createUser(database, 'root')
+    const user = await createSystemUserFixture(database, { username: 'root' })
     const prefix = randomUUID()
     const existingAdminRole = await database
       .select()
@@ -311,7 +245,7 @@ describe('user access service', () => {
 
   it('builds accessible non-action menus and does not auto-fill missing parent menus', async () => {
     const database = await createTestDb()
-    const user = await createUser(database, 'menu-viewer')
+    const user = await createSystemUserFixture(database, { username: 'menu-viewer' })
     const role = await createRole(database, 'menu')
     const prefix = randomUUID()
 

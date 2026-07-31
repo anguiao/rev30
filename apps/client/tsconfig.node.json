@@ -1,8 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "composite": true,
     "lib": ["ES2023"],
+    "noEmit": true,
     "tsBuildInfoFile": "node_modules/.cache/tsconfig.node.tsbuildinfo",
     "types": ["node"]
   },

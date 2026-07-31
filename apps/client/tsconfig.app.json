@@ -7,6 +7,5 @@
     "types": ["vite/client", "node"]
   },
   "include": ["src/**/*.ts", "src/**/*.vue", "src/env.d.ts", "typed-router.d.ts"],
-  "exclude": ["src/**/*.test.ts"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "exclude": ["src/**/*.test.ts"]
 }

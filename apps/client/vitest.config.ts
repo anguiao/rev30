@@ -1,5 +1,5 @@
 import { mergeConfig } from 'vitest/config'
-import viteConfig from './vite.config'
+import viteConfig from './vite.config.ts'
 
 const nodeTestFiles = [
   '__tests__/api.test.ts',

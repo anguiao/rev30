@@ -25,7 +25,7 @@
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
     "@file-type/cfbf": "^0.2.2",
-    "@hono/node-server": "^2.0.10",
+    "@hono/node-server": "^2.0.12",
     "@hono/zod-validator": "^0.9.0",
     "@iconify/json": "catalog:",
     "@iconify/tools": "^5.0.12",

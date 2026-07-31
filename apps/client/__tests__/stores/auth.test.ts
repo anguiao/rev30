@@ -94,17 +94,16 @@ describe('auth store', () => {
       accessCodes: session.accessCodes,
       menus: session.menus,
       user: session.user,
-      isReady: false,
+      isReady: true,
     })
     expect(auth.user?.departments).toEqual([])
     expect('refreshToken' in auth.$state).toBe(false)
     expect(auth.isAuthenticated).toBe(true)
   })
 
-  it('clears session state without changing readiness', () => {
+  it('clears session state and keeps the store ready', () => {
     const auth = useAuthStore()
     auth.setSession(session)
-    auth.markReady()
 
     auth.clearSession()
 
@@ -116,9 +115,8 @@ describe('auth store', () => {
     expect(auth.isReady).toBe(true)
   })
 
-  it('clears session state without marking an unready store as ready', () => {
+  it('marks an empty session state as ready when clearing it', () => {
     const auth = useAuthStore()
-    auth.setSession(session)
 
     auth.clearSession()
 
@@ -127,14 +125,6 @@ describe('auth store', () => {
     expect(auth.menus).toEqual([])
     expect(auth.user).toBeNull()
     expect(auth.isAuthenticated).toBe(false)
-    expect(auth.isReady).toBe(false)
-  })
-
-  it('marks the initial session restore as ready', () => {
-    const auth = useAuthStore()
-
-    auth.markReady()
-
     expect(auth.isReady).toBe(true)
   })
 
@@ -152,7 +142,7 @@ describe('auth store', () => {
     expect(auth.accessToken).toBe('access-token')
     expect(auth.accessCodes).toEqual(session.accessCodes)
     expect(auth.menus).toEqual(session.menus)
-    expect(auth.isReady).toBe(false)
+    expect(auth.isReady).toBe(true)
     expect(auth.user).toEqual(nextUser)
   })
 

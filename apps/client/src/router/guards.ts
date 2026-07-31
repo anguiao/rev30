@@ -1,20 +1,25 @@
 import type { ResourceTreeNode } from '@rev30/contracts'
+import type { Pinia } from 'pinia'
 import type { RouteLocationNormalized, Router } from 'vue-router'
+import { watch } from 'vue'
 import { refreshSession } from '../features/auth/requests'
 import { useAuthStore } from '../stores/auth'
 import { ApiRequestError } from '../utils/request'
 import { resolveRedirectTarget } from './redirect'
 
-export const authRoutes = new Set(['/login'])
-export const accountRoutes = new Set(['/account/settings', '/account/announcements'])
+const authRoutePaths = new Set(['/login'])
+const accountRoutePaths = new Set(['/account/settings', '/account/announcements'])
 
-function findDefaultRoute(menus: ResourceTreeNode[]): string | null {
+function findDefaultRoutePath(
+  menus: ResourceTreeNode[],
+  registeredRoutePaths: ReadonlySet<string>,
+): string | null {
   for (const menu of menus) {
-    if (menu.type === 'menu' && menu.path !== null) {
+    if (menu.type === 'menu' && menu.path !== null && registeredRoutePaths.has(menu.path)) {
       return menu.path
     }
 
-    const childPath = findDefaultRoute(menu.children)
+    const childPath = findDefaultRoutePath(menu.children, registeredRoutePaths)
 
     if (childPath !== null) {
       return childPath
@@ -24,12 +29,33 @@ function findDefaultRoute(menus: ResourceTreeNode[]): string | null {
   return null
 }
 
-function canAccessRoute(to: RouteLocationNormalized, routePaths: string[]) {
-  const routePathSet = new Set(routePaths)
+function getAuthenticatedEntryPath(router: Router, menus: ResourceTreeNode[]) {
+  const registeredRoutePaths = new Set(router.getRoutes().map((route) => route.path))
+
+  return findDefaultRoutePath(menus, registeredRoutePaths) ?? '/403'
+}
+
+function hasRouteAccess(to: RouteLocationNormalized, accessibleRoutePaths: readonly string[]) {
+  if (to.matched.length === 0) {
+    return false
+  }
+
+  const accessibleRoutePathSet = new Set(accessibleRoutePaths)
   const leafRoutePath = to.matched.at(-1)?.path
 
   return (
-    routePathSet.has(to.path) || (leafRoutePath !== undefined && routePathSet.has(leafRoutePath))
+    accessibleRoutePathSet.has(to.path) ||
+    (leafRoutePath !== undefined && accessibleRoutePathSet.has(leafRoutePath))
+  )
+}
+
+function canKeepCurrentRoute(to: RouteLocationNormalized, accessibleRoutePaths: readonly string[]) {
+  return (
+    authRoutePaths.has(to.path) ||
+    accountRoutePaths.has(to.path) ||
+    to.path === '/' ||
+    to.path === '/403' ||
+    hasRouteAccess(to, accessibleRoutePaths)
   )
 }
 
@@ -37,55 +63,73 @@ function resolveAuthenticatedEntryTarget(to: RouteLocationNormalized, fallback: 
   const redirectTarget = resolveRedirectTarget(to.query.redirect)
   const redirectPath = redirectTarget.split(/[?#]/, 1)[0] ?? ''
 
-  return redirectTarget === '/' || authRoutes.has(redirectPath) ? fallback : redirectTarget
+  return redirectTarget === '/' || authRoutePaths.has(redirectPath) ? fallback : redirectTarget
 }
 
-async function restoreSessionIfNeeded() {
-  const auth = useAuthStore()
-
+async function restoreSessionIfNeeded(auth: ReturnType<typeof useAuthStore>) {
   if (auth.isAuthenticated || auth.isReady) {
     return
   }
 
   try {
     auth.setSession(await refreshSession())
-    auth.markReady()
   } catch (error) {
     if (!(error instanceof ApiRequestError) || error.status !== 401) {
       throw error
     }
 
     auth.clearSession()
-    auth.markReady()
   }
 }
 
-export function installAuthGuards(router: Router) {
+export function installAuthGuards(router: Router, pinia: Pinia) {
+  const auth = useAuthStore(pinia)
+
   router.beforeEach(async (to) => {
-    await restoreSessionIfNeeded()
+    await restoreSessionIfNeeded(auth)
 
-    const auth = useAuthStore()
-    const defaultRoute = findDefaultRoute(auth.visibleMenus)
-    const authenticatedEntryRoute = defaultRoute ?? '/403'
-
-    if (authRoutes.has(to.path)) {
-      return auth.isAuthenticated
-        ? resolveAuthenticatedEntryTarget(to, authenticatedEntryRoute)
-        : true
+    if (!auth.isAuthenticated) {
+      return authRoutePaths.has(to.path)
+        ? true
+        : { path: '/login', query: { redirect: to.fullPath } }
     }
 
-    if (auth.isAuthenticated) {
-      if (accountRoutes.has(to.path) || to.path === '/403') {
-        return true
-      }
-
-      if (to.path === '/') {
-        return { path: authenticatedEntryRoute }
-      }
-
-      return canAccessRoute(to, auth.accessibleRoutePaths) ? true : { path: '/403' }
+    if (authRoutePaths.has(to.path)) {
+      return resolveAuthenticatedEntryTarget(
+        to,
+        getAuthenticatedEntryPath(router, auth.visibleMenus),
+      )
     }
 
-    return { path: '/login', query: { redirect: to.fullPath } }
+    if (to.path === '/') {
+      return { path: getAuthenticatedEntryPath(router, auth.visibleMenus) }
+    }
+
+    if (accountRoutePaths.has(to.path) || to.path === '/403') {
+      return true
+    }
+
+    return hasRouteAccess(to, auth.accessibleRoutePaths) ? true : { path: '/403' }
   })
+
+  watch(
+    () => auth.accessToken,
+    (accessToken, previousAccessToken) => {
+      if (previousAccessToken !== null && accessToken === null) {
+        window.location.replace(router.resolve('/login').href)
+      }
+    },
+  )
+
+  watch(
+    () => auth.accessibleRoutePaths,
+    (accessibleRoutePaths) => {
+      if (
+        auth.isAuthenticated &&
+        !canKeepCurrentRoute(router.currentRoute.value, accessibleRoutePaths)
+      ) {
+        window.location.replace(router.resolve('/403').href)
+      }
+    },
+  )
 }

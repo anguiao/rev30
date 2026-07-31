@@ -1,5 +1,7 @@
+import type { Pinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import {
   RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_MENU,
@@ -40,6 +42,8 @@ const session: AuthTokenResponse = {
 }
 
 const refreshSessionMock = vi.mocked(refreshSession)
+const replaceLocationMock = vi.fn()
+let pinia: Pinia
 
 function createMenuNode(
   overrides: Partial<ResourceTreeNode> & Pick<ResourceTreeNode, 'code' | 'name' | 'type'>,
@@ -98,15 +102,17 @@ function createTestRouter() {
     ],
   })
 
-  installAuthGuards(router)
+  installAuthGuards(router, pinia)
 
   return router
 }
 
 describe('auth guards', () => {
   beforeEach(() => {
-    createTestPinia()
+    pinia = createTestPinia()
     refreshSessionMock.mockReset()
+    replaceLocationMock.mockReset()
+    vi.stubGlobal('window', { location: { replace: replaceLocationMock } })
   })
 
   it('restores the session before redirecting the protected root route to the default admin route', async () => {
@@ -138,6 +144,85 @@ describe('auth guards', () => {
     expect(auth.accessToken).toBe(session.accessToken)
     expect(auth.user).toEqual(session.user)
     expect(auth.isReady).toBe(true)
+    expect(router.currentRoute.value.fullPath).toBe('/system/users')
+  })
+
+  it('replaces the document with login when an authenticated session ends', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system:user',
+          name: 'Users',
+          type: RESOURCE_TYPE_MENU,
+          path: '/system/users',
+        }),
+      ]),
+    )
+    const router = createTestRouter()
+
+    await router.push('/system/users')
+    auth.clearSession()
+    await nextTick()
+
+    expect(replaceLocationMock).toHaveBeenCalledOnce()
+    expect(replaceLocationMock).toHaveBeenCalledWith('/login')
+  })
+
+  it('replaces the document with forbidden when a refreshed session removes current route access', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system:user',
+          name: 'Users',
+          type: RESOURCE_TYPE_MENU,
+          path: '/system/users',
+        }),
+      ]),
+    )
+    const router = createTestRouter()
+
+    await router.push('/system/users')
+    auth.setSession({
+      ...createSession([]),
+      accessToken: 'refreshed-access-token',
+    })
+    await nextTick()
+
+    expect(replaceLocationMock).toHaveBeenCalledOnce()
+    expect(replaceLocationMock).toHaveBeenCalledWith('/403')
+  })
+
+  it('keeps the document when a refreshed session retains current route access', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system:user',
+          name: 'Users',
+          type: RESOURCE_TYPE_MENU,
+          path: '/system/users',
+        }),
+      ]),
+    )
+    const router = createTestRouter()
+
+    await router.push('/system/users')
+    auth.setSession({
+      ...createSession([
+        createMenuNode({
+          code: 'system:user',
+          name: 'Users',
+          type: RESOURCE_TYPE_MENU,
+          path: '/system/users',
+        }),
+      ]),
+      accessToken: 'refreshed-access-token',
+    })
+    await nextTick()
+
+    expect(replaceLocationMock).not.toHaveBeenCalled()
     expect(router.currentRoute.value.fullPath).toBe('/system/users')
   })
 
@@ -209,7 +294,6 @@ describe('auth guards', () => {
         }),
       ]),
     )
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/login')
@@ -238,7 +322,6 @@ describe('auth guards', () => {
         }),
       ]),
     )
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/login?redirect=/account/settings')
@@ -340,12 +423,66 @@ describe('auth guards', () => {
         }),
       ]),
     )
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/login')
 
     expect(router.currentRoute.value.fullPath).toBe('/system/roles')
+  })
+
+  it('skips unregistered menu paths when choosing the authenticated entry route', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system',
+          name: 'System',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'system:missing',
+              name: 'Missing',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/missing',
+              parentId: 'system-id',
+              sortOrder: 10,
+            }),
+            createMenuNode({
+              code: 'system:role',
+              name: 'Roles',
+              type: RESOURCE_TYPE_MENU,
+              path: '/system/roles',
+              parentId: 'system-id',
+              sortOrder: 20,
+            }),
+          ],
+        }),
+      ]),
+    )
+    const router = createTestRouter()
+
+    await router.push('/login')
+
+    expect(router.currentRoute.value.fullPath).toBe('/system/roles')
+  })
+
+  it('falls back to forbidden when every visible menu path is unregistered', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system:missing',
+          name: 'Missing',
+          type: RESOURCE_TYPE_MENU,
+          path: '/system/missing',
+        }),
+      ]),
+    )
+    const router = createTestRouter()
+
+    await router.push('/')
+
+    expect(router.currentRoute.value.fullPath).toBe('/403')
   })
 
   it('skips hidden menus when choosing the authenticated entry route', async () => {
@@ -378,7 +515,6 @@ describe('auth guards', () => {
         }),
       ]),
     )
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/')
@@ -407,7 +543,6 @@ describe('auth guards', () => {
         }),
       ]),
     )
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/system/audit-log')
@@ -436,7 +571,6 @@ describe('auth guards', () => {
         }),
       ]),
     )
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/system/audit-log/123')
@@ -464,7 +598,6 @@ describe('auth guards', () => {
         }),
       ]),
     )
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/system/users/123')
@@ -492,7 +625,6 @@ describe('auth guards', () => {
         }),
       ]),
     )
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/nested/users/123')
@@ -521,7 +653,6 @@ describe('auth guards', () => {
         }),
       ]),
     )
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/nested/users/123')
@@ -549,10 +680,28 @@ describe('auth guards', () => {
         }),
       ]),
     )
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/system/users')
+
+    expect(router.currentRoute.value.fullPath).toBe('/403')
+  })
+
+  it('does not allow an unregistered route even when its exact path is in the menu tree', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system:missing',
+          name: 'Missing',
+          type: RESOURCE_TYPE_MENU,
+          path: '/system/missing',
+        }),
+      ]),
+    )
+    const router = createTestRouter()
+
+    await router.push('/system/missing')
 
     expect(router.currentRoute.value.fullPath).toBe('/403')
   })
@@ -568,7 +717,6 @@ describe('auth guards', () => {
         }),
       ]),
     )
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/login')
@@ -579,7 +727,6 @@ describe('auth guards', () => {
   it('allows authenticated users without menus to access account settings', async () => {
     const auth = useAuthStore()
     auth.setSession(createSession([]))
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/account/settings')
@@ -590,7 +737,6 @@ describe('auth guards', () => {
   it('allows authenticated users without menus to access my announcements', async () => {
     const auth = useAuthStore()
     auth.setSession(createSession([]))
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/account/announcements')
@@ -601,7 +747,6 @@ describe('auth guards', () => {
   it('redirects authenticated users without menus from protected admin pages to forbidden', async () => {
     const auth = useAuthStore()
     auth.setSession(createSession([]))
-    auth.markReady()
     const router = createTestRouter()
 
     await router.push('/system/users')

@@ -33,6 +33,7 @@ export const useAuthStore = defineStore('auth', () => {
     accessCodes.value = session.accessCodes
     menus.value = session.menus
     user.value = session.user
+    isReady.value = true
   }
 
   function setUser(nextUser: User) {
@@ -44,6 +45,7 @@ export const useAuthStore = defineStore('auth', () => {
     accessCodes.value = []
     menus.value = []
     user.value = null
+    isReady.value = true
   }
 
   function can(code: string) {
@@ -56,10 +58,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   function canAll(codes: string[]) {
     return codes.every((code) => can(code))
-  }
-
-  function markReady() {
-    isReady.value = true
   }
 
   return {
@@ -77,6 +75,5 @@ export const useAuthStore = defineStore('auth', () => {
     can,
     canAny,
     canAll,
-    markReady,
   }
 })

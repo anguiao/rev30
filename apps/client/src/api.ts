@@ -3,6 +3,22 @@ import { AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH, authTokenResponseSchema } from
 import type { AppType } from '@rev30/server'
 import type { AuthTokenResponse } from '@rev30/contracts'
 import { useAuthStore } from './stores/auth'
+import { ApiRequestError, parseApiResponse } from './utils/request'
+
+function createSerialExecutor() {
+  let tail = Promise.resolve()
+
+  return function run<T>(operation: () => Promise<T>) {
+    const result = tail.then(operation)
+
+    tail = result.then(
+      () => undefined,
+      () => undefined,
+    )
+
+    return result
+  }
+}
 
 function cloneFetchInput(input: RequestInfo | URL) {
   return input instanceof Request ? input.clone() : input
@@ -22,6 +38,10 @@ function createRequestHeaders(input: RequestInfo | URL, init: RequestInit) {
   return headers
 }
 
+function setBearerToken(headers: Headers, accessToken: string) {
+  headers.set('authorization', `Bearer ${accessToken}`)
+}
+
 function sendFetch(input: RequestInfo | URL, init: RequestInit = {}, headers?: Headers) {
   return fetch(cloneFetchInput(input), {
     ...init,
@@ -30,45 +50,36 @@ function sendFetch(input: RequestInfo | URL, init: RequestInit = {}, headers?: H
   })
 }
 
-function setBearerToken(headers: Headers, accessToken: string) {
-  headers.set('authorization', `Bearer ${accessToken}`)
-}
-
 const internalApi = hc<AppType>('/api', {
   fetch: sendFetch,
 })
 
-let refreshedSessionPromise: Promise<AuthTokenResponse | null> | null = null
+const runSessionOperation = createSerialExecutor()
+let autoRefreshPromise: Promise<AuthTokenResponse> | null = null
 
-async function requestRefreshedSession() {
-  try {
-    const response = await internalApi.auth.refresh.$post()
-
-    if (response.status === 401) {
-      return null
-    }
-
-    if (!response.ok) {
-      throw new Error('Failed to refresh session')
-    }
-
-    return authTokenResponseSchema.parse(await response.json())
-  } finally {
-    refreshedSessionPromise = null
-  }
+export function refreshAuthSession() {
+  return runSessionOperation(async () =>
+    parseApiResponse(await internalApi.auth.refresh.$post(), authTokenResponseSchema),
+  )
 }
 
-function getRefreshedSession() {
-  refreshedSessionPromise ??= requestRefreshedSession()
+export async function logoutAuthSession() {
+  await runSessionOperation(() => internalApi.auth.logout.$post())
+}
 
-  return refreshedSessionPromise
+function getOrStartAutomaticRefresh() {
+  autoRefreshPromise ??= refreshAuthSession().finally(() => {
+    autoRefreshPromise = null
+  })
+
+  return autoRefreshPromise
 }
 
 function clearSessionAndLogout() {
   const auth = useAuthStore()
 
   auth.clearSession()
-  void internalApi.auth.logout.$post().catch(() => {})
+  void logoutAuthSession().catch(() => {})
 }
 
 function clearSessionAndLogoutIfCurrent(accessToken: string) {
@@ -90,22 +101,23 @@ async function resolveRetryAccessToken(accessToken: string) {
     return auth.accessToken
   }
 
-  let refreshedSession: AuthTokenResponse | null
+  let refreshedSession: AuthTokenResponse
 
   try {
-    refreshedSession = await getRefreshedSession()
-  } catch {
-    return auth.accessToken !== accessToken ? auth.accessToken : null
+    refreshedSession = await getOrStartAutomaticRefresh()
+  } catch (error) {
+    if (auth.accessToken !== accessToken) {
+      return auth.accessToken
+    }
+
+    if (error instanceof ApiRequestError && error.status === 401) {
+      clearSessionAndLogout()
+    }
+    return null
   }
 
   if (auth.accessToken !== accessToken) {
     return auth.accessToken
-  }
-
-  if (refreshedSession === null) {
-    clearSessionAndLogout()
-
-    return null
   }
 
   auth.setSession(refreshedSession)

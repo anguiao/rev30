@@ -5,7 +5,7 @@ import {
   type DepartmentSummary,
   type RoleSummary,
 } from '@rev30/contracts'
-import { api, authFetch } from '../src/api'
+import { api, authFetch, logoutAuthSession } from '../src/api'
 import { useAuthStore } from '../src/stores/auth'
 import {
   createFetchMock,
@@ -384,6 +384,53 @@ describe('authFetch', () => {
     expect(auth.accessToken).toBe('newer-access-token')
     expect(auth.user).toEqual(newerSession.user)
     expect(new Headers(retryInit.headers).get('authorization')).toBe('Bearer newer-access-token')
+  })
+
+  it('waits for an in-flight refresh before sending logout', async () => {
+    const refreshResponse = createDeferred<Response>()
+    const requestPaths: string[] = []
+    let protectedRequestCount = 0
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const requestPath =
+        typeof input === 'string' ? input : input instanceof URL ? input.pathname : input.url
+      requestPaths.push(requestPath)
+
+      if (requestPath === '/api/auth/refresh') {
+        return refreshResponse.promise
+      }
+
+      if (requestPath === '/api/auth/logout') {
+        return new Response(null, { status: 204 })
+      }
+
+      protectedRequestCount += 1
+      return protectedRequestCount === 1
+        ? new Response(JSON.stringify({ message: '未授权' }), {
+            status: 401,
+            headers: {
+              [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
+            },
+          })
+        : new Response(JSON.stringify({ ok: true }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    useAuthStore().setSession(session)
+
+    const requestPromise = authFetch('/api/system/users')
+    await vi.waitFor(() => {
+      expect(requestPaths).toContain('/api/auth/refresh')
+    })
+
+    const logoutPromise = logoutAuthSession()
+    await flushMicrotasks()
+    expect(requestPaths).not.toContain('/api/auth/logout')
+
+    refreshResponse.resolve(new Response(JSON.stringify(refreshedSession)))
+    await Promise.all([requestPromise, logoutPromise])
+
+    expect(requestPaths.indexOf('/api/auth/refresh')).toBeLessThan(
+      requestPaths.indexOf('/api/auth/logout'),
+    )
   })
 })
 

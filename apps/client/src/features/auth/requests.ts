@@ -7,7 +7,7 @@ import {
   type User,
   userSchema,
 } from '@rev30/contracts'
-import { api } from '../../api'
+import { api, logoutAuthSession, refreshAuthSession } from '../../api'
 import { assertApiResponseOk, parseApiResponse } from '../../utils/request'
 
 export async function login(input: AuthLoginInput): Promise<AuthTokenResponse> {
@@ -15,11 +15,11 @@ export async function login(input: AuthLoginInput): Promise<AuthTokenResponse> {
 }
 
 export async function refreshSession(): Promise<AuthTokenResponse> {
-  return parseApiResponse(await api.auth.refresh.$post(), authTokenResponseSchema)
+  return refreshAuthSession()
 }
 
 export async function logout(): Promise<void> {
-  await api.auth.logout.$post()
+  await logoutAuthSession()
 }
 
 export async function updateMyProfile(input: AuthProfileUpdateInput): Promise<User> {

@@ -695,7 +695,7 @@ describe('attachment service', () => {
     })
 
     expect(content.headers).toMatchObject({
-      'Content-Disposition': 'inline; filename="avatar.jpg"',
+      'Content-Disposition': 'inline; filename=avatar.jpg',
       'Content-Type': 'image/jpeg',
     })
   })
@@ -790,7 +790,7 @@ describe('attachment service', () => {
 
     expect(await streamToBytes(content.body)).toEqual(textBytes)
     expect(content.headers).toMatchObject({
-      'Content-Disposition': 'attachment; filename="notes.txt"',
+      'Content-Disposition': 'attachment; filename=notes.txt',
       'Content-Type': 'text/plain; charset=utf-8',
     })
   })
@@ -901,7 +901,7 @@ describe('attachment service', () => {
     expect(await streamToBytes(content.body)).toEqual(pngBytes)
     expect(content.headers).toMatchObject({
       'Cache-Control': 'private, max-age=300',
-      'Content-Disposition': 'inline; filename="avatar.png"',
+      'Content-Disposition': 'inline; filename=avatar.png',
     })
   })
 
@@ -1117,7 +1117,7 @@ describe('attachment service', () => {
     expect(await streamToBytes(content.body)).toEqual(pngBytes)
     expect(content.headers).toEqual({
       'Cache-Control': 'private, max-age=300',
-      'Content-Disposition': 'inline; filename="avatar.png"',
+      'Content-Disposition': 'inline; filename=avatar.png',
       'Content-Length': String(pngBytes.byteLength),
       'Content-Type': 'image/png',
       'X-Content-Type-Options': 'nosniff',

@@ -289,10 +289,43 @@ describe('attachment routes integration', () => {
 
     expect(contentResponse.status).toBe(200)
     expect(contentResponse.headers.get('content-type')).toBe('image/png')
-    expect(contentResponse.headers.get('content-disposition')).toBe('inline; filename="avatar.png"')
+    expect(contentResponse.headers.get('content-disposition')).toBe('inline; filename=avatar.png')
     expect(contentResponse.headers.get('content-length')).toBe(String(pngBytes.byteLength))
     expect(contentResponse.headers.get('x-content-type-options')).toBe('nosniff')
     expect(contentBody).toEqual(pngBytes)
+  })
+
+  it('serves unicode filenames with an ASCII fallback and RFC 5987 filename', async () => {
+    const { app, authenticated } = await createAttachmentIntegrationFixture()
+    const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
+      bytes: pngBytes,
+      contentType: 'image/png',
+      originalName: '报告📎.png',
+      usage: 'report',
+    })
+    const uploaded = (await completeResponse.json()) as { id: string }
+    const contentUrlResponse = await app.request(`/api/attachments/${uploaded.id}/content-url`, {
+      method: 'POST',
+      body: JSON.stringify({
+        disposition: ATTACHMENT_DISPOSITION_INLINE,
+      }),
+      headers: {
+        ...authenticated.authHeaders,
+        'content-type': 'application/json',
+      },
+    })
+    const content = (await contentUrlResponse.json()) as {
+      request: {
+        url: string
+      }
+    }
+    const contentResponse = await app.request(content.request.url)
+
+    expect(contentResponse.status).toBe(200)
+    expect(contentResponse.headers.get('content-disposition')).toBe(
+      `inline; filename="????.png"; filename*=UTF-8''%E6%8A%A5%E5%91%8A%F0%9F%93%8E.png`,
+    )
+    expect(new Uint8Array(await contentResponse.arrayBuffer())).toEqual(pngBytes)
   })
 
   it('lists active attachments with uploader summaries and keeps soft-deleted attachments out', async () => {

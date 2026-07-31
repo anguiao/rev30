@@ -34,6 +34,7 @@
     "@rev30/rich-text": "workspace:*",
     "@rev30/utils": "workspace:*",
     "bytes": "catalog:",
+    "content-disposition": "^2.0.1",
     "dotenv": "^17.4.2",
     "drizzle-orm": "rc",
     "file-type": "^22.0.1",

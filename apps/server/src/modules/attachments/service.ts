@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { extname } from 'node:path'
 import { detectCfbf } from '@file-type/cfbf'
+import { create as createContentDisposition } from 'content-disposition'
 import { fileTypeStream } from 'file-type'
 import { contentType } from 'mime-types'
 import {
@@ -66,7 +67,7 @@ function createUploadSessionStorageKey(uploadId: string, extension: string, crea
 }
 
 function createDownloadFilename(name: string) {
-  return name.replace(/["\r\n]/g, '_')
+  return name.replace(/[\\/\p{C}]/gu, '_')
 }
 
 function createTypedDownloadFilename(name: string, extension: string) {
@@ -98,7 +99,9 @@ function createContentDispositionHeader(
     filename: string
   },
 ) {
-  return `${disposition}; filename="${createTypedDownloadFilename(input.filename, input.extension)}"`
+  const filename = createTypedDownloadFilename(input.filename, input.extension)
+
+  return createContentDisposition(filename, { type: disposition })
 }
 
 function createContentResponse(

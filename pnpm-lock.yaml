@@ -210,6 +210,9 @@ importers:
       bytes:
         specifier: 'catalog:'
         version: 3.1.2
+      content-disposition:
+        specifier: ^2.0.1
+        version: 2.0.1
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -2494,6 +2497,10 @@ packages:
   consola@3.4.2:
     resolution: {integrity: sha512-5IKcdX0nnYavi6G7TtOhwkYzyjfJlatbjMjuLSfE2kYT5pMDOilZ4OvMhi637CcDICTmz3wARPoyhqyX1Y+XvA==}
     engines: {node: ^14.18.0 || >=16.10.0}
+
+  content-disposition@2.0.1:
+    resolution: {integrity: sha512-e+H0ZXHSWYrENhQzw1LPuP4oF5MzVKmDU6d3hxlvaPEYLLg62MxtQNPRx4SYSuYJSBUgnQIG4HIN2tEtNv7Dog==}
+    engines: {node: '>=18'}
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
@@ -5545,6 +5552,8 @@ snapshots:
       proto-list: 1.2.4
 
   consola@3.4.2: {}
+
+  content-disposition@2.0.1: {}
 
   convert-source-map@2.0.0: {}
 

@@ -462,6 +462,16 @@ describe('ImageToolbarControl', () => {
 })
 
 describe('ImageDialog', () => {
+  it('exposes an accessible dialog name and a native file input', () => {
+    const wrapper = mountDialog()
+
+    expect(wrapper.get('[role="dialog"]').attributes('aria-label')).toBe('图片')
+    expect(wrapper.get('[data-test="rich-text-image-file-input"]').attributes()).toMatchObject({
+      type: 'file',
+      accept: 'image/*',
+    })
+  })
+
   it('shows a local preview before upload and replaces it with the uploaded image', async () => {
     const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:cover')
     const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})

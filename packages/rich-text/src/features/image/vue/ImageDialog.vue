@@ -23,6 +23,7 @@ const isEditing = props.image !== undefined
 const selectedFile = ref<File | null>(null)
 const hasSelectedFile = computed(() => selectedFile.value !== null)
 const localPreviewSrc = useObjectUrl(selectedFile)
+const fileInput = ref<HTMLInputElement>(document.createElement('input'))
 
 const activeUpload = shallowRef<Promise<{ src: string }> | null>(null)
 const isUploading = computed(() => activeUpload.value !== null)
@@ -35,6 +36,7 @@ function selectLocalImageFile(file: File) {
 
 const { open: openFileDialog, onChange: onFileDialogChange } = useFileDialog({
   accept: 'image/*',
+  input: fileInput,
   multiple: false,
   reset: true,
 })
@@ -238,6 +240,7 @@ function updateHeight(value: number | null) {
     :show="true"
     preset="card"
     title="图片"
+    aria-label="图片"
     class="rich-text-theme w-[calc(100vw-32px)] max-w-lg"
     :style="richTextThemeStyle"
     @update:show="emit('cancel')"
@@ -290,6 +293,13 @@ function updateHeight(value: number | null) {
         </div>
 
         <div v-if="!isEditing" data-test="rich-text-image-upload" class="flex w-fit gap-2">
+          <input
+            ref="fileInput"
+            data-test="rich-text-image-file-input"
+            class="hidden"
+            type="file"
+            accept="image/*"
+          />
           <NButton
             data-test="rich-text-image-file"
             class="flex-1"

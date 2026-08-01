@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { NConfigProvider, NGlobalStyle, lightTheme } from 'naive-ui'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { RichTextDocument } from '@rev30/rich-text/schema'
 import { RichTextEditor } from '@rev30/rich-text/vue'
 import { createDefaultDocument } from '../../src/playground/defaultDocument'
 import { createPlaygroundPresets } from '../../src/playground/presets'
+import { useDerivation } from '../../src/playground/useDerivation'
 import '../../src/style.css'
 
 const model = ref<RichTextDocument>(createDefaultDocument())
@@ -12,6 +13,7 @@ const blurCount = ref(0)
 const imageError = ref<string | null>(null)
 const selectionText = ref('')
 const activeElement = ref('')
+const narrowEditor = ref(false)
 const presets = createPlaygroundPresets({
   onImageError(error) {
     imageError.value = error instanceof Error ? error.message : '读取图片失败'
@@ -20,6 +22,8 @@ const presets = createPlaygroundPresets({
     imageError.value = null
   },
 })
+const derivation = useDerivation(model, presets.serverPreset)
+const renderedHtml = computed(() => derivation.result.value?.html ?? '')
 
 function handleBlur() {
   blurCount.value += 1
@@ -41,14 +45,86 @@ function updateInteractionState() {
 }
 
 function resetShortDocument() {
-  model.value = { type: 'doc', content: [{ type: 'paragraph' }] }
+  narrowEditor.value = false
+  updateModel({ type: 'doc', content: [{ type: 'paragraph' }] })
 }
 
 function setPasteDocument() {
-  model.value = {
+  narrowEditor.value = false
+  updateModel({
     type: 'doc',
     content: [{ type: 'paragraph', content: [{ type: 'text', text: '文档' }] }],
+  })
+}
+
+function setCodeBlockDocument() {
+  narrowEditor.value = false
+  updateModel({
+    type: 'doc',
+    content: [
+      {
+        type: 'codeBlock',
+        attrs: { language: 'typescript' },
+        content: [{ type: 'text', text: 'const value = 1' }],
+      },
+    ],
+  })
+}
+
+function createTableParagraph(text?: string) {
+  return text === undefined
+    ? { type: 'paragraph' as const, attrs: { textAlign: null } }
+    : {
+        type: 'paragraph' as const,
+        attrs: { textAlign: null },
+        content: [{ type: 'text' as const, text }],
+      }
+}
+
+function createTableCell(type: 'tableCell' | 'tableHeader', text?: string) {
+  return {
+    type,
+    attrs: { colspan: 1, rowspan: 1, colwidth: null, align: null },
+    content: [createTableParagraph(text)],
   }
+}
+
+function createTableRow(cells: ReturnType<typeof createTableCell>[]) {
+  return { type: 'tableRow' as const, content: cells }
+}
+
+function setTableDocument() {
+  narrowEditor.value = true
+  updateModel({
+    type: 'doc',
+    content: [
+      {
+        type: 'table',
+        content: [
+          createTableRow(
+            ['键', '值', '状态', '备注', '更新时间'].map((text) =>
+              createTableCell('tableHeader', text),
+            ),
+          ),
+          createTableRow(
+            ['第一项', '第二项', undefined, undefined, undefined].map((text) =>
+              createTableCell('tableCell', text),
+            ),
+          ),
+        ],
+      },
+    ],
+  })
+}
+
+function setImageDocument() {
+  narrowEditor.value = false
+  updateModel({ type: 'doc', content: [{ type: 'paragraph' }] })
+}
+
+function updateModel(value: RichTextDocument) {
+  model.value = value
+  derivation.schedule()
 }
 
 onMounted(() => {
@@ -70,14 +146,21 @@ onBeforeUnmount(() => {
     <div class="flex gap-2">
       <button data-test="reset-short-document" @click="resetShortDocument">短文档</button>
       <button data-test="set-paste-document" @click="setPasteDocument">粘贴文档</button>
+      <button data-test="set-code-block-document" @click="setCodeBlockDocument">代码块</button>
+      <button data-test="set-table-document" @click="setTableDocument">表格</button>
+      <button data-test="set-image-document" @click="setImageDocument">图片</button>
     </div>
-    <div class="h-[560px] w-[900px] overflow-auto" data-test="editor-container">
+    <div
+      class="h-[560px] overflow-auto"
+      :class="narrowEditor ? 'w-[360px]' : 'w-[900px]'"
+      data-test="editor-container"
+    >
       <RichTextEditor
         :model-value="model"
         :preset="presets.editorPreset"
         :min-height="320"
         @blur="handleBlur"
-        @update:model-value="model = $event"
+        @update:model-value="updateModel"
       />
     </div>
     <button data-test="after-editor">编辑器后控件</button>
@@ -85,6 +168,8 @@ onBeforeUnmount(() => {
     <output data-test="blur-count">{{ blurCount }}</output>
     <output data-test="selection-text">{{ selectionText }}</output>
     <output data-test="active-element">{{ activeElement }}</output>
+    <output data-test="derivation-status">{{ derivation.status }}</output>
+    <div v-if="derivation.result" data-test="rendered-result" v-html="renderedHtml" />
     <output v-if="imageError" data-test="image-error">{{ imageError }}</output>
   </NConfigProvider>
 </template>

@@ -4,7 +4,15 @@ import { PluginKey, type Transaction } from '@tiptap/pm/state'
 import type { Editor } from '@tiptap/vue-3'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import { useEventListener, useResizeObserver } from '@vueuse/core'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+  useTemplateRef,
+} from 'vue'
 import type { RichTextQuickBarConfig } from '.'
 import { useRichTextRovingFocus } from '../interactions/focus'
 import { resolveRichTextQuickBar, type RichTextQuickBarMatch } from './resolve'
@@ -18,7 +26,7 @@ const props = defineProps<{
 }>()
 
 const editor = props.editor
-const root = ref<HTMLElement | null>(null)
+const root = useTemplateRef<HTMLElement>('root')
 const isDismissed = ref(false)
 
 const quickBarPluginKey = new PluginKey('richTextQuickBar')

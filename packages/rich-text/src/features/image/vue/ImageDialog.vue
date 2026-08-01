@@ -2,7 +2,7 @@
 import type { RichTextImageAttrs } from '../editor'
 import { NButton, NFormItem, NImage, NInput, NInputNumber, NModal, NSpin } from 'naive-ui'
 import { useDropZone, useEventListener, useFileDialog, useObjectUrl } from '@vueuse/core'
-import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef, type Ref, useTemplateRef } from 'vue'
 import { useRichTextThemeStyle } from '../../../vue/theme'
 
 const props = defineProps<{
@@ -23,7 +23,6 @@ const isEditing = props.image !== undefined
 const selectedFile = ref<File | null>(null)
 const hasSelectedFile = computed(() => selectedFile.value !== null)
 const localPreviewSrc = useObjectUrl(selectedFile)
-const fileInput = ref<HTMLInputElement>(document.createElement('input'))
 
 const activeUpload = shallowRef<Promise<{ src: string }> | null>(null)
 const isUploading = computed(() => activeUpload.value !== null)
@@ -34,9 +33,10 @@ function selectLocalImageFile(file: File) {
   resetImageState()
 }
 
+const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 const { open: openFileDialog, onChange: onFileDialogChange } = useFileDialog({
   accept: 'image/*',
-  input: fileInput,
+  input: fileInput as Ref<HTMLInputElement>,
   multiple: false,
   reset: true,
 })
@@ -49,7 +49,7 @@ onFileDialogChange((files) => {
   selectLocalImageFile(file)
 })
 
-const dropZoneRef = ref<HTMLElement | null>(null)
+const dropZoneRef = useTemplateRef<HTMLElement>('dropZoneRef')
 const { isOverDropZone } = useDropZone(dropZoneRef, {
   multiple: false,
   preventDefaultForUnhandled: true,

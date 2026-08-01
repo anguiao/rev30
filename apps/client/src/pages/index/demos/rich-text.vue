@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useMutation } from '@pinia/colada'
 import { NAlert, NButton, NEmpty, NTabPane, NTabs } from 'naive-ui'
 import type { RichTextDocument } from '@rev30/rich-text/schema'
@@ -59,7 +59,7 @@ const previewError = computed(
       : null),
 )
 
-const previewContainer = ref<HTMLElement | null>(null)
+const previewContainer = useTemplateRef<HTMLElement>('previewContainer')
 const { highlightCode } = useRichTextCodeHighlight(previewContainer)
 
 const formattedContentJson = computed(() =>

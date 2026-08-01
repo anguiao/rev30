@@ -5,7 +5,7 @@ import { computed, nextTick, type Ref } from 'vue'
 import { useStyleTag } from '@vueuse/core'
 import { useThemeStore } from '../../stores/theme'
 
-export function useRichTextCodeHighlight(container: Ref<HTMLElement | null>) {
+export function useRichTextCodeHighlight(container: Readonly<Ref<HTMLElement | null>>) {
   const theme = useThemeStore()
   const highlightThemeCss = computed(() => (theme.isDark ? githubDarkThemeCss : githubThemeCss))
   useStyleTag(highlightThemeCss, { id: 'rich-text-demo-highlight-theme' })

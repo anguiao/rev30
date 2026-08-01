@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
 import { NButton, NPopover } from 'naive-ui'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import { resolveLinkRange } from '../range'
 import LinkEditor from './LinkEditor.vue'
 
@@ -16,7 +16,7 @@ const props = withDefaults(
 )
 
 const editor = props.editor
-const root = ref<HTMLElement | null>(null)
+const root = useTemplateRef<HTMLElement>('root')
 const show = ref(false)
 
 const range = computed(() => resolveLinkRange(editor))

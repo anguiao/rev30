@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Editor, EditorContent } from '@tiptap/vue-3'
-import { nextTick, onUnmounted, ref, watch } from 'vue'
+import { nextTick, onUnmounted, useTemplateRef, watch } from 'vue'
 import { collectRichTextEditorExtensions } from '../editor/feature'
 import type { RichTextDocument } from '../schema'
 import type { RichTextEditorPreset } from './presets/types'
@@ -28,10 +28,10 @@ const emit = defineEmits<{
   blur: []
 }>()
 
-const root = ref<HTMLElement | null>(null)
+const root = useTemplateRef<HTMLElement>('root')
 const richTextThemeStyle = useRichTextThemeStyle()
 
-const scrollContainer = ref<HTMLElement | null>(null)
+const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer')
 let pendingBlur = false
 let blurEmitted = false
 

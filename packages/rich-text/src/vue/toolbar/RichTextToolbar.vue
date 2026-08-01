@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
-import { ref } from 'vue'
+import { useTemplateRef } from 'vue'
 import type { RichTextToolbarConfig } from '.'
 import { useRichTextRovingFocus } from '../interactions/focus'
 import { toolbarShortcut, useToolbarShortcut } from '../interactions/toolbar/shortcut'
@@ -18,7 +18,7 @@ const props = withDefaults(
 )
 
 const groups = props.toolbar.groups.filter((group) => group.controls.length > 0)
-const root = ref<HTMLElement | null>(null)
+const root = useTemplateRef<HTMLElement>('root')
 
 const rovingFocus = useRichTextRovingFocus(root)
 useToolbarShortcut(props.editor, rovingFocus.focusEntry, () => !props.disabled)

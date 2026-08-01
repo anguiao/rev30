@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
-import { ref } from 'vue'
+import { ref, useTemplateRef } from 'vue'
 import { runRichTextAction } from '../../../editor/action'
 import { handleRichTextGridKeydown } from '../../../vue/interactions/focus'
 import { insertTableAction } from '../editor'
@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const editor = props.editor
-const panel = ref<HTMLElement | null>(null)
+const panel = useTemplateRef<HTMLElement>('panel')
 const rows = ref(1)
 const columns = ref(1)
 

@@ -2,7 +2,7 @@
 import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
 import type { InputInst } from 'naive-ui'
 import { NButton, NCheckbox, NInput, NPopover } from 'naive-ui'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { runRichTextAction } from '../../../editor/action'
 import {
   closeSearchReplaceAction,
@@ -120,7 +120,7 @@ function handleEscape(event: KeyboardEvent) {
   closePanelAndRestoreFocus()
 }
 
-const searchInput = ref<InputInst | null>(null)
+const searchInput = useTemplateRef<InputInst>('searchInput')
 watch(
   () => searchState.value.isOpen,
   (isOpen) => {

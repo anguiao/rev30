@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DropdownDividerOption, DropdownOption } from 'naive-ui'
 import { NButton, NDropdown, NPopover } from 'naive-ui'
-import { computed, h, nextTick, ref, watch } from 'vue'
+import { computed, h, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
 import { useRichTextDropdownTrigger } from '../../../vue/interactions/dropdown'
 import { focusRichTextGridItem } from '../../../vue/interactions/focus'
@@ -25,7 +25,7 @@ const props = withDefaults(defineProps<RichTextToolbarControlProps>(), {
 })
 
 const editor = props.editor
-const root = ref<HTMLElement | null>(null)
+const root = useTemplateRef<HTMLElement>('root')
 
 const isActive = computed(() => getSelectedTable(editor.state.selection) !== null)
 const isDisabled = computed(

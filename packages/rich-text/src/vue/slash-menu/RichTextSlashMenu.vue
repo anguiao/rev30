@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import type { SuggestionProps } from '@tiptap/suggestion'
 import type { Editor } from '@tiptap/vue-3'
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useId, watch } from 'vue'
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+  useId,
+  useTemplateRef,
+  watch,
+} from 'vue'
 import { exitRichTextSlashMenu, registerRichTextSlashMenu } from './plugin'
 import {
   canRunRichTextSlashCommand,
@@ -19,7 +28,7 @@ const props = defineProps<{
 
 const listboxId = `rich-text-slash-menu-${useId()}`
 
-const root = ref<HTMLElement | null>(null)
+const root = useTemplateRef<HTMLElement>('root')
 
 const suggestion = shallowRef<SuggestionProps>()
 

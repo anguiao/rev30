@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
 import { NButton, NPopover } from 'naive-ui'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
 import { focusRichTextGridItem, handleRichTextGridKeydown } from '../../../vue/interactions/focus'
 import { setHighlightAction, unsetHighlightAction } from '../editor'
@@ -18,8 +18,8 @@ const props = withDefaults(defineProps<HighlightControlProps>(), {
 
 const editor = props.editor
 const show = ref(false)
-const root = ref<HTMLElement | null>(null)
-const panel = ref<HTMLElement | null>(null)
+const root = useTemplateRef<HTMLElement>('root')
+const panel = useTemplateRef<HTMLElement>('panel')
 
 const isActive = computed(() => editor.isActive('highlight'))
 const selectedColorKey = computed(

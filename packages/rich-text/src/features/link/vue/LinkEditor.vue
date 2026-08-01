@@ -2,7 +2,7 @@
 import type { Editor } from '@tiptap/vue-3'
 import type { InputInst } from 'naive-ui'
 import { NButton, NInput } from 'naive-ui'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { runRichTextAction } from '../../../editor/action'
 import { setLinkAction, unsetLinkAction } from '../editor'
 import { normalizeLinkHref } from '../href'
@@ -72,7 +72,7 @@ function handleEscape(event: KeyboardEvent) {
   emit('cancel')
 }
 
-const urlInput = ref<InputInst | null>(null)
+const urlInput = useTemplateRef<InputInst>('urlInput')
 onMounted(() => urlInput.value?.focus())
 </script>
 

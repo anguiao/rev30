@@ -3,7 +3,7 @@ import hljs from 'highlight.js/lib/common'
 import githubDarkThemeCss from 'highlight.js/styles/github-dark.css?raw'
 import githubThemeCss from 'highlight.js/styles/github.css?raw'
 import { NAlert, NEmpty, NTabPane, NTabs, NTag } from 'naive-ui'
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { RichTextContentInvalidError } from '@rev30/rich-text/server'
 import type { RichTextDocument } from '@rev30/rich-text/schema'
 import type { DerivedRichTextContent, DerivationStatus } from '../playground/useDerivation'
@@ -19,7 +19,7 @@ const props = defineProps<{
   isDark: boolean
 }>()
 
-const renderedContainer = ref<HTMLElement | null>(null)
+const renderedContainer = useTemplateRef<HTMLElement>('renderedContainer')
 const highlightThemeStyle = ref<HTMLStyleElement | null>(null)
 
 function updateHighlightTheme(isDark: boolean) {

@@ -12,7 +12,7 @@ import {
   NSpin,
   NTooltip,
 } from 'naive-ui'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import { searchIcons } from '.'
 
 const props = defineProps<{
@@ -24,7 +24,7 @@ const emit = defineEmits<{
   blur: []
 }>()
 
-const searchInputRef = ref<InstanceType<typeof NInput> | null>(null)
+const searchInputRef = useTemplateRef<InstanceType<typeof NInput>>('searchInputRef')
 
 const showPanel = ref(false)
 

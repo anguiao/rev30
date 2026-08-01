@@ -20,7 +20,7 @@
 
 ## 常用验证
 
-- 完整验证：`pnpm check`
+- 完整验证：`pnpm check`，需在沙箱外运行以支持其中的 Chromium 浏览器测试。
 - 按需单跑：`pnpm typecheck`、`pnpm test`、`pnpm lint:check`
 - 定向运行 Vitest 时，使用 `pnpm --filter <pkg> test <package-relative-test-file>`，不要在 `test` 后添加 `--`。
 

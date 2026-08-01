@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { NConfigProvider, NDropdown } from 'naive-ui'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import type { RichTextFeature } from '../../src/core/feature'
 import { defineRichTextPreset } from '../../src/core/preset'
@@ -354,6 +354,26 @@ describe('RichTextEditor', () => {
     overlayButton.dispatchEvent(
       new FocusEvent('focusout', { bubbles: true, relatedTarget: outsideButton }),
     )
+    expect(wrapper.emitted('blur')).toHaveLength(1)
+  })
+
+  it('defers an unknown focusout until focus restoration settles', async () => {
+    const wrapper = mount(RichTextEditor, {
+      attachTo: document.body,
+      props: { modelValue: contentJson, preset: allEditorPreset },
+    })
+    const editable = await getEditable(wrapper)
+    const outsideButton = appendTestElement('button')
+    const restoredButton = wrapper
+      .findAll<HTMLElement>('[data-rich-text-toolbar-item]')
+      .find((item) => !item.element.matches(':disabled'))!.element
+
+    void nextTick(() => restoredButton.focus())
+    editable.element.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+    await flushPromises()
+    expect(wrapper.emitted('blur')).toBeUndefined()
+
+    outsideButton.focus()
     expect(wrapper.emitted('blur')).toHaveLength(1)
   })
 

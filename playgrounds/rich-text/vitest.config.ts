@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
-import { playwright } from '@vitest/browser-playwright'
+import { defineBrowserCommand, playwright } from '@vitest/browser-playwright'
+import type { PlaywrightBrowserProvider } from '@vitest/browser-playwright'
 import { defineConfig } from 'vitest/config'
 
 const browserProvider = playwright({
@@ -9,6 +10,15 @@ const browserProvider = playwright({
     locale: 'zh-CN',
     timezoneId: 'Asia/Shanghai',
   },
+})
+
+const setClipboard = defineBrowserCommand(async (context, value: string) => {
+  const provider = context.provider as PlaywrightBrowserProvider
+  const { page, context: browserContext } = provider.getCommandsContext(context.sessionId)
+  const origin = new URL(page.url()).origin
+
+  await browserContext.grantPermissions(['clipboard-read', 'clipboard-write'], { origin })
+  await page.evaluate(async (text) => navigator.clipboard.writeText(text), value)
 })
 
 export default defineConfig({
@@ -28,6 +38,9 @@ export default defineConfig({
       trace: { mode: 'retain-on-failure', tracesDir: 'test-results/traces' },
       screenshotFailures: false,
       locators: { testIdAttribute: 'data-test' },
+      commands: {
+        setClipboard,
+      },
     },
     fileParallelism: false,
     maxWorkers: 1,

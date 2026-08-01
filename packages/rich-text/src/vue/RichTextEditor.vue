@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Editor, EditorContent } from '@tiptap/vue-3'
-import { onUnmounted, ref, watch } from 'vue'
+import { nextTick, onUnmounted, ref, watch } from 'vue'
 import { collectRichTextEditorExtensions } from '../editor/feature'
 import type { RichTextDocument } from '../schema'
 import type { RichTextEditorPreset } from './presets/types'
@@ -32,6 +32,8 @@ const root = ref<HTMLElement | null>(null)
 const richTextThemeStyle = useRichTextThemeStyle()
 
 const scrollContainer = ref<HTMLElement | null>(null)
+let pendingBlur = false
+let blurEmitted = false
 
 const preset = props.preset
 const editor = new Editor({
@@ -71,7 +73,46 @@ function handleFocusout(event: FocusEvent) {
     return
   }
 
-  emit('blur')
+  if (nextTarget === null) {
+    if (pendingBlur || blurEmitted) {
+      return
+    }
+
+    pendingBlur = true
+    void nextTick(() => {
+      if (!pendingBlur) {
+        return
+      }
+
+      pendingBlur = false
+      const editorRoot = root.value
+      const activeElement = document.activeElement
+
+      if (
+        editorRoot === null ||
+        (activeElement instanceof Node && editorRoot.contains(activeElement))
+      ) {
+        return
+      }
+
+      if (!blurEmitted) {
+        blurEmitted = true
+        emit('blur')
+      }
+    })
+    return
+  }
+
+  pendingBlur = false
+  if (!blurEmitted) {
+    blurEmitted = true
+    emit('blur')
+  }
+}
+
+function handleFocusin() {
+  pendingBlur = false
+  blurEmitted = false
 }
 </script>
 
@@ -86,6 +127,7 @@ function handleFocusout(event: FocusEvent) {
         : 'focus-within:border-(--rich-text-theme-input-border-focus-color) focus-within:bg-(--rich-text-theme-input-focus-color) focus-within:shadow-(--rich-text-theme-input-box-shadow-focus) hover:border-(--rich-text-theme-input-border-hover-color)'
     "
     :style="richTextThemeStyle"
+    @focusin="handleFocusin"
     @focusout="handleFocusout"
   >
     <RichTextToolbar

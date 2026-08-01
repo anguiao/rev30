@@ -25,7 +25,6 @@ const naiveTheme = computed(() => (theme.isDark.value ? darkTheme : null))
 
 function updateDocument(value: RichTextDocument) {
   document.value = value
-  imageError.value = null
   derivation.schedule()
 }
 
@@ -50,6 +49,7 @@ function restoreExample() {
           <span>主题</span>
           <NSelect
             id="theme-mode"
+            data-test="theme-mode"
             :value="theme.mode.value"
             :options="themeModeOptions"
             size="small"
@@ -73,6 +73,7 @@ function restoreExample() {
           :result-revision="derivation.resultRevision.value"
           :error="derivation.error.value"
           :image-error="imageError"
+          :is-dark="theme.isDark.value"
         />
       </div>
     </main>

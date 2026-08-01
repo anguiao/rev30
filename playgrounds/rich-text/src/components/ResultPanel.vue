@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import hljs from 'highlight.js/lib/common'
+import githubDarkThemeCss from 'highlight.js/styles/github-dark.css?raw'
+import githubThemeCss from 'highlight.js/styles/github.css?raw'
 import { NAlert, NEmpty, NTabPane, NTabs, NTag } from 'naive-ui'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { RichTextContentInvalidError } from '@rev30/rich-text/server'
 import type { RichTextDocument } from '@rev30/rich-text/schema'
 import type { DerivedRichTextContent, DerivationStatus } from '../playground/useDerivation'
@@ -14,9 +16,28 @@ const props = defineProps<{
   resultRevision: number | null
   error: unknown
   imageError: string | null
+  isDark: boolean
 }>()
 
 const renderedContainer = ref<HTMLElement | null>(null)
+const highlightThemeStyle = ref<HTMLStyleElement | null>(null)
+
+function updateHighlightTheme(isDark: boolean) {
+  if (highlightThemeStyle.value === null) {
+    const style = document.createElement('style')
+    style.id = 'rich-text-playground-highlight-theme'
+    document.head.append(style)
+    highlightThemeStyle.value = style
+  }
+
+  highlightThemeStyle.value.textContent = isDark ? githubDarkThemeCss : githubThemeCss
+}
+
+watch(() => props.isDark, updateHighlightTheme, { immediate: true })
+
+onBeforeUnmount(() => {
+  highlightThemeStyle.value?.remove()
+})
 
 const formattedJson = computed(() =>
   props.result ? redactImageDataUrls(JSON.stringify(props.result.json, null, 2)) : '',
@@ -108,7 +129,7 @@ watch(
       {{ imageError }}
     </NAlert>
     <NAlert v-if="status === 'error'" type="error" :show-icon="false" data-test="derivation-error">
-      {{ errorMessage }}。保留的结果不是当前内容。
+      {{ errorMessage }}<template v-if="result !== null">。保留的结果不是当前内容。</template>
     </NAlert>
 
     <NTabs

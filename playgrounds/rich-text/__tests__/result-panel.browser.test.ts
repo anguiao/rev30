@@ -23,6 +23,7 @@ function createErrorPanelProps(
     resultRevision: result === null ? null : 1,
     error,
     imageError: null,
+    isDark: false,
   }
 }
 
@@ -53,5 +54,8 @@ test('shows an empty error state when the first derivation has no successful res
   await expect
     .element(screen.getByTestId('derivation-error'))
     .toHaveTextContent('生成富文本结果失败')
+  await expect
+    .element(screen.getByTestId('derivation-error'))
+    .not.toHaveTextContent('保留的结果不是当前内容')
   await expect.element(screen.getByTestId('rendered-result')).not.toBeInTheDocument()
 })

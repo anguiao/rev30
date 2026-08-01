@@ -1,0 +1,38 @@
+{
+  "name": "@rev30/rich-text-playground",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit && vue-tsc -p tsconfig.test.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "test": "vitest run",
+    "test:browser": "vitest run",
+    "test:browser:ui": "vitest watch --browser.headless=false --exclude __tests__/rich-text-clipboard.browser.test.ts",
+    "test:browser:clipboard:ui": "echo 'Warning: this headed test may overwrite the system clipboard.' && vitest run --browser.headless=false __tests__/rich-text-clipboard.browser.test.ts"
+  },
+  "dependencies": {
+    "@rev30/rich-text": "workspace:*",
+    "highlight.js": "^11.11.1",
+    "naive-ui": "catalog:",
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@iconify/json": "catalog:",
+    "@iconify/tailwind4": "^1.2.3",
+    "@tailwindcss/typography": "^0.5.20",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.13.3",
+    "@vitejs/plugin-vue": "catalog:",
+    "@vitest/browser-playwright": "^4.1.10",
+    "@vue/test-utils": "catalog:",
+    "playwright": "^1.62.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vitest-browser-vue": "^2.0.2",
+    "vue-tsc": "catalog:"
+  }
+}

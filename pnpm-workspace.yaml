@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - playgrounds/*
 
 catalog:
   '@iconify/json': ^2.2.507

@@ -19,15 +19,13 @@ function createErrorPanelProps(
   return {
     result,
     status: 'error' as const,
-    revision: 2,
-    resultRevision: result === null ? null : 1,
     error,
     imageError: null,
     isDark: false,
   }
 }
 
-test('maps known derivation errors and hides unknown causes without discarding stale results', async () => {
+test('maps known derivation errors and hides unknown causes without discarding previous results', async () => {
   const screen = render(ResultPanel, {
     props: createErrorPanelProps(new RichTextContentInvalidError()),
   })
@@ -36,7 +34,6 @@ test('maps known derivation errors and hides unknown causes without discarding s
   await expect.element(errorAlert).toHaveTextContent('富文本内容无效')
   await expect.element(errorAlert).not.toHaveTextContent('Rich text content is invalid')
   await expect.element(screen.getByTestId('rendered-result')).toHaveTextContent('旧结果')
-  await expect.element(screen.getByText('当前显示的结果对应旧 revision')).toBeVisible()
 
   for (const error of [new Error('private error'), 'private string', null]) {
     await screen.rerender({ error })

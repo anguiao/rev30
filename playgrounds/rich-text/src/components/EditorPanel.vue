@@ -28,10 +28,7 @@ function restoreExample() {
 <template>
   <section aria-labelledby="editor-panel-title" class="flex min-h-0 min-w-0 flex-col gap-3">
     <div class="flex items-center justify-between gap-3">
-      <div>
-        <h2 id="editor-panel-title" class="text-base font-semibold">编辑</h2>
-        <p class="text-sm text-stone-500 dark:text-zinc-400">使用真实 client all preset。</p>
-      </div>
+      <h2 id="editor-panel-title" class="text-base font-semibold">编辑</h2>
       <NButton secondary size="small" data-test="restore-example" @click="restoreExample">
         恢复示例
       </NButton>

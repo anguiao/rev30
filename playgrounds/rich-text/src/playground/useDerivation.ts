@@ -13,17 +13,14 @@ export interface DerivedRichTextContent {
 
 export function useDerivation(document: Ref<RichTextDocument>, serverPreset: RichTextServerPreset) {
   const status = ref<DerivationStatus>('pending')
-  const revision = ref(0)
-  const resultRevision = ref<number | null>(null)
   const result = shallowRef<DerivedRichTextContent | null>(null)
   const error = shallowRef<unknown>(null)
   let timer: number | undefined
 
-  function derive(currentRevision: number, currentDocument: RichTextDocument) {
+  function derive(currentDocument: RichTextDocument) {
     try {
       const derived = deriveRichTextContent(currentDocument, serverPreset)
       result.value = derived
-      resultRevision.value = currentRevision
       error.value = null
       status.value = 'ready'
     } catch (cause) {
@@ -41,19 +38,16 @@ export function useDerivation(document: Ref<RichTextDocument>, serverPreset: Ric
 
   function schedule() {
     clearTimer()
-    revision.value += 1
-    const currentRevision = revision.value
     status.value = 'pending'
     timer = window.setTimeout(() => {
       timer = undefined
-      derive(currentRevision, document.value)
+      derive(document.value)
     }, 300)
   }
 
   function deriveImmediately() {
     clearTimer()
-    revision.value += 1
-    derive(revision.value, document.value)
+    derive(document.value)
   }
 
   deriveImmediately()
@@ -62,8 +56,6 @@ export function useDerivation(document: Ref<RichTextDocument>, serverPreset: Ric
 
   return {
     status,
-    revision,
-    resultRevision,
     result,
     error,
     schedule,

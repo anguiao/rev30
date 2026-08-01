@@ -13,7 +13,7 @@ pnpm --filter @rev30/rich-text-playground exec playwright install chromium
 pnpm --filter @rev30/rich-text-playground test:browser
 ```
 
-开发服务器默认监听 `http://localhost:3201`。`test:browser` 是 headless Chromium suite，包含 preset smoke、真实 Selection/focus、clipboard、布局/键盘和图片文件输入契约；Chromium binary 首次运行前安装一次。
+开发服务器默认监听 `http://localhost:3210`。`test:browser` 是 headless Chromium suite，包含 preset smoke、真实 Selection/focus、clipboard、布局/键盘和图片文件输入契约；Chromium binary 首次运行前安装一次。
 
 需要只运行派生错误回归时：
 
@@ -37,9 +37,9 @@ pnpm --filter @rev30/rich-text-playground test:browser:clipboard:ui
 
 ## 派生状态
 
-- `ready`（页面显示“已同步”）：结果对应最新 editor revision。
-- `pending`（页面显示“同步中”）：内容已修改，等待 300ms 防抖；继续保留上一次成功结果，并提示正在同步。
-- `error`（页面显示“派生失败”）：最新 revision 派生失败；保留上一次成功结果并标记它不是当前内容。首次派生失败时没有成功结果，结果面板显示错误空状态。
+- `ready`：结果对应最新 editor revision。
+- `pending`：内容已修改，等待 300ms 防抖，并继续保留上一次成功结果。
+- `error`：最新 revision 派生失败，并继续保留上一次成功结果。首次派生失败时没有成功结果，结果面板显示错误空状态。
 
 公开的 `RichTextContentInvalidError` 显示“富文本内容无效”；其它异常统一显示“生成富文本结果失败”，原始异常仍保留在派生状态中供测试和开发诊断。
 

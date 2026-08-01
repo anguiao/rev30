@@ -2,7 +2,7 @@
 import hljs from 'highlight.js/lib/common'
 import githubDarkThemeCss from 'highlight.js/styles/github-dark.css?raw'
 import githubThemeCss from 'highlight.js/styles/github.css?raw'
-import { NAlert, NEmpty, NTabPane, NTabs, NTag } from 'naive-ui'
+import { NAlert, NEmpty, NTabPane, NTabs } from 'naive-ui'
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { RichTextContentInvalidError } from '@rev30/rich-text/server'
 import type { RichTextDocument } from '@rev30/rich-text/schema'
@@ -12,8 +12,6 @@ import { redactImageDataUrls } from '../playground/image'
 const props = defineProps<{
   result: DerivedRichTextContent | null
   status: DerivationStatus
-  revision: number
-  resultRevision: number | null
   error: unknown
   imageError: string | null
   isDark: boolean
@@ -43,12 +41,6 @@ const formattedJson = computed(() =>
   props.result ? redactImageDataUrls(JSON.stringify(props.result.json, null, 2)) : '',
 )
 const formattedHtml = computed(() => (props.result ? redactImageDataUrls(props.result.html) : ''))
-const hasStaleResult = computed(
-  () =>
-    props.result !== null &&
-    props.resultRevision !== null &&
-    props.resultRevision !== props.revision,
-)
 const errorMessage = computed(() => {
   if (props.status !== 'error') {
     return null
@@ -59,28 +51,6 @@ const errorMessage = computed(() => {
   }
 
   return '生成富文本结果失败'
-})
-const statusLabel = computed(() => {
-  if (props.status === 'pending') {
-    return '同步中'
-  }
-
-  if (props.status === 'error') {
-    return '派生失败'
-  }
-
-  return '已同步'
-})
-const statusType = computed(() => {
-  if (props.status === 'error') {
-    return 'error'
-  }
-
-  if (props.status === 'pending') {
-    return 'warning'
-  }
-
-  return 'success'
 })
 
 async function highlightCode() {
@@ -107,29 +77,13 @@ watch(
 
 <template>
   <section aria-labelledby="result-panel-title" class="flex min-h-0 min-w-0 flex-col gap-3">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h2 id="result-panel-title" class="text-base font-semibold">派生结果</h2>
-        <p class="text-sm text-stone-500 dark:text-zinc-400">
-          真实 server all preset 的校验、清洗和渲染。
-        </p>
-      </div>
-      <NTag :type="statusType" size="small" data-test="derivation-status">{{ statusLabel }}</NTag>
-    </div>
+    <h2 id="result-panel-title" class="text-base font-semibold">派生结果</h2>
 
-    <NAlert
-      v-if="status === 'pending'"
-      type="warning"
-      :show-icon="false"
-      data-test="pending-result"
-    >
-      内容已修改，正在同步；暂时保留上一次成功结果。
-    </NAlert>
     <NAlert v-if="imageError" type="error" :show-icon="false" data-test="image-error">
       {{ imageError }}
     </NAlert>
     <NAlert v-if="status === 'error'" type="error" :show-icon="false" data-test="derivation-error">
-      {{ errorMessage }}<template v-if="result !== null">。保留的结果不是当前内容。</template>
+      {{ errorMessage }}
     </NAlert>
 
     <NTabs
@@ -175,9 +129,5 @@ watch(
         </template>
       </NTabPane>
     </NTabs>
-
-    <p v-if="hasStaleResult" class="text-xs text-amber-700 dark:text-amber-300">
-      当前显示的结果对应旧 revision，不能代表最新内容。
-    </p>
   </section>
 </template>

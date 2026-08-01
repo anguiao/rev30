@@ -21,11 +21,20 @@ test('creates all presets and renders the complete default document in Chromium'
   expect(derived.html).toContain('<img')
   expect(derived.html).toContain('data:image/png;base64,')
   expect(derived.html).toContain('tableWrapper')
+  expect(derived.html).not.toContain('all preset')
+  expect(derived.html).not.toContain('deriveRichTextContent')
   expect(JSON.stringify(derived.json)).toContain('data:image/png;base64,')
 
   const screen = render(App)
   await expect.element(screen.getByRole('heading', { name: 'Rich Text Playground' })).toBeVisible()
-  await expect.element(screen.getByTestId('derivation-status')).toHaveTextContent('已同步')
+  const themeMode = screen.getByTestId('theme-mode').element()
+  expect(themeMode.getAttribute('aria-label')).toBe('主题')
+  expect(themeMode.getBoundingClientRect().width).toBe(128)
+  await expect.element(screen.getByText('主题', { exact: true })).not.toBeInTheDocument()
+  await expect.element(screen.getByTestId('derivation-status')).not.toBeInTheDocument()
+  await expect
+    .element(screen.getByText('使用真实 client all preset。', { exact: true }))
+    .not.toBeInTheDocument()
   await expect
     .element(screen.getByTestId('rendered-result').getByRole('heading', { level: 1 }))
     .toBeVisible()
@@ -42,10 +51,39 @@ test('creates all presets and renders the complete default document in Chromium'
     .toHaveTextContent(/图片 payload 已省略，\d+ 字节/)
 })
 
+test('keeps the editor and preview within the viewport with internal scrolling', async () => {
+  const screen = render(App)
+  const editorPanel = screen.getByRole('region', { name: '编辑' })
+  const resultPanel = screen.getByRole('region', { name: '派生结果' })
+  const renderedResult = screen.getByTestId('rendered-result')
+
+  await expect.element(editorPanel).toBeVisible()
+  await expect.element(resultPanel).toBeVisible()
+  await expect.element(renderedResult).toBeVisible()
+
+  for (const panel of [editorPanel.element(), resultPanel.element()]) {
+    const rect = panel.getBoundingClientRect()
+    expect(rect.top).toBeGreaterThanOrEqual(0)
+    expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight)
+  }
+
+  const editorRoot = screen.getByTestId('playground-editor').element()
+  const editorScrollContainer =
+    editorRoot.querySelector('.ProseMirror')?.parentElement?.parentElement
+  expect(editorScrollContainer).not.toBeNull()
+  expect(getComputedStyle(editorScrollContainer!).overflowY).toBe('auto')
+  expect(editorScrollContainer!.scrollHeight).toBeGreaterThan(editorScrollContainer!.clientHeight)
+
+  const previewScrollContainer = renderedResult.element().closest<HTMLElement>('.n-tab-pane')
+  expect(previewScrollContainer).not.toBeNull()
+  expect(getComputedStyle(previewScrollContainer!).overflowY).toBe('auto')
+  expect(previewScrollContainer!.scrollHeight).toBeGreaterThan(previewScrollContainer!.clientHeight)
+})
+
 test('highlights rendered code and switches its theme with the playground mode', async () => {
   const screen = render(App)
   const renderedResult = screen.getByTestId('rendered-result')
-  await expect.element(screen.getByTestId('derivation-status')).toHaveTextContent('已同步')
+  await expect.element(renderedResult).toBeVisible()
 
   const code = renderedResult.element().querySelector<HTMLElement>('pre code')
   expect(code).not.toBeNull()
@@ -92,5 +130,5 @@ test('keeps image errors through normal edits until restoring the example', asyn
 
   await screen.getByTestId('restore-example').click()
   await expect.element(screen.getByTestId('image-error')).not.toBeInTheDocument()
-  await expect.element(screen.getByTestId('derivation-status')).toHaveTextContent('已同步')
+  await expect.element(screen.getByTestId('rendered-result')).toBeVisible()
 })

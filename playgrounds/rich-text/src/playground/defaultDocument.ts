@@ -28,9 +28,6 @@ export function createDefaultDocument(): RichTextDocument {
         attrs: { level: 1, textAlign: null },
         content: [text('用真实能力写一篇富文本文章')],
       },
-      paragraph([
-        text('这是一个本地 playground：编辑器使用 client all preset，结果使用 server all preset。'),
-      ]),
       {
         type: 'heading',
         attrs: { level: 2, textAlign: null },
@@ -94,11 +91,7 @@ export function createDefaultDocument(): RichTextDocument {
       {
         type: 'codeBlock',
         attrs: { language: 'typescript' },
-        content: [
-          text(
-            'const result = deriveRichTextContent(document, serverPreset)\nconsole.log(result.html)',
-          ),
-        ],
+        content: [text("const articleTitle = '富文本示例'\nexport { articleTitle }")],
       },
       { type: 'horizontalRule' },
       {
@@ -111,30 +104,29 @@ export function createDefaultDocument(): RichTextDocument {
           {
             type: 'tableRow',
             content: [
-              cell('tableHeader', '功能'),
-              cell('tableHeader', '状态'),
-              cell('tableHeader', '说明'),
+              cell('tableHeader', '项目'),
+              cell('tableHeader', '负责人'),
+              cell('tableHeader', '进度'),
             ],
           },
           {
             type: 'tableRow',
             content: [
-              cell('tableCell', 'Client all preset'),
-              cell('tableCell', '已启用'),
-              cell('tableCell', '真实编辑器工具栏'),
+              cell('tableCell', '内容整理'),
+              cell('tableCell', '编辑团队'),
+              cell('tableCell', '已完成'),
             ],
           },
           {
             type: 'tableRow',
             content: [
-              cell('tableCell', 'Server all preset'),
-              cell('tableCell', '已启用'),
-              cell('tableCell', '校验、清洗和静态渲染'),
+              cell('tableCell', '发布检查'),
+              cell('tableCell', '运营团队'),
+              cell('tableCell', '进行中'),
             ],
           },
         ],
       },
-      paragraph([text('继续输入，结果会在停止编辑约 300ms 后自动同步。')]),
     ],
   }
 }

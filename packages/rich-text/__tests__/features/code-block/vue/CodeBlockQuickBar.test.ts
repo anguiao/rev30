@@ -6,10 +6,10 @@ import { NDropdown } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { codeBlockEditorFeature } from '../../../../src/features/code-block/editor'
-import CodeBlockLanguageControl from '../../../../src/features/code-block/vue/CodeBlockLanguageControl.vue'
+import CodeBlockQuickBar from '../../../../src/features/code-block/vue/CodeBlockQuickBar.vue'
 import { createTestEditor } from '../../../helpers/editor'
 
-describe('CodeBlockLanguageControl', () => {
+describe('CodeBlockQuickBar', () => {
   it('keeps focus on its trigger when closing the language menu with Escape', async () => {
     const editor = createTestEditor({
       extensions: [Document, Paragraph, Text, ...codeBlockEditorFeature.extensions!()],
@@ -17,11 +17,10 @@ describe('CodeBlockLanguageControl', () => {
     })
     editor.commands.setTextSelection(1)
     editor.view.focus()
-    const wrapper = mount(CodeBlockLanguageControl, {
+    const wrapper = mount(CodeBlockQuickBar, {
       attachTo: document.body,
       props: {
         editor: markRaw(editor),
-        showLabel: true,
       },
     })
 
@@ -45,10 +44,9 @@ describe('CodeBlockLanguageControl', () => {
       content: '<pre><code class="language-c++">const value = 1</code></pre>',
     })
     editor.commands.setTextSelection(1)
-    const wrapper = mount(CodeBlockLanguageControl, {
+    const wrapper = mount(CodeBlockQuickBar, {
       props: {
         editor: markRaw(editor),
-        showLabel: true,
       },
     })
 

@@ -104,8 +104,15 @@ export const codeBlockActionItem = defineRichTextActionItem(codeBlockAction, {
 
 export const setCodeBlockLanguageAction = defineRichTextAction(codeBlockFeature, {
   key: 'set-code-block-language',
-  command: ({ chain }, language: string | null) =>
-    chain().focus().updateAttributes('codeBlock', { language }).run(),
+  command: ({ chain, state }, language: string | null) => {
+    if (getSelectedCodeBlock(state.selection)) {
+      return chain().focus().updateAttributes('codeBlock', { language }).run()
+    }
+
+    return language === null
+      ? chain().focus().setCodeBlock().run()
+      : chain().focus().setCodeBlock({ language }).run()
+  },
 })
 
 export const codeBlockEditorFeature = defineRichTextEditorFeature(codeBlockFeature, {

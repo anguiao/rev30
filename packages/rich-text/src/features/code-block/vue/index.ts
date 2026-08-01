@@ -2,7 +2,7 @@ import { richTextFeatureQuickBar } from '../../../vue/quick-bar'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
 import { getSelectedCodeBlock } from '../editor'
 import { codeBlockFeature } from '../shared'
-import CodeBlockLanguageControl from './CodeBlockLanguageControl.vue'
+import CodeBlockQuickBar from './CodeBlockQuickBar.vue'
 import CodeBlockToolbarControl from './CodeBlockToolbarControl.vue'
 
 export const codeBlockToolbarControl = richTextToolbarComponent({
@@ -14,8 +14,8 @@ export const codeBlockToolbarControl = richTextToolbarComponent({
 export const codeBlockQuickBar = richTextFeatureQuickBar({
   feature: codeBlockFeature,
   isActive: (editor) => getSelectedCodeBlock(editor.state.selection) !== null,
-  component: CodeBlockLanguageControl,
-  props: { showLabel: true },
+  component: CodeBlockQuickBar,
+  props: {},
   getAnchorElement: (editor) => {
     const codeBlock = getSelectedCodeBlock(editor.state.selection)
     const element = codeBlock ? editor.view.nodeDOM(codeBlock.position) : null

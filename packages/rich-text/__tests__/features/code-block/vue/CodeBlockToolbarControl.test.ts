@@ -4,31 +4,17 @@ import Text from '@tiptap/extension-text'
 import type { Editor } from '@tiptap/vue-3'
 import { mount } from '@vue/test-utils'
 import type { DropdownOption } from 'naive-ui'
-import { NButtonGroup, NDropdown } from 'naive-ui'
+import { NDropdown } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { codeBlockEditorFeature } from '../../../../src/features/code-block/editor'
 import CodeBlockToolbarControl from '../../../../src/features/code-block/vue/CodeBlockToolbarControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
 
-function createEditor(firstLanguage: string | null, secondLanguage: string | null) {
+function createEditor(content: string | object = '<p>const ready = true</p>') {
   return createTestEditor({
     extensions: [Document, Paragraph, Text, ...codeBlockEditorFeature.extensions!()],
-    content: {
-      type: 'doc',
-      content: [
-        {
-          type: 'codeBlock',
-          attrs: { language: firstLanguage },
-          content: [{ type: 'text', text: 'const first = 1' }],
-        },
-        {
-          type: 'codeBlock',
-          attrs: { language: secondLanguage },
-          content: [{ type: 'text', text: 'const second = 2' }],
-        },
-      ],
-    },
+    content,
   })
 }
 
@@ -39,21 +25,6 @@ function mountControl(editor: Editor, attachToDocument = false) {
       editor: markRaw(editor),
     },
   })
-}
-
-function findCodeBlockTextPositions(editor: Editor) {
-  const positions: number[] = []
-
-  editor.state.doc.descendants((node, position) => {
-    if (node.type.name === 'codeBlock') {
-      positions.push(position + 1)
-      return false
-    }
-
-    return true
-  })
-
-  return positions
 }
 
 function findOption(wrapper: ReturnType<typeof mount>, value: string) {
@@ -68,65 +39,63 @@ function findOption(wrapper: ReturnType<typeof mount>, value: string) {
 }
 
 describe('CodeBlockToolbarControl', () => {
-  it('groups the primary action and language menu as a split button', async () => {
-    const editor = createEditor(null, null)
-    editor.commands.setTextSelection(findCodeBlockTextPositions(editor)[0]!)
+  it('creates a language-selected code block from one dropdown', async () => {
+    const editor = createEditor()
     const wrapper = mountControl(editor)
     const dropdown = wrapper.getComponent(NDropdown)
+    const trigger = wrapper.get('[data-test="rich-text-code-block"]')
 
-    expect(wrapper.getComponent(NButtonGroup).props('size')).toBe('small')
-    expect(wrapper.get('[data-test="rich-text-code-block"]').attributes('aria-pressed')).toBe(
-      'true',
-    )
+    expect(wrapper.findAll('[data-rich-text-toolbar-item]')).toHaveLength(1)
+    expect(trigger.attributes('aria-pressed')).toBe('false')
+    expect(trigger.attributes('aria-haspopup')).toBe('menu')
     expect(dropdown.props('disabled')).toBe(false)
     expect(findOption(wrapper, 'plaintext').props).toMatchObject({
-      'aria-pressed': true,
+      'aria-pressed': false,
+    })
+    expect(findOption(wrapper, 'typescript').props).toMatchObject({
+      'aria-pressed': false,
     })
 
     dropdown.vm.$emit('select', 'typescript')
 
     await vi.waitFor(() => {
-      expect(editor.getJSON().content?.[0]?.attrs).toEqual({ language: 'typescript' })
-    })
-
-    dropdown.vm.$emit('select', 'plaintext')
-
-    await vi.waitFor(() => {
-      expect(editor.getJSON().content?.[0]?.attrs).toEqual({ language: null })
-    })
-  })
-
-  it('disables language changes across multiple code blocks', async () => {
-    const editor = createEditor('typescript', 'json')
-    const positions = findCodeBlockTextPositions(editor)
-    const wrapper = mountControl(editor)
-    const dropdown = wrapper.getComponent(NDropdown)
-
-    editor.commands.setTextSelection(positions[0]!)
-
-    await vi.waitFor(() => {
-      expect(dropdown.props('disabled')).toBe(false)
+      expect(editor.getJSON().content?.[0]).toMatchObject({
+        type: 'codeBlock',
+        attrs: { language: 'typescript' },
+      })
+      expect(trigger.attributes('aria-pressed')).toBe('true')
       expect(findOption(wrapper, 'typescript').props).toMatchObject({
         'aria-pressed': true,
       })
     })
 
-    editor.commands.setTextSelection({
-      from: positions[0]!,
-      to: positions[1]! + 1,
+    expect(trigger.text()).toBe('')
+  })
+
+  it('switches language without exposing it in the toolbar', async () => {
+    const editor = createEditor({
+      type: 'doc',
+      content: [
+        {
+          type: 'codeBlock',
+          attrs: { language: 'typescript' },
+          content: [{ type: 'text', text: 'const ready = true' }],
+        },
+      ],
     })
+    editor.commands.setTextSelection(1)
+    const wrapper = mountControl(editor)
+    const dropdown = wrapper.getComponent(NDropdown)
+    const trigger = wrapper.get('[data-test="rich-text-code-block"]')
+
+    expect(trigger.text()).toBe('')
+    expect(findOption(wrapper, 'typescript').props).toMatchObject({ 'aria-pressed': true })
+
+    dropdown.vm.$emit('select', 'plaintext')
 
     await vi.waitFor(() => {
-      expect(dropdown.props('disabled')).toBe(true)
-    })
-
-    editor.commands.setTextSelection({
-      from: positions[0]!,
-      to: positions[0]! + 3,
-    })
-
-    await vi.waitFor(() => {
-      expect(dropdown.props('disabled')).toBe(false)
+      expect(editor.getJSON().content?.[0]?.attrs).toEqual({ language: null })
+      expect(findOption(wrapper, 'plaintext').props).toMatchObject({ 'aria-pressed': true })
     })
   })
 })

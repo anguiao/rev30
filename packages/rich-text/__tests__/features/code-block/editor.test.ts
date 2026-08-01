@@ -72,6 +72,16 @@ describe('code block feature', () => {
     expect(editor.isActive('codeBlock')).toBe(true)
   })
 
+  it('keeps the native Backspace behavior at the start of a code block', () => {
+    const editor = createEditor()
+
+    expect(runRichTextAction(editor, codeBlockAction)).toBe(true)
+    editor.commands.setTextSelection(1)
+
+    expect(editor.commands.keyboardShortcut('Backspace')).toBe(true)
+    expect(editor.isActive('codeBlock')).toBe(false)
+  })
+
   it('creates a paragraph when clicking editor whitespace below the final code block', () => {
     const editor = createEditor({
       type: 'doc',
@@ -136,12 +146,9 @@ describe('code block feature', () => {
     expect(editorWithTrailingParagraph.getJSON().content).toHaveLength(2)
   })
 
-  it('stores the selected language and highlights the editable code', () => {
+  it('creates a code block with the selected language and updates it', () => {
     const editor = createEditor()
 
-    expect(canRunRichTextAction(editor, setCodeBlockLanguageAction, 'typescript')).toBe(false)
-    expect(runRichTextAction(editor, setCodeBlockLanguageAction, 'typescript')).toBe(false)
-    expect(runRichTextAction(editor, codeBlockAction)).toBe(true)
     expect(canRunRichTextAction(editor, setCodeBlockLanguageAction, 'typescript')).toBe(true)
     expect(runRichTextAction(editor, setCodeBlockLanguageAction, 'typescript')).toBe(true)
     expect(editor.getJSON()).toMatchObject({

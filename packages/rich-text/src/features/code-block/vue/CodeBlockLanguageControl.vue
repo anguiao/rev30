@@ -1,21 +1,19 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
 import type { DropdownOption } from 'naive-ui'
-import { NButton, NDropdown } from 'naive-ui'
+import { NDropdown } from 'naive-ui'
 import { computed, h } from 'vue'
-import { runRichTextAction } from '../../../editor/action'
+import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
 import { useRichTextDropdownTrigger } from '../../../vue/interactions/dropdown'
 import { getSelectedCodeBlock, setCodeBlockLanguageAction } from '../editor'
 
 interface CodeBlockLanguageControlProps {
   editor: Editor
   disabled?: boolean
-  showLabel?: boolean
 }
 
 const props = withDefaults(defineProps<CodeBlockLanguageControlProps>(), {
   disabled: false,
-  showLabel: false,
 })
 
 const editor = props.editor
@@ -36,34 +34,35 @@ const languages = [
 ] as const
 
 const currentCodeBlock = computed(() => getSelectedCodeBlock(editor.state.selection))
-const isDisabled = computed(() => props.disabled || currentCodeBlock.value === null)
-const { show, handleTriggerKeydown } = useRichTextDropdownTrigger(isDisabled)
-
-const currentLanguage = computed(() => {
-  const codeBlock = currentCodeBlock.value
-
-  if (!codeBlock) {
-    return null
-  }
-
-  return codeBlock.node.attrs.language ?? 'plaintext'
-})
+const currentLanguage = computed(() => currentCodeBlock.value?.node.attrs.language ?? 'plaintext')
 const languageLabel = computed(
   () =>
     languages.find((option) => option.value === currentLanguage.value)?.label ??
     currentLanguage.value,
 )
-const buttonLabel = computed(() =>
-  languageLabel.value ? `代码语言：${languageLabel.value}` : '代码语言',
-)
+
+function canSetLanguage(value: string) {
+  if (props.disabled) {
+    return false
+  }
+
+  if (currentCodeBlock.value !== null) {
+    return true
+  }
+
+  const language = value === 'plaintext' ? null : value
+  return canRunRichTextAction(editor, setCodeBlockLanguageAction, language)
+}
 
 const options = computed<DropdownOption[]>(() =>
   languages.map((language) => {
-    const active = currentLanguage.value === language.value
+    const active = currentCodeBlock.value !== null && currentLanguage.value === language.value
+    const disabled = !canSetLanguage(language.value)
 
     return {
       key: language.value,
       label: language.label,
+      disabled,
       icon: () =>
         h('span', {
           class: [
@@ -76,10 +75,15 @@ const options = computed<DropdownOption[]>(() =>
         'data-test': `rich-text-code-block-language-${language.value}`,
         role: 'menuitem',
         'aria-pressed': active,
+        'aria-disabled': disabled ? 'true' : undefined,
+        onMousedown: (event) => event.preventDefault(),
       },
     }
   }),
 )
+
+const isDisabled = computed(() => options.value.every((option) => option.disabled))
+const { show, handleTriggerKeydown } = useRichTextDropdownTrigger(isDisabled)
 
 function handleSelect(value: string) {
   const option = languages.find((language) => language.value === value)
@@ -106,22 +110,14 @@ function handleSelect(value: string) {
       :disabled="isDisabled"
       @select="handleSelect"
     >
-      <NButton
-        data-test="rich-text-code-block-language"
-        data-rich-text-toolbar-item="code-block-language"
+      <slot
+        name="trigger"
+        :active="currentCodeBlock !== null"
         :disabled="isDisabled"
-        size="small"
-        style="--n-padding: 0 6px"
-        quaternary
-        :title="buttonLabel"
-        :aria-label="buttonLabel"
-        aria-haspopup="menu"
-        :aria-expanded="show"
-        @keydown="handleTriggerKeydown"
-      >
-        <span v-if="showLabel" class="mr-1 text-xs">{{ languageLabel }}</span>
-        <span class="i-[lucide--chevron-down] text-xs" aria-hidden="true" />
-      </NButton>
+        :show="show"
+        :language-label="languageLabel"
+        :handle-keydown="handleTriggerKeydown"
+      />
     </NDropdown>
   </div>
 </template>

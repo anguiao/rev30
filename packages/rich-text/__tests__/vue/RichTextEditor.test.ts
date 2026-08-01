@@ -46,7 +46,6 @@ const toolbarDataTests = [
   'rich-text-list',
   'rich-text-blockquote',
   'rich-text-code-block',
-  'rich-text-code-block-language',
   'rich-text-horizontal-rule',
   'rich-text-table',
   'rich-text-image',
@@ -434,7 +433,7 @@ describe('RichTextEditor', () => {
     })
   })
 
-  it('creates, configures, and exits code blocks with a split button', async () => {
+  it('creates and configures code blocks with one dropdown', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: {
         type: 'doc',
@@ -456,18 +455,13 @@ describe('RichTextEditor', () => {
       return options.some((option) => option.key === 'typescript')
     })
 
-    expect(languageDropdown?.props('disabled')).toBe(true)
-    await codeBlockButton.trigger('click')
-
-    await vi.waitFor(() => {
-      expect(codeBlockButton.attributes('aria-pressed')).toBe('true')
-      expect(languageDropdown?.props('disabled')).toBe(false)
-      expect(wrapper.find('.ProseMirror pre').exists()).toBe(true)
-    })
+    expect(languageDropdown?.props('disabled')).toBe(false)
 
     await selectDropdownCommand(wrapper, 'typescript')
 
     await vi.waitFor(() => {
+      expect(codeBlockButton.attributes('aria-pressed')).toBe('true')
+      expect(wrapper.find('.ProseMirror pre').exists()).toBe(true)
       expect(wrapper.get('.ProseMirror code').classes()).toContain('language-typescript')
       expect(wrapper.get('.ProseMirror .hljs-keyword').text()).toBe('const')
     })
@@ -476,13 +470,6 @@ describe('RichTextEditor', () => {
 
     await vi.waitFor(() => {
       expect(wrapper.get('.ProseMirror code').classes()).not.toContain('language-typescript')
-    })
-
-    await codeBlockButton.trigger('click')
-
-    await vi.waitFor(() => {
-      expect(wrapper.find('.ProseMirror pre').exists()).toBe(false)
-      expect(wrapper.get('.ProseMirror p').text()).toBe('const ready = true')
     })
   })
 

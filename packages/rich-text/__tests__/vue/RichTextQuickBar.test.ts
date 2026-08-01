@@ -474,7 +474,14 @@ describe('RichTextQuickBar', () => {
       to: positions[0],
     })
 
-    wrapper.getComponent(NDropdown).vm.$emit('select', 'typescript')
+    const languageOption = wrapper.get('[data-test="rich-text-code-block-language-typescript"]')
+    expect(languageOption.attributes('aria-disabled')).toBeUndefined()
+
+    const mousedown = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    languageOption.element.dispatchEvent(mousedown)
+    expect(mousedown.defaultPrevented).toBe(true)
+
+    await languageOption.trigger('click')
     await flushPromises()
 
     expect(editor.getJSON().content?.[0]?.attrs).toEqual({ language: 'typescript' })

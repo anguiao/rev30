@@ -2,6 +2,7 @@
 import hljs from 'highlight.js/lib/common'
 import { NAlert, NEmpty, NTabPane, NTabs, NTag } from 'naive-ui'
 import { computed, nextTick, ref, watch } from 'vue'
+import { RichTextContentInvalidError } from '@rev30/rich-text/server'
 import type { RichTextDocument } from '@rev30/rich-text/schema'
 import type { DerivedRichTextContent, DerivationStatus } from '../playground/useDerivation'
 import { redactImageDataUrls } from '../playground/image'
@@ -28,11 +29,15 @@ const hasStaleResult = computed(
     props.resultRevision !== props.revision,
 )
 const errorMessage = computed(() => {
-  if (props.error instanceof Error) {
-    return props.error.message || '生成富文本结果失败'
+  if (props.status !== 'error') {
+    return null
   }
 
-  return props.error ? '生成富文本结果失败' : null
+  if (props.error instanceof RichTextContentInvalidError) {
+    return '富文本内容无效'
+  }
+
+  return '生成富文本结果失败'
 })
 const statusLabel = computed(() => {
   if (props.status === 'pending') {

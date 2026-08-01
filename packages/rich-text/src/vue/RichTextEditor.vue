@@ -32,8 +32,6 @@ const root = useTemplateRef<HTMLElement>('root')
 const richTextThemeStyle = useRichTextThemeStyle()
 
 const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer')
-let pendingBlur = false
-let blurEmitted = false
 
 const preset = props.preset
 const editor = new Editor({
@@ -66,53 +64,19 @@ watch(
   { deep: true },
 )
 
-function handleFocusout(event: FocusEvent) {
-  const nextTarget = event.relatedTarget
-
-  if (nextTarget instanceof Node && root.value?.contains(nextTarget)) {
-    return
-  }
-
+async function handleFocusout(event: FocusEvent) {
+  let nextTarget = event.relatedTarget
   if (nextTarget === null) {
-    if (pendingBlur || blurEmitted) {
-      return
-    }
+    await nextTick()
+    nextTarget = document.activeElement
+  }
 
-    pendingBlur = true
-    void nextTick(() => {
-      if (!pendingBlur) {
-        return
-      }
-
-      pendingBlur = false
-      const editorRoot = root.value
-      const activeElement = document.activeElement
-
-      if (
-        editorRoot === null ||
-        (activeElement instanceof Node && editorRoot.contains(activeElement))
-      ) {
-        return
-      }
-
-      if (!blurEmitted) {
-        blurEmitted = true
-        emit('blur')
-      }
-    })
+  const editorRoot = root.value
+  if (editorRoot === null || (nextTarget instanceof Node && editorRoot.contains(nextTarget))) {
     return
   }
 
-  pendingBlur = false
-  if (!blurEmitted) {
-    blurEmitted = true
-    emit('blur')
-  }
-}
-
-function handleFocusin() {
-  pendingBlur = false
-  blurEmitted = false
+  emit('blur')
 }
 </script>
 
@@ -127,7 +91,6 @@ function handleFocusin() {
         : 'focus-within:border-(--rich-text-theme-input-border-focus-color) focus-within:bg-(--rich-text-theme-input-focus-color) focus-within:shadow-(--rich-text-theme-input-box-shadow-focus) hover:border-(--rich-text-theme-input-border-hover-color)'
     "
     :style="richTextThemeStyle"
-    @focusin="handleFocusin"
     @focusout="handleFocusout"
   >
     <RichTextToolbar

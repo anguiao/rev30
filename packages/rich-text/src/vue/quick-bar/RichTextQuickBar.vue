@@ -171,7 +171,6 @@ onMounted(() => {
     :options="menuOptions"
     :should-show="shouldShowQuickBar"
     :get-referenced-virtual-element="getAnchorElement"
-    :update-delay="0"
   >
     <div
       ref="root"

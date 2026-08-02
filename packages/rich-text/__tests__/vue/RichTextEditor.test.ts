@@ -196,9 +196,10 @@ describe('RichTextEditor', () => {
       expect(wrapper.find(`[data-test="${dataTest}"]`).exists()).toBe(true)
     }
     expect(wrapper.findAllComponents(NDropdown)).toHaveLength(7)
-    expect(wrapper.get('[data-test="rich-text-status-bar"]').text()).toBe('4 字')
-    expect(wrapper.find('[data-test="rich-text-status-bar-start"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="rich-text-status-bar"]').text()).toBe('p4 字')
+    expect(wrapper.find('[data-test="rich-text-status-bar-start"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="rich-text-status-bar-end"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="rich-text-element-path"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="rich-text-character-count"]').exists()).toBe(true)
     expect(editable.text()).toContain('维护通知')
   })

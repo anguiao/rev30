@@ -140,6 +140,8 @@ test('runs slash commands with keyboard geometry and native tab navigation', asy
   await userEvent.type(nextEditable, '/')
   await expect.element(screen.getByTestId('rich-text-slash-menu')).toBeVisible()
   await userEvent.keyboard('{Tab}')
+  await expect.element(screen.getByTestId('active-element')).toHaveTextContent('node:paragraph')
+  await userEvent.keyboard('{Tab}')
   await expect.element(screen.getByTestId('active-element')).toHaveTextContent('after-editor')
 })
 
@@ -193,4 +195,112 @@ test('keeps focus inside toolbar, popover, and quick bar without overall blur', 
 
   await screen.getByTestId('after-editor').click()
   await expect.element(screen.getByTestId('blur-count')).toHaveTextContent('1')
+})
+
+test('updates nested model marks and activates the element path without losing it on blur', async () => {
+  const screen = getHarness()
+  await screen.getByTestId('set-element-path-document').click()
+  const editable = await getEditable(screen)
+
+  await userEvent.click(editable)
+  await userEvent.keyboard('{Home}')
+  await userEvent.keyboard('{ArrowRight}{ArrowRight}')
+
+  const path = screen.getByTestId('rich-text-element-path').element()
+  await expect.element(screen.getByRole('button', { name: '选择 em 元素' })).toBeVisible()
+  const items = Array.from(
+    path.querySelectorAll<HTMLButtonElement>('[data-rich-text-toolbar-item]'),
+  )
+  expect(items.filter((item) => item.tabIndex === 0)).toHaveLength(1)
+  expect(items.every((item) => item.getAttribute('aria-label')?.startsWith('选择 '))).toBe(true)
+  expect(path.querySelectorAll('[aria-hidden="true"]')).toHaveLength(Math.max(items.length - 1, 0))
+  expect(path.innerHTML).not.toContain('https://example.com/docs')
+  expect(getComputedStyle(path).minWidth).toBe('0px')
+  expect(getComputedStyle(path).overflowX).toBe('auto')
+
+  const outermost = items[0]!
+  outermost.focus()
+  await expect
+    .element(screen.getByTestId('active-element'))
+    .toHaveTextContent(outermost.dataset.richTextToolbarItem ?? '')
+  await userEvent.keyboard('{ArrowRight}')
+  const next = items[1] ?? outermost
+  await expect
+    .element(screen.getByTestId('active-element'))
+    .toHaveTextContent(next.dataset.richTextToolbarItem ?? '')
+
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByTestId('active-element')).toHaveTextContent('editor')
+  const strongButton = screen.getByRole('button', { name: '选择 strong 元素' }).element()
+  strongButton.focus()
+  await userEvent.keyboard('{Space}')
+  await expect.element(screen.getByTestId('selection-text')).toHaveTextContent('甲乙丙')
+  await expect.element(screen.getByTestId('active-element')).toHaveTextContent('editor')
+
+  await screen.getByTestId('after-editor').click()
+  await expect.element(screen.getByTestId('rich-text-element-path')).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: '选择 strong 元素' })).toBeVisible()
+})
+
+test('reflects image NodeSelection through the img path item', async () => {
+  const screen = getHarness()
+  await screen.getByTestId('set-image-selection-document').click()
+  const editable = await getEditable(screen)
+  await expect.element(screen.getByTestId('model-json')).toHaveTextContent('路径图片')
+  const imageLocator = editable.getByRole('img', { name: '路径图片' })
+  await expect.element(imageLocator).toBeVisible()
+  const image = imageLocator.element()
+  expect(image).toBeInstanceOf(HTMLImageElement)
+  expect(editable.element().contains(image)).toBe(true)
+
+  await imageLocator.click()
+  const path = screen.getByTestId('rich-text-element-path')
+  await expect.element(path.getByRole('button', { name: '选择 img 元素' })).toBeVisible()
+  expect(image.classList.contains('ProseMirror-selectednode')).toBe(true)
+
+  await path.getByRole('button', { name: '选择 img 元素' }).click()
+  await expect.element(screen.getByTestId('active-element')).toHaveTextContent('editor')
+  expect(image.classList.contains('ProseMirror-selectednode')).toBe(true)
+})
+
+test('selects table cells from td, tr, and table path items without hiding the count', async () => {
+  const screen = getHarness()
+  await screen.getByTestId('set-table-document').click()
+  const editable = await getEditable(screen)
+  const cell = editable.element().querySelector<HTMLTableCellElement>('tbody tr:nth-child(2) td')
+  expect(cell).not.toBeNull()
+
+  await userEvent.click(cell!)
+  const path = screen.getByTestId('rich-text-element-path')
+  await expect.element(path.getByRole('button', { name: '选择 p 元素' })).toBeVisible()
+  await expect.element(path.getByRole('button', { name: '选择 td 元素' })).toBeVisible()
+  expect(path.element().scrollWidth).toBeGreaterThan(path.element().clientWidth)
+
+  await path.getByRole('button', { name: '选择 td 元素' }).click()
+  await expect.element(path.getByRole('button', { name: '选择 td 元素' })).toBeVisible()
+  expect(editable.element().querySelectorAll('.selectedCell')).toHaveLength(1)
+
+  await path.getByRole('button', { name: '选择 tr 元素' }).click()
+  expect(editable.element().querySelectorAll('.selectedCell')).toHaveLength(5)
+
+  await path.getByRole('button', { name: '选择 table 元素' }).click()
+  expect(editable.element().querySelectorAll('.selectedCell')).toHaveLength(10)
+
+  const statusBar = screen.getByTestId('rich-text-status-bar').element()
+  const statusEnd = screen.getByTestId('rich-text-status-bar-end').element()
+  const characterCount = screen.getByTestId('rich-text-character-count').element()
+  expect(characterCount.getBoundingClientRect().right).toBeLessThanOrEqual(
+    statusEnd.getBoundingClientRect().right,
+  )
+  expect(characterCount.getBoundingClientRect().width).toBeGreaterThan(0)
+  expect(characterCount.getBoundingClientRect().left).toBeGreaterThanOrEqual(
+    path.element().getBoundingClientRect().right,
+  )
+  expect(statusEnd.getBoundingClientRect().right).toBeLessThanOrEqual(
+    statusBar.getBoundingClientRect().right,
+  )
+
+  path.getByRole('button', { name: '选择 table 元素' }).element().focus()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(screen.getByTestId('active-element')).toHaveTextContent('editor')
 })

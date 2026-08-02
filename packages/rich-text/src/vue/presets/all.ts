@@ -5,6 +5,8 @@ import { characterCountEditorFeature } from '../../features/character-count/edit
 import { characterCountStatusBarItem } from '../../features/character-count/vue'
 import { codeBlockActionItem, codeBlockEditorFeature } from '../../features/code-block/editor'
 import { codeBlockQuickBar, codeBlockToolbarControl } from '../../features/code-block/vue'
+import { elementPathEditorFeature } from '../../features/element-path/editor'
+import { elementPathStatusBarItem } from '../../features/element-path/vue'
 import { headingActionItems, headingEditorFeature } from '../../features/heading/editor'
 import { highlightEditorFeature } from '../../features/highlight/editor'
 import { highlightQuickBarControl, highlightToolbarControl } from '../../features/highlight/vue'
@@ -75,6 +77,7 @@ const allEditorFeatures = [
   horizontalRuleEditorFeature,
   imageEditorFeature,
   tableEditorFeature,
+  elementPathEditorFeature,
 ] as const
 
 function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
@@ -181,7 +184,7 @@ function createAllRichTextSlashMenu(options: AllRichTextEditorPresetOptions) {
 }
 
 const allRichTextStatusBar = defineRichTextStatusBar({
-  start: [],
+  start: [elementPathStatusBarItem],
   end: [characterCountStatusBarItem],
 })
 

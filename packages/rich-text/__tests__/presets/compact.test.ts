@@ -39,6 +39,7 @@ const allFeatureKeys = [
   'horizontal-rule',
   'image',
   'table',
+  'element-path',
 ]
 
 const compactFeatureKeys = ['base', 'history', 'bold', 'italic', 'link', 'heading', 'list']
@@ -190,7 +191,7 @@ describe('all rich text preset', () => {
       'table',
       'image',
     ])
-    expect(allEditorPreset.statusBar?.start.map((item) => item.key)).toEqual([])
+    expect(allEditorPreset.statusBar?.start.map((item) => item.key)).toEqual(['element-path'])
     expect(allEditorPreset.statusBar?.end.map((item) => item.key)).toEqual(['character-count'])
   })
 

@@ -3,6 +3,7 @@ import { NConfigProvider, NGlobalStyle, lightTheme } from 'naive-ui'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { RichTextDocument } from '@rev30/rich-text/schema'
 import { RichTextEditor } from '@rev30/rich-text/vue'
+import exampleImage from '../../src/assets/example-image.png?inline'
 import { createDefaultDocument } from '../../src/playground/defaultDocument'
 import { createPlaygroundPresets } from '../../src/playground/presets'
 import { useDerivation } from '../../src/playground/useDerivation'
@@ -24,6 +25,16 @@ const presets = createPlaygroundPresets({
 })
 const derivation = useDerivation(model, presets.serverPreset)
 const renderedHtml = computed(() => derivation.result.value?.html ?? '')
+
+function text(value: string, marks?: unknown[]) {
+  return marks?.length
+    ? { type: 'text' as const, text: value, marks }
+    : { type: 'text' as const, text: value }
+}
+
+function paragraph(content: unknown[], textAlign: string | null = null) {
+  return { type: 'paragraph' as const, attrs: { textAlign }, content }
+}
 
 function handleBlur() {
   blurCount.value += 1
@@ -122,6 +133,34 @@ function setImageDocument() {
   updateModel({ type: 'doc', content: [{ type: 'paragraph' }] })
 }
 
+function setElementPathDocument() {
+  narrowEditor.value = false
+  updateModel({
+    type: 'doc',
+    content: [
+      paragraph([
+        text('甲', [{ type: 'bold' }]),
+        text('乙', [{ type: 'bold' }, { type: 'italic' }]),
+        text('丙', [{ type: 'bold' }]),
+      ]),
+    ],
+  })
+}
+
+function setImageSelectionDocument() {
+  narrowEditor.value = false
+  updateModel({
+    type: 'doc',
+    content: [
+      {
+        type: 'image',
+        attrs: { src: exampleImage, alt: '路径图片', width: 320, height: null },
+      },
+      paragraph([]),
+    ],
+  })
+}
+
 function updateModel(value: RichTextDocument) {
   model.value = value
   derivation.schedule()
@@ -149,10 +188,16 @@ onBeforeUnmount(() => {
       <button data-test="set-code-block-document" @click="setCodeBlockDocument">代码块</button>
       <button data-test="set-table-document" @click="setTableDocument">表格</button>
       <button data-test="set-image-document" @click="setImageDocument">图片</button>
+      <button data-test="set-element-path-document" @click="setElementPathDocument">
+        路径文本
+      </button>
+      <button data-test="set-image-selection-document" @click="setImageSelectionDocument">
+        路径图片
+      </button>
     </div>
     <div
       class="h-[560px] overflow-auto"
-      :class="narrowEditor ? 'w-[360px]' : 'w-[900px]'"
+      :class="narrowEditor ? 'w-[160px]' : 'w-[900px]'"
       data-test="editor-container"
     >
       <RichTextEditor

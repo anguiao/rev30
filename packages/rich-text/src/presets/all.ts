@@ -4,6 +4,7 @@ import { blockquoteFeature } from '../features/blockquote/shared'
 import { boldFeature } from '../features/bold/shared'
 import { characterCountFeature } from '../features/character-count/shared'
 import { codeBlockFeature } from '../features/code-block/shared'
+import { elementPathFeature } from '../features/element-path/shared'
 import { headingFeature } from '../features/heading/shared'
 import { historyFeature } from '../features/history/shared'
 import { highlightFeature } from '../features/highlight/shared'
@@ -45,5 +46,6 @@ export const allRichTextPreset = defineRichTextPreset({
     horizontalRuleFeature,
     imageFeature,
     tableFeature,
+    elementPathFeature,
   ],
 })

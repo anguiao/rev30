@@ -9,6 +9,7 @@
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit && vue-tsc -p tsconfig.test.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "vitest run",
     "test:browser": "vitest run",
+    "test:browser:trace": "vitest run --browser.trace=retain-on-failure",
     "test:browser:ui": "vitest watch --browser.headless=false --exclude __tests__/rich-text-clipboard.browser.test.ts",
     "test:browser:clipboard:ui": "echo 'Warning: this headed test may overwrite the system clipboard.' && vitest run --browser.headless=false __tests__/rich-text-clipboard.browser.test.ts"
   },

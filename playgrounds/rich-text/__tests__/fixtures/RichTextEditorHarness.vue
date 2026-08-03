@@ -3,13 +3,16 @@ import { NConfigProvider, NGlobalStyle, lightTheme } from 'naive-ui'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { RichTextDocument } from '@rev30/rich-text/schema'
 import { RichTextEditor } from '@rev30/rich-text/vue'
-import exampleImage from '../../src/assets/example-image.png?inline'
-import { createDefaultDocument } from '../../src/playground/defaultDocument'
 import { createPlaygroundPresets } from '../../src/playground/presets'
 import { useDerivation } from '../../src/playground/useDerivation'
 import '../../src/style.css'
 
-const model = ref<RichTextDocument>(createDefaultDocument())
+const props = defineProps<{ initialDocument?: RichTextDocument }>()
+const fixtureImage =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAYCAYAAACbU/80AAAAK0lEQVR4nO3OIQEAAAgDMBqRkdRIiHEzMb+qnr0kAQEBAQEBAQEBAYF04AHpJ/FrJbf1awAAAABJRU5ErkJggg=='
+const model = ref<RichTextDocument>(
+  props.initialDocument ?? { type: 'doc', content: [{ type: 'paragraph' }] },
+)
 const blurCount = ref(0)
 const imageError = ref<string | null>(null)
 const selectionText = ref('')
@@ -154,7 +157,7 @@ function setImageSelectionDocument() {
     content: [
       {
         type: 'image',
-        attrs: { src: exampleImage, alt: '路径图片', width: 320, height: null },
+        attrs: { src: fixtureImage, alt: '路径图片', width: 320, height: null },
       },
       paragraph([]),
     ],

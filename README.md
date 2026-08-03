@@ -75,4 +75,4 @@ pnpm --filter @rev30/server db:migrate
 
 `pnpm coverage` 会串行生成五个测试 package 各自的 V8 终端摘要和 HTML 报告；覆盖率用于诊断盲区，不设置全局门槛，也不包含在 `pnpm check` 中。单包可使用 `pnpm --filter <pkg> coverage`，定向测试使用 `pnpm --filter <pkg> test <package-relative-test-file>`。
 
-富文本 Playground 默认监听 `http://localhost:3201`；Chromium 浏览器测试首次运行前执行一次安装命令即可。
+富文本 Playground 默认监听 `http://localhost:3210`；Chromium 浏览器测试首次运行前执行一次安装命令即可。

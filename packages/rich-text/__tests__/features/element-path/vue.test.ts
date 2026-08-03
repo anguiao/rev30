@@ -135,34 +135,50 @@ describe('ElementPathStatusBarItem', () => {
   it('scrolls the focused item first and otherwise the innermost item into view', async () => {
     const editor = createEditor()
     editor.commands.setTextSelection(6)
-    const wrapper = mountPath(editor)
-    await flushPromises()
-
-    const scrollTargets: HTMLElement[] = []
-    const scrollSpy = vi
-      .spyOn(HTMLElement.prototype, 'scrollIntoView')
+    const rectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
-        scrollTargets.push(this)
+        if (this.matches('[data-test="rich-text-element-path"]')) {
+          return new DOMRect(0, 0, 100, 20)
+        }
+
+        if (this.matches('[data-rich-text-toolbar-item]')) {
+          const container = this.closest<HTMLElement>('[data-test="rich-text-element-path"]')
+          const tag = this.textContent?.trim()
+          const contentLeft = tag === 'p' ? 0 : tag === 'strong' ? 80 : 140
+          const width = tag === 'strong' ? 30 : 20
+          return new DOMRect(contentLeft - (container?.scrollLeft ?? 0), 0, width, 20)
+        }
+
+        return new DOMRect()
       })
+    const scrollSpy = vi.spyOn(HTMLElement.prototype, 'scrollIntoView')
 
     try {
+      const wrapper = mountPath(editor)
+      await flushPromises()
+      const root = wrapper.get<HTMLElement>('[data-test="rich-text-element-path"]')
+
+      expect(root.element.scrollLeft).toBe(60)
+
       const initialItems = wrapper.findAll<HTMLButtonElement>('[data-rich-text-toolbar-item]')
       initialItems[0]!.element.focus()
       await initialItems[0]!.trigger('focusin')
+      expect(root.element.scrollLeft).toBe(0)
 
-      scrollTargets.length = 0
       editor.commands.setTextSelection(2)
       await flushPromises()
       const focusedPathItems = wrapper.findAll<HTMLButtonElement>('[data-rich-text-toolbar-item]')
-      expect(scrollTargets).toContain(focusedPathItems[0]!.element)
+      expect(document.activeElement).toBe(focusedPathItems[0]!.element)
+      expect(root.element.scrollLeft).toBe(0)
 
       editor.view.focus()
-      scrollTargets.length = 0
       editor.commands.setTextSelection(6)
       await flushPromises()
-      const unfocusedPathItems = wrapper.findAll<HTMLButtonElement>('[data-rich-text-toolbar-item]')
-      expect(scrollTargets.at(-1)).toBe(unfocusedPathItems.at(-1)!.element)
+      expect(root.element.scrollLeft).toBe(60)
+      expect(scrollSpy).not.toHaveBeenCalled()
     } finally {
+      rectSpy.mockRestore()
       scrollSpy.mockRestore()
     }
   })

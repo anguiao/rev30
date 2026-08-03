@@ -1,12 +1,5 @@
 import type { CommandProps } from '@tiptap/core'
-import type {
-  DOMOutputSpec,
-  Mark,
-  MarkType,
-  Node as ProseMirrorNode,
-  NodeType,
-  ResolvedPos,
-} from '@tiptap/pm/model'
+import type { DOMOutputSpec, Mark, Node as ProseMirrorNode, ResolvedPos } from '@tiptap/pm/model'
 import { AllSelection, NodeSelection, TextSelection } from '@tiptap/pm/state'
 import type { EditorState, Selection } from '@tiptap/pm/state'
 import { CellSelection, TableMap, type TableRole } from '@tiptap/pm/tables'
@@ -15,36 +8,38 @@ import { defineRichTextAction } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import { elementPathFeature } from './shared'
 
-interface ElementPathItemBase {
-  readonly tag: string
-  readonly from: number
-  readonly to: number
-  readonly key: string
+export type ElementPathItem =
+  | {
+      readonly kind: 'node'
+      readonly tag: string
+      readonly key: string
+      readonly node: ProseMirrorNode
+      readonly from: number
+    }
+  | {
+      readonly kind: 'mark'
+      readonly tag: string
+      readonly key: string
+      readonly mark: Mark
+      readonly from: number
+      readonly to: number
+    }
+
+function tagFromOutputTagName(value: string): string | null {
+  const tag = value.trim()
+  const namespaceSeparator = tag.lastIndexOf(' ')
+  const semanticTag = namespaceSeparator > 0 ? tag.slice(namespaceSeparator + 1).trim() : tag
+
+  return semanticTag === '' ? null : semanticTag.toLowerCase()
 }
 
-export interface ElementPathNodeItem extends ElementPathItemBase {
-  readonly kind: 'node'
-  readonly node: ProseMirrorNode
-  readonly nodeType: NodeType
-  readonly depth: number
-}
+function tagFromDOMNode(value: unknown): string | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
 
-export interface ElementPathMarkItem extends ElementPathItemBase {
-  readonly kind: 'mark'
-  readonly mark: Mark
-  readonly markType: MarkType
-}
-
-export type ElementPathItem = ElementPathNodeItem | ElementPathMarkItem
-
-interface TextRange {
-  readonly from: number
-  readonly to: number
-}
-
-interface CellPosition {
-  readonly node: ProseMirrorNode
-  readonly pos: number
+  const tagName = (value as { readonly tagName?: unknown }).tagName
+  return typeof tagName === 'string' && tagName !== '' ? tagName.toLowerCase() : null
 }
 
 function tagFromOutputSpec(output: DOMOutputSpec): string | null {
@@ -64,23 +59,6 @@ function tagFromOutputSpec(output: DOMOutputSpec): string | null {
   return null
 }
 
-function tagFromOutputTagName(value: string): string | null {
-  const tag = value.trim()
-  const namespaceSeparator = tag.lastIndexOf(' ')
-  const semanticTag = namespaceSeparator > 0 ? tag.slice(namespaceSeparator + 1).trim() : tag
-
-  return semanticTag === '' ? null : semanticTag.toLowerCase()
-}
-
-function tagFromDOMNode(value: unknown): string | null {
-  if (!value || typeof value !== 'object') {
-    return null
-  }
-
-  const tagName = (value as { readonly tagName?: unknown }).tagName
-  return typeof tagName === 'string' && tagName !== '' ? tagName.toLowerCase() : null
-}
-
 function tagFromParseRule(ruleTag: unknown): string | null {
   if (typeof ruleTag !== 'string') {
     return null
@@ -90,15 +68,14 @@ function tagFromParseRule(ruleTag: unknown): string | null {
   return match?.[0]?.toLowerCase() ?? null
 }
 
-function getTableRole(nodeType: NodeType): TableRole | null {
-  const role = nodeType.spec.tableRole
-  return role === 'table' || role === 'row' || role === 'cell' || role === 'header_cell'
-    ? role
+function parseTableRole(value: unknown): TableRole | null {
+  return value === 'table' || value === 'row' || value === 'cell' || value === 'header_cell'
+    ? value
     : null
 }
 
 function getNodeTag(node: ProseMirrorNode): string | null {
-  const role = getTableRole(node.type)
+  const role = parseTableRole(node.type.spec.tableRole)
 
   if (role !== null) {
     for (const rule of node.type.spec.parseDOM ?? []) {
@@ -116,70 +93,35 @@ function getNodeTag(node: ProseMirrorNode): string | null {
   return toDOM ? tagFromOutputSpec(toDOM(node)) : null
 }
 
-function getMarkTag(mark: Mark): string | null {
-  const toDOM = mark.type.spec.toDOM
-  return toDOM ? tagFromOutputSpec(toDOM(mark, true)) : null
-}
-
-function createNodeItem(
-  node: ProseMirrorNode,
-  from: number,
-  to: number,
-  depth: number,
-): ElementPathNodeItem | null {
+function appendNodeItem(items: ElementPathItem[], node: ProseMirrorNode, from: number) {
   const tag = getNodeTag(node)
 
   if (tag === null) {
-    return null
+    return
   }
 
-  return {
+  const to = from + node.nodeSize
+  items.push({
     kind: 'node',
     tag,
     node,
-    nodeType: node.type,
     from,
-    to,
-    depth,
     key: `node:${node.type.name}:${from}:${to}`,
-  }
+  })
 }
 
-function createMarkItem(mark: Mark, from: number, to: number): ElementPathMarkItem | null {
-  const tag = getMarkTag(mark)
-
-  if (tag === null) {
-    return null
-  }
-
-  return {
-    kind: 'mark',
-    tag,
-    mark,
-    markType: mark.type,
-    from,
-    to,
-    key: `mark:${mark.type.name}:${from}:${to}`,
-  }
-}
-
-function createAncestorItems($pos: ResolvedPos): ElementPathNodeItem[] {
-  const items: ElementPathNodeItem[] = []
+function createAncestorItems($pos: ResolvedPos): ElementPathItem[] {
+  const items: ElementPathItem[] = []
 
   for (let depth = 1; depth <= $pos.depth; depth += 1) {
-    const node = $pos.node(depth)
-    const item = createNodeItem(node, $pos.before(depth), $pos.after(depth), depth)
-
-    if (item !== null) {
-      items.push(item)
-    }
+    appendNodeItem(items, $pos.node(depth), $pos.before(depth))
   }
 
   return items
 }
 
 function collectMarkRanges(parent: ProseMirrorNode, parentStart: number, target: Mark) {
-  const ranges: TextRange[] = []
+  const ranges: { from: number; to: number }[] = []
 
   parent.forEach((node, offset) => {
     if (!node.isText || !node.marks.some((mark) => mark.eq(target))) {
@@ -217,10 +159,18 @@ function appendMarkItems(
       continue
     }
 
-    const item = createMarkItem(mark, range.from, range.to)
+    const toDOM = mark.type.spec.toDOM
+    const tag = toDOM ? tagFromOutputSpec(toDOM(mark, true)) : null
 
-    if (item !== null) {
-      items.push(item)
+    if (tag !== null) {
+      items.push({
+        kind: 'mark',
+        tag,
+        mark,
+        from: range.from,
+        to: range.to,
+        key: `mark:${mark.type.name}:${range.from}:${range.to}`,
+      })
     }
   }
 }
@@ -246,44 +196,14 @@ function appendFirstContentPath(
   items: ElementPathItem[],
   node: ProseMirrorNode,
   from: number,
-  depth: number,
 ): boolean {
-  const nodeItem = createNodeItem(node, from, from + node.nodeSize, depth)
-
-  if (nodeItem !== null) {
-    items.push(nodeItem)
+  if (node.isInline && node.isLeaf && node.type.spec.selectable === false) {
+    return false
   }
+
+  appendNodeItem(items, node, from)
 
   if (node.isText) {
-    return true
-  }
-
-  if (node.isInline && node.isLeaf) {
-    return node.type.spec.selectable !== false
-  }
-
-  if (node.isTextblock) {
-    let foundContent = false
-    node.forEach((child, offset) => {
-      if (foundContent) {
-        return
-      }
-
-      const childFrom = from + 1 + offset
-
-      if (child.isText) {
-        appendMarkItems(items, node, from + 1, childFrom, child.marks)
-        foundContent = true
-        return
-      }
-
-      if (child.isInline && child.isLeaf && child.type.spec.selectable === false) {
-        return
-      }
-
-      foundContent = appendFirstContentPath(items, child, childFrom, depth + 1)
-    })
-
     return true
   }
 
@@ -293,63 +213,32 @@ function appendFirstContentPath(
       return
     }
 
-    foundContent = appendFirstContentPath(items, child, from + 1 + offset, depth + 1)
+    const childFrom = from + 1 + offset
+
+    if (child.isText) {
+      if (node.isTextblock) {
+        appendMarkItems(items, node, from + 1, childFrom, child.marks)
+      }
+
+      foundContent = true
+      return
+    }
+
+    foundContent = appendFirstContentPath(items, child, childFrom)
   })
 
   return true
 }
 
-function resolveAllSelectionPath(state: EditorState) {
-  const items: ElementPathItem[] = []
-  const firstChild = state.doc.firstChild
-
-  if (firstChild !== null) {
-    appendFirstContentPath(items, firstChild, 0, 1)
-  }
-
-  return items
-}
-
 function resolveCellSelectionPath(selection: CellSelection) {
-  const cells: CellPosition[] = []
+  const cells: { node: ProseMirrorNode; pos: number }[] = []
   selection.forEachCell((node, pos) => cells.push({ node, pos }))
   cells.sort((left, right) => left.pos - right.pos)
-  const firstCell = cells[0]
-
-  if (firstCell === undefined) {
-    return []
-  }
+  const firstCell = cells[0]!
 
   const $cell = selection.$anchorCell.doc.resolve(firstCell.pos)
   const items: ElementPathItem[] = createAncestorItems($cell)
-  const cell = $cell.nodeAfter
-  const cellRole = cell ? getTableRole(cell.type) : null
-
-  if (cell === null || (cellRole !== 'cell' && cellRole !== 'header_cell')) {
-    return items
-  }
-
-  const item = createNodeItem(cell, $cell.pos, $cell.pos + cell.nodeSize, $cell.depth + 1)
-
-  if (item !== null) {
-    items.push(item)
-  }
-
-  return items
-}
-
-function resolveNodeSelectionPath(selection: NodeSelection) {
-  const items: ElementPathItem[] = createAncestorItems(selection.$from)
-  const item = createNodeItem(
-    selection.node,
-    selection.from,
-    selection.to,
-    selection.$from.depth + 1,
-  )
-
-  if (item !== null) {
-    items.push(item)
-  }
+  appendNodeItem(items, firstCell.node, firstCell.pos)
 
   return items
 }
@@ -359,7 +248,14 @@ export function resolveElementPath(state: EditorState): ElementPathItem[] {
   const { selection } = state
 
   if (selection instanceof AllSelection) {
-    return resolveAllSelectionPath(state)
+    const items: ElementPathItem[] = []
+    const firstChild = state.doc.firstChild
+
+    if (firstChild !== null) {
+      appendFirstContentPath(items, firstChild, 0)
+    }
+
+    return items
   }
 
   if (selection instanceof CellSelection) {
@@ -367,7 +263,9 @@ export function resolveElementPath(state: EditorState): ElementPathItem[] {
   }
 
   if (selection instanceof NodeSelection) {
-    return resolveNodeSelectionPath(selection)
+    const items: ElementPathItem[] = createAncestorItems(selection.$from)
+    appendNodeItem(items, selection.node, selection.from)
+    return items
   }
 
   if (selection instanceof GapCursor) {
@@ -383,7 +281,10 @@ export function resolveElementPath(state: EditorState): ElementPathItem[] {
   return items
 }
 
-function collectTextRange(node: ProseMirrorNode, from: number): TextRange | null {
+function collectTextRange(
+  node: ProseMirrorNode,
+  from: number,
+): { from: number; to: number } | null {
   if (node.isTextblock) {
     return { from: from + 1, to: from + node.nodeSize - 1 }
   }
@@ -409,83 +310,57 @@ function collectTextRange(node: ProseMirrorNode, from: number): TextRange | null
   return first === null || last === null ? null : { from: first, to: last }
 }
 
-function resolveNodeAtItem(state: Pick<EditorState, 'doc'>, item: ElementPathNodeItem) {
-  const node = state.doc.nodeAt(item.from)
-  return node && node.eq(item.node) && node.type === item.nodeType ? node : null
-}
-
-function resolveCellSelectionForNode(
-  state: Pick<EditorState, 'doc'>,
-  item: ElementPathNodeItem,
-  node: ProseMirrorNode,
-) {
-  const role = getTableRole(node.type)
+function resolveCellSelectionForNode(doc: ProseMirrorNode, from: number, node: ProseMirrorNode) {
+  const role = parseTableRole(node.type.spec.tableRole)
 
   if (role === null) {
     return null
   }
 
   if (role === 'cell' || role === 'header_cell') {
-    return CellSelection.create(state.doc, item.from)
+    return CellSelection.create(doc, from)
   }
 
   if (role === 'table') {
     const map = TableMap.get(node)
-    const tableStart = item.from + 1
-    const firstCell = map.map[0]
-    const lastCell = map.map.at(-1)
-
-    if (firstCell === undefined || lastCell === undefined) {
-      return null
-    }
-
-    return CellSelection.create(state.doc, tableStart + firstCell, tableStart + lastCell)
+    const tableStart = from + 1
+    return CellSelection.create(doc, tableStart + map.map[0]!, tableStart + map.map.at(-1)!)
   }
 
-  const $insideRow = state.doc.resolve(item.from + 1)
-  let tableDepth = $insideRow.depth
-
-  while (tableDepth > 0 && getTableRole($insideRow.node(tableDepth).type) !== 'table') {
-    tableDepth -= 1
-  }
-
-  if (getTableRole($insideRow.node(tableDepth).type) !== 'table') {
-    return null
-  }
-
-  const table = $insideRow.node(tableDepth)
-  const tableStart = $insideRow.start(tableDepth)
+  const $row = doc.resolve(from)
+  const table = $row.parent
+  const tableStart = $row.start()
   const map = TableMap.get(table)
-  const row = $insideRow.index(tableDepth)
-
-  if (row < 0 || row >= map.height) {
-    return null
-  }
-
-  const firstCell = map.map[row * map.width]
-  const lastCell = map.map[(row + 1) * map.width - 1]
-
-  if (firstCell === undefined || lastCell === undefined) {
-    return null
-  }
+  const row = $row.index()
 
   return CellSelection.rowSelection(
-    state.doc.resolve(tableStart + firstCell),
-    state.doc.resolve(tableStart + lastCell),
+    doc.resolve(tableStart + map.map[row * map.width]!),
+    doc.resolve(tableStart + map.map[(row + 1) * map.width - 1]!),
   )
 }
 
-function resolveSelectionForNode(
-  state: Pick<EditorState, 'doc'>,
-  item: ElementPathNodeItem,
-): Selection | null {
-  const node = resolveNodeAtItem(state, item)
+function resolveSelectionForItem(doc: ProseMirrorNode, item: ElementPathItem): Selection | null {
+  if (item.kind === 'mark') {
+    const $from = doc.resolve(item.from)
 
-  if (node === null) {
+    if (!$from.parent.isTextblock) {
+      return null
+    }
+
+    const range = collectMarkRanges($from.parent, $from.start(), item.mark).find(
+      ({ from, to }) => from === item.from && to === item.to,
+    )
+
+    return range ? TextSelection.create(doc, range.from, range.to) : null
+  }
+
+  const node = doc.nodeAt(item.from)
+
+  if (node === null || !node.eq(item.node)) {
     return null
   }
 
-  const tableSelection = resolveCellSelectionForNode(state, item, node)
+  const tableSelection = resolveCellSelectionForNode(doc, item.from, node)
 
   if (tableSelection !== null) {
     return tableSelection
@@ -494,36 +369,10 @@ function resolveSelectionForNode(
   const textRange = collectTextRange(node, item.from)
 
   if (textRange !== null) {
-    return TextSelection.create(state.doc, textRange.from, textRange.to)
+    return TextSelection.create(doc, textRange.from, textRange.to)
   }
 
-  return NodeSelection.isSelectable(node) ? NodeSelection.create(state.doc, item.from) : null
-}
-
-function resolveSelectionForMark(
-  state: Pick<EditorState, 'doc'>,
-  item: ElementPathMarkItem,
-): Selection | null {
-  const $from = state.doc.resolve(item.from)
-
-  if (!$from.parent.isTextblock) {
-    return null
-  }
-
-  const range = collectMarkRanges($from.parent, $from.start(), item.mark).find(
-    ({ from, to }) => from === item.from && to === item.to,
-  )
-
-  return range ? TextSelection.create(state.doc, range.from, range.to) : null
-}
-
-function resolveSelectionForItem(
-  state: Pick<EditorState, 'doc'>,
-  item: ElementPathItem,
-): Selection | null {
-  return item.kind === 'node'
-    ? resolveSelectionForNode(state, item)
-    : resolveSelectionForMark(state, item)
+  return NodeSelection.isSelectable(node) ? NodeSelection.create(doc, item.from) : null
 }
 
 export const selectElementPathItemAction = defineRichTextAction(elementPathFeature, {
@@ -533,7 +382,7 @@ export const selectElementPathItemAction = defineRichTextAction(elementPathFeatu
       return false
     }
 
-    const selection = resolveSelectionForItem(state, item)
+    const selection = resolveSelectionForItem(state.doc, item)
 
     if (selection === null) {
       return false

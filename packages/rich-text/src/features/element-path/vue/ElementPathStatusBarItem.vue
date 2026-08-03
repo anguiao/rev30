@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useMutationObserver, useResizeObserver } from '@vueuse/core'
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import { runRichTextAction } from '../../../editor/action'
 import { resolveElementPath, selectElementPathItemAction, type ElementPathItem } from '../editor'
 import type { RichTextStatusBarItemInjectedProps } from '../../../vue/status-bar'
@@ -13,25 +13,21 @@ const root = useTemplateRef<HTMLElement>('root')
 const path = computed(() => resolveElementPath(editor.state))
 const isEditable = ref(editor.isEditable)
 
-function syncEditable() {
-  isEditable.value = editor.isEditable
-}
-
 // `setEditable(..., false)` updates ProseMirror's contenteditable attribute without
 // changing the reactive editor state. Observe that boundary so the path controls
 // become disabled without manufacturing a content transaction.
-useMutationObserver(() => editor.view.dom, syncEditable, {
-  attributes: true,
-  attributeFilter: ['contenteditable'],
-})
+useMutationObserver(
+  () => editor.view.dom,
+  () => {
+    isEditable.value = editor.isEditable
+  },
+  {
+    attributes: true,
+    attributeFilter: ['contenteditable'],
+  },
+)
 
 const rovingFocus = useRichTextRovingFocus(root)
-
-function getPathItems() {
-  return Array.from(
-    root.value?.querySelectorAll<HTMLElement>('[data-rich-text-toolbar-item]') ?? [],
-  )
-}
 
 function scrollCurrentPathItem() {
   const container = root.value
@@ -39,23 +35,34 @@ function scrollCurrentPathItem() {
     return
   }
 
+  const pathItemSelector = '[data-rich-text-toolbar-item]'
   const activeElement = document.activeElement
   const focusedItem =
-    activeElement instanceof HTMLElement &&
-    container.contains(activeElement) &&
-    activeElement.closest<HTMLElement>('[data-rich-text-toolbar-item]')
-      ? activeElement.closest<HTMLElement>('[data-rich-text-toolbar-item]')
+    activeElement instanceof HTMLElement
+      ? activeElement.closest<HTMLElement>(pathItemSelector)
       : null
-  const item = focusedItem ?? getPathItems().at(-1)
+  const item =
+    focusedItem && container.contains(focusedItem)
+      ? focusedItem
+      : Array.from(container.querySelectorAll<HTMLElement>(pathItemSelector)).at(-1)
 
-  if (item) {
-    item.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  if (!item) {
+    return
+  }
+
+  const containerRect = container.getBoundingClientRect()
+  const itemRect = item.getBoundingClientRect()
+
+  if (itemRect.left < containerRect.left) {
+    container.scrollLeft -= containerRect.left - itemRect.left
+  } else if (itemRect.right > containerRect.right) {
+    container.scrollLeft += itemRect.right - containerRect.right
   }
 }
 
 function handlePathFocusIn(event: FocusEvent) {
   rovingFocus.handleFocusIn(event)
-  void nextTick(scrollCurrentPathItem)
+  scrollCurrentPathItem()
 }
 
 function handlePathKeydown(event: KeyboardEvent) {
@@ -83,21 +90,8 @@ function handlePathItemClick(item: ElementPathItem) {
   runRichTextAction(editor, selectElementPathItemAction, item)
 }
 
-watch(
-  path,
-  () => {
-    void nextTick(scrollCurrentPathItem)
-  },
-  { flush: 'post' },
-)
-
-onMounted(() => {
-  void nextTick(scrollCurrentPathItem)
-})
-
-useResizeObserver(root, () => {
-  scrollCurrentPathItem()
-})
+watch([root, path], scrollCurrentPathItem, { flush: 'post' })
+useResizeObserver(root, scrollCurrentPathItem)
 </script>
 
 <template>

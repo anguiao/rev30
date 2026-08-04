@@ -152,15 +152,47 @@ test('applies matching editor and readonly content typography across supported s
   expect(getComputedStyle(readonlyLg).lineHeight).toBe('32px')
 
   const sizeExpectations = [
-    { container: readonlySm, headingSize: '30px', listPadding: '22px', tableSize: '12px' },
-    { container: readonlyBase, headingSize: '36px', listPadding: '26px', tableSize: '14px' },
-    { container: readonlyLg, headingSize: '48px', listPadding: '28px', tableSize: '16px' },
+    {
+      container: readonlySm,
+      headingSize: '30px',
+      listPadding: '22px',
+      tableSize: '12px',
+      tableMargin: '24px',
+      cellBlockPadding: 8,
+      cellInlinePadding: 10,
+    },
+    {
+      container: readonlyBase,
+      headingSize: '36px',
+      listPadding: '26px',
+      tableSize: '14px',
+      tableMargin: '28px',
+      cellBlockPadding: 9.3333,
+      cellInlinePadding: 11.6667,
+    },
+    {
+      container: readonlyLg,
+      headingSize: '48px',
+      listPadding: '28px',
+      tableSize: '16px',
+      tableMargin: '32px',
+      cellBlockPadding: 10.6667,
+      cellInlinePadding: 13.3333,
+    },
   ]
 
-  for (const { container, headingSize, listPadding, tableSize } of sizeExpectations) {
+  for (const {
+    container,
+    headingSize,
+    listPadding,
+    tableSize,
+    tableMargin,
+    cellBlockPadding,
+    cellInlinePadding,
+  } of sizeExpectations) {
     const tableWrapper = getRequiredElement<HTMLElement>(container, '.tableWrapper')
     const table = getRequiredElement<HTMLTableElement>(tableWrapper, 'table')
-    const cell = getRequiredElement<HTMLElement>(table, 'th, td')
+    const header = getRequiredElement<HTMLElement>(table, 'th')
     const image = getRequiredElement<HTMLImageElement>(container, 'img')
     const quote = getRequiredElement<HTMLElement>(container, 'blockquote')
 
@@ -171,7 +203,10 @@ test('applies matching editor and readonly content typography across supported s
       getComputedStyle(getRequiredElement<HTMLElement>(container, 'ul')).paddingInlineStart,
     ).toBe(listPadding)
     expect(getComputedStyle(table).fontSize).toBe(tableSize)
-    expect(getComputedStyle(cell).minWidth).toBe('96px')
+    expect(getComputedStyle(header).minWidth).toBe('96px')
+    expect(getComputedStyle(tableWrapper).marginTop).toBe(tableMargin)
+    expect(parseFloat(getComputedStyle(header).paddingBlockStart)).toBeCloseTo(cellBlockPadding)
+    expect(parseFloat(getComputedStyle(header).paddingInlineStart)).toBeCloseTo(cellInlinePadding)
     expect(getComputedStyle(tableWrapper).overflowX).toBe('auto')
     expect(getComputedStyle(image).display).toBe('block')
     expect(getComputedStyle(image).maxWidth).toBe('100%')
@@ -228,6 +263,7 @@ test('switches content defaults with the root theme and honors public color vari
     getComputedStyle(quote).color,
     getComputedStyle(code).color,
     getComputedStyle(cell).borderTopColor,
+    getComputedStyle(cell).backgroundColor,
   ]
 
   await screen.rerender({ dark: true })
@@ -239,9 +275,12 @@ test('switches content defaults with the root theme and honors public color vari
     getComputedStyle(quote).color,
     getComputedStyle(code).color,
     getComputedStyle(cell).borderTopColor,
+    getComputedStyle(cell).backgroundColor,
   ]
 
-  expect(darkColors).not.toEqual(lightColors)
+  for (const [index, color] of darkColors.entries()) {
+    expect(color).not.toBe(lightColors[index])
+  }
   expect(getComputedStyle(code).backgroundColor).toBe('rgb(9, 9, 11)')
 
   await screen.rerender({ dark: false })

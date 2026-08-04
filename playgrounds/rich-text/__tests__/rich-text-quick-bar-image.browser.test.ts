@@ -7,7 +7,7 @@ test('does not flash the quick bar when a pointer click beside an image returns 
   const screen = renderRichTextEditorHarness(createDefaultDocument())
   const editable = await getEditable(screen)
   const heading = editable.element().querySelector('h1')
-  const imageLocator = editable.getByRole('img', { name: '富文本 playground 示例图片' })
+  const imageLocator = editable.getByRole('img', { name: '一位编辑正在整理文章结构' })
   await expect.element(imageLocator).toBeVisible()
   const image = imageLocator.element()
   expect(heading).not.toBeNull()

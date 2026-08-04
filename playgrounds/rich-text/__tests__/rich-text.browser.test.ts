@@ -15,7 +15,7 @@ test('creates all presets and renders the complete default document in Chromium'
   expect(imageErrors).toHaveLength(0)
   expect(derived.json).toMatchObject({ type: 'doc' })
   expect(derived.html).toContain('<h1>')
-  expect(derived.html).toContain('https://example.com/docs')
+  expect(derived.html).toContain('https://github.com/anguiao/rev30')
   expect(derived.html).toContain('language-typescript')
   expect(derived.html).toContain('<img')
   expect(derived.html).toContain('data:image/png;base64,')

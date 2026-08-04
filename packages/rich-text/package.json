@@ -20,6 +20,8 @@
       "types": "./src/presets/compact.ts",
       "default": "./src/presets/compact.ts"
     },
+    "./content/presets/all.css": "./src/content/presets/all.css",
+    "./content/presets/compact.css": "./src/content/presets/compact.css",
     "./server": {
       "types": "./src/server/index.ts",
       "default": "./src/server/index.ts"

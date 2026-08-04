@@ -1,0 +1,113 @@
+/* Typography rules are derived from @tailwindcss/typography@0.5.20. */
+.rich-text-content :where(h1, h2, h3, h4) {
+  color: var(--rich-text-content-heading);
+}
+
+.rich-text-content :where(h1) {
+  margin-top: 0;
+  margin-bottom: 0.8888889em;
+  font-size: 2.25em;
+  font-weight: 800;
+  line-height: 1.1111111;
+}
+
+.rich-text-content :where(h1 strong) {
+  color: inherit;
+  font-weight: 900;
+}
+
+.rich-text-content :where(h2) {
+  margin-top: 2em;
+  margin-bottom: 1em;
+  font-size: 1.5em;
+  font-weight: 700;
+  line-height: 1.3333333;
+}
+
+.rich-text-content :where(h2 strong) {
+  color: inherit;
+  font-weight: 800;
+}
+
+.rich-text-content :where(h3) {
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  font-size: 1.25em;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.rich-text-content :where(h3 strong, h4 strong) {
+  color: inherit;
+  font-weight: 700;
+}
+
+.rich-text-content :where(h4) {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.rich-text-content > :where(h2 + *, h3 + *, h4 + *),
+.rich-text-content :where(.ProseMirror > h2 + *, .ProseMirror > h3 + *, .ProseMirror > h4 + *),
+.rich-text-content.rich-text-content--sm > :where(h2 + *, h3 + *, h4 + *),
+.rich-text-content.rich-text-content--sm
+  :where(.ProseMirror > h2 + *, .ProseMirror > h3 + *, .ProseMirror > h4 + *),
+.rich-text-content.rich-text-content--lg > :where(h2 + *, h3 + *, h4 + *),
+.rich-text-content.rich-text-content--lg
+  :where(.ProseMirror > h2 + *, .ProseMirror > h3 + *, .ProseMirror > h4 + *) {
+  margin-top: 0;
+}
+
+.rich-text-content.rich-text-content--sm :where(h1) {
+  margin-bottom: 0.8em;
+  font-size: 2.1428571em;
+  line-height: 1.2;
+}
+
+.rich-text-content.rich-text-content--sm :where(h2) {
+  margin-top: 1.6em;
+  margin-bottom: 0.8em;
+  font-size: 1.4285714em;
+  line-height: 1.4;
+}
+
+.rich-text-content.rich-text-content--sm :where(h3) {
+  margin-top: 1.5555556em;
+  margin-bottom: 0.4444444em;
+  font-size: 1.2857143em;
+  line-height: 1.5555556;
+}
+
+.rich-text-content.rich-text-content--sm :where(h4) {
+  margin-top: 1.4285714em;
+  margin-bottom: 0.5714286em;
+  line-height: 1.4285714;
+}
+
+.rich-text-content.rich-text-content--lg :where(h1) {
+  margin-bottom: 0.8333333em;
+  font-size: 2.6666667em;
+  line-height: 1;
+}
+
+.rich-text-content.rich-text-content--lg :where(h2) {
+  margin-top: 1.8666667em;
+  margin-bottom: 1.0666667em;
+  font-size: 1.6666667em;
+  line-height: 1.3333333;
+}
+
+.rich-text-content.rich-text-content--lg :where(h3) {
+  margin-top: 1.6666667em;
+  margin-bottom: 0.6666667em;
+  font-size: 1.3333333em;
+  line-height: 1.5;
+}
+
+.rich-text-content.rich-text-content--lg :where(h4) {
+  margin-top: 1.7777778em;
+  margin-bottom: 0.4444444em;
+  line-height: 1.5555556;
+}

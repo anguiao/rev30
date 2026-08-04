@@ -49,18 +49,9 @@
     --rich-text-input-box-shadow-focus,
     var(--rich-text-default-input-box-shadow-focus)
   );
-  --rich-text-theme-table-border-color: var(
-    --rich-text-table-border-color,
-    var(--rich-text-default-table-border-color)
-  );
-  --rich-text-theme-table-header-color: var(
-    --rich-text-table-header-color,
-    var(--rich-text-default-table-header-color)
-  );
-  --rich-text-theme-muted-text-color: var(
-    --rich-text-muted-text-color,
-    var(--rich-text-default-muted-text-color)
-  );
+  --rich-text-theme-table-border-color: var(--rich-text-default-table-border-color);
+  --rich-text-theme-table-header-color: var(--rich-text-default-table-header-color);
+  --rich-text-theme-muted-text-color: var(--rich-text-default-muted-text-color);
 }
 
 .dark .rich-text-theme {

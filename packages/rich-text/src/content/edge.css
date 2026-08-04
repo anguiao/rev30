@@ -1,0 +1,17 @@
+.rich-text-content > :where(:first-child),
+.rich-text-content :where(.ProseMirror > :first-child),
+.rich-text-content.rich-text-content--sm > :where(:first-child),
+.rich-text-content.rich-text-content--sm :where(.ProseMirror > :first-child),
+.rich-text-content.rich-text-content--lg > :where(:first-child),
+.rich-text-content.rich-text-content--lg :where(.ProseMirror > :first-child) {
+  margin-top: 0;
+}
+
+.rich-text-content > :where(:last-child),
+.rich-text-content :where(.ProseMirror > :last-child),
+.rich-text-content.rich-text-content--sm > :where(:last-child),
+.rich-text-content.rich-text-content--sm :where(.ProseMirror > :last-child),
+.rich-text-content.rich-text-content--lg > :where(:last-child),
+.rich-text-content.rich-text-content--lg :where(.ProseMirror > :last-child) {
+  margin-bottom: 0;
+}

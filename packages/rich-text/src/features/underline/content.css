@@ -1,0 +1,3 @@
+.rich-text-content :where(u) {
+  text-decoration-line: underline;
+}

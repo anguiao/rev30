@@ -201,6 +201,8 @@ describe('RichTextEditor', () => {
     expect(wrapper.find('[data-test="rich-text-status-bar-end"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="rich-text-element-path"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="rich-text-character-count"]').exists()).toBe(true)
+    expect(editable.element.parentElement?.classList).toContain('rich-text-content')
+    expect(editable.element.parentElement?.classList).toContain('rich-text-content--sm')
     expect(editable.text()).toContain('维护通知')
   })
 

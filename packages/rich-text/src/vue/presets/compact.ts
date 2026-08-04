@@ -1,3 +1,4 @@
+import '../../content/presets/compact.css'
 import { baseEditorFeature, paragraphActionItem } from '../../features/base/editor'
 import { boldActionItem, boldEditorFeature } from '../../features/bold/editor'
 import { headingActionItems, headingEditorFeature } from '../../features/heading/editor'

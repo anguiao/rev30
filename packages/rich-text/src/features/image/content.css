@@ -1,0 +1,18 @@
+/* Typography rules are derived from @tailwindcss/typography@0.5.20. */
+.rich-text-content :where(img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-top: 2em;
+  margin-bottom: 2em;
+}
+
+.rich-text-content.rich-text-content--sm :where(img) {
+  margin-top: 1.7142857em;
+  margin-bottom: 1.7142857em;
+}
+
+.rich-text-content.rich-text-content--lg :where(img) {
+  margin-top: 1.7777778em;
+  margin-bottom: 1.7777778em;
+}

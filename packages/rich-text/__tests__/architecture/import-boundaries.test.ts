@@ -195,6 +195,36 @@ describe('rich text import boundaries', () => {
     ).toHaveLength(3)
     expect(findModules(graph.loaded, isForbidden), 'loaded server module graph').toEqual([])
     expect(findModules(graph.bundled, isForbidden), 'bundled server module graph').toEqual([])
+    expect(graph.css, 'bundled server styles').toBe('')
+  }, 30_000)
+
+  it('exposes independently loadable content CSS preset entries', async () => {
+    const all = await collectBuildGraph({
+      virtualSource: `import '@rev30/rich-text/content/presets/all.css'`,
+    })
+    const compact = await collectBuildGraph({
+      virtualSource: `import '@rev30/rich-text/content/presets/compact.css'`,
+    })
+
+    expect(all.css, 'bundled all content styles').toContain('.rich-text-content')
+    expect(all.css, 'bundled all table styles').toContain('.tableWrapper')
+    expect(compact.css, 'bundled compact content styles').toContain('.rich-text-content')
+    expect(compact.css, 'bundled compact heading styles').toContain('h1')
+  }, 30_000)
+
+  it('loads content CSS from Vue preset entries', async () => {
+    const all = await collectBuildGraph({
+      virtualSource: `export * from '@rev30/rich-text/vue/presets/all'`,
+      vue: true,
+    })
+    const compact = await collectBuildGraph({
+      virtualSource: `export * from '@rev30/rich-text/vue/presets/compact'`,
+      vue: true,
+    })
+
+    expect(all.css, 'bundled all Vue preset content styles').toContain('.rich-text-content')
+    expect(all.css, 'bundled all Vue preset table styles').toContain('.tableWrapper')
+    expect(compact.css, 'bundled compact Vue preset content styles').toContain('.rich-text-content')
   }, 30_000)
 
   it('keeps server-only modules out of editor entries', async () => {

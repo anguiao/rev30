@@ -1,0 +1,225 @@
+/*
+ * Container typography is derived from @tailwindcss/typography@0.5.20.
+ * Highlight token selectors and palettes are derived from highlight.js@11.11.1
+ * github.css and github-dark.css.
+ */
+.rich-text-content :where(pre) {
+  margin-top: 1.7142857em;
+  margin-bottom: 1.7142857em;
+  overflow-x: auto;
+  border-radius: 0.375rem;
+  background-color: var(--rich-text-content-code-background-value);
+  color: var(--rich-text-content-code-block);
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  font-size: 0.875em;
+  font-weight: 400;
+  line-height: 1.7142857;
+  padding: 0.8571429em 1.1428571em;
+}
+
+.rich-text-content :where(pre > code),
+.rich-text-content.rich-text-content--sm :where(pre > code),
+.rich-text-content.rich-text-content--lg :where(pre > code) {
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  padding: 0;
+}
+
+.rich-text-content :where(pre.hljs, code.hljs) {
+  color: var(--rich-text-content-code-block);
+}
+
+.rich-text-content :where(pre code.hljs) {
+  display: block;
+  overflow-x: visible;
+  padding: 0;
+}
+
+.rich-text-content.rich-text-content--sm :where(pre) {
+  margin-top: 1.6666667em;
+  margin-bottom: 1.6666667em;
+  border-radius: 0.25rem;
+  font-size: 0.8571429em;
+  line-height: 1.6666667;
+  padding: 0.6666667em 1em;
+}
+
+.rich-text-content.rich-text-content--lg :where(pre) {
+  margin-top: 2em;
+  margin-bottom: 2em;
+  font-size: 0.8888889em;
+  line-height: 1.75;
+  padding: 1em 1.5em;
+}
+
+.rich-text-content
+  :where(
+    .hljs-doctag,
+    .hljs-keyword,
+    .hljs-meta .hljs-keyword,
+    .hljs-template-tag,
+    .hljs-template-variable,
+    .hljs-type,
+    .hljs-variable.language_
+  ) {
+  color: #d73a49;
+}
+
+.rich-text-content
+  :where(.hljs-title, .hljs-title.class_, .hljs-title.class_.inherited__, .hljs-title.function_) {
+  color: #6f42c1;
+}
+
+.rich-text-content
+  :where(
+    .hljs-attr,
+    .hljs-attribute,
+    .hljs-literal,
+    .hljs-meta,
+    .hljs-number,
+    .hljs-operator,
+    .hljs-variable,
+    .hljs-selector-attr,
+    .hljs-selector-class,
+    .hljs-selector-id
+  ) {
+  color: #005cc5;
+}
+
+.rich-text-content :where(.hljs-regexp, .hljs-string, .hljs-meta .hljs-string) {
+  color: #032f62;
+}
+
+.rich-text-content :where(.hljs-built_in, .hljs-symbol) {
+  color: #e36209;
+}
+
+.rich-text-content :where(.hljs-comment, .hljs-code, .hljs-formula) {
+  color: #6a737d;
+}
+
+.rich-text-content :where(.hljs-name, .hljs-quote, .hljs-selector-tag, .hljs-selector-pseudo) {
+  color: #22863a;
+}
+
+.rich-text-content :where(.hljs-subst) {
+  color: #24292e;
+}
+
+.rich-text-content :where(.hljs-section) {
+  color: #005cc5;
+  font-weight: 700;
+}
+
+.rich-text-content :where(.hljs-bullet) {
+  color: #735c0f;
+}
+
+.rich-text-content :where(.hljs-emphasis) {
+  color: #24292e;
+  font-style: italic;
+}
+
+.rich-text-content :where(.hljs-strong) {
+  color: #24292e;
+  font-weight: 700;
+}
+
+.rich-text-content :where(.hljs-addition) {
+  background-color: #f0fff4;
+  color: #22863a;
+}
+
+.rich-text-content :where(.hljs-deletion) {
+  background-color: #ffeef0;
+  color: #b31d28;
+}
+
+.dark
+  .rich-text-content
+  :where(
+    .hljs-doctag,
+    .hljs-keyword,
+    .hljs-meta .hljs-keyword,
+    .hljs-template-tag,
+    .hljs-template-variable,
+    .hljs-type,
+    .hljs-variable.language_
+  ) {
+  color: #ff7b72;
+}
+
+.dark
+  .rich-text-content
+  :where(.hljs-title, .hljs-title.class_, .hljs-title.class_.inherited__, .hljs-title.function_) {
+  color: #d2a8ff;
+}
+
+.dark
+  .rich-text-content
+  :where(
+    .hljs-attr,
+    .hljs-attribute,
+    .hljs-literal,
+    .hljs-meta,
+    .hljs-number,
+    .hljs-operator,
+    .hljs-variable,
+    .hljs-selector-attr,
+    .hljs-selector-class,
+    .hljs-selector-id
+  ) {
+  color: #79c0ff;
+}
+
+.dark .rich-text-content :where(.hljs-regexp, .hljs-string, .hljs-meta .hljs-string) {
+  color: #a5d6ff;
+}
+
+.dark .rich-text-content :where(.hljs-built_in, .hljs-symbol) {
+  color: #ffa657;
+}
+
+.dark .rich-text-content :where(.hljs-comment, .hljs-code, .hljs-formula) {
+  color: #8b949e;
+}
+
+.dark
+  .rich-text-content
+  :where(.hljs-name, .hljs-quote, .hljs-selector-tag, .hljs-selector-pseudo) {
+  color: #7ee787;
+}
+
+.dark .rich-text-content :where(.hljs-subst) {
+  color: #c9d1d9;
+}
+
+.dark .rich-text-content :where(.hljs-section) {
+  color: #1f6feb;
+}
+
+.dark .rich-text-content :where(.hljs-bullet) {
+  color: #f2cc60;
+}
+
+.dark .rich-text-content :where(.hljs-emphasis, .hljs-strong) {
+  color: #c9d1d9;
+}
+
+.dark .rich-text-content :where(.hljs-addition) {
+  background-color: #033a16;
+  color: #aff5b4;
+}
+
+.dark .rich-text-content :where(.hljs-deletion) {
+  background-color: #67060c;
+  color: #ffdcd7;
+}

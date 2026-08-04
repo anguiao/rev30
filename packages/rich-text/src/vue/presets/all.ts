@@ -1,3 +1,4 @@
+import '../../content/presets/all.css'
 import { baseEditorFeature, paragraphActionItem } from '../../features/base/editor'
 import { blockquoteActionItem, blockquoteEditorFeature } from '../../features/blockquote/editor'
 import { boldActionItem, boldEditorFeature } from '../../features/bold/editor'

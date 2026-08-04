@@ -1,0 +1,61 @@
+/* Typography rules are derived from @tailwindcss/typography@0.5.20. */
+.rich-text-content :where(.tableWrapper) {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin-top: 1.75rem;
+  margin-bottom: 1.75rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.rich-text-content :where(.tableWrapper > table) {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  border: 1px solid var(--rich-text-content-table-border);
+  border-collapse: collapse;
+  table-layout: auto;
+  font-size: 0.875em;
+  line-height: 1.7142857;
+}
+
+.rich-text-content :where(.tableWrapper th, .tableWrapper td) {
+  box-sizing: border-box;
+  min-width: 96px;
+  border: 1px solid var(--rich-text-content-table-border);
+  padding: 0.6666667em 0.8333333em;
+  text-align: inherit;
+  vertical-align: top;
+}
+
+.rich-text-content :where(.tableWrapper th) {
+  background-color: var(--rich-text-content-table-header);
+  color: var(--rich-text-content-heading);
+  font-weight: 600;
+}
+
+.rich-text-content :where(.tableWrapper th > p, .tableWrapper td > p),
+.rich-text-content.rich-text-content--sm :where(.tableWrapper th > p, .tableWrapper td > p),
+.rich-text-content.rich-text-content--lg :where(.tableWrapper th > p, .tableWrapper td > p) {
+  margin: 0;
+}
+
+.rich-text-content.rich-text-content--sm :where(.tableWrapper) {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.rich-text-content.rich-text-content--sm :where(.tableWrapper > table) {
+  font-size: 0.8571429em;
+  line-height: 1.5;
+}
+
+.rich-text-content.rich-text-content--lg :where(.tableWrapper) {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.rich-text-content.rich-text-content--lg :where(.tableWrapper > table) {
+  font-size: 0.8888889em;
+  line-height: 1.5;
+}

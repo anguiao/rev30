@@ -1,0 +1,26 @@
+/* Typography rules are derived from @tailwindcss/typography@0.5.20. */
+.rich-text-content :where(blockquote) {
+  margin-top: 1.6em;
+  margin-bottom: 1.6em;
+  padding-inline-start: 1em;
+  border-inline-start: 0.25rem solid var(--rich-text-content-quote-border);
+  color: var(--rich-text-content-quote);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.rich-text-content :where(blockquote strong) {
+  color: inherit;
+}
+
+.rich-text-content.rich-text-content--sm :where(blockquote) {
+  margin-top: 1.3333333em;
+  margin-bottom: 1.3333333em;
+  padding-inline-start: 1.1111111em;
+}
+
+.rich-text-content.rich-text-content--lg :where(blockquote) {
+  margin-top: 1.6666667em;
+  margin-bottom: 1.6666667em;
+  padding-inline-start: 1em;
+}

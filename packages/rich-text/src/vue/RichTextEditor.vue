@@ -104,7 +104,7 @@ async function handleFocusout(event: FocusEvent) {
     <div ref="scrollContainer" class="relative min-h-0 min-w-0 flex-1 overflow-y-auto">
       <EditorContent
         :editor="editor"
-        class="prose prose-sm h-full max-w-none dark:prose-invert"
+        class="rich-text-content rich-text-content--sm h-full"
         :style="{ '--rich-text-editor-min-height': `${minHeight}px` }"
       />
 
@@ -134,22 +134,10 @@ async function handleFocusout(event: FocusEvent) {
 </template>
 
 <style scoped>
-:deep(.ProseMirror pre.hljs) {
-  background-color: light-dark(#f5f5f4, #09090b);
-}
-
 :deep(.ProseMirror) {
   min-height: max(100%, var(--rich-text-editor-min-height));
   padding: 0.75rem;
   outline: none;
-}
-
-:deep(.ProseMirror > :first-child) {
-  margin-top: 0;
-}
-
-:deep(.ProseMirror > :last-child) {
-  margin-bottom: 0;
 }
 
 :deep(.ProseMirror ::selection) {
@@ -180,41 +168,14 @@ async function handleFocusout(event: FocusEvent) {
   outline-offset: 2px;
 }
 
-:deep(.ProseMirror .tableWrapper) {
-  margin-top: 1.5rem;
-  margin-bottom: 1.5rem;
-  max-width: 100%;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-}
-
-:deep(.ProseMirror > .tableWrapper:first-child) {
-  margin-top: 0;
-}
-
-:deep(.ProseMirror > .tableWrapper:last-child) {
-  margin-bottom: 0;
-}
-
 :deep(.ProseMirror .tableWrapper:focus-visible) {
   outline: 2px solid var(--rich-text-theme-primary-color);
   outline-offset: 2px;
 }
 
-:deep(.ProseMirror .tableWrapper > table) {
-  margin-top: 0;
-  margin-bottom: 0;
-  width: 100%;
-}
-
 :deep(.ProseMirror .tableWrapper th),
 :deep(.ProseMirror .tableWrapper td) {
   position: relative;
-}
-
-:deep(.ProseMirror .tableWrapper th > p),
-:deep(.ProseMirror .tableWrapper td > p) {
-  margin: 0;
 }
 
 :deep(.ProseMirror .tableWrapper .selectedCell::after) {

@@ -1,0 +1,49 @@
+/* Typography rules are derived from @tailwindcss/typography@0.5.20. */
+.rich-text-content :where(code) {
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--rich-text-content-inline-code);
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  font-size: 0.875em;
+  font-weight: 600;
+  padding: 0;
+}
+
+.rich-text-content :where(a code, h1 code, h2 code, h3 code, h4 code, blockquote code, th code),
+.rich-text-content.rich-text-content--sm
+  :where(a code, h1 code, h2 code, h3 code, h4 code, blockquote code, th code),
+.rich-text-content.rich-text-content--lg
+  :where(a code, h1 code, h2 code, h3 code, h4 code, blockquote code, th code) {
+  color: inherit;
+}
+
+.rich-text-content.rich-text-content--sm :where(code) {
+  font-size: 0.8571429em;
+}
+
+.rich-text-content :where(h3 code) {
+  font-size: 0.9em;
+}
+
+.rich-text-content.rich-text-content--sm :where(h2 code) {
+  font-size: 0.9em;
+}
+
+.rich-text-content.rich-text-content--sm :where(h3 code) {
+  font-size: 0.8888889em;
+}
+
+.rich-text-content.rich-text-content--lg :where(code) {
+  font-size: 0.8888889em;
+}
+
+.rich-text-content.rich-text-content--lg :where(h2 code) {
+  font-size: 0.8666667em;
+}
+
+.rich-text-content.rich-text-content--lg :where(h3 code) {
+  font-size: 0.875em;
+}

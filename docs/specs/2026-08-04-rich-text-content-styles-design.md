@@ -56,7 +56,8 @@ date: 2026-08-04
 - 两个 preset 文件分别直接组合内部 base 和 feature CSS，互不 import。
 - feature 的特殊视觉规则与 feature 代码放在同一目录。
 - CSS 使用普通静态源码，由现有 Vite/CSS pipeline 处理。
-- 公共入口和内部 partial 均使用未分层 CSS，不声明 `@layer`。
+- 排版规则以未分层 author CSS 输出；宿主 reset 互操作只在需要恢复浏览器原生语义时局部处理。
+- Table 的静态外观由 CSS 承担，标准 `<colgroup>` 与按列尺寸保留在 HTML 中。
 
 未采用以下方案：
 
@@ -189,7 +190,7 @@ packages/rich-text/src/
 规则遵循以下边界：
 
 - 不写全局 element selector，不依赖 Tailwind Preflight。
-- 不使用 `@layer`，避免公共 stylesheet 的优先级取决于宿主 layer 声明或加载顺序；规则以普通未分层 author CSS 参与 cascade。
+- 排版规则以普通未分层 author CSS 参与 cascade。对于被宿主 `base` layer reset 覆盖的浏览器原生语义，可以通过 scoped `@layer base` 与 `revert-layer` 恢复；该机制不承载排版或主题优先级。
 - 为内容内部需要稳定盒模型的元素提供 scoped normalization，但不提供全站 reset。
 - 不使用 `!important`，保证经过 sanitizer 允许的作者内联格式可以覆盖默认值。
 - 正文、标题、列表和引用默认继承宿主应用字体；inline code 与 CodeBlock 显式使用标准 system monospace 字体栈，避免依赖 Tailwind Preflight 或宿主 reset。作者通过 TextStyle 选择的合法字体仍由内联样式覆盖默认值。
@@ -275,7 +276,7 @@ Highlight.js JavaScript 行为不变：编辑器继续由 Lowlight 产生高亮 
 | Image | block 布局、上下间距、`max-width: 100%`、`height: auto` |
 | Table | wrapper 滚动、table 默认宽度与 border collapse、cell 最小宽度/边框/按尺寸变化的 padding/垂直对齐、header 背景与字重 |
 
-这些规则不再由 Tiptap extension 的静态 `HTMLAttributes` 或 server sanitizer transform 重复重建。
+这些规则不再由 Tiptap extension 的静态 `HTMLAttributes` 或 server sanitizer transform 写入 HTML，尤其不在每个 `th`、`td` 上重复声明。Table HTML 只保留布局所需的列结构与尺寸信息。
 
 ### 继续保留在 HTML 的内容格式
 
@@ -284,12 +285,12 @@ Highlight.js JavaScript 行为不变：编辑器继续由 Lowlight 产生高亮 
 - TextStyle 的 text color、font family、font size、line height。
 - Highlight 的作者选择颜色。
 - Paragraph、Heading 和 TableCell 的显式 text alignment。
-- Table/col 的合法固定 `width` 或 `min-width`，以及 `colspan`、`rowspan`、`colwidth`。
+- Table 的 `<colgroup>`、table/col 合法 `width` 或 `min-width`，以及 `colspan`、`rowspan`、`colwidth`。未设置固定列宽时，renderer 仍可按 `cellMinWidth` 输出列级最小宽度。
 - Image 的 `src`、`alt`、`width`、`height`。数值 `width` 和 `height` 属性保留作者选择的展示尺寸与宽高比；Image 不再输出 `style` 属性，block 布局、响应式上限和自动高度全部由 CSS 提供。
 - CodeBlock 的 language class，以及 Highlight.js/Lowlight 产生的 scoped token classes。
 - Table wrapper 的 `class`、`tabindex`、`role` 和可访问名称。
 
-没有实际自定义值时不输出占位内联声明：例如默认 cell alignment 和 Table 的默认 `width: 100%` 都由 CSS 处理。Image 无论是否设置展示尺寸都不输出内联样式。
+默认 cell alignment 和值为 `1` 的 `colspan`、`rowspan` 不写入 HTML，Table 的默认 `width: 100%` 由 CSS 处理。按列生成的 `<colgroup>` 和 table/col 最小宽度属于结构尺寸，不视为按单元格重复的占位声明。Image 无论是否设置展示尺寸都不输出内联样式。
 
 ### Sanitizer 与数据流
 
@@ -317,7 +318,7 @@ CSS 不参与安全判断。内容是否合法仍完全由 schema、feature asse
 - Client rich-text demo 和 Playground 使用 all CSS 与 `sm` container classes；其 Vue all preset import 会自动带入 stylesheet。
 - 删除 Client 和 Playground 的 `@tailwindcss/typography` plugin 配置与依赖；Tailwind CSS 继续用于普通应用 UI。
 - 删除 Client/Playground 的 Highlight.js raw theme 注入逻辑，只保留代码高亮 JavaScript。
-- 更新 table、code-block、image renderer 与 sanitizer policy，使静态视觉由 CSS 接管。
+- 更新 table、code-block、image 的 extension 配置与 sanitizer policy，使静态视觉由 CSS 接管，同时保留 Table 的标准列结构与尺寸输出。
 - 更新 package exports、相关 README 和富文本 Playground 说明，明确 HTML 与 preset CSS 必须配套。
 
 仓库没有需要迁移的历史富文本数据，也没有依赖精确 style attribute 的外部消费者，因此不增加 feature flag、旧样式变量 alias、旧 HTML parser 或数据迁移脚本。
@@ -365,7 +366,9 @@ CSS 不参与安全判断。内容是否合法仍完全由 schema、feature asse
 - 单元格包含一个 paragraph，文本按 `R{row}C{column}` 生成，行列从 1 开始计数。
 - 单表恰好占用现有上限 10,000 个 grid slots，不触发超限路径。
 
-当前实现对该样本派生出的 HTML 长度约为 259 万字符；移除重复静态样式后的预估降幅约为 82%。实现验收目标仍为 `derived.html.length` 较当前实现降低至少约 75%。该值只作为一次性实现验收和回归风险判断，不写成精确字节数的自动化测试，也不把压缩算法或机器环境纳入公共契约。
+优化前实现对该样本派生出的 HTML 长度约为 259 万字符。实现验收目标为 `derived.html.length` 较该基线降低至少约 75%。该值只作为一次性实现验收和回归风险判断，不写成精确字节数的自动化测试，也不把压缩算法或机器环境纳入公共契约。
+
+验收统计包含按 100 列生成的 `<colgroup>` 和 table/col 尺寸声明；这些结构按列增长，并直接计入 HTML 总长度。
 
 ### 完整验证
 

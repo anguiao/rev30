@@ -95,11 +95,11 @@
   margin-bottom: 1.3333333em;
 }
 
-.rich-text-content :where(strong, b) {
+.rich-text-content :where(strong) {
   color: var(--rich-text-content-heading);
   font-weight: 600;
 }
 
-.rich-text-content :where(em, i) {
+.rich-text-content :where(em) {
   font-style: italic;
 }

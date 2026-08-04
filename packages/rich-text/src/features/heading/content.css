@@ -49,17 +49,6 @@
   line-height: 1.5;
 }
 
-.rich-text-content > :where(h2 + *, h3 + *, h4 + *),
-.rich-text-content :where(.ProseMirror > h2 + *, .ProseMirror > h3 + *, .ProseMirror > h4 + *),
-.rich-text-content.rich-text-content--sm > :where(h2 + *, h3 + *, h4 + *),
-.rich-text-content.rich-text-content--sm
-  :where(.ProseMirror > h2 + *, .ProseMirror > h3 + *, .ProseMirror > h4 + *),
-.rich-text-content.rich-text-content--lg > :where(h2 + *, h3 + *, h4 + *),
-.rich-text-content.rich-text-content--lg
-  :where(.ProseMirror > h2 + *, .ProseMirror > h3 + *, .ProseMirror > h4 + *) {
-  margin-top: 0;
-}
-
 .rich-text-content.rich-text-content--sm :where(h1) {
   margin-bottom: 0.8em;
   font-size: 2.1428571em;

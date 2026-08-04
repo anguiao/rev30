@@ -78,9 +78,12 @@ describe('table server feature', () => {
     expect(content.text).toBe('姓名\n\n\n\n状态\n\n\n\n\n\n张三\n\n\n\n正常')
     expect(content.html).toContain('<div class="tableWrapper" tabindex="0"')
     expect(content.html).toContain('role="region"')
-    expect(content.html).toContain('<table><tbody>')
-    expect(content.html).toContain('<th colspan="1" rowspan="1"><p>姓名</p></th>')
-    expect(content.html).toContain('<td colspan="1" rowspan="1"><p>张三</p></td>')
+    expect(content.html).toContain('<table style="min-width:192px"><colgroup>')
+    expect(content.html.match(/<col style="min-width:96px" \/>/g)).toHaveLength(2)
+    expect(content.html).toContain('<th><p>姓名</p></th>')
+    expect(content.html).toContain('<td><p>张三</p></td>')
+    expect(content.html).not.toContain('colspan="1"')
+    expect(content.html).not.toContain('rowspan="1"')
   })
 
   it('accepts inline marks, hard breaks, paragraph attributes, and legal cell attributes', () => {
@@ -127,6 +130,8 @@ describe('table server feature', () => {
     expect(tableContent.content[0]?.content[0]?.content[0]).toMatchObject({
       attrs: { colspan: 2, colwidth: [20, 30], align: 'right' },
     })
+    expect(content.html).toContain('colspan="2"')
+    expect(content.html).not.toContain('rowspan="1"')
     expect(content.html).toContain('text-align:center')
     expect(content.html).toContain('text-align:right')
     expect(content.html).toContain('width:96px')

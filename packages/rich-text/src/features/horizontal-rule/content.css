@@ -6,15 +6,6 @@
   border-top: 1px solid var(--rich-text-content-divider);
 }
 
-.rich-text-content > :where(hr + *),
-.rich-text-content :where(.ProseMirror > hr + *),
-.rich-text-content.rich-text-content--sm > :where(hr + *),
-.rich-text-content.rich-text-content--sm :where(.ProseMirror > hr + *),
-.rich-text-content.rich-text-content--lg > :where(hr + *),
-.rich-text-content.rich-text-content--lg :where(.ProseMirror > hr + *) {
-  margin-top: 0;
-}
-
 .rich-text-content.rich-text-content--sm :where(hr) {
   margin-top: 2.8571429em;
   margin-bottom: 2.8571429em;

@@ -48,7 +48,7 @@ const RichTextCodeBlock = CodeBlock.extend({
       ],
     ]
   },
-}).configure({})
+})
 
 export const codeBlockServerFeature = defineRichTextServerFeature(codeBlockFeature, {
   htmlPolicy: codeBlockHtmlPolicy,

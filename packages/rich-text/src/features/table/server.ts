@@ -127,7 +127,7 @@ function normalizeCellAttributes({ tagName, attribs }: Parameters<RichTextTagTra
   for (const attribute of ['colspan', 'rowspan'] as const) {
     const value = attribs[attribute]
 
-    if (value && positiveIntegerPattern.test(value)) {
+    if (value && value !== '1' && positiveIntegerPattern.test(value)) {
       nextAttributes[attribute] = value
     }
   }

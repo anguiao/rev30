@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest'
 import { render } from 'vitest-browser-vue'
+import type { RichTextDocument } from '@rev30/rich-text/schema'
 import { deriveRichTextContent } from '@rev30/rich-text/server'
 import App from '../src/App.vue'
 import { createDefaultDocument } from '../src/playground/defaultDocument'
@@ -239,6 +240,75 @@ test('applies matching editor and readonly content typography across supported s
   expect(getComputedStyle(readonlyCode).color).toBe(
     getComputedStyle(readonlyCode.parentElement!).color,
   )
+})
+
+test('preserves ordered list markers and collapses adjacent flow spacing', async () => {
+  const markerTypes = ['a', 'A', 'i', 'I'] as const
+  const expectedListStyles = ['lower-alpha', 'upper-alpha', 'lower-roman', 'upper-roman']
+  const document: RichTextDocument = {
+    type: 'doc',
+    content: [
+      {
+        type: 'heading',
+        attrs: { level: 2, textAlign: null },
+        content: [{ type: 'text', text: 'Heading two' }],
+      },
+      {
+        type: 'heading',
+        attrs: { level: 3, textAlign: null },
+        content: [{ type: 'text', text: 'Heading three' }],
+      },
+      { type: 'horizontalRule' },
+      { type: 'horizontalRule' },
+      ...markerTypes.map((type) => ({
+        type: 'orderedList',
+        attrs: { start: 1, type },
+        content: [
+          {
+            type: 'listItem',
+            content: [
+              {
+                type: 'paragraph',
+                attrs: { textAlign: null },
+                content: [{ type: 'text', text: `${type} item` }],
+              },
+            ],
+          },
+        ],
+      })),
+    ],
+  }
+  const { serverPreset } = createPlaygroundPresets({ onImageError() {} })
+  const derived = deriveRichTextContent(document, serverPreset)
+  const screen = render(RichTextContentStyleHarness, {
+    props: { document, html: derived.html, dark: false },
+  })
+
+  await expect.element(screen.getByTestId('style-editor')).toBeVisible()
+
+  const editor = getRequiredElement<HTMLElement>(
+    screen.getByTestId('style-editor').element(),
+    '.ProseMirror',
+  )
+  const containers = [
+    editor,
+    screen.getByTestId('style-readonly-sm').element(),
+    screen.getByTestId('style-readonly-base').element(),
+    screen.getByTestId('style-readonly-lg').element(),
+  ]
+
+  for (const container of containers) {
+    const lists = Array.from(container.querySelectorAll<HTMLOListElement>('ol'))
+
+    expect(lists.map((list) => list.getAttribute('type'))).toEqual(markerTypes)
+    expect(lists.map((list) => getComputedStyle(list).listStyleType)).toEqual(expectedListStyles)
+
+    for (const selector of ['h2 + h3', 'h3 + hr', 'hr + hr', 'hr + ol']) {
+      expect(getComputedStyle(getRequiredElement<HTMLElement>(container, selector)).marginTop).toBe(
+        '0px',
+      )
+    }
+  }
 })
 
 test('switches content defaults with the root theme and honors public color variables', async () => {

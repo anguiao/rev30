@@ -5,7 +5,13 @@
   padding-inline-start: 1.625em;
 }
 
-.rich-text-content :where(ol) {
+@layer base {
+  .rich-text-content :where(ol[type]) {
+    list-style-type: revert-layer;
+  }
+}
+
+.rich-text-content :where(ol:not([type])) {
   list-style-type: decimal;
 }
 

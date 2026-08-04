@@ -1,3 +1,9 @@
+.rich-text-content :where(h2 + *, h3 + *, h4 + *, hr + *),
+.rich-text-content.rich-text-content--sm :where(h2 + *, h3 + *, h4 + *, hr + *),
+.rich-text-content.rich-text-content--lg :where(h2 + *, h3 + *, h4 + *, hr + *) {
+  margin-top: 0;
+}
+
 .rich-text-content > :where(:first-child),
 .rich-text-content :where(.ProseMirror > :first-child),
 .rich-text-content.rich-text-content--sm > :where(:first-child),

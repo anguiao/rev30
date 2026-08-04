@@ -133,7 +133,7 @@ function generatePreview() {
             v-if="previewData"
             ref="previewContainer"
             data-test="rich-text-demo-rendered"
-            class="rich-text-demo-rendered prose prose-sm max-w-none dark:prose-invert"
+            class="rich-text-content rich-text-content--sm rich-text-demo-rendered"
             v-html="previewData.contentHtml"
           />
           <NEmpty v-else description="生成服务端预览后显示" class="py-16" />

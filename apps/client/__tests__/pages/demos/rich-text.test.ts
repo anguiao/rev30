@@ -8,7 +8,6 @@ import {
   createRichTextDemoImageDataUrl,
   generateRichTextPreview,
 } from '../../../src/features/demos'
-import { useThemeStore } from '../../../src/stores/theme'
 import { mountAuthRoute, session } from '../../helpers/auth'
 import { createDeferred } from '../../helpers/promise'
 
@@ -54,14 +53,6 @@ vi.mock('@rev30/rich-text/vue', () => ({
         )
     },
   }),
-}))
-
-vi.mock('highlight.js/styles/github.css?raw', () => ({
-  default: '.hljs { color: light; }',
-}))
-
-vi.mock('highlight.js/styles/github-dark.css?raw', () => ({
-  default: '.hljs { color: dark; }',
 }))
 
 vi.mock('../../../src/features/demos', async (importOriginal) => ({
@@ -134,6 +125,9 @@ describe('rich text demo page', () => {
       '<strong>组件演示</strong>',
     )
     expect(wrapper.get('[data-test="rich-text-demo-rendered"] .hljs-keyword').text()).toBe('const')
+    expect(wrapper.get('[data-test="rich-text-demo-rendered"]').classes()).toEqual(
+      expect.arrayContaining(['rich-text-content', 'rich-text-content--sm']),
+    )
 
     const jsonTab = wrapper.findAll('.n-tabs-tab').find((tab) => tab.text() === 'JSON')
 
@@ -212,25 +206,5 @@ describe('rich text demo page', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-test="rich-text-demo-error"]').exists()).toBe(false)
-  })
-
-  it('loads highlight themes for the resolved mode while the page is mounted', async () => {
-    const { wrapper } = await mountPage()
-    const theme = useThemeStore()
-    const highlightTheme = document.head.querySelector<HTMLStyleElement>(
-      '#rich-text-demo-highlight-theme',
-    )
-
-    theme.setMode('light')
-    await flushPromises()
-    expect(highlightTheme?.textContent).toBe('.hljs { color: light; }')
-
-    theme.setMode('dark')
-    await flushPromises()
-
-    expect(highlightTheme?.textContent).toBe('.hljs { color: dark; }')
-
-    wrapper.unmount()
-    expect(document.head.querySelector('#rich-text-demo-highlight-theme')).toBeNull()
   })
 })

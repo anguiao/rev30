@@ -217,7 +217,12 @@ onBeforeUnmount(() => {
     <output data-test="selection-text">{{ selectionText }}</output>
     <output data-test="active-element">{{ activeElement }}</output>
     <output data-test="derivation-status">{{ derivation.status }}</output>
-    <div v-if="derivation.result" data-test="rendered-result" v-html="renderedHtml" />
+    <div
+      v-if="derivation.result"
+      data-test="rendered-result"
+      class="rich-text-content rich-text-content--sm"
+      v-html="renderedHtml"
+    />
     <output v-if="imageError" data-test="image-error">{{ imageError }}</output>
   </NConfigProvider>
 </template>

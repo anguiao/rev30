@@ -22,7 +22,6 @@
   "devDependencies": {
     "@iconify/json": "catalog:",
     "@iconify/tailwind4": "^1.2.3",
-    "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.13.3",
     "@vitejs/plugin-vue": "catalog:",

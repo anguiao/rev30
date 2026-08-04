@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import hljs from 'highlight.js/lib/common'
-import githubDarkThemeCss from 'highlight.js/styles/github-dark.css?raw'
-import githubThemeCss from 'highlight.js/styles/github.css?raw'
 import { NAlert, NEmpty, NTabPane, NTabs } from 'naive-ui'
-import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, useTemplateRef, watch } from 'vue'
 import { RichTextContentInvalidError } from '@rev30/rich-text/server'
 import type { RichTextDocument } from '@rev30/rich-text/schema'
 import type { DerivedRichTextContent, DerivationStatus } from '../playground/useDerivation'
@@ -14,28 +12,9 @@ const props = defineProps<{
   status: DerivationStatus
   error: unknown
   imageError: string | null
-  isDark: boolean
 }>()
 
 const renderedContainer = useTemplateRef<HTMLElement>('renderedContainer')
-const highlightThemeStyle = ref<HTMLStyleElement | null>(null)
-
-function updateHighlightTheme(isDark: boolean) {
-  if (highlightThemeStyle.value === null) {
-    const style = document.createElement('style')
-    style.id = 'rich-text-playground-highlight-theme'
-    document.head.append(style)
-    highlightThemeStyle.value = style
-  }
-
-  highlightThemeStyle.value.textContent = isDark ? githubDarkThemeCss : githubThemeCss
-}
-
-watch(() => props.isDark, updateHighlightTheme, { immediate: true })
-
-onBeforeUnmount(() => {
-  highlightThemeStyle.value?.remove()
-})
 
 const formattedJson = computed(() =>
   props.result ? redactImageDataUrls(JSON.stringify(props.result.json, null, 2)) : '',
@@ -100,7 +79,7 @@ watch(
           v-else
           ref="renderedContainer"
           data-test="rendered-result"
-          class="rich-text-result prose prose-sm max-w-none dark:prose-invert"
+          class="rich-text-content rich-text-content--sm rich-text-result"
           v-html="result.html"
         />
       </NTabPane>

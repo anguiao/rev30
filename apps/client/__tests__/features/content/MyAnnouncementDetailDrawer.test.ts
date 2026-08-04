@@ -68,9 +68,13 @@ describe('MyAnnouncementDetailDrawer', () => {
     expect(bodyText).toContain(formatDisplayDateTime(detail.publishedAt))
     expect(bodyText).toContain('第一段内容')
     expect(bodyText).toContain('第二段内容')
-    expect(
-      document.body.querySelector('[data-test="announcement-detail-content"]')?.innerHTML,
-    ).toBe(detail.contentHtml)
+    const content = document.body.querySelector<HTMLElement>(
+      '[data-test="announcement-detail-content"]',
+    )
+
+    expect(content?.innerHTML).toBe(detail.contentHtml)
+    expect(content?.classList).toContain('rich-text-content')
+    expect(content?.classList).toContain('rich-text-content--sm')
   })
 
   it('does not load detail or render the empty state while closed', async () => {

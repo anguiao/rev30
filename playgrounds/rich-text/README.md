@@ -4,6 +4,10 @@
 
 server preset 在这里用于验证功能配对、schema 校验、清洗和渲染的一致性；浏览器中的编辑器 JSON 和 server 派生代码处在同一个信任域，因此该 playground 不是生产安全边界。生产系统仍必须在可信服务端执行富文本校验和清洗。
 
+## 内容样式
+
+Playground 通过真实 Vue `all` preset 自动加载 `@rev30/rich-text/content/presets/all.css`。右侧只读结果使用 `rich-text-content rich-text-content--sm` 容器，与编辑器保持同一排版尺寸；不再依赖 Tailwind Typography，也不再动态注入 Highlight.js 的全局 theme CSS。只读生产页面若未导入 Vue preset，应显式导入与 server preset 对应的 package CSS；详见 `packages/rich-text/README.md`。
+
 ## 启动和验证
 
 ```bash

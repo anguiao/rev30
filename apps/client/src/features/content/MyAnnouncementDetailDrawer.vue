@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import '@rev30/rich-text/content/presets/compact.css'
 import { computed } from 'vue'
 import { useQuery } from '@pinia/colada'
 import { type AnnouncementMyListItem } from '@rev30/contracts'
@@ -73,7 +74,7 @@ const visibleDetail = computed(() => (show.value ? (detail.value ?? null) : null
 
           <article
             data-test="announcement-detail-content"
-            class="prose prose-sm mt-4 flow-root max-w-none dark:prose-invert"
+            class="rich-text-content rich-text-content--sm mt-4 flow-root"
             v-html="visibleDetail.contentHtml"
           />
         </div>

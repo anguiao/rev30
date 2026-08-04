@@ -21,7 +21,6 @@ function createErrorPanelProps(
     status: 'error' as const,
     error,
     imageError: null,
-    isDark: false,
   }
 }
 

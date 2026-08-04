@@ -2,6 +2,7 @@
 .rich-text-content :where(blockquote) {
   margin-top: 1.6em;
   margin-bottom: 1.6em;
+  margin-inline: 0;
   padding-inline-start: 1em;
   border-inline-start: 0.25rem solid var(--rich-text-content-quote-border);
   color: var(--rich-text-content-quote);

@@ -162,6 +162,7 @@ test('applies matching editor and readonly content typography across supported s
     const table = getRequiredElement<HTMLTableElement>(tableWrapper, 'table')
     const cell = getRequiredElement<HTMLElement>(table, 'th, td')
     const image = getRequiredElement<HTMLImageElement>(container, 'img')
+    const quote = getRequiredElement<HTMLElement>(container, 'blockquote')
 
     expect(getComputedStyle(getRequiredElement<HTMLElement>(container, 'h1')).fontSize).toBe(
       headingSize,
@@ -174,6 +175,8 @@ test('applies matching editor and readonly content typography across supported s
     expect(getComputedStyle(tableWrapper).overflowX).toBe('auto')
     expect(getComputedStyle(image).display).toBe('block')
     expect(getComputedStyle(image).maxWidth).toBe('100%')
+    expect(getComputedStyle(quote).marginInlineStart).toBe('0px')
+    expect(getComputedStyle(quote).marginInlineEnd).toBe('0px')
   }
 
   const editorH2 = getRequiredElement<HTMLElement>(editor, 'h2')

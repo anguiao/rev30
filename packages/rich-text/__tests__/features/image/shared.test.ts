@@ -22,7 +22,7 @@ describe('image feature shared rendering', () => {
     )
     const html = editor.getHTML()
 
-    expect(html).toMatch(/style="max-width: 100%; height: auto;?"/)
+    expect(html).toBe('<img src="/api/attachments/cover/content" alt="说明">')
     expect(html).not.toContain('height="360"')
     expect(html).not.toContain('width=')
   })
@@ -35,7 +35,9 @@ describe('image feature shared rendering', () => {
 
     expect(html).toContain('width="640"')
     expect(html).toContain('height="360"')
-    expect(html).toMatch(/style="width: 640px; max-width: 100%; height: auto;?"/)
+    expect(html).toBe(
+      '<img src="/api/attachments/cover/content" alt="说明" width="640" height="360">',
+    )
   })
 
   it('accepts valid image attributes from JSON', () => {

@@ -1,7 +1,7 @@
 import { mergeAttributes } from '@tiptap/core'
 import Image from '@tiptap/extension-image'
 import { defineRichTextFeature } from '../../core/feature'
-import { buildImageStyle, normalizeImageDimension, normalizeImageSize } from './dimensions'
+import { normalizeImageDimension, normalizeImageSize } from './dimensions'
 
 function validateImageDimension(value: unknown) {
   if (value !== null && (typeof value !== 'number' || !Number.isInteger(value) || value <= 0)) {
@@ -40,7 +40,6 @@ const RichTextImage = Image.extend({
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
         width,
         height,
-        style: buildImageStyle(width),
       }),
     ]
   },

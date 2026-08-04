@@ -23,9 +23,6 @@ describe('table shared feature', () => {
       'tableCell',
       'tableHeader',
     ])
-    expect(extensions[0]!.options.HTMLAttributes.style).toContain('border-collapse: collapse')
-    expect(extensions[2]!.options.HTMLAttributes.style).toContain('padding: 0.5rem 0.625rem')
-    expect(extensions[3]!.options.HTMLAttributes.style).toContain('font-weight: 600')
     expect(tableFeature.sharedExtensions!()).not.toBe(extensions)
     expect(tableFeature.sharedExtensions!()[0]).not.toBe(extensions[0])
   })

@@ -1,7 +1,7 @@
 import { RichTextContentInvalidError } from '../../server/errors'
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
-import { buildImageStyle, normalizeImageSize } from './dimensions'
+import { normalizeImageSize } from './dimensions'
 import { imageFeature } from './shared'
 
 export interface RichTextImageServerOptions {
@@ -26,7 +26,6 @@ export function createImageHtmlPolicy(options: RichTextImageServerOptions): Rich
         ...(Object.hasOwn(attribs, 'alt') ? { alt: attribs.alt } : {}),
         ...(width === null ? {} : { width: String(width) }),
         ...(height === null ? {} : { height: String(height) }),
-        style: buildImageStyle(width),
       },
     }
   }
@@ -37,14 +36,7 @@ export function createImageHtmlPolicy(options: RichTextImageServerOptions): Rich
       ? { allowedSchemesByTag: { img: options.allowedSrcSchemes } }
       : {}),
     allowedAttributes: {
-      img: ['src', 'alt', 'width', 'height', 'style'],
-    },
-    allowedStyles: {
-      img: {
-        width: [/^.+$/],
-        'max-width': [/^.+$/],
-        height: [/^.+$/],
-      },
+      img: ['src', 'alt', 'width', 'height'],
     },
     transformTags: {
       img: [transformImage],

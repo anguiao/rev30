@@ -8,12 +8,6 @@ import {
   type RichTextTagTransform,
 } from '../../server/sanitize'
 import { tableFeature } from './shared'
-import {
-  buildRichTextTableCellStyle,
-  buildRichTextTableHeaderStyle,
-  buildRichTextTableStyle,
-  richTextTableWrapperStyle,
-} from './styles'
 
 const TABLE_MAX_GRID_SLOTS_PER_TABLE = 10_000
 const TABLE_MAX_GRID_SLOTS_PER_DOCUMENT = 100_000
@@ -114,11 +108,15 @@ function normalizeCellAlignment(value: string | undefined) {
 const normalizeTable: RichTextTagTransform = ({ tagName, attribs }) => {
   const width = normalizePixelValue(getInlineStyleValue(attribs.style, 'width'))
   const minWidth = normalizePixelValue(getInlineStyleValue(attribs.style, 'min-width'))
+  const style = [
+    ...(width ? [`width: ${width}`] : []),
+    ...(minWidth ? [`min-width: ${minWidth}`] : []),
+  ].join('; ')
 
   return {
     tagName,
     attribs: {
-      style: buildRichTextTableStyle(width, minWidth),
+      ...(style ? { style } : {}),
     },
   }
 }
@@ -140,10 +138,9 @@ function normalizeCellAttributes({ tagName, attribs }: Parameters<RichTextTagTra
 
   const textAlign = normalizeCellAlignment(getInlineStyleValue(attribs.style, 'text-align'))
 
-  nextAttributes.style =
-    tagName === 'th'
-      ? buildRichTextTableHeaderStyle(textAlign)
-      : buildRichTextTableCellStyle(textAlign)
+  if (textAlign) {
+    nextAttributes.style = `text-align: ${textAlign}`
+  }
 
   return { tagName, attribs: nextAttributes }
 }
@@ -152,7 +149,6 @@ const normalizeTableWrapper: RichTextTagTransform = ({ tagName }) => ({
   tagName,
   attribs: {
     class: 'tableWrapper',
-    style: richTextTableWrapperStyle,
     tabindex: '0',
     role: 'region',
     'aria-label': '可横向滚动的表格',
@@ -162,43 +158,26 @@ const normalizeTableWrapper: RichTextTagTransform = ({ tagName }) => ({
 export const tableHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['div', 'table', 'colgroup', 'col', 'tbody', 'tr', 'th', 'td'],
   allowedAttributes: {
-    div: ['class', 'style', 'tabindex', 'role', 'aria-label'],
+    div: ['class', 'tabindex', 'role', 'aria-label'],
     table: ['style'],
     col: ['style'],
     th: ['colspan', 'rowspan', 'colwidth', 'style'],
     td: ['colspan', 'rowspan', 'colwidth', 'style'],
   },
   allowedStyles: {
-    div: {
-      'max-width': [/^\s*100%\s*$/],
-      'overflow-x': [/^\s*auto\s*$/],
-      'overscroll-behavior-x': [/^\s*contain\s*$/],
-    },
     table: {
-      width: [/^\s*(?:100%|\d+(?:\.\d+)?px)\s*$/],
+      width: [pixelValuePattern],
       'min-width': [pixelValuePattern],
-      border: [/^.+$/],
-      'border-collapse': [/^\s*collapse\s*$/],
     },
     col: {
       width: [pixelValuePattern],
       'min-width': [pixelValuePattern],
     },
     th: {
-      'min-width': [pixelValuePattern],
-      border: [/^.+$/],
-      padding: [/^\s*0\.5rem 0\.625rem\s*$/],
-      'text-align': [/^\s*(?:inherit|left|center|right)\s*$/],
-      'vertical-align': [/^\s*top\s*$/],
-      'background-color': [/^.+$/],
-      'font-weight': [/^\s*600\s*$/],
+      'text-align': [/^\s*(?:left|center|right)\s*$/],
     },
     td: {
-      'min-width': [pixelValuePattern],
-      border: [/^.+$/],
-      padding: [/^\s*0\.5rem 0\.625rem\s*$/],
-      'text-align': [/^\s*(?:inherit|left|center|right)\s*$/],
-      'vertical-align': [/^\s*top\s*$/],
+      'text-align': [/^\s*(?:left|center|right)\s*$/],
     },
   },
   transformTags: {

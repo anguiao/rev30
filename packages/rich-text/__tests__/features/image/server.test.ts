@@ -34,7 +34,7 @@ function getImageAttributes(html: string) {
 }
 
 describe('image html policy', () => {
-  it('keeps authenticated attachment images and rebuilds safe style', () => {
+  it('keeps authenticated attachment images while dropping styles', () => {
     const sanitized = sanitizeRichTextHtml(
       `<img src="${attachmentSrc}" alt="示意图" width="640" height="360" style="position: fixed; inset: 0">`,
       [imagePolicy],
@@ -45,7 +45,6 @@ describe('image html policy', () => {
       alt: '示意图',
       width: '640',
       height: '360',
-      style: 'width: 640px; max-width: 100%; height: auto',
     })
   })
 
@@ -91,7 +90,7 @@ describe('image html policy', () => {
     ).toThrow(RichTextContentInvalidError)
   })
 
-  it('drops invalid dimensions and keeps overflow protection', () => {
+  it('drops invalid dimensions and styles', () => {
     const sanitized = sanitizeRichTextHtml(
       `<img src="${attachmentSrc}" alt="示意图" width="0" height="-1" style="width: 9999px">`,
       [imagePolicy],
@@ -100,7 +99,6 @@ describe('image html policy', () => {
     expect(getImageAttributes(sanitized)).toEqual({
       src: attachmentSrc,
       alt: '示意图',
-      style: 'max-width: 100%; height: auto',
     })
   })
 
@@ -113,7 +111,6 @@ describe('image html policy', () => {
     expect(getImageAttributes(sanitized)).toEqual({
       src: attachmentSrc,
       alt: '示意图',
-      style: 'max-width: 100%; height: auto',
     })
   })
 })

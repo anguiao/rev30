@@ -13,9 +13,3 @@ export function normalizeImageSize(attributes: Record<string, unknown>) {
     height: width === null ? null : height,
   }
 }
-
-export function buildImageStyle(width: number | null) {
-  return width === null
-    ? 'max-width: 100%; height: auto'
-    : `width: ${width}px; max-width: 100%; height: auto`
-}

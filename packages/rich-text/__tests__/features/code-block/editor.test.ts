@@ -61,7 +61,7 @@ describe('code block feature', () => {
     })
     const code = editor.view.dom.querySelector('pre.hljs > code')
 
-    expect(code?.getAttribute('style')).toBe('padding: 0px; background: transparent;')
+    expect(code?.outerHTML).toBe('<code>const ready = true</code>')
     expect(editor.view.dom.querySelector('.hljs-keyword')).toBeNull()
   })
 

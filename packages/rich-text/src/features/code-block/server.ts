@@ -3,7 +3,7 @@ import CodeBlock from '@tiptap/extension-code-block'
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
 import { createCodeBlockLanguageAttribute, normalizeCodeBlockLanguage } from './languages'
-import { codeBlockFeature, richTextCodeBlockCodeStyle, richTextCodeBlockStyle } from './shared'
+import { codeBlockFeature } from './shared'
 
 const transformCode: RichTextTagTransform = ({ tagName, attribs }) => {
   const languageClass = attribs.class
@@ -15,35 +15,16 @@ const transformCode: RichTextTagTransform = ({ tagName, attribs }) => {
     tagName,
     attribs: {
       ...(language ? { class: `language-${language}` } : {}),
-      ...(attribs.style ? { style: attribs.style } : {}),
     },
   }
 }
 
-const transformCodeBlock: RichTextTagTransform = ({ tagName }) => ({
-  tagName,
-  attribs: {
-    style: richTextCodeBlockStyle,
-  },
-})
-
 export const codeBlockHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['pre', 'code'],
   allowedAttributes: {
-    pre: ['style'],
-    code: ['class', 'style'],
-  },
-  allowedStyles: {
-    pre: {
-      'background-color': [/^.+$/],
-    },
-    code: {
-      padding: [/^0$/i],
-      background: [/^transparent$/i],
-    },
+    code: ['class'],
   },
   transformTags: {
-    pre: [transformCodeBlock],
     code: [transformCode],
   },
 }
@@ -62,17 +43,12 @@ const RichTextCodeBlock = CodeBlock.extend({
           class: node.attrs.language
             ? this.options.languageClassPrefix + node.attrs.language
             : null,
-          style: richTextCodeBlockCodeStyle,
         },
         0,
       ],
     ]
   },
-}).configure({
-  HTMLAttributes: {
-    style: richTextCodeBlockStyle,
-  },
-})
+}).configure({})
 
 export const codeBlockServerFeature = defineRichTextServerFeature(codeBlockFeature, {
   htmlPolicy: codeBlockHtmlPolicy,

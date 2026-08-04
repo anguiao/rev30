@@ -5,7 +5,7 @@ import { common, createLowlight } from 'lowlight'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import { createCodeBlockLanguageAttribute } from './languages'
-import { codeBlockFeature, richTextCodeBlockCodeStyle } from './shared'
+import { codeBlockFeature } from './shared'
 
 const codeBlockLowlight = createLowlight(common)
 // Keep missing or unsupported languages unhighlighted instead of auto-detecting them.
@@ -77,7 +77,6 @@ const RichTextCodeBlock = CodeBlockLowlight.extend({
           class: node.attrs.language
             ? this.options.languageClassPrefix + node.attrs.language
             : null,
-          style: richTextCodeBlockCodeStyle,
         },
         0,
       ],

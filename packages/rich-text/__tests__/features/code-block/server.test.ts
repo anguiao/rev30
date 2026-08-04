@@ -9,9 +9,7 @@ describe('code block html policy', () => {
         '<pre class="code-block"><code class="language-typescript" data-x="1">const ready = true</code></pre>',
         [codeBlockHtmlPolicy],
       ),
-    ).toBe(
-      '<pre style="background-color:light-dark(#f5f5f4, #09090b)"><code class="language-typescript">const ready = true</code></pre>',
-    )
+    ).toBe('<pre><code class="language-typescript">const ready = true</code></pre>')
   })
 
   it('keeps punctuation in valid language classes', () => {
@@ -19,16 +17,12 @@ describe('code block html policy', () => {
       sanitizeRichTextHtml('<pre><code class="language-c++">const ready = true</code></pre>', [
         codeBlockHtmlPolicy,
       ]),
-    ).toBe(
-      '<pre style="background-color:light-dark(#f5f5f4, #09090b)"><code class="language-c++">const ready = true</code></pre>',
-    )
+    ).toBe('<pre><code class="language-c++">const ready = true</code></pre>')
 
     expect(
       sanitizeRichTextHtml('<pre><code class="language-c#">const ready = true</code></pre>', [
         codeBlockHtmlPolicy,
       ]),
-    ).toBe(
-      '<pre style="background-color:light-dark(#f5f5f4, #09090b)"><code class="language-c#">const ready = true</code></pre>',
-    )
+    ).toBe('<pre><code class="language-c#">const ready = true</code></pre>')
   })
 })

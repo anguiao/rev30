@@ -53,24 +53,12 @@ describe('link feature', () => {
     expect(() => editor.state.doc.check()).not.toThrow()
   })
 
-  it('links allowed URLs pasted over selected text', () => {
+  it('leaves link-on-paste to the editor paste integration layer', () => {
     const editor = createEditor()
     selectEditorText(editor)
 
-    expect(pasteTextOverSelection(editor, 'https://example.com')).toBe(true)
-
-    expect(editor.getJSON()).toMatchObject({
-      content: [
-        {
-          content: [
-            {
-              marks: [{ type: 'link', attrs: { href: 'https://example.com' } }],
-              text: '维护通知',
-            },
-          ],
-        },
-      ],
-    })
+    expect(pasteTextOverSelection(editor, 'https://example.com')).not.toBe(true)
+    expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
   })
 
   it('does not link an unsupported URL pasted over selected text', () => {

@@ -1,10 +1,12 @@
 import type { AnyExtension } from '@tiptap/core'
 import type { RichTextFeature } from '../core/feature'
 import type { RichTextPreset } from '../core/preset'
+import { collectRichTextPasteExtensions, type RichTextPasteRule } from './paste'
 
 export interface RichTextEditorFeature<Feature extends RichTextFeature = RichTextFeature> {
   readonly feature: Feature
   readonly extensions?: () => readonly AnyExtension[]
+  readonly pasteRule?: RichTextPasteRule
 }
 
 export function defineRichTextEditorFeature<const Feature extends RichTextFeature>(
@@ -32,7 +34,7 @@ export function collectRichTextEditorExtensions(
     preset.editorFeatures.map((implementation) => [implementation.feature, implementation]),
   )
 
-  return preset.features.flatMap((feature) => {
+  const extensions = preset.features.flatMap((feature) => {
     const editorImplementation = editorImplementationByFeature.get(feature)
 
     return [
@@ -40,4 +42,12 @@ export function collectRichTextEditorExtensions(
       ...(editorImplementation?.extensions?.() ?? []),
     ]
   })
+
+  const pasteRules = preset.features.flatMap((feature) => {
+    const pasteRule = editorImplementationByFeature.get(feature)?.pasteRule
+
+    return pasteRule ? [pasteRule] : []
+  })
+
+  return [...extensions, ...collectRichTextPasteExtensions(pasteRules)]
 }

@@ -1,7 +1,10 @@
-import type { Command, Range } from '@tiptap/core'
+import type { Command, Editor, Range } from '@tiptap/core'
+import { TextSelection } from '@tiptap/pm/state'
+import { find } from 'linkifyjs'
 import { defineRichTextAction } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { normalizeLinkHref } from './href'
+import type { RichTextPasteRule } from '../../editor/paste'
+import { linkDefaultProtocol, normalizeLinkHref } from './href'
 import { linkFeature } from './shared'
 
 function setLinkMark(range: Range, href: string | null): Command {
@@ -48,4 +51,79 @@ export const unsetLinkAction = defineRichTextAction(linkFeature, {
   command: ({ chain }, range: Range) => chain().focus().command(setLinkMark(range, null)).run(),
 })
 
-export const linkEditorFeature = defineRichTextEditorFeature(linkFeature, {})
+function getPastedLinkHref(event: ClipboardEvent) {
+  const clipboardData = event.clipboardData
+
+  if (
+    clipboardData === null ||
+    clipboardData.files.length > 0 ||
+    clipboardData.getData('text/html') !== ''
+  ) {
+    return null
+  }
+
+  const text = clipboardData.getData('text/plain').trim()
+
+  if (text === '') {
+    return null
+  }
+
+  const [token] = find(text, { defaultProtocol: linkDefaultProtocol })
+
+  if (
+    !token ||
+    token.start !== 0 ||
+    token.end !== text.length ||
+    !token.isLink ||
+    (token.type !== 'url' && token.type !== 'email')
+  ) {
+    return null
+  }
+
+  const href = normalizeLinkHref(token.href)
+
+  return href === '' ? null : href
+}
+
+function getLinkPasteSelection(editor: Editor) {
+  const { selection, schema } = editor.state
+  const link = schema.marks.link
+
+  if (
+    !(selection instanceof TextSelection) ||
+    selection.empty ||
+    !link ||
+    selection.$from.parent !== selection.$to.parent ||
+    !selection.$from.parent.isTextblock ||
+    !selection.$from.parent.type.allowsMarkType(link)
+  ) {
+    return null
+  }
+
+  return { selection, link }
+}
+
+export const linkPasteRule: RichTextPasteRule = {
+  handlePaste({ editor, event }) {
+    const href = getPastedLinkHref(event)
+    const linkSelection = getLinkPasteSelection(editor)
+
+    if (href === null || linkSelection === null) {
+      return false
+    }
+
+    editor.view.dispatch(
+      editor.state.tr.addMark(
+        linkSelection.selection.from,
+        linkSelection.selection.to,
+        linkSelection.link.create({ href }),
+      ),
+    )
+
+    return true
+  },
+}
+
+export const linkEditorFeature = defineRichTextEditorFeature(linkFeature, {
+  pasteRule: linkPasteRule,
+})

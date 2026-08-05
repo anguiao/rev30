@@ -88,6 +88,7 @@
     "@tiptap/vue-3": "^3.29.2",
     "@vueuse/core": "catalog:",
     "highlight.js": "^11.11.1",
+    "linkifyjs": "^4.3.3",
     "lowlight": "^3.3.0",
     "naive-ui": "catalog:",
     "sanitize-html": "^2.17.6",

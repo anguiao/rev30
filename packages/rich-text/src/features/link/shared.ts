@@ -69,7 +69,7 @@ export const linkFeature = defineRichTextFeature({
       openOnClick: false,
       enableClickSelection: false,
       autolink: true,
-      linkOnPaste: true,
+      linkOnPaste: false,
       defaultProtocol: linkDefaultProtocol,
       isAllowedUri: (url, ctx) => {
         const normalizedHref = normalizeLinkHref(url, ctx.defaultProtocol)

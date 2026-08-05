@@ -1,27 +1,16 @@
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
+import { normalizeOrderedListStart, normalizeOrderedListType } from './attrs'
 import { listFeature } from './shared'
-
-const orderedListTypes = new Set(['1', 'a', 'A', 'i', 'I'])
-
-function normalizeOrderedListStart(value: string | undefined) {
-  if (!value || !/^-?\d+$/.test(value)) {
-    return undefined
-  }
-
-  const start = Number(value)
-
-  return Number.isSafeInteger(start) ? String(start) : undefined
-}
 
 const transformOrderedList: RichTextTagTransform = ({ tagName, attribs }) => {
   const start = normalizeOrderedListStart(attribs.start)
-  const type = attribs.type && orderedListTypes.has(attribs.type) ? attribs.type : undefined
+  const type = normalizeOrderedListType(attribs.type)
 
   return {
     tagName,
     attribs: {
-      ...(start ? { start } : {}),
+      ...(start === null ? {} : { start: String(start) }),
       ...(type ? { type } : {}),
     },
   }

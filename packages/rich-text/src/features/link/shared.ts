@@ -32,7 +32,7 @@ const ValidatedLink = Link.extend({
     return {
       href: {
         isRequired: true,
-        parseHTML: (element) => element.getAttribute('href'),
+        parseHTML: (element) => normalizeLinkHref(element.getAttribute('href') ?? ''),
         validate: (value) => {
           if (
             typeof value !== 'string' ||
@@ -44,6 +44,19 @@ const ValidatedLink = Link.extend({
         },
       },
     }
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'a[href]',
+        getAttrs: (node) => {
+          const href = normalizeLinkHref((node as HTMLElement).getAttribute('href') ?? '')
+
+          return href === '' ? false : { href }
+        },
+      },
+    ]
   },
 })
 

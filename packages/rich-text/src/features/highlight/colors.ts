@@ -8,3 +8,15 @@ export const highlightColorOptions = [
 export type HighlightColor = (typeof highlightColorOptions)[number]['value']
 
 export const highlightColors = highlightColorOptions.map((color) => color.value)
+
+const highlightColorSet = new Set<string>(highlightColors)
+
+export function normalizeHighlightColor(value: unknown): HighlightColor | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const color = value.trim().toLowerCase()
+
+  return highlightColorSet.has(color) ? (color as HighlightColor) : null
+}

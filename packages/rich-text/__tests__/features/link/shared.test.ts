@@ -30,6 +30,29 @@ function pasteTextOverSelection(editor: Editor, text: string) {
 }
 
 describe('link feature', () => {
+  it('canonicalizes valid external anchors and keeps invalid anchor text unmarked', () => {
+    const editor = createTestEditor({
+      extensions: [Document, Paragraph, Text, ...linkFeature.sharedExtensions!()],
+      content:
+        '<p><a href=" example.com/docs " target="_self" rel="author">文档</a><a href="javascript:alert(1)">危险</a></p>',
+    })
+
+    expect(editor.getJSON()).toMatchObject({
+      content: [
+        {
+          content: [
+            {
+              text: '文档',
+              marks: [{ type: 'link', attrs: { href: 'https://example.com/docs' } }],
+            },
+            { text: '危险' },
+          ],
+        },
+      ],
+    })
+    expect(() => editor.state.doc.check()).not.toThrow()
+  })
+
   it('links allowed URLs pasted over selected text', () => {
     const editor = createEditor()
     selectEditorText(editor)

@@ -49,5 +49,5 @@ export const imageFeature = defineRichTextFeature({
   key: 'image',
   editorImplementation: true,
   serverImplementation: true,
-  sharedExtensions: () => [RichTextImage],
+  sharedExtensions: () => [RichTextImage.configure({ allowBase64: true })],
 })

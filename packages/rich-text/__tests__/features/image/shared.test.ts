@@ -16,6 +16,21 @@ function createEditor(content: string) {
 }
 
 describe('image feature shared rendering', () => {
+  it('parses data URL images for internal clipboard round-trips', () => {
+    const dataUrl = 'data:image/png;base64,aGVsbG8='
+    const editor = createEditor(`<img src="${dataUrl}" alt="剪贴板图片" />`)
+
+    expect(editor.getJSON()).toMatchObject({
+      content: [
+        {
+          type: 'image',
+          attrs: { src: dataUrl, alt: '剪贴板图片' },
+        },
+      ],
+    })
+    expect(() => editor.state.doc.check()).not.toThrow()
+  })
+
   it('drops isolated height when width is missing', () => {
     const editor = createEditor(
       '<img src="/api/attachments/cover/content" alt="说明" height="360" />',

@@ -7,14 +7,18 @@ import {
   type RichTextHtmlPolicy,
   type RichTextTagTransform,
 } from '../../server/sanitize'
+import {
+  normalizeTableCellAlign,
+  normalizeTableCellSpan,
+  normalizeTableColwidth,
+  tableMaxCellSpan,
+} from './attrs'
 import { tableFeature } from './shared'
 
-const TABLE_MAX_GRID_SLOTS_PER_TABLE = 10_000
+const TABLE_MAX_GRID_SLOTS_PER_TABLE = tableMaxCellSpan
 const TABLE_MAX_GRID_SLOTS_PER_DOCUMENT = 100_000
 
 const pixelValuePattern = /^\s*\d+(?:\.\d+)?px\s*$/
-const positiveIntegerPattern = /^[1-9]\d*$/
-const colwidthPattern = /^-?\d+(?:\.\d+)?(?:,-?\d+(?:\.\d+)?)*$/
 
 function getTableGridSlotCount(table: ProseMirrorNode) {
   const rowCount = table.childCount
@@ -97,14 +101,6 @@ function normalizePixelValue(value: string | undefined) {
   return value && pixelValuePattern.test(value) ? value.trim() : undefined
 }
 
-function normalizeCellAlignment(value: string | undefined) {
-  const normalized = value?.trim().toLowerCase()
-
-  return normalized === 'left' || normalized === 'center' || normalized === 'right'
-    ? normalized
-    : undefined
-}
-
 const normalizeTable: RichTextTagTransform = ({ tagName, attribs }) => {
   const width = normalizePixelValue(getInlineStyleValue(attribs.style, 'width'))
   const minWidth = normalizePixelValue(getInlineStyleValue(attribs.style, 'min-width'))
@@ -125,18 +121,20 @@ function normalizeCellAttributes({ tagName, attribs }: Parameters<RichTextTagTra
   const nextAttributes: Record<string, string> = {}
 
   for (const attribute of ['colspan', 'rowspan'] as const) {
-    const value = attribs[attribute]
+    const value = normalizeTableCellSpan(attribs[attribute])
 
-    if (value && value !== '1' && positiveIntegerPattern.test(value)) {
-      nextAttributes[attribute] = value
+    if (value !== 1) {
+      nextAttributes[attribute] = String(value)
     }
   }
 
-  if (attribs.colwidth && colwidthPattern.test(attribs.colwidth)) {
-    nextAttributes.colwidth = attribs.colwidth
+  const colwidth = normalizeTableColwidth(attribs.colwidth)
+
+  if (colwidth) {
+    nextAttributes.colwidth = colwidth.join(',')
   }
 
-  const textAlign = normalizeCellAlignment(getInlineStyleValue(attribs.style, 'text-align'))
+  const textAlign = normalizeTableCellAlign(getInlineStyleValue(attribs.style, 'text-align'))
 
   if (textAlign) {
     nextAttributes.style = `text-align: ${textAlign}`

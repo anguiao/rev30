@@ -1,11 +1,19 @@
 import type { Attributes } from '@tiptap/core'
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table'
 import { defineRichTextFeature } from '../../core/feature'
+import {
+  isValidTableCellAlign,
+  isValidTableCellSpan,
+  isValidTableColwidth,
+  normalizeTableCellAlign,
+  normalizeTableCellSpan,
+  normalizeTableColwidth,
+} from './attrs'
 
 const TABLE_CELL_MIN_WIDTH = 96
 
 function validatePositiveInteger(value: unknown) {
-  if (!Number.isSafeInteger(value) || (value as number) <= 0) {
+  if (!isValidTableCellSpan(value)) {
     throw new RangeError('Table cell spans must be positive integers')
   }
 }
@@ -15,17 +23,40 @@ function validateColwidth(value: unknown) {
     return
   }
 
-  if (
-    !Array.isArray(value) ||
-    value.some((width) => typeof width !== 'number' || !Number.isFinite(width))
-  ) {
+  if (!isValidTableColwidth(value)) {
     throw new RangeError('Table cell colwidth must be null or an array of numbers')
   }
 }
 
 function validateCellAlign(value: unknown) {
-  if (value !== null && value !== 'left' && value !== 'center' && value !== 'right') {
+  if (value !== null && !isValidTableCellAlign(value)) {
     throw new RangeError('Unsupported table cell alignment')
+  }
+}
+
+function createTableCellAttributes(parentAttributes: Attributes): Attributes {
+  return {
+    ...parentAttributes,
+    colspan: {
+      ...parentAttributes.colspan,
+      parseHTML: (element) => normalizeTableCellSpan(element.getAttribute('colspan')),
+      validate: validatePositiveInteger,
+    },
+    rowspan: {
+      ...parentAttributes.rowspan,
+      parseHTML: (element) => normalizeTableCellSpan(element.getAttribute('rowspan')),
+      validate: validatePositiveInteger,
+    },
+    colwidth: {
+      ...parentAttributes.colwidth,
+      parseHTML: (element) => normalizeTableColwidth(element.getAttribute('colwidth')),
+      validate: validateColwidth,
+    },
+    align: {
+      ...parentAttributes.align,
+      parseHTML: (element) => normalizeTableCellAlign(parentAttributes.align?.parseHTML?.(element)),
+      validate: validateCellAlign,
+    },
   }
 }
 
@@ -35,25 +66,7 @@ const RichTextTableCell = TableCell.extend({
   addAttributes() {
     const parentAttributes: Attributes = this.parent?.() ?? {}
 
-    return {
-      ...parentAttributes,
-      colspan: {
-        ...parentAttributes.colspan,
-        validate: validatePositiveInteger,
-      },
-      rowspan: {
-        ...parentAttributes.rowspan,
-        validate: validatePositiveInteger,
-      },
-      colwidth: {
-        ...parentAttributes.colwidth,
-        validate: validateColwidth,
-      },
-      align: {
-        ...parentAttributes.align,
-        validate: validateCellAlign,
-      },
-    }
+    return createTableCellAttributes(parentAttributes)
   },
 })
 
@@ -63,25 +76,7 @@ const RichTextTableHeader = TableHeader.extend({
   addAttributes() {
     const parentAttributes: Attributes = this.parent?.() ?? {}
 
-    return {
-      ...parentAttributes,
-      colspan: {
-        ...parentAttributes.colspan,
-        validate: validatePositiveInteger,
-      },
-      rowspan: {
-        ...parentAttributes.rowspan,
-        validate: validatePositiveInteger,
-      },
-      colwidth: {
-        ...parentAttributes.colwidth,
-        validate: validateColwidth,
-      },
-      align: {
-        ...parentAttributes.align,
-        validate: validateCellAlign,
-      },
-    }
+    return createTableCellAttributes(parentAttributes)
   },
 })
 

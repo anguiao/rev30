@@ -322,6 +322,37 @@ describe('ImageToolbarControl', () => {
     )
   })
 
+  it('keeps the editor and local candidate when upload resolves an empty image source', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:empty-image-source')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const upload = vi.fn(async () => ({ src: '' }))
+    const onError = vi.fn()
+    const editor = createEditor()
+    const initialDocument = editor.getJSON()
+    const toolbar = mountControl(editor, upload, onError)
+
+    await toolbar.get('[data-test="rich-text-image"]').trigger('click')
+    await flushPromises()
+    const dialog = new DOMWrapper(document.body)
+    await chooseFile(dialog, new File(['image'], 'empty.png', { type: 'image/png' }))
+
+    expect(getPreviewImageSrc(dialog)).toBe('blob:empty-image-source')
+
+    await uploadSelectedFile(dialog)
+
+    expect(onError.mock.calls.at(-1)?.[0]).toMatchObject({ message: '图片加载失败' })
+    expect(getPreviewImageSrc(dialog)).toBe('blob:empty-image-source')
+    expect(dialog.get('[data-test="rich-text-image-confirm"]').attributes('disabled')).toBeDefined()
+    expect(
+      dialog.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
+    ).toBeUndefined()
+    expect(editor.getJSON()).toEqual(initialDocument)
+
+    await uploadSelectedFile(dialog)
+
+    expect(upload).toHaveBeenCalledTimes(2)
+  })
+
   it('replaces the selected text when inserting an image', async () => {
     const editor = createEditor('<p>replace</p>')
     editor.commands.setTextSelection({ from: 1, to: 8 })

@@ -185,6 +185,11 @@ async function uploadImageFile() {
       return
     }
 
+    if (uploaded.src === '') {
+      clearFailedRemoteImage(new Error('图片加载失败'))
+      return
+    }
+
     pendingRemoteImageFile.value = file
     naturalWidth.value = null
     naturalHeight.value = null

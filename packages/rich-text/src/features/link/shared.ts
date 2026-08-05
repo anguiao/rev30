@@ -51,7 +51,7 @@ const ValidatedLink = Link.extend({
       {
         tag: 'a[href]',
         getAttrs: (node) => {
-          const href = normalizeLinkHref((node as HTMLElement).getAttribute('href') ?? '')
+          const href = normalizeLinkHref(node.getAttribute('href') ?? '')
 
           return href === '' ? false : { href }
         },

@@ -44,6 +44,62 @@ const allFeatureKeys = [
 
 const compactFeatureKeys = ['base', 'history', 'bold', 'italic', 'link', 'heading', 'list']
 
+const allEditorExtensionNames = [
+  'doc',
+  'paragraph',
+  'text',
+  'hardBreak',
+  'dropCursor',
+  'gapCursor',
+  'selection',
+  'undoRedo',
+  'characterCount',
+  'searchReplace',
+  'bold',
+  'italic',
+  'underline',
+  'strike',
+  'code',
+  'highlight',
+  'textStyle',
+  'color',
+  'fontFamily',
+  'fontSize',
+  'lineHeight',
+  'link',
+  'heading',
+  'textAlign',
+  'blockquote',
+  'codeBlock',
+  'bulletList',
+  'orderedList',
+  'listItem',
+  'horizontalRule',
+  'image',
+  'table',
+  'tableRow',
+  'tableCell',
+  'tableHeader',
+]
+
+const compactEditorExtensionNames = [
+  'doc',
+  'paragraph',
+  'text',
+  'hardBreak',
+  'dropCursor',
+  'gapCursor',
+  'selection',
+  'undoRedo',
+  'bold',
+  'italic',
+  'link',
+  'heading',
+  'bulletList',
+  'orderedList',
+  'listItem',
+]
+
 const allEditorPreset = createAllRichTextEditorPreset({
   image: {
     upload: imageUpload,
@@ -73,6 +129,13 @@ function expectNoDuplicateTiptapExtensions(
   }
 }
 
+function expectKnownExtensionOrder(
+  actualNames: readonly string[],
+  expectedNames: readonly string[],
+) {
+  expect(actualNames.filter((name) => expectedNames.includes(name))).toEqual(expectedNames)
+}
+
 describe('all rich text preset', () => {
   it('enables every current built-in feature', () => {
     expect(allRichTextPreset.features.map((feature) => feature.key)).toEqual(allFeatureKeys)
@@ -90,46 +153,9 @@ describe('all rich text preset', () => {
     expect(allEditorPreset.key).toBe(allRichTextPreset.key)
     expect(allEditorPreset.features).toBe(allRichTextPreset.features)
     expect(allEditorPreset.editorFeatures.map(({ feature }) => feature.key)).toEqual(allFeatureKeys)
-    expect(
+    expectKnownExtensionOrder(
       collectRichTextEditorExtensions(allEditorPreset).map((extension) => extension.name),
-    ).toEqual(
-      expect.arrayContaining([
-        'doc',
-        'paragraph',
-        'text',
-        'hardBreak',
-        'dropCursor',
-        'gapCursor',
-        'selection',
-        'undoRedo',
-        'characterCount',
-        'searchReplace',
-        'bold',
-        'italic',
-        'underline',
-        'strike',
-        'code',
-        'highlight',
-        'textStyle',
-        'color',
-        'fontFamily',
-        'fontSize',
-        'lineHeight',
-        'link',
-        'heading',
-        'textAlign',
-        'blockquote',
-        'codeBlock',
-        'bulletList',
-        'orderedList',
-        'listItem',
-        'horizontalRule',
-        'image',
-        'table',
-        'tableRow',
-        'tableCell',
-        'tableHeader',
-      ]),
+      allEditorExtensionNames,
     )
   })
 
@@ -329,28 +355,11 @@ describe('compact rich text preset', () => {
     expect(compactRichTextEditorPreset.editorFeatures.map(({ feature }) => feature.key)).toEqual(
       compactFeatureKeys,
     )
-    expect(
+    expectKnownExtensionOrder(
       collectRichTextEditorExtensions(compactRichTextEditorPreset).map(
         (extension) => extension.name,
       ),
-    ).toEqual(
-      expect.arrayContaining([
-        'doc',
-        'paragraph',
-        'text',
-        'hardBreak',
-        'dropCursor',
-        'gapCursor',
-        'selection',
-        'undoRedo',
-        'bold',
-        'italic',
-        'link',
-        'heading',
-        'bulletList',
-        'orderedList',
-        'listItem',
-      ]),
+      compactEditorExtensionNames,
     )
   })
 

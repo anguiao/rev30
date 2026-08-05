@@ -25,16 +25,6 @@ function getInlineStyleValue(style: string | null, property: string) {
   return value
 }
 
-function parseHighlightColor(element: HTMLElement) {
-  if (element.hasAttribute('data-color')) {
-    return normalizeHighlightColor(element.getAttribute('data-color'))
-  }
-
-  return normalizeHighlightColor(
-    getInlineStyleValue(element.getAttribute('style'), 'background-color'),
-  )
-}
-
 const RichTextHighlight = Highlight.extend({
   addAttributes() {
     const parentAttributes: Attributes = this.parent?.() ?? {}
@@ -43,7 +33,15 @@ const RichTextHighlight = Highlight.extend({
       ...parentAttributes,
       color: {
         ...parentAttributes.color,
-        parseHTML: parseHighlightColor,
+        parseHTML: (element) => {
+          if (element.hasAttribute('data-color')) {
+            return normalizeHighlightColor(element.getAttribute('data-color'))
+          }
+
+          return normalizeHighlightColor(
+            getInlineStyleValue(element.getAttribute('style'), 'background-color'),
+          )
+        },
         validate: validateHighlightColor,
       },
     }

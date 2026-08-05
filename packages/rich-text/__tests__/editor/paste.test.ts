@@ -1,4 +1,6 @@
+import { Extension, type AnyExtension } from '@tiptap/core'
 import { Fragment, Slice } from '@tiptap/pm/model'
+import { Plugin } from '@tiptap/pm/state'
 import type { Editor } from '@tiptap/vue-3'
 import { describe, expect, it } from 'vitest'
 import { defineRichTextFeature } from '../../src/core/feature'
@@ -61,6 +63,7 @@ function createEditor(
     RichTextPasteRule | undefined,
     RichTextPasteRule | undefined,
   ],
+  editorExtensions: readonly AnyExtension[] = [],
 ) {
   const firstFeature = defineRichTextFeature({
     key: 'first-paste-rule',
@@ -101,7 +104,7 @@ function createEditor(
   })
 
   return createTestEditor({
-    extensions: collectRichTextEditorExtensions(editorPreset),
+    extensions: [...editorExtensions, ...collectRichTextEditorExtensions(editorPreset)],
     content: '<p>旧内容</p>',
   })
 }
@@ -146,6 +149,44 @@ describe('rich text paste feature integration', () => {
       true,
     )
     expect(calls).toEqual(['first', 'second'])
+  })
+
+  it('queries collected rules before another default-priority paste consumer', () => {
+    const calls: string[] = []
+    const editor = createEditor(
+      [
+        {
+          handlePaste() {
+            calls.push('collector')
+            return false
+          },
+        },
+        undefined,
+        undefined,
+      ],
+      [
+        Extension.create({
+          name: 'testPasteConsumer',
+          addProseMirrorPlugins() {
+            return [
+              new Plugin({
+                props: {
+                  handlePaste() {
+                    calls.push('consumer')
+                    return true
+                  },
+                },
+              }),
+            ]
+          },
+        }),
+      ],
+    )
+
+    expect(callPasteHandler(editor, createClipboardEvent({ text: 'https://example.com' }))).toBe(
+      true,
+    )
+    expect(calls).toEqual(['collector', 'consumer'])
   })
 
   it('leaves a paste to ProseMirror when all enabled rules return false', () => {

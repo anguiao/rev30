@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import type { RichTextImageAttrs } from '../editor'
+import { getFirstClipboardImageFile, type RichTextImageAttrs } from '../editor'
 import { NButton, NFormItem, NImage, NInput, NInputNumber, NModal, NSpin } from 'naive-ui'
-import { useDropZone, useEventListener, useFileDialog, useObjectUrl } from '@vueuse/core'
+import { useDropZone, useFileDialog, useObjectUrl } from '@vueuse/core'
 import { computed, onBeforeUnmount, ref, shallowRef, type Ref, useTemplateRef } from 'vue'
 import { useRichTextThemeStyle } from '../../../vue/theme'
 
 const props = defineProps<{
   upload: (file: File) => Promise<{ src: string }>
-  image?: RichTextImageAttrs | undefined
+  existingImage?: RichTextImageAttrs | undefined
+  initialImageFile?: File | undefined
 }>()
 
 const emit = defineEmits<{
@@ -18,20 +19,11 @@ const emit = defineEmits<{
 
 const richTextThemeStyle = useRichTextThemeStyle()
 
-const isEditing = props.image !== undefined
+const isEditing = props.existingImage !== undefined
 
-const selectedFile = ref<File | null>(null)
-const hasSelectedFile = computed(() => selectedFile.value !== null)
-const localPreviewSrc = useObjectUrl(selectedFile)
-
-const activeUpload = shallowRef<Promise<{ src: string }> | null>(null)
-const isUploading = computed(() => activeUpload.value !== null)
-const canSelectFile = computed(() => !isEditing && !isUploading.value)
-
-function selectLocalImageFile(file: File) {
-  selectedFile.value = file
-  resetImageState()
-}
+const selectedImageFile = shallowRef<File | null>(props.initialImageFile ?? null)
+const hasSelectedImageFile = computed(() => selectedImageFile.value !== null)
+const localPreviewSrc = useObjectUrl(selectedImageFile)
 
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 const { open: openFileDialog, onChange: onFileDialogChange } = useFileDialog({
@@ -67,35 +59,19 @@ const { isOverDropZone } = useDropZone(dropZoneRef, {
   },
 })
 
-useEventListener(window, 'paste', (event) => {
-  const target = event.target
-  if (
-    !canSelectFile.value ||
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    (target instanceof HTMLElement && target.isContentEditable)
-  ) {
-    return
-  }
-
-  const file = event.clipboardData?.files?.item(0)
-  if (file === null || file === undefined) {
-    return
-  }
-  if (!file.type.startsWith('image/')) {
-    return
-  }
-
-  event.preventDefault()
-  selectLocalImageFile(file)
-})
-
-const src = ref(props.image?.src ?? '')
-const alt = ref(props.image?.alt ?? '')
-const width = ref<number | null>(props.image?.width ?? null)
-const height = ref<number | null>(props.image?.height ?? null)
+const src = ref(props.existingImage?.src ?? '')
+const alt = ref(props.existingImage?.alt ?? '')
+const width = ref<number | null>(props.existingImage?.width ?? null)
+const height = ref<number | null>(props.existingImage?.height ?? null)
 const naturalWidth = ref<number | null>(null)
 const naturalHeight = ref<number | null>(null)
+const activeUpload = shallowRef<Promise<{ src: string }> | null>(null)
+const isUploading = computed(() => activeUpload.value !== null)
+const pendingRemoteImageFile = shallowRef<File | null>(null)
+const isLoadingUploadedImage = computed(
+  () => pendingRemoteImageFile.value !== null && src.value !== '',
+)
+const canSelectFile = computed(() => !isUploading.value && !isLoadingUploadedImage.value)
 const aspectRatio = computed(() =>
   naturalWidth.value === null || naturalHeight.value === null
     ? null
@@ -107,7 +83,7 @@ const isImageReady = computed(
 )
 
 const displayPreviewSrc = computed(() => src.value || localPreviewSrc.value || '')
-const selectButtonLabel = computed(() => (hasSelectedFile.value ? '重新选择' : '选择图片'))
+const selectButtonLabel = computed(() => (hasSelectedImageFile.value ? '重新选择' : '选择图片'))
 const uploadButtonLabel = computed(() => {
   if (isUploading.value) {
     return '上传中'
@@ -121,6 +97,9 @@ const uploadButtonLabel = computed(() => {
 })
 
 const canApply = computed(() => isImageReady.value && width.value !== null && height.value !== null)
+const canUpload = computed(
+  () => hasSelectedImageFile.value && !isUploading.value && src.value === '',
+)
 
 function handleApply() {
   if (width.value === null || height.value === null) {
@@ -135,21 +114,65 @@ function handleApply() {
   })
 }
 
-function resetImageState() {
+function resetCandidateImageState() {
   src.value = ''
-  alt.value = ''
-  width.value = null
-  height.value = null
   naturalWidth.value = null
   naturalHeight.value = null
+  pendingRemoteImageFile.value = null
+
+  if (!isEditing) {
+    alt.value = ''
+    width.value = null
+    height.value = null
+  }
+}
+
+function selectLocalImageFile(file: File) {
+  selectedImageFile.value = file
+  resetCandidateImageState()
+}
+
+function isTextEntryTarget(target: EventTarget | null) {
+  if (!(target instanceof Element)) {
+    return false
+  }
+
+  return (
+    target.matches('input, textarea, [contenteditable]') ||
+    target.closest('[contenteditable]') !== null
+  )
+}
+
+function handlePaste(event: ClipboardEvent) {
+  if (event.defaultPrevented || !canSelectFile.value || isTextEntryTarget(event.target)) {
+    return
+  }
+
+  const imageFile = getFirstClipboardImageFile(event.clipboardData?.files)
+
+  if (imageFile === null) {
+    return
+  }
+
+  event.preventDefault()
+  selectLocalImageFile(imageFile)
+}
+
+function clearFailedRemoteImage(error: Error) {
+  emit('error', error)
+  src.value = ''
+  naturalWidth.value = null
+  naturalHeight.value = null
+  pendingRemoteImageFile.value = null
 }
 
 onBeforeUnmount(() => {
   activeUpload.value = null
+  pendingRemoteImageFile.value = null
 })
 
 async function uploadImageFile() {
-  const file = selectedFile.value
+  const file = selectedImageFile.value
   if (file === null) {
     return
   }
@@ -162,9 +185,10 @@ async function uploadImageFile() {
       return
     }
 
+    pendingRemoteImageFile.value = file
+    naturalWidth.value = null
+    naturalHeight.value = null
     src.value = uploaded.src
-    alt.value = file.name
-    selectedFile.value = null
   } catch (error) {
     if (activeUpload.value !== upload) {
       return
@@ -185,12 +209,47 @@ function handleImageLoad(event: Event) {
   }
 
   if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
-    emit('error', new Error('图片尺寸无效'))
+    if (pendingRemoteImageFile.value !== null) {
+      clearFailedRemoteImage(new Error('图片尺寸无效'))
+    } else {
+      emit('error', new Error('图片尺寸无效'))
+    }
     return
   }
 
   naturalWidth.value = image.naturalWidth
   naturalHeight.value = image.naturalHeight
+
+  const uploadedImageFile = pendingRemoteImageFile.value
+
+  if (uploadedImageFile !== null) {
+    const existingImageWidth = props.existingImage?.width
+
+    if (
+      isEditing &&
+      existingImageWidth !== null &&
+      existingImageWidth !== undefined &&
+      Number.isInteger(existingImageWidth) &&
+      existingImageWidth > 0
+    ) {
+      width.value = existingImageWidth
+      height.value = Math.max(
+        1,
+        Math.round((existingImageWidth * image.naturalHeight) / image.naturalWidth),
+      )
+    } else {
+      width.value = image.naturalWidth
+      height.value = image.naturalHeight
+    }
+
+    if (!isEditing) {
+      alt.value = uploadedImageFile.name
+    }
+
+    pendingRemoteImageFile.value = null
+    selectedImageFile.value = null
+    return
+  }
 
   if (width.value === null && height.value === null) {
     width.value = image.naturalWidth
@@ -205,6 +264,11 @@ function handleImageLoad(event: Event) {
 function handleImageError(event: Event) {
   const image = event.target
   if (!(image instanceof HTMLImageElement) || image.getAttribute('src') !== src.value) {
+    return
+  }
+
+  if (pendingRemoteImageFile.value !== null) {
+    clearFailedRemoteImage(new Error('图片加载失败'))
     return
   }
 
@@ -246,9 +310,12 @@ function updateHeight(value: number | null) {
     @update:show="emit('cancel')"
   >
     <NSpin :show="isUploading">
-      <div class="flex flex-col gap-3">
+      <div
+        data-test="rich-text-image-dialog-content"
+        class="flex flex-col gap-3"
+        @paste="handlePaste"
+      >
         <div
-          v-if="!isEditing"
           ref="dropZoneRef"
           data-test="rich-text-image-drop-zone"
           class="flex w-fit rounded-(--rich-text-theme-border-radius) transition-[outline-color,outline-width]"
@@ -275,24 +342,8 @@ function updateHeight(value: number | null) {
             <span class="i-[lucide--image] text-2xl opacity-20" aria-hidden="true" />
           </div>
         </div>
-        <NImage
-          v-else-if="displayPreviewSrc"
-          data-test="rich-text-image-preview"
-          class="max-w-full"
-          :img-props="{ class: 'block max-h-28 max-w-full' }"
-          :src="displayPreviewSrc"
-          :alt="alt"
-          @load="handleImageLoad"
-          @error="handleImageError"
-        />
-        <div
-          v-else
-          class="flex size-28 items-center justify-center rounded-(--rich-text-theme-border-radius) border border-(--rich-text-theme-input-border-color) bg-(--rich-text-theme-input-color)"
-        >
-          <span class="i-[lucide--image] text-2xl opacity-20" aria-hidden="true" />
-        </div>
 
-        <div v-if="!isEditing" data-test="rich-text-image-upload" class="flex w-fit gap-2">
+        <div data-test="rich-text-image-upload" class="flex w-fit gap-2">
           <input
             ref="fileInput"
             data-test="rich-text-image-file-input"
@@ -316,7 +367,7 @@ function updateHeight(value: number | null) {
             type="primary"
             secondary
             :loading="isUploading"
-            :disabled="!hasSelectedFile || isUploading"
+            :disabled="!canUpload"
             @click.stop="uploadImageFile"
           >
             <template v-if="src" #icon>

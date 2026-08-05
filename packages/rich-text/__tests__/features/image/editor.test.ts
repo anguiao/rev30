@@ -5,7 +5,14 @@ import { NodeSelection } from '@tiptap/pm/state'
 import { UndoRedo } from '@tiptap/extensions/undo-redo'
 import { describe, expect, it, vi } from 'vitest'
 import { runRichTextAction } from '../../../src/editor/action'
-import { insertImageAction, updateImageAction } from '../../../src/features/image/editor'
+import {
+  createImagePasteRule,
+  getFirstClipboardImageFile,
+  insertImageAction,
+  isInternalRichTextHtml,
+  transformPastedImageHtml,
+  updateImageAction,
+} from '../../../src/features/image/editor'
 import { imageFeature } from '../../../src/features/image/shared'
 import { createTestEditor } from '../../helpers/editor'
 
@@ -21,6 +28,21 @@ function createEditor(content: string | object = '<p></p><p>后续正文</p>') {
     extensions: [Document, Paragraph, Text, UndoRedo, ...imageFeature.sharedExtensions!()],
     content,
   })
+}
+
+function createFileList(files: readonly File[]): FileList {
+  return Object.assign([...files], {
+    item: (index: number) => files[index] ?? null,
+  }) as FileList
+}
+
+function createClipboardEvent(html: string, files: readonly File[] = []): ClipboardEvent {
+  return {
+    clipboardData: {
+      files: createFileList(files),
+      getData: (type: string) => (type === 'text/html' ? html : ''),
+    } as DataTransfer,
+  } as ClipboardEvent
 }
 
 describe('image editor actions', () => {
@@ -88,5 +110,64 @@ describe('image editor actions', () => {
     expect(editor.state.selection).toBeInstanceOf(NodeSelection)
     expect((editor.state.selection as NodeSelection).node.type.name).toBe('image')
     expect(editor.getJSON().content).toHaveLength(2)
+  })
+})
+
+describe('image paste rule', () => {
+  it('preserves only a valid ProseMirror slice marker on the first top-level element', () => {
+    const internalHtml =
+      '<p data-pm-slice="0 0 []"><img src="data:image/png;base64,aGVsbG8=" /></p>'
+
+    expect(isInternalRichTextHtml(internalHtml)).toBe(true)
+    expect(transformPastedImageHtml(internalHtml)).toBe(internalHtml)
+
+    for (const externalHtml of [
+      '<p>前文<img src="https://example.com/external.png" /></p>',
+      '<p>前文</p><div data-pm-slice="0 0 []"><img src="https://example.com/external.png" /></div>',
+      '<p data-pm-slice="0 0 not-json">前文<img src="https://example.com/external.png" /></p>',
+      '<div>前文<p data-pm-slice="0 0 []"><img src="https://example.com/external.png" /></p></div>',
+    ]) {
+      const transformedHtml = transformPastedImageHtml(externalHtml)
+
+      expect(isInternalRichTextHtml(externalHtml)).toBe(false)
+      expect(transformedHtml).not.toContain('<img')
+      expect(transformedHtml).toContain('前文')
+    }
+  })
+
+  it('selects the first image file while skipping other clipboard files', () => {
+    const textFile = new File(['text'], 'note.txt', { type: 'text/plain' })
+    const firstImage = new File(['first'], 'first.png', { type: 'image/png' })
+    const secondImage = new File(['second'], 'second.jpg', { type: 'image/jpeg' })
+
+    expect(getFirstClipboardImageFile(createFileList([textFile, firstImage, secondImage]))).toBe(
+      firstImage,
+    )
+    expect(getFirstClipboardImageFile(createFileList([textFile]))).toBeNull()
+  })
+
+  it('opens the image dialog for an external image file but leaves internal HTML to ProseMirror', () => {
+    const editor = createEditor()
+    const openImageDialog = vi.fn()
+    const pasteRule = createImagePasteRule(openImageDialog)
+    const imageFile = new File(['image'], 'pasted.png', { type: 'image/png' })
+
+    expect(
+      pasteRule.handlePaste?.({
+        editor,
+        event: createClipboardEvent('', [imageFile]),
+        slice: editor.state.selection.content(),
+      }),
+    ).toBe(true)
+    expect(openImageDialog).toHaveBeenCalledWith(editor, imageFile)
+
+    expect(
+      pasteRule.handlePaste?.({
+        editor,
+        event: createClipboardEvent('<p data-pm-slice="0 0 []"><img /></p>', [imageFile]),
+        slice: editor.state.selection.content(),
+      }),
+    ).toBe(false)
+    expect(openImageDialog).toHaveBeenCalledOnce()
   })
 })

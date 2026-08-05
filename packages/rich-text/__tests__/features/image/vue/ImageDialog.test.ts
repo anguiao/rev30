@@ -8,12 +8,14 @@ import { DOMWrapper, flushPromises, mount, type BaseWrapper } from '@vue/test-ut
 import type { Editor } from '@tiptap/vue-3'
 import { markRaw, nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { collectRichTextEditorExtensions } from '../../../../src/editor/feature'
 import type { RichTextImageAttrs } from '../../../../src/features/image/editor'
 import { imageFeature } from '../../../../src/features/image/shared'
 import {
   createImageToolbarControl,
   type RichTextImageUploadOptions,
 } from '../../../../src/features/image/vue'
+import { createAllRichTextEditorPreset } from '../../../../src/vue/presets/all'
 import ImageDialog from '../../../../src/features/image/vue/ImageDialog.vue'
 import { createTestEditor } from '../../../helpers/editor'
 
@@ -26,7 +28,6 @@ type FileDialogOptions = {
 type DropZoneOptions = {
   onDrop?: (files: File[] | null, event: DragEvent) => void
 }
-type PasteHandler = (event: ClipboardEvent) => void
 
 const fileDialog = vi.hoisted(() => ({
   options: [] as FileDialogOptions[],
@@ -38,10 +39,6 @@ const dropZone = vi.hoisted(() => ({
   options: [] as DropZoneOptions[],
   isOverDropZone: { value: false },
 }))
-const eventListeners = vi.hoisted(() => ({
-  pasteHandlers: [] as PasteHandler[],
-}))
-
 const imageAttrs = {
   src: '/images/context.png',
   alt: '上下文图片',
@@ -61,13 +58,6 @@ vi.mock('@vueuse/core', async (importOriginal) => {
         files: { value: null },
         isOverDropZone: dropZone.isOverDropZone,
       }
-    }),
-    useEventListener: vi.fn((_target: unknown, event: string, handler: PasteHandler) => {
-      if (event === 'paste') {
-        eventListeners.pasteHandlers.push(handler)
-      }
-
-      return vi.fn()
     }),
     useFileDialog: vi.fn((options: FileDialogOptions) => {
       fileDialog.options.push(options)
@@ -99,6 +89,15 @@ function createEditor(content = '<p>维护通知</p>') {
   return createTestEditor({
     extensions: [Document, Paragraph, Text, ...imageFeature.sharedExtensions!()],
     content,
+  })
+}
+
+function createImagePasteEditor(upload: RichTextImageUploadOptions['upload']) {
+  const preset = createAllRichTextEditorPreset({ image: { upload } })
+
+  return createTestEditor({
+    extensions: collectRichTextEditorExtensions(preset),
+    content: '<p>粘贴目标</p>',
   })
 }
 
@@ -136,7 +135,12 @@ function deleteSlashQuery(editor: ReturnType<typeof createHistoryEditor>) {
     .run()
 }
 
-function mountDialog(upload = vi.fn(), onError = vi.fn(), image?: RichTextImageAttrs) {
+function mountDialog(
+  upload = vi.fn(),
+  onError = vi.fn(),
+  existingImage?: RichTextImageAttrs,
+  initialImageFile?: File,
+) {
   return mount(ImageDialog, {
     global: {
       stubs: {
@@ -146,7 +150,8 @@ function mountDialog(upload = vi.fn(), onError = vi.fn(), image?: RichTextImageA
     props: {
       upload,
       onError,
-      image,
+      existingImage,
+      initialImageFile,
     },
   })
 }
@@ -181,6 +186,20 @@ function createClipboardData(...files: File[]) {
   } as DataTransfer
 }
 
+function dispatchEditorPaste(editor: Editor, files: File[], html = '') {
+  const event = new Event('paste', { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'clipboardData', {
+    value: {
+      files: createFileList(...files),
+      getData: (type: string) => (type === 'text/html' ? html : ''),
+    } as DataTransfer,
+  })
+
+  editor.view.dom.dispatchEvent(event)
+
+  return event
+}
+
 async function chooseFile(_wrapper: BaseWrapper<Node>, file: File) {
   const onChange = fileDialog.changeHandlers.at(-1)
   if (onChange === undefined) {
@@ -201,22 +220,24 @@ async function dropFiles(files: File[]) {
   await nextTick()
 }
 
-async function pasteFiles(files: File[], target: EventTarget | null) {
-  const onPaste = eventListeners.pasteHandlers.at(-1)
-  if (onPaste === undefined) {
-    throw new Error('Paste handler is not registered')
+async function pasteFiles(
+  files: File[],
+  target: Element,
+  options: { defaultPrevented?: boolean } = {},
+) {
+  const event = new Event('paste', { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'clipboardData', {
+    value: createClipboardData(...files),
+  })
+
+  if (options.defaultPrevented) {
+    event.preventDefault()
   }
 
-  const preventDefault = vi.fn()
-  // Partial DOM mock with only the fields used by the paste handler.
-  onPaste({
-    clipboardData: createClipboardData(...files),
-    preventDefault,
-    target,
-  } as unknown as ClipboardEvent)
+  target.dispatchEvent(event)
   await nextTick()
 
-  return { preventDefault }
+  return event
 }
 
 async function uploadSelectedFile(wrapper: BaseWrapper<Node>) {
@@ -254,7 +275,6 @@ afterEach(() => {
   fileDialog.reset.mockClear()
   dropZone.options.length = 0
   dropZone.isOverDropZone.value = false
-  eventListeners.pasteHandlers.length = 0
 })
 
 describe('ImageToolbarControl', () => {
@@ -326,6 +346,28 @@ describe('ImageToolbarControl', () => {
     expect(editor.state.selection).toBeInstanceOf(NodeSelection)
   })
 
+  it('keeps the selection captured when the dialog opens', async () => {
+    const editor = createEditor('<p>first</p><p>second</p>')
+    editor.commands.setTextSelection({ from: 1, to: 6 })
+    const toolbar = mountControl(editor, async () => ({
+      src: '/api/attachments/frozen/content',
+    }))
+
+    await toolbar.get('[data-test="rich-text-image"]').trigger('click')
+    await flushPromises()
+    editor.commands.setTextSelection(8)
+
+    const dialog = new DOMWrapper(document.body)
+    await chooseFile(dialog, new File(['image'], 'frozen.png', { type: 'image/png' }))
+    await uploadSelectedFile(dialog)
+    await loadPreviewImage(dialog)
+    await dialog.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(editor.state.doc.firstChild?.type.name).toBe('image')
+    expect(editor.state.doc.child(1).textContent).toBe('second')
+  })
+
   it('marks the image toolbar button as active when an image is selected', () => {
     const editor = createEditor(
       '<img src="/api/attachments/cover/content" alt="旧说明" width="500" height="250" />',
@@ -339,7 +381,7 @@ describe('ImageToolbarControl', () => {
     expect(button.attributes('aria-label')).toBe('编辑图片')
   })
 
-  it('does not allow uploading a replacement for an existing image', async () => {
+  it('replaces an existing image only after uploading and confirming a new candidate', async () => {
     const upload = vi.fn(async (file: File) => ({
       src: `/api/attachments/${file.name}/content`,
     }))
@@ -354,26 +396,27 @@ describe('ImageToolbarControl', () => {
     const dialog = new DOMWrapper(document.body)
     await loadPreviewImage(dialog, 1000, 500)
 
-    expect(dialog.find('[data-test="rich-text-image-file"]').exists()).toBe(false)
-    expect(dialog.find('[data-test="rich-text-image-drop-zone"]').exists()).toBe(false)
+    expect(dialog.find('[data-test="rich-text-image-file"]').exists()).toBe(true)
+    expect(dialog.find('[data-test="rich-text-image-drop-zone"]').exists()).toBe(true)
 
-    await dialog.get('[data-test="rich-text-image-alt"] input').setValue('编辑说明')
-    const widthInput = dialog.get('[data-test="rich-text-image-width"] input')
-    await widthInput.setValue('600')
-    await widthInput.trigger('blur')
+    const replacement = new File(['replacement'], 'replacement.png', { type: 'image/png' })
+    await chooseFile(dialog, replacement)
+    expect(upload).not.toHaveBeenCalled()
+    await uploadSelectedFile(dialog)
+    await loadPreviewImage(dialog, 1000, 1000)
     await dialog.get('[data-test="rich-text-image-confirm"]').trigger('click')
     await flushPromises()
 
-    expect(upload).not.toHaveBeenCalled()
+    expect(upload).toHaveBeenCalledWith(replacement)
     expect(editor.getJSON()).toMatchObject({
       content: [
         {
           type: 'image',
           attrs: {
-            src: '/api/attachments/cover/content',
-            alt: '编辑说明',
-            width: 600,
-            height: 300,
+            src: '/api/attachments/replacement.png/content',
+            alt: '旧说明',
+            width: 500,
+            height: 500,
           },
         },
       ],
@@ -461,6 +504,64 @@ describe('ImageToolbarControl', () => {
   })
 })
 
+describe('image editor paste', () => {
+  it('opens one prefilled dialog for the first pasted image file', async () => {
+    const upload = vi.fn(async (file: File) => ({
+      src: `/api/attachments/${file.name}/content`,
+    }))
+    const editor = createImagePasteEditor(upload)
+    const imageFile = new File(['image'], 'pasted.png', { type: 'image/png' })
+
+    const event = dispatchEditorPaste(editor, [
+      new File(['text'], 'note.txt', { type: 'text/plain' }),
+      imageFile,
+    ])
+    await flushPromises()
+
+    expect(event.defaultPrevented).toBe(true)
+    const dialog = new DOMWrapper(document.body)
+    expect(dialog.find('[data-test="rich-text-image-dialog-content"]').exists()).toBe(true)
+
+    await uploadSelectedFile(dialog)
+
+    expect(upload).toHaveBeenCalledWith(imageFile)
+    await dialog.get('[data-test="rich-text-image-cancel"]').trigger('click')
+  })
+
+  it('does not open a dialog for internal rich-text HTML', async () => {
+    const editor = createImagePasteEditor(async () => ({ src: '/api/attachments/image/content' }))
+    const imageFile = new File(['image'], 'pasted.png', { type: 'image/png' })
+
+    const event = dispatchEditorPaste(
+      editor,
+      [imageFile],
+      '<img data-pm-slice="0 0 []" src="data:image/png;base64,aGVsbG8=" />',
+    )
+    await flushPromises()
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(document.querySelector('[data-test="rich-text-image-dialog-content"]')).toBeNull()
+    expect(editor.getJSON().content).toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'image' })]),
+    )
+  })
+
+  it('removes images from external HTML before the editor parses it', async () => {
+    const editor = createImagePasteEditor(async () => ({ src: '/api/attachments/image/content' }))
+
+    const event = dispatchEditorPaste(
+      editor,
+      [],
+      '<p>保留<img src="https://example.com/external.png" />文字</p>',
+    )
+    await flushPromises()
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(editor.getText()).toContain('保留文字')
+    expect(editor.getHTML()).not.toContain('https://example.com/external.png')
+  })
+})
+
 describe('ImageDialog', () => {
   it('exposes an accessible dialog name and a native file input', () => {
     const wrapper = mountDialog()
@@ -472,7 +573,7 @@ describe('ImageDialog', () => {
     })
   })
 
-  it('shows a local preview before upload and replaces it with the uploaded image', async () => {
+  it('keeps the selected candidate until the uploaded image loads successfully', async () => {
     const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:cover')
     const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     const upload = vi.fn(async (file: File) => ({
@@ -486,6 +587,11 @@ describe('ImageDialog', () => {
     expect(getPreviewImageSrc(wrapper)).toBe('blob:cover')
 
     await uploadSelectedFile(wrapper)
+
+    expect(revokeObjectUrl).not.toHaveBeenCalled()
+    expect(getPreviewImageSrc(wrapper)).toBe('/api/attachments/cover.png/content')
+
+    await loadPreviewImage(wrapper)
 
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:cover')
     expect(getPreviewImageSrc(wrapper)).toBe('/api/attachments/cover.png/content')
@@ -510,19 +616,19 @@ describe('ImageDialog', () => {
     expect(upload).toHaveBeenCalledWith(imageFile)
   })
 
-  it('uses pasted images as insert candidates when the insert dialog is open', async () => {
+  it('uses pasted images from its content root as insert candidates', async () => {
     const upload = vi.fn(async (file: File) => ({
       src: `/api/attachments/${file.name}/content`,
     }))
     const wrapper = mountDialog(upload)
     const imageFile = new File(['image'], 'pasted.png', { type: 'image/png' })
 
-    const { preventDefault } = await pasteFiles(
+    const event = await pasteFiles(
       [imageFile],
       wrapper.get('[data-test="rich-text-image-drop-zone"]').element,
     )
 
-    expect(preventDefault).toHaveBeenCalledOnce()
+    expect(event.defaultPrevented).toBe(true)
     expect(upload).not.toHaveBeenCalled()
 
     await uploadSelectedFile(wrapper)
@@ -534,15 +640,84 @@ describe('ImageDialog', () => {
     const upload = vi.fn(async () => ({ src: '/api/attachments/pasted/content' }))
     const wrapper = mountDialog(upload)
 
-    const { preventDefault } = await pasteFiles(
+    const event = await pasteFiles(
       [new File(['image'], 'pasted.png', { type: 'image/png' })],
       wrapper.get('[data-test="rich-text-image-alt"] input').element,
     )
 
-    expect(preventDefault).not.toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(false)
     expect(
       wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
     ).toBeDefined()
+  })
+
+  it('ignores consumed paste events and paste events outside the dialog root', async () => {
+    const wrapper = mountDialog()
+    const imageFile = new File(['image'], 'pasted.png', { type: 'image/png' })
+    const root = wrapper.get('[data-test="rich-text-image-dialog-content"]').element
+
+    const consumedEvent = await pasteFiles([imageFile], root, { defaultPrevented: true })
+
+    expect(consumedEvent.defaultPrevented).toBe(true)
+    expect(
+      wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
+    ).toBeDefined()
+
+    const outsideEvent = new Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(outsideEvent, 'clipboardData', {
+      value: createClipboardData(imageFile),
+    })
+    window.dispatchEvent(outsideEvent)
+    await nextTick()
+
+    expect(outsideEvent.defaultPrevented).toBe(false)
+    expect(
+      wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
+    ).toBeDefined()
+  })
+
+  it('initializes an insert candidate from an editor-pasted image file', () => {
+    const imageFile = new File(['image'], 'pasted.png', { type: 'image/png' })
+    const wrapper = mountDialog(vi.fn(), vi.fn(), undefined, imageFile)
+
+    expect(wrapper.find('[data-test="rich-text-image-preview"]').exists()).toBe(true)
+    expect(
+      wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
+    ).toBeUndefined()
+  })
+
+  it('lets an edit dialog replace its candidate through drop or scoped paste before upload', async () => {
+    const upload = vi.fn(async (file: File) => ({
+      src: `/api/attachments/${file.name}/content`,
+    }))
+    const wrapper = mountDialog(upload, vi.fn(), {
+      src: '/api/attachments/original/content',
+      alt: '原说明',
+      width: 480,
+      height: 240,
+    })
+    await loadPreviewImage(wrapper, 960, 480)
+
+    await dropFiles([new File(['first'], 'dropped.png', { type: 'image/png' })])
+    const pastedFile = new File(['second'], 'pasted.png', { type: 'image/png' })
+    const event = await pasteFiles(
+      [pastedFile],
+      wrapper.get('[data-test="rich-text-image-drop-zone"]').element,
+    )
+
+    expect(event.defaultPrevented).toBe(true)
+    await uploadSelectedFile(wrapper)
+
+    expect(upload).toHaveBeenCalledWith(pastedFile)
+    await loadPreviewImage(wrapper, 800, 400)
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+
+    expect(wrapper.emitted('confirm')?.at(-1)?.[0]).toMatchObject({
+      src: '/api/attachments/pasted.png/content',
+      alt: '原说明',
+      width: 480,
+      height: 240,
+    })
   })
 
   it('keeps insert dialog cancellation from uploading or confirming an image', async () => {
@@ -573,40 +748,33 @@ describe('ImageDialog', () => {
     expect(wrapper.emitted('confirm')).toBeUndefined()
   })
 
-  it('clears the insert candidate when a newer file upload fails', async () => {
+  it('keeps the insert candidate when its upload fails', async () => {
     const uploadError = new Error('Upload failed')
-    const upload = vi.fn((file: File) =>
-      file.name === 'first.png'
-        ? Promise.resolve({
-            src: '/api/attachments/first.png/content',
-          })
-        : Promise.reject(uploadError),
-    )
+    const upload = vi.fn(async () => {
+      throw uploadError
+    })
     const onError = vi.fn()
     const wrapper = mountDialog(upload, onError)
 
-    await chooseFile(wrapper, new File(['first'], 'first.png', { type: 'image/png' }))
-    await uploadSelectedFile(wrapper)
-    await loadPreviewImage(wrapper)
-    expect(
-      wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
-    ).toBeUndefined()
-
-    await chooseFile(wrapper, new File(['second'], 'second.png', { type: 'image/png' }))
-    expect(upload).toHaveBeenCalledOnce()
+    const imageFile = new File(['second'], 'second.png', { type: 'image/png' })
+    await chooseFile(wrapper, imageFile)
     await uploadSelectedFile(wrapper)
 
     expect(onError).toHaveBeenCalledWith(uploadError)
     expect(
       wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
     ).toBeDefined()
-    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
-    await flushPromises()
+    expect(
+      wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
+    ).toBeUndefined()
 
-    expect(wrapper.emitted('confirm')).toBeUndefined()
+    await uploadSelectedFile(wrapper)
+
+    expect(upload).toHaveBeenCalledTimes(2)
+    expect(upload).toHaveBeenLastCalledWith(imageFile)
   })
 
-  it('reports natural size errors and keeps insert confirmation disabled', async () => {
+  it('reports natural size errors while keeping the candidate available for retry', async () => {
     const onError = vi.fn()
     const wrapper = mountDialog(
       vi.fn(async () => ({ src: '/api/attachments/broken/content' })),
@@ -621,10 +789,13 @@ describe('ImageDialog', () => {
     expect(
       wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
     ).toBeDefined()
+    expect(
+      wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
+    ).toBeUndefined()
     expect(wrapper.emitted('confirm')).toBeUndefined()
   })
 
-  it('reports image load errors and keeps insert confirmation disabled', async () => {
+  it('reports image load errors while keeping the candidate available for retry', async () => {
     const onError = vi.fn()
     const wrapper = mountDialog(
       vi.fn(async () => ({ src: '/api/attachments/broken/content' })),
@@ -639,10 +810,13 @@ describe('ImageDialog', () => {
     expect(
       wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
     ).toBeDefined()
+    expect(
+      wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
+    ).toBeUndefined()
     expect(wrapper.emitted('confirm')).toBeUndefined()
   })
 
-  it('keeps file selection disabled while upload is pending', async () => {
+  it('keeps file selection disabled until an uploaded candidate finishes loading', async () => {
     const uploadResult = deferred<{ src: string }>()
     const upload = vi.fn(() => uploadResult.promise)
     const wrapper = mountDialog(upload)
@@ -655,18 +829,29 @@ describe('ImageDialog', () => {
       wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
     ).toBeDefined()
 
+    const pastedEvent = await pasteFiles(
+      [new File(['second'], 'second.png', { type: 'image/png' })],
+      wrapper.get('[data-test="rich-text-image-drop-zone"]').element,
+    )
+
+    expect(pastedEvent.defaultPrevented).toBe(false)
+
     uploadResult.resolve({
       src: '/api/attachments/first.png/content',
     })
     await flushPromises()
 
-    expect(wrapper.get('[data-test="rich-text-image-file"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-test="rich-text-image-file"]').attributes('disabled')).toBeDefined()
     expect(
       wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
     ).toBeDefined()
     expect(
       wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
     ).toBeDefined()
+
+    await loadPreviewImage(wrapper)
+
+    expect(wrapper.get('[data-test="rich-text-image-file"]').attributes('disabled')).toBeUndefined()
   })
 
   it('updates existing image attrs with a fixed ratio', async () => {
@@ -731,6 +916,29 @@ describe('ImageDialog', () => {
     expect(wrapper.emitted('confirm')?.at(-1)?.[0]).toMatchObject({
       width: 500,
       height: 250,
+    })
+  })
+
+  it('uses the replacement natural size when the existing image has no display width', async () => {
+    const upload = vi.fn(async () => ({ src: '/api/attachments/replacement/content' }))
+    const wrapper = mountDialog(upload, vi.fn(), {
+      src: '/api/attachments/original/content',
+      alt: '原说明',
+      width: null,
+      height: 250,
+    })
+    await loadPreviewImage(wrapper, 1000, 500)
+
+    await chooseFile(wrapper, new File(['image'], 'replacement.png', { type: 'image/png' }))
+    await uploadSelectedFile(wrapper)
+    await loadPreviewImage(wrapper, 800, 400)
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+
+    expect(wrapper.emitted('confirm')?.at(-1)?.[0]).toMatchObject({
+      src: '/api/attachments/replacement/content',
+      alt: '原说明',
+      width: 800,
+      height: 400,
     })
   })
 

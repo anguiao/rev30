@@ -16,8 +16,8 @@ import {
   horizontalRuleActionItem,
   horizontalRuleEditorFeature,
 } from '../../features/horizontal-rule/editor'
-import { imageEditorFeature } from '../../features/image/editor'
 import {
+  createImageEditorFeature,
   createImageSlashCommand,
   createImageQuickBar,
   createImageToolbarControl,
@@ -56,30 +56,32 @@ export interface AllRichTextEditorPresetOptions {
   image: RichTextImageUploadOptions
 }
 
-const allEditorFeatures = [
-  baseEditorFeature,
-  historyEditorFeature,
-  characterCountEditorFeature,
-  searchReplaceEditorFeature,
-  boldEditorFeature,
-  italicEditorFeature,
-  underlineEditorFeature,
-  strikeEditorFeature,
-  inlineCodeEditorFeature,
-  highlightEditorFeature,
-  textStyleEditorFeature,
-  linkEditorFeature,
-  removeFormatEditorFeature,
-  headingEditorFeature,
-  textAlignEditorFeature,
-  blockquoteEditorFeature,
-  codeBlockEditorFeature,
-  listEditorFeature,
-  horizontalRuleEditorFeature,
-  imageEditorFeature,
-  tableEditorFeature,
-  elementPathEditorFeature,
-] as const
+function createAllEditorFeatures(options: AllRichTextEditorPresetOptions) {
+  return [
+    baseEditorFeature,
+    historyEditorFeature,
+    characterCountEditorFeature,
+    searchReplaceEditorFeature,
+    boldEditorFeature,
+    italicEditorFeature,
+    underlineEditorFeature,
+    strikeEditorFeature,
+    inlineCodeEditorFeature,
+    highlightEditorFeature,
+    textStyleEditorFeature,
+    linkEditorFeature,
+    removeFormatEditorFeature,
+    headingEditorFeature,
+    textAlignEditorFeature,
+    blockquoteEditorFeature,
+    codeBlockEditorFeature,
+    listEditorFeature,
+    horizontalRuleEditorFeature,
+    createImageEditorFeature(options.image),
+    tableEditorFeature,
+    elementPathEditorFeature,
+  ] as const
+}
 
 function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
   return defineRichTextToolbar([
@@ -191,7 +193,7 @@ const allRichTextStatusBar = defineRichTextStatusBar({
 
 export function createAllRichTextEditorPreset(options: AllRichTextEditorPresetOptions) {
   return defineRichTextEditorPreset(allRichTextPreset, {
-    editorFeatures: allEditorFeatures,
+    editorFeatures: createAllEditorFeatures(options),
     toolbar: createAllRichTextToolbar(options),
     statusBar: allRichTextStatusBar,
     quickBar: createAllRichTextQuickBar(options),

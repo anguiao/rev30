@@ -1,10 +1,11 @@
 import type { Editor } from '@tiptap/core'
 import { VueRenderer } from '@tiptap/vue-3'
-import { runRichTextAction } from '../../../editor/action'
+import { defineRichTextEditorFeature } from '../../../editor/feature'
 import { richTextFeatureQuickBar } from '../../../vue/quick-bar'
 import { richTextSlashCommand } from '../../../vue/slash-menu'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
 import {
+  createImagePasteRule,
   getSelectedImageAttrs,
   insertImageAction,
   insertImageActionItem,
@@ -21,7 +22,12 @@ export interface RichTextImageUploadOptions {
   readonly onError?: (error: unknown) => void
 }
 
-function openImageDialog(editor: Editor, options: RichTextImageUploadOptions) {
+function openImageDialog(
+  editor: Editor,
+  options: RichTextImageUploadOptions,
+  initialImageFile?: File,
+) {
+  const selection = editor.state.selection
   const image = getSelectedImageAttrs(editor.state.selection)
   const action = image === null ? insertImageAction : updateImageAction
   let renderer: VueRenderer
@@ -37,7 +43,10 @@ function openImageDialog(editor: Editor, options: RichTextImageUploadOptions) {
   }
 
   function confirmDialog(attrs: RichTextImageAttrs) {
-    runRichTextAction(editor, action, attrs)
+    editor.commands.command((props) => {
+      props.tr.setSelection(selection)
+      return action.command(props, attrs)
+    })
     closeDialog()
   }
 
@@ -45,13 +54,22 @@ function openImageDialog(editor: Editor, options: RichTextImageUploadOptions) {
     editor,
     props: {
       upload: options.upload,
-      image: image ?? undefined,
+      existingImage: image ?? undefined,
+      initialImageFile,
       onCancel: cancelDialog,
       onConfirm: confirmDialog,
       onError: options.onError,
     },
   })
   editor.on('destroy', closeDialog)
+}
+
+export function createImageEditorFeature(options: RichTextImageUploadOptions) {
+  return defineRichTextEditorFeature(imageFeature, {
+    pasteRule: createImagePasteRule((editor, initialImageFile) =>
+      openImageDialog(editor, options, initialImageFile),
+    ),
+  })
 }
 
 export function createImageToolbarControl(options: RichTextImageUploadOptions) {

@@ -67,7 +67,7 @@ function setPasteDocument() {
   narrowEditor.value = false
   updateModel({
     type: 'doc',
-    content: [{ type: 'paragraph', content: [{ type: 'text', text: '文档' }] }],
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: '未选已选' }] }],
   })
 }
 

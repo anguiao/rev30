@@ -1,6 +1,6 @@
-export const tableMaxCellSpan = 10_000
+export const tableMaxGridSlotsPerTable = 10_000
 
-export type TableCellAlign = 'left' | 'center' | 'right'
+type TableCellAlign = 'left' | 'center' | 'right'
 
 const tableCellAlignments = new Set<string>(['left', 'center', 'right'])
 const positiveIntegerPattern = /^[1-9]\d*$/
@@ -10,7 +10,7 @@ export function isValidTableCellSpan(value: unknown): value is number {
     typeof value === 'number' &&
     Number.isSafeInteger(value) &&
     value > 0 &&
-    value <= tableMaxCellSpan
+    value <= tableMaxGridSlotsPerTable
   )
 }
 

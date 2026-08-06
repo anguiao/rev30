@@ -1,6 +1,7 @@
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
+import type { Editor } from '@tiptap/core'
 import { describe, expect, it, vi } from 'vitest'
 import { defineRichTextFeature } from '../../src/core/feature'
 import { defineRichTextPreset } from '../../src/core/preset'
@@ -24,7 +25,7 @@ const testInteraction = defineRichTextInteraction<typeof interactionFeature, str
 )
 
 const editorFeature = defineRichTextEditorFeature(interactionFeature, {
-  interactions: [testInteraction.interaction],
+  interactions: [testInteraction],
 })
 
 const preset = defineRichTextPreset({
@@ -33,7 +34,33 @@ const preset = defineRichTextPreset({
 })
 
 describe('rich text interactions', () => {
-  it('binds a typed handler through the owning editor feature', () => {
+  it('binds a typed handler through the owning editor feature after applying its transaction', () => {
+    const handle = vi.fn((editor: Editor, _payload: string) => {
+      expect(editor.getText()).toBe('committed')
+    })
+    const editorPreset = defineRichTextEditorPreset(preset, {
+      editorFeatures: [editorFeature],
+      interactionHandlers: [testInteraction.defineHandler(handle)],
+    })
+    const editor = createTestEditor({
+      extensions: [Document, Paragraph, Text, ...collectRichTextEditorExtensions(editorPreset)],
+      content: '<p></p>',
+    })
+
+    expect(
+      editor
+        .chain()
+        .insertContent('committed')
+        .command((props) => testInteraction.command(props, 'payload'))
+        .run(),
+    ).toBe(true)
+
+    expect(handle).toHaveBeenCalledWith(editor, 'payload')
+    expect(editor.getText()).toBe('committed')
+    expect(editorPreset).not.toHaveProperty('interactionHandlers')
+  })
+
+  it('does not invoke a handler while checking whether a request can run', () => {
     const handle = vi.fn()
     const editorPreset = defineRichTextEditorPreset(preset, {
       editorFeatures: [editorFeature],
@@ -44,10 +71,11 @@ describe('rich text interactions', () => {
       content: '<p></p>',
     })
 
-    testInteraction.request(editor, 'payload')
+    expect(editor.can().command((props) => testInteraction.command(props, 'payload'))).toBe(true)
+    expect(handle).not.toHaveBeenCalled()
 
+    expect(testInteraction.request(editor, 'payload')).toBe(true)
     expect(handle).toHaveBeenCalledWith(editor, 'payload')
-    expect(editorPreset).not.toHaveProperty('interactionHandlers')
   })
 
   it('validates required handlers without knowing a concrete feature', () => {

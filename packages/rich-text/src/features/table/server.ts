@@ -11,18 +11,17 @@ import {
   normalizeTableCellAlign,
   normalizeTableCellSpan,
   normalizeTableColwidth,
-  tableMaxCellSpan,
+  tableMaxGridSlotsPerTable,
 } from './attrs'
 import { tableFeature } from './shared'
 
-const TABLE_MAX_GRID_SLOTS_PER_TABLE = tableMaxCellSpan
 const TABLE_MAX_GRID_SLOTS_PER_DOCUMENT = 100_000
 
 const pixelValuePattern = /^\s*\d+(?:\.\d+)?px\s*$/
 
 function getTableGridSlotCount(table: ProseMirrorNode) {
   const rowCount = table.childCount
-  const maximumAllowedColumnCount = Math.floor(TABLE_MAX_GRID_SLOTS_PER_TABLE / rowCount)
+  const maximumAllowedColumnCount = Math.floor(tableMaxGridSlotsPerTable / rowCount)
   const rowspanColumnCountsByEndRow = new Map<number, number>()
   let activeRowspanColumnCount = 0
   let maximumRowColumnCount = 0

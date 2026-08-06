@@ -45,19 +45,6 @@ const ValidatedLink = Link.extend({
       },
     }
   },
-
-  parseHTML() {
-    return [
-      {
-        tag: 'a[href]',
-        getAttrs: (node) => {
-          const href = normalizeLinkHref(node.getAttribute('href') ?? '')
-
-          return href === '' ? false : { href }
-        },
-      },
-    ]
-  },
 })
 
 export const linkFeature = defineRichTextFeature({

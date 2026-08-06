@@ -11,7 +11,7 @@ export interface RichTextPasteRule {
   }) => boolean
 }
 
-function createRichTextPasteExtension(rules: readonly RichTextPasteRule[]) {
+export function createRichTextPasteExtension(rules: readonly RichTextPasteRule[]) {
   return Extension.create({
     name: 'richTextPasteRules',
 
@@ -41,8 +41,4 @@ function createRichTextPasteExtension(rules: readonly RichTextPasteRule[]) {
       ]
     },
   })
-}
-
-export function collectRichTextPasteExtensions(rules: readonly RichTextPasteRule[]) {
-  return rules.length === 0 ? [] : [createRichTextPasteExtension(rules)]
 }

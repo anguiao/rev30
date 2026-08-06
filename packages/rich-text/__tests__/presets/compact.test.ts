@@ -244,7 +244,7 @@ describe('all rich text preset', () => {
       [
         ['paragraph', 'heading-1', 'heading-2', 'heading-3', 'blockquote'],
         ['bullet-list', 'ordered-list'],
-        ['code-block', 'horizontal-rule', 'table', 'insert-image'],
+        ['code-block', 'horizontal-rule', 'table', 'image'],
       ],
     )
   })

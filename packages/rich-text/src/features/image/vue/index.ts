@@ -1,14 +1,11 @@
 import type { Editor } from '@tiptap/core'
 import { VueRenderer } from '@tiptap/vue-3'
 import { richTextFeatureQuickBar } from '../../../vue/quick-bar'
-import { richTextSlashCommand } from '../../../vue/slash-menu'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
 import {
   defineImagePickerHandler,
   getSelectedImageAttrs,
   insertImageAction,
-  insertImageActionItem,
-  openImagePicker,
   type RichTextImageAttrs,
   updateImageAction,
 } from '../editor'
@@ -31,8 +28,10 @@ function openImageDialog(
   const image = getSelectedImageAttrs(editor.state.selection)
   const action = image === null ? insertImageAction : updateImageAction
   let renderer: VueRenderer
+  let reportError = options.onError
 
   function closeDialog() {
+    reportError = undefined
     editor.off('destroy', closeDialog)
     renderer.destroy()
   }
@@ -58,7 +57,7 @@ function openImageDialog(
       initialImageFile,
       onCancel: cancelDialog,
       onConfirm: confirmDialog,
-      onError: options.onError,
+      onError: (error: unknown) => reportError?.(error),
     },
   })
   editor.on('destroy', closeDialog)
@@ -82,7 +81,3 @@ export const imageQuickBar = richTextFeatureQuickBar({
   component: ImageQuickBar,
   props: {},
 })
-
-export const imageSlashCommand = richTextSlashCommand(insertImageActionItem, (editor) =>
-  openImagePicker(editor),
-)

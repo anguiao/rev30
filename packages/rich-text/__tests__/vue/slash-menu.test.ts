@@ -13,9 +13,9 @@ import { headingActionItems, headingEditorFeature } from '../../src/features/hea
 import { headingFeature } from '../../src/features/heading/shared'
 import { historyEditorFeature } from '../../src/features/history/editor'
 import { historyFeature } from '../../src/features/history/shared'
-import { imageEditorFeature } from '../../src/features/image/editor'
+import { imageActionItem, imageEditorFeature } from '../../src/features/image/editor'
 import { imageFeature } from '../../src/features/image/shared'
-import { createImagePickerHandler, imageSlashCommand } from '../../src/features/image/vue'
+import { createImagePickerHandler } from '../../src/features/image/vue'
 import { tableActionItem, tableEditorFeature } from '../../src/features/table/editor'
 import { tableFeature } from '../../src/features/table/shared'
 import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
@@ -57,7 +57,7 @@ function createEditor(content = '<p></p>') {
 const paragraphCommand = richTextSlashCommand(paragraphActionItem)
 const headingCommand = richTextSlashCommand(headingActionItems[0])
 const tableCommand = richTextSlashCommand(tableActionItem)
-const imageCommand = imageSlashCommand
+const imageCommand = richTextSlashCommand(imageActionItem)
 
 function createGroups() {
   return defineRichTextSlashMenu([
@@ -113,7 +113,7 @@ describe('rich text slash menu model', () => {
       { key: 'basic', commands: [{ key: 'heading-1' }] },
     ])
     expect(filterRichTextSlashMenu(groups, 'PIC')).toMatchObject([
-      { key: 'insert', commands: [{ key: 'insert-image' }] },
+      { key: 'insert', commands: [{ key: 'image' }] },
     ])
     expect(filterRichTextSlashMenu(groups, 'zhengwen')).toEqual([])
   })
@@ -193,7 +193,12 @@ describe('rich text slash menu model', () => {
     editor.commands.insertContent('/图片')
     editor.on('update', update)
 
-    expect(runRichTextSlashCommand(editor, imageCommand, { from: 1, to: 4 })).toBe(true)
+    const queryRange = { from: 1, to: 4 }
+
+    expect(canRunRichTextSlashCommand(editor, imageCommand, queryRange)).toBe(true)
+    expect(document.querySelector('[data-test="rich-text-image-cancel"]')).toBeNull()
+
+    expect(runRichTextSlashCommand(editor, imageCommand, queryRange)).toBe(true)
     await flushPromises()
 
     expect(editor.getJSON()).toMatchObject({ content: [{ type: 'paragraph' }] })

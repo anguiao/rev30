@@ -1,6 +1,7 @@
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
+import { Fragment, Slice } from '@tiptap/pm/model'
 import { NodeSelection } from '@tiptap/pm/state'
 import { UndoRedo } from '@tiptap/extensions/undo-redo'
 import { describe, expect, it, vi } from 'vitest'
@@ -9,11 +10,10 @@ import { runRichTextAction } from '../../../src/editor/action'
 import { collectRichTextEditorExtensions } from '../../../src/editor/feature'
 import {
   defineImagePickerHandler,
-  getFirstClipboardImageFile,
+  getPastedImageFile,
   imageEditorFeature,
   imagePasteRule,
   insertImageAction,
-  isInternalRichTextHtml,
   transformPastedImageHtml,
   updateImageAction,
 } from '../../../src/features/image/editor'
@@ -119,12 +119,13 @@ describe('image editor actions', () => {
 })
 
 describe('image paste rule', () => {
-  it('preserves only a valid ProseMirror slice marker on the first top-level element', () => {
+  it('preserves only a valid ProseMirror slice marker on the first content element', () => {
     const internalHtml =
       '<p data-pm-slice="0 0 []"><img src="data:image/png;base64,aGVsbG8=" /></p>'
+    const internalHtmlWithMetadata = `<meta charset="utf-8">${internalHtml}`
 
-    expect(isInternalRichTextHtml(internalHtml)).toBe(true)
     expect(transformPastedImageHtml(internalHtml)).toBe(internalHtml)
+    expect(transformPastedImageHtml(internalHtmlWithMetadata)).toBe(internalHtmlWithMetadata)
 
     for (const externalHtml of [
       '<p>前文<img src="https://example.com/external.png" /></p>',
@@ -134,7 +135,6 @@ describe('image paste rule', () => {
     ]) {
       const transformedHtml = transformPastedImageHtml(externalHtml)
 
-      expect(isInternalRichTextHtml(externalHtml)).toBe(false)
       expect(transformedHtml).not.toContain('<img')
       expect(transformedHtml).toContain('前文')
     }
@@ -145,13 +145,13 @@ describe('image paste rule', () => {
     const firstImage = new File(['first'], 'first.png', { type: 'image/png' })
     const secondImage = new File(['second'], 'second.jpg', { type: 'image/jpeg' })
 
-    expect(getFirstClipboardImageFile(createFileList([textFile, firstImage, secondImage]))).toBe(
+    expect(getPastedImageFile(createClipboardEvent('', [textFile, firstImage, secondImage]))).toBe(
       firstImage,
     )
-    expect(getFirstClipboardImageFile(createFileList([textFile]))).toBeNull()
+    expect(getPastedImageFile(createClipboardEvent('', [textFile]))).toBeNull()
   })
 
-  it('opens the image picker for an external image file but leaves internal HTML to ProseMirror', () => {
+  it('opens the image picker unless the parsed slice already contains an image', () => {
     const openPicker = vi.fn()
     const preset = defineRichTextPreset({
       key: 'image-paste-test',
@@ -166,12 +166,18 @@ describe('image paste rule', () => {
       content: '<p></p>',
     })
     const imageFile = new File(['image'], 'pasted.png', { type: 'image/png' })
+    const emptySlice = editor.state.selection.content()
+    const imageSlice = new Slice(
+      Fragment.from(editor.schema.nodeFromJSON({ type: 'image', attrs: imageAttrs })),
+      0,
+      0,
+    )
 
     expect(
       imagePasteRule.handlePaste?.({
         editor,
         event: createClipboardEvent('', [imageFile]),
-        slice: editor.state.selection.content(),
+        slice: emptySlice,
       }),
     ).toBe(true)
     expect(openPicker).toHaveBeenCalledWith(editor, imageFile)
@@ -180,9 +186,18 @@ describe('image paste rule', () => {
       imagePasteRule.handlePaste?.({
         editor,
         event: createClipboardEvent('<p data-pm-slice="0 0 []"><img /></p>', [imageFile]),
-        slice: editor.state.selection.content(),
+        slice: imageSlice,
       }),
     ).toBe(false)
     expect(openPicker).toHaveBeenCalledOnce()
+
+    expect(
+      imagePasteRule.handlePaste?.({
+        editor,
+        event: createClipboardEvent('<p data-pm-slice="0 0 []">正文</p>', [imageFile]),
+        slice: emptySlice,
+      }),
+    ).toBe(true)
+    expect(openPicker).toHaveBeenCalledTimes(2)
   })
 })

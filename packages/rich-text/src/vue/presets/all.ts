@@ -16,11 +16,10 @@ import {
   horizontalRuleActionItem,
   horizontalRuleEditorFeature,
 } from '../../features/horizontal-rule/editor'
-import { imageEditorFeature } from '../../features/image/editor'
+import { imageActionItem, imageEditorFeature } from '../../features/image/editor'
 import {
   createImagePickerHandler,
   imageQuickBar,
-  imageSlashCommand,
   imageToolbarControl,
   type RichTextImageUploadOptions,
 } from '../../features/image/vue'
@@ -165,7 +164,7 @@ const allRichTextSlashMenu = defineRichTextSlashMenu([
       richTextSlashCommand(codeBlockActionItem),
       richTextSlashCommand(horizontalRuleActionItem),
       richTextSlashCommand(tableActionItem),
-      imageSlashCommand,
+      richTextSlashCommand(imageActionItem),
     ],
   },
 ])

@@ -1,4 +1,4 @@
-import type { Command, Editor, Range } from '@tiptap/core'
+import type { Command, Range } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { find } from 'linkifyjs'
 import { defineRichTextAction } from '../../editor/action'
@@ -63,20 +63,9 @@ function getPastedLinkHref(event: ClipboardEvent) {
   }
 
   const text = clipboardData.getData('text/plain').trim()
-
-  if (text === '') {
-    return null
-  }
-
   const [token] = find(text, { defaultProtocol: linkDefaultProtocol })
 
-  if (
-    !token ||
-    token.start !== 0 ||
-    token.end !== text.length ||
-    !token.isLink ||
-    (token.type !== 'url' && token.type !== 'email')
-  ) {
+  if (!token?.isLink || token.value !== text || (token.type !== 'url' && token.type !== 'email')) {
     return null
   }
 
@@ -85,39 +74,29 @@ function getPastedLinkHref(event: ClipboardEvent) {
   return href === '' ? null : href
 }
 
-function getLinkPasteSelection(editor: Editor) {
-  const { selection, schema } = editor.state
-  const link = schema.marks.link
-
-  if (
-    !(selection instanceof TextSelection) ||
-    selection.empty ||
-    !link ||
-    selection.$from.parent !== selection.$to.parent ||
-    !selection.$from.parent.isTextblock ||
-    !selection.$from.parent.type.allowsMarkType(link)
-  ) {
-    return null
-  }
-
-  return { selection, link }
-}
-
 export const linkPasteRule: RichTextPasteRule = {
   handlePaste({ editor, event }) {
     const href = getPastedLinkHref(event)
-    const linkSelection = getLinkPasteSelection(editor)
+    if (href === null) {
+      return false
+    }
 
-    if (href === null || linkSelection === null) {
+    const { schema, selection } = editor.state
+    const link = schema.marks.link
+
+    if (
+      !(selection instanceof TextSelection) ||
+      selection.empty ||
+      !link ||
+      selection.$from.parent !== selection.$to.parent ||
+      !selection.$from.parent.isTextblock ||
+      !selection.$from.parent.type.allowsMarkType(link)
+    ) {
       return false
     }
 
     editor.view.dispatch(
-      editor.state.tr.addMark(
-        linkSelection.selection.from,
-        linkSelection.selection.to,
-        linkSelection.link.create({ href }),
-      ),
+      editor.state.tr.addMark(selection.from, selection.to, link.create({ href })),
     )
 
     return true

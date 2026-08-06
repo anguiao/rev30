@@ -1,16 +1,16 @@
-import { closeHistory } from '@tiptap/pm/history'
 import { NodeSelection } from '@tiptap/pm/state'
 import { DOMWrapper, flushPromises, mount, type BaseWrapper } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
 import { markRaw, nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../../../src/editor/feature'
-import type { RichTextImageAttrs } from '../../../../src/features/image/editor'
+import { imageActionItem, type RichTextImageAttrs } from '../../../../src/features/image/editor'
 import {
   imageToolbarControl,
   type RichTextImageUploadOptions,
 } from '../../../../src/features/image/vue'
 import ImageDialog from '../../../../src/features/image/vue/ImageDialog.vue'
+import { richTextSlashCommand, runRichTextSlashCommand } from '../../../../src/vue/slash-menu'
 import { createTestEditor } from '../../../helpers/editor'
 import { createImageTestEditorPreset } from '../../../helpers/image-editor'
 
@@ -127,15 +127,10 @@ function createHistoryEditor(
   })
 }
 
-function deleteSlashQuery(editor: ReturnType<typeof createHistoryEditor>) {
-  return editor
-    .chain()
-    .command(({ tr }) => {
-      closeHistory(tr)
-      return true
-    })
-    .deleteRange({ from: 1, to: 4 })
-    .run()
+const imageSlashCommand = richTextSlashCommand(imageActionItem)
+
+function openImageFromSlash(editor: ReturnType<typeof createHistoryEditor>) {
+  return runRichTextSlashCommand(editor, imageSlashCommand, { from: 1, to: 4 })
 }
 
 function mountDialog(
@@ -487,10 +482,7 @@ describe('ImageToolbarControl', () => {
     const editor = createHistoryEditor(undefined, {
       upload: async () => ({ src: imageAttrs.src }),
     })
-    expect(deleteSlashQuery(editor)).toBe(true)
-
-    const toolbar = mountControl(editor)
-    await toolbar.get('[data-test="rich-text-image"]').trigger('click')
+    expect(openImageFromSlash(editor)).toBe(true)
     await flushPromises()
 
     const dialog = new DOMWrapper(document.body)
@@ -512,10 +504,7 @@ describe('ImageToolbarControl', () => {
 
   it('cancels slash insertion without adding a second history event', async () => {
     const editor = createHistoryEditor()
-    expect(deleteSlashQuery(editor)).toBe(true)
-
-    const toolbar = mountControl(editor)
-    await toolbar.get('[data-test="rich-text-image"]').trigger('click')
+    expect(openImageFromSlash(editor)).toBe(true)
     await flushPromises()
 
     await new DOMWrapper(document.body).get('[data-test="rich-text-image-cancel"]').trigger('click')
@@ -722,6 +711,43 @@ describe('ImageDialog', () => {
     ).toBeUndefined()
   })
 
+  it('initializes a replacement candidate from an editor-pasted image file', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:replacement')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const imageFile = new File(['image'], 'replacement.png', { type: 'image/png' })
+    const upload = vi.fn(async () => ({
+      src: '/api/attachments/replacement/content',
+    }))
+    const wrapper = mountDialog(
+      upload,
+      vi.fn(),
+      {
+        src: '/api/attachments/original/content',
+        alt: '原说明',
+        width: 480,
+        height: 240,
+      },
+      imageFile,
+    )
+
+    expect(getPreviewImageSrc(wrapper)).toBe('blob:replacement')
+    expect(
+      wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
+    ).toBeUndefined()
+
+    await uploadSelectedFile(wrapper)
+    expect(upload).toHaveBeenCalledWith(imageFile)
+    await loadPreviewImage(wrapper, 800, 800)
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+
+    expect(wrapper.emitted('confirm')?.at(-1)?.[0]).toMatchObject({
+      src: '/api/attachments/replacement/content',
+      alt: '原说明',
+      width: 480,
+      height: 480,
+    })
+  })
+
   it('lets an edit dialog replace its candidate through drop or scoped paste before upload', async () => {
     const upload = vi.fn(async (file: File) => ({
       src: `/api/attachments/${file.name}/content`,
@@ -852,9 +878,14 @@ describe('ImageDialog', () => {
     expect(wrapper.emitted('confirm')).toBeUndefined()
   })
 
-  it('keeps file selection disabled until an uploaded candidate finishes loading', async () => {
+  it('replaces a loading remote candidate without accepting its stale image events', async () => {
     const uploadResult = deferred<{ src: string }>()
-    const upload = vi.fn(() => uploadResult.promise)
+    const firstSrc = '/api/attachments/first.png/content'
+    const secondSrc = '/api/attachments/second.png/content'
+    const upload = vi
+      .fn()
+      .mockReturnValueOnce(uploadResult.promise)
+      .mockResolvedValueOnce({ src: secondSrc })
     const wrapper = mountDialog(upload)
 
     await chooseFile(wrapper, new File(['first'], 'first.png', { type: 'image/png' }))
@@ -872,12 +903,10 @@ describe('ImageDialog', () => {
 
     expect(pastedEvent.defaultPrevented).toBe(false)
 
-    uploadResult.resolve({
-      src: '/api/attachments/first.png/content',
-    })
+    uploadResult.resolve({ src: firstSrc })
     await flushPromises()
 
-    expect(wrapper.get('[data-test="rich-text-image-file"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-test="rich-text-image-file"]').attributes('disabled')).toBeUndefined()
     expect(
       wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
     ).toBeDefined()
@@ -885,9 +914,38 @@ describe('ImageDialog', () => {
       wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
     ).toBeDefined()
 
-    await loadPreviewImage(wrapper)
+    const replacementEvent = await pasteFiles(
+      [new File(['second'], 'second.png', { type: 'image/png' })],
+      wrapper.get('[data-test="rich-text-image-drop-zone"]').element,
+    )
 
-    expect(wrapper.get('[data-test="rich-text-image-file"]').attributes('disabled')).toBeUndefined()
+    expect(replacementEvent.defaultPrevented).toBe(true)
+    expect(
+      wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
+    ).toBeUndefined()
+
+    await uploadSelectedFile(wrapper)
+
+    const preview = wrapper.get('[data-test="rich-text-image-preview"] img')
+    preview.element.setAttribute('src', firstSrc)
+    Object.defineProperty(preview.element, 'naturalWidth', { configurable: true, value: 100 })
+    Object.defineProperty(preview.element, 'naturalHeight', { configurable: true, value: 100 })
+    await preview.trigger('load')
+
+    expect(
+      wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
+    ).toBeDefined()
+
+    preview.element.setAttribute('src', secondSrc)
+    await loadPreviewImage(wrapper, 800, 400)
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+
+    expect(wrapper.emitted('confirm')?.at(-1)?.[0]).toMatchObject({
+      src: secondSrc,
+      alt: 'second.png',
+      width: 800,
+      height: 400,
+    })
   })
 
   it('updates existing image attrs with a fixed ratio', async () => {

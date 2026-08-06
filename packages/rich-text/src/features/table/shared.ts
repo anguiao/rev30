@@ -12,9 +12,11 @@ import {
 
 const TABLE_CELL_MIN_WIDTH = 96
 
-function validatePositiveInteger(value: unknown) {
+function validateTableCellSpan(value: unknown) {
   if (!isValidTableCellSpan(value)) {
-    throw new RangeError('Table cell spans must be positive integers')
+    throw new RangeError(
+      'Table cell spans must be positive safe integers within the per-table grid slot limit',
+    )
   }
 }
 
@@ -40,16 +42,21 @@ function createTableCellAttributes(parentAttributes: Attributes): Attributes {
     colspan: {
       ...parentAttributes.colspan,
       parseHTML: (element) => normalizeTableCellSpan(element.getAttribute('colspan')),
-      validate: validatePositiveInteger,
+      validate: validateTableCellSpan,
     },
     rowspan: {
       ...parentAttributes.rowspan,
       parseHTML: (element) => normalizeTableCellSpan(element.getAttribute('rowspan')),
-      validate: validatePositiveInteger,
+      validate: validateTableCellSpan,
     },
     colwidth: {
       ...parentAttributes.colwidth,
-      parseHTML: (element) => normalizeTableColwidth(element.getAttribute('colwidth')),
+      parseHTML: (element) =>
+        normalizeTableColwidth(
+          element.hasAttribute('colwidth')
+            ? element.getAttribute('colwidth')
+            : parentAttributes.colwidth?.parseHTML?.(element),
+        ),
       validate: validateColwidth,
     },
     align: {

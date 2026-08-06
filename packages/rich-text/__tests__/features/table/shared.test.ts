@@ -1,18 +1,24 @@
 import { getSchema } from '@tiptap/core'
 import { describe, expect, it } from 'vitest'
-import { collectRichTextEditorExtensions } from '../../../src/editor/feature'
+import { baseFeature } from '../../../src/features/base/shared'
+import { headingFeature } from '../../../src/features/heading/shared'
 import { tableFeature } from '../../../src/features/table/shared'
 import { allRichTextPreset } from '../../../src/presets/all'
-import { createAllRichTextEditorPreset } from '../../../src/vue/presets/all'
 import { createTestEditor } from '../../helpers/editor'
 
-const imageUpload = async (file: File) => ({ src: `/api/attachments/${file.name}/content` })
+function createExtensions() {
+  return [
+    ...baseFeature.sharedExtensions!(),
+    ...headingFeature.sharedExtensions!(),
+    ...tableFeature.sharedExtensions!(),
+  ]
+}
+
+const schema = getSchema(createExtensions())
 
 function createEditor(content: string) {
   return createTestEditor({
-    extensions: collectRichTextEditorExtensions(
-      createAllRichTextEditorPreset({ image: { upload: imageUpload } }),
-    ),
+    extensions: createExtensions(),
     content,
   })
 }
@@ -73,9 +79,6 @@ describe('table shared feature', () => {
   })
 
   it('uses paragraph-only cells, a wrapped non-resizable table, and strict cell attributes', () => {
-    const editorPreset = createAllRichTextEditorPreset({ image: { upload: imageUpload } })
-    const schema = getSchema(collectRichTextEditorExtensions(editorPreset))
-
     expect(schema.nodes.table!.spec.content).toBe('tableRow+')
     expect(schema.nodes.tableCell!.spec.content).toBe('paragraph+')
     expect(schema.nodes.tableHeader!.spec.content).toBe('paragraph+')
@@ -150,15 +153,21 @@ describe('table shared feature', () => {
     expect(() => editor.state.doc.check()).not.toThrow()
   })
 
+  it('keeps the Tiptap colgroup width fallback when cells omit colwidth', () => {
+    const editor = createEditor(
+      '<table><colgroup><col width="42"></colgroup><tbody><tr><td><p>内容</p></td></tr></tbody></table>',
+    )
+
+    expect(getFirstTableCell(editor)).toMatchObject({ attrs: { colwidth: [42] } })
+    expect(() => editor.state.doc.check()).not.toThrow()
+  })
+
   it.each([
     { colspan: 0, rowspan: 1, colwidth: null, align: null },
     { colspan: 10_001, rowspan: 1, colwidth: null, align: null },
     { colspan: 1, rowspan: 1, colwidth: [20, Number.NaN], align: null },
     { colspan: 1, rowspan: 1, colwidth: null, align: 'justify' },
   ])('rejects invalid table JSON attrs: %o', (attrs) => {
-    const editorPreset = createAllRichTextEditorPreset({ image: { upload: imageUpload } })
-    const schema = getSchema(collectRichTextEditorExtensions(editorPreset))
-
     expect(() => schema.nodeFromJSON(tableDocument(attrs)).check()).toThrow()
   })
 

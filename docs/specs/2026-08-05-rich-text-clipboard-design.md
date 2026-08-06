@@ -41,7 +41,7 @@ date: 2026-08-05
 - 外部 HTML 图片 URL 的客户端业务域名或路径白名单。
 - 为 hostile clipboard 建立不可伪造的来源证明、私有 copy token 或 client image source policy。
 - 在客户端复制服务端完整的 table 总量和几何校验。
-- paste rule 的异步执行、数值优先级、共享可变上下文或通用事件总线。
+- paste rule 的异步执行、数值优先级、共享可变上下文或多订阅者通用事件总线。
 - 修改已冻结的 rich-text image、table、contextual interactions 或 playground spec。
 
 ## 设计决策摘要
@@ -52,6 +52,7 @@ date: 2026-08-05
 | 组合位置 | paste rule 归属对应 editor feature，由 collector 从 preset 已启用的 feature 自动收集 |
 | 执行顺序 | 沿用 `preset.features` 顺序；link rule 忽略带文件的 clipboard，不依赖额外优先级让位给 image |
 | 运行时接入 | Collector 把已启用 feature 的 rules 封装到一个匿名 Tiptap Extension，由它对接 `transformPastedHTML` 和 ProseMirror `handlePaste` |
+| 图片交互 | 静态 image rule 只触发 feature 声明的同步 interaction；Vue handler 统一接入 ImageDialog、upload 和 error policy |
 | Link on Paste | 只处理同一 textblock 内、允许 link mark 的非空 `TextSelection`，保留 `linkifyjs` 的 URL 与邮箱 token 范围 |
 | `AllSelection` 粘贴 | `Cmd/Ctrl+A` 后粘贴 URL 替换全文，不把全文作为链接标签 |
 | 外部 HTML attrs | 各 shared feature 的 DOM parse rule 与 attribute parser 共同拒绝非法结构并返回 canonical attrs |
@@ -66,7 +67,7 @@ date: 2026-08-05
 
 ### 内部 rich-text HTML
 
-由 ProseMirror clipboard serializer 产生的 HTML。其首个顶层元素包含 `data-pm-slice`，值符合 ProseMirror 的 `<openStart> <openEnd> [-<wrapperCount>] <JSON context>` clipboard 格式。该标记用于恢复 ProseMirror slice 结构和启发式识别内部 rich-text copy，不是安全凭证。
+由 ProseMirror clipboard serializer 产生的 HTML。忽略浏览器附加在开头的 `<meta>` 后，其首个顶层元素包含 `data-pm-slice`，值符合 ProseMirror 的 `<openStart> <openEnd> [-<wrapperCount>] <JSON context>` clipboard 格式。该标记用于恢复 ProseMirror slice 结构和启发式识别内部 rich-text copy，不是安全凭证。
 
 ### 外部 HTML
 
@@ -111,6 +112,7 @@ interface RichTextPasteRule {
 interface RichTextEditorFeature<Feature extends RichTextFeature = RichTextFeature> {
   readonly feature: Feature
   readonly extensions?: () => readonly AnyExtension[]
+  readonly interactions?: readonly RichTextInteraction<Feature>[]
   readonly pasteRule?: RichTextPasteRule
 }
 ```
@@ -127,9 +129,13 @@ const linkEditorFeature = defineRichTextEditorFeature(linkFeature, {
 })
 ```
 
-Image paste 需要已有 ImageDialog integration。Image feature 提供不依赖 Vue 的 rule 构造逻辑，由 image Vue integration 注入打开 Dialog 的内部函数，生成配置完成的 image editor feature。应用仍只提供既有 `image.upload` 与 `image.onError`，不接触 rule 或 Dialog callback。
+Image editor feature 静态声明私有的 image picker interaction 和 image rule。Rule 识别外部图片文件后只调用 `openImagePicker`，并把第一张图片作为 payload；它不接收 `upload`、`onError` 或 Dialog callback。Toolbar、quick bar 和 slash command 复用同一语义入口，不接触 interaction identity。
 
-`compact` 和 `all` 继续只维护各自已有的 `editorFeatures`。启用 link editor feature 会自动包含 link rule；`all` 中配置完成的 image editor feature 会自动包含 image rule，不再维护第二份 paste rule 清单。未来自定义 preset 通过受控 builder 组合 editor features 时，也自然获得这些 feature 的 paste 行为。
+Image Vue integration 提供唯一 picker handler，把既有 `image.upload` 与 `image.onError` 绑定到私有 `openImageDialog`。`all` preset 在构造时提供该 handler，但继续静态引用 `imageEditorFeature` 和各 Vue surface 配置；应用不接触 interaction、rule 或 Dialog callback。
+
+Preset builder 对 interaction 只执行通用关系校验：handler 所属 feature 必须启用，editor feature 声明的每个 interaction 必须有且仅有一个 canonical handler。校验不导入、识别或分支处理 image 等具体 feature。校验后，builder 把 handler Extension 折叠进所属 editor feature 既有的 `extensions()`；返回的 preset 不暴露独立的 handler 字段或清单。
+
+`compact` 和 `all` 继续只维护各自已有的 `editorFeatures`。启用 link editor feature 会自动包含 link rule；启用静态 image editor feature 会自动包含 image rule，不再维护第二份 paste rule 清单。未来自定义 preset 通过受控 builder 组合 editor features 时，也自然获得这些 feature 的 paste 行为。
 
 Collector 沿用 `preset.features` 的既有顺序收集 transforms 和 handlers。Link handler 在纯文本条件之外还要求 `clipboardData.files` 为空，因此任何带文件的事件都不会被 link rule 消费；image handler 再按自身条件选择第一张图片。当前规则的消费条件互斥，不新增 priority、依赖关系或覆盖顺序。以后只有出现无法通过输入条件拆分的真实冲突时，才另行设计排序机制。
 
@@ -142,15 +148,17 @@ Collector 沿用 `preset.features` 的既有顺序收集 transforms 和 handlers
 5. 按同一 feature 顺序调用 handlers；第一个返回 `true` 的 rule 消费事件。
 6. 所有 handlers 都返回 `false` 时，ProseMirror 执行默认 paste。
 
-`RichTextEditorPreset` 的公开与运行时形状都不增加 `paste` 字段，也不使用私有 symbol 保存第二份配置。现有 preset 校验继续保证每个 editor feature 都属于 preset 且不重复；rule 随已验证的 editor feature 进入 collector，不需要单独做 feature 配对校验。
+`RichTextEditorPreset` 的公开与运行时形状都不增加 `paste` 或 `interactionHandlers` 字段，也不使用私有 symbol 或 WeakMap 保存这些构造配置。`defineRichTextEditorPreset` 只把 handler 作为构造输入，在返回前完成通用校验和 feature extension 绑定。现有 preset 校验继续保证每个 editor feature 都属于 preset 且不重复；rule 随已验证的 editor feature 进入 collector，不需要单独做 feature 配对校验。
+
+每个 interaction capability 本身就是 preset 校验使用的 canonical identity，并持有私有 `PluginKey`；它提供带真实 payload 函数签名的 `request`、`command` 和 `defineHandler` 入口，因此不需要额外的 identity wrapper 或 phantom `unique symbol`。Request 将 payload 写入独立或调用方已有的 transaction；绑定后的内部 Extension 在新 editor state 应用后调用同步 handler，保证 command 中触发的 interaction 观察到已提交的 document 和 selection。它不通过 DOM event、全局 registry 或 feature-specific preset 分支传递 payload。Collector 不感知 handler，只按原有流程收集 editor feature extensions。
 
 `collectRichTextEditorExtensions` 在至少收集到一条 rule 时创建一个匿名 Tiptap Extension。它只负责把内部规则转换为框架认识的两个入口：将所有 `transformHTML` 组合成 Extension 的 `transformPastedHTML`，并通过一个 ProseMirror plugin 注册统一的 `handlePaste`。它不定义 image、link 等具体行为，也不是新的 feature 或公开扩展点。
 
 Collector 把这个匿名 Extension 放在返回数组末尾。其 `transformPastedHTML` 由 Tiptap 3.29.2 与其它 extension transform 组合，并在 ProseMirror DOM parse 前按 `preset.features` 顺序执行内部 rule transforms；其 ProseMirror plugin 则利用 Tiptap 反转同 priority extension 输入顺序的现有行为，使统一 `handlePaste` 先于其它同 priority extension handler 被查询。这里不设置新的 Tiptap priority，也不形成 rule priority 机制。
 
-该匿名 Extension 不导出 factory，测试也不读取其名称、实例或数组位置。顺序契约只通过用户可见的 paste 行为验证；升级 Tiptap 时若其 plugin 组装规则变化，由这些行为测试暴露兼容性问题。
+该匿名 Extension 的 factory 不从 package 公开入口导出，测试也不读取 Extension 的名称、实例或数组位置。顺序契约只通过用户可见的 paste 行为验证；升级 Tiptap 时若其 plugin 组装规则变化，由这些行为测试暴露兼容性问题。
 
-`RichTextEditor.vue` 不感知 image、link、ImageDialog 或具体 paste rules。
+`RichTextEditor.vue` 不感知 image、link、ImageDialog、具体 paste rules 或 interaction handlers。
 
 ## 用户可见行为
 
@@ -192,16 +200,16 @@ Handler 只忽略 clipboard 纯文本的首尾空白，对 trim 后的值执行 
 
 ### Link HTML 属性
 
-Link 必须同时覆盖 mark 级 DOM parse rule 和 `href` attribute parser，因为 Tiptap 只有在 mark rule 的 `getAttrs` 返回 `false` 时才会跳过整个 link mark；仅让 attribute parser 返回空值仍可能创建缺少必填 `href` 的 mark。
+Link 复用 Tiptap 的 mark 级 DOM parse rule，并覆盖 `href` attribute parser。原生 mark rule 通过已配置的 `isAllowedUri` 拒绝非法 href；其 `getAttrs` 返回 `false` 时不创建 link mark，但保留 anchor 文字。
 
-Mark rule 读取原始 `href` 并先执行 `normalizeLinkHref`：
+`isAllowedUri` 读取原始 `href` 并执行 `normalizeLinkHref`：
 
 - trim 首尾空白；
 - 对无显式协议的合法主机名补全默认 `https`；
 - 只保留当前允许的 scheme；
 - 无效 href 时由 `getAttrs` 返回 `false`，不创建 link mark，但保留 anchor 文字。
 
-合法 href 再由 attribute `parseHTML` 返回同一个 canonical 值，确保 DOM parser 写入 document 的不是未经规范化的原始属性。
+合法 href 再由 attribute `parseHTML` 返回 canonical 值，确保 DOM parser 写入 document 的不是未经规范化的原始属性。
 
 Editor document 不持久化外部 anchor 的 `target`、`rel`、`class` 或 `title`。直接 JSON 中的非法 href 继续由 attribute validator 和 `document.check()` 拒绝。
 
@@ -222,15 +230,16 @@ OrderedList 增加 attribute validator，并包装 Tiptap 原有 parser：
 - `start` 只接受安全整数，包括 `0` 和负数；非法外部 HTML 值归一化为 `1`。
 - `type` 只接受 `1 | a | A | i | I | null`；非法外部 HTML 值归一化为 `null`。
 - Tiptap 对 CSS `list-style-type` 的既有映射先执行，再进入相同 normalizer。
-- 直接 JSON 中的非法 `start` 或 `type` 由 `document.check()` 拒绝。
+- 直接 JSON 中的非法 `start` 或 `type` 由 attribute validator 在反序列化或文档校验时拒绝。
 
 ### Table
 
-TableCell 与 TableHeader 覆盖上游宽松的 `colspan`、`rowspan` 和 `colwidth` parser，并继续使用归一化后的 `align` parser：
+TableCell 与 TableHeader 覆盖上游宽松的 `colspan`、`rowspan` 和显式 `colwidth` parser，并继续包装 Tiptap 原有的 `colwidth` fallback 与 `align` parser：
 
 - `colspan`、`rowspan` 必须是完整的正安全整数；非法值归一化为 `1`。
 - 单个 `colspan` 或 `rowspan` 超过现有单表 10,000 网格槽位上限时归一化为 `1`，避免单个 attribute 形成无界放大。
 - `colwidth` 的每一项必须完整解析为有限数字；任一项非法时整个 attribute 归一化为 `null`。
+- Cell 未显式提供 `colwidth` 时，Tiptap 从 `<colgroup><col width>` 推导的既有结果先执行，再进入相同 normalizer。
 - 不新增 colwidth 最小值或数组长度约束。
 - `align` 只保留 `left | center | right | null`。
 
@@ -244,7 +253,7 @@ Image extension 允许解析 Base64 `src`，修复 Playground Data URL image 在
 
 Image HTML transform 使用 inert `<template>` 解析 clipboard HTML：
 
-- 若首个顶层元素的 `data-pm-slice` 符合 ProseMirror clipboard 格式，返回原始内部 HTML，让默认 parser 恢复 image node 和周围内容。
+- 忽略浏览器附加在开头的 `<meta>` 后，若首个顶层元素的 `data-pm-slice` 符合 ProseMirror clipboard 格式，返回原始内部 HTML，让默认 parser 恢复 image node 和周围内容。
 - 否则移除所有 `<img>` 后返回其余 HTML。
 
 使用 inert template 避免为了检查和删除普通外部 `<img>` 而先把它们挂入活动 document。Client 不新增图片来源 callback、业务 URL 白名单或私有 clipboard 协议。内部标记可被 hostile clipboard 伪造；伪造成功时，其中的 `<img src>` 仍可能在服务端校验前由 editor 加载。因此该 transform 只提供普通外部粘贴的最佳努力过滤，不承担来源证明、网络请求隔离或安全保证；最终持久化的 `src` 仍须通过 server image policy。
@@ -253,14 +262,15 @@ Image HTML transform 使用 inert `<template>` 解析 clipboard HTML：
 
 ### 图片文件选择
 
-Image feature 提供唯一的纯函数，从 `clipboardData.files` 中按顺序返回第一张 `image/*` 文件。Editor image rule 与 ImageDialog 局部事件入口复用该函数。
+Image feature 提供唯一的纯函数，从 `ClipboardEvent` 中按顺序返回第一张 `image/*` 文件，并在内部处理 nullable `clipboardData`。Editor image rule 与 ImageDialog 局部 paste 入口复用该函数；file dialog 和 drop 继续处理各自 API 的文件输入。
 
 Editor paste handler：
 
-1. 内部 rich-text HTML 返回 `false`，保留默认 rich paste。
-2. 查找第一张图片文件。
-3. 找不到时返回 `false`。
-4. 找到时打开 ImageDialog 并返回 `true`，不再插入 clipboard 的其它表示。
+1. 查找第一张图片文件；找不到时返回 `false`。
+2. 若经过 HTML transform 和 ProseMirror parser 得到的 `Slice` 已包含 image node，返回 `false`，保留默认 rich paste。
+3. 否则调用 `openImagePicker` 并携带该文件；已绑定的 Vue handler 打开 ImageDialog，rule 返回 `true`，不再插入 clipboard 的其它表示。
+
+Handler 不重新解析原始 HTML 或重复判断 `data-pm-slice`；内部图片是否交给默认 paste，以同一流程已经转换和解析出的 `Slice` 为准。
 
 ImageDialog 移除全局 `window` paste listener。Dialog 内容根节点只处理自身范围内冒泡的 paste 事件；它忽略已被消费的事件、input、textarea、contenteditable 和上传中状态。同一个 DOM paste 事件因此只进入 editor 或 dialog 其中一个作用域。
 
@@ -315,10 +325,12 @@ const selectedImageFile = shallowRef<File | null>(props.initialImageFile ?? null
 模块职责：
 
 - `src/editor/paste.ts`：rule 定义、按 feature 顺序执行的规则执行器，以及把 rules 封装为匿名 Tiptap Extension 的内部函数。
-- `src/editor/feature.ts`：让 editor feature 可携带一个 paste rule，并在 extension collector 中自动收集。
+- `src/editor/interaction.ts`：用私有 `PluginKey` 建立 typed interaction capability、单 handler Extension 和同步请求入口。
+- `src/editor/feature.ts`：让 editor feature 可携带 paste rule 和所需 interactions；extension collector 只收集 feature 已有 extensions 和 paste rules。
+- `src/vue/presets/types.ts`：通用校验 interaction handler，并在 preset 构造期间把 handler Extension 折叠进所属 editor feature。
 - `src/features/link/editor.ts`：`linkPasteRule` 与 link selection policy。
-- `src/features/image/editor.ts`：内部/外部 clipboard 判断、第一张图片提取和不依赖 Vue 的 image paste rule 构造。
-- `src/features/image/vue/*`：把 image rule 接到私有 `openImageDialog`，维护 Dialog UI 状态。
+- `src/features/image/editor.ts`：内部/外部 clipboard 判断、第一张图片提取、静态 image paste rule、私有 picker capability、语义入口和 editor feature。
+- `src/features/image/vue/*`：提供唯一 image picker handler，把各静态 UI 入口接到私有 `openImageDialog`，并维护 Dialog UI 状态。
 - feature shared modules：HTML attribute normalizer 与 validator。
 
 现有应用消费方式不变：
@@ -341,6 +353,7 @@ Paste executor 不捕获 rule 编程错误。外部属性无效时按 feature �
 ### Paste feature 集成层
 
 - Editor feature 自带的 rule 随 preset 启用，不要求 preset 维护第二份 rule 清单。
+- Preset builder 用 feature-agnostic 校验保证 editor feature 所需 interaction 有且仅有一个 canonical handler，并把其 Extension 绑定到所属 feature；返回的 preset 不暴露 handler 配置。
 - HTML transforms 和 handlers 按 `preset.features` 顺序组合。
 - Handlers 在首个 `true` 后停止；link handler 对任何带文件的 clipboard 返回 `false`。
 - 所有 handlers 返回 `false` 时保留默认 paste。
@@ -426,7 +439,7 @@ Link URL tokenization 显式依赖锁定的 `linkifyjs`，不依赖 Tiptap 私�
 ## 验收标准
 
 - 普通 copy、cut 和未被消费的 paste 行为没有新增应用层拦截。
-- `compact` 和 `all` preset 从已启用的 editor features 自动获得 paste rules，不维护第二份规则清单，应用调用签名不变。
+- `compact` 和 `all` preset 从已启用的静态 editor features 自动获得 paste rules，不维护第二份规则清单；image runtime options 只在 preset 构造期间配置一个 handler，应用调用签名不变，返回的 preset 不暴露该配置。
 - 明确文本选区 paste URL 设置链接；`AllSelection` 和其它不符合定义的 selection 类型走默认 paste。
 - 外部 link、highlight、ordered list 和 table attrs 解析为 canonical values，结果通过 `doc.check()`。
 - Playground Data URL image 能在 image-enabled editor 中内部复制粘贴。

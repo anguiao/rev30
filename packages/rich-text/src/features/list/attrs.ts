@@ -1,6 +1,6 @@
-export const orderedListTypes = ['1', 'a', 'A', 'i', 'I'] as const
+const orderedListTypes = ['1', 'a', 'A', 'i', 'I'] as const
 
-export type OrderedListType = (typeof orderedListTypes)[number]
+type OrderedListType = (typeof orderedListTypes)[number]
 
 const orderedListTypeSet = new Set<string>(orderedListTypes)
 const orderedListStartPattern = /^-?\d+$/

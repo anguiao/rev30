@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/core'
 import { closeHistory } from '@tiptap/pm/history'
+import type { Slice } from '@tiptap/pm/model'
 import { NodeSelection, type Selection } from '@tiptap/pm/state'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
@@ -27,27 +28,26 @@ export function getSelectedImageAttrs(selection: Selection): RichTextImageAttrs 
   }
 }
 
-const proseMirrorSlicePattern = /^(\d+) (\d+)(?: -(\d+))? (.+)$/
+const proseMirrorSlicePattern = /^\d+ \d+(?: -\d+)? (.+)$/
 
-function hasValidProseMirrorSlice(value: string | null) {
-  if (value === null) {
+function hasProseMirrorSliceMarker(content: DocumentFragment) {
+  let element = content.firstElementChild
+  while (element?.tagName === 'META') {
+    element = element.nextElementSibling
+  }
+
+  const slice = element?.getAttribute('data-pm-slice')
+  if (!slice) {
     return false
   }
 
-  const match = proseMirrorSlicePattern.exec(value)
-
-  if (
-    match === null ||
-    match[4] === undefined ||
-    !Number.isSafeInteger(Number(match[1])) ||
-    !Number.isSafeInteger(Number(match[2])) ||
-    (match[3] !== undefined && !Number.isSafeInteger(Number(match[3])))
-  ) {
+  const serializedContext = proseMirrorSlicePattern.exec(slice)?.[1]
+  if (serializedContext === undefined) {
     return false
   }
 
   try {
-    const context = JSON.parse(match[4])
+    const context = JSON.parse(serializedContext)
 
     return Array.isArray(context) && context.length % 2 === 0
   } catch {
@@ -55,22 +55,25 @@ function hasValidProseMirrorSlice(value: string | null) {
   }
 }
 
-export function isInternalRichTextHtml(html: string) {
-  const template = document.createElement('template')
-  template.innerHTML = html
+function hasImageNode(slice: Slice) {
+  let found = false
 
-  return hasValidProseMirrorSlice(
-    template.content.firstElementChild?.getAttribute('data-pm-slice') ?? null,
-  )
+  slice.content.descendants((node) => {
+    if (node.type.name === 'image') {
+      found = true
+    }
+  })
+
+  return found
 }
 
 export function transformPastedImageHtml(html: string) {
-  if (isInternalRichTextHtml(html)) {
-    return html
-  }
-
   const template = document.createElement('template')
   template.innerHTML = html
+
+  if (hasProseMirrorSliceMarker(template.content)) {
+    return html
+  }
 
   for (const image of template.content.querySelectorAll('img')) {
     image.remove()
@@ -79,13 +82,14 @@ export function transformPastedImageHtml(html: string) {
   return template.innerHTML
 }
 
-export function getFirstClipboardImageFile(files: FileList | null | undefined) {
-  if (files === null || files === undefined) {
+export function getPastedImageFile(event: ClipboardEvent) {
+  const clipboardData = event.clipboardData
+  if (clipboardData === null) {
     return null
   }
 
-  for (let index = 0; index < files.length; index += 1) {
-    const file = files.item(index)
+  for (let index = 0; index < clipboardData.files.length; index += 1) {
+    const file = clipboardData.files.item(index)
 
     if (file?.type.startsWith('image/')) {
       return file
@@ -110,20 +114,25 @@ export function defineImagePickerHandler(
   return imagePicker.defineHandler(handle)
 }
 
+export const imageAction = defineRichTextAction(imageFeature, {
+  key: imageFeature.key,
+  command: (props) => imagePicker.command(props, undefined),
+})
+
+export const imageActionItem = defineRichTextActionItem(imageAction, {
+  label: '图片',
+  icon: 'i-[lucide--image]',
+  keywords: ['img', 'picture'],
+})
+
 export const imagePasteRule: RichTextPasteRule = {
   transformHTML(html) {
     return transformPastedImageHtml(html)
   },
-  handlePaste({ editor, event }) {
-    const clipboardData = event.clipboardData
+  handlePaste({ editor, event, slice }) {
+    const imageFile = getPastedImageFile(event)
 
-    if (clipboardData === null || isInternalRichTextHtml(clipboardData.getData('text/html'))) {
-      return false
-    }
-
-    const imageFile = getFirstClipboardImageFile(clipboardData.files)
-
-    if (imageFile === null) {
+    if (imageFile === null || hasImageNode(slice)) {
       return false
     }
 
@@ -144,12 +153,6 @@ export const insertImageAction = defineRichTextAction(imageFeature, {
       .run(),
 })
 
-export const insertImageActionItem = defineRichTextActionItem(insertImageAction, {
-  label: '图片',
-  icon: 'i-[lucide--image]',
-  keywords: ['img', 'picture'],
-})
-
 export const updateImageAction = defineRichTextAction(imageFeature, {
   key: 'update-image',
   command: ({ chain, tr }, attrs: Partial<RichTextImageAttrs>) => {
@@ -162,6 +165,6 @@ export const updateImageAction = defineRichTextAction(imageFeature, {
 })
 
 export const imageEditorFeature = defineRichTextEditorFeature(imageFeature, {
-  interactions: [imagePicker.interaction],
+  interactions: [imagePicker],
   pasteRule: imagePasteRule,
 })

@@ -1,4 +1,4 @@
-import { Extension, type AnyExtension, type Editor } from '@tiptap/core'
+import { Extension, type AnyExtension, type CommandProps, type Editor } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import type { RichTextFeature } from '../core/feature'
 
@@ -14,22 +14,35 @@ export interface RichTextInteractionHandler {
 
 type RichTextInteractionHandle<Payload> = (editor: Editor, payload: Payload) => void
 
+interface RichTextInteractionRequest<Payload> {
+  readonly payload: Payload
+}
+
+interface RichTextInteractionState<Payload> {
+  readonly request?: RichTextInteractionRequest<Payload>
+}
+
 export function defineRichTextInteraction<const Feature extends RichTextFeature, Payload>(
   feature: Feature,
   key: string,
 ) {
-  const interaction: RichTextInteraction<Feature> = { feature, key }
   const extensionName = `richTextInteraction:${feature.key}:${key}`
-  const pluginKey = new PluginKey<RichTextInteractionHandle<Payload>>(extensionName)
+  const pluginKey = new PluginKey<RichTextInteractionState<Payload>>(extensionName)
 
-  function request(editor: Editor, payload: Payload) {
-    const handle = pluginKey.getState(editor.state)
-
-    if (handle === undefined) {
+  function command({ editor, tr, dispatch }: CommandProps, payload: Payload): boolean {
+    if (pluginKey.getState(editor.state) === undefined) {
       throw new Error(`Rich text interaction "${feature.key}:${key}" is not configured`)
     }
 
-    handle(editor, payload)
+    if (dispatch) {
+      tr.setMeta(pluginKey, { payload } satisfies RichTextInteractionRequest<Payload>)
+    }
+
+    return true
+  }
+
+  function request(editor: Editor, payload: Payload) {
+    return editor.commands.command((props) => command(props, payload))
   }
 
   function defineHandler(handle: RichTextInteractionHandle<Payload>): RichTextInteractionHandler {
@@ -40,13 +53,31 @@ export function defineRichTextInteraction<const Feature extends RichTextFeature,
           name: extensionName,
 
           addProseMirrorPlugins() {
+            const editor = this.editor
+
             return [
               new Plugin({
                 key: pluginKey,
                 state: {
-                  init: () => handle,
-                  apply: (_transaction, currentHandle) => currentHandle,
+                  init: () => ({}),
+                  apply(transaction, currentState) {
+                    const request = transaction.getMeta(pluginKey) as
+                      | RichTextInteractionRequest<Payload>
+                      | undefined
+
+                    return request === undefined ? currentState : { request }
+                  },
                 },
+                view: () => ({
+                  update(view, previousState) {
+                    const previousRequest = pluginKey.getState(previousState)?.request
+                    const request = pluginKey.getState(view.state)?.request
+
+                    if (request !== undefined && request !== previousRequest) {
+                      handle(editor, request.payload)
+                    }
+                  },
+                }),
               }),
             ]
           },
@@ -54,9 +85,13 @@ export function defineRichTextInteraction<const Feature extends RichTextFeature,
     }
   }
 
-  return {
-    interaction,
+  const interaction = {
+    feature,
+    key,
     request,
+    command,
     defineHandler,
   }
+
+  return interaction
 }

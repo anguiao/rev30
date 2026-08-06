@@ -4,16 +4,8 @@ import {
   type RichTextHtmlPolicy,
   type RichTextTagTransform,
 } from '../../server/sanitize'
-import { normalizeHighlightColor as normalizeSharedHighlightColor } from './colors'
+import { normalizeHighlightColor } from './colors'
 import { highlightFeature } from './shared'
-
-function normalizeHighlightColor(value: string | undefined) {
-  return normalizeSharedHighlightColor(value) ?? undefined
-}
-
-function buildHighlightStyle(color: string) {
-  return `background-color: ${color}; color: inherit`
-}
 
 const transformMark: RichTextTagTransform = ({ tagName, attribs }) => {
   const color = Object.hasOwn(attribs, 'data-color')
@@ -31,7 +23,7 @@ const transformMark: RichTextTagTransform = ({ tagName, attribs }) => {
     tagName,
     attribs: {
       'data-color': color,
-      style: buildHighlightStyle(color),
+      style: `background-color: ${color}; color: inherit`,
     },
   }
 }

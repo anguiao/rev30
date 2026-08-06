@@ -9,39 +9,21 @@ function validateHighlightColor(value: unknown) {
   }
 }
 
-function getInlineStyleValue(style: string | null, property: string) {
-  let value: string | null = null
-
-  for (const declaration of style?.split(';') ?? []) {
-    const separator = declaration.indexOf(':')
-
-    if (separator === -1 || declaration.slice(0, separator).trim().toLowerCase() !== property) {
-      continue
-    }
-
-    value = declaration.slice(separator + 1)
-  }
-
-  return value
-}
-
 const RichTextHighlight = Highlight.extend({
   addAttributes() {
     const parentAttributes: Attributes = this.parent?.() ?? {}
+    const parentColor = parentAttributes.color
 
     return {
       ...parentAttributes,
       color: {
-        ...parentAttributes.color,
-        parseHTML: (element) => {
-          if (element.hasAttribute('data-color')) {
-            return normalizeHighlightColor(element.getAttribute('data-color'))
-          }
-
-          return normalizeHighlightColor(
-            getInlineStyleValue(element.getAttribute('style'), 'background-color'),
-          )
-        },
+        ...parentColor,
+        parseHTML: (element) =>
+          normalizeHighlightColor(
+            element.hasAttribute('data-color')
+              ? element.getAttribute('data-color')
+              : parentColor?.parseHTML?.(element),
+          ),
         validate: validateHighlightColor,
       },
     }

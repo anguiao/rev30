@@ -16,11 +16,12 @@ import {
   horizontalRuleActionItem,
   horizontalRuleEditorFeature,
 } from '../../features/horizontal-rule/editor'
+import { imageEditorFeature } from '../../features/image/editor'
 import {
-  createImageEditorFeature,
-  createImageSlashCommand,
-  createImageQuickBar,
-  createImageToolbarControl,
+  createImagePickerHandler,
+  imageQuickBar,
+  imageSlashCommand,
+  imageToolbarControl,
   type RichTextImageUploadOptions,
 } from '../../features/image/vue'
 import { inlineCodeActionItem, inlineCodeEditorFeature } from '../../features/inline-code/editor'
@@ -56,135 +57,118 @@ export interface AllRichTextEditorPresetOptions {
   image: RichTextImageUploadOptions
 }
 
-function createAllEditorFeatures(options: AllRichTextEditorPresetOptions) {
-  return [
-    baseEditorFeature,
-    historyEditorFeature,
-    characterCountEditorFeature,
-    searchReplaceEditorFeature,
-    boldEditorFeature,
-    italicEditorFeature,
-    underlineEditorFeature,
-    strikeEditorFeature,
-    inlineCodeEditorFeature,
-    highlightEditorFeature,
-    textStyleEditorFeature,
-    linkEditorFeature,
-    removeFormatEditorFeature,
-    headingEditorFeature,
-    textAlignEditorFeature,
-    blockquoteEditorFeature,
-    codeBlockEditorFeature,
-    listEditorFeature,
-    horizontalRuleEditorFeature,
-    createImageEditorFeature(options.image),
-    tableEditorFeature,
-    elementPathEditorFeature,
-  ] as const
-}
+const allEditorFeatures = [
+  baseEditorFeature,
+  historyEditorFeature,
+  characterCountEditorFeature,
+  searchReplaceEditorFeature,
+  boldEditorFeature,
+  italicEditorFeature,
+  underlineEditorFeature,
+  strikeEditorFeature,
+  inlineCodeEditorFeature,
+  highlightEditorFeature,
+  textStyleEditorFeature,
+  linkEditorFeature,
+  removeFormatEditorFeature,
+  headingEditorFeature,
+  textAlignEditorFeature,
+  blockquoteEditorFeature,
+  codeBlockEditorFeature,
+  listEditorFeature,
+  horizontalRuleEditorFeature,
+  imageEditorFeature,
+  tableEditorFeature,
+  elementPathEditorFeature,
+] as const
 
-function createAllRichTextToolbar(options: AllRichTextEditorPresetOptions) {
-  return defineRichTextToolbar([
-    {
-      key: 'history',
-      controls: [...historyActionItems.map(button), searchReplaceToolbarControl],
-    },
-    {
-      key: 'marks',
-      controls: [
-        button(boldActionItem),
-        button(italicActionItem),
-        button(underlineActionItem),
-        button(strikeActionItem),
-        button(inlineCodeActionItem),
-        highlightToolbarControl,
-        linkToolbarControl,
-        button(removeFormatActionItem),
-      ],
-    },
-    { key: 'text-style', controls: [textStyleToolbarControl] },
-    {
-      key: 'blocks',
-      controls: [
-        dropdown({
-          key: 'heading',
-          label: '标题',
-          icon: 'i-[lucide--heading]',
-          items: headingActionItems,
-        }),
-        dropdown({
-          key: 'text-align',
-          label: '对齐',
-          icon: 'i-[lucide--align-left]',
-          items: textAlignActionItems,
-        }),
-        dropdown({
-          key: 'list',
-          label: '列表',
-          icon: 'i-[lucide--list]',
-          items: listActionItems,
-        }),
-        button(blockquoteActionItem),
-        codeBlockToolbarControl,
-      ],
-    },
-    {
-      key: 'insert',
-      controls: [
-        button(horizontalRuleActionItem),
-        tableToolbarControl,
-        createImageToolbarControl(options.image),
-      ],
-    },
-  ])
-}
-
-function createAllRichTextQuickBar(options: AllRichTextEditorPresetOptions) {
-  return defineRichTextQuickBar({
-    textControls: [
-      richTextQuickBarAction(boldActionItem),
-      richTextQuickBarAction(italicActionItem),
-      richTextQuickBarAction(underlineActionItem),
-      highlightQuickBarControl,
-      linkQuickBarControl,
+const allRichTextToolbar = defineRichTextToolbar([
+  {
+    key: 'history',
+    controls: [...historyActionItems.map(button), searchReplaceToolbarControl],
+  },
+  {
+    key: 'marks',
+    controls: [
+      button(boldActionItem),
+      button(italicActionItem),
+      button(underlineActionItem),
+      button(strikeActionItem),
+      button(inlineCodeActionItem),
+      highlightToolbarControl,
+      linkToolbarControl,
+      button(removeFormatActionItem),
     ],
-    featureBars: [
-      createImageQuickBar(options.image),
-      linkQuickBar,
-      codeBlockQuickBar,
-      tableQuickBar,
+  },
+  { key: 'text-style', controls: [textStyleToolbarControl] },
+  {
+    key: 'blocks',
+    controls: [
+      dropdown({
+        key: 'heading',
+        label: '标题',
+        icon: 'i-[lucide--heading]',
+        items: headingActionItems,
+      }),
+      dropdown({
+        key: 'text-align',
+        label: '对齐',
+        icon: 'i-[lucide--align-left]',
+        items: textAlignActionItems,
+      }),
+      dropdown({
+        key: 'list',
+        label: '列表',
+        icon: 'i-[lucide--list]',
+        items: listActionItems,
+      }),
+      button(blockquoteActionItem),
+      codeBlockToolbarControl,
     ],
-  })
-}
+  },
+  {
+    key: 'insert',
+    controls: [button(horizontalRuleActionItem), tableToolbarControl, imageToolbarControl],
+  },
+])
 
-function createAllRichTextSlashMenu(options: AllRichTextEditorPresetOptions) {
-  return defineRichTextSlashMenu([
-    {
-      key: 'basic',
-      label: '基础块',
-      commands: [
-        richTextSlashCommand(paragraphActionItem),
-        ...headingActionItems.map((item) => richTextSlashCommand(item)),
-        richTextSlashCommand(blockquoteActionItem),
-      ],
-    },
-    {
-      key: 'list',
-      label: '列表',
-      commands: listActionItems.map((item) => richTextSlashCommand(item)),
-    },
-    {
-      key: 'insert',
-      label: '插入',
-      commands: [
-        richTextSlashCommand(codeBlockActionItem),
-        richTextSlashCommand(horizontalRuleActionItem),
-        richTextSlashCommand(tableActionItem),
-        createImageSlashCommand(options.image),
-      ],
-    },
-  ])
-}
+const allRichTextQuickBar = defineRichTextQuickBar({
+  textControls: [
+    richTextQuickBarAction(boldActionItem),
+    richTextQuickBarAction(italicActionItem),
+    richTextQuickBarAction(underlineActionItem),
+    highlightQuickBarControl,
+    linkQuickBarControl,
+  ],
+  featureBars: [imageQuickBar, linkQuickBar, codeBlockQuickBar, tableQuickBar],
+})
+
+const allRichTextSlashMenu = defineRichTextSlashMenu([
+  {
+    key: 'basic',
+    label: '基础块',
+    commands: [
+      richTextSlashCommand(paragraphActionItem),
+      ...headingActionItems.map((item) => richTextSlashCommand(item)),
+      richTextSlashCommand(blockquoteActionItem),
+    ],
+  },
+  {
+    key: 'list',
+    label: '列表',
+    commands: listActionItems.map((item) => richTextSlashCommand(item)),
+  },
+  {
+    key: 'insert',
+    label: '插入',
+    commands: [
+      richTextSlashCommand(codeBlockActionItem),
+      richTextSlashCommand(horizontalRuleActionItem),
+      richTextSlashCommand(tableActionItem),
+      imageSlashCommand,
+    ],
+  },
+])
 
 const allRichTextStatusBar = defineRichTextStatusBar({
   start: [elementPathStatusBarItem],
@@ -193,10 +177,11 @@ const allRichTextStatusBar = defineRichTextStatusBar({
 
 export function createAllRichTextEditorPreset(options: AllRichTextEditorPresetOptions) {
   return defineRichTextEditorPreset(allRichTextPreset, {
-    editorFeatures: createAllEditorFeatures(options),
-    toolbar: createAllRichTextToolbar(options),
+    editorFeatures: allEditorFeatures,
+    interactionHandlers: [createImagePickerHandler(options.image)],
+    toolbar: allRichTextToolbar,
     statusBar: allRichTextStatusBar,
-    quickBar: createAllRichTextQuickBar(options),
-    slashMenu: createAllRichTextSlashMenu(options),
+    quickBar: allRichTextQuickBar,
+    slashMenu: allRichTextSlashMenu,
   })
 }

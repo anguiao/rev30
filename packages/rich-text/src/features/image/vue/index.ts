@@ -1,14 +1,14 @@
 import type { Editor } from '@tiptap/core'
 import { VueRenderer } from '@tiptap/vue-3'
-import { defineRichTextEditorFeature } from '../../../editor/feature'
 import { richTextFeatureQuickBar } from '../../../vue/quick-bar'
 import { richTextSlashCommand } from '../../../vue/slash-menu'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
 import {
-  createImagePasteRule,
+  defineImagePickerHandler,
   getSelectedImageAttrs,
   insertImageAction,
   insertImageActionItem,
+  openImagePicker,
   type RichTextImageAttrs,
   updateImageAction,
 } from '../editor'
@@ -64,35 +64,25 @@ function openImageDialog(
   editor.on('destroy', closeDialog)
 }
 
-export function createImageEditorFeature(options: RichTextImageUploadOptions) {
-  return defineRichTextEditorFeature(imageFeature, {
-    pasteRule: createImagePasteRule((editor, initialImageFile) =>
-      openImageDialog(editor, options, initialImageFile),
-    ),
-  })
+export function createImagePickerHandler(options: RichTextImageUploadOptions) {
+  return defineImagePickerHandler((editor, initialImageFile) =>
+    openImageDialog(editor, options, initialImageFile),
+  )
 }
 
-export function createImageToolbarControl(options: RichTextImageUploadOptions) {
-  return richTextToolbarComponent({
-    feature: imageFeature,
-    component: ImageToolbarControl,
-    props: {
-      openDialog: (editor) => openImageDialog(editor, options),
-    },
-  })
-}
+export const imageToolbarControl = richTextToolbarComponent({
+  feature: imageFeature,
+  component: ImageToolbarControl,
+  props: {},
+})
 
-export function createImageQuickBar(options: RichTextImageUploadOptions) {
-  return richTextFeatureQuickBar({
-    feature: imageFeature,
-    isActive: (editor) => getSelectedImageAttrs(editor.state.selection) !== null,
-    component: ImageQuickBar,
-    props: {
-      openDialog: (editor) => openImageDialog(editor, options),
-    },
-  })
-}
+export const imageQuickBar = richTextFeatureQuickBar({
+  feature: imageFeature,
+  isActive: (editor) => getSelectedImageAttrs(editor.state.selection) !== null,
+  component: ImageQuickBar,
+  props: {},
+})
 
-export function createImageSlashCommand(options: RichTextImageUploadOptions) {
-  return richTextSlashCommand(insertImageActionItem, (editor) => openImageDialog(editor, options))
-}
+export const imageSlashCommand = richTextSlashCommand(insertImageActionItem, (editor) =>
+  openImagePicker(editor),
+)

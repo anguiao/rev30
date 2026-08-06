@@ -2,6 +2,8 @@ import type { Editor } from '@tiptap/core'
 import { closeHistory } from '@tiptap/pm/history'
 import { NodeSelection, type Selection } from '@tiptap/pm/state'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
+import { defineRichTextEditorFeature } from '../../editor/feature'
+import { defineRichTextInteraction } from '../../editor/interaction'
 import type { RichTextPasteRule } from '../../editor/paste'
 import { imageFeature } from './shared'
 
@@ -93,30 +95,41 @@ export function getFirstClipboardImageFile(files: FileList | null | undefined) {
   return null
 }
 
-export function createImagePasteRule(
-  openImageDialog: (editor: Editor, initialImageFile: File) => void,
-): RichTextPasteRule {
-  return {
-    transformHTML(html) {
-      return transformPastedImageHtml(html)
-    },
-    handlePaste({ editor, event }) {
-      const clipboardData = event.clipboardData
+const imagePicker = defineRichTextInteraction<typeof imageFeature, File | undefined>(
+  imageFeature,
+  'pick-image',
+)
 
-      if (clipboardData === null || isInternalRichTextHtml(clipboardData.getData('text/html'))) {
-        return false
-      }
+export function openImagePicker(editor: Editor, initialImageFile?: File) {
+  imagePicker.request(editor, initialImageFile)
+}
 
-      const imageFile = getFirstClipboardImageFile(clipboardData.files)
+export function defineImagePickerHandler(
+  handle: (editor: Editor, initialImageFile?: File) => void,
+) {
+  return imagePicker.defineHandler(handle)
+}
 
-      if (imageFile === null) {
-        return false
-      }
+export const imagePasteRule: RichTextPasteRule = {
+  transformHTML(html) {
+    return transformPastedImageHtml(html)
+  },
+  handlePaste({ editor, event }) {
+    const clipboardData = event.clipboardData
 
-      openImageDialog(editor, imageFile)
-      return true
-    },
-  }
+    if (clipboardData === null || isInternalRichTextHtml(clipboardData.getData('text/html'))) {
+      return false
+    }
+
+    const imageFile = getFirstClipboardImageFile(clipboardData.files)
+
+    if (imageFile === null) {
+      return false
+    }
+
+    openImagePicker(editor, imageFile)
+    return true
+  },
 }
 
 export const insertImageAction = defineRichTextAction(imageFeature, {
@@ -146,4 +159,9 @@ export const updateImageAction = defineRichTextAction(imageFeature, {
 
     return chain().focus().updateAttributes('image', attrs).run()
   },
+})
+
+export const imageEditorFeature = defineRichTextEditorFeature(imageFeature, {
+  interactions: [imagePicker.interaction],
+  pasteRule: imagePasteRule,
 })

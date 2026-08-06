@@ -1,18 +1,17 @@
 <script setup lang="ts">
-import type { Editor } from '@tiptap/vue-3'
 import type { RichTextQuickBarComponentProps } from '../../../vue/quick-bar'
 import { NButton } from 'naive-ui'
 import { computed } from 'vue'
-import { getSelectedImageAttrs } from '../editor'
+import { getSelectedImageAttrs, openImagePicker } from '../editor'
 
-interface ImageQuickBarProps extends RichTextQuickBarComponentProps {
-  openDialog: (editor: Editor) => void
-}
-
-const props = defineProps<ImageQuickBarProps>()
+const props = defineProps<RichTextQuickBarComponentProps>()
 
 const editor = props.editor
 const image = computed(() => getSelectedImageAttrs(editor.state.selection))
+
+function openPicker() {
+  openImagePicker(editor)
+}
 </script>
 
 <template>
@@ -39,7 +38,7 @@ const image = computed(() => getSelectedImageAttrs(editor.state.selection))
       quaternary
       title="编辑图片"
       aria-label="编辑图片"
-      @click="openDialog(editor)"
+      @click="openPicker"
     >
       <span class="i-[lucide--pencil]" aria-hidden="true" />
     </NButton>

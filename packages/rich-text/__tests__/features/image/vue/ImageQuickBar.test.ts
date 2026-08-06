@@ -1,29 +1,25 @@
-import Document from '@tiptap/extension-document'
-import Paragraph from '@tiptap/extension-paragraph'
-import Text from '@tiptap/extension-text'
 import { flushPromises, mount } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
-import { imageFeature } from '../../../../src/features/image/shared'
-import { createImageQuickBar } from '../../../../src/features/image/vue'
+import { collectRichTextEditorExtensions } from '../../../../src/editor/feature'
+import { imageQuickBar } from '../../../../src/features/image/vue'
 import { createTestEditor } from '../../../helpers/editor'
+import { createImageTestEditorPreset } from '../../../helpers/image-editor'
 
 describe('ImageQuickBar', () => {
   it('offers native download and opens the shared image dialog for editing', async () => {
     const src = '/uploads/image.png'
+    const preset = createImageTestEditorPreset({ upload: async () => ({ src }) })
     const editor = createTestEditor({
-      extensions: [Document, Paragraph, Text, ...imageFeature.sharedExtensions!()],
+      extensions: collectRichTextEditorExtensions(preset),
       content: `<img src="${src}">`,
     })
     editor.commands.setNodeSelection(0)
 
-    const quickBar = createImageQuickBar({
-      upload: async () => ({ src }),
-    })
-    const wrapper = mount(quickBar.component, {
+    const wrapper = mount(imageQuickBar.component, {
       attachTo: document.body,
       props: {
-        ...quickBar.props,
+        ...imageQuickBar.props,
         editor: markRaw(editor),
       },
     })

@@ -1,21 +1,20 @@
 <script setup lang="ts">
-import type { Editor } from '@tiptap/vue-3'
 import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
 import { NButton } from 'naive-ui'
 import { computed } from 'vue'
-import { getSelectedImageAttrs } from '../editor'
+import { getSelectedImageAttrs, openImagePicker } from '../editor'
 
-interface ImageToolbarControlProps extends RichTextToolbarControlProps {
-  openDialog: (editor: Editor) => void
-}
-
-const props = withDefaults(defineProps<ImageToolbarControlProps>(), {
+const props = withDefaults(defineProps<RichTextToolbarControlProps>(), {
   disabled: false,
 })
 
 const editor = props.editor
 const isActive = computed(() => getSelectedImageAttrs(editor.state.selection) !== null)
 const buttonLabel = computed(() => (isActive.value ? '编辑图片' : '图片'))
+
+function openPicker() {
+  openImagePicker(editor)
+}
 </script>
 
 <template>
@@ -31,7 +30,7 @@ const buttonLabel = computed(() => (isActive.value ? '编辑图片' : '图片'))
     :title="buttonLabel"
     :aria-label="buttonLabel"
     :aria-pressed="isActive"
-    @click="openDialog(editor)"
+    @click="openPicker"
   >
     <span class="i-[lucide--image]" aria-hidden="true" />
   </NButton>

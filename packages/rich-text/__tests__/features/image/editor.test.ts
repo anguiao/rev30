@@ -4,16 +4,21 @@ import Text from '@tiptap/extension-text'
 import { NodeSelection } from '@tiptap/pm/state'
 import { UndoRedo } from '@tiptap/extensions/undo-redo'
 import { describe, expect, it, vi } from 'vitest'
+import { defineRichTextPreset } from '../../../src/core/preset'
 import { runRichTextAction } from '../../../src/editor/action'
+import { collectRichTextEditorExtensions } from '../../../src/editor/feature'
 import {
-  createImagePasteRule,
+  defineImagePickerHandler,
   getFirstClipboardImageFile,
+  imageEditorFeature,
+  imagePasteRule,
   insertImageAction,
   isInternalRichTextHtml,
   transformPastedImageHtml,
   updateImageAction,
 } from '../../../src/features/image/editor'
 import { imageFeature } from '../../../src/features/image/shared'
+import { defineRichTextEditorPreset } from '../../../src/vue/presets/types'
 import { createTestEditor } from '../../helpers/editor'
 
 const imageAttrs = {
@@ -146,28 +151,38 @@ describe('image paste rule', () => {
     expect(getFirstClipboardImageFile(createFileList([textFile]))).toBeNull()
   })
 
-  it('opens the image dialog for an external image file but leaves internal HTML to ProseMirror', () => {
-    const editor = createEditor()
-    const openImageDialog = vi.fn()
-    const pasteRule = createImagePasteRule(openImageDialog)
+  it('opens the image picker for an external image file but leaves internal HTML to ProseMirror', () => {
+    const openPicker = vi.fn()
+    const preset = defineRichTextPreset({
+      key: 'image-paste-test',
+      features: [imageFeature],
+    })
+    const editorPreset = defineRichTextEditorPreset(preset, {
+      editorFeatures: [imageEditorFeature],
+      interactionHandlers: [defineImagePickerHandler(openPicker)],
+    })
+    const editor = createTestEditor({
+      extensions: [Document, Paragraph, Text, ...collectRichTextEditorExtensions(editorPreset)],
+      content: '<p></p>',
+    })
     const imageFile = new File(['image'], 'pasted.png', { type: 'image/png' })
 
     expect(
-      pasteRule.handlePaste?.({
+      imagePasteRule.handlePaste?.({
         editor,
         event: createClipboardEvent('', [imageFile]),
         slice: editor.state.selection.content(),
       }),
     ).toBe(true)
-    expect(openImageDialog).toHaveBeenCalledWith(editor, imageFile)
+    expect(openPicker).toHaveBeenCalledWith(editor, imageFile)
 
     expect(
-      pasteRule.handlePaste?.({
+      imagePasteRule.handlePaste?.({
         editor,
         event: createClipboardEvent('<p data-pm-slice="0 0 []"><img /></p>', [imageFile]),
         slice: editor.state.selection.content(),
       }),
     ).toBe(false)
-    expect(openImageDialog).toHaveBeenCalledOnce()
+    expect(openPicker).toHaveBeenCalledOnce()
   })
 })

@@ -13,9 +13,12 @@ import { headingActionItems, headingEditorFeature } from '../../src/features/hea
 import { headingFeature } from '../../src/features/heading/shared'
 import { historyEditorFeature } from '../../src/features/history/editor'
 import { historyFeature } from '../../src/features/history/shared'
-import { createImageSlashCommand } from '../../src/features/image/vue'
+import { imageEditorFeature } from '../../src/features/image/editor'
+import { imageFeature } from '../../src/features/image/shared'
+import { createImagePickerHandler, imageSlashCommand } from '../../src/features/image/vue'
 import { tableActionItem, tableEditorFeature } from '../../src/features/table/editor'
 import { tableFeature } from '../../src/features/table/shared'
+import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
 import {
   canRunRichTextSlashCommand,
   defineRichTextSlashMenu,
@@ -25,17 +28,28 @@ import {
 } from '../../src/vue/slash-menu'
 import { createTestEditor } from '../helpers/editor'
 
-const preset = defineRichTextPreset({
+const slashMenuPreset = defineRichTextPreset({
   key: 'slash-menu-test',
-  features: [baseFeature, historyFeature, headingFeature],
+  features: [baseFeature, historyFeature, headingFeature, imageFeature],
+})
+
+const slashMenuEditorPreset = defineRichTextEditorPreset(slashMenuPreset, {
+  editorFeatures: [
+    baseEditorFeature,
+    historyEditorFeature,
+    headingEditorFeature,
+    imageEditorFeature,
+  ],
+  interactionHandlers: [
+    createImagePickerHandler({
+      upload: async () => ({ src: '/uploads/image.png' }),
+    }),
+  ],
 })
 
 function createEditor(content = '<p></p>') {
   return createTestEditor({
-    extensions: collectRichTextEditorExtensions({
-      ...preset,
-      editorFeatures: [baseEditorFeature, historyEditorFeature, headingEditorFeature],
-    }),
+    extensions: collectRichTextEditorExtensions(slashMenuEditorPreset),
     content,
   })
 }
@@ -43,9 +57,7 @@ function createEditor(content = '<p></p>') {
 const paragraphCommand = richTextSlashCommand(paragraphActionItem)
 const headingCommand = richTextSlashCommand(headingActionItems[0])
 const tableCommand = richTextSlashCommand(tableActionItem)
-const imageCommand = createImageSlashCommand({
-  upload: async () => ({ src: '/uploads/image.png' }),
-})
+const imageCommand = imageSlashCommand
 
 function createGroups() {
   return defineRichTextSlashMenu([

@@ -1,23 +1,18 @@
-import Document from '@tiptap/extension-document'
-import Paragraph from '@tiptap/extension-paragraph'
-import Text from '@tiptap/extension-text'
 import { closeHistory } from '@tiptap/pm/history'
 import { NodeSelection } from '@tiptap/pm/state'
-import { UndoRedo } from '@tiptap/extensions/undo-redo'
 import { DOMWrapper, flushPromises, mount, type BaseWrapper } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
 import { markRaw, nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../../../src/editor/feature'
 import type { RichTextImageAttrs } from '../../../../src/features/image/editor'
-import { imageFeature } from '../../../../src/features/image/shared'
 import {
-  createImageToolbarControl,
+  imageToolbarControl,
   type RichTextImageUploadOptions,
 } from '../../../../src/features/image/vue'
-import { createAllRichTextEditorPreset } from '../../../../src/vue/presets/all'
 import ImageDialog from '../../../../src/features/image/vue/ImageDialog.vue'
 import { createTestEditor } from '../../../helpers/editor'
+import { createImageTestEditorPreset } from '../../../helpers/image-editor'
 
 type FileDialogChangeHandler = (files: FileList | null) => void
 type FileDialogOptions = {
@@ -85,15 +80,22 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
-function createEditor(content = '<p>维护通知</p>') {
+function createEditor(
+  content = '<p>维护通知</p>',
+  options: RichTextImageUploadOptions = {
+    upload: async () => ({ src: imageAttrs.src }),
+  },
+) {
+  const preset = createImageTestEditorPreset(options)
+
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, ...imageFeature.sharedExtensions!()],
+    extensions: collectRichTextEditorExtensions(preset),
     content,
   })
 }
 
 function createImagePasteEditor(upload: RichTextImageUploadOptions['upload']) {
-  const preset = createAllRichTextEditorPreset({ image: { upload } })
+  const preset = createImageTestEditorPreset({ upload })
 
   return createTestEditor({
     extensions: collectRichTextEditorExtensions(preset),
@@ -101,25 +103,26 @@ function createImagePasteEditor(upload: RichTextImageUploadOptions['upload']) {
   })
 }
 
-function mountControl(
-  editor: Editor,
-  upload: RichTextImageUploadOptions['upload'] = vi.fn(),
-  onError: NonNullable<RichTextImageUploadOptions['onError']> = vi.fn(),
-) {
-  const control = createImageToolbarControl({ upload, onError })
-
-  return mount(control.component, {
+function mountControl(editor: Editor) {
+  return mount(imageToolbarControl.component, {
     props: {
-      ...control.props,
+      ...imageToolbarControl.props,
       editor: markRaw(editor),
       disabled: false,
     },
   })
 }
 
-function createHistoryEditor(content = '<p>/图片</p>') {
+function createHistoryEditor(
+  content = '<p>/图片</p>',
+  options: RichTextImageUploadOptions = {
+    upload: async () => ({ src: imageAttrs.src }),
+  },
+) {
+  const preset = createImageTestEditorPreset(options)
+
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, UndoRedo, ...imageFeature.sharedExtensions!()],
+    extensions: collectRichTextEditorExtensions(preset),
     content,
   })
 }
@@ -282,8 +285,8 @@ describe('ImageToolbarControl', () => {
     const upload = vi.fn(async (file: File) => ({
       src: `/api/attachments/${file.name}/content`,
     }))
-    const editor = createEditor()
-    const toolbar = mountControl(editor, upload)
+    const editor = createEditor(undefined, { upload })
+    const toolbar = mountControl(editor)
 
     await toolbar.get('[data-test="rich-text-image"]').trigger('click')
     await flushPromises()
@@ -327,9 +330,9 @@ describe('ImageToolbarControl', () => {
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     const upload = vi.fn(async () => ({ src: '' }))
     const onError = vi.fn()
-    const editor = createEditor()
+    const editor = createEditor(undefined, { upload, onError })
     const initialDocument = editor.getJSON()
-    const toolbar = mountControl(editor, upload, onError)
+    const toolbar = mountControl(editor)
 
     await toolbar.get('[data-test="rich-text-image"]').trigger('click')
     await flushPromises()
@@ -354,11 +357,11 @@ describe('ImageToolbarControl', () => {
   })
 
   it('replaces the selected text when inserting an image', async () => {
-    const editor = createEditor('<p>replace</p>')
+    const editor = createEditor('<p>replace</p>', {
+      upload: async () => ({ src: '/api/attachments/replacement/content' }),
+    })
     editor.commands.setTextSelection({ from: 1, to: 8 })
-    const toolbar = mountControl(editor, async () => ({
-      src: '/api/attachments/replacement/content',
-    }))
+    const toolbar = mountControl(editor)
     const button = toolbar.get('[data-test="rich-text-image"]')
 
     expect(button.attributes('disabled')).toBeUndefined()
@@ -378,11 +381,11 @@ describe('ImageToolbarControl', () => {
   })
 
   it('keeps the selection captured when the dialog opens', async () => {
-    const editor = createEditor('<p>first</p><p>second</p>')
+    const editor = createEditor('<p>first</p><p>second</p>', {
+      upload: async () => ({ src: '/api/attachments/frozen/content' }),
+    })
     editor.commands.setTextSelection({ from: 1, to: 6 })
-    const toolbar = mountControl(editor, async () => ({
-      src: '/api/attachments/frozen/content',
-    }))
+    const toolbar = mountControl(editor)
 
     await toolbar.get('[data-test="rich-text-image"]').trigger('click')
     await flushPromises()
@@ -418,9 +421,10 @@ describe('ImageToolbarControl', () => {
     }))
     const editor = createEditor(
       '<img src="/api/attachments/cover/content" alt="旧说明" width="500" height="250" />',
+      { upload },
     )
     editor.commands.setNodeSelection(0)
-    const toolbar = mountControl(editor, upload)
+    const toolbar = mountControl(editor)
 
     await toolbar.get('[data-test="rich-text-image"]').trigger('click')
     await flushPromises()
@@ -457,12 +461,11 @@ describe('ImageToolbarControl', () => {
   it('ignores upload errors after cancellation', async () => {
     const pendingUpload = deferred<{ src: string }>()
     const onError = vi.fn()
-    const editor = createEditor()
-    const toolbar = mountControl(
-      editor,
-      vi.fn(() => pendingUpload.promise),
+    const editor = createEditor(undefined, {
+      upload: vi.fn(() => pendingUpload.promise),
       onError,
-    )
+    })
+    const toolbar = mountControl(editor)
 
     await toolbar.get('[data-test="rich-text-image"]').trigger('click')
     await flushPromises()
@@ -481,10 +484,12 @@ describe('ImageToolbarControl', () => {
   })
 
   it('keeps slash deletion and confirmed insertion as two history events', async () => {
-    const editor = createHistoryEditor()
+    const editor = createHistoryEditor(undefined, {
+      upload: async () => ({ src: imageAttrs.src }),
+    })
     expect(deleteSlashQuery(editor)).toBe(true)
 
-    const toolbar = mountControl(editor, async () => ({ src: imageAttrs.src }))
+    const toolbar = mountControl(editor)
     await toolbar.get('[data-test="rich-text-image"]').trigger('click')
     await flushPromises()
 

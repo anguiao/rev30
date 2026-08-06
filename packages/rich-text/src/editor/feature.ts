@@ -1,11 +1,13 @@
 import type { AnyExtension } from '@tiptap/core'
 import type { RichTextFeature } from '../core/feature'
 import type { RichTextPreset } from '../core/preset'
+import type { RichTextInteraction } from './interaction'
 import { collectRichTextPasteExtensions, type RichTextPasteRule } from './paste'
 
 export interface RichTextEditorFeature<Feature extends RichTextFeature = RichTextFeature> {
   readonly feature: Feature
   readonly extensions?: () => readonly AnyExtension[]
+  readonly interactions?: readonly RichTextInteraction<Feature>[]
   readonly pasteRule?: RichTextPasteRule
 }
 
@@ -15,6 +17,24 @@ export function defineRichTextEditorFeature<const Feature extends RichTextFeatur
 ): RichTextEditorFeature<Feature> {
   if (!feature.editorImplementation) {
     throw new Error(`Rich text feature "${feature.key}" does not declare the editor implementation`)
+  }
+
+  const interactionKeys = new Set<string>()
+
+  for (const interaction of implementation.interactions ?? []) {
+    if (interaction.feature !== feature) {
+      throw new Error(
+        `Rich text editor feature "${feature.key}" has an interaction for another feature: "${interaction.feature.key}"`,
+      )
+    }
+
+    if (interactionKeys.has(interaction.key)) {
+      throw new Error(
+        `Rich text editor feature "${feature.key}" has a duplicate interaction: "${interaction.key}"`,
+      )
+    }
+
+    interactionKeys.add(interaction.key)
   }
 
   return {

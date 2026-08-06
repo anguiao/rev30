@@ -12,8 +12,7 @@ import { collectRichTextEditorExtensions } from '../../src/editor/feature'
 import { boldActionItem } from '../../src/features/bold/editor'
 import { codeBlockEditorFeature } from '../../src/features/code-block/editor'
 import { codeBlockQuickBar } from '../../src/features/code-block/vue'
-import { imageFeature } from '../../src/features/image/shared'
-import { createImageQuickBar } from '../../src/features/image/vue'
+import { imageQuickBar } from '../../src/features/image/vue'
 import { historyActionItems } from '../../src/features/history/editor'
 import { italicActionItem } from '../../src/features/italic/editor'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
@@ -24,6 +23,7 @@ import {
 } from '../../src/vue/quick-bar'
 import RichTextQuickBar from '../../src/vue/quick-bar/RichTextQuickBar.vue'
 import { appendTestElement, createTestEditor } from '../helpers/editor'
+import { createImageTestEditorPreset } from '../helpers/image-editor'
 
 const BubbleMenuStub = defineComponent({
   props: {
@@ -490,8 +490,11 @@ describe('RichTextQuickBar', () => {
   })
 
   it('hides when an image dialog takes focus', async () => {
+    const preset = createImageTestEditorPreset({
+      upload: async () => ({ src: '/uploads/image.png' }),
+    })
     const editor = createTestEditor({
-      extensions: [Document, Paragraph, Text, ...imageFeature.sharedExtensions!()],
+      extensions: collectRichTextEditorExtensions(preset),
       content: '<img src="/uploads/image.png">',
     })
     editor.commands.setNodeSelection(0)
@@ -499,11 +502,7 @@ describe('RichTextQuickBar', () => {
     const wrapper = mountQuickBar(
       editor,
       defineRichTextQuickBar({
-        featureBars: [
-          createImageQuickBar({
-            upload: async () => ({ src: '/uploads/image.png' }),
-          }),
-        ],
+        featureBars: [imageQuickBar],
       }),
     )
     await flushPromises()

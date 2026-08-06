@@ -1,6 +1,7 @@
 import { validateRichTextFeatureImplementations, type RichTextFeature } from '../../core/feature'
 import type { RichTextPreset } from '../../core/preset'
 import type { RichTextEditorFeature } from '../../editor/feature'
+import type { RichTextInteraction, RichTextInteractionHandler } from '../../editor/interaction'
 import type { RichTextQuickBarConfig, RichTextQuickBarControl } from '../quick-bar'
 import type { RichTextSlashMenuGroup } from '../slash-menu'
 import type { RichTextStatusBarConfig, RichTextStatusBarComponentItem } from '../status-bar'
@@ -80,6 +81,63 @@ function validateSlashMenu(
   }
 }
 
+function bindInteractionHandlers<EditorFeature extends RichTextEditorFeature>(
+  preset: RichTextPreset,
+  editorFeatures: readonly EditorFeature[],
+  handlers: readonly RichTextInteractionHandler[],
+): EditorFeature[] {
+  const interactions = editorFeatures.flatMap((editorFeature) => editorFeature.interactions ?? [])
+  const enabledInteractions = new Set(interactions)
+  const handlersByInteraction = new Map<RichTextInteraction, RichTextInteractionHandler>()
+
+  for (const handler of handlers) {
+    const interactionId = `${handler.interaction.feature.key}:${handler.interaction.key}`
+
+    if (!enabledInteractions.has(handler.interaction)) {
+      throw new Error(
+        `Rich text preset "${preset.key}" has a handler for an unknown interaction: "${interactionId}"`,
+      )
+    }
+
+    if (handlersByInteraction.has(handler.interaction)) {
+      throw new Error(
+        `Rich text preset "${preset.key}" has a duplicate interaction handler: "${interactionId}"`,
+      )
+    }
+
+    handlersByInteraction.set(handler.interaction, handler)
+  }
+
+  return editorFeatures.map((editorFeature) => {
+    const interactionHandlers = (editorFeature.interactions ?? []).map((interaction) => {
+      const handler = handlersByInteraction.get(interaction)
+      const interactionId = `${interaction.feature.key}:${interaction.key}`
+
+      if (handler === undefined) {
+        throw new Error(
+          `Rich text preset "${preset.key}" is missing the interaction handler: "${interactionId}"`,
+        )
+      }
+
+      return handler
+    })
+
+    if (interactionHandlers.length === 0) {
+      return editorFeature
+    }
+
+    const createFeatureExtensions = editorFeature.extensions
+
+    return {
+      ...editorFeature,
+      extensions: () => [
+        ...(createFeatureExtensions?.() ?? []),
+        ...interactionHandlers.map((handler) => handler.createExtension()),
+      ],
+    }
+  })
+}
+
 export function defineRichTextEditorPreset<
   const Preset extends RichTextPreset,
   const EditorFeatures extends readonly RichTextEditorFeature<Preset['features'][number]>[],
@@ -87,15 +145,19 @@ export function defineRichTextEditorPreset<
   preset: Preset,
   options: {
     readonly editorFeatures: EditorFeatures
+    readonly interactionHandlers?: readonly RichTextInteractionHandler[]
     readonly toolbar?: RichTextToolbarConfig
     readonly statusBar?: RichTextStatusBarConfig
     readonly quickBar?: RichTextQuickBarConfig
     readonly slashMenu?: readonly RichTextSlashMenuGroup[]
   },
 ): RichTextEditorPreset<Preset, ReadonlyArray<EditorFeatures[number]>> {
-  const { editorFeatures } = options
-
-  validateRichTextFeatureImplementations(preset, 'editor', editorFeatures)
+  validateRichTextFeatureImplementations(preset, 'editor', options.editorFeatures)
+  const editorFeatures = bindInteractionHandlers(
+    preset,
+    options.editorFeatures,
+    options.interactionHandlers ?? [],
+  )
 
   if (options.toolbar) {
     for (const group of options.toolbar.groups) {

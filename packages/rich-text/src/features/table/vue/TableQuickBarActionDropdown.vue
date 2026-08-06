@@ -3,13 +3,17 @@ import type { Editor } from '@tiptap/vue-3'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
 import { computed } from 'vue'
-import { runRichTextAction, type RichTextActionItem } from '../../../editor/action'
 import { useRichTextDropdownTrigger } from '../../../vue/interactions/dropdown'
-import { createTableDropdownOption, type TableActionDropdownOption } from './dropdown'
+import {
+  createTableDropdownOption,
+  runTableDropdownOption,
+  type TableActionDropdownOption,
+  type TableDropdownActionItem,
+} from './dropdown'
 
 const props = defineProps<{
   editor: Editor
-  items: readonly RichTextActionItem[]
+  items: readonly TableDropdownActionItem[]
   triggerKey: string
   triggerLabel: string
   triggerIcon: string
@@ -23,8 +27,7 @@ const isDisabled = computed(() => options.value.every((option) => option.disable
 const { show, handleTriggerKeydown } = useRichTextDropdownTrigger(isDisabled)
 
 function handleSelect(_key: string | number, option: DropdownOption) {
-  const { action } = option as TableActionDropdownOption
-  runRichTextAction(editor, action)
+  runTableDropdownOption(editor, option as TableActionDropdownOption)
 }
 </script>
 

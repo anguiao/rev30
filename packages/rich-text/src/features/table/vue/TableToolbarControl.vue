@@ -2,7 +2,7 @@
 import type { DropdownDividerOption, DropdownOption } from 'naive-ui'
 import { NButton, NDropdown, NPopover } from 'naive-ui'
 import { computed, h, nextTick, ref, useTemplateRef, watch } from 'vue'
-import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
+import { canRunRichTextAction } from '../../../editor/action'
 import { useRichTextDropdownTrigger } from '../../../vue/interactions/dropdown'
 import { focusRichTextGridItem } from '../../../vue/interactions/focus'
 import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
@@ -10,11 +10,15 @@ import {
   deleteTableActionItem,
   getSelectedTable,
   insertTableAction,
+  toggleHeaderColumnActionItem,
   toggleHeaderRowActionItem,
 } from '../editor'
 import TableToolbarSizePicker from './TableToolbarSizePicker.vue'
 import {
   createTableDropdownOption,
+  runTableDropdownOption,
+  tableAlignmentActionItems,
+  tableCellActionItems,
   tableColumnActionItems,
   tableRowActionItems,
   type TableActionDropdownOption,
@@ -53,8 +57,6 @@ function createSubmenu(key: string, label: string, icon: string, children: Dropd
 }
 
 const options = computed<(DropdownOption | DropdownDividerOption)[]>(() => {
-  const headerActive = toggleHeaderRowActionItem.action.isActive?.(editor) ?? false
-
   return [
     createSubmenu(
       'table-row-actions',
@@ -68,22 +70,34 @@ const options = computed<(DropdownOption | DropdownDividerOption)[]>(() => {
       'i-[lucide--columns-3]',
       tableColumnActionItems.map((item) => createTableDropdownOption(editor, item)),
     ),
+    createSubmenu(
+      'table-cell-actions',
+      '单元格',
+      'i-[lucide--table-properties]',
+      tableCellActionItems.map((item) => createTableDropdownOption(editor, item)),
+    ),
+    createSubmenu(
+      'table-alignment-actions',
+      '对齐',
+      'i-[lucide--align-left]',
+      tableAlignmentActionItems.map((item) => createTableDropdownOption(editor, item)),
+    ),
     {
       type: 'divider',
       key: 'table-level-divider',
     },
-    createTableDropdownOption(
-      editor,
-      toggleHeaderRowActionItem,
-      headerActive ? '取消首行表头' : '设置首行表头',
-    ),
+    createTableDropdownOption(editor, toggleHeaderRowActionItem),
+    createTableDropdownOption(editor, toggleHeaderColumnActionItem),
+    {
+      type: 'divider',
+      key: 'table-delete-divider',
+    },
     createTableDropdownOption(editor, deleteTableActionItem),
   ]
 })
 
 function handleSelect(_key: string | number, option: DropdownOption) {
-  const { action } = option as TableActionDropdownOption
-  runRichTextAction(editor, action)
+  runTableDropdownOption(editor, option as TableActionDropdownOption)
 }
 
 function getMenuProps(option?: DropdownOption) {

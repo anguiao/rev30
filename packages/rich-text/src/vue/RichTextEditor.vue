@@ -36,12 +36,14 @@ const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer')
 const preset = props.preset
 const editor = new Editor({
   content: props.modelValue,
-  editable: !props.disabled,
+  editable: true,
   extensions: collectRichTextEditorExtensions(preset),
   onUpdate({ editor: currentEditor }) {
     emit('update:modelValue', currentEditor.getJSON())
   },
 })
+
+editor.setEditable(!props.disabled, false)
 
 onUnmounted(() => editor.destroy())
 
@@ -190,5 +192,25 @@ async function handleFocusout(event: FocusEvent) {
 :deep(.ProseMirror .tableWrapper .selectedCell > *) {
   position: relative;
   z-index: 1;
+}
+
+:deep(.ProseMirror[contenteditable='true'] .tableWrapper .column-resize-handle) {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: -2px;
+  bottom: 0;
+  width: 4px;
+  background-color: var(--rich-text-theme-primary-color);
+  pointer-events: none;
+}
+
+:deep(.ProseMirror[contenteditable='true'].resize-cursor),
+:deep(.ProseMirror[contenteditable='true'] .tableWrapper .column-resize-dragging) {
+  cursor: col-resize;
+}
+
+:deep(.ProseMirror[contenteditable='false'] .tableWrapper .column-resize-handle) {
+  display: none;
 }
 </style>

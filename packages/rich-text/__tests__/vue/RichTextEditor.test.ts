@@ -1,4 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { columnResizingPluginKey } from '@tiptap/pm/tables'
+import { EditorContent, type Editor } from '@tiptap/vue-3'
 import { NConfigProvider, NDropdown } from 'naive-ui'
 import { defineComponent, h, nextTick } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
@@ -10,6 +12,8 @@ import { boldEditorFeature } from '../../src/features/bold/editor'
 import { boldFeature } from '../../src/features/bold/shared'
 import { historyEditorFeature } from '../../src/features/history/editor'
 import { historyFeature } from '../../src/features/history/shared'
+import { tableEditorFeature } from '../../src/features/table/editor'
+import { tableFeature } from '../../src/features/table/shared'
 import RichTextEditor from '../../src/vue/RichTextEditor.vue'
 import type { RichTextDocument } from '../../src/schema'
 import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
@@ -70,6 +74,14 @@ const noHeadingEditorPreset = defineRichTextEditorPreset(noHeadingPreset, {
   editorFeatures: [baseEditorFeature, boldEditorFeature, historyEditorFeature],
 })
 
+const tableResizePreset = defineRichTextPreset({
+  key: 'table-resize',
+  features: [baseFeature, tableFeature],
+})
+const tableResizeEditorPreset = defineRichTextEditorPreset(tableResizePreset, {
+  editorFeatures: [baseEditorFeature, tableEditorFeature],
+})
+
 function createStatusBarItem(feature: RichTextFeature, label: string) {
   return richTextStatusBarComponent({
     feature,
@@ -102,6 +114,10 @@ const statusBarEditorPreset = defineRichTextEditorPreset(statusBarPreset, {
 
 function mountRichTextEditor(props: InstanceType<typeof RichTextEditor>['$props']) {
   return mount(RichTextEditor, { props })
+}
+
+function getTiptapEditor(wrapper: ReturnType<typeof mount>) {
+  return wrapper.findComponent(EditorContent).props('editor') as Editor
 }
 
 async function getEditable(wrapper: ReturnType<typeof mount>) {
@@ -380,18 +396,23 @@ describe('RichTextEditor', () => {
     expect(wrapper.emitted('blur')).toHaveLength(1)
   })
 
-  it('toggles editor editability when disabled changes', async () => {
+  it('keeps column resizing registered while editability changes from an initial disabled state', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,
-      preset: noHeadingEditorPreset,
+      preset: tableResizeEditorPreset,
+      disabled: true,
     })
 
-    await getEditable(wrapper)
-    await wrapper.setProps({ disabled: true })
+    await flushPromises()
 
-    await vi.waitFor(() => {
-      expect(wrapper.get('.ProseMirror').attributes('contenteditable')).toBe('false')
-    })
+    const editor = getTiptapEditor(wrapper)
+    const document = editor.state.doc
+    const selection = editor.state.selection
+    const resizeState = columnResizingPluginKey.getState(editor.state)
+
+    expect(resizeState).toBeDefined()
+    expect(editor.isEditable).toBe(false)
+    expect(wrapper.get('.ProseMirror').attributes('contenteditable')).toBe('false')
 
     await wrapper.setProps({ disabled: false })
 
@@ -399,6 +420,19 @@ describe('RichTextEditor', () => {
       expect(wrapper.get('.ProseMirror').attributes('contenteditable')).toBe('true')
     })
 
+    expect(getTiptapEditor(wrapper)).toBe(editor)
+    expect(editor.state.doc).toBe(document)
+    expect(editor.state.selection).toBe(selection)
+    expect(columnResizingPluginKey.getState(editor.state)).toBe(resizeState)
+
+    await wrapper.setProps({ disabled: true })
+
+    await vi.waitFor(() => {
+      expect(wrapper.get('.ProseMirror').attributes('contenteditable')).toBe('false')
+    })
+
+    expect(editor.isEditable).toBe(false)
+    expect(columnResizingPluginKey.getState(editor.state)).toBe(resizeState)
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })
 

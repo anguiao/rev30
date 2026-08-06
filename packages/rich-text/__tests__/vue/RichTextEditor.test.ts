@@ -436,6 +436,53 @@ describe('RichTextEditor', () => {
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })
 
+  it('keeps all-preset overlay layers stable while disabled changes', async () => {
+    const unhandledErrors: unknown[] = []
+    const handleError = (event: ErrorEvent) => {
+      unhandledErrors.push(event.error ?? event.message)
+    }
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      unhandledErrors.push(event.reason)
+      event.preventDefault()
+    }
+    window.addEventListener('error', handleError)
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+
+    try {
+      const wrapper = mountRichTextEditor({
+        modelValue: contentJson,
+        preset: allEditorPreset,
+        disabled: true,
+      })
+      await flushPromises()
+
+      const editor = getTiptapEditor(wrapper)
+      const document = editor.state.doc
+      expect(editor.isEditable).toBe(false)
+      expect(wrapper.find('[data-test="rich-text-quick-bar"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="rich-text-slash-menu"]').exists()).toBe(false)
+
+      await wrapper.setProps({ disabled: false })
+      await vi.waitFor(() => {
+        expect(wrapper.get('.ProseMirror').attributes('contenteditable')).toBe('true')
+      })
+
+      await wrapper.setProps({ disabled: true })
+      await vi.waitFor(() => {
+        expect(wrapper.get('.ProseMirror').attributes('contenteditable')).toBe('false')
+      })
+
+      expect(editor.state.doc).toBe(document)
+      expect(wrapper.find('[data-test="rich-text-quick-bar"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="rich-text-slash-menu"]').exists()).toBe(false)
+      expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+      expect(unhandledErrors).toEqual([])
+    } finally {
+      window.removeEventListener('error', handleError)
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+    }
+  })
+
   it('reflects active formatting states in toolbar buttons', async () => {
     const wrapper = mountRichTextEditor({
       modelValue: contentJson,

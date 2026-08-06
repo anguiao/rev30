@@ -111,7 +111,7 @@ async function handleFocusout(event: FocusEvent) {
       />
 
       <RichTextQuickBar
-        v-if="preset.quickBar && !disabled && root && scrollContainer"
+        v-if="preset.quickBar && root && scrollContainer"
         :editor="editor"
         :quick-bar="preset.quickBar"
         :scroll-container="scrollContainer"
@@ -119,7 +119,7 @@ async function handleFocusout(event: FocusEvent) {
       />
 
       <RichTextSlashMenu
-        v-if="preset.slashMenu && !disabled && root"
+        v-if="preset.slashMenu && root"
         :editor="editor"
         :slash-menu="preset.slashMenu"
         :append-to="root"

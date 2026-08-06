@@ -93,9 +93,10 @@ export const tableFeature = defineRichTextFeature({
   serverImplementation: true,
   sharedExtensions: () => [
     Table.configure({
-      resizable: false,
+      resizable: true,
       renderWrapper: true,
       cellMinWidth: TABLE_CELL_MIN_WIDTH,
+      lastColumnResizable: true,
     }),
     TableRow,
     RichTextTableCell,

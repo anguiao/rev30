@@ -78,11 +78,19 @@ describe('table shared feature', () => {
     expect(tableFeature.sharedExtensions!()[0]).not.toBe(extensions[0])
   })
 
-  it('uses paragraph-only cells, a wrapped non-resizable table, and strict cell attributes', () => {
+  it('uses paragraph-only cells, a wrapped resizable table, and strict cell attributes', () => {
+    const tableExtension = tableFeature.sharedExtensions!()[0]
+
     expect(schema.nodes.table!.spec.content).toBe('tableRow+')
     expect(schema.nodes.tableCell!.spec.content).toBe('paragraph+')
     expect(schema.nodes.tableHeader!.spec.content).toBe('paragraph+')
     expect(schema.nodes.table!.spec.toDOM).toBeDefined()
+    expect(tableExtension?.options).toMatchObject({
+      resizable: true,
+      renderWrapper: true,
+      cellMinWidth: 96,
+      lastColumnResizable: true,
+    })
 
     const valid = schema.nodeFromJSON({
       type: 'doc',

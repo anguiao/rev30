@@ -7,12 +7,16 @@ import { createPlaygroundPresets } from '../../src/playground/presets'
 import { useDerivation } from '../../src/playground/useDerivation'
 import '../../src/style.css'
 
-const props = defineProps<{ initialDocument?: RichTextDocument }>()
+const props = defineProps<{
+  initialDisabled?: boolean
+  initialDocument?: RichTextDocument
+}>()
 const fixtureImage =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAYCAYAAACbU/80AAAAK0lEQVR4nO3OIQEAAAgDMBqRkdRIiHEzMb+qnr0kAQEBAQEBAQEBAYF04AHpJ/FrJbf1awAAAABJRU5ErkJggg=='
 const model = ref<RichTextDocument>(
   props.initialDocument ?? { type: 'doc', content: [{ type: 'paragraph' }] },
 )
+const disabled = ref(props.initialDisabled ?? false)
 const blurCount = ref(0)
 const imageError = ref<string | null>(null)
 const selectionText = ref('')
@@ -169,6 +173,10 @@ function updateModel(value: RichTextDocument) {
   derivation.schedule()
 }
 
+function toggleDisabled() {
+  disabled.value = !disabled.value
+}
+
 onMounted(() => {
   document.addEventListener('selectionchange', updateInteractionState)
   document.addEventListener('focusin', updateInteractionState)
@@ -197,6 +205,9 @@ onBeforeUnmount(() => {
       <button data-test="set-image-selection-document" @click="setImageSelectionDocument">
         路径图片
       </button>
+      <button data-test="toggle-editor-disabled" @click="toggleDisabled">
+        {{ disabled ? '启用编辑器' : '禁用编辑器' }}
+      </button>
     </div>
     <div
       class="h-[560px] overflow-auto"
@@ -207,6 +218,7 @@ onBeforeUnmount(() => {
         :model-value="model"
         :preset="presets.editorPreset"
         :min-height="320"
+        :disabled="disabled"
         @blur="handleBlur"
         @update:model-value="updateModel"
       />
@@ -216,6 +228,7 @@ onBeforeUnmount(() => {
     <output data-test="blur-count">{{ blurCount }}</output>
     <output data-test="selection-text">{{ selectionText }}</output>
     <output data-test="active-element">{{ activeElement }}</output>
+    <output data-test="editor-disabled">{{ disabled }}</output>
     <output data-test="derivation-status">{{ derivation.status }}</output>
     <div
       v-if="derivation.result"

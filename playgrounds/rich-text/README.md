@@ -17,7 +17,7 @@ pnpm --filter @rev30/rich-text-playground exec playwright install chromium
 pnpm --filter @rev30/rich-text-playground test:browser
 ```
 
-开发服务器默认监听 `http://localhost:3210`。`test:browser` 是 headless Chromium suite，包含 preset smoke、真实 Selection/focus、clipboard、布局/键盘和图片文件输入契约；Chromium binary 首次运行前安装一次。
+开发服务器默认监听 `http://localhost:3210`。`test:browser` 是 headless Chromium suite，包含 preset smoke、真实 Selection/focus、clipboard、布局/键盘、表格合并/表头/对齐/列宽拖动/禁用状态和图片文件输入契约；Chromium binary 首次运行前安装一次。
 
 需要只运行派生错误回归时：
 

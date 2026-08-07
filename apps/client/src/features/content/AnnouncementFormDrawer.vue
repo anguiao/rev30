@@ -18,6 +18,8 @@ import {
   NTreeSelect,
 } from 'naive-ui'
 import {
+  ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+  ATTACHMENT_READ_POLICY_AUTHENTICATED,
   ANNOUNCEMENT_STATUS_PUBLISHED,
   ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
   ANNOUNCEMENT_TARGET_TYPE_ROLE,
@@ -38,7 +40,7 @@ import {
   type TiptapDocument,
 } from '@rev30/contracts'
 import { RichTextEditor } from '@rev30/rich-text/vue'
-import { compactRichTextEditorPreset } from '@rev30/rich-text/vue/presets/compact'
+import { createStandardRichTextEditorPreset } from '@rev30/rich-text/vue/presets/standard'
 import {
   createAnnouncement,
   getAnnouncement,
@@ -46,6 +48,7 @@ import {
   updateAnnouncement,
 } from '.'
 import { announcementTypeSelectOptions, announcementVisibilityOptions } from './labels'
+import { compressImageFile, getAttachmentContentUrl, uploadAttachment } from '../attachments'
 import { getErrorMessage } from '../../utils/error'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
 import { ApiRequestError } from '../../utils/request'
@@ -159,6 +162,31 @@ const loadError = computed(() =>
 )
 
 const formError = ref<string | null>(null)
+
+async function uploadAnnouncementContentImage(file: File) {
+  const compressedFile = await compressImageFile(file, {
+    maxDimension: 1920,
+    quality: 0.86,
+  })
+  const attachment = await uploadAttachment(compressedFile, {
+    usage: 'announcement-content-image',
+    readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+    cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+  })
+
+  return {
+    src: getAttachmentContentUrl(attachment.id),
+  }
+}
+
+const editorPreset = createStandardRichTextEditorPreset({
+  image: {
+    upload: uploadAnnouncementContentImage,
+    onError() {
+      formError.value = '上传图片失败'
+    },
+  },
+})
 
 const form = useForm({
   defaultValues: defaultFormValues,
@@ -384,7 +412,7 @@ watch(
             >
               <RichTextEditor
                 :model-value="state.value"
-                :preset="compactRichTextEditorPreset"
+                :preset="editorPreset"
                 @blur="field.handleBlur"
                 @update:model-value="
                   (value) => {

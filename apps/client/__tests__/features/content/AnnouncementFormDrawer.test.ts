@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getErrorMessage } from '../../../src/utils/error'
 import { ApiRequestError } from '../../../src/utils/request'
 import {
+  ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+  ATTACHMENT_READ_POLICY_AUTHENTICATED,
   ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
   ANNOUNCEMENT_TARGET_TYPE_ROLE,
   ANNOUNCEMENT_TARGET_TYPE_USER,
@@ -19,8 +21,10 @@ import {
   type AnnouncementTargetOptionsResponse,
   type DepartmentTreeOptionsResponse,
   type RoleOptionsResponse,
+  type TiptapDocument,
   type UserOptionsResponse,
 } from '@rev30/contracts'
+import { compressImageFile, uploadAttachment } from '../../../src/features/attachments'
 import {
   createAnnouncement,
   getAnnouncement,
@@ -30,13 +34,24 @@ import {
 import AnnouncementFormDrawer from '../../../src/features/content/AnnouncementFormDrawer.vue'
 import { createTestQueryHarness } from '../../helpers/colada'
 
-vi.mock('@rev30/rich-text/vue/presets/compact', () => ({
-  compactRichTextEditorPreset: {
-    key: 'compact',
-    features: [],
-    toolbar: null,
-  },
+const { createStandardRichTextEditorPresetMock } = vi.hoisted(() => ({
+  createStandardRichTextEditorPresetMock: vi.fn((options: { image: unknown }) => ({
+    image: options.image,
+  })),
 }))
+
+vi.mock('@rev30/rich-text/vue/presets/standard', () => ({
+  createStandardRichTextEditorPreset: createStandardRichTextEditorPresetMock,
+}))
+
+type RichTextImageOptions = {
+  upload: (file: File) => Promise<{ src: string }>
+  onError?: (error: unknown) => void
+}
+
+type RichTextEditorStubPreset = {
+  image?: RichTextImageOptions
+}
 
 vi.mock('@rev30/rich-text/vue', () => ({
   RichTextEditor: defineComponent({
@@ -60,8 +75,41 @@ vi.mock('@rev30/rich-text/vue', () => ({
       },
     },
     emits: ['update:modelValue', 'blur'],
-    setup(_, { emit }) {
-      return () =>
+    setup(props, { emit }) {
+      async function insertImage() {
+        const image = (props.preset as RichTextEditorStubPreset).image
+
+        if (!image) {
+          return
+        }
+
+        try {
+          const { src } = await image.upload(
+            new File(['image'], 'announcement.png', { type: 'image/png' }),
+          )
+          const content =
+            (
+              props.modelValue as TiptapDocument & {
+                content?: unknown[]
+              }
+            ).content ?? []
+
+          emit('update:modelValue', {
+            type: 'doc',
+            content: [...content, { type: 'image', attrs: { src } }],
+          })
+        } catch (error) {
+          image.onError?.(error)
+        }
+      }
+
+      function reportImageLoadError() {
+        const image = (props.preset as RichTextEditorStubPreset).image
+
+        image?.onError?.(new Error('image load failed'))
+      }
+
+      return () => [
         h(
           'button',
           {
@@ -75,9 +123,62 @@ vi.mock('@rev30/rich-text/vue', () => ({
             onBlur: () => emit('blur'),
           },
           'editor',
-        )
+        ),
+        h(
+          'button',
+          {
+            'data-test': 'announcement-form-rich-text-standard-format',
+            type: 'button',
+            onClick: () =>
+              emit('update:modelValue', {
+                type: 'doc',
+                content: [
+                  {
+                    type: 'paragraph',
+                    content: [
+                      {
+                        type: 'text',
+                        text: '带下划线的正文',
+                        marks: [{ type: 'underline' }],
+                      },
+                    ],
+                  },
+                ],
+              }),
+          },
+          'standard format',
+        ),
+        h(
+          'button',
+          {
+            'data-test': 'announcement-form-rich-text-insert-image',
+            type: 'button',
+            onClick: () => void insertImage(),
+          },
+          'insert image',
+        ),
+        h(
+          'button',
+          {
+            'data-test': 'announcement-form-rich-text-image-load-error',
+            type: 'button',
+            onClick: reportImageLoadError,
+          },
+          'image load error',
+        ),
+      ]
     },
   }),
+}))
+
+vi.mock('../../../src/features/attachments/imageCompression', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/attachments/imageCompression')>()),
+  compressImageFile: vi.fn((file: File) => file),
+}))
+
+vi.mock('../../../src/features/attachments/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/attachments/requests')>()),
+  uploadAttachment: vi.fn(),
 }))
 
 vi.mock('../../../src/features/content', async (importOriginal) => ({
@@ -93,10 +194,12 @@ vi.mock('../../../src/utils/error', () => ({
 }))
 
 const createAnnouncementMock = vi.mocked(createAnnouncement)
+const compressImageFileMock = vi.mocked(compressImageFile)
 const getAnnouncementMock = vi.mocked(getAnnouncement)
 const getAnnouncementTargetOptionsMock = vi.mocked(getAnnouncementTargetOptions)
 const getErrorMessageMock = vi.mocked(getErrorMessage)
 const updateAnnouncementMock = vi.mocked(updateAnnouncement)
+const uploadAttachmentMock = vi.mocked(uploadAttachment)
 
 const announcementId = '11111111-1111-4111-8111-111111111111'
 const userTargetId = '22222222-2222-4222-8222-222222222222'
@@ -169,6 +272,51 @@ const announcementResponse: Announcement = {
   publishedAt: null,
   createdAt: '2026-05-20T00:00:00.000Z',
   updatedAt: '2026-05-20T00:00:00.000Z',
+}
+
+const legacyCompactContentJson: TiptapDocument = {
+  type: 'doc',
+  content: [
+    {
+      type: 'heading',
+      attrs: { level: 2 },
+      content: [{ type: 'text', text: '旧版标题', marks: [{ type: 'bold' }] }],
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: '旧版链接',
+          marks: [
+            {
+              type: 'link',
+              attrs: {
+                href: 'https://example.com/legacy',
+                target: '_blank',
+                rel: 'noopener noreferrer nofollow',
+                class: null,
+              },
+            },
+          ],
+        },
+      ],
+    },
+    {
+      type: 'bulletList',
+      content: [
+        {
+          type: 'listItem',
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: '旧版列表项' }],
+            },
+          ],
+        },
+      ],
+    },
+  ],
 }
 
 const queryCaches = new WeakMap<
@@ -256,10 +404,16 @@ function getTestComponent(wrapper: ReturnType<typeof mount>, dataTest: string) {
 describe('AnnouncementFormDrawer', () => {
   beforeEach(() => {
     createAnnouncementMock.mockReset()
+    compressImageFileMock.mockReset()
+    compressImageFileMock.mockImplementation(async (file) => file)
     getAnnouncementMock.mockReset()
     getAnnouncementTargetOptionsMock.mockReset()
     getErrorMessageMock.mockClear()
     updateAnnouncementMock.mockReset()
+    uploadAttachmentMock.mockReset()
+    uploadAttachmentMock.mockResolvedValue({
+      id: '55555555-5555-4555-8555-555555555555',
+    })
     getAnnouncementTargetOptionsMock.mockResolvedValue(targetOptionsResponse)
   })
 
@@ -529,6 +683,165 @@ describe('AnnouncementFormDrawer', () => {
           type: 'doc',
           content: [{ type: 'paragraph' }],
         },
+      }),
+    )
+  })
+
+  it('uploads announcement images as internal attachments and submits their URL', async () => {
+    const compressedFile = new File(['compressed'], 'announcement.webp', {
+      type: 'image/webp',
+    })
+    const attachmentId = '55555555-5555-4555-8555-555555555555'
+    createAnnouncementMock.mockResolvedValue(announcementResponse)
+    compressImageFileMock.mockResolvedValue(compressedFile)
+    uploadAttachmentMock.mockResolvedValue({ id: attachmentId })
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await wrapper.get('[data-test="announcement-form-title"] input').setValue('新的维护通知')
+    await selectUserTarget(wrapper)
+    await wrapper.get('[data-test="announcement-form-rich-text-insert-image"]').trigger('click')
+    await flushPromises()
+
+    const sourceFile = compressImageFileMock.mock.calls[0]?.[0]
+
+    expect(sourceFile).toBeInstanceOf(File)
+    expect(compressImageFileMock).toHaveBeenCalledWith(sourceFile, {
+      maxDimension: 1920,
+      quality: 0.86,
+    })
+    expect(uploadAttachmentMock).toHaveBeenCalledWith(compressedFile, {
+      usage: 'announcement-content-image',
+      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+    })
+
+    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
+
+    expect(createAnnouncementMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentJson: {
+          type: 'doc',
+          content: [
+            { type: 'paragraph' },
+            {
+              type: 'image',
+              attrs: {
+                src: `/api/attachments/${attachmentId}/content`,
+              },
+            },
+          ],
+        },
+      }),
+    )
+  })
+
+  it('shows a fixed image error without adding failed images to submitted content', async () => {
+    createAnnouncementMock.mockResolvedValue(announcementResponse)
+    uploadAttachmentMock.mockRejectedValue(new Error('upload failed'))
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await wrapper.get('[data-test="announcement-form-title"] input').setValue('新的维护通知')
+    await selectUserTarget(wrapper)
+    await wrapper.get('[data-test="announcement-form-rich-text-insert-image"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('上传图片失败')
+
+    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
+
+    expect(createAnnouncementMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentJson: {
+          type: 'doc',
+          content: [{ type: 'paragraph' }],
+        },
+      }),
+    )
+  })
+
+  it('shows the same fixed error without submitting an image when it cannot load', async () => {
+    createAnnouncementMock.mockResolvedValue(announcementResponse)
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await wrapper.get('[data-test="announcement-form-title"] input').setValue('新的维护通知')
+    await selectUserTarget(wrapper)
+    await wrapper.get('[data-test="announcement-form-rich-text-image-load-error"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('上传图片失败')
+
+    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
+
+    expect(createAnnouncementMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentJson: {
+          type: 'doc',
+          content: [{ type: 'paragraph' }],
+        },
+      }),
+    )
+  })
+
+  it('submits standard rich text formatting', async () => {
+    createAnnouncementMock.mockResolvedValue(announcementResponse)
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await wrapper.get('[data-test="announcement-form-title"] input').setValue('新的维护通知')
+    await selectUserTarget(wrapper)
+    await wrapper.get('[data-test="announcement-form-rich-text-standard-format"]').trigger('click')
+    await flushPromises()
+    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
+
+    expect(createAnnouncementMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentJson: {
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                {
+                  type: 'text',
+                  text: '带下划线的正文',
+                  marks: [{ type: 'underline' }],
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    )
+  })
+
+  it('loads and resubmits a frozen compact announcement body in edit mode', async () => {
+    const legacyAnnouncement: Announcement = {
+      ...announcementResponse,
+      contentJson: legacyCompactContentJson,
+    }
+    getAnnouncementMock.mockResolvedValue(legacyAnnouncement)
+    updateAnnouncementMock.mockResolvedValue(legacyAnnouncement)
+
+    const wrapper = mountDrawer({ show: true, announcementId })
+    await flushPromises()
+
+    expect(wrapper.getComponent({ name: 'RichTextEditorStub' }).props('modelValue')).toEqual(
+      legacyCompactContentJson,
+    )
+
+    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
+
+    expect(updateAnnouncementMock).toHaveBeenCalledWith(
+      announcementId,
+      expect.objectContaining({
+        contentJson: legacyCompactContentJson,
       }),
     )
   })

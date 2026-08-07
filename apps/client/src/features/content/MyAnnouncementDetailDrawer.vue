@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import '@rev30/rich-text/content/presets/compact.css'
+import '@rev30/rich-text/content/presets/standard.css'
 import { computed } from 'vue'
 import { useQuery } from '@pinia/colada'
 import { type AnnouncementMyListItem } from '@rev30/contracts'

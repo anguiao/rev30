@@ -20,8 +20,13 @@
       "types": "./src/presets/compact.ts",
       "default": "./src/presets/compact.ts"
     },
+    "./presets/standard": {
+      "types": "./src/presets/standard.ts",
+      "default": "./src/presets/standard.ts"
+    },
     "./content/presets/all.css": "./src/content/presets/all.css",
     "./content/presets/compact.css": "./src/content/presets/compact.css",
+    "./content/presets/standard.css": "./src/content/presets/standard.css",
     "./server": {
       "types": "./src/server/index.ts",
       "default": "./src/server/index.ts"
@@ -34,6 +39,10 @@
       "types": "./src/server/presets/compact.ts",
       "default": "./src/server/presets/compact.ts"
     },
+    "./server/presets/standard": {
+      "types": "./src/server/presets/standard.ts",
+      "default": "./src/server/presets/standard.ts"
+    },
     "./vue": {
       "types": "./src/vue/index.ts",
       "default": "./src/vue/index.ts"
@@ -45,6 +54,10 @@
     "./vue/presets/compact": {
       "types": "./src/vue/presets/compact.ts",
       "default": "./src/vue/presets/compact.ts"
+    },
+    "./vue/presets/standard": {
+      "types": "./src/vue/presets/standard.ts",
+      "default": "./src/vue/presets/standard.ts"
     }
   },
   "scripts": {

@@ -20,10 +20,11 @@ import '@rev30/rich-text/content/presets/compact.css'
 
 - `@rev30/rich-text/content/presets/all.css`
 - `@rev30/rich-text/content/presets/compact.css`
+- `@rev30/rich-text/content/presets/standard.css`
 
 容器默认使用 base 排版（`16px / 28px`）；也可显式添加 `rich-text-content--base`，或选择 `rich-text-content--sm`（`14px / 24px`）和 `rich-text-content--lg`（`18px / 32px`）。页面根元素有 `.dark` class 时，内容样式会切换到 dark defaults。
 
-`@rev30/rich-text/vue/presets/all` 和 `@rev30/rich-text/vue/presets/compact` 会自动导入各自的内容 CSS。`@rev30/rich-text/presets/*`、`@rev30/rich-text/server` 和 `@rev30/rich-text/server/presets/*` 保持无 CSS 副作用。
+`@rev30/rich-text/vue/presets/all`、`@rev30/rich-text/vue/presets/compact` 和 `@rev30/rich-text/vue/presets/standard` 会自动导入各自的内容 CSS。`@rev30/rich-text/presets/*`、`@rev30/rich-text/server` 和 `@rev30/rich-text/server/presets/*` 保持无 CSS 副作用。
 
 可在容器或祖先上通过以下变量覆盖颜色：
 

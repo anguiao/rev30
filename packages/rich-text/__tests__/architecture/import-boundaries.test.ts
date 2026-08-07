@@ -174,6 +174,7 @@ describe('rich text import boundaries', () => {
         export * from '@rev30/rich-text/server'
         export * from '@rev30/rich-text/server/presets/all'
         export * from '@rev30/rich-text/server/presets/compact'
+        export * from '@rev30/rich-text/server/presets/standard'
       `,
     })
     const isForbidden = (id: string) =>
@@ -189,13 +190,29 @@ describe('rich text import boundaries', () => {
         (id) =>
           id.endsWith('/packages/rich-text/src/server/index.ts') ||
           id.endsWith('/packages/rich-text/src/server/presets/all.ts') ||
-          id.endsWith('/packages/rich-text/src/server/presets/compact.ts'),
+          id.endsWith('/packages/rich-text/src/server/presets/compact.ts') ||
+          id.endsWith('/packages/rich-text/src/server/presets/standard.ts'),
       ),
       'resolved server package exports',
-    ).toHaveLength(3)
+    ).toHaveLength(4)
     expect(findModules(graph.loaded, isForbidden), 'loaded server module graph').toEqual([])
     expect(findModules(graph.bundled, isForbidden), 'bundled server module graph').toEqual([])
     expect(graph.css, 'bundled server styles').toBe('')
+  }, 30_000)
+
+  it('keeps Vue, editor, server modules, and CSS out of the core standard entry', async () => {
+    const graph = await collectBuildGraph({
+      virtualSource: `export * from '@rev30/rich-text/presets/standard'`,
+    })
+
+    expect(
+      findModules(graph.loaded, (id) => id.endsWith('/packages/rich-text/src/presets/standard.ts')),
+      'resolved core standard package export',
+    ).toHaveLength(1)
+    expect(findModules(graph.loaded, isVueModule), 'loaded core Vue module graph').toEqual([])
+    expect(findModules(graph.loaded, isEditorModule), 'loaded core editor module graph').toEqual([])
+    expect(findModules(graph.loaded, isServerModule), 'loaded core server module graph').toEqual([])
+    expect(graph.css, 'bundled core standard styles').toBe('')
   }, 30_000)
 
   it('exposes independently loadable content CSS preset entries', async () => {
@@ -205,11 +222,20 @@ describe('rich text import boundaries', () => {
     const compact = await collectBuildGraph({
       virtualSource: `import '@rev30/rich-text/content/presets/compact.css'`,
     })
+    const standard = await collectBuildGraph({
+      virtualSource: `import '@rev30/rich-text/content/presets/standard.css'`,
+    })
 
     expect(all.css, 'bundled all content styles').toContain('.rich-text-content')
     expect(all.css, 'bundled all table styles').toContain('.tableWrapper')
     expect(compact.css, 'bundled compact content styles').toContain('.rich-text-content')
     expect(compact.css, 'bundled compact heading styles').toContain('h1')
+    expect(standard.css, 'bundled standard content styles').toContain('.rich-text-content')
+    expect(standard.css, 'bundled standard heading styles').toContain('h1')
+    expect(standard.css, 'bundled standard image styles').toContain(':where(img)')
+    expect(standard.css, 'bundled standard table styles').not.toContain('.tableWrapper')
+    expect(standard.css, 'bundled standard code block styles').not.toContain(':where(pre)')
+    expect(standard.css, 'bundled standard inline code styles').not.toContain(':where(code)')
   }, 30_000)
 
   it('loads content CSS from Vue preset entries', async () => {
@@ -221,10 +247,21 @@ describe('rich text import boundaries', () => {
       virtualSource: `export * from '@rev30/rich-text/vue/presets/compact'`,
       vue: true,
     })
+    const standard = await collectBuildGraph({
+      virtualSource: `export * from '@rev30/rich-text/vue/presets/standard'`,
+      vue: true,
+    })
 
     expect(all.css, 'bundled all Vue preset content styles').toContain('.rich-text-content')
     expect(all.css, 'bundled all Vue preset table styles').toContain('.tableWrapper')
     expect(compact.css, 'bundled compact Vue preset content styles').toContain('.rich-text-content')
+    expect(standard.css, 'bundled standard Vue preset content styles').toContain(
+      '.rich-text-content',
+    )
+    expect(standard.css, 'bundled standard Vue preset table styles').not.toContain('.tableWrapper')
+    expect(standard.css, 'bundled standard Vue preset code block styles').not.toContain(
+      ':where(pre)',
+    )
   }, 30_000)
 
   it('keeps server-only modules out of editor entries', async () => {
@@ -233,6 +270,7 @@ describe('rich text import boundaries', () => {
         export * from '@rev30/rich-text/vue'
         export * from '@rev30/rich-text/vue/presets/all'
         export * from '@rev30/rich-text/vue/presets/compact'
+        export * from '@rev30/rich-text/vue/presets/standard'
       `,
       vue: true,
     })
@@ -243,10 +281,11 @@ describe('rich text import boundaries', () => {
         (id) =>
           id.endsWith('/packages/rich-text/src/vue/index.ts') ||
           id.endsWith('/packages/rich-text/src/vue/presets/all.ts') ||
-          id.endsWith('/packages/rich-text/src/vue/presets/compact.ts'),
+          id.endsWith('/packages/rich-text/src/vue/presets/compact.ts') ||
+          id.endsWith('/packages/rich-text/src/vue/presets/standard.ts'),
       ),
       'resolved Vue package exports',
-    ).toHaveLength(3)
+    ).toHaveLength(4)
     expect(findModules(graph.loaded, isServerModule), 'loaded editor module graph').toEqual([])
     expect(findModules(graph.bundled, isServerModule), 'bundled editor module graph').toEqual([])
     expect(findModules(graph.loaded, isUnusedTextStyleModule), 'loaded text style modules').toEqual(
@@ -329,6 +368,79 @@ describe('rich text import boundaries', () => {
     expect(graph.css, 'bundled compact current search match styles').not.toContain(
       'rich-text-search-match-current',
     )
+  }, 30_000)
+
+  it('does not load unselected features through public standard preset entries', async () => {
+    const graph = await collectBuildGraph({
+      virtualSource: `
+        import { RichTextEditor } from '@rev30/rich-text/vue'
+        export { standardRichTextPreset } from '@rev30/rich-text/presets/standard'
+        export { createStandardRichTextServerPreset } from '@rev30/rich-text/server/presets/standard'
+        export { createStandardRichTextEditorPreset } from '@rev30/rich-text/vue/presets/standard'
+
+        globalThis.__richTextEditorBoundaryTest = RichTextEditor
+      `,
+      vue: true,
+    })
+    const standardFeatureKeys = [
+      'base',
+      'blockquote',
+      'bold',
+      'character-count',
+      'heading',
+      'highlight',
+      'history',
+      'horizontal-rule',
+      'image',
+      'italic',
+      'link',
+      'list',
+      'remove-format',
+      'search-replace',
+      'strike',
+      'text-align',
+      'underline',
+    ]
+
+    expect(
+      findModules(
+        graph.loaded,
+        (id) =>
+          id.endsWith('/packages/rich-text/src/presets/standard.ts') ||
+          id.endsWith('/packages/rich-text/src/server/presets/standard.ts') ||
+          id.endsWith('/packages/rich-text/src/vue/presets/standard.ts'),
+      ),
+      'resolved standard preset package exports',
+    ).toHaveLength(3)
+    expect(
+      findModules(graph.loaded, (id) =>
+        id.endsWith('/packages/rich-text/src/vue/RichTextEditor.vue'),
+      ),
+      'resolved shared rich text editor',
+    ).toHaveLength(1)
+    expect(graph.css.length, 'bundled standard editor styles').toBeGreaterThan(0)
+    expect(collectFeatureKeys(graph.loaded), 'loaded standard preset features').toEqual(
+      standardFeatureKeys,
+    )
+    expect(collectFeatureKeys(graph.bundled), 'bundled standard preset features').toEqual(
+      standardFeatureKeys,
+    )
+    expect(
+      findModules(graph.loaded, isTextStyleModule),
+      'loaded standard text style modules',
+    ).toEqual([])
+    expect(
+      findModules(graph.bundled, isTextStyleModule),
+      'bundled standard text style modules',
+    ).toEqual([])
+    expect(
+      findModules(graph.loaded, isCodeBlockHighlighterModule),
+      'loaded standard code block highlighter modules',
+    ).toEqual([])
+    expect(
+      findModules(graph.bundled, isCodeBlockHighlighterModule),
+      'bundled standard code block highlighter modules',
+    ).toEqual([])
   }, 30_000)
 
   it('does not load unselected features for a minimal preset', async () => {

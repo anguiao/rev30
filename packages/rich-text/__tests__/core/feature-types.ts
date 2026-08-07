@@ -15,13 +15,24 @@ import {
   type AllRichTextServerPresetOptions,
 } from '../../src/server/presets/all'
 import { compactRichTextServerPreset } from '../../src/server/presets/compact'
-import { defineRichTextServerPreset } from '../../src/server/presets/types'
+import {
+  createStandardRichTextServerPreset,
+  type StandardRichTextServerPresetOptions,
+} from '../../src/server/presets/standard'
+import {
+  defineRichTextServerPreset,
+  type RichTextServerPreset,
+} from '../../src/server/presets/types'
 import {
   createAllRichTextEditorPreset,
   type AllRichTextEditorPresetOptions,
 } from '../../src/vue/presets/all'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
-import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
+import {
+  createStandardRichTextEditorPreset,
+  type StandardRichTextEditorPresetOptions,
+} from '../../src/vue/presets/standard'
+import { defineRichTextEditorPreset, type RichTextEditorPreset } from '../../src/vue/presets/types'
 import { richTextSlashCommand } from '../../src/vue/slash-menu'
 
 const baseFeature = defineRichTextFeature({
@@ -99,7 +110,25 @@ expectTypeOf(createAllRichTextEditorPreset)
 expectTypeOf(createAllRichTextServerPreset)
   .parameter(0)
   .toEqualTypeOf<AllRichTextServerPresetOptions>()
+expectTypeOf(createStandardRichTextEditorPreset)
+  .parameter(0)
+  .toEqualTypeOf<StandardRichTextEditorPresetOptions>()
+expectTypeOf(createStandardRichTextServerPreset)
+  .parameter(0)
+  .toEqualTypeOf<StandardRichTextServerPresetOptions>()
 expectTypeOf<ReturnType<typeof createAllRichTextEditorPreset>['key']>().toEqualTypeOf<'all'>()
 expectTypeOf<ReturnType<typeof createAllRichTextServerPreset>['key']>().toEqualTypeOf<'all'>()
+expectTypeOf<
+  ReturnType<typeof createStandardRichTextEditorPreset>
+>().toEqualTypeOf<RichTextEditorPreset>()
+expectTypeOf<
+  ReturnType<typeof createStandardRichTextServerPreset>
+>().toEqualTypeOf<RichTextServerPreset>()
 expectTypeOf(compactRichTextEditorPreset.key).toEqualTypeOf<'compact'>()
 expectTypeOf(compactRichTextServerPreset.key).toEqualTypeOf<'compact'>()
+
+// @ts-expect-error Standard editor presets require an image upload strategy.
+createStandardRichTextEditorPreset({})
+
+// @ts-expect-error Standard server presets require an image source strategy.
+createStandardRichTextServerPreset({})

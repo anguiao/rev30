@@ -3,11 +3,15 @@ import { describe, expect, it, vi } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
 import { allRichTextPreset } from '../../src/presets/all'
 import { compactRichTextPreset } from '../../src/presets/compact'
+import { standardRichTextPreset } from '../../src/presets/standard'
+import { RichTextContentInvalidError, deriveRichTextContent } from '../../src/server'
 import { createAllRichTextServerPreset } from '../../src/server/presets/all'
 import { compactRichTextServerPreset } from '../../src/server/presets/compact'
+import { createStandardRichTextServerPreset } from '../../src/server/presets/standard'
 import { collectRichTextServerExtensions } from '../../src/server/feature'
 import { createAllRichTextEditorPreset } from '../../src/vue/presets/all'
 import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
+import { createStandardRichTextEditorPreset } from '../../src/vue/presets/standard'
 
 const imageUpload = async (file: File) => ({
   src: `/api/attachments/${file.name}/content`,
@@ -43,6 +47,26 @@ const allFeatureKeys = [
 ]
 
 const compactFeatureKeys = ['base', 'history', 'bold', 'italic', 'link', 'heading', 'list']
+
+const standardFeatureKeys = [
+  'base',
+  'history',
+  'character-count',
+  'search-replace',
+  'bold',
+  'italic',
+  'underline',
+  'strike',
+  'highlight',
+  'link',
+  'remove-format',
+  'heading',
+  'text-align',
+  'blockquote',
+  'list',
+  'horizontal-rule',
+  'image',
+]
 
 const allEditorExtensionNames = [
   'doc',
@@ -100,6 +124,33 @@ const compactEditorExtensionNames = [
   'listItem',
 ]
 
+const standardEditorExtensionNames = [
+  'doc',
+  'paragraph',
+  'text',
+  'hardBreak',
+  'dropCursor',
+  'gapCursor',
+  'selection',
+  'undoRedo',
+  'characterCount',
+  'searchReplace',
+  'bold',
+  'italic',
+  'underline',
+  'strike',
+  'highlight',
+  'link',
+  'heading',
+  'textAlign',
+  'blockquote',
+  'bulletList',
+  'orderedList',
+  'listItem',
+  'horizontalRule',
+  'image',
+]
+
 const allEditorPreset = createAllRichTextEditorPreset({
   image: {
     upload: imageUpload,
@@ -107,6 +158,16 @@ const allEditorPreset = createAllRichTextEditorPreset({
 })
 
 const allServerPreset = createAllRichTextServerPreset({
+  image: imageServerOptions,
+})
+
+const standardEditorPreset = createStandardRichTextEditorPreset({
+  image: {
+    upload: imageUpload,
+  },
+})
+
+const standardServerPreset = createStandardRichTextServerPreset({
   image: imageServerOptions,
 })
 
@@ -144,6 +205,14 @@ describe('all rich text preset', () => {
   it('contains every compact feature by canonical identity', () => {
     expect(
       compactRichTextPreset.features.every((feature) =>
+        allRichTextPreset.features.includes(feature),
+      ),
+    ).toBe(true)
+  })
+
+  it('contains every standard feature by canonical identity', () => {
+    expect(
+      standardRichTextPreset.features.every((feature) =>
         allRichTextPreset.features.includes(feature),
       ),
     ).toBe(true)
@@ -436,5 +505,227 @@ describe('compact rich text preset', () => {
 
   it('does not register duplicate Tiptap extensions', () => {
     expectNoDuplicateTiptapExtensions(compactRichTextEditorPreset)
+  })
+})
+
+describe('standard rich text preset', () => {
+  it('keeps the selected standard feature set in its canonical order', () => {
+    expect(standardRichTextPreset.features.map((feature) => feature.key)).toEqual(
+      standardFeatureKeys,
+    )
+  })
+
+  it('keeps editor implementations and extension order with the editor preset', () => {
+    expect(standardEditorPreset.key).toBe(standardRichTextPreset.key)
+    expect(standardEditorPreset.features).toBe(standardRichTextPreset.features)
+    expect(standardEditorPreset.editorFeatures.map(({ feature }) => feature.key)).toEqual(
+      standardFeatureKeys,
+    )
+    expectKnownExtensionOrder(
+      collectRichTextEditorExtensions(standardEditorPreset).map((extension) => extension.name),
+      standardEditorExtensionNames,
+    )
+  })
+
+  it('keeps the standard visible toolbar layout with the editor preset', () => {
+    expect(standardEditorPreset.toolbar?.groups.map((group) => group.key)).toEqual([
+      'history',
+      'marks',
+      'blocks',
+      'insert',
+    ])
+
+    const history = standardEditorPreset.toolbar?.groups.find((group) => group.key === 'history')
+    const marks = standardEditorPreset.toolbar?.groups.find((group) => group.key === 'marks')
+    const blocks = standardEditorPreset.toolbar?.groups.find((group) => group.key === 'blocks')
+    const insert = standardEditorPreset.toolbar?.groups.find((group) => group.key === 'insert')
+    const heading = blocks?.controls.find(
+      (control) => control.type === 'dropdown' && control.key === 'heading',
+    )
+    const textAlign = blocks?.controls.find(
+      (control) => control.type === 'dropdown' && control.key === 'text-align',
+    )
+    const list = blocks?.controls.find(
+      (control) => control.type === 'dropdown' && control.key === 'list',
+    )
+
+    expect(history?.controls.map((control) => control.key) ?? []).toEqual([
+      'undo',
+      'redo',
+      'search-replace',
+    ])
+    expect(marks?.controls.map((control) => control.key) ?? []).toEqual([
+      'bold',
+      'italic',
+      'underline',
+      'strike',
+      'highlight',
+      'link',
+      'remove-format',
+    ])
+    expect(
+      heading?.type === 'dropdown' ? heading.items.map((item) => item.action.key) : [],
+    ).toEqual(['heading-1', 'heading-2', 'heading-3'])
+    expect(
+      textAlign?.type === 'dropdown' ? textAlign.items.map((item) => item.action.key) : [],
+    ).toEqual(['text-align-left', 'text-align-center', 'text-align-right', 'text-align-justify'])
+    expect(list?.type === 'dropdown' ? list.items.map((item) => item.action.key) : []).toEqual([
+      'bullet-list',
+      'ordered-list',
+    ])
+    expect(blocks?.controls.map((control) => control.key) ?? []).toEqual([
+      'heading',
+      'text-align',
+      'list',
+      'blockquote',
+    ])
+    expect(insert?.controls.map((control) => control.key) ?? []).toEqual([
+      'horizontal-rule',
+      'image',
+    ])
+  })
+
+  it('keeps the standard quick bar, slash menu, and status bar layout', () => {
+    expect(standardEditorPreset.quickBar?.textControls?.map((control) => control.key)).toEqual([
+      'bold',
+      'italic',
+      'underline',
+      'highlight',
+      'link',
+    ])
+    expect(
+      standardEditorPreset.quickBar?.featureBars.map((quickBar) => quickBar.feature.key),
+    ).toEqual(['image', 'link'])
+    expect(standardEditorPreset.slashMenu?.map(({ key }) => key)).toEqual([
+      'basic',
+      'list',
+      'insert',
+    ])
+    expect(
+      standardEditorPreset.slashMenu?.map((group) => group.commands.map(({ key }) => key)),
+    ).toEqual([
+      ['paragraph', 'heading-3', 'blockquote'],
+      ['bullet-list', 'ordered-list'],
+      ['horizontal-rule', 'image'],
+    ])
+    expect(standardEditorPreset.statusBar?.start.map((item) => item.key)).toEqual([])
+    expect(standardEditorPreset.statusBar?.end.map((item) => item.key)).toEqual(['character-count'])
+  })
+
+  it('keeps server implementations, shared extensions, and html policy order', () => {
+    expect(standardServerPreset.key).toBe(standardRichTextPreset.key)
+    expect(standardServerPreset.features).toBe(standardRichTextPreset.features)
+    expect(standardServerPreset.serverFeatures.map(({ feature }) => feature.key)).toEqual([
+      'base',
+      'bold',
+      'italic',
+      'underline',
+      'strike',
+      'highlight',
+      'link',
+      'heading',
+      'text-align',
+      'blockquote',
+      'list',
+      'horizontal-rule',
+      'image',
+    ])
+    expect(
+      collectRichTextServerExtensions(standardServerPreset).map((extension) => extension.name),
+    ).toEqual([
+      'doc',
+      'paragraph',
+      'text',
+      'hardBreak',
+      'bold',
+      'italic',
+      'underline',
+      'strike',
+      'highlight',
+      'link',
+      'heading',
+      'textAlign',
+      'blockquote',
+      'bulletList',
+      'orderedList',
+      'listItem',
+      'horizontalRule',
+      'image',
+    ])
+    expect(
+      standardServerPreset.serverFeatures.flatMap(({ htmlPolicy }) => htmlPolicy.allowedTags ?? []),
+    ).toEqual([
+      'p',
+      'br',
+      'strong',
+      'em',
+      'u',
+      's',
+      'mark',
+      'a',
+      'h1',
+      'h2',
+      'h3',
+      'blockquote',
+      'ul',
+      'ol',
+      'li',
+      'hr',
+      'img',
+    ])
+  })
+
+  it('derives standard content and applies the injected image source strategy', () => {
+    const imageSrc = '/api/attachments/11111111-1111-4111-8111-111111111111/content'
+    const content = deriveRichTextContent(
+      {
+        type: 'doc',
+        content: [
+          {
+            type: 'heading',
+            attrs: { level: 3 },
+            content: [{ type: 'text', text: '维护通知' }],
+          },
+          {
+            type: 'paragraph',
+            content: [
+              {
+                type: 'text',
+                text: '需要关注',
+                marks: [{ type: 'underline' }, { type: 'strike' }, { type: 'highlight' }],
+              },
+            ],
+          },
+          { type: 'image', attrs: { src: imageSrc, alt: '通知图片' } },
+        ],
+      },
+      createStandardRichTextServerPreset({
+        image: { isAllowedSrc: (src) => src === imageSrc },
+      }),
+    )
+
+    expect(content.html).toContain('<h3>维护通知</h3>')
+    expect(content.html).toContain('<mark><s><u>需要关注</u></s></mark>')
+    expect(content.html).toContain(`src="${imageSrc}"`)
+    expect(content.html).toContain('alt="通知图片"')
+
+    expect(() =>
+      deriveRichTextContent(
+        {
+          type: 'doc',
+          content: [
+            {
+              type: 'image',
+              attrs: { src: 'https://example.com/image.png', alt: '外部图片' },
+            },
+          ],
+        },
+        standardServerPreset,
+      ),
+    ).toThrow(RichTextContentInvalidError)
+  })
+
+  it('does not register duplicate Tiptap extensions', () => {
+    expectNoDuplicateTiptapExtensions(standardEditorPreset)
   })
 })

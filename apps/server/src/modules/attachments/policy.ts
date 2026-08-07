@@ -113,7 +113,7 @@ function isInlineAttachmentMime(mimeType: string) {
   return isRasterImage(mimeType) || mimeType === 'application/pdf'
 }
 
-function isRasterImage(mimeType: string) {
+export function isRasterImage(mimeType: string) {
   return mimeType.startsWith('image/') && mimeType !== 'image/svg+xml'
 }
 

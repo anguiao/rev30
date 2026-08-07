@@ -17,6 +17,8 @@ import {
   DEPARTMENT_STATUS_ENABLED,
   ROLE_STATUS_ENABLED,
   USER_STATUS_ENABLED,
+  ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+  ATTACHMENT_READ_POLICY_AUTHENTICATED,
 } from '@rev30/contracts'
 import {
   and,
@@ -32,8 +34,9 @@ import {
   sql,
 } from 'drizzle-orm'
 import { unionAll } from 'drizzle-orm/pg-core'
-import type { Db, DbReader } from '../../../db'
+import type { Db, DbExecutor, DbReader } from '../../../db'
 import {
+  attachments,
   announcementReads,
   announcements,
   announcementTargets,
@@ -43,8 +46,20 @@ import {
   systemUserRoles,
   systemUsers,
 } from '../../../db/schema'
+import { AttachmentReferenceTargetInvalidError } from '../../attachments/errors'
+import {
+  deleteAttachmentReferences,
+  refreshAttachmentReferences,
+} from '../../attachments/references'
+import { isRasterImage } from '../../attachments/policy'
 import { deriveAnnouncementContent } from './content'
-import { AnnouncementInvalidTargetError, AnnouncementVisibilityTargetRequiredError } from './errors'
+import {
+  AnnouncementContentImageInvalidError,
+  AnnouncementInvalidTargetError,
+  AnnouncementVisibilityTargetRequiredError,
+} from './errors'
+
+const announcementContentImageUsage = 'announcement-content-image'
 
 function announcementSortOrder() {
   return [
@@ -60,6 +75,63 @@ function announcementSortOrder() {
     desc(announcements.createdAt),
     desc(announcements.id),
   ] as const
+}
+
+function announcementContentImageReferenceSource(announcementId: string) {
+  return {
+    sourceType: 'announcement',
+    sourceId: announcementId,
+    sourceField: 'contentJson',
+  }
+}
+
+function isValidAnnouncementContentImageAttachment(attachment: typeof attachments.$inferSelect) {
+  return (
+    attachment.usage === announcementContentImageUsage &&
+    attachment.readPolicy === ATTACHMENT_READ_POLICY_AUTHENTICATED &&
+    attachment.cleanupPolicy === ATTACHMENT_CLEANUP_POLICY_UNREFERENCED &&
+    isRasterImage(attachment.mimeType)
+  )
+}
+
+function assertValidAnnouncementContentImageAttachments(
+  lockedAttachments: readonly (typeof attachments.$inferSelect)[],
+  targetAttachmentIds: readonly string[],
+) {
+  const targetAttachmentIdSet = new Set(targetAttachmentIds)
+
+  if (
+    lockedAttachments.some(
+      (attachment) =>
+        targetAttachmentIdSet.has(attachment.id) &&
+        !isValidAnnouncementContentImageAttachment(attachment),
+    )
+  ) {
+    throw new AnnouncementContentImageInvalidError()
+  }
+}
+
+async function refreshAnnouncementContentImageReferences(
+  executor: DbExecutor,
+  announcementId: string,
+  attachmentIds: string[],
+) {
+  try {
+    await refreshAttachmentReferences(
+      executor,
+      announcementContentImageReferenceSource(announcementId),
+      attachmentIds,
+      {
+        validateTargets: assertValidAnnouncementContentImageAttachments,
+      },
+    )
+  } catch (error) {
+    if (error instanceof AttachmentReferenceTargetInvalidError) {
+      throw new AnnouncementContentImageInvalidError()
+    }
+
+    throw error
+  }
 }
 
 function buildAnnouncementTargetValues(announcementId: string, targets: AnnouncementTarget[]) {
@@ -410,6 +482,8 @@ export function createAnnouncementRepository(database: Db) {
             .values(buildAnnouncementTargetValues(created.id, normalizedTargets))
         }
 
+        await refreshAnnouncementContentImageReferences(tx, created.id, content.attachmentIds)
+
         return {
           announcement: created,
           targets: normalizedTargets,
@@ -478,6 +552,10 @@ export function createAnnouncementRepository(database: Db) {
           }
         }
 
+        if (content !== undefined) {
+          await refreshAnnouncementContentImageReferences(tx, id, content.attachmentIds)
+        }
+
         return {
           announcement: updated,
           targets: finalTargets,
@@ -535,16 +613,25 @@ export function createAnnouncementRepository(database: Db) {
 
     async softDelete(id: string) {
       const now = new Date()
-      const [deleted] = await database
-        .update(announcements)
-        .set({
-          deletedAt: now,
-          updatedAt: now,
-        })
-        .where(and(eq(announcements.id, id), isNull(announcements.deletedAt)))
-        .returning()
 
-      return deleted
+      return await database.transaction(async (tx) => {
+        const [deleted] = await tx
+          .update(announcements)
+          .set({
+            deletedAt: now,
+            updatedAt: now,
+          })
+          .where(and(eq(announcements.id, id), isNull(announcements.deletedAt)))
+          .returning()
+
+        if (!deleted) {
+          return undefined
+        }
+
+        await deleteAttachmentReferences(tx, announcementContentImageReferenceSource(id))
+
+        return deleted
+      })
     },
   }
 }

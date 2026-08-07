@@ -13,6 +13,12 @@ export class AnnouncementContentInvalidError extends FormFieldError<'contentJson
   }
 }
 
+export class AnnouncementContentImageInvalidError extends FormFieldError<'contentJson'> {
+  constructor() {
+    super('正文包含无效图片，请移除或重新上传', 'contentJson')
+  }
+}
+
 export class AnnouncementVisibilityTargetRequiredError extends FormFieldError<'targets'> {
   constructor() {
     super('请选择可见对象', 'targets')

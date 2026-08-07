@@ -746,6 +746,43 @@ describe('attachment references', () => {
     expect(await listSourceReferences(database, source)).toEqual([])
   })
 
+  it('validates next targets after locking the existing and next union', async () => {
+    const database = await createTestDb()
+    const source = testSource()
+    const attachmentIds = [randomUUID(), randomUUID()].sort()
+    const existingAttachmentId = attachmentIds[0]!
+    const nextAttachmentId = attachmentIds[1]!
+    const forUpdateCalls: unknown[][] = []
+    const validationError = new Error('Invalid announcement image attachment')
+
+    await createAttachmentRows(database, [existingAttachmentId, nextAttachmentId])
+    await refreshAttachmentReferences(database, source, [existingAttachmentId])
+
+    await expect(
+      refreshAttachmentReferences(
+        createDatabaseWithForUpdateTracking(database, forUpdateCalls),
+        source,
+        [nextAttachmentId],
+        {
+          validateTargets(lockedAttachments, targetAttachmentIds) {
+            expect(lockedAttachments.map((attachment) => attachment.id)).toEqual([
+              existingAttachmentId,
+              nextAttachmentId,
+            ])
+            expect(targetAttachmentIds).toEqual([nextAttachmentId])
+
+            throw validationError
+          },
+        },
+      ),
+    ).rejects.toBe(validationError)
+
+    expect(await listSourceReferences(database, source)).toMatchObject([
+      { attachmentId: existingAttachmentId },
+    ])
+    expect(forUpdateCalls).toEqual([['update'], ['update']])
+  })
+
   it('rejects references to soft-deleted attachments', async () => {
     const database = await createTestDb()
     const source = testSource()

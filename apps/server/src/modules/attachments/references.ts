@@ -9,6 +9,13 @@ export type AttachmentReferenceSource = {
   sourceField: string
 }
 
+export interface RefreshAttachmentReferencesOptions {
+  validateTargets?: (
+    lockedAttachments: readonly (typeof attachments.$inferSelect)[],
+    targetAttachmentIds: readonly string[],
+  ) => void | Promise<void>
+}
+
 function sourceReferenceCondition(source: AttachmentReferenceSource) {
   return and(
     eq(attachmentReferences.sourceType, source.sourceType),
@@ -40,6 +47,7 @@ export async function refreshAttachmentReferences(
   executor: DbExecutor,
   source: AttachmentReferenceSource,
   attachmentIds: string[],
+  options: RefreshAttachmentReferencesOptions = {},
 ) {
   const uniqueAttachmentIds = [...new Set(attachmentIds)]
   const nextAttachmentIds = new Set(uniqueAttachmentIds)
@@ -60,6 +68,8 @@ export async function refreshAttachmentReferences(
   if (uniqueAttachmentIds.some((attachmentId) => !lockedAttachmentIds.has(attachmentId))) {
     throw new AttachmentReferenceTargetInvalidError()
   }
+
+  await options.validateTargets?.(lockedAttachments, uniqueAttachmentIds)
 
   await executor.delete(attachmentReferences).where(sourceReferenceCondition(source))
 

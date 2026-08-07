@@ -14,6 +14,7 @@ import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import {
+  AnnouncementContentImageInvalidError,
   AnnouncementContentInvalidError,
   AnnouncementDraftArchiveError,
   AnnouncementInvalidTargetError,
@@ -77,6 +78,7 @@ const announcementUpdateBodyValidator = zValidator(
 function announcementErrorResponse(error: unknown, c: Context) {
   if (
     error instanceof AnnouncementContentInvalidError ||
+    error instanceof AnnouncementContentImageInvalidError ||
     error instanceof AnnouncementVisibilityTargetRequiredError ||
     error instanceof AnnouncementInvalidTargetError
   ) {

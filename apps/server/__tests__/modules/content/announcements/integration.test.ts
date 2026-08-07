@@ -17,6 +17,10 @@ import {
   ANNOUNCEMENT_TYPE_BULLETIN,
   ANNOUNCEMENT_TYPE_NOTICE,
   ANNOUNCEMENT_VISIBILITY_TARGETED,
+  ATTACHMENT_CLEANUP_POLICY_MANUAL,
+  ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+  ATTACHMENT_READ_POLICY_AUTHENTICATED,
+  ATTACHMENT_READ_POLICY_SIGNED,
   DEPARTMENT_STATUS_DISABLED,
   ROLE_STATUS_DISABLED,
   USER_STATUS_DISABLED,
@@ -25,6 +29,8 @@ import { and, eq, isNull } from 'drizzle-orm'
 import type { Hono } from 'hono'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  attachmentReferences,
+  attachments,
   announcementReads,
   announcements,
   announcementTargets,
@@ -60,6 +66,11 @@ const createBody = {
 } as const
 
 const createBodyContentHtml = '<p>今晚维护</p>'
+const announcementContentImageUsage = 'announcement-content-image'
+const announcementContentImageError = {
+  field: 'contentJson',
+  message: '正文包含无效图片，请移除或重新上传',
+}
 
 async function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
   const fixture = await createSystemAccessFixture(database, {
@@ -95,6 +106,84 @@ async function createAnnouncement(
   })
 
   return { body: (await response.json()) as Announcement, response }
+}
+
+function contentWithImages(attachmentIds: string[]): TiptapDocument {
+  return {
+    type: 'doc',
+    content: [
+      {
+        type: 'paragraph',
+        content: [{ type: 'text', text: '带图片的公告正文' }],
+      },
+      ...attachmentIds.map((attachmentId) => ({
+        type: 'image',
+        attrs: { src: `/api/attachments/${attachmentId}/content` },
+      })),
+    ],
+  } as TiptapDocument
+}
+
+async function createAnnouncementContentImageAttachment(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  input: {
+    cleanupPolicy?: string
+    createdBy: string
+    deletedAt?: Date
+    id?: string
+    mimeType?: string
+    readPolicy?: string
+    usage?: string
+  },
+) {
+  const id = input.id ?? randomUUID()
+
+  await database.insert(attachments).values({
+    id,
+    storageProvider: 'local',
+    storageKey: `announcements/${id}.png`,
+    originalName: `${id}.png`,
+    mimeType: input.mimeType ?? 'image/png',
+    extension: 'png',
+    size: 1,
+    usage: input.usage ?? announcementContentImageUsage,
+    readPolicy: input.readPolicy ?? ATTACHMENT_READ_POLICY_AUTHENTICATED,
+    cleanupPolicy: input.cleanupPolicy ?? ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+    createdBy: input.createdBy,
+    ...(input.deletedAt === undefined ? {} : { deletedAt: input.deletedAt }),
+  })
+
+  return id
+}
+
+async function createAttachmentOwner(database: Awaited<ReturnType<typeof createTestDb>>) {
+  const id = randomUUID()
+
+  await database.insert(systemUsers).values({
+    id,
+    username: `announcement-image-owner-${id.slice(0, 8)}`,
+    nickname: 'Announcement Image Owner',
+  })
+
+  return id
+}
+
+async function listAnnouncementContentImageReferences(
+  database: Awaited<ReturnType<typeof createTestDb>>,
+  announcementId: string,
+) {
+  const rows = await database
+    .select({ attachmentId: attachmentReferences.attachmentId })
+    .from(attachmentReferences)
+    .where(
+      and(
+        eq(attachmentReferences.sourceType, 'announcement'),
+        eq(attachmentReferences.sourceId, announcementId),
+        eq(attachmentReferences.sourceField, 'contentJson'),
+      ),
+    )
+
+  return rows.map((row) => row.attachmentId).sort()
 }
 
 async function createAnnouncementTargetsFixture(
@@ -187,6 +276,7 @@ describe('announcement routes', () => {
       content: [
         {
           type: 'paragraph',
+          attrs: { textAlign: null },
           content: [{ type: 'text', text: '今晚维护' }],
         },
       ],
@@ -419,6 +509,260 @@ describe('announcement routes', () => {
     expect(body.contentHtml).toContain('维护时间改到 23:00')
   })
 
+  it('synchronizes image references on create, content update, and soft delete', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const ownerId = await createAttachmentOwner(database)
+    const firstAttachmentId = await createAnnouncementContentImageAttachment(database, {
+      createdBy: ownerId,
+    })
+    const secondAttachmentId = await createAnnouncementContentImageAttachment(database, {
+      createdBy: ownerId,
+    })
+    const replacementAttachmentId = await createAnnouncementContentImageAttachment(database, {
+      createdBy: ownerId,
+    })
+
+    const { body: created, response: createResponse } = await createAnnouncement(app, {
+      ...createBody,
+      title: '含图片的已发布公告',
+      contentJson: contentWithImages([firstAttachmentId, secondAttachmentId, firstAttachmentId]),
+      publish: true,
+    })
+
+    expect(createResponse.status).toBe(201)
+    expect(created.status).toBe(ANNOUNCEMENT_STATUS_PUBLISHED)
+    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual(
+      [firstAttachmentId, secondAttachmentId].sort(),
+    )
+
+    const updateResponse = await app.request(`/api/content/announcements/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        contentJson: contentWithImages([replacementAttachmentId]),
+        publish: true,
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const updated = (await updateResponse.json()) as Announcement
+
+    expect(updateResponse.status).toBe(200)
+    expect(updated.status).toBe(ANNOUNCEMENT_STATUS_PUBLISHED)
+    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
+      replacementAttachmentId,
+    ])
+
+    const deleteResponse = await app.request(`/api/content/announcements/${created.id}`, {
+      method: 'DELETE',
+    })
+
+    expect(deleteResponse.status).toBe(204)
+    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([])
+  })
+
+  it('returns a content field error and rolls back invalid image reference writes', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const ownerId = await createAttachmentOwner(database)
+    const invalidUsageAttachmentId = await createAnnouncementContentImageAttachment(database, {
+      createdBy: ownerId,
+      usage: 'avatar',
+    })
+    const signedAttachmentId = await createAnnouncementContentImageAttachment(database, {
+      createdBy: ownerId,
+      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+    })
+    const manualCleanupAttachmentId = await createAnnouncementContentImageAttachment(database, {
+      createdBy: ownerId,
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
+    })
+    const svgAttachmentId = await createAnnouncementContentImageAttachment(database, {
+      createdBy: ownerId,
+      mimeType: 'image/svg+xml',
+    })
+    const pdfAttachmentId = await createAnnouncementContentImageAttachment(database, {
+      createdBy: ownerId,
+      mimeType: 'application/pdf',
+    })
+    const softDeletedAttachmentId = await createAnnouncementContentImageAttachment(database, {
+      createdBy: ownerId,
+      deletedAt: new Date(),
+    })
+    const invalidAttachmentIds = [
+      invalidUsageAttachmentId,
+      signedAttachmentId,
+      manualCleanupAttachmentId,
+      svgAttachmentId,
+      pdfAttachmentId,
+      softDeletedAttachmentId,
+      randomUUID(),
+    ]
+
+    for (const [index, attachmentId] of invalidAttachmentIds.entries()) {
+      const title = `无效公告图片 ${index}`
+      const response = await app.request('/api/content/announcements', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...createBody,
+          title,
+          contentJson: contentWithImages([attachmentId]),
+        }),
+        headers: { 'content-type': 'application/json' },
+      })
+
+      expect(response.status).toBe(400)
+      expect((await response.json()) as ErrorResponse).toEqual(announcementContentImageError)
+      await expect(
+        database
+          .select({ id: announcements.id })
+          .from(announcements)
+          .where(eq(announcements.title, title)),
+      ).resolves.toEqual([])
+    }
+
+    const validAttachmentId = await createAnnouncementContentImageAttachment(database, {
+      createdBy: ownerId,
+    })
+    const { body: created, response: createResponse } = await createAnnouncement(app, {
+      ...createBody,
+      title: '待回滚图片公告',
+      contentJson: contentWithImages([validAttachmentId]),
+    })
+
+    expect(createResponse.status).toBe(201)
+
+    const updateResponse = await app.request(`/api/content/announcements/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        title: '不应持久化的标题',
+        contentJson: contentWithImages([randomUUID()]),
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(updateResponse.status).toBe(400)
+    expect((await updateResponse.json()) as ErrorResponse).toEqual(announcementContentImageError)
+    await expect(
+      database.select().from(announcements).where(eq(announcements.id, created.id)),
+    ).resolves.toMatchObject([{ title: '待回滚图片公告' }])
+    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
+      validAttachmentId,
+    ])
+  })
+
+  it('allows valid announcement images uploaded by another user', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const otherUserId = await createAttachmentOwner(database)
+    const attachmentId = await createAnnouncementContentImageAttachment(database, {
+      createdBy: otherUserId,
+    })
+
+    const { body: created, response } = await createAnnouncement(app, {
+      ...createBody,
+      title: '引用其他用户图片',
+      contentJson: contentWithImages([attachmentId]),
+    })
+
+    expect(response.status).toBe(201)
+    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
+      attachmentId,
+    ])
+  })
+
+  it('requires repaired content after manual image deletion but permits patches without content', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const ownerId = await createAttachmentOwner(database)
+    const attachmentId = await createAnnouncementContentImageAttachment(database, {
+      createdBy: ownerId,
+    })
+    const { body: created, response: createResponse } = await createAnnouncement(app, {
+      ...createBody,
+      title: '包含已删除图片的公告',
+      contentJson: contentWithImages([attachmentId]),
+    })
+
+    expect(createResponse.status).toBe(201)
+    await database
+      .update(attachments)
+      .set({ deletedAt: new Date() })
+      .where(eq(attachments.id, attachmentId))
+
+    const contentUpdateResponse = await app.request(`/api/content/announcements/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        title: '不应保存的失效图片正文',
+        contentJson: contentWithImages([attachmentId]),
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(contentUpdateResponse.status).toBe(400)
+    expect((await contentUpdateResponse.json()) as ErrorResponse).toEqual(
+      announcementContentImageError,
+    )
+    await expect(
+      database.select().from(announcements).where(eq(announcements.id, created.id)),
+    ).resolves.toMatchObject([{ title: '包含已删除图片的公告' }])
+    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
+      attachmentId,
+    ])
+
+    const metadataUpdateResponse = await app.request(`/api/content/announcements/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title: '图片失效后仍可更新标题' }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const updated = (await metadataUpdateResponse.json()) as Announcement
+
+    expect(metadataUpdateResponse.status).toBe(200)
+    expect(updated.title).toBe('图片失效后仍可更新标题')
+    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
+      attachmentId,
+    ])
+  })
+
+  it('does not validate deleted image references when publishing, republishing, or archiving', async () => {
+    const database = await createTestDb()
+    const app = await createTestApp(database)
+    const ownerId = await createAttachmentOwner(database)
+    const attachmentId = await createAnnouncementContentImageAttachment(database, {
+      createdBy: ownerId,
+    })
+    const { body: created, response: createResponse } = await createAnnouncement(app, {
+      ...createBody,
+      title: '失效图片状态流转公告',
+      contentJson: contentWithImages([attachmentId]),
+    })
+
+    expect(createResponse.status).toBe(201)
+    await database
+      .update(attachments)
+      .set({ deletedAt: new Date() })
+      .where(eq(attachments.id, attachmentId))
+
+    const publishResponse = await app.request(`/api/content/announcements/${created.id}/publish`, {
+      method: 'POST',
+    })
+    const archiveResponse = await app.request(`/api/content/announcements/${created.id}/archive`, {
+      method: 'POST',
+    })
+    const republishResponse = await app.request(
+      `/api/content/announcements/${created.id}/publish`,
+      {
+        method: 'POST',
+      },
+    )
+
+    expect(publishResponse.status).toBe(204)
+    expect(archiveResponse.status).toBe(204)
+    expect(republishResponse.status).toBe(204)
+    await expect(
+      database.select().from(announcements).where(eq(announcements.id, created.id)),
+    ).resolves.toMatchObject([{ status: ANNOUNCEMENT_STATUS_PUBLISHED }])
+  })
+
   it('persists schema-canonical content json when creating and updating announcements', async () => {
     const database = await createTestDb()
     const app = await createTestApp(database)
@@ -443,6 +787,7 @@ describe('announcement routes', () => {
       content: [
         {
           type: 'paragraph',
+          attrs: { textAlign: null },
           content: [{ type: 'text', text: '创建内容' }],
         },
       ],
@@ -473,7 +818,7 @@ describe('announcement routes', () => {
       content: [
         {
           type: 'heading',
-          attrs: { level: 2 },
+          attrs: { level: 2, textAlign: null },
           content: [{ type: 'text', text: '更新内容' }],
         },
       ],

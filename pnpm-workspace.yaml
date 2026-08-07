@@ -4,7 +4,7 @@ packages:
   - playgrounds/*
 
 catalog:
-  '@iconify/json': ^2.2.507
+  '@iconify/json': ^2.2.509
   '@types/bytes': ^3.1.5
   '@vitest/coverage-v8': ^4.1.10
   '@vitejs/plugin-vue': ^6.0.8
@@ -12,12 +12,12 @@ catalog:
   '@vueuse/core': ^14.4.0
   bytes: ^3.1.2
   happy-dom: ^20.11.1
-  hono: ^4.12.32
+  hono: ^4.13.0
   naive-ui: ^2.44.1
   vite: ^8.2.0
   vitest: ^4.1.10
-  vue: ^3.5.40
-  vue-tsc: ^3.3.8
+  vue: ^3.5.41
+  vue-tsc: ^3.3.9
   zod: ^4.4.3
 
 allowBuilds:

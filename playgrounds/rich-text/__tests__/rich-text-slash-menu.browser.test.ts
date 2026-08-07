@@ -1,6 +1,10 @@
 import { expect, test } from 'vitest'
-import { userEvent } from 'vitest/browser'
+import { commands, userEvent } from 'vitest/browser'
 import { getEditable, renderRichTextEditorHarness } from './fixtures/renderRichTextEditorHarness'
+
+const editorSelector = '[data-test="editor-container"] .ProseMirror'
+const pathButtonSelector =
+  '[data-test="rich-text-element-path"] [data-rich-text-toolbar-item^="node:paragraph:"]'
 
 test('runs slash commands with keyboard geometry and native tab navigation', async () => {
   const screen = renderRichTextEditorHarness()
@@ -29,11 +33,16 @@ test('runs slash commands with keyboard geometry and native tab navigation', asy
 
   await screen.getByTestId('reset-short-document').click()
   const nextEditable = await getEditable(screen)
+  await expect.poll(() => nextEditable.element().textContent).toBe('')
   await userEvent.click(nextEditable)
+  await expect.element(nextEditable).toHaveFocus()
   await userEvent.type(nextEditable, '/')
   await expect.element(screen.getByTestId('rich-text-slash-menu')).toBeVisible()
-  await userEvent.keyboard('{Tab}')
-  await expect.element(screen.getByTestId('active-element')).toHaveTextContent('node:paragraph')
-  await userEvent.keyboard('{Tab}')
-  await expect.element(screen.getByTestId('active-element')).toHaveTextContent('after-editor')
+  await expect.element(nextEditable).toHaveFocus()
+
+  const pathButton = screen.getByRole('button', { name: '选择 p 元素' })
+  await commands.pressKey(editorSelector, 'Tab')
+  await expect.element(pathButton).toHaveFocus()
+  await commands.pressKey(pathButtonSelector, 'Tab')
+  await expect.element(screen.getByTestId('after-editor')).toHaveFocus()
 })

@@ -4,6 +4,7 @@ import { render } from 'vitest-browser-vue'
 import RichTextEditorHarness from './fixtures/RichTextEditorHarness.vue'
 
 const pastedUrl = 'https://example.com/pasted'
+const editorSelector = '[data-test="editor-container"] .ProseMirror'
 
 function getDocumentText(value: unknown): string {
   if (typeof value !== 'object' || value === null) {
@@ -63,10 +64,14 @@ test('adds a link only to a locally selected text range through the native clipb
   const screen = render(RichTextEditorHarness)
   await screen.getByTestId('set-paste-document').click()
   const editable = screen.getByTestId('editor-container').getByRole('textbox')
+  await expect.element(editable).toHaveTextContent('未选已选')
   await userEvent.click(editable)
-  await userEvent.keyboard('{End}')
-  await userEvent.keyboard('{Shift>}{ArrowLeft}{ArrowLeft}{/Shift}')
-  await expect.element(screen.getByTestId('selection-text')).toHaveTextContent('已选')
+  await expect.element(editable).toHaveFocus()
+  await expect.poll(() => window.getSelection()?.focusOffset).toBe(4)
+  await commands.pressKey(editorSelector, 'Shift+ArrowLeft')
+  await expect.poll(() => window.getSelection()?.toString()).toBe('选')
+  await commands.pressKey(editorSelector, 'Shift+ArrowLeft')
+  await expect.poll(() => window.getSelection()?.toString()).toBe('已选')
   await commands.setClipboard(pastedUrl)
   await pasteNativeClipboard()
 

@@ -1,6 +1,22 @@
 import { expect, test } from 'vitest'
-import { userEvent } from 'vitest/browser'
+import { commands, userEvent } from 'vitest/browser'
 import { getEditable, renderRichTextEditorHarness } from './fixtures/renderRichTextEditorHarness'
+
+const editorSelector = '[data-test="editor-container"] .ProseMirror'
+
+function getSelectionFocusOffset(root: Element) {
+  const selection = window.getSelection()
+
+  if (selection === null || selection.focusNode === null || !root.contains(selection.focusNode)) {
+    return null
+  }
+
+  const range = document.createRange()
+  range.selectNodeContents(root)
+  range.setEnd(selection.focusNode, selection.focusOffset)
+
+  return range.toString().length
+}
 
 test('does not scroll the page when an offscreen element path mounts or updates', async () => {
   const spacer = document.createElement('div')
@@ -31,10 +47,15 @@ test('updates nested model marks and activates the element path without losing i
   const screen = renderRichTextEditorHarness()
   await screen.getByTestId('set-element-path-document').click()
   const editable = await getEditable(screen)
+  await expect.element(editable).toHaveTextContent('甲乙丙')
 
-  await userEvent.click(editable)
-  await userEvent.keyboard('{Home}')
-  await userEvent.keyboard('{ArrowRight}{ArrowRight}')
+  await userEvent.click(editable, { position: { x: 4, y: 20 } })
+  await expect.element(editable).toHaveFocus()
+  await expect.poll(() => getSelectionFocusOffset(editable.element())).toBe(0)
+  await commands.pressKey(editorSelector, 'ArrowRight')
+  await expect.poll(() => getSelectionFocusOffset(editable.element())).toBe(1)
+  await commands.pressKey(editorSelector, 'ArrowRight')
+  await expect.poll(() => getSelectionFocusOffset(editable.element())).toBe(2)
 
   await expect.element(screen.getByRole('button', { name: '选择 em 元素' })).toBeVisible()
   const strongButton = screen.getByRole('button', { name: '选择 strong 元素' }).element()

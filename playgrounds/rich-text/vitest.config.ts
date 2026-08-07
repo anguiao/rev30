@@ -12,6 +12,24 @@ const browserProvider = playwright({
   },
 })
 
+const browserPressKeys = ['ArrowRight', 'Shift+ArrowLeft', 'Tab'] as const
+
+type BrowserPressKey = (typeof browserPressKeys)[number]
+
+interface MouseDragPoint {
+  readonly selector: string
+  readonly x: number
+  readonly y: number
+}
+
+declare module 'vitest/internal/browser' {
+  interface BrowserCommands {
+    dragMouse(source: MouseDragPoint, target: MouseDragPoint): Promise<void>
+    pressKey(selector: string, key: BrowserPressKey): Promise<void>
+    setClipboard(value: string): Promise<void>
+  }
+}
+
 const setClipboard = defineBrowserCommand(async (context, value: string) => {
   const provider = context.provider as PlaywrightBrowserProvider
   const { page, context: browserContext } = provider.getCommandsContext(context.sessionId)
@@ -21,11 +39,17 @@ const setClipboard = defineBrowserCommand(async (context, value: string) => {
   await page.evaluate(async (text) => navigator.clipboard.writeText(text), value)
 })
 
-interface MouseDragPoint {
-  readonly selector: string
-  readonly x: number
-  readonly y: number
-}
+const pressKey = defineBrowserCommand(async (context, selector: string, key: BrowserPressKey) => {
+  if (selector.length === 0 || !browserPressKeys.includes(key)) {
+    throw new Error(`Browser key presses require a selector and supported key: ${key}`)
+  }
+
+  const provider = context.provider as PlaywrightBrowserProvider
+  const { frame } = provider.getCommandsContext(context.sessionId)
+  const testFrame = await frame()
+
+  await testFrame.locator(selector).press(key)
+})
 
 function resolveMouseDragPoint(point: MouseDragPoint) {
   if (point.selector.length === 0 || !Number.isFinite(point.x) || !Number.isFinite(point.y)) {
@@ -84,6 +108,7 @@ export default defineConfig({
       locators: { testIdAttribute: 'data-test' },
       commands: {
         dragMouse,
+        pressKey,
         setClipboard,
       },
     },

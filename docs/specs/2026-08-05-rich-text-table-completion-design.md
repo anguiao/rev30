@@ -68,6 +68,7 @@ date: 2026-08-05
 | 对齐值 | `null`、`left`、`center`、`right` 四种；`null` 在 UI 中显示为“默认” |
 | 对齐层级 | 单元格对齐作为继承默认值；段落自身 `textAlign` 自然覆盖，不做额外清理 |
 | Quick Bar | 固定为“行 / 列 / 单元格 / 对齐 / 删除表格”五个入口 |
+| Quick Bar 位置 | 在当前可见 `.tableWrapper` 上方水平居中；不改变其它 feature 的锚点对齐 |
 | 列宽边界 | 允许拖动内部边界和最右侧边界 |
 | 混合类型合并 | 允许合并表头与普通单元格；结果继承左上角单元格类型与属性 |
 | 合并列宽 | 合并时把每个逻辑列的已有宽度完整保存在合并单元格的 `colwidth` 中；拆分按该数组展开，不在拆分时推断已丢失的宽度 |
@@ -126,12 +127,12 @@ packages/rich-text/src/features/table/
 ```
 
 - `shared.ts`：保留 Table schema 与属性校验，开启原生列宽拖动配置。
-- `editor.ts`：解析目标单元格，定义新增 actions、action items 和 active state。
+- `editor.ts`：解析目标单元格，定义新增 actions、action items 和 active state；四个对齐 action item 在此绑定具体对齐值，向 UI 暴露为普通无参数 action。
 - `server.ts`：继续使用现有几何校验和 HTML policy；本轮不增加新的服务端能力。
-- `vue/dropdown.ts`：组合行、列、单元格和对齐菜单项，统一绑定 action 参数及 active/disabled 状态。
+- `vue/dropdown.ts`：组合行、列、单元格和对齐菜单项，统一派生动态文案、active/disabled 状态和菜单语义。
 - `TableToolbarControl.vue`：渲染完整多级菜单与动态表头文案。
 - `TableQuickBar.vue`：渲染五个稳定入口。
-- `TableQuickBarActionDropdown.vue`：继续承担 Quick Bar 平铺 dropdown；扩展其内部 item 绑定模型，而不是复制命令逻辑。
+- `TableQuickBarActionDropdown.vue`：继续承担 Quick Bar 平铺 dropdown，并沿用通用无参数 action item 模型，不复制命令逻辑。
 - `RichTextEditor.vue`：确保列宽 plugin 不依赖初始 `disabled` 状态，并补充编辑器专用拖动手柄规则。
 
 不从 package public exports 暴露新增 action、selection helper 或 UI 配置。
@@ -192,7 +193,7 @@ Table.configure({
 
 - 判断表头单元格 action 的动态 label。
 - 判断对齐菜单的统一值或混合状态。
-- 生成参数化 align action 的 `can()` 结果。
+- 生成四个已绑定 align action item 的 active 与 `can()` 结果。
 - 保证 Toolbar 与 Quick Bar 对同一 selection 显示相同状态。
 
 Vue 组件不缓存第二份 selection 或单元格状态。每次 editor transaction 后直接从最新 `editor.state` 重新派生。
@@ -256,10 +257,10 @@ Vue 组件不缓存第二份 selection 或单元格状态。每次 editor transa
 新增参数化 `setCellAlignAction`，参数类型固定为：
 
 ```ts
-type TableCellAlignment = null | 'left' | 'center' | 'right'
+type TableCellAlign = 'left' | 'center' | 'right'
 ```
 
-四个 UI 项分别绑定：
+action 参数为 `TableCellAlign | null`。`editor.ts` 中的四个 UI action item 分别把下列值绑定到独立的无参数 action；Toolbar 与 Quick Bar 因而继续使用与其它菜单项相同的执行路径：
 
 | UI | action 参数 |
 | --- | --- |
@@ -313,6 +314,8 @@ Table Quick Bar 固定按以下顺序显示五个 roving item：
 - 删除表格继续使用独立危险操作按钮。
 
 入口位置与含义不会根据 selection 动态替换；只有内部 menu item 的 active、disabled 和动态 label 变化。
+
+由于本轮将 Table Quick Bar 从三个入口扩展为五个入口，操作条改为在当前可见 `.tableWrapper` 上方水平居中。该增量决策替代基础表格 spec 中的右上方对齐；锚点仍为 wrapper，不随折叠光标或 `CellSelection` 移动，宽表格横向滚动时也不依赖内部 table 的最右侧边缘。Floating UI 继续使用 `shift` 处理靠近编辑器边缘时的溢出；CodeBlock 等其它 feature 的锚点对齐保持不变。
 
 ### 上下文优先级
 
@@ -459,7 +462,7 @@ Vue 只维护 dropdown 显隐等临时界面状态，不维护表格数据副本
 
 - `shared.test.ts` 验证 `resizable`、`cellMinWidth` 和 `lastColumnResizable` 配置。
 - `TableControls.test.ts` 验证完整菜单顺序、子菜单内容、动态表头 label、对齐 active/disabled 和键盘行为。
-- `TableQuickBar.test.ts` 验证五个稳定入口、单元格/对齐 dropdown、roving focus、局部 `Escape` 和原生 `Tab`。
+- `TableQuickBar.test.ts` 验证五个稳定入口、默认居中锚点对齐、单元格/对齐 dropdown、roving focus、局部 `Escape` 和原生 `Tab`。
 - `RichTextEditor.test.ts` 验证 resize plugin 不受初始 disabled 影响而缺失、editable 状态可按 prop 往返切换，单纯切换状态不产生 model update；实际 pointer 手势留给 Chromium。
 
 ### 服务端回归测试
@@ -510,7 +513,7 @@ pnpm check
 5. 鼠标和触控板可以拖动内部列边界和最右侧边界，宽度写入 `colwidth`，静态 HTML 与编辑器展示一致；合并不会丢失所覆盖逻辑列的已有宽度，随后拆分按保存的逐列映射展开。
 6. 一次 Undo 可以撤销一次合并、拆分、表头、对齐或完成的列宽修改。
 7. 初始 disabled、运行时 enabled、再次 disabled 的编辑器分别不能开始拖动、可以拖动、不能开始新拖动；单纯切换状态不修改文档，切换前已经开始的拖动按上游默认允许完成。
-8. Toolbar、Quick Bar、Dropdown 和 selection 优先级不回归，键盘与辅助技术名称完整。
+8. Table Quick Bar 在当前可见 `.tableWrapper` 上方水平居中；Toolbar、Quick Bar、Dropdown 和 selection 优先级不回归，键盘与辅助技术名称完整。
 9. 服务端继续拒绝非法或超限表格，并安全保留新增 UI 产生的合法属性。
 10. 内置 preset 组合、公开 API 与现有文档无需迁移。
 11. 定向测试与完整 `pnpm check` 全部通过。

@@ -1,16 +1,19 @@
 import type { Editor } from '@tiptap/vue-3'
 import { h } from 'vue'
-import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
+import { canRunRichTextAction, type RichTextActionItem } from '../../../editor/action'
 import {
   addColumnAfterActionItem,
   addColumnBeforeActionItem,
   addRowAfterActionItem,
   addRowBeforeActionItem,
-  cellAlignActionItems,
   deleteColumnActionItem,
   deleteRowActionItem,
   deleteTableActionItem,
   mergeCellsActionItem,
+  setCellAlignCenterActionItem,
+  setCellAlignDefaultActionItem,
+  setCellAlignLeftActionItem,
+  setCellAlignRightActionItem,
   splitCellActionItem,
   toggleHeaderCellActionItem,
   toggleHeaderColumnActionItem,
@@ -35,24 +38,18 @@ export const tableCellActionItems = [
   toggleHeaderCellActionItem,
 ] as const
 
-export const tableAlignmentActionItems = cellAlignActionItems
+export const tableAlignmentActionItems = [
+  setCellAlignDefaultActionItem,
+  setCellAlignLeftActionItem,
+  setCellAlignCenterActionItem,
+  setCellAlignRightActionItem,
+] as const
 
-export type TableDropdownActionItem =
-  | (typeof tableRowActionItems)[number]
-  | (typeof tableColumnActionItems)[number]
-  | (typeof tableCellActionItems)[number]
-  | (typeof tableAlignmentActionItems)[number]
-  | typeof toggleHeaderRowActionItem
-  | typeof toggleHeaderColumnActionItem
-  | typeof deleteTableActionItem
-
-function isAlignmentActionItem(
-  item: TableDropdownActionItem,
-): item is (typeof tableAlignmentActionItems)[number] {
-  return 'alignment' in item
+function isAlignmentActionItem(item: RichTextActionItem) {
+  return tableAlignmentActionItems.some((candidate) => candidate.action === item.action)
 }
 
-function isHeaderToggleActionItem(item: TableDropdownActionItem) {
+function isHeaderToggleActionItem(item: RichTextActionItem) {
   return (
     item.action === toggleHeaderRowActionItem.action ||
     item.action === toggleHeaderColumnActionItem.action ||
@@ -60,17 +57,7 @@ function isHeaderToggleActionItem(item: TableDropdownActionItem) {
   )
 }
 
-function getTableDropdownItemKey(item: TableDropdownActionItem) {
-  if (!isAlignmentActionItem(item)) {
-    return item.action.key
-  }
-
-  return `${item.action.key}-${item.alignment ?? 'default'}`
-}
-
-function getTableDropdownItemLabel(editor: Editor, item: TableDropdownActionItem) {
-  const active = getTableDropdownItemActive(editor, item)
-
+function getTableDropdownItemLabel(item: RichTextActionItem, active: boolean) {
   if (item.action === toggleHeaderRowActionItem.action) {
     return active ? '取消首行表头' : '设置首行表头'
   }
@@ -86,28 +73,12 @@ function getTableDropdownItemLabel(editor: Editor, item: TableDropdownActionItem
   return item.label
 }
 
-function getTableDropdownItemActive(editor: Editor, item: TableDropdownActionItem) {
-  if (isAlignmentActionItem(item)) {
-    return item.action.isActive?.(editor, item.alignment) ?? false
-  }
-
-  return item.action.isActive?.(editor) ?? false
-}
-
-function canRunTableDropdownItem(editor: Editor, item: TableDropdownActionItem) {
-  if (isAlignmentActionItem(item)) {
-    return canRunRichTextAction(editor, item.action, item.alignment)
-  }
-
-  return canRunRichTextAction(editor, item.action)
-}
-
-export function createTableDropdownOption(editor: Editor, item: TableDropdownActionItem) {
-  const key = getTableDropdownItemKey(item)
-  const active = getTableDropdownItemActive(editor, item)
-  const label = getTableDropdownItemLabel(editor, item)
-  const disabled = !canRunTableDropdownItem(editor, item)
-  const destructive = item.action.key === deleteTableActionItem.action.key
+export function createTableDropdownOption(editor: Editor, item: RichTextActionItem) {
+  const key = item.action.key
+  const active = item.action.isActive?.(editor) ?? false
+  const label = getTableDropdownItemLabel(item, active)
+  const disabled = !canRunRichTextAction(editor, item.action)
+  const destructive = item.action === deleteTableActionItem.action
   const role = isAlignmentActionItem(item)
     ? 'menuitemradio'
     : isHeaderToggleActionItem(item)
@@ -116,7 +87,7 @@ export function createTableDropdownOption(editor: Editor, item: TableDropdownAct
   const checked = role === 'menuitem' ? undefined : active
 
   return {
-    item,
+    action: item.action,
     key,
     label: destructive
       ? () => h('span', { class: 'text-(--rich-text-theme-error-color)' }, label)
@@ -142,12 +113,4 @@ export function createTableDropdownOption(editor: Editor, item: TableDropdownAct
   }
 }
 
-export type TableActionDropdownOption = ReturnType<typeof createTableDropdownOption>
-
-export function runTableDropdownOption(editor: Editor, option: TableActionDropdownOption) {
-  if (isAlignmentActionItem(option.item)) {
-    return runRichTextAction(editor, option.item.action, option.item.alignment)
-  }
-
-  return runRichTextAction(editor, option.item.action)
-}
+export type TableDropdownOption = ReturnType<typeof createTableDropdownOption>

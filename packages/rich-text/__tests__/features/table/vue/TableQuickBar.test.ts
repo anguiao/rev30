@@ -84,6 +84,10 @@ async function waitForEditorFocus() {
 }
 
 describe('TableQuickBar', () => {
+  it('uses the default centered anchor alignment', () => {
+    expect(tableQuickBar.anchorAlignment).toBeUndefined()
+  })
+
   it('keeps five ordered entries and runs flat cell and alignment actions', async () => {
     const editor = createEditor()
     runRichTextAction(editor, insertTableAction, 2, 2)

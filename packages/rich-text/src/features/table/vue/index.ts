@@ -25,5 +25,4 @@ export const tableQuickBar = richTextFeatureQuickBar({
 
     return element instanceof HTMLElement ? element : null
   },
-  anchorAlignment: 'end',
 })

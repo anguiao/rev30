@@ -2,7 +2,7 @@
 import type { DropdownDividerOption, DropdownOption } from 'naive-ui'
 import { NButton, NDropdown, NPopover } from 'naive-ui'
 import { computed, h, nextTick, ref, useTemplateRef, watch } from 'vue'
-import { canRunRichTextAction } from '../../../editor/action'
+import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
 import { useRichTextDropdownTrigger } from '../../../vue/interactions/dropdown'
 import { focusRichTextGridItem } from '../../../vue/interactions/focus'
 import type { RichTextToolbarControlProps } from '../../../vue/toolbar'
@@ -16,12 +16,11 @@ import {
 import TableToolbarSizePicker from './TableToolbarSizePicker.vue'
 import {
   createTableDropdownOption,
-  runTableDropdownOption,
   tableAlignmentActionItems,
   tableCellActionItems,
   tableColumnActionItems,
   tableRowActionItems,
-  type TableActionDropdownOption,
+  type TableDropdownOption,
 } from './dropdown'
 
 const props = withDefaults(defineProps<RichTextToolbarControlProps>(), {
@@ -97,7 +96,7 @@ const options = computed<(DropdownOption | DropdownDividerOption)[]>(() => {
 })
 
 function handleSelect(_key: string | number, option: DropdownOption) {
-  runTableDropdownOption(editor, option as TableActionDropdownOption)
+  runRichTextAction(editor, (option as TableDropdownOption).action)
 }
 
 function getMenuProps(option?: DropdownOption) {

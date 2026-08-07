@@ -1,5 +1,4 @@
-import type { CommandProps } from '@tiptap/core'
-import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
+import type { CommandProps, NodeWithPos } from '@tiptap/core'
 import {
   cellAround,
   CellSelection,
@@ -11,32 +10,24 @@ import {
   splitCell,
   TableMap,
 } from '@tiptap/pm/tables'
-import { TextSelection, type Selection } from '@tiptap/pm/state'
+import { TextSelection, type EditorState, type Selection } from '@tiptap/pm/state'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
+import { normalizeTableCellAlign, type TableCellAlign } from './attrs'
 import { tableFeature } from './shared'
 
 const defaultTableRows = 3
 const defaultTableColumns = 3
 
-export type TableCellAlignment = null | 'left' | 'center' | 'right'
-
-interface TableCellTarget {
-  readonly node: ProseMirrorNode
-  readonly pos: number
-}
-
-function getTargetTableCells(selection: Selection): TableCellTarget[] {
+function getTargetTableCells(selection: Selection): NodeWithPos[] {
   if (selection instanceof CellSelection) {
-    const cells = new Map<number, ProseMirrorNode>()
+    const cells: NodeWithPos[] = []
 
     selection.forEachCell((node, pos) => {
-      cells.set(pos, node)
+      cells.push({ node, pos })
     })
 
-    return [...cells]
-      .sort(([firstPosition], [secondPosition]) => firstPosition - secondPosition)
-      .map(([pos, node]) => ({ node, pos }))
+    return cells
   }
 
   if (!(selection instanceof TextSelection)) {
@@ -59,25 +50,35 @@ function getTargetTableCells(selection: Selection): TableCellTarget[] {
   return toCell?.pos === fromCell.pos ? [{ node: cell, pos: fromCell.pos }] : []
 }
 
-function getCellAlignment(cell: ProseMirrorNode): TableCellAlignment {
-  const { align } = cell.attrs
+export function getSelectedTable(selection: Selection) {
+  const isCellSelection = selection instanceof CellSelection
+  const fromCell = isCellSelection ? selection.$anchorCell : cellAround(selection.$from)
+  const toCell = isCellSelection ? selection.$headCell : cellAround(selection.$to)
 
-  return align === 'left' || align === 'center' || align === 'right' ? align : null
+  if (!fromCell || !toCell) {
+    return null
+  }
+
+  const table = findTable(fromCell)
+
+  return table && findTable(toCell)?.node === table.node ? table : null
 }
 
-function getUniformCellAlignment(selection: Selection): TableCellAlignment | undefined {
-  const cells = getTargetTableCells(selection)
+function getUniformCellAlignment(selection: Selection): TableCellAlign | null | undefined {
+  const [firstCell, ...remainingCells] = getTargetTableCells(selection)
 
-  if (!cells.length) {
+  if (!firstCell) {
     return undefined
   }
 
-  const alignment = getCellAlignment(cells[0]!.node)
+  const alignment = normalizeTableCellAlign(firstCell.node.attrs.align)
 
-  return cells.every(({ node }) => getCellAlignment(node) === alignment) ? alignment : undefined
+  return remainingCells.every(({ node }) => normalizeTableCellAlign(node.attrs.align) === alignment)
+    ? alignment
+    : undefined
 }
 
-function getMergedCellColwidth(state: CommandProps['state']) {
+function getMergedCellColwidth(state: EditorState) {
   const rect = selectedRect(state)
   const colwidth = Array.from({ length: rect.right - rect.left }, (_, index) => {
     const column = rect.left + index
@@ -105,19 +106,12 @@ function getMergedCellColwidth(state: CommandProps['state']) {
 }
 
 function mergeCellsPreservingColwidth({ state, dispatch }: CommandProps) {
-  const cells = getTargetTableCells(state.selection)
-
-  if (!(state.selection instanceof CellSelection) || cells.length < 2) {
-    return false
-  }
-
   if (!dispatch) {
     return mergeCells(state)
   }
 
-  const colwidth = getMergedCellColwidth(state)
-
   return mergeCells(state, (tr) => {
+    const colwidth = getMergedCellColwidth(state)
     const selection = tr.selection
 
     if (selection instanceof CellSelection) {
@@ -133,10 +127,7 @@ function mergeCellsPreservingColwidth({ state, dispatch }: CommandProps) {
 }
 
 function splitTargetCell({ state, dispatch }: CommandProps) {
-  const cells = getTargetTableCells(state.selection)
-  const cell = cells[0]?.node
-
-  if (!cell || cells.length !== 1 || (cell.attrs.colspan === 1 && cell.attrs.rowspan === 1)) {
+  if (getTargetTableCells(state.selection).length !== 1) {
     return false
   }
 
@@ -171,12 +162,14 @@ function toggleTargetCellHeaders({ state, tr, dispatch }: CommandProps) {
 
 function setTargetCellAlignment(
   { state, tr, dispatch }: CommandProps,
-  alignment: TableCellAlignment,
+  alignment: TableCellAlign | null,
 ) {
   const cells = getTargetTableCells(state.selection)
-  const cellsToChange = cells.filter(({ node }) => getCellAlignment(node) !== alignment)
+  const cellsToChange = cells.filter(
+    ({ node }) => normalizeTableCellAlign(node.attrs.align) !== alignment,
+  )
 
-  if (!cells.length || !cellsToChange.length) {
+  if (!cellsToChange.length) {
     return false
   }
 
@@ -187,20 +180,6 @@ function setTargetCellAlignment(
   }
 
   return true
-}
-
-export function getSelectedTable(selection: Selection) {
-  const isCellSelection = selection instanceof CellSelection
-  const fromCell = isCellSelection ? selection.$anchorCell : cellAround(selection.$from)
-  const toCell = isCellSelection ? selection.$headCell : cellAround(selection.$to)
-
-  if (!fromCell || !toCell) {
-    return null
-  }
-
-  const table = findTable(fromCell)
-
-  return table && findTable(toCell)?.node === table.node ? table : null
 }
 
 function isPositiveTableSize(value: number) {
@@ -333,7 +312,7 @@ export const toggleHeaderCellAction = defineRichTextAction(tableFeature, {
 
 export const setCellAlignAction = defineRichTextAction(tableFeature, {
   key: 'set-cell-align',
-  command: ({ chain }, alignment: TableCellAlignment) =>
+  command: ({ chain }, alignment: TableCellAlign | null) =>
     chain()
       .focus()
       .command((props) => setTargetCellAlignment(props, alignment))
@@ -379,12 +358,12 @@ export const deleteColumnActionItem = defineRichTextActionItem(deleteColumnActio
 
 export const toggleHeaderRowActionItem = defineRichTextActionItem(toggleHeaderRowAction, {
   label: '首行作为表头',
-  icon: 'i-[lucide--table-2]',
+  icon: 'i-[lucide--panel-top]',
 })
 
 export const toggleHeaderColumnActionItem = defineRichTextActionItem(toggleHeaderColumnAction, {
   label: '首列作为表头',
-  icon: 'i-[lucide--table-columns-split]',
+  icon: 'i-[lucide--panel-left]',
 })
 
 export const mergeCellsActionItem = defineRichTextActionItem(mergeCellsAction, {
@@ -399,39 +378,56 @@ export const splitCellActionItem = defineRichTextActionItem(splitCellAction, {
 
 export const toggleHeaderCellActionItem = defineRichTextActionItem(toggleHeaderCellAction, {
   label: '设置表头单元格',
-  icon: 'i-[lucide--table-properties]',
+  icon: 'i-[lucide--heading]',
 })
 
-export const cellAlignActionItems = [
+export const setCellAlignDefaultActionItem = defineRichTextActionItem(
+  defineRichTextAction(tableFeature, {
+    key: 'set-cell-align-default',
+    command: (props) => setCellAlignAction.command(props, null),
+    isActive: (editor) => setCellAlignAction.isActive?.(editor, null) ?? false,
+  }),
   {
-    ...defineRichTextActionItem(setCellAlignAction, {
-      label: '默认',
-      icon: 'i-[lucide--align-left]',
-    }),
-    alignment: null,
+    label: '默认',
+    icon: 'i-[lucide--align-left]',
   },
+)
+
+export const setCellAlignLeftActionItem = defineRichTextActionItem(
+  defineRichTextAction(tableFeature, {
+    key: 'set-cell-align-left',
+    command: (props) => setCellAlignAction.command(props, 'left'),
+    isActive: (editor) => setCellAlignAction.isActive?.(editor, 'left') ?? false,
+  }),
   {
-    ...defineRichTextActionItem(setCellAlignAction, {
-      label: '左对齐',
-      icon: 'i-[lucide--align-left]',
-    }),
-    alignment: 'left',
+    label: '左对齐',
+    icon: 'i-[lucide--align-left]',
   },
+)
+
+export const setCellAlignCenterActionItem = defineRichTextActionItem(
+  defineRichTextAction(tableFeature, {
+    key: 'set-cell-align-center',
+    command: (props) => setCellAlignAction.command(props, 'center'),
+    isActive: (editor) => setCellAlignAction.isActive?.(editor, 'center') ?? false,
+  }),
   {
-    ...defineRichTextActionItem(setCellAlignAction, {
-      label: '居中',
-      icon: 'i-[lucide--align-center]',
-    }),
-    alignment: 'center',
+    label: '居中',
+    icon: 'i-[lucide--align-center]',
   },
+)
+
+export const setCellAlignRightActionItem = defineRichTextActionItem(
+  defineRichTextAction(tableFeature, {
+    key: 'set-cell-align-right',
+    command: (props) => setCellAlignAction.command(props, 'right'),
+    isActive: (editor) => setCellAlignAction.isActive?.(editor, 'right') ?? false,
+  }),
   {
-    ...defineRichTextActionItem(setCellAlignAction, {
-      label: '右对齐',
-      icon: 'i-[lucide--align-right]',
-    }),
-    alignment: 'right',
+    label: '右对齐',
+    icon: 'i-[lucide--align-right]',
   },
-] as const
+)
 
 export const deleteTableActionItem = defineRichTextActionItem(deleteTableAction, {
   label: '删除表格',

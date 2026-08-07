@@ -1,9 +1,10 @@
 export const MAX_GRID_SLOTS_PER_TABLE = 10_000
 
-type TableCellAlign = 'left' | 'center' | 'right'
-
-const tableCellAlignments = new Set<string>(['left', 'center', 'right'])
+const tableCellAlignmentValues = ['left', 'center', 'right'] as const
+const tableCellAlignments = new Set<string>(tableCellAlignmentValues)
 const positiveIntegerPattern = /^[1-9]\d*$/
+
+export type TableCellAlign = (typeof tableCellAlignmentValues)[number]
 
 export function isValidTableCellSpan(value: unknown): value is number {
   return (

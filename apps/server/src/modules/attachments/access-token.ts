@@ -11,14 +11,14 @@ type AttachmentAccessTokenConfig = Pick<
 >
 type JwtPayload = Awaited<ReturnType<typeof verify>>
 
-export const attachmentAccessTokenCookieName = 'attachment_token'
+const COOKIE_NAME = 'attachment_token'
 
 function readSubject(payload: JwtPayload) {
   return typeof payload.sub === 'string' ? payload.sub : undefined
 }
 
 export function getAttachmentAccessTokenCookie(c: Context) {
-  return getCookie(c, attachmentAccessTokenCookieName)
+  return getCookie(c, COOKIE_NAME)
 }
 
 export function setAttachmentAccessTokenCookie(
@@ -26,7 +26,7 @@ export function setAttachmentAccessTokenCookie(
   attachmentAccessToken: string,
   config: AttachmentAccessTokenConfig,
 ) {
-  setCookie(c, attachmentAccessTokenCookieName, attachmentAccessToken, {
+  setCookie(c, COOKIE_NAME, attachmentAccessToken, {
     httpOnly: true,
     maxAge: config.attachmentExpiresInSeconds,
     path: '/api/attachments',
@@ -36,7 +36,7 @@ export function setAttachmentAccessTokenCookie(
 }
 
 export function clearAttachmentAccessTokenCookie(c: Context) {
-  deleteCookie(c, attachmentAccessTokenCookieName, {
+  deleteCookie(c, COOKIE_NAME, {
     path: '/api/attachments',
   })
 }

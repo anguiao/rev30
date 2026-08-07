@@ -16,8 +16,8 @@ import { defineRichTextAction, defineRichTextActionItem } from '../../editor/act
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import { tableFeature } from './shared'
 
-const DEFAULT_TABLE_ROWS = 3
-const DEFAULT_TABLE_COLUMNS = 3
+const defaultTableRows = 3
+const defaultTableColumns = 3
 
 export type TableCellAlignment = null | 'left' | 'center' | 'right'
 
@@ -229,7 +229,7 @@ export const insertTableAction = defineRichTextAction(tableFeature, {
 
 export const tableAction = defineRichTextAction(tableFeature, {
   key: tableFeature.key,
-  command: (props) => insertTableAction.command(props, DEFAULT_TABLE_ROWS, DEFAULT_TABLE_COLUMNS),
+  command: (props) => insertTableAction.command(props, defaultTableRows, defaultTableColumns),
 })
 
 export const addRowBeforeAction = defineRichTextAction(tableFeature, {

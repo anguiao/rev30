@@ -2,7 +2,7 @@ import { DrizzleQueryError } from 'drizzle-orm/errors'
 import { FormFieldError } from '../../../core/errors'
 import { POSTGRES_UNIQUE_VIOLATION_CODE } from '../../../db/errors'
 
-const resourceUniqueConstraintName = 'system_resources_code_unique'
+const UNIQUE_CONSTRAINT_NAME = 'system_resources_code_unique'
 
 type DatabaseErrorCause = {
   code?: unknown
@@ -84,5 +84,5 @@ export function toResourceConflictError(error: unknown) {
     return undefined
   }
 
-  return constraintName === resourceUniqueConstraintName ? new ResourceConflictError() : undefined
+  return constraintName === UNIQUE_CONSTRAINT_NAME ? new ResourceConflictError() : undefined
 }

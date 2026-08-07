@@ -5,7 +5,7 @@ import { optionalQueryValue, optionalTrimmedQueryString } from './query'
 
 const iconFileExtension = '.json'
 export const iconifyIconNamePartPatternSource = '[a-z0-9]+(?:-[a-z0-9]+)*'
-const iconDataIconsMaxLength = 500
+const ICON_DATA_ICONS_MAX_LENGTH = 500
 const iconFilenamePattern = new RegExp(`^${iconifyIconNamePartPatternSource}\\.json$`)
 const iconDataIconsPattern = new RegExp(
   `^(?:${iconifyIconNamePartPatternSource}(?:,${iconifyIconNamePartPatternSource})*)?$`,
@@ -25,23 +25,23 @@ export const iconDataParamSchema = z
 export const iconDataQuerySchema = z.object({
   icons: z
     .string()
-    .max(iconDataIconsMaxLength, '图标请求过长')
+    .max(ICON_DATA_ICONS_MAX_LENGTH, '图标请求过长')
     .regex(iconDataIconsPattern, '图标名称无效')
     .transform((value) => value.split(',')),
   pretty: z.string().optional().transform(Boolean),
 })
 
-const iconSearchLimitDefault = 60
-const iconSearchLimitMax = 100
-const iconSearchKeywordMaxLength = 120
+const defaultIconSearchLimit = 60
+const ICON_SEARCH_LIMIT_MAX = 100
+const ICON_SEARCH_KEYWORD_MAX_LENGTH = 120
 
 const iconSearchLimitSchema = z
   .string()
   .optional()
-  .default(String(iconSearchLimitDefault))
+  .default(String(defaultIconSearchLimit))
   .transform((value) => Number(value))
   .pipe(z.number().int().min(1))
-  .transform((value) => Math.min(value, iconSearchLimitMax))
+  .transform((value) => Math.min(value, ICON_SEARCH_LIMIT_MAX))
 
 export const iconSearchQuerySchema = z.object({
   keyword: z
@@ -49,7 +49,7 @@ export const iconSearchQuerySchema = z.object({
     .optional()
     .default('')
     .transform((value) => value.trim())
-    .pipe(z.string().max(iconSearchKeywordMaxLength, '搜索关键词过长')),
+    .pipe(z.string().max(ICON_SEARCH_KEYWORD_MAX_LENGTH, '搜索关键词过长')),
   limit: iconSearchLimitSchema,
 })
 
@@ -66,9 +66,9 @@ export const iconSearchResponseSchema = z.object({
 })
 
 const iconSetPrefixPattern = new RegExp(`^${iconifyIconNamePartPatternSource}$`)
-const iconSetIconPageSizeDefault = 80
-const customIconSetNameMaxLength = 80
-const customIconSetDescriptionMaxLength = 300
+const defaultIconSetIconPageSize = 80
+const CUSTOM_ICON_SET_NAME_MAX_LENGTH = 80
+const CUSTOM_ICON_SET_DESCRIPTION_MAX_LENGTH = 300
 
 const iconSetPrefixSchema = z.string().regex(iconSetPrefixPattern, '图标集前缀无效')
 const iconSetNameSchema = z.string().regex(iconSetPrefixPattern, '图标名称无效')
@@ -82,9 +82,9 @@ const customIconSetNameInputSchema = z
   .string()
   .trim()
   .min(1, '请输入图标集名称')
-  .max(customIconSetNameMaxLength)
+  .max(CUSTOM_ICON_SET_NAME_MAX_LENGTH)
 const customIconSetDescriptionValueSchema = z.union([
-  z.string().trim().max(customIconSetDescriptionMaxLength, '图标集描述不能超过 300 个字符'),
+  z.string().trim().max(CUSTOM_ICON_SET_DESCRIPTION_MAX_LENGTH, '图标集描述不能超过 300 个字符'),
   z.null(),
 ])
 const customIconSetDescriptionInputSchema = z
@@ -100,7 +100,7 @@ export const iconSetIconListQuerySchema = z.object({
   keyword: iconSetKeywordSchema,
   prefix: iconSetPrefixSchema.optional(),
   cursor: iconSetIconCursorSchema,
-  pageSize: pageSizeSchema.default(iconSetIconPageSizeDefault),
+  pageSize: pageSizeSchema.default(defaultIconSetIconPageSize),
 })
 
 export const iconSetPrefixParamSchema = z.object({

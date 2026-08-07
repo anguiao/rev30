@@ -53,10 +53,10 @@ export const userListItemSchema = userSchema
 export const userDepartmentSchema = departmentSummarySchema
 export const userRoleSchema = roleSummarySchema
 
-const departmentIdsMaxLength = 50
+const DEPARTMENT_IDS_MAX_LENGTH = 50
 export const departmentIdsSchema = z
   .array(z.uuid('部门 ID 无效'))
-  .max(departmentIdsMaxLength, `用户部门不能超过 ${departmentIdsMaxLength} 个`)
+  .max(DEPARTMENT_IDS_MAX_LENGTH, `用户部门不能超过 ${DEPARTMENT_IDS_MAX_LENGTH} 个`)
   .superRefine(ensureUniqueItems('部门不能重复'))
 
 export const userListQuerySchema = paginationQuerySchema.extend({

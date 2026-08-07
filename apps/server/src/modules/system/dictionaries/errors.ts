@@ -2,8 +2,8 @@ import { DrizzleQueryError } from 'drizzle-orm/errors'
 import { FormFieldError } from '../../../core/errors'
 import { POSTGRES_UNIQUE_VIOLATION_CODE } from '../../../db/errors'
 
-const dictionaryCodeUniqueConstraintName = 'system_dictionary_types_code_active_unique'
-const dictionaryItemValueUniqueConstraintName = 'system_dictionary_items_type_value_active_unique'
+const CODE_UNIQUE_CONSTRAINT_NAME = 'system_dictionary_types_code_active_unique'
+const ITEM_VALUE_UNIQUE_CONSTRAINT_NAME = 'system_dictionary_items_type_value_active_unique'
 
 type DatabaseErrorCause = {
   code?: unknown
@@ -56,11 +56,11 @@ export function toDictionaryConflictError(error: unknown) {
     return undefined
   }
 
-  if (constraintName === dictionaryCodeUniqueConstraintName) {
+  if (constraintName === CODE_UNIQUE_CONSTRAINT_NAME) {
     return new DictionaryCodeConflictError()
   }
 
-  if (constraintName === dictionaryItemValueUniqueConstraintName) {
+  if (constraintName === ITEM_VALUE_UNIQUE_CONSTRAINT_NAME) {
     return new DictionaryItemValueConflictError()
   }
 

@@ -1,7 +1,7 @@
 import { chineseIconSearchAliases, iconSearchAliasGroups } from './config'
 import type { ExpandedSearch } from './types'
 
-const maxSearchCandidateCount = 12
+const MAX_CANDIDATE_COUNT = 12
 
 function addPluralVariants(value: string, addValue: (value: string) => boolean) {
   if (value.length <= 1) {
@@ -42,7 +42,7 @@ export function expandSearchCandidates(keyword: string): ExpandedSearch {
       return true
     }
 
-    if (candidates.size >= maxSearchCandidateCount) {
+    if (candidates.size >= MAX_CANDIDATE_COUNT) {
       return false
     }
 

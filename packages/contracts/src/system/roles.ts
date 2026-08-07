@@ -53,10 +53,10 @@ export const roleSchema = roleBaseSchema.extend({
   resources: z.array(roleResourceSchema),
 })
 
-const roleResourceIdsMaxLength = 500
+const ROLE_RESOURCE_IDS_MAX_LENGTH = 500
 export const roleResourceIdsSchema = z
   .array(resourceIdSchema)
-  .max(roleResourceIdsMaxLength, `权限资源不能超过 ${roleResourceIdsMaxLength} 个`)
+  .max(ROLE_RESOURCE_IDS_MAX_LENGTH, `权限资源不能超过 ${ROLE_RESOURCE_IDS_MAX_LENGTH} 个`)
   .superRefine(ensureUniqueItems('资源不能重复'))
 
 export const roleOptionsQuerySchema = z.object({
@@ -90,10 +90,10 @@ export function createRoleResourceIdsSchema(
   }, '子级权限资源需要包含所有上级权限资源')
 }
 
-const roleIdsMaxLength = 50
+const ROLE_IDS_MAX_LENGTH = 50
 export const roleIdsSchema = z
   .array(roleIdSchema)
-  .max(roleIdsMaxLength, `用户角色不能超过 ${roleIdsMaxLength} 个`)
+  .max(ROLE_IDS_MAX_LENGTH, `用户角色不能超过 ${ROLE_IDS_MAX_LENGTH} 个`)
   .superRefine(ensureUniqueItems('角色不能重复'))
 
 export const roleListQuerySchema = paginationQuerySchema.extend({

@@ -2,14 +2,14 @@ import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
 import { promisify } from 'node:util'
 
 const scryptAsync = promisify(scrypt)
-const algorithm = 'scrypt'
-const keyLength = 64
+const HASH_ALGORITHM = 'scrypt'
+const SCRYPT_KEY_LENGTH = 64
 
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString('base64url')
-  const hash = (await scryptAsync(password, salt, keyLength)) as Buffer
+  const hash = (await scryptAsync(password, salt, SCRYPT_KEY_LENGTH)) as Buffer
 
-  return `${algorithm}$${salt}$${hash.toString('base64url')}`
+  return `${HASH_ALGORITHM}$${salt}$${hash.toString('base64url')}`
 }
 
 export function generateTemporaryPassword() {
@@ -19,7 +19,7 @@ export function generateTemporaryPassword() {
 export async function verifyPassword(password: string, storedHash: string) {
   const [storedAlgorithm, salt, encodedHash] = storedHash.split('$')
 
-  if (storedAlgorithm !== algorithm || !salt || !encodedHash) {
+  if (storedAlgorithm !== HASH_ALGORITHM || !salt || !encodedHash) {
     return false
   }
 

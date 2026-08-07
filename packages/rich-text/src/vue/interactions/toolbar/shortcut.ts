@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/vue-3'
 import { useEventListener } from '@vueuse/core'
 import { onBeforeUnmount, watch } from 'vue'
 
-export const toolbarShortcut = 'Alt+F10'
+export const TOOLBAR_SHORTCUT = 'Alt+F10'
 
 export function useToolbarShortcut(
   editor: Editor,
@@ -25,7 +25,7 @@ export function useToolbarShortcut(
     const shortcuts = new Set(initialShortcuts?.split(/\s+/).filter(Boolean) ?? [])
 
     if (isEnabled()) {
-      shortcuts.add(toolbarShortcut)
+      shortcuts.add(TOOLBAR_SHORTCUT)
     }
 
     setShortcuts(Array.from(shortcuts).join(' ') || null)

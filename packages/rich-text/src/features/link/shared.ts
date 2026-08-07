@@ -1,6 +1,6 @@
 import Link from '@tiptap/extension-link'
 import { defineRichTextFeature } from '../../core/feature'
-import { linkDefaultProtocol, normalizeLinkHref } from './href'
+import { defaultLinkProtocol, normalizeLinkHref } from './href'
 
 const ValidatedLink = Link.extend({
   addKeyboardShortcuts() {
@@ -57,7 +57,7 @@ export const linkFeature = defineRichTextFeature({
       enableClickSelection: false,
       autolink: true,
       linkOnPaste: false,
-      defaultProtocol: linkDefaultProtocol,
+      defaultProtocol: defaultLinkProtocol,
       isAllowedUri: (url, ctx) => {
         const normalizedHref = normalizeLinkHref(url, ctx.defaultProtocol)
 

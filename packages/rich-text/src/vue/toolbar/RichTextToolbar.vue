@@ -3,7 +3,7 @@ import type { Editor } from '@tiptap/vue-3'
 import { useTemplateRef } from 'vue'
 import type { RichTextToolbarConfig } from '.'
 import { useRichTextRovingFocus } from '../interactions/focus'
-import { toolbarShortcut, useToolbarShortcut } from '../interactions/toolbar/shortcut'
+import { TOOLBAR_SHORTCUT, useToolbarShortcut } from '../interactions/toolbar/shortcut'
 import RichTextToolbarControl from './RichTextToolbarControl.vue'
 
 const props = withDefaults(
@@ -49,7 +49,7 @@ function handleToolbarKeydown(event: KeyboardEvent) {
     role="toolbar"
     aria-label="格式工具栏"
     aria-orientation="horizontal"
-    :aria-keyshortcuts="disabled ? undefined : toolbarShortcut"
+    :aria-keyshortcuts="disabled ? undefined : TOOLBAR_SHORTCUT"
     @focusin="rovingFocus.handleFocusIn"
     @keydown="handleToolbarKeydown"
   >

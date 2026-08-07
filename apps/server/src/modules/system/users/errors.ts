@@ -19,7 +19,7 @@ const userUniqueFieldConflictMessages: Record<UserUniqueField, string> = {
   phone: '手机号已存在',
   username: '用户名已存在',
 }
-const userAvatarForeignKeyConstraintName = 'system_users_avatar_id_attachments_id_fk'
+const AVATAR_FOREIGN_KEY_CONSTRAINT_NAME = 'system_users_avatar_id_attachments_id_fk'
 
 type DatabaseErrorCause = {
   code?: unknown
@@ -119,7 +119,7 @@ export function toUserInvalidAvatarError(error: unknown) {
 
   if (
     databaseError?.code !== POSTGRES_FOREIGN_KEY_VIOLATION_CODE ||
-    databaseError.constraintName !== userAvatarForeignKeyConstraintName
+    databaseError.constraintName !== AVATAR_FOREIGN_KEY_CONSTRAINT_NAME
   ) {
     return undefined
   }

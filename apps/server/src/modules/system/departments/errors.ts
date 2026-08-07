@@ -2,7 +2,7 @@ import { DrizzleQueryError } from 'drizzle-orm/errors'
 import { FormFieldError } from '../../../core/errors'
 import { POSTGRES_UNIQUE_VIOLATION_CODE } from '../../../db/errors'
 
-const departmentUniqueConstraintName = 'system_departments_code_unique'
+const UNIQUE_CONSTRAINT_NAME = 'system_departments_code_unique'
 
 type DatabaseErrorCause = {
   code?: unknown
@@ -63,7 +63,5 @@ export function toDepartmentConflictError(error: unknown) {
     return undefined
   }
 
-  return constraintName === departmentUniqueConstraintName
-    ? new DepartmentConflictError()
-    : undefined
+  return constraintName === UNIQUE_CONSTRAINT_NAME ? new DepartmentConflictError() : undefined
 }

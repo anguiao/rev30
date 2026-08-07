@@ -14,8 +14,8 @@ type IconSubsetResult = {
   subset: IconifyJSON
 }
 
-const builtinIconSubsetCacheLimit = 2000
-const builtinIconSetDefaultKeys = ['width', 'height', 'left', 'top', 'lastModified'] as const
+const BUILTIN_ICON_SUBSET_CACHE_LIMIT = 2000
+const iconSetInheritedPropertyKeys = ['width', 'height', 'left', 'top', 'lastModified'] as const
 const builtinIconSubsetCache = new Map<string, Promise<IconifyJSON>>()
 
 function getIconCacheKey(prefix: string, name: string): string {
@@ -42,7 +42,7 @@ function rememberBuiltinIconSubset(key: string, subsetPromise: Promise<IconifyJS
 
   builtinIconSubsetCache.set(key, subsetPromise)
 
-  if (builtinIconSubsetCache.size <= builtinIconSubsetCacheLimit) {
+  if (builtinIconSubsetCache.size <= BUILTIN_ICON_SUBSET_CACHE_LIMIT) {
     return
   }
 
@@ -101,7 +101,7 @@ function copyIconSetDefaults(iconSet?: IconifyJSON): Partial<IconifyJSON> {
 
   const defaults: Partial<IconifyJSON> = {}
 
-  for (const key of builtinIconSetDefaultKeys) {
+  for (const key of iconSetInheritedPropertyKeys) {
     if (iconSet[key] !== undefined) {
       defaults[key] = iconSet[key]
     }

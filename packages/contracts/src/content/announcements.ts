@@ -94,10 +94,10 @@ export const announcementTargetSchema = z.object({
   targetId: z.uuid('可见对象 ID 无效'),
 })
 
-const announcementTargetsMaxLength = 200
+const ANNOUNCEMENT_TARGETS_MAX_LENGTH = 200
 export const announcementTargetsSchema = z
   .array(announcementTargetSchema)
-  .max(announcementTargetsMaxLength, '可见对象不能超过 200 个')
+  .max(ANNOUNCEMENT_TARGETS_MAX_LENGTH, '可见对象不能超过 200 个')
   .superRefine(ensureUniqueAnnouncementTargets)
 
 export const announcementSchema = z.object({

@@ -5,14 +5,14 @@ import type { MaintenanceWorker } from './types'
 
 const defaultLoginAttemptCleanupIntervalMs = 6 * 60 * 60 * 1000
 const defaultLoginAttemptRetentionMs = 24 * 60 * 60 * 1000
-const maxTimerDelayMs = 2 ** 31 - 1
+const MAX_TIMER_DELAY_MS = 2 ** 31 - 1
 
 function readLoginAttemptCleanupIntervalMs() {
   const value = Number(
     process.env.AUTH_LOGIN_ATTEMPT_CLEANUP_INTERVAL_MS ?? defaultLoginAttemptCleanupIntervalMs,
   )
 
-  if (!Number.isInteger(value) || value < 0 || value > maxTimerDelayMs) {
+  if (!Number.isInteger(value) || value < 0 || value > MAX_TIMER_DELAY_MS) {
     throw new Error(`AUTH_LOGIN_ATTEMPT_CLEANUP_INTERVAL_MS 必须是 0 或正整数毫秒值`)
   }
 

@@ -1,4 +1,4 @@
-export const tableMaxGridSlotsPerTable = 10_000
+export const MAX_GRID_SLOTS_PER_TABLE = 10_000
 
 type TableCellAlign = 'left' | 'center' | 'right'
 
@@ -10,7 +10,7 @@ export function isValidTableCellSpan(value: unknown): value is number {
     typeof value === 'number' &&
     Number.isSafeInteger(value) &&
     value > 0 &&
-    value <= tableMaxGridSlotsPerTable
+    value <= MAX_GRID_SLOTS_PER_TABLE
   )
 }
 

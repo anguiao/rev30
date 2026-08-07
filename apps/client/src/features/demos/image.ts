@@ -2,7 +2,7 @@ import { RICH_TEXT_DEMO_IMAGE_MAX_SIZE_BYTES } from '@rev30/contracts'
 import { compressImageFile } from '../attachments'
 
 const allowedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
-const maxInputSizeBytes = 10 * 1024 * 1024
+const MAX_INPUT_SIZE_BYTES = 10 * 1024 * 1024
 
 function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -26,7 +26,7 @@ export async function createRichTextDemoImageDataUrl(file: File) {
     throw new Error('仅支持 PNG、JPEG 和 WebP 图片')
   }
 
-  if (file.size > maxInputSizeBytes) {
+  if (file.size > MAX_INPUT_SIZE_BYTES) {
     throw new Error('图片不能超过 10 MB')
   }
 

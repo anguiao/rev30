@@ -1,8 +1,8 @@
 import { DrizzleQueryError } from 'drizzle-orm/errors'
 import { POSTGRES_UNIQUE_VIOLATION_CODE } from '../../../../db/errors'
 
-const customIconSetPrefixUniqueConstraintName = 'custom_icon_sets_prefix_active_unique'
-const customIconNameUniqueConstraintName = 'custom_icon_set_icons_set_name_active_unique'
+const SET_PREFIX_UNIQUE_CONSTRAINT_NAME = 'custom_icon_sets_prefix_active_unique'
+const ICON_NAME_UNIQUE_CONSTRAINT_NAME = 'custom_icon_set_icons_set_name_active_unique'
 
 type DatabaseErrorCause = {
   code?: unknown
@@ -64,11 +64,11 @@ export function toCustomIconConflictError(error: unknown) {
     return undefined
   }
 
-  if (constraintName === customIconSetPrefixUniqueConstraintName) {
+  if (constraintName === SET_PREFIX_UNIQUE_CONSTRAINT_NAME) {
     return new CustomIconSetConflictError()
   }
 
-  if (constraintName === customIconNameUniqueConstraintName) {
+  if (constraintName === ICON_NAME_UNIQUE_CONSTRAINT_NAME) {
     return new CustomIconConflictError()
   }
 

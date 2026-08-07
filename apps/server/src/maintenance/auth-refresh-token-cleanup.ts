@@ -5,14 +5,14 @@ import type { MaintenanceWorker } from './types'
 
 const defaultRefreshTokenCleanupIntervalMs = 6 * 60 * 60 * 1000
 const defaultRevokedRefreshTokenRetentionMs = 7 * 24 * 60 * 60 * 1000
-const maxTimerDelayMs = 2 ** 31 - 1
+const MAX_TIMER_DELAY_MS = 2 ** 31 - 1
 
 function readRefreshTokenCleanupIntervalMs() {
   const value = Number(
     process.env.AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS ?? defaultRefreshTokenCleanupIntervalMs,
   )
 
-  if (!Number.isInteger(value) || value < 0 || value > maxTimerDelayMs) {
+  if (!Number.isInteger(value) || value < 0 || value > MAX_TIMER_DELAY_MS) {
     throw new Error(`AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS 必须是 0 或正整数毫秒值`)
   }
 

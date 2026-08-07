@@ -11,14 +11,14 @@ import type { MaintenanceWorker } from './types'
 
 const defaultAttachmentCleanupIntervalMs = 6 * 60 * 60 * 1000
 const defaultAttachmentCleanupRetentionMs = 7 * 24 * 60 * 60 * 1000
-const maxTimerDelayMs = 2 ** 31 - 1
+const MAX_TIMER_DELAY_MS = 2 ** 31 - 1
 
 function readAttachmentCleanupIntervalMs() {
   const value = Number(
     process.env.ATTACHMENT_CLEANUP_INTERVAL_MS ?? defaultAttachmentCleanupIntervalMs,
   )
 
-  if (!Number.isInteger(value) || value < 0 || value > maxTimerDelayMs) {
+  if (!Number.isInteger(value) || value < 0 || value > MAX_TIMER_DELAY_MS) {
     throw new Error(`ATTACHMENT_CLEANUP_INTERVAL_MS 必须是 0 或正整数毫秒值`)
   }
 

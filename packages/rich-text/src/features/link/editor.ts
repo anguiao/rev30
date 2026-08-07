@@ -4,7 +4,7 @@ import { find } from 'linkifyjs'
 import { defineRichTextAction } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import type { RichTextPasteRule } from '../../editor/paste'
-import { linkDefaultProtocol, normalizeLinkHref } from './href'
+import { defaultLinkProtocol, normalizeLinkHref } from './href'
 import { linkFeature } from './shared'
 
 function setLinkMark(range: Range, href: string | null): Command {
@@ -63,7 +63,7 @@ function getPastedLinkHref(event: ClipboardEvent) {
   }
 
   const text = clipboardData.getData('text/plain').trim()
-  const [token] = find(text, { defaultProtocol: linkDefaultProtocol })
+  const [token] = find(text, { defaultProtocol: defaultLinkProtocol })
 
   if (!token?.isLink || token.value !== text || (token.type !== 'url' && token.type !== 'email')) {
     return null

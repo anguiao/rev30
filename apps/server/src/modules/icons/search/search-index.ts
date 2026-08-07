@@ -10,7 +10,7 @@ let builtinSearchIndexIdleTimer: ReturnType<typeof setTimeout> | null = null
 let builtinSearchIndexIdlePromise: Promise<SearchIndex> | null = null
 
 const defaultSearchIndexIdleTtlMs = 15 * 60 * 1000
-const maxTimerDelayMs = 2 ** 31 - 1
+const MAX_TIMER_DELAY_MS = 2 ** 31 - 1
 const searchTokenPattern = new RegExp(iconifyIconNamePartPatternSource, 'g')
 const searchIndexIdleTtlMs = readSearchIndexIdleTtlMs()
 const recommendedIconNameIndexes = new Map(
@@ -20,8 +20,8 @@ const recommendedIconNameIndexes = new Map(
 function readSearchIndexIdleTtlMs(): number {
   const value = Number(process.env.ICON_SEARCH_INDEX_IDLE_TTL_MS ?? defaultSearchIndexIdleTtlMs)
 
-  if (!Number.isInteger(value) || value > maxTimerDelayMs) {
-    throw new Error(`ICON_SEARCH_INDEX_IDLE_TTL_MS 必须是整数，且不能超过 ${maxTimerDelayMs}`)
+  if (!Number.isInteger(value) || value > MAX_TIMER_DELAY_MS) {
+    throw new Error(`ICON_SEARCH_INDEX_IDLE_TTL_MS 必须是整数，且不能超过 ${MAX_TIMER_DELAY_MS}`)
   }
 
   return value

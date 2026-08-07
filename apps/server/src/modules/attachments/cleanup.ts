@@ -138,11 +138,11 @@ export async function cleanupUnreferencedAttachments(
         isNull(attachments.deletedAt),
         eq(attachments.storageProvider, storage.provider),
         eq(attachments.cleanupPolicy, ATTACHMENT_CLEANUP_POLICY_UNREFERENCED),
-        lte(attachments.createdAt, cutoff),
+        lte(attachments.updatedAt, cutoff),
         unreferencedAttachmentCondition(),
       ),
     )
-    .orderBy(asc(attachments.createdAt), asc(attachments.id))
+    .orderBy(asc(attachments.updatedAt), asc(attachments.id))
 
   let deletedCount = 0
 
@@ -154,7 +154,7 @@ export async function cleanupUnreferencedAttachments(
         !locked ||
         locked.storageProvider !== storage.provider ||
         locked.cleanupPolicy !== ATTACHMENT_CLEANUP_POLICY_UNREFERENCED ||
-        locked.createdAt.getTime() > cutoff.getTime()
+        locked.updatedAt.getTime() > cutoff.getTime()
       ) {
         return undefined
       }
@@ -178,7 +178,7 @@ export async function cleanupUnreferencedAttachments(
             isNull(attachments.deletedAt),
             eq(attachments.storageProvider, storage.provider),
             eq(attachments.cleanupPolicy, ATTACHMENT_CLEANUP_POLICY_UNREFERENCED),
-            lte(attachments.createdAt, cutoff),
+            lte(attachments.updatedAt, cutoff),
             unreferencedAttachmentCondition(),
           ),
         )

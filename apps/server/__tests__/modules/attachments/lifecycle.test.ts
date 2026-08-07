@@ -208,6 +208,7 @@ async function createAttachment(
     cleanupPolicy?: string
     id?: string
     storageKey?: string
+    updatedAt?: Date
     usage?: string
   },
 ) {
@@ -225,6 +226,7 @@ async function createAttachment(
     ...(input.cleanupPolicy ? { cleanupPolicy: input.cleanupPolicy } : {}),
     createdBy: input.createdBy,
     createdAt: input.createdAt,
+    updatedAt: input.updatedAt ?? input.createdAt,
   })
 
   return id
@@ -558,6 +560,36 @@ describe('attachment cleanup', () => {
 
     expect(insertedReference).toBe(true)
     expect(row?.deletedAt).toBeNull()
+  })
+
+  it('starts a new retention period when the last reference is removed', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
+
+    const database = await createTestDb()
+    const storage = new LocalAttachmentStorage(await createTempRoot())
+    const userId = await createUser(database)
+    const attachmentId = await createAttachment(database, {
+      createdAt: new Date(Date.now() - 30 * dayMs),
+      createdBy: userId,
+      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+    })
+    const source = testSource()
+
+    await refreshAttachmentReferences(database, source, [attachmentId])
+    await deleteAttachmentReferences(database, source)
+
+    const [unreferenced] = await database
+      .select()
+      .from(attachments)
+      .where(eq(attachments.id, attachmentId))
+
+    expect(unreferenced?.updatedAt).toEqual(new Date())
+    await expect(cleanupUnreferencedAttachments(database, storage, 7 * dayMs)).resolves.toBe(0)
+
+    vi.advanceTimersByTime(8 * dayMs)
+
+    await expect(cleanupUnreferencedAttachments(database, storage, 7 * dayMs)).resolves.toBe(1)
   })
 })
 

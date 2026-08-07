@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import type { DbExecutor, DbReader } from '../../db'
 import { attachmentReferences, attachments } from '../../db/schema'
 import { AttachmentReferenceTargetInvalidError } from './errors'
@@ -42,10 +42,14 @@ export async function refreshAttachmentReferences(
   attachmentIds: string[],
 ) {
   const uniqueAttachmentIds = [...new Set(attachmentIds)]
+  const nextAttachmentIds = new Set(uniqueAttachmentIds)
   const existingReferences = await executor
     .select({ attachmentId: attachmentReferences.attachmentId })
     .from(attachmentReferences)
     .where(sourceReferenceCondition(source))
+  const removedAttachmentIds = existingReferences
+    .map((reference) => reference.attachmentId)
+    .filter((attachmentId) => !nextAttachmentIds.has(attachmentId))
 
   const lockedAttachments = await lockActiveAttachmentsByIds(executor, [
     ...existingReferences.map((reference) => reference.attachmentId),
@@ -58,6 +62,13 @@ export async function refreshAttachmentReferences(
   }
 
   await executor.delete(attachmentReferences).where(sourceReferenceCondition(source))
+
+  if (removedAttachmentIds.length > 0) {
+    await executor
+      .update(attachments)
+      .set({ updatedAt: new Date() })
+      .where(and(inArray(attachments.id, removedAttachmentIds), isNull(attachments.deletedAt)))
+  }
 
   if (uniqueAttachmentIds.length === 0) {
     return

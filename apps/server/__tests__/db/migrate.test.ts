@@ -295,6 +295,7 @@ describe('PGlite migration runner', () => {
 
       expect(createdAttachment?.readPolicy).toBe(ATTACHMENT_READ_POLICY_SIGNED)
       expect(createdAttachment?.cleanupPolicy).toBe(ATTACHMENT_CLEANUP_POLICY_MANUAL)
+      expect(createdAttachment?.updatedAt).toBeInstanceOf(Date)
 
       await database.insert(attachmentReferences).values({
         attachmentId: createdAttachment!.id,

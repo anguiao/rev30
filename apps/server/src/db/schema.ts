@@ -237,14 +237,13 @@ export const attachments = pgTable(
     createdBy: uuid('created_by')
       .notNull()
       .references((): AnyPgColumn => systemUsers.id),
-    createdAt: createdAtColumn(),
-    deletedAt: deletedAtColumn(),
+    ...auditTimestamps(),
   },
   (table) => [
     uniqueIndex('attachments_storage_key_unique').on(table.storageProvider, table.storageKey),
     index('attachments_created_by_created_at_idx').on(table.createdBy, table.createdAt),
     index('attachments_usage_created_at_idx').on(table.usage, table.createdAt),
-    index('attachments_cleanup_policy_created_at_idx').on(table.cleanupPolicy, table.createdAt),
+    index('attachments_cleanup_policy_updated_at_idx').on(table.cleanupPolicy, table.updatedAt),
     index('attachments_deleted_at_idx').on(table.deletedAt),
   ],
 )

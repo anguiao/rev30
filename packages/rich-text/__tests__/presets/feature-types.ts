@@ -7,7 +7,7 @@ import { defineRichTextEditorFeature } from '../../src/client/editor/feature'
 import {
   createImageServerFeature,
   type RichTextImageServerOptions,
-} from '../../src/features/image/server'
+} from '../../src/features/image/server/feature'
 import { imageFeature } from '../../src/features/image/core/feature'
 import { defineRichTextServerFeature } from '../../src/server/feature'
 import {
@@ -19,10 +19,7 @@ import {
   createStandardRichTextServerPreset,
   type StandardRichTextServerPresetOptions,
 } from '../../src/server/presets/standard'
-import {
-  defineRichTextServerPreset,
-  type RichTextServerPreset,
-} from '../../src/server/presets/types'
+import { defineRichTextServerPreset, type RichTextServerPreset } from '../../src/server/preset'
 import {
   createAllRichTextEditorPreset,
   type AllRichTextEditorPresetOptions,

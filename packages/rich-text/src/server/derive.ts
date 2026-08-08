@@ -4,7 +4,7 @@ import { renderToHTMLString } from '@tiptap/static-renderer/pm/html-string'
 import type { RichTextDocument, RichTextJsonNode } from '../core/schema'
 import { RichTextContentInvalidError, RichTextDocumentInvalidError } from './errors'
 import { collectRichTextServerExtensions } from './feature'
-import type { RichTextServerPreset } from './presets/types'
+import type { RichTextServerPreset } from './preset'
 import { sanitizeRichTextHtml } from './sanitize'
 
 export function deriveRichTextContent(contentJson: unknown, preset: RichTextServerPreset) {

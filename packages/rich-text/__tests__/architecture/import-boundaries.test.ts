@@ -170,7 +170,7 @@ function isSearchReplaceModule(id: string) {
 function isServerModule(id: string) {
   return (
     id.includes('/packages/rich-text/src/server/') ||
-    /\/packages\/rich-text\/src\/features\/[^/]+\/server(?:\.ts|\/)/.test(id) ||
+    /\/packages\/rich-text\/src\/features\/[^/]+\/server\//.test(id) ||
     id.includes('/node_modules/sanitize-html/')
   )
 }
@@ -503,12 +503,12 @@ describe('rich text import boundaries', () => {
       virtualSource: `
           import { defineRichTextPreset } from ${JSON.stringify(`${sourceRoot}/core/preset.ts`)}
           import { baseEditorFeature } from ${JSON.stringify(`${sourceRoot}/features/base/client/editor.ts`)}
-          import { baseServerFeature } from ${JSON.stringify(`${sourceRoot}/features/base/server.ts`)}
+          import { baseServerFeature } from ${JSON.stringify(`${sourceRoot}/features/base/server/feature.ts`)}
           import { baseFeature } from ${JSON.stringify(`${sourceRoot}/features/base/core/feature.ts`)}
           import { boldEditorFeature } from ${JSON.stringify(`${sourceRoot}/features/bold/client/editor.ts`)}
-          import { boldServerFeature } from ${JSON.stringify(`${sourceRoot}/features/bold/server.ts`)}
+          import { boldServerFeature } from ${JSON.stringify(`${sourceRoot}/features/bold/server/feature.ts`)}
           import { boldFeature } from ${JSON.stringify(`${sourceRoot}/features/bold/core/feature.ts`)}
-          import { defineRichTextServerPreset } from ${JSON.stringify(`${sourceRoot}/server/presets/types.ts`)}
+          import { defineRichTextServerPreset } from ${JSON.stringify(`${sourceRoot}/server/preset.ts`)}
           import { defineRichTextEditorPreset } from ${JSON.stringify(`${sourceRoot}/client/vue/preset.ts`)}
 
           export const minimalPreset = defineRichTextPreset({

@@ -11,7 +11,7 @@ import {
   collectRichTextServerExtensions,
   defineRichTextServerFeature,
 } from '../../src/server/feature'
-import { defineRichTextServerPreset } from '../../src/server/presets/types'
+import { defineRichTextServerPreset } from '../../src/server/preset'
 import {
   defineRichTextToolbar,
   richTextToolbarButton,

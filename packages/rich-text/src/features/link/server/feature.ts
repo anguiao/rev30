@@ -1,0 +1,32 @@
+import { defineRichTextServerFeature } from '../../../server/feature'
+import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../../server/sanitize'
+import { linkAllowedSchemes, normalizeLinkHref } from '../core/href'
+import { linkFeature } from '../core/feature'
+
+const transformAnchor: RichTextTagTransform = ({ tagName, attribs }) => {
+  const href = normalizeLinkHref(attribs.href ?? '')
+
+  return {
+    tagName,
+    attribs: {
+      ...(href ? { href } : {}),
+      target: '_blank',
+      rel: 'noopener noreferrer nofollow',
+    },
+  }
+}
+
+export const linkHtmlPolicy: RichTextHtmlPolicy = {
+  allowedTags: ['a'],
+  allowedAttributes: {
+    a: ['href', 'target', 'rel'],
+  },
+  allowedSchemes: [...linkAllowedSchemes],
+  transformTags: {
+    a: [transformAnchor],
+  },
+}
+
+export const linkServerFeature = defineRichTextServerFeature(linkFeature, {
+  htmlPolicy: linkHtmlPolicy,
+})

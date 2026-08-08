@@ -30,7 +30,7 @@ SOFTWARE.
 
 ## highlight.js@11.11.1
 
-Adapted GitHub light and dark syntax-token selectors and palettes in `src/features/code-block/content.css`.
+Adapted GitHub light and dark syntax-token selectors and palettes in `src/features/code-block/content/style.css`.
 
 BSD 3-Clause License
 

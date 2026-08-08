@@ -23,8 +23,8 @@ import type {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
-import DictionaryFormDrawer from '../../../features/system/DictionaryFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
   deleteDictionary,
@@ -100,11 +100,16 @@ const loadErrorMessage = computed(() =>
     : getErrorMessage(dictionariesError.value, '加载数据字典失败'),
 )
 
-const isDictionaryDrawerVisible = ref(false)
+const {
+  component: DictionaryFormDrawer,
+  hasOpened: hasOpenedDictionaryDrawer,
+  visible: isDictionaryDrawerVisible,
+  open: showDictionaryDrawer,
+} = useDrawer(() => import('../../../features/system/DictionaryFormDrawer.vue'))
 const editingDictionaryId = ref<string | null>(null)
 function openDictionaryFormDrawer(dictionaryId: string | null = null) {
   editingDictionaryId.value = dictionaryId
-  isDictionaryDrawerVisible.value = true
+  showDictionaryDrawer()
 }
 async function invalidateDictionaryListQueries() {
   await queryCache.invalidateQueries({
@@ -279,6 +284,7 @@ const columns: DataTableColumns<DictionaryListItem> = [
     </section>
 
     <DictionaryFormDrawer
+      v-if="hasOpenedDictionaryDrawer"
       v-model:show="isDictionaryDrawerVisible"
       :dictionary-id="editingDictionaryId"
       @saved="handleDictionarySaved"

@@ -325,7 +325,7 @@ describe('icon sets page', () => {
       })
     })
 
-    expect(wrapper.get('[data-test="icon-upload-drawer"]').attributes('data-prefix')).toBe('acme')
+    expect(wrapper.find('[data-test="icon-upload-drawer"]').exists()).toBe(false)
 
     await wrapper.get('[data-test="icon-sets-tab-builtin"]').trigger('click')
     await flushPromises()
@@ -335,6 +335,10 @@ describe('icon sets page', () => {
     expect(
       wrapper.find<HTMLInputElement>('[data-test="custom-icon-filter"] input').element.value,
     ).toBe('logo')
+
+    await wrapper.get('[data-test="custom-icon-set-upload"]').trigger('click')
+    await flushPromises()
+
     expect(wrapper.get('[data-test="icon-upload-drawer"]').attributes('data-prefix')).toBe('acme')
   })
 

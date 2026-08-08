@@ -27,8 +27,8 @@ import {
   NThing,
 } from 'naive-ui'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
-import MyAnnouncementDetailDrawer from '../../../features/content/MyAnnouncementDetailDrawer.vue'
 import { announcementTypeLabels, listMyAnnouncements } from '../../../features/content'
 
 const pageTitle = useAdminPageTitle('通知公告')
@@ -119,11 +119,16 @@ const loadErrorMessage = computed(() =>
     : getErrorMessage(announcementsError.value, '加载通知公告失败'),
 )
 
-const isDetailDrawerVisible = ref(false)
+const {
+  component: MyAnnouncementDetailDrawer,
+  hasOpened: hasOpenedDetailDrawer,
+  visible: isDetailDrawerVisible,
+  open: showDetailDrawer,
+} = useDrawer(() => import('../../../features/content/MyAnnouncementDetailDrawer.vue'))
 const selectedAnnouncement = ref<AnnouncementMyListItem | null>(null)
 function openAnnouncementDetail(announcement: AnnouncementMyListItem) {
   selectedAnnouncement.value = announcement
-  isDetailDrawerVisible.value = true
+  showDetailDrawer()
 }
 </script>
 
@@ -227,7 +232,7 @@ function openAnnouncementDetail(announcement: AnnouncementMyListItem) {
   </div>
 
   <MyAnnouncementDetailDrawer
-    v-if="selectedAnnouncement !== null"
+    v-if="hasOpenedDetailDrawer && selectedAnnouncement !== null"
     v-model:show="isDetailDrawerVisible"
     :announcement="selectedAnnouncement"
   />

@@ -132,10 +132,15 @@ describe('departments page', () => {
         children: [remainingChild],
       },
     ])
-    const { wrapper } = await mountDepartmentsPage()
+    const { wrapper } = await mountDepartmentsPage([
+      'system:department:create',
+      'system:department:list',
+    ])
     await flushPromises()
 
     wrapper.getComponent(NDataTable).vm.$emit('update:expandedRowKeys', [])
+    await flushPromises()
+    await wrapper.get('[data-test="departments-create"]').trigger('click')
     await flushPromises()
     wrapper.getComponent({ name: 'DepartmentFormDrawerStub' }).vm.$emit('saved')
     await flushPromises()
@@ -188,14 +193,12 @@ describe('departments page', () => {
     ])
     await flushPromises()
 
-    const drawer = wrapper.get('[data-test="department-form-drawer"]')
-    expect(drawer.attributes('data-show')).toBe('false')
-    expect(drawer.attributes('data-department-id')).toBe('')
-    expect(drawer.attributes('data-parent-id')).toBe('')
+    expect(wrapper.find('[data-test="department-form-drawer"]').exists()).toBe(false)
 
     await wrapper.get('[data-test="departments-create"]').trigger('click')
     await flushPromises()
 
+    const drawer = wrapper.get('[data-test="department-form-drawer"]')
     expect(drawer.attributes('data-show')).toBe('true')
     expect(drawer.attributes('data-department-id')).toBe('')
     expect(drawer.attributes('data-parent-id')).toBe('')

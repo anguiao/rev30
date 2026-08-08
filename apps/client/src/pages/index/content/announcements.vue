@@ -24,8 +24,8 @@ import {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
-import AnnouncementFormDrawer from '../../../features/content/AnnouncementFormDrawer.vue'
 import {
   ANNOUNCEMENT_PINNED_FILTER_ALL,
   ANNOUNCEMENT_STATUS_FILTER_ALL,
@@ -119,11 +119,16 @@ const loadErrorMessage = computed(() =>
     : getErrorMessage(announcementsError.value, '加载通知公告失败'),
 )
 
-const isAnnouncementDrawerVisible = ref(false)
+const {
+  component: AnnouncementFormDrawer,
+  hasOpened: hasOpenedAnnouncementDrawer,
+  visible: isAnnouncementDrawerVisible,
+  open: showAnnouncementDrawer,
+} = useDrawer(() => import('../../../features/content/AnnouncementFormDrawer.vue'))
 const editingAnnouncementId = ref<string | null>(null)
 function openAnnouncementFormDrawer(announcementId: string | null = null) {
   editingAnnouncementId.value = announcementId
-  isAnnouncementDrawerVisible.value = true
+  showAnnouncementDrawer()
 }
 
 async function invalidateAnnouncementListQueries() {
@@ -420,6 +425,7 @@ const columns: DataTableColumns<AnnouncementListItem> = [
     </section>
 
     <AnnouncementFormDrawer
+      v-if="hasOpenedAnnouncementDrawer"
       v-model:show="isAnnouncementDrawerVisible"
       :announcement-id="editingAnnouncementId"
       @saved="handleAnnouncementSaved"

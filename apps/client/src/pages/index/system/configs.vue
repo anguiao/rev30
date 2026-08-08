@@ -5,8 +5,8 @@ import type { DataTableColumns } from 'naive-ui'
 import { NAlert, NButton, NDataTable, NForm, NFormItem, NInput, useMessage } from 'naive-ui'
 import type { Config } from '@rev30/contracts'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
-import ConfigFormDrawer from '../../../features/system/ConfigFormDrawer.vue'
 import { configValueTypeLabels, listConfigs } from '../../../features/system'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
@@ -54,12 +54,17 @@ const filteredConfigs = computed(() => {
   )
 })
 
-const isConfigDrawerVisible = ref(false)
+const {
+  component: ConfigFormDrawer,
+  hasOpened: hasOpenedConfigDrawer,
+  visible: isConfigDrawerVisible,
+  open: showConfigDrawer,
+} = useDrawer(() => import('../../../features/system/ConfigFormDrawer.vue'))
 const editingConfigKey = ref<string | null>(null)
 
 function openConfigFormDrawer(configKey: string) {
   editingConfigKey.value = configKey
-  isConfigDrawerVisible.value = true
+  showConfigDrawer()
 }
 
 async function handleConfigSaved() {
@@ -155,6 +160,7 @@ const columns: DataTableColumns<Config> = [
     </section>
 
     <ConfigFormDrawer
+      v-if="hasOpenedConfigDrawer"
       v-model:show="isConfigDrawerVisible"
       :config-key="editingConfigKey"
       @saved="handleConfigSaved"

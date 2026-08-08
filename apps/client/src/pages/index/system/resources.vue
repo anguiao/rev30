@@ -30,8 +30,8 @@ import {
   treeToArray,
 } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
-import ResourceFormDrawer from '../../../features/system/ResourceFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
   deleteResource,
@@ -138,13 +138,18 @@ const rows = computed(() => {
 
 const visibleCount = computed(() => getTreeNodeCount(rows.value))
 
-const isResourceDrawerVisible = ref(false)
+const {
+  component: ResourceFormDrawer,
+  hasOpened: hasOpenedResourceDrawer,
+  visible: isResourceDrawerVisible,
+  open: showResourceDrawer,
+} = useDrawer(() => import('../../../features/system/ResourceFormDrawer.vue'))
 const editingResourceId = ref<string | null>(null)
 const selectedParentResourceId = ref<string | null>(null)
 function openResourceFormDrawer(resourceId: string | null = null, parentId: string | null = null) {
   editingResourceId.value = resourceId
   selectedParentResourceId.value = parentId
-  isResourceDrawerVisible.value = true
+  showResourceDrawer()
 }
 async function invalidateResourceTreeQuery() {
   await queryCache.invalidateQueries({
@@ -381,6 +386,7 @@ const columns: DataTableColumns<ResourceTreeNode> = [
     </section>
 
     <ResourceFormDrawer
+      v-if="hasOpenedResourceDrawer"
       v-model:show="isResourceDrawerVisible"
       :resource-id="editingResourceId"
       :parent-id="selectedParentResourceId"

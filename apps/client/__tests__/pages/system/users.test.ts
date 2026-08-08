@@ -324,6 +324,9 @@ describe('users page', () => {
     ])
     await flushPromises()
 
+    await wrapper.get('[data-test="users-create"]').trigger('click')
+    await flushPromises()
+
     wrapper.getComponent({ name: 'UserFormDrawerStub' }).vm.$emit('saved', userCreateResponse)
     await flushPromises()
 

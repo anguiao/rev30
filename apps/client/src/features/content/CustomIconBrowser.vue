@@ -22,12 +22,11 @@ import type {
   CustomIconSetListResponse,
   IconItem,
 } from '@rev30/contracts'
+import { useDrawer } from '../../composables/useDrawer'
 import { useAuthStore } from '../../stores/auth'
 import { saveFile } from '../../utils/download'
 import { getErrorMessage } from '../../utils/error'
 import IconGrid from './IconGrid.vue'
-import IconSetFormDrawer from './IconSetFormDrawer.vue'
-import IconUploadDrawer from './IconUploadDrawer.vue'
 import {
   deleteCustomIcon,
   deleteCustomIconSet,
@@ -157,15 +156,20 @@ async function invalidateIconQueries() {
 const canRenameIcon = computed(() => auth.can('content:icon-set:update'))
 const canDeleteIcon = computed(() => auth.can('content:icon-set:delete'))
 
-const isIconSetDrawerVisible = ref(false)
+const {
+  component: IconSetFormDrawer,
+  hasOpened: hasOpenedIconSetDrawer,
+  visible: isIconSetDrawerVisible,
+  open: showIconSetDrawer,
+} = useDrawer(() => import('./IconSetFormDrawer.vue'))
 const editingPrefix = ref<string | null>(null)
 function openCreateSetDrawer() {
   editingPrefix.value = null
-  isIconSetDrawerVisible.value = true
+  showIconSetDrawer()
 }
 function openEditSetDrawer(iconSet: CustomIconSet) {
   editingPrefix.value = iconSet.prefix
-  isIconSetDrawerVisible.value = true
+  showIconSetDrawer()
 }
 async function handleSetSaved() {
   message.success('保存图标集成功')
@@ -203,14 +207,19 @@ function confirmDeleteSet(iconSet: CustomIconSet) {
   })
 }
 
-const isUploadDrawerVisible = ref(false)
+const {
+  component: IconUploadDrawer,
+  hasOpened: hasOpenedUploadDrawer,
+  visible: isUploadDrawerVisible,
+  open: showUploadDrawer,
+} = useDrawer(() => import('./IconUploadDrawer.vue'))
 function openUploadDrawer() {
   if (selectedSet.value === null) {
     message.warning('请先选择自定义图标集')
     return
   }
 
-  isUploadDrawerVisible.value = true
+  showUploadDrawer()
 }
 async function handleIconsUploaded() {
   message.success('上传图标成功')
@@ -490,12 +499,14 @@ async function copySvg(svg: string) {
     </section>
 
     <IconSetFormDrawer
+      v-if="hasOpenedIconSetDrawer"
       v-model:show="isIconSetDrawerVisible"
       :prefix="editingPrefix"
       @saved="handleSetSaved"
     />
 
     <IconUploadDrawer
+      v-if="hasOpenedUploadDrawer"
       v-model:show="isUploadDrawerVisible"
       :prefix="selectedPrefix"
       @uploaded="handleIconsUploaded"

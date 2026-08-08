@@ -24,8 +24,8 @@ import {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
-import RoleFormDrawer from '../../../features/system/RoleFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
   deleteRole,
@@ -99,11 +99,16 @@ const loadErrorMessage = computed(() =>
   rolesError.value === null ? '' : getErrorMessage(rolesError.value, '加载系统角色失败'),
 )
 
-const isRoleDrawerVisible = ref(false)
+const {
+  component: RoleFormDrawer,
+  hasOpened: hasOpenedRoleDrawer,
+  visible: isRoleDrawerVisible,
+  open: showRoleDrawer,
+} = useDrawer(() => import('../../../features/system/RoleFormDrawer.vue'))
 const editingRoleId = ref<string | null>(null)
 function openRoleFormDrawer(roleId: string | null = null) {
   editingRoleId.value = roleId
-  isRoleDrawerVisible.value = true
+  showRoleDrawer()
 }
 async function invalidateRoleListQueries() {
   await queryCache.invalidateQueries({
@@ -275,6 +280,7 @@ const columns: DataTableColumns<RoleListItem> = [
     </section>
 
     <RoleFormDrawer
+      v-if="hasOpenedRoleDrawer"
       v-model:show="isRoleDrawerVisible"
       :role-id="editingRoleId"
       @saved="handleRoleSaved"

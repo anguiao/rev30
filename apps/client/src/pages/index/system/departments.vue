@@ -23,8 +23,8 @@ import {
   treeToArray,
 } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
-import DepartmentFormDrawer from '../../../features/system/DepartmentFormDrawer.vue'
 import {
   STATUS_FILTER_ALL,
   deleteDepartment,
@@ -117,7 +117,12 @@ const rows = computed(() => {
 
 const visibleCount = computed(() => getTreeNodeCount(rows.value))
 
-const isDepartmentDrawerVisible = ref(false)
+const {
+  component: DepartmentFormDrawer,
+  hasOpened: hasOpenedDepartmentDrawer,
+  visible: isDepartmentDrawerVisible,
+  open: showDepartmentDrawer,
+} = useDrawer(() => import('../../../features/system/DepartmentFormDrawer.vue'))
 const editingDepartmentId = ref<string | null>(null)
 const selectedParentDepartmentId = ref<string | null>(null)
 function openDepartmentFormDrawer(
@@ -126,7 +131,7 @@ function openDepartmentFormDrawer(
 ) {
   editingDepartmentId.value = departmentId
   selectedParentDepartmentId.value = parentId
-  isDepartmentDrawerVisible.value = true
+  showDepartmentDrawer()
 }
 async function invalidateDepartmentTreeQuery() {
   await queryCache.invalidateQueries({
@@ -320,6 +325,7 @@ const columns: DataTableColumns<DepartmentTreeNode> = [
     </section>
 
     <DepartmentFormDrawer
+      v-if="hasOpenedDepartmentDrawer"
       v-model:show="isDepartmentDrawerVisible"
       :department-id="editingDepartmentId"
       :parent-id="selectedParentDepartmentId"

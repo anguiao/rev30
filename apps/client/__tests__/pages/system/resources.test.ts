@@ -157,10 +157,12 @@ describe('resources page', () => {
         children: [remainingChild],
       },
     ])
-    const { wrapper } = await mountResourcesPage()
+    const { wrapper } = await mountResourcesPage(['system:resource:create', 'system:resource:list'])
     await flushPromises()
 
     wrapper.getComponent(NDataTable).vm.$emit('update:expandedRowKeys', [])
+    await flushPromises()
+    await wrapper.get('[data-test="resources-create"]').trigger('click')
     await flushPromises()
     wrapper.getComponent({ name: 'ResourceFormDrawerStub' }).vm.$emit('saved')
     await flushPromises()
@@ -213,14 +215,12 @@ describe('resources page', () => {
     ])
     await flushPromises()
 
-    const drawer = wrapper.get('[data-test="resource-form-drawer"]')
-    expect(drawer.attributes('data-show')).toBe('false')
-    expect(drawer.attributes('data-resource-id')).toBe('')
-    expect(drawer.attributes('data-parent-id')).toBe('')
+    expect(wrapper.find('[data-test="resource-form-drawer"]').exists()).toBe(false)
 
     await wrapper.get('[data-test="resources-create"]').trigger('click')
     await flushPromises()
 
+    const drawer = wrapper.get('[data-test="resource-form-drawer"]')
     expect(drawer.attributes('data-show')).toBe('true')
     expect(drawer.attributes('data-resource-id')).toBe('')
     expect(drawer.attributes('data-parent-id')).toBe('')

@@ -26,8 +26,8 @@ import type {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
-import UserFormDrawer from '../../../features/system/UserFormDrawer.vue'
 import { UserAvatar } from '../../../features/users'
 import {
   STATUS_FILTER_ALL,
@@ -141,11 +141,16 @@ const loadErrorMessage = computed(() =>
   usersError.value === null ? '' : getErrorMessage(usersError.value, '加载系统用户失败'),
 )
 
-const isUserDrawerVisible = ref(false)
+const {
+  component: UserFormDrawer,
+  hasOpened: hasOpenedUserDrawer,
+  visible: isUserDrawerVisible,
+  open: showUserDrawer,
+} = useDrawer(() => import('../../../features/system/UserFormDrawer.vue'))
 const editingUserId = ref<string | null>(null)
 function openUserFormDrawer(userId: string | null = null) {
   editingUserId.value = userId
-  isUserDrawerVisible.value = true
+  showUserDrawer()
 }
 async function invalidateUserListQueries() {
   await queryCache.invalidateQueries({
@@ -459,6 +464,7 @@ const columns: DataTableColumns<UserListItem> = [
     </section>
 
     <UserFormDrawer
+      v-if="hasOpenedUserDrawer"
       v-model:show="isUserDrawerVisible"
       :user-id="editingUserId"
       @saved="handleUserSaved"

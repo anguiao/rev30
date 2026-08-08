@@ -4,7 +4,7 @@ The content stylesheet adapts rules from the following third-party projects. Thi
 
 ## @tailwindcss/typography@0.5.20
 
-Adapted typography declarations in `src/content/` and feature `content.css` files.
+Adapted typography declarations in `src/content/` and feature `content/style.css` files.
 
 MIT License
 

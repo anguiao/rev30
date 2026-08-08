@@ -238,6 +238,53 @@ describe('rich text import boundaries', () => {
     expect(graph.css, 'bundled core standard styles').toBe('')
   }, 30_000)
 
+  it('keeps Vue, editor, server modules, and CSS out of core and schema entries', async () => {
+    const graph = await collectBuildGraph({
+      virtualSource: `
+        export * from '@rev30/rich-text'
+        export * from '@rev30/rich-text/schema'
+      `,
+    })
+
+    expect(
+      findModules(graph.loaded, (id) => id.endsWith('/packages/rich-text/src/core/index.ts')),
+      'resolved core package export',
+    ).toHaveLength(1)
+    expect(
+      findModules(graph.loaded, (id) =>
+        id.endsWith('/packages/rich-text/src/core/schema/index.ts'),
+      ),
+      'resolved schema package export',
+    ).toHaveLength(1)
+    expect(
+      findModules(graph.loaded, isVueModule),
+      'loaded core and schema Vue module graph',
+    ).toEqual([])
+    expect(
+      findModules(graph.loaded, isEditorModule),
+      'loaded core and schema editor module graph',
+    ).toEqual([])
+    expect(
+      findModules(graph.loaded, isServerModule),
+      'loaded core and schema server module graph',
+    ).toEqual([])
+    expect(findModules(graph.loaded, isCssModule), 'loaded core and schema styles').toEqual([])
+    expect(
+      findModules(graph.bundled, isVueModule),
+      'bundled core and schema Vue module graph',
+    ).toEqual([])
+    expect(
+      findModules(graph.bundled, isEditorModule),
+      'bundled core and schema editor module graph',
+    ).toEqual([])
+    expect(
+      findModules(graph.bundled, isServerModule),
+      'bundled core and schema server module graph',
+    ).toEqual([])
+    expect(findModules(graph.bundled, isCssModule), 'bundled core and schema styles').toEqual([])
+    expect(graph.css, 'bundled core and schema styles').toBe('')
+  }, 30_000)
+
   it('exposes independently loadable content CSS preset entries', async () => {
     const all = await collectBuildGraph({
       virtualSource: `import '@rev30/rich-text/content/presets/all.css'`,

@@ -12,7 +12,7 @@ happy-dom 中建立的 selection、focus、clipboard 和几何输入只验证编
 
 ```bash
 pnpm --filter @rev30/rich-text test
-pnpm --filter @rev30/rich-text test __tests__/features/image/vue/ImageDialog.test.ts
+pnpm --filter @rev30/rich-text test __tests__/features/image/client/vue/ImageDialog.test.ts
 pnpm --filter @rev30/rich-text coverage
 pnpm --filter @rev30/rich-text-playground test:browser
 pnpm --filter @rev30/rich-text-playground test:browser:ui

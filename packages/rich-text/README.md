@@ -2,6 +2,10 @@
 
 `@rev30/rich-text` 提供 Tiptap schema、editor preset、server 校验/清洗与派生 HTML。服务端派生的 HTML 是经过 sanitize 的 fragment；生产环境仍必须在可信服务端执行校验和清洗。
 
+## 源码分区
+
+`src/core` 保存跨端富文本语义、schema 和 core preset；`src/client/editor` 保存不依赖 Vue 的 headless editor 运行时，`src/client/vue` 保存 Vue 编辑器 UI 与 Vue preset；`src/server` 保存可信服务端派生、校验和清洗，`src/content` 保存展示派生 HTML 的静态 CSS。具体能力按 `src/features/<name>/` 继续 feature-first 维护，并在 feature 内使用同样的职责目录。各职责的 `presets/` 是组合多个 feature 的 composition root。
+
 ## 内容 CSS
 
 派生 HTML 不再携带静态视觉内联样式。只读使用方需要导入与 server preset 对应的 CSS，并在承载 fragment 的元素上添加内容容器 class：

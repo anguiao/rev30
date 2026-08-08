@@ -515,6 +515,7 @@ describe('announcement routes', () => {
     const ownerId = await createAttachmentOwner(database)
     const firstAttachmentId = await createAnnouncementContentImageAttachment(database, {
       createdBy: ownerId,
+      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     })
     const secondAttachmentId = await createAnnouncementContentImageAttachment(database, {
       createdBy: ownerId,
@@ -526,7 +527,11 @@ describe('announcement routes', () => {
     const { body: created, response: createResponse } = await createAnnouncement(app, {
       ...createBody,
       title: '含图片的已发布公告',
-      contentJson: contentWithImages([firstAttachmentId, secondAttachmentId, firstAttachmentId]),
+      contentJson: contentWithImages([
+        firstAttachmentId.toUpperCase(),
+        secondAttachmentId,
+        firstAttachmentId,
+      ]),
       publish: true,
     })
 

@@ -59,7 +59,7 @@ import {
   AnnouncementVisibilityTargetRequiredError,
 } from './errors'
 
-const announcementContentImageUsage = 'announcement-content-image'
+const CONTENT_IMAGE_USAGE = 'announcement-content-image'
 
 function announcementSortOrder() {
   return [
@@ -77,7 +77,7 @@ function announcementSortOrder() {
   ] as const
 }
 
-function announcementContentImageReferenceSource(announcementId: string) {
+function contentImageReferenceSource(announcementId: string) {
   return {
     sourceType: 'announcement',
     sourceId: announcementId,
@@ -85,45 +85,50 @@ function announcementContentImageReferenceSource(announcementId: string) {
   }
 }
 
-function isValidAnnouncementContentImageAttachment(attachment: typeof attachments.$inferSelect) {
+function isValidContentImageAttachment(attachment: typeof attachments.$inferSelect) {
   return (
-    attachment.usage === announcementContentImageUsage &&
+    attachment.usage === CONTENT_IMAGE_USAGE &&
     attachment.readPolicy === ATTACHMENT_READ_POLICY_AUTHENTICATED &&
     attachment.cleanupPolicy === ATTACHMENT_CLEANUP_POLICY_UNREFERENCED &&
     isRasterImage(attachment.mimeType)
   )
 }
 
-function assertValidAnnouncementContentImageAttachments(
-  lockedAttachments: readonly (typeof attachments.$inferSelect)[],
-  targetAttachmentIds: readonly string[],
+async function assertValidContentImageAttachments(
+  executor: DbReader,
+  attachmentIds: readonly string[],
 ) {
-  const targetAttachmentIdSet = new Set(targetAttachmentIds)
+  const uniqueAttachmentIds = [...new Set(attachmentIds)]
+
+  if (uniqueAttachmentIds.length === 0) {
+    return
+  }
+
+  const imageAttachments = await executor
+    .select()
+    .from(attachments)
+    .where(and(inArray(attachments.id, uniqueAttachmentIds), isNull(attachments.deletedAt)))
 
   if (
-    lockedAttachments.some(
-      (attachment) =>
-        targetAttachmentIdSet.has(attachment.id) &&
-        !isValidAnnouncementContentImageAttachment(attachment),
-    )
+    imageAttachments.length !== uniqueAttachmentIds.length ||
+    imageAttachments.some((attachment) => !isValidContentImageAttachment(attachment))
   ) {
     throw new AnnouncementContentImageInvalidError()
   }
 }
 
-async function refreshAnnouncementContentImageReferences(
+async function refreshContentImageReferences(
   executor: DbExecutor,
   announcementId: string,
   attachmentIds: string[],
 ) {
+  await assertValidContentImageAttachments(executor, attachmentIds)
+
   try {
     await refreshAttachmentReferences(
       executor,
-      announcementContentImageReferenceSource(announcementId),
+      contentImageReferenceSource(announcementId),
       attachmentIds,
-      {
-        validateTargets: assertValidAnnouncementContentImageAttachments,
-      },
     )
   } catch (error) {
     if (error instanceof AttachmentReferenceTargetInvalidError) {
@@ -132,14 +137,6 @@ async function refreshAnnouncementContentImageReferences(
 
     throw error
   }
-}
-
-function buildAnnouncementTargetValues(announcementId: string, targets: AnnouncementTarget[]) {
-  return targets.map((target) => ({
-    announcementId,
-    targetType: target.targetType,
-    targetId: target.targetId,
-  }))
 }
 
 function normalizeTargetsForVisibility(
@@ -477,12 +474,15 @@ export function createAnnouncementRepository(database: Db) {
         }
 
         if (normalizedTargets.length > 0) {
-          await tx
-            .insert(announcementTargets)
-            .values(buildAnnouncementTargetValues(created.id, normalizedTargets))
+          await tx.insert(announcementTargets).values(
+            normalizedTargets.map((target) => ({
+              announcementId: created.id,
+              ...target,
+            })),
+          )
         }
 
-        await refreshAnnouncementContentImageReferences(tx, created.id, content.attachmentIds)
+        await refreshContentImageReferences(tx, created.id, content.attachmentIds)
 
         return {
           announcement: created,
@@ -546,14 +546,17 @@ export function createAnnouncementRepository(database: Db) {
           await tx.delete(announcementTargets).where(eq(announcementTargets.announcementId, id))
 
           if (finalTargets.length > 0) {
-            await tx
-              .insert(announcementTargets)
-              .values(buildAnnouncementTargetValues(id, finalTargets))
+            await tx.insert(announcementTargets).values(
+              finalTargets.map((target) => ({
+                announcementId: id,
+                ...target,
+              })),
+            )
           }
         }
 
         if (content !== undefined) {
-          await refreshAnnouncementContentImageReferences(tx, id, content.attachmentIds)
+          await refreshContentImageReferences(tx, id, content.attachmentIds)
         }
 
         return {
@@ -628,7 +631,7 @@ export function createAnnouncementRepository(database: Db) {
           return undefined
         }
 
-        await deleteAttachmentReferences(tx, announcementContentImageReferenceSource(id))
+        await deleteAttachmentReferences(tx, contentImageReferenceSource(id))
 
         return deleted
       })

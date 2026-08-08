@@ -1,50 +1,41 @@
+import type { RichTextJsonNode } from '@rev30/rich-text/schema'
 import { createStandardRichTextServerPreset } from '@rev30/rich-text/server/presets/standard'
 import { deriveRichTextContent, RichTextContentInvalidError } from '@rev30/rich-text/server'
 import { z } from 'zod'
 import { AnnouncementContentInvalidError } from './errors'
 
-const announcementContentImageSrcPattern = /^\/api\/attachments\/(?<attachmentId>[^/]+)\/content$/
-const announcementContentImageIdSchema = z.uuid()
+const imageSrcPattern = /^\/api\/attachments\/(?<attachmentId>[^/]+)\/content$/
+const imageAttachmentIdSchema = z.uuid()
 
-function attachmentIdFromAnnouncementContentImageSrc(src: string) {
-  const match = announcementContentImageSrcPattern.exec(src)
+function parseImageAttachmentId(src: string) {
+  const match = imageSrcPattern.exec(src)
   const attachmentId = match?.groups?.attachmentId
 
   if (match?.[0] !== src || attachmentId === undefined) {
     return undefined
   }
 
-  return announcementContentImageIdSchema.safeParse(attachmentId).success ? attachmentId : undefined
+  const result = imageAttachmentIdSchema.safeParse(attachmentId)
+
+  return result.success ? result.data.toLowerCase() : undefined
 }
 
-function isAllowedAnnouncementContentImageSrc(src: string) {
-  return attachmentIdFromAnnouncementContentImageSrc(src) !== undefined
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function extractAnnouncementContentImageAttachmentIds(contentJson: unknown) {
+function extractAnnouncementContentImageAttachmentIds(contentJson: RichTextJsonNode) {
   const attachmentIds = new Set<string>()
 
-  function visit(node: unknown) {
-    if (!isRecord(node)) {
-      return
-    }
+  function visit(node: RichTextJsonNode) {
+    const src = node.attrs?.src
 
-    if (node.type === 'image' && isRecord(node.attrs) && typeof node.attrs.src === 'string') {
-      const attachmentId = attachmentIdFromAnnouncementContentImageSrc(node.attrs.src)
+    if (node.type === 'image' && typeof src === 'string') {
+      const attachmentId = parseImageAttachmentId(src)
 
       if (attachmentId !== undefined) {
         attachmentIds.add(attachmentId)
       }
     }
 
-    if (Array.isArray(node.content)) {
-      for (const child of node.content) {
-        visit(child)
-      }
+    for (const child of node.content ?? []) {
+      visit(child)
     }
   }
 
@@ -55,7 +46,7 @@ function extractAnnouncementContentImageAttachmentIds(contentJson: unknown) {
 
 const announcementRichTextServerPreset = createStandardRichTextServerPreset({
   image: {
-    isAllowedSrc: isAllowedAnnouncementContentImageSrc,
+    isAllowedSrc: (src) => parseImageAttachmentId(src) !== undefined,
   },
 })
 

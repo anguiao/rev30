@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { deriveAnnouncementContent } from '../../../../src/modules/content/announcements/content'
 import { AnnouncementContentInvalidError } from '../../../../src/modules/content/announcements/errors'
 
-const firstAttachmentId = '11111111-1111-4111-8111-111111111111'
-const secondAttachmentId = '22222222-2222-4222-8222-222222222222'
+const firstAttachmentId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+const secondAttachmentId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 
 const compactAnnouncementFixture = {
   type: 'doc',
@@ -35,7 +35,7 @@ describe('announcement content helpers', () => {
         },
         {
           type: 'image',
-          attrs: { src: `/api/attachments/${firstAttachmentId}/content` },
+          attrs: { src: `/api/attachments/${firstAttachmentId.toUpperCase()}/content` },
         },
         {
           type: 'image',
@@ -60,7 +60,7 @@ describe('announcement content helpers', () => {
         {
           type: 'image',
           attrs: {
-            src: `/api/attachments/${firstAttachmentId}/content`,
+            src: `/api/attachments/${firstAttachmentId.toUpperCase()}/content`,
             alt: null,
             width: null,
             height: null,

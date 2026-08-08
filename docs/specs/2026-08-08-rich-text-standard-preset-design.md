@@ -262,7 +262,7 @@ Server preset 为所有需要可信服务端实现的 `standard` feature 显式�
 /api/attachments/:uuid/content
 ```
 
-其中 `:uuid` 必须通过 `z.uuid()` 校验。URL 不接受协议、host、query、hash、前后空白或额外路径片段。外部 URL、协议相对 URL、`data:` 和 `blob:` 均导致正文无效，而不是静默移除图片。
+其中 `:uuid` 必须通过 `z.uuid()` 校验；通过后将附件 ID 规范化为小写，用于提取、去重和附件引用，但不重写正文中的原始 URL。URL 不接受协议、host、query、hash、前后空白或额外路径片段。外部 URL、协议相对 URL、`data:` 和 `blob:` 均导致正文无效，而不是静默移除图片。
 
 公告图片沿用通用附件的 `authenticated` 读取边界，不继承公告按用户、部门或角色配置的可见范围。服务端不根据公告接收范围对图片内容请求做二次鉴权；任意状态有效的登录用户取得图片 URL 后均可读取。这是明确接受的访问边界，图片 URL 不作为需要公告接收权限才能访问的资源地址。
 
@@ -295,6 +295,8 @@ Server preset 为所有需要可信服务端实现的 `standard` feature 显式�
   - `mimeType` 以 `image/` 开头且不为 `image/svg+xml`，与附件模块现有栅格图片判断一致。
 - 引用目标不存在、已软删除或任一业务属性不匹配：映射为 `AnnouncementContentImageInvalidError`，公告事务不落库。
 
+附件业务属性由公告 repository 在刷新引用前批量查询和校验；通用 `refreshAttachmentReferences` 只负责锁定活动附件、再次确认引用目标仍然有效并维护引用，不接收业务校验回调。`usage`、`readPolicy`、`cleanupPolicy` 和 `mimeType` 在附件创建后不提供修改入口；若附件在业务校验后并发软删除，通用引用刷新仍会在锁定活动附件时拒绝该目标。
+
 上述校验位于公告保存的服务端业务边界，不信任客户端上传时声明的属性。附件上传者 `createdBy` 不属于引用资格：只要目标附件满足上述业务属性，具备公告创建或更新权限的操作者就可以引用，包括编辑其他操作者创建且已包含图片的公告。repository 不读取 preset feature，也不负责图片 URL 解析。
 
 ## 数据流
@@ -309,7 +311,8 @@ Server preset 为所有需要可信服务端实现的 `standard` feature 显式�
   -> standard server preset 校验并规范化 JSON
   -> 派生 text 与安全 HTML
   -> 从规范化 JSON 提取附件 ID
-  -> 在公告事务内锁定并校验目标附件的业务属性
+  -> 在公告事务内批量校验目标附件的业务属性
+  -> 通用引用刷新锁定活动附件并再次确认目标有效
   -> 公告数据与附件引用在同一事务内写入
   -> 详情使用 standard.css 渲染安全 HTML
 ```

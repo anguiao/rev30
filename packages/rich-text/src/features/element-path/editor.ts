@@ -6,7 +6,7 @@ import { CellSelection, TableMap, type TableRole } from '@tiptap/pm/tables'
 import { GapCursor } from '@tiptap/pm/gapcursor'
 import { defineRichTextAction } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { elementPathFeature } from './shared'
+import { elementPathFeature } from './core/feature'
 
 export type ElementPathItem =
   | {

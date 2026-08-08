@@ -17,7 +17,7 @@ import {
   transformPastedImageHtml,
   updateImageAction,
 } from '../../../src/features/image/editor'
-import { imageFeature } from '../../../src/features/image/shared'
+import { imageFeature } from '../../../src/features/image/core/feature'
 import { defineRichTextEditorPreset } from '../../../src/vue/presets/types'
 import { createTestEditor } from '../../helpers/editor'
 

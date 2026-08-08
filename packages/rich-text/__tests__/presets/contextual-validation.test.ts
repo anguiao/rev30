@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
 import { baseEditorFeature, paragraphActionItem } from '../../src/features/base/editor'
-import { baseFeature } from '../../src/features/base/shared'
+import { baseFeature } from '../../src/features/base/core/feature'
 import { boldActionItem } from '../../src/features/bold/editor'
 import { headingActionItems } from '../../src/features/heading/editor'
 import { defineRichTextSlashMenu, richTextSlashCommand } from '../../src/vue/slash-menu'

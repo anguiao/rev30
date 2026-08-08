@@ -1,7 +1,7 @@
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { textAlignOptions } from './alignments'
-import { textAlignFeature } from './shared'
+import { textAlignOptions } from './core/alignments'
+import { textAlignFeature } from './core/feature'
 
 export const textAlignActions = [
   defineRichTextAction(textAlignFeature, {

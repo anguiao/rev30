@@ -2,7 +2,7 @@
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import { nextTick, onUnmounted, useTemplateRef, watch } from 'vue'
 import { collectRichTextEditorExtensions } from '../editor/feature'
-import type { RichTextDocument } from '../schema'
+import type { RichTextDocument } from '../core/schema'
 import type { RichTextEditorPreset } from './presets/types'
 import RichTextQuickBar from './quick-bar/RichTextQuickBar.vue'
 import RichTextSlashMenu from './slash-menu/RichTextSlashMenu.vue'

@@ -3,7 +3,7 @@ import Gapcursor from '@tiptap/extension-gapcursor'
 import { Selection } from '@tiptap/extensions/selection'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { baseFeature } from './shared'
+import { baseFeature } from './core/feature'
 
 export const paragraphAction = defineRichTextAction(baseFeature, {
   key: 'paragraph',

@@ -1,7 +1,7 @@
 import { defineRichTextAction } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import type { TextStyleOption } from './options'
-import { textStyleFeature } from './shared'
+import type { TextStyleOption } from './core/options'
+import { textStyleFeature } from './core/feature'
 
 export const setTextColorAction = defineRichTextAction(textStyleFeature, {
   key: 'set-text-color',

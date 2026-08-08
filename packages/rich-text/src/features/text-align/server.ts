@@ -4,8 +4,8 @@ import {
   type RichTextHtmlPolicy,
   type RichTextTagTransform,
 } from '../../server/sanitize'
-import { textAlignments, type TextAlignment } from './alignments'
-import { textAlignFeature } from './shared'
+import { textAlignments, type TextAlignment } from './core/alignments'
+import { textAlignFeature } from './core/feature'
 
 const textAlignTags = ['p', 'h1', 'h2', 'h3'] as const
 const textAlignSet = new Set<string>(textAlignments)

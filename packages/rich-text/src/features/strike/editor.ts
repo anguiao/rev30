@@ -1,6 +1,6 @@
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { strikeFeature } from './shared'
+import { strikeFeature } from './core/feature'
 
 export const strikeAction = defineRichTextAction(strikeFeature, {
   key: strikeFeature.key,

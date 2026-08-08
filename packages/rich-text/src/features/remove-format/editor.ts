@@ -1,6 +1,6 @@
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { removeFormatFeature } from './shared'
+import { removeFormatFeature } from './core/feature'
 
 export const removeFormatAction = defineRichTextAction(removeFormatFeature, {
   key: removeFormatFeature.key,

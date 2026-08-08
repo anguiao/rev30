@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core'
-import { highlightFeature } from '../../src/features/highlight/shared'
+import { highlightFeature } from '../../src/features/highlight/core/feature'
 import HighlightControl from '../../src/features/highlight/vue/HighlightControl.vue'
-import { linkFeature } from '../../src/features/link/shared'
+import { linkFeature } from '../../src/features/link/core/feature'
 import LinkControl from '../../src/features/link/vue/LinkControl.vue'
 import { richTextToolbarComponent } from '../../src/vue/toolbar'
 

@@ -41,7 +41,7 @@ import { textStyleToolbarControl } from '../../features/text-style/vue'
 import { tableActionItem, tableEditorFeature } from '../../features/table/editor'
 import { tableQuickBar, tableToolbarControl } from '../../features/table/vue'
 import { underlineActionItem, underlineEditorFeature } from '../../features/underline/editor'
-import { allRichTextPreset } from '../../presets/all'
+import { allRichTextPreset } from '../../core/presets/all'
 import { defineRichTextQuickBar, richTextQuickBarAction } from '../quick-bar'
 import { defineRichTextSlashMenu, richTextSlashCommand } from '../slash-menu'
 import {

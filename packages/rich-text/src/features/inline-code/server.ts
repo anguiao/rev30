@@ -1,6 +1,6 @@
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy } from '../../server/sanitize'
-import { inlineCodeFeature } from './shared'
+import { inlineCodeFeature } from './core/feature'
 
 export const inlineCodeHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['code'],

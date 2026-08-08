@@ -6,7 +6,7 @@ import { defineRichTextAction, defineRichTextActionItem } from '../../editor/act
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import { defineRichTextInteraction } from '../../editor/interaction'
 import type { RichTextPasteRule } from '../../editor/paste'
-import { imageFeature } from './shared'
+import { imageFeature } from './core/feature'
 
 export interface RichTextImageAttrs {
   src: string

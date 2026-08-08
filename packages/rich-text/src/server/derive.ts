@@ -1,7 +1,7 @@
 import { getSchema, getText, getTextSerializersFromSchema } from '@tiptap/core'
 import { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { renderToHTMLString } from '@tiptap/static-renderer/pm/html-string'
-import type { RichTextDocument, RichTextJsonNode } from '../schema'
+import type { RichTextDocument, RichTextJsonNode } from '../core/schema'
 import { RichTextContentInvalidError, RichTextDocumentInvalidError } from './errors'
 import { collectRichTextServerExtensions } from './feature'
 import type { RichTextServerPreset } from './presets/types'

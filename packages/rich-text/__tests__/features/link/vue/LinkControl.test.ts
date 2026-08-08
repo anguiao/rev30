@@ -7,7 +7,7 @@ import type { Editor } from '@tiptap/vue-3'
 import { NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { linkFeature } from '../../../../src/features/link/shared'
+import { linkFeature } from '../../../../src/features/link/core/feature'
 import LinkControl from '../../../../src/features/link/vue/LinkControl.vue'
 import { appendTestElement, createTestEditor } from '../../../helpers/editor'
 

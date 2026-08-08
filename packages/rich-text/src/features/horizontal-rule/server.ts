@@ -1,6 +1,6 @@
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy } from '../../server/sanitize'
-import { horizontalRuleFeature } from './shared'
+import { horizontalRuleFeature } from './core/feature'
 
 export const horizontalRuleHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['hr'],

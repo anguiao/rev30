@@ -2,8 +2,8 @@ import { mergeAttributes } from '@tiptap/core'
 import CodeBlock from '@tiptap/extension-code-block'
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
-import { createCodeBlockLanguageAttribute, normalizeCodeBlockLanguage } from './languages'
-import { codeBlockFeature } from './shared'
+import { createCodeBlockLanguageAttribute, normalizeCodeBlockLanguage } from './core/languages'
+import { codeBlockFeature } from './core/feature'
 
 const transformCode: RichTextTagTransform = ({ tagName, attribs }) => {
   const languageClass = attribs.class

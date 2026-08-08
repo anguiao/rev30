@@ -1,7 +1,7 @@
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
-import { fontFamilySet, fontSizeSet, lineHeightSet, textColorSet } from './options'
-import { textStyleFeature } from './shared'
+import { fontFamilySet, fontSizeSet, lineHeightSet, textColorSet } from './core/options'
+import { textStyleFeature } from './core/feature'
 
 const textStyleProperties = ['color', 'font-family', 'font-size', 'line-height'] as const
 

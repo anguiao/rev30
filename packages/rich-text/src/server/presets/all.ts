@@ -18,7 +18,7 @@ import { textAlignServerFeature } from '../../features/text-align/server'
 import { textStyleServerFeature } from '../../features/text-style/server'
 import { tableServerFeature } from '../../features/table/server'
 import { underlineServerFeature } from '../../features/underline/server'
-import { allRichTextPreset } from '../../presets/all'
+import { allRichTextPreset } from '../../core/presets/all'
 import { defineRichTextServerPreset } from './types'
 
 export interface AllRichTextServerPresetOptions {

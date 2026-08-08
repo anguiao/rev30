@@ -4,8 +4,8 @@ import { find } from 'linkifyjs'
 import { defineRichTextAction } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
 import type { RichTextPasteRule } from '../../editor/paste'
-import { defaultLinkProtocol, normalizeLinkHref } from './href'
-import { linkFeature } from './shared'
+import { defaultLinkProtocol, normalizeLinkHref } from './core/href'
+import { linkFeature } from './core/feature'
 
 function setLinkMark(range: Range, href: string | null): Command {
   return ({ dispatch, state, tr }) => {

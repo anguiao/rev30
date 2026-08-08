@@ -10,7 +10,7 @@ import {
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { defineRichTextAction, runRichTextAction } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { searchReplaceFeature } from './shared'
+import { searchReplaceFeature } from './core/feature'
 
 export interface RichTextSearchMatch {
   readonly from: number

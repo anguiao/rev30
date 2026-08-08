@@ -1,6 +1,6 @@
 import { richTextQuickBarComponent } from '../../../vue/quick-bar'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
-import { highlightFeature } from '../shared'
+import { highlightFeature } from '../core/feature'
 import HighlightControl from './HighlightControl.vue'
 
 export const highlightToolbarControl = richTextToolbarComponent({

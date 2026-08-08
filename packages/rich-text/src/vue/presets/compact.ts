@@ -7,7 +7,7 @@ import { italicActionItem, italicEditorFeature } from '../../features/italic/edi
 import { linkEditorFeature } from '../../features/link/editor'
 import { linkQuickBar, linkQuickBarControl, linkToolbarControl } from '../../features/link/vue'
 import { listActionItems, listEditorFeature } from '../../features/list/editor'
-import { compactRichTextPreset } from '../../presets/compact'
+import { compactRichTextPreset } from '../../core/presets/compact'
 import { defineRichTextQuickBar, richTextQuickBarAction } from '../quick-bar'
 import { defineRichTextSlashMenu, richTextSlashCommand } from '../slash-menu'
 import {

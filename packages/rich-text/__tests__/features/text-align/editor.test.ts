@@ -5,7 +5,7 @@ import Text from '@tiptap/extension-text'
 import { describe, expect, it } from 'vitest'
 import { runRichTextAction } from '../../../src/editor/action'
 import { textAlignActions } from '../../../src/features/text-align/editor'
-import { textAlignFeature } from '../../../src/features/text-align/shared'
+import { textAlignFeature } from '../../../src/features/text-align/core/feature'
 import { textAlignActionItems } from '../../../src/features/text-align/editor'
 import { createTestEditor } from '../../helpers/editor'
 

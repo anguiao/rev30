@@ -6,7 +6,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
 import { markRaw } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
-import { highlightColorOptions } from '../../../../src/features/highlight/colors'
+import { highlightColorOptions } from '../../../../src/features/highlight/core/colors'
 import HighlightControl from '../../../../src/features/highlight/vue/HighlightControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
 const yellow = highlightColorOptions[0]

@@ -1,6 +1,6 @@
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { italicFeature } from './shared'
+import { italicFeature } from './core/feature'
 
 export const italicAction = defineRichTextAction(italicFeature, {
   key: italicFeature.key,

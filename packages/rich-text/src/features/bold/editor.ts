@@ -1,6 +1,6 @@
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { boldFeature } from './shared'
+import { boldFeature } from './core/feature'
 
 export const boldAction = defineRichTextAction(boldFeature, {
   key: boldFeature.key,

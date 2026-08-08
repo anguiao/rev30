@@ -5,7 +5,7 @@ import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
 import { focusRichTextGridItem, handleRichTextGridKeydown } from '../../../vue/interactions/focus'
 import { setHighlightAction, unsetHighlightAction } from '../editor'
-import { highlightColorOptions, type HighlightColor } from '../colors'
+import { highlightColorOptions, type HighlightColor } from '../core/colors'
 
 interface HighlightControlProps {
   editor: Editor

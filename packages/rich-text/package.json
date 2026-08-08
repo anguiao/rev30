@@ -5,24 +5,24 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./src/core/index.ts",
+      "default": "./src/core/index.ts"
     },
     "./schema": {
-      "types": "./src/schema/index.ts",
-      "default": "./src/schema/index.ts"
+      "types": "./src/core/schema/index.ts",
+      "default": "./src/core/schema/index.ts"
     },
     "./presets/all": {
-      "types": "./src/presets/all.ts",
-      "default": "./src/presets/all.ts"
+      "types": "./src/core/presets/all.ts",
+      "default": "./src/core/presets/all.ts"
     },
     "./presets/compact": {
-      "types": "./src/presets/compact.ts",
-      "default": "./src/presets/compact.ts"
+      "types": "./src/core/presets/compact.ts",
+      "default": "./src/core/presets/compact.ts"
     },
     "./presets/standard": {
-      "types": "./src/presets/standard.ts",
-      "default": "./src/presets/standard.ts"
+      "types": "./src/core/presets/standard.ts",
+      "default": "./src/core/presets/standard.ts"
     },
     "./content/presets/all.css": "./src/content/presets/all.css",
     "./content/presets/compact.css": "./src/content/presets/compact.css",

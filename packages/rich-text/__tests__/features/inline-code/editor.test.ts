@@ -4,7 +4,7 @@ import Text from '@tiptap/extension-text'
 import { describe, expect, it } from 'vitest'
 import { canRunRichTextAction, runRichTextAction } from '../../../src/editor/action'
 import { inlineCodeAction } from '../../../src/features/inline-code/editor'
-import { inlineCodeFeature } from '../../../src/features/inline-code/shared'
+import { inlineCodeFeature } from '../../../src/features/inline-code/core/feature'
 import { inlineCodeActionItem } from '../../../src/features/inline-code/editor'
 import { createTestEditor } from '../../helpers/editor'
 

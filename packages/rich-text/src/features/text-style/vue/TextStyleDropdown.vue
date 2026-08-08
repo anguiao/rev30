@@ -11,7 +11,7 @@ import {
   type RichTextIconClass,
 } from '../../../editor/action'
 import { useRichTextDropdownTrigger } from '../../../vue/interactions/dropdown'
-import type { TextStyleOption } from '../options'
+import type { TextStyleOption } from '../core/options'
 
 interface TextStyleDropdownConfig {
   readonly key: string

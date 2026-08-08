@@ -1,6 +1,6 @@
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { headingFeature } from './shared'
+import { headingFeature } from './core/feature'
 
 export const headingActions = [
   defineRichTextAction(headingFeature, {

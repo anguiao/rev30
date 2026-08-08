@@ -4,8 +4,8 @@ import {
   type RichTextHtmlPolicy,
   type RichTextTagTransform,
 } from '../../server/sanitize'
-import { normalizeHighlightColor } from './colors'
-import { highlightFeature } from './shared'
+import { normalizeHighlightColor } from './core/colors'
+import { highlightFeature } from './core/feature'
 
 const transformMark: RichTextTagTransform = ({ tagName, attribs }) => {
   const color = Object.hasOwn(attribs, 'data-color')

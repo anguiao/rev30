@@ -1,6 +1,6 @@
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { inlineCodeFeature } from './shared'
+import { inlineCodeFeature } from './core/feature'
 
 export const inlineCodeAction = defineRichTextAction(inlineCodeFeature, {
   key: inlineCodeFeature.key,

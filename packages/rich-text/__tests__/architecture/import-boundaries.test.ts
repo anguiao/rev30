@@ -206,7 +206,9 @@ describe('rich text import boundaries', () => {
     })
 
     expect(
-      findModules(graph.loaded, (id) => id.endsWith('/packages/rich-text/src/presets/standard.ts')),
+      findModules(graph.loaded, (id) =>
+        id.endsWith('/packages/rich-text/src/core/presets/standard.ts'),
+      ),
       'resolved core standard package export',
     ).toHaveLength(1)
     expect(findModules(graph.loaded, isVueModule), 'loaded core Vue module graph').toEqual([])
@@ -319,7 +321,7 @@ describe('rich text import boundaries', () => {
       findModules(
         graph.loaded,
         (id) =>
-          id.endsWith('/packages/rich-text/src/presets/compact.ts') ||
+          id.endsWith('/packages/rich-text/src/core/presets/compact.ts') ||
           id.endsWith('/packages/rich-text/src/server/presets/compact.ts') ||
           id.endsWith('/packages/rich-text/src/vue/presets/compact.ts'),
       ),
@@ -406,7 +408,7 @@ describe('rich text import boundaries', () => {
       findModules(
         graph.loaded,
         (id) =>
-          id.endsWith('/packages/rich-text/src/presets/standard.ts') ||
+          id.endsWith('/packages/rich-text/src/core/presets/standard.ts') ||
           id.endsWith('/packages/rich-text/src/server/presets/standard.ts') ||
           id.endsWith('/packages/rich-text/src/vue/presets/standard.ts'),
       ),
@@ -449,10 +451,10 @@ describe('rich text import boundaries', () => {
           import { defineRichTextPreset } from ${JSON.stringify(`${sourceRoot}/core/preset.ts`)}
           import { baseEditorFeature } from ${JSON.stringify(`${sourceRoot}/features/base/editor.ts`)}
           import { baseServerFeature } from ${JSON.stringify(`${sourceRoot}/features/base/server.ts`)}
-          import { baseFeature } from ${JSON.stringify(`${sourceRoot}/features/base/shared.ts`)}
+          import { baseFeature } from ${JSON.stringify(`${sourceRoot}/features/base/core/feature.ts`)}
           import { boldEditorFeature } from ${JSON.stringify(`${sourceRoot}/features/bold/editor.ts`)}
           import { boldServerFeature } from ${JSON.stringify(`${sourceRoot}/features/bold/server.ts`)}
-          import { boldFeature } from ${JSON.stringify(`${sourceRoot}/features/bold/shared.ts`)}
+          import { boldFeature } from ${JSON.stringify(`${sourceRoot}/features/bold/core/feature.ts`)}
           import { defineRichTextServerPreset } from ${JSON.stringify(`${sourceRoot}/server/presets/types.ts`)}
           import { defineRichTextEditorPreset } from ${JSON.stringify(`${sourceRoot}/vue/presets/types.ts`)}
 

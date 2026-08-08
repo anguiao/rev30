@@ -1,6 +1,6 @@
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { blockquoteFeature } from './shared'
+import { blockquoteFeature } from './core/feature'
 
 export const blockquoteAction = defineRichTextAction(blockquoteFeature, {
   key: blockquoteFeature.key,

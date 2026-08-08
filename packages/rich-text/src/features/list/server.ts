@@ -1,7 +1,7 @@
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
-import { normalizeOrderedListStart, normalizeOrderedListType } from './attrs'
-import { listFeature } from './shared'
+import { normalizeOrderedListStart, normalizeOrderedListType } from './core/attrs'
+import { listFeature } from './core/feature'
 
 const transformOrderedList: RichTextTagTransform = ({ tagName, attribs }) => {
   const start = normalizeOrderedListStart(attribs.start)

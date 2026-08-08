@@ -2,7 +2,7 @@ import type { CommandProps } from '@tiptap/core'
 import { liftTarget } from '@tiptap/pm/transform'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { listFeature } from './shared'
+import { listFeature } from './core/feature'
 
 function simulateClearNodes({ state, tr }: Pick<CommandProps, 'state' | 'tr'>) {
   for (const { $from, $to } of tr.selection.ranges) {

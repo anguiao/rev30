@@ -4,7 +4,7 @@ import Text from '@tiptap/extension-text'
 import { flushPromises, mount } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
-import { linkFeature } from '../../../../src/features/link/shared'
+import { linkFeature } from '../../../../src/features/link/core/feature'
 import { linkQuickBar } from '../../../../src/features/link/vue'
 import { createTestEditor } from '../../../helpers/editor'
 

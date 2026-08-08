@@ -11,8 +11,8 @@ import {
   textStyleFontFamilyOptions,
   textStyleFontSizeOptions,
   textStyleLineHeightOptions,
-} from '../../../../src/features/text-style/options'
-import { textStyleFeature } from '../../../../src/features/text-style/shared'
+} from '../../../../src/features/text-style/core/options'
+import { textStyleFeature } from '../../../../src/features/text-style/core/feature'
 import TextStyleToolbarControl from '../../../../src/features/text-style/vue/TextStyleToolbarControl.vue'
 import { createTestEditor } from '../../../helpers/editor'
 

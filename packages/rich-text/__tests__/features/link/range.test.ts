@@ -6,7 +6,7 @@ import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { describe, expect, it } from 'vitest'
 import { resolveLinkRange } from '../../../src/features/link/range'
-import { linkFeature } from '../../../src/features/link/shared'
+import { linkFeature } from '../../../src/features/link/core/feature'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor(content: string) {

@@ -1,6 +1,6 @@
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy } from '../../server/sanitize'
-import { strikeFeature } from './shared'
+import { strikeFeature } from './core/feature'
 
 export const strikeHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['s'],

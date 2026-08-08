@@ -12,8 +12,8 @@ import {
   normalizeTableCellSpan,
   normalizeTableColwidth,
   MAX_GRID_SLOTS_PER_TABLE,
-} from './attrs'
-import { tableFeature } from './shared'
+} from './core/attrs'
+import { tableFeature } from './core/feature'
 
 const TABLE_MAX_GRID_SLOTS_PER_DOCUMENT = 100_000
 

@@ -4,8 +4,8 @@ import {
   textStyleFontFamilyOptions,
   textStyleFontSizeOptions,
   textStyleLineHeightOptions,
-} from '../options'
-import { textStyleFeature } from '../shared'
+} from '../core/options'
+import { textStyleFeature } from '../core/feature'
 import TextStyleToolbarControl from './TextStyleToolbarControl.vue'
 
 export const textStyleToolbarControl = richTextToolbarComponent({

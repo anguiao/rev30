@@ -1,6 +1,6 @@
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy } from '../../server/sanitize'
-import { underlineFeature } from './shared'
+import { underlineFeature } from './core/feature'
 
 export const underlineHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['u'],

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { highlightColorOptions } from '../../../src/features/highlight/colors'
+import { highlightColorOptions } from '../../../src/features/highlight/core/colors'
 import { highlightHtmlPolicy } from '../../../src/features/highlight/server'
 import { sanitizeRichTextHtml } from '../../../src/server/sanitize'
 

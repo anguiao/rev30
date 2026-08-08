@@ -8,7 +8,7 @@ import {
   unsetFontSizeAction,
   unsetLineHeightAction,
 } from '../editor'
-import type { TextStyleOption } from '../options'
+import type { TextStyleOption } from '../core/options'
 import TextStyleColorControl from './TextStyleColorControl.vue'
 import TextStyleDropdown from './TextStyleDropdown.vue'
 

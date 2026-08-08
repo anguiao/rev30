@@ -5,7 +5,7 @@ import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import { canRunRichTextAction, runRichTextAction } from '../../../editor/action'
 import { focusRichTextGridItem, handleRichTextGridKeydown } from '../../../vue/interactions/focus'
 import { setTextColorAction, unsetTextColorAction } from '../editor'
-import type { TextStyleOption } from '../options'
+import type { TextStyleOption } from '../core/options'
 
 const props = defineProps<{
   editor: Editor

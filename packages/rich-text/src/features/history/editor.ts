@@ -1,7 +1,7 @@
 import { UndoRedo } from '@tiptap/extensions/undo-redo'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { historyFeature } from './shared'
+import { historyFeature } from './core/feature'
 
 export const historyActions = [
   defineRichTextAction(historyFeature, {

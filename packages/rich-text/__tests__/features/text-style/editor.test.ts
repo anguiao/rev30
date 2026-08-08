@@ -13,7 +13,7 @@ import {
   unsetLineHeightAction,
   unsetTextColorAction,
 } from '../../../src/features/text-style/editor'
-import { textStyleFeature } from '../../../src/features/text-style/shared'
+import { textStyleFeature } from '../../../src/features/text-style/core/feature'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor() {

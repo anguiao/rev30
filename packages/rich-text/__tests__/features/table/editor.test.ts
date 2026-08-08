@@ -25,7 +25,7 @@ import {
   toggleHeaderColumnAction,
   toggleHeaderRowAction,
 } from '../../../src/features/table/editor'
-import { tableFeature } from '../../../src/features/table/shared'
+import { tableFeature } from '../../../src/features/table/core/feature'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor(content: string | object = '<p>前后</p>') {

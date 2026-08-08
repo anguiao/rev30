@@ -1,5 +1,5 @@
 import { richTextStatusBarComponent } from '../../../vue/status-bar'
-import { elementPathFeature } from '../shared'
+import { elementPathFeature } from '../core/feature'
 import ElementPathStatusBarItem from './ElementPathStatusBarItem.vue'
 
 export const elementPathStatusBarItem = richTextStatusBarComponent({

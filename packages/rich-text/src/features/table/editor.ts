@@ -13,8 +13,8 @@ import {
 import { TextSelection, type EditorState, type Selection } from '@tiptap/pm/state'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { normalizeTableCellAlign, type TableCellAlign } from './attrs'
-import { tableFeature } from './shared'
+import { normalizeTableCellAlign, type TableCellAlign } from './core/attrs'
+import { tableFeature } from './core/feature'
 
 const defaultTableRows = 3
 const defaultTableColumns = 3

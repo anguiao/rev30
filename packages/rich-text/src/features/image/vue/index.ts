@@ -9,7 +9,7 @@ import {
   type RichTextImageAttrs,
   updateImageAction,
 } from '../editor'
-import { imageFeature } from '../shared'
+import { imageFeature } from '../core/feature'
 import ImageDialog from './ImageDialog.vue'
 import ImageQuickBar from './ImageQuickBar.vue'
 import ImageToolbarControl from './ImageToolbarControl.vue'

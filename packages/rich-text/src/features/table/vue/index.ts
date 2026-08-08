@@ -2,7 +2,7 @@ import { TextSelection } from '@tiptap/pm/state'
 import { richTextFeatureQuickBar } from '../../../vue/quick-bar'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
 import { getSelectedTable } from '../editor'
-import { tableFeature } from '../shared'
+import { tableFeature } from '../core/feature'
 import TableQuickBar from './TableQuickBar.vue'
 import TableToolbarControl from './TableToolbarControl.vue'
 

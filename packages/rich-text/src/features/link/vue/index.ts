@@ -1,7 +1,7 @@
 import { richTextFeatureQuickBar, richTextQuickBarComponent } from '../../../vue/quick-bar'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
 import { resolveLinkRange } from '../range'
-import { linkFeature } from '../shared'
+import { linkFeature } from '../core/feature'
 import LinkControl from './LinkControl.vue'
 import LinkQuickBar from './LinkQuickBar.vue'
 

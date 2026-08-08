@@ -5,7 +5,7 @@ import { NButton, NInput } from 'naive-ui'
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { runRichTextAction } from '../../../editor/action'
 import { setLinkAction, unsetLinkAction } from '../editor'
-import { normalizeLinkHref } from '../href'
+import { normalizeLinkHref } from '../core/href'
 import type { LinkRange } from '../range'
 
 const props = defineProps<{

@@ -4,8 +4,8 @@ import { Plugin, TextSelection, type Selection } from '@tiptap/pm/state'
 import { common, createLowlight } from 'lowlight'
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { createCodeBlockLanguageAttribute } from './languages'
-import { codeBlockFeature } from './shared'
+import { createCodeBlockLanguageAttribute } from './core/languages'
+import { codeBlockFeature } from './core/feature'
 
 const codeBlockLowlight = createLowlight(common)
 // Keep missing or unsupported languages unhighlighted instead of auto-detecting them.

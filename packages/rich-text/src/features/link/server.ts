@@ -1,7 +1,7 @@
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
-import { linkAllowedSchemes, normalizeLinkHref } from './href'
-import { linkFeature } from './shared'
+import { linkAllowedSchemes, normalizeLinkHref } from './core/href'
+import { linkFeature } from './core/feature'
 
 const transformAnchor: RichTextTagTransform = ({ tagName, attribs }) => {
   const href = normalizeLinkHref(attribs.href ?? '')

@@ -1,6 +1,6 @@
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { underlineFeature } from './shared'
+import { underlineFeature } from './core/feature'
 
 export const underlineAction = defineRichTextAction(underlineFeature, {
   key: underlineFeature.key,

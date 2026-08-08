@@ -1,6 +1,6 @@
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy } from '../../server/sanitize'
-import { blockquoteFeature } from './shared'
+import { blockquoteFeature } from './core/feature'
 
 export const blockquoteHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['blockquote'],

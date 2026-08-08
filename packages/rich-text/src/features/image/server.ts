@@ -1,8 +1,8 @@
 import { RichTextContentInvalidError } from '../../server/errors'
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy, RichTextTagTransform } from '../../server/sanitize'
-import { normalizeImageSize } from './dimensions'
-import { imageFeature } from './shared'
+import { normalizeImageSize } from './core/dimensions'
+import { imageFeature } from './core/feature'
 
 export interface RichTextImageServerOptions {
   isAllowedSrc: (src: string) => boolean

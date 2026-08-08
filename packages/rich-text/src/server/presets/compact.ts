@@ -4,7 +4,7 @@ import { headingServerFeature } from '../../features/heading/server'
 import { italicServerFeature } from '../../features/italic/server'
 import { linkServerFeature } from '../../features/link/server'
 import { listServerFeature } from '../../features/list/server'
-import { compactRichTextPreset } from '../../presets/compact'
+import { compactRichTextPreset } from '../../core/presets/compact'
 import { defineRichTextServerPreset } from './types'
 
 export const compactRichTextServerPreset = defineRichTextServerPreset(compactRichTextPreset, [

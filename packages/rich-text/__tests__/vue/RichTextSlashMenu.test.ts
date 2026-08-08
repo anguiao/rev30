@@ -7,7 +7,7 @@ import { defineRichTextPreset } from '../../src/core/preset'
 import { defineRichTextAction, defineRichTextActionItem } from '../../src/editor/action'
 import { collectRichTextEditorExtensions } from '../../src/editor/feature'
 import { baseEditorFeature, paragraphActionItem } from '../../src/features/base/editor'
-import { baseFeature } from '../../src/features/base/shared'
+import { baseFeature } from '../../src/features/base/core/feature'
 import {
   defineRichTextSlashMenu,
   richTextSlashCommand,

@@ -4,10 +4,10 @@ import { defineConfig } from 'vitest/config'
 const nodeTestFiles = [
   '__tests__/architecture/*.test.ts',
   '__tests__/core/*.test.ts',
-  '__tests__/features/link/href.test.ts',
+  '__tests__/features/{character-count,heading,search-replace}/core/*.test.ts',
+  '__tests__/features/link/core/href.test.ts',
   '__tests__/features/*/server.test.ts',
   '__tests__/presets/*.test.ts',
-  '__tests__/schema.test.ts',
   '__tests__/server/*.test.ts',
 ]
 

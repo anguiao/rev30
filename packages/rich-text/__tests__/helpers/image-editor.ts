@@ -1,10 +1,10 @@
 import { defineRichTextPreset } from '../../src/core/preset'
 import { baseEditorFeature } from '../../src/features/base/editor'
-import { baseFeature } from '../../src/features/base/shared'
+import { baseFeature } from '../../src/features/base/core/feature'
 import { historyEditorFeature } from '../../src/features/history/editor'
-import { historyFeature } from '../../src/features/history/shared'
+import { historyFeature } from '../../src/features/history/core/feature'
 import { imageEditorFeature } from '../../src/features/image/editor'
-import { imageFeature } from '../../src/features/image/shared'
+import { imageFeature } from '../../src/features/image/core/feature'
 import {
   createImagePickerHandler,
   type RichTextImageUploadOptions,

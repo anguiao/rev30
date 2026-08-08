@@ -1,7 +1,7 @@
 import { richTextFeatureQuickBar } from '../../../vue/quick-bar'
 import { richTextToolbarComponent } from '../../../vue/toolbar'
 import { getSelectedCodeBlock } from '../editor'
-import { codeBlockFeature } from '../shared'
+import { codeBlockFeature } from '../core/feature'
 import CodeBlockQuickBar from './CodeBlockQuickBar.vue'
 import CodeBlockToolbarControl from './CodeBlockToolbarControl.vue'
 

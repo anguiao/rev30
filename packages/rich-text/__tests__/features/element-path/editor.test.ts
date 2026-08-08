@@ -14,16 +14,16 @@ import {
   resolveElementPath,
   selectElementPathItemAction,
 } from '../../../src/features/element-path/editor'
-import { elementPathFeature } from '../../../src/features/element-path/shared'
-import { boldFeature } from '../../../src/features/bold/shared'
-import { blockquoteFeature } from '../../../src/features/blockquote/shared'
-import { headingFeature } from '../../../src/features/heading/shared'
-import { imageFeature } from '../../../src/features/image/shared'
-import { italicFeature } from '../../../src/features/italic/shared'
-import { linkFeature } from '../../../src/features/link/shared'
-import { listFeature } from '../../../src/features/list/shared'
-import { baseFeature } from '../../../src/features/base/shared'
-import { tableFeature } from '../../../src/features/table/shared'
+import { elementPathFeature } from '../../../src/features/element-path/core/feature'
+import { boldFeature } from '../../../src/features/bold/core/feature'
+import { blockquoteFeature } from '../../../src/features/blockquote/core/feature'
+import { headingFeature } from '../../../src/features/heading/core/feature'
+import { imageFeature } from '../../../src/features/image/core/feature'
+import { italicFeature } from '../../../src/features/italic/core/feature'
+import { linkFeature } from '../../../src/features/link/core/feature'
+import { listFeature } from '../../../src/features/list/core/feature'
+import { baseFeature } from '../../../src/features/base/core/feature'
+import { tableFeature } from '../../../src/features/table/core/feature'
 import { createTestEditor } from '../../helpers/editor'
 
 function createEditor(

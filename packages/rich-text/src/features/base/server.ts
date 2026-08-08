@@ -1,6 +1,6 @@
 import { defineRichTextServerFeature } from '../../server/feature'
 import type { RichTextHtmlPolicy } from '../../server/sanitize'
-import { baseFeature } from './shared'
+import { baseFeature } from './core/feature'
 
 export const baseHtmlPolicy: RichTextHtmlPolicy = {
   allowedTags: ['p', 'br'],

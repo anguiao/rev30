@@ -1,7 +1,7 @@
 import { defineRichTextAction } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import type { HighlightColor } from './colors'
-import { highlightFeature } from './shared'
+import type { HighlightColor } from './core/colors'
+import { highlightFeature } from './core/feature'
 
 export const setHighlightAction = defineRichTextAction(highlightFeature, {
   key: 'set-highlight',

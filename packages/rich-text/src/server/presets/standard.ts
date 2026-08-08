@@ -14,7 +14,7 @@ import { listServerFeature } from '../../features/list/server'
 import { strikeServerFeature } from '../../features/strike/server'
 import { textAlignServerFeature } from '../../features/text-align/server'
 import { underlineServerFeature } from '../../features/underline/server'
-import { standardRichTextPreset } from '../../presets/standard'
+import { standardRichTextPreset } from '../../core/presets/standard'
 import { defineRichTextServerPreset, type RichTextServerPreset } from './types'
 
 export interface StandardRichTextServerPresetOptions {

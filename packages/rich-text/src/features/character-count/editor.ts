@@ -1,6 +1,6 @@
 import { CharacterCount } from '@tiptap/extensions/character-count'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { characterCountFeature } from './shared'
+import { characterCountFeature } from './core/feature'
 
 const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
 

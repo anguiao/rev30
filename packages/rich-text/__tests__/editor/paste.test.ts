@@ -11,7 +11,7 @@ import {
   defineRichTextEditorFeature,
 } from '../../src/editor/feature'
 import { baseEditorFeature } from '../../src/features/base/editor'
-import { baseFeature } from '../../src/features/base/shared'
+import { baseFeature } from '../../src/features/base/core/feature'
 import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
 import { createTestEditor } from '../helpers/editor'
 

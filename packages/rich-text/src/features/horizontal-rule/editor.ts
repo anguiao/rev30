@@ -1,6 +1,6 @@
 import { defineRichTextAction, defineRichTextActionItem } from '../../editor/action'
 import { defineRichTextEditorFeature } from '../../editor/feature'
-import { horizontalRuleFeature } from './shared'
+import { horizontalRuleFeature } from './core/feature'
 
 export const horizontalRuleAction = defineRichTextAction(horizontalRuleFeature, {
   key: horizontalRuleFeature.key,

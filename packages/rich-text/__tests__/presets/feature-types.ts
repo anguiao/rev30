@@ -2,8 +2,8 @@ import type { CommandProps } from '@tiptap/core'
 import { expectTypeOf } from 'vitest'
 import { defineRichTextFeature } from '../../src/core/feature'
 import { defineRichTextPreset } from '../../src/core/preset'
-import { defineRichTextAction, defineRichTextActionItem } from '../../src/editor/action'
-import { defineRichTextEditorFeature } from '../../src/editor/feature'
+import { defineRichTextAction, defineRichTextActionItem } from '../../src/client/editor/action'
+import { defineRichTextEditorFeature } from '../../src/client/editor/feature'
 import {
   createImageServerFeature,
   type RichTextImageServerOptions,
@@ -26,14 +26,14 @@ import {
 import {
   createAllRichTextEditorPreset,
   type AllRichTextEditorPresetOptions,
-} from '../../src/vue/presets/all'
-import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
+} from '../../src/client/vue/presets/all'
+import { compactRichTextEditorPreset } from '../../src/client/vue/presets/compact'
 import {
   createStandardRichTextEditorPreset,
   type StandardRichTextEditorPresetOptions,
-} from '../../src/vue/presets/standard'
-import { defineRichTextEditorPreset, type RichTextEditorPreset } from '../../src/vue/presets/types'
-import { richTextSlashCommand } from '../../src/vue/slash-menu'
+} from '../../src/client/vue/presets/standard'
+import { defineRichTextEditorPreset, type RichTextEditorPreset } from '../../src/client/vue/preset'
+import { richTextSlashCommand } from '../../src/client/vue/slash-menu'
 
 const baseFeature = defineRichTextFeature({
   key: 'base',

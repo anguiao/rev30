@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { defineRichTextPreset } from '../../src/core/preset'
-import { baseEditorFeature, paragraphActionItem } from '../../src/features/base/editor'
+import { baseEditorFeature, paragraphActionItem } from '../../src/features/base/client/editor'
 import { baseFeature } from '../../src/features/base/core/feature'
-import { boldActionItem } from '../../src/features/bold/editor'
-import { headingActionItems } from '../../src/features/heading/editor'
-import { defineRichTextSlashMenu, richTextSlashCommand } from '../../src/vue/slash-menu'
-import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
-import { defineRichTextQuickBar, richTextQuickBarAction } from '../../src/vue/quick-bar'
+import { boldActionItem } from '../../src/features/bold/client/editor'
+import { headingActionItems } from '../../src/features/heading/client/editor'
+import { defineRichTextSlashMenu, richTextSlashCommand } from '../../src/client/vue/slash-menu'
+import { defineRichTextEditorPreset } from '../../src/client/vue/preset'
+import { defineRichTextQuickBar, richTextQuickBarAction } from '../../src/client/vue/quick-bar'
 
 describe('contextual configuration validation', () => {
   it('rejects quick bar controls without an enabled editor feature', () => {

@@ -44,20 +44,20 @@
       "default": "./src/server/presets/standard.ts"
     },
     "./vue": {
-      "types": "./src/vue/index.ts",
-      "default": "./src/vue/index.ts"
+      "types": "./src/client/vue/index.ts",
+      "default": "./src/client/vue/index.ts"
     },
     "./vue/presets/all": {
-      "types": "./src/vue/presets/all.ts",
-      "default": "./src/vue/presets/all.ts"
+      "types": "./src/client/vue/presets/all.ts",
+      "default": "./src/client/vue/presets/all.ts"
     },
     "./vue/presets/compact": {
-      "types": "./src/vue/presets/compact.ts",
-      "default": "./src/vue/presets/compact.ts"
+      "types": "./src/client/vue/presets/compact.ts",
+      "default": "./src/client/vue/presets/compact.ts"
     },
     "./vue/presets/standard": {
-      "types": "./src/vue/presets/standard.ts",
-      "default": "./src/vue/presets/standard.ts"
+      "types": "./src/client/vue/presets/standard.ts",
+      "default": "./src/client/vue/presets/standard.ts"
     }
   },
   "scripts": {

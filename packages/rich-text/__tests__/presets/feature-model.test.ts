@@ -2,11 +2,11 @@ import { Extension } from '@tiptap/core'
 import { describe, expect, it } from 'vitest'
 import { defineRichTextFeature } from '../../src/core/feature'
 import { defineRichTextPreset } from '../../src/core/preset'
-import { defineRichTextAction, defineRichTextActionItem } from '../../src/editor/action'
+import { defineRichTextAction, defineRichTextActionItem } from '../../src/client/editor/action'
 import {
   collectRichTextEditorExtensions,
   defineRichTextEditorFeature,
-} from '../../src/editor/feature'
+} from '../../src/client/editor/feature'
 import {
   collectRichTextServerExtensions,
   defineRichTextServerFeature,
@@ -16,8 +16,8 @@ import {
   defineRichTextToolbar,
   richTextToolbarButton,
   richTextToolbarDropdown,
-} from '../../src/vue/toolbar'
-import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
+} from '../../src/client/vue/toolbar'
+import { defineRichTextEditorPreset } from '../../src/client/vue/preset'
 
 describe('rich text feature model', () => {
   it('rejects duplicate feature keys', () => {

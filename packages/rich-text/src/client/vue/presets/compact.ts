@@ -1,0 +1,89 @@
+import '../../../content/presets/compact.css'
+import { baseEditorFeature, paragraphActionItem } from '../../../features/base/client/editor'
+import { boldActionItem, boldEditorFeature } from '../../../features/bold/client/editor'
+import { headingActionItems, headingEditorFeature } from '../../../features/heading/client/editor'
+import { historyActionItems, historyEditorFeature } from '../../../features/history/client/editor'
+import { italicActionItem, italicEditorFeature } from '../../../features/italic/client/editor'
+import { linkEditorFeature } from '../../../features/link/client/editor'
+import {
+  linkQuickBar,
+  linkQuickBarControl,
+  linkToolbarControl,
+} from '../../../features/link/client/vue'
+import { listActionItems, listEditorFeature } from '../../../features/list/client/editor'
+import { compactRichTextPreset } from '../../../core/presets/compact'
+import { defineRichTextQuickBar, richTextQuickBarAction } from '../quick-bar'
+import { defineRichTextSlashMenu, richTextSlashCommand } from '../slash-menu'
+import {
+  defineRichTextToolbar,
+  richTextToolbarButton as button,
+  richTextToolbarDropdown as dropdown,
+} from '../toolbar'
+import { defineRichTextEditorPreset } from '../preset'
+
+const compactEditorFeatures = [
+  baseEditorFeature,
+  historyEditorFeature,
+  boldEditorFeature,
+  italicEditorFeature,
+  linkEditorFeature,
+  headingEditorFeature,
+  listEditorFeature,
+] as const
+
+const compactRichTextToolbar = defineRichTextToolbar([
+  { key: 'history', controls: historyActionItems.map(button) },
+  {
+    key: 'marks',
+    controls: [button(boldActionItem), button(italicActionItem), linkToolbarControl],
+  },
+  {
+    key: 'blocks',
+    controls: [
+      dropdown({
+        key: 'heading',
+        label: '标题',
+        icon: 'i-[lucide--heading]',
+        items: headingActionItems,
+      }),
+      dropdown({
+        key: 'list',
+        label: '列表',
+        icon: 'i-[lucide--list]',
+        items: listActionItems,
+      }),
+    ],
+  },
+])
+
+const compactRichTextQuickBar = defineRichTextQuickBar({
+  textControls: [
+    richTextQuickBarAction(boldActionItem),
+    richTextQuickBarAction(italicActionItem),
+    linkQuickBarControl,
+  ],
+  featureBars: [linkQuickBar],
+})
+
+const compactRichTextSlashMenu = defineRichTextSlashMenu([
+  {
+    key: 'basic',
+    label: '基础块',
+    commands: [
+      richTextSlashCommand(paragraphActionItem),
+      ...headingActionItems.map((item) => richTextSlashCommand(item)),
+    ],
+  },
+  {
+    key: 'list',
+    label: '列表',
+    commands: listActionItems.map((item) => richTextSlashCommand(item)),
+  },
+])
+
+export const compactRichTextEditorPreset = defineRichTextEditorPreset(compactRichTextPreset, {
+  editorFeatures: compactEditorFeatures,
+  toolbar: compactRichTextToolbar,
+  quickBar: compactRichTextQuickBar,
+  slashMenu: compactRichTextSlashMenu,
+})

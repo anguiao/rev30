@@ -1,6 +1,6 @@
 import { getSchema } from '@tiptap/core'
 import { describe, expect, it, vi } from 'vitest'
-import { collectRichTextEditorExtensions } from '../../src/editor/feature'
+import { collectRichTextEditorExtensions } from '../../src/client/editor/feature'
 import { allRichTextPreset } from '../../src/core/presets/all'
 import { compactRichTextPreset } from '../../src/core/presets/compact'
 import { standardRichTextPreset } from '../../src/core/presets/standard'
@@ -9,9 +9,9 @@ import { createAllRichTextServerPreset } from '../../src/server/presets/all'
 import { compactRichTextServerPreset } from '../../src/server/presets/compact'
 import { createStandardRichTextServerPreset } from '../../src/server/presets/standard'
 import { collectRichTextServerExtensions } from '../../src/server/feature'
-import { createAllRichTextEditorPreset } from '../../src/vue/presets/all'
-import { compactRichTextEditorPreset } from '../../src/vue/presets/compact'
-import { createStandardRichTextEditorPreset } from '../../src/vue/presets/standard'
+import { createAllRichTextEditorPreset } from '../../src/client/vue/presets/all'
+import { compactRichTextEditorPreset } from '../../src/client/vue/presets/compact'
+import { createStandardRichTextEditorPreset } from '../../src/client/vue/presets/standard'
 
 const imageUpload = async (file: File) => ({
   src: `/api/attachments/${file.name}/content`,

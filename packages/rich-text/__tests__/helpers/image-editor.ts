@@ -1,15 +1,15 @@
 import { defineRichTextPreset } from '../../src/core/preset'
-import { baseEditorFeature } from '../../src/features/base/editor'
+import { baseEditorFeature } from '../../src/features/base/client/editor'
 import { baseFeature } from '../../src/features/base/core/feature'
-import { historyEditorFeature } from '../../src/features/history/editor'
+import { historyEditorFeature } from '../../src/features/history/client/editor'
 import { historyFeature } from '../../src/features/history/core/feature'
-import { imageEditorFeature } from '../../src/features/image/editor'
+import { imageEditorFeature } from '../../src/features/image/client/editor'
 import { imageFeature } from '../../src/features/image/core/feature'
 import {
   createImagePickerHandler,
   type RichTextImageUploadOptions,
-} from '../../src/features/image/vue'
-import { defineRichTextEditorPreset } from '../../src/vue/presets/types'
+} from '../../src/features/image/client/vue'
+import { defineRichTextEditorPreset } from '../../src/client/vue/preset'
 
 const imageTestPreset = defineRichTextPreset({
   key: 'image-test',

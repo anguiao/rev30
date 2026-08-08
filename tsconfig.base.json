@@ -16,7 +16,7 @@
       "@rev30/rich-text": ["./packages/rich-text/src/core/index.ts"],
       "@rev30/rich-text/schema": ["./packages/rich-text/src/core/schema/index.ts"],
       "@rev30/rich-text/server": ["./packages/rich-text/src/server/index.ts"],
-      "@rev30/rich-text/vue": ["./packages/rich-text/src/vue/index.ts"]
+      "@rev30/rich-text/vue": ["./packages/rich-text/src/client/vue/index.ts"]
     },
     "resolveJsonModule": true,
     "skipLibCheck": true,

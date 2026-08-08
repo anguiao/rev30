@@ -1,0 +1,49 @@
+import { defineRichTextAction } from '../../../client/editor/action'
+import { defineRichTextEditorFeature } from '../../../client/editor/feature'
+import type { TextStyleOption } from '../core/options'
+import { textStyleFeature } from '../core/feature'
+
+export const setTextColorAction = defineRichTextAction(textStyleFeature, {
+  key: 'set-text-color',
+  command: ({ chain }, color: TextStyleOption['value']) => chain().focus().setColor(color).run(),
+})
+
+export const unsetTextColorAction = defineRichTextAction(textStyleFeature, {
+  key: 'unset-text-color',
+  command: ({ chain }) => chain().focus().unsetColor().run(),
+})
+
+export const setFontFamilyAction = defineRichTextAction(textStyleFeature, {
+  key: 'set-font-family',
+  command: ({ chain }, fontFamily: TextStyleOption['value']) =>
+    chain().focus().setFontFamily(fontFamily).run(),
+})
+
+export const unsetFontFamilyAction = defineRichTextAction(textStyleFeature, {
+  key: 'unset-font-family',
+  command: ({ chain }) => chain().focus().unsetFontFamily().run(),
+})
+
+export const setFontSizeAction = defineRichTextAction(textStyleFeature, {
+  key: 'set-font-size',
+  command: ({ chain }, fontSize: TextStyleOption['value']) =>
+    chain().focus().setFontSize(fontSize).run(),
+})
+
+export const unsetFontSizeAction = defineRichTextAction(textStyleFeature, {
+  key: 'unset-font-size',
+  command: ({ chain }) => chain().focus().unsetFontSize().run(),
+})
+
+export const setLineHeightAction = defineRichTextAction(textStyleFeature, {
+  key: 'set-line-height',
+  command: ({ chain }, lineHeight: TextStyleOption['value']) =>
+    chain().focus().setLineHeight(lineHeight).run(),
+})
+
+export const unsetLineHeightAction = defineRichTextAction(textStyleFeature, {
+  key: 'unset-line-height',
+  command: ({ chain }) => chain().focus().unsetLineHeight().run(),
+})
+
+export const textStyleEditorFeature = defineRichTextEditorFeature(textStyleFeature, {})

@@ -1,3 +1,4 @@
+import { existsSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { build, normalizePath, type Plugin } from 'vite'
@@ -15,9 +16,24 @@ interface BuildGraphOptions {
 }
 
 const packageRoot = normalizePath(fileURLToPath(new URL('../../', import.meta.url)))
-const sourceRoot = normalizePath(fileURLToPath(new URL('../../src/', import.meta.url)))
+const sourceRoot = normalizePath(fileURLToPath(new URL('../../src/', import.meta.url))).replace(
+  /\/$/,
+  '',
+)
 const virtualEntryId = 'virtual:rich-text-minimal'
 const resolvedVirtualEntryId = '\0rich-text-minimal'
+
+const packageClientEditorEntryPaths = ['action', 'feature', 'interaction', 'paste'].map(
+  (moduleName) => `${sourceRoot}/client/editor/${moduleName}.ts`,
+)
+const featureClientEditorEntryPaths = readdirSync(`${sourceRoot}/features`, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => `${sourceRoot}/features/${entry.name}/client/editor.ts`)
+  .filter((entryPath) => existsSync(entryPath))
+const headlessEditorEntryPaths = [
+  ...packageClientEditorEntryPaths,
+  ...featureClientEditorEntryPaths,
+]
 
 function normalizeModuleId(id: string) {
   return normalizePath(id).replace(/\?.*$/, '')
@@ -101,21 +117,26 @@ function findModules(ids: Iterable<string>, predicate: (id: string) => boolean) 
 
 function isVueModule(id: string) {
   return (
-    id.includes('/packages/rich-text/src/vue/') ||
-    /\/packages\/rich-text\/src\/features\/[^/]+\/vue(?:\.ts|\/)/.test(id) ||
+    id.includes('/packages/rich-text/src/client/vue/') ||
+    /\/packages\/rich-text\/src\/features\/[^/]+\/client\/vue(?:\.ts|\/)/.test(id) ||
     id.endsWith('.vue') ||
     id.includes('/node_modules/vue/') ||
     id.includes('/node_modules/@vue/') ||
     id.includes('/node_modules/@vueuse/') ||
+    id.includes('/node_modules/@tiptap/vue-3/') ||
     id.includes('/node_modules/naive-ui/')
   )
 }
 
 function isEditorModule(id: string) {
   return (
-    id.includes('/packages/rich-text/src/editor/') ||
-    /\/packages\/rich-text\/src\/features\/[^/]+\/editor(?:\.ts|\/)/.test(id)
+    id.includes('/packages/rich-text/src/client/editor/') ||
+    /\/packages\/rich-text\/src\/features\/[^/]+\/client\/editor(?:\.ts|\/)/.test(id)
   )
+}
+
+function isCssModule(id: string) {
+  return id.endsWith('.css')
 }
 
 function isCodeBlockHighlighterModule(id: string) {
@@ -281,10 +302,10 @@ describe('rich text import boundaries', () => {
       findModules(
         graph.loaded,
         (id) =>
-          id.endsWith('/packages/rich-text/src/vue/index.ts') ||
-          id.endsWith('/packages/rich-text/src/vue/presets/all.ts') ||
-          id.endsWith('/packages/rich-text/src/vue/presets/compact.ts') ||
-          id.endsWith('/packages/rich-text/src/vue/presets/standard.ts'),
+          id.endsWith('/packages/rich-text/src/client/vue/index.ts') ||
+          id.endsWith('/packages/rich-text/src/client/vue/presets/all.ts') ||
+          id.endsWith('/packages/rich-text/src/client/vue/presets/compact.ts') ||
+          id.endsWith('/packages/rich-text/src/client/vue/presets/standard.ts'),
       ),
       'resolved Vue package exports',
     ).toHaveLength(4)
@@ -301,6 +322,38 @@ describe('rich text import boundaries', () => {
     expect(graph.css, 'bundled all current search match styles').toContain(
       'rich-text-search-match-current',
     )
+  }, 30_000)
+
+  it('keeps the internal headless editor graph free of Vue, server, and CSS modules', async () => {
+    const bindings = headlessEditorEntryPaths
+      .map((entryPath, index) => `import * as entry${index} from ${JSON.stringify(entryPath)}`)
+      .join('\n')
+    const entries = headlessEditorEntryPaths.map((_, index) => `entry${index}`).join(', ')
+    const graph = await collectBuildGraph({
+      virtualSource: `${bindings}\nexport const headlessEditorEntries = [${entries}]`,
+    })
+
+    expect(
+      findModules(graph.loaded, (id) => headlessEditorEntryPaths.includes(id)),
+      'resolved package and feature headless editor entries',
+    ).toHaveLength(headlessEditorEntryPaths.length)
+    expect(findModules(graph.loaded, isVueModule), 'loaded headless editor Vue modules').toEqual([])
+    expect(findModules(graph.bundled, isVueModule), 'bundled headless editor Vue modules').toEqual(
+      [],
+    )
+    expect(
+      findModules(graph.loaded, isServerModule),
+      'loaded headless editor server modules',
+    ).toEqual([])
+    expect(
+      findModules(graph.bundled, isServerModule),
+      'bundled headless editor server modules',
+    ).toEqual([])
+    expect(findModules(graph.loaded, isCssModule), 'loaded headless editor CSS modules').toEqual([])
+    expect(findModules(graph.bundled, isCssModule), 'bundled headless editor CSS modules').toEqual(
+      [],
+    )
+    expect(graph.css, 'bundled headless editor styles').toBe('')
   }, 30_000)
 
   it('does not load all-only features through public compact preset entries', async () => {
@@ -323,13 +376,13 @@ describe('rich text import boundaries', () => {
         (id) =>
           id.endsWith('/packages/rich-text/src/core/presets/compact.ts') ||
           id.endsWith('/packages/rich-text/src/server/presets/compact.ts') ||
-          id.endsWith('/packages/rich-text/src/vue/presets/compact.ts'),
+          id.endsWith('/packages/rich-text/src/client/vue/presets/compact.ts'),
       ),
       'resolved compact preset package exports',
     ).toHaveLength(3)
     expect(
       findModules(graph.loaded, (id) =>
-        id.endsWith('/packages/rich-text/src/vue/RichTextEditor.vue'),
+        id.endsWith('/packages/rich-text/src/client/vue/RichTextEditor.vue'),
       ),
       'resolved shared rich text editor',
     ).toHaveLength(1)
@@ -410,13 +463,13 @@ describe('rich text import boundaries', () => {
         (id) =>
           id.endsWith('/packages/rich-text/src/core/presets/standard.ts') ||
           id.endsWith('/packages/rich-text/src/server/presets/standard.ts') ||
-          id.endsWith('/packages/rich-text/src/vue/presets/standard.ts'),
+          id.endsWith('/packages/rich-text/src/client/vue/presets/standard.ts'),
       ),
       'resolved standard preset package exports',
     ).toHaveLength(3)
     expect(
       findModules(graph.loaded, (id) =>
-        id.endsWith('/packages/rich-text/src/vue/RichTextEditor.vue'),
+        id.endsWith('/packages/rich-text/src/client/vue/RichTextEditor.vue'),
       ),
       'resolved shared rich text editor',
     ).toHaveLength(1)
@@ -449,14 +502,14 @@ describe('rich text import boundaries', () => {
     const graph = await collectBuildGraph({
       virtualSource: `
           import { defineRichTextPreset } from ${JSON.stringify(`${sourceRoot}/core/preset.ts`)}
-          import { baseEditorFeature } from ${JSON.stringify(`${sourceRoot}/features/base/editor.ts`)}
+          import { baseEditorFeature } from ${JSON.stringify(`${sourceRoot}/features/base/client/editor.ts`)}
           import { baseServerFeature } from ${JSON.stringify(`${sourceRoot}/features/base/server.ts`)}
           import { baseFeature } from ${JSON.stringify(`${sourceRoot}/features/base/core/feature.ts`)}
-          import { boldEditorFeature } from ${JSON.stringify(`${sourceRoot}/features/bold/editor.ts`)}
+          import { boldEditorFeature } from ${JSON.stringify(`${sourceRoot}/features/bold/client/editor.ts`)}
           import { boldServerFeature } from ${JSON.stringify(`${sourceRoot}/features/bold/server.ts`)}
           import { boldFeature } from ${JSON.stringify(`${sourceRoot}/features/bold/core/feature.ts`)}
           import { defineRichTextServerPreset } from ${JSON.stringify(`${sourceRoot}/server/presets/types.ts`)}
-          import { defineRichTextEditorPreset } from ${JSON.stringify(`${sourceRoot}/vue/presets/types.ts`)}
+          import { defineRichTextEditorPreset } from ${JSON.stringify(`${sourceRoot}/client/vue/preset.ts`)}
 
           export const minimalPreset = defineRichTextPreset({
             key: 'minimal',

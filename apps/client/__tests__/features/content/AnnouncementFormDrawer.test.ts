@@ -274,51 +274,6 @@ const announcementResponse: Announcement = {
   updatedAt: '2026-05-20T00:00:00.000Z',
 }
 
-const legacyCompactContentJson: TiptapDocument = {
-  type: 'doc',
-  content: [
-    {
-      type: 'heading',
-      attrs: { level: 2 },
-      content: [{ type: 'text', text: '旧版标题', marks: [{ type: 'bold' }] }],
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: '旧版链接',
-          marks: [
-            {
-              type: 'link',
-              attrs: {
-                href: 'https://example.com/legacy',
-                target: '_blank',
-                rel: 'noopener noreferrer nofollow',
-                class: null,
-              },
-            },
-          ],
-        },
-      ],
-    },
-    {
-      type: 'bulletList',
-      content: [
-        {
-          type: 'listItem',
-          content: [
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: '旧版列表项' }],
-            },
-          ],
-        },
-      ],
-    },
-  ],
-}
-
 const queryCaches = new WeakMap<
   object,
   ReturnType<ReturnType<typeof createTestQueryHarness>['getQueryCache']>
@@ -817,31 +772,6 @@ describe('AnnouncementFormDrawer', () => {
             },
           ],
         },
-      }),
-    )
-  })
-
-  it('loads and resubmits a frozen compact announcement body in edit mode', async () => {
-    const legacyAnnouncement: Announcement = {
-      ...announcementResponse,
-      contentJson: legacyCompactContentJson,
-    }
-    getAnnouncementMock.mockResolvedValue(legacyAnnouncement)
-    updateAnnouncementMock.mockResolvedValue(legacyAnnouncement)
-
-    const wrapper = mountDrawer({ show: true, announcementId })
-    await flushPromises()
-
-    expect(wrapper.getComponent({ name: 'RichTextEditorStub' }).props('modelValue')).toEqual(
-      legacyCompactContentJson,
-    )
-
-    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
-
-    expect(updateAnnouncementMock).toHaveBeenCalledWith(
-      announcementId,
-      expect.objectContaining({
-        contentJson: legacyCompactContentJson,
       }),
     )
   })

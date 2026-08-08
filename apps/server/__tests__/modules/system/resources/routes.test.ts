@@ -283,19 +283,15 @@ describe('resource routes', () => {
     expect(mocks.service.create).not.toHaveBeenCalled()
   })
 
-  it('maps invalid type field errors to route responses', async () => {
+  it('maps invalid final type field errors to route responses', async () => {
     const app = createTestApp()
 
-    mocks.service.create.mockRejectedValueOnce(
+    mocks.service.update.mockRejectedValueOnce(
       new ResourceInvalidTypeFieldsError('内部菜单路径不能为空', 'path'),
     )
-    const invalidTypeResponse = await app.request('/api/system/resources', {
-      method: 'POST',
-      body: JSON.stringify({
-        type: RESOURCE_TYPE_MENU,
-        name: 'Users',
-        code: 'test-system:user',
-      }),
+    const invalidTypeResponse = await app.request(`/api/system/resources/${resourceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name: 'Users' }),
       headers: { 'content-type': 'application/json' },
     })
     expect(invalidTypeResponse.status).toBe(400)

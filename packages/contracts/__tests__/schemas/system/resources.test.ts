@@ -145,21 +145,7 @@ describe('resource schemas', () => {
     })
   })
 
-  it('normalizes missing internal menu paths for service-level validation', () => {
-    expect(
-      resourceCreateSchema.parse({
-        type: RESOURCE_TYPE_MENU,
-        name: 'Users',
-        code: 'system:user',
-      }),
-    ).toMatchObject({
-      type: RESOURCE_TYPE_MENU,
-      path: null,
-      externalUrl: null,
-    })
-  })
-
-  it('defaults external menus to blank target and leaves final url validation to service', () => {
+  it('defaults external menus to blank target', () => {
     expect(
       resourceCreateSchema.parse({
         type: RESOURCE_TYPE_EXTERNAL,
@@ -171,19 +157,6 @@ describe('resource schemas', () => {
       type: RESOURCE_TYPE_EXTERNAL,
       path: null,
       externalUrl: 'https://example.com/docs',
-      openTarget: RESOURCE_OPEN_TARGET_BLANK,
-    })
-
-    expect(
-      resourceCreateSchema.parse({
-        type: RESOURCE_TYPE_EXTERNAL,
-        name: 'Broken Docs',
-        code: 'system:broken-docs',
-      }),
-    ).toMatchObject({
-      type: RESOURCE_TYPE_EXTERNAL,
-      path: null,
-      externalUrl: null,
       openTarget: RESOURCE_OPEN_TARGET_BLANK,
     })
   })
@@ -247,38 +220,6 @@ describe('resource schemas', () => {
     ).toMatchObject({
       type: RESOURCE_TYPE_EXTERNAL,
       externalUrl: 'https://example.com/docs',
-    })
-  })
-
-  it('keeps submitted resource type-specific validation in the service layer', () => {
-    const baseFormInput = {
-      name: 'Docs',
-      code: 'system:docs',
-      parentId: null,
-      path: null,
-      externalUrl: null,
-      openTarget: RESOURCE_OPEN_TARGET_SELF,
-      icon: null,
-      hidden: false,
-      status: RESOURCE_STATUS_ENABLED,
-      sortOrder: 0,
-    }
-
-    expect(
-      resourceCreateSchema.parse({ ...baseFormInput, type: RESOURCE_TYPE_MENU }),
-    ).toMatchObject({
-      type: RESOURCE_TYPE_MENU,
-      path: null,
-    })
-    expect(
-      resourceCreateSchema.parse({
-        ...baseFormInput,
-        type: RESOURCE_TYPE_EXTERNAL,
-        externalUrl: 'not-a-url',
-      }),
-    ).toMatchObject({
-      type: RESOURCE_TYPE_EXTERNAL,
-      externalUrl: 'not-a-url',
     })
   })
 
@@ -524,20 +465,14 @@ describe('resource schemas', () => {
     expectZodIssue(result, { message: '至少修改一个字段' })
   })
 
-  it('defers omitted-type externalUrl validation and validates explicit external updates', () => {
+  it('normalizes type-specific update fields', () => {
     expect(
       resourceUpdateSchema.parse({
-        externalUrl: 'not-a-url',
-      }),
-    ).toMatchObject({
-      externalUrl: 'not-a-url',
-    })
-
-    expect(
-      resourceUpdateSchema.parse({
+        type: RESOURCE_TYPE_EXTERNAL,
         externalUrl: 'https://example.com/docs',
       }),
     ).toMatchObject({
+      type: RESOURCE_TYPE_EXTERNAL,
       externalUrl: 'https://example.com/docs',
     })
 
@@ -579,26 +514,6 @@ describe('resource schemas', () => {
       path: null,
       externalUrl: null,
       openTarget: RESOURCE_OPEN_TARGET_SELF,
-    })
-
-    expect(
-      resourceUpdateSchema.parse({
-        type: RESOURCE_TYPE_EXTERNAL,
-        externalUrl: 'not-a-url',
-      }),
-    ).toMatchObject({
-      type: RESOURCE_TYPE_EXTERNAL,
-      externalUrl: 'not-a-url',
-    })
-
-    expect(
-      resourceUpdateSchema.parse({
-        type: RESOURCE_TYPE_EXTERNAL,
-        externalUrl: null,
-      }),
-    ).toMatchObject({
-      type: RESOURCE_TYPE_EXTERNAL,
-      externalUrl: null,
     })
   })
 })

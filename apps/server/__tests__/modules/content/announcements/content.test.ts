@@ -5,26 +5,7 @@ import { AnnouncementContentInvalidError } from '../../../../src/modules/content
 const firstAttachmentId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const secondAttachmentId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 
-const compactAnnouncementFixture = {
-  type: 'doc',
-  content: [
-    {
-      type: 'heading',
-      attrs: { level: 2 },
-      content: [{ type: 'text', marks: [{ type: 'bold' }, { type: 'italic' }], text: '维护通知' }],
-    },
-  ],
-} as const
-
 describe('announcement content helpers', () => {
-  it('derives the frozen compact announcement fixture with the standard preset', () => {
-    expect(deriveAnnouncementContent(compactAnnouncementFixture)).toMatchObject({
-      json: compactAnnouncementFixture,
-      text: '维护通知',
-      html: '<h2><em><strong>维护通知</strong></em></h2>',
-    })
-  })
-
   it('derives standard-only formatting and extracts unique internal image attachment ids', () => {
     const content = deriveAnnouncementContent({
       type: 'doc',

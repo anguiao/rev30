@@ -137,7 +137,7 @@ describe('auth requests', () => {
     })
   })
 
-  it('reuses parseApiError for profile and password request failures', async () => {
+  it('maps password update failures to typed API errors', async () => {
     createFetchMock(
       jsonResponse(
         {

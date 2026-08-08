@@ -1,5 +1,10 @@
-import hljs from 'highlight.js/lib/common'
+import hljs from 'highlight.js/lib/core'
+import { common } from 'lowlight'
 import { nextTick, type Ref } from 'vue'
+
+for (const [name, language] of Object.entries(common)) {
+  hljs.registerLanguage(name, language)
+}
 
 export function useRichTextCodeHighlight(container: Readonly<Ref<HTMLElement | null>>) {
   async function highlightCode() {

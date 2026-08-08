@@ -24,6 +24,7 @@
     "highlight.js": "^11.11.1",
     "hono": "catalog:",
     "lodash-es": "^4.18.1",
+    "lowlight": "^3.3.0",
     "naive-ui": "catalog:",
     "pinia": "^4.0.2",
     "vue": "catalog:",

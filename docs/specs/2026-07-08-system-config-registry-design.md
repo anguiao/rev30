@@ -1,5 +1,5 @@
 ---
-status: approved
+status: completed
 date: 2026-07-08
 ---
 

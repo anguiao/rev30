@@ -115,7 +115,13 @@ watch(
 </script>
 
 <template>
-  <NDrawer v-model:show="show" placement="right" :width="560">
+  <NDrawer
+    v-model:show="show"
+    placement="right"
+    :width="560"
+    :mask-closable="false"
+    :close-on-esc="false"
+  >
     <NDrawerContent title="上传 SVG 图标" closable>
       <div class="flex flex-col gap-4">
         <NAlert v-if="uploadError" type="error" :show-icon="false">

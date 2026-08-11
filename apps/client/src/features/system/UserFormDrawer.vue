@@ -226,7 +226,13 @@ function toDepartmentIds(value: Array<string | number> | null) {
 </script>
 
 <template>
-  <NDrawer v-model:show="show" placement="right" :width="640">
+  <NDrawer
+    v-model:show="show"
+    placement="right"
+    :width="640"
+    :mask-closable="false"
+    :close-on-esc="false"
+  >
     <NDrawerContent :title="drawerTitle" closable>
       <div class="flex flex-col gap-4">
         <NAlert v-if="loadError" type="error" :show-icon="false">

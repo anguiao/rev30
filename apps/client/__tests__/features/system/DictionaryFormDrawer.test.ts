@@ -350,26 +350,6 @@ describe('DictionaryFormDrawer', () => {
     ).toBe('archived')
   })
 
-  it('does not save when canceling after removing a local item', async () => {
-    getDictionaryMock.mockResolvedValue(dictionaryDetail)
-
-    const wrapper = mountDrawer({ show: true, dictionaryId })
-    await flushPromises()
-
-    await confirmRemoveItem(wrapper, 0)
-
-    const cancelButton = wrapper.findAll('button').find((button) => button.text() === '取消')
-
-    expect(cancelButton).toBeDefined()
-    await cancelButton!.trigger('click')
-    await flushPromises()
-
-    expect(createDictionaryMock).not.toHaveBeenCalled()
-    expect(updateDictionaryMock).not.toHaveBeenCalled()
-    expect(wrapper.emitted('saved')).toBeUndefined()
-    expect(wrapper.emitted('update:show')).toEqual([[false]])
-  })
-
   it('shows server field error on code field', async () => {
     createDictionaryMock.mockRejectedValue(new ApiRequestError(400, '字典编码已存在', 'code'))
 

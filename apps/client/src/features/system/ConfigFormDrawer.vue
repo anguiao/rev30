@@ -28,6 +28,7 @@ import {
 import { z } from 'zod'
 import { getConfig, updateConfig } from '.'
 import { configValueTypeLabels } from './labels'
+import { useDrawerUnsavedChangesGuard } from '../../composables/useDrawerUnsavedChangesGuard'
 import { getErrorMessage } from '../../utils/error'
 import { ApiRequestError } from '../../utils/request'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
@@ -214,15 +215,22 @@ watch(
     immediate: true,
   },
 )
+
+const isFormDirty = form.useSelector((state) => !state.isDefaultValue)
+const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
+  show,
+  isDirty: isFormDirty,
+})
 </script>
 
 <template>
   <NDrawer
-    v-model:show="show"
+    :show="show"
     placement="right"
     :width="640"
     :mask-closable="false"
     :close-on-esc="false"
+    @update:show="handleDrawerShowUpdate"
   >
     <NDrawerContent title="编辑系统配置" closable>
       <div class="flex flex-col gap-4">
@@ -343,7 +351,7 @@ watch(
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <NButton @click="show = false">取消</NButton>
+          <NButton @click="requestClose">取消</NButton>
           <NButton
             data-test="config-form-submit"
             attr-type="submit"

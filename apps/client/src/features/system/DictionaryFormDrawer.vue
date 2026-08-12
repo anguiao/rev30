@@ -23,6 +23,7 @@ import {
 } from '@rev30/contracts'
 import { createDictionary, getDictionary, updateDictionary } from '.'
 import { statusSelectOptions } from './labels'
+import { useDrawerUnsavedChangesGuard } from '../../composables/useDrawerUnsavedChangesGuard'
 import { getErrorMessage } from '../../utils/error'
 import {
   formItemValidationFeedback,
@@ -251,15 +252,22 @@ watch(
     immediate: true,
   },
 )
+
+const isFormDirty = form.useSelector((state) => !state.isDefaultValue)
+const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
+  show,
+  isDirty: isFormDirty,
+})
 </script>
 
 <template>
   <NDrawer
-    v-model:show="show"
+    :show="show"
     placement="right"
     :width="860"
     :mask-closable="false"
     :close-on-esc="false"
+    @update:show="handleDrawerShowUpdate"
   >
     <NDrawerContent :title="drawerTitle" closable>
       <div class="flex flex-col gap-4">
@@ -489,7 +497,7 @@ watch(
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <NButton @click="show = false">取消</NButton>
+          <NButton @click="requestClose">取消</NButton>
           <NButton
             data-test="dictionary-form-submit"
             type="primary"

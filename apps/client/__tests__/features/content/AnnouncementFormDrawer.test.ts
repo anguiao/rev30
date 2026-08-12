@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
+import { NDialogProvider } from 'naive-ui'
+import { defineComponent, h, type PropType } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getErrorMessage } from '../../../src/utils/error'
 import { ApiRequestError } from '../../../src/utils/request'
@@ -274,6 +275,33 @@ const announcementResponse: Announcement = {
   updatedAt: '2026-05-20T00:00:00.000Z',
 }
 
+const AnnouncementFormDrawerTestHost = defineComponent({
+  name: 'AnnouncementFormDrawerTestHost',
+  props: {
+    show: {
+      type: Boolean,
+      required: true,
+    },
+    announcementId: {
+      type: String as PropType<string | null>,
+      default: null,
+    },
+  },
+  emits: ['update:show', 'saved'],
+  setup(props, { emit }) {
+    return () =>
+      h(NDialogProvider, null, {
+        default: () =>
+          h(AnnouncementFormDrawer, {
+            show: props.show,
+            announcementId: props.announcementId,
+            'onUpdate:show': (nextShow: boolean) => emit('update:show', nextShow),
+            onSaved: () => emit('saved'),
+          }),
+      })
+  },
+})
+
 const queryCaches = new WeakMap<
   object,
   ReturnType<ReturnType<typeof createTestQueryHarness>['getQueryCache']>
@@ -282,7 +310,7 @@ const queryCaches = new WeakMap<
 function mountDrawer(props = { show: true, announcementId: null as string | null }) {
   const queryHarness = createTestQueryHarness()
 
-  const wrapper = mount(AnnouncementFormDrawer, {
+  const wrapper = mount(AnnouncementFormDrawerTestHost, {
     props,
     attachTo: document.body,
     global: {
@@ -337,6 +365,16 @@ async function clickAction(wrapper: ReturnType<typeof mount>, selector: string) 
   await flushPromises()
 }
 
+function getDialogButton(dataTest: string) {
+  const button = document.body.querySelector<HTMLButtonElement>(`[data-test="${dataTest}"]`)
+
+  if (!button) {
+    throw new Error(`Expected dialog button: ${dataTest}`)
+  }
+
+  return button
+}
+
 function getContentFormItem(wrapper: ReturnType<typeof mount>) {
   return wrapper.get('[data-test="announcement-form-content-item"]')
 }
@@ -387,6 +425,29 @@ describe('AnnouncementFormDrawer', () => {
       getTestComponent(wrapper, 'announcement-form-target-departments').props('value'),
     ).toEqual([])
     expect(getTestComponent(wrapper, 'announcement-form-target-roles').props('value')).toEqual([])
+  })
+
+  it('guards changed loaded values and closes directly after restoring them', async () => {
+    getAnnouncementMock.mockResolvedValue(announcementResponse)
+
+    const wrapper = mountDrawer({ show: true, announcementId })
+    await flushPromises()
+
+    const titleInput = wrapper.get('[data-test="announcement-form-title"] input')
+    await titleInput.setValue('临时修改的标题')
+    await wrapper.get('button[aria-label="close"]').trigger('click')
+    await flushPromises()
+
+    expect(document.body.textContent).toContain('放弃未保存的更改？')
+    expect(wrapper.emitted('update:show')).toBeUndefined()
+
+    getDialogButton('unsaved-changes-discard-cancel').click()
+    await flushPromises()
+
+    await titleInput.setValue(announcementResponse.title)
+    await clickAction(wrapper, '[data-test="announcement-form-cancel"]')
+
+    expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
 
   it('submits all visibility with empty targets', async () => {
@@ -462,6 +523,7 @@ describe('AnnouncementFormDrawer', () => {
     })
     expect(wrapper.emitted('saved')).toHaveLength(1)
     expect(wrapper.emitted('update:show')).toEqual([[false]])
+    expect(document.body.textContent).not.toContain('放弃未保存的更改？')
   })
 
   it('keeps create draft values when the form query refreshes', async () => {

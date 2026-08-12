@@ -24,6 +24,7 @@ import {
 } from '@rev30/contracts'
 import { createDepartment, getDepartment, getDepartmentTreeOptions, updateDepartment } from '.'
 import { statusSelectOptions } from './labels'
+import { useDrawerUnsavedChangesGuard } from '../../composables/useDrawerUnsavedChangesGuard'
 import { getErrorMessage } from '../../utils/error'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
 import { ApiRequestError } from '../../utils/request'
@@ -221,15 +222,22 @@ watch(
     immediate: true,
   },
 )
+
+const isFormDirty = form.useSelector((state) => !state.isDefaultValue)
+const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
+  show,
+  isDirty: isFormDirty,
+})
 </script>
 
 <template>
   <NDrawer
-    v-model:show="show"
+    :show="show"
     placement="right"
     :width="640"
     :mask-closable="false"
     :close-on-esc="false"
+    @update:show="handleDrawerShowUpdate"
   >
     <NDrawerContent :title="drawerTitle" closable>
       <div class="flex flex-col gap-4">
@@ -308,7 +316,7 @@ watch(
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <NButton @click="show = false">取消</NButton>
+          <NButton @click="requestClose">取消</NButton>
           <NButton
             data-test="department-form-submit"
             type="primary"

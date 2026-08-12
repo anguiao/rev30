@@ -51,6 +51,6 @@
     "@types/mime-types": "^3.0.1",
     "drizzle-kit": "rc",
     "tsup": "^8.5.1",
-    "tsx": "^4.23.8"
+    "tsx": "^4.23.12"
   }
 }

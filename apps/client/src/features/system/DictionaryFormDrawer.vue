@@ -190,7 +190,7 @@ function removeItem(index: number) {
   )
 }
 
-const fieldMeta = form.useStore((state) => state.fieldMeta)
+const fieldMeta = form.useSelector((state) => state.fieldMeta)
 const itemsValidationProps = computed(() => {
   const parentMeta = fieldMeta.value.items
 

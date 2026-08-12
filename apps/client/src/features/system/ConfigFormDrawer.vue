@@ -124,7 +124,7 @@ const form = useForm({
   },
 })
 
-const showsCustomValue = form.useStore((state) => state.values.valueSource === 'custom')
+const showsCustomValue = form.useSelector((state) => state.values.valueSource === 'custom')
 
 const { isLoading: isSaving, ...saveConfigMutation } = useMutation({
   onMutate() {

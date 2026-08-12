@@ -203,7 +203,7 @@ const form = useForm({
   },
 })
 
-const selectedVisibility = form.useStore((state) => state.values.visibility)
+const selectedVisibility = form.useSelector((state) => state.values.visibility)
 const isTargetedVisibility = computed(
   () => selectedVisibility.value === ANNOUNCEMENT_VISIBILITY_TARGETED,
 )

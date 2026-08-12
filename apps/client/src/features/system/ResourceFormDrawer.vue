@@ -163,7 +163,7 @@ const form = useForm({
   },
 })
 
-const selectedResourceType = form.useStore((state) => state.values.type)
+const selectedResourceType = form.useSelector((state) => state.values.type)
 const showsPath = computed(() => selectedResourceType.value === RESOURCE_TYPE_MENU)
 const showsExternalUrl = computed(() => selectedResourceType.value === RESOURCE_TYPE_EXTERNAL)
 const showsOpenTarget = computed(

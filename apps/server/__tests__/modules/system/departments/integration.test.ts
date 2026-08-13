@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { describe, expect, it } from 'vitest'
+import { describe, expect } from 'vitest'
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import {
@@ -12,17 +12,14 @@ import {
 } from '@rev30/contracts'
 import { systemDepartments, systemUserDepartments, systemUsers } from '../../../../src/db/schema'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
-import { createTestDb } from '../../../helpers/db'
+import { dbTest, type TestDatabase } from '../../../fixtures/database'
 import { createDepartmentRoutes } from '../../../../src/modules/system/departments/routes'
 
 type ErrorResponse = {
   message: string
 }
 
-async function createTestApp(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  authHeaders?: Record<string, string>,
-) {
+async function createTestApp(database: TestDatabase, authHeaders?: Record<string, string>) {
   const headers =
     authHeaders ??
     (
@@ -60,48 +57,49 @@ async function createDepartment(
 }
 
 describe('department routes', () => {
-  it('creates departments in the database and returns paginated departments', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
+  dbTest(
+    'creates departments in the database and returns paginated departments',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
 
-    const { body, response } = await createDepartment(app, {
-      name: 'Engineering',
-      code: 'engineering',
-      sortOrder: 10,
-    })
+      const { body, response } = await createDepartment(app, {
+        name: 'Engineering',
+        code: 'engineering',
+        sortOrder: 10,
+      })
 
-    expect(response.status).toBe(201)
-    expect(body).toMatchObject({
-      name: 'Engineering',
-      code: 'engineering',
-      parentId: null,
-      status: DEPARTMENT_STATUS_ENABLED,
-      sortOrder: 10,
-    })
-    expect(body.createdAt).toEqual(expect.any(String))
-    expect(body.updatedAt).toEqual(expect.any(String))
+      expect(response.status).toBe(201)
+      expect(body).toMatchObject({
+        name: 'Engineering',
+        code: 'engineering',
+        parentId: null,
+        status: DEPARTMENT_STATUS_ENABLED,
+        sortOrder: 10,
+      })
+      expect(body.createdAt).toEqual(expect.any(String))
+      expect(body.updatedAt).toEqual(expect.any(String))
 
-    const storedDepartments = await database.select().from(systemDepartments)
-    expect(storedDepartments).toHaveLength(1)
-    expect(storedDepartments[0]?.code).toBe('engineering')
+      const storedDepartments = await database.select().from(systemDepartments)
+      expect(storedDepartments).toHaveLength(1)
+      expect(storedDepartments[0]?.code).toBe('engineering')
 
-    const listResponse = await app.request('/api/system/departments?page=1&pageSize=10')
-    const listBody = (await listResponse.json()) as DepartmentListResponse
+      const listResponse = await app.request('/api/system/departments?page=1&pageSize=10')
+      const listBody = (await listResponse.json()) as DepartmentListResponse
 
-    expect(listResponse.status).toBe(200)
-    expect(listBody).toMatchObject({
-      total: 1,
-      page: 1,
-      pageSize: 10,
-    })
-    expect(listBody.list).toHaveLength(1)
-    expect(listBody.list[0]).toMatchObject({
-      id: body.id,
-    })
-  })
+      expect(listResponse.status).toBe(200)
+      expect(listBody).toMatchObject({
+        total: 1,
+        page: 1,
+        pageSize: 10,
+      })
+      expect(listBody.list).toHaveLength(1)
+      expect(listBody.list[0]).toMatchObject({
+        id: body.id,
+      })
+    },
+  )
 
-  it('filters department lists by keyword, status, and parent id', async () => {
-    const database = await createTestDb()
+  dbTest('filters department lists by keyword, status, and parent id', async ({ db: database }) => {
     const app = await createTestApp(database)
 
     const { body: root } = await createDepartment(app, {
@@ -140,8 +138,7 @@ describe('department routes', () => {
     })
   })
 
-  it('returns department details and department trees', async () => {
-    const database = await createTestDb()
+  dbTest('returns department details and department trees', async ({ db: database }) => {
     const app = await createTestApp(database)
 
     const { body: root } = await createDepartment(app, {
@@ -185,248 +182,257 @@ describe('department routes', () => {
     })
   })
 
-  it('returns lightweight department tree options with enabled and non-deleted nodes by default', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const { body: root } = await createDepartment(app, {
-      name: 'Company',
-      code: 'company',
-      status: DEPARTMENT_STATUS_ENABLED,
-      sortOrder: 1,
-    })
-    const { body: enabledChild } = await createDepartment(app, {
-      name: 'Engineering',
-      code: 'engineering',
-      parentId: root.id,
-      status: DEPARTMENT_STATUS_ENABLED,
-      sortOrder: 2,
-    })
-    const { body: disabledChild } = await createDepartment(app, {
-      name: 'Disabled',
-      code: 'disabled',
-      parentId: root.id,
-      status: DEPARTMENT_STATUS_DISABLED,
-      sortOrder: 3,
-    })
-
-    await app.request(`/api/system/departments/${disabledChild.id}`, { method: 'DELETE' })
-
-    const response = await app.request('/api/system/departments/options/tree')
-    const body = (await response.json()) as DepartmentTreeOptionsResponse
-
-    expect(response.status).toBe(200)
-    expect(body).toEqual([
-      {
-        id: root.id,
-        parentId: null,
+  dbTest(
+    'returns lightweight department tree options with enabled and non-deleted nodes by default',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const { body: root } = await createDepartment(app, {
         name: 'Company',
         code: 'company',
         status: DEPARTMENT_STATUS_ENABLED,
-        children: [
-          {
-            id: enabledChild.id,
-            parentId: root.id,
-            name: 'Engineering',
-            code: 'engineering',
-            status: DEPARTMENT_STATUS_ENABLED,
-            children: [],
-          },
-        ],
-      },
-    ])
-    expect(body[0]).not.toHaveProperty('sortOrder')
-    expect(body[0]).not.toHaveProperty('createdAt')
-    expect(body[0]).not.toHaveProperty('updatedAt')
-  })
+        sortOrder: 1,
+      })
+      const { body: enabledChild } = await createDepartment(app, {
+        name: 'Engineering',
+        code: 'engineering',
+        parentId: root.id,
+        status: DEPARTMENT_STATUS_ENABLED,
+        sortOrder: 2,
+      })
+      const { body: disabledChild } = await createDepartment(app, {
+        name: 'Disabled',
+        code: 'disabled',
+        parentId: root.id,
+        status: DEPARTMENT_STATUS_DISABLED,
+        sortOrder: 3,
+      })
 
-  it('does not expose disabled parent when only enabled descendant matches default options tree', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const { body: disabledParent } = await createDepartment(app, {
-      name: 'Disabled Parent',
-      code: 'disabled-parent-default',
-      status: DEPARTMENT_STATUS_DISABLED,
-    })
-    const { body: enabledChild } = await createDepartment(app, {
-      name: 'Enabled Child',
-      code: 'enabled-child-default',
-      parentId: disabledParent.id,
-      status: DEPARTMENT_STATUS_ENABLED,
-    })
+      await app.request(`/api/system/departments/${disabledChild.id}`, { method: 'DELETE' })
 
-    const response = await app.request('/api/system/departments/options/tree')
-    const body = (await response.json()) as DepartmentTreeOptionsResponse
+      const response = await app.request('/api/system/departments/options/tree')
+      const body = (await response.json()) as DepartmentTreeOptionsResponse
 
-    expect(response.status).toBe(200)
-    expect(JSON.stringify(body)).not.toContain(disabledParent.id)
-    expect(JSON.stringify(body)).not.toContain(enabledChild.id)
-  })
-
-  it('includes disabled departments and required non-deleted ancestors when includeIds is provided', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const { body: enabledRoot } = await createDepartment(app, {
-      name: 'Enabled Root',
-      code: 'enabled-root',
-      status: DEPARTMENT_STATUS_ENABLED,
-      sortOrder: 10,
-    })
-    const { body: disabledRoot } = await createDepartment(app, {
-      name: 'Disabled Root',
-      code: 'disabled-root',
-      status: DEPARTMENT_STATUS_DISABLED,
-      sortOrder: 20,
-    })
-    const { body: disabledParent } = await createDepartment(app, {
-      name: 'Disabled Parent',
-      code: 'disabled-parent',
-      parentId: disabledRoot.id,
-      status: DEPARTMENT_STATUS_DISABLED,
-      sortOrder: 1,
-    })
-    const { body: disabledLeaf } = await createDepartment(app, {
-      name: 'Disabled Leaf',
-      code: 'disabled-leaf',
-      parentId: disabledParent.id,
-      status: DEPARTMENT_STATUS_DISABLED,
-      sortOrder: 1,
-    })
-    const { body: deletedLeaf } = await createDepartment(app, {
-      name: 'Deleted Leaf',
-      code: 'deleted-leaf',
-      parentId: enabledRoot.id,
-      status: DEPARTMENT_STATUS_DISABLED,
-    })
-
-    await app.request(`/api/system/departments/${deletedLeaf.id}`, { method: 'DELETE' })
-
-    const response = await app.request(
-      `/api/system/departments/options/tree?includeIds=${disabledLeaf.id},${deletedLeaf.id},${randomUUID()}`,
-    )
-    const body = (await response.json()) as DepartmentTreeOptionsResponse
-
-    expect(response.status).toBe(200)
-    expect(body).toHaveLength(2)
-    const disabledRootNode = body.find((item) => item.id === disabledRoot.id)
-    const enabledRootNode = body.find((item) => item.id === enabledRoot.id)
-    expect(disabledRootNode).toMatchObject({
-      id: disabledRoot.id,
-      status: DEPARTMENT_STATUS_DISABLED,
-      children: [
+      expect(response.status).toBe(200)
+      expect(body).toEqual([
         {
-          id: disabledParent.id,
-          status: DEPARTMENT_STATUS_DISABLED,
+          id: root.id,
+          parentId: null,
+          name: 'Company',
+          code: 'company',
+          status: DEPARTMENT_STATUS_ENABLED,
           children: [
             {
-              id: disabledLeaf.id,
-              status: DEPARTMENT_STATUS_DISABLED,
+              id: enabledChild.id,
+              parentId: root.id,
+              name: 'Engineering',
+              code: 'engineering',
+              status: DEPARTMENT_STATUS_ENABLED,
               children: [],
             },
           ],
         },
-      ],
-    })
-    expect(enabledRootNode).toMatchObject({
-      id: enabledRoot.id,
-      status: DEPARTMENT_STATUS_ENABLED,
-    })
-    expect(JSON.stringify(body)).not.toContain(deletedLeaf.id)
-  })
+      ])
+      expect(body[0]).not.toHaveProperty('sortOrder')
+      expect(body[0]).not.toHaveProperty('createdAt')
+      expect(body[0]).not.toHaveProperty('updatedAt')
+    },
+  )
 
-  it('does not include includeIds nodes when required ancestor is deleted', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const { body: deletedParent } = await createDepartment(app, {
-      name: 'Deleted Parent',
-      code: 'deleted-parent',
-      status: DEPARTMENT_STATUS_DISABLED,
-    })
-    const { body: includedChild } = await createDepartment(app, {
-      name: 'Included Child',
-      code: 'included-child',
-      parentId: deletedParent.id,
-      status: DEPARTMENT_STATUS_DISABLED,
-    })
-
-    await database
-      .update(systemDepartments)
-      .set({
-        deletedAt: new Date(),
+  dbTest(
+    'does not expose disabled parent when only enabled descendant matches default options tree',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const { body: disabledParent } = await createDepartment(app, {
+        name: 'Disabled Parent',
+        code: 'disabled-parent-default',
+        status: DEPARTMENT_STATUS_DISABLED,
       })
-      .where(eq(systemDepartments.id, deletedParent.id))
+      const { body: enabledChild } = await createDepartment(app, {
+        name: 'Enabled Child',
+        code: 'enabled-child-default',
+        parentId: disabledParent.id,
+        status: DEPARTMENT_STATUS_ENABLED,
+      })
 
-    const response = await app.request(
-      `/api/system/departments/options/tree?includeIds=${includedChild.id}`,
-    )
-    const body = (await response.json()) as DepartmentTreeOptionsResponse
+      const response = await app.request('/api/system/departments/options/tree')
+      const body = (await response.json()) as DepartmentTreeOptionsResponse
 
-    expect(response.status).toBe(200)
-    expect(JSON.stringify(body)).not.toContain(deletedParent.id)
-    expect(JSON.stringify(body)).not.toContain(includedChild.id)
-  })
+      expect(response.status).toBe(200)
+      expect(JSON.stringify(body)).not.toContain(disabledParent.id)
+      expect(JSON.stringify(body)).not.toContain(enabledChild.id)
+    },
+  )
 
-  it('updates department fields and rejects moving a department under itself or descendants', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const { body: root } = await createDepartment(app, { name: 'Company', code: 'company' })
-    const { body: child } = await createDepartment(app, {
-      name: 'Engineering',
-      code: 'engineering',
-      parentId: root.id,
-    })
-    const { body: grandchild } = await createDepartment(app, {
-      name: 'Platform',
-      code: 'platform',
-      parentId: child.id,
-    })
+  dbTest(
+    'includes disabled departments and required non-deleted ancestors when includeIds is provided',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const { body: enabledRoot } = await createDepartment(app, {
+        name: 'Enabled Root',
+        code: 'enabled-root',
+        status: DEPARTMENT_STATUS_ENABLED,
+        sortOrder: 10,
+      })
+      const { body: disabledRoot } = await createDepartment(app, {
+        name: 'Disabled Root',
+        code: 'disabled-root',
+        status: DEPARTMENT_STATUS_DISABLED,
+        sortOrder: 20,
+      })
+      const { body: disabledParent } = await createDepartment(app, {
+        name: 'Disabled Parent',
+        code: 'disabled-parent',
+        parentId: disabledRoot.id,
+        status: DEPARTMENT_STATUS_DISABLED,
+        sortOrder: 1,
+      })
+      const { body: disabledLeaf } = await createDepartment(app, {
+        name: 'Disabled Leaf',
+        code: 'disabled-leaf',
+        parentId: disabledParent.id,
+        status: DEPARTMENT_STATUS_DISABLED,
+        sortOrder: 1,
+      })
+      const { body: deletedLeaf } = await createDepartment(app, {
+        name: 'Deleted Leaf',
+        code: 'deleted-leaf',
+        parentId: enabledRoot.id,
+        status: DEPARTMENT_STATUS_DISABLED,
+      })
 
-    const updateResponse = await app.request(`/api/system/departments/${child.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
+      await app.request(`/api/system/departments/${deletedLeaf.id}`, { method: 'DELETE' })
+
+      const response = await app.request(
+        `/api/system/departments/options/tree?includeIds=${disabledLeaf.id},${deletedLeaf.id},${randomUUID()}`,
+      )
+      const body = (await response.json()) as DepartmentTreeOptionsResponse
+
+      expect(response.status).toBe(200)
+      expect(body).toHaveLength(2)
+      const disabledRootNode = body.find((item) => item.id === disabledRoot.id)
+      const enabledRootNode = body.find((item) => item.id === enabledRoot.id)
+      expect(disabledRootNode).toMatchObject({
+        id: disabledRoot.id,
+        status: DEPARTMENT_STATUS_DISABLED,
+        children: [
+          {
+            id: disabledParent.id,
+            status: DEPARTMENT_STATUS_DISABLED,
+            children: [
+              {
+                id: disabledLeaf.id,
+                status: DEPARTMENT_STATUS_DISABLED,
+                children: [],
+              },
+            ],
+          },
+        ],
+      })
+      expect(enabledRootNode).toMatchObject({
+        id: enabledRoot.id,
+        status: DEPARTMENT_STATUS_ENABLED,
+      })
+      expect(JSON.stringify(body)).not.toContain(deletedLeaf.id)
+    },
+  )
+
+  dbTest(
+    'does not include includeIds nodes when required ancestor is deleted',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const { body: deletedParent } = await createDepartment(app, {
+        name: 'Deleted Parent',
+        code: 'deleted-parent',
+        status: DEPARTMENT_STATUS_DISABLED,
+      })
+      const { body: includedChild } = await createDepartment(app, {
+        name: 'Included Child',
+        code: 'included-child',
+        parentId: deletedParent.id,
+        status: DEPARTMENT_STATUS_DISABLED,
+      })
+
+      await database
+        .update(systemDepartments)
+        .set({
+          deletedAt: new Date(),
+        })
+        .where(eq(systemDepartments.id, deletedParent.id))
+
+      const response = await app.request(
+        `/api/system/departments/options/tree?includeIds=${includedChild.id}`,
+      )
+      const body = (await response.json()) as DepartmentTreeOptionsResponse
+
+      expect(response.status).toBe(200)
+      expect(JSON.stringify(body)).not.toContain(deletedParent.id)
+      expect(JSON.stringify(body)).not.toContain(includedChild.id)
+    },
+  )
+
+  dbTest(
+    'updates department fields and rejects moving a department under itself or descendants',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const { body: root } = await createDepartment(app, { name: 'Company', code: 'company' })
+      const { body: child } = await createDepartment(app, {
+        name: 'Engineering',
+        code: 'engineering',
+        parentId: root.id,
+      })
+      const { body: grandchild } = await createDepartment(app, {
+        name: 'Platform',
+        code: 'platform',
+        parentId: child.id,
+      })
+
+      const updateResponse = await app.request(`/api/system/departments/${child.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: 'Platform Engineering',
+          code: 'platform-engineering',
+          sortOrder: 20,
+        }),
+        headers: { 'content-type': 'application/json' },
+      })
+      const updateBody = (await updateResponse.json()) as Department
+
+      expect(updateResponse.status).toBe(200)
+      expect(updateBody).toMatchObject({
+        id: child.id,
         name: 'Platform Engineering',
         code: 'platform-engineering',
         sortOrder: 20,
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    const updateBody = (await updateResponse.json()) as Department
+      })
 
-    expect(updateResponse.status).toBe(200)
-    expect(updateBody).toMatchObject({
-      id: child.id,
-      name: 'Platform Engineering',
-      code: 'platform-engineering',
-      sortOrder: 20,
-    })
+      const selfMoveResponse = await app.request(`/api/system/departments/${child.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ parentId: child.id }),
+        headers: { 'content-type': 'application/json' },
+      })
 
-    const selfMoveResponse = await app.request(`/api/system/departments/${child.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ parentId: child.id }),
-      headers: { 'content-type': 'application/json' },
-    })
+      expect(selfMoveResponse.status).toBe(409)
+      expect(await selfMoveResponse.json()).toEqual({ message: '不能移动到自己或子部门下' })
 
-    expect(selfMoveResponse.status).toBe(409)
-    expect(await selfMoveResponse.json()).toEqual({ message: '不能移动到自己或子部门下' })
+      const descendantMoveResponse = await app.request(`/api/system/departments/${root.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ parentId: grandchild.id }),
+        headers: { 'content-type': 'application/json' },
+      })
 
-    const descendantMoveResponse = await app.request(`/api/system/departments/${root.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ parentId: grandchild.id }),
-      headers: { 'content-type': 'application/json' },
-    })
+      expect(descendantMoveResponse.status).toBe(409)
+      expect(await descendantMoveResponse.json()).toEqual({ message: '不能移动到自己或子部门下' })
 
-    expect(descendantMoveResponse.status).toBe(409)
-    expect(await descendantMoveResponse.json()).toEqual({ message: '不能移动到自己或子部门下' })
+      const rootDetailResponse = await app.request(`/api/system/departments/${root.id}`)
 
-    const rootDetailResponse = await app.request(`/api/system/departments/${root.id}`)
+      expect(rootDetailResponse.status).toBe(200)
+      expect(await rootDetailResponse.json()).toEqual(
+        expect.objectContaining({ id: root.id, parentId: null }),
+      )
+    },
+  )
 
-    expect(rootDetailResponse.status).toBe(200)
-    expect(await rootDetailResponse.json()).toEqual(
-      expect.objectContaining({ id: root.id, parentId: null }),
-    )
-  })
-
-  it('rejects duplicate department codes on create and update', async () => {
-    const database = await createTestDb()
+  dbTest('rejects duplicate department codes on create and update', async ({ db: database }) => {
     const app = await createTestApp(database)
     await createDepartment(app, { name: 'Engineering', code: 'engineering' })
     const { body: sales } = await createDepartment(app, { name: 'Sales', code: 'sales' })
@@ -450,8 +456,7 @@ describe('department routes', () => {
     })
   })
 
-  it('allows recreating a department code after soft delete', async () => {
-    const database = await createTestDb()
+  dbTest('allows recreating a department code after soft delete', async ({ db: database }) => {
     const app = await createTestApp(database)
     const { body: created } = await createDepartment(app, {
       name: 'Engineering',
@@ -474,74 +479,77 @@ describe('department routes', () => {
     })
   })
 
-  it('soft deletes empty departments and rejects deleting departments with children', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const { body: root } = await createDepartment(app, { name: 'Company', code: 'company' })
-    const { body: child } = await createDepartment(app, {
-      name: 'Engineering',
-      code: 'engineering',
-      parentId: root.id,
-    })
+  dbTest(
+    'soft deletes empty departments and rejects deleting departments with children',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const { body: root } = await createDepartment(app, { name: 'Company', code: 'company' })
+      const { body: child } = await createDepartment(app, {
+        name: 'Engineering',
+        code: 'engineering',
+        parentId: root.id,
+      })
 
-    const rootDeleteResponse = await app.request(`/api/system/departments/${root.id}`, {
-      method: 'DELETE',
-    })
-    expect(rootDeleteResponse.status).toBe(409)
-    expect(await rootDeleteResponse.json()).toEqual({ message: '部门存在子部门，不能删除' })
+      const rootDeleteResponse = await app.request(`/api/system/departments/${root.id}`, {
+        method: 'DELETE',
+      })
+      expect(rootDeleteResponse.status).toBe(409)
+      expect(await rootDeleteResponse.json()).toEqual({ message: '部门存在子部门，不能删除' })
 
-    const childDeleteResponse = await app.request(`/api/system/departments/${child.id}`, {
-      method: 'DELETE',
-    })
-    expect(childDeleteResponse.status).toBe(204)
+      const childDeleteResponse = await app.request(`/api/system/departments/${child.id}`, {
+        method: 'DELETE',
+      })
+      expect(childDeleteResponse.status).toBe(204)
 
-    const storedRows = await database
-      .select()
-      .from(systemDepartments)
-      .where(eq(systemDepartments.id, child.id))
-    expect(storedRows).toHaveLength(1)
-    expect(storedRows[0]?.deletedAt).toBeInstanceOf(Date)
-    expect(storedRows[0]?.status).toBe(DEPARTMENT_STATUS_ENABLED)
+      const storedRows = await database
+        .select()
+        .from(systemDepartments)
+        .where(eq(systemDepartments.id, child.id))
+      expect(storedRows).toHaveLength(1)
+      expect(storedRows[0]?.deletedAt).toBeInstanceOf(Date)
+      expect(storedRows[0]?.status).toBe(DEPARTMENT_STATUS_ENABLED)
 
-    const detailResponse = await app.request(`/api/system/departments/${child.id}`)
-    const detailBody = (await detailResponse.json()) as ErrorResponse
-    expect(detailResponse.status).toBe(404)
-    expect(detailBody).toEqual({ message: '部门不存在' })
-  })
+      const detailResponse = await app.request(`/api/system/departments/${child.id}`)
+      const detailBody = (await detailResponse.json()) as ErrorResponse
+      expect(detailResponse.status).toBe(404)
+      expect(detailBody).toEqual({ message: '部门不存在' })
+    },
+  )
 
-  it('returns invalid parent errors for create and update requests', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const missingParentId = randomUUID()
+  dbTest(
+    'returns invalid parent errors for create and update requests',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const missingParentId = randomUUID()
 
-    const createResponse = await app.request('/api/system/departments', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: 'Ghost Child',
-        code: 'ghost-child',
-        parentId: missingParentId,
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    const createBody = (await createResponse.json()) as ErrorResponse
+      const createResponse = await app.request('/api/system/departments', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Ghost Child',
+          code: 'ghost-child',
+          parentId: missingParentId,
+        }),
+        headers: { 'content-type': 'application/json' },
+      })
+      const createBody = (await createResponse.json()) as ErrorResponse
 
-    expect(createResponse.status).toBe(400)
-    expect(createBody).toEqual({ message: '上级部门不存在' })
+      expect(createResponse.status).toBe(400)
+      expect(createBody).toEqual({ message: '上级部门不存在' })
 
-    const { body: existing } = await createDepartment(app, { name: 'Support', code: 'support' })
-    const updateResponse = await app.request(`/api/system/departments/${existing.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ parentId: missingParentId }),
-      headers: { 'content-type': 'application/json' },
-    })
-    const updateBody = (await updateResponse.json()) as ErrorResponse
+      const { body: existing } = await createDepartment(app, { name: 'Support', code: 'support' })
+      const updateResponse = await app.request(`/api/system/departments/${existing.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ parentId: missingParentId }),
+        headers: { 'content-type': 'application/json' },
+      })
+      const updateBody = (await updateResponse.json()) as ErrorResponse
 
-    expect(updateResponse.status).toBe(400)
-    expect(updateBody).toEqual({ message: '上级部门不存在' })
-  })
+      expect(updateResponse.status).toBe(400)
+      expect(updateBody).toEqual({ message: '上级部门不存在' })
+    },
+  )
 
-  it('rejects deleting departments with related users', async () => {
-    const database = await createTestDb()
+  dbTest('rejects deleting departments with related users', async ({ db: database }) => {
     const app = await createTestApp(database)
     const { body: department } = await createDepartment(app, {
       name: 'Operations',

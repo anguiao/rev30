@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, vi } from 'vitest'
 import {
   ATTACHMENT_DISPOSITION_INLINE,
   type AuthTokenResponse,
@@ -16,7 +16,7 @@ import {
   ATTACHMENT_MAX_SIZE_MESSAGE,
 } from '../../../src/modules/attachments/policy'
 import { createSystemAccessFixture } from '../../helpers/auth'
-import { createTestDb } from '../../helpers/db'
+import { dbTest, type TestDatabase } from '../../fixtures/database'
 import { createSystemUserFixture } from '../../helpers/system'
 
 const tempDirs: string[] = []
@@ -25,8 +25,6 @@ const pngBytes = new Uint8Array([
 ])
 const pngFile = new File([pngBytes], 'avatar.png', { type: 'image/png' })
 
-type TestDatabase = Awaited<ReturnType<typeof createTestDb>>
-
 async function createTempRoot() {
   const root = await mkdtemp(join(tmpdir(), 'rev30-attachments-routes-'))
   tempDirs.push(root)
@@ -34,8 +32,7 @@ async function createTempRoot() {
   return root
 }
 
-async function createAttachmentIntegrationFixture() {
-  const database = await createTestDb()
+async function createAttachmentIntegrationFixture(database: TestDatabase) {
   const storageDir = await createTempRoot()
 
   vi.stubEnv('ATTACHMENT_STORAGE_DIR', storageDir)
@@ -210,155 +207,164 @@ afterEach(async () => {
 })
 
 describe('attachment routes integration', () => {
-  it('uploads metadata, creates content urls, and serves content without auth', async () => {
-    const { app, authenticated } = await createAttachmentIntegrationFixture()
-    const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
-      bytes: pngBytes,
-      contentType: 'image/png',
-      originalName: 'avatar.png',
-      usage: 'avatar',
-    })
-    const uploaded = (await completeResponse.json()) as {
-      createdAt: string
-      extension: string
-      id: string
-      mimeType: string
-      originalName: string
-      size: number
-      usage: string
-    }
-
-    expect(completeResponse.status).toBe(201)
-    expect(uploaded).toMatchObject({
-      id: expect.any(String),
-      originalName: 'avatar.png',
-      mimeType: 'image/png',
-      extension: 'png',
-      size: pngBytes.byteLength,
-      usage: 'avatar',
-      createdAt: expect.any(String),
-    })
-
-    const metadataResponse = await app.request(`/api/attachments/${uploaded.id}`, {
-      headers: authenticated.authHeaders,
-    })
-
-    expect(metadataResponse.status).toBe(200)
-    expect(await metadataResponse.json()).toEqual(uploaded)
-
-    const contentUrlResponse = await app.request(`/api/attachments/${uploaded.id}/content-url`, {
-      method: 'POST',
-      body: JSON.stringify({
-        disposition: ATTACHMENT_DISPOSITION_INLINE,
-      }),
-      headers: {
-        ...authenticated.authHeaders,
-        'content-type': 'application/json',
-      },
-    })
-    const content = (await contentUrlResponse.json()) as {
-      request: {
-        expiresAt: string
-        url: string
+  dbTest(
+    'uploads metadata, creates content urls, and serves content without auth',
+    async ({ db: database }) => {
+      const { app, authenticated } = await createAttachmentIntegrationFixture(database)
+      const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
+        bytes: pngBytes,
+        contentType: 'image/png',
+        originalName: 'avatar.png',
+        usage: 'avatar',
+      })
+      const uploaded = (await completeResponse.json()) as {
+        createdAt: string
+        extension: string
+        id: string
+        mimeType: string
+        originalName: string
+        size: number
+        usage: string
       }
-    }
 
-    expect(contentUrlResponse.status).toBe(200)
-    expect(content).toEqual({
-      request: {
-        url: expect.stringContaining(`/api/attachments/${uploaded.id}/content?token=`),
-        method: 'GET',
-        headers: {},
-        expiresAt: expect.any(String),
-      },
-    })
+      expect(completeResponse.status).toBe(201)
+      expect(uploaded).toMatchObject({
+        id: expect.any(String),
+        originalName: 'avatar.png',
+        mimeType: 'image/png',
+        extension: 'png',
+        size: pngBytes.byteLength,
+        usage: 'avatar',
+        createdAt: expect.any(String),
+      })
 
-    const contentResponse = await app.request(content.request.url)
-    const contentBody = new Uint8Array(await contentResponse.arrayBuffer())
+      const metadataResponse = await app.request(`/api/attachments/${uploaded.id}`, {
+        headers: authenticated.authHeaders,
+      })
 
-    expect(contentResponse.status).toBe(200)
-    expect(contentResponse.headers.get('content-type')).toBe('image/png')
-    expect(contentResponse.headers.get('content-disposition')).toBe('inline; filename=avatar.png')
-    expect(contentResponse.headers.get('content-length')).toBe(String(pngBytes.byteLength))
-    expect(contentResponse.headers.get('x-content-type-options')).toBe('nosniff')
-    expect(contentBody).toEqual(pngBytes)
-  })
+      expect(metadataResponse.status).toBe(200)
+      expect(await metadataResponse.json()).toEqual(uploaded)
 
-  it('serves unicode filenames with an ASCII fallback and RFC 5987 filename', async () => {
-    const { app, authenticated } = await createAttachmentIntegrationFixture()
-    const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
-      bytes: pngBytes,
-      contentType: 'image/png',
-      originalName: '报告📎.png',
-      usage: 'report',
-    })
-    const uploaded = (await completeResponse.json()) as { id: string }
-    const contentUrlResponse = await app.request(`/api/attachments/${uploaded.id}/content-url`, {
-      method: 'POST',
-      body: JSON.stringify({
-        disposition: ATTACHMENT_DISPOSITION_INLINE,
-      }),
-      headers: {
-        ...authenticated.authHeaders,
-        'content-type': 'application/json',
-      },
-    })
-    const content = (await contentUrlResponse.json()) as {
-      request: {
-        url: string
+      const contentUrlResponse = await app.request(`/api/attachments/${uploaded.id}/content-url`, {
+        method: 'POST',
+        body: JSON.stringify({
+          disposition: ATTACHMENT_DISPOSITION_INLINE,
+        }),
+        headers: {
+          ...authenticated.authHeaders,
+          'content-type': 'application/json',
+        },
+      })
+      const content = (await contentUrlResponse.json()) as {
+        request: {
+          expiresAt: string
+          url: string
+        }
       }
-    }
-    const contentResponse = await app.request(content.request.url)
 
-    expect(contentResponse.status).toBe(200)
-    expect(contentResponse.headers.get('content-disposition')).toBe(
-      `inline; filename="????.png"; filename*=UTF-8''%E6%8A%A5%E5%91%8A%F0%9F%93%8E.png`,
-    )
-    expect(new Uint8Array(await contentResponse.arrayBuffer())).toEqual(pngBytes)
-  })
+      expect(contentUrlResponse.status).toBe(200)
+      expect(content).toEqual({
+        request: {
+          url: expect.stringContaining(`/api/attachments/${uploaded.id}/content?token=`),
+          method: 'GET',
+          headers: {},
+          expiresAt: expect.any(String),
+        },
+      })
 
-  it('lists active attachments with uploader summaries and keeps soft-deleted attachments out', async () => {
-    const { app, authenticated } = await createAttachmentIntegrationFixture()
-    const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
-      bytes: pngBytes,
-      contentType: 'image/png',
-      originalName: 'avatar.png',
-      usage: 'avatar',
-    })
-    const uploaded = (await completeResponse.json()) as { id: string }
+      const contentResponse = await app.request(content.request.url)
+      const contentBody = new Uint8Array(await contentResponse.arrayBuffer())
 
-    const listResponse = await app.request('/api/attachments?usage=avatar&keyword=avatar', {
-      headers: authenticated.authHeaders,
-    })
-    const listBody = (await listResponse.json()) as AttachmentListResponse
+      expect(contentResponse.status).toBe(200)
+      expect(contentResponse.headers.get('content-type')).toBe('image/png')
+      expect(contentResponse.headers.get('content-disposition')).toBe('inline; filename=avatar.png')
+      expect(contentResponse.headers.get('content-length')).toBe(String(pngBytes.byteLength))
+      expect(contentResponse.headers.get('x-content-type-options')).toBe('nosniff')
+      expect(contentBody).toEqual(pngBytes)
+    },
+  )
 
-    expect(listResponse.status).toBe(200)
-    expect(listBody.total).toBe(1)
-    expect(listBody.list[0]).toMatchObject({
-      id: uploaded.id,
-      originalName: 'avatar.png',
-      usage: 'avatar',
-      createdBy: {
-        id: authenticated.userId,
-      },
-    })
+  dbTest(
+    'serves unicode filenames with an ASCII fallback and RFC 5987 filename',
+    async ({ db: database }) => {
+      const { app, authenticated } = await createAttachmentIntegrationFixture(database)
+      const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
+        bytes: pngBytes,
+        contentType: 'image/png',
+        originalName: '报告📎.png',
+        usage: 'report',
+      })
+      const uploaded = (await completeResponse.json()) as { id: string }
+      const contentUrlResponse = await app.request(`/api/attachments/${uploaded.id}/content-url`, {
+        method: 'POST',
+        body: JSON.stringify({
+          disposition: ATTACHMENT_DISPOSITION_INLINE,
+        }),
+        headers: {
+          ...authenticated.authHeaders,
+          'content-type': 'application/json',
+        },
+      })
+      const content = (await contentUrlResponse.json()) as {
+        request: {
+          url: string
+        }
+      }
+      const contentResponse = await app.request(content.request.url)
 
-    const deleteResponse = await app.request(`/api/attachments/${uploaded.id}`, {
-      method: 'DELETE',
-      headers: authenticated.authHeaders,
-    })
-    expect(deleteResponse.status).toBe(204)
+      expect(contentResponse.status).toBe(200)
+      expect(contentResponse.headers.get('content-disposition')).toBe(
+        `inline; filename="????.png"; filename*=UTF-8''%E6%8A%A5%E5%91%8A%F0%9F%93%8E.png`,
+      )
+      expect(new Uint8Array(await contentResponse.arrayBuffer())).toEqual(pngBytes)
+    },
+  )
 
-    const afterDeleteResponse = await app.request('/api/attachments', {
-      headers: authenticated.authHeaders,
-    })
-    const afterDeleteBody = (await afterDeleteResponse.json()) as AttachmentListResponse
+  dbTest(
+    'lists active attachments with uploader summaries and keeps soft-deleted attachments out',
+    async ({ db: database }) => {
+      const { app, authenticated } = await createAttachmentIntegrationFixture(database)
+      const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
+        bytes: pngBytes,
+        contentType: 'image/png',
+        originalName: 'avatar.png',
+        usage: 'avatar',
+      })
+      const uploaded = (await completeResponse.json()) as { id: string }
 
-    expect(afterDeleteBody.list).not.toContainEqual(expect.objectContaining({ id: uploaded.id }))
-  })
+      const listResponse = await app.request('/api/attachments?usage=avatar&keyword=avatar', {
+        headers: authenticated.authHeaders,
+      })
+      const listBody = (await listResponse.json()) as AttachmentListResponse
 
-  it('rejects uploads above the global attachment size limit', async () => {
-    const { app, authenticated } = await createAttachmentIntegrationFixture()
+      expect(listResponse.status).toBe(200)
+      expect(listBody.total).toBe(1)
+      expect(listBody.list[0]).toMatchObject({
+        id: uploaded.id,
+        originalName: 'avatar.png',
+        usage: 'avatar',
+        createdBy: {
+          id: authenticated.userId,
+        },
+      })
+
+      const deleteResponse = await app.request(`/api/attachments/${uploaded.id}`, {
+        method: 'DELETE',
+        headers: authenticated.authHeaders,
+      })
+      expect(deleteResponse.status).toBe(204)
+
+      const afterDeleteResponse = await app.request('/api/attachments', {
+        headers: authenticated.authHeaders,
+      })
+      const afterDeleteBody = (await afterDeleteResponse.json()) as AttachmentListResponse
+
+      expect(afterDeleteBody.list).not.toContainEqual(expect.objectContaining({ id: uploaded.id }))
+    },
+  )
+
+  dbTest('rejects uploads above the global attachment size limit', async ({ db: database }) => {
+    const { app, authenticated } = await createAttachmentIntegrationFixture(database)
     const response = await app.request('/api/attachments/uploads', {
       method: 'POST',
       body: JSON.stringify({
@@ -379,50 +385,59 @@ describe('attachment routes integration', () => {
     })
   })
 
-  it('reads authenticated attachment content through the attachment token cookie', async () => {
-    const { app, database } = await createAttachmentIntegrationFixture()
-    const loggedIn = await login(app, database)
-    const setCookie = loggedIn.response.headers.get('set-cookie') ?? ''
-    const attachmentToken = setCookie.match(/attachment_token=([^;]+)/)?.[1]
+  dbTest(
+    'reads authenticated attachment content through the attachment token cookie',
+    async ({ db: database }) => {
+      const { app } = await createAttachmentIntegrationFixture(database)
+      const loggedIn = await login(app, database)
+      const setCookie = loggedIn.response.headers.get('set-cookie') ?? ''
+      const attachmentToken = setCookie.match(/attachment_token=([^;]+)/)?.[1]
 
-    expect(attachmentToken).toBeTruthy()
+      expect(attachmentToken).toBeTruthy()
 
-    const uploaded = await uploadAttachmentViaSession(app, {
-      accessToken: loggedIn.body.accessToken,
-      usage: 'avatar',
-      readPolicy: 'authenticated',
-      file: pngFile,
-    })
+      const uploaded = await uploadAttachmentViaSession(app, {
+        accessToken: loggedIn.body.accessToken,
+        usage: 'avatar',
+        readPolicy: 'authenticated',
+        file: pngFile,
+      })
 
-    const response = await app.request(`/api/attachments/${uploaded.id}/content`, {
-      headers: {
-        cookie: `attachment_token=${attachmentToken}`,
-      },
-    })
-    const blankTokenResponse = await app.request(`/api/attachments/${uploaded.id}/content?token=`, {
-      headers: {
-        cookie: `attachment_token=${attachmentToken}`,
-      },
-    })
+      const response = await app.request(`/api/attachments/${uploaded.id}/content`, {
+        headers: {
+          cookie: `attachment_token=${attachmentToken}`,
+        },
+      })
+      const blankTokenResponse = await app.request(
+        `/api/attachments/${uploaded.id}/content?token=`,
+        {
+          headers: {
+            cookie: `attachment_token=${attachmentToken}`,
+          },
+        },
+      )
 
-    expect(response.status).toBe(200)
-    expect(response.headers.get('cache-control')).toBe('private, max-age=300')
-    expect(blankTokenResponse.status).toBe(200)
-    expect(blankTokenResponse.headers.get('cache-control')).toBe('private, max-age=300')
-  })
+      expect(response.status).toBe(200)
+      expect(response.headers.get('cache-control')).toBe('private, max-age=300')
+      expect(blankTokenResponse.status).toBe(200)
+      expect(blankTokenResponse.headers.get('cache-control')).toBe('private, max-age=300')
+    },
+  )
 
-  it('rejects authenticated attachment content without the attachment token cookie', async () => {
-    const { app, database } = await createAttachmentIntegrationFixture()
-    const loggedIn = await login(app, database)
-    const uploaded = await uploadAttachmentViaSession(app, {
-      accessToken: loggedIn.body.accessToken,
-      usage: 'avatar',
-      readPolicy: 'authenticated',
-      file: pngFile,
-    })
+  dbTest(
+    'rejects authenticated attachment content without the attachment token cookie',
+    async ({ db: database }) => {
+      const { app } = await createAttachmentIntegrationFixture(database)
+      const loggedIn = await login(app, database)
+      const uploaded = await uploadAttachmentViaSession(app, {
+        accessToken: loggedIn.body.accessToken,
+        usage: 'avatar',
+        readPolicy: 'authenticated',
+        file: pngFile,
+      })
 
-    const response = await app.request(`/api/attachments/${uploaded.id}/content`)
+      const response = await app.request(`/api/attachments/${uploaded.id}/content`)
 
-    expect(response.status).toBe(401)
-  })
+      expect(response.status).toBe(401)
+    },
+  )
 })

@@ -27,7 +27,7 @@ import {
 } from '@rev30/contracts'
 import { and, eq, isNull } from 'drizzle-orm'
 import type { Hono } from 'hono'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, vi } from 'vitest'
 import {
   attachmentReferences,
   attachments,
@@ -47,7 +47,7 @@ import {
   createProtectedContentRouteTestApp,
   createSystemAccessFixture,
 } from '../../../helpers/auth'
-import { createTestDb } from '../../../helpers/db'
+import { dbTest, type TestDatabase } from '../../../fixtures/database'
 
 type ErrorResponse = {
   message: string
@@ -72,7 +72,7 @@ const announcementContentImageError = {
   message: '正文包含无效图片，请移除或重新上传',
 }
 
-async function createTestApp(database: Awaited<ReturnType<typeof createTestDb>>) {
+async function createTestApp(database: TestDatabase) {
   const fixture = await createSystemAccessFixture(database, {
     admin: true,
     usernamePrefix: 'announcement-routes-admin',
@@ -125,7 +125,7 @@ function contentWithImages(attachmentIds: string[]): TiptapDocument {
 }
 
 async function createAnnouncementContentImageAttachment(
-  database: Awaited<ReturnType<typeof createTestDb>>,
+  database: TestDatabase,
   input: {
     cleanupPolicy?: string
     createdBy: string
@@ -156,7 +156,7 @@ async function createAnnouncementContentImageAttachment(
   return id
 }
 
-async function createAttachmentOwner(database: Awaited<ReturnType<typeof createTestDb>>) {
+async function createAttachmentOwner(database: TestDatabase) {
   const id = randomUUID()
 
   await database.insert(systemUsers).values({
@@ -169,7 +169,7 @@ async function createAttachmentOwner(database: Awaited<ReturnType<typeof createT
 }
 
 async function listAnnouncementContentImageReferences(
-  database: Awaited<ReturnType<typeof createTestDb>>,
+  database: TestDatabase,
   announcementId: string,
 ) {
   const rows = await database
@@ -186,9 +186,7 @@ async function listAnnouncementContentImageReferences(
   return rows.map((row) => row.attachmentId).sort()
 }
 
-async function createAnnouncementTargetsFixture(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-) {
+async function createAnnouncementTargetsFixture(database: TestDatabase) {
   const userId = randomUUID()
   const departmentId = randomUUID()
   const roleId = randomUUID()
@@ -224,271 +222,276 @@ afterEach(() => {
 })
 
 describe('announcement routes', () => {
-  it('supports creating draft and published announcements and exposes list/detail shapes', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
+  dbTest(
+    'supports creating draft and published announcements and exposes list/detail shapes',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
 
-    const { body: createdDraft, response: createDraftResponse } = await createAnnouncement(
-      app,
-      createBody,
-    )
-    expect(createDraftResponse.status).toBe(201)
-    expect(createdDraft).toMatchObject({
-      type: 'notice',
-      title: '维护通知',
-      summary: '今晚维护',
-      contentHtml: createBodyContentHtml,
-      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-      targets: [],
-      status: 'draft',
-      pinned: true,
-      publishedAt: null,
-      contentText: '今晚维护',
-    })
+      const { body: createdDraft, response: createDraftResponse } = await createAnnouncement(
+        app,
+        createBody,
+      )
+      expect(createDraftResponse.status).toBe(201)
+      expect(createdDraft).toMatchObject({
+        type: 'notice',
+        title: '维护通知',
+        summary: '今晚维护',
+        contentHtml: createBodyContentHtml,
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+        targets: [],
+        status: 'draft',
+        pinned: true,
+        publishedAt: null,
+        contentText: '今晚维护',
+      })
 
-    const { body: createdPublished, response: createPublishedResponse } = await createAnnouncement(
-      app,
-      {
+      const { body: createdPublished, response: createPublishedResponse } =
+        await createAnnouncement(app, {
+          ...createBody,
+          title: '已发布通知',
+          visibility: 'all',
+          publish: true,
+        })
+      expect(createPublishedResponse.status).toBe(201)
+      expect(createdPublished.status).toBe('published')
+      expect(createdPublished.publishedAt).toEqual(expect.any(String))
+
+      const listResponse = await app.request('/api/content/announcements?page=1&pageSize=10')
+      const listBody = (await listResponse.json()) as AnnouncementListResponse
+      expect(listResponse.status).toBe(200)
+      const listedDraft = listBody.list.find((item) => item.id === createdDraft.id)
+      expect(listedDraft).toBeDefined()
+      expect(listedDraft?.readStats).toBeNull()
+      expect(listedDraft).not.toHaveProperty('contentJson')
+      expect(listedDraft).not.toHaveProperty('contentText')
+
+      const detailResponse = await app.request(`/api/content/announcements/${createdDraft.id}`)
+      const detailBody = (await detailResponse.json()) as Announcement
+      expect(detailResponse.status).toBe(200)
+      expect(detailBody.contentJson).toEqual({
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            attrs: { textAlign: null },
+            content: [{ type: 'text', text: '今晚维护' }],
+          },
+        ],
+      })
+      expect(detailBody.contentHtml).toBe(createBodyContentHtml)
+      expect(detailBody.visibility).toBe(ANNOUNCEMENT_VISIBILITY_ALL)
+      expect(detailBody.targets).toEqual([])
+    },
+  )
+
+  dbTest(
+    'returns dynamic read stats for targeted announcement list items',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const recipientUserId = randomUUID()
+      const roleRecipientUserId = randomUUID()
+      const outsiderUserId = randomUUID()
+      const departmentId = randomUUID()
+      const roleId = randomUUID()
+
+      await database.insert(systemUsers).values([
+        {
+          id: recipientUserId,
+          username: `announcement-reader-${recipientUserId.slice(0, 8)}`,
+          nickname: 'Announcement Reader',
+        },
+        {
+          id: roleRecipientUserId,
+          username: `announcement-role-reader-${roleRecipientUserId.slice(0, 8)}`,
+          nickname: 'Announcement Role Reader',
+        },
+        {
+          id: outsiderUserId,
+          username: `announcement-outsider-${outsiderUserId.slice(0, 8)}`,
+          nickname: 'Announcement Outsider',
+        },
+      ])
+      await database.insert(systemDepartments).values({
+        id: departmentId,
+        name: 'Announcement Readers',
+        code: `announcement-readers-${departmentId.slice(0, 8)}`,
+      })
+      await database.insert(systemRoles).values({
+        id: roleId,
+        name: 'Announcement Reader Role',
+        code: `announcement-reader-role-${roleId.slice(0, 8)}`,
+      })
+      await database.insert(systemUserDepartments).values({
+        userId: recipientUserId,
+        departmentId,
+      })
+      await database.insert(systemUserRoles).values([
+        {
+          userId: recipientUserId,
+          roleId,
+        },
+        {
+          userId: roleRecipientUserId,
+          roleId,
+        },
+      ])
+
+      const { body: created } = await createAnnouncement(app, {
         ...createBody,
-        title: '已发布通知',
-        visibility: 'all',
+        title: '定向统计通知',
         publish: true,
-      },
-    )
-    expect(createPublishedResponse.status).toBe(201)
-    expect(createdPublished.status).toBe('published')
-    expect(createdPublished.publishedAt).toEqual(expect.any(String))
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
+            targetId: recipientUserId,
+          },
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+            targetId: departmentId,
+          },
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+            targetId: roleId,
+          },
+        ],
+      })
 
-    const listResponse = await app.request('/api/content/announcements?page=1&pageSize=10')
-    const listBody = (await listResponse.json()) as AnnouncementListResponse
-    expect(listResponse.status).toBe(200)
-    const listedDraft = listBody.list.find((item) => item.id === createdDraft.id)
-    expect(listedDraft).toBeDefined()
-    expect(listedDraft?.readStats).toBeNull()
-    expect(listedDraft).not.toHaveProperty('contentJson')
-    expect(listedDraft).not.toHaveProperty('contentText')
-
-    const detailResponse = await app.request(`/api/content/announcements/${createdDraft.id}`)
-    const detailBody = (await detailResponse.json()) as Announcement
-    expect(detailResponse.status).toBe(200)
-    expect(detailBody.contentJson).toEqual({
-      type: 'doc',
-      content: [
+      await database.insert(announcementReads).values([
         {
-          type: 'paragraph',
-          attrs: { textAlign: null },
-          content: [{ type: 'text', text: '今晚维护' }],
+          announcementId: created.id,
+          userId: recipientUserId,
         },
-      ],
-    })
-    expect(detailBody.contentHtml).toBe(createBodyContentHtml)
-    expect(detailBody.visibility).toBe(ANNOUNCEMENT_VISIBILITY_ALL)
-    expect(detailBody.targets).toEqual([])
-  })
+        {
+          announcementId: created.id,
+          userId: outsiderUserId,
+        },
+      ])
 
-  it('returns dynamic read stats for targeted announcement list items', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const recipientUserId = randomUUID()
-    const roleRecipientUserId = randomUUID()
-    const outsiderUserId = randomUUID()
-    const departmentId = randomUUID()
-    const roleId = randomUUID()
+      const listResponse = await app.request('/api/content/announcements?page=1&pageSize=10')
+      const body = (await listResponse.json()) as AnnouncementListResponse
+      const listedAnnouncement = body.list.find((item) => item.id === created.id)
 
-    await database.insert(systemUsers).values([
-      {
+      expect(listResponse.status).toBe(200)
+      expect(listedAnnouncement?.readStats).toEqual({
+        recipientCount: 2,
+        readCount: 1,
+        unreadCount: 1,
+      })
+    },
+  )
+
+  dbTest(
+    'returns zero read stats when a targeted announcement no longer has active recipients',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const recipientUserId = randomUUID()
+
+      await database.insert(systemUsers).values({
         id: recipientUserId,
-        username: `announcement-reader-${recipientUserId.slice(0, 8)}`,
-        nickname: 'Announcement Reader',
-      },
-      {
-        id: roleRecipientUserId,
-        username: `announcement-role-reader-${roleRecipientUserId.slice(0, 8)}`,
-        nickname: 'Announcement Role Reader',
-      },
-      {
-        id: outsiderUserId,
-        username: `announcement-outsider-${outsiderUserId.slice(0, 8)}`,
-        nickname: 'Announcement Outsider',
-      },
-    ])
-    await database.insert(systemDepartments).values({
-      id: departmentId,
-      name: 'Announcement Readers',
-      code: `announcement-readers-${departmentId.slice(0, 8)}`,
-    })
-    await database.insert(systemRoles).values({
-      id: roleId,
-      name: 'Announcement Reader Role',
-      code: `announcement-reader-role-${roleId.slice(0, 8)}`,
-    })
-    await database.insert(systemUserDepartments).values({
-      userId: recipientUserId,
-      departmentId,
-    })
-    await database.insert(systemUserRoles).values([
-      {
-        userId: recipientUserId,
-        roleId,
-      },
-      {
-        userId: roleRecipientUserId,
-        roleId,
-      },
-    ])
+        username: `announcement-former-reader-${recipientUserId.slice(0, 8)}`,
+        nickname: 'Former Announcement Reader',
+      })
 
-    const { body: created } = await createAnnouncement(app, {
-      ...createBody,
-      title: '定向统计通知',
-      publish: true,
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
-          targetId: recipientUserId,
-        },
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
-          targetId: departmentId,
-        },
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
-          targetId: roleId,
-        },
-      ],
-    })
+      const { body: created } = await createAnnouncement(app, {
+        ...createBody,
+        title: '无当前收件人通知',
+        publish: true,
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
+            targetId: recipientUserId,
+          },
+        ],
+      })
 
-    await database.insert(announcementReads).values([
-      {
+      await database.insert(announcementReads).values({
         announcementId: created.id,
         userId: recipientUserId,
-      },
-      {
-        announcementId: created.id,
-        userId: outsiderUserId,
-      },
-    ])
+      })
+      await database
+        .update(systemUsers)
+        .set({ status: USER_STATUS_DISABLED })
+        .where(eq(systemUsers.id, recipientUserId))
 
-    const listResponse = await app.request('/api/content/announcements?page=1&pageSize=10')
-    const body = (await listResponse.json()) as AnnouncementListResponse
-    const listedAnnouncement = body.list.find((item) => item.id === created.id)
+      const listResponse = await app.request('/api/content/announcements?page=1&pageSize=10')
+      const body = (await listResponse.json()) as AnnouncementListResponse
+      const listedAnnouncement = body.list.find((item) => item.id === created.id)
 
-    expect(listResponse.status).toBe(200)
-    expect(listedAnnouncement?.readStats).toEqual({
-      recipientCount: 2,
-      readCount: 1,
-      unreadCount: 1,
-    })
-  })
+      expect(listResponse.status).toBe(200)
+      expect(listedAnnouncement?.readStats).toEqual({
+        recipientCount: 0,
+        readCount: 0,
+        unreadCount: 0,
+      })
+    },
+  )
 
-  it('returns zero read stats when a targeted announcement no longer has active recipients', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const recipientUserId = randomUUID()
+  dbTest(
+    'counts only active users in read stats for all-visible announcements',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const activeUserId = randomUUID()
+      const disabledUserId = randomUUID()
+      const deletedUserId = randomUUID()
 
-    await database.insert(systemUsers).values({
-      id: recipientUserId,
-      username: `announcement-former-reader-${recipientUserId.slice(0, 8)}`,
-      nickname: 'Former Announcement Reader',
-    })
-
-    const { body: created } = await createAnnouncement(app, {
-      ...createBody,
-      title: '无当前收件人通知',
-      publish: true,
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [
+      await database.insert(systemUsers).values([
         {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
-          targetId: recipientUserId,
+          id: activeUserId,
+          username: `announcement-active-reader-${activeUserId.slice(0, 8)}`,
+          nickname: 'Active Announcement Reader',
         },
-      ],
-    })
+        {
+          id: disabledUserId,
+          username: `announcement-disabled-reader-${disabledUserId.slice(0, 8)}`,
+          nickname: 'Disabled Announcement Reader',
+          status: USER_STATUS_DISABLED,
+        },
+        {
+          id: deletedUserId,
+          username: `announcement-deleted-reader-${deletedUserId.slice(0, 8)}`,
+          nickname: 'Deleted Announcement Reader',
+          deletedAt: new Date('2026-05-19T00:00:00.000Z'),
+        },
+      ])
 
-    await database.insert(announcementReads).values({
-      announcementId: created.id,
-      userId: recipientUserId,
-    })
-    await database
-      .update(systemUsers)
-      .set({ status: USER_STATUS_DISABLED })
-      .where(eq(systemUsers.id, recipientUserId))
+      const { body: created } = await createAnnouncement(app, {
+        ...createBody,
+        title: '全员统计通知',
+        publish: true,
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+      })
 
-    const listResponse = await app.request('/api/content/announcements?page=1&pageSize=10')
-    const body = (await listResponse.json()) as AnnouncementListResponse
-    const listedAnnouncement = body.list.find((item) => item.id === created.id)
+      await database.insert(announcementReads).values([
+        {
+          announcementId: created.id,
+          userId: activeUserId,
+        },
+        {
+          announcementId: created.id,
+          userId: disabledUserId,
+        },
+        {
+          announcementId: created.id,
+          userId: deletedUserId,
+        },
+      ])
 
-    expect(listResponse.status).toBe(200)
-    expect(listedAnnouncement?.readStats).toEqual({
-      recipientCount: 0,
-      readCount: 0,
-      unreadCount: 0,
-    })
-  })
+      const listResponse = await app.request('/api/content/announcements?page=1&pageSize=10')
+      const body = (await listResponse.json()) as AnnouncementListResponse
+      const listedAnnouncement = body.list.find((item) => item.id === created.id)
 
-  it('counts only active users in read stats for all-visible announcements', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const activeUserId = randomUUID()
-    const disabledUserId = randomUUID()
-    const deletedUserId = randomUUID()
+      expect(listResponse.status).toBe(200)
+      expect(listedAnnouncement?.readStats).toEqual({
+        recipientCount: 2,
+        readCount: 1,
+        unreadCount: 1,
+      })
+    },
+  )
 
-    await database.insert(systemUsers).values([
-      {
-        id: activeUserId,
-        username: `announcement-active-reader-${activeUserId.slice(0, 8)}`,
-        nickname: 'Active Announcement Reader',
-      },
-      {
-        id: disabledUserId,
-        username: `announcement-disabled-reader-${disabledUserId.slice(0, 8)}`,
-        nickname: 'Disabled Announcement Reader',
-        status: USER_STATUS_DISABLED,
-      },
-      {
-        id: deletedUserId,
-        username: `announcement-deleted-reader-${deletedUserId.slice(0, 8)}`,
-        nickname: 'Deleted Announcement Reader',
-        deletedAt: new Date('2026-05-19T00:00:00.000Z'),
-      },
-    ])
-
-    const { body: created } = await createAnnouncement(app, {
-      ...createBody,
-      title: '全员统计通知',
-      publish: true,
-      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-    })
-
-    await database.insert(announcementReads).values([
-      {
-        announcementId: created.id,
-        userId: activeUserId,
-      },
-      {
-        announcementId: created.id,
-        userId: disabledUserId,
-      },
-      {
-        announcementId: created.id,
-        userId: deletedUserId,
-      },
-    ])
-
-    const listResponse = await app.request('/api/content/announcements?page=1&pageSize=10')
-    const body = (await listResponse.json()) as AnnouncementListResponse
-    const listedAnnouncement = body.list.find((item) => item.id === created.id)
-
-    expect(listResponse.status).toBe(200)
-    expect(listedAnnouncement?.readStats).toEqual({
-      recipientCount: 2,
-      readCount: 1,
-      unreadCount: 1,
-    })
-  })
-
-  it('updates content text when patching announcement content', async () => {
-    const database = await createTestDb()
+  dbTest('updates content text when patching announcement content', async ({ db: database }) => {
     const app = await createTestApp(database)
     const { body: created } = await createAnnouncement(app, createBody)
 
@@ -509,154 +512,157 @@ describe('announcement routes', () => {
     expect(body.contentHtml).toContain('维护时间改到 23:00')
   })
 
-  it('synchronizes image references on create, content update, and soft delete', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const ownerId = await createAttachmentOwner(database)
-    const firstAttachmentId = await createAnnouncementContentImageAttachment(database, {
-      createdBy: ownerId,
-      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    })
-    const secondAttachmentId = await createAnnouncementContentImageAttachment(database, {
-      createdBy: ownerId,
-    })
-    const replacementAttachmentId = await createAnnouncementContentImageAttachment(database, {
-      createdBy: ownerId,
-    })
+  dbTest(
+    'synchronizes image references on create, content update, and soft delete',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const ownerId = await createAttachmentOwner(database)
+      const firstAttachmentId = await createAnnouncementContentImageAttachment(database, {
+        createdBy: ownerId,
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      })
+      const secondAttachmentId = await createAnnouncementContentImageAttachment(database, {
+        createdBy: ownerId,
+      })
+      const replacementAttachmentId = await createAnnouncementContentImageAttachment(database, {
+        createdBy: ownerId,
+      })
 
-    const { body: created, response: createResponse } = await createAnnouncement(app, {
-      ...createBody,
-      title: '含图片的已发布公告',
-      contentJson: contentWithImages([
-        firstAttachmentId.toUpperCase(),
-        secondAttachmentId,
-        firstAttachmentId,
-      ]),
-      publish: true,
-    })
-
-    expect(createResponse.status).toBe(201)
-    expect(created.status).toBe(ANNOUNCEMENT_STATUS_PUBLISHED)
-    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual(
-      [firstAttachmentId, secondAttachmentId].sort(),
-    )
-
-    const updateResponse = await app.request(`/api/content/announcements/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        contentJson: contentWithImages([replacementAttachmentId]),
+      const { body: created, response: createResponse } = await createAnnouncement(app, {
+        ...createBody,
+        title: '含图片的已发布公告',
+        contentJson: contentWithImages([
+          firstAttachmentId.toUpperCase(),
+          secondAttachmentId,
+          firstAttachmentId,
+        ]),
         publish: true,
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    const updated = (await updateResponse.json()) as Announcement
+      })
 
-    expect(updateResponse.status).toBe(200)
-    expect(updated.status).toBe(ANNOUNCEMENT_STATUS_PUBLISHED)
-    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
-      replacementAttachmentId,
-    ])
+      expect(createResponse.status).toBe(201)
+      expect(created.status).toBe(ANNOUNCEMENT_STATUS_PUBLISHED)
+      expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual(
+        [firstAttachmentId, secondAttachmentId].sort(),
+      )
 
-    const deleteResponse = await app.request(`/api/content/announcements/${created.id}`, {
-      method: 'DELETE',
-    })
-
-    expect(deleteResponse.status).toBe(204)
-    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([])
-  })
-
-  it('returns a content field error and rolls back invalid image reference writes', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const ownerId = await createAttachmentOwner(database)
-    const invalidUsageAttachmentId = await createAnnouncementContentImageAttachment(database, {
-      createdBy: ownerId,
-      usage: 'avatar',
-    })
-    const signedAttachmentId = await createAnnouncementContentImageAttachment(database, {
-      createdBy: ownerId,
-      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
-    })
-    const manualCleanupAttachmentId = await createAnnouncementContentImageAttachment(database, {
-      createdBy: ownerId,
-      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
-    })
-    const svgAttachmentId = await createAnnouncementContentImageAttachment(database, {
-      createdBy: ownerId,
-      mimeType: 'image/svg+xml',
-    })
-    const pdfAttachmentId = await createAnnouncementContentImageAttachment(database, {
-      createdBy: ownerId,
-      mimeType: 'application/pdf',
-    })
-    const softDeletedAttachmentId = await createAnnouncementContentImageAttachment(database, {
-      createdBy: ownerId,
-      deletedAt: new Date(),
-    })
-    const invalidAttachmentIds = [
-      invalidUsageAttachmentId,
-      signedAttachmentId,
-      manualCleanupAttachmentId,
-      svgAttachmentId,
-      pdfAttachmentId,
-      softDeletedAttachmentId,
-      randomUUID(),
-    ]
-
-    for (const [index, attachmentId] of invalidAttachmentIds.entries()) {
-      const title = `无效公告图片 ${index}`
-      const response = await app.request('/api/content/announcements', {
-        method: 'POST',
+      const updateResponse = await app.request(`/api/content/announcements/${created.id}`, {
+        method: 'PATCH',
         body: JSON.stringify({
-          ...createBody,
-          title,
-          contentJson: contentWithImages([attachmentId]),
+          contentJson: contentWithImages([replacementAttachmentId]),
+          publish: true,
+        }),
+        headers: { 'content-type': 'application/json' },
+      })
+      const updated = (await updateResponse.json()) as Announcement
+
+      expect(updateResponse.status).toBe(200)
+      expect(updated.status).toBe(ANNOUNCEMENT_STATUS_PUBLISHED)
+      expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
+        replacementAttachmentId,
+      ])
+
+      const deleteResponse = await app.request(`/api/content/announcements/${created.id}`, {
+        method: 'DELETE',
+      })
+
+      expect(deleteResponse.status).toBe(204)
+      expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([])
+    },
+  )
+
+  dbTest(
+    'returns a content field error and rolls back invalid image reference writes',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const ownerId = await createAttachmentOwner(database)
+      const invalidUsageAttachmentId = await createAnnouncementContentImageAttachment(database, {
+        createdBy: ownerId,
+        usage: 'avatar',
+      })
+      const signedAttachmentId = await createAnnouncementContentImageAttachment(database, {
+        createdBy: ownerId,
+        readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+      })
+      const manualCleanupAttachmentId = await createAnnouncementContentImageAttachment(database, {
+        createdBy: ownerId,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
+      })
+      const svgAttachmentId = await createAnnouncementContentImageAttachment(database, {
+        createdBy: ownerId,
+        mimeType: 'image/svg+xml',
+      })
+      const pdfAttachmentId = await createAnnouncementContentImageAttachment(database, {
+        createdBy: ownerId,
+        mimeType: 'application/pdf',
+      })
+      const softDeletedAttachmentId = await createAnnouncementContentImageAttachment(database, {
+        createdBy: ownerId,
+        deletedAt: new Date(),
+      })
+      const invalidAttachmentIds = [
+        invalidUsageAttachmentId,
+        signedAttachmentId,
+        manualCleanupAttachmentId,
+        svgAttachmentId,
+        pdfAttachmentId,
+        softDeletedAttachmentId,
+        randomUUID(),
+      ]
+
+      for (const [index, attachmentId] of invalidAttachmentIds.entries()) {
+        const title = `无效公告图片 ${index}`
+        const response = await app.request('/api/content/announcements', {
+          method: 'POST',
+          body: JSON.stringify({
+            ...createBody,
+            title,
+            contentJson: contentWithImages([attachmentId]),
+          }),
+          headers: { 'content-type': 'application/json' },
+        })
+
+        expect(response.status).toBe(400)
+        expect((await response.json()) as ErrorResponse).toEqual(announcementContentImageError)
+        await expect(
+          database
+            .select({ id: announcements.id })
+            .from(announcements)
+            .where(eq(announcements.title, title)),
+        ).resolves.toEqual([])
+      }
+
+      const validAttachmentId = await createAnnouncementContentImageAttachment(database, {
+        createdBy: ownerId,
+      })
+      const { body: created, response: createResponse } = await createAnnouncement(app, {
+        ...createBody,
+        title: '待回滚图片公告',
+        contentJson: contentWithImages([validAttachmentId]),
+      })
+
+      expect(createResponse.status).toBe(201)
+
+      const updateResponse = await app.request(`/api/content/announcements/${created.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: '不应持久化的标题',
+          contentJson: contentWithImages([randomUUID()]),
         }),
         headers: { 'content-type': 'application/json' },
       })
 
-      expect(response.status).toBe(400)
-      expect((await response.json()) as ErrorResponse).toEqual(announcementContentImageError)
+      expect(updateResponse.status).toBe(400)
+      expect((await updateResponse.json()) as ErrorResponse).toEqual(announcementContentImageError)
       await expect(
-        database
-          .select({ id: announcements.id })
-          .from(announcements)
-          .where(eq(announcements.title, title)),
-      ).resolves.toEqual([])
-    }
+        database.select().from(announcements).where(eq(announcements.id, created.id)),
+      ).resolves.toMatchObject([{ title: '待回滚图片公告' }])
+      expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
+        validAttachmentId,
+      ])
+    },
+  )
 
-    const validAttachmentId = await createAnnouncementContentImageAttachment(database, {
-      createdBy: ownerId,
-    })
-    const { body: created, response: createResponse } = await createAnnouncement(app, {
-      ...createBody,
-      title: '待回滚图片公告',
-      contentJson: contentWithImages([validAttachmentId]),
-    })
-
-    expect(createResponse.status).toBe(201)
-
-    const updateResponse = await app.request(`/api/content/announcements/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        title: '不应持久化的标题',
-        contentJson: contentWithImages([randomUUID()]),
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(updateResponse.status).toBe(400)
-    expect((await updateResponse.json()) as ErrorResponse).toEqual(announcementContentImageError)
-    await expect(
-      database.select().from(announcements).where(eq(announcements.id, created.id)),
-    ).resolves.toMatchObject([{ title: '待回滚图片公告' }])
-    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
-      validAttachmentId,
-    ])
-  })
-
-  it('allows valid announcement images uploaded by another user', async () => {
-    const database = await createTestDb()
+  dbTest('allows valid announcement images uploaded by another user', async ({ db: database }) => {
     const app = await createTestApp(database)
     const otherUserId = await createAttachmentOwner(database)
     const attachmentId = await createAnnouncementContentImageAttachment(database, {
@@ -675,407 +681,435 @@ describe('announcement routes', () => {
     ])
   })
 
-  it('requires repaired content after manual image deletion but permits patches without content', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const ownerId = await createAttachmentOwner(database)
-    const attachmentId = await createAnnouncementContentImageAttachment(database, {
-      createdBy: ownerId,
-    })
-    const { body: created, response: createResponse } = await createAnnouncement(app, {
-      ...createBody,
-      title: '包含已删除图片的公告',
-      contentJson: contentWithImages([attachmentId]),
-    })
-
-    expect(createResponse.status).toBe(201)
-    await database
-      .update(attachments)
-      .set({ deletedAt: new Date() })
-      .where(eq(attachments.id, attachmentId))
-
-    const contentUpdateResponse = await app.request(`/api/content/announcements/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        title: '不应保存的失效图片正文',
+  dbTest(
+    'requires repaired content after manual image deletion but permits patches without content',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const ownerId = await createAttachmentOwner(database)
+      const attachmentId = await createAnnouncementContentImageAttachment(database, {
+        createdBy: ownerId,
+      })
+      const { body: created, response: createResponse } = await createAnnouncement(app, {
+        ...createBody,
+        title: '包含已删除图片的公告',
         contentJson: contentWithImages([attachmentId]),
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
+      })
 
-    expect(contentUpdateResponse.status).toBe(400)
-    expect((await contentUpdateResponse.json()) as ErrorResponse).toEqual(
-      announcementContentImageError,
-    )
-    await expect(
-      database.select().from(announcements).where(eq(announcements.id, created.id)),
-    ).resolves.toMatchObject([{ title: '包含已删除图片的公告' }])
-    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
-      attachmentId,
-    ])
+      expect(createResponse.status).toBe(201)
+      await database
+        .update(attachments)
+        .set({ deletedAt: new Date() })
+        .where(eq(attachments.id, attachmentId))
 
-    const metadataUpdateResponse = await app.request(`/api/content/announcements/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ title: '图片失效后仍可更新标题' }),
-      headers: { 'content-type': 'application/json' },
-    })
-    const updated = (await metadataUpdateResponse.json()) as Announcement
+      const contentUpdateResponse = await app.request(`/api/content/announcements/${created.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: '不应保存的失效图片正文',
+          contentJson: contentWithImages([attachmentId]),
+        }),
+        headers: { 'content-type': 'application/json' },
+      })
 
-    expect(metadataUpdateResponse.status).toBe(200)
-    expect(updated.title).toBe('图片失效后仍可更新标题')
-    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
-      attachmentId,
-    ])
-  })
+      expect(contentUpdateResponse.status).toBe(400)
+      expect((await contentUpdateResponse.json()) as ErrorResponse).toEqual(
+        announcementContentImageError,
+      )
+      await expect(
+        database.select().from(announcements).where(eq(announcements.id, created.id)),
+      ).resolves.toMatchObject([{ title: '包含已删除图片的公告' }])
+      expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
+        attachmentId,
+      ])
 
-  it('does not validate deleted image references when publishing, republishing, or archiving', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const ownerId = await createAttachmentOwner(database)
-    const attachmentId = await createAnnouncementContentImageAttachment(database, {
-      createdBy: ownerId,
-    })
-    const { body: created, response: createResponse } = await createAnnouncement(app, {
-      ...createBody,
-      title: '失效图片状态流转公告',
-      contentJson: contentWithImages([attachmentId]),
-    })
+      const metadataUpdateResponse = await app.request(`/api/content/announcements/${created.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ title: '图片失效后仍可更新标题' }),
+        headers: { 'content-type': 'application/json' },
+      })
+      const updated = (await metadataUpdateResponse.json()) as Announcement
 
-    expect(createResponse.status).toBe(201)
-    await database
-      .update(attachments)
-      .set({ deletedAt: new Date() })
-      .where(eq(attachments.id, attachmentId))
+      expect(metadataUpdateResponse.status).toBe(200)
+      expect(updated.title).toBe('图片失效后仍可更新标题')
+      expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
+        attachmentId,
+      ])
+    },
+  )
 
-    const publishResponse = await app.request(`/api/content/announcements/${created.id}/publish`, {
-      method: 'POST',
-    })
-    const archiveResponse = await app.request(`/api/content/announcements/${created.id}/archive`, {
-      method: 'POST',
-    })
-    const republishResponse = await app.request(
-      `/api/content/announcements/${created.id}/publish`,
-      {
-        method: 'POST',
-      },
-    )
+  dbTest(
+    'does not validate deleted image references when publishing, republishing, or archiving',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const ownerId = await createAttachmentOwner(database)
+      const attachmentId = await createAnnouncementContentImageAttachment(database, {
+        createdBy: ownerId,
+      })
+      const { body: created, response: createResponse } = await createAnnouncement(app, {
+        ...createBody,
+        title: '失效图片状态流转公告',
+        contentJson: contentWithImages([attachmentId]),
+      })
 
-    expect(publishResponse.status).toBe(204)
-    expect(archiveResponse.status).toBe(204)
-    expect(republishResponse.status).toBe(204)
-    await expect(
-      database.select().from(announcements).where(eq(announcements.id, created.id)),
-    ).resolves.toMatchObject([{ status: ANNOUNCEMENT_STATUS_PUBLISHED }])
-  })
+      expect(createResponse.status).toBe(201)
+      await database
+        .update(attachments)
+        .set({ deletedAt: new Date() })
+        .where(eq(attachments.id, attachmentId))
 
-  it('persists schema-canonical content json when creating and updating announcements', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const { body: created, response: createResponse } = await createAnnouncement(app, {
-      ...createBody,
-      contentJson: {
-        type: 'doc',
-        unsupported: 'root',
-        content: [
-          {
-            type: 'paragraph',
-            attrs: { unsupported: 'paragraph' },
-            content: [{ type: 'text', text: '创建内容' }],
-          },
-        ],
-      },
-    })
-
-    expect(createResponse.status).toBe(201)
-    expect(created.contentJson).toEqual({
-      type: 'doc',
-      content: [
+      const publishResponse = await app.request(
+        `/api/content/announcements/${created.id}/publish`,
         {
-          type: 'paragraph',
-          attrs: { textAlign: null },
-          content: [{ type: 'text', text: '创建内容' }],
+          method: 'POST',
         },
-      ],
-    })
+      )
+      const archiveResponse = await app.request(
+        `/api/content/announcements/${created.id}/archive`,
+        {
+          method: 'POST',
+        },
+      )
+      const republishResponse = await app.request(
+        `/api/content/announcements/${created.id}/publish`,
+        {
+          method: 'POST',
+        },
+      )
 
-    const updateResponse = await app.request(`/api/content/announcements/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
+      expect(publishResponse.status).toBe(204)
+      expect(archiveResponse.status).toBe(204)
+      expect(republishResponse.status).toBe(204)
+      await expect(
+        database.select().from(announcements).where(eq(announcements.id, created.id)),
+      ).resolves.toMatchObject([{ status: ANNOUNCEMENT_STATUS_PUBLISHED }])
+    },
+  )
+
+  dbTest(
+    'persists schema-canonical content json when creating and updating announcements',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const { body: created, response: createResponse } = await createAnnouncement(app, {
+        ...createBody,
         contentJson: {
           type: 'doc',
           unsupported: 'root',
           content: [
             {
-              type: 'heading',
-              attrs: { level: 2, unsupported: 'heading' },
-              content: [{ type: 'text', text: '更新内容' }],
+              type: 'paragraph',
+              attrs: { unsupported: 'paragraph' },
+              content: [{ type: 'text', text: '创建内容' }],
             },
           ],
         },
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    const updated = (await updateResponse.json()) as Announcement
+      })
 
-    expect(updateResponse.status).toBe(200)
-    expect(updated.contentJson).toEqual({
-      type: 'doc',
-      content: [
+      expect(createResponse.status).toBe(201)
+      expect(created.contentJson).toEqual({
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            attrs: { textAlign: null },
+            content: [{ type: 'text', text: '创建内容' }],
+          },
+        ],
+      })
+
+      const updateResponse = await app.request(`/api/content/announcements/${created.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          contentJson: {
+            type: 'doc',
+            unsupported: 'root',
+            content: [
+              {
+                type: 'heading',
+                attrs: { level: 2, unsupported: 'heading' },
+                content: [{ type: 'text', text: '更新内容' }],
+              },
+            ],
+          },
+        }),
+        headers: { 'content-type': 'application/json' },
+      })
+      const updated = (await updateResponse.json()) as Announcement
+
+      expect(updateResponse.status).toBe(200)
+      expect(updated.contentJson).toEqual({
+        type: 'doc',
+        content: [
+          {
+            type: 'heading',
+            attrs: { level: 2, textAlign: null },
+            content: [{ type: 'text', text: '更新内容' }],
+          },
+        ],
+      })
+    },
+  )
+
+  dbTest(
+    'persists visibility targets and returns them in management detail',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const targets = await createAnnouncementTargetsFixture(database)
+
+      const createResponse = await createAnnouncement(app, {
+        ...createBody,
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [targets.user, targets.role],
+      })
+      expect(createResponse.response.status).toBe(201)
+      expect(createResponse.body.contentHtml).toBe(createBodyContentHtml)
+      expect(createResponse.body.visibility).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
+      expect(createResponse.body.targets).toEqual([targets.user, targets.role])
+
+      const createdTargetRows = await database
+        .select()
+        .from(announcementTargets)
+        .where(eq(announcementTargets.announcementId, createResponse.body.id))
+      expect(createdTargetRows).toHaveLength(2)
+      expect(
+        createdTargetRows.map((row) => ({
+          targetType: row.targetType,
+          targetId: row.targetId,
+        })),
+      ).toEqual(
+        expect.arrayContaining([
+          { targetType: targets.user.targetType, targetId: targets.user.targetId },
+          { targetType: targets.role.targetType, targetId: targets.role.targetId },
+        ]),
+      )
+
+      const updateResponse = await app.request(
+        `/api/content/announcements/${createResponse.body.id}`,
         {
-          type: 'heading',
-          attrs: { level: 2, textAlign: null },
-          content: [{ type: 'text', text: '更新内容' }],
+          method: 'PATCH',
+          body: JSON.stringify({
+            visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+            targets: [targets.department],
+          }),
+          headers: { 'content-type': 'application/json' },
         },
-      ],
-    })
-  })
+      )
+      const updated = (await updateResponse.json()) as Announcement
+      expect(updateResponse.status).toBe(200)
+      expect(updated.visibility).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
+      expect(updated.targets).toEqual([targets.department])
 
-  it('persists visibility targets and returns them in management detail', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const targets = await createAnnouncementTargetsFixture(database)
+      const detailResponse = await app.request(
+        `/api/content/announcements/${createResponse.body.id}`,
+      )
+      const detail = (await detailResponse.json()) as Announcement
+      expect(detailResponse.status).toBe(200)
+      expect(detail.visibility).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
+      expect(detail.targets).toEqual([targets.department])
+      expect(detail.contentHtml).toBe(createBodyContentHtml)
 
-    const createResponse = await createAnnouncement(app, {
-      ...createBody,
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [targets.user, targets.role],
-    })
-    expect(createResponse.response.status).toBe(201)
-    expect(createResponse.body.contentHtml).toBe(createBodyContentHtml)
-    expect(createResponse.body.visibility).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
-    expect(createResponse.body.targets).toEqual([targets.user, targets.role])
+      const updatedTargetRows = await database
+        .select()
+        .from(announcementTargets)
+        .where(eq(announcementTargets.announcementId, createResponse.body.id))
+      expect(updatedTargetRows).toHaveLength(1)
+      expect(updatedTargetRows[0]).toMatchObject({
+        announcementId: createResponse.body.id,
+        targetType: targets.department.targetType,
+        targetId: targets.department.targetId,
+      })
+    },
+  )
 
-    const createdTargetRows = await database
-      .select()
-      .from(announcementTargets)
-      .where(eq(announcementTargets.announcementId, createResponse.body.id))
-    expect(createdTargetRows).toHaveLength(2)
-    expect(
-      createdTargetRows.map((row) => ({
-        targetType: row.targetType,
-        targetId: row.targetId,
-      })),
-    ).toEqual(
-      expect.arrayContaining([
-        { targetType: targets.user.targetType, targetId: targets.user.targetId },
-        { targetType: targets.role.targetType, targetId: targets.role.targetId },
-      ]),
-    )
+  dbTest(
+    'loads target options with announcement access and preserves disabled existing targets',
+    async ({ db: database }) => {
+      const adminApp = await createTestApp(database)
+      const targets = await createAnnouncementTargetsFixture(database)
+      const { body: announcement, response: createResponse } = await createAnnouncement(adminApp, {
+        ...createBody,
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [targets.user, targets.department, targets.role],
+      })
+      expect(createResponse.status).toBe(201)
 
-    const updateResponse = await app.request(
-      `/api/content/announcements/${createResponse.body.id}`,
-      {
+      await database
+        .update(systemUsers)
+        .set({ status: USER_STATUS_DISABLED })
+        .where(eq(systemUsers.id, targets.user.targetId))
+      await database
+        .update(systemDepartments)
+        .set({ status: DEPARTMENT_STATUS_DISABLED })
+        .where(eq(systemDepartments.id, targets.department.targetId))
+      await database
+        .update(systemRoles)
+        .set({ status: ROLE_STATUS_DISABLED })
+        .where(eq(systemRoles.id, targets.role.targetId))
+
+      const fixture = await createSystemAccessFixture(database, {
+        accessCodes: ['content:announcement:list'],
+        usernamePrefix: 'announcement-target-options-reader',
+      })
+      const app = createProtectedContentRouteTestApp(
+        database,
+        '/api/content/announcements',
+        createAnnouncementRoutes(database),
+        fixture.authHeaders,
+      )
+
+      const createOptionsResponse = await app.request('/api/content/announcements/target-options')
+      const createOptions =
+        (await createOptionsResponse.json()) as AnnouncementTargetOptionsResponse
+      expect(createOptionsResponse.status).toBe(200)
+      expect(createOptions.users.some((user) => user.id === targets.user.targetId)).toBe(false)
+      expect(
+        createOptions.departments.some(
+          (department) => department.id === targets.department.targetId,
+        ),
+      ).toBe(false)
+      expect(createOptions.roles.some((role) => role.id === targets.role.targetId)).toBe(false)
+
+      const editOptionsResponse = await app.request(
+        `/api/content/announcements/target-options?announcementId=${announcement.id}`,
+      )
+      const editOptions = (await editOptionsResponse.json()) as AnnouncementTargetOptionsResponse
+      expect(editOptionsResponse.status).toBe(200)
+      expect(editOptions.users).toContainEqual(
+        expect.objectContaining({ id: targets.user.targetId, status: USER_STATUS_DISABLED }),
+      )
+      expect(editOptions.departments).toContainEqual(
+        expect.objectContaining({
+          id: targets.department.targetId,
+          status: DEPARTMENT_STATUS_DISABLED,
+        }),
+      )
+      expect(editOptions.roles).toContainEqual(
+        expect.objectContaining({ id: targets.role.targetId, status: ROLE_STATUS_DISABLED }),
+      )
+    },
+  )
+
+  dbTest(
+    'rejects publishing targeted announcements without visible objects',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const announcementId = randomUUID()
+      await database.insert(announcements).values({
+        id: announcementId,
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '空可见对象草稿',
+        summary: null,
+        contentJson: createBody.contentJson,
+        contentText: '今晚维护',
+        contentHtml: createBodyContentHtml,
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        status: ANNOUNCEMENT_STATUS_DRAFT,
+      })
+
+      const response = await app.request(`/api/content/announcements/${announcementId}/publish`, {
+        method: 'POST',
+      })
+
+      expect(response.status).toBe(400)
+      expect((await response.json()) as ErrorResponse).toEqual({
+        field: 'targets',
+        message: '请选择可见对象',
+      })
+    },
+  )
+
+  dbTest(
+    'rejects updating published announcements to targeted visibility without visible objects',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const { body: created } = await createAnnouncement(app, {
+        ...createBody,
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+        targets: [],
+        publish: true,
+      })
+
+      const response = await app.request(`/api/content/announcements/${created.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
           visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-          targets: [targets.department],
+          targets: [],
         }),
         headers: { 'content-type': 'application/json' },
-      },
-    )
-    const updated = (await updateResponse.json()) as Announcement
-    expect(updateResponse.status).toBe(200)
-    expect(updated.visibility).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
-    expect(updated.targets).toEqual([targets.department])
-
-    const detailResponse = await app.request(`/api/content/announcements/${createResponse.body.id}`)
-    const detail = (await detailResponse.json()) as Announcement
-    expect(detailResponse.status).toBe(200)
-    expect(detail.visibility).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
-    expect(detail.targets).toEqual([targets.department])
-    expect(detail.contentHtml).toBe(createBodyContentHtml)
-
-    const updatedTargetRows = await database
-      .select()
-      .from(announcementTargets)
-      .where(eq(announcementTargets.announcementId, createResponse.body.id))
-    expect(updatedTargetRows).toHaveLength(1)
-    expect(updatedTargetRows[0]).toMatchObject({
-      announcementId: createResponse.body.id,
-      targetType: targets.department.targetType,
-      targetId: targets.department.targetId,
-    })
-  })
-
-  it('loads target options with announcement access and preserves disabled existing targets', async () => {
-    const database = await createTestDb()
-    const adminApp = await createTestApp(database)
-    const targets = await createAnnouncementTargetsFixture(database)
-    const { body: announcement, response: createResponse } = await createAnnouncement(adminApp, {
-      ...createBody,
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [targets.user, targets.department, targets.role],
-    })
-    expect(createResponse.status).toBe(201)
-
-    await database
-      .update(systemUsers)
-      .set({ status: USER_STATUS_DISABLED })
-      .where(eq(systemUsers.id, targets.user.targetId))
-    await database
-      .update(systemDepartments)
-      .set({ status: DEPARTMENT_STATUS_DISABLED })
-      .where(eq(systemDepartments.id, targets.department.targetId))
-    await database
-      .update(systemRoles)
-      .set({ status: ROLE_STATUS_DISABLED })
-      .where(eq(systemRoles.id, targets.role.targetId))
-
-    const fixture = await createSystemAccessFixture(database, {
-      accessCodes: ['content:announcement:list'],
-      usernamePrefix: 'announcement-target-options-reader',
-    })
-    const app = createProtectedContentRouteTestApp(
-      database,
-      '/api/content/announcements',
-      createAnnouncementRoutes(database),
-      fixture.authHeaders,
-    )
-
-    const createOptionsResponse = await app.request('/api/content/announcements/target-options')
-    const createOptions = (await createOptionsResponse.json()) as AnnouncementTargetOptionsResponse
-    expect(createOptionsResponse.status).toBe(200)
-    expect(createOptions.users.some((user) => user.id === targets.user.targetId)).toBe(false)
-    expect(
-      createOptions.departments.some((department) => department.id === targets.department.targetId),
-    ).toBe(false)
-    expect(createOptions.roles.some((role) => role.id === targets.role.targetId)).toBe(false)
-
-    const editOptionsResponse = await app.request(
-      `/api/content/announcements/target-options?announcementId=${announcement.id}`,
-    )
-    const editOptions = (await editOptionsResponse.json()) as AnnouncementTargetOptionsResponse
-    expect(editOptionsResponse.status).toBe(200)
-    expect(editOptions.users).toContainEqual(
-      expect.objectContaining({ id: targets.user.targetId, status: USER_STATUS_DISABLED }),
-    )
-    expect(editOptions.departments).toContainEqual(
-      expect.objectContaining({
-        id: targets.department.targetId,
-        status: DEPARTMENT_STATUS_DISABLED,
-      }),
-    )
-    expect(editOptions.roles).toContainEqual(
-      expect.objectContaining({ id: targets.role.targetId, status: ROLE_STATUS_DISABLED }),
-    )
-  })
-
-  it('rejects publishing targeted announcements without visible objects', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const announcementId = randomUUID()
-    await database.insert(announcements).values({
-      id: announcementId,
-      type: ANNOUNCEMENT_TYPE_NOTICE,
-      title: '空可见对象草稿',
-      summary: null,
-      contentJson: createBody.contentJson,
-      contentText: '今晚维护',
-      contentHtml: createBodyContentHtml,
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      status: ANNOUNCEMENT_STATUS_DRAFT,
-    })
-
-    const response = await app.request(`/api/content/announcements/${announcementId}/publish`, {
-      method: 'POST',
-    })
-
-    expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({
-      field: 'targets',
-      message: '请选择可见对象',
-    })
-  })
-
-  it('rejects updating published announcements to targeted visibility without visible objects', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const { body: created } = await createAnnouncement(app, {
-      ...createBody,
-      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-      targets: [],
-      publish: true,
-    })
-
-    const response = await app.request(`/api/content/announcements/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-        targets: [],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
-  })
-
-  it('rejects publishing targeted announcements whose saved targets became invalid', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const targets = await createAnnouncementTargetsFixture(database)
-    const { body: created } = await createAnnouncement(app, {
-      ...createBody,
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [targets.user],
-    })
-
-    await database
-      .update(systemUsers)
-      .set({
-        status: USER_STATUS_DISABLED,
       })
-      .where(eq(systemUsers.id, targets.user.targetId))
 
-    const response = await app.request(`/api/content/announcements/${created.id}/publish`, {
-      method: 'POST',
-    })
+      expect(response.status).toBe(400)
+      expect((await response.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
+    },
+  )
 
-    expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({
-      field: 'targets',
-      message: '可见对象无效',
-    })
-  })
+  dbTest(
+    'rejects publishing targeted announcements whose saved targets became invalid',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const targets = await createAnnouncementTargetsFixture(database)
+      const { body: created } = await createAnnouncement(app, {
+        ...createBody,
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [targets.user],
+      })
 
-  it('switches targeted announcements to all visibility and clears targets', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const targets = await createAnnouncementTargetsFixture(database)
-    const { body: created } = await createAnnouncement(app, {
-      ...createBody,
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [targets.user, targets.department],
-    })
+      await database
+        .update(systemUsers)
+        .set({
+          status: USER_STATUS_DISABLED,
+        })
+        .where(eq(systemUsers.id, targets.user.targetId))
 
-    const updateResponse = await app.request(`/api/content/announcements/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    const updated = (await updateResponse.json()) as Announcement
+      const response = await app.request(`/api/content/announcements/${created.id}/publish`, {
+        method: 'POST',
+      })
 
-    expect(updateResponse.status).toBe(200)
-    expect(updated.visibility).toBe(ANNOUNCEMENT_VISIBILITY_ALL)
-    expect(updated.targets).toEqual([])
+      expect(response.status).toBe(400)
+      expect((await response.json()) as ErrorResponse).toEqual({
+        field: 'targets',
+        message: '可见对象无效',
+      })
+    },
+  )
 
-    const detailResponse = await app.request(`/api/content/announcements/${created.id}`)
-    const detail = (await detailResponse.json()) as Announcement
-    expect(detailResponse.status).toBe(200)
-    expect(detail.visibility).toBe(ANNOUNCEMENT_VISIBILITY_ALL)
-    expect(detail.targets).toEqual([])
+  dbTest(
+    'switches targeted announcements to all visibility and clears targets',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const targets = await createAnnouncementTargetsFixture(database)
+      const { body: created } = await createAnnouncement(app, {
+        ...createBody,
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [targets.user, targets.department],
+      })
 
-    const targetRows = await database
-      .select()
-      .from(announcementTargets)
-      .where(eq(announcementTargets.announcementId, created.id))
-    expect(targetRows).toHaveLength(0)
-  })
+      const updateResponse = await app.request(`/api/content/announcements/${created.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+        }),
+        headers: { 'content-type': 'application/json' },
+      })
+      const updated = (await updateResponse.json()) as Announcement
 
-  it('ignores targets when creating all-visible announcements', async () => {
-    const database = await createTestDb()
+      expect(updateResponse.status).toBe(200)
+      expect(updated.visibility).toBe(ANNOUNCEMENT_VISIBILITY_ALL)
+      expect(updated.targets).toEqual([])
+
+      const detailResponse = await app.request(`/api/content/announcements/${created.id}`)
+      const detail = (await detailResponse.json()) as Announcement
+      expect(detailResponse.status).toBe(200)
+      expect(detail.visibility).toBe(ANNOUNCEMENT_VISIBILITY_ALL)
+      expect(detail.targets).toEqual([])
+
+      const targetRows = await database
+        .select()
+        .from(announcementTargets)
+        .where(eq(announcementTargets.announcementId, created.id))
+      expect(targetRows).toHaveLength(0)
+    },
+  )
+
+  dbTest('ignores targets when creating all-visible announcements', async ({ db: database }) => {
     const app = await createTestApp(database)
     const targets = await createAnnouncementTargetsFixture(database)
 
@@ -1096,8 +1130,7 @@ describe('announcement routes', () => {
     expect(targetRows).toHaveLength(0)
   })
 
-  it('rejects invalid announcement targets', async () => {
-    const database = await createTestDb()
+  dbTest('rejects invalid announcement targets', async ({ db: database }) => {
     const app = await createTestApp(database)
     const roleId = randomUUID()
 
@@ -1125,38 +1158,39 @@ describe('announcement routes', () => {
     })
   })
 
-  it('rejects invalid targets inside repository publishing writes', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const repository = createAnnouncementRepository(database)
-    const roleId = randomUUID()
-    const { body: created } = await createAnnouncement(app, createBody)
+  dbTest(
+    'rejects invalid targets inside repository publishing writes',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const repository = createAnnouncementRepository(database)
+      const roleId = randomUUID()
+      const { body: created } = await createAnnouncement(app, createBody)
 
-    await database.insert(systemRoles).values({
-      id: roleId,
-      name: 'Disabled Publish Role',
-      code: `disabled-publish-role-${roleId.slice(0, 8)}`,
-      status: ROLE_STATUS_DISABLED,
-    })
+      await database.insert(systemRoles).values({
+        id: roleId,
+        name: 'Disabled Publish Role',
+        code: `disabled-publish-role-${roleId.slice(0, 8)}`,
+        status: ROLE_STATUS_DISABLED,
+      })
 
-    await expect(
-      repository.update(created.id, {
-        publish: true,
-        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-        targets: [{ targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE, targetId: roleId }],
-      }),
-    ).rejects.toThrow(AnnouncementInvalidTargetError)
+      await expect(
+        repository.update(created.id, {
+          publish: true,
+          visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+          targets: [{ targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE, targetId: roleId }],
+        }),
+      ).rejects.toThrow(AnnouncementInvalidTargetError)
 
-    const [announcement] = await database
-      .select()
-      .from(announcements)
-      .where(eq(announcements.id, created.id))
+      const [announcement] = await database
+        .select()
+        .from(announcements)
+        .where(eq(announcements.id, created.id))
 
-    expect(announcement?.status).toBe(ANNOUNCEMENT_STATUS_DRAFT)
-  })
+      expect(announcement?.status).toBe(ANNOUNCEMENT_STATUS_DRAFT)
+    },
+  )
 
-  it('publishes archived announcements and refreshes publishedAt', async () => {
-    const database = await createTestDb()
+  dbTest('publishes archived announcements and refreshes publishedAt', async ({ db: database }) => {
     const app = await createTestApp(database)
     const firstTime = new Date()
     vi.useFakeTimers()
@@ -1193,8 +1227,7 @@ describe('announcement routes', () => {
     expect(republished.publishedAt).not.toBe(firstPublishedAt)
   })
 
-  it('rejects archiving draft announcements', async () => {
-    const database = await createTestDb()
+  dbTest('rejects archiving draft announcements', async ({ db: database }) => {
     const app = await createTestApp(database)
     const { body: created } = await createAnnouncement(app, createBody)
 
@@ -1206,8 +1239,7 @@ describe('announcement routes', () => {
     expect((await response.json()) as ErrorResponse).toEqual({ message: '草稿通知公告不能下线' })
   })
 
-  it('matches keyword against title, summary, and content text', async () => {
-    const database = await createTestDb()
+  dbTest('matches keyword against title, summary, and content text', async ({ db: database }) => {
     const app = await createTestApp(database)
 
     await createAnnouncement(app, {
@@ -1252,221 +1284,224 @@ describe('announcement routes', () => {
     ])
   })
 
-  it('sorts pinned announcements first, then published, then drafts, then archived', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const now = new Date('2026-05-18T10:00:00.000Z')
+  dbTest(
+    'sorts pinned announcements first, then published, then drafts, then archived',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const now = new Date('2026-05-18T10:00:00.000Z')
 
-    await database.insert(announcements).values([
-      {
-        id: randomUUID(),
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '置顶已发布',
-        summary: null,
-        contentJson: createBody.contentJson,
-        contentText: '置顶已发布',
-        contentHtml: '<p>置顶已发布</p>',
-        status: ANNOUNCEMENT_STATUS_PUBLISHED,
-        pinned: true,
-        publishedAt: new Date('2026-05-18T09:00:00.000Z'),
-        createdAt: now,
-        updatedAt: new Date('2026-05-18T09:00:00.000Z'),
-      },
-      {
-        id: randomUUID(),
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '较新已发布',
-        summary: null,
-        contentJson: createBody.contentJson,
-        contentText: '较新已发布',
-        contentHtml: '<p>较新已发布</p>',
-        status: ANNOUNCEMENT_STATUS_PUBLISHED,
-        pinned: false,
-        publishedAt: new Date('2026-05-18T08:00:00.000Z'),
-        createdAt: now,
-        updatedAt: new Date('2026-05-18T08:00:00.000Z'),
-      },
-      {
-        id: randomUUID(),
-        type: ANNOUNCEMENT_TYPE_BULLETIN,
-        title: '较旧已发布',
-        summary: null,
-        contentJson: createBody.contentJson,
-        contentText: '较旧已发布',
-        contentHtml: '<p>较旧已发布</p>',
-        status: ANNOUNCEMENT_STATUS_PUBLISHED,
-        pinned: false,
-        publishedAt: new Date('2026-05-18T07:00:00.000Z'),
-        createdAt: now,
-        updatedAt: new Date('2026-05-18T07:00:00.000Z'),
-      },
-      {
-        id: randomUUID(),
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '归档但发布时间更新',
-        summary: null,
-        contentJson: createBody.contentJson,
-        contentText: '归档但发布时间更新',
-        contentHtml: '<p>归档但发布时间更新</p>',
-        status: ANNOUNCEMENT_STATUS_ARCHIVED,
-        pinned: false,
-        publishedAt: new Date('2026-05-18T10:30:00.000Z'),
-        createdAt: now,
-        updatedAt: new Date('2026-05-18T10:30:00.000Z'),
-      },
-      {
-        id: randomUUID(),
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '草稿最近更新',
-        summary: null,
-        contentJson: createBody.contentJson,
-        contentText: '草稿最近更新',
-        contentHtml: '<p>草稿最近更新</p>',
-        status: ANNOUNCEMENT_STATUS_DRAFT,
-        pinned: false,
-        publishedAt: null,
-        createdAt: now,
-        updatedAt: new Date('2026-05-18T11:00:00.000Z'),
-      },
-      {
-        id: randomUUID(),
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '草稿较旧更新',
-        summary: null,
-        contentJson: createBody.contentJson,
-        contentText: '草稿较旧更新',
-        contentHtml: '<p>草稿较旧更新</p>',
-        status: ANNOUNCEMENT_STATUS_DRAFT,
-        pinned: false,
-        publishedAt: null,
-        createdAt: new Date('2026-05-18T09:30:00.000Z'),
-        updatedAt: new Date('2026-05-18T09:30:00.000Z'),
-      },
-      {
-        id: randomUUID(),
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '更早归档',
-        summary: null,
-        contentJson: createBody.contentJson,
-        contentText: '更早归档',
-        contentHtml: '<p>更早归档</p>',
-        status: ANNOUNCEMENT_STATUS_ARCHIVED,
-        pinned: false,
-        publishedAt: new Date('2026-05-18T06:00:00.000Z'),
-        createdAt: new Date('2026-05-18T06:00:00.000Z'),
-        updatedAt: new Date('2026-05-18T06:00:00.000Z'),
-      },
-    ])
+      await database.insert(announcements).values([
+        {
+          id: randomUUID(),
+          type: ANNOUNCEMENT_TYPE_NOTICE,
+          title: '置顶已发布',
+          summary: null,
+          contentJson: createBody.contentJson,
+          contentText: '置顶已发布',
+          contentHtml: '<p>置顶已发布</p>',
+          status: ANNOUNCEMENT_STATUS_PUBLISHED,
+          pinned: true,
+          publishedAt: new Date('2026-05-18T09:00:00.000Z'),
+          createdAt: now,
+          updatedAt: new Date('2026-05-18T09:00:00.000Z'),
+        },
+        {
+          id: randomUUID(),
+          type: ANNOUNCEMENT_TYPE_NOTICE,
+          title: '较新已发布',
+          summary: null,
+          contentJson: createBody.contentJson,
+          contentText: '较新已发布',
+          contentHtml: '<p>较新已发布</p>',
+          status: ANNOUNCEMENT_STATUS_PUBLISHED,
+          pinned: false,
+          publishedAt: new Date('2026-05-18T08:00:00.000Z'),
+          createdAt: now,
+          updatedAt: new Date('2026-05-18T08:00:00.000Z'),
+        },
+        {
+          id: randomUUID(),
+          type: ANNOUNCEMENT_TYPE_BULLETIN,
+          title: '较旧已发布',
+          summary: null,
+          contentJson: createBody.contentJson,
+          contentText: '较旧已发布',
+          contentHtml: '<p>较旧已发布</p>',
+          status: ANNOUNCEMENT_STATUS_PUBLISHED,
+          pinned: false,
+          publishedAt: new Date('2026-05-18T07:00:00.000Z'),
+          createdAt: now,
+          updatedAt: new Date('2026-05-18T07:00:00.000Z'),
+        },
+        {
+          id: randomUUID(),
+          type: ANNOUNCEMENT_TYPE_NOTICE,
+          title: '归档但发布时间更新',
+          summary: null,
+          contentJson: createBody.contentJson,
+          contentText: '归档但发布时间更新',
+          contentHtml: '<p>归档但发布时间更新</p>',
+          status: ANNOUNCEMENT_STATUS_ARCHIVED,
+          pinned: false,
+          publishedAt: new Date('2026-05-18T10:30:00.000Z'),
+          createdAt: now,
+          updatedAt: new Date('2026-05-18T10:30:00.000Z'),
+        },
+        {
+          id: randomUUID(),
+          type: ANNOUNCEMENT_TYPE_NOTICE,
+          title: '草稿最近更新',
+          summary: null,
+          contentJson: createBody.contentJson,
+          contentText: '草稿最近更新',
+          contentHtml: '<p>草稿最近更新</p>',
+          status: ANNOUNCEMENT_STATUS_DRAFT,
+          pinned: false,
+          publishedAt: null,
+          createdAt: now,
+          updatedAt: new Date('2026-05-18T11:00:00.000Z'),
+        },
+        {
+          id: randomUUID(),
+          type: ANNOUNCEMENT_TYPE_NOTICE,
+          title: '草稿较旧更新',
+          summary: null,
+          contentJson: createBody.contentJson,
+          contentText: '草稿较旧更新',
+          contentHtml: '<p>草稿较旧更新</p>',
+          status: ANNOUNCEMENT_STATUS_DRAFT,
+          pinned: false,
+          publishedAt: null,
+          createdAt: new Date('2026-05-18T09:30:00.000Z'),
+          updatedAt: new Date('2026-05-18T09:30:00.000Z'),
+        },
+        {
+          id: randomUUID(),
+          type: ANNOUNCEMENT_TYPE_NOTICE,
+          title: '更早归档',
+          summary: null,
+          contentJson: createBody.contentJson,
+          contentText: '更早归档',
+          contentHtml: '<p>更早归档</p>',
+          status: ANNOUNCEMENT_STATUS_ARCHIVED,
+          pinned: false,
+          publishedAt: new Date('2026-05-18T06:00:00.000Z'),
+          createdAt: new Date('2026-05-18T06:00:00.000Z'),
+          updatedAt: new Date('2026-05-18T06:00:00.000Z'),
+        },
+      ])
 
-    const response = await app.request('/api/content/announcements?page=1&pageSize=10')
-    const body = (await response.json()) as AnnouncementListResponse
+      const response = await app.request('/api/content/announcements?page=1&pageSize=10')
+      const body = (await response.json()) as AnnouncementListResponse
 
-    expect(response.status).toBe(200)
-    expect(body.list.slice(0, 7).map((item) => item.title)).toEqual([
-      '置顶已发布',
-      '较新已发布',
-      '较旧已发布',
-      '草稿最近更新',
-      '草稿较旧更新',
-      '归档但发布时间更新',
-      '更早归档',
-    ])
-  })
+      expect(response.status).toBe(200)
+      expect(body.list.slice(0, 7).map((item) => item.title)).toEqual([
+        '置顶已发布',
+        '较新已发布',
+        '较旧已发布',
+        '草稿最近更新',
+        '草稿较旧更新',
+        '归档但发布时间更新',
+        '更早归档',
+      ])
+    },
+  )
 
-  it('uses deterministic tie breakers when publishedAt and updatedAt are equal', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const sharedPublishedAt = new Date('2026-05-18T08:00:00.000Z')
-    const sharedUpdatedAt = new Date('2026-05-18T09:00:00.000Z')
+  dbTest(
+    'uses deterministic tie breakers when publishedAt and updatedAt are equal',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const sharedPublishedAt = new Date('2026-05-18T08:00:00.000Z')
+      const sharedUpdatedAt = new Date('2026-05-18T09:00:00.000Z')
 
-    await database.insert(announcements).values([
-      {
-        id: '11111111-1111-4111-8111-111111111111',
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '较小 ID',
-        summary: null,
-        contentJson: createBody.contentJson,
-        contentText: '较小 ID',
-        contentHtml: '<p>较小 ID</p>',
-        status: ANNOUNCEMENT_STATUS_PUBLISHED,
-        pinned: false,
-        publishedAt: sharedPublishedAt,
-        createdAt: new Date('2026-05-18T07:00:00.000Z'),
-        updatedAt: sharedUpdatedAt,
-      },
-      {
-        id: '22222222-2222-4222-8222-222222222222',
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '较大 ID 但较早创建',
-        summary: null,
-        contentJson: createBody.contentJson,
-        contentText: '较大 ID 但较早创建',
-        contentHtml: '<p>较大 ID 但较早创建</p>',
-        status: ANNOUNCEMENT_STATUS_PUBLISHED,
-        pinned: false,
-        publishedAt: sharedPublishedAt,
-        createdAt: new Date('2026-05-18T06:00:00.000Z'),
-        updatedAt: sharedUpdatedAt,
-      },
-      {
-        id: '33333333-3333-4333-8333-333333333333',
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '更新创建更晚',
-        summary: null,
-        contentJson: createBody.contentJson,
-        contentText: '更新创建更晚',
-        contentHtml: '<p>更新创建更晚</p>',
-        status: ANNOUNCEMENT_STATUS_PUBLISHED,
-        pinned: false,
-        publishedAt: sharedPublishedAt,
-        createdAt: new Date('2026-05-18T10:00:00.000Z'),
-        updatedAt: sharedUpdatedAt,
-      },
-      {
-        id: '44444444-4444-4444-8444-444444444444',
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '同创建时间取较大 ID',
-        summary: null,
-        contentJson: createBody.contentJson,
-        contentText: '同创建时间取较大 ID',
-        contentHtml: '<p>同创建时间取较大 ID</p>',
-        status: ANNOUNCEMENT_STATUS_PUBLISHED,
-        pinned: false,
-        publishedAt: sharedPublishedAt,
-        createdAt: new Date('2026-05-18T05:00:00.000Z'),
-        updatedAt: sharedUpdatedAt,
-      },
-      {
-        id: '55555555-5555-4555-8555-555555555555',
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '同创建时间取最大 ID',
-        summary: null,
-        contentJson: createBody.contentJson,
-        contentText: '同创建时间取最大 ID',
-        contentHtml: '<p>同创建时间取最大 ID</p>',
-        status: ANNOUNCEMENT_STATUS_PUBLISHED,
-        pinned: false,
-        publishedAt: sharedPublishedAt,
-        createdAt: new Date('2026-05-18T05:00:00.000Z'),
-        updatedAt: sharedUpdatedAt,
-      },
-    ])
+      await database.insert(announcements).values([
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          type: ANNOUNCEMENT_TYPE_NOTICE,
+          title: '较小 ID',
+          summary: null,
+          contentJson: createBody.contentJson,
+          contentText: '较小 ID',
+          contentHtml: '<p>较小 ID</p>',
+          status: ANNOUNCEMENT_STATUS_PUBLISHED,
+          pinned: false,
+          publishedAt: sharedPublishedAt,
+          createdAt: new Date('2026-05-18T07:00:00.000Z'),
+          updatedAt: sharedUpdatedAt,
+        },
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          type: ANNOUNCEMENT_TYPE_NOTICE,
+          title: '较大 ID 但较早创建',
+          summary: null,
+          contentJson: createBody.contentJson,
+          contentText: '较大 ID 但较早创建',
+          contentHtml: '<p>较大 ID 但较早创建</p>',
+          status: ANNOUNCEMENT_STATUS_PUBLISHED,
+          pinned: false,
+          publishedAt: sharedPublishedAt,
+          createdAt: new Date('2026-05-18T06:00:00.000Z'),
+          updatedAt: sharedUpdatedAt,
+        },
+        {
+          id: '33333333-3333-4333-8333-333333333333',
+          type: ANNOUNCEMENT_TYPE_NOTICE,
+          title: '更新创建更晚',
+          summary: null,
+          contentJson: createBody.contentJson,
+          contentText: '更新创建更晚',
+          contentHtml: '<p>更新创建更晚</p>',
+          status: ANNOUNCEMENT_STATUS_PUBLISHED,
+          pinned: false,
+          publishedAt: sharedPublishedAt,
+          createdAt: new Date('2026-05-18T10:00:00.000Z'),
+          updatedAt: sharedUpdatedAt,
+        },
+        {
+          id: '44444444-4444-4444-8444-444444444444',
+          type: ANNOUNCEMENT_TYPE_NOTICE,
+          title: '同创建时间取较大 ID',
+          summary: null,
+          contentJson: createBody.contentJson,
+          contentText: '同创建时间取较大 ID',
+          contentHtml: '<p>同创建时间取较大 ID</p>',
+          status: ANNOUNCEMENT_STATUS_PUBLISHED,
+          pinned: false,
+          publishedAt: sharedPublishedAt,
+          createdAt: new Date('2026-05-18T05:00:00.000Z'),
+          updatedAt: sharedUpdatedAt,
+        },
+        {
+          id: '55555555-5555-4555-8555-555555555555',
+          type: ANNOUNCEMENT_TYPE_NOTICE,
+          title: '同创建时间取最大 ID',
+          summary: null,
+          contentJson: createBody.contentJson,
+          contentText: '同创建时间取最大 ID',
+          contentHtml: '<p>同创建时间取最大 ID</p>',
+          status: ANNOUNCEMENT_STATUS_PUBLISHED,
+          pinned: false,
+          publishedAt: sharedPublishedAt,
+          createdAt: new Date('2026-05-18T05:00:00.000Z'),
+          updatedAt: sharedUpdatedAt,
+        },
+      ])
 
-    const response = await app.request('/api/content/announcements?page=1&pageSize=10')
-    const body = (await response.json()) as AnnouncementListResponse
+      const response = await app.request('/api/content/announcements?page=1&pageSize=10')
+      const body = (await response.json()) as AnnouncementListResponse
 
-    expect(response.status).toBe(200)
-    expect(body.list.slice(0, 5).map((item) => item.title)).toEqual([
-      '更新创建更晚',
-      '较小 ID',
-      '较大 ID 但较早创建',
-      '同创建时间取最大 ID',
-      '同创建时间取较大 ID',
-    ])
-  })
+      expect(response.status).toBe(200)
+      expect(body.list.slice(0, 5).map((item) => item.title)).toEqual([
+        '更新创建更晚',
+        '较小 ID',
+        '较大 ID 但较早创建',
+        '同创建时间取最大 ID',
+        '同创建时间取较大 ID',
+      ])
+    },
+  )
 
-  it('soft deletes announcements and hides them from list', async () => {
-    const database = await createTestDb()
+  dbTest('soft deletes announcements and hides them from list', async ({ db: database }) => {
     const app = await createTestApp(database)
     const { body: created } = await createAnnouncement(app, createBody)
 

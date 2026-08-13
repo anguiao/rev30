@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { sign } from 'hono/jwt'
@@ -26,7 +26,7 @@ import {
   systemUserRoles,
   systemUsers,
 } from '../../../src/db/schema'
-import { createTestDb } from '../../helpers/db'
+import { dbTest, type TestDatabase } from '../../fixtures/database'
 import { createSystemResourceFixture as createResource } from '../../helpers/system'
 import { createAuthMiddleware } from '../../../src/middleware/auth'
 import { hashPassword, verifyPassword } from '../../../src/modules/auth/password'
@@ -42,7 +42,6 @@ type ErrorResponse = {
 
 type AuthLoginResponse = AuthTokenResponse | ErrorResponse
 
-type TestDatabase = Awaited<ReturnType<typeof createTestDb>>
 type TestTransaction = Parameters<Parameters<TestDatabase['transaction']>[0]>[0]
 type FixturePassword = 'old-password' | 'secret-password'
 type AccountInput = {
@@ -184,8 +183,7 @@ function createTestAppWithRefreshRevokeFailure(database: TestDatabase) {
 }
 
 describe('auth routes', () => {
-  it('logs in with username and password', async () => {
-    const database = await createTestDb()
+  dbTest('logs in with username and password', async ({ db: database }) => {
     const app = createTestApp(database)
 
     await createPasswordAccount(database)
@@ -210,164 +208,169 @@ describe('auth routes', () => {
     expect(body).not.toHaveProperty('attachmentToken')
   })
 
-  it('returns a uniform credentials error for wrong passwords and disabled users', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
+  dbTest(
+    'returns a uniform credentials error for wrong passwords and disabled users',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
 
-    const account = await createPasswordAccount(database)
-    const wrongPassword = await login(app, {
-      password: 'wrong-password',
-    })
-
-    expect(wrongPassword.response.status).toBe(401)
-    expect(wrongPassword.body).toEqual({
-      message: '用户名或密码错误',
-    })
-
-    await database
-      .update(systemUsers)
-      .set({
-        status: USER_STATUS_DISABLED,
+      const account = await createPasswordAccount(database)
+      const wrongPassword = await login(app, {
+        password: 'wrong-password',
       })
-      .where(eq(systemUsers.id, account.id))
 
-    const disabled = await login(app)
+      expect(wrongPassword.response.status).toBe(401)
+      expect(wrongPassword.body).toEqual({
+        message: '用户名或密码错误',
+      })
 
-    expect(disabled.response.status).toBe(401)
-    expect(disabled.body).toEqual({
-      message: '用户名或密码错误',
-    })
-  })
+      await database
+        .update(systemUsers)
+        .set({
+          status: USER_STATUS_DISABLED,
+        })
+        .where(eq(systemUsers.id, account.id))
 
-  it('locks a username after repeated login failures and clears failures after success', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
+      const disabled = await login(app)
 
-    await createPasswordAccount(database, {
-      username: 'rate-limit-user',
-      password: 'secret-password',
-    })
+      expect(disabled.response.status).toBe(401)
+      expect(disabled.body).toEqual({
+        message: '用户名或密码错误',
+      })
+    },
+  )
 
-    for (let index = 0; index < 5; index += 1) {
-      const failed = await login(app, {
+  dbTest(
+    'locks a username after repeated login failures and clears failures after success',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+
+      await createPasswordAccount(database, {
         username: 'rate-limit-user',
+        password: 'secret-password',
+      })
+
+      for (let index = 0; index < 5; index += 1) {
+        const failed = await login(app, {
+          username: 'rate-limit-user',
+          password: 'wrong-password',
+        })
+
+        expect(failed.response.status).toBe(401)
+        expect(failed.body).toEqual({ message: '用户名或密码错误' })
+      }
+
+      const locked = await login(app, {
+        username: 'rate-limit-user',
+        password: 'secret-password',
+      })
+
+      expect(locked.response.status).toBe(429)
+      expect(locked.body).toEqual({ message: '登录失败次数过多，请稍后再试' })
+      expect(locked.response.headers.get('set-cookie')).toBeNull()
+
+      await createPasswordAccount(database, {
+        username: 'clear-bucket-login-user',
+        password: 'secret-password',
+      })
+
+      const clearBucketFailed = await login(app, {
+        username: 'clear-bucket-login-user',
         password: 'wrong-password',
       })
 
-      expect(failed.response.status).toBe(401)
-      expect(failed.body).toEqual({ message: '用户名或密码错误' })
-    }
+      expect(clearBucketFailed.response.status).toBe(401)
+      expect(clearBucketFailed.body).toEqual({ message: '用户名或密码错误' })
 
-    const locked = await login(app, {
-      username: 'rate-limit-user',
-      password: 'secret-password',
-    })
+      const failedBuckets = await database
+        .select()
+        .from(authLoginAttemptBuckets)
+        .where(eq(authLoginAttemptBuckets.username, 'clear-bucket-login-user'))
 
-    expect(locked.response.status).toBe(429)
-    expect(locked.body).toEqual({ message: '登录失败次数过多，请稍后再试' })
-    expect(locked.response.headers.get('set-cookie')).toBeNull()
+      expect(failedBuckets).toHaveLength(1)
 
-    await createPasswordAccount(database, {
-      username: 'clear-bucket-login-user',
-      password: 'secret-password',
-    })
+      const clearBucketSuccess = await login(app, {
+        username: 'clear-bucket-login-user',
+        password: 'secret-password',
+      })
 
-    const clearBucketFailed = await login(app, {
-      username: 'clear-bucket-login-user',
-      password: 'wrong-password',
-    })
+      expect(clearBucketSuccess.response.status).toBe(200)
+      expect(clearBucketSuccess.response.headers.get('set-cookie')).toContain('refresh_token=')
 
-    expect(clearBucketFailed.response.status).toBe(401)
-    expect(clearBucketFailed.body).toEqual({ message: '用户名或密码错误' })
+      const clearedBuckets = await database
+        .select()
+        .from(authLoginAttemptBuckets)
+        .where(eq(authLoginAttemptBuckets.username, 'clear-bucket-login-user'))
 
-    const failedBuckets = await database
-      .select()
-      .from(authLoginAttemptBuckets)
-      .where(eq(authLoginAttemptBuckets.username, 'clear-bucket-login-user'))
+      expect(clearedBuckets).toHaveLength(0)
 
-    expect(failedBuckets).toHaveLength(1)
+      const unaffectedUser = await createPasswordAccount(database, {
+        username: 'unaffected-login-user',
+        password: 'secret-password',
+      })
+      const unaffected = await login(app, {
+        username: unaffectedUser.username,
+        password: 'secret-password',
+      })
 
-    const clearBucketSuccess = await login(app, {
-      username: 'clear-bucket-login-user',
-      password: 'secret-password',
-    })
+      expect(unaffected.response.status).toBe(200)
 
-    expect(clearBucketSuccess.response.status).toBe(200)
-    expect(clearBucketSuccess.response.headers.get('set-cookie')).toContain('refresh_token=')
+      await database
+        .delete(authLoginAttemptBuckets)
+        .where(eq(authLoginAttemptBuckets.username, 'rate-limit-user'))
 
-    const clearedBuckets = await database
-      .select()
-      .from(authLoginAttemptBuckets)
-      .where(eq(authLoginAttemptBuckets.username, 'clear-bucket-login-user'))
+      const recovered = await login(app, {
+        username: 'rate-limit-user',
+        password: 'secret-password',
+      })
 
-    expect(clearedBuckets).toHaveLength(0)
+      expect(recovered.response.status).toBe(200)
+      expect(recovered.response.headers.get('set-cookie')).toContain('refresh_token=')
 
-    const unaffectedUser = await createPasswordAccount(database, {
-      username: 'unaffected-login-user',
-      password: 'secret-password',
-    })
-    const unaffected = await login(app, {
-      username: unaffectedUser.username,
-      password: 'secret-password',
-    })
+      const remainingBuckets = await database
+        .select()
+        .from(authLoginAttemptBuckets)
+        .where(eq(authLoginAttemptBuckets.username, 'rate-limit-user'))
 
-    expect(unaffected.response.status).toBe(200)
+      expect(remainingBuckets).toHaveLength(0)
+    },
+  )
 
-    await database
-      .delete(authLoginAttemptBuckets)
-      .where(eq(authLoginAttemptBuckets.username, 'rate-limit-user'))
+  dbTest(
+    'uses system config overrides for login failure limits without recreating routes',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
 
-    const recovered = await login(app, {
-      username: 'rate-limit-user',
-      password: 'secret-password',
-    })
-
-    expect(recovered.response.status).toBe(200)
-    expect(recovered.response.headers.get('set-cookie')).toContain('refresh_token=')
-
-    const remainingBuckets = await database
-      .select()
-      .from(authLoginAttemptBuckets)
-      .where(eq(authLoginAttemptBuckets.username, 'rate-limit-user'))
-
-    expect(remainingBuckets).toHaveLength(0)
-  })
-
-  it('uses system config overrides for login failure limits without recreating routes', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-
-    await createPasswordAccount(database, {
-      username: 'dynamic-rate-limit-user',
-      password: 'secret-password',
-    })
-
-    await database.insert(systemConfigOverrides).values({
-      key: 'auth.loginFailureMaxAttempts',
-      value: '2',
-    })
-
-    for (let index = 0; index < 2; index += 1) {
-      const failed = await login(app, {
+      await createPasswordAccount(database, {
         username: 'dynamic-rate-limit-user',
-        password: 'wrong-password',
+        password: 'secret-password',
       })
 
-      expect(failed.response.status).toBe(401)
-      expect(failed.body).toEqual({ message: '用户名或密码错误' })
-    }
+      await database.insert(systemConfigOverrides).values({
+        key: 'auth.loginFailureMaxAttempts',
+        value: '2',
+      })
 
-    const locked = await login(app, {
-      username: 'dynamic-rate-limit-user',
-      password: 'secret-password',
-    })
+      for (let index = 0; index < 2; index += 1) {
+        const failed = await login(app, {
+          username: 'dynamic-rate-limit-user',
+          password: 'wrong-password',
+        })
 
-    expect(locked.response.status).toBe(429)
-    expect(locked.body).toEqual({ message: '登录失败次数过多，请稍后再试' })
-  })
+        expect(failed.response.status).toBe(401)
+        expect(failed.body).toEqual({ message: '用户名或密码错误' })
+      }
 
-  it('creates a login failure bucket for a new username', async () => {
-    const database = await createTestDb()
+      const locked = await login(app, {
+        username: 'dynamic-rate-limit-user',
+        password: 'secret-password',
+      })
+
+      expect(locked.response.status).toBe(429)
+      expect(locked.body).toEqual({ message: '登录失败次数过多，请稍后再试' })
+    },
+  )
+
+  dbTest('creates a login failure bucket for a new username', async ({ db: database }) => {
     const repository = createAuthRepository(database)
     const attemptTime = new Date('2026-05-14T00:00:00.000Z')
 
@@ -390,81 +393,84 @@ describe('auth routes', () => {
     })
   })
 
-  it('increments failed count within an active login failure window', async () => {
-    const database = await createTestDb()
-    const repository = createAuthRepository(database)
-    const windowStart = new Date('2026-05-14T00:00:00.000Z')
-    const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
+  dbTest(
+    'increments failed count within an active login failure window',
+    async ({ db: database }) => {
+      const repository = createAuthRepository(database)
+      const windowStart = new Date('2026-05-14T00:00:00.000Z')
+      const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
 
-    await repository.recordLoginFailure({
-      username: 'window-user',
-      now: windowStart,
-      maxAttempts: 5,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.recordLoginFailure({
-      username: 'window-user',
-      now: secondAttempt,
-      maxAttempts: 5,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
+      await repository.recordLoginFailure({
+        username: 'window-user',
+        now: windowStart,
+        maxAttempts: 5,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
+      await repository.recordLoginFailure({
+        username: 'window-user',
+        now: secondAttempt,
+        maxAttempts: 5,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
 
-    const bucket = await repository.findLoginAttemptBucketByUsername('window-user')
+      const bucket = await repository.findLoginAttemptBucketByUsername('window-user')
 
-    expect(bucket).toMatchObject({
-      username: 'window-user',
-      failedCount: 2,
-      windowStartedAt: windowStart,
-      lastFailedAt: secondAttempt,
-      lockedUntil: null,
-    })
-  })
+      expect(bucket).toMatchObject({
+        username: 'window-user',
+        failedCount: 2,
+        windowStartedAt: windowStart,
+        lastFailedAt: secondAttempt,
+        lockedUntil: null,
+      })
+    },
+  )
 
-  it('locks username when failed login attempts hit the threshold', async () => {
-    const database = await createTestDb()
-    const repository = createAuthRepository(database)
-    const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
-    const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
-    const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
-    const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
+  dbTest(
+    'locks username when failed login attempts hit the threshold',
+    async ({ db: database }) => {
+      const repository = createAuthRepository(database)
+      const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
+      const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
+      const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
+      const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
 
-    await repository.recordLoginFailure({
-      username: 'threshold-user',
-      now: firstAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.recordLoginFailure({
-      username: 'threshold-user',
-      now: secondAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.recordLoginFailure({
-      username: 'threshold-user',
-      now: thirdAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
+      await repository.recordLoginFailure({
+        username: 'threshold-user',
+        now: firstAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
+      await repository.recordLoginFailure({
+        username: 'threshold-user',
+        now: secondAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
+      await repository.recordLoginFailure({
+        username: 'threshold-user',
+        now: thirdAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
 
-    const bucket = await repository.findLoginAttemptBucketByUsername('threshold-user')
+      const bucket = await repository.findLoginAttemptBucketByUsername('threshold-user')
 
-    expect(bucket).toMatchObject({
-      username: 'threshold-user',
-      failedCount: 3,
-      windowStartedAt: firstAttempt,
-      lastFailedAt: thirdAttempt,
-      lockedUntil: expectedLockUntil,
-    })
-  })
+      expect(bucket).toMatchObject({
+        username: 'threshold-user',
+        failedCount: 3,
+        windowStartedAt: firstAttempt,
+        lastFailedAt: thirdAttempt,
+        lockedUntil: expectedLockUntil,
+      })
+    },
+  )
 
-  it('resets failed count when the login failure window expires', async () => {
-    const database = await createTestDb()
+  dbTest('resets failed count when the login failure window expires', async ({ db: database }) => {
     const repository = createAuthRepository(database)
     const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
     const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
@@ -503,148 +509,153 @@ describe('auth routes', () => {
     })
   })
 
-  it('resets failed count when the previous login failure lock expires', async () => {
-    const database = await createTestDb()
-    const repository = createAuthRepository(database)
-    const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
-    const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
-    const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
-    const afterLockExpiresAttempt = new Date('2026-05-14T00:17:01.000Z')
+  dbTest(
+    'resets failed count when the previous login failure lock expires',
+    async ({ db: database }) => {
+      const repository = createAuthRepository(database)
+      const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
+      const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
+      const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
+      const afterLockExpiresAttempt = new Date('2026-05-14T00:17:01.000Z')
 
-    await repository.recordLoginFailure({
-      username: 'lock-expired-user',
-      now: firstAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.recordLoginFailure({
-      username: 'lock-expired-user',
-      now: secondAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.recordLoginFailure({
-      username: 'lock-expired-user',
-      now: thirdAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.recordLoginFailure({
-      username: 'lock-expired-user',
-      now: afterLockExpiresAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
+      await repository.recordLoginFailure({
+        username: 'lock-expired-user',
+        now: firstAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
+      await repository.recordLoginFailure({
+        username: 'lock-expired-user',
+        now: secondAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
+      await repository.recordLoginFailure({
+        username: 'lock-expired-user',
+        now: thirdAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
+      await repository.recordLoginFailure({
+        username: 'lock-expired-user',
+        now: afterLockExpiresAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
 
-    const bucket = await repository.findLoginAttemptBucketByUsername('lock-expired-user')
+      const bucket = await repository.findLoginAttemptBucketByUsername('lock-expired-user')
 
-    expect(bucket).toMatchObject({
-      username: 'lock-expired-user',
-      failedCount: 1,
-      windowStartedAt: afterLockExpiresAttempt,
-      lastFailedAt: afterLockExpiresAttempt,
-      lockedUntil: null,
-    })
-  })
+      expect(bucket).toMatchObject({
+        username: 'lock-expired-user',
+        failedCount: 1,
+        windowStartedAt: afterLockExpiresAttempt,
+        lastFailedAt: afterLockExpiresAttempt,
+        lockedUntil: null,
+      })
+    },
+  )
 
-  it('keeps active login failure lock when stale write sees expired window', async () => {
-    const database = await createTestDb()
-    const repository = createAuthRepository(database)
-    const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
-    const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
-    const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
-    const staleAttempt = new Date('2026-05-14T00:16:00.000Z')
-    const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
+  dbTest(
+    'keeps active login failure lock when stale write sees expired window',
+    async ({ db: database }) => {
+      const repository = createAuthRepository(database)
+      const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
+      const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
+      const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
+      const staleAttempt = new Date('2026-05-14T00:16:00.000Z')
+      const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
 
-    await repository.recordLoginFailure({
-      username: 'stale-lock-user',
-      now: firstAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.recordLoginFailure({
-      username: 'stale-lock-user',
-      now: secondAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.recordLoginFailure({
-      username: 'stale-lock-user',
-      now: thirdAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.recordLoginFailure({
-      username: 'stale-lock-user',
-      now: staleAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
+      await repository.recordLoginFailure({
+        username: 'stale-lock-user',
+        now: firstAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
+      await repository.recordLoginFailure({
+        username: 'stale-lock-user',
+        now: secondAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
+      await repository.recordLoginFailure({
+        username: 'stale-lock-user',
+        now: thirdAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
+      await repository.recordLoginFailure({
+        username: 'stale-lock-user',
+        now: staleAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
 
-    const bucket = await repository.findLoginAttemptBucketByUsername('stale-lock-user')
+      const bucket = await repository.findLoginAttemptBucketByUsername('stale-lock-user')
 
-    expect(bucket).toMatchObject({
-      username: 'stale-lock-user',
-      failedCount: 3,
-      windowStartedAt: firstAttempt,
-      lastFailedAt: staleAttempt,
-      lockedUntil: expectedLockUntil,
-    })
-  })
+      expect(bucket).toMatchObject({
+        username: 'stale-lock-user',
+        failedCount: 3,
+        windowStartedAt: firstAttempt,
+        lastFailedAt: staleAttempt,
+        lockedUntil: expectedLockUntil,
+      })
+    },
+  )
 
-  it('keeps active login failure lock when stale successful login cleanup runs', async () => {
-    const database = await createTestDb()
-    const repository = createAuthRepository(database)
-    const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
-    const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
-    const staleSuccessStartedAt = new Date('2026-05-14T00:01:30.000Z')
-    const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
-    const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
+  dbTest(
+    'keeps active login failure lock when stale successful login cleanup runs',
+    async ({ db: database }) => {
+      const repository = createAuthRepository(database)
+      const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
+      const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
+      const staleSuccessStartedAt = new Date('2026-05-14T00:01:30.000Z')
+      const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
+      const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
 
-    await repository.recordLoginFailure({
-      username: 'stale-success-lock-user',
-      now: firstAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.recordLoginFailure({
-      username: 'stale-success-lock-user',
-      now: secondAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.recordLoginFailure({
-      username: 'stale-success-lock-user',
-      now: thirdAttempt,
-      maxAttempts: 3,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.clearLoginAttemptBucket('stale-success-lock-user', staleSuccessStartedAt)
+      await repository.recordLoginFailure({
+        username: 'stale-success-lock-user',
+        now: firstAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
+      await repository.recordLoginFailure({
+        username: 'stale-success-lock-user',
+        now: secondAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
+      await repository.recordLoginFailure({
+        username: 'stale-success-lock-user',
+        now: thirdAttempt,
+        maxAttempts: 3,
+        windowSeconds: 900,
+        lockSeconds: 900,
+      })
+      await repository.clearLoginAttemptBucket('stale-success-lock-user', staleSuccessStartedAt)
 
-    const bucket = await repository.findLoginAttemptBucketByUsername('stale-success-lock-user')
+      const bucket = await repository.findLoginAttemptBucketByUsername('stale-success-lock-user')
 
-    expect(bucket).toMatchObject({
-      username: 'stale-success-lock-user',
-      failedCount: 3,
-      windowStartedAt: firstAttempt,
-      lastFailedAt: thirdAttempt,
-      lockedUntil: expectedLockUntil,
-    })
-  })
+      expect(bucket).toMatchObject({
+        username: 'stale-success-lock-user',
+        failedCount: 3,
+        windowStartedAt: firstAttempt,
+        lastFailedAt: thirdAttempt,
+        lockedUntil: expectedLockUntil,
+      })
+    },
+  )
 
-  it('returns role summaries on login', async () => {
-    const database = await createTestDb()
+  dbTest('returns role summaries on login', async ({ db: database }) => {
     const app = createTestApp(database)
     const account = await createPasswordAccount(database, {
       username: 'role-login-user',
@@ -698,8 +709,7 @@ describe('auth routes', () => {
     ])
   })
 
-  it('returns admin access codes and menus on login', async () => {
-    const database = await createTestDb()
+  dbTest('returns admin access codes and menus on login', async ({ db: database }) => {
     const app = createTestApp(database)
     const account = await createPasswordAccount(database, {
       username: 'admin-login',
@@ -801,163 +811,170 @@ describe('auth routes', () => {
     )
   })
 
-  it('rotates refresh tokens and rejects reuse of the old refresh token', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database)
-    const oldRefreshToken = registered.refreshToken
+  dbTest(
+    'rotates refresh tokens and rejects reuse of the old refresh token',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+      const registered = await createLoggedInAccount(app, database)
+      const oldRefreshToken = registered.refreshToken
 
-    const refreshResponse = await app.request('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${oldRefreshToken}`,
-      },
-    })
-    const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
-    const newRefreshToken = getRefreshTokenCookie(refreshResponse)
-
-    expect(refreshResponse.status).toBe(200)
-    expect(refreshResponse.headers.get('set-cookie')).toContain('refresh_token=')
-    expect(refreshResponse.headers.get('set-cookie')).toContain('attachment_token=')
-    expect(refreshBody).not.toHaveProperty('refreshToken')
-    expect(refreshBody).not.toHaveProperty('attachmentToken')
-    expect(refreshBody.accessCodes).toEqual([])
-    expect(refreshBody.menus).toEqual([])
-    expect(newRefreshToken).toEqual(expect.any(String))
-    expect(newRefreshToken).not.toBe(oldRefreshToken)
-
-    const reuseResponse = await app.request('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${oldRefreshToken}`,
-      },
-    })
-    const reuseBody = (await reuseResponse.json()) as ErrorResponse
-
-    expect(reuseResponse.status).toBe(401)
-    expect(reuseBody).toEqual({
-      message: '刷新令牌无效',
-    })
-  })
-
-  it('atomically consumes a refresh token when concurrent requests race', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database)
-    const oldRefreshToken = requireRefreshToken(registered.refreshToken)
-    const refresh = () =>
-      app.request('/api/auth/refresh', {
+      const refreshResponse = await app.request('/api/auth/refresh', {
         method: 'POST',
         headers: {
           cookie: `refresh_token=${oldRefreshToken}`,
         },
       })
+      const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
+      const newRefreshToken = getRefreshTokenCookie(refreshResponse)
 
-    const responses = await Promise.all([refresh(), refresh()])
+      expect(refreshResponse.status).toBe(200)
+      expect(refreshResponse.headers.get('set-cookie')).toContain('refresh_token=')
+      expect(refreshResponse.headers.get('set-cookie')).toContain('attachment_token=')
+      expect(refreshBody).not.toHaveProperty('refreshToken')
+      expect(refreshBody).not.toHaveProperty('attachmentToken')
+      expect(refreshBody.accessCodes).toEqual([])
+      expect(refreshBody.menus).toEqual([])
+      expect(newRefreshToken).toEqual(expect.any(String))
+      expect(newRefreshToken).not.toBe(oldRefreshToken)
 
-    expect(
-      responses.map((response) => response.status).sort((left, right) => left - right),
-    ).toEqual([200, 401])
+      const reuseResponse = await app.request('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${oldRefreshToken}`,
+        },
+      })
+      const reuseBody = (await reuseResponse.json()) as ErrorResponse
 
-    const successResponse = responses.find((response) => response.status === 200)
-    const unauthorizedResponse = responses.find((response) => response.status === 401)
+      expect(reuseResponse.status).toBe(401)
+      expect(reuseBody).toEqual({
+        message: '刷新令牌无效',
+      })
+    },
+  )
 
-    if (!successResponse || !unauthorizedResponse) {
-      throw new Error('Expected one successful and one unauthorized refresh response')
-    }
+  dbTest(
+    'atomically consumes a refresh token when concurrent requests race',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+      const registered = await createLoggedInAccount(app, database)
+      const oldRefreshToken = requireRefreshToken(registered.refreshToken)
+      const refresh = () =>
+        app.request('/api/auth/refresh', {
+          method: 'POST',
+          headers: {
+            cookie: `refresh_token=${oldRefreshToken}`,
+          },
+        })
 
-    const newRefreshToken = requireRefreshToken(getRefreshTokenCookie(successResponse))
-    const config = readAuthConfig()
-    const [oldToken, newToken] = await Promise.all([
-      verifyRefreshToken(oldRefreshToken, config),
-      verifyRefreshToken(newRefreshToken, config),
-    ])
-    const sessions = await database
-      .select()
-      .from(authRefreshTokens)
-      .where(eq(authRefreshTokens.userId, registered.user.id))
-    const activeSessions = sessions.filter(
-      (session) => session.revokedAt === null && session.expiresAt > new Date(),
-    )
+      const responses = await Promise.all([refresh(), refresh()])
 
-    expect(await unauthorizedResponse.json()).toEqual({ message: '刷新令牌无效' })
-    expect(newRefreshToken).not.toBe(oldRefreshToken)
-    expect(sessions).toHaveLength(2)
-    expect(
-      sessions.find((session) => session.tokenHash === oldToken.refreshTokenHash),
-    ).toMatchObject({
-      revokedAt: expect.any(Date),
-    })
-    expect(activeSessions).toMatchObject([
-      {
-        tokenHash: newToken.refreshTokenHash,
-        revokedAt: null,
-      },
-    ])
-  })
+      expect(
+        responses.map((response) => response.status).sort((left, right) => left - right),
+      ).toEqual([200, 401])
 
-  it('refreshes from the refresh cookie when no body token is provided', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database)
+      const successResponse = responses.find((response) => response.status === 200)
+      const unauthorizedResponse = responses.find((response) => response.status === 401)
 
-    const refreshResponse = await app.request('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${registered.refreshToken}`,
-      },
-    })
-    const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
+      if (!successResponse || !unauthorizedResponse) {
+        throw new Error('Expected one successful and one unauthorized refresh response')
+      }
 
-    expect(refreshResponse.status).toBe(200)
-    expect(refreshBody.user.id).toBe(registered.body.user.id)
-    expect(refreshBody.accessCodes).toEqual([])
-    expect(refreshBody.menus).toEqual([])
-    expect(refreshBody.user.departments).toEqual([])
-    expect(refreshBody.user.roles).toEqual([])
-    expect(refreshBody).not.toHaveProperty('refreshToken')
-    expect(getRefreshTokenCookie(refreshResponse)).not.toBe(registered.refreshToken)
-  })
+      const newRefreshToken = requireRefreshToken(getRefreshTokenCookie(successResponse))
+      const config = readAuthConfig()
+      const [oldToken, newToken] = await Promise.all([
+        verifyRefreshToken(oldRefreshToken, config),
+        verifyRefreshToken(newRefreshToken, config),
+      ])
+      const sessions = await database
+        .select()
+        .from(authRefreshTokens)
+        .where(eq(authRefreshTokens.userId, registered.user.id))
+      const activeSessions = sessions.filter(
+        (session) => session.revokedAt === null && session.expiresAt > new Date(),
+      )
 
-  it('logs out by revoking refresh tokens and clearing the cookie', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database)
+      expect(await unauthorizedResponse.json()).toEqual({ message: '刷新令牌无效' })
+      expect(newRefreshToken).not.toBe(oldRefreshToken)
+      expect(sessions).toHaveLength(2)
+      expect(
+        sessions.find((session) => session.tokenHash === oldToken.refreshTokenHash),
+      ).toMatchObject({
+        revokedAt: expect.any(Date),
+      })
+      expect(activeSessions).toMatchObject([
+        {
+          tokenHash: newToken.refreshTokenHash,
+          revokedAt: null,
+        },
+      ])
+    },
+  )
 
-    const logoutResponse = await app.request('/api/auth/logout', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${registered.refreshToken}`,
-      },
-    })
+  dbTest(
+    'refreshes from the refresh cookie when no body token is provided',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+      const registered = await createLoggedInAccount(app, database)
 
-    expect(logoutResponse.status).toBe(204)
-    expect(logoutResponse.headers.get('set-cookie')).toContain('refresh_token=')
-    expect(logoutResponse.headers.get('set-cookie')).toContain('attachment_token=')
-    expect(logoutResponse.headers.get('set-cookie')).toContain('Max-Age=0')
-    expect(logoutResponse.headers.get('set-cookie')).toContain('Path=/api/attachments')
+      const refreshResponse = await app.request('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${registered.refreshToken}`,
+        },
+      })
+      const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
 
-    const refreshResponse = await app.request('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${registered.refreshToken}`,
-      },
-    })
+      expect(refreshResponse.status).toBe(200)
+      expect(refreshBody.user.id).toBe(registered.body.user.id)
+      expect(refreshBody.accessCodes).toEqual([])
+      expect(refreshBody.menus).toEqual([])
+      expect(refreshBody.user.departments).toEqual([])
+      expect(refreshBody.user.roles).toEqual([])
+      expect(refreshBody).not.toHaveProperty('refreshToken')
+      expect(getRefreshTokenCookie(refreshResponse)).not.toBe(registered.refreshToken)
+    },
+  )
 
-    expect(refreshResponse.status).toBe(401)
+  dbTest(
+    'logs out by revoking refresh tokens and clearing the cookie',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+      const registered = await createLoggedInAccount(app, database)
 
-    const secondLogoutResponse = await app.request('/api/auth/logout', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${registered.refreshToken}`,
-      },
-    })
+      const logoutResponse = await app.request('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${registered.refreshToken}`,
+        },
+      })
 
-    expect(secondLogoutResponse.status).toBe(204)
-  })
+      expect(logoutResponse.status).toBe(204)
+      expect(logoutResponse.headers.get('set-cookie')).toContain('refresh_token=')
+      expect(logoutResponse.headers.get('set-cookie')).toContain('attachment_token=')
+      expect(logoutResponse.headers.get('set-cookie')).toContain('Max-Age=0')
+      expect(logoutResponse.headers.get('set-cookie')).toContain('Path=/api/attachments')
 
-  it('returns the current user for a valid access token', async () => {
-    const database = await createTestDb()
+      const refreshResponse = await app.request('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${registered.refreshToken}`,
+        },
+      })
+
+      expect(refreshResponse.status).toBe(401)
+
+      const secondLogoutResponse = await app.request('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${registered.refreshToken}`,
+        },
+      })
+
+      expect(secondLogoutResponse.status).toBe(204)
+    },
+  )
+
+  dbTest('returns the current user for a valid access token', async ({ db: database }) => {
     const app = createTestApp(database)
     const registered = await createLoggedInAccount(app, database)
 
@@ -999,8 +1016,7 @@ describe('auth routes', () => {
     })
   })
 
-  it('updates current user profile', async () => {
-    const database = await createTestDb()
+  dbTest('updates current user profile', async ({ db: database }) => {
     const app = createTestApp(database)
     const registered = await createLoggedInAccount(app, database)
 
@@ -1028,8 +1044,7 @@ describe('auth routes', () => {
     })
   })
 
-  it('updates current user avatar ids through profile updates', async () => {
-    const database = await createTestDb()
+  dbTest('updates current user avatar ids through profile updates', async ({ db: database }) => {
     const app = createTestApp(database)
     const registered = await createLoggedInAccount(app, database)
     const avatarId = randomUUID()
@@ -1067,253 +1082,38 @@ describe('auth routes', () => {
     expect(body.avatarId).toBe(avatarId)
   })
 
-  it('returns bad request when current user avatar ids do not exist', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database)
+  dbTest(
+    'returns bad request when current user avatar ids do not exist',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+      const registered = await createLoggedInAccount(app, database)
 
-    const response = await app.request('/api/auth/me/profile', {
-      method: 'PATCH',
-      body: JSON.stringify({
-        nickname: 'Invalid Avatar',
-        avatarId: '11111111-1111-4111-8111-111111111111',
-        email: null,
-        phone: null,
-      }),
-      headers: {
-        authorization: `Bearer ${registered.body.accessToken}`,
-        'content-type': 'application/json',
-      },
-    })
-
-    expect(response.status).toBe(400)
-    expect(await response.json()).toEqual({
-      message: '请求体无效',
-    })
-  })
-
-  it('changes current user password and clears must-change-password state', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database, {
-      password: 'old-password',
-    })
-    await database
-      .update(authPasswordCredentials)
-      .set({ mustChangePassword: true })
-      .where(eq(authPasswordCredentials.userId, registered.body.user.id))
-
-    const wrongResponse = await app.request('/api/auth/me/password', {
-      method: 'PATCH',
-      body: JSON.stringify({
-        currentPassword: 'wrong-password',
-        newPassword: 'new-password',
-      }),
-      headers: {
-        authorization: `Bearer ${registered.body.accessToken}`,
-        'content-type': 'application/json',
-      },
-    })
-    expect(wrongResponse.status).toBe(400)
-    expect(await wrongResponse.json()).toEqual({
-      field: 'currentPassword',
-      message: '当前密码错误',
-    })
-
-    const response = await app.request('/api/auth/me/password', {
-      method: 'PATCH',
-      body: JSON.stringify({
-        currentPassword: 'old-password',
-        newPassword: 'new-password',
-      }),
-      headers: {
-        authorization: `Bearer ${registered.body.accessToken}`,
-        cookie: `refresh_token=${registered.refreshToken}`,
-        'content-type': 'application/json',
-      },
-    })
-    expect(response.status).toBe(204)
-
-    const credential = await database.query.authPasswordCredentials.findFirst({
-      where: { userId: registered.body.user.id },
-    })
-    expect(credential?.mustChangePassword).toBe(false)
-    expect(await verifyPassword('new-password', credential!.passwordHash)).toBe(true)
-  })
-
-  it('keeps the current refresh session while revoking other sessions after a password change', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database, {
-      password: 'old-password',
-      username: 'password-keep-current',
-      nickname: 'Password Keep Current',
-    })
-    const currentSession = await login(app, {
-      username: 'password-keep-current',
-      password: 'old-password',
-    })
-    const currentRefreshToken = requireRefreshToken(currentSession.refreshToken)
-
-    const response = await app.request('/api/auth/me/password', {
-      method: 'PATCH',
-      body: JSON.stringify({
-        currentPassword: 'old-password',
-        newPassword: 'new-password',
-      }),
-      headers: {
-        authorization: `Bearer ${(currentSession.body as AuthTokenResponse).accessToken}`,
-        cookie: `refresh_token=${currentRefreshToken}`,
-        'content-type': 'application/json',
-      },
-    })
-
-    expect(response.status).toBe(204)
-
-    const verifiedCurrentToken = await verifyRefreshToken(currentRefreshToken, readAuthConfig())
-    const sessions = await database.query.authRefreshTokens.findMany({
-      where: { userId: registered.body.user.id },
-    })
-
-    expect(
-      sessions.find((session) => session.tokenHash === verifiedCurrentToken.refreshTokenHash)
-        ?.revokedAt,
-    ).toBeNull()
-    expect(
-      sessions
-        .filter((session) => session.tokenHash !== verifiedCurrentToken.refreshTokenHash)
-        .every((session) => session.revokedAt instanceof Date),
-    ).toBe(true)
-
-    const oldRefreshResponse = await app.request('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${requireRefreshToken(registered.refreshToken)}`,
-      },
-    })
-    expect(oldRefreshResponse.status).toBe(401)
-
-    const currentRefreshResponse = await app.request('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${currentRefreshToken}`,
-      },
-    })
-    expect(currentRefreshResponse.status).toBe(200)
-  })
-
-  it('revokes all refresh sessions after a password change when the refresh cookie is missing', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database, {
-      password: 'old-password',
-      username: 'password-revoke-missing-cookie',
-      nickname: 'Password Revoke Missing Cookie',
-    })
-    const secondSession = await login(app, {
-      username: 'password-revoke-missing-cookie',
-      password: 'old-password',
-    })
-
-    const response = await app.request('/api/auth/me/password', {
-      method: 'PATCH',
-      body: JSON.stringify({
-        currentPassword: 'old-password',
-        newPassword: 'new-password',
-      }),
-      headers: {
-        authorization: `Bearer ${registered.body.accessToken}`,
-        'content-type': 'application/json',
-      },
-    })
-
-    expect(response.status).toBe(204)
-
-    const sessions = await database.query.authRefreshTokens.findMany({
-      where: { userId: registered.body.user.id },
-    })
-    expect(sessions.every((session) => session.revokedAt instanceof Date)).toBe(true)
-
-    const firstRefreshResponse = await app.request('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${requireRefreshToken(registered.refreshToken)}`,
-      },
-    })
-    expect(firstRefreshResponse.status).toBe(401)
-
-    const secondRefreshResponse = await app.request('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${requireRefreshToken(secondSession.refreshToken)}`,
-      },
-    })
-    expect(secondRefreshResponse.status).toBe(401)
-  })
-
-  it('revokes all refresh sessions after a password change when the refresh cookie is invalid', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database, {
-      password: 'old-password',
-      username: 'password-revoke-invalid-cookie',
-      nickname: 'Password Revoke Invalid Cookie',
-    })
-    const secondSession = await login(app, {
-      username: 'password-revoke-invalid-cookie',
-      password: 'old-password',
-    })
-
-    const response = await app.request('/api/auth/me/password', {
-      method: 'PATCH',
-      body: JSON.stringify({
-        currentPassword: 'old-password',
-        newPassword: 'new-password',
-      }),
-      headers: {
-        authorization: `Bearer ${registered.body.accessToken}`,
-        cookie: 'refresh_token=invalid-refresh-token',
-        'content-type': 'application/json',
-      },
-    })
-
-    expect(response.status).toBe(204)
-
-    const sessions = await database.query.authRefreshTokens.findMany({
-      where: { userId: registered.body.user.id },
-    })
-    expect(sessions.every((session) => session.revokedAt instanceof Date)).toBe(true)
-
-    const firstRefreshResponse = await app.request('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${requireRefreshToken(registered.refreshToken)}`,
-      },
-    })
-    expect(firstRefreshResponse.status).toBe(401)
-
-    const secondRefreshResponse = await app.request('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${requireRefreshToken(secondSession.refreshToken)}`,
-      },
-    })
-    expect(secondRefreshResponse.status).toBe(401)
-  })
-
-  it('rolls back password changes when refresh session revocation fails', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-    try {
-      const database = await createTestDb()
-      const setupApp = createTestApp(database)
-      const registered = await createLoggedInAccount(setupApp, database, {
-        password: 'old-password',
-        username: 'password-rollback-on-revoke-failure',
-        nickname: 'Password Rollback On Revoke Failure',
+      const response = await app.request('/api/auth/me/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          nickname: 'Invalid Avatar',
+          avatarId: '11111111-1111-4111-8111-111111111111',
+          email: null,
+          phone: null,
+        }),
+        headers: {
+          authorization: `Bearer ${registered.body.accessToken}`,
+          'content-type': 'application/json',
+        },
       })
-      const currentSession = await login(setupApp, {
-        username: 'password-rollback-on-revoke-failure',
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toEqual({
+        message: '请求体无效',
+      })
+    },
+  )
+
+  dbTest(
+    'changes current user password and clears must-change-password state',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+      const registered = await createLoggedInAccount(app, database, {
         password: 'old-password',
       })
       await database
@@ -1321,7 +1121,60 @@ describe('auth routes', () => {
         .set({ mustChangePassword: true })
         .where(eq(authPasswordCredentials.userId, registered.body.user.id))
 
-      const app = createTestAppWithRefreshRevokeFailure(database)
+      const wrongResponse = await app.request('/api/auth/me/password', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          currentPassword: 'wrong-password',
+          newPassword: 'new-password',
+        }),
+        headers: {
+          authorization: `Bearer ${registered.body.accessToken}`,
+          'content-type': 'application/json',
+        },
+      })
+      expect(wrongResponse.status).toBe(400)
+      expect(await wrongResponse.json()).toEqual({
+        field: 'currentPassword',
+        message: '当前密码错误',
+      })
+
+      const response = await app.request('/api/auth/me/password', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          currentPassword: 'old-password',
+          newPassword: 'new-password',
+        }),
+        headers: {
+          authorization: `Bearer ${registered.body.accessToken}`,
+          cookie: `refresh_token=${registered.refreshToken}`,
+          'content-type': 'application/json',
+        },
+      })
+      expect(response.status).toBe(204)
+
+      const credential = await database.query.authPasswordCredentials.findFirst({
+        where: { userId: registered.body.user.id },
+      })
+      expect(credential?.mustChangePassword).toBe(false)
+      expect(await verifyPassword('new-password', credential!.passwordHash)).toBe(true)
+    },
+  )
+
+  dbTest(
+    'keeps the current refresh session while revoking other sessions after a password change',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+      const registered = await createLoggedInAccount(app, database, {
+        password: 'old-password',
+        username: 'password-keep-current',
+        nickname: 'Password Keep Current',
+      })
+      const currentSession = await login(app, {
+        username: 'password-keep-current',
+        password: 'old-password',
+      })
+      const currentRefreshToken = requireRefreshToken(currentSession.refreshToken)
+
       const response = await app.request('/api/auth/me/password', {
         method: 'PATCH',
         body: JSON.stringify({
@@ -1330,197 +1183,379 @@ describe('auth routes', () => {
         }),
         headers: {
           authorization: `Bearer ${(currentSession.body as AuthTokenResponse).accessToken}`,
-          cookie: `refresh_token=${requireRefreshToken(currentSession.refreshToken)}`,
+          cookie: `refresh_token=${currentRefreshToken}`,
           'content-type': 'application/json',
         },
       })
 
-      expect(response.status).toBe(500)
+      expect(response.status).toBe(204)
 
-      const credential = await database.query.authPasswordCredentials.findFirst({
-        where: { userId: registered.body.user.id },
-      })
+      const verifiedCurrentToken = await verifyRefreshToken(currentRefreshToken, readAuthConfig())
       const sessions = await database.query.authRefreshTokens.findMany({
         where: { userId: registered.body.user.id },
       })
 
-      expect(credential?.mustChangePassword).toBe(true)
-      expect(await verifyPassword('old-password', credential!.passwordHash)).toBe(true)
-      expect(await verifyPassword('new-password', credential!.passwordHash)).toBe(false)
-      expect(sessions.every((session) => session.revokedAt === null)).toBe(true)
-    } finally {
-      consoleError.mockRestore()
-    }
-  })
+      expect(
+        sessions.find((session) => session.tokenHash === verifiedCurrentToken.refreshTokenHash)
+          ?.revokedAt,
+      ).toBeNull()
+      expect(
+        sessions
+          .filter((session) => session.tokenHash !== verifiedCurrentToken.refreshTokenHash)
+          .every((session) => session.revokedAt instanceof Date),
+      ).toBe(true)
 
-  it('returns updated department summaries from login and existing-session me and refresh', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-    const existingSession = await createLoggedInAccount(app, database)
-    const departmentId = randomUUID()
-    const now = new Date()
-
-    await database.insert(systemDepartments).values({
-      id: departmentId,
-      name: 'Engineering',
-      code: 'engineering',
-      createdAt: now,
-      updatedAt: now,
-    })
-    await database.insert(systemUserDepartments).values({
-      userId: existingSession.user.id,
-      departmentId,
-      createdAt: now,
-    })
-
-    const loggedIn = await login(app)
-    const loggedInBody = loggedIn.body as AuthTokenResponse
-
-    expect(loggedIn.response.status).toBe(200)
-    expect(loggedInBody.accessCodes).toEqual([])
-    expect(loggedInBody.menus).toEqual([])
-    expect(loggedInBody).toMatchObject({
-      user: {
-        id: existingSession.user.id,
-        departments: [
-          {
-            id: departmentId,
-            name: 'Engineering',
-            code: 'engineering',
-          },
-        ],
-        roles: [],
-      },
-    })
-
-    const meResponse = await app.request('/api/auth/me', {
-      headers: {
-        authorization: `Bearer ${existingSession.body.accessToken}`,
-      },
-    })
-    const meBody = await meResponse.json()
-
-    expect(meResponse.status).toBe(200)
-    expect(meBody).toMatchObject({
-      user: {
-        id: existingSession.user.id,
-        departments: [
-          {
-            id: departmentId,
-            name: 'Engineering',
-            code: 'engineering',
-          },
-        ],
-        roles: [],
-      },
-      accessCodes: [],
-      menus: [],
-    })
-
-    const refreshResponse = await app.request('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        cookie: `refresh_token=${existingSession.refreshToken}`,
-      },
-    })
-    const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
-
-    expect(refreshResponse.status).toBe(200)
-    expect(refreshBody).toMatchObject({
-      user: {
-        id: existingSession.user.id,
-        departments: [
-          {
-            id: departmentId,
-            name: 'Engineering',
-            code: 'engineering',
-          },
-        ],
-        roles: [],
-      },
-    })
-    expect(refreshBody.accessCodes).toEqual([])
-    expect(refreshBody.menus).toEqual([])
-  })
-
-  it('rejects bearer authorization headers with extra fields for current user', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database)
-
-    const response = await app.request('/api/auth/me', {
-      headers: {
-        authorization: `Bearer ${registered.body.accessToken} extra`,
-      },
-    })
-
-    expect(response.status).toBe(401)
-    expect(await response.json()).toEqual({
-      message: '未授权',
-    })
-  })
-
-  it('rejects missing, refresh, and disabled-user tokens for current user', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-    const registered = await createLoggedInAccount(app, database)
-
-    const missingResponse = await app.request('/api/auth/me')
-    expect(missingResponse.status).toBe(401)
-    expect(await missingResponse.json()).toEqual({
-      message: '未授权',
-    })
-
-    const refreshTokenResponse = await app.request('/api/auth/me', {
-      headers: {
-        authorization: `Bearer ${registered.refreshToken}`,
-      },
-    })
-    expect(refreshTokenResponse.status).toBe(401)
-
-    await database
-      .update(systemUsers)
-      .set({
-        status: USER_STATUS_DISABLED,
+      const oldRefreshResponse = await app.request('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${requireRefreshToken(registered.refreshToken)}`,
+        },
       })
-      .where(eq(systemUsers.id, registered.body.user.id))
+      expect(oldRefreshResponse.status).toBe(401)
 
-    const disabledResponse = await app.request('/api/auth/me', {
-      headers: {
-        authorization: `Bearer ${registered.body.accessToken}`,
-      },
-    })
+      const currentRefreshResponse = await app.request('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${currentRefreshToken}`,
+        },
+      })
+      expect(currentRefreshResponse.status).toBe(200)
+    },
+  )
 
-    expect(disabledResponse.status).toBe(401)
-    expect(await disabledResponse.json()).toEqual({
-      message: '未授权',
-    })
-  })
+  dbTest(
+    'revokes all refresh sessions after a password change when the refresh cookie is missing',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+      const registered = await createLoggedInAccount(app, database, {
+        password: 'old-password',
+        username: 'password-revoke-missing-cookie',
+        nickname: 'Password Revoke Missing Cookie',
+      })
+      const secondSession = await login(app, {
+        username: 'password-revoke-missing-cookie',
+        password: 'old-password',
+      })
 
-  it('marks expired access tokens as refreshable for current user requests', async () => {
-    const database = await createTestDb()
-    const app = createTestApp(database)
-    const expiredAccessToken = await sign(
-      {
-        sub: '11111111-1111-4111-8111-111111111111',
-        type: 'access',
-        iat: 1,
-        exp: 2,
-      },
-      readAuthConfig().accessSecret,
-      'HS256',
-    )
+      const response = await app.request('/api/auth/me/password', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          currentPassword: 'old-password',
+          newPassword: 'new-password',
+        }),
+        headers: {
+          authorization: `Bearer ${registered.body.accessToken}`,
+          'content-type': 'application/json',
+        },
+      })
 
-    const response = await app.request('/api/auth/me', {
-      headers: {
-        authorization: `Bearer ${expiredAccessToken}`,
-      },
-    })
+      expect(response.status).toBe(204)
 
-    expect(response.status).toBe(401)
-    expect(response.headers.get(AUTH_ACTION_HEADER)).toBe(AUTH_ACTION_REFRESH)
-    expect(await response.json()).toEqual({
-      message: '未授权',
-    })
-  })
+      const sessions = await database.query.authRefreshTokens.findMany({
+        where: { userId: registered.body.user.id },
+      })
+      expect(sessions.every((session) => session.revokedAt instanceof Date)).toBe(true)
+
+      const firstRefreshResponse = await app.request('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${requireRefreshToken(registered.refreshToken)}`,
+        },
+      })
+      expect(firstRefreshResponse.status).toBe(401)
+
+      const secondRefreshResponse = await app.request('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${requireRefreshToken(secondSession.refreshToken)}`,
+        },
+      })
+      expect(secondRefreshResponse.status).toBe(401)
+    },
+  )
+
+  dbTest(
+    'revokes all refresh sessions after a password change when the refresh cookie is invalid',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+      const registered = await createLoggedInAccount(app, database, {
+        password: 'old-password',
+        username: 'password-revoke-invalid-cookie',
+        nickname: 'Password Revoke Invalid Cookie',
+      })
+      const secondSession = await login(app, {
+        username: 'password-revoke-invalid-cookie',
+        password: 'old-password',
+      })
+
+      const response = await app.request('/api/auth/me/password', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          currentPassword: 'old-password',
+          newPassword: 'new-password',
+        }),
+        headers: {
+          authorization: `Bearer ${registered.body.accessToken}`,
+          cookie: 'refresh_token=invalid-refresh-token',
+          'content-type': 'application/json',
+        },
+      })
+
+      expect(response.status).toBe(204)
+
+      const sessions = await database.query.authRefreshTokens.findMany({
+        where: { userId: registered.body.user.id },
+      })
+      expect(sessions.every((session) => session.revokedAt instanceof Date)).toBe(true)
+
+      const firstRefreshResponse = await app.request('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${requireRefreshToken(registered.refreshToken)}`,
+        },
+      })
+      expect(firstRefreshResponse.status).toBe(401)
+
+      const secondRefreshResponse = await app.request('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${requireRefreshToken(secondSession.refreshToken)}`,
+        },
+      })
+      expect(secondRefreshResponse.status).toBe(401)
+    },
+  )
+
+  dbTest(
+    'rolls back password changes when refresh session revocation fails',
+    async ({ db: database }) => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      try {
+        const setupApp = createTestApp(database)
+        const registered = await createLoggedInAccount(setupApp, database, {
+          password: 'old-password',
+          username: 'password-rollback-on-revoke-failure',
+          nickname: 'Password Rollback On Revoke Failure',
+        })
+        const currentSession = await login(setupApp, {
+          username: 'password-rollback-on-revoke-failure',
+          password: 'old-password',
+        })
+        await database
+          .update(authPasswordCredentials)
+          .set({ mustChangePassword: true })
+          .where(eq(authPasswordCredentials.userId, registered.body.user.id))
+
+        const app = createTestAppWithRefreshRevokeFailure(database)
+        const response = await app.request('/api/auth/me/password', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            currentPassword: 'old-password',
+            newPassword: 'new-password',
+          }),
+          headers: {
+            authorization: `Bearer ${(currentSession.body as AuthTokenResponse).accessToken}`,
+            cookie: `refresh_token=${requireRefreshToken(currentSession.refreshToken)}`,
+            'content-type': 'application/json',
+          },
+        })
+
+        expect(response.status).toBe(500)
+
+        const credential = await database.query.authPasswordCredentials.findFirst({
+          where: { userId: registered.body.user.id },
+        })
+        const sessions = await database.query.authRefreshTokens.findMany({
+          where: { userId: registered.body.user.id },
+        })
+
+        expect(credential?.mustChangePassword).toBe(true)
+        expect(await verifyPassword('old-password', credential!.passwordHash)).toBe(true)
+        expect(await verifyPassword('new-password', credential!.passwordHash)).toBe(false)
+        expect(sessions.every((session) => session.revokedAt === null)).toBe(true)
+      } finally {
+        consoleError.mockRestore()
+      }
+    },
+  )
+
+  dbTest(
+    'returns updated department summaries from login and existing-session me and refresh',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+      const existingSession = await createLoggedInAccount(app, database)
+      const departmentId = randomUUID()
+      const now = new Date()
+
+      await database.insert(systemDepartments).values({
+        id: departmentId,
+        name: 'Engineering',
+        code: 'engineering',
+        createdAt: now,
+        updatedAt: now,
+      })
+      await database.insert(systemUserDepartments).values({
+        userId: existingSession.user.id,
+        departmentId,
+        createdAt: now,
+      })
+
+      const loggedIn = await login(app)
+      const loggedInBody = loggedIn.body as AuthTokenResponse
+
+      expect(loggedIn.response.status).toBe(200)
+      expect(loggedInBody.accessCodes).toEqual([])
+      expect(loggedInBody.menus).toEqual([])
+      expect(loggedInBody).toMatchObject({
+        user: {
+          id: existingSession.user.id,
+          departments: [
+            {
+              id: departmentId,
+              name: 'Engineering',
+              code: 'engineering',
+            },
+          ],
+          roles: [],
+        },
+      })
+
+      const meResponse = await app.request('/api/auth/me', {
+        headers: {
+          authorization: `Bearer ${existingSession.body.accessToken}`,
+        },
+      })
+      const meBody = await meResponse.json()
+
+      expect(meResponse.status).toBe(200)
+      expect(meBody).toMatchObject({
+        user: {
+          id: existingSession.user.id,
+          departments: [
+            {
+              id: departmentId,
+              name: 'Engineering',
+              code: 'engineering',
+            },
+          ],
+          roles: [],
+        },
+        accessCodes: [],
+        menus: [],
+      })
+
+      const refreshResponse = await app.request('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${existingSession.refreshToken}`,
+        },
+      })
+      const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
+
+      expect(refreshResponse.status).toBe(200)
+      expect(refreshBody).toMatchObject({
+        user: {
+          id: existingSession.user.id,
+          departments: [
+            {
+              id: departmentId,
+              name: 'Engineering',
+              code: 'engineering',
+            },
+          ],
+          roles: [],
+        },
+      })
+      expect(refreshBody.accessCodes).toEqual([])
+      expect(refreshBody.menus).toEqual([])
+    },
+  )
+
+  dbTest(
+    'rejects bearer authorization headers with extra fields for current user',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+      const registered = await createLoggedInAccount(app, database)
+
+      const response = await app.request('/api/auth/me', {
+        headers: {
+          authorization: `Bearer ${registered.body.accessToken} extra`,
+        },
+      })
+
+      expect(response.status).toBe(401)
+      expect(await response.json()).toEqual({
+        message: '未授权',
+      })
+    },
+  )
+
+  dbTest(
+    'rejects missing, refresh, and disabled-user tokens for current user',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+      const registered = await createLoggedInAccount(app, database)
+
+      const missingResponse = await app.request('/api/auth/me')
+      expect(missingResponse.status).toBe(401)
+      expect(await missingResponse.json()).toEqual({
+        message: '未授权',
+      })
+
+      const refreshTokenResponse = await app.request('/api/auth/me', {
+        headers: {
+          authorization: `Bearer ${registered.refreshToken}`,
+        },
+      })
+      expect(refreshTokenResponse.status).toBe(401)
+
+      await database
+        .update(systemUsers)
+        .set({
+          status: USER_STATUS_DISABLED,
+        })
+        .where(eq(systemUsers.id, registered.body.user.id))
+
+      const disabledResponse = await app.request('/api/auth/me', {
+        headers: {
+          authorization: `Bearer ${registered.body.accessToken}`,
+        },
+      })
+
+      expect(disabledResponse.status).toBe(401)
+      expect(await disabledResponse.json()).toEqual({
+        message: '未授权',
+      })
+    },
+  )
+
+  dbTest(
+    'marks expired access tokens as refreshable for current user requests',
+    async ({ db: database }) => {
+      const app = createTestApp(database)
+      const expiredAccessToken = await sign(
+        {
+          sub: '11111111-1111-4111-8111-111111111111',
+          type: 'access',
+          iat: 1,
+          exp: 2,
+        },
+        readAuthConfig().accessSecret,
+        'HS256',
+      )
+
+      const response = await app.request('/api/auth/me', {
+        headers: {
+          authorization: `Bearer ${expiredAccessToken}`,
+        },
+      })
+
+      expect(response.status).toBe(401)
+      expect(response.headers.get(AUTH_ACTION_HEADER)).toBe(AUTH_ACTION_REFRESH)
+      expect(await response.json()).toEqual({
+        message: '未授权',
+      })
+    },
+  )
 })

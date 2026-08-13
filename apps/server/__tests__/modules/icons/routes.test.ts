@@ -1,18 +1,16 @@
 import type { IconifyJSON } from '@iconify/types'
 import { Hono } from 'hono'
-import { describe, expect, it } from 'vitest'
+import { describe, expect } from 'vitest'
 import { createApp } from '../../../src/app'
 import { customIconSetIcons, customIconSets } from '../../../src/db/schema'
 import { createIconRoutes } from '../../../src/modules/icons/routes'
-import { createTestDb } from '../../helpers/db'
+import { dbTest, type TestDatabase } from '../../fixtures/database'
 
 const builtinIconDataCacheControl = 'public, max-age=604800, min-refresh=604800, immutable'
 const customIconDataCacheControl = 'public, max-age=3600'
 const missingIconDataCacheControl = 'public, max-age=60'
 
-async function createIconTestApp() {
-  const database = await createTestDb()
-
+async function createIconTestApp(database: TestDatabase) {
   return new Hono().route('/api/icons', createIconRoutes(database))
 }
 
@@ -48,8 +46,8 @@ function expectIconCacheControl(response: Response, cacheControl: string) {
 }
 
 describe('icon routes', () => {
-  it('returns requested Iconify JSON without authentication', async () => {
-    const app = await createIconTestApp()
+  dbTest('returns requested Iconify JSON without authentication', async ({ db }) => {
+    const app = await createIconTestApp(db)
 
     const response = await app.request('/api/icons/lucide.json?icons=sun,moon')
     const body = (await response.json()) as IconifyJSON
@@ -67,8 +65,7 @@ describe('icon routes', () => {
     expect(body.not_found).toBeUndefined()
   })
 
-  it('returns custom Iconify JSON for active custom icons', async () => {
-    const database = await createTestDb()
+  dbTest('returns custom Iconify JSON for active custom icons', async ({ db: database }) => {
     const [set] = await database
       .insert(customIconSets)
       .values({
@@ -109,8 +106,8 @@ describe('icon routes', () => {
     })
   })
 
-  it('returns not_found for missing icons while keeping found icons', async () => {
-    const app = await createIconTestApp()
+  dbTest('returns not_found for missing icons while keeping found icons', async ({ db }) => {
+    const app = await createIconTestApp(db)
 
     const response = await app.request('/api/icons/lucide.json?icons=sun,not-a-real-icon')
     const body = (await response.json()) as IconifyJSON
@@ -122,32 +119,35 @@ describe('icon routes', () => {
     expect(body.not_found).toEqual(['not-a-real-icon'])
   })
 
-  it('returns text 404 for missing collections, missing icons parameter, and invalid prefixes', async () => {
-    const app = await createIconTestApp()
+  dbTest(
+    'returns text 404 for missing collections, missing icons parameter, and invalid prefixes',
+    async ({ db }) => {
+      const app = await createIconTestApp(db)
 
-    const missingCollection = await app.request('/api/icons/not-a-prefix.json?icons=sun')
-    expect(missingCollection.status).toBe(404)
-    expect(missingCollection.headers.get('content-type')).toContain('text/plain')
-    expectIconHeaders(missingCollection)
-    expectIconCacheControl(missingCollection, missingIconDataCacheControl)
-    expect(await missingCollection.text()).toBe('404')
+      const missingCollection = await app.request('/api/icons/not-a-prefix.json?icons=sun')
+      expect(missingCollection.status).toBe(404)
+      expect(missingCollection.headers.get('content-type')).toContain('text/plain')
+      expectIconHeaders(missingCollection)
+      expectIconCacheControl(missingCollection, missingIconDataCacheControl)
+      expect(await missingCollection.text()).toBe('404')
 
-    const missingIcons = await app.request('/api/icons/lucide.json')
-    expect(missingIcons.status).toBe(404)
-    expect(missingIcons.headers.get('content-type')).toContain('text/plain')
-    expectIconHeaders(missingIcons)
-    expectIconCacheControl(missingIcons, missingIconDataCacheControl)
-    expect(await missingIcons.text()).toBe('404')
+      const missingIcons = await app.request('/api/icons/lucide.json')
+      expect(missingIcons.status).toBe(404)
+      expect(missingIcons.headers.get('content-type')).toContain('text/plain')
+      expectIconHeaders(missingIcons)
+      expectIconCacheControl(missingIcons, missingIconDataCacheControl)
+      expect(await missingIcons.text()).toBe('404')
 
-    const invalidPrefix = await app.request('/api/icons/Invalid.json?icons=sun')
-    expect(invalidPrefix.status).toBe(404)
-    expectIconHeaders(invalidPrefix)
-    expectIconCacheControl(invalidPrefix, missingIconDataCacheControl)
-    expect(await invalidPrefix.text()).toBe('404')
-  })
+      const invalidPrefix = await app.request('/api/icons/Invalid.json?icons=sun')
+      expect(invalidPrefix.status).toBe(404)
+      expectIconHeaders(invalidPrefix)
+      expectIconCacheControl(invalidPrefix, missingIconDataCacheControl)
+      expect(await invalidPrefix.text()).toBe('404')
+    },
+  )
 
-  it('returns text 404 for malicious icon data queries', async () => {
-    const app = await createIconTestApp()
+  dbTest('returns text 404 for malicious icon data queries', async ({ db }) => {
+    const app = await createIconTestApp(db)
 
     const overlongIcons = await app.request(`/api/icons/lucide.json?icons=${'a'.repeat(501)}`)
     const malformedIcons = await app.request('/api/icons/lucide.json?icons=sun,../secret')
@@ -160,8 +160,8 @@ describe('icon routes', () => {
     expect(await malformedIcons.text()).toBe('404')
   })
 
-  it('returns CORS headers for OPTIONS requests', async () => {
-    const app = await createIconTestApp()
+  dbTest('returns CORS headers for OPTIONS requests', async ({ db }) => {
+    const app = await createIconTestApp(db)
 
     const response = await app.request('/api/icons/lucide.json?icons=sun', {
       method: 'OPTIONS',
@@ -172,8 +172,8 @@ describe('icon routes', () => {
     expect(await response.text()).toBe('')
   })
 
-  it('pretty prints JSON when pretty has a non-empty value', async () => {
-    const app = await createIconTestApp()
+  dbTest('pretty prints JSON when pretty has a non-empty value', async ({ db }) => {
+    const app = await createIconTestApp(db)
 
     const prettyOne = await app.request('/api/icons/lucide.json?icons=sun&pretty=1')
     const prettyTrue = await app.request('/api/icons/lucide.json?icons=sun&pretty=true')

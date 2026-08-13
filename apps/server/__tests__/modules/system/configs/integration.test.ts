@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect } from 'vitest'
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import { CONFIG_VALUE_TYPE_NUMBER, type Config, type ConfigListResponse } from '@rev30/contracts'
@@ -6,7 +6,7 @@ import { systemConfigOverrides } from '../../../../src/db/schema'
 import { configRegistry } from '../../../../src/modules/system/configs/registry'
 import { createConfigRoutes } from '../../../../src/modules/system/configs/routes'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
-import { createTestDb } from '../../../helpers/db'
+import { dbTest, type TestDatabase } from '../../../fixtures/database'
 
 type ErrorResponse = {
   message: string
@@ -15,10 +15,7 @@ type ErrorResponse = {
 
 const configKey = 'auth.loginFailureMaxAttempts'
 
-async function createTestApp(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  authHeaders?: Record<string, string>,
-) {
+async function createTestApp(database: TestDatabase, authHeaders?: Record<string, string>) {
   const headers =
     authHeaders ??
     (
@@ -47,30 +44,31 @@ async function updateConfig(app: Hono, key: string, customValue: string | null) 
 }
 
 describe('config routes', () => {
-  it('lists every registry config without requiring override rows', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
+  dbTest(
+    'lists every registry config without requiring override rows',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
 
-    const response = await app.request('/api/system/configs')
-    const body = (await response.json()) as ConfigListResponse
+      const response = await app.request('/api/system/configs')
+      const body = (await response.json()) as ConfigListResponse
 
-    expect(response.status).toBe(200)
-    expect(body).toHaveLength(configRegistry.length)
-    expect(body).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          key: configKey,
-          valueType: CONFIG_VALUE_TYPE_NUMBER,
-          defaultValue: '5',
-          customValue: null,
-          value: '5',
-        }),
-      ]),
-    )
-  })
+      expect(response.status).toBe(200)
+      expect(body).toHaveLength(configRegistry.length)
+      expect(body).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: configKey,
+            valueType: CONFIG_VALUE_TYPE_NUMBER,
+            defaultValue: '5',
+            customValue: null,
+            value: '5',
+          }),
+        ]),
+      )
+    },
+  )
 
-  it('gets a single registry config by key', async () => {
-    const database = await createTestDb()
+  dbTest('gets a single registry config by key', async ({ db: database }) => {
     const app = await createTestApp(database)
 
     const response = await app.request(`/api/system/configs/${configKey}`)
@@ -85,8 +83,7 @@ describe('config routes', () => {
     })
   })
 
-  it('sets and updates a custom override value', async () => {
-    const database = await createTestDb()
+  dbTest('sets and updates a custom override value', async ({ db: database }) => {
     const app = await createTestApp(database)
 
     const { body: created, response: createResponse } = await updateConfig(app, configKey, '8')
@@ -119,8 +116,7 @@ describe('config routes', () => {
     expect(rows[0]!.value).toBe('9')
   })
 
-  it('clears a custom value by submitting null', async () => {
-    const database = await createTestDb()
+  dbTest('clears a custom value by submitting null', async ({ db: database }) => {
     const app = await createTestApp(database)
 
     await updateConfig(app, configKey, '8')
@@ -140,8 +136,7 @@ describe('config routes', () => {
     expect(rows).toHaveLength(0)
   })
 
-  it('returns not found for unregistered config keys', async () => {
-    const database = await createTestDb()
+  dbTest('returns not found for unregistered config keys', async ({ db: database }) => {
     const app = await createTestApp(database)
 
     const detailResponse = await app.request('/api/system/configs/auth.unknown')
@@ -157,8 +152,7 @@ describe('config routes', () => {
     expect((await updateResponse.json()) as ErrorResponse).toEqual({ message: '配置不存在' })
   })
 
-  it('returns field error for invalid custom values', async () => {
-    const database = await createTestDb()
+  dbTest('returns field error for invalid custom values', async ({ db: database }) => {
     const app = await createTestApp(database)
 
     const response = await app.request(`/api/system/configs/${configKey}`, {

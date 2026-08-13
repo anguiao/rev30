@@ -8,5 +8,6 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.d.ts'],
     },
+    globalSetup: './__tests__/global-setup.ts',
   },
 })

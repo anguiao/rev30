@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { authLoginAttemptBuckets, authRefreshTokens, systemUsers } from '../../src/db/schema'
 import { startAppMaintenance } from '../../src/maintenance'
@@ -10,7 +10,7 @@ import {
   cleanupAuthLoginAttemptBuckets,
   cleanupAuthRefreshTokens,
 } from '../../src/modules/auth/cleanup'
-import { createTestDb } from '../helpers/db'
+import { dbTest } from '../fixtures/database'
 
 const hourMs = 60 * 60 * 1000
 
@@ -20,84 +20,85 @@ describe('auth maintenance', () => {
     vi.unstubAllEnvs()
   })
 
-  it('removes expired refresh tokens and revoked tokens beyond the retention window', async () => {
-    const database = await createTestDb()
-    const now = new Date()
-    const userId = randomUUID()
+  dbTest(
+    'removes expired refresh tokens and revoked tokens beyond the retention window',
+    async ({ db: database }) => {
+      const now = new Date()
+      const userId = randomUUID()
 
-    await database.insert(systemUsers).values({
-      id: userId,
-      username: 'maintenance-user',
-      nickname: 'Maintenance User',
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    await database.insert(authRefreshTokens).values([
-      {
-        id: randomUUID(),
-        userId,
-        tokenHash: 'expired-active',
-        expiresAt: now,
+      await database.insert(systemUsers).values({
+        id: userId,
+        username: 'maintenance-user',
+        nickname: 'Maintenance User',
         createdAt: now,
         updatedAt: now,
-      },
-      {
-        id: randomUUID(),
-        userId,
-        tokenHash: 'expired-revoked-recently',
-        expiresAt: new Date(now.getTime() - hourMs),
-        revokedAt: new Date(now.getTime() - hourMs),
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        id: randomUUID(),
-        userId,
-        tokenHash: 'revoked-before-retention',
-        expiresAt: new Date(now.getTime() + hourMs),
-        revokedAt: new Date(now.getTime() - 25 * hourMs),
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        id: randomUUID(),
-        userId,
-        tokenHash: 'revoked-within-retention',
-        expiresAt: new Date(now.getTime() + hourMs),
-        revokedAt: new Date(now.getTime() - hourMs),
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        id: randomUUID(),
-        userId,
-        tokenHash: 'usable',
-        expiresAt: new Date(now.getTime() + hourMs),
-        createdAt: now,
-        updatedAt: now,
-      },
-    ])
-
-    const deletedCount = await cleanupAuthRefreshTokens(database, 24 * hourMs)
-
-    const remaining = await database
-      .select({
-        tokenHash: authRefreshTokens.tokenHash,
       })
-      .from(authRefreshTokens)
-      .where(eq(authRefreshTokens.userId, userId))
-      .orderBy(authRefreshTokens.tokenHash)
 
-    expect(deletedCount).toBe(3)
-    expect(remaining.map((session) => session.tokenHash)).toEqual([
-      'revoked-within-retention',
-      'usable',
-    ])
-  })
+      await database.insert(authRefreshTokens).values([
+        {
+          id: randomUUID(),
+          userId,
+          tokenHash: 'expired-active',
+          expiresAt: now,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          userId,
+          tokenHash: 'expired-revoked-recently',
+          expiresAt: new Date(now.getTime() - hourMs),
+          revokedAt: new Date(now.getTime() - hourMs),
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          userId,
+          tokenHash: 'revoked-before-retention',
+          expiresAt: new Date(now.getTime() + hourMs),
+          revokedAt: new Date(now.getTime() - 25 * hourMs),
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          userId,
+          tokenHash: 'revoked-within-retention',
+          expiresAt: new Date(now.getTime() + hourMs),
+          revokedAt: new Date(now.getTime() - hourMs),
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          userId,
+          tokenHash: 'usable',
+          expiresAt: new Date(now.getTime() + hourMs),
+          createdAt: now,
+          updatedAt: now,
+        },
+      ])
 
-  it('removes login attempt buckets outside the retention window', async () => {
-    const database = await createTestDb()
+      const deletedCount = await cleanupAuthRefreshTokens(database, 24 * hourMs)
+
+      const remaining = await database
+        .select({
+          tokenHash: authRefreshTokens.tokenHash,
+        })
+        .from(authRefreshTokens)
+        .where(eq(authRefreshTokens.userId, userId))
+        .orderBy(authRefreshTokens.tokenHash)
+
+      expect(deletedCount).toBe(3)
+      expect(remaining.map((session) => session.tokenHash)).toEqual([
+        'revoked-within-retention',
+        'usable',
+      ])
+    },
+  )
+
+  dbTest('removes login attempt buckets outside the retention window', async ({ db: database }) => {
     const now = new Date()
 
     await database.insert(authLoginAttemptBuckets).values([
@@ -151,7 +152,7 @@ describe('auth maintenance', () => {
     ])
   })
 
-  it('runs refresh token cleanup after the previous run finishes', async () => {
+  dbTest('runs refresh token cleanup after the previous run finishes', async () => {
     vi.useFakeTimers()
     vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', '50')
     vi.stubEnv('AUTH_REVOKED_REFRESH_TOKEN_RETENTION_MS', '0')
@@ -199,7 +200,7 @@ describe('auth maintenance', () => {
     expect(returning).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps refresh token cleanup disabled when the interval is zero', async () => {
+  dbTest('keeps refresh token cleanup disabled when the interval is zero', async () => {
     vi.useFakeTimers()
     vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', '0')
 
@@ -218,7 +219,7 @@ describe('auth maintenance', () => {
     expect(returning).not.toHaveBeenCalled()
   })
 
-  it('keeps login attempt cleanup disabled when the interval is zero', async () => {
+  dbTest('keeps login attempt cleanup disabled when the interval is zero', async () => {
     vi.useFakeTimers()
     vi.stubEnv('AUTH_LOGIN_ATTEMPT_CLEANUP_INTERVAL_MS', '0')
 
@@ -237,7 +238,7 @@ describe('auth maintenance', () => {
     expect(returning).not.toHaveBeenCalled()
   })
 
-  it('keeps attachment cleanup disabled when the interval is zero', async () => {
+  dbTest('keeps attachment cleanup disabled when the interval is zero', async () => {
     vi.useFakeTimers()
     vi.stubEnv('ATTACHMENT_CLEANUP_INTERVAL_MS', '0')
 
@@ -260,7 +261,7 @@ describe('auth maintenance', () => {
     expect(select).not.toHaveBeenCalled()
   })
 
-  it('stops earlier maintenance workers when a later worker fails to start', async () => {
+  dbTest('stops earlier maintenance workers when a later worker fails to start', async () => {
     vi.useFakeTimers()
     vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', '50')
     vi.stubEnv('AUTH_LOGIN_ATTEMPT_RETENTION_MS', '-1')
@@ -283,7 +284,7 @@ describe('auth maintenance', () => {
     expect(returning).not.toHaveBeenCalled()
   })
 
-  it('stops auth maintenance workers when attachment cleanup fails to start', async () => {
+  dbTest('stops auth maintenance workers when attachment cleanup fails to start', async () => {
     vi.useFakeTimers()
     vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', '50')
     vi.stubEnv('AUTH_LOGIN_ATTEMPT_CLEANUP_INTERVAL_MS', '50')
@@ -307,7 +308,7 @@ describe('auth maintenance', () => {
     expect(returning).not.toHaveBeenCalled()
   })
 
-  it('fails fast for invalid maintenance durations', () => {
+  dbTest('fails fast for invalid maintenance durations', () => {
     vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', 'abc')
 
     expect(() => startAuthRefreshTokenCleanup({} as never)).toThrow(
@@ -329,7 +330,7 @@ describe('auth maintenance', () => {
     )
   })
 
-  it('fails fast for invalid attachment cleanup settings', () => {
+  dbTest('fails fast for invalid attachment cleanup settings', () => {
     vi.stubEnv('ATTACHMENT_CLEANUP_INTERVAL_MS', 'abc')
 
     expect(() => startAttachmentCleanup({} as never)).toThrow(

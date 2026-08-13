@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { describe, expect, it } from 'vitest'
+import { describe, expect } from 'vitest'
 import { Hono } from 'hono'
 import { eq, inArray } from 'drizzle-orm'
 import {
@@ -22,7 +22,7 @@ import {
   systemUsers,
 } from '../../../../src/db/schema'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
-import { createTestDb } from '../../../helpers/db'
+import { dbTest, type TestDatabase } from '../../../fixtures/database'
 import { createSystemResourceFixture as createResource } from '../../../helpers/system'
 import { createRoleRoutes } from '../../../../src/modules/system/roles/routes'
 
@@ -30,10 +30,7 @@ type ErrorResponse = {
   message: string
 }
 
-async function createTestApp(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  authHeaders?: Record<string, string>,
-) {
+async function createTestApp(database: TestDatabase, authHeaders?: Record<string, string>) {
   const headers =
     authHeaders ??
     (
@@ -51,10 +48,7 @@ async function createTestApp(
   )
 }
 
-async function findResourceIdsByCodes(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  codes: string[],
-) {
+async function findResourceIdsByCodes(database: TestDatabase, codes: string[]) {
   const resources = await database
     .select({
       id: systemResources.id,
@@ -91,54 +85,55 @@ async function createRole(
 }
 
 describe('role routes', () => {
-  it('creates roles with resource ids and returns resources sorted by resource sort order', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const action = await createResource(database, {
-      name: 'Create User',
-      code: 'test-system:user:create',
-      type: RESOURCE_TYPE_ACTION,
-      sortOrder: 2,
-    })
-    const directory = await createResource(database, {
-      name: 'System',
-      code: 'test-system',
-      type: RESOURCE_TYPE_DIRECTORY,
-      sortOrder: 1,
-    })
-
-    const { body, response } = await createRole(app, {
-      name: 'Administrator',
-      code: 'test-admin',
-      sortOrder: 10,
-      resourceIds: [action.id, directory.id],
-    })
-
-    expect(response.status).toBe(201)
-    expect(body).toMatchObject({
-      name: 'Administrator',
-      code: 'test-admin',
-      status: ROLE_STATUS_ENABLED,
-      sortOrder: 10,
-    })
-    expect(body.resources).toEqual([
-      {
-        id: directory.id,
-        name: 'System',
-        code: 'test-system',
-        type: RESOURCE_TYPE_DIRECTORY,
-      },
-      {
-        id: action.id,
+  dbTest(
+    'creates roles with resource ids and returns resources sorted by resource sort order',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const action = await createResource(database, {
         name: 'Create User',
         code: 'test-system:user:create',
         type: RESOURCE_TYPE_ACTION,
-      },
-    ])
-  })
+        sortOrder: 2,
+      })
+      const directory = await createResource(database, {
+        name: 'System',
+        code: 'test-system',
+        type: RESOURCE_TYPE_DIRECTORY,
+        sortOrder: 1,
+      })
 
-  it('limits non-admin role management to the actor access scope', async () => {
-    const database = await createTestDb()
+      const { body, response } = await createRole(app, {
+        name: 'Administrator',
+        code: 'test-admin',
+        sortOrder: 10,
+        resourceIds: [action.id, directory.id],
+      })
+
+      expect(response.status).toBe(201)
+      expect(body).toMatchObject({
+        name: 'Administrator',
+        code: 'test-admin',
+        status: ROLE_STATUS_ENABLED,
+        sortOrder: 10,
+      })
+      expect(body.resources).toEqual([
+        {
+          id: directory.id,
+          name: 'System',
+          code: 'test-system',
+          type: RESOURCE_TYPE_DIRECTORY,
+        },
+        {
+          id: action.id,
+          name: 'Create User',
+          code: 'test-system:user:create',
+          type: RESOURCE_TYPE_ACTION,
+        },
+      ])
+    },
+  )
+
+  dbTest('limits non-admin role management to the actor access scope', async ({ db: database }) => {
     const adminApp = await createTestApp(database)
     const actor = await createSystemAccessFixture(database, {
       accessCodes: [
@@ -281,158 +276,161 @@ describe('role routes', () => {
     expect(adminDelete.status).toBe(204)
   })
 
-  it('lists roles with userCount only and supports keyword/status with non-deleted user counting', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const { body: admin } = await createRole(app, {
-      name: 'Administrator',
-      code: 'test-admin',
-      status: ROLE_STATUS_ENABLED,
-    })
-    await createRole(app, {
-      name: 'Operator',
-      code: 'operator',
-      status: ROLE_STATUS_DISABLED,
-    })
-    const activeUserId = randomUUID()
-    const deletedUserId = randomUUID()
+  dbTest(
+    'lists roles with userCount only and supports keyword/status with non-deleted user counting',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const { body: admin } = await createRole(app, {
+        name: 'Administrator',
+        code: 'test-admin',
+        status: ROLE_STATUS_ENABLED,
+      })
+      await createRole(app, {
+        name: 'Operator',
+        code: 'operator',
+        status: ROLE_STATUS_DISABLED,
+      })
+      const activeUserId = randomUUID()
+      const deletedUserId = randomUUID()
 
-    await database.insert(systemUsers).values([
-      {
-        id: activeUserId,
-        username: 'active-user',
-        nickname: 'Active User',
-      },
-      {
-        id: deletedUserId,
-        username: 'deleted-user',
-        nickname: 'Deleted User',
-        deletedAt: new Date(),
-      },
-    ])
-    await database.insert(systemUserRoles).values([
-      { userId: activeUserId, roleId: admin.id },
-      { userId: deletedUserId, roleId: admin.id },
-    ])
+      await database.insert(systemUsers).values([
+        {
+          id: activeUserId,
+          username: 'active-user',
+          nickname: 'Active User',
+        },
+        {
+          id: deletedUserId,
+          username: 'deleted-user',
+          nickname: 'Deleted User',
+          deletedAt: new Date(),
+        },
+      ])
+      await database.insert(systemUserRoles).values([
+        { userId: activeUserId, roleId: admin.id },
+        { userId: deletedUserId, roleId: admin.id },
+      ])
 
-    const response = await app.request('/api/system/roles?keyword=test-admin&status=1')
-    const body = (await response.json()) as RoleListResponse
+      const response = await app.request('/api/system/roles?keyword=test-admin&status=1')
+      const body = (await response.json()) as RoleListResponse
 
-    expect(response.status).toBe(200)
-    expect(body.total).toBe(1)
-    expect(body.list).toHaveLength(1)
-    expect(body.list[0]).toMatchObject({
-      id: admin.id,
-      name: 'Administrator',
-      code: 'test-admin',
-      status: ROLE_STATUS_ENABLED,
-      userCount: 1,
-    })
-    expect(body.list[0]).not.toHaveProperty('resources')
-    expect(body.list[0]).not.toHaveProperty('resourceCount')
-  })
+      expect(response.status).toBe(200)
+      expect(body.total).toBe(1)
+      expect(body.list).toHaveLength(1)
+      expect(body.list[0]).toMatchObject({
+        id: admin.id,
+        name: 'Administrator',
+        code: 'test-admin',
+        status: ROLE_STATUS_ENABLED,
+        userCount: 1,
+      })
+      expect(body.list[0]).not.toHaveProperty('resources')
+      expect(body.list[0]).not.toHaveProperty('resourceCount')
+    },
+  )
 
-  it('returns flat role options and supports includeIds for disabled roles only', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const enabledRoleId = randomUUID()
-    const disabledRoleId = randomUUID()
-    const deletedRoleId = randomUUID()
+  dbTest(
+    'returns flat role options and supports includeIds for disabled roles only',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const enabledRoleId = randomUUID()
+      const disabledRoleId = randomUUID()
+      const deletedRoleId = randomUUID()
 
-    await database.insert(systemRoles).values([
-      {
+      await database.insert(systemRoles).values([
+        {
+          id: enabledRoleId,
+          name: 'Enabled Role',
+          code: 'enabled-role',
+          status: ROLE_STATUS_ENABLED,
+          sortOrder: 1,
+          createdAt: new Date('2026-05-10T00:00:00.000Z'),
+          updatedAt: new Date('2026-05-10T00:00:00.000Z'),
+        },
+        {
+          id: disabledRoleId,
+          name: 'Disabled Role',
+          code: 'disabled-role',
+          status: ROLE_STATUS_DISABLED,
+          sortOrder: 2,
+          createdAt: new Date('2026-05-09T00:00:00.000Z'),
+          updatedAt: new Date('2026-05-09T00:00:00.000Z'),
+        },
+        {
+          id: deletedRoleId,
+          name: 'Deleted Role',
+          code: 'deleted-role',
+          status: ROLE_STATUS_ENABLED,
+          sortOrder: 0,
+          deletedAt: new Date('2026-05-11T00:00:00.000Z'),
+          createdAt: new Date('2026-05-11T00:00:00.000Z'),
+          updatedAt: new Date('2026-05-11T00:00:00.000Z'),
+        },
+      ])
+
+      const optionsResponse = await app.request('/api/system/roles/options')
+      const optionsBody = (await optionsResponse.json()) as RoleOptionsResponse
+
+      expect(optionsResponse.status).toBe(200)
+      expect(optionsBody).toContainEqual({
         id: enabledRoleId,
         name: 'Enabled Role',
         code: 'enabled-role',
         status: ROLE_STATUS_ENABLED,
-        sortOrder: 1,
-        createdAt: new Date('2026-05-10T00:00:00.000Z'),
-        updatedAt: new Date('2026-05-10T00:00:00.000Z'),
-      },
-      {
+      })
+      expect(optionsBody).not.toContainEqual(
+        expect.objectContaining({
+          id: disabledRoleId,
+        }),
+      )
+      expect(optionsBody).not.toContainEqual(
+        expect.objectContaining({
+          id: deletedRoleId,
+        }),
+      )
+      expect(optionsBody.every((item) => item.status === ROLE_STATUS_ENABLED)).toBe(true)
+      for (const item of optionsBody) {
+        expect(item).not.toHaveProperty('createdAt')
+        expect(item).not.toHaveProperty('updatedAt')
+        expect(item).not.toHaveProperty('sortOrder')
+        expect(item).not.toHaveProperty('userCount')
+        expect(item).not.toHaveProperty('resources')
+      }
+
+      const includeResponse = await app.request(
+        `/api/system/roles/options?includeIds=${disabledRoleId},${deletedRoleId}`,
+      )
+      const includeBody = (await includeResponse.json()) as RoleOptionsResponse
+
+      expect(includeResponse.status).toBe(200)
+      expect(includeBody).toContainEqual({
+        id: enabledRoleId,
+        name: 'Enabled Role',
+        code: 'enabled-role',
+        status: ROLE_STATUS_ENABLED,
+      })
+      expect(includeBody).toContainEqual({
         id: disabledRoleId,
         name: 'Disabled Role',
         code: 'disabled-role',
         status: ROLE_STATUS_DISABLED,
-        sortOrder: 2,
-        createdAt: new Date('2026-05-09T00:00:00.000Z'),
-        updatedAt: new Date('2026-05-09T00:00:00.000Z'),
-      },
-      {
-        id: deletedRoleId,
-        name: 'Deleted Role',
-        code: 'deleted-role',
-        status: ROLE_STATUS_ENABLED,
-        sortOrder: 0,
-        deletedAt: new Date('2026-05-11T00:00:00.000Z'),
-        createdAt: new Date('2026-05-11T00:00:00.000Z'),
-        updatedAt: new Date('2026-05-11T00:00:00.000Z'),
-      },
-    ])
+      })
+      expect(includeBody).not.toContainEqual(
+        expect.objectContaining({
+          id: deletedRoleId,
+        }),
+      )
+      for (const item of includeBody) {
+        expect(item).not.toHaveProperty('createdAt')
+        expect(item).not.toHaveProperty('updatedAt')
+        expect(item).not.toHaveProperty('sortOrder')
+        expect(item).not.toHaveProperty('userCount')
+        expect(item).not.toHaveProperty('resources')
+      }
+    },
+  )
 
-    const optionsResponse = await app.request('/api/system/roles/options')
-    const optionsBody = (await optionsResponse.json()) as RoleOptionsResponse
-
-    expect(optionsResponse.status).toBe(200)
-    expect(optionsBody).toContainEqual({
-      id: enabledRoleId,
-      name: 'Enabled Role',
-      code: 'enabled-role',
-      status: ROLE_STATUS_ENABLED,
-    })
-    expect(optionsBody).not.toContainEqual(
-      expect.objectContaining({
-        id: disabledRoleId,
-      }),
-    )
-    expect(optionsBody).not.toContainEqual(
-      expect.objectContaining({
-        id: deletedRoleId,
-      }),
-    )
-    expect(optionsBody.every((item) => item.status === ROLE_STATUS_ENABLED)).toBe(true)
-    for (const item of optionsBody) {
-      expect(item).not.toHaveProperty('createdAt')
-      expect(item).not.toHaveProperty('updatedAt')
-      expect(item).not.toHaveProperty('sortOrder')
-      expect(item).not.toHaveProperty('userCount')
-      expect(item).not.toHaveProperty('resources')
-    }
-
-    const includeResponse = await app.request(
-      `/api/system/roles/options?includeIds=${disabledRoleId},${deletedRoleId}`,
-    )
-    const includeBody = (await includeResponse.json()) as RoleOptionsResponse
-
-    expect(includeResponse.status).toBe(200)
-    expect(includeBody).toContainEqual({
-      id: enabledRoleId,
-      name: 'Enabled Role',
-      code: 'enabled-role',
-      status: ROLE_STATUS_ENABLED,
-    })
-    expect(includeBody).toContainEqual({
-      id: disabledRoleId,
-      name: 'Disabled Role',
-      code: 'disabled-role',
-      status: ROLE_STATUS_DISABLED,
-    })
-    expect(includeBody).not.toContainEqual(
-      expect.objectContaining({
-        id: deletedRoleId,
-      }),
-    )
-    for (const item of includeBody) {
-      expect(item).not.toHaveProperty('createdAt')
-      expect(item).not.toHaveProperty('updatedAt')
-      expect(item).not.toHaveProperty('sortOrder')
-      expect(item).not.toHaveProperty('userCount')
-      expect(item).not.toHaveProperty('resources')
-    }
-  })
-
-  it('returns role details with resources', async () => {
-    const database = await createTestDb()
+  dbTest('returns role details with resources', async ({ db: database }) => {
     const app = await createTestApp(database)
     const resource = await createResource(database, {
       name: 'System',
@@ -463,8 +461,7 @@ describe('role routes', () => {
     ])
   })
 
-  it('replaces and clears role resource authorization on patch', async () => {
-    const database = await createTestDb()
+  dbTest('replaces and clears role resource authorization on patch', async ({ db: database }) => {
     const app = await createTestApp(database)
     const system = await createResource(database, {
       name: 'System',
@@ -528,8 +525,7 @@ describe('role routes', () => {
     expect(storedRelations).toEqual([])
   })
 
-  it('returns conflict for duplicate role code', async () => {
-    const database = await createTestDb()
+  dbTest('returns conflict for duplicate role code', async ({ db: database }) => {
     const app = await createTestApp(database)
     await createRole(app, { name: 'Test Administrator', code: 'test-admin' })
 
@@ -540,8 +536,7 @@ describe('role routes', () => {
     expect(body).toEqual({ field: 'code', message: '编码已存在' })
   })
 
-  it('allows recreating a role code after soft delete', async () => {
-    const database = await createTestDb()
+  dbTest('allows recreating a role code after soft delete', async ({ db: database }) => {
     const app = await createTestApp(database)
     const { body: created } = await createRole(app, {
       name: 'Auditor',
@@ -564,115 +559,118 @@ describe('role routes', () => {
     })
   })
 
-  it('returns invalid resource errors for missing or deleted resources', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const missingResourceId = randomUUID()
-    const deletedResource = await createResource(database, {
-      name: 'Deleted',
-      code: 'system:deleted',
-      deletedAt: new Date(),
-    })
+  dbTest(
+    'returns invalid resource errors for missing or deleted resources',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const missingResourceId = randomUUID()
+      const deletedResource = await createResource(database, {
+        name: 'Deleted',
+        code: 'system:deleted',
+        deletedAt: new Date(),
+      })
 
-    const missingCreateResponse = await app.request('/api/system/roles', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: 'Administrator',
-        code: 'test-admin',
-        resourceIds: [missingResourceId],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
+      const missingCreateResponse = await app.request('/api/system/roles', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Administrator',
+          code: 'test-admin',
+          resourceIds: [missingResourceId],
+        }),
+        headers: { 'content-type': 'application/json' },
+      })
 
-    expect(missingCreateResponse.status).toBe(400)
-    expect(await missingCreateResponse.json()).toEqual({ message: '权限资源不存在' })
+      expect(missingCreateResponse.status).toBe(400)
+      expect(await missingCreateResponse.json()).toEqual({ message: '权限资源不存在' })
 
-    const { body: created } = await createRole(app, {
-      name: 'Operator',
-      code: 'operator',
-    })
-    const deletedUpdateResponse = await app.request(`/api/system/roles/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        resourceIds: [deletedResource.id],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
+      const { body: created } = await createRole(app, {
+        name: 'Operator',
+        code: 'operator',
+      })
+      const deletedUpdateResponse = await app.request(`/api/system/roles/${created.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          resourceIds: [deletedResource.id],
+        }),
+        headers: { 'content-type': 'application/json' },
+      })
 
-    expect(deletedUpdateResponse.status).toBe(400)
-    expect(await deletedUpdateResponse.json()).toEqual({ message: '权限资源不存在' })
-  })
+      expect(deletedUpdateResponse.status).toBe(400)
+      expect(await deletedUpdateResponse.json()).toEqual({ message: '权限资源不存在' })
+    },
+  )
 
-  it('rejects child resource authorization without its parent resource', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const system = await createResource(database, {
-      name: 'System',
-      code: 'test-system',
-      sortOrder: 1,
-    })
-    const userMenu = await createResource(database, {
-      name: 'Users',
-      code: 'test-system:user',
-      type: RESOURCE_TYPE_DIRECTORY,
-      parentId: system.id,
-      sortOrder: 2,
-    })
-    const listUser = await createResource(database, {
-      name: 'List Users',
-      code: 'test-system:user:list',
-      type: RESOURCE_TYPE_ACTION,
-      parentId: userMenu.id,
-      sortOrder: 3,
-    })
-
-    const parentOnly = await createRole(app, {
-      name: 'Menu Viewer',
-      code: 'menu-viewer',
-      resourceIds: [system.id],
-    })
-    expect(parentOnly.response.status).toBe(201)
-    expect(parentOnly.body.resources).toEqual([
-      {
-        id: system.id,
+  dbTest(
+    'rejects child resource authorization without its parent resource',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const system = await createResource(database, {
         name: 'System',
         code: 'test-system',
+        sortOrder: 1,
+      })
+      const userMenu = await createResource(database, {
+        name: 'Users',
+        code: 'test-system:user',
         type: RESOURCE_TYPE_DIRECTORY,
-      },
-    ])
+        parentId: system.id,
+        sortOrder: 2,
+      })
+      const listUser = await createResource(database, {
+        name: 'List Users',
+        code: 'test-system:user:list',
+        type: RESOURCE_TYPE_ACTION,
+        parentId: userMenu.id,
+        sortOrder: 3,
+      })
 
-    const missingParentResponse = await app.request('/api/system/roles', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: 'Action Viewer',
-        code: 'action-viewer',
-        resourceIds: [system.id, listUser.id],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
+      const parentOnly = await createRole(app, {
+        name: 'Menu Viewer',
+        code: 'menu-viewer',
+        resourceIds: [system.id],
+      })
+      expect(parentOnly.response.status).toBe(201)
+      expect(parentOnly.body.resources).toEqual([
+        {
+          id: system.id,
+          name: 'System',
+          code: 'test-system',
+          type: RESOURCE_TYPE_DIRECTORY,
+        },
+      ])
 
-    expect(missingParentResponse.status).toBe(400)
-    expect(await missingParentResponse.json()).toEqual({
-      field: 'resourceIds',
-      message: '子级权限资源需要包含所有上级权限资源',
-    })
+      const missingParentResponse = await app.request('/api/system/roles', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Action Viewer',
+          code: 'action-viewer',
+          resourceIds: [system.id, listUser.id],
+        }),
+        headers: { 'content-type': 'application/json' },
+      })
 
-    const fullChain = await createRole(app, {
-      name: 'User Viewer',
-      code: 'user-viewer',
-      resourceIds: [system.id, userMenu.id, listUser.id],
-    })
+      expect(missingParentResponse.status).toBe(400)
+      expect(await missingParentResponse.json()).toEqual({
+        field: 'resourceIds',
+        message: '子级权限资源需要包含所有上级权限资源',
+      })
 
-    expect(fullChain.response.status).toBe(201)
-    expect(fullChain.body.resources.map((resource) => resource.id)).toEqual([
-      system.id,
-      userMenu.id,
-      listUser.id,
-    ])
-  })
+      const fullChain = await createRole(app, {
+        name: 'User Viewer',
+        code: 'user-viewer',
+        resourceIds: [system.id, userMenu.id, listUser.id],
+      })
 
-  it('rejects updating and deleting the built-in admin role', async () => {
-    const database = await createTestDb()
+      expect(fullChain.response.status).toBe(201)
+      expect(fullChain.body.resources.map((resource) => resource.id)).toEqual([
+        system.id,
+        userMenu.id,
+        listUser.id,
+      ])
+    },
+  )
+
+  dbTest('rejects updating and deleting the built-in admin role', async ({ db: database }) => {
     const app = await createTestApp(database)
     const [adminRole] = await database
       .select()
@@ -713,8 +711,7 @@ describe('role routes', () => {
     })
   })
 
-  it('rejects deleting roles that are assigned to users', async () => {
-    const database = await createTestDb()
+  dbTest('rejects deleting roles that are assigned to users', async ({ db: database }) => {
     const app = await createTestApp(database)
     const { body: role } = await createRole(app, {
       name: 'Administrator',
@@ -738,37 +735,42 @@ describe('role routes', () => {
     expect(body).toEqual({ message: '角色存在关联用户，不能删除' })
   })
 
-  it('soft deletes roles with resources and clears role resource relations', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const resource = await createResource(database, {
-      name: 'System',
-      code: 'test-system',
-    })
-    const { body: role } = await createRole(app, {
-      name: 'Administrator',
-      code: 'test-admin',
-      resourceIds: [resource.id],
-    })
+  dbTest(
+    'soft deletes roles with resources and clears role resource relations',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const resource = await createResource(database, {
+        name: 'System',
+        code: 'test-system',
+      })
+      const { body: role } = await createRole(app, {
+        name: 'Administrator',
+        code: 'test-admin',
+        resourceIds: [resource.id],
+      })
 
-    const deleteResponse = await app.request(`/api/system/roles/${role.id}`, {
-      method: 'DELETE',
-    })
-    expect(deleteResponse.status).toBe(204)
+      const deleteResponse = await app.request(`/api/system/roles/${role.id}`, {
+        method: 'DELETE',
+      })
+      expect(deleteResponse.status).toBe(204)
 
-    const storedRows = await database.select().from(systemRoles).where(eq(systemRoles.id, role.id))
-    expect(storedRows).toHaveLength(1)
-    expect(storedRows[0]?.deletedAt).toBeInstanceOf(Date)
+      const storedRows = await database
+        .select()
+        .from(systemRoles)
+        .where(eq(systemRoles.id, role.id))
+      expect(storedRows).toHaveLength(1)
+      expect(storedRows[0]?.deletedAt).toBeInstanceOf(Date)
 
-    const storedRelations = await database
-      .select()
-      .from(systemRoleResources)
-      .where(eq(systemRoleResources.roleId, role.id))
-    expect(storedRelations).toEqual([])
+      const storedRelations = await database
+        .select()
+        .from(systemRoleResources)
+        .where(eq(systemRoleResources.roleId, role.id))
+      expect(storedRelations).toEqual([])
 
-    const detailResponse = await app.request(`/api/system/roles/${role.id}`)
-    const detailBody = (await detailResponse.json()) as ErrorResponse
-    expect(detailResponse.status).toBe(404)
-    expect(detailBody).toEqual({ message: '角色不存在' })
-  })
+      const detailResponse = await app.request(`/api/system/roles/${role.id}`)
+      const detailBody = (await detailResponse.json()) as ErrorResponse
+      expect(detailResponse.status).toBe(404)
+      expect(detailBody).toEqual({ message: '角色不存在' })
+    },
+  )
 })

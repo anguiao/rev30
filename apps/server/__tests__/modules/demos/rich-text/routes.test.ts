@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect } from 'vitest'
 import {
   RICH_TEXT_DEMO_PREVIEW_MAX_BODY_SIZE_BYTES,
   type ErrorResponse,
@@ -6,7 +6,7 @@ import {
 } from '@rev30/contracts'
 import { createApp } from '../../../../src/app'
 import { createSystemAccessFixture } from '../../../helpers/auth'
-import { createTestDb } from '../../../helpers/db'
+import { dbTest } from '../../../fixtures/database'
 
 const previewBody = {
   contentJson: {
@@ -21,8 +21,7 @@ const previewBody = {
 }
 
 describe('rich text demo routes', () => {
-  it('requires authentication and preview access', async () => {
-    const database = await createTestDb()
+  dbTest('requires authentication and preview access', async ({ db: database }) => {
     const app = createApp(database)
 
     const unauthorizedResponse = await app.request('/api/demos/rich-text/preview', {
@@ -48,32 +47,33 @@ describe('rich text demo routes', () => {
     expect(await forbiddenResponse.json()).toEqual({ message: '无权访问' })
   })
 
-  it('returns server-derived JSON, text, and HTML without creating a resource', async () => {
-    const database = await createTestDb()
-    const authenticated = await createSystemAccessFixture(database, {
-      accessCodes: ['demo:rich-text:preview'],
-      usernamePrefix: 'rich-text-demo-preview',
-    })
-    const app = createApp(database)
+  dbTest(
+    'returns server-derived JSON, text, and HTML without creating a resource',
+    async ({ db: database }) => {
+      const authenticated = await createSystemAccessFixture(database, {
+        accessCodes: ['demo:rich-text:preview'],
+        usernamePrefix: 'rich-text-demo-preview',
+      })
+      const app = createApp(database)
 
-    const response = await app.request('/api/demos/rich-text/preview', {
-      method: 'POST',
-      body: JSON.stringify(previewBody),
-      headers: {
-        ...authenticated.authHeaders,
-        'content-type': 'application/json',
-      },
-    })
+      const response = await app.request('/api/demos/rich-text/preview', {
+        method: 'POST',
+        body: JSON.stringify(previewBody),
+        headers: {
+          ...authenticated.authHeaders,
+          'content-type': 'application/json',
+        },
+      })
 
-    expect(response.status).toBe(200)
-    const body = (await response.json()) as RichTextDemoPreviewResponse
-    expect(body.contentText).toBe('组件演示')
-    expect(body.contentHtml).toBe('<p><u>组件演示</u></p>')
-    expect(body.contentJson).toMatchObject(previewBody.contentJson)
-  })
+      expect(response.status).toBe(200)
+      const body = (await response.json()) as RichTextDemoPreviewResponse
+      expect(body.contentText).toBe('组件演示')
+      expect(body.contentHtml).toBe('<p><u>组件演示</u></p>')
+      expect(body.contentJson).toMatchObject(previewBody.contentJson)
+    },
+  )
 
-  it('maps invalid all-preset content to the contentJson field', async () => {
-    const database = await createTestDb()
+  dbTest('maps invalid all-preset content to the contentJson field', async ({ db: database }) => {
     const authenticated = await createSystemAccessFixture(database, {
       accessCodes: ['demo:rich-text:preview'],
       usernamePrefix: 'rich-text-demo-invalid',
@@ -101,8 +101,7 @@ describe('rich text demo routes', () => {
     })
   })
 
-  it('rejects oversized preview requests before parsing JSON', async () => {
-    const database = await createTestDb()
+  dbTest('rejects oversized preview requests before parsing JSON', async ({ db: database }) => {
     const authenticated = await createSystemAccessFixture(database, {
       accessCodes: ['demo:rich-text:preview'],
       usernamePrefix: 'rich-text-demo-oversized',

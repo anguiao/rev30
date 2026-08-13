@@ -1,8 +1,8 @@
 import { lookupCollection } from '@iconify/json'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, vi } from 'vitest'
 import { customIconSetIcons, customIconSets } from '../../../../src/db/schema'
 import { getBuiltinIconSubset } from '../../../../src/modules/icons/service'
-import { createTestDb } from '../../../helpers/db'
+import { dbTest, type TestDatabase } from '../../../fixtures/database'
 
 vi.mock('@iconify/json', () => {
   const collections = {
@@ -109,15 +109,13 @@ const { createIconSearchService } = await import('../../../../src/modules/icons/
 const getBuiltinIconSubsetMock = vi.mocked(getBuiltinIconSubset)
 const lookupCollectionMock = vi.mocked(lookupCollection)
 
-async function createSearchService() {
-  const database = await createTestDb()
-
+async function createSearchService(database: TestDatabase) {
   return createIconSearchService(database)
 }
 
 describe('icon search service', () => {
-  it('resolves exact icon names without building the search index', async () => {
-    const service = await createSearchService()
+  dbTest('resolves exact icon names without building the search index', async ({ db }) => {
+    const service = await createSearchService(db)
     lookupCollectionMock.mockClear()
     getBuiltinIconSubsetMock.mockResolvedValueOnce({
       prefix: 'lucide',
@@ -146,59 +144,64 @@ describe('icon search service', () => {
     expect(lookupCollectionMock).not.toHaveBeenCalled()
   })
 
-  it('returns an empty list for missing exact icon names without building the search index', async () => {
-    const service = await createSearchService()
-    lookupCollectionMock.mockClear()
-    getBuiltinIconSubsetMock.mockResolvedValueOnce({
-      prefix: 'lucide',
-      icons: {},
-      aliases: {},
-      not_found: ['not-real'],
-    })
-
-    const result = await service.searchIcons({ keyword: 'lucide:not-real', limit: 10 })
-
-    expect(result).toEqual({ list: [] })
-    expect(getBuiltinIconSubsetMock).toHaveBeenCalledWith('lucide', ['not-real'])
-    expect(lookupCollectionMock).not.toHaveBeenCalled()
-  })
-
-  it('does not fall back to custom icons when a built-in prefix exists', async () => {
-    const database = await createTestDb()
-    const [set] = await database
-      .insert(customIconSets)
-      .values({
+  dbTest(
+    'returns an empty list for missing exact icon names without building the search index',
+    async ({ db }) => {
+      const service = await createSearchService(db)
+      lookupCollectionMock.mockClear()
+      getBuiltinIconSubsetMock.mockResolvedValueOnce({
         prefix: 'lucide',
-        name: 'Lucide Custom',
-        description: null,
+        icons: {},
+        aliases: {},
+        not_found: ['not-real'],
       })
-      .returning()
 
-    await database.insert(customIconSetIcons).values({
-      setId: set!.id,
-      name: 'not-real',
-      body: '<path d="custom" />',
-      width: 24,
-      height: 24,
-      palette: false,
-    })
-    getBuiltinIconSubsetMock.mockResolvedValueOnce({
-      prefix: 'lucide',
-      icons: {},
-      aliases: {},
-      not_found: ['not-real'],
-    })
+      const result = await service.searchIcons({ keyword: 'lucide:not-real', limit: 10 })
 
-    const result = await createIconSearchService(database).searchIcons({
-      keyword: 'lucide:not-real',
-      limit: 10,
-    })
+      expect(result).toEqual({ list: [] })
+      expect(getBuiltinIconSubsetMock).toHaveBeenCalledWith('lucide', ['not-real'])
+      expect(lookupCollectionMock).not.toHaveBeenCalled()
+    },
+  )
 
-    expect(result).toEqual({ list: [] })
-  })
+  dbTest(
+    'does not fall back to custom icons when a built-in prefix exists',
+    async ({ db: database }) => {
+      const [set] = await database
+        .insert(customIconSets)
+        .values({
+          prefix: 'lucide',
+          name: 'Lucide Custom',
+          description: null,
+        })
+        .returning()
 
-  it('fills the default recommendation limit for an empty keyword', async () => {
-    const service = await createSearchService()
+      await database.insert(customIconSetIcons).values({
+        setId: set!.id,
+        name: 'not-real',
+        body: '<path d="custom" />',
+        width: 24,
+        height: 24,
+        palette: false,
+      })
+      getBuiltinIconSubsetMock.mockResolvedValueOnce({
+        prefix: 'lucide',
+        icons: {},
+        aliases: {},
+        not_found: ['not-real'],
+      })
+
+      const result = await createIconSearchService(database).searchIcons({
+        keyword: 'lucide:not-real',
+        limit: 10,
+      })
+
+      expect(result).toEqual({ list: [] })
+    },
+  )
+
+  dbTest('fills the default recommendation limit for an empty keyword', async ({ db }) => {
+    const service = await createSearchService(db)
     const result = await service.searchIcons({ keyword: '', limit: 60 })
     const whitespaceResult = await service.searchIcons({ keyword: '   ', limit: 60 })
 
@@ -209,8 +212,8 @@ describe('icon search service', () => {
     )
   })
 
-  it('searches icons by English, Chinese, alias, exact, and fuzzy keywords', async () => {
-    const service = await createSearchService()
+  dbTest('searches icons by English, Chinese, alias, exact, and fuzzy keywords', async ({ db }) => {
+    const service = await createSearchService(db)
     const english = await service.searchIcons({ keyword: 'user', limit: 20 })
     expect(english.list[0]?.icon).toBe('lucide:user')
 
@@ -247,16 +250,16 @@ describe('icon search service', () => {
     expect(fuzzy.list.some((item) => item.icon.includes('user'))).toBe(true)
   })
 
-  it('keeps icon set prefixes searchable without search text copies', async () => {
-    const service = await createSearchService()
+  dbTest('keeps icon set prefixes searchable without search text copies', async ({ db }) => {
+    const service = await createSearchService(db)
     const result = await service.searchIcons({ keyword: 'lucide', limit: 20 })
 
     expect(result.list.length).toBeGreaterThan(0)
     expect(result.list.every((item) => item.prefix === 'lucide')).toBe(true)
   })
 
-  it('searches broad Chinese keywords with bounded candidate expansion', async () => {
-    const service = await createSearchService()
+  dbTest('searches broad Chinese keywords with bounded candidate expansion', async ({ db }) => {
+    const service = await createSearchService(db)
     const result = await service.searchIcons({
       keyword:
         '用户角色权限菜单资源部门组织系统设置日志首页统计报表字典通知文件外链操作状态排序配置',
@@ -270,14 +273,17 @@ describe('icon search service', () => {
     ).toBe(true)
   })
 
-  it('keeps color and brand icons searchable while preferring monochrome admin icon sets', async () => {
-    const service = await createSearchService()
-    const result = await service.searchIcons({ keyword: 'vue', limit: 80 })
-    const colorIndex = result.list.findIndex((item) => item.prefix === 'logos')
-    const monochromeIndex = result.list.findIndex((item) => !item.palette)
+  dbTest(
+    'keeps color and brand icons searchable while preferring monochrome admin icon sets',
+    async ({ db }) => {
+      const service = await createSearchService(db)
+      const result = await service.searchIcons({ keyword: 'vue', limit: 80 })
+      const colorIndex = result.list.findIndex((item) => item.prefix === 'logos')
+      const monochromeIndex = result.list.findIndex((item) => !item.palette)
 
-    expect(colorIndex).toBeGreaterThanOrEqual(0)
-    expect(monochromeIndex).toBeGreaterThanOrEqual(0)
-    expect(monochromeIndex).toBeLessThan(colorIndex)
-  })
+      expect(colorIndex).toBeGreaterThanOrEqual(0)
+      expect(monochromeIndex).toBeGreaterThanOrEqual(0)
+      expect(monochromeIndex).toBeLessThan(colorIndex)
+    },
+  )
 })

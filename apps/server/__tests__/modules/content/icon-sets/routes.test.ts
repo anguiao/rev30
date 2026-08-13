@@ -6,10 +6,10 @@ import type {
   CustomIconUploadResponse,
 } from '@rev30/contracts'
 import type { IconifyJSON } from '@iconify/types'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, vi } from 'vitest'
 import { createApp } from '../../../../src/app'
 import { createSystemAccessFixture } from '../../../helpers/auth'
-import { createTestDb } from '../../../helpers/db'
+import { dbTest } from '../../../fixtures/database'
 
 function createSvg(size: number, body: string) {
   return `<svg viewBox="0 0 ${size} ${size}">${body}</svg>`
@@ -24,8 +24,7 @@ describe('icon set routes', () => {
     vi.restoreAllMocks()
   })
 
-  it('lists built-in icon sets for authorized users', async () => {
-    const database = await createTestDb()
+  dbTest('lists built-in icon sets for authorized users', async ({ db: database }) => {
     const authenticated = await createSystemAccessFixture(database, {
       accessCodes: ['content:icon-set:list'],
       usernamePrefix: 'icon-set-builtin-list-user',
@@ -41,8 +40,7 @@ describe('icon set routes', () => {
     expect(body.list.some((item) => item.prefix === 'lucide')).toBe(true)
   })
 
-  it('lists built-in icons for authorized users', async () => {
-    const database = await createTestDb()
+  dbTest('lists built-in icons for authorized users', async ({ db: database }) => {
     const authenticated = await createSystemAccessFixture(database, {
       accessCodes: ['content:icon-set:list'],
       usernamePrefix: 'icon-set-builtin-icons-user',
@@ -64,91 +62,93 @@ describe('icon set routes', () => {
     expect(typeof body.list[0]?.height).toBe('number')
   })
 
-  it('uses cursor pagination and excludes aliases for global browsing without a keyword', async () => {
-    vi.resetModules()
-    const loadIconCollectionsMock = vi.fn().mockResolvedValue({
-      alpha: {
-        name: 'Alpha',
-        total: 1,
-      },
-      beta: {
-        name: 'Beta',
-        total: 1,
-      },
-    })
-    const lookupCollectionMock = vi.fn(async (prefix: string) => {
-      if (prefix === 'alpha') {
-        return {
-          prefix: 'alpha',
-          icons: {
-            real: {
-              body: '<path d="real" />',
+  dbTest(
+    'uses cursor pagination and excludes aliases for global browsing without a keyword',
+    async () => {
+      vi.resetModules()
+      const loadIconCollectionsMock = vi.fn().mockResolvedValue({
+        alpha: {
+          name: 'Alpha',
+          total: 1,
+        },
+        beta: {
+          name: 'Beta',
+          total: 1,
+        },
+      })
+      const lookupCollectionMock = vi.fn(async (prefix: string) => {
+        if (prefix === 'alpha') {
+          return {
+            prefix: 'alpha',
+            icons: {
+              real: {
+                body: '<path d="real" />',
+              },
             },
-          },
-          aliases: {
-            alias: {
-              parent: 'real',
+            aliases: {
+              alias: {
+                parent: 'real',
+              },
             },
-          },
-          width: 24,
-          height: 24,
+            width: 24,
+            height: 24,
+          }
         }
-      }
 
-      if (prefix === 'beta') {
-        return {
-          prefix: 'beta',
-          icons: {
-            second: {
-              body: '<path d="second" />',
+        if (prefix === 'beta') {
+          return {
+            prefix: 'beta',
+            icons: {
+              second: {
+                body: '<path d="second" />',
+              },
             },
-          },
-          aliases: {},
-          width: 24,
-          height: 24,
+            aliases: {},
+            width: 24,
+            height: 24,
+          }
         }
-      }
 
-      throw new Error(`Unexpected prefix: ${prefix}`)
-    })
+        throw new Error(`Unexpected prefix: ${prefix}`)
+      })
 
-    vi.doMock('../../../../src/modules/icons/search/collections', () => ({
-      loadIconCollections: loadIconCollectionsMock,
-    }))
-    vi.doMock('@iconify/json', () => ({
-      lookupCollection: lookupCollectionMock,
-    }))
+      vi.doMock('../../../../src/modules/icons/search/collections', () => ({
+        loadIconCollections: loadIconCollectionsMock,
+      }))
+      vi.doMock('@iconify/json', () => ({
+        lookupCollection: lookupCollectionMock,
+      }))
 
-    const { listBuiltinIcons } =
-      await import('../../../../src/modules/content/icon-sets/builtin/service')
+      const { listBuiltinIcons } =
+        await import('../../../../src/modules/content/icon-sets/builtin/service')
 
-    const pageOne = await listBuiltinIcons({
-      keyword: undefined,
-      prefix: undefined,
-      cursor: undefined,
-      pageSize: 1,
-    })
+      const pageOne = await listBuiltinIcons({
+        keyword: undefined,
+        prefix: undefined,
+        cursor: undefined,
+        pageSize: 1,
+      })
 
-    expect(pageOne.nextCursor).toBe('alpha:real')
-    expect(pageOne.list.map((item) => item.icon)).toEqual(['alpha:real'])
+      expect(pageOne.nextCursor).toBe('alpha:real')
+      expect(pageOne.list.map((item) => item.icon)).toEqual(['alpha:real'])
 
-    const pageTwo = await listBuiltinIcons({
-      keyword: undefined,
-      prefix: undefined,
-      cursor: pageOne.nextCursor ?? undefined,
-      pageSize: 1,
-    })
+      const pageTwo = await listBuiltinIcons({
+        keyword: undefined,
+        prefix: undefined,
+        cursor: pageOne.nextCursor ?? undefined,
+        pageSize: 1,
+      })
 
-    expect(pageTwo.nextCursor).toBeNull()
-    expect(pageTwo.list.map((item) => item.icon)).toEqual(['beta:second'])
+      expect(pageTwo.nextCursor).toBeNull()
+      expect(pageTwo.list.map((item) => item.icon)).toEqual(['beta:second'])
 
-    vi.doUnmock('../../../../src/modules/icons/search/collections')
-    vi.doUnmock('@iconify/json')
-    vi.resetModules()
-  })
+      vi.doUnmock('../../../../src/modules/icons/search/collections')
+      vi.doUnmock('@iconify/json')
+      vi.resetModules()
+    },
+  )
 
-  it('creates, uploads, lists, and exports custom icon sets', async () => {
-    const database = await createTestDb()
+  dbTest('creates, uploads, lists, and exports custom icon sets', async ({ db: database }) => {
     const authenticated = await createSystemAccessFixture(database, {
       accessCodes: [
         'content:icon-set:list',
@@ -236,8 +236,7 @@ describe('icon set routes', () => {
     })
   })
 
-  it('rejects creating custom sets with built-in prefixes', async () => {
-    const database = await createTestDb()
+  dbTest('rejects creating custom sets with built-in prefixes', async ({ db: database }) => {
     const authenticated = await createSystemAccessFixture(database, {
       accessCodes: ['content:icon-set:create'],
       usernamePrefix: 'icon-set-conflict-user',
@@ -261,36 +260,37 @@ describe('icon set routes', () => {
     expect(await response.json()).toEqual({ message: '图标集前缀已存在' })
   })
 
-  it('rejects anonymous requests and invalid multipart duplicate strategies', async () => {
-    const database = await createTestDb()
-    const authenticated = await createSystemAccessFixture(database, {
-      accessCodes: ['content:icon-set:create'],
-      usernamePrefix: 'icon-set-invalid-user',
-    })
-    const app = createApp(database)
+  dbTest(
+    'rejects anonymous requests and invalid multipart duplicate strategies',
+    async ({ db: database }) => {
+      const authenticated = await createSystemAccessFixture(database, {
+        accessCodes: ['content:icon-set:create'],
+        usernamePrefix: 'icon-set-invalid-user',
+      })
+      const app = createApp(database)
 
-    const anonymousResponse = await app.request('/api/content/icon-sets/builtin?keyword=lucide')
+      const anonymousResponse = await app.request('/api/content/icon-sets/builtin?keyword=lucide')
 
-    const formData = new FormData()
-    formData.set('duplicateStrategy', 'overwrite')
-    formData.append(
-      'files',
-      new File([createSvg(24, createRect('#000'))], 'Logo.svg', { type: 'image/svg+xml' }),
-    )
-    const invalidResponse = await app.request('/api/content/icon-sets/custom/acme/icons', {
-      method: 'POST',
-      headers: authenticated.authHeaders,
-      body: formData,
-    })
+      const formData = new FormData()
+      formData.set('duplicateStrategy', 'overwrite')
+      formData.append(
+        'files',
+        new File([createSvg(24, createRect('#000'))], 'Logo.svg', { type: 'image/svg+xml' }),
+      )
+      const invalidResponse = await app.request('/api/content/icon-sets/custom/acme/icons', {
+        method: 'POST',
+        headers: authenticated.authHeaders,
+        body: formData,
+      })
 
-    expect(anonymousResponse.status).toBe(401)
-    expect(await anonymousResponse.json()).toEqual({ message: '未授权' })
-    expect(invalidResponse.status).toBe(400)
-    expect(await invalidResponse.json()).toEqual({ message: '请求体无效' })
-  })
+      expect(anonymousResponse.status).toBe(401)
+      expect(await anonymousResponse.json()).toEqual({ message: '未授权' })
+      expect(invalidResponse.status).toBe(400)
+      expect(await invalidResponse.json()).toEqual({ message: '请求体无效' })
+    },
+  )
 
-  it('rejects non-form upload bodies with 400', async () => {
-    const database = await createTestDb()
+  dbTest('rejects non-form upload bodies with 400', async ({ db: database }) => {
     const authenticated = await createSystemAccessFixture(database, {
       accessCodes: ['content:icon-set:create'],
       usernamePrefix: 'icon-set-non-form-user',
@@ -310,8 +310,7 @@ describe('icon set routes', () => {
     expect(await response.json()).toEqual({ message: '请求体无效' })
   })
 
-  it('rejects oversized custom icon upload bodies', async () => {
-    const database = await createTestDb()
+  dbTest('rejects oversized custom icon upload bodies', async ({ db: database }) => {
     const authenticated = await createSystemAccessFixture(database, {
       accessCodes: ['content:icon-set:create'],
       usernamePrefix: 'icon-set-upload-limit-user',
@@ -331,50 +330,52 @@ describe('icon set routes', () => {
     expect(await oversizedRequestResponse.json()).toEqual({ message: '请求体过大' })
   })
 
-  it('rejects create and export operations for users without the required access', async () => {
-    const database = await createTestDb()
-    const manager = await createSystemAccessFixture(database, {
-      accessCodes: ['content:icon-set:create'],
-      usernamePrefix: 'icon-set-creator-user',
-    })
-    const listOnly = await createSystemAccessFixture(database, {
-      accessCodes: ['content:icon-set:list'],
-      usernamePrefix: 'icon-set-list-only-user',
-    })
-    const app = createApp(database)
+  dbTest(
+    'rejects create and export operations for users without the required access',
+    async ({ db: database }) => {
+      const manager = await createSystemAccessFixture(database, {
+        accessCodes: ['content:icon-set:create'],
+        usernamePrefix: 'icon-set-creator-user',
+      })
+      const listOnly = await createSystemAccessFixture(database, {
+        accessCodes: ['content:icon-set:list'],
+        usernamePrefix: 'icon-set-list-only-user',
+      })
+      const app = createApp(database)
 
-    await app.request('/api/content/icon-sets/custom', {
-      method: 'POST',
-      headers: {
-        ...manager.authHeaders,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        prefix: 'acme-export',
-        name: 'Acme Export',
-        description: null,
-      }),
-    })
+      await app.request('/api/content/icon-sets/custom', {
+        method: 'POST',
+        headers: {
+          ...manager.authHeaders,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          prefix: 'acme-export',
+          name: 'Acme Export',
+          description: null,
+        }),
+      })
 
-    const createResponse = await app.request('/api/content/icon-sets/custom', {
-      method: 'POST',
-      headers: {
-        ...listOnly.authHeaders,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        prefix: 'acme-denied',
-        name: 'Acme Denied',
-        description: null,
-      }),
-    })
-    const exportResponse = await app.request('/api/content/icon-sets/custom/acme-export/export', {
-      headers: listOnly.authHeaders,
-    })
+      const createResponse = await app.request('/api/content/icon-sets/custom', {
+        method: 'POST',
+        headers: {
+          ...listOnly.authHeaders,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          prefix: 'acme-denied',
+          name: 'Acme Denied',
+          description: null,
+        }),
+      })
+      const exportResponse = await app.request('/api/content/icon-sets/custom/acme-export/export', {
+        headers: listOnly.authHeaders,
+      })
 
-    expect(createResponse.status).toBe(403)
-    expect(await createResponse.json()).toEqual({ message: '无权访问' })
-    expect(exportResponse.status).toBe(403)
-    expect(await exportResponse.json()).toEqual({ message: '无权访问' })
-  })
+      expect(createResponse.status).toBe(403)
+      expect(await createResponse.json()).toEqual({ message: '无权访问' })
+      expect(exportResponse.status).toBe(403)
+      expect(await exportResponse.json()).toEqual({ message: '无权访问' })
+    },
+  )
 })

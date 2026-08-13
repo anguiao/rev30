@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { createTestDb } from '../../../../helpers/db'
+import { describe, expect } from 'vitest'
+import { dbTest } from '../../../../fixtures/database'
 import {
   CustomIconConflictError,
   CustomIconNotFoundError,
@@ -19,53 +19,64 @@ function rect(fill: string) {
 }
 
 describe('custom icon set service', () => {
-  it('creates, lists, updates, and deletes custom icon sets', async () => {
-    const database = await createTestDb()
-    const service = createCustomIconSetService(database)
+  dbTest(
+    'manages custom icon set lifecycle and reuses deleted prefixes',
+    async ({ db: database }) => {
+      const service = createCustomIconSetService(database)
 
-    const created = await service.create({
-      prefix: 'acme',
-      name: 'Acme Icons',
-      description: 'Initial description',
-    })
+      const created = await service.create({
+        prefix: 'acme',
+        name: 'Acme Icons',
+        description: 'Initial description',
+      })
 
-    expect(created).toMatchObject({
-      prefix: 'acme',
-      name: 'Acme Icons',
-      description: 'Initial description',
-      iconCount: 0,
-    })
+      expect(created).toMatchObject({
+        prefix: 'acme',
+        name: 'Acme Icons',
+        description: 'Initial description',
+        iconCount: 0,
+      })
 
-    const list = await service.list({ keyword: undefined })
+      const list = await service.list({ keyword: undefined })
 
-    expect(list.total).toBe(1)
-    expect(list.list[0]).toMatchObject({
-      prefix: 'acme',
-      iconCount: 0,
-    })
+      expect(list.total).toBe(1)
+      expect(list.list[0]).toMatchObject({
+        prefix: 'acme',
+        iconCount: 0,
+      })
 
-    const updated = await service.update('acme', {
-      name: 'Acme Product Icons',
-      description: null,
-    })
+      const updated = await service.update('acme', {
+        name: 'Acme Product Icons',
+        description: null,
+      })
 
-    expect(updated).toMatchObject({
-      prefix: 'acme',
-      name: 'Acme Product Icons',
-      description: null,
-    })
-    await expect(service.get('acme')).resolves.toMatchObject({ name: 'Acme Product Icons' })
+      expect(updated).toMatchObject({
+        prefix: 'acme',
+        name: 'Acme Product Icons',
+        description: null,
+      })
+      await expect(service.get('acme')).resolves.toMatchObject({ name: 'Acme Product Icons' })
 
-    await service.delete('acme')
-    await expect(service.get('acme')).rejects.toBeInstanceOf(CustomIconSetNotFoundError)
-    await expect(service.list({ keyword: undefined })).resolves.toMatchObject({
-      total: 0,
-      list: [],
-    })
-  })
+      await service.delete('acme')
+      await expect(service.get('acme')).rejects.toBeInstanceOf(CustomIconSetNotFoundError)
+      await expect(service.list({ keyword: undefined })).resolves.toMatchObject({
+        total: 0,
+        list: [],
+      })
+      await expect(
+        service.create({
+          prefix: 'acme',
+          name: 'Recreated Acme Icons',
+          description: null,
+        }),
+      ).resolves.toMatchObject({
+        prefix: 'acme',
+        name: 'Recreated Acme Icons',
+      })
+    },
+  )
 
-  it('uploads duplicate icons with skip and replace strategies', async () => {
-    const database = await createTestDb()
+  dbTest('uploads duplicate icons with skip and replace strategies', async ({ db: database }) => {
     const service = createCustomIconSetService(database)
 
     await service.create({
@@ -124,8 +135,7 @@ describe('custom icon set service', () => {
     })
   })
 
-  it('lists, renames, exports, and deletes icons', async () => {
-    const database = await createTestDb()
+  dbTest('lists, renames, exports, and deletes icons', async ({ db: database }) => {
     const service = createCustomIconSetService(database)
 
     await service.create({
@@ -200,8 +210,7 @@ describe('custom icon set service', () => {
     })
   })
 
-  it('reports failed files without aborting the upload', async () => {
-    const database = await createTestDb()
+  dbTest('reports failed files without aborting the upload', async ({ db: database }) => {
     const service = createCustomIconSetService(database)
 
     await service.create({
@@ -233,8 +242,7 @@ describe('custom icon set service', () => {
     ])
   })
 
-  it('throws domain errors for conflicts and missing records', async () => {
-    const database = await createTestDb()
+  dbTest('throws domain errors for conflicts and missing records', async ({ db: database }) => {
     const service = createCustomIconSetService(database)
 
     await service.create({
@@ -290,38 +298,42 @@ describe('custom icon set service', () => {
     )
   })
 
-  it('translates custom icon set unique constraints into domain conflicts', async () => {
-    const database = await createTestDb()
-    const repository = createCustomIconSetRepository(database)
+  dbTest(
+    'translates custom icon set unique constraints into domain conflicts',
+    async ({ db: database }) => {
+      const repository = createCustomIconSetRepository(database)
 
-    await repository.createSet({
-      prefix: 'acme',
-      name: 'Acme Icons',
-      description: null,
-    })
-
-    await expect(
-      repository.createSet({
+      await repository.createSet({
         prefix: 'acme',
-        name: 'Duplicate Prefix',
+        name: 'Acme Icons',
         description: null,
-      }),
-    ).rejects.toBeInstanceOf(CustomIconSetConflictError)
-  })
+      })
 
-  it('translates custom icon unique constraints into domain conflicts', async () => {
-    const database = await createTestDb()
-    const repository = createCustomIconSetRepository(database)
-    const set = await repository.createSet({
-      prefix: 'acme',
-      name: 'Acme Icons',
-      description: null,
-    })
-    const parsedIcon = await parseSvgIcon('Logo.svg', svg(24, rect('#000')))
+      await expect(
+        repository.createSet({
+          prefix: 'acme',
+          name: 'Duplicate Prefix',
+          description: null,
+        }),
+      ).rejects.toBeInstanceOf(CustomIconSetConflictError)
+    },
+  )
 
-    await repository.createIcon(set.set, parsedIcon)
-    await expect(repository.createIcon(set.set, parsedIcon)).rejects.toBeInstanceOf(
-      CustomIconConflictError,
-    )
-  })
+  dbTest(
+    'translates custom icon unique constraints into domain conflicts',
+    async ({ db: database }) => {
+      const repository = createCustomIconSetRepository(database)
+      const set = await repository.createSet({
+        prefix: 'acme',
+        name: 'Acme Icons',
+        description: null,
+      })
+      const parsedIcon = await parseSvgIcon('Logo.svg', svg(24, rect('#000')))
+
+      await repository.createIcon(set.set, parsedIcon)
+      await expect(repository.createIcon(set.set, parsedIcon)).rejects.toBeInstanceOf(
+        CustomIconConflictError,
+      )
+    },
+  )
 })

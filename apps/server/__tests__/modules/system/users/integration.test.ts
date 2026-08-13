@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { describe, expect, it } from 'vitest'
+import { describe, expect } from 'vitest'
 import { eq, inArray } from 'drizzle-orm'
 import { Hono } from 'hono'
 import {
@@ -27,7 +27,7 @@ import {
 } from '../../../../src/db/schema'
 import { hashPassword, verifyPassword } from '../../../../src/modules/auth/password'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
-import { createTestDb } from '../../../helpers/db'
+import { dbTest, type TestDatabase } from '../../../fixtures/database'
 import {
   createSystemDepartmentFixture as createDepartment,
   createSystemRoleFixture as createRole,
@@ -40,10 +40,7 @@ type ErrorResponse = {
   field?: string
 }
 
-async function createTestApp(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  authHeaders?: Record<string, string>,
-) {
+async function createTestApp(database: TestDatabase, authHeaders?: Record<string, string>) {
   const headers =
     authHeaders ??
     (
@@ -61,8 +58,7 @@ async function createTestApp(
   )
 }
 
-async function createUserCreateAccessApp() {
-  const database = await createTestDb()
+async function createUserCreateAccessApp(database: TestDatabase) {
   const fixture = await createSystemAccessFixture(database, {
     accessCodes: ['system:user:create'],
   })
@@ -101,7 +97,7 @@ async function createUser(
 }
 
 async function assignResourcesToRole(
-  database: Awaited<ReturnType<typeof createTestDb>>,
+  database: TestDatabase,
   roleId: string,
   resourceCodes: string[],
 ) {
@@ -125,10 +121,7 @@ async function assignResourcesToRole(
   )
 }
 
-async function createAvatarAttachment(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  createdBy: string,
-) {
+async function createAvatarAttachment(database: TestDatabase, createdBy: string) {
   const id = randomUUID()
   const now = new Date('2026-05-30T00:00:00.000Z')
   const [attachment] = await database
@@ -155,51 +148,53 @@ async function createAvatarAttachment(
 }
 
 describe('user routes', () => {
-  it('creates users with a generated temporary password credential', async () => {
-    const database = await createTestDb()
-    const fixture = await createSystemAccessFixture(database, {
-      accessCodes: ['system:user:create'],
-    })
-    const app = createProtectedSystemRouteTestApp(
-      database,
-      '/api/system/users',
-      createUserRoutes(database),
-      fixture.authHeaders,
-    )
+  dbTest(
+    'creates users with a generated temporary password credential',
+    async ({ db: database }) => {
+      const fixture = await createSystemAccessFixture(database, {
+        accessCodes: ['system:user:create'],
+      })
+      const app = createProtectedSystemRouteTestApp(
+        database,
+        '/api/system/users',
+        createUserRoutes(database),
+        fixture.authHeaders,
+      )
 
-    const response = await app.request(
-      '/api/system/users',
-      jsonRequest(
-        {
-          username: 'created-by-admin',
-          nickname: 'Created By Admin',
-          email: null,
-          phone: null,
-          status: USER_STATUS_ENABLED,
-          departmentIds: [],
-          roleIds: [],
-        },
-        {
-          method: 'POST',
-        },
-      ),
-    )
-    const body = await responseJson<UserCreateResponse>(response)
+      const response = await app.request(
+        '/api/system/users',
+        jsonRequest(
+          {
+            username: 'created-by-admin',
+            nickname: 'Created By Admin',
+            email: null,
+            phone: null,
+            status: USER_STATUS_ENABLED,
+            departmentIds: [],
+            roleIds: [],
+          },
+          {
+            method: 'POST',
+          },
+        ),
+      )
+      const body = await responseJson<UserCreateResponse>(response)
 
-    expect(response.status).toBe(201)
-    expect(body.user.username).toBe('created-by-admin')
-    expect(body.temporaryPassword).toEqual(expect.any(String))
-    expect(body.temporaryPassword.length).toBeGreaterThanOrEqual(8)
+      expect(response.status).toBe(201)
+      expect(body.user.username).toBe('created-by-admin')
+      expect(body.temporaryPassword).toEqual(expect.any(String))
+      expect(body.temporaryPassword.length).toBeGreaterThanOrEqual(8)
 
-    const credential = await database.query.authPasswordCredentials.findFirst({
-      where: { userId: body.user.id },
-    })
-    expect(credential?.mustChangePassword).toBe(true)
-    expect(await verifyPassword(body.temporaryPassword, credential!.passwordHash)).toBe(true)
-  })
+      const credential = await database.query.authPasswordCredentials.findFirst({
+        where: { userId: body.user.id },
+      })
+      expect(credential?.mustChangePassword).toBe(true)
+      expect(await verifyPassword(body.temporaryPassword, credential!.passwordHash)).toBe(true)
+    },
+  )
 
-  it('returns a field error when a department relation does not exist', async () => {
-    const app = await createUserCreateAccessApp()
+  dbTest('returns a field error when a department relation does not exist', async ({ db }) => {
+    const app = await createUserCreateAccessApp(db)
 
     const response = await app.request(
       '/api/system/users',
@@ -227,8 +222,8 @@ describe('user routes', () => {
     })
   })
 
-  it('returns a field error when a role relation does not exist', async () => {
-    const app = await createUserCreateAccessApp()
+  dbTest('returns a field error when a role relation does not exist', async ({ db }) => {
+    const app = await createUserCreateAccessApp(db)
 
     const response = await app.request(
       '/api/system/users',
@@ -256,228 +251,231 @@ describe('user routes', () => {
     })
   })
 
-  it('limits non-admin role assignments to the actor access scope', async () => {
-    const database = await createTestDb()
-    const actor = await createSystemAccessFixture(database, {
-      accessCodes: ['system:user:create', 'system:user:update', 'system:user:list'],
-      usernamePrefix: 'limited-user-manager',
-    })
-    const app = await createTestApp(database, actor.authHeaders)
-    const adminApp = await createTestApp(database)
-    const scopedRole = await createRole(database, {
-      name: 'Scoped Viewer',
-      code: 'scoped-viewer',
-    })
-    const disabledScopedRole = await createRole(database, {
-      name: 'Disabled Scoped Viewer',
-      code: 'disabled-scoped-viewer',
-      status: ROLE_STATUS_DISABLED,
-    })
-    const privilegedRole = await createRole(database, {
-      name: 'Resource Administrator',
-      code: 'resource-administrator',
-    })
-    const disabledPrivilegedRole = await createRole(database, {
-      name: 'Disabled Resource Administrator',
-      code: 'disabled-resource-administrator',
-      status: ROLE_STATUS_DISABLED,
-    })
-    const deletedRole = await createRole(database, {
-      name: 'Deleted Role',
-      code: 'limited-manager-deleted-role',
-      deletedAt: new Date(),
-    })
+  dbTest(
+    'limits non-admin role assignments to the actor access scope',
+    async ({ db: database }) => {
+      const actor = await createSystemAccessFixture(database, {
+        accessCodes: ['system:user:create', 'system:user:update', 'system:user:list'],
+        usernamePrefix: 'limited-user-manager',
+      })
+      const app = await createTestApp(database, actor.authHeaders)
+      const adminApp = await createTestApp(database)
+      const scopedRole = await createRole(database, {
+        name: 'Scoped Viewer',
+        code: 'scoped-viewer',
+      })
+      const disabledScopedRole = await createRole(database, {
+        name: 'Disabled Scoped Viewer',
+        code: 'disabled-scoped-viewer',
+        status: ROLE_STATUS_DISABLED,
+      })
+      const privilegedRole = await createRole(database, {
+        name: 'Resource Administrator',
+        code: 'resource-administrator',
+      })
+      const disabledPrivilegedRole = await createRole(database, {
+        name: 'Disabled Resource Administrator',
+        code: 'disabled-resource-administrator',
+        status: ROLE_STATUS_DISABLED,
+      })
+      const deletedRole = await createRole(database, {
+        name: 'Deleted Role',
+        code: 'limited-manager-deleted-role',
+        deletedAt: new Date(),
+      })
 
-    await assignResourcesToRole(database, scopedRole.id, ['system:user:list'])
-    await assignResourcesToRole(database, disabledScopedRole.id, ['system:user:list'])
-    await assignResourcesToRole(database, privilegedRole.id, ['system:resource:delete'])
-    await assignResourcesToRole(database, disabledPrivilegedRole.id, ['system:resource:delete'])
+      await assignResourcesToRole(database, scopedRole.id, ['system:user:list'])
+      await assignResourcesToRole(database, disabledScopedRole.id, ['system:user:list'])
+      await assignResourcesToRole(database, privilegedRole.id, ['system:resource:delete'])
+      await assignResourcesToRole(database, disabledPrivilegedRole.id, ['system:resource:delete'])
 
-    const [adminRole] = await database
-      .select()
-      .from(systemRoles)
-      .where(eq(systemRoles.code, BUILT_IN_ADMIN_ROLE_CODE))
+      const [adminRole] = await database
+        .select()
+        .from(systemRoles)
+        .where(eq(systemRoles.code, BUILT_IN_ADMIN_ROLE_CODE))
 
-    if (!adminRole) {
-      throw new Error('Expected built-in admin role')
-    }
+      if (!adminRole) {
+        throw new Error('Expected built-in admin role')
+      }
 
-    for (const [username, roleId] of [
-      ['scoped-role-user', scopedRole.id],
-      ['disabled-scoped-role-user', disabledScopedRole.id],
-    ] as const) {
-      const response = await app.request(
-        '/api/system/users',
-        jsonRequest(
-          {
-            username,
-            nickname: username,
-            roleIds: [roleId],
-          },
-          { method: 'POST' },
-        ),
-      )
+      for (const [username, roleId] of [
+        ['scoped-role-user', scopedRole.id],
+        ['disabled-scoped-role-user', disabledScopedRole.id],
+      ] as const) {
+        const response = await app.request(
+          '/api/system/users',
+          jsonRequest(
+            {
+              username,
+              nickname: username,
+              roleIds: [roleId],
+            },
+            { method: 'POST' },
+          ),
+        )
 
-      expect(response.status).toBe(201)
-    }
+        expect(response.status).toBe(201)
+      }
 
-    for (const [username, roleId] of [
-      ['admin-role-user', adminRole.id],
-      ['privileged-role-user', privilegedRole.id],
-      ['disabled-privileged-role-user', disabledPrivilegedRole.id],
-    ] as const) {
-      const response = await app.request(
-        '/api/system/users',
-        jsonRequest(
-          {
-            username,
-            nickname: username,
-            roleIds: [roleId],
-          },
-          { method: 'POST' },
-        ),
-      )
+      for (const [username, roleId] of [
+        ['admin-role-user', adminRole.id],
+        ['privileged-role-user', privilegedRole.id],
+        ['disabled-privileged-role-user', disabledPrivilegedRole.id],
+      ] as const) {
+        const response = await app.request(
+          '/api/system/users',
+          jsonRequest(
+            {
+              username,
+              nickname: username,
+              roleIds: [roleId],
+            },
+            { method: 'POST' },
+          ),
+        )
 
-      await expectJsonResponse(response, {
+        await expectJsonResponse(response, {
+          status: 403,
+          body: { message: '不能授予超出自身权限范围的角色' },
+        })
+      }
+
+      const { body: updateTarget } = await createUser(adminApp, {
+        username: 'role-scope-update-target',
+        nickname: 'Role Scope Update Target',
+      })
+      const scopedUpdate = await app.request(`/api/system/users/${updateTarget.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ roleIds: [scopedRole.id] }),
+        headers: { 'content-type': 'application/json' },
+      })
+      expect(scopedUpdate.status).toBe(200)
+
+      const privilegedUpdate = await app.request(`/api/system/users/${updateTarget.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ roleIds: [privilegedRole.id] }),
+        headers: { 'content-type': 'application/json' },
+      })
+      await expectJsonResponse(privilegedUpdate, {
         status: 403,
         body: { message: '不能授予超出自身权限范围的角色' },
       })
-    }
 
-    const { body: updateTarget } = await createUser(adminApp, {
-      username: 'role-scope-update-target',
-      nickname: 'Role Scope Update Target',
-    })
-    const scopedUpdate = await app.request(`/api/system/users/${updateTarget.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ roleIds: [scopedRole.id] }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(scopedUpdate.status).toBe(200)
+      for (const roleIds of [[randomUUID()], [deletedRole.id], [scopedRole.id, scopedRole.id]]) {
+        const response = await app.request(
+          '/api/system/users',
+          jsonRequest(
+            {
+              username: `invalid-scope-role-${randomUUID()}`,
+              nickname: 'Invalid Scope Role',
+              roleIds,
+            },
+            { method: 'POST' },
+          ),
+        )
 
-    const privilegedUpdate = await app.request(`/api/system/users/${updateTarget.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ roleIds: [privilegedRole.id] }),
-      headers: { 'content-type': 'application/json' },
-    })
-    await expectJsonResponse(privilegedUpdate, {
-      status: 403,
-      body: { message: '不能授予超出自身权限范围的角色' },
-    })
+        expect(response.status).toBe(400)
+      }
 
-    for (const roleIds of [[randomUUID()], [deletedRole.id], [scopedRole.id, scopedRole.id]]) {
-      const response = await app.request(
+      const adminResponse = await adminApp.request(
         '/api/system/users',
         jsonRequest(
           {
-            username: `invalid-scope-role-${randomUUID()}`,
-            nickname: 'Invalid Scope Role',
-            roleIds,
+            username: 'admin-unrestricted-role-user',
+            nickname: 'Admin Unrestricted Role User',
+            roleIds: [adminRole.id, privilegedRole.id],
           },
           { method: 'POST' },
         ),
       )
+      expect(adminResponse.status).toBe(201)
+    },
+  )
 
-      expect(response.status).toBe(400)
-    }
+  dbTest(
+    'prevents non-admins from taking over users above their access scope',
+    async ({ db: database }) => {
+      const adminApp = await createTestApp(database)
+      const actor = await createSystemAccessFixture(database, {
+        accessCodes: ['system:user:update', 'system:user:delete', 'system:user:reset-password'],
+        usernamePrefix: 'limited-account-manager',
+      })
+      const app = await createTestApp(database, actor.authHeaders)
+      const privilegedRole = await createRole(database, {
+        name: 'Privileged Ordinary Role',
+        code: 'privileged-ordinary-role',
+      })
+      await assignResourcesToRole(database, privilegedRole.id, ['system:resource:delete'])
 
-    const adminResponse = await adminApp.request(
-      '/api/system/users',
-      jsonRequest(
-        {
-          username: 'admin-unrestricted-role-user',
-          nickname: 'Admin Unrestricted Role User',
-          roleIds: [adminRole.id, privilegedRole.id],
-        },
-        { method: 'POST' },
-      ),
-    )
-    expect(adminResponse.status).toBe(201)
-  })
+      const [adminRole] = await database
+        .select()
+        .from(systemRoles)
+        .where(eq(systemRoles.code, BUILT_IN_ADMIN_ROLE_CODE))
 
-  it('prevents non-admins from taking over users above their access scope', async () => {
-    const database = await createTestDb()
-    const adminApp = await createTestApp(database)
-    const actor = await createSystemAccessFixture(database, {
-      accessCodes: ['system:user:update', 'system:user:delete', 'system:user:reset-password'],
-      usernamePrefix: 'limited-account-manager',
-    })
-    const app = await createTestApp(database, actor.authHeaders)
-    const privilegedRole = await createRole(database, {
-      name: 'Privileged Ordinary Role',
-      code: 'privileged-ordinary-role',
-    })
-    await assignResourcesToRole(database, privilegedRole.id, ['system:resource:delete'])
+      if (!adminRole) {
+        throw new Error('Expected built-in admin role')
+      }
 
-    const [adminRole] = await database
-      .select()
-      .from(systemRoles)
-      .where(eq(systemRoles.code, BUILT_IN_ADMIN_ROLE_CODE))
+      const { body: adminTarget } = await createUser(adminApp, {
+        username: 'non-built-in-admin-target',
+        nickname: 'Non-built-in Admin Target',
+        roleIds: [adminRole.id],
+      })
+      const { body: privilegedTarget } = await createUser(adminApp, {
+        username: 'privileged-ordinary-target',
+        nickname: 'Privileged Ordinary Target',
+        roleIds: [privilegedRole.id],
+      })
 
-    if (!adminRole) {
-      throw new Error('Expected built-in admin role')
-    }
+      for (const target of [adminTarget, privilegedTarget]) {
+        const updateResponse = await app.request(`/api/system/users/${target.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ nickname: 'Taken Over' }),
+          headers: { 'content-type': 'application/json' },
+        })
+        await expectJsonResponse(updateResponse, {
+          status: 403,
+          body: { message: '不能操作超出自身权限范围的用户' },
+        })
 
-    const { body: adminTarget } = await createUser(adminApp, {
-      username: 'non-built-in-admin-target',
-      nickname: 'Non-built-in Admin Target',
-      roleIds: [adminRole.id],
-    })
-    const { body: privilegedTarget } = await createUser(adminApp, {
-      username: 'privileged-ordinary-target',
-      nickname: 'Privileged Ordinary Target',
-      roleIds: [privilegedRole.id],
-    })
+        const resetResponse = await app.request(`/api/system/users/${target.id}/password/reset`, {
+          method: 'POST',
+        })
+        await expectJsonResponse(resetResponse, {
+          status: 403,
+          body: { message: '不能操作超出自身权限范围的用户' },
+        })
 
-    for (const target of [adminTarget, privilegedTarget]) {
-      const updateResponse = await app.request(`/api/system/users/${target.id}`, {
+        const deleteResponse = await app.request(`/api/system/users/${target.id}`, {
+          method: 'DELETE',
+        })
+        await expectJsonResponse(deleteResponse, {
+          status: 403,
+          body: { message: '不能操作超出自身权限范围的用户' },
+        })
+      }
+
+      const adminUpdateResponse = await adminApp.request(`/api/system/users/${adminTarget.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ nickname: 'Taken Over' }),
+        body: JSON.stringify({ nickname: 'Admin Managed' }),
         headers: { 'content-type': 'application/json' },
       })
-      await expectJsonResponse(updateResponse, {
-        status: 403,
-        body: { message: '不能操作超出自身权限范围的用户' },
-      })
+      expect(adminUpdateResponse.status).toBe(200)
 
-      const resetResponse = await app.request(`/api/system/users/${target.id}/password/reset`, {
-        method: 'POST',
-      })
-      await expectJsonResponse(resetResponse, {
-        status: 403,
-        body: { message: '不能操作超出自身权限范围的用户' },
-      })
+      const adminResetResponse = await adminApp.request(
+        `/api/system/users/${adminTarget.id}/password/reset`,
+        { method: 'POST' },
+      )
+      expect(adminResetResponse.status).toBe(200)
 
-      const deleteResponse = await app.request(`/api/system/users/${target.id}`, {
+      const adminDeleteResponse = await adminApp.request(`/api/system/users/${adminTarget.id}`, {
         method: 'DELETE',
       })
-      await expectJsonResponse(deleteResponse, {
-        status: 403,
-        body: { message: '不能操作超出自身权限范围的用户' },
-      })
-    }
+      expect(adminDeleteResponse.status).toBe(204)
+    },
+  )
 
-    const adminUpdateResponse = await adminApp.request(`/api/system/users/${adminTarget.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ nickname: 'Admin Managed' }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(adminUpdateResponse.status).toBe(200)
-
-    const adminResetResponse = await adminApp.request(
-      `/api/system/users/${adminTarget.id}/password/reset`,
-      { method: 'POST' },
-    )
-    expect(adminResetResponse.status).toBe(200)
-
-    const adminDeleteResponse = await adminApp.request(`/api/system/users/${adminTarget.id}`, {
-      method: 'DELETE',
-    })
-    expect(adminDeleteResponse.status).toBe(204)
-  })
-
-  it('returns bad request when avatar ids do not exist', async () => {
-    const database = await createTestDb()
+  dbTest('returns bad request when avatar ids do not exist', async ({ db: database }) => {
     const app = await createTestApp(database)
 
     const response = await app.request(
@@ -500,65 +498,66 @@ describe('user routes', () => {
     })
   })
 
-  it('resets non-built-in user passwords and revokes refresh sessions', async () => {
-    const database = await createTestDb()
-    const fixture = await createSystemAccessFixture(database, {
-      accessCodes: ['system:user:reset-password'],
-    })
-    const app = createProtectedSystemRouteTestApp(
-      database,
-      '/api/system/users',
-      createUserRoutes(database),
-      fixture.authHeaders,
-    )
-    const userId = '33333333-3333-4333-8333-333333333333'
-    await database.insert(systemUsers).values({
-      id: userId,
-      username: 'reset-password-user',
-      nickname: 'Reset Password User',
-      status: USER_STATUS_ENABLED,
-      createdAt: new Date('2026-05-08T00:00:00.000Z'),
-      updatedAt: new Date('2026-05-08T00:00:00.000Z'),
-    })
-    await database.insert(authPasswordCredentials).values({
-      userId,
-      passwordHash: await hashPassword('old-password'),
-      mustChangePassword: false,
-      createdAt: new Date('2026-05-08T00:00:00.000Z'),
-      updatedAt: new Date('2026-05-08T00:00:00.000Z'),
-    })
-    await database.insert(authRefreshTokens).values({
-      id: '44444444-4444-4444-8444-444444444444',
-      userId,
-      tokenHash: 'reset-password-token-hash',
-      expiresAt: new Date('2026-06-08T00:00:00.000Z'),
-      createdAt: new Date('2026-05-08T00:00:00.000Z'),
-      updatedAt: new Date('2026-05-08T00:00:00.000Z'),
-    })
+  dbTest(
+    'resets non-built-in user passwords and revokes refresh sessions',
+    async ({ db: database }) => {
+      const fixture = await createSystemAccessFixture(database, {
+        accessCodes: ['system:user:reset-password'],
+      })
+      const app = createProtectedSystemRouteTestApp(
+        database,
+        '/api/system/users',
+        createUserRoutes(database),
+        fixture.authHeaders,
+      )
+      const userId = '33333333-3333-4333-8333-333333333333'
+      await database.insert(systemUsers).values({
+        id: userId,
+        username: 'reset-password-user',
+        nickname: 'Reset Password User',
+        status: USER_STATUS_ENABLED,
+        createdAt: new Date('2026-05-08T00:00:00.000Z'),
+        updatedAt: new Date('2026-05-08T00:00:00.000Z'),
+      })
+      await database.insert(authPasswordCredentials).values({
+        userId,
+        passwordHash: await hashPassword('old-password'),
+        mustChangePassword: false,
+        createdAt: new Date('2026-05-08T00:00:00.000Z'),
+        updatedAt: new Date('2026-05-08T00:00:00.000Z'),
+      })
+      await database.insert(authRefreshTokens).values({
+        id: '44444444-4444-4444-8444-444444444444',
+        userId,
+        tokenHash: 'reset-password-token-hash',
+        expiresAt: new Date('2026-06-08T00:00:00.000Z'),
+        createdAt: new Date('2026-05-08T00:00:00.000Z'),
+        updatedAt: new Date('2026-05-08T00:00:00.000Z'),
+      })
 
-    const response = await app.request(`/api/system/users/${userId}/password/reset`, {
-      method: 'POST',
-    })
-    const body = (await response.json()) as UserResetPasswordResponse
+      const response = await app.request(`/api/system/users/${userId}/password/reset`, {
+        method: 'POST',
+      })
+      const body = (await response.json()) as UserResetPasswordResponse
 
-    expect(response.status).toBe(200)
-    expect(body).toMatchObject({ userId })
-    expect(body.temporaryPassword).toEqual(expect.any(String))
+      expect(response.status).toBe(200)
+      expect(body).toMatchObject({ userId })
+      expect(body.temporaryPassword).toEqual(expect.any(String))
 
-    const credential = await database.query.authPasswordCredentials.findFirst({
-      where: { userId },
-    })
-    expect(credential?.mustChangePassword).toBe(true)
-    expect(await verifyPassword(body.temporaryPassword, credential!.passwordHash)).toBe(true)
+      const credential = await database.query.authPasswordCredentials.findFirst({
+        where: { userId },
+      })
+      expect(credential?.mustChangePassword).toBe(true)
+      expect(await verifyPassword(body.temporaryPassword, credential!.passwordHash)).toBe(true)
 
-    const sessions = await database.query.authRefreshTokens.findMany({
-      where: { userId },
-    })
-    expect(sessions[0]?.revokedAt).toBeInstanceOf(Date)
-  })
+      const sessions = await database.query.authRefreshTokens.findMany({
+        where: { userId },
+      })
+      expect(sessions[0]?.revokedAt).toBeInstanceOf(Date)
+    },
+  )
 
-  it('creates users in the database and returns paginated users', async () => {
-    const database = await createTestDb()
+  dbTest('creates users in the database and returns paginated users', async ({ db: database }) => {
     const app = await createTestApp(database)
 
     const { body, response, temporaryPassword } = await createUser(app, {
@@ -609,8 +608,7 @@ describe('user routes', () => {
     })
   })
 
-  it('creates, lists, details, and updates users with avatar ids', async () => {
-    const database = await createTestDb()
+  dbTest('creates, lists, details, and updates users with avatar ids', async ({ db: database }) => {
     const fixture = await createSystemAccessFixture(database, {
       admin: true,
       usernamePrefix: 'avatar-admin',
@@ -654,8 +652,7 @@ describe('user routes', () => {
     expect(updateBody.avatarId).toBeNull()
   })
 
-  it('filters paginated users by department and role assignments', async () => {
-    const database = await createTestDb()
+  dbTest('filters paginated users by department and role assignments', async ({ db: database }) => {
     const app = await createTestApp(database)
     const engineering = await createDepartment(database, {
       name: 'Engineering',
@@ -723,199 +720,206 @@ describe('user routes', () => {
     expect(combinedBody.list[0]?.username).toBe('engineering-admin-user')
   })
 
-  it('returns flat user options and supports includeIds for disabled users only', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const now = new Date('2026-05-10T00:00:00.000Z')
-    const enabledUserId = randomUUID()
-    const disabledUserId = randomUUID()
-    const deletedUserId = randomUUID()
+  dbTest(
+    'returns flat user options and supports includeIds for disabled users only',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const now = new Date('2026-05-10T00:00:00.000Z')
+      const enabledUserId = randomUUID()
+      const disabledUserId = randomUUID()
+      const deletedUserId = randomUUID()
 
-    await database.insert(systemUsers).values([
-      {
+      await database.insert(systemUsers).values([
+        {
+          id: enabledUserId,
+          username: 'enabled-user',
+          nickname: 'Enabled User',
+          status: USER_STATUS_ENABLED,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: disabledUserId,
+          username: 'disabled-user',
+          nickname: 'Disabled User',
+          status: USER_STATUS_DISABLED,
+          createdAt: new Date('2026-05-09T00:00:00.000Z'),
+          updatedAt: new Date('2026-05-09T00:00:00.000Z'),
+        },
+        {
+          id: deletedUserId,
+          username: 'deleted-user',
+          nickname: 'Deleted User',
+          status: USER_STATUS_ENABLED,
+          deletedAt: new Date('2026-05-11T00:00:00.000Z'),
+          createdAt: new Date('2026-05-11T00:00:00.000Z'),
+          updatedAt: new Date('2026-05-11T00:00:00.000Z'),
+        },
+      ])
+
+      const optionsResponse = await app.request('/api/system/users/options')
+      const optionsBody = (await optionsResponse.json()) as UserOptionsResponse
+
+      expect(optionsResponse.status).toBe(200)
+      expect(optionsBody).toContainEqual({
         id: enabledUserId,
         username: 'enabled-user',
         nickname: 'Enabled User',
         status: USER_STATUS_ENABLED,
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
+      })
+      expect(optionsBody).not.toContainEqual(
+        expect.objectContaining({
+          id: disabledUserId,
+        }),
+      )
+      expect(optionsBody).not.toContainEqual(
+        expect.objectContaining({
+          id: deletedUserId,
+        }),
+      )
+      expect(optionsBody.every((item) => item.status === USER_STATUS_ENABLED)).toBe(true)
+      for (const item of optionsBody) {
+        expect(item).not.toHaveProperty('createdAt')
+        expect(item).not.toHaveProperty('updatedAt')
+        expect(item).not.toHaveProperty('departments')
+        expect(item).not.toHaveProperty('roles')
+      }
+
+      const includeResponse = await app.request(
+        `/api/system/users/options?includeIds=${disabledUserId},${deletedUserId}`,
+      )
+      const includeBody = (await includeResponse.json()) as UserOptionsResponse
+
+      expect(includeResponse.status).toBe(200)
+      expect(includeBody).toContainEqual({
+        id: enabledUserId,
+        username: 'enabled-user',
+        nickname: 'Enabled User',
+        status: USER_STATUS_ENABLED,
+      })
+      expect(includeBody).toContainEqual({
         id: disabledUserId,
         username: 'disabled-user',
         nickname: 'Disabled User',
         status: USER_STATUS_DISABLED,
-        createdAt: new Date('2026-05-09T00:00:00.000Z'),
-        updatedAt: new Date('2026-05-09T00:00:00.000Z'),
-      },
-      {
-        id: deletedUserId,
-        username: 'deleted-user',
-        nickname: 'Deleted User',
-        status: USER_STATUS_ENABLED,
-        deletedAt: new Date('2026-05-11T00:00:00.000Z'),
-        createdAt: new Date('2026-05-11T00:00:00.000Z'),
-        updatedAt: new Date('2026-05-11T00:00:00.000Z'),
-      },
-    ])
+      })
+      expect(includeBody).not.toContainEqual(
+        expect.objectContaining({
+          id: deletedUserId,
+        }),
+      )
+      for (const item of includeBody) {
+        expect(item).not.toHaveProperty('createdAt')
+        expect(item).not.toHaveProperty('updatedAt')
+        expect(item).not.toHaveProperty('departments')
+        expect(item).not.toHaveProperty('roles')
+      }
+    },
+  )
 
-    const optionsResponse = await app.request('/api/system/users/options')
-    const optionsBody = (await optionsResponse.json()) as UserOptionsResponse
+  dbTest(
+    'returns details and updates disabled users without treating them as deleted',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
 
-    expect(optionsResponse.status).toBe(200)
-    expect(optionsBody).toContainEqual({
-      id: enabledUserId,
-      username: 'enabled-user',
-      nickname: 'Enabled User',
-      status: USER_STATUS_ENABLED,
-    })
-    expect(optionsBody).not.toContainEqual(
-      expect.objectContaining({
-        id: disabledUserId,
-      }),
-    )
-    expect(optionsBody).not.toContainEqual(
-      expect.objectContaining({
-        id: deletedUserId,
-      }),
-    )
-    expect(optionsBody.every((item) => item.status === USER_STATUS_ENABLED)).toBe(true)
-    for (const item of optionsBody) {
-      expect(item).not.toHaveProperty('createdAt')
-      expect(item).not.toHaveProperty('updatedAt')
-      expect(item).not.toHaveProperty('departments')
-      expect(item).not.toHaveProperty('roles')
-    }
+      const { body: created } = await createUser(app, {
+        username: 'grace',
+        nickname: 'Grace Hopper',
+        status: USER_STATUS_DISABLED,
+      })
 
-    const includeResponse = await app.request(
-      `/api/system/users/options?includeIds=${disabledUserId},${deletedUserId}`,
-    )
-    const includeBody = (await includeResponse.json()) as UserOptionsResponse
+      const detailResponse = await app.request(`/api/system/users/${created.id}`)
+      const detailBody = (await detailResponse.json()) as User
 
-    expect(includeResponse.status).toBe(200)
-    expect(includeBody).toContainEqual({
-      id: enabledUserId,
-      username: 'enabled-user',
-      nickname: 'Enabled User',
-      status: USER_STATUS_ENABLED,
-    })
-    expect(includeBody).toContainEqual({
-      id: disabledUserId,
-      username: 'disabled-user',
-      nickname: 'Disabled User',
-      status: USER_STATUS_DISABLED,
-    })
-    expect(includeBody).not.toContainEqual(
-      expect.objectContaining({
-        id: deletedUserId,
-      }),
-    )
-    for (const item of includeBody) {
-      expect(item).not.toHaveProperty('createdAt')
-      expect(item).not.toHaveProperty('updatedAt')
-      expect(item).not.toHaveProperty('departments')
-      expect(item).not.toHaveProperty('roles')
-    }
-  })
+      expect(detailResponse.status).toBe(200)
+      expect(detailBody).toMatchObject({
+        id: created.id,
+        status: USER_STATUS_DISABLED,
+        departments: [],
+        roles: [],
+      })
 
-  it('returns details and updates disabled users without treating them as deleted', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
+      const updateResponse = await app.request(`/api/system/users/${created.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          nickname: 'Rear Admiral Grace Hopper',
+          phone: '10000000002',
+        }),
+        headers: {
+          'content-type': 'application/json',
+        },
+      })
+      const updateBody = (await updateResponse.json()) as User
 
-    const { body: created } = await createUser(app, {
-      username: 'grace',
-      nickname: 'Grace Hopper',
-      status: USER_STATUS_DISABLED,
-    })
-
-    const detailResponse = await app.request(`/api/system/users/${created.id}`)
-    const detailBody = (await detailResponse.json()) as User
-
-    expect(detailResponse.status).toBe(200)
-    expect(detailBody).toMatchObject({
-      id: created.id,
-      status: USER_STATUS_DISABLED,
-      departments: [],
-      roles: [],
-    })
-
-    const updateResponse = await app.request(`/api/system/users/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
+      expect(updateResponse.status).toBe(200)
+      expect(updateBody).toMatchObject({
+        id: created.id,
         nickname: 'Rear Admiral Grace Hopper',
         phone: '10000000002',
-      }),
-      headers: {
-        'content-type': 'application/json',
-      },
-    })
-    const updateBody = (await updateResponse.json()) as User
+        status: USER_STATUS_DISABLED,
+        departments: [],
+        roles: [],
+      })
+    },
+  )
 
-    expect(updateResponse.status).toBe(200)
-    expect(updateBody).toMatchObject({
-      id: created.id,
-      nickname: 'Rear Admiral Grace Hopper',
-      phone: '10000000002',
-      status: USER_STATUS_DISABLED,
-      departments: [],
-      roles: [],
-    })
-  })
-
-  it('creates users with multiple departments and returns department summaries', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const engineering = await createDepartment(database, {
-      name: 'Engineering',
-      code: 'engineering',
-      sortOrder: 20,
-    })
-    const product = await createDepartment(database, {
-      name: 'Product',
-      code: 'product',
-      sortOrder: 10,
-    })
-
-    const { body, response } = await createUser(app, {
-      username: 'department-user',
-      nickname: 'Department User',
-      departmentIds: [engineering.id, product.id],
-    })
-
-    expect(response.status).toBe(201)
-    expect(body.departments).toEqual([
-      {
-        id: product.id,
-        name: 'Product',
-        code: 'product',
-      },
-      {
-        id: engineering.id,
+  dbTest(
+    'creates users with multiple departments and returns department summaries',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const engineering = await createDepartment(database, {
         name: 'Engineering',
         code: 'engineering',
-      },
-    ])
+        sortOrder: 20,
+      })
+      const product = await createDepartment(database, {
+        name: 'Product',
+        code: 'product',
+        sortOrder: 10,
+      })
 
-    const detailResponse = await app.request(`/api/system/users/${body.id}`)
-    const detailBody = (await detailResponse.json()) as User
-    expect(detailResponse.status).toBe(200)
-    expect(detailBody.departments).toEqual(body.departments)
+      const { body, response } = await createUser(app, {
+        username: 'department-user',
+        nickname: 'Department User',
+        departmentIds: [engineering.id, product.id],
+      })
 
-    const listResponse = await app.request(
-      '/api/system/users?keyword=department-user&page=1&pageSize=10',
-    )
-    const listBody = (await listResponse.json()) as UserListResponse
-    expect(listResponse.status).toBe(200)
-    expect(listBody.list).toHaveLength(1)
-    expect(listBody.list[0]?.departments).toEqual(body.departments)
+      expect(response.status).toBe(201)
+      expect(body.departments).toEqual([
+        {
+          id: product.id,
+          name: 'Product',
+          code: 'product',
+        },
+        {
+          id: engineering.id,
+          name: 'Engineering',
+          code: 'engineering',
+        },
+      ])
 
-    const storedRelations = await database.select().from(systemUserDepartments)
-    expect(storedRelations).toHaveLength(2)
-    expect(new Set(storedRelations.map((relation) => relation.createdAt.getTime()))).toHaveLength(1)
-  })
+      const detailResponse = await app.request(`/api/system/users/${body.id}`)
+      const detailBody = (await detailResponse.json()) as User
+      expect(detailResponse.status).toBe(200)
+      expect(detailBody.departments).toEqual(body.departments)
 
-  it('replaces and clears user departments on update', async () => {
-    const database = await createTestDb()
+      const listResponse = await app.request(
+        '/api/system/users?keyword=department-user&page=1&pageSize=10',
+      )
+      const listBody = (await listResponse.json()) as UserListResponse
+      expect(listResponse.status).toBe(200)
+      expect(listBody.list).toHaveLength(1)
+      expect(listBody.list[0]?.departments).toEqual(body.departments)
+
+      const storedRelations = await database.select().from(systemUserDepartments)
+      expect(storedRelations).toHaveLength(2)
+      expect(new Set(storedRelations.map((relation) => relation.createdAt.getTime()))).toHaveLength(
+        1,
+      )
+    },
+  )
+
+  dbTest('replaces and clears user departments on update', async ({ db: database }) => {
     const app = await createTestApp(database)
     const engineering = await createDepartment(database, {
       name: 'Engineering',
@@ -988,64 +992,69 @@ describe('user routes', () => {
     expect(clearBody.roles).toEqual([])
   })
 
-  it('creates users with multiple roles and returns role summaries', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const admin = await createRole(database, {
-      name: 'Administrator',
-      code: 'test-admin',
-      sortOrder: 20,
-    })
-    const editor = await createRole(database, {
-      name: 'Editor',
-      code: 'editor',
-      sortOrder: 10,
-    })
-
-    const { body, response } = await createUser(app, {
-      username: 'role-user',
-      nickname: 'Role User',
-      roleIds: [admin.id, editor.id],
-    })
-
-    expect(response.status).toBe(201)
-    expect(body.roles).toEqual([
-      {
-        id: editor.id,
-        name: 'Editor',
-        code: 'editor',
-      },
-      {
-        id: admin.id,
+  dbTest(
+    'creates users with multiple roles and returns role summaries',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const admin = await createRole(database, {
         name: 'Administrator',
         code: 'test-admin',
-      },
-    ])
-    expect(body.departments).toEqual([])
+        sortOrder: 20,
+      })
+      const editor = await createRole(database, {
+        name: 'Editor',
+        code: 'editor',
+        sortOrder: 10,
+      })
 
-    const detailResponse = await app.request(`/api/system/users/${body.id}`)
-    const detailBody = (await detailResponse.json()) as User
-    expect(detailResponse.status).toBe(200)
-    expect(detailBody.roles).toEqual(body.roles)
-    expect(detailBody.departments).toEqual([])
+      const { body, response } = await createUser(app, {
+        username: 'role-user',
+        nickname: 'Role User',
+        roleIds: [admin.id, editor.id],
+      })
 
-    const listResponse = await app.request('/api/system/users?keyword=role-user&page=1&pageSize=10')
-    const listBody = (await listResponse.json()) as UserListResponse
-    expect(listResponse.status).toBe(200)
-    expect(listBody.list).toHaveLength(1)
-    expect(listBody.list[0]?.roles).toEqual(body.roles)
-    expect(listBody.list[0]?.departments).toEqual([])
+      expect(response.status).toBe(201)
+      expect(body.roles).toEqual([
+        {
+          id: editor.id,
+          name: 'Editor',
+          code: 'editor',
+        },
+        {
+          id: admin.id,
+          name: 'Administrator',
+          code: 'test-admin',
+        },
+      ])
+      expect(body.departments).toEqual([])
 
-    const storedRelations = await database
-      .select()
-      .from(systemUserRoles)
-      .where(eq(systemUserRoles.userId, body.id))
-    expect(storedRelations).toHaveLength(2)
-    expect(new Set(storedRelations.map((relation) => relation.createdAt.getTime()))).toHaveLength(1)
-  })
+      const detailResponse = await app.request(`/api/system/users/${body.id}`)
+      const detailBody = (await detailResponse.json()) as User
+      expect(detailResponse.status).toBe(200)
+      expect(detailBody.roles).toEqual(body.roles)
+      expect(detailBody.departments).toEqual([])
 
-  it('replaces and clears user roles on update', async () => {
-    const database = await createTestDb()
+      const listResponse = await app.request(
+        '/api/system/users?keyword=role-user&page=1&pageSize=10',
+      )
+      const listBody = (await listResponse.json()) as UserListResponse
+      expect(listResponse.status).toBe(200)
+      expect(listBody.list).toHaveLength(1)
+      expect(listBody.list[0]?.roles).toEqual(body.roles)
+      expect(listBody.list[0]?.departments).toEqual([])
+
+      const storedRelations = await database
+        .select()
+        .from(systemUserRoles)
+        .where(eq(systemUserRoles.userId, body.id))
+      expect(storedRelations).toHaveLength(2)
+      expect(new Set(storedRelations.map((relation) => relation.createdAt.getTime()))).toHaveLength(
+        1,
+      )
+    },
+  )
+
+  dbTest('replaces and clears user roles on update', async ({ db: database }) => {
     const app = await createTestApp(database)
     const admin = await createRole(database, {
       name: 'Administrator',
@@ -1118,131 +1127,136 @@ describe('user routes', () => {
     expect(clearBody.departments).toEqual([])
   })
 
-  it('rejects missing or deleted role ids on user create and update', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const deletedRole = await createRole(database, {
-      name: 'Deleted Role',
-      code: 'deleted-role',
-      deletedAt: new Date(),
-    })
-    const missingRoleId = randomUUID()
-    const invalidRoleIds = [deletedRole.id, missingRoleId]
-
-    for (const [index, roleId] of invalidRoleIds.entries()) {
-      const createResponse = await app.request('/api/system/users', {
-        method: 'POST',
-        body: JSON.stringify({
-          username: `invalid-role-create-user-${index}`,
-          nickname: `Invalid Role Create User ${index}`,
-          roleIds: [roleId],
-        }),
-        headers: {
-          'content-type': 'application/json',
-        },
+  dbTest(
+    'rejects missing or deleted role ids on user create and update',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const deletedRole = await createRole(database, {
+        name: 'Deleted Role',
+        code: 'deleted-role',
+        deletedAt: new Date(),
       })
-      const createBody = (await createResponse.json()) as ErrorResponse
+      const missingRoleId = randomUUID()
+      const invalidRoleIds = [deletedRole.id, missingRoleId]
 
-      expect(createResponse.status).toBe(400)
-      expect(createBody).toEqual({ field: 'roleIds', message: '角色不存在' })
-    }
+      for (const [index, roleId] of invalidRoleIds.entries()) {
+        const createResponse = await app.request('/api/system/users', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: `invalid-role-create-user-${index}`,
+            nickname: `Invalid Role Create User ${index}`,
+            roleIds: [roleId],
+          }),
+          headers: {
+            'content-type': 'application/json',
+          },
+        })
+        const createBody = (await createResponse.json()) as ErrorResponse
 
-    const { body: validUser } = await createUser(app, {
-      username: 'valid-for-invalid-role-update',
-      nickname: 'Valid For Invalid Role Update',
-    })
+        expect(createResponse.status).toBe(400)
+        expect(createBody).toEqual({ field: 'roleIds', message: '角色不存在' })
+      }
 
-    for (const roleId of invalidRoleIds) {
-      const updateResponse = await app.request(`/api/system/users/${validUser.id}`, {
+      const { body: validUser } = await createUser(app, {
+        username: 'valid-for-invalid-role-update',
+        nickname: 'Valid For Invalid Role Update',
+      })
+
+      for (const roleId of invalidRoleIds) {
+        const updateResponse = await app.request(`/api/system/users/${validUser.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            roleIds: [roleId],
+          }),
+          headers: {
+            'content-type': 'application/json',
+          },
+        })
+        const updateBody = (await updateResponse.json()) as ErrorResponse
+
+        expect(updateResponse.status).toBe(400)
+        expect(updateBody).toEqual({ field: 'roleIds', message: '角色不存在' })
+      }
+    },
+  )
+
+  dbTest(
+    'rejects missing or deleted department ids on user create and update',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const deletedDepartment = await createDepartment(database, {
+        name: 'Deleted',
+        code: 'deleted',
+        deletedAt: new Date(),
+      })
+      const missingDepartmentId = randomUUID()
+      const invalidDepartmentIds = [deletedDepartment.id, missingDepartmentId]
+
+      for (const [index, departmentId] of invalidDepartmentIds.entries()) {
+        const createResponse = await app.request('/api/system/users', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: `invalid-create-user-${index}`,
+            nickname: `Invalid Create User ${index}`,
+            departmentIds: [departmentId],
+          }),
+          headers: {
+            'content-type': 'application/json',
+          },
+        })
+        const createBody = (await createResponse.json()) as ErrorResponse
+
+        expect(createResponse.status).toBe(400)
+        expect(createBody).toEqual({ field: 'departmentIds', message: '部门不存在' })
+      }
+
+      const { body: validUser } = await createUser(app, {
+        username: 'valid-for-invalid-update',
+        nickname: 'Valid For Invalid Update',
+      })
+
+      for (const departmentId of invalidDepartmentIds) {
+        const updateResponse = await app.request(`/api/system/users/${validUser.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            departmentIds: [departmentId],
+          }),
+          headers: {
+            'content-type': 'application/json',
+          },
+        })
+        const updateBody = (await updateResponse.json()) as ErrorResponse
+
+        expect(updateResponse.status).toBe(400)
+        expect(updateBody).toEqual({ field: 'departmentIds', message: '部门不存在' })
+      }
+    },
+  )
+
+  dbTest(
+    'returns not found when updating a missing user before validating department ids',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const missingUserId = randomUUID()
+      const missingDepartmentId = randomUUID()
+
+      const response = await app.request(`/api/system/users/${missingUserId}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          roleIds: [roleId],
+          departmentIds: [missingDepartmentId],
         }),
         headers: {
           'content-type': 'application/json',
         },
       })
-      const updateBody = (await updateResponse.json()) as ErrorResponse
+      const body = (await response.json()) as ErrorResponse
 
-      expect(updateResponse.status).toBe(400)
-      expect(updateBody).toEqual({ field: 'roleIds', message: '角色不存在' })
-    }
-  })
+      expect(response.status).toBe(404)
+      expect(body).toEqual({ message: '用户不存在' })
+    },
+  )
 
-  it('rejects missing or deleted department ids on user create and update', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const deletedDepartment = await createDepartment(database, {
-      name: 'Deleted',
-      code: 'deleted',
-      deletedAt: new Date(),
-    })
-    const missingDepartmentId = randomUUID()
-    const invalidDepartmentIds = [deletedDepartment.id, missingDepartmentId]
-
-    for (const [index, departmentId] of invalidDepartmentIds.entries()) {
-      const createResponse = await app.request('/api/system/users', {
-        method: 'POST',
-        body: JSON.stringify({
-          username: `invalid-create-user-${index}`,
-          nickname: `Invalid Create User ${index}`,
-          departmentIds: [departmentId],
-        }),
-        headers: {
-          'content-type': 'application/json',
-        },
-      })
-      const createBody = (await createResponse.json()) as ErrorResponse
-
-      expect(createResponse.status).toBe(400)
-      expect(createBody).toEqual({ field: 'departmentIds', message: '部门不存在' })
-    }
-
-    const { body: validUser } = await createUser(app, {
-      username: 'valid-for-invalid-update',
-      nickname: 'Valid For Invalid Update',
-    })
-
-    for (const departmentId of invalidDepartmentIds) {
-      const updateResponse = await app.request(`/api/system/users/${validUser.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          departmentIds: [departmentId],
-        }),
-        headers: {
-          'content-type': 'application/json',
-        },
-      })
-      const updateBody = (await updateResponse.json()) as ErrorResponse
-
-      expect(updateResponse.status).toBe(400)
-      expect(updateBody).toEqual({ field: 'departmentIds', message: '部门不存在' })
-    }
-  })
-
-  it('returns not found when updating a missing user before validating department ids', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const missingUserId = randomUUID()
-    const missingDepartmentId = randomUUID()
-
-    const response = await app.request(`/api/system/users/${missingUserId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        departmentIds: [missingDepartmentId],
-      }),
-      headers: {
-        'content-type': 'application/json',
-      },
-    })
-    const body = (await response.json()) as ErrorResponse
-
-    expect(response.status).toBe(404)
-    expect(body).toEqual({ message: '用户不存在' })
-  })
-
-  it('rejects updating and deleting built-in users', async () => {
-    const database = await createTestDb()
+  dbTest('rejects updating and deleting built-in users', async ({ db: database }) => {
     const app = await createTestApp(database)
     const [builtInUser] = await database
       .insert(systemUsers)
@@ -1289,8 +1303,7 @@ describe('user routes', () => {
     })
   })
 
-  it('soft deletes users without removing database rows', async () => {
-    const database = await createTestDb()
+  dbTest('soft deletes users without removing database rows', async ({ db: database }) => {
     const app = await createTestApp(database)
     const department = await createDepartment(database, {
       name: 'Research',
@@ -1367,172 +1380,182 @@ describe('user routes', () => {
     })
   })
 
-  it('allows reusing username, email, and phone after soft delete', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
+  dbTest(
+    'allows reusing username, email, and phone after soft delete',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
 
-    const { body: created } = await createUser(app, {
-      username: 'margaret',
-      nickname: 'Margaret Hamilton',
-      email: 'margaret@example.com',
-      phone: '10000000004',
-    })
-
-    for (const body of [
-      {
+      const { body: created } = await createUser(app, {
         username: 'margaret',
-        nickname: 'Duplicate Username',
-      },
-      {
-        username: 'margaret-email',
-        nickname: 'Duplicate Email',
+        nickname: 'Margaret Hamilton',
         email: 'margaret@example.com',
-      },
-      {
-        username: 'margaret-phone',
-        nickname: 'Duplicate Phone',
         phone: '10000000004',
-      },
-    ]) {
-      const duplicate = await createUser(app, body)
-      expect(duplicate.response.status).toBe(409)
-    }
-
-    await app.request(`/api/system/users/${created.id}`, {
-      method: 'DELETE',
-    })
-
-    const afterDeleteRecreated = await createUser(app, {
-      username: 'margaret',
-      nickname: 'Margaret Recreated',
-      email: 'margaret@example.com',
-      phone: '10000000004',
-    })
-
-    expect(afterDeleteRecreated.response.status).toBe(201)
-    expect(afterDeleteRecreated.body).toMatchObject({
-      username: 'margaret',
-      nickname: 'Margaret Recreated',
-      email: 'margaret@example.com',
-      phone: '10000000004',
-    })
-  })
-
-  it('returns conflict when concurrent creates hit the username unique index', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const body = JSON.stringify({
-      username: 'race',
-      nickname: 'Race User',
-    })
-    const createRaceUser = () =>
-      app.request('/api/system/users', {
-        method: 'POST',
-        body,
-        headers: {
-          'content-type': 'application/json',
-        },
       })
 
-    const responses = await Promise.all([createRaceUser(), createRaceUser()])
-    const statuses = responses
-      .map((response) => response.status)
-      .sort((left, right) => left - right)
-
-    expect(statuses).toEqual([201, 409])
-  })
-
-  it('rejects duplicate username, email, and phone when updating users', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-
-    await createUser(app, {
-      username: 'katherine',
-      nickname: 'Katherine Johnson',
-      email: 'katherine@example.com',
-      phone: '10000000005',
-    })
-
-    const { body: target } = await createUser(app, {
-      username: 'dorothy',
-      nickname: 'Dorothy Vaughan',
-      email: 'dorothy@example.com',
-      phone: '10000000006',
-    })
-
-    for (const [body, field, message] of [
-      [{ username: 'katherine' }, 'username', '用户名已存在'],
-      [{ email: 'katherine@example.com' }, 'email', '邮箱已存在'],
-      [{ phone: '10000000005' }, 'phone', '手机号已存在'],
-    ] as const) {
-      const response = await app.request(`/api/system/users/${target.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(body),
-        headers: {
-          'content-type': 'application/json',
+      for (const body of [
+        {
+          username: 'margaret',
+          nickname: 'Duplicate Username',
         },
+        {
+          username: 'margaret-email',
+          nickname: 'Duplicate Email',
+          email: 'margaret@example.com',
+        },
+        {
+          username: 'margaret-phone',
+          nickname: 'Duplicate Phone',
+          phone: '10000000004',
+        },
+      ]) {
+        const duplicate = await createUser(app, body)
+        expect(duplicate.response.status).toBe(409)
+      }
+
+      await app.request(`/api/system/users/${created.id}`, {
+        method: 'DELETE',
       })
 
-      expect(response.status).toBe(409)
-      expect(await response.json()).toEqual({ field, message })
-    }
-  })
-
-  it('returns conflict when concurrent updates hit the username unique index', async () => {
-    const database = await createTestDb()
-    const app = await createTestApp(database)
-    const { body: first } = await createUser(app, {
-      username: 'first-update-target',
-      nickname: 'First Update Target',
-    })
-    const { body: second } = await createUser(app, {
-      username: 'second-update-target',
-      nickname: 'Second Update Target',
-    })
-    const body = JSON.stringify({
-      username: 'shared-update-target',
-    })
-    const updateUser = (id: string) =>
-      app.request(`/api/system/users/${id}`, {
-        method: 'PATCH',
-        body,
-        headers: {
-          'content-type': 'application/json',
-        },
+      const afterDeleteRecreated = await createUser(app, {
+        username: 'margaret',
+        nickname: 'Margaret Recreated',
+        email: 'margaret@example.com',
+        phone: '10000000004',
       })
 
-    const responses = await Promise.all([updateUser(first.id), updateUser(second.id)])
-    const statuses = responses
-      .map((response) => response.status)
-      .sort((left, right) => left - right)
+      expect(afterDeleteRecreated.response.status).toBe(201)
+      expect(afterDeleteRecreated.body).toMatchObject({
+        username: 'margaret',
+        nickname: 'Margaret Recreated',
+        email: 'margaret@example.com',
+        phone: '10000000004',
+      })
+    },
+  )
 
-    expect(statuses).toEqual([200, 409])
-  })
+  dbTest(
+    'returns conflict when concurrent creates hit the username unique index',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const body = JSON.stringify({
+        username: 'race',
+        nickname: 'Race User',
+      })
+      const createRaceUser = () =>
+        app.request('/api/system/users', {
+          method: 'POST',
+          body,
+          headers: {
+            'content-type': 'application/json',
+          },
+        })
 
-  it('allows non-admin users with system:user:list access to list users', async () => {
-    const database = await createTestDb()
-    const adminApp = await createTestApp(database)
-    const authorized = await createSystemAccessFixture(database, {
-      accessCodes: ['system:user:list'],
-      usernamePrefix: 'user-routes-reader',
-    })
-    const app = await createTestApp(database, authorized.authHeaders)
+      const responses = await Promise.all([createRaceUser(), createRaceUser()])
+      const statuses = responses
+        .map((response) => response.status)
+        .sort((left, right) => left - right)
 
-    const { body: created } = await createUser(adminApp, {
-      username: 'authorized-visible-user',
-      nickname: 'Authorized Visible User',
-    })
-    const response = await app.request('/api/system/users')
-    const body = (await response.json()) as UserListResponse
+      expect(statuses).toEqual([201, 409])
+    },
+  )
 
-    expect(response.status).toBe(200)
-    expect(body.list).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: created.id,
-          username: 'authorized-visible-user',
-        }),
-      ]),
-    )
-  })
+  dbTest(
+    'rejects duplicate username, email, and phone when updating users',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+
+      await createUser(app, {
+        username: 'katherine',
+        nickname: 'Katherine Johnson',
+        email: 'katherine@example.com',
+        phone: '10000000005',
+      })
+
+      const { body: target } = await createUser(app, {
+        username: 'dorothy',
+        nickname: 'Dorothy Vaughan',
+        email: 'dorothy@example.com',
+        phone: '10000000006',
+      })
+
+      for (const [body, field, message] of [
+        [{ username: 'katherine' }, 'username', '用户名已存在'],
+        [{ email: 'katherine@example.com' }, 'email', '邮箱已存在'],
+        [{ phone: '10000000005' }, 'phone', '手机号已存在'],
+      ] as const) {
+        const response = await app.request(`/api/system/users/${target.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(body),
+          headers: {
+            'content-type': 'application/json',
+          },
+        })
+
+        expect(response.status).toBe(409)
+        expect(await response.json()).toEqual({ field, message })
+      }
+    },
+  )
+
+  dbTest(
+    'returns conflict when concurrent updates hit the username unique index',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const { body: first } = await createUser(app, {
+        username: 'first-update-target',
+        nickname: 'First Update Target',
+      })
+      const { body: second } = await createUser(app, {
+        username: 'second-update-target',
+        nickname: 'Second Update Target',
+      })
+      const body = JSON.stringify({
+        username: 'shared-update-target',
+      })
+      const updateUser = (id: string) =>
+        app.request(`/api/system/users/${id}`, {
+          method: 'PATCH',
+          body,
+          headers: {
+            'content-type': 'application/json',
+          },
+        })
+
+      const responses = await Promise.all([updateUser(first.id), updateUser(second.id)])
+      const statuses = responses
+        .map((response) => response.status)
+        .sort((left, right) => left - right)
+
+      expect(statuses).toEqual([200, 409])
+    },
+  )
+
+  dbTest(
+    'allows non-admin users with system:user:list access to list users',
+    async ({ db: database }) => {
+      const adminApp = await createTestApp(database)
+      const authorized = await createSystemAccessFixture(database, {
+        accessCodes: ['system:user:list'],
+        usernamePrefix: 'user-routes-reader',
+      })
+      const app = await createTestApp(database, authorized.authHeaders)
+
+      const { body: created } = await createUser(adminApp, {
+        username: 'authorized-visible-user',
+        nickname: 'Authorized Visible User',
+      })
+      const response = await app.request('/api/system/users')
+      const body = (await response.json()) as UserListResponse
+
+      expect(response.status).toBe(200)
+      expect(body.list).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: created.id,
+            username: 'authorized-visible-user',
+          }),
+        ]),
+      )
+    },
+  )
 })

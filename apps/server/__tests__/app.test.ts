@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { sign } from 'hono/jwt'
@@ -10,14 +10,10 @@ import {
 } from '@rev30/contracts'
 import { createApp } from '../src/app'
 import { createSystemAccessFixture } from './helpers/auth'
-import { createTestDb } from './helpers/db'
+import { dbTest } from './fixtures/database'
 import { systemRoles } from '../src/db/schema'
 import { createAuthMiddleware, type AuthVariables } from '../src/middleware/auth'
 import { readAuthConfig } from '../src/modules/auth/config'
-
-function createUnusedDatabase() {
-  return {} as Awaited<ReturnType<typeof createTestDb>>
-}
 
 const attachmentId = '11111111-1111-4111-8111-111111111111'
 const protectedAppRoutes = [
@@ -75,8 +71,8 @@ const protectedAttachmentRoutes: Array<{
 ]
 
 describe('app auth boundaries', () => {
-  it('rejects oversized JSON bodies before route parsing', async () => {
-    const app = createApp(createUnusedDatabase())
+  dbTest('rejects oversized JSON bodies before route parsing', async ({ db }) => {
+    const app = createApp(db)
 
     const response = await app.request('/api/attachments/uploads', {
       method: 'POST',
@@ -91,8 +87,8 @@ describe('app auth boundaries', () => {
     expect(await response.json()).toEqual({ message: '请求体过大' })
   })
 
-  it.each(protectedAppRoutes)('requires authentication for $name', async ({ path }) => {
-    const app = createApp(createUnusedDatabase())
+  dbTest.for(protectedAppRoutes)('requires authentication for $name', async ({ path }, { db }) => {
+    const app = createApp(db)
 
     const response = await app.request(path)
 
@@ -101,22 +97,26 @@ describe('app auth boundaries', () => {
     expect(response.headers.has(AUTH_ACTION_HEADER)).toBe(false)
   })
 
-  it('keeps icon data and attachment content outside authentication middleware', async () => {
-    const database = await createTestDb()
-    const app = createApp(database)
+  dbTest(
+    'keeps icon data and attachment content outside authentication middleware',
+    async ({ db: database }) => {
+      const app = createApp(database)
 
-    const iconDataResponse = await app.request('/api/icons/lucide.json?icons=sun')
-    const attachmentContentResponse = await app.request(`/api/attachments/${attachmentId}/content`)
+      const iconDataResponse = await app.request('/api/icons/lucide.json?icons=sun')
+      const attachmentContentResponse = await app.request(
+        `/api/attachments/${attachmentId}/content`,
+      )
 
-    expect(iconDataResponse.status).toBe(200)
-    expect(attachmentContentResponse.status).toBe(404)
-    expect(await attachmentContentResponse.json()).toEqual({ message: '附件不存在' })
-  })
+      expect(iconDataResponse.status).toBe(200)
+      expect(attachmentContentResponse.status).toBe(404)
+      expect(await attachmentContentResponse.json()).toEqual({ message: '附件不存在' })
+    },
+  )
 
-  it.each(protectedAttachmentRoutes)(
+  dbTest.for(protectedAttachmentRoutes)(
     'requires authentication for attachment $name',
-    async ({ path, init }) => {
-      const app = createApp(createUnusedDatabase())
+    async ({ path, init }, { db }) => {
+      const app = createApp(db)
 
       const response = await app.request(path, init)
 
@@ -125,8 +125,7 @@ describe('app auth boundaries', () => {
     },
   )
 
-  it('returns 403 for logged-in users without route access', async () => {
-    const database = await createTestDb()
+  dbTest('returns 403 for logged-in users without route access', async ({ db: database }) => {
     const app = createApp(database)
     const authenticated = await createSystemAccessFixture(database, {
       usernamePrefix: 'app-no-access',
@@ -140,8 +139,8 @@ describe('app auth boundaries', () => {
     expect(await response.json()).toEqual({ message: '无权访问' })
   })
 
-  it('marks expired access tokens as refreshable on system routes', async () => {
-    const app = createApp(createUnusedDatabase())
+  dbTest('marks expired access tokens as refreshable on system routes', async ({ db }) => {
+    const app = createApp(db)
     const expiredAccessToken = await sign(
       {
         sub: 'unused-user-id',
@@ -166,8 +165,8 @@ describe('app auth boundaries', () => {
     })
   })
 
-  it('does not mark invalid access tokens as refreshable on system routes', async () => {
-    const app = createApp(createUnusedDatabase())
+  dbTest('does not mark invalid access tokens as refreshable on system routes', async ({ db }) => {
+    const app = createApp(db)
     const invalidExpiredAccessToken = await sign(
       {
         sub: 'unused-user-id',
@@ -191,50 +190,51 @@ describe('app auth boundaries', () => {
 })
 
 describe('auth middleware', () => {
-  it('exposes the authenticated user and admin access context to downstream handlers', async () => {
-    const database = await createTestDb()
-    const adminSession = await createSystemAccessFixture(database, {
-      admin: true,
-      usernamePrefix: 'auth-middleware-admin',
-    })
-    const app = new Hono<{ Variables: AuthVariables }>()
-      .use('/me', createAuthMiddleware(database))
-      .get('/me', (c) =>
-        c.json({
-          user: c.get('currentUser'),
-          accessCodes: c.get('accessCodes'),
-          menus: c.get('menus'),
-          isAdmin: c.get('isAdmin'),
-        }),
+  dbTest(
+    'exposes the authenticated user and admin access context to downstream handlers',
+    async ({ db: database }) => {
+      const adminSession = await createSystemAccessFixture(database, {
+        admin: true,
+        usernamePrefix: 'auth-middleware-admin',
+      })
+      const app = new Hono<{ Variables: AuthVariables }>()
+        .use('/me', createAuthMiddleware(database))
+        .get('/me', (c) =>
+          c.json({
+            user: c.get('currentUser'),
+            accessCodes: c.get('accessCodes'),
+            menus: c.get('menus'),
+            isAdmin: c.get('isAdmin'),
+          }),
+        )
+
+      const response = await app.request('/me', {
+        headers: {
+          authorization: `Bearer ${adminSession.accessToken}`,
+        },
+      })
+      const body = (await response.json()) as {
+        user: User
+        accessCodes: string[]
+        menus: ResourceTreeNode[]
+        isAdmin: boolean
+      }
+
+      expect(response.status).toBe(200)
+      expect(body.user.roles).toEqual(
+        expect.arrayContaining([expect.objectContaining({ code: 'admin' })]),
       )
+      expect(body.accessCodes).toEqual(
+        expect.arrayContaining(['system', 'system:user', 'system:user:list']),
+      )
+      expect(body.menus).toEqual(
+        expect.arrayContaining([expect.objectContaining({ code: 'system' })]),
+      )
+      expect(body.isAdmin).toBe(true)
+    },
+  )
 
-    const response = await app.request('/me', {
-      headers: {
-        authorization: `Bearer ${adminSession.accessToken}`,
-      },
-    })
-    const body = (await response.json()) as {
-      user: User
-      accessCodes: string[]
-      menus: ResourceTreeNode[]
-      isAdmin: boolean
-    }
-
-    expect(response.status).toBe(200)
-    expect(body.user.roles).toEqual(
-      expect.arrayContaining([expect.objectContaining({ code: 'admin' })]),
-    )
-    expect(body.accessCodes).toEqual(
-      expect.arrayContaining(['system', 'system:user', 'system:user:list']),
-    )
-    expect(body.menus).toEqual(
-      expect.arrayContaining([expect.objectContaining({ code: 'system' })]),
-    )
-    expect(body.isAdmin).toBe(true)
-  })
-
-  it('does not treat disabled admin roles as admin access', async () => {
-    const database = await createTestDb()
+  dbTest('does not treat disabled admin roles as admin access', async ({ db: database }) => {
     const adminSession = await createSystemAccessFixture(database, {
       admin: true,
       usernamePrefix: 'auth-middleware-disabled-admin',

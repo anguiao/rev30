@@ -21,7 +21,7 @@ import {
   ROLE_STATUS_ENABLED,
 } from '@rev30/contracts'
 import { and, eq } from 'drizzle-orm'
-import { describe, expect, it } from 'vitest'
+import { describe, expect } from 'vitest'
 import {
   announcementReads,
   announcements,
@@ -36,11 +36,9 @@ import {
   createProtectedContentRouteTestApp,
   createSystemAccessFixture,
 } from '../../../../helpers/auth'
-import { createTestDb } from '../../../../helpers/db'
+import { dbTest, type TestDatabase } from '../../../../fixtures/database'
 
 const now = new Date('2026-05-20T00:00:00.000Z')
-
-type TestDatabase = Awaited<ReturnType<typeof createTestDb>>
 
 type InsertAnnouncementInput = {
   id?: string
@@ -116,310 +114,323 @@ async function insertAnnouncement(database: TestDatabase, input: InsertAnnouncem
 }
 
 describe('my announcement integration', () => {
-  it('shows all-visibility announcements to logged-in users and supports keyword/type filters', async () => {
-    const database = await createTestDb()
-    const { app } = await createTestApp(database)
+  dbTest(
+    'shows all-visibility announcements to logged-in users and supports keyword/type filters',
+    async ({ db: database }) => {
+      const { app } = await createTestApp(database)
 
-    const visibleId = await insertAnnouncement(database, {
-      title: '全员维护通知',
-      summary: '今晚维护',
-      contentText: '系统将于今晚维护',
-      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-      type: ANNOUNCEMENT_TYPE_NOTICE,
-      pinned: true,
-    })
-    await insertAnnouncement(database, {
-      title: '全员周报',
-      summary: '本周总结',
-      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-      type: ANNOUNCEMENT_TYPE_BULLETIN,
-      publishedAt: new Date('2026-05-19T00:00:00.000Z'),
-    })
+      const visibleId = await insertAnnouncement(database, {
+        title: '全员维护通知',
+        summary: '今晚维护',
+        contentText: '系统将于今晚维护',
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        pinned: true,
+      })
+      await insertAnnouncement(database, {
+        title: '全员周报',
+        summary: '本周总结',
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+        type: ANNOUNCEMENT_TYPE_BULLETIN,
+        publishedAt: new Date('2026-05-19T00:00:00.000Z'),
+      })
 
-    const listResponse = await app.request(
-      '/api/content/announcements/my?page=1&pageSize=10&keyword=维护&type=notice',
-    )
-    const listBody = (await listResponse.json()) as AnnouncementMyListResponse
-
-    expect(listResponse.status).toBe(200)
-    expect(listBody).toEqual({
-      list: [
-        {
-          id: visibleId,
-          type: ANNOUNCEMENT_TYPE_NOTICE,
-          title: '全员维护通知',
-          summary: '今晚维护',
-          pinned: true,
-          publishedAt: '2026-05-20T00:00:00.000Z',
-        },
-      ],
-      total: 1,
-      page: 1,
-      pageSize: 10,
-    })
-
-    const detailResponse = await app.request(`/api/content/announcements/my/${visibleId}`)
-    const detailBody = (await detailResponse.json()) as AnnouncementMyDetail
-
-    expect(detailResponse.status).toBe(200)
-    expect(detailBody).toEqual({
-      id: visibleId,
-      type: ANNOUNCEMENT_TYPE_NOTICE,
-      title: '全员维护通知',
-      summary: '今晚维护',
-      pinned: true,
-      publishedAt: '2026-05-20T00:00:00.000Z',
-      contentHtml: '<p>系统将于今晚维护</p>',
-    })
-  })
-
-  it('marks visible announcement details as read once for the current user', async () => {
-    const database = await createTestDb()
-    const { app, fixture } = await createTestApp(database)
-    const announcementId = await insertAnnouncement(database, {
-      title: '需要阅读的通知',
-      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-    })
-
-    const firstDetailResponse = await app.request(`/api/content/announcements/my/${announcementId}`)
-    expect(firstDetailResponse.status).toBe(200)
-
-    const [createdRead] = await database
-      .select()
-      .from(announcementReads)
-      .where(
-        and(
-          eq(announcementReads.announcementId, announcementId),
-          eq(announcementReads.userId, fixture.userId),
-        ),
+      const listResponse = await app.request(
+        '/api/content/announcements/my?page=1&pageSize=10&keyword=维护&type=notice',
       )
+      const listBody = (await listResponse.json()) as AnnouncementMyListResponse
 
-    expect(createdRead).toMatchObject({
-      announcementId,
-      userId: fixture.userId,
-      readAt: expect.any(Date),
-    })
+      expect(listResponse.status).toBe(200)
+      expect(listBody).toEqual({
+        list: [
+          {
+            id: visibleId,
+            type: ANNOUNCEMENT_TYPE_NOTICE,
+            title: '全员维护通知',
+            summary: '今晚维护',
+            pinned: true,
+            publishedAt: '2026-05-20T00:00:00.000Z',
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+      })
 
-    const originalReadAt = new Date('2026-05-19T08:00:00.000Z')
+      const detailResponse = await app.request(`/api/content/announcements/my/${visibleId}`)
+      const detailBody = (await detailResponse.json()) as AnnouncementMyDetail
 
-    await database
-      .update(announcementReads)
-      .set({ readAt: originalReadAt })
-      .where(
-        and(
-          eq(announcementReads.announcementId, announcementId),
-          eq(announcementReads.userId, fixture.userId),
-        ),
+      expect(detailResponse.status).toBe(200)
+      expect(detailBody).toEqual({
+        id: visibleId,
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+        title: '全员维护通知',
+        summary: '今晚维护',
+        pinned: true,
+        publishedAt: '2026-05-20T00:00:00.000Z',
+        contentHtml: '<p>系统将于今晚维护</p>',
+      })
+    },
+  )
+
+  dbTest(
+    'marks visible announcement details as read once for the current user',
+    async ({ db: database }) => {
+      const { app, fixture } = await createTestApp(database)
+      const announcementId = await insertAnnouncement(database, {
+        title: '需要阅读的通知',
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+      })
+
+      const firstDetailResponse = await app.request(
+        `/api/content/announcements/my/${announcementId}`,
       )
+      expect(firstDetailResponse.status).toBe(200)
 
-    const secondDetailResponse = await app.request(
-      `/api/content/announcements/my/${announcementId}`,
-    )
-    expect(secondDetailResponse.status).toBe(200)
+      const [createdRead] = await database
+        .select()
+        .from(announcementReads)
+        .where(
+          and(
+            eq(announcementReads.announcementId, announcementId),
+            eq(announcementReads.userId, fixture.userId),
+          ),
+        )
 
-    const readRows = await database
-      .select()
-      .from(announcementReads)
-      .where(
-        and(
-          eq(announcementReads.announcementId, announcementId),
-          eq(announcementReads.userId, fixture.userId),
-        ),
+      expect(createdRead).toMatchObject({
+        announcementId,
+        userId: fixture.userId,
+        readAt: expect.any(Date),
+      })
+
+      const originalReadAt = new Date('2026-05-19T08:00:00.000Z')
+
+      await database
+        .update(announcementReads)
+        .set({ readAt: originalReadAt })
+        .where(
+          and(
+            eq(announcementReads.announcementId, announcementId),
+            eq(announcementReads.userId, fixture.userId),
+          ),
+        )
+
+      const secondDetailResponse = await app.request(
+        `/api/content/announcements/my/${announcementId}`,
       )
+      expect(secondDetailResponse.status).toBe(200)
 
-    expect(readRows).toHaveLength(1)
-    expect(readRows[0]?.readAt).toEqual(originalReadAt)
-  })
+      const readRows = await database
+        .select()
+        .from(announcementReads)
+        .where(
+          and(
+            eq(announcementReads.announcementId, announcementId),
+            eq(announcementReads.userId, fixture.userId),
+          ),
+        )
 
-  it('shows user-targeted announcements only to the matching user', async () => {
-    const database = await createTestDb()
-    const { app, fixture } = await createTestApp(database)
+      expect(readRows).toHaveLength(1)
+      expect(readRows[0]?.readAt).toEqual(originalReadAt)
+    },
+  )
 
-    const visibleId = await insertAnnouncement(database, {
-      title: '给当前用户的通知',
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
-          targetId: fixture.userId,
-        },
-      ],
-    })
-    await insertAnnouncement(database, {
-      title: '给别人的通知',
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
-          targetId: randomUUID(),
-        },
-      ],
-    })
+  dbTest(
+    'shows user-targeted announcements only to the matching user',
+    async ({ db: database }) => {
+      const { app, fixture } = await createTestApp(database)
 
-    const listResponse = await app.request('/api/content/announcements/my?page=1&pageSize=10')
-    const listBody = (await listResponse.json()) as AnnouncementMyListResponse
+      const visibleId = await insertAnnouncement(database, {
+        title: '给当前用户的通知',
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
+            targetId: fixture.userId,
+          },
+        ],
+      })
+      await insertAnnouncement(database, {
+        title: '给别人的通知',
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
+            targetId: randomUUID(),
+          },
+        ],
+      })
 
-    expect(listResponse.status).toBe(200)
-    expect(listBody.list.map((item) => item.id)).toEqual([visibleId])
-    expect(listBody.total).toBe(1)
-  })
+      const listResponse = await app.request('/api/content/announcements/my?page=1&pageSize=10')
+      const listBody = (await listResponse.json()) as AnnouncementMyListResponse
 
-  it('shows department-targeted announcements only for direct department matches', async () => {
-    const database = await createTestDb()
-    const { app, fixture } = await createTestApp(database)
-    const departmentId = randomUUID()
+      expect(listResponse.status).toBe(200)
+      expect(listBody.list.map((item) => item.id)).toEqual([visibleId])
+      expect(listBody.total).toBe(1)
+    },
+  )
 
-    await database.insert(systemDepartments).values({
-      id: departmentId,
-      name: 'Engineering',
-      code: `engineering-${departmentId.slice(0, 8)}`,
-      status: DEPARTMENT_STATUS_ENABLED,
-      sortOrder: 0,
-      createdAt: now,
-      updatedAt: now,
-    })
-    await database.insert(systemUserDepartments).values({
-      userId: fixture.userId,
-      departmentId,
-      createdAt: now,
-    })
+  dbTest(
+    'shows department-targeted announcements only for direct department matches',
+    async ({ db: database }) => {
+      const { app, fixture } = await createTestApp(database)
+      const departmentId = randomUUID()
 
-    const visibleId = await insertAnnouncement(database, {
-      title: '研发部通知',
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
-          targetId: departmentId,
-        },
-      ],
-    })
-    await insertAnnouncement(database, {
-      title: '别的部门通知',
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
-          targetId: randomUUID(),
-        },
-      ],
-    })
-
-    const response = await app.request('/api/content/announcements/my?page=1&pageSize=10')
-    const body = (await response.json()) as AnnouncementMyListResponse
-
-    expect(response.status).toBe(200)
-    expect(body.list.map((item) => item.id)).toEqual([visibleId])
-  })
-
-  it('hides department-targeted announcements when the matched department is disabled', async () => {
-    const database = await createTestDb()
-    const { app, fixture } = await createTestApp(database)
-    const departmentId = randomUUID()
-
-    await database.insert(systemDepartments).values({
-      id: departmentId,
-      name: 'Disabled Engineering',
-      code: `disabled-engineering-${departmentId.slice(0, 8)}`,
-      status: DEPARTMENT_STATUS_ENABLED,
-      sortOrder: 0,
-      createdAt: now,
-      updatedAt: now,
-    })
-    await database.insert(systemUserDepartments).values({
-      userId: fixture.userId,
-      departmentId,
-      createdAt: now,
-    })
-
-    const announcementId = await insertAnnouncement(database, {
-      title: '禁用部门通知',
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
-          targetId: departmentId,
-        },
-      ],
-    })
-
-    await database
-      .update(systemDepartments)
-      .set({ status: DEPARTMENT_STATUS_DISABLED })
-      .where(eq(systemDepartments.id, departmentId))
-
-    const listResponse = await app.request('/api/content/announcements/my?page=1&pageSize=10')
-    const listBody = (await listResponse.json()) as AnnouncementMyListResponse
-
-    expect(listResponse.status).toBe(200)
-    expect(listBody.list.map((item) => item.id)).not.toContain(announcementId)
-
-    const detailResponse = await app.request(`/api/content/announcements/my/${announcementId}`)
-    expect(detailResponse.status).toBe(404)
-  })
-
-  it('does not include child department users when targeting a parent department', async () => {
-    const database = await createTestDb()
-    const { app, fixture } = await createTestApp(database)
-    const parentDepartmentId = randomUUID()
-    const childDepartmentId = randomUUID()
-
-    await database.insert(systemDepartments).values([
-      {
-        id: parentDepartmentId,
-        name: 'Head Office',
-        code: `parent-${parentDepartmentId.slice(0, 8)}`,
-        parentId: null,
+      await database.insert(systemDepartments).values({
+        id: departmentId,
+        name: 'Engineering',
+        code: `engineering-${departmentId.slice(0, 8)}`,
         status: DEPARTMENT_STATUS_ENABLED,
         sortOrder: 0,
         createdAt: now,
         updatedAt: now,
-      },
-      {
-        id: childDepartmentId,
-        name: 'Branch Office',
-        code: `child-${childDepartmentId.slice(0, 8)}`,
-        parentId: parentDepartmentId,
+      })
+      await database.insert(systemUserDepartments).values({
+        userId: fixture.userId,
+        departmentId,
+        createdAt: now,
+      })
+
+      const visibleId = await insertAnnouncement(database, {
+        title: '研发部通知',
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+            targetId: departmentId,
+          },
+        ],
+      })
+      await insertAnnouncement(database, {
+        title: '别的部门通知',
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+            targetId: randomUUID(),
+          },
+        ],
+      })
+
+      const response = await app.request('/api/content/announcements/my?page=1&pageSize=10')
+      const body = (await response.json()) as AnnouncementMyListResponse
+
+      expect(response.status).toBe(200)
+      expect(body.list.map((item) => item.id)).toEqual([visibleId])
+    },
+  )
+
+  dbTest(
+    'hides department-targeted announcements when the matched department is disabled',
+    async ({ db: database }) => {
+      const { app, fixture } = await createTestApp(database)
+      const departmentId = randomUUID()
+
+      await database.insert(systemDepartments).values({
+        id: departmentId,
+        name: 'Disabled Engineering',
+        code: `disabled-engineering-${departmentId.slice(0, 8)}`,
         status: DEPARTMENT_STATUS_ENABLED,
         sortOrder: 0,
         createdAt: now,
         updatedAt: now,
-      },
-    ])
-    await database.insert(systemUserDepartments).values({
-      userId: fixture.userId,
-      departmentId: childDepartmentId,
-      createdAt: now,
-    })
+      })
+      await database.insert(systemUserDepartments).values({
+        userId: fixture.userId,
+        departmentId,
+        createdAt: now,
+      })
 
-    const announcementId = await insertAnnouncement(database, {
-      title: '总部通知',
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [
+      const announcementId = await insertAnnouncement(database, {
+        title: '禁用部门通知',
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+            targetId: departmentId,
+          },
+        ],
+      })
+
+      await database
+        .update(systemDepartments)
+        .set({ status: DEPARTMENT_STATUS_DISABLED })
+        .where(eq(systemDepartments.id, departmentId))
+
+      const listResponse = await app.request('/api/content/announcements/my?page=1&pageSize=10')
+      const listBody = (await listResponse.json()) as AnnouncementMyListResponse
+
+      expect(listResponse.status).toBe(200)
+      expect(listBody.list.map((item) => item.id)).not.toContain(announcementId)
+
+      const detailResponse = await app.request(`/api/content/announcements/my/${announcementId}`)
+      expect(detailResponse.status).toBe(404)
+    },
+  )
+
+  dbTest(
+    'does not include child department users when targeting a parent department',
+    async ({ db: database }) => {
+      const { app, fixture } = await createTestApp(database)
+      const parentDepartmentId = randomUUID()
+      const childDepartmentId = randomUUID()
+
+      await database.insert(systemDepartments).values([
         {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
-          targetId: parentDepartmentId,
+          id: parentDepartmentId,
+          name: 'Head Office',
+          code: `parent-${parentDepartmentId.slice(0, 8)}`,
+          parentId: null,
+          status: DEPARTMENT_STATUS_ENABLED,
+          sortOrder: 0,
+          createdAt: now,
+          updatedAt: now,
         },
-      ],
-    })
+        {
+          id: childDepartmentId,
+          name: 'Branch Office',
+          code: `child-${childDepartmentId.slice(0, 8)}`,
+          parentId: parentDepartmentId,
+          status: DEPARTMENT_STATUS_ENABLED,
+          sortOrder: 0,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ])
+      await database.insert(systemUserDepartments).values({
+        userId: fixture.userId,
+        departmentId: childDepartmentId,
+        createdAt: now,
+      })
 
-    const listResponse = await app.request('/api/content/announcements/my?page=1&pageSize=10')
-    const listBody = (await listResponse.json()) as AnnouncementMyListResponse
-    expect(listResponse.status).toBe(200)
-    expect(listBody).toEqual({
-      list: [],
-      total: 0,
-      page: 1,
-      pageSize: 10,
-    })
+      const announcementId = await insertAnnouncement(database, {
+        title: '总部通知',
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_DEPARTMENT,
+            targetId: parentDepartmentId,
+          },
+        ],
+      })
 
-    const detailResponse = await app.request(`/api/content/announcements/my/${announcementId}`)
-    expect(detailResponse.status).toBe(404)
-    expect(await detailResponse.json()).toEqual({ message: '通知公告不存在' })
-  })
+      const listResponse = await app.request('/api/content/announcements/my?page=1&pageSize=10')
+      const listBody = (await listResponse.json()) as AnnouncementMyListResponse
+      expect(listResponse.status).toBe(200)
+      expect(listBody).toEqual({
+        list: [],
+        total: 0,
+        page: 1,
+        pageSize: 10,
+      })
 
-  it('shows role-targeted announcements only for matching roles', async () => {
-    const database = await createTestDb()
+      const detailResponse = await app.request(`/api/content/announcements/my/${announcementId}`)
+      expect(detailResponse.status).toBe(404)
+      expect(await detailResponse.json()).toEqual({ message: '通知公告不存在' })
+    },
+  )
+
+  dbTest('shows role-targeted announcements only for matching roles', async ({ db: database }) => {
     const { app, fixture } = await createTestApp(database)
     const roleId = randomUUID()
 
@@ -466,97 +477,100 @@ describe('my announcement integration', () => {
     expect(body.list.map((item) => item.id)).toEqual([visibleId])
   })
 
-  it('hides role-targeted announcements when the matched role is disabled', async () => {
-    const database = await createTestDb()
-    const { app, fixture } = await createTestApp(database)
-    const roleId = randomUUID()
+  dbTest(
+    'hides role-targeted announcements when the matched role is disabled',
+    async ({ db: database }) => {
+      const { app, fixture } = await createTestApp(database)
+      const roleId = randomUUID()
 
-    await database.insert(systemRoles).values({
-      id: roleId,
-      name: 'Disabled Announcement Reader',
-      code: `disabled-announcement-reader-${roleId.slice(0, 8)}`,
-      status: ROLE_STATUS_ENABLED,
-      sortOrder: 0,
-      createdAt: now,
-      updatedAt: now,
-    })
-    await database.insert(systemUserRoles).values({
-      userId: fixture.userId,
-      roleId,
-      createdAt: now,
-    })
+      await database.insert(systemRoles).values({
+        id: roleId,
+        name: 'Disabled Announcement Reader',
+        code: `disabled-announcement-reader-${roleId.slice(0, 8)}`,
+        status: ROLE_STATUS_ENABLED,
+        sortOrder: 0,
+        createdAt: now,
+        updatedAt: now,
+      })
+      await database.insert(systemUserRoles).values({
+        userId: fixture.userId,
+        roleId,
+        createdAt: now,
+      })
 
-    const announcementId = await insertAnnouncement(database, {
-      title: '禁用角色通知',
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
-          targetId: roleId,
-        },
-      ],
-    })
+      const announcementId = await insertAnnouncement(database, {
+        title: '禁用角色通知',
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
+            targetId: roleId,
+          },
+        ],
+      })
 
-    await database
-      .update(systemRoles)
-      .set({ status: ROLE_STATUS_DISABLED })
-      .where(eq(systemRoles.id, roleId))
+      await database
+        .update(systemRoles)
+        .set({ status: ROLE_STATUS_DISABLED })
+        .where(eq(systemRoles.id, roleId))
 
-    const listResponse = await app.request('/api/content/announcements/my?page=1&pageSize=10')
-    const listBody = (await listResponse.json()) as AnnouncementMyListResponse
+      const listResponse = await app.request('/api/content/announcements/my?page=1&pageSize=10')
+      const listBody = (await listResponse.json()) as AnnouncementMyListResponse
 
-    expect(listResponse.status).toBe(200)
-    expect(listBody.list.map((item) => item.id)).not.toContain(announcementId)
+      expect(listResponse.status).toBe(200)
+      expect(listBody.list.map((item) => item.id)).not.toContain(announcementId)
 
-    const detailResponse = await app.request(`/api/content/announcements/my/${announcementId}`)
-    expect(detailResponse.status).toBe(404)
-  })
+      const detailResponse = await app.request(`/api/content/announcements/my/${announcementId}`)
+      expect(detailResponse.status).toBe(404)
+    },
+  )
 
-  it('hides draft, archived, soft-deleted, and non-matching targeted announcements', async () => {
-    const database = await createTestDb()
-    const { app } = await createTestApp(database)
+  dbTest(
+    'hides draft, archived, soft-deleted, and non-matching targeted announcements',
+    async ({ db: database }) => {
+      const { app } = await createTestApp(database)
 
-    const visibleId = await insertAnnouncement(database, {
-      title: '真正可见的全员通知',
-      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-    })
-    await insertAnnouncement(database, {
-      title: '草稿通知',
-      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-      status: ANNOUNCEMENT_STATUS_DRAFT,
-      publishedAt: null,
-    })
-    await insertAnnouncement(database, {
-      title: '已归档通知',
-      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-      status: ANNOUNCEMENT_STATUS_ARCHIVED,
-    })
-    await insertAnnouncement(database, {
-      title: '已删除通知',
-      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-      deletedAt: now,
-    })
-    await insertAnnouncement(database, {
-      title: '不匹配的定向通知',
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: [
-        {
-          targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
-          targetId: randomUUID(),
-        },
-      ],
-    })
+      const visibleId = await insertAnnouncement(database, {
+        title: '真正可见的全员通知',
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+      })
+      await insertAnnouncement(database, {
+        title: '草稿通知',
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+        status: ANNOUNCEMENT_STATUS_DRAFT,
+        publishedAt: null,
+      })
+      await insertAnnouncement(database, {
+        title: '已归档通知',
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+        status: ANNOUNCEMENT_STATUS_ARCHIVED,
+      })
+      await insertAnnouncement(database, {
+        title: '已删除通知',
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+        deletedAt: now,
+      })
+      await insertAnnouncement(database, {
+        title: '不匹配的定向通知',
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+        targets: [
+          {
+            targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
+            targetId: randomUUID(),
+          },
+        ],
+      })
 
-    const response = await app.request('/api/content/announcements/my?page=1&pageSize=10')
-    const body = (await response.json()) as AnnouncementMyListResponse
+      const response = await app.request('/api/content/announcements/my?page=1&pageSize=10')
+      const body = (await response.json()) as AnnouncementMyListResponse
 
-    expect(response.status).toBe(200)
-    expect(body.list.map((item) => item.id)).toEqual([visibleId])
-    expect(body.total).toBe(1)
-  })
+      expect(response.status).toBe(200)
+      expect(body.list.map((item) => item.id)).toEqual([visibleId])
+      expect(body.total).toBe(1)
+    },
+  )
 
-  it('returns 404 for invisible announcements in detail', async () => {
-    const database = await createTestDb()
+  dbTest('returns 404 for invisible announcements in detail', async ({ db: database }) => {
     const { app } = await createTestApp(database)
 
     const hiddenId = await insertAnnouncement(database, {

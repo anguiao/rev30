@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdtemp, rm, utimes } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, vi } from 'vitest'
 import { ATTACHMENT_CLEANUP_POLICY_UNREFERENCED } from '@rev30/contracts'
 import { and, eq } from 'drizzle-orm'
 import { attachmentReferences, attachments, attachmentUploadSessions } from '../../../src/db/schema'
@@ -20,7 +20,7 @@ import {
 } from '../../../src/modules/attachments/references'
 import { createAttachmentRepository } from '../../../src/modules/attachments/repository'
 import { LocalAttachmentStorage } from '../../../src/modules/attachments/storage'
-import { createTestDb } from '../../helpers/db'
+import { dbTest, type TestDatabase } from '../../fixtures/database'
 import { createSystemUserFixture } from '../../helpers/system'
 
 const dayMs = 24 * 60 * 60 * 1000
@@ -48,7 +48,7 @@ async function writeStoredFile(
 }
 
 function createDatabaseWithBeforeTransaction(
-  database: Awaited<ReturnType<typeof createTestDb>>,
+  database: TestDatabase,
   beforeTransaction: () => Promise<void>,
 ) {
   let called = false
@@ -77,10 +77,7 @@ function createDatabaseWithBeforeTransaction(
   })
 }
 
-function createDatabaseWithStorageKeyHandoff(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  handoff: () => Promise<void>,
-) {
+function createDatabaseWithStorageKeyHandoff(database: TestDatabase, handoff: () => Promise<void>) {
   let completeHandoff: (() => void) | undefined
   let failHandoff: ((reason: unknown) => void) | undefined
   let handoffStarted = false
@@ -188,7 +185,7 @@ function createDatabaseWithStorageKeyHandoff(
   })
 }
 
-async function createUser(database: Awaited<ReturnType<typeof createTestDb>>) {
+async function createUser(database: TestDatabase) {
   const userId = randomUUID()
 
   const user = await createSystemUserFixture(database, {
@@ -201,7 +198,7 @@ async function createUser(database: Awaited<ReturnType<typeof createTestDb>>) {
 }
 
 async function createAttachment(
-  database: Awaited<ReturnType<typeof createTestDb>>,
+  database: TestDatabase,
   input: {
     createdAt: Date
     createdBy: string
@@ -232,7 +229,7 @@ async function createAttachment(
   return id
 }
 
-async function listAttachmentDeletedStates(database: Awaited<ReturnType<typeof createTestDb>>) {
+async function listAttachmentDeletedStates(database: TestDatabase) {
   const rows = await database
     .select({
       deletedAt: attachments.deletedAt,
@@ -244,353 +241,421 @@ async function listAttachmentDeletedStates(database: Awaited<ReturnType<typeof c
   return Object.fromEntries(rows.map((row) => [row.id, row.deletedAt]))
 }
 
+describe('attachment upload sessions', () => {
+  dbTest(
+    'requires stored sessions to include complete storage metadata',
+    async ({ db: database }) => {
+      const userId = await createUser(database)
+      const createdAt = new Date('2026-07-27T00:00:00.000Z')
+      const expectStorageStateViolation = async (
+        values: typeof attachmentUploadSessions.$inferInsert,
+      ) => {
+        await expect(
+          database.transaction(async (transaction) => {
+            await transaction.insert(attachmentUploadSessions).values(values)
+          }),
+        ).rejects.toMatchObject({
+          cause: {
+            message: expect.stringContaining('attachment_upload_sessions_storage_state_check'),
+          },
+        })
+      }
+
+      await expectStorageStateViolation({
+        originalName: 'report.png',
+        expectedSize: 1,
+        usage: 'test-upload-session',
+        state: 'stored',
+        createdBy: userId,
+        createdAt,
+        updatedAt: createdAt,
+        expiresAt: new Date('2026-07-27T00:05:00.000Z'),
+      })
+      await expectStorageStateViolation({
+        originalName: 'report.png',
+        expectedSize: 1,
+        usage: 'test-upload-session',
+        state: 'stored',
+        storageProvider: 'local',
+        storageKey: `uploads/${randomUUID()}.png`,
+        mimeType: 'image/png',
+        extension: 'png',
+        storedSize: null,
+        checksum: 'stored-checksum',
+        storedAt: createdAt,
+        createdBy: userId,
+        createdAt,
+        updatedAt: createdAt,
+        expiresAt: new Date('2026-07-27T00:05:00.000Z'),
+      })
+    },
+  )
+})
+
 describe('attachment cleanup', () => {
   afterEach(async () => {
     vi.useRealTimers()
     await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })))
   })
 
-  it('deletes old upload files unless an active attachment or upload session owns them', async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
+  dbTest(
+    'deletes old upload files unless an active attachment or upload session owns them',
+    async ({ db: database }) => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
 
-    const database = await createTestDb()
-    const userId = await createUser(database)
-    const root = await createTempRoot()
-    const storage = new LocalAttachmentStorage(root)
-    const oldModifiedAt = new Date(Date.now() - 8 * dayMs)
-    const recentModifiedAt = new Date(Date.now() - dayMs)
-    const oldOrphanKey = 'uploads/2026/06/28/orphan.png'
-    const oldTempKey = 'uploads/2026/06/28/interrupted.png.session.tmp'
-    const recentOrphanKey = 'uploads/2026/07/05/recent.png'
-    const persistedKey = 'uploads/2026/06/28/persisted.png'
-    const activeUploadKey = 'uploads/2026/06/28/active-session.png'
-    const activeWritingUploadId = randomUUID()
-    const activeWritingKey = `uploads/2026/06/28/${activeWritingUploadId}.png`
-    const activeWritingTempKey = `${activeWritingKey}.${randomUUID()}.tmp`
+      const userId = await createUser(database)
+      const root = await createTempRoot()
+      const storage = new LocalAttachmentStorage(root)
+      const oldModifiedAt = new Date(Date.now() - 8 * dayMs)
+      const recentModifiedAt = new Date(Date.now() - dayMs)
+      const oldOrphanKey = 'uploads/2026/06/28/orphan.png'
+      const oldTempKey = 'uploads/2026/06/28/interrupted.png.session.tmp'
+      const recentOrphanKey = 'uploads/2026/07/05/recent.png'
+      const persistedKey = 'uploads/2026/06/28/persisted.png'
+      const activeUploadKey = 'uploads/2026/06/28/active-session.png'
+      const activeWritingUploadId = randomUUID()
+      const activeWritingKey = `uploads/2026/06/28/${activeWritingUploadId}.png`
+      const activeWritingTempKey = `${activeWritingKey}.${randomUUID()}.tmp`
 
-    await writeStoredFile(storage, root, oldOrphanKey, oldModifiedAt)
-    await writeStoredFile(storage, root, oldTempKey, oldModifiedAt)
-    await writeStoredFile(storage, root, recentOrphanKey, recentModifiedAt)
-    const persistedAttachmentId = await createAttachment(database, {
-      createdAt: oldModifiedAt,
-      createdBy: userId,
-      storageKey: persistedKey,
-    })
-    await writeStoredFile(storage, root, persistedKey, oldModifiedAt)
-    await database
-      .update(attachments)
-      .set({ deletedAt: new Date() })
-      .where(eq(attachments.id, persistedAttachmentId))
-    await database.insert(attachmentUploadSessions).values({
-      originalName: 'active-session.png',
-      expectedSize: 1,
-      usage: 'cleanup',
-      state: 'stored',
-      storageProvider: storage.provider,
-      storageKey: activeUploadKey,
-      mimeType: 'image/png',
-      extension: 'png',
-      storedSize: 1,
-      checksum: 'checksum',
-      storedAt: oldModifiedAt,
-      createdBy: userId,
-      createdAt: oldModifiedAt,
-      updatedAt: oldModifiedAt,
-      expiresAt: new Date(Date.now() + dayMs),
-    })
-    await database.insert(attachmentUploadSessions).values({
-      id: activeWritingUploadId,
-      originalName: 'active-writing.png',
-      expectedSize: 1,
-      usage: 'cleanup',
-      state: 'uploading',
-      createdBy: userId,
-      createdAt: oldModifiedAt,
-      updatedAt: oldModifiedAt,
-      expiresAt: new Date(Date.now() + dayMs),
-    })
-    await writeStoredFile(storage, root, activeUploadKey, oldModifiedAt)
-    await writeStoredFile(storage, root, activeWritingKey, oldModifiedAt)
-    await writeStoredFile(storage, root, activeWritingTempKey, oldModifiedAt)
-
-    await expect(cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs)).resolves.toBe(3)
-    await expect(storage.get(oldOrphanKey)).rejects.toThrow()
-    await expect(storage.get(oldTempKey)).rejects.toThrow()
-    await expect(storage.get(recentOrphanKey)).resolves.toBeDefined()
-    await expect(storage.get(persistedKey)).rejects.toThrow()
-    await expect(storage.get(activeUploadKey)).resolves.toBeDefined()
-    await expect(storage.get(activeWritingKey)).resolves.toBeDefined()
-    await expect(storage.get(activeWritingTempKey)).resolves.toBeDefined()
-  })
-
-  it('removes expired upload sessions and eventually cleans interrupted upload files', async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
-
-    const database = await createTestDb()
-    const userId = await createUser(database)
-    const root = await createTempRoot()
-    const storage = new LocalAttachmentStorage(root)
-    const expiredCreatedAt = new Date(Date.now() - 10 * dayMs)
-    const expiredAt = new Date(Date.now() - 8 * dayMs)
-    const storedAt = new Date(Date.now() - 9 * dayMs)
-    const activeCreatedAt = new Date()
-    const interruptedUploadId = randomUUID()
-    const storedUploadId = randomUUID()
-    const expiredPendingUploadId = randomUUID()
-    const activeUploadId = randomUUID()
-    const interruptedStorageKey = `uploads/2026/06/26/${interruptedUploadId}.png`
-    const storedStorageKey = `uploads/2026/06/26/${storedUploadId}.png`
-
-    await database.insert(attachmentUploadSessions).values([
-      {
-        id: expiredPendingUploadId,
-        originalName: 'pending.png',
-        expectedSize: 1,
-        usage: 'cleanup',
-        state: 'pending',
+      await writeStoredFile(storage, root, oldOrphanKey, oldModifiedAt)
+      await writeStoredFile(storage, root, oldTempKey, oldModifiedAt)
+      await writeStoredFile(storage, root, recentOrphanKey, recentModifiedAt)
+      const persistedAttachmentId = await createAttachment(database, {
+        createdAt: oldModifiedAt,
         createdBy: userId,
-        createdAt: expiredCreatedAt,
-        updatedAt: expiredCreatedAt,
-        expiresAt: expiredAt,
-      },
-      {
-        id: interruptedUploadId,
-        originalName: 'interrupted.png',
-        expectedSize: 1,
-        usage: 'cleanup',
-        state: 'uploading',
-        createdBy: userId,
-        createdAt: expiredCreatedAt,
-        updatedAt: storedAt,
-        expiresAt: expiredAt,
-      },
-      {
-        id: storedUploadId,
-        originalName: 'stored.png',
+        storageKey: persistedKey,
+      })
+      await writeStoredFile(storage, root, persistedKey, oldModifiedAt)
+      await database
+        .update(attachments)
+        .set({ deletedAt: new Date() })
+        .where(eq(attachments.id, persistedAttachmentId))
+      await database.insert(attachmentUploadSessions).values({
+        originalName: 'active-session.png',
         expectedSize: 1,
         usage: 'cleanup',
         state: 'stored',
         storageProvider: storage.provider,
-        storageKey: storedStorageKey,
+        storageKey: activeUploadKey,
+        mimeType: 'image/png',
+        extension: 'png',
+        storedSize: 1,
+        checksum: 'checksum',
+        storedAt: oldModifiedAt,
+        createdBy: userId,
+        createdAt: oldModifiedAt,
+        updatedAt: oldModifiedAt,
+        expiresAt: new Date(Date.now() + dayMs),
+      })
+      await database.insert(attachmentUploadSessions).values({
+        id: activeWritingUploadId,
+        originalName: 'active-writing.png',
+        expectedSize: 1,
+        usage: 'cleanup',
+        state: 'uploading',
+        createdBy: userId,
+        createdAt: oldModifiedAt,
+        updatedAt: oldModifiedAt,
+        expiresAt: new Date(Date.now() + dayMs),
+      })
+      await writeStoredFile(storage, root, activeUploadKey, oldModifiedAt)
+      await writeStoredFile(storage, root, activeWritingKey, oldModifiedAt)
+      await writeStoredFile(storage, root, activeWritingTempKey, oldModifiedAt)
+
+      await expect(cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs)).resolves.toBe(3)
+      await expect(storage.get(oldOrphanKey)).rejects.toThrow()
+      await expect(storage.get(oldTempKey)).rejects.toThrow()
+      await expect(storage.get(recentOrphanKey)).resolves.toBeDefined()
+      await expect(storage.get(persistedKey)).rejects.toThrow()
+      await expect(storage.get(activeUploadKey)).resolves.toBeDefined()
+      await expect(storage.get(activeWritingKey)).resolves.toBeDefined()
+      await expect(storage.get(activeWritingTempKey)).resolves.toBeDefined()
+    },
+  )
+
+  dbTest(
+    'removes expired upload sessions and eventually cleans interrupted upload files',
+    async ({ db: database }) => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
+
+      const userId = await createUser(database)
+      const root = await createTempRoot()
+      const storage = new LocalAttachmentStorage(root)
+      const expiredCreatedAt = new Date(Date.now() - 10 * dayMs)
+      const expiredAt = new Date(Date.now() - 8 * dayMs)
+      const storedAt = new Date(Date.now() - 9 * dayMs)
+      const activeCreatedAt = new Date()
+      const interruptedUploadId = randomUUID()
+      const storedUploadId = randomUUID()
+      const expiredPendingUploadId = randomUUID()
+      const activeUploadId = randomUUID()
+      const interruptedStorageKey = `uploads/2026/06/26/${interruptedUploadId}.png`
+      const storedStorageKey = `uploads/2026/06/26/${storedUploadId}.png`
+
+      await database.insert(attachmentUploadSessions).values([
+        {
+          id: expiredPendingUploadId,
+          originalName: 'pending.png',
+          expectedSize: 1,
+          usage: 'cleanup',
+          state: 'pending',
+          createdBy: userId,
+          createdAt: expiredCreatedAt,
+          updatedAt: expiredCreatedAt,
+          expiresAt: expiredAt,
+        },
+        {
+          id: interruptedUploadId,
+          originalName: 'interrupted.png',
+          expectedSize: 1,
+          usage: 'cleanup',
+          state: 'uploading',
+          createdBy: userId,
+          createdAt: expiredCreatedAt,
+          updatedAt: storedAt,
+          expiresAt: expiredAt,
+        },
+        {
+          id: storedUploadId,
+          originalName: 'stored.png',
+          expectedSize: 1,
+          usage: 'cleanup',
+          state: 'stored',
+          storageProvider: storage.provider,
+          storageKey: storedStorageKey,
+          mimeType: 'image/png',
+          extension: 'png',
+          storedSize: 1,
+          checksum: 'checksum',
+          storedAt,
+          createdBy: userId,
+          createdAt: expiredCreatedAt,
+          updatedAt: storedAt,
+          expiresAt: expiredAt,
+        },
+        {
+          id: activeUploadId,
+          originalName: 'active.png',
+          expectedSize: 1,
+          usage: 'cleanup',
+          state: 'pending',
+          createdBy: userId,
+          createdAt: activeCreatedAt,
+          updatedAt: activeCreatedAt,
+          expiresAt: new Date(Date.now() + dayMs),
+        },
+      ])
+      await writeStoredFile(storage, root, interruptedStorageKey, expiredAt)
+      await writeStoredFile(storage, root, storedStorageKey, storedAt)
+
+      await expect(cleanupExpiredAttachmentUploadSessions(database, storage)).resolves.toBe(3)
+      await expect(storage.get(storedStorageKey)).rejects.toThrow()
+      await expect(storage.get(interruptedStorageKey)).resolves.toBeDefined()
+
+      await expect(cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs)).resolves.toBe(1)
+      await expect(storage.get(interruptedStorageKey)).rejects.toThrow()
+      await expect(database.select().from(attachmentUploadSessions)).resolves.toMatchObject([
+        {
+          id: activeUploadId,
+          state: 'pending',
+        },
+      ])
+    },
+  )
+
+  dbTest(
+    'keeps storage across expiry while a stored session is handed off to attachment metadata',
+    async ({ db: database }) => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
+
+      const userId = await createUser(database)
+      const root = await createTempRoot()
+      const storage = new LocalAttachmentStorage(root)
+      const uploadId = randomUUID()
+      const storageKey = `uploads/2026/06/28/${uploadId}.png`
+      const storedAt = new Date(Date.now() - 8 * dayMs)
+      const expiresAt = new Date(Date.now() - 1_000)
+      const completionRequestedAt = new Date(Date.now() - 2_000)
+
+      await database.insert(attachmentUploadSessions).values({
+        id: uploadId,
+        originalName: 'handoff.png',
+        expectedSize: 1,
+        usage: 'cleanup',
+        state: 'stored',
+        storageProvider: storage.provider,
+        storageKey,
         mimeType: 'image/png',
         extension: 'png',
         storedSize: 1,
         checksum: 'checksum',
         storedAt,
         createdBy: userId,
-        createdAt: expiredCreatedAt,
+        createdAt: storedAt,
         updatedAt: storedAt,
-        expiresAt: expiredAt,
-      },
-      {
-        id: activeUploadId,
-        originalName: 'active.png',
-        expectedSize: 1,
-        usage: 'cleanup',
-        state: 'pending',
+        expiresAt,
+      })
+      await writeStoredFile(storage, root, storageKey, storedAt)
+
+      let attachmentId: string | undefined
+      const racedDatabase = createDatabaseWithStorageKeyHandoff(database, async () => {
+        const created = await createAttachmentRepository(database).completeUploadSession(
+          uploadId,
+          userId,
+          completionRequestedAt,
+        )
+
+        expect(created).toBeDefined()
+        attachmentId = created!.id
+      })
+
+      await expect(
+        cleanupOrphanedAttachmentUploads(racedDatabase, storage, 7 * dayMs),
+      ).resolves.toBe(0)
+      await expect(storage.get(storageKey)).resolves.toBeDefined()
+      await expect(database.select().from(attachmentUploadSessions)).resolves.toEqual([])
+      await expect(
+        database.select().from(attachments).where(eq(attachments.id, attachmentId!)),
+      ).resolves.toMatchObject([
+        {
+          storageKey,
+        },
+      ])
+    },
+  )
+
+  dbTest(
+    'soft deletes only old unreferenced attachments with unreferenced cleanup policy',
+    async ({ db: database }) => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
+
+      const storage = new LocalAttachmentStorage(await createTempRoot())
+      const userId = await createUser(database)
+      const oldCreatedAt = new Date(Date.now() - 8 * dayMs)
+      const recentCreatedAt = new Date(Date.now() - dayMs)
+      const oldUnreferenced = await createAttachment(database, {
+        createdAt: oldCreatedAt,
         createdBy: userId,
-        createdAt: activeCreatedAt,
-        updatedAt: activeCreatedAt,
-        expiresAt: new Date(Date.now() + dayMs),
-      },
-    ])
-    await writeStoredFile(storage, root, interruptedStorageKey, expiredAt)
-    await writeStoredFile(storage, root, storedStorageKey, storedAt)
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+      })
+      const oldReferenced = await createAttachment(database, {
+        createdAt: oldCreatedAt,
+        createdBy: userId,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+      })
+      const oldManual = await createAttachment(database, {
+        createdAt: oldCreatedAt,
+        createdBy: userId,
+      })
+      const oldUnreferencedOtherUsage = await createAttachment(database, {
+        createdAt: oldCreatedAt,
+        createdBy: userId,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+        usage: 'other-usage',
+      })
+      const recentUnreferenced = await createAttachment(database, {
+        createdAt: recentCreatedAt,
+        createdBy: userId,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+      })
 
-    await expect(cleanupExpiredAttachmentUploadSessions(database, storage)).resolves.toBe(3)
-    await expect(storage.get(storedStorageKey)).rejects.toThrow()
-    await expect(storage.get(interruptedStorageKey)).resolves.toBeDefined()
-
-    await expect(cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs)).resolves.toBe(1)
-    await expect(storage.get(interruptedStorageKey)).rejects.toThrow()
-    await expect(database.select().from(attachmentUploadSessions)).resolves.toMatchObject([
-      {
-        id: activeUploadId,
-        state: 'pending',
-      },
-    ])
-  })
-
-  it('keeps storage across expiry while a stored session is handed off to attachment metadata', async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
-
-    const database = await createTestDb()
-    const userId = await createUser(database)
-    const root = await createTempRoot()
-    const storage = new LocalAttachmentStorage(root)
-    const uploadId = randomUUID()
-    const storageKey = `uploads/2026/06/28/${uploadId}.png`
-    const storedAt = new Date(Date.now() - 8 * dayMs)
-    const expiresAt = new Date(Date.now() - 1_000)
-    const completionRequestedAt = new Date(Date.now() - 2_000)
-
-    await database.insert(attachmentUploadSessions).values({
-      id: uploadId,
-      originalName: 'handoff.png',
-      expectedSize: 1,
-      usage: 'cleanup',
-      state: 'stored',
-      storageProvider: storage.provider,
-      storageKey,
-      mimeType: 'image/png',
-      extension: 'png',
-      storedSize: 1,
-      checksum: 'checksum',
-      storedAt,
-      createdBy: userId,
-      createdAt: storedAt,
-      updatedAt: storedAt,
-      expiresAt,
-    })
-    await writeStoredFile(storage, root, storageKey, storedAt)
-
-    let attachmentId: string | undefined
-    const racedDatabase = createDatabaseWithStorageKeyHandoff(database, async () => {
-      const created = await createAttachmentRepository(database).completeUploadSession(
-        uploadId,
-        userId,
-        completionRequestedAt,
+      await refreshAttachmentReferences(
+        database,
+        {
+          sourceType: 'announcement',
+          sourceId: randomUUID(),
+          sourceField: 'contentJson',
+        },
+        [oldReferenced],
       )
 
-      expect(created).toBeDefined()
-      attachmentId = created!.id
-    })
+      await expect(cleanupUnreferencedAttachments(database, storage, 7 * dayMs)).resolves.toBe(2)
 
-    await expect(cleanupOrphanedAttachmentUploads(racedDatabase, storage, 7 * dayMs)).resolves.toBe(
-      0,
-    )
-    await expect(storage.get(storageKey)).resolves.toBeDefined()
-    await expect(database.select().from(attachmentUploadSessions)).resolves.toEqual([])
-    await expect(
-      database.select().from(attachments).where(eq(attachments.id, attachmentId!)),
-    ).resolves.toMatchObject([
-      {
-        storageKey,
-      },
-    ])
-  })
+      const deletedStates = await listAttachmentDeletedStates(database)
 
-  it('soft deletes only old unreferenced attachments with unreferenced cleanup policy', async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
+      expect(deletedStates[oldUnreferenced]).toBeInstanceOf(Date)
+      expect(deletedStates[oldReferenced]).toBeNull()
+      expect(deletedStates[oldManual]).toBeNull()
+      expect(deletedStates[oldUnreferencedOtherUsage]).toBeInstanceOf(Date)
+      expect(deletedStates[recentUnreferenced]).toBeNull()
+      await expect(database.select().from(attachmentReferences)).resolves.toHaveLength(1)
+    },
+  )
 
-    const database = await createTestDb()
-    const storage = new LocalAttachmentStorage(await createTempRoot())
-    const userId = await createUser(database)
-    const oldCreatedAt = new Date(Date.now() - 8 * dayMs)
-    const recentCreatedAt = new Date(Date.now() - dayMs)
-    const oldUnreferenced = await createAttachment(database, {
-      createdAt: oldCreatedAt,
-      createdBy: userId,
-      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
-    })
-    const oldReferenced = await createAttachment(database, {
-      createdAt: oldCreatedAt,
-      createdBy: userId,
-      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
-    })
-    const oldManual = await createAttachment(database, {
-      createdAt: oldCreatedAt,
-      createdBy: userId,
-    })
-    const oldUnreferencedOtherUsage = await createAttachment(database, {
-      createdAt: oldCreatedAt,
-      createdBy: userId,
-      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
-      usage: 'other-usage',
-    })
-    const recentUnreferenced = await createAttachment(database, {
-      createdAt: recentCreatedAt,
-      createdBy: userId,
-      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
-    })
+  dbTest(
+    'rechecks references before soft deleting a selected candidate',
+    async ({ db: database }) => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
 
-    await refreshAttachmentReferences(
-      database,
-      {
-        sourceType: 'announcement',
-        sourceId: randomUUID(),
-        sourceField: 'contentJson',
-      },
-      [oldReferenced],
-    )
-
-    await expect(cleanupUnreferencedAttachments(database, storage, 7 * dayMs)).resolves.toBe(2)
-
-    const deletedStates = await listAttachmentDeletedStates(database)
-
-    expect(deletedStates[oldUnreferenced]).toBeInstanceOf(Date)
-    expect(deletedStates[oldReferenced]).toBeNull()
-    expect(deletedStates[oldManual]).toBeNull()
-    expect(deletedStates[oldUnreferencedOtherUsage]).toBeInstanceOf(Date)
-    expect(deletedStates[recentUnreferenced]).toBeNull()
-    await expect(database.select().from(attachmentReferences)).resolves.toHaveLength(1)
-  })
-
-  it('rechecks references before soft deleting a selected candidate', async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
-
-    const database = await createTestDb()
-    const storage = new LocalAttachmentStorage(await createTempRoot())
-    const userId = await createUser(database)
-    const attachmentId = await createAttachment(database, {
-      createdAt: new Date(Date.now() - 8 * dayMs),
-      createdBy: userId,
-      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
-    })
-
-    let insertedReference = false
-    const racedDatabase = createDatabaseWithBeforeTransaction(database, async () => {
-      insertedReference = true
-      await database.insert(attachmentReferences).values({
-        attachmentId,
-        sourceType: 'announcement',
-        sourceId: randomUUID(),
-        sourceField: 'contentJson',
+      const storage = new LocalAttachmentStorage(await createTempRoot())
+      const userId = await createUser(database)
+      const attachmentId = await createAttachment(database, {
+        createdAt: new Date(Date.now() - 8 * dayMs),
+        createdBy: userId,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
       })
-    })
 
-    await expect(cleanupUnreferencedAttachments(racedDatabase, storage, 7 * dayMs)).resolves.toBe(0)
+      let insertedReference = false
+      const racedDatabase = createDatabaseWithBeforeTransaction(database, async () => {
+        insertedReference = true
+        await database.insert(attachmentReferences).values({
+          attachmentId,
+          sourceType: 'announcement',
+          sourceId: randomUUID(),
+          sourceField: 'contentJson',
+        })
+      })
 
-    const [row] = await database.select().from(attachments).where(eq(attachments.id, attachmentId))
+      await expect(cleanupUnreferencedAttachments(racedDatabase, storage, 7 * dayMs)).resolves.toBe(
+        0,
+      )
 
-    expect(insertedReference).toBe(true)
-    expect(row?.deletedAt).toBeNull()
-  })
+      const [row] = await database
+        .select()
+        .from(attachments)
+        .where(eq(attachments.id, attachmentId))
 
-  it('starts a new retention period when the last reference is removed', async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
+      expect(insertedReference).toBe(true)
+      expect(row?.deletedAt).toBeNull()
+    },
+  )
 
-    const database = await createTestDb()
-    const storage = new LocalAttachmentStorage(await createTempRoot())
-    const userId = await createUser(database)
-    const attachmentId = await createAttachment(database, {
-      createdAt: new Date(Date.now() - 30 * dayMs),
-      createdBy: userId,
-      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
-    })
-    const source = testSource()
+  dbTest(
+    'starts a new retention period when the last reference is removed',
+    async ({ db: database }) => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-07-06T00:00:00.000Z'))
 
-    await refreshAttachmentReferences(database, source, [attachmentId])
-    await deleteAttachmentReferences(database, source)
+      const storage = new LocalAttachmentStorage(await createTempRoot())
+      const userId = await createUser(database)
+      const attachmentId = await createAttachment(database, {
+        createdAt: new Date(Date.now() - 30 * dayMs),
+        createdBy: userId,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
+      })
+      const source = testSource()
 
-    const [unreferenced] = await database
-      .select()
-      .from(attachments)
-      .where(eq(attachments.id, attachmentId))
+      await refreshAttachmentReferences(database, source, [attachmentId])
+      await deleteAttachmentReferences(database, source)
 
-    expect(unreferenced?.updatedAt).toEqual(new Date())
-    await expect(cleanupUnreferencedAttachments(database, storage, 7 * dayMs)).resolves.toBe(0)
+      const [unreferenced] = await database
+        .select()
+        .from(attachments)
+        .where(eq(attachments.id, attachmentId))
 
-    vi.advanceTimersByTime(8 * dayMs)
+      expect(unreferenced?.updatedAt).toEqual(new Date())
+      await expect(cleanupUnreferencedAttachments(database, storage, 7 * dayMs)).resolves.toBe(0)
 
-    await expect(cleanupUnreferencedAttachments(database, storage, 7 * dayMs)).resolves.toBe(1)
-  })
+      vi.advanceTimersByTime(8 * dayMs)
+
+      await expect(cleanupUnreferencedAttachments(database, storage, 7 * dayMs)).resolves.toBe(1)
+    },
+  )
 })
 
 function testSource(): AttachmentReferenceSource {
@@ -625,10 +690,7 @@ function trackForUpdate<T extends object>(query: T, calls: unknown[][]): T {
   })
 }
 
-function createDatabaseWithForUpdateTracking(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  calls: unknown[][],
-) {
+function createDatabaseWithForUpdateTracking(database: TestDatabase, calls: unknown[][]) {
   return new Proxy(database, {
     get(target, property, receiver) {
       const value = Reflect.get(target, property, receiver)
@@ -648,10 +710,7 @@ function createDatabaseWithForUpdateTracking(
   })
 }
 
-async function createAttachmentRows(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  attachmentIds: string[],
-) {
+async function createAttachmentRows(database: TestDatabase, attachmentIds: string[]) {
   const userId = randomUUID()
 
   await createSystemUserFixture(database, {
@@ -674,10 +733,7 @@ async function createAttachmentRows(
   )
 }
 
-async function listSourceReferences(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  source: AttachmentReferenceSource,
-) {
+async function listSourceReferences(database: TestDatabase, source: AttachmentReferenceSource) {
   return await database
     .select()
     .from(attachmentReferences)
@@ -692,8 +748,7 @@ async function listSourceReferences(
 }
 
 describe('attachment references', () => {
-  it('locks unique active attachments in stable order', async () => {
-    const database = await createTestDb()
+  dbTest('locks unique active attachments in stable order', async ({ db: database }) => {
     const firstAttachmentId = randomUUID()
     const secondAttachmentId = randomUUID()
     const sortedAttachmentIds = [firstAttachmentId, secondAttachmentId].sort()
@@ -710,8 +765,7 @@ describe('attachment references', () => {
     expect(forUpdateCalls).toEqual([['update'], ['update']])
   })
 
-  it('refreshes source references with unique attachment ids', async () => {
-    const database = await createTestDb()
+  dbTest('refreshes source references with unique attachment ids', async ({ db: database }) => {
     const source = testSource()
     const firstAttachmentId = randomUUID()
     const secondAttachmentId = randomUUID()
@@ -746,8 +800,7 @@ describe('attachment references', () => {
     expect(await listSourceReferences(database, source)).toEqual([])
   })
 
-  it('rejects references to soft-deleted attachments', async () => {
-    const database = await createTestDb()
+  dbTest('rejects references to soft-deleted attachments', async ({ db: database }) => {
     const source = testSource()
     const attachmentId = randomUUID()
 

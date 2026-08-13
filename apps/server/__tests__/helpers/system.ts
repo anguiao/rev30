@@ -8,7 +8,7 @@ import {
   USER_STATUS_ENABLED,
 } from '@rev30/contracts'
 import { systemDepartments, systemResources, systemRoles, systemUsers } from '../../src/db/schema'
-import type { TestDatabase } from './db'
+import type { TestDatabase } from '../fixtures/database'
 
 type WithDefaults<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
 

@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { eq } from 'drizzle-orm'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, vi } from 'vitest'
 import {
   ATTACHMENT_CLEANUP_POLICY_MANUAL,
   ATTACHMENT_DISPOSITION_INLINE,
@@ -34,7 +34,7 @@ import { LocalAttachmentStorage } from '../../../src/modules/attachments/storage
 import { createAttachmentAccessToken } from '../../../src/modules/attachments/access-token'
 import { readAuthConfig } from '../../../src/modules/auth/config'
 import { logger } from '../../../src/runtime/logger'
-import { createTestDb } from '../../helpers/db'
+import { dbTest, type TestDatabase } from '../../fixtures/database'
 import { createSystemUserFixture } from '../../helpers/system'
 
 const tempDirs: string[] = []
@@ -97,10 +97,7 @@ async function createTempRoot() {
   return root
 }
 
-async function createUser(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  status = USER_STATUS_ENABLED,
-) {
+async function createUser(database: TestDatabase, status = USER_STATUS_ENABLED) {
   const user = await createSystemUserFixture(database, {
     username: `attachment-service-user-${randomUUID()}`,
     nickname: 'Attachment Service User',
@@ -134,10 +131,7 @@ function getStoredFilePath(storageKey: string) {
   return join(process.env.ATTACHMENT_STORAGE_DIR!, storageKey)
 }
 
-function createDatabaseWithAttachmentTransactionFailure(
-  database: Awaited<ReturnType<typeof createTestDb>>,
-  error: Error,
-) {
+function createDatabaseWithAttachmentTransactionFailure(database: TestDatabase, error: Error) {
   return new Proxy(database, {
     get(target, property, receiver) {
       if (property === 'transaction') {
@@ -162,7 +156,7 @@ afterEach(async () => {
 
 describe('attachment service', () => {
   async function createAttachmentServiceForTest(
-    database: Awaited<ReturnType<typeof createTestDb>>,
+    database: TestDatabase,
     options: { contentUrlTtlSeconds?: string; uploadSessionTtlSeconds?: string } = {},
   ) {
     const root = await createTempRoot()
@@ -236,7 +230,7 @@ describe('attachment service', () => {
   }
 
   async function createAttachmentWithMissingStorage(
-    database: Awaited<ReturnType<typeof createTestDb>>,
+    database: TestDatabase,
     input: {
       readPolicy: 'signed' | 'authenticated'
       userId: string
@@ -263,215 +257,225 @@ describe('attachment service', () => {
     return id
   }
 
-  it('creates upload sessions, accepts authorized uploads, and completes metadata', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
+  dbTest(
+    'creates upload sessions, accepts authorized uploads, and completes metadata',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
 
-    const session = await service.createUploadSession({
-      originalName: 'avatar.png',
-      usage: 'avatar',
-      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
-      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
-      size: pngBytes.byteLength,
-      contentType: 'image/png',
-      userId,
-    })
-    const token = getUploadToken(session.request.url)
+      const session = await service.createUploadSession({
+        originalName: 'avatar.png',
+        usage: 'avatar',
+        readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
+        size: pngBytes.byteLength,
+        contentType: 'image/png',
+        userId,
+      })
+      const token = getUploadToken(session.request.url)
 
-    expect(session).toMatchObject({
-      request: {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'image/png',
+      expect(session).toMatchObject({
+        request: {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'image/png',
+          },
+          expiresAt: '2026-05-29T00:05:00.000Z',
         },
-        expiresAt: '2026-05-29T00:05:00.000Z',
-      },
-    })
+      })
 
-    await service.uploadSessionContent({
-      body: streamFromBytes(pngBytes),
-      token,
-      uploadId: session.uploadId,
-    })
-
-    const attachment = await service.completeUploadSession({
-      uploadId: session.uploadId,
-      userId,
-    })
-
-    expect(attachment.id).not.toBe(session.uploadId)
-    expect(attachment.id).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
-    )
-    expect(attachment).toMatchObject({
-      originalName: 'avatar.png',
-      mimeType: 'image/png',
-      extension: 'png',
-      size: pngBytes.byteLength,
-      usage: 'avatar',
-      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
-    })
-
-    const [row] = await database.select().from(attachments)
-    expect(row).toMatchObject({
-      id: attachment.id,
-      storageProvider: 'local',
-      storageKey: `uploads/2026/05/29/${session.uploadId}.png`,
-      size: pngBytes.byteLength,
-      checksum: pngChecksum,
-      createdBy: userId,
-    })
-    await expect(database.select().from(attachmentUploadSessions)).resolves.toEqual([])
-  })
-
-  it('persists upload progress across attachment service instances', async () => {
-    const database = await createTestDb()
-    const creatingService = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
-    const session = await creatingService.createUploadSession({
-      originalName: 'avatar.png',
-      usage: 'avatar',
-      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
-      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
-      size: pngBytes.byteLength,
-      userId,
-    })
-    const [pendingSession] = await database
-      .select()
-      .from(attachmentUploadSessions)
-      .where(eq(attachmentUploadSessions.id, session.uploadId))
-
-    expect(pendingSession).toMatchObject({
-      createdBy: userId,
-      expectedSize: pngBytes.byteLength,
-      state: 'pending',
-    })
-
-    const uploadingService = createAttachmentService(database)
-
-    await uploadingService.uploadSessionContent({
-      body: streamFromBytes(pngBytes),
-      token: getUploadToken(session.request.url),
-      uploadId: session.uploadId,
-    })
-
-    const [storedSession] = await database
-      .select()
-      .from(attachmentUploadSessions)
-      .where(eq(attachmentUploadSessions.id, session.uploadId))
-
-    expect(storedSession).toMatchObject({
-      checksum: pngChecksum,
-      state: 'stored',
-      storageKey: `uploads/2026/05/29/${session.uploadId}.png`,
-    })
-
-    const completingService = createAttachmentService(database)
-    const attachment = await completingService.completeUploadSession({
-      uploadId: session.uploadId,
-      userId,
-    })
-
-    expect(attachment).toMatchObject({
-      originalName: 'avatar.png',
-      size: pngBytes.byteLength,
-    })
-    await expect(database.select().from(attachmentUploadSessions)).resolves.toEqual([])
-  })
-
-  it('allows only one concurrent upload request to store session content', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
-    const session = await service.createUploadSession({
-      originalName: 'avatar.png',
-      usage: 'avatar',
-      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
-      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
-      size: pngBytes.byteLength,
-      userId,
-    })
-    const token = getUploadToken(session.request.url)
-    const [firstUpload, secondUpload] = await Promise.allSettled([
-      service.uploadSessionContent({
+      await service.uploadSessionContent({
         body: streamFromBytes(pngBytes),
         token,
         uploadId: session.uploadId,
-      }),
-      service.uploadSessionContent({
-        body: streamFromBytes(pngBytes),
-        token,
-        uploadId: session.uploadId,
-      }),
-    ])
+      })
 
-    expect(firstUpload.status).toBe('fulfilled')
-    expect(secondUpload).toMatchObject({
-      status: 'rejected',
-      reason: expect.any(AttachmentUploadSessionInvalidError),
-    })
-    await expect(
-      service.uploadSessionContent({
-        body: streamFromBytes(pngBytes),
-        token,
-        uploadId: session.uploadId,
-      }),
-    ).rejects.toBeInstanceOf(AttachmentUploadSessionInvalidError)
-
-    const attachment = await service.completeUploadSession({
-      uploadId: session.uploadId,
-      userId,
-    })
-    const [row] = await database.select().from(attachments).where(eq(attachments.id, attachment.id))
-
-    expect(row).toBeDefined()
-    expect(new Uint8Array(await readFile(getStoredFilePath(row!.storageKey)))).toEqual(pngBytes)
-  })
-
-  it('allows only one concurrent completion and keeps the created attachment readable', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
-    const session = await createStoredUploadSession(service, {
-      bytes: pngBytes,
-      originalName: 'avatar.png',
-      userId,
-    })
-    const [firstCompletion, secondCompletion] = await Promise.allSettled([
-      service.completeUploadSession({
+      const attachment = await service.completeUploadSession({
         uploadId: session.uploadId,
         userId,
-      }),
-      service.completeUploadSession({
+      })
+
+      expect(attachment.id).not.toBe(session.uploadId)
+      expect(attachment.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      )
+      expect(attachment).toMatchObject({
+        originalName: 'avatar.png',
+        mimeType: 'image/png',
+        extension: 'png',
+        size: pngBytes.byteLength,
+        usage: 'avatar',
+        readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+      })
+
+      const [row] = await database.select().from(attachments)
+      expect(row).toMatchObject({
+        id: attachment.id,
+        storageProvider: 'local',
+        storageKey: `uploads/2026/05/29/${session.uploadId}.png`,
+        size: pngBytes.byteLength,
+        checksum: pngChecksum,
+        createdBy: userId,
+      })
+      await expect(database.select().from(attachmentUploadSessions)).resolves.toEqual([])
+    },
+  )
+
+  dbTest(
+    'persists upload progress across attachment service instances',
+    async ({ db: database }) => {
+      const creatingService = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const session = await creatingService.createUploadSession({
+        originalName: 'avatar.png',
+        usage: 'avatar',
+        readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
+        size: pngBytes.byteLength,
+        userId,
+      })
+      const [pendingSession] = await database
+        .select()
+        .from(attachmentUploadSessions)
+        .where(eq(attachmentUploadSessions.id, session.uploadId))
+
+      expect(pendingSession).toMatchObject({
+        createdBy: userId,
+        expectedSize: pngBytes.byteLength,
+        state: 'pending',
+      })
+
+      const uploadingService = createAttachmentService(database)
+
+      await uploadingService.uploadSessionContent({
+        body: streamFromBytes(pngBytes),
+        token: getUploadToken(session.request.url),
+        uploadId: session.uploadId,
+      })
+
+      const [storedSession] = await database
+        .select()
+        .from(attachmentUploadSessions)
+        .where(eq(attachmentUploadSessions.id, session.uploadId))
+
+      expect(storedSession).toMatchObject({
+        checksum: pngChecksum,
+        state: 'stored',
+        storageKey: `uploads/2026/05/29/${session.uploadId}.png`,
+      })
+
+      const completingService = createAttachmentService(database)
+      const attachment = await completingService.completeUploadSession({
         uploadId: session.uploadId,
         userId,
-      }),
-    ])
+      })
 
-    expect(firstCompletion.status).toBe('fulfilled')
-    expect(secondCompletion).toMatchObject({
-      status: 'rejected',
-      reason: expect.any(AttachmentUploadSessionInvalidError),
-    })
+      expect(attachment).toMatchObject({
+        originalName: 'avatar.png',
+        size: pngBytes.byteLength,
+      })
+      await expect(database.select().from(attachmentUploadSessions)).resolves.toEqual([])
+    },
+  )
 
-    if (firstCompletion.status !== 'fulfilled') {
-      throw firstCompletion.reason
-    }
+  dbTest(
+    'allows only one concurrent upload request to store session content',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const session = await service.createUploadSession({
+        originalName: 'avatar.png',
+        usage: 'avatar',
+        readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
+        size: pngBytes.byteLength,
+        userId,
+      })
+      const token = getUploadToken(session.request.url)
+      const [firstUpload, secondUpload] = await Promise.allSettled([
+        service.uploadSessionContent({
+          body: streamFromBytes(pngBytes),
+          token,
+          uploadId: session.uploadId,
+        }),
+        service.uploadSessionContent({
+          body: streamFromBytes(pngBytes),
+          token,
+          uploadId: session.uploadId,
+        }),
+      ])
 
-    const access = await service.createContentUrl(firstCompletion.value.id, {
-      disposition: ATTACHMENT_DISPOSITION_INLINE,
-    })
-    const content = await service.readContent(firstCompletion.value.id, {
-      signedToken: getUploadToken(access.request.url),
-    })
+      expect(firstUpload.status).toBe('fulfilled')
+      expect(secondUpload).toMatchObject({
+        status: 'rejected',
+        reason: expect.any(AttachmentUploadSessionInvalidError),
+      })
+      await expect(
+        service.uploadSessionContent({
+          body: streamFromBytes(pngBytes),
+          token,
+          uploadId: session.uploadId,
+        }),
+      ).rejects.toBeInstanceOf(AttachmentUploadSessionInvalidError)
 
-    expect(await streamToBytes(content.body)).toEqual(pngBytes)
-    await expect(database.select().from(attachments)).resolves.toHaveLength(1)
-  })
+      const attachment = await service.completeUploadSession({
+        uploadId: session.uploadId,
+        userId,
+      })
+      const [row] = await database
+        .select()
+        .from(attachments)
+        .where(eq(attachments.id, attachment.id))
 
-  it('uses system config overrides for upload session expiration', async () => {
-    const database = await createTestDb()
+      expect(row).toBeDefined()
+      expect(new Uint8Array(await readFile(getStoredFilePath(row!.storageKey)))).toEqual(pngBytes)
+    },
+  )
+
+  dbTest(
+    'allows only one concurrent completion and keeps the created attachment readable',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const session = await createStoredUploadSession(service, {
+        bytes: pngBytes,
+        originalName: 'avatar.png',
+        userId,
+      })
+      const [firstCompletion, secondCompletion] = await Promise.allSettled([
+        service.completeUploadSession({
+          uploadId: session.uploadId,
+          userId,
+        }),
+        service.completeUploadSession({
+          uploadId: session.uploadId,
+          userId,
+        }),
+      ])
+
+      expect(firstCompletion.status).toBe('fulfilled')
+      expect(secondCompletion).toMatchObject({
+        status: 'rejected',
+        reason: expect.any(AttachmentUploadSessionInvalidError),
+      })
+
+      if (firstCompletion.status !== 'fulfilled') {
+        throw firstCompletion.reason
+      }
+
+      const access = await service.createContentUrl(firstCompletion.value.id, {
+        disposition: ATTACHMENT_DISPOSITION_INLINE,
+      })
+      const content = await service.readContent(firstCompletion.value.id, {
+        signedToken: getUploadToken(access.request.url),
+      })
+
+      expect(await streamToBytes(content.body)).toEqual(pngBytes)
+      await expect(database.select().from(attachments)).resolves.toHaveLength(1)
+    },
+  )
+
+  dbTest('uses system config overrides for upload session expiration', async ({ db: database }) => {
     const service = await createAttachmentServiceForTest(database, {
       uploadSessionTtlSeconds: '60',
     })
@@ -489,8 +493,7 @@ describe('attachment service', () => {
     expect(session.request.expiresAt).toBe('2026-05-29T00:01:00.000Z')
   })
 
-  it('rejects completing missing or expired upload sessions', async () => {
-    const database = await createTestDb()
+  dbTest('rejects completing missing or expired upload sessions', async ({ db: database }) => {
     const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
     const session = await service.createUploadSession({
@@ -519,115 +522,120 @@ describe('attachment service', () => {
     ).rejects.toBeInstanceOf(AttachmentUploadSessionInvalidError)
   })
 
-  it('allows only the upload session owner to complete stored content', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const ownerId = await createUser(database)
-    const otherUserId = await createUser(database)
-    const session = await createStoredUploadSession(service, {
-      bytes: pngBytes,
-      originalName: 'avatar.png',
-      userId: ownerId,
-    })
+  dbTest(
+    'allows only the upload session owner to complete stored content',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const ownerId = await createUser(database)
+      const otherUserId = await createUser(database)
+      const session = await createStoredUploadSession(service, {
+        bytes: pngBytes,
+        originalName: 'avatar.png',
+        userId: ownerId,
+      })
 
-    await expect(
-      service.completeUploadSession({
+      await expect(
+        service.completeUploadSession({
+          uploadId: session.uploadId,
+          userId: otherUserId,
+        }),
+      ).rejects.toBeInstanceOf(AttachmentUploadSessionInvalidError)
+
+      const completed = await service.completeUploadSession({
         uploadId: session.uploadId,
-        userId: otherUserId,
-      }),
-    ).rejects.toBeInstanceOf(AttachmentUploadSessionInvalidError)
+        userId: ownerId,
+      })
 
-    const completed = await service.completeUploadSession({
-      uploadId: session.uploadId,
-      userId: ownerId,
-    })
+      expect(completed).toMatchObject({
+        originalName: 'avatar.png',
+      })
+      await expect(
+        database.select().from(attachments).where(eq(attachments.id, completed.id)),
+      ).resolves.toMatchObject([{ createdBy: ownerId }])
+    },
+  )
 
-    expect(completed).toMatchObject({
-      originalName: 'avatar.png',
-    })
-    await expect(
-      database.select().from(attachments).where(eq(attachments.id, completed.id)),
-    ).resolves.toMatchObject([{ createdBy: ownerId }])
-  })
+  dbTest(
+    'removes stored content when uploaded size does not match the session',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const session = await service.createUploadSession({
+        originalName: 'avatar.png',
+        usage: 'avatar',
+        readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
+        size: pngBytes.byteLength + 1,
+        userId,
+      })
+      const token = getUploadToken(session.request.url)
+      const storedFilePath = getStoredFilePath(`uploads/2026/05/29/${session.uploadId}.png`)
 
-  it('removes stored content when uploaded size does not match the session', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
-    const session = await service.createUploadSession({
-      originalName: 'avatar.png',
-      usage: 'avatar',
-      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
-      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
-      size: pngBytes.byteLength + 1,
-      userId,
-    })
-    const token = getUploadToken(session.request.url)
-    const storedFilePath = getStoredFilePath(`uploads/2026/05/29/${session.uploadId}.png`)
+      await expect(
+        service.uploadSessionContent({
+          body: streamFromBytes(pngBytes),
+          token,
+          uploadId: session.uploadId,
+        }),
+      ).rejects.toBeInstanceOf(AttachmentUploadRequestError)
 
-    await expect(
-      service.uploadSessionContent({
-        body: streamFromBytes(pngBytes),
-        token,
-        uploadId: session.uploadId,
-      }),
-    ).rejects.toBeInstanceOf(AttachmentUploadRequestError)
+      await expect(database.select().from(attachments)).resolves.toEqual([])
+      await expect(readFile(storedFilePath)).rejects.toMatchObject({ code: 'ENOENT' })
+    },
+  )
 
-    await expect(database.select().from(attachments)).resolves.toEqual([])
-    await expect(readFile(storedFilePath)).rejects.toMatchObject({ code: 'ENOENT' })
-  })
+  dbTest(
+    'keeps stored content and the session retryable when metadata creation fails',
+    async ({ db: database }) => {
+      const userId = await createUser(database)
+      const metadataError = new Error('metadata creation failed')
+      const service = await createAttachmentServiceForTest(
+        createDatabaseWithAttachmentTransactionFailure(database, metadataError),
+      )
+      const session = await createStoredUploadSession(service, {
+        bytes: pngBytes,
+        originalName: 'avatar.png',
+        userId,
+      })
+      const storageKey = `uploads/2026/05/29/${session.uploadId}.png`
+      const storedFilePath = getStoredFilePath(storageKey)
 
-  it('keeps stored content and the session retryable when metadata creation fails', async () => {
-    const database = await createTestDb()
-    const userId = await createUser(database)
-    const metadataError = new Error('metadata creation failed')
-    const service = await createAttachmentServiceForTest(
-      createDatabaseWithAttachmentTransactionFailure(database, metadataError),
-    )
-    const session = await createStoredUploadSession(service, {
-      bytes: pngBytes,
-      originalName: 'avatar.png',
-      userId,
-    })
-    const storageKey = `uploads/2026/05/29/${session.uploadId}.png`
-    const storedFilePath = getStoredFilePath(storageKey)
+      await expect(
+        service.completeUploadSession({
+          uploadId: session.uploadId,
+          userId,
+        }),
+      ).rejects.toBe(metadataError)
 
-    await expect(
-      service.completeUploadSession({
+      expect(new Uint8Array(await readFile(storedFilePath))).toEqual(pngBytes)
+      await expect(database.select().from(attachments)).resolves.toEqual([])
+      await expect(
+        database
+          .select()
+          .from(attachmentUploadSessions)
+          .where(eq(attachmentUploadSessions.id, session.uploadId)),
+      ).resolves.toMatchObject([
+        {
+          state: 'stored',
+          storageKey,
+        },
+      ])
+
+      const attachment = await createAttachmentService(database).completeUploadSession({
         uploadId: session.uploadId,
         userId,
-      }),
-    ).rejects.toBe(metadataError)
+      })
 
-    expect(new Uint8Array(await readFile(storedFilePath))).toEqual(pngBytes)
-    await expect(database.select().from(attachments)).resolves.toEqual([])
-    await expect(
-      database
-        .select()
-        .from(attachmentUploadSessions)
-        .where(eq(attachmentUploadSessions.id, session.uploadId)),
-    ).resolves.toMatchObject([
-      {
-        state: 'stored',
-        storageKey,
-      },
-    ])
+      expect(attachment).toMatchObject({
+        originalName: 'avatar.png',
+        size: pngBytes.byteLength,
+      })
+      await expect(database.select().from(attachmentUploadSessions)).resolves.toEqual([])
+      expect(new Uint8Array(await readFile(storedFilePath))).toEqual(pngBytes)
+    },
+  )
 
-    const attachment = await createAttachmentService(database).completeUploadSession({
-      uploadId: session.uploadId,
-      userId,
-    })
-
-    expect(attachment).toMatchObject({
-      originalName: 'avatar.png',
-      size: pngBytes.byteLength,
-    })
-    await expect(database.select().from(attachmentUploadSessions)).resolves.toEqual([])
-    expect(new Uint8Array(await readFile(storedFilePath))).toEqual(pngBytes)
-  })
-
-  it('uses detected extensions when detected MIME matches', async () => {
-    const database = await createTestDb()
+  dbTest('uses detected extensions when detected MIME matches', async ({ db: database }) => {
     const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
 
@@ -652,189 +660,198 @@ describe('attachment service', () => {
     expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.jpg$/)
   })
 
-  it('stores detected MIME and extension when upload content differs from the original name', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
+  dbTest(
+    'stores detected MIME and extension when upload content differs from the original name',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
 
-    const attachment = await createAttachmentViaSession(service, {
-      bytes: jpegBytes,
-      originalName: 'avatar.png',
-      userId,
-    })
+      const attachment = await createAttachmentViaSession(service, {
+        bytes: jpegBytes,
+        originalName: 'avatar.png',
+        userId,
+      })
 
-    expect(attachment).toMatchObject({
-      originalName: 'avatar.png',
-      mimeType: 'image/jpeg',
-      extension: 'jpg',
-      size: jpegBytes.byteLength,
-    })
+      expect(attachment).toMatchObject({
+        originalName: 'avatar.png',
+        mimeType: 'image/jpeg',
+        extension: 'jpg',
+        size: jpegBytes.byteLength,
+      })
 
-    const [row] = await database.select().from(attachments)
-    expect(row).toMatchObject({
-      id: attachment.id,
-      checksum: jpegChecksum,
-    })
-    expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.jpg$/)
+      const [row] = await database.select().from(attachments)
+      expect(row).toMatchObject({
+        id: attachment.id,
+        checksum: jpegChecksum,
+      })
+      expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.jpg$/)
 
-    const access = await service.createContentUrl(attachment.id, {
-      disposition: ATTACHMENT_DISPOSITION_INLINE,
-    })
-    const token = new URL(access.request.url, 'http://localhost').searchParams.get('token')
+      const access = await service.createContentUrl(attachment.id, {
+        disposition: ATTACHMENT_DISPOSITION_INLINE,
+      })
+      const token = new URL(access.request.url, 'http://localhost').searchParams.get('token')
 
-    expect(token).toBeTruthy()
+      expect(token).toBeTruthy()
 
-    const content = await service.readContent(attachment.id, {
-      signedToken: token!,
-    })
+      const content = await service.readContent(attachment.id, {
+        signedToken: token!,
+      })
 
-    expect(content.headers).toMatchObject({
-      'Content-Disposition': 'inline; filename=avatar.jpg',
-      'Content-Type': 'image/jpeg',
-    })
-  })
+      expect(content.headers).toMatchObject({
+        'Content-Disposition': 'inline; filename=avatar.jpg',
+        'Content-Type': 'image/jpeg',
+      })
+    },
+  )
 
-  it('accepts detected content when the original filename extension is unsupported', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
+  dbTest(
+    'accepts detected content when the original filename extension is unsupported',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
 
-    const attachment = await createAttachmentViaSession(service, {
-      bytes: pngBytes,
-      originalName: 'avatar.bin',
-      userId,
-    })
+      const attachment = await createAttachmentViaSession(service, {
+        bytes: pngBytes,
+        originalName: 'avatar.bin',
+        userId,
+      })
 
-    expect(attachment).toMatchObject({
-      originalName: 'avatar.bin',
-      mimeType: 'image/png',
-      extension: 'png',
-      size: pngBytes.byteLength,
-    })
+      expect(attachment).toMatchObject({
+        originalName: 'avatar.bin',
+        mimeType: 'image/png',
+        extension: 'png',
+        size: pngBytes.byteLength,
+      })
 
-    const [row] = await database.select().from(attachments)
-    expect(row).toMatchObject({
-      id: attachment.id,
-      checksum: pngChecksum,
-    })
-    expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.png$/)
-  })
+      const [row] = await database.select().from(attachments)
+      expect(row).toMatchObject({
+        id: attachment.id,
+        checksum: pngChecksum,
+      })
+      expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.png$/)
+    },
+  )
 
-  it('rejects uploads without a detected type or a text filename fallback', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
-    const bytes = Uint8Array.from([0x01, 0x02, 0x03])
-    const session = await service.createUploadSession({
-      originalName: 'report.docx',
-      usage: 'avatar',
-      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
-      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
-      size: bytes.byteLength,
-      userId,
-    })
-    const token = getUploadToken(session.request.url)
+  dbTest(
+    'rejects uploads without a detected type or a text filename fallback',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const bytes = Uint8Array.from([0x01, 0x02, 0x03])
+      const session = await service.createUploadSession({
+        originalName: 'report.docx',
+        usage: 'avatar',
+        readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
+        size: bytes.byteLength,
+        userId,
+      })
+      const token = getUploadToken(session.request.url)
 
-    await expect(
-      service.uploadSessionContent({
-        body: streamFromBytes(bytes),
-        token,
-        uploadId: session.uploadId,
-      }),
-    ).rejects.toBeInstanceOf(AttachmentTypeUnsupportedError)
+      await expect(
+        service.uploadSessionContent({
+          body: streamFromBytes(bytes),
+          token,
+          uploadId: session.uploadId,
+        }),
+      ).rejects.toBeInstanceOf(AttachmentTypeUnsupportedError)
 
-    await expect(database.select().from(attachments)).resolves.toEqual([])
-  })
+      await expect(database.select().from(attachments)).resolves.toEqual([])
+    },
+  )
 
-  it('falls back to text filename types when content detection has no result', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
+  dbTest(
+    'falls back to text filename types when content detection has no result',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
 
-    const attachment = await createAttachmentViaSession(service, {
-      bytes: textBytes,
-      originalName: 'notes.txt',
-      userId,
-    })
+      const attachment = await createAttachmentViaSession(service, {
+        bytes: textBytes,
+        originalName: 'notes.txt',
+        userId,
+      })
 
-    expect(attachment).toMatchObject({
-      originalName: 'notes.txt',
-      mimeType: 'text/plain',
-      extension: 'txt',
-      size: textBytes.byteLength,
-    })
+      expect(attachment).toMatchObject({
+        originalName: 'notes.txt',
+        mimeType: 'text/plain',
+        extension: 'txt',
+        size: textBytes.byteLength,
+      })
 
-    const [row] = await database.select().from(attachments)
-    expect(row).toMatchObject({
-      id: attachment.id,
-      checksum: textChecksum,
-    })
-    expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.txt$/)
+      const [row] = await database.select().from(attachments)
+      expect(row).toMatchObject({
+        id: attachment.id,
+        checksum: textChecksum,
+      })
+      expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.txt$/)
 
-    const accessUrl = await service.createContentUrl(attachment.id, {
-      disposition: ATTACHMENT_DISPOSITION_INLINE,
-    })
-    const token = new URL(accessUrl.request.url, 'http://localhost').searchParams.get('token')
+      const accessUrl = await service.createContentUrl(attachment.id, {
+        disposition: ATTACHMENT_DISPOSITION_INLINE,
+      })
+      const token = new URL(accessUrl.request.url, 'http://localhost').searchParams.get('token')
 
-    expect(token).toBeTruthy()
+      expect(token).toBeTruthy()
 
-    const content = await service.readContent(attachment.id, {
-      signedToken: token!,
-    })
+      const content = await service.readContent(attachment.id, {
+        signedToken: token!,
+      })
 
-    expect(await streamToBytes(content.body)).toEqual(textBytes)
-    expect(content.headers).toMatchObject({
-      'Content-Disposition': 'attachment; filename=notes.txt',
-      'Content-Type': 'text/plain; charset=utf-8',
-    })
-  })
+      expect(await streamToBytes(content.body)).toEqual(textBytes)
+      expect(content.headers).toMatchObject({
+        'Content-Disposition': 'attachment; filename=notes.txt',
+        'Content-Type': 'text/plain; charset=utf-8',
+      })
+    },
+  )
 
-  it('stores metadata and creates content URLs after upload sessions complete', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
+  dbTest(
+    'stores metadata and creates content URLs after upload sessions complete',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
 
-    const attachment = await createAttachmentViaSession(service, {
-      bytes: pngBytes,
-      originalName: 'avatar.png',
-      userId,
-    })
+      const attachment = await createAttachmentViaSession(service, {
+        bytes: pngBytes,
+        originalName: 'avatar.png',
+        userId,
+      })
 
-    expect(attachment).toMatchObject({
-      originalName: 'avatar.png',
-      mimeType: 'image/png',
-      extension: 'png',
-      size: pngBytes.byteLength,
-      usage: 'avatar',
-      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
-    })
+      expect(attachment).toMatchObject({
+        originalName: 'avatar.png',
+        mimeType: 'image/png',
+        extension: 'png',
+        size: pngBytes.byteLength,
+        usage: 'avatar',
+        readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+      })
 
-    const [row] = await database.select().from(attachments)
-    expect(row).toMatchObject({
-      id: attachment.id,
-      storageProvider: 'local',
-      size: pngBytes.byteLength,
-      checksum: pngChecksum,
-      createdBy: userId,
-    })
-    expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.png$/)
+      const [row] = await database.select().from(attachments)
+      expect(row).toMatchObject({
+        id: attachment.id,
+        storageProvider: 'local',
+        size: pngBytes.byteLength,
+        checksum: pngChecksum,
+        createdBy: userId,
+      })
+      expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.png$/)
 
-    const access = await service.createContentUrl(attachment.id, {
-      disposition: ATTACHMENT_DISPOSITION_INLINE,
-    })
+      const access = await service.createContentUrl(attachment.id, {
+        disposition: ATTACHMENT_DISPOSITION_INLINE,
+      })
 
-    expect(access.request).toMatchObject({
-      method: 'GET',
-      headers: {},
-      expiresAt: '2026-05-29T00:05:00.000Z',
-    })
-    expect(access.request.url).toMatch(
-      new RegExp(`^/api/attachments/${attachment.id}/content\\?token=`),
-    )
-  })
+      expect(access.request).toMatchObject({
+        method: 'GET',
+        headers: {},
+        expiresAt: '2026-05-29T00:05:00.000Z',
+      })
+      expect(access.request.url).toMatch(
+        new RegExp(`^/api/attachments/${attachment.id}/content\\?token=`),
+      )
+    },
+  )
 
-  it('stores authenticated read policy from upload sessions', async () => {
-    const database = await createTestDb()
+  dbTest('stores authenticated read policy from upload sessions', async ({ db: database }) => {
     const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
 
@@ -857,8 +874,7 @@ describe('attachment service', () => {
     })
   })
 
-  it('rejects signed URL creation for authenticated attachments', async () => {
-    const database = await createTestDb()
+  dbTest('rejects signed URL creation for authenticated attachments', async ({ db: database }) => {
     const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
     const attachment = await createAttachmentViaSession(service, {
@@ -875,98 +891,107 @@ describe('attachment service', () => {
     ).rejects.toBeInstanceOf(AttachmentContentUrlUnsupportedError)
   })
 
-  it('reads authenticated content with a verified attachment-token user', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
-    const attachment = await createAttachmentViaSession(service, {
-      bytes: pngBytes,
-      originalName: 'avatar.png',
-      userId,
-      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
-    })
-    const attachmentReadToken = await createAttachmentReadToken(userId)
+  dbTest(
+    'reads authenticated content with a verified attachment-token user',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const attachment = await createAttachmentViaSession(service, {
+        bytes: pngBytes,
+        originalName: 'avatar.png',
+        userId,
+        readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+      })
+      const attachmentReadToken = await createAttachmentReadToken(userId)
 
-    const content = await service.readContent(attachment.id, {
-      signedToken: 'stale-signed-token',
-      attachmentReadToken,
-    })
-
-    expect(await streamToBytes(content.body)).toEqual(pngBytes)
-    expect(content.headers).toMatchObject({
-      'Cache-Control': 'private, max-age=300',
-      'Content-Disposition': 'inline; filename=avatar.png',
-    })
-  })
-
-  it('rejects authenticated content without a verified attachment token', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
-    const attachment = await createAttachmentViaSession(service, {
-      bytes: pngBytes,
-      originalName: 'avatar.png',
-      userId,
-      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
-    })
-
-    await expect(service.readContent(attachment.id, {})).rejects.toBeInstanceOf(
-      AttachmentContentUnauthorizedError,
-    )
-  })
-
-  it('rejects authenticated content when the token user is disabled', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
-    const disabledUserId = await createUser(database, USER_STATUS_DISABLED)
-    const attachment = await createAttachmentViaSession(service, {
-      bytes: pngBytes,
-      originalName: 'avatar.png',
-      userId,
-      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
-    })
-    const attachmentReadToken = await createAttachmentReadToken(disabledUserId)
-
-    await expect(
-      service.readContent(attachment.id, {
+      const content = await service.readContent(attachment.id, {
+        signedToken: 'stale-signed-token',
         attachmentReadToken,
-      }),
-    ).rejects.toBeInstanceOf(AttachmentContentUnauthorizedError)
-  })
+      })
 
-  it('rejects signed content without a token before reading storage', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
-    const attachmentId = await createAttachmentWithMissingStorage(database, {
-      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
-      userId,
-    })
+      expect(await streamToBytes(content.body)).toEqual(pngBytes)
+      expect(content.headers).toMatchObject({
+        'Cache-Control': 'private, max-age=300',
+        'Content-Disposition': 'inline; filename=avatar.png',
+      })
+    },
+  )
 
-    await expect(service.readContent(attachmentId, {})).rejects.toBeInstanceOf(
-      AttachmentContentUrlInvalidError,
-    )
-  })
+  dbTest(
+    'rejects authenticated content without a verified attachment token',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const attachment = await createAttachmentViaSession(service, {
+        bytes: pngBytes,
+        originalName: 'avatar.png',
+        userId,
+        readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+      })
 
-  it('rejects unauthorized authenticated content before reading storage', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
-    const attachmentId = await createAttachmentWithMissingStorage(database, {
-      readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
-      userId,
-    })
+      await expect(service.readContent(attachment.id, {})).rejects.toBeInstanceOf(
+        AttachmentContentUnauthorizedError,
+      )
+    },
+  )
 
-    await expect(
-      service.readContent(attachmentId, {
-        attachmentReadToken: 'invalid-token',
-      }),
-    ).rejects.toBeInstanceOf(AttachmentContentUnauthorizedError)
-  })
+  dbTest(
+    'rejects authenticated content when the token user is disabled',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const disabledUserId = await createUser(database, USER_STATUS_DISABLED)
+      const attachment = await createAttachmentViaSession(service, {
+        bytes: pngBytes,
+        originalName: 'avatar.png',
+        userId,
+        readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+      })
+      const attachmentReadToken = await createAttachmentReadToken(disabledUserId)
 
-  it('uploads legacy Office CFBF files', async () => {
-    const database = await createTestDb()
+      await expect(
+        service.readContent(attachment.id, {
+          attachmentReadToken,
+        }),
+      ).rejects.toBeInstanceOf(AttachmentContentUnauthorizedError)
+    },
+  )
+
+  dbTest(
+    'rejects signed content without a token before reading storage',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const attachmentId = await createAttachmentWithMissingStorage(database, {
+        readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+        userId,
+      })
+
+      await expect(service.readContent(attachmentId, {})).rejects.toBeInstanceOf(
+        AttachmentContentUrlInvalidError,
+      )
+    },
+  )
+
+  dbTest(
+    'rejects unauthorized authenticated content before reading storage',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const attachmentId = await createAttachmentWithMissingStorage(database, {
+        readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+        userId,
+      })
+
+      await expect(
+        service.readContent(attachmentId, {
+          attachmentReadToken: 'invalid-token',
+        }),
+      ).rejects.toBeInstanceOf(AttachmentContentUnauthorizedError)
+    },
+  )
+
+  dbTest('uploads legacy Office CFBF files', async ({ db: database }) => {
     const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
 
@@ -987,90 +1012,93 @@ describe('attachment service', () => {
     }
   })
 
-  it('reads metadata, creates content URLs, and deletes attachments without user access checks', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
-    const attachment = await createAttachmentViaSession(service, {
-      bytes: pngBytes,
-      originalName: 'avatar.png',
-      userId,
-    })
+  dbTest(
+    'reads metadata, creates content URLs, and deletes attachments without user access checks',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const attachment = await createAttachmentViaSession(service, {
+        bytes: pngBytes,
+        originalName: 'avatar.png',
+        userId,
+      })
 
-    await expect(service.get(attachment.id)).resolves.toMatchObject({
-      id: attachment.id,
-      originalName: 'avatar.png',
-    })
-    await expect(
-      service.createContentUrl(attachment.id, {
-        disposition: ATTACHMENT_DISPOSITION_INLINE,
-      }),
-    ).resolves.toMatchObject({
-      request: {
-        expiresAt: '2026-05-29T00:05:00.000Z',
-      },
-    })
+      await expect(service.get(attachment.id)).resolves.toMatchObject({
+        id: attachment.id,
+        originalName: 'avatar.png',
+      })
+      await expect(
+        service.createContentUrl(attachment.id, {
+          disposition: ATTACHMENT_DISPOSITION_INLINE,
+        }),
+      ).resolves.toMatchObject({
+        request: {
+          expiresAt: '2026-05-29T00:05:00.000Z',
+        },
+      })
 
-    const [activeRow] = await database.select().from(attachments)
-    expect(activeRow?.deletedAt).toBeNull()
+      const [activeRow] = await database.select().from(attachments)
+      expect(activeRow?.deletedAt).toBeNull()
 
-    const storedFilePath = getStoredFilePath(activeRow!.storageKey)
-    expect(new Uint8Array(await readFile(storedFilePath))).toEqual(pngBytes)
+      const storedFilePath = getStoredFilePath(activeRow!.storageKey)
+      expect(new Uint8Array(await readFile(storedFilePath))).toEqual(pngBytes)
 
-    await expect(service.delete(attachment.id)).resolves.toBeUndefined()
+      await expect(service.delete(attachment.id)).resolves.toBeUndefined()
 
-    const [deletedRow] = await database
-      .select()
-      .from(attachments)
-      .where(eq(attachments.id, attachment.id))
+      const [deletedRow] = await database
+        .select()
+        .from(attachments)
+        .where(eq(attachments.id, attachment.id))
 
-    expect(deletedRow?.deletedAt).toBeInstanceOf(Date)
-    await expect(readFile(storedFilePath)).rejects.toMatchObject({ code: 'ENOENT' })
-  })
+      expect(deletedRow?.deletedAt).toBeInstanceOf(Date)
+      await expect(readFile(storedFilePath)).rejects.toMatchObject({ code: 'ENOENT' })
+    },
+  )
 
-  it('keeps attachments soft deleted and logs when storage deletion fails', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
-    const attachment = await createAttachmentViaSession(service, {
-      bytes: pngBytes,
-      originalName: 'avatar.png',
-      userId,
-    })
-    const [activeRow] = await database
-      .select()
-      .from(attachments)
-      .where(eq(attachments.id, attachment.id))
-    const storageError = new Error('storage delete failed')
-    const deleteStoredFile = vi
-      .spyOn(LocalAttachmentStorage.prototype, 'delete')
-      .mockRejectedValueOnce(storageError)
-    const logError = vi.spyOn(logger, 'error').mockImplementation(() => {})
+  dbTest(
+    'keeps attachments soft deleted and logs when storage deletion fails',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const attachment = await createAttachmentViaSession(service, {
+        bytes: pngBytes,
+        originalName: 'avatar.png',
+        userId,
+      })
+      const [activeRow] = await database
+        .select()
+        .from(attachments)
+        .where(eq(attachments.id, attachment.id))
+      const storageError = new Error('storage delete failed')
+      const deleteStoredFile = vi
+        .spyOn(LocalAttachmentStorage.prototype, 'delete')
+        .mockRejectedValueOnce(storageError)
+      const logError = vi.spyOn(logger, 'error').mockImplementation(() => {})
 
-    await expect(service.delete(attachment.id)).resolves.toBeUndefined()
+      await expect(service.delete(attachment.id)).resolves.toBeUndefined()
 
-    const [deletedRow] = await database
-      .select()
-      .from(attachments)
-      .where(eq(attachments.id, attachment.id))
+      const [deletedRow] = await database
+        .select()
+        .from(attachments)
+        .where(eq(attachments.id, attachment.id))
 
-    expect(deletedRow?.deletedAt).toBeInstanceOf(Date)
-    expect(deleteStoredFile).toHaveBeenCalledWith(activeRow!.storageKey)
-    expect(logError).toHaveBeenCalledWith(
-      {
-        attachmentId: attachment.id,
-        err: storageError,
-        storageKey: activeRow!.storageKey,
-      },
-      'attachment storage deletion failed',
-    )
-    expect(new Uint8Array(await readFile(getStoredFilePath(activeRow!.storageKey)))).toEqual(
-      pngBytes,
-    )
-  })
+      expect(deletedRow?.deletedAt).toBeInstanceOf(Date)
+      expect(deleteStoredFile).toHaveBeenCalledWith(activeRow!.storageKey)
+      expect(logError).toHaveBeenCalledWith(
+        {
+          attachmentId: attachment.id,
+          err: storageError,
+          storageKey: activeRow!.storageKey,
+        },
+        'attachment storage deletion failed',
+      )
+      expect(new Uint8Array(await readFile(getStoredFilePath(activeRow!.storageKey)))).toEqual(
+        pngBytes,
+      )
+    },
+  )
 
-  it('does not create content URLs for deleted attachments', async () => {
-    const database = await createTestDb()
+  dbTest('does not create content URLs for deleted attachments', async ({ db: database }) => {
     const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
     const attachment = await createAttachmentViaSession(service, {
@@ -1088,38 +1116,39 @@ describe('attachment service', () => {
     ).rejects.toBeInstanceOf(AttachmentNotFoundError)
   })
 
-  it('reads stored content with content token and response headers', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
-    const attachment = await createAttachmentViaSession(service, {
-      bytes: pngBytes,
-      originalName: 'avatar.png',
-      userId,
-    })
-    const access = await service.createContentUrl(attachment.id, {
-      disposition: ATTACHMENT_DISPOSITION_INLINE,
-    })
-    const token = new URL(access.request.url, 'http://localhost').searchParams.get('token')
+  dbTest(
+    'reads stored content with content token and response headers',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const attachment = await createAttachmentViaSession(service, {
+        bytes: pngBytes,
+        originalName: 'avatar.png',
+        userId,
+      })
+      const access = await service.createContentUrl(attachment.id, {
+        disposition: ATTACHMENT_DISPOSITION_INLINE,
+      })
+      const token = new URL(access.request.url, 'http://localhost').searchParams.get('token')
 
-    expect(token).toBeTruthy()
+      expect(token).toBeTruthy()
 
-    const content = await service.readContent(attachment.id, {
-      signedToken: token!,
-    })
+      const content = await service.readContent(attachment.id, {
+        signedToken: token!,
+      })
 
-    expect(await streamToBytes(content.body)).toEqual(pngBytes)
-    expect(content.headers).toEqual({
-      'Cache-Control': 'private, max-age=300',
-      'Content-Disposition': 'inline; filename=avatar.png',
-      'Content-Length': String(pngBytes.byteLength),
-      'Content-Type': 'image/png',
-      'X-Content-Type-Options': 'nosniff',
-    })
-  })
+      expect(await streamToBytes(content.body)).toEqual(pngBytes)
+      expect(content.headers).toEqual({
+        'Cache-Control': 'private, max-age=300',
+        'Content-Disposition': 'inline; filename=avatar.png',
+        'Content-Length': String(pngBytes.byteLength),
+        'Content-Type': 'image/png',
+        'X-Content-Type-Options': 'nosniff',
+      })
+    },
+  )
 
-  it('does not cache content beyond the token lifetime', async () => {
-    const database = await createTestDb()
+  dbTest('does not cache content beyond the token lifetime', async ({ db: database }) => {
     const service = await createAttachmentServiceForTest(database, { contentUrlTtlSeconds: '60' })
     const userId = await createUser(database)
     const attachment = await createAttachmentViaSession(service, {
@@ -1141,8 +1170,7 @@ describe('attachment service', () => {
     expect(content.headers['Cache-Control']).toBe('private, max-age=60')
   })
 
-  it('rejects old content token after attachment delete', async () => {
-    const database = await createTestDb()
+  dbTest('rejects old content token after attachment delete', async ({ db: database }) => {
     const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
     const attachment = await createAttachmentViaSession(service, {
@@ -1166,34 +1194,36 @@ describe('attachment service', () => {
     ).rejects.toBeInstanceOf(AttachmentNotFoundError)
   })
 
-  it('rejects streams above the global upload size without creating metadata', async () => {
-    const database = await createTestDb()
-    const service = await createAttachmentServiceForTest(database)
-    const userId = await createUser(database)
+  dbTest(
+    'rejects streams above the global upload size without creating metadata',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
 
-    async function* oversizedPngStream() {
-      yield pngBytes
-      yield new Uint8Array(ATTACHMENT_MAX_SIZE_BYTES - pngBytes.byteLength + 1)
-    }
+      async function* oversizedPngStream() {
+        yield pngBytes
+        yield new Uint8Array(ATTACHMENT_MAX_SIZE_BYTES - pngBytes.byteLength + 1)
+      }
 
-    const session = await service.createUploadSession({
-      originalName: 'avatar.png',
-      usage: 'avatar',
-      readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
-      cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
-      size: ATTACHMENT_MAX_SIZE_BYTES,
-      userId,
-    })
-    const token = getUploadToken(session.request.url)
+      const session = await service.createUploadSession({
+        originalName: 'avatar.png',
+        usage: 'avatar',
+        readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
+        size: ATTACHMENT_MAX_SIZE_BYTES,
+        userId,
+      })
+      const token = getUploadToken(session.request.url)
 
-    await expect(
-      service.uploadSessionContent({
-        body: oversizedPngStream(),
-        token,
-        uploadId: session.uploadId,
-      }),
-    ).rejects.toBeInstanceOf(AttachmentFileTooLargeError)
+      await expect(
+        service.uploadSessionContent({
+          body: oversizedPngStream(),
+          token,
+          uploadId: session.uploadId,
+        }),
+      ).rejects.toBeInstanceOf(AttachmentFileTooLargeError)
 
-    await expect(database.select().from(attachments)).resolves.toEqual([])
-  })
+      await expect(database.select().from(attachments)).resolves.toEqual([])
+    },
+  )
 })

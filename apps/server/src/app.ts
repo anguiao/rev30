@@ -1,8 +1,13 @@
-import { Hono } from 'hono'
+import { Hono, type ErrorHandler } from 'hono'
+import type { Logger } from 'pino'
 import type { Db } from './db'
 import { createAuthMiddleware } from './middleware/auth'
 import { createJsonBodyLimit } from './middleware/body-limit'
 import { createRequestLogger } from './middleware/logger'
+import {
+  createRequestContextMiddleware,
+  type RequestContextEnv,
+} from './middleware/request-context'
 import { createAttachmentRoutes } from './modules/attachments/routes'
 import { createAuthRoutes } from './modules/auth/routes'
 import { createContentRoutes } from './modules/content/routes'
@@ -11,6 +16,13 @@ import { healthRoutes } from './modules/health/routes'
 import { createIconRoutes } from './modules/icons/routes'
 import { createIconSearchRoutes } from './modules/icons/search/routes'
 import { createSystemRoutes } from './modules/system/routes'
+import { logger } from './runtime/logger'
+import { compileTrustedProxyPolicy, type TrustedProxyPolicy } from './runtime/trusted-proxy'
+
+export type CreateAppOptions = {
+  logger?: Logger
+  trustedProxyPolicy?: TrustedProxyPolicy
+}
 
 export function createApiRoutes(database: Db) {
   const apiJsonBodyLimit = createJsonBodyLimit(5 * 1024 * 1024)
@@ -28,8 +40,25 @@ export function createApiRoutes(database: Db) {
     .route('/demos', createDemoRoutes(authMiddleware))
 }
 
-export function createApp(database: Db) {
-  return new Hono().use('*', createRequestLogger()).route('/api', createApiRoutes(database))
+export const createRootErrorHandler: ErrorHandler<RequestContextEnv> = (error, c) => {
+  if ('getResponse' in error) {
+    const response = error.getResponse()
+
+    return c.newResponse(response.body, response)
+  }
+
+  return c.text('Internal Server Error', 500)
+}
+
+export function createApp(database: Db, options: CreateAppOptions = {}) {
+  const appLogger = options.logger ?? logger
+  const trustedProxyPolicy = options.trustedProxyPolicy ?? compileTrustedProxyPolicy(undefined)
+
+  return new Hono<RequestContextEnv>()
+    .use('*', createRequestContextMiddleware({ logger: appLogger, trustedProxyPolicy }))
+    .use('*', createRequestLogger())
+    .onError(createRootErrorHandler)
+    .route('/api', createApiRoutes(database))
 }
 
 export type AppType = ReturnType<typeof createApiRoutes>

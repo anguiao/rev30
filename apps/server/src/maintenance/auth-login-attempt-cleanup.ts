@@ -71,7 +71,7 @@ export function startAuthLoginAttemptCleanup(database: Db): MaintenanceWorker {
       }
     } catch (error) {
       if (!stopped) {
-        logger.error({ error }, 'auth login attempt cleanup failed')
+        logger.error({ err: error }, 'auth login attempt cleanup failed')
       }
     }
 

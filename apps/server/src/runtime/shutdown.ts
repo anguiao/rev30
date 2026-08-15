@@ -46,7 +46,7 @@ export function registerShutdownHandlers({ server, cleanup }: ShutdownOptions) {
       }
 
       if (shutdownError) {
-        logger.error({ error: shutdownError, signal }, 'server shutdown failed')
+        logger.error({ err: shutdownError, signal }, 'server shutdown failed')
         process.exitCode = 1
         return
       }

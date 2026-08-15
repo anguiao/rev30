@@ -1,40 +1,31 @@
 import type { MiddlewareHandler } from 'hono'
-import { logger } from '../runtime/logger'
+import type { RequestContextEnv } from './request-context'
 
-function getRequestPath(url: string) {
-  return new URL(url).pathname
-}
-
-export function createRequestLogger(): MiddlewareHandler {
+export function createRequestLogger(): MiddlewareHandler<RequestContextEnv> {
   return async (c, next) => {
     const start = Date.now()
-    const request = {
-      method: c.req.method,
-      path: getRequestPath(c.req.url),
+    const requestContext = c.get('requestContext')
+
+    requestContext.logger.info({ userAgent: requestContext.userAgent }, 'request started')
+
+    await next()
+
+    const requestResult = {
+      durationMs: Date.now() - start,
+      status: c.res.status,
     }
 
-    logger.info(request, 'request started')
-
-    try {
-      await next()
-      logger.info(
+    if (c.error && c.res.status >= 500) {
+      requestContext.logger.error(
         {
-          ...request,
-          durationMs: Date.now() - start,
-          status: c.res.status,
-        },
-        'request completed',
-      )
-    } catch (error) {
-      logger.error(
-        {
-          ...request,
-          durationMs: Date.now() - start,
-          err: error,
+          ...requestResult,
+          err: c.error,
         },
         'request failed',
       )
-      throw error
+      return
     }
+
+    requestContext.logger.info(requestResult, 'request completed')
   }
 }

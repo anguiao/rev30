@@ -16,6 +16,8 @@ import { createAuthMiddleware, type AuthVariables } from '../src/middleware/auth
 import { readAuthConfig } from '../src/modules/auth/config'
 
 const attachmentId = '11111111-1111-4111-8111-111111111111'
+const requestIdPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const protectedAppRoutes = [
   {
     name: 'icon search',
@@ -70,7 +72,47 @@ const protectedAttachmentRoutes: Array<{
   },
 ]
 
+function expectRequestId(response: Response) {
+  const requestId = response.headers.get('x-request-id')
+
+  expect(requestId).toMatch(requestIdPattern)
+
+  return requestId
+}
+
 describe('app auth boundaries', () => {
+  dbTest(
+    'returns a unique server request ID on standard application response boundaries',
+    async ({ db }) => {
+      const app = createApp(db)
+      const noAccess = await createSystemAccessFixture(db, {
+        usernamePrefix: 'app-request-id',
+      })
+      const responses = [
+        await app.request('/api/health'),
+        await app.request('/api/system/users'),
+        await app.request('/api/system/users', {
+          headers: noAccess.authHeaders,
+        }),
+        await app.request('/api/not-found'),
+        await app.request('/api/attachments/uploads', {
+          method: 'POST',
+          body: '{}',
+          headers: {
+            'content-length': String(5 * 1024 * 1024 + 1),
+            'content-type': 'application/json',
+          },
+        }),
+      ]
+
+      expect(responses.map((response) => response.status)).toEqual([200, 401, 403, 404, 413])
+
+      const requestIds = responses.map(expectRequestId)
+
+      expect(new Set(requestIds).size).toBe(responses.length)
+    },
+  )
+
   dbTest('rejects oversized JSON bodies before route parsing', async ({ db }) => {
     const app = createApp(db)
 

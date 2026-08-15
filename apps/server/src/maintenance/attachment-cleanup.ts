@@ -73,7 +73,7 @@ export function startAttachmentCleanup(database: Db): MaintenanceWorker {
       }
     } catch (error) {
       if (!stopped) {
-        logger.error({ error }, 'expired attachment upload session cleanup failed')
+        logger.error({ err: error }, 'expired attachment upload session cleanup failed')
       }
     }
 
@@ -85,7 +85,7 @@ export function startAttachmentCleanup(database: Db): MaintenanceWorker {
       }
     } catch (error) {
       if (!stopped) {
-        logger.error({ error }, 'orphaned attachment upload cleanup failed')
+        logger.error({ err: error }, 'orphaned attachment upload cleanup failed')
       }
     }
 
@@ -97,7 +97,7 @@ export function startAttachmentCleanup(database: Db): MaintenanceWorker {
       }
     } catch (error) {
       if (!stopped) {
-        logger.error({ error }, 'unreferenced attachment cleanup failed')
+        logger.error({ err: error }, 'unreferenced attachment cleanup failed')
       }
     }
 

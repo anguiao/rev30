@@ -83,7 +83,7 @@ describe('attachment cleanup maintenance', () => {
 
     expect(mocks.cleanupUnreferencedAttachments).toHaveBeenCalledOnce()
     expect(mocks.logger.error).toHaveBeenCalledWith(
-      { error },
+      { err: error },
       'orphaned attachment upload cleanup failed',
     )
 

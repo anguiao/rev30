@@ -39,6 +39,8 @@ pnpm dev
 
 开发环境不需要 `DATABASE_URL`，默认使用 `.pglite/dev` 并自动应用迁移。数据库基线为 PostgreSQL 18+；当前 PGlite 版本基于 PostgreSQL 18，表主键默认使用数据库内置 `uuidv7()` 生成。部署到 PostgreSQL 时设置 `NODE_ENV=production` 和 `DATABASE_URL`，并使用 PostgreSQL 18 或更高版本。
 
+客户端 IP 默认只使用 socket IP。只有实际受控的反向代理或负载均衡器出口 IP/CIDR 才应配置到 `TRUSTED_PROXY_CIDRS`；这些代理必须覆盖客户端传入的 `X-Forwarded-For`，或按规范向现有链追加其直连来源地址，不能原样信任客户端传入的整条链。正式值由部署系统注入。
+
 服务端环境变量可从 `apps/server/.env.example` 复制起步；执行 bootstrap 前，请先在 `apps/server/.env` 中确认或修改 `BOOTSTRAP_ADMIN_*` 账号信息，认证相关密钥在本地也建议改成非默认值。
 通用附件默认使用本地私有存储，文件目录由 `ATTACHMENT_STORAGE_DIR` 控制，默认 `.attachments/dev`。
 

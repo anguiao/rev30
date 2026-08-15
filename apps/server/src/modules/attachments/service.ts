@@ -4,6 +4,7 @@ import { detectCfbf } from '@file-type/cfbf'
 import { create as createContentDisposition } from 'content-disposition'
 import { fileTypeStream } from 'file-type'
 import { contentType } from 'mime-types'
+import type { Logger } from 'pino'
 import {
   ATTACHMENT_DISPOSITION_ATTACHMENT,
   ATTACHMENT_DISPOSITION_INLINE,
@@ -15,7 +16,6 @@ import {
 } from '@rev30/contracts'
 import { addSeconds, millisecondsBetween, toIsoDateTime } from '@rev30/utils'
 import type { Db } from '../../db'
-import { logger } from '../../runtime/logger'
 import { readAuthConfig } from '../auth/config'
 import { readNumberConfigValue } from '../system/configs/values'
 import { verifyAttachmentAccessToken } from './access-token'
@@ -382,7 +382,7 @@ export function createAttachmentService(database: Db) {
       })
     },
 
-    async delete(id: string) {
+    async delete(id: string, requestLogger: Logger) {
       const row = await repository.findActiveById(id)
 
       if (!row) {
@@ -398,7 +398,7 @@ export function createAttachmentService(database: Db) {
       try {
         await storage.delete(deleted.storageKey)
       } catch (error) {
-        logger.error(
+        requestLogger.error(
           {
             attachmentId: id,
             err: error,

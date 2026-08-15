@@ -33,7 +33,7 @@ import { createAttachmentService } from '../../../src/modules/attachments/servic
 import { LocalAttachmentStorage } from '../../../src/modules/attachments/storage'
 import { createAttachmentAccessToken } from '../../../src/modules/attachments/access-token'
 import { readAuthConfig } from '../../../src/modules/auth/config'
-import { logger } from '../../../src/runtime/logger'
+import { createLogger } from '../../../src/runtime/logger'
 import { dbTest, type TestDatabase } from '../../fixtures/database'
 import { createSystemUserFixture } from '../../helpers/system'
 
@@ -79,6 +79,7 @@ const legacyOfficeCases = [
     originalName: 'slides.ppt',
   },
 ] as const
+const testLogger = createLogger({ level: 'silent' })
 
 function createLegacyOfficeBytes(clsid: readonly number[]) {
   const bytes = new Uint8Array(608)
@@ -1043,7 +1044,7 @@ describe('attachment service', () => {
       const storedFilePath = getStoredFilePath(activeRow!.storageKey)
       expect(new Uint8Array(await readFile(storedFilePath))).toEqual(pngBytes)
 
-      await expect(service.delete(attachment.id)).resolves.toBeUndefined()
+      await expect(service.delete(attachment.id, testLogger)).resolves.toBeUndefined()
 
       const [deletedRow] = await database
         .select()
@@ -1073,9 +1074,10 @@ describe('attachment service', () => {
       const deleteStoredFile = vi
         .spyOn(LocalAttachmentStorage.prototype, 'delete')
         .mockRejectedValueOnce(storageError)
-      const logError = vi.spyOn(logger, 'error').mockImplementation(() => {})
+      const requestLogger = createLogger({ level: 'silent' })
+      const logError = vi.spyOn(requestLogger, 'error')
 
-      await expect(service.delete(attachment.id)).resolves.toBeUndefined()
+      await expect(service.delete(attachment.id, requestLogger)).resolves.toBeUndefined()
 
       const [deletedRow] = await database
         .select()
@@ -1107,7 +1109,7 @@ describe('attachment service', () => {
       userId,
     })
 
-    await service.delete(attachment.id)
+    await service.delete(attachment.id, testLogger)
 
     await expect(
       service.createContentUrl(attachment.id, {
@@ -1185,7 +1187,7 @@ describe('attachment service', () => {
 
     expect(token).toBeTruthy()
 
-    await service.delete(attachment.id)
+    await service.delete(attachment.id, testLogger)
 
     await expect(
       service.readContent(attachment.id, {

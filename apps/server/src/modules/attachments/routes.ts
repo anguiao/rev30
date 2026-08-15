@@ -15,6 +15,7 @@ import { z } from 'zod'
 import type { Db } from '../../db'
 import { requireAccess } from '../../middleware/access'
 import type { AuthEnv } from '../../middleware/auth'
+import type { RequestContextEnv } from '../../middleware/request-context'
 import { getAttachmentAccessTokenCookie } from './access-token'
 import {
   AttachmentContentUnauthorizedError,
@@ -43,6 +44,10 @@ const attachmentUploadContentQuerySchema = z.object({
 const attachmentListRequestQuerySchema = attachmentListQuerySchema
   .optional()
   .transform((query) => query ?? attachmentListQuerySchema.parse({}))
+
+type AttachmentRouteEnv = {
+  Variables: AuthEnv['Variables'] & RequestContextEnv['Variables']
+}
 
 const attachmentIdValidator = zValidator('param', attachmentIdParamSchema, (result, c) => {
   if (!result.success) {
@@ -155,7 +160,7 @@ function attachmentErrorResponse(error: unknown, c: Context) {
 
 export function createAttachmentRoutes(database: Db, authMiddleware: MiddlewareHandler<AuthEnv>) {
   const service = createAttachmentService(database)
-  const app = new Hono<AuthEnv>()
+  const app = new Hono<AttachmentRouteEnv>()
 
   app.onError((error, c) => attachmentErrorResponse(error, c))
 
@@ -245,7 +250,7 @@ export function createAttachmentRoutes(database: Db, authMiddleware: MiddlewareH
       async (c) => {
         const { id } = c.req.valid('param')
 
-        await service.delete(id)
+        await service.delete(id, c.get('requestContext').logger)
 
         return c.body(null, 204)
       },

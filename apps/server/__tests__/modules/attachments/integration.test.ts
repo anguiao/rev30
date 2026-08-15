@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { Logger } from 'pino'
 import { afterEach, describe, expect, vi } from 'vitest'
 import {
   ATTACHMENT_DISPOSITION_INLINE,
@@ -18,12 +19,43 @@ import {
 import { createSystemAccessFixture } from '../../helpers/auth'
 import { dbTest, type TestDatabase } from '../../fixtures/database'
 import { createSystemUserFixture } from '../../helpers/system'
+import { createLogger } from '../../../src/runtime/logger'
+import { LocalAttachmentStorage } from '../../../src/modules/attachments/storage'
 
 const tempDirs: string[] = []
 const pngBytes = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
 ])
 const pngFile = new File([pngBytes], 'avatar.png', { type: 'image/png' })
+const requestIdPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+type LogRecord = Record<string, unknown>
+
+function createMemoryLogger() {
+  const output: string[] = []
+  const logger = createLogger({
+    destination: {
+      write(message) {
+        output.push(message)
+      },
+    },
+    level: 'trace',
+  })
+
+  return {
+    logger,
+    records() {
+      return output.flatMap((chunk) =>
+        chunk
+          .trim()
+          .split('\n')
+          .filter(Boolean)
+          .map((line) => JSON.parse(line) as LogRecord),
+      )
+    },
+  }
+}
 
 async function createTempRoot() {
   const root = await mkdtemp(join(tmpdir(), 'rev30-attachments-routes-'))
@@ -32,13 +64,16 @@ async function createTempRoot() {
   return root
 }
 
-async function createAttachmentIntegrationFixture(database: TestDatabase) {
+async function createAttachmentIntegrationFixture(
+  database: TestDatabase,
+  options: { logger?: Logger } = {},
+) {
   const storageDir = await createTempRoot()
 
   vi.stubEnv('ATTACHMENT_STORAGE_DIR', storageDir)
   vi.stubEnv('ATTACHMENT_SIGNING_SECRET', 'integration-attachment-secret')
 
-  const app = createApp(database)
+  const app = createApp(database, options)
   const authenticated = await createSystemAccessFixture(database, {
     admin: true,
     usernamePrefix: 'attachment-integration-user',
@@ -360,6 +395,81 @@ describe('attachment routes integration', () => {
       const afterDeleteBody = (await afterDeleteResponse.json()) as AttachmentListResponse
 
       expect(afterDeleteBody.list).not.toContainEqual(expect.objectContaining({ id: uploaded.id }))
+    },
+  )
+
+  dbTest(
+    'keeps attachment storage deletion failure correlated with its request logs',
+    async ({ db: database }) => {
+      const memory = createMemoryLogger()
+      const { app, authenticated } = await createAttachmentIntegrationFixture(database, {
+        logger: memory.logger,
+      })
+      const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
+        bytes: pngBytes,
+        contentType: 'image/png',
+        originalName: 'avatar.png',
+        usage: 'avatar',
+      })
+      const uploaded = (await completeResponse.json()) as { id: string }
+      const storageError = new Error('storage delete failed')
+      vi.spyOn(LocalAttachmentStorage.prototype, 'delete').mockRejectedValueOnce(storageError)
+      const privateBody = 'private-request-body'
+      const privateHeader = 'private-header-value'
+      const privateQuery = 'private-query-token'
+
+      const deleteResponse = await app.request(
+        `/api/attachments/${uploaded.id}?attachmentToken=${privateQuery}`,
+        {
+          method: 'DELETE',
+          body: privateBody,
+          headers: {
+            ...authenticated.authHeaders,
+            'content-type': 'text/plain',
+            'x-private-header': privateHeader,
+          },
+        },
+      )
+      const requestId = deleteResponse.headers.get('x-request-id')
+      const requestRecords = memory.records().filter((record) => record.requestId === requestId)
+      const started = requestRecords.find((record) => record.msg === 'request started')
+      const storageFailure = requestRecords.find(
+        (record) => record.msg === 'attachment storage deletion failed',
+      )
+      const completed = requestRecords.find((record) => record.msg === 'request completed')
+      const requestFields = {
+        clientIp: null,
+        clientIpSource: 'unavailable',
+        method: 'DELETE',
+        path: `/api/attachments/${uploaded.id}`,
+        requestId,
+      }
+
+      expect(deleteResponse.status).toBe(204)
+      expect(await deleteResponse.text()).toBe('')
+      expect(requestId).toMatch(requestIdPattern)
+      expect(started).toMatchObject({
+        ...requestFields,
+        userAgent: null,
+      })
+      expect(storageFailure).toMatchObject({
+        ...requestFields,
+        attachmentId: uploaded.id,
+        err: {
+          message: 'storage delete failed',
+          type: 'Error',
+        },
+        storageKey: expect.any(String),
+      })
+      expect(completed).toMatchObject({
+        ...requestFields,
+        durationMs: expect.any(Number),
+        status: 204,
+      })
+      expect(requestRecords.filter((record) => record.msg === 'request failed')).toHaveLength(0)
+      expect(JSON.stringify(requestRecords)).not.toContain(privateBody)
+      expect(JSON.stringify(requestRecords)).not.toContain(privateHeader)
+      expect(JSON.stringify(requestRecords)).not.toContain(privateQuery)
     },
   )
 

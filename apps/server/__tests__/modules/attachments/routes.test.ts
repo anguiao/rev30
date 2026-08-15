@@ -15,6 +15,8 @@ import {
 } from '../../../src/modules/attachments/errors'
 import { ATTACHMENT_MAX_SIZE_MESSAGE } from '../../../src/modules/attachments/policy'
 import { createAttachmentRoutes } from '../../../src/modules/attachments/routes'
+import type { RequestContextEnv } from '../../../src/middleware/request-context'
+import { createLogger } from '../../../src/runtime/logger'
 
 const attachmentId = '11111111-1111-4111-8111-111111111111'
 const currentUser = {
@@ -61,6 +63,8 @@ const uploadSession = {
     expiresAt: '2026-05-29T00:05:00.000Z',
   },
 }
+
+const requestLogger = createLogger({ level: 'silent' })
 
 async function readJson(response: Response) {
   return response.json() as Promise<Record<string, unknown>>
@@ -114,10 +118,19 @@ vi.mock('../../../src/modules/attachments/service', () => ({
 }))
 
 function createAttachmentTestApp() {
-  return new Hono().route(
-    '/api/attachments',
-    createAttachmentRoutes({} as never, mocks.authMiddleware),
-  )
+  return new Hono<RequestContextEnv>()
+    .use('*', async (c, next) => {
+      c.set('requestContext', {
+        clientIp: null,
+        clientIpSource: 'unavailable',
+        logger: requestLogger,
+        requestId: '11111111-1111-4111-8111-111111111111',
+        userAgent: null,
+      })
+
+      await next()
+    })
+    .route('/api/attachments', createAttachmentRoutes({} as never, mocks.authMiddleware))
 }
 
 describe('attachment routes', () => {
@@ -258,7 +271,7 @@ describe('attachment routes', () => {
       method: 'DELETE',
     })
     expect(deleteResponse.status).toBe(204)
-    expect(mocks.service.delete).toHaveBeenCalledWith(attachmentId)
+    expect(mocks.service.delete).toHaveBeenCalledWith(attachmentId, requestLogger)
   })
 
   it('requires attachment management access for metadata and manual deletion', async () => {

@@ -98,7 +98,8 @@ const passwordForm = useForm({
 
     try {
       const input = omit(authPasswordUpdateFormSchema.parse(value), 'confirmPassword')
-      await passwordMutation.mutateAsync(input)
+      const session = await passwordMutation.mutateAsync(input)
+      auth.setSession(session)
 
       passwordForm.reset()
       message.success('修改密码成功')

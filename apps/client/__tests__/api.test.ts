@@ -5,7 +5,7 @@ import {
   type DepartmentSummary,
   type RoleSummary,
 } from '@rev30/contracts'
-import { api, authFetch, logoutAuthSession } from '../src/api'
+import { api, authFetch, logoutAuthSession, refreshAuthSession } from '../src/api'
 import { useAuthStore } from '../src/stores/auth'
 import {
   createFetchMock,
@@ -153,9 +153,11 @@ describe('authFetch', () => {
     )
 
     const firstHeaders = getFetchCall(fetchMock, 0).headers
+    const refreshHeaders = getFetchCall(fetchMock, 1).headers
     const retryHeaders = getFetchCall(fetchMock, 2).headers
 
     expect(firstHeaders.get('authorization')).toBe('Bearer access-token')
+    expect(refreshHeaders.get('authorization')).toBe('Bearer access-token')
     expect(retryHeaders.get('authorization')).toBe('Bearer new-access-token')
     expect(retryHeaders.get('x-request-id')).toBe('request-id')
   })
@@ -211,6 +213,14 @@ describe('authFetch', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
   })
 
+  it('refreshes without authorization during initial page restoration', async () => {
+    const fetchMock = createFetchMock(jsonResponse(refreshedSession))
+
+    await refreshAuthSession()
+
+    expect(getFetchCall(fetchMock).headers.has('authorization')).toBe(false)
+  })
+
   it('clears the current session and logs out for non-refreshable unauthorized responses', async () => {
     const fetchMock = createFetchMock(
       jsonResponse({ message: '未授权' }, { status: 401 }),
@@ -230,6 +240,7 @@ describe('authFetch', () => {
         method: 'POST',
       }),
     )
+    expect(getFetchCall(fetchMock, 1).headers.get('authorization')).toBe('Bearer access-token')
   })
 
   it('clears the current session and logs out when refresh is unauthorized', async () => {
@@ -347,7 +358,9 @@ describe('authFetch', () => {
     expect(response.status).toBe(401)
     expect(auth.accessToken).toBe('newer-access-token')
     expect(auth.user).toEqual(newerSession.user)
-    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(getFetchCall(fetchMock, 1).url).toBe('/api/auth/logout')
+    expect(getFetchCall(fetchMock, 1).headers.get('authorization')).toBe('Bearer access-token')
   })
 
   it('does not overwrite a newer session with a stale refresh result', async () => {
@@ -384,6 +397,45 @@ describe('authFetch', () => {
     expect(auth.accessToken).toBe('newer-access-token')
     expect(auth.user).toEqual(newerSession.user)
     expect(new Headers(retryInit.headers).get('authorization')).toBe('Bearer newer-access-token')
+  })
+
+  it('logs out a stale retry session without clearing a newer session', async () => {
+    const retryResponse = createDeferred<Response>()
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: '未授权' }), {
+          status: 401,
+          headers: {
+            [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify(refreshedSession)))
+      .mockReturnValueOnce(retryResponse.promise)
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const auth = useAuthStore()
+    auth.setSession(session)
+
+    const responsePromise = authFetch('/api/system/users')
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(3)
+    })
+
+    auth.setSession(newerSession)
+    retryResponse.resolve(new Response(JSON.stringify({ message: '未授权' }), { status: 401 }))
+
+    const response = await responsePromise
+
+    expect(response.status).toBe(401)
+    expect(auth.accessToken).toBe('newer-access-token')
+    expect(auth.user).toEqual(newerSession.user)
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(4)
+    })
+    expect(getFetchCall(fetchMock, 3).url).toBe('/api/auth/logout')
+    expect(getFetchCall(fetchMock, 3).headers.get('authorization')).toBe('Bearer new-access-token')
   })
 
   it('waits for an in-flight refresh before sending logout', async () => {

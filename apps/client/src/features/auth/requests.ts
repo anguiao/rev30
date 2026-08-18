@@ -8,7 +8,7 @@ import {
   userSchema,
 } from '@rev30/contracts'
 import { api, logoutAuthSession, refreshAuthSession } from '../../api'
-import { assertApiResponseOk, parseApiResponse } from '../../utils/request'
+import { parseApiResponse } from '../../utils/request'
 
 export async function login(input: AuthLoginInput): Promise<AuthTokenResponse> {
   return parseApiResponse(await api.auth.login.$post({ json: input }), authTokenResponseSchema)
@@ -26,6 +26,9 @@ export async function updateMyProfile(input: AuthProfileUpdateInput): Promise<Us
   return parseApiResponse(await api.auth.me.profile.$patch({ json: input }), userSchema)
 }
 
-export async function updateMyPassword(input: AuthPasswordUpdateInput): Promise<void> {
-  await assertApiResponseOk(await api.auth.me.password.$patch({ json: input }))
+export async function updateMyPassword(input: AuthPasswordUpdateInput): Promise<AuthTokenResponse> {
+  return parseApiResponse(
+    await api.auth.me.password.$patch({ json: input }),
+    authTokenResponseSchema,
+  )
 }

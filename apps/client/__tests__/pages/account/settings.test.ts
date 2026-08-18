@@ -215,8 +215,20 @@ describe('account settings page', () => {
   })
 
   it('clears password fields after a successful password update', async () => {
-    updateMyPasswordMock.mockResolvedValue(undefined)
+    const passwordSession = {
+      ...session,
+      accessToken: 'password-changed-access-token',
+      accessCodes: ['account:updated'],
+      menus: [],
+      user: {
+        ...session.user,
+        nickname: 'Ada Byron',
+        updatedAt: '2026-05-02T00:00:00.000Z',
+      },
+    }
+    updateMyPasswordMock.mockResolvedValue(passwordSession)
     const { wrapper } = await mountAccountSettingsPage()
+    const auth = useAuthStore()
 
     await wrapper.find('[data-test="account-password-current"] input').setValue('password123')
     await wrapper.find('[data-test="account-password-new"] input').setValue('password456')
@@ -230,6 +242,12 @@ describe('account settings page', () => {
     expect(updateMyPasswordMock).toHaveBeenCalledWith({
       currentPassword: 'password123',
       newPassword: 'password456',
+    })
+    expect(auth.$state).toMatchObject({
+      accessToken: passwordSession.accessToken,
+      accessCodes: passwordSession.accessCodes,
+      menus: passwordSession.menus,
+      user: passwordSession.user,
     })
     expect(
       (wrapper.get('[data-test="account-password-current"] input').element as HTMLInputElement)

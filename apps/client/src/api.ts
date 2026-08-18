@@ -58,13 +58,25 @@ const runSessionOperation = createSerialExecutor()
 let autoRefreshPromise: Promise<AuthTokenResponse> | null = null
 
 export function refreshAuthSession() {
-  return runSessionOperation(async () =>
-    parseApiResponse(await internalApi.auth.refresh.$post(), authTokenResponseSchema),
-  )
+  const accessToken = useAuthStore().accessToken
+
+  return runSessionOperation(async () => {
+    const response = await internalApi.auth.refresh.$post(
+      undefined,
+      accessToken === null ? undefined : { headers: { authorization: `Bearer ${accessToken}` } },
+    )
+
+    return parseApiResponse(response, authTokenResponseSchema)
+  })
 }
 
-export async function logoutAuthSession() {
-  await runSessionOperation(() => internalApi.auth.logout.$post())
+export async function logoutAuthSession(accessToken = useAuthStore().accessToken) {
+  await runSessionOperation(() =>
+    internalApi.auth.logout.$post(
+      undefined,
+      accessToken === null ? undefined : { headers: { authorization: `Bearer ${accessToken}` } },
+    ),
+  )
 }
 
 function getOrStartAutomaticRefresh() {
@@ -75,19 +87,21 @@ function getOrStartAutomaticRefresh() {
   return autoRefreshPromise
 }
 
-function clearSessionAndLogout() {
+function clearSessionAndLogout(accessToken: string) {
   const auth = useAuthStore()
 
   auth.clearSession()
-  void logoutAuthSession().catch(() => {})
+  void logoutAuthSession(accessToken).catch(() => {})
 }
 
 function clearSessionAndLogoutIfCurrent(accessToken: string) {
   const auth = useAuthStore()
 
   if (auth.accessToken === accessToken) {
-    clearSessionAndLogout()
+    auth.clearSession()
   }
+
+  void logoutAuthSession(accessToken).catch(() => {})
 }
 
 function shouldRefreshAccessToken(response: Response) {
@@ -111,7 +125,7 @@ async function resolveRetryAccessToken(accessToken: string) {
     }
 
     if (error instanceof ApiRequestError && error.status === 401) {
-      clearSessionAndLogout()
+      clearSessionAndLogout(accessToken)
     }
     return null
   }
@@ -163,8 +177,8 @@ export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}
 
   const retryResponse = await sendFetch(input, init, retryHeaders)
 
-  if (retryResponse.status === 401 && auth.accessToken === retryAccessToken) {
-    clearSessionAndLogout()
+  if (retryResponse.status === 401) {
+    clearSessionAndLogoutIfCurrent(retryAccessToken)
   }
 
   return retryResponse

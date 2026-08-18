@@ -1,5 +1,5 @@
 ---
-status: implemented
+status: completed
 date: 2026-08-14
 ---
 
@@ -52,10 +52,10 @@ date: 2026-08-14
 | 主题 | 决策 |
 | --- | --- |
 | 请求上下文 | Hono 类型化 context variable，不使用 `AsyncLocalStorage` |
-| `requestId` | 每次请求使用 `crypto.randomUUID()` 生成，不接受调用方提供的值 |
+| `requestId` | 每次请求使用 Node.js `randomUUID()` 生成，不接受调用方提供的值 |
 | 响应关联 | 所有响应返回 `X-Request-Id` |
 | 代理默认值 | `TRUSTED_PROXY_CIDRS` 默认为空，转发头默认不可信 |
-| 代理配置来源 | 服务端启动环境变量，入口最先解析并编译，运行期间只读 |
+| 代理配置来源 | 服务端启动环境变量，入口最先解析并创建策略，运行期间只读 |
 | 客户端 IP | 从 socket 和可信 `X-Forwarded-For` 链解析，并记录来源 |
 | User-Agent | 只读取单个 header，去空白，空值归一为 `null`，最长保留 512 个字符 |
 | 请求 logger | Pino child logger，绑定请求公共字段，不建立隐式全局上下文 |
@@ -116,8 +116,8 @@ request context -> request logger -> JSON body limit -> auth -> access -> route
 请求上下文和请求日志覆盖整个 Hono app，而不只覆盖 `/api` 中已注册的成功路由，因此
 未匹配路由、认证失败、body limit 拒绝和未知异常也必须带有同一请求的 `X-Request-Id`。
 
-根 app 显式注册 error handler：带有 Hono `getResponse()` 语义的异常继续返回其原始
-response，其他未知异常保持 Hono 默认的 `500 Internal Server Error` 状态、响应体和
+根 app 显式注册 error handler：Hono `HTTPException` 继续返回其原始 response，其他未知
+异常保持 Hono 默认的 `500 Internal Server Error` 状态、响应体和
 content type，但不执行默认的 `console.error`。对应原始异常仍保留在 `c.error`，由外层
 请求日志中间件使用 request child logger 记录一次。各子应用已有的领域错误映射保持
 不变；未知异常继续向根 handler 传播。
@@ -143,7 +143,7 @@ child logger 绑定以下稳定公共字段：
 
 ## `requestId` 策略
 
-每个请求无条件使用 `crypto.randomUUID()` 生成新的 UUID。请求中已有的
+每个请求无条件使用 Node.js `node:crypto` 的 `randomUUID()` 生成新的 UUID。请求中已有的
 `X-Request-Id` 无论来自普通客户端还是可信代理都不参与生成，避免调用方伪造、复用或
 污染内部日志关联键。
 
@@ -169,9 +169,11 @@ TRUSTED_PROXY_CIDRS=
 - 每项去除首尾空白；非空配置中的空项、hostname、端口、非法 IP、非法网络前缀或
   非法 CIDR 都使应用启动失败。
 - 启动错误指出环境变量名称和无效项位置，但不回显整段配置值。
-- 生产入口在连接或迁移数据库、启动维护任务和监听端口之前读取并编译配置；非法配置在
-  这些启动副作用之前失败。编译后的只读匹配策略显式注入 app，请求期间不再读取
+- 生产入口在连接或迁移数据库、启动维护任务和监听端口之前读取配置并创建策略；非法配置
+  在这些启动副作用之前失败。创建后的只读匹配策略显式注入 app，请求期间不再读取
   `process.env`，也不查询数据库或自动刷新。
+- CIDR 地址匹配复用 Node.js `node:net` 的 `BlockList`；项目层继续负责严格配置格式校验、
+  IPv4-mapped IPv6 归一化和安全错误信息。
 
 `apps/server/.env.example` 增加空配置和注释，README 的部署说明解释该变量只应填写实际
 受控反向代理或负载均衡器的出口地址，而且这些代理必须覆盖或按规范追加
@@ -249,7 +251,7 @@ Pino 标准序列化。
 - 原始 `X-Forwarded-For` 值。
 - 环境变量对象、配置对象或数据库连接串。
 
-转发链警告除 child logger 已绑定的请求公共字段外，只增加安全原因码和可选 hop 数，不
+转发链警告除 child logger 已绑定的请求公共字段外，只增加安全原因码和 hop 数，不
 记录原始转发头。查询串被排除是安全要求，因为附件签名 token 等秘密可能出现在 URL
 query 中。
 
@@ -328,7 +330,7 @@ redaction 路径为理由放开完整 body 或配置对象日志。
 - 请求日志中间件只通过 `c.error` 和最终 `5xx` 状态记录已经由 Hono error handler 处理的
   未知异常，不二次抛出或重新映射；继续沿用现有 Hono 路由错误映射和未知错误处理，
   不新增宽泛错误 fallback。
-- 根 error handler 保留 Hono `getResponse()` 异常的原始响应，并为其他异常复现原有通用
+- 根 error handler 保留 Hono `HTTPException` 的原始响应，并为其他异常复现原有通用
   `500` 响应；handler 不写 console 日志，错误记录统一由请求日志中间件完成，避免重复
   输出和绕过 Pino redaction。
 - 日志 redaction 是泄漏防线，不参与业务控制流；日志配置或调用方式不得吞掉业务异常。
@@ -342,12 +344,12 @@ redaction 路径为理由放开完整 body 或配置对象日志。
 - 空可信代理配置忽略伪造的 `X-Forwarded-For`。
 - 单个 IP、IPv4 CIDR 和 IPv6 CIDR 的合法配置与匹配。
 - 非法 IP、CIDR、前缀、端口、hostname 和空配置项导致创建策略失败。
-- IPv4-mapped IPv6 规范化。
+- IPv4-mapped IPv6 地址及 CIDR 规范化。
 - 单层和多层可信代理选择第一个非可信地址。
 - 全部地址可信时选择最左侧地址。
 - 非可信直连对端不能借助转发头伪造客户端 IP。
 - 空地址、非法地址和超过 32 跳的链安全返回 socket 地址。
-- socket 地址缺失时返回 `unavailable`，且不使用转发头。
+- socket 地址缺失或无效时返回 `unavailable`，且不使用转发头。
 
 ### 请求上下文与 app 边界测试
 
@@ -373,7 +375,7 @@ redaction 路径为理由放开完整 body 或配置对象日志。
   `[Redacted]`，原值在序列化结果中不可见。
 - Error 使用 `err` 得到标准序列化；未知异常只产生失败日志，不再额外产生完成日志，且
   Hono 生成的 `500` 响应保持不变。
-- 根 error handler 保留带 `getResponse()` 异常的原始状态、headers 和响应体。
+- 根 error handler 保留 Hono `HTTPException` 的原始状态、headers 和响应体。
 - 未知异常不再触发 Hono 默认 `console.error`，最终只存在一条 Pino 失败日志。
 - 子应用 error handler 映射为 `4xx` 的领域异常即使存在 `c.error`，仍只产生完成日志。
 - 流式响应不被日志中间件读取或包裹，并按响应构造完成语义记录；测试不把流消费完成

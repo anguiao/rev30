@@ -4,14 +4,14 @@ import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import type { Logger } from 'pino'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createRootErrorHandler } from '../../src/app'
+import { rootErrorHandler } from '../../src/app'
 import {
   createRequestContextMiddleware,
   type RequestContextEnv,
 } from '../../src/middleware/request-context'
 import { createRequestLogger } from '../../src/middleware/logger'
 import { createLogger } from '../../src/runtime/logger'
-import { compileTrustedProxyPolicy, type TrustedProxyPolicy } from '../../src/runtime/trusted-proxy'
+import { readTrustedProxyPolicy, type TrustedProxyPolicy } from '../../src/runtime/trusted-proxy'
 
 type LogRecord = Record<string, unknown>
 
@@ -45,12 +45,12 @@ function createMemoryLogger() {
 
 function createTestApp(
   logger: Logger,
-  trustedProxyPolicy: TrustedProxyPolicy = compileTrustedProxyPolicy(undefined),
+  trustedProxyPolicy: TrustedProxyPolicy = readTrustedProxyPolicy({}),
 ) {
   return new Hono<RequestContextEnv>()
     .use('*', createRequestContextMiddleware({ logger, trustedProxyPolicy }))
     .use('*', createRequestLogger())
-    .onError(createRootErrorHandler)
+    .onError(rootErrorHandler)
 }
 
 function findRecord(records: LogRecord[], message: string) {
@@ -154,17 +154,17 @@ describe('request context middleware', () => {
 
   it('reads the actual Node socket and trusts X-Forwarded-For only through a trusted loopback proxy', async () => {
     const memory = createMemoryLogger()
-    const app = createTestApp(memory.logger, compileTrustedProxyPolicy('127.0.0.1/32')).get(
-      '/context',
-      (c) => {
-        const requestContext = c.get('requestContext')
+    const app = createTestApp(
+      memory.logger,
+      readTrustedProxyPolicy({ TRUSTED_PROXY_CIDRS: '127.0.0.1/32' }),
+    ).get('/context', (c) => {
+      const requestContext = c.get('requestContext')
 
-        return c.json({
-          clientIp: requestContext.clientIp,
-          clientIpSource: requestContext.clientIpSource,
-        })
-      },
-    )
+      return c.json({
+        clientIp: requestContext.clientIp,
+        clientIpSource: requestContext.clientIpSource,
+      })
+    })
     const server = serve({
       fetch: app.fetch,
       hostname: '127.0.0.1',
@@ -282,7 +282,7 @@ describe('request logging middleware', () => {
     })
   })
 
-  it('keeps getResponse errors intact while preserving the request ID header', async () => {
+  it('keeps HTTPException responses intact while preserving the request ID header', async () => {
     const memory = createMemoryLogger()
     const app = createTestApp(memory.logger).get('/teapot', () => {
       throw new HTTPException(418, {
@@ -301,6 +301,21 @@ describe('request logging middleware', () => {
     expect(response.headers.get('x-original-error-header')).toBe('preserved')
     expect(response.headers.get('x-request-id')).toMatch(requestIdPattern)
     expect(await response.text()).toBe('short and stout')
+  })
+
+  it('does not trust response-like unknown errors', async () => {
+    const memory = createMemoryLogger()
+    const getResponse = vi.fn(() => new Response('should not be returned', { status: 418 }))
+    const error = Object.assign(new Error('unexpected failure'), { getResponse })
+    const app = createTestApp(memory.logger).get('/failure', () => {
+      throw error
+    })
+
+    const response = await app.request('/failure')
+
+    expect(response.status).toBe(500)
+    expect(await response.text()).toBe('Internal Server Error')
+    expect(getResponse).not.toHaveBeenCalled()
   })
 
   it('records a mapped domain 4xx as completed even when Hono retains c.error', async () => {
@@ -349,7 +364,7 @@ describe('request logging middleware', () => {
 
   it('logs invalid forwarded chains without recording the original header', async () => {
     const memory = createMemoryLogger()
-    const policy = compileTrustedProxyPolicy('10.0.0.0/8')
+    const policy = readTrustedProxyPolicy({ TRUSTED_PROXY_CIDRS: '10.0.0.0/8' })
     const forwardedFor = '198.51.100.42, invalid-proxy.example'
     const app = createTestApp(memory.logger, policy).get('/context', (c) => {
       const requestContext = c.get('requestContext')

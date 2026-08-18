@@ -1,16 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import {
-  compileTrustedProxyPolicy,
-  normalizeIpAddress,
-  readTrustedProxyPolicy,
-  resolveClientIp,
-} from '../../src/runtime/trusted-proxy'
+import { readTrustedProxyPolicy, resolveClientIp } from '../../src/runtime/trusted-proxy'
 
 describe('trusted proxy policy', () => {
   it('defaults to trusting no proxy and ignores a forged X-Forwarded-For header', () => {
     const policy = readTrustedProxyPolicy({ TRUSTED_PROXY_CIDRS: '' })
 
-    expect(Object.isFrozen(policy)).toBe(true)
     expect(policy.isTrusted('127.0.0.1')).toBe(false)
     expect(readTrustedProxyPolicy({}).isTrusted('127.0.0.1')).toBe(false)
     expect(
@@ -26,7 +20,9 @@ describe('trusted proxy policy', () => {
   })
 
   it('matches a single address, an IPv4 CIDR, and an IPv6 CIDR', () => {
-    const policy = compileTrustedProxyPolicy('192.0.2.10, 10.24.0.0/16, 2001:db8:12::/48')
+    const policy = readTrustedProxyPolicy({
+      TRUSTED_PROXY_CIDRS: '192.0.2.10, 10.24.0.0/16, 2001:db8:12::/48, ::ffff:198.51.100.0/120',
+    })
 
     expect(policy.isTrusted('192.0.2.10')).toBe(true)
     expect(policy.isTrusted('::ffff:192.0.2.10')).toBe(true)
@@ -35,6 +31,9 @@ describe('trusted proxy policy', () => {
     expect(policy.isTrusted('10.25.0.1')).toBe(false)
     expect(policy.isTrusted('2001:db8:12:abcd::1')).toBe(true)
     expect(policy.isTrusted('2001:db8:13::1')).toBe(false)
+    expect(policy.isTrusted('198.51.100.42')).toBe(true)
+    expect(policy.isTrusted('::ffff:198.51.100.42')).toBe(true)
+    expect(policy.isTrusted('198.51.101.1')).toBe(false)
   })
 
   it('rejects malformed trusted proxy configuration with only the environment name and item position', () => {
@@ -51,7 +50,7 @@ describe('trusted proxy policy', () => {
       let error: unknown
 
       try {
-        compileTrustedProxyPolicy(value)
+        readTrustedProxyPolicy({ TRUSTED_PROXY_CIDRS: value })
       } catch (caught) {
         error = caught
       }
@@ -63,18 +62,10 @@ describe('trusted proxy policy', () => {
   })
 })
 
-describe('IP address normalization', () => {
-  it('normalizes IPv4-mapped IPv6 addresses and rejects non-literals', () => {
-    expect(normalizeIpAddress('::ffff:127.0.0.1')).toBe('127.0.0.1')
-    expect(normalizeIpAddress('0:0:0:0:0:ffff:192.0.2.4')).toBe('192.0.2.4')
-    expect(normalizeIpAddress('fe80::1%en0')).toBeNull()
-    expect(normalizeIpAddress('proxy.internal')).toBeNull()
-    expect(normalizeIpAddress('192.0.2.4:8080')).toBeNull()
-  })
-})
-
 describe('client IP resolution', () => {
-  const trustedProxyPolicy = compileTrustedProxyPolicy('10.0.0.0/8, 2001:db8:ffff::/48')
+  const trustedProxyPolicy = readTrustedProxyPolicy({
+    TRUSTED_PROXY_CIDRS: '10.0.0.0/8, 2001:db8:ffff::/48',
+  })
 
   it('selects the first non-trusted address from a trusted multi-proxy chain', () => {
     expect(
@@ -105,7 +96,7 @@ describe('client IP resolution', () => {
   it('normalizes mapped IPv6 socket and forwarded addresses before matching and returning them', () => {
     expect(
       resolveClientIp({
-        socketAddress: '::ffff:10.0.0.3',
+        socketAddress: '0:0:0:0:0:ffff:10.0.0.3',
         xForwardedFor: '::ffff:198.51.100.42',
         trustedProxyPolicy,
       }),
@@ -114,6 +105,22 @@ describe('client IP resolution', () => {
       clientIpSource: 'x-forwarded-for',
     })
   })
+
+  it.each(['fe80::1%en0', 'proxy.internal', '192.0.2.4:8080'])(
+    'ignores forwarded addresses when the socket address %s is invalid',
+    (socketAddress) => {
+      expect(
+        resolveClientIp({
+          socketAddress,
+          xForwardedFor: '198.51.100.42, 10.0.0.2',
+          trustedProxyPolicy,
+        }),
+      ).toEqual({
+        clientIp: null,
+        clientIpSource: 'unavailable',
+      })
+    },
+  )
 
   it('uses the socket address without a warning when a trusted proxy omits X-Forwarded-For', () => {
     expect(

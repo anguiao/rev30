@@ -1,4 +1,5 @@
 import { Hono, type ErrorHandler } from 'hono'
+import { HTTPException } from 'hono/http-exception'
 import type { Logger } from 'pino'
 import type { Db } from './db'
 import { createAuthMiddleware } from './middleware/auth'
@@ -17,7 +18,7 @@ import { createIconRoutes } from './modules/icons/routes'
 import { createIconSearchRoutes } from './modules/icons/search/routes'
 import { createSystemRoutes } from './modules/system/routes'
 import { logger } from './runtime/logger'
-import { compileTrustedProxyPolicy, type TrustedProxyPolicy } from './runtime/trusted-proxy'
+import { readTrustedProxyPolicy, type TrustedProxyPolicy } from './runtime/trusted-proxy'
 
 export type CreateAppOptions = {
   logger?: Logger
@@ -40,8 +41,8 @@ export function createApiRoutes(database: Db) {
     .route('/demos', createDemoRoutes(authMiddleware))
 }
 
-export const createRootErrorHandler: ErrorHandler<RequestContextEnv> = (error, c) => {
-  if ('getResponse' in error) {
+export const rootErrorHandler: ErrorHandler<RequestContextEnv> = (error, c) => {
+  if (error instanceof HTTPException) {
     const response = error.getResponse()
 
     return c.newResponse(response.body, response)
@@ -52,12 +53,12 @@ export const createRootErrorHandler: ErrorHandler<RequestContextEnv> = (error, c
 
 export function createApp(database: Db, options: CreateAppOptions = {}) {
   const appLogger = options.logger ?? logger
-  const trustedProxyPolicy = options.trustedProxyPolicy ?? compileTrustedProxyPolicy(undefined)
+  const trustedProxyPolicy = options.trustedProxyPolicy ?? readTrustedProxyPolicy({})
 
   return new Hono<RequestContextEnv>()
     .use('*', createRequestContextMiddleware({ logger: appLogger, trustedProxyPolicy }))
     .use('*', createRequestLogger())
-    .onError(createRootErrorHandler)
+    .onError(rootErrorHandler)
     .route('/api', createApiRoutes(database))
 }
 

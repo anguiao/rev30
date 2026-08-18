@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { HttpBindings } from '@hono/node-server'
 import type { MiddlewareHandler } from 'hono'
 import type { Logger } from 'pino'
@@ -10,7 +11,7 @@ import {
 const requestIdHeader = 'X-Request-Id'
 const maxUserAgentLength = 512
 
-export type RequestContext = {
+type RequestContext = {
   requestId: string
   clientIp: string | null
   clientIpSource: ClientIpSource
@@ -18,12 +19,12 @@ export type RequestContext = {
   logger: Logger
 }
 
-export type RequestContextVariables = {
+type RequestContextVariables = {
   requestContext: RequestContext
 }
 
 export type RequestContextEnv = {
-  Bindings: Partial<HttpBindings>
+  Bindings?: Partial<HttpBindings>
   Variables: RequestContextVariables
 }
 
@@ -37,22 +38,22 @@ export function createRequestContextMiddleware({
   trustedProxyPolicy,
 }: CreateRequestContextMiddlewareOptions): MiddlewareHandler<RequestContextEnv> {
   return async (c, next) => {
-    const requestId = crypto.randomUUID()
-    const clientIp = resolveClientIp({
+    const requestId = randomUUID()
+    const { clientIp, clientIpSource, forwardedForError } = resolveClientIp({
       socketAddress: c.env?.incoming?.socket.remoteAddress,
       trustedProxyPolicy,
       xForwardedFor: c.req.header('x-forwarded-for'),
     })
     const requestLogger = logger.child({
-      clientIp: clientIp.clientIp,
-      clientIpSource: clientIp.clientIpSource,
+      clientIp,
+      clientIpSource,
       method: c.req.method,
       path: new URL(c.req.url).pathname,
       requestId,
     })
     const requestContext: RequestContext = {
-      clientIp: clientIp.clientIp,
-      clientIpSource: clientIp.clientIpSource,
+      clientIp,
+      clientIpSource,
       logger: requestLogger,
       requestId,
       userAgent: normalizeUserAgent(c.req.header('user-agent')),
@@ -61,13 +62,8 @@ export function createRequestContextMiddleware({
     c.set('requestContext', requestContext)
     c.header(requestIdHeader, requestId)
 
-    if (clientIp.forwardedForError) {
-      const { hopCount, reason } = clientIp.forwardedForError
-
-      requestLogger.warn(
-        { ...(hopCount === undefined ? {} : { hopCount }), reason },
-        'invalid X-Forwarded-For',
-      )
+    if (forwardedForError) {
+      requestLogger.warn(forwardedForError, 'invalid X-Forwarded-For')
     }
 
     await next()

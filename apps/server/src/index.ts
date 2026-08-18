@@ -7,7 +7,7 @@ import { logger } from './runtime/logger'
 import { registerShutdownHandlers } from './runtime/shutdown'
 import { readTrustedProxyPolicy } from './runtime/trusted-proxy'
 
-const trustedProxyPolicy = readTrustedProxyPolicy(process.env)
+const trustedProxyPolicy = readTrustedProxyPolicy()
 const port = Number(process.env.PORT ?? 3000)
 const { close: closeDb, db } = await createDb()
 const maintenance = startAppMaintenance(db)

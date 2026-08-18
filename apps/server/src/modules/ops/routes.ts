@@ -17,7 +17,7 @@ import { createOpsService } from './service'
 
 const loginLogQueryValidator = zValidator('query', loginLogListQuerySchema, (result, c) => {
   if (!result.success) {
-    return c.json({ message: '查询参数无效' }, 400)
+    return c.json({ message: '请求参数无效' }, 400)
   }
 })
 const onlineSessionQueryValidator = zValidator(
@@ -25,7 +25,7 @@ const onlineSessionQueryValidator = zValidator(
   onlineSessionListQuerySchema,
   (result, c) => {
     if (!result.success) {
-      return c.json({ message: '查询参数无效' }, 400)
+      return c.json({ message: '请求参数无效' }, 400)
     }
   },
 )

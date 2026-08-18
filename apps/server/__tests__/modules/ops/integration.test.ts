@@ -301,17 +301,19 @@ describe('ops routes', () => {
       })
       const app = createTestApp(database, operator.authHeaders)
 
-      expect((await app.request('/api/ops/login-logs?pageSize=101')).status).toBe(400)
-      expect(
-        (
-          await app.request(
-            '/api/ops/login-logs?occurredFrom=2026-08-19T00%3A00%3A00Z&occurredTo=2026-08-18T00%3A00%3A00Z',
-          )
-        ).status,
-      ).toBe(400)
-      expect((await app.request('/api/ops/sessions/not-a-uuid', { method: 'DELETE' })).status).toBe(
-        400,
+      const invalidPageSize = await app.request('/api/ops/login-logs?pageSize=101')
+      expect(invalidPageSize.status).toBe(400)
+      expect(await invalidPageSize.json()).toEqual({ message: '请求参数无效' })
+
+      const invalidRange = await app.request(
+        '/api/ops/login-logs?occurredFrom=2026-08-19T00%3A00%3A00Z&occurredTo=2026-08-18T00%3A00%3A00Z',
       )
+      expect(invalidRange.status).toBe(400)
+      expect(await invalidRange.json()).toEqual({ message: '请求参数无效' })
+
+      const invalidId = await app.request('/api/ops/sessions/not-a-uuid', { method: 'DELETE' })
+      expect(invalidId.status).toBe(400)
+      expect(await invalidId.json()).toEqual({ message: '会话 ID 无效' })
     },
   )
 })

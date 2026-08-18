@@ -19,6 +19,21 @@ describe('stable auth session migration', () => {
         sql`select to_regclass('auth_refresh_tokens')::text as "tableName"`,
       )
       expect(legacyTable.rows).toEqual([{ tableName: null }])
+      const idDefaults = await db.execute<{
+        tableName: string
+        columnDefault: string | null
+      }>(sql`
+        select table_name as "tableName", column_default as "columnDefault"
+        from information_schema.columns
+        where table_schema = 'public'
+          and table_name in ('auth_sessions', 'ops_login_logs')
+          and column_name = 'id'
+        order by table_name
+      `)
+      expect(idDefaults.rows).toEqual([
+        { tableName: 'auth_sessions', columnDefault: null },
+        { tableName: 'ops_login_logs', columnDefault: 'uuidv7()' },
+      ])
 
       const ids = [
         '10000000-0000-4000-8000-000000000300',
@@ -62,6 +77,7 @@ describe('stable auth session migration', () => {
 
     await expect(
       db.insert(authSessions).values({
+        id: '11111111-1111-4111-8111-111111111111',
         userId: user!.id,
         refreshTokenHash: 'invalid-revocation',
         expiresAt: new Date('2099-01-01T00:00:00.000Z'),

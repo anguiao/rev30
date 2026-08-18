@@ -1327,6 +1327,7 @@ describe('user routes', () => {
       ],
     })
     await database.insert(authSessions).values({
+      id: randomUUID(),
       userId: created.id,
       refreshTokenHash: `delete-${randomUUID()}`,
       expiresAt: new Date('2099-01-01T00:00:00.000Z'),
@@ -1399,6 +1400,7 @@ describe('user routes', () => {
       nickname: 'Disable Session User',
     })
     await db.insert(authSessions).values({
+      id: randomUUID(),
       userId: created.id,
       refreshTokenHash: `disable-${randomUUID()}`,
       expiresAt: new Date('2099-01-01T00:00:00.000Z'),

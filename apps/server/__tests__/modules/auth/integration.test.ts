@@ -81,9 +81,21 @@ function getRefreshTokenCookie(response: Response) {
   return response.headers.get('set-cookie')?.match(/refresh_token=([^;]+)/)?.[1]
 }
 
+function getAttachmentAccessTokenCookie(response: Response) {
+  return response.headers.get('set-cookie')?.match(/attachment_token=([^;]+)/)?.[1]
+}
+
 function requireRefreshToken(token: string | undefined) {
   if (!token) {
     throw new Error('Expected refresh token cookie')
+  }
+
+  return token
+}
+
+function requireAttachmentAccessToken(token: string | undefined) {
+  if (!token) {
+    throw new Error('Expected attachment access token cookie')
   }
 
   return token
@@ -1014,10 +1026,14 @@ describe('auth routes', () => {
   )
 
   dbTest(
-    'logs out by revoking refresh tokens and clearing the cookie',
+    'logs out by revoking the stable session for all three tokens and clearing cookies',
     async ({ db: database }) => {
       const app = createTestApp(database)
       const registered = await createLoggedInAccount(app, database)
+      const attachmentAccess = await verifyAttachmentAccessToken(
+        requireAttachmentAccessToken(getAttachmentAccessTokenCookie(registered.response)),
+        readAuthConfig(),
+      )
 
       const logoutResponse = await app.request('/api/auth/logout', {
         method: 'POST',
@@ -1040,6 +1056,22 @@ describe('auth routes', () => {
       })
 
       expect(refreshResponse.status).toBe(401)
+
+      const accessResponse = await app.request('/api/auth/me', {
+        headers: {
+          authorization: `Bearer ${registered.body.accessToken}`,
+        },
+      })
+      expect(accessResponse.status).toBe(401)
+      expect(accessResponse.headers.get(AUTH_ACTION_HEADER)).toBeNull()
+
+      await expect(
+        createAuthRepository(database).findValidSessionUser(
+          attachmentAccess.sessionId,
+          attachmentAccess.userId,
+          new Date(),
+        ),
+      ).resolves.toBeUndefined()
 
       const secondLogoutResponse = await app.request('/api/auth/logout', {
         method: 'POST',
@@ -1252,6 +1284,18 @@ describe('auth routes', () => {
         password: 'old-password',
       })
       const currentRefreshToken = requireRefreshToken(currentSession.refreshToken)
+      const currentAuth = currentSession.body as AuthTokenResponse
+      const config = readAuthConfig()
+      const [registeredAttachment, currentAttachment] = await Promise.all([
+        verifyAttachmentAccessToken(
+          requireAttachmentAccessToken(getAttachmentAccessTokenCookie(registered.response)),
+          config,
+        ),
+        verifyAttachmentAccessToken(
+          requireAttachmentAccessToken(getAttachmentAccessTokenCookie(currentSession.response)),
+          config,
+        ),
+      ])
 
       const response = await app.request('/api/auth/me/password', {
         method: 'PATCH',
@@ -1260,7 +1304,7 @@ describe('auth routes', () => {
           newPassword: 'new-password',
         }),
         headers: {
-          authorization: `Bearer ${(currentSession.body as AuthTokenResponse).accessToken}`,
+          authorization: `Bearer ${currentAuth.accessToken}`,
           cookie: `refresh_token=${currentRefreshToken}`,
           'content-type': 'application/json',
         },
@@ -1268,8 +1312,18 @@ describe('auth routes', () => {
 
       expect(response.status).toBe(200)
 
+      const passwordSession = (await response.json()) as AuthTokenResponse
       const newRefreshToken = requireRefreshToken(getRefreshTokenCookie(response))
-      const verifiedNewToken = await verifyRefreshToken(newRefreshToken, readAuthConfig())
+      const [verifiedNewAccess, verifiedNewToken, verifiedNewAttachment] = await Promise.all([
+        verifyAccessToken(passwordSession.accessToken, config),
+        verifyRefreshToken(newRefreshToken, config),
+        verifyAttachmentAccessToken(
+          requireAttachmentAccessToken(getAttachmentAccessTokenCookie(response)),
+          config,
+        ),
+      ])
+      expect(verifiedNewAccess.sessionId).toBe(verifiedNewToken.sessionId)
+      expect(verifiedNewAttachment.sessionId).toBe(verifiedNewToken.sessionId)
       const sessions = await database.query.authSessions.findMany({
         where: { userId: registered.body.user.id },
       })
@@ -1291,13 +1345,52 @@ describe('auth routes', () => {
       })
       expect(oldRefreshResponse.status).toBe(401)
 
-      const currentRefreshResponse = await app.request('/api/auth/refresh', {
+      const oldCurrentRefreshResponse = await app.request('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          cookie: `refresh_token=${currentRefreshToken}`,
+        },
+      })
+      expect(oldCurrentRefreshResponse.status).toBe(401)
+
+      for (const accessToken of [registered.body.accessToken, currentAuth.accessToken]) {
+        const oldAccessResponse = await app.request('/api/auth/me', {
+          headers: { authorization: `Bearer ${accessToken}` },
+        })
+        expect(oldAccessResponse.status).toBe(401)
+        expect(oldAccessResponse.headers.get(AUTH_ACTION_HEADER)).toBeNull()
+      }
+
+      const authRepository = createAuthRepository(database)
+      for (const attachmentAccess of [registeredAttachment, currentAttachment]) {
+        await expect(
+          authRepository.findValidSessionUser(
+            attachmentAccess.sessionId,
+            attachmentAccess.userId,
+            new Date(),
+          ),
+        ).resolves.toBeUndefined()
+      }
+      await expect(
+        authRepository.findValidSessionUser(
+          verifiedNewAttachment.sessionId,
+          verifiedNewAttachment.userId,
+          new Date(),
+        ),
+      ).resolves.toBeDefined()
+
+      const newAccessResponse = await app.request('/api/auth/me', {
+        headers: { authorization: `Bearer ${passwordSession.accessToken}` },
+      })
+      expect(newAccessResponse.status).toBe(200)
+
+      const newRefreshResponse = await app.request('/api/auth/refresh', {
         method: 'POST',
         headers: {
           cookie: `refresh_token=${newRefreshToken}`,
         },
       })
-      expect(currentRefreshResponse.status).toBe(200)
+      expect(newRefreshResponse.status).toBe(200)
     },
   )
 

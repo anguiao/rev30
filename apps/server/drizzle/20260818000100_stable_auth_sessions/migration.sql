@@ -2,7 +2,7 @@ DROP TABLE "auth_refresh_tokens";
 --> statement-breakpoint
 
 CREATE TABLE "auth_sessions" (
-  "id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
+  "id" uuid PRIMARY KEY NOT NULL,
   "user_id" uuid NOT NULL REFERENCES "system_users"("id"),
   "refresh_token_hash" text NOT NULL,
   "created_ip" text,

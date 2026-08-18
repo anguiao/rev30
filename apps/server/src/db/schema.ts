@@ -403,7 +403,7 @@ export const authPasswordCredentials = pgTable('auth_password_credentials', {
 export const authSessions = pgTable(
   'auth_sessions',
   {
-    id: uuidPrimaryKeyColumn(),
+    id: uuid('id').primaryKey(),
     userId: uuid('user_id')
       .notNull()
       .references(() => systemUsers.id),

@@ -1218,6 +1218,38 @@ describe('attachment service', () => {
     },
   )
 
+  dbTest('keeps an issued signed content URL valid after session revocation', async ({ db }) => {
+    const service = await createAttachmentServiceForTest(db)
+    const userId = await createUser(db)
+    const sessionId = randomUUID()
+    await db.insert(authSessions).values({
+      id: sessionId,
+      userId,
+      refreshTokenHash: randomUUID(),
+      expiresAt: new Date(Date.now() + 60_000),
+    })
+    const attachment = await createAttachmentViaSession(service, {
+      bytes: pngBytes,
+      originalName: 'avatar.png',
+      userId,
+    })
+    const access = await service.createContentUrl(attachment.id, {
+      disposition: ATTACHMENT_DISPOSITION_INLINE,
+    })
+    const token = new URL(access.request.url, 'http://localhost').searchParams.get('token')
+
+    await db
+      .update(authSessions)
+      .set({ revokedAt: new Date(), revocationReason: 'logout' })
+      .where(eq(authSessions.id, sessionId))
+
+    const content = await service.readContent(attachment.id, {
+      signedToken: token!,
+    })
+
+    expect(await streamToBytes(content.body)).toEqual(pngBytes)
+  })
+
   dbTest('does not cache content beyond the token lifetime', async ({ db: database }) => {
     const service = await createAttachmentServiceForTest(database, { contentUrlTtlSeconds: '60' })
     const userId = await createUser(database)

@@ -1,7 +1,8 @@
 import type { Db } from '../db'
 import { startAttachmentCleanup } from './attachment-cleanup'
 import { startAuthLoginAttemptCleanup } from './auth-login-attempt-cleanup'
-import { startAuthRefreshTokenCleanup } from './auth-refresh-token-cleanup'
+import { startAuthSessionCleanup } from './auth-session-cleanup'
+import { startOpsLoginLogCleanup } from './ops-login-log-cleanup'
 import type { MaintenanceWorker } from './types'
 
 export type AppMaintenance = {
@@ -12,11 +13,12 @@ export function startAppMaintenance(database: Db): AppMaintenance {
   const workers: MaintenanceWorker[] = []
 
   try {
-    workers.push(startAuthRefreshTokenCleanup(database))
+    workers.push(startAuthSessionCleanup(database))
     workers.push(startAuthLoginAttemptCleanup(database))
+    workers.push(startOpsLoginLogCleanup(database))
     workers.push(startAttachmentCleanup(database))
   } catch (error) {
-    for (const worker of workers) {
+    for (const worker of [...workers].reverse()) {
       void worker.stop()
     }
 

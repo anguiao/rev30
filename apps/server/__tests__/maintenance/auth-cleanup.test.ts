@@ -1,15 +1,19 @@
 import { randomUUID } from 'node:crypto'
 import { afterEach, describe, expect, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { authLoginAttemptBuckets, authSessions, systemUsers } from '../../src/db/schema'
+import {
+  authLoginAttemptBuckets,
+  authSessions,
+  opsLoginLogs,
+  systemUsers,
+} from '../../src/db/schema'
 import { startAppMaintenance } from '../../src/maintenance'
 import { startAttachmentCleanup } from '../../src/maintenance/attachment-cleanup'
 import { startAuthLoginAttemptCleanup } from '../../src/maintenance/auth-login-attempt-cleanup'
-import { startAuthRefreshTokenCleanup } from '../../src/maintenance/auth-refresh-token-cleanup'
-import {
-  cleanupAuthLoginAttemptBuckets,
-  cleanupAuthRefreshTokens,
-} from '../../src/modules/auth/cleanup'
+import { startAuthSessionCleanup } from '../../src/maintenance/auth-session-cleanup'
+import { startOpsLoginLogCleanup } from '../../src/maintenance/ops-login-log-cleanup'
+import { cleanupAuthLoginAttemptBuckets, cleanupAuthSessions } from '../../src/modules/auth/cleanup'
+import { cleanupOpsLoginLogs } from '../../src/modules/ops/cleanup'
 import { dbTest } from '../fixtures/database'
 
 const hourMs = 60 * 60 * 1000
@@ -21,7 +25,7 @@ describe('auth maintenance', () => {
   })
 
   dbTest(
-    'removes expired refresh tokens and revoked tokens beyond the retention window',
+    'removes expired sessions immediately and revoked sessions at the retention boundary',
     async ({ db: database }) => {
       const now = new Date()
       const userId = randomUUID()
@@ -56,9 +60,9 @@ describe('auth maintenance', () => {
         {
           id: randomUUID(),
           userId,
-          refreshTokenHash: 'revoked-before-retention',
+          refreshTokenHash: 'revoked-at-retention',
           expiresAt: new Date(now.getTime() + hourMs),
-          revokedAt: new Date(now.getTime() - 25 * hourMs),
+          revokedAt: new Date(now.getTime() - 24 * hourMs),
           revocationReason: 'logout',
           createdAt: now,
           updatedAt: now,
@@ -83,7 +87,7 @@ describe('auth maintenance', () => {
         },
       ])
 
-      const deletedCount = await cleanupAuthRefreshTokens(database, 24 * hourMs)
+      const deletedCount = await cleanupAuthSessions(database, 24 * hourMs)
 
       const remaining = await database
         .select({
@@ -100,6 +104,36 @@ describe('auth maintenance', () => {
       ])
     },
   )
+
+  dbTest('removes login logs at the retention boundary', async ({ db: database }) => {
+    const now = new Date()
+    const dayMs = 24 * hourMs
+    const createLog = (username: string, createdAt: Date) => ({
+      username,
+      result: 'failure',
+      failureReason: 'invalid_credentials',
+      requestId: randomUUID(),
+      clientIpSource: 'unavailable',
+      createdAt,
+    })
+
+    await database
+      .insert(opsLoginLogs)
+      .values([
+        createLog('older-than-retention', new Date(now.getTime() - 90 * dayMs - hourMs)),
+        createLog('at-retention', new Date(now.getTime() - 90 * dayMs)),
+        createLog('within-retention', new Date(now.getTime() - 90 * dayMs + hourMs)),
+      ])
+
+    const deletedCount = await cleanupOpsLoginLogs(database, 90 * dayMs)
+    const remaining = await database
+      .select({ username: opsLoginLogs.username })
+      .from(opsLoginLogs)
+      .orderBy(opsLoginLogs.username)
+
+    expect(deletedCount).toBe(2)
+    expect(remaining).toEqual([{ username: 'within-retention' }])
+  })
 
   dbTest('removes login attempt buckets outside the retention window', async ({ db: database }) => {
     const now = new Date()
@@ -155,10 +189,10 @@ describe('auth maintenance', () => {
     ])
   })
 
-  dbTest('runs refresh token cleanup after the previous run finishes', async () => {
+  dbTest('runs session cleanup after the previous run finishes', async () => {
     vi.useFakeTimers()
-    vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', '50')
-    vi.stubEnv('AUTH_REVOKED_REFRESH_TOKEN_RETENTION_MS', '0')
+    vi.stubEnv('AUTH_SESSION_CLEANUP_INTERVAL_MS', '50')
+    vi.stubEnv('AUTH_REVOKED_SESSION_RETENTION_MS', '0')
 
     const resolvers: ((rows: { id: string }[]) => void)[] = []
     const returning = vi.fn(
@@ -174,7 +208,7 @@ describe('auth maintenance', () => {
       where,
     }))
 
-    const worker = startAuthRefreshTokenCleanup({
+    const worker = startAuthSessionCleanup({
       delete: deleteTable,
     } as never)
 
@@ -203,16 +237,38 @@ describe('auth maintenance', () => {
     expect(returning).toHaveBeenCalledTimes(2)
   })
 
-  dbTest('keeps refresh token cleanup disabled when the interval is zero', async () => {
+  dbTest(
+    'keeps session cleanup disabled when the interval is zero and ignores old settings',
+    async () => {
+      vi.useFakeTimers()
+      vi.stubEnv('AUTH_SESSION_CLEANUP_INTERVAL_MS', '0')
+      vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', 'invalid-old-value')
+      vi.stubEnv('AUTH_REVOKED_REFRESH_TOKEN_RETENTION_MS', 'invalid-old-value')
+
+      const returning = vi.fn(() => Promise.resolve([]))
+      const worker = startAuthSessionCleanup({
+        delete: vi.fn(() => ({
+          where: vi.fn(() => ({
+            returning,
+          })),
+        })),
+      } as never)
+
+      await vi.advanceTimersByTimeAsync(0)
+      await worker.stop()
+
+      expect(returning).not.toHaveBeenCalled()
+    },
+  )
+
+  dbTest('keeps ops login log cleanup disabled when the interval is zero', async () => {
     vi.useFakeTimers()
-    vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', '0')
+    vi.stubEnv('OPS_LOGIN_LOG_CLEANUP_INTERVAL_MS', '0')
 
     const returning = vi.fn(() => Promise.resolve([]))
-    const worker = startAuthRefreshTokenCleanup({
+    const worker = startOpsLoginLogCleanup({
       delete: vi.fn(() => ({
-        where: vi.fn(() => ({
-          returning,
-        })),
+        where: vi.fn(() => ({ returning })),
       })),
     } as never)
 
@@ -266,7 +322,7 @@ describe('auth maintenance', () => {
 
   dbTest('stops earlier maintenance workers when a later worker fails to start', async () => {
     vi.useFakeTimers()
-    vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', '50')
+    vi.stubEnv('AUTH_SESSION_CLEANUP_INTERVAL_MS', '50')
     vi.stubEnv('AUTH_LOGIN_ATTEMPT_RETENTION_MS', '-1')
 
     const returning = vi.fn(() => Promise.resolve([]))
@@ -289,8 +345,9 @@ describe('auth maintenance', () => {
 
   dbTest('stops auth maintenance workers when attachment cleanup fails to start', async () => {
     vi.useFakeTimers()
-    vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', '50')
+    vi.stubEnv('AUTH_SESSION_CLEANUP_INTERVAL_MS', '50')
     vi.stubEnv('AUTH_LOGIN_ATTEMPT_CLEANUP_INTERVAL_MS', '50')
+    vi.stubEnv('OPS_LOGIN_LOG_CLEANUP_INTERVAL_MS', '50')
     vi.stubEnv('ATTACHMENT_CLEANUP_RETENTION_MS', '0')
 
     const returning = vi.fn(() => Promise.resolve([]))
@@ -312,24 +369,38 @@ describe('auth maintenance', () => {
   })
 
   dbTest('fails fast for invalid maintenance durations', () => {
-    vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', 'abc')
+    vi.stubEnv('AUTH_SESSION_CLEANUP_INTERVAL_MS', 'abc')
 
-    expect(() => startAuthRefreshTokenCleanup({} as never)).toThrow(
-      'AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS 必须是 0 或正整数毫秒值',
+    expect(() => startAuthSessionCleanup({} as never)).toThrow(
+      'AUTH_SESSION_CLEANUP_INTERVAL_MS 必须是 0 或正整数毫秒值',
     )
 
     vi.unstubAllEnvs()
-    vi.stubEnv('AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS', `${2 ** 31}`)
+    vi.stubEnv('AUTH_SESSION_CLEANUP_INTERVAL_MS', `${2 ** 31}`)
 
-    expect(() => startAuthRefreshTokenCleanup({} as never)).toThrow(
-      'AUTH_REFRESH_TOKEN_CLEANUP_INTERVAL_MS 必须是 0 或正整数毫秒值',
+    expect(() => startAuthSessionCleanup({} as never)).toThrow(
+      'AUTH_SESSION_CLEANUP_INTERVAL_MS 必须是 0 或正整数毫秒值',
     )
 
     vi.unstubAllEnvs()
-    vi.stubEnv('AUTH_REVOKED_REFRESH_TOKEN_RETENTION_MS', '-1')
+    vi.stubEnv('AUTH_REVOKED_SESSION_RETENTION_MS', '-1')
 
-    expect(() => startAuthRefreshTokenCleanup({} as never)).toThrow(
-      'AUTH_REVOKED_REFRESH_TOKEN_RETENTION_MS 必须是 0 或正整数毫秒值',
+    expect(() => startAuthSessionCleanup({} as never)).toThrow(
+      'AUTH_REVOKED_SESSION_RETENTION_MS 必须是 0 或正整数毫秒值',
+    )
+
+    vi.unstubAllEnvs()
+    vi.stubEnv('OPS_LOGIN_LOG_CLEANUP_INTERVAL_MS', `${2 ** 31}`)
+
+    expect(() => startOpsLoginLogCleanup({} as never)).toThrow(
+      'OPS_LOGIN_LOG_CLEANUP_INTERVAL_MS 必须是 0 或正整数毫秒值',
+    )
+
+    vi.unstubAllEnvs()
+    vi.stubEnv('OPS_LOGIN_LOG_RETENTION_MS', '-1')
+
+    expect(() => startOpsLoginLogCleanup({} as never)).toThrow(
+      'OPS_LOGIN_LOG_RETENTION_MS 必须是 0 或正整数毫秒值',
     )
   })
 

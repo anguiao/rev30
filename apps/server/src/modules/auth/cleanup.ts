@@ -3,7 +3,7 @@ import { and, isNotNull, isNull, lte, or } from 'drizzle-orm'
 import type { Db } from '../../db'
 import { authLoginAttemptBuckets, authSessions } from '../../db/schema'
 
-export async function cleanupAuthRefreshTokens(
+export async function cleanupAuthSessions(
   database: Db,
   revokedRetentionMs: number,
 ): Promise<number> {

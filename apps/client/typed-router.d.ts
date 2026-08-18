@@ -73,6 +73,20 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/ops/login-logs': RouteRecordInfo<
+      '/ops/login-logs',
+      '/ops/login-logs',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/ops/online-sessions': RouteRecordInfo<
+      '/ops/online-sessions',
+      '/ops/online-sessions',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/system/configs': RouteRecordInfo<
       '/system/configs',
       '/system/configs',
@@ -150,6 +164,8 @@ declare module 'vue-router/auto-routes' {
         | '/content/attachments'
         | '/content/icon-sets'
         | '/demos/rich-text'
+        | '/ops/login-logs'
+        | '/ops/online-sessions'
         | '/system/configs'
         | '/system/departments'
         | '/system/dictionaries'
@@ -204,6 +220,22 @@ declare module 'vue-router/auto-routes' {
     'src/pages/index/demos/rich-text.vue': {
       routes:
         | '/demos/rich-text'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/index/ops/login-logs.vue': {
+      routes:
+        | '/ops/login-logs'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/index/ops/online-sessions.vue': {
+      routes:
+        | '/ops/online-sessions'
       views:
         | never
       pathParamNames:

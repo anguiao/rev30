@@ -189,6 +189,20 @@ describe('user schemas', () => {
     })
   })
 
+  it('enforces the shared 64 character username boundary on create and update', () => {
+    expect(
+      userCreateSchema.safeParse({ username: 'a'.repeat(64), nickname: 'Boundary User' }).success,
+    ).toBe(true)
+    expectZodIssue(userCreateSchema.safeParse({ username: 'a'.repeat(65), nickname: 'Too Long' }), {
+      message: '用户名不能超过 64 个字符',
+      path: ['username'],
+    })
+    expectZodIssue(userUpdateSchema.safeParse({ username: 'a'.repeat(65) }), {
+      message: '用户名不能超过 64 个字符',
+      path: ['username'],
+    })
+  })
+
   it('accepts disabled status but rejects unknown status values', () => {
     expect(
       userCreateSchema.parse({

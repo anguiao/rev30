@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { passwordInputSchema } from './common/inputs'
+import { passwordInputSchema, usernameInputSchema } from './common/inputs'
 import {
   contactInputSchema,
   userAvatarIdSchema,
@@ -13,7 +13,7 @@ export const AUTH_ACTION_REFRESH = 'refresh'
 
 export const authLoginSchema = z
   .object({
-    username: z.string().trim().min(1, '请输入用户名'),
+    username: usernameInputSchema,
     password: z.string().refine((value) => value.trim().length > 0, '请输入密码'),
   })
   .strict()

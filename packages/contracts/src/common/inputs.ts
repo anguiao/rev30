@@ -18,4 +18,9 @@ export function optionalNullableString(message = '不能为空') {
 
 export const passwordInputSchema = z.string().min(8, '密码至少需要 8 位')
 
+export const usernameInputSchema = nonBlankString('请输入用户名').max(
+  64,
+  '用户名不能超过 64 个字符',
+)
+
 export const sortOrderInputSchema = z.number('排序必须是数字').int('排序必须是整数')

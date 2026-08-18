@@ -39,6 +39,15 @@ describe('auth schemas', () => {
     expectZodIssue(result, { message: '请输入用户名' })
   })
 
+  it('rejects login usernames longer than 64 characters', () => {
+    const result = authLoginSchema.safeParse({
+      username: 'a'.repeat(65),
+      password: 'secret-password',
+    })
+
+    expectZodIssue(result, { message: '用户名不能超过 64 个字符', path: ['username'] })
+  })
+
   it('parses username and password login input', () => {
     expect(
       authLoginSchema.parse({

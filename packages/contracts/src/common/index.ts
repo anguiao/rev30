@@ -1,1 +1,1 @@
-export { passwordInputSchema } from './inputs'
+export { passwordInputSchema, usernameInputSchema } from './inputs'

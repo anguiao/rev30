@@ -16,6 +16,7 @@ import { createDemoRoutes } from './modules/demos/routes'
 import { healthRoutes } from './modules/health/routes'
 import { createIconRoutes } from './modules/icons/routes'
 import { createIconSearchRoutes } from './modules/icons/search/routes'
+import { createOpsRoutes } from './modules/ops/routes'
 import { createSystemRoutes } from './modules/system/routes'
 import { logger } from './runtime/logger'
 import { readTrustedProxyPolicy, type TrustedProxyPolicy } from './runtime/trusted-proxy'
@@ -36,6 +37,7 @@ export function createApiRoutes(database: Db) {
     .route('/icons/search', createIconSearchRoutes(database, authMiddleware))
     .route('/icons', createIconRoutes(database))
     .route('/attachments', createAttachmentRoutes(database, authMiddleware))
+    .route('/ops', new Hono().use('*', authMiddleware).route('/', createOpsRoutes(database)))
     .route('/system', createSystemRoutes(database, authMiddleware))
     .route('/content', createContentRoutes(database, authMiddleware))
     .route('/demos', createDemoRoutes(authMiddleware))

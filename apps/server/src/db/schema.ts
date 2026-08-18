@@ -400,23 +400,69 @@ export const authPasswordCredentials = pgTable('auth_password_credentials', {
   ...mutableTimestamps(),
 })
 
-export const authRefreshTokens = pgTable(
-  'auth_refresh_tokens',
+export const authSessions = pgTable(
+  'auth_sessions',
   {
     id: uuidPrimaryKeyColumn(),
     userId: uuid('user_id')
       .notNull()
       .references(() => systemUsers.id),
-    tokenHash: text('token_hash').notNull(),
+    refreshTokenHash: text('refresh_token_hash').notNull(),
+    createdIp: text('created_ip'),
+    createdIpSource: text('created_ip_source').notNull().default('unavailable'),
+    userAgent: text('user_agent'),
+    lastActiveAt: timestamp('last_active_at', timestampOptions).notNull().defaultNow(),
     expiresAt: timestamp('expires_at', timestampOptions).notNull(),
     revokedAt: timestamp('revoked_at', timestampOptions),
+    revocationReason: text('revocation_reason'),
     ...mutableTimestamps(),
   },
   (table) => [
-    uniqueIndex('auth_refresh_tokens_token_hash_unique').on(table.tokenHash),
-    index('auth_refresh_tokens_user_id_idx').on(table.userId),
-    index('auth_refresh_tokens_expires_at_idx').on(table.expiresAt),
-    index('auth_refresh_tokens_revoked_at_idx').on(table.revokedAt),
+    uniqueIndex('auth_sessions_refresh_token_hash_unique').on(table.refreshTokenHash),
+    index('auth_sessions_user_id_idx').on(table.userId),
+    index('auth_sessions_expires_at_idx').on(table.expiresAt),
+    index('auth_sessions_revoked_at_idx').on(table.revokedAt),
+    index('auth_sessions_last_active_at_idx').on(table.lastActiveAt),
+    check(
+      'auth_sessions_created_ip_source_check',
+      sql`${table.createdIpSource} in ('socket', 'x-forwarded-for', 'unavailable')`,
+    ),
+    check(
+      'auth_sessions_revocation_check',
+      sql`(${table.revokedAt} is null and ${table.revocationReason} is null) or (${table.revokedAt} is not null and ${table.revocationReason} is not null and ${table.revocationReason} in ('logout', 'password_changed', 'password_reset', 'admin_forced', 'user_disabled', 'user_deleted'))`,
+    ),
+  ],
+)
+
+export const opsLoginLogs = pgTable(
+  'ops_login_logs',
+  {
+    id: uuidPrimaryKeyColumn(),
+    userId: uuid('user_id').references(() => systemUsers.id),
+    username: text('username').notNull(),
+    result: text('result').notNull(),
+    failureReason: text('failure_reason'),
+    sessionId: uuid('session_id'),
+    requestId: uuid('request_id').notNull(),
+    clientIp: text('client_ip'),
+    clientIpSource: text('client_ip_source').notNull(),
+    userAgent: text('user_agent'),
+    ...createdTimestamp(),
+  },
+  (table) => [
+    index('ops_login_logs_created_at_id_idx').on(table.createdAt, table.id),
+    index('ops_login_logs_user_id_idx').on(table.userId),
+    index('ops_login_logs_username_idx').on(table.username),
+    index('ops_login_logs_result_idx').on(table.result),
+    index('ops_login_logs_client_ip_idx').on(table.clientIp),
+    check(
+      'ops_login_logs_client_ip_source_check',
+      sql`${table.clientIpSource} in ('socket', 'x-forwarded-for', 'unavailable')`,
+    ),
+    check(
+      'ops_login_logs_result_check',
+      sql`(${table.result} = 'success' and ${table.userId} is not null and ${table.sessionId} is not null and ${table.failureReason} is null) or (${table.result} = 'failure' and ${table.sessionId} is null and ${table.failureReason} is not null and ${table.failureReason} in ('invalid_credentials', 'account_disabled', 'rate_limited'))`,
+    ),
   ],
 )
 

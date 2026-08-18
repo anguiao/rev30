@@ -6,11 +6,11 @@ import {
   type UserOptionsQuery,
   type UserUpdateInput,
 } from '@rev30/contracts'
-import { and, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
+import { and, count, desc, eq, gt, ilike, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../db'
 import {
   authPasswordCredentials,
-  authRefreshTokens,
+  authSessions,
   systemDepartments,
   systemRoles,
   systemUserDepartments,
@@ -335,11 +335,19 @@ export function createUserRepository(database: Db) {
           })
 
         await tx
-          .update(authRefreshTokens)
+          .update(authSessions)
           .set({
             revokedAt: now,
+            revocationReason: 'password_reset',
+            updatedAt: now,
           })
-          .where(and(eq(authRefreshTokens.userId, id), isNull(authRefreshTokens.revokedAt)))
+          .where(
+            and(
+              eq(authSessions.userId, id),
+              isNull(authSessions.revokedAt),
+              gt(authSessions.expiresAt, now),
+            ),
+          )
 
         return existingUser
       })
@@ -381,6 +389,20 @@ export function createUserRepository(database: Db) {
 
         if (!updated) {
           return undefined
+        }
+
+        if (existingUser.status === USER_STATUS_ENABLED && updated.status !== USER_STATUS_ENABLED) {
+          const now = new Date()
+          await tx
+            .update(authSessions)
+            .set({ revokedAt: now, revocationReason: 'user_disabled', updatedAt: now })
+            .where(
+              and(
+                eq(authSessions.userId, id),
+                isNull(authSessions.revokedAt),
+                gt(authSessions.expiresAt, now),
+              ),
+            )
         }
 
         if (departmentIds !== undefined) {
@@ -445,6 +467,17 @@ export function createUserRepository(database: Db) {
 
         await tx.delete(systemUserDepartments).where(eq(systemUserDepartments.userId, id))
         await tx.delete(systemUserRoles).where(eq(systemUserRoles.userId, id))
+
+        await tx
+          .update(authSessions)
+          .set({ revokedAt: now, revocationReason: 'user_deleted', updatedAt: now })
+          .where(
+            and(
+              eq(authSessions.userId, id),
+              isNull(authSessions.revokedAt),
+              gt(authSessions.expiresAt, now),
+            ),
+          )
 
         return deleted
       })

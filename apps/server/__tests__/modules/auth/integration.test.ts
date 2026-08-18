@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { describe, expect, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { sign } from 'hono/jwt'
+import { sign, verify } from 'hono/jwt'
 import {
   AUTH_ACTION_HEADER,
   AUTH_ACTION_REFRESH,
@@ -17,8 +17,9 @@ import {
 import {
   attachments,
   authPasswordCredentials,
-  authRefreshTokens,
+  authSessions,
   authLoginAttemptBuckets,
+  opsLoginLogs,
   systemDepartments,
   systemConfigOverrides,
   systemRoles,
@@ -33,7 +34,8 @@ import { hashPassword, verifyPassword } from '../../../src/modules/auth/password
 import { createAuthRoutes } from '../../../src/modules/auth/routes'
 import { createAuthRepository } from '../../../src/modules/auth/repository'
 import { readAuthConfig } from '../../../src/modules/auth/config'
-import { verifyRefreshToken } from '../../../src/modules/auth/tokens'
+import { verifyAccessToken, verifyRefreshToken } from '../../../src/modules/auth/tokens'
+import { verifyAttachmentAccessToken } from '../../../src/modules/attachments/access-token'
 
 type ErrorResponse = {
   message: string
@@ -60,7 +62,19 @@ const fixturePasswordHashPromises: Record<FixturePassword, Promise<string>> = {
 }
 
 function createTestApp(database: TestDatabase) {
-  return new Hono().route('/api/auth', createAuthRoutes(database, createAuthMiddleware(database)))
+  return new Hono()
+    .use('*', async (c, next) => {
+      const context = c as unknown as { set: (key: string, value: unknown) => void }
+      context.set('requestContext', {
+        requestId: randomUUID(),
+        clientIp: '192.0.2.1',
+        clientIpSource: 'socket',
+        userAgent: 'integration-test',
+        logger: {} as never,
+      })
+      await next()
+    })
+    .route('/api/auth', createAuthRoutes(database, createAuthMiddleware(database)))
 }
 
 function getRefreshTokenCookie(response: Response) {
@@ -149,13 +163,15 @@ function createTestAppWithRefreshRevokeFailure(database: TestDatabase) {
                   get(txTarget, txProperty, txReceiver) {
                     if (txProperty === 'update') {
                       return (table: unknown) => {
-                        if (table === authRefreshTokens) {
+                        if (table === authSessions) {
                           return {
                             set() {
                               return {
-                                where: async () => {
-                                  throw new Error('revoke failed')
-                                },
+                                where: () => ({
+                                  returning: async () => {
+                                    throw new Error('revoke failed')
+                                  },
+                                }),
                               }
                             },
                           }
@@ -206,6 +222,46 @@ describe('auth routes', () => {
     expect(body.menus).toEqual([])
     expect(body).not.toHaveProperty('refreshToken')
     expect(body).not.toHaveProperty('attachmentToken')
+    expect(body).not.toHaveProperty('sessionId')
+    const refreshToken = requireRefreshToken(getRefreshTokenCookie(response))
+    const attachmentToken = response.headers
+      .get('set-cookie')
+      ?.match(/attachment_token=([^;]+)/)?.[1]
+    const config = readAuthConfig()
+    const [access, refresh, attachment] = await Promise.all([
+      verifyAccessToken(body.accessToken, config),
+      verifyRefreshToken(refreshToken, config),
+      verifyAttachmentAccessToken(requireRefreshToken(attachmentToken), config),
+    ])
+    const refreshPayload = await verify(refreshToken, config.refreshSecret, 'HS256')
+    const [storedSession] = await database
+      .select()
+      .from(authSessions)
+      .where(eq(authSessions.id, refresh.sessionId))
+    expect(access.sessionId).toBe(refresh.sessionId)
+    expect(attachment.sessionId).toBe(refresh.sessionId)
+    expect(storedSession?.expiresAt.getTime()).toBe(Number(refreshPayload.exp) * 1000)
+    await expect(database.select().from(opsLoginLogs)).resolves.toMatchObject([
+      { result: 'success', failureReason: null, sessionId: refresh.sessionId },
+    ])
+  })
+
+  dbTest('creates independent stable sessions for separate logins', async ({ db }) => {
+    const app = createTestApp(db)
+    const registered = await createLoggedInAccount(app, db, {
+      username: 'two-login-user',
+    })
+    const second = await login(app, { username: 'two-login-user' })
+    const config = readAuthConfig()
+    const [firstToken, secondToken] = await Promise.all([
+      verifyRefreshToken(requireRefreshToken(registered.refreshToken), config),
+      verifyRefreshToken(requireRefreshToken(second.refreshToken), config),
+    ])
+
+    expect(firstToken.sessionId).not.toBe(secondToken.sessionId)
+    await expect(
+      db.select().from(authSessions).where(eq(authSessions.userId, registered.user.id)),
+    ).resolves.toHaveLength(2)
   })
 
   dbTest(
@@ -236,6 +292,10 @@ describe('auth routes', () => {
       expect(disabled.body).toEqual({
         message: '用户名或密码错误',
       })
+      await expect(database.select().from(opsLoginLogs)).resolves.toMatchObject([
+        { userId: account.id, result: 'failure', failureReason: 'invalid_credentials' },
+        { userId: account.id, result: 'failure', failureReason: 'account_disabled' },
+      ])
     },
   )
 
@@ -267,6 +327,11 @@ describe('auth routes', () => {
       expect(locked.response.status).toBe(429)
       expect(locked.body).toEqual({ message: '登录失败次数过多，请稍后再试' })
       expect(locked.response.headers.get('set-cookie')).toBeNull()
+      const [rateLimitedLog] = await database
+        .select()
+        .from(opsLoginLogs)
+        .where(eq(opsLoginLogs.failureReason, 'rate_limited'))
+      expect(rateLimitedLog).toMatchObject({ userId: null, username: 'rate-limit-user' })
 
       await createPasswordAccount(database, {
         username: 'clear-bucket-login-user',
@@ -374,7 +439,7 @@ describe('auth routes', () => {
     const repository = createAuthRepository(database)
     const attemptTime = new Date('2026-05-14T00:00:00.000Z')
 
-    await repository.recordLoginFailure({
+    await repository.recordLoginFailureBucket({
       username: 'missing-user',
       now: attemptTime,
       maxAttempts: 5,
@@ -400,14 +465,14 @@ describe('auth routes', () => {
       const windowStart = new Date('2026-05-14T00:00:00.000Z')
       const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
 
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'window-user',
         now: windowStart,
         maxAttempts: 5,
         windowSeconds: 900,
         lockSeconds: 900,
       })
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'window-user',
         now: secondAttempt,
         maxAttempts: 5,
@@ -436,21 +501,21 @@ describe('auth routes', () => {
       const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
       const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
 
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'threshold-user',
         now: firstAttempt,
         maxAttempts: 3,
         windowSeconds: 900,
         lockSeconds: 900,
       })
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'threshold-user',
         now: secondAttempt,
         maxAttempts: 3,
         windowSeconds: 900,
         lockSeconds: 900,
       })
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'threshold-user',
         now: thirdAttempt,
         maxAttempts: 3,
@@ -476,21 +541,21 @@ describe('auth routes', () => {
     const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
     const expiredWindowAttempt = new Date('2026-05-14T00:16:00.000Z')
 
-    await repository.recordLoginFailure({
+    await repository.recordLoginFailureBucket({
       username: 'window-expired-user',
       now: firstAttempt,
       maxAttempts: 5,
       windowSeconds: 900,
       lockSeconds: 900,
     })
-    await repository.recordLoginFailure({
+    await repository.recordLoginFailureBucket({
       username: 'window-expired-user',
       now: secondAttempt,
       maxAttempts: 5,
       windowSeconds: 900,
       lockSeconds: 900,
     })
-    await repository.recordLoginFailure({
+    await repository.recordLoginFailureBucket({
       username: 'window-expired-user',
       now: expiredWindowAttempt,
       maxAttempts: 5,
@@ -518,28 +583,28 @@ describe('auth routes', () => {
       const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
       const afterLockExpiresAttempt = new Date('2026-05-14T00:17:01.000Z')
 
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'lock-expired-user',
         now: firstAttempt,
         maxAttempts: 3,
         windowSeconds: 900,
         lockSeconds: 900,
       })
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'lock-expired-user',
         now: secondAttempt,
         maxAttempts: 3,
         windowSeconds: 900,
         lockSeconds: 900,
       })
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'lock-expired-user',
         now: thirdAttempt,
         maxAttempts: 3,
         windowSeconds: 900,
         lockSeconds: 900,
       })
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'lock-expired-user',
         now: afterLockExpiresAttempt,
         maxAttempts: 3,
@@ -569,28 +634,28 @@ describe('auth routes', () => {
       const staleAttempt = new Date('2026-05-14T00:16:00.000Z')
       const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
 
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'stale-lock-user',
         now: firstAttempt,
         maxAttempts: 3,
         windowSeconds: 900,
         lockSeconds: 900,
       })
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'stale-lock-user',
         now: secondAttempt,
         maxAttempts: 3,
         windowSeconds: 900,
         lockSeconds: 900,
       })
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'stale-lock-user',
         now: thirdAttempt,
         maxAttempts: 3,
         windowSeconds: 900,
         lockSeconds: 900,
       })
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'stale-lock-user',
         now: staleAttempt,
         maxAttempts: 3,
@@ -620,21 +685,21 @@ describe('auth routes', () => {
       const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
       const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
 
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'stale-success-lock-user',
         now: firstAttempt,
         maxAttempts: 3,
         windowSeconds: 900,
         lockSeconds: 900,
       })
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'stale-success-lock-user',
         now: secondAttempt,
         maxAttempts: 3,
         windowSeconds: 900,
         lockSeconds: 900,
       })
-      await repository.recordLoginFailure({
+      await repository.recordLoginFailureBucket({
         username: 'stale-success-lock-user',
         now: thirdAttempt,
         maxAttempts: 3,
@@ -849,6 +914,23 @@ describe('auth routes', () => {
       expect(reuseBody).toEqual({
         message: '刷新令牌无效',
       })
+
+      const secondRefreshResponse = await app.request('/api/auth/refresh', {
+        method: 'POST',
+        headers: { cookie: `refresh_token=${requireRefreshToken(newRefreshToken)}` },
+      })
+      const latestRefreshToken = requireRefreshToken(getRefreshTokenCookie(secondRefreshResponse))
+      const [first, latest] = await Promise.all([
+        verifyRefreshToken(requireRefreshToken(oldRefreshToken), readAuthConfig()),
+        verifyRefreshToken(latestRefreshToken, readAuthConfig()),
+      ])
+      expect(secondRefreshResponse.status).toBe(200)
+      expect(latest.sessionId).toBe(first.sessionId)
+      await expect(
+        database.select().from(authSessions).where(eq(authSessions.userId, registered.user.id)),
+      ).resolves.toMatchObject([
+        { id: first.sessionId, refreshTokenHash: latest.refreshTokenHash, revokedAt: null },
+      ])
     },
   )
 
@@ -887,23 +969,19 @@ describe('auth routes', () => {
       ])
       const sessions = await database
         .select()
-        .from(authRefreshTokens)
-        .where(eq(authRefreshTokens.userId, registered.user.id))
+        .from(authSessions)
+        .where(eq(authSessions.userId, registered.user.id))
       const activeSessions = sessions.filter(
         (session) => session.revokedAt === null && session.expiresAt > new Date(),
       )
 
       expect(await unauthorizedResponse.json()).toEqual({ message: '刷新令牌无效' })
       expect(newRefreshToken).not.toBe(oldRefreshToken)
-      expect(sessions).toHaveLength(2)
-      expect(
-        sessions.find((session) => session.tokenHash === oldToken.refreshTokenHash),
-      ).toMatchObject({
-        revokedAt: expect.any(Date),
-      })
+      expect(sessions).toHaveLength(1)
+      expect(newToken.sessionId).toBe(oldToken.sessionId)
       expect(activeSessions).toMatchObject([
         {
-          tokenHash: newToken.refreshTokenHash,
+          refreshTokenHash: newToken.refreshTokenHash,
           revokedAt: null,
         },
       ])
@@ -1150,7 +1228,7 @@ describe('auth routes', () => {
           'content-type': 'application/json',
         },
       })
-      expect(response.status).toBe(204)
+      expect(response.status).toBe(200)
 
       const credential = await database.query.authPasswordCredentials.findFirst({
         where: { userId: registered.body.user.id },
@@ -1161,7 +1239,7 @@ describe('auth routes', () => {
   )
 
   dbTest(
-    'keeps the current refresh session while revoking other sessions after a password change',
+    'replaces the current session and revokes every old session after a password change',
     async ({ db: database }) => {
       const app = createTestApp(database)
       const registered = await createLoggedInAccount(app, database, {
@@ -1188,21 +1266,21 @@ describe('auth routes', () => {
         },
       })
 
-      expect(response.status).toBe(204)
+      expect(response.status).toBe(200)
 
-      const verifiedCurrentToken = await verifyRefreshToken(currentRefreshToken, readAuthConfig())
-      const sessions = await database.query.authRefreshTokens.findMany({
+      const newRefreshToken = requireRefreshToken(getRefreshTokenCookie(response))
+      const verifiedNewToken = await verifyRefreshToken(newRefreshToken, readAuthConfig())
+      const sessions = await database.query.authSessions.findMany({
         where: { userId: registered.body.user.id },
       })
 
-      expect(
-        sessions.find((session) => session.tokenHash === verifiedCurrentToken.refreshTokenHash)
-          ?.revokedAt,
-      ).toBeNull()
+      expect(sessions.filter((session) => session.revokedAt === null)).toMatchObject([
+        { id: verifiedNewToken.sessionId, refreshTokenHash: verifiedNewToken.refreshTokenHash },
+      ])
       expect(
         sessions
-          .filter((session) => session.tokenHash !== verifiedCurrentToken.refreshTokenHash)
-          .every((session) => session.revokedAt instanceof Date),
+          .filter((session) => session.id !== verifiedNewToken.sessionId)
+          .every((session) => session.revocationReason === 'password_changed'),
       ).toBe(true)
 
       const oldRefreshResponse = await app.request('/api/auth/refresh', {
@@ -1216,7 +1294,7 @@ describe('auth routes', () => {
       const currentRefreshResponse = await app.request('/api/auth/refresh', {
         method: 'POST',
         headers: {
-          cookie: `refresh_token=${currentRefreshToken}`,
+          cookie: `refresh_token=${newRefreshToken}`,
         },
       })
       expect(currentRefreshResponse.status).toBe(200)
@@ -1249,12 +1327,17 @@ describe('auth routes', () => {
         },
       })
 
-      expect(response.status).toBe(204)
+      expect(response.status).toBe(200)
 
-      const sessions = await database.query.authRefreshTokens.findMany({
+      const sessions = await database.query.authSessions.findMany({
         where: { userId: registered.body.user.id },
       })
-      expect(sessions.every((session) => session.revokedAt instanceof Date)).toBe(true)
+      expect(sessions.filter((session) => session.revokedAt === null)).toHaveLength(1)
+      expect(
+        sessions
+          .filter((session) => session.revokedAt !== null)
+          .every((session) => session.revocationReason === 'password_changed'),
+      ).toBe(true)
 
       const firstRefreshResponse = await app.request('/api/auth/refresh', {
         method: 'POST',
@@ -1301,12 +1384,17 @@ describe('auth routes', () => {
         },
       })
 
-      expect(response.status).toBe(204)
+      expect(response.status).toBe(200)
 
-      const sessions = await database.query.authRefreshTokens.findMany({
+      const sessions = await database.query.authSessions.findMany({
         where: { userId: registered.body.user.id },
       })
-      expect(sessions.every((session) => session.revokedAt instanceof Date)).toBe(true)
+      expect(sessions.filter((session) => session.revokedAt === null)).toHaveLength(1)
+      expect(
+        sessions
+          .filter((session) => session.revokedAt !== null)
+          .every((session) => session.revocationReason === 'password_changed'),
+      ).toBe(true)
 
       const firstRefreshResponse = await app.request('/api/auth/refresh', {
         method: 'POST',
@@ -1366,7 +1454,7 @@ describe('auth routes', () => {
         const credential = await database.query.authPasswordCredentials.findFirst({
           where: { userId: registered.body.user.id },
         })
-        const sessions = await database.query.authRefreshTokens.findMany({
+        const sessions = await database.query.authSessions.findMany({
           where: { userId: registered.body.user.id },
         })
 
@@ -1537,6 +1625,7 @@ describe('auth routes', () => {
       const expiredAccessToken = await sign(
         {
           sub: '11111111-1111-4111-8111-111111111111',
+          sid: '22222222-2222-4222-8222-222222222222',
           type: 'access',
           iat: 1,
           exp: 2,

@@ -17,6 +17,13 @@ function readSubject(payload: JwtPayload) {
   return typeof payload.sub === 'string' ? payload.sub : undefined
 }
 
+function readSessionId(payload: JwtPayload) {
+  return typeof payload.sid === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.sid)
+    ? payload.sid
+    : undefined
+}
+
 export function getAttachmentAccessTokenCookie(c: Context) {
   return getCookie(c, COOKIE_NAME)
 }
@@ -43,13 +50,16 @@ export function clearAttachmentAccessTokenCookie(c: Context) {
 
 export async function createAttachmentAccessToken(
   userId: string,
+  sessionId: string,
   config: AttachmentAccessTokenConfig,
+  issuedAtDate = new Date(),
 ) {
-  const issuedAt = toUnixTimeSeconds(new Date())
+  const issuedAt = toUnixTimeSeconds(issuedAtDate)
 
   return sign(
     {
       sub: userId,
+      sid: sessionId,
       type: 'attachment-access',
       iat: issuedAt,
       exp: issuedAt + config.attachmentExpiresInSeconds,
@@ -66,12 +76,18 @@ export async function verifyAttachmentAccessToken(
   try {
     const payload = await verify(token, config.attachmentSecret, 'HS256')
     const userId = readSubject(payload)
+    const sessionId = readSessionId(payload)
 
-    if (!userId || payload.type !== 'attachment-access' || typeof payload.exp !== 'number') {
+    if (
+      !userId ||
+      !sessionId ||
+      payload.type !== 'attachment-access' ||
+      typeof payload.exp !== 'number'
+    ) {
       throw new AttachmentContentUnauthorizedError()
     }
 
-    return { userId }
+    return { userId, sessionId }
   } catch {
     throw new AttachmentContentUnauthorizedError()
   }

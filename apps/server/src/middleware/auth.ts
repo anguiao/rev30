@@ -8,6 +8,7 @@ import { AuthAccessTokenExpiredError, AuthUnauthorizedError } from '../modules/a
 import { createAuthService } from '../modules/auth/service'
 
 export type AuthVariables = {
+  currentSessionId: string
   currentUser: User
 } & ResolvedUserAccess
 
@@ -24,6 +25,7 @@ export function createAuthMiddleware(database: Db): MiddlewareHandler<AuthEnv> {
       const session = await service.me(parseBearerToken(c.req.header('authorization')))
 
       c.set('currentUser', session.user)
+      c.set('currentSessionId', session.currentSessionId)
       c.set('accessCodes', session.accessCodes)
       c.set('menus', session.menus)
       c.set('isAdmin', session.isAdmin)

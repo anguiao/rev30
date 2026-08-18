@@ -1,7 +1,7 @@
 import { subMilliseconds } from '@rev30/utils'
 import { and, isNotNull, isNull, lte, or } from 'drizzle-orm'
 import type { Db } from '../../db'
-import { authLoginAttemptBuckets, authRefreshTokens } from '../../db/schema'
+import { authLoginAttemptBuckets, authSessions } from '../../db/schema'
 
 export async function cleanupAuthRefreshTokens(
   database: Db,
@@ -10,14 +10,11 @@ export async function cleanupAuthRefreshTokens(
   const now = new Date()
   const revokedCutoff = subMilliseconds(now, revokedRetentionMs)
   const deleted = await database
-    .delete(authRefreshTokens)
+    .delete(authSessions)
     .where(
       or(
-        lte(authRefreshTokens.expiresAt, now),
-        and(
-          isNotNull(authRefreshTokens.revokedAt),
-          lte(authRefreshTokens.revokedAt, revokedCutoff),
-        ),
+        lte(authSessions.expiresAt, now),
+        and(isNotNull(authSessions.revokedAt), lte(authSessions.revokedAt, revokedCutoff)),
       ),
     )
     .returning()

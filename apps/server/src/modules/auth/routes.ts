@@ -11,14 +11,15 @@ import { Hono, type Context, type MiddlewareHandler } from 'hono'
 import type { ZodType } from 'zod'
 import type { Db } from '../../db'
 import type { AuthEnv } from '../../middleware/auth'
+import type { RequestContextEnv } from '../../middleware/request-context'
 import { createBodyLimit } from '../../middleware/body-limit'
 import {
   clearAttachmentAccessTokenCookie,
-  createAttachmentAccessToken,
   setAttachmentAccessTokenCookie,
 } from '../attachments/access-token'
 import { UserConflictError, UserInvalidAvatarError } from '../system/users/errors'
 import { clearRefreshTokenCookie, getRefreshTokenCookie, setRefreshTokenCookie } from './cookies'
+import { parseBearerToken } from './bearer'
 import { readAuthConfig } from './config'
 import {
   AuthInvalidCredentialsError,
@@ -41,6 +42,11 @@ const profileUpdateBodyValidator = jsonBodyValidator(authProfileUpdateSchema)
 const passwordUpdateBodyValidator = jsonBodyValidator(authPasswordUpdateSchema)
 
 const authJsonBodyLimit = createBodyLimit(16 * 1024)
+
+function toLoginRequestMetadata(requestContext: RequestContextEnv['Variables']['requestContext']) {
+  const { requestId, clientIp, clientIpSource, userAgent } = requestContext
+  return { requestId, clientIp, clientIpSource, userAgent }
+}
 
 function authErrorResponse(error: unknown, c: Context) {
   if (error instanceof UserConflictError) {
@@ -85,15 +91,17 @@ function authErrorResponse(error: unknown, c: Context) {
 export function createAuthRoutes(database: Db, authMiddleware: MiddlewareHandler<AuthEnv>) {
   const config = readAuthConfig()
   const service = createAuthService(database, config)
-  const app = new Hono()
+  const app = new Hono<AuthEnv & RequestContextEnv>()
 
   app.onError((error, c) => authErrorResponse(error, c))
 
   return app
     .post('/login', authJsonBodyLimit, loginBodyValidator, async (c) => {
       const body: AuthLoginInput = c.req.valid('json')
-      const { refreshToken, ...session } = await service.login(body)
-      const attachmentAccessToken = await createAttachmentAccessToken(session.user.id, config)
+      const { refreshToken, attachmentAccessToken, ...session } = await service.login(
+        body,
+        toLoginRequestMetadata(c.get('requestContext')),
+      )
 
       setRefreshTokenCookie(c, refreshToken, config)
       setAttachmentAccessTokenCookie(c, attachmentAccessToken, config)
@@ -101,8 +109,10 @@ export function createAuthRoutes(database: Db, authMiddleware: MiddlewareHandler
       return c.json(session)
     })
     .post('/refresh', async (c) => {
-      const { refreshToken, ...session } = await service.refresh(getRefreshTokenCookie(c))
-      const attachmentAccessToken = await createAttachmentAccessToken(session.user.id, config)
+      const { refreshToken, attachmentAccessToken, ...session } = await service.refresh(
+        getRefreshTokenCookie(c),
+        parseBearerToken(c.req.header('authorization')),
+      )
 
       setRefreshTokenCookie(c, refreshToken, config)
       setAttachmentAccessTokenCookie(c, attachmentAccessToken, config)
@@ -111,7 +121,10 @@ export function createAuthRoutes(database: Db, authMiddleware: MiddlewareHandler
     })
     .post('/logout', async (c) => {
       try {
-        await service.logout(getRefreshTokenCookie(c))
+        await service.logout(
+          parseBearerToken(c.req.header('authorization')),
+          getRefreshTokenCookie(c),
+        )
       } finally {
         clearRefreshTokenCookie(c)
         clearAttachmentAccessTokenCookie(c)
@@ -136,8 +149,14 @@ export function createAuthRoutes(database: Db, authMiddleware: MiddlewareHandler
     .patch('/me/password', authJsonBodyLimit, passwordUpdateBodyValidator, async (c) => {
       const body: AuthPasswordUpdateInput = c.req.valid('json')
 
-      await service.updatePassword(c.get('currentUser').id, body, getRefreshTokenCookie(c))
-
-      return c.body(null, 204)
+      const { refreshToken, attachmentAccessToken, ...session } = await service.updatePassword(
+        c.get('currentUser').id,
+        c.get('currentSessionId'),
+        body,
+        toLoginRequestMetadata(c.get('requestContext')),
+      )
+      setRefreshTokenCookie(c, refreshToken, config)
+      setAttachmentAccessTokenCookie(c, attachmentAccessToken, config)
+      return c.json(session)
     })
 }

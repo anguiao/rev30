@@ -17,6 +17,7 @@ import {
 import { addSeconds, millisecondsBetween, toIsoDateTime } from '@rev30/utils'
 import type { Db } from '../../db'
 import { readAuthConfig } from '../auth/config'
+import { createAuthRepository } from '../auth/repository'
 import { readNumberConfigValue } from '../system/configs/values'
 import { verifyAttachmentAccessToken } from './access-token'
 import { readAttachmentConfig } from './config'
@@ -130,6 +131,7 @@ function createContentResponse(
 }
 
 export function createAttachmentService(database: Db) {
+  const authRepository = createAuthRepository(database)
   const config = readAttachmentConfig()
   const authConfig = readAuthConfig()
   const storage = createAttachmentStorage(config)
@@ -351,7 +353,11 @@ export function createAttachmentService(database: Db) {
         }
 
         const verified = await verifyAttachmentAccessToken(input.attachmentReadToken, authConfig)
-        const user = await repository.findActiveUserById(verified.userId)
+        const user = await authRepository.findValidSessionUser(
+          verified.sessionId,
+          verified.userId,
+          requestedAt,
+        )
 
         if (!user) {
           throw new AttachmentContentUnauthorizedError()

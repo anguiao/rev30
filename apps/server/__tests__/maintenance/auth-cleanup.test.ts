@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { afterEach, describe, expect, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { authLoginAttemptBuckets, authRefreshTokens, systemUsers } from '../../src/db/schema'
+import { authLoginAttemptBuckets, authSessions, systemUsers } from '../../src/db/schema'
 import { startAppMaintenance } from '../../src/maintenance'
 import { startAttachmentCleanup } from '../../src/maintenance/attachment-cleanup'
 import { startAuthLoginAttemptCleanup } from '../../src/maintenance/auth-login-attempt-cleanup'
@@ -34,11 +34,11 @@ describe('auth maintenance', () => {
         updatedAt: now,
       })
 
-      await database.insert(authRefreshTokens).values([
+      await database.insert(authSessions).values([
         {
           id: randomUUID(),
           userId,
-          tokenHash: 'expired-active',
+          refreshTokenHash: 'expired-active',
           expiresAt: now,
           createdAt: now,
           updatedAt: now,
@@ -46,34 +46,37 @@ describe('auth maintenance', () => {
         {
           id: randomUUID(),
           userId,
-          tokenHash: 'expired-revoked-recently',
+          refreshTokenHash: 'expired-revoked-recently',
           expiresAt: new Date(now.getTime() - hourMs),
           revokedAt: new Date(now.getTime() - hourMs),
+          revocationReason: 'logout',
           createdAt: now,
           updatedAt: now,
         },
         {
           id: randomUUID(),
           userId,
-          tokenHash: 'revoked-before-retention',
+          refreshTokenHash: 'revoked-before-retention',
           expiresAt: new Date(now.getTime() + hourMs),
           revokedAt: new Date(now.getTime() - 25 * hourMs),
+          revocationReason: 'logout',
           createdAt: now,
           updatedAt: now,
         },
         {
           id: randomUUID(),
           userId,
-          tokenHash: 'revoked-within-retention',
+          refreshTokenHash: 'revoked-within-retention',
           expiresAt: new Date(now.getTime() + hourMs),
           revokedAt: new Date(now.getTime() - hourMs),
+          revocationReason: 'logout',
           createdAt: now,
           updatedAt: now,
         },
         {
           id: randomUUID(),
           userId,
-          tokenHash: 'usable',
+          refreshTokenHash: 'usable',
           expiresAt: new Date(now.getTime() + hourMs),
           createdAt: now,
           updatedAt: now,
@@ -84,14 +87,14 @@ describe('auth maintenance', () => {
 
       const remaining = await database
         .select({
-          tokenHash: authRefreshTokens.tokenHash,
+          refreshTokenHash: authSessions.refreshTokenHash,
         })
-        .from(authRefreshTokens)
-        .where(eq(authRefreshTokens.userId, userId))
-        .orderBy(authRefreshTokens.tokenHash)
+        .from(authSessions)
+        .where(eq(authSessions.userId, userId))
+        .orderBy(authSessions.refreshTokenHash)
 
       expect(deletedCount).toBe(3)
-      expect(remaining.map((session) => session.tokenHash)).toEqual([
+      expect(remaining.map((session) => session.refreshTokenHash)).toEqual([
         'revoked-within-retention',
         'usable',
       ])

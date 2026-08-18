@@ -186,6 +186,7 @@ describe('app auth boundaries', () => {
     const expiredAccessToken = await sign(
       {
         sub: 'unused-user-id',
+        sid: '22222222-2222-4222-8222-222222222222',
         type: 'access',
         iat: 1,
         exp: 2,

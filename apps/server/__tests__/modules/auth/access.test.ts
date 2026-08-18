@@ -35,7 +35,7 @@ async function createRole(database: TestDatabase, code: string) {
 
 describe('user access service', () => {
   dbTest(
-    'keeps the seeded disabled ops root outside of administrator access',
+    'grants the seeded enabled ops resources to administrators without role bindings',
     async ({ db: database }) => {
       const [opsResource] = await database
         .select()
@@ -84,18 +84,30 @@ describe('user access service', () => {
         openTarget: RESOURCE_OPEN_TARGET_SELF,
         icon: 'lucide:activity',
         hidden: false,
-        status: RESOURCE_STATUS_DISABLED,
+        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 300,
         deletedAt: null,
       })
       expect(opsResource.createdAt).toBeInstanceOf(Date)
       expect(opsResource.updatedAt).toBeInstanceOf(Date)
-      expect(childResources).toEqual([])
+      expect(childResources.map((resource) => resource.code).sort()).toEqual([
+        'ops:login-log',
+        'ops:online-session',
+      ])
       expect(roleResourceBindings).toEqual([])
       expect(adminRole.status).toBe(ROLE_STATUS_ENABLED)
       expect(access.isAdmin).toBe(true)
-      expect(access.accessCodes).not.toContain('ops')
-      expect(access.menus.some((node) => node.code === 'ops')).toBe(false)
+      expect(access.accessCodes).toEqual(
+        expect.arrayContaining([
+          'ops',
+          'ops:login-log',
+          'ops:login-log:list',
+          'ops:online-session',
+          'ops:online-session:list',
+          'ops:online-session:revoke',
+        ]),
+      )
+      expect(access.menus.some((node) => node.code === 'ops')).toBe(true)
     },
   )
 

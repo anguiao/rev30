@@ -5,6 +5,7 @@ import { and, eq, inArray, isNull } from 'drizzle-orm'
 import type { Db } from '../../src/db'
 import { createAuthMiddleware } from '../../src/middleware/auth'
 import {
+  authSessions,
   systemRoles,
   systemRoleResources,
   systemResources,
@@ -176,7 +177,21 @@ export async function createSystemAccessFixture(
     )
   }
 
-  const { accessToken } = await createTokenPair(user.id, readAuthConfig())
+  const sessionId = randomUUID()
+  const config = readAuthConfig()
+  const pair = await createTokenPair(user.id, sessionId, config)
+  const activeAt = new Date()
+  await database.insert(authSessions).values({
+    id: sessionId,
+    userId: user.id,
+    refreshTokenHash: pair.refreshTokenHash,
+    createdIpSource: 'unavailable',
+    lastActiveAt: activeAt,
+    expiresAt: pair.refreshExpiresAt,
+    createdAt: activeAt,
+    updatedAt: activeAt,
+  })
+  const { accessToken } = pair
 
   return {
     accessToken,

@@ -11,7 +11,7 @@ import {
 const requestIdHeader = 'X-Request-Id'
 const maxUserAgentLength = 512
 
-type RequestContext = {
+export type RequestContext = {
   requestId: string
   clientIp: string | null
   clientIpSource: ClientIpSource

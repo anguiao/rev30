@@ -63,6 +63,16 @@ describe('auth config', () => {
     ).toThrow('附件读取令牌有效期不能超过刷新令牌有效期')
   })
 
+  it('rejects access token lifetimes that are not shorter than refresh token lifetimes', () => {
+    expect(() =>
+      readAuthConfig({
+        NODE_ENV: 'test',
+        JWT_ACCESS_EXPIRES_IN_SECONDS: '3600',
+        JWT_REFRESH_EXPIRES_IN_SECONDS: '3600',
+      }),
+    ).toThrow('访问令牌有效期必须短于刷新令牌有效期')
+  })
+
   it('rejects invalid positive integer settings', () => {
     expect(() =>
       readAuthConfig({

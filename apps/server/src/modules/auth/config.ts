@@ -42,11 +42,20 @@ export function readAuthConfig(env = process.env): AuthConfig {
     'JWT_REFRESH_EXPIRES_IN_SECONDS',
     defaultRefreshExpiresInSeconds,
   )
+  const accessExpiresInSeconds = readPositiveIntegerEnv(
+    env,
+    'JWT_ACCESS_EXPIRES_IN_SECONDS',
+    defaultAccessExpiresInSeconds,
+  )
   const attachmentExpiresInSeconds = readPositiveIntegerEnv(
     env,
     'JWT_ATTACHMENT_EXPIRES_IN_SECONDS',
     defaultAttachmentExpiresInSeconds,
   )
+
+  if (accessExpiresInSeconds >= refreshExpiresInSeconds) {
+    throw new Error('访问令牌有效期必须短于刷新令牌有效期')
+  }
 
   if (attachmentExpiresInSeconds > refreshExpiresInSeconds) {
     throw new Error('附件读取令牌有效期不能超过刷新令牌有效期')
@@ -56,11 +65,7 @@ export function readAuthConfig(env = process.env): AuthConfig {
     accessSecret,
     refreshSecret,
     attachmentSecret,
-    accessExpiresInSeconds: readPositiveIntegerEnv(
-      env,
-      'JWT_ACCESS_EXPIRES_IN_SECONDS',
-      defaultAccessExpiresInSeconds,
-    ),
+    accessExpiresInSeconds,
     refreshExpiresInSeconds,
     attachmentExpiresInSeconds,
     secureCookies: isProduction,

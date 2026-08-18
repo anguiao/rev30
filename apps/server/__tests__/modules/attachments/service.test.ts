@@ -15,6 +15,7 @@ import {
 import {
   attachments,
   attachmentUploadSessions,
+  authSessions,
   systemConfigOverrides,
 } from '../../../src/db/schema'
 import {
@@ -125,7 +126,11 @@ function getUploadToken(url: string) {
 }
 
 function createAttachmentReadToken(userId: string) {
-  return createAttachmentAccessToken(userId, readAuthConfig())
+  return createAttachmentAccessToken(
+    userId,
+    '5dfc90f3-9d4d-40f2-a8b9-f7d1863e5ad0',
+    readAuthConfig(),
+  )
 }
 
 function getStoredFilePath(storageKey: string) {
@@ -263,7 +268,6 @@ describe('attachment service', () => {
     async ({ db: database }) => {
       const service = await createAttachmentServiceForTest(database)
       const userId = await createUser(database)
-
       const session = await service.createUploadSession({
         originalName: 'avatar.png',
         usage: 'avatar',
@@ -897,6 +901,13 @@ describe('attachment service', () => {
     async ({ db: database }) => {
       const service = await createAttachmentServiceForTest(database)
       const userId = await createUser(database)
+      await database.insert(authSessions).values({
+        id: '5dfc90f3-9d4d-40f2-a8b9-f7d1863e5ad0',
+        userId,
+        refreshTokenHash: randomUUID(),
+        lastActiveAt: new Date('2026-01-01T00:00:00.000Z'),
+        expiresAt: new Date(Date.now() + 60_000),
+      })
       const attachment = await createAttachmentViaSession(service, {
         bytes: pngBytes,
         originalName: 'avatar.png',
@@ -915,6 +926,63 @@ describe('attachment service', () => {
         'Cache-Control': 'private, max-age=300',
         'Content-Disposition': 'inline; filename=avatar.png',
       })
+      const [session] = await database
+        .select()
+        .from(authSessions)
+        .where(eq(authSessions.id, '5dfc90f3-9d4d-40f2-a8b9-f7d1863e5ad0'))
+      expect(session?.lastActiveAt).toEqual(new Date('2026-01-01T00:00:00.000Z'))
+    },
+  )
+
+  dbTest(
+    'rejects authenticated content for missing, expired, or revoked sessions',
+    async ({ db: database }) => {
+      const service = await createAttachmentServiceForTest(database)
+      const userId = await createUser(database)
+      const attachment = await createAttachmentViaSession(service, {
+        bytes: pngBytes,
+        originalName: 'avatar.png',
+        userId,
+        readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+      })
+      const cases = [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          session: undefined,
+        },
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          session: { expiresAt: new Date(Date.now() - 60_000) },
+        },
+        {
+          id: '33333333-3333-4333-8333-333333333333',
+          session: {
+            expiresAt: new Date(Date.now() + 60_000),
+            revokedAt: new Date(),
+            revocationReason: 'logout' as const,
+          },
+        },
+      ]
+
+      for (const item of cases) {
+        if (item.session) {
+          await database.insert(authSessions).values({
+            id: item.id,
+            userId,
+            refreshTokenHash: randomUUID(),
+            ...item.session,
+          })
+        }
+        const attachmentReadToken = await createAttachmentAccessToken(
+          userId,
+          item.id,
+          readAuthConfig(),
+        )
+
+        await expect(
+          service.readContent(attachment.id, { attachmentReadToken }),
+        ).rejects.toBeInstanceOf(AttachmentContentUnauthorizedError)
+      }
     },
   )
 

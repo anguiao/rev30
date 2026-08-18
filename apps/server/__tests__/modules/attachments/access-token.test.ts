@@ -17,15 +17,19 @@ const config: AuthConfig = {
   attachmentExpiresInSeconds: 86400,
   secureCookies: false,
 }
+const userId = '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7'
+const sessionId = '5dfc90f3-9d4d-40f2-a8b9-f7d1863e5ad0'
 
 describe('attachment access token helpers', () => {
   it('creates and verifies attachment access tokens', async () => {
-    const userId = '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7'
-    const token = await createAttachmentAccessToken(userId, config)
+    const token = await createAttachmentAccessToken(userId, sessionId, config)
 
-    await expect(verifyAttachmentAccessToken(token, config)).resolves.toEqual({ userId })
+    await expect(verifyAttachmentAccessToken(token, config)).resolves.toEqual({ userId, sessionId })
     await expect(
-      verifyAttachmentAccessToken((await createTokenPair(userId, config)).accessToken, config),
+      verifyAttachmentAccessToken(
+        (await createTokenPair(userId, sessionId, config)).accessToken,
+        config,
+      ),
     ).rejects.toBeInstanceOf(AttachmentContentUnauthorizedError)
   })
 

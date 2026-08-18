@@ -17,7 +17,7 @@ import {
 import {
   attachments,
   authPasswordCredentials,
-  authRefreshTokens,
+  authSessions,
   systemRoleResources,
   systemRoles,
   systemResources,
@@ -526,11 +526,11 @@ describe('user routes', () => {
         createdAt: new Date('2026-05-08T00:00:00.000Z'),
         updatedAt: new Date('2026-05-08T00:00:00.000Z'),
       })
-      await database.insert(authRefreshTokens).values({
+      await database.insert(authSessions).values({
         id: '44444444-4444-4444-8444-444444444444',
         userId,
-        tokenHash: 'reset-password-token-hash',
-        expiresAt: new Date('2026-06-08T00:00:00.000Z'),
+        refreshTokenHash: 'reset-password-token-hash',
+        expiresAt: new Date('2099-06-08T00:00:00.000Z'),
         createdAt: new Date('2026-05-08T00:00:00.000Z'),
         updatedAt: new Date('2026-05-08T00:00:00.000Z'),
       })
@@ -550,10 +550,11 @@ describe('user routes', () => {
       expect(credential?.mustChangePassword).toBe(true)
       expect(await verifyPassword(body.temporaryPassword, credential!.passwordHash)).toBe(true)
 
-      const sessions = await database.query.authRefreshTokens.findMany({
+      const sessions = await database.query.authSessions.findMany({
         where: { userId },
       })
       expect(sessions[0]?.revokedAt).toBeInstanceOf(Date)
+      expect(sessions[0]?.revocationReason).toBe('password_reset')
     },
   )
 
@@ -1325,6 +1326,11 @@ describe('user routes', () => {
         ).id,
       ],
     })
+    await database.insert(authSessions).values({
+      userId: created.id,
+      refreshTokenHash: `delete-${randomUUID()}`,
+      expiresAt: new Date('2099-01-01T00:00:00.000Z'),
+    })
 
     const deleteResponse = await app.request(`/api/system/users/${created.id}`, {
       method: 'DELETE',
@@ -1357,6 +1363,12 @@ describe('user routes', () => {
       .from(systemUserRoles)
       .where(eq(systemUserRoles.userId, created.id))
     expect(storedRoleRelations).toEqual([])
+    const [deletedSession] = await database
+      .select()
+      .from(authSessions)
+      .where(eq(authSessions.userId, created.id))
+    expect(deletedSession?.revokedAt).toBeInstanceOf(Date)
+    expect(deletedSession?.revocationReason).toBe('user_deleted')
 
     const listResponse = await app.request('/api/system/users?keyword=alan')
     expect(listResponse.status).toBe(200)
@@ -1378,6 +1390,43 @@ describe('user routes', () => {
     expect(await secondDeleteResponse.json()).toEqual({
       message: '用户不存在',
     })
+  })
+
+  dbTest('revokes active sessions only when a user transitions to disabled', async ({ db }) => {
+    const app = await createTestApp(db)
+    const { body: created } = await createUser(app, {
+      username: 'disable-session-user',
+      nickname: 'Disable Session User',
+    })
+    await db.insert(authSessions).values({
+      userId: created.id,
+      refreshTokenHash: `disable-${randomUUID()}`,
+      expiresAt: new Date('2099-01-01T00:00:00.000Z'),
+    })
+
+    const disableResponse = await app.request(`/api/system/users/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: USER_STATUS_DISABLED }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(disableResponse.status).toBe(200)
+    const [disabledSession] = await db
+      .select()
+      .from(authSessions)
+      .where(eq(authSessions.userId, created.id))
+    expect(disabledSession?.revocationReason).toBe('user_disabled')
+
+    const enableResponse = await app.request(`/api/system/users/${created.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: USER_STATUS_ENABLED }),
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(enableResponse.status).toBe(200)
+    const [stillRevoked] = await db
+      .select()
+      .from(authSessions)
+      .where(eq(authSessions.userId, created.id))
+    expect(stillRevoked?.revocationReason).toBe('user_disabled')
   })
 
   dbTest(

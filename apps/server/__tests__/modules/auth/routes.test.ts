@@ -23,6 +23,12 @@ const authUser = {
   createdAt: '2026-05-06T00:00:00.000Z',
   updatedAt: '2026-05-06T00:00:00.000Z',
 }
+const requestMetadata = {
+  requestId: '6afde8ac-04ec-4dc3-abcf-7bba62f89886',
+  clientIp: '192.0.2.1',
+  clientIpSource: 'socket',
+  userAgent: 'route-test',
+}
 
 const mocks = vi.hoisted(() => {
   const service = {
@@ -49,6 +55,7 @@ const mocks = vi.hoisted(() => {
       createdAt: '2026-05-06T00:00:00.000Z',
       updatedAt: '2026-05-06T00:00:00.000Z',
     })
+    context.set('currentSessionId', '5dfc90f3-9d4d-40f2-a8b9-f7d1863e5ad0')
     context.set('accessCodes', ['system:user:list'])
     context.set('menus', [{ code: 'system:user' }])
 
@@ -67,13 +74,26 @@ vi.mock('../../../src/modules/auth/service', () => ({
 }))
 
 function createTestApp() {
-  return new Hono().route('/api/auth', createAuthRoutes({} as never, mocks.authMiddleware))
+  return new Hono()
+    .use('*', async (c, next) => {
+      const context = c as unknown as { set: (key: string, value: unknown) => void }
+      context.set('requestContext', {
+        requestId: '6afde8ac-04ec-4dc3-abcf-7bba62f89886',
+        clientIp: '192.0.2.1',
+        clientIpSource: 'socket',
+        userAgent: 'route-test',
+        logger: {} as never,
+      })
+      await next()
+    })
+    .route('/api/auth', createAuthRoutes({} as never, mocks.authMiddleware))
 }
 
 function createSession(refreshToken: string) {
   return {
     accessToken: `${refreshToken}-access-token`,
     refreshToken,
+    attachmentAccessToken: `${refreshToken}-attachment-token`,
     tokenType: 'Bearer' as const,
     expiresIn: 900,
     user: authUser,
@@ -100,7 +120,7 @@ describe('auth routes', () => {
       avatarId: null,
       email: 'updated@example.com',
     })
-    mocks.service.updatePassword.mockResolvedValue(undefined)
+    mocks.service.updatePassword.mockResolvedValue(createSession('password-refresh-token'))
   })
 
   it('does not expose public registration', async () => {
@@ -138,10 +158,13 @@ describe('auth routes', () => {
     expect(loginResponse.headers.get('set-cookie')).toContain('attachment_token=')
     expect(loginBody).not.toHaveProperty('refreshToken')
     expect(loginBody).not.toHaveProperty('attachmentToken')
-    expect(mocks.service.login).toHaveBeenCalledWith({
-      username: 'ada',
-      password: 'secret-password',
-    })
+    expect(mocks.service.login).toHaveBeenCalledWith(
+      {
+        username: 'ada',
+        password: 'secret-password',
+      },
+      requestMetadata,
+    )
   })
 
   it('rejects oversized login bodies before parsing JSON', async () => {
@@ -187,7 +210,7 @@ describe('auth routes', () => {
     expect(refreshResponse.headers.get('set-cookie')).toContain('attachment_token=')
     expect(refreshBody).not.toHaveProperty('refreshToken')
     expect(refreshBody).not.toHaveProperty('attachmentToken')
-    expect(mocks.service.refresh).toHaveBeenCalledWith('old-refresh-token')
+    expect(mocks.service.refresh).toHaveBeenCalledWith('old-refresh-token', undefined)
   })
 
   it('clears the refresh cookie during logout even when revoke fails', async () => {
@@ -206,7 +229,7 @@ describe('auth routes', () => {
       expect(response.headers.get('set-cookie')).toContain('attachment_token=')
       expect(response.headers.get('set-cookie')).toContain('Max-Age=0')
       expect(response.headers.get('set-cookie')).toContain('Path=/api/attachments')
-      expect(mocks.service.logout).toHaveBeenCalledWith('current-refresh-token')
+      expect(mocks.service.logout).toHaveBeenCalledWith(undefined, 'current-refresh-token')
     } finally {
       consoleError.mockRestore()
     }
@@ -225,7 +248,7 @@ describe('auth routes', () => {
     })
 
     expect(refreshResponse.status).toBe(401)
-    expect(mocks.service.refresh).toHaveBeenCalledWith(undefined)
+    expect(mocks.service.refresh).toHaveBeenCalledWith(undefined, undefined)
   })
 
   it('logs out successfully without a refresh cookie', async () => {
@@ -240,7 +263,7 @@ describe('auth routes', () => {
     expect(emptyLogoutResponse.headers.get('set-cookie')).toContain('attachment_token=')
     expect(emptyLogoutResponse.headers.get('set-cookie')).toContain('Max-Age=0')
     expect(emptyLogoutResponse.headers.get('set-cookie')).toContain('Path=/api/attachments')
-    expect(mocks.service.logout).toHaveBeenCalledWith(undefined)
+    expect(mocks.service.logout).toHaveBeenCalledWith(undefined, undefined)
   })
 
   it('reads logout tokens from cookies only', async () => {
@@ -258,7 +281,7 @@ describe('auth routes', () => {
     })
 
     expect(cookieLogoutResponse.status).toBe(204)
-    expect(mocks.service.logout).toHaveBeenLastCalledWith('cookie-refresh-token')
+    expect(mocks.service.logout).toHaveBeenLastCalledWith(undefined, 'cookie-refresh-token')
   })
 
   it('uses authenticated context for current-user routes', async () => {
@@ -312,14 +335,15 @@ describe('auth routes', () => {
       },
     })
 
-    expect(passwordResponse.status).toBe(204)
+    expect(passwordResponse.status).toBe(200)
     expect(mocks.service.updatePassword).toHaveBeenCalledWith(
       authUser.id,
+      '5dfc90f3-9d4d-40f2-a8b9-f7d1863e5ad0',
       {
         currentPassword: 'old-password',
         newPassword: 'new-password',
       },
-      'current-refresh-token',
+      requestMetadata,
     )
   })
 

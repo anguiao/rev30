@@ -1,28 +1,35 @@
+import { randomUUID } from 'node:crypto'
 import {
   USER_STATUS_ENABLED,
   type AuthLoginInput,
   type AuthPasswordUpdateInput,
   type AuthProfileUpdateInput,
-  type AuthTokenResponse,
-  type User,
 } from '@rev30/contracts'
+import { subSeconds } from '@rev30/utils'
 import type { Db } from '../../db'
+import { createAttachmentAccessToken } from '../attachments/access-token'
 import { toUserConflictError, toUserInvalidAvatarError } from '../system/users/errors'
 import { toUser } from '../system/users/mapper'
+import { readNumberConfigValue } from '../system/configs/values'
+import { createUserAccessService } from './access'
 import type { AuthConfig } from './config'
 import {
   AuthAccessTokenExpiredError,
+  AuthInvalidAccessTokenError,
   AuthInvalidCredentialsError,
   AuthInvalidCurrentPasswordError,
-  AuthLoginRateLimitedError,
   AuthInvalidRefreshTokenError,
+  AuthLoginRateLimitedError,
   AuthUnauthorizedError,
 } from './errors'
 import { hashPassword, verifyPassword } from './password'
-import { createAuthRepository } from './repository'
-import { createUserAccessService } from './access'
-import { createTokenPair, verifyAccessToken, verifyRefreshToken } from './tokens'
-import { readNumberConfigValue } from '../system/configs/values'
+import { createAuthRepository, type LoginRequestMetadata } from './repository'
+import {
+  createTokenPair,
+  verifyAccessToken,
+  verifyAccessTokenAllowExpired,
+  verifyRefreshToken,
+} from './tokens'
 
 const dummyPasswordHash =
   'scrypt$rev30-auth-dummy-salt$gqCTp4XOR3Xf1LvfHOITCoogF-vpgXvmPkOuxWGr-ChkgWkyXG0_Zf19YMXZ_Oy3mXaxJAVa2LGtlr8sJPJDjA'
@@ -31,18 +38,10 @@ async function withUserWriteConstraints<T>(operation: () => Promise<T>) {
   try {
     return await operation()
   } catch (error) {
-    const uniqueConflict = toUserConflictError(error)
-
-    if (uniqueConflict) {
-      throw uniqueConflict
-    }
-
+    const conflict = toUserConflictError(error)
+    if (conflict) throw conflict
     const invalidAvatar = toUserInvalidAvatarError(error)
-
-    if (invalidAvatar) {
-      throw invalidAvatar
-    }
-
+    if (invalidAvatar) throw invalidAvatar
     throw error
   }
 }
@@ -59,154 +58,200 @@ async function readLoginFailureConfig(database: Db) {
     readNumberConfigValue(database, 'auth.loginFailureWindowSeconds'),
     readNumberConfigValue(database, 'auth.loginFailureLockSeconds'),
   ])
-
-  return {
-    maxAttempts,
-    windowSeconds,
-    lockSeconds,
-  }
+  return { maxAttempts, windowSeconds, lockSeconds }
 }
 
 export function createAuthService(database: Db, config: AuthConfig) {
   const repository = createAuthRepository(database)
   const accessService = createUserAccessService(database)
 
-  async function createTokenResponse(userId: string) {
-    const tokenPair = await createTokenPair(userId, config)
-
-    await repository.createRefreshSession({
+  async function createTokens(userId: string, sessionId: string, issuedAt: Date) {
+    const pair = await createTokenPair(userId, sessionId, config, issuedAt)
+    const attachmentAccessToken = await createAttachmentAccessToken(
       userId,
-      tokenHash: tokenPair.refreshTokenHash,
-      expiresAt: tokenPair.refreshExpiresAt,
-    })
-
-    return {
-      accessToken: tokenPair.accessToken,
-      refreshToken: tokenPair.refreshToken,
-      tokenType: 'Bearer' as const,
-      expiresIn: tokenPair.accessExpiresIn,
-    }
+      sessionId,
+      config,
+      issuedAt,
+    )
+    return { ...pair, attachmentAccessToken }
   }
 
-  async function createAuthSession(
-    user: User,
-  ): Promise<AuthTokenResponse & { refreshToken: string }> {
-    const access = await accessService.resolveUserAccess(user.id)
-    const tokens = await createTokenResponse(user.id)
-
-    return {
-      ...tokens,
-      user,
-      accessCodes: access.accessCodes,
-      menus: access.menus,
-    }
+  async function recordOrdinaryFailure(
+    input: AuthLoginInput,
+    metadata: LoginRequestMetadata,
+    userId: string | null,
+    reason: 'invalid_credentials' | 'account_disabled',
+    now: Date,
+  ) {
+    const limits = await readLoginFailureConfig(database)
+    await repository.recordLoginFailure({
+      username: input.username,
+      userId,
+      failureReason: reason,
+      metadata,
+      now,
+      ...limits,
+    })
   }
 
   return {
-    async login(input: AuthLoginInput) {
-      const now = new Date()
+    async login(input: AuthLoginInput, metadata: LoginRequestMetadata) {
+      const attemptedAt = new Date()
       const bucket = await repository.findLoginAttemptBucketByUsername(input.username)
-
-      if (isLoginAttemptLocked(bucket, now)) {
+      if (isLoginAttemptLocked(bucket, attemptedAt)) {
+        await repository.recordRateLimitedLogin(input.username, metadata, attemptedAt)
         throw new AuthLoginRateLimitedError()
       }
 
       const account = await repository.findActiveUserCredentialByUsername(input.username)
-      const passwordHash = account?.credential.passwordHash ?? dummyPasswordHash
-      const passwordMatches = await verifyPassword(input.password, passwordHash)
-
-      if (!account || account.user.status !== USER_STATUS_ENABLED || !passwordMatches) {
-        const loginFailureConfig = await readLoginFailureConfig(database)
-
-        await repository.recordLoginFailure({
-          username: input.username,
-          now,
-          maxAttempts: loginFailureConfig.maxAttempts,
-          windowSeconds: loginFailureConfig.windowSeconds,
-          lockSeconds: loginFailureConfig.lockSeconds,
-        })
+      const matches = await verifyPassword(
+        input.password,
+        account?.credential.passwordHash ?? dummyPasswordHash,
+      )
+      if (!account || !matches || account.user.status !== USER_STATUS_ENABLED) {
+        const reason =
+          account && account.user.status !== USER_STATUS_ENABLED
+            ? 'account_disabled'
+            : 'invalid_credentials'
+        await recordOrdinaryFailure(input, metadata, account?.user.id ?? null, reason, attemptedAt)
         throw new AuthInvalidCredentialsError()
       }
 
       const user = toUser(account.user, account.departments, account.roles)
-      const session = await createAuthSession(user)
-      await repository.clearLoginAttemptBucket(input.username, now)
-
-      return session
+      const access = await accessService.resolveUserAccess(user.id)
+      const sessionId = randomUUID()
+      const sessionCreatedAt = new Date()
+      const tokens = await createTokens(user.id, sessionId, sessionCreatedAt)
+      const result = await repository.createLoginSession({
+        id: sessionId,
+        userId: user.id,
+        username: input.username,
+        credentialHash: account.credential.passwordHash,
+        refreshTokenHash: tokens.refreshTokenHash,
+        expiresAt: tokens.refreshExpiresAt,
+        metadata,
+        now: sessionCreatedAt,
+      })
+      if (result !== 'success') {
+        await recordOrdinaryFailure(input, metadata, user.id, result, new Date())
+        throw new AuthInvalidCredentialsError()
+      }
+      return {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        attachmentAccessToken: tokens.attachmentAccessToken,
+        tokenType: 'Bearer' as const,
+        expiresIn: tokens.accessExpiresIn,
+        user,
+        accessCodes: access.accessCodes,
+        menus: access.menus,
+      }
     },
 
-    async refresh(refreshToken: string | undefined) {
-      if (!refreshToken) {
-        throw new AuthInvalidRefreshTokenError()
-      }
-
+    async refresh(refreshToken: string | undefined, accessToken?: string) {
+      if (!refreshToken) throw new AuthInvalidRefreshTokenError()
       const verified = await verifyRefreshToken(refreshToken, config)
-
-      const consumed = await repository.consumeRefreshSession(verified.refreshTokenHash)
-
-      if (!consumed) {
-        throw new AuthInvalidRefreshTokenError()
+      if (accessToken) {
+        try {
+          const access = await verifyAccessTokenAllowExpired(accessToken, config)
+          if (access.userId !== verified.userId || access.sessionId !== verified.sessionId)
+            throw new AuthInvalidRefreshTokenError()
+        } catch (error) {
+          if (error instanceof AuthInvalidRefreshTokenError) throw error
+          throw new AuthInvalidRefreshTokenError()
+        }
       }
-
       const account = await repository.findActiveUserById(verified.userId)
-
-      if (!account || account.user.status !== USER_STATUS_ENABLED) {
+      if (!account || account.user.status !== USER_STATUS_ENABLED)
         throw new AuthInvalidRefreshTokenError()
-      }
-
       const user = toUser(account.user, account.departments, account.roles)
-
-      return createAuthSession(user)
+      const access = await accessService.resolveUserAccess(user.id)
+      const now = new Date()
+      const tokens = await createTokens(user.id, verified.sessionId, now)
+      const rotated = await repository.rotateSession({
+        id: verified.sessionId,
+        userId: user.id,
+        oldHash: verified.refreshTokenHash,
+        newHash: tokens.refreshTokenHash,
+        expiresAt: tokens.refreshExpiresAt,
+        now,
+      })
+      if (!rotated) throw new AuthInvalidRefreshTokenError()
+      return {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        attachmentAccessToken: tokens.attachmentAccessToken,
+        tokenType: 'Bearer' as const,
+        expiresIn: tokens.accessExpiresIn,
+        user,
+        accessCodes: access.accessCodes,
+        menus: access.menus,
+      }
     },
 
-    async logout(refreshToken: string | undefined) {
-      if (!refreshToken) {
-        return
-      }
-
-      let verified: Awaited<ReturnType<typeof verifyRefreshToken>>
-
-      try {
-        verified = await verifyRefreshToken(refreshToken, config)
-      } catch (error) {
-        if (error instanceof AuthInvalidRefreshTokenError) {
-          return
+    async logout(accessToken: string | undefined, refreshToken: string | undefined) {
+      if (accessToken) {
+        try {
+          const access = await verifyAccessToken(accessToken, config)
+          const revoked = await repository.revokeValidSession(
+            access.sessionId,
+            access.userId,
+            'logout',
+          )
+          if (revoked) return
+        } catch (error) {
+          if (
+            !(
+              error instanceof AuthInvalidAccessTokenError ||
+              error instanceof AuthAccessTokenExpiredError
+            )
+          )
+            throw error
         }
-
-        throw error
       }
-
-      await repository.revokeRefreshSession(verified.refreshTokenHash)
+      if (!refreshToken) return
+      try {
+        const refresh = await verifyRefreshToken(refreshToken, config)
+        await repository.revokeValidSession(
+          refresh.sessionId,
+          refresh.userId,
+          'logout',
+          refresh.refreshTokenHash,
+        )
+      } catch (error) {
+        if (!(error instanceof AuthInvalidRefreshTokenError)) throw error
+      }
     },
 
     async me(accessToken: string | undefined) {
-      if (!accessToken) {
-        throw new AuthUnauthorizedError()
-      }
-
+      if (!accessToken) throw new AuthUnauthorizedError()
       let verified: Awaited<ReturnType<typeof verifyAccessToken>>
-
       try {
         verified = await verifyAccessToken(accessToken, config)
       } catch (error) {
-        if (error instanceof AuthAccessTokenExpiredError) {
-          throw error
+        if (error instanceof AuthAccessTokenExpiredError) throw error
+        throw new AuthUnauthorizedError()
+      }
+      const now = new Date()
+      let account = await repository.findValidSessionUser(verified.sessionId, verified.userId, now)
+      if (!account) throw new AuthUnauthorizedError()
+      if (account.session.lastActiveAt <= subSeconds(now, 300)) {
+        const touched = await repository.touchSession(
+          verified.sessionId,
+          verified.userId,
+          subSeconds(now, 300),
+          now,
+        )
+        if (!touched) {
+          account = await repository.findValidSessionUser(verified.sessionId, verified.userId, now)
+          if (!account) throw new AuthUnauthorizedError()
         }
-
-        throw new AuthUnauthorizedError()
       }
-
-      const account = await repository.findActiveUserById(verified.userId)
-
-      if (!account || account.user.status !== USER_STATUS_ENABLED) {
-        throw new AuthUnauthorizedError()
-      }
-
       const user = toUser(account.user, account.departments, account.roles)
-      const access = await accessService.resolveUserAccess(account.user.id)
-
+      const access = await accessService.resolveUserAccess(user.id)
       return {
         user,
+        currentSessionId: verified.sessionId,
         accessCodes: access.accessCodes,
         menus: access.menus,
         isAdmin: access.isAdmin,
@@ -217,55 +262,50 @@ export function createAuthService(database: Db, config: AuthConfig) {
       const updated = await withUserWriteConstraints(() =>
         repository.updateUserProfile(userId, input),
       )
-
-      if (!updated || updated.user.status !== USER_STATUS_ENABLED) {
-        throw new AuthUnauthorizedError()
-      }
-
+      if (!updated || updated.user.status !== USER_STATUS_ENABLED) throw new AuthUnauthorizedError()
       return toUser(updated.user, updated.departments, updated.roles)
     },
 
     async updatePassword(
       userId: string,
+      currentSessionId: string,
       input: AuthPasswordUpdateInput,
-      refreshToken: string | undefined,
+      metadata: LoginRequestMetadata,
     ) {
       const account = await repository.findActiveUserCredentialById(userId)
-
-      if (!account || account.user.status !== USER_STATUS_ENABLED) {
-        throw new AuthUnauthorizedError()
-      }
-
-      const passwordMatches = await verifyPassword(
-        input.currentPassword,
-        account.credential.passwordHash,
-      )
-
-      if (!passwordMatches) {
+      if (!account || account.user.status !== USER_STATUS_ENABLED) throw new AuthUnauthorizedError()
+      if (!(await verifyPassword(input.currentPassword, account.credential.passwordHash)))
         throw new AuthInvalidCurrentPasswordError()
-      }
-
-      let currentTokenHash: string | undefined
-
-      if (refreshToken) {
-        try {
-          currentTokenHash = (await verifyRefreshToken(refreshToken, config)).refreshTokenHash
-        } catch (error) {
-          if (!(error instanceof AuthInvalidRefreshTokenError)) {
-            throw error
-          }
-        }
-      }
-
+      const user = toUser(account.user, account.departments, account.roles)
+      const access = await accessService.resolveUserAccess(user.id)
       const passwordHash = await hashPassword(input.newPassword)
-      const updatedCredential = await repository.updatePasswordCredentialAndRevokeSessions(
+      const now = new Date()
+      const sessionId = randomUUID()
+      const tokens = await createTokens(userId, sessionId, now)
+      const updated = await repository.updatePasswordAndReplaceSession({
         userId,
+        currentSessionId,
+        credentialHash: account.credential.passwordHash,
         passwordHash,
-        currentTokenHash,
-      )
-
-      if (!updatedCredential) {
-        throw new AuthUnauthorizedError()
+        newSession: {
+          id: sessionId,
+          userId,
+          refreshTokenHash: tokens.refreshTokenHash,
+          expiresAt: tokens.refreshExpiresAt,
+          metadata,
+          now,
+        },
+      })
+      if (!updated) throw new AuthUnauthorizedError()
+      return {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        attachmentAccessToken: tokens.attachmentAccessToken,
+        tokenType: 'Bearer' as const,
+        expiresIn: tokens.accessExpiresIn,
+        user,
+        accessCodes: access.accessCodes,
+        menus: access.menus,
       }
     },
   }

@@ -20,7 +20,7 @@ Rev30 是一个 TypeScript monorepo 项目，包含 Vue 客户端、Hono API、�
 ## 当前项目进度
 
 - 已完成基础 monorepo 结构，包含 Vue 客户端、Hono 服务端、共享接口契约和通用工具包。
-- 当前业务核心包含认证、刷新令牌、登录态恢复、权限资源访问码授权、内置系统资源、显式管理员 bootstrap、管理员新增/重置系统用户密码、个人资料和密码维护能力，以及私有通用附件上传基础能力。
+- 当前业务核心包含稳定认证会话、登录态恢复、登录日志与在线会话运维、权限资源访问码授权、内置系统资源、显式管理员 bootstrap、管理员新增/重置系统用户密码、个人资料和密码维护能力，以及私有通用附件上传基础能力。
 - 当前后端新增 Iconify API 兼容图标服务，可从 `@iconify/json` 按需读取全部已安装图标集，供后续 `@iconify/vue` 默认 provider 接入。
 - 内容管理新增图标库页面，可浏览内置图标集，并维护自定义 SVG 图标集；自定义图标可导出 Iconify JSON 并接入运行时图标加载。
 - 组件演示新增富文本页面，使用完整 preset 验证编辑器交互、代码语言选择与高亮、文档表格、base64 图片、服务端 JSON 规范化、纯文本提取和安全 HTML 派生，全程不持久化演示正文。
@@ -43,6 +43,16 @@ pnpm dev
 
 服务端环境变量可从 `apps/server/.env.example` 复制起步；执行 bootstrap 前，请先在 `apps/server/.env` 中确认或修改 `BOOTSTRAP_ADMIN_*` 账号信息，认证相关密钥在本地也建议改成非默认值。
 通用附件默认使用本地私有存储，文件目录由 `ATTACHMENT_STORAGE_DIR` 控制，默认 `.attachments/dev`。
+
+### 认证会话与登录审计
+
+每次登录会创建一条带稳定 `sid` 的数据库会话。access、refresh 和 authenticated 附件读取令牌都绑定该会话；refresh 只轮换同一行的 token hash，并将会话有效期滑动到当前时间后 7 天。退出、修改或重置密码、停用或删除用户，以及管理员强制下线后，目标会话的三类令牌都会在下一次认证检查时失效。短期 signed 附件内容 URL 仍是独立能力链接，不受会话撤销影响。
+
+运维菜单提供 `/ops/login-logs` 和 `/ops/online-sessions`：前者查询成功、凭据无效、账号停用和限流四类登录结果，后者查询有效会话并允许有权限的管理员强制下线非当前会话。接口和页面分别使用 `ops:login-log:list`、`ops:online-session:list` 与 `ops:online-session:revoke` 权限；迁移只创建资源，不自动授权普通角色。
+
+认证会话和登录日志清理默认每 6 小时运行。自然到期会话在清理时删除，撤销会话超过 7 天后删除，登录日志达到 90 天时删除；对应设置为 `AUTH_SESSION_CLEANUP_INTERVAL_MS`、`AUTH_REVOKED_SESSION_RETENTION_MS`、`OPS_LOGIN_LOG_CLEANUP_INTERVAL_MS` 和 `OPS_LOGIN_LOG_RETENTION_MS`，清理 interval 设为 `0` 可关闭调度。
+
+本次数据库迁移会删除旧的 `auth_refresh_tokens`，不把旧 refresh 记录转换为会话。旧 access、refresh 和附件读取令牌也没有 `sid`，部署后会按无效令牌处理；已有用户需要重新登录。
 
 - 附件上传使用数据库持久化的上传会话：先创建上传会话，再通过临时 PUT URL 上传文件，最后 complete 写入附件元数据；后续阶段可由不同服务实例处理。
 - 附件读取支持两种策略：普通附件默认使用短期签名内容 URL；头像等资源可使用稳定的 `/api/attachments/:id/content` URL。

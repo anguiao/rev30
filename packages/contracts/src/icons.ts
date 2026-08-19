@@ -1,6 +1,5 @@
 import { z } from 'zod'
-import { pageSizeSchema } from './common/pagination'
-import { hasAnyDefinedValue } from './common/refinements'
+import { hasAnyDefinedValue, pageSizeSchema } from './common'
 import { optionalQueryValue, optionalTrimmedQueryString } from './query'
 
 const iconFileExtension = '.json'

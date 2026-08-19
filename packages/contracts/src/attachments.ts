@@ -1,6 +1,5 @@
 import { z } from 'zod'
-import { nonBlankString } from './common/inputs'
-import { paginationQuerySchema } from './common/pagination'
+import { nonBlankString, paginationQuerySchema } from './common'
 import { optionalQueryValue, optionalTrimmedQueryString } from './query'
 
 export const ATTACHMENT_READ_POLICY_SIGNED = 'signed'

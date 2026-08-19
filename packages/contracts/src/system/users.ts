@@ -1,12 +1,13 @@
 import { z } from 'zod'
 import {
+  ensureUniqueItems,
+  hasAnyDefinedValue,
   nonBlankString,
   optionalNullableString,
+  paginationQuerySchema,
   passwordInputSchema,
   usernameInputSchema,
-} from '../common/inputs'
-import { paginationQuerySchema } from '../common/pagination'
-import { ensureUniqueItems, hasAnyDefinedValue } from '../common/refinements'
+} from '../common'
 import {
   includeIdsQueryValue,
   optionalNumericQueryValue,

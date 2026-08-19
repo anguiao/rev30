@@ -1,12 +1,12 @@
 import { z } from 'zod'
-import { passwordInputSchema, usernameInputSchema } from './common/inputs'
+import { passwordInputSchema, usernameInputSchema } from './common'
 import {
   contactInputSchema,
+  resourceTreeNodeSchema,
   userAvatarIdSchema,
   userNicknameSchema,
   userSchema,
-} from './system/users'
-import { resourceTreeNodeSchema } from './system/resources'
+} from './system'
 
 export const AUTH_ACTION_HEADER = 'Auth-Action'
 export const AUTH_ACTION_REFRESH = 'refresh'

@@ -1,6 +1,10 @@
 import { z } from 'zod'
-import { nonBlankString, optionalNullableString, sortOrderInputSchema } from '../common/inputs'
-import { paginationQuerySchema } from '../common/pagination'
+import {
+  nonBlankString,
+  optionalNullableString,
+  paginationQuerySchema,
+  sortOrderInputSchema,
+} from '../common'
 import { optionalNumericQueryValue, optionalTrimmedQueryString } from '../query'
 
 export const DICTIONARY_STATUS_DISABLED = 0

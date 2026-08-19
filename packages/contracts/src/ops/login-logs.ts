@@ -1,6 +1,5 @@
 import { z } from 'zod'
-import { usernameInputSchema } from '../common/inputs'
-import { paginationQuerySchema } from '../common/pagination'
+import { paginationQuerySchema, usernameInputSchema } from '../common'
 import { optionalQueryValue } from '../query'
 import { clientIpSourceSchema, opsUserAgentSchema } from './common'
 

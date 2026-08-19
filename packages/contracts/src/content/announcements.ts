@@ -1,12 +1,17 @@
 import { z } from 'zod'
 import { richTextDocumentEnvelopeSchema, type RichTextDocument } from '@rev30/rich-text/schema'
-import { nonBlankString, optionalNullableString } from '../common/inputs'
-import { paginationQuerySchema } from '../common/pagination'
-import { hasAnyDefinedValue } from '../common/refinements'
+import {
+  hasAnyDefinedValue,
+  nonBlankString,
+  optionalNullableString,
+  paginationQuerySchema,
+} from '../common'
 import { optionalQueryValue, optionalTrimmedQueryString } from '../query'
-import { departmentTreeOptionsResponseSchema } from '../system/departments'
-import { roleOptionsResponseSchema } from '../system/roles'
-import { userOptionsResponseSchema } from '../system/users'
+import {
+  departmentTreeOptionsResponseSchema,
+  roleOptionsResponseSchema,
+  userOptionsResponseSchema,
+} from '../system'
 
 export const ANNOUNCEMENT_TYPE_NOTICE = 'notice'
 export const ANNOUNCEMENT_TYPE_BULLETIN = 'bulletin'

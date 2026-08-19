@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { nonBlankString } from '../common/inputs'
+import { nonBlankString } from '../common'
 
 export const clientIpSourceSchema = z.enum(
   ['socket', 'x-forwarded-for', 'unavailable'],

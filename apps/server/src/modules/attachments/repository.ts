@@ -1,4 +1,4 @@
-import { USER_STATUS_ENABLED, type AttachmentListQuery } from '@rev30/contracts'
+import type { AttachmentListQuery } from '@rev30/contracts'
 import { and, count, desc, eq, gt, ilike, isNull, or } from 'drizzle-orm'
 import type { Db } from '../../db'
 import { attachments, attachmentUploadSessions, systemUsers } from '../../db/schema'
@@ -12,22 +12,6 @@ export function createAttachmentRepository(database: Db) {
         .select()
         .from(attachments)
         .where(and(eq(attachments.id, id), isNull(attachments.deletedAt)))
-        .limit(1)
-
-      return row
-    },
-
-    async findActiveUserById(id: string) {
-      const [row] = await database
-        .select({ id: systemUsers.id })
-        .from(systemUsers)
-        .where(
-          and(
-            eq(systemUsers.id, id),
-            eq(systemUsers.status, USER_STATUS_ENABLED),
-            isNull(systemUsers.deletedAt),
-          ),
-        )
         .limit(1)
 
       return row

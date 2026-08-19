@@ -1,48 +1,8 @@
-import type {
-  LoginLogListItem,
-  LoginLogListQuery,
-  OnlineSessionListItem,
-  OnlineSessionListQuery,
-} from '@rev30/contracts'
+import { type LoginLogListQuery, type OnlineSessionListQuery } from '@rev30/contracts'
 import type { Db } from '../../db'
 import { CurrentOnlineSessionConflictError, OnlineSessionNotFoundError } from './errors'
+import { toLoginLogListItem, toOnlineSessionListItem } from './mapper'
 import { createOpsRepository } from './repository'
-import { toOpsUserAgent } from './user-agent'
-
-function toLoginLog(
-  row: Awaited<ReturnType<ReturnType<typeof createOpsRepository>['listLoginLogs']>>['list'][number],
-): LoginLogListItem {
-  const base = {
-    id: row.id,
-    username: row.username,
-    requestId: row.requestId,
-    clientIp: row.clientIp,
-    clientIpSource: row.clientIpSource as LoginLogListItem['clientIpSource'],
-    userAgent: toOpsUserAgent(row.userAgent),
-    createdAt: row.createdAt.toISOString(),
-  }
-
-  if (row.result === 'success' && row.userId && row.sessionId) {
-    return {
-      ...base,
-      userId: row.userId,
-      result: 'success',
-      failureReason: null,
-      sessionId: row.sessionId,
-    }
-  }
-
-  return {
-    ...base,
-    userId: row.userId,
-    result: 'failure',
-    failureReason: row.failureReason as Extract<
-      LoginLogListItem,
-      { result: 'failure' }
-    >['failureReason'],
-    sessionId: null,
-  }
-}
 
 export function createOpsService(database: Db) {
   const repository = createOpsRepository(database)
@@ -51,7 +11,7 @@ export function createOpsService(database: Db) {
     async listLoginLogs(query: LoginLogListQuery) {
       const result = await repository.listLoginLogs(query)
 
-      return { ...result, list: result.list.map(toLoginLog) }
+      return { ...result, list: result.list.map(toLoginLogListItem) }
     },
 
     async listOnlineSessions(query: OnlineSessionListQuery, currentSessionId: string) {
@@ -59,15 +19,7 @@ export function createOpsService(database: Db) {
 
       return {
         ...result,
-        list: result.list.map((row): OnlineSessionListItem => ({
-          ...row,
-          createdIpSource: row.createdIpSource as OnlineSessionListItem['createdIpSource'],
-          userAgent: toOpsUserAgent(row.userAgent),
-          createdAt: row.createdAt.toISOString(),
-          lastActiveAt: row.lastActiveAt.toISOString(),
-          expiresAt: row.expiresAt.toISOString(),
-          isCurrent: row.id === currentSessionId,
-        })),
+        list: result.list.map((row) => toOnlineSessionListItem(row, currentSessionId)),
       }
     },
 

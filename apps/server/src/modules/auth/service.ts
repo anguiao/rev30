@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import {
+  LOGIN_FAILURE_REASON_ACCOUNT_DISABLED,
+  LOGIN_FAILURE_REASON_INVALID_CREDENTIALS,
+  LOGIN_LOG_RESULT_SUCCESS,
   USER_STATUS_ENABLED,
   type AuthLoginInput,
   type AuthPasswordUpdateInput,
@@ -23,7 +26,7 @@ import {
   AuthUnauthorizedError,
 } from './errors'
 import { hashPassword, verifyPassword } from './password'
-import { createAuthRepository, type LoginRequestMetadata } from './repository'
+import { createAuthRepository, type AuthRequestMetadata } from './repository'
 import {
   createTokenPair,
   verifyAccessToken,
@@ -38,10 +41,18 @@ async function withUserWriteConstraints<T>(operation: () => Promise<T>) {
   try {
     return await operation()
   } catch (error) {
-    const conflict = toUserConflictError(error)
-    if (conflict) throw conflict
+    const uniqueConflict = toUserConflictError(error)
+
+    if (uniqueConflict) {
+      throw uniqueConflict
+    }
+
     const invalidAvatar = toUserInvalidAvatarError(error)
-    if (invalidAvatar) throw invalidAvatar
+
+    if (invalidAvatar) {
+      throw invalidAvatar
+    }
+
     throw error
   }
 }
@@ -58,7 +69,12 @@ async function readLoginFailureConfig(database: Db) {
     readNumberConfigValue(database, 'auth.loginFailureWindowSeconds'),
     readNumberConfigValue(database, 'auth.loginFailureLockSeconds'),
   ])
-  return { maxAttempts, windowSeconds, lockSeconds }
+
+  return {
+    maxAttempts,
+    windowSeconds,
+    lockSeconds,
+  }
 }
 
 export function createAuthService(database: Db, config: AuthConfig) {
@@ -78,9 +94,11 @@ export function createAuthService(database: Db, config: AuthConfig) {
 
   async function recordOrdinaryFailure(
     input: AuthLoginInput,
-    metadata: LoginRequestMetadata,
+    metadata: AuthRequestMetadata,
     userId: string | null,
-    reason: 'invalid_credentials' | 'account_disabled',
+    reason:
+      | typeof LOGIN_FAILURE_REASON_INVALID_CREDENTIALS
+      | typeof LOGIN_FAILURE_REASON_ACCOUNT_DISABLED,
     now: Date,
   ) {
     const limits = await readLoginFailureConfig(database)
@@ -95,24 +113,24 @@ export function createAuthService(database: Db, config: AuthConfig) {
   }
 
   return {
-    async login(input: AuthLoginInput, metadata: LoginRequestMetadata) {
+    async login(input: AuthLoginInput, metadata: AuthRequestMetadata) {
       const attemptedAt = new Date()
       const bucket = await repository.findLoginAttemptBucketByUsername(input.username)
+
       if (isLoginAttemptLocked(bucket, attemptedAt)) {
         await repository.recordRateLimitedLogin(input.username, metadata, attemptedAt)
         throw new AuthLoginRateLimitedError()
       }
 
       const account = await repository.findActiveUserCredentialByUsername(input.username)
-      const matches = await verifyPassword(
-        input.password,
-        account?.credential.passwordHash ?? dummyPasswordHash,
-      )
-      if (!account || !matches || account.user.status !== USER_STATUS_ENABLED) {
+      const passwordHash = account?.credential.passwordHash ?? dummyPasswordHash
+      const passwordMatches = await verifyPassword(input.password, passwordHash)
+
+      if (!account || !passwordMatches || account.user.status !== USER_STATUS_ENABLED) {
         const reason =
           account && account.user.status !== USER_STATUS_ENABLED
-            ? 'account_disabled'
-            : 'invalid_credentials'
+            ? LOGIN_FAILURE_REASON_ACCOUNT_DISABLED
+            : LOGIN_FAILURE_REASON_INVALID_CREDENTIALS
         await recordOrdinaryFailure(input, metadata, account?.user.id ?? null, reason, attemptedAt)
         throw new AuthInvalidCredentialsError()
       }
@@ -132,10 +150,12 @@ export function createAuthService(database: Db, config: AuthConfig) {
         metadata,
         now: sessionCreatedAt,
       })
-      if (result !== 'success') {
+
+      if (result !== LOGIN_LOG_RESULT_SUCCESS) {
         await recordOrdinaryFailure(input, metadata, user.id, result, new Date())
         throw new AuthInvalidCredentialsError()
       }
+
       return {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
@@ -149,21 +169,34 @@ export function createAuthService(database: Db, config: AuthConfig) {
     },
 
     async refresh(refreshToken: string | undefined, accessToken?: string) {
-      if (!refreshToken) throw new AuthInvalidRefreshTokenError()
+      if (!refreshToken) {
+        throw new AuthInvalidRefreshTokenError()
+      }
+
       const verified = await verifyRefreshToken(refreshToken, config)
+
       if (accessToken) {
         try {
           const access = await verifyAccessTokenAllowExpired(accessToken, config)
-          if (access.userId !== verified.userId || access.sessionId !== verified.sessionId)
+
+          if (access.userId !== verified.userId || access.sessionId !== verified.sessionId) {
             throw new AuthInvalidRefreshTokenError()
+          }
         } catch (error) {
-          if (error instanceof AuthInvalidRefreshTokenError) throw error
+          if (error instanceof AuthInvalidRefreshTokenError) {
+            throw error
+          }
+
           throw new AuthInvalidRefreshTokenError()
         }
       }
+
       const account = await repository.findActiveUserById(verified.userId)
-      if (!account || account.user.status !== USER_STATUS_ENABLED)
+
+      if (!account || account.user.status !== USER_STATUS_ENABLED) {
         throw new AuthInvalidRefreshTokenError()
+      }
+
       const user = toUser(account.user, account.departments, account.roles)
       const access = await accessService.resolveUserAccess(user.id)
       const now = new Date()
@@ -176,7 +209,11 @@ export function createAuthService(database: Db, config: AuthConfig) {
         expiresAt: tokens.refreshExpiresAt,
         now,
       })
-      if (!rotated) throw new AuthInvalidRefreshTokenError()
+
+      if (!rotated) {
+        throw new AuthInvalidRefreshTokenError()
+      }
+
       return {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
@@ -198,18 +235,26 @@ export function createAuthService(database: Db, config: AuthConfig) {
             access.userId,
             'logout',
           )
-          if (revoked) return
+
+          if (revoked) {
+            return
+          }
         } catch (error) {
           if (
             !(
               error instanceof AuthInvalidAccessTokenError ||
               error instanceof AuthAccessTokenExpiredError
             )
-          )
+          ) {
             throw error
+          }
         }
       }
-      if (!refreshToken) return
+
+      if (!refreshToken) {
+        return
+      }
+
       try {
         const refresh = await verifyRefreshToken(refreshToken, config)
         await repository.revokeValidSession(
@@ -219,22 +264,36 @@ export function createAuthService(database: Db, config: AuthConfig) {
           refresh.refreshTokenHash,
         )
       } catch (error) {
-        if (!(error instanceof AuthInvalidRefreshTokenError)) throw error
+        if (!(error instanceof AuthInvalidRefreshTokenError)) {
+          throw error
+        }
       }
     },
 
     async me(accessToken: string | undefined) {
-      if (!accessToken) throw new AuthUnauthorizedError()
+      if (!accessToken) {
+        throw new AuthUnauthorizedError()
+      }
+
       let verified: Awaited<ReturnType<typeof verifyAccessToken>>
+
       try {
         verified = await verifyAccessToken(accessToken, config)
       } catch (error) {
-        if (error instanceof AuthAccessTokenExpiredError) throw error
+        if (error instanceof AuthAccessTokenExpiredError) {
+          throw error
+        }
+
         throw new AuthUnauthorizedError()
       }
+
       const now = new Date()
       let account = await repository.findValidSessionUser(verified.sessionId, verified.userId, now)
-      if (!account) throw new AuthUnauthorizedError()
+
+      if (!account) {
+        throw new AuthUnauthorizedError()
+      }
+
       if (account.session.lastActiveAt <= subSeconds(now, 300)) {
         const touched = await repository.touchSession(
           verified.sessionId,
@@ -244,11 +303,16 @@ export function createAuthService(database: Db, config: AuthConfig) {
         )
         if (!touched) {
           account = await repository.findValidSessionUser(verified.sessionId, verified.userId, now)
-          if (!account) throw new AuthUnauthorizedError()
+
+          if (!account) {
+            throw new AuthUnauthorizedError()
+          }
         }
       }
+
       const user = toUser(account.user, account.departments, account.roles)
       const access = await accessService.resolveUserAccess(user.id)
+
       return {
         user,
         currentSessionId: verified.sessionId,
@@ -262,7 +326,11 @@ export function createAuthService(database: Db, config: AuthConfig) {
       const updated = await withUserWriteConstraints(() =>
         repository.updateUserProfile(userId, input),
       )
-      if (!updated || updated.user.status !== USER_STATUS_ENABLED) throw new AuthUnauthorizedError()
+
+      if (!updated || updated.user.status !== USER_STATUS_ENABLED) {
+        throw new AuthUnauthorizedError()
+      }
+
       return toUser(updated.user, updated.departments, updated.roles)
     },
 
@@ -270,12 +338,23 @@ export function createAuthService(database: Db, config: AuthConfig) {
       userId: string,
       currentSessionId: string,
       input: AuthPasswordUpdateInput,
-      metadata: LoginRequestMetadata,
+      metadata: AuthRequestMetadata,
     ) {
       const account = await repository.findActiveUserCredentialById(userId)
-      if (!account || account.user.status !== USER_STATUS_ENABLED) throw new AuthUnauthorizedError()
-      if (!(await verifyPassword(input.currentPassword, account.credential.passwordHash)))
+
+      if (!account || account.user.status !== USER_STATUS_ENABLED) {
+        throw new AuthUnauthorizedError()
+      }
+
+      const passwordMatches = await verifyPassword(
+        input.currentPassword,
+        account.credential.passwordHash,
+      )
+
+      if (!passwordMatches) {
         throw new AuthInvalidCurrentPasswordError()
+      }
+
       const user = toUser(account.user, account.departments, account.roles)
       const access = await accessService.resolveUserAccess(user.id)
       const passwordHash = await hashPassword(input.newPassword)
@@ -296,7 +375,11 @@ export function createAuthService(database: Db, config: AuthConfig) {
           now,
         },
       })
-      if (!updated) throw new AuthUnauthorizedError()
+
+      if (!updated) {
+        throw new AuthUnauthorizedError()
+      }
+
       return {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,

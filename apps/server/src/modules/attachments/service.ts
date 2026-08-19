@@ -353,13 +353,13 @@ export function createAttachmentService(database: Db) {
         }
 
         const verified = await verifyAttachmentAccessToken(input.attachmentReadToken, authConfig)
-        const user = await authRepository.findValidSessionUser(
+        const session = await authRepository.findValidSession(
           verified.sessionId,
           verified.userId,
           requestedAt,
         )
 
-        if (!user) {
+        if (!session) {
           throw new AttachmentContentUnauthorizedError()
         }
 

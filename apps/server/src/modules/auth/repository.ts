@@ -1,4 +1,12 @@
-import { USER_STATUS_ENABLED, type AuthProfileUpdateInput } from '@rev30/contracts'
+import {
+  LOGIN_FAILURE_REASON_ACCOUNT_DISABLED,
+  LOGIN_FAILURE_REASON_INVALID_CREDENTIALS,
+  LOGIN_FAILURE_REASON_RATE_LIMITED,
+  LOGIN_LOG_RESULT_FAILURE,
+  LOGIN_LOG_RESULT_SUCCESS,
+  USER_STATUS_ENABLED,
+  type AuthProfileUpdateInput,
+} from '@rev30/contracts'
 import { addSeconds, subSeconds } from '@rev30/utils'
 import { and, eq, gt, isNull, lte, or, sql } from 'drizzle-orm'
 import type { Db, DbReader } from '../../db'
@@ -13,7 +21,7 @@ import type { ClientIpSource } from '../../runtime/trusted-proxy'
 import { findDepartmentSummariesByUserId } from '../system/departments/repository'
 import { findRoleSummariesByUserId } from '../system/roles/repository'
 
-export type LoginRequestMetadata = {
+export type AuthRequestMetadata = {
   requestId: string
   clientIp: string | null
   clientIpSource: ClientIpSource
@@ -29,8 +37,10 @@ export type AuthSessionRevocationReason =
 type RecordLoginFailureInput = {
   username: string
   userId: string | null
-  failureReason: 'invalid_credentials' | 'account_disabled'
-  metadata: LoginRequestMetadata
+  failureReason:
+    | typeof LOGIN_FAILURE_REASON_INVALID_CREDENTIALS
+    | typeof LOGIN_FAILURE_REASON_ACCOUNT_DISABLED
+  metadata: AuthRequestMetadata
   now: Date
   maxAttempts: number
   windowSeconds: number
@@ -41,7 +51,7 @@ type SessionCreateInput = {
   userId: string
   refreshTokenHash: string
   expiresAt: Date
-  metadata: LoginRequestMetadata
+  metadata: AuthRequestMetadata
   now: Date
 }
 
@@ -57,6 +67,26 @@ async function findUserWithAccess(executor: DbReader, id: string) {
     departments: await findDepartmentSummariesByUserId(executor, user.id),
     roles: await findRoleSummariesByUserId(executor, user.id),
   }
+}
+
+async function findValidSession(executor: DbReader, sessionId: string, userId: string, now: Date) {
+  const [row] = await executor
+    .select({ session: authSessions })
+    .from(authSessions)
+    .innerJoin(systemUsers, eq(systemUsers.id, authSessions.userId))
+    .where(
+      and(
+        eq(authSessions.id, sessionId),
+        eq(authSessions.userId, userId),
+        isNull(authSessions.revokedAt),
+        gt(authSessions.expiresAt, now),
+        eq(systemUsers.status, USER_STATUS_ENABLED),
+        isNull(systemUsers.deletedAt),
+      ),
+    )
+    .limit(1)
+
+  return row?.session
 }
 
 function sessionValues(input: SessionCreateInput) {
@@ -130,11 +160,11 @@ export function createAuthRepository(database: Db) {
         .limit(1)
       return bucket
     },
-    async recordRateLimitedLogin(username: string, metadata: LoginRequestMetadata, now: Date) {
+    async recordRateLimitedLogin(username: string, metadata: AuthRequestMetadata, now: Date) {
       await database.insert(opsLoginLogs).values({
         username,
-        result: 'failure',
-        failureReason: 'rate_limited',
+        result: LOGIN_LOG_RESULT_FAILURE,
+        failureReason: LOGIN_FAILURE_REASON_RATE_LIMITED,
         requestId: metadata.requestId,
         clientIp: metadata.clientIp,
         clientIpSource: metadata.clientIpSource,
@@ -214,7 +244,7 @@ export function createAuthRepository(database: Db) {
         await tx.insert(opsLoginLogs).values({
           userId: input.userId,
           username: input.username,
-          result: 'failure',
+          result: LOGIN_LOG_RESULT_FAILURE,
           failureReason: input.failureReason,
           requestId: input.metadata.requestId,
           clientIp: input.metadata.clientIp,
@@ -236,13 +266,14 @@ export function createAuthRepository(database: Db) {
           .limit(1)
           .for('update')
         if (!account || account.credential.passwordHash !== input.credentialHash)
-          return 'invalid_credentials' as const
-        if (account.user.status !== USER_STATUS_ENABLED) return 'account_disabled' as const
+          return LOGIN_FAILURE_REASON_INVALID_CREDENTIALS
+        if (account.user.status !== USER_STATUS_ENABLED)
+          return LOGIN_FAILURE_REASON_ACCOUNT_DISABLED
         await tx.insert(authSessions).values(sessionValues(input))
         await tx.insert(opsLoginLogs).values({
           userId: input.userId,
           username: input.username,
-          result: 'success',
+          result: LOGIN_LOG_RESULT_SUCCESS,
           sessionId: input.id,
           requestId: input.metadata.requestId,
           clientIp: input.metadata.clientIp,
@@ -261,28 +292,17 @@ export function createAuthRepository(database: Db) {
               ),
             ),
           )
-        return 'success' as const
+        return LOGIN_LOG_RESULT_SUCCESS
       })
     },
+    findValidSession(sessionId: string, userId: string, now: Date) {
+      return findValidSession(database, sessionId, userId, now)
+    },
     async findValidSessionUser(sessionId: string, userId: string, now: Date) {
-      const [row] = await database
-        .select({ session: authSessions, user: systemUsers })
-        .from(authSessions)
-        .innerJoin(systemUsers, eq(systemUsers.id, authSessions.userId))
-        .where(
-          and(
-            eq(authSessions.id, sessionId),
-            eq(authSessions.userId, userId),
-            isNull(authSessions.revokedAt),
-            gt(authSessions.expiresAt, now),
-            eq(systemUsers.status, USER_STATUS_ENABLED),
-            isNull(systemUsers.deletedAt),
-          ),
-        )
-        .limit(1)
-      if (!row) return undefined
+      const session = await findValidSession(database, sessionId, userId, now)
+      if (!session) return undefined
       const withAccess = await findUserWithAccess(database, userId)
-      return withAccess ? { session: row.session, ...withAccess } : undefined
+      return withAccess ? { session, ...withAccess } : undefined
     },
     async touchSession(sessionId: string, userId: string, threshold: Date, now: Date) {
       const [updated] = await database

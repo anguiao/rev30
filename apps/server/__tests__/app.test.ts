@@ -185,7 +185,7 @@ describe('app auth boundaries', () => {
     const app = createApp(db)
     const expiredAccessToken = await sign(
       {
-        sub: 'unused-user-id',
+        sub: '11111111-1111-4111-8111-111111111111',
         sid: '22222222-2222-4222-8222-222222222222',
         type: 'access',
         iat: 1,
@@ -212,7 +212,7 @@ describe('app auth boundaries', () => {
     const app = createApp(db)
     const invalidExpiredAccessToken = await sign(
       {
-        sub: 'unused-user-id',
+        sub: '11111111-1111-4111-8111-111111111111',
         type: 'access',
         iat: 1,
         exp: 2,

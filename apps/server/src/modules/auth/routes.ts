@@ -11,7 +11,7 @@ import { Hono, type Context, type MiddlewareHandler } from 'hono'
 import type { ZodType } from 'zod'
 import type { Db } from '../../db'
 import type { AuthEnv } from '../../middleware/auth'
-import type { RequestContextEnv } from '../../middleware/request-context'
+import type { RequestContext, RequestContextEnv } from '../../middleware/request-context'
 import { createBodyLimit } from '../../middleware/body-limit'
 import {
   clearAttachmentAccessTokenCookie,
@@ -43,7 +43,7 @@ const passwordUpdateBodyValidator = jsonBodyValidator(authPasswordUpdateSchema)
 
 const authJsonBodyLimit = createBodyLimit(16 * 1024)
 
-function toLoginRequestMetadata(requestContext: RequestContextEnv['Variables']['requestContext']) {
+function pickAuthRequestMetadata(requestContext: RequestContext) {
   const { requestId, clientIp, clientIpSource, userAgent } = requestContext
   return { requestId, clientIp, clientIpSource, userAgent }
 }
@@ -100,7 +100,7 @@ export function createAuthRoutes(database: Db, authMiddleware: MiddlewareHandler
       const body: AuthLoginInput = c.req.valid('json')
       const { refreshToken, attachmentAccessToken, ...session } = await service.login(
         body,
-        toLoginRequestMetadata(c.get('requestContext')),
+        pickAuthRequestMetadata(c.get('requestContext')),
       )
 
       setRefreshTokenCookie(c, refreshToken, config)
@@ -153,7 +153,7 @@ export function createAuthRoutes(database: Db, authMiddleware: MiddlewareHandler
         c.get('currentUser').id,
         c.get('currentSessionId'),
         body,
-        toLoginRequestMetadata(c.get('requestContext')),
+        pickAuthRequestMetadata(c.get('requestContext')),
       )
       setRefreshTokenCookie(c, refreshToken, config)
       setAttachmentAccessTokenCookie(c, attachmentAccessToken, config)

@@ -26,19 +26,7 @@ export function createOpsRepository(database: Db) {
       )
       const [list, totalRows] = await Promise.all([
         database
-          .select({
-            id: opsLoginLogs.id,
-            userId: opsLoginLogs.userId,
-            username: opsLoginLogs.username,
-            result: opsLoginLogs.result,
-            failureReason: opsLoginLogs.failureReason,
-            sessionId: opsLoginLogs.sessionId,
-            requestId: opsLoginLogs.requestId,
-            clientIp: opsLoginLogs.clientIp,
-            clientIpSource: opsLoginLogs.clientIpSource,
-            userAgent: opsLoginLogs.userAgent,
-            createdAt: opsLoginLogs.createdAt,
-          })
+          .select()
           .from(opsLoginLogs)
           .where(where)
           .orderBy(desc(opsLoginLogs.createdAt), desc(opsLoginLogs.id))

@@ -1,5 +1,5 @@
 ---
-status: implemented
+status: completed
 date: 2026-08-18
 ---
 
@@ -306,7 +306,7 @@ body 中的独立会话值。
 登录 service 接收经过 schema 校验的凭据和以下请求元数据子集：
 
 ```ts
-type LoginRequestMetadata = {
+type AuthRequestMetadata = {
   requestId: string
   clientIp: string | null
   clientIpSource: ClientIpSource
@@ -373,8 +373,10 @@ token 可以在事务前完成签名，但只有数据库事务成功后才能�
 6. 数据库异常继续向上传播为 `500`，但 route 的 `finally` 仍清除两个 Cookie。
 
 前端自动 refresh 和 logout 请求显式携带当前 access token，同时继续在当前标签页内串行化
-refresh/logout 会话操作；首次页面恢复没有 access token，因此 refresh 不携带 Authorization。
-前端在请求 settled 后清除本地状态，因此无效或已撤销会话仍能正常完成退出体验。
+refresh/logout 会话操作；自动 refresh 只在相同 access token 之间合并，不同 token 不共享结果。
+首次页面恢复没有 access token，因此 refresh 不携带 Authorization。请求失败后，只有发起请求的
+access token 仍属于当前本地会话时才清除状态并 best-effort 调用 logout；旧请求的迟到响应不调用
+logout，避免清除或回退使用已经属于新会话的 Cookie。
 
 ### 用户修改自己的密码
 
@@ -548,9 +550,9 @@ DELETE /api/ops/sessions/:id
 - 客户端 IP，缺失时显示 `-`；IP 来源通过 tooltip 辅助显示。
 - 设备摘要，格式优先为 `浏览器 · 操作系统 · 设备类型`；无法识别的部分省略，全部未知时
   显示“未知设备”，原始 User-Agent 放在 tooltip。
-- 标识信息：request ID 始终可复制；成功记录同时提供 session ID 复制入口。
 
-页面不提供行详情、删除、清空或导出按钮。
+页面不展示 request ID 或 session ID；这些内部关联字段保留在 API 响应中。页面不提供行详情、
+删除、清空或导出按钮。
 
 ### 在线会话 `/ops/online-sessions`
 
@@ -576,9 +578,11 @@ DELETE /api/ops/sessions/:id
 
 ### 客户端会话失效
 
-现有 `authFetch` 规则保持：普通 `401` 不尝试 refresh，立即清除当前本地会话并 best-effort
-调用 logout；只有 `Auth-Action: refresh` 才进入串行 refresh。管理员强制下线、密码重置、
-停用和删除用户都因此在目标用户下一次 API 请求时进入登录页。
+现有 `authFetch` 规则保持：普通 `401` 不尝试 refresh；请求使用的 access token 仍属于当前
+本地会话时，立即清除状态并 best-effort 调用 logout。旧会话请求的迟到 `401` 不影响已经替换
+它的新会话。只有 `Auth-Action: refresh` 才进入串行 refresh，同一 access token 的并发请求
+合并 refresh，不同 token 分别刷新。管理员强制下线、密码重置、停用和删除用户都因此在目标
+用户下一次 API 请求时进入登录页。
 
 ## 清理与配置
 
@@ -623,7 +627,8 @@ worker 继续使用幂等删除；多实例可能同时触发，但不会把本�
 ## 安全边界
 
 - 三类原始 token、refresh hash、密码、Cookie 和请求 body 都不得写入登录日志或普通技术日志。
-- session ID 和 request ID 可展示和复制，但都不是认证凭证。
+- session ID 和 request ID 都不是认证凭证；登录日志 API 保留字段，但当前页面不展示这些
+  内部关联标识。
 - `refresh_token_hash` 永不出现在运维 API 或客户端 contracts。
 - 登录日志 API 和在线会话 API 分别要求精确资源权限；仅拥有菜单权限不能读取数据。
 - 管理员当前会话保护由服务端强制，不能只依赖按钮禁用。
@@ -719,12 +724,14 @@ PGlite 继续覆盖条件更新和并发回归，但测试结论不扩展为生�
 ### 前端
 
 - 登录日志请求正确序列化筛选，响应通过 contracts 解析。
-- 登录日志页面展示结果、原因、设备摘要、原始 User-Agent tooltip 和可复制标识。
+- 登录日志页面展示结果、原因、设备摘要和原始 User-Agent tooltip，不展示内部关联标识。
 - 在线会话页面展示当前标签、活动/到期时间和设备摘要。
 - 当前会话下线按钮禁用；其他会话确认后调用 DELETE 并刷新列表。
 - 密码修改成功后 auth store 接收新的认证响应。
 - 普通会话失效 `401` 不 refresh 并清空本地状态；只有 access token 自身过期时仍按 header
   refresh。
+- 同一 access token 的并发 `401` 合并 refresh，不同 token 不共享 refresh 结果；旧请求的迟到
+  `401` 不清理或 logout 已经切换的新会话。
 
 ## 验收标准
 

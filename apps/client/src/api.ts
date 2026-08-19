@@ -1,7 +1,11 @@
 import { hc } from 'hono/client'
-import { AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH, authTokenResponseSchema } from '@rev30/contracts'
+import {
+  AUTH_ACTION_HEADER,
+  AUTH_ACTION_REFRESH,
+  authTokenResponseSchema,
+  type AuthTokenResponse,
+} from '@rev30/contracts'
 import type { AppType } from '@rev30/server'
-import type { AuthTokenResponse } from '@rev30/contracts'
 import { useAuthStore } from './stores/auth'
 import { ApiRequestError, parseApiResponse } from './utils/request'
 
@@ -55,11 +59,9 @@ const internalApi = hc<AppType>('/api', {
 })
 
 const runSessionOperation = createSerialExecutor()
-let autoRefreshPromise: Promise<AuthTokenResponse> | null = null
+const autoRefreshes = new Map<string, Promise<AuthTokenResponse>>()
 
-export function refreshAuthSession() {
-  const accessToken = useAuthStore().accessToken
-
+function runAuthSessionRefresh(accessToken: string | null) {
   return runSessionOperation(async () => {
     const response = await internalApi.auth.refresh.$post(
       undefined,
@@ -68,6 +70,10 @@ export function refreshAuthSession() {
 
     return parseApiResponse(response, authTokenResponseSchema)
   })
+}
+
+export function refreshAuthSession() {
+  return runAuthSessionRefresh(useAuthStore().accessToken)
 }
 
 export async function logoutAuthSession(accessToken = useAuthStore().accessToken) {
@@ -79,28 +85,29 @@ export async function logoutAuthSession(accessToken = useAuthStore().accessToken
   )
 }
 
-function getOrStartAutomaticRefresh() {
-  autoRefreshPromise ??= refreshAuthSession().finally(() => {
-    autoRefreshPromise = null
-  })
+function getOrStartAutomaticRefresh(accessToken: string) {
+  const pendingRefresh = autoRefreshes.get(accessToken)
 
-  return autoRefreshPromise
+  if (pendingRefresh !== undefined) {
+    return pendingRefresh
+  }
+
+  const refresh = runAuthSessionRefresh(accessToken).finally(() => {
+    autoRefreshes.delete(accessToken)
+  })
+  autoRefreshes.set(accessToken, refresh)
+
+  return refresh
 }
 
 function clearSessionAndLogout(accessToken: string) {
   const auth = useAuthStore()
 
-  auth.clearSession()
-  void logoutAuthSession(accessToken).catch(() => {})
-}
-
-function clearSessionAndLogoutIfCurrent(accessToken: string) {
-  const auth = useAuthStore()
-
-  if (auth.accessToken === accessToken) {
-    auth.clearSession()
+  if (auth.accessToken !== accessToken) {
+    return
   }
 
+  auth.clearSession()
   void logoutAuthSession(accessToken).catch(() => {})
 }
 
@@ -118,7 +125,7 @@ async function resolveRetryAccessToken(accessToken: string) {
   let refreshedSession: AuthTokenResponse
 
   try {
-    refreshedSession = await getOrStartAutomaticRefresh()
+    refreshedSession = await getOrStartAutomaticRefresh(accessToken)
   } catch (error) {
     if (auth.accessToken !== accessToken) {
       return auth.accessToken
@@ -162,7 +169,7 @@ export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}
   }
 
   if (!shouldRefreshAccessToken(response)) {
-    clearSessionAndLogoutIfCurrent(requestAccessToken)
+    clearSessionAndLogout(requestAccessToken)
     return response
   }
 
@@ -178,7 +185,7 @@ export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}
   const retryResponse = await sendFetch(input, init, retryHeaders)
 
   if (retryResponse.status === 401) {
-    clearSessionAndLogoutIfCurrent(retryAccessToken)
+    clearSessionAndLogout(retryAccessToken)
   }
 
   return retryResponse

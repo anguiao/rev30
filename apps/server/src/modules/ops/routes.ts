@@ -8,7 +8,7 @@ import {
   onlineSessionRevokePathSchema,
 } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
-import { Hono, type Context } from 'hono'
+import { Hono, type Context, type MiddlewareHandler } from 'hono'
 import type { Db } from '../../db'
 import { requireAccess } from '../../middleware/access'
 import type { AuthEnv } from '../../middleware/auth'
@@ -45,9 +45,9 @@ function opsErrorResponse(error: unknown, c: Context) {
   throw error
 }
 
-export function createOpsRoutes(database: Db) {
+export function createOpsRoutes(database: Db, authMiddleware: MiddlewareHandler<AuthEnv>) {
   const service = createOpsService(database)
-  const app = new Hono<AuthEnv>()
+  const app = new Hono<AuthEnv>().use('*', authMiddleware)
 
   app.onError((error, c) => opsErrorResponse(error, c))
 

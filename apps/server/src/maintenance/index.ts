@@ -18,7 +18,7 @@ export function startAppMaintenance(database: Db): AppMaintenance {
     workers.push(startOpsLoginLogCleanup(database))
     workers.push(startAttachmentCleanup(database))
   } catch (error) {
-    for (const worker of [...workers].reverse()) {
+    for (const worker of workers) {
       void worker.stop()
     }
 

@@ -23,9 +23,10 @@ import { createSystemAccessFixture } from '../../helpers/auth'
 import { createSystemUserFixture } from '../../helpers/system'
 
 function createTestApp(database: TestDatabase, authHeaders: Record<string, string>) {
-  const app = new Hono()
-    .use('/api/ops/*', createAuthMiddleware(database))
-    .route('/api/ops', createOpsRoutes(database))
+  const app = new Hono().route(
+    '/api/ops',
+    createOpsRoutes(database, createAuthMiddleware(database)),
+  )
   const request = app.request.bind(app)
 
   app.request = ((input, init) =>

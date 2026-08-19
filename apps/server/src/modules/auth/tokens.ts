@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { fromUnixTimeSeconds, toUnixTimeSeconds } from '@rev30/utils'
 import { sign, verify } from 'hono/jwt'
+import { z } from 'zod'
 import type { AuthConfig } from './config'
 import {
   AuthAccessTokenExpiredError,
@@ -8,18 +9,18 @@ import {
   AuthInvalidRefreshTokenError,
 } from './errors'
 
-type JwtPayload = Awaited<ReturnType<typeof verify>>
-
-function readSubject(payload: JwtPayload) {
-  return typeof payload.sub === 'string' ? payload.sub : undefined
-}
-
-function readSessionId(payload: JwtPayload) {
-  return typeof payload.sid === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.sid)
-    ? payload.sid
-    : undefined
-}
+const tokenIdentitySchema = z.object({
+  sub: z.uuid(),
+  sid: z.uuid(),
+})
+const accessTokenPayloadSchema = tokenIdentitySchema.extend({
+  type: z.literal('access'),
+  exp: z.number(),
+})
+const refreshTokenPayloadSchema = tokenIdentitySchema.extend({
+  type: z.literal('refresh'),
+  jti: z.string(),
+})
 
 export function hashRefreshTokenId(refreshTokenId: string) {
   return createHash('sha256').update(refreshTokenId).digest('hex')
@@ -70,63 +71,51 @@ export async function createTokenPair(
   }
 }
 
-export async function verifyAccessToken(token: string, config: AuthConfig) {
-  let payload: JwtPayload
-
+async function verifyAccessTokenPayload(token: string, config: AuthConfig) {
   try {
-    payload = await verify(token, config.accessSecret, { alg: 'HS256', exp: false })
+    const payload = await verify(token, config.accessSecret, { alg: 'HS256', exp: false })
+    const result = accessTokenPayloadSchema.safeParse(payload)
+
+    if (!result.success) {
+      throw new AuthInvalidAccessTokenError()
+    }
+
+    return result.data
   } catch {
     throw new AuthInvalidAccessTokenError()
   }
+}
 
-  const userId = readSubject(payload)
-  const sessionId = readSessionId(payload)
-
-  if (!userId || !sessionId || payload.type !== 'access' || typeof payload.exp !== 'number') {
-    throw new AuthInvalidAccessTokenError()
-  }
+export async function verifyAccessToken(token: string, config: AuthConfig) {
+  const payload = await verifyAccessTokenPayload(token, config)
 
   if (payload.exp <= toUnixTimeSeconds(new Date())) {
     throw new AuthAccessTokenExpiredError()
   }
 
-  return { userId, sessionId }
+  return { userId: payload.sub, sessionId: payload.sid }
 }
 
 export async function verifyAccessTokenAllowExpired(token: string, config: AuthConfig) {
-  let payload: JwtPayload
+  const payload = await verifyAccessTokenPayload(token, config)
 
-  try {
-    payload = await verify(token, config.accessSecret, { alg: 'HS256', exp: false })
-  } catch {
-    throw new AuthInvalidAccessTokenError()
-  }
-
-  const userId = readSubject(payload)
-  const sessionId = readSessionId(payload)
-
-  if (!userId || !sessionId || payload.type !== 'access' || typeof payload.exp !== 'number') {
-    throw new AuthInvalidAccessTokenError()
-  }
-
-  return { userId, sessionId }
+  return { userId: payload.sub, sessionId: payload.sid }
 }
 
 export async function verifyRefreshToken(token: string, config: AuthConfig) {
   try {
     const payload = await verify(token, config.refreshSecret, 'HS256')
-    const userId = readSubject(payload)
-    const sessionId = readSessionId(payload)
+    const result = refreshTokenPayloadSchema.safeParse(payload)
 
-    if (!userId || !sessionId || payload.type !== 'refresh' || typeof payload.jti !== 'string') {
+    if (!result.success) {
       throw new AuthInvalidRefreshTokenError()
     }
 
     return {
-      userId,
-      sessionId,
-      refreshTokenId: payload.jti,
-      refreshTokenHash: hashRefreshTokenId(payload.jti),
+      userId: result.data.sub,
+      sessionId: result.data.sid,
+      refreshTokenId: result.data.jti,
+      refreshTokenHash: hashRefreshTokenId(result.data.jti),
     }
   } catch {
     throw new AuthInvalidRefreshTokenError()

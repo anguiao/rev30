@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue'
 import { useQuery } from '@pinia/colada'
-import { useClipboard } from '@vueuse/core'
-import type { DataTableColumns, SelectOption } from 'naive-ui'
+import type { DataTableColumns } from 'naive-ui'
 import {
   NAlert,
   NButton,
@@ -15,12 +14,13 @@ import {
   NSelect,
   NTag,
 } from 'naive-ui'
-import type {
-  LoginFailureReason,
-  LoginLogListItem,
-  LoginLogListQuery,
-  LoginLogListResponse,
-  LoginLogResult,
+import {
+  LOGIN_LOG_RESULT_SUCCESS,
+  type LoginFailureReason,
+  type LoginLogListItem,
+  type LoginLogListQuery,
+  type LoginLogListResponse,
+  type LoginLogResult,
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
@@ -29,40 +29,36 @@ import {
   clientIpSourceLabels,
   listLoginLogs,
   loginFailureReasonLabels,
+  loginFailureReasonOptions,
   loginLogResultLabels,
+  loginLogResultOptions,
 } from '../../../features/ops'
 import { getErrorMessage } from '../../../utils/error'
 
 const pageTitle = useAdminPageTitle('登录日志')
+
 const username = ref('')
 const result = ref<LoginLogResult | null>(null)
 const failureReason = ref<LoginFailureReason | null>(null)
 const clientIp = ref('')
 const occurredRange = ref<[number, number] | null>(null)
-const query = ref<LoginLogListQuery>({ page: 1, pageSize: 20 })
-
-const resultOptions: SelectOption[] = Object.entries(loginLogResultLabels).map(
-  ([value, label]) => ({
-    label,
-    value,
-  }),
-)
-const failureReasonOptions: SelectOption[] = Object.entries(loginFailureReasonLabels).map(
-  ([value, label]) => ({ label, value }),
-)
-
-watch(result, (value) => {
-  if (value === 'success') {
-    failureReason.value = null
-  }
+const query = ref<LoginLogListQuery>({
+  page: 1,
+  pageSize: 20,
 })
-
 const emptyData: LoginLogListResponse = {
   list: [],
   total: 0,
   page: 1,
   pageSize: query.value.pageSize,
 }
+
+watch(result, (value) => {
+  if (value === LOGIN_LOG_RESULT_SUCCESS) {
+    failureReason.value = null
+  }
+})
+
 const {
   data: response,
   error,
@@ -119,21 +115,6 @@ function handleReset() {
   query.value = { page: 1, pageSize: query.value.pageSize }
 }
 
-const { copy } = useClipboard()
-function renderCopyButton(label: string, value: string, dataTest: string) {
-  return h(
-    NButton,
-    {
-      text: true,
-      size: 'small',
-      type: 'primary',
-      'data-test': dataTest,
-      onClick: () => copy(value),
-    },
-    () => label,
-  )
-}
-
 const columns: DataTableColumns<LoginLogListItem> = [
   {
     title: '登录时间',
@@ -149,7 +130,7 @@ const columns: DataTableColumns<LoginLogListItem> = [
     render: (item) =>
       h(
         NTag,
-        { type: item.result === 'success' ? 'success' : 'error', size: 'small' },
+        { type: item.result === LOGIN_LOG_RESULT_SUCCESS ? 'success' : 'error', size: 'small' },
         () => loginLogResultLabels[item.result],
       ),
   },
@@ -172,18 +153,6 @@ const columns: DataTableColumns<LoginLogListItem> = [
     key: 'userAgent',
     minWidth: 260,
     render: (item) => h(UserAgentSummary, { userAgent: item.userAgent }),
-  },
-  {
-    title: '标识信息',
-    key: 'identifiers',
-    minWidth: 160,
-    render: (item) =>
-      h('div', { class: 'flex flex-col items-start gap-1' }, [
-        renderCopyButton('请求 ID', item.requestId, 'login-log-request-id-copy'),
-        ...(item.sessionId === null
-          ? []
-          : [renderCopyButton('会话 ID', item.sessionId, 'login-log-session-id-copy')]),
-      ]),
   },
 ]
 </script>
@@ -213,7 +182,7 @@ const columns: DataTableColumns<LoginLogListItem> = [
             v-model:value="result"
             data-test="login-logs-result"
             clearable
-            :options="resultOptions"
+            :options="loginLogResultOptions"
             placeholder="全部"
             class="w-32!"
           />
@@ -223,8 +192,8 @@ const columns: DataTableColumns<LoginLogListItem> = [
             v-model:value="failureReason"
             data-test="login-logs-failure-reason"
             clearable
-            :disabled="result === 'success'"
-            :options="failureReasonOptions"
+            :disabled="result === LOGIN_LOG_RESULT_SUCCESS"
+            :options="loginFailureReasonOptions"
             placeholder="全部"
             class="w-40!"
           />

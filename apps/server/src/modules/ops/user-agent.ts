@@ -1,7 +1,5 @@
-import type { OpsDeviceType, OpsUserAgent } from '@rev30/contracts'
+import { opsDeviceTypeSchema, type OpsUserAgent } from '@rev30/contracts'
 import Bowser from 'bowser'
-
-const knownDeviceTypes = new Set<OpsDeviceType>(['desktop', 'mobile', 'tablet', 'tv', 'bot'])
 
 function toProduct(product: Bowser.Parser.ParsedResult['browser']) {
   const name = product.name?.trim()
@@ -21,15 +19,12 @@ export function toOpsUserAgent(raw: string | null): OpsUserAgent {
   }
 
   const result = Bowser.parse(raw)
-  const platformType = result.platform.type
+  const deviceType = opsDeviceTypeSchema.safeParse(result.platform.type)
 
   return {
     raw,
     browser: toProduct(result.browser),
     operatingSystem: toProduct(result.os),
-    deviceType:
-      platformType && knownDeviceTypes.has(platformType as OpsDeviceType)
-        ? (platformType as OpsDeviceType)
-        : 'unknown',
+    deviceType: deviceType.success ? deviceType.data : 'unknown',
   }
 }

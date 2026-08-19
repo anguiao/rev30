@@ -37,7 +37,7 @@ export function createApiRoutes(database: Db) {
     .route('/icons/search', createIconSearchRoutes(database, authMiddleware))
     .route('/icons', createIconRoutes(database))
     .route('/attachments', createAttachmentRoutes(database, authMiddleware))
-    .route('/ops', new Hono().use('*', authMiddleware).route('/', createOpsRoutes(database)))
+    .route('/ops', createOpsRoutes(database, authMiddleware))
     .route('/system', createSystemRoutes(database, authMiddleware))
     .route('/content', createContentRoutes(database, authMiddleware))
     .route('/demos', createDemoRoutes(authMiddleware))

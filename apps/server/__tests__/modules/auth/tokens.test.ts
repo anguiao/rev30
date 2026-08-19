@@ -4,6 +4,7 @@ import type { AuthConfig } from '../../../src/modules/auth/config'
 import {
   AuthAccessTokenExpiredError,
   AuthInvalidAccessTokenError,
+  AuthInvalidRefreshTokenError,
 } from '../../../src/modules/auth/errors'
 import {
   createTokenPair,
@@ -46,15 +47,32 @@ describe('auth token helpers', () => {
     await expect(verifyAccessToken(pair.refreshToken, config)).rejects.toThrow('访问令牌无效')
   })
 
-  it('rejects tokens with a missing or invalid session id', async () => {
+  it('rejects tokens with missing or malformed identity claims', async () => {
+    const expiresAt = Math.floor(Date.now() / 1000) + 60
     const missingSessionId = await sign(
-      { sub: userId, type: 'access', exp: Math.floor(Date.now() / 1000) + 60 },
+      { sub: userId, type: 'access', exp: expiresAt },
       config.accessSecret,
       'HS256',
     )
     const invalidSessionId = await sign(
-      { sub: userId, sid: 'not-a-uuid', type: 'access', exp: Math.floor(Date.now() / 1000) + 60 },
+      { sub: userId, sid: 'not-a-uuid', type: 'access', exp: expiresAt },
       config.accessSecret,
+      'HS256',
+    )
+    const invalidUserId = await sign(
+      { sub: 'not-a-uuid', sid: sessionId, type: 'access', exp: expiresAt },
+      config.accessSecret,
+      'HS256',
+    )
+    const invalidRefreshSessionId = await sign(
+      {
+        sub: userId,
+        sid: 'not-a-uuid',
+        type: 'refresh',
+        jti: 'refresh-token-id',
+        exp: expiresAt,
+      },
+      config.refreshSecret,
       'HS256',
     )
 
@@ -63,6 +81,12 @@ describe('auth token helpers', () => {
     )
     await expect(verifyAccessToken(invalidSessionId, config)).rejects.toBeInstanceOf(
       AuthInvalidAccessTokenError,
+    )
+    await expect(verifyAccessToken(invalidUserId, config)).rejects.toBeInstanceOf(
+      AuthInvalidAccessTokenError,
+    )
+    await expect(verifyRefreshToken(invalidRefreshSessionId, config)).rejects.toBeInstanceOf(
+      AuthInvalidRefreshTokenError,
     )
   })
 

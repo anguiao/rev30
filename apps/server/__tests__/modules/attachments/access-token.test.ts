@@ -36,7 +36,8 @@ describe('attachment access token helpers', () => {
   it('rejects attachment access tokens without expiration', async () => {
     const token = await sign(
       {
-        sub: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        sub: userId,
+        sid: sessionId,
         type: 'attachment-access',
         iat: 1,
       },
@@ -47,5 +48,28 @@ describe('attachment access token helpers', () => {
     await expect(verifyAttachmentAccessToken(token, config)).rejects.toBeInstanceOf(
       AttachmentContentUnauthorizedError,
     )
+  })
+
+  it('rejects attachment access tokens with malformed identity claims', async () => {
+    const expiresAt = Math.floor(Date.now() / 1000) + 60
+
+    for (const identity of [
+      { sub: 'not-a-uuid', sid: sessionId },
+      { sub: userId, sid: 'not-a-uuid' },
+    ]) {
+      const token = await sign(
+        {
+          ...identity,
+          type: 'attachment-access',
+          exp: expiresAt,
+        },
+        config.attachmentSecret,
+        'HS256',
+      )
+
+      await expect(verifyAttachmentAccessToken(token, config)).rejects.toBeInstanceOf(
+        AttachmentContentUnauthorizedError,
+      )
+    }
   })
 })

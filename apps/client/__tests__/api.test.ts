@@ -55,6 +55,11 @@ const newerSession = {
   },
 }
 
+const refreshedNewerSession = {
+  ...newerSession,
+  accessToken: 'refreshed-newer-access-token',
+}
+
 async function flushMicrotasks() {
   await Promise.resolve()
   await Promise.resolve()
@@ -342,7 +347,7 @@ describe('authFetch', () => {
     )
   })
 
-  it('does not clear a newer session after a stale unauthorized response', async () => {
+  it('does not log out a newer session after a stale unauthorized response', async () => {
     const firstResponse = createDeferred<Response>()
     const fetchMock = vi.fn().mockReturnValueOnce(firstResponse.promise)
     vi.stubGlobal('fetch', fetchMock)
@@ -358,9 +363,7 @@ describe('authFetch', () => {
     expect(response.status).toBe(401)
     expect(auth.accessToken).toBe('newer-access-token')
     expect(auth.user).toEqual(newerSession.user)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(getFetchCall(fetchMock, 1).url).toBe('/api/auth/logout')
-    expect(getFetchCall(fetchMock, 1).headers.get('authorization')).toBe('Bearer access-token')
+    expect(fetchMock).toHaveBeenCalledOnce()
   })
 
   it('does not overwrite a newer session with a stale refresh result', async () => {
@@ -399,7 +402,80 @@ describe('authFetch', () => {
     expect(new Headers(retryInit.headers).get('authorization')).toBe('Bearer newer-access-token')
   })
 
-  it('logs out a stale retry session without clearing a newer session', async () => {
+  it('keeps automatic refreshes isolated by their triggering access token', async () => {
+    const firstRefreshResponse = createDeferred<Response>()
+    const secondRefreshResponse = createDeferred<Response>()
+    const protectedRequestCounts = new Map<string, number>()
+    const fetchMock = vi.fn((input: RequestInfo | URL, init: RequestInit = {}) => {
+      const requestPath =
+        typeof input === 'string' ? input : input instanceof URL ? input.pathname : input.url
+
+      if (requestPath === '/api/auth/refresh') {
+        const authorization = new Headers(init.headers).get('authorization')
+
+        if (authorization === 'Bearer access-token') {
+          return firstRefreshResponse.promise
+        }
+        if (authorization === 'Bearer newer-access-token') {
+          return secondRefreshResponse.promise
+        }
+
+        throw new Error(`Unexpected refresh authorization: ${authorization}`)
+      }
+
+      const requestCount = (protectedRequestCounts.get(requestPath) ?? 0) + 1
+      protectedRequestCounts.set(requestPath, requestCount)
+
+      return Promise.resolve(
+        requestCount === 1
+          ? new Response(JSON.stringify({ message: '未授权' }), {
+              status: 401,
+              headers: {
+                [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
+              },
+            })
+          : new Response(JSON.stringify({ ok: true })),
+      )
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const auth = useAuthStore()
+    auth.setSession(session)
+
+    const staleRequest = authFetch('/api/system/users')
+    await vi.waitFor(() => {
+      expect(fetchMock.mock.calls.some(([input]) => input === '/api/auth/refresh')).toBe(true)
+    })
+
+    auth.setSession(newerSession)
+    const currentRequest = authFetch('/api/system/profile')
+    await vi.waitFor(() => {
+      expect(protectedRequestCounts.get('/api/system/profile')).toBe(1)
+    })
+
+    firstRefreshResponse.resolve(new Response(JSON.stringify(refreshedSession)))
+    await vi.waitFor(() => {
+      const refreshCalls = fetchMock.mock.calls
+        .map((_, index) => getFetchCall(fetchMock, index))
+        .filter(({ url }) => url === '/api/auth/refresh')
+
+      expect(refreshCalls).toHaveLength(2)
+    })
+    expect(auth.accessToken).toBe('newer-access-token')
+
+    secondRefreshResponse.resolve(new Response(JSON.stringify(refreshedNewerSession)))
+    await Promise.all([staleRequest, currentRequest])
+
+    const refreshAuthorizations = fetchMock.mock.calls
+      .map((_, index) => getFetchCall(fetchMock, index))
+      .filter(({ url }) => url === '/api/auth/refresh')
+      .map(({ headers }) => headers.get('authorization'))
+
+    expect(refreshAuthorizations).toEqual(['Bearer access-token', 'Bearer newer-access-token'])
+    expect(auth.accessToken).toBe('refreshed-newer-access-token')
+    expect(auth.user).toEqual(newerSession.user)
+  })
+
+  it('does not log out a stale retry after a newer session is set', async () => {
     const retryResponse = createDeferred<Response>()
     const fetchMock = vi
       .fn()
@@ -413,7 +489,6 @@ describe('authFetch', () => {
       )
       .mockResolvedValueOnce(new Response(JSON.stringify(refreshedSession)))
       .mockReturnValueOnce(retryResponse.promise)
-      .mockResolvedValueOnce(new Response(null, { status: 204 }))
     vi.stubGlobal('fetch', fetchMock)
     const auth = useAuthStore()
     auth.setSession(session)
@@ -431,11 +506,7 @@ describe('authFetch', () => {
     expect(response.status).toBe(401)
     expect(auth.accessToken).toBe('newer-access-token')
     expect(auth.user).toEqual(newerSession.user)
-    await vi.waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(4)
-    })
-    expect(getFetchCall(fetchMock, 3).url).toBe('/api/auth/logout')
-    expect(getFetchCall(fetchMock, 3).headers.get('authorization')).toBe('Bearer new-access-token')
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
   it('waits for an in-flight refresh before sending logout', async () => {

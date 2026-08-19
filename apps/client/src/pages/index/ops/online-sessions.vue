@@ -32,12 +32,17 @@ import { ApiRequestError } from '../../../utils/request'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 const pageTitle = useAdminPageTitle('在线会话')
+
 const message = useMessage()
 const dialog = useDialog()
 const queryCache = useQueryCache()
+
 const username = ref('')
 const createdIp = ref('')
-const query = ref<OnlineSessionListQuery>({ page: 1, pageSize: 20 })
+const query = ref<OnlineSessionListQuery>({
+  page: 1,
+  pageSize: 20,
+})
 const emptyData: OnlineSessionListResponse = {
   list: [],
   total: 0,

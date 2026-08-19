@@ -2,6 +2,7 @@ import type { Context } from 'hono'
 import { toUnixTimeSeconds } from '@rev30/utils'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
+import { z } from 'zod'
 import type { AuthConfig } from '../auth/config'
 import { AttachmentContentUnauthorizedError } from './errors'
 
@@ -9,20 +10,14 @@ type AttachmentAccessTokenConfig = Pick<
   AuthConfig,
   'attachmentSecret' | 'attachmentExpiresInSeconds' | 'secureCookies'
 >
-type JwtPayload = Awaited<ReturnType<typeof verify>>
 
 const COOKIE_NAME = 'attachment_token'
-
-function readSubject(payload: JwtPayload) {
-  return typeof payload.sub === 'string' ? payload.sub : undefined
-}
-
-function readSessionId(payload: JwtPayload) {
-  return typeof payload.sid === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.sid)
-    ? payload.sid
-    : undefined
-}
+const attachmentAccessTokenPayloadSchema = z.object({
+  sub: z.uuid(),
+  sid: z.uuid(),
+  type: z.literal('attachment-access'),
+  exp: z.number(),
+})
 
 export function getAttachmentAccessTokenCookie(c: Context) {
   return getCookie(c, COOKIE_NAME)
@@ -75,19 +70,13 @@ export async function verifyAttachmentAccessToken(
 ) {
   try {
     const payload = await verify(token, config.attachmentSecret, 'HS256')
-    const userId = readSubject(payload)
-    const sessionId = readSessionId(payload)
+    const result = attachmentAccessTokenPayloadSchema.safeParse(payload)
 
-    if (
-      !userId ||
-      !sessionId ||
-      payload.type !== 'attachment-access' ||
-      typeof payload.exp !== 'number'
-    ) {
+    if (!result.success) {
       throw new AttachmentContentUnauthorizedError()
     }
 
-    return { userId, sessionId }
+    return { userId: result.data.sub, sessionId: result.data.sid }
   } catch {
     throw new AttachmentContentUnauthorizedError()
   }

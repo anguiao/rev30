@@ -75,17 +75,7 @@ describe('login logs page', () => {
     stubPreferredDark(false)
   })
 
-  it('renders results, failure reasons, device details, and copyable identifiers', async () => {
-    class TestClipboardItem {
-      constructor(readonly items: Record<string, unknown>) {}
-    }
-
-    const write = vi.fn().mockResolvedValue(undefined)
-    vi.stubGlobal('ClipboardItem', TestClipboardItem)
-    Object.defineProperty(navigator, 'clipboard', {
-      value: { write },
-      configurable: true,
-    })
+  it('renders results, failure reasons, and device details without internal identifiers', async () => {
     const { wrapper } = await mountPage()
     await flushPromises()
 
@@ -94,19 +84,11 @@ describe('login logs page', () => {
     expect(wrapper.text()).toContain('凭据无效')
     expect(wrapper.text()).toContain('Chrome 140 · macOS 15 · 桌面设备')
     expect(wrapper.text()).toContain('未知设备')
-    expect(wrapper.get('[data-test="login-log-request-id-copy"]').text()).toContain('请求 ID')
-    expect(wrapper.get('[data-test="login-log-session-id-copy"]').text()).toContain('会话 ID')
+    expect(wrapper.text()).not.toContain('标识信息')
+    expect(wrapper.text()).not.toContain('请求 ID')
+    expect(wrapper.text()).not.toContain('会话 ID')
     expect(wrapper.get('[title="Mozilla/5.0 Chrome test agent"]')).toBeDefined()
     expect(wrapper.get('[title="x-forwarded-for"]')).toBeDefined()
-
-    await wrapper.get('[data-test="login-log-request-id-copy"]').trigger('click')
-    await wrapper.get('[data-test="login-log-session-id-copy"]').trigger('click')
-    await flushPromises()
-
-    expect(write).toHaveBeenCalledTimes(2)
-    const copiedItems = write.mock.calls.map(([items]) => (items as TestClipboardItem[])[0]!.items)
-    expect(copiedItems[0]).toHaveProperty('text/plain', response.list[0]!.requestId)
-    expect(copiedItems[1]).toHaveProperty('text/plain', response.list[0]!.sessionId)
   })
 
   it('disables incompatible failure reason and sends local range as UTC ISO', async () => {

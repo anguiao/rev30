@@ -3,9 +3,22 @@ import { paginationQuerySchema, usernameInputSchema } from '../common'
 import { optionalQueryValue } from '../query'
 import { clientIpSourceSchema, opsUserAgentSchema } from './common'
 
-export const loginLogResultSchema = z.enum(['success', 'failure'], '登录结果无效')
+export const LOGIN_LOG_RESULT_SUCCESS = 'success'
+export const LOGIN_LOG_RESULT_FAILURE = 'failure'
+export const loginLogResultSchema = z.enum(
+  [LOGIN_LOG_RESULT_SUCCESS, LOGIN_LOG_RESULT_FAILURE],
+  '登录结果无效',
+)
+
+export const LOGIN_FAILURE_REASON_INVALID_CREDENTIALS = 'invalid_credentials'
+export const LOGIN_FAILURE_REASON_ACCOUNT_DISABLED = 'account_disabled'
+export const LOGIN_FAILURE_REASON_RATE_LIMITED = 'rate_limited'
 export const loginFailureReasonSchema = z.enum(
-  ['invalid_credentials', 'account_disabled', 'rate_limited'],
+  [
+    LOGIN_FAILURE_REASON_INVALID_CREDENTIALS,
+    LOGIN_FAILURE_REASON_ACCOUNT_DISABLED,
+    LOGIN_FAILURE_REASON_RATE_LIMITED,
+  ],
   '登录失败原因无效',
 )
 
@@ -48,13 +61,13 @@ const loginLogListItemBaseSchema = z.object({
 export const loginLogListItemSchema = z.discriminatedUnion('result', [
   loginLogListItemBaseSchema.extend({
     userId: z.uuid('用户 ID 无效'),
-    result: z.literal('success'),
+    result: z.literal(LOGIN_LOG_RESULT_SUCCESS),
     failureReason: z.null(),
     sessionId: z.uuid('会话 ID 无效'),
   }),
   loginLogListItemBaseSchema.extend({
     userId: z.uuid('用户 ID 无效').nullable(),
-    result: z.literal('failure'),
+    result: z.literal(LOGIN_LOG_RESULT_FAILURE),
     failureReason: loginFailureReasonSchema,
     sessionId: z.null(),
   }),

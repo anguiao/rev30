@@ -6,5 +6,17 @@ export {
   loginLogResultLabels,
   loginLogResultOptions,
   opsDeviceTypeLabels,
+  operationLogActionLabels,
+  operationLogActionOptions,
+  operationLogModuleLabels,
+  operationLogModuleOptions,
+  operationLogResultLabels,
+  operationLogResultOptions,
 } from './labels'
-export { listLoginLogs, listOnlineSessions, revokeOnlineSession } from './requests'
+export {
+  getOperationLog,
+  listLoginLogs,
+  listOnlineSessions,
+  listOperationLogs,
+  revokeOnlineSession,
+} from './requests'

@@ -8,7 +8,66 @@ import {
   type LoginFailureReason,
   type LoginLogResult,
   type OpsDeviceType,
+  type OperationLogAction,
+  type OperationLogModule,
+  type OperationLogResult,
 } from '@rev30/contracts'
+
+export const operationLogModuleLabels = {
+  system: '系统管理',
+  content: '内容管理',
+  ops: '运维管理',
+} as const satisfies Record<OperationLogModule, string>
+
+export const operationLogResultLabels = {
+  success: '成功',
+  failure: '失败',
+} as const satisfies Record<OperationLogResult, string>
+
+export const operationLogActionLabels = {
+  'system:config:update': '更新系统配置',
+  'system:dictionary:create': '创建字典',
+  'system:dictionary:update': '更新字典',
+  'system:dictionary:delete': '删除字典',
+  'system:department:create': '创建部门',
+  'system:department:update': '更新部门',
+  'system:department:delete': '删除部门',
+  'system:role:create': '创建角色',
+  'system:role:update': '更新角色',
+  'system:role:delete': '删除角色',
+  'system:resource:create': '创建资源',
+  'system:resource:update': '更新资源',
+  'system:resource:delete': '删除资源',
+  'system:user:create': '创建用户',
+  'system:user:update': '更新用户',
+  'system:user:reset-password': '重置用户密码',
+  'system:user:delete': '删除用户',
+  'content:announcement:create': '创建公告',
+  'content:announcement:update': '更新公告',
+  'content:announcement:publish': '发布公告',
+  'content:announcement:archive': '归档公告',
+  'content:announcement:delete': '删除公告',
+  'content:icon-set:create': '创建图标集',
+  'content:icon-set:update': '更新图标集',
+  'content:icon-set:delete': '删除图标集',
+  'content:icon-set:export': '导出图标集',
+  'content:icon:upload': '上传图标',
+  'content:icon:rename': '重命名图标',
+  'content:icon:delete': '删除图标',
+  'content:attachment:upload': '完成附件上传',
+  'content:attachment:delete': '删除附件',
+  'ops:online-session:revoke': '撤销在线会话',
+} as const satisfies Record<OperationLogAction, string>
+
+export const operationLogModuleOptions = Object.entries(operationLogModuleLabels).map(
+  ([value, label]) => ({ label, value: value as OperationLogModule }),
+)
+export const operationLogResultOptions = Object.entries(operationLogResultLabels).map(
+  ([value, label]) => ({ label, value: value as OperationLogResult }),
+)
+export const operationLogActionOptions = Object.entries(operationLogActionLabels).map(
+  ([value, label]) => ({ label, value: value as OperationLogAction }),
+)
 
 export const loginLogResultLabels = {
   [LOGIN_LOG_RESULT_SUCCESS]: '成功',

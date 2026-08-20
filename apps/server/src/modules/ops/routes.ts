@@ -14,6 +14,7 @@ import { requireAccess } from '../../middleware/access'
 import type { AuthEnv } from '../../middleware/auth'
 import { CurrentOnlineSessionConflictError, OnlineSessionNotFoundError } from './errors'
 import { markOperationAudit, type OperationAuditRouteEnv } from './operation-logs/audit'
+import { createOperationLogRoutes } from './operation-logs/routes'
 import { createOpsService } from './service'
 
 const loginLogQueryValidator = zValidator('query', loginLogListQuerySchema, (result, c) => {
@@ -53,6 +54,7 @@ export function createOpsRoutes(database: Db, authMiddleware: MiddlewareHandler<
   app.onError((error, c) => opsErrorResponse(error, c))
 
   return app
+    .route('/operation-logs', createOperationLogRoutes(database))
     .get('/login-logs', requireAccess('ops:login-log:list'), loginLogQueryValidator, async (c) => {
       const query: LoginLogListQuery = c.req.valid('query')
       return c.json(loginLogListResponseSchema.parse(await service.listLoginLogs(query)))

@@ -20,7 +20,7 @@ Rev30 是一个 TypeScript monorepo 项目，包含 Vue 客户端、Hono API、�
 ## 当前项目进度
 
 - 已完成基础 monorepo 结构，包含 Vue 客户端、Hono 服务端、共享接口契约和通用工具包。
-- 当前业务核心包含稳定认证会话、登录态恢复、登录日志与在线会话运维、权限资源访问码授权、内置系统资源、显式管理员 bootstrap、管理员新增/重置系统用户密码、个人资料和密码维护能力，以及私有通用附件上传基础能力。
+- 当前业务核心包含稳定认证会话、登录态恢复、登录日志、在线会话与操作日志运维、权限资源访问码授权、内置系统资源、显式管理员 bootstrap、管理员新增/重置系统用户密码、个人资料和密码维护能力，以及私有通用附件上传基础能力。
 - 当前后端新增 Iconify API 兼容图标服务，可从 `@iconify/json` 按需读取全部已安装图标集，供后续 `@iconify/vue` 默认 provider 接入。
 - 内容管理新增图标库页面，可浏览内置图标集，并维护自定义 SVG 图标集；自定义图标可导出 Iconify JSON 并接入运行时图标加载。
 - 组件演示新增富文本页面，使用完整 preset 验证编辑器交互、代码语言选择与高亮、文档表格、base64 图片、服务端 JSON 规范化、纯文本提取和安全 HTML 派生，全程不持久化演示正文。
@@ -50,7 +50,11 @@ pnpm dev
 
 运维菜单提供 `/ops/login-logs` 和 `/ops/online-sessions`：前者查询成功、凭据无效、账号停用和限流四类登录结果，后者查询有效会话并允许有权限的管理员强制下线非当前会话。接口和页面分别使用 `ops:login-log:list`、`ops:online-session:list` 与 `ops:online-session:revoke` 权限；迁移只创建资源，不自动授权普通角色。
 
+操作日志页面位于 `/ops/operation-logs`，支持筛选列表和按需加载详情，记录显式标记的后台业务写操作与指定业务导出，不记录登录、个人操作或维护任务。列表和详情都要求精确权限 `ops:operation-log:list`；迁移创建对应菜单与动作资源，但不自动授权普通角色。审计事件通过有界异步 FIFO 以 fail-open 方式写入，不保证零丢失或与业务事务一致。
+
 认证会话和登录日志清理默认每 6 小时运行。自然到期会话在清理时删除，撤销会话超过 7 天后删除，登录日志达到 90 天时删除；对应设置为 `AUTH_SESSION_CLEANUP_INTERVAL_MS`、`AUTH_REVOKED_SESSION_RETENTION_MS`、`OPS_LOGIN_LOG_CLEANUP_INTERVAL_MS` 和 `OPS_LOGIN_LOG_RETENTION_MS`，清理 interval 设为 `0` 可关闭调度。
+
+操作日志默认每 6 小时清理并保留 180 天，对应设置为 `OPS_OPERATION_LOG_CLEANUP_INTERVAL_MS` 和 `OPS_OPERATION_LOG_RETENTION_MS`；cleanup interval 设为 `0` 可关闭调度。
 
 本次数据库迁移会删除旧的 `auth_refresh_tokens`，不把旧 refresh 记录转换为会话。旧 access、refresh 和附件读取令牌也没有 `sid`，部署后会按无效令牌处理；已有用户需要重新登录。
 

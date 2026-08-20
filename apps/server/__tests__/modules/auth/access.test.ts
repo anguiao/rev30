@@ -93,6 +93,7 @@ describe('user access service', () => {
       expect(childResources.map((resource) => resource.code).sort()).toEqual([
         'ops:login-log',
         'ops:online-session',
+        'ops:operation-log',
       ])
       expect(roleResourceBindings).toEqual([])
       expect(adminRole.status).toBe(ROLE_STATUS_ENABLED)
@@ -105,6 +106,8 @@ describe('user access service', () => {
           'ops:online-session',
           'ops:online-session:list',
           'ops:online-session:revoke',
+          'ops:operation-log',
+          'ops:operation-log:list',
         ]),
       )
       expect(access.menus.some((node) => node.code === 'ops')).toBe(true)

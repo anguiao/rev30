@@ -466,6 +466,69 @@ export const opsLoginLogs = pgTable(
   ],
 )
 
+export const opsOperationLogs = pgTable(
+  'ops_operation_logs',
+  {
+    id: uuidPrimaryKeyColumn(),
+    actorUserId: uuid('actor_user_id').notNull(),
+    actorUsername: text('actor_username').notNull(),
+    actorNickname: text('actor_nickname').notNull(),
+    actorIsAdmin: boolean('actor_is_admin').notNull(),
+    actorSessionId: uuid('actor_session_id').notNull(),
+    module: text('module').notNull(),
+    action: text('action').notNull(),
+    targetType: text('target_type').notNull(),
+    targetKey: text('target_key'),
+    targetLabel: text('target_label'),
+    result: text('result').notNull(),
+    httpStatus: smallint('http_status').notNull(),
+    durationMs: integer('duration_ms').notNull(),
+    requestId: uuid('request_id').notNull(),
+    clientIp: text('client_ip'),
+    clientIpSource: text('client_ip_source').notNull(),
+    userAgent: text('user_agent'),
+    ...createdTimestamp(),
+  },
+  (table) => [
+    index('ops_operation_logs_created_at_id_idx').on(table.createdAt, table.id),
+    index('ops_operation_logs_actor_user_id_idx').on(table.actorUserId),
+    index('ops_operation_logs_actor_session_id_idx').on(table.actorSessionId),
+    index('ops_operation_logs_module_action_idx').on(table.module, table.action),
+    index('ops_operation_logs_result_idx').on(table.result),
+    index('ops_operation_logs_http_status_idx').on(table.httpStatus),
+    index('ops_operation_logs_target_type_target_key_idx').on(table.targetType, table.targetKey),
+    index('ops_operation_logs_client_ip_idx').on(table.clientIp),
+    uniqueIndex('ops_operation_logs_request_id_unique').on(table.requestId),
+    check('ops_operation_logs_module_check', sql`${table.module} in ('system', 'content', 'ops')`),
+    check(
+      'ops_operation_logs_client_ip_source_check',
+      sql`${table.clientIpSource} in ('socket', 'x-forwarded-for', 'unavailable')`,
+    ),
+    check(
+      'ops_operation_logs_action_shape_check',
+      sql`btrim(${table.action}) <> '' and btrim(${table.targetType}) <> '' and char_length(${table.targetType}) <= 512 and split_part(${table.action}, ':', 1) = ${table.module} and split_part(${table.action}, ':', 2) = ${table.targetType} and btrim(split_part(${table.action}, ':', 3)) <> '' and ${table.action} = ${table.module} || ':' || ${table.targetType} || ':' || split_part(${table.action}, ':', 3)`,
+    ),
+    check('ops_operation_logs_http_status_check', sql`${table.httpStatus} between 100 and 599`),
+    check('ops_operation_logs_duration_check', sql`${table.durationMs} >= 0`),
+    check(
+      'ops_operation_logs_result_status_check',
+      sql`(${table.result} = 'success' and ${table.httpStatus} between 200 and 299) or (${table.result} = 'failure' and ${table.httpStatus} not between 200 and 299)`,
+    ),
+    check(
+      'ops_operation_logs_actor_snapshot_check',
+      sql`btrim(${table.actorUsername}) <> '' and char_length(${table.actorUsername}) <= 512 and btrim(${table.actorNickname}) <> '' and char_length(${table.actorNickname}) <= 512`,
+    ),
+    check(
+      'ops_operation_logs_target_check',
+      sql`(${table.targetKey} is null or (btrim(${table.targetKey}) <> '' and char_length(${table.targetKey}) <= 512)) and (${table.targetLabel} is null or (btrim(${table.targetLabel}) <> '' and char_length(${table.targetLabel}) <= 512)) and (${table.targetKey} is not null or ${table.targetLabel} is not null)`,
+    ),
+    check(
+      'ops_operation_logs_user_agent_length_check',
+      sql`${table.userAgent} is null or char_length(${table.userAgent}) <= 512`,
+    ),
+  ],
+)
+
 export const authLoginAttemptBuckets = pgTable(
   'auth_login_attempt_buckets',
   {

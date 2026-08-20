@@ -3,6 +3,7 @@ import { loginLogListResponseSchema, onlineSessionListResponseSchema } from '@re
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import { describe, expect } from 'vitest'
+import { createApp } from '../../../src/app'
 import { authSessions, opsLoginLogs } from '../../../src/db/schema'
 import { createAuthMiddleware } from '../../../src/middleware/auth'
 import {
@@ -18,6 +19,7 @@ import { createAuthRepository } from '../../../src/modules/auth/repository'
 import { createAuthService } from '../../../src/modules/auth/service'
 import { createTokenPair } from '../../../src/modules/auth/tokens'
 import { createOpsRoutes } from '../../../src/modules/ops/routes'
+import type { OperationAuditEvent } from '../../../src/modules/ops/operation-logs/types'
 import { dbTest, type TestDatabase } from '../../fixtures/database'
 import { createSystemAccessFixture } from '../../helpers/auth'
 import { createSystemUserFixture } from '../../helpers/system'
@@ -36,6 +38,14 @@ function createTestApp(database: TestDatabase, authHeaders: Record<string, strin
     })) as typeof app.request
 
   return app
+}
+
+function createAuditSink(events: OperationAuditEvent[]) {
+  return {
+    enqueue(event: OperationAuditEvent) {
+      events.push(event)
+    },
+  }
 }
 
 async function insertSession(
@@ -216,11 +226,12 @@ describe('ops routes', () => {
   dbTest(
     'protects the current session and invalidates every token bound to an active target',
     async ({ db: database }) => {
+      const events: OperationAuditEvent[] = []
       const operator = await createSystemAccessFixture(database, {
         accessCodes: ['ops:online-session:revoke'],
         usernamePrefix: 'ops-session-revoker',
       })
-      const app = createTestApp(database, operator.authHeaders)
+      const app = createApp(database, { operationAuditSink: createAuditSink(events) })
       const [operatorSession] = await database
         .select({ id: authSessions.id })
         .from(authSessions)
@@ -250,18 +261,79 @@ describe('ops routes', () => {
       })
 
       expect(
-        (await app.request(`/api/ops/sessions/${operatorSession?.id}`, { method: 'DELETE' }))
-          .status,
+        (
+          await app.request(`/api/ops/sessions/${operatorSession?.id}`, {
+            method: 'DELETE',
+            headers: operator.authHeaders,
+          })
+        ).status,
       ).toBe(409)
       expect(
-        (await app.request(`/api/ops/sessions/${expiredId}`, { method: 'DELETE' })).status,
+        (
+          await app.request(`/api/ops/sessions/${expiredId}`, {
+            method: 'DELETE',
+            headers: operator.authHeaders,
+          })
+        ).status,
       ).toBe(404)
       expect(
-        (await app.request(`/api/ops/sessions/${activeId}`, { method: 'DELETE' })).status,
+        (
+          await app.request(`/api/ops/sessions/${activeId}`, {
+            method: 'DELETE',
+            headers: operator.authHeaders,
+          })
+        ).status,
       ).toBe(204)
       expect(
-        (await app.request(`/api/ops/sessions/${activeId}`, { method: 'DELETE' })).status,
+        (
+          await app.request(`/api/ops/sessions/${activeId}`, {
+            method: 'DELETE',
+            headers: operator.authHeaders,
+          })
+        ).status,
       ).toBe(404)
+
+      expect(
+        events.map(({ action, httpStatus, result, targetKey, targetLabel }) => ({
+          action,
+          httpStatus,
+          result,
+          targetKey,
+          targetLabel,
+        })),
+      ).toEqual([
+        {
+          action: 'ops:online-session:revoke',
+          httpStatus: 409,
+          result: 'failure',
+          targetKey: operatorSession?.id,
+          targetLabel: null,
+        },
+        {
+          action: 'ops:online-session:revoke',
+          httpStatus: 404,
+          result: 'failure',
+          targetKey: expiredId,
+          targetLabel: null,
+        },
+        {
+          action: 'ops:online-session:revoke',
+          httpStatus: 204,
+          result: 'success',
+          targetKey: activeId,
+          targetLabel: null,
+        },
+        {
+          action: 'ops:online-session:revoke',
+          httpStatus: 404,
+          result: 'failure',
+          targetKey: activeId,
+          targetLabel: null,
+        },
+      ])
+      expect(JSON.stringify(events)).not.toMatch(
+        /refreshTokenHash|accessCodes|refreshToken|accessToken/,
+      )
 
       const [revoked] = await database
         .select()
@@ -292,6 +364,36 @@ describe('ops routes', () => {
       })
     },
   )
+
+  dbTest('does not mark invalid, forbidden, or read-only session requests', async ({ db }) => {
+    const events: OperationAuditEvent[] = []
+    const app = createApp(db, { operationAuditSink: createAuditSink(events) })
+    const revoker = await createSystemAccessFixture(db, {
+      accessCodes: ['ops:online-session:revoke'],
+      usernamePrefix: 'ops-audit-validator',
+    })
+    const listOnly = await createSystemAccessFixture(db, {
+      accessCodes: ['ops:login-log:list', 'ops:online-session:list'],
+      usernamePrefix: 'ops-audit-list-only',
+    })
+
+    const invalid = await app.request('/api/ops/sessions/not-a-uuid', {
+      method: 'DELETE',
+      headers: revoker.authHeaders,
+    })
+    const forbidden = await app.request(`/api/ops/sessions/${randomUUID()}`, {
+      method: 'DELETE',
+      headers: listOnly.authHeaders,
+    })
+    const list = await app.request('/api/ops/sessions', { headers: listOnly.authHeaders })
+    const loginLogs = await app.request('/api/ops/login-logs', { headers: listOnly.authHeaders })
+
+    expect(invalid.status).toBe(400)
+    expect(forbidden.status).toBe(403)
+    expect(list.status).toBe(200)
+    expect(loginLogs.status).toBe(200)
+    expect(events).toEqual([])
+  })
 
   dbTest(
     'returns contract validation errors for invalid list queries and session ids',

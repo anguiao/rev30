@@ -13,6 +13,7 @@ import type { Db } from '../../db'
 import { requireAccess } from '../../middleware/access'
 import type { AuthEnv } from '../../middleware/auth'
 import { CurrentOnlineSessionConflictError, OnlineSessionNotFoundError } from './errors'
+import { markOperationAudit, type OperationAuditRouteEnv } from './operation-logs/audit'
 import { createOpsService } from './service'
 
 const loginLogQueryValidator = zValidator('query', loginLogListQuerySchema, (result, c) => {
@@ -47,7 +48,7 @@ function opsErrorResponse(error: unknown, c: Context) {
 
 export function createOpsRoutes(database: Db, authMiddleware: MiddlewareHandler<AuthEnv>) {
   const service = createOpsService(database)
-  const app = new Hono<AuthEnv>().use('*', authMiddleware)
+  const app = new Hono<OperationAuditRouteEnv>().use('*', authMiddleware)
 
   app.onError((error, c) => opsErrorResponse(error, c))
 
@@ -75,6 +76,9 @@ export function createOpsRoutes(database: Db, authMiddleware: MiddlewareHandler<
       onlineSessionIdValidator,
       async (c) => {
         const { id } = c.req.valid('param')
+
+        markOperationAudit(c, 'ops:online-session:revoke', { targetKey: id })
+
         await service.revokeOnlineSession(id, c.get('currentSessionId'))
         return c.body(null, 204)
       },

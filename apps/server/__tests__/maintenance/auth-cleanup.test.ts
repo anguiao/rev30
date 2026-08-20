@@ -368,6 +368,28 @@ describe('auth maintenance', () => {
     expect(returning).not.toHaveBeenCalled()
   })
 
+  dbTest(
+    'includes operation log cleanup and stops earlier workers when it fails to start',
+    async () => {
+      vi.useFakeTimers()
+      vi.stubEnv('AUTH_SESSION_CLEANUP_INTERVAL_MS', '50')
+      vi.stubEnv('AUTH_LOGIN_ATTEMPT_CLEANUP_INTERVAL_MS', '50')
+      vi.stubEnv('OPS_LOGIN_LOG_CLEANUP_INTERVAL_MS', '50')
+      vi.stubEnv('OPS_OPERATION_LOG_RETENTION_MS', '-1')
+
+      const returning = vi.fn(() => Promise.resolve([]))
+      const database = {
+        delete: vi.fn(() => ({ where: vi.fn(() => ({ returning })) })),
+      } as never
+
+      expect(() => startAppMaintenance(database)).toThrow(
+        'OPS_OPERATION_LOG_RETENTION_MS 必须是 0 或正整数毫秒值',
+      )
+      await vi.advanceTimersByTimeAsync(0)
+      expect(returning).not.toHaveBeenCalled()
+    },
+  )
+
   dbTest('fails fast for invalid maintenance durations', () => {
     vi.stubEnv('AUTH_SESSION_CLEANUP_INTERVAL_MS', 'abc')
 

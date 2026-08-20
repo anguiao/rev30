@@ -3,6 +3,7 @@ import { startAttachmentCleanup } from './attachment-cleanup'
 import { startAuthLoginAttemptCleanup } from './auth-login-attempt-cleanup'
 import { startAuthSessionCleanup } from './auth-session-cleanup'
 import { startOpsLoginLogCleanup } from './ops-login-log-cleanup'
+import { startOpsOperationLogCleanup } from './ops-operation-log-cleanup'
 import type { MaintenanceWorker } from './types'
 
 export type AppMaintenance = {
@@ -16,6 +17,7 @@ export function startAppMaintenance(database: Db): AppMaintenance {
     workers.push(startAuthSessionCleanup(database))
     workers.push(startAuthLoginAttemptCleanup(database))
     workers.push(startOpsLoginLogCleanup(database))
+    workers.push(startOpsOperationLogCleanup(database))
     workers.push(startAttachmentCleanup(database))
   } catch (error) {
     for (const worker of workers) {

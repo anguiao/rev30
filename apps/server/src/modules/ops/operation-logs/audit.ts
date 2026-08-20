@@ -90,7 +90,7 @@ export type OperationAuditEnv = {
   Variables: OperationAuditVariables
 }
 
-type OperationAuditMarkEnv = {
+export type OperationAuditRouteEnv = {
   Variables: OperationAuditVariables & RequestContextEnv['Variables'] & AuthVariables
 }
 
@@ -112,7 +112,7 @@ function safeRequestId(value: unknown) {
 }
 
 export function markOperationAudit(
-  c: Context<OperationAuditMarkEnv>,
+  c: Context<OperationAuditRouteEnv>,
   action: OperationLogAction,
   target: OperationAuditTarget,
 ) {

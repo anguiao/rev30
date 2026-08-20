@@ -13,7 +13,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
-import type { AuthEnv } from '../../../middleware/auth'
+import { markOperationAudit, type OperationAuditRouteEnv } from '../../ops/operation-logs/audit'
 import {
   BuiltInUserMutationError,
   UserConflictError,
@@ -102,7 +102,7 @@ function userErrorResponse(error: unknown, c: Context) {
 
 export function createUserRoutes(database: Db) {
   const service = createUserService(database)
-  const app = new Hono<AuthEnv>()
+  const app = new Hono<OperationAuditRouteEnv>()
 
   app.onError((error, c) => userErrorResponse(error, c))
 
@@ -119,6 +119,10 @@ export function createUserRoutes(database: Db) {
     })
     .post('/', requireAccess('system:user:create'), userCreateBodyValidator, async (c) => {
       const body: UserCreateInput = c.req.valid('json')
+      markOperationAudit(c, 'system:user:create', {
+        targetKey: body.username,
+        targetLabel: body.nickname,
+      })
 
       return c.json(
         await service.create(body, {
@@ -134,6 +138,7 @@ export function createUserRoutes(database: Db) {
       userIdValidator,
       async (c) => {
         const { id } = c.req.valid('param')
+        markOperationAudit(c, 'system:user:reset-password', { targetKey: id })
 
         return c.json(
           await service.resetPassword(id, {
@@ -156,6 +161,10 @@ export function createUserRoutes(database: Db) {
       async (c) => {
         const { id } = c.req.valid('param')
         const body: UserUpdateInput = c.req.valid('json')
+        markOperationAudit(c, 'system:user:update', {
+          targetKey: id,
+          ...(body.nickname !== undefined ? { targetLabel: body.nickname } : {}),
+        })
 
         return c.json(
           await service.update(id, body, {
@@ -167,6 +176,7 @@ export function createUserRoutes(database: Db) {
     )
     .delete('/:id', requireAccess('system:user:delete'), userIdValidator, async (c) => {
       const { id } = c.req.valid('param')
+      markOperationAudit(c, 'system:user:delete', { targetKey: id })
 
       await service.delete(id, {
         accessCodes: c.get('accessCodes'),

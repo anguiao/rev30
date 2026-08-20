@@ -13,6 +13,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
+import { markOperationAudit, type OperationAuditRouteEnv } from '../../ops/operation-logs/audit'
 import {
   DepartmentConflictError,
   DepartmentDeleteConflictError,
@@ -90,7 +91,7 @@ function departmentErrorResponse(error: unknown, c: Context) {
 
 export function createDepartmentRoutes(database: Db) {
   const service = createDepartmentService(database)
-  const app = new Hono()
+  const app = new Hono<OperationAuditRouteEnv>()
 
   app.onError((error, c) => departmentErrorResponse(error, c))
 
@@ -124,6 +125,10 @@ export function createDepartmentRoutes(database: Db) {
       departmentCreateBodyValidator,
       async (c) => {
         const body: DepartmentCreateInput = c.req.valid('json')
+        markOperationAudit(c, 'system:department:create', {
+          targetKey: body.code,
+          targetLabel: body.name,
+        })
 
         return c.json(await service.create(body), 201)
       },
@@ -136,12 +141,17 @@ export function createDepartmentRoutes(database: Db) {
       async (c) => {
         const { id } = c.req.valid('param')
         const body: DepartmentUpdateInput = c.req.valid('json')
+        markOperationAudit(c, 'system:department:update', {
+          targetKey: id,
+          ...(body.name !== undefined ? { targetLabel: body.name } : {}),
+        })
 
         return c.json(await service.update(id, body))
       },
     )
     .delete('/:id', requireAccess('system:department:delete'), departmentIdValidator, async (c) => {
       const { id } = c.req.valid('param')
+      markOperationAudit(c, 'system:department:delete', { targetKey: id })
 
       await service.delete(id)
 

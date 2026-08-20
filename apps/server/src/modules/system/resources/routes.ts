@@ -13,7 +13,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
-import type { AuthEnv } from '../../../middleware/auth'
+import { markOperationAudit, type OperationAuditRouteEnv } from '../../ops/operation-logs/audit'
 import {
   ResourceConflictError,
   ResourceDeleteConflictError,
@@ -100,7 +100,7 @@ function resourceErrorResponse(error: unknown, c: Context) {
 
 export function createResourceRoutes(database: Db) {
   const service = createResourceService(database)
-  const app = new Hono<AuthEnv>()
+  const app = new Hono<OperationAuditRouteEnv>()
 
   app.onError((error, c) => resourceErrorResponse(error, c))
 
@@ -128,6 +128,10 @@ export function createResourceRoutes(database: Db) {
     })
     .post('/', requireAccess('system:resource:create'), resourceCreateBodyValidator, async (c) => {
       const body: ResourceCreateInput = c.req.valid('json')
+      markOperationAudit(c, 'system:resource:create', {
+        targetKey: body.code,
+        targetLabel: body.name,
+      })
 
       return c.json(
         await service.create(body, {
@@ -145,6 +149,10 @@ export function createResourceRoutes(database: Db) {
       async (c) => {
         const { id } = c.req.valid('param')
         const body: ResourceUpdateInput = c.req.valid('json')
+        markOperationAudit(c, 'system:resource:update', {
+          targetKey: id,
+          ...(body.name !== undefined ? { targetLabel: body.name } : {}),
+        })
 
         return c.json(
           await service.update(id, body, {
@@ -156,6 +164,7 @@ export function createResourceRoutes(database: Db) {
     )
     .delete('/:id', requireAccess('system:resource:delete'), resourceIdValidator, async (c) => {
       const { id } = c.req.valid('param')
+      markOperationAudit(c, 'system:resource:delete', { targetKey: id })
 
       await service.delete(id, {
         accessCodes: c.get('accessCodes'),

@@ -54,6 +54,7 @@ const mocks = vi.hoisted(() => {
   return {
     accessMiddleware,
     createDictionaryService: vi.fn(() => service),
+    markOperationAudit: vi.fn(),
     requireAccess: vi.fn(() => accessMiddleware),
     service,
   }
@@ -67,6 +68,10 @@ vi.mock('../../../../src/modules/system/dictionaries/service', () => ({
   createDictionaryService: mocks.createDictionaryService,
 }))
 
+vi.mock('../../../../src/modules/ops/operation-logs/audit', () => ({
+  markOperationAudit: mocks.markOperationAudit,
+}))
+
 function createTestApp() {
   return new Hono().route('/api/system/dictionaries', createDictionaryRoutes({} as never))
 }
@@ -76,6 +81,7 @@ describe('dictionary routes', () => {
     vi.clearAllMocks()
     Object.values(mocks.service).forEach((mock) => mock.mockReset())
     mocks.requireAccess.mockReturnValue(mocks.accessMiddleware)
+    mocks.accessMiddleware.mockImplementation(async (_c: Context, next: Next) => next())
     mocks.createDictionaryService.mockReturnValue(mocks.service)
     mocks.service.list.mockResolvedValue({
       list: [{ ...dictionary, itemCount: 1 }],
@@ -217,6 +223,33 @@ describe('dictionary routes', () => {
     })
     expect(deleteResponse.status).toBe(204)
     expect(mocks.service.delete).toHaveBeenCalledWith(dictionaryId)
+    expect(
+      (mocks.markOperationAudit.mock.calls as unknown as [Context, string, object][]).map(
+        ([, action, target]) => ({ action, target }),
+      ),
+    ).toEqual([
+      {
+        action: 'system:dictionary:create',
+        target: { targetKey: 'gender', targetLabel: '性别' },
+      },
+      {
+        action: 'system:dictionary:update',
+        target: { targetKey: dictionaryId, targetLabel: '性别' },
+      },
+      {
+        action: 'system:dictionary:delete',
+        target: { targetKey: dictionaryId },
+      },
+    ])
+    expect(mocks.markOperationAudit.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.service.create.mock.invocationCallOrder[0]!,
+    )
+    expect(mocks.markOperationAudit.mock.invocationCallOrder[1]).toBeLessThan(
+      mocks.service.update.mock.invocationCallOrder[0]!,
+    )
+    expect(mocks.markOperationAudit.mock.invocationCallOrder[2]).toBeLessThan(
+      mocks.service.delete.mock.invocationCallOrder[0]!,
+    )
   })
 
   it('returns validation errors before calling service', async () => {
@@ -261,6 +294,24 @@ describe('dictionary routes', () => {
     expect(updateResponse.status).toBe(400)
     expect(await updateResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.update).not.toHaveBeenCalled()
+    expect(mocks.markOperationAudit).not.toHaveBeenCalled()
+  })
+
+  it('does not mark requests rejected by the basic access guard', async () => {
+    mocks.accessMiddleware.mockImplementationOnce(async (c) => {
+      c.res = c.json({ message: '无权访问' }, 403)
+    })
+    const app = createTestApp()
+
+    const response = await app.request('/api/system/dictionaries', {
+      method: 'POST',
+      body: JSON.stringify({ code: 'gender', name: '性别' }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(response.status).toBe(403)
+    expect(mocks.markOperationAudit).not.toHaveBeenCalled()
+    expect(mocks.service.create).not.toHaveBeenCalled()
   })
 
   it('matches /options static route before /:id validator', async () => {
@@ -294,6 +345,9 @@ describe('dictionary routes', () => {
       field: 'code',
       message: '字典编码已存在',
     })
+    expect(mocks.markOperationAudit.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.service.create.mock.invocationCallOrder[0]!,
+    )
 
     mocks.service.update.mockRejectedValueOnce(new DictionaryItemValueConflictError())
     const duplicateItemValueResponse = await app.request(

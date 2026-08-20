@@ -13,7 +13,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
-import type { AuthEnv } from '../../../middleware/auth'
+import { markOperationAudit, type OperationAuditRouteEnv } from '../../ops/operation-logs/audit'
 import {
   BuiltInAdminRoleMutationError,
   RoleConflictError,
@@ -90,7 +90,7 @@ function roleErrorResponse(error: unknown, c: Context) {
 
 export function createRoleRoutes(database: Db) {
   const service = createRoleService(database)
-  const app = new Hono<AuthEnv>()
+  const app = new Hono<OperationAuditRouteEnv>()
 
   app.onError((error, c) => roleErrorResponse(error, c))
 
@@ -112,6 +112,10 @@ export function createRoleRoutes(database: Db) {
     })
     .post('/', requireAccess('system:role:create'), roleCreateBodyValidator, async (c) => {
       const body: RoleCreateInput = c.req.valid('json')
+      markOperationAudit(c, 'system:role:create', {
+        targetKey: body.code,
+        targetLabel: body.name,
+      })
 
       return c.json(
         await service.create(body, {
@@ -129,6 +133,10 @@ export function createRoleRoutes(database: Db) {
       async (c) => {
         const { id } = c.req.valid('param')
         const body: RoleUpdateInput = c.req.valid('json')
+        markOperationAudit(c, 'system:role:update', {
+          targetKey: id,
+          ...(body.name !== undefined ? { targetLabel: body.name } : {}),
+        })
 
         return c.json(
           await service.update(id, body, {
@@ -140,6 +148,7 @@ export function createRoleRoutes(database: Db) {
     )
     .delete('/:id', requireAccess('system:role:delete'), roleIdValidator, async (c) => {
       const { id } = c.req.valid('param')
+      markOperationAudit(c, 'system:role:delete', { targetKey: id })
 
       await service.delete(id, {
         accessCodes: c.get('accessCodes'),

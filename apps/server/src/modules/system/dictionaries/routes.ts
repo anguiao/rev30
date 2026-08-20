@@ -13,6 +13,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
+import { markOperationAudit, type OperationAuditRouteEnv } from '../../ops/operation-logs/audit'
 import {
   DictionaryCodeConflictError,
   DictionaryInvalidItemError,
@@ -81,7 +82,7 @@ function dictionaryErrorResponse(error: unknown, c: Context) {
 
 export function createDictionaryRoutes(database: Db) {
   const service = createDictionaryService(database)
-  const app = new Hono()
+  const app = new Hono<OperationAuditRouteEnv>()
 
   app.onError((error, c) => dictionaryErrorResponse(error, c))
 
@@ -107,6 +108,10 @@ export function createDictionaryRoutes(database: Db) {
       dictionaryCreateBodyValidator,
       async (c) => {
         const body: DictionaryCreateInput = c.req.valid('json')
+        markOperationAudit(c, 'system:dictionary:create', {
+          targetKey: body.code,
+          targetLabel: body.name,
+        })
 
         return c.json(await service.create(body), 201)
       },
@@ -119,12 +124,17 @@ export function createDictionaryRoutes(database: Db) {
       async (c) => {
         const { id } = c.req.valid('param')
         const body: DictionaryUpdateInput = c.req.valid('json')
+        markOperationAudit(c, 'system:dictionary:update', {
+          targetKey: id,
+          targetLabel: body.name,
+        })
 
         return c.json(await service.update(id, body))
       },
     )
     .delete('/:id', requireAccess('system:dictionary:delete'), dictionaryIdValidator, async (c) => {
       const { id } = c.req.valid('param')
+      markOperationAudit(c, 'system:dictionary:delete', { targetKey: id })
 
       await service.delete(id)
 

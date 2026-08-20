@@ -1,4 +1,4 @@
-import { Hono, type ErrorHandler } from 'hono'
+import { Hono, type Context, type Env } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import type { Logger } from 'pino'
 import type { Db } from './db'
@@ -17,12 +17,15 @@ import { healthRoutes } from './modules/health/routes'
 import { createIconRoutes } from './modules/icons/routes'
 import { createIconSearchRoutes } from './modules/icons/search/routes'
 import { createOpsRoutes } from './modules/ops/routes'
+import { createOperationAuditMiddleware } from './modules/ops/operation-logs/audit'
+import type { OperationAuditSink } from './modules/ops/operation-logs/types'
 import { createSystemRoutes } from './modules/system/routes'
 import { logger } from './runtime/logger'
 import { readTrustedProxyPolicy, type TrustedProxyPolicy } from './runtime/trusted-proxy'
 
 export type CreateAppOptions = {
   logger?: Logger
+  operationAuditSink?: OperationAuditSink
   trustedProxyPolicy?: TrustedProxyPolicy
 }
 
@@ -43,7 +46,7 @@ export function createApiRoutes(database: Db) {
     .route('/demos', createDemoRoutes(authMiddleware))
 }
 
-export const rootErrorHandler: ErrorHandler<RequestContextEnv> = (error, c) => {
+export function rootErrorHandler<TEnv extends Env>(error: Error, c: Context<TEnv>) {
   if (error instanceof HTTPException) {
     const response = error.getResponse()
 
@@ -55,11 +58,13 @@ export const rootErrorHandler: ErrorHandler<RequestContextEnv> = (error, c) => {
 
 export function createApp(database: Db, options: CreateAppOptions = {}) {
   const appLogger = options.logger ?? logger
+  const operationAuditSink = options.operationAuditSink ?? { enqueue() {} }
   const trustedProxyPolicy = options.trustedProxyPolicy ?? readTrustedProxyPolicy({})
 
   return new Hono<RequestContextEnv>()
     .use('*', createRequestContextMiddleware({ logger: appLogger, trustedProxyPolicy }))
     .use('*', createRequestLogger())
+    .use('*', createOperationAuditMiddleware({ logger: appLogger, sink: operationAuditSink }))
     .onError(rootErrorHandler)
     .route('/api', createApiRoutes(database))
 }

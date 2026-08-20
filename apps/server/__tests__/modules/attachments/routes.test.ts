@@ -109,12 +109,17 @@ const mocks = vi.hoisted(() => {
     authState,
     authMiddleware,
     createAttachmentService: vi.fn(() => service),
+    markOperationAudit: vi.fn(),
     service,
   }
 })
 
 vi.mock('../../../src/modules/attachments/service', () => ({
   createAttachmentService: mocks.createAttachmentService,
+}))
+
+vi.mock('../../../src/modules/ops/operation-logs/audit', () => ({
+  markOperationAudit: mocks.markOperationAudit,
 }))
 
 function createAttachmentTestApp() {
@@ -246,6 +251,14 @@ describe('attachment routes', () => {
       uploadId: attachmentId,
       userId: currentUser.id,
     })
+    expect(mocks.markOperationAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      'content:attachment:upload',
+      { targetKey: attachmentId },
+    )
+    expect(mocks.markOperationAudit.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.service.completeUploadSession.mock.invocationCallOrder[0]!,
+    )
 
     const detailResponse = await app.request(`/api/attachments/${attachmentId}`)
     expect(detailResponse.status).toBe(200)
@@ -272,6 +285,14 @@ describe('attachment routes', () => {
     })
     expect(deleteResponse.status).toBe(204)
     expect(mocks.service.delete).toHaveBeenCalledWith(attachmentId, requestLogger)
+    expect(mocks.markOperationAudit).toHaveBeenLastCalledWith(
+      expect.anything(),
+      'content:attachment:delete',
+      { targetKey: attachmentId },
+    )
+    expect(mocks.markOperationAudit.mock.invocationCallOrder[1]).toBeLessThan(
+      mocks.service.delete.mock.invocationCallOrder[0]!,
+    )
   })
 
   it('requires attachment management access for metadata and manual deletion', async () => {

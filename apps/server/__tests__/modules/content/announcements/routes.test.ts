@@ -107,6 +107,7 @@ const mocks = vi.hoisted(() => {
   return {
     accessMiddleware,
     createAnnouncementService: vi.fn(() => service),
+    markOperationAudit: vi.fn(),
     requireAccess: vi.fn(() => accessMiddleware),
     service,
   }
@@ -118,6 +119,10 @@ vi.mock('../../../../src/middleware/access', () => ({
 
 vi.mock('../../../../src/modules/content/announcements/service', () => ({
   createAnnouncementService: mocks.createAnnouncementService,
+}))
+
+vi.mock('../../../../src/modules/ops/operation-logs/audit', () => ({
+  markOperationAudit: mocks.markOperationAudit,
 }))
 
 function createTestApp() {
@@ -211,6 +216,17 @@ describe('announcement routes', () => {
       visibility: ANNOUNCEMENT_VISIBILITY_ALL,
       targets: [],
     })
+    expect(mocks.markOperationAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      'content:announcement:create',
+      { targetLabel: '维护通知' },
+    )
+    expect(mocks.markOperationAudit.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.service.create.mock.invocationCallOrder[0]!,
+    )
+    expect(JSON.stringify(mocks.markOperationAudit.mock.calls)).not.toMatch(
+      /contentJson|今晚维护|targets|summary/,
+    )
   })
 
   it('preserves targeted announcement create fields before delegation', async () => {
@@ -238,6 +254,14 @@ describe('announcement routes', () => {
 
     expect(updateResponse.status).toBe(200)
     expect(mocks.service.update).toHaveBeenCalledWith(announcementId, { title: '维护通知（更新）' })
+    expect(mocks.markOperationAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      'content:announcement:update',
+      { targetKey: announcementId, targetLabel: '维护通知（更新）' },
+    )
+    expect(mocks.markOperationAudit.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.service.update.mock.invocationCallOrder[0]!,
+    )
   })
 
   it('delegates targeted announcement updates to the service', async () => {

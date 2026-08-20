@@ -8,6 +8,7 @@ import type {
 import type { IconifyJSON } from '@iconify/types'
 import { afterEach, describe, expect, vi } from 'vitest'
 import { createApp } from '../../../../src/app'
+import type { OperationAuditEvent } from '../../../../src/modules/ops/operation-logs/types'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest } from '../../../fixtures/database'
 
@@ -17,6 +18,14 @@ function createSvg(size: number, body: string) {
 
 function createRect(fill: string) {
   return `<path fill="${fill}" d="M0 0h10v10H0z" />`
+}
+
+function createAuditSink(events: OperationAuditEvent[]) {
+  return {
+    enqueue(event: OperationAuditEvent) {
+      events.push(event)
+    },
+  }
 }
 
 describe('icon set routes', () => {
@@ -149,6 +158,7 @@ describe('icon set routes', () => {
   )
 
   dbTest('creates, uploads, lists, and exports custom icon sets', async ({ db: database }) => {
+    const events: OperationAuditEvent[] = []
     const authenticated = await createSystemAccessFixture(database, {
       accessCodes: [
         'content:icon-set:list',
@@ -158,7 +168,7 @@ describe('icon set routes', () => {
       ],
       usernamePrefix: 'icon-set-custom-user',
     })
-    const app = createApp(database)
+    const app = createApp(database, { operationAuditSink: createAuditSink(events) })
 
     const createResponse = await app.request('/api/content/icon-sets/custom', {
       method: 'POST',
@@ -177,6 +187,10 @@ describe('icon set routes', () => {
     formData.append(
       'files',
       new File([createSvg(24, createRect('#000'))], 'Logo.svg', { type: 'image/svg+xml' }),
+    )
+    formData.append(
+      'files',
+      new File(['not svg'], 'Private-Failure.svg', { type: 'image/svg+xml' }),
     )
     const uploadResponse = await app.request('/api/content/icon-sets/custom/acme/icons', {
       method: 'POST',
@@ -208,6 +222,7 @@ describe('icon set routes', () => {
       icon: 'acme:logo',
       name: 'logo',
     })
+    expect(uploaded.failed).toHaveLength(1)
 
     expect(listResponse.status).toBe(200)
     const listBody = (await listResponse.json()) as CustomIconListResponse
@@ -234,6 +249,68 @@ describe('icon set routes', () => {
         },
       },
     })
+    expect(
+      events.map(({ action, result, targetKey, targetLabel }) => ({
+        action,
+        result,
+        targetKey,
+        targetLabel,
+      })),
+    ).toEqual([
+      {
+        action: 'content:icon-set:create',
+        result: 'success',
+        targetKey: 'acme',
+        targetLabel: 'Acme Icons',
+      },
+      {
+        action: 'content:icon:upload',
+        result: 'success',
+        targetKey: 'acme',
+        targetLabel: null,
+      },
+      {
+        action: 'content:icon-set:export',
+        result: 'success',
+        targetKey: 'acme',
+        targetLabel: null,
+      },
+    ])
+    expect(JSON.stringify(events)).not.toMatch(/Logo\.svg|Private-Failure|<svg|Acme custom icons/)
+  })
+
+  dbTest('records upload preprocessing failures after marking the operation', async ({ db }) => {
+    const events: OperationAuditEvent[] = []
+    const authenticated = await createSystemAccessFixture(db, {
+      accessCodes: ['content:icon-set:create'],
+      usernamePrefix: 'icon-set-preprocess-failure-user',
+    })
+    const app = createApp(db, { operationAuditSink: createAuditSink(events) })
+    await app.request('/api/content/icon-sets/custom', {
+      method: 'POST',
+      headers: { ...authenticated.authHeaders, 'content-type': 'application/json' },
+      body: JSON.stringify({ prefix: 'preprocess', name: 'Preprocess', description: null }),
+    })
+    events.length = 0
+
+    vi.spyOn(File.prototype, 'text').mockRejectedValueOnce(new Error('private file failure'))
+    const formData = new FormData()
+    formData.append('files', new File(['<svg />'], 'private.svg', { type: 'image/svg+xml' }))
+    const response = await app.request('/api/content/icon-sets/custom/preprocess/icons', {
+      method: 'POST',
+      headers: authenticated.authHeaders,
+      body: formData,
+    })
+
+    expect(response.status).toBe(500)
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      action: 'content:icon:upload',
+      result: 'failure',
+      targetKey: 'preprocess',
+      targetLabel: null,
+    })
+    expect(JSON.stringify(events)).not.toMatch(/private\.svg|private file failure|<svg/)
   })
 
   dbTest('rejects creating custom sets with built-in prefixes', async ({ db: database }) => {

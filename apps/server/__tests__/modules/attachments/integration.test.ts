@@ -2,14 +2,13 @@ import { randomUUID } from 'node:crypto'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { Logger } from 'pino'
 import { afterEach, describe, expect, vi } from 'vitest'
 import {
   ATTACHMENT_DISPOSITION_INLINE,
   type AuthTokenResponse,
   type AttachmentListResponse,
 } from '@rev30/contracts'
-import { createApp } from '../../../src/app'
+import { createApp, type CreateAppOptions } from '../../../src/app'
 import { authPasswordCredentials } from '../../../src/db/schema'
 import { hashPassword } from '../../../src/modules/auth/password'
 import {
@@ -21,6 +20,7 @@ import { dbTest, type TestDatabase } from '../../fixtures/database'
 import { createSystemUserFixture } from '../../helpers/system'
 import { createLogger } from '../../../src/runtime/logger'
 import { LocalAttachmentStorage } from '../../../src/modules/attachments/storage'
+import type { OperationAuditEvent } from '../../../src/modules/ops/operation-logs/types'
 
 const tempDirs: string[] = []
 const pngBytes = new Uint8Array([
@@ -66,7 +66,7 @@ async function createTempRoot() {
 
 async function createAttachmentIntegrationFixture(
   database: TestDatabase,
-  options: { logger?: Logger } = {},
+  options: CreateAppOptions = {},
 ) {
   const storageDir = await createTempRoot()
 
@@ -83,6 +83,14 @@ async function createAttachmentIntegrationFixture(
     app,
     authenticated,
     database,
+  }
+}
+
+function createAuditSink(events: OperationAuditEvent[]) {
+  return {
+    enqueue(event: OperationAuditEvent) {
+      events.push(event)
+    },
   }
 }
 
@@ -358,7 +366,10 @@ describe('attachment routes integration', () => {
   dbTest(
     'lists active attachments with uploader summaries and keeps soft-deleted attachments out',
     async ({ db: database }) => {
-      const { app, authenticated } = await createAttachmentIntegrationFixture(database)
+      const events: OperationAuditEvent[] = []
+      const { app, authenticated } = await createAttachmentIntegrationFixture(database, {
+        operationAuditSink: createAuditSink(events),
+      })
       const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
         bytes: pngBytes,
         contentType: 'image/png',
@@ -388,6 +399,29 @@ describe('attachment routes integration', () => {
         headers: authenticated.authHeaders,
       })
       expect(deleteResponse.status).toBe(204)
+      expect(
+        events.map(({ action, result, targetKey, targetLabel }) => ({
+          action,
+          result,
+          targetKey,
+          targetLabel,
+        })),
+      ).toEqual([
+        {
+          action: 'content:attachment:upload',
+          result: 'success',
+          targetKey: expect.any(String),
+          targetLabel: null,
+        },
+        {
+          action: 'content:attachment:delete',
+          result: 'success',
+          targetKey: uploaded.id,
+          targetLabel: null,
+        },
+      ])
+      expect(events[0]?.targetKey).not.toBe(uploaded.id)
+      expect(JSON.stringify(events)).not.toMatch(/avatar\.png|image\/png|storage|checksum/)
 
       const afterDeleteResponse = await app.request('/api/attachments', {
         headers: authenticated.authHeaders,

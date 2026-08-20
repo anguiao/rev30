@@ -16,6 +16,7 @@ import type { Db } from '../../db'
 import { requireAccess } from '../../middleware/access'
 import type { AuthEnv } from '../../middleware/auth'
 import type { RequestContextEnv } from '../../middleware/request-context'
+import { markOperationAudit, type OperationAuditRouteEnv } from '../ops/operation-logs/audit'
 import { getAttachmentAccessTokenCookie } from './access-token'
 import {
   AttachmentContentUnauthorizedError,
@@ -46,7 +47,9 @@ const attachmentListRequestQuerySchema = attachmentListQuerySchema
   .transform((query) => query ?? attachmentListQuerySchema.parse({}))
 
 type AttachmentRouteEnv = {
-  Variables: AuthEnv['Variables'] & RequestContextEnv['Variables']
+  Variables: AuthEnv['Variables'] &
+    RequestContextEnv['Variables'] &
+    OperationAuditRouteEnv['Variables']
 }
 
 const attachmentIdValidator = zValidator('param', attachmentIdParamSchema, (result, c) => {
@@ -213,6 +216,9 @@ export function createAttachmentRoutes(database: Db, authMiddleware: MiddlewareH
       attachmentUploadSessionCompleteBodyValidator,
       async (c) => {
         const { uploadId } = c.req.valid('param')
+
+        markOperationAudit(c, 'content:attachment:upload', { targetKey: uploadId })
+
         const attachment = await service.completeUploadSession({
           uploadId,
           userId: c.get('currentUser').id,
@@ -249,6 +255,8 @@ export function createAttachmentRoutes(database: Db, authMiddleware: MiddlewareH
       attachmentIdValidator,
       async (c) => {
         const { id } = c.req.valid('param')
+
+        markOperationAudit(c, 'content:attachment:delete', { targetKey: id })
 
         await service.delete(id, c.get('requestContext').logger)
 

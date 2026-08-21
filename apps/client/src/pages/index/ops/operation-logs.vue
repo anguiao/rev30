@@ -19,6 +19,7 @@ import {
   NSelect,
   NSpin,
   NTag,
+  useMessage,
 } from 'naive-ui'
 import type {
   OperationLogAction,
@@ -45,9 +46,40 @@ import {
 import { getErrorMessage } from '../../../utils/error'
 
 const pageTitle = useAdminPageTitle('操作日志')
+const message = useMessage()
 
-function copyId(value: string) {
-  return navigator.clipboard.writeText(value)
+async function copyId(value: string) {
+  try {
+    await navigator.clipboard.writeText(value)
+    message.success('已复制')
+  } catch {
+    message.error('复制失败')
+  }
+}
+
+function getOperationLogQueryKey(value: OperationLogListQuery) {
+  return [
+    value.page,
+    value.pageSize,
+    value.actorKeyword ?? '',
+    value.actorSessionId ?? '',
+    value.module ?? '',
+    value.action ?? '',
+    value.result ?? '',
+    value.httpStatus ?? '',
+    value.targetKeyword ?? '',
+    value.clientIp ?? '',
+    value.requestId ?? '',
+    value.occurredFrom ?? '',
+    value.occurredTo ?? '',
+  ] as const
+}
+
+function hasSameOperationLogQuery(current: OperationLogListQuery, next: OperationLogListQuery) {
+  const currentKey = getOperationLogQueryKey(current)
+  const nextKey = getOperationLogQueryKey(next)
+
+  return currentKey.every((value, index) => value === nextKey[index])
 }
 
 const actorKeyword = ref('')
@@ -61,7 +93,6 @@ const clientIp = ref('')
 const requestId = ref('')
 const occurredRange = ref<[number, number] | null>(null)
 const query = ref<OperationLogListQuery>({ page: 1, pageSize: 20 })
-const queryRevision = ref(0)
 const selectedId = ref<string | null>(null)
 const showDetail = ref(false)
 
@@ -71,7 +102,7 @@ const actionOptions = computed(() =>
     : operationLogActionOptions.filter(({ value }) => value.startsWith(`${module.value}:`)),
 )
 watch(module, (value) => {
-  if (action.value !== null && (value === null || !action.value.startsWith(`${value}:`))) {
+  if (action.value !== null && value !== null && !action.value.startsWith(`${value}:`)) {
     action.value = null
   }
 })
@@ -86,8 +117,10 @@ const {
   data: response,
   error,
   isLoading,
+  refetch: refetchList,
 } = useQuery({
-  key: () => ['ops', 'operation-logs', 'list', queryRevision.value, query.value],
+  key: () => ['ops', 'operation-logs', 'list', ...getOperationLogQueryKey(query.value)],
+  staleTime: 0,
   placeholderData: () => emptyData,
   query: () => listOperationLogs(query.value),
 })
@@ -117,9 +150,18 @@ function trimmed(value: string) {
   return next.length === 0 ? undefined : next
 }
 
+function submitQuery(nextQuery: OperationLogListQuery) {
+  if (hasSameOperationLogQuery(query.value, nextQuery)) {
+    void refetchList()
+    return
+  }
+
+  query.value = nextQuery
+}
+
 function handleSearch() {
   const range = occurredRange.value
-  query.value = {
+  submitQuery({
     page: 1,
     pageSize: query.value.pageSize,
     ...(trimmed(actorKeyword.value) ? { actorKeyword: trimmed(actorKeyword.value) } : {}),
@@ -137,8 +179,7 @@ function handleSearch() {
           occurredFrom: new Date(range[0]).toISOString(),
           occurredTo: new Date(range[1]).toISOString(),
         }),
-  }
-  queryRevision.value += 1
+  })
 }
 
 function handleReset() {
@@ -152,8 +193,7 @@ function handleReset() {
   clientIp.value = ''
   requestId.value = ''
   occurredRange.value = null
-  query.value = { page: 1, pageSize: query.value.pageSize }
-  queryRevision.value += 1
+  submitQuery({ page: 1, pageSize: query.value.pageSize })
 }
 
 function openDetail(id: string) {

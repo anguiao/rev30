@@ -80,10 +80,13 @@ export const operationLogListQuerySchema = paginationQuerySchema
     },
   )
 
-const operationLogSnapshotStringSchema = nonBlankString().max(512)
+const operationLogSnapshotStringSchema = nonBlankString().refine(
+  (value) => Array.from(value).length <= 512,
+  '操作日志字段不能超过 512 个字符',
+)
 const operationLogTargetValueSchema = operationLogSnapshotStringSchema.nullable()
 
-export const operationLogListItemSchema = z.object({
+const operationLogListItemShape = {
   id: z.uuid('操作日志 ID 无效'),
   actorUserId: z.uuid('用户 ID 无效'),
   actorUsername: operationLogSnapshotStringSchema,
@@ -98,22 +101,85 @@ export const operationLogListItemSchema = z.object({
   durationMs: z.number().int().min(0),
   clientIp: z.string().nullable(),
   createdAt: z.iso.datetime(),
-})
+}
 
-export const operationLogListResponseSchema = z.object({
-  list: z.array(operationLogListItemSchema),
-  total: z.number().int().min(0),
-  page: z.number().int().min(1),
-  pageSize: z.number().int().min(1),
-})
+type OperationLogRecordFields = {
+  module: OperationLogModule
+  action: OperationLogAction
+  targetType: string
+  targetKey: string | null
+  targetLabel: string | null
+  result: OperationLogResult
+  httpStatus: number
+}
 
-export const operationLogDetailSchema = operationLogListItemSchema.extend({
-  actorIsAdmin: z.boolean(),
-  actorSessionId: z.uuid('会话 ID 无效'),
-  requestId: z.uuid('请求 ID 无效'),
-  clientIpSource: clientIpSourceSchema,
-  userAgent: opsUserAgentSchema,
-})
+function addOperationLogRecordInvariants<TSchema extends z.ZodType<OperationLogRecordFields>>(
+  schema: TSchema,
+) {
+  return schema.superRefine((value, context) => {
+    const [module, targetType] = value.action.split(':')
+
+    if (value.module !== module) {
+      context.addIssue({
+        code: 'custom',
+        message: '操作日志模块与动作不一致',
+        path: ['module'],
+      })
+    }
+
+    if (value.targetType !== targetType) {
+      context.addIssue({
+        code: 'custom',
+        message: '操作日志目标类型与动作不一致',
+        path: ['targetType'],
+      })
+    }
+
+    if (value.targetKey === null && value.targetLabel === null) {
+      context.addIssue({
+        code: 'custom',
+        message: '操作日志至少需要一个目标',
+        path: ['targetKey'],
+      })
+    }
+
+    const succeeded = value.httpStatus >= 200 && value.httpStatus <= 299
+
+    if ((value.result === 'success') !== succeeded) {
+      context.addIssue({
+        code: 'custom',
+        message: '操作日志结果与 HTTP 状态不一致',
+        path: ['result'],
+      })
+    }
+  })
+}
+
+export const operationLogListItemSchema = addOperationLogRecordInvariants(
+  z.object(operationLogListItemShape).strict(),
+)
+
+export const operationLogListResponseSchema = z
+  .object({
+    list: z.array(operationLogListItemSchema),
+    total: z.number().int().min(0),
+    page: z.number().int().min(1),
+    pageSize: z.number().int().min(1),
+  })
+  .strict()
+
+export const operationLogDetailSchema = addOperationLogRecordInvariants(
+  z
+    .object({
+      ...operationLogListItemShape,
+      actorIsAdmin: z.boolean(),
+      actorSessionId: z.uuid('会话 ID 无效'),
+      requestId: z.uuid('请求 ID 无效'),
+      clientIpSource: clientIpSourceSchema,
+      userAgent: opsUserAgentSchema,
+    })
+    .strict(),
+)
 
 export const operationLogDetailPathSchema = z.object({
   id: z.uuid('操作日志 ID 无效'),

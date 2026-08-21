@@ -115,6 +115,32 @@ describe('operation audit marker and middleware', () => {
     expect(logger.error).not.toHaveBeenCalled()
   })
 
+  it('truncates Unicode code points and line breaks without discarding the event', async () => {
+    const events: OperationAuditEvent[] = []
+    const logger = createLoggerSpy()
+    const unicodeValue = '😀'.repeat(520)
+    const multilineValue = `${'a\n'.repeat(300)}a`
+    const app = createTestApp({ events, logger, monotonicNow: () => 0 }).post('/unicode', (c) => {
+      markOperationAudit(c, 'system:user:update', {
+        targetKey: unicodeValue,
+        targetLabel: multilineValue,
+      })
+
+      return c.json({ ok: true })
+    })
+
+    const response = await app.request('/unicode', { method: 'POST' })
+
+    expect(response.status).toBe(200)
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      targetKey: `${'😀'.repeat(511)}…`,
+      targetLabel: `${Array.from(multilineValue).slice(0, 511).join('')}…`,
+    })
+    expect(Array.from(events[0]!.targetKey ?? '')).toHaveLength(512)
+    expect(Array.from(events[0]!.targetLabel ?? '')).toHaveLength(512)
+  })
+
   it('uses the final 4xx and 500 responses without exposing response bodies', async () => {
     const events: OperationAuditEvent[] = []
     const logger = createLoggerSpy()

@@ -11,8 +11,25 @@ import { opsOperationLogs } from '../../../db/schema'
 import { toOpsUserAgent } from '../user-agent'
 
 export type OperationLogRow = typeof opsOperationLogs.$inferSelect
+export type OperationLogListRow = Pick<
+  OperationLogRow,
+  | 'id'
+  | 'actorUserId'
+  | 'actorUsername'
+  | 'actorNickname'
+  | 'module'
+  | 'action'
+  | 'targetType'
+  | 'targetKey'
+  | 'targetLabel'
+  | 'result'
+  | 'httpStatus'
+  | 'durationMs'
+  | 'clientIp'
+  | 'createdAt'
+>
 
-export function toOperationLogListItem(row: OperationLogRow): OperationLogListItem {
+export function toOperationLogListItem(row: OperationLogListRow): OperationLogListItem {
   return {
     id: row.id,
     actorUserId: row.actorUserId,

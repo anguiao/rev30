@@ -15,19 +15,44 @@ const maxSnapshotLength = 512
 
 function normalizeSnapshot(value: string) {
   const normalized = value.trim()
-  const characters = normalized.match(/./gu) ?? []
+  let firstCharacters = ''
+  let lastCharacter = ''
+  let characterCount = 0
 
-  if (characters.length <= maxSnapshotLength) {
-    return normalized
+  for (const character of normalized) {
+    characterCount += 1
+
+    if (characterCount < maxSnapshotLength) {
+      firstCharacters += character
+      continue
+    }
+
+    if (characterCount === maxSnapshotLength) {
+      lastCharacter = character
+      continue
+    }
+
+    return `${firstCharacters}…`
   }
 
-  return `${characters.slice(0, maxSnapshotLength - 1).join('')}…`
+  return `${firstCharacters}${lastCharacter}`
 }
 
-const boundedNormalizedStringSchema = z
-  .string()
-  .min(1)
-  .refine((value) => (value.match(/./gu)?.length ?? 0) <= maxSnapshotLength)
+function isWithinSnapshotLimit(value: string) {
+  let characterCount = 0
+
+  for (const _character of value) {
+    characterCount += 1
+
+    if (characterCount > maxSnapshotLength) {
+      return false
+    }
+  }
+
+  return true
+}
+
+const boundedNormalizedStringSchema = z.string().min(1).refine(isWithinSnapshotLimit)
 const boundedSnapshotSchema = z
   .string()
   .transform(normalizeSnapshot)

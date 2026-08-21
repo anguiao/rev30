@@ -3,6 +3,24 @@ import { and, count, desc, eq, gte, ilike, lte, or } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Db } from '../../../db'
 import { opsOperationLogs } from '../../../db/schema'
+import type { OperationLogListRow } from './mapper'
+
+const operationLogListSelection = {
+  id: opsOperationLogs.id,
+  actorUserId: opsOperationLogs.actorUserId,
+  actorUsername: opsOperationLogs.actorUsername,
+  actorNickname: opsOperationLogs.actorNickname,
+  module: opsOperationLogs.module,
+  action: opsOperationLogs.action,
+  targetType: opsOperationLogs.targetType,
+  targetKey: opsOperationLogs.targetKey,
+  targetLabel: opsOperationLogs.targetLabel,
+  result: opsOperationLogs.result,
+  httpStatus: opsOperationLogs.httpStatus,
+  durationMs: opsOperationLogs.durationMs,
+  clientIp: opsOperationLogs.clientIp,
+  createdAt: opsOperationLogs.createdAt,
+} satisfies Record<keyof OperationLogListRow, unknown>
 
 export function createOperationLogRepository(database: Db) {
   return {
@@ -51,7 +69,7 @@ export function createOperationLogRepository(database: Db) {
       )
       const [list, totalRows] = await Promise.all([
         database
-          .select()
+          .select(operationLogListSelection)
           .from(opsOperationLogs)
           .where(where)
           .orderBy(desc(opsOperationLogs.createdAt), desc(opsOperationLogs.id))

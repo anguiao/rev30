@@ -3,6 +3,7 @@ import {
   operationLogActionSchema,
   operationLogDetailPathSchema,
   operationLogDetailSchema,
+  operationLogListItemSchema,
   operationLogListQuerySchema,
   operationLogListResponseSchema,
   operationLogModuleSchema,
@@ -154,28 +155,23 @@ describe('operation log schemas', () => {
     )
   })
 
-  it('parses list responses without detail-only or details fields', () => {
+  it('parses exact list responses and rejects detail-only fields', () => {
     const response = operationLogListResponseSchema.parse({
-      list: [
-        {
-          ...listItem,
-          actorSessionId: testUuid(3),
-          requestId: testUuid(4),
-          clientIpSource: 'x-forwarded-for',
-          userAgent: null,
-          details: { secret: true },
-        },
-      ],
+      list: [listItem],
       total: 1,
       page: 1,
       pageSize: 20,
     })
 
     expect(response).toEqual({ list: [listItem], total: 1, page: 1, pageSize: 20 })
+    expectZodIssue(
+      operationLogListItemSchema.safeParse({ ...listItem, details: { secret: true } }),
+      { message: 'Unrecognized key: "details"' },
+    )
   })
 
-  it('parses detail responses with user-agent structure and without details', () => {
-    const detail = operationLogDetailSchema.parse({
+  it('parses exact detail responses with user-agent structure', () => {
+    const input = {
       ...listItem,
       actorIsAdmin: true,
       actorSessionId: testUuid(3),
@@ -187,23 +183,59 @@ describe('operation log schemas', () => {
         operatingSystem: null,
         deviceType: 'desktop',
       },
-      details: { password: 'secret' },
-    })
+    }
+    const detail = operationLogDetailSchema.parse(input)
 
-    expect(detail).toMatchObject({
-      ...listItem,
-      actorIsAdmin: true,
-      actorSessionId: testUuid(3),
-      requestId: testUuid(4),
-      clientIpSource: 'x-forwarded-for',
-    })
+    expect(detail).toMatchObject(input)
     expect(detail.userAgent).toEqual({
       raw: 'Example/1.0',
       browser: { name: 'Example', version: null },
       operatingSystem: null,
       deviceType: 'desktop',
     })
-    expect(detail).not.toHaveProperty('details')
+    expectZodIssue(
+      operationLogDetailSchema.safeParse({ ...input, details: { password: 'secret' } }),
+      { message: 'Unrecognized key: "details"' },
+    )
+  })
+
+  it('rejects inconsistent operation-log response records', () => {
+    expectZodIssue(operationLogListItemSchema.safeParse({ ...listItem, module: 'content' }), {
+      message: '操作日志模块与动作不一致',
+      path: ['module'],
+    })
+    expectZodIssue(operationLogListItemSchema.safeParse({ ...listItem, targetType: 'role' }), {
+      message: '操作日志目标类型与动作不一致',
+      path: ['targetType'],
+    })
+    expectZodIssue(
+      operationLogListItemSchema.safeParse({
+        ...listItem,
+        targetKey: null,
+        targetLabel: null,
+      }),
+      { message: '操作日志至少需要一个目标', path: ['targetKey'] },
+    )
+    expectZodIssue(operationLogListItemSchema.safeParse({ ...listItem, result: 'failure' }), {
+      message: '操作日志结果与 HTTP 状态不一致',
+      path: ['result'],
+    })
+  })
+
+  it('counts bounded response fields by Unicode code points', () => {
+    expect(
+      operationLogListItemSchema.safeParse({
+        ...listItem,
+        actorNickname: '😀'.repeat(512),
+      }).success,
+    ).toBe(true)
+    expectZodIssue(
+      operationLogListItemSchema.safeParse({
+        ...listItem,
+        actorNickname: '😀'.repeat(513),
+      }),
+      { message: '操作日志字段不能超过 512 个字符', path: ['actorNickname'] },
+    )
   })
 
   it('validates the detail path UUID', () => {

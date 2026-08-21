@@ -9,6 +9,11 @@ export async function cleanupOperationLogs(
   now = new Date(),
 ): Promise<number> {
   const cutoff = subMilliseconds(now, retentionMs)
+
+  if (Number.isNaN(cutoff.getTime())) {
+    return 0
+  }
+
   const deleted = await database
     .delete(opsOperationLogs)
     .where(lte(opsOperationLogs.createdAt, cutoff))

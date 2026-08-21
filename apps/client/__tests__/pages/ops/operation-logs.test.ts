@@ -93,6 +93,9 @@ describe('operation logs page', () => {
         String('value' in item ? item.value : '').startsWith('system:'),
       ),
     ).toBe(true)
+    moduleSelect.vm.$emit('update:value', null)
+    await flushPromises()
+    expect(actionSelect.props('value')).toBe('system:user:update')
     moduleSelect.vm.$emit('update:value', 'content')
     await flushPromises()
     expect(actionSelect.props('value')).toBeNull()
@@ -134,6 +137,22 @@ describe('operation logs page', () => {
     await wrapper.get('[data-test="operation-logs-reset"]').trigger('click')
     await flushPromises()
     expect(listMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
+  })
+
+  it('refetches an unchanged query without duplicating changed-query requests', async () => {
+    const { wrapper } = await mountPage()
+    await flushPromises()
+    expect(listMock).toHaveBeenCalledTimes(1)
+
+    await wrapper.find('[data-test="operation-logs-actor"] input').setValue('ada')
+    await wrapper.get('[data-test="operation-logs-search"]').trigger('click')
+    await flushPromises()
+    expect(listMock).toHaveBeenCalledTimes(2)
+    expect(listMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, actorKeyword: 'ada' })
+
+    await wrapper.get('[data-test="operation-logs-search"]').trigger('click')
+    await flushPromises()
+    expect(listMock).toHaveBeenCalledTimes(3)
   })
 
   it('renders safe list fields and lazily loads structured detail with copy controls', async () => {
@@ -178,6 +197,25 @@ describe('operation logs page', () => {
       requestId,
       actorSessionId,
     ])
+    expect(document.body.textContent).toContain('已复制')
     expect(detailText).not.toMatch(/导出|删除|清空|批量|JSON/)
+  })
+
+  it('reports clipboard failures without rejecting the detail interaction', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('clipboard unavailable'))
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    const { wrapper } = await mountPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="operation-log-detail"]').trigger('click')
+    await flushPromises()
+    const copyButton = document.querySelector<HTMLElement>('[data-test="operation-log-copy-id"]')
+    expect(copyButton).not.toBeNull()
+
+    copyButton?.click()
+    await flushPromises()
+
+    expect(writeText).toHaveBeenCalledWith(actorUserId)
+    expect(document.body.textContent).toContain('复制失败')
   })
 })

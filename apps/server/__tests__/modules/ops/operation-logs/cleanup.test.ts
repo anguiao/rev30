@@ -63,4 +63,13 @@ describe('operation log retention cleanup', () => {
     await expect(cleanupOperationLogs(db, 0, now)).resolves.toBe(2)
     await expect(remainingIds(db)).resolves.toEqual([{ id: futureId }])
   })
+
+  dbTest('keeps logs when a safe retention predates representable timestamps', async ({ db }) => {
+    const id = randomUUID()
+    const now = new Date('2026-08-20T00:00:00.000Z')
+    await db.insert(opsOperationLogs).values(operationLog(now, { id }))
+
+    await expect(cleanupOperationLogs(db, Number.MAX_SAFE_INTEGER, now)).resolves.toBe(0)
+    await expect(remainingIds(db)).resolves.toEqual([{ id }])
+  })
 })

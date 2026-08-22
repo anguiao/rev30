@@ -7,7 +7,9 @@ import {
   NButton,
   NDataTable,
   NForm,
-  NFormItem,
+  NFormItemGi,
+  NGrid,
+  NGridItem,
   NInput,
   NPagination,
   NTag,
@@ -193,31 +195,35 @@ const columns: DataTableColumns<OnlineSessionListItem> = [
     <section
       class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <NForm inline label-placement="left" :show-feedback="false" class="items-center gap-y-3">
-        <NFormItem label="用户名">
-          <NInput
-            v-model:value="username"
-            data-test="online-sessions-username"
-            clearable
-            placeholder="请输入用户名"
-            class="w-48!"
-          />
-        </NFormItem>
-        <NFormItem label="创建 IP">
-          <NInput
-            v-model:value="createdIp"
-            data-test="online-sessions-created-ip"
-            clearable
-            placeholder="请输入会话创建 IP"
-            class="w-48!"
-          />
-        </NFormItem>
-        <div class="flex gap-2">
-          <NButton data-test="online-sessions-search" type="primary" @click="handleSearch"
-            >查询</NButton
-          >
-          <NButton data-test="online-sessions-reset" @click="handleReset">重置</NButton>
-        </div>
+      <NForm label-placement="left" :show-feedback="false">
+        <NGrid cols="1 640:12 1024:24" item-responsive :x-gap="16" :y-gap="12">
+          <NFormItemGi label="用户名" span="1 640:4 1024:5" class="min-w-0">
+            <NInput
+              v-model:value="username"
+              data-test="online-sessions-username"
+              clearable
+              placeholder="请输入用户名"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="创建 IP" span="1 640:4 1024:5" class="min-w-0">
+            <NInput
+              v-model:value="createdIp"
+              data-test="online-sessions-created-ip"
+              clearable
+              placeholder="请输入会话创建 IP"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NGridItem suffix span="1 640:4 1024:14">
+            <div class="flex h-full items-center justify-end gap-2">
+              <NButton data-test="online-sessions-search" type="primary" @click="handleSearch"
+                >查询</NButton
+              >
+              <NButton data-test="online-sessions-reset" @click="handleReset">重置</NButton>
+            </div>
+          </NGridItem>
+        </NGrid>
       </NForm>
     </section>
 

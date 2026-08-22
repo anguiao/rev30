@@ -12,7 +12,9 @@ import {
   NDrawer,
   NDrawerContent,
   NForm,
-  NFormItem,
+  NFormItemGi,
+  NGrid,
+  NGridItem,
   NInput,
   NInputNumber,
   NPagination,
@@ -272,88 +274,103 @@ const columns: DataTableColumns<OperationLogListItem> = [
     <section
       class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <NForm inline label-placement="left" :show-feedback="false" class="items-center gap-y-3">
-        <NFormItem label="操作者"
-          ><NInput
-            v-model:value="actorKeyword"
-            data-test="operation-logs-actor"
-            clearable
-            class="w-44!"
-        /></NFormItem>
-        <NFormItem label="会话 ID"
-          ><NInput
-            v-model:value="actorSessionId"
-            data-test="operation-logs-session"
-            clearable
-            class="w-64!"
-        /></NFormItem>
-        <NFormItem label="模块"
-          ><NSelect
-            v-model:value="module"
-            data-test="operation-logs-module"
-            clearable
-            :options="operationLogModuleOptions"
-            class="w-32!"
-        /></NFormItem>
-        <NFormItem label="动作"
-          ><NSelect
-            v-model:value="action"
-            data-test="operation-logs-action"
-            clearable
-            :options="actionOptions"
-            class="w-48!"
-        /></NFormItem>
-        <NFormItem label="结果"
-          ><NSelect
-            v-model:value="result"
-            data-test="operation-logs-result"
-            clearable
-            :options="operationLogResultOptions"
-            class="w-28!"
-        /></NFormItem>
-        <NFormItem label="HTTP status"
-          ><NInputNumber
-            v-model:value="httpStatus"
-            data-test="operation-logs-http-status"
-            clearable
-            :min="100"
-            :max="599"
-            :precision="0"
-            class="w-32!"
-        /></NFormItem>
-        <NFormItem label="目标"
-          ><NInput
-            v-model:value="targetKeyword"
-            data-test="operation-logs-target"
-            clearable
-            class="w-44!"
-        /></NFormItem>
-        <NFormItem label="客户端 IP"
-          ><NInput
-            v-model:value="clientIp"
-            data-test="operation-logs-client-ip"
-            clearable
-            class="w-44!"
-        /></NFormItem>
-        <NFormItem label="请求 ID"
-          ><NInput
-            v-model:value="requestId"
-            data-test="operation-logs-request-id"
-            clearable
-            class="w-64!"
-        /></NFormItem>
-        <NFormItem label="发生时间"
-          ><NDatePicker
-            v-model:value="occurredRange"
-            data-test="operation-logs-occurred-range"
-            type="datetimerange"
-            clearable
-        /></NFormItem>
-        <div class="flex gap-2">
-          <NButton data-test="operation-logs-search" type="primary" @click="handleSearch"
-            >查询</NButton
-          ><NButton data-test="operation-logs-reset" @click="handleReset">重置</NButton>
-        </div>
+      <NForm label-placement="left" :show-feedback="false">
+        <NGrid cols="1 640:6 1024:24" item-responsive :x-gap="16" :y-gap="12">
+          <NFormItemGi label="操作者" span="1 640:3 1024:4" class="min-w-0">
+            <NInput
+              v-model:value="actorKeyword"
+              data-test="operation-logs-actor"
+              clearable
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="会话 ID" span="1 640:3 1024:5" class="min-w-0">
+            <NInput
+              v-model:value="actorSessionId"
+              data-test="operation-logs-session"
+              clearable
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="模块" span="1 640:2 1024:4" class="min-w-0">
+            <NSelect
+              v-model:value="module"
+              data-test="operation-logs-module"
+              clearable
+              :options="operationLogModuleOptions"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="动作" span="1 640:4 1024:4" class="min-w-0">
+            <NSelect
+              v-model:value="action"
+              data-test="operation-logs-action"
+              clearable
+              :options="actionOptions"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="结果" span="1 640:2 1024:3" class="min-w-0">
+            <NSelect
+              v-model:value="result"
+              data-test="operation-logs-result"
+              clearable
+              :options="operationLogResultOptions"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="状态码" span="1 640:2 1024:4" class="min-w-0">
+            <NInputNumber
+              v-model:value="httpStatus"
+              data-test="operation-logs-http-status"
+              clearable
+              :min="100"
+              :max="599"
+              :precision="0"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="目标" span="1 640:2 1024:4" class="min-w-0">
+            <NInput
+              v-model:value="targetKeyword"
+              data-test="operation-logs-target"
+              clearable
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="客户端 IP" span="1 640:3 1024:4" class="min-w-0">
+            <NInput
+              v-model:value="clientIp"
+              data-test="operation-logs-client-ip"
+              clearable
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="请求 ID" span="1 640:3 1024:5" class="min-w-0">
+            <NInput
+              v-model:value="requestId"
+              data-test="operation-logs-request-id"
+              clearable
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="发生时间" span="1 640:4 1024:7" class="min-w-0">
+            <NDatePicker
+              v-model:value="occurredRange"
+              data-test="operation-logs-occurred-range"
+              type="datetimerange"
+              clearable
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NGridItem suffix span="1 640:2 1024:4">
+            <div class="flex h-full items-center justify-end gap-2">
+              <NButton data-test="operation-logs-search" type="primary" @click="handleSearch"
+                >查询</NButton
+              ><NButton data-test="operation-logs-reset" @click="handleReset">重置</NButton>
+            </div>
+          </NGridItem>
+        </NGrid>
       </NForm>
     </section>
 

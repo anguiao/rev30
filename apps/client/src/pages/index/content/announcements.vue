@@ -7,7 +7,9 @@ import {
   NButton,
   NDataTable,
   NForm,
-  NFormItem,
+  NFormItemGi,
+  NGrid,
+  NGridItem,
   NInput,
   NPagination,
   NSelect,
@@ -358,49 +360,53 @@ const columns: DataTableColumns<AnnouncementListItem> = [
     <section
       class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <NForm inline label-placement="left" :show-feedback="false" class="items-center gap-y-3">
-        <NFormItem label="关键词">
-          <NInput
-            v-model:value="keyword"
-            data-test="announcements-keyword"
-            clearable
-            placeholder="请输入关键词"
-            class="w-64!"
-          />
-        </NFormItem>
-        <NFormItem label="类型">
-          <NSelect
-            v-model:value="type"
-            data-test="announcements-type"
-            :options="announcementTypeFilterOptions"
-            placeholder="全部"
-            class="w-40!"
-          />
-        </NFormItem>
-        <NFormItem label="状态">
-          <NSelect
-            v-model:value="status"
-            data-test="announcements-status"
-            :options="announcementStatusFilterOptions"
-            placeholder="全部"
-            class="w-40!"
-          />
-        </NFormItem>
-        <NFormItem label="置顶">
-          <NSelect
-            v-model:value="pinned"
-            data-test="announcements-pinned"
-            :options="announcementPinnedFilterOptions"
-            placeholder="全部"
-            class="w-40!"
-          />
-        </NFormItem>
-        <div class="flex gap-2">
-          <NButton data-test="announcements-search" type="primary" @click="handleSearch">
-            查询
-          </NButton>
-          <NButton data-test="announcements-reset" @click="handleReset">重置</NButton>
-        </div>
+      <NForm label-placement="left" :show-feedback="false">
+        <NGrid cols="1 640:12 1024:24" item-responsive :x-gap="16" :y-gap="12">
+          <NFormItemGi label="关键词" span="1 640:6 1024:7" class="min-w-0">
+            <NInput
+              v-model:value="keyword"
+              data-test="announcements-keyword"
+              clearable
+              placeholder="请输入关键词"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="类型" span="1 640:3 1024:4" class="min-w-0">
+            <NSelect
+              v-model:value="type"
+              data-test="announcements-type"
+              :options="announcementTypeFilterOptions"
+              placeholder="全部"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="状态" span="1 640:3 1024:4" class="min-w-0">
+            <NSelect
+              v-model:value="status"
+              data-test="announcements-status"
+              :options="announcementStatusFilterOptions"
+              placeholder="全部"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="置顶" span="1 640:3 1024:3" class="min-w-0">
+            <NSelect
+              v-model:value="pinned"
+              data-test="announcements-pinned"
+              :options="announcementPinnedFilterOptions"
+              placeholder="全部"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NGridItem suffix span="1 640:9 1024:6">
+            <div class="flex h-full items-center justify-end gap-2">
+              <NButton data-test="announcements-search" type="primary" @click="handleSearch">
+                查询
+              </NButton>
+              <NButton data-test="announcements-reset" @click="handleReset">重置</NButton>
+            </div>
+          </NGridItem>
+        </NGrid>
       </NForm>
     </section>
 

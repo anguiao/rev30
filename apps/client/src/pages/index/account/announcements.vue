@@ -15,7 +15,9 @@ import {
   NButton,
   NEmpty,
   NForm,
-  NFormItem,
+  NFormItemGi,
+  NGrid,
+  NGridItem,
   NInput,
   NList,
   NListItem,
@@ -146,23 +148,27 @@ function openAnnouncementDetail(announcement: AnnouncementMyListItem) {
         <NTabPane name="bulletin" tab="公告" />
       </NTabs>
 
-      <NForm inline label-placement="left" :show-feedback="false" class="mt-4 items-center gap-y-3">
-        <NFormItem label="关键词">
-          <NInput
-            v-model:value="activeKeyword"
-            data-test="my-announcements-keyword"
-            clearable
-            placeholder="请输入关键词"
-            class="w-64!"
-            @keyup.enter="handleSearch"
-          />
-        </NFormItem>
-        <div class="flex gap-2">
-          <NButton data-test="my-announcements-search" type="primary" @click="handleSearch">
-            搜索
-          </NButton>
-          <NButton data-test="my-announcements-reset" @click="handleReset">重置</NButton>
-        </div>
+      <NForm label-placement="left" :show-feedback="false" class="mt-4">
+        <NGrid cols="1 640:12 1024:24" item-responsive :x-gap="16" :y-gap="12">
+          <NFormItemGi label="关键词" span="1 640:6 1024:6" class="min-w-0">
+            <NInput
+              v-model:value="activeKeyword"
+              data-test="my-announcements-keyword"
+              clearable
+              placeholder="请输入关键词"
+              class="w-full!"
+              @keyup.enter="handleSearch"
+            />
+          </NFormItemGi>
+          <NGridItem suffix span="1 640:6 1024:18">
+            <div class="flex h-full items-center justify-end gap-2">
+              <NButton data-test="my-announcements-search" type="primary" @click="handleSearch">
+                搜索
+              </NButton>
+              <NButton data-test="my-announcements-reset" @click="handleReset">重置</NButton>
+            </div>
+          </NGridItem>
+        </NGrid>
       </NForm>
 
       <NAlert v-if="loadErrorMessage" class="mt-4" type="error" :show-icon="false">

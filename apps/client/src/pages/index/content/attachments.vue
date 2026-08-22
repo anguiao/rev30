@@ -8,7 +8,9 @@ import {
   NButton,
   NDataTable,
   NForm,
-  NFormItem,
+  NFormItemGi,
+  NGrid,
+  NGridItem,
   NInput,
   NPagination,
   useDialog,
@@ -203,31 +205,35 @@ const columns: DataTableColumns<AttachmentListItem> = [
     <section
       class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <NForm inline label-placement="left" :show-feedback="false" class="items-center gap-y-3">
-        <NFormItem label="关键词">
-          <NInput
-            v-model:value="keyword"
-            data-test="attachments-keyword"
-            clearable
-            placeholder="请输入文件名关键词"
-            class="w-64!"
-          />
-        </NFormItem>
-        <NFormItem label="用途">
-          <NInput
-            v-model:value="usage"
-            data-test="attachments-usage"
-            clearable
-            placeholder="请输入用途"
-            class="w-48!"
-          />
-        </NFormItem>
-        <div class="flex gap-2">
-          <NButton data-test="attachments-search" type="primary" @click="handleSearch"
-            >查询</NButton
-          >
-          <NButton data-test="attachments-reset" @click="handleReset">重置</NButton>
-        </div>
+      <NForm label-placement="left" :show-feedback="false">
+        <NGrid cols="1 640:12 1024:24" item-responsive :x-gap="16" :y-gap="12">
+          <NFormItemGi label="关键词" span="1 640:6 1024:7" class="min-w-0">
+            <NInput
+              v-model:value="keyword"
+              data-test="attachments-keyword"
+              clearable
+              placeholder="请输入文件名关键词"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="用途" span="1 640:4 1024:5" class="min-w-0">
+            <NInput
+              v-model:value="usage"
+              data-test="attachments-usage"
+              clearable
+              placeholder="请输入用途"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NGridItem suffix span="1 640:2 1024:12">
+            <div class="flex h-full items-center justify-end gap-2">
+              <NButton data-test="attachments-search" type="primary" @click="handleSearch"
+                >查询</NButton
+              >
+              <NButton data-test="attachments-reset" @click="handleReset">重置</NButton>
+            </div>
+          </NGridItem>
+        </NGrid>
       </NForm>
     </section>
 

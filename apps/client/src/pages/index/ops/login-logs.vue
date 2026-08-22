@@ -8,7 +8,9 @@ import {
   NDataTable,
   NDatePicker,
   NForm,
-  NFormItem,
+  NFormItemGi,
+  NGrid,
+  NGridItem,
   NInput,
   NPagination,
   NSelect,
@@ -167,58 +169,65 @@ const columns: DataTableColumns<LoginLogListItem> = [
     <section
       class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <NForm inline label-placement="left" :show-feedback="false" class="items-center gap-y-3">
-        <NFormItem label="用户名">
-          <NInput
-            v-model:value="username"
-            data-test="login-logs-username"
-            clearable
-            placeholder="请输入用户名"
-            class="w-44!"
-          />
-        </NFormItem>
-        <NFormItem label="结果">
-          <NSelect
-            v-model:value="result"
-            data-test="login-logs-result"
-            clearable
-            :options="loginLogResultOptions"
-            placeholder="全部"
-            class="w-32!"
-          />
-        </NFormItem>
-        <NFormItem label="失败原因">
-          <NSelect
-            v-model:value="failureReason"
-            data-test="login-logs-failure-reason"
-            clearable
-            :disabled="result === LOGIN_LOG_RESULT_SUCCESS"
-            :options="loginFailureReasonOptions"
-            placeholder="全部"
-            class="w-40!"
-          />
-        </NFormItem>
-        <NFormItem label="客户端 IP">
-          <NInput
-            v-model:value="clientIp"
-            data-test="login-logs-client-ip"
-            clearable
-            placeholder="请输入客户端 IP"
-            class="w-44!"
-          />
-        </NFormItem>
-        <NFormItem label="发生时间">
-          <NDatePicker
-            v-model:value="occurredRange"
-            data-test="login-logs-occurred-range"
-            type="datetimerange"
-            clearable
-          />
-        </NFormItem>
-        <div class="flex gap-2">
-          <NButton data-test="login-logs-search" type="primary" @click="handleSearch">查询</NButton>
-          <NButton data-test="login-logs-reset" @click="handleReset">重置</NButton>
-        </div>
+      <NForm label-placement="left" :show-feedback="false">
+        <NGrid cols="1 640:12 1024:24" item-responsive :x-gap="16" :y-gap="12">
+          <NFormItemGi label="用户名" span="1 640:4 1024:4" class="min-w-0">
+            <NInput
+              v-model:value="username"
+              data-test="login-logs-username"
+              clearable
+              placeholder="请输入用户名"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="结果" span="1 640:3 1024:3" class="min-w-0">
+            <NSelect
+              v-model:value="result"
+              data-test="login-logs-result"
+              clearable
+              :options="loginLogResultOptions"
+              placeholder="全部"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="失败原因" span="1 640:5 1024:4" class="min-w-0">
+            <NSelect
+              v-model:value="failureReason"
+              data-test="login-logs-failure-reason"
+              clearable
+              :disabled="result === LOGIN_LOG_RESULT_SUCCESS"
+              :options="loginFailureReasonOptions"
+              placeholder="全部"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="客户端 IP" span="1 640:4 1024:4" class="min-w-0">
+            <NInput
+              v-model:value="clientIp"
+              data-test="login-logs-client-ip"
+              clearable
+              placeholder="请输入客户端 IP"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NFormItemGi label="发生时间" span="1 640:6 1024:6" class="min-w-0">
+            <NDatePicker
+              v-model:value="occurredRange"
+              data-test="login-logs-occurred-range"
+              type="datetimerange"
+              clearable
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NGridItem suffix span="1 640:2 1024:3">
+            <div class="flex h-full items-center justify-end gap-2">
+              <NButton data-test="login-logs-search" type="primary" @click="handleSearch"
+                >查询</NButton
+              >
+              <NButton data-test="login-logs-reset" @click="handleReset">重置</NButton>
+            </div>
+          </NGridItem>
+        </NGrid>
       </NForm>
     </section>
 

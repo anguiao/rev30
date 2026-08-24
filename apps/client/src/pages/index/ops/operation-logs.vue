@@ -224,7 +224,7 @@ const columns: DataTableColumns<OperationLogListItem> = [
     render: (item) => `${item.actorNickname}（${item.actorUsername}）`,
   },
   {
-    title: '操作',
+    title: '模块 / 动作',
     key: 'action',
     minWidth: 190,
     render: (item) =>
@@ -242,7 +242,7 @@ const columns: DataTableColumns<OperationLogListItem> = [
         () => operationLogResultLabels[item.result],
       ),
   },
-  { title: 'HTTP', key: 'httpStatus', width: 80 },
+  { title: '状态码', key: 'httpStatus', width: 80 },
   { title: '客户端 IP', key: 'clientIp', minWidth: 140, render: (item) => item.clientIp ?? '-' },
   { title: '耗时', key: 'durationMs', width: 90, render: (item) => `${item.durationMs} ms` },
   {
@@ -411,14 +411,22 @@ const columns: DataTableColumns<OperationLogListItem> = [
               }}）</NDescriptionsItem
             >
             <NDescriptionsItem label="操作者 ID"
-              ><span>{{ visibleDetail.actorUserId }}</span>
-              <NButton
-                text
-                data-test="operation-log-copy-id"
-                @click="copyId(visibleDetail.actorUserId)"
-                >复制</NButton
-              ></NDescriptionsItem
-            >
+              ><span class="inline-flex max-w-full items-center gap-2 align-middle">
+                <span class="min-w-0 break-all">{{ visibleDetail.actorUserId }}</span>
+                <NButton
+                  quaternary
+                  circle
+                  type="primary"
+                  size="tiny"
+                  class="shrink-0"
+                  aria-label="复制操作者 ID"
+                  title="复制操作者 ID"
+                  data-test="operation-log-copy-id"
+                  @click="copyId(visibleDetail.actorUserId)"
+                >
+                  <span class="i-[lucide--copy]" aria-hidden="true" />
+                </NButton> </span
+            ></NDescriptionsItem>
             <NDescriptionsItem label="管理员快照">{{
               visibleDetail.actorIsAdmin ? '管理员' : '非管理员'
             }}</NDescriptionsItem>
@@ -427,32 +435,47 @@ const columns: DataTableColumns<OperationLogListItem> = [
                 operationLogResultLabels[visibleDetail.result]
               }}</NTag></NDescriptionsItem
             >
-            <NDescriptionsItem label="模块与动作"
+            <NDescriptionsItem label="模块 / 动作"
               >{{ operationLogModuleLabels[visibleDetail.module] }} ·
               {{ operationLogActionLabels[visibleDetail.action] }}</NDescriptionsItem
             >
             <NDescriptionsItem label="目标">{{ targetText(visibleDetail) }}</NDescriptionsItem>
-            <NDescriptionsItem label="HTTP status / 耗时"
-              >{{ visibleDetail.httpStatus }} / {{ visibleDetail.durationMs }} ms</NDescriptionsItem
-            >
+            <NDescriptionsItem label="状态码">{{ visibleDetail.httpStatus }}</NDescriptionsItem>
+            <NDescriptionsItem label="耗时">{{ visibleDetail.durationMs }} ms</NDescriptionsItem>
             <NDescriptionsItem label="请求 ID"
-              ><span>{{ visibleDetail.requestId }}</span>
-              <NButton
-                text
-                data-test="operation-log-copy-id"
-                @click="copyId(visibleDetail.requestId)"
-                >复制</NButton
-              ></NDescriptionsItem
-            >
+              ><span class="inline-flex max-w-full items-center gap-2 align-middle">
+                <span class="min-w-0 break-all">{{ visibleDetail.requestId }}</span>
+                <NButton
+                  quaternary
+                  circle
+                  type="primary"
+                  size="tiny"
+                  class="shrink-0"
+                  aria-label="复制请求 ID"
+                  title="复制请求 ID"
+                  data-test="operation-log-copy-id"
+                  @click="copyId(visibleDetail.requestId)"
+                >
+                  <span class="i-[lucide--copy]" aria-hidden="true" />
+                </NButton> </span
+            ></NDescriptionsItem>
             <NDescriptionsItem label="会话 ID"
-              ><span>{{ visibleDetail.actorSessionId }}</span>
-              <NButton
-                text
-                data-test="operation-log-copy-id"
-                @click="copyId(visibleDetail.actorSessionId)"
-                >复制</NButton
-              ></NDescriptionsItem
-            >
+              ><span class="inline-flex max-w-full items-center gap-2 align-middle">
+                <span class="min-w-0 break-all">{{ visibleDetail.actorSessionId }}</span>
+                <NButton
+                  quaternary
+                  circle
+                  type="primary"
+                  size="tiny"
+                  class="shrink-0"
+                  aria-label="复制会话 ID"
+                  title="复制会话 ID"
+                  data-test="operation-log-copy-id"
+                  @click="copyId(visibleDetail.actorSessionId)"
+                >
+                  <span class="i-[lucide--copy]" aria-hidden="true" />
+                </NButton> </span
+            ></NDescriptionsItem>
             <NDescriptionsItem label="客户端 IP"
               >{{ visibleDetail.clientIp ?? '-' }}（{{
                 clientIpSourceLabels[visibleDetail.clientIpSource]

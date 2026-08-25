@@ -28,6 +28,24 @@ type RuntimeRepository = Pick<
 
 type RuntimeScheduler = Pick<ScheduledJobScheduler, 'start' | 'stop' | 'wake'>
 
+export type ScheduledJobRuntimeCommands = {
+  listDefinitions(): readonly {
+    key: ScheduledJobTaskKey
+    name: string
+    description: string
+  }[]
+  runManual(input: {
+    taskKey: ScheduledJobTaskKey
+    actor: ScheduledJobActorSnapshot
+  }): Promise<Awaited<ReturnType<Repository['claimManual']>>>
+  requestCancellation(input: {
+    taskKey: ScheduledJobTaskKey
+    runId: string
+    actor: ScheduledJobActorSnapshot
+  }): Promise<Awaited<ReturnType<Repository['requestCancellation']>>>
+  wake(): void
+}
+
 type RuntimeOptions = {
   executorId?: string
   registry: ScheduledJobRegistry
@@ -106,6 +124,16 @@ export function createScheduledJobRuntime(options: RuntimeOptions) {
 
   return {
     executorId,
+    listDefinitions() {
+      return options.registry.keys().map((key) => {
+        const definition = options.registry.get(key)
+        return {
+          key: definition.key,
+          name: definition.name,
+          description: definition.description,
+        }
+      })
+    },
     start() {
       if (stopping) return Promise.reject(new ScheduledJobRuntimeStoppedError())
       if (startPromise) return startPromise

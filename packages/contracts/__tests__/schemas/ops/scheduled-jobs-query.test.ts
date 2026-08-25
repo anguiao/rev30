@@ -37,7 +37,7 @@ describe('scheduled job query and path schemas', () => {
     )
   })
 
-  it('accepts all fixed task keys and rejects arbitrary keys', () => {
+  it('accepts fixed and unknown non-blank task keys at the path boundary', () => {
     const taskKeys = [
       'auth-session-cleanup',
       'auth-login-attempt-cleanup',
@@ -54,16 +54,21 @@ describe('scheduled job query and path schemas', () => {
       expect(scheduledJobPathSchema.parse({ taskKey })).toEqual({ taskKey })
     }
 
+    expect(scheduledJobPathSchema.parse({ taskKey: 'arbitrary-handler' })).toEqual({
+      taskKey: 'arbitrary-handler',
+    })
+    expect(scheduledJobTaskKeySchema.safeParse('arbitrary-handler').success).toBe(false)
+    expectZodIssue(scheduledJobPathSchema.safeParse({ taskKey: ' ' }), {
+      message: '定时任务键不能为空',
+      path: ['taskKey'],
+    })
     expectZodIssue(scheduledJobTaskKeySchema.safeParse('arbitrary-handler'), {
       message: '定时任务键无效',
     })
-    expectZodIssue(
-      scheduledJobRunPathSchema.safeParse({ taskKey: 'unknown', runId: testUuid(1) }),
-      {
-        message: '定时任务键无效',
-        path: ['taskKey'],
-      },
-    )
+    expect(scheduledJobRunPathSchema.parse({ taskKey: 'unknown', runId: testUuid(1) })).toEqual({
+      taskKey: 'unknown',
+      runId: testUuid(1),
+    })
   })
 
   it('validates run ids in the run path', () => {

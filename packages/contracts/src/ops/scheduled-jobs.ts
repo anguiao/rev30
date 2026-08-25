@@ -106,6 +106,10 @@ const scheduledJobTimezoneSchema = z
   .trim()
   .min(1, '时区不能为空')
   .max(128, '时区不能超过 128 个字符')
+const scheduledJobPathTaskKeySchema = nonBlankString('定时任务键不能为空').max(
+  128,
+  '定时任务键不能超过 128 个字符',
+)
 const scheduledJobDateTimeSchema = z.iso.datetime()
 const scheduledJobNullableDateTimeSchema = scheduledJobDateTimeSchema.nullable()
 const scheduledJobIdSchema = z.uuid('任务运行 ID 无效')
@@ -132,13 +136,13 @@ const scheduledJobNullableDurationSchema = scheduledJobDurationSchema.nullable()
 
 export const scheduledJobPathSchema = z
   .object({
-    taskKey: scheduledJobTaskKeySchema,
+    taskKey: scheduledJobPathTaskKeySchema,
   })
   .strict()
 
 export const scheduledJobRunPathSchema = z
   .object({
-    taskKey: scheduledJobTaskKeySchema,
+    taskKey: scheduledJobPathTaskKeySchema,
     runId: scheduledJobIdSchema,
   })
   .strict()
@@ -532,6 +536,8 @@ export type ScheduledJobEnabledInput = z.infer<typeof scheduledJobEnabledInputSc
 export type ScheduledJobManualExecuteInput = z.infer<typeof scheduledJobManualExecuteInputSchema>
 export type ScheduledJobCancelInput = z.infer<typeof scheduledJobCancelInputSchema>
 export type ScheduledJobRunSummary = z.infer<typeof scheduledJobRunSummarySchema>
+export type ScheduledJobCurrentRunSummary = z.infer<typeof scheduledJobCurrentRunSummarySchema>
+export type ScheduledJobLatestRunSummary = z.infer<typeof scheduledJobLatestRunSummarySchema>
 export type ScheduledJob = z.infer<typeof scheduledJobSchema>
 export type ScheduledJobListItem = z.infer<typeof scheduledJobListItemSchema>
 export type ScheduledJobListResponse = z.infer<typeof scheduledJobListResponseSchema>

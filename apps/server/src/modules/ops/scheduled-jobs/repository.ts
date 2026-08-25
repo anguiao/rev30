@@ -1,6 +1,17 @@
 import type { ScheduledJobErrorCategory, ScheduledJobTaskKey } from '@rev30/contracts'
 import { getNextCronOccurrences, validateCronSchedule } from '@rev30/utils'
-import { and, asc, desc, eq, isNotNull, lte, ne, type AnyRelations } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  lte,
+  ne,
+  type AnyRelations,
+} from 'drizzle-orm'
 import type { PgAsyncDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core'
 import type { Db, DbExecutor, DbReader } from '../../../db'
 import { opsJobRuns, opsScheduledJobs } from '../../../db/schema'
@@ -68,14 +79,14 @@ export type ScheduledJobFinalizeCandidate =
 
 export class ScheduledJobStateConflictError extends Error {
   constructor() {
-    super('Scheduled job state conflicts with the requested transition')
+    super('定时任务运行状态冲突')
     this.name = 'ScheduledJobStateConflictError'
   }
 }
 
 export class ScheduledJobNotFoundError extends Error {
   constructor() {
-    super('Scheduled job or run was not found')
+    super('定时任务或运行不存在')
     this.name = 'ScheduledJobNotFoundError'
   }
 }
@@ -183,6 +194,105 @@ export function createScheduledJobRepository(database: Db) {
         .orderBy(asc(opsScheduledJobs.nextRunAt), asc(opsScheduledJobs.taskKey))
         .limit(1)
       return plan?.nextRunAt ?? null
+    },
+
+    async list() {
+      const plans = await database
+        .select()
+        .from(opsScheduledJobs)
+        .orderBy(asc(opsScheduledJobs.taskKey))
+      const taskKeys = plans.map((plan) => plan.taskKey)
+      const currentRuns = taskKeys.length
+        ? await database
+            .select()
+            .from(opsJobRuns)
+            .where(and(inArray(opsJobRuns.taskKey, taskKeys), eq(opsJobRuns.status, 'running')))
+            .orderBy(desc(opsJobRuns.createdAt), desc(opsJobRuns.id))
+        : []
+      const lastRuns = taskKeys.length
+        ? await database
+            .selectDistinctOn([opsJobRuns.taskKey])
+            .from(opsJobRuns)
+            .where(and(inArray(opsJobRuns.taskKey, taskKeys), ne(opsJobRuns.status, 'running')))
+            .orderBy(asc(opsJobRuns.taskKey), desc(opsJobRuns.createdAt), desc(opsJobRuns.id))
+        : []
+
+      return { plans, currentRuns, lastRuns }
+    },
+
+    async listRuns(input: { taskKey: string; page: number; pageSize: number }) {
+      const where = eq(opsJobRuns.taskKey, input.taskKey)
+      const [list, totalRows] = await Promise.all([
+        database
+          .select()
+          .from(opsJobRuns)
+          .where(where)
+          .orderBy(desc(opsJobRuns.createdAt), desc(opsJobRuns.id))
+          .limit(input.pageSize)
+          .offset((input.page - 1) * input.pageSize),
+        database.select({ total: count() }).from(opsJobRuns).where(where),
+      ])
+
+      return {
+        list,
+        total: totalRows[0]?.total ?? 0,
+        page: input.page,
+        pageSize: input.pageSize,
+      }
+    },
+
+    async findRun(taskKey: string, runId: string) {
+      const [run] = await database
+        .select()
+        .from(opsJobRuns)
+        .where(and(eq(opsJobRuns.taskKey, taskKey), eq(opsJobRuns.id, runId)))
+        .limit(1)
+      return run
+    },
+
+    async updatePlan(input: {
+      taskKey: string
+      cronExpression: string
+      timezone: string
+      now: Date
+    }) {
+      const schedule = validateCronSchedule({
+        expression: input.cronExpression,
+        timezone: input.timezone,
+      })
+
+      return await database.transaction(async (tx) => {
+        const plan = await lockPlan(tx, input.taskKey)
+        if (!plan) throw new ScheduledJobNotFoundError()
+        const nextRunAt = plan.enabled
+          ? getNextCronOccurrences({ ...schedule, from: input.now, count: 1 })[0]!
+          : null
+        const [updated] = await tx
+          .update(opsScheduledJobs)
+          .set({
+            cronExpression: schedule.expression,
+            timezone: schedule.timezone,
+            nextRunAt,
+            updatedAt: input.now,
+          })
+          .where(eq(opsScheduledJobs.taskKey, input.taskKey))
+          .returning()
+        return updated!
+      })
+    },
+
+    async updateEnabled(input: { taskKey: string; enabled: boolean; now: Date }) {
+      return await database.transaction(async (tx) => {
+        const plan = await lockPlan(tx, input.taskKey)
+        if (!plan) throw new ScheduledJobNotFoundError()
+        const nextRunAt = input.enabled ? nextOccurrence(plan, input.now) : null
+        const [updated] = await tx
+          .update(opsScheduledJobs)
+          .set({ enabled: input.enabled, nextRunAt, updatedAt: input.now })
+          .where(eq(opsScheduledJobs.taskKey, input.taskKey))
+          .returning()
+        return updated!
+      })
     },
 
     async initialize(input: { registry: ScheduledJobRegistry; startupAt: Date }) {

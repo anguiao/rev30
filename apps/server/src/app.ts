@@ -18,6 +18,7 @@ import { healthRoutes } from './modules/health/routes'
 import { createIconRoutes } from './modules/icons/routes'
 import { createIconSearchRoutes } from './modules/icons/search/routes'
 import { createOpsRoutes } from './modules/ops/routes'
+import type { ScheduledJobRuntimeCommands } from './modules/ops/scheduled-jobs/runtime'
 import { createSystemRoutes } from './modules/system/routes'
 import { logger } from './runtime/logger'
 import type { OperationLogEventReceiver } from './runtime/operation-log'
@@ -26,10 +27,11 @@ import { readTrustedProxyPolicy, type TrustedProxyPolicy } from './runtime/trust
 export type CreateAppOptions = {
   logger?: Logger
   operationLogReceiver: OperationLogEventReceiver
+  scheduledJobs: ScheduledJobRuntimeCommands
   trustedProxyPolicy?: TrustedProxyPolicy
 }
 
-export function createApiRoutes(database: Db) {
+export function createApiRoutes(database: Db, scheduledJobs: ScheduledJobRuntimeCommands) {
   const apiJsonBodyLimit = createJsonBodyLimit(5 * 1024 * 1024)
   const authMiddleware = createAuthMiddleware(database)
 
@@ -40,7 +42,7 @@ export function createApiRoutes(database: Db) {
     .route('/icons/search', createIconSearchRoutes(database, authMiddleware))
     .route('/icons', createIconRoutes(database))
     .route('/attachments', createAttachmentRoutes(database, authMiddleware))
-    .route('/ops', createOpsRoutes(database, authMiddleware))
+    .route('/ops', createOpsRoutes(database, authMiddleware, scheduledJobs))
     .route('/system', createSystemRoutes(database, authMiddleware))
     .route('/content', createContentRoutes(database, authMiddleware))
     .route('/demos', createDemoRoutes(authMiddleware))
@@ -71,7 +73,7 @@ export function createApp(database: Db, options: CreateAppOptions) {
       }),
     )
     .onError(rootErrorHandler)
-    .route('/api', createApiRoutes(database))
+    .route('/api', createApiRoutes(database, options.scheduledJobs))
 }
 
 export type AppType = ReturnType<typeof createApiRoutes>

@@ -16,3 +16,10 @@ export class ScheduledJobExecutionError extends Error {
     this.name = 'ScheduledJobExecutionError'
   }
 }
+
+export class ScheduledJobInvalidPlanError extends Error {
+  constructor() {
+    super('Cron 表达式或时区无效')
+    this.name = 'ScheduledJobInvalidPlanError'
+  }
+}

@@ -45,6 +45,11 @@ export const operationLogActionSchema = z.enum(
     'content:attachment:upload',
     'content:attachment:delete',
     'ops:online-session:revoke',
+    'ops:scheduled-job:update',
+    'ops:scheduled-job:enable',
+    'ops:scheduled-job:disable',
+    'ops:scheduled-job:execute',
+    'ops:scheduled-job:cancel',
   ],
   '操作日志动作无效',
 )

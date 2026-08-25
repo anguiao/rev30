@@ -36,6 +36,7 @@ const operationLog = createOperationLogRuntime(db, logger)
 const app = createApp(db, {
   logger,
   operationLogReceiver: operationLog.receiver,
+  scheduledJobs,
   trustedProxyPolicy,
 })
 

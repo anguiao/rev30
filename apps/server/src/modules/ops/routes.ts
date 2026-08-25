@@ -4,11 +4,18 @@ import type { AuthEnv } from '../../middleware/auth'
 import { createLoginLogRoutes } from './login-logs/routes'
 import { createOnlineSessionRoutes } from './online-sessions/routes'
 import { createOperationLogRoutes } from './operation-logs/routes'
+import type { ScheduledJobRuntimeCommands } from './scheduled-jobs/runtime'
+import { createScheduledJobRoutes } from './scheduled-jobs/routes'
 
-export function createOpsRoutes(database: Db, authMiddleware: MiddlewareHandler<AuthEnv>) {
+export function createOpsRoutes(
+  database: Db,
+  authMiddleware: MiddlewareHandler<AuthEnv>,
+  scheduledJobs: ScheduledJobRuntimeCommands,
+) {
   return new Hono<AuthEnv>()
     .use('*', authMiddleware)
     .route('/login-logs', createLoginLogRoutes(database))
     .route('/sessions', createOnlineSessionRoutes(database))
     .route('/operation-logs', createOperationLogRoutes(database))
+    .route('/scheduled-jobs', createScheduledJobRoutes(database, scheduledJobs))
 }

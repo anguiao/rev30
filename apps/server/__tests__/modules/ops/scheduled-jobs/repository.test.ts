@@ -373,6 +373,147 @@ describe('scheduled job repository claims', () => {
   )
 })
 
+describe('scheduled job API repository operations', () => {
+  dbTest(
+    'lists plans with current and terminal runs and updates plan semantics',
+    async ({ db }) => {
+      await setPlan(db, firstTask, {
+        cronExpression: '0 * * * *',
+        timezone: 'UTC',
+        enabled: true,
+        nextRunAt: dueAt,
+      })
+      const active = await occupy(
+        db,
+        runningRun(firstTask, {
+          id: randomUUID(),
+          createdAt: new Date('2026-08-24T00:00:00.000Z'),
+        }),
+      )
+      await db.insert(opsJobRuns).values({
+        id: randomUUID(),
+        taskKey: firstTask,
+        triggerSource: 'scheduled',
+        status: 'success',
+        scheduledFor: new Date('2026-08-23T00:00:00.000Z'),
+        executorId,
+        startedAt: new Date('2026-08-23T00:00:00.000Z'),
+        finishedAt: new Date('2026-08-23T00:00:01.000Z'),
+        durationMs: 1000,
+        deletedCount: 1,
+        failedCount: 0,
+        createdAt: new Date('2026-08-23T00:00:00.000Z'),
+        updatedAt: new Date('2026-08-23T00:00:01.000Z'),
+      })
+      await db.insert(opsJobRuns).values({
+        id: 'ffffffff-ffff-4fff-bfff-ffffffffffff',
+        taskKey: firstTask,
+        triggerSource: 'scheduled',
+        status: 'failure',
+        scheduledFor: new Date('2026-08-24T00:00:00.000Z'),
+        executorId,
+        startedAt: new Date('2026-08-24T00:00:01.000Z'),
+        finishedAt: new Date('2026-08-24T00:00:03.000Z'),
+        durationMs: 2000,
+        failedCount: 1,
+        errorCategory: 'internal',
+        errorSummary: 'Safe failure',
+        createdAt: new Date('2026-08-24T00:00:01.000Z'),
+        updatedAt: new Date('2026-08-24T00:00:03.000Z'),
+      })
+      const repository = createScheduledJobRepository(db)
+
+      const listed = await repository.list()
+      expect(listed.plans).toHaveLength(8)
+      expect(listed.currentRuns).toHaveLength(1)
+      expect(listed.currentRuns[0]).toMatchObject({ taskKey: firstTask, status: 'running' })
+      expect(listed.lastRuns).toHaveLength(1)
+      expect(listed.lastRuns[0]).toMatchObject({
+        taskKey: firstTask,
+        id: 'ffffffff-ffff-4fff-bfff-ffffffffffff',
+        status: 'failure',
+      })
+      expect(active.id).toBeDefined()
+
+      const updated = await repository.updatePlan({
+        taskKey: firstTask,
+        cronExpression: ' 15 * * * * ',
+        timezone: ' UTC ',
+        now: claimAt,
+      })
+      expect(updated).toMatchObject({
+        cronExpression: '15 * * * *',
+        timezone: 'UTC',
+        enabled: true,
+        activeRunId: active.id,
+        nextRunAt: new Date('2026-08-25T12:15:00.000Z'),
+      })
+
+      await setPlan(db, firstTask, { enabled: false, nextRunAt: null })
+      const disabledPlan = await repository.updatePlan({
+        taskKey: firstTask,
+        cronExpression: '30 * * * *',
+        timezone: 'UTC',
+        now: claimAt,
+      })
+      expect(disabledPlan).toMatchObject({
+        enabled: false,
+        nextRunAt: null,
+        activeRunId: active.id,
+      })
+
+      const disabled = await repository.updateEnabled({
+        taskKey: firstTask,
+        enabled: false,
+        now: claimAt,
+      })
+      expect(disabled).toMatchObject({
+        enabled: false,
+        nextRunAt: null,
+        activeRunId: active.id,
+      })
+
+      const enabled = await repository.updateEnabled({
+        taskKey: firstTask,
+        enabled: true,
+        now: claimAt,
+      })
+      expect(enabled.enabled).toBe(true)
+      expect(enabled.activeRunId).toBe(active.id)
+      expect(enabled.nextRunAt?.getTime()).toBeGreaterThan(claimAt.getTime())
+    },
+  )
+
+  dbTest('paginates runs by createdAt and id and matches detail task and run', async ({ db }) => {
+    const first = '10000000-0000-4000-8000-000000000001'
+    const second = 'ffffffff-ffff-4fff-bfff-ffffffffffff'
+    const sameTime = new Date('2026-08-25T00:00:00.000Z')
+    for (const [id, taskKey] of [
+      [first, firstTask],
+      [second, firstTask],
+    ] as const) {
+      await db.insert(opsJobRuns).values({
+        id,
+        taskKey,
+        triggerSource: 'scheduled',
+        status: 'skipped',
+        skipReason: 'overlap',
+        scheduledFor: sameTime,
+        finishedAt: sameTime,
+        createdAt: sameTime,
+        updatedAt: sameTime,
+      })
+    }
+    const repository = createScheduledJobRepository(db)
+
+    const page = await repository.listRuns({ taskKey: firstTask, page: 1, pageSize: 1 })
+    expect(page).toMatchObject({ total: 2, page: 1, pageSize: 1 })
+    expect(page.list[0]?.id).toBe(second)
+    await expect(repository.findRun(firstTask, second)).resolves.toMatchObject({ id: second })
+    await expect(repository.findRun(secondTask, second)).resolves.toBeUndefined()
+  })
+})
+
 describe('scheduled job startup recovery', () => {
   dbTest(
     'rejects registry/plan mismatches and invalid Cron before mutating old running rows',

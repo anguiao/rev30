@@ -40,6 +40,15 @@ describe('operation log schemas', () => {
     expect(operationLogActionSchema.parse('ops:online-session:revoke')).toBe(
       'ops:online-session:revoke',
     )
+    for (const action of [
+      'ops:scheduled-job:update',
+      'ops:scheduled-job:enable',
+      'ops:scheduled-job:disable',
+      'ops:scheduled-job:execute',
+      'ops:scheduled-job:cancel',
+    ] as const) {
+      expect(operationLogActionSchema.parse(action)).toBe(action)
+    }
     expect(operationLogResultSchema.parse('success')).toBe('success')
     expect(operationLogResultSchema.parse('failure')).toBe('failure')
 

@@ -1,8 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import type { ScheduledJobTaskKey } from '@rev30/contracts'
 import type { Logger } from 'pino'
+import type { Db } from '../../../db'
+import type { AttachmentStorage } from '../../attachments/storage'
 import { createScheduledJobRepository, type ScheduledJobActorSnapshot } from './repository'
+import { createProductionScheduledJobRegistry } from './production'
 import type { ScheduledJobRegistry } from './registry'
+import type { ScheduledJobRetentionConfig } from './config'
 import { createScheduledJobRunner, type ScheduledJobRunner } from './runner'
 import { createScheduledJobScheduler, type ScheduledJobScheduler } from './scheduler'
 
@@ -37,6 +41,15 @@ type RuntimeOptions = {
     logger: Logger
     now: () => Date
   }) => RuntimeScheduler
+}
+
+export type ProductionScheduledJobRuntimeOptions = Omit<
+  RuntimeOptions,
+  'registry' | 'repository'
+> & {
+  database: Db
+  storage: AttachmentStorage
+  retention: ScheduledJobRetentionConfig
 }
 
 export class ScheduledJobRuntimeStoppedError extends Error {
@@ -202,6 +215,21 @@ export function createScheduledJobRuntime(options: RuntimeOptions) {
       return stopPromise
     },
   }
+}
+
+export function createProductionScheduledJobRuntime(options: ProductionScheduledJobRuntimeOptions) {
+  const repository = createScheduledJobRepository(options.database)
+  const registry = createProductionScheduledJobRegistry({
+    database: options.database,
+    storage: options.storage,
+    retention: options.retention,
+  })
+
+  return createScheduledJobRuntime({
+    ...options,
+    registry,
+    repository,
+  })
 }
 
 export type ScheduledJobRuntime = ReturnType<typeof createScheduledJobRuntime>

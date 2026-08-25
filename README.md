@@ -52,9 +52,9 @@ pnpm dev
 
 操作日志页面位于 `/ops/operation-logs`，支持筛选列表和按需加载详情，记录显式登记的后台业务写操作与指定业务导出，不记录登录、个人操作或维护任务。列表和详情都要求精确权限 `ops:operation-log:list`；迁移创建对应菜单与动作资源，但不自动授权普通角色。操作日志事件通过有界异步 FIFO 以 fail-open 方式写入，不保证零丢失或与业务事务一致。
 
-认证会话和登录日志清理默认每 6 小时运行。自然到期会话在清理时删除，撤销会话超过 7 天后删除，登录日志达到 90 天时删除；对应设置为 `AUTH_SESSION_CLEANUP_INTERVAL_MS`、`AUTH_REVOKED_SESSION_RETENTION_MS`、`OPS_LOGIN_LOG_CLEANUP_INTERVAL_MS` 和 `OPS_LOGIN_LOG_RETENTION_MS`，清理 interval 设为 `0` 可关闭调度。
+认证会话、登录尝试桶、登录日志、操作日志和附件清理由数据库持久化的定时任务计划管理，不再使用进程内 cleanup interval。自然到期会话在清理时删除，撤销会话超过 7 天后删除，登录日志保留 90 天；业务保留期仍分别由 `AUTH_REVOKED_SESSION_RETENTION_MS`、`AUTH_LOGIN_ATTEMPT_RETENTION_MS`、`OPS_LOGIN_LOG_RETENTION_MS`、`OPS_OPERATION_LOG_RETENTION_MS` 和 `ATTACHMENT_CLEANUP_RETENTION_MS` 控制，设为 `0` 的语义仅适用于前四项。
 
-操作日志默认每 6 小时清理并保留 180 天，对应设置为 `OPS_OPERATION_LOG_CLEANUP_INTERVAL_MS` 和 `OPS_OPERATION_LOG_RETENTION_MS`；cleanup interval 设为 `0` 可关闭调度。
+任务运行日志默认保留 90 天，由 `OPS_JOB_RUN_RETENTION_MS` 控制。定时任务计划、启停和执行由运维定时任务功能管理。
 
 本次数据库迁移会删除旧的 `auth_refresh_tokens`，不把旧 refresh 记录转换为会话。旧 access、refresh 和附件读取令牌也没有 `sid`，部署后会按无效令牌处理；已有用户需要重新登录。
 
@@ -62,7 +62,7 @@ pnpm dev
 - 附件读取支持两种策略：普通附件默认使用短期签名内容 URL；头像等资源可使用稳定的 `/api/attachments/:id/content` URL。
 - 稳定内容 URL 仍要求登录态，浏览器通过 `attachment_token` HttpOnly cookie 完成附件内容读取，不暴露 token 给前端 JS。
 - `usage` 是任意非空业务记录字符串，前端不维护全局 usage 常量、选项列表或文案映射。
-- 业务可为附件记录引用；常驻维护任务默认每 6 小时清理过期上传会话、保留超过 7 天的孤儿上传文件（包括软删除后物理删除失败的文件），以及 `cleanupPolicy=unreferenced` 且持续无引用超过 7 天的附件。
+- 业务可为附件记录引用；附件清理由持久化定时任务计划管理，初始计划错峰并约每 6 小时运行一次，负责清理过期上传会话、保留超过 7 天的孤儿上传文件（包括软删除后物理删除失败的文件），以及 `cleanupPolicy=unreferenced` 且持续无引用超过 7 天的附件。
 
 临时 URL 签名密钥由 `ATTACHMENT_SIGNING_SECRET` 配置，内容访问 URL 默认有效期由 `ATTACHMENT_CONTENT_URL_TTL_SECONDS` 控制，上传会话默认有效期由 `ATTACHMENT_UPLOAD_SESSION_TTL_SECONDS` 控制。
 

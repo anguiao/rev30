@@ -1,11 +1,10 @@
-import type {
-  ScheduledJobErrorCategory,
-  ScheduledJobTaskKey,
-  ScheduledJobTriggerSource,
-} from '@rev30/contracts'
+import type { ScheduledJobTaskKey, ScheduledJobTriggerSource } from '@rev30/contracts'
 import type { Logger } from 'pino'
 import type { ScheduledJobFinalizeCandidate, createScheduledJobRepository } from './repository'
 import { scheduledJobResultSchema, type ScheduledJobRegistry } from './registry'
+import { ScheduledJobExecutionError } from './errors'
+
+export { ScheduledJobExecutionError } from './errors'
 
 const FINALIZATION_RETRY_MS = 60_000
 
@@ -14,15 +13,6 @@ const safeErrorSummary = {
   storage: 'Scheduled job storage operation failed',
   internal: 'Scheduled job execution failed',
 } as const
-
-type ExecutionErrorCategory = Exclude<ScheduledJobErrorCategory, 'partial_failure'>
-
-export class ScheduledJobExecutionError extends Error {
-  constructor(readonly category: ExecutionErrorCategory) {
-    super(safeErrorSummary[category])
-    this.name = 'ScheduledJobExecutionError'
-  }
-}
 
 type RunnerRepository = Pick<ReturnType<typeof createScheduledJobRepository>, 'finalizeRun'>
 
@@ -137,7 +127,12 @@ export function createScheduledJobRunner(options: RunnerOptions) {
 
     if (candidate.status === 'failure') {
       const fields = executionError
-        ? { err: executionError }
+        ? {
+            err:
+              executionError instanceof ScheduledJobExecutionError
+                ? (executionError.cause ?? executionError)
+                : executionError,
+          }
         : {
             errorCategory: candidate.errorCategory,
             deletedCount: candidate.deletedCount,

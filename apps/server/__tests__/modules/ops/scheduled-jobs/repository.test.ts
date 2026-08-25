@@ -131,7 +131,12 @@ function createClaimLockTrackingDb(events: string[]) {
       return {
         values() {
           events.push('insert:run')
-          return Promise.resolve()
+          return {
+            returning() {
+              events.push('returning:run')
+              return Promise.resolve([{ id: '00000000-0000-7000-8000-000000000001' }])
+            },
+          }
         },
       }
     },
@@ -167,13 +172,13 @@ describe('scheduled job repository claims', () => {
       taskKey: firstTask,
       now: claimAt,
       executorId,
-      runId: randomUUID(),
     })
     expect(scheduledEvents).toEqual([
       'transaction',
       'select:plan',
       'lock:update',
       'insert:run',
+      'returning:run',
       'update:plan',
     ])
 
@@ -183,10 +188,15 @@ describe('scheduled job repository claims', () => {
       taskKey: firstTask,
       now: claimAt,
       executorId,
-      runId: randomUUID(),
       actor,
     })
-    expect(manualEvents).toEqual(['transaction', 'select:plan', 'lock:update', 'insert:run'])
+    expect(manualEvents).toEqual([
+      'transaction',
+      'select:plan',
+      'lock:update',
+      'insert:run',
+      'returning:run',
+    ])
   })
 
   dbTest(
@@ -199,21 +209,23 @@ describe('scheduled job repository claims', () => {
         taskKey: firstTask,
         now: claimAt,
         executorId,
-        runId: randomUUID(),
       })
       const manual = await repository.claimManual({
         taskKey: firstTask,
         now: claimAt,
         executorId: secondExecutorId,
-        runId: randomUUID(),
         actor,
       })
 
       expect(scheduled.kind).toBe('running')
       if (scheduled.kind !== 'running') throw new Error('Expected a running scheduled claim')
       expect(manual).toMatchObject({ kind: 'overlap', activeRunId: scheduled.runId })
+      if (manual.kind !== 'overlap') throw new Error('Expected a manual overlap claim')
+      expect(scheduled.runId[14]).toBe('7')
+      expect(manual.runId[14]).toBe('7')
       const rows = await runRows(db)
       expect(rows).toHaveLength(2)
+      expect(rows.every(({ id }) => id[14] === '7')).toBe(true)
       expect(rows.find(({ triggerSource }) => triggerSource === 'scheduled')).toMatchObject({
         status: 'running',
         skipReason: null,
@@ -246,7 +258,6 @@ describe('scheduled job repository claims', () => {
           taskKey: firstTask,
           now: claimAt,
           executorId,
-          runId: randomUUID(),
         }),
       ).resolves.toMatchObject({ kind: 'running', scheduledFor: dueAt })
       const [plan] = await db
@@ -260,7 +271,6 @@ describe('scheduled job repository claims', () => {
           taskKey: firstTask,
           now: claimAt,
           executorId,
-          runId: randomUUID(),
         }),
       ).resolves.toEqual({ kind: 'stale' })
       await setPlan(db, secondTask, { enabled: false, nextRunAt: null })
@@ -269,7 +279,6 @@ describe('scheduled job repository claims', () => {
           taskKey: secondTask,
           now: claimAt,
           executorId,
-          runId: randomUUID(),
         }),
       ).resolves.toEqual({ kind: 'stale' })
     },
@@ -287,14 +296,18 @@ describe('scheduled job repository claims', () => {
       })
       const repository = createScheduledJobRepository(db)
 
-      await expect(
-        repository.claimScheduled({
-          taskKey: firstTask,
-          now: claimAt,
-          executorId,
-          runId: randomUUID(),
-        }),
-      ).resolves.toMatchObject({ kind: 'overlap', activeRunId: active.id, scheduledFor: dueAt })
+      const overlap = await repository.claimScheduled({
+        taskKey: firstTask,
+        now: claimAt,
+        executorId,
+      })
+      expect(overlap).toMatchObject({
+        kind: 'overlap',
+        activeRunId: active.id,
+        scheduledFor: dueAt,
+      })
+      if (overlap.kind !== 'overlap') throw new Error('Expected a scheduled overlap claim')
+      expect(overlap.runId[14]).toBe('7')
       const [plan] = await db
         .select()
         .from(opsScheduledJobs)
@@ -312,15 +325,15 @@ describe('scheduled job repository claims', () => {
       await setPlan(db, firstTask, { enabled: false, nextRunAt: null })
       const repository = createScheduledJobRepository(db)
 
-      await expect(
-        repository.claimManual({
-          taskKey: firstTask,
-          now: claimAt,
-          executorId,
-          runId: randomUUID(),
-          actor,
-        }),
-      ).resolves.toMatchObject({ kind: 'running' })
+      const manual = await repository.claimManual({
+        taskKey: firstTask,
+        now: claimAt,
+        executorId,
+        actor,
+      })
+      expect(manual).toMatchObject({ kind: 'running' })
+      if (manual.kind !== 'running') throw new Error('Expected a running manual claim')
+      expect(manual.runId[14]).toBe('7')
       const [plan] = await db
         .select()
         .from(opsScheduledJobs)
@@ -331,7 +344,6 @@ describe('scheduled job repository claims', () => {
           taskKey: 'missing-task',
           now: claimAt,
           executorId,
-          runId: randomUUID(),
           actor,
         }),
       ).resolves.toEqual({ kind: 'not-found' })
@@ -491,10 +503,10 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
         candidate: candidate(),
         now: claimAt,
         executorId,
-        runId: randomUUID(),
       })
 
       expect(result).toMatchObject({ kind: 'running', scheduledFor: null })
+      expect(result.runId[14]).toBe('7')
       const [run] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, result.runId!))
       expect(run).toMatchObject({
         triggerSource: 'recovery',
@@ -515,14 +527,17 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
       await setPlan(db, firstTask, { enabled: true, nextRunAt: futureAt })
       const active = await occupy(db, runningRun(firstTask))
       const repository = createScheduledJobRepository(db)
-      await expect(
-        repository.claimRecovery({
-          candidate: candidate({ scheduledFor: dueAt }),
-          now: claimAt,
-          executorId,
-          runId: randomUUID(),
-        }),
-      ).resolves.toMatchObject({ kind: 'overlap', activeRunId: active.id, scheduledFor: dueAt })
+      const overlap = await repository.claimRecovery({
+        candidate: candidate({ scheduledFor: dueAt }),
+        now: claimAt,
+        executorId,
+      })
+      expect(overlap).toMatchObject({
+        kind: 'overlap',
+        activeRunId: active.id,
+        scheduledFor: dueAt,
+      })
+      expect(overlap.runId[14]).toBe('7')
       let [plan] = await db
         .select()
         .from(opsScheduledJobs)
@@ -535,7 +550,6 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
           candidate: candidate({ taskKey: secondTask }),
           now: claimAt,
           executorId,
-          runId: randomUUID(),
         }),
       ).resolves.toMatchObject({ kind: 'running' })
       ;[plan] = await db

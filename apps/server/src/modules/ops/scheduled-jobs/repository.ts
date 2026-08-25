@@ -1,7 +1,8 @@
 import type { ScheduledJobErrorCategory, ScheduledJobTaskKey } from '@rev30/contracts'
 import { getNextCronOccurrences, validateCronSchedule } from '@rev30/utils'
-import { and, asc, desc, eq, ne } from 'drizzle-orm'
-import type { Db, DbReader } from '../../../db'
+import { and, asc, desc, eq, ne, type AnyRelations } from 'drizzle-orm'
+import type { PgAsyncDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core'
+import type { Db, DbExecutor, DbReader } from '../../../db'
 import { opsJobRuns, opsScheduledJobs } from '../../../db/schema'
 import type { ScheduledJobRegistry } from './registry'
 
@@ -110,6 +111,15 @@ function sameDate(left: Date | null, right: Date | null) {
   return left?.getTime() === right?.getTime()
 }
 
+async function insertRun(executor: DbExecutor, values: typeof opsJobRuns.$inferInsert) {
+  const insertExecutor = executor as unknown as PgAsyncDatabase<PgQueryResultHKT, AnyRelations>
+  const [inserted] = await insertExecutor
+    .insert(opsJobRuns)
+    .values(values)
+    .returning({ id: opsJobRuns.id })
+  return inserted!.id
+}
+
 export function createScheduledJobRepository(database: Db) {
   return {
     async initialize(input: { registry: ScheduledJobRegistry; startupAt: Date }) {
@@ -210,7 +220,6 @@ export function createScheduledJobRepository(database: Db) {
       taskKey: ScheduledJobTaskKey
       now: Date
       executorId: string
-      runId: string
     }): Promise<ScheduledJobClaimResult> {
       return await database.transaction(async (tx) => {
         const plan = await lockPlan(tx, input.taskKey)
@@ -226,8 +235,7 @@ export function createScheduledJobRepository(database: Db) {
         const scheduledFor = plan.nextRunAt
         const nextRunAt = nextOccurrence(plan, input.now)
         if (plan.activeRunId !== null) {
-          await tx.insert(opsJobRuns).values({
-            id: input.runId,
+          const runId = await insertRun(tx, {
             taskKey: input.taskKey,
             triggerSource: 'scheduled',
             status: 'skipped',
@@ -243,14 +251,13 @@ export function createScheduledJobRepository(database: Db) {
             .where(eq(opsScheduledJobs.taskKey, input.taskKey))
           return {
             kind: 'overlap',
-            runId: input.runId,
+            runId,
             activeRunId: plan.activeRunId,
             scheduledFor,
           }
         }
 
-        await tx.insert(opsJobRuns).values({
-          id: input.runId,
+        const runId = await insertRun(tx, {
           taskKey: input.taskKey,
           triggerSource: 'scheduled',
           status: 'running',
@@ -262,9 +269,9 @@ export function createScheduledJobRepository(database: Db) {
         })
         await tx
           .update(opsScheduledJobs)
-          .set({ activeRunId: input.runId, nextRunAt, updatedAt: input.now })
+          .set({ activeRunId: runId, nextRunAt, updatedAt: input.now })
           .where(eq(opsScheduledJobs.taskKey, input.taskKey))
-        return { kind: 'running', runId: input.runId, scheduledFor }
+        return { kind: 'running', runId, scheduledFor }
       })
     },
 
@@ -272,7 +279,6 @@ export function createScheduledJobRepository(database: Db) {
       taskKey: string
       now: Date
       executorId: string
-      runId: string
       actor: ScheduledJobActorSnapshot
     }): Promise<ScheduledJobManualClaimResult> {
       return await database.transaction(async (tx) => {
@@ -280,8 +286,7 @@ export function createScheduledJobRepository(database: Db) {
         if (!plan) return { kind: 'not-found' }
 
         if (plan.activeRunId !== null) {
-          await tx.insert(opsJobRuns).values({
-            id: input.runId,
+          const runId = await insertRun(tx, {
             taskKey: plan.taskKey,
             triggerSource: 'manual',
             status: 'skipped',
@@ -293,14 +298,13 @@ export function createScheduledJobRepository(database: Db) {
           })
           return {
             kind: 'overlap',
-            runId: input.runId,
+            runId,
             activeRunId: plan.activeRunId,
             scheduledFor: null,
           }
         }
 
-        await tx.insert(opsJobRuns).values({
-          id: input.runId,
+        const runId = await insertRun(tx, {
           taskKey: plan.taskKey,
           triggerSource: 'manual',
           status: 'running',
@@ -312,9 +316,9 @@ export function createScheduledJobRepository(database: Db) {
         })
         await tx
           .update(opsScheduledJobs)
-          .set({ activeRunId: input.runId, updatedAt: input.now })
+          .set({ activeRunId: runId, updatedAt: input.now })
           .where(eq(opsScheduledJobs.taskKey, plan.taskKey))
-        return { kind: 'running', runId: input.runId, scheduledFor: null }
+        return { kind: 'running', runId, scheduledFor: null }
       })
     },
 
@@ -322,7 +326,6 @@ export function createScheduledJobRepository(database: Db) {
       candidate: ScheduledJobRecoveryCandidate
       now: Date
       executorId: string
-      runId: string
     }): Promise<Exclude<ScheduledJobClaimResult, { kind: 'stale' }>> {
       return await database.transaction(async (tx) => {
         const plan = await lockPlan(tx, input.candidate.taskKey)
@@ -333,8 +336,7 @@ export function createScheduledJobRepository(database: Db) {
             : plan.nextRunAt
 
         if (plan.activeRunId !== null) {
-          await tx.insert(opsJobRuns).values({
-            id: input.runId,
+          const runId = await insertRun(tx, {
             taskKey: input.candidate.taskKey,
             triggerSource: 'recovery',
             status: 'skipped',
@@ -352,14 +354,13 @@ export function createScheduledJobRepository(database: Db) {
           }
           return {
             kind: 'overlap',
-            runId: input.runId,
+            runId,
             activeRunId: plan.activeRunId,
             scheduledFor: input.candidate.scheduledFor,
           }
         }
 
-        await tx.insert(opsJobRuns).values({
-          id: input.runId,
+        const runId = await insertRun(tx, {
           taskKey: input.candidate.taskKey,
           triggerSource: 'recovery',
           status: 'running',
@@ -371,9 +372,9 @@ export function createScheduledJobRepository(database: Db) {
         })
         await tx
           .update(opsScheduledJobs)
-          .set({ activeRunId: input.runId, nextRunAt, updatedAt: input.now })
+          .set({ activeRunId: runId, nextRunAt, updatedAt: input.now })
           .where(eq(opsScheduledJobs.taskKey, plan.taskKey))
-        return { kind: 'running', runId: input.runId, scheduledFor: input.candidate.scheduledFor }
+        return { kind: 'running', runId, scheduledFor: input.candidate.scheduledFor }
       })
     },
 

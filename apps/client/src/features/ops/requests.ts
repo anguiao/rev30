@@ -10,9 +10,30 @@ import {
   type OperationLogListQuery,
   type OperationLogListResponse,
   operationLogListResponseSchema,
+  type ScheduledJobCancelResponse,
+  type ScheduledJobEnabledInput,
+  type ScheduledJobListResponse,
+  type ScheduledJobManualExecuteResult,
+  type ScheduledJobPlanUpdateInput,
+  type ScheduledJobRunDetail,
+  type ScheduledJobRunListResponse,
+  type ScheduledJobRunsListQuery,
+  scheduledJobCancelResponseSchema,
+  scheduledJobEnabledResponseSchema,
+  scheduledJobListResponseSchema,
+  scheduledJobManualExecuteResultSchema,
+  scheduledJobPlanUpdateInputSchema,
+  scheduledJobRunDetailSchema,
+  scheduledJobRunListResponseSchema,
 } from '@rev30/contracts'
 import { api } from '../../api'
-import { assertApiResponseOk, normalizeRequestQuery, parseApiResponse } from '../../utils/request'
+import {
+  ApiRequestError,
+  assertApiResponseOk,
+  normalizeRequestQuery,
+  parseApiError,
+  parseApiResponse,
+} from '../../utils/request'
 
 export async function listLoginLogs(query: LoginLogListQuery): Promise<LoginLogListResponse> {
   return parseApiResponse(
@@ -47,5 +68,107 @@ export async function getOperationLog(id: string): Promise<OperationLogDetail> {
   return parseApiResponse(
     await api.ops['operation-logs'][':id'].$get({ param: { id } }),
     operationLogDetailSchema,
+  )
+}
+
+export async function listScheduledJobs(): Promise<ScheduledJobListResponse> {
+  return parseApiResponse(await api.ops['scheduled-jobs'].$get(), scheduledJobListResponseSchema)
+}
+
+export async function updateScheduledJob(
+  taskKey: string,
+  input: ScheduledJobPlanUpdateInput,
+): Promise<ScheduledJobListResponse[number]> {
+  return parseApiResponse(
+    await api.ops['scheduled-jobs'][':taskKey'].$put({
+      param: { taskKey },
+      json: scheduledJobPlanUpdateInputSchema.parse(input),
+    }),
+    scheduledJobListResponseSchema.element,
+  )
+}
+
+export async function updateScheduledJobEnabled(
+  taskKey: string,
+  enabled: boolean,
+): Promise<ScheduledJobListResponse[number]> {
+  return parseApiResponse(
+    await api.ops['scheduled-jobs'][':taskKey'].enabled.$put({
+      param: { taskKey },
+      json: { enabled } satisfies ScheduledJobEnabledInput,
+    }),
+    scheduledJobEnabledResponseSchema,
+  )
+}
+
+async function parseScheduledJobCommandResponse<T>(
+  response: Response,
+  acceptedStatuses: readonly number[],
+  schema: Parameters<typeof parseApiResponse<T>>[1],
+): Promise<T> {
+  if (!acceptedStatuses.includes(response.status)) {
+    if (!response.ok) {
+      throw await parseApiError(response)
+    }
+
+    throw new ApiRequestError(response.status, '请求响应状态无效')
+  }
+
+  return schema.parse(await response.json())
+}
+
+export async function executeScheduledJob(
+  taskKey: string,
+): Promise<ScheduledJobManualExecuteResult> {
+  return parseScheduledJobCommandResponse(
+    await api.ops['scheduled-jobs'][':taskKey'].runs.$post({
+      param: { taskKey },
+    }),
+    [202, 409],
+    scheduledJobManualExecuteResultSchema,
+  )
+}
+
+export async function listScheduledJobRuns(
+  taskKey: string,
+  query: ScheduledJobRunsListQuery,
+  options: { signal?: AbortSignal } = {},
+): Promise<ScheduledJobRunListResponse> {
+  return parseApiResponse(
+    await api.ops['scheduled-jobs'][':taskKey'].runs.$get(
+      {
+        param: { taskKey },
+        query: normalizeRequestQuery(query),
+      },
+      options.signal === undefined ? undefined : { init: { signal: options.signal } },
+    ),
+    scheduledJobRunListResponseSchema,
+  )
+}
+
+export async function getScheduledJobRun(
+  taskKey: string,
+  runId: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<ScheduledJobRunDetail> {
+  return parseApiResponse(
+    await api.ops['scheduled-jobs'][':taskKey'].runs[':runId'].$get(
+      { param: { taskKey, runId } },
+      options.signal === undefined ? undefined : { init: { signal: options.signal } },
+    ),
+    scheduledJobRunDetailSchema,
+  )
+}
+
+export async function cancelScheduledJob(
+  taskKey: string,
+  runId: string,
+): Promise<ScheduledJobCancelResponse> {
+  return parseScheduledJobCommandResponse(
+    await api.ops['scheduled-jobs'][':taskKey'].runs[':runId'].cancel.$post({
+      param: { taskKey, runId },
+    }),
+    [202],
+    scheduledJobCancelResponseSchema,
   )
 }

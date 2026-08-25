@@ -9,6 +9,20 @@ import {
   OPERATION_LOG_MODULE_SYSTEM,
   OPERATION_LOG_RESULT_FAILURE,
   OPERATION_LOG_RESULT_SUCCESS,
+  SCHEDULED_JOB_ERROR_CATEGORY_DATABASE,
+  SCHEDULED_JOB_ERROR_CATEGORY_INTERNAL,
+  SCHEDULED_JOB_ERROR_CATEGORY_PARTIAL_FAILURE,
+  SCHEDULED_JOB_ERROR_CATEGORY_STORAGE,
+  SCHEDULED_JOB_RUN_STATUS_CANCELLED,
+  SCHEDULED_JOB_RUN_STATUS_FAILURE,
+  SCHEDULED_JOB_RUN_STATUS_INTERRUPTED,
+  SCHEDULED_JOB_RUN_STATUS_RUNNING,
+  SCHEDULED_JOB_RUN_STATUS_SKIPPED,
+  SCHEDULED_JOB_RUN_STATUS_SUCCESS,
+  SCHEDULED_JOB_SKIP_REASON_OVERLAP,
+  SCHEDULED_JOB_TRIGGER_SOURCE_MANUAL,
+  SCHEDULED_JOB_TRIGGER_SOURCE_RECOVERY,
+  SCHEDULED_JOB_TRIGGER_SOURCE_SCHEDULED,
   operationLogActionSchema,
   type ClientIpSource,
   type LoginFailureReason,
@@ -18,6 +32,10 @@ import {
   type OperationLogListItem,
   type OperationLogModule,
   type OperationLogResult,
+  type ScheduledJobErrorCategory,
+  type ScheduledJobRunStatus,
+  type ScheduledJobSkipReason,
+  type ScheduledJobTriggerSource,
 } from '@rev30/contracts'
 
 export const operationLogModuleLabels = {
@@ -64,7 +82,38 @@ export const operationLogActionLabels = {
   'content:attachment:upload': '完成附件上传',
   'content:attachment:delete': '删除附件',
   'ops:online-session:revoke': '撤销在线会话',
+  'ops:scheduled-job:update': '修改定时任务',
+  'ops:scheduled-job:enable': '启用定时任务',
+  'ops:scheduled-job:disable': '禁用定时任务',
+  'ops:scheduled-job:execute': '执行定时任务',
+  'ops:scheduled-job:cancel': '取消定时任务',
 } as const satisfies Record<OperationLogAction, string>
+
+export const scheduledJobRunStatusLabels = {
+  [SCHEDULED_JOB_RUN_STATUS_RUNNING]: '运行中',
+  [SCHEDULED_JOB_RUN_STATUS_SUCCESS]: '成功',
+  [SCHEDULED_JOB_RUN_STATUS_FAILURE]: '失败',
+  [SCHEDULED_JOB_RUN_STATUS_SKIPPED]: '已跳过',
+  [SCHEDULED_JOB_RUN_STATUS_CANCELLED]: '已取消',
+  [SCHEDULED_JOB_RUN_STATUS_INTERRUPTED]: '已中断',
+} as const satisfies Record<ScheduledJobRunStatus, string>
+
+export const scheduledJobTriggerSourceLabels = {
+  [SCHEDULED_JOB_TRIGGER_SOURCE_SCHEDULED]: '定时',
+  [SCHEDULED_JOB_TRIGGER_SOURCE_MANUAL]: '手动',
+  [SCHEDULED_JOB_TRIGGER_SOURCE_RECOVERY]: '恢复',
+} as const satisfies Record<ScheduledJobTriggerSource, string>
+
+export const scheduledJobSkipReasonLabels = {
+  [SCHEDULED_JOB_SKIP_REASON_OVERLAP]: '任务重叠',
+} as const satisfies Record<ScheduledJobSkipReason, string>
+
+export const scheduledJobErrorCategoryLabels = {
+  [SCHEDULED_JOB_ERROR_CATEGORY_PARTIAL_FAILURE]: '部分失败',
+  [SCHEDULED_JOB_ERROR_CATEGORY_DATABASE]: '数据库',
+  [SCHEDULED_JOB_ERROR_CATEGORY_STORAGE]: '存储',
+  [SCHEDULED_JOB_ERROR_CATEGORY_INTERNAL]: '内部错误',
+} as const satisfies Record<ScheduledJobErrorCategory, string>
 
 export const operationLogModuleOptions: Array<{
   label: string

@@ -23,6 +23,7 @@ import type { ZodType } from 'zod'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
+import { createBodyLimit } from '../../../middleware/body-limit'
 import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
 import { ScheduledJobInvalidPlanError } from './errors'
@@ -104,6 +105,7 @@ const scheduledJobManualBodyValidator = optionalEmptyJsonBodyValidator(
 const scheduledJobCancelBodyValidator = optionalEmptyJsonBodyValidator(
   scheduledJobCancelInputSchema,
 )
+const scheduledJobCommandBodyLimit = createBodyLimit(1024)
 
 function scheduledJobErrorResponse(error: unknown, c: Context) {
   if (error instanceof ScheduledJobInvalidPlanError) {
@@ -184,6 +186,7 @@ export function createScheduledJobRoutes(database: Db, runtime: ScheduledJobRunt
     .post(
       '/:taskKey/runs',
       requireAccess('ops:scheduled-job:execute'),
+      scheduledJobCommandBodyLimit,
       scheduledJobPathValidator,
       scheduledJobManualBodyValidator,
       async (c) => {
@@ -221,6 +224,7 @@ export function createScheduledJobRoutes(database: Db, runtime: ScheduledJobRunt
     .post(
       '/:taskKey/runs/:runId/cancel',
       requireAccess('ops:scheduled-job:cancel'),
+      scheduledJobCommandBodyLimit,
       scheduledJobRunPathValidator,
       scheduledJobCancelBodyValidator,
       async (c) => {

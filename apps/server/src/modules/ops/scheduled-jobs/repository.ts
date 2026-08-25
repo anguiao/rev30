@@ -620,7 +620,7 @@ export function createScheduledJobRepository(database: Db) {
 
         if (run.status !== 'running') {
           const matches =
-            plan.activeRunId === null &&
+            plan.activeRunId !== run.id &&
             run.status === status &&
             sameDate(run.finishedAt, input.candidate.finishedAt) &&
             run.durationMs === input.candidate.durationMs &&

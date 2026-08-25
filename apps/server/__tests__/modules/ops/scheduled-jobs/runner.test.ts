@@ -154,6 +154,39 @@ describe('scheduled job runner', () => {
     },
   )
 
+  it('records a cooperatively aborted handler as cancelled without a false failure log', async () => {
+    const handler = vi.fn(async ({ signal }: { signal: AbortSignal }) => {
+      await new Promise<void>((resolve) => signal.addEventListener('abort', () => resolve()))
+      signal.throwIfAborted()
+      return { deletedCount: 0, failedCount: 0 }
+    })
+    const context = setup(handler)
+    context.finalizeRun.mockImplementation(async ({ candidate }) => ({
+      ...candidate,
+      status: 'cancelled',
+      errorCategory: null,
+      errorSummary: null,
+    }))
+    const running = context.runner.run({ taskKey, runId, triggerSource: 'manual' })
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(context.runner.abort(runId)).toBe(true)
+    await running
+
+    expect(context.runLogger.error).not.toHaveBeenCalledWith(
+      expect.anything(),
+      'scheduled job failed',
+    )
+    expect(context.runLogger.info).toHaveBeenCalledWith(
+      {
+        status: 'cancelled',
+        deletedCount: null,
+        failedCount: null,
+      },
+      'scheduled job completed',
+    )
+  })
+
   it('retries finalization after 60 seconds with one handler call and an unchanged candidate', async () => {
     const handler = vi.fn().mockResolvedValue({ deletedCount: 1, failedCount: 0 })
     const context = setup(handler)

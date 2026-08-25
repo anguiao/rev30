@@ -125,22 +125,6 @@ export function createScheduledJobRunner(options: RunnerOptions) {
       input.onHandlerSettled?.()
     }
 
-    if (candidate.status === 'failure') {
-      const fields = executionError
-        ? {
-            err:
-              executionError instanceof ScheduledJobExecutionError
-                ? (executionError.cause ?? executionError)
-                : executionError,
-          }
-        : {
-            errorCategory: candidate.errorCategory,
-            deletedCount: candidate.deletedCount,
-            failedCount: candidate.failedCount,
-          }
-      runLogger.error(fields, 'scheduled job failed')
-    }
-
     while (true) {
       try {
         const finalized = await options.repository.finalizeRun({
@@ -150,7 +134,21 @@ export function createScheduledJobRunner(options: RunnerOptions) {
         })
         controllers.delete(input.runId)
         input.onFinalized?.()
-        if (finalized.status !== 'failure') {
+        if (finalized.status === 'failure') {
+          const fields = executionError
+            ? {
+                err:
+                  executionError instanceof ScheduledJobExecutionError
+                    ? (executionError.cause ?? executionError)
+                    : executionError,
+              }
+            : {
+                errorCategory: finalized.errorCategory,
+                deletedCount: finalized.deletedCount,
+                failedCount: finalized.failedCount,
+              }
+          runLogger.error(fields, 'scheduled job failed')
+        } else {
           runLogger.info(
             {
               status: finalized.status,

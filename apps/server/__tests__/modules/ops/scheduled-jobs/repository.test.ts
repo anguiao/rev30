@@ -781,7 +781,7 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
   )
 
   dbTest(
-    'lets an earlier cancel request win finalization and makes matching retries idempotent',
+    'lets an earlier cancel request win finalization and keeps retries idempotent after a new claim',
     async ({ db }) => {
       const active = await occupy(db, runningRun(firstTask))
       const repository = createScheduledJobRepository(db)
@@ -809,6 +809,14 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
       await expect(repository.finalizeRun(finalizeInput)).resolves.toMatchObject({
         status: 'cancelled',
       })
+      const nextRun = await repository.claimManual({
+        taskKey: firstTask,
+        now: futureAt,
+        executorId: secondExecutorId,
+        actor: secondActor,
+      })
+      expect(nextRun).toMatchObject({ kind: 'running' })
+      if (nextRun.kind !== 'running') throw new Error('Expected a running manual claim')
       await expect(repository.finalizeRun(finalizeInput)).resolves.toMatchObject({
         status: 'cancelled',
       })
@@ -826,7 +834,7 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
         .select()
         .from(opsScheduledJobs)
         .where(eq(opsScheduledJobs.taskKey, firstTask))
-      expect(plan?.activeRunId).toBeNull()
+      expect(plan?.activeRunId).toBe(nextRun.runId)
     },
   )
 

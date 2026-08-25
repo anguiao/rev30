@@ -97,6 +97,10 @@ function createTestRouter() {
           { path: ':id', component: { template: '<main>Nested system user detail</main>' } },
         ],
       },
+      {
+        path: '/ops/scheduled-jobs',
+        component: { template: '<main>Scheduled Jobs</main>' },
+      },
       { path: '/403', component: { template: '<main>No access</main>' } },
       { path: '/login', component: { template: '<main>Login</main>' } },
     ],
@@ -428,6 +432,58 @@ describe('auth guards', () => {
     await router.push('/login')
 
     expect(router.currentRoute.value.fullPath).toBe('/system/roles')
+  })
+
+  it('hides and denies the scheduled jobs route without list access', async () => {
+    const auth = useAuthStore()
+    auth.setSession({
+      ...createSession([
+        createMenuNode({
+          code: 'ops',
+          name: 'Operations',
+          type: RESOURCE_TYPE_DIRECTORY,
+          children: [
+            createMenuNode({
+              code: 'ops:scheduled-job',
+              name: 'Scheduled Jobs',
+              type: RESOURCE_TYPE_MENU,
+              path: '/ops/scheduled-jobs',
+              parentId: 'ops-id',
+            }),
+          ],
+        }),
+      ]),
+      accessCodes: ['ops', 'ops:scheduled-job'],
+    })
+    const router = createTestRouter()
+
+    expect(auth.visibleMenus).toEqual([])
+    expect(auth.accessibleRoutePaths).not.toContain('/ops/scheduled-jobs')
+    await router.push('/ops/scheduled-jobs')
+
+    expect(router.currentRoute.value.fullPath).toBe('/403')
+  })
+
+  it('shows and permits the scheduled jobs route with list access', async () => {
+    const auth = useAuthStore()
+    auth.setSession({
+      ...createSession([
+        createMenuNode({
+          code: 'ops:scheduled-job',
+          name: 'Scheduled Jobs',
+          type: RESOURCE_TYPE_MENU,
+          path: '/ops/scheduled-jobs',
+        }),
+      ]),
+      accessCodes: ['ops:scheduled-job', 'ops:scheduled-job:list'],
+    })
+    const router = createTestRouter()
+
+    expect(auth.visibleMenus.map((menu) => menu.path)).toEqual(['/ops/scheduled-jobs'])
+    expect(auth.accessibleRoutePaths).toContain('/ops/scheduled-jobs')
+    await router.push('/ops/scheduled-jobs')
+
+    expect(router.currentRoute.value.fullPath).toBe('/ops/scheduled-jobs')
   })
 
   it('skips unregistered menu paths when choosing the authenticated entry route', async () => {

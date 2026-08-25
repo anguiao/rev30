@@ -198,6 +198,25 @@ describe('scheduled job HTTP routes', () => {
       })
       expect(extraEnabledBody.status).toBe(400)
 
+      const oversizedBody = 'x'.repeat(1025)
+      const oversizedExecuteBody = await app.request(`/api/ops/scheduled-jobs/${taskKey}/runs`, {
+        method: 'POST',
+        headers: { ...operator.authHeaders, 'content-type': 'text/plain' },
+        body: oversizedBody,
+      })
+      const oversizedCancelBody = await app.request(
+        `/api/ops/scheduled-jobs/${taskKey}/runs/${randomUUID()}/cancel`,
+        {
+          method: 'POST',
+          headers: { ...operator.authHeaders, 'content-type': 'application/octet-stream' },
+          body: oversizedBody,
+        },
+      )
+      expect(oversizedExecuteBody.status).toBe(413)
+      expect(oversizedCancelBody.status).toBe(413)
+      expect(vi.mocked(runtime).runManual.mock.calls).toHaveLength(0)
+      expect(vi.mocked(runtime).requestCancellation.mock.calls).toHaveLength(0)
+
       const emptyJsonBody = await app.request(`/api/ops/scheduled-jobs/${taskKey}/runs`, {
         method: 'POST',
         headers: { ...operator.authHeaders, 'content-type': 'application/json' },

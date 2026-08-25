@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import {
+  RESOURCE_TYPE_EXTERNAL,
   RESOURCE_TYPE_MENU,
   type AuthTokenResponse,
   type ResourceTreeNode,
   type User,
 } from '@rev30/contracts'
-import { pruneTree, treeToArray } from '@rev30/utils'
+import { filterTree, pruneTree, treeToArray } from '@rev30/utils'
+import { hasRequiredRouteAccess } from '../router/permissions'
 
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(null)
@@ -18,13 +20,26 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => accessToken.value !== null && user.value !== null)
 
   const visibleMenus = computed(() =>
-    pruneTree(menus.value, {
-      excludes: (menu) => menu.hidden,
-    }),
+    filterTree(
+      pruneTree(menus.value, {
+        excludes: (menu) =>
+          menu.hidden ||
+          (menu.type === RESOURCE_TYPE_MENU &&
+            menu.path !== null &&
+            !hasRequiredRouteAccess(menu.path, accessCodes.value)),
+      }),
+      {
+        matches: (menu) => menu.type === RESOURCE_TYPE_MENU || menu.type === RESOURCE_TYPE_EXTERNAL,
+      },
+    ),
   )
   const accessibleRoutePaths = computed(() =>
     treeToArray(menus.value).flatMap((menu) =>
-      menu.type === RESOURCE_TYPE_MENU && menu.path !== null ? [menu.path] : [],
+      menu.type === RESOURCE_TYPE_MENU &&
+      menu.path !== null &&
+      hasRequiredRouteAccess(menu.path, accessCodes.value)
+        ? [menu.path]
+        : [],
     ),
   )
 

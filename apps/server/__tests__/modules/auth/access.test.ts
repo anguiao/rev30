@@ -94,6 +94,7 @@ describe('user access service', () => {
         'ops:login-log',
         'ops:online-session',
         'ops:operation-log',
+        'ops:scheduled-job',
       ])
       expect(roleResourceBindings).toEqual([])
       expect(adminRole.status).toBe(ROLE_STATUS_ENABLED)

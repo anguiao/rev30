@@ -163,6 +163,28 @@ function createClaimLockTrackingDb(events: string[]) {
 }
 
 describe('scheduled job repository claims', () => {
+  dbTest(
+    'returns ordered due plans and the next enabled wake time without claiming',
+    async ({ db }) => {
+      await db.update(opsScheduledJobs).set({ enabled: false, nextRunAt: null })
+      await setPlan(db, firstTask, { enabled: true, nextRunAt: claimAt })
+      await setPlan(db, secondTask, { enabled: true, nextRunAt: dueAt })
+      await setPlan(db, thirdTask, { enabled: false, nextRunAt: null })
+      const repository = createScheduledJobRepository(db)
+
+      await expect(repository.listDueScheduled({ now: claimAt })).resolves.toEqual([
+        { taskKey: secondTask, nextRunAt: dueAt, activeRunId: null },
+        { taskKey: firstTask, nextRunAt: claimAt, activeRunId: null },
+      ])
+      await expect(repository.findNextScheduledAt()).resolves.toEqual(dueAt)
+      await expect(repository.findNextActiveScheduledAt()).resolves.toBeNull()
+      const active = await occupy(db, runningRun(firstTask))
+      await setPlan(db, firstTask, { nextRunAt: futureAt, activeRunId: active.id })
+      await expect(repository.findNextActiveScheduledAt()).resolves.toEqual(futureAt)
+      expect(await runRows(db)).toHaveLength(1)
+    },
+  )
+
   it('locks the plan with FOR UPDATE inside both scheduled and manual claim transactions', async () => {
     const scheduledEvents: string[] = []
     const scheduledRepository = createScheduledJobRepository(
@@ -446,9 +468,9 @@ describe('scheduled job startup recovery', () => {
       )
       const repository = createScheduledJobRepository(db)
 
-      const candidates = await repository.initialize({ registry: registry(), startupAt: claimAt })
+      const initialized = await repository.initialize({ registry: registry(), startupAt: claimAt })
 
-      expect(candidates).toEqual([
+      expect(initialized.recoveryCandidates).toEqual([
         {
           originalRunId: earlierRun.id,
           taskKey: thirdTask,
@@ -462,6 +484,28 @@ describe('scheduled job startup recovery', () => {
           startedAt: new Date('2026-08-25T01:00:00.000Z'),
         },
       ])
+      expect(initialized.interruptedRuns).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            runId: laterRun.id,
+            taskKey: firstTask,
+            triggerSource: 'scheduled',
+            executorId,
+          }),
+          expect.objectContaining({
+            runId: cancelled.id,
+            taskKey: secondTask,
+            triggerSource: 'scheduled',
+            executorId,
+          }),
+          expect.objectContaining({
+            runId: earlierRun.id,
+            taskKey: thirdTask,
+            triggerSource: 'recovery',
+            executorId,
+          }),
+        ]),
+      )
       const stored = await db.select().from(opsJobRuns).where(eq(opsJobRuns.status, 'interrupted'))
       expect(stored).toHaveLength(3)
       expect(

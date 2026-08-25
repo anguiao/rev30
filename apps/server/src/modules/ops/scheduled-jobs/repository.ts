@@ -1,6 +1,6 @@
 import type { ScheduledJobErrorCategory, ScheduledJobTaskKey } from '@rev30/contracts'
 import { getNextCronOccurrences, validateCronSchedule } from '@rev30/utils'
-import { and, asc, desc, eq, ne, type AnyRelations } from 'drizzle-orm'
+import { and, asc, desc, eq, isNotNull, lte, ne, type AnyRelations } from 'drizzle-orm'
 import type { PgAsyncDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core'
 import type { Db, DbExecutor, DbReader } from '../../../db'
 import { opsJobRuns, opsScheduledJobs } from '../../../db/schema'
@@ -19,6 +19,19 @@ export type ScheduledJobRecoveryCandidate = {
   taskKey: ScheduledJobTaskKey
   scheduledFor: Date | null
   startedAt: Date
+}
+
+export type ScheduledJobInterruptedRun = {
+  runId: string
+  taskKey: ScheduledJobTaskKey
+  triggerSource: 'scheduled' | 'manual' | 'recovery'
+  executorId: string
+}
+
+export type ScheduledJobDueCandidate = {
+  taskKey: ScheduledJobTaskKey
+  nextRunAt: Date
+  activeRunId: string | null
 }
 
 export type ScheduledJobClaimResult =
@@ -122,6 +135,56 @@ async function insertRun(executor: DbExecutor, values: typeof opsJobRuns.$inferI
 
 export function createScheduledJobRepository(database: Db) {
   return {
+    async listDueScheduled(input: { now: Date }): Promise<ScheduledJobDueCandidate[]> {
+      const plans = await database
+        .select({
+          taskKey: opsScheduledJobs.taskKey,
+          nextRunAt: opsScheduledJobs.nextRunAt,
+          activeRunId: opsScheduledJobs.activeRunId,
+        })
+        .from(opsScheduledJobs)
+        .where(
+          and(
+            eq(opsScheduledJobs.enabled, true),
+            isNotNull(opsScheduledJobs.nextRunAt),
+            lte(opsScheduledJobs.nextRunAt, input.now),
+          ),
+        )
+        .orderBy(asc(opsScheduledJobs.nextRunAt), asc(opsScheduledJobs.taskKey))
+
+      return plans.map((plan) => ({
+        taskKey: plan.taskKey as ScheduledJobTaskKey,
+        nextRunAt: plan.nextRunAt!,
+        activeRunId: plan.activeRunId,
+      }))
+    },
+
+    async findNextScheduledAt() {
+      const [plan] = await database
+        .select({ nextRunAt: opsScheduledJobs.nextRunAt })
+        .from(opsScheduledJobs)
+        .where(and(eq(opsScheduledJobs.enabled, true), isNotNull(opsScheduledJobs.nextRunAt)))
+        .orderBy(asc(opsScheduledJobs.nextRunAt), asc(opsScheduledJobs.taskKey))
+        .limit(1)
+      return plan?.nextRunAt ?? null
+    },
+
+    async findNextActiveScheduledAt() {
+      const [plan] = await database
+        .select({ nextRunAt: opsScheduledJobs.nextRunAt })
+        .from(opsScheduledJobs)
+        .where(
+          and(
+            eq(opsScheduledJobs.enabled, true),
+            isNotNull(opsScheduledJobs.activeRunId),
+            isNotNull(opsScheduledJobs.nextRunAt),
+          ),
+        )
+        .orderBy(asc(opsScheduledJobs.nextRunAt), asc(opsScheduledJobs.taskKey))
+        .limit(1)
+      return plan?.nextRunAt ?? null
+    },
+
     async initialize(input: { registry: ScheduledJobRegistry; startupAt: Date }) {
       return await database.transaction(async (tx) => {
         const plans = await tx
@@ -195,7 +258,7 @@ export function createScheduledJobRepository(database: Db) {
           if (!latestByTask.has(run.taskKey)) latestByTask.set(run.taskKey, run)
         }
 
-        return [...latestByTask.values()]
+        const recoveryCandidates = [...latestByTask.values()]
           .filter(
             (run): run is typeof run & { startedAt: Date } =>
               run.status === 'interrupted' &&
@@ -213,6 +276,15 @@ export function createScheduledJobRepository(database: Db) {
               left.startedAt.getTime() - right.startedAt.getTime() ||
               left.taskKey.localeCompare(right.taskKey),
           )
+
+        const interruptedRuns = runningRuns.map((run): ScheduledJobInterruptedRun => ({
+          runId: run.id,
+          taskKey: run.taskKey as ScheduledJobTaskKey,
+          triggerSource: run.triggerSource as ScheduledJobInterruptedRun['triggerSource'],
+          executorId: run.executorId!,
+        }))
+
+        return { recoveryCandidates, interruptedRuns }
       })
     },
 
@@ -220,6 +292,7 @@ export function createScheduledJobRepository(database: Db) {
       taskKey: ScheduledJobTaskKey
       now: Date
       executorId: string
+      allowRunning?: boolean
     }): Promise<ScheduledJobClaimResult> {
       return await database.transaction(async (tx) => {
         const plan = await lockPlan(tx, input.taskKey)
@@ -256,6 +329,8 @@ export function createScheduledJobRepository(database: Db) {
             scheduledFor,
           }
         }
+
+        if (input.allowRunning === false) return { kind: 'stale' }
 
         const runId = await insertRun(tx, {
           taskKey: input.taskKey,

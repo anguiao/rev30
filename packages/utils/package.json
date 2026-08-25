@@ -16,6 +16,7 @@
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.test.json"
   },
   "dependencies": {
+    "croner": "^10.0.1",
     "date-fns": "^4.4.0"
   }
 }

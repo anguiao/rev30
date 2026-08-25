@@ -1,15 +1,13 @@
 import type { TiptapDocument } from '@rev30/contracts'
 import { describe, expect } from 'vitest'
-import { createApp } from '../../../src/app'
-import type { OperationAuditEvent } from '../../../src/modules/ops/operation-logs/types'
+import { createApp } from '../../helpers/app'
+import type { OperationLogEvent } from '../../../src/runtime/operation-log'
 import { dbTest } from '../../fixtures/database'
 import { createSystemAccessFixture } from '../../helpers/auth'
 
-function createAuditSink(events: OperationAuditEvent[]) {
-  return {
-    enqueue(event: OperationAuditEvent) {
-      events.push(event)
-    },
+function createOperationLogReceiver(events: OperationLogEvent[]) {
+  return (event: OperationLogEvent) => {
+    events.push(event)
   }
 }
 
@@ -18,22 +16,22 @@ const contentJson: TiptapDocument = {
   content: [{ type: 'paragraph', content: [{ type: 'text', text: 'private body text' }] }],
 }
 
-describe('content operation audit integration', () => {
+describe('content operation log integration', () => {
   dbTest(
     'records minimal announcement targets only after access and validation',
     async ({ db }) => {
-      const events: OperationAuditEvent[] = []
-      const app = createApp(db, { operationAuditSink: createAuditSink(events) })
+      const events: OperationLogEvent[] = []
+      const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
       const denied = await createSystemAccessFixture(db, {
-        usernamePrefix: 'announcement-audit-denied',
+        usernamePrefix: 'announcement-log-denied',
       })
       const admin = await createSystemAccessFixture(db, {
         admin: true,
-        usernamePrefix: 'announcement-audit-admin',
+        usernamePrefix: 'announcement-log-admin',
       })
       const body = {
         type: 'notice',
-        title: 'Audited announcement',
+        title: 'Recorded announcement',
         summary: 'private summary',
         contentJson,
         visibility: 'all',
@@ -72,7 +70,7 @@ describe('content operation audit integration', () => {
         action: 'content:announcement:create',
         result: 'success',
         targetKey: null,
-        targetLabel: 'Audited announcement',
+        targetLabel: 'Recorded announcement',
       })
       expect(JSON.stringify(events)).not.toMatch(
         /private body text|private summary|contentJson|targets/,

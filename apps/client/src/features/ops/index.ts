@@ -1,6 +1,7 @@
 export { default as UserAgentSummary } from './UserAgentSummary.vue'
 export {
   clientIpSourceLabels,
+  formatOperationLogTarget,
   loginFailureReasonLabels,
   loginFailureReasonOptions,
   loginLogResultLabels,

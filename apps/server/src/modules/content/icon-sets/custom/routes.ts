@@ -13,8 +13,10 @@ import { Hono, type Context } from 'hono'
 import { z } from 'zod'
 import type { Db } from '../../../../db'
 import { requireAccess } from '../../../../middleware/access'
+import type { AuthEnv } from '../../../../middleware/auth'
 import { createBodyLimit } from '../../../../middleware/body-limit'
-import { markOperationAudit, type OperationAuditRouteEnv } from '../../../ops/operation-logs/audit'
+import { recordOperation, type OperationLogEnv } from '../../../../middleware/operation-log'
+import type { RequestContextEnv } from '../../../../middleware/request-context'
 import {
   CustomIconConflictError,
   CustomIconNotFoundError,
@@ -108,7 +110,7 @@ function customIconErrorResponse(error: unknown, c: Context) {
 
 export function createCustomIconSetRoutes(database: Db) {
   const service = createCustomIconSetService(database)
-  const app = new Hono<OperationAuditRouteEnv>()
+  const app = new Hono<AuthEnv & RequestContextEnv & OperationLogEnv>()
 
   app.onError((error, c) => customIconErrorResponse(error, c))
 
@@ -119,7 +121,7 @@ export function createCustomIconSetRoutes(database: Db) {
     .post('/', requireAccess('content:icon-set:create'), iconSetCreateBodyValidator, async (c) => {
       const body = c.req.valid('json')
 
-      markOperationAudit(c, 'content:icon-set:create', {
+      recordOperation(c, 'content:icon-set:create', {
         targetKey: body.prefix,
         targetLabel: body.name,
       })
@@ -144,7 +146,7 @@ export function createCustomIconSetRoutes(database: Db) {
         const { prefix } = c.req.valid('param')
         const form = c.req.valid('form')
 
-        markOperationAudit(c, 'content:icon:upload', { targetKey: prefix })
+        recordOperation(c, 'content:icon:upload', { targetKey: prefix })
 
         const files = await Promise.all(
           form.files.map(async (file) => ({
@@ -170,7 +172,7 @@ export function createCustomIconSetRoutes(database: Db) {
         const { prefix, name } = c.req.valid('param')
         const body = c.req.valid('json')
 
-        markOperationAudit(c, 'content:icon:rename', {
+        recordOperation(c, 'content:icon:rename', {
           targetKey: `${prefix}:${name}`,
           targetLabel: body.name,
         })
@@ -185,7 +187,7 @@ export function createCustomIconSetRoutes(database: Db) {
       async (c) => {
         const { prefix, name } = c.req.valid('param')
 
-        markOperationAudit(c, 'content:icon:delete', { targetKey: `${prefix}:${name}` })
+        recordOperation(c, 'content:icon:delete', { targetKey: `${prefix}:${name}` })
 
         await service.deleteIcon(prefix, name)
 
@@ -199,7 +201,7 @@ export function createCustomIconSetRoutes(database: Db) {
       async (c) => {
         const { prefix } = c.req.valid('param')
 
-        markOperationAudit(c, 'content:icon-set:export', { targetKey: prefix })
+        recordOperation(c, 'content:icon-set:export', { targetKey: prefix })
 
         const exported = await service.exportIconSet(prefix)
 
@@ -223,7 +225,7 @@ export function createCustomIconSetRoutes(database: Db) {
         const { prefix } = c.req.valid('param')
         const body = c.req.valid('json')
 
-        markOperationAudit(c, 'content:icon-set:update', {
+        recordOperation(c, 'content:icon-set:update', {
           targetKey: prefix,
           ...(body.name === undefined ? {} : { targetLabel: body.name }),
         })
@@ -238,7 +240,7 @@ export function createCustomIconSetRoutes(database: Db) {
       async (c) => {
         const { prefix } = c.req.valid('param')
 
-        markOperationAudit(c, 'content:icon-set:delete', { targetKey: prefix })
+        recordOperation(c, 'content:icon-set:delete', { targetKey: prefix })
 
         await service.delete(prefix)
 

@@ -7,10 +7,6 @@ import {
   NButton,
   NDataTable,
   NDatePicker,
-  NDescriptions,
-  NDescriptionsItem,
-  NDrawer,
-  NDrawerContent,
   NForm,
   NFormItemGi,
   NGrid,
@@ -19,24 +15,22 @@ import {
   NInputNumber,
   NPagination,
   NSelect,
-  NSpin,
   NTag,
-  useMessage,
 } from 'naive-ui'
-import type {
-  OperationLogAction,
-  OperationLogListItem,
-  OperationLogListQuery,
-  OperationLogListResponse,
-  OperationLogModule,
-  OperationLogResult,
+import {
+  OPERATION_LOG_RESULT_SUCCESS,
+  type OperationLogAction,
+  type OperationLogListItem,
+  type OperationLogListQuery,
+  type OperationLogListResponse,
+  type OperationLogModule,
+  type OperationLogResult,
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import { useDrawer } from '../../../composables/useDrawer'
 import {
-  UserAgentSummary,
-  clientIpSourceLabels,
-  getOperationLog,
+  formatOperationLogTarget,
   listOperationLogs,
   operationLogActionLabels,
   operationLogActionOptions,
@@ -46,43 +40,9 @@ import {
   operationLogResultOptions,
 } from '../../../features/ops'
 import { getErrorMessage } from '../../../utils/error'
+import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 const pageTitle = useAdminPageTitle('操作日志')
-const message = useMessage()
-
-async function copyId(value: string) {
-  try {
-    await navigator.clipboard.writeText(value)
-    message.success('已复制')
-  } catch {
-    message.error('复制失败')
-  }
-}
-
-function getOperationLogQueryKey(value: OperationLogListQuery) {
-  return [
-    value.page,
-    value.pageSize,
-    value.actorKeyword ?? '',
-    value.actorSessionId ?? '',
-    value.module ?? '',
-    value.action ?? '',
-    value.result ?? '',
-    value.httpStatus ?? '',
-    value.targetKeyword ?? '',
-    value.clientIp ?? '',
-    value.requestId ?? '',
-    value.occurredFrom ?? '',
-    value.occurredTo ?? '',
-  ] as const
-}
-
-function hasSameOperationLogQuery(current: OperationLogListQuery, next: OperationLogListQuery) {
-  const currentKey = getOperationLogQueryKey(current)
-  const nextKey = getOperationLogQueryKey(next)
-
-  return currentKey.every((value, index) => value === nextKey[index])
-}
 
 const actorKeyword = ref('')
 const actorSessionId = ref('')
@@ -94,9 +54,16 @@ const targetKeyword = ref('')
 const clientIp = ref('')
 const requestId = ref('')
 const occurredRange = ref<[number, number] | null>(null)
-const query = ref<OperationLogListQuery>({ page: 1, pageSize: 20 })
-const selectedId = ref<string | null>(null)
-const showDetail = ref(false)
+const query = ref<OperationLogListQuery>({
+  page: 1,
+  pageSize: 20,
+})
+const emptyData: OperationLogListResponse = {
+  list: [],
+  total: 0,
+  page: 1,
+  pageSize: query.value.pageSize,
+}
 
 const actionOptions = computed(() =>
   module.value === null
@@ -109,20 +76,29 @@ watch(module, (value) => {
   }
 })
 
-const emptyData: OperationLogListResponse = {
-  list: [],
-  total: 0,
-  page: 1,
-  pageSize: query.value.pageSize,
-}
 const {
   data: response,
   error,
   isLoading,
-  refetch: refetchList,
 } = useQuery({
-  key: () => ['ops', 'operation-logs', 'list', ...getOperationLogQueryKey(query.value)],
-  staleTime: 0,
+  key: () => [
+    'ops',
+    'operation-logs',
+    'list',
+    query.value.page,
+    query.value.pageSize,
+    query.value.actorKeyword ?? '',
+    query.value.actorSessionId ?? '',
+    query.value.module ?? null,
+    query.value.action ?? null,
+    query.value.result ?? null,
+    query.value.httpStatus ?? null,
+    query.value.targetKeyword ?? '',
+    query.value.clientIp ?? '',
+    query.value.requestId ?? '',
+    query.value.occurredFrom ?? '',
+    query.value.occurredTo ?? '',
+  ],
   placeholderData: () => emptyData,
   query: () => listOperationLogs(query.value),
 })
@@ -131,57 +107,33 @@ const loadErrorMessage = computed(() =>
   error.value === null ? '' : getErrorMessage(error.value, '加载操作日志失败'),
 )
 
-const {
-  data: detail,
-  error: detailError,
-  isLoading: isDetailLoading,
-} = useQuery({
-  key: () => ['ops', 'operation-logs', 'detail', selectedId.value],
-  enabled: () => showDetail.value && selectedId.value !== null,
-  query: () => getOperationLog(selectedId.value!),
-})
-const visibleDetail = computed(() =>
-  showDetail.value && detail.value?.id === selectedId.value ? detail.value : null,
-)
-const detailErrorMessage = computed(() =>
-  detailError.value === null ? '' : getErrorMessage(detailError.value, '加载操作日志详情失败'),
-)
-
-function trimmed(value: string) {
-  const next = value.trim()
-  return next.length === 0 ? undefined : next
-}
-
-function submitQuery(nextQuery: OperationLogListQuery) {
-  if (hasSameOperationLogQuery(query.value, nextQuery)) {
-    void refetchList()
-    return
-  }
-
-  query.value = nextQuery
-}
-
 function handleSearch() {
+  const nextActorKeyword = actorKeyword.value.trim()
+  const nextActorSessionId = actorSessionId.value.trim()
+  const nextTargetKeyword = targetKeyword.value.trim()
+  const nextClientIp = clientIp.value.trim()
+  const nextRequestId = requestId.value.trim()
   const range = occurredRange.value
-  submitQuery({
+
+  query.value = {
     page: 1,
     pageSize: query.value.pageSize,
-    ...(trimmed(actorKeyword.value) ? { actorKeyword: trimmed(actorKeyword.value) } : {}),
-    ...(trimmed(actorSessionId.value) ? { actorSessionId: trimmed(actorSessionId.value) } : {}),
+    ...(nextActorKeyword.length === 0 ? {} : { actorKeyword: nextActorKeyword }),
+    ...(nextActorSessionId.length === 0 ? {} : { actorSessionId: nextActorSessionId }),
     ...(module.value === null ? {} : { module: module.value }),
     ...(action.value === null ? {} : { action: action.value }),
     ...(result.value === null ? {} : { result: result.value }),
     ...(httpStatus.value === null ? {} : { httpStatus: httpStatus.value }),
-    ...(trimmed(targetKeyword.value) ? { targetKeyword: trimmed(targetKeyword.value) } : {}),
-    ...(trimmed(clientIp.value) ? { clientIp: trimmed(clientIp.value) } : {}),
-    ...(trimmed(requestId.value) ? { requestId: trimmed(requestId.value) } : {}),
+    ...(nextTargetKeyword.length === 0 ? {} : { targetKeyword: nextTargetKeyword }),
+    ...(nextClientIp.length === 0 ? {} : { clientIp: nextClientIp }),
+    ...(nextRequestId.length === 0 ? {} : { requestId: nextRequestId }),
     ...(range === null
       ? {}
       : {
           occurredFrom: new Date(range[0]).toISOString(),
           occurredTo: new Date(range[1]).toISOString(),
         }),
-  })
+  }
 }
 
 function handleReset() {
@@ -195,19 +147,19 @@ function handleReset() {
   clientIp.value = ''
   requestId.value = ''
   occurredRange.value = null
-  submitQuery({ page: 1, pageSize: query.value.pageSize })
+  query.value = { page: 1, pageSize: query.value.pageSize }
 }
 
-function openDetail(id: string) {
-  selectedId.value = id
-  showDetail.value = true
-}
-
-function targetText(item: OperationLogListItem) {
-  if (item.targetLabel !== null && item.targetKey !== null) {
-    return `${item.targetLabel}（${item.targetKey}）`
-  }
-  return item.targetLabel ?? item.targetKey ?? '-'
+const {
+  component: OperationLogDetailDrawer,
+  hasOpened: hasOpenedDetailDrawer,
+  visible: isDetailDrawerVisible,
+  open: showDetailDrawer,
+} = useDrawer(() => import('../../../features/ops/OperationLogDetailDrawer.vue'))
+const selectedOperationLogId = ref<string | null>(null)
+function openOperationLogDetail(operationLogId: string) {
+  selectedOperationLogId.value = operationLogId
+  showDetailDrawer()
 }
 
 const columns: DataTableColumns<OperationLogListItem> = [
@@ -230,7 +182,7 @@ const columns: DataTableColumns<OperationLogListItem> = [
     render: (item) =>
       `${operationLogModuleLabels[item.module]} · ${operationLogActionLabels[item.action]}`,
   },
-  { title: '目标', key: 'target', minWidth: 180, render: targetText },
+  { title: '目标', key: 'target', minWidth: 180, render: formatOperationLogTarget },
   {
     title: '结果',
     key: 'result',
@@ -238,7 +190,10 @@ const columns: DataTableColumns<OperationLogListItem> = [
     render: (item) =>
       h(
         NTag,
-        { type: item.result === 'success' ? 'success' : 'error', size: 'small' },
+        {
+          type: item.result === OPERATION_LOG_RESULT_SUCCESS ? 'success' : 'error',
+          size: 'small',
+        },
         () => operationLogResultLabels[item.result],
       ),
   },
@@ -246,20 +201,19 @@ const columns: DataTableColumns<OperationLogListItem> = [
   { title: '客户端 IP', key: 'clientIp', minWidth: 140, render: (item) => item.clientIp ?? '-' },
   { title: '耗时', key: 'durationMs', width: 90, render: (item) => `${item.durationMs} ms` },
   {
-    title: '详情',
-    key: 'detail',
+    title: '操作',
+    key: 'actions',
     width: 100,
+    fixed: 'right',
     render: (item) =>
-      h(
-        NButton,
-        {
-          text: true,
-          type: 'primary',
-          'data-test': 'operation-log-detail',
-          onClick: () => openDetail(item.id),
-        },
-        () => '查看详情',
-      ),
+      renderTableActions([
+        renderTableActionButton({
+          label: '查看详情',
+          accessCode: 'ops:operation-log:list',
+          dataTest: 'operation-log-detail',
+          onClick: () => openOperationLogDetail(item.id),
+        }),
+      ]),
   },
 ]
 </script>
@@ -275,51 +229,56 @@ const columns: DataTableColumns<OperationLogListItem> = [
       class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
     >
       <NForm label-placement="left" :show-feedback="false">
-        <NGrid cols="1 640:6 1024:24" item-responsive :x-gap="16" :y-gap="12">
-          <NFormItemGi label="操作者" span="1 640:3 1024:4" class="min-w-0">
+        <NGrid cols="1 640:12 1024:24" item-responsive :x-gap="16" :y-gap="12">
+          <NFormItemGi label="操作者" span="1 640:6 1024:4" class="min-w-0">
             <NInput
               v-model:value="actorKeyword"
               data-test="operation-logs-actor"
               clearable
+              placeholder="请输入用户名、昵称或用户 ID"
               class="w-full!"
             />
           </NFormItemGi>
-          <NFormItemGi label="会话 ID" span="1 640:3 1024:5" class="min-w-0">
+          <NFormItemGi label="会话 ID" span="1 640:6 1024:5" class="min-w-0">
             <NInput
               v-model:value="actorSessionId"
               data-test="operation-logs-session"
               clearable
+              placeholder="请输入会话 ID"
               class="w-full!"
             />
           </NFormItemGi>
-          <NFormItemGi label="模块" span="1 640:2 1024:4" class="min-w-0">
+          <NFormItemGi label="模块" span="1 640:4 1024:4" class="min-w-0">
             <NSelect
               v-model:value="module"
               data-test="operation-logs-module"
               clearable
               :options="operationLogModuleOptions"
+              placeholder="全部"
               class="w-full!"
             />
           </NFormItemGi>
-          <NFormItemGi label="动作" span="1 640:4 1024:4" class="min-w-0">
+          <NFormItemGi label="动作" span="1 640:8 1024:4" class="min-w-0">
             <NSelect
               v-model:value="action"
               data-test="operation-logs-action"
               clearable
               :options="actionOptions"
+              placeholder="全部"
               class="w-full!"
             />
           </NFormItemGi>
-          <NFormItemGi label="结果" span="1 640:2 1024:3" class="min-w-0">
+          <NFormItemGi label="结果" span="1 640:4 1024:3" class="min-w-0">
             <NSelect
               v-model:value="result"
               data-test="operation-logs-result"
               clearable
               :options="operationLogResultOptions"
+              placeholder="全部"
               class="w-full!"
             />
           </NFormItemGi>
-          <NFormItemGi label="状态码" span="1 640:2 1024:4" class="min-w-0">
+          <NFormItemGi label="状态码" span="1 640:4 1024:4" class="min-w-0">
             <NInputNumber
               v-model:value="httpStatus"
               data-test="operation-logs-http-status"
@@ -327,34 +286,38 @@ const columns: DataTableColumns<OperationLogListItem> = [
               :min="100"
               :max="599"
               :precision="0"
+              placeholder="100–599"
               class="w-full!"
             />
           </NFormItemGi>
-          <NFormItemGi label="目标" span="1 640:2 1024:4" class="min-w-0">
+          <NFormItemGi label="目标" span="1 640:4 1024:4" class="min-w-0">
             <NInput
               v-model:value="targetKeyword"
               data-test="operation-logs-target"
               clearable
+              placeholder="请输入目标关键词"
               class="w-full!"
             />
           </NFormItemGi>
-          <NFormItemGi label="客户端 IP" span="1 640:3 1024:4" class="min-w-0">
+          <NFormItemGi label="客户端 IP" span="1 640:6 1024:4" class="min-w-0">
             <NInput
               v-model:value="clientIp"
               data-test="operation-logs-client-ip"
               clearable
+              placeholder="请输入客户端 IP"
               class="w-full!"
             />
           </NFormItemGi>
-          <NFormItemGi label="请求 ID" span="1 640:3 1024:5" class="min-w-0">
+          <NFormItemGi label="请求 ID" span="1 640:6 1024:5" class="min-w-0">
             <NInput
               v-model:value="requestId"
               data-test="operation-logs-request-id"
               clearable
+              placeholder="请输入请求 ID"
               class="w-full!"
             />
           </NFormItemGi>
-          <NFormItemGi label="发生时间" span="1 640:4 1024:7" class="min-w-0">
+          <NFormItemGi label="发生时间" span="1 640:8 1024:7" class="min-w-0">
             <NDatePicker
               v-model:value="occurredRange"
               data-test="operation-logs-occurred-range"
@@ -363,11 +326,12 @@ const columns: DataTableColumns<OperationLogListItem> = [
               class="w-full!"
             />
           </NFormItemGi>
-          <NGridItem suffix span="1 640:2 1024:4">
+          <NGridItem suffix span="1 640:4 1024:4">
             <div class="flex h-full items-center justify-end gap-2">
               <NButton data-test="operation-logs-search" type="primary" @click="handleSearch"
                 >查询</NButton
-              ><NButton data-test="operation-logs-reset" @click="handleReset">重置</NButton>
+              >
+              <NButton data-test="operation-logs-reset" @click="handleReset">重置</NButton>
             </div>
           </NGridItem>
         </NGrid>
@@ -375,6 +339,7 @@ const columns: DataTableColumns<OperationLogListItem> = [
     </section>
 
     <NAlert v-if="loadErrorMessage" type="error">{{ loadErrorMessage }}</NAlert>
+
     <section>
       <NDataTable
         :columns="columns"
@@ -392,101 +357,10 @@ const columns: DataTableColumns<OperationLogListItem> = [
       </div>
     </section>
 
-    <NDrawer
-      v-model:show="showDetail"
-      data-test="operation-log-detail-drawer"
-      placement="right"
-      :width="620"
-    >
-      <NDrawerContent title="操作日志详情" closable>
-        <NSpin :show="isDetailLoading">
-          <NAlert v-if="detailErrorMessage" type="error">{{ detailErrorMessage }}</NAlert>
-          <NDescriptions v-if="visibleDetail" bordered :column="1" label-placement="left">
-            <NDescriptionsItem label="发生时间">{{
-              formatDisplayDateTime(visibleDetail.createdAt)
-            }}</NDescriptionsItem>
-            <NDescriptionsItem label="操作者"
-              >{{ visibleDetail.actorNickname }}（{{
-                visibleDetail.actorUsername
-              }}）</NDescriptionsItem
-            >
-            <NDescriptionsItem label="操作者 ID"
-              ><span class="inline-flex max-w-full items-center gap-2 align-middle">
-                <span class="min-w-0 break-all">{{ visibleDetail.actorUserId }}</span>
-                <NButton
-                  quaternary
-                  circle
-                  type="primary"
-                  size="tiny"
-                  class="shrink-0"
-                  aria-label="复制操作者 ID"
-                  title="复制操作者 ID"
-                  data-test="operation-log-copy-id"
-                  @click="copyId(visibleDetail.actorUserId)"
-                >
-                  <span class="i-[lucide--copy]" aria-hidden="true" />
-                </NButton> </span
-            ></NDescriptionsItem>
-            <NDescriptionsItem label="管理员快照">{{
-              visibleDetail.actorIsAdmin ? '管理员' : '非管理员'
-            }}</NDescriptionsItem>
-            <NDescriptionsItem label="结果"
-              ><NTag :type="visibleDetail.result === 'success' ? 'success' : 'error'">{{
-                operationLogResultLabels[visibleDetail.result]
-              }}</NTag></NDescriptionsItem
-            >
-            <NDescriptionsItem label="模块 / 动作"
-              >{{ operationLogModuleLabels[visibleDetail.module] }} ·
-              {{ operationLogActionLabels[visibleDetail.action] }}</NDescriptionsItem
-            >
-            <NDescriptionsItem label="目标">{{ targetText(visibleDetail) }}</NDescriptionsItem>
-            <NDescriptionsItem label="状态码">{{ visibleDetail.httpStatus }}</NDescriptionsItem>
-            <NDescriptionsItem label="耗时">{{ visibleDetail.durationMs }} ms</NDescriptionsItem>
-            <NDescriptionsItem label="请求 ID"
-              ><span class="inline-flex max-w-full items-center gap-2 align-middle">
-                <span class="min-w-0 break-all">{{ visibleDetail.requestId }}</span>
-                <NButton
-                  quaternary
-                  circle
-                  type="primary"
-                  size="tiny"
-                  class="shrink-0"
-                  aria-label="复制请求 ID"
-                  title="复制请求 ID"
-                  data-test="operation-log-copy-id"
-                  @click="copyId(visibleDetail.requestId)"
-                >
-                  <span class="i-[lucide--copy]" aria-hidden="true" />
-                </NButton> </span
-            ></NDescriptionsItem>
-            <NDescriptionsItem label="会话 ID"
-              ><span class="inline-flex max-w-full items-center gap-2 align-middle">
-                <span class="min-w-0 break-all">{{ visibleDetail.actorSessionId }}</span>
-                <NButton
-                  quaternary
-                  circle
-                  type="primary"
-                  size="tiny"
-                  class="shrink-0"
-                  aria-label="复制会话 ID"
-                  title="复制会话 ID"
-                  data-test="operation-log-copy-id"
-                  @click="copyId(visibleDetail.actorSessionId)"
-                >
-                  <span class="i-[lucide--copy]" aria-hidden="true" />
-                </NButton> </span
-            ></NDescriptionsItem>
-            <NDescriptionsItem label="客户端 IP"
-              >{{ visibleDetail.clientIp ?? '-' }}（{{
-                clientIpSourceLabels[visibleDetail.clientIpSource]
-              }}）</NDescriptionsItem
-            >
-            <NDescriptionsItem label="设备"
-              ><UserAgentSummary :user-agent="visibleDetail.userAgent"
-            /></NDescriptionsItem>
-          </NDescriptions>
-        </NSpin>
-      </NDrawerContent>
-    </NDrawer>
+    <OperationLogDetailDrawer
+      v-if="hasOpenedDetailDrawer && selectedOperationLogId !== null"
+      v-model:show="isDetailDrawerVisible"
+      :operation-log-id="selectedOperationLogId"
+    />
   </main>
 </template>

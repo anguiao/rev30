@@ -1,33 +1,31 @@
 import type { UserCreateResponse } from '@rev30/contracts'
 import { describe, expect } from 'vitest'
-import { createApp } from '../../../src/app'
-import type { OperationAuditEvent } from '../../../src/modules/ops/operation-logs/types'
+import { createApp } from '../../helpers/app'
+import type { OperationLogEvent } from '../../../src/runtime/operation-log'
 import { createSystemAccessFixture } from '../../helpers/auth'
 import { jsonRequest, responseJson } from '../../helpers/http'
 import { dbTest } from '../../fixtures/database'
 
 const configKey = 'auth.loginFailureMaxAttempts'
 
-function createAuditSink(events: OperationAuditEvent[]) {
-  return {
-    enqueue(event: OperationAuditEvent) {
-      events.push(event)
-    },
+function createOperationLogReceiver(events: OperationLogEvent[]) {
+  return (event: OperationLogEvent) => {
+    events.push(event)
   }
 }
 
-describe('system operation audit integration', () => {
+describe('system operation log integration', () => {
   dbTest(
-    'marks service failures after access and validation without recording config values',
+    'records service failures after access and validation without recording config values',
     async ({ db }) => {
-      const events: OperationAuditEvent[] = []
-      const app = createApp(db, { operationAuditSink: createAuditSink(events) })
+      const events: OperationLogEvent[] = []
+      const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
       const denied = await createSystemAccessFixture(db, {
-        usernamePrefix: 'config-audit-denied',
+        usernamePrefix: 'config-log-denied',
       })
       const admin = await createSystemAccessFixture(db, {
         admin: true,
-        usernamePrefix: 'config-audit-admin',
+        usernamePrefix: 'config-log-admin',
       })
 
       const deniedResponse = await app.request(
@@ -66,22 +64,22 @@ describe('system operation audit integration', () => {
   )
 
   dbTest(
-    'keeps user create, partial update, reset and delete audit targets minimal',
+    'keeps user create, partial update, reset and delete operation log targets minimal',
     async ({ db }) => {
-      const events: OperationAuditEvent[] = []
-      const app = createApp(db, { operationAuditSink: createAuditSink(events) })
+      const events: OperationLogEvent[] = []
+      const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
       const admin = await createSystemAccessFixture(db, {
         admin: true,
-        usernamePrefix: 'user-audit-admin',
+        usernamePrefix: 'user-log-admin',
       })
-      const email = 'audit-private@example.com'
+      const email = 'operation-log-private@example.com'
       const phone = '13900000000'
       const createResponse = await app.request(
         '/api/system/users',
         jsonRequest(
           {
-            username: 'audited-user',
-            nickname: 'Audited User',
+            username: 'recorded-user',
+            nickname: 'Recorded User',
             avatarId: null,
             email,
             phone,
@@ -99,7 +97,7 @@ describe('system operation audit integration', () => {
         `/api/system/users/${created.user.id}`,
         jsonRequest(
           {
-            nickname: 'Updated Audited User',
+            nickname: 'Updated Recorded User',
             email: 'updated-private@example.com',
             phone: null,
             avatarId: null,
@@ -127,13 +125,13 @@ describe('system operation audit integration', () => {
       ).toEqual([
         {
           action: 'system:user:create',
-          targetKey: 'audited-user',
-          targetLabel: 'Audited User',
+          targetKey: 'recorded-user',
+          targetLabel: 'Recorded User',
         },
         {
           action: 'system:user:update',
           targetKey: created.user.id,
-          targetLabel: 'Updated Audited User',
+          targetLabel: 'Updated Recorded User',
         },
         {
           action: 'system:user:reset-password',

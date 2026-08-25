@@ -7,8 +7,8 @@ import type {
 } from '@rev30/contracts'
 import type { IconifyJSON } from '@iconify/types'
 import { afterEach, describe, expect, vi } from 'vitest'
-import { createApp } from '../../../../src/app'
-import type { OperationAuditEvent } from '../../../../src/modules/ops/operation-logs/types'
+import { createApp } from '../../../helpers/app'
+import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest } from '../../../fixtures/database'
 
@@ -20,11 +20,9 @@ function createRect(fill: string) {
   return `<path fill="${fill}" d="M0 0h10v10H0z" />`
 }
 
-function createAuditSink(events: OperationAuditEvent[]) {
-  return {
-    enqueue(event: OperationAuditEvent) {
-      events.push(event)
-    },
+function createOperationLogReceiver(events: OperationLogEvent[]) {
+  return (event: OperationLogEvent) => {
+    events.push(event)
   }
 }
 
@@ -158,7 +156,7 @@ describe('icon set routes', () => {
   )
 
   dbTest('creates, uploads, lists, and exports custom icon sets', async ({ db: database }) => {
-    const events: OperationAuditEvent[] = []
+    const events: OperationLogEvent[] = []
     const authenticated = await createSystemAccessFixture(database, {
       accessCodes: [
         'content:icon-set:list',
@@ -168,7 +166,9 @@ describe('icon set routes', () => {
       ],
       usernamePrefix: 'icon-set-custom-user',
     })
-    const app = createApp(database, { operationAuditSink: createAuditSink(events) })
+    const app = createApp(database, {
+      operationLogReceiver: createOperationLogReceiver(events),
+    })
 
     const createResponse = await app.request('/api/content/icon-sets/custom', {
       method: 'POST',
@@ -279,13 +279,13 @@ describe('icon set routes', () => {
     expect(JSON.stringify(events)).not.toMatch(/Logo\.svg|Private-Failure|<svg|Acme custom icons/)
   })
 
-  dbTest('records upload preprocessing failures after marking the operation', async ({ db }) => {
-    const events: OperationAuditEvent[] = []
+  dbTest('records upload preprocessing failures after operation registration', async ({ db }) => {
+    const events: OperationLogEvent[] = []
     const authenticated = await createSystemAccessFixture(db, {
       accessCodes: ['content:icon-set:create'],
       usernamePrefix: 'icon-set-preprocess-failure-user',
     })
-    const app = createApp(db, { operationAuditSink: createAuditSink(events) })
+    const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
     await app.request('/api/content/icon-sets/custom', {
       method: 'POST',
       headers: { ...authenticated.authHeaders, 'content-type': 'application/json' },

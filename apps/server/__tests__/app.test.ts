@@ -8,7 +8,7 @@ import {
   type ResourceTreeNode,
   type User,
 } from '@rev30/contracts'
-import { createApp } from '../src/app'
+import { createApp } from './helpers/app'
 import { createSystemAccessFixture } from './helpers/auth'
 import { dbTest } from './fixtures/database'
 import { systemRoles } from '../src/db/schema'

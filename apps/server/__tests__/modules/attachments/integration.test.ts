@@ -8,7 +8,7 @@ import {
   type AuthTokenResponse,
   type AttachmentListResponse,
 } from '@rev30/contracts'
-import { createApp, type CreateAppOptions } from '../../../src/app'
+import { createApp, type CreateTestAppOptions } from '../../helpers/app'
 import { authPasswordCredentials } from '../../../src/db/schema'
 import { hashPassword } from '../../../src/modules/auth/password'
 import {
@@ -20,7 +20,7 @@ import { dbTest, type TestDatabase } from '../../fixtures/database'
 import { createSystemUserFixture } from '../../helpers/system'
 import { createLogger } from '../../../src/runtime/logger'
 import { LocalAttachmentStorage } from '../../../src/modules/attachments/storage'
-import type { OperationAuditEvent } from '../../../src/modules/ops/operation-logs/types'
+import type { OperationLogEvent } from '../../../src/runtime/operation-log'
 
 const tempDirs: string[] = []
 const pngBytes = new Uint8Array([
@@ -66,7 +66,7 @@ async function createTempRoot() {
 
 async function createAttachmentIntegrationFixture(
   database: TestDatabase,
-  options: CreateAppOptions = {},
+  options: CreateTestAppOptions = {},
 ) {
   const storageDir = await createTempRoot()
 
@@ -86,11 +86,9 @@ async function createAttachmentIntegrationFixture(
   }
 }
 
-function createAuditSink(events: OperationAuditEvent[]) {
-  return {
-    enqueue(event: OperationAuditEvent) {
-      events.push(event)
-    },
+function createOperationLogReceiver(events: OperationLogEvent[]) {
+  return (event: OperationLogEvent) => {
+    events.push(event)
   }
 }
 
@@ -366,9 +364,9 @@ describe('attachment routes integration', () => {
   dbTest(
     'lists active attachments with uploader summaries and keeps soft-deleted attachments out',
     async ({ db: database }) => {
-      const events: OperationAuditEvent[] = []
+      const events: OperationLogEvent[] = []
       const { app, authenticated } = await createAttachmentIntegrationFixture(database, {
-        operationAuditSink: createAuditSink(events),
+        operationLogReceiver: createOperationLogReceiver(events),
       })
       const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
         bytes: pngBytes,

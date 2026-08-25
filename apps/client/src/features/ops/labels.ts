@@ -4,24 +4,31 @@ import {
   LOGIN_FAILURE_REASON_RATE_LIMITED,
   LOGIN_LOG_RESULT_FAILURE,
   LOGIN_LOG_RESULT_SUCCESS,
+  OPERATION_LOG_MODULE_CONTENT,
+  OPERATION_LOG_MODULE_OPS,
+  OPERATION_LOG_MODULE_SYSTEM,
+  OPERATION_LOG_RESULT_FAILURE,
+  OPERATION_LOG_RESULT_SUCCESS,
+  operationLogActionSchema,
   type ClientIpSource,
   type LoginFailureReason,
   type LoginLogResult,
   type OpsDeviceType,
   type OperationLogAction,
+  type OperationLogListItem,
   type OperationLogModule,
   type OperationLogResult,
 } from '@rev30/contracts'
 
 export const operationLogModuleLabels = {
-  system: '系统管理',
-  content: '内容管理',
-  ops: '运维管理',
+  [OPERATION_LOG_MODULE_SYSTEM]: '系统管理',
+  [OPERATION_LOG_MODULE_CONTENT]: '内容管理',
+  [OPERATION_LOG_MODULE_OPS]: '运维管理',
 } as const satisfies Record<OperationLogModule, string>
 
 export const operationLogResultLabels = {
-  success: '成功',
-  failure: '失败',
+  [OPERATION_LOG_RESULT_SUCCESS]: '成功',
+  [OPERATION_LOG_RESULT_FAILURE]: '失败',
 } as const satisfies Record<OperationLogResult, string>
 
 export const operationLogActionLabels = {
@@ -59,15 +66,50 @@ export const operationLogActionLabels = {
   'ops:online-session:revoke': '撤销在线会话',
 } as const satisfies Record<OperationLogAction, string>
 
-export const operationLogModuleOptions = Object.entries(operationLogModuleLabels).map(
-  ([value, label]) => ({ label, value: value as OperationLogModule }),
-)
-export const operationLogResultOptions = Object.entries(operationLogResultLabels).map(
-  ([value, label]) => ({ label, value: value as OperationLogResult }),
-)
-export const operationLogActionOptions = Object.entries(operationLogActionLabels).map(
-  ([value, label]) => ({ label, value: value as OperationLogAction }),
-)
+export const operationLogModuleOptions: Array<{
+  label: string
+  value: OperationLogModule
+}> = [
+  {
+    label: operationLogModuleLabels[OPERATION_LOG_MODULE_SYSTEM],
+    value: OPERATION_LOG_MODULE_SYSTEM,
+  },
+  {
+    label: operationLogModuleLabels[OPERATION_LOG_MODULE_CONTENT],
+    value: OPERATION_LOG_MODULE_CONTENT,
+  },
+  {
+    label: operationLogModuleLabels[OPERATION_LOG_MODULE_OPS],
+    value: OPERATION_LOG_MODULE_OPS,
+  },
+]
+export const operationLogResultOptions: Array<{
+  label: string
+  value: OperationLogResult
+}> = [
+  {
+    label: operationLogResultLabels[OPERATION_LOG_RESULT_SUCCESS],
+    value: OPERATION_LOG_RESULT_SUCCESS,
+  },
+  {
+    label: operationLogResultLabels[OPERATION_LOG_RESULT_FAILURE],
+    value: OPERATION_LOG_RESULT_FAILURE,
+  },
+]
+export const operationLogActionOptions = operationLogActionSchema.options.map((value) => ({
+  label: operationLogActionLabels[value],
+  value,
+}))
+
+export function formatOperationLogTarget(
+  item: Pick<OperationLogListItem, 'targetKey' | 'targetLabel'>,
+) {
+  if (item.targetLabel !== null && item.targetKey !== null) {
+    return `${item.targetLabel}（${item.targetKey}）`
+  }
+
+  return item.targetLabel ?? item.targetKey ?? '-'
+}
 
 export const loginLogResultLabels = {
   [LOGIN_LOG_RESULT_SUCCESS]: '成功',

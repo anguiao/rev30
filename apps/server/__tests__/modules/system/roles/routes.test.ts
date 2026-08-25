@@ -81,6 +81,10 @@ vi.mock('../../../../src/middleware/access', () => ({
   requireAccess: mocks.requireAccess,
 }))
 
+vi.mock('../../../../src/middleware/operation-log', () => ({
+  recordOperation: vi.fn(),
+}))
+
 vi.mock('../../../../src/modules/system/roles/service', () => ({
   createRoleService: mocks.createRoleService,
 }))

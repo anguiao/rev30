@@ -50,7 +50,7 @@ pnpm dev
 
 运维菜单提供 `/ops/login-logs` 和 `/ops/online-sessions`：前者查询成功、凭据无效、账号停用和限流四类登录结果，后者查询有效会话并允许有权限的管理员强制下线非当前会话。接口和页面分别使用 `ops:login-log:list`、`ops:online-session:list` 与 `ops:online-session:revoke` 权限；迁移只创建资源，不自动授权普通角色。
 
-操作日志页面位于 `/ops/operation-logs`，支持筛选列表和按需加载详情，记录显式标记的后台业务写操作与指定业务导出，不记录登录、个人操作或维护任务。列表和详情都要求精确权限 `ops:operation-log:list`；迁移创建对应菜单与动作资源，但不自动授权普通角色。审计事件通过有界异步 FIFO 以 fail-open 方式写入，不保证零丢失或与业务事务一致。
+操作日志页面位于 `/ops/operation-logs`，支持筛选列表和按需加载详情，记录显式登记的后台业务写操作与指定业务导出，不记录登录、个人操作或维护任务。列表和详情都要求精确权限 `ops:operation-log:list`；迁移创建对应菜单与动作资源，但不自动授权普通角色。操作日志事件通过有界异步 FIFO 以 fail-open 方式写入，不保证零丢失或与业务事务一致。
 
 认证会话和登录日志清理默认每 6 小时运行。自然到期会话在清理时删除，撤销会话超过 7 天后删除，登录日志达到 90 天时删除；对应设置为 `AUTH_SESSION_CLEANUP_INTERVAL_MS`、`AUTH_REVOKED_SESSION_RETENTION_MS`、`OPS_LOGIN_LOG_CLEANUP_INTERVAL_MS` 和 `OPS_LOGIN_LOG_RETENTION_MS`，清理 interval 设为 `0` 可关闭调度。
 

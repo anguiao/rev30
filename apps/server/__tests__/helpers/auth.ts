@@ -4,6 +4,7 @@ import { Hono } from 'hono'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import type { Db } from '../../src/db'
 import { createAuthMiddleware } from '../../src/middleware/auth'
+import { createRequestContextMiddleware } from '../../src/middleware/request-context'
 import {
   authSessions,
   systemRoles,
@@ -14,8 +15,14 @@ import {
 } from '../../src/db/schema'
 import { readAuthConfig } from '../../src/modules/auth/config'
 import { createTokenPair } from '../../src/modules/auth/tokens'
+import { logger } from '../../src/runtime/logger'
+import { readTrustedProxyPolicy } from '../../src/runtime/trusted-proxy'
 
 const now = new Date('2026-05-06T00:00:00.000Z')
+const requestContextMiddleware = createRequestContextMiddleware({
+  logger,
+  trustedProxyPolicy: readTrustedProxyPolicy({}),
+})
 
 type SystemAccessFixtureOptions = {
   admin?: boolean
@@ -63,6 +70,7 @@ export function createProtectedSystemRouteTestApp(
   defaultHeaders?: Record<string, string>,
 ) {
   const app = new Hono()
+    .use('/api/system/*', requestContextMiddleware)
     .use('/api/system/*', createAuthMiddleware(database))
     .route(routePath, routeApp)
 
@@ -76,6 +84,7 @@ export function createProtectedContentRouteTestApp(
   defaultHeaders?: Record<string, string>,
 ) {
   const app = new Hono()
+    .use('/api/content/*', requestContextMiddleware)
     .use('/api/content/*', createAuthMiddleware(database))
     .route(routePath, routeApp)
 

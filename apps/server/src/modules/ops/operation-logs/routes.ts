@@ -9,7 +9,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
-import type { OperationAuditRouteEnv } from './audit'
+import type { AuthEnv } from '../../../middleware/auth'
 import { OperationLogNotFoundError } from './errors'
 import { createOperationLogService } from './service'
 
@@ -43,7 +43,7 @@ function operationLogErrorResponse(error: unknown, c: Context) {
 
 export function createOperationLogRoutes(database: Db) {
   const service = createOperationLogService(database)
-  const app = new Hono<OperationAuditRouteEnv>()
+  const app = new Hono<AuthEnv>()
 
   app.onError((error, c) => operationLogErrorResponse(error, c))
 

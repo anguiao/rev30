@@ -1,5 +1,5 @@
 ---
-status: implemented
+status: completed
 date: 2026-08-19
 ---
 
@@ -9,7 +9,7 @@ date: 2026-08-19
 
 运维管理的前两个切片已经建立请求上下文、可信客户端 IP、请求关联日志、登录日志和稳定
 会话。服务端现在可以在经过认证的请求中取得服务端生成的 request ID、可信 IP 及来源、
-已截断的 User-Agent、当前用户和稳定 session ID，但这些信息尚未形成业务操作审计事件。
+已截断的 User-Agent、当前用户和稳定 session ID，但这些信息尚未形成结构化业务操作记录。
 
 当前系统管理、内容管理和运维管理包含约三十个后台写操作，并有一项具备独立权限的业务
 导出。Pino 请求日志只能说明某个 HTTP 请求的路径、状态和耗时，无法表达“谁对哪个业务
@@ -26,14 +26,14 @@ spec。
    以及最终 HTTP 结果是什么。
 2. 使用固定、类型化的动作目录，不按 HTTP method 自动推断业务动作。
 3. 由每个适用路由在认证、权限和输入校验通过后，取得目标字段所需的已校验值并完成简单
-   纯计算，再在任何可能失败的 handler 预处理或 service 调用前显式标记操作。
+   纯计算，再在任何可能失败的 handler 预处理或 service 调用前显式登记操作。
 4. 统一记录成功、领域失败和未知失败，并以最终 HTTP 状态作为请求结果语义。
 5. 只保存登记时已经存在的最小目标标识，不保存完整请求、响应、业务对象或成功后快照。
 6. 覆盖当前系统管理、内容管理和运维管理中列出的适用写操作及明确的后台业务导出。
 7. 提供带权限保护的分页查询、详情 API 和操作日志管理页面。
 8. 默认保留操作日志 180 天，并通过独立维护 worker 自动清理。
-9. 通过固定容量的进程内 FIFO 和单消费者隔离审计写入延迟与失败，不让业务 response 等待
-   审计 INSERT。
+9. 通过固定容量的进程内 FIFO 和单消费者隔离操作日志写入延迟与失败，不让业务 response
+   等待日志 INSERT。
 10. 用定向测试覆盖框架语义、代表性路由、敏感信息边界、查询页面和清理能力。
 
 ## 非目标
@@ -42,12 +42,12 @@ spec。
 
 - 合规级不可抵赖账本、WORM 存储、哈希链、数字签名或数据库管理员防篡改。
 - 操作日志与业务写入之间的事务、outbox、外部消息设施、持久化本地队列或零丢失承诺。
-- 独立数据库、第二个 PostgreSQL 客户端或审计专用连接池。
+- 独立数据库、第二个 PostgreSQL 客户端或操作日志专用连接池。
 - 成功后生成 ID、目标名称、删除前对象、字段 diff 或其他领域结果补充。
 - `details`、`summary`、`changes` 或任意 JSON 扩展容器。
 - 将所有 POST、PUT、PATCH、DELETE 请求自动持久化或自动判断业务动作。
 - 为未来写路由建立静态路由清单、强制 opt-out 机制或固定动作数量测试。
-- 认证中间件或路由级 `requireAccess` 拒绝，以及 HTTP schema 校验失败请求的安全事件审计。
+- 认证中间件或路由级 `requireAccess` 拒绝，以及 HTTP schema 校验失败请求的安全事件记录。
 - 登录、refresh、logout、个人资料、个人密码和公告已读事件；登录行为继续由登录日志负责。
 - 上传会话创建、原始文件字节传输、附件内容 URL 签发或附件读取。
 - 后台清理、服务启动、定时维护等非用户触发运行事件。
@@ -63,11 +63,11 @@ spec。
 - **请求日志**：现有 `request started`、`request completed` 和 `request failed` Pino
   事件。
 - **Pino 运行日志**：应用或后台 worker 通过 Pino 输出的其他结构化运行事件。
-- **操作日志**：本设计新增并持久化到 `ops_operation_logs` 的业务操作审计记录。
+- **操作日志**：本设计新增并持久化到 `ops_operation_logs` 的结构化业务操作记录。
 - **登录日志**：现有 `ops_login_logs` 中的认证登录历史。
-- **操作标记**：路由在校验后、可能失败的 handler 处理前登记的固定 action 和至少一个目标
+- **操作登记**：路由在校验后、可能失败的 handler 处理前登记的固定 action 和至少一个目标
   字段。
-- **审计缓冲**：容量固定的进程内 FIFO，只吸收短时写入波动，不提供可靠消息交付。
+- **操作日志缓冲**：容量固定的进程内 FIFO，只吸收短时写入波动，不提供可靠消息交付。
 
 操作日志中的“成功/失败”描述最终 HTTP 请求结果，而不是数据库事务证明。`2xx` 表示成功，
 其他最终状态表示失败。若业务写入已经提交、随后 response 构造发生未知错误，操作日志仍按
@@ -84,11 +84,11 @@ spec。
 
 | 主题 | 决策 |
 | --- | --- |
-| 总体方案 | 全局审计收口中间件 + 路由单次显式标记 |
+| 总体方案 | 全局操作日志收口中间件 + 路由单次显式登记 |
 | 范围 | 当前列出的后台写操作及所有具有明确业务导出语义的后台导出 |
-| 标记时点 | 校验并完成目标纯计算后，任何可能失败的 handler 预处理或 service 调用之前 |
+| 登记时点 | 校验并完成目标纯计算后，任何可能失败的 handler 预处理或 service 调用之前 |
 | 记录结果 | `2xx` 成功；领域 `4xx` 与未知 `5xx` 失败 |
-| 不记录请求 | 标记前的认证/路由权限拒绝、HTTP schema 校验失败和未显式标记请求 |
+| 不记录请求 | 登记前的认证/路由权限拒绝、HTTP schema 校验失败和未显式登记请求 |
 | 事件数量 | 每个 HTTP 请求最多一条操作日志 |
 | 动作标识 | 固定类型化目录，使用冒号分隔的稳定动作码 |
 | 操作者 | 用户 ID、用户名、昵称、管理员状态和 session ID 快照 |
@@ -106,38 +106,37 @@ spec。
 操作日志拆为四类职责：
 
 1. **共享 API 契约**：放在 `packages/contracts/src/ops/operation-logs.ts`，只定义会跨越
-   客户端与服务端的模块、动作、结果、查询和响应 schema。不放审计执行器、目标提取规则、
+   客户端与服务端的模块、动作、结果、查询和响应 schema。不放服务端记录逻辑、目标提取规则、
    中文标签或业务输入类型。
-2. **请求内操作标记与收口中间件**：服务端内部负责登记当前请求唯一的最小草稿，并在最终
-   response 形成后组装不可变事件；不访问数据库，不使用 `AsyncLocalStorage`。
-3. **审计缓冲与 writer**：每个 app 实例拥有一个显式创建的固定容量 FIFO；单消费者调用
-   writer 单行插入。writer 不判断业务动作，不承担重试或查询。
-4. **操作日志查询模块**：在 `apps/server/src/modules/ops/operation-logs` 下独立维护
-   repository、service、mapper、routes 和 cleanup，避免继续扩张现有扁平 ops 文件。
+2. **请求内操作登记与收口中间件**：`apps/server/src/middleware/operation-log.ts` 负责登记
+   当前请求唯一的最小草稿，并在最终 response 形成后组装不可变事件；不访问数据库，不使用
+   `AsyncLocalStorage`。
+3. **操作日志运行时**：`apps/server/src/runtime/operation-log.ts` 定义不可变事件与窄接收器接口，
+   为每个 app 实例创建固定容量 FIFO，并由单消费者通过内部 writer 单行插入。writer 不判断
+   业务动作，不承担重试或查询。
+4. **运维子模块**：`apps/server/src/modules/ops` 下的 `login-logs`、`online-sessions` 和
+   `operation-logs` 作为三个并列领域，各自维护查询所需的 repository、service、mapper、routes
+   及领域专属的 cleanup 或 errors。根 `routes.ts` 只负责认证与子路由挂载，三者共用的
+   User-Agent 解析保留在 ops 根目录；全局操作日志管线不属于运维查询模块。
 
-现有登录日志和在线会话 API 保持原结构。本切片只为操作日志新增子目录，不搬迁或重构与
-本设计无关的代码。
-
-业务路由只依赖 `markOperationAudit`。根中间件之后使用窄接口接收不可变事件：
+业务路由只依赖 `recordOperation`。根中间件之后使用窄接口接收不可变事件：
 
 ```ts
-type OperationAuditSink = {
-  enqueue(event: OperationAuditEvent): void
-}
+type OperationLogEventReceiver = (event: OperationLogEvent) => void
 ```
 
-操作审计收口中间件和当前 FIFO 分别注入基础 app logger；不把已绑定 method、path、IP 和
-request ID 的 request child logger 传入或保存在 FIFO。审计诊断事件需要关联请求时，从请求
-上下文或不可变事件中显式加入 request ID。以后具备独立数据库或消息设施时，可以替换 sink，
-而不修改各业务路由的操作标记。
+操作日志收口中间件和当前 FIFO 分别注入基础 app logger；不把已绑定 method、path、IP 和
+request ID 的 request child logger 传入或保存在 FIFO。操作日志诊断事件需要关联请求时，从请求
+上下文或不可变事件中显式加入 request ID。以后具备独立数据库或消息设施时，可以替换事件
+接收器，而不修改各业务路由的操作登记。
 
-## 操作标记
+## 操作登记
 
-适用路由在取得已校验输入、完成目标字段所需的同步纯计算后执行一次 marker；marker 之后才
+适用路由在取得已校验输入、完成目标字段所需的同步纯计算后执行一次登记；登记之后才
 进行文件读取、其他可能失败的异步预处理、领域查询、service 调用或副作用：
 
 ```ts
-markOperationAudit(c, 'system:user:delete', {
+recordOperation(c, 'system:user:delete', {
   targetKey: id,
 })
 ```
@@ -145,17 +144,17 @@ markOperationAudit(c, 'system:user:delete', {
 创建操作可以登记已有的自然业务键和安全名称：
 
 ```ts
-markOperationAudit(c, 'system:user:create', {
+recordOperation(c, 'system:user:create', {
   targetKey: body.username,
   targetLabel: body.nickname,
 })
 ```
 
 action 先由共享 schema 校验，再从第一段派生 module、第二段派生 target type。路由不重复
-传入这两个字段。marker 同时捕获操作者快照、当时的 `isAdmin`、session ID、request ID、
+传入这两个字段。登记同时捕获操作者快照、当时的 `isAdmin`、session ID、request ID、
 可信 IP、User-Agent、墙钟发生时间和单调计时起点。
 
-marker 是服务端内部的 fail-open 边界：
+登记是服务端内部的 fail-open 边界：
 
 - action、目标形状和请求上下文先规范化并通过 strict schema，成功后才写入 context。
 - `targetKey` 和 `targetLabel` 可以单独省略，但规范化后必须至少存在一个；该通用约束不建立
@@ -164,66 +163,68 @@ marker 是服务端内部的 fail-open 边界：
   `…` 标识，不拒绝或改变业务调用。
 - 用户 ID、session ID 和 request ID 等 UUID 始终完整保留。
 - 空白 target 值归一为未提供，不保存空字符串。
-- marker 校验或事件草稿构造失败时，将该请求的审计状态设为 `discarded`；根收口中间件使用
-  基础 app logger 输出不附带 marker 输入、action 或目标值的
-  `operation audit registration discarded` Pino 运行事件，并继续执行业务。
-- 每个请求最多允许一次 marker。重复标记不覆盖第一次，而是把该请求的审计状态改为
-  `discarded`，使用固定 `auditErrorKind = duplicate_mark` 告警，并继续执行业务。
-- 根收口中间件看到 `discarded` 时不向 sink 入队。
+- 登记校验或事件草稿构造失败时，将失败信息写入请求 context；根收口中间件使用基础 app
+  logger 输出不附带登记输入、action 或目标值的
+  `operation log registration discarded` Pino 运行事件，并继续执行业务。
+- 每个请求最多允许一次登记。重复登记不覆盖第一次，而是将失败信息写入请求 context，使用
+  固定 `operationLogErrorKind = duplicate_registration` 告警，并继续执行业务。
+- 根收口中间件看到登记失败信息时不向事件接收器入队。
 
-这项重复标记保护只检查单个请求 context 槽位，不引入计数器、注册表或全局状态。审计框架
-自身的任何程序错误都不得改变业务 response；不安全或含义不确定的审计事件宁可丢弃。
+这项重复登记保护只检查单个请求 context 槽位，不引入计数器、注册表或全局状态。登记、事件
+组装与接收采用 fail-open；不安全或含义不确定的操作日志事件宁可丢弃。
 
 ## 请求生命周期
 
 根应用中间件顺序调整为：
 
 ```text
-请求上下文 -> 请求日志 -> 操作审计收口 -> JSON body limit -> 认证 -> 权限 -> 参数校验 -> 路由
+请求上下文 -> 请求日志 -> 操作日志收口 -> JSON body limit -> 认证 -> 权限 -> 参数校验 -> 路由
 ```
 
-操作审计收口中间件采用与现有请求日志相同的外层观察方式：
+操作日志收口中间件采用与现有请求日志相同的外层观察方式：
 
 1. 调用下游。
 2. 等待 Hono 子应用和根 error handler 形成最终 response。
-3. context 没有有效操作标记时直接返回原 response。
-4. 停止计时并组装不可变 `OperationAuditEvent`。
-5. 依据最终 HTTP 状态确定 result，并同步尝试向 sink 入队。
+3. context 没有有效操作登记时直接返回原 response。
+4. 停止计时并组装不可变 `OperationLogEvent`。
+5. 依据最终 HTTP 状态确定 result，并同步尝试向事件接收器入队。
 6. 立即返回原 response，不等待数据库 INSERT。
 
-审计中间件不读取或克隆 response body，不解析完整 URL，不复制领域错误映射，也不改变
+操作日志中间件不读取或克隆 response body，不解析完整 URL，不复制领域错误映射，也不改变
 `c.error`。领域错误即使由子应用映射为 `4xx`，仍会在最终 response 形成后记录为失败；未知
 错误沿用根 error handler 的 `500`。
 
-`durationMs` 从 marker 成功执行时开始，到最终 response 形成时结束，不包含认证、权限和
-HTTP 输入校验时间；包含 marker 后的 handler 预处理、service 调用和 response 构造时间，
+`durationMs` 从登记成功执行时开始，到最终 response 形成时结束，不包含认证、权限和 HTTP
+输入校验时间；包含登记后的 handler 预处理、service 调用和 response 构造时间，
 不包含排队、数据库插入或客户端接收 response 的网络时间。
 
 因此：
 
 - 认证中间件的 `401`、路由级 `requireAccess` 的 `403` 和 HTTP schema validator 的 `400`
-  发生在 marker 前，不产生操作日志。
-- service 在 marker 后抛出的领域 `400`、目标范围 `403`、`404`、`409` 等都会记录为失败。
-- 文件读取等 marker 后的 handler 预处理失败也会记录；不得把 marker 延迟到这类处理完成后。
+  发生在登记前，不产生操作日志。
+- service 在登记后抛出的领域 `400`、目标范围 `403`、`404`、`409` 等都会记录为失败。
+- 文件读取等登记后的 handler 预处理失败也会记录；不得把登记延迟到这类处理完成后。
 - 用户、角色和资源管理的目标范围 `403` 表示已获基本操作权限的用户尝试了不允许的具体
   目标，属于操作日志范围。
 - response 构造本身发生错误时，仍依据根 error handler 形成的最终状态记录。
-- 最终事件组装或 sink 调用发生审计框架错误时，只通过基础 app logger 输出安全 Pino 运行
-  事件并返回原 response。
+- 最终事件组装或事件接收器调用发生操作日志框架错误时，只通过基础 app logger 输出固定
+  `operationLogErrorKind = finalization_error` 的安全 Pino 运行事件并返回原 response。
 
 ## 进程内 FIFO 与异步写入
 
-操作日志是运维追溯能力，不是业务事务的一部分。生产入口显式创建一个审计缓冲并注入 app，
-测试可以注入受控 sink；不使用模块级单例。
+操作日志是运维追溯能力，不是业务事务的一部分。`CreateAppOptions.operationLogReceiver` 是
+必填的运行时依赖；生产入口显式创建操作日志运行时并注入 app，不提供生产 no-op 默认值。
+普通测试通过测试 helper 显式使用 no-op 接收器，操作日志测试可以注入受控接收器；不使用
+模块级单例。
 
 FIFO 固定规则如下：
 
 - 总容量为 32 条，包含正在执行 INSERT 的队首事件。
-- `enqueue` 只进行同步、常数时间的入队判断，不等待数据库。
-- 单个消费者严格按接受顺序逐条调用 writer，同时最多一条审计 INSERT。
+- `receiver` 只进行同步、常数时间的入队判断，不等待数据库。
+- 单个消费者严格按接受顺序逐条调用 writer，同时最多一条操作日志 INSERT。
 - 每个事件只尝试写入一次；失败后移除队首并继续下一条，不重试、不重新排队。
 - 队列已满或缓冲已停止时拒绝新事件，不覆盖已经接受的旧事件，并输出
-  `operation audit enqueue failed`，固定原因为 `full` 或 `stopped`。
+  `operation log enqueue failed`，固定原因为 `full` 或 `stopped`。
 - 接受入队只表示当前进程暂存了事件，不表示已经持久化。查询 API 因此是最终一致的。
 - 多实例部署时每个实例分别维护容量 32 的 FIFO，不保证跨实例顺序。
 
@@ -231,11 +232,12 @@ FIFO 固定规则如下：
 不增加字节级预算、容量环境变量、批量策略、重试退避或死信机制。
 
 缓冲复用现有 Drizzle `Db`，不创建第二个 `postgres.js` 客户端。它保证业务 response 不进入
-审计 INSERT 的等待链路，并把审计数据库并发限制为一条查询；它不提供数据库层绝对隔离。
+操作日志 INSERT 的等待链路，并把操作日志数据库并发限制为一条查询；它不提供数据库层绝对
+隔离。
 该查询仍可能占用现有客户端池的一个连接，并与后续业务查询竞争同一 PostgreSQL 的 CPU、
 磁盘和锁资源。
 
-停机不提供审计专用排空保证：
+停机不提供操作日志专用排空保证：
 
 - HTTP server 停止接收并等待在途请求结束后，缓冲停止接受新事件。
 - 尚未开始写入的队列项被丢弃，只记录有界 `droppedCount`，不输出事件内容。
@@ -244,20 +246,20 @@ FIFO 固定规则如下：
 - 进程崩溃、强制终止和部署停机都可能丢失尚未持久化的事件。
 
 writer 插入失败时通过 FIFO 注入的基础 app logger 输出
-`operation audit persistence failed`，并遵循以下安全边界：
+`operation log persistence failed`，并遵循以下安全边界：
 
 - 捕获范围只包围 `ops_operation_logs` 的单次异步 INSERT。
 - `err` 使用新建的通用 Error，不把原始数据库错误对象、message、stack 或 cause 传给 Pino。
-- 额外字段只允许固定 action、最终 status、归一化 `auditErrorKind`，以及通过严格格式和长度
-  校验后可选的 PostgreSQL error code 与 constraint name。
+- 额外字段只允许固定 action、最终 status、request ID，以及固定
+  `operationLogErrorKind = persistence_failure`。
 - 不输出完整事件、操作者、目标值、输入、response、SQL、参数、数据库 detail/hint、连接
-  地址或端口。无法安全分类时只使用 `unknown`，不以原始值作为 fallback。
+  地址或端口。
 - 入队拒绝、登记失败和停机丢弃遵守同一白名单原则。
-- 审计诊断事件不继承 request child logger 的 method、path、IP、IP 来源或 User-Agent；现有
+- 操作日志诊断事件不继承 request child logger 的 method、path、IP、IP 来源或 User-Agent；现有
   普通请求日志仍沿用原绑定，不由本设计修改。
 
 业务 service、查询 API、cleanup 和其他未知异常不使用这项 fail-open 规则，仍按项目现有
-错误传播约定处理。若业务数据库故障同时导致 service 和审计 INSERT 失败，客户端获得原业务
+错误传播约定处理。若业务数据库故障同时导致 service 和操作日志 INSERT 失败，客户端获得原业务
 `5xx`，Pino 只留下脱敏运行事件；本设计不承诺此时仍有数据库操作日志。
 
 ## 数据模型
@@ -281,12 +283,12 @@ writer 插入失败时通过 FIFO 注入的基础 app logger 输出
 | `target_label` | text | 可空；请求时可读目标名称，最长 512 字符 |
 | `result` | text | `success` 或 `failure` |
 | `http_status` | smallint | 最终 HTTP 状态，范围 100–599 |
-| `duration_ms` | integer | 从 marker 到最终 response 形成的非负整数毫秒 |
+| `duration_ms` | integer | 从登记到最终 response 形成的非负整数毫秒 |
 | `request_id` | uuid | 服务端生成的 request ID，必填且唯一 |
 | `client_ip` | text | 可空可信客户端 IP |
 | `client_ip_source` | text | `socket`、`x-forwarded-for` 或 `unavailable` |
 | `user_agent` | text | 可空；复用请求上下文中最长 512 字符的原始值 |
-| `created_at` | timestamptz | marker 时间；writer 显式写入，默认值仍为 `now()` |
+| `created_at` | timestamptz | 登记时间；writer 显式写入，默认值仍为 `now()` |
 
 操作者和 session 字段故意不建立生命周期外键。用户采用软删除，会话也会按保留策略清理；
 操作日志必须在这些记录消失后仍能独立读取。目标键同样不建立领域外键，允许被删除实体、
@@ -329,8 +331,8 @@ writer 插入失败时通过 FIFO 注入的基础 app logger 输出
 
 ## 动作目录与目标规则
 
-动作码是审计标识，不是权限判断输入。部分 CRUD 动作恰好与权限码相同，公告发布、归档等
-动作则使用比现有 `update` 权限更精细的审计代码。授权仍由原有 `requireAccess` 完成。
+动作码用于标识操作记录，不是权限判断输入。部分 CRUD 动作恰好与权限码相同，公告发布、
+归档等动作则使用比现有 `update` 权限更精细的记录代码。授权仍由原有 `requireAccess` 完成。
 
 ### 当前固定动作
 
@@ -370,13 +372,13 @@ writer 插入失败时通过 FIFO 注入的基础 app logger 输出
 | ops | 在线会话 | `ops:online-session:revoke` |
 
 当前清单共 32 个动作；该数字只是本设计时的仓库范围快照，不是长期业务不变量，也不写成
-固定数量测试。新增需审计的后台写操作时扩充 action schema、路由 marker、前端标签和相关
+固定数量测试。新增需要记录的后台写操作时扩充 action schema、路由登记、前端标签和相关
 测试，不通过复用宽泛 `update` 动作隐藏独立状态转换。所有具有明确业务导出语义的后台导出
 同样属于操作日志范围；当前只有自定义图标集导出。
 
-### 目标标记
+### 目标登记
 
-目标字段统一表示 marker 执行时的尝试目标，不因成功而补充：
+目标字段统一表示登记执行时的尝试目标，不因成功而补充：
 
 | 动作类别 | `targetKey` | 可选 `targetLabel` |
 | --- | --- | --- |
@@ -402,11 +404,11 @@ writer 插入失败时通过 FIFO 注入的基础 app logger 输出
 
 不得为了补齐目标增加查询或改变 service 返回值。创建动作没有稳定 key 时允许只保存 label；
 删除和状态动作不知道名称时允许只保存路径 ID。当前动作没有无目标事件；未来若确需增加，
-必须显式调整 marker 和数据库约束，而不是在路由中静默省略目标。
+必须显式调整登记和数据库约束，而不是在路由中静默省略目标。
 
 ### 明确排除
 
-以下当前写请求不标记操作日志：
+以下当前写请求不登记操作日志：
 
 - `POST /api/auth/login`、refresh、logout。
 - 当前用户资料和密码修改。
@@ -430,8 +432,8 @@ writer 插入失败时通过 FIFO 注入的基础 app logger 输出
 - `operationLogResultSchema`：`success | failure`。
 - 列表查询、列表项、详情和详情路径 schema。
 
-contracts 不包含 marker、FIFO、writer、目标提取规则、动作中文标签或业务输入类型。服务端
-内部可以复用 action 类型和 schema，但审计执行逻辑不进入 contracts。前端在自身模块使用
+contracts 不包含登记、FIFO、writer、目标提取规则、动作中文标签或业务输入类型。服务端
+内部可以复用 action 类型和 schema，但操作记录逻辑不进入 contracts。前端在自身模块使用
 `Record<OperationLogAction, string>` 等穷尽映射维护中文标签。
 
 所有查询条件按交集筛选；module/action 不匹配或 result/HTTP status 不一致的组合返回空
@@ -509,7 +511,7 @@ GET /api/ops/operation-logs/:id
 | 缺少精确资源权限 | `403` | 沿用 `无权访问` |
 | 详情不存在 | `404` | `操作日志不存在` |
 
-未知错误继续抛给根 error handler，不增加空数据 fallback。操作日志 GET 请求不标记新的操作
+未知错误继续抛给根 error handler，不增加空数据 fallback。操作日志 GET 请求不登记新的操作
 日志。
 
 ## 权限资源
@@ -619,10 +621,10 @@ OPS_OPERATION_LOG_RETENTION_MS=15552000000
 - 来自业务数据的字符串快照最长 512 字符；超长值截断而不阻断业务操作。
 - 失败操作不保存 response message、领域异常类型或数据库错误。
 - request ID 用于关联请求日志和 Pino 运行日志。
-- marker、缓冲和 writer 的失败事件遵循严格白名单，不透传原始 PostgreSQL 错误。
+- 登记、缓冲和 writer 的失败事件遵循严格白名单，不透传原始数据库错误。
 - 列表和详情都要求精确动作权限；仅拥有菜单资源不能读取数据。
 - 操作日志 API、writer INSERT 和 cleanup 不递归生成操作日志。
-- Pino redaction 继续作为结构化运行日志的泄漏防线，但不替代 marker 的最小字段规则。
+- Pino redaction 继续作为结构化运行日志的泄漏防线，但不替代登记的最小字段规则。
 
 ## 数据迁移与兼容性
 
@@ -632,7 +634,7 @@ OPS_OPERATION_LOG_RETENTION_MS=15552000000
 2. 插入操作日志 menu 和 list action 两条固定资源。
 
 迁移不回填历史记录，不修改 `ops_login_logs`、`auth_sessions` 或既有资源。部署后只有新发生且
-显式标记的业务请求会生成操作日志。
+显式登记的业务请求会生成操作日志。
 
 同步更新：
 
@@ -665,21 +667,21 @@ OPS_OPERATION_LOG_RETENTION_MS=15552000000
 - target key 和 label 同时为空被拒绝。
 - 两条固定资源存在、启用且没有普通角色绑定。
 
-### 审计框架
+### 操作日志框架
 
-- 未标记和 `discarded` 请求不向 sink 入队。
-- 合法 marker 捕获最小字段，超长动态字符串被截断且不改变业务 response。
-- marker 的两个目标都缺失或规范化为空时丢弃审计事件并告警，业务 response 不变。
-- 非法 marker 和重复 marker 只产生安全 Pino 运行事件并继续业务。
-- 标记后最终 `2xx` 形成成功事件；领域 `4xx` 和未知 `500` 形成失败事件。
-- marker 后、service 前的 handler 预处理失败形成失败事件，duration 包含这段处理时间。
+- 未登记和登记失败的请求不向事件接收器入队。
+- 合法登记捕获最小字段，超长动态字符串被截断且不改变业务 response。
+- 登记的两个目标都缺失或规范化为空时丢弃操作日志事件并告警，业务 response 不变。
+- 非法登记和重复登记只产生安全 Pino 运行事件并继续业务。
+- 登记后最终 `2xx` 形成成功事件；领域 `4xx` 和未知 `500` 形成失败事件。
+- 登记后、service 前的 handler 预处理失败形成失败事件，duration 包含这段处理时间。
 - 图标批量上传在部分或全部单文件失败但最终返回 `2xx` 时仍形成请求级成功事件，不保存逐项
   结果。
 - auth `401`、`requireAccess` `403` 和 route validator `400` 不写操作日志。
 - 中间件不读取 response body，duration 不包含排队与 INSERT。
 - FIFO 总容量 32，包含队首在途事件；严格单消费者和 FIFO 顺序。
-- `enqueue` 不等待数据库；队列满时不调用 writer、不覆盖旧事件，并产生安全告警。
-- FIFO 只保留不可变审计事件，不保留 request child logger；审计诊断日志不继承 path、IP 或
+- `receiver` 不等待数据库；队列满时不调用 writer、不覆盖旧事件，并产生安全告警。
+- FIFO 只保留不可变操作日志事件，不保留 request child logger；操作日志诊断日志不继承 path、IP 或
   User-Agent。
 - 单条 INSERT 失败不重试，随后继续消费下一条。
 - 停止接收时不等待排空，报告并丢弃尚未开始的队列项。
@@ -690,7 +692,7 @@ OPS_OPERATION_LOG_RETENTION_MS=15552000000
 ### 代表性路由与安全边界
 
 选择不同接入形态做少量集成测试，包括 JSON 创建、局部更新、`204` 删除、状态动作、业务
-导出、附件上传完成和在线会话撤销。代表性失败覆盖标记后的目标范围 `403`、其他领域错误和
+导出、附件上传完成和在线会话撤销。代表性失败覆盖登记后的目标范围 `403`、其他领域错误和
 未知 `500`。
 
 高风险数据定向覆盖：
@@ -702,8 +704,8 @@ OPS_OPERATION_LOG_RETENTION_MS=15552000000
 - 附件操作不保存文件内容、storage key 或 checksum。
 - 在线会话撤销不保存 token、refresh hash 或权限快照。
 
-实现和 review 阶段按本 spec 的当前动作清单核对 marker 范围一次；不为每个动作新增一套重复
-集成测试，也不断言固定数量。未来新路由的标记由开发约定、代码审阅和相关业务测试负责。
+实现和 review 阶段按本 spec 的当前动作清单核对登记范围一次；不为每个动作新增一套重复
+集成测试，也不断言固定数量。未来新路由的登记由开发约定、代码审阅和相关业务测试负责。
 
 ### 查询 API
 
@@ -746,15 +748,15 @@ OPS_OPERATION_LOG_RETENTION_MS=15552000000
 
 1. 数据库迁移后存在空的 `ops_operation_logs` 和两条未自动授权普通角色的操作日志资源。
 2. 当前动作目录列出的适用写操作和业务导出均在可能失败的 handler 预处理和 service 前显式
-   标记；不通过固定数量测试把该清单冻结为长期不变量。
-3. 标记前的认证、路由权限和 HTTP schema 校验失败不写；标记后的目标范围 `403`、其他领域
+   登记；不通过固定数量测试把该清单冻结为长期不变量。
+3. 登记前的认证、路由权限和 HTTP schema 校验失败不写；登记后的目标范围 `403`、其他领域
    错误和未知错误写失败记录。
 4. 每条日志都能关联操作者及其当时的管理员状态、session、request、可信 IP、action、请求时
    尝试目标和最终状态。
 5. 数据库没有 `details`；敏感与大体积字段在数据库、内存 FIFO 和 Pino 输出中均不可见。
-6. 业务 response 不等待审计 INSERT；队列拒绝、异步写入失败、审计框架错误和停机丢弃都不
-   改变业务结果，并输出仅含白名单诊断字段、不含操作者、目标或请求/响应内容的明确 Pino
-   运行事件。
+6. 业务 response 不等待操作日志 INSERT；队列拒绝、异步写入失败、事件组装与接收失败和停机
+   丢弃都不改变业务结果，并输出仅含白名单诊断字段、不含操作者、目标或请求/响应内容的明确
+   Pino 运行事件。
 7. FIFO 容量固定为 32，每个 app 实例的 writer INSERT 并发为一条；单条失败不重试并继续
    后续事件。
 8. 有权限用户可以筛选列表、按 session ID 追踪同一会话、打开详情并复制操作者、session 和
@@ -764,16 +766,12 @@ OPS_OPERATION_LOG_RETENTION_MS=15552000000
 
 ## 实施顺序
 
-后续 `implement` 阶段按以下顺序执行：
-
 1. 新增共享 action、查询和响应契约，不增加 `details` 扩展容器。
 2. 新增数据库 schema、migration、约束、索引和权限资源。
-3. 实现请求内 marker、全局收口中间件、容量 32 的 FIFO、writer 和无等待 stop。
-4. 按系统管理、内容管理、运维管理顺序标记当前动作目录中的适用写路由和业务导出。
+3. 实现请求内登记、全局收口中间件、容量 32 的 FIFO、writer 和无等待 stop。
+4. 按系统管理、内容管理、运维管理顺序登记当前动作目录中的适用写路由和业务导出。
 5. 实现操作日志列表和详情 repository、service、mapper 与 routes。
 6. 实现前端列表和详情抽屉。
 7. 实现 180 天 cleanup、环境变量和维护任务接入。
 8. 更新 README、`.env.example` 和必要测试。
 9. 运行定向验证和完整 `pnpm check`。
-
-本 spec 在 `draft` 阶段只记录设计，不开始上述实现，不创建提交。

@@ -134,25 +134,19 @@ describe('operation logs page', () => {
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
     await flushPromises()
     expect(listMock).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 }))
+    const callCountBeforeReset = listMock.mock.calls.length
+
     await wrapper.get('[data-test="operation-logs-reset"]').trigger('click')
     await flushPromises()
-    expect(listMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
-  })
 
-  it('refetches an unchanged query without duplicating changed-query requests', async () => {
-    const { wrapper } = await mountPage()
-    await flushPromises()
-    expect(listMock).toHaveBeenCalledTimes(1)
-
-    await wrapper.find('[data-test="operation-logs-actor"] input').setValue('ada')
-    await wrapper.get('[data-test="operation-logs-search"]').trigger('click')
-    await flushPromises()
-    expect(listMock).toHaveBeenCalledTimes(2)
-    expect(listMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, actorKeyword: 'ada' })
-
-    await wrapper.get('[data-test="operation-logs-search"]').trigger('click')
-    await flushPromises()
-    expect(listMock).toHaveBeenCalledTimes(3)
+    expect(
+      (wrapper.get('[data-test="operation-logs-actor"] input').element as HTMLInputElement).value,
+    ).toBe('')
+    expect(moduleSelect.props('value')).toBeNull()
+    expect(actionSelect.props('value')).toBeNull()
+    expect(statusInput.props('value')).toBeNull()
+    expect(wrapper.getComponent(NPagination).props('page')).toBe(1)
+    expect(listMock).toHaveBeenCalledTimes(callCountBeforeReset)
   })
 
   it('renders safe list fields and lazily loads structured detail with copy controls', async () => {
@@ -176,8 +170,8 @@ describe('operation logs page', () => {
     expect(wrapper.text()).not.toContain('private raw user agent')
 
     await wrapper.get('[data-test="operation-log-detail"]').trigger('click')
+    await vi.waitFor(() => expect(detailMock).toHaveBeenCalledWith(id))
     await flushPromises()
-    expect(detailMock).toHaveBeenCalledWith(id)
     const detailText = document.body.textContent ?? ''
     expect(detailText).toContain('管理员')
     expect(detailText).toContain(actorUserId)
@@ -208,6 +202,7 @@ describe('operation logs page', () => {
     await flushPromises()
 
     await wrapper.get('[data-test="operation-log-detail"]').trigger('click')
+    await vi.waitFor(() => expect(detailMock).toHaveBeenCalledWith(id))
     await flushPromises()
     const copyButton = document.querySelector<HTMLElement>('[data-test="operation-log-copy-id"]')
     expect(copyButton).not.toBeNull()

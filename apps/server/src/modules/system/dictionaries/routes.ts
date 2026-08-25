@@ -13,7 +13,9 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
-import { markOperationAudit, type OperationAuditRouteEnv } from '../../ops/operation-logs/audit'
+import type { AuthEnv } from '../../../middleware/auth'
+import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
+import type { RequestContextEnv } from '../../../middleware/request-context'
 import {
   DictionaryCodeConflictError,
   DictionaryInvalidItemError,
@@ -82,7 +84,7 @@ function dictionaryErrorResponse(error: unknown, c: Context) {
 
 export function createDictionaryRoutes(database: Db) {
   const service = createDictionaryService(database)
-  const app = new Hono<OperationAuditRouteEnv>()
+  const app = new Hono<AuthEnv & RequestContextEnv & OperationLogEnv>()
 
   app.onError((error, c) => dictionaryErrorResponse(error, c))
 
@@ -108,7 +110,7 @@ export function createDictionaryRoutes(database: Db) {
       dictionaryCreateBodyValidator,
       async (c) => {
         const body: DictionaryCreateInput = c.req.valid('json')
-        markOperationAudit(c, 'system:dictionary:create', {
+        recordOperation(c, 'system:dictionary:create', {
           targetKey: body.code,
           targetLabel: body.name,
         })
@@ -124,7 +126,7 @@ export function createDictionaryRoutes(database: Db) {
       async (c) => {
         const { id } = c.req.valid('param')
         const body: DictionaryUpdateInput = c.req.valid('json')
-        markOperationAudit(c, 'system:dictionary:update', {
+        recordOperation(c, 'system:dictionary:update', {
           targetKey: id,
           targetLabel: body.name,
         })
@@ -134,7 +136,7 @@ export function createDictionaryRoutes(database: Db) {
     )
     .delete('/:id', requireAccess('system:dictionary:delete'), dictionaryIdValidator, async (c) => {
       const { id } = c.req.valid('param')
-      markOperationAudit(c, 'system:dictionary:delete', { targetKey: id })
+      recordOperation(c, 'system:dictionary:delete', { targetKey: id })
 
       await service.delete(id)
 

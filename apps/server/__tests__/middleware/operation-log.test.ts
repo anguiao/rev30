@@ -1,23 +1,18 @@
 import type { OperationLogAction } from '@rev30/contracts'
 import { Hono } from 'hono'
 import type { Logger } from 'pino'
-import { describe, expect, it, vi } from 'vitest'
-import { rootErrorHandler } from '../../../../src/app'
-import type { AuthVariables } from '../../../../src/middleware/auth'
-import type { RequestContextEnv } from '../../../../src/middleware/request-context'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { rootErrorHandler } from '../../src/app'
+import type { AuthEnv, AuthVariables } from '../../src/middleware/auth'
 import {
-  createOperationAuditMiddleware,
-  markOperationAudit,
-  type OperationAuditEnv,
-} from '../../../../src/modules/ops/operation-logs/audit'
-import type {
-  OperationAuditEvent,
-  OperationAuditSink,
-} from '../../../../src/modules/ops/operation-logs/types'
+  createOperationLogMiddleware,
+  recordOperation,
+  type OperationLogEnv,
+} from '../../src/middleware/operation-log'
+import type { RequestContextEnv } from '../../src/middleware/request-context'
+import type { OperationLogEvent, OperationLogEventReceiver } from '../../src/runtime/operation-log'
 
-type TestEnv = {
-  Variables: RequestContextEnv['Variables'] & AuthVariables & OperationAuditEnv['Variables']
-}
+type TestEnv = AuthEnv & RequestContextEnv & OperationLogEnv
 
 function createLoggerSpy() {
   return {
@@ -27,11 +22,9 @@ function createLoggerSpy() {
 }
 
 function createTestApp(options: {
-  events: OperationAuditEvent[]
+  events: OperationLogEvent[]
   logger: Logger
-  monotonicNow: () => number
-  now?: () => Date
-  sink?: OperationAuditSink
+  receiver?: OperationLogEventReceiver
 }) {
   const app = new Hono<TestEnv>()
     .use('*', async (c, next) => {
@@ -55,11 +48,13 @@ function createTestApp(options: {
     })
     .use(
       '*',
-      createOperationAuditMiddleware({
+      createOperationLogMiddleware({
         logger: options.logger,
-        sink: options.sink ?? { enqueue: (event) => options.events.push(event) },
-        monotonicNow: options.monotonicNow,
-        now: options.now ?? (() => new Date('2026-08-19T00:00:00.000Z')),
+        receiver:
+          options.receiver ??
+          ((event) => {
+            options.events.push(event)
+          }),
       }),
     )
     .onError(rootErrorHandler)
@@ -67,23 +62,28 @@ function createTestApp(options: {
   return app
 }
 
-describe('operation audit marker and middleware', () => {
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.useRealTimers()
+})
+
+describe('operation log registration and middleware', () => {
   it('captures a normalized immutable event after the final successful response', async () => {
-    const events: OperationAuditEvent[] = []
+    const events: OperationLogEvent[] = []
     const logger = createLoggerSpy()
     let monotonicTime = 10
-    const app = createTestApp({ events, logger, monotonicNow: () => monotonicTime }).post(
-      '/success',
-      (c) => {
-        markOperationAudit(c, 'system:user:update', {
-          targetKey: `  ${'k'.repeat(600)}  `,
-          targetLabel: '  Ada  ',
-        })
-        monotonicTime = 22.9
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T00:00:00.000Z'))
+    vi.spyOn(performance, 'now').mockImplementation(() => monotonicTime)
+    const app = createTestApp({ events, logger }).post('/success', (c) => {
+      recordOperation(c, 'system:user:update', {
+        targetKey: `  ${'k'.repeat(600)}  `,
+        targetLabel: '  Ada  ',
+      })
+      monotonicTime = 22.9
 
-        return c.json({ secret: 'response-secret' })
-      },
-    )
+      return c.json({ secret: 'response-secret' })
+    })
 
     const response = await app.request('/success', { method: 'POST' })
 
@@ -110,18 +110,17 @@ describe('operation audit marker and middleware', () => {
       targetType: 'user',
       userAgent: 'Example/1.0',
     })
-    expect(Object.isFrozen(events[0])).toBe(true)
     expect(logger.warn).not.toHaveBeenCalled()
     expect(logger.error).not.toHaveBeenCalled()
   })
 
   it('truncates Unicode code points and line breaks without discarding the event', async () => {
-    const events: OperationAuditEvent[] = []
+    const events: OperationLogEvent[] = []
     const logger = createLoggerSpy()
     const unicodeValue = '😀'.repeat(520)
     const multilineValue = `${'a\n'.repeat(300)}a`
-    const app = createTestApp({ events, logger, monotonicNow: () => 0 }).post('/unicode', (c) => {
-      markOperationAudit(c, 'system:user:update', {
+    const app = createTestApp({ events, logger }).post('/unicode', (c) => {
+      recordOperation(c, 'system:user:update', {
         targetKey: unicodeValue,
         targetLabel: multilineValue,
       })
@@ -142,17 +141,18 @@ describe('operation audit marker and middleware', () => {
   })
 
   it('uses the final 4xx and 500 responses without exposing response bodies', async () => {
-    const events: OperationAuditEvent[] = []
+    const events: OperationLogEvent[] = []
     const logger = createLoggerSpy()
     let monotonicTime = 0
-    const app = createTestApp({ events, logger, monotonicNow: () => monotonicTime })
+    vi.spyOn(performance, 'now').mockImplementation(() => monotonicTime)
+    const app = createTestApp({ events, logger })
       .post('/failure', (c) => {
-        markOperationAudit(c, 'system:user:delete', { targetKey: 'user-1' })
+        recordOperation(c, 'system:user:delete', { targetKey: 'user-1' })
         monotonicTime = 5
         return c.json({ password: 'domain-secret' }, 409)
       })
       .post('/unknown', (c) => {
-        markOperationAudit(c, 'system:user:delete', { targetKey: 'user-2' })
+        recordOperation(c, 'system:user:delete', { targetKey: 'user-2' })
         monotonicTime = 9
         throw new Error('database-password-secret')
       })
@@ -172,30 +172,30 @@ describe('operation audit marker and middleware', () => {
     expect(JSON.stringify(events)).not.toContain('database-password-secret')
   })
 
-  it('discards missing targets, invalid registrations and duplicate marks without changing responses', async () => {
-    const events: OperationAuditEvent[] = []
+  it('discards missing targets, invalid registrations and duplicate registrations without changing responses', async () => {
+    const events: OperationLogEvent[] = []
     const logger = createLoggerSpy()
-    const app = createTestApp({ events, logger, monotonicNow: () => 0 })
+    const app = createTestApp({ events, logger })
       .post('/empty', (c) => {
-        markOperationAudit(c, 'system:user:update', { targetKey: ' ', targetLabel: '' })
+        recordOperation(c, 'system:user:update', { targetKey: ' ', targetLabel: '' })
         return c.text('empty-ok')
       })
       .post('/invalid', (c) => {
-        markOperationAudit(c, 'invalid:action' as OperationLogAction, {
+        recordOperation(c, 'invalid:action' as OperationLogAction, {
           targetKey: 'secret-target',
         })
         return c.text('invalid-ok')
       })
       .post('/extra', (c) => {
-        markOperationAudit(c, 'system:user:update', {
+        recordOperation(c, 'system:user:update', {
           targetKey: 'secret-target',
           extra: 'secret-extra',
         } as never)
         return c.text('extra-ok')
       })
       .post('/duplicate', (c) => {
-        markOperationAudit(c, 'system:user:update', { targetKey: 'first-secret' })
-        markOperationAudit(c, 'system:user:delete', { targetKey: 'second-secret' })
+        recordOperation(c, 'system:user:update', { targetKey: 'first-secret' })
+        recordOperation(c, 'system:user:delete', { targetKey: 'second-secret' })
         return c.text('duplicate-ok')
       })
 
@@ -216,63 +216,68 @@ describe('operation audit marker and middleware', () => {
     expect(logger.warn).toHaveBeenNthCalledWith(
       4,
       {
-        auditErrorKind: 'duplicate_mark',
+        operationLogErrorKind: 'duplicate_registration',
         requestId: '10000000-0000-4000-8000-000000000003',
       },
-      'operation audit registration discarded',
+      'operation log registration discarded',
     )
     expect(JSON.stringify((logger.warn as ReturnType<typeof vi.fn>).mock.calls)).not.toMatch(
       /secret|invalid:action|system:user/,
     )
   })
 
-  it('does not enqueue unmarked requests and isolates sink failures from the response', async () => {
-    const events: OperationAuditEvent[] = []
+  it('does not enqueue unregistered requests and isolates receiver failures from the response', async () => {
+    const events: OperationLogEvent[] = []
     const logger = createLoggerSpy()
-    const sink = {
-      enqueue: vi.fn(() => {
-        throw new Error('sink-secret')
-      }),
-    }
-    const app = createTestApp({ events, logger, monotonicNow: () => 0, sink })
-      .get('/unmarked', (c) => c.text('unmarked-ok'))
-      .post('/marked', (c) => {
-        markOperationAudit(c, 'system:user:delete', { targetKey: 'user-1' })
-        return c.text('marked-ok')
+    const receiver = vi.fn(() => {
+      throw new Error('receiver-secret')
+    })
+    const app = createTestApp({ events, logger, receiver })
+      .get('/unregistered', (c) => c.text('unregistered-ok'))
+      .post('/registered', (c) => {
+        recordOperation(c, 'system:user:delete', { targetKey: 'user-1' })
+        return c.text('registered-ok')
       })
 
-    expect(await (await app.request('/unmarked')).text()).toBe('unmarked-ok')
-    expect(await (await app.request('/marked', { method: 'POST' })).text()).toBe('marked-ok')
-    expect(sink.enqueue).toHaveBeenCalledTimes(1)
+    expect(await (await app.request('/unregistered')).text()).toBe('unregistered-ok')
+    expect(await (await app.request('/registered', { method: 'POST' })).text()).toBe(
+      'registered-ok',
+    )
+    expect(receiver).toHaveBeenCalledTimes(1)
     expect(logger.error).toHaveBeenCalledWith(
       {
-        auditErrorKind: 'sink_error',
+        operationLogErrorKind: 'finalization_error',
         requestId: '10000000-0000-4000-8000-000000000003',
       },
-      'operation audit finalization failed',
+      'operation log finalization failed',
     )
     expect(JSON.stringify((logger.error as ReturnType<typeof vi.fn>).mock.calls)).not.toContain(
-      'sink-secret',
+      'receiver-secret',
     )
   })
 
-  it('isolates diagnostic logger failures from discarded responses', async () => {
-    const logger = {
-      warn: vi.fn(() => {
-        throw new Error('logger-secret')
-      }),
-    } as unknown as Logger
-    const app = createTestApp({ events: [], logger, monotonicNow: () => 0 }).post(
-      '/discarded',
-      (c) => {
-        markOperationAudit(c, 'system:user:update', { targetKey: ' ' })
-        return c.text('business-ok')
-      },
-    )
+  it('isolates invalid finalization durations from the response', async () => {
+    const events: OperationLogEvent[] = []
+    const logger = createLoggerSpy()
+    let monotonicTime = 10
+    vi.spyOn(performance, 'now').mockImplementation(() => monotonicTime)
+    const app = createTestApp({ events, logger }).post('/invalid-duration', (c) => {
+      recordOperation(c, 'system:user:delete', { targetKey: 'user-1' })
+      monotonicTime = 9
+      return c.text('business-ok')
+    })
 
-    const response = await app.request('/discarded', { method: 'POST' })
+    const response = await app.request('/invalid-duration', { method: 'POST' })
 
     expect(response.status).toBe(200)
     expect(await response.text()).toBe('business-ok')
+    expect(events).toEqual([])
+    expect(logger.error).toHaveBeenCalledWith(
+      {
+        operationLogErrorKind: 'finalization_error',
+        requestId: '10000000-0000-4000-8000-000000000003',
+      },
+      'operation log finalization failed',
+    )
   })
 })

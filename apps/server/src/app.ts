@@ -9,6 +9,7 @@ import {
   createRequestContextMiddleware,
   type RequestContextEnv,
 } from './middleware/request-context'
+import { createOperationLogMiddleware } from './middleware/operation-log'
 import { createAttachmentRoutes } from './modules/attachments/routes'
 import { createAuthRoutes } from './modules/auth/routes'
 import { createContentRoutes } from './modules/content/routes'
@@ -17,15 +18,14 @@ import { healthRoutes } from './modules/health/routes'
 import { createIconRoutes } from './modules/icons/routes'
 import { createIconSearchRoutes } from './modules/icons/search/routes'
 import { createOpsRoutes } from './modules/ops/routes'
-import { createOperationAuditMiddleware } from './modules/ops/operation-logs/audit'
-import type { OperationAuditSink } from './modules/ops/operation-logs/types'
 import { createSystemRoutes } from './modules/system/routes'
 import { logger } from './runtime/logger'
+import type { OperationLogEventReceiver } from './runtime/operation-log'
 import { readTrustedProxyPolicy, type TrustedProxyPolicy } from './runtime/trusted-proxy'
 
 export type CreateAppOptions = {
   logger?: Logger
-  operationAuditSink?: OperationAuditSink
+  operationLogReceiver: OperationLogEventReceiver
   trustedProxyPolicy?: TrustedProxyPolicy
 }
 
@@ -56,15 +56,20 @@ export function rootErrorHandler<TEnv extends Env>(error: Error, c: Context<TEnv
   return c.text('Internal Server Error', 500)
 }
 
-export function createApp(database: Db, options: CreateAppOptions = {}) {
+export function createApp(database: Db, options: CreateAppOptions) {
   const appLogger = options.logger ?? logger
-  const operationAuditSink = options.operationAuditSink ?? { enqueue() {} }
   const trustedProxyPolicy = options.trustedProxyPolicy ?? readTrustedProxyPolicy({})
 
   return new Hono<RequestContextEnv>()
     .use('*', createRequestContextMiddleware({ logger: appLogger, trustedProxyPolicy }))
     .use('*', createRequestLogger())
-    .use('*', createOperationAuditMiddleware({ logger: appLogger, sink: operationAuditSink }))
+    .use(
+      '*',
+      createOperationLogMiddleware({
+        logger: appLogger,
+        receiver: options.operationLogReceiver,
+      }),
+    )
     .onError(rootErrorHandler)
     .route('/api', createApiRoutes(database))
 }

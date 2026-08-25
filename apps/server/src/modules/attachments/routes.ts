@@ -15,8 +15,8 @@ import { z } from 'zod'
 import type { Db } from '../../db'
 import { requireAccess } from '../../middleware/access'
 import type { AuthEnv } from '../../middleware/auth'
+import { recordOperation, type OperationLogEnv } from '../../middleware/operation-log'
 import type { RequestContextEnv } from '../../middleware/request-context'
-import { markOperationAudit, type OperationAuditRouteEnv } from '../ops/operation-logs/audit'
 import { getAttachmentAccessTokenCookie } from './access-token'
 import {
   AttachmentContentUnauthorizedError,
@@ -45,12 +45,6 @@ const attachmentUploadContentQuerySchema = z.object({
 const attachmentListRequestQuerySchema = attachmentListQuerySchema
   .optional()
   .transform((query) => query ?? attachmentListQuerySchema.parse({}))
-
-type AttachmentRouteEnv = {
-  Variables: AuthEnv['Variables'] &
-    RequestContextEnv['Variables'] &
-    OperationAuditRouteEnv['Variables']
-}
 
 const attachmentIdValidator = zValidator('param', attachmentIdParamSchema, (result, c) => {
   if (!result.success) {
@@ -163,7 +157,7 @@ function attachmentErrorResponse(error: unknown, c: Context) {
 
 export function createAttachmentRoutes(database: Db, authMiddleware: MiddlewareHandler<AuthEnv>) {
   const service = createAttachmentService(database)
-  const app = new Hono<AttachmentRouteEnv>()
+  const app = new Hono<AuthEnv & RequestContextEnv & OperationLogEnv>()
 
   app.onError((error, c) => attachmentErrorResponse(error, c))
 
@@ -217,7 +211,7 @@ export function createAttachmentRoutes(database: Db, authMiddleware: MiddlewareH
       async (c) => {
         const { uploadId } = c.req.valid('param')
 
-        markOperationAudit(c, 'content:attachment:upload', { targetKey: uploadId })
+        recordOperation(c, 'content:attachment:upload', { targetKey: uploadId })
 
         const attachment = await service.completeUploadSession({
           uploadId,
@@ -256,7 +250,7 @@ export function createAttachmentRoutes(database: Db, authMiddleware: MiddlewareH
       async (c) => {
         const { id } = c.req.valid('param')
 
-        markOperationAudit(c, 'content:attachment:delete', { targetKey: id })
+        recordOperation(c, 'content:attachment:delete', { targetKey: id })
 
         await service.delete(id, c.get('requestContext').logger)
 

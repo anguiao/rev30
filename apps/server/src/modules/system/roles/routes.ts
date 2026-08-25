@@ -13,7 +13,9 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
-import { markOperationAudit, type OperationAuditRouteEnv } from '../../ops/operation-logs/audit'
+import type { AuthEnv } from '../../../middleware/auth'
+import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
+import type { RequestContextEnv } from '../../../middleware/request-context'
 import {
   BuiltInAdminRoleMutationError,
   RoleConflictError,
@@ -90,7 +92,7 @@ function roleErrorResponse(error: unknown, c: Context) {
 
 export function createRoleRoutes(database: Db) {
   const service = createRoleService(database)
-  const app = new Hono<OperationAuditRouteEnv>()
+  const app = new Hono<AuthEnv & RequestContextEnv & OperationLogEnv>()
 
   app.onError((error, c) => roleErrorResponse(error, c))
 
@@ -112,7 +114,7 @@ export function createRoleRoutes(database: Db) {
     })
     .post('/', requireAccess('system:role:create'), roleCreateBodyValidator, async (c) => {
       const body: RoleCreateInput = c.req.valid('json')
-      markOperationAudit(c, 'system:role:create', {
+      recordOperation(c, 'system:role:create', {
         targetKey: body.code,
         targetLabel: body.name,
       })
@@ -133,7 +135,7 @@ export function createRoleRoutes(database: Db) {
       async (c) => {
         const { id } = c.req.valid('param')
         const body: RoleUpdateInput = c.req.valid('json')
-        markOperationAudit(c, 'system:role:update', {
+        recordOperation(c, 'system:role:update', {
           targetKey: id,
           ...(body.name !== undefined ? { targetLabel: body.name } : {}),
         })
@@ -148,7 +150,7 @@ export function createRoleRoutes(database: Db) {
     )
     .delete('/:id', requireAccess('system:role:delete'), roleIdValidator, async (c) => {
       const { id } = c.req.valid('param')
-      markOperationAudit(c, 'system:role:delete', { targetKey: id })
+      recordOperation(c, 'system:role:delete', { targetKey: id })
 
       await service.delete(id, {
         accessCodes: c.get('accessCodes'),

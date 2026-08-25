@@ -1,28 +1,28 @@
 import { randomUUID } from 'node:crypto'
-import { loginLogListResponseSchema, onlineSessionListResponseSchema } from '@rev30/contracts'
-import { Hono } from 'hono'
+import { onlineSessionListResponseSchema } from '@rev30/contracts'
 import { eq } from 'drizzle-orm'
+import { Hono } from 'hono'
 import { describe, expect } from 'vitest'
-import { createApp } from '../../../src/app'
-import { authSessions, opsLoginLogs } from '../../../src/db/schema'
-import { createAuthMiddleware } from '../../../src/middleware/auth'
+import { authSessions } from '../../../../src/db/schema'
+import { createAuthMiddleware } from '../../../../src/middleware/auth'
 import {
   createAttachmentAccessToken,
   verifyAttachmentAccessToken,
-} from '../../../src/modules/attachments/access-token'
-import { readAuthConfig } from '../../../src/modules/auth/config'
+} from '../../../../src/modules/attachments/access-token'
+import { readAuthConfig } from '../../../../src/modules/auth/config'
 import {
   AuthInvalidRefreshTokenError,
   AuthUnauthorizedError,
-} from '../../../src/modules/auth/errors'
-import { createAuthRepository } from '../../../src/modules/auth/repository'
-import { createAuthService } from '../../../src/modules/auth/service'
-import { createTokenPair } from '../../../src/modules/auth/tokens'
-import { createOpsRoutes } from '../../../src/modules/ops/routes'
-import type { OperationAuditEvent } from '../../../src/modules/ops/operation-logs/types'
-import { dbTest, type TestDatabase } from '../../fixtures/database'
-import { createSystemAccessFixture } from '../../helpers/auth'
-import { createSystemUserFixture } from '../../helpers/system'
+} from '../../../../src/modules/auth/errors'
+import { createAuthRepository } from '../../../../src/modules/auth/repository'
+import { createAuthService } from '../../../../src/modules/auth/service'
+import { createTokenPair } from '../../../../src/modules/auth/tokens'
+import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
+import { createOpsRoutes } from '../../../../src/modules/ops/routes'
+import { dbTest, type TestDatabase } from '../../../fixtures/database'
+import { createApp } from '../../../helpers/app'
+import { createSystemAccessFixture } from '../../../helpers/auth'
+import { createSystemUserFixture } from '../../../helpers/system'
 
 function createTestApp(database: TestDatabase, authHeaders: Record<string, string>) {
   const app = new Hono().route(
@@ -40,11 +40,9 @@ function createTestApp(database: TestDatabase, authHeaders: Record<string, strin
   return app
 }
 
-function createAuditSink(events: OperationAuditEvent[]) {
-  return {
-    enqueue(event: OperationAuditEvent) {
-      events.push(event)
-    },
+function createOperationLogReceiver(events: OperationLogEvent[]) {
+  return (event: OperationLogEvent) => {
+    events.push(event)
   }
 }
 
@@ -80,85 +78,7 @@ async function insertSession(
   return id
 }
 
-describe('ops routes', () => {
-  dbTest(
-    'lists login logs with exact permission, filters, pagination, sorting, and contract fields',
-    async ({ db: database }) => {
-      const authorized = await createSystemAccessFixture(database, {
-        accessCodes: ['ops:login-log:list'],
-        usernamePrefix: 'ops-login-log-reader',
-      })
-      const app = createTestApp(database, authorized.authHeaders)
-      const targetUser = await createSystemUserFixture(database, { username: 'Alice.Target' })
-      const firstId = randomUUID()
-      const secondId = randomUUID()
-      const sessionId = randomUUID()
-
-      await database.insert(opsLoginLogs).values([
-        {
-          id: firstId,
-          userId: targetUser.id,
-          username: 'Alice.Target',
-          result: 'success',
-          sessionId,
-          requestId: randomUUID(),
-          clientIp: '203.0.113.10',
-          clientIpSource: 'x-forwarded-for',
-          userAgent: 'unrecognized-client',
-          createdAt: new Date('2026-08-18T08:00:00.000Z'),
-        },
-        {
-          id: secondId,
-          username: 'alice.target',
-          result: 'failure',
-          failureReason: 'invalid_credentials',
-          requestId: randomUUID(),
-          clientIp: '203.0.113.10',
-          clientIpSource: 'socket',
-          createdAt: new Date('2026-08-18T09:00:00.000Z'),
-        },
-        {
-          username: 'other-user',
-          result: 'failure',
-          failureReason: 'rate_limited',
-          requestId: randomUUID(),
-          clientIpSource: 'unavailable',
-          createdAt: new Date('2026-08-18T10:00:00.000Z'),
-        },
-      ])
-
-      const response = await app.request(
-        '/api/ops/login-logs?username=ALICE&clientIp=203.0.113.10&occurredFrom=2026-08-18T07%3A00%3A00.000Z&occurredTo=2026-08-18T10%3A00%3A00.000Z&page=1&pageSize=1',
-      )
-      const body = loginLogListResponseSchema.parse(await response.json())
-
-      expect(response.status).toBe(200)
-      expect(body).toMatchObject({ total: 2, page: 1, pageSize: 1 })
-      expect(body.list).toEqual([
-        expect.objectContaining({
-          id: secondId,
-          username: 'alice.target',
-          result: 'failure',
-          failureReason: 'invalid_credentials',
-          userAgent: null,
-        }),
-      ])
-      expect(Object.keys(body.list[0] ?? {}).sort()).toEqual([
-        'clientIp',
-        'clientIpSource',
-        'createdAt',
-        'failureReason',
-        'id',
-        'requestId',
-        'result',
-        'sessionId',
-        'userAgent',
-        'userId',
-        'username',
-      ])
-    },
-  )
-
+describe('online session routes', () => {
   dbTest('requires admin or the exact list permission', async ({ db: database }) => {
     const admin = await createSystemAccessFixture(database, {
       admin: true,
@@ -226,12 +146,14 @@ describe('ops routes', () => {
   dbTest(
     'protects the current session and invalidates every token bound to an active target',
     async ({ db: database }) => {
-      const events: OperationAuditEvent[] = []
+      const events: OperationLogEvent[] = []
       const operator = await createSystemAccessFixture(database, {
         accessCodes: ['ops:online-session:revoke'],
         usernamePrefix: 'ops-session-revoker',
       })
-      const app = createApp(database, { operationAuditSink: createAuditSink(events) })
+      const app = createApp(database, {
+        operationLogReceiver: createOperationLogReceiver(events),
+      })
       const [operatorSession] = await database
         .select({ id: authSessions.id })
         .from(authSessions)
@@ -365,16 +287,16 @@ describe('ops routes', () => {
     },
   )
 
-  dbTest('does not mark invalid, forbidden, or read-only session requests', async ({ db }) => {
-    const events: OperationAuditEvent[] = []
-    const app = createApp(db, { operationAuditSink: createAuditSink(events) })
+  dbTest('does not record invalid, forbidden, or read-only requests', async ({ db }) => {
+    const events: OperationLogEvent[] = []
+    const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
     const revoker = await createSystemAccessFixture(db, {
       accessCodes: ['ops:online-session:revoke'],
-      usernamePrefix: 'ops-audit-validator',
+      usernamePrefix: 'ops-log-validator',
     })
     const listOnly = await createSystemAccessFixture(db, {
-      accessCodes: ['ops:login-log:list', 'ops:online-session:list'],
-      usernamePrefix: 'ops-audit-list-only',
+      accessCodes: ['ops:online-session:list'],
+      usernamePrefix: 'ops-log-list-only',
     })
 
     const invalid = await app.request('/api/ops/sessions/not-a-uuid', {
@@ -386,33 +308,21 @@ describe('ops routes', () => {
       headers: listOnly.authHeaders,
     })
     const list = await app.request('/api/ops/sessions', { headers: listOnly.authHeaders })
-    const loginLogs = await app.request('/api/ops/login-logs', { headers: listOnly.authHeaders })
 
     expect(invalid.status).toBe(400)
     expect(forbidden.status).toBe(403)
     expect(list.status).toBe(200)
-    expect(loginLogs.status).toBe(200)
     expect(events).toEqual([])
   })
 
   dbTest(
-    'returns contract validation errors for invalid list queries and session ids',
+    'returns a contract validation error for invalid session ids',
     async ({ db: database }) => {
       const operator = await createSystemAccessFixture(database, {
-        accessCodes: ['ops:login-log:list', 'ops:online-session:revoke'],
+        accessCodes: ['ops:online-session:revoke'],
         usernamePrefix: 'ops-validator',
       })
       const app = createTestApp(database, operator.authHeaders)
-
-      const invalidPageSize = await app.request('/api/ops/login-logs?pageSize=101')
-      expect(invalidPageSize.status).toBe(400)
-      expect(await invalidPageSize.json()).toEqual({ message: '请求参数无效' })
-
-      const invalidRange = await app.request(
-        '/api/ops/login-logs?occurredFrom=2026-08-19T00%3A00%3A00Z&occurredTo=2026-08-18T00%3A00%3A00Z',
-      )
-      expect(invalidRange.status).toBe(400)
-      expect(await invalidRange.json()).toEqual({ message: '请求参数无效' })
 
       const invalidId = await app.request('/api/ops/sessions/not-a-uuid', { method: 'DELETE' })
       expect(invalidId.status).toBe(400)

@@ -109,7 +109,7 @@ const mocks = vi.hoisted(() => {
     authState,
     authMiddleware,
     createAttachmentService: vi.fn(() => service),
-    markOperationAudit: vi.fn(),
+    recordOperation: vi.fn(),
     service,
   }
 })
@@ -118,8 +118,8 @@ vi.mock('../../../src/modules/attachments/service', () => ({
   createAttachmentService: mocks.createAttachmentService,
 }))
 
-vi.mock('../../../src/modules/ops/operation-logs/audit', () => ({
-  markOperationAudit: mocks.markOperationAudit,
+vi.mock('../../../src/middleware/operation-log', () => ({
+  recordOperation: mocks.recordOperation,
 }))
 
 function createAttachmentTestApp() {
@@ -251,12 +251,12 @@ describe('attachment routes', () => {
       uploadId: attachmentId,
       userId: currentUser.id,
     })
-    expect(mocks.markOperationAudit).toHaveBeenCalledWith(
+    expect(mocks.recordOperation).toHaveBeenCalledWith(
       expect.anything(),
       'content:attachment:upload',
       { targetKey: attachmentId },
     )
-    expect(mocks.markOperationAudit.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.service.completeUploadSession.mock.invocationCallOrder[0]!,
     )
 
@@ -285,12 +285,12 @@ describe('attachment routes', () => {
     })
     expect(deleteResponse.status).toBe(204)
     expect(mocks.service.delete).toHaveBeenCalledWith(attachmentId, requestLogger)
-    expect(mocks.markOperationAudit).toHaveBeenLastCalledWith(
+    expect(mocks.recordOperation).toHaveBeenLastCalledWith(
       expect.anything(),
       'content:attachment:delete',
       { targetKey: attachmentId },
     )
-    expect(mocks.markOperationAudit.mock.invocationCallOrder[1]).toBeLessThan(
+    expect(mocks.recordOperation.mock.invocationCallOrder[1]).toBeLessThan(
       mocks.service.delete.mock.invocationCallOrder[0]!,
     )
   })

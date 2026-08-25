@@ -13,7 +13,7 @@ import { startAuthLoginAttemptCleanup } from '../../src/maintenance/auth-login-a
 import { startAuthSessionCleanup } from '../../src/maintenance/auth-session-cleanup'
 import { startOpsLoginLogCleanup } from '../../src/maintenance/ops-login-log-cleanup'
 import { cleanupAuthLoginAttemptBuckets, cleanupAuthSessions } from '../../src/modules/auth/cleanup'
-import { cleanupOpsLoginLogs } from '../../src/modules/ops/cleanup'
+import { cleanupLoginLogs } from '../../src/modules/ops/login-logs/cleanup'
 import { dbTest } from '../fixtures/database'
 
 const hourMs = 60 * 60 * 1000
@@ -125,7 +125,7 @@ describe('auth maintenance', () => {
         createLog('within-retention', new Date(now.getTime() - 90 * dayMs + hourMs)),
       ])
 
-    const deletedCount = await cleanupOpsLoginLogs(database, 90 * dayMs)
+    const deletedCount = await cleanupLoginLogs(database, 90 * dayMs)
     const remaining = await database
       .select({ username: opsLoginLogs.username })
       .from(opsLoginLogs)

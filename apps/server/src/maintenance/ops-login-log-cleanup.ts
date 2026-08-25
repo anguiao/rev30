@@ -1,5 +1,5 @@
 import type { Db } from '../db'
-import { cleanupOpsLoginLogs } from '../modules/ops/cleanup'
+import { cleanupLoginLogs } from '../modules/ops/login-logs/cleanup'
 import { logger } from '../runtime/logger'
 import type { MaintenanceWorker } from './types'
 
@@ -57,7 +57,7 @@ export function startOpsLoginLogCleanup(database: Db): MaintenanceWorker {
     }
 
     try {
-      const deletedCount = await cleanupOpsLoginLogs(database, retentionMs)
+      const deletedCount = await cleanupLoginLogs(database, retentionMs)
 
       if (deletedCount > 0) {
         logger.info({ deletedCount }, 'ops login log cleanup completed')

@@ -13,7 +13,9 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
-import { markOperationAudit, type OperationAuditRouteEnv } from '../../ops/operation-logs/audit'
+import type { AuthEnv } from '../../../middleware/auth'
+import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
+import type { RequestContextEnv } from '../../../middleware/request-context'
 import {
   AnnouncementContentImageInvalidError,
   AnnouncementContentInvalidError,
@@ -99,7 +101,7 @@ function announcementErrorResponse(error: unknown, c: Context) {
 
 export function createAnnouncementRoutes(database: Db) {
   const service = createAnnouncementService(database)
-  const app = new Hono<OperationAuditRouteEnv>()
+  const app = new Hono<AuthEnv & RequestContextEnv & OperationLogEnv>()
 
   app.onError((error, c) => announcementErrorResponse(error, c))
 
@@ -137,7 +139,7 @@ export function createAnnouncementRoutes(database: Db) {
       async (c) => {
         const body: AnnouncementCreateInput = c.req.valid('json')
 
-        markOperationAudit(c, 'content:announcement:create', { targetLabel: body.title })
+        recordOperation(c, 'content:announcement:create', { targetLabel: body.title })
 
         return c.json(await service.create(body), 201)
       },
@@ -151,7 +153,7 @@ export function createAnnouncementRoutes(database: Db) {
         const { id } = c.req.valid('param')
         const body: AnnouncementUpdateInput = c.req.valid('json')
 
-        markOperationAudit(c, 'content:announcement:update', {
+        recordOperation(c, 'content:announcement:update', {
           targetKey: id,
           ...(body.title === undefined ? {} : { targetLabel: body.title }),
         })
@@ -166,7 +168,7 @@ export function createAnnouncementRoutes(database: Db) {
       async (c) => {
         const { id } = c.req.valid('param')
 
-        markOperationAudit(c, 'content:announcement:publish', { targetKey: id })
+        recordOperation(c, 'content:announcement:publish', { targetKey: id })
 
         await service.publish(id)
 
@@ -180,7 +182,7 @@ export function createAnnouncementRoutes(database: Db) {
       async (c) => {
         const { id } = c.req.valid('param')
 
-        markOperationAudit(c, 'content:announcement:archive', { targetKey: id })
+        recordOperation(c, 'content:announcement:archive', { targetKey: id })
 
         await service.archive(id)
 
@@ -194,7 +196,7 @@ export function createAnnouncementRoutes(database: Db) {
       async (c) => {
         const { id } = c.req.valid('param')
 
-        markOperationAudit(c, 'content:announcement:delete', { targetKey: id })
+        recordOperation(c, 'content:announcement:delete', { targetKey: id })
 
         await service.delete(id)
 

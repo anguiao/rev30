@@ -6,9 +6,9 @@ import {
 } from '@rev30/contracts'
 import { describe, expect } from 'vitest'
 import { sql } from 'drizzle-orm'
-import { createApp } from '../../../../src/app'
+import { createApp } from '../../../helpers/app'
 import { opsOperationLogs } from '../../../../src/db/schema'
-import type { OperationAuditEvent } from '../../../../src/modules/ops/operation-logs/types'
+import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 
@@ -44,11 +44,9 @@ function operationLog(
   }
 }
 
-function createAuditSink(events: OperationAuditEvent[]) {
-  return {
-    enqueue(event: OperationAuditEvent) {
-      events.push(event)
-    },
+function createOperationLogReceiver(events: OperationLogEvent[]) {
+  return (event: OperationLogEvent) => {
+    events.push(event)
   }
 }
 
@@ -91,7 +89,7 @@ async function seedLogs(database: TestDatabase) {
 
 describe('operation log query API', () => {
   dbTest('enforces permission and returns stable paginated list fields', async ({ db }) => {
-    const events: OperationAuditEvent[] = []
+    const events: OperationLogEvent[] = []
     const allowed = await createSystemAccessFixture(db, {
       accessCodes: ['ops:operation-log:list'],
       usernamePrefix: 'operation-log-reader',
@@ -100,7 +98,7 @@ describe('operation log query API', () => {
       usernamePrefix: 'operation-log-denied',
     })
     const ids = await seedLogs(db)
-    const app = createApp(db, { operationAuditSink: createAuditSink(events) })
+    const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
 
     const deniedResponse = await app.request('/api/ops/operation-logs', {
       headers: denied.authHeaders,
@@ -202,8 +200,8 @@ describe('operation log query API', () => {
     ).toEqual([])
   })
 
-  dbTest('returns detail mapping and boundary errors without auditing reads', async ({ db }) => {
-    const events: OperationAuditEvent[] = []
+  dbTest('returns detail mapping and boundary errors without recording reads', async ({ db }) => {
+    const events: OperationLogEvent[] = []
     const reader = await createSystemAccessFixture(db, {
       accessCodes: ['ops:operation-log:list'],
       usernamePrefix: 'operation-log-detail-reader',
@@ -212,7 +210,7 @@ describe('operation log query API', () => {
       usernamePrefix: 'operation-log-detail-denied',
     })
     const ids = await seedLogs(db)
-    const app = createApp(db, { operationAuditSink: createAuditSink(events) })
+    const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
 
     const response = await app.request(`/api/ops/operation-logs/${ids.newestId}`, {
       headers: reader.authHeaders,

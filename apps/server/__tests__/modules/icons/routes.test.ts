@@ -1,7 +1,7 @@
 import type { IconifyJSON } from '@iconify/types'
 import { Hono } from 'hono'
 import { describe, expect } from 'vitest'
-import { createApp } from '../../../src/app'
+import { createApp } from '../../helpers/app'
 import { customIconSetIcons, customIconSets } from '../../../src/db/schema'
 import { createIconRoutes } from '../../../src/modules/icons/routes'
 import { dbTest, type TestDatabase } from '../../fixtures/database'

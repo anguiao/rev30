@@ -54,7 +54,7 @@ const mocks = vi.hoisted(() => {
   return {
     accessMiddleware,
     createDictionaryService: vi.fn(() => service),
-    markOperationAudit: vi.fn(),
+    recordOperation: vi.fn(),
     requireAccess: vi.fn(() => accessMiddleware),
     service,
   }
@@ -68,8 +68,8 @@ vi.mock('../../../../src/modules/system/dictionaries/service', () => ({
   createDictionaryService: mocks.createDictionaryService,
 }))
 
-vi.mock('../../../../src/modules/ops/operation-logs/audit', () => ({
-  markOperationAudit: mocks.markOperationAudit,
+vi.mock('../../../../src/middleware/operation-log', () => ({
+  recordOperation: mocks.recordOperation,
 }))
 
 function createTestApp() {
@@ -224,7 +224,7 @@ describe('dictionary routes', () => {
     expect(deleteResponse.status).toBe(204)
     expect(mocks.service.delete).toHaveBeenCalledWith(dictionaryId)
     expect(
-      (mocks.markOperationAudit.mock.calls as unknown as [Context, string, object][]).map(
+      (mocks.recordOperation.mock.calls as unknown as [Context, string, object][]).map(
         ([, action, target]) => ({ action, target }),
       ),
     ).toEqual([
@@ -241,13 +241,13 @@ describe('dictionary routes', () => {
         target: { targetKey: dictionaryId },
       },
     ])
-    expect(mocks.markOperationAudit.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.service.create.mock.invocationCallOrder[0]!,
     )
-    expect(mocks.markOperationAudit.mock.invocationCallOrder[1]).toBeLessThan(
+    expect(mocks.recordOperation.mock.invocationCallOrder[1]).toBeLessThan(
       mocks.service.update.mock.invocationCallOrder[0]!,
     )
-    expect(mocks.markOperationAudit.mock.invocationCallOrder[2]).toBeLessThan(
+    expect(mocks.recordOperation.mock.invocationCallOrder[2]).toBeLessThan(
       mocks.service.delete.mock.invocationCallOrder[0]!,
     )
   })
@@ -294,10 +294,10 @@ describe('dictionary routes', () => {
     expect(updateResponse.status).toBe(400)
     expect(await updateResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.update).not.toHaveBeenCalled()
-    expect(mocks.markOperationAudit).not.toHaveBeenCalled()
+    expect(mocks.recordOperation).not.toHaveBeenCalled()
   })
 
-  it('does not mark requests rejected by the basic access guard', async () => {
+  it('does not register requests rejected by the basic access guard', async () => {
     mocks.accessMiddleware.mockImplementationOnce(async (c) => {
       c.res = c.json({ message: '无权访问' }, 403)
     })
@@ -310,7 +310,7 @@ describe('dictionary routes', () => {
     })
 
     expect(response.status).toBe(403)
-    expect(mocks.markOperationAudit).not.toHaveBeenCalled()
+    expect(mocks.recordOperation).not.toHaveBeenCalled()
     expect(mocks.service.create).not.toHaveBeenCalled()
   })
 
@@ -345,7 +345,7 @@ describe('dictionary routes', () => {
       field: 'code',
       message: '字典编码已存在',
     })
-    expect(mocks.markOperationAudit.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.service.create.mock.invocationCallOrder[0]!,
     )
 

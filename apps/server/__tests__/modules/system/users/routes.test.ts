@@ -50,7 +50,7 @@ const mocks = vi.hoisted(() => {
   return {
     accessMiddleware,
     createUserService: vi.fn(() => service),
-    markOperationAudit: vi.fn(),
+    recordOperation: vi.fn(),
     requireAccess: vi.fn(() => accessMiddleware),
     service,
   }
@@ -64,8 +64,8 @@ vi.mock('../../../../src/modules/system/users/service', () => ({
   createUserService: mocks.createUserService,
 }))
 
-vi.mock('../../../../src/modules/ops/operation-logs/audit', () => ({
-  markOperationAudit: mocks.markOperationAudit,
+vi.mock('../../../../src/middleware/operation-log', () => ({
+  recordOperation: mocks.recordOperation,
 }))
 
 function createTestApp() {
@@ -188,14 +188,14 @@ describe('user routes', () => {
       },
       userAccess,
     )
-    expect(mocks.markOperationAudit).toHaveBeenCalledWith(expect.anything(), 'system:user:create', {
+    expect(mocks.recordOperation).toHaveBeenCalledWith(expect.anything(), 'system:user:create', {
       targetKey: 'ada',
       targetLabel: 'Ada Lovelace',
     })
-    expect(mocks.markOperationAudit.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.service.create.mock.invocationCallOrder[0]!,
     )
-    expect(JSON.stringify(mocks.markOperationAudit.mock.calls)).not.toMatch(
+    expect(JSON.stringify(mocks.recordOperation.mock.calls)).not.toMatch(
       /avatar|email|phone|department|role|temporary-password/,
     )
   })
@@ -222,14 +222,14 @@ describe('user routes', () => {
       { nickname: 'Updated Ada', avatarId: null },
       userAccess,
     )
-    expect(mocks.markOperationAudit).toHaveBeenCalledWith(expect.anything(), 'system:user:update', {
+    expect(mocks.recordOperation).toHaveBeenCalledWith(expect.anything(), 'system:user:update', {
       targetKey: userId,
       targetLabel: 'Updated Ada',
     })
-    expect(mocks.markOperationAudit.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.service.update.mock.invocationCallOrder[0]!,
     )
-    expect(JSON.stringify(mocks.markOperationAudit.mock.calls)).not.toContain('avatarId')
+    expect(JSON.stringify(mocks.recordOperation.mock.calls)).not.toContain('avatarId')
   })
 
   it('delegates reset-password requests by id', async () => {
@@ -240,12 +240,12 @@ describe('user routes', () => {
     })
     expect(resetResponse.status).toBe(200)
     expect(mocks.service.resetPassword).toHaveBeenCalledWith(userId, userAccess)
-    expect(mocks.markOperationAudit).toHaveBeenCalledWith(
+    expect(mocks.recordOperation).toHaveBeenCalledWith(
       expect.anything(),
       'system:user:reset-password',
       { targetKey: userId },
     )
-    expect(mocks.markOperationAudit.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.service.resetPassword.mock.invocationCallOrder[0]!,
     )
   })
@@ -258,10 +258,10 @@ describe('user routes', () => {
     })
     expect(deleteResponse.status).toBe(204)
     expect(mocks.service.delete).toHaveBeenCalledWith(userId, userAccess)
-    expect(mocks.markOperationAudit).toHaveBeenCalledWith(expect.anything(), 'system:user:delete', {
+    expect(mocks.recordOperation).toHaveBeenCalledWith(expect.anything(), 'system:user:delete', {
       targetKey: userId,
     })
-    expect(mocks.markOperationAudit.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.service.delete.mock.invocationCallOrder[0]!,
     )
   })
@@ -328,7 +328,7 @@ describe('user routes', () => {
     expect(createResponse.status).toBe(400)
     expect(await createResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.create).not.toHaveBeenCalled()
-    expect(mocks.markOperationAudit).not.toHaveBeenCalled()
+    expect(mocks.recordOperation).not.toHaveBeenCalled()
   })
 
   it('returns update body validation errors before calling the user service', async () => {
@@ -430,11 +430,11 @@ describe('user routes', () => {
 
     expect(response.status).toBe(403)
     expect(await response.json()).toEqual({ message: '不能操作超出自身权限范围的用户' })
-    expect(mocks.markOperationAudit).toHaveBeenCalledWith(expect.anything(), 'system:user:update', {
+    expect(mocks.recordOperation).toHaveBeenCalledWith(expect.anything(), 'system:user:update', {
       targetKey: userId,
       targetLabel: 'Blocked Update',
     })
-    expect(mocks.markOperationAudit.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.service.update.mock.invocationCallOrder[0]!,
     )
   })

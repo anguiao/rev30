@@ -9,7 +9,9 @@ import { Hono, type Context } from 'hono'
 import { z } from 'zod'
 import type { Db } from '../../../db'
 import { requireAccess } from '../../../middleware/access'
-import { markOperationAudit, type OperationAuditRouteEnv } from '../../ops/operation-logs/audit'
+import type { AuthEnv } from '../../../middleware/auth'
+import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
+import type { RequestContextEnv } from '../../../middleware/request-context'
 import { ConfigInvalidValueError, ConfigNotFoundError } from './errors'
 import { createConfigService } from './service'
 
@@ -50,7 +52,7 @@ function configErrorResponse(error: unknown, c: Context) {
 
 export function createConfigRoutes(database: Db) {
   const service = createConfigService(database)
-  const app = new Hono<OperationAuditRouteEnv>()
+  const app = new Hono<AuthEnv & RequestContextEnv & OperationLogEnv>()
 
   app.onError((error, c) => configErrorResponse(error, c))
 
@@ -71,7 +73,7 @@ export function createConfigRoutes(database: Db) {
       async (c) => {
         const { key } = c.req.valid('param')
         const body = c.req.valid('json')
-        markOperationAudit(c, 'system:config:update', { targetKey: key })
+        recordOperation(c, 'system:config:update', { targetKey: key })
 
         return c.json(configSchema.parse(await service.update(key, body)))
       },

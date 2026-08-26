@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import { h, onMounted, ref } from 'vue'
+import { computed, h, ref } from 'vue'
+import { useQuery, useQueryCache } from '@pinia/colada'
 import {
   NAlert,
   NButton,
   NDataTable,
+  NForm,
+  NFormItemGi,
+  NGrid,
+  NGridItem,
+  NInput,
   NTag,
   useDialog,
   useMessage,
@@ -13,12 +19,13 @@ import {
 import type { ScheduledJobListItem } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
-import { ScheduledJobEditDrawer, ScheduledJobRunLogDrawer } from '../../../features/ops'
+import { useDrawer } from '../../../composables/useDrawer'
 import {
   cancelScheduledJob,
   executeScheduledJob,
   listScheduledJobs,
   scheduledJobRunStatusLabels,
+  scheduledJobRunStatusTagTypes,
   updateScheduledJobEnabled,
 } from '../../../features/ops'
 import { getErrorMessage } from '../../../utils/error'
@@ -27,106 +34,204 @@ import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 const pageTitle = useAdminPageTitle('定时任务')
 const message = useMessage()
 const dialog = useDialog()
-const jobs = ref<ScheduledJobListItem[]>([])
-const isLoading = ref(false)
-const loadError = ref<string | null>(null)
-const pendingAction = ref<string | null>(null)
-const selectedJob = ref<ScheduledJobListItem | null>(null)
-const isEditDrawerVisible = ref(false)
-const isRunLogDrawerVisible = ref(false)
-const focusedRunId = ref<string | null>(null)
-let loadGeneration = 0
+const queryCache = useQueryCache()
 
-async function refreshJobs() {
-  const generation = ++loadGeneration
-  isLoading.value = true
-  loadError.value = null
+const keyword = ref('')
+const submittedKeyword = ref('')
 
-  try {
-    const response = await listScheduledJobs()
-    if (generation === loadGeneration) {
-      jobs.value = response
-    }
-  } catch (error) {
-    if (generation === loadGeneration) {
-      loadError.value = getErrorMessage(error, '加载定时任务失败')
-    }
-  } finally {
-    if (generation === loadGeneration) {
-      isLoading.value = false
-    }
-  }
+const {
+  data: jobsResponse,
+  error: jobsError,
+  isLoading,
+} = useQuery({
+  key: () => ['ops', 'scheduled-jobs', 'list'],
+  placeholderData: () => [],
+  query: () => listScheduledJobs(),
+})
+const loadErrorMessage = computed(() =>
+  jobsError.value === null ? '' : getErrorMessage(jobsError.value, '加载定时任务失败'),
+)
+
+async function invalidateScheduledJobListQueries() {
+  await queryCache.invalidateQueries({ key: ['ops', 'scheduled-jobs', 'list'] })
 }
 
-onMounted(() => {
-  void refreshJobs()
+async function handleSearch() {
+  submittedKeyword.value = keyword.value.trim()
+  await invalidateScheduledJobListQueries()
+}
+
+function handleReset() {
+  keyword.value = ''
+  submittedKeyword.value = ''
+}
+
+const jobsData = computed(() => jobsResponse.value ?? [])
+const filteredJobs = computed(() => {
+  const value = submittedKeyword.value.toLowerCase()
+  if (!value) {
+    return jobsData.value
+  }
+
+  return jobsData.value.filter((job) =>
+    [job.taskKey, job.name, job.description].some((item) => item.toLowerCase().includes(value)),
+  )
 })
 
-function formatNextRun(job: ScheduledJobListItem) {
-  return job.nextRunAt === null
-    ? '已禁用'
-    : `${formatDisplayDateTime(job.nextRunAt)}（${job.timezone}）`
+const pendingActions = ref(new Set<string>())
+
+function getActionKey(taskKey: string, action: string) {
+  return `${taskKey}:${action}`
 }
 
-function renderCurrentRun(job: ScheduledJobListItem) {
-  if (job.currentRun === null) {
+function setActionPending(taskKey: string, action: string, pending: boolean) {
+  const key = getActionKey(taskKey, action)
+  const next = new Set(pendingActions.value)
+  if (pending) {
+    next.add(key)
+  } else {
+    next.delete(key)
+  }
+  pendingActions.value = next
+}
+
+function taskHasPendingAction(taskKey: string) {
+  const prefix = `${taskKey}:`
+  return [...pendingActions.value].some((key) => key.startsWith(prefix))
+}
+
+const {
+  component: ScheduledJobEditDrawer,
+  hasOpened: hasOpenedEditDrawer,
+  visible: isEditDrawerVisible,
+  open: showEditDrawer,
+} = useDrawer(() => import('../../../features/ops/ScheduledJobEditDrawer.vue'))
+const editingJob = ref<ScheduledJobListItem | null>(null)
+
+function openEditor(job: ScheduledJobListItem) {
+  editingJob.value = job
+  showEditDrawer()
+}
+
+async function handleJobSaved() {
+  await invalidateScheduledJobListQueries()
+}
+
+const {
+  component: ScheduledJobRunLogDrawer,
+  hasOpened: hasOpenedRunLogDrawer,
+  visible: isRunLogDrawerVisible,
+  open: showRunLogDrawer,
+} = useDrawer(() => import('../../../features/ops/ScheduledJobRunLogDrawer.vue'))
+const runLogJob = ref<ScheduledJobListItem | null>(null)
+const focusedRunId = ref<string | null>(null)
+
+function openRunLogs(job: ScheduledJobListItem, runId: string | null = null) {
+  runLogJob.value = job
+  focusedRunId.value = runId
+  showRunLogDrawer()
+}
+
+async function handleRunSettled() {
+  await invalidateScheduledJobListQueries()
+}
+
+const nextRunFormatters = new Map<string, Intl.DateTimeFormat>()
+
+function formatNextRun(job: ScheduledJobListItem) {
+  if (job.nextRunAt === null) {
     return '-'
   }
 
-  if (job.currentRun.cancelRequestedAt !== null) {
-    return h(NTag, { type: 'warning', size: 'small' }, () => '取消中')
+  let formatter = nextRunFormatters.get(job.timezone)
+  if (formatter === undefined) {
+    formatter = new Intl.DateTimeFormat('zh-CN', {
+      timeZone: job.timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+    nextRunFormatters.set(job.timezone, formatter)
   }
 
-  return h(NTag, { type: 'info', size: 'small' }, () => '运行中')
+  return formatter.format(new Date(job.nextRunAt))
+}
+
+function renderJobStatus(job: ScheduledJobListItem) {
+  const currentRun = job.currentRun
+  const tags = [
+    h(
+      NTag,
+      {
+        type: job.enabled ? 'success' : 'default',
+        size: 'small',
+        bordered: false,
+      },
+      () => (job.enabled ? '已启用' : '已禁用'),
+    ),
+  ]
+
+  if (currentRun !== null) {
+    tags.push(
+      h(
+        NTag,
+        {
+          type: currentRun.cancelRequestedAt === null ? 'info' : 'warning',
+          size: 'small',
+          bordered: false,
+        },
+        () => (currentRun.cancelRequestedAt === null ? '运行中' : '取消中'),
+      ),
+    )
+  }
+
+  return h('div', { class: 'flex flex-wrap items-center gap-1.5' }, tags)
 }
 
 function renderLastRun(job: ScheduledJobListItem) {
-  if (job.lastRun === null) {
+  const lastRun = job.lastRun
+  if (lastRun === null) {
     return '-'
   }
 
-  return h('div', { class: 'space-y-0.5' }, [
-    h('div', scheduledJobRunStatusLabels[job.lastRun.status]),
+  return h('div', { class: 'space-y-1' }, [
+    h(
+      NTag,
+      {
+        type: scheduledJobRunStatusTagTypes[lastRun.status],
+        size: 'small',
+        bordered: false,
+      },
+      () => scheduledJobRunStatusLabels[lastRun.status],
+    ),
     h(
       'div',
       { class: 'text-xs text-stone-500 dark:text-zinc-400' },
-      formatDisplayDateTime(job.lastRun.finishedAt),
+      formatDisplayDateTime(lastRun.finishedAt),
     ),
   ])
 }
 
-function actionIsPending(taskKey: string, action: string) {
-  return pendingAction.value === `${taskKey}:${action}`
-}
-
-function openEditor(job: ScheduledJobListItem) {
-  selectedJob.value = job
-  isEditDrawerVisible.value = true
-}
-
-function openRunLogs(job: ScheduledJobListItem, runId: string | null = null) {
-  selectedJob.value = job
-  focusedRunId.value = runId
-  isRunLogDrawerVisible.value = true
-}
-
 async function toggleEnabled(job: ScheduledJobListItem) {
   const action = job.enabled ? 'disable' : 'enable'
-  pendingAction.value = `${job.taskKey}:${action}`
+  setActionPending(job.taskKey, action, true)
 
   try {
     await updateScheduledJobEnabled(job.taskKey, !job.enabled)
     message.success(job.enabled ? '定时任务已禁用' : '定时任务已启用')
-    await refreshJobs()
+    await invalidateScheduledJobListQueries()
   } catch (error) {
     message.error(getErrorMessage(error, job.enabled ? '禁用定时任务失败' : '启用定时任务失败'))
   } finally {
-    pendingAction.value = null
+    setActionPending(job.taskKey, action, false)
   }
 }
 
 async function executeJob(job: ScheduledJobListItem) {
-  pendingAction.value = `${job.taskKey}:execute`
+  setActionPending(job.taskKey, 'execute', true)
 
   try {
     const result = await executeScheduledJob(job.taskKey)
@@ -134,19 +239,62 @@ async function executeJob(job: ScheduledJobListItem) {
       message.success('定时任务已提交执行')
       openRunLogs(job, result.runId)
     } else {
-      message.warning(`任务已有运行中的实例（${result.activeRunId}），本次执行已跳过`)
+      message.warning('任务已有运行中的实例，本次执行已跳过')
+      openRunLogs(job, result.activeRunId)
     }
-    await refreshJobs()
+    await invalidateScheduledJobListQueries()
+    return true
   } catch (error) {
     message.error(getErrorMessage(error, '提交定时任务失败'))
+    return false
   } finally {
-    pendingAction.value = null
+    setActionPending(job.taskKey, 'execute', false)
+  }
+}
+
+function confirmExecute(job: ScheduledJobListItem) {
+  if (job.currentRun !== null || taskHasPendingAction(job.taskKey)) {
+    return
+  }
+
+  const positiveButtonProps: ButtonProps & Record<string, unknown> = {
+    type: 'warning',
+    'data-test': 'scheduled-job-execute-confirm',
+  }
+  dialog.warning({
+    title: '确认立即执行',
+    content: `确定立即执行“${job.name}”吗？任务会按当前业务保留规则执行清理，可能删除符合条件的数据。`,
+    positiveText: '立即执行',
+    negativeText: '取消',
+    positiveButtonProps,
+    onPositiveClick: () => executeJob(job),
+  })
+}
+
+async function cancelJob(job: ScheduledJobListItem, runId: string) {
+  setActionPending(job.taskKey, 'cancel', true)
+
+  try {
+    const result = await cancelScheduledJob(job.taskKey, runId)
+    message.success('取消请求已提交')
+    openRunLogs(job, result.run.id)
+    await invalidateScheduledJobListQueries()
+    return true
+  } catch (error) {
+    message.error(getErrorMessage(error, '取消定时任务失败'))
+    return false
+  } finally {
+    setActionPending(job.taskKey, 'cancel', false)
   }
 }
 
 function confirmCancel(job: ScheduledJobListItem) {
   const currentRun = job.currentRun
-  if (currentRun === null) {
+  if (
+    currentRun === null ||
+    currentRun.cancelRequestedAt !== null ||
+    taskHasPendingAction(job.taskKey)
+  ) {
     return
   }
 
@@ -156,24 +304,11 @@ function confirmCancel(job: ScheduledJobListItem) {
   }
   dialog.warning({
     title: '确认取消运行',
-    content: `确定请求取消“${job.name}”当前运行吗？handler 会在安全边界退出。`,
+    content: `确定请求取消“${job.name}”当前运行吗？任务会在下一个安全边界停止，已经开始的数据库或存储操作不会被强制中断。`,
     positiveText: '请求取消',
     negativeText: '返回',
     positiveButtonProps,
-    async onPositiveClick() {
-      pendingAction.value = `${job.taskKey}:cancel`
-      try {
-        const result = await cancelScheduledJob(job.taskKey, currentRun.id)
-        message.success('取消请求已提交')
-        openRunLogs(job, result.run.id)
-        await refreshJobs()
-      } catch (error) {
-        message.error(getErrorMessage(error, '取消定时任务失败'))
-        return false
-      } finally {
-        pendingAction.value = null
-      }
-    },
+    onPositiveClick: () => cancelJob(job, currentRun.id),
   })
 }
 
@@ -190,7 +325,7 @@ const columns: DataTableColumns<ScheduledJobListItem> = [
       ]),
   },
   {
-    title: 'Cron / 时区',
+    title: '计划',
     key: 'schedule',
     minWidth: 210,
     render: (job) =>
@@ -199,32 +334,39 @@ const columns: DataTableColumns<ScheduledJobListItem> = [
         h('div', { class: 'text-xs text-stone-500 dark:text-zinc-400' }, job.timezone),
       ]),
   },
+  { title: '状态', key: 'status', minWidth: 150, render: renderJobStatus },
   {
-    title: '启用 / 下次执行',
+    title: '下次执行',
     key: 'nextRunAt',
-    minWidth: 220,
+    minWidth: 210,
     render: (job) =>
-      h('div', { class: 'space-y-1' }, [
-        h(NTag, { type: job.enabled ? 'success' : 'default', size: 'small' }, () =>
-          job.enabled ? '已启用' : '已禁用',
-        ),
-        h('div', { class: 'text-sm' }, formatNextRun(job)),
-      ]),
+      job.nextRunAt === null
+        ? '-'
+        : h('div', { class: 'space-y-0.5' }, [
+            h('div', formatNextRun(job)),
+            h('div', { class: 'text-xs text-stone-500 dark:text-zinc-400' }, job.timezone),
+          ]),
   },
-  { title: '当前状态', key: 'currentRun', minWidth: 110, render: renderCurrentRun },
-  { title: '最近终态', key: 'lastRun', minWidth: 150, render: renderLastRun },
+  { title: '最近运行', key: 'lastRun', minWidth: 150, render: renderLastRun },
   {
     title: '操作',
     key: 'actions',
-    minWidth: 300,
+    width: 220,
     fixed: 'right',
-    render: (job) =>
-      renderTableActions([
+    render: (job) => {
+      const actionDisabled = taskHasPendingAction(job.taskKey)
+      return renderTableActions([
+        renderTableActionButton({
+          label: '查看日志',
+          accessCode: 'ops:scheduled-job:list',
+          dataTest: 'scheduled-job-logs',
+          onClick: () => openRunLogs(job),
+        }),
         renderTableActionButton({
           label: '编辑',
           accessCode: 'ops:scheduled-job:update',
           dataTest: 'scheduled-job-edit',
-          disabled: actionIsPending(job.taskKey, 'update'),
+          disabled: actionDisabled,
           onClick: () => openEditor(job),
         }),
         renderTableActionButton({
@@ -232,75 +374,92 @@ const columns: DataTableColumns<ScheduledJobListItem> = [
           accessCode: 'ops:scheduled-job:update',
           type: job.enabled ? 'warning' : 'success',
           dataTest: job.enabled ? 'scheduled-job-disable' : 'scheduled-job-enable',
-          disabled: actionIsPending(job.taskKey, job.enabled ? 'disable' : 'enable'),
+          disabled: actionDisabled,
           onClick: () => void toggleEnabled(job),
         }),
-        renderTableActionButton({
-          label: '立即执行',
-          accessCode: 'ops:scheduled-job:execute',
-          dataTest: 'scheduled-job-execute',
-          disabled: actionIsPending(job.taskKey, 'execute'),
-          onClick: () => void executeJob(job),
-        }),
         job.currentRun === null
-          ? null
-          : renderTableActionButton({
-              label: '取消',
-              accessCode: 'ops:scheduled-job:cancel',
+          ? renderTableActionButton({
+              label: '立即执行',
+              accessCode: 'ops:scheduled-job:execute',
               type: 'warning',
-              dataTest: 'scheduled-job-cancel',
-              disabled: actionIsPending(job.taskKey, 'cancel'),
-              onClick: () => confirmCancel(job),
-            }),
-        renderTableActionButton({
-          label: '查看日志',
-          accessCode: 'ops:scheduled-job:list',
-          dataTest: 'scheduled-job-logs',
-          onClick: () => openRunLogs(job),
-        }),
-      ]),
+              dataTest: 'scheduled-job-execute',
+              disabled: actionDisabled,
+              onClick: () => confirmExecute(job),
+            })
+          : job.currentRun.cancelRequestedAt === null
+            ? renderTableActionButton({
+                label: '取消',
+                accessCode: 'ops:scheduled-job:cancel',
+                type: 'warning',
+                dataTest: 'scheduled-job-cancel',
+                disabled: actionDisabled,
+                onClick: () => confirmCancel(job),
+              })
+            : null,
+      ])
+    },
   },
 ]
 </script>
 
 <template>
   <main class="space-y-5">
-    <header class="flex items-start justify-between gap-4">
-      <div>
-        <h1 class="text-xl font-semibold">{{ pageTitle }}</h1>
-        <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">
-          共 {{ jobs.length }} 个固定任务
-        </p>
-      </div>
-      <NButton data-test="scheduled-jobs-refresh" :loading="isLoading" @click="refreshJobs">
-        刷新
-      </NButton>
+    <header>
+      <h1 class="text-xl font-semibold">{{ pageTitle }}</h1>
+      <p class="mt-1 text-sm text-stone-500 dark:text-zinc-400">共 {{ filteredJobs.length }} 个</p>
     </header>
 
-    <NAlert v-if="loadError" type="error">{{ loadError }}</NAlert>
+    <section
+      class="rounded-ui border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+    >
+      <NForm label-placement="left" :show-feedback="false">
+        <NGrid cols="1 640:12 1024:24" item-responsive :x-gap="16" :y-gap="12">
+          <NFormItemGi label="关键词" span="1 640:6 1024:6" class="min-w-0">
+            <NInput
+              v-model:value="keyword"
+              data-test="scheduled-jobs-keyword"
+              clearable
+              placeholder="请输入关键词"
+              class="w-full!"
+            />
+          </NFormItemGi>
+          <NGridItem suffix span="1 640:6 1024:18">
+            <div class="flex h-full items-center justify-end gap-2">
+              <NButton data-test="scheduled-jobs-search" type="primary" @click="handleSearch">
+                查询
+              </NButton>
+              <NButton data-test="scheduled-jobs-reset" @click="handleReset">重置</NButton>
+            </div>
+          </NGridItem>
+        </NGrid>
+      </NForm>
+    </section>
+
+    <NAlert v-if="loadErrorMessage" type="error">{{ loadErrorMessage }}</NAlert>
 
     <section>
       <NDataTable
         :columns="columns"
-        :data="jobs"
+        :data="filteredJobs"
         :loading="isLoading"
         :pagination="false"
         :row-key="(job: ScheduledJobListItem) => job.taskKey"
-        :scroll-x="1250"
+        :scroll-x="1200"
       />
     </section>
 
     <ScheduledJobEditDrawer
-      v-if="selectedJob !== null"
+      v-if="hasOpenedEditDrawer && editingJob !== null"
       v-model:show="isEditDrawerVisible"
-      :job="selectedJob"
-      @saved="refreshJobs"
+      :job="editingJob"
+      @saved="handleJobSaved"
     />
     <ScheduledJobRunLogDrawer
-      v-if="selectedJob !== null"
+      v-if="hasOpenedRunLogDrawer && runLogJob !== null"
       v-model:show="isRunLogDrawerVisible"
-      :job="selectedJob"
+      :job="runLogJob"
       :focus-run-id="focusedRunId"
+      @run-settled="handleRunSettled"
     />
   </main>
 </template>

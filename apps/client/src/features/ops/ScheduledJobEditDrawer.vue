@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useMutation } from '@pinia/colada'
 import {
   NAlert,
   NButton,
@@ -14,6 +15,7 @@ import {
 import type { ScheduledJobListItem } from '@rev30/contracts'
 import { getNextCronOccurrences, validateCronSchedule } from '@rev30/utils'
 import { updateScheduledJob } from './requests'
+import { useDrawerUnsavedChangesGuard } from '../../composables/useDrawerUnsavedChangesGuard'
 import { getErrorMessage } from '../../utils/error'
 
 const props = defineProps<{
@@ -27,7 +29,7 @@ const message = useMessage()
 const cronExpression = ref('')
 const timezone = ref('Asia/Shanghai')
 const formError = ref<string | null>(null)
-const isSaving = ref(false)
+const drawerSessionId = ref(0)
 
 const timezoneOptions = [...new Set(['UTC', ...Intl.supportedValuesOf('timeZone')])].map(
   (value) => ({
@@ -83,6 +85,37 @@ function formatPreviewDateTime(value: Date) {
   return `${date} ${time} ${timezone.value}（${explicitOffset}）`
 }
 
+const { isLoading: isSaving, ...saveScheduledJobMutation } = useMutation({
+  onMutate() {
+    return { sessionId: drawerSessionId.value }
+  },
+  mutation: ({
+    taskKey,
+    cronExpression,
+    timezone,
+  }: {
+    taskKey: ScheduledJobListItem['taskKey']
+    cronExpression: string
+    timezone: string
+  }) => updateScheduledJob(taskKey, { cronExpression, timezone }),
+  onSuccess(_, { taskKey }, { sessionId }) {
+    if (!show.value || props.job?.taskKey !== taskKey || sessionId !== drawerSessionId.value) {
+      return
+    }
+
+    message.success('定时任务计划已保存')
+    emit('saved')
+    show.value = false
+  },
+  onError(error, { taskKey }, { sessionId }) {
+    if (!show.value || props.job?.taskKey !== taskKey || sessionId !== drawerSessionId.value) {
+      return
+    }
+
+    formError.value = getErrorMessage(error, '保存定时任务计划失败')
+  },
+})
+
 watch(
   () => [show.value, props.job] as const,
   ([visible, job]) => {
@@ -90,6 +123,8 @@ watch(
       return
     }
 
+    drawerSessionId.value += 1
+    saveScheduledJobMutation.reset()
     cronExpression.value = job.cronExpression
     timezone.value = job.timezone
     formError.value = null
@@ -97,34 +132,48 @@ watch(
   { immediate: true },
 )
 
-async function handleSave() {
+function handleSave() {
   if (props.job === null || preview.value.schedule === null || isSaving.value) {
     return
   }
 
   formError.value = null
-  isSaving.value = true
-
-  try {
-    await updateScheduledJob(props.job.taskKey, {
-      cronExpression: preview.value.schedule.expression,
-      timezone: preview.value.schedule.timezone,
-    })
-    message.success('定时任务计划已保存')
-    emit('saved')
-    show.value = false
-  } catch (error) {
-    formError.value = getErrorMessage(error, '保存定时任务计划失败')
-  } finally {
-    isSaving.value = false
-  }
+  saveScheduledJobMutation.mutate({
+    taskKey: props.job.taskKey,
+    cronExpression: preview.value.schedule.expression,
+    timezone: preview.value.schedule.timezone,
+  })
 }
+
+const isFormDirty = computed(
+  () =>
+    props.job !== null &&
+    (cronExpression.value !== props.job.cronExpression || timezone.value !== props.job.timezone),
+)
+const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
+  show,
+  isDirty: isFormDirty,
+})
 </script>
 
 <template>
-  <NDrawer v-model:show="show" placement="right" :width="560" :mask-closable="false">
-    <NDrawerContent v-if="job" :title="`编辑：${job.name}`" closable>
+  <NDrawer
+    :show="show"
+    data-test="scheduled-job-edit-drawer"
+    placement="right"
+    width="min(560px, 100vw)"
+    :mask-closable="false"
+    :close-on-esc="false"
+    @update:show="handleDrawerShowUpdate"
+  >
+    <NDrawerContent v-if="job" title="编辑定时任务" closable>
       <div class="space-y-4">
+        <p data-test="scheduled-job-edit-context" class="text-sm text-stone-500 dark:text-zinc-400">
+          当前任务：<span class="font-medium text-stone-700 dark:text-zinc-200">{{
+            job.name
+          }}</span>
+        </p>
+
         <NAlert type="info" :show-icon="false">
           仅支持标准五段 Cron（分、时、日、月、周）。不支持秒、年份、@daily、L、W、# 等扩展语法。
           修改计划或禁用不会影响当前运行；重新启用不会补跑禁用期间的计划。
@@ -166,7 +215,7 @@ async function handleSave() {
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <NButton @click="show = false">取消</NButton>
+          <NButton data-test="scheduled-job-edit-cancel" @click="requestClose">取消</NButton>
           <NButton
             data-test="scheduled-job-save"
             type="primary"

@@ -98,6 +98,15 @@ export const scheduledJobRunStatusLabels = {
   [SCHEDULED_JOB_RUN_STATUS_INTERRUPTED]: '已中断',
 } as const satisfies Record<ScheduledJobRunStatus, string>
 
+export const scheduledJobRunStatusTagTypes = {
+  [SCHEDULED_JOB_RUN_STATUS_RUNNING]: 'info',
+  [SCHEDULED_JOB_RUN_STATUS_SUCCESS]: 'success',
+  [SCHEDULED_JOB_RUN_STATUS_FAILURE]: 'error',
+  [SCHEDULED_JOB_RUN_STATUS_SKIPPED]: 'warning',
+  [SCHEDULED_JOB_RUN_STATUS_CANCELLED]: 'warning',
+  [SCHEDULED_JOB_RUN_STATUS_INTERRUPTED]: 'error',
+} as const satisfies Record<ScheduledJobRunStatus, 'error' | 'info' | 'success' | 'warning'>
+
 export const scheduledJobTriggerSourceLabels = {
   [SCHEDULED_JOB_TRIGGER_SOURCE_SCHEDULED]: '定时',
   [SCHEDULED_JOB_TRIGGER_SOURCE_MANUAL]: '手动',

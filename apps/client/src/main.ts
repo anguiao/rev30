@@ -1,4 +1,5 @@
 import { PiniaColada } from '@pinia/colada'
+import { PiniaColadaAutoRefetch } from '@pinia/colada-plugin-auto-refetch'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
@@ -12,7 +13,9 @@ const pinia = createPinia()
 const router = createAppRouter(pinia)
 
 app.use(pinia)
-app.use(PiniaColada)
+app.use(PiniaColada, {
+  plugins: [PiniaColadaAutoRefetch()],
+})
 app.use(router)
 app.directive('can', canDirective)
 

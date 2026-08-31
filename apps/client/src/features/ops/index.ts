@@ -22,6 +22,7 @@ export {
 export {
   cancelScheduledJob,
   executeScheduledJob,
+  getScheduledJob,
   getScheduledJobRun,
   getOperationLog,
   listScheduledJobRuns,

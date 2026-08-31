@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type {
+  ScheduledJob,
   ScheduledJobListResponse,
   ScheduledJobRunDetail,
   ScheduledJobRunListResponse,
@@ -8,19 +9,14 @@ import { useAuthStore } from '../../../src/stores/auth'
 import {
   cancelScheduledJob,
   executeScheduledJob,
+  getScheduledJob,
   getScheduledJobRun,
   listScheduledJobRuns,
   listScheduledJobs,
   updateScheduledJob,
   updateScheduledJobEnabled,
 } from '../../../src/features/ops'
-import {
-  createFetchMock,
-  expectFetchCall,
-  expectJsonBody,
-  getFetchCall,
-  jsonResponse,
-} from '../../helpers/fetch'
+import { createFetchMock, expectFetchCall, expectJsonBody, jsonResponse } from '../../helpers/fetch'
 import { createTestPinia } from '../../helpers/pinia'
 
 const taskKey = 'auth-session-cleanup' as const
@@ -40,6 +36,16 @@ const job: ScheduledJobListResponse[number] = {
   nextRunAt: '2026-08-25T04:02:00.000Z',
   currentRun: null,
   lastRun: null,
+}
+
+const jobDetail: ScheduledJob = {
+  taskKey: job.taskKey,
+  name: job.name,
+  description: job.description,
+  cronExpression: job.cronExpression,
+  timezone: job.timezone,
+  enabled: job.enabled,
+  nextRunAt: job.nextRunAt,
 }
 
 const run: ScheduledJobRunDetail = {
@@ -107,8 +113,9 @@ describe('scheduled jobs requests', () => {
   it('uses the scheduled jobs API contracts for reads and writes', async () => {
     const fetchMock = createFetchMock(
       jsonResponse([job]),
-      jsonResponse(job),
-      jsonResponse(job),
+      jsonResponse(jobDetail),
+      jsonResponse(jobDetail),
+      jsonResponse(jobDetail),
       jsonResponse({ runId }, { status: 202 }),
       jsonResponse(runs),
       jsonResponse(run),
@@ -131,13 +138,14 @@ describe('scheduled jobs requests', () => {
     )
 
     await expect(listScheduledJobs()).resolves.toEqual([job])
+    await expect(getScheduledJob(taskKey)).resolves.toEqual(jobDetail)
     await expect(
       updateScheduledJob(taskKey, {
         cronExpression: ' 2   */6 * * * ',
         timezone: ' Asia/Shanghai ',
       }),
-    ).resolves.toEqual(job)
-    await expect(updateScheduledJobEnabled(taskKey, false)).resolves.toEqual(job)
+    ).resolves.toEqual(jobDetail)
+    await expect(updateScheduledJobEnabled(taskKey, false)).resolves.toEqual(jobDetail)
     await expect(executeScheduledJob(taskKey)).resolves.toEqual({ runId })
     await expect(listScheduledJobRuns(taskKey, { page: 1, pageSize: 20 })).resolves.toEqual(runs)
     await expect(getScheduledJobRun(taskKey, runId)).resolves.toEqual(run)
@@ -148,32 +156,36 @@ describe('scheduled jobs requests', () => {
       pathname: '/api/ops/scheduled-jobs',
     })
     expectFetchCall(fetchMock, 1, {
-      method: 'PUT',
+      method: 'GET',
       pathname: `/api/ops/scheduled-jobs/${taskKey}`,
-    })
-    expectJsonBody(fetchMock, 1, {
-      cronExpression: '2   */6 * * *',
-      timezone: 'Asia/Shanghai',
     })
     expectFetchCall(fetchMock, 2, {
       method: 'PUT',
+      pathname: `/api/ops/scheduled-jobs/${taskKey}`,
+    })
+    expectJsonBody(fetchMock, 2, {
+      cronExpression: '2   */6 * * *',
+      timezone: 'Asia/Shanghai',
+    })
+    expectFetchCall(fetchMock, 3, {
+      method: 'PUT',
       pathname: `/api/ops/scheduled-jobs/${taskKey}/enabled`,
     })
-    expectJsonBody(fetchMock, 2, { enabled: false })
-    expectFetchCall(fetchMock, 3, {
+    expectJsonBody(fetchMock, 3, { enabled: false })
+    expectFetchCall(fetchMock, 4, {
       method: 'POST',
       pathname: `/api/ops/scheduled-jobs/${taskKey}/runs`,
     })
-    expectFetchCall(fetchMock, 4, {
+    expectFetchCall(fetchMock, 5, {
       method: 'GET',
       pathname: `/api/ops/scheduled-jobs/${taskKey}/runs`,
       query: { page: '1', pageSize: '20' },
     })
-    expectFetchCall(fetchMock, 5, {
+    expectFetchCall(fetchMock, 6, {
       method: 'GET',
       pathname: `/api/ops/scheduled-jobs/${taskKey}/runs/${runId}`,
     })
-    expectFetchCall(fetchMock, 6, {
+    expectFetchCall(fetchMock, 7, {
       method: 'POST',
       pathname: `/api/ops/scheduled-jobs/${taskKey}/runs/${runId}/cancel`,
     })
@@ -195,15 +207,5 @@ describe('scheduled jobs requests', () => {
       skippedRunId: runId,
       activeRunId,
     })
-  })
-
-  it('passes AbortSignal to a focused run request', async () => {
-    const controller = new AbortController()
-    const fetchMock = createFetchMock(jsonResponse(run))
-
-    await expect(
-      getScheduledJobRun(taskKey, runId, { signal: controller.signal }),
-    ).resolves.toEqual(run)
-    expect(getFetchCall(fetchMock, 0).init.signal).toBe(controller.signal)
   })
 })

@@ -16,7 +16,7 @@ import {
   type ButtonProps,
   type DataTableColumns,
 } from 'naive-ui'
-import type { ScheduledJobListItem } from '@rev30/contracts'
+import type { ScheduledJobListItem, ScheduledJobTaskKey } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import { useDrawer } from '../../../composables/useDrawer'
@@ -101,19 +101,20 @@ function taskHasPendingAction(taskKey: string) {
 }
 
 const {
-  component: ScheduledJobEditDrawer,
-  hasOpened: hasOpenedEditDrawer,
-  visible: isEditDrawerVisible,
-  open: showEditDrawer,
-} = useDrawer(() => import('../../../features/ops/ScheduledJobEditDrawer.vue'))
-const editingJob = ref<ScheduledJobListItem | null>(null)
+  component: ScheduledJobFormDrawer,
+  hasOpened: hasOpenedScheduledJobDrawer,
+  visible: isScheduledJobDrawerVisible,
+  open: showScheduledJobDrawer,
+} = useDrawer(() => import('../../../features/ops/ScheduledJobFormDrawer.vue'))
+const editingScheduledJobTaskKey = ref<ScheduledJobTaskKey | null>(null)
 
-function openEditor(job: ScheduledJobListItem) {
-  editingJob.value = job
-  showEditDrawer()
+function openScheduledJobFormDrawer(taskKey: ScheduledJobTaskKey) {
+  editingScheduledJobTaskKey.value = taskKey
+  showScheduledJobDrawer()
 }
 
-async function handleJobSaved() {
+async function handleScheduledJobSaved() {
+  message.success('定时任务计划已保存')
   await invalidateScheduledJobListQueries()
 }
 
@@ -123,17 +124,16 @@ const {
   visible: isRunLogDrawerVisible,
   open: showRunLogDrawer,
 } = useDrawer(() => import('../../../features/ops/ScheduledJobRunLogDrawer.vue'))
-const runLogJob = ref<ScheduledJobListItem | null>(null)
-const focusedRunId = ref<string | null>(null)
+const runLogTask = ref<Pick<ScheduledJobListItem, 'taskKey' | 'name'> | null>(null)
+const initialRunId = ref<string | null>(null)
 
 function openRunLogs(job: ScheduledJobListItem, runId: string | null = null) {
-  runLogJob.value = job
-  focusedRunId.value = runId
+  runLogTask.value = {
+    taskKey: job.taskKey,
+    name: job.name,
+  }
+  initialRunId.value = runId
   showRunLogDrawer()
-}
-
-async function handleRunSettled() {
-  await invalidateScheduledJobListQueries()
 }
 
 const nextRunFormatters = new Map<string, Intl.DateTimeFormat>()
@@ -367,7 +367,7 @@ const columns: DataTableColumns<ScheduledJobListItem> = [
           accessCode: 'ops:scheduled-job:update',
           dataTest: 'scheduled-job-edit',
           disabled: actionDisabled,
-          onClick: () => openEditor(job),
+          onClick: () => openScheduledJobFormDrawer(job.taskKey),
         }),
         renderTableActionButton({
           label: job.enabled ? '禁用' : '启用',
@@ -448,18 +448,18 @@ const columns: DataTableColumns<ScheduledJobListItem> = [
       />
     </section>
 
-    <ScheduledJobEditDrawer
-      v-if="hasOpenedEditDrawer && editingJob !== null"
-      v-model:show="isEditDrawerVisible"
-      :job="editingJob"
-      @saved="handleJobSaved"
+    <ScheduledJobFormDrawer
+      v-if="hasOpenedScheduledJobDrawer && editingScheduledJobTaskKey !== null"
+      v-model:show="isScheduledJobDrawerVisible"
+      :task-key="editingScheduledJobTaskKey"
+      @saved="handleScheduledJobSaved"
     />
     <ScheduledJobRunLogDrawer
-      v-if="hasOpenedRunLogDrawer && runLogJob !== null"
+      v-if="hasOpenedRunLogDrawer && runLogTask !== null"
       v-model:show="isRunLogDrawerVisible"
-      :job="runLogJob"
-      :focus-run-id="focusedRunId"
-      @run-settled="handleRunSettled"
+      :task-key="runLogTask.taskKey"
+      :task-name="runLogTask.name"
+      :initial-run-id="initialRunId"
     />
   </main>
 </template>

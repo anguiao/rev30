@@ -1,6 +1,15 @@
 import { PiniaColada, useQueryCache } from '@pinia/colada'
+import { PiniaColadaAutoRefetch } from '@pinia/colada-plugin-auto-refetch'
 import type { Plugin } from 'vue'
 import { createTestPinia } from './pinia'
+
+const piniaColadaWithAutoRefetch: Plugin = {
+  install(app) {
+    app.use(PiniaColada, {
+      plugins: [PiniaColadaAutoRefetch()],
+    })
+  },
+}
 
 export function createTestQueryHarness() {
   const pinia = createTestPinia()
@@ -21,6 +30,6 @@ export function createTestQueryHarness() {
       return queryCache
     },
     pinia,
-    plugins: [pinia, PiniaColada, captureQueryCache],
+    plugins: [pinia, piniaColadaWithAutoRefetch, captureQueryCache],
   }
 }

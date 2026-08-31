@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, h, onBeforeUnmount, ref, watch } from 'vue'
-import { useQuery, useQueryCache } from '@pinia/colada'
+import { computed, h, ref, watch } from 'vue'
+import { useQuery } from '@pinia/colada'
 import type { DataTableColumns } from 'naive-ui'
 import {
   NAlert,
@@ -15,9 +15,10 @@ import {
   NTag,
 } from 'naive-ui'
 import type {
-  ScheduledJobListItem,
+  ScheduledJobRunDetail,
   ScheduledJobRunListItem,
   ScheduledJobRunListResponse,
+  ScheduledJobTaskKey,
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { getScheduledJobRun, listScheduledJobRuns } from './requests'
@@ -32,64 +33,29 @@ import { getErrorMessage } from '../../utils/error'
 import { renderTableActionButton, renderTableActions } from '../../utils/ui'
 
 const props = defineProps<{
-  job: ScheduledJobListItem | null
-  focusRunId: string | null
+  taskKey: ScheduledJobTaskKey
+  taskName: string
+  initialRunId: string | null
 }>()
 
 const show = defineModel<boolean>('show', { required: true })
-const emit = defineEmits<{ runSettled: [runId: string] }>()
-const queryCache = useQueryCache()
 
 const page = ref(1)
 const pageSize = 10
-const view = ref<'detail' | 'list'>('list')
+const runDetailRefetchIntervalMs = 2000
 const selectedRunId = ref<string | null>(null)
-const settledRunIds = new Set<string>()
-const observedRunningRunIds = new Set<string>()
-let pollTimer: ReturnType<typeof setTimeout> | null = null
-
-const taskKey = computed(() => props.job?.taskKey ?? null)
-
-function clearPolling() {
-  if (pollTimer !== null) {
-    clearTimeout(pollTimer)
-    pollTimer = null
-  }
-}
-
-function cancelRunQueries(currentTaskKey: ScheduledJobListItem['taskKey'] | null) {
-  if (currentTaskKey === null) {
-    return
-  }
-
-  queryCache.cancelQueries({
-    key: ['ops', 'scheduled-jobs', 'runs', currentTaskKey],
-  })
-}
 
 watch(
-  () => [show.value, taskKey.value, props.focusRunId] as const,
-  ([visible, nextTaskKey, focusRunId], previousValues) => {
-    const previousTaskKey = previousValues?.[1] ?? null
-    clearPolling()
-
-    if (previousTaskKey !== null && previousTaskKey !== nextTaskKey) {
-      cancelRunQueries(previousTaskKey)
-    }
-
-    if (!visible || nextTaskKey === null) {
-      cancelRunQueries(nextTaskKey ?? previousTaskKey)
-      page.value = 1
-      selectedRunId.value = null
-      view.value = 'list'
+  show,
+  (visible) => {
+    if (!visible) {
       return
     }
 
     page.value = 1
-    selectedRunId.value = focusRunId
-    view.value = focusRunId === null ? 'list' : 'detail'
+    selectedRunId.value = props.initialRunId
   },
-  { immediate: true, flush: 'sync' },
+  { immediate: true },
 )
 
 const emptyRunList: ScheduledJobRunListResponse = {
@@ -103,29 +69,12 @@ const {
   data: runsResponse,
   error: runsError,
   isLoading: isLoadingList,
-  refetch: refetchRunList,
 } = useQuery<ScheduledJobRunListResponse>({
-  key: () => [
-    'ops',
-    'scheduled-jobs',
-    'runs',
-    taskKey.value ?? 'none',
-    'list',
-    page.value,
-    pageSize,
-  ],
-  enabled: () => show.value && taskKey.value !== null,
+  key: () => ['ops', 'scheduled-jobs', 'runs', props.taskKey, 'list', page.value, pageSize],
+  enabled: () => show.value && selectedRunId.value === null,
   staleTime: 0,
-  placeholderData: (previousData, previousEntry) =>
-    previousEntry?.key?.[3] === taskKey.value ? (previousData ?? emptyRunList) : emptyRunList,
-  query: ({ signal }) => {
-    const currentTaskKey = taskKey.value
-    if (currentTaskKey === null) {
-      throw new Error('定时任务不存在')
-    }
-
-    return listScheduledJobRuns(currentTaskKey, { page: page.value, pageSize }, { signal })
-  },
+  placeholderData: () => emptyRunList,
+  query: () => listScheduledJobRuns(props.taskKey, { page: page.value, pageSize }),
 })
 const runsData = computed(() => runsResponse.value ?? emptyRunList)
 const listErrorMessage = computed(() =>
@@ -135,29 +84,29 @@ const listErrorMessage = computed(() =>
 const {
   data: detail,
   error: detailError,
-  asyncStatus: detailAsyncStatus,
   isLoading: isLoadingDetail,
-  refetch: refetchRunDetail,
-} = useQuery({
+} = useQuery<ScheduledJobRunDetail>({
   key: () => [
     'ops',
     'scheduled-jobs',
     'runs',
-    taskKey.value ?? 'none',
+    props.taskKey,
     'detail',
     selectedRunId.value ?? 'none',
   ],
-  enabled: () =>
-    show.value && taskKey.value !== null && view.value === 'detail' && selectedRunId.value !== null,
+  enabled: () => show.value && selectedRunId.value !== null,
   staleTime: 0,
-  query: ({ signal }) => {
-    const currentTaskKey = taskKey.value
+  autoRefetch: (state) =>
+    state.status === 'success' && state.data.status === 'running'
+      ? runDetailRefetchIntervalMs
+      : false,
+  query: () => {
     const runId = selectedRunId.value
-    if (currentTaskKey === null || runId === null) {
+    if (runId === null) {
       throw new Error('任务运行不存在')
     }
 
-    return getScheduledJobRun(currentTaskKey, runId, { signal })
+    return getScheduledJobRun(props.taskKey, runId)
   },
 })
 const visibleDetail = computed(() =>
@@ -167,116 +116,30 @@ const detailErrorMessage = computed(() =>
   detailError.value === null ? '' : getErrorMessage(detailError.value, '加载任务运行详情失败'),
 )
 
-function notifyRunSettled(runId: string) {
-  if (settledRunIds.has(runId)) {
-    return
-  }
-
-  settledRunIds.add(runId)
-  observedRunningRunIds.delete(runId)
-  emit('runSettled', runId)
-  void refetchRunList()
-}
-
-watch(
-  () =>
-    [
-      show.value,
-      view.value,
-      selectedRunId.value,
-      visibleDetail.value,
-      detailAsyncStatus.value,
-      detailError.value,
-    ] as const,
-  ([visible, currentView, runId, nextDetail, asyncStatus, error]) => {
-    clearPolling()
-    if (
-      !visible ||
-      currentView !== 'detail' ||
-      runId === null ||
-      nextDetail === null ||
-      asyncStatus !== 'idle' ||
-      error !== null
-    ) {
-      return
-    }
-
-    if (nextDetail.status === 'running') {
-      observedRunningRunIds.add(runId)
-      pollTimer = setTimeout(() => {
-        pollTimer = null
-        void refetchRunDetail()
-      }, 2000)
-      return
-    }
-
-    const listedStatus = runsData.value.list.find((item) => item.id === runId)?.status ?? null
-    if (
-      props.focusRunId === runId ||
-      observedRunningRunIds.has(runId) ||
-      listedStatus === 'running'
-    ) {
-      notifyRunSettled(runId)
-    }
-  },
-  { flush: 'post' },
-)
-
 function selectRun(runId: string) {
-  clearPolling()
   selectedRunId.value = runId
-  view.value = 'detail'
 }
 
 function showRunList() {
-  const currentTaskKey = taskKey.value
-  const runId = selectedRunId.value
-  clearPolling()
-  if (currentTaskKey !== null && runId !== null) {
-    queryCache.cancelQueries({
-      key: ['ops', 'scheduled-jobs', 'runs', currentTaskKey, 'detail', runId],
-      exact: true,
-    })
-  }
   selectedRunId.value = null
-  view.value = 'list'
 }
-
-function retryDetail() {
-  if (selectedRunId.value !== null) {
-    void refetchRunDetail()
-  }
-}
-
-function closeDrawer() {
-  show.value = false
-}
-
-function handleDrawerShowUpdate(nextShow: boolean) {
-  if (!nextShow) {
-    closeDrawer()
-  }
-}
-
-onBeforeUnmount(() => {
-  clearPolling()
-  cancelRunQueries(taskKey.value)
-})
 
 function formatRunDate(value: string | null) {
   return value === null ? '-' : formatDisplayDateTime(value)
 }
 
-function renderStatus(status: ScheduledJobRunListItem['status']) {
-  return h(
-    NTag,
-    { type: scheduledJobRunStatusTagTypes[status], size: 'small', bordered: false },
-    () => scheduledJobRunStatusLabels[status],
-  )
-}
-
 const columns: DataTableColumns<ScheduledJobRunListItem> = [
-  { title: '状态', key: 'status', width: 90, render: (item) => renderStatus(item.status) },
+  {
+    title: '状态',
+    key: 'status',
+    width: 90,
+    render: (item) =>
+      h(
+        NTag,
+        { type: scheduledJobRunStatusTagTypes[item.status], size: 'small', bordered: false },
+        () => scheduledJobRunStatusLabels[item.status],
+      ),
+  },
   {
     title: '来源',
     key: 'triggerSource',
@@ -334,21 +197,20 @@ const columns: DataTableColumns<ScheduledJobRunListItem> = [
 
 <template>
   <NDrawer
-    :show="show"
+    v-model:show="show"
     data-test="scheduled-job-run-log-drawer"
     placement="right"
     width="min(920px, 100vw)"
-    @update:show="handleDrawerShowUpdate"
   >
-    <NDrawerContent v-if="job" title="定时任务日志" closable>
+    <NDrawerContent title="定时任务日志" closable>
       <p
         data-test="scheduled-job-run-context"
         class="mb-4 text-sm text-stone-500 dark:text-zinc-400"
       >
-        当前任务：<span class="font-medium text-stone-700 dark:text-zinc-200">{{ job.name }}</span>
+        当前任务：<span class="font-medium text-stone-700 dark:text-zinc-200">{{ taskName }}</span>
       </p>
 
-      <div v-if="view === 'list'" class="space-y-5">
+      <div v-if="selectedRunId === null" class="space-y-5">
         <NAlert v-if="listErrorMessage" type="error">{{ listErrorMessage }}</NAlert>
         <NDataTable
           :columns="columns"
@@ -372,10 +234,7 @@ const columns: DataTableColumns<ScheduledJobRunListItem> = [
         <div class="mt-1">
           <NSpin :show="isLoadingDetail">
             <div class="min-h-24">
-              <div v-if="detailErrorMessage" class="space-y-3">
-                <NAlert type="error">{{ detailErrorMessage }}</NAlert>
-                <NButton size="small" @click="retryDetail">重试</NButton>
-              </div>
+              <NAlert v-if="detailErrorMessage" type="error">{{ detailErrorMessage }}</NAlert>
 
               <NDescriptions v-if="visibleDetail" bordered :column="1" label-placement="left">
                 <NDescriptionsItem label="运行 ID">

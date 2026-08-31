@@ -1,20 +1,21 @@
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NInput, NPagination, NSelect } from 'naive-ui'
-import type { ScheduledJobListResponse } from '@rev30/contracts'
+import type { ScheduledJob, ScheduledJobListResponse } from '@rev30/contracts'
 import ScheduledJobsPage from '../../../src/pages/index/ops/scheduled-jobs.vue'
 import {
   cancelScheduledJob,
   executeScheduledJob,
+  getScheduledJob,
   getScheduledJobRun,
   listScheduledJobRuns,
   listScheduledJobs,
+  updateScheduledJob,
   updateScheduledJobEnabled,
 } from '../../../src/features/ops'
 import {
   getScheduledJobRun as getScheduledJobRunRequest,
   listScheduledJobRuns as listScheduledJobRunsRequest,
-  updateScheduledJob as updateScheduledJobRequest,
 } from '../../../src/features/ops/requests'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
@@ -22,16 +23,17 @@ vi.mock('../../../src/features/ops', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/ops')>()),
   executeScheduledJob: vi.fn(),
   cancelScheduledJob: vi.fn(),
+  getScheduledJob: vi.fn(),
   getScheduledJobRun: vi.fn(),
   listScheduledJobs: vi.fn(),
   listScheduledJobRuns: vi.fn(),
+  updateScheduledJob: vi.fn(),
   updateScheduledJobEnabled: vi.fn(),
 }))
 vi.mock('../../../src/features/ops/requests', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/ops/requests')>()),
   getScheduledJobRun: vi.fn(),
   listScheduledJobRuns: vi.fn(),
-  updateScheduledJob: vi.fn(),
 }))
 
 const listMock = vi.mocked(listScheduledJobs)
@@ -42,7 +44,8 @@ const getRunMock = vi.mocked(getScheduledJobRun)
 const enabledMock = vi.mocked(updateScheduledJobEnabled)
 const listRunsRequestMock = vi.mocked(listScheduledJobRunsRequest)
 const getRunRequestMock = vi.mocked(getScheduledJobRunRequest)
-const updateRequestMock = vi.mocked(updateScheduledJobRequest)
+const updateMock = vi.mocked(updateScheduledJob)
+const getJobMock = vi.mocked(getScheduledJob)
 
 const runId = '11111111-1111-4111-8111-111111111111'
 const executorId = '22222222-2222-4222-8222-222222222222'
@@ -84,6 +87,16 @@ const response: ScheduledJobListResponse = [
 ]
 
 const idleResponse: ScheduledJobListResponse = [{ ...response[0]!, currentRun: null }]
+
+const jobDetail: ScheduledJob = {
+  taskKey: response[0]!.taskKey,
+  name: response[0]!.name,
+  description: response[0]!.description,
+  cronExpression: response[0]!.cronExpression,
+  timezone: response[0]!.timezone,
+  enabled: response[0]!.enabled,
+  nextRunAt: response[0]!.nextRunAt,
+}
 
 const detail = {
   id: runId,
@@ -174,7 +187,8 @@ describe('scheduled jobs page', () => {
     enabledMock.mockReset()
     listRunsRequestMock.mockReset()
     getRunRequestMock.mockReset()
-    updateRequestMock.mockReset()
+    updateMock.mockReset()
+    getJobMock.mockReset()
     listMock.mockResolvedValue(response)
     executeMock.mockResolvedValue({ runId })
     cancelMock.mockResolvedValue({ run: response[0]!.currentRun! })
@@ -183,7 +197,8 @@ describe('scheduled jobs page', () => {
     getRunMock.mockResolvedValue(detail)
     listRunsRequestMock.mockResolvedValue({ list: [], total: 0, page: 1, pageSize: 10 })
     getRunRequestMock.mockResolvedValue(detail)
-    updateRequestMock.mockResolvedValue(response[0]!)
+    updateMock.mockResolvedValue(response[0]!)
+    getJobMock.mockResolvedValue(jobDetail)
     stubPreferredDark(false)
   })
 
@@ -248,7 +263,7 @@ describe('scheduled jobs page', () => {
     expect(listMock).toHaveBeenCalledTimes(2)
   })
 
-  it('submits a manual run, opens its log detail, and starts focused polling', async () => {
+  it('submits a manual run, polls its detail until terminal, and loads logs on return', async () => {
     vi.useFakeTimers()
     let wrapper: Awaited<ReturnType<typeof mountPage>>['wrapper'] | undefined
     try {
@@ -269,20 +284,9 @@ describe('scheduled jobs page', () => {
 
       expect(executeMock).toHaveBeenCalledWith('auth-session-cleanup')
       await vi.waitFor(() => {
-        expect(listRunsRequestMock).toHaveBeenCalledWith(
-          'auth-session-cleanup',
-          {
-            page: 1,
-            pageSize: 10,
-          },
-          expect.objectContaining({ signal: expect.any(AbortSignal) }),
-        )
-        expect(getRunRequestMock).toHaveBeenCalledWith(
-          'auth-session-cleanup',
-          runId,
-          expect.anything(),
-        )
+        expect(getRunRequestMock).toHaveBeenCalledWith('auth-session-cleanup', runId)
       })
+      expect(listRunsRequestMock).not.toHaveBeenCalled()
 
       await vi.advanceTimersByTimeAsync(2000)
       await flushPromises()
@@ -294,15 +298,22 @@ describe('scheduled jobs page', () => {
       await vi.advanceTimersByTimeAsync(2000)
       await flushPromises()
       expect(getRunRequestMock.mock.calls.length).toBe(completedCallCount)
-      expect(listRunsRequestMock.mock.calls.length).toBeGreaterThanOrEqual(2)
-      expect(listMock.mock.calls.length).toBeGreaterThanOrEqual(3)
+
+      document.querySelector<HTMLButtonElement>('[data-test="scheduled-job-run-back"]')?.click()
+      await flushPromises()
+      await vi.waitFor(() => {
+        expect(listRunsRequestMock).toHaveBeenCalledWith('auth-session-cleanup', {
+          page: 1,
+          pageSize: 10,
+        })
+      })
     } finally {
       wrapper?.unmount()
       vi.useRealTimers()
     }
   })
 
-  it('shows the edit drawer preview and rejects an unsupported shortcut before saving', async () => {
+  it('shows the edit drawer preview and accepts a supported Cron shortcut', async () => {
     const { wrapper } = await mountPage()
     await flushPromises()
 
@@ -312,33 +323,39 @@ describe('scheduled jobs page', () => {
     await vi.waitFor(() => {
       expect(document.body.textContent).toContain('未来五次执行预览')
     })
-    const editDrawer = document.querySelector('[data-test="scheduled-job-edit-drawer"]')
+    expect(getJobMock).toHaveBeenCalledWith('auth-session-cleanup')
+    const editDrawer = document.querySelector('[data-test="scheduled-job-form-drawer"]')
     expect(editDrawer?.textContent).toContain('编辑定时任务')
     expect(editDrawer?.textContent).not.toContain('编辑：')
-    const editContext = document.querySelector('[data-test="scheduled-job-edit-context"]')
+    const editContext = document.querySelector('[data-test="scheduled-job-form-context"]')
     expect(editContext?.textContent).toContain('当前任务：认证会话清理')
     expect(editContext?.textContent).not.toContain('auth-session-cleanup')
-    expect(document.body.textContent).toContain('标准五段 Cron')
+    expect(document.body.textContent).toContain('Cron 表达式按分钟级解析')
+    expect(editDrawer?.textContent).toContain('GMT+08:00')
     const timezoneOptions = wrapper.findComponent(NSelect).props('options') as
       | Array<{ value?: string | number }>
       | undefined
     expect(timezoneOptions?.some((option) => option.value === 'UTC')).toBe(true)
-    expect(document.querySelectorAll('[data-test="scheduled-job-cron-input"]')).toHaveLength(1)
+    expect(
+      document.querySelectorAll('[data-test="scheduled-job-form-cron-expression"]'),
+    ).toHaveLength(1)
 
     const input = wrapper
       .findAllComponents(NInput)
-      .find((component) => component.attributes('data-test') === 'scheduled-job-cron-input')
+      .find(
+        (component) => component.attributes('data-test') === 'scheduled-job-form-cron-expression',
+      )
     expect(input).toBeDefined()
     input!.vm.$emit('update:value', '@daily')
     await flushPromises()
 
-    expect(document.body.textContent).toContain('Cron 表达式')
+    expect(document.body.textContent).not.toContain('Cron 表达式或时区无效')
     expect(
-      document.querySelector('[data-test="scheduled-job-save"]')?.hasAttribute('disabled'),
-    ).toBe(true)
+      document.querySelector('[data-test="scheduled-job-form-submit"]')?.hasAttribute('disabled'),
+    ).toBe(false)
 
     const editCancelButton = document.querySelector<HTMLButtonElement>(
-      '[data-test="scheduled-job-edit-cancel"]',
+      '[data-test="scheduled-job-form-cancel"]',
     )
     expect(editCancelButton).not.toBeNull()
     editCancelButton!.click()
@@ -348,7 +365,9 @@ describe('scheduled jobs page', () => {
       .querySelector<HTMLButtonElement>('[data-test="unsaved-changes-discard-cancel"]')
       ?.click()
     await flushPromises()
-    expect(document.querySelector('[data-test="scheduled-job-cron-input"]')).not.toBeNull()
+    expect(
+      document.querySelector('[data-test="scheduled-job-form-cron-expression"]'),
+    ).not.toBeNull()
   })
 
   it('refreshes after enable/disable and plan save', async () => {
@@ -363,11 +382,11 @@ describe('scheduled jobs page', () => {
     await wrapper.get('[data-test="scheduled-job-edit"]').trigger('click')
     await flushPromises()
     await vi.waitFor(() => {
-      expect(document.querySelector('[data-test="scheduled-job-save"]')).not.toBeNull()
+      expect(document.querySelector('[data-test="scheduled-job-form-submit"]')).not.toBeNull()
     })
-    document.querySelector<HTMLButtonElement>('[data-test="scheduled-job-save"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-test="scheduled-job-form-submit"]')!.click()
     await flushPromises()
-    expect(updateRequestMock).toHaveBeenCalledWith('auth-session-cleanup', {
+    expect(updateMock).toHaveBeenCalledWith('auth-session-cleanup', {
       cronExpression: '2 */6 * * *',
       timezone: 'Asia/Shanghai',
     })
@@ -432,11 +451,7 @@ describe('scheduled jobs page', () => {
     expect(listMock).toHaveBeenCalledTimes(2)
     expect(document.body.textContent).toContain('任务已有运行中的实例')
     await vi.waitFor(() => {
-      expect(getRunRequestMock).toHaveBeenCalledWith(
-        'auth-session-cleanup',
-        activeRunId,
-        expect.anything(),
-      )
+      expect(getRunRequestMock).toHaveBeenCalledWith('auth-session-cleanup', activeRunId)
     })
   })
 
@@ -468,11 +483,7 @@ describe('scheduled jobs page', () => {
       expect(wrapper.text()).toContain('取消中')
       expect(wrapper.findAll('[data-test="scheduled-job-cancel"]')).toHaveLength(0)
       await vi.waitFor(() => {
-        expect(getRunRequestMock).toHaveBeenCalledWith(
-          'auth-session-cleanup',
-          runId,
-          expect.anything(),
-        )
+        expect(getRunRequestMock).toHaveBeenCalledWith('auth-session-cleanup', runId)
       })
     } finally {
       wrapper?.unmount()
@@ -480,7 +491,7 @@ describe('scheduled jobs page', () => {
     }
   })
 
-  it('keeps pagination independent from detail and aborts unfinished requests on unmount', async () => {
+  it('keeps pagination independent from detail', async () => {
     const { wrapper } = await mountPage(['ops:scheduled-job:list'])
     await flushPromises()
     listRunsRequestMock.mockResolvedValue({
@@ -493,14 +504,10 @@ describe('scheduled jobs page', () => {
     await wrapper.get('[data-test="scheduled-job-logs"]').trigger('click')
     await flushPromises()
     await vi.waitFor(() => {
-      expect(listRunsRequestMock).toHaveBeenCalledWith(
-        'auth-session-cleanup',
-        {
-          page: 1,
-          pageSize: 10,
-        },
-        expect.objectContaining({ signal: expect.any(AbortSignal) }),
-      )
+      expect(listRunsRequestMock).toHaveBeenCalledWith('auth-session-cleanup', {
+        page: 1,
+        pageSize: 10,
+      })
     })
     const runLogDrawer = document.querySelector('[data-test="scheduled-job-run-log-drawer"]')
     expect(runLogDrawer?.textContent).toContain('定时任务日志')
@@ -521,33 +528,18 @@ describe('scheduled jobs page', () => {
     document.querySelector<HTMLButtonElement>('[data-test="scheduled-job-run-back"]')?.click()
     await flushPromises()
 
-    let listSignal: AbortSignal | undefined
-    listRunsRequestMock.mockImplementation((_taskKey, _query, options) => {
-      listSignal = options?.signal
-      return new Promise(() => {})
+    listRunsRequestMock.mockResolvedValue({
+      list: [],
+      total: 11,
+      page: 2,
+      pageSize: 10,
     })
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
     await flushPromises()
-    expect(listRunsRequestMock).toHaveBeenLastCalledWith(
-      'auth-session-cleanup',
-      {
-        page: 2,
-        pageSize: 10,
-      },
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
-    )
-
-    let signal: AbortSignal | undefined
-    getRunRequestMock.mockImplementation((_taskKey, _runId, options) => {
-      signal = options?.signal
-      return new Promise(() => {})
+    expect(listRunsRequestMock).toHaveBeenLastCalledWith('auth-session-cleanup', {
+      page: 2,
+      pageSize: 10,
     })
-    document.querySelector<HTMLButtonElement>('[data-test="scheduled-job-run-view"]')?.click()
-    await flushPromises()
-    expect(listSignal?.aborted).toBe(false)
-    wrapper.unmount()
-    expect(listSignal?.aborted).toBe(true)
-    expect(signal?.aborted).toBe(true)
   })
 
   it('does not render cancel when a task has no current running record', async () => {

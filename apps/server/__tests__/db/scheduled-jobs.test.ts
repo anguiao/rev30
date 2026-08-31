@@ -14,7 +14,7 @@ import {
   SCHEDULED_JOB_TASK_KEY_OPS_LOGIN_LOG_CLEANUP,
   SCHEDULED_JOB_TASK_KEY_OPS_OPERATION_LOG_CLEANUP,
 } from '@rev30/contracts'
-import { getNextCronOccurrences, validateCronSchedule } from '@rev30/utils'
+import { getNextCronOccurrences, parseCronSchedule } from '@rev30/utils'
 import { asc, eq, inArray, sql } from 'drizzle-orm'
 import { describe, expect } from 'vitest'
 import {
@@ -444,11 +444,14 @@ describe('scheduled jobs migration', () => {
       const phaseMinutes = new Set<number>()
       const firstRunByTask = new Map<string, number>()
       for (const job of jobs) {
-        const schedule = validateCronSchedule({
-          expression: job.cronExpression,
-          timezone: job.timezone,
-        })
-        const occurrences = getNextCronOccurrences({ ...schedule, from, count: 3 })
+        const schedule = parseCronSchedule(
+          {
+            expression: job.cronExpression,
+            timezone: job.timezone,
+          },
+          from,
+        )
+        const occurrences = getNextCronOccurrences(schedule, from, 3)
         firstRunByTask.set(job.taskKey, occurrences[0]!.getTime())
         const intervals = occurrences
           .slice(1)

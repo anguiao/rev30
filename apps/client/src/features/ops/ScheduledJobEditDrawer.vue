@@ -13,7 +13,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import type { ScheduledJobListItem } from '@rev30/contracts'
-import { getNextCronOccurrences, validateCronSchedule } from '@rev30/utils'
+import { getNextCronOccurrences, parseCronSchedule } from '@rev30/utils'
 import { updateScheduledJob } from './requests'
 import { useDrawerUnsavedChangesGuard } from '../../composables/useDrawerUnsavedChangesGuard'
 import { getErrorMessage } from '../../utils/error'
@@ -40,13 +40,17 @@ const timezoneOptions = [...new Set(['UTC', ...Intl.supportedValuesOf('timeZone'
 
 const preview = computed(() => {
   try {
-    const schedule = validateCronSchedule({
-      expression: cronExpression.value,
-      timezone: timezone.value,
-    })
+    const from = new Date()
+    const schedule = parseCronSchedule(
+      {
+        expression: cronExpression.value,
+        timezone: timezone.value,
+      },
+      from,
+    )
     return {
       schedule,
-      occurrences: getNextCronOccurrences({ ...schedule, from: new Date(), count: 5 }),
+      occurrences: getNextCronOccurrences(schedule, from, 5),
       error: null,
     }
   } catch (error) {

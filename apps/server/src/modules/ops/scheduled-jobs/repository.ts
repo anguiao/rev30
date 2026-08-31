@@ -1,5 +1,5 @@
 import type { ScheduledJobErrorCategory, ScheduledJobTaskKey } from '@rev30/contracts'
-import { getNextCronOccurrences, validateCronSchedule } from '@rev30/utils'
+import { getNextCronOccurrences, parseCronSchedule } from '@rev30/utils'
 import {
   and,
   asc,
@@ -92,12 +92,11 @@ export class ScheduledJobNotFoundError extends Error {
 }
 
 function nextOccurrence(plan: typeof opsScheduledJobs.$inferSelect, now: Date) {
-  return getNextCronOccurrences({
-    expression: plan.cronExpression,
-    timezone: plan.timezone,
-    from: now,
-    count: 1,
-  })[0]!
+  return getNextCronOccurrences(
+    { expression: plan.cronExpression, timezone: plan.timezone },
+    now,
+    1,
+  )[0]!
 }
 
 async function lockPlan(executor: DbReader, taskKey: string) {
@@ -256,17 +255,18 @@ export function createScheduledJobRepository(database: Db) {
       timezone: string
       now: Date
     }) {
-      const schedule = validateCronSchedule({
-        expression: input.cronExpression,
-        timezone: input.timezone,
-      })
+      const schedule = parseCronSchedule(
+        {
+          expression: input.cronExpression,
+          timezone: input.timezone,
+        },
+        input.now,
+      )
 
       return await database.transaction(async (tx) => {
         const plan = await lockPlan(tx, input.taskKey)
         if (!plan) throw new ScheduledJobNotFoundError()
-        const nextRunAt = plan.enabled
-          ? getNextCronOccurrences({ ...schedule, from: input.now, count: 1 })[0]!
-          : null
+        const nextRunAt = plan.enabled ? getNextCronOccurrences(schedule, input.now, 1)[0]! : null
         const [updated] = await tx
           .update(opsScheduledJobs)
           .set({
@@ -313,7 +313,10 @@ export function createScheduledJobRepository(database: Db) {
         }
 
         for (const plan of plans) {
-          validateCronSchedule({ expression: plan.cronExpression, timezone: plan.timezone })
+          parseCronSchedule(
+            { expression: plan.cronExpression, timezone: plan.timezone },
+            input.startupAt,
+          )
           if (
             (plan.enabled && plan.nextRunAt === null) ||
             (!plan.enabled && plan.nextRunAt !== null)

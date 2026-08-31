@@ -9,7 +9,7 @@ import {
   type ScheduledJobRunsListQuery,
   type ScheduledJobTaskKey,
 } from '@rev30/contracts'
-import { validateCronSchedule } from '@rev30/utils'
+import { parseCronSchedule } from '@rev30/utils'
 import type { Db } from '../../../db'
 import {
   ScheduledJobNotFoundError,
@@ -83,12 +83,16 @@ export function createScheduledJobService(
 
   async function updatePlan(taskKey: string, input: ScheduledJobPlanUpdateInput) {
     const parsedTaskKey = assertKnownTask(taskKey, runtime.listDefinitions())
+    const updatedAt = now()
     let schedule: ScheduledJobPlanUpdateInput
     try {
-      const normalized = validateCronSchedule({
-        expression: input.cronExpression,
-        timezone: input.timezone,
-      })
+      const normalized = parseCronSchedule(
+        {
+          expression: input.cronExpression,
+          timezone: input.timezone,
+        },
+        updatedAt,
+      )
       schedule = {
         cronExpression: normalized.expression,
         timezone: normalized.timezone,
@@ -101,7 +105,7 @@ export function createScheduledJobService(
       taskKey: parsedTaskKey,
       cronExpression: schedule.cronExpression,
       timezone: schedule.timezone,
-      now: now(),
+      now: updatedAt,
     })
     runtime.wake()
     return (await list()).find((item) => item.taskKey === parsedTaskKey)!

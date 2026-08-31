@@ -1,8 +1,8 @@
 import type { Logger } from 'pino'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { scheduledJobTaskKeySchema } from '@rev30/contracts'
 import type { ScheduledJobRetentionConfig } from '../../../../src/modules/ops/scheduled-jobs/config'
 import { createProductionScheduledJobRegistry } from '../../../../src/modules/ops/scheduled-jobs/production'
+import { scheduledJobTaskKeys } from '../../../../src/modules/ops/scheduled-jobs/registry'
 
 const mocks = vi.hoisted(() => ({
   cleanupAuthSessions: vi.fn(),
@@ -74,7 +74,7 @@ describe('production scheduled job registry', () => {
     const registry = createProductionScheduledJobRegistry({ database, storage, retention })
     const signal = new AbortController().signal
 
-    expect(registry.keys()).toEqual(scheduledJobTaskKeySchema.options)
+    expect(registry.keys()).toEqual(scheduledJobTaskKeys)
     expect(new Set(registry.keys()).size).toBe(8)
 
     const results = []

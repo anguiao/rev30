@@ -3,14 +3,14 @@ import type { Logger } from 'pino'
 import { describe, expect, it, vi } from 'vitest'
 import {
   createScheduledJobRegistry,
+  scheduledJobTaskKeys,
   scheduledJobResultSchema,
   type ScheduledJobDefinition,
 } from '../../../../src/modules/ops/scheduled-jobs/registry'
 
-const sharedTaskKeys = scheduledJobTaskKeySchema.options
 const logger = {} as Logger
 
-function definition(key: (typeof sharedTaskKeys)[number]): ScheduledJobDefinition {
+function definition(key: (typeof scheduledJobTaskKeys)[number]): ScheduledJobDefinition {
   return {
     key,
     name: `Name for ${key}`,
@@ -20,31 +20,38 @@ function definition(key: (typeof sharedTaskKeys)[number]): ScheduledJobDefinitio
 }
 
 describe('scheduled job registry', () => {
-  it('requires unique definitions that completely cover the shared task keys', () => {
-    expect(() => createScheduledJobRegistry(sharedTaskKeys.slice(1).map(definition))).toThrow(
+  it('uses contract-compatible keys', () => {
+    for (const taskKey of scheduledJobTaskKeys) {
+      expect(scheduledJobTaskKeySchema.parse(taskKey)).toBe(taskKey)
+    }
+  })
+
+  it('requires unique definitions that completely cover the predefined task keys', () => {
+    expect(() => createScheduledJobRegistry(scheduledJobTaskKeys.slice(1).map(definition))).toThrow(
       /完整覆盖/,
     )
     expect(() =>
       createScheduledJobRegistry([
-        ...sharedTaskKeys.map(definition),
-        definition(sharedTaskKeys[0]!),
+        ...scheduledJobTaskKeys.map(definition),
+        definition(scheduledJobTaskKeys[0]),
       ]),
     ).toThrow(/重复/)
   })
 
   it('returns definitions by key and preserves the signal and logger run boundary', async () => {
-    const definitions = sharedTaskKeys.map(definition)
+    const definitions = scheduledJobTaskKeys.map(definition)
     const registry = createScheduledJobRegistry(definitions)
     const controller = new AbortController()
-    const target = registry.get(sharedTaskKeys[0]!)
+    const target = registry.get(scheduledJobTaskKeys[0])
 
     await expect(target.run({ signal: controller.signal, logger })).resolves.toEqual({
       deletedCount: 0,
       failedCount: 0,
     })
     expect(target).toBe(definitions[0])
-    expect(registry.keys()).toEqual(sharedTaskKeys)
+    expect(registry.keys()).toEqual(scheduledJobTaskKeys)
     expect(target.run).toHaveBeenCalledWith({ signal: controller.signal, logger })
+    expect(() => registry.get('unknown-task')).toThrow(/不存在 key/)
   })
 
   it('strictly validates safe handler result counts', () => {

@@ -37,37 +37,28 @@ describe('scheduled job query and path schemas', () => {
     )
   })
 
-  it('accepts fixed and unknown non-blank task keys at the path boundary', () => {
-    const taskKeys = [
-      'auth-session-cleanup',
-      'auth-login-attempt-cleanup',
-      'ops-login-log-cleanup',
-      'ops-operation-log-cleanup',
-      'attachment-expired-upload-session-cleanup',
-      'attachment-unreferenced-cleanup',
-      'attachment-orphaned-storage-cleanup',
-      'ops-job-run-cleanup',
-    ] as const
-
-    for (const taskKey of taskKeys) {
+  it('accepts well-formed task keys without constraining the server registry', () => {
+    for (const taskKey of ['auth-session-cleanup', 'arbitrary-handler', 'unknown']) {
       expect(scheduledJobTaskKeySchema.parse(taskKey)).toBe(taskKey)
       expect(scheduledJobPathSchema.parse({ taskKey })).toEqual({ taskKey })
     }
 
-    expect(scheduledJobPathSchema.parse({ taskKey: 'arbitrary-handler' })).toEqual({
-      taskKey: 'arbitrary-handler',
+    expect(scheduledJobRunPathSchema.parse({ taskKey: 'unknown', runId: testUuid(1) })).toEqual({
+      taskKey: 'unknown',
+      runId: testUuid(1),
     })
-    expect(scheduledJobTaskKeySchema.safeParse('arbitrary-handler').success).toBe(false)
+  })
+
+  it('rejects blank, oversized, and malformed task keys', () => {
     expectZodIssue(scheduledJobPathSchema.safeParse({ taskKey: ' ' }), {
       message: '定时任务键不能为空',
       path: ['taskKey'],
     })
-    expectZodIssue(scheduledJobTaskKeySchema.safeParse('arbitrary-handler'), {
-      message: '定时任务键无效',
+    expectZodIssue(scheduledJobTaskKeySchema.safeParse('task_key'), {
+      message: '定时任务键格式无效',
     })
-    expect(scheduledJobRunPathSchema.parse({ taskKey: 'unknown', runId: testUuid(1) })).toEqual({
-      taskKey: 'unknown',
-      runId: testUuid(1),
+    expectZodIssue(scheduledJobTaskKeySchema.safeParse('a'.repeat(129)), {
+      message: '定时任务键不能超过 128 个字符',
     })
   })
 

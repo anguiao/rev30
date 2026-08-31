@@ -219,6 +219,15 @@ export function createScheduledJobRepository(database: Db) {
       return { plans, currentRuns, lastRuns }
     },
 
+    async findPlan(taskKey: string) {
+      const [plan] = await database
+        .select()
+        .from(opsScheduledJobs)
+        .where(eq(opsScheduledJobs.taskKey, taskKey))
+        .limit(1)
+      return plan
+    },
+
     async listRuns(input: { taskKey: string; page: number; pageSize: number }) {
       const where = eq(opsJobRuns.taskKey, input.taskKey)
       const [list, totalRows] = await Promise.all([

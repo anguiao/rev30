@@ -1,5 +1,5 @@
 import {
-  scheduledJobTaskKeySchema,
+  type ScheduledJob,
   type ScheduledJobEnabledInput,
   type ScheduledJobListItem,
   type ScheduledJobManualExecuteResult,
@@ -7,7 +7,6 @@ import {
   type ScheduledJobRunDetail,
   type ScheduledJobRunListResponse,
   type ScheduledJobRunsListQuery,
-  type ScheduledJobTaskKey,
 } from '@rev30/contracts'
 import { parseCronSchedule } from '@rev30/utils'
 import type { Db } from '../../../db'
@@ -18,6 +17,7 @@ import {
   type ScheduledJobActorSnapshot,
 } from './repository'
 import {
+  toScheduledJob,
   toScheduledJobListItem,
   toScheduledJobRunDetail,
   toScheduledJobRunListItem,
@@ -29,18 +29,16 @@ import type { ScheduledJobRuntimeCommands } from './runtime'
 type Repository = ReturnType<typeof createScheduledJobRepository>
 type ServiceRepository = Pick<
   Repository,
-  'list' | 'listRuns' | 'findRun' | 'updatePlan' | 'updateEnabled'
+  'list' | 'findPlan' | 'listRuns' | 'findRun' | 'updatePlan' | 'updateEnabled'
 >
 
-function assertKnownTask(
+function requireTaskDefinition(
   taskKey: string,
   definitions: ReturnType<ScheduledJobRuntimeCommands['listDefinitions']>,
-): ScheduledJobTaskKey {
-  const parsed = scheduledJobTaskKeySchema.safeParse(taskKey)
-  if (!parsed.success || !definitions.some((definition) => definition.key === parsed.data)) {
-    throw new ScheduledJobNotFoundError()
-  }
-  return parsed.data
+) {
+  const definition = definitions.find((item) => item.key === taskKey)
+  if (!definition) throw new ScheduledJobNotFoundError()
+  return definition
 }
 
 export type ScheduledJobServiceOptions = {
@@ -81,8 +79,17 @@ export function createScheduledJobService(
     })
   }
 
+  async function get(taskKey: string): Promise<ScheduledJob> {
+    const definitions = runtime.listDefinitions()
+    const definition = requireTaskDefinition(taskKey, definitions)
+    const plan = await repository.findPlan(definition.key)
+    if (!plan) throw new ScheduledJobNotFoundError()
+
+    return toScheduledJob(plan, definition)
+  }
+
   async function updatePlan(taskKey: string, input: ScheduledJobPlanUpdateInput) {
-    const parsedTaskKey = assertKnownTask(taskKey, runtime.listDefinitions())
+    const definition = requireTaskDefinition(taskKey, runtime.listDefinitions())
     const updatedAt = now()
     let schedule: ScheduledJobPlanUpdateInput
     try {
@@ -101,33 +108,33 @@ export function createScheduledJobService(
       throw new ScheduledJobInvalidPlanError()
     }
 
-    await repository.updatePlan({
-      taskKey: parsedTaskKey,
+    const plan = await repository.updatePlan({
+      taskKey: definition.key,
       cronExpression: schedule.cronExpression,
       timezone: schedule.timezone,
       now: updatedAt,
     })
     runtime.wake()
-    return (await list()).find((item) => item.taskKey === parsedTaskKey)!
+    return toScheduledJob(plan, definition)
   }
 
   async function updateEnabled(taskKey: string, input: ScheduledJobEnabledInput) {
-    const parsedTaskKey = assertKnownTask(taskKey, runtime.listDefinitions())
-    await repository.updateEnabled({
-      taskKey: parsedTaskKey,
+    const definition = requireTaskDefinition(taskKey, runtime.listDefinitions())
+    const plan = await repository.updateEnabled({
+      taskKey: definition.key,
       enabled: input.enabled,
       now: now(),
     })
     runtime.wake()
-    return (await list()).find((item) => item.taskKey === parsedTaskKey)!
+    return toScheduledJob(plan, definition)
   }
 
   async function runManual(
     taskKey: string,
     actor: ScheduledJobActorSnapshot,
   ): Promise<ScheduledJobManualExecuteResult> {
-    const parsedTaskKey = assertKnownTask(taskKey, runtime.listDefinitions())
-    const result = await runtime.runManual({ taskKey: parsedTaskKey, actor })
+    const definition = requireTaskDefinition(taskKey, runtime.listDefinitions())
+    const result = await runtime.runManual({ taskKey: definition.key, actor })
     if (result.kind === 'not-found') throw new ScheduledJobNotFoundError()
     if (result.kind === 'overlap') {
       return {
@@ -142,8 +149,8 @@ export function createScheduledJobService(
     taskKey: string,
     query: ScheduledJobRunsListQuery,
   ): Promise<ScheduledJobRunListResponse> {
-    const parsedTaskKey = assertKnownTask(taskKey, runtime.listDefinitions())
-    const result = await repository.listRuns({ taskKey: parsedTaskKey, ...query })
+    const definition = requireTaskDefinition(taskKey, runtime.listDefinitions())
+    const result = await repository.listRuns({ taskKey: definition.key, ...query })
     return {
       ...result,
       list: result.list.map(toScheduledJobRunListItem),
@@ -151,16 +158,16 @@ export function createScheduledJobService(
   }
 
   async function getRun(taskKey: string, runId: string): Promise<ScheduledJobRunDetail> {
-    const parsedTaskKey = assertKnownTask(taskKey, runtime.listDefinitions())
-    const run = await repository.findRun(parsedTaskKey, runId)
+    const definition = requireTaskDefinition(taskKey, runtime.listDefinitions())
+    const run = await repository.findRun(definition.key, runId)
     if (!run) throw new ScheduledJobNotFoundError()
     return toScheduledJobRunDetail(run)
   }
 
   async function cancel(taskKey: string, runId: string, actor: ScheduledJobActorSnapshot) {
-    const parsedTaskKey = assertKnownTask(taskKey, runtime.listDefinitions())
+    const definition = requireTaskDefinition(taskKey, runtime.listDefinitions())
     const result = await runtime.requestCancellation({
-      taskKey: parsedTaskKey,
+      taskKey: definition.key,
       runId,
       actor,
     })
@@ -182,7 +189,7 @@ export function createScheduledJobService(
     }
   }
 
-  return { list, updatePlan, updateEnabled, runManual, listRuns, getRun, cancel }
+  return { list, get, updatePlan, updateEnabled, runManual, listRuns, getRun, cancel }
 }
 
 export type ScheduledJobService = ReturnType<typeof createScheduledJobService>

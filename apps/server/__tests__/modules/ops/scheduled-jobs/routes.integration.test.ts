@@ -1,12 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import {
   scheduledJobCancelResponseSchema,
-  scheduledJobEnabledResponseSchema,
   scheduledJobListResponseSchema,
   scheduledJobManualExecuteOverlapResponseSchema,
   scheduledJobRunDetailSchema,
   scheduledJobRunListResponseSchema,
-  scheduledJobTaskKeySchema,
+  scheduledJobSchema,
 } from '@rev30/contracts'
 import { eq } from 'drizzle-orm'
 import { describe, expect, vi } from 'vitest'
@@ -19,15 +18,16 @@ import {
   ScheduledJobStateConflictError,
 } from '../../../../src/modules/ops/scheduled-jobs/repository'
 import type { ScheduledJobRuntimeCommands } from '../../../../src/modules/ops/scheduled-jobs/runtime'
+import { scheduledJobTaskKeys } from '../../../../src/modules/ops/scheduled-jobs/registry'
 import { dbTest } from '../../../fixtures/database'
 
-const taskKey = scheduledJobTaskKeySchema.options[0]!
+const taskKey = scheduledJobTaskKeys[0]
 const activeRunId = '20000000-0000-4000-8000-000000000001'
 const terminalRunId = '20000000-0000-4000-8000-000000000002'
 const executorId = '30000000-0000-4000-8000-000000000001'
 
 function createRuntime(): ScheduledJobRuntimeCommands {
-  const definitions = scheduledJobTaskKeySchema.options.map((key) => ({
+  const definitions = scheduledJobTaskKeys.map((key) => ({
     key,
     name: `Definition ${key}`,
     description: `Description ${key}`,
@@ -98,11 +98,17 @@ describe('scheduled job HTTP routes', () => {
       })
       const body = scheduledJobListResponseSchema.parse(await response.json())
       const item = body.find((entry) => entry.taskKey === taskKey)
+      const detailResponse = await app.request(`/api/ops/scheduled-jobs/${taskKey}`, {
+        headers: reader.authHeaders,
+      })
+      const detail = scheduledJobSchema.parse(await detailResponse.json())
 
       expect(response.status).toBe(200)
       expect(body).toHaveLength(8)
       expect(item?.currentRun).toMatchObject({ id: activeRunId, status: 'running' })
       expect(item?.lastRun).toMatchObject({ id: terminalRunId, status: 'success' })
+      expect(detailResponse.status).toBe(200)
+      expect(detail).toMatchObject({ taskKey, name: `Definition ${taskKey}` })
     },
   )
 
@@ -149,11 +155,25 @@ describe('scheduled job HTTP routes', () => {
 
       expect(
         (
+          await app.request(`/api/ops/scheduled-jobs/${taskKey}`, {
+            headers: operator.authHeaders,
+          })
+        ).status,
+      ).toBe(403)
+      expect(
+        (
           await app.request(`/api/ops/scheduled-jobs/${taskKey}/runs`, {
             headers: operator.authHeaders,
           })
         ).status,
       ).toBe(403)
+      expect(
+        (
+          await app.request('/api/ops/scheduled-jobs/not-registered', {
+            headers: listOnly.authHeaders,
+          })
+        ).status,
+      ).toBe(404)
       expect(
         (
           await app.request('/api/ops/scheduled-jobs/not-registered/runs', {
@@ -320,7 +340,7 @@ describe('scheduled job HTTP routes', () => {
         body: JSON.stringify({ enabled: false }),
       })
       expect(disable.status).toBe(200)
-      const disabledBody = scheduledJobEnabledResponseSchema.parse(await disable.json())
+      const disabledBody = scheduledJobSchema.parse(await disable.json())
       expect(disabledBody).toMatchObject({ taskKey, enabled: false, nextRunAt: null })
       const [disabledPlan] = await db
         .select()
@@ -335,7 +355,7 @@ describe('scheduled job HTTP routes', () => {
         body: JSON.stringify({ enabled: true }),
       })
       expect(enable.status).toBe(200)
-      const enabledBody = scheduledJobEnabledResponseSchema.parse(await enable.json())
+      const enabledBody = scheduledJobSchema.parse(await enable.json())
       expect(enabledBody.enabled).toBe(true)
       expect(enabledBody.nextRunAt).not.toBeNull()
       expect(Date.parse(enabledBody.nextRunAt!)).toBeGreaterThan(beforeEnable.getTime())
@@ -478,7 +498,7 @@ describe('scheduled job HTTP routes', () => {
     })
 
     const mismatchResponse = await app.request(
-      `/api/ops/scheduled-jobs/${scheduledJobTaskKeySchema.options[1]}/runs/${secondRunId}`,
+      `/api/ops/scheduled-jobs/${scheduledJobTaskKeys[1]}/runs/${secondRunId}`,
       { headers: reader.authHeaders },
     )
     expect(mismatchResponse.status).toBe(404)

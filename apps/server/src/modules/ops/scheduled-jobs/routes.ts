@@ -4,7 +4,6 @@ import {
   scheduledJobCancelInputSchema,
   scheduledJobCancelResponseSchema,
   scheduledJobEnabledInputSchema,
-  scheduledJobEnabledResponseSchema,
   scheduledJobListResponseSchema,
   scheduledJobManualExecuteInputSchema,
   scheduledJobManualExecuteOverlapResponseSchema,
@@ -15,7 +14,7 @@ import {
   scheduledJobRunListResponseSchema,
   scheduledJobRunPathSchema,
   scheduledJobRunsListQuerySchema,
-  scheduledJobUpdateResponseSchema,
+  scheduledJobSchema,
 } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context, type MiddlewareHandler } from 'hono'
@@ -149,6 +148,15 @@ export function createScheduledJobRoutes(database: Db, runtime: ScheduledJobRunt
     .get('/', requireAccess('ops:scheduled-job:list'), async (c) => {
       return c.json(scheduledJobListResponseSchema.parse(await service.list()))
     })
+    .get(
+      '/:taskKey',
+      requireAccess('ops:scheduled-job:list'),
+      scheduledJobPathValidator,
+      async (c) => {
+        const { taskKey } = c.req.valid('param')
+        return c.json(scheduledJobSchema.parse(await service.get(taskKey)))
+      },
+    )
     .put(
       '/:taskKey',
       requireAccess('ops:scheduled-job:update'),
@@ -158,9 +166,7 @@ export function createScheduledJobRoutes(database: Db, runtime: ScheduledJobRunt
         const { taskKey } = c.req.valid('param')
         const body: ScheduledJobPlanUpdateInput = c.req.valid('json')
         recordOperation(c, 'ops:scheduled-job:update', { targetKey: taskKey })
-        return c.json(
-          scheduledJobUpdateResponseSchema.parse(await service.updatePlan(taskKey, body)),
-        )
+        return c.json(scheduledJobSchema.parse(await service.updatePlan(taskKey, body)))
       },
     )
     .put(
@@ -178,9 +184,7 @@ export function createScheduledJobRoutes(database: Db, runtime: ScheduledJobRunt
             targetKey: taskKey,
           },
         )
-        return c.json(
-          scheduledJobEnabledResponseSchema.parse(await service.updateEnabled(taskKey, body)),
-        )
+        return c.json(scheduledJobSchema.parse(await service.updateEnabled(taskKey, body)))
       },
     )
     .post(

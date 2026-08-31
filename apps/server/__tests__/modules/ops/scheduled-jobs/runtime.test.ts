@@ -1,4 +1,3 @@
-import { scheduledJobTaskKeySchema } from '@rev30/contracts'
 import type { Logger } from 'pino'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -6,9 +5,12 @@ import {
   ScheduledJobRuntimeStoppedError,
 } from '../../../../src/modules/ops/scheduled-jobs/runtime'
 import type { ScheduledJobActorSnapshot } from '../../../../src/modules/ops/scheduled-jobs/repository'
-import type { ScheduledJobDefinition } from '../../../../src/modules/ops/scheduled-jobs/registry'
+import {
+  scheduledJobTaskKeys,
+  type ScheduledJobDefinition,
+} from '../../../../src/modules/ops/scheduled-jobs/registry'
 
-const taskKey = scheduledJobTaskKeySchema.options[0]!
+const taskKey = scheduledJobTaskKeys[0]
 const runId = '10000000-0000-7000-8000-000000000001'
 const executorId = '20000000-0000-4000-8000-000000000001'
 const now = new Date('2026-08-25T00:00:00.000Z')

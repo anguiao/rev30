@@ -1,10 +1,10 @@
 import type {
+  ScheduledJob,
   ScheduledJobCurrentRunSummary,
   ScheduledJobLatestRunSummary,
   ScheduledJobListItem,
   ScheduledJobRunDetail,
   ScheduledJobRunListItem,
-  ScheduledJobRunSummary,
   ScheduledJobTaskKey,
 } from '@rev30/contracts'
 import { toIsoDateTime } from '@rev30/utils'
@@ -31,10 +31,6 @@ function runSummaryFields(row: ScheduledJobRunRow) {
   }
 }
 
-export function toScheduledJobRunSummary(row: ScheduledJobRunRow): ScheduledJobRunSummary {
-  return runSummaryFields(row) as ScheduledJobRunSummary
-}
-
 export function toScheduledJobCurrentRunSummary(
   row: ScheduledJobRunRow,
 ): ScheduledJobCurrentRunSummary {
@@ -47,12 +43,10 @@ export function toScheduledJobLatestRunSummary(
   return runSummaryFields(row) as ScheduledJobLatestRunSummary
 }
 
-export function toScheduledJobListItem(
+export function toScheduledJob(
   plan: ScheduledJobPlanRow,
   definition: Pick<RegistryDefinition, 'key' | 'name' | 'description'>,
-  currentRun: ScheduledJobRunRow | null,
-  lastRun: ScheduledJobRunRow | null,
-): ScheduledJobListItem {
+): ScheduledJob {
   return {
     taskKey: definition.key,
     name: definition.name,
@@ -61,6 +55,17 @@ export function toScheduledJobListItem(
     timezone: plan.timezone,
     enabled: plan.enabled,
     nextRunAt: iso(plan.nextRunAt),
+  }
+}
+
+export function toScheduledJobListItem(
+  plan: ScheduledJobPlanRow,
+  definition: Pick<RegistryDefinition, 'key' | 'name' | 'description'>,
+  currentRun: ScheduledJobRunRow | null,
+  lastRun: ScheduledJobRunRow | null,
+): ScheduledJobListItem {
+  return {
+    ...toScheduledJob(plan, definition),
     currentRun: currentRun ? toScheduledJobCurrentRunSummary(currentRun) : null,
     lastRun: lastRun ? toScheduledJobLatestRunSummary(lastRun) : null,
   }

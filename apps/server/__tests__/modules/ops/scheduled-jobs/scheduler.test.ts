@@ -1,10 +1,14 @@
-import { scheduledJobTaskKeySchema } from '@rev30/contracts'
+import type { ScheduledJobTaskKey } from '@rev30/contracts'
 import type { Logger } from 'pino'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createScheduledJobScheduler } from '../../../../src/modules/ops/scheduled-jobs/scheduler'
 import type { ScheduledJobRecoveryCandidate } from '../../../../src/modules/ops/scheduled-jobs/repository'
+import { scheduledJobTaskKeys } from '../../../../src/modules/ops/scheduled-jobs/registry'
 
-const [firstTask, secondTask, thirdTask, fourthTask] = scheduledJobTaskKeySchema.options
+const firstTask: ScheduledJobTaskKey = scheduledJobTaskKeys[0]
+const secondTask: ScheduledJobTaskKey = scheduledJobTaskKeys[1]
+const thirdTask: ScheduledJobTaskKey = scheduledJobTaskKeys[2]
+const fourthTask: ScheduledJobTaskKey = scheduledJobTaskKeys[3]
 const executorId = '20000000-0000-4000-8000-000000000001'
 const now = new Date('2026-08-25T00:00:00.000Z')
 

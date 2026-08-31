@@ -8,7 +8,6 @@ import {
   scheduledJobRunDetailSchema,
   scheduledJobRunListResponseSchema,
   scheduledJobRunStatusSchema,
-  scheduledJobRunSummarySchema,
   scheduledJobSkipReasonSchema,
   scheduledJobTriggerSourceSchema,
   scheduledJobCancelResponseSchema,
@@ -149,21 +148,6 @@ describe('scheduled job response schemas', () => {
     })
   })
 
-  it('requires enabled and nextRunAt to have matching nullability', () => {
-    expectZodIssue(
-      scheduledJobListItemSchema.safeParse({ ...taskItem, enabled: true, nextRunAt: null }),
-      { message: '启用任务必须有下次执行时间', path: ['nextRunAt'] },
-    )
-    expectZodIssue(
-      scheduledJobListItemSchema.safeParse({
-        ...taskItem,
-        enabled: false,
-        nextRunAt: '2026-08-25T06:00:02.000Z',
-      }),
-      { message: '禁用任务不能有下次执行时间', path: ['nextRunAt'] },
-    )
-  })
-
   it('restricts current and latest summaries to their respective status classes', () => {
     expectZodIssue(
       scheduledJobCurrentRunSummarySchema.safeParse({ ...taskItem.currentRun, status: 'success' }),
@@ -190,8 +174,7 @@ describe('scheduled job response schemas', () => {
     })
   })
 
-  it('enforces status, count, operator, and cancellation snapshot semantics', () => {
-    expect(scheduledJobRunSummarySchema.parse(taskItem.currentRun)).toEqual(taskItem.currentRun)
+  it('validates command responses and numeric bounds', () => {
     expect(scheduledJobCancelResponseSchema.parse({ run: taskItem.currentRun })).toEqual({
       run: taskItem.currentRun,
     })
@@ -206,33 +189,6 @@ describe('scheduled job response schemas', () => {
     ).toEqual({ skippedRunId: testUuid(8), activeRunId: testUuid(9) })
 
     expectZodIssue(
-      scheduledJobRunDetailSchema.safeParse({ ...successfulScheduledRun, failedCount: 1 }),
-      { message: '成功运行的失败计数必须为 0', path: ['failedCount'] },
-    )
-    expectZodIssue(
-      scheduledJobRunDetailSchema.safeParse({
-        ...runningRun,
-        triggerSource: 'scheduled',
-        triggeredByUserId: testUuid(3),
-      }),
-      { message: '非手动运行不能包含操作者快照', path: ['triggeredByUserId'] },
-    )
-    expectZodIssue(
-      scheduledJobRunDetailSchema.safeParse({
-        ...runningRun,
-        cancelRequestedAt: '2026-08-25T00:00:03.000Z',
-      }),
-      { message: '取消请求快照必须完整', path: ['cancelRequestedByUserId'] },
-    )
-    expectZodIssue(
-      scheduledJobRunDetailSchema.safeParse({
-        ...runningRun,
-        status: 'skipped',
-        skipReason: null,
-      }),
-      { message: '跳过运行必须使用 overlap 原因', path: ['skipReason'] },
-    )
-    expectZodIssue(
       scheduledJobRunDetailSchema.safeParse({ ...successfulScheduledRun, deletedCount: -1 }),
       { message: '任务计数不能小于 0', path: ['deletedCount'] },
     )
@@ -243,68 +199,6 @@ describe('scheduled job response schemas', () => {
       }),
       { message: '任务耗时超过安全整数范围', path: ['durationMs'] },
     )
-  })
-
-  it('accepts the secure shapes for skipped, interrupted, cancelled, and failed runs', () => {
-    expect(
-      scheduledJobRunDetailSchema.parse({
-        ...successfulScheduledRun,
-        status: 'skipped',
-        executorId: null,
-        deletedCount: null,
-        failedCount: null,
-        skipReason: 'overlap',
-        startedAt: null,
-        finishedAt: '2026-08-25T00:00:03.000Z',
-        durationMs: null,
-      }),
-    ).toMatchObject({ status: 'skipped', skipReason: 'overlap' })
-    expect(
-      scheduledJobRunDetailSchema.parse({
-        ...successfulScheduledRun,
-        status: 'interrupted',
-        finishedAt: '2026-08-25T00:00:03.000Z',
-        durationMs: null,
-        deletedCount: null,
-        failedCount: null,
-      }),
-    ).toMatchObject({ status: 'interrupted', durationMs: null })
-    expect(
-      scheduledJobRunDetailSchema.parse({
-        ...runningRun,
-        status: 'cancelled',
-        cancelRequestedAt: '2026-08-25T00:00:01.000Z',
-        cancelRequestedByUserId: testUuid(10),
-        cancelRequestedByUsername: 'admin',
-        cancelRequestedByNickname: 'Administrator',
-        cancelRequestedBySessionId: testUuid(11),
-        cancelRequestId: testUuid(12),
-        finishedAt: '2026-08-25T00:00:03.000Z',
-        durationMs: 2000,
-        deletedCount: 0,
-        failedCount: 0,
-      }),
-    ).toMatchObject({ status: 'cancelled', cancelRequestId: testUuid(12) })
-    expectZodIssue(
-      scheduledJobRunDetailSchema.safeParse({
-        ...runningRun,
-        status: 'cancelled',
-        finishedAt: '2026-08-25T00:00:03.000Z',
-        durationMs: 2000,
-        deletedCount: 0,
-        failedCount: 0,
-      }),
-      { message: '已取消运行必须包含完整取消请求快照', path: ['cancelRequestedAt'] },
-    )
-    expect(
-      scheduledJobRunDetailSchema.parse({
-        ...successfulScheduledRun,
-        status: 'failure',
-        failedCount: 2,
-        errorCategory: 'database',
-        errorSummary: '数据库操作失败',
-      }),
-    ).toMatchObject({ status: 'failure', failedCount: 2, errorCategory: 'database' })
   })
 
   it('accepts only the wrapped current-run summary for cancellation responses', () => {

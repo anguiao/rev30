@@ -12,6 +12,7 @@ import {
   operationLogListResponseSchema,
   type ScheduledJobCancelResponse,
   type ScheduledJobEnabledInput,
+  type ScheduledJob,
   type ScheduledJobListResponse,
   type ScheduledJobManualExecuteResult,
   type ScheduledJobPlanUpdateInput,
@@ -19,12 +20,12 @@ import {
   type ScheduledJobRunListResponse,
   type ScheduledJobRunsListQuery,
   scheduledJobCancelResponseSchema,
-  scheduledJobEnabledResponseSchema,
   scheduledJobListResponseSchema,
   scheduledJobManualExecuteResultSchema,
   scheduledJobPlanUpdateInputSchema,
   scheduledJobRunDetailSchema,
   scheduledJobRunListResponseSchema,
+  scheduledJobSchema,
 } from '@rev30/contracts'
 import { api } from '../../api'
 import {
@@ -75,29 +76,36 @@ export async function listScheduledJobs(): Promise<ScheduledJobListResponse> {
   return parseApiResponse(await api.ops['scheduled-jobs'].$get(), scheduledJobListResponseSchema)
 }
 
+export async function getScheduledJob(taskKey: string): Promise<ScheduledJob> {
+  return parseApiResponse(
+    await api.ops['scheduled-jobs'][':taskKey'].$get({ param: { taskKey } }),
+    scheduledJobSchema,
+  )
+}
+
 export async function updateScheduledJob(
   taskKey: string,
   input: ScheduledJobPlanUpdateInput,
-): Promise<ScheduledJobListResponse[number]> {
+): Promise<ScheduledJob> {
   return parseApiResponse(
     await api.ops['scheduled-jobs'][':taskKey'].$put({
       param: { taskKey },
       json: scheduledJobPlanUpdateInputSchema.parse(input),
     }),
-    scheduledJobListResponseSchema.element,
+    scheduledJobSchema,
   )
 }
 
 export async function updateScheduledJobEnabled(
   taskKey: string,
   enabled: boolean,
-): Promise<ScheduledJobListResponse[number]> {
+): Promise<ScheduledJob> {
   return parseApiResponse(
     await api.ops['scheduled-jobs'][':taskKey'].enabled.$put({
       param: { taskKey },
       json: { enabled } satisfies ScheduledJobEnabledInput,
     }),
-    scheduledJobEnabledResponseSchema,
+    scheduledJobSchema,
   )
 }
 

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { scheduledJobTaskKeySchema, type ScheduledJobTaskKey } from '@rev30/contracts'
+import type { ScheduledJobTaskKey } from '@rev30/contracts'
 import { asc, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import type { Db } from '../../../../src/db'
@@ -13,11 +13,12 @@ import {
 } from '../../../../src/modules/ops/scheduled-jobs/repository'
 import {
   createScheduledJobRegistry,
+  scheduledJobTaskKeys,
   type ScheduledJobDefinition,
 } from '../../../../src/modules/ops/scheduled-jobs/registry'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
 
-const taskKeys = scheduledJobTaskKeySchema.options
+const taskKeys = scheduledJobTaskKeys
 const firstTask = taskKeys[0]!
 const secondTask = taskKeys[1]!
 const thirdTask = taskKeys[2]!

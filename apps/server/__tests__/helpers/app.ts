@@ -1,16 +1,16 @@
-import { scheduledJobTaskKeySchema } from '@rev30/contracts'
 import type { Db } from '../../src/db'
 import {
   createApp as createProductionApp,
   type CreateAppOptions as CreateProductionAppOptions,
 } from '../../src/app'
 import type { ScheduledJobRuntimeCommands } from '../../src/modules/ops/scheduled-jobs/runtime'
+import { scheduledJobTaskKeys } from '../../src/modules/ops/scheduled-jobs/registry'
 import type { OperationLogEventReceiver } from '../../src/runtime/operation-log'
 
 const noopOperationLogReceiver: OperationLogEventReceiver = () => undefined
 
 export function createScheduledJobRuntimeStub(): ScheduledJobRuntimeCommands {
-  const definitions = scheduledJobTaskKeySchema.options.map((key) => ({
+  const definitions = scheduledJobTaskKeys.map((key) => ({
     key,
     name: key,
     description: key,

@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  scheduledJobCancelInputSchema,
-  scheduledJobEnabledInputSchema,
-  scheduledJobManualExecuteInputSchema,
-  scheduledJobPlanUpdateInputSchema,
-} from '../../../src'
+import { scheduledJobEnabledInputSchema, scheduledJobPlanUpdateInputSchema } from '../../../src'
 import { expectZodIssue } from '../../helpers/schema'
 
 describe('scheduled job input schemas', () => {
@@ -34,17 +29,6 @@ describe('scheduled job input schemas', () => {
     expectZodIssue(scheduledJobEnabledInputSchema.safeParse({ enabled: 'false' }), {
       message: '启用状态必须是布尔值',
       path: ['enabled'],
-    })
-  })
-
-  it('accepts only empty bodies for manual execution and cancellation', () => {
-    expect(scheduledJobManualExecuteInputSchema.parse({})).toEqual({})
-    expect(scheduledJobCancelInputSchema.parse({})).toEqual({})
-    expectZodIssue(scheduledJobManualExecuteInputSchema.safeParse({ reason: 'now' }), {
-      message: 'Unrecognized key: "reason"',
-    })
-    expectZodIssue(scheduledJobCancelInputSchema.safeParse({ cancel: true }), {
-      message: 'Unrecognized key: "cancel"',
     })
   })
 })

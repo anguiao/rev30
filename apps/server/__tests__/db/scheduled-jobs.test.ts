@@ -4,7 +4,6 @@ import {
   SCHEDULED_JOB_RUN_STATUS_RUNNING,
   SCHEDULED_JOB_RUN_STATUS_SKIPPED,
   SCHEDULED_JOB_RUN_STATUS_SUCCESS,
-  SCHEDULED_JOB_SKIP_REASON_OVERLAP,
 } from '@rev30/contracts'
 import { getNextCronOccurrences, parseCronSchedule } from '@rev30/utils'
 import { asc, eq, inArray, sql } from 'drizzle-orm'
@@ -36,11 +35,7 @@ const resourceIds = [
 const validTaskKey = taskKeys[0]
 const validRunId = '20000000-0000-4000-8000-000000000001'
 const secondRunId = '20000000-0000-4000-8000-000000000002'
-const validExecutorId = '30000000-0000-4000-8000-000000000001'
 const validUserId = '40000000-0000-4000-8000-000000000001'
-const validSessionId = '50000000-0000-4000-8000-000000000001'
-const validRequestId = '60000000-0000-4000-8000-000000000001'
-const validCancelRequestId = '70000000-0000-4000-8000-000000000001'
 const startedAt = new Date('2026-08-25T00:00:00.000Z')
 const finishedAt = new Date('2026-08-25T00:00:01.000Z')
 
@@ -53,7 +48,6 @@ function validRunningRun(
     triggerSource: 'scheduled',
     status: SCHEDULED_JOB_RUN_STATUS_RUNNING,
     scheduledFor: startedAt,
-    executorId: validExecutorId,
     startedAt,
     ...overrides,
   }
@@ -69,8 +63,6 @@ function validManualRunningRun(
     triggeredByUserId: validUserId,
     triggeredByUsername: 'operator',
     triggeredByNickname: 'Operator',
-    triggeredBySessionId: validSessionId,
-    triggerRequestId: validRequestId,
     ...overrides,
   })
 }
@@ -162,22 +154,8 @@ describe('scheduled jobs migration', () => {
         },
         {
           tableName: 'ops_job_runs',
-          columnName: 'skip_reason',
-          dataType: 'text',
-          nullable: 'YES',
-          columnDefault: null,
-        },
-        {
-          tableName: 'ops_job_runs',
           columnName: 'scheduled_for',
           dataType: 'timestamp with time zone',
-          nullable: 'YES',
-          columnDefault: null,
-        },
-        {
-          tableName: 'ops_job_runs',
-          columnName: 'executor_id',
-          dataType: 'uuid',
           nullable: 'YES',
           columnDefault: null,
         },
@@ -232,20 +210,6 @@ describe('scheduled jobs migration', () => {
         },
         {
           tableName: 'ops_job_runs',
-          columnName: 'triggered_by_session_id',
-          dataType: 'uuid',
-          nullable: 'YES',
-          columnDefault: null,
-        },
-        {
-          tableName: 'ops_job_runs',
-          columnName: 'trigger_request_id',
-          dataType: 'uuid',
-          nullable: 'YES',
-          columnDefault: null,
-        },
-        {
-          tableName: 'ops_job_runs',
           columnName: 'cancel_requested_at',
           dataType: 'timestamp with time zone',
           nullable: 'YES',
@@ -274,20 +238,6 @@ describe('scheduled jobs migration', () => {
         },
         {
           tableName: 'ops_job_runs',
-          columnName: 'cancel_requested_by_session_id',
-          dataType: 'uuid',
-          nullable: 'YES',
-          columnDefault: null,
-        },
-        {
-          tableName: 'ops_job_runs',
-          columnName: 'cancel_request_id',
-          dataType: 'uuid',
-          nullable: 'YES',
-          columnDefault: null,
-        },
-        {
-          tableName: 'ops_job_runs',
           columnName: 'started_at',
           dataType: 'timestamp with time zone',
           nullable: 'YES',
@@ -310,13 +260,6 @@ describe('scheduled jobs migration', () => {
         {
           tableName: 'ops_job_runs',
           columnName: 'created_at',
-          dataType: 'timestamp with time zone',
-          nullable: 'NO',
-          columnDefault: 'now()',
-        },
-        {
-          tableName: 'ops_job_runs',
-          columnName: 'updated_at',
           dataType: 'timestamp with time zone',
           nullable: 'NO',
           columnDefault: 'now()',
@@ -387,12 +330,10 @@ describe('scheduled jobs migration', () => {
       order by tablename, indexname
     `)
       expect(indexes.rows.map(({ tableName, name }) => `${tableName}:${name}`)).toEqual([
-        'ops_job_runs:ops_job_runs_finished_at_id_idx',
+        'ops_job_runs:ops_job_runs_finished_at_idx',
         'ops_job_runs:ops_job_runs_pkey',
-        'ops_job_runs:ops_job_runs_status_idx',
         'ops_job_runs:ops_job_runs_task_key_created_at_id_idx',
         'ops_job_runs:ops_job_runs_task_key_running_unique',
-        'ops_job_runs:ops_job_runs_trigger_request_id_unique',
         'ops_scheduled_jobs:ops_scheduled_jobs_active_run_id_unique',
         'ops_scheduled_jobs:ops_scheduled_jobs_enabled_next_run_at_task_key_idx',
         'ops_scheduled_jobs:ops_scheduled_jobs_pkey',
@@ -532,18 +473,6 @@ describe('scheduled jobs migration', () => {
     await db.insert(opsJobRuns).values(validManualRunningRun({ taskKey: secondTaskKey }))
     await expectRejected(
       db,
-      validManualRunningRun({
-        id: '20000000-0000-4000-8000-000000000003',
-        taskKey: secondTaskKey,
-        status: SCHEDULED_JOB_RUN_STATUS_FAILURE,
-        finishedAt,
-        durationMs: 1,
-        errorCategory: SCHEDULED_JOB_ERROR_CATEGORY_DATABASE,
-        errorSummary: 'Database operation failed',
-      }),
-    )
-    await expectRejected(
-      db,
       validRunningRun({ id: '20000000-0000-4000-8000-000000000004', taskKey: 'not-a-task' }),
     )
     await expectRejected(
@@ -551,8 +480,7 @@ describe('scheduled jobs migration', () => {
       validRunningRun({
         id: '20000000-0000-4000-8000-000000000005',
         status: SCHEDULED_JOB_RUN_STATUS_SKIPPED,
-        skipReason: SCHEDULED_JOB_SKIP_REASON_OVERLAP,
-        executorId: validExecutorId,
+        finishedAt,
       }),
     )
     await expectRejected(
@@ -591,18 +519,6 @@ describe('scheduled jobs migration', () => {
         status: SCHEDULED_JOB_RUN_STATUS_FAILURE,
         finishedAt,
         durationMs: 1,
-      }),
-    )
-    await expectRejected(
-      db,
-      validRunningRun({
-        id: '20000000-0000-4000-8000-000000000011',
-        status: SCHEDULED_JOB_RUN_STATUS_SKIPPED,
-        skipReason: SCHEDULED_JOB_SKIP_REASON_OVERLAP,
-        startedAt,
-        executorId: null,
-        scheduledFor: startedAt,
-        finishedAt,
       }),
     )
     await expectRejected(
@@ -649,9 +565,7 @@ describe('scheduled jobs migration', () => {
       {
         ...validRunningRun({ id: '20000000-0000-0000-0000-000000000003' }),
         status: SCHEDULED_JOB_RUN_STATUS_SKIPPED,
-        skipReason: SCHEDULED_JOB_SKIP_REASON_OVERLAP,
         scheduledFor: startedAt,
-        executorId: null,
         startedAt: null,
         finishedAt,
       },
@@ -664,8 +578,6 @@ describe('scheduled jobs migration', () => {
         cancelRequestedByUserId: validUserId,
         cancelRequestedByUsername: 'operator',
         cancelRequestedByNickname: 'Operator',
-        cancelRequestedBySessionId: validSessionId,
-        cancelRequestId: validCancelRequestId,
       },
       {
         ...validRunningRun({ id: '20000000-0000-0000-0000-000000000005' }),

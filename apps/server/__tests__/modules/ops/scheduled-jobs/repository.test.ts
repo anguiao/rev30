@@ -5,54 +5,32 @@ import { describe, expect, it } from 'vitest'
 import type { Db } from '../../../../src/db'
 import { opsJobRuns, opsScheduledJobs } from '../../../../src/db/schema'
 import {
-  createScheduledJobRepository,
   ScheduledJobNotFoundError,
   ScheduledJobStateConflictError,
-  type ScheduledJobActorSnapshot,
-  type ScheduledJobRecoveryCandidate,
-} from '../../../../src/modules/ops/scheduled-jobs/repository'
+} from '../../../../src/modules/ops/scheduled-jobs/errors'
 import {
-  createScheduledJobRegistry,
-  scheduledJobTaskKeys,
-  type ScheduledJobDefinition,
-} from '../../../../src/modules/ops/scheduled-jobs/registry'
+  createScheduledJobRepository,
+  type RecoverableScheduledJobRun,
+} from '../../../../src/modules/ops/scheduled-jobs/repository'
+import { scheduledJobTaskKeys } from '../../../../src/modules/ops/scheduled-jobs/registry'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
 
 const taskKeys = scheduledJobTaskKeys
 const firstTask = taskKeys[0]!
 const secondTask = taskKeys[1]!
 const thirdTask = taskKeys[2]!
-const executorId = '30000000-0000-4000-8000-000000000001'
-const secondExecutorId = '30000000-0000-4000-8000-000000000002'
 const dueAt = new Date('2026-08-25T00:00:00.000Z')
 const claimAt = new Date('2026-08-25T12:05:00.000Z')
 const futureAt = new Date('2026-08-26T00:00:00.000Z')
-const actor: ScheduledJobActorSnapshot = {
-  userId: '40000000-0000-4000-8000-000000000001',
+const actor = {
+  id: '40000000-0000-4000-8000-000000000001',
   username: 'operator',
   nickname: 'Operator',
-  sessionId: '50000000-0000-4000-8000-000000000001',
-  requestId: '60000000-0000-4000-8000-000000000001',
 }
-const secondActor: ScheduledJobActorSnapshot = {
-  userId: '40000000-0000-4000-8000-000000000002',
+const secondActor = {
+  id: '40000000-0000-4000-8000-000000000002',
   username: 'second',
   nickname: 'Second',
-  sessionId: '50000000-0000-4000-8000-000000000002',
-  requestId: '60000000-0000-4000-8000-000000000002',
-}
-
-function registry(keys: readonly ScheduledJobTaskKey[] = taskKeys) {
-  return createScheduledJobRegistry(
-    keys.map((key): ScheduledJobDefinition => ({
-      key,
-      name: `Name for ${key}`,
-      description: `Description for ${key}`,
-      async run() {
-        return { deletedCount: 0, failedCount: 0 }
-      },
-    })),
-  )
 }
 
 async function setPlan(
@@ -81,10 +59,8 @@ function runningRun(
     triggerSource: 'scheduled',
     status: 'running',
     scheduledFor: dueAt,
-    executorId,
     startedAt: dueAt,
     createdAt: dueAt,
-    updatedAt: dueAt,
     ...overrides,
   }
 }
@@ -194,7 +170,6 @@ describe('scheduled job repository claims', () => {
     await scheduledRepository.claimScheduled({
       taskKey: firstTask,
       now: claimAt,
-      executorId,
     })
     expect(scheduledEvents).toEqual([
       'transaction',
@@ -210,7 +185,6 @@ describe('scheduled job repository claims', () => {
     await manualRepository.claimManual({
       taskKey: firstTask,
       now: claimAt,
-      executorId,
       actor,
     })
     expect(manualEvents).toEqual([
@@ -231,19 +205,16 @@ describe('scheduled job repository claims', () => {
       const scheduled = await repository.claimScheduled({
         taskKey: firstTask,
         now: claimAt,
-        executorId,
       })
       const manual = await repository.claimManual({
         taskKey: firstTask,
         now: claimAt,
-        executorId: secondExecutorId,
         actor,
       })
 
-      expect(scheduled.kind).toBe('running')
-      if (scheduled.kind !== 'running') throw new Error('Expected a running scheduled claim')
-      expect(manual).toMatchObject({ kind: 'overlap', activeRunId: scheduled.runId })
-      if (manual.kind !== 'overlap') throw new Error('Expected a manual overlap claim')
+      expect(scheduled).toMatchObject({ blockedByRunId: null })
+      if (!scheduled) throw new Error('Expected a scheduled claim')
+      expect(manual).toMatchObject({ blockedByRunId: scheduled.runId })
       expect(scheduled.runId[14]).toBe('7')
       expect(manual.runId[14]).toBe('7')
       const rows = await runRows(db)
@@ -251,22 +222,18 @@ describe('scheduled job repository claims', () => {
       expect(rows.every(({ id }) => id[14] === '7')).toBe(true)
       expect(rows.find(({ triggerSource }) => triggerSource === 'scheduled')).toMatchObject({
         status: 'running',
-        skipReason: null,
       })
       expect(rows.find(({ triggerSource }) => triggerSource === 'manual')).toMatchObject({
         status: 'skipped',
-        skipReason: 'overlap',
-        triggeredByUserId: actor.userId,
+        triggeredByUserId: actor.id,
         triggeredByUsername: actor.username,
         triggeredByNickname: actor.nickname,
-        triggeredBySessionId: actor.sessionId,
-        triggerRequestId: actor.requestId,
       })
     },
   )
 
   dbTest(
-    'merges missed scheduled occurrences and treats disabled or stale candidates as no-op',
+    'merges missed scheduled occurrences and treats disabled or stale plans as no-op',
     async ({ db }) => {
       await setPlan(db, firstTask, {
         cronExpression: '0 * * * *',
@@ -280,9 +247,8 @@ describe('scheduled job repository claims', () => {
         repository.claimScheduled({
           taskKey: firstTask,
           now: claimAt,
-          executorId,
         }),
-      ).resolves.toMatchObject({ kind: 'running', scheduledFor: dueAt })
+      ).resolves.toMatchObject({ blockedByRunId: null, scheduledFor: dueAt })
       const [plan] = await db
         .select()
         .from(opsScheduledJobs)
@@ -293,17 +259,15 @@ describe('scheduled job repository claims', () => {
         repository.claimScheduled({
           taskKey: firstTask,
           now: claimAt,
-          executorId,
         }),
-      ).resolves.toEqual({ kind: 'stale' })
+      ).resolves.toBeNull()
       await setPlan(db, secondTask, { enabled: false, nextRunAt: null })
       await expect(
         repository.claimScheduled({
           taskKey: secondTask,
           now: claimAt,
-          executorId,
         }),
-      ).resolves.toEqual({ kind: 'stale' })
+      ).resolves.toBeNull()
     },
   )
 
@@ -322,14 +286,12 @@ describe('scheduled job repository claims', () => {
       const overlap = await repository.claimScheduled({
         taskKey: firstTask,
         now: claimAt,
-        executorId,
       })
       expect(overlap).toMatchObject({
-        kind: 'overlap',
-        activeRunId: active.id,
+        blockedByRunId: active.id,
         scheduledFor: dueAt,
       })
-      if (overlap.kind !== 'overlap') throw new Error('Expected a scheduled overlap claim')
+      if (!overlap) throw new Error('Expected a scheduled overlap claim')
       expect(overlap.runId[14]).toBe('7')
       const [plan] = await db
         .select()
@@ -351,11 +313,9 @@ describe('scheduled job repository claims', () => {
       const manual = await repository.claimManual({
         taskKey: firstTask,
         now: claimAt,
-        executorId,
         actor,
       })
-      expect(manual).toMatchObject({ kind: 'running' })
-      if (manual.kind !== 'running') throw new Error('Expected a running manual claim')
+      expect(manual).toMatchObject({ blockedByRunId: null })
       expect(manual.runId[14]).toBe('7')
       const [plan] = await db
         .select()
@@ -366,10 +326,9 @@ describe('scheduled job repository claims', () => {
         repository.claimManual({
           taskKey: 'missing-task',
           now: claimAt,
-          executorId,
           actor,
         }),
-      ).resolves.toEqual({ kind: 'not-found' })
+      ).rejects.toBeInstanceOf(ScheduledJobNotFoundError)
     },
   )
 })
@@ -397,14 +356,12 @@ describe('scheduled job API repository operations', () => {
         triggerSource: 'scheduled',
         status: 'success',
         scheduledFor: new Date('2026-08-23T00:00:00.000Z'),
-        executorId,
         startedAt: new Date('2026-08-23T00:00:00.000Z'),
         finishedAt: new Date('2026-08-23T00:00:01.000Z'),
         durationMs: 1000,
         deletedCount: 1,
         failedCount: 0,
         createdAt: new Date('2026-08-23T00:00:00.000Z'),
-        updatedAt: new Date('2026-08-23T00:00:01.000Z'),
       })
       await db.insert(opsJobRuns).values({
         id: 'ffffffff-ffff-4fff-bfff-ffffffffffff',
@@ -412,7 +369,6 @@ describe('scheduled job API repository operations', () => {
         triggerSource: 'scheduled',
         status: 'failure',
         scheduledFor: new Date('2026-08-24T00:00:00.000Z'),
-        executorId,
         startedAt: new Date('2026-08-24T00:00:01.000Z'),
         finishedAt: new Date('2026-08-24T00:00:03.000Z'),
         durationMs: 2000,
@@ -420,7 +376,6 @@ describe('scheduled job API repository operations', () => {
         errorCategory: 'internal',
         errorSummary: 'Safe failure',
         createdAt: new Date('2026-08-24T00:00:01.000Z'),
-        updatedAt: new Date('2026-08-24T00:00:03.000Z'),
       })
       const repository = createScheduledJobRepository(db)
 
@@ -438,8 +393,7 @@ describe('scheduled job API repository operations', () => {
 
       const updated = await repository.updatePlan({
         taskKey: firstTask,
-        cronExpression: ' 15 * * * * ',
-        timezone: ' UTC ',
+        schedule: { expression: '15 * * * *', timezone: 'UTC' },
         now: claimAt,
       })
       expect(updated).toMatchObject({
@@ -453,8 +407,7 @@ describe('scheduled job API repository operations', () => {
       await setPlan(db, firstTask, { enabled: false, nextRunAt: null })
       const disabledPlan = await repository.updatePlan({
         taskKey: firstTask,
-        cronExpression: '30 * * * *',
-        timezone: 'UTC',
+        schedule: { expression: '30 * * * *', timezone: 'UTC' },
         now: claimAt,
       })
       expect(disabledPlan).toMatchObject({
@@ -498,11 +451,9 @@ describe('scheduled job API repository operations', () => {
         taskKey,
         triggerSource: 'scheduled',
         status: 'skipped',
-        skipReason: 'overlap',
         scheduledFor: sameTime,
         finishedAt: sameTime,
         createdAt: sameTime,
-        updatedAt: sameTime,
       })
     }
     const repository = createScheduledJobRepository(db)
@@ -517,7 +468,7 @@ describe('scheduled job API repository operations', () => {
 
 describe('scheduled job startup recovery', () => {
   dbTest(
-    'rejects registry/plan mismatches and invalid Cron before mutating old running rows',
+    'rejects task-key/plan mismatches and invalid Cron before mutating old running rows',
     async ({ db }) => {
       const oldRun = await occupy(db, runningRun(firstTask))
       const repository = createScheduledJobRepository(db)
@@ -530,14 +481,12 @@ describe('scheduled job startup recovery', () => {
         nextRunAt: null,
       })
 
-      await expect(
-        repository.initialize({ registry: registry(), startupAt: claimAt }),
-      ).rejects.toThrow(/Registry.*计划集合/)
+      await expect(repository.initialize({ taskKeys, startupAt: claimAt })).rejects.toThrow(
+        /任务集合.*计划集合/,
+      )
       await db.delete(opsScheduledJobs).where(eq(opsScheduledJobs.taskKey, extraTaskKey))
       await setPlan(db, secondTask, { cronExpression: 'invalid cron' })
-      await expect(
-        repository.initialize({ registry: registry(), startupAt: claimAt }),
-      ).rejects.toThrow()
+      await expect(repository.initialize({ taskKeys, startupAt: claimAt })).rejects.toThrow()
       const [stored] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, oldRun.id!))
       expect(stored).toMatchObject({ status: 'running', finishedAt: null })
     },
@@ -551,23 +500,23 @@ describe('scheduled job startup recovery', () => {
       await setPlan(db, firstTask, { activeRunId: mismatched.id })
       const repository = createScheduledJobRepository(db)
 
-      await expect(
-        repository.initialize({ registry: registry(), startupAt: claimAt }),
-      ).rejects.toThrow(/运行状态不一致/)
+      await expect(repository.initialize({ taskKeys, startupAt: claimAt })).rejects.toThrow(
+        /运行状态不一致/,
+      )
       const [stored] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, mismatched.id!))
       expect(stored?.status).toBe('running')
 
       await setPlan(db, firstTask, { activeRunId: null })
-      await expect(
-        repository.initialize({ registry: registry(), startupAt: claimAt }),
-      ).rejects.toThrow(/运行状态不一致/)
+      await expect(repository.initialize({ taskKeys, startupAt: claimAt })).rejects.toThrow(
+        /运行状态不一致/,
+      )
       const [orphan] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, mismatched.id!))
       expect(orphan?.status).toBe('running')
     },
   )
 
   dbTest(
-    'interrupts at one instant and returns latest non-skipped uncancelled candidates in order',
+    'interrupts at one instant and returns latest non-skipped uncancelled runs in order',
     async ({ db }) => {
       const laterRun = await occupy(
         db,
@@ -581,22 +530,18 @@ describe('scheduled job startup recovery', () => {
         taskKey: firstTask,
         triggerSource: 'scheduled',
         status: 'skipped',
-        skipReason: 'overlap',
         scheduledFor: new Date('2026-08-25T02:00:00.000Z'),
         finishedAt: new Date('2026-08-25T02:00:00.000Z'),
         createdAt: new Date('2026-08-25T02:00:00.000Z'),
-        updatedAt: new Date('2026-08-25T02:00:00.000Z'),
       })
       const cancelled = await occupy(
         db,
         runningRun(secondTask, {
           startedAt: dueAt,
           cancelRequestedAt: new Date('2026-08-25T00:30:00.000Z'),
-          cancelRequestedByUserId: actor.userId,
+          cancelRequestedByUserId: actor.id,
           cancelRequestedByUsername: actor.username,
           cancelRequestedByNickname: actor.nickname,
-          cancelRequestedBySessionId: actor.sessionId,
-          cancelRequestId: actor.requestId,
         }),
       )
       const earlierRun = await occupy(
@@ -610,17 +555,15 @@ describe('scheduled job startup recovery', () => {
       )
       const repository = createScheduledJobRepository(db)
 
-      const initialized = await repository.initialize({ registry: registry(), startupAt: claimAt })
+      const initialized = await repository.initialize({ taskKeys, startupAt: claimAt })
 
-      expect(initialized.recoveryCandidates).toEqual([
+      expect(initialized.recoverableRuns).toEqual([
         {
-          originalRunId: earlierRun.id,
           taskKey: thirdTask,
           scheduledFor: null,
           startedAt: new Date('2026-08-24T23:00:00.000Z'),
         },
         {
-          originalRunId: laterRun.id,
           taskKey: firstTask,
           scheduledFor: dueAt,
           startedAt: new Date('2026-08-25T01:00:00.000Z'),
@@ -632,19 +575,16 @@ describe('scheduled job startup recovery', () => {
             runId: laterRun.id,
             taskKey: firstTask,
             triggerSource: 'scheduled',
-            executorId,
           }),
           expect.objectContaining({
             runId: cancelled.id,
             taskKey: secondTask,
             triggerSource: 'scheduled',
-            executorId,
           }),
           expect.objectContaining({
             runId: earlierRun.id,
             taskKey: thirdTask,
             triggerSource: 'recovery',
-            executorId,
           }),
         ]),
       )
@@ -655,9 +595,7 @@ describe('scheduled job startup recovery', () => {
           (run) => run.finishedAt?.getTime() === claimAt.getTime() && run.durationMs === null,
         ),
       ).toBe(true)
-      expect(stored.find(({ id }) => id === cancelled.id)?.cancelRequestedByUserId).toBe(
-        actor.userId,
-      )
+      expect(stored.find(({ id }) => id === cancelled.id)?.cancelRequestedByUserId).toBe(actor.id)
       const plans = await db.select().from(opsScheduledJobs)
       expect(plans.every(({ activeRunId }) => activeRunId === null)).toBe(true)
     },
@@ -665,10 +603,9 @@ describe('scheduled job startup recovery', () => {
 })
 
 describe('scheduled job recovery, cancellation, and finalization', () => {
-  const candidate = (
-    overrides: Partial<ScheduledJobRecoveryCandidate> = {},
-  ): ScheduledJobRecoveryCandidate => ({
-    originalRunId: randomUUID(),
+  const recoverableRun = (
+    overrides: Partial<RecoverableScheduledJobRun> = {},
+  ): RecoverableScheduledJobRun => ({
     taskKey: firstTask,
     scheduledFor: null,
     startedAt: dueAt,
@@ -686,12 +623,11 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
       })
       const repository = createScheduledJobRepository(db)
       const result = await repository.claimRecovery({
-        candidate: candidate(),
+        run: recoverableRun(),
         now: claimAt,
-        executorId,
       })
 
-      expect(result).toMatchObject({ kind: 'running', scheduledFor: null })
+      expect(result).toMatchObject({ blockedByRunId: null, scheduledFor: null })
       expect(result.runId[14]).toBe('7')
       const [run] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, result.runId!))
       expect(run).toMatchObject({
@@ -714,13 +650,11 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
       const active = await occupy(db, runningRun(firstTask))
       const repository = createScheduledJobRepository(db)
       const overlap = await repository.claimRecovery({
-        candidate: candidate({ scheduledFor: dueAt }),
+        run: recoverableRun({ scheduledFor: dueAt }),
         now: claimAt,
-        executorId,
       })
       expect(overlap).toMatchObject({
-        kind: 'overlap',
-        activeRunId: active.id,
+        blockedByRunId: active.id,
         scheduledFor: dueAt,
       })
       expect(overlap.runId[14]).toBe('7')
@@ -733,11 +667,10 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
       await setPlan(db, secondTask, { enabled: false, nextRunAt: null })
       await expect(
         repository.claimRecovery({
-          candidate: candidate({ taskKey: secondTask }),
+          run: recoverableRun({ taskKey: secondTask }),
           now: claimAt,
-          executorId,
         }),
-      ).resolves.toMatchObject({ kind: 'running' })
+      ).resolves.toMatchObject({ blockedByRunId: null })
       ;[plan] = await db
         .select()
         .from(opsScheduledJobs)
@@ -753,17 +686,12 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
       const repository = createScheduledJobRepository(db)
       const input = { taskKey: firstTask, runId: active.id!, now: claimAt, actor }
 
-      await expect(repository.requestCancellation(input)).resolves.toMatchObject({
-        kind: 'accepted',
-        firstRequest: true,
-      })
-      await expect(
-        repository.requestCancellation({ ...input, now: futureAt, actor: secondActor }),
-      ).resolves.toMatchObject({ kind: 'accepted', firstRequest: false })
+      await repository.requestCancellation(input)
+      await repository.requestCancellation({ ...input, now: futureAt, actor: secondActor })
       const [stored] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, active.id!))
       expect(stored).toMatchObject({
         cancelRequestedAt: claimAt,
-        cancelRequestedByUserId: actor.userId,
+        cancelRequestedByUserId: actor.id,
         cancelRequestedByUsername: actor.username,
       })
       await expect(
@@ -796,7 +724,7 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
       const finalizeInput = {
         taskKey: firstTask,
         runId: active.id!,
-        candidate: {
+        completion: {
           status: 'failure' as const,
           finishedAt: finish,
           durationMs: 1000,
@@ -813,11 +741,9 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
       const nextRun = await repository.claimManual({
         taskKey: firstTask,
         now: futureAt,
-        executorId: secondExecutorId,
         actor: secondActor,
       })
-      expect(nextRun).toMatchObject({ kind: 'running' })
-      if (nextRun.kind !== 'running') throw new Error('Expected a running manual claim')
+      expect(nextRun).toMatchObject({ blockedByRunId: null })
       await expect(repository.finalizeRun(finalizeInput)).resolves.toMatchObject({
         status: 'cancelled',
       })
@@ -847,7 +773,7 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
     await repository.finalizeRun({
       taskKey: firstTask,
       runId: active.id!,
-      candidate: {
+      completion: {
         status: 'success',
         finishedAt,
         durationMs: 1000,
@@ -873,7 +799,7 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
   })
 
   dbTest(
-    'persists a normal safe terminal candidate and rejects non-matching finalization',
+    'persists a normal safe completion and rejects non-matching finalization',
     async ({ db }) => {
       const active = await occupy(db, runningRun(firstTask))
       const repository = createScheduledJobRepository(db)
@@ -883,7 +809,7 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
         repository.finalizeRun({
           taskKey: firstTask,
           runId: active.id!,
-          candidate: {
+          completion: {
             status: 'success',
             finishedAt,
             durationMs: 1000,
@@ -896,7 +822,7 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
         repository.finalizeRun({
           taskKey: firstTask,
           runId: randomUUID(),
-          candidate: {
+          completion: {
             status: 'success',
             finishedAt,
             durationMs: 1000,

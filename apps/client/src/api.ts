@@ -54,9 +54,9 @@ function sendFetch(input: RequestInfo | URL, init: RequestInit = {}, headers?: H
   })
 }
 
-const internalApi = hc<AppType>('/api', {
+const internalApi = hc<AppType>('/', {
   fetch: sendFetch,
-})
+}).api
 
 const runSessionOperation = createSerialExecutor()
 const autoRefreshes = new Map<string, Promise<AuthTokenResponse>>()
@@ -191,6 +191,6 @@ export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}
   return retryResponse
 }
 
-export const api = hc<AppType>('/api', {
+export const api = hc<AppType>('/', {
   fetch: authFetch,
-})
+}).api

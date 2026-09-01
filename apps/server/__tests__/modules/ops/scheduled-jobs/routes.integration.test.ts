@@ -10,40 +10,35 @@ import {
 import { eq } from 'drizzle-orm'
 import { describe, expect, vi } from 'vitest'
 import { opsJobRuns, opsScheduledJobs } from '../../../../src/db/schema'
-import { createApp } from '../../../helpers/app'
+import { createApp, createTestScheduledJobService } from '../../../helpers/app'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
 import {
   ScheduledJobNotFoundError,
   ScheduledJobStateConflictError,
-} from '../../../../src/modules/ops/scheduled-jobs/repository'
-import type { ScheduledJobRuntimeCommands } from '../../../../src/modules/ops/scheduled-jobs/runtime'
+} from '../../../../src/modules/ops/scheduled-jobs/errors'
 import { scheduledJobTaskKeys } from '../../../../src/modules/ops/scheduled-jobs/registry'
+import type { ScheduledJobScheduler } from '../../../../src/modules/ops/scheduled-jobs/scheduler'
 import { dbTest } from '../../../fixtures/database'
 
 const taskKey = scheduledJobTaskKeys[0]
 const activeRunId = '20000000-0000-4000-8000-000000000001'
 const terminalRunId = '20000000-0000-4000-8000-000000000002'
-const executorId = '30000000-0000-4000-8000-000000000001'
 
-function createRuntime(): ScheduledJobRuntimeCommands {
-  const definitions = scheduledJobTaskKeys.map((key) => ({
-    key,
-    name: `Definition ${key}`,
-    description: `Description ${key}`,
-  }))
+function createScheduler() {
   return {
-    listDefinitions: () => definitions,
-    runManual: vi.fn(async () => ({
-      kind: 'running' as const,
+    start: vi.fn<ScheduledJobScheduler['start']>(async () => undefined),
+    runManual: vi.fn<ScheduledJobScheduler['runManual']>(async () => ({
       runId: randomUUID(),
+      blockedByRunId: null,
       scheduledFor: null,
     })),
-    requestCancellation: vi.fn(async () => {
+    requestCancellation: vi.fn<ScheduledJobScheduler['requestCancellation']>(async () => {
       throw new Error('not configured')
     }),
-    wake: vi.fn(),
-  }
+    wake: vi.fn<ScheduledJobScheduler['wake']>(),
+    stop: vi.fn<ScheduledJobScheduler['stop']>(async () => undefined),
+  } satisfies ScheduledJobScheduler
 }
 
 function receiver(events: OperationLogEvent[]) {
@@ -58,7 +53,7 @@ describe('scheduled job HTTP routes', () => {
         accessCodes: ['ops:scheduled-job:list'],
         usernamePrefix: 'scheduled-job-reader',
       })
-      const runtime = createRuntime()
+      const scheduler = createScheduler()
       await db.insert(opsJobRuns).values([
         {
           id: activeRunId,
@@ -66,10 +61,8 @@ describe('scheduled job HTTP routes', () => {
           triggerSource: 'scheduled',
           status: 'running',
           scheduledFor: new Date('2026-08-25T00:00:00.000Z'),
-          executorId,
           startedAt: new Date('2026-08-25T00:00:01.000Z'),
           createdAt: new Date('2026-08-25T00:00:01.000Z'),
-          updatedAt: new Date('2026-08-25T00:00:01.000Z'),
         },
         {
           id: terminalRunId,
@@ -77,21 +70,21 @@ describe('scheduled job HTTP routes', () => {
           triggerSource: 'scheduled',
           status: 'success',
           scheduledFor: new Date('2026-08-24T00:00:00.000Z'),
-          executorId,
           deletedCount: 2,
           failedCount: 0,
           startedAt: new Date('2026-08-24T00:00:01.000Z'),
           finishedAt: new Date('2026-08-24T00:00:02.000Z'),
           durationMs: 1000,
           createdAt: new Date('2026-08-24T00:00:01.000Z'),
-          updatedAt: new Date('2026-08-24T00:00:02.000Z'),
         },
       ])
       await db
         .update(opsScheduledJobs)
         .set({ activeRunId })
         .where(eq(opsScheduledJobs.taskKey, taskKey))
-      const app = createApp(db, { scheduledJobs: runtime })
+      const app = createApp(db, {
+        scheduledJobService: createTestScheduledJobService(db, scheduler),
+      })
 
       const response = await app.request('/api/ops/scheduled-jobs', {
         headers: reader.authHeaders,
@@ -128,9 +121,9 @@ describe('scheduled job HTTP routes', () => {
         usernamePrefix: 'scheduled-job-operator',
       })
       const events: OperationLogEvent[] = []
-      const runtime = createRuntime()
+      const scheduler = createScheduler()
       const app = createApp(db, {
-        scheduledJobs: runtime,
+        scheduledJobService: createTestScheduledJobService(db, scheduler),
         operationLogReceiver: receiver(events),
       })
 
@@ -151,7 +144,7 @@ describe('scheduled job HTTP routes', () => {
           })
         ).status,
       ).toBe(403)
-      expect(runtime.runManual).not.toHaveBeenCalled()
+      expect(scheduler.runManual).not.toHaveBeenCalled()
 
       expect(
         (
@@ -203,67 +196,26 @@ describe('scheduled job HTTP routes', () => {
         },
       ])
 
-      const extraBody = await app.request(`/api/ops/scheduled-jobs/${taskKey}/runs`, {
-        method: 'POST',
-        headers: { ...operator.authHeaders, 'content-type': 'application/json' },
-        body: JSON.stringify({ unexpected: true }),
-      })
-      expect(extraBody.status).toBe(400)
-      expect(runtime.runManual).not.toHaveBeenCalled()
-
       const extraEnabledBody = await app.request(`/api/ops/scheduled-jobs/${taskKey}/enabled`, {
         method: 'PUT',
         headers: { ...operator.authHeaders, 'content-type': 'application/json' },
         body: JSON.stringify({ enabled: false, unexpected: true }),
       })
       expect(extraEnabledBody.status).toBe(400)
-
-      const oversizedBody = 'x'.repeat(1025)
-      const oversizedExecuteBody = await app.request(`/api/ops/scheduled-jobs/${taskKey}/runs`, {
-        method: 'POST',
-        headers: { ...operator.authHeaders, 'content-type': 'text/plain' },
-        body: oversizedBody,
-      })
-      const oversizedCancelBody = await app.request(
-        `/api/ops/scheduled-jobs/${taskKey}/runs/${randomUUID()}/cancel`,
-        {
-          method: 'POST',
-          headers: { ...operator.authHeaders, 'content-type': 'application/octet-stream' },
-          body: oversizedBody,
-        },
-      )
-      expect(oversizedExecuteBody.status).toBe(413)
-      expect(oversizedCancelBody.status).toBe(413)
-      expect(vi.mocked(runtime).runManual.mock.calls).toHaveLength(0)
-      expect(vi.mocked(runtime).requestCancellation.mock.calls).toHaveLength(0)
-
-      const emptyJsonBody = await app.request(`/api/ops/scheduled-jobs/${taskKey}/runs`, {
-        method: 'POST',
-        headers: { ...operator.authHeaders, 'content-type': 'application/json' },
-        body: '',
-      })
-      expect(emptyJsonBody.status).toBe(202)
-
-      const malformedBody = await app.request(`/api/ops/scheduled-jobs/${taskKey}/runs`, {
-        method: 'POST',
-        headers: { ...operator.authHeaders, 'content-type': 'application/json' },
-        body: '{',
-      })
-      expect(malformedBody.status).toBe(400)
     },
   )
 
   dbTest(
-    'passes request actor context, wakes after plan update, and records command actions',
+    'passes the current user, wakes after plan update, and records command actions',
     async ({ db }) => {
       const operator = await createSystemAccessFixture(db, {
         accessCodes: ['ops:scheduled-job:update', 'ops:scheduled-job:execute'],
         usernamePrefix: 'scheduled-job-command',
       })
       const events: OperationLogEvent[] = []
-      const runtime = createRuntime()
+      const scheduler = createScheduler()
       const app = createApp(db, {
-        scheduledJobs: runtime,
+        scheduledJobService: createTestScheduledJobService(db, scheduler),
         operationLogReceiver: receiver(events),
       })
 
@@ -272,15 +224,13 @@ describe('scheduled job HTTP routes', () => {
         headers: operator.authHeaders,
       })
       expect(execute.status).toBe(202)
-      expect(runtime.runManual).toHaveBeenCalledWith({
+      expect(scheduler.runManual).toHaveBeenCalledWith({
         taskKey,
-        actor: {
-          userId: operator.userId,
+        actor: expect.objectContaining({
+          id: operator.userId,
           username: expect.any(String),
           nickname: expect.any(String),
-          sessionId: expect.any(String),
-          requestId: expect.any(String),
-        },
+        }),
       })
 
       const update = await app.request(`/api/ops/scheduled-jobs/${taskKey}`, {
@@ -289,7 +239,7 @@ describe('scheduled job HTTP routes', () => {
         body: JSON.stringify({ cronExpression: '15 * * * *', timezone: 'UTC' }),
       })
       expect(update.status).toBe(200)
-      expect(runtime.wake).toHaveBeenCalledTimes(1)
+      expect(scheduler.wake).toHaveBeenCalledTimes(1)
       expect(
         events.map(({ action, httpStatus, targetKey: eventTargetKey }) => ({
           action,
@@ -318,19 +268,17 @@ describe('scheduled job HTTP routes', () => {
         triggerSource: 'scheduled',
         status: 'running',
         scheduledFor: new Date('2026-08-25T00:00:00.000Z'),
-        executorId,
         startedAt,
         createdAt: startedAt,
-        updatedAt: startedAt,
       })
       await db
         .update(opsScheduledJobs)
         .set({ activeRunId: runId })
         .where(eq(opsScheduledJobs.taskKey, taskKey))
       const events: OperationLogEvent[] = []
-      const runtime = createRuntime()
+      const scheduler = createScheduler()
       const app = createApp(db, {
-        scheduledJobs: runtime,
+        scheduledJobService: createTestScheduledJobService(db, scheduler),
         operationLogReceiver: receiver(events),
       })
 
@@ -364,7 +312,7 @@ describe('scheduled job HTTP routes', () => {
         .from(opsScheduledJobs)
         .where(eq(opsScheduledJobs.taskKey, taskKey))
       expect(enabledPlan?.activeRunId).toBe(runId)
-      expect(runtime.wake).toHaveBeenCalledTimes(2)
+      expect(scheduler.wake).toHaveBeenCalledTimes(2)
       expect(events.map(({ action, httpStatus }) => ({ action, httpStatus }))).toEqual([
         { action: 'ops:scheduled-job:disable', httpStatus: 200 },
         { action: 'ops:scheduled-job:enable', httpStatus: 200 },
@@ -379,16 +327,15 @@ describe('scheduled job HTTP routes', () => {
     })
     const skippedRunId = '20000000-0000-4000-8000-000000000011'
     const activeRunId = '20000000-0000-4000-8000-000000000012'
-    const runtime = createRuntime()
-    runtime.runManual = vi.fn(async () => ({
-      kind: 'overlap' as const,
+    const scheduler = createScheduler()
+    scheduler.runManual.mockResolvedValue({
       runId: skippedRunId,
-      activeRunId,
+      blockedByRunId: activeRunId,
       scheduledFor: null,
-    }))
+    })
     const events: OperationLogEvent[] = []
     const app = createApp(db, {
-      scheduledJobs: runtime,
+      scheduledJobService: createTestScheduledJobService(db, scheduler),
       operationLogReceiver: receiver(events),
     })
 
@@ -417,10 +364,7 @@ describe('scheduled job HTTP routes', () => {
     const firstRunId = '10000000-0000-4000-8000-000000000021'
     const secondRunId = 'ffffffff-ffff-4fff-bfff-ffffffffffff'
     const sameCreatedAt = new Date('2026-08-25T00:00:00.000Z')
-    const executor = '30000000-0000-4000-8000-000000000021'
     const userId = '40000000-0000-4000-8000-000000000021'
-    const sessionId = '50000000-0000-4000-8000-000000000021'
-    const requestId = '60000000-0000-4000-8000-000000000021'
     await db.insert(opsJobRuns).values([
       {
         id: firstRunId,
@@ -428,43 +372,37 @@ describe('scheduled job HTTP routes', () => {
         triggerSource: 'scheduled',
         status: 'success',
         scheduledFor: sameCreatedAt,
-        executorId: executor,
         startedAt: sameCreatedAt,
         finishedAt: new Date('2026-08-25T00:00:01.000Z'),
         durationMs: 1000,
         deletedCount: 1,
         failedCount: 0,
         createdAt: sameCreatedAt,
-        updatedAt: new Date('2026-08-25T00:00:01.000Z'),
       },
       {
         id: secondRunId,
         taskKey,
         triggerSource: 'manual',
         status: 'cancelled',
-        executorId: executor,
         deletedCount: 0,
         failedCount: 0,
         triggeredByUserId: userId,
         triggeredByUsername: 'detail-user',
         triggeredByNickname: 'Detail User',
-        triggeredBySessionId: sessionId,
-        triggerRequestId: requestId,
         cancelRequestedAt: new Date('2026-08-25T00:00:02.000Z'),
         cancelRequestedByUserId: userId,
         cancelRequestedByUsername: 'detail-user',
         cancelRequestedByNickname: 'Detail User',
-        cancelRequestedBySessionId: sessionId,
-        cancelRequestId: requestId,
         startedAt: sameCreatedAt,
         finishedAt: new Date('2026-08-25T00:00:03.000Z'),
         durationMs: 3000,
         createdAt: sameCreatedAt,
-        updatedAt: new Date('2026-08-25T00:00:03.000Z'),
       },
     ])
-    const runtime = createRuntime()
-    const app = createApp(db, { scheduledJobs: runtime })
+    const scheduler = createScheduler()
+    const app = createApp(db, {
+      scheduledJobService: createTestScheduledJobService(db, scheduler),
+    })
     const firstPageResponse = await app.request(
       `/api/ops/scheduled-jobs/${taskKey}/runs?page=1&pageSize=1`,
       { headers: reader.authHeaders },
@@ -474,7 +412,7 @@ describe('scheduled job HTTP routes', () => {
     expect(firstPage).toMatchObject({ total: 2, page: 1, pageSize: 1 })
     expect(firstPage.list[0]?.id).toBe(secondRunId)
     expect(firstPage.list[0]).not.toHaveProperty('triggeredByUserId')
-    expect(firstPage.list[0]).not.toHaveProperty('cancelRequestId')
+    expect(firstPage.list[0]).not.toHaveProperty('cancelRequestedAt')
 
     const secondPageResponse = await app.request(
       `/api/ops/scheduled-jobs/${taskKey}/runs?page=2&pageSize=1`,
@@ -494,7 +432,6 @@ describe('scheduled job HTTP routes', () => {
       taskKey,
       triggeredByUserId: userId,
       cancelRequestedByUserId: userId,
-      cancelRequestId: requestId,
     })
 
     const mismatchResponse = await app.request(
@@ -518,32 +455,23 @@ describe('scheduled job HTTP routes', () => {
       triggerSource: 'scheduled',
       status: 'running',
       scheduledFor: new Date('2026-08-25T00:00:00.000Z'),
-      executorId,
       startedAt,
       cancelRequestedAt,
       cancelRequestedByUserId: operator.userId,
       cancelRequestedByUsername: 'first-operator',
       cancelRequestedByNickname: 'First Operator',
-      cancelRequestedBySessionId: randomUUID(),
-      cancelRequestId: randomUUID(),
       createdAt: startedAt,
-      updatedAt: cancelRequestedAt,
     })
     await db
       .update(opsScheduledJobs)
       .set({ activeRunId: cancelRunId })
       .where(eq(opsScheduledJobs.taskKey, taskKey))
     const run = (await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, cancelRunId)))[0]!
-    const requestCancellation = vi.fn(async () => ({
-      kind: 'accepted' as const,
-      firstRequest: false,
-      run,
-    }))
-    const runtime = createRuntime()
-    runtime.requestCancellation = requestCancellation
+    const scheduler = createScheduler()
+    scheduler.requestCancellation.mockResolvedValue(run)
     const events: OperationLogEvent[] = []
     const app = createApp(db, {
-      scheduledJobs: runtime,
+      scheduledJobService: createTestScheduledJobService(db, scheduler),
       operationLogReceiver: receiver(events),
     })
 
@@ -563,16 +491,14 @@ describe('scheduled job HTTP routes', () => {
         cancelRequestedAt: cancelRequestedAt.toISOString(),
       },
     })
-    expect(requestCancellation).toHaveBeenCalledWith({
+    expect(scheduler.requestCancellation).toHaveBeenCalledWith({
       taskKey,
       runId: cancelRunId,
-      actor: {
-        userId: operator.userId,
+      actor: expect.objectContaining({
+        id: operator.userId,
         username: expect.any(String),
         nickname: expect.any(String),
-        sessionId: expect.any(String),
-        requestId: expect.any(String),
-      },
+      }),
     })
     expect(events[0]).toMatchObject({
       action: 'ops:scheduled-job:cancel',
@@ -592,15 +518,14 @@ describe('scheduled job HTTP routes', () => {
       const terminalId = '20000000-0000-4000-8000-000000000031'
       const nonCurrentId = '20000000-0000-4000-8000-000000000032'
       const unknownId = '20000000-0000-4000-8000-000000000033'
-      const runtime = createRuntime()
-      runtime.requestCancellation = vi
-        .fn()
+      const scheduler = createScheduler()
+      scheduler.requestCancellation
         .mockRejectedValueOnce(new ScheduledJobStateConflictError())
         .mockRejectedValueOnce(new ScheduledJobStateConflictError())
         .mockRejectedValueOnce(new ScheduledJobNotFoundError())
       const events: OperationLogEvent[] = []
       const app = createApp(db, {
-        scheduledJobs: runtime,
+        scheduledJobService: createTestScheduledJobService(db, scheduler),
         operationLogReceiver: receiver(events),
       })
 

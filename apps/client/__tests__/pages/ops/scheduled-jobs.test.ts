@@ -48,10 +48,7 @@ const updateMock = vi.mocked(updateScheduledJob)
 const getJobMock = vi.mocked(getScheduledJob)
 
 const runId = '11111111-1111-4111-8111-111111111111'
-const executorId = '22222222-2222-4222-8222-222222222222'
 const userId = '33333333-3333-4333-8333-333333333333'
-const sessionId = '44444444-4444-4444-8444-444444444444'
-const requestId = '55555555-5555-4555-8555-555555555555'
 const activeRunId = '66666666-6666-4666-8666-666666666666'
 
 const response: ScheduledJobListResponse = [
@@ -103,9 +100,7 @@ const detail = {
   taskKey: 'auth-session-cleanup' as const,
   triggerSource: 'manual' as const,
   status: 'running' as const,
-  skipReason: null,
   scheduledFor: null,
-  executorId,
   deletedCount: null,
   failedCount: null,
   errorCategory: null,
@@ -113,19 +108,14 @@ const detail = {
   triggeredByUserId: userId,
   triggeredByUsername: 'ada',
   triggeredByNickname: 'Ada Lovelace',
-  triggeredBySessionId: sessionId,
-  triggerRequestId: requestId,
   cancelRequestedAt: null,
   cancelRequestedByUserId: null,
   cancelRequestedByUsername: null,
   cancelRequestedByNickname: null,
-  cancelRequestedBySessionId: null,
-  cancelRequestId: null,
   startedAt: '2026-08-25T04:00:00.000Z',
   finishedAt: null,
   durationMs: null,
   createdAt: '2026-08-25T04:00:00.000Z',
-  updatedAt: '2026-08-25T04:00:00.000Z',
 }
 
 const completedDetail = {
@@ -135,7 +125,6 @@ const completedDetail = {
   failedCount: 0,
   finishedAt: '2026-08-25T04:00:01.000Z',
   durationMs: 1000,
-  updatedAt: '2026-08-25T04:00:01.000Z',
 }
 
 const publicRun = {
@@ -143,9 +132,7 @@ const publicRun = {
   taskKey: detail.taskKey,
   triggerSource: detail.triggerSource,
   status: detail.status,
-  skipReason: detail.skipReason,
   scheduledFor: detail.scheduledFor,
-  executorId: detail.executorId,
   deletedCount: detail.deletedCount,
   failedCount: detail.failedCount,
   errorCategory: detail.errorCategory,
@@ -154,7 +141,6 @@ const publicRun = {
   finishedAt: detail.finishedAt,
   durationMs: detail.durationMs,
   createdAt: detail.createdAt,
-  updatedAt: detail.updatedAt,
 }
 
 const completedPublicRun = {
@@ -164,7 +150,6 @@ const completedPublicRun = {
   failedCount: completedDetail.failedCount,
   finishedAt: completedDetail.finishedAt,
   durationMs: completedDetail.durationMs,
-  updatedAt: completedDetail.updatedAt,
 }
 
 async function mountPage(
@@ -519,7 +504,7 @@ describe('scheduled jobs page', () => {
     document.querySelector<HTMLButtonElement>('[data-test="scheduled-job-run-view"]')?.click()
     await flushPromises()
     expect(document.body.textContent).toContain('Ada Lovelace')
-    expect(document.body.textContent).toContain(requestId)
+    expect(document.body.textContent).toContain(userId)
     expect(document.body.textContent).toContain('成功')
     expect(runLogDrawer?.textContent).toContain('定时任务日志')
     expect(runLogDrawer?.textContent).not.toContain('运行详情：')

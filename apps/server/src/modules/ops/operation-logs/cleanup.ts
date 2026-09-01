@@ -3,12 +3,8 @@ import { lte } from 'drizzle-orm'
 import type { Db } from '../../../db'
 import { opsOperationLogs } from '../../../db/schema'
 
-export async function cleanupOperationLogs(
-  database: Db,
-  retentionMs: number,
-  now = new Date(),
-): Promise<number> {
-  const cutoff = subMilliseconds(now, retentionMs)
+export async function cleanupOperationLogs(database: Db, retentionMs: number): Promise<number> {
+  const cutoff = subMilliseconds(new Date(), retentionMs)
 
   if (Number.isNaN(cutoff.getTime())) {
     return 0

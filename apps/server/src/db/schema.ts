@@ -579,9 +579,7 @@ export const opsJobRuns = pgTable(
       .references(() => opsScheduledJobs.taskKey, { onDelete: 'restrict' }),
     triggerSource: text('trigger_source').notNull(),
     status: text('status').notNull(),
-    skipReason: text('skip_reason'),
     scheduledFor: timestamp('scheduled_for', timestampOptions),
-    executorId: uuid('executor_id'),
     deletedCount: integer('deleted_count'),
     failedCount: integer('failed_count'),
     errorCategory: text('error_category'),
@@ -589,33 +587,21 @@ export const opsJobRuns = pgTable(
     triggeredByUserId: uuid('triggered_by_user_id'),
     triggeredByUsername: text('triggered_by_username'),
     triggeredByNickname: text('triggered_by_nickname'),
-    triggeredBySessionId: uuid('triggered_by_session_id'),
-    triggerRequestId: uuid('trigger_request_id'),
     cancelRequestedAt: timestamp('cancel_requested_at', timestampOptions),
     cancelRequestedByUserId: uuid('cancel_requested_by_user_id'),
     cancelRequestedByUsername: text('cancel_requested_by_username'),
     cancelRequestedByNickname: text('cancel_requested_by_nickname'),
-    cancelRequestedBySessionId: uuid('cancel_requested_by_session_id'),
-    cancelRequestId: uuid('cancel_request_id'),
     startedAt: timestamp('started_at', timestampOptions),
     finishedAt: timestamp('finished_at', timestampOptions),
     durationMs: bigintColumn('duration_ms', { mode: 'number' }),
-    ...mutableTimestamps(),
+    ...createdTimestamp(),
   },
   (table) => [
     index('ops_job_runs_task_key_created_at_id_idx').on(table.taskKey, table.createdAt, table.id),
     uniqueIndex('ops_job_runs_task_key_running_unique')
       .on(table.taskKey)
       .where(sql`${table.status} = 'running'`),
-    index('ops_job_runs_finished_at_id_idx').on(table.finishedAt, table.id),
-    index('ops_job_runs_status_idx').on(table.status),
-    uniqueIndex('ops_job_runs_trigger_request_id_unique')
-      .on(table.triggerRequestId)
-      .where(sql`${table.triggerRequestId} IS NOT NULL`),
-    check(
-      'ops_job_runs_task_key_shape_check',
-      sql`btrim(${table.taskKey}) <> '' AND char_length(${table.taskKey}) <= 128`,
-    ),
+    index('ops_job_runs_finished_at_idx').on(table.finishedAt),
     check(
       'ops_job_runs_trigger_source_check',
       sql`${table.triggerSource} IN ('scheduled', 'manual', 'recovery')`,
@@ -637,88 +623,58 @@ export const opsJobRuns = pgTable(
       )`,
     ),
     check(
-      'ops_job_runs_skip_shape_check',
+      'ops_job_runs_lifecycle_check',
       sql`(
+        ${table.status} = 'running'
+        AND ${table.startedAt} IS NOT NULL
+        AND ${table.finishedAt} IS NULL
+        AND ${table.durationMs} IS NULL
+      ) OR (
         ${table.status} = 'skipped'
-        AND ${table.skipReason} IS NOT NULL
-        AND ${table.skipReason} = 'overlap'
         AND ${table.startedAt} IS NULL
-        AND ${table.executorId} IS NULL
-        AND ${table.deletedCount} IS NULL
-        AND ${table.failedCount} IS NULL
+        AND ${table.finishedAt} IS NOT NULL
+        AND ${table.durationMs} IS NULL
+      ) OR (
+        ${table.status} = 'interrupted'
+        AND ${table.startedAt} IS NOT NULL
+        AND ${table.finishedAt} IS NOT NULL
+        AND ${table.durationMs} IS NULL
+      ) OR (
+        ${table.status} IN ('success', 'failure', 'cancelled')
+        AND ${table.startedAt} IS NOT NULL
+        AND ${table.finishedAt} IS NOT NULL
+        AND ${table.durationMs} IS NOT NULL
+        AND ${table.durationMs} BETWEEN 0 AND 9007199254740991
+      )`,
+    ),
+    check(
+      'ops_job_runs_result_check',
+      sql`(
+        ${table.status} = 'success'
+        AND ${table.deletedCount} IS NOT NULL
+        AND ${table.deletedCount} >= 0
+        AND ${table.failedCount} IS NOT NULL
+        AND ${table.failedCount} = 0
         AND ${table.errorCategory} IS NULL
         AND ${table.errorSummary} IS NULL
       ) OR (
-        ${table.status} <> 'skipped'
-        AND ${table.skipReason} IS NULL
-      )`,
-    ),
-    check(
-      'ops_job_runs_execution_shape_check',
-      sql`(
-        ${table.status} = 'skipped'
-        AND ${table.startedAt} IS NULL
-        AND ${table.executorId} IS NULL
-      ) OR (
-        ${table.status} <> 'skipped'
-        AND ${table.startedAt} IS NOT NULL
-        AND ${table.executorId} IS NOT NULL
-      )`,
-    ),
-    check(
-      'ops_job_runs_finished_shape_check',
-      sql`(${table.status} = 'running' AND ${table.finishedAt} IS NULL) OR (${table.status} <> 'running' AND ${table.finishedAt} IS NOT NULL)`,
-    ),
-    check(
-      'ops_job_runs_duration_shape_check',
-      sql`(
-        ${table.status} IN ('success', 'failure', 'cancelled')
-        AND ${table.durationMs} IS NOT NULL
-        AND ${table.durationMs} BETWEEN 0 AND 9007199254740991
-      ) OR (
-        ${table.status} IN ('running', 'skipped', 'interrupted')
-        AND ${table.durationMs} IS NULL
-      )`,
-    ),
-    check(
-      'ops_job_runs_count_shape_check',
-      sql`
-        (
-          (${table.deletedCount} IS NULL OR ${table.deletedCount} >= 0)
-          AND (${table.failedCount} IS NULL OR ${table.failedCount} >= 0)
-          AND ${table.status} NOT IN ('running', 'skipped', 'interrupted')
-        ) OR (
-          ${table.status} IN ('running', 'skipped', 'interrupted')
-          AND ${table.deletedCount} IS NULL
-          AND ${table.failedCount} IS NULL
-        )
-      `,
-    ),
-    check(
-      'ops_job_runs_success_shape_check',
-      sql`${table.status} <> 'success' OR (${table.deletedCount} IS NOT NULL AND ${table.failedCount} IS NOT NULL AND ${table.failedCount} = 0 AND ${table.errorCategory} IS NULL AND ${table.errorSummary} IS NULL)`,
-    ),
-    check(
-      'ops_job_runs_error_shape_check',
-      sql`(
         ${table.status} = 'failure'
+        AND (${table.deletedCount} IS NULL OR ${table.deletedCount} >= 0)
+        AND (${table.failedCount} IS NULL OR ${table.failedCount} >= 0)
         AND ${table.errorCategory} IS NOT NULL
         AND ${table.errorCategory} IN ('partial_failure', 'database', 'storage', 'internal')
         AND ${table.errorSummary} IS NOT NULL
         AND btrim(${table.errorSummary}) <> ''
         AND char_length(${table.errorSummary}) <= 512
       ) OR (
-        ${table.status} <> 'failure'
+        ${table.status} = 'cancelled'
+        AND (${table.deletedCount} IS NULL OR ${table.deletedCount} >= 0)
+        AND (${table.failedCount} IS NULL OR ${table.failedCount} >= 0)
         AND ${table.errorCategory} IS NULL
         AND ${table.errorSummary} IS NULL
-      )`,
-    ),
-    check(
-      'ops_job_runs_running_interrupted_shape_check',
-      sql`(
-        ${table.status} NOT IN ('running', 'interrupted')
       ) OR (
-        ${table.deletedCount} IS NULL
+        ${table.status} IN ('running', 'skipped', 'interrupted')
+        AND ${table.deletedCount} IS NULL
         AND ${table.failedCount} IS NULL
         AND ${table.errorCategory} IS NULL
         AND ${table.errorSummary} IS NULL
@@ -735,28 +691,24 @@ export const opsJobRuns = pgTable(
         AND ${table.triggeredByNickname} IS NOT NULL
         AND btrim(${table.triggeredByNickname}) <> ''
         AND char_length(${table.triggeredByNickname}) <= 512
-        AND ${table.triggeredBySessionId} IS NOT NULL
-        AND ${table.triggerRequestId} IS NOT NULL
       ) OR (
         ${table.triggerSource} <> 'manual'
         AND ${table.triggeredByUserId} IS NULL
         AND ${table.triggeredByUsername} IS NULL
         AND ${table.triggeredByNickname} IS NULL
-        AND ${table.triggeredBySessionId} IS NULL
-        AND ${table.triggerRequestId} IS NULL
       )`,
     ),
     check(
-      'ops_job_runs_cancellation_snapshot_check',
+      'ops_job_runs_cancellation_check',
       sql`(
         ${table.cancelRequestedAt} IS NULL
         AND ${table.cancelRequestedByUserId} IS NULL
         AND ${table.cancelRequestedByUsername} IS NULL
         AND ${table.cancelRequestedByNickname} IS NULL
-        AND ${table.cancelRequestedBySessionId} IS NULL
-        AND ${table.cancelRequestId} IS NULL
+        AND ${table.status} <> 'cancelled'
       ) OR (
         ${table.cancelRequestedAt} IS NOT NULL
+        AND ${table.status} IN ('running', 'cancelled', 'interrupted')
         AND ${table.cancelRequestedByUserId} IS NOT NULL
         AND ${table.cancelRequestedByUsername} IS NOT NULL
         AND btrim(${table.cancelRequestedByUsername}) <> ''
@@ -764,18 +716,6 @@ export const opsJobRuns = pgTable(
         AND ${table.cancelRequestedByNickname} IS NOT NULL
         AND btrim(${table.cancelRequestedByNickname}) <> ''
         AND char_length(${table.cancelRequestedByNickname}) <= 512
-        AND ${table.cancelRequestedBySessionId} IS NOT NULL
-        AND ${table.cancelRequestId} IS NOT NULL
-      )`,
-    ),
-    check(
-      'ops_job_runs_cancellation_status_check',
-      sql`(
-        ${table.cancelRequestedAt} IS NULL
-        OR ${table.status} IN ('running', 'cancelled', 'interrupted')
-      ) AND (
-        ${table.status} <> 'cancelled'
-        OR ${table.cancelRequestedAt} IS NOT NULL
       )`,
     ),
   ],

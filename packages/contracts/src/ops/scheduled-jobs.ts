@@ -12,8 +12,6 @@ export const SCHEDULED_JOB_RUN_STATUS_SKIPPED = 'skipped'
 export const SCHEDULED_JOB_RUN_STATUS_CANCELLED = 'cancelled'
 export const SCHEDULED_JOB_RUN_STATUS_INTERRUPTED = 'interrupted'
 
-export const SCHEDULED_JOB_SKIP_REASON_OVERLAP = 'overlap'
-
 export const SCHEDULED_JOB_ERROR_CATEGORY_PARTIAL_FAILURE = 'partial_failure'
 export const SCHEDULED_JOB_ERROR_CATEGORY_DATABASE = 'database'
 export const SCHEDULED_JOB_ERROR_CATEGORY_STORAGE = 'storage'
@@ -42,11 +40,6 @@ export const scheduledJobRunStatusSchema = z.enum(
     SCHEDULED_JOB_RUN_STATUS_INTERRUPTED,
   ],
   '定时任务运行状态无效',
-)
-
-export const scheduledJobSkipReasonSchema = z.enum(
-  [SCHEDULED_JOB_SKIP_REASON_OVERLAP],
-  '定时任务跳过原因无效',
 )
 
 export const scheduledJobErrorCategorySchema = z.enum(
@@ -80,10 +73,7 @@ const scheduledJobTimezoneSchema = z
 const scheduledJobDateTimeSchema = z.iso.datetime()
 const scheduledJobNullableDateTimeSchema = scheduledJobDateTimeSchema.nullable()
 const scheduledJobIdSchema = z.uuid('任务运行 ID 无效')
-const scheduledJobExecutorIdSchema = z.uuid('执行器 ID 无效')
 const scheduledJobUserIdSchema = z.uuid('用户 ID 无效')
-const scheduledJobSessionIdSchema = z.uuid('会话 ID 无效')
-const scheduledJobRequestIdSchema = z.uuid('请求 ID 无效')
 const scheduledJobSnapshotStringSchema = nonBlankString('快照字段不能为空').max(
   512,
   '快照字段不能超过 512 个字符',
@@ -128,9 +118,6 @@ export const scheduledJobEnabledInputSchema = z
     enabled: z.boolean('启用状态必须是布尔值'),
   })
   .strict()
-
-export const scheduledJobManualExecuteInputSchema = z.object({}).strict().default({})
-export const scheduledJobCancelInputSchema = z.object({}).strict().default({})
 
 const scheduledJobRunSummaryFields = {
   id: scheduledJobIdSchema,
@@ -200,9 +187,7 @@ const scheduledJobRunRecordBaseSchema = z
     taskKey: scheduledJobTaskKeySchema,
     triggerSource: scheduledJobTriggerSourceSchema,
     status: scheduledJobRunStatusSchema,
-    skipReason: scheduledJobSkipReasonSchema.nullable(),
     scheduledFor: scheduledJobNullableDateTimeSchema,
-    executorId: scheduledJobExecutorIdSchema.nullable(),
     deletedCount: scheduledJobNullableCountSchema,
     failedCount: scheduledJobNullableCountSchema,
     errorCategory: scheduledJobErrorCategorySchema.nullable(),
@@ -210,19 +195,14 @@ const scheduledJobRunRecordBaseSchema = z
     triggeredByUserId: scheduledJobUserIdSchema.nullable(),
     triggeredByUsername: scheduledJobSnapshotStringSchema.nullable(),
     triggeredByNickname: scheduledJobSnapshotStringSchema.nullable(),
-    triggeredBySessionId: scheduledJobSessionIdSchema.nullable(),
-    triggerRequestId: scheduledJobRequestIdSchema.nullable(),
     cancelRequestedAt: scheduledJobNullableDateTimeSchema,
     cancelRequestedByUserId: scheduledJobUserIdSchema.nullable(),
     cancelRequestedByUsername: scheduledJobSnapshotStringSchema.nullable(),
     cancelRequestedByNickname: scheduledJobSnapshotStringSchema.nullable(),
-    cancelRequestedBySessionId: scheduledJobSessionIdSchema.nullable(),
-    cancelRequestId: scheduledJobRequestIdSchema.nullable(),
     startedAt: scheduledJobNullableDateTimeSchema,
     finishedAt: scheduledJobNullableDateTimeSchema,
     durationMs: scheduledJobNullableDurationSchema,
     createdAt: scheduledJobDateTimeSchema,
-    updatedAt: scheduledJobDateTimeSchema,
   })
   .strict()
 
@@ -233,14 +213,10 @@ export const scheduledJobRunListItemSchema = scheduledJobRunRecordBaseSchema
     triggeredByUserId: true,
     triggeredByUsername: true,
     triggeredByNickname: true,
-    triggeredBySessionId: true,
-    triggerRequestId: true,
     cancelRequestedAt: true,
     cancelRequestedByUserId: true,
     cancelRequestedByUsername: true,
     cancelRequestedByNickname: true,
-    cancelRequestedBySessionId: true,
-    cancelRequestId: true,
   })
   .strict()
 
@@ -280,15 +256,12 @@ export const scheduledJobCancelResponseSchema = z
 export type ScheduledJobTaskKey = z.infer<typeof scheduledJobTaskKeySchema>
 export type ScheduledJobTriggerSource = z.infer<typeof scheduledJobTriggerSourceSchema>
 export type ScheduledJobRunStatus = z.infer<typeof scheduledJobRunStatusSchema>
-export type ScheduledJobSkipReason = z.infer<typeof scheduledJobSkipReasonSchema>
 export type ScheduledJobErrorCategory = z.infer<typeof scheduledJobErrorCategorySchema>
 export type ScheduledJobPath = z.infer<typeof scheduledJobPathSchema>
 export type ScheduledJobRunPath = z.infer<typeof scheduledJobRunPathSchema>
 export type ScheduledJobRunsListQuery = z.infer<typeof scheduledJobRunsListQuerySchema>
 export type ScheduledJobPlanUpdateInput = z.infer<typeof scheduledJobPlanUpdateInputSchema>
 export type ScheduledJobEnabledInput = z.infer<typeof scheduledJobEnabledInputSchema>
-export type ScheduledJobManualExecuteInput = z.infer<typeof scheduledJobManualExecuteInputSchema>
-export type ScheduledJobCancelInput = z.infer<typeof scheduledJobCancelInputSchema>
 export type ScheduledJobCurrentRunSummary = z.infer<typeof scheduledJobCurrentRunSummarySchema>
 export type ScheduledJobLatestRunSummary = z.infer<typeof scheduledJobLatestRunSummarySchema>
 export type ScheduledJob = z.infer<typeof scheduledJobSchema>

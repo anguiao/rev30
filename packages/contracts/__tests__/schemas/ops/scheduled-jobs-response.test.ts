@@ -8,7 +8,6 @@ import {
   scheduledJobRunDetailSchema,
   scheduledJobRunListResponseSchema,
   scheduledJobRunStatusSchema,
-  scheduledJobSkipReasonSchema,
   scheduledJobTriggerSourceSchema,
   scheduledJobCancelResponseSchema,
   scheduledJobCurrentRunSummarySchema,
@@ -21,9 +20,7 @@ const runningRun = {
   taskKey: 'auth-session-cleanup' as const,
   triggerSource: 'manual' as const,
   status: 'running' as const,
-  skipReason: null,
   scheduledFor: null,
-  executorId: testUuid(2),
   deletedCount: null,
   failedCount: null,
   errorCategory: null,
@@ -31,19 +28,14 @@ const runningRun = {
   triggeredByUserId: testUuid(3),
   triggeredByUsername: 'ada',
   triggeredByNickname: 'Ada Lovelace',
-  triggeredBySessionId: testUuid(4),
-  triggerRequestId: testUuid(5),
   cancelRequestedAt: null,
   cancelRequestedByUserId: null,
   cancelRequestedByUsername: null,
   cancelRequestedByNickname: null,
-  cancelRequestedBySessionId: null,
-  cancelRequestId: null,
   startedAt: '2026-08-25T00:00:00.000Z',
   finishedAt: null,
   durationMs: null,
   createdAt: '2026-08-25T00:00:00.000Z',
-  updatedAt: '2026-08-25T00:00:00.000Z',
 }
 
 const successfulScheduledRun = {
@@ -51,18 +43,14 @@ const successfulScheduledRun = {
   triggerSource: 'scheduled' as const,
   status: 'success' as const,
   scheduledFor: '2026-08-25T00:00:00.000Z',
-  executorId: testUuid(6),
   deletedCount: 4,
   failedCount: 0,
   triggeredByUserId: null,
   triggeredByUsername: null,
   triggeredByNickname: null,
-  triggeredBySessionId: null,
-  triggerRequestId: null,
   startedAt: '2026-08-25T00:00:01.000Z',
   finishedAt: '2026-08-25T00:00:02.000Z',
   durationMs: 1000,
-  updatedAt: '2026-08-25T00:00:02.000Z',
 }
 
 const taskItem = {
@@ -100,9 +88,7 @@ const successfulRunListItem = {
   taskKey: successfulScheduledRun.taskKey,
   triggerSource: successfulScheduledRun.triggerSource,
   status: successfulScheduledRun.status,
-  skipReason: successfulScheduledRun.skipReason,
   scheduledFor: successfulScheduledRun.scheduledFor,
-  executorId: successfulScheduledRun.executorId,
   deletedCount: successfulScheduledRun.deletedCount,
   failedCount: successfulScheduledRun.failedCount,
   errorCategory: successfulScheduledRun.errorCategory,
@@ -111,7 +97,6 @@ const successfulRunListItem = {
   finishedAt: successfulScheduledRun.finishedAt,
   durationMs: successfulScheduledRun.durationMs,
   createdAt: successfulScheduledRun.createdAt,
-  updatedAt: successfulScheduledRun.updatedAt,
 }
 
 describe('scheduled job response schemas', () => {
@@ -120,7 +105,6 @@ describe('scheduled job response schemas', () => {
     expect(scheduledJobTriggerSourceSchema.parse('manual')).toBe('manual')
     expect(scheduledJobTriggerSourceSchema.parse('recovery')).toBe('recovery')
     expect(scheduledJobRunStatusSchema.parse('interrupted')).toBe('interrupted')
-    expect(scheduledJobSkipReasonSchema.parse('overlap')).toBe('overlap')
     expect(scheduledJobErrorCategorySchema.parse('partial_failure')).toBe('partial_failure')
     expect(scheduledJobErrorCategorySchema.parse('database')).toBe('database')
     expect(scheduledJobErrorCategorySchema.parse('storage')).toBe('storage')
@@ -131,9 +115,6 @@ describe('scheduled job response schemas', () => {
     })
     expectZodIssue(scheduledJobRunStatusSchema.safeParse('queued'), {
       message: '定时任务运行状态无效',
-    })
-    expectZodIssue(scheduledJobSkipReasonSchema.safeParse('capacity'), {
-      message: '定时任务跳过原因无效',
     })
     expectZodIssue(scheduledJobErrorCategorySchema.safeParse('secret'), {
       message: '定时任务错误分类无效',

@@ -1,28 +1,16 @@
 import type { ScheduledJobTaskKey, ScheduledJobTriggerSource } from '@rev30/contracts'
 import type { Logger } from 'pino'
-import type { ScheduledJobFinalizeCandidate, createScheduledJobRepository } from './repository'
+import type { ScheduledJobRepository, ScheduledJobRunCompletion } from './repository'
 import { scheduledJobResultSchema, type ScheduledJobRegistry } from './registry'
 import { ScheduledJobExecutionError } from './errors'
 
-export { ScheduledJobExecutionError } from './errors'
-
 const FINALIZATION_RETRY_MS = 60_000
-
-const safeErrorSummary = {
-  database: 'Scheduled job database operation failed',
-  storage: 'Scheduled job storage operation failed',
-  internal: 'Scheduled job execution failed',
-} as const
-
-type RunnerRepository = Pick<ReturnType<typeof createScheduledJobRepository>, 'finalizeRun'>
 
 type RunnerOptions = {
   executorId: string
   registry: ScheduledJobRegistry
-  repository: RunnerRepository
+  repository: ScheduledJobRepository
   logger: Logger
-  now?: () => Date
-  monotonicNow?: () => number
 }
 
 type RunInput = {
@@ -33,15 +21,11 @@ type RunInput = {
   onFinalized?: () => void
 }
 
-function safeDuration(startedAt: number, finishedAt: number) {
-  return Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Math.round(finishedAt - startedAt)))
-}
-
-function failureCandidate(
+function failureCompletion(
   error: unknown,
   finishedAt: Date,
   durationMs: number,
-): ScheduledJobFinalizeCandidate {
+): ScheduledJobRunCompletion {
   const category =
     error instanceof ScheduledJobExecutionError ? error.category : ('internal' as const)
   return {
@@ -51,13 +35,14 @@ function failureCandidate(
     deletedCount: null,
     failedCount: null,
     errorCategory: category,
-    errorSummary: safeErrorSummary[category],
+    errorSummary:
+      error instanceof ScheduledJobExecutionError
+        ? error.message
+        : 'Scheduled job execution failed',
   }
 }
 
 export function createScheduledJobRunner(options: RunnerOptions) {
-  const now = options.now ?? (() => new Date())
-  const monotonicNow = options.monotonicNow ?? (() => performance.now())
   const controllers = new Map<string, AbortController>()
   const activeRuns = new Set<Promise<void>>()
   const retryWaiters = new Set<() => void>()
@@ -89,8 +74,8 @@ export function createScheduledJobRunner(options: RunnerOptions) {
     })
     runLogger.info('scheduled job started')
 
-    const startedAt = monotonicNow()
-    let candidate: ScheduledJobFinalizeCandidate
+    const startedAt = performance.now()
+    let completion: ScheduledJobRunCompletion
     let executionError: unknown
     try {
       const result = scheduledJobResultSchema.parse(
@@ -98,9 +83,9 @@ export function createScheduledJobRunner(options: RunnerOptions) {
           .get(input.taskKey)
           .run({ signal: controller.signal, logger: runLogger }),
       )
-      const finishedAt = now()
-      const durationMs = safeDuration(startedAt, monotonicNow())
-      candidate =
+      const finishedAt = new Date()
+      const durationMs = Math.round(performance.now() - startedAt)
+      completion =
         result.failedCount === 0
           ? {
               status: 'success',
@@ -120,49 +105,52 @@ export function createScheduledJobRunner(options: RunnerOptions) {
             }
     } catch (error) {
       executionError = error
-      candidate = failureCandidate(error, now(), safeDuration(startedAt, monotonicNow()))
+      completion = failureCompletion(error, new Date(), Math.round(performance.now() - startedAt))
     } finally {
       input.onHandlerSettled?.()
     }
 
     while (true) {
+      let finalized
       try {
-        const finalized = await options.repository.finalizeRun({
+        finalized = await options.repository.finalizeRun({
           taskKey: input.taskKey,
           runId: input.runId,
-          candidate,
+          completion,
         })
-        controllers.delete(input.runId)
-        input.onFinalized?.()
-        if (finalized.status === 'failure') {
-          const fields = executionError
-            ? {
-                err:
-                  executionError instanceof ScheduledJobExecutionError
-                    ? (executionError.cause ?? executionError)
-                    : executionError,
-              }
-            : {
-                errorCategory: finalized.errorCategory,
-                deletedCount: finalized.deletedCount,
-                failedCount: finalized.failedCount,
-              }
-          runLogger.error(fields, 'scheduled job failed')
-        } else {
-          runLogger.info(
-            {
-              status: finalized.status,
-              deletedCount: finalized.deletedCount,
-              failedCount: finalized.failedCount,
-            },
-            'scheduled job completed',
-          )
-        }
-        return
       } catch (error) {
         runLogger.error({ err: error }, 'scheduled job finalization failed')
         if (!(await waitForRetry())) return
+        continue
       }
+
+      controllers.delete(input.runId)
+      input.onFinalized?.()
+      if (finalized.status === 'failure') {
+        const fields = executionError
+          ? {
+              err:
+                executionError instanceof ScheduledJobExecutionError
+                  ? (executionError.cause ?? executionError)
+                  : executionError,
+            }
+          : {
+              errorCategory: finalized.errorCategory,
+              deletedCount: finalized.deletedCount,
+              failedCount: finalized.failedCount,
+            }
+        runLogger.error(fields, 'scheduled job failed')
+      } else {
+        runLogger.info(
+          {
+            status: finalized.status,
+            deletedCount: finalized.deletedCount,
+            failedCount: finalized.failedCount,
+          },
+          'scheduled job completed',
+        )
+      }
+      return
     }
   }
 

@@ -28,9 +28,7 @@ CREATE TABLE "ops_job_runs" (
   "task_key" text NOT NULL,
   "trigger_source" text NOT NULL,
   "status" text NOT NULL,
-  "skip_reason" text,
   "scheduled_for" timestamptz,
-  "executor_id" uuid,
   "deleted_count" integer,
   "failed_count" integer,
   "error_category" text,
@@ -38,21 +36,14 @@ CREATE TABLE "ops_job_runs" (
   "triggered_by_user_id" uuid,
   "triggered_by_username" text,
   "triggered_by_nickname" text,
-  "triggered_by_session_id" uuid,
-  "trigger_request_id" uuid,
   "cancel_requested_at" timestamptz,
   "cancel_requested_by_user_id" uuid,
   "cancel_requested_by_username" text,
   "cancel_requested_by_nickname" text,
-  "cancel_requested_by_session_id" uuid,
-  "cancel_request_id" uuid,
   "started_at" timestamptz,
   "finished_at" timestamptz,
   "duration_ms" bigint,
   "created_at" timestamptz DEFAULT now() NOT NULL,
-  "updated_at" timestamptz DEFAULT now() NOT NULL,
-  CONSTRAINT "ops_job_runs_task_key_shape_check"
-    CHECK (btrim("task_key") <> '' AND char_length("task_key") <= 128),
   CONSTRAINT "ops_job_runs_trigger_source_check"
     CHECK ("trigger_source" IN ('scheduled', 'manual', 'recovery')),
   CONSTRAINT "ops_job_runs_status_check"
@@ -69,94 +60,59 @@ CREATE TABLE "ops_job_runs" (
         "trigger_source" = 'recovery'
       )
     ),
-  CONSTRAINT "ops_job_runs_skip_shape_check"
+  CONSTRAINT "ops_job_runs_lifecycle_check"
     CHECK (
       (
-        "status" = 'skipped'
-        AND "skip_reason" IS NOT NULL
-        AND "skip_reason" = 'overlap'
-        AND "started_at" IS NULL
-        AND "executor_id" IS NULL
-        AND "deleted_count" IS NULL
-        AND "failed_count" IS NULL
-        AND "error_category" IS NULL
-        AND "error_summary" IS NULL
-      ) OR (
-        "status" <> 'skipped'
-        AND "skip_reason" IS NULL
-      )
-    ),
-  CONSTRAINT "ops_job_runs_execution_shape_check"
-    CHECK (
-      (
-        "status" = 'skipped'
-        AND "started_at" IS NULL
-        AND "executor_id" IS NULL
-      ) OR (
-        "status" <> 'skipped'
+        "status" = 'running'
         AND "started_at" IS NOT NULL
-        AND "executor_id" IS NOT NULL
-      )
-    ),
-  CONSTRAINT "ops_job_runs_finished_shape_check"
-    CHECK (
-      ("status" = 'running' AND "finished_at" IS NULL)
-      OR ("status" <> 'running' AND "finished_at" IS NOT NULL)
-    ),
-  CONSTRAINT "ops_job_runs_duration_shape_check"
-    CHECK (
-      (
+        AND "finished_at" IS NULL
+        AND "duration_ms" IS NULL
+      ) OR (
+        "status" = 'skipped'
+        AND "started_at" IS NULL
+        AND "finished_at" IS NOT NULL
+        AND "duration_ms" IS NULL
+      ) OR (
+        "status" = 'interrupted'
+        AND "started_at" IS NOT NULL
+        AND "finished_at" IS NOT NULL
+        AND "duration_ms" IS NULL
+      ) OR (
         "status" IN ('success', 'failure', 'cancelled')
+        AND "started_at" IS NOT NULL
+        AND "finished_at" IS NOT NULL
         AND "duration_ms" IS NOT NULL
         AND "duration_ms" BETWEEN 0 AND 9007199254740991
-      ) OR (
-        "status" IN ('running', 'skipped', 'interrupted')
-        AND "duration_ms" IS NULL
       )
     ),
-  CONSTRAINT "ops_job_runs_count_shape_check"
+  CONSTRAINT "ops_job_runs_result_check"
     CHECK (
       (
-        ("deleted_count" IS NULL OR "deleted_count" BETWEEN 0 AND 9007199254740991)
-        AND ("failed_count" IS NULL OR "failed_count" BETWEEN 0 AND 9007199254740991)
-        AND "status" NOT IN ('running', 'skipped', 'interrupted')
-      ) OR (
-        "status" IN ('running', 'skipped', 'interrupted')
-        AND "deleted_count" IS NULL
-        AND "failed_count" IS NULL
-      )
-    ),
-  CONSTRAINT "ops_job_runs_success_shape_check"
-    CHECK (
-      "status" <> 'success'
-      OR (
-        "deleted_count" IS NOT NULL
+        "status" = 'success'
+        AND "deleted_count" IS NOT NULL
+        AND "deleted_count" >= 0
         AND "failed_count" IS NOT NULL
         AND "failed_count" = 0
         AND "error_category" IS NULL
         AND "error_summary" IS NULL
-      )
-    ),
-  CONSTRAINT "ops_job_runs_error_shape_check"
-    CHECK (
-      (
+      ) OR (
         "status" = 'failure'
+        AND ("deleted_count" IS NULL OR "deleted_count" >= 0)
+        AND ("failed_count" IS NULL OR "failed_count" >= 0)
         AND "error_category" IS NOT NULL
         AND "error_category" IN ('partial_failure', 'database', 'storage', 'internal')
         AND "error_summary" IS NOT NULL
         AND btrim("error_summary") <> ''
         AND char_length("error_summary") <= 512
       ) OR (
-        "status" <> 'failure'
+        "status" = 'cancelled'
+        AND ("deleted_count" IS NULL OR "deleted_count" >= 0)
+        AND ("failed_count" IS NULL OR "failed_count" >= 0)
         AND "error_category" IS NULL
         AND "error_summary" IS NULL
-      )
-    ),
-  CONSTRAINT "ops_job_runs_running_interrupted_shape_check"
-    CHECK (
-      "status" NOT IN ('running', 'interrupted')
-      OR (
-        "deleted_count" IS NULL
+      ) OR (
+        "status" IN ('running', 'skipped', 'interrupted')
+        AND "deleted_count" IS NULL
         AND "failed_count" IS NULL
         AND "error_category" IS NULL
         AND "error_summary" IS NULL
@@ -173,28 +129,24 @@ CREATE TABLE "ops_job_runs" (
         AND "triggered_by_nickname" IS NOT NULL
         AND btrim("triggered_by_nickname") <> ''
         AND char_length("triggered_by_nickname") <= 512
-        AND "triggered_by_session_id" IS NOT NULL
-        AND "trigger_request_id" IS NOT NULL
       ) OR (
         "trigger_source" <> 'manual'
         AND "triggered_by_user_id" IS NULL
         AND "triggered_by_username" IS NULL
         AND "triggered_by_nickname" IS NULL
-        AND "triggered_by_session_id" IS NULL
-        AND "trigger_request_id" IS NULL
       )
     ),
-  CONSTRAINT "ops_job_runs_cancellation_snapshot_check"
+  CONSTRAINT "ops_job_runs_cancellation_check"
     CHECK (
       (
         "cancel_requested_at" IS NULL
         AND "cancel_requested_by_user_id" IS NULL
         AND "cancel_requested_by_username" IS NULL
         AND "cancel_requested_by_nickname" IS NULL
-        AND "cancel_requested_by_session_id" IS NULL
-        AND "cancel_request_id" IS NULL
+        AND "status" <> 'cancelled'
       ) OR (
         "cancel_requested_at" IS NOT NULL
+        AND "status" IN ('running', 'cancelled', 'interrupted')
         AND "cancel_requested_by_user_id" IS NOT NULL
         AND "cancel_requested_by_username" IS NOT NULL
         AND btrim("cancel_requested_by_username") <> ''
@@ -202,18 +154,6 @@ CREATE TABLE "ops_job_runs" (
         AND "cancel_requested_by_nickname" IS NOT NULL
         AND btrim("cancel_requested_by_nickname") <> ''
         AND char_length("cancel_requested_by_nickname") <= 512
-        AND "cancel_requested_by_session_id" IS NOT NULL
-        AND "cancel_request_id" IS NOT NULL
-      )
-    ),
-  CONSTRAINT "ops_job_runs_cancellation_status_check"
-    CHECK (
-      (
-        "cancel_requested_at" IS NULL
-        OR "status" IN ('running', 'cancelled', 'interrupted')
-      ) AND (
-        "status" <> 'cancelled'
-        OR "cancel_requested_at" IS NOT NULL
       )
     )
 );
@@ -240,15 +180,8 @@ CREATE UNIQUE INDEX "ops_job_runs_task_key_running_unique"
   ON "ops_job_runs" ("task_key")
   WHERE "status" = 'running';
 --> statement-breakpoint
-CREATE INDEX "ops_job_runs_finished_at_id_idx"
-  ON "ops_job_runs" ("finished_at", "id");
---> statement-breakpoint
-CREATE INDEX "ops_job_runs_status_idx"
-  ON "ops_job_runs" ("status");
---> statement-breakpoint
-CREATE UNIQUE INDEX "ops_job_runs_trigger_request_id_unique"
-  ON "ops_job_runs" ("trigger_request_id")
-  WHERE "trigger_request_id" IS NOT NULL;
+CREATE INDEX "ops_job_runs_finished_at_idx"
+  ON "ops_job_runs" ("finished_at");
 --> statement-breakpoint
 INSERT INTO "ops_scheduled_jobs"
   ("task_key", "cron_expression", "timezone", "enabled", "next_run_at", "active_run_id", "created_at", "updated_at")

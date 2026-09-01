@@ -3,8 +3,8 @@ import { and, lte, ne, sql } from 'drizzle-orm'
 import type { Db } from '../../../db'
 import { opsJobRuns, opsScheduledJobs } from '../../../db/schema'
 
-export async function cleanupScheduledJobRuns(database: Db, retentionMs: number, now = new Date()) {
-  const cutoff = subMilliseconds(now, retentionMs)
+export async function cleanupScheduledJobRuns(database: Db, retentionMs: number) {
+  const cutoff = subMilliseconds(new Date(), retentionMs)
   const deleted = await database
     .delete(opsJobRuns)
     .where(
@@ -20,5 +20,5 @@ export async function cleanupScheduledJobRuns(database: Db, retentionMs: number,
     )
     .returning()
 
-  return { deletedCount: deleted.length, failedCount: 0 as const }
+  return deleted.length
 }

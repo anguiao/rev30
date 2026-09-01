@@ -2,41 +2,33 @@ import 'dotenv/config'
 import { serve } from '@hono/node-server'
 import { createApp } from './app'
 import { createDb } from './db'
-import { readScheduledJobRetentionConfig } from './modules/ops/scheduled-jobs/config'
-import { createProductionScheduledJobRuntime } from './modules/ops/scheduled-jobs/runtime'
-import { createAttachmentStorage } from './modules/attachments/storage'
 import { readAttachmentConfig } from './modules/attachments/config'
+import { createAttachmentStorage } from './modules/attachments/storage'
+import { readScheduledJobRetentionConfig } from './modules/ops/scheduled-jobs/config'
+import { startScheduledJobs } from './modules/ops/scheduled-jobs/startup'
 import { logger } from './runtime/logger'
 import { createOperationLogRuntime } from './runtime/operation-log'
-import { registerShutdownHandlers } from './runtime/shutdown'
+import { closeServer, registerShutdownHandlers } from './runtime/shutdown'
 import { readTrustedProxyPolicy } from './runtime/trusted-proxy'
 
-const trustedProxyPolicy = readTrustedProxyPolicy()
 const port = Number(process.env.PORT ?? 3000)
 const { close: closeDb, db } = await createDb()
 
-async function startScheduledJobs() {
-  try {
-    const scheduledJobs = createProductionScheduledJobRuntime({
-      database: db,
-      logger,
-      storage: createAttachmentStorage(readAttachmentConfig()),
-      retention: readScheduledJobRetentionConfig(),
-    })
-    await scheduledJobs.start()
-    return scheduledJobs
-  } catch (error) {
-    await closeDb()
-    throw error
-  }
-}
-
-const scheduledJobs = await startScheduledJobs()
+const trustedProxyPolicy = readTrustedProxyPolicy()
+const attachmentStorage = createAttachmentStorage(readAttachmentConfig())
+const scheduledJobRetention = readScheduledJobRetentionConfig()
+const scheduledJobs = await startScheduledJobs({
+  database: db,
+  logger,
+  storage: attachmentStorage,
+  retention: scheduledJobRetention,
+})
 const operationLog = createOperationLogRuntime(db, logger)
+
 const app = createApp(db, {
   logger,
   operationLogReceiver: operationLog.receiver,
-  scheduledJobs,
+  scheduledJobService: scheduledJobs.service,
   trustedProxyPolicy,
 })
 
@@ -56,11 +48,12 @@ const server = serve(
   },
 )
 
-registerShutdownHandlers({
-  server,
-  cleanup: async () => {
-    await scheduledJobs.stop()
-    operationLog.stop()
-    await closeDb()
-  },
+registerShutdownHandlers(async () => {
+  const results = await Promise.allSettled([closeServer(server), scheduledJobs.stop()])
+  operationLog.stop()
+  await closeDb()
+
+  for (const result of results) {
+    if (result.status === 'rejected') throw result.reason
+  }
 })

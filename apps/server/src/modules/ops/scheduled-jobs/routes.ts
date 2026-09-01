@@ -1,11 +1,9 @@
 import {
   type ScheduledJobPlanUpdateInput,
   type ScheduledJobRunsListQuery,
-  scheduledJobCancelInputSchema,
   scheduledJobCancelResponseSchema,
   scheduledJobEnabledInputSchema,
   scheduledJobListResponseSchema,
-  scheduledJobManualExecuteInputSchema,
   scheduledJobManualExecuteOverlapResponseSchema,
   scheduledJobManualExecuteResponseSchema,
   scheduledJobPathSchema,
@@ -17,22 +15,17 @@ import {
   scheduledJobSchema,
 } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
-import { Hono, type Context, type MiddlewareHandler } from 'hono'
-import type { ZodType } from 'zod'
-import type { Db } from '../../../db'
+import { Hono, type Context } from 'hono'
 import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
-import { createBodyLimit } from '../../../middleware/body-limit'
 import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
-import { ScheduledJobInvalidPlanError } from './errors'
 import {
+  ScheduledJobInvalidPlanError,
   ScheduledJobNotFoundError,
   ScheduledJobStateConflictError,
-  type ScheduledJobActorSnapshot,
-} from './repository'
-import { createScheduledJobService } from './service'
-import { ScheduledJobRuntimeStoppedError, type ScheduledJobRuntimeCommands } from './runtime'
+} from './errors'
+import type { ScheduledJobService } from './service'
 
 const scheduledJobPathValidator = zValidator('param', scheduledJobPathSchema, (result, c) => {
   if (!result.success) return c.json({ message: '任务键无效' }, 400)
@@ -74,38 +67,6 @@ const scheduledJobEnabledBodyValidator = zValidator(
   },
 )
 
-function optionalEmptyJsonBodyValidator(schema: ZodType): MiddlewareHandler {
-  return async (c, next) => {
-    const text = await c.req.text()
-    if (text.trim() === '') {
-      await next()
-      return
-    }
-
-    let value: unknown
-    try {
-      value = JSON.parse(text)
-    } catch {
-      return c.json({ message: '请求体无效' }, 400)
-    }
-
-    if (!schema.safeParse(value).success) {
-      return c.json({ message: '请求体无效' }, 400)
-    }
-
-    await next()
-  }
-}
-
-const scheduledJobManualBodyValidator = optionalEmptyJsonBodyValidator(
-  scheduledJobManualExecuteInputSchema,
-)
-
-const scheduledJobCancelBodyValidator = optionalEmptyJsonBodyValidator(
-  scheduledJobCancelInputSchema,
-)
-const scheduledJobCommandBodyLimit = createBodyLimit(1024)
-
 function scheduledJobErrorResponse(error: unknown, c: Context) {
   if (error instanceof ScheduledJobInvalidPlanError) {
     return c.json({ message: error.message }, 400)
@@ -119,27 +80,10 @@ function scheduledJobErrorResponse(error: unknown, c: Context) {
     return c.json({ message: error.message }, 409)
   }
 
-  if (error instanceof ScheduledJobRuntimeStoppedError) {
-    throw error
-  }
-
   throw error
 }
 
-function actorSnapshot(c: Context<AuthEnv & RequestContextEnv>) {
-  const user = c.get('currentUser')
-  const requestContext = c.get('requestContext')
-  return {
-    userId: user.id,
-    username: user.username,
-    nickname: user.nickname,
-    sessionId: c.get('currentSessionId'),
-    requestId: requestContext.requestId,
-  } satisfies ScheduledJobActorSnapshot
-}
-
-export function createScheduledJobRoutes(database: Db, runtime: ScheduledJobRuntimeCommands) {
-  const service = createScheduledJobService(database, runtime)
+export function createScheduledJobRoutes(service: ScheduledJobService) {
   const app = new Hono<AuthEnv & RequestContextEnv & OperationLogEnv>()
 
   app.onError((error, c) => scheduledJobErrorResponse(error, c))
@@ -190,13 +134,11 @@ export function createScheduledJobRoutes(database: Db, runtime: ScheduledJobRunt
     .post(
       '/:taskKey/runs',
       requireAccess('ops:scheduled-job:execute'),
-      scheduledJobCommandBodyLimit,
       scheduledJobPathValidator,
-      scheduledJobManualBodyValidator,
       async (c) => {
         const { taskKey } = c.req.valid('param')
         recordOperation(c, 'ops:scheduled-job:execute', { targetKey: taskKey })
-        const result = await service.runManual(taskKey, actorSnapshot(c))
+        const result = await service.runManual(taskKey, c.get('currentUser'))
         if ('runId' in result) {
           return c.json(scheduledJobManualExecuteResponseSchema.parse(result), 202)
         }
@@ -228,9 +170,7 @@ export function createScheduledJobRoutes(database: Db, runtime: ScheduledJobRunt
     .post(
       '/:taskKey/runs/:runId/cancel',
       requireAccess('ops:scheduled-job:cancel'),
-      scheduledJobCommandBodyLimit,
       scheduledJobRunPathValidator,
-      scheduledJobCancelBodyValidator,
       async (c) => {
         const { taskKey, runId } = c.req.valid('param')
         recordOperation(c, 'ops:scheduled-job:cancel', {
@@ -239,7 +179,7 @@ export function createScheduledJobRoutes(database: Db, runtime: ScheduledJobRunt
         })
         return c.json(
           scheduledJobCancelResponseSchema.parse(
-            await service.cancel(taskKey, runId, actorSnapshot(c)),
+            await service.cancel(taskKey, runId, c.get('currentUser')),
           ),
           202,
         )

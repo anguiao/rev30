@@ -20,14 +20,18 @@ import { createTokenPair } from '../../../../src/modules/auth/tokens'
 import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
 import { createOpsRoutes } from '../../../../src/modules/ops/routes'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
-import { createApp, createScheduledJobRuntimeStub } from '../../../helpers/app'
+import { createApp, createTestScheduledJobService } from '../../../helpers/app'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { createSystemUserFixture } from '../../../helpers/system'
 
 function createTestApp(database: TestDatabase, authHeaders: Record<string, string>) {
   const app = new Hono().route(
     '/api/ops',
-    createOpsRoutes(database, createAuthMiddleware(database), createScheduledJobRuntimeStub()),
+    createOpsRoutes(
+      database,
+      createAuthMiddleware(database),
+      createTestScheduledJobService(database),
+    ),
   )
   const request = app.request.bind(app)
 

@@ -26,7 +26,6 @@ import {
   scheduledJobErrorCategoryLabels,
   scheduledJobRunStatusLabels,
   scheduledJobRunStatusTagTypes,
-  scheduledJobSkipReasonLabels,
   scheduledJobTriggerSourceLabels,
 } from './labels'
 import { getErrorMessage } from '../../utils/error'
@@ -272,19 +271,11 @@ const columns: DataTableColumns<ScheduledJobRunListItem> = [
                     visibleDetail.durationMs === null ? '未知' : `${visibleDetail.durationMs} ms`
                   }}
                 </NDescriptionsItem>
-                <NDescriptionsItem label="执行器 ID">
-                  <span class="font-mono text-xs break-all">{{
-                    visibleDetail.executorId ?? '-'
-                  }}</span>
-                </NDescriptionsItem>
                 <NDescriptionsItem label="删除计数">
                   {{ visibleDetail.deletedCount ?? '-' }}
                 </NDescriptionsItem>
                 <NDescriptionsItem label="失败计数">
                   {{ visibleDetail.failedCount ?? '-' }}
-                </NDescriptionsItem>
-                <NDescriptionsItem v-if="visibleDetail.skipReason" label="跳过原因">
-                  {{ scheduledJobSkipReasonLabels[visibleDetail.skipReason] }}
                 </NDescriptionsItem>
                 <NDescriptionsItem v-if="visibleDetail.errorCategory" label="错误分类">
                   {{ scheduledJobErrorCategoryLabels[visibleDetail.errorCategory] }}
@@ -298,14 +289,6 @@ const columns: DataTableColumns<ScheduledJobRunListItem> = [
                   }}）<br />
                   <span class="font-mono text-xs break-all">{{
                     visibleDetail.triggeredByUserId
-                  }}</span
-                  ><br />
-                  会话：<span class="font-mono text-xs break-all">{{
-                    visibleDetail.triggeredBySessionId
-                  }}</span
-                  ><br />
-                  请求：<span class="font-mono text-xs break-all">{{
-                    visibleDetail.triggerRequestId
                   }}</span>
                 </NDescriptionsItem>
                 <NDescriptionsItem v-if="visibleDetail.cancelRequestedByUserId" label="取消操作者">
@@ -314,14 +297,6 @@ const columns: DataTableColumns<ScheduledJobRunListItem> = [
                   }}）<br />
                   <span class="font-mono text-xs break-all">{{
                     visibleDetail.cancelRequestedByUserId
-                  }}</span
-                  ><br />
-                  会话：<span class="font-mono text-xs break-all">{{
-                    visibleDetail.cancelRequestedBySessionId
-                  }}</span
-                  ><br />
-                  请求：<span class="font-mono text-xs break-all">{{
-                    visibleDetail.cancelRequestId
                   }}</span>
                 </NDescriptionsItem>
               </NDescriptions>

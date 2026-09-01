@@ -74,3 +74,10 @@ export class AttachmentContentUnauthorizedError extends Error {
     this.name = new.target.name
   }
 }
+
+export class AttachmentStorageListError extends Error {
+  constructor(cause: unknown) {
+    super('Attachment storage listing failed', { cause })
+    this.name = new.target.name
+  }
+}

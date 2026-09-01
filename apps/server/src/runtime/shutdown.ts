@@ -1,12 +1,7 @@
 import type { ServerType } from '@hono/node-server'
 import { logger } from './logger'
 
-type ShutdownOptions = {
-  server: ServerType
-  cleanup: () => Promise<void>
-}
-
-async function closeServer(server: ServerType) {
+export async function closeServer(server: ServerType) {
   await new Promise<void>((resolve, reject) => {
     server.close((error) => {
       if (error) {
@@ -19,10 +14,10 @@ async function closeServer(server: ServerType) {
   })
 }
 
-export function registerShutdownHandlers({ server, cleanup }: ShutdownOptions) {
+export function registerShutdownHandlers(shutdown: () => Promise<void>) {
   let shutdownPromise: Promise<void> | null = null
 
-  async function shutdown(signal: NodeJS.Signals) {
+  async function handleShutdown(signal: NodeJS.Signals) {
     if (shutdownPromise) {
       logger.info({ signal }, 'server shutdown already in progress')
       return shutdownPromise
@@ -31,22 +26,10 @@ export function registerShutdownHandlers({ server, cleanup }: ShutdownOptions) {
     shutdownPromise = (async () => {
       logger.info({ signal }, 'server shutting down')
 
-      let shutdownError: unknown
-
       try {
-        await closeServer(server)
+        await shutdown()
       } catch (error) {
-        shutdownError = error
-      }
-
-      try {
-        await cleanup()
-      } catch (error) {
-        shutdownError ??= error
-      }
-
-      if (shutdownError) {
-        logger.error({ err: shutdownError, signal }, 'server shutdown failed')
+        logger.error({ err: error, signal }, 'server shutdown failed')
         process.exitCode = 1
         return
       }
@@ -60,7 +43,7 @@ export function registerShutdownHandlers({ server, cleanup }: ShutdownOptions) {
 
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.on(signal, () => {
-      void shutdown(signal)
+      void handleShutdown(signal)
     })
   }
 }

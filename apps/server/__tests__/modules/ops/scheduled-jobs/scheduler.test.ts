@@ -1,16 +1,53 @@
 import type { ScheduledJobTaskKey } from '@rev30/contracts'
 import type { Logger } from 'pino'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createScheduledJobScheduler } from '../../../../src/modules/ops/scheduled-jobs/scheduler'
-import type { ScheduledJobRecoveryCandidate } from '../../../../src/modules/ops/scheduled-jobs/repository'
+import { opsJobRuns } from '../../../../src/db/schema'
+import {
+  ScheduledJobNotFoundError,
+  ScheduledJobStateConflictError,
+} from '../../../../src/modules/ops/scheduled-jobs/errors'
+import type {
+  RecoverableScheduledJobRun,
+  ScheduledJobRepository,
+} from '../../../../src/modules/ops/scheduled-jobs/repository'
 import { scheduledJobTaskKeys } from '../../../../src/modules/ops/scheduled-jobs/registry'
+import { createScheduledJobScheduler } from '../../../../src/modules/ops/scheduled-jobs/scheduler'
+import { createScheduledJobRepositoryMock } from './helpers'
 
 const firstTask: ScheduledJobTaskKey = scheduledJobTaskKeys[0]
 const secondTask: ScheduledJobTaskKey = scheduledJobTaskKeys[1]
 const thirdTask: ScheduledJobTaskKey = scheduledJobTaskKeys[2]
 const fourthTask: ScheduledJobTaskKey = scheduledJobTaskKeys[3]
+const runId = '10000000-0000-7000-8000-000000000001'
 const executorId = '20000000-0000-4000-8000-000000000001'
 const now = new Date('2026-08-25T00:00:00.000Z')
+const actor = {
+  id: '30000000-0000-4000-8000-000000000001',
+  username: 'operator',
+  nickname: 'Operator',
+}
+const cancellationRun = {
+  id: runId,
+  taskKey: firstTask,
+  triggerSource: 'manual',
+  status: 'running',
+  scheduledFor: null,
+  deletedCount: null,
+  failedCount: null,
+  errorCategory: null,
+  errorSummary: null,
+  triggeredByUserId: actor.id,
+  triggeredByUsername: actor.username,
+  triggeredByNickname: actor.nickname,
+  cancelRequestedAt: now,
+  cancelRequestedByUserId: actor.id,
+  cancelRequestedByUsername: actor.username,
+  cancelRequestedByNickname: actor.nickname,
+  startedAt: now,
+  finishedAt: null,
+  durationMs: null,
+  createdAt: now,
+} satisfies typeof opsJobRuns.$inferSelect
 
 async function flush() {
   for (let index = 0; index < 30; index += 1) await Promise.resolve()
@@ -32,43 +69,52 @@ function setup() {
   }))
   const settlements = new Map<string, () => void>()
   let runSequence = 0
-  const repository = {
+  const repository = createScheduledJobRepositoryMock({
     listDueScheduled: vi.fn(async () => [...due]),
     findNextScheduledAt: vi.fn(async () => null as Date | null),
     findNextActiveScheduledAt: vi.fn(async () => null as Date | null),
     claimScheduled: vi.fn(
       async ({ taskKey }: { taskKey: typeof firstTask; allowRunning?: boolean }) => {
-        const index = due.findIndex((candidate) => candidate.taskKey === taskKey)
-        const candidate = due[index]
-        if (!candidate) return { kind: 'stale' as const }
+        const index = due.findIndex((plan) => plan.taskKey === taskKey)
+        const plan = due[index]
+        if (!plan) return null
         due.splice(index, 1)
-        if (candidate.activeRunId) {
+        if (plan.activeRunId) {
           return {
-            kind: 'overlap' as const,
             runId: `overlap-${taskKey}`,
-            activeRunId: candidate.activeRunId,
-            scheduledFor: candidate.nextRunAt,
+            blockedByRunId: plan.activeRunId,
+            scheduledFor: plan.nextRunAt,
           }
         }
         return {
-          kind: 'running' as const,
           runId: `run-${++runSequence}`,
-          scheduledFor: candidate.nextRunAt,
+          blockedByRunId: null,
+          scheduledFor: plan.nextRunAt,
         }
       },
     ),
-    claimRecovery: vi.fn(async ({ candidate }: { candidate: ScheduledJobRecoveryCandidate }) => ({
-      kind: 'running' as const,
-      runId: `recovery-${candidate.taskKey}`,
-      scheduledFor: candidate.scheduledFor,
+    claimRecovery: vi.fn(async ({ run }: { run: RecoverableScheduledJobRun }) => ({
+      runId: `recovery-${run.taskKey}`,
+      blockedByRunId: null,
+      scheduledFor: run.scheduledFor,
     })),
-  }
+    claimManual: vi.fn<ScheduledJobRepository['claimManual']>(async () => ({
+      runId,
+      blockedByRunId: null,
+      scheduledFor: null,
+    })),
+    requestCancellation: vi.fn<ScheduledJobRepository['requestCancellation']>(
+      async () => cancellationRun,
+    ),
+  })
   const runner = {
     run: vi.fn(
       async ({ runId, onHandlerSettled }: { runId: string; onHandlerSettled?: () => void }) => {
         if (onHandlerSettled) settlements.set(runId, onHandlerSettled)
       },
     ),
+    abort: vi.fn(() => false),
+    stop: vi.fn(async () => undefined),
   }
   const logger = { error: vi.fn(), info: vi.fn() } as unknown as Logger
   const scheduler = createScheduledJobScheduler({
@@ -76,7 +122,6 @@ function setup() {
     repository,
     runner,
     logger,
-    now: () => now,
   })
   return { due, logger, repository, runner, scheduler, settlements }
 }
@@ -106,19 +151,19 @@ describe('scheduled job scheduler', () => {
     expect(context.due).toEqual([])
   })
 
-  it('dispatches recovery candidates by startedAt and task key before ordinary due work', async () => {
+  it('dispatches recoverable runs by startedAt and task key before ordinary due work', async () => {
     const context = setup()
-    const candidates: ScheduledJobRecoveryCandidate[] = [
-      { originalRunId: '2', taskKey: secondTask!, scheduledFor: null, startedAt: new Date(2) },
-      { originalRunId: '1b', taskKey: secondTask!, scheduledFor: null, startedAt: new Date(1) },
-      { originalRunId: '1a', taskKey: firstTask!, scheduledFor: null, startedAt: new Date(1) },
+    const runs: RecoverableScheduledJobRun[] = [
+      { taskKey: secondTask!, scheduledFor: null, startedAt: new Date(2) },
+      { taskKey: secondTask!, scheduledFor: null, startedAt: new Date(1) },
+      { taskKey: firstTask!, scheduledFor: null, startedAt: new Date(1) },
     ]
-    context.scheduler.start(candidates)
+    context.scheduler.start(runs)
     await flush()
 
-    expect(
-      context.repository.claimRecovery.mock.calls.map(([input]) => input.candidate.taskKey),
-    ).toEqual([secondTask, firstTask])
+    expect(context.repository.claimRecovery.mock.calls.map(([input]) => input.run.taskKey)).toEqual(
+      [secondTask, firstTask],
+    )
     expect(context.repository.claimScheduled).not.toHaveBeenCalled()
   })
 
@@ -175,8 +220,8 @@ describe('scheduled job scheduler', () => {
   it('waits for an in-flight claim during stop and dispatches a committed claim before draining', async () => {
     const context = setup()
     const claim = deferred<{
-      kind: 'running'
       runId: string
+      blockedByRunId: null
       scheduledFor: Date
     }>()
     context.repository.claimScheduled.mockImplementationOnce(() => claim.promise)
@@ -191,12 +236,39 @@ describe('scheduled job scheduler', () => {
     await flush()
     expect(stopped).toBe(false)
 
-    claim.resolve({ kind: 'running', runId: 'committed-run', scheduledFor: now })
+    claim.resolve({ runId: 'committed-run', blockedByRunId: null, scheduledFor: now })
     await stop
     expect(context.runner.run).toHaveBeenCalledWith(
       expect.objectContaining({ runId: 'committed-run' }),
     )
     expect(stopped).toBe(true)
+  })
+
+  it('waits for an in-flight manual start before stopping the runner', async () => {
+    const context = setup()
+    context.due.splice(0)
+    const claim = deferred<{
+      runId: string
+      blockedByRunId: null
+      scheduledFor: null
+    }>()
+    context.repository.claimManual.mockImplementationOnce(() => claim.promise)
+
+    const manualRun = context.scheduler.runManual({ taskKey: firstTask, actor })
+    const stop = context.scheduler.stop()
+    await flush()
+    expect(context.runner.stop).not.toHaveBeenCalled()
+
+    claim.resolve({ runId, blockedByRunId: null, scheduledFor: null })
+    await manualRun
+    await stop
+
+    expect(context.runner.run).toHaveBeenCalledWith(
+      expect.objectContaining({ taskKey: firstTask, runId, triggerSource: 'manual' }),
+    )
+    expect(context.runner.run.mock.invocationCallOrder[0]).toBeLessThan(
+      context.runner.stop.mock.invocationCallOrder[0]!,
+    )
   })
 
   it('uses one timer, segments waits beyond the Node limit, and leaves disabled state timer-free', async () => {
@@ -246,18 +318,136 @@ describe('scheduled job scheduler', () => {
     expect(vi.getTimerCount()).toBe(1)
   })
 
-  it('clears its timer and rejects new claims after stop', async () => {
+  it('releases the automatic slot and logs an unexpected runner failure', async () => {
+    const context = setup()
+    const failure = new Error('runner failed')
+    context.due.splice(1)
+    context.runner.run.mockRejectedValueOnce(failure)
+
+    context.scheduler.start([])
+    await flush()
+
+    expect(context.logger.error).toHaveBeenCalledWith(
+      {
+        err: failure,
+        taskKey: firstTask,
+        runId: 'run-1',
+        triggerSource: 'scheduled',
+        executorId,
+      },
+      'scheduled job runner failed',
+    )
+    expect(context.runner.run).toHaveBeenCalledOnce()
+  })
+
+  it('dispatches manual claims and reports overlaps without consuming automatic slots', async () => {
+    const context = setup()
+    context.due.splice(0)
+    context.scheduler.start([])
+    await flush()
+
+    await expect(context.scheduler.runManual({ taskKey: firstTask, actor })).resolves.toEqual({
+      runId,
+      blockedByRunId: null,
+      scheduledFor: null,
+    })
+    expect(context.runner.run).toHaveBeenCalledWith(
+      expect.objectContaining({ taskKey: firstTask, runId, triggerSource: 'manual' }),
+    )
+
+    context.repository.claimManual.mockResolvedValueOnce({
+      runId: 'skipped-run',
+      blockedByRunId: 'active-run',
+      scheduledFor: null,
+    })
+    await expect(context.scheduler.runManual({ taskKey: firstTask, actor })).resolves.toMatchObject(
+      {
+        blockedByRunId: 'active-run',
+      },
+    )
+    expect(context.logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        taskKey: firstTask,
+        runId: 'skipped-run',
+        triggerSource: 'manual',
+        executorId,
+      }),
+      'scheduled job skipped',
+    )
+  })
+
+  it('propagates manual claim errors', async () => {
+    const context = setup()
+    context.due.splice(0)
+    context.scheduler.start([])
+    context.repository.claimManual.mockRejectedValueOnce(new ScheduledJobNotFoundError())
+
+    await expect(context.scheduler.runManual({ taskKey: firstTask, actor })).rejects.toBeInstanceOf(
+      ScheduledJobNotFoundError,
+    )
+  })
+
+  it('rejects manual execution after stop begins without claiming a run', async () => {
+    const context = setup()
+    context.due.splice(0)
+    const stop = context.scheduler.stop()
+
+    await expect(context.scheduler.runManual({ taskKey: firstTask, actor })).rejects.toBeInstanceOf(
+      ScheduledJobStateConflictError,
+    )
+    expect(context.repository.claimManual).not.toHaveBeenCalled()
+    expect(context.runner.run).not.toHaveBeenCalled()
+    await stop
+  })
+
+  it('aborts only after a committed cancellation request and reports a missing controller', async () => {
+    const context = setup()
+    context.runner.abort.mockReturnValueOnce(true).mockReturnValueOnce(false)
+
+    await context.scheduler.requestCancellation({ taskKey: firstTask, runId, actor })
+    expect(context.runner.abort).toHaveBeenCalledWith(runId)
+    expect(context.logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ taskKey: firstTask, runId, triggerSource: 'manual', executorId }),
+      'scheduled job cancellation requested',
+    )
+
+    context.repository.requestCancellation.mockResolvedValueOnce({
+      ...cancellationRun,
+      id: 'missing-controller',
+      triggerSource: 'scheduled',
+      scheduledFor: now,
+      triggeredByUserId: null,
+      triggeredByUsername: null,
+      triggeredByNickname: null,
+    })
+    await context.scheduler.requestCancellation({
+      taskKey: firstTask,
+      runId: 'missing-controller',
+      actor,
+    })
+    expect(context.logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ taskKey: firstTask, runId: 'missing-controller' }),
+      'scheduled job cancellation controller missing',
+    )
+  })
+
+  it('clears its timer and stops automatic claims without aborting active runs', async () => {
     const context = setup()
     context.due.splice(0)
     context.repository.findNextScheduledAt.mockResolvedValue(new Date(now.getTime() + 10_000))
     context.scheduler.start([])
     await flush()
     expect(vi.getTimerCount()).toBe(1)
-    await context.scheduler.stop()
+
+    const stop = context.scheduler.stop()
+    expect(vi.getTimerCount()).toBe(0)
     context.due.push({ taskKey: firstTask!, nextRunAt: now, activeRunId: null })
     context.scheduler.wake()
     await vi.advanceTimersByTimeAsync(10_000)
     expect(context.repository.claimScheduled).not.toHaveBeenCalled()
-    expect(vi.getTimerCount()).toBe(0)
+
+    await stop
+    expect(context.runner.stop).toHaveBeenCalledOnce()
+    expect(context.runner.abort).not.toHaveBeenCalled()
   })
 })

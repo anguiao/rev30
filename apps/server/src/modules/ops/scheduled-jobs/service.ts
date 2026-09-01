@@ -7,81 +7,55 @@ import {
   type ScheduledJobRunDetail,
   type ScheduledJobRunListResponse,
   type ScheduledJobRunsListQuery,
+  type User,
 } from '@rev30/contracts'
-import { parseCronSchedule } from '@rev30/utils'
-import type { Db } from '../../../db'
-import {
-  ScheduledJobNotFoundError,
-  ScheduledJobStateConflictError,
-  createScheduledJobRepository,
-  type ScheduledJobActorSnapshot,
-} from './repository'
+import { parseCronSchedule, type CronSchedule } from '@rev30/utils'
+import { ScheduledJobInvalidPlanError, ScheduledJobNotFoundError } from './errors'
 import {
   toScheduledJob,
+  toScheduledJobCurrentRunSummary,
   toScheduledJobListItem,
   toScheduledJobRunDetail,
   toScheduledJobRunListItem,
-  type ScheduledJobRunRow,
 } from './mapper'
-import { ScheduledJobInvalidPlanError } from './errors'
-import type { ScheduledJobRuntimeCommands } from './runtime'
+import type { ScheduledJobRepository } from './repository'
+import type { ScheduledJobDefinition } from './registry'
+import type { ScheduledJobScheduler } from './scheduler'
 
-type Repository = ReturnType<typeof createScheduledJobRepository>
-type ServiceRepository = Pick<
-  Repository,
-  'list' | 'findPlan' | 'listRuns' | 'findRun' | 'updatePlan' | 'updateEnabled'
->
-
-function requireTaskDefinition(
-  taskKey: string,
-  definitions: ReturnType<ScheduledJobRuntimeCommands['listDefinitions']>,
-) {
-  const definition = definitions.find((item) => item.key === taskKey)
-  if (!definition) throw new ScheduledJobNotFoundError()
-  return definition
+type ServiceOptions = {
+  definitions: readonly Pick<ScheduledJobDefinition, 'key' | 'name' | 'description'>[]
+  repository: ScheduledJobRepository
+  scheduler: ScheduledJobScheduler
 }
 
-export type ScheduledJobServiceOptions = {
-  repository?: ServiceRepository
-  now?: () => Date
-}
+export function createScheduledJobService(options: ServiceOptions) {
+  const { definitions, repository, scheduler } = options
+  const definitionByKey = new Map(definitions.map((definition) => [definition.key, definition]))
 
-export function createScheduledJobService(
-  database: Db,
-  runtime: ScheduledJobRuntimeCommands,
-  options: ScheduledJobServiceOptions = {},
-) {
-  const repository = options.repository ?? createScheduledJobRepository(database)
-  const now = options.now ?? (() => new Date())
+  function requireTaskDefinition(taskKey: string) {
+    const definition = definitionByKey.get(taskKey)
+    if (!definition) throw new ScheduledJobNotFoundError()
+    return definition
+  }
 
   async function list(): Promise<ScheduledJobListItem[]> {
     const result = await repository.list()
-    const currentRunsByTask = new Map<string, ScheduledJobRunRow>()
-    for (const run of result.currentRuns) {
-      currentRunsByTask.set(run.taskKey, run)
-    }
-    const lastRunsByTask = new Map<string, ScheduledJobRunRow>()
-    for (const run of result.lastRuns) {
-      lastRunsByTask.set(run.taskKey, run)
-    }
+    const plansByTask = new Map(result.plans.map((plan) => [plan.taskKey, plan]))
+    const currentRunsById = new Map(result.currentRuns.map((run) => [run.id, run]))
+    const lastRunsByTask = new Map(result.lastRuns.map((run) => [run.taskKey, run]))
 
-    return runtime.listDefinitions().map((definition) => {
-      const plan = result.plans.find((item) => item.taskKey === definition.key)
+    return definitions.map((definition) => {
+      const plan = plansByTask.get(definition.key)
       if (!plan) throw new Error(`Scheduled job plan missing: ${definition.key}`)
       const currentRun =
-        plan.activeRunId === null
-          ? null
-          : currentRunsByTask.get(definition.key)?.id === plan.activeRunId
-            ? (currentRunsByTask.get(definition.key) ?? null)
-            : null
+        plan.activeRunId === null ? null : (currentRunsById.get(plan.activeRunId) ?? null)
       const lastRun = lastRunsByTask.get(definition.key) ?? null
       return toScheduledJobListItem(plan, definition, currentRun, lastRun)
     })
   }
 
   async function get(taskKey: string): Promise<ScheduledJob> {
-    const definitions = runtime.listDefinitions()
-    const definition = requireTaskDefinition(taskKey, definitions)
+    const definition = requireTaskDefinition(taskKey)
     const plan = await repository.findPlan(definition.key)
     if (!plan) throw new ScheduledJobNotFoundError()
 
@@ -89,57 +63,51 @@ export function createScheduledJobService(
   }
 
   async function updatePlan(taskKey: string, input: ScheduledJobPlanUpdateInput) {
-    const definition = requireTaskDefinition(taskKey, runtime.listDefinitions())
-    const updatedAt = now()
-    let schedule: ScheduledJobPlanUpdateInput
+    const definition = requireTaskDefinition(taskKey)
+    const updatedAt = new Date()
+    let schedule: CronSchedule
     try {
-      const normalized = parseCronSchedule(
+      schedule = parseCronSchedule(
         {
           expression: input.cronExpression,
           timezone: input.timezone,
         },
         updatedAt,
       )
-      schedule = {
-        cronExpression: normalized.expression,
-        timezone: normalized.timezone,
-      }
     } catch {
       throw new ScheduledJobInvalidPlanError()
     }
 
     const plan = await repository.updatePlan({
       taskKey: definition.key,
-      cronExpression: schedule.cronExpression,
-      timezone: schedule.timezone,
+      schedule,
       now: updatedAt,
     })
-    runtime.wake()
+    scheduler.wake()
     return toScheduledJob(plan, definition)
   }
 
   async function updateEnabled(taskKey: string, input: ScheduledJobEnabledInput) {
-    const definition = requireTaskDefinition(taskKey, runtime.listDefinitions())
+    const definition = requireTaskDefinition(taskKey)
     const plan = await repository.updateEnabled({
       taskKey: definition.key,
       enabled: input.enabled,
-      now: now(),
+      now: new Date(),
     })
-    runtime.wake()
+    scheduler.wake()
     return toScheduledJob(plan, definition)
   }
 
   async function runManual(
     taskKey: string,
-    actor: ScheduledJobActorSnapshot,
+    actor: Pick<User, 'id' | 'nickname' | 'username'>,
   ): Promise<ScheduledJobManualExecuteResult> {
-    const definition = requireTaskDefinition(taskKey, runtime.listDefinitions())
-    const result = await runtime.runManual({ taskKey: definition.key, actor })
-    if (result.kind === 'not-found') throw new ScheduledJobNotFoundError()
-    if (result.kind === 'overlap') {
+    const definition = requireTaskDefinition(taskKey)
+    const result = await scheduler.runManual({ taskKey: definition.key, actor })
+    if (result.blockedByRunId !== null) {
       return {
         skippedRunId: result.runId,
-        activeRunId: result.activeRunId,
+        activeRunId: result.blockedByRunId,
       }
     }
     return { runId: result.runId }
@@ -149,7 +117,7 @@ export function createScheduledJobService(
     taskKey: string,
     query: ScheduledJobRunsListQuery,
   ): Promise<ScheduledJobRunListResponse> {
-    const definition = requireTaskDefinition(taskKey, runtime.listDefinitions())
+    const definition = requireTaskDefinition(taskKey)
     const result = await repository.listRuns({ taskKey: definition.key, ...query })
     return {
       ...result,
@@ -158,35 +126,24 @@ export function createScheduledJobService(
   }
 
   async function getRun(taskKey: string, runId: string): Promise<ScheduledJobRunDetail> {
-    const definition = requireTaskDefinition(taskKey, runtime.listDefinitions())
+    const definition = requireTaskDefinition(taskKey)
     const run = await repository.findRun(definition.key, runId)
     if (!run) throw new ScheduledJobNotFoundError()
     return toScheduledJobRunDetail(run)
   }
 
-  async function cancel(taskKey: string, runId: string, actor: ScheduledJobActorSnapshot) {
-    const definition = requireTaskDefinition(taskKey, runtime.listDefinitions())
-    const result = await runtime.requestCancellation({
+  async function cancel(
+    taskKey: string,
+    runId: string,
+    actor: Pick<User, 'id' | 'nickname' | 'username'>,
+  ) {
+    const definition = requireTaskDefinition(taskKey)
+    const run = await scheduler.requestCancellation({
       taskKey: definition.key,
       runId,
       actor,
     })
-    if (result.kind !== 'accepted') {
-      throw new ScheduledJobStateConflictError()
-    }
-    const run = result.run
-    return {
-      run: {
-        id: run.id,
-        triggerSource: run.triggerSource,
-        status: run.status,
-        scheduledFor: run.scheduledFor?.toISOString() ?? null,
-        startedAt: run.startedAt?.toISOString() ?? null,
-        finishedAt: run.finishedAt?.toISOString() ?? null,
-        durationMs: run.durationMs,
-        cancelRequestedAt: run.cancelRequestedAt?.toISOString() ?? null,
-      },
-    }
+    return { run: toScheduledJobCurrentRunSummary(run) }
   }
 
   return { list, get, updatePlan, updateEnabled, runManual, listRuns, getRun, cancel }

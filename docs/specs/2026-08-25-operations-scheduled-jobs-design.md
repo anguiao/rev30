@@ -1,5 +1,5 @@
 ---
-status: implemented
+status: completed
 date: 2026-08-25
 ---
 
@@ -116,42 +116,39 @@ date: 2026-08-25
 封装至少提供：
 
 ~~~ts
-type CronScheduleInput = {
+type CronSchedule = {
   expression: string
   timezone: string
 }
 
-function validateCronSchedule(input: CronScheduleInput): CronScheduleInput
+function parseCronSchedule(schedule: CronSchedule, from: Date): CronSchedule
 
-function getNextCronOccurrences(
-  input: CronScheduleInput & {
-    from: Date
-    count: number
-  },
-): Date[]
+function getNextCronOccurrences(schedule: CronSchedule, from: Date, count: number): Date[]
 ~~~
 
-实现先检查表达式恰好有五个空白分隔字段，字段只含数字、英文月份或星期别名及
-`* , - /`，再使用 Croner `mode: '5-part'`、指定 `timezone` 和暂停模式完成语义校验与
-时间计算。所有返回时刻必须严格晚于 `from`，不能把刚好匹配的 `from` 本身计入结果；无法
-产生未来时刻或不能返回请求数量的表达式视为无效。封装不暴露 Croner 实例、timer 或
-callback。
+实现只规范化表达式空白和时区，Cron 语法及语义完全交给 Croner `mode: '5-part'` 和指定
+`timezone` 校验，不在项目内重复解析字段、维护别名或限制 Croner 支持的扩展语法。五段模式将
+任务限制在分钟级调度；该模式下 Croner 支持且能产生未来执行时刻的表达式均可使用。解析时从
+调用方提供的 `from` 探测至少一个未来时刻，以拒绝不可能产生执行时刻的日期组合；计划修改和
+启动校验分别传入当前业务时间与 `startupAt`，工具函数不自行读取时钟。所有返回时刻必须严格
+晚于 `from`，不能把刚好匹配的 `from` 本身计入结果；无法产生未来时刻或不能返回请求数量的
+表达式视为无效。封装不暴露 Croner 实例、timer 或 callback。
 
-`timezone` 必须是运行环境认可的 IANA 时区。`count` 由内部调用固定为所需数量，API 不开放
-任意大预览请求。返回值是绝对 `Date`；数据库只保存对应的 `timestamptz`。夏令时跳跃和重复
-时刻遵循 Croner 的时区计算，不在项目内另写 Cron 解释器。
+`timezone` 必须是运行环境认可的 IANA 时区。`count` 必须是正安全整数，并由内部调用固定为
+所需数量，API 不开放任意大预览请求。返回值是绝对 `Date`；数据库只保存对应的
+`timestamptz`。夏令时跳跃和重复时刻遵循 Croner 的时区计算，不在项目内另写 Cron 解释器。
 
 ### 共享契约
 
 `packages/contracts/src/ops/scheduled-jobs.ts` 定义：
 
-- 固定任务 key、触发来源、状态、跳过原因和安全错误分类。
-- 任务列表、计划修改、启停、分页运行列表和运行详情 schema。
+- 任务 key 格式、触发来源、状态和安全错误分类。
+- 任务列表、任务详情、计划修改、启停、分页运行列表和运行详情 schema。
 - 手动执行、取消和冲突响应所需的窄结构。
 - 路径与 query schema，以及从 Zod 推导的 TypeScript 类型。
 
-任务 key 可以作为共享枚举供路由和前端使用，但 handler、依赖注入、中文任务说明和执行
-结果映射不进入 contracts。
+contracts 将任务 key 视为符合格式的透明标识，不维护服务端固定任务清单。固定任务 key、
+handler、依赖注入、中文任务说明和执行结果映射均归服务端 registry 所有。
 
 ### 服务端任务 Registry
 
@@ -164,7 +161,7 @@ type ScheduledJobResult = {
 }
 
 type ScheduledJobDefinition = {
-  key: ScheduledJobKey
+  key: ScheduledJobTaskKey
   name: string
   description: string
   run: (context: {
@@ -174,26 +171,39 @@ type ScheduledJobDefinition = {
 }
 ~~~
 
-Registry 在启动时一次性构造，key 必须唯一且完整覆盖共享任务 key。handler 通过闭包取得
+Registry 在启动时一次性构造，key 必须唯一且完整覆盖服务端预定义任务 key。handler 通过闭包取得
 `Db`、附件存储和已经通过系统边界校验的保留期配置，不从运行记录接收任意参数。`logger`
 是 runner 从基础进程 logger 创建并已经绑定 task key、run ID 和 executor ID 的 child
 logger，不是请求 logger。handler 返回值使用 strict schema 校验后才能持久化；原始返回
 对象不会直接进入数据库。
+
+内置任务名称、说明、handler 及其边界错误映射集中在 `definitions.ts`；`registry.ts` 只负责
+通用 registry 构造、key 完整性和重复校验；`startup.ts` 负责装配并启动 definitions、registry、
+repository、runner、scheduler 和 service。模块目录不增加入口文件，也不以运行环境或抽象架构概念命名
+这些职责。definitions 在启动时只创建一次：完整定义用于构造 registry，名称和说明直接交给
+service，不通过 scheduler 增加一层查询命令。
 
 ### 服务端运行时
 
 调度能力拆为以下职责：
 
 1. **Repository**：计划和运行记录的查询、短事务认领、状态转换和分页。
-2. **Scheduler**：维护最近到期 timer、两个自动执行槽、恢复候选和唤醒信号。
+2. **Scheduler**：维护最近到期 timer、两个自动执行槽、可恢复运行和唤醒信号。
 3. **Runner**：管理当前进程的 `AbortController`，调用 registry handler，写安全结果并输出
    Pino。
 4. **Service**：供运维 API 查询、修改、启停、手动执行和取消；不直接调用领域 cleanup。
 5. **Routes**：输入校验、权限、HTTP 状态和显式操作日志登记。
 
-运行时由生产入口创建并注入 app，不使用模块级全局单例。数据库是计划和运行状态的唯一事实
-源；内存只保存当前进程可以重建的 timer、两个自动槽、恢复候选、AbortController，以及
-runner 当前调用栈中尚未持久化的安全候选结果。
+模块领域错误集中在 `errors.ts`，service、repository、scheduler 和 runner 不通过彼此的实现文件转导错误；
+routes 只映射预期领域错误，运行时停止等未知生命周期错误继续交给根 error handler。
+
+`startup.ts` 通过 `startScheduledJobs()` 一次性装配 registry、repository、runner、scheduler 和 service，
+完成启动后只向进程入口返回 `service` 和 `stop()`。进程入口把 service 注入 HTTP app，并在关闭
+时调用 `stop()`；routes 不创建或接触 scheduler 和 runner。通用 scheduler 和 runner 不依赖数据库
+类型、附件存储、保留期配置或内置 definitions，也不使用模块级全局单例。数据库是计划和运行状态
+的唯一事实源；内存只
+保存当前进程可以重建的 timer、两个自动槽、可恢复运行、AbortController，以及 runner 当前调用栈
+中尚未持久化的安全完成结果。
 
 ## 内置任务目录与初始计划
 
@@ -258,9 +268,7 @@ Cron 和 IANA 时区的完整语义仍在迁移、API 和启动边界通过共�
 | `task_key` | `text` | 非空，引用 `ops_scheduled_jobs.task_key`，删除受限 |
 | `trigger_source` | `text` | `scheduled`、`manual` 或 `recovery` |
 | `status` | `text` | `running`、`success`、`failure`、`skipped`、`cancelled` 或 `interrupted` |
-| `skip_reason` | `text` | 仅 `skipped` 使用；初期只允许 `overlap` |
 | `scheduled_for` | `timestamptz` | 定时运行必填；手动运行为空；恢复运行复制被中断运行的值 |
-| `executor_id` | `uuid` | 真正执行时记录当前启动实例 ID；跳过时为空 |
 | `deleted_count` | `integer` | 可空，非负；只保存显式公共计数 |
 | `failed_count` | `integer` | 可空，非负；只保存显式公共计数 |
 | `error_category` | `text` | 可空；固定安全分类 |
@@ -268,19 +276,14 @@ Cron 和 IANA 时区的完整语义仍在迁移、API 和启动边界通过共�
 | `triggered_by_user_id` | `uuid` | 手动触发人 ID 快照，不设用户外键 |
 | `triggered_by_username` | `text` | 手动触发人用户名快照 |
 | `triggered_by_nickname` | `text` | 手动触发人昵称快照 |
-| `triggered_by_session_id` | `uuid` | 手动触发 session ID |
-| `trigger_request_id` | `uuid` | 手动触发 request ID |
 | `cancel_requested_at` | `timestamptz` | 首次取消请求时间 |
 | `cancel_requested_by_user_id` | `uuid` | 首次取消请求人 ID 快照 |
 | `cancel_requested_by_username` | `text` | 首次取消请求人用户名快照 |
 | `cancel_requested_by_nickname` | `text` | 首次取消请求人昵称快照 |
-| `cancel_requested_by_session_id` | `uuid` | 首次取消请求 session ID |
-| `cancel_request_id` | `uuid` | 首次取消请求 request ID |
 | `started_at` | `timestamptz` | 真正执行时非空；跳过时为空 |
 | `finished_at` | `timestamptz` | 终态非空；`interrupted` 表示下次启动确认中断的时间；`running` 为空 |
 | `duration_ms` | `bigint` | `success`、`failure`、`cancelled` 时为非负安全整数；`running`、`skipped`、`interrupted` 为空 |
 | `created_at` | `timestamptz` | 非空 |
-| `updated_at` | `timestamptz` | 非空 |
 
 `error_category` 初期只允许 `partial_failure`、`database`、`storage` 和 `internal`。
 handler 或 runner 只能从固定映射产生 `error_summary`；禁止持久化原始 `Error`、stack、SQL、
@@ -292,24 +295,22 @@ handler 或 runner 只能从固定映射产生 `error_summary`；禁止持久化
 数据库 check 至少保证：
 
 - `running` 没有结束时间；所有终态都有结束时间。
-- `skipped` 必须有 `overlap`，没有开始时间、执行器、耗时、计数或错误。
-- 真正执行的记录有开始时间和执行器；`success`、`failure`、`cancelled` 有不超过 JavaScript
+- `skipped` 表示任务重叠，没有开始时间、耗时、计数或错误。
+- 真正执行的记录有开始时间；`success`、`failure`、`cancelled` 有不超过 JavaScript
   `Number.MAX_SAFE_INTEGER` 的非负耗时。
-- `interrupted` 有开始时间、执行器和结束时间，但耗时为空，因为进程退出的准确时刻不可知；
+- `interrupted` 有开始和结束时间，但耗时为空，因为进程退出的准确时刻不可知；
   结束时间只表示下次启动确认中断的时刻。
 - `success` 没有错误且 `failed_count` 为 0。
 - `failure` 有安全错误分类和摘要；允许保留部分成功计数。
-- 手动来源的五个触发人字段全部非空，其他来源全部为空。
-- 取消时间与五个取消人字段要么全部为空，要么全部非空。
+- 手动来源的三个触发人字段全部非空，其他来源全部为空。
+- 取消时间与三个取消人字段要么全部为空，要么全部非空。
 - 只有 `running` 可以新增取消请求；“取消中”由运行状态和取消时间派生。
 
 索引至少覆盖：
 
 - `task_key, created_at, id`，用于每任务倒序分页。
 - `task_key` 在 `status = 'running'` 时的部分唯一索引，作为同任务不重叠的数据库兜底。
-- `finished_at, id`，用于终态保留期清理。
-- `status`，用于启动一致性检查。
-- `trigger_request_id` 的非空唯一索引，保证一次手动触发请求只产生一条尝试记录。
+- `finished_at`，用于终态保留期清理。
 
 任务运行记录不是操作日志：它在运行期间会从 `running` 更新为终态，并可能增加取消信息；
 终态之后不再编辑。
@@ -320,7 +321,8 @@ handler 或 runner 只能从固定映射产生 `error_summary`；禁止持久化
 
 前端用共享工具实时校验并展示从当前时刻开始的未来五次执行；服务端保存时必须重新使用同一
 工具校验，不能信任前端结果。数据库保存用户输入规范化后的五段表达式和 IANA 时区，不保存
-中文描述或预览数组。
+中文描述或预览数组。service 完成一次解析和领域错误映射后，把规范化的 `CronSchedule` 交给
+repository 在计划行事务内计算并保存，不在仓储层重复解析。
 
 计划时间采用以下固定规则：
 
@@ -342,8 +344,8 @@ Scheduler 只保存一个 timer：
 1. 没有空闲自动槽时，仍查询并处理 `active_run_id` 非空的到期任务，为其写入重叠跳过并推进
    计划；对没有占用、需要真实执行的到期任务不认领也不忙循环，等待任一运行结束信号。
 2. 有空闲槽时，查询最早 `next_run_at`，到期则调度，未到期则设置单一 timer。
-3. 配置修改、启停、自动运行结束和恢复候选变化都会主动调用 `wake()` 并重建 timer。
-4. 所有任务禁用且没有恢复候选时不设置 timer，等待显式唤醒。
+3. 配置修改、启停、自动运行结束和可恢复运行变化都会主动调用 `wake()` 并重建 timer。
+4. 所有任务禁用且没有可恢复运行时不设置 timer，等待显式唤醒。
 5. 超过 Node timer 安全范围的等待拆成安全长度后重新计算，不把大延时传给 `setTimeout`。
 6. timer 唤醒后重新读取数据库并比较墙钟，不把内存中的旧时间视为事实。
 7. 到期查询发生数据库错误时写安全 Pino，并设置唯一的 60 秒重试 timer；连续失败时
@@ -358,7 +360,7 @@ Scheduler 只保存一个 timer：
 `scheduled` 和 `recovery` 共用两个进程内执行槽。这个容量是当前运行时常量，不作为管理页面
 配置。手动执行不占这两个槽，但仍受同任务 `active_run_id` 约束。
 
-恢复候选优先于普通到期任务，并按被中断记录的 `started_at + task_key` 排序。普通到期任务
+可恢复运行优先于普通到期任务，并按被中断记录的 `started_at + task_key` 排序。普通到期任务
 按 `next_run_at + task_key` 排序。空闲槽只认领可实际执行的任务；因容量不足未认领的任务
 继续保持到期，不生成 `skipped`。
 
@@ -367,7 +369,7 @@ Scheduler 只保存一个 timer：
 
 ### 定时认领
 
-每个候选在短事务内锁定对应计划行并重新检查状态：
+每个到期计划在短事务内锁定对应计划行并重新检查状态：
 
 1. 任务已禁用、已不再到期或记录已变化时，不执行。
 2. `active_run_id` 非空时，插入 `scheduled + skipped + overlap` 记录；`scheduled_for`
@@ -389,7 +391,7 @@ Scheduler 只保存一个 timer：
 3. 没有占用时，插入带操作者快照的 `manual + running` 记录并设置 `active_run_id`。
 4. 事务提交后立即把执行交给 runner，并返回 `202` 和 `runId`；HTTP response 不等待任务。
 
-禁用只控制定时触发，不能阻止手动认领。内存中等待自动槽的恢复候选也不阻止手动认领，且不
+禁用只控制定时触发，不能阻止手动认领。内存中等待自动槽的可恢复运行也不阻止手动认领，且不
 因为后来出现手动执行而设置额外的失效或替代状态。
 
 ### 启动恢复
@@ -402,11 +404,12 @@ Scheduler 只保存一个 timer：
 2. 使用同一启动时刻把这些记录更新为 `interrupted`，以该时刻补齐 `finished_at`，保持
    `duration_ms = null`，并清除对应 `active_run_id`。该时间表示确认中断的时刻，不冒充无法
    得知的实际进程退出时刻。
-3. 按 `created_at DESC, id DESC` 查询每个任务最新一条非 `skipped` 的真实执行记录；状态为
-   `interrupted` 且没有取消请求时加入内存恢复候选。较新的重叠跳过记录不能遮蔽中断执行；
-   带取消请求的中断记录保留 `interrupted` 状态及首次取消人快照，但不恢复。
+3. 由数据库按 task key 直接选出 `created_at DESC, id DESC` 的最新一条非 `skipped` 真实执行
+   记录，不把完整历史加载到内存；状态为 `interrupted` 且没有取消请求时加入内存可恢复运行集合。
+   较新的重叠跳过记录不能遮蔽中断执行；带取消请求的中断记录保留 `interrupted` 状态及首次
+   取消人快照，但不恢复。
 4. 恢复认领同样在短事务内锁定计划行：已有 `active_run_id` 时插入
-   `recovery + skipped + overlap` 并消费该恢复候选；没有占用时创建新的
+   `recovery + skipped + overlap` 并消费该可恢复运行；没有占用时创建新的
    `recovery + running`。两者都不复制原手动操作者，并复制原 `scheduled_for`；禁用状态不
    阻止这次恢复。
 5. 若进程在恢复认领前再次退出且期间没有更晚的非跳过执行，最新真实执行仍是
@@ -417,7 +420,7 @@ Scheduler 只保存一个 timer：
 恢复执行占自动槽。正常 `failure`、`cancelled`、`skipped` 或带取消请求的 `interrupted` 不触发
 立即恢复。
 
-不为“恢复候选排队期间又发生手动执行”建立特殊替代机制。若恢复认领时手动运行仍在执行，
+不为“可恢复运行排队期间又发生手动执行”建立特殊替代机制。若恢复认领时手动运行仍在执行，
 恢复尝试按重叠跳过；若手动运行已结束，恢复仍会随后执行一次。后者可能形成两次连续执行，
 本设计接受这一低概率结果，并依赖首批清理 handler 的幂等性。
 
@@ -429,7 +432,8 @@ Scheduler 只保存一个 timer：
 
 - 删除已不存在的数据库行自然无操作。
 - 附件存储删除对不存在对象按现有存储契约保持可重复。
-- 每个候选在删除前重新校验当前数据库条件。
+- 逐项处理的未引用附件在删除前重新校验当前数据库条件；孤立存储使用一次一致的数据库快照
+  建立保护集合。
 - 任务日志清理只删除满足终态和截止时间的记录。
 
 本设计不承诺 exactly-once。
@@ -438,16 +442,17 @@ Scheduler 只保存一个 timer：
 
 ### 执行与收尾
 
-每次服务启动生成一个 UUID `executorId`。runner 为实际认领的 run 创建
+每次服务启动生成一个仅用于运行日志关联的 UUID `executorId`，不写入运行记录或 API。
+runner 为实际认领的 run 创建
 `AbortController`，以 `runId` 为键保存在内存 map，并从基础进程 logger 创建绑定
 `taskKey`、`runId`、`triggerSource` 和 `executorId` 的 child logger。runner 和 handler
 只使用该 logger 输出本次执行日志。
 
 handler 正常返回后，runner 通过 strict schema 接受 `deletedCount` 和 `failedCount`：
 
-- `failedCount = 0`：候选终态为 `success`。
-- `failedCount > 0`：候选终态为 `failure`，分类为 `partial_failure`，摘要由固定模板生成。
-- handler 抛错：候选终态为 `failure`；安全分类和摘要来自固定错误映射，原始错误只进入 Pino。
+- `failedCount = 0`：完成结果为 `success`。
+- `failedCount > 0`：完成结果为 `failure`，分类为 `partial_failure`，摘要由固定模板生成。
+- handler 抛错：完成结果为 `failure`；安全分类和摘要来自固定错误映射，原始错误只进入 Pino。
 
 最终事务锁定运行和计划行，确认 `active_run_id` 仍等于当前 `runId`，写结束时间、耗时、
 计数和安全错误，再清除占用。该事务必须幂等：若前一次提交成功但调用方没有收到确认，重试
@@ -455,16 +460,17 @@ handler 正常返回后，runner 通过 strict schema 接受 `deletedCount` 和 
 终态改为 `cancelled`；若成功或失败收尾先完成，之后的取消请求返回冲突。该顺序以数据库行锁
 决定，不依赖内存事件先后。
 
-handler 返回或抛错时，runner 立即捕获候选 `finishedAt`，用单调时钟计算不受墙钟调整影响的
-`durationMs`，并在当前 `run()` 调用的局部变量中保留经过 schema 校验的安全候选结果。此时
+handler 返回或抛错时，runner 立即捕获完成时间 `finishedAt`，用单调时钟计算不受墙钟调整影响的
+`durationMs`，并在当前 `run()` 调用的局部变量中保留经过 schema 校验的安全完成结果。此时
 handler 已不再执行，自动运行立即释放原自动槽并唤醒 Scheduler；手动运行则没有自动槽。
 runner 随后立即尝试终态事务，失败时写 Pino，等待固定 60 秒后幂等重试同一事务，直到成功或
-运行时开始关闭；每次重试复用相同的候选时间、耗时、计数和安全错误，不把等待时间计入执行
-耗时。它不把结果转移到 Scheduler、不创建共享待收尾表，也不重跑 handler。收尾重试期间保留
-该 run 的 AbortController 和数据库 `active_run_id`，因此只阻止同一任务重叠，其他任务的自动
-容量和业务 HTTP 服务不受影响。终态事务成功后才移除 AbortController 并再次唤醒 Scheduler。
+scheduler 开始关闭；重试边界只包含 repository 的终态事务，成功后的内存通知和日志不触发重复
+落库。每次重试复用相同的完成时间、耗时、计数和安全错误，不把等待时间计入执行耗时。它不把
+结果转移到 Scheduler、不创建共享待收尾表，也不重跑 handler。收尾重试期间保留该 run 的
+AbortController 和数据库 `active_run_id`，因此只阻止同一任务重叠，其他任务的自动容量和业务
+HTTP 服务不受影响。终态事务成功后才移除 AbortController 并再次唤醒 Scheduler。
 
-若进程在收尾重试期间退出，局部候选结果可以丢失；数据库中的 `running + active_run_id` 仍由
+若进程在收尾重试期间退出，局部完成结果可以丢失；数据库中的 `running + active_run_id` 仍由
 下次启动按既定中断恢复语义处理。
 
 ### 合作取消
@@ -475,15 +481,16 @@ runner 随后立即尝试终态事务，失败时写 Pino，等待固定 60 秒�
 - 该 run 正是计划记录的 `active_run_id`。
 - run 仍是 `running`。
 
-首次请求在短事务内写入取消时间和操作者快照。重复请求不覆盖第一次取消人，返回当前已接受
-状态。事务提交后，service 查找当前进程的 AbortController 并调用 `abort()`。正常部署下
+首次请求在短事务内写入取消时间和操作者快照。重复请求不覆盖第一次取消人，repository 都直接
+返回当前运行记录，不额外包装内部接受状态。事务提交后，scheduler 通过 runner 查找当前进程的
+AbortController 并调用 `abort()`。正常部署下
 正在运行的记录一定属于当前进程；缺少 controller 是运行时不变量错误，写 Pino，不清除
 占用。
 
 handler 在以下边界检查 `AbortSignal`：
 
 - 单次数据库清理调用之前和之后。
-- 附件候选循环的每个项目之前。
+- 附件候选循环中每次异步处理开始之前。
 - 每个数据库事务和存储调用之间。
 
 已经开始的 SQL、对象存储 list 或 delete 可以完成。取消不会启动第二个 handler，也没有
@@ -511,8 +518,9 @@ registry。保留期仍在服务启动边界读取和校验，handler 不重复�
 }
 ~~~
 
-数据库单语句删除成功时 `failedCount = 0`；语句失败直接抛错。附件循环对单项存储失败继续
-处理其他候选，累计 `failedCount`，并把原始错误写入带 `runId` 的 Pino。
+数据库单语句 cleanup 只返回删除数量，由 definition 适配为 `failedCount = 0` 的 handler
+结果；语句失败直接抛错。附件循环直接返回完整结果，对单项存储失败继续处理其他候选，累计
+`failedCount`，并把原始错误写入带 `runId` 的 Pino。
 
 附件迁移固定如下：
 
@@ -521,7 +529,9 @@ registry。保留期仍在服务启动边界读取和校验，handler 不重复�
 2. **未引用附件清理**：继续逐项锁定并复核引用，先软删除附件记录，再删除存储对象；存储
    失败计入 `failedCount`。
 3. **孤立附件存储清理**：把现有“孤立上传文件”名称扩展为准确的“孤立附件存储”，继续扫描
-   当前 `uploads` 前缀，保护活动附件和上传会话引用的 key；其余超过保留期对象可删除。
+   当前 `uploads` 前缀，在同一数据库语句快照中收集活动附件的 storage key 和上传会话的
+   storage key / upload ID，其余超过保留期的对象可删除。上传会话转换为附件时 key 不变，
+   因此该快照不会在交接过程中遗漏受保护对象，也不需要逐候选重复查库。
 
 未引用附件软删除后，该 storage key 不再属于孤立扫描的保护集合。因此文件删除失败无需新增
 补偿状态，后续“孤立附件存储清理”会在达到保留期条件后重新尝试。两项任务本身都保持幂等。
@@ -578,6 +588,15 @@ registry。保留期仍在服务启动边界读取和校验，handler 不重复�
   摘要。
 - 当前运行和最近终态分别查询，当前运行不会遮蔽最近一次已完成结果。
 
+### 任务详情
+
+`GET /api/ops/scheduled-jobs/:taskKey`
+
+- 权限：`ops:scheduled-job:list`。
+- 返回单个固定任务的名称、说明、Cron、时区、启用状态和下次执行时间，不附带运行摘要。
+- 计划修改和启停成功响应复用相同的任务详情结构。
+- 编辑 drawer 只从列表接收 `taskKey`，并通过该接口加载当前详情，不使用列表行作为表单初始值。
+
 ### 修改计划
 
 `PUT /api/ops/scheduled-jobs/:taskKey`
@@ -585,7 +604,7 @@ registry。保留期仍在服务启动边界读取和校验，handler 不重复�
 - 权限：`ops:scheduled-job:update`。
 - body 严格为 `cronExpression` 和 `timezone`。
 - 服务端校验后按当前时间重算启用任务的 `nextRunAt`；禁用任务保持为空。
-- 返回更新后的任务。
+- 返回更新后的任务详情，不附带运行摘要。
 - 记录 `ops:scheduled-job:update` 操作日志。
 
 ### 启用或禁用
@@ -595,6 +614,7 @@ registry。保留期仍在服务启动边界读取和校验，handler 不重复�
 - 权限：`ops:scheduled-job:update`。
 - body 严格为 `enabled: boolean`。
 - 启用计算未来首个时刻；禁用清空 `nextRunAt`；不取消当前运行。
+- 返回更新后的任务详情，不附带运行摘要。
 - 根据目标状态记录 `ops:scheduled-job:enable` 或 `ops:scheduled-job:disable`。
 
 ### 手动执行
@@ -602,7 +622,7 @@ registry。保留期仍在服务启动边界读取和校验，handler 不重复�
 `POST /api/ops/scheduled-jobs/:taskKey/runs`
 
 - 权限：`ops:scheduled-job:execute`。
-- 无业务 body。
+- 不定义也不读取请求 body。
 - 成功认领返回 `202` 和 `runId`。
 - 同任务运行中时仍插入手动 `skipped / overlap`，返回 `409`，响应提供本次
   `skippedRunId` 和当前 `activeRunId`，便于 UI 刷新。
@@ -627,7 +647,7 @@ registry。保留期仍在服务启动边界读取和校验，handler 不重复�
 `POST /api/ops/scheduled-jobs/:taskKey/runs/:runId/cancel`
 
 - 权限：`ops:scheduled-job:cancel`。
-- 无业务 body。
+- 不定义也不读取请求 body。
 - 首次接受或重复读取同一取消请求时返回 `202` 和当前运行摘要；终态、非当前运行或不一致
   状态返回 `409`。
 - 记录 `ops:scheduled-job:cancel` 操作日志。
@@ -663,7 +683,8 @@ HTTP 请求是否成功。
 
 `scheduled`、`recovery` 和 handler 内部事件没有用户、session 或 request context，不写
 操作日志。运行开始、成功、失败、跳过、中断和取消只进入 `ops_job_runs` 与 Pino。手动
-运行记录独立保存触发人快照；取消记录保存首次取消人快照。
+运行记录独立保存触发人身份快照；取消记录保存首次取消人身份快照。session ID 和 request ID
+只由操作日志保存，不复制到运行记录。
 
 ## 前端
 
@@ -683,11 +704,11 @@ HTTP 请求是否成功。
 
 操作列固定在表格右侧，并按实际四个文字操作使用紧凑固定宽度，不为操作区保留额外空白。
 
-页面列表复用前端统一的查询缓存，初次进入、用户操作成功和聚焦运行到达终态后使列表失效并
-重新查询。页面采用与系统配置注册表一致的关键词筛选区，可按任务 key、名称和说明在前端
-筛选；输入仅在点击“查询”后生效，同时该操作使任务列表查询失效并重新拉取，以此承载显式
-刷新能力，不另设刷新按钮。“重置”清除关键词并恢复完整列表，不额外发起请求。编辑和日志
-drawer 按首次打开懒加载。页面不持续轮询全部任务，也不为八个固定任务增加分页。
+页面列表复用前端统一的查询缓存，初次进入和用户操作成功后使列表失效并重新查询。页面采用
+与系统配置注册表一致的关键词筛选区，可按任务 key、名称和说明在前端筛选；输入仅在点击
+“查询”后生效，同时该操作使任务列表查询失效并重新拉取，以此承载显式刷新能力，不另设
+刷新按钮。“重置”清除关键词并恢复完整列表，不额外发起请求。编辑和日志 drawer 按首次
+打开懒加载。页面不持续轮询全部任务，也不为八个固定任务增加分页。
 
 ### 编辑
 
@@ -703,7 +724,8 @@ drawer 按首次打开懒加载。页面不持续轮询全部任务，也不为�
 
 保存前客户端校验只改善体验，服务端仍是安全边界。编辑界面明确提示：修改计划或禁用不会
 影响当前运行；重新启用不会补跑禁用期间的计划。表单发生修改后关闭抽屉必须先确认是否放弃
-未保存更改。保存请求使用前端统一的 mutation 状态管理，并忽略抽屉会话失效后的迟到结果。
+未保存更改。表单状态、字段校验和脏状态使用与其它 form drawer 一致的 TanStack Form；保存
+请求使用前端统一的 mutation 状态管理，并忽略抽屉会话失效后的迟到结果。
 
 ### 手动执行与取消
 
@@ -726,15 +748,15 @@ drawer 按首次打开懒加载。页面不持续轮询全部任务，也不为�
 
 - run ID、task key、状态和触发来源。
 - `scheduledFor`、创建、开始、取消请求、结束时间和耗时。
-- executor ID。
 - 删除、失败计数和安全错误分类、摘要；`interrupted` 的耗时显示为“未知”。
 - 手动触发人和取消人快照；不适用时不展示空块。
 
-打开到 `running` 详情时每 2 秒只轮询该 run。终态、切换记录、关闭 drawer 或离开路由时
-取消 timer 和未完成查询。聚焦运行到达终态后刷新日志列表和任务列表，避免详情、日志行和
-任务行显示不同状态。状态中文映射、状态标签类型和操作日志 action 中文标签集中放在 ops
-feature labels，不在页面内重复散落。日志列表和详情使用与其它页面一致的查询缓存、查询 key、
-loading/error 状态及请求 `AbortSignal`；页面只自行维护视图切换和运行中详情的轮询 timer。
+打开到 `running` 详情时通过 Pinia Colada 官方 Auto Refetch 插件每 2 秒只重新查询该 run；
+终态、切换记录、关闭 drawer 或离开路由后不再继续轮询，页面不自行维护 timer 或请求取消
+逻辑。详情视图不加载日志列表，返回列表时重新查询当前页；任务列表不监听运行终态，用户通过
+页面“查询”显式获取最新状态。状态中文映射、状态标签类型和操作日志 action 中文标签集中
+放在 ops feature labels，不在页面内重复散落。日志列表和详情使用与其它页面一致的查询缓存、
+查询 key 和 loading/error 状态。
 
 ## 错误、日志与安全
 
@@ -756,10 +778,10 @@ Pino 事件至少包括：
 - `scheduled job finalization failed`
 - `scheduled job scheduler query failed`
 
-所有事件包含可用的 `taskKey`、`runId`、`triggerSource` 和 `executorId`，使用基础进程
-logger；后台运行不创建假的 request logger。原始 Error 只进入 Pino 的 `err` 字段并沿用已有
-redaction。数据库运行记录绝不保存 raw Error、stack、SQL、连接参数、文件路径、storage key、
-完整请求、响应或任意 JSON。
+实际执行期间的事件包含 `taskKey`、`runId`、`triggerSource` 和当前进程的 `executorId`；启动时
+确认旧运行中断的事件不伪造旧进程 ID。所有事件使用基础进程 logger，后台运行不创建假的
+request logger。原始 Error 只进入 Pino 的 `err` 字段并沿用已有 redaction。数据库运行记录
+绝不保存 raw Error、stack、SQL、连接参数、文件路径、storage key、完整请求、响应或任意 JSON。
 
 运行详情中的用户名、昵称和 UUID 是已批准的管理员审计快照。普通 `list` 权限可以读取任务
 运行及这些快照，与现有操作日志查看权限模型保持一致。
@@ -773,10 +795,12 @@ redaction。数据库运行记录绝不保存 raw Error、stack、SQL、连接�
 - 校验合法与非法 IANA 时区。
 - 固定时钟验证未来五次计算、严格未来语义和至少一个夏令时跳跃/重复边界。
 - 拒绝语法可解析但没有未来执行时刻的表达式。
-- 验证请求和响应 strict schema、状态派生、计数、操作者与取消快照形状。
+- 验证请求和响应 strict schema、有限枚举、UUID、时间、计数边界和敏感字段裁剪；contracts
+  不重复数据库状态约束。
 
 ### 服务端
 
+- 数据库约束测试覆盖运行状态、计数、触发来源、操作者快照和取消快照的完整形状。
 - 迁移为 registry 中每个任务产生且只产生一条种子；默认 Cron 语义合法、每项保持约六小时
   一次、相位互不冲突，并满足附件任务的既定先后关系。测试只断言这些性质，不快照或逐项断言
   具体小时、分钟；首次到期且以后不被启动覆盖，新增任务不重新平衡旧计划。
@@ -809,7 +833,8 @@ redaction。数据库运行记录绝不保存 raw Error、stack、SQL、连接�
 
 ### 前端
 
-- 无 `list` 权限时菜单/页面不可访问；按钮按 `update`、`execute`、`cancel` 独立控制。
+- 菜单和页面访问沿用现有菜单资源权限；接口继续要求 `list` 权限，按钮按 `update`、
+  `execute`、`cancel` 独立控制。
 - Cron 错误、时区错误和未来五次预览可见。
 - 修改计划后关闭编辑抽屉会触发未保存更改确认。
 - 启停、保存、手动执行、overlap 和取消反馈正确。
@@ -834,7 +859,7 @@ redaction。数据库运行记录绝不保存 raw Error、stack、SQL、连接�
 7. 定向回归、敏感信息检查、README 或环境变量文档更新，以及完整验证。
 
 旧 maintenance worker 与新 Scheduler 不能同时启动。切换提交必须删除旧入口接线和 interval
-配置后再启用新运行时，避免同一清理逻辑重复执行。
+配置后再启用新 Scheduler，避免同一清理逻辑重复执行。
 
 ## 验收标准
 

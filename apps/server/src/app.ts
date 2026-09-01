@@ -18,7 +18,7 @@ import { healthRoutes } from './modules/health/routes'
 import { createIconRoutes } from './modules/icons/routes'
 import { createIconSearchRoutes } from './modules/icons/search/routes'
 import { createOpsRoutes } from './modules/ops/routes'
-import type { ScheduledJobRuntimeCommands } from './modules/ops/scheduled-jobs/runtime'
+import type { ScheduledJobService } from './modules/ops/scheduled-jobs/service'
 import { createSystemRoutes } from './modules/system/routes'
 import { logger } from './runtime/logger'
 import type { OperationLogEventReceiver } from './runtime/operation-log'
@@ -27,25 +27,8 @@ import { readTrustedProxyPolicy, type TrustedProxyPolicy } from './runtime/trust
 export type CreateAppOptions = {
   logger?: Logger
   operationLogReceiver: OperationLogEventReceiver
-  scheduledJobs: ScheduledJobRuntimeCommands
+  scheduledJobService: ScheduledJobService
   trustedProxyPolicy?: TrustedProxyPolicy
-}
-
-export function createApiRoutes(database: Db, scheduledJobs: ScheduledJobRuntimeCommands) {
-  const apiJsonBodyLimit = createJsonBodyLimit(5 * 1024 * 1024)
-  const authMiddleware = createAuthMiddleware(database)
-
-  return new Hono()
-    .use('*', apiJsonBodyLimit)
-    .route('/', healthRoutes)
-    .route('/auth', createAuthRoutes(database, authMiddleware))
-    .route('/icons/search', createIconSearchRoutes(database, authMiddleware))
-    .route('/icons', createIconRoutes(database))
-    .route('/attachments', createAttachmentRoutes(database, authMiddleware))
-    .route('/ops', createOpsRoutes(database, authMiddleware, scheduledJobs))
-    .route('/system', createSystemRoutes(database, authMiddleware))
-    .route('/content', createContentRoutes(database, authMiddleware))
-    .route('/demos', createDemoRoutes(authMiddleware))
 }
 
 export function rootErrorHandler<TEnv extends Env>(error: Error, c: Context<TEnv>) {
@@ -61,6 +44,20 @@ export function rootErrorHandler<TEnv extends Env>(error: Error, c: Context<TEnv
 export function createApp(database: Db, options: CreateAppOptions) {
   const appLogger = options.logger ?? logger
   const trustedProxyPolicy = options.trustedProxyPolicy ?? readTrustedProxyPolicy({})
+  const apiJsonBodyLimit = createJsonBodyLimit(5 * 1024 * 1024)
+  const authMiddleware = createAuthMiddleware(database)
+
+  const api = new Hono()
+    .use('*', apiJsonBodyLimit)
+    .route('/', healthRoutes)
+    .route('/auth', createAuthRoutes(database, authMiddleware))
+    .route('/icons/search', createIconSearchRoutes(database, authMiddleware))
+    .route('/icons', createIconRoutes(database))
+    .route('/attachments', createAttachmentRoutes(database, authMiddleware))
+    .route('/ops', createOpsRoutes(database, authMiddleware, options.scheduledJobService))
+    .route('/system', createSystemRoutes(database, authMiddleware))
+    .route('/content', createContentRoutes(database, authMiddleware))
+    .route('/demos', createDemoRoutes(authMiddleware))
 
   return new Hono<RequestContextEnv>()
     .use('*', createRequestContextMiddleware({ logger: appLogger, trustedProxyPolicy }))
@@ -73,7 +70,7 @@ export function createApp(database: Db, options: CreateAppOptions) {
       }),
     )
     .onError(rootErrorHandler)
-    .route('/api', createApiRoutes(database, options.scheduledJobs))
+    .route('/api', api)
 }
 
-export type AppType = ReturnType<typeof createApiRoutes>
+export type AppType = ReturnType<typeof createApp>

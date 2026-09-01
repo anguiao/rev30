@@ -5,23 +5,22 @@ import { unionAll } from 'drizzle-orm/pg-core'
 import type { Logger } from 'pino'
 import type { Db } from '../../db'
 import { attachmentReferences, attachments, attachmentUploadSessions } from '../../db/schema'
+import { AttachmentStorageListError } from './errors'
 import { lockActiveAttachmentsByIds } from './references'
-import { ATTACHMENT_UPLOAD_STORAGE_PREFIX, type AttachmentStorage } from './storage'
+import {
+  ATTACHMENT_UPLOAD_STORAGE_PREFIX,
+  type AttachmentStorage,
+  type AttachmentStorageEntry,
+} from './storage'
 
-export type AttachmentCleanupContext = {
+type AttachmentCleanupOptions = {
   signal: AbortSignal
   logger: Logger
 }
 
-export class AttachmentCleanupStorageError extends Error {
-  constructor(cause: unknown) {
-    super('Attachment cleanup storage operation failed', { cause })
-    this.name = 'AttachmentCleanupStorageError'
-  }
-}
-
-function assertNotAborted(signal: AbortSignal) {
-  signal.throwIfAborted()
+type AttachmentCleanupResult = {
+  deletedCount: number
+  failedCount: number
 }
 
 function unreferencedAttachmentCondition() {
@@ -39,68 +38,55 @@ function getUploadIdFromUploadStorageKey(storageKey: string) {
   return extensionSeparator === -1 ? filename : filename.slice(0, extensionSeparator)
 }
 
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
-}
-
-async function hasActiveStorageReference(
-  database: Db,
+async function deleteAttachmentStorageObject(
   storage: AttachmentStorage,
   storageKey: string,
-  signal: AbortSignal,
+  options: AttachmentCleanupOptions,
+  logFields?: { attachmentId: string } | { uploadId: string },
 ) {
-  assertNotAborted(signal)
-  const [attachment] = await database
-    .select({ storageKey: attachments.storageKey })
-    .from(attachments)
-    .where(
-      and(
-        eq(attachments.storageProvider, storage.provider),
-        eq(attachments.storageKey, storageKey),
-        isNull(attachments.deletedAt),
-      ),
+  const { signal, logger } = options
+  signal.throwIfAborted()
+
+  try {
+    await storage.delete(storageKey)
+  } catch (error) {
+    signal.throwIfAborted()
+    logger.error(
+      { err: error, storageKey, ...logFields },
+      'attachment cleanup storage deletion failed',
     )
-    .limit(1)
-  assertNotAborted(signal)
-  if (attachment) return true
+    return false
+  }
 
-  const uploadId = getUploadIdFromUploadStorageKey(storageKey)
-  if (!isUuid(uploadId)) return false
-
-  const [uploadSession] = await database
-    .select({ id: attachmentUploadSessions.id })
-    .from(attachmentUploadSessions)
-    .where(eq(attachmentUploadSessions.id, uploadId))
-    .limit(1)
-  assertNotAborted(signal)
-  return uploadSession !== undefined
+  signal.throwIfAborted()
+  return true
 }
 
 export async function cleanupOrphanedAttachmentUploads(
   database: Db,
   storage: AttachmentStorage,
   retentionMs: number,
-  context: AttachmentCleanupContext,
-): Promise<{ deletedCount: number; failedCount: number }> {
-  const { signal, logger } = context
+  options: AttachmentCleanupOptions,
+): Promise<AttachmentCleanupResult> {
+  const { signal } = options
   const cutoff = subMilliseconds(new Date(), retentionMs)
 
-  assertNotAborted(signal)
-  let candidates
+  signal.throwIfAborted()
+  let entries: AttachmentStorageEntry[]
   try {
-    candidates = await storage.list(ATTACHMENT_UPLOAD_STORAGE_PREFIX)
+    entries = await storage.list(ATTACHMENT_UPLOAD_STORAGE_PREFIX)
   } catch (error) {
-    throw new AttachmentCleanupStorageError(error)
+    signal.throwIfAborted()
+    throw new AttachmentStorageListError(error)
   }
-  assertNotAborted(signal)
-  candidates = candidates.filter((entry) => entry.modifiedAt.getTime() <= cutoff.getTime())
+  signal.throwIfAborted()
+  const candidates = entries.filter((entry) => entry.modifiedAt.getTime() <= cutoff.getTime())
 
   if (candidates.length === 0) {
     return { deletedCount: 0, failedCount: 0 }
   }
 
-  assertNotAborted(signal)
-  const persistedRows = await unionAll(
+  const protectedRows = await unionAll(
     database
       .select({
         storageKey: sql<string | null>`${attachments.storageKey}`.as('storage_key'),
@@ -121,94 +107,77 @@ export async function cleanupOrphanedAttachmentUploads(
       })
       .from(attachmentUploadSessions),
   )
-  assertNotAborted(signal)
+  signal.throwIfAborted()
 
-  const persistedStorageKeys = new Set(
-    persistedRows.flatMap((row) => (row.storageKey ? [row.storageKey] : [])),
+  const protectedStorageKeys = new Set(
+    protectedRows.flatMap((row) => (row.storageKey ? [row.storageKey] : [])),
   )
-  const activeUploadIds = new Set(
-    persistedRows.flatMap((row) => (row.uploadId ? [row.uploadId] : [])),
+  const protectedUploadIds = new Set(
+    protectedRows.flatMap((row) => (row.uploadId ? [row.uploadId] : [])),
   )
-  let deletedCount = 0
-  let failedCount = 0
+  const result: AttachmentCleanupResult = { deletedCount: 0, failedCount: 0 }
 
   for (const candidate of candidates) {
-    assertNotAborted(signal)
     if (
-      persistedStorageKeys.has(candidate.key) ||
-      activeUploadIds.has(getUploadIdFromUploadStorageKey(candidate.key))
+      protectedStorageKeys.has(candidate.key) ||
+      protectedUploadIds.has(getUploadIdFromUploadStorageKey(candidate.key))
     ) {
       continue
     }
 
-    if (await hasActiveStorageReference(database, storage, candidate.key, signal)) {
-      continue
-    }
-
-    assertNotAborted(signal)
-    try {
-      await storage.delete(candidate.key)
-      deletedCount += 1
-      assertNotAborted(signal)
-    } catch (error) {
-      if (signal.aborted) signal.throwIfAborted()
-      failedCount += 1
-      logger.error(
-        { err: error, storageKey: candidate.key },
-        'orphaned attachment storage deletion failed',
-      )
+    if (await deleteAttachmentStorageObject(storage, candidate.key, options)) {
+      result.deletedCount += 1
+    } else {
+      result.failedCount += 1
     }
   }
 
-  return { deletedCount, failedCount }
+  return result
 }
 
 export async function cleanupExpiredAttachmentUploadSessions(
   database: Db,
   storage: AttachmentStorage,
-  context: AttachmentCleanupContext,
-): Promise<{ deletedCount: number; failedCount: number }> {
-  const { signal, logger } = context
-  assertNotAborted(signal)
+  options: AttachmentCleanupOptions,
+): Promise<AttachmentCleanupResult> {
+  const { signal } = options
+  signal.throwIfAborted()
   const expiredSessions = await database
     .delete(attachmentUploadSessions)
     .where(lte(attachmentUploadSessions.expiresAt, new Date()))
     .returning()
-  assertNotAborted(signal)
+  signal.throwIfAborted()
 
-  let failedCount = 0
+  const result: AttachmentCleanupResult = {
+    deletedCount: expiredSessions.length,
+    failedCount: 0,
+  }
   for (const session of expiredSessions) {
-    assertNotAborted(signal)
     if (!session.storageKey || session.storageProvider !== storage.provider) {
       continue
     }
 
-    assertNotAborted(signal)
-    try {
-      await storage.delete(session.storageKey)
-      assertNotAborted(signal)
-    } catch (error) {
-      if (signal.aborted) signal.throwIfAborted()
-      failedCount += 1
-      logger.error(
-        { err: error, storageKey: session.storageKey, uploadId: session.id },
-        'expired attachment upload session storage deletion failed',
-      )
+    if (
+      !(await deleteAttachmentStorageObject(storage, session.storageKey, options, {
+        uploadId: session.id,
+      }))
+    ) {
+      result.failedCount += 1
     }
   }
 
-  return { deletedCount: expiredSessions.length, failedCount }
+  return result
 }
 
 export async function cleanupUnreferencedAttachments(
   database: Db,
   storage: AttachmentStorage,
   retentionMs: number,
-  context: AttachmentCleanupContext,
-): Promise<{ deletedCount: number; failedCount: number }> {
-  const { signal, logger } = context
+  options: AttachmentCleanupOptions,
+): Promise<AttachmentCleanupResult> {
+  const { signal } = options
   const cutoff = subMilliseconds(new Date(), retentionMs)
-  assertNotAborted(signal)
+  signal.throwIfAborted()
   const candidates = await database
     .select({
       id: attachments.id,
@@ -224,35 +193,18 @@ export async function cleanupUnreferencedAttachments(
       ),
     )
     .orderBy(asc(attachments.updatedAt), asc(attachments.id))
-  assertNotAborted(signal)
+  signal.throwIfAborted()
 
-  let deletedCount = 0
-  let failedCount = 0
+  const result: AttachmentCleanupResult = { deletedCount: 0, failedCount: 0 }
 
   for (const candidate of candidates) {
-    assertNotAborted(signal)
+    signal.throwIfAborted()
     const deleted = await database.transaction(async (tx) => {
-      assertNotAborted(signal)
+      signal.throwIfAborted()
       const [locked] = await lockActiveAttachmentsByIds(tx, [candidate.id])
-      assertNotAborted(signal)
+      signal.throwIfAborted()
 
-      if (
-        !locked ||
-        locked.storageProvider !== storage.provider ||
-        locked.cleanupPolicy !== ATTACHMENT_CLEANUP_POLICY_UNREFERENCED ||
-        locked.updatedAt.getTime() > cutoff.getTime()
-      ) {
-        return undefined
-      }
-
-      const [reference] = await tx
-        .select({ attachmentId: attachmentReferences.attachmentId })
-        .from(attachmentReferences)
-        .where(eq(attachmentReferences.attachmentId, candidate.id))
-        .limit(1)
-      assertNotAborted(signal)
-
-      if (reference) {
+      if (!locked) {
         return undefined
       }
 
@@ -270,30 +222,25 @@ export async function cleanupUnreferencedAttachments(
           ),
         )
         .returning()
-      assertNotAborted(signal)
+      signal.throwIfAborted()
 
       return deleted
     })
-    assertNotAborted(signal)
+    signal.throwIfAborted()
 
     if (!deleted) {
       continue
     }
 
-    deletedCount += 1
-    assertNotAborted(signal)
-    try {
-      await storage.delete(deleted.storageKey)
-      assertNotAborted(signal)
-    } catch (error) {
-      if (signal.aborted) signal.throwIfAborted()
-      failedCount += 1
-      logger.error(
-        { attachmentId: deleted.id, err: error, storageKey: deleted.storageKey },
-        'unreferenced attachment storage deletion failed',
-      )
+    result.deletedCount += 1
+    if (
+      !(await deleteAttachmentStorageObject(storage, deleted.storageKey, options, {
+        attachmentId: deleted.id,
+      }))
+    ) {
+      result.failedCount += 1
     }
   }
 
-  return { deletedCount, failedCount }
+  return result
 }

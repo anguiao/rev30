@@ -1,44 +1,27 @@
-import type { ScheduledJobTaskKey, ScheduledJobTriggerSource } from '@rev30/contracts'
+import type { ScheduledJobTaskKey, ScheduledJobTriggerSource, User } from '@rev30/contracts'
 import type { Logger } from 'pino'
-import type {
-  ScheduledJobClaimResult,
-  ScheduledJobDueCandidate,
-  ScheduledJobRecoveryCandidate,
-  createScheduledJobRepository,
-} from './repository'
+import { ScheduledJobStateConflictError } from './errors'
+import type { RecoverableScheduledJobRun, ScheduledJobRepository } from './repository'
 import type { ScheduledJobRunner } from './runner'
 
-export const SCHEDULED_JOB_AUTOMATIC_CAPACITY = 2
+const SCHEDULED_JOB_AUTOMATIC_CAPACITY = 2
 const RETRY_MS = 60_000
 const MAX_TIMER_DELAY_MS = 2_147_483_647
 
-type SchedulerRepository = Pick<
-  ReturnType<typeof createScheduledJobRepository>,
-  | 'claimRecovery'
-  | 'claimScheduled'
-  | 'findNextActiveScheduledAt'
-  | 'findNextScheduledAt'
-  | 'listDueScheduled'
->
-
-type SchedulerRunner = Pick<ScheduledJobRunner, 'run'>
-
 type SchedulerOptions = {
   executorId: string
-  repository: SchedulerRepository
-  runner: SchedulerRunner
+  repository: ScheduledJobRepository
+  runner: ScheduledJobRunner
   logger: Logger
-  now?: () => Date
 }
 
 export function createScheduledJobScheduler(options: SchedulerOptions) {
-  const now = options.now ?? (() => new Date())
-  const recoveryCandidates: ScheduledJobRecoveryCandidate[] = []
+  const recoverableRuns: RecoverableScheduledJobRun[] = []
   const automaticRuns = new Set<string>()
+  const manualStarts = new Set<Promise<unknown>>()
   let timer: ReturnType<typeof setTimeout> | null = null
-  let polling = false
   let pollRequested = false
-  let pollDrainPromise: Promise<void> | null = null
+  let pollPromise: Promise<void> | null = null
   let retryPending = false
   let stopped = false
 
@@ -64,15 +47,16 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
   function logSkipped(
     taskKey: ScheduledJobTaskKey,
     triggerSource: ScheduledJobTriggerSource,
-    result: Extract<ScheduledJobClaimResult, { kind: 'overlap' }>,
+    runId: string,
+    blockedByRunId: string,
   ) {
     options.logger.info(
       {
         taskKey,
-        runId: result.runId,
+        runId,
         triggerSource,
         executorId: options.executorId,
-        activeRunId: result.activeRunId,
+        activeRunId: blockedByRunId,
       },
       'scheduled job skipped',
     )
@@ -84,30 +68,24 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
     runId: string,
   ) {
     automaticRuns.add(runId)
-    let settled = false
-    const releaseSlot = (shouldWake: boolean) => {
-      if (settled) return
-      settled = true
-      automaticRuns.delete(runId)
-      if (shouldWake) wake()
+    const releaseSlot = () => {
+      if (automaticRuns.delete(runId)) wake()
     }
-    try {
-      void options.runner
-        .run({
-          taskKey,
-          runId,
-          triggerSource,
-          onHandlerSettled: () => releaseSlot(true),
-          onFinalized: wake,
-        })
-        .catch((error: unknown) => {
-          releaseSlot(false)
-          scheduleFailureRetry(error)
-        })
-    } catch (error) {
-      releaseSlot(false)
-      scheduleFailureRetry(error)
-    }
+    void options.runner
+      .run({
+        taskKey,
+        runId,
+        triggerSource,
+        onHandlerSettled: releaseSlot,
+        onFinalized: wake,
+      })
+      .catch((error: unknown) => {
+        options.logger.error(
+          { err: error, taskKey, runId, triggerSource, executorId: options.executorId },
+          'scheduled job runner failed',
+        )
+        releaseSlot()
+      })
   }
 
   function scheduleFailureRetry(error: unknown) {
@@ -123,55 +101,19 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
   async function processRecovery() {
     while (
       !stopped &&
-      recoveryCandidates.length > 0 &&
+      recoverableRuns.length > 0 &&
       automaticRuns.size < SCHEDULED_JOB_AUTOMATIC_CAPACITY
     ) {
-      const candidate = recoveryCandidates[0]!
+      const run = recoverableRuns[0]!
       const result = await options.repository.claimRecovery({
-        candidate,
-        now: now(),
-        executorId: options.executorId,
+        run,
+        now: new Date(),
       })
-      recoveryCandidates.shift()
-      if (result.kind === 'overlap') {
-        logSkipped(candidate.taskKey, 'recovery', result)
+      recoverableRuns.shift()
+      if (result.blockedByRunId !== null) {
+        logSkipped(run.taskKey, 'recovery', result.runId, result.blockedByRunId)
       } else {
-        dispatch(candidate.taskKey, 'recovery', result.runId)
-      }
-    }
-  }
-
-  async function processDueOverlaps(candidates: ScheduledJobDueCandidate[]) {
-    for (const candidate of candidates) {
-      if (stopped || candidate.activeRunId === null) continue
-      const result = await options.repository.claimScheduled({
-        taskKey: candidate.taskKey,
-        now: now(),
-        executorId: options.executorId,
-        allowRunning: false,
-      })
-      if (result.kind === 'overlap') logSkipped(candidate.taskKey, 'scheduled', result)
-    }
-  }
-
-  async function processRunnableDue(candidates: ScheduledJobDueCandidate[]) {
-    for (const candidate of candidates) {
-      if (
-        stopped ||
-        candidate.activeRunId !== null ||
-        automaticRuns.size >= SCHEDULED_JOB_AUTOMATIC_CAPACITY
-      ) {
-        continue
-      }
-      const result = await options.repository.claimScheduled({
-        taskKey: candidate.taskKey,
-        now: now(),
-        executorId: options.executorId,
-      })
-      if (result.kind === 'overlap') {
-        logSkipped(candidate.taskKey, 'scheduled', result)
-      } else if (result.kind === 'running') {
-        dispatch(candidate.taskKey, 'scheduled', result.runId)
+        dispatch(run.taskKey, 'recovery', result.runId)
       }
     }
   }
@@ -182,21 +124,38 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
     try {
       await processRecovery()
       if (stopped) return
-      const due = await options.repository.listDueScheduled({ now: now() })
-      await processDueOverlaps(due)
-      await processRunnableDue(due)
-      if (
-        !stopped &&
-        recoveryCandidates.length === 0 &&
-        automaticRuns.size < SCHEDULED_JOB_AUTOMATIC_CAPACITY
-      ) {
-        const nextScheduledAt = await options.repository.findNextScheduledAt()
-        if (nextScheduledAt !== null) setWakeTimer(nextScheduledAt.getTime() - now().getTime())
-      } else if (!stopped && automaticRuns.size >= SCHEDULED_JOB_AUTOMATIC_CAPACITY) {
-        const nextActiveScheduledAt = await options.repository.findNextActiveScheduledAt()
-        if (nextActiveScheduledAt !== null) {
-          setWakeTimer(nextActiveScheduledAt.getTime() - now().getTime())
+      const due = await options.repository.listDueScheduled({ now: new Date() })
+      for (const plan of due) {
+        if (stopped) return
+        if (plan.activeRunId !== null) {
+          const result = await options.repository.claimScheduled({
+            taskKey: plan.taskKey,
+            now: new Date(),
+            allowRunning: false,
+          })
+          if (result && result.blockedByRunId !== null) {
+            logSkipped(plan.taskKey, 'scheduled', result.runId, result.blockedByRunId)
+          }
+          continue
         }
+        if (automaticRuns.size >= SCHEDULED_JOB_AUTOMATIC_CAPACITY) continue
+        const result = await options.repository.claimScheduled({
+          taskKey: plan.taskKey,
+          now: new Date(),
+        })
+        if (result && result.blockedByRunId !== null) {
+          logSkipped(plan.taskKey, 'scheduled', result.runId, result.blockedByRunId)
+        } else if (result) {
+          dispatch(plan.taskKey, 'scheduled', result.runId)
+        }
+      }
+      if (stopped) return
+      const nextWakeAt =
+        automaticRuns.size >= SCHEDULED_JOB_AUTOMATIC_CAPACITY
+          ? await options.repository.findNextActiveScheduledAt()
+          : await options.repository.findNextScheduledAt()
+      if (nextWakeAt !== null) {
+        setWakeTimer(nextWakeAt.getTime() - Date.now())
       }
     } catch (error) {
       scheduleFailureRetry(error)
@@ -205,22 +164,17 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
 
   function queuePoll() {
     if (stopped) return
-    if (polling) {
+    if (pollPromise) {
       pollRequested = true
       return
     }
-    polling = true
-    pollDrainPromise = new Promise<void>((resolve) => {
-      queueMicrotask(() => {
-        void poll().finally(() => {
-          polling = false
-          if (pollRequested) {
-            pollRequested = false
-            queuePoll()
-          }
-          resolve()
-        })
-      })
+    pollPromise = (async () => {
+      do {
+        pollRequested = false
+        await poll()
+      } while (pollRequested && !stopped)
+    })().finally(() => {
+      pollPromise = null
     })
   }
 
@@ -230,25 +184,102 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
     queuePoll()
   }
 
+  function start(runs: readonly RecoverableScheduledJobRun[]) {
+    recoverableRuns.push(
+      ...runs.toSorted(
+        (left, right) =>
+          left.startedAt.getTime() - right.startedAt.getTime() ||
+          left.taskKey.localeCompare(right.taskKey),
+      ),
+    )
+    wake()
+  }
+
+  async function startManualRun(
+    taskKey: ScheduledJobTaskKey,
+    actor: Pick<User, 'id' | 'nickname' | 'username'>,
+  ) {
+    const result = await options.repository.claimManual({
+      taskKey,
+      actor,
+      now: new Date(),
+    })
+    if (result.blockedByRunId === null) {
+      void options.runner
+        .run({
+          taskKey,
+          runId: result.runId,
+          triggerSource: 'manual',
+          onFinalized: wake,
+        })
+        .catch((error: unknown) => {
+          options.logger.error(
+            {
+              err: error,
+              taskKey,
+              runId: result.runId,
+              triggerSource: 'manual',
+              executorId: options.executorId,
+            },
+            'scheduled job runner failed',
+          )
+        })
+    } else {
+      logSkipped(taskKey, 'manual', result.runId, result.blockedByRunId)
+    }
+    return result
+  }
+
+  async function runManual(input: {
+    taskKey: ScheduledJobTaskKey
+    actor: Pick<User, 'id' | 'nickname' | 'username'>
+  }) {
+    if (stopped) throw new ScheduledJobStateConflictError()
+
+    const start = startManualRun(input.taskKey, input.actor)
+    manualStarts.add(start)
+    try {
+      return await start
+    } finally {
+      manualStarts.delete(start)
+    }
+  }
+
+  async function requestCancellation(input: {
+    taskKey: ScheduledJobTaskKey
+    runId: string
+    actor: Pick<User, 'id' | 'nickname' | 'username'>
+  }) {
+    const run = await options.repository.requestCancellation({
+      ...input,
+      now: new Date(),
+    })
+    const logFields = {
+      taskKey: input.taskKey,
+      runId: input.runId,
+      triggerSource: run.triggerSource,
+      executorId: options.executorId,
+    }
+    options.logger.info(logFields, 'scheduled job cancellation requested')
+    if (!options.runner.abort(input.runId)) {
+      options.logger.error(logFields, 'scheduled job cancellation controller missing')
+    }
+    return run
+  }
+
+  async function stop() {
+    stopped = true
+    clearWakeTimer()
+    await Promise.allSettled([pollPromise, ...manualStarts])
+    await options.runner.stop()
+  }
+
   return {
-    start(candidates: readonly ScheduledJobRecoveryCandidate[]) {
-      recoveryCandidates.push(
-        ...candidates.toSorted(
-          (left, right) =>
-            left.startedAt.getTime() - right.startedAt.getTime() ||
-            left.taskKey.localeCompare(right.taskKey),
-        ),
-      )
-      wake()
-    },
+    start,
+    runManual,
+    requestCancellation,
     wake,
-    async stop() {
-      stopped = true
-      pollRequested = false
-      retryPending = false
-      clearWakeTimer()
-      await pollDrainPromise
-    },
+    stop,
   }
 }
 

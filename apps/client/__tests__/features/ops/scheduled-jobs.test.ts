@@ -21,10 +21,7 @@ import { createTestPinia } from '../../helpers/pinia'
 
 const taskKey = 'auth-session-cleanup' as const
 const runId = '11111111-1111-4111-8111-111111111111'
-const executorId = '22222222-2222-4222-8222-222222222222'
 const userId = '33333333-3333-4333-8333-333333333333'
-const sessionId = '44444444-4444-4444-8444-444444444444'
-const requestId = '55555555-5555-4555-8555-555555555555'
 
 const job: ScheduledJobListResponse[number] = {
   taskKey,
@@ -53,9 +50,7 @@ const run: ScheduledJobRunDetail = {
   taskKey,
   triggerSource: 'manual',
   status: 'success',
-  skipReason: null,
   scheduledFor: null,
-  executorId,
   deletedCount: 4,
   failedCount: 0,
   errorCategory: null,
@@ -63,19 +58,14 @@ const run: ScheduledJobRunDetail = {
   triggeredByUserId: userId,
   triggeredByUsername: 'ada',
   triggeredByNickname: 'Ada Lovelace',
-  triggeredBySessionId: sessionId,
-  triggerRequestId: requestId,
   cancelRequestedAt: null,
   cancelRequestedByUserId: null,
   cancelRequestedByUsername: null,
   cancelRequestedByNickname: null,
-  cancelRequestedBySessionId: null,
-  cancelRequestId: null,
   startedAt: '2026-08-25T04:00:00.000Z',
   finishedAt: '2026-08-25T04:00:01.000Z',
   durationMs: 1000,
   createdAt: '2026-08-25T04:00:00.000Z',
-  updatedAt: '2026-08-25T04:00:01.000Z',
 }
 
 const runs: ScheduledJobRunListResponse = {
@@ -85,9 +75,7 @@ const runs: ScheduledJobRunListResponse = {
       taskKey: run.taskKey,
       triggerSource: run.triggerSource,
       status: run.status,
-      skipReason: run.skipReason,
       scheduledFor: run.scheduledFor,
-      executorId: run.executorId,
       deletedCount: run.deletedCount,
       failedCount: run.failedCount,
       errorCategory: run.errorCategory,
@@ -96,7 +84,6 @@ const runs: ScheduledJobRunListResponse = {
       finishedAt: run.finishedAt,
       durationMs: run.durationMs,
       createdAt: run.createdAt,
-      updatedAt: run.updatedAt,
     },
   ],
   total: 1,

@@ -19,7 +19,6 @@ import {
   SCHEDULED_JOB_RUN_STATUS_RUNNING,
   SCHEDULED_JOB_RUN_STATUS_SKIPPED,
   SCHEDULED_JOB_RUN_STATUS_SUCCESS,
-  SCHEDULED_JOB_SKIP_REASON_OVERLAP,
   SCHEDULED_JOB_TRIGGER_SOURCE_MANUAL,
   SCHEDULED_JOB_TRIGGER_SOURCE_RECOVERY,
   SCHEDULED_JOB_TRIGGER_SOURCE_SCHEDULED,
@@ -34,7 +33,6 @@ import {
   type OperationLogResult,
   type ScheduledJobErrorCategory,
   type ScheduledJobRunStatus,
-  type ScheduledJobSkipReason,
   type ScheduledJobTriggerSource,
 } from '@rev30/contracts'
 
@@ -112,10 +110,6 @@ export const scheduledJobTriggerSourceLabels = {
   [SCHEDULED_JOB_TRIGGER_SOURCE_MANUAL]: '手动',
   [SCHEDULED_JOB_TRIGGER_SOURCE_RECOVERY]: '恢复',
 } as const satisfies Record<ScheduledJobTriggerSource, string>
-
-export const scheduledJobSkipReasonLabels = {
-  [SCHEDULED_JOB_SKIP_REASON_OVERLAP]: '任务重叠',
-} as const satisfies Record<ScheduledJobSkipReason, string>
 
 export const scheduledJobErrorCategoryLabels = {
   [SCHEDULED_JOB_ERROR_CATEGORY_PARTIAL_FAILURE]: '部分失败',

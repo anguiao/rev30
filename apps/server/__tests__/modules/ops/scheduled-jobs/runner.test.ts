@@ -1,14 +1,13 @@
 import type { Logger } from 'pino'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  createScheduledJobRunner,
-  ScheduledJobExecutionError,
-} from '../../../../src/modules/ops/scheduled-jobs/runner'
-import type { ScheduledJobFinalizeCandidate } from '../../../../src/modules/ops/scheduled-jobs/repository'
+import { ScheduledJobExecutionError } from '../../../../src/modules/ops/scheduled-jobs/errors'
+import type { ScheduledJobRunCompletion } from '../../../../src/modules/ops/scheduled-jobs/repository'
+import { createScheduledJobRunner } from '../../../../src/modules/ops/scheduled-jobs/runner'
 import {
   scheduledJobTaskKeys,
   type ScheduledJobDefinition,
 } from '../../../../src/modules/ops/scheduled-jobs/registry'
+import { createScheduledJobRepositoryMock } from './helpers'
 
 const taskKey = scheduledJobTaskKeys[0]
 const runId = '10000000-0000-7000-8000-000000000001'
@@ -29,36 +28,25 @@ function setup(run: ScheduledJobDefinition['run']) {
   const finalizeRun = vi
     .fn()
     .mockImplementation(
-      async ({ candidate }: { candidate: ScheduledJobFinalizeCandidate }) => candidate,
+      async ({ completion }: { completion: ScheduledJobRunCompletion }) => completion,
     )
+  const repository = createScheduledJobRepositoryMock({ finalizeRun })
   const definition = { key: taskKey, name: 'Task', description: 'Task', run }
   const registry = { get: vi.fn(() => definition), keys: vi.fn(() => [taskKey]) }
-  let wall = new Date('2026-08-25T00:00:01.000Z')
-  let monotonicCalls = 0
   const runner = createScheduledJobRunner({
     executorId,
     registry,
-    repository: { finalizeRun },
+    repository,
     logger,
-    now: () => wall,
-    monotonicNow: () => (monotonicCalls++ === 0 ? 100 : 350),
   })
 
-  return {
-    child,
-    finalizeRun,
-    logger,
-    runLogger,
-    runner,
-    setClock(nextWall: Date) {
-      wall = nextWall
-    },
-  }
+  return { child, finalizeRun, logger, runLogger, runner }
 }
 
 describe('scheduled job runner', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-25T00:00:01.000Z'))
   })
 
   afterEach(() => {
@@ -80,34 +68,31 @@ describe('scheduled job runner', () => {
         errorSummary: 'Scheduled job completed with failed items',
       },
     ],
-  ] as const)(
-    'maps a strict handler result to a safe terminal candidate',
-    async (result, expected) => {
-      const onHandlerSettled = vi.fn()
-      const context = setup(vi.fn().mockImplementation(async () => result))
-      context.setClock(new Date('2026-08-25T00:00:02.000Z'))
+  ] as const)('maps a strict handler result to a safe completion', async (result, expected) => {
+    const onHandlerSettled = vi.fn()
+    const context = setup(vi.fn().mockImplementation(async () => result))
+    vi.setSystemTime(new Date('2026-08-25T00:00:02.000Z'))
 
-      await context.runner.run({ taskKey, runId, triggerSource: 'scheduled', onHandlerSettled })
+    await context.runner.run({ taskKey, runId, triggerSource: 'scheduled', onHandlerSettled })
 
-      expect(context.finalizeRun).toHaveBeenCalledWith({
-        taskKey,
-        runId,
-        candidate: expect.objectContaining({
-          ...expected,
-          finishedAt: new Date('2026-08-25T00:00:02.000Z'),
-          durationMs: 250,
-        }),
-      })
-      expect(onHandlerSettled).toHaveBeenCalledOnce()
-      expect(context.child).toHaveBeenCalledWith({
-        taskKey,
-        runId,
-        triggerSource: 'scheduled',
-        executorId,
-      })
-      expect(context.runner.abort(runId)).toBe(false)
-    },
-  )
+    expect(context.finalizeRun).toHaveBeenCalledWith({
+      taskKey,
+      runId,
+      completion: expect.objectContaining({
+        ...expected,
+        finishedAt: new Date('2026-08-25T00:00:02.000Z'),
+        durationMs: expect.any(Number),
+      }),
+    })
+    expect(onHandlerSettled).toHaveBeenCalledOnce()
+    expect(context.child).toHaveBeenCalledWith({
+      taskKey,
+      runId,
+      triggerSource: 'scheduled',
+      executorId,
+    })
+    expect(context.runner.abort(runId)).toBe(false)
+  })
 
   it.each([
     [
@@ -139,16 +124,16 @@ describe('scheduled job runner', () => {
 
       await context.runner.run({ taskKey, runId, triggerSource: 'manual' })
 
-      const candidate = context.finalizeRun.mock.calls[0]![0]
-        .candidate as ScheduledJobFinalizeCandidate
-      expect(candidate).toMatchObject({
+      const completion = context.finalizeRun.mock.calls[0]![0]
+        .completion as ScheduledJobRunCompletion
+      expect(completion).toMatchObject({
         status: 'failure',
         deletedCount: null,
         failedCount: null,
         errorCategory: category,
         errorSummary: summary,
       })
-      expect(JSON.stringify(candidate)).not.toContain('secret')
+      expect(JSON.stringify(completion)).not.toContain('secret')
       expect(context.runLogger.error).toHaveBeenCalledWith(
         { err: expect.anything() },
         'scheduled job failed',
@@ -163,8 +148,8 @@ describe('scheduled job runner', () => {
       return { deletedCount: 0, failedCount: 0 }
     })
     const context = setup(handler)
-    context.finalizeRun.mockImplementation(async ({ candidate }) => ({
-      ...candidate,
+    context.finalizeRun.mockImplementation(async ({ completion }) => ({
+      ...completion,
       status: 'cancelled',
       errorCategory: null,
       errorSummary: null,
@@ -189,7 +174,7 @@ describe('scheduled job runner', () => {
     )
   })
 
-  it('retries finalization after 60 seconds with one handler call and an unchanged candidate', async () => {
+  it('retries finalization after 60 seconds with one handler call and an unchanged completion', async () => {
     const handler = vi.fn().mockResolvedValue({ deletedCount: 1, failedCount: 0 })
     const context = setup(handler)
     context.finalizeRun
@@ -197,7 +182,7 @@ describe('scheduled job runner', () => {
       .mockResolvedValueOnce({ status: 'success' })
     const promise = context.runner.run({ taskKey, runId, triggerSource: 'scheduled' })
     await vi.advanceTimersByTimeAsync(0)
-    const firstCandidate = context.finalizeRun.mock.calls[0]![0].candidate
+    const firstCompletion = context.finalizeRun.mock.calls[0]![0].completion
 
     expect(handler).toHaveBeenCalledOnce()
     expect(context.runner.abort(runId)).toBe(true)
@@ -212,7 +197,7 @@ describe('scheduled job runner', () => {
     await vi.advanceTimersByTimeAsync(1)
     await promise
     expect(context.finalizeRun).toHaveBeenCalledTimes(2)
-    expect(context.finalizeRun.mock.calls[1]![0].candidate).toBe(firstCandidate)
+    expect(context.finalizeRun.mock.calls[1]![0].completion).toBe(firstCompletion)
     expect(handler).toHaveBeenCalledOnce()
     expect(context.runner.abort(runId)).toBe(false)
   })

@@ -7,12 +7,15 @@ import type { Logger } from 'pino'
 import { ATTACHMENT_CLEANUP_POLICY_UNREFERENCED } from '@rev30/contracts'
 import { and, eq } from 'drizzle-orm'
 import { attachmentReferences, attachments, attachmentUploadSessions } from '../../../src/db/schema'
-import { AttachmentReferenceTargetInvalidError } from '../../../src/modules/attachments/errors'
 import {
   cleanupExpiredAttachmentUploadSessions,
   cleanupOrphanedAttachmentUploads,
   cleanupUnreferencedAttachments,
 } from '../../../src/modules/attachments/cleanup'
+import {
+  AttachmentReferenceTargetInvalidError,
+  AttachmentStorageListError,
+} from '../../../src/modules/attachments/errors'
 import {
   deleteAttachmentReferences,
   lockActiveAttachmentsByIds,
@@ -30,7 +33,7 @@ import { createSystemUserFixture } from '../../helpers/system'
 const dayMs = 24 * 60 * 60 * 1000
 const tempDirs: string[] = []
 
-function cleanupContext() {
+function cleanupOptions() {
   return {
     signal: new AbortController().signal,
     logger: { error: vi.fn() } as unknown as Logger,
@@ -309,6 +312,24 @@ describe('attachment cleanup', () => {
     await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })))
   })
 
+  dbTest('marks storage listing failures as storage errors', async ({ db: database }) => {
+    const listError = new Error('storage unavailable')
+    const storage = {
+      provider: 'local',
+      put: vi.fn(),
+      get: vi.fn(),
+      list: vi.fn().mockRejectedValue(listError),
+      delete: vi.fn(),
+    } as unknown as AttachmentStorage
+
+    await expect(
+      cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs, cleanupOptions()),
+    ).rejects.toMatchObject({
+      name: AttachmentStorageListError.name,
+      cause: listError,
+    })
+  })
+
   dbTest(
     'continues orphaned storage cleanup after an individual delete failure',
     async ({ db: database }) => {
@@ -330,14 +351,14 @@ describe('attachment cleanup', () => {
         ]),
         delete: deleting,
       } as unknown as AttachmentStorage
-      const context = cleanupContext()
+      const options = cleanupOptions()
 
       await expect(
-        cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs, context),
+        cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs, options),
       ).resolves.toEqual({ deletedCount: 1, failedCount: 1 })
       expect(deleting).toHaveBeenNthCalledWith(1, firstKey)
       expect(deleting).toHaveBeenNthCalledWith(2, secondKey)
-      expect(context.logger.error).toHaveBeenCalledWith(
+      expect(options.logger.error).toHaveBeenCalledWith(
         expect.objectContaining({ err: deleteError }),
         expect.any(String),
       )
@@ -369,10 +390,10 @@ describe('attachment cleanup', () => {
         list: vi.fn().mockResolvedValue([{ key: storageKey, modifiedAt: oldModifiedAt }]),
         delete: deleting,
       } as unknown as AttachmentStorage
-      const context = cleanupContext()
+      const options = cleanupOptions()
 
       await expect(
-        cleanupUnreferencedAttachments(database, storage, 7 * dayMs, context),
+        cleanupUnreferencedAttachments(database, storage, 7 * dayMs, options),
       ).resolves.toEqual({ deletedCount: 1, failedCount: 1 })
       await expect(
         database
@@ -382,10 +403,10 @@ describe('attachment cleanup', () => {
       ).resolves.toEqual([{ deletedAt: expect.any(Date) }])
 
       await expect(
-        cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs, cleanupContext()),
+        cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs, cleanupOptions()),
       ).resolves.toEqual({ deletedCount: 1, failedCount: 0 })
       expect(deleting).toHaveBeenCalledTimes(2)
-      expect(context.logger.error).toHaveBeenCalledWith(
+      expect(options.logger.error).toHaveBeenCalledWith(
         expect.objectContaining({ err: deleteError }),
         expect.any(String),
       )
@@ -427,12 +448,12 @@ describe('attachment cleanup', () => {
         list: vi.fn().mockResolvedValue([]),
         delete: vi.fn().mockRejectedValue(deleteError),
       } as unknown as AttachmentStorage
-      const context = cleanupContext()
+      const options = cleanupOptions()
 
       await expect(
-        cleanupExpiredAttachmentUploadSessions(database, storage, context),
+        cleanupExpiredAttachmentUploadSessions(database, storage, options),
       ).resolves.toEqual({ deletedCount: 1, failedCount: 1 })
-      expect(context.logger.error).toHaveBeenCalledWith(
+      expect(options.logger.error).toHaveBeenCalledWith(
         expect.objectContaining({ err: deleteError }),
         expect.any(String),
       )
@@ -455,7 +476,7 @@ describe('attachment cleanup', () => {
       await expect(
         cleanupOrphanedAttachmentUploads(database, deletingStorage, 0, {
           signal: controller.signal,
-          logger: context.logger,
+          logger: options.logger,
         }),
       ).rejects.toMatchObject({ name: 'AbortError' })
       expect(deleting).toHaveBeenCalledOnce()
@@ -528,7 +549,7 @@ describe('attachment cleanup', () => {
       await writeStoredFile(storage, root, activeWritingTempKey, oldModifiedAt)
 
       await expect(
-        cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs, cleanupContext()),
+        cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs, cleanupOptions()),
       ).resolves.toEqual({ deletedCount: 3, failedCount: 0 })
       await expect(storage.get(oldOrphanKey)).rejects.toThrow()
       await expect(storage.get(oldTempKey)).rejects.toThrow()
@@ -617,13 +638,13 @@ describe('attachment cleanup', () => {
       await writeStoredFile(storage, root, storedStorageKey, storedAt)
 
       await expect(
-        cleanupExpiredAttachmentUploadSessions(database, storage, cleanupContext()),
+        cleanupExpiredAttachmentUploadSessions(database, storage, cleanupOptions()),
       ).resolves.toEqual({ deletedCount: 3, failedCount: 0 })
       await expect(storage.get(storedStorageKey)).rejects.toThrow()
       await expect(storage.get(interruptedStorageKey)).resolves.toBeDefined()
 
       await expect(
-        cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs, cleanupContext()),
+        cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs, cleanupOptions()),
       ).resolves.toEqual({ deletedCount: 1, failedCount: 0 })
       await expect(storage.get(interruptedStorageKey)).rejects.toThrow()
       await expect(database.select().from(attachmentUploadSessions)).resolves.toMatchObject([
@@ -683,7 +704,7 @@ describe('attachment cleanup', () => {
       })
 
       await expect(
-        cleanupOrphanedAttachmentUploads(racedDatabase, storage, 7 * dayMs, cleanupContext()),
+        cleanupOrphanedAttachmentUploads(racedDatabase, storage, 7 * dayMs, cleanupOptions()),
       ).resolves.toEqual({ deletedCount: 0, failedCount: 0 })
       await expect(storage.get(storageKey)).resolves.toBeDefined()
       await expect(database.select().from(attachmentUploadSessions)).resolves.toEqual([])
@@ -744,7 +765,7 @@ describe('attachment cleanup', () => {
       )
 
       await expect(
-        cleanupUnreferencedAttachments(database, storage, 7 * dayMs, cleanupContext()),
+        cleanupUnreferencedAttachments(database, storage, 7 * dayMs, cleanupOptions()),
       ).resolves.toEqual({ deletedCount: 2, failedCount: 0 })
 
       const deletedStates = await listAttachmentDeletedStates(database)
@@ -784,7 +805,7 @@ describe('attachment cleanup', () => {
       })
 
       await expect(
-        cleanupUnreferencedAttachments(racedDatabase, storage, 7 * dayMs, cleanupContext()),
+        cleanupUnreferencedAttachments(racedDatabase, storage, 7 * dayMs, cleanupOptions()),
       ).resolves.toEqual({ deletedCount: 0, failedCount: 0 })
 
       const [row] = await database
@@ -822,13 +843,13 @@ describe('attachment cleanup', () => {
 
       expect(unreferenced?.updatedAt).toEqual(new Date())
       await expect(
-        cleanupUnreferencedAttachments(database, storage, 7 * dayMs, cleanupContext()),
+        cleanupUnreferencedAttachments(database, storage, 7 * dayMs, cleanupOptions()),
       ).resolves.toEqual({ deletedCount: 0, failedCount: 0 })
 
       vi.advanceTimersByTime(8 * dayMs)
 
       await expect(
-        cleanupUnreferencedAttachments(database, storage, 7 * dayMs, cleanupContext()),
+        cleanupUnreferencedAttachments(database, storage, 7 * dayMs, cleanupOptions()),
       ).resolves.toEqual({ deletedCount: 1, failedCount: 0 })
     },
   )

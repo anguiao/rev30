@@ -1,8 +1,15 @@
 import type { Logger } from 'pino'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AttachmentStorageListError } from '../../../../src/modules/attachments/errors'
 import type { ScheduledJobRetentionConfig } from '../../../../src/modules/ops/scheduled-jobs/config'
-import { createProductionScheduledJobRegistry } from '../../../../src/modules/ops/scheduled-jobs/production'
-import { scheduledJobTaskKeys } from '../../../../src/modules/ops/scheduled-jobs/registry'
+import {
+  createScheduledJobDefinitions,
+  type ScheduledJobDefinitionsOptions,
+} from '../../../../src/modules/ops/scheduled-jobs/definitions'
+import {
+  createScheduledJobRegistry,
+  scheduledJobTaskKeys,
+} from '../../../../src/modules/ops/scheduled-jobs/registry'
 
 const mocks = vi.hoisted(() => ({
   cleanupAuthSessions: vi.fn(),
@@ -13,12 +20,6 @@ const mocks = vi.hoisted(() => ({
   cleanupUnreferencedAttachments: vi.fn(),
   cleanupOrphanedAttachmentUploads: vi.fn(),
   cleanupScheduledJobRuns: vi.fn(),
-  AttachmentCleanupStorageError: class extends Error {
-    constructor(readonly cause: unknown) {
-      super('Attachment cleanup storage operation failed')
-      this.name = 'AttachmentCleanupStorageError'
-    }
-  },
 }))
 
 vi.mock('../../../../src/modules/auth/cleanup', () => ({
@@ -35,7 +36,6 @@ vi.mock('../../../../src/modules/attachments/cleanup', () => ({
   cleanupExpiredAttachmentUploadSessions: mocks.cleanupExpiredAttachmentUploadSessions,
   cleanupUnreferencedAttachments: mocks.cleanupUnreferencedAttachments,
   cleanupOrphanedAttachmentUploads: mocks.cleanupOrphanedAttachmentUploads,
-  AttachmentCleanupStorageError: mocks.AttachmentCleanupStorageError,
 }))
 vi.mock('../../../../src/modules/ops/scheduled-jobs/cleanup', () => ({
   cleanupScheduledJobRuns: mocks.cleanupScheduledJobRuns,
@@ -53,7 +53,11 @@ const database = {} as never
 const storage = { provider: 'test' } as never
 const logger = { error: vi.fn() } as unknown as Logger
 
-describe('production scheduled job registry', () => {
+function createRegistry(options: ScheduledJobDefinitionsOptions) {
+  return createScheduledJobRegistry(createScheduledJobDefinitions(options))
+}
+
+describe('scheduled job definitions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -69,9 +73,9 @@ describe('production scheduled job registry', () => {
     })
     mocks.cleanupUnreferencedAttachments.mockResolvedValue({ deletedCount: 6, failedCount: 0 })
     mocks.cleanupOrphanedAttachmentUploads.mockResolvedValue({ deletedCount: 7, failedCount: 0 })
-    mocks.cleanupScheduledJobRuns.mockResolvedValue({ deletedCount: 8, failedCount: 0 })
+    mocks.cleanupScheduledJobRuns.mockResolvedValue(8)
 
-    const registry = createProductionScheduledJobRegistry({ database, storage, retention })
+    const registry = createRegistry({ database, storage, retention })
     const signal = new AbortController().signal
 
     expect(registry.keys()).toEqual(scheduledJobTaskKeys)
@@ -97,7 +101,7 @@ describe('production scheduled job registry', () => {
   it('maps a database boundary failure without returning raw error data', async () => {
     const error = new Error('secret SQL details')
     mocks.cleanupAuthSessions.mockRejectedValueOnce(error)
-    const registry = createProductionScheduledJobRegistry({ database, storage, retention })
+    const registry = createRegistry({ database, storage, retention })
 
     await expect(
       registry.get('auth-session-cleanup').run({
@@ -110,9 +114,9 @@ describe('production scheduled job registry', () => {
   it('maps attachment storage-list failures to storage without exposing raw data in the summary', async () => {
     const rawError = new Error('secret storage key')
     mocks.cleanupOrphanedAttachmentUploads.mockRejectedValueOnce(
-      new mocks.AttachmentCleanupStorageError(rawError),
+      new AttachmentStorageListError(rawError),
     )
-    const registry = createProductionScheduledJobRegistry({ database, storage, retention })
+    const registry = createRegistry({ database, storage, retention })
 
     await expect(
       registry.get('attachment-orphaned-storage-cleanup').run({
@@ -128,7 +132,7 @@ describe('production scheduled job registry', () => {
 
   it('keeps attachment database failures in the database category', async () => {
     mocks.cleanupOrphanedAttachmentUploads.mockRejectedValueOnce(new Error('secret SQL details'))
-    const registry = createProductionScheduledJobRegistry({ database, storage, retention })
+    const registry = createRegistry({ database, storage, retention })
 
     await expect(
       registry.get('attachment-orphaned-storage-cleanup').run({
@@ -142,7 +146,7 @@ describe('production scheduled job registry', () => {
     const preAborted = new AbortController()
     preAborted.abort()
     mocks.cleanupAuthSessions.mockResolvedValue(0)
-    const registry = createProductionScheduledJobRegistry({ database, storage, retention })
+    const registry = createRegistry({ database, storage, retention })
 
     await expect(
       registry.get('auth-session-cleanup').run({ signal: preAborted.signal, logger }),

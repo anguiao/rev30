@@ -20,7 +20,11 @@ import { createTokenPair } from '../../../../src/modules/auth/tokens'
 import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
 import { createOpsRoutes } from '../../../../src/modules/ops/routes'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
-import { createApp, createTestScheduledJobService } from '../../../helpers/app'
+import {
+  createApp,
+  createTestScheduledJobService,
+  createTestSystemHealthService,
+} from '../../../helpers/app'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { createSystemUserFixture } from '../../../helpers/system'
 
@@ -31,6 +35,7 @@ function createTestApp(database: TestDatabase, authHeaders: Record<string, strin
       database,
       createAuthMiddleware(database),
       createTestScheduledJobService(database),
+      createTestSystemHealthService(database),
     ),
   )
   const request = app.request.bind(app)

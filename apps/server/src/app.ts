@@ -21,6 +21,7 @@ import { createIconRoutes } from './modules/icons/routes'
 import { createIconSearchRoutes } from './modules/icons/search/routes'
 import { createOpsRoutes } from './modules/ops/routes'
 import type { ScheduledJobService } from './modules/ops/scheduled-jobs/service'
+import type { SystemHealthService } from './modules/ops/system-health/service'
 import { createSystemRoutes } from './modules/system/routes'
 import { logger } from './runtime/logger'
 import type { OperationLogEventReceiver } from './runtime/operation-log'
@@ -31,6 +32,7 @@ export type CreateAppOptions = {
   logger?: Logger
   operationLogReceiver: OperationLogEventReceiver
   scheduledJobService: ScheduledJobService
+  systemHealthService: SystemHealthService
   trustedProxyPolicy?: TrustedProxyPolicy
 }
 
@@ -63,7 +65,15 @@ export function createApp(database: Db, options: CreateAppOptions) {
       '/attachments',
       createAttachmentRoutes(database, authMiddleware, options.attachmentStorage),
     )
-    .route('/ops', createOpsRoutes(database, authMiddleware, options.scheduledJobService))
+    .route(
+      '/ops',
+      createOpsRoutes(
+        database,
+        authMiddleware,
+        options.scheduledJobService,
+        options.systemHealthService,
+      ),
+    )
     .route('/system', createSystemRoutes(database, authMiddleware))
     .route('/content', createContentRoutes(database, authMiddleware))
     .route('/demos', createDemoRoutes(authMiddleware))

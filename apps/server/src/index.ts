@@ -6,6 +6,9 @@ import { readAttachmentConfig } from './modules/attachments/config'
 import { createAttachmentStorage } from './modules/attachments/storage'
 import { readScheduledJobRetentionConfig } from './modules/ops/scheduled-jobs/config'
 import { startScheduledJobs } from './modules/ops/scheduled-jobs/startup'
+import { createSystemHealthRepository } from './modules/ops/system-health/repository'
+import { createSystemHealthService } from './modules/ops/system-health/service'
+import { createSystemHealthStorageProbe } from './modules/ops/system-health/storage-probe'
 import { logger } from './runtime/logger'
 import { createOperationLogRuntime } from './runtime/operation-log'
 import { closeServer, registerShutdownHandlers } from './runtime/shutdown'
@@ -23,6 +26,12 @@ const scheduledJobs = await startScheduledJobs({
   storage: attachmentStorage,
   retention: scheduledJobRetention,
 })
+const systemHealthService = createSystemHealthService({
+  repository: createSystemHealthRepository(db),
+  diagnostics: scheduledJobs.diagnostics,
+  storageProbe: createSystemHealthStorageProbe({ storage: attachmentStorage, logger }),
+  logger,
+})
 const operationLog = createOperationLogRuntime(db, logger)
 
 const app = createApp(db, {
@@ -30,6 +39,7 @@ const app = createApp(db, {
   logger,
   operationLogReceiver: operationLog.receiver,
   scheduledJobService: scheduledJobs.service,
+  systemHealthService,
   trustedProxyPolicy,
 })
 

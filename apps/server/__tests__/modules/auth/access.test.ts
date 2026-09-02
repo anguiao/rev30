@@ -95,6 +95,7 @@ describe('user access service', () => {
         'ops:online-session',
         'ops:operation-log',
         'ops:scheduled-job',
+        'ops:system-health',
       ])
       expect(roleResourceBindings).toEqual([])
       expect(adminRole.status).toBe(ROLE_STATUS_ENABLED)
@@ -109,9 +110,15 @@ describe('user access service', () => {
           'ops:online-session:revoke',
           'ops:operation-log',
           'ops:operation-log:list',
+          'ops:system-health',
+          'ops:system-health:list',
         ]),
       )
-      expect(access.menus.some((node) => node.code === 'ops')).toBe(true)
+      expect(access.menus.find((node) => node.code === 'ops')?.children).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'ops:system-health', path: '/ops/system-health' }),
+        ]),
+      )
     },
   )
 

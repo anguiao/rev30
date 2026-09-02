@@ -6,11 +6,14 @@ import { createOnlineSessionRoutes } from './online-sessions/routes'
 import { createOperationLogRoutes } from './operation-logs/routes'
 import { createScheduledJobRoutes } from './scheduled-jobs/routes'
 import type { ScheduledJobService } from './scheduled-jobs/service'
+import { createSystemHealthRoutes } from './system-health/routes'
+import type { SystemHealthService } from './system-health/service'
 
 export function createOpsRoutes(
   database: Db,
   authMiddleware: MiddlewareHandler<AuthEnv>,
   scheduledJobService: ScheduledJobService,
+  systemHealthService: SystemHealthService,
 ) {
   return new Hono<AuthEnv>()
     .use('*', authMiddleware)
@@ -18,4 +21,5 @@ export function createOpsRoutes(
     .route('/sessions', createOnlineSessionRoutes(database))
     .route('/operation-logs', createOperationLogRoutes(database))
     .route('/scheduled-jobs', createScheduledJobRoutes(scheduledJobService))
+    .route('/system-health', createSystemHealthRoutes(systemHealthService))
 }

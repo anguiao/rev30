@@ -1,4 +1,4 @@
-import { onScopeDispose, type Ref } from 'vue'
+import { watch, type Ref } from 'vue'
 import { useQuery, useQueryCache } from '@pinia/colada'
 
 export function useHealthQuery<T>(
@@ -9,35 +9,35 @@ export function useHealthQuery<T>(
 ) {
   const cache = useQueryCache()
   const key = ['ops', 'system-health', name]
-  let inFlight = false
-  const result = useQuery({
+  const getEntry = () => cache.getEntries({ key, exact: true })[0]
+  const options = {
     key,
-    query: async () => {
-      inFlight = true
-      try {
-        return await query()
-      } finally {
-        inFlight = false
-      }
-    },
+    query,
     enabled: visible,
     staleTime: 0,
-    autoRefetch: () => (inFlight ? false : interval),
+    // The shared entry can still be loading a request started by a previous page.
+    autoRefetch: () => (getEntry()?.pending ? false : interval),
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-  })
+  }
+  const result = useQuery(options)
 
-  // Auto-refetch 0.2 resumes after successful fetches only. Re-ensure failed
-  // health entries through the public API so its timer also retries failures.
-  const unsubscribe = cache.$onAction(({ name: action, args, onError }) => {
-    if (action !== 'fetch') return
-    const [entry] = args
-    if (entry.key.length !== key.length || entry.key.some((part, index) => part !== key[index]))
-      return
-    onError(() => {
-      if (visible.value && entry.active && entry.options) cache.ensure(entry.options)
-    })
+  // Auto-refetch 0.2 resumes after successful fetches only. Observe settled
+  // failures, including requests inherited from a previous page.
+  watch([result.error, result.asyncStatus, visible], ([error, status, isVisible], _, onCleanup) => {
+    if (error === null || status !== 'idle' || !isVisible) return
+    const entry = getEntry()
+    if (!entry?.active) return
+    cache.ensure(options)
+
+    // An old refresh error handler can restore its disposed page's options later
+    // in this microtask chain. Restore current options only if that happened.
+    const timeout = setTimeout(() => {
+      if (visible.value && entry.active && !entry.pending && entry.options?.enabled !== visible) {
+        cache.ensure(options)
+      }
+    }, 0)
+    onCleanup(() => clearTimeout(timeout))
   })
-  onScopeDispose(unsubscribe)
   return result
 }

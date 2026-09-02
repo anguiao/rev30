@@ -74,7 +74,7 @@ describe('authFetch', () => {
     const fetchMock = createFetchMock(jsonResponse({}))
     useAuthStore().accessToken = 'access-token'
 
-    await authFetch('/api/health', {
+    await authFetch('/api/health/live', {
       headers: {
         authorization: 'Basic caller-token',
       },
@@ -87,7 +87,7 @@ describe('authFetch', () => {
     const fetchMock = createFetchMock(jsonResponse({}))
     useAuthStore().accessToken = 'access-token'
 
-    await authFetch('/api/health', {
+    await authFetch('/api/health/live', {
       headers: {
         'x-request-id': 'request-id',
       },
@@ -103,7 +103,7 @@ describe('authFetch', () => {
     async (credentials) => {
       const fetchMock = createFetchMock(jsonResponse({}))
 
-      await authFetch('/api/health', {
+      await authFetch('/api/health/live', {
         credentials,
       })
 
@@ -114,7 +114,7 @@ describe('authFetch', () => {
   it('omits authorization when no access token is present', async () => {
     const fetchMock = createFetchMock(jsonResponse({}))
 
-    await authFetch('/api/health')
+    await authFetch('/api/health/live')
 
     expect(getFetchCall(fetchMock).headers.has('authorization')).toBe(false)
   })
@@ -562,16 +562,16 @@ describe('api client', () => {
     const fetchMock = createFetchMock(
       jsonResponse({
         service: 'rev30-server',
-        status: 'ok',
+        status: 'alive',
       }),
     )
 
-    await api.health.$get()
+    await api.health.live.$get()
 
     expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
       method: 'GET',
-      pathname: '/api/health',
+      pathname: '/api/health/live',
     })
     expect(getFetchCall(fetchMock).init.credentials).toBe('same-origin')
   })
@@ -579,11 +579,11 @@ describe('api client', () => {
   it('adds the bearer token from the auth store when present', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(new Response(JSON.stringify({ service: 'rev30-server', status: 'ok' })))
+      .mockResolvedValue(new Response(JSON.stringify({ service: 'rev30-server', status: 'alive' })))
     vi.stubGlobal('fetch', fetchMock)
     useAuthStore().accessToken = 'access-token'
 
-    await api.health.$get()
+    await api.health.live.$get()
 
     const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
     expect(new Headers(init.headers).get('authorization')).toBe('Bearer access-token')

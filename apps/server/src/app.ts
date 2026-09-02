@@ -15,7 +15,8 @@ import type { AttachmentStorage } from './modules/attachments/storage'
 import { createAuthRoutes } from './modules/auth/routes'
 import { createContentRoutes } from './modules/content/routes'
 import { createDemoRoutes } from './modules/demos/routes'
-import { healthRoutes } from './modules/health/routes'
+import { probeDatabase } from './modules/health/database-probe'
+import { createHealthRoutes } from './modules/health/routes'
 import { createIconRoutes } from './modules/icons/routes'
 import { createIconSearchRoutes } from './modules/icons/search/routes'
 import { createOpsRoutes } from './modules/ops/routes'
@@ -51,7 +52,10 @@ export function createApp(database: Db, options: CreateAppOptions) {
 
   const api = new Hono()
     .use('*', apiJsonBodyLimit)
-    .route('/', healthRoutes)
+    .route(
+      '/',
+      createHealthRoutes(() => probeDatabase(database)),
+    )
     .route('/auth', createAuthRoutes(database, authMiddleware))
     .route('/icons/search', createIconSearchRoutes(database, authMiddleware))
     .route('/icons', createIconRoutes(database))

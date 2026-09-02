@@ -44,6 +44,12 @@ pnpm dev
 服务端环境变量可从 `apps/server/.env.example` 复制起步；执行 bootstrap 前，请先在 `apps/server/.env` 中确认或修改 `BOOTSTRAP_ADMIN_*` 账号信息，认证相关密钥在本地也建议改成非默认值。
 通用附件默认使用本地私有存储，文件目录由 `ATTACHMENT_STORAGE_DIR` 控制，默认 `.attachments/dev`。
 
+### 公共健康探针
+
+`GET /api/health/live` 仅证明进程与 HTTP 路由可响应，返回 `200 / alive`，不访问业务依赖。`GET /api/health/ready` 只执行数据库轻量查询，成功返回 `200 / ready`，失败返回 `503 / not_ready`；附件存储与调度器不影响 readiness。两个公开接口均设置 `Cache-Control: no-store`，不要求登录、不登记操作日志，并保留 `X-Request-Id`。
+
+旧 `GET /api/health` 已删除。部署探针客户端应设置请求超时；数据库连接失败沿用现有客户端配置传播。
+
 ### 认证会话与登录审计
 
 每次登录会创建一条带稳定 `sid` 的数据库会话。access、refresh 和 authenticated 附件读取令牌都绑定该会话；refresh 只轮换同一行的 token hash，并将会话有效期滑动到当前时间后 7 天。退出、修改或重置密码、停用或删除用户，以及管理员强制下线后，目标会话的三类令牌都会在下一次认证检查时失效。短期 signed 附件内容 URL 仍是独立能力链接，不受会话撤销影响。

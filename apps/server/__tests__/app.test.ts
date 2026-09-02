@@ -1,4 +1,4 @@
-import { describe, expect } from 'vitest'
+import { describe, expect, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { sign } from 'hono/jwt'
@@ -84,11 +84,14 @@ describe('app auth boundaries', () => {
   dbTest(
     'returns a unique server request ID on standard application response boundaries',
     async ({ db }) => {
-      const app = createApp(db)
+      const operationLogReceiver = vi.fn()
+      const app = createApp(db, { operationLogReceiver })
       const noAccess = await createSystemAccessFixture(db, {
         usernamePrefix: 'app-request-id',
       })
       const responses = [
+        await app.request('/api/health/live', { headers: { authorization: 'Bearer invalid' } }),
+        await app.request('/api/health/ready', { headers: { authorization: 'Bearer invalid' } }),
         await app.request('/api/health'),
         await app.request('/api/system/users'),
         await app.request('/api/system/users', {
@@ -105,11 +108,14 @@ describe('app auth boundaries', () => {
         }),
       ]
 
-      expect(responses.map((response) => response.status)).toEqual([200, 401, 403, 404, 413])
+      expect(responses.map((response) => response.status)).toEqual([
+        200, 200, 404, 401, 403, 404, 413,
+      ])
 
       const requestIds = responses.map(expectRequestId)
 
       expect(new Set(requestIds).size).toBe(responses.length)
+      expect(operationLogReceiver).not.toHaveBeenCalled()
     },
   )
 

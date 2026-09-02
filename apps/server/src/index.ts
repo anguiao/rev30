@@ -29,6 +29,7 @@ const scheduledJobs = await startScheduledJobs({
 const systemHealthService = createSystemHealthService({
   repository: createSystemHealthRepository(db),
   diagnostics: scheduledJobs.diagnostics,
+  taskCatalog: scheduledJobs.taskCatalog,
   storageProbe: createSystemHealthStorageProbe({ storage: attachmentStorage, logger }),
   logger,
 })

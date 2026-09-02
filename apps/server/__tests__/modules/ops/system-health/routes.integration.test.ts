@@ -4,13 +4,26 @@ import { join } from 'node:path'
 import { LocalAttachmentStorage } from '../../../../src/modules/attachments/storage'
 import { opsScheduledJobs } from '../../../../src/db/schema'
 import { describe, expect, vi } from 'vitest'
-import { systemHealthSnapshotSchema } from '@rev30/contracts'
+import { systemHealthJobStatisticsSchema, systemHealthSnapshotSchema } from '@rev30/contracts'
 import { dbTest } from '../../../fixtures/database'
 import { createApp } from '../../../helpers/app'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { createHealthTestContext } from './helpers'
 
 describe('system health snapshot HTTP API', () => {
+  dbTest('returns an unknown safe 500 when statistics cannot be read', async ({ db }) => {
+    const context = createHealthTestContext()
+    context.repository.readJobStatistics.mockRejectedValueOnce(new Error('private query'))
+    const app = createApp(db, { systemHealthService: context.service })
+    const allowed = await createSystemAccessFixture(db, { accessCodes: ['ops:system-health:list'] })
+    const response = await app.request('/api/ops/system-health/job-statistics', {
+      headers: allowed.authHeaders,
+    })
+    expect(response.status).toBe(500)
+    expect(await response.text()).toBe('Internal Server Error')
+    expect(context.logger.error).not.toHaveBeenCalled()
+  })
+
   dbTest('requires an authenticated session and explicit list access', async ({ db }) => {
     const context = createHealthTestContext()
     const snapshot = vi.spyOn(context.service, 'snapshot')
@@ -20,7 +33,13 @@ describe('system health snapshot HTTP API', () => {
     expect(
       (await app.request('/api/ops/system-health', { headers: denied.authHeaders })).status,
     ).toBe(403)
+    expect((await app.request('/api/ops/system-health/job-statistics')).status).toBe(401)
+    expect(
+      (await app.request('/api/ops/system-health/job-statistics', { headers: denied.authHeaders }))
+        .status,
+    ).toBe(403)
     expect(snapshot).not.toHaveBeenCalled()
+    expect(context.repository.readJobStatistics).not.toHaveBeenCalled()
   })
 
   dbTest(
@@ -50,6 +69,14 @@ describe('system health snapshot HTTP API', () => {
           storage: { status: 'healthy', provider: 'local', cached: false },
           scheduler: { shared: { runningCount: 0, overdueCount: 0, oldestOverdueAt: null } },
         })
+        const statisticsResponse = await app.request('/api/ops/system-health/job-statistics', {
+          headers: allowed.authHeaders,
+        })
+        expect(statisticsResponse.status).toBe(200)
+        expect(statisticsResponse.headers.get('cache-control')).toBe('no-store')
+        const statistics = systemHealthJobStatisticsSchema.parse(await statisticsResponse.json())
+        expect(statistics.dailyRuns).toHaveLength(7)
+        expect(statistics.recentAnomalies).toEqual([])
         expect(operationLogReceiver).not.toHaveBeenCalled()
         expect(await readdir(root)).toEqual([])
       } finally {

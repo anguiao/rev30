@@ -5,6 +5,21 @@ import { createHealthTestContext, observedAt } from './helpers'
 afterEach(() => vi.restoreAllMocks())
 
 describe('system health snapshot service', () => {
+  it('captures one statistics time without probing current health and propagates database errors', async () => {
+    const context = createHealthTestContext()
+    context.now.mockClear()
+    expect((await context.service.jobStatistics()).generatedAt).toBe(observedAt.toISOString())
+    expect(context.now).toHaveBeenCalledOnce()
+    expect(context.repository.readJobStatistics).toHaveBeenCalledExactlyOnceWith(observedAt)
+    expect(context.repository.readSnapshot).not.toHaveBeenCalled()
+    expect(context.storageProbe).not.toHaveBeenCalled()
+    expect(context.diagnostics).not.toHaveBeenCalled()
+    const error = new Error('private statistics query')
+    context.repository.readJobStatistics.mockRejectedValueOnce(error)
+    await expect(context.service.jobStatistics()).rejects.toBe(error)
+    expect(context.logger.error).not.toHaveBeenCalled()
+  })
+
   it('captures the safe current instance and fixes its start time across wall clock changes', async () => {
     const uptime = vi.spyOn(process, 'uptime').mockReturnValue(12.9)
     vi.spyOn(process, 'memoryUsage').mockReturnValue({

@@ -76,6 +76,7 @@ export function createTestSystemHealthService(
   return createSystemHealthService({
     repository: createSystemHealthRepository(database),
     diagnostics: createScheduledJobSchedulerStub().diagnostics,
+    taskCatalog: scheduledJobDefinitions,
     storageProbe: createSystemHealthStorageProbe({ storage, logger }),
     logger,
   })

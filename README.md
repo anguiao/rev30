@@ -5,7 +5,7 @@ Rev30 是一个 TypeScript monorepo 项目，包含 Vue 客户端、Hono API、�
 ## 目录结构
 
 - `apps/server`：Node.js + Hono + Drizzle API，提供健康检查、认证、系统管理、内容管理和组件演示接口。
-- `apps/client`：Vue 3 + Vite 前端，包含登录、后台管理壳层，以及系统管理、内容管理和组件演示页面，通过 `/api` 代理调用服务端。
+- `apps/client`：Vue 3 + Vite 前端，包含登录、后台管理壳层，以及系统管理、内容管理、运维管理和组件演示页面，通过 `/api` 代理调用服务端。
 - `packages/contracts`：前后端共用的 zod schema、请求/响应契约和 TypeScript 类型。
 - `packages/rich-text`：跨端复用的 Tiptap feature、preset、Vue 编辑器和服务端内容派生能力。
 - `packages/utils`：前后端共用的纯 TypeScript 工具函数。
@@ -13,7 +13,7 @@ Rev30 是一个 TypeScript monorepo 项目，包含 Vue 客户端、Hono API、�
 
 ## 技术栈
 
-- 前端：Vue 3、Tailwind CSS v4、Naive UI、Pinia、Pinia Colada、TanStack Vue Form、`vue-router/vite`。
+- 前端：Vue 3、Tailwind CSS v4、Naive UI、Pinia、Pinia Colada、Vue ECharts、TanStack Vue Form、`vue-router/vite`。
 - 服务端：Hono、Drizzle、PGlite（开发）/ PostgreSQL（生产）、Hono typed client。
 - 工程化：pnpm workspace、TypeScript、Vitest、oxlint、oxfmt。
 
@@ -49,6 +49,16 @@ pnpm dev
 `GET /api/health/live` 仅证明进程与 HTTP 路由可响应，返回 `200 / alive`，不访问业务依赖。`GET /api/health/ready` 只执行数据库轻量查询，成功返回 `200 / ready`，失败返回 `503 / not_ready`；附件存储与调度器不影响 readiness。两个公开接口均设置 `Cache-Control: no-store`，不要求登录、不登记操作日志，并保留 `X-Request-Id`。
 
 旧 `GET /api/health` 已删除。部署探针客户端应设置请求超时；数据库连接失败沿用现有客户端配置传播。
+
+### 系统健康管理
+
+运维系统健康页面位于 `/ops/system-health`。受保护的 `GET /api/ops/system-health` 返回实例和依赖快照，`GET /api/ops/system-health/job-statistics` 返回任务统计及最近异常；两者均要求 `ops:system-health:list`，设置 `Cache-Control: no-store`，不登记操作日志。菜单与页面访问沿用菜单资源授权；迁移只创建资源，不自动授权普通角色。
+
+页面区分当前响应实例的运行时间、内存、数据库和附件存储探测、调度器内存状态，以及数据库共享的运行中任务和明显积压（启用任务超过计划时刻 60 秒）。它不提供集群视图。数据库不可用为不健康，存储不可用、调度停止、查询退避或明显积压为降级；历史失败不影响当前健康状态。
+
+任务图表展示上海自然日的近 7 日运行结果、近 30 日状态及失败分类、成功平均耗时 Top 5，并提供最近异常的日志入口。按当前留存日志统计，已清理记录不计入统计；保留期沿用 `OPS_JOB_RUN_RETENTION_MS`，不保证窗口内历史完整。关联日志沿用 `ops:scheduled-job:list` 权限，仅有系统健康权限时抽屉可能显示 `403`。
+
+页面可见时每 10 秒更新快照、每 60 秒更新统计；进入、恢复可见及手动刷新时立即更新两者。失败后保留各自最后成功数据和时间并继续重试，隐藏或卸载后停止自动刷新。浏览器只在当前页面内保存最近 10 分钟、最多 61 个快照点，固定 10 秒槽内替换；存储趋势只记录实际变化的探测时间。不可用与已知采样空档显示断点，不补零或插值。页面刷新、卸载或实例启动时间变化后清空趋势，不写入服务端、持久 store 或浏览器存储。
 
 ### 认证会话与登录审计
 

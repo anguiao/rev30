@@ -21,6 +21,7 @@
     "@tanstack/vue-form": "^1.33.4",
     "@vueuse/core": "catalog:",
     "bytes": "catalog:",
+    "echarts": "^6.1.0",
     "file-saver": "^2.0.5",
     "highlight.js": "^11.11.1",
     "hono": "catalog:",
@@ -29,6 +30,7 @@
     "naive-ui": "catalog:",
     "pinia": "^4.0.2",
     "vue": "catalog:",
+    "vue-echarts": "^8.2.0",
     "vue-router": "^5.2.0",
     "zod": "catalog:"
   },

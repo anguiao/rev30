@@ -1,4 +1,9 @@
 import type { Db } from '../../src/db'
+import { readAttachmentConfig } from '../../src/modules/attachments/config'
+import {
+  createAttachmentStorage,
+  type AttachmentStorage,
+} from '../../src/modules/attachments/storage'
 import {
   createApp as createProductionApp,
   type CreateAppOptions as CreateProductionAppOptions,
@@ -46,8 +51,9 @@ export function createTestScheduledJobService(
 
 export type CreateTestAppOptions = Omit<
   CreateProductionAppOptions,
-  'operationLogReceiver' | 'scheduledJobService'
+  'operationLogReceiver' | 'scheduledJobService' | 'attachmentStorage'
 > & {
+  attachmentStorage?: AttachmentStorage
   operationLogReceiver?: OperationLogEventReceiver
   scheduledJobService?: ScheduledJobService
 }
@@ -55,6 +61,7 @@ export type CreateTestAppOptions = Omit<
 export function createApp(database: Db, options: CreateTestAppOptions = {}) {
   return createProductionApp(database, {
     ...options,
+    attachmentStorage: options.attachmentStorage ?? createAttachmentStorage(readAttachmentConfig()),
     scheduledJobService: options.scheduledJobService ?? createTestScheduledJobService(database),
     operationLogReceiver: options.operationLogReceiver ?? noopOperationLogReceiver,
   })

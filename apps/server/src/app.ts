@@ -11,6 +11,7 @@ import {
 } from './middleware/request-context'
 import { createOperationLogMiddleware } from './middleware/operation-log'
 import { createAttachmentRoutes } from './modules/attachments/routes'
+import type { AttachmentStorage } from './modules/attachments/storage'
 import { createAuthRoutes } from './modules/auth/routes'
 import { createContentRoutes } from './modules/content/routes'
 import { createDemoRoutes } from './modules/demos/routes'
@@ -25,6 +26,7 @@ import type { OperationLogEventReceiver } from './runtime/operation-log'
 import { readTrustedProxyPolicy, type TrustedProxyPolicy } from './runtime/trusted-proxy'
 
 export type CreateAppOptions = {
+  attachmentStorage: AttachmentStorage
   logger?: Logger
   operationLogReceiver: OperationLogEventReceiver
   scheduledJobService: ScheduledJobService
@@ -53,7 +55,10 @@ export function createApp(database: Db, options: CreateAppOptions) {
     .route('/auth', createAuthRoutes(database, authMiddleware))
     .route('/icons/search', createIconSearchRoutes(database, authMiddleware))
     .route('/icons', createIconRoutes(database))
-    .route('/attachments', createAttachmentRoutes(database, authMiddleware))
+    .route(
+      '/attachments',
+      createAttachmentRoutes(database, authMiddleware, options.attachmentStorage),
+    )
     .route('/ops', createOpsRoutes(database, authMiddleware, options.scheduledJobService))
     .route('/system', createSystemRoutes(database, authMiddleware))
     .route('/content', createContentRoutes(database, authMiddleware))

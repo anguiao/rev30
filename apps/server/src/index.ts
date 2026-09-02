@@ -26,6 +26,7 @@ const scheduledJobs = await startScheduledJobs({
 const operationLog = createOperationLogRuntime(db, logger)
 
 const app = createApp(db, {
+  attachmentStorage,
   logger,
   operationLogReceiver: operationLog.receiver,
   scheduledJobService: scheduledJobs.service,

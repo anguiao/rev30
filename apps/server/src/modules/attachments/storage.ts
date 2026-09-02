@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { createReadStream, createWriteStream } from 'node:fs'
-import { mkdir, readdir, rename, rm, stat, unlink } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { Readable, Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
@@ -25,6 +25,8 @@ export type AttachmentStorageEntry = {
 
 export interface AttachmentStorage {
   readonly provider: string
+
+  probe(): Promise<void>
 
   put(input: { key: string; body: AsyncIterable<Uint8Array> }): Promise<AttachmentPutResult>
 
@@ -116,6 +118,29 @@ export class LocalAttachmentStorage implements AttachmentStorage {
 
   constructor(rootDir: string) {
     this.rootPath = resolve(rootDir)
+  }
+
+  async probe(): Promise<void> {
+    const probePath = join(this.rootPath, `.health-${randomUUID()}.tmp`)
+    const content = Buffer.from('rev30-storage-probe')
+    let failed = false
+
+    await mkdir(this.rootPath, { recursive: true })
+
+    try {
+      await writeFile(probePath, content, { flag: 'wx' })
+      const stored = await readFile(probePath)
+      if (!stored.equals(content)) {
+        throw new Error('Attachment storage probe verification failed')
+      }
+    } catch (error) {
+      failed = true
+      throw error
+    } finally {
+      await rm(probePath, { force: true }).catch((error: unknown) => {
+        if (!failed) throw error
+      })
+    }
   }
 
   private resolveKey(key: string) {

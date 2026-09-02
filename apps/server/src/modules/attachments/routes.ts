@@ -31,6 +31,7 @@ import {
   AttachmentUploadRequestError,
 } from './errors'
 import { createAttachmentService } from './service'
+import type { AttachmentStorage } from './storage'
 
 const attachmentIdParamSchema = attachmentSchema.pick({ id: true })
 const attachmentUploadSessionIdParamSchema = z.object({
@@ -155,8 +156,12 @@ function attachmentErrorResponse(error: unknown, c: Context) {
   throw error
 }
 
-export function createAttachmentRoutes(database: Db, authMiddleware: MiddlewareHandler<AuthEnv>) {
-  const service = createAttachmentService(database)
+export function createAttachmentRoutes(
+  database: Db,
+  authMiddleware: MiddlewareHandler<AuthEnv>,
+  storage: AttachmentStorage,
+) {
+  const service = createAttachmentService(database, storage)
   const app = new Hono<AuthEnv & RequestContextEnv & OperationLogEnv>()
 
   app.onError((error, c) => attachmentErrorResponse(error, c))

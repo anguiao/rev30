@@ -26,6 +26,17 @@ const scheduledJobDefinitions = scheduledJobTaskKeys.map((key) => ({
 
 export function createScheduledJobSchedulerStub(): ScheduledJobScheduler {
   return {
+    diagnostics: () => ({
+      runtimeStatus: 'stopped',
+      automaticCapacity: 2,
+      automaticRunning: 0,
+      manualStarting: 0,
+      recoveryQueued: 0,
+      retryPending: false,
+      nextWakeAt: null,
+      lastPollAt: null,
+      lastPollStatus: null,
+    }),
     start: async () => undefined,
     runManual: async () => {
       throw new Error('Scheduled job test scheduler is not configured')

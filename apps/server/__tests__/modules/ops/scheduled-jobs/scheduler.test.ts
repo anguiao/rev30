@@ -136,19 +136,52 @@ describe('scheduled job scheduler', () => {
     vi.useRealTimers()
   })
 
+  it('returns a safe independent diagnostic snapshot across start and stop', async () => {
+    const context = setup()
+    context.due.splice(0)
+    const initial = context.scheduler.diagnostics()
+    expect(initial).toEqual({
+      runtimeStatus: 'stopped',
+      automaticCapacity: 2,
+      automaticRunning: 0,
+      manualStarting: 0,
+      recoveryQueued: 0,
+      retryPending: false,
+      nextWakeAt: null,
+      lastPollAt: null,
+      lastPollStatus: null,
+    })
+    initial.automaticRunning = 99
+    expect(context.scheduler.diagnostics().automaticRunning).toBe(0)
+    context.scheduler.start([])
+    expect(context.scheduler.diagnostics().runtimeStatus).toBe('running')
+    await flush()
+    expect(context.scheduler.diagnostics()).toMatchObject({
+      lastPollAt: now.toISOString(),
+      lastPollStatus: 'success',
+      nextWakeAt: null,
+    })
+    const stop = context.scheduler.stop()
+    expect(context.scheduler.diagnostics().runtimeStatus).toBe('stopped')
+    await stop
+  })
+
   it('runs at most two automatic jobs and leaves the third due until a slot settles', async () => {
     const context = setup()
     context.scheduler.start([])
     await flush()
 
+    expect(context.scheduler.diagnostics().automaticRunning).toBe(2)
     expect(context.runner.run).toHaveBeenCalledTimes(2)
     expect(context.due.map(({ taskKey }) => taskKey)).toEqual([thirdTask])
     expect(context.repository.claimScheduled).toHaveBeenCalledTimes(2)
 
     context.settlements.get('run-1')!()
+    expect(context.scheduler.diagnostics().automaticRunning).toBe(1)
     await flush()
     expect(context.runner.run).toHaveBeenCalledTimes(3)
     expect(context.due).toEqual([])
+    expect(context.scheduler.diagnostics().automaticRunning).toBe(2)
   })
 
   it('dispatches recoverable runs by startedAt and task key before ordinary due work', async () => {
@@ -159,7 +192,9 @@ describe('scheduled job scheduler', () => {
       { taskKey: firstTask!, scheduledFor: null, startedAt: new Date(1) },
     ]
     context.scheduler.start(runs)
+    expect(context.scheduler.diagnostics().recoveryQueued).toBe(3)
     await flush()
+    expect(context.scheduler.diagnostics().recoveryQueued).toBe(1)
 
     expect(context.repository.claimRecovery.mock.calls.map(([input]) => input.run.taskKey)).toEqual(
       [secondTask, firstTask],
@@ -235,9 +270,19 @@ describe('scheduled job scheduler', () => {
     })
     await flush()
     expect(stopped).toBe(false)
+    expect(context.scheduler.diagnostics()).toMatchObject({
+      runtimeStatus: 'stopped',
+      lastPollAt: null,
+      lastPollStatus: null,
+    })
+    vi.setSystemTime(new Date(now.getTime() + 1_000))
 
     claim.resolve({ runId: 'committed-run', blockedByRunId: null, scheduledFor: now })
     await stop
+    expect(context.scheduler.diagnostics()).toMatchObject({
+      lastPollAt: new Date(now.getTime() + 1_000).toISOString(),
+      lastPollStatus: 'success',
+    })
     expect(context.runner.run).toHaveBeenCalledWith(
       expect.objectContaining({ runId: 'committed-run' }),
     )
@@ -255,12 +300,14 @@ describe('scheduled job scheduler', () => {
     context.repository.claimManual.mockImplementationOnce(() => claim.promise)
 
     const manualRun = context.scheduler.runManual({ taskKey: firstTask, actor })
+    expect(context.scheduler.diagnostics().manualStarting).toBe(1)
     const stop = context.scheduler.stop()
     await flush()
     expect(context.runner.stop).not.toHaveBeenCalled()
 
     claim.resolve({ runId, blockedByRunId: null, scheduledFor: null })
     await manualRun
+    expect(context.scheduler.diagnostics().manualStarting).toBe(0)
     await stop
 
     expect(context.runner.run).toHaveBeenCalledWith(
@@ -280,6 +327,9 @@ describe('scheduled job scheduler', () => {
     context.scheduler.start([])
     await flush()
     expect(vi.getTimerCount()).toBe(1)
+    expect(context.scheduler.diagnostics().nextWakeAt).toBe(
+      new Date(now.getTime() + 2_147_483_647).toISOString(),
+    )
 
     context.scheduler.wake()
     context.scheduler.wake()
@@ -289,11 +339,15 @@ describe('scheduled job scheduler', () => {
     await flush()
     expect(context.repository.listDueScheduled.mock.calls.length).toBeGreaterThan(1)
     expect(vi.getTimerCount()).toBe(1)
+    expect(context.scheduler.diagnostics().nextWakeAt).toBe(
+      new Date(now.getTime() + 2_147_483_647 + 5_000).toISOString(),
+    )
 
     context.repository.findNextScheduledAt.mockResolvedValue(null)
     context.scheduler.wake()
     await flush()
     expect(vi.getTimerCount()).toBe(0)
+    expect(context.scheduler.diagnostics().nextWakeAt).toBeNull()
   })
 
   it('logs a safe query failure and installs one 60-second retry timer', async () => {
@@ -308,6 +362,12 @@ describe('scheduled job scheduler', () => {
       'scheduled job scheduler query failed',
     )
     expect(vi.getTimerCount()).toBe(1)
+    expect(context.scheduler.diagnostics()).toMatchObject({
+      retryPending: true,
+      lastPollAt: now.toISOString(),
+      lastPollStatus: 'failure',
+      nextWakeAt: new Date(now.getTime() + 60_000).toISOString(),
+    })
     context.scheduler.wake()
     context.scheduler.wake()
     await vi.advanceTimersByTimeAsync(59_999)
@@ -316,6 +376,26 @@ describe('scheduled job scheduler', () => {
     await flush()
     expect(context.repository.listDueScheduled).toHaveBeenCalledTimes(2)
     expect(vi.getTimerCount()).toBe(1)
+    context.repository.listDueScheduled.mockResolvedValue([])
+    await vi.advanceTimersByTimeAsync(60_000)
+    await flush()
+    expect(context.scheduler.diagnostics()).toMatchObject({
+      retryPending: false,
+      lastPollAt: new Date(now.getTime() + 120_000).toISOString(),
+      lastPollStatus: 'success',
+      nextWakeAt: null,
+    })
+    context.repository.listDueScheduled.mockRejectedValueOnce(failure)
+    context.scheduler.wake()
+    await flush()
+    const stop = context.scheduler.stop()
+    expect(context.scheduler.diagnostics()).toMatchObject({
+      runtimeStatus: 'stopped',
+      retryPending: false,
+      nextWakeAt: null,
+      lastPollStatus: 'failure',
+    })
+    await stop
   })
 
   it('releases the automatic slot and logs an unexpected runner failure', async () => {
@@ -439,7 +519,14 @@ describe('scheduled job scheduler', () => {
     await flush()
     expect(vi.getTimerCount()).toBe(1)
 
+    expect(context.scheduler.diagnostics().nextWakeAt).toBe(
+      new Date(now.getTime() + 10_000).toISOString(),
+    )
     const stop = context.scheduler.stop()
+    expect(context.scheduler.diagnostics()).toMatchObject({
+      runtimeStatus: 'stopped',
+      nextWakeAt: null,
+    })
     expect(vi.getTimerCount()).toBe(0)
     context.due.push({ taskKey: firstTask!, nextRunAt: now, activeRunId: null })
     context.scheduler.wake()

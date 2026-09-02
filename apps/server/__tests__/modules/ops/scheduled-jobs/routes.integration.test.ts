@@ -10,7 +10,11 @@ import {
 import { eq } from 'drizzle-orm'
 import { describe, expect, vi } from 'vitest'
 import { opsJobRuns, opsScheduledJobs } from '../../../../src/db/schema'
-import { createApp, createTestScheduledJobService } from '../../../helpers/app'
+import {
+  createApp,
+  createScheduledJobSchedulerStub,
+  createTestScheduledJobService,
+} from '../../../helpers/app'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
 import {
@@ -27,6 +31,7 @@ const terminalRunId = '20000000-0000-4000-8000-000000000002'
 
 function createScheduler() {
   return {
+    ...createScheduledJobSchedulerStub(),
     start: vi.fn<ScheduledJobScheduler['start']>(async () => undefined),
     runManual: vi.fn<ScheduledJobScheduler['runManual']>(async () => ({
       runId: randomUUID(),

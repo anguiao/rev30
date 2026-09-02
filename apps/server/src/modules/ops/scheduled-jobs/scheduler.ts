@@ -1,4 +1,9 @@
-import type { ScheduledJobTaskKey, ScheduledJobTriggerSource, User } from '@rev30/contracts'
+import type {
+  ScheduledJobTaskKey,
+  ScheduledJobTriggerSource,
+  SystemHealthSnapshot,
+  User,
+} from '@rev30/contracts'
 import type { Logger } from 'pino'
 import { ScheduledJobStateConflictError } from './errors'
 import type { RecoverableScheduledJobRun, ScheduledJobRepository } from './repository'
@@ -7,6 +12,8 @@ import type { ScheduledJobRunner } from './runner'
 const SCHEDULED_JOB_AUTOMATIC_CAPACITY = 2
 const RETRY_MS = 60_000
 const MAX_TIMER_DELAY_MS = 2_147_483_647
+
+export type ScheduledJobDiagnostics = Omit<SystemHealthSnapshot['scheduler'], 'shared'>
 
 type SchedulerOptions = {
   executorId: string
@@ -24,8 +31,13 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
   let pollPromise: Promise<void> | null = null
   let retryPending = false
   let stopped = false
+  let runtimeStatus: ScheduledJobDiagnostics['runtimeStatus'] = 'stopped'
+  let nextWakeAt: string | null = null
+  let lastPollAt: string | null = null
+  let lastPollStatus: ScheduledJobDiagnostics['lastPollStatus'] = null
 
   function clearWakeTimer() {
+    nextWakeAt = null
     if (timer === null) return
     clearTimeout(timer)
     timer = null
@@ -34,14 +46,14 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
   function setWakeTimer(delayMs: number, retry = false) {
     clearWakeTimer()
     retryPending = retry
-    timer = setTimeout(
-      () => {
-        timer = null
-        retryPending = false
-        wake()
-      },
-      Math.min(MAX_TIMER_DELAY_MS, Math.max(0, delayMs)),
-    )
+    const delay = Math.min(MAX_TIMER_DELAY_MS, Math.max(0, delayMs))
+    nextWakeAt = new Date(Date.now() + delay).toISOString()
+    timer = setTimeout(() => {
+      timer = null
+      nextWakeAt = null
+      retryPending = false
+      wake()
+    }, delay)
   }
 
   function logSkipped(
@@ -121,6 +133,7 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
   async function poll() {
     if (stopped) return
     clearWakeTimer()
+    let result: ScheduledJobDiagnostics['lastPollStatus'] = 'success'
     try {
       await processRecovery()
       if (stopped) return
@@ -158,7 +171,11 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
         setWakeTimer(nextWakeAt.getTime() - Date.now())
       }
     } catch (error) {
+      result = 'failure'
       scheduleFailureRetry(error)
+    } finally {
+      lastPollAt = new Date().toISOString()
+      lastPollStatus = result
     }
   }
 
@@ -185,6 +202,7 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
   }
 
   function start(runs: readonly RecoverableScheduledJobRun[]) {
+    if (!stopped) runtimeStatus = 'running'
     recoverableRuns.push(
       ...runs.toSorted(
         (left, right) =>
@@ -269,12 +287,29 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
 
   async function stop() {
     stopped = true
+    runtimeStatus = 'stopped'
+    retryPending = false
     clearWakeTimer()
     await Promise.allSettled([pollPromise, ...manualStarts])
     await options.runner.stop()
   }
 
+  function diagnostics(): ScheduledJobDiagnostics {
+    return {
+      runtimeStatus,
+      automaticCapacity: SCHEDULED_JOB_AUTOMATIC_CAPACITY,
+      automaticRunning: automaticRuns.size,
+      manualStarting: manualStarts.size,
+      recoveryQueued: recoverableRuns.length,
+      retryPending,
+      nextWakeAt,
+      lastPollAt,
+      lastPollStatus,
+    }
+  }
+
   return {
+    diagnostics,
     start,
     runManual,
     requestCancellation,

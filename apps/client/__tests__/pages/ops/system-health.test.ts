@@ -74,7 +74,14 @@ describe('system health page', () => {
   it('renders independent times, chart mapping, accessible summaries and theme; opens the selected anomaly', async () => {
     const { wrapper } = await mountPage()
     expect(wrapper.text()).toContain('当前响应实例')
-    expect(wrapper.text()).toContain('数据库共享状态')
+    const detailsButton = wrapper.findAll('button').find((item) => item.text() === '诊断详情')!
+    expect(detailsButton.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.text()).not.toContain(healthSnapshot().instance.nodeVersion)
+    await detailsButton.trigger('click')
+    expect(detailsButton.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.text()).toContain(healthSnapshot().instance.nodeVersion)
+    await detailsButton.trigger('click')
+    expect(wrapper.text()).not.toContain(healthSnapshot().instance.nodeVersion)
     expect(wrapper.text()).toContain('12:00:00')
     expect(wrapper.text()).toContain('12:00:01')
     expect(wrapper.text()).toContain('按当前留存日志统计，已清理记录不计入统计')
@@ -84,11 +91,19 @@ describe('system health page', () => {
       expect(chart.props('autoresize')).toBe(true)
       expect(chart.props('option').aria.enabled).toBe(true)
     }
-    expect(charts[0]!.props('option').series).toHaveLength(6)
-    expect(charts[0]!.props('option').series[1].data).toEqual([0, 1, 2, 3, 4, 5, 6])
-    expect(charts[1]!.props('option').series[0].data).toHaveLength(6)
-    expect(charts[2]!.props('option').series[0].data).toHaveLength(4)
-    expect(charts[3]!.props('option').series[0].data).toEqual([1250])
+    const statisticsCharts = wrapper
+      .findComponent({ name: 'HealthStatistics' })
+      .findAllComponents({ name: 'VChart' })
+    expect(statisticsCharts[0]!.props('option').series).toHaveLength(6)
+    expect(statisticsCharts[0]!.props('option').series[1].data).toEqual([0, 1, 2, 3, 4, 5, 6])
+    expect(statisticsCharts[1]!.props('option').series[0].data).toHaveLength(6)
+    expect(statisticsCharts[2]!.props('option').series[0].data).toHaveLength(4)
+    const durationChart = statisticsCharts[3]!.props('option')
+    expect(durationChart.series[0].data).toEqual([1250])
+    expect(durationChart.yAxis[0].data).toEqual(['认证会话清理'])
+    expect(durationChart.yAxis[1].data).toEqual(['1250 ms · 21 次成功'])
+    expect(durationChart.aria.label.description).toContain('认证会话清理：1250 ms（21 次成功）')
+    expect(wrapper.findComponent({ name: 'HealthTrends' }).text()).toContain('最新：100MB')
     useThemeStore().setMode('dark')
     await flushPromises()
     expect(charts.every((chart) => chart.props('theme') === 'dark')).toBe(true)
@@ -216,7 +231,10 @@ describe('system health page', () => {
     statisticsMock.mockResolvedValue(stats)
     const { wrapper } = await mountPage()
     expect(wrapper.text()).toContain('当前留存日志中无异常任务')
-    expect(wrapper.text().match(/暂无统计数据/g)).toHaveLength(4)
+    expect(wrapper.text()).toContain('近 7 日留存日志中无任务记录')
+    expect(wrapper.text()).toContain('近 30 日留存日志中无任务记录')
+    expect(wrapper.text()).toContain('近 30 日留存日志中无失败任务')
+    expect(wrapper.text()).toContain('近 30 日留存日志中无成功任务耗时样本')
     wrapper.unmount()
   })
   it('starts page-local trends afresh on remount despite retained query data', async () => {
@@ -228,13 +246,18 @@ describe('system health page', () => {
     await router.push('/ops/system-health')
     await flushPromises()
     expect(wrapper.text().match(/尚无趋势样本/g)).toHaveLength(3)
-    pending.resolve(healthSnapshot(20))
+    const snapshot = healthSnapshot(20)
+    snapshot.instance.memory.rssBytes = 105381888
+    pending.resolve(snapshot)
     await flushPromises()
-    const charts = wrapper.findAllComponents({ name: 'VChart' })
-    expect(charts[4]!.props('option').series[0].data).toEqual([
-      [Date.parse(healthSnapshot(20).observedAt), 104857600],
+    const charts = wrapper
+      .findComponent({ name: 'HealthTrends' })
+      .findAllComponents({ name: 'VChart' })
+    expect(charts[0]!.props('option').series[0].data).toEqual([
+      [Date.parse(snapshot.observedAt), 100.5],
     ])
-    expect(charts[4]!.props('option').xAxis.max - charts[4]!.props('option').xAxis.min).toBe(600000)
+    expect(charts[0]!.props('option').tooltip.valueFormatter(100.5)).toBe('100.5MB')
+    expect(charts[0]!.props('option').xAxis.max - charts[0]!.props('option').xAxis.min).toBe(600000)
     wrapper.unmount()
   })
 
@@ -246,20 +269,21 @@ describe('system health page', () => {
     snapshotMock.mockResolvedValueOnce(cached).mockResolvedValueOnce(healthSnapshot(30))
     await visibility('visible')
     await tick(10000)
-    let charts = wrapper.findAllComponents({ name: 'VChart' })
+    let charts = wrapper
+      .findComponent({ name: 'HealthTrends' })
+      .findAllComponents({ name: 'VChart' })
     expect(
-      charts[4]!.props('option').series[0].data.map((point: [number, number | null]) => point[1]),
-    ).toEqual([104857600, null, 104857600, 104857600])
+      charts[0]!.props('option').series[0].data.map((point: [number, number | null]) => point[1]),
+    ).toEqual([100, null, 100, 100])
     expect(
-      charts[6]!.props('option').series[0].data.map((point: [number, number | null]) => point[1]),
+      charts[2]!.props('option').series[0].data.map((point: [number, number | null]) => point[1]),
     ).toEqual([5, null, 5])
     const restarted = healthSnapshot(40)
     restarted.instance.startedAt = healthSnapshot(39).observedAt
     snapshotMock.mockResolvedValue(restarted)
     await tick(10000)
-    charts = wrapper.findAllComponents({ name: 'VChart' })
-    for (const chart of charts.slice(4))
-      expect(chart.props('option').series[0].data).toHaveLength(1)
+    charts = wrapper.findComponent({ name: 'HealthTrends' }).findAllComponents({ name: 'VChart' })
+    for (const chart of charts) expect(chart.props('option').series[0].data).toHaveLength(1)
     wrapper.unmount()
   })
   it('keeps a completed storage probe later than observedAt inside the shared time axis', async () => {
@@ -267,7 +291,9 @@ describe('system health page', () => {
     snapshot.storage.checkedAt = healthSnapshot(3).observedAt
     snapshotMock.mockResolvedValue(snapshot)
     const { wrapper } = await mountPage()
-    const charts = wrapper.findAllComponents({ name: 'VChart' }).slice(4)
+    const charts = wrapper
+      .findComponent({ name: 'HealthTrends' })
+      .findAllComponents({ name: 'VChart' })
     const probeTime = Date.parse(snapshot.storage.checkedAt)
     for (const chart of charts) {
       expect(chart.props('option').xAxis.max).toBe(probeTime)

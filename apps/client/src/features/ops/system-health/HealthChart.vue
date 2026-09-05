@@ -1,8 +1,5 @@
-<script setup lang="ts">
-import { computed } from 'vue'
-import { NCard, NEmpty, useThemeVars } from 'naive-ui'
+<script lang="ts">
 import { use } from 'echarts/core'
-import type { EChartsCoreOption } from 'echarts/core'
 import { BarChart, LineChart, PieChart } from 'echarts/charts'
 import {
   AriaComponent,
@@ -12,8 +9,6 @@ import {
   TooltipComponent,
 } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
-import VChart from 'vue-echarts'
-import { useThemeStore } from '../../../stores/theme'
 
 use([
   BarChart,
@@ -26,6 +21,15 @@ use([
   TooltipComponent,
   CanvasRenderer,
 ])
+</script>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { NCard, NEmpty, useThemeVars } from 'naive-ui'
+import type { EChartsCoreOption } from 'echarts/core'
+import VChart from 'vue-echarts'
+import { useThemeStore } from '../../../stores/theme'
+
 const props = defineProps<{
   title: string
   option: EChartsCoreOption
@@ -35,8 +39,10 @@ const props = defineProps<{
   compact?: boolean
   hideSummary?: boolean
 }>()
+
 const theme = useThemeStore()
 const vars = useThemeVars()
+
 const option = computed<EChartsCoreOption>(() => ({
   color: [
     vars.value.primaryColor,

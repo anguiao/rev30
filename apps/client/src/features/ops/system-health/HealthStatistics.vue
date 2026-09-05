@@ -1,15 +1,32 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useThemeVars } from 'naive-ui'
+import { NButton, NCard, NTag, useThemeVars } from 'naive-ui'
 import type { EChartsCoreOption } from 'echarts/core'
 import type { TooltipComponentOption } from 'echarts/components'
-import type { ScheduledJobRunStatus, SystemHealthJobStatistics } from '@rev30/contracts'
-import { scheduledJobErrorCategoryLabels, scheduledJobRunStatusLabels } from '../labels'
+import {
+  scheduledJobRunStatusSchema,
+  type ScheduledJobRunStatus,
+  type SystemHealthJobStatistics,
+  type SystemHealthRecentAnomaly,
+} from '@rev30/contracts'
+import {
+  scheduledJobErrorCategoryLabels,
+  scheduledJobRunStatusLabels,
+  scheduledJobRunStatusTagTypes,
+} from '../labels'
+import { formatHealthDateTime } from './format'
 import HealthChart from './HealthChart.vue'
 
 const props = defineProps<{ statistics: SystemHealthJobStatistics }>()
+
+const emit = defineEmits<{
+  openRunLog: [anomaly: SystemHealthRecentAnomaly]
+}>()
+
 const vars = useThemeVars()
-const statuses = ['running', 'success', 'failure', 'skipped', 'cancelled', 'interrupted'] as const
+
+const statuses = scheduledJobRunStatusSchema.options
+
 const charts = computed(() => {
   const stats = props.statistics
   const statusColors = {
@@ -20,6 +37,7 @@ const charts = computed(() => {
     cancelled: vars.value.textColor3,
     interrupted: vars.value.errorColorSuppl,
   } satisfies Record<ScheduledJobRunStatus, string>
+
   const legend = {
     bottom: 0,
     type: 'scroll',
@@ -77,6 +95,7 @@ const charts = computed(() => {
       ],
     }
   }
+
   return [
     {
       key: 'daily',
@@ -188,6 +207,42 @@ const charts = computed(() => {
 </script>
 
 <template>
+  <NCard title="最近异常任务" size="small">
+    <p
+      v-if="statistics.recentAnomalies.length === 0"
+      class="text-sm text-stone-500 dark:text-zinc-400"
+    >
+      当前留存日志中无异常任务
+    </p>
+    <ul v-else class="divide-y divide-stone-200 dark:divide-zinc-800">
+      <li
+        v-for="anomaly in statistics.recentAnomalies"
+        :key="anomaly.runId"
+        class="py-3 first:pt-0 last:pb-0"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <NButton text type="primary" @click="emit('openRunLog', anomaly)">
+            {{ anomaly.taskName }} · 查看运行日志
+          </NButton>
+          <div class="flex flex-wrap items-center gap-3">
+            <NTag
+              :type="scheduledJobRunStatusTagTypes[anomaly.status]"
+              :bordered="false"
+              size="small"
+            >
+              {{ scheduledJobRunStatusLabels[anomaly.status] }}
+            </NTag>
+            <time :datetime="anomaly.finishedAt" class="text-sm text-stone-500 dark:text-zinc-400">
+              {{ formatHealthDateTime(anomaly.finishedAt) }}
+            </time>
+          </div>
+        </div>
+        <p v-if="anomaly.errorSummary" class="mt-2 text-sm text-stone-500 dark:text-zinc-400">
+          {{ anomaly.errorSummary }}
+        </p>
+      </li>
+    </ul>
+  </NCard>
   <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
     <HealthChart v-for="{ key, ...chart } in charts" :key="key" v-bind="chart" />
   </div>

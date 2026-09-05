@@ -103,7 +103,10 @@ describe('system health page', () => {
     expect(durationChart.yAxis[0].data).toEqual(['认证会话清理'])
     expect(durationChart.yAxis[1].data).toEqual(['1250 ms · 21 次成功'])
     expect(durationChart.aria.label.description).toContain('认证会话清理：1250 ms（21 次成功）')
-    expect(wrapper.findComponent({ name: 'HealthTrends' }).text()).toContain('最新：100MB')
+    const trends = wrapper.findComponent({ name: 'HealthTrends' })
+    expect(trends.text()).toContain('最新：100MB（12:00:00）')
+    const trendAxis = trends.findComponent({ name: 'VChart' }).props('option').xAxis
+    expect(trendAxis.axisLabel.formatter(Date.parse(healthSnapshot().observedAt))).toBe('12:00:00')
     useThemeStore().setMode('dark')
     await flushPromises()
     expect(charts.every((chart) => chart.props('theme') === 'dark')).toBe(true)
@@ -261,9 +264,75 @@ describe('system health page', () => {
     wrapper.unmount()
   })
 
+  it('skips a response received while hidden and waits for new data when visible again', async () => {
+    const pending = createDeferred<ReturnType<typeof healthSnapshot>>()
+    snapshotMock.mockResolvedValueOnce(healthSnapshot()).mockReturnValueOnce(pending.promise)
+    const { wrapper } = await mountPage()
+    await tick(10000)
+    await visibility('hidden')
+    pending.resolve(healthSnapshot(10))
+    await flushPromises()
+    const chart = wrapper.findComponent({ name: 'HealthTrends' }).findComponent({ name: 'VChart' })
+    expect(chart.props('option').series[0].data).toEqual([
+      [Date.parse(healthSnapshot().observedAt), 100],
+    ])
+    await tick(60000)
+    expect(snapshotMock).toHaveBeenCalledTimes(2)
+
+    const resumed = createDeferred<ReturnType<typeof healthSnapshot>>()
+    snapshotMock.mockReturnValueOnce(resumed.promise)
+    await visibility('visible')
+    expect(snapshotMock).toHaveBeenCalledTimes(3)
+    expect(chart.props('option').series[0].data).toHaveLength(1)
+    resumed.resolve(healthSnapshot(70))
+    await flushPromises()
+    expect(chart.props('option').series[0].data).toEqual([
+      [Date.parse(healthSnapshot().observedAt), 100],
+      [Date.parse(healthSnapshot(35).observedAt), null],
+      [Date.parse(healthSnapshot(70).observedAt), 100],
+    ])
+    wrapper.unmount()
+  })
+
+  it('keeps trends connected through brief hiding and failed refreshes without missing slots', async () => {
+    snapshotMock.mockResolvedValueOnce(healthSnapshot()).mockResolvedValueOnce(healthSnapshot(10))
+    const { wrapper } = await mountPage()
+    await tick(10000)
+    await visibility('hidden')
+    await tick(1000)
+    const resumed = healthSnapshot(11)
+    resumed.storage = { ...healthSnapshot(10).storage, cached: true }
+    snapshotMock.mockResolvedValueOnce(resumed)
+    await visibility('visible')
+
+    snapshotMock.mockRejectedValueOnce(new Error('snapshot unavailable'))
+    await wrapper
+      .findAll('button')
+      .find((item) => item.text() === '立即刷新')!
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('刷新失败，数据截至')
+    snapshotMock.mockResolvedValue(healthSnapshot(21))
+    await tick(10000)
+    expect(wrapper.text()).not.toContain('刷新失败，数据截至')
+
+    const charts = wrapper
+      .findComponent({ name: 'HealthTrends' })
+      .findAllComponents({ name: 'VChart' })
+    for (const [index, value] of [100, 3, 5].entries()) {
+      expect(
+        charts[index]!.props('option').series[0].data.map(
+          (point: [number, number | null]) => point[1],
+        ),
+      ).toEqual([value, value, value])
+    }
+    wrapper.unmount()
+  })
+
   it('breaks sampling gaps and resets all trends after the responding instance restarts', async () => {
     const { wrapper } = await mountPage()
     await visibility('hidden')
+    await tick(20000)
     const cached = healthSnapshot(20)
     cached.storage = { ...healthSnapshot().storage, cached: true }
     snapshotMock.mockResolvedValueOnce(cached).mockResolvedValueOnce(healthSnapshot(30))
@@ -302,25 +371,35 @@ describe('system health page', () => {
     expect(charts[2]!.props('option').series[0].data).toEqual([[probeTime, 5]])
     wrapper.unmount()
   })
-  it('retries a pending request inherited from an unmounted page after it fails', async () => {
-    const pending = createDeferred<ReturnType<typeof healthSnapshot>>()
-    snapshotMock.mockReturnValueOnce(pending.promise)
-    const { wrapper, router } = await mountPage()
-    await router.push('/away')
-    await flushPromises()
-    await router.push('/ops/system-health')
-    await flushPromises()
-    expect(snapshotMock).toHaveBeenCalledTimes(1)
-    pending.reject(new Error('inherited snapshot failed'))
-    await flushPromises()
-    expect(wrapper.text()).toContain('加载系统健康失败')
-    await tick(10000)
-    expect(snapshotMock).toHaveBeenCalledTimes(2)
-    expect(wrapper.text()).not.toContain('加载系统健康失败')
-    wrapper.unmount()
-  })
+  it.each(['visible', 'hidden'] as const)(
+    'restores current page polling after an inherited request fails while %s',
+    async (state) => {
+      const pending = createDeferred<ReturnType<typeof healthSnapshot>>()
+      snapshotMock.mockReturnValueOnce(pending.promise)
+      const { wrapper, router } = await mountPage()
+      await router.push('/away')
+      await flushPromises()
+      await router.push('/ops/system-health')
+      await flushPromises()
+      await visibility(state)
+      expect(snapshotMock).toHaveBeenCalledTimes(1)
+      pending.reject(new Error('inherited snapshot failed'))
+      await flushPromises()
+      expect(wrapper.text()).toContain('加载系统健康失败')
+      if (state === 'hidden') {
+        await tick(60000)
+        expect(snapshotMock).toHaveBeenCalledTimes(1)
+        await visibility('visible')
+      } else {
+        await tick(10000)
+      }
+      expect(snapshotMock).toHaveBeenCalledTimes(2)
+      expect(wrapper.text()).not.toContain('加载系统健康失败')
+      wrapper.unmount()
+    },
+  )
 
-  it('does not overlap an inherited pending request after remount and visibility changes', async () => {
+  it('shares an inherited request and samples its response in the current page', async () => {
     const pending = createDeferred<ReturnType<typeof healthSnapshot>>()
     snapshotMock.mockReturnValueOnce(pending.promise)
     const { wrapper, router } = await mountPage()
@@ -334,6 +413,10 @@ describe('system health page', () => {
     expect(snapshotMock).toHaveBeenCalledTimes(1)
     pending.resolve(healthSnapshot(20))
     await flushPromises()
+    const chart = wrapper.findComponent({ name: 'HealthTrends' }).findComponent({ name: 'VChart' })
+    expect(chart.props('option').series[0].data).toEqual([
+      [Date.parse(healthSnapshot(20).observedAt), 100],
+    ])
     await tick(10000)
     expect(snapshotMock).toHaveBeenCalledTimes(2)
     wrapper.unmount()

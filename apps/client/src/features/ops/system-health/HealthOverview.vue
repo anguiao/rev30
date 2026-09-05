@@ -2,18 +2,13 @@
 import { computed, ref } from 'vue'
 import { NButton, NCard, NDescriptions, NDescriptionsItem, NDivider, NTag } from 'naive-ui'
 import bytes from 'bytes'
-import type { SystemHealthSnapshot, SystemHealthIssue } from '@rev30/contracts'
-import { formatHealthLatency, formatHealthTime } from './format'
+import type { SystemHealthSnapshot } from '@rev30/contracts'
+import { formatHealthLatency, formatHealthDateTime } from './format'
+import { systemHealthIssueLabels } from './labels'
 
 const props = defineProps<{ snapshot: SystemHealthSnapshot }>()
 const detailsVisible = ref(false)
-const issueLabels: Record<SystemHealthIssue, string> = {
-  database_unavailable: '数据库不可用',
-  storage_unavailable: '附件存储不可用',
-  scheduler_stopped: '调度器已停止',
-  scheduler_query_retry: '任务调度检查失败',
-  scheduler_overdue: '任务启动延迟',
-}
+
 const uptime = computed(() => {
   const seconds = props.snapshot.instance.uptimeSeconds
   return `${Math.floor(seconds / 86400)} 天 ${Math.floor((seconds % 86400) / 3600)} 小时 ${Math.floor((seconds % 3600) / 60)} 分 ${seconds % 60} 秒`
@@ -26,7 +21,7 @@ const overdueHint = computed(() => {
   const oldestOverdueAt = props.snapshot.scheduler.shared.oldestOverdueAt
   return oldestOverdueAt === null
     ? threshold
-    : `${threshold}\n最早计划时间：${formatHealthTime(oldestOverdueAt)}`
+    : `${threshold}\n最早计划时间：${formatHealthDateTime(oldestOverdueAt)}`
 })
 </script>
 
@@ -53,7 +48,7 @@ const overdueHint = computed(() => {
         :key="issue"
         :type="issue === 'database_unavailable' ? 'error' : 'warning'"
         :bordered="false"
-        >{{ issueLabels[issue] }}</NTag
+        >{{ systemHealthIssueLabels[issue] }}</NTag
       >
     </div>
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
@@ -134,7 +129,7 @@ const overdueHint = computed(() => {
           <h3 class="mb-3 font-medium">运行环境</h3>
           <NDescriptions :column="1" label-placement="left">
             <NDescriptionsItem label="启动时间">{{
-              formatHealthTime(snapshot.instance.startedAt)
+              formatHealthDateTime(snapshot.instance.startedAt)
             }}</NDescriptionsItem>
             <NDescriptionsItem label="Node / 平台 / 架构">
               {{ snapshot.instance.nodeVersion }} / {{ snapshot.instance.platform }} /
@@ -152,10 +147,10 @@ const overdueHint = computed(() => {
           <h3 class="mb-3 font-medium">数据库与存储检查</h3>
           <NDescriptions :column="1" label-placement="left">
             <NDescriptionsItem label="数据库检查时间">{{
-              formatHealthTime(snapshot.database.checkedAt)
+              formatHealthDateTime(snapshot.database.checkedAt)
             }}</NDescriptionsItem>
             <NDescriptionsItem label="存储检查时间">{{
-              formatHealthTime(snapshot.storage.checkedAt)
+              formatHealthDateTime(snapshot.storage.checkedAt)
             }}</NDescriptionsItem>
             <NDescriptionsItem label="存储类型">{{ snapshot.storage.provider }}</NDescriptionsItem>
             <NDescriptionsItem label="存储结果来源">{{
@@ -176,14 +171,14 @@ const overdueHint = computed(() => {
               {{
                 snapshot.scheduler.lastPollStatus === null
                   ? '尚未完成首次检查'
-                  : `${formatHealthTime(snapshot.scheduler.lastPollAt)} · ${snapshot.scheduler.lastPollStatus === 'success' ? '成功' : '失败'}`
+                  : `${formatHealthDateTime(snapshot.scheduler.lastPollAt)} · ${snapshot.scheduler.lastPollStatus === 'success' ? '成功' : '失败'}`
               }}
             </NDescriptionsItem>
             <NDescriptionsItem label="下次调度检查">
               {{
                 snapshot.scheduler.nextWakeAt === null
                   ? '尚未安排'
-                  : formatHealthTime(snapshot.scheduler.nextWakeAt)
+                  : formatHealthDateTime(snapshot.scheduler.nextWakeAt)
               }}
               <span v-if="snapshot.scheduler.retryPending"> · 重试</span>
             </NDescriptionsItem>

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   createHealthHistory,
   appendHealthSnapshot,
-  markHealthHistoryGap,
   healthTrendData,
 } from '../../../src/features/ops/system-health/history'
 import { healthSnapshot } from '../../helpers/system-health'
@@ -32,21 +31,29 @@ describe('system health local history', () => {
     appendHealthSnapshot(history, next)
     expect(history.storage).toHaveLength(1)
     expect(history.samples[1]!.databaseMs).toBeNull()
+    const cached = healthSnapshot(20)
+    cached.storage = { ...healthSnapshot().storage, cached: true }
+    appendHealthSnapshot(history, cached)
     const failed = healthSnapshot(30)
     failed.storage = { ...failed.storage, status: 'unavailable', latencyMs: null }
     appendHealthSnapshot(history, failed)
     expect(history.storage[1]!.latencyMs).toBeNull()
+    expect(healthTrendData(history.storage, (sample) => sample.latencyMs)).toEqual([
+      [Date.parse(healthSnapshot().observedAt), 5],
+      [Date.parse(failed.storage.checkedAt), null],
+    ])
   })
 
-  it('breaks known sampling gaps, including a resumed sample in the same slot, and resets on restart', () => {
+  it('keeps adjacent slots connected through replacements and resets on restart', () => {
     const history = createHealthHistory()
     appendHealthSnapshot(history, healthSnapshot())
     appendHealthSnapshot(history, healthSnapshot(10))
-    markHealthHistoryGap(history)
     appendHealthSnapshot(history, healthSnapshot(15))
-    expect(healthTrendData(history.samples, 'rssBytes').some((point) => point[1] === null)).toBe(
-      true,
-    )
+    expect(
+      healthTrendData(history.samples, (sample) => sample.rssBytes).some(
+        (point) => point[1] === null,
+      ),
+    ).toBe(false)
     const restarted = healthSnapshot(20)
     restarted.instance.startedAt = '2026-09-01T04:00:19.000Z'
     appendHealthSnapshot(history, restarted)
@@ -57,32 +64,33 @@ describe('system health local history', () => {
   it('retains a storage gap through cached snapshots and clips storage against the newest observation', () => {
     const history = createHealthHistory()
     appendHealthSnapshot(history, healthSnapshot())
-    markHealthHistoryGap(history)
-    const cached = healthSnapshot(10)
-    cached.storage = { ...healthSnapshot().storage, cached: true }
-    appendHealthSnapshot(history, cached)
-    expect(history.storageGap).toBe(true)
-    appendHealthSnapshot(history, healthSnapshot(30))
-    expect(healthTrendData(history.storage, 'latencyMs')).toEqual([
+    for (const second of [20, 30]) {
+      const cached = healthSnapshot(second)
+      cached.storage = { ...healthSnapshot().storage, cached: true }
+      appendHealthSnapshot(history, cached)
+    }
+    appendHealthSnapshot(history, healthSnapshot(40))
+    appendHealthSnapshot(history, healthSnapshot(50))
+    expect(healthTrendData(history.storage, (sample) => sample.latencyMs)).toEqual([
       [Date.parse(healthSnapshot().observedAt), 5],
-      [Date.parse(healthSnapshot(15).observedAt), null],
-      [Date.parse(healthSnapshot(30).observedAt), 5],
+      [Date.parse(healthSnapshot(20).observedAt), null],
+      [Date.parse(healthSnapshot(40).observedAt), 5],
+      [Date.parse(healthSnapshot(50).observedAt), 5],
     ])
-    const later = healthSnapshot(631)
-    later.storage = { ...healthSnapshot(30).storage, cached: true }
+    const later = healthSnapshot(651)
+    later.storage = { ...healthSnapshot(50).storage, cached: true }
     appendHealthSnapshot(history, later)
     expect(history.storage).toEqual([])
   })
 
-  it('breaks missing time slots without inventing zero-valued samples', () => {
+  it('breaks missing time slots and preserves the break when replacing a sample', () => {
     const history = createHealthHistory()
     appendHealthSnapshot(history, healthSnapshot())
     appendHealthSnapshot(history, healthSnapshot(30))
+    appendHealthSnapshot(history, healthSnapshot(35))
     expect(history.samples).toHaveLength(2)
-    expect(healthTrendData(history.samples, 'databaseMs').map((point) => point[1])).toEqual([
-      3,
-      null,
-      3,
-    ])
+    expect(
+      healthTrendData(history.samples, (sample) => sample.databaseMs).map((point) => point[1]),
+    ).toEqual([3, null, 3])
   })
 })

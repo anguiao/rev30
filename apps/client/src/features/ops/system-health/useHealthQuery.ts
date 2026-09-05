@@ -4,40 +4,52 @@ import { useQuery, useQueryCache } from '@pinia/colada'
 export function useHealthQuery<T>(
   name: string,
   query: () => Promise<T>,
-  visible: Ref<boolean>,
-  interval: number,
+  enabled: Ref<boolean>,
+  intervalMs: number,
 ) {
-  const cache = useQueryCache()
+  const queryCache = useQueryCache()
+
   const key = ['ops', 'system-health', name]
-  const getEntry = () => cache.getEntries({ key, exact: true })[0]
+
+  const getQueryEntry = () => queryCache.getEntries({ key, exact: true })[0]
+
   const options = {
     key,
     query,
-    enabled: visible,
+    enabled,
+    // Always refresh settled data; refresh() reuses pending requests.
     staleTime: 0,
     // The shared entry can still be loading a request started by a previous page.
-    autoRefetch: () => (getEntry()?.pending ? false : interval),
+    autoRefetch: () => (getQueryEntry()?.pending ? false : intervalMs),
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   }
+
   const result = useQuery(options)
 
-  // Auto-refetch 0.2 resumes after successful fetches only. Observe settled
-  // failures, including requests inherited from a previous page.
-  watch([result.error, result.asyncStatus, visible], ([error, status, isVisible], _, onCleanup) => {
-    if (error === null || status !== 'idle' || !isVisible) return
-    const entry = getEntry()
-    if (!entry?.active) return
-    cache.ensure(options)
+  // Auto-refetch 0.2 does not reschedule failed requests. Restore current options
+  // even while disabled, so an old page cannot resume polling.
+  watch([result.error, result.asyncStatus], ([error, status], _, onCleanup) => {
+    if (error === null || status !== 'idle') {
+      return
+    }
 
-    // An old refresh error handler can restore its disposed page's options later
-    // in this microtask chain. Restore current options only if that happened.
-    const timeout = setTimeout(() => {
-      if (visible.value && entry.active && !entry.pending && entry.options?.enabled !== visible) {
-        cache.ensure(options)
+    const entry = getQueryEntry()
+    if (!entry?.active) {
+      return
+    }
+
+    queryCache.ensure(options)
+
+    // Colada may reapply an old page's options later in the promise chain.
+    const restoreTimeout = setTimeout(() => {
+      if (entry.active && !entry.pending && entry.options?.enabled !== enabled) {
+        queryCache.ensure(options)
       }
     }, 0)
-    onCleanup(() => clearTimeout(timeout))
+
+    onCleanup(() => clearTimeout(restoreTimeout))
   })
+
   return result
 }

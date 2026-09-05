@@ -1,18 +1,32 @@
 import { randomUUID } from 'node:crypto'
 import type { ScheduledJobRunStatus } from '@rev30/contracts'
 import { eq, sql } from 'drizzle-orm'
-import { describe, expect } from 'vitest'
+import { afterEach, beforeEach, describe, expect, vi } from 'vitest'
 import { opsJobRuns, opsScheduledJobs } from '../../../../src/db/schema'
+import { LocalAttachmentStorage } from '../../../../src/modules/attachments/storage'
 import { scheduledJobTaskKeys } from '../../../../src/modules/ops/scheduled-jobs/registry'
-import { createSystemHealthRepository } from '../../../../src/modules/ops/system-health/repository'
+import { ScheduledJobNotFoundError } from '../../../../src/modules/ops/scheduled-jobs/errors'
 import { createSystemHealthService } from '../../../../src/modules/ops/system-health/service'
+import { createLogger } from '../../../../src/runtime/logger'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
-import { createHealthTestContext } from './helpers'
+import {
+  createScheduledJobSchedulerStub,
+  createTestScheduledJobService,
+} from '../../../helpers/app'
 
 const generatedAt = new Date('2026-09-02T16:30:00.000Z')
 const taskKey = scheduledJobTaskKeys[0]
 const zeroCounts = { running: 0, success: 0, failure: 0, skipped: 0, cancelled: 0, interrupted: 0 }
-const catalog = scheduledJobTaskKeys.map((key) => ({ key, name: `名称 ${key}` }))
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(generatedAt)
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.useRealTimers()
+})
 
 function run(
   status: ScheduledJobRunStatus,
@@ -46,13 +60,12 @@ function run(
 }
 
 function createService(db: TestDatabase) {
-  const context = createHealthTestContext()
-  return createSystemHealthService({
-    ...context,
-    repository: createSystemHealthRepository(db),
-    taskCatalog: catalog,
-    now: () => generatedAt,
+  const scheduler = createScheduledJobSchedulerStub()
+  vi.spyOn(scheduler, 'diagnostics').mockReturnValue({
+    ...scheduler.diagnostics(),
+    runtimeStatus: 'running',
   })
+  return createSystemHealthService(db, createTestScheduledJobService(db, scheduler))
 }
 
 describe('system health retained job statistics', () => {
@@ -163,7 +176,7 @@ describe('system health retained job statistics', () => {
       expect(result.averageDurations.map(({ taskKey }) => taskKey)).toEqual(keys.slice(0, 5))
       expect(result.averageDurations[4]).toEqual({
         taskKey: keys[4],
-        taskName: `名称 ${keys[4]}`,
+        taskName: `Definition ${keys[4]}`,
         averageDurationMs: 100,
         runCount: 4,
       })
@@ -202,7 +215,7 @@ describe('system health retained job statistics', () => {
         status: 'failure',
         errorCategory: 'internal',
         errorSummary: '任务执行失败',
-        taskName: `名称 ${taskKey}`,
+        taskName: `Definition ${taskKey}`,
       })
       await db
         .update(opsJobRuns)
@@ -215,9 +228,13 @@ describe('system health retained job statistics', () => {
   dbTest(
     'rejects unknown catalog keys and leaves current health unaffected by historical failures',
     async ({ db }) => {
+      vi.spyOn(LocalAttachmentStorage.prototype, 'checkHealth').mockResolvedValueOnce(undefined)
       await db.update(opsScheduledJobs).set({ enabled: false, nextRunAt: null })
       await db.insert(opsJobRuns).values(run('failure'))
-      expect(await createService(db).snapshot()).toMatchObject({ status: 'healthy', issues: [] })
+      expect(await createService(db).snapshot(createLogger({ level: 'silent' }))).toMatchObject({
+        status: 'healthy',
+        issues: [],
+      })
       await db.insert(opsScheduledJobs).values({
         taskKey: 'unknown-task',
         cronExpression: '0 0 * * *',
@@ -228,9 +245,7 @@ describe('system health retained job statistics', () => {
       await db
         .insert(opsJobRuns)
         .values(run('failure', { taskKey: 'unknown-task', finishedAt: generatedAt }))
-      await expect(createService(db).jobStatistics()).rejects.toThrow(
-        'Unknown scheduled job task: unknown-task',
-      )
+      await expect(createService(db).jobStatistics()).rejects.toThrow(ScheduledJobNotFoundError)
     },
   )
 })

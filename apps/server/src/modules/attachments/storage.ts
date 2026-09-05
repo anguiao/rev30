@@ -26,7 +26,7 @@ export type AttachmentStorageEntry = {
 export interface AttachmentStorage {
   readonly provider: string
 
-  probe(): Promise<void>
+  checkHealth(): Promise<void>
 
   put(input: { key: string; body: AsyncIterable<Uint8Array> }): Promise<AttachmentPutResult>
 
@@ -120,24 +120,24 @@ export class LocalAttachmentStorage implements AttachmentStorage {
     this.rootPath = resolve(rootDir)
   }
 
-  async probe(): Promise<void> {
-    const probePath = join(this.rootPath, `.health-${randomUUID()}.tmp`)
-    const content = Buffer.from('rev30-storage-probe')
+  async checkHealth(): Promise<void> {
+    const tempPath = join(this.rootPath, `.health-${randomUUID()}.tmp`)
+    const content = Buffer.from('rev30-storage-health-check')
     let failed = false
 
     await mkdir(this.rootPath, { recursive: true })
 
     try {
-      await writeFile(probePath, content, { flag: 'wx' })
-      const stored = await readFile(probePath)
+      await writeFile(tempPath, content, { flag: 'wx' })
+      const stored = await readFile(tempPath)
       if (!stored.equals(content)) {
-        throw new Error('Attachment storage probe verification failed')
+        throw new Error('Attachment storage health check failed')
       }
     } catch (error) {
       failed = true
       throw error
     } finally {
-      await rm(probePath, { force: true }).catch((error: unknown) => {
+      await rm(tempPath, { force: true }).catch((error: unknown) => {
         if (!failed) throw error
       })
     }

@@ -47,7 +47,7 @@ import {
 import {
   ATTACHMENT_UPLOAD_STORAGE_PREFIX,
   type AttachmentGetResult,
-  type AttachmentStorage,
+  createAttachmentStorage,
 } from './storage'
 import { limitAttachmentBodySize, toReadableStream } from './stream'
 
@@ -130,10 +130,11 @@ function createContentResponse(
   }
 }
 
-export function createAttachmentService(database: Db, storage: AttachmentStorage) {
+export function createAttachmentService(database: Db) {
   const authRepository = createAuthRepository(database)
   const config = readAttachmentConfig()
   const authConfig = readAuthConfig()
+  const storage = createAttachmentStorage(config)
   const repository = createAttachmentRepository(database)
 
   return {

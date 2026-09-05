@@ -16,7 +16,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 
 const tempDirs: string[] = []
 async function createRoot() {
-  const directory = await mkdtemp(join(tmpdir(), 'rev30-storage-probe-'))
+  const directory = await mkdtemp(join(tmpdir(), 'rev30-storage-health-'))
   tempDirs.push(directory)
   return join(directory, 'storage')
 }
@@ -29,11 +29,11 @@ afterEach(async () => {
   vi.clearAllMocks()
 })
 
-describe('local attachment storage probe', () => {
-  it('creates the root and independently writes, verifies and removes unique probe files', async () => {
+describe('local attachment storage health checks', () => {
+  it('creates the root and independently writes, verifies and removes unique temporary files', async () => {
     const root = await createRoot()
     const storage = new LocalAttachmentStorage(root)
-    await Promise.all([storage.probe(), storage.probe()])
+    await Promise.all([storage.checkHealth(), storage.checkHealth()])
     expect(await readdir(root)).toEqual([])
     const paths = vi.mocked(writeFile).mock.calls.map(([path]) => path)
     expect(paths).toHaveLength(2)
@@ -52,9 +52,9 @@ describe('local attachment storage probe', () => {
       if (stage === 'read') vi.mocked(readFile).mockRejectedValueOnce(error)
       if (stage === 'verify') vi.mocked(readFile).mockResolvedValueOnce(Buffer.from('corrupted'))
       if (stage === 'delete') vi.mocked(rm).mockRejectedValueOnce(error)
-      const pending = storage.probe()
+      const pending = storage.checkHealth()
       if (stage === 'verify')
-        await expect(pending).rejects.toThrow('Attachment storage probe verification failed')
+        await expect(pending).rejects.toThrow('Attachment storage health check failed')
       else await expect(pending).rejects.toBe(error)
       expect(rm).toHaveBeenCalledTimes(1)
       if (stage !== 'delete') expect(await readdir(root)).toEqual([])
@@ -66,7 +66,7 @@ describe('local attachment storage probe', () => {
     const error = new Error('read failure')
     vi.mocked(readFile).mockRejectedValueOnce(error)
     vi.mocked(rm).mockRejectedValueOnce(new Error('cleanup failure'))
-    await expect(storage.probe()).rejects.toBe(error)
+    await expect(storage.checkHealth()).rejects.toBe(error)
     expect(rm).toHaveBeenCalledTimes(1)
   })
 })

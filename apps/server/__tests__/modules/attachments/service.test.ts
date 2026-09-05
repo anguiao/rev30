@@ -31,7 +31,6 @@ import {
 } from '../../../src/modules/attachments/errors'
 import { ATTACHMENT_MAX_SIZE_BYTES } from '../../../src/modules/attachments/policy'
 import { createAttachmentService } from '../../../src/modules/attachments/service'
-import { readAttachmentConfig } from '../../../src/modules/attachments/config'
 import { LocalAttachmentStorage } from '../../../src/modules/attachments/storage'
 import { createAttachmentAccessToken } from '../../../src/modules/attachments/access-token'
 import { readAuthConfig } from '../../../src/modules/auth/config'
@@ -192,7 +191,7 @@ describe('attachment service', () => {
       await database.insert(systemConfigOverrides).values(overrides)
     }
 
-    return createAttachmentService(database, new LocalAttachmentStorage(root))
+    return createAttachmentService(database)
   }
 
   async function createStoredUploadSession(
@@ -263,22 +262,6 @@ describe('attachment service', () => {
 
     return id
   }
-
-  dbTest('uses the injected storage instance for attachment content', async ({ db: database }) => {
-    const root = await createTempRoot()
-    vi.stubEnv('ATTACHMENT_STORAGE_DIR', await createTempRoot())
-    const storage = new LocalAttachmentStorage(root)
-    const put = vi.spyOn(storage, 'put')
-    const service = createAttachmentService(database, storage)
-    await createStoredUploadSession(service, {
-      bytes: pngBytes,
-      originalName: 'avatar.png',
-      userId: await createUser(database),
-    })
-    expect(put).toHaveBeenCalledTimes(1)
-    const [call] = put.mock.calls
-    expect(new Uint8Array(await readFile(join(root, call![0].key)))).toEqual(pngBytes)
-  })
 
   dbTest(
     'creates upload sessions, accepts authorized uploads, and completes metadata',
@@ -367,10 +350,7 @@ describe('attachment service', () => {
         state: 'pending',
       })
 
-      const uploadingService = createAttachmentService(
-        database,
-        new LocalAttachmentStorage(readAttachmentConfig().storageDir),
-      )
+      const uploadingService = createAttachmentService(database)
 
       await uploadingService.uploadSessionContent({
         body: streamFromBytes(pngBytes),
@@ -389,10 +369,7 @@ describe('attachment service', () => {
         storageKey: `uploads/2026/05/29/${session.uploadId}.png`,
       })
 
-      const completingService = createAttachmentService(
-        database,
-        new LocalAttachmentStorage(readAttachmentConfig().storageDir),
-      )
+      const completingService = createAttachmentService(database)
       const attachment = await completingService.completeUploadSession({
         uploadId: session.uploadId,
         userId,
@@ -649,10 +626,7 @@ describe('attachment service', () => {
         },
       ])
 
-      const attachment = await createAttachmentService(
-        database,
-        new LocalAttachmentStorage(readAttachmentConfig().storageDir),
-      ).completeUploadSession({
+      const attachment = await createAttachmentService(database).completeUploadSession({
         uploadId: session.uploadId,
         userId,
       })

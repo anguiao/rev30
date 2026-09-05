@@ -11,28 +11,23 @@ import {
 } from './middleware/request-context'
 import { createOperationLogMiddleware } from './middleware/operation-log'
 import { createAttachmentRoutes } from './modules/attachments/routes'
-import type { AttachmentStorage } from './modules/attachments/storage'
 import { createAuthRoutes } from './modules/auth/routes'
 import { createContentRoutes } from './modules/content/routes'
 import { createDemoRoutes } from './modules/demos/routes'
-import { probeDatabase } from './modules/health/database-probe'
 import { createHealthRoutes } from './modules/health/routes'
 import { createIconRoutes } from './modules/icons/routes'
 import { createIconSearchRoutes } from './modules/icons/search/routes'
 import { createOpsRoutes } from './modules/ops/routes'
 import type { ScheduledJobService } from './modules/ops/scheduled-jobs/service'
-import type { SystemHealthService } from './modules/ops/system-health/service'
 import { createSystemRoutes } from './modules/system/routes'
 import { logger } from './runtime/logger'
 import type { OperationLogEventReceiver } from './runtime/operation-log'
 import { readTrustedProxyPolicy, type TrustedProxyPolicy } from './runtime/trusted-proxy'
 
 export type CreateAppOptions = {
-  attachmentStorage: AttachmentStorage
   logger?: Logger
   operationLogReceiver: OperationLogEventReceiver
   scheduledJobService: ScheduledJobService
-  systemHealthService: SystemHealthService
   trustedProxyPolicy?: TrustedProxyPolicy
 }
 
@@ -54,26 +49,12 @@ export function createApp(database: Db, options: CreateAppOptions) {
 
   const api = new Hono()
     .use('*', apiJsonBodyLimit)
-    .route(
-      '/',
-      createHealthRoutes(() => probeDatabase(database)),
-    )
+    .route('/', createHealthRoutes(database))
     .route('/auth', createAuthRoutes(database, authMiddleware))
     .route('/icons/search', createIconSearchRoutes(database, authMiddleware))
     .route('/icons', createIconRoutes(database))
-    .route(
-      '/attachments',
-      createAttachmentRoutes(database, authMiddleware, options.attachmentStorage),
-    )
-    .route(
-      '/ops',
-      createOpsRoutes(
-        database,
-        authMiddleware,
-        options.scheduledJobService,
-        options.systemHealthService,
-      ),
-    )
+    .route('/attachments', createAttachmentRoutes(database, authMiddleware))
+    .route('/ops', createOpsRoutes(database, authMiddleware, options.scheduledJobService))
     .route('/system', createSystemRoutes(database, authMiddleware))
     .route('/content', createContentRoutes(database, authMiddleware))
     .route('/demos', createDemoRoutes(authMiddleware))
@@ -81,13 +62,7 @@ export function createApp(database: Db, options: CreateAppOptions) {
   return new Hono<RequestContextEnv>()
     .use('*', createRequestContextMiddleware({ logger: appLogger, trustedProxyPolicy }))
     .use('*', createRequestLogger())
-    .use(
-      '*',
-      createOperationLogMiddleware({
-        logger: appLogger,
-        receiver: options.operationLogReceiver,
-      }),
-    )
+    .use('*', createOperationLogMiddleware(options.operationLogReceiver))
     .onError(rootErrorHandler)
     .route('/api', api)
 }

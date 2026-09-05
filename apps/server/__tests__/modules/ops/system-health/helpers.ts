@@ -1,15 +1,16 @@
-import type { SystemHealthSnapshot } from '@rev30/contracts'
 import { vi } from 'vitest'
 import type { Logger } from 'pino'
-import { scheduledJobTaskKeys } from '../../../../src/modules/ops/scheduled-jobs/registry'
+import type { Db } from '../../../../src/db'
 import type { ScheduledJobDiagnostics } from '../../../../src/modules/ops/scheduled-jobs/scheduler'
-import type { SystemHealthRepository } from '../../../../src/modules/ops/system-health/repository'
+import type { ScheduledJobService } from '../../../../src/modules/ops/scheduled-jobs/service'
+import * as systemHealthRepository from '../../../../src/modules/ops/system-health/repository'
 import { createSystemHealthService } from '../../../../src/modules/ops/system-health/service'
+import * as systemHealthStorage from '../../../../src/modules/ops/system-health/storage'
 import { createScheduledJobSchedulerStub } from '../../../helpers/app'
 
 export const observedAt = new Date('2026-09-02T00:00:00.000Z')
 
-export function createHealthTestContext() {
+export function createHealthTestContext(database: Db) {
   const databaseResult = {
     latencyMs: 3,
     checkedAt: observedAt,
@@ -18,8 +19,12 @@ export function createHealthTestContext() {
     oldestOverdueAt: null as Date | null,
   }
   const repository = {
-    readSnapshot: vi.fn<SystemHealthRepository['readSnapshot']>(async () => databaseResult),
-    readJobStatistics: vi.fn<SystemHealthRepository['readJobStatistics']>(async () => ({
+    readSnapshot: vi.fn<
+      ReturnType<typeof systemHealthRepository.createSystemHealthRepository>['readSnapshot']
+    >(async () => databaseResult),
+    readJobStatistics: vi.fn<
+      ReturnType<typeof systemHealthRepository.createSystemHealthRepository>['readJobStatistics']
+    >(async () => ({
       dailyRuns: [],
       statusDistribution: [],
       failureCategories: [],
@@ -32,16 +37,29 @@ export function createHealthTestContext() {
     runtimeStatus: 'running',
   }
   const diagnostics = vi.fn(() => ({ ...scheduler }))
-  const storageProbe = vi.fn<() => Promise<SystemHealthSnapshot['storage']>>(async () => ({
-    status: 'healthy',
-    provider: 'local',
-    latencyMs: 1,
-    checkedAt: observedAt.toISOString(),
-    cached: false,
-  }))
+  const checkStorageHealth = vi.fn<ReturnType<typeof systemHealthStorage.createStorageHealthCheck>>(
+    async () => ({
+      status: 'healthy',
+      provider: 'local',
+      latencyMs: 1,
+      checkedAt: observedAt.toISOString(),
+      cached: false,
+    }),
+  )
   const logger = { error: vi.fn<Logger['error']>() }
-  const now = vi.fn(() => observedAt)
-  const taskCatalog = scheduledJobTaskKeys.map((key) => ({ key, name: `名称 ${key}` }))
-  const options = { repository, diagnostics, storageProbe, logger, now, taskCatalog }
-  return { ...options, databaseResult, scheduler, service: createSystemHealthService(options) }
+  const scheduledJobs = {
+    diagnostics,
+    getTaskName: vi.fn<ScheduledJobService['getTaskName']>((taskKey) => `名称 ${taskKey}`),
+  }
+  vi.spyOn(systemHealthRepository, 'createSystemHealthRepository').mockReturnValueOnce(repository)
+  vi.spyOn(systemHealthStorage, 'createStorageHealthCheck').mockReturnValueOnce(checkStorageHealth)
+  return {
+    repository,
+    checkStorageHealth,
+    logger,
+    databaseResult,
+    scheduler,
+    diagnostics,
+    service: createSystemHealthService(database, scheduledJobs),
+  }
 }

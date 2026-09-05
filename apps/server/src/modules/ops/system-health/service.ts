@@ -3,24 +3,18 @@ import {
   scheduledJobRunStatusSchema,
   type SystemHealthIssue,
   type SystemHealthJobStatistics,
+  type SystemHealthRecentAnomaly,
   type SystemHealthSnapshot,
 } from '@rev30/contracts'
 import type { Logger } from 'pino'
-import type { ScheduledJobDefinition } from '../scheduled-jobs/registry'
-import type { ScheduledJobDiagnostics } from '../scheduled-jobs/scheduler'
-import type { SystemHealthRepository } from './repository'
-import type { createSystemHealthStorageProbe } from './storage-probe'
+import type { Db } from '../../../db'
+import { readAttachmentConfig } from '../../attachments/config'
+import { createAttachmentStorage } from '../../attachments/storage'
+import type { ScheduledJobService } from '../scheduled-jobs/service'
+import { createSystemHealthRepository } from './repository'
+import { createStorageHealthCheck } from './storage'
 
-type SystemHealthServiceOptions = {
-  repository: SystemHealthRepository
-  taskCatalog: readonly Readonly<Pick<ScheduledJobDefinition, 'key' | 'name'>>[]
-  diagnostics: () => ScheduledJobDiagnostics
-  storageProbe: ReturnType<typeof createSystemHealthStorageProbe>
-  logger: Pick<Logger, 'error'>
-  now?: () => Date
-}
-
-const shanghaiDateFormatter = new Intl.DateTimeFormat('en-CA', {
+const shanghaiDateFormatter = new Intl.DateTimeFormat('zh-CN', {
   timeZone: 'Asia/Shanghai',
   year: 'numeric',
   month: '2-digit',
@@ -32,28 +26,30 @@ function emptyStatusCounts(): SystemHealthJobStatistics['statusDistribution'] {
 }
 
 function dailyBuckets(generatedAt: Date): SystemHealthJobStatistics['dailyRuns'] {
-  const calendarDay = Date.parse(`${shanghaiDateFormatter.format(generatedAt)}T00:00:00.000Z`)
+  const parts = Object.fromEntries(
+    shanghaiDateFormatter.formatToParts(generatedAt).map((part) => [part.type, part.value]),
+  )
+  const calendarDay = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day))
   return Array.from({ length: 7 }, (_, index) => ({
     date: new Date(calendarDay - (6 - index) * 86_400_000).toISOString().slice(0, 10),
     ...emptyStatusCounts(),
   }))
 }
 
-export function createSystemHealthService(options: SystemHealthServiceOptions) {
-  const now = options.now ?? (() => new Date())
-  const startedAt = new Date(now().getTime() - process.uptime() * 1000).toISOString()
-  const taskNames = new Map(options.taskCatalog.map(({ key, name }) => [key, name]))
-
-  function taskName(taskKey: string) {
-    const name = taskNames.get(taskKey)
-    if (name === undefined) throw new Error(`Unknown scheduled job task: ${taskKey}`)
-    return name
-  }
+export function createSystemHealthService(
+  database: Db,
+  scheduledJobs: Pick<ScheduledJobService, 'diagnostics' | 'getTaskName'>,
+) {
+  const repository = createSystemHealthRepository(database)
+  const checkStorageHealth = createStorageHealthCheck({
+    storage: createAttachmentStorage(readAttachmentConfig()),
+  })
+  const startedAt = new Date(Date.now() - process.uptime() * 1000).toISOString()
 
   return {
     async jobStatistics(): Promise<SystemHealthJobStatistics> {
-      const generatedAt = now()
-      const rows = await options.repository.readJobStatistics(generatedAt)
+      const generatedAt = new Date()
+      const rows = await repository.readJobStatistics(generatedAt)
       const dailyRuns = dailyBuckets(generatedAt)
       const dailyByDate = new Map(dailyRuns.map((bucket) => [bucket.date, bucket]))
       for (const row of rows.dailyRuns) {
@@ -76,7 +72,7 @@ export function createSystemHealthService(options: SystemHealthServiceOptions) {
       const averageDurations = rows.averageDurations
         .map((row) => ({
           taskKey: row.taskKey,
-          taskName: taskName(row.taskKey),
+          taskName: scheduledJobs.getTaskName(row.taskKey),
           averageDurationMs: Math.round(row.averageDurationMs!),
           runCount: row.runCount,
         }))
@@ -86,28 +82,26 @@ export function createSystemHealthService(options: SystemHealthServiceOptions) {
             left.taskKey.localeCompare(right.taskKey),
         )
         .slice(0, 5)
-      const recentAnomalies = rows.recentAnomalies.map(
-        (row): SystemHealthJobStatistics['recentAnomalies'][number] => {
-          const common = {
-            taskKey: row.taskKey,
-            taskName: taskName(row.taskKey),
-            runId: row.runId,
-            finishedAt: row.finishedAt!.toISOString(),
+      const recentAnomalies = rows.recentAnomalies.map((row): SystemHealthRecentAnomaly => {
+        const common = {
+          taskKey: row.taskKey,
+          taskName: scheduledJobs.getTaskName(row.taskKey),
+          runId: row.runId,
+          finishedAt: row.finishedAt!.toISOString(),
+        }
+        if (row.status === 'failure') {
+          return {
+            ...common,
+            status: 'failure',
+            errorCategory: scheduledJobErrorCategorySchema.parse(row.errorCategory),
+            errorSummary: row.errorSummary!,
           }
-          if (row.status === 'failure') {
-            return {
-              ...common,
-              status: 'failure',
-              errorCategory: scheduledJobErrorCategorySchema.parse(row.errorCategory),
-              errorSummary: row.errorSummary!,
-            }
-          }
-          if (row.status === 'interrupted') {
-            return { ...common, status: 'interrupted', errorCategory: null, errorSummary: null }
-          }
-          throw new Error(`Unexpected scheduled job anomaly status: ${row.status}`)
-        },
-      )
+        }
+        if (row.status === 'interrupted') {
+          return { ...common, status: 'interrupted', errorCategory: null, errorSummary: null }
+        }
+        throw new Error(`Unexpected scheduled job anomaly status: ${row.status}`)
+      })
       return {
         generatedAt: generatedAt.toISOString(),
         timezone: 'Asia/Shanghai',
@@ -119,8 +113,8 @@ export function createSystemHealthService(options: SystemHealthServiceOptions) {
       }
     },
 
-    async snapshot(): Promise<SystemHealthSnapshot> {
-      const observedAt = now()
+    async snapshot(requestLogger: Pick<Logger, 'error'>): Promise<SystemHealthSnapshot> {
+      const observedAt = new Date()
       const memory = process.memoryUsage()
       const instance: SystemHealthSnapshot['instance'] = {
         startedAt,
@@ -135,10 +129,10 @@ export function createSystemHealthService(options: SystemHealthServiceOptions) {
           externalBytes: memory.external,
         },
       }
-      const scheduler = options.diagnostics()
+      const scheduler = scheduledJobs.diagnostics()
       const [databaseResult, storageResult] = await Promise.allSettled([
-        options.repository.readSnapshot(observedAt),
-        options.storageProbe(),
+        repository.readSnapshot(observedAt),
+        checkStorageHealth(requestLogger),
       ])
       const issues: SystemHealthIssue[] = []
       let database: SystemHealthSnapshot['database']
@@ -157,9 +151,9 @@ export function createSystemHealthService(options: SystemHealthServiceOptions) {
             result.oldestOverdueAt === null ? null : result.oldestOverdueAt.toISOString(),
         }
       } else {
-        options.logger.error(
+        requestLogger.error(
           { component: 'database', err: databaseResult.reason },
-          'system health probe failed',
+          'system health check failed',
         )
         issues.push('database_unavailable')
         database = { status: 'unavailable', latencyMs: null, checkedAt: observedAt.toISOString() }
@@ -190,5 +184,3 @@ export function createSystemHealthService(options: SystemHealthServiceOptions) {
     },
   }
 }
-
-export type SystemHealthService = ReturnType<typeof createSystemHealthService>

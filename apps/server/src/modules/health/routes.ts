@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
+import type { Db } from '../../db'
+import { checkReadiness } from './service'
 
-export function createHealthRoutes(probeDatabase: () => Promise<void>) {
+export function createHealthRoutes(database: Db) {
   return new Hono()
     .get('/health/live', (c) => {
       c.header('Cache-Control', 'no-store')
@@ -9,7 +11,7 @@ export function createHealthRoutes(probeDatabase: () => Promise<void>) {
     .get('/health/ready', async (c) => {
       c.header('Cache-Control', 'no-store')
       try {
-        await probeDatabase()
+        await checkReadiness(database)
       } catch {
         return c.json({ service: 'rev30-server', status: 'not_ready' } as const, 503)
       }

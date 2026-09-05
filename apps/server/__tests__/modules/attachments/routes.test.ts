@@ -15,7 +15,6 @@ import {
 } from '../../../src/modules/attachments/errors'
 import { ATTACHMENT_MAX_SIZE_MESSAGE } from '../../../src/modules/attachments/policy'
 import { createAttachmentRoutes } from '../../../src/modules/attachments/routes'
-import { LocalAttachmentStorage } from '../../../src/modules/attachments/storage'
 import type { RequestContextEnv } from '../../../src/middleware/request-context'
 import { createLogger } from '../../../src/runtime/logger'
 
@@ -136,14 +135,7 @@ function createAttachmentTestApp() {
 
       await next()
     })
-    .route(
-      '/api/attachments',
-      createAttachmentRoutes(
-        {} as never,
-        mocks.authMiddleware,
-        new LocalAttachmentStorage('/unused'),
-      ),
-    )
+    .route('/api/attachments', createAttachmentRoutes({} as never, mocks.authMiddleware))
 }
 
 describe('attachment routes', () => {

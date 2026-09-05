@@ -1,10 +1,4 @@
-import type { Logger } from 'pino'
 import type { Db } from '../../src/db'
-import { readAttachmentConfig } from '../../src/modules/attachments/config'
-import {
-  createAttachmentStorage,
-  type AttachmentStorage,
-} from '../../src/modules/attachments/storage'
 import {
   createApp as createProductionApp,
   type CreateAppOptions as CreateProductionAppOptions,
@@ -18,12 +12,6 @@ import {
 } from '../../src/modules/ops/scheduled-jobs/service'
 import type { OperationLogEventReceiver } from '../../src/runtime/operation-log'
 import { createLogger } from '../../src/runtime/logger'
-import { createSystemHealthRepository } from '../../src/modules/ops/system-health/repository'
-import {
-  createSystemHealthService,
-  type SystemHealthService,
-} from '../../src/modules/ops/system-health/service'
-import { createSystemHealthStorageProbe } from '../../src/modules/ops/system-health/storage-probe'
 
 const noopOperationLogReceiver: OperationLogEventReceiver = () => undefined
 const scheduledJobDefinitions = scheduledJobTaskKeys.map((key) => ({
@@ -68,38 +56,19 @@ export function createTestScheduledJobService(
   })
 }
 
-export function createTestSystemHealthService(
-  database: Db,
-  storage: AttachmentStorage = createAttachmentStorage(readAttachmentConfig()),
-  logger: Logger = createLogger({ level: 'silent' }),
-) {
-  return createSystemHealthService({
-    repository: createSystemHealthRepository(database),
-    diagnostics: createScheduledJobSchedulerStub().diagnostics,
-    taskCatalog: scheduledJobDefinitions,
-    storageProbe: createSystemHealthStorageProbe({ storage, logger }),
-    logger,
-  })
-}
-
 export type CreateTestAppOptions = Omit<
   CreateProductionAppOptions,
-  'operationLogReceiver' | 'scheduledJobService' | 'attachmentStorage' | 'systemHealthService'
+  'operationLogReceiver' | 'scheduledJobService'
 > & {
-  attachmentStorage?: AttachmentStorage
   operationLogReceiver?: OperationLogEventReceiver
   scheduledJobService?: ScheduledJobService
-  systemHealthService?: SystemHealthService
 }
 
 export function createApp(database: Db, options: CreateTestAppOptions = {}) {
-  const storage = options.attachmentStorage ?? createAttachmentStorage(readAttachmentConfig())
   const logger = options.logger ?? createLogger({ level: 'silent' })
   return createProductionApp(database, {
     ...options,
-    attachmentStorage: storage,
-    systemHealthService:
-      options.systemHealthService ?? createTestSystemHealthService(database, storage, logger),
+    logger,
     scheduledJobService: options.scheduledJobService ?? createTestScheduledJobService(database),
     operationLogReceiver: options.operationLogReceiver ?? noopOperationLogReceiver,
   })

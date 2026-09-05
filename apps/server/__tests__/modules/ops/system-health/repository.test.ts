@@ -73,7 +73,7 @@ describe('system health snapshot repository', () => {
   )
 
   dbTest(
-    'rejects the complete result when either the light probe or a shared query fails',
+    'rejects the complete result when either the light check or a shared query fails',
     async ({ db }) => {
       const repository = createSystemHealthRepository(db)
       const error = new Error('private query error')

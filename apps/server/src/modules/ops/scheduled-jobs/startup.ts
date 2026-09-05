@@ -58,8 +58,6 @@ export async function startScheduledJobs(options: StartScheduledJobsOptions) {
 
   return {
     service,
-    diagnostics: scheduler.diagnostics,
-    taskCatalog: Object.freeze(definitions.map(({ key, name }) => Object.freeze({ key, name }))),
     stop: () => scheduler.stop(),
   }
 }

@@ -33,7 +33,7 @@ function createTestApp(options: {
         clientIp: '192.0.2.1',
         clientIpSource: 'x-forwarded-for',
         userAgent: 'Example/1.0',
-        logger: {} as Logger,
+        logger: options.logger,
       })
       c.set('currentUser', {
         id: '10000000-0000-4000-8000-000000000001',
@@ -48,14 +48,12 @@ function createTestApp(options: {
     })
     .use(
       '*',
-      createOperationLogMiddleware({
-        logger: options.logger,
-        receiver:
-          options.receiver ??
+      createOperationLogMiddleware(
+        options.receiver ??
           ((event) => {
             options.events.push(event)
           }),
-      }),
+      ),
     )
     .onError(rootErrorHandler)
 

@@ -387,13 +387,16 @@ describe('scheduled jobs migration', () => {
           .slice(1)
           .map((value, index) => value.getTime() - occurrences[index]!.getTime())
         expect(intervals.every((interval) => interval === 6 * 60 * 60 * 1000)).toBe(true)
-        const localTime = new Intl.DateTimeFormat('en-CA', {
+        const timeParts = new Intl.DateTimeFormat('zh-CN', {
           timeZone: job.timezone,
           hour: '2-digit',
           minute: '2-digit',
           hourCycle: 'h23',
-        }).format(occurrences[0])
-        phaseMinutes.add(Number(localTime.slice(0, 2)) * 60 + Number(localTime.slice(3)))
+        }).formatToParts(occurrences[0])
+        const { hour, minute } = Object.fromEntries(
+          timeParts.map((part) => [part.type, part.value]),
+        )
+        phaseMinutes.add(Number(hour) * 60 + Number(minute))
       }
       expect(phaseMinutes.size).toBe(taskKeys.length)
 

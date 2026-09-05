@@ -1,9 +1,4 @@
-import type {
-  ScheduledJobTaskKey,
-  ScheduledJobTriggerSource,
-  SystemHealthSnapshot,
-  User,
-} from '@rev30/contracts'
+import type { ScheduledJobTaskKey, ScheduledJobTriggerSource, User } from '@rev30/contracts'
 import type { Logger } from 'pino'
 import { ScheduledJobStateConflictError } from './errors'
 import type { RecoverableScheduledJobRun, ScheduledJobRepository } from './repository'
@@ -12,8 +7,6 @@ import type { ScheduledJobRunner } from './runner'
 const SCHEDULED_JOB_AUTOMATIC_CAPACITY = 2
 const RETRY_MS = 60_000
 const MAX_TIMER_DELAY_MS = 2_147_483_647
-
-export type ScheduledJobDiagnostics = Omit<SystemHealthSnapshot['scheduler'], 'shared'>
 
 type SchedulerOptions = {
   executorId: string
@@ -31,10 +24,10 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
   let pollPromise: Promise<void> | null = null
   let retryPending = false
   let stopped = false
-  let runtimeStatus: ScheduledJobDiagnostics['runtimeStatus'] = 'stopped'
+  let runtimeStatus: 'running' | 'stopped' = 'stopped'
   let nextWakeAt: string | null = null
   let lastPollAt: string | null = null
-  let lastPollStatus: ScheduledJobDiagnostics['lastPollStatus'] = null
+  let lastPollStatus: 'success' | 'failure' | null = null
 
   function clearWakeTimer() {
     nextWakeAt = null
@@ -133,7 +126,7 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
   async function poll() {
     if (stopped) return
     clearWakeTimer()
-    let result: ScheduledJobDiagnostics['lastPollStatus'] = 'success'
+    let result: typeof lastPollStatus = 'success'
     try {
       await processRecovery()
       if (stopped) return
@@ -294,7 +287,7 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
     await options.runner.stop()
   }
 
-  function diagnostics(): ScheduledJobDiagnostics {
+  function diagnostics() {
     return {
       runtimeStatus,
       automaticCapacity: SCHEDULED_JOB_AUTOMATIC_CAPACITY,
@@ -319,3 +312,4 @@ export function createScheduledJobScheduler(options: SchedulerOptions) {
 }
 
 export type ScheduledJobScheduler = ReturnType<typeof createScheduledJobScheduler>
+export type ScheduledJobDiagnostics = ReturnType<ScheduledJobScheduler['diagnostics']>

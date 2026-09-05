@@ -146,7 +146,20 @@ export function createScheduledJobService(options: ServiceOptions) {
     return { run: toScheduledJobCurrentRunSummary(run) }
   }
 
-  return { list, get, updatePlan, updateEnabled, runManual, listRuns, getRun, cancel }
+  return {
+    list,
+    get,
+    updatePlan,
+    updateEnabled,
+    runManual,
+    listRuns,
+    getRun,
+    cancel,
+    diagnostics: scheduler.diagnostics,
+    getTaskName(taskKey: string) {
+      return requireTaskDefinition(taskKey).name
+    },
+  }
 }
 
 export type ScheduledJobService = ReturnType<typeof createScheduledJobService>

@@ -102,5 +102,3 @@ export function createSystemHealthRepository(
     },
   }
 }
-
-export type SystemHealthRepository = ReturnType<typeof createSystemHealthRepository>

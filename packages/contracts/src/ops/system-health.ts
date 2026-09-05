@@ -91,37 +91,35 @@ export const systemHealthSnapshotSchema = z
   })
   .strict()
 
-const statusCountsFields = {
-  running: measurementSchema,
-  success: measurementSchema,
-  failure: measurementSchema,
-  skipped: measurementSchema,
-  cancelled: measurementSchema,
-  interrupted: measurementSchema,
-}
-const anomalyFields = {
-  taskKey: scheduledJobTaskKeySchema,
-  taskName: scheduledJobSchema.shape.name,
-  runId: scheduledJobRunPathSchema.shape.runId,
-  finishedAt: dateTimeSchema,
-}
+const statusCountsSchema = z
+  .object({
+    running: measurementSchema,
+    success: measurementSchema,
+    failure: measurementSchema,
+    skipped: measurementSchema,
+    cancelled: measurementSchema,
+    interrupted: measurementSchema,
+  })
+  .strict()
+const recentAnomalyBaseSchema = z
+  .object({
+    taskKey: scheduledJobTaskKeySchema,
+    taskName: scheduledJobSchema.shape.name,
+    runId: scheduledJobRunPathSchema.shape.runId,
+    finishedAt: dateTimeSchema,
+  })
+  .strict()
 const recentAnomalySchema = z.discriminatedUnion('status', [
-  z
-    .object({
-      ...anomalyFields,
-      status: z.literal('failure'),
-      errorCategory: scheduledJobErrorCategorySchema,
-      errorSummary: scheduledJobRunDetailSchema.shape.errorSummary.unwrap(),
-    })
-    .strict(),
-  z
-    .object({
-      ...anomalyFields,
-      status: z.literal('interrupted'),
-      errorCategory: z.null(),
-      errorSummary: z.null(),
-    })
-    .strict(),
+  recentAnomalyBaseSchema.extend({
+    status: z.literal('failure'),
+    errorCategory: scheduledJobErrorCategorySchema,
+    errorSummary: scheduledJobRunDetailSchema.shape.errorSummary.unwrap(),
+  }),
+  recentAnomalyBaseSchema.extend({
+    status: z.literal('interrupted'),
+    errorCategory: z.null(),
+    errorSummary: z.null(),
+  }),
 ])
 
 export const systemHealthJobStatisticsSchema = z
@@ -129,9 +127,9 @@ export const systemHealthJobStatisticsSchema = z
     generatedAt: dateTimeSchema,
     timezone: z.literal('Asia/Shanghai'),
     dailyRuns: z
-      .array(z.object({ date: z.iso.date(), ...statusCountsFields }).strict())
+      .array(statusCountsSchema.extend({ date: z.iso.date() }))
       .length(7, '每日统计必须包含 7 天'),
-    statusDistribution: z.object(statusCountsFields).strict(),
+    statusDistribution: statusCountsSchema,
     failureCategories: z
       .array(
         z.object({ category: scheduledJobErrorCategorySchema, count: measurementSchema }).strict(),
@@ -156,4 +154,5 @@ export const systemHealthJobStatisticsSchema = z
 export type SystemHealthStatus = z.infer<typeof systemHealthStatusSchema>
 export type SystemHealthIssue = z.infer<typeof systemHealthIssueSchema>
 export type SystemHealthSnapshot = z.infer<typeof systemHealthSnapshotSchema>
+export type SystemHealthRecentAnomaly = z.infer<typeof recentAnomalySchema>
 export type SystemHealthJobStatistics = z.infer<typeof systemHealthJobStatisticsSchema>

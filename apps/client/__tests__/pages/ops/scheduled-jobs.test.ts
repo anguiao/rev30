@@ -12,15 +12,11 @@ import {
   listScheduledJobs,
   updateScheduledJob,
   updateScheduledJobEnabled,
-} from '../../../src/features/ops'
-import {
-  getScheduledJobRun as getScheduledJobRunRequest,
-  listScheduledJobRuns as listScheduledJobRunsRequest,
-} from '../../../src/features/ops/requests'
+} from '../../../src/features/scheduled-jobs/requests'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
-vi.mock('../../../src/features/ops', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/ops')>()),
+vi.mock('../../../src/features/scheduled-jobs/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/scheduled-jobs/requests')>()),
   executeScheduledJob: vi.fn(),
   cancelScheduledJob: vi.fn(),
   getScheduledJob: vi.fn(),
@@ -30,25 +26,22 @@ vi.mock('../../../src/features/ops', async (importOriginal) => ({
   updateScheduledJob: vi.fn(),
   updateScheduledJobEnabled: vi.fn(),
 }))
-vi.mock('../../../src/features/ops/requests', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/ops/requests')>()),
-  getScheduledJobRun: vi.fn(),
-  listScheduledJobRuns: vi.fn(),
-}))
 
 const listMock = vi.mocked(listScheduledJobs)
 const executeMock = vi.mocked(executeScheduledJob)
+
 const cancelMock = vi.mocked(cancelScheduledJob)
 const listRunsMock = vi.mocked(listScheduledJobRuns)
+
 const getRunMock = vi.mocked(getScheduledJobRun)
 const enabledMock = vi.mocked(updateScheduledJobEnabled)
-const listRunsRequestMock = vi.mocked(listScheduledJobRunsRequest)
-const getRunRequestMock = vi.mocked(getScheduledJobRunRequest)
+
 const updateMock = vi.mocked(updateScheduledJob)
 const getJobMock = vi.mocked(getScheduledJob)
 
 const runId = '11111111-1111-4111-8111-111111111111'
 const userId = '33333333-3333-4333-8333-333333333333'
+
 const activeRunId = '66666666-6666-4666-8666-666666666666'
 
 const response: ScheduledJobListResponse = [
@@ -170,8 +163,6 @@ describe('scheduled jobs page', () => {
     listRunsMock.mockReset()
     getRunMock.mockReset()
     enabledMock.mockReset()
-    listRunsRequestMock.mockReset()
-    getRunRequestMock.mockReset()
     updateMock.mockReset()
     getJobMock.mockReset()
     listMock.mockResolvedValue(response)
@@ -180,8 +171,6 @@ describe('scheduled jobs page', () => {
     enabledMock.mockResolvedValue(response[0]!)
     listRunsMock.mockResolvedValue({ list: [], total: 0, page: 1, pageSize: 10 })
     getRunMock.mockResolvedValue(detail)
-    listRunsRequestMock.mockResolvedValue({ list: [], total: 0, page: 1, pageSize: 10 })
-    getRunRequestMock.mockResolvedValue(detail)
     updateMock.mockResolvedValue(response[0]!)
     getJobMock.mockResolvedValue(jobDetail)
     stubPreferredDark(false)
@@ -269,25 +258,25 @@ describe('scheduled jobs page', () => {
 
       expect(executeMock).toHaveBeenCalledWith('auth-session-cleanup')
       await vi.waitFor(() => {
-        expect(getRunRequestMock).toHaveBeenCalledWith('auth-session-cleanup', runId)
+        expect(getRunMock).toHaveBeenCalledWith('auth-session-cleanup', runId)
       })
-      expect(listRunsRequestMock).not.toHaveBeenCalled()
+      expect(listRunsMock).not.toHaveBeenCalled()
 
       await vi.advanceTimersByTimeAsync(2000)
       await flushPromises()
-      expect(getRunRequestMock.mock.calls.length).toBeGreaterThanOrEqual(2)
-      getRunRequestMock.mockResolvedValue(completedDetail)
+      expect(getRunMock.mock.calls.length).toBeGreaterThanOrEqual(2)
+      getRunMock.mockResolvedValue(completedDetail)
       await vi.advanceTimersByTimeAsync(2000)
       await flushPromises()
-      const completedCallCount = getRunRequestMock.mock.calls.length
+      const completedCallCount = getRunMock.mock.calls.length
       await vi.advanceTimersByTimeAsync(2000)
       await flushPromises()
-      expect(getRunRequestMock.mock.calls.length).toBe(completedCallCount)
+      expect(getRunMock.mock.calls.length).toBe(completedCallCount)
 
       document.querySelector<HTMLButtonElement>('[data-test="scheduled-job-run-back"]')?.click()
       await flushPromises()
       await vi.waitFor(() => {
-        expect(listRunsRequestMock).toHaveBeenCalledWith('auth-session-cleanup', {
+        expect(listRunsMock).toHaveBeenCalledWith('auth-session-cleanup', {
           page: 1,
           pageSize: 10,
         })
@@ -422,7 +411,7 @@ describe('scheduled jobs page', () => {
       activeRunId,
     })
     listMock.mockResolvedValue(idleResponse)
-    getRunRequestMock.mockResolvedValue({ ...detail, id: activeRunId })
+    getRunMock.mockResolvedValue({ ...detail, id: activeRunId })
     const { wrapper } = await mountPage(['ops:scheduled-job:list', 'ops:scheduled-job:execute'])
     await flushPromises()
 
@@ -436,7 +425,7 @@ describe('scheduled jobs page', () => {
     expect(listMock).toHaveBeenCalledTimes(2)
     expect(document.body.textContent).toContain('任务已有运行中的实例')
     await vi.waitFor(() => {
-      expect(getRunRequestMock).toHaveBeenCalledWith('auth-session-cleanup', activeRunId)
+      expect(getRunMock).toHaveBeenCalledWith('auth-session-cleanup', activeRunId)
     })
   })
 
@@ -468,7 +457,7 @@ describe('scheduled jobs page', () => {
       expect(wrapper.text()).toContain('取消中')
       expect(wrapper.findAll('[data-test="scheduled-job-cancel"]')).toHaveLength(0)
       await vi.waitFor(() => {
-        expect(getRunRequestMock).toHaveBeenCalledWith('auth-session-cleanup', runId)
+        expect(getRunMock).toHaveBeenCalledWith('auth-session-cleanup', runId)
       })
     } finally {
       wrapper?.unmount()
@@ -479,7 +468,7 @@ describe('scheduled jobs page', () => {
   it('keeps pagination independent from detail', async () => {
     const { wrapper } = await mountPage(['ops:scheduled-job:list'])
     await flushPromises()
-    listRunsRequestMock.mockResolvedValue({
+    listRunsMock.mockResolvedValue({
       list: [completedPublicRun],
       total: 11,
       page: 1,
@@ -489,7 +478,7 @@ describe('scheduled jobs page', () => {
     await wrapper.get('[data-test="scheduled-job-logs"]').trigger('click')
     await flushPromises()
     await vi.waitFor(() => {
-      expect(listRunsRequestMock).toHaveBeenCalledWith('auth-session-cleanup', {
+      expect(listRunsMock).toHaveBeenCalledWith('auth-session-cleanup', {
         page: 1,
         pageSize: 10,
       })
@@ -500,7 +489,7 @@ describe('scheduled jobs page', () => {
     const runContext = document.querySelector('[data-test="scheduled-job-run-context"]')
     expect(runContext?.textContent).toContain('当前任务：认证会话清理')
     expect(runContext?.textContent).not.toContain('auth-session-cleanup')
-    getRunRequestMock.mockResolvedValue(completedDetail)
+    getRunMock.mockResolvedValue(completedDetail)
     document.querySelector<HTMLButtonElement>('[data-test="scheduled-job-run-view"]')?.click()
     await flushPromises()
     expect(document.body.textContent).toContain('Ada Lovelace')
@@ -513,7 +502,7 @@ describe('scheduled jobs page', () => {
     document.querySelector<HTMLButtonElement>('[data-test="scheduled-job-run-back"]')?.click()
     await flushPromises()
 
-    listRunsRequestMock.mockResolvedValue({
+    listRunsMock.mockResolvedValue({
       list: [],
       total: 11,
       page: 2,
@@ -521,7 +510,7 @@ describe('scheduled jobs page', () => {
     })
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
     await flushPromises()
-    expect(listRunsRequestMock).toHaveBeenLastCalledWith('auth-session-cleanup', {
+    expect(listRunsMock).toHaveBeenLastCalledWith('auth-session-cleanup', {
       page: 2,
       pageSize: 10,
     })

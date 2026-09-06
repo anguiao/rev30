@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NDatePicker, NSelect } from 'naive-ui'
 import type { LoginLogListResponse } from '@rev30/contracts'
 import LoginLogsPage from '../../../src/pages/index/ops/login-logs.vue'
-import { listLoginLogs } from '../../../src/features/ops'
+import { listLoginLogs } from '../../../src/features/login-logs/requests'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
-vi.mock('../../../src/features/ops', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/ops')>()),
+vi.mock('../../../src/features/login-logs/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/login-logs/requests')>()),
   listLoginLogs: vi.fn(),
 }))
 

@@ -20,11 +20,11 @@ import {
   deleteAnnouncement,
   listAnnouncements,
   publishAnnouncement,
-} from '../../../src/features/content'
+} from '../../../src/features/announcements/requests'
 import AnnouncementsPage from '../../../src/pages/index/content/announcements.vue'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
-vi.mock('../../../src/features/content/AnnouncementFormDrawer.vue', () => ({
+vi.mock('../../../src/features/announcements/AnnouncementFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'AnnouncementFormDrawerStub',
     props: {
@@ -49,8 +49,8 @@ vi.mock('../../../src/features/content/AnnouncementFormDrawer.vue', () => ({
   }),
 }))
 
-vi.mock('../../../src/features/content', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/content')>()),
+vi.mock('../../../src/features/announcements/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/announcements/requests')>()),
   archiveAnnouncement: vi.fn(),
   deleteAnnouncement: vi.fn(),
   listAnnouncements: vi.fn(),
@@ -59,6 +59,7 @@ vi.mock('../../../src/features/content', async (importOriginal) => ({
 
 const archiveAnnouncementMock = vi.mocked(archiveAnnouncement)
 const deleteAnnouncementMock = vi.mocked(deleteAnnouncement)
+
 const listAnnouncementsMock = vi.mocked(listAnnouncements)
 const publishAnnouncementMock = vi.mocked(publishAnnouncement)
 

@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
 import { CONFIG_VALUE_TYPE_NUMBER, CONFIG_VALUE_TYPE_STRING, type Config } from '@rev30/contracts'
 import { defineComponent, h } from 'vue'
-import { listConfigs } from '../../../src/features/system'
+import { listConfigs } from '../../../src/features/configs/requests'
 import ConfigsPage from '../../../src/pages/index/system/configs.vue'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
-vi.mock('../../../src/features/system/ConfigFormDrawer.vue', () => ({
+vi.mock('../../../src/features/configs/ConfigFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'ConfigFormDrawerStub',
     props: {
@@ -32,8 +32,8 @@ vi.mock('../../../src/features/system/ConfigFormDrawer.vue', () => ({
   }),
 }))
 
-vi.mock('../../../src/features/system', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/system')>()),
+vi.mock('../../../src/features/configs/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/configs/requests')>()),
   listConfigs: vi.fn(),
 }))
 

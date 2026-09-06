@@ -9,10 +9,11 @@ import {
   type DepartmentTreeNode,
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
-import { deleteDepartment, getDepartmentTree } from '../../../src/features/system'
+import { deleteDepartment, getDepartmentTree } from '../../../src/features/departments/requests'
 import DepartmentsPage from '../../../src/pages/index/system/departments.vue'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
-vi.mock('../../../src/features/system/DepartmentFormDrawer.vue', () => ({
+
+vi.mock('../../../src/features/departments/DepartmentFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'DepartmentFormDrawerStub',
     props: {
@@ -33,8 +34,8 @@ vi.mock('../../../src/features/system/DepartmentFormDrawer.vue', () => ({
   }),
 }))
 
-vi.mock('../../../src/features/system', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/system')>()),
+vi.mock('../../../src/features/departments/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/departments/requests')>()),
   deleteDepartment: vi.fn(),
   getDepartmentTree: vi.fn(),
 }))

@@ -3,19 +3,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NDatePicker, NInputNumber, NPagination, NSelect } from 'naive-ui'
 import type { OperationLogDetail, OperationLogListResponse } from '@rev30/contracts'
 import OperationLogsPage from '../../../src/pages/index/ops/operation-logs.vue'
-import { getOperationLog, listOperationLogs } from '../../../src/features/ops'
+import { getOperationLog, listOperationLogs } from '../../../src/features/operation-logs/requests'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
-vi.mock('../../../src/features/ops', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/ops')>()),
+vi.mock('../../../src/features/operation-logs/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/operation-logs/requests')>()),
   getOperationLog: vi.fn(),
   listOperationLogs: vi.fn(),
 }))
 
 const id = '11111111-1111-4111-8111-111111111111'
 const actorUserId = '22222222-2222-4222-8222-222222222222'
+
 const actorSessionId = '33333333-3333-4333-8333-333333333333'
 const requestId = '44444444-4444-4444-8444-444444444444'
+
 const listResponse: OperationLogListResponse = {
   list: [
     {
@@ -39,6 +41,7 @@ const listResponse: OperationLogListResponse = {
   page: 1,
   pageSize: 20,
 }
+
 const detail: OperationLogDetail = {
   ...listResponse.list[0]!,
   actorIsAdmin: true,

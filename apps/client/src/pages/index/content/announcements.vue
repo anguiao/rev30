@@ -38,14 +38,16 @@ import {
   announcementStatusTagTypes,
   announcementTypeFilterOptions,
   announcementTypeLabels,
+  type AnnouncementPinnedFilter,
+  type AnnouncementStatusFilter,
+  type AnnouncementTypeFilter,
+} from '../../../features/announcements/labels'
+import {
   archiveAnnouncement,
   listAnnouncements,
   publishAnnouncement,
   deleteAnnouncement,
-  type AnnouncementPinnedFilter,
-  type AnnouncementStatusFilter,
-  type AnnouncementTypeFilter,
-} from '../../../features/content'
+} from '../../../features/announcements/requests'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 const pageTitle = useAdminPageTitle('通知公告')
@@ -126,7 +128,7 @@ const {
   hasOpened: hasOpenedAnnouncementDrawer,
   visible: isAnnouncementDrawerVisible,
   open: showAnnouncementDrawer,
-} = useDrawer(() => import('../../../features/content/AnnouncementFormDrawer.vue'))
+} = useDrawer(() => import('../../../features/announcements/AnnouncementFormDrawer.vue'))
 const editingAnnouncementId = ref<string | null>(null)
 function openAnnouncementFormDrawer(announcementId: string | null = null) {
   editingAnnouncementId.value = announcementId

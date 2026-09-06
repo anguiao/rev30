@@ -10,10 +10,11 @@ import {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
-import { deleteRole, listRoles } from '../../../src/features/system'
+import { deleteRole, listRoles } from '../../../src/features/roles/requests'
 import RolesPage from '../../../src/pages/index/system/roles.vue'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
-vi.mock('../../../src/features/system/RoleFormDrawer.vue', () => ({
+
+vi.mock('../../../src/features/roles/RoleFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'RoleFormDrawerStub',
     props: {
@@ -38,8 +39,8 @@ vi.mock('../../../src/features/system/RoleFormDrawer.vue', () => ({
   }),
 }))
 
-vi.mock('../../../src/features/system', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/system')>()),
+vi.mock('../../../src/features/roles/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/roles/requests')>()),
   deleteRole: vi.fn(),
   listRoles: vi.fn(),
 }))

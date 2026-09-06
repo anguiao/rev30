@@ -13,16 +13,13 @@ import {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
-import {
-  deleteUser,
-  getDepartmentTreeOptions,
-  getRoleOptions,
-  listUsers,
-  resetUserPassword,
-} from '../../../src/features/system'
+import { deleteUser, listUsers, resetUserPassword } from '../../../src/features/users/requests'
+import { getDepartmentTreeOptions } from '../../../src/features/departments/requests'
+import { getRoleOptions } from '../../../src/features/roles/requests'
 import UsersPage from '../../../src/pages/index/system/users.vue'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
-vi.mock('../../../src/features/system/UserFormDrawer.vue', () => ({
+
+vi.mock('../../../src/features/users/UserFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'UserFormDrawerStub',
     props: {
@@ -46,6 +43,7 @@ vi.mock('../../../src/features/system/UserFormDrawer.vue', () => ({
     },
   }),
 }))
+
 vi.mock('../../../src/features/users', () => ({
   UserAvatar: {
     name: 'UserAvatar',
@@ -54,23 +52,34 @@ vi.mock('../../../src/features/users', () => ({
   },
 }))
 
-vi.mock('../../../src/features/system', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/system')>()),
+vi.mock('../../../src/features/users/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/users/requests')>()),
   deleteUser: vi.fn(),
-  getDepartmentTreeOptions: vi.fn(),
-  getRoleOptions: vi.fn(),
   listUsers: vi.fn(),
   resetUserPassword: vi.fn(),
 }))
 
+vi.mock('../../../src/features/departments/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/departments/requests')>()),
+  getDepartmentTreeOptions: vi.fn(),
+}))
+
+vi.mock('../../../src/features/roles/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/roles/requests')>()),
+  getRoleOptions: vi.fn(),
+}))
+
 const deleteUserMock = vi.mocked(deleteUser)
 const getDepartmentTreeOptionsMock = vi.mocked(getDepartmentTreeOptions)
+
 const getRoleOptionsMock = vi.mocked(getRoleOptions)
 const listUsersMock = vi.mocked(listUsers)
+
 const resetUserPasswordMock = vi.mocked(resetUserPassword)
 
 const departmentFilterId = '11111111-1111-4111-8111-111111111111'
 const roleFilterId = '22222222-2222-4222-8222-222222222222'
+
 const avatarId = '66666666-6666-4666-8666-666666666666'
 
 const departmentFilterOptions: DepartmentTreeOptionsResponse = [

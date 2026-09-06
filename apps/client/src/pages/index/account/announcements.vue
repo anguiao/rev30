@@ -31,7 +31,8 @@ import {
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
-import { announcementTypeLabels, listMyAnnouncements } from '../../../features/content'
+import { announcementTypeLabels } from '../../../features/announcements/labels'
+import { listMyAnnouncements } from '../../../features/announcements/requests'
 
 const pageTitle = useAdminPageTitle('通知公告')
 
@@ -126,7 +127,7 @@ const {
   hasOpened: hasOpenedDetailDrawer,
   visible: isDetailDrawerVisible,
   open: showDetailDrawer,
-} = useDrawer(() => import('../../../features/content/MyAnnouncementDetailDrawer.vue'))
+} = useDrawer(() => import('../../../features/announcements/MyAnnouncementDetailDrawer.vue'))
 const selectedAnnouncement = ref<AnnouncementMyListItem | null>(null)
 function openAnnouncementDetail(announcement: AnnouncementMyListItem) {
   selectedAnnouncement.value = announcement

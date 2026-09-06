@@ -16,12 +16,12 @@ import {
   listCustomIconSets,
   listCustomIcons,
   renameCustomIcon,
-} from '../../../src/features/content'
+} from '../../../src/features/icons/requests'
 import IconSetsPage from '../../../src/pages/index/content/icon-sets.vue'
 import { saveFile } from '../../../src/utils/download'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
-vi.mock('../../../src/features/content/IconSetFormDrawer.vue', () => ({
+vi.mock('../../../src/features/icons/IconSetFormDrawer.vue', () => ({
   default: {
     name: 'IconSetFormDrawerStub',
     props: ['show', 'prefix'],
@@ -38,7 +38,7 @@ vi.mock('../../../src/features/content/IconSetFormDrawer.vue', () => ({
   },
 }))
 
-vi.mock('../../../src/features/content/IconUploadDrawer.vue', () => ({
+vi.mock('../../../src/features/icons/IconUploadDrawer.vue', () => ({
   default: {
     name: 'IconUploadDrawerStub',
     props: ['show', 'prefix'],
@@ -51,8 +51,12 @@ vi.mock('../../../src/features/content/IconUploadDrawer.vue', () => ({
   },
 }))
 
-vi.mock('../../../src/features/content', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/content')>()),
+vi.mock('../../../src/utils/download', () => ({
+  saveFile: vi.fn(),
+}))
+
+vi.mock('../../../src/features/icons/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/icons/requests')>()),
   deleteCustomIconSet: vi.fn(),
   listBuiltinIconSets: vi.fn(),
   listBuiltinIcons: vi.fn(),
@@ -62,16 +66,15 @@ vi.mock('../../../src/features/content', async (importOriginal) => ({
   renameCustomIcon: vi.fn(),
 }))
 
-vi.mock('../../../src/utils/download', () => ({
-  saveFile: vi.fn(),
-}))
-
 const listBuiltinIconSetsMock = vi.mocked(listBuiltinIconSets)
 const listBuiltinIconsMock = vi.mocked(listBuiltinIcons)
+
 const listCustomIconSetsMock = vi.mocked(listCustomIconSets)
 const listCustomIconsMock = vi.mocked(listCustomIcons)
+
 const deleteCustomIconSetMock = vi.mocked(deleteCustomIconSet)
 const exportCustomIconSetMock = vi.mocked(exportCustomIconSet)
+
 const renameCustomIconMock = vi.mocked(renameCustomIcon)
 const saveFileMock = vi.mocked(saveFile)
 

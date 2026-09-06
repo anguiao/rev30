@@ -13,10 +13,11 @@ import {
   type ResourceTreeNode,
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
-import { deleteResource, getResourceTree } from '../../../src/features/system'
+import { deleteResource, getResourceTree } from '../../../src/features/resources/requests'
 import ResourcesPage from '../../../src/pages/index/system/resources.vue'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
-vi.mock('../../../src/features/system/ResourceFormDrawer.vue', () => ({
+
+vi.mock('../../../src/features/resources/ResourceFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'ResourceFormDrawerStub',
     props: {
@@ -37,8 +38,8 @@ vi.mock('../../../src/features/system/ResourceFormDrawer.vue', () => ({
   }),
 }))
 
-vi.mock('../../../src/features/system', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/system')>()),
+vi.mock('../../../src/features/resources/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/resources/requests')>()),
   deleteResource: vi.fn(),
   getResourceTree: vi.fn(),
 }))

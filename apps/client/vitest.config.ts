@@ -3,8 +3,7 @@ import viteConfig from './vite.config.ts'
 
 const nodeTestFiles = [
   '__tests__/api.test.ts',
-  '__tests__/features/{attachments,auth,content,system}/requests.test.ts',
-  '__tests__/features/demos/requests.test.ts',
+  '__tests__/features/*/requests.test.ts',
   '__tests__/router/{guards,redirect}.test.ts',
   '__tests__/stores/auth.test.ts',
   '__tests__/utils/{error,menu,request,ui}.test.ts',

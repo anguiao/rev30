@@ -10,10 +10,11 @@ import {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { defineComponent, h } from 'vue'
-import { deleteDictionary, listDictionaries } from '../../../src/features/system'
+import { deleteDictionary, listDictionaries } from '../../../src/features/dictionaries/requests'
 import DictionariesPage from '../../../src/pages/index/system/dictionaries.vue'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
-vi.mock('../../../src/features/system/DictionaryFormDrawer.vue', () => ({
+
+vi.mock('../../../src/features/dictionaries/DictionaryFormDrawer.vue', () => ({
   default: defineComponent({
     name: 'DictionaryFormDrawerStub',
     props: {
@@ -38,8 +39,8 @@ vi.mock('../../../src/features/system/DictionaryFormDrawer.vue', () => ({
   }),
 }))
 
-vi.mock('../../../src/features/system', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/system')>()),
+vi.mock('../../../src/features/dictionaries/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/dictionaries/requests')>()),
   deleteDictionary: vi.fn(),
   listDictionaries: vi.fn(),
 }))

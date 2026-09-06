@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DepartmentStatus } from '@rev30/contracts'
 import { computed, h, ref, watch } from 'vue'
 import { useQuery, useQueryCache } from '@pinia/colada'
 import type { ButtonProps, DataTableColumns, DataTableRowKey } from 'naive-ui'
@@ -29,14 +30,12 @@ import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
 import {
   STATUS_FILTER_ALL,
-  deleteDepartment,
-  getDepartmentTree,
   statusFilterOptions,
   statusLabels,
   statusTagTypes,
   type StatusFilter,
-  type SystemStatus,
-} from '../../../features/system'
+} from '../../../utils/status'
+import { deleteDepartment, getDepartmentTree } from '../../../features/departments/requests'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 const pageTitle = useAdminPageTitle('组织部门')
@@ -51,7 +50,7 @@ type DepartmentFilters = {
 }
 type DepartmentActiveFilters = {
   keyword: string
-  status: SystemStatus | null
+  status: DepartmentStatus | null
 }
 
 const filters = ref<DepartmentFilters>({
@@ -124,7 +123,7 @@ const {
   hasOpened: hasOpenedDepartmentDrawer,
   visible: isDepartmentDrawerVisible,
   open: showDepartmentDrawer,
-} = useDrawer(() => import('../../../features/system/DepartmentFormDrawer.vue'))
+} = useDrawer(() => import('../../../features/departments/DepartmentFormDrawer.vue'))
 const editingDepartmentId = ref<string | null>(null)
 const selectedParentDepartmentId = ref<string | null>(null)
 function openDepartmentFormDrawer(

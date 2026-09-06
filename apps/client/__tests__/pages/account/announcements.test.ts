@@ -9,10 +9,10 @@ import {
 import { NPagination, NTabs } from 'naive-ui'
 import { defineComponent, h } from 'vue'
 import AccountAnnouncementsPage from '../../../src/pages/index/account/announcements.vue'
-import { listMyAnnouncements } from '../../../src/features/content'
+import { listMyAnnouncements } from '../../../src/features/announcements/requests'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
-vi.mock('../../../src/features/content/MyAnnouncementDetailDrawer.vue', () => ({
+vi.mock('../../../src/features/announcements/MyAnnouncementDetailDrawer.vue', () => ({
   default: defineComponent({
     name: 'MyAnnouncementDetailDrawerStub',
     props: {
@@ -38,8 +38,8 @@ vi.mock('../../../src/features/content/MyAnnouncementDetailDrawer.vue', () => ({
   }),
 }))
 
-vi.mock('../../../src/features/content', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/content')>()),
+vi.mock('../../../src/features/announcements/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/announcements/requests')>()),
   listMyAnnouncements: vi.fn(),
 }))
 

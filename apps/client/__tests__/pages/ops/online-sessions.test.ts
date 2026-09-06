@@ -3,17 +3,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { OnlineSessionListResponse } from '@rev30/contracts'
 import { ApiRequestError } from '../../../src/utils/request'
 import OnlineSessionsPage from '../../../src/pages/index/ops/online-sessions.vue'
-import { listOnlineSessions, revokeOnlineSession } from '../../../src/features/ops'
+import {
+  listOnlineSessions,
+  revokeOnlineSession,
+} from '../../../src/features/online-sessions/requests'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 
-vi.mock('../../../src/features/ops', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/ops')>()),
+vi.mock('../../../src/features/online-sessions/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/features/online-sessions/requests')>()),
   listOnlineSessions: vi.fn(),
   revokeOnlineSession: vi.fn(),
 }))
 
 const listOnlineSessionsMock = vi.mocked(listOnlineSessions)
 const revokeOnlineSessionMock = vi.mocked(revokeOnlineSession)
+
 const targetSessionId = '11111111-1111-4111-8111-111111111111'
 const response: OnlineSessionListResponse = {
   list: [

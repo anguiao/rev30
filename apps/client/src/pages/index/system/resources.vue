@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ResourceStatus } from '@rev30/contracts'
 import { computed, h, ref, watch } from 'vue'
 import { useQuery, useQueryCache } from '@pinia/colada'
 import type { ButtonProps, DataTableColumns, DataTableRowKey, SelectOption } from 'naive-ui'
@@ -36,15 +37,13 @@ import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
 import {
   STATUS_FILTER_ALL,
-  deleteResource,
-  getResourceTree,
-  resourceTypeLabels,
   statusFilterOptions,
   statusLabels,
   statusTagTypes,
   type StatusFilter,
-  type SystemStatus,
-} from '../../../features/system'
+} from '../../../utils/status'
+import { deleteResource, getResourceTree } from '../../../features/resources/requests'
+import { resourceTypeLabels } from '../../../features/resources/labels'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 const pageTitle = useAdminPageTitle('权限资源')
@@ -63,7 +62,7 @@ type ResourceFilters = {
 type ResourceActiveFilters = {
   keyword: string
   type: ResourceType | null
-  status: SystemStatus | null
+  status: ResourceStatus | null
 }
 
 const filters = ref<ResourceFilters>({
@@ -145,7 +144,7 @@ const {
   hasOpened: hasOpenedResourceDrawer,
   visible: isResourceDrawerVisible,
   open: showResourceDrawer,
-} = useDrawer(() => import('../../../features/system/ResourceFormDrawer.vue'))
+} = useDrawer(() => import('../../../features/resources/ResourceFormDrawer.vue'))
 const editingResourceId = ref<string | null>(null)
 const selectedParentResourceId = ref<string | null>(null)
 function openResourceFormDrawer(resourceId: string | null = null, parentId: string | null = null) {

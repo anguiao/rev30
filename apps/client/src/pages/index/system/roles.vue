@@ -30,13 +30,12 @@ import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
 import {
   STATUS_FILTER_ALL,
-  deleteRole,
-  listRoles,
   statusFilterOptions,
   statusLabels,
   statusTagTypes,
   type StatusFilter,
-} from '../../../features/system'
+} from '../../../utils/status'
+import { deleteRole, listRoles } from '../../../features/roles/requests'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 const pageTitle = useAdminPageTitle('系统角色')
@@ -106,7 +105,7 @@ const {
   hasOpened: hasOpenedRoleDrawer,
   visible: isRoleDrawerVisible,
   open: showRoleDrawer,
-} = useDrawer(() => import('../../../features/system/RoleFormDrawer.vue'))
+} = useDrawer(() => import('../../../features/roles/RoleFormDrawer.vue'))
 const editingRoleId = ref<string | null>(null)
 function openRoleFormDrawer(roleId: string | null = null) {
   editingRoleId.value = roleId

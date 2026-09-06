@@ -24,10 +24,12 @@ import {
   cancelScheduledJob,
   executeScheduledJob,
   listScheduledJobs,
+  updateScheduledJobEnabled,
+} from '../../../features/scheduled-jobs/requests'
+import {
   scheduledJobRunStatusLabels,
   scheduledJobRunStatusTagTypes,
-  updateScheduledJobEnabled,
-} from '../../../features/ops'
+} from '../../../features/scheduled-jobs/labels'
 import { getErrorMessage } from '../../../utils/error'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
@@ -105,7 +107,7 @@ const {
   hasOpened: hasOpenedScheduledJobDrawer,
   visible: isScheduledJobDrawerVisible,
   open: showScheduledJobDrawer,
-} = useDrawer(() => import('../../../features/ops/ScheduledJobFormDrawer.vue'))
+} = useDrawer(() => import('../../../features/scheduled-jobs/ScheduledJobFormDrawer.vue'))
 const editingScheduledJobTaskKey = ref<ScheduledJobTaskKey | null>(null)
 
 function openScheduledJobFormDrawer(taskKey: ScheduledJobTaskKey) {
@@ -123,7 +125,7 @@ const {
   hasOpened: hasOpenedRunLogDrawer,
   visible: isRunLogDrawerVisible,
   open: showRunLogDrawer,
-} = useDrawer(() => import('../../../features/ops/ScheduledJobRunLogDrawer.vue'))
+} = useDrawer(() => import('../../../features/scheduled-jobs/ScheduledJobRunLogDrawer.vue'))
 const runLogTask = ref<Pick<ScheduledJobListItem, 'taskKey' | 'name'> | null>(null)
 const initialRunId = ref<string | null>(null)
 

@@ -1,0 +1,49 @@
+import {
+  SCHEDULED_JOB_ERROR_CATEGORY_DATABASE,
+  SCHEDULED_JOB_ERROR_CATEGORY_INTERNAL,
+  SCHEDULED_JOB_ERROR_CATEGORY_PARTIAL_FAILURE,
+  SCHEDULED_JOB_ERROR_CATEGORY_STORAGE,
+  SCHEDULED_JOB_RUN_STATUS_CANCELLED,
+  SCHEDULED_JOB_RUN_STATUS_FAILURE,
+  SCHEDULED_JOB_RUN_STATUS_INTERRUPTED,
+  SCHEDULED_JOB_RUN_STATUS_RUNNING,
+  SCHEDULED_JOB_RUN_STATUS_SKIPPED,
+  SCHEDULED_JOB_RUN_STATUS_SUCCESS,
+  SCHEDULED_JOB_TRIGGER_SOURCE_MANUAL,
+  SCHEDULED_JOB_TRIGGER_SOURCE_RECOVERY,
+  SCHEDULED_JOB_TRIGGER_SOURCE_SCHEDULED,
+  type ScheduledJobErrorCategory,
+  type ScheduledJobRunStatus,
+  type ScheduledJobTriggerSource,
+} from '@rev30/contracts'
+
+export const scheduledJobRunStatusLabels = {
+  [SCHEDULED_JOB_RUN_STATUS_RUNNING]: '运行中',
+  [SCHEDULED_JOB_RUN_STATUS_SUCCESS]: '成功',
+  [SCHEDULED_JOB_RUN_STATUS_FAILURE]: '失败',
+  [SCHEDULED_JOB_RUN_STATUS_SKIPPED]: '已跳过',
+  [SCHEDULED_JOB_RUN_STATUS_CANCELLED]: '已取消',
+  [SCHEDULED_JOB_RUN_STATUS_INTERRUPTED]: '已中断',
+} as const satisfies Record<ScheduledJobRunStatus, string>
+
+export const scheduledJobRunStatusTagTypes = {
+  [SCHEDULED_JOB_RUN_STATUS_RUNNING]: 'info',
+  [SCHEDULED_JOB_RUN_STATUS_SUCCESS]: 'success',
+  [SCHEDULED_JOB_RUN_STATUS_FAILURE]: 'error',
+  [SCHEDULED_JOB_RUN_STATUS_SKIPPED]: 'warning',
+  [SCHEDULED_JOB_RUN_STATUS_CANCELLED]: 'warning',
+  [SCHEDULED_JOB_RUN_STATUS_INTERRUPTED]: 'error',
+} as const satisfies Record<ScheduledJobRunStatus, 'error' | 'info' | 'success' | 'warning'>
+
+export const scheduledJobTriggerSourceLabels = {
+  [SCHEDULED_JOB_TRIGGER_SOURCE_SCHEDULED]: '定时',
+  [SCHEDULED_JOB_TRIGGER_SOURCE_MANUAL]: '手动',
+  [SCHEDULED_JOB_TRIGGER_SOURCE_RECOVERY]: '恢复',
+} as const satisfies Record<ScheduledJobTriggerSource, string>
+
+export const scheduledJobErrorCategoryLabels = {
+  [SCHEDULED_JOB_ERROR_CATEGORY_PARTIAL_FAILURE]: '部分失败',
+  [SCHEDULED_JOB_ERROR_CATEGORY_DATABASE]: '数据库',
+  [SCHEDULED_JOB_ERROR_CATEGORY_STORAGE]: '存储',
+  [SCHEDULED_JOB_ERROR_CATEGORY_INTERNAL]: '内部错误',
+} as const satisfies Record<ScheduledJobErrorCategory, string>

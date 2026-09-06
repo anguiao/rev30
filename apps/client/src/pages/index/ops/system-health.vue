@@ -8,20 +8,17 @@ import { useDrawer } from '../../../composables/useDrawer'
 import {
   getSystemHealth,
   getSystemHealthJobStatistics,
-} from '../../../features/ops/system-health/requests'
-import { useHealthQuery } from '../../../features/ops/system-health/useHealthQuery'
-import {
-  appendHealthSnapshot,
-  createHealthHistory,
-} from '../../../features/ops/system-health/history'
-import { formatHealthDateTime } from '../../../features/ops/system-health/format'
+} from '../../../features/system-health/requests'
+import { useHealthQuery } from '../../../features/system-health/useHealthQuery'
+import { appendHealthSnapshot, createHealthHistory } from '../../../features/system-health/history'
+import { formatHealthDateTime } from '../../../features/system-health/format'
 import {
   systemHealthStatusLabels,
   systemHealthStatusTagTypes,
-} from '../../../features/ops/system-health/labels'
-import HealthOverview from '../../../features/ops/system-health/HealthOverview.vue'
-import HealthStatistics from '../../../features/ops/system-health/HealthStatistics.vue'
-import HealthTrends from '../../../features/ops/system-health/HealthTrends.vue'
+} from '../../../features/system-health/labels'
+import HealthOverview from '../../../features/system-health/HealthOverview.vue'
+import HealthStatistics from '../../../features/system-health/HealthStatistics.vue'
+import HealthTrends from '../../../features/system-health/HealthTrends.vue'
 
 const pageTitle = useAdminPageTitle('系统健康')
 
@@ -60,7 +57,7 @@ const {
   hasOpened,
   visible: drawerVisible,
   open,
-} = useDrawer(() => import('../../../features/ops/ScheduledJobRunLogDrawer.vue'))
+} = useDrawer(() => import('../../../features/scheduled-jobs/ScheduledJobRunLogDrawer.vue'))
 
 const selectedAnomaly = ref<SystemHealthRecentAnomaly | null>(null)
 

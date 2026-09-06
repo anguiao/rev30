@@ -31,14 +31,14 @@ import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import { useDrawer } from '../../../composables/useDrawer'
 import {
   formatOperationLogTarget,
-  listOperationLogs,
   operationLogActionLabels,
   operationLogActionOptions,
   operationLogModuleLabels,
   operationLogModuleOptions,
   operationLogResultLabels,
   operationLogResultOptions,
-} from '../../../features/ops'
+} from '../../../features/operation-logs/labels'
+import { listOperationLogs } from '../../../features/operation-logs/requests'
 import { getErrorMessage } from '../../../utils/error'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
@@ -155,7 +155,7 @@ const {
   hasOpened: hasOpenedDetailDrawer,
   visible: isDetailDrawerVisible,
   open: showDetailDrawer,
-} = useDrawer(() => import('../../../features/ops/OperationLogDetailDrawer.vue'))
+} = useDrawer(() => import('../../../features/operation-logs/OperationLogDetailDrawer.vue'))
 const selectedOperationLogId = ref<string | null>(null)
 function openOperationLogDetail(operationLogId: string) {
   selectedOperationLogId.value = operationLogId

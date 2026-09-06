@@ -33,16 +33,14 @@ import { getErrorMessage } from '../../../utils/error'
 import { UserAvatar } from '../../../features/users'
 import {
   STATUS_FILTER_ALL,
-  deleteUser,
-  getDepartmentTreeOptions,
-  getRoleOptions,
-  listUsers,
-  resetUserPassword,
   statusFilterOptions,
   statusLabels,
   statusTagTypes,
   type StatusFilter,
-} from '../../../features/system'
+} from '../../../utils/status'
+import { deleteUser, listUsers, resetUserPassword } from '../../../features/users/requests'
+import { getDepartmentTreeOptions } from '../../../features/departments/requests'
+import { getRoleOptions } from '../../../features/roles/requests'
 import {
   renderTableActionButton,
   renderTableActions,
@@ -148,7 +146,7 @@ const {
   hasOpened: hasOpenedUserDrawer,
   visible: isUserDrawerVisible,
   open: showUserDrawer,
-} = useDrawer(() => import('../../../features/system/UserFormDrawer.vue'))
+} = useDrawer(() => import('../../../features/users/UserFormDrawer.vue'))
 const editingUserId = ref<string | null>(null)
 function openUserFormDrawer(userId: string | null = null) {
   editingUserId.value = userId

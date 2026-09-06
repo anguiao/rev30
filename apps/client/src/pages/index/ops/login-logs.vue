@@ -26,15 +26,15 @@ import {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
+import UserAgentSummary from '../../../components/common/UserAgentSummary.vue'
+import { clientIpSourceLabels } from '../../../utils/clientContext'
+import { listLoginLogs } from '../../../features/login-logs/requests'
 import {
-  UserAgentSummary,
-  clientIpSourceLabels,
-  listLoginLogs,
   loginFailureReasonLabels,
   loginFailureReasonOptions,
   loginLogResultLabels,
   loginLogResultOptions,
-} from '../../../features/ops'
+} from '../../../features/login-logs/labels'
 import { getErrorMessage } from '../../../utils/error'
 
 const pageTitle = useAdminPageTitle('登录日志')

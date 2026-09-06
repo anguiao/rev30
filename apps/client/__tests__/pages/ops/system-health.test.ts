@@ -4,13 +4,13 @@ import SystemHealthPage from '../../../src/pages/index/ops/system-health.vue'
 import {
   getSystemHealth,
   getSystemHealthJobStatistics,
-} from '../../../src/features/ops/system-health/requests'
+} from '../../../src/features/system-health/requests'
 import { useThemeStore } from '../../../src/stores/theme'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 import { healthSnapshot, healthStatistics } from '../../helpers/system-health'
 import { createDeferred } from '../../helpers/promise'
 
-vi.mock('../../../src/features/ops/system-health/requests', () => ({
+vi.mock('../../../src/features/system-health/requests', () => ({
   getSystemHealth: vi.fn(),
   getSystemHealthJobStatistics: vi.fn(),
 }))
@@ -24,7 +24,7 @@ vi.mock('vue-echarts', async () => {
     }),
   }
 })
-vi.mock('../../../src/features/ops/ScheduledJobRunLogDrawer.vue', async () => {
+vi.mock('../../../src/features/scheduled-jobs/ScheduledJobRunLogDrawer.vue', async () => {
   const { defineComponent, h } = await import('vue')
   return {
     default: defineComponent({

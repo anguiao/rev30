@@ -17,7 +17,8 @@ import type { Config } from '@rev30/contracts'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
 import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
-import { configValueTypeLabels, listConfigs } from '../../../features/system'
+import { configValueTypeLabels } from '../../../features/configs/labels'
+import { listConfigs } from '../../../features/configs/requests'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 const pageTitle = useAdminPageTitle('系统配置')
@@ -69,7 +70,7 @@ const {
   hasOpened: hasOpenedConfigDrawer,
   visible: isConfigDrawerVisible,
   open: showConfigDrawer,
-} = useDrawer(() => import('../../../features/system/ConfigFormDrawer.vue'))
+} = useDrawer(() => import('../../../features/configs/ConfigFormDrawer.vue'))
 const editingConfigKey = ref<string | null>(null)
 
 function openConfigFormDrawer(configKey: string) {

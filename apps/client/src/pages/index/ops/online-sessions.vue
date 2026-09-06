@@ -23,12 +23,9 @@ import type {
 } from '@rev30/contracts'
 import { formatDisplayDateTime } from '@rev30/utils'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
-import {
-  UserAgentSummary,
-  clientIpSourceLabels,
-  listOnlineSessions,
-  revokeOnlineSession,
-} from '../../../features/ops'
+import UserAgentSummary from '../../../components/common/UserAgentSummary.vue'
+import { clientIpSourceLabels } from '../../../utils/clientContext'
+import { listOnlineSessions, revokeOnlineSession } from '../../../features/online-sessions/requests'
 import { getErrorMessage } from '../../../utils/error'
 import { ApiRequestError } from '../../../utils/request'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'

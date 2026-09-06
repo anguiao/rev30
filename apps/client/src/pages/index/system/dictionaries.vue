@@ -29,13 +29,12 @@ import { useDrawer } from '../../../composables/useDrawer'
 import { getErrorMessage } from '../../../utils/error'
 import {
   STATUS_FILTER_ALL,
-  deleteDictionary,
-  listDictionaries,
   statusFilterOptions,
   statusLabels,
   statusTagTypes,
   type StatusFilter,
-} from '../../../features/system'
+} from '../../../utils/status'
+import { deleteDictionary, listDictionaries } from '../../../features/dictionaries/requests'
 import { renderTableActionButton, renderTableActions } from '../../../utils/ui'
 
 const pageTitle = useAdminPageTitle('数据字典')
@@ -107,7 +106,7 @@ const {
   hasOpened: hasOpenedDictionaryDrawer,
   visible: isDictionaryDrawerVisible,
   open: showDictionaryDrawer,
-} = useDrawer(() => import('../../../features/system/DictionaryFormDrawer.vue'))
+} = useDrawer(() => import('../../../features/dictionaries/DictionaryFormDrawer.vue'))
 const editingDictionaryId = ref<string | null>(null)
 function openDictionaryFormDrawer(dictionaryId: string | null = null) {
   editingDictionaryId.value = dictionaryId

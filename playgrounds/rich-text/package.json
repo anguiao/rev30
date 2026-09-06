@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@rev30/rich-text": "workspace:*",
-    "highlight.js": "^11.11.1",
+    "highlight.js": "^11.12.0",
     "naive-ui": "catalog:",
     "vue": "catalog:"
   },
@@ -25,14 +25,14 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.13.3",
     "@vitejs/plugin-vue": "catalog:",
-    "@vitest/browser-playwright": "^4.1.10",
+    "@vitest/browser-playwright": "^5.0.0",
     "@vue/test-utils": "catalog:",
-    "playwright": "^1.62.1",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "vitest-browser-vue": "^2.0.2",
+    "vitest-browser-vue": "^3.1.0",
     "vue-tsc": "catalog:"
   }
 }

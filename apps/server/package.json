@@ -23,23 +23,23 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.5.4",
+    "@electric-sql/pglite": "^0.5.8",
     "@file-type/cfbf": "^0.2.2",
-    "@hono/node-server": "^2.1.0",
-    "@hono/zod-validator": "^0.9.0",
+    "@hono/node-server": "^2.1.1",
+    "@hono/zod-validator": "^0.9.1",
     "@iconify/json": "catalog:",
-    "@iconify/tools": "^5.0.12",
+    "@iconify/tools": "^5.0.14",
     "@iconify/types": "^2.0.0",
-    "@iconify/utils": "^3.1.4",
+    "@iconify/utils": "^3.1.5",
     "@rev30/contracts": "workspace:*",
     "@rev30/rich-text": "workspace:*",
     "@rev30/utils": "workspace:*",
     "bowser": "^2.14.1",
     "bytes": "catalog:",
-    "content-disposition": "^2.0.1",
+    "content-disposition": "^3.0.0",
     "dotenv": "^17.4.2",
     "drizzle-orm": "rc",
-    "file-type": "^22.0.1",
+    "file-type": "^22.0.2",
     "fzf": "^0.5.2",
     "hono": "catalog:",
     "mime-types": "^3.0.2",
@@ -52,6 +52,6 @@
     "@types/mime-types": "^3.0.1",
     "drizzle-kit": "rc",
     "tsup": "^8.5.1",
-    "tsx": "^4.23.12"
+    "tsx": "^4.23.13"
   }
 }

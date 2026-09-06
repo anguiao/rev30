@@ -3,7 +3,7 @@ import { userEvent } from 'vitest/browser'
 import { getEditable, renderRichTextEditorHarness } from './fixtures/renderRichTextEditorHarness'
 
 test('uses native input and DOM selection to show an in-bounds quick bar', async () => {
-  const screen = renderRichTextEditorHarness()
+  const screen = await renderRichTextEditorHarness()
   const editable = await getEditable(screen)
 
   await userEvent.click(editable)
@@ -12,7 +12,7 @@ test('uses native input and DOM selection to show an in-bounds quick bar', async
 
   const quickBar = screen.getByTestId('rich-text-quick-bar')
   await expect.element(quickBar).toBeVisible()
-  await expect.element(screen.getByTestId('selection-text')).toHaveTextContent('o')
+  await expect.element(screen.getByTestId('selection-text')).toMatchTextContent('o')
 
   const containerRect = screen.getByTestId('editor-container').element().getBoundingClientRect()
   const quickBarRect = quickBar.element().getBoundingClientRect()
@@ -22,7 +22,7 @@ test('uses native input and DOM selection to show an in-bounds quick bar', async
   expect(quickBarRect.bottom).toBeLessThanOrEqual(containerRect.bottom)
 
   await quickBar.getByRole('button', { name: '加粗' }).click()
-  await expect.element(screen.getByTestId('model-json')).toHaveTextContent('"bold"')
+  await expect.element(screen.getByTestId('model-json')).toMatchTextContent('"bold"')
   const document = JSON.parse(
     screen.getByTestId('model-json').element().textContent ?? '',
   ) as unknown
@@ -39,6 +39,6 @@ test('uses native input and DOM selection to show an in-bounds quick bar', async
       },
     ],
   })
-  await expect.element(screen.getByTestId('active-element')).toHaveTextContent('editor')
-  await expect.element(screen.getByTestId('selection-text')).toHaveTextContent('o')
+  await expect.element(screen.getByTestId('active-element')).toMatchTextContent('editor')
+  await expect.element(screen.getByTestId('selection-text')).toMatchTextContent('o')
 })

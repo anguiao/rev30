@@ -5,6 +5,7 @@ import { THEME_STORAGE_KEY } from '../src/playground/useThemeMode'
 const expectedPostcssBrowserExternalAccesses = new Set([
   'fs:fs.existsSync',
   'fs:fs.readFileSync',
+  'fs:fs.realpathSync',
   'path:path.dirname',
   'path:path.isAbsolute',
   'path:path.join',

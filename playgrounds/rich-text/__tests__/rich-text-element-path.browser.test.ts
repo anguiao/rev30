@@ -25,7 +25,7 @@ test('does not scroll the page when an offscreen element path mounts or updates'
   window.scrollTo(0, 0)
 
   try {
-    const screen = renderRichTextEditorHarness()
+    const screen = await renderRichTextEditorHarness()
     await expect.element(screen.getByTestId('rich-text-element-path')).toBeInTheDocument()
     await new Promise((resolve) => window.setTimeout(resolve, 50))
     expect(window.scrollY).toBe(0)
@@ -44,10 +44,10 @@ test('does not scroll the page when an offscreen element path mounts or updates'
 })
 
 test('updates nested model marks and activates the element path without losing it on blur', async () => {
-  const screen = renderRichTextEditorHarness()
+  const screen = await renderRichTextEditorHarness()
   await screen.getByTestId('set-element-path-document').click()
   const editable = await getEditable(screen)
-  await expect.element(editable).toHaveTextContent('甲乙丙')
+  await expect.element(editable).toMatchTextContent('甲乙丙')
 
   await userEvent.click(editable, { position: { x: 4, y: 20 } })
   await expect.element(editable).toHaveFocus()
@@ -61,8 +61,8 @@ test('updates nested model marks and activates the element path without losing i
   const strongButton = screen.getByRole('button', { name: '选择 strong 元素' }).element()
   strongButton.focus()
   await userEvent.keyboard('{Space}')
-  await expect.element(screen.getByTestId('selection-text')).toHaveTextContent('甲乙丙')
-  await expect.element(screen.getByTestId('active-element')).toHaveTextContent('editor')
+  await expect.element(screen.getByTestId('selection-text')).toMatchTextContent('甲乙丙')
+  await expect.element(screen.getByTestId('active-element')).toMatchTextContent('editor')
 
   await screen.getByTestId('after-editor').click()
   await expect.element(screen.getByTestId('rich-text-element-path')).toBeVisible()
@@ -70,7 +70,7 @@ test('updates nested model marks and activates the element path without losing i
 })
 
 test('selects table cells from td, tr, and table path items without hiding the count', async () => {
-  const screen = renderRichTextEditorHarness()
+  const screen = await renderRichTextEditorHarness()
   await screen.getByTestId('set-table-document').click()
   const editable = await getEditable(screen)
   const cell = editable.element().querySelector<HTMLTableCellElement>('tbody tr:nth-child(2) td')

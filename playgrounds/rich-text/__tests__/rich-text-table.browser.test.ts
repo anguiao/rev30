@@ -106,8 +106,8 @@ function getColumnWidth(table: TableModel, column: number) {
 
 async function setTableDocument(screen: RichTextEditorHarnessScreen) {
   await screen.getByTestId('set-table-document').click()
-  await expect.element(screen.getByTestId('model-json')).toHaveTextContent('"table"')
-  await expect.element(screen.getByTestId('derivation-status')).toHaveTextContent('ready')
+  await expect.element(screen.getByTestId('model-json')).toMatchTextContent('"table"')
+  await expect.element(screen.getByTestId('derivation-status')).toMatchTextContent('ready')
 }
 
 async function selectTwoBodyCells() {
@@ -139,7 +139,7 @@ async function focusToolbarTableControl(screen: RichTextEditorHarnessScreen) {
 }
 
 test('runs table Quick Bar and toolbar actions through a real multi-cell drag', async () => {
-  const screen = renderRichTextEditorHarness()
+  const screen = await renderRichTextEditorHarness()
   await setTableDocument(screen)
   const editor = await getEditorRoot(screen)
 
@@ -205,7 +205,7 @@ test('runs table Quick Bar and toolbar actions through a real multi-cell drag', 
 })
 
 test('resizes inner and final table edges with native mouse input and one undo', async () => {
-  const screen = renderRichTextEditorHarness()
+  const screen = await renderRichTextEditorHarness()
   await setTableDocument(screen)
   const editor = await getEditorRoot(screen)
 
@@ -268,7 +268,7 @@ test('resizes inner and final table edges with native mouse input and one undo',
 })
 
 test('blocks new resize gestures while disabled without mutating the model on lifecycle changes', async () => {
-  const screen = renderRichTextEditorHarness(undefined, { initialDisabled: true })
+  const screen = await renderRichTextEditorHarness(undefined, { initialDisabled: true })
   await setTableDocument(screen)
   const editor = await getEditorRoot(screen)
   const modelBefore = screen.getByTestId('model-json').element().textContent
@@ -303,7 +303,7 @@ test('blocks new resize gestures while disabled without mutating the model on li
 })
 
 test('prioritizes text and full-cell selections for their corresponding Quick Bars', async () => {
-  const screen = renderRichTextEditorHarness()
+  const screen = await renderRichTextEditorHarness()
   await setTableDocument(screen)
   const editor = await getEditorRoot(screen)
   const firstCell = getTableBodyCell(getEditorTable(editor), 1)

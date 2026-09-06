@@ -25,33 +25,33 @@ function createErrorPanelProps(
 }
 
 test('maps known derivation errors and hides unknown causes without discarding previous results', async () => {
-  const screen = render(ResultPanel, {
+  const screen = await render(ResultPanel, {
     props: createErrorPanelProps(new RichTextContentInvalidError()),
   })
 
   const errorAlert = screen.getByTestId('derivation-error')
-  await expect.element(errorAlert).toHaveTextContent('富文本内容无效')
-  await expect.element(errorAlert).not.toHaveTextContent('Rich text content is invalid')
-  await expect.element(screen.getByTestId('rendered-result')).toHaveTextContent('旧结果')
+  await expect.element(errorAlert).toMatchTextContent('富文本内容无效')
+  await expect.element(errorAlert).not.toMatchTextContent('Rich text content is invalid')
+  await expect.element(screen.getByTestId('rendered-result')).toMatchTextContent('旧结果')
 
   for (const error of [new Error('private error'), 'private string', null]) {
     await screen.rerender({ error })
-    await expect.element(errorAlert).toHaveTextContent('生成富文本结果失败')
-    await expect.element(errorAlert).not.toHaveTextContent('private')
-    await expect.element(screen.getByTestId('rendered-result')).toHaveTextContent('旧结果')
+    await expect.element(errorAlert).toMatchTextContent('生成富文本结果失败')
+    await expect.element(errorAlert).not.toMatchTextContent('private')
+    await expect.element(screen.getByTestId('rendered-result')).toMatchTextContent('旧结果')
   }
 })
 
 test('shows an empty error state when the first derivation has no successful result', async () => {
-  const screen = render(ResultPanel, {
+  const screen = await render(ResultPanel, {
     props: createErrorPanelProps(null, null),
   })
 
   await expect
     .element(screen.getByTestId('derivation-error'))
-    .toHaveTextContent('生成富文本结果失败')
+    .toMatchTextContent('生成富文本结果失败')
   await expect
     .element(screen.getByTestId('derivation-error'))
-    .not.toHaveTextContent('保留的结果不是当前内容')
+    .not.toMatchTextContent('保留的结果不是当前内容')
   await expect.element(screen.getByTestId('rendered-result')).not.toBeInTheDocument()
 })

@@ -7,7 +7,7 @@ const pathButtonSelector =
   '[data-test="rich-text-element-path"] [data-rich-text-toolbar-item^="node:paragraph:"]'
 
 test('runs slash commands with keyboard geometry and native tab navigation', async () => {
-  const screen = renderRichTextEditorHarness()
+  const screen = await renderRichTextEditorHarness()
   const editable = await getEditable(screen)
 
   await userEvent.click(editable)
@@ -23,13 +23,13 @@ test('runs slash commands with keyboard geometry and native tab navigation', asy
   expect(menuRect.right).toBeLessThanOrEqual(containerRect.right)
   expect(menuRect.top).toBeGreaterThanOrEqual(containerRect.top)
   expect(menuRect.bottom).toBeLessThanOrEqual(containerRect.bottom)
-  await expect.element(screen.getByTestId('active-element')).toHaveTextContent('editor')
+  await expect.element(screen.getByTestId('active-element')).toMatchTextContent('editor')
 
   await userEvent.keyboard('{ArrowDown}')
   await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByTestId('model-json')).toHaveTextContent('"type":"heading"')
-  await expect.element(screen.getByTestId('model-json')).toHaveTextContent('"level":2')
-  await expect.element(screen.getByTestId('active-element')).toHaveTextContent('editor')
+  await expect.element(screen.getByTestId('model-json')).toMatchTextContent('"type":"heading"')
+  await expect.element(screen.getByTestId('model-json')).toMatchTextContent('"level":2')
+  await expect.element(screen.getByTestId('active-element')).toMatchTextContent('editor')
 
   await screen.getByTestId('reset-short-document').click()
   const nextEditable = await getEditable(screen)

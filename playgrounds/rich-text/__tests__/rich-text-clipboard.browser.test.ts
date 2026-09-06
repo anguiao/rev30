@@ -61,10 +61,10 @@ afterEach(async () => {
 })
 
 test('adds a link only to a locally selected text range through the native clipboard shortcut', async () => {
-  const screen = render(RichTextEditorHarness)
+  const screen = await render(RichTextEditorHarness)
   await screen.getByTestId('set-paste-document').click()
   const editable = screen.getByTestId('editor-container').getByRole('textbox')
-  await expect.element(editable).toHaveTextContent('未选已选')
+  await expect.element(editable).toMatchTextContent('未选已选')
   await userEvent.click(editable)
   await expect.element(editable).toHaveFocus()
   await expect.poll(() => window.getSelection()?.focusOffset).toBe(4)
@@ -76,7 +76,7 @@ test('adds a link only to a locally selected text range through the native clipb
   await pasteNativeClipboard()
 
   const modelOutput = screen.getByTestId('model-json')
-  await expect.element(modelOutput).toHaveTextContent('"link"')
+  await expect.element(modelOutput).toMatchTextContent('"link"')
 
   expect(readModel(modelOutput.element())).toEqual({
     type: 'doc',
@@ -98,7 +98,7 @@ test('adds a link only to a locally selected text range through the native clipb
 })
 
 test('replaces an all-selection with pasted URL text through the native clipboard shortcut', async () => {
-  const screen = render(RichTextEditorHarness)
+  const screen = await render(RichTextEditorHarness)
   await screen.getByTestId('set-paste-document').click()
   const editable = screen.getByTestId('editor-container').getByRole('textbox')
   await userEvent.click(editable)
@@ -107,7 +107,7 @@ test('replaces an all-selection with pasted URL text through the native clipboar
   await pasteNativeClipboard()
 
   const modelOutput = screen.getByTestId('model-json')
-  await expect.element(modelOutput).toHaveTextContent(pastedUrl)
+  await expect.element(modelOutput).toMatchTextContent(pastedUrl)
   const model = readModel(modelOutput.element())
 
   expect(JSON.stringify(model)).not.toContain('未选')
@@ -115,7 +115,7 @@ test('replaces an all-selection with pasted URL text through the native clipboar
 })
 
 test('round-trips a Data URL image with native copy and paste shortcuts', async () => {
-  const screen = render(RichTextEditorHarness)
+  const screen = await render(RichTextEditorHarness)
   await screen.getByTestId('set-image-selection-document').click()
   const editable = screen.getByTestId('editor-container').getByRole('textbox')
   const image = editable.getByRole('img', { name: '路径图片' })
@@ -126,7 +126,7 @@ test('round-trips a Data URL image with native copy and paste shortcuts', async 
   await pasteNativeClipboard()
 
   const modelOutput = screen.getByTestId('model-json')
-  await expect.element(modelOutput).toHaveTextContent('data:image/png;base64,')
+  await expect.element(modelOutput).toMatchTextContent('data:image/png;base64,')
   const imageSources = getImageSources(readModel(modelOutput.element()))
 
   expect(imageSources).toHaveLength(2)

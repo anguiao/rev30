@@ -4,7 +4,7 @@ import { render } from 'vitest-browser-vue'
 import App from '../src/App.vue'
 
 test('keeps image errors through normal edits until restoring the example', async () => {
-  const screen = render(App)
+  const screen = await render(App)
   const toolbar = screen.getByRole('toolbar', { name: '格式工具栏', exact: true })
   await toolbar.getByRole('button', { name: '图片', exact: true }).click()
 
@@ -16,7 +16,7 @@ test('keeps image errors through normal edits until restoring the example', asyn
   await dialog.getByTestId('rich-text-image-upload-action').click()
   await expect
     .element(screen.getByTestId('image-error'))
-    .toHaveTextContent('仅支持 JPEG、PNG 和 WebP 图片')
+    .toMatchTextContent('仅支持 JPEG、PNG 和 WebP 图片')
 
   await dialog.getByTestId('rich-text-image-cancel').click()
   await expect.element(dialog).not.toBeInTheDocument()
@@ -26,7 +26,7 @@ test('keeps image errors through normal edits until restoring the example', asyn
   await userEvent.type(editable, 'x')
   await expect
     .element(screen.getByTestId('image-error'))
-    .toHaveTextContent('仅支持 JPEG、PNG 和 WebP 图片')
+    .toMatchTextContent('仅支持 JPEG、PNG 和 WebP 图片')
 
   await screen.getByTestId('restore-example').click()
   await expect.element(screen.getByTestId('image-error')).not.toBeInTheDocument()

@@ -21,7 +21,7 @@ export function renderRichTextEditorHarness(
   })
 }
 
-export type RichTextEditorHarnessScreen = ReturnType<typeof renderRichTextEditorHarness>
+export type RichTextEditorHarnessScreen = Awaited<ReturnType<typeof renderRichTextEditorHarness>>
 
 export async function getEditable(screen: RichTextEditorHarnessScreen) {
   const editable = screen.getByTestId('editor-container').getByRole('textbox')

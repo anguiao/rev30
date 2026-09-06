@@ -4,7 +4,7 @@ import { createDefaultDocument } from '../src/playground/defaultDocument'
 import { getEditable, renderRichTextEditorHarness } from './fixtures/renderRichTextEditorHarness'
 
 test('does not flash the quick bar when a pointer click beside an image returns to the editor', async () => {
-  const screen = renderRichTextEditorHarness(createDefaultDocument())
+  const screen = await renderRichTextEditorHarness(createDefaultDocument())
   const editable = await getEditable(screen)
   const heading = editable.element().querySelector('h1')
   const imageLocator = editable.getByRole('img', { name: '一位编辑正在整理文章结构' })

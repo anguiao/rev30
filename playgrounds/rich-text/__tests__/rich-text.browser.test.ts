@@ -56,7 +56,7 @@ test('creates all presets and renders the complete default document in Chromium'
   expect(derived.html).not.toContain('deriveRichTextContent')
   expect(JSON.stringify(derived.json)).toContain('data:image/png;base64,')
 
-  const screen = render(App)
+  const screen = await render(App)
   await expect.element(screen.getByRole('heading', { name: 'Rich Text Playground' })).toBeVisible()
   const themeMode = screen.getByTestId('theme-mode').element()
   expect(themeMode.getAttribute('aria-label')).toBe('主题')
@@ -71,19 +71,19 @@ test('creates all presets and renders the complete default document in Chromium'
     .toBeVisible()
 
   await screen.getByTestId('result-tabs').getByText('JSON', { exact: true }).click()
-  await expect.element(screen.getByTestId('json-result')).not.toHaveTextContent('iVBORw0KGgo')
+  await expect.element(screen.getByTestId('json-result')).not.toMatchTextContent('iVBORw0KGgo')
   await expect
-    .element(screen.getByTestId('json-result'))
-    .toHaveTextContent(/图片 payload 已省略，\d+ 字节/)
+    .poll(() => screen.getByTestId('json-result').element().textContent)
+    .toMatch(/图片 payload 已省略，\d+ 字节/)
 
   await screen.getByTestId('result-tabs').getByText('HTML', { exact: true }).click()
   await expect
-    .element(screen.getByTestId('html-result'))
-    .toHaveTextContent(/图片 payload 已省略，\d+ 字节/)
+    .poll(() => screen.getByTestId('html-result').element().textContent)
+    .toMatch(/图片 payload 已省略，\d+ 字节/)
 })
 
 test('keeps the editor and preview within the viewport with internal scrolling', async () => {
-  const screen = render(App)
+  const screen = await render(App)
   const editorPanel = screen.getByRole('region', { name: '编辑' })
   const resultPanel = screen.getByRole('region', { name: '派生结果' })
   const renderedResult = screen.getByTestId('rendered-result')
@@ -115,7 +115,7 @@ test('applies matching editor and readonly content typography across supported s
   const content = createDefaultDocument()
   const { serverPreset } = createPlaygroundPresets({ onImageError() {} })
   const derived = deriveRichTextContent(content, serverPreset)
-  const screen = render(RichTextContentStyleHarness, {
+  const screen = await render(RichTextContentStyleHarness, {
     props: { document: content, html: derived.html, dark: false },
   })
 
@@ -280,7 +280,7 @@ test('preserves ordered list markers and collapses adjacent flow spacing', async
   }
   const { serverPreset } = createPlaygroundPresets({ onImageError() {} })
   const derived = deriveRichTextContent(document, serverPreset)
-  const screen = render(RichTextContentStyleHarness, {
+  const screen = await render(RichTextContentStyleHarness, {
     props: { document, html: derived.html, dark: false },
   })
 
@@ -315,7 +315,7 @@ test('switches content defaults with the root theme and honors public color vari
   const content = createDefaultDocument()
   const { serverPreset } = createPlaygroundPresets({ onImageError() {} })
   const derived = deriveRichTextContent(content, serverPreset)
-  const screen = render(RichTextContentStyleHarness, {
+  const screen = await render(RichTextContentStyleHarness, {
     props: { document: content, html: derived.html, dark: false },
   })
   const readonly = screen.getByTestId('style-readonly-sm').element()
@@ -368,7 +368,7 @@ test('switches content defaults with the root theme and honors public color vari
 })
 
 test('highlights rendered code and switches its theme with the playground mode', async () => {
-  const screen = render(App)
+  const screen = await render(App)
   const renderedResult = screen.getByTestId('rendered-result')
   await expect.element(renderedResult).toBeVisible()
 

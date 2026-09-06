@@ -3,7 +3,7 @@ import { userEvent } from 'vitest/browser'
 import { getEditable, renderRichTextEditorHarness } from './fixtures/renderRichTextEditorHarness'
 
 test('keeps focus inside toolbar, popover, and quick bar without overall blur', async () => {
-  const screen = renderRichTextEditorHarness()
+  const screen = await renderRichTextEditorHarness()
   const editable = await getEditable(screen)
   const toolbar = screen.getByRole('toolbar', { name: '格式工具栏', exact: true })
 
@@ -16,7 +16,9 @@ test('keeps focus inside toolbar, popover, and quick bar without overall blur', 
     (item) => !item.matches(':disabled') && item.getAttribute('aria-disabled') !== 'true',
   )
   const enabledToolbarKeys = enabledToolbarItems.map((item) => item.dataset.richTextToolbarItem)
-  await expect.element(screen.getByTestId('active-element')).toHaveTextContent(/\S+/)
+  await expect
+    .poll(() => screen.getByTestId('active-element').element().textContent?.trim())
+    .toBeTruthy()
   const focusedToolbarKey = screen.getByTestId('active-element').element().textContent?.trim()
 
   expect(focusedToolbarKey).toBeTruthy()
@@ -24,10 +26,12 @@ test('keeps focus inside toolbar, popover, and quick bar without overall blur', 
   await userEvent.keyboard('{ArrowRight}')
   const focusedToolbarIndex = enabledToolbarKeys.indexOf(focusedToolbarKey)
   const nextToolbarKey = enabledToolbarKeys[(focusedToolbarIndex + 1) % enabledToolbarKeys.length]
-  await expect.element(screen.getByTestId('active-element')).toHaveTextContent(nextToolbarKey ?? '')
-  await expect.element(screen.getByTestId('blur-count')).toHaveTextContent('0')
+  await expect
+    .element(screen.getByTestId('active-element'))
+    .toMatchTextContent(nextToolbarKey ?? '')
+  await expect.element(screen.getByTestId('blur-count')).toMatchTextContent('0')
   await userEvent.keyboard('{Escape}')
-  await expect.element(screen.getByTestId('active-element')).toHaveTextContent('editor')
+  await expect.element(screen.getByTestId('active-element')).toMatchTextContent('editor')
 
   await userEvent.type(editable, 'x')
   await userEvent.keyboard('{Shift>}{ArrowLeft}{/Shift}')
@@ -38,8 +42,8 @@ test('keeps focus inside toolbar, popover, and quick bar without overall blur', 
   await expect.element(popover).toBeVisible()
   await linkInput.click()
   await expect.element(linkInput).toHaveFocus()
-  await expect.element(screen.getByTestId('active-element')).toHaveTextContent('input')
-  await expect.element(screen.getByTestId('blur-count')).toHaveTextContent('0')
+  await expect.element(screen.getByTestId('active-element')).toMatchTextContent('input')
+  await expect.element(screen.getByTestId('blur-count')).toMatchTextContent('0')
   await userEvent.keyboard('{Escape}')
 
   await userEvent.click(editable)
@@ -48,8 +52,8 @@ test('keeps focus inside toolbar, popover, and quick bar without overall blur', 
   const quickBar = screen.getByTestId('rich-text-quick-bar')
   await expect.element(quickBar).toBeVisible()
   await quickBar.getByRole('button', { name: '加粗' }).click()
-  await expect.element(screen.getByTestId('blur-count')).toHaveTextContent('0')
+  await expect.element(screen.getByTestId('blur-count')).toMatchTextContent('0')
 
   await screen.getByTestId('after-editor').click()
-  await expect.element(screen.getByTestId('blur-count')).toHaveTextContent('1')
+  await expect.element(screen.getByTestId('blur-count')).toMatchTextContent('1')
 })

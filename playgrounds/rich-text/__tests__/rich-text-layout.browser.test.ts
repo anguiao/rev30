@@ -3,9 +3,9 @@ import { userEvent } from 'vitest/browser'
 import { getEditable, renderRichTextEditorHarness } from './fixtures/renderRichTextEditorHarness'
 
 test('exits a trailing code block only after a real click below its DOM rect', async () => {
-  const screen = renderRichTextEditorHarness()
+  const screen = await renderRichTextEditorHarness()
   await screen.getByTestId('set-code-block-document').click()
-  await expect.element(screen.getByTestId('model-json')).toHaveTextContent('"codeBlock"')
+  await expect.element(screen.getByTestId('model-json')).toMatchTextContent('"codeBlock"')
 
   const editable = await getEditable(screen)
   const editorElement = editable.element()
@@ -43,9 +43,9 @@ test('exits a trailing code block only after a real click below its DOM rect', a
 })
 
 test('keeps a wide table scrollable and adds a row from the last cell with native Tab', async () => {
-  const screen = renderRichTextEditorHarness()
+  const screen = await renderRichTextEditorHarness()
   await screen.getByTestId('set-table-document').click()
-  await expect.element(screen.getByTestId('model-json')).toHaveTextContent('"table"')
+  await expect.element(screen.getByTestId('model-json')).toMatchTextContent('"table"')
 
   const editable = await getEditable(screen)
   const tableWrapper = editable.element().querySelector<HTMLElement>('.tableWrapper')
@@ -64,7 +64,7 @@ test('keeps a wide table scrollable and adds a row from the last cell with nativ
   await userEvent.keyboard('{Tab}')
   await userEvent.keyboard('row')
 
-  await expect.element(screen.getByTestId('model-json')).toHaveTextContent('"tableRow"')
+  await expect.element(screen.getByTestId('model-json')).toMatchTextContent('"tableRow"')
   const rowsAfter = table!.querySelectorAll('tr')
   expect(rowsAfter).toHaveLength(rowsBefore + 1)
 

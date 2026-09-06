@@ -6,7 +6,7 @@ const FIXTURE_PNG =
   'iVBORw0KGgoAAAANSUhEUgAAACAAAAAYCAYAAACbU/80AAAAK0lEQVR4nO3OIQEAAAgDMBqRkdRIiHEzMb+qnr0kAQEBAQEBAQEBAYF04AHpJ/FrJbf1awAAAABJRU5ErkJggg=='
 
 test('uploads a local image, derives sanitized HTML, and deletes the selected node', async () => {
-  const screen = renderRichTextEditorHarness()
+  const screen = await renderRichTextEditorHarness()
   const editable = await getEditable(screen)
   const toolbar = screen.getByRole('toolbar', { name: '格式工具栏', exact: true })
   await toolbar.getByRole('button', { name: '图片', exact: true }).click()
@@ -24,9 +24,11 @@ test('uploads a local image, derives sanitized HTML, and deletes the selected no
   await expect.element(dialog.getByTestId('rich-text-image-confirm')).toBeEnabled()
   await dialog.getByTestId('rich-text-image-confirm').click()
 
-  await expect.element(screen.getByTestId('model-json')).toHaveTextContent('"type":"image"')
-  await expect.element(screen.getByTestId('model-json')).toHaveTextContent('data:image/png;base64,')
-  await expect.element(screen.getByTestId('derivation-status')).toHaveTextContent('ready')
+  await expect.element(screen.getByTestId('model-json')).toMatchTextContent('"type":"image"')
+  await expect
+    .element(screen.getByTestId('model-json'))
+    .toMatchTextContent('data:image/png;base64,')
+  await expect.element(screen.getByTestId('derivation-status')).toMatchTextContent('ready')
 
   const renderedResult = screen.getByTestId('rendered-result').element()
   const renderedImage = renderedResult.querySelector<HTMLImageElement>('img')
@@ -43,7 +45,7 @@ test('uploads a local image, derives sanitized HTML, and deletes the selected no
   await userEvent.click(editorImage!)
   expect(editorImage!.classList.contains('ProseMirror-selectednode')).toBe(true)
   await userEvent.keyboard('{Backspace}')
-  await expect.element(screen.getByTestId('model-json')).not.toHaveTextContent('"type":"image"')
+  await expect.element(screen.getByTestId('model-json')).not.toMatchTextContent('"type":"image"')
   await userEvent.keyboard('after')
-  await expect.element(screen.getByTestId('model-json')).toHaveTextContent('"text":"after"')
+  await expect.element(screen.getByTestId('model-json')).toMatchTextContent('"text":"after"')
 })

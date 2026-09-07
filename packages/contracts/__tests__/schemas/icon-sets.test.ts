@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { expectZodIssue } from '../helpers/schema'
 import {
   iconSetIconListQuerySchema,
   iconSetListQuerySchema,
@@ -22,6 +23,52 @@ import {
 } from '../../src/icons'
 
 describe('icon set schemas', () => {
+  it('limits input prefixes and renamed icons to 256 characters', () => {
+    const prefix = 'p'.repeat(256)
+    const name = 'n'.repeat(256)
+
+    expect(customIconSetFormSchema.parse({ prefix, name: 'Icons', description: null }).prefix).toBe(
+      prefix,
+    )
+    expect(customIconSetCreateSchema.parse({ prefix, name: 'Icons' }).prefix).toBe(prefix)
+    expect(iconSetRenameIconSchema.parse({ name }).name).toBe(name)
+    expectZodIssue(
+      customIconSetFormSchema.safeParse({ prefix: `${prefix}p`, name: 'Icons', description: null }),
+      {
+        path: ['prefix'],
+        message: '图标集前缀不能超过 256 个字符',
+      },
+    )
+    expectZodIssue(customIconSetCreateSchema.safeParse({ prefix: `${prefix}p`, name: 'Icons' }), {
+      path: ['prefix'],
+      message: '图标集前缀不能超过 256 个字符',
+    })
+    expectZodIssue(iconSetRenameIconSchema.safeParse({ name: `${name}n` }), {
+      path: ['name'],
+      message: '图标名称不能超过 256 个字符',
+    })
+  })
+
+  it('keeps existing long identities readable and addressable', () => {
+    const prefix = 'p'.repeat(257)
+    const name = 'n'.repeat(257)
+
+    expect(customIconParamSchema.parse({ prefix, name })).toEqual({ prefix, name })
+    expect(
+      customIconItemSchema.parse({
+        icon: `${prefix}:${name}`,
+        prefix,
+        name,
+        setName: 'Icons',
+        body: '<path d="M0 0h24v24H0z"/>',
+        width: 24,
+        height: 24,
+        createdAt: '2026-09-07T00:00:00.000Z',
+        updatedAt: '2026-09-07T00:00:00.000Z',
+      }).name,
+    ).toBe(name)
+  })
+
   it('parses icon set list query defaults', () => {
     expect(iconSetListQuerySchema.parse({})).toEqual({
       keyword: undefined,

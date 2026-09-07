@@ -18,6 +18,13 @@ describe('custom icon SVG parser', () => {
     ).rejects.toThrow('图标名称无效')
   })
 
+  it('limits normalized upload names to 256 characters without truncating them', () => {
+    expect(normalizeSvgIconName(`  ${'A'.repeat(256)}.SVG`)).toBe('a'.repeat(256))
+    expect(() => normalizeSvgIconName(`${'a'.repeat(257)}.svg`)).toThrow(
+      '图标名称不能超过 256 个字符',
+    )
+  })
+
   it('parses single color SVGs as currentColor icons', async () => {
     const icon = await parseSvgIcon(
       'Logo.svg',

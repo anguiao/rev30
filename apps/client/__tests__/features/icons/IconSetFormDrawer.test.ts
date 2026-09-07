@@ -133,6 +133,34 @@ describe('IconSetFormDrawer', () => {
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
 
+  it('rejects an oversized new prefix in the form', async () => {
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    await wrapper.get('[data-test="icon-set-form-prefix"] input').setValue('p'.repeat(257))
+    await wrapper.get('[data-test="icon-set-form-name"] input').setValue('Icons')
+    await submitForm(wrapper)
+
+    expect(wrapper.text()).toContain('图标集前缀不能超过 256 个字符')
+    expect(createCustomIconSetMock).not.toHaveBeenCalled()
+  })
+
+  it('allows editing an icon set whose prefix is at the length limit', async () => {
+    const existing = { ...acmeIconSet, prefix: 'p'.repeat(256) }
+    getCustomIconSetMock.mockResolvedValue(existing)
+    updateCustomIconSetMock.mockResolvedValue({ ...existing, name: 'Updated' })
+    const wrapper = mountDrawer({ show: true, prefix: existing.prefix })
+    await flushPromises()
+
+    await wrapper.get('[data-test="icon-set-form-name"] input').setValue('Updated')
+    await submitForm(wrapper)
+
+    expect(updateCustomIconSetMock).toHaveBeenCalledWith(existing.prefix, {
+      name: 'Updated',
+      description: existing.description,
+    })
+  })
+
   it('shows field-level API errors next to the matching input', async () => {
     createCustomIconSetMock.mockRejectedValue(
       new ApiRequestError(409, '图标集前缀已存在', 'prefix'),

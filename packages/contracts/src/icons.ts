@@ -68,9 +68,14 @@ const iconSetPrefixPattern = new RegExp(`^${iconifyIconNamePartPatternSource}$`)
 const defaultIconSetIconPageSize = 80
 const CUSTOM_ICON_SET_NAME_MAX_LENGTH = 80
 const CUSTOM_ICON_SET_DESCRIPTION_MAX_LENGTH = 300
+const CUSTOM_ICON_ID_PART_MAX_LENGTH = 256
 
 const iconSetPrefixSchema = z.string().regex(iconSetPrefixPattern, '图标集前缀无效')
 const iconSetNameSchema = z.string().regex(iconSetPrefixPattern, '图标名称无效')
+export const customIconNameInputSchema = iconSetNameSchema.max(
+  CUSTOM_ICON_ID_PART_MAX_LENGTH,
+  '图标名称不能超过 256 个字符',
+)
 
 const iconSetKeywordSchema = optionalTrimmedQueryString()
 const iconSetIconCursorSchema = optionalQueryValue(
@@ -165,7 +170,7 @@ export const customIconListResponseSchema = z.object({
 })
 
 export const customIconSetFormSchema = z.object({
-  prefix: iconSetPrefixSchema,
+  prefix: iconSetPrefixSchema.max(CUSTOM_ICON_ID_PART_MAX_LENGTH, '图标集前缀不能超过 256 个字符'),
   name: customIconSetNameInputSchema,
   description: customIconSetDescriptionInputSchema,
 })
@@ -186,7 +191,7 @@ export const customIconSetUpdateSchema = customIconSetFormSchema
 export const customIconDuplicateStrategySchema = z.enum(['skip', 'replace'], '重复处理策略无效')
 
 export const iconSetRenameIconSchema = z.object({
-  name: iconSetNameSchema,
+  name: customIconNameInputSchema,
 })
 
 export const customIconUploadSkippedSchema = z.object({

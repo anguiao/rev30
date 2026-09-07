@@ -279,6 +279,61 @@ describe('icon set routes', () => {
     expect(JSON.stringify(events)).not.toMatch(/Logo\.svg|Private-Failure|<svg|Acme custom icons/)
   })
 
+  dbTest('enforces identity length limits for creation, upload, and rename', async ({ db }) => {
+    const authenticated = await createSystemAccessFixture(db, {
+      accessCodes: ['content:icon-set:list', 'content:icon-set:create', 'content:icon-set:update'],
+      usernamePrefix: 'icon-identity-limit-user',
+    })
+    const app = createApp(db)
+    const headers = { ...authenticated.authHeaders, 'content-type': 'application/json' }
+    const prefix = 'p'.repeat(256)
+    const name = 'n'.repeat(256)
+
+    const rejectedSet = await app.request('/api/content/icon-sets/custom', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ prefix: `${prefix}p`, name: 'Icons' }),
+    })
+    expect(rejectedSet.status).toBe(400)
+    const createdSet = await app.request('/api/content/icon-sets/custom', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ prefix, name: 'Icons' }),
+    })
+    expect(createdSet.status).toBe(201)
+
+    const formData = new FormData()
+    for (const filename of [`${name}.svg`, `${name}n.svg`]) {
+      formData.append('files', new File([createSvg(24, createRect('#000'))], filename))
+    }
+    const uploaded = await app.request(`/api/content/icon-sets/custom/${prefix}/icons`, {
+      method: 'POST',
+      headers: authenticated.authHeaders,
+      body: formData,
+    })
+    expect(uploaded.status).toBe(200)
+    const body = (await uploaded.json()) as CustomIconUploadResponse
+    expect(body.created.map((icon) => icon.name)).toEqual([name])
+    expect(body.failed).toEqual([
+      { sourceFilename: `${name}n.svg`, message: '图标名称不能超过 256 个字符' },
+    ])
+
+    const iconUrl = `/api/content/icon-sets/custom/${prefix}/icons/${name}`
+    const rejectedRename = await app.request(iconUrl, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ name: 'r'.repeat(257) }),
+    })
+    expect(rejectedRename.status).toBe(400)
+    const renamed = await app.request(iconUrl, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ name: 'r'.repeat(256) }),
+    })
+    expect(renamed.status).toBe(200)
+    expect(await renamed.json()).toMatchObject({ name: 'r'.repeat(256) })
+  })
+
   dbTest('records upload preprocessing failures after operation registration', async ({ db }) => {
     const events: OperationLogEvent[] = []
     const authenticated = await createSystemAccessFixture(db, {

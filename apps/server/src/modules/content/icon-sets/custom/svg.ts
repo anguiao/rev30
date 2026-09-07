@@ -1,9 +1,8 @@
-import { iconifyIconNamePartPatternSource } from '@rev30/contracts'
+import { customIconNameInputSchema } from '@rev30/contracts'
 import { cleanupSVG, isEmptyColor, parseColors, runSVGO, SVG } from '@iconify/tools'
 import { basename } from 'node:path/posix'
 import { CustomSvgInvalidError } from './errors'
 
-const iconNamePattern = new RegExp(`^${iconifyIconNamePartPatternSource}$`)
 const customIconSvgoPlugins = [
   {
     name: 'preset-default',
@@ -37,11 +36,13 @@ export function normalizeSvgIconName(filename: string) {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
 
-  if (!iconNamePattern.test(name)) {
-    throw new CustomSvgInvalidError('图标名称无效')
+  const result = customIconNameInputSchema.safeParse(name)
+
+  if (!result.success) {
+    throw new CustomSvgInvalidError(result.error.issues[0]!.message)
   }
 
-  return name
+  return result.data
 }
 
 function detectPalette(svg: SVG) {

@@ -56,6 +56,7 @@ const roleUpdateInput = {
 
 beforeEach(() => {
   createTestPinia()
+  useAuthStore().accessToken = 'access-token'
 })
 
 describe('roles request helpers', () => {
@@ -70,7 +71,6 @@ describe('roles request helpers', () => {
         },
       ]),
     )
-    useAuthStore().accessToken = 'access-token'
 
     const result = await getRoleOptions(['22222222-2222-4222-8222-222222222222'])
 
@@ -105,7 +105,6 @@ describe('roles request helpers', () => {
         pageSize: 10,
       }),
     )
-    useAuthStore().accessToken = 'access-token'
 
     const result = await listRoles({
       page: 2,
@@ -155,7 +154,6 @@ describe('roles request helpers', () => {
 
   it('sends role create input and parses the created role', async () => {
     const fetchMock = createFetchMock(jsonResponse(roleRequestResponse))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(createRole(roleCreateInput)).resolves.toEqual(roleRequestResponse)
 
@@ -169,7 +167,6 @@ describe('roles request helpers', () => {
 
   it('sends role update input and parses the updated role', async () => {
     const fetchMock = createFetchMock(jsonResponse(updatedRoleRequestResponse))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(updateRole(roleRequestId, roleUpdateInput)).resolves.toEqual(
       updatedRoleRequestResponse,
@@ -185,7 +182,6 @@ describe('roles request helpers', () => {
 
   it('parses a role detail response', async () => {
     const fetchMock = createFetchMock(jsonResponse(updatedRoleRequestResponse))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(getRole(roleRequestId)).resolves.toEqual(updatedRoleRequestResponse)
 
@@ -198,7 +194,6 @@ describe('roles request helpers', () => {
 
   it('deletes a role with an empty response', async () => {
     const fetchMock = createFetchMock(emptyResponse())
-    useAuthStore().accessToken = 'access-token'
 
     await expect(deleteRole(roleRequestId)).resolves.toBeUndefined()
 

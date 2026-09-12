@@ -17,6 +17,7 @@ import {
   AnnouncementNotFoundError,
   AnnouncementVisibilityTargetRequiredError,
 } from '../../../../src/modules/content/announcements/errors'
+import type { requireAccess } from '../../../../src/middleware/access'
 import { createAnnouncementRoutes } from '../../../../src/modules/content/announcements/routes'
 
 const announcementId = '11111111-1111-4111-8111-111111111111'
@@ -108,7 +109,7 @@ const mocks = vi.hoisted(() => {
     accessMiddleware,
     createAnnouncementService: vi.fn(() => service),
     recordOperation: vi.fn(),
-    requireAccess: vi.fn(() => accessMiddleware),
+    requireAccess: vi.fn<typeof requireAccess>(() => accessMiddleware),
     service,
   }
 })
@@ -152,27 +153,26 @@ describe('announcement routes', () => {
   it('registers expected access guards for every announcement endpoint', () => {
     createTestApp()
 
-    expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
-      [
-        'content:announcement:list',
-        'content:announcement:list',
-        'content:announcement:list',
-        'content:announcement:create',
-        'content:announcement:update',
-        'content:announcement:update',
-        'content:announcement:update',
-        'content:announcement:delete',
-      ],
-    )
+    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
+      'content:announcement:list',
+      'content:announcement:list',
+      'content:announcement:list',
+      'content:announcement:create',
+      'content:announcement:update',
+      'content:announcement:update',
+      'content:announcement:update',
+      'content:announcement:delete',
+    ])
   })
 
   it('parses list query and delegates to the announcement service', async () => {
     const app = createTestApp()
 
-    const listResponse = await app.request(
+    const response = await app.request(
       '/api/content/announcements?page=2&pageSize=5&keyword=维护&type=notice&status=published&pinned=true',
     )
-    expect(listResponse.status).toBe(200)
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual(listResponse)
     expect(mocks.service.list).toHaveBeenCalledWith({
       page: 2,
       pageSize: 5,
@@ -188,6 +188,7 @@ describe('announcement routes', () => {
     const detailResponse = await app.request(`/api/content/announcements/${announcementId}`)
 
     expect(detailResponse.status).toBe(200)
+    expect(await detailResponse.json()).toEqual(announcement)
     expect(mocks.service.get).toHaveBeenCalledWith(announcementId)
   })
 

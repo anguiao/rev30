@@ -1,3 +1,4 @@
+import { getDialogButton } from '../../helpers/dom'
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
@@ -275,13 +276,7 @@ describe('roles page', () => {
     await wrapper.get('[data-test="roles-delete"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="roles-delete-confirm"]',
-    ) as HTMLButtonElement | null
-
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('roles-delete-confirm').click()
     await flushPromises()
 
     expect(deleteRoleMock).toHaveBeenCalledWith(deletableRole.id)
@@ -299,13 +294,7 @@ describe('roles page', () => {
     await wrapper.get('[data-test="roles-delete"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="roles-delete-confirm"]',
-    ) as HTMLButtonElement | null
-
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('roles-delete-confirm').click()
     await flushPromises()
 
     expect(deleteRoleMock).toHaveBeenCalledWith(roleListResponse.list[1]!.id)

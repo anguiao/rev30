@@ -36,7 +36,7 @@ async function remainingIds(database: TestDatabase) {
 
 describe('operation log retention cleanup', () => {
   beforeEach(() => {
-    vi.useFakeTimers()
+    vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(now)
   })
 
@@ -44,17 +44,18 @@ describe('operation log retention cleanup', () => {
 
   dbTest('deletes through the inclusive retention boundary and is idempotent', async ({ db }) => {
     const retentionMs = 180 * 24 * 60 * 60 * 1000
+    const retainedId = randomUUID()
     await db
       .insert(opsOperationLogs)
       .values([
         operationLog(new Date(now.getTime() - retentionMs - 1)),
         operationLog(new Date(now.getTime() - retentionMs)),
-        operationLog(new Date(now.getTime() - retentionMs + 1)),
+        operationLog(new Date(now.getTime() - retentionMs + 1), { id: retainedId }),
       ])
 
     await expect(cleanupOperationLogs(db, retentionMs)).resolves.toBe(2)
     await expect(cleanupOperationLogs(db, retentionMs)).resolves.toBe(0)
-    await expect(remainingIds(db)).resolves.toHaveLength(1)
+    await expect(remainingIds(db)).resolves.toEqual([{ id: retainedId }])
   })
 
   dbTest('with zero retention deletes existing rows but preserves future rows', async ({ db }) => {

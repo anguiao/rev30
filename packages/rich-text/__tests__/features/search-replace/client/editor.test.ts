@@ -32,7 +32,9 @@ const InlineAtom = Node.create({
   renderHTML: () => ['span', { 'data-inline-atom': '' }],
 })
 
-function createEditor(content: string | object = '<p>维护 ABC abc</p>') {
+function createEditor(
+  content: Parameters<typeof createTestEditor>[0]['content'] = '<p>维护 ABC abc</p>',
+) {
   return createTestEditor({
     extensions: [
       Document,

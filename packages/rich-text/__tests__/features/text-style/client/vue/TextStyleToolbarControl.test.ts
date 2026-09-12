@@ -3,7 +3,7 @@ import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
-import { NButton, NDropdown, NPopover } from 'naive-ui'
+import { NDropdown, NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -14,7 +14,7 @@ import {
 } from '../../../../../src/features/text-style/core/options'
 import { textStyleFeature } from '../../../../../src/features/text-style/core/feature'
 import TextStyleToolbarControl from '../../../../../src/features/text-style/client/vue/TextStyleToolbarControl.vue'
-import { createTestEditor } from '../../../../helpers/editor'
+import { appendTestElement, createTestEditor } from '../../../../helpers/editor'
 
 const red = textStyleColorOptions.find((option) => option.key === 'red')!
 const blue = textStyleColorOptions.find((option) => option.key === 'blue')!
@@ -52,18 +52,6 @@ function selectEditorText(editor: Editor) {
   })
 }
 
-function getButtonComponent(wrapper: ReturnType<typeof mount>, dataTest: string) {
-  const button = wrapper.findAllComponents(NButton).find((component) => {
-    return component.attributes('data-test') === dataTest
-  })
-
-  if (!button) {
-    throw new Error(`Button not found: ${dataTest}`)
-  }
-
-  return button
-}
-
 function getDropdownComponent(wrapper: ReturnType<typeof mount>, dataTest: string) {
   const dropdown = wrapper.findAllComponents(NDropdown).find((component) => {
     return component.find(`[data-test="${dataTest}"]`).exists()
@@ -91,7 +79,7 @@ describe('TextStyleToolbarControl', () => {
     const wrapper = mountControl(editor)
 
     await openColorPopover(wrapper)
-    getButtonComponent(wrapper, `rich-text-text-color-${red.key}`).vm.$emit('click')
+    await wrapper.get(`[data-test="rich-text-text-color-${red.key}"]`).trigger('click')
     getDropdownComponent(wrapper, 'rich-text-font-family').vm.$emit('select', serif.key)
     getDropdownComponent(wrapper, 'rich-text-font-size').vm.$emit('select', large.key)
     getDropdownComponent(wrapper, 'rich-text-line-height').vm.$emit('select', spacious.key)
@@ -116,13 +104,14 @@ describe('TextStyleToolbarControl', () => {
       `行高：${spacious.label}`,
     )
 
-    getButtonComponent(wrapper, 'rich-text-text-color-default').vm.$emit('click')
+    await openColorPopover(wrapper)
+    await wrapper.get('[data-test="rich-text-text-color-default"]').trigger('click')
     getDropdownComponent(wrapper, 'rich-text-font-family').vm.$emit('select', 'font-family-default')
     getDropdownComponent(wrapper, 'rich-text-font-size').vm.$emit('select', 'font-size-default')
     getDropdownComponent(wrapper, 'rich-text-line-height').vm.$emit('select', 'line-height-default')
     await flushPromises()
 
-    expect(JSON.stringify(editor.getJSON())).not.toContain('textStyle')
+    expect(editor.getJSON().content?.[0]?.content).toEqual([{ type: 'text', text: '维护通知' }])
   })
 
   it('updates every current style when the editor selection changes', async () => {
@@ -249,7 +238,7 @@ describe('TextStyleToolbarControl', () => {
   it('keeps vertical palette navigation aligned with visual columns', async () => {
     const editor = createEditor()
     selectEditorText(editor)
-    const wrapper = mountControl(editor, false, document.body)
+    const wrapper = mountControl(editor, false, appendTestElement('div'))
 
     await openColorPopover(wrapper)
     const defaultColor = wrapper.get<HTMLElement>('[data-test="rich-text-text-color-default"]')
@@ -274,14 +263,12 @@ describe('TextStyleToolbarControl', () => {
     amber.element.focus()
     await amber.trigger('keydown', { key: 'ArrowDown' })
     expect(document.activeElement).toBe(amber.element)
-
-    wrapper.unmount()
   })
 
   it('uses dropdown keyboard state without moving DOM focus', async () => {
     const editor = createEditor()
     selectEditorText(editor)
-    const wrapper = mountControl(editor, false, document.body)
+    const wrapper = mountControl(editor, false, appendTestElement('div'))
     const fontSizeDropdown = getDropdownComponent(wrapper, 'rich-text-font-size')
     const trigger = wrapper.get<HTMLElement>('[data-test="rich-text-font-size"]')
 
@@ -314,8 +301,6 @@ describe('TextStyleToolbarControl', () => {
     expect(escape.defaultPrevented).toBe(true)
     expect(fontSizeDropdown.props('show')).toBe(false)
     expect(document.activeElement).toBe(trigger.element)
-
-    wrapper.unmount()
   })
 
   it('closes the color popover after selection and with Escape', async () => {
@@ -324,7 +309,7 @@ describe('TextStyleToolbarControl', () => {
     const wrapper = mountControl(editor)
 
     await openColorPopover(wrapper)
-    getButtonComponent(wrapper, `rich-text-text-color-${red.key}`).vm.$emit('click')
+    await wrapper.get(`[data-test="rich-text-text-color-${red.key}"]`).trigger('click')
     await flushPromises()
 
     expect(wrapper.getComponent(NPopover).props('show')).toBe(false)

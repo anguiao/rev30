@@ -27,7 +27,7 @@ describe('auth schemas', () => {
       password: '   ',
     })
 
-    expectZodIssue(result, { message: '请输入密码' })
+    expectZodIssue(result, { message: '请输入密码', path: ['password'] })
   })
 
   it('rejects blank login usernames with a schema message', () => {
@@ -36,7 +36,7 @@ describe('auth schemas', () => {
       password: 'secret-password',
     })
 
-    expectZodIssue(result, { message: '请输入用户名' })
+    expectZodIssue(result, { message: '请输入用户名', path: ['username'] })
   })
 
   it('rejects login usernames longer than 64 characters', () => {

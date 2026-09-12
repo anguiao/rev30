@@ -20,7 +20,7 @@ describe('scheduled job input schemas', () => {
         timezone: 'UTC',
         extra: true,
       }),
-      { message: 'Unrecognized key: "extra"' },
+      { code: 'unrecognized_keys', keys: ['extra'], path: [] },
     )
     expectZodIssue(scheduledJobPlanUpdateInputSchema.safeParse({ cronExpression: '0 * * * *' }), {
       message: '时区不能为空',

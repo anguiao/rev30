@@ -179,7 +179,7 @@ describe('table shared feature', () => {
     expect(() => schema.nodeFromJSON(tableDocument(attrs)).check()).toThrow()
   })
 
-  it('belongs to all preset only', () => {
+  it('belongs to the all preset', () => {
     expect(allRichTextPreset.features).toContain(tableFeature)
   })
 })

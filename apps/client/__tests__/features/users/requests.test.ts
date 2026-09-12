@@ -67,6 +67,7 @@ const userUpdateInput = {
 
 beforeEach(() => {
   createTestPinia()
+  useAuthStore().accessToken = 'access-token'
 })
 
 describe('users request helpers', () => {
@@ -79,7 +80,6 @@ describe('users request helpers', () => {
         pageSize: 20,
       }),
     )
-    useAuthStore().accessToken = 'access-token'
 
     const result = await listUsers({
       page: 1,
@@ -111,7 +111,6 @@ describe('users request helpers', () => {
         pageSize: 20,
       }),
     )
-    useAuthStore().accessToken = 'access-token'
 
     await listUsers({
       page: 1,
@@ -144,7 +143,6 @@ describe('users request helpers', () => {
         },
       ]),
     )
-    useAuthStore().accessToken = 'access-token'
 
     const result = await getUserOptions(['11111111-1111-4111-8111-111111111111'])
 
@@ -161,7 +159,6 @@ describe('users request helpers', () => {
 
   it('omits includeIds when empty for user options requests', async () => {
     const fetchMock = createFetchMock(jsonResponse([]))
-    useAuthStore().accessToken = 'access-token'
 
     await getUserOptions([])
 
@@ -194,7 +191,6 @@ describe('users request helpers', () => {
       temporaryPassword: 'temp-pwd-001',
     }
     const fetchMock = createFetchMock(jsonResponse(responseBody))
-    useAuthStore().accessToken = 'access-token'
 
     const result = await createUser(userCreateInput)
 
@@ -228,7 +224,6 @@ describe('users request helpers', () => {
         temporaryPassword: 'short',
       }),
     )
-    useAuthStore().accessToken = 'access-token'
 
     await expect(createUser(userCreateInput)).rejects.toThrow()
     expectFetchCall(fetchMock, 0, {
@@ -244,7 +239,6 @@ describe('users request helpers', () => {
       temporaryPassword: 'temp-reset-001',
     }
     const fetchMock = createFetchMock(jsonResponse(responseBody))
-    useAuthStore().accessToken = 'access-token'
 
     const result = await resetUserPassword('33333333-3333-4333-8333-333333333333')
 
@@ -263,7 +257,6 @@ describe('users request helpers', () => {
         temporaryPassword: 'short',
       }),
     )
-    useAuthStore().accessToken = 'access-token'
 
     await expect(resetUserPassword('33333333-3333-4333-8333-333333333333')).rejects.toThrow()
     expectFetchCall(fetchMock, 0, {
@@ -274,7 +267,6 @@ describe('users request helpers', () => {
 
   it('parses a user detail response', async () => {
     const fetchMock = createFetchMock(jsonResponse(userRequestResponse))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(getUser(userRequestId)).resolves.toEqual(userRequestResponse)
 
@@ -287,7 +279,6 @@ describe('users request helpers', () => {
 
   it('sends user update input and parses the updated user', async () => {
     const fetchMock = createFetchMock(jsonResponse(updatedUserRequestResponse))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(updateUser(userRequestId, userUpdateInput)).resolves.toEqual(
       updatedUserRequestResponse,
@@ -303,7 +294,6 @@ describe('users request helpers', () => {
 
   it('deletes a user with an empty response', async () => {
     const fetchMock = createFetchMock(emptyResponse())
-    useAuthStore().accessToken = 'access-token'
 
     await expect(deleteUser(userRequestId)).resolves.toBeUndefined()
 

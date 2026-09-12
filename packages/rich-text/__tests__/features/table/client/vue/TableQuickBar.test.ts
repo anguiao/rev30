@@ -1,7 +1,6 @@
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
-import { CellSelection, TableMap } from '@tiptap/pm/tables'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { DropdownOption } from 'naive-ui'
 import { NButton, NDropdown } from 'naive-ui'
@@ -14,69 +13,13 @@ import { tableQuickBar } from '../../../../../src/features/table/client/vue'
 import { defineRichTextQuickBar } from '../../../../../src/client/vue/quick-bar'
 import RichTextQuickBar from '../../../../../src/client/vue/quick-bar/RichTextQuickBar.vue'
 import { appendTestElement, createTestEditor } from '../../../../helpers/editor'
+import { getTableCell, selectTableCells } from '../../../../helpers/table'
 
 function createEditor() {
   return createTestEditor({
     extensions: [Document, Paragraph, Text, ...tableFeature.sharedExtensions!()],
     content: '<p></p>',
   })
-}
-
-function getTableCellPosition(
-  editor: ReturnType<typeof createEditor>,
-  row: number,
-  column: number,
-) {
-  let tablePosition: number | undefined
-  let table: ReturnType<typeof editor.state.doc.nodeAt> | undefined
-
-  editor.state.doc.descendants((node, position) => {
-    if (node.type.name === 'table') {
-      table = node
-      tablePosition = position
-      return false
-    }
-
-    return true
-  })
-
-  if (!table || tablePosition === undefined) {
-    throw new Error('Expected a table')
-  }
-
-  const map = TableMap.get(table)
-  const position = map.map[row * map.width + column]
-
-  if (position === undefined) {
-    throw new Error('Expected a table cell')
-  }
-
-  return tablePosition + position + 1
-}
-
-function getTableCell(editor: ReturnType<typeof createEditor>, row: number, column: number) {
-  const cell = editor.state.doc.nodeAt(getTableCellPosition(editor, row, column))
-
-  if (!cell) {
-    throw new Error('Expected a table cell')
-  }
-
-  return cell
-}
-
-function selectTableCells(
-  editor: ReturnType<typeof createEditor>,
-  anchor: readonly [row: number, column: number],
-  head: readonly [row: number, column: number],
-) {
-  editor.view.dispatch(
-    editor.state.tr.setSelection(
-      new CellSelection(
-        editor.state.doc.resolve(getTableCellPosition(editor, anchor[0], anchor[1])),
-        editor.state.doc.resolve(getTableCellPosition(editor, head[0], head[1])),
-      ),
-    ),
-  )
 }
 
 async function waitForEditorFocus() {
@@ -93,7 +36,7 @@ describe('TableQuickBar', () => {
     runRichTextAction(editor, insertTableAction, 2, 2)
     await waitForEditorFocus()
     const wrapper = mount(tableQuickBar.component, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: { ...tableQuickBar.props, editor: markRaw(editor) },
     })
 
@@ -230,7 +173,7 @@ describe('TableQuickBar', () => {
     await waitForEditorFocus()
     editor.view.focus()
     const wrapper = mount(RichTextQuickBar, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: {
         appendTo: document.body,
         scrollContainer: document.body,
@@ -268,7 +211,7 @@ describe('TableQuickBar', () => {
     await waitForEditorFocus()
     editor.view.focus()
     const wrapper = mount(RichTextQuickBar, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: {
         appendTo: document.body,
         scrollContainer: document.body,
@@ -297,7 +240,7 @@ describe('TableQuickBar', () => {
     runRichTextAction(editor, insertTableAction, 2, 2)
     await waitForEditorFocus()
     const wrapper = mount(tableQuickBar.component, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: { ...tableQuickBar.props, editor: markRaw(editor) },
     })
     const alignmentTrigger = wrapper.get<HTMLElement>(

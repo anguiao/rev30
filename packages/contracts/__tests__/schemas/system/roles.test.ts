@@ -42,7 +42,7 @@ describe('role schemas', () => {
       includeIds: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7, invalid-uuid',
     })
 
-    expectZodIssue(result, { message: '角色 ID 无效' })
+    expectZodIssue(result, { message: '角色 ID 无效', path: ['includeIds', 1] })
   })
 
   it('accepts lightweight role options response', () => {
@@ -66,14 +66,20 @@ describe('role schemas', () => {
   })
 
   it('parses role options with field selection', () => {
-    const result = roleOptionSchema.safeParse({
+    const result = roleOptionSchema.parse({
+      id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+      name: 'Administrator',
+      code: 'admin',
+      status: ROLE_STATUS_ENABLED,
+      resources: [],
+    })
+
+    expect(result).toEqual({
       id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
       name: 'Administrator',
       code: 'admin',
       status: ROLE_STATUS_ENABLED,
     })
-
-    expect(result.success).toBe(true)
   })
 
   it('accepts role list items with user counts and no resources', () => {
@@ -196,7 +202,7 @@ describe('role schemas', () => {
       resourceIds: Array.from({ length: 501 }, (_, index) => testUuid(index + 1)),
     })
 
-    expectZodIssue(result, { message: '权限资源不能超过 500 个' })
+    expectZodIssue(result, { message: '权限资源不能超过 500 个', path: ['resourceIds'] })
   })
 
   it('rejects resource ids that omit required parent resources', () => {
@@ -227,7 +233,7 @@ describe('role schemas', () => {
   it('requires at least one role update field', () => {
     const result = roleUpdateSchema.safeParse({})
 
-    expectZodIssue(result, { message: '至少修改一个字段' })
+    expectZodIssue(result, { message: '至少修改一个字段', path: [] })
   })
 
   it('parses role list query strings into pagination and filters', () => {

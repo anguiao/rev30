@@ -3,7 +3,7 @@ import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../../../../src/client/editor/feature'
 import { imageQuickBar } from '../../../../../src/features/image/client/vue'
-import { createTestEditor } from '../../../../helpers/editor'
+import { appendTestElement, createTestEditor } from '../../../../helpers/editor'
 import { createImageTestEditorPreset } from '../../../../helpers/image-editor'
 
 describe('ImageQuickBar', () => {
@@ -17,7 +17,7 @@ describe('ImageQuickBar', () => {
     editor.commands.setNodeSelection(0)
 
     const wrapper = mount(imageQuickBar.component, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: {
         ...imageQuickBar.props,
         editor: markRaw(editor),

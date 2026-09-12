@@ -3,7 +3,6 @@ import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import type { Editor } from '@tiptap/vue-3'
 import { mount } from '@vue/test-utils'
-import type { DropdownOption } from 'naive-ui'
 import { NDropdown } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
@@ -11,16 +10,17 @@ import { codeBlockEditorFeature } from '../../../../../src/features/code-block/c
 import CodeBlockToolbarControl from '../../../../../src/features/code-block/client/vue/CodeBlockToolbarControl.vue'
 import { createTestEditor } from '../../../../helpers/editor'
 
-function createEditor(content: string | object = '<p>const ready = true</p>') {
+function createEditor(
+  content: Parameters<typeof createTestEditor>[0]['content'] = '<p>const ready = true</p>',
+) {
   return createTestEditor({
     extensions: [Document, Paragraph, Text, ...codeBlockEditorFeature.extensions!()],
     content,
   })
 }
 
-function mountControl(editor: Editor, attachToDocument = false) {
+function mountControl(editor: Editor) {
   return mount(CodeBlockToolbarControl, {
-    ...(attachToDocument ? { attachTo: document.body } : undefined),
     props: {
       editor: markRaw(editor),
     },
@@ -28,7 +28,7 @@ function mountControl(editor: Editor, attachToDocument = false) {
 }
 
 function findOption(wrapper: ReturnType<typeof mount>, value: string) {
-  const options = wrapper.getComponent(NDropdown).props('options') as DropdownOption[]
+  const options = wrapper.getComponent(NDropdown).props('options')!
   const option = options.find((candidate) => candidate.key === value)
 
   if (!option) {

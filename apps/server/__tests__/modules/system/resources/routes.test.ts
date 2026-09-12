@@ -9,7 +9,10 @@ import {
   RESOURCE_TYPE_MENU,
   USER_STATUS_ENABLED,
   type User,
+  type Resource,
 } from '@rev30/contracts'
+import type { createResourceService } from '../../../../src/modules/system/resources/service'
+import type { requireAccess } from '../../../../src/middleware/access'
 import type { AuthEnv } from '../../../../src/middleware/auth'
 import {
   ResourceConflictError,
@@ -22,6 +25,8 @@ import {
   ResourceRoleAuthorizationConflictError,
 } from '../../../../src/modules/system/resources/errors'
 import { createResourceRoutes } from '../../../../src/modules/system/resources/routes'
+
+type ResourceService = ReturnType<typeof createResourceService>
 
 const resourceId = '55555555-5555-4555-8555-555555555555'
 const parentId = '66666666-6666-4666-8666-666666666666'
@@ -59,24 +64,24 @@ const resource = {
   sortOrder: 10,
   createdAt: '2026-05-06T00:00:00.000Z',
   updatedAt: '2026-05-06T00:00:00.000Z',
-}
+} satisfies Resource
 
 const mocks = vi.hoisted(() => {
   const accessMiddleware = vi.fn(async (_c: Context, next: Next) => next())
   const service = {
-    create: vi.fn(),
-    delete: vi.fn(),
-    get: vi.fn(),
-    list: vi.fn(),
-    tree: vi.fn(),
-    treeOptions: vi.fn(),
-    update: vi.fn(),
+    create: vi.fn<ResourceService['create']>(),
+    delete: vi.fn<ResourceService['delete']>(),
+    get: vi.fn<ResourceService['get']>(),
+    list: vi.fn<ResourceService['list']>(),
+    tree: vi.fn<ResourceService['tree']>(),
+    treeOptions: vi.fn<ResourceService['treeOptions']>(),
+    update: vi.fn<ResourceService['update']>(),
   }
 
   return {
     accessMiddleware,
     createResourceService: vi.fn(() => service),
-    requireAccess: vi.fn(() => accessMiddleware),
+    requireAccess: vi.fn<typeof requireAccess>(() => accessMiddleware),
     service,
   }
 })
@@ -124,17 +129,15 @@ describe('resource routes', () => {
   it('registers expected access guards for every resource endpoint', () => {
     createTestApp()
 
-    expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
-      [
-        'system:resource:list',
-        'system:resource:list',
-        'system:resource:list',
-        'system:resource:list',
-        'system:resource:create',
-        'system:resource:update',
-        'system:resource:delete',
-      ],
-    )
+    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
+      'system:resource:list',
+      'system:resource:list',
+      'system:resource:list',
+      'system:resource:list',
+      'system:resource:create',
+      'system:resource:update',
+      'system:resource:delete',
+    ])
   })
 
   it('parses list query and delegates to the resource service', async () => {

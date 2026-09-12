@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { describe, expect } from 'vitest'
+import { assert, describe, expect } from 'vitest'
 import { eq } from 'drizzle-orm'
 import {
   RESOURCE_OPEN_TARGET_SELF,
@@ -136,11 +136,7 @@ describe('user access service', () => {
         type: RESOURCE_TYPE_DIRECTORY,
         parentId: null,
         path: null,
-        externalUrl: null,
-        openTarget: 'self',
         icon: 'lucide:settings',
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 0,
       })
 
@@ -150,11 +146,7 @@ describe('user access service', () => {
         type: RESOURCE_TYPE_MENU,
         parentId: system.id,
         path: '/system/users',
-        externalUrl: null,
-        openTarget: 'self',
         icon: 'lucide:users',
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 10,
       })
 
@@ -164,11 +156,7 @@ describe('user access service', () => {
         type: RESOURCE_TYPE_ACTION,
         parentId: userMenu.id,
         path: null,
-        externalUrl: null,
-        openTarget: 'self',
         icon: null,
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 20,
       })
 
@@ -222,11 +210,7 @@ describe('user access service', () => {
       type: RESOURCE_TYPE_ACTION,
       parentId: null,
       path: null,
-      externalUrl: null,
-      openTarget: 'self',
       icon: null,
-      hidden: false,
-      status: RESOURCE_STATUS_ENABLED,
       sortOrder: 0,
     })
 
@@ -250,7 +234,7 @@ describe('user access service', () => {
 
     await database
       .update(systemRoles)
-      .set({ status: RESOURCE_STATUS_ENABLED })
+      .set({ status: ROLE_STATUS_ENABLED })
       .where(eq(systemRoles.id, role.id))
     await database
       .update(systemResources)
@@ -268,13 +252,12 @@ describe('user access service', () => {
     async ({ db: database }) => {
       const user = await createSystemUserFixture(database, { username: 'root' })
       const prefix = randomUUID()
-      const existingAdminRole = await database
+      const [adminRole] = await database
         .select()
         .from(systemRoles)
         .where(eq(systemRoles.code, 'admin'))
-        .then((rows) => rows[0])
 
-      const adminRole = existingAdminRole ?? (await createRole(database, 'admin'))
+      assert(adminRole, 'Expected seeded admin role')
 
       const system = await createResource(database, {
         code: `${prefix}-system`,
@@ -282,11 +265,7 @@ describe('user access service', () => {
         type: RESOURCE_TYPE_DIRECTORY,
         parentId: null,
         path: null,
-        externalUrl: null,
-        openTarget: 'self',
         icon: 'lucide:settings',
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 0,
       })
 
@@ -296,11 +275,7 @@ describe('user access service', () => {
         type: RESOURCE_TYPE_ACTION,
         parentId: system.id,
         path: null,
-        externalUrl: null,
-        openTarget: 'self',
         icon: null,
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 10,
       })
 
@@ -310,11 +285,7 @@ describe('user access service', () => {
         type: RESOURCE_TYPE_ACTION,
         parentId: system.id,
         path: null,
-        externalUrl: null,
-        openTarget: 'self',
         icon: null,
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 20,
       })
 
@@ -350,11 +321,7 @@ describe('user access service', () => {
         type: RESOURCE_TYPE_DIRECTORY,
         parentId: null,
         path: null,
-        externalUrl: null,
-        openTarget: 'self',
         icon: 'lucide:settings',
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 0,
       })
 
@@ -364,11 +331,7 @@ describe('user access service', () => {
         type: RESOURCE_TYPE_MENU,
         parentId: rootMenu.id,
         path: '/system/users',
-        externalUrl: null,
-        openTarget: 'self',
         icon: 'lucide:users',
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 10,
       })
 
@@ -378,11 +341,7 @@ describe('user access service', () => {
         type: RESOURCE_TYPE_ACTION,
         parentId: usersMenu.id,
         path: null,
-        externalUrl: null,
-        openTarget: 'self',
         icon: null,
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 11,
       })
 
@@ -392,11 +351,8 @@ describe('user access service', () => {
         type: RESOURCE_TYPE_MENU,
         parentId: rootMenu.id,
         path: '/system/hidden',
-        externalUrl: null,
-        openTarget: 'self',
         icon: 'lucide:eye-off',
         hidden: true,
-        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 20,
       })
 
@@ -409,8 +365,6 @@ describe('user access service', () => {
         externalUrl: 'https://example.com/help',
         openTarget: 'blank',
         icon: 'lucide:help-circle',
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 30,
       })
 
@@ -420,11 +374,7 @@ describe('user access service', () => {
         type: RESOURCE_TYPE_DIRECTORY,
         parentId: null,
         path: null,
-        externalUrl: null,
-        openTarget: 'self',
         icon: 'lucide:alert-triangle',
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 40,
       })
 
@@ -434,11 +384,7 @@ describe('user access service', () => {
         type: RESOURCE_TYPE_MENU,
         parentId: orphanParent.id,
         path: '/system/orphan',
-        externalUrl: null,
-        openTarget: 'self',
         icon: 'lucide:anchor',
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
         sortOrder: 41,
       })
 

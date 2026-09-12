@@ -21,3 +21,13 @@ export function stubPreferredDark(matches: boolean) {
     })),
   )
 }
+
+export function getDialogButton(dataTest: string) {
+  const button = document.body.querySelector<HTMLButtonElement>(`[data-test="${dataTest}"]`)
+
+  if (!button) {
+    throw new Error(`Expected dialog button: ${dataTest}`)
+  }
+
+  return button
+}

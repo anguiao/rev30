@@ -181,11 +181,6 @@ describe('form helpers', () => {
           const form = useForm({
             defaultValues: {
               username: '',
-              nickname: '',
-              password: '',
-              confirmPassword: '',
-              email: '',
-              phone: '',
             },
           })
 
@@ -201,7 +196,7 @@ describe('form helpers', () => {
     expect(serverError).toBe('username already exists')
   })
 
-  it('clears a server field error when the edited field validates again', async () => {
+  it('clears a server field error when the edited field validates again', () => {
     let serverErrorAfterChange: unknown = 'not-cleared'
     mount(
       defineComponent({

@@ -20,6 +20,7 @@ import {
 import { imageFeature } from '../../../../src/features/image/core/feature'
 import { defineRichTextEditorPreset } from '../../../../src/client/vue/preset'
 import { createTestEditor } from '../../../helpers/editor'
+import { createClipboardEvent } from '../../../helpers/clipboard'
 
 const imageAttrs = {
   src: '/api/attachments/image/content',
@@ -28,26 +29,13 @@ const imageAttrs = {
   height: 360,
 }
 
-function createEditor(content: string | object = '<p></p><p>后续正文</p>') {
+function createEditor(
+  content: Parameters<typeof createTestEditor>[0]['content'] = '<p></p><p>后续正文</p>',
+) {
   return createTestEditor({
     extensions: [Document, Paragraph, Text, UndoRedo, ...imageFeature.sharedExtensions!()],
     content,
   })
-}
-
-function createFileList(files: readonly File[]): FileList {
-  return Object.assign([...files], {
-    item: (index: number) => files[index] ?? null,
-  }) as FileList
-}
-
-function createClipboardEvent(html: string, files: readonly File[] = []): ClipboardEvent {
-  return {
-    clipboardData: {
-      files: createFileList(files),
-      getData: (type: string) => (type === 'text/html' ? html : ''),
-    } as DataTransfer,
-  } as ClipboardEvent
 }
 
 describe('image editor actions', () => {
@@ -145,10 +133,10 @@ describe('image paste rule', () => {
     const firstImage = new File(['first'], 'first.png', { type: 'image/png' })
     const secondImage = new File(['second'], 'second.jpg', { type: 'image/jpeg' })
 
-    expect(getPastedImageFile(createClipboardEvent('', [textFile, firstImage, secondImage]))).toBe(
-      firstImage,
-    )
-    expect(getPastedImageFile(createClipboardEvent('', [textFile]))).toBeNull()
+    expect(
+      getPastedImageFile(createClipboardEvent({ files: [textFile, firstImage, secondImage] })),
+    ).toBe(firstImage)
+    expect(getPastedImageFile(createClipboardEvent({ files: [textFile] }))).toBeNull()
   })
 
   it('opens the image picker unless the parsed slice already contains an image', () => {
@@ -176,7 +164,7 @@ describe('image paste rule', () => {
     expect(
       imagePasteRule.handlePaste?.({
         editor,
-        event: createClipboardEvent('', [imageFile]),
+        event: createClipboardEvent({ files: [imageFile] }),
         slice: emptySlice,
       }),
     ).toBe(true)
@@ -185,7 +173,10 @@ describe('image paste rule', () => {
     expect(
       imagePasteRule.handlePaste?.({
         editor,
-        event: createClipboardEvent('<p data-pm-slice="0 0 []"><img /></p>', [imageFile]),
+        event: createClipboardEvent({
+          html: '<p data-pm-slice="0 0 []"><img /></p>',
+          files: [imageFile],
+        }),
         slice: imageSlice,
       }),
     ).toBe(false)
@@ -194,7 +185,10 @@ describe('image paste rule', () => {
     expect(
       imagePasteRule.handlePaste?.({
         editor,
-        event: createClipboardEvent('<p data-pm-slice="0 0 []">正文</p>', [imageFile]),
+        event: createClipboardEvent({
+          html: '<p data-pm-slice="0 0 []">正文</p>',
+          files: [imageFile],
+        }),
         slice: emptySlice,
       }),
     ).toBe(true)

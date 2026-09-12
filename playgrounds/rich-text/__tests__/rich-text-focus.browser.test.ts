@@ -15,20 +15,17 @@ test('keeps focus inside toolbar, popover, and quick bar without overall blur', 
   const enabledToolbarItems = toolbarItems.filter(
     (item) => !item.matches(':disabled') && item.getAttribute('aria-disabled') !== 'true',
   )
-  const enabledToolbarKeys = enabledToolbarItems.map((item) => item.dataset.richTextToolbarItem)
   await expect
-    .poll(() => screen.getByTestId('active-element').element().textContent?.trim())
-    .toBeTruthy()
-  const focusedToolbarKey = screen.getByTestId('active-element').element().textContent?.trim()
+    .poll(() => enabledToolbarItems.findIndex((item) => item === document.activeElement))
+    .toBeGreaterThanOrEqual(0)
+  const focusedToolbarIndex = enabledToolbarItems.findIndex(
+    (item) => item === document.activeElement,
+  )
+  const nextToolbarItem =
+    enabledToolbarItems[(focusedToolbarIndex + 1) % enabledToolbarItems.length]!
 
-  expect(focusedToolbarKey).toBeTruthy()
-  expect(enabledToolbarKeys).toContain(focusedToolbarKey)
   await userEvent.keyboard('{ArrowRight}')
-  const focusedToolbarIndex = enabledToolbarKeys.indexOf(focusedToolbarKey)
-  const nextToolbarKey = enabledToolbarKeys[(focusedToolbarIndex + 1) % enabledToolbarKeys.length]
-  await expect
-    .element(screen.getByTestId('active-element'))
-    .toMatchTextContent(nextToolbarKey ?? '')
+  await expect.element(nextToolbarItem).toHaveFocus()
   await expect.element(screen.getByTestId('blur-count')).toMatchTextContent('0')
   await userEvent.keyboard('{Escape}')
   await expect.element(screen.getByTestId('active-element')).toMatchTextContent('editor')

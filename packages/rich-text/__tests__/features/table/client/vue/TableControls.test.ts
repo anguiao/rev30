@@ -16,7 +16,7 @@ import TableToolbarControl from '../../../../../src/features/table/client/vue/Ta
 import { runRichTextAction } from '../../../../../src/client/editor/action'
 import { appendTestElement, createTestEditor } from '../../../../helpers/editor'
 
-function createEditor(content: string | object = '<p>正文</p>') {
+function createEditor(content: Parameters<typeof createTestEditor>[0]['content'] = '<p>正文</p>') {
   return createTestEditor({
     extensions: [Document, Paragraph, Text, ...tableFeature.sharedExtensions!()],
     content,
@@ -32,7 +32,7 @@ describe('table size picker and toolbar control', () => {
     const editor = createEditor()
     const onClose = vi.fn()
     const wrapper = mount(TableToolbarSizePicker, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: { editor: markRaw(editor), onClose },
     })
 
@@ -69,7 +69,7 @@ describe('table size picker and toolbar control', () => {
   it('opens a size picker outside a table and exposes the complete cascaded action menu inside one', async () => {
     const editor = createEditor()
     const wrapper = mount(TableToolbarControl, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: { editor: markRaw(editor) },
     })
     const trigger = wrapper.get('[data-test="rich-text-table"]')
@@ -253,7 +253,7 @@ describe('table size picker and toolbar control', () => {
   it('opens at opposite palette edges with trigger arrow keys and restores focus on Escape', async () => {
     const editor = createEditor()
     const wrapper = mount(TableToolbarControl, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: { editor: markRaw(editor) },
     })
     const trigger = wrapper.get('[data-test="rich-text-table"]')
@@ -279,7 +279,7 @@ describe('table size picker and toolbar control', () => {
   ])('lets %s keep native focus navigation while closing the size picker', async (_, shiftKey) => {
     const editor = createEditor()
     const wrapper = mount(TableToolbarControl, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: { editor: markRaw(editor) },
     })
     const trigger = wrapper.get('[data-test="rich-text-table"]')
@@ -308,7 +308,7 @@ describe('table size picker and toolbar control', () => {
     runRichTextAction(editor, insertTableAction, 2, 2)
     await waitForEditorFocus()
     const wrapper = mount(TableToolbarControl, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: { editor: markRaw(editor) },
     })
     const trigger = wrapper.get<HTMLElement>('[data-test="rich-text-table"]')

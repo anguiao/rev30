@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { NConfigProvider, NGlobalStyle, lightTheme } from 'naive-ui'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import type { RichTextDocument } from '@rev30/rich-text/schema'
+import type { RichTextDocument, RichTextJsonNode } from '@rev30/rich-text/schema'
 import { RichTextEditor } from '@rev30/rich-text/vue'
 import { createPlaygroundPresets } from '../../src/playground/presets'
 import { useDerivation } from '../../src/playground/useDerivation'
@@ -33,13 +33,13 @@ const presets = createPlaygroundPresets({
 const derivation = useDerivation(model, presets.serverPreset)
 const renderedHtml = computed(() => derivation.result.value?.html ?? '')
 
-function text(value: string, marks?: unknown[]) {
+function text(value: string, marks?: RichTextJsonNode['marks']) {
   return marks?.length
     ? { type: 'text' as const, text: value, marks }
     : { type: 'text' as const, text: value }
 }
 
-function paragraph(content: unknown[], textAlign: string | null = null) {
+function paragraph(content: RichTextJsonNode[], textAlign: string | null = null) {
   return { type: 'paragraph' as const, attrs: { textAlign }, content }
 }
 
@@ -135,11 +135,6 @@ function setTableDocument() {
   })
 }
 
-function setImageDocument() {
-  narrowEditor.value = false
-  updateModel({ type: 'doc', content: [{ type: 'paragraph' }] })
-}
-
 function setElementPathDocument() {
   narrowEditor.value = false
   updateModel({
@@ -198,7 +193,7 @@ onBeforeUnmount(() => {
       <button data-test="set-paste-document" @click="setPasteDocument">粘贴文档</button>
       <button data-test="set-code-block-document" @click="setCodeBlockDocument">代码块</button>
       <button data-test="set-table-document" @click="setTableDocument">表格</button>
-      <button data-test="set-image-document" @click="setImageDocument">图片</button>
+      <button data-test="set-image-document" @click="resetShortDocument">图片</button>
       <button data-test="set-element-path-document" @click="setElementPathDocument">
         路径文本
       </button>

@@ -84,23 +84,15 @@ describe('dictionary schemas', () => {
     })
   })
 
-  it('rejects dictionary detail items without timestamps or type ids', () => {
-    const result = dictionaryDetailSchema.safeParse({
-      ...dictionaryDetail,
-      items: [
-        {
-          id: '11111111-1111-4111-8111-111111111112',
-          label: '男',
-          value: 'male',
-          description: null,
-          status: DICTIONARY_STATUS_ENABLED,
-          sortOrder: 0,
-        },
-      ],
-    })
+  it.each(['typeId', 'createdAt', 'updatedAt'] as const)(
+    'rejects dictionary detail items without %s',
+    (field) => {
+      const { [field]: _missing, ...item } = dictionaryDetail.items[0]!
+      const result = dictionaryDetailSchema.safeParse({ ...dictionaryDetail, items: [item] })
 
-    expect(result.success).toBe(false)
-  })
+      expectZodIssue(result, { code: 'invalid_type', path: ['items', 0, field] })
+    },
+  )
 
   it('rejects dictionary details without descriptions', () => {
     const result = dictionaryDetailSchema.safeParse({
@@ -308,100 +300,25 @@ describe('dictionary schemas', () => {
     expectZodIssue(invalidChars, { message: '字典编码格式无效' })
   })
 
-  it('validates dictionary item value and forbids comma', () => {
-    expect(
-      dictionaryItemSchema.parse({
-        id: '11111111-1111-4111-8111-111111111112',
-        typeId: '11111111-1111-4111-8111-111111111111',
-        label: '待支付',
-        value: 'pending-payment',
-        description: null,
-        status: DICTIONARY_STATUS_ENABLED,
-        sortOrder: 0,
-        createdAt: '2026-05-04T08:00:00.000Z',
-        updatedAt: '2026-05-04T08:00:00.000Z',
-      }),
-    ).toMatchObject({
-      label: '待支付',
-      value: 'pending-payment',
-    })
+  it.each([
+    { label: '待支付', value: 'pending-payment', status: DICTIONARY_STATUS_ENABLED },
+    { label: '启用', value: '0', status: DICTIONARY_STATUS_ENABLED },
+    { label: '禁用', value: '1', status: DICTIONARY_STATUS_DISABLED },
+    { label: '男', value: 'male', status: DICTIONARY_STATUS_ENABLED },
+  ])('accepts dictionary item value $value', (input) => {
+    expect(dictionaryItemSchema.parse({ ...dictionaryDetail.items[0], ...input })).toMatchObject(
+      input,
+    )
+  })
 
-    expect(
-      dictionaryItemSchema.parse({
-        id: '11111111-1111-4111-8111-111111111112',
-        typeId: '11111111-1111-4111-8111-111111111111',
-        label: '启用',
-        value: '0',
-        description: null,
-        status: DICTIONARY_STATUS_ENABLED,
-        sortOrder: 0,
-        createdAt: '2026-05-04T08:00:00.000Z',
-        updatedAt: '2026-05-04T08:00:00.000Z',
-      }),
-    ).toMatchObject({
-      label: '启用',
-      value: '0',
+  it.each([
+    { value: '   ', message: '字典项值不能为空' },
+    { value: 'male,1', message: '字典项值不能包含逗号' },
+  ])('rejects dictionary item value "$value"', ({ value, message }) => {
+    expectZodIssue(dictionaryItemSchema.safeParse({ ...dictionaryDetail.items[0], value }), {
+      message,
+      path: ['value'],
     })
-
-    expect(
-      dictionaryItemSchema.parse({
-        id: '11111111-1111-4111-8111-111111111112',
-        typeId: '11111111-1111-4111-8111-111111111111',
-        label: '禁用',
-        value: '1',
-        description: null,
-        status: DICTIONARY_STATUS_DISABLED,
-        sortOrder: 0,
-        createdAt: '2026-05-04T08:00:00.000Z',
-        updatedAt: '2026-05-04T08:00:00.000Z',
-      }),
-    ).toMatchObject({
-      label: '禁用',
-      value: '1',
-    })
-
-    expect(
-      dictionaryItemSchema.parse({
-        id: '11111111-1111-4111-8111-111111111112',
-        typeId: '11111111-1111-4111-8111-111111111111',
-        label: '男',
-        value: 'male',
-        description: null,
-        status: DICTIONARY_STATUS_ENABLED,
-        sortOrder: 0,
-        createdAt: '2026-05-04T08:00:00.000Z',
-        updatedAt: '2026-05-04T08:00:00.000Z',
-      }),
-    ).toMatchObject({
-      label: '男',
-      value: 'male',
-    })
-
-    const blankValue = dictionaryItemSchema.safeParse({
-      id: '11111111-1111-4111-8111-111111111112',
-      typeId: '11111111-1111-4111-8111-111111111111',
-      label: '空',
-      value: '   ',
-      description: null,
-      status: DICTIONARY_STATUS_ENABLED,
-      sortOrder: 0,
-      createdAt: '2026-05-04T08:00:00.000Z',
-      updatedAt: '2026-05-04T08:00:00.000Z',
-    })
-    expect(blankValue.success).toBe(false)
-
-    const commaValue = dictionaryItemSchema.safeParse({
-      id: '11111111-1111-4111-8111-111111111112',
-      typeId: '11111111-1111-4111-8111-111111111111',
-      label: '有逗号',
-      value: 'male,1',
-      description: null,
-      status: DICTIONARY_STATUS_ENABLED,
-      sortOrder: 0,
-      createdAt: '2026-05-04T08:00:00.000Z',
-      updatedAt: '2026-05-04T08:00:00.000Z',
-    })
-    expectZodIssue(commaValue, { message: '字典项值不能包含逗号' })
   })
 
   it('requires unique dictionary item values for create and update payloads', () => {
@@ -420,8 +337,7 @@ describe('dictionary schemas', () => {
       ],
     })
 
-    const createError = expectZodIssue(duplicateCreate, { message: '字典项值不能重复' })
-    expect(createError.issues.some((issue) => issue.path[0] === 'items')).toBe(true)
+    expectZodIssue(duplicateCreate, { message: '字典项值不能重复', path: ['items', 1, 'value'] })
 
     const duplicateUpdate = dictionaryUpdateSchema.safeParse({
       code: 'gender',
@@ -444,8 +360,7 @@ describe('dictionary schemas', () => {
       ],
     })
 
-    const updateError = expectZodIssue(duplicateUpdate, { message: '字典项值不能重复' })
-    expect(updateError.issues.some((issue) => issue.path[0] === 'items')).toBe(true)
+    expectZodIssue(duplicateUpdate, { message: '字典项值不能重复', path: ['items', 1, 'value'] })
   })
 
   it('parses list query values and normalizes filters', () => {
@@ -484,12 +399,12 @@ describe('dictionary schemas', () => {
     expect(blankCodes.success).toBe(false)
 
     const nonStringCode = dictionaryOptionsQuerySchema.safeParse({
-      codes: ['gender', 1 as unknown],
+      codes: ['gender', 1],
     })
     expect(nonStringCode.success).toBe(false)
 
     const topLevelInvalid = dictionaryOptionsQuerySchema.safeParse({
-      codes: 123 as unknown,
+      codes: 123,
     })
     expect(topLevelInvalid.success).toBe(false)
 
@@ -568,60 +483,34 @@ describe('dictionary schemas', () => {
     ).toBe(false)
   })
 
-  it('requires dictionary update payload to include complete fields', () => {
-    const result = dictionaryUpdateSchema.safeParse({
+  it('accepts complete dictionary update fields', () => {
+    const input = {
       code: 'gender',
       name: '性别',
       status: DICTIONARY_STATUS_ENABLED,
       sortOrder: 1,
       items: [],
-    })
-    expect(result.success).toBe(true)
+    }
 
-    expect(
-      dictionaryUpdateSchema.safeParse({
-        name: '性别',
-        status: DICTIONARY_STATUS_ENABLED,
-        sortOrder: 1,
-        items: [],
-      }).success,
-    ).toBe(false)
+    expect(dictionaryUpdateSchema.parse(input)).toEqual(input)
+  })
 
-    expect(
-      dictionaryUpdateSchema.safeParse({
-        code: 'gender',
-        status: DICTIONARY_STATUS_ENABLED,
-        sortOrder: 1,
-        items: [],
-      }).success,
-    ).toBe(false)
+  it.each([
+    { field: 'code', code: 'invalid_type' },
+    { field: 'name', code: 'invalid_type' },
+    { field: 'status', code: 'invalid_value' },
+    { field: 'sortOrder', code: 'invalid_type' },
+    { field: 'items', code: 'invalid_type' },
+  ] as const)('rejects dictionary updates without $field', ({ field, code }) => {
+    const { [field]: _missing, ...input } = {
+      code: 'gender',
+      name: '性别',
+      status: DICTIONARY_STATUS_ENABLED,
+      sortOrder: 1,
+      items: [],
+    }
 
-    expect(
-      dictionaryUpdateSchema.safeParse({
-        code: 'gender',
-        name: '性别',
-        sortOrder: 1,
-        items: [],
-      }).success,
-    ).toBe(false)
-
-    expect(
-      dictionaryUpdateSchema.safeParse({
-        code: 'gender',
-        name: '性别',
-        status: DICTIONARY_STATUS_ENABLED,
-        items: [],
-      }).success,
-    ).toBe(false)
-
-    expect(
-      dictionaryUpdateSchema.safeParse({
-        code: 'gender',
-        name: '性别',
-        status: DICTIONARY_STATUS_ENABLED,
-        sortOrder: 1,
-      }).success,
-    ).toBe(false)
+    expectZodIssue(dictionaryUpdateSchema.safeParse(input), { code, path: [field] })
   })
 
   it('validates dictionary list item structure', () => {

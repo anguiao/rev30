@@ -57,6 +57,7 @@ const departmentUpdateInput = {
 
 beforeEach(() => {
   createTestPinia()
+  useAuthStore().accessToken = 'access-token'
 })
 
 describe('departments request helpers', () => {
@@ -82,7 +83,6 @@ describe('departments request helpers', () => {
         },
       ]),
     )
-    useAuthStore().accessToken = 'access-token'
 
     const result = await getDepartmentTreeOptions(['33333333-3333-4333-8333-333333333333'])
 
@@ -125,7 +125,6 @@ describe('departments request helpers', () => {
         },
       ]),
     )
-    useAuthStore().accessToken = 'access-token'
 
     const result = await getDepartmentTree()
 
@@ -139,7 +138,6 @@ describe('departments request helpers', () => {
 
   it('parses a department detail response', async () => {
     const fetchMock = createFetchMock(jsonResponse(departmentRequestResponse))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(getDepartment(departmentRequestId)).resolves.toEqual(departmentRequestResponse)
 
@@ -152,7 +150,6 @@ describe('departments request helpers', () => {
 
   it('sends department create input and parses the created department', async () => {
     const fetchMock = createFetchMock(jsonResponse(departmentRequestResponse, { status: 201 }))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(createDepartment(departmentCreateInput)).resolves.toEqual(
       departmentRequestResponse,
@@ -168,7 +165,6 @@ describe('departments request helpers', () => {
 
   it('sends department update input and parses the updated department', async () => {
     const fetchMock = createFetchMock(jsonResponse(updatedDepartmentRequestResponse))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(updateDepartment(departmentRequestId, departmentUpdateInput)).resolves.toEqual(
       updatedDepartmentRequestResponse,
@@ -184,7 +180,6 @@ describe('departments request helpers', () => {
 
   it('deletes a department with an empty response', async () => {
     const fetchMock = createFetchMock(emptyResponse())
-    useAuthStore().accessToken = 'access-token'
 
     await expect(deleteDepartment(departmentRequestId)).resolves.toBeUndefined()
 

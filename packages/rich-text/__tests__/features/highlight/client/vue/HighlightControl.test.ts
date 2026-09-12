@@ -8,7 +8,7 @@ import { markRaw } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { highlightColorOptions } from '../../../../../src/features/highlight/core/colors'
 import HighlightControl from '../../../../../src/features/highlight/client/vue/HighlightControl.vue'
-import { createTestEditor } from '../../../../helpers/editor'
+import { appendTestElement, createTestEditor } from '../../../../helpers/editor'
 const yellow = highlightColorOptions[0]
 const blue = highlightColorOptions[2]
 
@@ -75,7 +75,7 @@ describe('HighlightControl', () => {
     await wrapper.get('[data-test="rich-text-highlight-clear"]').trigger('click')
     await flushPromises()
 
-    expect(JSON.stringify(editor.getJSON())).not.toContain('highlight')
+    expect(editor.getJSON().content?.[0]?.content).toEqual([{ type: 'text', text: '维护通知' }])
     expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
       'false',
     )
@@ -128,7 +128,7 @@ describe('HighlightControl', () => {
     const editor = createEditor()
     selectEditorText(editor)
     const wrapper = mount(HighlightControl, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: {
         editor: markRaw(editor),
       },
@@ -216,7 +216,7 @@ describe('HighlightControl', () => {
     editor.commands.setTextSelection({ from: 1, to: 3 })
     editor.view.focus()
     const wrapper = mount(HighlightControl, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: {
         editor: markRaw(editor),
       },
@@ -248,6 +248,6 @@ describe('HighlightControl', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-test="rich-text-highlight-yellow"]').exists()).toBe(false)
-    expect(JSON.stringify(editor.getJSON())).not.toContain('highlight')
+    expect(editor.getJSON().content?.[0]?.content).toEqual([{ type: 'text', text: '维护通知' }])
   })
 })

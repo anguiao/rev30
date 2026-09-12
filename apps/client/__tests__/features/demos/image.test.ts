@@ -28,13 +28,17 @@ describe('rich text demo images', () => {
     })
   })
 
-  it('rejects unsupported or oversized compressed images', async () => {
+  it('rejects unsupported image types before compression', async () => {
     const svg = new File(['<svg />'], 'source.svg', { type: 'image/svg+xml' })
 
     await expect(createRichTextDemoImageDataUrl(svg)).rejects.toThrow(
       '仅支持 PNG、JPEG 和 WebP 图片',
     )
 
+    expect(compressImageFileMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects oversized compressed images', async () => {
     const source = new File(['source'], 'source.png', { type: 'image/png' })
     const oversized = new File(
       [new Uint8Array(RICH_TEXT_DEMO_IMAGE_MAX_SIZE_BYTES + 1)],

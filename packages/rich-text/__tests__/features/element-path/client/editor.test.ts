@@ -27,7 +27,7 @@ import { tableFeature } from '../../../../src/features/table/core/feature'
 import { createTestEditor } from '../../../helpers/editor'
 
 function createEditor(
-  content: string | object = '<p>维护通知</p>',
+  content: Parameters<typeof createTestEditor>[0]['content'] = '<p>维护通知</p>',
   options: { readonly history?: boolean } = {},
 ) {
   return createTestEditor({

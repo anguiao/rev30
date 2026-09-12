@@ -8,6 +8,7 @@ import {
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MyAnnouncementNotFoundError } from '../../../../../src/modules/content/announcements/my/errors'
+import type { createMyAnnouncementService } from '../../../../../src/modules/content/announcements/my/service'
 import { createMyAnnouncementRoutes } from '../../../../../src/modules/content/announcements/my/routes'
 
 const announcementId = '11111111-1111-4111-8111-111111111111'
@@ -61,8 +62,8 @@ const detailResponse: AnnouncementMyDetail = {
 
 const mocks = vi.hoisted(() => {
   const service = {
-    get: vi.fn(),
-    list: vi.fn(),
+    get: vi.fn<ReturnType<typeof createMyAnnouncementService>['get']>(),
+    list: vi.fn<ReturnType<typeof createMyAnnouncementService>['list']>(),
   }
 
   return {
@@ -77,11 +78,7 @@ vi.mock('../../../../../src/modules/content/announcements/my/service', () => ({
 
 function createTestApp() {
   return new Hono<{ Variables: { currentUser: User } }>()
-    .use('/api/content/announcements/my/*', async (c, next) => {
-      c.set('currentUser', currentUser)
-      await next()
-    })
-    .use('/api/content/announcements/my', async (c, next) => {
+    .use('*', async (c, next) => {
       c.set('currentUser', currentUser)
       await next()
     })
@@ -103,6 +100,7 @@ describe('my announcement routes', () => {
       '/api/content/announcements/my?page=2&pageSize=5&keyword=维护&type=notice',
     )
     expect(listHttpResponse.status).toBe(200)
+    expect(await listHttpResponse.json()).toEqual(listResponse)
     expect(mocks.service.list).toHaveBeenCalledWith(currentUser, {
       page: 2,
       pageSize: 5,
@@ -112,6 +110,7 @@ describe('my announcement routes', () => {
 
     const detailHttpResponse = await app.request(`/api/content/announcements/my/${announcementId}`)
     expect(detailHttpResponse.status).toBe(200)
+    expect(await detailHttpResponse.json()).toEqual(detailResponse)
     expect(mocks.service.get).toHaveBeenCalledWith(currentUser, announcementId)
   })
 

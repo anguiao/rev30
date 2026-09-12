@@ -1,3 +1,4 @@
+import { getDialogButton } from '../helpers/dom'
 import { flushPromises, mount } from '@vue/test-utils'
 import { NDialogProvider } from 'naive-ui'
 import { computed, defineComponent, h, toRef } from 'vue'
@@ -98,16 +99,6 @@ function mountGuard(props = { show: true, isDirty: false }) {
 async function clickAction(wrapper: ReturnType<typeof mount>, selector: string) {
   await wrapper.get(selector).trigger('click')
   await flushPromises()
-}
-
-function getDialogButton(dataTest: string) {
-  const button = document.body.querySelector<HTMLButtonElement>(`[data-test="${dataTest}"]`)
-
-  if (!button) {
-    throw new Error(`Expected dialog button: ${dataTest}`)
-  }
-
-  return button
 }
 
 function dispatchBeforeUnload() {

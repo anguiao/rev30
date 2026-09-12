@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../../../src/client/editor/feature'
 import ElementPathStatusBarItem from '../../../../src/features/element-path/client/vue/ElementPathStatusBarItem.vue'
 import { compactRichTextEditorPreset } from '../../../../src/client/vue/presets/compact'
-import { createTestEditor } from '../../../helpers/editor'
+import { appendTestElement, createTestEditor } from '../../../helpers/editor'
 
 function createEditor(editable = true) {
   return createTestEditor({
@@ -16,7 +16,7 @@ function createEditor(editable = true) {
 
 function mountPath(editor: ReturnType<typeof createEditor>) {
   return mount(ElementPathStatusBarItem, {
-    attachTo: document.body,
+    attachTo: appendTestElement('div'),
     props: { editor: markRaw(editor) },
   })
 }

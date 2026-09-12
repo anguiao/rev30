@@ -85,7 +85,9 @@ function account(status = USER_STATUS_ENABLED) {
 
 describe('auth service', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    Object.values(repository).forEach((mock) => mock.mockReset())
+    Object.values(access).forEach((mock) => mock.mockReset())
+    Object.values(password).forEach((mock) => mock.mockReset())
     repository.findLoginAttemptBucketByUsername.mockResolvedValue(undefined)
     repository.recordLoginFailure.mockResolvedValue(undefined)
     repository.createLoginSession.mockResolvedValue('success')

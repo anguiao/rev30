@@ -8,31 +8,6 @@ const imagePolicy = createImageHtmlPolicy({
   isAllowedSrc: (src) => src === attachmentSrc,
 })
 
-function getImageAttributes(html: string) {
-  const match = /^<img(?<attributes>(?:\s+[^>]+)?) \/>$/.exec(html)
-  expect(match).not.toBeNull()
-
-  const attributesSource = match?.groups?.attributes ?? ''
-
-  const attributes = Object.fromEntries(
-    [...attributesSource.matchAll(/([a-z-]+)="([^"]*)"/g)].map(([, name, value]) => [name, value]),
-  )
-
-  if (typeof attributes.style === 'string') {
-    attributes.style = attributes.style
-      .split(';')
-      .map((part: string) => part.trim())
-      .filter(Boolean)
-      .map((part: string) => {
-        const [name = '', value = ''] = part.split(':')
-        return `${name.trim()}: ${value.trim()}`
-      })
-      .join('; ')
-  }
-
-  return attributes
-}
-
 describe('image html policy', () => {
   it('keeps authenticated attachment images while dropping styles', () => {
     const sanitized = sanitizeRichTextHtml(
@@ -40,20 +15,15 @@ describe('image html policy', () => {
       [imagePolicy],
     )
 
-    expect(getImageAttributes(sanitized)).toEqual({
-      src: attachmentSrc,
-      alt: '示意图',
-      width: '640',
-      height: '360',
-    })
+    expect(sanitized).toBe(`<img src="${attachmentSrc}" alt="示意图" width="640" height="360" />`)
   })
 
   it('preserves an explicitly empty alt and omits only an absent alt', () => {
     const decorative = sanitizeRichTextHtml(`<img src="${attachmentSrc}" alt="" />`, [imagePolicy])
     const unspecified = sanitizeRichTextHtml(`<img src="${attachmentSrc}" />`, [imagePolicy])
 
-    expect(getImageAttributes(decorative)).toMatchObject({ alt: '' })
-    expect(getImageAttributes(unspecified)).not.toHaveProperty('alt')
+    expect(decorative).toBe(`<img src="${attachmentSrc}" alt="" />`)
+    expect(unspecified).toBe(`<img src="${attachmentSrc}" />`)
   })
 
   it('rejects non-internal image sources', () => {
@@ -72,7 +42,7 @@ describe('image html policy', () => {
     ).toThrow(RichTextContentInvalidError)
   })
 
-  it('allows configured data images without enabling data links', () => {
+  it('allows explicitly configured data image sources', () => {
     const dataSrc = 'data:image/png;base64,aGVsbG8='
     const dataImagePolicy = createImageHtmlPolicy({
       allowedSrcSchemes: ['data'],
@@ -96,10 +66,7 @@ describe('image html policy', () => {
       [imagePolicy],
     )
 
-    expect(getImageAttributes(sanitized)).toEqual({
-      src: attachmentSrc,
-      alt: '示意图',
-    })
+    expect(sanitized).toBe(`<img src="${attachmentSrc}" alt="示意图" />`)
   })
 
   it.each([
@@ -108,9 +75,6 @@ describe('image html policy', () => {
   ])('drops height when width is missing or invalid: %s', (html) => {
     const sanitized = sanitizeRichTextHtml(html, [imagePolicy])
 
-    expect(getImageAttributes(sanitized)).toEqual({
-      src: attachmentSrc,
-      alt: '示意图',
-    })
+    expect(sanitized).toBe(`<img src="${attachmentSrc}" alt="示意图" />`)
   })
 })

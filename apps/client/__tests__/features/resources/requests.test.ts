@@ -70,6 +70,7 @@ const resourceUpdateInput = {
 
 beforeEach(() => {
   createTestPinia()
+  useAuthStore().accessToken = 'access-token'
 })
 
 describe('resources request helpers', () => {
@@ -97,7 +98,6 @@ describe('resources request helpers', () => {
         },
       ]),
     )
-    useAuthStore().accessToken = 'access-token'
 
     const result = await getResourceTreeOptions(['55555555-5555-4555-8555-555555555555'])
 
@@ -134,7 +134,6 @@ describe('resources request helpers', () => {
         },
       ]),
     )
-    useAuthStore().accessToken = 'access-token'
 
     const result = await getResourceTree()
 
@@ -148,7 +147,6 @@ describe('resources request helpers', () => {
 
   it('parses a resource detail response', async () => {
     const fetchMock = createFetchMock(jsonResponse(resourceRequestResponse))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(getResource(resourceRequestId)).resolves.toEqual(resourceRequestResponse)
 
@@ -161,7 +159,6 @@ describe('resources request helpers', () => {
 
   it('sends resource create input and parses the created resource', async () => {
     const fetchMock = createFetchMock(jsonResponse(resourceRequestResponse, { status: 201 }))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(createResource(resourceCreateInput)).resolves.toEqual(resourceRequestResponse)
 
@@ -175,7 +172,6 @@ describe('resources request helpers', () => {
 
   it('sends resource update input and parses the updated resource', async () => {
     const fetchMock = createFetchMock(jsonResponse(updatedResourceRequestResponse))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(updateResource(resourceRequestId, resourceUpdateInput)).resolves.toEqual(
       updatedResourceRequestResponse,
@@ -191,7 +187,6 @@ describe('resources request helpers', () => {
 
   it('deletes a resource with an empty response', async () => {
     const fetchMock = createFetchMock(emptyResponse())
-    useAuthStore().accessToken = 'access-token'
 
     await expect(deleteResource(resourceRequestId)).resolves.toBeUndefined()
 

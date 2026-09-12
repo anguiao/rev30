@@ -175,7 +175,7 @@ describe('operation log schemas', () => {
     expect(response).toEqual({ list: [listItem], total: 1, page: 1, pageSize: 20 })
     expectZodIssue(
       operationLogListItemSchema.safeParse({ ...listItem, details: { secret: true } }),
-      { message: 'Unrecognized key: "details"' },
+      { code: 'unrecognized_keys', keys: ['details'], path: [] },
     )
   })
 
@@ -204,7 +204,7 @@ describe('operation log schemas', () => {
     })
     expectZodIssue(
       operationLogDetailSchema.safeParse({ ...input, details: { password: 'secret' } }),
-      { message: 'Unrecognized key: "details"' },
+      { code: 'unrecognized_keys', keys: ['details'], path: [] },
     )
   })
 

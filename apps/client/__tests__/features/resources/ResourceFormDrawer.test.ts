@@ -201,20 +201,15 @@ const updatedMenuResourceResponse: Resource = {
   updatedAt: '2026-05-20T00:00:00.000Z',
 }
 
-function mountDrawer(
-  props: {
-    show?: boolean
-    resourceId?: string | null
-    parentId?: string | null
-  } = {},
-) {
+function mountDrawer(props: Partial<InstanceType<typeof ResourceFormDrawer>['$props']> = {}) {
   const { plugins } = createTestQueryHarness()
 
   return mount(ResourceFormDrawer, {
     props: {
-      show: props.show ?? true,
-      resourceId: props.resourceId === undefined ? null : props.resourceId,
-      parentId: props.parentId === undefined ? null : props.parentId,
+      show: true,
+      resourceId: null,
+      parentId: null,
+      ...props,
     },
     attachTo: document.body,
     global: {
@@ -232,13 +227,7 @@ async function submitForm(wrapper: ReturnType<typeof mount>) {
 }
 
 function getSelect(wrapper: ReturnType<typeof mount>, dataTest: string) {
-  const select = wrapper
-    .findAllComponents(NSelect)
-    .find((componentWrapper) => componentWrapper.attributes('data-test') === dataTest)
-
-  expect(select).toBeDefined()
-
-  return select!
+  return wrapper.get(`[data-test="${dataTest}"]`).getComponent(NSelect)
 }
 
 describe('ResourceFormDrawer', () => {

@@ -180,9 +180,20 @@ describe('attachment request helpers', () => {
     })
   })
 
-  it('deletes attachments and parses errors', async () => {
+  it('deletes attachments', async () => {
+    const fetchMock = createFetchMock(emptyResponse())
+
+    await expect(deleteAttachment(attachmentId)).resolves.toBeUndefined()
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expectFetchCall(fetchMock, 0, {
+      method: 'DELETE',
+      pathname: `/api/attachments/${attachmentId}`,
+    })
+  })
+
+  it('reports rejected upload sessions', async () => {
     const fetchMock = createFetchMock(
-      emptyResponse(),
       jsonResponse({ message: '不支持的文件类型' }, { status: 400 }),
     )
     const expectedError: Partial<ApiRequestError> = {
@@ -190,16 +201,12 @@ describe('attachment request helpers', () => {
       status: 400,
     }
 
-    await expect(deleteAttachment(attachmentId)).resolves.toBeUndefined()
     await expect(
       uploadAttachment(new File(['bad'], 'bad.svg'), { usage: 'avatar' }),
     ).rejects.toMatchObject(expectedError)
 
+    expect(fetchMock).toHaveBeenCalledOnce()
     expectFetchCall(fetchMock, 0, {
-      method: 'DELETE',
-      pathname: `/api/attachments/${attachmentId}`,
-    })
-    expectFetchCall(fetchMock, 1, {
       method: 'POST',
       pathname: '/api/attachments/uploads',
     })

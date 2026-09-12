@@ -114,12 +114,13 @@ describe('system health response schemas', () => {
       ['scheduler'],
       ['scheduler', 'shared'],
     ]) {
-      const input = systemHealthSnapshotSchema.parse(snapshot)
+      const input = structuredClone(snapshot)
       let target: Record<string, unknown> = input
       for (const key of path) target = target[key] as Record<string, unknown>
       target.secret = 'internal diagnostic'
       expectZodIssue(systemHealthSnapshotSchema.safeParse(input), {
-        message: 'Unrecognized key: "secret"',
+        code: 'unrecognized_keys',
+        keys: ['secret'],
         path,
       })
     }
@@ -161,7 +162,7 @@ describe('system health response schemas', () => {
     }
     expectZodIssue(
       systemHealthSnapshotSchema.safeParse({ ...snapshot, observedAt: '2026-09-01' }),
-      { message: 'Invalid ISO datetime', path: ['observedAt'] },
+      { code: 'invalid_format', format: 'datetime', path: ['observedAt'] },
     )
   })
 
@@ -207,7 +208,8 @@ describe('system health response schemas', () => {
         recentAnomalies: [{ ...anomaly, status: 'interrupted' }],
       }),
       {
-        message: 'Invalid input: expected null, received string',
+        code: 'invalid_type',
+        expected: 'null',
         path: ['recentAnomalies', 0, 'errorCategory'],
       },
     )
@@ -217,7 +219,7 @@ describe('system health response schemas', () => {
         recentAnomalies: [{ ...anomaly, status: 'cancelled' }],
       }),
       {
-        message: "Invalid discriminator value. Expected 'failure' | 'interrupted'",
+        code: 'invalid_union',
         path: ['recentAnomalies', 0, 'status'],
       },
     )
@@ -243,7 +245,7 @@ describe('system health response schemas', () => {
         ...statistics,
         dailyRuns: [{ date: '2026-02-30', ...counts }, ...statistics.dailyRuns.slice(1)],
       }),
-      { message: 'Invalid ISO date', path: ['dailyRuns', 0, 'date'] },
+      { code: 'invalid_format', format: 'date', path: ['dailyRuns', 0, 'date'] },
     )
     expectZodIssue(
       systemHealthJobStatisticsSchema.safeParse({
@@ -263,12 +265,13 @@ describe('system health response schemas', () => {
       ['averageDurations', 0],
       ['recentAnomalies', 0],
     ] satisfies (string | number)[][]) {
-      const input = systemHealthJobStatisticsSchema.parse(statistics)
+      const input = structuredClone(statistics)
       let target: Record<string | number, unknown> = input
       for (const key of path) target = target[key] as Record<string | number, unknown>
       target.secret = 'internal diagnostic'
       expectZodIssue(systemHealthJobStatisticsSchema.safeParse(input), {
-        message: 'Unrecognized key: "secret"',
+        code: 'unrecognized_keys',
+        keys: ['secret'],
         path,
       })
     }

@@ -6,7 +6,7 @@ import {
   USER_STATUS_ENABLED,
 } from '@rev30/contracts'
 import { and, eq } from 'drizzle-orm'
-import { describe, expect } from 'vitest'
+import { assert, describe, expect } from 'vitest'
 import {
   authPasswordCredentials,
   systemRoles,
@@ -37,19 +37,17 @@ describe('bootstrap admin user', () => {
       .select()
       .from(systemRoles)
       .where(eq(systemRoles.code, 'admin'))
+    assert(user, 'Expected bootstrapped admin user')
+    assert(adminRole, 'Expected seeded admin role')
+
     const bindings = await database
       .select()
       .from(systemUserRoles)
-      .where(
-        and(
-          eq(systemUserRoles.userId, user?.id ?? ''),
-          eq(systemUserRoles.roleId, adminRole?.id ?? ''),
-        ),
-      )
+      .where(and(eq(systemUserRoles.userId, user.id), eq(systemUserRoles.roleId, adminRole.id)))
     const [credential] = await database
       .select()
       .from(authPasswordCredentials)
-      .where(eq(authPasswordCredentials.userId, user?.id ?? ''))
+      .where(eq(authPasswordCredentials.userId, user.id))
 
     expect(user).toMatchObject({
       username: 'admin',
@@ -62,13 +60,14 @@ describe('bootstrap admin user', () => {
     })
     expect(bindings).toEqual([
       expect.objectContaining({
-        userId: user?.id,
-        roleId: adminRole?.id,
+        userId: user.id,
+        roleId: adminRole.id,
       }),
     ])
-    await expect(
-      verifyPassword('secret-admin-password', credential?.passwordHash ?? ''),
-    ).resolves.toBe(true)
+    assert(credential, 'Expected admin password credential')
+    await expect(verifyPassword('secret-admin-password', credential.passwordHash)).resolves.toBe(
+      true,
+    )
   })
 
   dbTest(
@@ -87,9 +86,7 @@ describe('bootstrap admin user', () => {
         .from(systemUsers)
         .where(eq(systemUsers.username, 'admin'))
 
-      if (!createdUser) {
-        throw new Error('Expected bootstrap user')
-      }
+      assert(createdUser, 'Expected bootstrap user')
 
       await database
         .update(systemUsers)
@@ -118,19 +115,17 @@ describe('bootstrap admin user', () => {
         .select()
         .from(systemUsers)
         .where(eq(systemUsers.username, 'admin'))
+      assert(user, 'Expected bootstrapped admin user')
+      assert(adminRole, 'Expected seeded admin role')
+
       const bindings = await database
         .select()
         .from(systemUserRoles)
-        .where(
-          and(
-            eq(systemUserRoles.userId, user?.id ?? ''),
-            eq(systemUserRoles.roleId, adminRole?.id ?? ''),
-          ),
-        )
+        .where(and(eq(systemUserRoles.userId, user.id), eq(systemUserRoles.roleId, adminRole.id)))
       const [credential] = await database
         .select()
         .from(authPasswordCredentials)
-        .where(eq(authPasswordCredentials.userId, user?.id ?? ''))
+        .where(eq(authPasswordCredentials.userId, user.id))
 
       expect(user).toMatchObject({
         id: createdUser.id,
@@ -142,9 +137,10 @@ describe('bootstrap admin user', () => {
         deletedAt: null,
       })
       expect(bindings).toHaveLength(1)
-      await expect(
-        verifyPassword('second-admin-password', credential?.passwordHash ?? ''),
-      ).resolves.toBe(true)
+      assert(credential, 'Expected admin password credential')
+      await expect(verifyPassword('second-admin-password', credential.passwordHash)).resolves.toBe(
+        true,
+      )
     },
   )
 
@@ -231,12 +227,12 @@ describe('bootstrap admin user', () => {
         .from(systemRoles)
         .where(eq(systemRoles.code, 'admin'))
       const [user] = await database.select().from(systemUsers).where(eq(systemUsers.id, userId))
+      assert(adminRole, 'Expected seeded admin role')
+
       const bindings = await database
         .select()
         .from(systemUserRoles)
-        .where(
-          and(eq(systemUserRoles.userId, userId), eq(systemUserRoles.roleId, adminRole?.id ?? '')),
-        )
+        .where(and(eq(systemUserRoles.userId, userId), eq(systemUserRoles.roleId, adminRole.id)))
       const [credential] = await database
         .select()
         .from(authPasswordCredentials)
@@ -252,8 +248,9 @@ describe('bootstrap admin user', () => {
         deletedAt: null,
       })
       expect(bindings).toHaveLength(1)
+      assert(credential, 'Expected admin password credential')
       await expect(
-        verifyPassword('restored-admin-password', credential?.passwordHash ?? ''),
+        verifyPassword('restored-admin-password', credential.passwordHash),
       ).resolves.toBe(true)
     },
   )
@@ -291,9 +288,7 @@ describe('bootstrap admin user', () => {
       const deletedUser = users.find((user) => user.id === deletedUserId)
       const activeUser = users.find((user) => user.id !== deletedUserId)
 
-      if (!activeUser) {
-        throw new Error('Expected active admin user')
-      }
+      assert(activeUser, 'Expected active admin user')
 
       const [adminRole] = await database
         .select()
@@ -303,14 +298,13 @@ describe('bootstrap admin user', () => {
         .select()
         .from(authPasswordCredentials)
         .where(eq(authPasswordCredentials.userId, activeUser.id))
+      assert(adminRole, 'Expected seeded admin role')
+
       const bindings = await database
         .select()
         .from(systemUserRoles)
         .where(
-          and(
-            eq(systemUserRoles.userId, activeUser.id),
-            eq(systemUserRoles.roleId, adminRole?.id ?? ''),
-          ),
+          and(eq(systemUserRoles.userId, activeUser.id), eq(systemUserRoles.roleId, adminRole.id)),
         )
 
       expect(users).toHaveLength(2)
@@ -329,9 +323,10 @@ describe('bootstrap admin user', () => {
         deletedAt: null,
       })
       expect(bindings).toHaveLength(1)
-      await expect(
-        verifyPassword('new-admin-password', credential?.passwordHash ?? ''),
-      ).resolves.toBe(true)
+      assert(credential, 'Expected admin password credential')
+      await expect(verifyPassword('new-admin-password', credential.passwordHash)).resolves.toBe(
+        true,
+      )
     },
   )
 
@@ -366,17 +361,16 @@ describe('bootstrap admin user', () => {
         .from(systemRoles)
         .where(eq(systemRoles.code, 'admin'))
       const allCredentials = await database.select().from(authPasswordCredentials)
+      expect(allUsers).toHaveLength(1)
+      const user = allUsers[0]
+      assert(user, 'Expected bootstrapped admin user')
+      assert(adminRole, 'Expected seeded admin role')
+
       const bindings = await database
         .select()
         .from(systemUserRoles)
-        .where(
-          and(
-            eq(systemUserRoles.userId, allUsers[0]?.id ?? ''),
-            eq(systemUserRoles.roleId, adminRole?.id ?? ''),
-          ),
-        )
+        .where(and(eq(systemUserRoles.userId, user.id), eq(systemUserRoles.roleId, adminRole.id)))
 
-      expect(allUsers).toHaveLength(1)
       expect(allCredentials).toHaveLength(1)
       expect(bindings).toHaveLength(1)
       expect(allUsers[0]).toMatchObject({

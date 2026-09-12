@@ -27,8 +27,9 @@ import {
 } from '../../../../src/features/table/client/editor'
 import { tableFeature } from '../../../../src/features/table/core/feature'
 import { createTestEditor } from '../../../helpers/editor'
+import { getTableCell, getTableCellPosition, selectTableCells } from '../../../helpers/table'
 
-function createEditor(content: string | object = '<p>前后</p>') {
+function createEditor(content: Parameters<typeof createTestEditor>[0]['content'] = '<p>前后</p>') {
   return createTestEditor({
     extensions: [Document, Paragraph, Text, UndoRedo, ...tableFeature.sharedExtensions!()],
     content,
@@ -83,66 +84,6 @@ function createTableEditor(rows: ReturnType<typeof tableCell>[][]) {
       },
     ],
   })
-}
-
-function getTableStart(editor: ReturnType<typeof createEditor>) {
-  let tablePosition: number | undefined
-
-  editor.state.doc.descendants((node, position) => {
-    if (node.type.name === 'table') {
-      tablePosition = position
-      return false
-    }
-
-    return true
-  })
-
-  if (tablePosition === undefined) {
-    throw new Error('Expected a table position')
-  }
-
-  return tablePosition + 1
-}
-
-function getTableCellPosition(
-  editor: ReturnType<typeof createEditor>,
-  row: number,
-  column: number,
-) {
-  const table = getTable(editor)
-  const map = TableMap.get(table)
-  const position = map.map[row * map.width + column]
-
-  if (position === undefined) {
-    throw new Error('Expected a table cell position')
-  }
-
-  return getTableStart(editor) + position
-}
-
-function getTableCell(editor: ReturnType<typeof createEditor>, row: number, column: number) {
-  const cell = editor.state.doc.nodeAt(getTableCellPosition(editor, row, column))
-
-  if (!cell) {
-    throw new Error('Expected a table cell')
-  }
-
-  return cell
-}
-
-function selectTableCells(
-  editor: ReturnType<typeof createEditor>,
-  anchor: readonly [row: number, column: number],
-  head: readonly [row: number, column: number],
-) {
-  editor.view.dispatch(
-    editor.state.tr.setSelection(
-      new CellSelection(
-        editor.state.doc.resolve(getTableCellPosition(editor, anchor[0], anchor[1])),
-        editor.state.doc.resolve(getTableCellPosition(editor, head[0], head[1])),
-      ),
-    ),
-  )
 }
 
 describe('table editor actions', () => {

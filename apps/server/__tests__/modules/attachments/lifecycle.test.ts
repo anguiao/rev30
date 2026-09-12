@@ -3,7 +3,6 @@ import { mkdtemp, rm, utimes } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, vi } from 'vitest'
-import type { Logger } from 'pino'
 import { ATTACHMENT_CLEANUP_POLICY_UNREFERENCED } from '@rev30/contracts'
 import { and, eq } from 'drizzle-orm'
 import { attachmentReferences, attachments, attachmentUploadSessions } from '../../../src/db/schema'
@@ -29,15 +28,15 @@ import {
 } from '../../../src/modules/attachments/storage'
 import { dbTest, type TestDatabase } from '../../fixtures/database'
 import { createSystemUserFixture } from '../../helpers/system'
+import { createLogger } from '../../../src/runtime/logger'
 
 const dayMs = 24 * 60 * 60 * 1000
 const tempDirs: string[] = []
 
 function cleanupOptions() {
-  return {
-    signal: new AbortController().signal,
-    logger: { error: vi.fn() } as unknown as Logger,
-  }
+  const logger = createLogger({ level: 'silent' })
+  vi.spyOn(logger, 'error')
+  return { signal: new AbortController().signal, logger }
 }
 
 async function createTempRoot() {
@@ -144,14 +143,6 @@ function createDatabaseWithStorageKeyHandoff(database: TestDatabase, handoff: ()
             onRejected?: (reason: unknown) => unknown,
           ) => {
             const result = (async () => {
-              if (readsAttachments && readsUploadSessions) {
-                const rows = await execute()
-
-                await runHandoff()
-
-                return rows
-              }
-
               if (readsAttachments) {
                 const rows = await execute()
 
@@ -308,6 +299,7 @@ describe('attachment upload sessions', () => {
 
 describe('attachment cleanup', () => {
   afterEach(async () => {
+    vi.restoreAllMocks()
     vi.useRealTimers()
     await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })))
   })
@@ -316,11 +308,12 @@ describe('attachment cleanup', () => {
     const listError = new Error('storage unavailable')
     const storage = {
       provider: 'local',
-      put: vi.fn(),
-      get: vi.fn(),
-      list: vi.fn().mockRejectedValue(listError),
-      delete: vi.fn(),
-    } as unknown as AttachmentStorage
+      checkHealth: vi.fn<AttachmentStorage['checkHealth']>(),
+      put: vi.fn<AttachmentStorage['put']>(),
+      get: vi.fn<AttachmentStorage['get']>(),
+      list: vi.fn<AttachmentStorage['list']>().mockRejectedValue(listError),
+      delete: vi.fn<AttachmentStorage['delete']>(),
+    } satisfies AttachmentStorage
 
     await expect(
       cleanupOrphanedAttachmentUploads(database, storage, 7 * dayMs, cleanupOptions()),
@@ -340,17 +333,21 @@ describe('attachment cleanup', () => {
       const firstKey = 'uploads/orphan-delete-fails.bin'
       const secondKey = 'uploads/orphan-delete-succeeds.bin'
       const deleteError = new Error('orphan delete failed')
-      const deleting = vi.fn().mockRejectedValueOnce(deleteError).mockResolvedValueOnce(undefined)
+      const deleting = vi
+        .fn<AttachmentStorage['delete']>()
+        .mockRejectedValueOnce(deleteError)
+        .mockResolvedValueOnce(undefined)
       const storage = {
         provider: 'local',
-        put: vi.fn(),
-        get: vi.fn(),
-        list: vi.fn().mockResolvedValue([
+        checkHealth: vi.fn<AttachmentStorage['checkHealth']>(),
+        put: vi.fn<AttachmentStorage['put']>(),
+        get: vi.fn<AttachmentStorage['get']>(),
+        list: vi.fn<AttachmentStorage['list']>().mockResolvedValue([
           { key: firstKey, modifiedAt: oldModifiedAt },
           { key: secondKey, modifiedAt: oldModifiedAt },
         ]),
         delete: deleting,
-      } as unknown as AttachmentStorage
+      } satisfies AttachmentStorage
       const options = cleanupOptions()
 
       await expect(
@@ -382,14 +379,20 @@ describe('attachment cleanup', () => {
         updatedAt: oldModifiedAt,
       })
       const deleteError = new Error('unreferenced delete failed')
-      const deleting = vi.fn().mockRejectedValueOnce(deleteError).mockResolvedValueOnce(undefined)
+      const deleting = vi
+        .fn<AttachmentStorage['delete']>()
+        .mockRejectedValueOnce(deleteError)
+        .mockResolvedValueOnce(undefined)
       const storage = {
         provider: 'local',
-        put: vi.fn(),
-        get: vi.fn(),
-        list: vi.fn().mockResolvedValue([{ key: storageKey, modifiedAt: oldModifiedAt }]),
+        checkHealth: vi.fn<AttachmentStorage['checkHealth']>(),
+        put: vi.fn<AttachmentStorage['put']>(),
+        get: vi.fn<AttachmentStorage['get']>(),
+        list: vi
+          .fn<AttachmentStorage['list']>()
+          .mockResolvedValue([{ key: storageKey, modifiedAt: oldModifiedAt }]),
         delete: deleting,
-      } as unknown as AttachmentStorage
+      } satisfies AttachmentStorage
       const options = cleanupOptions()
 
       await expect(
@@ -443,11 +446,12 @@ describe('attachment cleanup', () => {
       const deleteError = new Error('storage unavailable')
       const storage = {
         provider: 'local',
-        put: vi.fn(),
-        get: vi.fn(),
-        list: vi.fn().mockResolvedValue([]),
-        delete: vi.fn().mockRejectedValue(deleteError),
-      } as unknown as AttachmentStorage
+        checkHealth: vi.fn<AttachmentStorage['checkHealth']>(),
+        put: vi.fn<AttachmentStorage['put']>(),
+        get: vi.fn<AttachmentStorage['get']>(),
+        list: vi.fn<AttachmentStorage['list']>().mockResolvedValue([]),
+        delete: vi.fn<AttachmentStorage['delete']>().mockRejectedValue(deleteError),
+      } satisfies AttachmentStorage
       const options = cleanupOptions()
 
       await expect(
@@ -459,19 +463,20 @@ describe('attachment cleanup', () => {
       )
 
       const controller = new AbortController()
-      const deleting = vi.fn().mockImplementation(async () => {
+      const deleting = vi.fn<AttachmentStorage['delete']>().mockImplementation(async () => {
         controller.abort()
       })
       const deletingStorage = {
         provider: 'local',
-        put: vi.fn(),
-        get: vi.fn(),
-        list: vi.fn().mockResolvedValue([
+        checkHealth: vi.fn<AttachmentStorage['checkHealth']>(),
+        put: vi.fn<AttachmentStorage['put']>(),
+        get: vi.fn<AttachmentStorage['get']>(),
+        list: vi.fn<AttachmentStorage['list']>().mockResolvedValue([
           { key: 'uploads/old-a.bin', modifiedAt: new Date(Date.now() - dayMs) },
           { key: 'uploads/old-b.bin', modifiedAt: new Date(Date.now() - dayMs) },
         ]),
         delete: deleting,
-      } as unknown as AttachmentStorage
+      } satisfies AttachmentStorage
 
       await expect(
         cleanupOrphanedAttachmentUploads(database, deletingStorage, 0, {

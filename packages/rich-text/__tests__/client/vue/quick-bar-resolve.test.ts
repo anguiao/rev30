@@ -89,7 +89,7 @@ describe('rich text quick bar resolution', () => {
     })
   })
 
-  it('selects the table Quick Bar for a collapsed cell cursor and CellSelection only', () => {
+  it('selects the table Quick Bar for a collapsed cell cursor and the text bar for a text range', () => {
     const tableEditor = createEditor(
       '<table><tr><th><p>单元格</p></th><td><p>其它</p></td></tr></table>',
     )

@@ -6,7 +6,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
 import { NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { linkFeature } from '../../../../../src/features/link/core/feature'
 import LinkControl from '../../../../../src/features/link/client/vue/LinkControl.vue'
 import { appendTestElement, createTestEditor } from '../../../../helpers/editor'
@@ -46,10 +46,6 @@ async function openPopover(wrapper: ReturnType<typeof mountControl>) {
 }
 
 describe('LinkControl', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
   it('opens on click and creates a normalized link for the exact selection', async () => {
     const editor = createEditor()
     editor.commands.setTextSelection({ from: 1, to: 3 })
@@ -158,12 +154,13 @@ describe('LinkControl', () => {
     await wrapper.get('[data-test="rich-text-link-remove"]').trigger('click')
     await flushPromises()
 
-    expect(editor.getJSON().content?.[0]?.content).toMatchObject([
+    expect(editor.getJSON().content?.[0]?.content).toEqual([
       {
+        type: 'text',
         text: '链',
         marks: [{ type: 'link', attrs: { href: 'https://old.example' } }],
       },
-      { text: '接普通' },
+      { type: 'text', text: '接普通' },
     ])
     expect(editor.state.selection).toMatchObject({ from: 2, to: 5 })
   })

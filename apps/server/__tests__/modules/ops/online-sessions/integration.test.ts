@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { onlineSessionListResponseSchema } from '@rev30/contracts'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { describe, expect } from 'vitest'
+import { assert, describe, expect } from 'vitest'
 import { authSessions } from '../../../../src/db/schema'
 import { createAuthMiddleware } from '../../../../src/middleware/auth'
 import {
@@ -33,15 +33,14 @@ function createTestApp(database: TestDatabase, authHeaders: Record<string, strin
       createTestScheduledJobService(database),
     ),
   )
-  const request = app.request.bind(app)
-
-  app.request = ((input, init) =>
-    request(input, {
-      ...init,
-      headers: new Headers({ ...authHeaders, ...Object.fromEntries(new Headers(init?.headers)) }),
-    })) as typeof app.request
-
-  return app
+  return {
+    request(input: string, init?: RequestInit) {
+      return app.request(input, {
+        ...init,
+        headers: new Headers({ ...authHeaders, ...Object.fromEntries(new Headers(init?.headers)) }),
+      })
+    },
+  }
 }
 
 function createOperationLogReceiver(events: OperationLogEvent[]) {
@@ -163,6 +162,7 @@ describe('online session routes', () => {
         .from(authSessions)
         .where(eq(authSessions.userId, operator.userId))
         .limit(1)
+      assert(operatorSession)
       const target = await createSystemUserFixture(database, { username: 'revocation-target' })
       const targetSessionId = randomUUID()
       const config = readAuthConfig()
@@ -188,7 +188,7 @@ describe('online session routes', () => {
 
       expect(
         (
-          await app.request(`/api/ops/sessions/${operatorSession?.id}`, {
+          await app.request(`/api/ops/sessions/${operatorSession.id}`, {
             method: 'DELETE',
             headers: operator.authHeaders,
           })
@@ -232,7 +232,7 @@ describe('online session routes', () => {
           action: 'ops:online-session:revoke',
           httpStatus: 409,
           result: 'failure',
-          targetKey: operatorSession?.id,
+          targetKey: operatorSession.id,
           targetLabel: null,
         },
         {
@@ -286,7 +286,7 @@ describe('online session routes', () => {
 
       const operatorAccessToken = operator.authHeaders.authorization?.replace(/^Bearer /, '')
       await expect(authService.me(operatorAccessToken)).resolves.toMatchObject({
-        currentSessionId: operatorSession?.id,
+        currentSessionId: operatorSession.id,
       })
     },
   )

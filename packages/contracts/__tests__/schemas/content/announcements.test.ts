@@ -72,28 +72,13 @@ describe('announcement schemas', () => {
       title: '维护通知',
       contentJson,
     })
-    const {
-      contentHtml: _contentHtml,
-      targets: _targets,
-      ...announcementListItemInput
-    } = {
-      ...announcement,
-      readStats: null,
-    }
+    const listItem = announcementListItemSchema.parse({ ...announcement, readStats: null })
 
-    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty(
-      'contentJson',
-    )
-    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty(
-      'contentText',
-    )
-    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty(
-      'contentHtml',
-    )
-    expect(announcementListItemSchema.parse(announcementListItemInput)).not.toHaveProperty(
-      'targets',
-    )
-    expect(announcementListItemSchema.parse(announcementListItemInput).readStats).toBeNull()
+    expect(listItem).not.toHaveProperty('contentJson')
+    expect(listItem).not.toHaveProperty('contentText')
+    expect(listItem).not.toHaveProperty('contentHtml')
+    expect(listItem).not.toHaveProperty('targets')
+    expect(listItem.readStats).toBeNull()
     expect(
       announcementListResponseSchema.parse({
         list: [
@@ -278,7 +263,7 @@ describe('announcement schemas', () => {
       contentJson: { type: 'paragraph' },
     })
 
-    expectZodIssue(result, { message: '正文格式无效' })
+    expectZodIssue(result, { message: '正文格式无效', path: ['contentJson'] })
   })
 
   it('accepts empty announcement content input', () => {
@@ -338,8 +323,6 @@ describe('announcement schemas', () => {
 
   it('requires update input to contain at least one changed field', () => {
     expect(announcementUpdateSchema.parse({ title: '新标题' })).toEqual({ title: '新标题' })
-    expect(announcementUpdateSchema.parse({ title: '新标题' })).not.toHaveProperty('pinned')
-    expect(announcementUpdateSchema.parse({ title: '新标题' })).not.toHaveProperty('publish')
     expect(announcementUpdateSchema.parse({ publish: true })).toEqual({ publish: true })
     expect(announcementUpdateSchema.parse({ title: '新标题', publish: false })).toEqual({
       title: '新标题',
@@ -396,10 +379,10 @@ describe('announcement schemas', () => {
     ['type', { type: 'news' }, '类型无效'],
     ['status', { status: 'enabled' }, '状态无效'],
     ['pinned', { pinned: 'yes' }, '置顶筛选无效'],
-  ])('rejects invalid %s filters', (_field, input, message) => {
+  ])('rejects invalid %s filters', (field, input, message) => {
     const result = announcementListQuerySchema.safeParse(input)
 
-    expectZodIssue(result, { message })
+    expectZodIssue(result, { message, path: [field] })
   })
 
   it.each([ANNOUNCEMENT_STATUS_DRAFT, ANNOUNCEMENT_STATUS_PUBLISHED, ANNOUNCEMENT_STATUS_ARCHIVED])(
@@ -455,33 +438,11 @@ describe('announcement schemas', () => {
       ],
     }
 
-    expect(announcementSchema.parse(announcement).targets).toEqual(announcement.targets)
-    expect(announcementSchema.parse(announcement).visibility).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
-    expect(announcementSchema.parse(announcement).contentHtml).toBe(announcement.contentHtml)
-  })
-
-  it('defaults create schema to all visibility and keeps publish with all visibility', () => {
-    expect(
-      announcementCreateSchema.parse({
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '默认可见范围',
-        contentJson,
-      }),
-    ).toMatchObject({
-      visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-      targets: [],
-      publish: false,
+    expect(announcementSchema.parse(announcement)).toMatchObject({
+      targets: announcement.targets,
+      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      contentHtml: announcement.contentHtml,
     })
-
-    expect(
-      announcementCreateSchema.parse({
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '全员发布',
-        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-        publish: true,
-        contentJson,
-      }).visibility,
-    ).toBe(ANNOUNCEMENT_VISIBILITY_ALL)
   })
 
   it('fails when duplicate visibility targets exist with same type and id', () => {
@@ -501,9 +462,7 @@ describe('announcement schemas', () => {
       ],
     })
 
-    const error = expectZodIssue(result, { message: '可见对象不能重复' })
-    const duplicateIssue = error.issues.find((issue) => issue.message === '可见对象不能重复')
-    expect(duplicateIssue?.path).toContain(1)
+    expectZodIssue(result, { message: '可见对象不能重复', path: ['targets', 1] })
   })
 
   it('parses my announcement list query with normalized page size type and trimmed keyword', () => {

@@ -3,10 +3,9 @@ import type { z } from 'zod'
 
 export function expectZodIssue(
   result: z.ZodSafeParseResult<unknown>,
-  expected: {
-    message: string
-    path?: PropertyKey[]
-  },
+  expected:
+    | { message: string; path?: PropertyKey[] }
+    | (Pick<z.core.$ZodIssue, 'code' | 'path'> & Partial<z.core.$ZodIssue>),
 ) {
   expect(result.success).toBe(false)
 

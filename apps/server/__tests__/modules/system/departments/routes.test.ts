@@ -1,7 +1,11 @@
 import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEPARTMENT_STATUS_ENABLED, DEPARTMENT_STATUS_DISABLED } from '@rev30/contracts'
+import {
+  DEPARTMENT_STATUS_ENABLED,
+  DEPARTMENT_STATUS_DISABLED,
+  type Department,
+} from '@rev30/contracts'
 import {
   DepartmentConflictError,
   DepartmentDeleteConflictError,
@@ -9,7 +13,11 @@ import {
   DepartmentMoveConflictError,
   DepartmentNotFoundError,
 } from '../../../../src/modules/system/departments/errors'
+import type { createDepartmentService } from '../../../../src/modules/system/departments/service'
+import type { requireAccess } from '../../../../src/middleware/access'
 import { createDepartmentRoutes } from '../../../../src/modules/system/departments/routes'
+
+type DepartmentService = ReturnType<typeof createDepartmentService>
 
 const departmentId = '22222222-2222-4222-8222-222222222222'
 const department = {
@@ -21,24 +29,24 @@ const department = {
   sortOrder: 10,
   createdAt: '2026-05-06T00:00:00.000Z',
   updatedAt: '2026-05-06T00:00:00.000Z',
-}
+} satisfies Department
 
 const mocks = vi.hoisted(() => {
   const accessMiddleware = vi.fn(async (_c: Context, next: Next) => next())
   const service = {
-    create: vi.fn(),
-    delete: vi.fn(),
-    get: vi.fn(),
-    list: vi.fn(),
-    tree: vi.fn(),
-    treeOptions: vi.fn(),
-    update: vi.fn(),
+    create: vi.fn<DepartmentService['create']>(),
+    delete: vi.fn<DepartmentService['delete']>(),
+    get: vi.fn<DepartmentService['get']>(),
+    list: vi.fn<DepartmentService['list']>(),
+    tree: vi.fn<DepartmentService['tree']>(),
+    treeOptions: vi.fn<DepartmentService['treeOptions']>(),
+    update: vi.fn<DepartmentService['update']>(),
   }
 
   return {
     accessMiddleware,
     createDepartmentService: vi.fn(() => service),
-    requireAccess: vi.fn(() => accessMiddleware),
+    requireAccess: vi.fn<typeof requireAccess>(() => accessMiddleware),
     service,
   }
 })
@@ -79,17 +87,15 @@ describe('department routes', () => {
   it('registers expected access guards for every department endpoint', () => {
     createTestApp()
 
-    expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
-      [
-        'system:department:list',
-        'system:department:list',
-        'system:department:list',
-        'system:department:list',
-        'system:department:create',
-        'system:department:update',
-        'system:department:delete',
-      ],
-    )
+    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
+      'system:department:list',
+      'system:department:list',
+      'system:department:list',
+      'system:department:list',
+      'system:department:create',
+      'system:department:update',
+      'system:department:delete',
+    ])
   })
 
   it('parses list query and delegates to the department service', async () => {

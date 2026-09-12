@@ -11,14 +11,16 @@ import {
 } from '../../../../src/features/code-block/client/editor'
 import { createTestEditor } from '../../../helpers/editor'
 
-function createEditor(content: string | object = '<p>const ready = true</p>') {
+function createEditor(
+  content: Parameters<typeof createTestEditor>[0]['content'] = '<p>const ready = true</p>',
+) {
   return createTestEditor({
     extensions: [Document, Paragraph, Text, ...codeBlockEditorFeature.extensions!()],
     content,
   })
 }
 
-function handleEditorClick(editor: Editor, target: EventTarget, clientY: number) {
+function handleEditorClick(target: EventTarget, clientY: number) {
   const event = new MouseEvent('click', {
     bubbles: true,
     button: 0,
@@ -38,7 +40,7 @@ function setLastElementBottom(editor: Editor, bottom: number) {
     throw new Error('Editor has no rendered document node')
   }
 
-  lastElement.getBoundingClientRect = () => ({ bottom }) as DOMRect
+  lastElement.getBoundingClientRect = () => new DOMRect(0, 0, 100, bottom)
 
   return lastElement
 }
@@ -96,7 +98,7 @@ describe('code block feature', () => {
 
     setLastElementBottom(editor, 100)
 
-    expect(handleEditorClick(editor, editor.view.dom, 120)).toBe(true)
+    expect(handleEditorClick(editor.view.dom, 120)).toBe(true)
     expect(editor.getJSON()).toMatchObject({
       content: [
         {
@@ -122,8 +124,8 @@ describe('code block feature', () => {
     })
     const codeBlockElement = setLastElementBottom(editor, 100)
 
-    expect(handleEditorClick(editor, editor.view.dom, 80)).toBe(false)
-    expect(handleEditorClick(editor, codeBlockElement, 120)).toBe(false)
+    expect(handleEditorClick(editor.view.dom, 80)).toBe(false)
+    expect(handleEditorClick(codeBlockElement, 120)).toBe(false)
     expect(editor.getJSON().content).toHaveLength(1)
 
     const editorWithTrailingParagraph = createEditor({
@@ -140,9 +142,7 @@ describe('code block feature', () => {
 
     setLastElementBottom(editorWithTrailingParagraph, 100)
 
-    expect(
-      handleEditorClick(editorWithTrailingParagraph, editorWithTrailingParagraph.view.dom, 120),
-    ).toBe(false)
+    expect(handleEditorClick(editorWithTrailingParagraph.view.dom, 120)).toBe(false)
     expect(editorWithTrailingParagraph.getJSON().content).toHaveLength(2)
   })
 

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect } from 'vitest'
+import type { z } from 'zod'
 import { Hono } from 'hono'
 import { eq, inArray } from 'drizzle-orm'
 import {
@@ -11,6 +12,8 @@ import {
   RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_EXTERNAL,
   RESOURCE_TYPE_MENU,
+  resourceCreateSchema,
+  type ErrorResponse,
   type Resource,
   type ResourceListResponse,
   type ResourceTreeOptionsResponse,
@@ -20,11 +23,7 @@ import { systemRoleResources, systemRoles, systemResources } from '../../../../s
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
 import { createResourceRoutes } from '../../../../src/modules/system/resources/routes'
-
-type ErrorResponse = {
-  message: string
-  field?: string
-}
+import { expectJsonResponse, jsonRequest } from '../../../helpers/http'
 
 async function createTestApp(database: TestDatabase, authHeaders?: Record<string, string>) {
   const headers =
@@ -44,27 +43,9 @@ async function createTestApp(database: TestDatabase, authHeaders?: Record<string
   )
 }
 
-async function createResource(
-  app: Hono,
-  body: {
-    type: 'directory' | 'menu' | 'external' | 'action'
-    name: string
-    code: string
-    parentId?: string | null
-    path?: string | null
-    externalUrl?: string | null
-    openTarget?: 'self' | 'blank'
-    icon?: string | null
-    hidden?: boolean
-    status?: 0 | 1
-    sortOrder?: number
-  },
-) {
-  const response = await app.request('/api/system/resources', {
-    method: 'POST',
-    body: JSON.stringify(body),
-    headers: { 'content-type': 'application/json' },
-  })
+async function createResource(app: Hono, body: z.input<typeof resourceCreateSchema>) {
+  const response = await app.request('/api/system/resources', jsonRequest(body, { method: 'POST' }))
+  expect(response.status).toBe(201)
 
   return { body: (await response.json()) as Resource, response }
 }
@@ -520,7 +501,10 @@ describe('resource routes', () => {
         sortOrder: 3,
       })
 
-      await app.request(`/api/system/resources/${disabledChild.id}`, { method: 'DELETE' })
+      const deleteResponse = await app.request(`/api/system/resources/${disabledChild.id}`, {
+        method: 'DELETE',
+      })
+      expect(deleteResponse.status).toBe(204)
 
       const response = await app.request('/api/system/resources/options/tree')
       const body = (await response.json()) as ResourceTreeOptionsResponse
@@ -627,7 +611,10 @@ describe('resource routes', () => {
         status: RESOURCE_STATUS_DISABLED,
       })
 
-      await app.request(`/api/system/resources/${deletedLeaf.id}`, { method: 'DELETE' })
+      const deleteResponse = await app.request(`/api/system/resources/${deletedLeaf.id}`, {
+        method: 'DELETE',
+      })
+      expect(deleteResponse.status).toBe(204)
 
       const response = await app.request(
         `/api/system/resources/options/tree?includeIds=${disabledLeaf.id},${deletedLeaf.id},${randomUUID()}`,
@@ -959,14 +946,16 @@ describe('resource routes', () => {
       path: '/system/users',
     })
 
-    const createConflict = await createResource(app, {
-      type: RESOURCE_TYPE_ACTION,
-      name: 'Duplicate',
-      code: 'test-system',
-    })
-    expect(createConflict.response.status).toBe(409)
-    expect(createConflict.body as unknown as ErrorResponse).toMatchObject({
-      message: '权限编码已存在',
+    const createConflict = await app.request(
+      '/api/system/resources',
+      jsonRequest(
+        { type: RESOURCE_TYPE_ACTION, name: 'Duplicate', code: 'test-system' },
+        { method: 'POST' },
+      ),
+    )
+    await expectJsonResponse(createConflict, {
+      status: 409,
+      body: { message: '权限编码已存在' },
     })
 
     const updateConflict = await app.request(`/api/system/resources/${userMenu.id}`, {

@@ -107,7 +107,7 @@ describe('tree utils', () => {
     const engineeringNode = rootNode.children[0]!
     const platformNode = engineeringNode.children[0]!
     const financeNode = rootNode.children[1]!
-    const snapshot = JSON.parse(JSON.stringify(tree))
+    const snapshot = structuredClone(tree)
     const matchesName = (node: FlatNode) => node.name.includes('部')
     const matchesType = (node: FlatNode) => node.type === 'menu'
 
@@ -142,7 +142,7 @@ describe('tree utils', () => {
   it('prunes matching nodes with their descendants without mutating original tree', () => {
     const rootNode = tree[0]!
     const financeNode = rootNode.children[1]!
-    const snapshot = JSON.parse(JSON.stringify(tree))
+    const snapshot = structuredClone(tree)
 
     const pruned = pruneTree(tree, {
       excludes: (node) => node.code === 'eng',

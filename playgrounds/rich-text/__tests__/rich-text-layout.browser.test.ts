@@ -1,6 +1,10 @@
 import { expect, test } from 'vitest'
 import { userEvent } from 'vitest/browser'
-import { getEditable, renderRichTextEditorHarness } from './fixtures/renderRichTextEditorHarness'
+import {
+  getEditable,
+  readEditorModel,
+  renderRichTextEditorHarness,
+} from './fixtures/renderRichTextEditorHarness'
 
 test('exits a trailing code block only after a real click below its DOM rect', async () => {
   const screen = await renderRichTextEditorHarness()
@@ -22,9 +26,7 @@ test('exits a trailing code block only after a real click below its DOM rect', a
   await userEvent.click(editable, { position: { x: 24, y: clickY } })
   await userEvent.keyboard('next')
 
-  const document = JSON.parse(
-    screen.getByTestId('model-json').element().textContent ?? '',
-  ) as unknown
+  const document = readEditorModel(screen)
   expect(document).toEqual({
     type: 'doc',
     content: [
@@ -68,9 +70,7 @@ test('keeps a wide table scrollable and adds a row from the last cell with nativ
   const rowsAfter = table!.querySelectorAll('tr')
   expect(rowsAfter).toHaveLength(rowsBefore + 1)
 
-  const document = JSON.parse(
-    screen.getByTestId('model-json').element().textContent ?? '',
-  ) as unknown
+  const document = readEditorModel(screen)
   expect(document).toEqual({
     type: 'doc',
     content: [

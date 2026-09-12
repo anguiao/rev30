@@ -132,7 +132,7 @@ async function getEditable(wrapper: ReturnType<typeof mount>) {
 
 async function selectDropdownCommand(wrapper: ReturnType<typeof mount>, commandKey: string) {
   const dropdown = wrapper.findAllComponents(NDropdown).find((component) => {
-    const options = component.props('options') as Array<{ key: string | number }>
+    const options = component.props('options')!
 
     return options.some((option) => option.key === commandKey)
   })
@@ -381,7 +381,7 @@ describe('RichTextEditor', () => {
 
   it('defers an unknown focusout until focus restoration settles', async () => {
     const wrapper = mount(RichTextEditor, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: { modelValue: contentJson, preset: allEditorPreset },
     })
     const editable = await getEditable(wrapper)
@@ -557,7 +557,7 @@ describe('RichTextEditor', () => {
     await getEditable(wrapper)
     const codeBlockButton = wrapper.get('[data-test="rich-text-code-block"]')
     const languageDropdown = wrapper.findAllComponents(NDropdown).find((component) => {
-      const options = component.props('options') as Array<{ key: string | number }>
+      const options = component.props('options')!
 
       return options.some((option) => option.key === 'typescript')
     })
@@ -598,7 +598,7 @@ describe('RichTextEditor', () => {
     const editable = await getEditable(wrapper)
     expect(editable.element.parentElement?.classList.contains('h-full')).toBe(true)
     const codeBlock = editable.get('pre')
-    codeBlock.element.getBoundingClientRect = () => ({ bottom: 100 }) as DOMRect
+    codeBlock.element.getBoundingClientRect = () => new DOMRect(0, 0, 100, 100)
 
     await editable.trigger('click', { clientY: 120 })
 

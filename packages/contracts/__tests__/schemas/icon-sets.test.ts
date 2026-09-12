@@ -22,6 +22,37 @@ import {
   customIconUploadResponseSchema,
 } from '../../src/icons'
 
+const builtinIcon = {
+  icon: 'lucide:user-add',
+  prefix: 'lucide',
+  name: 'user-add',
+  setName: 'Lucide',
+  body: '<path d="M0 0h24v24H0z"/>',
+  width: 24,
+  height: 24,
+}
+
+const customIconSet = {
+  prefix: 'brand-icons',
+  name: 'Brand Icons',
+  description: 'Brand assets',
+  iconCount: 2,
+  createdAt: '2026-06-15T00:00:00.000Z',
+  updatedAt: '2026-06-15T01:00:00.000Z',
+}
+
+const customIcon = {
+  icon: 'brand-icons:user-add',
+  prefix: 'brand-icons',
+  name: 'user-add',
+  setName: 'Brand Icons',
+  body: '<path d="M0 0h24v24H0z"/>',
+  width: 24,
+  height: 24,
+  createdAt: '2026-06-15T00:00:00.000Z',
+  updatedAt: '2026-06-15T01:00:00.000Z',
+}
+
 describe('icon set schemas', () => {
   it('limits input prefixes and renamed icons to 256 characters', () => {
     const prefix = 'p'.repeat(256)
@@ -178,116 +209,38 @@ describe('icon set schemas', () => {
 
     expect(
       builtinIconListResponseSchema.parse({
-        list: [
-          {
-            icon: 'lucide:user-add',
-            prefix: 'lucide',
-            name: 'user-add',
-            setName: 'Lucide',
-            body: '<path d="M0 0h24v24H0z"/>',
-            width: 24,
-            height: 24,
-          },
-        ],
+        list: [builtinIcon],
         nextCursor: null,
         pageSize: 80,
       }),
     ).toEqual({
-      list: [
-        {
-          icon: 'lucide:user-add',
-          prefix: 'lucide',
-          name: 'user-add',
-          setName: 'Lucide',
-          body: '<path d="M0 0h24v24H0z"/>',
-          width: 24,
-          height: 24,
-        },
-      ],
+      list: [builtinIcon],
       nextCursor: null,
       pageSize: 80,
     })
   })
 
   it('parses custom icon set and icon list responses', () => {
-    expect(
-      customIconSetSchema.parse({
-        prefix: 'brand-icons',
-        name: 'Brand Icons',
-        description: 'Brand assets',
-        iconCount: 2,
-        createdAt: '2026-06-15T00:00:00.000Z',
-        updatedAt: '2026-06-15T01:00:00.000Z',
-      }),
-    ).toEqual({
-      prefix: 'brand-icons',
-      name: 'Brand Icons',
-      description: 'Brand assets',
-      iconCount: 2,
-      createdAt: '2026-06-15T00:00:00.000Z',
-      updatedAt: '2026-06-15T01:00:00.000Z',
-    })
+    expect(customIconSetSchema.parse(customIconSet)).toEqual(customIconSet)
 
     expect(
       customIconSetListResponseSchema.parse({
-        list: [
-          {
-            prefix: 'brand-icons',
-            name: 'Brand Icons',
-            description: 'Brand assets',
-            iconCount: 2,
-            createdAt: '2026-06-15T00:00:00.000Z',
-            updatedAt: '2026-06-15T01:00:00.000Z',
-          },
-        ],
+        list: [customIconSet],
         total: 1,
       }),
     ).toEqual({
-      list: [
-        {
-          prefix: 'brand-icons',
-          name: 'Brand Icons',
-          description: 'Brand assets',
-          iconCount: 2,
-          createdAt: '2026-06-15T00:00:00.000Z',
-          updatedAt: '2026-06-15T01:00:00.000Z',
-        },
-      ],
+      list: [customIconSet],
       total: 1,
     })
 
     expect(
       customIconListResponseSchema.parse({
-        list: [
-          {
-            icon: 'brand-icons:user-add',
-            prefix: 'brand-icons',
-            name: 'user-add',
-            setName: 'Brand Icons',
-            body: '<path d="M0 0h24v24H0z"/>',
-            width: 24,
-            height: 24,
-            createdAt: '2026-06-15T00:00:00.000Z',
-            updatedAt: '2026-06-15T01:00:00.000Z',
-          },
-        ],
+        list: [customIcon],
         nextCursor: null,
         pageSize: 80,
       }),
     ).toEqual({
-      list: [
-        {
-          icon: 'brand-icons:user-add',
-          prefix: 'brand-icons',
-          name: 'user-add',
-          setName: 'Brand Icons',
-          body: '<path d="M0 0h24v24H0z"/>',
-          width: 24,
-          height: 24,
-          createdAt: '2026-06-15T00:00:00.000Z',
-          updatedAt: '2026-06-15T01:00:00.000Z',
-        },
-      ],
+      list: [customIcon],
       nextCursor: null,
       pageSize: 80,
     })
@@ -322,29 +275,7 @@ describe('icon set schemas', () => {
       height: 24,
     })
 
-    expect(
-      customIconItemSchema.parse({
-        icon: 'brand-icons:user-add',
-        prefix: 'brand-icons',
-        name: 'user-add',
-        setName: 'Brand Icons',
-        body: '<path d="M0 0h24v24H0z"/>',
-        width: 24,
-        height: 24,
-        createdAt: '2026-06-15T00:00:00.000Z',
-        updatedAt: '2026-06-15T01:00:00.000Z',
-      }),
-    ).toEqual({
-      icon: 'brand-icons:user-add',
-      prefix: 'brand-icons',
-      name: 'user-add',
-      setName: 'Brand Icons',
-      body: '<path d="M0 0h24v24H0z"/>',
-      width: 24,
-      height: 24,
-      createdAt: '2026-06-15T00:00:00.000Z',
-      updatedAt: '2026-06-15T01:00:00.000Z',
-    })
+    expect(customIconItemSchema.parse(customIcon)).toEqual(customIcon)
 
     expect(
       customIconUploadSkippedSchema.parse({
@@ -370,19 +301,7 @@ describe('icon set schemas', () => {
 
     expect(
       customIconUploadResponseSchema.parse({
-        created: [
-          {
-            icon: 'brand-icons:user-add',
-            prefix: 'brand-icons',
-            name: 'user-add',
-            setName: 'Brand Icons',
-            body: '<path d="M0 0h24v24H0z"/>',
-            width: 24,
-            height: 24,
-            createdAt: '2026-06-15T00:00:00.000Z',
-            updatedAt: '2026-06-15T01:00:00.000Z',
-          },
-        ],
+        created: [customIcon],
         replaced: [],
         skipped: [
           {
@@ -399,19 +318,7 @@ describe('icon set schemas', () => {
         ],
       }),
     ).toEqual({
-      created: [
-        {
-          icon: 'brand-icons:user-add',
-          prefix: 'brand-icons',
-          name: 'user-add',
-          setName: 'Brand Icons',
-          body: '<path d="M0 0h24v24H0z"/>',
-          width: 24,
-          height: 24,
-          createdAt: '2026-06-15T00:00:00.000Z',
-          updatedAt: '2026-06-15T01:00:00.000Z',
-        },
-      ],
+      created: [customIcon],
       replaced: [],
       skipped: [
         {

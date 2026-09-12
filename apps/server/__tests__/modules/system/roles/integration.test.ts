@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect } from 'vitest'
+import type { z } from 'zod'
 import { Hono } from 'hono'
 import { eq, inArray } from 'drizzle-orm'
 import {
@@ -9,10 +10,11 @@ import {
   RESOURCE_TYPE_DIRECTORY,
   ROLE_STATUS_DISABLED,
   ROLE_STATUS_ENABLED,
+  roleCreateSchema,
+  type ErrorResponse,
   type Role,
   type RoleListResponse,
   type RoleOptionsResponse,
-  type RoleStatus,
 } from '@rev30/contracts'
 import {
   systemRoleResources,
@@ -25,10 +27,7 @@ import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '..
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
 import { createSystemResourceFixture as createResource } from '../../../helpers/system'
 import { createRoleRoutes } from '../../../../src/modules/system/roles/routes'
-
-type ErrorResponse = {
-  message: string
-}
+import { expectJsonResponse, jsonRequest } from '../../../helpers/http'
 
 async function createTestApp(database: TestDatabase, authHeaders?: Record<string, string>) {
   const headers =
@@ -65,21 +64,9 @@ async function findResourceIdsByCodes(database: TestDatabase, codes: string[]) {
   return codes.map((code) => idsByCode.get(code)!)
 }
 
-async function createRole(
-  app: Hono,
-  body: {
-    name: string
-    code: string
-    status?: RoleStatus
-    sortOrder?: number
-    resourceIds?: string[]
-  },
-) {
-  const response = await app.request('/api/system/roles', {
-    method: 'POST',
-    body: JSON.stringify(body),
-    headers: { 'content-type': 'application/json' },
-  })
+async function createRole(app: Hono, body: z.input<typeof roleCreateSchema>) {
+  const response = await app.request('/api/system/roles', jsonRequest(body, { method: 'POST' }))
+  expect(response.status).toBe(201)
 
   return { body: (await response.json()) as Role, response }
 }
@@ -529,11 +516,14 @@ describe('role routes', () => {
     const app = await createTestApp(database)
     await createRole(app, { name: 'Test Administrator', code: 'test-admin' })
 
-    const duplicate = await createRole(app, { name: 'Admin Duplicate', code: 'test-admin' })
-    const body = duplicate.body as unknown as ErrorResponse
-
-    expect(duplicate.response.status).toBe(409)
-    expect(body).toEqual({ field: 'code', message: '编码已存在' })
+    const duplicate = await app.request(
+      '/api/system/roles',
+      jsonRequest({ name: 'Admin Duplicate', code: 'test-admin' }, { method: 'POST' }),
+    )
+    await expectJsonResponse(duplicate, {
+      status: 409,
+      body: { field: 'code', message: '编码已存在' },
+    })
   })
 
   dbTest('allows recreating a role code after soft delete', async ({ db: database }) => {

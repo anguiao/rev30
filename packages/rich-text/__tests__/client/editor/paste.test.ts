@@ -14,33 +14,7 @@ import { baseEditorFeature } from '../../../src/features/base/client/editor'
 import { baseFeature } from '../../../src/features/base/core/feature'
 import { defineRichTextEditorPreset } from '../../../src/client/vue/preset'
 import { createTestEditor } from '../../helpers/editor'
-
-interface ClipboardContents {
-  readonly text?: string
-  readonly html?: string
-  readonly files?: readonly File[]
-}
-
-function createFileList(files: readonly File[]): FileList {
-  return Object.assign([...files], {
-    item: (index: number) => files[index] ?? null,
-  }) as FileList
-}
-
-function createClipboardEvent(contents: ClipboardContents = {}): ClipboardEvent {
-  return {
-    clipboardData: {
-      files: createFileList(contents.files ?? []),
-      getData(type: string) {
-        if (type === 'text/plain') {
-          return contents.text ?? ''
-        }
-
-        return type === 'text/html' ? (contents.html ?? '') : ''
-      },
-    } as DataTransfer,
-  } as ClipboardEvent
-}
+import { createClipboardEvent } from '../../helpers/clipboard'
 
 function callPasteHandler(editor: Editor, event: ClipboardEvent) {
   const slice = new Slice(Fragment.from(editor.schema.text('剪贴板内容')), 0, 0)
@@ -49,12 +23,7 @@ function callPasteHandler(editor: Editor, event: ClipboardEvent) {
 }
 
 function dispatchTextPaste(editor: Editor, text: string) {
-  const event = new Event('paste', { bubbles: true, cancelable: true })
-  Object.defineProperty(event, 'clipboardData', {
-    value: createClipboardEvent({ text }).clipboardData,
-  })
-
-  editor.view.dom.dispatchEvent(event)
+  editor.view.dom.dispatchEvent(createClipboardEvent({ text }))
 }
 
 function createEditor(

@@ -14,7 +14,7 @@ vi.mock('../../../src/features/attachments/requests', () => ({
 }))
 
 const resolveSignedAttachmentUrlMock = vi.mocked(resolveSignedAttachmentUrl)
-type ResolvedUrlResult = { expiresAt: string; url: string }
+type ResolvedUrlResult = Awaited<ReturnType<typeof resolveSignedAttachmentUrl>>
 
 function resolveUrl(url: string, expiresAt: string): ResolvedUrlResult {
   return {
@@ -192,7 +192,7 @@ describe('useSignedAttachmentUrl', () => {
     expect(wrapper.text()).toBe('/api/attachments/new/content?token=new')
   })
 
-  it('clears current URL while loading next id and ignores stale previous response', async () => {
+  it('clears current URL while loading the next attachment', async () => {
     const id = ref('11111111-1111-4111-8111-111111111111')
     const requestA = createDeferred<ResolvedUrlResult>()
     const requestB = createDeferred<ResolvedUrlResult>()

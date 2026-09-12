@@ -26,11 +26,12 @@ export function createFetchMock(...responses: Response[]) {
   const fetchMock = vi.fn<typeof fetch>()
 
   responses.forEach((response) => {
-    fetchMock.mockResolvedValueOnce(response)
+    fetchMock.mockImplementationOnce(async () => response.clone())
   })
 
   if (responses.length === 1) {
-    fetchMock.mockResolvedValue(responses[0]!)
+    const response = responses[0]!
+    fetchMock.mockImplementation(async () => response.clone())
   }
 
   vi.stubGlobal('fetch', fetchMock)

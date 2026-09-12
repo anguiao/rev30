@@ -1,6 +1,7 @@
+import { getDialogButton } from '../../helpers/dom'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { AuthTokenResponse } from '@rev30/contracts'
-import { defineComponent, h } from 'vue'
+import { defineComponent } from 'vue'
 import { NConfigProvider, NDialogProvider, dateZhCN, zhCN } from 'naive-ui'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -11,21 +12,6 @@ import { session, stubPreferredDark } from '../../helpers/auth'
 import { createTestQueryHarness } from '../../helpers/colada'
 vi.mock('../../../src/features/auth', () => ({
   logout: vi.fn(),
-}))
-
-vi.mock('@iconify/vue', () => ({
-  Icon: defineComponent({
-    name: 'Icon',
-    props: {
-      icon: {
-        type: String,
-        required: true,
-      },
-    },
-    setup(props) {
-      return () => h('span', { 'data-test': 'menu-icon' }, props.icon)
-    },
-  }),
 }))
 
 vi.mock('../../../src/features/users', () => ({
@@ -244,7 +230,7 @@ describe('admin layout', () => {
     expect(externalLink.attributes('target')).toBe('_blank')
     expect(externalLink.attributes('rel')).toBe('noopener noreferrer')
 
-    const icons = wrapper.findAll('[data-test="menu-icon"]').map((icon) => icon.text())
+    const icons = wrapper.findAll('[data-test="iconify-icon"]').map((icon) => icon.text())
     expect(icons).toContain('lucide:settings')
     expect(icons).toContain('lucide:users')
     expect(icons).toContain('lucide:book-open')
@@ -345,7 +331,7 @@ describe('admin layout', () => {
     expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('指南')
     expect(wrapper.get('[data-test="admin-breadcrumb"]').text()).toContain('系统角色')
     expect(wrapper.get('a[href="/system/roles"]').text()).toContain('系统角色')
-    expect(wrapper.findAll('[data-test="menu-icon"]').map((icon) => icon.text())).toContain(
+    expect(wrapper.findAll('[data-test="iconify-icon"]').map((icon) => icon.text())).toContain(
       'lucide:shield-check',
     )
   })
@@ -378,13 +364,7 @@ describe('admin layout', () => {
 
     expect(logoutMock).not.toHaveBeenCalled()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="admin-logout-confirm"]',
-    ) as HTMLButtonElement | null
-
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('admin-logout-confirm').click()
     await flushPromises()
 
     expect(logoutMock).toHaveBeenCalledTimes(1)
@@ -399,13 +379,7 @@ describe('admin layout', () => {
     await wrapper.get('[data-test="admin-logout"]').trigger('click')
     await flushPromises()
 
-    const cancelButton = document.body.querySelector(
-      '[data-test="admin-logout-cancel"]',
-    ) as HTMLButtonElement | null
-
-    expect(cancelButton).not.toBeNull()
-
-    cancelButton?.click()
+    getDialogButton('admin-logout-cancel').click()
     await flushPromises()
 
     expect(logoutMock).not.toHaveBeenCalled()
@@ -421,13 +395,7 @@ describe('admin layout', () => {
     await wrapper.get('[data-test="admin-logout"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="admin-logout-confirm"]',
-    ) as HTMLButtonElement | null
-
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('admin-logout-confirm').click()
     await flushPromises()
 
     expect(logoutMock).toHaveBeenCalledTimes(1)

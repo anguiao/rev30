@@ -9,7 +9,7 @@ describe('login log retention cleanup', () => {
 
   dbTest('removes logs at the inclusive retention boundary', async ({ db }) => {
     const now = new Date('2026-08-20T00:00:00.000Z')
-    vi.useFakeTimers()
+    vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(now)
     const retentionMs = 90 * 24 * 60 * 60 * 1000
     const createLog = (username: string, createdAt: Date) => ({
@@ -30,5 +30,8 @@ describe('login log retention cleanup', () => {
       ])
 
     await expect(cleanupLoginLogs(db, retentionMs)).resolves.toBe(2)
+    await expect(
+      db.select({ username: opsLoginLogs.username }).from(opsLoginLogs),
+    ).resolves.toEqual([{ username: 'within-retention' }])
   })
 })

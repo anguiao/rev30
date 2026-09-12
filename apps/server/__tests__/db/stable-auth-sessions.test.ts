@@ -5,9 +5,9 @@ import {
   opsLoginLogs,
   systemResources,
   systemRoleResources,
-  systemUsers,
 } from '../../src/db/schema'
 import { dbTest } from '../fixtures/database'
+import { createSystemUserFixture } from '../helpers/system'
 
 describe('stable auth session migration', () => {
   dbTest(
@@ -69,21 +69,21 @@ describe('stable auth session migration', () => {
     },
   )
 
-  dbTest('enforces paired session revocation fields and login result fields', async ({ db }) => {
-    const [user] = await db
-      .insert(systemUsers)
-      .values({ username: 'constraint-user', nickname: 'Constraint User' })
-      .returning()
+  dbTest('enforces paired session revocation fields', async ({ db }) => {
+    const user = await createSystemUserFixture(db, { username: 'constraint-user' })
 
     await expect(
       db.insert(authSessions).values({
         id: '11111111-1111-4111-8111-111111111111',
-        userId: user!.id,
+        userId: user.id,
         refreshTokenHash: 'invalid-revocation',
         expiresAt: new Date('2099-01-01T00:00:00.000Z'),
         revokedAt: new Date(),
       }),
-    ).rejects.toThrow()
+    ).rejects.toMatchObject({ cause: { constraint: 'auth_sessions_revocation_check' } })
+  })
+
+  dbTest('requires failure details for unsuccessful login records', async ({ db }) => {
     await expect(
       db.insert(opsLoginLogs).values({
         username: 'constraint-user',
@@ -91,6 +91,6 @@ describe('stable auth session migration', () => {
         requestId: '6afde8ac-04ec-4dc3-abcf-7bba62f89886',
         clientIpSource: 'unavailable',
       }),
-    ).rejects.toThrow()
+    ).rejects.toMatchObject({ cause: { constraint: 'ops_login_logs_result_check' } })
   })
 })

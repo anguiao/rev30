@@ -1,10 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  AUTH_ACTION_HEADER,
-  AUTH_ACTION_REFRESH,
-  type DepartmentSummary,
-  type RoleSummary,
-} from '@rev30/contracts'
+import { AUTH_ACTION_HEADER, AUTH_ACTION_REFRESH } from '@rev30/contracts'
 import { api, authFetch, logoutAuthSession, refreshAuthSession } from '../src/api'
 import { useAuthStore } from '../src/stores/auth'
 import {
@@ -16,28 +11,7 @@ import {
 } from './helpers/fetch'
 import { createTestPinia } from './helpers/pinia'
 import { createDeferred } from './helpers/promise'
-
-const session = {
-  accessToken: 'access-token',
-  tokenType: 'Bearer' as const,
-  expiresIn: 900,
-  accessCodes: ['system', 'system:user'],
-  menus: [],
-  user: {
-    id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-    username: 'ada',
-    nickname: 'Ada Lovelace',
-    avatarId: null,
-    email: null,
-    phone: null,
-    status: 1 as 0 | 1,
-    builtIn: false,
-    departments: [] as DepartmentSummary[],
-    roles: [] as RoleSummary[],
-    createdAt: '2026-05-01T00:00:00.000Z',
-    updatedAt: '2026-05-01T00:00:00.000Z',
-  },
-}
+import { session } from './helpers/session'
 
 const refreshedSession = {
   ...session,
@@ -58,6 +32,16 @@ const newerSession = {
 const refreshedNewerSession = {
   ...newerSession,
   accessToken: 'refreshed-newer-access-token',
+}
+
+function refreshableUnauthorizedResponse() {
+  return jsonResponse(
+    { message: '未授权' },
+    {
+      status: 401,
+      headers: { [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH },
+    },
+  )
 }
 
 async function flushMicrotasks() {
@@ -121,17 +105,7 @@ describe('authFetch', () => {
 
   it('refreshes the access token through RPC and retries refreshable unauthorized responses', async () => {
     const fetchMock = createFetchMock(
-      jsonResponse(
-        {
-          message: '未授权',
-        },
-        {
-          status: 401,
-          headers: {
-            [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
-          },
-        },
-      ),
+      refreshableUnauthorizedResponse(),
       jsonResponse(refreshedSession),
       jsonResponse({ ok: true }),
     )
@@ -169,25 +143,11 @@ describe('authFetch', () => {
 
   it('coalesces concurrent refreshable unauthorized responses into one refresh request', async () => {
     const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ message: '未授权' }), {
-          status: 401,
-          headers: {
-            [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
-          },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ message: '未授权' }), {
-          status: 401,
-          headers: {
-            [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
-          },
-        }),
-      )
-      .mockResolvedValueOnce(new Response(JSON.stringify(refreshedSession)))
-      .mockResolvedValue(new Response(JSON.stringify({ ok: true })))
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(refreshableUnauthorizedResponse())
+      .mockResolvedValueOnce(refreshableUnauthorizedResponse())
+      .mockResolvedValueOnce(jsonResponse(refreshedSession))
+      .mockImplementation(async () => jsonResponse({ ok: true }))
     vi.stubGlobal('fetch', fetchMock)
     useAuthStore().setSession(session)
 
@@ -198,19 +158,7 @@ describe('authFetch', () => {
   })
 
   it('does not refresh unauthorized responses without a local access token', async () => {
-    const fetchMock = createFetchMock(
-      jsonResponse(
-        {
-          message: '未授权',
-        },
-        {
-          status: 401,
-          headers: {
-            [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
-          },
-        },
-      ),
-    )
+    const fetchMock = createFetchMock(refreshableUnauthorizedResponse())
 
     const response = await authFetch('/api/system/users')
 
@@ -250,17 +198,10 @@ describe('authFetch', () => {
 
   it('clears the current session and logs out when refresh is unauthorized', async () => {
     const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ message: '未授权' }), {
-          status: 401,
-          headers: {
-            [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
-          },
-        }),
-      )
-      .mockResolvedValueOnce(new Response(JSON.stringify({ message: '刷新失败' }), { status: 401 }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(refreshableUnauthorizedResponse())
+      .mockResolvedValueOnce(jsonResponse({ message: '刷新失败' }, { status: 401 }))
+      .mockResolvedValueOnce(emptyResponse())
     vi.stubGlobal('fetch', fetchMock)
     const auth = useAuthStore()
     auth.setSession(session)
@@ -287,15 +228,8 @@ describe('authFetch', () => {
 
   it('keeps the current session when refresh fails transiently', async () => {
     const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ message: '未授权' }), {
-          status: 401,
-          headers: {
-            [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
-          },
-        }),
-      )
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(refreshableUnauthorizedResponse())
       .mockRejectedValueOnce(new TypeError('fetch failed'))
     vi.stubGlobal('fetch', fetchMock)
     const auth = useAuthStore()
@@ -318,18 +252,11 @@ describe('authFetch', () => {
 
   it('clears the current session and logs out when retry remains unauthorized', async () => {
     const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ message: '未授权' }), {
-          status: 401,
-          headers: {
-            [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
-          },
-        }),
-      )
-      .mockResolvedValueOnce(new Response(JSON.stringify(refreshedSession)))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ message: '未授权' }), { status: 401 }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(refreshableUnauthorizedResponse())
+      .mockResolvedValueOnce(jsonResponse(refreshedSession))
+      .mockResolvedValueOnce(jsonResponse({ message: '未授权' }, { status: 401 }))
+      .mockResolvedValueOnce(emptyResponse())
     vi.stubGlobal('fetch', fetchMock)
     const auth = useAuthStore()
     auth.setSession(session)
@@ -349,14 +276,14 @@ describe('authFetch', () => {
 
   it('does not log out a newer session after a stale unauthorized response', async () => {
     const firstResponse = createDeferred<Response>()
-    const fetchMock = vi.fn().mockReturnValueOnce(firstResponse.promise)
+    const fetchMock = vi.fn<typeof fetch>().mockReturnValueOnce(firstResponse.promise)
     vi.stubGlobal('fetch', fetchMock)
     const auth = useAuthStore()
     auth.setSession(session)
 
     const responsePromise = authFetch('/api/system/users')
     auth.setSession(newerSession)
-    firstResponse.resolve(new Response(JSON.stringify({ message: '未授权' }), { status: 401 }))
+    firstResponse.resolve(jsonResponse({ message: '未授权' }, { status: 401 }))
 
     const response = await responsePromise
 
@@ -370,36 +297,30 @@ describe('authFetch', () => {
     const firstResponse = createDeferred<Response>()
     const refreshResponse = createDeferred<Response>()
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockReturnValueOnce(firstResponse.promise)
       .mockReturnValueOnce(refreshResponse.promise)
-      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
     vi.stubGlobal('fetch', fetchMock)
     const auth = useAuthStore()
     auth.setSession(session)
 
     const responsePromise = authFetch('/api/system/users')
-    firstResponse.resolve(
-      new Response(JSON.stringify({ message: '未授权' }), {
-        status: 401,
-        headers: {
-          [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
-        },
-      }),
-    )
+    firstResponse.resolve(refreshableUnauthorizedResponse())
     await flushMicrotasks()
     expect(fetchMock).toHaveBeenCalledTimes(2)
 
     auth.setSession(newerSession)
-    refreshResponse.resolve(new Response(JSON.stringify(refreshedSession)))
+    refreshResponse.resolve(jsonResponse(refreshedSession))
 
     const response = await responsePromise
-    const [, retryInit] = fetchMock.mock.calls[2] as [RequestInfo | URL, RequestInit]
 
     expect(await response.json()).toEqual({ ok: true })
     expect(auth.accessToken).toBe('newer-access-token')
     expect(auth.user).toEqual(newerSession.user)
-    expect(new Headers(retryInit.headers).get('authorization')).toBe('Bearer newer-access-token')
+    expect(getFetchCall(fetchMock, 2).headers.get('authorization')).toBe(
+      'Bearer newer-access-token',
+    )
   })
 
   it('keeps automatic refreshes isolated by their triggering access token', async () => {
@@ -427,14 +348,7 @@ describe('authFetch', () => {
       protectedRequestCounts.set(requestPath, requestCount)
 
       return Promise.resolve(
-        requestCount === 1
-          ? new Response(JSON.stringify({ message: '未授权' }), {
-              status: 401,
-              headers: {
-                [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
-              },
-            })
-          : new Response(JSON.stringify({ ok: true })),
+        requestCount === 1 ? refreshableUnauthorizedResponse() : jsonResponse({ ok: true }),
       )
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -452,7 +366,7 @@ describe('authFetch', () => {
       expect(protectedRequestCounts.get('/api/system/profile')).toBe(1)
     })
 
-    firstRefreshResponse.resolve(new Response(JSON.stringify(refreshedSession)))
+    firstRefreshResponse.resolve(jsonResponse(refreshedSession))
     await vi.waitFor(() => {
       const refreshCalls = fetchMock.mock.calls
         .map((_, index) => getFetchCall(fetchMock, index))
@@ -462,7 +376,7 @@ describe('authFetch', () => {
     })
     expect(auth.accessToken).toBe('newer-access-token')
 
-    secondRefreshResponse.resolve(new Response(JSON.stringify(refreshedNewerSession)))
+    secondRefreshResponse.resolve(jsonResponse(refreshedNewerSession))
     await Promise.all([staleRequest, currentRequest])
 
     const refreshAuthorizations = fetchMock.mock.calls
@@ -478,16 +392,9 @@ describe('authFetch', () => {
   it('does not log out a stale retry after a newer session is set', async () => {
     const retryResponse = createDeferred<Response>()
     const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ message: '未授权' }), {
-          status: 401,
-          headers: {
-            [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
-          },
-        }),
-      )
-      .mockResolvedValueOnce(new Response(JSON.stringify(refreshedSession)))
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(refreshableUnauthorizedResponse())
+      .mockResolvedValueOnce(jsonResponse(refreshedSession))
       .mockReturnValueOnce(retryResponse.promise)
     vi.stubGlobal('fetch', fetchMock)
     const auth = useAuthStore()
@@ -499,7 +406,7 @@ describe('authFetch', () => {
     })
 
     auth.setSession(newerSession)
-    retryResponse.resolve(new Response(JSON.stringify({ message: '未授权' }), { status: 401 }))
+    retryResponse.resolve(jsonResponse({ message: '未授权' }, { status: 401 }))
 
     const response = await responsePromise
 
@@ -523,18 +430,13 @@ describe('authFetch', () => {
       }
 
       if (requestPath === '/api/auth/logout') {
-        return new Response(null, { status: 204 })
+        return emptyResponse()
       }
 
       protectedRequestCount += 1
       return protectedRequestCount === 1
-        ? new Response(JSON.stringify({ message: '未授权' }), {
-            status: 401,
-            headers: {
-              [AUTH_ACTION_HEADER]: AUTH_ACTION_REFRESH,
-            },
-          })
-        : new Response(JSON.stringify({ ok: true }))
+        ? refreshableUnauthorizedResponse()
+        : jsonResponse({ ok: true })
     })
     vi.stubGlobal('fetch', fetchMock)
     useAuthStore().setSession(session)
@@ -548,7 +450,7 @@ describe('authFetch', () => {
     await flushMicrotasks()
     expect(requestPaths).not.toContain('/api/auth/logout')
 
-    refreshResponse.resolve(new Response(JSON.stringify(refreshedSession)))
+    refreshResponse.resolve(jsonResponse(refreshedSession))
     await Promise.all([requestPromise, logoutPromise])
 
     expect(requestPaths.indexOf('/api/auth/refresh')).toBeLessThan(
@@ -577,15 +479,11 @@ describe('api client', () => {
   })
 
   it('adds the bearer token from the auth store when present', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(new Response(JSON.stringify({ service: 'rev30-server', status: 'alive' })))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = createFetchMock(jsonResponse({ service: 'rev30-server', status: 'alive' }))
     useAuthStore().accessToken = 'access-token'
 
     await api.health.live.$get()
 
-    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit]
-    expect(new Headers(init.headers).get('authorization')).toBe('Bearer access-token')
+    expect(getFetchCall(fetchMock).headers.get('authorization')).toBe('Bearer access-token')
   })
 })

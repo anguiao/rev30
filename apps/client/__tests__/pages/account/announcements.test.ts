@@ -1,3 +1,4 @@
+import { createDeferred } from '../../helpers/promise'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -197,20 +198,15 @@ describe('account announcements page', () => {
   })
 
   it('does not show the empty state while the list is loading', async () => {
-    let resolveList!: (value: AnnouncementMyListResponse) => void
-
-    listMyAnnouncementsMock.mockReturnValue(
-      new Promise<AnnouncementMyListResponse>((resolve) => {
-        resolveList = resolve
-      }),
-    )
+    const pendingList = createDeferred<AnnouncementMyListResponse>()
+    listMyAnnouncementsMock.mockReturnValue(pendingList.promise)
 
     const { wrapper } = await mountAnnouncementsPage()
     await flushPromises()
 
     expect(wrapper.text()).not.toContain('暂无通知公告')
 
-    resolveList(listResponse)
+    pendingList.resolve(listResponse)
     await flushPromises()
 
     expect(wrapper.text()).toContain(noticeItem.title)

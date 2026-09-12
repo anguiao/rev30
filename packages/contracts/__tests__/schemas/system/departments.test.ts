@@ -41,7 +41,7 @@ describe('department schemas', () => {
       includeIds: 'a1f5aa2c-4f1a-4d39-9ca6-6f4f2b7c8a4a, invalid-uuid',
     })
 
-    expectZodIssue(result, { message: '部门 ID 无效' })
+    expectZodIssue(result, { message: '部门 ID 无效', path: ['includeIds', 1] })
   })
 
   it('accepts recursive lightweight department tree options responses', () => {
@@ -74,12 +74,12 @@ describe('department schemas', () => {
           ],
         },
       ]),
-    ).toMatchObject({
-      0: {
+    ).toMatchObject([
+      {
         name: 'Root',
         children: [{ name: 'Child', children: [{ name: 'Grandchild' }] }],
       },
-    })
+    ])
   })
 
   it('accepts a department response with core fields', () => {
@@ -198,6 +198,6 @@ describe('department schemas', () => {
   it('requires at least one field for updates', () => {
     const result = departmentUpdateSchema.safeParse({})
 
-    expectZodIssue(result, { message: '至少修改一个字段' })
+    expectZodIssue(result, { message: '至少修改一个字段', path: [] })
   })
 })

@@ -6,6 +6,7 @@ import type { Editor } from '@tiptap/vue-3'
 import { describe, expect, it } from 'vitest'
 import { linkFeature } from '../../../../src/features/link/core/feature'
 import { createTestEditor } from '../../../helpers/editor'
+import { createClipboardEvent } from '../../../helpers/clipboard'
 
 function createEditor() {
   return createTestEditor({
@@ -25,7 +26,7 @@ function pasteTextOverSelection(editor: Editor, text: string) {
   const slice = new Slice(Fragment.from(editor.schema.text(text)), 0, 0)
 
   return editor.view.someProp('handlePaste', (handler) => {
-    return handler(editor.view, new Event('paste') as ClipboardEvent, slice)
+    return handler(editor.view, createClipboardEvent({ text }), slice)
   })
 }
 
@@ -37,19 +38,14 @@ describe('link feature', () => {
         '<p><a href=" example.com/docs " target="_self" rel="author">文档</a><a href="javascript:alert(1)">危险</a></p>',
     })
 
-    expect(editor.getJSON()).toMatchObject({
-      content: [
-        {
-          content: [
-            {
-              text: '文档',
-              marks: [{ type: 'link', attrs: { href: 'https://example.com/docs' } }],
-            },
-            { text: '危险' },
-          ],
-        },
-      ],
-    })
+    expect(editor.getJSON().content?.[0]?.content).toEqual([
+      {
+        type: 'text',
+        text: '文档',
+        marks: [{ type: 'link', attrs: { href: 'https://example.com/docs' } }],
+      },
+      { type: 'text', text: '危险' },
+    ])
     expect(() => editor.state.doc.check()).not.toThrow()
   })
 
@@ -58,7 +54,7 @@ describe('link feature', () => {
     selectEditorText(editor)
 
     expect(pasteTextOverSelection(editor, 'https://example.com')).not.toBe(true)
-    expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
+    expect(editor.getJSON().content?.[0]?.content).toEqual([{ type: 'text', text: '维护通知' }])
   })
 
   it('does not link an unsupported URL pasted over selected text', () => {
@@ -66,7 +62,7 @@ describe('link feature', () => {
     selectEditorText(editor)
 
     expect(pasteTextOverSelection(editor, 'ftp://example.com')).not.toBe(true)
-    expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
+    expect(editor.getJSON().content?.[0]?.content).toEqual([{ type: 'text', text: '维护通知' }])
   })
 
   it('rejects an unsupported href through editor commands', () => {
@@ -74,7 +70,7 @@ describe('link feature', () => {
     selectEditorText(editor)
 
     expect(editor.commands.setLink({ href: '/docs' })).toBe(false)
-    expect(JSON.stringify(editor.getJSON())).not.toContain('"link"')
+    expect(editor.getJSON().content?.[0]?.content).toEqual([{ type: 'text', text: '维护通知' }])
   })
 
   it('rejects unsafe href values during document validation', () => {
@@ -116,19 +112,9 @@ describe('link feature', () => {
       ],
     })
 
-    expect(document.toJSON()).toMatchObject({
-      content: [
-        {
-          content: [
-            {
-              marks: [{ type: 'link', attrs: { href: 'https://example.com' } }],
-            },
-          ],
-        },
-      ],
-    })
-    expect(JSON.stringify(document.toJSON())).not.toContain('custom-link')
-    expect(JSON.stringify(document.toJSON())).not.toContain('author')
+    expect(document.firstChild?.firstChild?.marks.map((mark) => mark.toJSON())).toEqual([
+      { type: 'link', attrs: { href: 'https://example.com' } },
+    ])
   })
 
   it('does not expand a collapsed caret when a link is clicked', () => {

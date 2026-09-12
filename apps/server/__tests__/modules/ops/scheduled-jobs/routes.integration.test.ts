@@ -8,7 +8,7 @@ import {
   scheduledJobSchema,
 } from '@rev30/contracts'
 import { eq } from 'drizzle-orm'
-import { describe, expect, vi } from 'vitest'
+import { assert, describe, expect, vi } from 'vitest'
 import { opsJobRuns, opsScheduledJobs } from '../../../../src/db/schema'
 import {
   createApp,
@@ -310,8 +310,8 @@ describe('scheduled job HTTP routes', () => {
       expect(enable.status).toBe(200)
       const enabledBody = scheduledJobSchema.parse(await enable.json())
       expect(enabledBody.enabled).toBe(true)
-      expect(enabledBody.nextRunAt).not.toBeNull()
-      expect(Date.parse(enabledBody.nextRunAt!)).toBeGreaterThan(beforeEnable.getTime())
+      assert(enabledBody.nextRunAt)
+      expect(Date.parse(enabledBody.nextRunAt)).toBeGreaterThan(beforeEnable.getTime())
       const [enabledPlan] = await db
         .select()
         .from(opsScheduledJobs)
@@ -412,12 +412,13 @@ describe('scheduled job HTTP routes', () => {
       `/api/ops/scheduled-jobs/${taskKey}/runs?page=1&pageSize=1`,
       { headers: reader.authHeaders },
     )
-    const firstPage = scheduledJobRunListResponseSchema.parse(await firstPageResponse.json())
+    const firstPageBody = await firstPageResponse.json()
+    const firstPage = scheduledJobRunListResponseSchema.parse(firstPageBody)
     expect(firstPageResponse.status).toBe(200)
     expect(firstPage).toMatchObject({ total: 2, page: 1, pageSize: 1 })
     expect(firstPage.list[0]?.id).toBe(secondRunId)
-    expect(firstPage.list[0]).not.toHaveProperty('triggeredByUserId')
-    expect(firstPage.list[0]).not.toHaveProperty('cancelRequestedAt')
+    expect(firstPageBody).not.toHaveProperty('list.0.triggeredByUserId')
+    expect(firstPageBody).not.toHaveProperty('list.0.cancelRequestedAt')
 
     const secondPageResponse = await app.request(
       `/api/ops/scheduled-jobs/${taskKey}/runs?page=2&pageSize=1`,
@@ -471,7 +472,8 @@ describe('scheduled job HTTP routes', () => {
       .update(opsScheduledJobs)
       .set({ activeRunId: cancelRunId })
       .where(eq(opsScheduledJobs.taskKey, taskKey))
-    const run = (await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, cancelRunId)))[0]!
+    const [run] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, cancelRunId))
+    assert(run)
     const scheduler = createScheduler()
     scheduler.requestCancellation.mockResolvedValue(run)
     const events: OperationLogEvent[] = []

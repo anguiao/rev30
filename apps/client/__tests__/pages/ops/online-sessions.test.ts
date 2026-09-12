@@ -1,3 +1,4 @@
+import { getDialogButton } from '../../helpers/dom'
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { OnlineSessionListResponse } from '@rev30/contracts'
@@ -70,11 +71,7 @@ async function mountPage() {
 }
 
 async function confirmTargetRevocation() {
-  const button = document.body.querySelector(
-    '[data-test="online-session-revoke-confirm"]',
-  ) as HTMLButtonElement | null
-  expect(button).not.toBeNull()
-  button?.click()
+  getDialogButton('online-session-revoke-confirm').click()
   await flushPromises()
 }
 

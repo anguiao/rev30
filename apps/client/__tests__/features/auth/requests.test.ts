@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { USER_STATUS_ENABLED, type AuthTokenResponse } from '@rev30/contracts'
+import { type AuthTokenResponse } from '@rev30/contracts'
+import { session } from '../../helpers/session'
 import { logout, updateMyPassword, updateMyProfile } from '../../../src/features/auth/requests'
 import { useAuthStore } from '../../../src/stores/auth'
 import {
@@ -33,17 +34,9 @@ describe('auth requests', () => {
 
   it('updates my profile through the Hono RPC client with provided input', async () => {
     const responseBody = {
-      id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-      username: 'ada',
-      nickname: 'Ada Lovelace',
+      ...session.user,
       email: 'ada@example.com',
       phone: '18888888888',
-      avatarId: null,
-      status: USER_STATUS_ENABLED,
-      builtIn: false,
-      departments: [],
-      roles: [],
-      createdAt: '2026-05-01T00:00:00.000Z',
       updatedAt: '2026-05-02T00:00:00.000Z',
     }
 
@@ -123,25 +116,8 @@ describe('auth requests', () => {
 
   it('updates my password through the Hono RPC client with provided input', async () => {
     const responseBody: AuthTokenResponse = {
+      ...session,
       accessToken: 'new-access-token',
-      tokenType: 'Bearer',
-      expiresIn: 900,
-      accessCodes: [],
-      menus: [],
-      user: {
-        id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-        username: 'ada',
-        nickname: 'Ada Lovelace',
-        email: null,
-        phone: null,
-        avatarId: null,
-        status: USER_STATUS_ENABLED,
-        builtIn: false,
-        departments: [],
-        roles: [],
-        createdAt: '2026-05-01T00:00:00.000Z',
-        updatedAt: '2026-05-02T00:00:00.000Z',
-      },
     }
     const fetchMock = createFetchMock(jsonResponse(responseBody))
 

@@ -97,19 +97,100 @@ beforeEach(() => {
 })
 
 describe('scheduled jobs requests', () => {
-  it('uses the scheduled jobs API contracts for reads and writes', async () => {
+  it('lists scheduled jobs', async () => {
+    const fetchMock = createFetchMock(jsonResponse([job]))
+
+    await expect(listScheduledJobs()).resolves.toEqual([job])
+
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/ops/scheduled-jobs',
+    })
+  })
+
+  it('loads scheduled job details', async () => {
+    const fetchMock = createFetchMock(jsonResponse(jobDetail))
+
+    await expect(getScheduledJob(taskKey)).resolves.toEqual(jobDetail)
+
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: `/api/ops/scheduled-jobs/${taskKey}`,
+    })
+  })
+
+  it('trims schedule settings before updating a job', async () => {
+    const fetchMock = createFetchMock(jsonResponse(jobDetail))
+
+    await expect(
+      updateScheduledJob(taskKey, {
+        cronExpression: ' 2   */6 * * * ',
+        timezone: ' Asia/Shanghai ',
+      }),
+    ).resolves.toEqual(jobDetail)
+
+    expectFetchCall(fetchMock, 0, {
+      method: 'PUT',
+      pathname: `/api/ops/scheduled-jobs/${taskKey}`,
+    })
+    expectJsonBody(fetchMock, 0, {
+      cronExpression: '2   */6 * * *',
+      timezone: 'Asia/Shanghai',
+    })
+  })
+
+  it('updates the enabled state', async () => {
+    const disabledJob = { ...jobDetail, enabled: false }
+    const fetchMock = createFetchMock(jsonResponse(disabledJob))
+
+    await expect(updateScheduledJobEnabled(taskKey, false)).resolves.toEqual(disabledJob)
+
+    expectFetchCall(fetchMock, 0, {
+      method: 'PUT',
+      pathname: `/api/ops/scheduled-jobs/${taskKey}/enabled`,
+    })
+    expectJsonBody(fetchMock, 0, { enabled: false })
+  })
+
+  it('starts a manual run', async () => {
+    const fetchMock = createFetchMock(jsonResponse({ runId }, { status: 202 }))
+
+    await expect(executeScheduledJob(taskKey)).resolves.toEqual({ runId })
+
+    expectFetchCall(fetchMock, 0, {
+      method: 'POST',
+      pathname: `/api/ops/scheduled-jobs/${taskKey}/runs`,
+    })
+  })
+
+  it('lists runs with pagination', async () => {
+    const fetchMock = createFetchMock(jsonResponse(runs))
+
+    await expect(listScheduledJobRuns(taskKey, { page: 1, pageSize: 20 })).resolves.toEqual(runs)
+
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: `/api/ops/scheduled-jobs/${taskKey}/runs`,
+      query: { page: '1', pageSize: '20' },
+    })
+  })
+
+  it('loads a run detail', async () => {
+    const fetchMock = createFetchMock(jsonResponse(run))
+
+    await expect(getScheduledJobRun(taskKey, runId)).resolves.toEqual(run)
+
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: `/api/ops/scheduled-jobs/${taskKey}/runs/${runId}`,
+    })
+  })
+
+  it('requests cancellation of the specified run', async () => {
     const fetchMock = createFetchMock(
-      jsonResponse([job]),
-      jsonResponse(jobDetail),
-      jsonResponse(jobDetail),
-      jsonResponse(jobDetail),
-      jsonResponse({ runId }, { status: 202 }),
-      jsonResponse(runs),
-      jsonResponse(run),
       jsonResponse(
         {
           run: {
-            ...job.currentRun,
             id: runId,
             status: 'running',
             triggerSource: 'manual',
@@ -124,55 +205,9 @@ describe('scheduled jobs requests', () => {
       ),
     )
 
-    await expect(listScheduledJobs()).resolves.toEqual([job])
-    await expect(getScheduledJob(taskKey)).resolves.toEqual(jobDetail)
-    await expect(
-      updateScheduledJob(taskKey, {
-        cronExpression: ' 2   */6 * * * ',
-        timezone: ' Asia/Shanghai ',
-      }),
-    ).resolves.toEqual(jobDetail)
-    await expect(updateScheduledJobEnabled(taskKey, false)).resolves.toEqual(jobDetail)
-    await expect(executeScheduledJob(taskKey)).resolves.toEqual({ runId })
-    await expect(listScheduledJobRuns(taskKey, { page: 1, pageSize: 20 })).resolves.toEqual(runs)
-    await expect(getScheduledJobRun(taskKey, runId)).resolves.toEqual(run)
     await expect(cancelScheduledJob(taskKey, runId)).resolves.toMatchObject({ run: { id: runId } })
 
     expectFetchCall(fetchMock, 0, {
-      method: 'GET',
-      pathname: '/api/ops/scheduled-jobs',
-    })
-    expectFetchCall(fetchMock, 1, {
-      method: 'GET',
-      pathname: `/api/ops/scheduled-jobs/${taskKey}`,
-    })
-    expectFetchCall(fetchMock, 2, {
-      method: 'PUT',
-      pathname: `/api/ops/scheduled-jobs/${taskKey}`,
-    })
-    expectJsonBody(fetchMock, 2, {
-      cronExpression: '2   */6 * * *',
-      timezone: 'Asia/Shanghai',
-    })
-    expectFetchCall(fetchMock, 3, {
-      method: 'PUT',
-      pathname: `/api/ops/scheduled-jobs/${taskKey}/enabled`,
-    })
-    expectJsonBody(fetchMock, 3, { enabled: false })
-    expectFetchCall(fetchMock, 4, {
-      method: 'POST',
-      pathname: `/api/ops/scheduled-jobs/${taskKey}/runs`,
-    })
-    expectFetchCall(fetchMock, 5, {
-      method: 'GET',
-      pathname: `/api/ops/scheduled-jobs/${taskKey}/runs`,
-      query: { page: '1', pageSize: '20' },
-    })
-    expectFetchCall(fetchMock, 6, {
-      method: 'GET',
-      pathname: `/api/ops/scheduled-jobs/${taskKey}/runs/${runId}`,
-    })
-    expectFetchCall(fetchMock, 7, {
       method: 'POST',
       pathname: `/api/ops/scheduled-jobs/${taskKey}/runs/${runId}/cancel`,
     })

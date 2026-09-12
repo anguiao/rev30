@@ -21,7 +21,13 @@ import {
   updateAnnouncement,
 } from '../../../src/features/announcements/requests'
 import { useAuthStore } from '../../../src/stores/auth'
-import { createFetchMock, expectFetchCall, expectJsonBody, jsonResponse } from '../../helpers/fetch'
+import {
+  createFetchMock,
+  emptyResponse,
+  expectFetchCall,
+  expectJsonBody,
+  jsonResponse,
+} from '../../helpers/fetch'
 import { createTestPinia } from '../../helpers/pinia'
 
 const announcementId = '11111111-1111-4111-8111-111111111111'
@@ -76,6 +82,7 @@ const updateInput: AnnouncementUpdateInput = {
 
 beforeEach(() => {
   createTestPinia()
+  useAuthStore().accessToken = 'access-token'
 })
 
 describe('announcements request helpers', () => {
@@ -88,7 +95,6 @@ describe('announcements request helpers', () => {
         pageSize: 5,
       }),
     )
-    useAuthStore().accessToken = 'access-token'
 
     const result = await listAnnouncements({
       page: 2,
@@ -126,7 +132,6 @@ describe('announcements request helpers', () => {
         pageSize: 20,
       }),
     )
-    useAuthStore().accessToken = 'access-token'
 
     await listAnnouncements({
       page: 1,
@@ -155,7 +160,6 @@ describe('announcements request helpers', () => {
         pageSize: 20,
       }),
     )
-    useAuthStore().accessToken = 'access-token'
 
     await listAnnouncements({
       page: 1,
@@ -176,7 +180,6 @@ describe('announcements request helpers', () => {
 
   it('gets announcement detail and parses response', async () => {
     const fetchMock = createFetchMock(jsonResponse(announcementResponse))
-    useAuthStore().accessToken = 'access-token'
 
     const result = await getAnnouncement(announcementId)
 
@@ -196,7 +199,6 @@ describe('announcements request helpers', () => {
         roles: [],
       }),
     )
-    useAuthStore().accessToken = 'access-token'
 
     const result = await getAnnouncementTargetOptions(announcementId)
 
@@ -218,7 +220,6 @@ describe('announcements request helpers', () => {
         pageSize: 5,
       }),
     )
-    useAuthStore().accessToken = 'access-token'
 
     const result = await listMyAnnouncements({
       page: 2,
@@ -244,7 +245,6 @@ describe('announcements request helpers', () => {
 
   it('gets my announcement detail and parses response', async () => {
     const fetchMock = createFetchMock(jsonResponse(myAnnouncementResponse))
-    useAuthStore().accessToken = 'access-token'
 
     const result = await getMyAnnouncement(announcementId)
 
@@ -258,7 +258,6 @@ describe('announcements request helpers', () => {
 
   it('creates announcements and sends body', async () => {
     const fetchMock = createFetchMock(jsonResponse(announcementResponse))
-    useAuthStore().accessToken = 'access-token'
 
     const result = await createAnnouncement(createInput)
 
@@ -273,7 +272,6 @@ describe('announcements request helpers', () => {
 
   it('updates announcements and sends body', async () => {
     const fetchMock = createFetchMock(jsonResponse(announcementResponse))
-    useAuthStore().accessToken = 'access-token'
 
     const result = await updateAnnouncement(announcementId, updateInput)
 
@@ -287,8 +285,7 @@ describe('announcements request helpers', () => {
   })
 
   it('publishes announcements', async () => {
-    const fetchMock = createFetchMock(new Response(null, { status: 204 }))
-    useAuthStore().accessToken = 'access-token'
+    const fetchMock = createFetchMock(emptyResponse())
 
     await expect(publishAnnouncement(announcementId)).resolves.toBeUndefined()
 
@@ -300,8 +297,7 @@ describe('announcements request helpers', () => {
   })
 
   it('archives announcements', async () => {
-    const fetchMock = createFetchMock(new Response(null, { status: 204 }))
-    useAuthStore().accessToken = 'access-token'
+    const fetchMock = createFetchMock(emptyResponse())
 
     await expect(archiveAnnouncement(announcementId)).resolves.toBeUndefined()
 
@@ -313,8 +309,7 @@ describe('announcements request helpers', () => {
   })
 
   it('deletes announcements', async () => {
-    const fetchMock = createFetchMock(new Response(null, { status: 204 }))
-    useAuthStore().accessToken = 'access-token'
+    const fetchMock = createFetchMock(emptyResponse())
 
     await expect(deleteAnnouncement(announcementId)).resolves.toBeUndefined()
     expect(fetchMock).toHaveBeenCalledOnce()
@@ -326,11 +321,13 @@ describe('announcements request helpers', () => {
 
   it('returns content error fields when response json contains field and message', async () => {
     const fetchMock = createFetchMock(
-      new Response(JSON.stringify({ field: 'contentJson', message: '请输入正文' }), {
-        status: 400,
-      }),
+      jsonResponse(
+        { field: 'contentJson', message: '请输入正文' },
+        {
+          status: 400,
+        },
+      ),
     )
-    useAuthStore().accessToken = 'access-token'
 
     const failedCreate = createAnnouncement(createInput)
 

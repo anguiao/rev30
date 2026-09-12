@@ -1,23 +1,33 @@
 import { randomUUID } from 'node:crypto'
-import { describe, expect } from 'vitest'
+import { afterEach, beforeEach, describe, expect, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { authLoginAttemptBuckets, authSessions, systemUsers } from '../../../src/db/schema'
+import { authLoginAttemptBuckets, authSessions } from '../../../src/db/schema'
 import {
   cleanupAuthLoginAttemptBuckets,
   cleanupAuthSessions,
 } from '../../../src/modules/auth/cleanup'
 import { dbTest } from '../../fixtures/database'
+import { createSystemUserFixture } from '../../helpers/system'
 
 const hourMs = 60 * 60 * 1000
 
 describe('auth cleanup', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-01T00:00:00.000Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   dbTest(
     'removes expired sessions immediately and revoked sessions at the retention boundary',
     async ({ db: database }) => {
       const now = new Date()
       const userId = randomUUID()
 
-      await database.insert(systemUsers).values({
+      await createSystemUserFixture(database, {
         id: userId,
         username: `cleanup-user-${userId.slice(0, 8)}`,
         nickname: 'Cleanup User',
@@ -129,5 +139,11 @@ describe('auth cleanup', () => {
     ])
 
     await expect(cleanupAuthLoginAttemptBuckets(database, 24 * hourMs)).resolves.toBe(2)
+    await expect(
+      database
+        .select({ username: authLoginAttemptBuckets.username })
+        .from(authLoginAttemptBuckets)
+        .orderBy(authLoginAttemptBuckets.username),
+    ).resolves.toEqual([{ username: 'recent-lock' }, { username: 'recent-open-window' }])
   })
 })

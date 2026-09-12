@@ -12,7 +12,6 @@ import {
   type UserCreateResponse,
   USER_STATUS_ENABLED,
   type User,
-  type UserStatus,
 } from '@rev30/contracts'
 import { createUser, getUser, updateUser } from '../../../src/features/users/requests'
 import { getDepartmentTreeOptions } from '../../../src/features/departments/requests'
@@ -118,7 +117,7 @@ const userResponse: User = {
   avatarId: null,
   email: 'ada@example.com',
   phone: '13800138000',
-  status: USER_STATUS_ENABLED as UserStatus,
+  status: USER_STATUS_ENABLED,
   builtIn: false,
   departments: [
     {
@@ -163,13 +162,14 @@ const queryCaches = new WeakMap<
   ReturnType<ReturnType<typeof createTestQueryHarness>['getQueryCache']>
 >()
 
-function mountDrawer(props?: { show?: boolean; userId?: string | null }) {
+function mountDrawer(props: Partial<InstanceType<typeof UserFormDrawer>['$props']> = {}) {
   const queryHarness = createTestQueryHarness()
 
   const wrapper = mount(UserFormDrawer, {
     props: {
-      show: props?.show ?? true,
-      userId: props === undefined || !('userId' in props) ? userId : props.userId,
+      show: true,
+      userId,
+      ...props,
     },
     attachTo: document.body,
     global: {

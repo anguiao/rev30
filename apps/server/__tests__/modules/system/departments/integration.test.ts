@@ -2,10 +2,13 @@ import { randomUUID } from 'node:crypto'
 import { describe, expect } from 'vitest'
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
+import type { z } from 'zod'
 import {
   DEPARTMENT_STATUS_DISABLED,
   DEPARTMENT_STATUS_ENABLED,
   type Department,
+  type departmentCreateSchema,
+  type ErrorResponse,
   type DepartmentListResponse,
   type DepartmentTreeOptionsResponse,
   type DepartmentTreeNode,
@@ -13,11 +16,8 @@ import {
 import { systemDepartments, systemUserDepartments, systemUsers } from '../../../../src/db/schema'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
+import { expectJsonResponse, jsonRequest } from '../../../helpers/http'
 import { createDepartmentRoutes } from '../../../../src/modules/system/departments/routes'
-
-type ErrorResponse = {
-  message: string
-}
 
 async function createTestApp(database: TestDatabase, authHeaders?: Record<string, string>) {
   const headers =
@@ -37,22 +37,14 @@ async function createTestApp(database: TestDatabase, authHeaders?: Record<string
   )
 }
 
-async function createDepartment(
-  app: Hono,
-  body: {
-    name: string
-    code: string
-    parentId?: string | null
-    status?: 0 | 1
-    sortOrder?: number
-  },
-) {
+async function createDepartment(app: Hono, body: z.input<typeof departmentCreateSchema>) {
   const response = await app.request('/api/system/departments', {
     method: 'POST',
     body: JSON.stringify(body),
     headers: { 'content-type': 'application/json' },
   })
 
+  await expectJsonResponse(response, { status: 201 })
   return { body: (await response.json()) as Department, response }
 }
 
@@ -207,7 +199,10 @@ describe('department routes', () => {
         sortOrder: 3,
       })
 
-      await app.request(`/api/system/departments/${disabledChild.id}`, { method: 'DELETE' })
+      await expectJsonResponse(
+        await app.request(`/api/system/departments/${disabledChild.id}`, { method: 'DELETE' }),
+        { status: 204 },
+      )
 
       const response = await app.request('/api/system/departments/options/tree')
       const body = (await response.json()) as DepartmentTreeOptionsResponse
@@ -300,7 +295,10 @@ describe('department routes', () => {
         status: DEPARTMENT_STATUS_DISABLED,
       })
 
-      await app.request(`/api/system/departments/${deletedLeaf.id}`, { method: 'DELETE' })
+      await expectJsonResponse(
+        await app.request(`/api/system/departments/${deletedLeaf.id}`, { method: 'DELETE' }),
+        { status: 204 },
+      )
 
       const response = await app.request(
         `/api/system/departments/options/tree?includeIds=${disabledLeaf.id},${deletedLeaf.id},${randomUUID()}`,
@@ -437,11 +435,13 @@ describe('department routes', () => {
     await createDepartment(app, { name: 'Engineering', code: 'engineering' })
     const { body: sales } = await createDepartment(app, { name: 'Sales', code: 'sales' })
 
-    const createConflict = await createDepartment(app, { name: 'Duplicate', code: 'engineering' })
-    expect(createConflict.response.status).toBe(409)
-    expect(createConflict.body).toEqual({
-      field: 'code',
-      message: '编码已存在',
+    const createConflict = await app.request(
+      '/api/system/departments',
+      jsonRequest({ name: 'Duplicate', code: 'engineering' }, { method: 'POST' }),
+    )
+    await expectJsonResponse(createConflict, {
+      status: 409,
+      body: { field: 'code', message: '编码已存在' },
     })
 
     const updateConflict = await app.request(`/api/system/departments/${sales.id}`, {

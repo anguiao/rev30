@@ -1,5 +1,6 @@
+import { getDialogButton } from '../../helpers/dom'
 import { flushPromises, mount } from '@vue/test-utils'
-import { NDialogProvider } from 'naive-ui'
+import { NDialogProvider, NRadioGroup, NSelect, NTreeSelect } from 'naive-ui'
 import { defineComponent, h, type PropType } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getErrorMessage } from '../../../src/utils/error'
@@ -363,9 +364,10 @@ async function fillRequiredFields(wrapper: ReturnType<typeof mount>) {
 }
 
 async function selectUserTarget(wrapper: ReturnType<typeof mount>) {
-  getTestComponent(wrapper, 'announcement-form-target-users').vm.$emit('update:value', [
-    userTargetId,
-  ])
+  wrapper
+    .get('[data-test="announcement-form-target-users"]')
+    .getComponent(NSelect)
+    .vm.$emit('update:value', [userTargetId])
   await flushPromises()
 }
 
@@ -374,33 +376,12 @@ async function clickAction(wrapper: ReturnType<typeof mount>, selector: string) 
   await flushPromises()
 }
 
-function getDialogButton(dataTest: string) {
-  const button = document.body.querySelector<HTMLButtonElement>(`[data-test="${dataTest}"]`)
-
-  if (!button) {
-    throw new Error(`Expected dialog button: ${dataTest}`)
-  }
-
-  return button
-}
-
 function getContentFormItem(wrapper: ReturnType<typeof mount>) {
   return wrapper.get('[data-test="announcement-form-content-item"]')
 }
 
 function getTargetsFormItem(wrapper: ReturnType<typeof mount>) {
   return wrapper.get('[data-test="announcement-form-targets-item"]')
-}
-
-type TestComponentWrapper = {
-  vm: {
-    $emit: (event: string, ...args: unknown[]) => void
-  }
-  props: (name: string) => unknown
-}
-
-function getTestComponent(wrapper: ReturnType<typeof mount>, dataTest: string) {
-  return wrapper.getComponent(`[data-test="${dataTest}"]`) as unknown as TestComponentWrapper
 }
 
 describe('AnnouncementFormDrawer', () => {
@@ -426,14 +407,30 @@ describe('AnnouncementFormDrawer', () => {
     expect(wrapper.text()).toContain('新增通知公告')
     expect(getAnnouncementMock).not.toHaveBeenCalled()
     expect(getAnnouncementTargetOptionsMock).toHaveBeenCalledWith()
-    expect(getTestComponent(wrapper, 'announcement-form-visibility').props('value')).toBe(
-      ANNOUNCEMENT_VISIBILITY_TARGETED,
-    )
-    expect(getTestComponent(wrapper, 'announcement-form-target-users').props('value')).toEqual([])
     expect(
-      getTestComponent(wrapper, 'announcement-form-target-departments').props('value'),
+      wrapper
+        .get('[data-test="announcement-form-visibility"]')
+        .getComponent(NRadioGroup)
+        .props('value'),
+    ).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
+    expect(
+      wrapper
+        .get('[data-test="announcement-form-target-users"]')
+        .getComponent(NSelect)
+        .props('value'),
     ).toEqual([])
-    expect(getTestComponent(wrapper, 'announcement-form-target-roles').props('value')).toEqual([])
+    expect(
+      wrapper
+        .get('[data-test="announcement-form-target-departments"]')
+        .getComponent(NTreeSelect)
+        .props('value'),
+    ).toEqual([])
+    expect(
+      wrapper
+        .get('[data-test="announcement-form-target-roles"]')
+        .getComponent(NSelect)
+        .props('value'),
+    ).toEqual([])
   })
 
   it('guards changed loaded values and closes directly after restoring them', async () => {
@@ -470,10 +467,10 @@ describe('AnnouncementFormDrawer', () => {
     await flushPromises()
 
     await fillRequiredFields(wrapper)
-    getTestComponent(wrapper, 'announcement-form-visibility').vm.$emit(
-      'update:value',
-      ANNOUNCEMENT_VISIBILITY_ALL,
-    )
+    wrapper
+      .get('[data-test="announcement-form-visibility"]')
+      .getComponent(NRadioGroup)
+      .vm.$emit('update:value', ANNOUNCEMENT_VISIBILITY_ALL)
     await flushPromises()
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
@@ -492,15 +489,18 @@ describe('AnnouncementFormDrawer', () => {
     await flushPromises()
 
     await fillRequiredFields(wrapper)
-    getTestComponent(wrapper, 'announcement-form-target-users').vm.$emit('update:value', [
-      userTargetId,
-    ])
-    getTestComponent(wrapper, 'announcement-form-target-departments').vm.$emit('update:value', [
-      departmentTargetId,
-    ])
-    getTestComponent(wrapper, 'announcement-form-target-roles').vm.$emit('update:value', [
-      roleTargetId,
-    ])
+    wrapper
+      .get('[data-test="announcement-form-target-users"]')
+      .getComponent(NSelect)
+      .vm.$emit('update:value', [userTargetId])
+    wrapper
+      .get('[data-test="announcement-form-target-departments"]')
+      .getComponent(NTreeSelect)
+      .vm.$emit('update:value', [departmentTargetId])
+    wrapper
+      .get('[data-test="announcement-form-target-roles"]')
+      .getComponent(NSelect)
+      .vm.$emit('update:value', [roleTargetId])
     await flushPromises()
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
@@ -601,18 +601,30 @@ describe('AnnouncementFormDrawer', () => {
     expect(wrapper.text()).toContain('编辑通知公告')
     expect(getAnnouncementMock).toHaveBeenCalledWith(announcementId)
     expect(getAnnouncementTargetOptionsMock).toHaveBeenCalledWith(announcementId)
-    expect(getTestComponent(wrapper, 'announcement-form-visibility').props('value')).toBe(
-      ANNOUNCEMENT_VISIBILITY_TARGETED,
-    )
-    expect(getTestComponent(wrapper, 'announcement-form-target-users').props('value')).toEqual([
-      userTargetId,
-    ])
     expect(
-      getTestComponent(wrapper, 'announcement-form-target-departments').props('value'),
+      wrapper
+        .get('[data-test="announcement-form-visibility"]')
+        .getComponent(NRadioGroup)
+        .props('value'),
+    ).toBe(ANNOUNCEMENT_VISIBILITY_TARGETED)
+    expect(
+      wrapper
+        .get('[data-test="announcement-form-target-users"]')
+        .getComponent(NSelect)
+        .props('value'),
+    ).toEqual([userTargetId])
+    expect(
+      wrapper
+        .get('[data-test="announcement-form-target-departments"]')
+        .getComponent(NTreeSelect)
+        .props('value'),
     ).toEqual([departmentTargetId])
-    expect(getTestComponent(wrapper, 'announcement-form-target-roles').props('value')).toEqual([
-      roleTargetId,
-    ])
+    expect(
+      wrapper
+        .get('[data-test="announcement-form-target-roles"]')
+        .getComponent(NSelect)
+        .props('value'),
+    ).toEqual([roleTargetId])
     expect(
       (wrapper.get('[data-test="announcement-form-title"] input').element as HTMLInputElement)
         .value,

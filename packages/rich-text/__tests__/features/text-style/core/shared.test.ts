@@ -15,7 +15,7 @@ import { createTestEditor } from '../../../helpers/editor'
 const extensions = [Document, Paragraph, Text, ...textStyleFeature.sharedExtensions!()]
 const schema = getSchema(extensions)
 
-function createEditor(content: string | object = '<p>维护通知</p>') {
+function createEditor(content = '<p>维护通知</p>') {
   return createTestEditor({
     extensions,
     content,

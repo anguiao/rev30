@@ -18,14 +18,16 @@ describe('scheduled job query and path schemas', () => {
 
   it('rejects unknown query and path fields', () => {
     expectZodIssue(scheduledJobRunsListQuerySchema.safeParse({ page: '1', unknown: 'x' }), {
-      message: 'Unrecognized key: "unknown"',
+      code: 'unrecognized_keys',
+      keys: ['unknown'],
+      path: [],
     })
     expectZodIssue(
       scheduledJobPathSchema.safeParse({
         taskKey: 'auth-session-cleanup',
         extra: true,
       }),
-      { message: 'Unrecognized key: "extra"' },
+      { code: 'unrecognized_keys', keys: ['extra'], path: [] },
     )
     expectZodIssue(
       scheduledJobRunPathSchema.safeParse({
@@ -33,7 +35,7 @@ describe('scheduled job query and path schemas', () => {
         runId: testUuid(1),
         extra: true,
       }),
-      { message: 'Unrecognized key: "extra"' },
+      { code: 'unrecognized_keys', keys: ['extra'], path: [] },
     )
   })
 

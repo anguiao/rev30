@@ -3,26 +3,13 @@ import { configKeySchema } from '@rev30/contracts'
 import { configRegistry } from '../../../../src/modules/system/configs/registry'
 
 describe('config registry', () => {
-  it('keeps registered config definitions valid', () => {
-    const messages: string[] = []
-    const keys = new Set<string>()
+  it('keeps registered config keys unique', () => {
+    const keys = configRegistry.map((config) => config.key)
+    expect(new Set(keys).size).toBe(keys.length)
+  })
 
-    for (const config of configRegistry) {
-      if (!configKeySchema.safeParse(config.key).success) {
-        messages.push(`invalid key: ${config.key}`)
-      }
-
-      if (keys.has(config.key)) {
-        messages.push(`duplicate key: ${config.key}`)
-      }
-      keys.add(config.key)
-
-      const defaultValueResult = config.schema.safeParse(config.defaultValue)
-      if (!defaultValueResult.success) {
-        messages.push(`invalid default value: ${config.key}`)
-      }
-    }
-
-    expect(messages).toEqual([])
+  it.each(configRegistry)('validates the key and default value for $key', (config) => {
+    expect(configKeySchema.parse(config.key)).toBe(config.key)
+    expect(() => config.schema.parse(config.defaultValue)).not.toThrow()
   })
 })

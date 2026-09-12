@@ -67,10 +67,16 @@ function validManualRunningRun(
   })
 }
 
-async function expectRejected(db: TestDatabase, values: typeof opsJobRuns.$inferInsert) {
+async function expectRejected(
+  db: TestDatabase,
+  values: typeof opsJobRuns.$inferInsert,
+  constraint: string,
+) {
   await db.execute(sql`savepoint scheduled_job_constraint_check`)
   try {
-    await expect(db.insert(opsJobRuns).values(values)).rejects.toThrow()
+    await expect(db.insert(opsJobRuns).values(values)).rejects.toMatchObject({
+      cause: { constraint },
+    })
   } finally {
     await db.execute(sql`rollback to savepoint scheduled_job_constraint_check`)
   }
@@ -79,7 +85,9 @@ async function expectRejected(db: TestDatabase, values: typeof opsJobRuns.$infer
 async function expectJobRejected(db: TestDatabase, values: typeof opsScheduledJobs.$inferInsert) {
   await db.execute(sql`savepoint scheduled_job_plan_check`)
   try {
-    await expect(db.insert(opsScheduledJobs).values(values)).rejects.toThrow()
+    await expect(db.insert(opsScheduledJobs).values(values)).rejects.toMatchObject({
+      cause: { constraint: 'ops_scheduled_jobs_enabled_next_run_at_check' },
+    })
   } finally {
     await db.execute(sql`rollback to savepoint scheduled_job_plan_check`)
   }
@@ -89,12 +97,13 @@ async function expectActiveRunUpdateRejected(
   db: TestDatabase,
   taskKey: string,
   activeRunId: string,
+  constraint: string,
 ) {
   await db.execute(sql`savepoint scheduled_job_active_run_check`)
   try {
     await expect(
       db.update(opsScheduledJobs).set({ activeRunId }).where(eq(opsScheduledJobs.taskKey, taskKey)),
-    ).rejects.toThrow()
+    ).rejects.toMatchObject({ cause: { constraint } })
   } finally {
     await db.execute(sql`rollback to savepoint scheduled_job_active_run_check`)
   }
@@ -472,11 +481,16 @@ describe('scheduled jobs migration', () => {
     })
     await db.insert(opsJobRuns).values(validRunningRun())
 
-    await expectRejected(db, validRunningRun({ id: secondRunId }))
+    await expectRejected(
+      db,
+      validRunningRun({ id: secondRunId }),
+      'ops_job_runs_task_key_running_unique',
+    )
     await db.insert(opsJobRuns).values(validManualRunningRun({ taskKey: secondTaskKey }))
     await expectRejected(
       db,
       validRunningRun({ id: '20000000-0000-4000-8000-000000000004', taskKey: 'not-a-task' }),
+      'ops_job_runs_task_key_ops_scheduled_jobs_task_key_fk',
     )
     await expectRejected(
       db,
@@ -485,18 +499,20 @@ describe('scheduled jobs migration', () => {
         status: SCHEDULED_JOB_RUN_STATUS_SKIPPED,
         finishedAt,
       }),
+      'ops_job_runs_lifecycle_check',
     )
     await expectRejected(
       db,
       validRunningRun({ id: '20000000-0000-4000-8000-000000000006', finishedAt }),
+      'ops_job_runs_lifecycle_check',
     )
     await expectRejected(
       db,
-      validRunningRun({
+      validManualRunningRun({
         id: '20000000-0000-4000-8000-000000000007',
-        triggerSource: 'manual',
         scheduledFor: startedAt,
       }),
+      'ops_job_runs_schedule_shape_check',
     )
     await expectRejected(
       db,
@@ -504,6 +520,7 @@ describe('scheduled jobs migration', () => {
         id: '20000000-0000-4000-8000-000000000008',
         triggeredByNickname: null,
       }),
+      'ops_job_runs_trigger_actor_snapshot_check',
     )
     await expectRejected(
       db,
@@ -512,8 +529,10 @@ describe('scheduled jobs migration', () => {
         status: SCHEDULED_JOB_RUN_STATUS_SUCCESS,
         finishedAt,
         durationMs: 1,
+        deletedCount: 3,
         failedCount: 1,
       }),
+      'ops_job_runs_result_check',
     )
     await expectRejected(
       db,
@@ -523,6 +542,7 @@ describe('scheduled jobs migration', () => {
         finishedAt,
         durationMs: 1,
       }),
+      'ops_job_runs_result_check',
     )
     await expectRejected(
       db,
@@ -534,6 +554,7 @@ describe('scheduled jobs migration', () => {
         errorCategory: SCHEDULED_JOB_ERROR_CATEGORY_DATABASE,
         errorSummary: ' ',
       }),
+      'ops_job_runs_result_check',
     )
 
     await expect(
@@ -542,8 +563,18 @@ describe('scheduled jobs migration', () => {
         .set({ activeRunId: validRunId })
         .where(eq(opsScheduledJobs.taskKey, validTaskKey)),
     ).resolves.toBeDefined()
-    await expectActiveRunUpdateRejected(db, secondTaskKey, validRunId)
-    await expectActiveRunUpdateRejected(db, secondTaskKey, '20000000-0000-4000-8000-000000000999')
+    await expectActiveRunUpdateRejected(
+      db,
+      secondTaskKey,
+      validRunId,
+      'ops_scheduled_jobs_active_run_id_unique',
+    )
+    await expectActiveRunUpdateRejected(
+      db,
+      secondTaskKey,
+      '20000000-0000-4000-8000-000000000999',
+      'ops_scheduled_jobs_active_run_id_ops_job_runs_id_fk',
+    )
   })
 
   dbTest('accepts valid terminal, skipped, and cancellation snapshot records', async ({ db }) => {

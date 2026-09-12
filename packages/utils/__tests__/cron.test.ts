@@ -29,20 +29,17 @@ describe('cron schedule utilities', () => {
     })
   })
 
-  it('rejects invalid expressions, timezones, and schedules without future occurrences', () => {
+  it.each([
+    { reason: 'an empty expression', expression: '', timezone: 'UTC' },
+    { reason: 'too few fields', expression: '* * * *', timezone: 'UTC' },
+    { reason: 'a seconds field', expression: '* * * * * *', timezone: 'UTC' },
+    { reason: 'an invalid month', expression: '0 0 * FOO *', timezone: 'UTC' },
+    { reason: 'no future occurrences', expression: '0 0 31 2 *', timezone: 'UTC' },
+    { reason: 'an invalid timezone', expression: '0 0 * * *', timezone: 'Not/AnIanaZone' },
+  ])('rejects $reason', ({ expression, timezone }) => {
     const from = new Date('2026-01-01T00:00:00.000Z')
-    const invalidInputs = [
-      { expression: '', timezone: 'UTC' },
-      { expression: '* * * *', timezone: 'UTC' },
-      { expression: '* * * * * *', timezone: 'UTC' },
-      { expression: '0 0 * FOO *', timezone: 'UTC' },
-      { expression: '0 0 31 2 *', timezone: 'UTC' },
-      { expression: '0 0 * * *', timezone: 'Not/AnIanaZone' },
-    ]
 
-    for (const input of invalidInputs) {
-      expect(() => parseCronSchedule(input, from)).toThrow()
-    }
+    expect(() => parseCronSchedule({ expression, timezone }, from)).toThrow()
   })
 
   it('returns exactly the requested number of occurrences strictly after from', () => {
@@ -69,7 +66,6 @@ describe('cron schedule utilities', () => {
       new Date('2026-03-08T07:30:00.000Z'),
       new Date('2026-03-09T06:30:00.000Z'),
     ])
-    expect(occurrences.every((value) => value > new Date('2026-03-07T00:00:00.000Z'))).toBe(true)
   })
 
   it('rejects invalid occurrence requests and never returns a partial result', () => {

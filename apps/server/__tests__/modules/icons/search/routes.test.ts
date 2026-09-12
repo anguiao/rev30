@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import type { IconSearchResponse } from '@rev30/contracts'
 import { describe, expect, vi } from 'vitest'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
@@ -32,8 +33,8 @@ function createIconSearchTestApp(database: TestDatabase) {
 }
 
 describe('icon search routes', () => {
-  dbTest('rejects anonymous icon search requests', async () => {
-    const app = createIconSearchTestApp({} as TestDatabase)
+  dbTest('rejects anonymous icon search requests', async ({ db }) => {
+    const app = createIconSearchTestApp(db)
 
     const response = await app.request('/api/icons/search?keyword=用户&limit=20')
 
@@ -136,15 +137,7 @@ describe('icon search routes', () => {
     const response = await app.request('/api/icons/search?keyword=logo', {
       headers: authenticated.authHeaders,
     })
-    const body = (await response.json()) as {
-      list: Array<{
-        icon: string
-        prefix: string
-        name: string
-        collection: string
-        palette: boolean
-      }>
-    }
+    const body = (await response.json()) as IconSearchResponse
 
     expect(response.status).toBe(200)
     expect(body.list).toContainEqual({

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../../src/client/editor/feature'
 import { compactRichTextEditorPreset } from '../../../src/client/vue/presets/compact'
 import RichTextToolbar from '../../../src/client/vue/toolbar/RichTextToolbar.vue'
-import { createTestEditor } from '../../helpers/editor'
+import { appendTestElement, createTestEditor } from '../../helpers/editor'
 
 function createEditor() {
   return createTestEditor({
@@ -16,7 +16,7 @@ function createEditor() {
 
 function mountToolbar(editor: ReturnType<typeof createEditor>, disabled = false) {
   return mount(RichTextToolbar, {
-    attachTo: document.body,
+    attachTo: appendTestElement('div'),
     props: {
       editor: markRaw(editor),
       toolbar: compactRichTextEditorPreset.toolbar!,
@@ -96,7 +96,7 @@ describe('RichTextToolbar', () => {
     const trigger = wrapper.get<HTMLElement>('[data-test="rich-text-heading"]')
 
     const dropdown = wrapper.findAllComponents(NDropdown).find((candidate) => {
-      const options = candidate.props('options') as Array<{ key: string | number }>
+      const options = candidate.props('options')!
       return options.some((option) => option.key === 'heading-1')
     })
 
@@ -190,11 +190,13 @@ describe('RichTextToolbar', () => {
 
   it('enters with Alt+F10, ignores it when disabled, and reselects after disabling the tab stop', async () => {
     const editor = createEditor()
+    editor.commands.insertContent('updated ')
     const wrapper = mountToolbar(editor)
     await flushPromises()
 
     const items = wrapper.findAll<HTMLElement>('[data-rich-text-toolbar-item]')
-    const enabledItems = items.filter((item) => !item.element.hasAttribute('disabled'))
+    const undo = wrapper.get<HTMLElement>('[data-test="rich-text-undo"]')
+    const redo = wrapper.get<HTMLElement>('[data-test="rich-text-redo"]')
     const entered = new KeyboardEvent('keydown', {
       key: 'F10',
       altKey: true,
@@ -204,16 +206,15 @@ describe('RichTextToolbar', () => {
     editor.view.dom.dispatchEvent(entered)
 
     expect(entered.defaultPrevented).toBe(true)
-    expect(document.activeElement).toBe(enabledItems[0]!.element)
+    expect(document.activeElement).toBe(undo.element)
 
-    enabledItems[0]!.element.setAttribute('aria-disabled', 'true')
+    editor.commands.undo()
     await nextTick()
     await flushPromises()
-    expect(enabledItems[0]!.element.tabIndex).toBe(-1)
-    expect(document.activeElement).toBe(enabledItems[1]!.element)
-    expect(items.find((item) => item.element.tabIndex === 0)?.element).toBe(
-      enabledItems[1]!.element,
-    )
+    expect(undo.attributes('disabled')).toBeDefined()
+    expect(undo.element.tabIndex).toBe(-1)
+    expect(document.activeElement).toBe(redo.element)
+    expect(items.find((item) => item.element.tabIndex === 0)?.element).toBe(redo.element)
 
     await wrapper.setProps({ disabled: true })
     await nextTick()

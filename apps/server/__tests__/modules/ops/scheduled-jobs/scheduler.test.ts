@@ -1,5 +1,5 @@
 import type { ScheduledJobTaskKey } from '@rev30/contracts'
-import type { Logger } from 'pino'
+import { createLogger } from '../../../../src/runtime/logger'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { opsJobRuns } from '../../../../src/db/schema'
 import {
@@ -62,7 +62,7 @@ function deferred<T>() {
 }
 
 function setup() {
-  const due = [firstTask!, secondTask!, thirdTask!].map((taskKey) => ({
+  const due = [firstTask, secondTask, thirdTask].map((taskKey) => ({
     taskKey,
     nextRunAt: now,
     activeRunId: null as string | null,
@@ -116,7 +116,9 @@ function setup() {
     abort: vi.fn(() => false),
     stop: vi.fn(async () => undefined),
   }
-  const logger = { error: vi.fn(), info: vi.fn() } as unknown as Logger
+  const logger = createLogger({ level: 'silent' })
+  vi.spyOn(logger, 'error')
+  vi.spyOn(logger, 'info')
   const scheduler = createScheduledJobScheduler({
     executorId,
     repository,
@@ -134,6 +136,7 @@ describe('scheduled job scheduler', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it('returns a safe independent diagnostic snapshot across start and stop', async () => {
@@ -187,9 +190,9 @@ describe('scheduled job scheduler', () => {
   it('dispatches recoverable runs by startedAt and task key before ordinary due work', async () => {
     const context = setup()
     const runs: RecoverableScheduledJobRun[] = [
-      { taskKey: secondTask!, scheduledFor: null, startedAt: new Date(2) },
-      { taskKey: secondTask!, scheduledFor: null, startedAt: new Date(1) },
-      { taskKey: firstTask!, scheduledFor: null, startedAt: new Date(1) },
+      { taskKey: secondTask, scheduledFor: null, startedAt: new Date(2) },
+      { taskKey: secondTask, scheduledFor: null, startedAt: new Date(1) },
+      { taskKey: firstTask, scheduledFor: null, startedAt: new Date(1) },
     ]
     context.scheduler.start(runs)
     expect(context.scheduler.diagnostics().recoveryQueued).toBe(3)
@@ -206,10 +209,10 @@ describe('scheduled job scheduler', () => {
     const context = setup()
     context.due.splice(0, context.due.length)
     context.due.push(
-      { taskKey: firstTask!, nextRunAt: now, activeRunId: null },
-      { taskKey: secondTask!, nextRunAt: now, activeRunId: null },
-      { taskKey: thirdTask!, nextRunAt: now, activeRunId: 'active-third' },
-      { taskKey: fourthTask!, nextRunAt: now, activeRunId: null },
+      { taskKey: firstTask, nextRunAt: now, activeRunId: null },
+      { taskKey: secondTask, nextRunAt: now, activeRunId: null },
+      { taskKey: thirdTask, nextRunAt: now, activeRunId: 'active-third' },
+      { taskKey: fourthTask, nextRunAt: now, activeRunId: null },
     )
     context.scheduler.start([])
     await flush()
@@ -237,7 +240,7 @@ describe('scheduled job scheduler', () => {
     expect(context.due.map(({ taskKey }) => taskKey)).toEqual([thirdTask])
     expect(vi.getTimerCount()).toBe(1)
 
-    context.due.push({ taskKey: firstTask!, nextRunAt: activeDueAt, activeRunId: 'run-1' })
+    context.due.push({ taskKey: firstTask, nextRunAt: activeDueAt, activeRunId: 'run-1' })
     context.repository.findNextActiveScheduledAt.mockResolvedValue(null)
     await vi.advanceTimersByTimeAsync(10_000)
     await flush()
@@ -528,7 +531,7 @@ describe('scheduled job scheduler', () => {
       nextWakeAt: null,
     })
     expect(vi.getTimerCount()).toBe(0)
-    context.due.push({ taskKey: firstTask!, nextRunAt: now, activeRunId: null })
+    context.due.push({ taskKey: firstTask, nextRunAt: now, activeRunId: null })
     context.scheduler.wake()
     await vi.advanceTimersByTimeAsync(10_000)
     expect(context.repository.claimScheduled).not.toHaveBeenCalled()

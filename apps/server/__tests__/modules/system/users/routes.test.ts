@@ -2,6 +2,9 @@ import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { USER_STATUS_ENABLED, type User } from '@rev30/contracts'
+import type { createUserService } from '../../../../src/modules/system/users/service'
+import type { requireAccess } from '../../../../src/middleware/access'
+import type { recordOperation } from '../../../../src/middleware/operation-log'
 import type { AuthEnv } from '../../../../src/middleware/auth'
 import { createUserRoutes } from '../../../../src/modules/system/users/routes'
 import {
@@ -12,6 +15,8 @@ import {
   UserMutationForbiddenError,
   UserNotFoundError,
 } from '../../../../src/modules/system/users/errors'
+
+type UserService = ReturnType<typeof createUserService>
 
 const userId = '11111111-1111-4111-8111-111111111111'
 const departmentId = '22222222-2222-4222-8222-222222222222'
@@ -38,20 +43,20 @@ const user = {
 const mocks = vi.hoisted(() => {
   const accessMiddleware = vi.fn(async (_c: Context, next: Next) => next())
   const service = {
-    create: vi.fn(),
-    delete: vi.fn(),
-    get: vi.fn(),
-    list: vi.fn(),
-    options: vi.fn(),
-    resetPassword: vi.fn(),
-    update: vi.fn(),
+    create: vi.fn<UserService['create']>(),
+    delete: vi.fn<UserService['delete']>(),
+    get: vi.fn<UserService['get']>(),
+    list: vi.fn<UserService['list']>(),
+    options: vi.fn<UserService['options']>(),
+    resetPassword: vi.fn<UserService['resetPassword']>(),
+    update: vi.fn<UserService['update']>(),
   }
 
   return {
     accessMiddleware,
     createUserService: vi.fn(() => service),
-    recordOperation: vi.fn(),
-    requireAccess: vi.fn(() => accessMiddleware),
+    recordOperation: vi.fn<typeof recordOperation>(),
+    requireAccess: vi.fn<typeof requireAccess>(() => accessMiddleware),
     service,
   }
 })
@@ -104,17 +109,15 @@ describe('user routes', () => {
   it('registers expected access guards for every user endpoint', () => {
     createTestApp()
 
-    expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
-      [
-        'system:user:list',
-        'system:user:list',
-        'system:user:create',
-        'system:user:reset-password',
-        'system:user:list',
-        'system:user:update',
-        'system:user:delete',
-      ],
-    )
+    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
+      'system:user:list',
+      'system:user:list',
+      'system:user:create',
+      'system:user:reset-password',
+      'system:user:list',
+      'system:user:update',
+      'system:user:delete',
+    ])
   })
 
   it('parses list query and delegates to the user service', async () => {
@@ -195,9 +198,11 @@ describe('user routes', () => {
     expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.service.create.mock.invocationCallOrder[0]!,
     )
-    expect(JSON.stringify(mocks.recordOperation.mock.calls)).not.toMatch(
-      /avatar|email|phone|department|role|temporary-password/,
-    )
+    expect(
+      JSON.stringify(
+        mocks.recordOperation.mock.calls.map(([, action, target]) => ({ action, target })),
+      ),
+    ).not.toMatch(/avatar|email|phone|department|role|temporary-password/)
   })
 
   it('delegates detail requests by id', async () => {
@@ -229,7 +234,11 @@ describe('user routes', () => {
     expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.service.update.mock.invocationCallOrder[0]!,
     )
-    expect(JSON.stringify(mocks.recordOperation.mock.calls)).not.toContain('avatarId')
+    expect(
+      JSON.stringify(
+        mocks.recordOperation.mock.calls.map(([, action, target]) => ({ action, target })),
+      ),
+    ).not.toContain('avatarId')
   })
 
   it('delegates reset-password requests by id', async () => {

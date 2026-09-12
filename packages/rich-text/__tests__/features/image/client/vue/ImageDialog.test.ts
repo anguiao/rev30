@@ -2,6 +2,7 @@ import { NodeSelection } from '@tiptap/pm/state'
 import { DOMWrapper, flushPromises, mount, type BaseWrapper } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
 import { markRaw, nextTick } from 'vue'
+import type { UseDropZoneOptions, UseFileDialogOptions } from '@vueuse/core'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../../../../src/client/editor/feature'
 import {
@@ -18,26 +19,18 @@ import {
   runRichTextSlashCommand,
 } from '../../../../../src/client/vue/slash-menu'
 import { createTestEditor } from '../../../../helpers/editor'
+import { createClipboardEvent, createFileList } from '../../../../helpers/clipboard'
 import { createImageTestEditorPreset } from '../../../../helpers/image-editor'
 
 type FileDialogChangeHandler = (files: FileList | null) => void
-type FileDialogOptions = {
-  accept?: string
-  multiple?: boolean
-  reset?: boolean
-}
-type DropZoneOptions = {
-  onDrop?: (files: File[] | null, event: DragEvent) => void
-}
-
 const fileDialog = vi.hoisted(() => ({
-  options: [] as FileDialogOptions[],
+  options: [] as UseFileDialogOptions[],
   changeHandlers: [] as FileDialogChangeHandler[],
   open: vi.fn(),
   reset: vi.fn(),
 }))
 const dropZone = vi.hoisted(() => ({
-  options: [] as DropZoneOptions[],
+  options: [] as UseDropZoneOptions[],
   isOverDropZone: { value: false },
 }))
 const imageAttrs = {
@@ -52,7 +45,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 
   return {
     ...vueuse,
-    useDropZone: vi.fn((_target: unknown, options: DropZoneOptions) => {
+    useDropZone: vi.fn((_target: unknown, options: UseDropZoneOptions) => {
       dropZone.options.push(options)
 
       return {
@@ -60,7 +53,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
         isOverDropZone: dropZone.isOverDropZone,
       }
     }),
-    useFileDialog: vi.fn((options: FileDialogOptions) => {
+    useFileDialog: vi.fn((options: UseFileDialogOptions) => {
       fileDialog.options.push(options)
 
       return {
@@ -119,23 +112,9 @@ function mountControl(editor: Editor) {
   })
 }
 
-function createHistoryEditor(
-  content = '<p>/图片</p>',
-  options: RichTextImageUploadOptions = {
-    upload: async () => ({ src: imageAttrs.src }),
-  },
-) {
-  const preset = createImageTestEditorPreset(options)
-
-  return createTestEditor({
-    extensions: collectRichTextEditorExtensions(preset),
-    content,
-  })
-}
-
 const imageSlashCommand = richTextSlashCommand(imageActionItem)
 
-function openImageFromSlash(editor: ReturnType<typeof createHistoryEditor>) {
+function openImageFromSlash(editor: ReturnType<typeof createEditor>) {
   return runRichTextSlashCommand(editor, imageSlashCommand, { from: 1, to: 4 })
 }
 
@@ -164,53 +143,19 @@ function mountEditDialog(image: RichTextImageAttrs) {
   return mountDialog(vi.fn(), vi.fn(), image)
 }
 
-function createFileList(...files: File[]): FileList {
-  return Object.assign(files, {
-    item: (index: number) => files[index] ?? null,
-  })
-}
-
-function createDataTransferItems(...files: File[]) {
-  const items = files.map((file) => ({
-    kind: 'file',
-    type: file.type,
-    getAsFile: () => file,
-  }))
-
-  // Partial DOM mock with only the fields used by the component.
-  return Object.assign(items, {
-    item: (index: number) => items[index] ?? null,
-  }) as unknown as DataTransferItemList
-}
-
-function createClipboardData(...files: File[]) {
-  return {
-    files: createFileList(...files),
-    items: createDataTransferItems(...files),
-  } as DataTransfer
-}
-
 function dispatchEditorPaste(editor: Editor, files: File[], html = '') {
-  const event = new Event('paste', { bubbles: true, cancelable: true })
-  Object.defineProperty(event, 'clipboardData', {
-    value: {
-      files: createFileList(...files),
-      getData: (type: string) => (type === 'text/html' ? html : ''),
-    } as DataTransfer,
-  })
-
+  const event = createClipboardEvent({ files, html })
   editor.view.dom.dispatchEvent(event)
-
   return event
 }
 
-async function chooseFile(_wrapper: BaseWrapper<Node>, file: File) {
+async function chooseFile(file: File) {
   const onChange = fileDialog.changeHandlers.at(-1)
   if (onChange === undefined) {
     throw new Error('File dialog change handler is not registered')
   }
 
-  onChange(createFileList(file))
+  onChange(createFileList([file]))
   await nextTick()
 }
 
@@ -220,7 +165,7 @@ async function dropFiles(files: File[]) {
     throw new Error('Drop zone handler is not registered')
   }
 
-  onDrop(files, new Event('drop') as DragEvent)
+  onDrop(files, new DragEvent('drop'))
   await nextTick()
 }
 
@@ -229,10 +174,7 @@ async function pasteFiles(
   target: Element,
   options: { defaultPrevented?: boolean } = {},
 ) {
-  const event = new Event('paste', { bubbles: true, cancelable: true })
-  Object.defineProperty(event, 'clipboardData', {
-    value: createClipboardData(...files),
-  })
+  const event = createClipboardEvent({ files })
 
   if (options.defaultPrevented) {
     event.preventDefault()
@@ -300,7 +242,7 @@ describe('ImageToolbarControl', () => {
     })
     await dialog.get('[data-test="rich-text-image-file"]').trigger('click')
     expect(fileDialog.open).toHaveBeenCalledWith()
-    await chooseFile(dialog, new File(['image'], 'cover.png', { type: 'image/png' }))
+    await chooseFile(new File(['image'], 'cover.png', { type: 'image/png' }))
     expect(upload).not.toHaveBeenCalled()
     await loadPreviewImage(dialog)
     expect(dialog.get('[data-test="rich-text-image-confirm"]').attributes('disabled')).toBeDefined()
@@ -338,7 +280,7 @@ describe('ImageToolbarControl', () => {
     await toolbar.get('[data-test="rich-text-image"]').trigger('click')
     await flushPromises()
     const dialog = new DOMWrapper(document.body)
-    await chooseFile(dialog, new File(['image'], 'empty.png', { type: 'image/png' }))
+    await chooseFile(new File(['image'], 'empty.png', { type: 'image/png' }))
 
     expect(getPreviewImageSrc(dialog)).toBe('blob:empty-image-source')
 
@@ -370,7 +312,7 @@ describe('ImageToolbarControl', () => {
     await flushPromises()
 
     const dialog = new DOMWrapper(document.body)
-    await chooseFile(dialog, new File(['image'], 'replacement.png', { type: 'image/png' }))
+    await chooseFile(new File(['image'], 'replacement.png', { type: 'image/png' }))
     await uploadSelectedFile(dialog)
     await loadPreviewImage(dialog)
     await dialog.get('[data-test="rich-text-image-confirm"]').trigger('click')
@@ -393,7 +335,7 @@ describe('ImageToolbarControl', () => {
     editor.commands.setTextSelection(8)
 
     const dialog = new DOMWrapper(document.body)
-    await chooseFile(dialog, new File(['image'], 'frozen.png', { type: 'image/png' }))
+    await chooseFile(new File(['image'], 'frozen.png', { type: 'image/png' }))
     await uploadSelectedFile(dialog)
     await loadPreviewImage(dialog)
     await dialog.get('[data-test="rich-text-image-confirm"]').trigger('click')
@@ -436,7 +378,7 @@ describe('ImageToolbarControl', () => {
     expect(dialog.find('[data-test="rich-text-image-drop-zone"]').exists()).toBe(true)
 
     const replacement = new File(['replacement'], 'replacement.png', { type: 'image/png' })
-    await chooseFile(dialog, replacement)
+    await chooseFile(replacement)
     expect(upload).not.toHaveBeenCalled()
     await uploadSelectedFile(dialog)
     await loadPreviewImage(dialog, 1000, 1000)
@@ -471,7 +413,7 @@ describe('ImageToolbarControl', () => {
     await toolbar.get('[data-test="rich-text-image"]').trigger('click')
     await flushPromises()
     const dialog = new DOMWrapper(document.body)
-    await chooseFile(dialog, new File(['image'], 'cover.png', { type: 'image/png' }))
+    await chooseFile(new File(['image'], 'cover.png', { type: 'image/png' }))
     await uploadSelectedFile(dialog)
     await dialog.get('[data-test="rich-text-image-cancel"]').trigger('click')
     await flushPromises()
@@ -485,14 +427,14 @@ describe('ImageToolbarControl', () => {
   })
 
   it('keeps slash deletion and confirmed insertion as two history events', async () => {
-    const editor = createHistoryEditor(undefined, {
+    const editor = createEditor('<p>/图片</p>', {
       upload: async () => ({ src: imageAttrs.src }),
     })
     expect(openImageFromSlash(editor)).toBe(true)
     await flushPromises()
 
     const dialog = new DOMWrapper(document.body)
-    await chooseFile(dialog, new File(['image'], 'context.png', { type: 'image/png' }))
+    await chooseFile(new File(['image'], 'context.png', { type: 'image/png' }))
     await uploadSelectedFile(dialog)
     await loadPreviewImage(dialog, imageAttrs.width, imageAttrs.height)
     await dialog.get('[data-test="rich-text-image-confirm"]').trigger('click')
@@ -509,7 +451,7 @@ describe('ImageToolbarControl', () => {
   })
 
   it('cancels slash insertion without adding a second history event', async () => {
-    const editor = createHistoryEditor()
+    const editor = createEditor('<p>/图片</p>')
     expect(openImageFromSlash(editor)).toBe(true)
     await flushPromises()
 
@@ -612,7 +554,7 @@ describe('ImageDialog', () => {
     }))
     const wrapper = mountDialog(upload)
 
-    await chooseFile(wrapper, new File(['image'], 'cover.png', { type: 'image/png' }))
+    await chooseFile(new File(['image'], 'cover.png', { type: 'image/png' }))
 
     expect(createObjectUrl).toHaveBeenCalledOnce()
     expect(getPreviewImageSrc(wrapper)).toBe('blob:cover')
@@ -694,10 +636,7 @@ describe('ImageDialog', () => {
       wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
     ).toBeDefined()
 
-    const outsideEvent = new Event('paste', { bubbles: true, cancelable: true })
-    Object.defineProperty(outsideEvent, 'clipboardData', {
-      value: createClipboardData(imageFile),
-    })
+    const outsideEvent = createClipboardEvent({ files: [imageFile] })
     window.dispatchEvent(outsideEvent)
     await nextTick()
 
@@ -792,7 +731,7 @@ describe('ImageDialog', () => {
     const upload = vi.fn(async () => ({ src: '/api/attachments/cover/content' }))
     const wrapper = mountDialog(upload)
 
-    await chooseFile(wrapper, new File(['image'], 'cover.png', { type: 'image/png' }))
+    await chooseFile(new File(['image'], 'cover.png', { type: 'image/png' }))
     await wrapper.get('[data-test="rich-text-image-cancel"]').trigger('click')
     await flushPromises()
 
@@ -809,7 +748,7 @@ describe('ImageDialog', () => {
     const onError = vi.fn()
     const wrapper = mountDialog(upload, onError)
 
-    await chooseFile(wrapper, new File(['image'], 'broken.png', { type: 'image/png' }))
+    await chooseFile(new File(['image'], 'broken.png', { type: 'image/png' }))
     await uploadSelectedFile(wrapper)
 
     expect(onError).toHaveBeenCalledWith(uploadError)
@@ -825,7 +764,7 @@ describe('ImageDialog', () => {
     const wrapper = mountDialog(upload, onError)
 
     const imageFile = new File(['second'], 'second.png', { type: 'image/png' })
-    await chooseFile(wrapper, imageFile)
+    await chooseFile(imageFile)
     await uploadSelectedFile(wrapper)
 
     expect(onError).toHaveBeenCalledWith(uploadError)
@@ -849,7 +788,7 @@ describe('ImageDialog', () => {
       onError,
     )
 
-    await chooseFile(wrapper, new File(['image'], 'broken.png', { type: 'image/png' }))
+    await chooseFile(new File(['image'], 'broken.png', { type: 'image/png' }))
     await uploadSelectedFile(wrapper)
     await loadPreviewImage(wrapper, 0, 0)
 
@@ -870,7 +809,7 @@ describe('ImageDialog', () => {
       onError,
     )
 
-    await chooseFile(wrapper, new File(['image'], 'broken.png', { type: 'image/png' }))
+    await chooseFile(new File(['image'], 'broken.png', { type: 'image/png' }))
     await uploadSelectedFile(wrapper)
     await failPreviewImage(wrapper)
 
@@ -894,7 +833,7 @@ describe('ImageDialog', () => {
       .mockResolvedValueOnce({ src: secondSrc })
     const wrapper = mountDialog(upload)
 
-    await chooseFile(wrapper, new File(['first'], 'first.png', { type: 'image/png' }))
+    await chooseFile(new File(['first'], 'first.png', { type: 'image/png' }))
     await uploadSelectedFile(wrapper)
 
     expect(wrapper.get('[data-test="rich-text-image-file"]').attributes('disabled')).toBeDefined()
@@ -1029,7 +968,7 @@ describe('ImageDialog', () => {
     })
     await loadPreviewImage(wrapper, 1000, 500)
 
-    await chooseFile(wrapper, new File(['image'], 'replacement.png', { type: 'image/png' }))
+    await chooseFile(new File(['image'], 'replacement.png', { type: 'image/png' }))
     await uploadSelectedFile(wrapper)
     await loadPreviewImage(wrapper, 800, 400)
     await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
@@ -1084,7 +1023,7 @@ describe('ImageDialog', () => {
     }))
     const wrapper = mountDialog(upload)
 
-    await chooseFile(wrapper, new File(['image'], 'cover.png', { type: 'image/png' }))
+    await chooseFile(new File(['image'], 'cover.png', { type: 'image/png' }))
     await uploadSelectedFile(wrapper)
 
     expect(

@@ -1,3 +1,4 @@
+import { getDialogButton } from '../../helpers/dom'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
@@ -189,32 +190,16 @@ function getTemporaryPasswordInput() {
   ) as HTMLInputElement | null
 }
 
-function getTemporaryPasswordButton(dataTest: string) {
-  return document.body.querySelector(`[data-test="${dataTest}"]`) as HTMLButtonElement | null
-}
-
 function getTemporaryPasswordCloseButton() {
   return queryTemporaryPasswordDialog()?.querySelector('.n-dialog__close') as HTMLElement | null
 }
 
 function getSelect(wrapper: VueWrapper, dataTest: string) {
-  const select = wrapper
-    .findAllComponents(NSelect)
-    .find((componentWrapper) => componentWrapper.attributes('data-test') === dataTest)
-
-  expect(select).toBeDefined()
-
-  return select!
+  return wrapper.get(`[data-test="${dataTest}"]`).getComponent(NSelect)
 }
 
 function getTreeSelect(wrapper: VueWrapper, dataTest: string) {
-  const select = wrapper
-    .findAllComponents(NTreeSelect)
-    .find((componentWrapper) => componentWrapper.attributes('data-test') === dataTest)
-
-  expect(select).toBeDefined()
-
-  return select!
+  return wrapper.get(`[data-test="${dataTest}"]`).getComponent(NTreeSelect)
 }
 
 describe('users page', () => {
@@ -409,13 +394,7 @@ describe('users page', () => {
     await wrapper.get('[data-test="users-delete"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="users-delete-confirm"]',
-    ) as HTMLButtonElement | null
-
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('users-delete-confirm').click()
     await flushPromises()
 
     expect(deleteUserMock).toHaveBeenCalledWith(deletableUser.id)
@@ -434,13 +413,7 @@ describe('users page', () => {
     await wrapper.get('[data-test="users-reset-password"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="users-reset-password-confirm"]',
-    ) as HTMLButtonElement | null
-
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('users-reset-password-confirm').click()
     await flushPromises()
 
     expect(resetUserPasswordMock).toHaveBeenCalledWith(resettableUser.id)
@@ -469,17 +442,13 @@ describe('users page', () => {
     await wrapper.get('[data-test="users-reset-password"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="users-reset-password-confirm"]',
-    ) as HTMLButtonElement | null
-
-    confirmButton?.click()
+    getDialogButton('users-reset-password-confirm').click()
     await flushPromises()
 
-    const copyButton = getTemporaryPasswordButton('users-temporary-password-copy')
+    const copyButton = getDialogButton('users-temporary-password-copy')
     expect(copyButton).not.toBeNull()
 
-    copyButton?.click()
+    copyButton.click()
     await flushPromises()
 
     expect(write).toHaveBeenCalledTimes(1)
@@ -489,7 +458,7 @@ describe('users page', () => {
       'text/plain',
       'ResetPass123',
     )
-    expect(copyButton?.textContent).toContain('已复制')
+    expect(copyButton.textContent).toContain('已复制')
   })
 
   it('keeps reset password dialog open when resetting password fails', async () => {
@@ -502,13 +471,7 @@ describe('users page', () => {
     await wrapper.get('[data-test="users-reset-password"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="users-reset-password-confirm"]',
-    ) as HTMLButtonElement | null
-
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('users-reset-password-confirm').click()
     await flushPromises()
 
     expect(resetUserPasswordMock).toHaveBeenCalledWith(userListResponse.list[1]!.id)
@@ -526,13 +489,7 @@ describe('users page', () => {
     await wrapper.get('[data-test="users-delete"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="users-delete-confirm"]',
-    ) as HTMLButtonElement | null
-
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('users-delete-confirm').click()
     await flushPromises()
 
     expect(deleteUserMock).toHaveBeenCalledWith(userListResponse.list[1]!.id)

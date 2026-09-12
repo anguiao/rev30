@@ -1,3 +1,4 @@
+import { createDeferred } from '../../helpers/promise'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import UserAvatarUpload from '../../../src/features/users/UserAvatarUpload.vue'
@@ -58,16 +59,8 @@ describe('UserAvatarUpload', () => {
 
     const fileOne = new File(['png1'], 'avatar1.png', { type: 'image/png' })
     const fileTwo = new File(['png2'], 'avatar2.png', { type: 'image/png' })
-    let pendingResolve: () => void = () => {}
-    uploadAttachmentMock.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          pendingResolve = () =>
-            resolve({
-              id: '33333333-3333-4333-8333-333333333333',
-            })
-        }),
-    )
+    const pendingUpload = createDeferred<Awaited<ReturnType<typeof uploadAttachment>>>()
+    uploadAttachmentMock.mockReturnValueOnce(pendingUpload.promise)
 
     const triggerUpload = (file: File) => {
       const dataTransfer = new DataTransfer()
@@ -85,7 +78,7 @@ describe('UserAvatarUpload', () => {
     expect(button.attributes('aria-busy')).toBe('true')
     expect(uploadAttachmentMock).toHaveBeenCalledTimes(1)
 
-    pendingResolve()
+    pendingUpload.resolve({ id: '33333333-3333-4333-8333-333333333333' })
     await firstSubmit
     await flushPromises()
 

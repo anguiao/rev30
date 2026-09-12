@@ -45,9 +45,11 @@ describe('login log schemas', () => {
   it('rejects pagination outside the shared boundaries', () => {
     expectZodIssue(loginLogListQuerySchema.safeParse({ page: '0' }), {
       message: '页码不能小于 1',
+      path: ['page'],
     })
     expectZodIssue(loginLogListQuerySchema.safeParse({ pageSize: '101' }), {
       message: '每页数量不能超过 100',
+      path: ['pageSize'],
     })
   })
 
@@ -143,6 +145,9 @@ describe('login log schemas', () => {
       pageSize: 20,
     })
 
-    expectZodIssue(result, { message: '设备类型无效' })
+    expectZodIssue(result, {
+      message: '设备类型无效',
+      path: ['list', 0, 'userAgent', 'deviceType'],
+    })
   })
 })

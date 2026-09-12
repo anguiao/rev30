@@ -1,4 +1,4 @@
-import type { UserCreateResponse } from '@rev30/contracts'
+import type { UserCreateResponse, UserResetPasswordResponse } from '@rev30/contracts'
 import { describe, expect } from 'vitest'
 import { createApp } from '../../helpers/app'
 import type { OperationLogEvent } from '../../../src/runtime/operation-log'
@@ -119,6 +119,7 @@ describe('system operation log integration', () => {
 
       expect(updateResponse.status).toBe(200)
       expect(resetResponse.status).toBe(200)
+      const reset = await responseJson<UserResetPasswordResponse>(resetResponse)
       expect(deleteResponse.status).toBe(204)
       expect(
         events.map(({ action, targetKey, targetLabel }) => ({ action, targetKey, targetLabel })),
@@ -146,6 +147,7 @@ describe('system operation log integration', () => {
       ])
       const serializedEvents = JSON.stringify(events)
       expect(serializedEvents).not.toContain(created.temporaryPassword)
+      expect(serializedEvents).not.toContain(reset.temporaryPassword)
       expect(serializedEvents).not.toContain(email)
       expect(serializedEvents).not.toContain(phone)
       expect(serializedEvents).not.toContain('updated-private@example.com')

@@ -7,6 +7,6 @@
     "rootDir": ".",
     "tsBuildInfoFile": "node_modules/.cache/tsconfig.test.tsbuildinfo"
   },
-  "include": ["__tests__/**/*.ts"],
+  "include": ["vitest.config.ts", "__tests__/**/*.ts"],
   "exclude": []
 }

@@ -1,3 +1,4 @@
+import { getDialogButton } from '../../helpers/dom'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NDatePicker, NInputNumber, NPagination, NSelect } from 'naive-ui'
@@ -68,9 +69,7 @@ async function mountPage() {
 }
 
 function getSelect(wrapper: VueWrapper, dataTest: string) {
-  return wrapper
-    .findAllComponents(NSelect)
-    .find((item) => item.attributes('data-test') === dataTest)!
+  return wrapper.get(`[data-test="${dataTest}"]`).getComponent(NSelect)
 }
 
 describe('operation logs page', () => {
@@ -207,10 +206,7 @@ describe('operation logs page', () => {
     await wrapper.get('[data-test="operation-log-detail"]').trigger('click')
     await vi.waitFor(() => expect(detailMock).toHaveBeenCalledWith(id))
     await flushPromises()
-    const copyButton = document.querySelector<HTMLElement>('[data-test="operation-log-copy-id"]')
-    expect(copyButton).not.toBeNull()
-
-    copyButton?.click()
+    getDialogButton('operation-log-copy-id').click()
     await flushPromises()
 
     expect(writeText).toHaveBeenCalledWith(actorUserId)

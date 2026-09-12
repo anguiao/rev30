@@ -6,6 +6,10 @@ import { afterEach, describe, expect, vi } from 'vitest'
 import {
   ATTACHMENT_DISPOSITION_INLINE,
   type AuthTokenResponse,
+  type Attachment,
+  type AttachmentContentUrl,
+  type AttachmentReadPolicy,
+  type AttachmentUploadSession,
   type AttachmentListResponse,
 } from '@rev30/contracts'
 import { createApp, type CreateTestAppOptions } from '../../helpers/app'
@@ -131,11 +135,12 @@ async function login(app: ReturnType<typeof createApp>, database: TestDatabase) 
 
 async function uploadAttachmentThroughSession(
   app: ReturnType<typeof createApp>,
-  authenticated: Awaited<ReturnType<typeof createSystemAccessFixture>>,
+  authenticated: Pick<Awaited<ReturnType<typeof createSystemAccessFixture>>, 'authHeaders'>,
   input: {
     bytes: Uint8Array
     contentType: string
     originalName: string
+    readPolicy?: AttachmentReadPolicy
     usage: string
   },
 ) {
@@ -144,6 +149,7 @@ async function uploadAttachmentThroughSession(
     body: JSON.stringify({
       originalName: input.originalName,
       usage: input.usage,
+      readPolicy: input.readPolicy,
       size: input.bytes.byteLength,
       contentType: input.contentType,
     }),
@@ -152,12 +158,7 @@ async function uploadAttachmentThroughSession(
       'content-type': 'application/json',
     },
   })
-  const session = (await sessionResponse.json()) as {
-    request: {
-      url: string
-    }
-    uploadId: string
-  }
+  const session = (await sessionResponse.json()) as AttachmentUploadSession
 
   expect(sessionResponse.status).toBe(201)
 
@@ -191,58 +192,29 @@ async function uploadAttachmentViaSession(
   input: {
     accessToken: string
     usage: string
-    readPolicy: 'signed' | 'authenticated'
+    readPolicy: AttachmentReadPolicy
     file: File
   },
 ) {
-  const sessionResponse = await app.request('/api/attachments/uploads', {
-    method: 'POST',
-    body: JSON.stringify({
-      originalName: input.file.name,
-      usage: input.usage,
-      readPolicy: input.readPolicy,
-      size: input.file.size,
-      contentType: input.file.type,
-    }),
-    headers: {
-      authorization: `Bearer ${input.accessToken}`,
-      'content-type': 'application/json',
-    },
-  })
-  const session = (await sessionResponse.json()) as {
-    request: {
-      url: string
-    }
-    uploadId: string
-  }
-
-  expect(sessionResponse.status).toBe(201)
-
-  const uploadResponse = await app.request(session.request.url, {
-    method: 'PUT',
-    body: input.file,
-  })
-
-  expect(uploadResponse.status).toBe(204)
-
-  const completeResponse = await app.request(
-    `/api/attachments/uploads/${session.uploadId}/complete`,
+  const { completeResponse } = await uploadAttachmentThroughSession(
+    app,
+    { authHeaders: { authorization: `Bearer ${input.accessToken}` } },
     {
-      method: 'POST',
-      body: JSON.stringify({}),
-      headers: {
-        authorization: `Bearer ${input.accessToken}`,
-        'content-type': 'application/json',
-      },
+      bytes: new Uint8Array(await input.file.arrayBuffer()),
+      contentType: input.file.type,
+      originalName: input.file.name,
+      readPolicy: input.readPolicy,
+      usage: input.usage,
     },
   )
 
   expect(completeResponse.status).toBe(201)
 
-  return (await completeResponse.json()) as { id: string }
+  return (await completeResponse.json()) as Attachment
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks()
   vi.unstubAllEnvs()
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })))
 })
@@ -258,15 +230,7 @@ describe('attachment routes integration', () => {
         originalName: 'avatar.png',
         usage: 'avatar',
       })
-      const uploaded = (await completeResponse.json()) as {
-        createdAt: string
-        extension: string
-        id: string
-        mimeType: string
-        originalName: string
-        size: number
-        usage: string
-      }
+      const uploaded = (await completeResponse.json()) as Attachment
 
       expect(completeResponse.status).toBe(201)
       expect(uploaded).toMatchObject({
@@ -296,12 +260,7 @@ describe('attachment routes integration', () => {
           'content-type': 'application/json',
         },
       })
-      const content = (await contentUrlResponse.json()) as {
-        request: {
-          expiresAt: string
-          url: string
-        }
-      }
+      const content = (await contentUrlResponse.json()) as AttachmentContentUrl
 
       expect(contentUrlResponse.status).toBe(200)
       expect(content).toEqual({
@@ -335,7 +294,7 @@ describe('attachment routes integration', () => {
         originalName: '报告📎.png',
         usage: 'report',
       })
-      const uploaded = (await completeResponse.json()) as { id: string }
+      const uploaded = (await completeResponse.json()) as Attachment
       const contentUrlResponse = await app.request(`/api/attachments/${uploaded.id}/content-url`, {
         method: 'POST',
         body: JSON.stringify({
@@ -346,11 +305,7 @@ describe('attachment routes integration', () => {
           'content-type': 'application/json',
         },
       })
-      const content = (await contentUrlResponse.json()) as {
-        request: {
-          url: string
-        }
-      }
+      const content = (await contentUrlResponse.json()) as AttachmentContentUrl
       const contentResponse = await app.request(content.request.url)
 
       expect(contentResponse.status).toBe(200)
@@ -374,7 +329,7 @@ describe('attachment routes integration', () => {
         originalName: 'avatar.png',
         usage: 'avatar',
       })
-      const uploaded = (await completeResponse.json()) as { id: string }
+      const uploaded = (await completeResponse.json()) as Attachment
 
       const listResponse = await app.request('/api/attachments?usage=avatar&keyword=avatar', {
         headers: authenticated.authHeaders,
@@ -443,7 +398,7 @@ describe('attachment routes integration', () => {
         originalName: 'avatar.png',
         usage: 'avatar',
       })
-      const uploaded = (await completeResponse.json()) as { id: string }
+      const uploaded = (await completeResponse.json()) as Attachment
       const storageError = new Error('storage delete failed')
       vi.spyOn(LocalAttachmentStorage.prototype, 'delete').mockRejectedValueOnce(storageError)
       const privateBody = 'private-request-body'

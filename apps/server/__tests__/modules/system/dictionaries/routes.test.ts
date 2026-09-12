@@ -12,7 +12,12 @@ import {
   DictionaryItemValueConflictError,
   DictionaryNotFoundError,
 } from '../../../../src/modules/system/dictionaries/errors'
+import type { createDictionaryService } from '../../../../src/modules/system/dictionaries/service'
+import type { recordOperation } from '../../../../src/middleware/operation-log'
+import type { requireAccess } from '../../../../src/middleware/access'
 import { createDictionaryRoutes } from '../../../../src/modules/system/dictionaries/routes'
+
+type DictionaryService = ReturnType<typeof createDictionaryService>
 
 const dictionaryId = '11111111-1111-4111-8111-111111111111'
 const itemId = '22222222-2222-4222-8222-222222222222'
@@ -43,19 +48,19 @@ const dictionary: DictionaryDetail = {
 const mocks = vi.hoisted(() => {
   const accessMiddleware = vi.fn(async (_c: Context, next: Next) => next())
   const service = {
-    create: vi.fn(),
-    delete: vi.fn(),
-    get: vi.fn(),
-    list: vi.fn(),
-    options: vi.fn(),
-    update: vi.fn(),
+    create: vi.fn<DictionaryService['create']>(),
+    delete: vi.fn<DictionaryService['delete']>(),
+    get: vi.fn<DictionaryService['get']>(),
+    list: vi.fn<DictionaryService['list']>(),
+    options: vi.fn<DictionaryService['options']>(),
+    update: vi.fn<DictionaryService['update']>(),
   }
 
   return {
     accessMiddleware,
     createDictionaryService: vi.fn(() => service),
-    recordOperation: vi.fn(),
-    requireAccess: vi.fn(() => accessMiddleware),
+    recordOperation: vi.fn<typeof recordOperation>(),
+    requireAccess: vi.fn<typeof requireAccess>(() => accessMiddleware),
     service,
   }
 })
@@ -105,15 +110,13 @@ describe('dictionary routes', () => {
   it('registers expected access guards for every dictionary endpoint', () => {
     createTestApp()
 
-    expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
-      [
-        'system:dictionary:list',
-        'system:dictionary:list',
-        'system:dictionary:create',
-        'system:dictionary:update',
-        'system:dictionary:delete',
-      ],
-    )
+    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
+      'system:dictionary:list',
+      'system:dictionary:list',
+      'system:dictionary:create',
+      'system:dictionary:update',
+      'system:dictionary:delete',
+    ])
   })
 
   it('parses list query and delegates to dictionary service', async () => {
@@ -224,9 +227,7 @@ describe('dictionary routes', () => {
     expect(deleteResponse.status).toBe(204)
     expect(mocks.service.delete).toHaveBeenCalledWith(dictionaryId)
     expect(
-      (mocks.recordOperation.mock.calls as unknown as [Context, string, object][]).map(
-        ([, action, target]) => ({ action, target }),
-      ),
+      mocks.recordOperation.mock.calls.map(([, action, target]) => ({ action, target })),
     ).toEqual([
       {
         action: 'system:dictionary:create',

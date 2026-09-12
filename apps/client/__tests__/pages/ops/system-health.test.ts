@@ -49,7 +49,7 @@ async function mountPage() {
   return result
 }
 async function visibility(state: DocumentVisibilityState) {
-  Object.defineProperty(document, 'visibilityState', { configurable: true, value: state })
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue(state)
   document.dispatchEvent(new Event('visibilitychange'))
   await flushPromises()
 }
@@ -60,7 +60,7 @@ async function tick(ms: number) {
 beforeEach(() => {
   vi.useFakeTimers()
   stubPreferredDark(false)
-  Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
   snapshotMock.mockReset().mockResolvedValue(healthSnapshot())
   statisticsMock.mockReset().mockResolvedValue(healthStatistics())
   vi.spyOn(console, 'error').mockImplementation(() => {})

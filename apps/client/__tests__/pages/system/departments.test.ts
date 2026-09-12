@@ -1,3 +1,4 @@
+import { getDialogButton } from '../../helpers/dom'
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
@@ -282,11 +283,7 @@ describe('departments page', () => {
     const deleteButtons = wrapper.findAll('[data-test="departments-delete"]')
     await deleteButtons[1]!.trigger('click')
     await flushPromises()
-    const confirmButton = document.body.querySelector(
-      '[data-test="departments-delete-confirm"]',
-    ) as HTMLButtonElement | null
-    expect(confirmButton).not.toBeNull()
-    confirmButton!.click()
+    getDialogButton('departments-delete-confirm').click()
     await flushPromises()
 
     expect(deleteDepartmentMock).toHaveBeenCalledWith(leafDepartment.id)
@@ -303,11 +300,7 @@ describe('departments page', () => {
     const deleteButtons = wrapper.findAll('[data-test="departments-delete"]')
     await deleteButtons[1]!.trigger('click')
     await flushPromises()
-    const confirmButton = document.body.querySelector(
-      '[data-test="departments-delete-confirm"]',
-    ) as HTMLButtonElement | null
-    expect(confirmButton).not.toBeNull()
-    confirmButton!.click()
+    getDialogButton('departments-delete-confirm').click()
     await flushPromises()
 
     expect(deleteDepartmentMock).toHaveBeenCalledTimes(1)

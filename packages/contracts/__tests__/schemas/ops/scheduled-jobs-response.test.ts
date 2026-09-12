@@ -125,7 +125,9 @@ describe('scheduled job response schemas', () => {
     expect(scheduledJobListItemSchema.parse(taskItem)).toEqual(taskItem)
     expect(scheduledJobListResponseSchema.parse([taskItem])).toEqual([taskItem])
     expectZodIssue(scheduledJobListItemSchema.safeParse({ ...taskItem, unknown: true }), {
-      message: 'Unrecognized key: "unknown"',
+      code: 'unrecognized_keys',
+      keys: ['unknown'],
+      path: [],
     })
   })
 
@@ -151,7 +153,9 @@ describe('scheduled job response schemas', () => {
       }),
     ).toEqual({ list: [successfulRunListItem], total: 1, page: 1, pageSize: 20 })
     expectZodIssue(scheduledJobRunDetailSchema.safeParse({ ...runningRun, rawError: 'secret' }), {
-      message: 'Unrecognized key: "rawError"',
+      code: 'unrecognized_keys',
+      keys: ['rawError'],
+      path: [],
     })
   })
 

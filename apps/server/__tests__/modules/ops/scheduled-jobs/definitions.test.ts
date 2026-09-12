@@ -1,4 +1,4 @@
-import type { Logger } from 'pino'
+import { createLogger } from '../../../../src/runtime/logger'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AttachmentStorageListError } from '../../../../src/modules/attachments/errors'
 import type { ScheduledJobRetentionConfig } from '../../../../src/modules/ops/scheduled-jobs/config'
@@ -51,7 +51,7 @@ const retention: ScheduledJobRetentionConfig = {
 }
 const database = {} as never
 const storage = { provider: 'test' } as never
-const logger = { error: vi.fn() } as unknown as Logger
+const logger = createLogger({ level: 'silent' })
 
 function createRegistry(options: ScheduledJobDefinitionsOptions) {
   return createScheduledJobRegistry(createScheduledJobDefinitions(options))
@@ -59,7 +59,7 @@ function createRegistry(options: ScheduledJobDefinitionsOptions) {
 
 describe('scheduled job definitions', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    Object.values(mocks).forEach((mock) => mock.mockReset())
   })
 
   it('constructs exactly the eight shared handlers with strict public results', async () => {

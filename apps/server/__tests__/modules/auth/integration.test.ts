@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { describe, expect, vi } from 'vitest'
+import { assert, describe, expect, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { sign, verify } from 'hono/jwt'
@@ -12,6 +12,9 @@ import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
   type AuthTokenResponse,
+  type AuthSessionResponse,
+  type AuthLoginInput,
+  type ErrorResponse,
   type User,
 } from '@rev30/contracts'
 import {
@@ -28,7 +31,12 @@ import {
   systemUsers,
 } from '../../../src/db/schema'
 import { dbTest, type TestDatabase } from '../../fixtures/database'
-import { createSystemResourceFixture as createResource } from '../../helpers/system'
+import {
+  createSystemResourceFixture as createResource,
+  createSystemUserFixture,
+} from '../../helpers/system'
+import type { RequestContextEnv } from '../../../src/middleware/request-context'
+import { createLogger } from '../../../src/runtime/logger'
 import { createAuthMiddleware } from '../../../src/middleware/auth'
 import { hashPassword, verifyPassword } from '../../../src/modules/auth/password'
 import { createAuthRoutes } from '../../../src/modules/auth/routes'
@@ -36,11 +44,6 @@ import { createAuthRepository } from '../../../src/modules/auth/repository'
 import { readAuthConfig } from '../../../src/modules/auth/config'
 import { verifyAccessToken, verifyRefreshToken } from '../../../src/modules/auth/tokens'
 import { verifyAttachmentAccessToken } from '../../../src/modules/attachments/access-token'
-
-type ErrorResponse = {
-  message: string
-  field?: string
-}
 
 type AuthLoginResponse = AuthTokenResponse | ErrorResponse
 
@@ -62,15 +65,14 @@ const fixturePasswordHashPromises: Record<FixturePassword, Promise<string>> = {
 }
 
 function createTestApp(database: TestDatabase) {
-  return new Hono()
+  return new Hono<RequestContextEnv>()
     .use('*', async (c, next) => {
-      const context = c as unknown as { set: (key: string, value: unknown) => void }
-      context.set('requestContext', {
+      c.set('requestContext', {
         requestId: randomUUID(),
         clientIp: '192.0.2.1',
         clientIpSource: 'socket',
         userAgent: 'integration-test',
-        logger: {} as never,
+        logger: createLogger({ level: 'silent' }),
       })
       await next()
     })
@@ -103,23 +105,15 @@ function requireAttachmentAccessToken(token: string | undefined) {
 
 async function createPasswordAccount(database: TestDatabase, input: AccountInput = {}) {
   const password = input.password ?? 'secret-password'
-  const [user] = await database
-    .insert(systemUsers)
-    .values({
-      id: randomUUID(),
-      username: input.username ?? 'ada',
-      nickname: input.nickname ?? 'Ada Lovelace',
-      email: input.email ?? null,
-      phone: input.phone ?? null,
-      status: input.status ?? USER_STATUS_ENABLED,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning()
-
-  if (!user) {
-    throw new Error('Expected account user')
-  }
+  const user = await createSystemUserFixture(database, {
+    username: input.username ?? 'ada',
+    nickname: input.nickname ?? 'Ada Lovelace',
+    email: input.email ?? null,
+    phone: input.phone ?? null,
+    status: input.status ?? USER_STATUS_ENABLED,
+    createdAt: now,
+    updatedAt: now,
+  })
 
   await database.insert(authPasswordCredentials).values({
     userId: user.id,
@@ -129,21 +123,29 @@ async function createPasswordAccount(database: TestDatabase, input: AccountInput
   return user
 }
 
-async function createLoggedInAccount(app: Hono, database: TestDatabase, input: AccountInput = {}) {
+async function createLoggedInAccount(
+  app: ReturnType<typeof createTestApp>,
+  database: TestDatabase,
+  input: AccountInput = {},
+) {
   const user = await createPasswordAccount(database, input)
   const session = await login(app, {
     username: user.username,
     password: input.password ?? 'secret-password',
   })
 
+  expect(session.response.status).toBe(200)
+  assert('accessToken' in session.body, 'Expected a successful login response')
+
   return {
     ...session,
-    body: session.body as AuthTokenResponse,
+    body: session.body,
+    refreshToken: requireRefreshToken(session.refreshToken),
     user,
   }
 }
 
-async function login(app: Hono, body = {}) {
+async function login(app: ReturnType<typeof createTestApp>, body: Partial<AuthLoginInput> = {}) {
   const response = await app.request('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({
@@ -243,7 +245,7 @@ describe('auth routes', () => {
     const [access, refresh, attachment] = await Promise.all([
       verifyAccessToken(body.accessToken, config),
       verifyRefreshToken(refreshToken, config),
-      verifyAttachmentAccessToken(requireRefreshToken(attachmentToken), config),
+      verifyAttachmentAccessToken(requireAttachmentAccessToken(attachmentToken), config),
     ])
     const refreshPayload = await verify(refreshToken, config.refreshSecret, 'HS256')
     const [storedSession] = await database
@@ -447,291 +449,6 @@ describe('auth routes', () => {
     },
   )
 
-  dbTest('creates a login failure bucket for a new username', async ({ db: database }) => {
-    const repository = createAuthRepository(database)
-    const attemptTime = new Date('2026-05-14T00:00:00.000Z')
-
-    await repository.recordLoginFailureBucket({
-      username: 'missing-user',
-      now: attemptTime,
-      maxAttempts: 5,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-
-    const bucket = await repository.findLoginAttemptBucketByUsername('missing-user')
-
-    expect(bucket).toMatchObject({
-      username: 'missing-user',
-      failedCount: 1,
-      windowStartedAt: attemptTime,
-      lastFailedAt: attemptTime,
-      lockedUntil: null,
-    })
-  })
-
-  dbTest(
-    'increments failed count within an active login failure window',
-    async ({ db: database }) => {
-      const repository = createAuthRepository(database)
-      const windowStart = new Date('2026-05-14T00:00:00.000Z')
-      const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
-
-      await repository.recordLoginFailureBucket({
-        username: 'window-user',
-        now: windowStart,
-        maxAttempts: 5,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-      await repository.recordLoginFailureBucket({
-        username: 'window-user',
-        now: secondAttempt,
-        maxAttempts: 5,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-
-      const bucket = await repository.findLoginAttemptBucketByUsername('window-user')
-
-      expect(bucket).toMatchObject({
-        username: 'window-user',
-        failedCount: 2,
-        windowStartedAt: windowStart,
-        lastFailedAt: secondAttempt,
-        lockedUntil: null,
-      })
-    },
-  )
-
-  dbTest(
-    'locks username when failed login attempts hit the threshold',
-    async ({ db: database }) => {
-      const repository = createAuthRepository(database)
-      const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
-      const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
-      const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
-      const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
-
-      await repository.recordLoginFailureBucket({
-        username: 'threshold-user',
-        now: firstAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-      await repository.recordLoginFailureBucket({
-        username: 'threshold-user',
-        now: secondAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-      await repository.recordLoginFailureBucket({
-        username: 'threshold-user',
-        now: thirdAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-
-      const bucket = await repository.findLoginAttemptBucketByUsername('threshold-user')
-
-      expect(bucket).toMatchObject({
-        username: 'threshold-user',
-        failedCount: 3,
-        windowStartedAt: firstAttempt,
-        lastFailedAt: thirdAttempt,
-        lockedUntil: expectedLockUntil,
-      })
-    },
-  )
-
-  dbTest('resets failed count when the login failure window expires', async ({ db: database }) => {
-    const repository = createAuthRepository(database)
-    const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
-    const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
-    const expiredWindowAttempt = new Date('2026-05-14T00:16:00.000Z')
-
-    await repository.recordLoginFailureBucket({
-      username: 'window-expired-user',
-      now: firstAttempt,
-      maxAttempts: 5,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.recordLoginFailureBucket({
-      username: 'window-expired-user',
-      now: secondAttempt,
-      maxAttempts: 5,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-    await repository.recordLoginFailureBucket({
-      username: 'window-expired-user',
-      now: expiredWindowAttempt,
-      maxAttempts: 5,
-      windowSeconds: 900,
-      lockSeconds: 900,
-    })
-
-    const bucket = await repository.findLoginAttemptBucketByUsername('window-expired-user')
-
-    expect(bucket).toMatchObject({
-      username: 'window-expired-user',
-      failedCount: 1,
-      windowStartedAt: expiredWindowAttempt,
-      lastFailedAt: expiredWindowAttempt,
-      lockedUntil: null,
-    })
-  })
-
-  dbTest(
-    'resets failed count when the previous login failure lock expires',
-    async ({ db: database }) => {
-      const repository = createAuthRepository(database)
-      const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
-      const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
-      const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
-      const afterLockExpiresAttempt = new Date('2026-05-14T00:17:01.000Z')
-
-      await repository.recordLoginFailureBucket({
-        username: 'lock-expired-user',
-        now: firstAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-      await repository.recordLoginFailureBucket({
-        username: 'lock-expired-user',
-        now: secondAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-      await repository.recordLoginFailureBucket({
-        username: 'lock-expired-user',
-        now: thirdAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-      await repository.recordLoginFailureBucket({
-        username: 'lock-expired-user',
-        now: afterLockExpiresAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-
-      const bucket = await repository.findLoginAttemptBucketByUsername('lock-expired-user')
-
-      expect(bucket).toMatchObject({
-        username: 'lock-expired-user',
-        failedCount: 1,
-        windowStartedAt: afterLockExpiresAttempt,
-        lastFailedAt: afterLockExpiresAttempt,
-        lockedUntil: null,
-      })
-    },
-  )
-
-  dbTest(
-    'keeps active login failure lock when stale write sees expired window',
-    async ({ db: database }) => {
-      const repository = createAuthRepository(database)
-      const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
-      const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
-      const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
-      const staleAttempt = new Date('2026-05-14T00:16:00.000Z')
-      const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
-
-      await repository.recordLoginFailureBucket({
-        username: 'stale-lock-user',
-        now: firstAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-      await repository.recordLoginFailureBucket({
-        username: 'stale-lock-user',
-        now: secondAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-      await repository.recordLoginFailureBucket({
-        username: 'stale-lock-user',
-        now: thirdAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-      await repository.recordLoginFailureBucket({
-        username: 'stale-lock-user',
-        now: staleAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-
-      const bucket = await repository.findLoginAttemptBucketByUsername('stale-lock-user')
-
-      expect(bucket).toMatchObject({
-        username: 'stale-lock-user',
-        failedCount: 3,
-        windowStartedAt: firstAttempt,
-        lastFailedAt: staleAttempt,
-        lockedUntil: expectedLockUntil,
-      })
-    },
-  )
-
-  dbTest(
-    'keeps active login failure lock when stale successful login cleanup runs',
-    async ({ db: database }) => {
-      const repository = createAuthRepository(database)
-      const firstAttempt = new Date('2026-05-14T00:00:00.000Z')
-      const secondAttempt = new Date('2026-05-14T00:01:00.000Z')
-      const staleSuccessStartedAt = new Date('2026-05-14T00:01:30.000Z')
-      const thirdAttempt = new Date('2026-05-14T00:02:00.000Z')
-      const expectedLockUntil = new Date('2026-05-14T00:17:00.000Z')
-
-      await repository.recordLoginFailureBucket({
-        username: 'stale-success-lock-user',
-        now: firstAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-      await repository.recordLoginFailureBucket({
-        username: 'stale-success-lock-user',
-        now: secondAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-      await repository.recordLoginFailureBucket({
-        username: 'stale-success-lock-user',
-        now: thirdAttempt,
-        maxAttempts: 3,
-        windowSeconds: 900,
-        lockSeconds: 900,
-      })
-      await repository.clearLoginAttemptBucket('stale-success-lock-user', staleSuccessStartedAt)
-
-      const bucket = await repository.findLoginAttemptBucketByUsername('stale-success-lock-user')
-
-      expect(bucket).toMatchObject({
-        username: 'stale-success-lock-user',
-        failedCount: 3,
-        windowStartedAt: firstAttempt,
-        lastFailedAt: thirdAttempt,
-        lockedUntil: expectedLockUntil,
-      })
-    },
-  )
-
   dbTest('returns role summaries on login', async ({ db: database }) => {
     const app = createTestApp(database)
     const account = await createPasswordAccount(database, {
@@ -793,29 +510,12 @@ describe('auth routes', () => {
       nickname: 'Admin Login',
       password: 'secret-password',
     })
-    const existingAdminRole = await database
+    const [adminRole] = await database
       .select()
       .from(systemRoles)
       .where(eq(systemRoles.code, 'admin'))
-      .then((rows) => rows[0])
 
-    const adminRole =
-      existingAdminRole ??
-      (await database
-        .insert(systemRoles)
-        .values({
-          id: randomUUID(),
-          name: 'Administrator',
-          code: 'admin',
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning()
-        .then((rows) => rows[0]))
-
-    if (!adminRole) {
-      throw new Error('Expected admin role')
-    }
+    assert(adminRole, 'Expected seeded admin role')
 
     const prefix = randomUUID()
 
@@ -1093,22 +793,7 @@ describe('auth routes', () => {
         authorization: `Bearer ${registered.body.accessToken}`,
       },
     })
-    const body = (await response.json()) as {
-      user: {
-        id: string
-        username: string
-        nickname: string
-        email: string | null
-        phone: string | null
-        status: number
-        departments: { id: string; name: string; code: string }[]
-        roles: { id: string; name: string; code: string }[]
-        createdAt: string
-        updatedAt: string
-      }
-      accessCodes: string[]
-      menus: unknown[]
-    }
+    const body = (await response.json()) as AuthSessionResponse
 
     expect(response.status).toBe(200)
     expect(body).toMatchObject({

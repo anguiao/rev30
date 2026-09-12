@@ -14,6 +14,7 @@ const nodeTestFiles = [
 export default defineConfig({
   plugins: [vue()],
   test: {
+    restoreMocks: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

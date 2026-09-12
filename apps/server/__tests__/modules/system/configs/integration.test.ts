@@ -7,11 +7,7 @@ import { configRegistry } from '../../../../src/modules/system/configs/registry'
 import { createConfigRoutes } from '../../../../src/modules/system/configs/routes'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
-
-type ErrorResponse = {
-  message: string
-  field?: string
-}
+import { expectJsonResponse, jsonRequest } from '../../../helpers/http'
 
 const configKey = 'auth.loginFailureMaxAttempts'
 
@@ -34,11 +30,11 @@ async function createTestApp(database: TestDatabase, authHeaders?: Record<string
 }
 
 async function updateConfig(app: Hono, key: string, customValue: string | null) {
-  const response = await app.request(`/api/system/configs/${key}`, {
-    method: 'PUT',
-    body: JSON.stringify({ customValue }),
-    headers: { 'content-type': 'application/json' },
-  })
+  const response = await app.request(
+    `/api/system/configs/${key}`,
+    jsonRequest({ customValue }, { method: 'PUT' }),
+  )
+  await expectJsonResponse(response, { status: 200 })
 
   return { body: (await response.json()) as Config, response }
 }
@@ -141,7 +137,7 @@ describe('config routes', () => {
 
     const detailResponse = await app.request('/api/system/configs/auth.unknown')
     expect(detailResponse.status).toBe(404)
-    expect((await detailResponse.json()) as ErrorResponse).toEqual({ message: '配置不存在' })
+    expect(await detailResponse.json()).toEqual({ message: '配置不存在' })
 
     const updateResponse = await app.request('/api/system/configs/auth.unknown', {
       method: 'PUT',
@@ -149,7 +145,7 @@ describe('config routes', () => {
       headers: { 'content-type': 'application/json' },
     })
     expect(updateResponse.status).toBe(404)
-    expect((await updateResponse.json()) as ErrorResponse).toEqual({ message: '配置不存在' })
+    expect(await updateResponse.json()).toEqual({ message: '配置不存在' })
   })
 
   dbTest('returns field error for invalid custom values', async ({ db: database }) => {
@@ -162,7 +158,7 @@ describe('config routes', () => {
     })
 
     expect(response.status).toBe(400)
-    expect((await response.json()) as ErrorResponse).toEqual({
+    expect(await response.json()).toEqual({
       field: 'customValue',
       message: '配置值必须是 1 到 20 之间的整数',
     })

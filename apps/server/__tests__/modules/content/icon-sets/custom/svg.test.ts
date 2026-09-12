@@ -78,12 +78,10 @@ describe('custom icon SVG parser', () => {
   })
 
   it('rejects invalid SVGs', async () => {
-    await expect(parseSvgIcon('Bad.svg', '<svg><script>alert(1)</script>')).rejects.toBeInstanceOf(
-      CustomSvgInvalidError,
-    )
-    await expect(parseSvgIcon('Bad.svg', '<svg><script>alert(1)</script>')).rejects.toThrow(
-      'SVG 无效',
-    )
+    const result = parseSvgIcon('Bad.svg', '<svg><script>alert(1)</script>')
+
+    await expect(result).rejects.toBeInstanceOf(CustomSvgInvalidError)
+    await expect(result).rejects.toThrow('SVG 无效')
   })
 
   it('rejects empty SVG bodies', async () => {

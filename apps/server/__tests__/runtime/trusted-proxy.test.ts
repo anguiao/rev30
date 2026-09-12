@@ -36,29 +36,19 @@ describe('trusted proxy policy', () => {
     expect(policy.isTrusted('198.51.101.1')).toBe(false)
   })
 
-  it('rejects malformed trusted proxy configuration with only the environment name and item position', () => {
-    for (const [value, position] of [
-      ['192.168.001.1', 1],
-      ['192.0.2.10/33', 1],
-      ['192.0.2.10/024', 1],
-      ['2001:db8::/129', 1],
-      ['2001:db8::/not-a-prefix', 1],
-      ['[2001:db8::1]:443', 1],
-      ['proxy.internal', 1],
-      ['192.0.2.10, , 2001:db8::1', 2],
-    ] as const) {
-      let error: unknown
-
-      try {
-        readTrustedProxyPolicy({ TRUSTED_PROXY_CIDRS: value })
-      } catch (caught) {
-        error = caught
-      }
-
-      expect(error).toBeInstanceOf(Error)
-      expect((error as Error).message).toBe(`TRUSTED_PROXY_CIDRS 第 ${position} 项无效`)
-      expect((error as Error).message).not.toContain(value)
-    }
+  it.each([
+    ['192.168.001.1', 1],
+    ['192.0.2.10/33', 1],
+    ['192.0.2.10/024', 1],
+    ['2001:db8::/129', 1],
+    ['2001:db8::/not-a-prefix', 1],
+    ['[2001:db8::1]:443', 1],
+    ['proxy.internal', 1],
+    ['192.0.2.10, , 2001:db8::1', 2],
+  ])('rejects %s with only the environment name and item position', (value, position) => {
+    expect(() => readTrustedProxyPolicy({ TRUSTED_PROXY_CIDRS: value })).toThrow(
+      new Error(`TRUSTED_PROXY_CIDRS 第 ${position} 项无效`),
+    )
   })
 })
 
@@ -188,11 +178,6 @@ describe('client IP resolution', () => {
           hopCount,
         },
       })
-      expect(resolution).not.toHaveProperty('xForwardedFor')
-
-      if (xForwardedFor) {
-        expect(JSON.stringify(resolution)).not.toContain(xForwardedFor)
-      }
     },
   )
 

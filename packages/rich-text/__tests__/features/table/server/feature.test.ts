@@ -121,14 +121,15 @@ describe('table server feature', () => {
       preset,
     )
 
-    const tableContent = content.json as unknown as {
-      content: Array<{
-        content: Array<{ content: Array<{ attrs: Record<string, unknown> }> }>
-      }>
-    }
-
-    expect(tableContent.content[0]?.content[0]?.content[0]).toMatchObject({
-      attrs: { colspan: 2, colwidth: [20, 30], align: 'right' },
+    expect(content.json).toMatchObject({
+      content: [
+        {
+          content: [
+            { content: [{ attrs: { colspan: 2, colwidth: [20, 30], align: 'right' } }] },
+            {},
+          ],
+        },
+      ],
     })
     expect(content.html).toContain('colspan="2"')
     expect(content.html).not.toContain('rowspan="1"')
@@ -229,8 +230,6 @@ describe('table server feature', () => {
       'Tables exceed the document-wide grid slot limit',
     )
     expect(tableMapGet).toHaveBeenCalledTimes(maximumTableCountAtGridSlotLimit)
-
-    tableMapGet.mockRestore()
   })
 
   it('counts active rowspans before constructing a TableMap', () => {
@@ -258,8 +257,6 @@ describe('table server feature', () => {
       RichTextContentInvalidError,
     )
     expect(tableMapGet).not.toHaveBeenCalled()
-
-    tableMapGet.mockRestore()
   })
 
   it('normalizes the table wrapper and keeps only dynamic table attributes', () => {

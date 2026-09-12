@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto'
 import type {
   Announcement,
   AnnouncementListResponse,
-  AnnouncementTarget,
+  AnnouncementCreateInput,
+  ErrorResponse,
   AnnouncementTargetOptionsResponse,
   TiptapDocument,
 } from '@rev30/contracts'
@@ -48,11 +49,11 @@ import {
   createSystemAccessFixture,
 } from '../../../helpers/auth'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
-
-type ErrorResponse = {
-  message: string
-  field?: string
-}
+import {
+  createSystemUserFixture,
+  createSystemRoleFixture,
+  createSystemDepartmentFixture,
+} from '../../../helpers/system'
 
 const createBody = {
   type: 'notice',
@@ -88,16 +89,8 @@ async function createTestApp(database: TestDatabase) {
 
 async function createAnnouncement(
   app: Hono,
-  body: {
-    type: 'notice' | 'bulletin'
-    title: string
-    summary?: string | null
-    contentJson: TiptapDocument
-    visibility?: 'all' | 'targeted'
-    targets?: AnnouncementTarget[]
-    pinned?: boolean
-    publish?: boolean
-  },
+  body: Pick<AnnouncementCreateInput, 'type' | 'title' | 'contentJson'> &
+    Partial<AnnouncementCreateInput>,
 ) {
   const response = await app.request('/api/content/announcements', {
     method: 'POST',
@@ -121,7 +114,7 @@ function contentWithImages(attachmentIds: string[]): TiptapDocument {
         attrs: { src: `/api/attachments/${attachmentId}/content` },
       })),
     ],
-  } as TiptapDocument
+  }
 }
 
 async function createAnnouncementContentImageAttachment(
@@ -159,7 +152,7 @@ async function createAnnouncementContentImageAttachment(
 async function createAttachmentOwner(database: TestDatabase) {
   const id = randomUUID()
 
-  await database.insert(systemUsers).values({
+  await createSystemUserFixture(database, {
     id,
     username: `announcement-image-owner-${id.slice(0, 8)}`,
     nickname: 'Announcement Image Owner',
@@ -191,17 +184,17 @@ async function createAnnouncementTargetsFixture(database: TestDatabase) {
   const departmentId = randomUUID()
   const roleId = randomUUID()
 
-  await database.insert(systemUsers).values({
+  await createSystemUserFixture(database, {
     id: userId,
     username: `announcement-target-user-${userId.slice(0, 8)}`,
     nickname: 'Announcement Target User',
   })
-  await database.insert(systemDepartments).values({
+  await createSystemDepartmentFixture(database, {
     id: departmentId,
     name: 'Announcement Target Department',
     code: `announcement-target-dept-${departmentId.slice(0, 8)}`,
   })
-  await database.insert(systemRoles).values({
+  await createSystemRoleFixture(database, {
     id: roleId,
     name: 'Announcement Target Role',
     code: `announcement-target-role-${roleId.slice(0, 8)}`,
@@ -311,12 +304,12 @@ describe('announcement routes', () => {
           nickname: 'Announcement Outsider',
         },
       ])
-      await database.insert(systemDepartments).values({
+      await createSystemDepartmentFixture(database, {
         id: departmentId,
         name: 'Announcement Readers',
         code: `announcement-readers-${departmentId.slice(0, 8)}`,
       })
-      await database.insert(systemRoles).values({
+      await createSystemRoleFixture(database, {
         id: roleId,
         name: 'Announcement Reader Role',
         code: `announcement-reader-role-${roleId.slice(0, 8)}`,
@@ -387,7 +380,7 @@ describe('announcement routes', () => {
       const app = await createTestApp(database)
       const recipientUserId = randomUUID()
 
-      await database.insert(systemUsers).values({
+      await createSystemUserFixture(database, {
         id: recipientUserId,
         username: `announcement-former-reader-${recipientUserId.slice(0, 8)}`,
         nickname: 'Former Announcement Reader',
@@ -1134,7 +1127,7 @@ describe('announcement routes', () => {
     const app = await createTestApp(database)
     const roleId = randomUUID()
 
-    await database.insert(systemRoles).values({
+    await createSystemRoleFixture(database, {
       id: roleId,
       name: 'Disabled Announcement Role',
       code: `disabled-announcement-role-${roleId.slice(0, 8)}`,
@@ -1166,7 +1159,7 @@ describe('announcement routes', () => {
       const roleId = randomUUID()
       const { body: created } = await createAnnouncement(app, createBody)
 
-      await database.insert(systemRoles).values({
+      await createSystemRoleFixture(database, {
         id: roleId,
         name: 'Disabled Publish Role',
         code: `disabled-publish-role-${roleId.slice(0, 8)}`,

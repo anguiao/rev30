@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect } from 'vitest'
+import type { z } from 'zod'
 import { eq, inArray } from 'drizzle-orm'
 import { Hono } from 'hono'
 import {
@@ -7,12 +8,13 @@ import {
   ROLE_STATUS_DISABLED,
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
+  userCreateSchema,
+  type ErrorResponse,
   type User,
   type UserCreateResponse,
   type UserListResponse,
   type UserOptionsResponse,
   type UserResetPasswordResponse,
-  type UserStatus,
 } from '@rev30/contracts'
 import {
   attachments,
@@ -34,11 +36,6 @@ import {
 } from '../../../helpers/system'
 import { createUserRoutes } from '../../../../src/modules/system/users/routes'
 import { expectJsonResponse, jsonRequest, responseJson } from '../../../helpers/http'
-
-type ErrorResponse = {
-  message: string
-  field?: string
-}
 
 async function createTestApp(database: TestDatabase, authHeaders?: Record<string, string>) {
   const headers =
@@ -72,20 +69,9 @@ async function createUserCreateAccessApp(database: TestDatabase) {
   return app
 }
 
-async function createUser(
-  app: Hono,
-  body: {
-    username: string
-    nickname: string
-    avatarId?: string | null
-    email?: string | null
-    phone?: string | null
-    status?: UserStatus
-    departmentIds?: string[]
-    roleIds?: string[]
-  },
-) {
+async function createUser(app: Hono, body: z.input<typeof userCreateSchema>) {
   const response = await app.request('/api/system/users', jsonRequest(body, { method: 'POST' }))
+  expect(response.status).toBe(201)
 
   const responseBody = await responseJson<UserCreateResponse>(response)
 
@@ -151,15 +137,7 @@ describe('user routes', () => {
   dbTest(
     'creates users with a generated temporary password credential',
     async ({ db: database }) => {
-      const fixture = await createSystemAccessFixture(database, {
-        accessCodes: ['system:user:create'],
-      })
-      const app = createProtectedSystemRouteTestApp(
-        database,
-        '/api/system/users',
-        createUserRoutes(database),
-        fixture.authHeaders,
-      )
+      const app = await createUserCreateAccessApp(database)
 
       const response = await app.request(
         '/api/system/users',
@@ -914,9 +892,7 @@ describe('user routes', () => {
 
       const storedRelations = await database.select().from(systemUserDepartments)
       expect(storedRelations).toHaveLength(2)
-      expect(new Set(storedRelations.map((relation) => relation.createdAt.getTime()))).toHaveLength(
-        1,
-      )
+      expect(new Set(storedRelations.map((relation) => relation.createdAt.getTime())).size).toBe(1)
     },
   )
 
@@ -1049,9 +1025,7 @@ describe('user routes', () => {
         .from(systemUserRoles)
         .where(eq(systemUserRoles.userId, body.id))
       expect(storedRelations).toHaveLength(2)
-      expect(new Set(storedRelations.map((relation) => relation.createdAt.getTime()))).toHaveLength(
-        1,
-      )
+      expect(new Set(storedRelations.map((relation) => relation.createdAt.getTime())).size).toBe(1)
     },
   )
 
@@ -1393,43 +1367,46 @@ describe('user routes', () => {
     })
   })
 
-  dbTest('revokes active sessions only when a user transitions to disabled', async ({ db }) => {
-    const app = await createTestApp(db)
-    const { body: created } = await createUser(app, {
-      username: 'disable-session-user',
-      nickname: 'Disable Session User',
-    })
-    await db.insert(authSessions).values({
-      id: randomUUID(),
-      userId: created.id,
-      refreshTokenHash: `disable-${randomUUID()}`,
-      expiresAt: new Date('2099-01-01T00:00:00.000Z'),
-    })
+  dbTest(
+    'revokes sessions when disabled and does not restore them on re-enabling',
+    async ({ db }) => {
+      const app = await createTestApp(db)
+      const { body: created } = await createUser(app, {
+        username: 'disable-session-user',
+        nickname: 'Disable Session User',
+      })
+      await db.insert(authSessions).values({
+        id: randomUUID(),
+        userId: created.id,
+        refreshTokenHash: `disable-${randomUUID()}`,
+        expiresAt: new Date('2099-01-01T00:00:00.000Z'),
+      })
 
-    const disableResponse = await app.request(`/api/system/users/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: USER_STATUS_DISABLED }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(disableResponse.status).toBe(200)
-    const [disabledSession] = await db
-      .select()
-      .from(authSessions)
-      .where(eq(authSessions.userId, created.id))
-    expect(disabledSession?.revocationReason).toBe('user_disabled')
+      const disableResponse = await app.request(`/api/system/users/${created.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: USER_STATUS_DISABLED }),
+        headers: { 'content-type': 'application/json' },
+      })
+      expect(disableResponse.status).toBe(200)
+      const [disabledSession] = await db
+        .select()
+        .from(authSessions)
+        .where(eq(authSessions.userId, created.id))
+      expect(disabledSession?.revocationReason).toBe('user_disabled')
 
-    const enableResponse = await app.request(`/api/system/users/${created.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: USER_STATUS_ENABLED }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(enableResponse.status).toBe(200)
-    const [stillRevoked] = await db
-      .select()
-      .from(authSessions)
-      .where(eq(authSessions.userId, created.id))
-    expect(stillRevoked?.revocationReason).toBe('user_disabled')
-  })
+      const enableResponse = await app.request(`/api/system/users/${created.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: USER_STATUS_ENABLED }),
+        headers: { 'content-type': 'application/json' },
+      })
+      expect(enableResponse.status).toBe(200)
+      const [stillRevoked] = await db
+        .select()
+        .from(authSessions)
+        .where(eq(authSessions.userId, created.id))
+      expect(stillRevoked?.revocationReason).toBe('user_disabled')
+    },
+  )
 
   dbTest(
     'allows reusing username, email, and phone after soft delete',
@@ -1459,13 +1436,17 @@ describe('user routes', () => {
           phone: '10000000004',
         },
       ]) {
-        const duplicate = await createUser(app, body)
-        expect(duplicate.response.status).toBe(409)
+        const duplicate = await app.request(
+          '/api/system/users',
+          jsonRequest(body, { method: 'POST' }),
+        )
+        expect(duplicate.status).toBe(409)
       }
 
-      await app.request(`/api/system/users/${created.id}`, {
+      const deleteResponse = await app.request(`/api/system/users/${created.id}`, {
         method: 'DELETE',
       })
+      expect(deleteResponse.status).toBe(204)
 
       const afterDeleteRecreated = await createUser(app, {
         username: 'margaret',

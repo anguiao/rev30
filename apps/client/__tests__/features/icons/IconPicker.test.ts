@@ -1,25 +1,10 @@
+import { createDeferred } from '../../helpers/promise'
 import { flushPromises, mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NInput, NPopover } from 'naive-ui'
 import IconPicker from '../../../src/features/icons/IconPicker.vue'
 import { searchIcons } from '../../../src/features/icons/requests'
 import { createTestQueryHarness } from '../../helpers/colada'
-
-vi.mock('@iconify/vue', () => ({
-  Icon: defineComponent({
-    name: 'Icon',
-    props: {
-      icon: {
-        type: String,
-        required: true,
-      },
-    },
-    setup(props: { icon: string }) {
-      return () => h('span', { 'data-test': 'iconify-icon' }, props.icon)
-    },
-  }),
-}))
 
 vi.mock('../../../src/features/icons/requests', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/icons/requests')>()),
@@ -27,14 +12,6 @@ vi.mock('../../../src/features/icons/requests', async (importOriginal) => ({
 }))
 
 const searchIconsMock = vi.mocked(searchIcons)
-
-type IconSearchList = Array<{
-  icon: string
-  prefix: string
-  name: string
-  collection: string
-  palette: boolean
-}>
 
 function mountPicker(value: string | null = null) {
   const { plugins } = createTestQueryHarness()
@@ -246,17 +223,14 @@ describe('IconPicker', () => {
 
   it('keeps newest search result when previous request resolves later', async () => {
     vi.useFakeTimers()
-    let resolveFirstRequest!: (value: { list: IconSearchList }) => void
-    const firstRequestPromise = new Promise<{ list: IconSearchList }>((resolve) => {
-      resolveFirstRequest = resolve
-    })
+    const firstRequest = createDeferred<Awaited<ReturnType<typeof searchIcons>>>()
 
     searchIconsMock.mockImplementation(({ keyword }) => {
       if (keyword === '') {
         return Promise.resolve({ list: [] })
       }
       if (keyword === '用户') {
-        return firstRequestPromise
+        return firstRequest.promise
       }
       return Promise.resolve({
         list: [
@@ -285,7 +259,7 @@ describe('IconPicker', () => {
 
     expect(wrapper.get('[data-test="resource-icon-option"]').text()).toBe('lucide:user-check')
 
-    resolveFirstRequest({
+    firstRequest.resolve({
       list: [
         {
           icon: 'lucide:users',
@@ -304,14 +278,11 @@ describe('IconPicker', () => {
 
   it('runs user keyword search while initial recommendation request is still pending', async () => {
     vi.useFakeTimers()
-    let resolveInitialRecommendation!: (value: { list: IconSearchList }) => void
-    const initialRecommendationPromise = new Promise<{ list: IconSearchList }>((resolve) => {
-      resolveInitialRecommendation = resolve
-    })
+    const initialRecommendation = createDeferred<Awaited<ReturnType<typeof searchIcons>>>()
 
     searchIconsMock.mockImplementation(({ keyword }) => {
       if (keyword === '') {
-        return initialRecommendationPromise
+        return initialRecommendation.promise
       }
       if (keyword === '用户') {
         return Promise.resolve({
@@ -341,7 +312,7 @@ describe('IconPicker', () => {
     expect(searchIconsMock).toHaveBeenCalledWith({ keyword: '用户', limit: 60 })
     expect(wrapper.get('[data-test="resource-icon-option"]').text()).toBe('lucide:users')
 
-    resolveInitialRecommendation({
+    initialRecommendation.resolve({
       list: [
         {
           icon: 'lucide:folder',

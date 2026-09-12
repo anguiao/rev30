@@ -1,12 +1,16 @@
 import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { CONFIG_VALUE_TYPE_NUMBER } from '@rev30/contracts'
+import { CONFIG_VALUE_TYPE_NUMBER, type Config } from '@rev30/contracts'
 import {
   ConfigInvalidValueError,
   ConfigNotFoundError,
 } from '../../../../src/modules/system/configs/errors'
+import type { createConfigService } from '../../../../src/modules/system/configs/service'
+import type { requireAccess } from '../../../../src/middleware/access'
 import { createConfigRoutes } from '../../../../src/modules/system/configs/routes'
+
+type ConfigService = ReturnType<typeof createConfigService>
 
 const configKey = 'auth.loginFailureMaxAttempts'
 const config = {
@@ -17,20 +21,20 @@ const config = {
   defaultValue: '5',
   customValue: null,
   value: '5',
-}
+} satisfies Config
 
 const mocks = vi.hoisted(() => {
   const accessMiddleware = vi.fn(async (_c: Context, next: Next) => next())
   const service = {
-    get: vi.fn(),
-    list: vi.fn(),
-    update: vi.fn(),
+    get: vi.fn<ConfigService['get']>(),
+    list: vi.fn<ConfigService['list']>(),
+    update: vi.fn<ConfigService['update']>(),
   }
 
   return {
     accessMiddleware,
     createConfigService: vi.fn(() => service),
-    requireAccess: vi.fn(() => accessMiddleware),
+    requireAccess: vi.fn<typeof requireAccess>(() => accessMiddleware),
     service,
   }
 })
@@ -65,9 +69,11 @@ describe('config routes', () => {
   it('registers expected access guards for config endpoints', () => {
     createTestApp()
 
-    expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
-      ['system:config:list', 'system:config:list', 'system:config:update'],
-    )
+    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
+      'system:config:list',
+      'system:config:list',
+      'system:config:update',
+    ])
   })
 
   it('delegates config list requests to the service', async () => {

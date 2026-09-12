@@ -39,7 +39,7 @@ describe('user schemas', () => {
       includeIds: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7, invalid-uuid',
     })
 
-    expectZodIssue(result, { message: '用户 ID 无效' })
+    expectZodIssue(result, { message: '用户 ID 无效', path: ['includeIds', 1] })
   })
 
   it('accepts lightweight user options response', () => {
@@ -108,14 +108,20 @@ describe('user schemas', () => {
   })
 
   it('parses user options with field selection', () => {
-    const result = userOptionSchema.safeParse({
+    const result = userOptionSchema.parse({
+      id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+      username: 'ada',
+      nickname: 'Ada Lovelace',
+      status: USER_STATUS_ENABLED,
+      roles: [],
+    })
+
+    expect(result).toEqual({
       id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
       username: 'ada',
       nickname: 'Ada Lovelace',
       status: USER_STATUS_ENABLED,
     })
-
-    expect(result.success).toBe(true)
   })
 
   it('accepts a user response with nullable email and phone', () => {
@@ -142,7 +148,7 @@ describe('user schemas', () => {
     })
   })
 
-  it('requires user responses to include department summaries', () => {
+  it('parses department summaries in user responses', () => {
     expect(
       userSchema.parse({
         id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
@@ -220,7 +226,7 @@ describe('user schemas', () => {
       status: 2,
     })
 
-    expectZodIssue(result, { message: '用户状态无效' })
+    expectZodIssue(result, { message: '用户状态无效', path: ['status'] })
   })
 
   it('parses list query strings into pagination and status values', () => {
@@ -264,8 +270,8 @@ describe('user schemas', () => {
       roleId: 'also-invalid',
     })
 
-    expectZodIssue(result, { message: '部门 ID 无效' })
-    expectZodIssue(result, { message: '角色 ID 无效' })
+    expectZodIssue(result, { message: '部门 ID 无效', path: ['departmentId'] })
+    expectZodIssue(result, { message: '角色 ID 无效', path: ['roleId'] })
   })
 
   it.each([{}, { email: undefined }, { status: undefined }])(
@@ -273,7 +279,7 @@ describe('user schemas', () => {
     (input) => {
       const result = userUpdateSchema.safeParse(input)
 
-      expectZodIssue(result, { message: '至少修改一个字段' })
+      expectZodIssue(result, { message: '至少修改一个字段', path: [] })
     },
   )
 
@@ -323,12 +329,13 @@ describe('user schemas', () => {
       departmentIds: Array.from({ length: 51 }, (_, index) => testUuid(index + 1)),
     })
 
-    expectZodIssue(result, { message: '用户部门不能超过 50 个' })
+    expectZodIssue(result, { message: '用户部门不能超过 50 个', path: ['departmentIds'] })
   })
 
   it('reports schema messages for invalid user input fields', () => {
     const invalidUser = userSchema.safeParse({
       id: 'not-a-uuid',
+      avatarId: null,
       username: 'ada',
       nickname: 'Ada Lovelace',
       email: null,
@@ -341,16 +348,16 @@ describe('user schemas', () => {
       updatedAt: '2026-04-29T08:00:00.000Z',
     })
 
-    expectZodIssue(invalidUser, { message: '用户 ID 无效' })
+    expectZodIssue(invalidUser, { message: '用户 ID 无效', path: ['id'] })
 
     const invalidQuery = userListQuerySchema.safeParse({
       page: '0',
     })
 
-    expectZodIssue(invalidQuery, { message: '页码不能小于 1' })
+    expectZodIssue(invalidQuery, { message: '页码不能小于 1', path: ['page'] })
   })
 
-  it('requires user responses to include role summaries', () => {
+  it('parses role summaries in user responses', () => {
     expect(
       userSchema.parse({
         id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
@@ -425,7 +432,7 @@ describe('user schemas', () => {
       roleIds: Array.from({ length: 51 }, (_, index) => testUuid(index + 1)),
     })
 
-    expectZodIssue(result, { message: '用户角色不能超过 50 个' })
+    expectZodIssue(result, { message: '用户角色不能超过 50 个', path: ['roleIds'] })
   })
 
   it('parses user create responses with a one-time temporary password', () => {

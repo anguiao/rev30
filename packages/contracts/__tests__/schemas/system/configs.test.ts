@@ -48,7 +48,7 @@ describe('config schemas', () => {
   it('rejects blank custom values', () => {
     const result = configUpdateSchema.safeParse({ customValue: '   ' })
 
-    expectZodIssue(result, { message: '请输入自定义值' })
+    expectZodIssue(result, { message: '请输入自定义值', path: ['customValue'] })
   })
 
   it('accepts config keys with dot-separated names', () => {
@@ -62,16 +62,16 @@ describe('config schemas', () => {
     (invalidKey) => {
       const result = configKeySchema.safeParse(invalidKey)
 
-      expect(result.success).toBe(false)
+      expectZodIssue(result, { message: '配置键格式无效', path: [] })
     },
   )
 
-  it('keeps supported value type constants', () => {
-    expect([
-      CONFIG_VALUE_TYPE_STRING,
-      CONFIG_VALUE_TYPE_NUMBER,
-      CONFIG_VALUE_TYPE_BOOLEAN,
-      CONFIG_VALUE_TYPE_JSON,
-    ]).toEqual(['string', 'number', 'boolean', 'json'])
+  it.each([
+    CONFIG_VALUE_TYPE_STRING,
+    CONFIG_VALUE_TYPE_NUMBER,
+    CONFIG_VALUE_TYPE_BOOLEAN,
+    CONFIG_VALUE_TYPE_JSON,
+  ])('accepts config responses with value type %s', (valueType) => {
+    expect(configSchema.parse({ ...config, valueType }).valueType).toBe(valueType)
   })
 })

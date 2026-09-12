@@ -44,7 +44,7 @@ describe('scheduled job run cleanup', () => {
 
   dbTest('deletes only old terminal runs and protects active references', async ({ db }) => {
     const now = new Date('2026-08-20T00:00:00.000Z')
-    vi.useFakeTimers()
+    vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(now)
     const retentionMs = 90 * 24 * 60 * 60 * 1000
     const oldSuccess = run('success', new Date(now.getTime() - retentionMs - 1))

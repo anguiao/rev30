@@ -1,3 +1,5 @@
+import { getDialogButton } from '../../helpers/dom'
+import { createDeferred } from '../../helpers/promise'
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NInput, NPagination, NSelect } from 'naive-ui'
@@ -251,9 +253,7 @@ describe('scheduled jobs page', () => {
 
       expect(executeMock).not.toHaveBeenCalled()
       expect(document.body.textContent).toContain('可能删除符合条件的数据')
-      document
-        .querySelector<HTMLButtonElement>('[data-test="scheduled-job-execute-confirm"]')
-        ?.click()
+      getDialogButton('scheduled-job-execute-confirm').click()
       await flushPromises()
 
       expect(executeMock).toHaveBeenCalledWith('auth-session-cleanup')
@@ -273,7 +273,7 @@ describe('scheduled jobs page', () => {
       await flushPromises()
       expect(getRunMock.mock.calls.length).toBe(completedCallCount)
 
-      document.querySelector<HTMLButtonElement>('[data-test="scheduled-job-run-back"]')?.click()
+      getDialogButton('scheduled-job-run-back').click()
       await flushPromises()
       await vi.waitFor(() => {
         expect(listRunsMock).toHaveBeenCalledWith('auth-session-cleanup', {
@@ -306,9 +306,7 @@ describe('scheduled jobs page', () => {
     expect(editContext?.textContent).not.toContain('auth-session-cleanup')
     expect(document.body.textContent).toContain('Cron 表达式按分钟级解析')
     expect(editDrawer?.textContent).toContain('GMT+08:00')
-    const timezoneOptions = wrapper.findComponent(NSelect).props('options') as
-      | Array<{ value?: string | number }>
-      | undefined
+    const timezoneOptions = wrapper.findComponent(NSelect).props('options')
     expect(timezoneOptions?.some((option) => option.value === 'UTC')).toBe(true)
     expect(
       document.querySelectorAll('[data-test="scheduled-job-form-cron-expression"]'),
@@ -335,9 +333,7 @@ describe('scheduled jobs page', () => {
     editCancelButton!.click()
     await flushPromises()
     expect(document.body.textContent).toContain('放弃未保存的更改？')
-    document
-      .querySelector<HTMLButtonElement>('[data-test="unsaved-changes-discard-cancel"]')
-      ?.click()
+    getDialogButton('unsaved-changes-discard-cancel').click()
     await flushPromises()
     expect(
       document.querySelector('[data-test="scheduled-job-form-cron-expression"]'),
@@ -358,7 +354,7 @@ describe('scheduled jobs page', () => {
     await vi.waitFor(() => {
       expect(document.querySelector('[data-test="scheduled-job-form-submit"]')).not.toBeNull()
     })
-    document.querySelector<HTMLButtonElement>('[data-test="scheduled-job-form-submit"]')!.click()
+    getDialogButton('scheduled-job-form-submit').click()
     await flushPromises()
     expect(updateMock).toHaveBeenCalledWith('auth-session-cleanup', {
       cronExpression: '2 */6 * * *',
@@ -375,15 +371,8 @@ describe('scheduled jobs page', () => {
       description: '清理过期登录尝试',
     }
     listMock.mockResolvedValue([idleResponse[0]!, secondJob])
-    let resolveFirst!: (value: ScheduledJobListResponse[number]) => void
-    enabledMock
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveFirst = resolve
-          }),
-      )
-      .mockResolvedValueOnce(secondJob)
+    const firstUpdate = createDeferred<Awaited<ReturnType<typeof updateScheduledJobEnabled>>>()
+    enabledMock.mockReturnValueOnce(firstUpdate.promise).mockResolvedValueOnce(secondJob)
     const { wrapper } = await mountPage(['ops:scheduled-job:list', 'ops:scheduled-job:update'])
     await flushPromises()
 
@@ -399,7 +388,7 @@ describe('scheduled jobs page', () => {
     disableButtons = wrapper.findAll('[data-test="scheduled-job-disable"]')
     expect(disableButtons[0]!.attributes('disabled')).toBeDefined()
 
-    resolveFirst(idleResponse[0]!)
+    firstUpdate.resolve(idleResponse[0]!)
     await flushPromises()
     disableButtons = wrapper.findAll('[data-test="scheduled-job-disable"]')
     expect(disableButtons[0]!.attributes('disabled')).toBeUndefined()
@@ -417,9 +406,7 @@ describe('scheduled jobs page', () => {
 
     await wrapper.get('[data-test="scheduled-job-execute"]').trigger('click')
     await flushPromises()
-    document
-      .querySelector<HTMLButtonElement>('[data-test="scheduled-job-execute-confirm"]')
-      ?.click()
+    getDialogButton('scheduled-job-execute-confirm').click()
     await flushPromises()
 
     expect(listMock).toHaveBeenCalledTimes(2)
@@ -447,9 +434,7 @@ describe('scheduled jobs page', () => {
 
       await wrapper.get('[data-test="scheduled-job-cancel"]').trigger('click')
       await flushPromises()
-      document
-        .querySelector<HTMLButtonElement>('[data-test="scheduled-job-cancel-confirm"]')
-        ?.click()
+      getDialogButton('scheduled-job-cancel-confirm').click()
       await flushPromises()
 
       expect(cancelMock).toHaveBeenCalledWith('auth-session-cleanup', runId)
@@ -490,7 +475,7 @@ describe('scheduled jobs page', () => {
     expect(runContext?.textContent).toContain('当前任务：认证会话清理')
     expect(runContext?.textContent).not.toContain('auth-session-cleanup')
     getRunMock.mockResolvedValue(completedDetail)
-    document.querySelector<HTMLButtonElement>('[data-test="scheduled-job-run-view"]')?.click()
+    getDialogButton('scheduled-job-run-view').click()
     await flushPromises()
     expect(document.body.textContent).toContain('Ada Lovelace')
     expect(document.body.textContent).toContain(userId)
@@ -499,7 +484,7 @@ describe('scheduled jobs page', () => {
     expect(runLogDrawer?.textContent).not.toContain('运行详情：')
     expect(document.querySelector('[data-test="scheduled-job-run-back"]')).not.toBeNull()
 
-    document.querySelector<HTMLButtonElement>('[data-test="scheduled-job-run-back"]')?.click()
+    getDialogButton('scheduled-job-run-back').click()
     await flushPromises()
 
     listRunsMock.mockResolvedValue({

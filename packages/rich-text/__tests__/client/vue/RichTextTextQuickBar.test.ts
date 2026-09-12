@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../../src/client/editor/feature'
 import { compactRichTextEditorPreset } from '../../../src/client/vue/presets/compact'
 import RichTextTextQuickBar from '../../../src/client/vue/quick-bar/RichTextTextQuickBar.vue'
-import { createTestEditor } from '../../helpers/editor'
+import { appendTestElement, createTestEditor } from '../../helpers/editor'
 
 const compactTextControls = compactRichTextEditorPreset.quickBar!.textControls!
 
@@ -19,7 +19,7 @@ function createEditor() {
 
 function mountControls(editor: ReturnType<typeof createEditor>) {
   return mount(RichTextTextQuickBar, {
-    attachTo: document.body,
+    attachTo: appendTestElement('div'),
     props: {
       editor: markRaw(editor),
       controls: compactTextControls,
@@ -36,8 +36,12 @@ describe('RichTextTextQuickBar', () => {
     await flushPromises()
 
     const input = wrapper.get('[data-test="rich-text-link-url"] input')
-    const arrow = new KeyboardEvent('keydown', { key: 'ArrowLeft', cancelable: true })
-    const tab = new KeyboardEvent('keydown', { key: 'Tab', cancelable: true })
+    const arrow = new KeyboardEvent('keydown', {
+      key: 'ArrowLeft',
+      bubbles: true,
+      cancelable: true,
+    })
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
     const commandMouseDown = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
 
     input.element.dispatchEvent(arrow)

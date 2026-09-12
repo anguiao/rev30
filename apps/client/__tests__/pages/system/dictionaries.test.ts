@@ -1,3 +1,4 @@
+import { getDialogButton } from '../../helpers/dom'
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
@@ -249,12 +250,7 @@ describe('dictionaries page', () => {
     await wrapper.get('[data-test="dictionaries-delete"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="dictionaries-delete-confirm"]',
-    ) as HTMLButtonElement | null
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('dictionaries-delete-confirm').click()
     await flushPromises()
 
     expect(deleteDictionaryMock).toHaveBeenCalledWith(baseDictionary.id)
@@ -272,12 +268,7 @@ describe('dictionaries page', () => {
     await wrapper.get('[data-test="dictionaries-delete"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="dictionaries-delete-confirm"]',
-    ) as HTMLButtonElement | null
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('dictionaries-delete-confirm').click()
     await flushPromises()
 
     expect(deleteDictionaryMock).toHaveBeenCalledTimes(1)

@@ -1,7 +1,6 @@
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { User } from '@rev30/contracts'
-import { h } from 'vue'
 import { useAuthStore } from '../../../src/stores/auth'
 import { updateMyPassword, updateMyProfile } from '../../../src/features/auth/requests'
 import AdminPage from '../../../src/pages/index.vue'
@@ -12,21 +11,6 @@ import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 vi.mock('../../../src/features/auth/requests', () => ({
   updateMyPassword: vi.fn(),
   updateMyProfile: vi.fn(),
-}))
-
-vi.mock('@iconify/vue', () => ({
-  Icon: {
-    name: 'Icon',
-    props: {
-      icon: {
-        type: String,
-        required: true,
-      },
-    },
-    setup(props: { icon: string }) {
-      return () => h('span', { 'data-test': 'menu-icon' }, props.icon)
-    },
-  },
 }))
 
 vi.mock('../../../src/features/users', () => ({

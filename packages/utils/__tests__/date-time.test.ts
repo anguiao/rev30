@@ -31,6 +31,7 @@ describe('date time utils', () => {
 
     expect(toIsoDateTime(addSeconds(now, 60))).toBe('2026-05-18T01:03:03.000Z')
     expect(toIsoDateTime(subSeconds(now, 60))).toBe('2026-05-18T01:01:03.000Z')
+    expect(now).toEqual(new Date('2026-05-18T01:02:03.000Z'))
   })
 
   it('adds and subtracts milliseconds', () => {
@@ -38,6 +39,7 @@ describe('date time utils', () => {
 
     expect(toIsoDateTime(addMilliseconds(now, 250))).toBe('2026-05-18T01:02:03.750Z')
     expect(toIsoDateTime(subMilliseconds(now, 250))).toBe('2026-05-18T01:02:03.250Z')
+    expect(now).toEqual(new Date('2026-05-18T01:02:03.500Z'))
   })
 
   it('calculates date time differences', () => {

@@ -115,12 +115,12 @@ const dictionaryOptionsResponse = {
 
 beforeEach(() => {
   createTestPinia()
+  useAuthStore().accessToken = 'access-token'
 })
 
 describe('dictionaries request helpers', () => {
   it('parses dictionary list responses and query params', async () => {
     const fetchMock = createFetchMock(jsonResponse(dictionaryListResponse))
-    useAuthStore().accessToken = 'access-token'
 
     const listResult = await listDictionaries({
       page: 1,
@@ -146,7 +146,6 @@ describe('dictionaries request helpers', () => {
 
   it('parses a dictionary detail response', async () => {
     const fetchMock = createFetchMock(jsonResponse(dictionaryDetailResponse))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(getDictionary(dictionaryId)).resolves.toEqual(dictionaryDetailResponse)
 
@@ -159,7 +158,6 @@ describe('dictionaries request helpers', () => {
 
   it('sends dictionary create input and parses the created dictionary', async () => {
     const fetchMock = createFetchMock(jsonResponse(dictionaryCreateResponse))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(createDictionary(dictionaryCreateInput)).resolves.toEqual(dictionaryCreateResponse)
 
@@ -173,7 +171,6 @@ describe('dictionaries request helpers', () => {
 
   it('sends dictionary update input and parses the updated dictionary', async () => {
     const fetchMock = createFetchMock(jsonResponse(dictionaryUpdateResponse))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(updateDictionary(dictionaryId, dictionaryUpdateInput)).resolves.toEqual(
       dictionaryUpdateResponse,
@@ -189,7 +186,6 @@ describe('dictionaries request helpers', () => {
 
   it('deletes a dictionary with an empty response', async () => {
     const fetchMock = createFetchMock(emptyResponse())
-    useAuthStore().accessToken = 'access-token'
 
     await expect(deleteDictionary(dictionaryId)).resolves.toBeUndefined()
 
@@ -202,7 +198,6 @@ describe('dictionaries request helpers', () => {
 
   it('parses dictionary options and encodes requested codes', async () => {
     const fetchMock = createFetchMock(jsonResponse(dictionaryOptionsResponse))
-    useAuthStore().accessToken = 'access-token'
 
     await expect(getDictionaryOptions(['user_status', 'region'])).resolves.toEqual(
       dictionaryOptionsResponse,

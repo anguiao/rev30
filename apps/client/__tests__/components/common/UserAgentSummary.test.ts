@@ -1,12 +1,10 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { NConfigProvider } from 'naive-ui'
 import UserAgentSummary from '../../../src/components/common/UserAgentSummary.vue'
 
 function mountSummary(userAgent: InstanceType<typeof UserAgentSummary>['$props']['userAgent']) {
   return mount(UserAgentSummary, {
     props: { userAgent },
-    global: { components: { NConfigProvider } },
   })
 }
 

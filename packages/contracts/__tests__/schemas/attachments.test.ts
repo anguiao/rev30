@@ -17,6 +17,18 @@ import {
   attachmentUploadSessionSchema,
   attachmentUsageSchema,
 } from '../../src/attachments'
+import { expectZodIssue } from '../helpers/schema'
+
+const attachment = {
+  id: '11111111-1111-4111-8111-111111111111',
+  originalName: 'avatar.png',
+  mimeType: 'image/png',
+  extension: 'png',
+  size: 12345,
+  usage: 'avatar',
+  readPolicy: 'signed',
+  createdAt: '2026-05-29T00:00:00.000Z',
+}
 
 describe('attachment schemas', () => {
   it('parses attachment list queries and responses', () => {
@@ -76,36 +88,24 @@ describe('attachment schemas', () => {
   })
 
   it('accepts attachment metadata responses', () => {
-    expect(
-      attachmentSchema.parse({
-        id: '11111111-1111-4111-8111-111111111111',
-        originalName: 'avatar.png',
-        mimeType: 'image/png',
-        extension: 'png',
-        size: 12345,
-        usage: 'avatar',
-        readPolicy: 'signed',
-        createdAt: '2026-05-29T00:00:00.000Z',
-      }),
-    ).toMatchObject({
-      originalName: 'avatar.png',
-      usage: 'avatar',
-      readPolicy: 'signed',
-    })
+    expect(attachmentSchema.parse(attachment)).toEqual(attachment)
   })
 
   it('accepts arbitrary non-blank attachment usages', () => {
     expect(attachmentUsageSchema.parse('general')).toBe('general')
     expect(attachmentUsageSchema.parse('avatar')).toBe('avatar')
     expect(attachmentUsageSchema.parse('rich-text-image')).toBe('rich-text-image')
-    expect(attachmentUsageSchema.safeParse('').success).toBe(false)
-    expect(attachmentUsageSchema.safeParse('   ').success).toBe(false)
+    expectZodIssue(attachmentUsageSchema.safeParse(''), { message: '上传用途无效', path: [] })
+    expectZodIssue(attachmentUsageSchema.safeParse('   '), { message: '上传用途无效', path: [] })
   })
 
   it('parses attachment read policies', () => {
     expect(attachmentReadPolicySchema.parse('signed')).toBe('signed')
     expect(attachmentReadPolicySchema.parse('authenticated')).toBe('authenticated')
-    expect(attachmentReadPolicySchema.safeParse('public').success).toBe(false)
+    expectZodIssue(attachmentReadPolicySchema.safeParse('public'), {
+      message: '访问方式无效',
+      path: [],
+    })
   })
 
   it('parses attachment cleanup policies', () => {
@@ -115,7 +115,10 @@ describe('attachment schemas', () => {
     expect(attachmentCleanupPolicySchema.parse(ATTACHMENT_CLEANUP_POLICY_UNREFERENCED)).toBe(
       ATTACHMENT_CLEANUP_POLICY_UNREFERENCED,
     )
-    expect(attachmentCleanupPolicySchema.safeParse('auto').success).toBe(false)
+    expectZodIssue(attachmentCleanupPolicySchema.safeParse('auto'), {
+      message: '清理策略无效',
+      path: [],
+    })
   })
 
   it('defaults content URL disposition to attachment', () => {
@@ -139,45 +142,15 @@ describe('attachment schemas', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejects blank attachment metadata string fields', () => {
-    expect(
-      attachmentSchema.safeParse({
-        id: '11111111-1111-4111-8111-111111111111',
-        originalName: ' ',
-        mimeType: 'image/png',
-        extension: 'png',
-        size: 123,
-        usage: 'avatar',
-        readPolicy: 'signed',
-        createdAt: '2026-05-29T00:00:00.000Z',
-      }).success,
-    ).toBe(false)
-
-    expect(
-      attachmentSchema.safeParse({
-        id: '11111111-1111-4111-8111-111111111111',
-        originalName: 'avatar.png',
-        mimeType: '',
-        extension: 'png',
-        size: 123,
-        usage: 'avatar',
-        readPolicy: 'signed',
-        createdAt: '2026-05-29T00:00:00.000Z',
-      }).success,
-    ).toBe(false)
-
-    expect(
-      attachmentSchema.safeParse({
-        id: '11111111-1111-4111-8111-111111111111',
-        originalName: 'avatar.png',
-        mimeType: 'image/png',
-        extension: ' ',
-        size: 123,
-        usage: 'avatar',
-        readPolicy: 'signed',
-        createdAt: '2026-05-29T00:00:00.000Z',
-      }).success,
-    ).toBe(false)
+  it.each([
+    ['originalName', ' '],
+    ['mimeType', ''],
+    ['extension', ' '],
+  ])('rejects blank attachment %s', (field, value) => {
+    expectZodIssue(attachmentSchema.safeParse({ ...attachment, [field]: value }), {
+      message: '不能为空',
+      path: [field],
+    })
   })
 
   it('rejects blank transfer request url', () => {

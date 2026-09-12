@@ -5,8 +5,7 @@ import ThemeTokenProvider from '../../../src/components/common/ThemeTokenProvide
 
 describe('ThemeTokenProvider', () => {
   beforeEach(() => {
-    document.documentElement.removeAttribute('style')
-    document.head.innerHTML = ''
+    document.head.querySelector('#app-theme-tokens')?.remove()
   })
 
   it('publishes theme tokens in a root style tag for teleported overlays', async () => {

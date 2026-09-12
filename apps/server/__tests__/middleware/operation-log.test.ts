@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import type { Logger } from 'pino'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { rootErrorHandler } from '../../src/app'
-import type { AuthEnv, AuthVariables } from '../../src/middleware/auth'
+import type { AuthEnv } from '../../src/middleware/auth'
 import {
   createOperationLogMiddleware,
   recordOperation,
@@ -11,14 +11,15 @@ import {
 } from '../../src/middleware/operation-log'
 import type { RequestContextEnv } from '../../src/middleware/request-context'
 import type { OperationLogEvent, OperationLogEventReceiver } from '../../src/runtime/operation-log'
+import { createLogger } from '../../src/runtime/logger'
 
 type TestEnv = AuthEnv & RequestContextEnv & OperationLogEnv
 
 function createLoggerSpy() {
-  return {
-    error: vi.fn(),
-    warn: vi.fn(),
-  } as unknown as Logger
+  const logger = createLogger({ level: 'silent' })
+  vi.spyOn(logger, 'error')
+  vi.spyOn(logger, 'warn')
+  return logger
 }
 
 function createTestApp(options: {
@@ -39,7 +40,16 @@ function createTestApp(options: {
         id: '10000000-0000-4000-8000-000000000001',
         username: 'a'.repeat(600),
         nickname: 'n'.repeat(600),
-      } as AuthVariables['currentUser'])
+        avatarId: null,
+        email: null,
+        phone: null,
+        status: 1,
+        builtIn: false,
+        departments: [],
+        roles: [],
+        createdAt: '2026-08-19T00:00:00.000Z',
+        updatedAt: '2026-08-19T00:00:00.000Z',
+      })
       c.set('currentSessionId', '10000000-0000-4000-8000-000000000002')
       c.set('accessCodes', [])
       c.set('menus', [])
@@ -219,7 +229,7 @@ describe('operation log registration and middleware', () => {
       },
       'operation log registration discarded',
     )
-    expect(JSON.stringify((logger.warn as ReturnType<typeof vi.fn>).mock.calls)).not.toMatch(
+    expect(JSON.stringify(vi.mocked(logger.warn).mock.calls)).not.toMatch(
       /secret|invalid:action|system:user/,
     )
   })
@@ -249,9 +259,7 @@ describe('operation log registration and middleware', () => {
       },
       'operation log finalization failed',
     )
-    expect(JSON.stringify((logger.error as ReturnType<typeof vi.fn>).mock.calls)).not.toContain(
-      'receiver-secret',
-    )
+    expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain('receiver-secret')
   })
 
   it('isolates invalid finalization durations from the response', async () => {

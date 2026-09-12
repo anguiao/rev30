@@ -2,6 +2,12 @@
 
 测试约定见 [`AGENTS.md`](./AGENTS.md)。
 
+## 测试基础设施
+
+`helpers/editor.ts` 负责 Editor 与挂载宿主的销毁，Vue wrapper 由 `setup.ts` 自动卸载；只有验证卸载行为的用例需要显式调用 `unmount()`。Vitest 自动恢复每个用例的 spy，模块 mock 和领域资源仍由所属测试负责清理。
+
+剪贴板 fixture 复用 `helpers/clipboard.ts`，其中集中补齐 happy-dom 缺少的 `FileList.item()` 并隔离其文件/文本 MIME 读取差异。表格单元格定位和 `CellSelection` fixture 复用 `helpers/table.ts`，业务预期留在各测试中。
+
 ## 环境说明
 
 happy-dom 中建立的 selection、focus、clipboard 和几何输入只验证编辑器对这些公开状态与事件的响应，不代表真实浏览器布局、原生剪贴板权限、IME/composition 或浏览器特有的 selection/focus 行为。

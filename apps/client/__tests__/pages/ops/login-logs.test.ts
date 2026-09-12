@@ -63,9 +63,7 @@ async function mountPage() {
 }
 
 function getSelect(wrapper: VueWrapper, dataTest: string) {
-  return wrapper
-    .findAllComponents(NSelect)
-    .find((item) => item.attributes('data-test') === dataTest)!
+  return wrapper.get(`[data-test="${dataTest}"]`).getComponent(NSelect)
 }
 
 describe('login logs page', () => {

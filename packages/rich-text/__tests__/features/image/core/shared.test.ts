@@ -38,8 +38,6 @@ describe('image feature shared rendering', () => {
     const html = editor.getHTML()
 
     expect(html).toBe('<img src="/api/attachments/cover/content" alt="说明">')
-    expect(html).not.toContain('height="360"')
-    expect(html).not.toContain('width=')
   })
 
   it('keeps valid width and height together when both are valid', () => {
@@ -48,8 +46,6 @@ describe('image feature shared rendering', () => {
     )
     const html = editor.getHTML()
 
-    expect(html).toContain('width="640"')
-    expect(html).toContain('height="360"')
     expect(html).toBe(
       '<img src="/api/attachments/cover/content" alt="说明" width="640" height="360">',
     )

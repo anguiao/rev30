@@ -11,13 +11,9 @@ const preset = createAllRichTextEditorPreset({
   },
 })
 
-function collectExtensions() {
-  return collectRichTextEditorExtensions(preset)
-}
-
 function createEditor() {
   return createTestEditor({
-    extensions: collectExtensions(),
+    extensions: collectRichTextEditorExtensions(preset),
     content: {
       type: 'doc',
       content: [
@@ -60,12 +56,12 @@ describe('remove format command', () => {
         },
       ],
     })
-    expect(JSON.stringify(editor.getJSON())).not.toContain('"marks"')
+    expect(editor.getHTML()).toBe('<h2>维护通知</h2>')
   })
 
   it('preserves nested list and blockquote structure', () => {
     const editor = createTestEditor({
-      extensions: collectExtensions(),
+      extensions: collectRichTextEditorExtensions(preset),
       content: {
         type: 'doc',
         content: [
@@ -124,6 +120,6 @@ describe('remove format command', () => {
         },
       ],
     })
-    expect(JSON.stringify(editor.getJSON())).not.toContain('"marks"')
+    expect(editor.getHTML()).toBe('<blockquote><ul><li><p>维护通知</p></li></ul></blockquote>')
   })
 })

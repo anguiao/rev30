@@ -80,7 +80,9 @@ describe('LocalAttachmentStorage', () => {
     ).rejects.toThrow('stream failed')
 
     await assertNoTmpFiles(root)
-    await expect(readFile(join(root, '2026/05/29/broken.txt'))).rejects.toThrow()
+    await expect(readFile(join(root, '2026/05/29/broken.txt'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    })
   })
 
   it('rejects invalid storage keys', async () => {
@@ -120,7 +122,9 @@ describe('LocalAttachmentStorage', () => {
     })
     await storage.delete('2026/05/29/delete-me.txt')
 
-    await expect(readFile(join(root, '2026/05/29/delete-me.txt'))).rejects.toThrow()
+    await expect(readFile(join(root, '2026/05/29/delete-me.txt'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    })
   })
 
   it('lists stored files below a prefix in stable key order', async () => {

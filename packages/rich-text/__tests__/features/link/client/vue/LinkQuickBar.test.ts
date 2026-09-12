@@ -6,7 +6,7 @@ import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { linkFeature } from '../../../../../src/features/link/core/feature'
 import { linkQuickBar } from '../../../../../src/features/link/client/vue'
-import { createTestEditor } from '../../../../helpers/editor'
+import { appendTestElement, createTestEditor } from '../../../../helpers/editor'
 
 function createEditor(content = '<p><a href="https://example.com">链接文本</a>末尾</p>') {
   return createTestEditor({
@@ -17,7 +17,7 @@ function createEditor(content = '<p><a href="https://example.com">链接文本</
 
 function mountQuickBar(editor: ReturnType<typeof createEditor>) {
   return mount(linkQuickBar.component, {
-    attachTo: document.body,
+    attachTo: appendTestElement('div'),
     props: {
       ...linkQuickBar.props,
       editor: markRaw(editor),
@@ -30,10 +30,10 @@ describe('LinkQuickBar', () => {
     const editor = createEditor()
     editor.commands.setTextSelection(3)
     const wrapper = mountQuickBar(editor)
-    const controls = wrapper.findAll('[data-rich-text-toolbar-item]')
+    const controls = wrapper.findAll<HTMLElement>('[data-rich-text-toolbar-item]')
     const open = controls[0]!
     const edit = controls[1]!
-    const editElement = edit.element as HTMLElement
+    const editElement = edit.element
 
     expect(controls.map((control) => control.attributes('aria-label'))).toEqual([
       '新窗口打开链接',

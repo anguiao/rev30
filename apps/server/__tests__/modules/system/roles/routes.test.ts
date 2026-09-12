@@ -6,7 +6,10 @@ import {
   ROLE_STATUS_ENABLED,
   USER_STATUS_ENABLED,
   type User,
+  type Role,
 } from '@rev30/contracts'
+import type { createRoleService } from '../../../../src/modules/system/roles/service'
+import type { requireAccess } from '../../../../src/middleware/access'
 import type { AuthEnv } from '../../../../src/middleware/auth'
 import {
   BuiltInAdminRoleMutationError,
@@ -18,6 +21,8 @@ import {
   RoleNotFoundError,
 } from '../../../../src/modules/system/roles/errors'
 import { createRoleRoutes } from '../../../../src/modules/system/roles/routes'
+
+type RoleService = ReturnType<typeof createRoleService>
 
 const roleId = '33333333-3333-4333-8333-333333333333'
 const resourceId = '44444444-4444-4444-8444-444444444444'
@@ -56,23 +61,23 @@ const role = {
       type: RESOURCE_TYPE_ACTION,
     },
   ],
-}
+} satisfies Role
 
 const mocks = vi.hoisted(() => {
   const accessMiddleware = vi.fn(async (_c: Context, next: Next) => next())
   const service = {
-    create: vi.fn(),
-    delete: vi.fn(),
-    get: vi.fn(),
-    list: vi.fn(),
-    options: vi.fn(),
-    update: vi.fn(),
+    create: vi.fn<RoleService['create']>(),
+    delete: vi.fn<RoleService['delete']>(),
+    get: vi.fn<RoleService['get']>(),
+    list: vi.fn<RoleService['list']>(),
+    options: vi.fn<RoleService['options']>(),
+    update: vi.fn<RoleService['update']>(),
   }
 
   return {
     accessMiddleware,
     createRoleService: vi.fn(() => service),
-    requireAccess: vi.fn(() => accessMiddleware),
+    requireAccess: vi.fn<typeof requireAccess>(() => accessMiddleware),
     service,
   }
 })
@@ -129,16 +134,14 @@ describe('role routes', () => {
   it('registers expected access guards for every role endpoint', () => {
     createTestApp()
 
-    expect((mocks.requireAccess.mock.calls as unknown as [string][]).map(([code]) => code)).toEqual(
-      [
-        'system:role:list',
-        'system:role:list',
-        'system:role:list',
-        'system:role:create',
-        'system:role:update',
-        'system:role:delete',
-      ],
-    )
+    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
+      'system:role:list',
+      'system:role:list',
+      'system:role:list',
+      'system:role:create',
+      'system:role:update',
+      'system:role:delete',
+    ])
   })
 
   it('parses list query and delegates to the role service', async () => {

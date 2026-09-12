@@ -114,7 +114,7 @@ function mountQuickBar(
   quickBar = compactRichTextEditorPreset.quickBar as RichTextQuickBarConfig,
 ) {
   return mount(RichTextQuickBar, {
-    attachTo: document.body,
+    attachTo: appendTestElement('div'),
     global: {
       stubs: {
         BubbleMenu: BubbleMenuStub,
@@ -134,7 +134,7 @@ function mountRealQuickBar(
   quickBar = compactRichTextEditorPreset.quickBar as RichTextQuickBarConfig,
 ) {
   return mount(RichTextQuickBar, {
-    attachTo: document.body,
+    attachTo: appendTestElement('div'),
     props: {
       appendTo: document.body,
       scrollContainer: document.body,
@@ -171,17 +171,13 @@ describe('RichTextQuickBar', () => {
     expect(quickBar.attributes('role')).toBe('toolbar')
     expect(quickBar.attributes('aria-orientation')).toBe('horizontal')
 
-    const controls = wrapper.findAll('[data-rich-text-toolbar-item]')
+    const controls = wrapper.findAll<HTMLElement>('[data-rich-text-toolbar-item]')
     expect(controls).toHaveLength(3)
-    expect(controls.map((control) => (control.element as HTMLElement).tabIndex)).toEqual([
-      0, -1, -1,
-    ])
+    expect(controls.map((control) => control.element.tabIndex)).toEqual([0, -1, -1])
 
     await controls[0]!.trigger('keydown', { key: 'ArrowRight' })
     expect(document.activeElement).toBe(controls[1]!.element)
-    expect(controls.map((control) => (control.element as HTMLElement).tabIndex)).toEqual([
-      -1, 0, -1,
-    ])
+    expect(controls.map((control) => control.element.tabIndex)).toEqual([-1, 0, -1])
 
     await controls[1]!.trigger('keydown', { key: 'End' })
     expect(document.activeElement).toBe(controls[2]!.element)
@@ -219,26 +215,26 @@ describe('RichTextQuickBar', () => {
     const editor = createEditor()
     editor.commands.setTextSelection({ from: 1, to: 4 })
     editor.view.focus()
-    const wrapper = mountQuickBar(editor)
+    const wrapper = mountQuickBar(
+      editor,
+      defineRichTextQuickBar({
+        textControls: [
+          richTextQuickBarAction(boldActionItem),
+          richTextQuickBarAction(historyActionItems[0]),
+          richTextQuickBarAction(italicActionItem),
+        ],
+      }),
+    )
     await flushPromises()
 
     const controls = wrapper.findAll<HTMLElement>('[data-rich-text-toolbar-item]')
-    const disabledLink = document.createElement('a')
-    disabledLink.dataset.richTextToolbarItem = ''
-    disabledLink.setAttribute('disabled', '')
-    disabledLink.tabIndex = 0
-
-    const ariaDisabledItem = document.createElement('div')
-    ariaDisabledItem.dataset.richTextToolbarItem = ''
-    ariaDisabledItem.setAttribute('aria-disabled', 'true')
-    ariaDisabledItem.tabIndex = 0
-
-    wrapper.get('[data-test="rich-text-quick-bar"]').element.append(disabledLink, ariaDisabledItem)
-
-    disabledLink.focus()
+    expect(controls).toHaveLength(3)
+    expect(controls[1]!.attributes('disabled')).toBeDefined()
     expect(controls.map((control) => control.element.tabIndex)).toEqual([0, -1, -1])
 
-    controls[2]!.element.focus()
+    await controls[0]!.trigger('keydown', { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(controls[2]!.element)
+
     await controls[2]!.trigger('keydown', { key: 'ArrowRight' })
 
     expect(document.activeElement).toBe(controls[0]!.element)

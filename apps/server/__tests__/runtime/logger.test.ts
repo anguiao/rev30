@@ -79,29 +79,20 @@ describe('runtime logger redaction', () => {
     )
     const record = memory.record()
     const serialized = JSON.stringify(record)
-    const topLevel = record as typeof values
-    const nested = record.nested as typeof values
-    const req = record.req as { headers: Record<string, string> }
-    const res = record.res as { headers: Record<string, string> }
+    const redactedValues = Object.fromEntries(Object.keys(values).map((key) => [key, '[Redacted]']))
+    const redactedHeaders = {
+      authorization: '[Redacted]',
+      cookie: '[Redacted]',
+      'set-cookie': '[Redacted]',
+    }
 
     for (const value of Object.values(values)) {
       expect(serialized).not.toContain(value)
     }
 
-    for (const key of Object.keys(values) as Array<keyof typeof values>) {
-      expect(topLevel[key]).toBe('[Redacted]')
-      expect(nested[key]).toBe('[Redacted]')
-    }
-
-    expect(req.headers).toEqual({
-      authorization: '[Redacted]',
-      cookie: '[Redacted]',
-      'set-cookie': '[Redacted]',
-    })
-    expect(res.headers).toEqual({
-      authorization: '[Redacted]',
-      cookie: '[Redacted]',
-      'set-cookie': '[Redacted]',
-    })
+    expect(record).toMatchObject(redactedValues)
+    expect(record.nested).toEqual(redactedValues)
+    expect(record.req).toEqual({ headers: redactedHeaders })
+    expect(record.res).toEqual({ headers: redactedHeaders })
   })
 })

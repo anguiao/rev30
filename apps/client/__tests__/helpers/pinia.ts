@@ -13,4 +13,5 @@ export function createTestPinia() {
 export function disposeActiveTestPinia() {
   activeTestPiniaInstances.forEach(disposePinia)
   activeTestPiniaInstances.clear()
+  setActivePinia(undefined)
 }

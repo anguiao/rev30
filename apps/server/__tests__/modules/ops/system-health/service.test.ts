@@ -124,20 +124,22 @@ describe('system health snapshot service', () => {
     },
   )
 
-  dbTest.for(['stopped', 'retry', 'poll-failure', 'overdue'] as const)(
-    'degrades for %s independently',
-    async (condition, { db }) => {
-      const context = createHealthTestContext(db)
-      if (condition === 'stopped')
-        context.diagnostics.mockReturnValue({ ...context.scheduler, runtimeStatus: 'stopped' })
-      if (condition === 'retry') context.scheduler.retryPending = true
-      if (condition === 'poll-failure') context.scheduler.lastPollStatus = 'failure'
-      if (condition === 'overdue') context.databaseResult.overdueCount = 1
-      const snapshot = await context.service.snapshot(context.logger)
-      expect(snapshot.status).toBe('degraded')
-      expect(snapshot.issues).toHaveLength(1)
-    },
-  )
+  dbTest.for([
+    { condition: 'stopped', issue: 'scheduler_stopped' },
+    { condition: 'retry', issue: 'scheduler_query_retry' },
+    { condition: 'poll-failure', issue: 'scheduler_query_retry' },
+    { condition: 'overdue', issue: 'scheduler_overdue' },
+  ] as const)('degrades for $condition independently', async ({ condition, issue }, { db }) => {
+    const context = createHealthTestContext(db)
+    if (condition === 'stopped')
+      context.diagnostics.mockReturnValue({ ...context.scheduler, runtimeStatus: 'stopped' })
+    if (condition === 'retry') context.scheduler.retryPending = true
+    if (condition === 'poll-failure') context.scheduler.lastPollStatus = 'failure'
+    if (condition === 'overdue') context.databaseResult.overdueCount = 1
+    const snapshot = await context.service.snapshot(context.logger)
+    expect(snapshot.status).toBe('degraded')
+    expect(snapshot.issues).toEqual([issue])
+  })
 
   dbTest('keeps normal capacity, initial poll and memory values healthy', async ({ db }) => {
     const context = createHealthTestContext(db)

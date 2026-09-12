@@ -50,15 +50,16 @@ describe('online session schemas', () => {
     ).toMatchObject({ total: 1, page: 1, pageSize: 20 })
   })
 
-  it('accepts all defined device types and rejects unknown values', () => {
-    const baseUserAgent = {
-      raw: 'Example/1.0',
-      browser: null,
-      operatingSystem: null,
-    }
+  it.each(['desktop', 'mobile', 'tablet', 'tv', 'bot', 'unknown'])(
+    'accepts device type %s in online session responses',
+    (deviceType) => {
+      const baseUserAgent = {
+        raw: 'Example/1.0',
+        browser: null,
+        operatingSystem: null,
+      }
 
-    for (const deviceType of ['desktop', 'mobile', 'tablet', 'tv', 'bot', 'unknown']) {
-      const response = onlineSessionListResponseSchema.safeParse({
+      const response = onlineSessionListResponseSchema.parse({
         list: [
           {
             id: testUuid(1),
@@ -79,9 +80,9 @@ describe('online session schemas', () => {
         pageSize: 20,
       })
 
-      expect(response.success).toBe(true)
-    }
-  })
+      expect(response.list[0]?.userAgent?.deviceType).toBe(deviceType)
+    },
+  )
 
   it('validates the revoke path session UUID', () => {
     expect(onlineSessionRevokePathSchema.parse({ id: testUuid(1) })).toEqual({ id: testUuid(1) })

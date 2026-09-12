@@ -48,7 +48,7 @@ describe('resource schemas', () => {
       includeIds: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7, invalid-uuid',
     })
 
-    expectZodIssue(result, { message: '资源 ID 无效' })
+    expectZodIssue(result, { message: '资源 ID 无效', path: ['includeIds', 1] })
   })
 
   it('accepts recursive lightweight resource tree options responses', () => {
@@ -74,12 +74,12 @@ describe('resource schemas', () => {
           ],
         },
       ]),
-    ).toMatchObject({
-      0: {
+    ).toMatchObject([
+      {
         code: 'system',
         children: [{ code: 'system:user:create' }],
       },
-    })
+    ])
   })
 
   it('accepts a resource response with menu fields', () => {
@@ -180,14 +180,14 @@ describe('resource schemas', () => {
       type: RESOURCE_TYPE_MENU,
     })
 
-    expectZodIssue(missingMenuPath, { message: '内部菜单路径不能为空' })
+    expectZodIssue(missingMenuPath, { message: '内部菜单路径不能为空', path: ['path'] })
 
     const missingExternalUrl = resourceFormSchema.safeParse({
       ...baseFormInput,
       type: RESOURCE_TYPE_EXTERNAL,
     })
 
-    expectZodIssue(missingExternalUrl, { message: '外链地址不能为空' })
+    expectZodIssue(missingExternalUrl, { message: '外链地址不能为空', path: ['externalUrl'] })
 
     const invalidExternalUrl = resourceFormSchema.safeParse({
       ...baseFormInput,
@@ -195,7 +195,7 @@ describe('resource schemas', () => {
       externalUrl: 'not-a-url',
     })
 
-    expectZodIssue(invalidExternalUrl, { message: '外链地址无效' })
+    expectZodIssue(invalidExternalUrl, { message: '外链地址无效', path: ['externalUrl'] })
 
     for (const externalUrl of [
       'javascript:alert(1)',
@@ -208,7 +208,7 @@ describe('resource schemas', () => {
         externalUrl,
       })
 
-      expectZodIssue(unsupportedExternalUrl, { message: '外链地址无效' })
+      expectZodIssue(unsupportedExternalUrl, { message: '外链地址无效', path: ['externalUrl'] })
     }
 
     expect(
@@ -378,13 +378,13 @@ describe('resource schemas', () => {
       icon: 'i-[lucide--users]',
     })
 
-    expectZodIssue(createResult, { message: '图标名称无效' })
+    expectZodIssue(createResult, { message: '图标名称无效', path: ['icon'] })
 
     const updateResult = resourceUpdateSchema.safeParse({
       icon: 'i-[lucide--users]',
     })
 
-    expectZodIssue(updateResult, { message: '图标名称无效' })
+    expectZodIssue(updateResult, { message: '图标名称无效', path: ['icon'] })
   })
 
   it('normalizes ignored external links for menu, directory, and action resources', () => {
@@ -462,7 +462,7 @@ describe('resource schemas', () => {
   it('requires at least one resource update field', () => {
     const result = resourceUpdateSchema.safeParse({})
 
-    expectZodIssue(result, { message: '至少修改一个字段' })
+    expectZodIssue(result, { message: '至少修改一个字段', path: [] })
   })
 
   it('normalizes type-specific update fields', () => {

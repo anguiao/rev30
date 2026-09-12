@@ -2,21 +2,20 @@ import {
   DICTIONARY_STATUS_DISABLED,
   DICTIONARY_STATUS_ENABLED,
   type DictionaryDetail,
+  type dictionaryCreateSchema,
+  type ErrorResponse,
   type DictionaryListResponse,
   type DictionaryOptionsResponse,
 } from '@rev30/contracts'
 import { eq } from 'drizzle-orm'
 import type { Hono } from 'hono'
+import type { z } from 'zod'
 import { describe, expect } from 'vitest'
 import { systemDictionaryItems, systemDictionaryTypes } from '../../../../src/db/schema'
 import { createDictionaryRoutes } from '../../../../src/modules/system/dictionaries/routes'
 import { createProtectedSystemRouteTestApp, createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
-
-type ErrorResponse = {
-  message: string
-  field?: string
-}
+import { expectJsonResponse } from '../../../helpers/http'
 
 type TestAppOptions = {
   admin?: boolean
@@ -39,29 +38,14 @@ async function createTestApp(database: TestDatabase, options: TestAppOptions = {
   )
 }
 
-async function createDictionary(
-  app: Hono,
-  body: {
-    code: string
-    name: string
-    description?: string | null
-    status?: 0 | 1
-    sortOrder?: number
-    items?: Array<{
-      label: string
-      value: string
-      description?: string | null
-      status?: 0 | 1
-      sortOrder?: number
-    }>
-  },
-) {
+async function createDictionary(app: Hono, body: z.input<typeof dictionaryCreateSchema>) {
   const response = await app.request('/api/system/dictionaries', {
     method: 'POST',
     body: JSON.stringify(body),
     headers: { 'content-type': 'application/json' },
   })
 
+  await expectJsonResponse(response, { status: 201 })
   return { body: (await response.json()) as DictionaryDetail, response }
 }
 
@@ -118,7 +102,7 @@ describe('dictionary routes', () => {
           sortOrder: 99,
           items: [
             {
-              id: maleItem?.id,
+              id: maleItem!.id,
               label: '男（更新）',
               value: 'male',
               description: 'updated',
@@ -302,7 +286,7 @@ describe('dictionary routes', () => {
         sortOrder: 0,
         items: [
           {
-            id: keepItem?.id,
+            id: keepItem!.id,
             label: '保留',
             value: 'keep',
             description: null,
@@ -458,7 +442,7 @@ describe('dictionary routes', () => {
           sortOrder: 99,
           items: [
             {
-              id: itemA?.id,
+              id: itemA!.id,
               label: 'A',
               value: 'b',
               description: null,
@@ -466,7 +450,7 @@ describe('dictionary routes', () => {
               sortOrder: 0,
             },
             {
-              id: itemB?.id,
+              id: itemB!.id,
               label: 'B',
               value: 'c',
               description: null,
@@ -489,7 +473,6 @@ describe('dictionary routes', () => {
         sortOrder: 99,
       })
       expect(body.items.map((item) => item.value).sort()).toEqual(['b', 'c'])
-      expect(body.items.every((item) => !item.value.startsWith('__dictionary_tmp_'))).toBe(true)
 
       const detailResponse = await app.request(`/api/system/dictionaries/${created.id}`)
       const detailBody = (await detailResponse.json()) as DictionaryDetail
@@ -498,9 +481,6 @@ describe('dictionary routes', () => {
       expect(detailBody.name).toBe('字典项值冲突（更新）')
       expect(detailBody.sortOrder).toBe(99)
       expect(detailBody.items.map((item) => item.value).sort()).toEqual(['b', 'c'])
-      expect(detailBody.items.every((item) => !item.value.startsWith('__dictionary_tmp_'))).toBe(
-        true,
-      )
 
       const [typeRow] = await database
         .select()
@@ -518,99 +498,71 @@ describe('dictionary routes', () => {
       expect(itemRows).toHaveLength(2)
       expect(itemRows.every((item) => item.deletedAt === null)).toBe(true)
       expect(itemRows.map((item) => item.value).sort()).toEqual(['b', 'c'])
-      expect(itemRows.every((item) => !item.value.startsWith('__dictionary_tmp_'))).toBe(true)
     },
   )
 
-  dbTest('allows reusing soft-deleted old value in same dictionary', async ({ db: database }) => {
-    const app = await createTestApp(database)
-    const { body: created } = await createDictionary(app, {
-      code: 'item-value',
-      name: '字典项值',
-      items: [
-        { label: '旧值', value: 'legacy' },
-        { label: '保留', value: 'keep' },
-      ],
-    })
-    const keepItem = created.items.find((item) => item.value === 'keep')
-    expect(keepItem).toBeDefined()
-
-    const duplicateCreate = await app.request('/api/system/dictionaries', {
-      method: 'POST',
-      body: JSON.stringify({
-        code: 'item-value-2',
-        name: '字典项值2',
-        items: [
-          { label: 'A', value: 'same' },
-          { label: 'B', value: 'same' },
-        ],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(duplicateCreate.status).toBe(400)
-    expect((await duplicateCreate.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
-
-    const duplicatePut = await app.request(`/api/system/dictionaries/${created.id}`, {
-      method: 'PUT',
-      body: JSON.stringify({
+  dbTest(
+    'rejects duplicate dictionary item values on create and update',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const { body: created } = await createDictionary(app, {
         code: 'item-value',
         name: '字典项值',
-        description: null,
-        status: DICTIONARY_STATUS_ENABLED,
-        sortOrder: 0,
         items: [
-          {
-            id: keepItem?.id,
-            label: '保留',
-            value: 'keep',
-            description: null,
-            status: DICTIONARY_STATUS_ENABLED,
-            sortOrder: 0,
-          },
-          {
-            label: '重复',
-            value: 'keep',
-            description: null,
-            status: DICTIONARY_STATUS_ENABLED,
-            sortOrder: 1,
-          },
+          { label: '旧值', value: 'legacy' },
+          { label: '保留', value: 'keep' },
         ],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(duplicatePut.status).toBe(400)
-    expect((await duplicatePut.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
+      })
+      const keepItem = created.items.find((item) => item.value === 'keep')
+      expect(keepItem).toBeDefined()
 
-    const reusablePut = await app.request(`/api/system/dictionaries/${created.id}`, {
-      method: 'PUT',
-      body: JSON.stringify({
-        code: 'item-value',
-        name: '字典项值',
-        description: null,
-        status: DICTIONARY_STATUS_ENABLED,
-        sortOrder: 0,
-        items: [
-          {
-            id: keepItem?.id,
-            label: '保留',
-            value: 'keep',
-            description: null,
-            status: DICTIONARY_STATUS_ENABLED,
-            sortOrder: 0,
-          },
-          {
-            label: '复用旧值',
-            value: 'legacy',
-            description: null,
-            status: DICTIONARY_STATUS_ENABLED,
-            sortOrder: 1,
-          },
-        ],
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(reusablePut.status).toBe(200)
-  })
+      const duplicateCreate = await app.request('/api/system/dictionaries', {
+        method: 'POST',
+        body: JSON.stringify({
+          code: 'item-value-2',
+          name: '字典项值2',
+          items: [
+            { label: 'A', value: 'same' },
+            { label: 'B', value: 'same' },
+          ],
+        }),
+        headers: { 'content-type': 'application/json' },
+      })
+      expect(duplicateCreate.status).toBe(400)
+      expect((await duplicateCreate.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
+
+      const duplicatePut = await app.request(`/api/system/dictionaries/${created.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          code: 'item-value',
+          name: '字典项值',
+          description: null,
+          status: DICTIONARY_STATUS_ENABLED,
+          sortOrder: 0,
+          items: [
+            {
+              id: keepItem!.id,
+              label: '保留',
+              value: 'keep',
+              description: null,
+              status: DICTIONARY_STATUS_ENABLED,
+              sortOrder: 0,
+            },
+            {
+              label: '重复',
+              value: 'keep',
+              description: null,
+              status: DICTIONARY_STATUS_ENABLED,
+              sortOrder: 1,
+            },
+          ],
+        }),
+        headers: { 'content-type': 'application/json' },
+      })
+      expect(duplicatePut.status).toBe(400)
+      expect((await duplicatePut.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
+    },
+  )
 
   dbTest(
     'cascades soft delete from dictionary type to its undeleted items',

@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { eq } from 'drizzle-orm'
-import { afterEach, describe, expect, vi } from 'vitest'
+import { afterEach, assert, describe, expect, vi } from 'vitest'
 import {
   ATTACHMENT_CLEANUP_POLICY_MANUAL,
   ATTACHMENT_DISPOSITION_INLINE,
@@ -11,6 +11,7 @@ import {
   ATTACHMENT_READ_POLICY_SIGNED,
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
+  type AttachmentReadPolicy,
 } from '@rev30/contracts'
 import {
   attachments,
@@ -117,12 +118,12 @@ async function* streamFromBytes(bytes: Uint8Array) {
   yield bytes
 }
 
-function getUploadToken(url: string) {
+function getTransferToken(url: string) {
   const token = new URL(url, 'http://localhost').searchParams.get('token')
 
-  expect(token).toBeTruthy()
+  assert(token, 'Expected a signed transfer token')
 
-  return token!
+  return token
 }
 
 function createAttachmentReadToken(userId: string) {
@@ -201,7 +202,7 @@ describe('attachment service', () => {
       originalName: string
       userId: string
       usage?: string
-      readPolicy?: 'signed' | 'authenticated'
+      readPolicy?: AttachmentReadPolicy
     },
   ) {
     const session = await service.createUploadSession({
@@ -212,7 +213,7 @@ describe('attachment service', () => {
       size: input.bytes.byteLength,
       userId: input.userId,
     })
-    const token = getUploadToken(session.request.url)
+    const token = getTransferToken(session.request.url)
 
     await service.uploadSessionContent({
       body: streamFromBytes(input.bytes),
@@ -238,7 +239,7 @@ describe('attachment service', () => {
   async function createAttachmentWithMissingStorage(
     database: TestDatabase,
     input: {
-      readPolicy: 'signed' | 'authenticated'
+      readPolicy: AttachmentReadPolicy
       userId: string
     },
   ) {
@@ -277,7 +278,7 @@ describe('attachment service', () => {
         contentType: 'image/png',
         userId,
       })
-      const token = getUploadToken(session.request.url)
+      const token = getTransferToken(session.request.url)
 
       expect(session).toMatchObject({
         request: {
@@ -354,7 +355,7 @@ describe('attachment service', () => {
 
       await uploadingService.uploadSessionContent({
         body: streamFromBytes(pngBytes),
-        token: getUploadToken(session.request.url),
+        token: getTransferToken(session.request.url),
         uploadId: session.uploadId,
       })
 
@@ -396,8 +397,8 @@ describe('attachment service', () => {
         size: pngBytes.byteLength,
         userId,
       })
-      const token = getUploadToken(session.request.url)
-      const [firstUpload, secondUpload] = await Promise.allSettled([
+      const token = getTransferToken(session.request.url)
+      const uploads = await Promise.allSettled([
         service.uploadSessionContent({
           body: streamFromBytes(pngBytes),
           token,
@@ -410,11 +411,12 @@ describe('attachment service', () => {
         }),
       ])
 
-      expect(firstUpload.status).toBe('fulfilled')
-      expect(secondUpload).toMatchObject({
-        status: 'rejected',
-        reason: expect.any(AttachmentUploadSessionInvalidError),
-      })
+      expect(uploads).toEqual(
+        expect.arrayContaining([
+          { status: 'fulfilled', value: undefined },
+          { status: 'rejected', reason: expect.any(AttachmentUploadSessionInvalidError) },
+        ]),
+      )
       await expect(
         service.uploadSessionContent({
           body: streamFromBytes(pngBytes),
@@ -447,7 +449,7 @@ describe('attachment service', () => {
         originalName: 'avatar.png',
         userId,
       })
-      const [firstCompletion, secondCompletion] = await Promise.allSettled([
+      const completions = await Promise.allSettled([
         service.completeUploadSession({
           uploadId: session.uploadId,
           userId,
@@ -458,21 +460,20 @@ describe('attachment service', () => {
         }),
       ])
 
-      expect(firstCompletion.status).toBe('fulfilled')
-      expect(secondCompletion).toMatchObject({
-        status: 'rejected',
-        reason: expect.any(AttachmentUploadSessionInvalidError),
-      })
+      expect(completions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ status: 'fulfilled' }),
+          { status: 'rejected', reason: expect.any(AttachmentUploadSessionInvalidError) },
+        ]),
+      )
+      const completed = completions.find((result) => result.status === 'fulfilled')
+      assert(completed, 'Expected exactly one completed attachment')
 
-      if (firstCompletion.status !== 'fulfilled') {
-        throw firstCompletion.reason
-      }
-
-      const access = await service.createContentUrl(firstCompletion.value.id, {
+      const access = await service.createContentUrl(completed.value.id, {
         disposition: ATTACHMENT_DISPOSITION_INLINE,
       })
-      const content = await service.readContent(firstCompletion.value.id, {
-        signedToken: getUploadToken(access.request.url),
+      const content = await service.readContent(completed.value.id, {
+        signedToken: getTransferToken(access.request.url),
       })
 
       expect(await streamToBytes(content.body)).toEqual(pngBytes)
@@ -573,7 +574,7 @@ describe('attachment service', () => {
         size: pngBytes.byteLength + 1,
         userId,
       })
-      const token = getUploadToken(session.request.url)
+      const token = getTransferToken(session.request.url)
       const storedFilePath = getStoredFilePath(`uploads/2026/05/29/${session.uploadId}.png`)
 
       await expect(
@@ -694,12 +695,10 @@ describe('attachment service', () => {
       const access = await service.createContentUrl(attachment.id, {
         disposition: ATTACHMENT_DISPOSITION_INLINE,
       })
-      const token = new URL(access.request.url, 'http://localhost').searchParams.get('token')
-
-      expect(token).toBeTruthy()
+      const token = getTransferToken(access.request.url)
 
       const content = await service.readContent(attachment.id, {
-        signedToken: token!,
+        signedToken: token,
       })
 
       expect(content.headers).toMatchObject({
@@ -751,7 +750,7 @@ describe('attachment service', () => {
         size: bytes.byteLength,
         userId,
       })
-      const token = getUploadToken(session.request.url)
+      const token = getTransferToken(session.request.url)
 
       await expect(
         service.uploadSessionContent({
@@ -794,12 +793,10 @@ describe('attachment service', () => {
       const accessUrl = await service.createContentUrl(attachment.id, {
         disposition: ATTACHMENT_DISPOSITION_INLINE,
       })
-      const token = new URL(accessUrl.request.url, 'http://localhost').searchParams.get('token')
-
-      expect(token).toBeTruthy()
+      const token = getTransferToken(accessUrl.request.url)
 
       const content = await service.readContent(attachment.id, {
-        signedToken: token!,
+        signedToken: token,
       })
 
       expect(await streamToBytes(content.body)).toEqual(textBytes)
@@ -1010,6 +1007,12 @@ describe('attachment service', () => {
       const service = await createAttachmentServiceForTest(database)
       const userId = await createUser(database)
       const disabledUserId = await createUser(database, USER_STATUS_DISABLED)
+      await database.insert(authSessions).values({
+        id: '5dfc90f3-9d4d-40f2-a8b9-f7d1863e5ad0',
+        userId: disabledUserId,
+        refreshTokenHash: randomUUID(),
+        expiresAt: new Date(Date.now() + 60_000),
+      })
       const attachment = await createAttachmentViaSession(service, {
         bytes: pngBytes,
         originalName: 'avatar.png',
@@ -1199,12 +1202,10 @@ describe('attachment service', () => {
       const access = await service.createContentUrl(attachment.id, {
         disposition: ATTACHMENT_DISPOSITION_INLINE,
       })
-      const token = new URL(access.request.url, 'http://localhost').searchParams.get('token')
-
-      expect(token).toBeTruthy()
+      const token = getTransferToken(access.request.url)
 
       const content = await service.readContent(attachment.id, {
-        signedToken: token!,
+        signedToken: token,
       })
 
       expect(await streamToBytes(content.body)).toEqual(pngBytes)
@@ -1236,7 +1237,7 @@ describe('attachment service', () => {
     const access = await service.createContentUrl(attachment.id, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
     })
-    const token = new URL(access.request.url, 'http://localhost').searchParams.get('token')
+    const token = getTransferToken(access.request.url)
 
     await db
       .update(authSessions)
@@ -1244,7 +1245,7 @@ describe('attachment service', () => {
       .where(eq(authSessions.id, sessionId))
 
     const content = await service.readContent(attachment.id, {
-      signedToken: token!,
+      signedToken: token,
     })
 
     expect(await streamToBytes(content.body)).toEqual(pngBytes)
@@ -1261,12 +1262,10 @@ describe('attachment service', () => {
     const access = await service.createContentUrl(attachment.id, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
     })
-    const token = new URL(access.request.url, 'http://localhost').searchParams.get('token')
-
-    expect(token).toBeTruthy()
+    const token = getTransferToken(access.request.url)
 
     const content = await service.readContent(attachment.id, {
-      signedToken: token!,
+      signedToken: token,
     })
 
     expect(content.headers['Cache-Control']).toBe('private, max-age=60')
@@ -1283,15 +1282,13 @@ describe('attachment service', () => {
     const access = await service.createContentUrl(attachment.id, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
     })
-    const token = new URL(access.request.url, 'http://localhost').searchParams.get('token')
-
-    expect(token).toBeTruthy()
+    const token = getTransferToken(access.request.url)
 
     await service.delete(attachment.id, testLogger)
 
     await expect(
       service.readContent(attachment.id, {
-        signedToken: token!,
+        signedToken: token,
       }),
     ).rejects.toBeInstanceOf(AttachmentNotFoundError)
   })
@@ -1315,7 +1312,7 @@ describe('attachment service', () => {
         size: ATTACHMENT_MAX_SIZE_BYTES,
         userId,
       })
-      const token = getUploadToken(session.request.url)
+      const token = getTransferToken(session.request.url)
 
       await expect(
         service.uploadSessionContent({

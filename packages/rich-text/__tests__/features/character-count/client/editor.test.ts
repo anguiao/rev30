@@ -11,7 +11,9 @@ import { imageFeature } from '../../../../src/features/image/core/feature'
 import { tableFeature } from '../../../../src/features/table/core/feature'
 import { createTestEditor } from '../../../helpers/editor'
 
-function createEditor(content: string | object = '<p>维护通知</p>') {
+function createEditor(
+  content: Parameters<typeof createTestEditor>[0]['content'] = '<p>维护通知</p>',
+) {
   return createTestEditor({
     extensions: [
       ...baseFeature.sharedExtensions!(),

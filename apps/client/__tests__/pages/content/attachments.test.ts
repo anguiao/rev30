@@ -1,3 +1,4 @@
+import { getDialogButton } from '../../helpers/dom'
 import bytes from 'bytes'
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -153,12 +154,7 @@ describe('attachments page', () => {
     await wrapper.get('[data-test="attachments-delete"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="attachments-delete-confirm"]',
-    ) as HTMLButtonElement | null
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('attachments-delete-confirm').click()
     await flushPromises()
 
     expect(deleteAttachmentMock).toHaveBeenCalledWith(authenticatedImage.id)

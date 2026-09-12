@@ -3,6 +3,9 @@ import type {
   AnnouncementMyDetail,
   AnnouncementMyListResponse,
   AnnouncementType,
+  AnnouncementVisibility,
+  AnnouncementStatus,
+  AnnouncementTarget,
 } from '@rev30/contracts'
 import {
   ANNOUNCEMENT_STATUS_ARCHIVED,
@@ -37,6 +40,7 @@ import {
   createSystemAccessFixture,
 } from '../../../../helpers/auth'
 import { dbTest, type TestDatabase } from '../../../../fixtures/database'
+import { createSystemDepartmentFixture, createSystemRoleFixture } from '../../../../helpers/system'
 
 const now = new Date('2026-05-20T00:00:00.000Z')
 
@@ -47,17 +51,14 @@ type InsertAnnouncementInput = {
   contentText?: string
   contentHtml?: string
   type?: AnnouncementType
-  visibility?: 'all' | 'targeted'
-  status?: 'draft' | 'published' | 'archived'
+  visibility?: AnnouncementVisibility
+  status?: AnnouncementStatus
   pinned?: boolean
   publishedAt?: Date | null
   updatedAt?: Date
   createdAt?: Date
   deletedAt?: Date | null
-  targets?: Array<{
-    targetType: 'user' | 'department' | 'role'
-    targetId: string
-  }>
+  targets?: AnnouncementTarget[]
 }
 
 async function createTestApp(database: TestDatabase) {
@@ -76,6 +77,7 @@ async function createTestApp(database: TestDatabase) {
 }
 
 async function insertAnnouncement(database: TestDatabase, input: InsertAnnouncementInput) {
+  const { publishedAt = now } = input
   const announcementId = input.id ?? randomUUID()
   const contentText = input.contentText ?? input.title
   const contentHtml = input.contentHtml ?? `<p>${contentText}</p>`
@@ -94,7 +96,7 @@ async function insertAnnouncement(database: TestDatabase, input: InsertAnnouncem
     visibility: input.visibility ?? ANNOUNCEMENT_VISIBILITY_TARGETED,
     status: input.status ?? ANNOUNCEMENT_STATUS_PUBLISHED,
     pinned: input.pinned ?? false,
-    publishedAt: input.publishedAt ?? now,
+    publishedAt,
     createdAt: input.createdAt ?? now,
     updatedAt: input.updatedAt ?? now,
     deletedAt: input.deletedAt ?? null,
@@ -276,7 +278,7 @@ describe('my announcement integration', () => {
       const { app, fixture } = await createTestApp(database)
       const departmentId = randomUUID()
 
-      await database.insert(systemDepartments).values({
+      await createSystemDepartmentFixture(database, {
         id: departmentId,
         name: 'Engineering',
         code: `engineering-${departmentId.slice(0, 8)}`,
@@ -326,7 +328,7 @@ describe('my announcement integration', () => {
       const { app, fixture } = await createTestApp(database)
       const departmentId = randomUUID()
 
-      await database.insert(systemDepartments).values({
+      await createSystemDepartmentFixture(database, {
         id: departmentId,
         name: 'Disabled Engineering',
         code: `disabled-engineering-${departmentId.slice(0, 8)}`,
@@ -434,7 +436,7 @@ describe('my announcement integration', () => {
     const { app, fixture } = await createTestApp(database)
     const roleId = randomUUID()
 
-    await database.insert(systemRoles).values({
+    await createSystemRoleFixture(database, {
       id: roleId,
       name: 'Announcement Reader',
       code: `announcement-reader-${roleId.slice(0, 8)}`,
@@ -483,7 +485,7 @@ describe('my announcement integration', () => {
       const { app, fixture } = await createTestApp(database)
       const roleId = randomUUID()
 
-      await database.insert(systemRoles).values({
+      await createSystemRoleFixture(database, {
         id: roleId,
         name: 'Disabled Announcement Reader',
         code: `disabled-announcement-reader-${roleId.slice(0, 8)}`,

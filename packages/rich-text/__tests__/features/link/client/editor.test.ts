@@ -8,35 +8,9 @@ import { linkPasteRule } from '../../../../src/features/link/client/editor'
 import { compactRichTextEditorPreset } from '../../../../src/client/vue/presets/compact'
 import { createAllRichTextEditorPreset } from '../../../../src/client/vue/presets/all'
 import { createTestEditor } from '../../../helpers/editor'
+import { createClipboardEvent } from '../../../helpers/clipboard'
 
-interface ClipboardContents {
-  readonly text?: string
-  readonly html?: string
-  readonly files?: readonly File[]
-}
-
-function createFileList(files: readonly File[]): FileList {
-  return Object.assign([...files], {
-    item: (index: number) => files[index] ?? null,
-  }) as FileList
-}
-
-function createClipboardEvent(contents: ClipboardContents = {}): ClipboardEvent {
-  return {
-    clipboardData: {
-      files: createFileList(contents.files ?? []),
-      getData(type: string) {
-        if (type === 'text/plain') {
-          return contents.text ?? ''
-        }
-
-        return type === 'text/html' ? (contents.html ?? '') : ''
-      },
-    } as DataTransfer,
-  } as ClipboardEvent
-}
-
-function paste(editor: Editor, contents: ClipboardContents) {
+function paste(editor: Editor, contents: NonNullable<Parameters<typeof createClipboardEvent>[0]>) {
   const slice = new Slice(Fragment.from(editor.schema.text(contents.text ?? '')), 0, 0)
 
   return editor.view.someProp('handlePaste', (handler) =>
@@ -51,7 +25,7 @@ function createCompactEditor(content = '<p>维护通知</p>') {
   })
 }
 
-function createAllEditor(content: string | object) {
+function createAllEditor(content: NonNullable<Parameters<typeof createTestEditor>[0]['content']>) {
   return createTestEditor({
     extensions: collectRichTextEditorExtensions(
       createAllRichTextEditorPreset({

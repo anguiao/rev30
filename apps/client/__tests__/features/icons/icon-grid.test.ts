@@ -17,20 +17,14 @@ const icons: BuiltinIconListResponse['list'] = [
 
 const customIcons: CustomIconListResponse['list'] = [
   {
-    icon: 'acme:logo',
-    prefix: 'acme',
-    name: 'logo',
-    setName: 'Acme Icons',
-    body: '<path d="M0 0h24v24H0z" />',
-    width: 24,
-    height: 24,
+    ...icons[0]!,
     createdAt: '2026-06-15T00:00:00.000Z',
     updatedAt: '2026-06-15T00:00:00.000Z',
   },
 ]
 
 describe('IconGrid', () => {
-  it('renders fixed grid items and emits copy actions from explicit buttons', async () => {
+  it('renders icon content and emits copy actions from explicit buttons', async () => {
     const wrapper = mount(IconGrid, {
       props: {
         icons,
@@ -39,8 +33,6 @@ describe('IconGrid', () => {
     })
 
     const item = wrapper.get('[data-test="icon-grid-item"]')
-    expect(item.classes()).toContain('w-28')
-    expect(item.classes()).toContain('h-32')
     expect(item.attributes('aria-label')).toBeUndefined()
 
     const svg = item.get('svg')
@@ -87,9 +79,7 @@ describe('IconGrid', () => {
     })
 
     const item = wrapper.get('[data-test="icon-grid-item"]')
-    expect(item.classes()).toContain('h-32')
     expect(item.attributes('role')).toBeUndefined()
-    expect(wrapper.get('[data-test="icon-grid-actions"]').classes()).not.toContain('absolute')
 
     const renameButton = wrapper.get('button[aria-label="重命名图标"]')
     await renameButton.trigger('click')

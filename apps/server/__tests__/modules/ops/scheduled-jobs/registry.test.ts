@@ -1,5 +1,5 @@
 import { scheduledJobTaskKeySchema } from '@rev30/contracts'
-import type { Logger } from 'pino'
+import { createLogger } from '../../../../src/runtime/logger'
 import { describe, expect, it, vi } from 'vitest'
 import {
   createScheduledJobRegistry,
@@ -8,14 +8,16 @@ import {
   type ScheduledJobDefinition,
 } from '../../../../src/modules/ops/scheduled-jobs/registry'
 
-const logger = {} as Logger
+const logger = createLogger({ level: 'silent' })
 
 function definition(key: (typeof scheduledJobTaskKeys)[number]): ScheduledJobDefinition {
   return {
     key,
     name: `Name for ${key}`,
     description: `Description for ${key}`,
-    run: vi.fn().mockResolvedValue({ deletedCount: 0, failedCount: 0 }),
+    run: vi
+      .fn<ScheduledJobDefinition['run']>()
+      .mockResolvedValue({ deletedCount: 0, failedCount: 0 }),
   }
 }
 

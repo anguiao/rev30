@@ -1,28 +1,13 @@
 import { expect, test } from 'vitest'
 import { commands, userEvent } from 'vitest/browser'
+import type { RichTextJsonNode } from '@rev30/rich-text/schema'
 import {
   getEditorRoot,
+  findEditorRoot,
+  readEditorModel,
   renderRichTextEditorHarness,
   type RichTextEditorHarnessScreen,
 } from './fixtures/renderRichTextEditorHarness'
-
-interface TableCellModel {
-  readonly type: 'tableCell' | 'tableHeader'
-  readonly attrs: {
-    readonly align: string | null
-    readonly colwidth: readonly number[] | null
-  }
-}
-
-interface TableRowModel {
-  readonly type: 'tableRow'
-  readonly content: readonly TableCellModel[]
-}
-
-interface TableModel {
-  readonly type: 'table'
-  readonly content: readonly TableRowModel[]
-}
 
 const editorSelector = '[data-test="editor-container"] .ProseMirror'
 const bodyRowSelector = `${editorSelector} .tableWrapper tbody tr:nth-child(2)`
@@ -41,21 +26,8 @@ function getEditorTable(editor: HTMLElement) {
   return table
 }
 
-function getCurrentEditorRoot(screen: RichTextEditorHarnessScreen) {
-  const editor = screen
-    .getByTestId('editor-container')
-    .element()
-    .querySelector<HTMLElement>('.ProseMirror')
-
-  if (editor === null) {
-    throw new Error('Expected a current ProseMirror editor')
-  }
-
-  return editor
-}
-
 function getCurrentEditorTable(screen: RichTextEditorHarnessScreen) {
-  return getEditorTable(getCurrentEditorRoot(screen))
+  return getEditorTable(findEditorRoot(screen))
 }
 
 function getTableBodyCell(table: HTMLTableElement, column: number) {
@@ -70,13 +42,7 @@ function getTableBodyCell(table: HTMLTableElement, column: number) {
 }
 
 function readTableModel(screen: RichTextEditorHarnessScreen) {
-  const document = JSON.parse(screen.getByTestId('model-json').element().textContent ?? '') as {
-    content?: unknown[]
-  }
-  const table = document.content?.find(
-    (node): node is TableModel =>
-      typeof node === 'object' && node !== null && (node as { type?: unknown }).type === 'table',
-  )
+  const table = readEditorModel(screen).content?.find((node) => node.type === 'table')
 
   if (table === undefined) {
     throw new Error('Expected a table in the editor model')
@@ -98,10 +64,9 @@ function getRenderedTable(screen: RichTextEditorHarnessScreen) {
   return table
 }
 
-function getColumnWidth(table: TableModel, column: number) {
-  return table.content
-    .map((row) => row.content[column]?.attrs.colwidth?.[0])
-    .find((width): width is number => typeof width === 'number')
+function getColumnWidth(table: RichTextJsonNode, column: number) {
+  const widths: unknown[] = table.content!.map((row) => row.content?.[column]?.attrs?.colwidth?.[0])
+  return widths.find((width): width is number => typeof width === 'number')
 }
 
 async function setTableDocument(screen: RichTextEditorHarnessScreen) {
@@ -151,12 +116,12 @@ test('runs table Quick Bar and toolbar actions through a real multi-cell drag', 
   await quickBar.getByRole('button', { name: '单元格操作' }).click()
   await screen.getByRole('menuitem', { name: '合并单元格' }).click()
   await expect.poll(() => getTableBodyCell(getEditorTable(editor), 1).colSpan).toBe(2)
-  expect(readTableModel(screen).content[1]?.content).toHaveLength(4)
+  expect(readTableModel(screen).content?.[1]?.content).toHaveLength(4)
 
   await quickBar.getByRole('button', { name: '单元格操作' }).click()
   await screen.getByRole('menuitem', { name: '拆分单元格' }).click()
   await expect.poll(() => getTableBodyCell(getEditorTable(editor), 1).colSpan).toBe(1)
-  expect(readTableModel(screen).content[1]?.content).toHaveLength(5)
+  expect(readTableModel(screen).content?.[1]?.content).toHaveLength(5)
 
   await focusToolbarTableControl(screen)
   await screen.getByRole('menuitemcheckbox', { name: '设置首列表头' }).click()
@@ -176,11 +141,11 @@ test('runs table Quick Bar and toolbar actions through a real multi-cell drag', 
   await expect
     .poll(() => {
       const table = readTableModel(screen)
-      const cells = table.content[1]?.content ?? []
+      const cells = table.content?.[1]?.content ?? []
 
       return (
         cells.length === 5 &&
-        cells.every((cell) => cell.type === 'tableHeader' && cell.attrs.align === 'center')
+        cells.every((cell) => cell.type === 'tableHeader' && cell.attrs?.align === 'center')
       )
     })
     .toBe(true)
@@ -209,6 +174,7 @@ test('resizes inner and final table edges with native mouse input and one undo',
   await setTableDocument(screen)
   const editor = await getEditorRoot(screen)
 
+  // Keep the resize gesture outside ProseMirror's 500 ms history grouping window.
   await new Promise<void>((resolve) => window.setTimeout(resolve, 600))
 
   await commands.dragMouse(
@@ -235,7 +201,7 @@ test('resizes inner and final table edges with native mouse input and one undo',
     .click()
   await expect.poll(() => getColumnWidth(readTableModel(screen), 0)).toBeUndefined()
 
-  const tableWrapper = getCurrentEditorRoot(screen).querySelector<HTMLElement>('.tableWrapper')
+  const tableWrapper = findEditorRoot(screen).querySelector<HTMLElement>('.tableWrapper')
   if (tableWrapper === null) {
     throw new Error('Expected a table wrapper')
   }
@@ -315,7 +281,7 @@ test('prioritizes text and full-cell selections for their corresponding Quick Ba
   await userEvent.keyboard('{End}')
   await userEvent.keyboard('{Shift>}{ArrowLeft}{/Shift}')
   await expect.element(quickBar.getByRole('button', { name: '加粗' })).toBeVisible()
-  expect(quickBar.element().querySelector('[aria-label="行操作"]')).toBeNull()
+  await expect.element(quickBar.getByRole('button', { name: '行操作' })).not.toBeInTheDocument()
 
   await selectTwoBodyCells()
   await expect.poll(() => getEditorTable(editor).querySelectorAll('.selectedCell').length).toBe(2)

@@ -147,20 +147,15 @@ const siblingDepartmentResponse: Department = {
   updatedAt: '2026-05-04T00:00:00.000Z',
 }
 
-function mountDrawer(
-  props: {
-    show?: boolean
-    departmentId?: string | null
-    parentId?: string | null
-  } = {},
-) {
+function mountDrawer(props: Partial<InstanceType<typeof DepartmentFormDrawer>['$props']> = {}) {
   const { plugins } = createTestQueryHarness()
 
   return mount(DepartmentFormDrawer, {
     props: {
-      show: props.show ?? true,
-      departmentId: props.departmentId === undefined ? null : props.departmentId,
-      parentId: props.parentId === undefined ? null : props.parentId,
+      show: true,
+      departmentId: null,
+      parentId: null,
+      ...props,
     },
     attachTo: document.body,
     global: {
@@ -327,7 +322,6 @@ describe('DepartmentFormDrawer', () => {
   it('keeps the original parent cached for a stale create load after switching parents', async () => {
     const firstTreeLoad = createDeferred<DepartmentTreeNode[]>()
     const secondTreeLoad = createDeferred<DepartmentTreeNode[]>()
-    let treeLoadCount = 0
     createDepartmentMock.mockResolvedValue({
       ...childDepartmentResponse,
       id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -337,19 +331,9 @@ describe('DepartmentFormDrawer', () => {
       sortOrder: 0,
     })
 
-    getDepartmentTreeOptionsMock.mockImplementation(() => {
-      treeLoadCount += 1
-
-      if (treeLoadCount === 1) {
-        return firstTreeLoad.promise
-      }
-
-      if (treeLoadCount === 2) {
-        return secondTreeLoad.promise
-      }
-
-      return Promise.resolve(departmentTreeResponse)
-    })
+    getDepartmentTreeOptionsMock
+      .mockReturnValueOnce(firstTreeLoad.promise)
+      .mockReturnValueOnce(secondTreeLoad.promise)
 
     const wrapper = mountDrawer({
       show: true,

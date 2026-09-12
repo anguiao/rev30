@@ -1,5 +1,10 @@
 import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
+import type { ResourceTreeNode, User } from '@rev30/contracts'
+import type { AuthEnv } from '../../../src/middleware/auth'
+import type { RequestContextEnv } from '../../../src/middleware/request-context'
+import type { createAuthService } from '../../../src/modules/auth/service'
+import { createLogger } from '../../../src/runtime/logger'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   AuthInvalidCredentialsError,
@@ -10,11 +15,14 @@ import {
 import { createAuthRoutes } from '../../../src/modules/auth/routes'
 import { UserConflictError, UserInvalidAvatarError } from '../../../src/modules/system/users/errors'
 
+type AuthService = ReturnType<typeof createAuthService>
+
 const authUser = {
   id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
   username: 'ada',
   nickname: 'Ada Lovelace',
   avatarId: null,
+  builtIn: false,
   email: null,
   phone: null,
   status: 1,
@@ -22,7 +30,26 @@ const authUser = {
   roles: [],
   createdAt: '2026-05-06T00:00:00.000Z',
   updatedAt: '2026-05-06T00:00:00.000Z',
-}
+} satisfies User
+const authMenus: ResourceTreeNode[] = [
+  {
+    id: '11111111-1111-4111-8111-111111111111',
+    parentId: null,
+    type: 'menu',
+    name: 'Users',
+    code: 'system:user',
+    path: '/system/users',
+    externalUrl: null,
+    openTarget: 'self',
+    icon: null,
+    hidden: false,
+    status: 1,
+    sortOrder: 0,
+    createdAt: '2026-05-06T00:00:00.000Z',
+    updatedAt: '2026-05-06T00:00:00.000Z',
+    children: [],
+  },
+]
 const requestMetadata = {
   requestId: '6afde8ac-04ec-4dc3-abcf-7bba62f89886',
   clientIp: '192.0.2.1',
@@ -32,32 +59,18 @@ const requestMetadata = {
 
 const mocks = vi.hoisted(() => {
   const service = {
-    login: vi.fn(),
-    logout: vi.fn(),
-    me: vi.fn(),
-    refresh: vi.fn(),
-    updatePassword: vi.fn(),
-    updateProfile: vi.fn(),
+    login: vi.fn<AuthService['login']>(),
+    logout: vi.fn<AuthService['logout']>(),
+    me: vi.fn<AuthService['me']>(),
+    refresh: vi.fn<AuthService['refresh']>(),
+    updatePassword: vi.fn<AuthService['updatePassword']>(),
+    updateProfile: vi.fn<AuthService['updateProfile']>(),
   }
-  const authMiddleware = vi.fn(async (c: Context, next: Next) => {
-    const context = c as unknown as { set: (key: string, value: unknown) => void }
-
-    context.set('currentUser', {
-      id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-      username: 'ada',
-      nickname: 'Ada Lovelace',
-      avatarId: null,
-      email: null,
-      phone: null,
-      status: 1,
-      departments: [],
-      roles: [],
-      createdAt: '2026-05-06T00:00:00.000Z',
-      updatedAt: '2026-05-06T00:00:00.000Z',
-    })
-    context.set('currentSessionId', '5dfc90f3-9d4d-40f2-a8b9-f7d1863e5ad0')
-    context.set('accessCodes', ['system:user:list'])
-    context.set('menus', [{ code: 'system:user' }])
+  const authMiddleware = vi.fn(async (c: Context<AuthEnv>, next: Next) => {
+    c.set('currentUser', authUser)
+    c.set('currentSessionId', '5dfc90f3-9d4d-40f2-a8b9-f7d1863e5ad0')
+    c.set('accessCodes', ['system:user:list'])
+    c.set('menus', authMenus)
 
     await next()
   })
@@ -74,15 +87,14 @@ vi.mock('../../../src/modules/auth/service', () => ({
 }))
 
 function createTestApp() {
-  return new Hono()
+  return new Hono<RequestContextEnv>()
     .use('*', async (c, next) => {
-      const context = c as unknown as { set: (key: string, value: unknown) => void }
-      context.set('requestContext', {
+      c.set('requestContext', {
         requestId: '6afde8ac-04ec-4dc3-abcf-7bba62f89886',
         clientIp: '192.0.2.1',
         clientIpSource: 'socket',
         userAgent: 'route-test',
-        logger: {} as never,
+        logger: createLogger({ level: 'silent' }),
       })
       await next()
     })
@@ -100,10 +112,6 @@ function createSession(refreshToken: string) {
     accessCodes: [],
     menus: [],
   }
-}
-
-async function readJson(response: Response) {
-  return response.json() as Promise<Record<string, unknown>>
 }
 
 describe('auth routes', () => {
@@ -151,7 +159,7 @@ describe('auth routes', () => {
       }),
       headers: { 'content-type': 'application/json' },
     })
-    const loginBody = await readJson(loginResponse)
+    const loginBody = await loginResponse.json()
 
     expect(loginResponse.status).toBe(200)
     expect(loginResponse.headers.get('set-cookie')).toContain('refresh_token=')
@@ -203,7 +211,7 @@ describe('auth routes', () => {
       method: 'POST',
       headers: { cookie: 'refresh_token=old-refresh-token' },
     })
-    const refreshBody = await readJson(refreshResponse)
+    const refreshBody = await refreshResponse.json()
 
     expect(refreshResponse.status).toBe(200)
     expect(refreshResponse.headers.get('set-cookie')).toContain('refresh_token=')
@@ -292,7 +300,7 @@ describe('auth routes', () => {
     expect(await meResponse.json()).toEqual({
       user: authUser,
       accessCodes: ['system:user:list'],
-      menus: [{ code: 'system:user' }],
+      menus: authMenus,
     })
   })
 

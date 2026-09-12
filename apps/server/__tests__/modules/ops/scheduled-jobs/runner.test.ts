@@ -1,4 +1,4 @@
-import type { Logger } from 'pino'
+import { createLogger } from '../../../../src/runtime/logger'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ScheduledJobExecutionError } from '../../../../src/modules/ops/scheduled-jobs/errors'
 import type { ScheduledJobRunCompletion } from '../../../../src/modules/ops/scheduled-jobs/repository'
@@ -22,9 +22,11 @@ function deferred<T>() {
 }
 
 function setup(run: ScheduledJobDefinition['run']) {
-  const runLogger = { info: vi.fn(), error: vi.fn() } as unknown as Logger
-  const child = vi.fn(() => runLogger)
-  const logger = { child } as unknown as Logger
+  const logger = createLogger({ level: 'silent' })
+  const runLogger = logger.child<string>({})
+  vi.spyOn(runLogger, 'info')
+  vi.spyOn(runLogger, 'error')
+  const child = vi.spyOn(logger, 'child').mockReturnValue(runLogger)
   const finalizeRun = vi
     .fn()
     .mockImplementation(
@@ -51,6 +53,7 @@ describe('scheduled job runner', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it.each([
@@ -175,7 +178,9 @@ describe('scheduled job runner', () => {
   })
 
   it('retries finalization after 60 seconds with one handler call and an unchanged completion', async () => {
-    const handler = vi.fn().mockResolvedValue({ deletedCount: 1, failedCount: 0 })
+    const handler = vi
+      .fn<ScheduledJobDefinition['run']>()
+      .mockResolvedValue({ deletedCount: 1, failedCount: 0 })
     const context = setup(handler)
     context.finalizeRun
       .mockRejectedValueOnce(new Error('database unavailable'))
@@ -203,7 +208,9 @@ describe('scheduled job runner', () => {
   })
 
   it('stops a pending finalization retry immediately on close without aborting', async () => {
-    const handler = vi.fn().mockResolvedValue({ deletedCount: 0, failedCount: 0 })
+    const handler = vi
+      .fn<ScheduledJobDefinition['run']>()
+      .mockResolvedValue({ deletedCount: 0, failedCount: 0 })
     const context = setup(handler)
     context.finalizeRun.mockRejectedValue(new Error('database unavailable'))
     const running = context.runner.run({ taskKey, runId, triggerSource: 'recovery' })
@@ -211,7 +218,7 @@ describe('scheduled job runner', () => {
 
     expect(context.finalizeRun).toHaveBeenCalledOnce()
     expect(vi.getTimerCount()).toBe(1)
-    const signal = handler.mock.calls[0]![0].signal as AbortSignal
+    const signal = handler.mock.calls[0]![0].signal
     const stop = context.runner.stop()
     await stop
     await running
@@ -223,7 +230,9 @@ describe('scheduled job runner', () => {
 
   it('waits for an in-flight finalization attempt before stop resolves', async () => {
     const finalization = deferred<{ status: string }>()
-    const context = setup(vi.fn().mockResolvedValue({ deletedCount: 0, failedCount: 0 }))
+    const context = setup(
+      vi.fn<ScheduledJobDefinition['run']>().mockResolvedValue({ deletedCount: 0, failedCount: 0 }),
+    )
     context.finalizeRun.mockImplementationOnce(() => finalization.promise)
     const running = context.runner.run({ taskKey, runId, triggerSource: 'scheduled' })
     await vi.advanceTimersByTimeAsync(0)

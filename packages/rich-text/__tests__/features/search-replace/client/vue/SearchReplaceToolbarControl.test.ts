@@ -3,7 +3,7 @@ import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/vue-3'
-import { NButton, NCheckbox, NInput, NPopover } from 'naive-ui'
+import { NPopover } from 'naive-ui'
 import { markRaw } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { runRichTextAction } from '../../../../../src/client/editor/action'
@@ -34,28 +34,8 @@ function mountControl(editor: Editor, disabled = false) {
   })
 }
 
-function getButtonComponent(wrapper: ReturnType<typeof mount>, dataTest: string) {
-  const button = wrapper.findAllComponents(NButton).find((component) => {
-    return component.attributes('data-test') === dataTest
-  })
-
-  if (!button) {
-    throw new Error(`Button not found: ${dataTest}`)
-  }
-
-  return button
-}
-
-function getInputComponent(wrapper: ReturnType<typeof mount>, dataTest: string) {
-  const input = wrapper.findAllComponents(NInput).find((component) => {
-    return component.attributes('data-test') === dataTest
-  })
-
-  if (!input) {
-    throw new Error(`Input not found: ${dataTest}`)
-  }
-
-  return input
+function getInput(wrapper: ReturnType<typeof mount>, dataTest: string) {
+  return wrapper.get(`[data-test="${dataTest}"] input`)
 }
 
 function isPopoverOpen(wrapper: ReturnType<typeof mount>) {
@@ -90,24 +70,24 @@ describe('SearchReplaceToolbarControl', () => {
     const wrapper = mountControl(editor)
 
     await openPanel(wrapper)
-    const queryInput = getInputComponent(wrapper, 'rich-text-search-query')
-    queryInput.vm.$emit('update:value', 'alpha')
+    const queryInput = getInput(wrapper, 'rich-text-search-query')
+    await queryInput.setValue('alpha')
 
     await waitForMatchPosition(wrapper, '1/3')
     expect(update).not.toHaveBeenCalled()
 
-    getButtonComponent(wrapper, 'rich-text-search-next').vm.$emit('click')
+    await wrapper.get('[data-test="rich-text-search-next"]').trigger('click')
 
     await waitForMatchPosition(wrapper, '2/3')
     expect(update).not.toHaveBeenCalled()
 
-    wrapper.getComponent(NCheckbox).vm.$emit('update:checked', true)
+    await wrapper.get('[role="checkbox"]').trigger('click')
 
     await waitForMatchPosition(wrapper, '1/1')
 
-    const replacementInput = getInputComponent(wrapper, 'rich-text-search-replacement')
-    replacementInput.vm.$emit('update:value', 'beta')
-    getButtonComponent(wrapper, 'rich-text-search-replace-current').vm.$emit('click')
+    const replacementInput = getInput(wrapper, 'rich-text-search-replacement')
+    await replacementInput.setValue('beta')
+    await wrapper.get('[data-test="rich-text-search-replace-current"]').trigger('click')
 
     expect(editor.getText()).toBe('Alpha beta ALPHA')
     expect(update).toHaveBeenCalledTimes(1)
@@ -121,14 +101,14 @@ describe('SearchReplaceToolbarControl', () => {
 
     runRichTextAction(editor, openSearchReplaceAction)
 
-    const getQueryElement = () => getInputComponent(wrapper, 'rich-text-search-query').get('input')
+    const getQueryElement = () => getInput(wrapper, 'rich-text-search-query')
 
     await waitForPopoverState(wrapper, true)
     await vi.waitFor(() => {
       expect(document.activeElement).toBe(getQueryElement().element)
     })
 
-    getInputComponent(wrapper, 'rich-text-search-query').vm.$emit('update:value', 'one')
+    await getInput(wrapper, 'rich-text-search-query').setValue('one')
     await waitForMatchPosition(wrapper, '1/2')
 
     await getQueryElement().trigger('keydown', { key: 'Enter' })
@@ -153,15 +133,15 @@ describe('SearchReplaceToolbarControl', () => {
     const wrapper = mountControl(editor)
 
     await openPanel(wrapper)
-    getInputComponent(wrapper, 'rich-text-search-query').vm.$emit('update:value', 'one')
-    const replacementInput = getInputComponent(wrapper, 'rich-text-search-replacement')
-    replacementInput.vm.$emit('update:value', 'two')
+    await getInput(wrapper, 'rich-text-search-query').setValue('one')
+    const replacementInput = getInput(wrapper, 'rich-text-search-replacement')
+    await replacementInput.setValue('two')
 
-    await replacementInput.get('input').trigger('keydown', { key: 'Enter', shiftKey: true })
+    await replacementInput.trigger('keydown', { key: 'Enter', shiftKey: true })
     expect(editor.getText()).toBe('one one')
     await waitForMatchPosition(wrapper, '2/2')
 
-    await replacementInput.get('input').trigger('keydown', { key: 'Enter' })
+    await replacementInput.trigger('keydown', { key: 'Enter' })
     expect(editor.getText()).toBe('one two')
     await waitForMatchPosition(wrapper, '1/1')
   })
@@ -172,9 +152,7 @@ describe('SearchReplaceToolbarControl', () => {
     const trigger = wrapper.get('[data-test="rich-text-search-replace"]')
 
     await openPanel(wrapper)
-    await getInputComponent(wrapper, 'rich-text-search-query')
-      .get('input')
-      .trigger('keydown', { key: 'Escape' })
+    await getInput(wrapper, 'rich-text-search-query').trigger('keydown', { key: 'Escape' })
 
     await waitForPopoverState(wrapper, false)
     expect(document.activeElement).toBe(trigger.element)

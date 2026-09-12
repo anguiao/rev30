@@ -1,7 +1,12 @@
 import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ATTACHMENT_DISPOSITION_INLINE } from '@rev30/contracts'
+import { assert, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  ATTACHMENT_DISPOSITION_INLINE,
+  type Attachment,
+  type AttachmentContentUrl,
+  type User,
+} from '@rev30/contracts'
 import {
   AttachmentContentUnauthorizedError,
   AttachmentFileTooLargeError,
@@ -14,15 +19,21 @@ import {
   AttachmentUploadUrlInvalidError,
 } from '../../../src/modules/attachments/errors'
 import { ATTACHMENT_MAX_SIZE_MESSAGE } from '../../../src/modules/attachments/policy'
+import type { createAttachmentService } from '../../../src/modules/attachments/service'
+import type { AuthEnv } from '../../../src/middleware/auth'
 import { createAttachmentRoutes } from '../../../src/modules/attachments/routes'
 import type { RequestContextEnv } from '../../../src/middleware/request-context'
 import { createLogger } from '../../../src/runtime/logger'
+
+type AttachmentService = ReturnType<typeof createAttachmentService>
 
 const attachmentId = '11111111-1111-4111-8111-111111111111'
 const currentUser = {
   id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
   username: 'ada',
   nickname: 'Ada Lovelace',
+  avatarId: null,
+  builtIn: false,
   email: null,
   phone: null,
   status: 1,
@@ -30,7 +41,7 @@ const currentUser = {
   roles: [],
   createdAt: '2026-05-06T00:00:00.000Z',
   updatedAt: '2026-05-06T00:00:00.000Z',
-}
+} satisfies User
 
 const attachment = {
   id: attachmentId,
@@ -41,7 +52,7 @@ const attachment = {
   usage: 'avatar',
   readPolicy: 'signed',
   createdAt: '2026-05-29T00:00:00.000Z',
-}
+} satisfies Attachment
 
 const contentUrl = {
   request: {
@@ -50,7 +61,7 @@ const contentUrl = {
     headers: {},
     expiresAt: '2026-05-29T00:05:00.000Z',
   },
-}
+} satisfies AttachmentContentUrl
 
 const uploadSession = {
   uploadId: attachmentId,
@@ -62,13 +73,9 @@ const uploadSession = {
     },
     expiresAt: '2026-05-29T00:05:00.000Z',
   },
-}
+} satisfies Awaited<ReturnType<AttachmentService['createUploadSession']>>
 
 const requestLogger = createLogger({ level: 'silent' })
-
-async function readJson(response: Response) {
-  return response.json() as Promise<Record<string, unknown>>
-}
 
 async function readStreamBytes(body: AsyncIterable<Uint8Array>) {
   const chunks: Uint8Array[] = []
@@ -86,21 +93,19 @@ const mocks = vi.hoisted(() => {
     isAdmin: false,
   }
   const service = {
-    completeUploadSession: vi.fn(),
-    createContentUrl: vi.fn(),
-    createUploadSession: vi.fn(),
-    delete: vi.fn(),
-    get: vi.fn(),
-    list: vi.fn(),
-    readContent: vi.fn(),
-    uploadSessionContent: vi.fn(),
+    completeUploadSession: vi.fn<AttachmentService['completeUploadSession']>(),
+    createContentUrl: vi.fn<AttachmentService['createContentUrl']>(),
+    createUploadSession: vi.fn<AttachmentService['createUploadSession']>(),
+    delete: vi.fn<AttachmentService['delete']>(),
+    get: vi.fn<AttachmentService['get']>(),
+    list: vi.fn<AttachmentService['list']>(),
+    readContent: vi.fn<AttachmentService['readContent']>(),
+    uploadSessionContent: vi.fn<AttachmentService['uploadSessionContent']>(),
   }
-  const authMiddleware = vi.fn(async (c: Context, next: Next) => {
-    const context = c as unknown as { set: (key: string, value: unknown) => void }
-
-    context.set('currentUser', currentUser)
-    context.set('accessCodes', authState.accessCodes)
-    context.set('isAdmin', authState.isAdmin)
+  const authMiddleware = vi.fn(async (c: Context<AuthEnv>, next: Next) => {
+    c.set('currentUser', currentUser)
+    c.set('accessCodes', authState.accessCodes)
+    c.set('isAdmin', authState.isAdmin)
 
     await next()
   })
@@ -146,11 +151,10 @@ describe('attachment routes', () => {
     Object.values(mocks.service).forEach((mock) => mock.mockReset())
     mocks.createAttachmentService.mockReturnValue(mocks.service)
     mocks.service.createUploadSession.mockResolvedValue(uploadSession)
-    mocks.service.uploadSessionContent.mockImplementation(
-      async (input: { body: AsyncIterable<Uint8Array> }) => {
-        await readStreamBytes(input.body)
-      },
-    )
+    mocks.service.uploadSessionContent.mockImplementation(async ({ body }) => {
+      assert(body, 'Expected an upload body')
+      await readStreamBytes(body)
+    })
     mocks.service.completeUploadSession.mockResolvedValue(attachment)
     mocks.service.list.mockResolvedValue({
       list: [
@@ -377,12 +381,6 @@ describe('attachment routes', () => {
 
   it('passes optional signed and authenticated read credentials to content reads', async () => {
     const app = createAttachmentTestApp()
-    mocks.service.readContent.mockResolvedValueOnce({
-      body: new ReadableStream(),
-      headers: {
-        'Content-Type': 'image/png',
-      },
-    })
 
     const response = await app.request(`/api/attachments/${attachmentId}/content`, {
       headers: {
@@ -402,12 +400,6 @@ describe('attachment routes', () => {
 
   it('passes blank content tokens through for policy-driven reads', async () => {
     const app = createAttachmentTestApp()
-    mocks.service.readContent.mockResolvedValueOnce({
-      body: new ReadableStream(),
-      headers: {
-        'Content-Type': 'image/png',
-      },
-    })
 
     const response = await app.request(`/api/attachments/${attachmentId}/content?token=`, {
       headers: {
@@ -534,7 +526,7 @@ describe('attachment routes', () => {
       },
     })
     expect(tooLargeResponse.status).toBe(400)
-    expect(await readJson(tooLargeResponse)).toEqual({
+    expect(await tooLargeResponse.json()).toEqual({
       message: ATTACHMENT_MAX_SIZE_MESSAGE,
     })
 
@@ -549,7 +541,7 @@ describe('attachment routes', () => {
       },
     )
     expect(unsupportedTypeResponse.status).toBe(400)
-    expect(await readJson(unsupportedTypeResponse)).toEqual({
+    expect(await unsupportedTypeResponse.json()).toEqual({
       message: '不支持的文件类型',
     })
 
@@ -564,7 +556,7 @@ describe('attachment routes', () => {
       },
     )
     expect(expiredUploadUrlResponse.status).toBe(403)
-    expect(await readJson(expiredUploadUrlResponse)).toEqual({
+    expect(await expiredUploadUrlResponse.json()).toEqual({
       message: '上传链接已失效',
     })
 
@@ -582,7 +574,7 @@ describe('attachment routes', () => {
       },
     )
     expect(notReadyCompleteResponse.status).toBe(400)
-    expect(await readJson(notReadyCompleteResponse)).toEqual({
+    expect(await notReadyCompleteResponse.json()).toEqual({
       message: '文件尚未上传',
     })
 
@@ -600,21 +592,21 @@ describe('attachment routes', () => {
       },
     )
     expect(expiredCompleteResponse.status).toBe(400)
-    expect(await readJson(expiredCompleteResponse)).toEqual({
+    expect(await expiredCompleteResponse.json()).toEqual({
       message: '上传会话已失效',
     })
 
     mocks.service.get.mockRejectedValueOnce(new AttachmentNotFoundError())
     const notFoundResponse = await app.request(`/api/attachments/${attachmentId}`)
     expect(notFoundResponse.status).toBe(404)
-    expect(await readJson(notFoundResponse)).toEqual({ message: '附件不存在' })
+    expect(await notFoundResponse.json()).toEqual({ message: '附件不存在' })
 
     mocks.service.readContent.mockRejectedValueOnce(new AttachmentContentUrlInvalidError())
     const invalidSignedTokenResponse = await app.request(
       `/api/attachments/${attachmentId}/content?token=expired-token`,
     )
     expect(invalidSignedTokenResponse.status).toBe(401)
-    expect(await readJson(invalidSignedTokenResponse)).toEqual({
+    expect(await invalidSignedTokenResponse.json()).toEqual({
       message: '附件链接已失效',
     })
 
@@ -623,6 +615,6 @@ describe('attachment routes', () => {
       `/api/attachments/${attachmentId}/content?token=signed-token`,
     )
     expect(contentNotFoundResponse.status).toBe(404)
-    expect(await readJson(contentNotFoundResponse)).toEqual({ message: '附件不存在' })
+    expect(await contentNotFoundResponse.json()).toEqual({ message: '附件不存在' })
   })
 })

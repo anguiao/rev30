@@ -3,7 +3,9 @@ import { userEvent } from 'vitest/browser'
 import { createDefaultDocument } from '../src/playground/defaultDocument'
 import { getEditable, renderRichTextEditorHarness } from './fixtures/renderRichTextEditorHarness'
 
-test('does not flash the quick bar when a pointer click beside an image returns to the editor', async () => {
+test('does not flash the quick bar when a pointer click beside an image returns to the editor', async ({
+  onTestFinished,
+}) => {
   const screen = await renderRichTextEditorHarness(createDefaultDocument())
   const editable = await getEditable(screen)
   const heading = editable.element().querySelector('h1')
@@ -35,6 +37,7 @@ test('does not flash the quick bar when a pointer click beside an image returns 
       }
     }
   })
+  onTestFinished(() => observer.disconnect())
   observer.observe(screen.getByTestId('editor-container').element(), {
     childList: true,
     subtree: true,

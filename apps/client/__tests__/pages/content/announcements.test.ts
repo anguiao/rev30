@@ -1,3 +1,4 @@
+import { getDialogButton } from '../../helpers/dom'
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
@@ -348,12 +349,7 @@ describe('announcements page', () => {
     await wrapper.get('[data-test="announcements-publish"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="announcements-publish-confirm"]',
-    ) as HTMLButtonElement | null
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('announcements-publish-confirm').click()
     await flushPromises()
 
     expect(publishAnnouncementMock).toHaveBeenCalledWith(draftAnnouncement.id)
@@ -371,12 +367,7 @@ describe('announcements page', () => {
     await wrapper.get('[data-test="announcements-publish"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="announcements-publish-confirm"]',
-    ) as HTMLButtonElement | null
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('announcements-publish-confirm').click()
     await flushPromises()
 
     expect(publishAnnouncementMock).toHaveBeenCalledWith(draftAnnouncement.id)
@@ -414,12 +405,7 @@ describe('announcements page', () => {
     await wrapper.get('[data-test="announcements-publish"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="announcements-publish-confirm"]',
-    ) as HTMLButtonElement | null
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('announcements-publish-confirm').click()
     await flushPromises()
 
     expect(listAnnouncementsMock).toHaveBeenNthCalledWith(3, {
@@ -447,12 +433,7 @@ describe('announcements page', () => {
     await wrapper.get('[data-test="announcements-archive"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="announcements-archive-confirm"]',
-    ) as HTMLButtonElement | null
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('announcements-archive-confirm').click()
     await flushPromises()
 
     expect(archiveAnnouncementMock).toHaveBeenCalledWith(publishedAnnouncement.id)
@@ -470,12 +451,7 @@ describe('announcements page', () => {
     await wrapper.get('[data-test="announcements-delete"]').trigger('click')
     await flushPromises()
 
-    const confirmButton = document.body.querySelector(
-      '[data-test="announcements-delete-confirm"]',
-    ) as HTMLButtonElement | null
-    expect(confirmButton).not.toBeNull()
-
-    confirmButton?.click()
+    getDialogButton('announcements-delete-confirm').click()
     await flushPromises()
 
     expect(deleteAnnouncementMock).toHaveBeenCalledWith(draftAnnouncement.id)

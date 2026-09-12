@@ -1,5 +1,5 @@
-import type { Logger } from 'pino'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { createLogger } from '../../src/runtime/logger'
 import type { Db } from '../../src/db'
 import { opsOperationLogs } from '../../src/db/schema'
 import { createOperationLogRuntime, type OperationLogEvent } from '../../src/runtime/operation-log'
@@ -30,10 +30,10 @@ function createEvent(index: number): OperationLogEvent {
 }
 
 function createLoggerSpy() {
-  return {
-    error: vi.fn(),
-    warn: vi.fn(),
-  } as unknown as Logger
+  const logger = createLogger({ level: 'silent' })
+  vi.spyOn(logger, 'error')
+  vi.spyOn(logger, 'warn')
+  return logger
 }
 
 function createDatabase(write: (values: OperationLogInsert) => Promise<void>) {
@@ -56,6 +56,7 @@ describe('operation log runtime', () => {
     const insert = vi.fn(() => ({ values }))
     const logger = createLoggerSpy()
     const runtime = createOperationLogRuntime({ insert } as unknown as Db, logger)
+    onTestFinished(() => runtime.stop())
     const event = createEvent(5)
 
     runtime.receiver(event)
@@ -74,6 +75,7 @@ describe('operation log runtime', () => {
     const writer = vi.fn(async () => firstWrite.promise)
     const logger = createLoggerSpy()
     const runtime = createOperationLogRuntime(createDatabase(writer), logger)
+    onTestFinished(() => runtime.stop())
 
     for (let index = 0; index < 32; index += 1) {
       runtime.receiver(createEvent(index))
@@ -92,7 +94,8 @@ describe('operation log runtime', () => {
 
     runtime.stop()
     firstWrite.resolve()
-    await vi.waitFor(() => expect(writer).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(writer.mock.settledResults[0]?.type).toBe('fulfilled'))
+    expect(writer).toHaveBeenCalledTimes(1)
   })
 
   it('writes strictly in FIFO order with one consumer and continues after one failure', async () => {
@@ -119,6 +122,7 @@ describe('operation log runtime', () => {
       }
     })
     const runtime = createOperationLogRuntime(createDatabase(writer), logger)
+    onTestFinished(() => runtime.stop())
 
     runtime.receiver(createEvent(0))
     runtime.receiver(createEvent(1))
@@ -128,16 +132,15 @@ describe('operation log runtime', () => {
     expect(order).toEqual([0, 1, 2])
     expect(maxActive).toBe(1)
     expect(logger.error).toHaveBeenCalledTimes(1)
-    const [fields, message] = (logger.error as ReturnType<typeof vi.fn>).mock.calls[0]!
+    const [fields, message] = vi.mocked(logger.error).mock.calls[0]!
     expect(message).toBe('operation log persistence failed')
     expect(fields).toMatchObject({
       action: 'system:user:update',
       operationLogErrorKind: 'persistence_failure',
-      err: expect.any(Error),
+      err: expect.objectContaining({ message: 'Operation log persistence failed' }),
       requestId: '10000000-0000-4000-8000-000000000001',
       status: 200,
     })
-    expect((fields as { err: Error }).err.message).toBe('Operation log persistence failed')
     expect(JSON.stringify(fields)).not.toMatch(/secret|query|password|detail|hint|targetKey/)
   })
 
@@ -146,6 +149,7 @@ describe('operation log runtime', () => {
     const writer = vi.fn(async () => firstWrite.promise)
     const logger = createLoggerSpy()
     const runtime = createOperationLogRuntime(createDatabase(writer), logger)
+    onTestFinished(() => runtime.stop())
 
     runtime.receiver(createEvent(0))
     runtime.receiver(createEvent(1))
@@ -166,6 +170,7 @@ describe('operation log runtime', () => {
     )
 
     firstWrite.resolve()
-    await vi.waitFor(() => expect(writer).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(writer.mock.settledResults[0]?.type).toBe('fulfilled'))
+    expect(writer).toHaveBeenCalledTimes(1)
   })
 })

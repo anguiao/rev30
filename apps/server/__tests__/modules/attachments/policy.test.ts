@@ -11,10 +11,6 @@ import {
 } from '../../../src/modules/attachments/policy'
 
 describe('attachment policy', () => {
-  function filenameType(originalName: string) {
-    return getAttachmentFilenameType(originalName)
-  }
-
   it('resolves filename file types from normalized extensions', () => {
     expect(getAttachmentFilenameType('Avatar.JPEG')).toEqual({
       extension: 'jpeg',
@@ -28,7 +24,7 @@ describe('attachment policy', () => {
 
   it('uses detected MIME types and extensions', () => {
     expect(
-      acceptAttachmentUploadType(filenameType('avatar.png'), {
+      acceptAttachmentUploadType(getAttachmentFilenameType('avatar.png'), {
         extension: 'png',
         mimeType: 'image/png',
       }),
@@ -37,7 +33,7 @@ describe('attachment policy', () => {
       mimeType: 'image/png',
     })
     expect(
-      acceptAttachmentUploadType(filenameType('avatar.jpeg'), {
+      acceptAttachmentUploadType(getAttachmentFilenameType('avatar.jpeg'), {
         extension: 'jpg',
         mimeType: 'image/jpeg',
       }),
@@ -46,7 +42,7 @@ describe('attachment policy', () => {
       mimeType: 'image/jpeg',
     })
     expect(
-      acceptAttachmentUploadType(filenameType('document.pdf'), {
+      acceptAttachmentUploadType(getAttachmentFilenameType('document.pdf'), {
         extension: 'pdf',
         mimeType: 'application/pdf',
       }),
@@ -55,7 +51,7 @@ describe('attachment policy', () => {
 
   it('uses detected extensions when detected MIME does not match the filename extension', () => {
     expect(
-      acceptAttachmentUploadType(filenameType('avatar.png'), {
+      acceptAttachmentUploadType(getAttachmentFilenameType('avatar.png'), {
         extension: 'jpg',
         mimeType: 'image/jpeg',
       }),
@@ -64,7 +60,7 @@ describe('attachment policy', () => {
       mimeType: 'image/jpeg',
     })
     expect(
-      acceptAttachmentUploadType(filenameType('avatar.jpeg'), {
+      acceptAttachmentUploadType(getAttachmentFilenameType('avatar.jpeg'), {
         extension: 'png',
         mimeType: 'image/png',
       }),
@@ -73,7 +69,7 @@ describe('attachment policy', () => {
       mimeType: 'image/png',
     })
     expect(
-      acceptAttachmentUploadType(filenameType('avatar.bin'), {
+      acceptAttachmentUploadType(getAttachmentFilenameType('avatar.bin'), {
         extension: 'png',
         mimeType: 'image/png',
       }),
@@ -84,11 +80,11 @@ describe('attachment policy', () => {
   })
 
   it('falls back to filename lookup for text-like files', () => {
-    expect(acceptAttachmentUploadType(filenameType('users.csv'), null)).toEqual({
+    expect(acceptAttachmentUploadType(getAttachmentFilenameType('users.csv'), null)).toEqual({
       extension: 'csv',
       mimeType: 'text/csv',
     })
-    expect(acceptAttachmentUploadType(filenameType('notes.txt'), null)).toEqual({
+    expect(acceptAttachmentUploadType(getAttachmentFilenameType('notes.txt'), null)).toEqual({
       extension: 'txt',
       mimeType: 'text/plain',
     })
@@ -99,13 +95,13 @@ describe('attachment policy', () => {
       extension: 'docx',
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     })
-    expect(() => acceptAttachmentUploadType(filenameType('report.docx'), null)).toThrow(
-      '不支持的文件类型',
-    )
-    expect(() => acceptAttachmentUploadType(filenameType('archive.zip'), null)).toThrow(
-      '不支持的文件类型',
-    )
-    expect(() => acceptAttachmentUploadType(filenameType('file.pdf'), null)).toThrow(
+    expect(() =>
+      acceptAttachmentUploadType(getAttachmentFilenameType('report.docx'), null),
+    ).toThrow('不支持的文件类型')
+    expect(() =>
+      acceptAttachmentUploadType(getAttachmentFilenameType('archive.zip'), null),
+    ).toThrow('不支持的文件类型')
+    expect(() => acceptAttachmentUploadType(getAttachmentFilenameType('file.pdf'), null)).toThrow(
       '不支持的文件类型',
     )
     expect(getAttachmentFilenameType('avatar.bin')).toBeNull()

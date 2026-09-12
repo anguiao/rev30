@@ -1,8 +1,8 @@
 import { lookupCollection } from '@iconify/json'
-import { describe, expect, vi } from 'vitest'
+import { beforeEach, describe, expect, vi } from 'vitest'
 import { customIconSetIcons, customIconSets } from '../../../../src/db/schema'
 import { getBuiltinIconSubset } from '../../../../src/modules/icons/service'
-import { dbTest, type TestDatabase } from '../../../fixtures/database'
+import { dbTest } from '../../../fixtures/database'
 
 vi.mock('@iconify/json', () => {
   const collections = {
@@ -109,14 +109,14 @@ const { createIconSearchService } = await import('../../../../src/modules/icons/
 const getBuiltinIconSubsetMock = vi.mocked(getBuiltinIconSubset)
 const lookupCollectionMock = vi.mocked(lookupCollection)
 
-async function createSearchService(database: TestDatabase) {
-  return createIconSearchService(database)
-}
-
 describe('icon search service', () => {
-  dbTest('resolves exact icon names without building the search index', async ({ db }) => {
-    const service = await createSearchService(db)
+  beforeEach(() => {
+    getBuiltinIconSubsetMock.mockReset()
     lookupCollectionMock.mockClear()
+  })
+
+  dbTest('resolves exact icon names without building the search index', async ({ db }) => {
+    const service = createIconSearchService(db)
     getBuiltinIconSubsetMock.mockResolvedValueOnce({
       prefix: 'lucide',
       icons: {
@@ -147,8 +147,7 @@ describe('icon search service', () => {
   dbTest(
     'returns an empty list for missing exact icon names without building the search index',
     async ({ db }) => {
-      const service = await createSearchService(db)
-      lookupCollectionMock.mockClear()
+      const service = createIconSearchService(db)
       getBuiltinIconSubsetMock.mockResolvedValueOnce({
         prefix: 'lucide',
         icons: {},
@@ -201,7 +200,7 @@ describe('icon search service', () => {
   )
 
   dbTest('fills the default recommendation limit for an empty keyword', async ({ db }) => {
-    const service = await createSearchService(db)
+    const service = createIconSearchService(db)
     const result = await service.searchIcons({ keyword: '', limit: 60 })
     const whitespaceResult = await service.searchIcons({ keyword: '   ', limit: 60 })
 
@@ -213,7 +212,7 @@ describe('icon search service', () => {
   })
 
   dbTest('searches icons by English, Chinese, alias, exact, and fuzzy keywords', async ({ db }) => {
-    const service = await createSearchService(db)
+    const service = createIconSearchService(db)
     const english = await service.searchIcons({ keyword: 'user', limit: 20 })
     expect(english.list[0]?.icon).toBe('lucide:user')
 
@@ -251,7 +250,7 @@ describe('icon search service', () => {
   })
 
   dbTest('keeps icon set prefixes searchable without search text copies', async ({ db }) => {
-    const service = await createSearchService(db)
+    const service = createIconSearchService(db)
     const result = await service.searchIcons({ keyword: 'lucide', limit: 20 })
 
     expect(result.list.length).toBeGreaterThan(0)
@@ -259,7 +258,7 @@ describe('icon search service', () => {
   })
 
   dbTest('searches broad Chinese keywords with bounded candidate expansion', async ({ db }) => {
-    const service = await createSearchService(db)
+    const service = createIconSearchService(db)
     const result = await service.searchIcons({
       keyword:
         '用户角色权限菜单资源部门组织系统设置日志首页统计报表字典通知文件外链操作状态排序配置',
@@ -276,7 +275,7 @@ describe('icon search service', () => {
   dbTest(
     'keeps color and brand icons searchable while preferring monochrome admin icon sets',
     async ({ db }) => {
-      const service = await createSearchService(db)
+      const service = createIconSearchService(db)
       const result = await service.searchIcons({ keyword: 'vue', limit: 80 })
       const colorIndex = result.list.findIndex((item) => item.prefix === 'logos')
       const monochromeIndex = result.list.findIndex((item) => !item.palette)

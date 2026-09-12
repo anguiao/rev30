@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { ScheduledJobTaskKey } from '@rev30/contracts'
 import { asc, eq } from 'drizzle-orm'
-import { describe, expect, it } from 'vitest'
+import { assert, describe, expect, it } from 'vitest'
 import type { Db } from '../../../../src/db'
 import { opsJobRuns, opsScheduledJobs } from '../../../../src/db/schema'
 import {
@@ -16,9 +16,9 @@ import { scheduledJobTaskKeys } from '../../../../src/modules/ops/scheduled-jobs
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
 
 const taskKeys = scheduledJobTaskKeys
-const firstTask = taskKeys[0]!
-const secondTask = taskKeys[1]!
-const thirdTask = taskKeys[2]!
+const firstTask = taskKeys[0]
+const secondTask = taskKeys[1]
+const thirdTask = taskKeys[2]
 const dueAt = new Date('2026-08-25T00:00:00.000Z')
 const claimAt = new Date('2026-08-25T12:05:00.000Z')
 const futureAt = new Date('2026-08-26T00:00:00.000Z')
@@ -49,10 +49,9 @@ async function runRows(db: TestDatabase, taskKey = firstTask) {
     .orderBy(asc(opsJobRuns.createdAt), asc(opsJobRuns.id))
 }
 
-function runningRun(
-  taskKey: ScheduledJobTaskKey,
-  overrides: Partial<typeof opsJobRuns.$inferInsert> = {},
-): typeof opsJobRuns.$inferInsert {
+type RunFixture = typeof opsJobRuns.$inferInsert & { id: string; taskKey: ScheduledJobTaskKey }
+
+function runningRun(taskKey: ScheduledJobTaskKey, overrides: Partial<RunFixture> = {}): RunFixture {
   return {
     id: randomUUID(),
     taskKey,
@@ -65,9 +64,9 @@ function runningRun(
   }
 }
 
-async function occupy(db: TestDatabase, run: typeof opsJobRuns.$inferInsert) {
+async function occupy(db: TestDatabase, run: RunFixture) {
   await db.insert(opsJobRuns).values(run)
-  await setPlan(db, run.taskKey as ScheduledJobTaskKey, { activeRunId: run.id })
+  await setPlan(db, run.taskKey, { activeRunId: run.id })
   return run
 }
 
@@ -213,7 +212,7 @@ describe('scheduled job repository claims', () => {
       })
 
       expect(scheduled).toMatchObject({ blockedByRunId: null })
-      if (!scheduled) throw new Error('Expected a scheduled claim')
+      assert(scheduled, 'Expected a scheduled claim')
       expect(manual).toMatchObject({ blockedByRunId: scheduled.runId })
       expect(scheduled.runId[14]).toBe('7')
       expect(manual.runId[14]).toBe('7')
@@ -291,7 +290,7 @@ describe('scheduled job repository claims', () => {
         blockedByRunId: active.id,
         scheduledFor: dueAt,
       })
-      if (!overlap) throw new Error('Expected a scheduled overlap claim')
+      assert(overlap, 'Expected a scheduled overlap claim')
       expect(overlap.runId[14]).toBe('7')
       const [plan] = await db
         .select()
@@ -487,7 +486,7 @@ describe('scheduled job startup recovery', () => {
       await db.delete(opsScheduledJobs).where(eq(opsScheduledJobs.taskKey, extraTaskKey))
       await setPlan(db, secondTask, { cronExpression: 'invalid cron' })
       await expect(repository.initialize({ taskKeys, startupAt: claimAt })).rejects.toThrow()
-      const [stored] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, oldRun.id!))
+      const [stored] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, oldRun.id))
       expect(stored).toMatchObject({ status: 'running', finishedAt: null })
     },
   )
@@ -503,14 +502,14 @@ describe('scheduled job startup recovery', () => {
       await expect(repository.initialize({ taskKeys, startupAt: claimAt })).rejects.toThrow(
         /运行状态不一致/,
       )
-      const [stored] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, mismatched.id!))
+      const [stored] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, mismatched.id))
       expect(stored?.status).toBe('running')
 
       await setPlan(db, firstTask, { activeRunId: null })
       await expect(repository.initialize({ taskKeys, startupAt: claimAt })).rejects.toThrow(
         /运行状态不一致/,
       )
-      const [orphan] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, mismatched.id!))
+      const [orphan] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, mismatched.id))
       expect(orphan?.status).toBe('running')
     },
   )
@@ -629,7 +628,7 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
 
       expect(result).toMatchObject({ blockedByRunId: null, scheduledFor: null })
       expect(result.runId[14]).toBe('7')
-      const [run] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, result.runId!))
+      const [run] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, result.runId))
       expect(run).toMatchObject({
         triggerSource: 'recovery',
         scheduledFor: null,
@@ -684,11 +683,11 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
     async ({ db }) => {
       const active = await occupy(db, runningRun(firstTask))
       const repository = createScheduledJobRepository(db)
-      const input = { taskKey: firstTask, runId: active.id!, now: claimAt, actor }
+      const input = { taskKey: firstTask, runId: active.id, now: claimAt, actor }
 
       await repository.requestCancellation(input)
       await repository.requestCancellation({ ...input, now: futureAt, actor: secondActor })
-      const [stored] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, active.id!))
+      const [stored] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, active.id))
       expect(stored).toMatchObject({
         cancelRequestedAt: claimAt,
         cancelRequestedByUserId: actor.id,
@@ -702,7 +701,7 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
       await db
         .update(opsJobRuns)
         .set({ status: 'interrupted', finishedAt: claimAt })
-        .where(eq(opsJobRuns.id, active.id!))
+        .where(eq(opsJobRuns.id, active.id))
       await expect(repository.requestCancellation(input)).rejects.toBeInstanceOf(
         ScheduledJobStateConflictError,
       )
@@ -716,14 +715,14 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
       const repository = createScheduledJobRepository(db)
       await repository.requestCancellation({
         taskKey: firstTask,
-        runId: active.id!,
+        runId: active.id,
         now: claimAt,
         actor,
       })
       const finish = new Date('2026-08-25T12:05:01.000Z')
       const finalizeInput = {
         taskKey: firstTask,
-        runId: active.id!,
+        runId: active.id,
         completion: {
           status: 'failure' as const,
           finishedAt: finish,
@@ -747,7 +746,7 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
       await expect(repository.finalizeRun(finalizeInput)).resolves.toMatchObject({
         status: 'cancelled',
       })
-      const [stored] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, active.id!))
+      const [stored] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, active.id))
       expect(stored).toMatchObject({
         status: 'cancelled',
         finishedAt: finish,
@@ -772,7 +771,7 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
 
     await repository.finalizeRun({
       taskKey: firstTask,
-      runId: active.id!,
+      runId: active.id,
       completion: {
         status: 'success',
         finishedAt,
@@ -785,12 +784,12 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
     await expect(
       repository.requestCancellation({
         taskKey: firstTask,
-        runId: active.id!,
+        runId: active.id,
         now: futureAt,
         actor,
       }),
     ).rejects.toBeInstanceOf(ScheduledJobStateConflictError)
-    const [stored] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, active.id!))
+    const [stored] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, active.id))
     expect(stored).toMatchObject({
       status: 'success',
       cancelRequestedAt: null,
@@ -808,7 +807,7 @@ describe('scheduled job recovery, cancellation, and finalization', () => {
       await expect(
         repository.finalizeRun({
           taskKey: firstTask,
-          runId: active.id!,
+          runId: active.id,
           completion: {
             status: 'success',
             finishedAt,

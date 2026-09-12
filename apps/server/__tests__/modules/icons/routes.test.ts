@@ -10,7 +10,7 @@ const builtinIconDataCacheControl = 'public, max-age=604800, min-refresh=604800,
 const customIconDataCacheControl = 'public, max-age=3600'
 const missingIconDataCacheControl = 'public, max-age=60'
 
-async function createIconTestApp(database: TestDatabase) {
+function createIconTestApp(database: TestDatabase) {
   return new Hono().route('/api/icons', createIconRoutes(database))
 }
 
@@ -47,7 +47,7 @@ function expectIconCacheControl(response: Response, cacheControl: string) {
 
 describe('icon routes', () => {
   dbTest('returns requested Iconify JSON without authentication', async ({ db }) => {
-    const app = await createIconTestApp(db)
+    const app = createIconTestApp(db)
 
     const response = await app.request('/api/icons/lucide.json?icons=sun,moon')
     const body = (await response.json()) as IconifyJSON
@@ -107,7 +107,7 @@ describe('icon routes', () => {
   })
 
   dbTest('returns not_found for missing icons while keeping found icons', async ({ db }) => {
-    const app = await createIconTestApp(db)
+    const app = createIconTestApp(db)
 
     const response = await app.request('/api/icons/lucide.json?icons=sun,not-a-real-icon')
     const body = (await response.json()) as IconifyJSON
@@ -122,7 +122,7 @@ describe('icon routes', () => {
   dbTest(
     'returns text 404 for missing collections, missing icons parameter, and invalid prefixes',
     async ({ db }) => {
-      const app = await createIconTestApp(db)
+      const app = createIconTestApp(db)
 
       const missingCollection = await app.request('/api/icons/not-a-prefix.json?icons=sun')
       expect(missingCollection.status).toBe(404)
@@ -147,7 +147,7 @@ describe('icon routes', () => {
   )
 
   dbTest('returns text 404 for malicious icon data queries', async ({ db }) => {
-    const app = await createIconTestApp(db)
+    const app = createIconTestApp(db)
 
     const overlongIcons = await app.request(`/api/icons/lucide.json?icons=${'a'.repeat(501)}`)
     const malformedIcons = await app.request('/api/icons/lucide.json?icons=sun,../secret')
@@ -161,7 +161,7 @@ describe('icon routes', () => {
   })
 
   dbTest('returns CORS headers for OPTIONS requests', async ({ db }) => {
-    const app = await createIconTestApp(db)
+    const app = createIconTestApp(db)
 
     const response = await app.request('/api/icons/lucide.json?icons=sun', {
       method: 'OPTIONS',
@@ -173,7 +173,7 @@ describe('icon routes', () => {
   })
 
   dbTest('pretty prints JSON when pretty has a non-empty value', async ({ db }) => {
-    const app = await createIconTestApp(db)
+    const app = createIconTestApp(db)
 
     const prettyOne = await app.request('/api/icons/lucide.json?icons=sun&pretty=1')
     const prettyTrue = await app.request('/api/icons/lucide.json?icons=sun&pretty=true')

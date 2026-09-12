@@ -1,6 +1,10 @@
 import { expect, test } from 'vitest'
 import { userEvent } from 'vitest/browser'
-import { getEditable, renderRichTextEditorHarness } from './fixtures/renderRichTextEditorHarness'
+import {
+  getEditable,
+  readEditorModel,
+  renderRichTextEditorHarness,
+} from './fixtures/renderRichTextEditorHarness'
 
 test('uses native input and DOM selection to show an in-bounds quick bar', async () => {
   const screen = await renderRichTextEditorHarness()
@@ -23,9 +27,7 @@ test('uses native input and DOM selection to show an in-bounds quick bar', async
 
   await quickBar.getByRole('button', { name: '加粗' }).click()
   await expect.element(screen.getByTestId('model-json')).toMatchTextContent('"bold"')
-  const document = JSON.parse(
-    screen.getByTestId('model-json').element().textContent ?? '',
-  ) as unknown
+  const document = readEditorModel(screen)
   expect(document).toEqual({
     type: 'doc',
     content: [

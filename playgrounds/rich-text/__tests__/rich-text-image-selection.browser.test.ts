@@ -12,9 +12,9 @@ test('reflects image NodeSelection through the img path item', async () => {
   await imageLocator.click()
   const path = screen.getByTestId('rich-text-element-path')
   await expect.element(path.getByRole('button', { name: '选择 img 元素' })).toBeVisible()
-  expect(image.classList.contains('ProseMirror-selectednode')).toBe(true)
+  await expect.element(image).toHaveClass('ProseMirror-selectednode')
 
   await path.getByRole('button', { name: '选择 img 元素' }).click()
   await expect.element(screen.getByTestId('active-element')).toMatchTextContent('editor')
-  expect(image.classList.contains('ProseMirror-selectednode')).toBe(true)
+  await expect.element(image).toHaveClass('ProseMirror-selectednode')
 })

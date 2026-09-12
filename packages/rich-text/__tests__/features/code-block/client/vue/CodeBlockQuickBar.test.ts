@@ -7,7 +7,7 @@ import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { codeBlockEditorFeature } from '../../../../../src/features/code-block/client/editor'
 import CodeBlockQuickBar from '../../../../../src/features/code-block/client/vue/CodeBlockQuickBar.vue'
-import { createTestEditor } from '../../../../helpers/editor'
+import { appendTestElement, createTestEditor } from '../../../../helpers/editor'
 
 describe('CodeBlockQuickBar', () => {
   it('keeps focus on its trigger when closing the language menu with Escape', async () => {
@@ -18,7 +18,7 @@ describe('CodeBlockQuickBar', () => {
     editor.commands.setTextSelection(1)
     editor.view.focus()
     const wrapper = mount(CodeBlockQuickBar, {
-      attachTo: document.body,
+      attachTo: appendTestElement('div'),
       props: {
         editor: markRaw(editor),
       },

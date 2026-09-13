@@ -11,7 +11,7 @@ import {
   listBuiltinIconSets,
   listCustomIcons,
   listCustomIconSets,
-  renameCustomIcon,
+  updateCustomIcon,
   updateCustomIconSet,
   uploadCustomIcons,
 } from '../../../src/features/icons/requests'
@@ -62,6 +62,7 @@ const customIconResponse = {
   setName: 'Acme Icons',
   createdAt: '2026-06-15T00:00:00.000Z',
   updatedAt: '2026-06-15T01:00:00.000Z',
+  keywords: [],
 }
 
 describe('icons request helpers', () => {
@@ -250,7 +251,11 @@ describe('icons request helpers', () => {
     useAuthStore().accessToken = 'access-token'
 
     await expect(
-      uploadCustomIcons('acme', { duplicateStrategy: 'replace', files }),
+      uploadCustomIcons('acme', {
+        duplicateStrategy: 'replace',
+        files,
+        metadata: [{ keywords: ['User'] }, {}],
+      }),
     ).resolves.toEqual(uploadResponse)
 
     const call = expectFetchCall(fetchMock, 0, {
@@ -262,6 +267,7 @@ describe('icons request helpers', () => {
     expect(form).toBeInstanceOf(FormData)
     expect((form as FormData).get('duplicateStrategy')).toBe('replace')
     expect((form as FormData).getAll('files')).toEqual(files)
+    expect((form as FormData).get('metadata')).toBe(JSON.stringify([{ keywords: ['User'] }, {}]))
   })
 
   it('renames and deletes custom icons', async () => {
@@ -273,16 +279,16 @@ describe('icons request helpers', () => {
     const fetchMock = createFetchMock(jsonResponse(renamedIcon), emptyResponse())
     useAuthStore().accessToken = 'access-token'
 
-    await expect(renameCustomIcon('acme', 'user-add', { name: 'account-add' })).resolves.toEqual(
-      renamedIcon,
-    )
+    await expect(
+      updateCustomIcon('acme', 'user-add', { name: 'account-add', keywords: ['Account'] }),
+    ).resolves.toEqual(renamedIcon)
     await expect(deleteCustomIcon('acme', 'account-add')).resolves.toBeUndefined()
 
     expectFetchCall(fetchMock, 0, {
       method: 'PATCH',
       pathname: '/api/content/icon-sets/custom/acme/icons/user-add',
     })
-    expectJsonBody(fetchMock, 0, { name: 'account-add' })
+    expectJsonBody(fetchMock, 0, { name: 'account-add', keywords: ['Account'] })
     expectFetchCall(fetchMock, 1, {
       method: 'DELETE',
       pathname: '/api/content/icon-sets/custom/acme/icons/account-add',

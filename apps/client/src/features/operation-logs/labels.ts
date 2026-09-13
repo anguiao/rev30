@@ -51,6 +51,7 @@ export const operationLogActionLabels = {
   'content:icon-set:export': '导出图标集',
   'content:icon:upload': '上传图标',
   'content:icon:rename': '重命名图标',
+  'content:icon:update': '编辑图标',
   'content:icon:delete': '删除图标',
   'content:attachment:upload': '完成附件上传',
   'content:attachment:delete': '删除附件',

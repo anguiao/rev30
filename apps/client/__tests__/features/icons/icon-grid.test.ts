@@ -18,6 +18,7 @@ const icons: BuiltinIconListResponse['list'] = [
 const customIcons: CustomIconListResponse['list'] = [
   {
     ...icons[0]!,
+    keywords: [],
     createdAt: '2026-06-15T00:00:00.000Z',
     updatedAt: '2026-06-15T00:00:00.000Z',
   },

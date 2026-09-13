@@ -35,6 +35,7 @@ export function mapCustomIcon(entry: CustomIconEntry): CustomIconItem {
     body: entry.body,
     width: entry.width,
     height: entry.height,
+    keywords: entry.keywords,
     createdAt: toIsoDateTime(entry.createdAt),
     updatedAt: toIsoDateTime(entry.updatedAt),
   }

@@ -1,9 +1,9 @@
 import type {
   CustomIconSetCreateInput,
   CustomIconSetUpdateInput,
+  CustomIconUpdateInput,
   IconSetIconListQuery,
   IconSetListQuery,
-  IconSetRenameIconInput,
 } from '@rev30/contracts'
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../../db'
@@ -371,7 +371,7 @@ export function createCustomIconSetRepository(database: Db) {
       return row
     },
 
-    async createIcon(set: CustomIconSetRow, parsed: ParsedSvgIcon) {
+    async createIcon(set: CustomIconSetRow, parsed: ParsedSvgIcon, keywords: string[] = []) {
       return await withCustomIconConflictTranslation(() =>
         database.transaction(async (tx) => {
           await lockIconSearchWrites(tx)
@@ -386,6 +386,7 @@ export function createCustomIconSetRepository(database: Db) {
               width: parsed.width,
               height: parsed.height,
               palette: parsed.palette,
+              keywords,
             })
             .returning()
 
@@ -400,7 +401,7 @@ export function createCustomIconSetRepository(database: Db) {
       )
     },
 
-    async replaceIcon(iconId: string, parsed: ParsedSvgIcon) {
+    async replaceIcon(iconId: string, parsed: ParsedSvgIcon, keywords?: string[]) {
       return await withCustomIconConflictTranslation(() =>
         database.transaction(async (tx) => {
           await lockIconSearchWrites(tx)
@@ -411,6 +412,7 @@ export function createCustomIconSetRepository(database: Db) {
               width: parsed.width,
               height: parsed.height,
               palette: parsed.palette,
+              ...(keywords === undefined ? {} : { keywords }),
             })
             .where(and(eq(customIconSetIcons.id, iconId), isNull(customIconSetIcons.deletedAt)))
             .returning()
@@ -433,15 +435,13 @@ export function createCustomIconSetRepository(database: Db) {
       )
     },
 
-    async renameIcon(prefix: string, oldName: string, input: IconSetRenameIconInput) {
+    async updateIcon(prefix: string, oldName: string, input: CustomIconUpdateInput) {
       return await withCustomIconConflictTranslation(() =>
         database.transaction(async (tx) => {
           await lockIconSearchWrites(tx)
           const [updated] = await tx
             .update(customIconSetIcons)
-            .set({
-              name: input.name,
-            })
+            .set(input)
             .from(customIconSets)
             .where(
               and(

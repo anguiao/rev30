@@ -79,6 +79,32 @@ const iconSetPrefixPattern = new RegExp(`^${iconifyIconNamePartPatternSource}$`)
 const defaultIconSetIconPageSize = 80
 const CUSTOM_ICON_SET_NAME_MAX_LENGTH = 80
 const CUSTOM_ICON_SET_DESCRIPTION_MAX_LENGTH = 300
+export const CUSTOM_ICON_KEYWORD_MAX_LENGTH = 40
+export const CUSTOM_ICON_KEYWORDS_MAX_ITEMS = 20
+
+const customIconKeywordSchema = z
+  .string()
+  .trim()
+  .min(1, '关键词不能为空')
+  .max(CUSTOM_ICON_KEYWORD_MAX_LENGTH, '关键词不能超过 40 个字符')
+  .refine((value) => /[\p{L}\p{N}]/u.test(value.normalize('NFKC')), '关键词必须包含文字或数字')
+
+function normalizedKeywordKey(value: string) {
+  return value.normalize('NFKC').toLowerCase().trim().replace(/\s+/gu, ' ')
+}
+
+export const customIconKeywordsSchema = z
+  .array(customIconKeywordSchema)
+  .max(CUSTOM_ICON_KEYWORDS_MAX_ITEMS, '关键词不能超过 20 项')
+  .transform((keywords) => {
+    const seen = new Set<string>()
+    return keywords.filter((keyword) => {
+      const key = normalizedKeywordKey(keyword)
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  })
 
 const iconSetPrefixSchema = z.string().regex(iconSetPrefixPattern, '图标集前缀无效')
 const iconSetNameSchema = z.string().regex(iconSetPrefixPattern, '图标名称无效')
@@ -172,6 +198,7 @@ export const customIconParamSchema = iconSetPrefixParamSchema.extend({
 })
 
 export const customIconItemSchema = iconItemSchema.extend({
+  keywords: customIconKeywordsSchema,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 })
@@ -203,9 +230,17 @@ export const customIconSetUpdateSchema = customIconSetFormSchema
 
 export const customIconDuplicateStrategySchema = z.enum(['skip', 'replace'], '重复处理策略无效')
 
-export const iconSetRenameIconSchema = z.object({
-  name: customIconNameInputSchema,
-})
+export const customIconUploadMetadataItemSchema = z
+  .object({ keywords: customIconKeywordsSchema.optional() })
+  .strict()
+export const customIconUploadMetadataSchema = z.array(customIconUploadMetadataItemSchema)
+
+export const customIconUpdateSchema = z
+  .object({
+    name: customIconNameInputSchema.optional(),
+    keywords: customIconKeywordsSchema.optional(),
+  })
+  .refine(hasAnyDefinedValue, { message: '至少修改一个字段' })
 
 export const customIconUploadSkippedSchema = z.object({
   name: iconSetNameSchema,
@@ -247,7 +282,9 @@ export type CustomIconSetFormInput = z.infer<typeof customIconSetFormSchema>
 export type CustomIconSetCreateInput = z.infer<typeof customIconSetCreateSchema>
 export type CustomIconSetUpdateInput = z.infer<typeof customIconSetUpdateSchema>
 export type CustomIconDuplicateStrategy = z.infer<typeof customIconDuplicateStrategySchema>
-export type IconSetRenameIconInput = z.infer<typeof iconSetRenameIconSchema>
+export type CustomIconKeywords = z.infer<typeof customIconKeywordsSchema>
+export type CustomIconUploadMetadata = z.infer<typeof customIconUploadMetadataSchema>
+export type CustomIconUpdateInput = z.infer<typeof customIconUpdateSchema>
 export type CustomIconUploadSkipped = z.infer<typeof customIconUploadSkippedSchema>
 export type CustomIconUploadFailed = z.infer<typeof customIconUploadFailedSchema>
 export type CustomIconUploadResponse = z.infer<typeof customIconUploadResponseSchema>

@@ -37,6 +37,8 @@ describe('operation log schemas', () => {
     expect(operationLogActionSchema.parse('content:icon-set:export')).toBe(
       'content:icon-set:export',
     )
+    expect(operationLogActionSchema.parse('content:icon:rename')).toBe('content:icon:rename')
+    expect(operationLogActionSchema.parse('content:icon:update')).toBe('content:icon:update')
     expect(operationLogActionSchema.parse('ops:online-session:revoke')).toBe(
       'ops:online-session:revoke',
     )

@@ -15,7 +15,7 @@ import {
   listBuiltinIcons,
   listCustomIconSets,
   listCustomIcons,
-  renameCustomIcon,
+  updateCustomIcon,
 } from '../../../src/features/icons/requests'
 import IconSetsPage from '../../../src/pages/index/content/icon-sets.vue'
 import { saveFile } from '../../../src/utils/download'
@@ -63,7 +63,7 @@ vi.mock('../../../src/features/icons/requests', async (importOriginal) => ({
   listCustomIconSets: vi.fn(),
   listCustomIcons: vi.fn(),
   exportCustomIconSet: vi.fn(),
-  renameCustomIcon: vi.fn(),
+  updateCustomIcon: vi.fn(),
 }))
 
 const listBuiltinIconSetsMock = vi.mocked(listBuiltinIconSets)
@@ -75,7 +75,7 @@ const listCustomIconsMock = vi.mocked(listCustomIcons)
 const deleteCustomIconSetMock = vi.mocked(deleteCustomIconSet)
 const exportCustomIconSetMock = vi.mocked(exportCustomIconSet)
 
-const renameCustomIconMock = vi.mocked(renameCustomIcon)
+const updateCustomIconMock = vi.mocked(updateCustomIcon)
 const saveFileMock = vi.mocked(saveFile)
 
 const authSession: AuthTokenResponse = {
@@ -151,6 +151,7 @@ const customIconsResponse: CustomIconListResponse = {
       body: '<path d="M0 0h24v24H0z" />',
       width: 24,
       height: 24,
+      keywords: [],
       createdAt: '2026-06-15T00:00:00.000Z',
       updatedAt: '2026-06-15T00:00:00.000Z',
     },
@@ -206,7 +207,7 @@ describe('icon sets page', () => {
     listCustomIconSetsMock.mockReset()
     listCustomIconsMock.mockReset()
     exportCustomIconSetMock.mockReset()
-    renameCustomIconMock.mockReset()
+    updateCustomIconMock.mockReset()
     saveFileMock.mockReset()
 
     listBuiltinIconSetsMock.mockResolvedValue(builtinIconSetsResponse)
@@ -416,7 +417,7 @@ describe('icon sets page', () => {
     listCustomIconsMock
       .mockResolvedValueOnce(customIconsResponse)
       .mockResolvedValue({ ...customIconsResponse, list: [renamedIcon] })
-    renameCustomIconMock.mockResolvedValue(renamedIcon)
+    updateCustomIconMock.mockResolvedValue(renamedIcon)
     const { wrapper } = await mountIconSetsPage()
     await flushPromises()
 
@@ -435,7 +436,7 @@ describe('icon sets page', () => {
     getBodyButton('保存').click()
     await flushPromises()
 
-    expect(renameCustomIconMock).toHaveBeenCalledWith('acme', 'logo', { name: 'mark' })
+    expect(updateCustomIconMock).toHaveBeenCalledWith('acme', 'logo', { name: 'mark' })
     expect(document.body.textContent).toContain('重命名图标成功')
     expect(wrapper.text()).toContain('mark')
   })

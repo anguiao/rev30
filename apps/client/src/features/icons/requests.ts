@@ -18,9 +18,10 @@ import {
   type CustomIconSetListResponse,
   type CustomIconSetUpdateInput,
   type CustomIconUploadResponse,
+  type CustomIconUploadMetadata,
+  type CustomIconUpdateInput,
   type IconSetIconListQuery,
   type IconSetListQuery,
-  type IconSetRenameIconInput,
 } from '@rev30/contracts'
 import { api } from '../../api'
 import { normalizeRequestQuery, parseApiResponse, assertApiResponseOk } from '../../utils/request'
@@ -122,6 +123,7 @@ export async function uploadCustomIcons(
   input: {
     duplicateStrategy: 'skip' | 'replace'
     files: File[]
+    metadata?: CustomIconUploadMetadata
   },
 ): Promise<CustomIconUploadResponse> {
   return parseApiResponse(
@@ -130,16 +132,17 @@ export async function uploadCustomIcons(
       form: {
         duplicateStrategy: input.duplicateStrategy,
         files: input.files,
+        ...(input.metadata === undefined ? {} : { metadata: JSON.stringify(input.metadata) }),
       },
     }),
     customIconUploadResponseSchema,
   )
 }
 
-export async function renameCustomIcon(
+export async function updateCustomIcon(
   prefix: string,
   name: string,
-  input: IconSetRenameIconInput,
+  input: CustomIconUpdateInput,
 ): Promise<CustomIconItem> {
   return parseApiResponse(
     await api.content['icon-sets'].custom[':prefix'].icons[':name'].$patch({

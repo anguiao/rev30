@@ -158,7 +158,7 @@ describe('custom icon search synchronization', () => {
         exactPhrases: ['logo'],
       })
 
-      await service.renameIcon('acme', 'logo', { name: 'brand-logo' })
+      await service.updateIcon('acme', 'logo', { name: 'brand-logo' })
       const documents = await db.select().from(iconSearchDocuments)
       expect(documents).toEqual([
         expect.objectContaining({ id: 'acme:brand-logo', customIconId: created!.customIconId }),

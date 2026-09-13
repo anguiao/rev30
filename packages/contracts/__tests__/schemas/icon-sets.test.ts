@@ -16,10 +16,14 @@ import {
   customIconSetCreateSchema,
   customIconSetUpdateSchema,
   customIconDuplicateStrategySchema,
-  iconSetRenameIconSchema,
   customIconUploadSkippedSchema,
   customIconUploadFailedSchema,
   customIconUploadResponseSchema,
+  customIconKeywordsSchema,
+  customIconUploadMetadataSchema,
+  customIconUpdateSchema,
+  CUSTOM_ICON_KEYWORD_MAX_LENGTH,
+  CUSTOM_ICON_KEYWORDS_MAX_ITEMS,
 } from '../../src/icons'
 
 const builtinIcon = {
@@ -51,9 +55,64 @@ const customIcon = {
   height: 24,
   createdAt: '2026-06-15T00:00:00.000Z',
   updatedAt: '2026-06-15T01:00:00.000Z',
+  keywords: [],
 }
 
 describe('icon set schemas', () => {
+  it('normalizes and deduplicates custom icon keywords while preserving readable input', () => {
+    expect(
+      customIconKeywordsSchema.parse([
+        '  File Manager  ',
+        'ｆｉｌｅ\u3000manager',
+        '图标 搜索',
+        'ⓐ',
+        'A',
+        '¨a',
+        '\u0308a',
+      ]),
+    ).toEqual(['File Manager', '图标 搜索', 'ⓐ', '¨a'])
+    expect(customIconKeywordsSchema.parse([])).toEqual([])
+  })
+
+  it('enforces custom icon keyword item and collection bounds', () => {
+    expectZodIssue(customIconKeywordsSchema.safeParse(['---']), {
+      path: [0],
+      message: '关键词必须包含文字或数字',
+    })
+    expectZodIssue(
+      customIconKeywordsSchema.safeParse(['x'.repeat(CUSTOM_ICON_KEYWORD_MAX_LENGTH + 1)]),
+      {
+        path: [0],
+        message: '关键词不能超过 40 个字符',
+      },
+    )
+    expectZodIssue(
+      customIconKeywordsSchema.safeParse(
+        Array.from(
+          { length: CUSTOM_ICON_KEYWORDS_MAX_ITEMS + 1 },
+          (_, index) => `keyword-${index}`,
+        ),
+      ),
+      { path: [], message: '关键词不能超过 20 项' },
+    )
+  })
+
+  it('validates positional upload metadata and icon updates', () => {
+    expect(customIconUploadMetadataSchema.parse([{ keywords: ['  Logo  '] }, {}])).toEqual([
+      { keywords: ['Logo'] },
+      {},
+    ])
+    expect(customIconUpdateSchema.parse({ keywords: [] })).toEqual({ keywords: [] })
+    expect(customIconUpdateSchema.parse({ name: 'brand', keywords: [' mark '] })).toEqual({
+      name: 'brand',
+      keywords: ['mark'],
+    })
+    expectZodIssue(customIconUpdateSchema.safeParse({}), {
+      path: [],
+      message: '至少修改一个字段',
+    })
+  })
+
   it('limits input prefixes and renamed icons to 256 characters', () => {
     const prefix = 'p'.repeat(256)
     const name = 'n'.repeat(256)
@@ -62,7 +121,7 @@ describe('icon set schemas', () => {
       prefix,
     )
     expect(customIconSetCreateSchema.parse({ prefix, name: 'Icons' }).prefix).toBe(prefix)
-    expect(iconSetRenameIconSchema.parse({ name }).name).toBe(name)
+    expect(customIconUpdateSchema.parse({ name }).name).toBe(name)
     expectZodIssue(
       customIconSetFormSchema.safeParse({ prefix: `${prefix}p`, name: 'Icons', description: null }),
       {
@@ -74,7 +133,7 @@ describe('icon set schemas', () => {
       path: ['prefix'],
       message: '图标集前缀不能超过 256 个字符',
     })
-    expectZodIssue(iconSetRenameIconSchema.safeParse({ name: `${name}n` }), {
+    expectZodIssue(customIconUpdateSchema.safeParse({ name: `${name}n` }), {
       path: ['name'],
       message: '图标名称不能超过 256 个字符',
     })
@@ -94,6 +153,7 @@ describe('icon set schemas', () => {
         body: '<path d="M0 0h24v24H0z"/>',
         width: 24,
         height: 24,
+        keywords: [],
         createdAt: '2026-09-07T00:00:00.000Z',
         updatedAt: '2026-09-07T00:00:00.000Z',
       }).name,
@@ -251,7 +311,7 @@ describe('icon set schemas', () => {
     expect(customIconDuplicateStrategySchema.parse('replace')).toBe('replace')
     expect(customIconDuplicateStrategySchema.safeParse('overwrite').success).toBe(false)
 
-    expect(iconSetRenameIconSchema.parse({ name: 'user-add' })).toEqual({
+    expect(customIconUpdateSchema.parse({ name: 'user-add' })).toEqual({
       name: 'user-add',
     })
 

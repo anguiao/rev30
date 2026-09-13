@@ -26,13 +26,28 @@ describe('request utils', () => {
   })
 
   it('exposes response metadata on typed request errors', () => {
-    const error = new ApiRequestError(409, '用户名已存在', 'username')
+    const error = new ApiRequestError(409, '游标无效', undefined, 'INVALID_ICON_CURSOR')
 
     expect(error).toMatchObject({
       name: 'ApiRequestError',
       status: 409,
-      message: '用户名已存在',
-      field: 'username',
+      message: '游标无效',
+      field: undefined,
+      code: 'INVALID_ICON_CURSOR',
+    })
+  })
+
+  it('parses icon search domain error codes', async () => {
+    await expect(
+      parseApiError(
+        new Response(JSON.stringify({ code: 'ICON_SEARCH_UNAVAILABLE', message: '暂不可用' }), {
+          status: 503,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      status: 503,
+      code: 'ICON_SEARCH_UNAVAILABLE',
+      message: '暂不可用',
     })
   })
 

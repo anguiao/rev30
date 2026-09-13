@@ -33,7 +33,7 @@ import {
   exportCustomIconSet,
   listCustomIcons,
   listCustomIconSets,
-  renameCustomIcon,
+  updateCustomIcon,
 } from './requests'
 
 const props = defineProps<{
@@ -246,7 +246,7 @@ const renamingIcon = ref<IconItem | null>(null)
 const renameIconName = ref('')
 const { isLoading: isRenamingIcon, ...renameIconMutation } = useMutation({
   mutation: ({ icon, name }: { icon: IconItem; name: string }) =>
-    renameCustomIcon(icon.prefix, icon.name, { name }),
+    updateCustomIcon(icon.prefix, icon.name, { name }),
   async onSuccess() {
     message.success('重命名图标成功')
     renamingIcon.value = null

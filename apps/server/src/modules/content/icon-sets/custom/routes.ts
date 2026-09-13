@@ -6,7 +6,9 @@ import {
   iconSetIconListQuerySchema,
   iconSetListQuerySchema,
   iconSetPrefixParamSchema,
-  iconSetRenameIconSchema,
+  customIconUpdateSchema,
+  customIconUploadMetadataSchema,
+  type CustomIconUploadMetadata,
 } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
@@ -57,7 +59,7 @@ const iconSetUpdateBodyValidator = zValidator('json', customIconSetUpdateSchema,
   }
 })
 
-const iconSetRenameBodyValidator = zValidator('json', iconSetRenameIconSchema, (result, c) => {
+const customIconUpdateBodyValidator = zValidator('json', customIconUpdateSchema, (result, c) => {
   if (!result.success) {
     return c.json({ message: '请求体无效' }, 400)
   }
@@ -87,6 +89,7 @@ const iconUploadFormSchema = z.object({
     .union([uploadFileSchema, uploadFileSchema.array()])
     .transform((value) => (Array.isArray(value) ? value : [value]))
     .pipe(uploadFileSchema.array().min(1)),
+  metadata: z.string().optional(),
 })
 
 const iconUploadFormValidator = zValidator('form', iconUploadFormSchema, (result, c) => {
@@ -148,14 +151,32 @@ export function createCustomIconSetRoutes(database: Db) {
       async (c) => {
         const { prefix } = c.req.valid('param')
         const form = c.req.valid('form')
+        let metadata: CustomIconUploadMetadata | undefined
+        if (form.metadata !== undefined) {
+          let decoded: unknown
+          try {
+            decoded = JSON.parse(form.metadata)
+          } catch {
+            return c.json({ message: '请求体无效' }, 400)
+          }
+          const result = customIconUploadMetadataSchema.safeParse(decoded)
+          if (!result.success || result.data.length !== form.files.length) {
+            return c.json({ message: '请求体无效' }, 400)
+          }
+          metadata = result.data
+        }
 
         recordOperation(c, 'content:icon:upload', { targetKey: prefix })
 
         const files = await Promise.all(
-          form.files.map(async (file) => ({
-            filename: file.name,
-            content: await file.text(),
-          })),
+          form.files.map(async (file, index) => {
+            const fileMetadata = metadata?.[index]
+            return {
+              filename: file.name,
+              content: await file.text(),
+              ...(fileMetadata?.keywords === undefined ? {} : { keywords: fileMetadata.keywords }),
+            }
+          }),
         )
 
         return c.json(
@@ -170,17 +191,17 @@ export function createCustomIconSetRoutes(database: Db) {
       '/:prefix/icons/:name',
       requireAccess('content:icon-set:update'),
       customIconParamValidator,
-      iconSetRenameBodyValidator,
+      customIconUpdateBodyValidator,
       async (c) => {
         const { prefix, name } = c.req.valid('param')
         const body = c.req.valid('json')
 
-        recordOperation(c, 'content:icon:rename', {
+        recordOperation(c, 'content:icon:update', {
           targetKey: `${prefix}:${name}`,
-          targetLabel: body.name,
+          ...(body.name === undefined ? {} : { targetLabel: body.name }),
         })
 
-        return c.json(await service.renameIcon(prefix, name, body))
+        return c.json(await service.updateIcon(prefix, name, body))
       },
     )
     .delete(

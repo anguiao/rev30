@@ -41,6 +41,7 @@ export const operationLogActionSchema = z.enum(
     'content:icon-set:export',
     'content:icon:upload',
     'content:icon:rename',
+    'content:icon:update',
     'content:icon:delete',
     'content:attachment:upload',
     'content:attachment:delete',

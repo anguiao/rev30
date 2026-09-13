@@ -4,6 +4,7 @@ import type {
   CustomIconListResponse,
   CustomIconSet,
   CustomIconUploadResponse,
+  IconSearchResponse,
 } from '@rev30/contracts'
 import type { IconifyJSON } from '@iconify/types'
 import { afterEach, describe, expect, vi } from 'vitest'
@@ -12,6 +13,7 @@ import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest } from '../../../fixtures/database'
 import { replaceIconSearchDocuments } from '../../../../src/modules/icons/search/repository'
+import { customIconSetIcons, iconSearchDocuments } from '../../../../src/db/schema'
 
 function createSvg(size: number, body: string) {
   return `<svg viewBox="0 0 ${size} ${size}">${body}</svg>`
@@ -30,6 +32,148 @@ function createOperationLogReceiver(events: OperationLogEvent[]) {
 describe('icon set routes', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  dbTest(
+    'rejects invalid upload metadata before reading files or writing icons',
+    async ({ db }) => {
+      const authenticated = await createSystemAccessFixture(db, {
+        accessCodes: ['content:icon-set:create'],
+        usernamePrefix: 'icon-metadata-invalid-user',
+      })
+      const app = createApp(db)
+      await app.request('/api/content/icon-sets/custom', {
+        method: 'POST',
+        headers: { ...authenticated.authHeaders, 'content-type': 'application/json' },
+        body: JSON.stringify({ prefix: 'acme-meta', name: 'Metadata' }),
+      })
+      const readFile = vi.spyOn(File.prototype, 'text')
+
+      for (const metadata of [
+        'not-json',
+        JSON.stringify([{ keywords: ['---'] }]),
+        JSON.stringify([{ keywords: ['one'] }, {}]),
+      ]) {
+        const form = new FormData()
+        form.append('files', new File([createSvg(24, createRect('#000'))], 'Logo.svg'))
+        form.set('metadata', metadata)
+        const response = await app.request('/api/content/icon-sets/custom/acme-meta/icons', {
+          method: 'POST',
+          headers: authenticated.authHeaders,
+          body: form,
+        })
+        expect(response.status).toBe(400)
+        expect(await response.json()).toEqual({ message: '请求体无效' })
+      }
+
+      expect(readFile).not.toHaveBeenCalled()
+      expect(await db.select().from(customIconSetIcons)).toEqual([])
+    },
+  )
+
+  dbTest('applies positional upload keywords and updates them transactionally', async ({ db }) => {
+    const events: OperationLogEvent[] = []
+    const authenticated = await createSystemAccessFixture(db, {
+      accessCodes: [
+        'content:icon-set:create',
+        'content:icon-set:list',
+        'content:icon-set:update',
+        'content:icon-set:export',
+      ],
+      usernamePrefix: 'icon-keywords-user',
+    })
+    await replaceIconSearchDocuments(db, [], {
+      indexVersion: 'keywords-test',
+      iconPackageVersion: 'test',
+      searchDataVersion: 'test',
+      rulesVersion: '1',
+    })
+    const app = createApp(db, { operationLogReceiver: createOperationLogReceiver(events) })
+    await app.request('/api/content/icon-sets/custom', {
+      method: 'POST',
+      headers: { ...authenticated.authHeaders, 'content-type': 'application/json' },
+      body: JSON.stringify({ prefix: 'acme-keywords', name: 'Keyword Icons' }),
+    })
+
+    const replaceForm = new FormData()
+    replaceForm.set('duplicateStrategy', 'replace')
+    replaceForm.append('files', new File([createSvg(16, createRect('#111'))], 'Logo.svg'))
+    replaceForm.append('files', new File([createSvg(24, createRect('#222'))], 'Logo.svg'))
+    replaceForm.set(
+      'metadata',
+      JSON.stringify([{ keywords: ['First Position'] }, { keywords: ['Second Position'] }]),
+    )
+    const uploadedResponse = await app.request(
+      '/api/content/icon-sets/custom/acme-keywords/icons',
+      { method: 'POST', headers: authenticated.authHeaders, body: replaceForm },
+    )
+    expect(uploadedResponse.status).toBe(200)
+    const uploaded = (await uploadedResponse.json()) as CustomIconUploadResponse
+    expect(uploaded.created[0]).toMatchObject({ keywords: ['First Position'] })
+    expect(uploaded.replaced[0]).toMatchObject({ keywords: ['Second Position'] })
+
+    const [before] = await db.select().from(customIconSetIcons)
+    const updateResponse = await app.request(
+      '/api/content/icon-sets/custom/acme-keywords/icons/logo',
+      {
+        method: 'PATCH',
+        headers: { ...authenticated.authHeaders, 'content-type': 'application/json' },
+        body: JSON.stringify({ keywords: ['Current Keyword'] }),
+      },
+    )
+    expect(updateResponse.status).toBe(200)
+    expect(await updateResponse.json()).toMatchObject({
+      icon: 'acme-keywords:logo',
+      keywords: ['Current Keyword'],
+    })
+    const [after] = await db.select().from(customIconSetIcons)
+    expect(after).toMatchObject({ id: before!.id, name: 'logo', keywords: ['Current Keyword'] })
+    expect(await db.select().from(iconSearchDocuments)).toEqual([
+      expect.objectContaining({
+        id: 'acme-keywords:logo',
+        exactPhrases: expect.arrayContaining(['current keyword']),
+      }),
+    ])
+
+    const foundBySelector = await app.request('/api/icons/search?keyword=current%20keyword', {
+      headers: authenticated.authHeaders,
+    })
+    const foundByLibrary = await app.request(
+      '/api/content/icon-sets/custom/icons?keyword=current%20keyword',
+      { headers: authenticated.authHeaders },
+    )
+    const selectorBody = (await foundBySelector.json()) as IconSearchResponse
+    const libraryBody = (await foundByLibrary.json()) as CustomIconListResponse
+    expect(selectorBody.list).toEqual([expect.objectContaining({ icon: 'acme-keywords:logo' })])
+    expect(selectorBody.list[0]).not.toHaveProperty('keywords')
+    expect(libraryBody.list).toEqual([
+      expect.objectContaining({ icon: 'acme-keywords:logo', keywords: ['Current Keyword'] }),
+    ])
+    const oldKeyword = await app.request('/api/icons/search?keyword=second%20position', {
+      headers: authenticated.authHeaders,
+    })
+    expect(((await oldKeyword.json()) as IconSearchResponse).list).toEqual([])
+    expect(events.at(-1)).toMatchObject({
+      action: 'content:icon:update',
+      targetKey: 'acme-keywords:logo',
+      targetLabel: null,
+    })
+
+    const exportResponse = await app.request('/api/content/icon-sets/custom/acme-keywords/export', {
+      headers: authenticated.authHeaders,
+    })
+    const exported = (await exportResponse.json()) as IconifyJSON
+    expect(exported.icons.logo).not.toHaveProperty('keywords')
+
+    const clearResponse = await app.request(
+      '/api/content/icon-sets/custom/acme-keywords/icons/logo',
+      {
+        method: 'PATCH',
+        headers: { ...authenticated.authHeaders, 'content-type': 'application/json' },
+        body: JSON.stringify({ keywords: [] }),
+      },
+    )
+    expect(await clearResponse.json()).toMatchObject({ keywords: [] })
   })
 
   dbTest('returns the cursor domain code for invalid opaque cursors', async ({ db: database }) => {
@@ -196,6 +340,7 @@ describe('icon set routes', () => {
     expect(uploaded.created[0]).toMatchObject({
       icon: 'acme:logo',
       name: 'logo',
+      keywords: [],
     })
     expect(uploaded.failed).toHaveLength(1)
 
@@ -206,6 +351,7 @@ describe('icon set routes', () => {
         icon: 'acme:logo',
         prefix: 'acme',
         name: 'logo',
+        keywords: [],
       }),
     ])
 

@@ -16,6 +16,7 @@ export class ApiRequestError extends Error {
     public readonly status: number,
     message: string,
     public readonly field?: ErrorResponse['field'],
+    public readonly code?: ErrorResponse['code'],
   ) {
     super(message)
     this.name = 'ApiRequestError'
@@ -30,6 +31,7 @@ export async function parseApiError(response: Response): Promise<ApiRequestError
       response.status,
       result.success ? result.data.message : '请求失败',
       result.success ? result.data.field : undefined,
+      result.success ? result.data.code : undefined,
     )
   } catch {
     return new ApiRequestError(response.status, '请求失败')

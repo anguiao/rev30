@@ -4,9 +4,9 @@ import type {
   CustomIconSetUpdateInput,
   CustomIconUploadFailed,
   CustomIconUploadResponse,
+  CustomIconUpdateInput,
   IconSetIconListQuery,
   IconSetListQuery,
-  IconSetRenameIconInput,
 } from '@rev30/contracts'
 import type { Db } from '../../../../db'
 import { loadIconCollections } from '../../../icons/search/collections'
@@ -26,7 +26,7 @@ import { parseSvgIcon } from './svg'
 
 type CustomIconUploadInput = {
   duplicateStrategy: CustomIconDuplicateStrategy
-  files: Array<{ filename: string; content: string }>
+  files: Array<{ filename: string; content: string; keywords?: string[] }>
 }
 
 async function hasBuiltinPrefix(prefix: string) {
@@ -135,7 +135,7 @@ export function createCustomIconSetService(database: Db) {
           }
 
           if (existing) {
-            const updated = await repository.replaceIcon(existing.id, parsed)
+            const updated = await repository.replaceIcon(existing.id, parsed, file.keywords)
 
             if (!updated) {
               throw new CustomIconNotFoundError()
@@ -145,7 +145,7 @@ export function createCustomIconSetService(database: Db) {
             continue
           }
 
-          created.push(mapCustomIcon(await repository.createIcon(set, parsed)))
+          created.push(mapCustomIcon(await repository.createIcon(set, parsed, file.keywords ?? [])))
         } catch (error) {
           if (parsed && error instanceof CustomIconConflictError) {
             const existing = await repository.findIcon(set.id, parsed.name)
@@ -160,7 +160,7 @@ export function createCustomIconSetService(database: Db) {
             }
 
             if (existing) {
-              const updated = await repository.replaceIcon(existing.id, parsed)
+              const updated = await repository.replaceIcon(existing.id, parsed, file.keywords)
 
               if (updated) {
                 replaced.push(mapCustomIcon(updated))
@@ -195,20 +195,16 @@ export function createCustomIconSetService(database: Db) {
       }
     },
 
-    async renameIcon(prefix: string, oldName: string, input: IconSetRenameIconInput) {
-      const set = await getSetOrThrow(prefix)
+    async updateIcon(prefix: string, oldName: string, input: CustomIconUpdateInput) {
+      await getSetOrThrow(prefix)
 
-      if (input.name !== oldName && (await repository.findIcon(set.id, input.name))) {
-        throw new CustomIconConflictError()
-      }
+      const updated = await repository.updateIcon(prefix, oldName, input)
 
-      const renamed = await repository.renameIcon(prefix, oldName, input)
-
-      if (!renamed) {
+      if (!updated) {
         throw new CustomIconNotFoundError()
       }
 
-      return mapCustomIcon(renamed)
+      return mapCustomIcon(updated)
     },
 
     async deleteIcon(prefix: string, name: string) {

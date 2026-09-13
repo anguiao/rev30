@@ -22,6 +22,7 @@ const uploadedIcon: CustomIconItem = {
   body: '<path d="M0 0h24v24H0z"/>',
   width: 24,
   height: 24,
+  keywords: [],
   createdAt: '2026-06-15T00:00:00.000Z',
   updatedAt: '2026-06-15T00:00:00.000Z',
 }

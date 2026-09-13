@@ -1,0 +1,17 @@
+{
+  "formatVersion": 1,
+  "iconPackageVersion": "2.2.525",
+  "dataVersion": "english-1",
+  "files": [
+    {
+      "kind": "english",
+      "path": "english/lucide.jsonl",
+      "checksum": "333dfae44bae9b66e279faff9f4d0e879cdc97dc2581886409a398a9a2855549"
+    },
+    {
+      "kind": "english",
+      "path": "english/mdi.jsonl",
+      "checksum": "2d252b319c361009a9759745aa9a97d21b50399c7a62cb4b51d9bd19bca55421"
+    }
+  ]
+}

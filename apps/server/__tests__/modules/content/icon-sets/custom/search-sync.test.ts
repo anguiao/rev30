@@ -1,0 +1,189 @@
+import { eq } from 'drizzle-orm'
+import { describe, expect, vi } from 'vitest'
+import {
+  customIconSetIcons,
+  customIconSets,
+  iconSearchDocuments,
+} from '../../../../../src/db/schema'
+import { createCustomIconSetService } from '../../../../../src/modules/content/icon-sets/custom/service'
+import { createCustomIconSetRepository } from '../../../../../src/modules/content/icon-sets/custom/repository'
+import { CustomIconSetNotFoundError } from '../../../../../src/modules/content/icon-sets/custom/errors'
+import { parseSvgIcon } from '../../../../../src/modules/content/icon-sets/custom/svg'
+import { replaceIconSearchDocuments } from '../../../../../src/modules/icons/search/repository'
+import { startDefaultIconSearchIndexPreparation } from '../../../../../src/modules/icons/search/lifecycle'
+import { IconSearchUnavailableError } from '../../../../../src/modules/icons/search/errors'
+import { dbTest } from '../../../../fixtures/database'
+
+const svg = '<svg viewBox="0 0 24 24"><path d="M0 0h10v10H0z" /></svg>'
+
+describe('custom icon search synchronization', () => {
+  dbTest('gates non-empty search while normalized blank input still browses', async ({ db }) => {
+    const service = createCustomIconSetService(db)
+    const [set] = await db
+      .insert(customIconSets)
+      .values({ prefix: 'acme', name: 'Acme', description: null })
+      .returning()
+    await db.insert(customIconSetIcons).values({
+      setId: set!.id,
+      name: 'logo',
+      body: '<path/>',
+      width: 16,
+      height: 16,
+      palette: false,
+    })
+    const runtime = startDefaultIconSearchIndexPreparation(db, {
+      logger: { error: vi.fn() },
+      installedIconPackageVersion: 'missing',
+      loadManifest: async () => {
+        throw new Error('missing manifest')
+      },
+    })
+    await runtime.completed
+
+    await expect(
+      service.listIcons({ keyword: 'logo', prefix: undefined, cursor: undefined, pageSize: 10 }),
+    ).rejects.toBeInstanceOf(IconSearchUnavailableError)
+    await expect(
+      service.listIcons({ keyword: '\u3000', prefix: undefined, cursor: undefined, pageSize: 10 }),
+    ).resolves.toMatchObject({ list: [expect.objectContaining({ icon: 'acme:logo' })] })
+  })
+
+  dbTest('re-reads the active set after taking the search write lock', async ({ db }) => {
+    const repository = createCustomIconSetRepository(db)
+    const stale = await repository.createSet({
+      prefix: 'acme',
+      name: 'Old Name',
+      description: null,
+    })
+    await db
+      .update(customIconSets)
+      .set({ name: 'Current Name' })
+      .where(eq(customIconSets.id, stale.set.id))
+
+    const parsed = await parseSvgIcon('Logo.svg', svg)
+    await repository.createIcon(stale.set, parsed)
+    expect(await db.select().from(iconSearchDocuments)).toEqual([
+      expect.objectContaining({ id: 'acme:logo', collection: 'Current Name' }),
+    ])
+
+    const deleted = await repository.createSet({ prefix: 'gone', name: 'Gone', description: null })
+    await repository.softDeleteSet('gone')
+    await expect(repository.createIcon(deleted.set, parsed)).rejects.toBeInstanceOf(
+      CustomIconSetNotFoundError,
+    )
+    expect(
+      await db
+        .select()
+        .from(customIconSetIcons)
+        .where(eq(customIconSetIcons.setId, deleted.set.id)),
+    ).toEqual([])
+  })
+
+  dbTest(
+    'rolls back the business write when derived document synchronization fails',
+    async ({ db }) => {
+      const repository = createCustomIconSetRepository(db)
+      const set = await repository.createSet({ prefix: 'acme', name: 'Acme', description: null })
+      await replaceIconSearchDocuments(
+        db,
+        [
+          {
+            id: 'acme:logo',
+            prefix: 'acme',
+            name: 'logo',
+            source: 'builtin',
+            collection: 'Conflict',
+            palette: false,
+            customIconId: null,
+            exactPhrases: ['logo'],
+            fullTokens: ['logo'],
+            primaryEnglishTerms: ['logo'],
+            auxiliaryEnglishTerms: [],
+          },
+        ],
+        {
+          indexVersion: 'v1',
+          iconPackageVersion: 'v1',
+          searchDataVersion: 'v1',
+          rulesVersion: '1',
+        },
+      )
+      const parsed = await parseSvgIcon('Logo.svg', svg)
+      await expect(repository.createIcon(set.set, parsed)).rejects.toThrow()
+      expect(await db.select().from(customIconSetIcons)).toEqual([])
+    },
+  )
+
+  dbTest('browses custom icons in complete-id byte order', async ({ db }) => {
+    const service = createCustomIconSetService(db)
+    for (const prefix of ['fa', 'fa-brands']) {
+      const [set] = await db
+        .insert(customIconSets)
+        .values({ prefix, name: prefix, description: null })
+        .returning()
+      await db.insert(customIconSetIcons).values({
+        setId: set!.id,
+        name: 'a',
+        body: '<path/>',
+        width: 16,
+        height: 16,
+        palette: false,
+      })
+    }
+    const result = await service.listIcons({
+      keyword: undefined,
+      prefix: undefined,
+      cursor: undefined,
+      pageSize: 10,
+    })
+    expect(result.list.map((item) => item.icon)).toEqual(['fa-brands:a', 'fa:a'])
+  })
+
+  dbTest(
+    'creates, renames, replaces and deletes derived documents in the business transaction',
+    async ({ db }) => {
+      const service = createCustomIconSetService(db)
+      await service.create({ prefix: 'acme', name: 'Acme Icons', description: null })
+      await service.uploadIcons('acme', {
+        duplicateStrategy: 'skip',
+        files: [{ filename: 'Logo.svg', content: svg }],
+      })
+      const [created] = await db
+        .select()
+        .from(iconSearchDocuments)
+        .where(eq(iconSearchDocuments.id, 'acme:logo'))
+      expect(created).toMatchObject({
+        source: 'custom',
+        collection: 'Acme Icons',
+        exactPhrases: ['logo'],
+      })
+
+      await service.renameIcon('acme', 'logo', { name: 'brand-logo' })
+      const documents = await db.select().from(iconSearchDocuments)
+      expect(documents).toEqual([
+        expect.objectContaining({ id: 'acme:brand-logo', customIconId: created!.customIconId }),
+      ])
+
+      await service.deleteIcon('acme', 'brand-logo')
+      expect(await db.select().from(iconSearchDocuments)).toEqual([])
+    },
+  )
+
+  dbTest(
+    'updates collection search fields and removes documents with their set',
+    async ({ db }) => {
+      const service = createCustomIconSetService(db)
+      await service.create({ prefix: 'acme', name: 'Old Name', description: null })
+      await service.uploadIcons('acme', {
+        duplicateStrategy: 'skip',
+        files: [{ filename: 'Logo.svg', content: svg }],
+      })
+      await service.update('acme', { name: 'New Name' })
+      expect(await db.select().from(iconSearchDocuments)).toEqual([
+        expect.objectContaining({ collection: 'New Name' }),
+      ])
+      await service.delete('acme')
+      expect(await db.select().from(iconSearchDocuments)).toEqual([])
+    },
+  )
+})

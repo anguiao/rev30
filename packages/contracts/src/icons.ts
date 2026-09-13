@@ -33,6 +33,22 @@ export const iconDataQuerySchema = z.object({
 const defaultIconSearchLimit = 60
 const ICON_SEARCH_LIMIT_MAX = 100
 const ICON_SEARCH_KEYWORD_MAX_LENGTH = 120
+export const ICON_CURSOR_MAX_LENGTH = 2048
+const CUSTOM_ICON_ID_PART_MAX_LENGTH = 256
+
+function isBoundedCompleteIconId(value: string) {
+  const normalized = value.normalize('NFKC').toLowerCase()
+  if (!iconifyIconNamePattern.test(normalized)) return false
+  return normalized.split(':').every((part) => part.length <= CUSTOM_ICON_ID_PART_MAX_LENGTH)
+}
+
+const iconSearchKeywordValueSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) => value.length <= ICON_SEARCH_KEYWORD_MAX_LENGTH || isBoundedCompleteIconId(value),
+    '搜索关键词过长',
+  )
 
 const iconSearchLimitSchema = z
   .string()
@@ -43,12 +59,7 @@ const iconSearchLimitSchema = z
   .transform((value) => Math.min(value, ICON_SEARCH_LIMIT_MAX))
 
 export const iconSearchQuerySchema = z.object({
-  keyword: z
-    .string()
-    .optional()
-    .default('')
-    .transform((value) => value.trim())
-    .pipe(z.string().max(ICON_SEARCH_KEYWORD_MAX_LENGTH, '搜索关键词过长')),
+  keyword: z.string().optional().default('').pipe(iconSearchKeywordValueSchema),
   limit: iconSearchLimitSchema,
 })
 
@@ -68,7 +79,6 @@ const iconSetPrefixPattern = new RegExp(`^${iconifyIconNamePartPatternSource}$`)
 const defaultIconSetIconPageSize = 80
 const CUSTOM_ICON_SET_NAME_MAX_LENGTH = 80
 const CUSTOM_ICON_SET_DESCRIPTION_MAX_LENGTH = 300
-const CUSTOM_ICON_ID_PART_MAX_LENGTH = 256
 
 const iconSetPrefixSchema = z.string().regex(iconSetPrefixPattern, '图标集前缀无效')
 const iconSetNameSchema = z.string().regex(iconSetPrefixPattern, '图标名称无效')
@@ -77,9 +87,12 @@ export const customIconNameInputSchema = iconSetNameSchema.max(
   '图标名称不能超过 256 个字符',
 )
 
+const iconSearchKeywordSchema = optionalQueryValue(
+  iconSearchKeywordValueSchema.pipe(z.string().min(1)),
+)
 const iconSetKeywordSchema = optionalTrimmedQueryString()
 const iconSetIconCursorSchema = optionalQueryValue(
-  z.string().trim().regex(iconifyIconNamePattern, '分页游标无效'),
+  z.string().trim().max(ICON_CURSOR_MAX_LENGTH, '分页游标无效'),
 )
 
 const customIconSetNameInputSchema = z
@@ -101,7 +114,7 @@ export const iconSetListQuerySchema = z.object({
 })
 
 export const iconSetIconListQuerySchema = z.object({
-  keyword: iconSetKeywordSchema,
+  keyword: iconSearchKeywordSchema,
   prefix: iconSetPrefixSchema.optional(),
   cursor: iconSetIconCursorSchema,
   pageSize: pageSizeSchema.default(defaultIconSetIconPageSize),
@@ -116,7 +129,7 @@ export const iconItemSchema = z.object({
   prefix: iconSetPrefixSchema,
   name: iconSetNameSchema,
   setName: z.string().min(1),
-  body: z.string().min(1),
+  body: z.string(),
   width: z.number().int().min(1),
   height: z.number().int().min(1),
 })
@@ -136,7 +149,7 @@ export const builtinIconSetListResponseSchema = z.object({
 
 export const builtinIconListResponseSchema = z.object({
   list: iconSetIconItemSchema.array(),
-  nextCursor: z.string().regex(iconifyIconNamePattern, '分页游标无效').nullable(),
+  nextCursor: z.string().max(ICON_CURSOR_MAX_LENGTH, '分页游标无效').nullable(),
   pageSize: z.number().int().min(1),
 })
 
@@ -165,7 +178,7 @@ export const customIconItemSchema = iconItemSchema.extend({
 
 export const customIconListResponseSchema = z.object({
   list: customIconItemSchema.array(),
-  nextCursor: z.string().regex(iconifyIconNamePattern, '分页游标无效').nullable(),
+  nextCursor: z.string().max(ICON_CURSOR_MAX_LENGTH, '分页游标无效').nullable(),
   pageSize: z.number().int().min(1),
 })
 

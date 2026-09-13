@@ -3,6 +3,7 @@ import {
   bigint as bigintColumn,
   boolean,
   check,
+  customType,
   index,
   integer,
   jsonb,
@@ -30,6 +31,11 @@ import {
 } from '@rev30/contracts'
 
 const timestampOptions = { withTimezone: true } as const
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return 'tsvector'
+  },
+})
 
 function createdAtColumn() {
   return timestamp('created_at', timestampOptions).notNull().defaultNow()
@@ -828,6 +834,10 @@ export const customIconSetIcons = pgTable(
     width: integer('width').notNull(),
     height: integer('height').notNull(),
     palette: boolean('palette').notNull().default(false),
+    keywords: text('keywords')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     ...auditTimestamps(),
   },
   (table) => [
@@ -836,4 +846,48 @@ export const customIconSetIcons = pgTable(
       .where(sql`${table.deletedAt} IS NULL`),
     index('custom_icon_set_icons_set_id_idx').on(table.setId),
   ],
+)
+
+export const iconSearchDocuments = pgTable(
+  'icon_search_documents',
+  {
+    id: text('id').primaryKey(),
+    prefix: text('prefix').notNull(),
+    name: text('name').notNull(),
+    source: text('source', { enum: ['builtin', 'custom'] }).notNull(),
+    collection: text('collection').notNull(),
+    palette: boolean('palette').notNull(),
+    customIconId: uuid('custom_icon_id'),
+    exactPhrases: text('exact_phrases').array().notNull(),
+    fullTokens: text('full_tokens').array().notNull(),
+    searchVector: tsvector('search_vector').notNull(),
+  },
+  (table) => [
+    index('icon_search_documents_full_tokens_gin').using('gin', table.fullTokens),
+    index('icon_search_documents_exact_phrases_gin').using('gin', table.exactPhrases),
+    index('icon_search_documents_search_vector_gin').using('gin', table.searchVector),
+    index('icon_search_documents_source_prefix_id_idx').on(table.source, table.prefix, table.id),
+    uniqueIndex('icon_search_documents_custom_icon_id_unique')
+      .on(table.customIconId)
+      .where(sql`${table.customIconId} IS NOT NULL`),
+    check('icon_search_documents_source_check', sql`${table.source} IN ('builtin', 'custom')`),
+    check(
+      'icon_search_documents_custom_id_check',
+      sql`(${table.source} = 'builtin' AND ${table.customIconId} IS NULL) OR (${table.source} = 'custom' AND ${table.customIconId} IS NOT NULL)`,
+    ),
+  ],
+)
+
+export const iconSearchIndexState = pgTable(
+  'icon_search_index_state',
+  {
+    key: text('key').primaryKey().default('current'),
+    indexVersion: text('index_version').notNull(),
+    iconPackageVersion: text('icon_package_version').notNull(),
+    searchDataVersion: text('search_data_version').notNull(),
+    rulesVersion: text('rules_version').notNull(),
+    documentCount: integer('document_count').notNull(),
+    completedAt: timestamp('completed_at', timestampOptions).notNull(),
+  },
+  (table) => [check('icon_search_index_state_singleton_check', sql`${table.key} = 'current'`)],
 )

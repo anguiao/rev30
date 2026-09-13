@@ -10,6 +10,8 @@ import type {
 } from '@rev30/contracts'
 import type { Db } from '../../../../db'
 import { loadIconCollections } from '../../../icons/search/collections'
+import { assertIconSearchAvailable } from '../../../icons/search/lifecycle'
+import { normalizeSearchText } from '../../../icons/search/text'
 import {
   CustomIconConflictError,
   CustomIconNotFoundError,
@@ -96,7 +98,9 @@ export function createCustomIconSetService(database: Db) {
     },
 
     async listIcons(query: IconSetIconListQuery) {
-      const result = await repository.listIcons(query)
+      const keyword = normalizeSearchText(query.keyword ?? '')
+      if (keyword) assertIconSearchAvailable(database)
+      const result = await repository.listIcons({ ...query, keyword: keyword || undefined })
 
       return {
         ...result,

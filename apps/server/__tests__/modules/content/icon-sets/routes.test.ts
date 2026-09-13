@@ -11,6 +11,7 @@ import { createApp } from '../../../helpers/app'
 import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest } from '../../../fixtures/database'
+import { replaceIconSearchDocuments } from '../../../../src/modules/icons/search/repository'
 
 function createSvg(size: number, body: string) {
   return `<svg viewBox="0 0 ${size} ${size}">${body}</svg>`
@@ -30,6 +31,42 @@ describe('icon set routes', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
+
+  dbTest('returns the cursor domain code for invalid opaque cursors', async ({ db: database }) => {
+    const authenticated = await createSystemAccessFixture(database, {
+      accessCodes: ['content:icon-set:list'],
+      usernamePrefix: 'icon-set-invalid-cursor-user',
+    })
+    const response = await createApp(database).request(
+      '/api/content/icon-sets/builtin/icons?cursor=opaque-cursor',
+      { headers: authenticated.authHeaders },
+    )
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      code: 'INVALID_ICON_CURSOR',
+      message: '分页游标无效',
+    })
+  })
+
+  dbTest(
+    'keeps non-cursor query validation errors generic when a cursor is present',
+    async ({ db: database }) => {
+      const authenticated = await createSystemAccessFixture(database, {
+        accessCodes: ['content:icon-set:list'],
+        usernamePrefix: 'icon-set-query-validation-user',
+      })
+      const app = createApp(database)
+
+      for (const source of ['builtin', 'custom']) {
+        const response = await app.request(
+          `/api/content/icon-sets/${source}/icons?cursor=opaque-cursor&pageSize=0`,
+          { headers: authenticated.authHeaders },
+        )
+        expect(response.status).toBe(400)
+        expect(await response.json()).toEqual({ message: '查询参数无效' })
+      }
+    },
+  )
 
   dbTest('lists built-in icon sets for authorized users', async ({ db: database }) => {
     const authenticated = await createSystemAccessFixture(database, {
@@ -53,6 +90,30 @@ describe('icon set routes', () => {
       usernamePrefix: 'icon-set-builtin-icons-user',
     })
     const app = createApp(database)
+    await replaceIconSearchDocuments(
+      database,
+      [
+        {
+          id: 'lucide:sun',
+          prefix: 'lucide',
+          name: 'sun',
+          source: 'builtin',
+          collection: 'Lucide',
+          palette: false,
+          customIconId: null,
+          exactPhrases: ['sun'],
+          fullTokens: ['sun'],
+          primaryEnglishTerms: ['sun'],
+          auxiliaryEnglishTerms: [],
+        },
+      ],
+      {
+        indexVersion: 'test',
+        iconPackageVersion: 'test',
+        searchDataVersion: 'test',
+        rulesVersion: '1',
+      },
+    )
 
     const response = await app.request(
       '/api/content/icon-sets/builtin/icons?prefix=lucide&keyword=sun',

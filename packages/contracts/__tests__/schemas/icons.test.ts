@@ -4,9 +4,46 @@ import {
   iconDataQuerySchema,
   iconSearchQuerySchema,
   iconSearchResponseSchema,
+  iconSetIconListQuerySchema,
+  iconSetIconItemSchema,
 } from '../../src/icons'
 
 describe('icon schemas', () => {
+  it('allows long complete icon ids while keeping ordinary queries within 120 characters', () => {
+    const part = 'a'.repeat(121)
+    expect(iconSearchQuerySchema.parse({ keyword: `${part}:${part}` }).keyword).toBe(
+      `${part}:${part}`,
+    )
+    expect(iconSetIconListQuerySchema.parse({ keyword: `${part}:${part}` }).keyword).toBe(
+      `${part}:${part}`,
+    )
+    expect(() => iconSearchQuerySchema.parse({ keyword: part })).toThrow('搜索关键词过长')
+    expect(() => iconSetIconListQuerySchema.parse({ keyword: part })).toThrow('搜索关键词过长')
+  })
+
+  it('accepts opaque bounded icon cursors and rejects oversized cursors', () => {
+    expect(iconSetIconListQuerySchema.parse({ cursor: 'opaque-cursor' }).cursor).toBe(
+      'opaque-cursor',
+    )
+    expect(() => iconSetIconListQuerySchema.parse({ cursor: 'a'.repeat(2049) })).toThrow(
+      '分页游标无效',
+    )
+  })
+
+  it('accepts valid built-in icon records whose package body is empty', () => {
+    expect(
+      iconSetIconItemSchema.parse({
+        icon: 'codicon:blank',
+        prefix: 'codicon',
+        name: 'blank',
+        setName: 'Codicons',
+        body: '',
+        width: 16,
+        height: 16,
+      }).body,
+    ).toBe('')
+  })
+
   it('parses icon data route params into an icon prefix', () => {
     expect(iconDataParamSchema.parse({ filename: 'lucide.json' })).toEqual({
       prefix: 'lucide',

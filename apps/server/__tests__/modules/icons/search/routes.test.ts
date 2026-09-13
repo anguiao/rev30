@@ -6,6 +6,32 @@ import { dbTest, type TestDatabase } from '../../../fixtures/database'
 import { customIconSetIcons, customIconSets } from '../../../../src/db/schema'
 import { createAuthMiddleware } from '../../../../src/middleware/auth'
 import { createIconSearchRoutes } from '../../../../src/modules/icons/search/routes'
+import { replaceIconSearchDocuments } from '../../../../src/modules/icons/search/repository'
+
+const state = {
+  indexVersion: 'test',
+  iconPackageVersion: 'test',
+  searchDataVersion: 'test',
+  rulesVersion: '1',
+}
+function document(input: {
+  id: string
+  prefix: string
+  name: string
+  collection: string
+  customIconId?: string
+}) {
+  return {
+    ...input,
+    source: input.customIconId ? ('custom' as const) : ('builtin' as const),
+    palette: false,
+    customIconId: input.customIconId ?? null,
+    exactPhrases: [input.name],
+    fullTokens: [input.name],
+    primaryEnglishTerms: [input.name],
+    auxiliaryEnglishTerms: [],
+  }
+}
 
 vi.mock('@iconify/json', () => ({
   lookupCollections: vi.fn(async () => ({
@@ -33,6 +59,24 @@ function createIconSearchTestApp(database: TestDatabase) {
 }
 
 describe('icon search routes', () => {
+  dbTest(
+    'returns an explicit preparing status for authenticated non-empty searches',
+    async ({ db }) => {
+      const authenticated = await createSystemAccessFixture(db, {
+        usernamePrefix: 'icon-search-preparing-user',
+      })
+      const response = await createIconSearchTestApp(db).request(
+        '/api/icons/search?keyword=camera',
+        { headers: authenticated.authHeaders },
+      )
+      expect(response.status).toBe(503)
+      expect(await response.json()).toEqual({
+        code: 'ICON_SEARCH_PREPARING',
+        message: '图标搜索正在准备',
+      })
+    },
+  )
+
   dbTest('rejects anonymous icon search requests', async ({ db }) => {
     const app = createIconSearchTestApp(db)
 
@@ -47,6 +91,11 @@ describe('icon search routes', () => {
       usernamePrefix: 'icon-search-route-user',
     })
     const app = createIconSearchTestApp(database)
+    await replaceIconSearchDocuments(
+      database,
+      [document({ id: 'lucide:users', prefix: 'lucide', name: 'users', collection: 'Lucide' })],
+      state,
+    )
 
     const response = await app.request('/api/icons/search?keyword=lucide:users&limit=20', {
       headers: authenticated.authHeaders,
@@ -81,14 +130,30 @@ describe('icon search routes', () => {
       })
       .returning()
 
-    await database.insert(customIconSetIcons).values({
-      setId: set!.id,
-      name: 'logo',
-      body: '<path d="logo" />',
-      width: 24,
-      height: 24,
-      palette: false,
-    })
+    const [icon] = await database
+      .insert(customIconSetIcons)
+      .values({
+        setId: set!.id,
+        name: 'logo',
+        body: '<path d="logo" />',
+        width: 24,
+        height: 24,
+        palette: false,
+      })
+      .returning()
+    await replaceIconSearchDocuments(
+      database,
+      [
+        document({
+          id: 'acme:logo',
+          prefix: 'acme',
+          name: 'logo',
+          collection: 'Acme Icons',
+          customIconId: icon!.id,
+        }),
+      ],
+      state,
+    )
 
     const app = createIconSearchTestApp(database)
 
@@ -123,14 +188,30 @@ describe('icon search routes', () => {
       })
       .returning()
 
-    await database.insert(customIconSetIcons).values({
-      setId: set!.id,
-      name: 'logo',
-      body: '<path d="logo" />',
-      width: 24,
-      height: 24,
-      palette: false,
-    })
+    const [icon] = await database
+      .insert(customIconSetIcons)
+      .values({
+        setId: set!.id,
+        name: 'logo',
+        body: '<path d="logo" />',
+        width: 24,
+        height: 24,
+        palette: false,
+      })
+      .returning()
+    await replaceIconSearchDocuments(
+      database,
+      [
+        document({
+          id: 'acme:logo',
+          prefix: 'acme',
+          name: 'logo',
+          collection: 'Acme Icons',
+          customIconId: icon!.id,
+        }),
+      ],
+      state,
+    )
 
     const app = createIconSearchTestApp(database)
 
@@ -150,7 +231,7 @@ describe('icon search routes', () => {
   })
 
   dbTest(
-    'returns 404 for invalid icon search queries after authentication',
+    'returns 400 for invalid icon search queries after authentication',
     async ({ db: database }) => {
       const authenticated = await createSystemAccessFixture(database, {
         usernamePrefix: 'icon-search-invalid-query-user',
@@ -167,10 +248,10 @@ describe('icon search routes', () => {
         },
       )
 
-      expect(response.status).toBe(404)
-      expect(await response.text()).toBe('404')
-      expect(overlongKeywordResponse.status).toBe(404)
-      expect(await overlongKeywordResponse.text()).toBe('404')
+      expect(response.status).toBe(400)
+      expect(await response.json()).toEqual({ message: '查询参数无效' })
+      expect(overlongKeywordResponse.status).toBe(400)
+      expect(await overlongKeywordResponse.json()).toEqual({ message: '查询参数无效' })
     },
   )
 })

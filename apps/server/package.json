@@ -45,7 +45,6 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "rc",
     "file-type": "^22.0.2",
-    "fzf": "^0.5.2",
     "hono": "catalog:",
     "mime-types": "^3.0.2",
     "pino": "^10.3.1",

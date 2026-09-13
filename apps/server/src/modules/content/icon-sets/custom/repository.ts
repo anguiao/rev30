@@ -5,13 +5,21 @@ import type {
   IconSetListQuery,
   IconSetRenameIconInput,
 } from '@rev30/contracts'
-import { and, asc, count, desc, eq, gt, ilike, inArray, isNull, or } from 'drizzle-orm'
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../../db'
 import { customIconSetIcons, customIconSets } from '../../../../db/schema'
 import { formatIconCursor, parseIconCursor } from '../cursor'
-import { toCustomIconConflictError } from './errors'
+import { CustomIconSetNotFoundError, toCustomIconConflictError } from './errors'
 import type { CustomIconEntry, CustomIconSetEntry, CustomIconSetRow } from './mapper'
 import type { ParsedSvgIcon } from './svg'
+import {
+  deleteCustomIconSearchDocument,
+  deleteCustomIconSearchDocumentsByPrefix,
+  lockIconSearchWrites,
+  syncCustomIconSearchDocument,
+  searchIconDocuments,
+} from '../../../icons/search/repository'
+import { InvalidIconCursorError } from '../../../icons/search/errors'
 
 const customIconColumns = {
   id: customIconSetIcons.id,
@@ -21,6 +29,7 @@ const customIconColumns = {
   width: customIconSetIcons.width,
   height: customIconSetIcons.height,
   palette: customIconSetIcons.palette,
+  keywords: customIconSetIcons.keywords,
   createdAt: customIconSetIcons.createdAt,
   updatedAt: customIconSetIcons.updatedAt,
   deletedAt: customIconSetIcons.deletedAt,
@@ -47,6 +56,16 @@ async function findActiveSetByPrefix(executor: DbReader, prefix: string) {
     .select()
     .from(customIconSets)
     .where(and(eq(customIconSets.prefix, prefix), isNull(customIconSets.deletedAt)))
+    .limit(1)
+
+  return row
+}
+
+async function findActiveSetById(executor: DbReader, id: string) {
+  const [row] = await executor
+    .select()
+    .from(customIconSets)
+    .where(and(eq(customIconSets.id, id), isNull(customIconSets.deletedAt)))
     .limit(1)
 
   return row
@@ -84,6 +103,22 @@ async function findActiveIconById(
 }
 
 export function createCustomIconSetRepository(database: Db) {
+  async function syncIcon(
+    executor: Parameters<Parameters<Db['transaction']>[0]>[0],
+    set: CustomIconSetRow,
+    icon: typeof customIconSetIcons.$inferSelect,
+  ) {
+    await syncCustomIconSearchDocument(executor, {
+      id: `${set.prefix}:${icon.name}`,
+      prefix: set.prefix,
+      name: icon.name,
+      collection: set.name,
+      palette: icon.palette,
+      customIconId: icon.id,
+      keywords: icon.keywords,
+    })
+  }
+
   return {
     async listSets(query: IconSetListQuery) {
       const { keyword } = query
@@ -182,28 +217,34 @@ export function createCustomIconSetRepository(database: Db) {
     },
 
     async updateSet(prefix: string, input: CustomIconSetUpdateInput) {
-      const [updated] = await withCustomIconConflictTranslation(() =>
-        database
-          .update(customIconSets)
-          .set(input)
-          .where(and(eq(customIconSets.prefix, prefix), isNull(customIconSets.deletedAt)))
-          .returning(),
+      return await withCustomIconConflictTranslation(() =>
+        database.transaction(async (tx) => {
+          await lockIconSearchWrites(tx)
+          const [updated] = await tx
+            .update(customIconSets)
+            .set(input)
+            .where(and(eq(customIconSets.prefix, prefix), isNull(customIconSets.deletedAt)))
+            .returning()
+
+          if (!updated) return undefined
+          const icons = await tx
+            .select()
+            .from(customIconSetIcons)
+            .where(
+              and(eq(customIconSetIcons.setId, updated.id), isNull(customIconSetIcons.deletedAt)),
+            )
+          for (const icon of icons) await syncIcon(tx, updated, icon)
+
+          return { set: updated, iconCount: await countActiveIcons(tx, updated.id) }
+        }),
       )
-
-      if (!updated) {
-        return undefined
-      }
-
-      return {
-        set: updated,
-        iconCount: await countActiveIcons(database, updated.id),
-      }
     },
 
     async softDeleteSet(prefix: string) {
       const now = new Date()
 
       return await database.transaction(async (tx) => {
+        await lockIconSearchWrites(tx)
         const [deleted] = await tx
           .update(customIconSets)
           .set({
@@ -227,43 +268,64 @@ export function createCustomIconSetRepository(database: Db) {
             and(eq(customIconSetIcons.setId, deleted.id), isNull(customIconSetIcons.deletedAt)),
           )
 
+        await deleteCustomIconSearchDocumentsByPrefix(tx, prefix)
+
         return deleted
       })
     },
 
     async listIcons(query: IconSetIconListQuery) {
       const { pageSize, keyword, prefix } = query
-      const keywordFilter = keyword ? `%${keyword}%` : undefined
-      const cursor = parseIconCursor(query.cursor)
-      const cursorFilter =
-        cursor && (!prefix || cursor.prefix === prefix)
-          ? or(
-              gt(customIconSets.prefix, cursor.prefix),
-              and(
-                eq(customIconSets.prefix, cursor.prefix),
-                gt(customIconSetIcons.name, cursor.name),
-              ),
-            )
-          : undefined
+      if (keyword) {
+        const found = await searchIconDocuments(database, {
+          query: keyword,
+          source: 'custom',
+          ...(prefix ? { prefix } : {}),
+          ...(query.cursor ? { cursor: query.cursor } : {}),
+          limit: pageSize,
+        })
+        const customIds = found.rows.flatMap((row) => row.customIconId ?? [])
+        const fetched =
+          customIds.length === 0
+            ? []
+            : await database
+                .select(customIconColumns)
+                .from(customIconSetIcons)
+                .innerJoin(customIconSets, eq(customIconSetIcons.setId, customIconSets.id))
+                .where(
+                  and(
+                    inArray(customIconSetIcons.id, customIds),
+                    isNull(customIconSets.deletedAt),
+                    isNull(customIconSetIcons.deletedAt),
+                  ),
+                )
+        const byId = new Map(fetched.map((row) => [row.id, row]))
+        const list = found.rows.flatMap((row) =>
+          row.customIconId ? (byId.get(row.customIconId) ?? []) : [],
+        )
+        return { list, nextCursor: found.nextCursor, pageSize }
+      }
+      const cursorBinding = {
+        mode: 'browse' as const,
+        query: '',
+        source: 'custom' as const,
+        ...(prefix ? { prefix } : {}),
+      }
+      const cursor = parseIconCursor(query.cursor, cursorBinding)
+      if (cursor && !('id' in cursor)) throw new InvalidIconCursorError()
+      const fullId = sql`${customIconSets.prefix} || ':' || ${customIconSetIcons.name}`
       const where = and(
         isNull(customIconSets.deletedAt),
         isNull(customIconSetIcons.deletedAt),
         prefix ? eq(customIconSets.prefix, prefix) : undefined,
-        cursorFilter,
-        keywordFilter
-          ? or(
-              ilike(customIconSets.prefix, keywordFilter),
-              ilike(customIconSets.name, keywordFilter),
-              ilike(customIconSetIcons.name, keywordFilter),
-            )
-          : undefined,
+        cursor ? sql`${fullId} COLLATE "C" > ${cursor.id}` : undefined,
       )
       const rows = await database
         .select(customIconColumns)
         .from(customIconSetIcons)
         .innerJoin(customIconSets, eq(customIconSetIcons.setId, customIconSets.id))
         .where(where)
-        .orderBy(asc(customIconSets.prefix), asc(customIconSetIcons.name))
+        .orderBy(sql`${fullId} COLLATE "C"`)
         .limit(pageSize + 1)
       const list = rows.slice(0, pageSize)
       const lastItem = list.at(-1)
@@ -272,7 +334,7 @@ export function createCustomIconSetRepository(database: Db) {
         list,
         nextCursor:
           rows.length > pageSize && lastItem
-            ? formatIconCursor(lastItem.prefix, lastItem.name)
+            ? formatIconCursor(cursorBinding, { id: `${lastItem.prefix}:${lastItem.name}` })
             : null,
         pageSize,
       }
@@ -310,102 +372,131 @@ export function createCustomIconSetRepository(database: Db) {
     },
 
     async createIcon(set: CustomIconSetRow, parsed: ParsedSvgIcon) {
-      const [created] = await withCustomIconConflictTranslation(() =>
-        database
-          .insert(customIconSetIcons)
-          .values({
-            setId: set.id,
-            name: parsed.name,
-            body: parsed.body,
-            width: parsed.width,
-            height: parsed.height,
-            palette: parsed.palette,
-          })
-          .returning(),
+      return await withCustomIconConflictTranslation(() =>
+        database.transaction(async (tx) => {
+          await lockIconSearchWrites(tx)
+          const currentSet = await findActiveSetById(tx, set.id)
+          if (!currentSet) throw new CustomIconSetNotFoundError()
+          const [created] = await tx
+            .insert(customIconSetIcons)
+            .values({
+              setId: currentSet.id,
+              name: parsed.name,
+              body: parsed.body,
+              width: parsed.width,
+              height: parsed.height,
+              palette: parsed.palette,
+            })
+            .returning()
+
+          if (!created) throw new Error('创建图标失败')
+          await syncIcon(tx, currentSet, created)
+          const row = await findActiveIconById(tx, created.id)
+
+          if (!row) throw new Error('创建图标失败')
+
+          return row
+        }),
       )
-
-      if (!created) {
-        throw new Error('创建图标失败')
-      }
-
-      const row = await findActiveIconById(database, created.id)
-
-      if (!row) {
-        throw new Error('创建图标失败')
-      }
-
-      return row
     },
 
     async replaceIcon(iconId: string, parsed: ParsedSvgIcon) {
-      const [updated] = await withCustomIconConflictTranslation(() =>
-        database
-          .update(customIconSetIcons)
-          .set({
-            body: parsed.body,
-            width: parsed.width,
-            height: parsed.height,
-            palette: parsed.palette,
+      return await withCustomIconConflictTranslation(() =>
+        database.transaction(async (tx) => {
+          await lockIconSearchWrites(tx)
+          const [updated] = await tx
+            .update(customIconSetIcons)
+            .set({
+              body: parsed.body,
+              width: parsed.width,
+              height: parsed.height,
+              palette: parsed.palette,
+            })
+            .where(and(eq(customIconSetIcons.id, iconId), isNull(customIconSetIcons.deletedAt)))
+            .returning()
+
+          if (!updated) return undefined
+          const row = await findActiveIconById(tx, updated.id)
+          if (!row) return undefined
+          await syncCustomIconSearchDocument(tx, {
+            id: `${row.prefix}:${row.name}`,
+            prefix: row.prefix,
+            name: row.name,
+            collection: row.setName,
+            palette: row.palette,
+            customIconId: row.id,
+            keywords: row.keywords,
           })
-          .where(and(eq(customIconSetIcons.id, iconId), isNull(customIconSetIcons.deletedAt)))
-          .returning(),
+
+          return row
+        }),
       )
-
-      if (!updated) {
-        return undefined
-      }
-
-      return await findActiveIconById(database, updated.id)
     },
 
     async renameIcon(prefix: string, oldName: string, input: IconSetRenameIconInput) {
-      const [updated] = await withCustomIconConflictTranslation(() =>
-        database
+      return await withCustomIconConflictTranslation(() =>
+        database.transaction(async (tx) => {
+          await lockIconSearchWrites(tx)
+          const [updated] = await tx
+            .update(customIconSetIcons)
+            .set({
+              name: input.name,
+            })
+            .from(customIconSets)
+            .where(
+              and(
+                eq(customIconSetIcons.setId, customIconSets.id),
+                eq(customIconSets.prefix, prefix),
+                eq(customIconSetIcons.name, oldName),
+                isNull(customIconSets.deletedAt),
+                isNull(customIconSetIcons.deletedAt),
+              ),
+            )
+            .returning()
+
+          if (!updated) return undefined
+          const row = await findActiveIconById(tx, updated.id)
+          if (!row) return undefined
+          await syncCustomIconSearchDocument(tx, {
+            id: `${row.prefix}:${row.name}`,
+            prefix: row.prefix,
+            name: row.name,
+            collection: row.setName,
+            palette: row.palette,
+            customIconId: row.id,
+            keywords: row.keywords,
+          })
+
+          return row
+        }),
+      )
+    },
+
+    async softDeleteIcon(prefix: string, name: string) {
+      return await database.transaction(async (tx) => {
+        await lockIconSearchWrites(tx)
+        const now = new Date()
+        const [deleted] = await tx
           .update(customIconSetIcons)
           .set({
-            name: input.name,
+            deletedAt: now,
+            updatedAt: now,
           })
           .from(customIconSets)
           .where(
             and(
               eq(customIconSetIcons.setId, customIconSets.id),
               eq(customIconSets.prefix, prefix),
-              eq(customIconSetIcons.name, oldName),
+              eq(customIconSetIcons.name, name),
               isNull(customIconSets.deletedAt),
               isNull(customIconSetIcons.deletedAt),
             ),
           )
-          .returning(),
-      )
+          .returning()
 
-      if (!updated) {
-        return undefined
-      }
-
-      return await findActiveIconById(database, updated.id)
-    },
-
-    async softDeleteIcon(prefix: string, name: string) {
-      const now = new Date()
-      const [deleted] = await database
-        .update(customIconSetIcons)
-        .set({
-          deletedAt: now,
-          updatedAt: now,
-        })
-        .from(customIconSets)
-        .where(
-          and(
-            eq(customIconSetIcons.setId, customIconSets.id),
-            eq(customIconSets.prefix, prefix),
-            eq(customIconSetIcons.name, name),
-            isNull(customIconSets.deletedAt),
-            isNull(customIconSetIcons.deletedAt),
-          ),
-        )
-        .returning()
-
-      return deleted
+        if (deleted) await deleteCustomIconSearchDocument(tx, deleted.id)
+        return deleted
+      })
     },
   }
 }

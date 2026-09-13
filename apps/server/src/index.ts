@@ -8,6 +8,8 @@ import { readScheduledJobRetentionConfig } from './modules/ops/scheduled-jobs/co
 import { startScheduledJobs } from './modules/ops/scheduled-jobs/startup'
 import { logger } from './runtime/logger'
 import { createOperationLogRuntime } from './runtime/operation-log'
+import { startDefaultIconSearchIndexPreparation } from './modules/icons/search/lifecycle'
+import { createRequire as createPackageRequire } from 'node:module'
 import { closeServer, registerShutdownHandlers } from './runtime/shutdown'
 import { readTrustedProxyPolicy } from './runtime/trusted-proxy'
 
@@ -48,9 +50,17 @@ const server = serve(
   },
 )
 
+const packageRequire = createPackageRequire(import.meta.url)
+const iconPackage = packageRequire('@iconify/json/package.json') as { version: string }
+const iconSearchIndex = startDefaultIconSearchIndexPreparation(db, {
+  logger,
+  installedIconPackageVersion: iconPackage.version,
+})
+
 registerShutdownHandlers(async () => {
   const results = await Promise.allSettled([closeServer(server), scheduledJobs.stop()])
   operationLog.stop()
+  await iconSearchIndex.completed
   await closeDb()
 
   for (const result of results) {

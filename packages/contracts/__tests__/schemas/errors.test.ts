@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { errorResponseSchema } from '../../src/errors'
 
 describe('error schemas', () => {
+  it('preserves icon search domain error codes', () => {
+    expect(
+      errorResponseSchema.parse({ code: 'INVALID_ICON_CURSOR', message: '分页游标无效' }),
+    ).toEqual({
+      code: 'INVALID_ICON_CURSOR',
+      message: '分页游标无效',
+    })
+  })
+
   it('parses error responses with optional field names', () => {
     expect(
       errorResponseSchema.parse({

@@ -47,4 +47,4 @@ export async function createDb() {
 export type ManagedDb = Awaited<ReturnType<typeof createDb>>
 export type Db = ManagedDb['db']
 export type DbReader = Pick<Db, 'select'>
-export type DbExecutor = Pick<Db, 'select' | 'insert' | 'update' | 'delete'>
+export type DbExecutor = Pick<Db, 'select' | 'insert' | 'update' | 'delete' | 'execute'>

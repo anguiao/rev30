@@ -70,6 +70,7 @@ const samples: Sample[] = []
 try {
   await client.waitReady
   const memoryEmptyPglite = process.memoryUsage()
+  const diskEmptyPgliteBytes = await directorySize(dataDirectory)
   await migratePGlite(client)
   const database = drizzle({ client, relations })
   const iconRoutes = createIconRoutes(database)
@@ -118,6 +119,8 @@ try {
     samples: requestedSamples,
     p95Ms: percentile95(emptyBaseline),
   })
+  const memoryBusinessBaseline = process.memoryUsage()
+  const diskBusinessBaselineBytes = await directorySize(dataDirectory)
   async function runImport(phase: 'initial-import' | 'version-update', mixedSearch: boolean) {
     const artifactReadStartedAt = performance.now()
     const { manifest, documents } = await readIconSearchArtifacts(
@@ -225,7 +228,7 @@ try {
     { kind: 'wide', query: 'co' },
     { kind: 'wide', query: 'icon' },
     { kind: 'chinese', query: '铃铛' },
-    { kind: 'mixed', query: 'icon 铃铛' },
+    { kind: 'mixed', query: 'lucide 铃铛' },
   ] as const
   for (const benchmarkCase of cases) {
     for (let warmup = 0; warmup < 2; warmup += 1) {
@@ -328,6 +331,9 @@ try {
     platform: `${process.platform}-${process.arch}`,
     documents: initialImport.documentCount,
     memoryEmptyPglite,
+    diskEmptyPgliteBytes,
+    memoryBusinessBaseline,
+    diskBusinessBaselineBytes,
     memoryAfterInitialImport,
     memoryAfterVersionUpdate,
     memoryAfterBenchmark: process.memoryUsage(),

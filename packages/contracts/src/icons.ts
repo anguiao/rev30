@@ -156,8 +156,8 @@ export const iconItemSchema = z.object({
   name: iconSetNameSchema,
   setName: z.string().min(1),
   body: z.string(),
-  width: z.number().int().min(1),
-  height: z.number().int().min(1),
+  width: z.number().min(0),
+  height: z.number().min(0),
 })
 
 export const iconSetIconItemSchema = iconItemSchema
@@ -198,6 +198,8 @@ export const customIconParamSchema = iconSetPrefixParamSchema.extend({
 })
 
 export const customIconItemSchema = iconItemSchema.extend({
+  width: z.number().int().min(1),
+  height: z.number().int().min(1),
   keywords: customIconKeywordsSchema,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),

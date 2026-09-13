@@ -1,11 +1,12 @@
 import { ICON_CURSOR_MAX_LENGTH } from '@rev30/contracts'
+import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { InvalidIconCursorError } from '../../icons/search/errors'
 import { ICON_SEARCH_RULES_VERSION, normalizeSearchText } from '../../icons/search/text'
 
 const cursorBase = {
-  v: z.literal(1),
-  query: z.string(),
+  v: z.literal(2),
+  queryHash: z.string().regex(/^[a-f0-9]{64}$/),
   source: z.enum(['builtin', 'custom', 'all']),
   prefix: z.string().nullable(),
   rulesVersion: z.string(),
@@ -60,12 +61,16 @@ export type IconCursorBinding = {
 }
 export type IconCursorTuple = z.infer<typeof cursorSchema>['tuple']
 
+function queryHash(query: string): string {
+  return createHash('sha256').update(normalizeSearchText(query)).digest('hex')
+}
+
 export function formatIconCursor(binding: IconCursorBinding, tuple: IconCursorTuple): string {
   return Buffer.from(
     JSON.stringify({
-      v: 1,
+      v: 2,
       mode: binding.mode,
-      query: normalizeSearchText(binding.query),
+      queryHash: queryHash(binding.query),
       source: binding.source,
       prefix: binding.prefix ?? null,
       rulesVersion: ICON_SEARCH_RULES_VERSION,
@@ -89,7 +94,7 @@ export function parseIconCursor(
     const parsed = cursorSchema.parse(JSON.parse(decoded.toString('utf8')))
     if (
       parsed.mode !== binding.mode ||
-      parsed.query !== normalizeSearchText(binding.query) ||
+      parsed.queryHash !== queryHash(binding.query) ||
       parsed.source !== binding.source ||
       parsed.prefix !== (binding.prefix ?? null) ||
       parsed.rulesVersion !== ICON_SEARCH_RULES_VERSION ||

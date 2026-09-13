@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { iconSetIconItemSchema } from '@rev30/contracts'
 import { dbTest } from '../../../../fixtures/database'
 import { replaceIconSearchDocuments } from '../../../../../src/modules/icons/search/repository'
 
@@ -9,6 +10,82 @@ afterEach(() => {
 })
 
 describe('built-in icon browsing', () => {
+  dbTest('returns package-defined positive decimal viewBox dimensions', async ({ db }) => {
+    vi.resetModules()
+    vi.doUnmock('../../../../../src/modules/icons/search/collections')
+    vi.doUnmock('@iconify/json')
+    await replaceIconSearchDocuments(
+      db,
+      [
+        {
+          id: 'formkit:currency',
+          prefix: 'formkit',
+          name: 'currency',
+          source: 'builtin',
+          collection: 'FormKit Icons',
+          palette: false,
+          customIconId: null,
+          exactPhrases: ['currency'],
+          fullTokens: ['currency'],
+          primaryEnglishTerms: ['currency'],
+          auxiliaryEnglishTerms: [],
+        },
+      ],
+      { indexVersion: 'v1', iconPackageVersion: 'v1', searchDataVersion: 'v1', rulesVersion: '3' },
+    )
+    const { listBuiltinIcons } =
+      await import('../../../../../src/modules/content/icon-sets/builtin/service')
+    const result = await listBuiltinIcons(
+      { keyword: 'currency', prefix: 'formkit', cursor: undefined, pageSize: 10 },
+      db,
+    )
+
+    expect(result.list[0]).toMatchObject({ width: 25.9, height: 16.8 })
+    expect(iconSetIconItemSchema.parse(result.list[0])).toEqual(result.list[0])
+  })
+
+  dbTest(
+    'returns a package-defined zero-sized viewBox without rejecting the page',
+    async ({ db }) => {
+      vi.resetModules()
+      vi.doUnmock('../../../../../src/modules/icons/search/collections')
+      vi.doUnmock('@iconify/json')
+      await replaceIconSearchDocuments(
+        db,
+        [
+          {
+            id: 'thesvg-color:logitech-g',
+            prefix: 'thesvg-color',
+            name: 'logitech-g',
+            source: 'builtin',
+            collection: 'The SVG Color Icons',
+            palette: true,
+            customIconId: null,
+            exactPhrases: ['logitech-g'],
+            fullTokens: ['logitech', 'g'],
+            primaryEnglishTerms: ['logitech', 'g'],
+            auxiliaryEnglishTerms: [],
+          },
+        ],
+        {
+          indexVersion: 'v1',
+          iconPackageVersion: 'v1',
+          searchDataVersion: 'v1',
+          rulesVersion: '3',
+        },
+      )
+      const { listBuiltinIcons } =
+        await import('../../../../../src/modules/content/icon-sets/builtin/service')
+      const result = await listBuiltinIcons(
+        { keyword: 'logitech-g', prefix: 'thesvg-color', cursor: undefined, pageSize: 10 },
+        db,
+      )
+
+      expect(result.list[0]).toMatchObject({ width: 0, height: 0 })
+      expect(iconSetIconItemSchema.parse(result.list[0])).toEqual(result.list[0])
+    },
+  )
+
   it('uses cursor pagination and excludes aliases for global browsing without a keyword', async () => {
     vi.resetModules()
     const loadIconCollectionsMock = vi.fn().mockResolvedValue({
@@ -158,5 +235,57 @@ describe('built-in icon browsing', () => {
       db,
     )
     expect(result.list).toEqual([expect.objectContaining({ icon: 'fa:blank', body: '' })])
+  })
+
+  dbTest('applies alias flips and rotations to non-square SVG output', async ({ db }) => {
+    vi.resetModules()
+    vi.doMock('../../../../../src/modules/icons/search/collections', () => ({
+      loadIconCollections: vi.fn().mockResolvedValue({ fa: { name: 'FA' } }),
+    }))
+    vi.doMock('@iconify/json', () => ({
+      lookupCollection: vi.fn(async () => ({
+        prefix: 'fa',
+        icons: {
+          triangle: { body: '<path d="M0 0L24 0L0 12Z"/>', width: 24, height: 12 },
+        },
+        aliases: { turned: { parent: 'triangle', hFlip: true, rotate: 1 } },
+        width: 24,
+        height: 12,
+      })),
+    }))
+    await replaceIconSearchDocuments(
+      db,
+      [
+        {
+          id: 'fa:turned',
+          prefix: 'fa',
+          name: 'turned',
+          source: 'builtin',
+          collection: 'FA',
+          palette: false,
+          customIconId: null,
+          exactPhrases: ['turned'],
+          fullTokens: ['turned'],
+          primaryEnglishTerms: ['turned'],
+          auxiliaryEnglishTerms: [],
+        },
+      ],
+      { indexVersion: 'v1', iconPackageVersion: 'v1', searchDataVersion: 'v1', rulesVersion: '2' },
+    )
+    const { listBuiltinIcons } =
+      await import('../../../../../src/modules/content/icon-sets/builtin/service')
+    const result = await listBuiltinIcons(
+      { keyword: 'turned', prefix: 'fa', cursor: undefined, pageSize: 10 },
+      db,
+    )
+
+    expect(result.list).toEqual([
+      expect.objectContaining({
+        icon: 'fa:turned',
+        body: '<g transform="rotate(90 6 6) translate(24 0) scale(-1 1)"><path d="M0 0L24 0L0 12Z"/></g>',
+        width: 12,
+        height: 24,
+      }),
+    ])
   })
 })

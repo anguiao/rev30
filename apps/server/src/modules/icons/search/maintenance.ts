@@ -9,6 +9,12 @@ import {
   type MaintainedTranslationRecord,
   validateMaintainedSearchData,
 } from './artifacts'
+import { deriveSearchText } from './text'
+
+const translationSchema = z
+  .string()
+  .min(1)
+  .refine((value) => deriveSearchText(value).tokens.length > 0)
 
 const maintainedFileSchema = z
   .object({
@@ -36,14 +42,28 @@ const maintainedEnglishRecordSchema = z
   })
   .strict()
 
-const maintainedTranslationRecordSchema = z
+const iconTranslationRecordSchema = z
   .object({
-    kind: z.enum(['icon', 'category']),
+    kind: z.literal('icon'),
     owner: z.string().min(1),
     source: z.string().min(1),
-    translations: z.array(z.string().min(1)),
+    translations: z.array(translationSchema).min(1),
   })
   .strict()
+
+const categoryTranslationRecordSchema = z
+  .object({
+    kind: z.literal('category'),
+    owner: z.object({ prefix: z.string().min(1), category: z.string().min(1) }).strict(),
+    source: z.string().min(1),
+    translations: z.array(translationSchema).min(1),
+  })
+  .strict()
+
+const maintainedTranslationRecordSchema = z.discriminatedUnion('kind', [
+  iconTranslationRecordSchema,
+  categoryTranslationRecordSchema,
+])
 
 type MaintainedManifest = z.infer<typeof maintainedManifestSchema>
 

@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "iconPackageVersion": "2.2.525",
-  "dataVersion": "english-1",
+  "dataVersion": "chinese-1",
   "files": [
     {
       "kind": "english",
@@ -12,6 +12,16 @@
       "kind": "english",
       "path": "english/mdi.jsonl",
       "checksum": "2d252b319c361009a9759745aa9a97d21b50399c7a62cb4b51d9bd19bca55421"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/lucide.jsonl",
+      "checksum": "f29afee0bbd19177a49c5984d78c9d48a9d73d8f1aba5e7cc086efa739c0e2fa"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/mdi.jsonl",
+      "checksum": "a960e75d48930d1a259902a207c745df10c31608f2ac4fe7184f6ccb068dd4b1"
     }
   ]
 }

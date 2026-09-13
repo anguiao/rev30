@@ -1,7 +1,7 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
 
 import {
   buildIconSearchArtifacts,
@@ -17,7 +17,7 @@ const collection = (overrides: Partial<IconPackageCollection> = {}): IconPackage
   icons: ['alarm-clock', 'member'],
   hidden: ['hidden-item'],
   aliases: { 'old-alarm': { parent: 'alarm-clock' } },
-  categories: { 'Account / User': ['member'] },
+  categories: { 'Account / User': ['hidden-item', 'member'] },
   ...overrides,
 })
 
@@ -34,13 +34,34 @@ const maintained = (overrides: Partial<MaintainedSearchData> = {}): MaintainedSe
       terms: ['account', 'user'],
     },
   ],
-  translations: [],
+  translations: [
+    { kind: 'icon', owner: 'test:alarm-clock', source: 'alarm-clock', translations: ['闹钟'] },
+    { kind: 'icon', owner: 'test:alarm-clock', source: 'clock', translations: ['时钟'] },
+    {
+      kind: 'category',
+      owner: { prefix: 'test', category: 'Account / User' },
+      source: 'account',
+      translations: ['账户'],
+    },
+    {
+      kind: 'category',
+      owner: { prefix: 'test', category: 'Account / User' },
+      source: 'user',
+      translations: ['用户'],
+    },
+  ],
   ...overrides,
 })
 
+async function temporaryDirectory() {
+  const directory = await mkdtemp(join(tmpdir(), 'icon-search-'))
+  onTestFinished(() => rm(directory, { recursive: true, force: true }))
+  return directory
+}
+
 describe('icon search artifacts', () => {
   it('tracks package additions/removals without requiring maintenance coverage', async () => {
-    const output = await mkdtemp(join(tmpdir(), 'icon-search-'))
+    const output = await temporaryDirectory()
     const result = await buildIconSearchArtifacts({
       collections: [
         collection({
@@ -63,8 +84,8 @@ describe('icon search artifacts', () => {
     ])
   })
 
-  it('keeps category terms auxiliary and limits them to declared members', async () => {
-    const output = await mkdtemp(join(tmpdir(), 'icon-search-'))
+  it('derives icon and category translations with their original field weights', async () => {
+    const output = await temporaryDirectory()
     await buildIconSearchArtifacts({
       collections: [collection()],
       iconPackageVersion: 'current',
@@ -74,13 +95,18 @@ describe('icon search artifacts', () => {
 
     const { documents } = await readIconSearchArtifacts(output)
     const member = documents.find((document) => document.id === 'test:member')!
+    const hidden = documents.find((document) => document.id === 'test:hidden-item')!
     const alarm = documents.find((document) => document.id === 'test:alarm-clock')!
     expect(member.auxiliaryEnglishTerms).toEqual(
       expect.arrayContaining(['account', 'user', 'test', 'icons']),
     )
     expect(member.primaryEnglishTerms).not.toContain('account')
+    expect(member.fullTokens).toEqual(expect.arrayContaining(['账户', '用户']))
+    expect(member.exactPhrases).not.toContain('账户')
+    expect(hidden.fullTokens).not.toContain('账户')
     expect(alarm.fullTokens).not.toContain('account')
-    expect(alarm.exactPhrases).toEqual(['alarm-clock'])
+    expect(alarm.fullTokens).toEqual(expect.arrayContaining(['闹钟', '时钟']))
+    expect(alarm.exactPhrases).toEqual(['alarm-clock', '闹钟'])
   })
 
   it('fails when an alias cannot resolve', async () => {
@@ -89,13 +115,33 @@ describe('icon search artifacts', () => {
         collections: [collection({ aliases: { broken: { parent: 'missing' } } })],
         iconPackageVersion: 'current',
         maintained: maintained(),
-        outputDirectory: await mkdtemp(join(tmpdir(), 'icon-search-')),
+        outputDirectory: await temporaryDirectory(),
       }),
     ).rejects.toThrow('test:broken')
   })
 
+  it('counts Chinese documents from final Han tokens', async () => {
+    const output = await temporaryDirectory()
+    const result = await buildIconSearchArtifacts({
+      collections: [collection()],
+      iconPackageVersion: 'current',
+      maintained: maintained({
+        translations: [
+          {
+            kind: 'icon',
+            owner: 'test:alarm-clock',
+            source: 'alarm-clock',
+            translations: ['alarm clock'],
+          },
+        ],
+      }),
+      outputDirectory: output,
+    })
+    expect(result.manifest.counts).toMatchObject({ validTranslations: 1, chineseDocuments: 0 })
+  })
+
   it('rejects corrupted runtime files', async () => {
-    const output = await mkdtemp(join(tmpdir(), 'icon-search-'))
+    const output = await temporaryDirectory()
     await buildIconSearchArtifacts({
       collections: [collection()],
       iconPackageVersion: 'current',

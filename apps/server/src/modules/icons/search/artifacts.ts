@@ -25,12 +25,28 @@ export type MaintainedEnglishRecord = {
   terms: string[]
 }
 
-export type MaintainedTranslationRecord = {
-  kind: 'icon' | 'category'
+export type MaintainedIconTranslationRecord = {
+  kind: 'icon'
   owner: string
   source: string
   translations: string[]
 }
+
+export type CategoryTranslationOwner = {
+  prefix: string
+  category: string
+}
+
+export type MaintainedCategoryTranslationRecord = {
+  kind: 'category'
+  owner: CategoryTranslationOwner
+  source: string
+  translations: string[]
+}
+
+export type MaintainedTranslationRecord =
+  | MaintainedIconTranslationRecord
+  | MaintainedCategoryTranslationRecord
 
 export type MaintainedSearchData = {
   formatVersion: 1
@@ -95,7 +111,7 @@ export type IconSearchRuntimeManifest = z.infer<typeof runtimeManifestSchema>
 
 export type ExcludedMaintainedRecord = {
   kind: 'english' | 'translation'
-  owner: string
+  owner: string | CategoryTranslationOwner
   source: string
   reason: string
 }
@@ -152,7 +168,7 @@ export function validateMaintainedSearchData(maintained: MaintainedSearchData) {
   }
 
   const keys = new Set<string>()
-  const validateRecords = <T extends MaintainedEnglishRecord | MaintainedTranslationRecord>(
+  const validateRecords = <T extends MaintainedEnglishRecord | MaintainedIconTranslationRecord>(
     recordKind: 'english' | 'translation',
     records: T[],
     getValues: (record: T) => string[],
@@ -166,18 +182,49 @@ export function validateMaintainedSearchData(maintained: MaintainedSearchData) {
       const values = getValues(record)
       if (
         !Array.isArray(values) ||
-        values.some((value) => typeof value !== 'string' || value.length === 0)
+        values.some((value) => typeof value !== 'string' || value.length === 0) ||
+        (recordKind === 'translation' &&
+          (values.length === 0 ||
+            values.some((value) => deriveSearchText(value).tokens.length === 0)))
       ) {
         throw new Error(`Invalid ${recordKind} record values for ${record.owner}`)
       }
-      const key = `${recordKind}\0${record.kind}\0${record.owner}\0${record.source}`
+      const normalizedSource = deriveSearchText(record.source).phrase
+      const key = `${recordKind}\0${record.kind}\0${record.owner}\0${normalizedSource}`
       if (keys.has(key))
         throw new Error(`Duplicate maintained record: ${record.owner} / ${record.source}`)
       keys.add(key)
     }
   }
   validateRecords('english', maintained.english, (record) => record.terms)
-  validateRecords('translation', maintained.translations, (record) => record.translations)
+  validateRecords(
+    'translation',
+    maintained.translations.filter(
+      (record): record is MaintainedIconTranslationRecord => record.kind === 'icon',
+    ),
+    (record) => record.translations,
+  )
+  for (const record of maintained.translations) {
+    if (record.kind !== 'category') continue
+    assertPlainString(record.owner.prefix, 'translation.owner.prefix')
+    assertPlainString(record.owner.category, 'translation.owner.category')
+    assertPlainString(record.source, 'translation.source')
+    if (
+      !Array.isArray(record.translations) ||
+      record.translations.length === 0 ||
+      record.translations.some(
+        (value) => typeof value !== 'string' || deriveSearchText(value).tokens.length === 0,
+      )
+    ) {
+      throw new Error(`Invalid translation record values for ${record.owner.category}`)
+    }
+    const key = `translation\0category\0${record.owner.prefix}\0${record.owner.category}\0${deriveSearchText(record.source).phrase}`
+    if (keys.has(key))
+      throw new Error(
+        `Duplicate maintained record: ${record.owner.prefix}:${record.owner.category} / ${record.source}`,
+      )
+    keys.add(key)
+  }
 }
 
 function validateEnglishRecord(record: MaintainedEnglishRecord): boolean {
@@ -200,7 +247,10 @@ export async function buildIconSearchArtifacts(options: {
   const collectionByPrefix = new Map(options.collections.map((entry) => [entry.prefix, entry]))
   const englishByIcon = new Map<string, MaintainedEnglishRecord[]>()
   const categoriesByIcon = new Map<string, MaintainedEnglishRecord[]>()
+  const translationsByIcon = new Map<string, MaintainedIconTranslationRecord[]>()
+  const translationsByCategory = new Map<string, MaintainedCategoryTranslationRecord[]>()
   let validEnglishRecords = 0
+  let validTranslations = 0
   let definitions = 0
   let aliases = 0
 
@@ -254,14 +304,72 @@ export async function buildIconSearchArtifacts(options: {
   }
 
   for (const record of options.maintained.translations) {
-    excluded.push({
-      kind: 'translation',
-      owner: record.owner,
-      source: record.source,
-      reason: 'translation is not included in the English-only artifact',
-    })
+    if (record.kind === 'icon') {
+      const colon = record.owner.indexOf(':')
+      const prefix = colon < 0 ? '' : record.owner.slice(0, colon)
+      const name = colon < 0 ? '' : record.owner.slice(colon + 1)
+      const collection = collectionByPrefix.get(prefix)
+      const names = collection
+        ? new Set([
+            ...collection.icons,
+            ...(collection.hidden ?? []),
+            ...Object.keys(collection.aliases),
+          ])
+        : new Set<string>()
+      const nameText = deriveSearchText(name)
+      const sourceText = deriveSearchText(record.source)
+      const validSource =
+        sourceText.phrase === nameText.phrase ||
+        (sourceText.tokens.length === 1 && nameText.tokens.includes(sourceText.phrase))
+      if (!names.has(name) || !validSource) {
+        excluded.push({
+          kind: 'translation',
+          owner: record.owner,
+          source: record.source,
+          reason: 'stale owner or source',
+        })
+        continue
+      }
+      validTranslations += record.translations.length
+      translationsByIcon.set(record.owner, [
+        ...(translationsByIcon.get(record.owner) ?? []),
+        record,
+      ])
+      continue
+    }
+
+    const collection = collectionByPrefix.get(record.owner.prefix)
+    const categoryText = deriveSearchText(record.owner.category)
+    const sourceText = deriveSearchText(record.source)
+    const validSource =
+      sourceText.phrase === categoryText.phrase ||
+      (sourceText.tokens.length === 1 && categoryText.tokens.includes(sourceText.phrase))
+    const hasMaintainedRelationship = [...categoriesByIcon.values()].some((entries) =>
+      entries.some(
+        (entry) =>
+          entry.owner.startsWith(`${record.owner.prefix}:`) &&
+          entry.source === record.owner.category,
+      ),
+    )
+    if (
+      !collection?.categories?.[record.owner.category] ||
+      !validSource ||
+      !hasMaintainedRelationship
+    ) {
+      excluded.push({
+        kind: 'translation',
+        owner: record.owner,
+        source: record.source,
+        reason: 'stale category owner, source, or relationship',
+      })
+      continue
+    }
+    validTranslations += record.translations.length
+    const key = `${record.owner.prefix}\0${record.owner.category}`
+    translationsByCategory.set(key, [...(translationsByCategory.get(key) ?? []), record])
   }
 
+  let chineseDocuments = 0
   for (const collection of [...options.collections].sort((a, b) =>
     compareText(a.prefix, b.prefix),
   )) {
@@ -280,24 +388,40 @@ export async function buildIconSearchArtifacts(options: {
       const maintainedTerms = (englishByIcon.get(`${collection.prefix}:${name}`) ?? []).flatMap(
         (entry) => entry.terms,
       )
-      documents.push(
-        deriveIconSearchDocument({
-          id: `${collection.prefix}:${name}`,
-          prefix: collection.prefix,
-          name,
-          source: 'builtin',
-          collection: collection.collection,
-          palette: collection.palette,
-          customIconId: null,
-          primaryPhrases: [name, ...maintainedTerms],
-          auxiliaryPhrases: [
-            collection.prefix,
-            collection.collection,
-            ...categoryEntries.flatMap((entry) => [entry.source, ...entry.terms]),
-          ],
-          exactPhrases: [name],
-        }) as BuiltinIconSearchDocument,
+      const iconTranslations = translationsByIcon.get(`${collection.prefix}:${name}`) ?? []
+      const categoryTranslations = categoryEntries.flatMap(
+        (entry) => translationsByCategory.get(`${collection.prefix}\0${entry.source}`) ?? [],
       )
+      const document = deriveIconSearchDocument({
+        id: `${collection.prefix}:${name}`,
+        prefix: collection.prefix,
+        name,
+        source: 'builtin',
+        collection: collection.collection,
+        palette: collection.palette,
+        customIconId: null,
+        primaryPhrases: [
+          name,
+          ...maintainedTerms,
+          ...iconTranslations.flatMap((entry) => entry.translations),
+        ],
+        auxiliaryPhrases: [
+          collection.prefix,
+          collection.collection,
+          ...categoryEntries.flatMap((entry) => [entry.source, ...entry.terms]),
+          ...categoryTranslations.flatMap((entry) => entry.translations),
+        ],
+        exactPhrases: [
+          name,
+          ...iconTranslations
+            .filter(
+              (entry) => deriveSearchText(entry.source).phrase === deriveSearchText(name).phrase,
+            )
+            .flatMap((entry) => entry.translations),
+        ],
+      }) as BuiltinIconSearchDocument
+      documents.push(document)
+      if (document.fullTokens.some((token) => /\p{Script=Han}/u.test(token))) chineseDocuments++
     }
     documentsByPrefix.set(collection.prefix, documents)
   }
@@ -332,8 +456,8 @@ export async function buildIconSearchArtifacts(options: {
       aliases,
       documents: definitions + aliases,
       validEnglishRecords,
-      validTranslations: 0,
-      chineseDocuments: 0,
+      validTranslations,
+      chineseDocuments,
     },
     files,
   }

@@ -7,7 +7,7 @@ import type {
   IconSetIconListQuery,
   IconSetListQuery,
 } from '@rev30/contracts'
-import { getIconData } from '@iconify/utils'
+import { getIconData, iconToSVG, wrapSVGContent } from '@iconify/utils'
 import { createRequire as createPackageRequire } from 'node:module'
 import type { Db } from '../../../../db'
 import { type IconCollections, loadIconCollections } from '../../../icons/search/collections'
@@ -28,14 +28,20 @@ function compareBytes(left: string, right: string) {
 function mapIcon(iconSet: IconifyJSON, name: string): IconSetIconItem | undefined {
   const icon = getIconData(iconSet, name)
   if (icon === null) return undefined
+  const rendered = iconToSVG(icon)
+  const [left, top, width, height] = rendered.viewBox
+  const body =
+    left === 0 && top === 0
+      ? rendered.body
+      : wrapSVGContent(rendered.body, `<g transform="translate(${-left} ${-top})">`, '</g>')
   return {
     icon: `${iconSet.prefix}:${name}`,
     prefix: iconSet.prefix,
     name,
     setName: iconSet.info?.name ?? '',
-    body: icon.body,
-    width: icon.width ?? iconSet.width ?? 16,
-    height: icon.height ?? iconSet.height ?? 16,
+    body,
+    width,
+    height,
   }
 }
 

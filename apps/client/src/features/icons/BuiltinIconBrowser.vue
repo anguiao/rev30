@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useInfiniteQuery, useQuery } from '@pinia/colada'
-import { refDebounced } from '@vueuse/core'
+import { useInfiniteQuery, useQuery, useQueryCache } from '@pinia/colada'
+import { refDebounced, watchDebounced } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 import { NAlert, NEmpty, NInfiniteScroll, NInput, NSpin, useMessage } from 'naive-ui'
 import type {
@@ -9,7 +9,10 @@ import type {
   BuiltinIconSetListResponse,
 } from '@rev30/contracts'
 import { getErrorMessage } from '../../utils/error'
+import { ApiRequestError } from '../../utils/request'
+import { resetInfiniteQuery } from './cache'
 import { listBuiltinIcons, listBuiltinIconSets } from './requests'
+import { useIconSearchState } from './search-state'
 import IconGrid from './IconGrid.vue'
 
 const props = defineProps<{
@@ -17,6 +20,7 @@ const props = defineProps<{
 }>()
 
 const message = useMessage()
+const queryCache = useQueryCache()
 const filterDebounceMs = 250
 const iconScrollLoadOffset = 160
 const iconListPageSize = 80
@@ -35,16 +39,43 @@ const setQueryKeyword = refDebounced(
   }),
   filterDebounceMs,
 )
-const iconQueryKeyword = refDebounced(
-  computed(() => {
-    const keyword = iconKeyword.value.trim()
-
-    return keyword.length > 0 ? keyword : undefined
-  }),
-  filterDebounceMs,
+const iconQueryKeyword = ref<string | undefined>()
+watchDebounced(
+  iconKeyword,
+  (value) => {
+    const keyword = value.trim()
+    iconQueryKeyword.value = keyword.length > 0 ? keyword : undefined
+  },
+  { debounce: filterDebounceMs },
+)
+watch(
+  iconKeyword,
+  (value) => {
+    if (value.trim() === '') iconQueryKeyword.value = undefined
+  },
+  { flush: 'sync' },
 )
 const selectedSet = ref<BuiltinIconSetItem | null>(null)
 const selectedPrefix = computed(() => selectedSet.value?.prefix ?? null)
+const iconQueryKey = computed(() => [
+  'content',
+  'icon-sets',
+  'builtin',
+  'icons',
+  iconListPageSize,
+  iconQueryKeyword.value ?? '',
+  selectedPrefix.value ?? '',
+])
+
+watch(
+  [iconQueryKey, () => props.active],
+  ([key, active], [previousKey, wasActive]) => {
+    if (active && (!wasActive || key.some((value, index) => value !== previousKey[index]))) {
+      void resetInfiniteQuery(queryCache, key)
+    }
+  },
+  { flush: 'sync' },
+)
 
 const {
   data: setsResponse,
@@ -60,19 +91,13 @@ const {
 const {
   data: iconsResponse,
   error: iconsError,
+  asyncStatus: iconsAsyncStatus,
   isLoading: isLoadingIcons,
   hasNextPage,
   loadNextPage,
+  refetch: refetchIcons,
 } = useInfiniteQuery<BuiltinIconListResponse, Error, string | null>({
-  key: () => [
-    'content',
-    'icon-sets',
-    'builtin',
-    'icons',
-    iconListPageSize,
-    iconQueryKeyword.value ?? '',
-    selectedPrefix.value ?? '',
-  ],
+  key: iconQueryKey,
   enabled: () => props.active,
   initialPageParam: null,
   query: ({ pageParam }) =>
@@ -93,8 +118,20 @@ const iconScrollKey = computed(
 const setErrorMessage = computed(() =>
   setsError.value === null ? '' : getErrorMessage(setsError.value, '加载内置图标集失败'),
 )
+const hasIconQuery = computed(() => iconQueryKeyword.value !== undefined)
+const iconSearchState = useIconSearchState({
+  error: iconsError,
+  asyncStatus: iconsAsyncStatus,
+  enabled: computed(() => props.active && hasIconQuery.value),
+  refetch: refetchIcons,
+})
 const iconErrorMessage = computed(() =>
-  iconsError.value === null ? '' : getErrorMessage(iconsError.value, '加载内置图标失败'),
+  iconSearchState.isOrdinaryError.value
+    ? getErrorMessage(iconsError.value, '加载内置图标失败')
+    : '',
+)
+const emptyDescription = computed(() =>
+  hasIconQuery.value ? '未找到匹配图标，可尝试英文名称、图标 ID 或其他关键词' : '暂无图标',
 )
 
 watch(setsData, (data) => {
@@ -113,6 +150,12 @@ async function loadMoreIcons() {
 
   await loadNextPage({ cancelRefetch: false })
 }
+
+watch(iconsError, (error) => {
+  if (error instanceof ApiRequestError && error.code === 'INVALID_ICON_CURSOR') {
+    void resetInfiniteQuery(queryCache, iconQueryKey.value)
+  }
+})
 
 async function copyIcon(icon: string) {
   await navigator.clipboard.writeText(icon)
@@ -153,6 +196,7 @@ async function copySvg(svg: string) {
             <div class="space-y-0.5">
               <button
                 type="button"
+                data-test="builtin-icon-set-all"
                 class="w-full rounded-ui px-2.5 py-1.5 text-left transition-colors"
                 :class="
                   selectedSet === null
@@ -209,11 +253,33 @@ async function copySvg(svg: string) {
 
           <NInput
             v-model:value="iconKeyword"
+            data-test="builtin-icon-filter"
             clearable
-            placeholder="筛选图标"
+            placeholder="搜索中英文名称和关键词"
             class="w-full sm:w-72!"
           />
         </div>
+
+        <div class="shrink-0 px-4 pt-3 text-xs text-stone-500 dark:text-zinc-400">
+          支持中英文名称和关键词。部分内置图标支持中文，可尝试英文名称或图标 ID。
+        </div>
+
+        <NAlert
+          v-if="iconSearchState.isPreparing.value"
+          type="info"
+          :show-icon="false"
+          class="mx-4 mt-3"
+        >
+          图标搜索正在准备
+        </NAlert>
+        <NAlert
+          v-else-if="iconSearchState.isUnavailable.value"
+          type="warning"
+          :show-icon="false"
+          class="mx-4 mt-3"
+        >
+          图标搜索暂不可用
+        </NAlert>
 
         <NInfiniteScroll
           :key="iconScrollKey"
@@ -231,7 +297,15 @@ async function copySvg(svg: string) {
               @copy="copyIcon"
               @copy-svg="copySvg"
             />
-            <NEmpty v-else-if="!isLoadingIcons" />
+            <NEmpty
+              v-else-if="
+                !isLoadingIcons &&
+                !iconSearchState.isPreparing.value &&
+                !iconSearchState.isUnavailable.value &&
+                !iconErrorMessage
+              "
+              :description="emptyDescription"
+            />
             <div v-else class="h-40" />
           </NSpin>
 

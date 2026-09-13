@@ -12,8 +12,9 @@ import {
   NSpin,
   NTooltip,
 } from 'naive-ui'
-import { computed, nextTick, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { searchIcons } from './requests'
+import { useIconSearchState } from './search-state'
 
 const props = defineProps<{
   value: string | null
@@ -35,7 +36,9 @@ const queryKeyword = ref('')
 const {
   data: iconSearchData,
   error: iconSearchError,
+  asyncStatus,
   isLoading: isSearching,
+  refetch,
 } = useQuery({
   key: () => ['system', 'icons', 'search', queryKeyword.value, limit],
   enabled: () => showPanel.value,
@@ -51,11 +54,31 @@ const {
 })
 
 const results = computed(() => iconSearchData.value?.list ?? [])
-const searchError = computed(() =>
-  iconSearchError.value === null || isSearching.value ? '' : '图标搜索失败',
+const hasSearchKeyword = computed(() => queryKeyword.value.trim().length > 0)
+const { isPreparing, isUnavailable, isOrdinaryError } = useIconSearchState({
+  error: iconSearchError,
+  asyncStatus,
+  enabled: computed(() => showPanel.value && hasSearchKeyword.value),
+  refetch,
+})
+const searchError = computed(() => (isOrdinaryError.value ? '图标搜索失败' : ''))
+const emptyDescription = computed(() =>
+  hasSearchKeyword.value ? '未找到匹配图标，可尝试英文名称、图标 ID 或其他关键词' : '暂无图标',
 )
 
 watchDebounced(keyword, (nextKeyword) => (queryKeyword.value = nextKeyword), { debounce: 200 })
+watch(
+  keyword,
+  (nextKeyword) => {
+    if (nextKeyword.trim() === '') queryKeyword.value = ''
+  },
+  { flush: 'sync' },
+)
+
+function updateKeyword(nextKeyword: string) {
+  keyword.value = nextKeyword
+  if (nextKeyword.trim() === '') queryKeyword.value = ''
+}
 
 async function openPanel() {
   if (showPanel.value) {
@@ -127,8 +150,19 @@ function selectIcon(icon: string) {
         clearable
         placeholder="搜索图标"
         :value="keyword"
-        @update:value="(nextValue) => (keyword = nextValue)"
+        @update:value="updateKeyword"
       />
+      <div class="mt-1 text-xs text-stone-500 dark:text-zinc-400">
+        支持中英文名称和关键词。部分内置图标支持中文，可尝试英文名称或图标 ID。
+      </div>
+
+      <NAlert v-if="isPreparing" type="info" :show-icon="false" class="mt-3">
+        图标搜索正在准备
+      </NAlert>
+
+      <NAlert v-else-if="isUnavailable" type="warning" :show-icon="false" class="mt-3">
+        图标搜索暂不可用
+      </NAlert>
 
       <NAlert v-if="searchError" type="error" :show-icon="false" class="mt-3">
         {{ searchError }}
@@ -159,7 +193,11 @@ function selectIcon(icon: string) {
             {{ item.icon }}
           </NTooltip>
         </div>
-        <NEmpty v-else-if="!isSearching" description="暂无图标" class="py-6" />
+        <NEmpty
+          v-else-if="!isSearching && !isPreparing && !isUnavailable && !searchError"
+          :description="emptyDescription"
+          class="py-6"
+        />
         <div v-else class="py-6" />
       </NSpin>
     </div>

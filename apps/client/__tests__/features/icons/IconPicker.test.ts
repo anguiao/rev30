@@ -5,6 +5,7 @@ import { NInput, NPopover } from 'naive-ui'
 import IconPicker from '../../../src/features/icons/IconPicker.vue'
 import { searchIcons } from '../../../src/features/icons/requests'
 import { createTestQueryHarness } from '../../helpers/colada'
+import { ApiRequestError } from '../../../src/utils/request'
 
 vi.mock('../../../src/features/icons/requests', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/icons/requests')>()),
@@ -116,6 +117,108 @@ describe('IconPicker', () => {
     await vi.advanceTimersByTimeAsync(1)
     await flushPromises()
     expect(searchIconsMock).toHaveBeenCalledWith({ keyword: '用户', limit: 60 })
+  })
+
+  it('shows the bilingual search hint and retries preparing searches until ready', async () => {
+    vi.useFakeTimers()
+    const preparingError = new ApiRequestError(
+      503,
+      '图标搜索正在准备',
+      undefined,
+      'ICON_SEARCH_PREPARING',
+    )
+    searchIconsMock
+      .mockResolvedValueOnce({ list: [] })
+      .mockRejectedValueOnce(preparingError)
+      .mockRejectedValueOnce(preparingError)
+      .mockResolvedValueOnce({
+        list: [
+          {
+            icon: 'lucide:users',
+            prefix: 'lucide',
+            name: 'users',
+            collection: 'Lucide',
+            palette: false,
+          },
+        ],
+      })
+
+    const wrapper = mountPicker(null)
+    await wrapper.get('[data-test="resource-form-icon"] input').trigger('focus')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('部分内置图标支持中文，可尝试英文名称或图标 ID')
+
+    await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
+    await vi.advanceTimersByTimeAsync(200)
+    await flushPromises()
+    expect(wrapper.text()).toContain('图标搜索正在准备')
+    expect(wrapper.text()).not.toContain('未找到匹配图标')
+
+    await vi.advanceTimersByTimeAsync(1_000)
+    await flushPromises()
+    expect(wrapper.text()).toContain('图标搜索正在准备')
+
+    await vi.advanceTimersByTimeAsync(1_000)
+    await flushPromises()
+    expect(wrapper.get('[data-test="resource-icon-option"]').text()).toBe('lucide:users')
+    expect(searchIconsMock).toHaveBeenCalledTimes(4)
+  })
+
+  it('clears preparing state immediately and distinguishes unavailable, errors, and zero results', async () => {
+    vi.useFakeTimers()
+    searchIconsMock
+      .mockResolvedValueOnce({ list: [] })
+      .mockRejectedValueOnce(
+        new ApiRequestError(503, '暂不可用', undefined, 'ICON_SEARCH_UNAVAILABLE'),
+      )
+
+    const wrapper = mountPicker(null)
+    await wrapper.get('[data-test="resource-form-icon"] input').trigger('focus')
+    await flushPromises()
+
+    await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
+    await vi.advanceTimersByTimeAsync(200)
+    await flushPromises()
+    expect(wrapper.text()).toContain('图标搜索暂不可用')
+    expect(wrapper.text()).not.toContain('未找到匹配图标')
+
+    searchIconsMock.mockResolvedValueOnce({ list: [] })
+    wrapper
+      .findAllComponents(NInput)
+      .find((input) => input.attributes('data-test') === 'resource-icon-search')!
+      .vm.$emit('update:value', '')
+    await flushPromises()
+    expect(wrapper.text()).toContain('暂无图标')
+    expect(wrapper.text()).not.toContain('图标搜索暂不可用')
+
+    searchIconsMock.mockResolvedValueOnce({ list: [] })
+    await wrapper.get('[data-test="resource-icon-search"] input').setValue('missing')
+    await vi.advanceTimersByTimeAsync(200)
+    await flushPromises()
+    expect(wrapper.text()).toContain('未找到匹配图标，可尝试英文名称、图标 ID 或其他关键词')
+  })
+
+  it('stops preparing retries after the picker closes', async () => {
+    vi.useFakeTimers()
+    searchIconsMock
+      .mockResolvedValueOnce({ list: [] })
+      .mockRejectedValue(new ApiRequestError(503, '正在准备', undefined, 'ICON_SEARCH_PREPARING'))
+    const wrapper = mountPicker(null)
+    await wrapper.get('[data-test="resource-form-icon"] input').trigger('focus')
+    await flushPromises()
+
+    await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
+    await vi.advanceTimersByTimeAsync(200)
+    await flushPromises()
+    expect(searchIconsMock).toHaveBeenCalledTimes(2)
+
+    wrapper.getComponent(NPopover).vm.$emit('clickoutside', new MouseEvent('click'))
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(2_000)
+    await flushPromises()
+
+    expect(searchIconsMock).toHaveBeenCalledTimes(2)
   })
 
   it('reopens with recommendation search after chinese keyword search', async () => {

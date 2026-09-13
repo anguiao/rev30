@@ -82,7 +82,7 @@ describe('IconGrid', () => {
     const item = wrapper.get('[data-test="icon-grid-item"]')
     expect(item.attributes('role')).toBeUndefined()
 
-    const renameButton = wrapper.get('button[aria-label="重命名图标"]')
+    const renameButton = wrapper.get('button[aria-label="编辑图标"]')
     await renameButton.trigger('click')
     await renameButton.trigger('keydown.enter')
 
@@ -108,7 +108,7 @@ describe('IconGrid', () => {
     await copyButton.trigger('click')
 
     expect(wrapper.find('button[aria-label="复制 SVG"]').exists()).toBe(true)
-    expect(wrapper.find('button[aria-label="重命名图标"]').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="编辑图标"]').exists()).toBe(false)
     expect(wrapper.find('button[aria-label="删除图标"]').exists()).toBe(false)
     expect(wrapper.emitted('copy')).toEqual([['acme:logo']])
   })

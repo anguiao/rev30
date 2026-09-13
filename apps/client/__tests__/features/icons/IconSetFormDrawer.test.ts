@@ -7,6 +7,7 @@ import {
   updateCustomIconSet,
 } from '../../../src/features/icons/requests'
 import IconSetFormDrawer from '../../../src/features/icons/IconSetFormDrawer.vue'
+import { refreshCustomIconCaches } from '../../../src/features/icons/cache'
 import { ApiRequestError } from '../../../src/utils/request'
 import { createTestQueryHarness } from '../../helpers/colada'
 import { createDeferred } from '../../helpers/promise'
@@ -18,11 +19,16 @@ vi.mock('../../../src/features/icons/requests', async (importOriginal) => ({
   updateCustomIconSet: vi.fn(),
 }))
 
+vi.mock('../../../src/features/icons/cache', () => ({
+  refreshCustomIconCaches: vi.fn().mockResolvedValue(undefined),
+}))
+
 const createCustomIconSetMock = vi.mocked(createCustomIconSet)
 
 const getCustomIconSetMock = vi.mocked(getCustomIconSet)
 
 const updateCustomIconSetMock = vi.mocked(updateCustomIconSet)
+const refreshCustomIconCachesMock = vi.mocked(refreshCustomIconCaches)
 
 const acmeIconSet: CustomIconSet = {
   prefix: 'acme',
@@ -67,6 +73,7 @@ describe('IconSetFormDrawer', () => {
     createCustomIconSetMock.mockReset()
     getCustomIconSetMock.mockReset()
     updateCustomIconSetMock.mockReset()
+    refreshCustomIconCachesMock.mockClear()
   })
 
   it('creates an icon set with normalized form values', async () => {
@@ -345,6 +352,7 @@ describe('IconSetFormDrawer', () => {
     )
     expect(wrapper.emitted('saved')).toBeUndefined()
     expect(wrapper.emitted('update:show')).toBeUndefined()
+    expect(refreshCustomIconCachesMock).toHaveBeenCalledOnce()
 
     updateCustomIconSetMock.mockResolvedValueOnce(novaIconSet)
     await submitForm(wrapper)

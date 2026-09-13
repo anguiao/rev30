@@ -14,6 +14,7 @@ import { useDrawerUnsavedChangesGuard } from '../../composables/useDrawerUnsaved
 import { getErrorMessage } from '../../utils/error'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
 import { ApiRequestError } from '../../utils/request'
+import { refreshCustomIconCaches } from './cache'
 
 const props = defineProps<{
   prefix: string | null
@@ -97,15 +98,19 @@ const { isLoading: isSaving, ...saveIconSetMutation } = useMutation({
       ? createCustomIconSet(customIconSetCreateSchema.parse(value))
       : updateCustomIconSet(prefix, customIconSetUpdateSchema.parse(value)),
   onSuccess(_, { prefix }, { sessionId }) {
-    if (!show.value || props.prefix !== prefix || sessionId !== drawerSessionId.value) {
-      return
-    }
+    void refreshCustomIconCaches(queryCache)
 
     if (prefix !== null) {
-      void queryCache.invalidateQueries({
-        key: ['content', 'icon-set-form', prefix],
-        exact: true,
-      })
+      void Promise.allSettled([
+        queryCache.invalidateQueries({
+          key: ['content', 'icon-set-form', prefix],
+          exact: true,
+        }),
+      ])
+    }
+
+    if (!show.value || props.prefix !== prefix || sessionId !== drawerSessionId.value) {
+      return
     }
 
     emit('saved')

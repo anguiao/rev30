@@ -1,11 +1,11 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="TIcon extends IconItem">
 import { computed } from 'vue'
 import { NButton } from 'naive-ui'
 import type { IconItem } from '@rev30/contracts'
 
 const props = withDefaults(
   defineProps<{
-    icons: IconItem[]
+    icons: TIcon[]
     scope: 'all' | 'single'
     renamable?: boolean
     deletable?: boolean
@@ -19,8 +19,8 @@ const props = withDefaults(
 const emit = defineEmits<{
   copy: [icon: string]
   copySvg: [svg: string]
-  rename: [icon: IconItem]
-  delete: [icon: IconItem]
+  rename: [icon: TIcon]
+  delete: [icon: TIcon]
 }>()
 
 const showIconSetName = computed(() => props.scope === 'all')
@@ -111,8 +111,8 @@ function getIconSvg(icon: IconItem) {
           quaternary
           circle
           size="tiny"
-          aria-label="重命名图标"
-          title="重命名"
+          aria-label="编辑图标"
+          title="编辑"
           @click.stop="emit('rename', icon)"
         >
           <span class="i-[lucide--pencil-line] text-xs" aria-hidden="true" />

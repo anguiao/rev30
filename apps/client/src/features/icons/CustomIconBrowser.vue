@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useInfiniteQuery, useMutation, useQuery, useQueryCache } from '@pinia/colada'
-import { refDebounced } from '@vueuse/core'
+import { refDebounced, watchDebounced } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 import type { ButtonProps } from 'naive-ui'
 import {
@@ -18,15 +18,21 @@ import {
 } from 'naive-ui'
 import type {
   CustomIconListResponse,
+  CustomIconItem,
   CustomIconSet,
   CustomIconSetListResponse,
-  IconItem,
+  CustomIconUpdateInput,
 } from '@rev30/contracts'
+import { customIconUpdateSchema } from '@rev30/contracts'
 import { useDrawer } from '../../composables/useDrawer'
 import { useAuthStore } from '../../stores/auth'
 import { saveFile } from '../../utils/download'
 import { getErrorMessage } from '../../utils/error'
+import { ApiRequestError } from '../../utils/request'
+import { refreshCustomIconCaches, resetInfiniteQuery } from './cache'
 import IconGrid from './IconGrid.vue'
+import IconKeywordsInput from './IconKeywordsInput.vue'
+import { useIconSearchState } from './search-state'
 import {
   deleteCustomIcon,
   deleteCustomIconSet,
@@ -62,16 +68,43 @@ const setQueryKeyword = refDebounced(
   }),
   filterDebounceMs,
 )
-const iconQueryKeyword = refDebounced(
-  computed(() => {
-    const keyword = iconKeyword.value.trim()
-
-    return keyword.length > 0 ? keyword : undefined
-  }),
-  filterDebounceMs,
+const iconQueryKeyword = ref<string | undefined>()
+watchDebounced(
+  iconKeyword,
+  (value) => {
+    const keyword = value.trim()
+    iconQueryKeyword.value = keyword.length > 0 ? keyword : undefined
+  },
+  { debounce: filterDebounceMs },
+)
+watch(
+  iconKeyword,
+  (value) => {
+    if (value.trim() === '') iconQueryKeyword.value = undefined
+  },
+  { flush: 'sync' },
 )
 const selectedSet = ref<CustomIconSet | null>(null)
 const selectedPrefix = computed(() => selectedSet.value?.prefix ?? null)
+const iconQueryKey = computed(() => [
+  'content',
+  'icon-sets',
+  'custom',
+  'icons',
+  iconListPageSize,
+  iconQueryKeyword.value ?? '',
+  selectedPrefix.value ?? '',
+])
+
+watch(
+  [iconQueryKey, () => props.active],
+  ([key, active], [previousKey, wasActive]) => {
+    if (active && (!wasActive || key.some((value, index) => value !== previousKey[index]))) {
+      void resetInfiniteQuery(queryCache, key)
+    }
+  },
+  { flush: 'sync' },
+)
 
 const {
   data: setsResponse,
@@ -87,19 +120,13 @@ const {
 const {
   data: iconsResponse,
   error: iconsError,
+  asyncStatus: iconsAsyncStatus,
   isLoading: isLoadingIcons,
   hasNextPage,
   loadNextPage,
+  refetch: refetchIcons,
 } = useInfiniteQuery<CustomIconListResponse, Error, string | null>({
-  key: () => [
-    'content',
-    'icon-sets',
-    'custom',
-    'icons',
-    iconListPageSize,
-    iconQueryKeyword.value ?? '',
-    selectedPrefix.value ?? '',
-  ],
+  key: iconQueryKey,
   enabled: () => props.active,
   initialPageParam: null,
   query: ({ pageParam }) =>
@@ -120,8 +147,20 @@ const iconScrollKey = computed(
 const setErrorMessage = computed(() =>
   setsError.value === null ? '' : getErrorMessage(setsError.value, '加载自定义图标集失败'),
 )
+const hasIconQuery = computed(() => iconQueryKeyword.value !== undefined)
+const iconSearchState = useIconSearchState({
+  error: iconsError,
+  asyncStatus: iconsAsyncStatus,
+  enabled: computed(() => props.active && hasIconQuery.value),
+  refetch: refetchIcons,
+})
 const iconErrorMessage = computed(() =>
-  iconsError.value === null ? '' : getErrorMessage(iconsError.value, '加载自定义图标失败'),
+  iconSearchState.isOrdinaryError.value
+    ? getErrorMessage(iconsError.value, '加载自定义图标失败')
+    : '',
+)
+const emptyDescription = computed(() =>
+  hasIconQuery.value ? '未找到匹配图标，可尝试英文名称、图标 ID 或其他关键词' : '暂无图标',
 )
 
 watch(setsData, (data) => {
@@ -141,19 +180,13 @@ async function loadMoreIcons() {
   await loadNextPage({ cancelRefetch: false })
 }
 
-async function invalidateIconSetQueries() {
-  await queryCache.invalidateQueries({
-    key: ['content', 'icon-sets', 'custom', 'sets'],
-  })
-}
+watch(iconsError, (error) => {
+  if (error instanceof ApiRequestError && error.code === 'INVALID_ICON_CURSOR') {
+    void resetInfiniteQuery(queryCache, iconQueryKey.value)
+  }
+})
 
-async function invalidateIconQueries() {
-  await queryCache.invalidateQueries({
-    key: ['content', 'icon-sets', 'custom', 'icons'],
-  })
-}
-
-const canRenameIcon = computed(() => auth.can('content:icon-set:update'))
+const canEditIcon = computed(() => auth.can('content:icon-set:update'))
 const canDeleteIcon = computed(() => auth.can('content:icon-set:delete'))
 
 const {
@@ -173,7 +206,6 @@ function openEditSetDrawer(iconSet: CustomIconSet) {
 }
 async function handleSetSaved() {
   message.success('保存图标集成功')
-  await invalidateIconSetQueries()
 }
 
 function confirmDeleteSet(iconSet: CustomIconSet) {
@@ -197,8 +229,7 @@ function confirmDeleteSet(iconSet: CustomIconSet) {
         }
 
         message.success('删除图标集成功')
-        await invalidateIconSetQueries()
-        await invalidateIconQueries()
+        void refreshCustomIconCaches(queryCache)
       } catch (error) {
         message.error(getErrorMessage(error, '删除图标集失败'))
         return false
@@ -223,8 +254,6 @@ function openUploadDrawer() {
 }
 async function handleIconsUploaded() {
   message.success('上传图标成功')
-  await invalidateIconSetQueries()
-  await invalidateIconQueries()
 }
 
 async function exportSelectedSet() {
@@ -242,34 +271,68 @@ async function exportSelectedSet() {
   }
 }
 
-const renamingIcon = ref<IconItem | null>(null)
-const renameIconName = ref('')
-const { isLoading: isRenamingIcon, ...renameIconMutation } = useMutation({
-  mutation: ({ icon, name }: { icon: IconItem; name: string }) =>
-    updateCustomIcon(icon.prefix, icon.name, { name }),
-  async onSuccess() {
-    message.success('重命名图标成功')
-    renamingIcon.value = null
-    await invalidateIconQueries()
+const editingIcon = ref<CustomIconItem | null>(null)
+const editIconName = ref('')
+const editIconKeywords = ref<string[]>([])
+const editIconError = ref<string | null>(null)
+const editIconSessionId = ref(0)
+const { isLoading: isEditingIcon, ...editIconMutation } = useMutation({
+  mutation: ({
+    icon,
+    input,
+  }: {
+    icon: CustomIconItem
+    input: CustomIconUpdateInput
+    sessionId: number
+  }) => updateCustomIcon(icon.prefix, icon.name, input),
+  onSuccess(_, { sessionId }) {
+    void refreshCustomIconCaches(queryCache)
+
+    if (sessionId !== editIconSessionId.value || editingIcon.value === null) return
+
+    message.success('编辑图标成功')
+    editingIcon.value = null
   },
-  onError(error) {
-    message.error(getErrorMessage(error, '重命名图标失败'))
+  onError(error, { sessionId }) {
+    if (sessionId !== editIconSessionId.value || editingIcon.value === null) return
+
+    editIconError.value = getErrorMessage(error, '编辑图标失败')
   },
 })
-function openRenameIconModal(icon: IconItem) {
-  renamingIcon.value = icon
-  renameIconName.value = icon.name
+function openEditIconModal(icon: CustomIconItem) {
+  editIconSessionId.value += 1
+  editingIcon.value = icon
+  editIconName.value = icon.name
+  editIconKeywords.value = [...icon.keywords]
+  editIconError.value = null
 }
-function submitRenameIcon() {
-  const icon = renamingIcon.value
-  const nextName = renameIconName.value.trim()
+function closeEditIconModal() {
+  editIconSessionId.value += 1
+  editingIcon.value = null
+  editIconError.value = null
+}
+function submitEditIcon() {
+  const icon = editingIcon.value
+  const result = customIconUpdateSchema.safeParse({
+    name: editIconName.value.trim(),
+    keywords: editIconKeywords.value,
+  })
 
-  if (icon === null || nextName.length === 0 || isRenamingIcon.value) return
+  if (icon === null || isEditingIcon.value) return
+  if (!result.success) {
+    editIconError.value = result.error.issues[0]?.message ?? '图标信息无效'
+    return
+  }
 
-  renameIconMutation.mutate({ icon, name: nextName })
+  editIconError.value = null
+  editIconMutation.mutate({
+    icon,
+    input: result.data,
+    sessionId: editIconSessionId.value,
+  })
 }
 
-function confirmDeleteIcon(icon: IconItem) {
+function confirmDeleteIcon(icon: CustomIconItem) {
   const positiveButtonProps: ButtonProps & Record<string, unknown> = {
     type: 'error',
   }
@@ -285,8 +348,7 @@ function confirmDeleteIcon(icon: IconItem) {
         await deleteCustomIcon(icon.prefix, icon.name)
 
         message.success('删除图标成功')
-        await invalidateIconSetQueries()
-        await invalidateIconQueries()
+        void refreshCustomIconCaches(queryCache)
       } catch (error) {
         message.error(getErrorMessage(error, '删除图标失败'))
         return false
@@ -434,7 +496,7 @@ async function copySvg(svg: string) {
               v-model:value="iconKeyword"
               data-test="custom-icon-filter"
               clearable
-              placeholder="筛选图标"
+              placeholder="搜索中英文名称和关键词"
               class="w-full sm:w-72!"
             />
             <div
@@ -468,6 +530,27 @@ async function copySvg(svg: string) {
           </div>
         </div>
 
+        <div class="shrink-0 px-4 pt-3 text-xs text-stone-500 dark:text-zinc-400">
+          支持中英文名称和关键词。部分内置图标支持中文，可尝试英文名称或图标 ID。
+        </div>
+
+        <NAlert
+          v-if="iconSearchState.isPreparing.value"
+          type="info"
+          :show-icon="false"
+          class="mx-4 mt-3"
+        >
+          图标搜索正在准备
+        </NAlert>
+        <NAlert
+          v-else-if="iconSearchState.isUnavailable.value"
+          type="warning"
+          :show-icon="false"
+          class="mx-4 mt-3"
+        >
+          图标搜索暂不可用
+        </NAlert>
+
         <NInfiniteScroll
           :key="iconScrollKey"
           class="min-h-0 flex-1"
@@ -480,14 +563,22 @@ async function copySvg(svg: string) {
               v-if="icons.length > 0"
               :icons="icons"
               :scope="selectedSet === null ? 'all' : 'single'"
-              :renamable="canRenameIcon"
+              :renamable="canEditIcon"
               :deletable="canDeleteIcon"
               @copy="copyIcon"
               @copy-svg="copySvg"
-              @rename="openRenameIconModal"
+              @rename="openEditIconModal"
               @delete="confirmDeleteIcon"
             />
-            <NEmpty v-else-if="!isLoadingIcons" />
+            <NEmpty
+              v-else-if="
+                !isLoadingIcons &&
+                !iconSearchState.isPreparing.value &&
+                !iconSearchState.isUnavailable.value &&
+                !iconErrorMessage
+              "
+              :description="emptyDescription"
+            />
             <div v-else class="h-40" />
           </NSpin>
 
@@ -513,19 +604,25 @@ async function copySvg(svg: string) {
     />
 
     <NModal
-      :show="renamingIcon !== null"
+      :show="editingIcon !== null"
       preset="dialog"
-      title="重命名图标"
+      title="编辑图标"
       positive-text="保存"
       negative-text="取消"
-      :positive-button-props="{ loading: isRenamingIcon }"
-      @positive-click="submitRenameIcon"
-      @negative-click="renamingIcon = null"
-      @close="renamingIcon = null"
+      :positive-button-props="{ loading: isEditingIcon }"
+      @positive-click="submitEditIcon"
+      @negative-click="closeEditIconModal"
+      @close="closeEditIconModal"
     >
-      <NForm :show-feedback="false" @submit.prevent="submitRenameIcon">
+      <NForm :show-feedback="false" @submit.prevent="submitEditIcon">
+        <NAlert v-if="editIconError" type="error" :show-icon="false" class="mb-3">
+          {{ editIconError }}
+        </NAlert>
         <NFormItem label="名称">
-          <NInput v-model:value="renameIconName" placeholder="请输入图标名称" />
+          <NInput v-model:value="editIconName" placeholder="请输入图标名称" />
+        </NFormItem>
+        <NFormItem label="关键词">
+          <IconKeywordsInput v-model="editIconKeywords" @clear="editIconKeywords = []" />
         </NFormItem>
       </NForm>
     </NModal>

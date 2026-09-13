@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useMutation } from '@pinia/colada'
+import { useMutation, useQueryCache } from '@pinia/colada'
 import {
   NAlert,
   NButton,
@@ -15,9 +15,16 @@ import {
   NUploadDragger,
   type UploadFileInfo,
 } from 'naive-ui'
-import type { CustomIconDuplicateStrategy, CustomIconUploadResponse } from '@rev30/contracts'
+import {
+  customIconKeywordsSchema,
+  type CustomIconDuplicateStrategy,
+  type CustomIconUploadMetadata,
+  type CustomIconUploadResponse,
+} from '@rev30/contracts'
 import { uploadCustomIcons } from './requests'
 import { getErrorMessage } from '../../utils/error'
+import { refreshCustomIconCaches } from './cache'
+import IconKeywordsInput from './IconKeywordsInput.vue'
 
 const props = defineProps<{
   prefix: string | null
@@ -29,10 +36,17 @@ const emit = defineEmits<{
   uploaded: [result: CustomIconUploadResponse]
 }>()
 
+const queryCache = useQueryCache()
 const drawerSessionId = ref(0)
 
 const duplicateStrategy = ref<CustomIconDuplicateStrategy>('skip')
 const fileList = ref<UploadFileInfo[]>([])
+type FileKeywordState = {
+  keywords: string[]
+  touched: boolean
+  error: string | null
+}
+const fileKeywordStates = ref(new Map<string, FileKeywordState>())
 
 const uploadError = ref<string | null>(null)
 const uploadResult = ref<CustomIconUploadResponse | null>(null)
@@ -47,16 +61,23 @@ const { isLoading: isUploading, ...uploadMutation } = useMutation({
     prefix,
     duplicateStrategy,
     files,
+    metadata,
   }: {
     prefix: string
     duplicateStrategy: CustomIconDuplicateStrategy
     files: File[]
+    metadata?: CustomIconUploadMetadata
   }) =>
     uploadCustomIcons(prefix, {
       duplicateStrategy,
       files,
+      ...(metadata === undefined ? {} : { metadata }),
     }),
   onSuccess(result, { prefix }, { sessionId }) {
+    if (result.created.length > 0 || result.replaced.length > 0) {
+      void refreshCustomIconCaches(queryCache)
+    }
+
     if (!show.value || props.prefix !== prefix || sessionId !== drawerSessionId.value) {
       return
     }
@@ -79,7 +100,10 @@ const { isLoading: isUploading, ...uploadMutation } = useMutation({
 
 function handleSubmit() {
   const prefix = props.prefix
-  const files = fileList.value.map((item) => item.file).filter((file) => file instanceof File)
+  const fileItems = fileList.value.filter(
+    (item): item is UploadFileInfo & { file: File } => item.file instanceof File,
+  )
+  const files = fileItems.map((item) => item.file)
 
   if (prefix === null || files.length === 0 || isUploading.value) {
     return
@@ -87,11 +111,61 @@ function handleSubmit() {
 
   uploadError.value = null
   uploadResult.value = null
+  const metadata: CustomIconUploadMetadata = []
+  let hasEditedKeywords = false
+
+  for (const item of fileItems) {
+    const state = fileKeywordStates.value.get(item.id)
+    if (state === undefined || !state.touched) {
+      metadata.push({})
+      continue
+    }
+
+    const result = customIconKeywordsSchema.safeParse(state.keywords)
+    if (!result.success) {
+      state.error = result.error.issues[0]?.message ?? '关键词无效'
+      return
+    }
+
+    state.keywords = result.data
+    state.error = null
+    hasEditedKeywords = true
+    metadata.push({ keywords: result.data })
+  }
+
   uploadMutation.mutate({
     prefix,
     duplicateStrategy: duplicateStrategy.value,
     files,
+    ...(hasEditedKeywords ? { metadata } : {}),
   })
+}
+
+function handleFileListUpdate(nextFileList: UploadFileInfo[]) {
+  const nextStates = new Map<string, FileKeywordState>()
+
+  for (const item of nextFileList) {
+    nextStates.set(
+      item.id,
+      fileKeywordStates.value.get(item.id) ?? { keywords: [], touched: false, error: null },
+    )
+  }
+
+  fileList.value = nextFileList
+  fileKeywordStates.value = nextStates
+}
+
+function updateKeywords(fileId: string, keywords: string[]) {
+  const state = fileKeywordStates.value.get(fileId)
+  if (state === undefined) return
+
+  state.keywords = keywords
+  state.touched = true
+  state.error = null
+}
+
+function clearKeywords(fileId: string) {
+  updateKeywords(fileId, [])
 }
 
 watch(
@@ -104,6 +178,7 @@ watch(
     drawerSessionId.value += 1
     duplicateStrategy.value = 'skip'
     fileList.value = []
+    fileKeywordStates.value = new Map()
     uploadError.value = null
     uploadResult.value = null
     uploadMutation.reset()
@@ -146,7 +221,8 @@ watch(
               accept=".svg,image/svg+xml"
               multiple
               :default-upload="false"
-              v-model:file-list="fileList"
+              :file-list="fileList"
+              @update:file-list="handleFileListUpdate"
             >
               <NUploadDragger>
                 <div
@@ -158,6 +234,31 @@ watch(
               </NUploadDragger>
             </NUpload>
           </NFormItem>
+
+          <div v-if="fileList.length > 0" class="space-y-3">
+            <div
+              v-for="item in fileList"
+              :key="item.id"
+              data-test="icon-upload-file"
+              :data-file-id="item.id"
+              class="rounded-ui border border-stone-200 p-3 dark:border-zinc-800"
+            >
+              <div class="mb-2 truncate text-sm font-medium" :title="item.name">
+                {{ item.name }}
+              </div>
+              <div class="mb-2 text-xs text-stone-500 dark:text-zinc-400">
+                关键词（可选），最多 20 项，每项最多 40 个字符
+              </div>
+              <IconKeywordsInput
+                :model-value="fileKeywordStates.get(item.id)?.keywords ?? []"
+                @update:model-value="(keywords) => updateKeywords(item.id, keywords)"
+                @clear="clearKeywords(item.id)"
+              />
+              <div v-if="fileKeywordStates.get(item.id)?.error" class="text-error mt-1 text-xs">
+                {{ fileKeywordStates.get(item.id)?.error }}
+              </div>
+            </div>
+          </div>
 
           <div
             v-if="uploadResult"

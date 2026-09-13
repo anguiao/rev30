@@ -81,9 +81,12 @@ export function parseIconCursor(
 ): IconCursorTuple | undefined {
   if (!cursor) return undefined
   if (cursor.length > ICON_CURSOR_MAX_LENGTH) throw new InvalidIconCursorError()
+  if (!/^[A-Za-z0-9_-]+$/.test(cursor)) throw new InvalidIconCursorError()
 
   try {
-    const parsed = cursorSchema.parse(JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')))
+    const decoded = Buffer.from(cursor, 'base64url')
+    if (decoded.toString('base64url') !== cursor) throw new InvalidIconCursorError()
+    const parsed = cursorSchema.parse(JSON.parse(decoded.toString('utf8')))
     if (
       parsed.mode !== binding.mode ||
       parsed.query !== normalizeSearchText(binding.query) ||

@@ -1,5 +1,9 @@
-import { describe, expect } from 'vitest'
+import { PGlite } from '@electric-sql/pglite'
+import { drizzle } from 'drizzle-orm/pglite'
+import { describe, expect, test } from 'vitest'
 import { iconSearchDocuments, iconSearchIndexState } from '../../../../src/db/schema'
+import { migratePGlite } from '../../../../src/db/migrate'
+import { relations } from '../../../../src/db/relations'
 import {
   replaceIconSearchDocuments,
   searchIconDocuments,
@@ -165,12 +169,16 @@ describe('database icon search', () => {
         searchDataVersion: 'data-v1',
         rulesVersion: '1',
       })
-      const complete = await searchIconDocuments(db, { query: 'cam', source: 'builtin', limit: 20 })
+      const complete = await searchIconDocuments(db, {
+        query: 'camera',
+        source: 'builtin',
+        limit: 20,
+      })
       const paged: string[] = []
       let cursor: string | undefined
       do {
         const page = await searchIconDocuments(db, {
-          query: 'cam',
+          query: 'camera',
           source: 'builtin',
           limit: 1,
           ...(cursor ? { cursor } : {}),
@@ -215,6 +223,56 @@ describe('database icon search', () => {
             .nextCursor!,
         }),
       ).rejects.toBeInstanceOf(InvalidIconCursorError)
+      const validCursor = (
+        await searchIconDocuments(db, { query: 'camera', source: 'builtin', limit: 1 })
+      ).nextCursor!
+      await expect(
+        searchIconDocuments(db, {
+          query: 'camera',
+          source: 'builtin',
+          limit: 1,
+          cursor: `${validCursor.slice(0, 2)}!${validCursor.slice(2)}`,
+        }),
+      ).rejects.toBeInstanceOf(InvalidIconCursorError)
     },
   )
+
+  test('returns documents and index version from the same committed snapshot', async () => {
+    const client = await PGlite.create()
+    await migratePGlite(client)
+    const database = drizzle({ client, relations })
+    await replaceIconSearchDocuments(database, fixtures, {
+      indexVersion: 'index-v1',
+      iconPackageVersion: 'icons-v1',
+      searchDataVersion: 'data-v1',
+      rulesVersion: '1',
+    })
+    const replacement = fixtures.map((fixture) => ({
+      ...fixture,
+      id: fixture.id.replace(':', ':next-'),
+      name: `next-${fixture.name}`,
+      exactPhrases: [`next-${fixture.name}`],
+      fullTokens: ['next', ...fixture.fullTokens],
+      primaryEnglishTerms: ['next', ...fixture.primaryEnglishTerms],
+    }))
+    const [result] = await Promise.all([
+      searchIconDocuments(database, { query: 'camera', limit: 20 }),
+      replaceIconSearchDocuments(database, replacement, {
+        indexVersion: 'index-v2',
+        iconPackageVersion: 'icons-v1',
+        searchDataVersion: 'data-v2',
+        rulesVersion: '1',
+      }),
+    ])
+    expect(result).toMatchObject({
+      indexVersion: 'index-v1',
+      rows: [
+        { id: 'lucide:camera' },
+        { id: 'tabler:camera' },
+        { id: 'lucide:camera-box' },
+        { id: 'lucide:cameraman' },
+      ],
+    })
+    await client.close()
+  })
 })

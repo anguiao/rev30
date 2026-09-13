@@ -1,6 +1,11 @@
 import { sql } from 'drizzle-orm'
 import { describe, expect } from 'vitest'
-import { customIconSetIcons, iconSearchDocuments, iconSearchIndexState } from '../../src/db/schema'
+import {
+  customIconSetIcons,
+  iconSearchDocuments,
+  iconSearchDocumentsStaging,
+  iconSearchIndexState,
+} from '../../src/db/schema'
 import { dbTest } from '../fixtures/database'
 
 describe('icon search migration', () => {
@@ -9,6 +14,7 @@ describe('icon search migration', () => {
     async ({ db }) => {
       await expect(db.select().from(customIconSetIcons).limit(0)).resolves.toEqual([])
       await expect(db.select().from(iconSearchDocuments)).resolves.toEqual([])
+      await expect(db.select().from(iconSearchDocumentsStaging)).resolves.toEqual([])
       await expect(db.select().from(iconSearchIndexState)).resolves.toEqual([])
       const indexes = await db.execute<{ name: string }>(sql`
       select indexname as name from pg_indexes
@@ -21,6 +27,25 @@ describe('icon search migration', () => {
           'icon_search_documents_search_vector_gin',
           'icon_search_documents_source_prefix_id_idx',
         ]),
+      )
+      const documentColumns = await db.execute<{
+        tableName: string
+        columnName: string
+        columnDefault: string | null
+      }>(sql`
+        select table_name as "tableName", column_name as "columnName",
+          column_default as "columnDefault"
+        from information_schema.columns
+        where table_name in ('icon_search_documents', 'icon_search_documents_staging')
+        order by table_name, ordinal_position
+      `)
+      const comparableColumns = (tableName: string) =>
+        documentColumns.rows
+          .filter((column) => column.tableName === tableName)
+          .map(({ columnName, columnDefault }) => ({ columnName, columnDefault }))
+          .sort((left, right) => left.columnName.localeCompare(right.columnName))
+      expect(comparableColumns('icon_search_documents_staging')).toEqual(
+        comparableColumns('icon_search_documents'),
       )
       const keywords = await db.execute<{
         dataType: string

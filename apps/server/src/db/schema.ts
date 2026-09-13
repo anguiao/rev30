@@ -848,20 +848,25 @@ export const customIconSetIcons = pgTable(
   ],
 )
 
-export const iconSearchDocuments = pgTable(
-  'icon_search_documents',
-  {
+function iconSearchDocumentColumns() {
+  return {
     id: text('id').primaryKey(),
     prefix: text('prefix').notNull(),
     name: text('name').notNull(),
     source: text('source', { enum: ['builtin', 'custom'] }).notNull(),
     collection: text('collection').notNull(),
     palette: boolean('palette').notNull(),
+    preference: integer('preference').notNull().default(0),
     customIconId: uuid('custom_icon_id'),
     exactPhrases: text('exact_phrases').array().notNull(),
     fullTokens: text('full_tokens').array().notNull(),
     searchVector: tsvector('search_vector').notNull(),
-  },
+  }
+}
+
+export const iconSearchDocuments = pgTable(
+  'icon_search_documents',
+  iconSearchDocumentColumns(),
   (table) => [
     index('icon_search_documents_full_tokens_gin').using('gin', table.fullTokens),
     index('icon_search_documents_exact_phrases_gin').using('gin', table.exactPhrases),
@@ -873,6 +878,32 @@ export const iconSearchDocuments = pgTable(
     check('icon_search_documents_source_check', sql`${table.source} IN ('builtin', 'custom')`),
     check(
       'icon_search_documents_custom_id_check',
+      sql`(${table.source} = 'builtin' AND ${table.customIconId} IS NULL) OR (${table.source} = 'custom' AND ${table.customIconId} IS NOT NULL)`,
+    ),
+  ],
+)
+
+export const iconSearchDocumentsStaging = pgTable(
+  'icon_search_documents_staging',
+  iconSearchDocumentColumns(),
+  (table) => [
+    index('icon_search_documents_staging_full_tokens_gin').using('gin', table.fullTokens),
+    index('icon_search_documents_staging_exact_phrases_gin').using('gin', table.exactPhrases),
+    index('icon_search_documents_staging_search_vector_gin').using('gin', table.searchVector),
+    index('icon_search_documents_staging_source_prefix_id_idx').on(
+      table.source,
+      table.prefix,
+      table.id,
+    ),
+    uniqueIndex('icon_search_documents_staging_custom_icon_id_unique')
+      .on(table.customIconId)
+      .where(sql`${table.customIconId} IS NOT NULL`),
+    check(
+      'icon_search_documents_staging_source_check',
+      sql`${table.source} IN ('builtin', 'custom')`,
+    ),
+    check(
+      'icon_search_documents_staging_custom_id_check',
       sql`(${table.source} = 'builtin' AND ${table.customIconId} IS NULL) OR (${table.source} = 'custom' AND ${table.customIconId} IS NOT NULL)`,
     ),
   ],

@@ -33,6 +33,7 @@ export async function prepareIconSearchIndex(
   input: {
     manifest: IconSearchTargetManifest
     readDocuments: () => Promise<BuiltinIconSearchDocument[]>
+    onCleanupError?: (error: Error) => void
   },
 ) {
   const committed = await getCommittedIconSearchState(database)
@@ -58,6 +59,12 @@ export async function prepareIconSearchIndex(
     runtimes.set(database as object, { status: 'ready', compatible: true })
     return 'updated' as const
   } catch (error) {
+    const current = await getCommittedIconSearchState(database)
+    if (current?.indexVersion === input.manifest.indexVersion) {
+      input.onCleanupError?.(error instanceof Error ? error : new Error(String(error)))
+      runtimes.set(database as object, { status: 'ready', compatible: true })
+      return 'updated' as const
+    }
     runtimes.set(database as object, { status: 'failed', compatible })
     throw error
   }
@@ -70,6 +77,7 @@ export function startDefaultIconSearchIndexPreparation(
     installedIconPackageVersion: string
     artifactDirectory?: string
     loadManifest?: () => Promise<IconSearchRuntimeManifest>
+    readDocuments?: () => Promise<BuiltinIconSearchDocument[]>
   },
 ) {
   const directory = input.artifactDirectory ?? getDefaultIconSearchArtifactDirectory()
@@ -93,12 +101,17 @@ export function startDefaultIconSearchIndexPreparation(
       }
       await prepareIconSearchIndex(database, {
         manifest,
-        readDocuments: async () => {
-          const documents: BuiltinIconSearchDocument[] = []
-          for await (const document of iterateIconSearchArtifacts(directory, manifest))
-            documents.push(document)
-          return documents
+        onCleanupError: (error) => {
+          input.logger.error({ errorMessage: error.message }, 'icon search index cleanup failed')
         },
+        readDocuments:
+          input.readDocuments ??
+          (async () => {
+            const documents: BuiltinIconSearchDocument[] = []
+            for await (const document of iterateIconSearchArtifacts(directory, manifest))
+              documents.push(document)
+            return documents
+          }),
       })
     } catch (error) {
       runtimes.set(database as object, { status: 'failed', compatible })

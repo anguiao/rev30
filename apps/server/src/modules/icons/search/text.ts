@@ -1,4 +1,4 @@
-export const ICON_SEARCH_RULES_VERSION = '1'
+export const ICON_SEARCH_RULES_VERSION = '2'
 
 const validCharacterPattern = /[\p{L}\p{N}]/u
 const asciiEnglishTermPattern = /^[a-z]+$/

@@ -245,6 +245,16 @@ export async function buildIconSearchArtifacts(options: {
   const excluded: ExcludedMaintainedRecord[] = []
   const documentsByPrefix = new Map<string, BuiltinIconSearchDocument[]>()
   const collectionByPrefix = new Map(options.collections.map((entry) => [entry.prefix, entry]))
+  const collectionNamesByPrefix = new Map(
+    options.collections.map((collection) => [
+      collection.prefix,
+      new Set([
+        ...collection.icons,
+        ...(collection.hidden ?? []),
+        ...Object.keys(collection.aliases),
+      ]),
+    ]),
+  )
   const englishByIcon = new Map<string, MaintainedEnglishRecord[]>()
   const categoriesByIcon = new Map<string, MaintainedEnglishRecord[]>()
   const translationsByIcon = new Map<string, MaintainedIconTranslationRecord[]>()
@@ -274,13 +284,7 @@ export async function buildIconSearchArtifacts(options: {
     const prefix = colon < 0 ? '' : record.owner.slice(0, colon)
     const ownerName = colon < 0 ? '' : record.owner.slice(colon + 1)
     const collection = collectionByPrefix.get(prefix)
-    const iconNames = collection
-      ? new Set([
-          ...collection.icons,
-          ...(collection.hidden ?? []),
-          ...Object.keys(collection.aliases),
-        ])
-      : new Set<string>()
+    const iconNames = collectionNamesByPrefix.get(prefix) ?? new Set<string>()
     const validOwner = iconNames.has(ownerName)
     const nameText = deriveSearchText(ownerName)
     const sourceText = deriveSearchText(record.source)
@@ -308,14 +312,7 @@ export async function buildIconSearchArtifacts(options: {
       const colon = record.owner.indexOf(':')
       const prefix = colon < 0 ? '' : record.owner.slice(0, colon)
       const name = colon < 0 ? '' : record.owner.slice(colon + 1)
-      const collection = collectionByPrefix.get(prefix)
-      const names = collection
-        ? new Set([
-            ...collection.icons,
-            ...(collection.hidden ?? []),
-            ...Object.keys(collection.aliases),
-          ])
-        : new Set<string>()
+      const names = collectionNamesByPrefix.get(prefix) ?? new Set<string>()
       const nameText = deriveSearchText(name)
       const sourceText = deriveSearchText(record.source)
       const validSource =

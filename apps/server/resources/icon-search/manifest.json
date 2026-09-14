@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "iconPackageVersion": "2.2.525",
-  "dataVersion": "chinese-1",
+  "dataVersion": "chinese-2",
   "files": [
     {
       "kind": "english",
@@ -16,12 +16,32 @@
     {
       "kind": "translations",
       "path": "translations/lucide.jsonl",
-      "checksum": "f29afee0bbd19177a49c5984d78c9d48a9d73d8f1aba5e7cc086efa739c0e2fa"
+      "checksum": "a95d4abca6194d9f9cd2b7b81864954b1c09f2dd4c0b41ea0d6477aa609d680c"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/material-symbols.jsonl",
+      "checksum": "0e8aa0826194abdeca3506d76136e906ab607a2a8782484450c0f18bad1fdb16"
     },
     {
       "kind": "translations",
       "path": "translations/mdi.jsonl",
-      "checksum": "a960e75d48930d1a259902a207c745df10c31608f2ac4fe7184f6ccb068dd4b1"
+      "checksum": "239e401bf70d40288fb695559edffaaf44c3ed7366bad135e335bc228b2e7424"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/ph.jsonl",
+      "checksum": "55c687162bb1747db5a5ca7fd376ddbcfb54b83ecd13d931b19df87d3ba898de"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/solar.jsonl",
+      "checksum": "67a0b73bd56316554d4ab5e4d4a368f85eb0a5bcf3c83051066d45efdfa6d908"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/tabler.jsonl",
+      "checksum": "2bfa46de42b4db8d95ef26bffb5e8feb595e603d06c09356223563611dafa38a"
     }
   ]
 }

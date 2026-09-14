@@ -1,0 +1,41 @@
+{"kind":"icon","owner":"nonicons:angular-16","source":"angular","translations":["角形"]}
+{"kind":"icon","owner":"nonicons:c-sharp-16","source":"sharp","translations":["锐角"]}
+{"kind":"icon","owner":"nonicons:capacitor-16","source":"capacitor","translations":["电容器"]}
+{"kind":"icon","owner":"nonicons:class-16","source":"class","translations":["类别"]}
+{"kind":"icon","owner":"nonicons:constant-16","source":"constant","translations":["常量"]}
+{"kind":"icon","owner":"nonicons:constant-16","source":"constant-16","translations":["常量 16"]}
+{"kind":"icon","owner":"nonicons:css-16","source":"css","translations":["层叠样式表"]}
+{"kind":"icon","owner":"nonicons:dart-16","source":"dart","translations":["飞镖"]}
+{"kind":"icon","owner":"nonicons:error-16","source":"error","translations":["错误"]}
+{"kind":"icon","owner":"nonicons:field-16","source":"field","translations":["字段"]}
+{"kind":"icon","owner":"nonicons:html-16","source":"html","translations":["超文本标记语言"]}
+{"kind":"icon","owner":"nonicons:html-16","source":"html-16","translations":["超文本标记语言 16"]}
+{"kind":"icon","owner":"nonicons:interface-16","source":"interface","translations":["界面"]}
+{"kind":"icon","owner":"nonicons:json-16","source":"json","translations":["JavaScript 对象表示法"]}
+{"kind":"icon","owner":"nonicons:keyword-16","source":"keyword","translations":["关键词"]}
+{"kind":"icon","owner":"nonicons:layout-16","source":"layout","translations":["布局"]}
+{"kind":"icon","owner":"nonicons:loading-16","source":"loading","translations":["加载"]}
+{"kind":"icon","owner":"nonicons:next-16","source":"next","translations":["下一个"]}
+{"kind":"icon","owner":"nonicons:node-16","source":"node","translations":["节点"]}
+{"kind":"icon","owner":"nonicons:not-found-16","source":"found","translations":["已找到"]}
+{"kind":"icon","owner":"nonicons:not-found-16","source":"not","translations":["未"]}
+{"kind":"icon","owner":"nonicons:snippet-16","source":"snippet","translations":["代码片段"]}
+{"kind":"icon","owner":"nonicons:struct-16","source":"struct","translations":["结构体"]}
+{"kind":"icon","owner":"nonicons:template-16","source":"template","translations":["模板"]}
+{"kind":"icon","owner":"nonicons:type-16","source":"type","translations":["类型"]}
+{"kind":"icon","owner":"nonicons:variable-16","source":"variable","translations":["变量"]}
+{"kind":"icon","owner":"nonicons:vim-command-mode-16","source":"command","translations":["命令"]}
+{"kind":"icon","owner":"nonicons:vim-command-mode-16","source":"mode","translations":["模式"]}
+{"kind":"icon","owner":"nonicons:vim-insert-mode-16","source":"insert","translations":["插入"]}
+{"kind":"icon","owner":"nonicons:vim-insert-mode-16","source":"mode","translations":["模式"]}
+{"kind":"icon","owner":"nonicons:vim-normal-mode-16","source":"mode","translations":["模式"]}
+{"kind":"icon","owner":"nonicons:vim-normal-mode-16","source":"normal","translations":["正常"]}
+{"kind":"icon","owner":"nonicons:vim-replace-mode-16","source":"mode","translations":["模式"]}
+{"kind":"icon","owner":"nonicons:vim-replace-mode-16","source":"replace","translations":["替换"]}
+{"kind":"icon","owner":"nonicons:vim-select-mode-16","source":"mode","translations":["模式"]}
+{"kind":"icon","owner":"nonicons:vim-select-mode-16","source":"select","translations":["选择"]}
+{"kind":"icon","owner":"nonicons:vim-terminal-mode-16","source":"mode","translations":["模式"]}
+{"kind":"icon","owner":"nonicons:vim-terminal-mode-16","source":"terminal","translations":["终端"]}
+{"kind":"icon","owner":"nonicons:vim-visual-mode-16","source":"mode","translations":["模式"]}
+{"kind":"icon","owner":"nonicons:vim-visual-mode-16","source":"visual","translations":["视觉"]}
+{"kind":"icon","owner":"nonicons:yarn-16","source":"yarn","translations":["毛线"]}

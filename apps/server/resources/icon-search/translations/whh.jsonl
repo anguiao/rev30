@@ -1,0 +1,1867 @@
+{"kind":"icon","owner":"whh:a-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:a-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:aaabattery","source":"aaabattery","translations":["电池"]}
+{"kind":"icon","owner":"whh:abacus","source":"abacus","translations":["算盘"]}
+{"kind":"icon","owner":"whh:accountfilter","source":"accountfilter","translations":["账户 筛选"]}
+{"kind":"icon","owner":"whh:acorn","source":"acorn","translations":["橡子"]}
+{"kind":"icon","owner":"whh:acsource","source":"acsource","translations":["交流电源"]}
+{"kind":"icon","owner":"whh:addalarm","source":"addalarm","translations":["添加 闹钟"]}
+{"kind":"icon","owner":"whh:addcomment","source":"addcomment","translations":["添加 评论"]}
+{"kind":"icon","owner":"whh:addfolderalt","source":"addfolderalt","translations":["添加 文件夹"]}
+{"kind":"icon","owner":"whh:addfriend","source":"addfriend","translations":["添加好友"]}
+{"kind":"icon","owner":"whh:address","source":"address","translations":["地址"]}
+{"kind":"icon","owner":"whh:addshape","source":"addshape","translations":["添加 形状"]}
+{"kind":"icon","owner":"whh:addtags","source":"addtags","translations":["添加 标签"]}
+{"kind":"icon","owner":"whh:addtocart","source":"addtocart","translations":["加入购物车"]}
+{"kind":"icon","owner":"whh:addtolist","source":"addtolist","translations":["加入列表"]}
+{"kind":"icon","owner":"whh:adduseralt","source":"adduseralt","translations":["添加 用户"]}
+{"kind":"icon","owner":"whh:adjust","source":"adjust","translations":["调节"]}
+{"kind":"icon","owner":"whh:adobe","source":"adobe","translations":["奥多比"]}
+{"kind":"icon","owner":"whh:ads","source":"ads","translations":["广告"]}
+{"kind":"icon","owner":"whh:affiliate","source":"affiliate","translations":["关联"]}
+{"kind":"icon","owner":"whh:alarm","source":"alarm","translations":["闹钟"]}
+{"kind":"icon","owner":"whh:alarmalt","source":"alarmalt","translations":["闹钟"]}
+{"kind":"icon","owner":"whh:alarmclock","source":"alarmclock","translations":["闹钟"]}
+{"kind":"icon","owner":"whh:album","source":"album","translations":["相册"]}
+{"kind":"icon","owner":"whh:alertalt","source":"alertalt","translations":["警报"]}
+{"kind":"icon","owner":"whh:alertpay","source":"alertpay","translations":["警报 支付"]}
+{"kind":"icon","owner":"whh:algorhythm","source":"algorhythm","translations":["算法"]}
+{"kind":"icon","owner":"whh:alienship","source":"alienship","translations":["外星人 船舶"]}
+{"kind":"icon","owner":"whh:alignbottomedge","source":"alignbottomedge","translations":["对齐 底部 边缘"]}
+{"kind":"icon","owner":"whh:aligncenter","source":"aligncenter","translations":["对齐 居中"]}
+{"kind":"icon","owner":"whh:alignhorizontalcenter","source":"alignhorizontalcenter","translations":["对齐 水平 居中"]}
+{"kind":"icon","owner":"whh:alignjustify","source":"alignjustify","translations":["对齐 两端对齐"]}
+{"kind":"icon","owner":"whh:alignleft","source":"alignleft","translations":["对齐 左"]}
+{"kind":"icon","owner":"whh:alignleftedge","source":"alignleftedge","translations":["对齐 左 边缘"]}
+{"kind":"icon","owner":"whh:alignright","source":"alignright","translations":["对齐 右"]}
+{"kind":"icon","owner":"whh:alignrightedge","source":"alignrightedge","translations":["对齐 右 边缘"]}
+{"kind":"icon","owner":"whh:aligntopedge","source":"aligntopedge","translations":["对齐 顶部 边缘"]}
+{"kind":"icon","owner":"whh:alignverticalcenter","source":"alignverticalcenter","translations":["对齐 垂直 居中"]}
+{"kind":"icon","owner":"whh:amazon","source":"amazon","translations":["亚马逊"]}
+{"kind":"icon","owner":"whh:analogdown","source":"analogdown","translations":["模拟 下"]}
+{"kind":"icon","owner":"whh:analogleft","source":"analogleft","translations":["模拟 左"]}
+{"kind":"icon","owner":"whh:analogright","source":"analogright","translations":["模拟 右"]}
+{"kind":"icon","owner":"whh:analogup","source":"analogup","translations":["模拟向上"]}
+{"kind":"icon","owner":"whh:analytics","source":"analytics","translations":["分析"]}
+{"kind":"icon","owner":"whh:analyticsalt","source":"analyticsalt","translations":["分析"]}
+{"kind":"icon","owner":"whh:anchor","source":"anchor","translations":["锚"]}
+{"kind":"icon","owner":"whh:android","source":"android","translations":["安卓"]}
+{"kind":"icon","owner":"whh:angle","source":"angle","translations":["角度"]}
+{"kind":"icon","owner":"whh:angrybirds","source":"angrybirds","translations":["愤怒的小鸟"]}
+{"kind":"icon","owner":"whh:antenna","source":"antenna","translations":["天线"]}
+{"kind":"icon","owner":"whh:antivirus","source":"antivirus","translations":["防病毒"]}
+{"kind":"icon","owner":"whh:antivirusalt","source":"antivirusalt","translations":["防病毒"]}
+{"kind":"icon","owner":"whh:aperture","source":"aperture","translations":["光圈"]}
+{"kind":"icon","owner":"whh:apple","source":"apple","translations":["苹果"]}
+{"kind":"icon","owner":"whh:appointment","source":"appointment","translations":["预约"]}
+{"kind":"icon","owner":"whh:arch","source":"arch","translations":["拱门"]}
+{"kind":"icon","owner":"whh:archive","source":"archive","translations":["归档"]}
+{"kind":"icon","owner":"whh:arrowdown","source":"arrowdown","translations":["箭头 下"]}
+{"kind":"icon","owner":"whh:arrowleft","source":"arrowleft","translations":["箭头 左"]}
+{"kind":"icon","owner":"whh:arrowright","source":"arrowright","translations":["箭头 右"]}
+{"kind":"icon","owner":"whh:arrowup","source":"arrowup","translations":["向上箭头"]}
+{"kind":"icon","owner":"whh:asterisk","source":"asterisk","translations":["星号"]}
+{"kind":"icon","owner":"whh:asteroid","source":"asteroid","translations":["小行星"]}
+{"kind":"icon","owner":"whh:astronaut","source":"astronaut","translations":["宇航员"]}
+{"kind":"icon","owner":"whh:at","source":"at","translations":["艾特"]}
+{"kind":"icon","owner":"whh:atari","source":"atari","translations":["雅达利"]}
+{"kind":"icon","owner":"whh:atom","source":"atom","translations":["原子"]}
+{"kind":"icon","owner":"whh:atoz","source":"atoz","translations":["字母顺序"]}
+{"kind":"icon","owner":"whh:authentication","source":"authentication","translations":["身份验证"]}
+{"kind":"icon","owner":"whh:autoflash","source":"autoflash","translations":["自动 闪光灯"]}
+{"kind":"icon","owner":"whh:automobile","source":"automobile","translations":["汽车"]}
+{"kind":"icon","owner":"whh:autorespond","source":"autorespond","translations":["自动回复"]}
+{"kind":"icon","owner":"whh:avatar","source":"avatar","translations":["头像"]}
+{"kind":"icon","owner":"whh:avataralt","source":"avataralt","translations":["头像"]}
+{"kind":"icon","owner":"whh:avengers","source":"avengers","translations":["复仇者联盟"]}
+{"kind":"icon","owner":"whh:avocado","source":"avocado","translations":["牛油果"]}
+{"kind":"icon","owner":"whh:axe","source":"axe","translations":["斧头"]}
+{"kind":"icon","owner":"whh:b-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:b-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:baby","source":"baby","translations":["婴儿"]}
+{"kind":"icon","owner":"whh:backup","source":"backup","translations":["备份"]}
+{"kind":"icon","owner":"whh:backupalt","source":"backupalt","translations":["备份"]}
+{"kind":"icon","owner":"whh:backupwizard","source":"backupwizard","translations":["备份 向导"]}
+{"kind":"icon","owner":"whh:backward","source":"backward","translations":["后退"]}
+{"kind":"icon","owner":"whh:bacon","source":"bacon","translations":["培根"]}
+{"kind":"icon","owner":"whh:bag","source":"bag","translations":["袋子"]}
+{"kind":"icon","owner":"whh:bait","source":"bait","translations":["诱饵"]}
+{"kind":"icon","owner":"whh:baloon","source":"baloon","translations":["气球"]}
+{"kind":"icon","owner":"whh:bamboo","source":"bamboo","translations":["竹子"]}
+{"kind":"icon","owner":"whh:banana","source":"banana","translations":["香蕉"]}
+{"kind":"icon","owner":"whh:bancircle","source":"bancircle","translations":["禁止 圆形"]}
+{"kind":"icon","owner":"whh:bandwidth","source":"bandwidth","translations":["带宽"]}
+{"kind":"icon","owner":"whh:bank","source":"bank","translations":["银行"]}
+{"kind":"icon","owner":"whh:banuser","source":"banuser","translations":["禁止 用户"]}
+{"kind":"icon","owner":"whh:banuseralt","source":"banuseralt","translations":["禁止 用户"]}
+{"kind":"icon","owner":"whh:barchart","source":"barchart","translations":["条形图"]}
+{"kind":"icon","owner":"whh:barchartalt","source":"barchartalt","translations":["条形图"]}
+{"kind":"icon","owner":"whh:barchartasc","source":"barchartasc","translations":["条形图"]}
+{"kind":"icon","owner":"whh:barchartdesc","source":"barchartdesc","translations":["条形图"]}
+{"kind":"icon","owner":"whh:barcode","source":"barcode","translations":["条形码"]}
+{"kind":"icon","owner":"whh:barrel","source":"barrel","translations":["木桶"]}
+{"kind":"icon","owner":"whh:basketball","source":"basketball","translations":["篮球"]}
+{"kind":"icon","owner":"whh:bat","source":"bat","translations":["蝙蝠"]}
+{"kind":"icon","owner":"whh:bathtub","source":"bathtub","translations":["浴缸"]}
+{"kind":"icon","owner":"whh:batman","source":"batman","translations":["蝙蝠侠"]}
+{"kind":"icon","owner":"whh:batteryaltcharging","source":"batteryaltcharging","translations":["电池 充电"]}
+{"kind":"icon","owner":"whh:batteryaltfull","source":"batteryaltfull","translations":["电池 满"]}
+{"kind":"icon","owner":"whh:batteryaltsixty","source":"batteryaltsixty","translations":["电池 六十"]}
+{"kind":"icon","owner":"whh:batteryaltthird","source":"batteryaltthird","translations":["电池"]}
+{"kind":"icon","owner":"whh:batterycharged","source":"batterycharged","translations":["电池 已充电"]}
+{"kind":"icon","owner":"whh:batterycharging","source":"batterycharging","translations":["电池 充电"]}
+{"kind":"icon","owner":"whh:batteryeighty","source":"batteryeighty","translations":["电池 八十"]}
+{"kind":"icon","owner":"whh:batteryempty","source":"batteryempty","translations":["电池"]}
+{"kind":"icon","owner":"whh:batteryforty","source":"batteryforty","translations":["电池 四十"]}
+{"kind":"icon","owner":"whh:batteryfull","source":"batteryfull","translations":["电池"]}
+{"kind":"icon","owner":"whh:batterysixty","source":"batterysixty","translations":["电池 六十"]}
+{"kind":"icon","owner":"whh:batterytwenty","source":"batterytwenty","translations":["电池 二十"]}
+{"kind":"icon","owner":"whh:beaker","source":"beaker","translations":["烧杯"]}
+{"kind":"icon","owner":"whh:beakeralt","source":"beakeralt","translations":["烧杯"]}
+{"kind":"icon","owner":"whh:bed","source":"bed","translations":["床"]}
+{"kind":"icon","owner":"whh:beer","source":"beer","translations":["啤酒"]}
+{"kind":"icon","owner":"whh:beeralt","source":"beeralt","translations":["啤酒"]}
+{"kind":"icon","owner":"whh:bell","source":"bell","translations":["铃铛"]}
+{"kind":"icon","owner":"whh:bellalt","source":"bellalt","translations":["铃铛"]}
+{"kind":"icon","owner":"whh:belt","source":"belt","translations":["腰带"]}
+{"kind":"icon","owner":"whh:bigger","source":"bigger","translations":["更大"]}
+{"kind":"icon","owner":"whh:bill","source":"bill","translations":["账单"]}
+{"kind":"icon","owner":"whh:binary","source":"binary","translations":["二进制"]}
+{"kind":"icon","owner":"whh:bing","source":"bing","translations":["必应"]}
+{"kind":"icon","owner":"whh:binoculars","source":"binoculars","translations":["双筒望远镜"]}
+{"kind":"icon","owner":"whh:biohazard","source":"biohazard","translations":["生物危害"]}
+{"kind":"icon","owner":"whh:birdhouse","source":"birdhouse","translations":["鸟屋"]}
+{"kind":"icon","owner":"whh:birthday","source":"birthday","translations":["生日"]}
+{"kind":"icon","owner":"whh:bishop","source":"bishop","translations":["主教"]}
+{"kind":"icon","owner":"whh:bitcoin","source":"bitcoin","translations":["比特币"]}
+{"kind":"icon","owner":"whh:bitcoinalt","source":"bitcoinalt","translations":["比特币 变体"]}
+{"kind":"icon","owner":"whh:bitcoinsquare","source":"bitcoinsquare","translations":["比特币 方形"]}
+{"kind":"icon","owner":"whh:blackberry","source":"blackberry","translations":["黑莓"]}
+{"kind":"icon","owner":"whh:blankstare","source":"blankstare","translations":["呆滞表情"]}
+{"kind":"icon","owner":"whh:bluetooth","source":"bluetooth","translations":["蓝牙"]}
+{"kind":"icon","owner":"whh:bluetoothconnected","source":"bluetoothconnected","translations":["蓝牙 已连接"]}
+{"kind":"icon","owner":"whh:boardgame","source":"boardgame","translations":["桌游"]}
+{"kind":"icon","owner":"whh:boat","source":"boat","translations":["船"]}
+{"kind":"icon","owner":"whh:bold","source":"bold","translations":["粗体"]}
+{"kind":"icon","owner":"whh:bomb","source":"bomb","translations":["炸弹"]}
+{"kind":"icon","owner":"whh:bone","source":"bone","translations":["骨骼"]}
+{"kind":"icon","owner":"whh:book","source":"book","translations":["书"]}
+{"kind":"icon","owner":"whh:bookalt","source":"bookalt","translations":["书"]}
+{"kind":"icon","owner":"whh:bookmark","source":"bookmark","translations":["书签"]}
+{"kind":"icon","owner":"whh:bookmarkalt","source":"bookmarkalt","translations":["书签"]}
+{"kind":"icon","owner":"whh:bookmarkfour","source":"bookmarkfour","translations":["书签 四"]}
+{"kind":"icon","owner":"whh:bookmarkthree","source":"bookmarkthree","translations":["书签 三"]}
+{"kind":"icon","owner":"whh:bookthree","source":"bookthree","translations":["书 三"]}
+{"kind":"icon","owner":"whh:boombox","source":"boombox","translations":["音响"]}
+{"kind":"icon","owner":"whh:bottle","source":"bottle","translations":["瓶子"]}
+{"kind":"icon","owner":"whh:bottomborder","source":"bottomborder","translations":["底部 边框"]}
+{"kind":"icon","owner":"whh:bow","source":"bow","translations":["弓"]}
+{"kind":"icon","owner":"whh:bowl","source":"bowl","translations":["碗"]}
+{"kind":"icon","owner":"whh:bowling","source":"bowling","translations":["保龄球"]}
+{"kind":"icon","owner":"whh:bowlingpins","source":"bowlingpins","translations":["保龄球瓶"]}
+{"kind":"icon","owner":"whh:bowtie","source":"bowtie","translations":["蝴蝶结"]}
+{"kind":"icon","owner":"whh:box","source":"box","translations":["盒子"]}
+{"kind":"icon","owner":"whh:boxbilling","source":"boxbilling","translations":["盒子 计费"]}
+{"kind":"icon","owner":"whh:boxing","source":"boxing","translations":["拳击"]}
+{"kind":"icon","owner":"whh:braces","source":"braces","translations":["花括号"]}
+{"kind":"icon","owner":"whh:braillea","source":"braillea","translations":["盲文 A"]}
+{"kind":"icon","owner":"whh:brailleb","source":"brailleb","translations":["盲文 B"]}
+{"kind":"icon","owner":"whh:braillec","source":"braillec","translations":["盲文 C"]}
+{"kind":"icon","owner":"whh:brailled","source":"brailled","translations":["盲文 D"]}
+{"kind":"icon","owner":"whh:braillee","source":"braillee","translations":["盲文 E"]}
+{"kind":"icon","owner":"whh:brailleeight","source":"brailleeight","translations":["盲文 八"]}
+{"kind":"icon","owner":"whh:braillef","source":"braillef","translations":["盲文 F"]}
+{"kind":"icon","owner":"whh:braillefive","source":"braillefive","translations":["盲文 五"]}
+{"kind":"icon","owner":"whh:braillefour","source":"braillefour","translations":["盲文 四"]}
+{"kind":"icon","owner":"whh:brailleg","source":"brailleg","translations":["盲文 G"]}
+{"kind":"icon","owner":"whh:brailleh","source":"brailleh","translations":["盲文 H"]}
+{"kind":"icon","owner":"whh:braillei","source":"braillei","translations":["盲文 I"]}
+{"kind":"icon","owner":"whh:braillej","source":"braillej","translations":["盲文 J"]}
+{"kind":"icon","owner":"whh:braillek","source":"braillek","translations":["盲文 K"]}
+{"kind":"icon","owner":"whh:braillel","source":"braillel","translations":["盲文 L"]}
+{"kind":"icon","owner":"whh:braillem","source":"braillem","translations":["盲文 M"]}
+{"kind":"icon","owner":"whh:braillen","source":"braillen","translations":["盲文 N"]}
+{"kind":"icon","owner":"whh:braillenine","source":"braillenine","translations":["盲文 九"]}
+{"kind":"icon","owner":"whh:brailleo","source":"brailleo","translations":["盲文 O"]}
+{"kind":"icon","owner":"whh:brailleone","source":"brailleone","translations":["盲文 一"]}
+{"kind":"icon","owner":"whh:braillep","source":"braillep","translations":["盲文 P"]}
+{"kind":"icon","owner":"whh:brailleq","source":"brailleq","translations":["盲文 Q"]}
+{"kind":"icon","owner":"whh:brailler","source":"brailler","translations":["盲文 R"]}
+{"kind":"icon","owner":"whh:brailles","source":"brailles","translations":["盲文 S"]}
+{"kind":"icon","owner":"whh:brailleseven","source":"brailleseven","translations":["盲文 七"]}
+{"kind":"icon","owner":"whh:braillesix","source":"braillesix","translations":["盲文 六"]}
+{"kind":"icon","owner":"whh:braillespace","source":"braillespace","translations":["盲文 空间"]}
+{"kind":"icon","owner":"whh:braillet","source":"braillet","translations":["盲文 T"]}
+{"kind":"icon","owner":"whh:braillethree","source":"braillethree","translations":["盲文 三"]}
+{"kind":"icon","owner":"whh:brailletwo","source":"brailletwo","translations":["盲文 二"]}
+{"kind":"icon","owner":"whh:brailleu","source":"brailleu","translations":["盲文 U"]}
+{"kind":"icon","owner":"whh:braillev","source":"braillev","translations":["盲文 V"]}
+{"kind":"icon","owner":"whh:braillew","source":"braillew","translations":["盲文 W"]}
+{"kind":"icon","owner":"whh:braillex","source":"braillex","translations":["盲文 X"]}
+{"kind":"icon","owner":"whh:brailley","source":"brailley","translations":["盲文 Y"]}
+{"kind":"icon","owner":"whh:braillez","source":"braillez","translations":["盲文 Z"]}
+{"kind":"icon","owner":"whh:braillezero","source":"braillezero","translations":["盲文 零"]}
+{"kind":"icon","owner":"whh:brain","source":"brain","translations":["大脑"]}
+{"kind":"icon","owner":"whh:branch","source":"branch","translations":["分支"]}
+{"kind":"icon","owner":"whh:bread","source":"bread","translations":["面包"]}
+{"kind":"icon","owner":"whh:breakable","source":"breakable","translations":["易碎"]}
+{"kind":"icon","owner":"whh:briefcase","source":"briefcase","translations":["公文包"]}
+{"kind":"icon","owner":"whh:briefcasethree","source":"briefcasethree","translations":["公文包 三"]}
+{"kind":"icon","owner":"whh:briefcasetwo","source":"briefcasetwo","translations":["公文包 二"]}
+{"kind":"icon","owner":"whh:brightness","source":"brightness","translations":["亮度"]}
+{"kind":"icon","owner":"whh:brightnessalt","source":"brightnessalt","translations":["亮度"]}
+{"kind":"icon","owner":"whh:brightnessaltauto","source":"brightnessaltauto","translations":["亮度 自动"]}
+{"kind":"icon","owner":"whh:brightnessaltfull","source":"brightnessaltfull","translations":["亮度 全"]}
+{"kind":"icon","owner":"whh:brightnessalthalf","source":"brightnessalthalf","translations":["亮度 半"]}
+{"kind":"icon","owner":"whh:brightnessfull","source":"brightnessfull","translations":["亮度"]}
+{"kind":"icon","owner":"whh:brightnesshalf","source":"brightnesshalf","translations":["亮度"]}
+{"kind":"icon","owner":"whh:bringforward","source":"bringforward","translations":["前移"]}
+{"kind":"icon","owner":"whh:bringtofront","source":"bringtofront","translations":["置于顶层"]}
+{"kind":"icon","owner":"whh:brokenheart","source":"brokenheart","translations":["心碎"]}
+{"kind":"icon","owner":"whh:brokenlink","source":"brokenlink","translations":["断开的链接"]}
+{"kind":"icon","owner":"whh:broom","source":"broom","translations":["扫帚"]}
+{"kind":"icon","owner":"whh:browser","source":"browser","translations":["浏览器"]}
+{"kind":"icon","owner":"whh:brush","source":"brush","translations":["画笔"]}
+{"kind":"icon","owner":"whh:bucket","source":"bucket","translations":["水桶"]}
+{"kind":"icon","owner":"whh:bug","source":"bug","translations":["虫子"]}
+{"kind":"icon","owner":"whh:building","source":"building","translations":["建筑"]}
+{"kind":"icon","owner":"whh:bullet","source":"bullet","translations":["项目符号"]}
+{"kind":"icon","owner":"whh:bullhorn","source":"bullhorn","translations":["扩音器"]}
+{"kind":"icon","owner":"whh:burstmode","source":"burstmode","translations":["连拍模式"]}
+{"kind":"icon","owner":"whh:bus","source":"bus","translations":["公交车"]}
+{"kind":"icon","owner":"whh:busalt","source":"busalt","translations":["公交车"]}
+{"kind":"icon","owner":"whh:business","source":"business","translations":["商务"]}
+{"kind":"icon","owner":"whh:businesscard","source":"businesscard","translations":["名片"]}
+{"kind":"icon","owner":"whh:businesscardalt","source":"businesscardalt","translations":["名片"]}
+{"kind":"icon","owner":"whh:butterfly","source":"butterfly","translations":["蝴蝶"]}
+{"kind":"icon","owner":"whh:butterflyalt","source":"butterflyalt","translations":["蝴蝶"]}
+{"kind":"icon","owner":"whh:buttona","source":"buttona","translations":["按钮 A"]}
+{"kind":"icon","owner":"whh:buttonb","source":"buttonb","translations":["按钮 B"]}
+{"kind":"icon","owner":"whh:buttonx","source":"buttonx","translations":["按钮 X"]}
+{"kind":"icon","owner":"whh:buttony","source":"buttony","translations":["按钮 Y"]}
+{"kind":"icon","owner":"whh:c-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:c-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:cactus","source":"cactus","translations":["仙人掌"]}
+{"kind":"icon","owner":"whh:calcdivide","source":"calcdivide","translations":["计算器 除法"]}
+{"kind":"icon","owner":"whh:calcequals","source":"calcequals","translations":["计算器 等于"]}
+{"kind":"icon","owner":"whh:calcminus","source":"calcminus","translations":["计算器 减法"]}
+{"kind":"icon","owner":"whh:calcmultiply","source":"calcmultiply","translations":["计算器 乘法"]}
+{"kind":"icon","owner":"whh:calcplus","source":"calcplus","translations":["计算器 加法"]}
+{"kind":"icon","owner":"whh:calculator","source":"calculator","translations":["计算器"]}
+{"kind":"icon","owner":"whh:calculatoralt","source":"calculatoralt","translations":["计算器"]}
+{"kind":"icon","owner":"whh:calendar","source":"calendar","translations":["日历"]}
+{"kind":"icon","owner":"whh:calendaralt","source":"calendaralt","translations":["日历"]}
+{"kind":"icon","owner":"whh:calendarthree","source":"calendarthree","translations":["日历 三"]}
+{"kind":"icon","owner":"whh:caligraphy","source":"caligraphy","translations":["书法"]}
+{"kind":"icon","owner":"whh:call","source":"call","translations":["呼叫"]}
+{"kind":"icon","owner":"whh:callalt","source":"callalt","translations":["呼叫"]}
+{"kind":"icon","owner":"whh:camcorder","source":"camcorder","translations":["摄像机"]}
+{"kind":"icon","owner":"whh:camel","source":"camel","translations":["骆驼"]}
+{"kind":"icon","owner":"whh:camera","source":"camera","translations":["相机"]}
+{"kind":"icon","owner":"whh:cameraflash","source":"cameraflash","translations":["相机 闪光灯"]}
+{"kind":"icon","owner":"whh:campfire","source":"campfire","translations":["营火"]}
+{"kind":"icon","owner":"whh:camping","source":"camping","translations":["露营"]}
+{"kind":"icon","owner":"whh:candle","source":"candle","translations":["蜡烛"]}
+{"kind":"icon","owner":"whh:candy","source":"candy","translations":["糖果"]}
+{"kind":"icon","owner":"whh:candycane","source":"candycane","translations":["拐杖糖"]}
+{"kind":"icon","owner":"whh:canister","source":"canister","translations":["罐"]}
+{"kind":"icon","owner":"whh:cannon","source":"cannon","translations":["加农炮"]}
+{"kind":"icon","owner":"whh:canvas","source":"canvas","translations":["画布"]}
+{"kind":"icon","owner":"whh:canvasrulers","source":"canvasrulers","translations":["画布 尺子"]}
+{"kind":"icon","owner":"whh:capacitator","source":"capacitator","translations":["电容器"]}
+{"kind":"icon","owner":"whh:capslock","source":"capslock","translations":["大写锁定"]}
+{"kind":"icon","owner":"whh:captainamerica","source":"captainamerica","translations":["美国队长"]}
+{"kind":"icon","owner":"whh:carbattery","source":"carbattery","translations":["汽车 电池"]}
+{"kind":"icon","owner":"whh:carrot","source":"carrot","translations":["胡萝卜"]}
+{"kind":"icon","owner":"whh:cartalt","source":"cartalt","translations":["购物车"]}
+{"kind":"icon","owner":"whh:cash","source":"cash","translations":["现金"]}
+{"kind":"icon","owner":"whh:cashregister","source":"cashregister","translations":["收银机"]}
+{"kind":"icon","owner":"whh:cassette","source":"cassette","translations":["磁带"]}
+{"kind":"icon","owner":"whh:cassettealt","source":"cassettealt","translations":["磁带"]}
+{"kind":"icon","owner":"whh:cat","source":"cat","translations":["猫"]}
+{"kind":"icon","owner":"whh:catface","source":"catface","translations":["猫 面孔"]}
+{"kind":"icon","owner":"whh:cctv","source":"cctv","translations":["监控摄像头"]}
+{"kind":"icon","owner":"whh:cd","source":"cd","translations":["光盘"]}
+{"kind":"icon","owner":"whh:ceilinglight","source":"ceilinglight","translations":["吊灯"]}
+{"kind":"icon","owner":"whh:cell","source":"cell","translations":["单元格"]}
+{"kind":"icon","owner":"whh:certificate","source":"certificate","translations":["证书"]}
+{"kind":"icon","owner":"whh:certificatealt","source":"certificatealt","translations":["证书"]}
+{"kind":"icon","owner":"whh:certificatethree","source":"certificatethree","translations":["证书 三"]}
+{"kind":"icon","owner":"whh:cgi","source":"cgi","translations":["公共网关接口"]}
+{"kind":"icon","owner":"whh:cgicenter","source":"cgicenter","translations":["公共网关接口中心"]}
+{"kind":"icon","owner":"whh:chair","source":"chair","translations":["椅子"]}
+{"kind":"icon","owner":"whh:chandelier","source":"chandelier","translations":["吊灯"]}
+{"kind":"icon","owner":"whh:charliechaplin","source":"charliechaplin","translations":["查理·卓别林"]}
+{"kind":"icon","owner":"whh:chat","source":"chat","translations":["聊天"]}
+{"kind":"icon","owner":"whh:checkbox","source":"checkbox","translations":["复选框"]}
+{"kind":"icon","owner":"whh:checkboxalt","source":"checkboxalt","translations":["复选框"]}
+{"kind":"icon","owner":"whh:checkin","source":"checkin","translations":["签到"]}
+{"kind":"icon","owner":"whh:checkinalt","source":"checkinalt","translations":["签到"]}
+{"kind":"icon","owner":"whh:checkmark","source":"checkmark","translations":["对勾"]}
+{"kind":"icon","owner":"whh:chef","source":"chef","translations":["厨师"]}
+{"kind":"icon","owner":"whh:cherry","source":"cherry","translations":["樱桃"]}
+{"kind":"icon","owner":"whh:cherryalt","source":"cherryalt","translations":["樱桃"]}
+{"kind":"icon","owner":"whh:chevrondown","source":"chevrondown","translations":["折线箭头 下"]}
+{"kind":"icon","owner":"whh:chevronleft","source":"chevronleft","translations":["折线箭头 左"]}
+{"kind":"icon","owner":"whh:chevronright","source":"chevronright","translations":["折线箭头 右"]}
+{"kind":"icon","owner":"whh:chevrons","source":"chevrons","translations":["双箭头"]}
+{"kind":"icon","owner":"whh:chevronup","source":"chevronup","translations":["向上 折角"]}
+{"kind":"icon","owner":"whh:chicken","source":"chicken","translations":["鸡"]}
+{"kind":"icon","owner":"whh:chickenalt","source":"chickenalt","translations":["鸡"]}
+{"kind":"icon","owner":"whh:chocolate","source":"chocolate","translations":["巧克力"]}
+{"kind":"icon","owner":"whh:christiancross","source":"christiancross","translations":["基督教十字架"]}
+{"kind":"icon","owner":"whh:christmasstree","source":"christmasstree","translations":["圣诞树"]}
+{"kind":"icon","owner":"whh:church","source":"church","translations":["教堂"]}
+{"kind":"icon","owner":"whh:cigar","source":"cigar","translations":["雪茄"]}
+{"kind":"icon","owner":"whh:cigarette","source":"cigarette","translations":["香烟"]}
+{"kind":"icon","owner":"whh:circlea","source":"circlea","translations":["圆形 A"]}
+{"kind":"icon","owner":"whh:circleadd","source":"circleadd","translations":["圆形 添加"]}
+{"kind":"icon","owner":"whh:circlearrowdown","source":"circlearrowdown","translations":["圆形 箭头 下"]}
+{"kind":"icon","owner":"whh:circlearrowleft","source":"circlearrowleft","translations":["圆形 箭头 左"]}
+{"kind":"icon","owner":"whh:circlearrowright","source":"circlearrowright","translations":["圆形 箭头 右"]}
+{"kind":"icon","owner":"whh:circlearrowup","source":"circlearrowup","translations":["圆形 向上箭头"]}
+{"kind":"icon","owner":"whh:circleb","source":"circleb","translations":["圆形 B"]}
+{"kind":"icon","owner":"whh:circlebackward","source":"circlebackward","translations":["圆形 后退"]}
+{"kind":"icon","owner":"whh:circlebackwardempty","source":"circlebackwardempty","translations":["圆形 后退"]}
+{"kind":"icon","owner":"whh:circlec","source":"circlec","translations":["圆形 C"]}
+{"kind":"icon","owner":"whh:circlecallincoming","source":"circlecallincoming","translations":["圆形 呼叫 呼入"]}
+{"kind":"icon","owner":"whh:circlecallmissed","source":"circlecallmissed","translations":["圆形 呼叫 未接"]}
+{"kind":"icon","owner":"whh:circlecalloutgoing","source":"circlecalloutgoing","translations":["圆形 呼叫 呼出"]}
+{"kind":"icon","owner":"whh:circled","source":"circled","translations":["圈起"]}
+{"kind":"icon","owner":"whh:circledelete","source":"circledelete","translations":["圆形 删除"]}
+{"kind":"icon","owner":"whh:circledown","source":"circledown","translations":["圆形 下"]}
+{"kind":"icon","owner":"whh:circledownload","source":"circledownload","translations":["圆形 下载"]}
+{"kind":"icon","owner":"whh:circledribbble","source":"circledribbble","translations":["圆形 Dribbble"]}
+{"kind":"icon","owner":"whh:circlee","source":"circlee","translations":["圆形 E"]}
+{"kind":"icon","owner":"whh:circleeight","source":"circleeight","translations":["圆形 八"]}
+{"kind":"icon","owner":"whh:circlef","source":"circlef","translations":["圆形 F"]}
+{"kind":"icon","owner":"whh:circlefacebook","source":"circlefacebook","translations":["圆形 脸书"]}
+{"kind":"icon","owner":"whh:circlefive","source":"circlefive","translations":["圆形 五"]}
+{"kind":"icon","owner":"whh:circlefork","source":"circlefork","translations":["圆形 分叉"]}
+{"kind":"icon","owner":"whh:circleforward","source":"circleforward","translations":["圆形 前进"]}
+{"kind":"icon","owner":"whh:circleforwardempty","source":"circleforwardempty","translations":["圆形 前进"]}
+{"kind":"icon","owner":"whh:circlefour","source":"circlefour","translations":["圆形 四"]}
+{"kind":"icon","owner":"whh:circleg","source":"circleg","translations":["圆形 G"]}
+{"kind":"icon","owner":"whh:circlegithub","source":"circlegithub","translations":["圆形 GitHub"]}
+{"kind":"icon","owner":"whh:circlegoogleplus","source":"circlegoogleplus","translations":["圆形 Google+"]}
+{"kind":"icon","owner":"whh:circleh","source":"circleh","translations":["圆形 H"]}
+{"kind":"icon","owner":"whh:circlehammer","source":"circlehammer","translations":["圆形 锤子"]}
+{"kind":"icon","owner":"whh:circlei","source":"circlei","translations":["圆形 I"]}
+{"kind":"icon","owner":"whh:circleinstagram","source":"circleinstagram","translations":["圆形 Instagram"]}
+{"kind":"icon","owner":"whh:circlej","source":"circlej","translations":["圆形 J"]}
+{"kind":"icon","owner":"whh:circlek","source":"circlek","translations":["圆形 K"]}
+{"kind":"icon","owner":"whh:circleknife","source":"circleknife","translations":["圆形 刀"]}
+{"kind":"icon","owner":"whh:circlel","source":"circlel","translations":["圆形 L"]}
+{"kind":"icon","owner":"whh:circleleft","source":"circleleft","translations":["圆形 左"]}
+{"kind":"icon","owner":"whh:circleloaderempty","source":"circleloaderempty","translations":["圆形 加载器"]}
+{"kind":"icon","owner":"whh:circleloaderfive","source":"circleloaderfive","translations":["圆形 加载器 五"]}
+{"kind":"icon","owner":"whh:circleloaderfour","source":"circleloaderfour","translations":["圆形 加载器 四"]}
+{"kind":"icon","owner":"whh:circleloaderfull","source":"circleloaderfull","translations":["圆形 加载器"]}
+{"kind":"icon","owner":"whh:circleloaderone","source":"circleloaderone","translations":["圆形 加载器 一"]}
+{"kind":"icon","owner":"whh:circleloaderseven","source":"circleloaderseven","translations":["圆形 加载器 七"]}
+{"kind":"icon","owner":"whh:circleloadersix","source":"circleloadersix","translations":["圆形 加载器 六"]}
+{"kind":"icon","owner":"whh:circleloaderthree","source":"circleloaderthree","translations":["圆形 加载器 三"]}
+{"kind":"icon","owner":"whh:circleloadertwo","source":"circleloadertwo","translations":["圆形 加载器 二"]}
+{"kind":"icon","owner":"whh:circlem","source":"circlem","translations":["圆形 M"]}
+{"kind":"icon","owner":"whh:circlen","source":"circlen","translations":["圆形 N"]}
+{"kind":"icon","owner":"whh:circlenext","source":"circlenext","translations":["圆形 下一个"]}
+{"kind":"icon","owner":"whh:circlenextempty","source":"circlenextempty","translations":["圆形 下一个"]}
+{"kind":"icon","owner":"whh:circlenine","source":"circlenine","translations":["圆形 九"]}
+{"kind":"icon","owner":"whh:circleo","source":"circleo","translations":["圆形 O"]}
+{"kind":"icon","owner":"whh:circleone","source":"circleone","translations":["圆形 一"]}
+{"kind":"icon","owner":"whh:circlep","source":"circlep","translations":["圆形 P"]}
+{"kind":"icon","owner":"whh:circlepath","source":"circlepath","translations":["圆形 路径"]}
+{"kind":"icon","owner":"whh:circlepause","source":"circlepause","translations":["圆形 暂停"]}
+{"kind":"icon","owner":"whh:circlepauseempty","source":"circlepauseempty","translations":["圆形 暂停"]}
+{"kind":"icon","owner":"whh:circlepencil","source":"circlepencil","translations":["圆形 铅笔"]}
+{"kind":"icon","owner":"whh:circleplay","source":"circleplay","translations":["圆形 播放"]}
+{"kind":"icon","owner":"whh:circleplayempty","source":"circleplayempty","translations":["圆形 播放"]}
+{"kind":"icon","owner":"whh:circleprevious","source":"circleprevious","translations":["圆形 上一个"]}
+{"kind":"icon","owner":"whh:circlepreviousempty","source":"circlepreviousempty","translations":["圆形 上一个"]}
+{"kind":"icon","owner":"whh:circleq","source":"circleq","translations":["圆形 Q"]}
+{"kind":"icon","owner":"whh:circlequora","source":"circlequora","translations":["圆形 Quora"]}
+{"kind":"icon","owner":"whh:circler","source":"circler","translations":["圆形 R"]}
+{"kind":"icon","owner":"whh:circlerecord","source":"circlerecord","translations":["圆形 记录"]}
+{"kind":"icon","owner":"whh:circlerecordempty","source":"circlerecordempty","translations":["圆形 记录"]}
+{"kind":"icon","owner":"whh:circleright","source":"circleright","translations":["圆形 右"]}
+{"kind":"icon","owner":"whh:circles","source":"circles","translations":["圆形"]}
+{"kind":"icon","owner":"whh:circlescrewdriver","source":"circlescrewdriver","translations":["圆形 螺丝刀"]}
+{"kind":"icon","owner":"whh:circleselect","source":"circleselect","translations":["圆形 选择"]}
+{"kind":"icon","owner":"whh:circleselection","source":"circleselection","translations":["圆形 选择"]}
+{"kind":"icon","owner":"whh:circleseven","source":"circleseven","translations":["圆形 七"]}
+{"kind":"icon","owner":"whh:circlesix","source":"circlesix","translations":["圆形 六"]}
+{"kind":"icon","owner":"whh:circlespoon","source":"circlespoon","translations":["圆形 勺子"]}
+{"kind":"icon","owner":"whh:circlestop","source":"circlestop","translations":["圆形 停止"]}
+{"kind":"icon","owner":"whh:circlestopempty","source":"circlestopempty","translations":["圆形 停止 空"]}
+{"kind":"icon","owner":"whh:circlet","source":"circlet","translations":["圆形 T"]}
+{"kind":"icon","owner":"whh:circlethree","source":"circlethree","translations":["圆形 三"]}
+{"kind":"icon","owner":"whh:circletwitter","source":"circletwitter","translations":["圆形 推特"]}
+{"kind":"icon","owner":"whh:circletwo","source":"circletwo","translations":["圆形 二"]}
+{"kind":"icon","owner":"whh:circleu","source":"circleu","translations":["圆形 U"]}
+{"kind":"icon","owner":"whh:circleup","source":"circleup","translations":["圆形 向上"]}
+{"kind":"icon","owner":"whh:circleupload","source":"circleupload","translations":["圆形 上传"]}
+{"kind":"icon","owner":"whh:circlev","source":"circlev","translations":["圆形 V"]}
+{"kind":"icon","owner":"whh:circlevimeo","source":"circlevimeo","translations":["圆形 Vimeo"]}
+{"kind":"icon","owner":"whh:circlevine","source":"circlevine","translations":["圆形 Vine"]}
+{"kind":"icon","owner":"whh:circlew","source":"circlew","translations":["圆形 W"]}
+{"kind":"icon","owner":"whh:circlex","source":"circlex","translations":["圆形 X"]}
+{"kind":"icon","owner":"whh:circleyahoo","source":"circleyahoo","translations":["圆形 雅虎"]}
+{"kind":"icon","owner":"whh:circlez","source":"circlez","translations":["圆形 Z"]}
+{"kind":"icon","owner":"whh:circlezero","source":"circlezero","translations":["圆形 零"]}
+{"kind":"icon","owner":"whh:circlezerply","source":"circlezerply","translations":["圆形 Zerply"]}
+{"kind":"icon","owner":"whh:city","source":"city","translations":["城市"]}
+{"kind":"icon","owner":"whh:clearformatting","source":"clearformatting","translations":["清除 格式化"]}
+{"kind":"icon","owner":"whh:clipboard","source":"clipboard","translations":["剪贴板"]}
+{"kind":"icon","owner":"whh:clipboardalt","source":"clipboardalt","translations":["剪贴板"]}
+{"kind":"icon","owner":"whh:clock","source":"clock","translations":["时钟"]}
+{"kind":"icon","owner":"whh:clockalt","source":"clockalt","translations":["时钟"]}
+{"kind":"icon","owner":"whh:closetab","source":"closetab","translations":["关闭 标签页"]}
+{"kind":"icon","owner":"whh:closewindow","source":"closewindow","translations":["关闭 窗口"]}
+{"kind":"icon","owner":"whh:cloud","source":"cloud","translations":["云"]}
+{"kind":"icon","owner":"whh:cloudalt","source":"cloudalt","translations":["云"]}
+{"kind":"icon","owner":"whh:cloudaltdownload","source":"cloudaltdownload","translations":["云 下载"]}
+{"kind":"icon","owner":"whh:cloudaltprivate","source":"cloudaltprivate","translations":["云 私有"]}
+{"kind":"icon","owner":"whh:cloudaltsync","source":"cloudaltsync","translations":["云 同步"]}
+{"kind":"icon","owner":"whh:cloudaltupload","source":"cloudaltupload","translations":["云 上传"]}
+{"kind":"icon","owner":"whh:clouddownload","source":"clouddownload","translations":["云 下载"]}
+{"kind":"icon","owner":"whh:clouderror","source":"clouderror","translations":["云 错误"]}
+{"kind":"icon","owner":"whh:cloudhosting","source":"cloudhosting","translations":["云托管"]}
+{"kind":"icon","owner":"whh:cloudsync","source":"cloudsync","translations":["云 同步"]}
+{"kind":"icon","owner":"whh:cloudupload","source":"cloudupload","translations":["云 上传"]}
+{"kind":"icon","owner":"whh:clover","source":"clover","translations":["三叶草"]}
+{"kind":"icon","owner":"whh:cloveralt","source":"cloveralt","translations":["三叶草"]}
+{"kind":"icon","owner":"whh:clubs","source":"clubs","translations":["梅花"]}
+{"kind":"icon","owner":"whh:cmd","source":"cmd","translations":["命令"]}
+{"kind":"icon","owner":"whh:cms","source":"cms","translations":["内容管理系统"]}
+{"kind":"icon","owner":"whh:cocktail","source":"cocktail","translations":["鸡尾酒"]}
+{"kind":"icon","owner":"whh:code","source":"code","translations":["代码"]}
+{"kind":"icon","owner":"whh:coffee","source":"coffee","translations":["咖啡"]}
+{"kind":"icon","owner":"whh:coffeealt","source":"coffeealt","translations":["咖啡"]}
+{"kind":"icon","owner":"whh:coffeebean","source":"coffeebean","translations":["咖啡 豆子"]}
+{"kind":"icon","owner":"whh:coffeecupalt","source":"coffeecupalt","translations":["咖啡 杯子"]}
+{"kind":"icon","owner":"whh:cog","source":"cog","translations":["齿轮"]}
+{"kind":"icon","owner":"whh:coins","source":"coins","translations":["硬币"]}
+{"kind":"icon","owner":"whh:coinsalt","source":"coinsalt","translations":["硬币"]}
+{"kind":"icon","owner":"whh:colocation","source":"colocation","translations":["托管机房"]}
+{"kind":"icon","owner":"whh:colocationalt","source":"colocationalt","translations":["服务器托管 变体"]}
+{"kind":"icon","owner":"whh:colors","source":"colors","translations":["颜色"]}
+{"kind":"icon","owner":"whh:comedy","source":"comedy","translations":["喜剧"]}
+{"kind":"icon","owner":"whh:comment","source":"comment","translations":["评论"]}
+{"kind":"icon","owner":"whh:commentlove","source":"commentlove","translations":["评论 喜爱"]}
+{"kind":"icon","owner":"whh:commentout","source":"commentout","translations":["注释掉"]}
+{"kind":"icon","owner":"whh:commentround","source":"commentround","translations":["评论 圆形"]}
+{"kind":"icon","owner":"whh:commentroundempty","source":"commentroundempty","translations":["评论 圆形 空"]}
+{"kind":"icon","owner":"whh:commentroundtyping","source":"commentroundtyping","translations":["评论 圆形 输入中"]}
+{"kind":"icon","owner":"whh:commentroundtypingempty","source":"commentroundtypingempty","translations":["评论 圆形 输入中 空"]}
+{"kind":"icon","owner":"whh:commentsmiley","source":"commentsmiley","translations":["评论 笑脸"]}
+{"kind":"icon","owner":"whh:commenttyping","source":"commenttyping","translations":["评论 输入"]}
+{"kind":"icon","owner":"whh:commit","source":"commit","translations":["提交"]}
+{"kind":"icon","owner":"whh:community","source":"community","translations":["社区"]}
+{"kind":"icon","owner":"whh:communitysmall","source":"communitysmall","translations":["社区 小"]}
+{"kind":"icon","owner":"whh:compass","source":"compass","translations":["指南针"]}
+{"kind":"icon","owner":"whh:compile","source":"compile","translations":["编译"]}
+{"kind":"icon","owner":"whh:compress","source":"compress","translations":["压缩"]}
+{"kind":"icon","owner":"whh:cone","source":"cone","translations":["圆锥"]}
+{"kind":"icon","owner":"whh:connected","source":"connected","translations":["已连接"]}
+{"kind":"icon","owner":"whh:connectedpc","source":"connectedpc","translations":["已连接电脑"]}
+{"kind":"icon","owner":"whh:constellation","source":"constellation","translations":["星座"]}
+{"kind":"icon","owner":"whh:construction","source":"construction","translations":["施工"]}
+{"kind":"icon","owner":"whh:controllernes","source":"controllernes","translations":["NES 控制器"]}
+{"kind":"icon","owner":"whh:controllerps","source":"controllerps","translations":["PlayStation 控制器"]}
+{"kind":"icon","owner":"whh:controllersnes","source":"controllersnes","translations":["SNES 控制器"]}
+{"kind":"icon","owner":"whh:controlpanel","source":"controlpanel","translations":["控制面板"]}
+{"kind":"icon","owner":"whh:controlpanelalt","source":"controlpanelalt","translations":["控制面板"]}
+{"kind":"icon","owner":"whh:cooling","source":"cooling","translations":["冷却"]}
+{"kind":"icon","owner":"whh:coppermine","source":"coppermine","translations":["铜矿"]}
+{"kind":"icon","owner":"whh:copy","source":"copy","translations":["复制"]}
+{"kind":"icon","owner":"whh:copyapp","source":"copyapp","translations":["复制 应用"]}
+{"kind":"icon","owner":"whh:copyright","source":"copyright","translations":["版权"]}
+{"kind":"icon","owner":"whh:counter","source":"counter","translations":["计数器"]}
+{"kind":"icon","owner":"whh:counteralt","source":"counteralt","translations":["计数器"]}
+{"kind":"icon","owner":"whh:coupon","source":"coupon","translations":["优惠券"]}
+{"kind":"icon","owner":"whh:cow","source":"cow","translations":["奶牛"]}
+{"kind":"icon","owner":"whh:cpu","source":"cpu","translations":["中央处理器"]}
+{"kind":"icon","owner":"whh:cpualt","source":"cpualt","translations":["处理器"]}
+{"kind":"icon","owner":"whh:cputhree","source":"cputhree","translations":["处理器 三"]}
+{"kind":"icon","owner":"whh:crackedegg","source":"crackedegg","translations":["破裂 鸡蛋"]}
+{"kind":"icon","owner":"whh:crayon","source":"crayon","translations":["蜡笔"]}
+{"kind":"icon","owner":"whh:createfile","source":"createfile","translations":["创建 文件"]}
+{"kind":"icon","owner":"whh:createfolder","source":"createfolder","translations":["创建 文件夹"]}
+{"kind":"icon","owner":"whh:creativecommons","source":"creativecommons","translations":["知识共享"]}
+{"kind":"icon","owner":"whh:creditcard","source":"creditcard","translations":["信用卡"]}
+{"kind":"icon","owner":"whh:cricket","source":"cricket","translations":["板球"]}
+{"kind":"icon","owner":"whh:croisant","source":"croisant","translations":["牛角面包"]}
+{"kind":"icon","owner":"whh:crop","source":"crop","translations":["裁剪"]}
+{"kind":"icon","owner":"whh:crown","source":"crown","translations":["皇冠"]}
+{"kind":"icon","owner":"whh:cssthree","source":"cssthree","translations":["层叠样式表 3"]}
+{"kind":"icon","owner":"whh:cube","source":"cube","translations":["立方体"]}
+{"kind":"icon","owner":"whh:cuckooclock","source":"cuckooclock","translations":["布谷鸟钟"]}
+{"kind":"icon","owner":"whh:cupcake","source":"cupcake","translations":["纸杯蛋糕"]}
+{"kind":"icon","owner":"whh:curling","source":"curling","translations":["冰壶"]}
+{"kind":"icon","owner":"whh:currency","source":"currency","translations":["货币"]}
+{"kind":"icon","owner":"whh:cursor","source":"cursor","translations":["光标"]}
+{"kind":"icon","owner":"whh:cut","source":"cut","translations":["剪切"]}
+{"kind":"icon","owner":"whh:cuthere","source":"cuthere","translations":["剪切 这里"]}
+{"kind":"icon","owner":"whh:d-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:d-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:dagger","source":"dagger","translations":["匕首"]}
+{"kind":"icon","owner":"whh:danger","source":"danger","translations":["危险"]}
+{"kind":"icon","owner":"whh:dart","source":"dart","translations":["飞镖"]}
+{"kind":"icon","owner":"whh:darthvader","source":"darthvader","translations":["达斯·维达"]}
+{"kind":"icon","owner":"whh:database","source":"database","translations":["数据库"]}
+{"kind":"icon","owner":"whh:databaseadd","source":"databaseadd","translations":["数据库 添加"]}
+{"kind":"icon","owner":"whh:databasedelete","source":"databasedelete","translations":["数据库 删除"]}
+{"kind":"icon","owner":"whh:davidstar","source":"davidstar","translations":["大卫之星"]}
+{"kind":"icon","owner":"whh:day","source":"day","translations":["白天"]}
+{"kind":"icon","owner":"whh:dcsource","source":"dcsource","translations":["直流电源"]}
+{"kind":"icon","owner":"whh:deathstar","source":"deathstar","translations":["死星"]}
+{"kind":"icon","owner":"whh:deathstarbuilding","source":"deathstarbuilding","translations":["死星建筑"]}
+{"kind":"icon","owner":"whh:debug","source":"debug","translations":["调试"]}
+{"kind":"icon","owner":"whh:dedicatedserver","source":"dedicatedserver","translations":["专用服务器"]}
+{"kind":"icon","owner":"whh:defragment","source":"defragment","translations":["碎片整理"]}
+{"kind":"icon","owner":"whh:delete","source":"delete","translations":["删除"]}
+{"kind":"icon","owner":"whh:deletealarm","source":"deletealarm","translations":["删除 闹钟"]}
+{"kind":"icon","owner":"whh:deletecomment","source":"deletecomment","translations":["删除 评论"]}
+{"kind":"icon","owner":"whh:deletefile","source":"deletefile","translations":["删除 文件"]}
+{"kind":"icon","owner":"whh:deletefolder","source":"deletefolder","translations":["删除 文件夹"]}
+{"kind":"icon","owner":"whh:deletefolderalt","source":"deletefolderalt","translations":["删除 文件夹"]}
+{"kind":"icon","owner":"whh:delicious","source":"delicious","translations":["美味"]}
+{"kind":"icon","owner":"whh:design","source":"design","translations":["设计"]}
+{"kind":"icon","owner":"whh:desklamp","source":"desklamp","translations":["台灯"]}
+{"kind":"icon","owner":"whh:details","source":"details","translations":["详情"]}
+{"kind":"icon","owner":"whh:detailsalt","source":"detailsalt","translations":["详情"]}
+{"kind":"icon","owner":"whh:dialpad","source":"dialpad","translations":["拨号键盘"]}
+{"kind":"icon","owner":"whh:diamond","source":"diamond","translations":["菱形"]}
+{"kind":"icon","owner":"whh:diamonds","source":"diamonds","translations":["菱形"]}
+{"kind":"icon","owner":"whh:dice","source":"dice","translations":["骰子"]}
+{"kind":"icon","owner":"whh:diefive","source":"diefive","translations":["骰子 五"]}
+{"kind":"icon","owner":"whh:diefour","source":"diefour","translations":["骰子 四"]}
+{"kind":"icon","owner":"whh:dieone","source":"dieone","translations":["骰子 一"]}
+{"kind":"icon","owner":"whh:diesix","source":"diesix","translations":["骰子 六"]}
+{"kind":"icon","owner":"whh:diethree","source":"diethree","translations":["骰子 三"]}
+{"kind":"icon","owner":"whh:dietwo","source":"dietwo","translations":["骰子 二"]}
+{"kind":"icon","owner":"whh:diode","source":"diode","translations":["二极管"]}
+{"kind":"icon","owner":"whh:directions","source":"directions","translations":["方向"]}
+{"kind":"icon","owner":"whh:director","source":"director","translations":["导演"]}
+{"kind":"icon","owner":"whh:diskspace","source":"diskspace","translations":["磁盘 空间"]}
+{"kind":"icon","owner":"whh:distributehorizontalcenters","source":"distributehorizontalcenters","translations":["水平 居中 分布"]}
+{"kind":"icon","owner":"whh:distributeverticalcenters","source":"distributeverticalcenters","translations":["垂直 居中 分布"]}
+{"kind":"icon","owner":"whh:divide","source":"divide","translations":["除号"]}
+{"kind":"icon","owner":"whh:dna","source":"dna","translations":["脱氧核糖核酸"]}
+{"kind":"icon","owner":"whh:dnszone","source":"dnszone","translations":["DNS 区域"]}
+{"kind":"icon","owner":"whh:document","source":"document","translations":["文档"]}
+{"kind":"icon","owner":"whh:dog","source":"dog","translations":["狗"]}
+{"kind":"icon","owner":"whh:doghouse","source":"doghouse","translations":["狗 房屋"]}
+{"kind":"icon","owner":"whh:dollar","source":"dollar","translations":["美元"]}
+{"kind":"icon","owner":"whh:dollaralt","source":"dollaralt","translations":["美元"]}
+{"kind":"icon","owner":"whh:dollarsquare","source":"dollarsquare","translations":["美元 正方形"]}
+{"kind":"icon","owner":"whh:dolphin","source":"dolphin","translations":["海豚"]}
+{"kind":"icon","owner":"whh:domain","source":"domain","translations":["域名"]}
+{"kind":"icon","owner":"whh:domainaddon","source":"domainaddon","translations":["附加 域名"]}
+{"kind":"icon","owner":"whh:domino","source":"domino","translations":["多米诺骨牌"]}
+{"kind":"icon","owner":"whh:dominoeight","source":"dominoeight","translations":["多米诺骨牌 八"]}
+{"kind":"icon","owner":"whh:dominofive","source":"dominofive","translations":["多米诺骨牌 五"]}
+{"kind":"icon","owner":"whh:dominofour","source":"dominofour","translations":["多米诺骨牌 四"]}
+{"kind":"icon","owner":"whh:dominonine","source":"dominonine","translations":["多米诺骨牌 九"]}
+{"kind":"icon","owner":"whh:dominoone","source":"dominoone","translations":["多米诺骨牌 一"]}
+{"kind":"icon","owner":"whh:dominoseven","source":"dominoseven","translations":["多米诺骨牌 七"]}
+{"kind":"icon","owner":"whh:dominosix","source":"dominosix","translations":["多米诺骨牌 六"]}
+{"kind":"icon","owner":"whh:dominothree","source":"dominothree","translations":["多米诺骨牌 三"]}
+{"kind":"icon","owner":"whh:dominotwo","source":"dominotwo","translations":["多米诺骨牌 二"]}
+{"kind":"icon","owner":"whh:donotdisturb","source":"donotdisturb","translations":["请勿打扰"]}
+{"kind":"icon","owner":"whh:donut","source":"donut","translations":["甜甜圈"]}
+{"kind":"icon","owner":"whh:dotclear","source":"dotclear","translations":["点 清除"]}
+{"kind":"icon","owner":"whh:dotlist","source":"dotlist","translations":["点 列表"]}
+{"kind":"icon","owner":"whh:dotproject","source":"dotproject","translations":["点 项目"]}
+{"kind":"icon","owner":"whh:doubletap","source":"doubletap","translations":["双击"]}
+{"kind":"icon","owner":"whh:downleft","source":"downleft","translations":["下 左"]}
+{"kind":"icon","owner":"whh:download","source":"download","translations":["下载"]}
+{"kind":"icon","owner":"whh:downloadalt","source":"downloadalt","translations":["下载"]}
+{"kind":"icon","owner":"whh:downright","source":"downright","translations":["下 右"]}
+{"kind":"icon","owner":"whh:draft","source":"draft","translations":["草稿"]}
+{"kind":"icon","owner":"whh:drawer","source":"drawer","translations":["抽屉"]}
+{"kind":"icon","owner":"whh:drill","source":"drill","translations":["电钻"]}
+{"kind":"icon","owner":"whh:drmanhattan","source":"drmanhattan","translations":["曼哈顿博士"]}
+{"kind":"icon","owner":"whh:dropmenu","source":"dropmenu","translations":["水滴 菜单"]}
+{"kind":"icon","owner":"whh:ducky","source":"ducky","translations":["小鸭"]}
+{"kind":"icon","owner":"whh:e-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:e-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:earbuds","source":"earbuds","translations":["耳塞"]}
+{"kind":"icon","owner":"whh:earbudsalt","source":"earbudsalt","translations":["耳塞"]}
+{"kind":"icon","owner":"whh:edit","source":"edit","translations":["编辑"]}
+{"kind":"icon","owner":"whh:editalt","source":"editalt","translations":["编辑"]}
+{"kind":"icon","owner":"whh:egg","source":"egg","translations":["鸡蛋"]}
+{"kind":"icon","owner":"whh:eggplant","source":"eggplant","translations":["茄子"]}
+{"kind":"icon","owner":"whh:egyptpyramid","source":"egyptpyramid","translations":["埃及 金字塔"]}
+{"kind":"icon","owner":"whh:eightball","source":"eightball","translations":["八 球"]}
+{"kind":"icon","owner":"whh:eject","source":"eject","translations":["弹出"]}
+{"kind":"icon","owner":"whh:elevator","source":"elevator","translations":["电梯"]}
+{"kind":"icon","owner":"whh:elipse","source":"elipse","translations":["椭圆"]}
+{"kind":"icon","owner":"whh:emailalt","source":"emailalt","translations":["邮件"]}
+{"kind":"icon","owner":"whh:emailexport","source":"emailexport","translations":["邮件 导出"]}
+{"kind":"icon","owner":"whh:emailforward","source":"emailforward","translations":["邮件转发"]}
+{"kind":"icon","owner":"whh:emailforwarders","source":"emailforwarders","translations":["邮件转发器"]}
+{"kind":"icon","owner":"whh:emailimport","source":"emailimport","translations":["邮件 导入"]}
+{"kind":"icon","owner":"whh:emailrefresh","source":"emailrefresh","translations":["邮件 刷新"]}
+{"kind":"icon","owner":"whh:emailtrace","source":"emailtrace","translations":["邮件 追踪"]}
+{"kind":"icon","owner":"whh:emergency","source":"emergency","translations":["紧急"]}
+{"kind":"icon","owner":"whh:emojiangry","source":"emojiangry","translations":["表情 生气"]}
+{"kind":"icon","owner":"whh:emojiconfused","source":"emojiconfused","translations":["表情 困惑"]}
+{"kind":"icon","owner":"whh:emojicry","source":"emojicry","translations":["表情 哭泣"]}
+{"kind":"icon","owner":"whh:emojidead","source":"emojidead","translations":["表情 死亡"]}
+{"kind":"icon","owner":"whh:emojidevil","source":"emojidevil","translations":["表情 魔鬼"]}
+{"kind":"icon","owner":"whh:emojigrin","source":"emojigrin","translations":["表情 露齿笑"]}
+{"kind":"icon","owner":"whh:emojigrinalt","source":"emojigrinalt","translations":["表情 露齿笑"]}
+{"kind":"icon","owner":"whh:emojisleep","source":"emojisleep","translations":["表情 睡眠"]}
+{"kind":"icon","owner":"whh:emojismile","source":"emojismile","translations":["表情 微笑"]}
+{"kind":"icon","owner":"whh:emojisorry","source":"emojisorry","translations":["表情 抱歉"]}
+{"kind":"icon","owner":"whh:emojisurprise","source":"emojisurprise","translations":["表情 惊讶"]}
+{"kind":"icon","owner":"whh:emojiwink","source":"emojiwink","translations":["表情 眨眼"]}
+{"kind":"icon","owner":"whh:emptycart","source":"emptycart","translations":["空 购物车"]}
+{"kind":"icon","owner":"whh:emptystar","source":"emptystar","translations":["空 星星"]}
+{"kind":"icon","owner":"whh:enter","source":"enter","translations":["进入"]}
+{"kind":"icon","owner":"whh:enteralt","source":"enteralt","translations":["进入"]}
+{"kind":"icon","owner":"whh:envelope","source":"envelope","translations":["信封"]}
+{"kind":"icon","owner":"whh:equalizer","source":"equalizer","translations":["均衡器"]}
+{"kind":"icon","owner":"whh:equalizeralt","source":"equalizeralt","translations":["均衡器"]}
+{"kind":"icon","owner":"whh:equalizerthree","source":"equalizerthree","translations":["均衡器 三"]}
+{"kind":"icon","owner":"whh:equals","source":"equals","translations":["等于"]}
+{"kind":"icon","owner":"whh:eraser","source":"eraser","translations":["橡皮擦"]}
+{"kind":"icon","owner":"whh:erroralt","source":"erroralt","translations":["错误"]}
+{"kind":"icon","owner":"whh:escalator","source":"escalator","translations":["自动扶梯"]}
+{"kind":"icon","owner":"whh:euro","source":"euro","translations":["欧元"]}
+{"kind":"icon","owner":"whh:euroalt","source":"euroalt","translations":["欧元"]}
+{"kind":"icon","owner":"whh:eurosquare","source":"eurosquare","translations":["欧元 正方形"]}
+{"kind":"icon","owner":"whh:event","source":"event","translations":["事件"]}
+{"kind":"icon","owner":"whh:evernote","source":"evernote","translations":["印象笔记"]}
+{"kind":"icon","owner":"whh:exclamationsign","source":"exclamationsign","translations":["感叹号"]}
+{"kind":"icon","owner":"whh:excludeshape","source":"excludeshape","translations":["排除 形状"]}
+{"kind":"icon","owner":"whh:exit","source":"exit","translations":["退出"]}
+{"kind":"icon","owner":"whh:exitalt","source":"exitalt","translations":["退出"]}
+{"kind":"icon","owner":"whh:explorerwindow","source":"explorerwindow","translations":["资源管理器 窗口"]}
+{"kind":"icon","owner":"whh:export","source":"export","translations":["导出"]}
+{"kind":"icon","owner":"whh:exportfile","source":"exportfile","translations":["导出 文件"]}
+{"kind":"icon","owner":"whh:exposure","source":"exposure","translations":["曝光"]}
+{"kind":"icon","owner":"whh:extinguisher","source":"extinguisher","translations":["灭火器"]}
+{"kind":"icon","owner":"whh:eye","source":"eye","translations":["眼睛"]}
+{"kind":"icon","owner":"whh:eyeclose","source":"eyeclose","translations":["眼睛 关闭"]}
+{"kind":"icon","owner":"whh:eyedropper","source":"eyedropper","translations":["滴管"]}
+{"kind":"icon","owner":"whh:eyeopen","source":"eyeopen","translations":["睁眼"]}
+{"kind":"icon","owner":"whh:f-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:f-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:facebook","source":"facebook","translations":["脸书"]}
+{"kind":"icon","owner":"whh:facetimevideo","source":"facetimevideo","translations":["视频通话"]}
+{"kind":"icon","owner":"whh:factory","source":"factory","translations":["工厂"]}
+{"kind":"icon","owner":"whh:fallingstar","source":"fallingstar","translations":["下落 星星"]}
+{"kind":"icon","owner":"whh:fan","source":"fan","translations":["风扇"]}
+{"kind":"icon","owner":"whh:faq","source":"faq","translations":["常见问题"]}
+{"kind":"icon","owner":"whh:fastbackward","source":"fastbackward","translations":["快速 后退"]}
+{"kind":"icon","owner":"whh:fastdown","source":"fastdown","translations":["快速 下"]}
+{"kind":"icon","owner":"whh:fastforward","source":"fastforward","translations":["快进"]}
+{"kind":"icon","owner":"whh:fastleft","source":"fastleft","translations":["快速 左"]}
+{"kind":"icon","owner":"whh:fastright","source":"fastright","translations":["快速 右"]}
+{"kind":"icon","owner":"whh:fastup","source":"fastup","translations":["快速向上"]}
+{"kind":"icon","owner":"whh:fatarrowdown","source":"fatarrowdown","translations":["粗 向下 箭头"]}
+{"kind":"icon","owner":"whh:fatarrowleft","source":"fatarrowleft","translations":["粗 向左 箭头"]}
+{"kind":"icon","owner":"whh:fatarrowright","source":"fatarrowright","translations":["粗 向右 箭头"]}
+{"kind":"icon","owner":"whh:fatarrowup","source":"fatarrowup","translations":["粗 向上 箭头"]}
+{"kind":"icon","owner":"whh:fatredo","source":"fatredo","translations":["粗 重做"]}
+{"kind":"icon","owner":"whh:fatundo","source":"fatundo","translations":["粗 撤销"]}
+{"kind":"icon","owner":"whh:favorite","source":"favorite","translations":["收藏"]}
+{"kind":"icon","owner":"whh:favoritealt","source":"favoritealt","translations":["收藏"]}
+{"kind":"icon","owner":"whh:favoritefile","source":"favoritefile","translations":["收藏 文件"]}
+{"kind":"icon","owner":"whh:favoritefolder","source":"favoritefolder","translations":["收藏 文件夹"]}
+{"kind":"icon","owner":"whh:fbdislike","source":"fbdislike","translations":["Facebook 不喜欢"]}
+{"kind":"icon","owner":"whh:fblike","source":"fblike","translations":["Facebook 喜欢"]}
+{"kind":"icon","owner":"whh:featheralt","source":"featheralt","translations":["羽毛"]}
+{"kind":"icon","owner":"whh:female","source":"female","translations":["女性"]}
+{"kind":"icon","owner":"whh:fence","source":"fence","translations":["栅栏"]}
+{"kind":"icon","owner":"whh:file","source":"file","translations":["文件"]}
+{"kind":"icon","owner":"whh:filemanager","source":"filemanager","translations":["文件 管理员"]}
+{"kind":"icon","owner":"whh:film","source":"film","translations":["影片"]}
+{"kind":"icon","owner":"whh:filmstrip","source":"filmstrip","translations":["胶片"]}
+{"kind":"icon","owner":"whh:filter","source":"filter","translations":["筛选"]}
+{"kind":"icon","owner":"whh:finance","source":"finance","translations":["金融"]}
+{"kind":"icon","owner":"whh:finder","source":"finder","translations":["查找器"]}
+{"kind":"icon","owner":"whh:findfriends","source":"findfriends","translations":["查找 朋友"]}
+{"kind":"icon","owner":"whh:firefox","source":"firefox","translations":["火狐"]}
+{"kind":"icon","owner":"whh:fireplace","source":"fireplace","translations":["壁炉"]}
+{"kind":"icon","owner":"whh:firewall","source":"firewall","translations":["防火墙"]}
+{"kind":"icon","owner":"whh:firewire","source":"firewire","translations":["火焰 电线"]}
+{"kind":"icon","owner":"whh:firstaid","source":"firstaid","translations":["急救"]}
+{"kind":"icon","owner":"whh:fish","source":"fish","translations":["鱼"]}
+{"kind":"icon","owner":"whh:fishbone","source":"fishbone","translations":["鱼 骨骼"]}
+{"kind":"icon","owner":"whh:flag","source":"flag","translations":["旗帜"]}
+{"kind":"icon","owner":"whh:flagalt","source":"flagalt","translations":["旗帜"]}
+{"kind":"icon","owner":"whh:flagtriangle","source":"flagtriangle","translations":["旗帜 三角形"]}
+{"kind":"icon","owner":"whh:flame","source":"flame","translations":["火焰"]}
+{"kind":"icon","owner":"whh:flash","source":"flash","translations":["闪光灯"]}
+{"kind":"icon","owner":"whh:flashlight","source":"flashlight","translations":["手电筒"]}
+{"kind":"icon","owner":"whh:flashlightalt","source":"flashlightalt","translations":["手电筒"]}
+{"kind":"icon","owner":"whh:flask","source":"flask","translations":["烧瓶"]}
+{"kind":"icon","owner":"whh:flaskfull","source":"flaskfull","translations":["烧瓶"]}
+{"kind":"icon","owner":"whh:flipboard","source":"flipboard","translations":["翻转 板"]}
+{"kind":"icon","owner":"whh:fliphorizontal","source":"fliphorizontal","translations":["翻转 水平"]}
+{"kind":"icon","owner":"whh:flipvertical","source":"flipvertical","translations":["翻转 垂直"]}
+{"kind":"icon","owner":"whh:floppy","source":"floppy","translations":["软盘"]}
+{"kind":"icon","owner":"whh:flowdown","source":"flowdown","translations":["流程 下"]}
+{"kind":"icon","owner":"whh:flower","source":"flower","translations":["花朵"]}
+{"kind":"icon","owner":"whh:flowernew","source":"flowernew","translations":["花朵 新建"]}
+{"kind":"icon","owner":"whh:flowerpot","source":"flowerpot","translations":["花盆"]}
+{"kind":"icon","owner":"whh:flowup","source":"flowup","translations":["流程 向上"]}
+{"kind":"icon","owner":"whh:folderalt","source":"folderalt","translations":["文件夹"]}
+{"kind":"icon","owner":"whh:folderopen","source":"folderopen","translations":["打开的文件夹"]}
+{"kind":"icon","owner":"whh:foldertree","source":"foldertree","translations":["文件夹 树木"]}
+{"kind":"icon","owner":"whh:font","source":"font","translations":["字体"]}
+{"kind":"icon","owner":"whh:fontcaligraphy","source":"fontcaligraphy","translations":["书法 字体"]}
+{"kind":"icon","owner":"whh:fontcase","source":"fontcase","translations":["字体 大小写"]}
+{"kind":"icon","owner":"whh:fontcomic","source":"fontcomic","translations":["字体 漫画"]}
+{"kind":"icon","owner":"whh:fontgothic","source":"fontgothic","translations":["哥特 字体"]}
+{"kind":"icon","owner":"whh:fonthandwriting","source":"fonthandwriting","translations":["字体 手 书写"]}
+{"kind":"icon","owner":"whh:fontrounded","source":"fontrounded","translations":["圆体 字体"]}
+{"kind":"icon","owner":"whh:fontsansserif","source":"fontsansserif","translations":["无衬线 字体"]}
+{"kind":"icon","owner":"whh:fontserif","source":"fontserif","translations":["字体 衬线"]}
+{"kind":"icon","owner":"whh:fontstencil","source":"fontstencil","translations":["模板 字体"]}
+{"kind":"icon","owner":"whh:fonttypewriter","source":"fonttypewriter","translations":["字体 打字机"]}
+{"kind":"icon","owner":"whh:foodtray","source":"foodtray","translations":["食物 托盘"]}
+{"kind":"icon","owner":"whh:football","source":"football","translations":["足球"]}
+{"kind":"icon","owner":"whh:forbidden","source":"forbidden","translations":["禁止"]}
+{"kind":"icon","owner":"whh:forest","source":"forest","translations":["森林"]}
+{"kind":"icon","owner":"whh:forestalt","source":"forestalt","translations":["森林"]}
+{"kind":"icon","owner":"whh:fork","source":"fork","translations":["分叉"]}
+{"kind":"icon","owner":"whh:forklift","source":"forklift","translations":["叉车"]}
+{"kind":"icon","owner":"whh:form","source":"form","translations":["表单"]}
+{"kind":"icon","owner":"whh:fort","source":"fort","translations":["堡垒"]}
+{"kind":"icon","owner":"whh:forumsalt","source":"forumsalt","translations":["论坛"]}
+{"kind":"icon","owner":"whh:forward","source":"forward","translations":["前进"]}
+{"kind":"icon","owner":"whh:fountain","source":"fountain","translations":["喷泉"]}
+{"kind":"icon","owner":"whh:fourg","source":"fourg","translations":["第四代移动通信"]}
+{"kind":"icon","owner":"whh:fourimages","source":"fourimages","translations":["四 图像"]}
+{"kind":"icon","owner":"whh:fourohfour","source":"fourohfour","translations":["四零四"]}
+{"kind":"icon","owner":"whh:freeway","source":"freeway","translations":["免费 路径"]}
+{"kind":"icon","owner":"whh:fridge","source":"fridge","translations":["冰箱"]}
+{"kind":"icon","owner":"whh:friends","source":"friends","translations":["朋友"]}
+{"kind":"icon","owner":"whh:fries","source":"fries","translations":["薯条"]}
+{"kind":"icon","owner":"whh:ftp","source":"ftp","translations":["文件传输协议"]}
+{"kind":"icon","owner":"whh:ftpaccounts","source":"ftpaccounts","translations":["FTP 账户"]}
+{"kind":"icon","owner":"whh:ftpsession","source":"ftpsession","translations":["FTP 会话"]}
+{"kind":"icon","owner":"whh:fullborders","source":"fullborders","translations":["全部边框"]}
+{"kind":"icon","owner":"whh:fullscreen","source":"fullscreen","translations":["全屏"]}
+{"kind":"icon","owner":"whh:fullstar","source":"fullstar","translations":["实心 星星"]}
+{"kind":"icon","owner":"whh:fx","source":"fx","translations":["效果"]}
+{"kind":"icon","owner":"whh:g-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:g-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:galaxy","source":"galaxy","translations":["星系"]}
+{"kind":"icon","owner":"whh:galaxyalt","source":"galaxyalt","translations":["星系"]}
+{"kind":"icon","owner":"whh:gallery","source":"gallery","translations":["图库"]}
+{"kind":"icon","owner":"whh:gamecursor","source":"gamecursor","translations":["游戏 光标"]}
+{"kind":"icon","owner":"whh:garage","source":"garage","translations":["车库"]}
+{"kind":"icon","owner":"whh:gasstation","source":"gasstation","translations":["燃气 车站"]}
+{"kind":"icon","owner":"whh:gavel","source":"gavel","translations":["法槌"]}
+{"kind":"icon","owner":"whh:gearalt","source":"gearalt","translations":["齿轮"]}
+{"kind":"icon","owner":"whh:gearfour","source":"gearfour","translations":["齿轮 四"]}
+{"kind":"icon","owner":"whh:gears","source":"gears","translations":["齿轮"]}
+{"kind":"icon","owner":"whh:gearsalt","source":"gearsalt","translations":["齿轮"]}
+{"kind":"icon","owner":"whh:gender","source":"gender","translations":["性别"]}
+{"kind":"icon","owner":"whh:ghost","source":"ghost","translations":["幽灵"]}
+{"kind":"icon","owner":"whh:gift","source":"gift","translations":["礼物"]}
+{"kind":"icon","owner":"whh:glass","source":"glass","translations":["玻璃杯"]}
+{"kind":"icon","owner":"whh:glasses","source":"glasses","translations":["眼镜"]}
+{"kind":"icon","owner":"whh:glassesalt","source":"glassesalt","translations":["眼镜"]}
+{"kind":"icon","owner":"whh:globe","source":"globe","translations":["地球"]}
+{"kind":"icon","owner":"whh:globealt","source":"globealt","translations":["地球"]}
+{"kind":"icon","owner":"whh:glue","source":"glue","translations":["胶水"]}
+{"kind":"icon","owner":"whh:golf","source":"golf","translations":["高尔夫"]}
+{"kind":"icon","owner":"whh:google","source":"google","translations":["谷歌"]}
+{"kind":"icon","owner":"whh:googledrive","source":"googledrive","translations":["谷歌云端硬盘"]}
+{"kind":"icon","owner":"whh:googlewallet","source":"googlewallet","translations":["谷歌钱包"]}
+{"kind":"icon","owner":"whh:gpsalt","source":"gpsalt","translations":["全球定位系统 变体"]}
+{"kind":"icon","owner":"whh:gpsoff","source":"gpsoff","translations":["全球定位系统 关闭"]}
+{"kind":"icon","owner":"whh:gpson","source":"gpson","translations":["全球定位系统 开启"]}
+{"kind":"icon","owner":"whh:gradient","source":"gradient","translations":["渐变"]}
+{"kind":"icon","owner":"whh:gramophone","source":"gramophone","translations":["留声机"]}
+{"kind":"icon","owner":"whh:grapes","source":"grapes","translations":["葡萄"]}
+{"kind":"icon","owner":"whh:graphicscard","source":"graphicscard","translations":["显卡"]}
+{"kind":"icon","owner":"whh:grave","source":"grave","translations":["坟墓"]}
+{"kind":"icon","owner":"whh:gravefour","source":"gravefour","translations":["坟墓 四"]}
+{"kind":"icon","owner":"whh:gravethree","source":"gravethree","translations":["坟墓 三"]}
+{"kind":"icon","owner":"whh:gravetwo","source":"gravetwo","translations":["坟墓 二"]}
+{"kind":"icon","owner":"whh:greekcolumn","source":"greekcolumn","translations":["希腊 列"]}
+{"kind":"icon","owner":"whh:greenhosting","source":"greenhosting","translations":["绿色托管"]}
+{"kind":"icon","owner":"whh:greenlantern","source":"greenlantern","translations":["绿灯侠"]}
+{"kind":"icon","owner":"whh:greenlightbulb","source":"greenlightbulb","translations":["绿色 灯泡"]}
+{"kind":"icon","owner":"whh:grid","source":"grid","translations":["网格"]}
+{"kind":"icon","owner":"whh:guitar","source":"guitar","translations":["吉他"]}
+{"kind":"icon","owner":"whh:gun","source":"gun","translations":["枪"]}
+{"kind":"icon","owner":"whh:h-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:h-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:halflife","source":"halflife","translations":["半衰期"]}
+{"kind":"icon","owner":"whh:halfstar","source":"halfstar","translations":["一半 星星"]}
+{"kind":"icon","owner":"whh:halo","source":"halo","translations":["光环"]}
+{"kind":"icon","owner":"whh:hamburger","source":"hamburger","translations":["汉堡"]}
+{"kind":"icon","owner":"whh:hammer","source":"hammer","translations":["锤子"]}
+{"kind":"icon","owner":"whh:hammeralt","source":"hammeralt","translations":["锤子"]}
+{"kind":"icon","owner":"whh:handcuffs","source":"handcuffs","translations":["手铐"]}
+{"kind":"icon","owner":"whh:handdown","source":"handdown","translations":["手 下"]}
+{"kind":"icon","owner":"whh:handdrag","source":"handdrag","translations":["手 拖动"]}
+{"kind":"icon","owner":"whh:handexpand","source":"handexpand","translations":["手 展开"]}
+{"kind":"icon","owner":"whh:handleft","source":"handleft","translations":["手 左"]}
+{"kind":"icon","owner":"whh:handpinch","source":"handpinch","translations":["手 捏合"]}
+{"kind":"icon","owner":"whh:handright","source":"handright","translations":["手 右"]}
+{"kind":"icon","owner":"whh:handswipe","source":"handswipe","translations":["手 滑动"]}
+{"kind":"icon","owner":"whh:handtwofingers","source":"handtwofingers","translations":["手 二 手指"]}
+{"kind":"icon","owner":"whh:handup","source":"handup","translations":["手 向上"]}
+{"kind":"icon","owner":"whh:hanger","source":"hanger","translations":["衣架"]}
+{"kind":"icon","owner":"whh:happy","source":"happy","translations":["开心"]}
+{"kind":"icon","owner":"whh:harddisk","source":"harddisk","translations":["硬盘"]}
+{"kind":"icon","owner":"whh:harddrivealt","source":"harddrivealt","translations":["硬盘"]}
+{"kind":"icon","owner":"whh:harrypotter","source":"harrypotter","translations":["哈利·波特"]}
+{"kind":"icon","owner":"whh:hashtag","source":"hashtag","translations":["话题标签"]}
+{"kind":"icon","owner":"whh:hate","source":"hate","translations":["厌恶"]}
+{"kind":"icon","owner":"whh:hdtv","source":"hdtv","translations":["高清电视"]}
+{"kind":"icon","owner":"whh:hdvideo","source":"hdvideo","translations":["高清视频"]}
+{"kind":"icon","owner":"whh:headphones","source":"headphones","translations":["耳机"]}
+{"kind":"icon","owner":"whh:headphonesalt","source":"headphonesalt","translations":["耳机"]}
+{"kind":"icon","owner":"whh:headphonesthree","source":"headphonesthree","translations":["耳机 三"]}
+{"kind":"icon","owner":"whh:heart","source":"heart","translations":["心形"]}
+{"kind":"icon","owner":"whh:heartarrow","source":"heartarrow","translations":["心形 箭头"]}
+{"kind":"icon","owner":"whh:heartempty","source":"heartempty","translations":["空心爱心"]}
+{"kind":"icon","owner":"whh:hearts","source":"hearts","translations":["心形"]}
+{"kind":"icon","owner":"whh:heartsparkle","source":"heartsparkle","translations":["心形 闪光"]}
+{"kind":"icon","owner":"whh:heavymetal","source":"heavymetal","translations":["沉重 金属"]}
+{"kind":"icon","owner":"whh:helicopter","source":"helicopter","translations":["直升机"]}
+{"kind":"icon","owner":"whh:hexagon","source":"hexagon","translations":["六边形"]}
+{"kind":"icon","owner":"whh:history","source":"history","translations":["历史"]}
+{"kind":"icon","owner":"whh:hockey","source":"hockey","translations":["曲棍球"]}
+{"kind":"icon","owner":"whh:home","source":"home","translations":["家"]}
+{"kind":"icon","owner":"whh:homealt","source":"homealt","translations":["家"]}
+{"kind":"icon","owner":"whh:honeycomb","source":"honeycomb","translations":["蜂窝"]}
+{"kind":"icon","owner":"whh:horizontalborder","source":"horizontalborder","translations":["水平 边框"]}
+{"kind":"icon","owner":"whh:horizontalcontract","source":"horizontalcontract","translations":["水平 收缩"]}
+{"kind":"icon","owner":"whh:horizontalexpand","source":"horizontalexpand","translations":["水平 展开"]}
+{"kind":"icon","owner":"whh:hospital","source":"hospital","translations":["医院"]}
+{"kind":"icon","owner":"whh:hot","source":"hot","translations":["炎热"]}
+{"kind":"icon","owner":"whh:hotdog","source":"hotdog","translations":["热狗"]}
+{"kind":"icon","owner":"whh:hotlinkprotection","source":"hotlinkprotection","translations":["防盗链"]}
+{"kind":"icon","owner":"whh:hourglass","source":"hourglass","translations":["沙漏"]}
+{"kind":"icon","owner":"whh:hourglassalt","source":"hourglassalt","translations":["沙漏"]}
+{"kind":"icon","owner":"whh:house","source":"house","translations":["房屋"]}
+{"kind":"icon","owner":"whh:hryvnia","source":"hryvnia","translations":["格里夫纳"]}
+{"kind":"icon","owner":"whh:hryvniaalt","source":"hryvniaalt","translations":["格里夫纳"]}
+{"kind":"icon","owner":"whh:hryvniasquare","source":"hryvniasquare","translations":["格里夫纳 正方形"]}
+{"kind":"icon","owner":"whh:html","source":"html","translations":["超文本标记语言"]}
+{"kind":"icon","owner":"whh:htmlfile","source":"htmlfile","translations":["超文本标记语言文件"]}
+{"kind":"icon","owner":"whh:htmlfive","source":"htmlfive","translations":["超文本标记语言 5"]}
+{"kind":"icon","owner":"whh:hydrant","source":"hydrant","translations":["消防栓"]}
+{"kind":"icon","owner":"whh:i-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:i-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:icecream","source":"icecream","translations":["冰淇淋"]}
+{"kind":"icon","owner":"whh:icecreamalt","source":"icecreamalt","translations":["冰淇淋"]}
+{"kind":"icon","owner":"whh:icecreamthree","source":"icecreamthree","translations":["冰淇淋 三"]}
+{"kind":"icon","owner":"whh:idea","source":"idea","translations":["想法"]}
+{"kind":"icon","owner":"whh:image","source":"image","translations":["图像"]}
+{"kind":"icon","owner":"whh:import","source":"import","translations":["导入"]}
+{"kind":"icon","owner":"whh:importcontacts","source":"importcontacts","translations":["导入 联系人"]}
+{"kind":"icon","owner":"whh:importfile","source":"importfile","translations":["导入 文件"]}
+{"kind":"icon","owner":"whh:inbox","source":"inbox","translations":["收件箱"]}
+{"kind":"icon","owner":"whh:inboxalt","source":"inboxalt","translations":["收件箱"]}
+{"kind":"icon","owner":"whh:incomingcall","source":"incomingcall","translations":["呼入 呼叫"]}
+{"kind":"icon","owner":"whh:incomingcallalt","source":"incomingcallalt","translations":["呼入 呼叫"]}
+{"kind":"icon","owner":"whh:indentleft","source":"indentleft","translations":["缩进 左"]}
+{"kind":"icon","owner":"whh:indentleftalt","source":"indentleftalt","translations":["缩进 左"]}
+{"kind":"icon","owner":"whh:indentright","source":"indentright","translations":["缩进 右"]}
+{"kind":"icon","owner":"whh:indentrightalt","source":"indentrightalt","translations":["缩进 右"]}
+{"kind":"icon","owner":"whh:indexmanager","source":"indexmanager","translations":["索引管理器"]}
+{"kind":"icon","owner":"whh:infinity","source":"infinity","translations":["无限"]}
+{"kind":"icon","owner":"whh:infinityalt","source":"infinityalt","translations":["无限"]}
+{"kind":"icon","owner":"whh:infographic","source":"infographic","translations":["信息图"]}
+{"kind":"icon","owner":"whh:infosign","source":"infosign","translations":["信息 标志"]}
+{"kind":"icon","owner":"whh:ingress","source":"ingress","translations":["入站"]}
+{"kind":"icon","owner":"whh:ink","source":"ink","translations":["墨水"]}
+{"kind":"icon","owner":"whh:inkpen","source":"inkpen","translations":["墨水 钢笔"]}
+{"kind":"icon","owner":"whh:innerborders","source":"innerborders","translations":["内部 边框"]}
+{"kind":"icon","owner":"whh:insertbarchart","source":"insertbarchart","translations":["插入 条形图"]}
+{"kind":"icon","owner":"whh:insertpicture","source":"insertpicture","translations":["插入 图片"]}
+{"kind":"icon","owner":"whh:insertpicturecenter","source":"insertpicturecenter","translations":["插入 图片 居中"]}
+{"kind":"icon","owner":"whh:insertpictureleft","source":"insertpictureleft","translations":["插入 图片 左"]}
+{"kind":"icon","owner":"whh:insertpictureright","source":"insertpictureright","translations":["插入 图片 右"]}
+{"kind":"icon","owner":"whh:insertpiechart","source":"insertpiechart","translations":["插入饼图"]}
+{"kind":"icon","owner":"whh:install","source":"install","translations":["安装"]}
+{"kind":"icon","owner":"whh:intel","source":"intel","translations":["英特尔"]}
+{"kind":"icon","owner":"whh:intersection","source":"intersection","translations":["交叉口"]}
+{"kind":"icon","owner":"whh:intersectshape","source":"intersectshape","translations":["相交 形状"]}
+{"kind":"icon","owner":"whh:invert","source":"invert","translations":["反转"]}
+{"kind":"icon","owner":"whh:invoice","source":"invoice","translations":["发票"]}
+{"kind":"icon","owner":"whh:ipcontrol","source":"ipcontrol","translations":["IP 控制"]}
+{"kind":"icon","owner":"whh:ironman","source":"ironman","translations":["钢铁侠"]}
+{"kind":"icon","owner":"whh:islam","source":"islam","translations":["伊斯兰教"]}
+{"kind":"icon","owner":"whh:island","source":"island","translations":["岛屿"]}
+{"kind":"icon","owner":"whh:issue","source":"issue","translations":["问题"]}
+{"kind":"icon","owner":"whh:issueclosed","source":"issueclosed","translations":["已关闭问题"]}
+{"kind":"icon","owner":"whh:issuereopened","source":"issuereopened","translations":["已重新打开问题"]}
+{"kind":"icon","owner":"whh:italic","source":"italic","translations":["斜体"]}
+{"kind":"icon","owner":"whh:j-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:j-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:jar","source":"jar","translations":["罐子"]}
+{"kind":"icon","owner":"whh:jersey","source":"jersey","translations":["球衣"]}
+{"kind":"icon","owner":"whh:joystickarcade","source":"joystickarcade","translations":["街机摇杆"]}
+{"kind":"icon","owner":"whh:joystickatari","source":"joystickatari","translations":["雅达利 操纵杆"]}
+{"kind":"icon","owner":"whh:k-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:k-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:kerning","source":"kerning","translations":["字距"]}
+{"kind":"icon","owner":"whh:key","source":"key","translations":["钥匙"]}
+{"kind":"icon","owner":"whh:keyboard","source":"keyboard","translations":["键盘"]}
+{"kind":"icon","owner":"whh:keyboardalt","source":"keyboardalt","translations":["键盘"]}
+{"kind":"icon","owner":"whh:keyboarddelete","source":"keyboarddelete","translations":["键盘 删除"]}
+{"kind":"icon","owner":"whh:keyhole","source":"keyhole","translations":["锁孔"]}
+{"kind":"icon","owner":"whh:kidney","source":"kidney","translations":["肾脏"]}
+{"kind":"icon","owner":"whh:king","source":"king","translations":["国王"]}
+{"kind":"icon","owner":"whh:kiss","source":"kiss","translations":["亲吻"]}
+{"kind":"icon","owner":"whh:kiwi","source":"kiwi","translations":["猕猴桃"]}
+{"kind":"icon","owner":"whh:kiwifruit","source":"kiwifruit","translations":["猕猴桃"]}
+{"kind":"icon","owner":"whh:knife","source":"knife","translations":["刀"]}
+{"kind":"icon","owner":"whh:knight","source":"knight","translations":["骑士"]}
+{"kind":"icon","owner":"whh:knob","source":"knob","translations":["旋钮"]}
+{"kind":"icon","owner":"whh:koala","source":"koala","translations":["树袋熊"]}
+{"kind":"icon","owner":"whh:l-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:l-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:lamp","source":"lamp","translations":["灯"]}
+{"kind":"icon","owner":"whh:lampalt","source":"lampalt","translations":["灯"]}
+{"kind":"icon","owner":"whh:lan","source":"lan","translations":["局域网"]}
+{"kind":"icon","owner":"whh:language","source":"language","translations":["语言"]}
+{"kind":"icon","owner":"whh:laptop","source":"laptop","translations":["笔记本电脑"]}
+{"kind":"icon","owner":"whh:lasso","source":"lasso","translations":["套索"]}
+{"kind":"icon","owner":"whh:laugh","source":"laugh","translations":["大笑"]}
+{"kind":"icon","owner":"whh:launch","source":"launch","translations":["启动"]}
+{"kind":"icon","owner":"whh:law","source":"law","translations":["法律"]}
+{"kind":"icon","owner":"whh:layerorder","source":"layerorder","translations":["图层 排序"]}
+{"kind":"icon","owner":"whh:layerorderdown","source":"layerorderdown","translations":["图层 排序 下"]}
+{"kind":"icon","owner":"whh:layerorderup","source":"layerorderup","translations":["图层 顺序 向上"]}
+{"kind":"icon","owner":"whh:layers","source":"layers","translations":["图层"]}
+{"kind":"icon","owner":"whh:layersalt","source":"layersalt","translations":["图层"]}
+{"kind":"icon","owner":"whh:layersthree","source":"layersthree","translations":["图层 三"]}
+{"kind":"icon","owner":"whh:leather","source":"leather","translations":["皮革"]}
+{"kind":"icon","owner":"whh:leftborder","source":"leftborder","translations":["左 边框"]}
+{"kind":"icon","owner":"whh:legacyfilemanager","source":"legacyfilemanager","translations":["旧版文件管理器"]}
+{"kind":"icon","owner":"whh:lego","source":"lego","translations":["积木"]}
+{"kind":"icon","owner":"whh:lemon","source":"lemon","translations":["柠檬"]}
+{"kind":"icon","owner":"whh:lens","source":"lens","translations":["镜头"]}
+{"kind":"icon","owner":"whh:lifeempty","source":"lifeempty","translations":["生命"]}
+{"kind":"icon","owner":"whh:lifefull","source":"lifefull","translations":["生命"]}
+{"kind":"icon","owner":"whh:lifehalf","source":"lifehalf","translations":["生命"]}
+{"kind":"icon","owner":"whh:lifepreserver","source":"lifepreserver","translations":["救生圈"]}
+{"kind":"icon","owner":"whh:lighthouse","source":"lighthouse","translations":["灯塔"]}
+{"kind":"icon","owner":"whh:lightning","source":"lightning","translations":["闪电"]}
+{"kind":"icon","owner":"whh:lightningalt","source":"lightningalt","translations":["闪电"]}
+{"kind":"icon","owner":"whh:lightoff","source":"lightoff","translations":["灯 关闭"]}
+{"kind":"icon","owner":"whh:lighton","source":"lighton","translations":["灯 开启"]}
+{"kind":"icon","owner":"whh:like","source":"like","translations":["喜欢"]}
+{"kind":"icon","owner":"whh:lineheight","source":"lineheight","translations":["行高"]}
+{"kind":"icon","owner":"whh:link","source":"link","translations":["链接"]}
+{"kind":"icon","owner":"whh:linkalt","source":"linkalt","translations":["链接"]}
+{"kind":"icon","owner":"whh:linkedin","source":"linkedin","translations":["领英"]}
+{"kind":"icon","owner":"whh:lips","source":"lips","translations":["嘴唇"]}
+{"kind":"icon","owner":"whh:lipstick","source":"lipstick","translations":["口红"]}
+{"kind":"icon","owner":"whh:list","source":"list","translations":["列表"]}
+{"kind":"icon","owner":"whh:listalt","source":"listalt","translations":["列表"]}
+{"kind":"icon","owner":"whh:liver","source":"liver","translations":["肝脏"]}
+{"kind":"icon","owner":"whh:loadingalt","source":"loadingalt","translations":["加载"]}
+{"kind":"icon","owner":"whh:loadingeight","source":"loadingeight","translations":["加载 八"]}
+{"kind":"icon","owner":"whh:loadingfive","source":"loadingfive","translations":["加载 五"]}
+{"kind":"icon","owner":"whh:loadingflowccw","source":"loadingflowccw","translations":["加载 流程 逆时针"]}
+{"kind":"icon","owner":"whh:loadingflowcw","source":"loadingflowcw","translations":["顺时针加载流"]}
+{"kind":"icon","owner":"whh:loadingfour","source":"loadingfour","translations":["加载 四"]}
+{"kind":"icon","owner":"whh:loadingone","source":"loadingone","translations":["加载 一"]}
+{"kind":"icon","owner":"whh:loadingseven","source":"loadingseven","translations":["加载 七"]}
+{"kind":"icon","owner":"whh:loadingsix","source":"loadingsix","translations":["加载 六"]}
+{"kind":"icon","owner":"whh:loadingthree","source":"loadingthree","translations":["加载 三"]}
+{"kind":"icon","owner":"whh:loadingtwo","source":"loadingtwo","translations":["加载 二"]}
+{"kind":"icon","owner":"whh:lock","source":"lock","translations":["锁"]}
+{"kind":"icon","owner":"whh:logprograms","source":"logprograms","translations":["日志 程序"]}
+{"kind":"icon","owner":"whh:lollypop","source":"lollypop","translations":["棒棒糖"]}
+{"kind":"icon","owner":"whh:lungs","source":"lungs","translations":["肺"]}
+{"kind":"icon","owner":"whh:m-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:m-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:macro","source":"macro","translations":["宏"]}
+{"kind":"icon","owner":"whh:magazine","source":"magazine","translations":["杂志"]}
+{"kind":"icon","owner":"whh:magnet","source":"magnet","translations":["磁铁"]}
+{"kind":"icon","owner":"whh:magnifier","source":"magnifier","translations":["放大镜"]}
+{"kind":"icon","owner":"whh:mailbox","source":"mailbox","translations":["邮箱"]}
+{"kind":"icon","owner":"whh:mailinglists","source":"mailinglists","translations":["邮件列表"]}
+{"kind":"icon","owner":"whh:male","source":"male","translations":["男性"]}
+{"kind":"icon","owner":"whh:managedhosting","source":"managedhosting","translations":["托管主机"]}
+{"kind":"icon","owner":"whh:manalt","source":"manalt","translations":["男性"]}
+{"kind":"icon","owner":"whh:manillaenvelope","source":"manillaenvelope","translations":["牛皮纸信封"]}
+{"kind":"icon","owner":"whh:manualshift","source":"manualshift","translations":["手册 移位"]}
+{"kind":"icon","owner":"whh:map","source":"map","translations":["地图"]}
+{"kind":"icon","owner":"whh:mapmarker","source":"mapmarker","translations":["地图 标记"]}
+{"kind":"icon","owner":"whh:marker","source":"marker","translations":["标记"]}
+{"kind":"icon","owner":"whh:markerdown","source":"markerdown","translations":["标记 下"]}
+{"kind":"icon","owner":"whh:markerleft","source":"markerleft","translations":["标记 左"]}
+{"kind":"icon","owner":"whh:markerright","source":"markerright","translations":["标记 右"]}
+{"kind":"icon","owner":"whh:markerup","source":"markerup","translations":["标记 向上"]}
+{"kind":"icon","owner":"whh:mastercard","source":"mastercard","translations":["万事达"]}
+{"kind":"icon","owner":"whh:maximize","source":"maximize","translations":["最大化"]}
+{"kind":"icon","owner":"whh:mayanpyramid","source":"mayanpyramid","translations":["玛雅 金字塔"]}
+{"kind":"icon","owner":"whh:medal","source":"medal","translations":["奖牌"]}
+{"kind":"icon","owner":"whh:medalbronze","source":"medalbronze","translations":["铜牌"]}
+{"kind":"icon","owner":"whh:medalgold","source":"medalgold","translations":["奖牌 黄金"]}
+{"kind":"icon","owner":"whh:medalsilver","source":"medalsilver","translations":["银牌"]}
+{"kind":"icon","owner":"whh:mediarepeat","source":"mediarepeat","translations":["媒体 重复"]}
+{"kind":"icon","owner":"whh:men","source":"men","translations":["男性"]}
+{"kind":"icon","owner":"whh:menu","source":"menu","translations":["菜单"]}
+{"kind":"icon","owner":"whh:merge","source":"merge","translations":["合并"]}
+{"kind":"icon","owner":"whh:mergecells","source":"mergecells","translations":["合并 单元格"]}
+{"kind":"icon","owner":"whh:mergeshapes","source":"mergeshapes","translations":["合并 形状"]}
+{"kind":"icon","owner":"whh:mergethree","source":"mergethree","translations":["合并 三"]}
+{"kind":"icon","owner":"whh:meteor","source":"meteor","translations":["流星"]}
+{"kind":"icon","owner":"whh:meteorite","source":"meteorite","translations":["陨石"]}
+{"kind":"icon","owner":"whh:metro","source":"metro","translations":["地铁"]}
+{"kind":"icon","owner":"whh:metronome","source":"metronome","translations":["节拍器"]}
+{"kind":"icon","owner":"whh:mickeymouse","source":"mickeymouse","translations":["米老鼠"]}
+{"kind":"icon","owner":"whh:microphone","source":"microphone","translations":["麦克风"]}
+{"kind":"icon","owner":"whh:microphonealt","source":"microphonealt","translations":["麦克风"]}
+{"kind":"icon","owner":"whh:microphonethree","source":"microphonethree","translations":["麦克风 三"]}
+{"kind":"icon","owner":"whh:microscope","source":"microscope","translations":["显微镜"]}
+{"kind":"icon","owner":"whh:microsd","source":"microsd","translations":["微型安全数字"]}
+{"kind":"icon","owner":"whh:microsoftoffice","source":"microsoftoffice","translations":["微软 Office"]}
+{"kind":"icon","owner":"whh:microwave","source":"microwave","translations":["微波炉"]}
+{"kind":"icon","owner":"whh:middlefinger","source":"middlefinger","translations":["中间 手指"]}
+{"kind":"icon","owner":"whh:milk","source":"milk","translations":["牛奶"]}
+{"kind":"icon","owner":"whh:mimetype","source":"mimetype","translations":["媒体类型"]}
+{"kind":"icon","owner":"whh:minecraft","source":"minecraft","translations":["我的世界"]}
+{"kind":"icon","owner":"whh:minecraftalt","source":"minecraftalt","translations":["我的世界 变体"]}
+{"kind":"icon","owner":"whh:miniangry","source":"miniangry","translations":["小 愤怒"]}
+{"kind":"icon","owner":"whh:miniconfused","source":"miniconfused","translations":["小 困惑"]}
+{"kind":"icon","owner":"whh:minigrin","source":"minigrin","translations":["小 露齿笑"]}
+{"kind":"icon","owner":"whh:minilaugh","source":"minilaugh","translations":["小 大笑"]}
+{"kind":"icon","owner":"whh:minimize","source":"minimize","translations":["最小化"]}
+{"kind":"icon","owner":"whh:minisad","source":"minisad","translations":["小 难过"]}
+{"kind":"icon","owner":"whh:minismile","source":"minismile","translations":["小 微笑"]}
+{"kind":"icon","owner":"whh:minitongue","source":"minitongue","translations":["小 舌头"]}
+{"kind":"icon","owner":"whh:minitonguealt","source":"minitonguealt","translations":["小 舌头"]}
+{"kind":"icon","owner":"whh:minitonguewink","source":"minitonguewink","translations":["小 舌头 眨眼"]}
+{"kind":"icon","owner":"whh:miniwink","source":"miniwink","translations":["小 眨眼"]}
+{"kind":"icon","owner":"whh:minus","source":"minus","translations":["减号"]}
+{"kind":"icon","owner":"whh:minussign","source":"minussign","translations":["减号"]}
+{"kind":"icon","owner":"whh:mirror","source":"mirror","translations":["镜子"]}
+{"kind":"icon","owner":"whh:missedcall","source":"missedcall","translations":["未接 呼叫"]}
+{"kind":"icon","owner":"whh:missedcallalt","source":"missedcallalt","translations":["未接 呼叫"]}
+{"kind":"icon","owner":"whh:mobile","source":"mobile","translations":["手机"]}
+{"kind":"icon","owner":"whh:molecule","source":"molecule","translations":["分子"]}
+{"kind":"icon","owner":"whh:moneyalt","source":"moneyalt","translations":["金钱"]}
+{"kind":"icon","owner":"whh:moneybag","source":"moneybag","translations":["钱袋"]}
+{"kind":"icon","owner":"whh:monitor","source":"monitor","translations":["显示器"]}
+{"kind":"icon","owner":"whh:monstersinc","source":"monstersinc","translations":["怪兽电力公司"]}
+{"kind":"icon","owner":"whh:moon","source":"moon","translations":["月亮"]}
+{"kind":"icon","owner":"whh:moonfirstquarter","source":"moonfirstquarter","translations":["月亮 第一个 四分之一"]}
+{"kind":"icon","owner":"whh:moonfull","source":"moonfull","translations":["满月"]}
+{"kind":"icon","owner":"whh:moonnew","source":"moonnew","translations":["月亮 新建"]}
+{"kind":"icon","owner":"whh:moonorbit","source":"moonorbit","translations":["月亮 轨道"]}
+{"kind":"icon","owner":"whh:moonthirdquarter","source":"moonthirdquarter","translations":["月亮 第三 四分之一"]}
+{"kind":"icon","owner":"whh:moonwaningcrescent","source":"moonwaningcrescent","translations":["月亮 渐亏 新月"]}
+{"kind":"icon","owner":"whh:moonwaninggibbous","source":"moonwaninggibbous","translations":["月亮 渐亏 凸月"]}
+{"kind":"icon","owner":"whh:moonwaxingcrescent","source":"moonwaxingcrescent","translations":["月亮 渐盈 新月"]}
+{"kind":"icon","owner":"whh:moonwaxinggibbous","source":"moonwaxinggibbous","translations":["月亮 渐盈 凸月"]}
+{"kind":"icon","owner":"whh:mosque","source":"mosque","translations":["清真寺"]}
+{"kind":"icon","owner":"whh:mountains","source":"mountains","translations":["山"]}
+{"kind":"icon","owner":"whh:mouse","source":"mouse","translations":["鼠标"]}
+{"kind":"icon","owner":"whh:mousealt","source":"mousealt","translations":["鼠标"]}
+{"kind":"icon","owner":"whh:moustache","source":"moustache","translations":["小胡子"]}
+{"kind":"icon","owner":"whh:move","source":"move","translations":["移动"]}
+{"kind":"icon","owner":"whh:movieclapper","source":"movieclapper","translations":["电影 场记板"]}
+{"kind":"icon","owner":"whh:moviereel","source":"moviereel","translations":["电影 卷轴"]}
+{"kind":"icon","owner":"whh:moviereelalt","source":"moviereelalt","translations":["电影 卷轴"]}
+{"kind":"icon","owner":"whh:muffin","source":"muffin","translations":["松饼"]}
+{"kind":"icon","owner":"whh:mug","source":"mug","translations":["马克杯"]}
+{"kind":"icon","owner":"whh:multiply","source":"multiply","translations":["乘号"]}
+{"kind":"icon","owner":"whh:mushroom","source":"mushroom","translations":["蘑菇"]}
+{"kind":"icon","owner":"whh:mushroomcloud","source":"mushroomcloud","translations":["蘑菇 云"]}
+{"kind":"icon","owner":"whh:music","source":"music","translations":["音乐"]}
+{"kind":"icon","owner":"whh:musicalt","source":"musicalt","translations":["音乐"]}
+{"kind":"icon","owner":"whh:musicsheet","source":"musicsheet","translations":["音乐 纸张"]}
+{"kind":"icon","owner":"whh:musicthree","source":"musicthree","translations":["音乐 三"]}
+{"kind":"icon","owner":"whh:mute","source":"mute","translations":["静音"]}
+{"kind":"icon","owner":"whh:mutealt","source":"mutealt","translations":["静音"]}
+{"kind":"icon","owner":"whh:mutemic","source":"mutemic","translations":["静音 麦克风"]}
+{"kind":"icon","owner":"whh:mymusic","source":"mymusic","translations":["我的 音乐"]}
+{"kind":"icon","owner":"whh:mypictures","source":"mypictures","translations":["我的 图片"]}
+{"kind":"icon","owner":"whh:myspace","source":"myspace","translations":["聚友"]}
+{"kind":"icon","owner":"whh:myvideos","source":"myvideos","translations":["我的 视频"]}
+{"kind":"icon","owner":"whh:n-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:n-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:nail","source":"nail","translations":["钉子"]}
+{"kind":"icon","owner":"whh:navigation","source":"navigation","translations":["导航"]}
+{"kind":"icon","owner":"whh:network","source":"network","translations":["网络"]}
+{"kind":"icon","owner":"whh:networksignal","source":"networksignal","translations":["网络 信号"]}
+{"kind":"icon","owner":"whh:networksignalalt","source":"networksignalalt","translations":["网络 信号"]}
+{"kind":"icon","owner":"whh:news","source":"news","translations":["新闻"]}
+{"kind":"icon","owner":"whh:newtab","source":"newtab","translations":["新建 标签页"]}
+{"kind":"icon","owner":"whh:newwindow","source":"newwindow","translations":["新窗口"]}
+{"kind":"icon","owner":"whh:next","source":"next","translations":["下一个"]}
+{"kind":"icon","owner":"whh:nfc","source":"nfc","translations":["近场通信"]}
+{"kind":"icon","owner":"whh:noborders","source":"noborders","translations":["无 边框"]}
+{"kind":"icon","owner":"whh:noflash","source":"noflash","translations":["无 闪光灯"]}
+{"kind":"icon","owner":"whh:notebook","source":"notebook","translations":["笔记本"]}
+{"kind":"icon","owner":"whh:notes","source":"notes","translations":["便笺"]}
+{"kind":"icon","owner":"whh:notesdate","source":"notesdate","translations":["便笺 日期"]}
+{"kind":"icon","owner":"whh:notesdatealt","source":"notesdatealt","translations":["便笺 日期"]}
+{"kind":"icon","owner":"whh:noteslist","source":"noteslist","translations":["便笺 列表"]}
+{"kind":"icon","owner":"whh:noteslistalt","source":"noteslistalt","translations":["便笺 列表"]}
+{"kind":"icon","owner":"whh:noteslocation","source":"noteslocation","translations":["便笺 位置"]}
+{"kind":"icon","owner":"whh:noteslocationalt","source":"noteslocationalt","translations":["便笺 位置"]}
+{"kind":"icon","owner":"whh:notestasks","source":"notestasks","translations":["便笺 任务"]}
+{"kind":"icon","owner":"whh:notestasksalt","source":"notestasksalt","translations":["便笺 任务"]}
+{"kind":"icon","owner":"whh:notification","source":"notification","translations":["通知"]}
+{"kind":"icon","owner":"whh:notificationbottom","source":"notificationbottom","translations":["通知 底部"]}
+{"kind":"icon","owner":"whh:notificationtop","source":"notificationtop","translations":["通知 顶部"]}
+{"kind":"icon","owner":"whh:nuclearplant","source":"nuclearplant","translations":["核电站"]}
+{"kind":"icon","owner":"whh:nucleus","source":"nucleus","translations":["核"]}
+{"kind":"icon","owner":"whh:numberlist","source":"numberlist","translations":["数字 列表"]}
+{"kind":"icon","owner":"whh:nut","source":"nut","translations":["螺母"]}
+{"kind":"icon","owner":"whh:o-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:o-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:observatory","source":"observatory","translations":["天文台"]}
+{"kind":"icon","owner":"whh:octoloaderempty","source":"octoloaderempty","translations":["octo 加载器 空"]}
+{"kind":"icon","owner":"whh:octoloaderfive","source":"octoloaderfive","translations":["octo 加载器 五"]}
+{"kind":"icon","owner":"whh:octoloaderfour","source":"octoloaderfour","translations":["octo 加载器 四"]}
+{"kind":"icon","owner":"whh:octoloaderfull","source":"octoloaderfull","translations":["octo 加载器 满"]}
+{"kind":"icon","owner":"whh:octoloaderone","source":"octoloaderone","translations":["octo 加载器 一"]}
+{"kind":"icon","owner":"whh:octoloaderseven","source":"octoloaderseven","translations":["octo 加载器 七"]}
+{"kind":"icon","owner":"whh:octoloadersix","source":"octoloadersix","translations":["octo 加载器 六"]}
+{"kind":"icon","owner":"whh:octoloaderthree","source":"octoloaderthree","translations":["octo 加载器 三"]}
+{"kind":"icon","owner":"whh:octoloadertwo","source":"octoloadertwo","translations":["octo 加载器 二"]}
+{"kind":"icon","owner":"whh:off","source":"off","translations":["关闭"]}
+{"kind":"icon","owner":"whh:officechair","source":"officechair","translations":["办公室 椅子"]}
+{"kind":"icon","owner":"whh:okcircle","source":"okcircle","translations":["确定 圆形"]}
+{"kind":"icon","owner":"whh:oksign","source":"oksign","translations":["确定 标志"]}
+{"kind":"icon","owner":"whh:oneup","source":"oneup","translations":["加一命"]}
+{"kind":"icon","owner":"whh:oneupalt","source":"oneupalt","translations":["加一命 变体"]}
+{"kind":"icon","owner":"whh:onion","source":"onion","translations":["洋葱"]}
+{"kind":"icon","owner":"whh:openfolderalt","source":"openfolderalt","translations":["打开 文件夹"]}
+{"kind":"icon","owner":"whh:opennewwindow","source":"opennewwindow","translations":["在新窗口打开"]}
+{"kind":"icon","owner":"whh:openshare","source":"openshare","translations":["开放 共享"]}
+{"kind":"icon","owner":"whh:opensource","source":"opensource","translations":["开源"]}
+{"kind":"icon","owner":"whh:orange","source":"orange","translations":["橙子"]}
+{"kind":"icon","owner":"whh:origami","source":"origami","translations":["折纸"]}
+{"kind":"icon","owner":"whh:outbox","source":"outbox","translations":["发件箱"]}
+{"kind":"icon","owner":"whh:outerborders","source":"outerborders","translations":["外部 边框"]}
+{"kind":"icon","owner":"whh:outgoingcall","source":"outgoingcall","translations":["呼出 呼叫"]}
+{"kind":"icon","owner":"whh:outgoingcallalt","source":"outgoingcallalt","translations":["呼出 呼叫"]}
+{"kind":"icon","owner":"whh:p-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:p-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:pacifier","source":"pacifier","translations":["安抚奶嘴"]}
+{"kind":"icon","owner":"whh:packarchive","source":"packarchive","translations":["包 归档"]}
+{"kind":"icon","owner":"whh:pacman","source":"pacman","translations":["吃豆人"]}
+{"kind":"icon","owner":"whh:pageback","source":"pageback","translations":["返回上一页"]}
+{"kind":"icon","owner":"whh:pagebreak","source":"pagebreak","translations":["分页符"]}
+{"kind":"icon","owner":"whh:pageforward","source":"pageforward","translations":["页面 前进"]}
+{"kind":"icon","owner":"whh:pagesetup","source":"pagesetup","translations":["页面 设置"]}
+{"kind":"icon","owner":"whh:paintbrush","source":"paintbrush","translations":["画笔"]}
+{"kind":"icon","owner":"whh:painting","source":"painting","translations":["绘画"]}
+{"kind":"icon","owner":"whh:paintroll","source":"paintroll","translations":["油漆滚筒"]}
+{"kind":"icon","owner":"whh:paintrollalt","source":"paintrollalt","translations":["油漆滚筒"]}
+{"kind":"icon","owner":"whh:panda","source":"panda","translations":["熊猫"]}
+{"kind":"icon","owner":"whh:panorama","source":"panorama","translations":["全景"]}
+{"kind":"icon","owner":"whh:panoramaalt","source":"panoramaalt","translations":["全景"]}
+{"kind":"icon","owner":"whh:panties","source":"panties","translations":["内裤"]}
+{"kind":"icon","owner":"whh:paperboat","source":"paperboat","translations":["纸船"]}
+{"kind":"icon","owner":"whh:paperclip","source":"paperclip","translations":["回形针"]}
+{"kind":"icon","owner":"whh:paperclipalt","source":"paperclipalt","translations":["回形针"]}
+{"kind":"icon","owner":"whh:paperclipvertical","source":"paperclipvertical","translations":["回形针 垂直"]}
+{"kind":"icon","owner":"whh:papercutter","source":"papercutter","translations":["纸张 切割器"]}
+{"kind":"icon","owner":"whh:paperplane","source":"paperplane","translations":["纸飞机"]}
+{"kind":"icon","owner":"whh:parentheses","source":"parentheses","translations":["圆括号"]}
+{"kind":"icon","owner":"whh:parkeddomain","source":"parkeddomain","translations":["停放域名"]}
+{"kind":"icon","owner":"whh:parkingmeter","source":"parkingmeter","translations":["停车 仪表"]}
+{"kind":"icon","owner":"whh:parthenon","source":"parthenon","translations":["帕特农神庙"]}
+{"kind":"icon","owner":"whh:password","source":"password","translations":["密码"]}
+{"kind":"icon","owner":"whh:passwordalt","source":"passwordalt","translations":["密码"]}
+{"kind":"icon","owner":"whh:pasta","source":"pasta","translations":["意大利面"]}
+{"kind":"icon","owner":"whh:pastealt","source":"pastealt","translations":["粘贴"]}
+{"kind":"icon","owner":"whh:patch","source":"patch","translations":["补丁"]}
+{"kind":"icon","owner":"whh:path","source":"path","translations":["路径"]}
+{"kind":"icon","owner":"whh:pattern","source":"pattern","translations":["图案"]}
+{"kind":"icon","owner":"whh:pause","source":"pause","translations":["暂停"]}
+{"kind":"icon","owner":"whh:paw","source":"paw","translations":["爪印"]}
+{"kind":"icon","owner":"whh:pawn","source":"pawn","translations":["兵"]}
+{"kind":"icon","owner":"whh:paypal","source":"paypal","translations":["贝宝"]}
+{"kind":"icon","owner":"whh:peace","source":"peace","translations":["和平"]}
+{"kind":"icon","owner":"whh:pear","source":"pear","translations":["梨"]}
+{"kind":"icon","owner":"whh:pen","source":"pen","translations":["钢笔"]}
+{"kind":"icon","owner":"whh:pencil","source":"pencil","translations":["铅笔"]}
+{"kind":"icon","owner":"whh:pepperoni","source":"pepperoni","translations":["意大利辣香肠"]}
+{"kind":"icon","owner":"whh:percent","source":"percent","translations":["百分比"]}
+{"kind":"icon","owner":"whh:perfume","source":"perfume","translations":["香水"]}
+{"kind":"icon","owner":"whh:phonealt","source":"phonealt","translations":["电话"]}
+{"kind":"icon","owner":"whh:phonebook","source":"phonebook","translations":["电话簿"]}
+{"kind":"icon","owner":"whh:phonebookalt","source":"phonebookalt","translations":["电话簿"]}
+{"kind":"icon","owner":"whh:phonemic","source":"phonemic","translations":["电话 麦克风"]}
+{"kind":"icon","owner":"whh:phoneold","source":"phoneold","translations":["电话 旧"]}
+{"kind":"icon","owner":"whh:phonescreensize","source":"phonescreensize","translations":["电话 屏幕 尺寸"]}
+{"kind":"icon","owner":"whh:photonineframes","source":"photonineframes","translations":["照片 九 框架"]}
+{"kind":"icon","owner":"whh:photosphere","source":"photosphere","translations":["全景照片"]}
+{"kind":"icon","owner":"whh:piano","source":"piano","translations":["钢琴"]}
+{"kind":"icon","owner":"whh:pickaxe","source":"pickaxe","translations":["镐"]}
+{"kind":"icon","owner":"whh:pictureframe","source":"pictureframe","translations":["相框"]}
+{"kind":"icon","owner":"whh:piggybank","source":"piggybank","translations":["存钱罐"]}
+{"kind":"icon","owner":"whh:pigpena","source":"pigpena","translations":["猪圈密码 A"]}
+{"kind":"icon","owner":"whh:pigpenb","source":"pigpenb","translations":["猪圈密码 B"]}
+{"kind":"icon","owner":"whh:pigpenc","source":"pigpenc","translations":["猪圈密码 C"]}
+{"kind":"icon","owner":"whh:pigpend","source":"pigpend","translations":["猪圈密码 D"]}
+{"kind":"icon","owner":"whh:pigpene","source":"pigpene","translations":["猪圈密码 E"]}
+{"kind":"icon","owner":"whh:pigpenf","source":"pigpenf","translations":["猪圈密码 F"]}
+{"kind":"icon","owner":"whh:pigpeng","source":"pigpeng","translations":["猪圈密码 G"]}
+{"kind":"icon","owner":"whh:pigpenh","source":"pigpenh","translations":["猪圈密码 H"]}
+{"kind":"icon","owner":"whh:pigpeni","source":"pigpeni","translations":["猪圈密码 I"]}
+{"kind":"icon","owner":"whh:pigpenj","source":"pigpenj","translations":["猪圈密码 J"]}
+{"kind":"icon","owner":"whh:pigpenk","source":"pigpenk","translations":["猪圈密码 K"]}
+{"kind":"icon","owner":"whh:pigpenl","source":"pigpenl","translations":["猪圈密码 L"]}
+{"kind":"icon","owner":"whh:pigpenm","source":"pigpenm","translations":["猪圈密码 M"]}
+{"kind":"icon","owner":"whh:pigpenn","source":"pigpenn","translations":["猪圈密码 N"]}
+{"kind":"icon","owner":"whh:pigpeno","source":"pigpeno","translations":["猪圈密码 O"]}
+{"kind":"icon","owner":"whh:pigpenp","source":"pigpenp","translations":["猪圈密码 P"]}
+{"kind":"icon","owner":"whh:pigpenq","source":"pigpenq","translations":["猪圈密码 Q"]}
+{"kind":"icon","owner":"whh:pigpenr","source":"pigpenr","translations":["猪圈密码 R"]}
+{"kind":"icon","owner":"whh:pigpens","source":"pigpens","translations":["猪圈密码 S"]}
+{"kind":"icon","owner":"whh:pigpent","source":"pigpent","translations":["猪圈密码 T"]}
+{"kind":"icon","owner":"whh:pigpenu","source":"pigpenu","translations":["猪圈密码 U"]}
+{"kind":"icon","owner":"whh:pigpenv","source":"pigpenv","translations":["猪圈密码 V"]}
+{"kind":"icon","owner":"whh:pigpenw","source":"pigpenw","translations":["猪圈密码 W"]}
+{"kind":"icon","owner":"whh:pigpenx","source":"pigpenx","translations":["猪圈密码 X"]}
+{"kind":"icon","owner":"whh:pigpeny","source":"pigpeny","translations":["猪圈密码 Y"]}
+{"kind":"icon","owner":"whh:pigpenz","source":"pigpenz","translations":["猪圈密码 Z"]}
+{"kind":"icon","owner":"whh:pilcrow","source":"pilcrow","translations":["段落标记"]}
+{"kind":"icon","owner":"whh:pin","source":"pin","translations":["图钉"]}
+{"kind":"icon","owner":"whh:pingpong","source":"pingpong","translations":["乒乓球"]}
+{"kind":"icon","owner":"whh:pipe","source":"pipe","translations":["管道"]}
+{"kind":"icon","owner":"whh:pixelarrow","source":"pixelarrow","translations":["像素 箭头"]}
+{"kind":"icon","owner":"whh:pixelaxe","source":"pixelaxe","translations":["像素 斧头"]}
+{"kind":"icon","owner":"whh:pixelbastardsword","source":"pixelbastardsword","translations":["像素 半手剑"]}
+{"kind":"icon","owner":"whh:pixelbattleaxe","source":"pixelbattleaxe","translations":["像素 战斗 斧头"]}
+{"kind":"icon","owner":"whh:pixelbow","source":"pixelbow","translations":["像素 弓"]}
+{"kind":"icon","owner":"whh:pixelbroadsword","source":"pixelbroadsword","translations":["像素 阔剑"]}
+{"kind":"icon","owner":"whh:pixelchest","source":"pixelchest","translations":["像素 箱子"]}
+{"kind":"icon","owner":"whh:pixeldagger","source":"pixeldagger","translations":["像素 匕首"]}
+{"kind":"icon","owner":"whh:pixelelixir","source":"pixelelixir","translations":["像素 灵药"]}
+{"kind":"icon","owner":"whh:pixelheart","source":"pixelheart","translations":["像素 心形"]}
+{"kind":"icon","owner":"whh:pixellance","source":"pixellance","translations":["像素 长矛"]}
+{"kind":"icon","owner":"whh:pixelpickaxe","source":"pixelpickaxe","translations":["像素 镐"]}
+{"kind":"icon","owner":"whh:pixelpotion","source":"pixelpotion","translations":["像素 药水"]}
+{"kind":"icon","owner":"whh:pixelpotionalt","source":"pixelpotionalt","translations":["像素 药水"]}
+{"kind":"icon","owner":"whh:pixelshield","source":"pixelshield","translations":["像素 盾牌"]}
+{"kind":"icon","owner":"whh:pixelshovel","source":"pixelshovel","translations":["像素 铲子"]}
+{"kind":"icon","owner":"whh:pixelsphere","source":"pixelsphere","translations":["像素 球体"]}
+{"kind":"icon","owner":"whh:pixelsword","source":"pixelsword","translations":["像素 剑"]}
+{"kind":"icon","owner":"whh:pixelwand","source":"pixelwand","translations":["像素 魔杖"]}
+{"kind":"icon","owner":"whh:pizza","source":"pizza","translations":["披萨"]}
+{"kind":"icon","owner":"whh:placeadd","source":"placeadd","translations":["地点 添加"]}
+{"kind":"icon","owner":"whh:placealt","source":"placealt","translations":["地点"]}
+{"kind":"icon","owner":"whh:placealtadd","source":"placealtadd","translations":["地点 添加"]}
+{"kind":"icon","owner":"whh:placealtdelete","source":"placealtdelete","translations":["地点 删除"]}
+{"kind":"icon","owner":"whh:placedelete","source":"placedelete","translations":["地点 删除"]}
+{"kind":"icon","owner":"whh:plane","source":"plane","translations":["飞机"]}
+{"kind":"icon","owner":"whh:planealt","source":"planealt","translations":["飞机"]}
+{"kind":"icon","owner":"whh:planet","source":"planet","translations":["行星"]}
+{"kind":"icon","owner":"whh:plantalt","source":"plantalt","translations":["植物"]}
+{"kind":"icon","owner":"whh:play","source":"play","translations":["播放"]}
+{"kind":"icon","owner":"whh:playcircle","source":"playcircle","translations":["播放 圆形"]}
+{"kind":"icon","owner":"whh:playstore","source":"playstore","translations":["播放 商店"]}
+{"kind":"icon","owner":"whh:playvideo","source":"playvideo","translations":["播放 视频"]}
+{"kind":"icon","owner":"whh:plug","source":"plug","translations":["插头"]}
+{"kind":"icon","owner":"whh:plugin","source":"plugin","translations":["插件"]}
+{"kind":"icon","owner":"whh:pluginalt","source":"pluginalt","translations":["插件"]}
+{"kind":"icon","owner":"whh:plumbing","source":"plumbing","translations":["管道"]}
+{"kind":"icon","owner":"whh:plus","source":"plus","translations":["加号"]}
+{"kind":"icon","owner":"whh:pluscircles","source":"pluscircles","translations":["加号 圆形"]}
+{"kind":"icon","owner":"whh:plusgames","source":"plusgames","translations":["加号 游戏"]}
+{"kind":"icon","owner":"whh:pluspages","source":"pluspages","translations":["加号 页面"]}
+{"kind":"icon","owner":"whh:plussign","source":"plussign","translations":["加号"]}
+{"kind":"icon","owner":"whh:pocket","source":"pocket","translations":["口袋"]}
+{"kind":"icon","owner":"whh:podcast","source":"podcast","translations":["播客"]}
+{"kind":"icon","owner":"whh:podium","source":"podium","translations":["讲台"]}
+{"kind":"icon","owner":"whh:pokemon","source":"pokemon","translations":["宝可梦"]}
+{"kind":"icon","owner":"whh:polaroid","source":"polaroid","translations":["拍立得"]}
+{"kind":"icon","owner":"whh:police","source":"police","translations":["警察"]}
+{"kind":"icon","owner":"whh:polygonlasso","source":"polygonlasso","translations":["多边形 套索"]}
+{"kind":"icon","owner":"whh:poop","source":"poop","translations":["粪便"]}
+{"kind":"icon","owner":"whh:poopalt","source":"poopalt","translations":["粪便"]}
+{"kind":"icon","owner":"whh:popcorn","source":"popcorn","translations":["爆米花"]}
+{"kind":"icon","owner":"whh:portrait","source":"portrait","translations":["肖像"]}
+{"kind":"icon","owner":"whh:post","source":"post","translations":["文章"]}
+{"kind":"icon","owner":"whh:postalt","source":"postalt","translations":["文章"]}
+{"kind":"icon","owner":"whh:pound","source":"pound","translations":["井号"]}
+{"kind":"icon","owner":"whh:poundalt","source":"poundalt","translations":["英镑 变体"]}
+{"kind":"icon","owner":"whh:poundsquare","source":"poundsquare","translations":["英镑 方形"]}
+{"kind":"icon","owner":"whh:powerjack","source":"powerjack","translations":["电源 插孔"]}
+{"kind":"icon","owner":"whh:powerplug","source":"powerplug","translations":["电源 插头"]}
+{"kind":"icon","owner":"whh:powerplugeu","source":"powerplugeu","translations":["欧式 电源插头"]}
+{"kind":"icon","owner":"whh:powerplugus","source":"powerplugus","translations":["美式 电源插头"]}
+{"kind":"icon","owner":"whh:precisecursor","source":"precisecursor","translations":["精确光标"]}
+{"kind":"icon","owner":"whh:presentation","source":"presentation","translations":["演示文稿"]}
+{"kind":"icon","owner":"whh:pretzel","source":"pretzel","translations":["椒盐卷饼"]}
+{"kind":"icon","owner":"whh:preview","source":"preview","translations":["预览"]}
+{"kind":"icon","owner":"whh:previous","source":"previous","translations":["上一个"]}
+{"kind":"icon","owner":"whh:price","source":"price","translations":["价格"]}
+{"kind":"icon","owner":"whh:pricealt","source":"pricealt","translations":["价格"]}
+{"kind":"icon","owner":"whh:print","source":"print","translations":["打印"]}
+{"kind":"icon","owner":"whh:profile","source":"profile","translations":["个人资料"]}
+{"kind":"icon","owner":"whh:programclose","source":"programclose","translations":["程序 关闭"]}
+{"kind":"icon","owner":"whh:programok","source":"programok","translations":["程序 确定"]}
+{"kind":"icon","owner":"whh:projectcompare","source":"projectcompare","translations":["项目 比较"]}
+{"kind":"icon","owner":"whh:projectforkdelete","source":"projectforkdelete","translations":["Projectfork 删除"]}
+{"kind":"icon","owner":"whh:projectforkprivate","source":"projectforkprivate","translations":["Projectfork 私有"]}
+{"kind":"icon","owner":"whh:projectmerge","source":"projectmerge","translations":["项目 合并"]}
+{"kind":"icon","owner":"whh:projector","source":"projector","translations":["投影仪"]}
+{"kind":"icon","owner":"whh:projectpier","source":"projectpier","translations":["项目 码头"]}
+{"kind":"icon","owner":"whh:protecteddirectory","source":"protecteddirectory","translations":["受保护 目录"]}
+{"kind":"icon","owner":"whh:pscircle","source":"pscircle","translations":["PlayStation 圆形"]}
+{"kind":"icon","owner":"whh:pscursor","source":"pscursor","translations":["PlayStation 光标"]}
+{"kind":"icon","owner":"whh:psdown","source":"psdown","translations":["PlayStation 向下"]}
+{"kind":"icon","owner":"whh:psleft","source":"psleft","translations":["PlayStation 向左"]}
+{"kind":"icon","owner":"whh:psright","source":"psright","translations":["PlayStation 向右"]}
+{"kind":"icon","owner":"whh:pssquare","source":"pssquare","translations":["PlayStation 方形"]}
+{"kind":"icon","owner":"whh:pstriangle","source":"pstriangle","translations":["PlayStation 三角形"]}
+{"kind":"icon","owner":"whh:psup","source":"psup","translations":["PlayStation 向上"]}
+{"kind":"icon","owner":"whh:pull","source":"pull","translations":["拉"]}
+{"kind":"icon","owner":"whh:pullalt","source":"pullalt","translations":["拉"]}
+{"kind":"icon","owner":"whh:pullrequest","source":"pullrequest","translations":["拉取请求"]}
+{"kind":"icon","owner":"whh:pumpjack","source":"pumpjack","translations":["抽油机"]}
+{"kind":"icon","owner":"whh:punisher","source":"punisher","translations":["惩罚者"]}
+{"kind":"icon","owner":"whh:purse","source":"purse","translations":["钱包"]}
+{"kind":"icon","owner":"whh:push","source":"push","translations":["推送"]}
+{"kind":"icon","owner":"whh:pushalt","source":"pushalt","translations":["推送"]}
+{"kind":"icon","owner":"whh:q-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:q-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:qrcode","source":"qrcode","translations":["二维码"]}
+{"kind":"icon","owner":"whh:queen","source":"queen","translations":["王后"]}
+{"kind":"icon","owner":"whh:query","source":"query","translations":["查询"]}
+{"kind":"icon","owner":"whh:questionsign","source":"questionsign","translations":["问号 标志"]}
+{"kind":"icon","owner":"whh:quote","source":"quote","translations":["引号"]}
+{"kind":"icon","owner":"whh:quotedown","source":"quotedown","translations":["引号 下"]}
+{"kind":"icon","owner":"whh:quoteup","source":"quoteup","translations":["引号 向上"]}
+{"kind":"icon","owner":"whh:r-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:r-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:rabbit","source":"rabbit","translations":["兔子"]}
+{"kind":"icon","owner":"whh:raceflag","source":"raceflag","translations":["赛车 旗帜"]}
+{"kind":"icon","owner":"whh:racquet","source":"racquet","translations":["球拍"]}
+{"kind":"icon","owner":"whh:radar","source":"radar","translations":["雷达"]}
+{"kind":"icon","owner":"whh:radio","source":"radio","translations":["收音机"]}
+{"kind":"icon","owner":"whh:radioactive","source":"radioactive","translations":["放射性"]}
+{"kind":"icon","owner":"whh:radiobutton","source":"radiobutton","translations":["单选按钮"]}
+{"kind":"icon","owner":"whh:railroad","source":"railroad","translations":["铁路"]}
+{"kind":"icon","owner":"whh:railtunnel","source":"railtunnel","translations":["铁轨 隧道"]}
+{"kind":"icon","owner":"whh:rain","source":"rain","translations":["雨"]}
+{"kind":"icon","owner":"whh:ram","source":"ram","translations":["随机存取存储器"]}
+{"kind":"icon","owner":"whh:random","source":"random","translations":["随机"]}
+{"kind":"icon","owner":"whh:raspberrypi","source":"raspberrypi","translations":["树莓派"]}
+{"kind":"icon","owner":"whh:rawaccesslogs","source":"rawaccesslogs","translations":["原始访问日志"]}
+{"kind":"icon","owner":"whh:razor","source":"razor","translations":["剃刀"]}
+{"kind":"icon","owner":"whh:reademail","source":"reademail","translations":["阅读 邮件"]}
+{"kind":"icon","owner":"whh:reademailalt","source":"reademailalt","translations":["阅读 邮件"]}
+{"kind":"icon","owner":"whh:record","source":"record","translations":["记录"]}
+{"kind":"icon","owner":"whh:rectangle","source":"rectangle","translations":["矩形"]}
+{"kind":"icon","owner":"whh:rectangleselection","source":"rectangleselection","translations":["矩形 选择"]}
+{"kind":"icon","owner":"whh:recycle","source":"recycle","translations":["回收"]}
+{"kind":"icon","owner":"whh:reddit","source":"reddit","translations":["红迪"]}
+{"kind":"icon","owner":"whh:redirect","source":"redirect","translations":["重定向"]}
+{"kind":"icon","owner":"whh:refresh","source":"refresh","translations":["刷新"]}
+{"kind":"icon","owner":"whh:refreshalt","source":"refreshalt","translations":["刷新"]}
+{"kind":"icon","owner":"whh:reliability","source":"reliability","translations":["可靠性"]}
+{"kind":"icon","owner":"whh:remote","source":"remote","translations":["遥控器"]}
+{"kind":"icon","owner":"whh:removecircle","source":"removecircle","translations":["移除 圆形"]}
+{"kind":"icon","owner":"whh:removefolderalt","source":"removefolderalt","translations":["移除 文件夹"]}
+{"kind":"icon","owner":"whh:removefriend","source":"removefriend","translations":["删除好友"]}
+{"kind":"icon","owner":"whh:removesign","source":"removesign","translations":["删除 标志"]}
+{"kind":"icon","owner":"whh:removetags","source":"removetags","translations":["移除 标签"]}
+{"kind":"icon","owner":"whh:removeuseralt","source":"removeuseralt","translations":["移除 用户"]}
+{"kind":"icon","owner":"whh:repeat","source":"repeat","translations":["重复"]}
+{"kind":"icon","owner":"whh:repeatone","source":"repeatone","translations":["重复 一"]}
+{"kind":"icon","owner":"whh:report","source":"report","translations":["报告"]}
+{"kind":"icon","owner":"whh:resellerhosting","source":"resellerhosting","translations":["经销商托管"]}
+{"kind":"icon","owner":"whh:residentevil","source":"residentevil","translations":["生化危机"]}
+{"kind":"icon","owner":"whh:resistor","source":"resistor","translations":["电阻"]}
+{"kind":"icon","owner":"whh:resize","source":"resize","translations":["调整大小"]}
+{"kind":"icon","owner":"whh:resizedownleft","source":"resizedownleft","translations":["调整大小 下 左"]}
+{"kind":"icon","owner":"whh:resizedownright","source":"resizedownright","translations":["调整大小 下 右"]}
+{"kind":"icon","owner":"whh:resizefull","source":"resizefull","translations":["调整大小"]}
+{"kind":"icon","owner":"whh:resizehorizontal","source":"resizehorizontal","translations":["调整大小 水平"]}
+{"kind":"icon","owner":"whh:resizehorizontalalt","source":"resizehorizontalalt","translations":["调整大小 水平"]}
+{"kind":"icon","owner":"whh:resizesmall","source":"resizesmall","translations":["调整大小 缩小"]}
+{"kind":"icon","owner":"whh:resizeupleft","source":"resizeupleft","translations":["调整大小 左上"]}
+{"kind":"icon","owner":"whh:resizeupright","source":"resizeupright","translations":["调整大小 直立"]}
+{"kind":"icon","owner":"whh:resizevertical","source":"resizevertical","translations":["调整大小 垂直"]}
+{"kind":"icon","owner":"whh:resizeverticalalt","source":"resizeverticalalt","translations":["调整大小 垂直"]}
+{"kind":"icon","owner":"whh:restart","source":"restart","translations":["重新启动"]}
+{"kind":"icon","owner":"whh:restaurantmenu","source":"restaurantmenu","translations":["餐厅 菜单"]}
+{"kind":"icon","owner":"whh:restore","source":"restore","translations":["恢复"]}
+{"kind":"icon","owner":"whh:restricted","source":"restricted","translations":["受限"]}
+{"kind":"icon","owner":"whh:retweet","source":"retweet","translations":["转发"]}
+{"kind":"icon","owner":"whh:rightborder","source":"rightborder","translations":["右 边框"]}
+{"kind":"icon","owner":"whh:ring","source":"ring","translations":["圆环"]}
+{"kind":"icon","owner":"whh:road","source":"road","translations":["道路"]}
+{"kind":"icon","owner":"whh:roadsignleft","source":"roadsignleft","translations":["路标 向左"]}
+{"kind":"icon","owner":"whh:roadsignright","source":"roadsignright","translations":["路标 向右"]}
+{"kind":"icon","owner":"whh:roadtunnel","source":"roadtunnel","translations":["道路 隧道"]}
+{"kind":"icon","owner":"whh:robocop","source":"robocop","translations":["机械战警"]}
+{"kind":"icon","owner":"whh:rook","source":"rook","translations":["车"]}
+{"kind":"icon","owner":"whh:root","source":"root","translations":["根"]}
+{"kind":"icon","owner":"whh:rotateclockwise","source":"rotateclockwise","translations":["旋转 顺时针"]}
+{"kind":"icon","owner":"whh:rotatecounterclockwise","source":"rotatecounterclockwise","translations":["旋转 逆时针"]}
+{"kind":"icon","owner":"whh:rouble","source":"rouble","translations":["卢布"]}
+{"kind":"icon","owner":"whh:roublealt","source":"roublealt","translations":["卢布"]}
+{"kind":"icon","owner":"whh:roublesquare","source":"roublesquare","translations":["卢布 正方形"]}
+{"kind":"icon","owner":"whh:roundrectangle","source":"roundrectangle","translations":["圆角矩形"]}
+{"kind":"icon","owner":"whh:route","source":"route","translations":["路线"]}
+{"kind":"icon","owner":"whh:router","source":"router","translations":["路由器"]}
+{"kind":"icon","owner":"whh:routeralt","source":"routeralt","translations":["路由器"]}
+{"kind":"icon","owner":"whh:rss","source":"rss","translations":["简易信息聚合"]}
+{"kind":"icon","owner":"whh:rubberstamp","source":"rubberstamp","translations":["橡胶 印章"]}
+{"kind":"icon","owner":"whh:rudder","source":"rudder","translations":["舵"]}
+{"kind":"icon","owner":"whh:ruler","source":"ruler","translations":["尺子"]}
+{"kind":"icon","owner":"whh:s-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:s-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:sad","source":"sad","translations":["悲伤"]}
+{"kind":"icon","owner":"whh:safetygoggles","source":"safetygoggles","translations":["安全 护目镜"]}
+{"kind":"icon","owner":"whh:safetypin","source":"safetypin","translations":["安全 图钉"]}
+{"kind":"icon","owner":"whh:sale","source":"sale","translations":["促销"]}
+{"kind":"icon","owner":"whh:salealt","source":"salealt","translations":["促销"]}
+{"kind":"icon","owner":"whh:satellite","source":"satellite","translations":["卫星"]}
+{"kind":"icon","owner":"whh:savetodrive","source":"savetodrive","translations":["保存到驱动器"]}
+{"kind":"icon","owner":"whh:scales","source":"scales","translations":["天平"]}
+{"kind":"icon","owner":"whh:scissorsalt","source":"scissorsalt","translations":["剪刀"]}
+{"kind":"icon","owner":"whh:scope","source":"scope","translations":["范围"]}
+{"kind":"icon","owner":"whh:scopealt","source":"scopealt","translations":["范围"]}
+{"kind":"icon","owner":"whh:screenshot","source":"screenshot","translations":["截图"]}
+{"kind":"icon","owner":"whh:screw","source":"screw","translations":["螺丝"]}
+{"kind":"icon","owner":"whh:screwdriver","source":"screwdriver","translations":["螺丝刀"]}
+{"kind":"icon","owner":"whh:screwdriveralt","source":"screwdriveralt","translations":["螺丝刀"]}
+{"kind":"icon","owner":"whh:script","source":"script","translations":["脚本"]}
+{"kind":"icon","owner":"whh:scriptalt","source":"scriptalt","translations":["脚本"]}
+{"kind":"icon","owner":"whh:sdvideo","source":"sdvideo","translations":["标清 视频"]}
+{"kind":"icon","owner":"whh:sea","source":"sea","translations":["海洋"]}
+{"kind":"icon","owner":"whh:seaalt","source":"seaalt","translations":["海洋"]}
+{"kind":"icon","owner":"whh:searchdocument","source":"searchdocument","translations":["搜索 文档"]}
+{"kind":"icon","owner":"whh:searchfolder","source":"searchfolder","translations":["搜索 文件夹"]}
+{"kind":"icon","owner":"whh:security","source":"security","translations":["安全"]}
+{"kind":"icon","owner":"whh:securityalt","source":"securityalt","translations":["安全"]}
+{"kind":"icon","owner":"whh:selectionadd","source":"selectionadd","translations":["选择 添加"]}
+{"kind":"icon","owner":"whh:selectionintersect","source":"selectionintersect","translations":["选择 相交"]}
+{"kind":"icon","owner":"whh:selectionremove","source":"selectionremove","translations":["选择 移除"]}
+{"kind":"icon","owner":"whh:selectionsymbol","source":"selectionsymbol","translations":["选择 符号"]}
+{"kind":"icon","owner":"whh:sendbackward","source":"sendbackward","translations":["发送 后退"]}
+{"kind":"icon","owner":"whh:sendtoback","source":"sendtoback","translations":["置于底层"]}
+{"kind":"icon","owner":"whh:seo","source":"seo","translations":["搜索引擎优化"]}
+{"kind":"icon","owner":"whh:server","source":"server","translations":["服务器"]}
+{"kind":"icon","owner":"whh:servers","source":"servers","translations":["服务器"]}
+{"kind":"icon","owner":"whh:settingsandroid","source":"settingsandroid","translations":["安卓设置"]}
+{"kind":"icon","owner":"whh:sextant","source":"sextant","translations":["六分仪"]}
+{"kind":"icon","owner":"whh:shapes","source":"shapes","translations":["形状"]}
+{"kind":"icon","owner":"whh:share","source":"share","translations":["分享"]}
+{"kind":"icon","owner":"whh:sharealt","source":"sharealt","translations":["分享"]}
+{"kind":"icon","owner":"whh:sharedfile","source":"sharedfile","translations":["已共享 文件"]}
+{"kind":"icon","owner":"whh:sharedhosting","source":"sharedhosting","translations":["共享主机"]}
+{"kind":"icon","owner":"whh:sharethree","source":"sharethree","translations":["分享 三"]}
+{"kind":"icon","owner":"whh:sharetwo","source":"sharetwo","translations":["分享 二"]}
+{"kind":"icon","owner":"whh:sheep","source":"sheep","translations":["绵羊"]}
+{"kind":"icon","owner":"whh:shell","source":"shell","translations":["贝壳"]}
+{"kind":"icon","owner":"whh:sheriff","source":"sheriff","translations":["治安官"]}
+{"kind":"icon","owner":"whh:shipping","source":"shipping","translations":["运输"]}
+{"kind":"icon","owner":"whh:shirtbutton","source":"shirtbutton","translations":["衬衫 按钮"]}
+{"kind":"icon","owner":"whh:shirtbuttonalt","source":"shirtbuttonalt","translations":["衬衫 按钮"]}
+{"kind":"icon","owner":"whh:shirtbuttonthree","source":"shirtbuttonthree","translations":["衬衫 按钮 三"]}
+{"kind":"icon","owner":"whh:shoebox","source":"shoebox","translations":["鞋子 盒子"]}
+{"kind":"icon","owner":"whh:shopping","source":"shopping","translations":["购物"]}
+{"kind":"icon","owner":"whh:shoppingbag","source":"shoppingbag","translations":["购物 袋子"]}
+{"kind":"icon","owner":"whh:shoppingcart","source":"shoppingcart","translations":["购物车"]}
+{"kind":"icon","owner":"whh:shoppingcartalt","source":"shoppingcartalt","translations":["购物车"]}
+{"kind":"icon","owner":"whh:shortcut","source":"shortcut","translations":["快捷方式"]}
+{"kind":"icon","owner":"whh:shovel","source":"shovel","translations":["铲子"]}
+{"kind":"icon","owner":"whh:shredder","source":"shredder","translations":["碎纸机"]}
+{"kind":"icon","owner":"whh:shutdown","source":"shutdown","translations":["关机"]}
+{"kind":"icon","owner":"whh:shuttle","source":"shuttle","translations":["穿梭机"]}
+{"kind":"icon","owner":"whh:sidebar","source":"sidebar","translations":["侧边栏"]}
+{"kind":"icon","owner":"whh:signal","source":"signal","translations":["信号"]}
+{"kind":"icon","owner":"whh:sim","source":"sim","translations":["用户身份识别模块"]}
+{"kind":"icon","owner":"whh:simalt","source":"simalt","translations":["用户身份识别模块 变体"]}
+{"kind":"icon","owner":"whh:simcardthree","source":"simcardthree","translations":["SIM 卡 3"]}
+{"kind":"icon","owner":"whh:sixteentonine","source":"sixteentonine","translations":["十六比九"]}
+{"kind":"icon","owner":"whh:skull","source":"skull","translations":["骷髅"]}
+{"kind":"icon","owner":"whh:skypeaway","source":"skypeaway","translations":["Skype 离开"]}
+{"kind":"icon","owner":"whh:skypebusy","source":"skypebusy","translations":["Skype 忙碌"]}
+{"kind":"icon","owner":"whh:skypeoffline","source":"skypeoffline","translations":["Skype 离线"]}
+{"kind":"icon","owner":"whh:skypeonline","source":"skypeonline","translations":["Skype 在线"]}
+{"kind":"icon","owner":"whh:sleep","source":"sleep","translations":["睡眠"]}
+{"kind":"icon","owner":"whh:sliderasc","source":"sliderasc","translations":["滑块 升序"]}
+{"kind":"icon","owner":"whh:slideronefull","source":"slideronefull","translations":["滑块 一"]}
+{"kind":"icon","owner":"whh:slidersdesc","source":"slidersdesc","translations":["滑块 降序"]}
+{"kind":"icon","owner":"whh:slidersfull","source":"slidersfull","translations":["滑块"]}
+{"kind":"icon","owner":"whh:slidersmiddle","source":"slidersmiddle","translations":["滑块 中间"]}
+{"kind":"icon","owner":"whh:slidersoff","source":"slidersoff","translations":["滑块 关闭"]}
+{"kind":"icon","owner":"whh:sliderthreefull","source":"sliderthreefull","translations":["滑块 三"]}
+{"kind":"icon","owner":"whh:slidertwofull","source":"slidertwofull","translations":["滑块 二"]}
+{"kind":"icon","owner":"whh:smaller","source":"smaller","translations":["更小"]}
+{"kind":"icon","owner":"whh:smile","source":"smile","translations":["微笑"]}
+{"kind":"icon","owner":"whh:snaptodot","source":"snaptodot","translations":["吸附到 点"]}
+{"kind":"icon","owner":"whh:snaptogrid","source":"snaptogrid","translations":["吸附到 网格"]}
+{"kind":"icon","owner":"whh:snooze","source":"snooze","translations":["稍后提醒"]}
+{"kind":"icon","owner":"whh:snow","source":"snow","translations":["雪"]}
+{"kind":"icon","owner":"whh:snowman","source":"snowman","translations":["雪人"]}
+{"kind":"icon","owner":"whh:socialnetwork","source":"socialnetwork","translations":["社交 网络"]}
+{"kind":"icon","owner":"whh:sodacup","source":"sodacup","translations":["汽水 杯子"]}
+{"kind":"icon","owner":"whh:software","source":"software","translations":["软件"]}
+{"kind":"icon","owner":"whh:solarpanel","source":"solarpanel","translations":["太阳能 面板"]}
+{"kind":"icon","owner":"whh:solarsystem","source":"solarsystem","translations":["太阳能 系统"]}
+{"kind":"icon","owner":"whh:sortbynameascending","source":"sortbynameascending","translations":["按名称升序"]}
+{"kind":"icon","owner":"whh:sortbysizeascending","source":"sortbysizeascending","translations":["按大小升序"]}
+{"kind":"icon","owner":"whh:sortbysizedescending","source":"sortbysizedescending","translations":["按大小降序"]}
+{"kind":"icon","owner":"whh:soundleft","source":"soundleft","translations":["声音 左"]}
+{"kind":"icon","owner":"whh:soundright","source":"soundright","translations":["声音 右"]}
+{"kind":"icon","owner":"whh:soundwave","source":"soundwave","translations":["声波"]}
+{"kind":"icon","owner":"whh:soup","source":"soup","translations":["汤"]}
+{"kind":"icon","owner":"whh:spaceinvaders","source":"spaceinvaders","translations":["太空侵略者"]}
+{"kind":"icon","owner":"whh:spades","source":"spades","translations":["黑桃"]}
+{"kind":"icon","owner":"whh:spam","source":"spam","translations":["垃圾信息"]}
+{"kind":"icon","owner":"whh:spamalt","source":"spamalt","translations":["垃圾信息"]}
+{"kind":"icon","owner":"whh:spawn","source":"spawn","translations":["生成"]}
+{"kind":"icon","owner":"whh:speaker","source":"speaker","translations":["扬声器"]}
+{"kind":"icon","owner":"whh:speakeralt","source":"speakeralt","translations":["扬声器"]}
+{"kind":"icon","owner":"whh:speed","source":"speed","translations":["速度"]}
+{"kind":"icon","owner":"whh:speedalt","source":"speedalt","translations":["速度"]}
+{"kind":"icon","owner":"whh:sphere","source":"sphere","translations":["球体"]}
+{"kind":"icon","owner":"whh:spider","source":"spider","translations":["蜘蛛"]}
+{"kind":"icon","owner":"whh:spiderman","source":"spiderman","translations":["蜘蛛侠"]}
+{"kind":"icon","owner":"whh:spiderweb","source":"spiderweb","translations":["蜘蛛网"]}
+{"kind":"icon","owner":"whh:split","source":"split","translations":["分屏"]}
+{"kind":"icon","owner":"whh:splitalt","source":"splitalt","translations":["拆分"]}
+{"kind":"icon","owner":"whh:splitthree","source":"splitthree","translations":["拆分 三"]}
+{"kind":"icon","owner":"whh:spock","source":"spock","translations":["斯波克"]}
+{"kind":"icon","owner":"whh:spoon","source":"spoon","translations":["勺子"]}
+{"kind":"icon","owner":"whh:spray","source":"spray","translations":["喷雾"]}
+{"kind":"icon","owner":"whh:spreadsheet","source":"spreadsheet","translations":["电子表格"]}
+{"kind":"icon","owner":"whh:squarea","source":"squarea","translations":["方形 A"]}
+{"kind":"icon","owner":"whh:squareapp","source":"squareapp","translations":["正方形 应用"]}
+{"kind":"icon","owner":"whh:squareb","source":"squareb","translations":["方形 B"]}
+{"kind":"icon","owner":"whh:squareback","source":"squareback","translations":["方形 返回"]}
+{"kind":"icon","owner":"whh:squarebookmark","source":"squarebookmark","translations":["正方形 书签"]}
+{"kind":"icon","owner":"whh:squarebrackets","source":"squarebrackets","translations":["正方形 括号"]}
+{"kind":"icon","owner":"whh:squarec","source":"squarec","translations":["方形 C"]}
+{"kind":"icon","owner":"whh:squarecomment","source":"squarecomment","translations":["正方形 评论"]}
+{"kind":"icon","owner":"whh:squared","source":"squared","translations":["平方"]}
+{"kind":"icon","owner":"whh:squaredribbble","source":"squaredribbble","translations":["方形 Dribbble"]}
+{"kind":"icon","owner":"whh:squaree","source":"squaree","translations":["方形 E"]}
+{"kind":"icon","owner":"whh:squareeight","source":"squareeight","translations":["正方形 八"]}
+{"kind":"icon","owner":"whh:squaref","source":"squaref","translations":["方形 F"]}
+{"kind":"icon","owner":"whh:squarefive","source":"squarefive","translations":["正方形 五"]}
+{"kind":"icon","owner":"whh:squareforward","source":"squareforward","translations":["正方形 前进"]}
+{"kind":"icon","owner":"whh:squarefour","source":"squarefour","translations":["正方形 四"]}
+{"kind":"icon","owner":"whh:squareg","source":"squareg","translations":["方形 G"]}
+{"kind":"icon","owner":"whh:squaregithub","source":"squaregithub","translations":["方形 GitHub"]}
+{"kind":"icon","owner":"whh:squareh","source":"squareh","translations":["方形 H"]}
+{"kind":"icon","owner":"whh:squareheart","source":"squareheart","translations":["方形 心形"]}
+{"kind":"icon","owner":"whh:squarei","source":"squarei","translations":["方形 I"]}
+{"kind":"icon","owner":"whh:squarej","source":"squarej","translations":["方形 J"]}
+{"kind":"icon","owner":"whh:squarek","source":"squarek","translations":["方形 K"]}
+{"kind":"icon","owner":"whh:squarel","source":"squarel","translations":["方形 L"]}
+{"kind":"icon","owner":"whh:squarelike","source":"squarelike","translations":["正方形 喜欢"]}
+{"kind":"icon","owner":"whh:squarem","source":"squarem","translations":["方形 M"]}
+{"kind":"icon","owner":"whh:squaren","source":"squaren","translations":["方形 N"]}
+{"kind":"icon","owner":"whh:squarenext","source":"squarenext","translations":["正方形 下一个"]}
+{"kind":"icon","owner":"whh:squarenine","source":"squarenine","translations":["正方形 九"]}
+{"kind":"icon","owner":"whh:squareo","source":"squareo","translations":["方形 O"]}
+{"kind":"icon","owner":"whh:squareone","source":"squareone","translations":["正方形 一"]}
+{"kind":"icon","owner":"whh:squarep","source":"squarep","translations":["方形 P"]}
+{"kind":"icon","owner":"whh:squarepause","source":"squarepause","translations":["正方形 暂停"]}
+{"kind":"icon","owner":"whh:squareplay","source":"squareplay","translations":["正方形 播放"]}
+{"kind":"icon","owner":"whh:squareprevious","source":"squareprevious","translations":["正方形 上一个"]}
+{"kind":"icon","owner":"whh:squareq","source":"squareq","translations":["方形 Q"]}
+{"kind":"icon","owner":"whh:squarequora","source":"squarequora","translations":["方形 Quora"]}
+{"kind":"icon","owner":"whh:squarer","source":"squarer","translations":["方形 R"]}
+{"kind":"icon","owner":"whh:squarerecord","source":"squarerecord","translations":["正方形 记录"]}
+{"kind":"icon","owner":"whh:squares","source":"squares","translations":["正方形"]}
+{"kind":"icon","owner":"whh:squaresearch","source":"squaresearch","translations":["正方形 搜索"]}
+{"kind":"icon","owner":"whh:squaresettings","source":"squaresettings","translations":["正方形 设置"]}
+{"kind":"icon","owner":"whh:squareseven","source":"squareseven","translations":["方形 七"]}
+{"kind":"icon","owner":"whh:squaresix","source":"squaresix","translations":["正方形 六"]}
+{"kind":"icon","owner":"whh:squarestar","source":"squarestar","translations":["正方形 星星"]}
+{"kind":"icon","owner":"whh:squarestop","source":"squarestop","translations":["方形 停止"]}
+{"kind":"icon","owner":"whh:squaret","source":"squaret","translations":["方形 T"]}
+{"kind":"icon","owner":"whh:squarethree","source":"squarethree","translations":["正方形 三"]}
+{"kind":"icon","owner":"whh:squaretwitter","source":"squaretwitter","translations":["方形 推特"]}
+{"kind":"icon","owner":"whh:squaretwo","source":"squaretwo","translations":["正方形 二"]}
+{"kind":"icon","owner":"whh:squareu","source":"squareu","translations":["方形 U"]}
+{"kind":"icon","owner":"whh:squarev","source":"squarev","translations":["方形 V"]}
+{"kind":"icon","owner":"whh:squareviber","source":"squareviber","translations":["方形 Viber"]}
+{"kind":"icon","owner":"whh:squarevimeo","source":"squarevimeo","translations":["方形 Vimeo"]}
+{"kind":"icon","owner":"whh:squarevoice","source":"squarevoice","translations":["正方形 语音"]}
+{"kind":"icon","owner":"whh:squarew","source":"squarew","translations":["方形 W"]}
+{"kind":"icon","owner":"whh:squarex","source":"squarex","translations":["方形 X"]}
+{"kind":"icon","owner":"whh:squarey","source":"squarey","translations":["方形 Y"]}
+{"kind":"icon","owner":"whh:squarez","source":"squarez","translations":["方形 Z"]}
+{"kind":"icon","owner":"whh:squarezero","source":"squarezero","translations":["正方形 零"]}
+{"kind":"icon","owner":"whh:squarezerply","source":"squarezerply","translations":["方形 Zerply"]}
+{"kind":"icon","owner":"whh:ssh","source":"ssh","translations":["安全外壳协议"]}
+{"kind":"icon","owner":"whh:sslmanager","source":"sslmanager","translations":["SSL 管理器"]}
+{"kind":"icon","owner":"whh:stacks","source":"stacks","translations":["堆叠"]}
+{"kind":"icon","owner":"whh:stadium","source":"stadium","translations":["体育场"]}
+{"kind":"icon","owner":"whh:stairsdown","source":"stairsdown","translations":["楼梯 下"]}
+{"kind":"icon","owner":"whh:stairsup","source":"stairsup","translations":["楼梯 向上"]}
+{"kind":"icon","owner":"whh:stamp","source":"stamp","translations":["印章"]}
+{"kind":"icon","owner":"whh:stampalt","source":"stampalt","translations":["印章"]}
+{"kind":"icon","owner":"whh:statistics","source":"statistics","translations":["统计"]}
+{"kind":"icon","owner":"whh:steak","source":"steak","translations":["牛排"]}
+{"kind":"icon","owner":"whh:stepbackward","source":"stepbackward","translations":["步骤 后退"]}
+{"kind":"icon","owner":"whh:stepforward","source":"stepforward","translations":["步骤 前进"]}
+{"kind":"icon","owner":"whh:sticker","source":"sticker","translations":["贴纸"]}
+{"kind":"icon","owner":"whh:stickynote","source":"stickynote","translations":["便笺"]}
+{"kind":"icon","owner":"whh:stickynotealt","source":"stickynotealt","translations":["便笺"]}
+{"kind":"icon","owner":"whh:stockdown","source":"stockdown","translations":["库存 下"]}
+{"kind":"icon","owner":"whh:stocks","source":"stocks","translations":["股票"]}
+{"kind":"icon","owner":"whh:stockup","source":"stockup","translations":["库存增加"]}
+{"kind":"icon","owner":"whh:stomach","source":"stomach","translations":["胃"]}
+{"kind":"icon","owner":"whh:stop","source":"stop","translations":["停止"]}
+{"kind":"icon","owner":"whh:stopwatch","source":"stopwatch","translations":["秒表"]}
+{"kind":"icon","owner":"whh:store","source":"store","translations":["商店"]}
+{"kind":"icon","owner":"whh:storm","source":"storm","translations":["暴风雨"]}
+{"kind":"icon","owner":"whh:stove","source":"stove","translations":["炉灶"]}
+{"kind":"icon","owner":"whh:strawberry","source":"strawberry","translations":["草莓"]}
+{"kind":"icon","owner":"whh:strikethrough","source":"strikethrough","translations":["删除线"]}
+{"kind":"icon","owner":"whh:stroller","source":"stroller","translations":["婴儿车"]}
+{"kind":"icon","owner":"whh:student","source":"student","translations":["学生"]}
+{"kind":"icon","owner":"whh:style","source":"style","translations":["样式"]}
+{"kind":"icon","owner":"whh:subdomain","source":"subdomain","translations":["子域名"]}
+{"kind":"icon","owner":"whh:submarine","source":"submarine","translations":["潜艇"]}
+{"kind":"icon","owner":"whh:subscript","source":"subscript","translations":["下标"]}
+{"kind":"icon","owner":"whh:subtitles","source":"subtitles","translations":["字幕"]}
+{"kind":"icon","owner":"whh:subtitlesoff","source":"subtitlesoff","translations":["字幕 关闭"]}
+{"kind":"icon","owner":"whh:subtractshape","source":"subtractshape","translations":["减去 形状"]}
+{"kind":"icon","owner":"whh:sum","source":"sum","translations":["求和"]}
+{"kind":"icon","owner":"whh:sunglasses","source":"sunglasses","translations":["太阳镜"]}
+{"kind":"icon","owner":"whh:sunnysideup","source":"sunnysideup","translations":["单面煎蛋"]}
+{"kind":"icon","owner":"whh:sunrise","source":"sunrise","translations":["日出"]}
+{"kind":"icon","owner":"whh:sunset","source":"sunset","translations":["日落"]}
+{"kind":"icon","owner":"whh:superman","source":"superman","translations":["超人"]}
+{"kind":"icon","owner":"whh:superscript","source":"superscript","translations":["上标"]}
+{"kind":"icon","owner":"whh:support","source":"support","translations":["支持"]}
+{"kind":"icon","owner":"whh:supportalt","source":"supportalt","translations":["支持"]}
+{"kind":"icon","owner":"whh:survey","source":"survey","translations":["调查"]}
+{"kind":"icon","owner":"whh:swipedown","source":"swipedown","translations":["滑动 下"]}
+{"kind":"icon","owner":"whh:swipeup","source":"swipeup","translations":["向上 滑动"]}
+{"kind":"icon","owner":"whh:switch","source":"switch","translations":["开关"]}
+{"kind":"icon","owner":"whh:switchoff","source":"switchoff","translations":["开关 关闭"]}
+{"kind":"icon","owner":"whh:switchoffalt","source":"switchoffalt","translations":["开关 关闭"]}
+{"kind":"icon","owner":"whh:switchon","source":"switchon","translations":["开关 开启"]}
+{"kind":"icon","owner":"whh:switchonalt","source":"switchonalt","translations":["开关 开启"]}
+{"kind":"icon","owner":"whh:sword","source":"sword","translations":["剑"]}
+{"kind":"icon","owner":"whh:sync","source":"sync","translations":["同步"]}
+{"kind":"icon","owner":"whh:syncalt","source":"syncalt","translations":["同步"]}
+{"kind":"icon","owner":"whh:synckeeplocal","source":"synckeeplocal","translations":["同步 保留 本地"]}
+{"kind":"icon","owner":"whh:synckeepserver","source":"synckeepserver","translations":["同步 保留 服务器"]}
+{"kind":"icon","owner":"whh:systemfolder","source":"systemfolder","translations":["系统 文件夹"]}
+{"kind":"icon","owner":"whh:t-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:t-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:tablet","source":"tablet","translations":["平板电脑"]}
+{"kind":"icon","owner":"whh:tabletscreensize","source":"tabletscreensize","translations":["平板电脑 屏幕 尺寸"]}
+{"kind":"icon","owner":"whh:taco","source":"taco","translations":["塔可"]}
+{"kind":"icon","owner":"whh:tagged","source":"tagged","translations":["已标记"]}
+{"kind":"icon","owner":"whh:tags","source":"tags","translations":["标签"]}
+{"kind":"icon","owner":"whh:tagvertical","source":"tagvertical","translations":["标签 垂直"]}
+{"kind":"icon","owner":"whh:tallglass","source":"tallglass","translations":["高 玻璃杯"]}
+{"kind":"icon","owner":"whh:tank","source":"tank","translations":["坦克"]}
+{"kind":"icon","owner":"whh:target","source":"target","translations":["目标"]}
+{"kind":"icon","owner":"whh:tasks","source":"tasks","translations":["任务"]}
+{"kind":"icon","owner":"whh:taxi","source":"taxi","translations":["出租车"]}
+{"kind":"icon","owner":"whh:tea","source":"tea","translations":["茶"]}
+{"kind":"icon","owner":"whh:teapot","source":"teapot","translations":["茶壶"]}
+{"kind":"icon","owner":"whh:teddybear","source":"teddybear","translations":["泰迪熊"]}
+{"kind":"icon","owner":"whh:telescope","source":"telescope","translations":["望远镜"]}
+{"kind":"icon","owner":"whh:temperature","source":"temperature","translations":["温度"]}
+{"kind":"icon","owner":"whh:temple","source":"temple","translations":["寺庙"]}
+{"kind":"icon","owner":"whh:tennis","source":"tennis","translations":["网球"]}
+{"kind":"icon","owner":"whh:terminal","source":"terminal","translations":["终端"]}
+{"kind":"icon","owner":"whh:terminalalt","source":"terminalalt","translations":["终端"]}
+{"kind":"icon","owner":"whh:tethering","source":"tethering","translations":["网络共享"]}
+{"kind":"icon","owner":"whh:tetrisone","source":"tetrisone","translations":["俄罗斯方块 一"]}
+{"kind":"icon","owner":"whh:tetristhree","source":"tetristhree","translations":["俄罗斯方块 三"]}
+{"kind":"icon","owner":"whh:tetristwo","source":"tetristwo","translations":["俄罗斯方块 二"]}
+{"kind":"icon","owner":"whh:textcursor","source":"textcursor","translations":["文本 光标"]}
+{"kind":"icon","owner":"whh:textfield","source":"textfield","translations":["文本 字段"]}
+{"kind":"icon","owner":"whh:textheight","source":"textheight","translations":["文本 高度"]}
+{"kind":"icon","owner":"whh:textlayer","source":"textlayer","translations":["文本 图层"]}
+{"kind":"icon","owner":"whh:texture","source":"texture","translations":["纹理"]}
+{"kind":"icon","owner":"whh:textwidth","source":"textwidth","translations":["文本 宽度"]}
+{"kind":"icon","owner":"whh:theather","source":"theather","translations":["剧院"]}
+{"kind":"icon","owner":"whh:thermometeralt","source":"thermometeralt","translations":["温度计"]}
+{"kind":"icon","owner":"whh:thinking","source":"thinking","translations":["思考"]}
+{"kind":"icon","owner":"whh:thissideup","source":"thissideup","translations":["此面向上"]}
+{"kind":"icon","owner":"whh:threecolumns","source":"threecolumns","translations":["三 列"]}
+{"kind":"icon","owner":"whh:threed","source":"threed","translations":["三维"]}
+{"kind":"icon","owner":"whh:threeg","source":"threeg","translations":["第三代移动通信"]}
+{"kind":"icon","owner":"whh:threetofour","source":"threetofour","translations":["三比四"]}
+{"kind":"icon","owner":"whh:ticket","source":"ticket","translations":["票券"]}
+{"kind":"icon","owner":"whh:tictactoe","source":"tictactoe","translations":["井字棋"]}
+{"kind":"icon","owner":"whh:tidefall","source":"tidefall","translations":["潮汐 下降"]}
+{"kind":"icon","owner":"whh:tiderise","source":"tiderise","translations":["潮汐 上升"]}
+{"kind":"icon","owner":"whh:timeline","source":"timeline","translations":["时间线"]}
+{"kind":"icon","owner":"whh:timer","source":"timer","translations":["计时器"]}
+{"kind":"icon","owner":"whh:tint","source":"tint","translations":["色调"]}
+{"kind":"icon","owner":"whh:toast","source":"toast","translations":["吐司"]}
+{"kind":"icon","owner":"whh:toiletbrush","source":"toiletbrush","translations":["马桶刷"]}
+{"kind":"icon","owner":"whh:tomatocart","source":"tomatocart","translations":["番茄 购物车"]}
+{"kind":"icon","owner":"whh:tools","source":"tools","translations":["工具"]}
+{"kind":"icon","owner":"whh:tooth","source":"tooth","translations":["牙齿"]}
+{"kind":"icon","owner":"whh:toothbrush","source":"toothbrush","translations":["牙刷"]}
+{"kind":"icon","owner":"whh:topborder","source":"topborder","translations":["顶部 边框"]}
+{"kind":"icon","owner":"whh:tophat","source":"tophat","translations":["顶部 帽子"]}
+{"kind":"icon","owner":"whh:torch","source":"torch","translations":["火炬"]}
+{"kind":"icon","owner":"whh:torigate","source":"torigate","translations":["鸟居"]}
+{"kind":"icon","owner":"whh:tornado","source":"tornado","translations":["龙卷风"]}
+{"kind":"icon","owner":"whh:touchpad","source":"touchpad","translations":["触控板"]}
+{"kind":"icon","owner":"whh:trafficlight","source":"trafficlight","translations":["交通灯"]}
+{"kind":"icon","owner":"whh:tragedy","source":"tragedy","translations":["悲剧"]}
+{"kind":"icon","owner":"whh:trailor","source":"trailor","translations":["拖车"]}
+{"kind":"icon","owner":"whh:train","source":"train","translations":["火车"]}
+{"kind":"icon","owner":"whh:transform","source":"transform","translations":["变换"]}
+{"kind":"icon","owner":"whh:trashempty","source":"trashempty","translations":["垃圾桶"]}
+{"kind":"icon","owner":"whh:trashfull","source":"trashfull","translations":["垃圾桶"]}
+{"kind":"icon","owner":"whh:travel","source":"travel","translations":["旅行"]}
+{"kind":"icon","owner":"whh:treediagram","source":"treediagram","translations":["树状图"]}
+{"kind":"icon","owner":"whh:treeornament","source":"treeornament","translations":["树 装饰"]}
+{"kind":"icon","owner":"whh:treethree","source":"treethree","translations":["树木 三"]}
+{"kind":"icon","owner":"whh:triangle","source":"triangle","translations":["三角形"]}
+{"kind":"icon","owner":"whh:trojan","source":"trojan","translations":["木马"]}
+{"kind":"icon","owner":"whh:trolleyempty","source":"trolleyempty","translations":["手推车"]}
+{"kind":"icon","owner":"whh:trolleyfull","source":"trolleyfull","translations":["手推车"]}
+{"kind":"icon","owner":"whh:trolleyload","source":"trolleyload","translations":["手推车 加载"]}
+{"kind":"icon","owner":"whh:trolleyunload","source":"trolleyunload","translations":["手推车 卸载"]}
+{"kind":"icon","owner":"whh:trophy","source":"trophy","translations":["奖杯"]}
+{"kind":"icon","owner":"whh:truck","source":"truck","translations":["卡车"]}
+{"kind":"icon","owner":"whh:trumpet","source":"trumpet","translations":["小号"]}
+{"kind":"icon","owner":"whh:tshirt","source":"tshirt","translations":["T恤"]}
+{"kind":"icon","owner":"whh:tumblr","source":"tumblr","translations":["汤博乐"]}
+{"kind":"icon","owner":"whh:turnip","source":"turnip","translations":["芜菁"]}
+{"kind":"icon","owner":"whh:turnleft","source":"turnleft","translations":["转向 左"]}
+{"kind":"icon","owner":"whh:turnoffalarm","source":"turnoffalarm","translations":["转向 关闭 闹钟"]}
+{"kind":"icon","owner":"whh:turnright","source":"turnright","translations":["转向 右"]}
+{"kind":"icon","owner":"whh:tv","source":"tv","translations":["电视"]}
+{"kind":"icon","owner":"whh:twitter","source":"twitter","translations":["推特"]}
+{"kind":"icon","owner":"whh:twocolumnsleft","source":"twocolumnsleft","translations":["二 列 左"]}
+{"kind":"icon","owner":"whh:twocolumnsleftalt","source":"twocolumnsleftalt","translations":["二 列 左"]}
+{"kind":"icon","owner":"whh:twocolumnsright","source":"twocolumnsright","translations":["二 列 右"]}
+{"kind":"icon","owner":"whh:twocolumnsrightalt","source":"twocolumnsrightalt","translations":["二 列 右"]}
+{"kind":"icon","owner":"whh:twofingerswipedown","source":"twofingerswipedown","translations":["双指 向下 滑动"]}
+{"kind":"icon","owner":"whh:twofingerswipeup","source":"twofingerswipeup","translations":["双指 向上 滑动"]}
+{"kind":"icon","owner":"whh:twog","source":"twog","translations":["第二代移动通信"]}
+{"kind":"icon","owner":"whh:u-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:u-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:umbrella","source":"umbrella","translations":["雨伞"]}
+{"kind":"icon","owner":"whh:underline","source":"underline","translations":["下划线"]}
+{"kind":"icon","owner":"whh:undo","source":"undo","translations":["撤销"]}
+{"kind":"icon","owner":"whh:unlock","source":"unlock","translations":["解锁"]}
+{"kind":"icon","owner":"whh:unpackarchive","source":"unpackarchive","translations":["解压 归档"]}
+{"kind":"icon","owner":"whh:upleft","source":"upleft","translations":["左上"]}
+{"kind":"icon","owner":"whh:upload","source":"upload","translations":["上传"]}
+{"kind":"icon","owner":"whh:uploadalt","source":"uploadalt","translations":["上传"]}
+{"kind":"icon","owner":"whh:upright","source":"upright","translations":["直立"]}
+{"kind":"icon","owner":"whh:uptime","source":"uptime","translations":["运行时间"]}
+{"kind":"icon","owner":"whh:usb","source":"usb","translations":["通用串行总线"]}
+{"kind":"icon","owner":"whh:usbalt","source":"usbalt","translations":["备用 USB"]}
+{"kind":"icon","owner":"whh:usbflash","source":"usbflash","translations":["USB 闪存"]}
+{"kind":"icon","owner":"whh:usbplug","source":"usbplug","translations":["USB 插头"]}
+{"kind":"icon","owner":"whh:useralt","source":"useralt","translations":["用户"]}
+{"kind":"icon","owner":"whh:userfilter","source":"userfilter","translations":["用户 筛选"]}
+{"kind":"icon","owner":"whh:usfootball","source":"usfootball","translations":["美式橄榄球"]}
+{"kind":"icon","owner":"whh:v-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:v-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:vaultthree","source":"vaultthree","translations":["保险库 三"]}
+{"kind":"icon","owner":"whh:vector","source":"vector","translations":["矢量"]}
+{"kind":"icon","owner":"whh:vectoralt","source":"vectoralt","translations":["矢量"]}
+{"kind":"icon","owner":"whh:versions","source":"versions","translations":["版本"]}
+{"kind":"icon","owner":"whh:verticalborder","source":"verticalborder","translations":["垂直 边框"]}
+{"kind":"icon","owner":"whh:vial","source":"vial","translations":["小瓶"]}
+{"kind":"icon","owner":"whh:video","source":"video","translations":["视频"]}
+{"kind":"icon","owner":"whh:videocamerathree","source":"videocamerathree","translations":["摄像机 三"]}
+{"kind":"icon","owner":"whh:viking","source":"viking","translations":["维京人"]}
+{"kind":"icon","owner":"whh:vinyl","source":"vinyl","translations":["黑胶唱片"]}
+{"kind":"icon","owner":"whh:violin","source":"violin","translations":["小提琴"]}
+{"kind":"icon","owner":"whh:virus","source":"virus","translations":["病毒"]}
+{"kind":"icon","owner":"whh:visa","source":"visa","translations":["维萨"]}
+{"kind":"icon","owner":"whh:visitor","source":"visitor","translations":["访客"]}
+{"kind":"icon","owner":"whh:voice","source":"voice","translations":["语音"]}
+{"kind":"icon","owner":"whh:voltage","source":"voltage","translations":["电压"]}
+{"kind":"icon","owner":"whh:volumedown","source":"volumedown","translations":["降低音量"]}
+{"kind":"icon","owner":"whh:volumeup","source":"volumeup","translations":["提高音量"]}
+{"kind":"icon","owner":"whh:vps","source":"vps","translations":["虚拟专用服务器"]}
+{"kind":"icon","owner":"whh:w-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:w-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:wacom","source":"wacom","translations":["和冠"]}
+{"kind":"icon","owner":"whh:walle","source":"walle","translations":["瓦力"]}
+{"kind":"icon","owner":"whh:wallet","source":"wallet","translations":["钱包"]}
+{"kind":"icon","owner":"whh:walletalt","source":"walletalt","translations":["钱包"]}
+{"kind":"icon","owner":"whh:warcraft","source":"warcraft","translations":["魔兽争霸"]}
+{"kind":"icon","owner":"whh:warmedal","source":"warmedal","translations":["战争 奖牌"]}
+{"kind":"icon","owner":"whh:warmedalalt","source":"warmedalalt","translations":["战争 奖牌"]}
+{"kind":"icon","owner":"whh:warningsign","source":"warningsign","translations":["警告 标志"]}
+{"kind":"icon","owner":"whh:washer","source":"washer","translations":["洗衣机"]}
+{"kind":"icon","owner":"whh:watch","source":"watch","translations":["手表"]}
+{"kind":"icon","owner":"whh:watermelon","source":"watermelon","translations":["西瓜"]}
+{"kind":"icon","owner":"whh:webcam","source":"webcam","translations":["网络摄像头"]}
+{"kind":"icon","owner":"whh:webcamalt","source":"webcamalt","translations":["网络摄像头"]}
+{"kind":"icon","owner":"whh:webmail","source":"webmail","translations":["网络邮件"]}
+{"kind":"icon","owner":"whh:webpage","source":"webpage","translations":["网页 页面"]}
+{"kind":"icon","owner":"whh:webplatform","source":"webplatform","translations":["网页 平台"]}
+{"kind":"icon","owner":"whh:website","source":"website","translations":["网站"]}
+{"kind":"icon","owner":"whh:websitebuilder","source":"websitebuilder","translations":["网站 构建器"]}
+{"kind":"icon","owner":"whh:weight","source":"weight","translations":["重量"]}
+{"kind":"icon","owner":"whh:weightscale","source":"weightscale","translations":["体重秤"]}
+{"kind":"icon","owner":"whh:westernunion","source":"westernunion","translations":["西联汇款"]}
+{"kind":"icon","owner":"whh:wetfloor","source":"wetfloor","translations":["潮湿 地板"]}
+{"kind":"icon","owner":"whh:wheel","source":"wheel","translations":["车轮"]}
+{"kind":"icon","owner":"whh:wheelchair","source":"wheelchair","translations":["轮椅"]}
+{"kind":"icon","owner":"whh:whistle","source":"whistle","translations":["哨子"]}
+{"kind":"icon","owner":"whh:wifi","source":"wifi","translations":["无线网络"]}
+{"kind":"icon","owner":"whh:wind","source":"wind","translations":["风"]}
+{"kind":"icon","owner":"whh:windleft","source":"windleft","translations":["风 左"]}
+{"kind":"icon","owner":"whh:windmill","source":"windmill","translations":["风车"]}
+{"kind":"icon","owner":"whh:windmillalt","source":"windmillalt","translations":["风车"]}
+{"kind":"icon","owner":"whh:windright","source":"windright","translations":["风 右"]}
+{"kind":"icon","owner":"whh:wine","source":"wine","translations":["葡萄酒"]}
+{"kind":"icon","owner":"whh:wineglass","source":"wineglass","translations":["酒杯"]}
+{"kind":"icon","owner":"whh:wizard","source":"wizard","translations":["向导"]}
+{"kind":"icon","owner":"whh:wizardalt","source":"wizardalt","translations":["向导"]}
+{"kind":"icon","owner":"whh:wizardhat","source":"wizardhat","translations":["巫师帽"]}
+{"kind":"icon","owner":"whh:womanalt","source":"womanalt","translations":["女性"]}
+{"kind":"icon","owner":"whh:women","source":"women","translations":["女性"]}
+{"kind":"icon","owner":"whh:workshirt","source":"workshirt","translations":["工作 衬衫"]}
+{"kind":"icon","owner":"whh:world","source":"world","translations":["世界"]}
+{"kind":"icon","owner":"whh:wrench","source":"wrench","translations":["扳手"]}
+{"kind":"icon","owner":"whh:wrenchalt","source":"wrenchalt","translations":["扳手"]}
+{"kind":"icon","owner":"whh:wwf","source":"wwf","translations":["世界自然基金会"]}
+{"kind":"icon","owner":"whh:x-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:x-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:xmen","source":"xmen","translations":["X 战警"]}
+{"kind":"icon","owner":"whh:y-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:y-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:yahoo","source":"yahoo","translations":["雅虎"]}
+{"kind":"icon","owner":"whh:yen","source":"yen","translations":["日元"]}
+{"kind":"icon","owner":"whh:yenalt","source":"yenalt","translations":["日元"]}
+{"kind":"icon","owner":"whh:yensquare","source":"yensquare","translations":["日元 正方形"]}
+{"kind":"icon","owner":"whh:yinyang","source":"yinyang","translations":["阴阳"]}
+{"kind":"icon","owner":"whh:z-upper-case","source":"case","translations":["大小写"]}
+{"kind":"icon","owner":"whh:z-upper-case","source":"upper","translations":["大写"]}
+{"kind":"icon","owner":"whh:zelda","source":"zelda","translations":["塞尔达"]}
+{"kind":"icon","owner":"whh:zip","source":"zip","translations":["压缩"]}
+{"kind":"icon","owner":"whh:zodiacaquarius","source":"zodiacaquarius","translations":["星座 水瓶座"]}
+{"kind":"icon","owner":"whh:zodiacaries","source":"zodiacaries","translations":["星座 白羊座"]}
+{"kind":"icon","owner":"whh:zodiaccancer","source":"zodiaccancer","translations":["星座 巨蟹座"]}
+{"kind":"icon","owner":"whh:zodiaccapricorn","source":"zodiaccapricorn","translations":["星座 摩羯座"]}
+{"kind":"icon","owner":"whh:zodiacgemini","source":"zodiacgemini","translations":["星座 双子座"]}
+{"kind":"icon","owner":"whh:zodiacleo","source":"zodiacleo","translations":["星座 狮子座"]}
+{"kind":"icon","owner":"whh:zodiaclibra","source":"zodiaclibra","translations":["星座 天秤座"]}
+{"kind":"icon","owner":"whh:zodiacpisces","source":"zodiacpisces","translations":["星座 双鱼座"]}
+{"kind":"icon","owner":"whh:zodiacsagitarius","source":"zodiacsagitarius","translations":["射手座"]}
+{"kind":"icon","owner":"whh:zodiacscorpio","source":"zodiacscorpio","translations":["星座 天蝎座"]}
+{"kind":"icon","owner":"whh:zodiactaurus","source":"zodiactaurus","translations":["星座 金牛座"]}
+{"kind":"icon","owner":"whh:zodiacvirgo","source":"zodiacvirgo","translations":["星座 处女座"]}
+{"kind":"icon","owner":"whh:zoomin","source":"zoomin","translations":["放大"]}
+{"kind":"icon","owner":"whh:zoomout","source":"zoomout","translations":["缩小"]}

@@ -1,0 +1,396 @@
+{"kind":"icon","owner":"wpf:2f-swipe-down","source":"2f","translations":["双指"]}
+{"kind":"icon","owner":"wpf:2f-swipe-down","source":"down","translations":["下"]}
+{"kind":"icon","owner":"wpf:2f-swipe-down","source":"swipe","translations":["滑动"]}
+{"kind":"icon","owner":"wpf:2f-swipe-right","source":"2f","translations":["双指"]}
+{"kind":"icon","owner":"wpf:2f-swipe-right","source":"right","translations":["右"]}
+{"kind":"icon","owner":"wpf:2f-swipe-right","source":"swipe","translations":["滑动"]}
+{"kind":"icon","owner":"wpf:2fswipedown","source":"2fswipedown","translations":["双指下滑"]}
+{"kind":"icon","owner":"wpf:2fswiperight","source":"2fswiperight","translations":["双指右滑"]}
+{"kind":"icon","owner":"wpf:add-image","source":"add","translations":["添加"]}
+{"kind":"icon","owner":"wpf:add-image","source":"image","translations":["图像"]}
+{"kind":"icon","owner":"wpf:add-user","source":"add","translations":["添加"]}
+{"kind":"icon","owner":"wpf:add-user","source":"user","translations":["用户"]}
+{"kind":"icon","owner":"wpf:addimage","source":"addimage","translations":["添加 图像"]}
+{"kind":"icon","owner":"wpf:adduser","source":"adduser","translations":["添加 用户"]}
+{"kind":"icon","owner":"wpf:administrator","source":"administrator","translations":["管理员"]}
+{"kind":"icon","owner":"wpf:airplane-takeoff","source":"airplane","translations":["飞机"]}
+{"kind":"icon","owner":"wpf:airplane-takeoff","source":"takeoff","translations":["起飞"]}
+{"kind":"icon","owner":"wpf:airplanetakeoff","source":"airplanetakeoff","translations":["飞机 起飞"]}
+{"kind":"icon","owner":"wpf:alarm-clock","source":"alarm","translations":["闹钟"]}
+{"kind":"icon","owner":"wpf:alarm-clock","source":"alarm-clock","translations":["闹钟"]}
+{"kind":"icon","owner":"wpf:alarm-clock","source":"clock","translations":["时钟"]}
+{"kind":"icon","owner":"wpf:alarmclock","source":"alarmclock","translations":["闹钟"]}
+{"kind":"icon","owner":"wpf:align-center","source":"align","translations":["对齐"]}
+{"kind":"icon","owner":"wpf:align-center","source":"center","translations":["居中"]}
+{"kind":"icon","owner":"wpf:align-justify","source":"align","translations":["对齐"]}
+{"kind":"icon","owner":"wpf:align-justify","source":"justify","translations":["两端对齐"]}
+{"kind":"icon","owner":"wpf:align-left","source":"align","translations":["对齐"]}
+{"kind":"icon","owner":"wpf:align-left","source":"left","translations":["左"]}
+{"kind":"icon","owner":"wpf:align-right","source":"align","translations":["对齐"]}
+{"kind":"icon","owner":"wpf:align-right","source":"right","translations":["右"]}
+{"kind":"icon","owner":"wpf:aligncenter","source":"aligncenter","translations":["对齐 居中"]}
+{"kind":"icon","owner":"wpf:alignjustify","source":"alignjustify","translations":["对齐 两端对齐"]}
+{"kind":"icon","owner":"wpf:alignleft","source":"alignleft","translations":["对齐 左"]}
+{"kind":"icon","owner":"wpf:alignright","source":"alignright","translations":["对齐 右"]}
+{"kind":"icon","owner":"wpf:android","source":"android","translations":["安卓"]}
+{"kind":"icon","owner":"wpf:android-os","source":"android","translations":["安卓"]}
+{"kind":"icon","owner":"wpf:android-os","source":"os","translations":["操作系统"]}
+{"kind":"icon","owner":"wpf:androidos","source":"androidos","translations":["安卓操作系统"]}
+{"kind":"icon","owner":"wpf:app-shield","source":"app","translations":["应用"]}
+{"kind":"icon","owner":"wpf:app-shield","source":"shield","translations":["盾牌"]}
+{"kind":"icon","owner":"wpf:approval","source":"approval","translations":["审批"]}
+{"kind":"icon","owner":"wpf:appshield","source":"appshield","translations":["应用 盾牌"]}
+{"kind":"icon","owner":"wpf:archive2","source":"archive2","translations":["归档"]}
+{"kind":"icon","owner":"wpf:ask-question","source":"ask","translations":["询问"]}
+{"kind":"icon","owner":"wpf:ask-question","source":"question","translations":["问题"]}
+{"kind":"icon","owner":"wpf:askquestion","source":"askquestion","translations":["询问 问题"]}
+{"kind":"icon","owner":"wpf:assistant","source":"assistant","translations":["助手"]}
+{"kind":"icon","owner":"wpf:attach","source":"attach","translations":["附加"]}
+{"kind":"icon","owner":"wpf:audio-wave","source":"audio","translations":["音频"]}
+{"kind":"icon","owner":"wpf:audio-wave","source":"wave","translations":["波浪"]}
+{"kind":"icon","owner":"wpf:audiowave","source":"audiowave","translations":["音频 波浪"]}
+{"kind":"icon","owner":"wpf:autopilot","source":"autopilot","translations":["自动驾驶"]}
+{"kind":"icon","owner":"wpf:ball-point-pen","source":"ball","translations":["球"]}
+{"kind":"icon","owner":"wpf:ball-point-pen","source":"pen","translations":["钢笔"]}
+{"kind":"icon","owner":"wpf:ball-point-pen","source":"point","translations":["点"]}
+{"kind":"icon","owner":"wpf:ballpointpen","source":"ballpointpen","translations":["球 点 钢笔"]}
+{"kind":"icon","owner":"wpf:bank-cards","source":"bank","translations":["银行"]}
+{"kind":"icon","owner":"wpf:bank-cards","source":"cards","translations":["卡片"]}
+{"kind":"icon","owner":"wpf:bankcards","source":"bankcards","translations":["银行卡"]}
+{"kind":"icon","owner":"wpf:banknotes","source":"banknotes","translations":["纸币"]}
+{"kind":"icon","owner":"wpf:bed","source":"bed","translations":["床"]}
+{"kind":"icon","owner":"wpf:bicycle","source":"bicycle","translations":["自行车"]}
+{"kind":"icon","owner":"wpf:birthday","source":"birthday","translations":["生日"]}
+{"kind":"icon","owner":"wpf:blackberry","source":"blackberry","translations":["黑莓"]}
+{"kind":"icon","owner":"wpf:bold","source":"bold","translations":["粗体"]}
+{"kind":"icon","owner":"wpf:books","source":"books","translations":["书"]}
+{"kind":"icon","owner":"wpf:briefcase","source":"briefcase","translations":["公文包"]}
+{"kind":"icon","owner":"wpf:bright-moon","source":"bright","translations":["明亮"]}
+{"kind":"icon","owner":"wpf:bright-moon","source":"moon","translations":["月亮"]}
+{"kind":"icon","owner":"wpf:brightmoon","source":"brightmoon","translations":["明亮 月亮"]}
+{"kind":"icon","owner":"wpf:bug","source":"bug","translations":["虫子"]}
+{"kind":"icon","owner":"wpf:building","source":"building","translations":["建筑"]}
+{"kind":"icon","owner":"wpf:business-contact","source":"business","translations":["商务"]}
+{"kind":"icon","owner":"wpf:business-contact","source":"contact","translations":["联系人"]}
+{"kind":"icon","owner":"wpf:businesscontact","source":"businesscontact","translations":["商务 联系人"]}
+{"kind":"icon","owner":"wpf:calendar","source":"calendar","translations":["日历"]}
+{"kind":"icon","owner":"wpf:call-transfer","source":"call","translations":["呼叫"]}
+{"kind":"icon","owner":"wpf:call-transfer","source":"transfer","translations":["传输"]}
+{"kind":"icon","owner":"wpf:calltransfer","source":"calltransfer","translations":["呼叫 传输"]}
+{"kind":"icon","owner":"wpf:camera","source":"camera","translations":["相机"]}
+{"kind":"icon","owner":"wpf:car-rental","source":"car","translations":["汽车"]}
+{"kind":"icon","owner":"wpf:car-rental","source":"rental","translations":["租赁"]}
+{"kind":"icon","owner":"wpf:carrental","source":"carrental","translations":["汽车 租赁"]}
+{"kind":"icon","owner":"wpf:charge-battery","source":"battery","translations":["电池"]}
+{"kind":"icon","owner":"wpf:charge-battery","source":"charge","translations":["充电"]}
+{"kind":"icon","owner":"wpf:chargebattery","source":"chargebattery","translations":["电池充电"]}
+{"kind":"icon","owner":"wpf:chat","source":"chat","translations":["聊天"]}
+{"kind":"icon","owner":"wpf:check-book","source":"book","translations":["书"]}
+{"kind":"icon","owner":"wpf:check-book","source":"check","translations":["勾选"]}
+{"kind":"icon","owner":"wpf:check-file","source":"check","translations":["勾选"]}
+{"kind":"icon","owner":"wpf:check-file","source":"file","translations":["文件"]}
+{"kind":"icon","owner":"wpf:checkbook","source":"checkbook","translations":["支票簿"]}
+{"kind":"icon","owner":"wpf:checkfile","source":"checkfile","translations":["勾选 文件"]}
+{"kind":"icon","owner":"wpf:checkmark","source":"checkmark","translations":["对勾"]}
+{"kind":"icon","owner":"wpf:clapperboard","source":"clapperboard","translations":["场记板"]}
+{"kind":"icon","owner":"wpf:clipboard","source":"clipboard","translations":["剪贴板"]}
+{"kind":"icon","owner":"wpf:cloakroom","source":"cloakroom","translations":["衣帽间"]}
+{"kind":"icon","owner":"wpf:close-up-mode","source":"close","translations":["关闭"]}
+{"kind":"icon","owner":"wpf:close-up-mode","source":"mode","translations":["模式"]}
+{"kind":"icon","owner":"wpf:close-up-mode","source":"up","translations":["上"]}
+{"kind":"icon","owner":"wpf:closeupmode","source":"closeupmode","translations":["特写模式"]}
+{"kind":"icon","owner":"wpf:cloud","source":"cloud","translations":["云"]}
+{"kind":"icon","owner":"wpf:coins","source":"coins","translations":["硬币"]}
+{"kind":"icon","owner":"wpf:collaborator","source":"collaborator","translations":["协作者"]}
+{"kind":"icon","owner":"wpf:color-dropper","source":"color","translations":["颜色"]}
+{"kind":"icon","owner":"wpf:color-dropper","source":"dropper","translations":["滴管"]}
+{"kind":"icon","owner":"wpf:colordropper","source":"colordropper","translations":["取色器"]}
+{"kind":"icon","owner":"wpf:connected","source":"connected","translations":["已连接"]}
+{"kind":"icon","owner":"wpf:controller","source":"controller","translations":["控制器"]}
+{"kind":"icon","owner":"wpf:cornet","source":"cornet","translations":["短号"]}
+{"kind":"icon","owner":"wpf:create-new","source":"create","translations":["创建"]}
+{"kind":"icon","owner":"wpf:create-new","source":"new","translations":["新建"]}
+{"kind":"icon","owner":"wpf:createnew","source":"createnew","translations":["创建 新建"]}
+{"kind":"icon","owner":"wpf:cursor","source":"cursor","translations":["光标"]}
+{"kind":"icon","owner":"wpf:cut","source":"cut","translations":["剪切"]}
+{"kind":"icon","owner":"wpf:cut-paper","source":"cut","translations":["剪切"]}
+{"kind":"icon","owner":"wpf:cut-paper","source":"paper","translations":["纸张"]}
+{"kind":"icon","owner":"wpf:cutpaper","source":"cutpaper","translations":["剪切 纸张"]}
+{"kind":"icon","owner":"wpf:define-location","source":"define","translations":["定义"]}
+{"kind":"icon","owner":"wpf:define-location","source":"location","translations":["位置"]}
+{"kind":"icon","owner":"wpf:definelocation","source":"definelocation","translations":["定义位置"]}
+{"kind":"icon","owner":"wpf:delete","source":"delete","translations":["删除"]}
+{"kind":"icon","owner":"wpf:delete-shield","source":"delete","translations":["删除"]}
+{"kind":"icon","owner":"wpf:delete-shield","source":"shield","translations":["盾牌"]}
+{"kind":"icon","owner":"wpf:deleteshield","source":"deleteshield","translations":["删除 盾牌"]}
+{"kind":"icon","owner":"wpf:desk-lamp","source":"desk","translations":["书桌"]}
+{"kind":"icon","owner":"wpf:desk-lamp","source":"lamp","translations":["灯"]}
+{"kind":"icon","owner":"wpf:desklamp","source":"desklamp","translations":["台灯"]}
+{"kind":"icon","owner":"wpf:details","source":"details","translations":["详情"]}
+{"kind":"icon","owner":"wpf:dining-room","source":"dining","translations":["用餐"]}
+{"kind":"icon","owner":"wpf:dining-room","source":"room","translations":["房间"]}
+{"kind":"icon","owner":"wpf:diningroom","source":"diningroom","translations":["用餐 房间"]}
+{"kind":"icon","owner":"wpf:diploma-1","source":"diploma","translations":["文凭"]}
+{"kind":"icon","owner":"wpf:diploma1","source":"diploma1","translations":["文凭"]}
+{"kind":"icon","owner":"wpf:disconnected","source":"disconnected","translations":["已断开"]}
+{"kind":"icon","owner":"wpf:doctors-bag","source":"bag","translations":["袋子"]}
+{"kind":"icon","owner":"wpf:doctors-bag","source":"doctors","translations":["医生"]}
+{"kind":"icon","owner":"wpf:doctorsbag","source":"doctorsbag","translations":["医生包"]}
+{"kind":"icon","owner":"wpf:edit","source":"edit","translations":["编辑"]}
+{"kind":"icon","owner":"wpf:edit-file","source":"edit","translations":["编辑"]}
+{"kind":"icon","owner":"wpf:edit-file","source":"file","translations":["文件"]}
+{"kind":"icon","owner":"wpf:edit-image","source":"edit","translations":["编辑"]}
+{"kind":"icon","owner":"wpf:edit-image","source":"image","translations":["图像"]}
+{"kind":"icon","owner":"wpf:editfile","source":"editfile","translations":["编辑 文件"]}
+{"kind":"icon","owner":"wpf:editimage","source":"editimage","translations":["编辑 图像"]}
+{"kind":"icon","owner":"wpf:eject","source":"eject","translations":["弹出"]}
+{"kind":"icon","owner":"wpf:empty-battery","source":"battery","translations":["电池"]}
+{"kind":"icon","owner":"wpf:empty-battery","source":"empty","translations":["空"]}
+{"kind":"icon","owner":"wpf:empty-flag","source":"empty","translations":["空"]}
+{"kind":"icon","owner":"wpf:empty-flag","source":"flag","translations":["旗帜"]}
+{"kind":"icon","owner":"wpf:emptybattery","source":"emptybattery","translations":["空 电池"]}
+{"kind":"icon","owner":"wpf:emptyflag","source":"emptyflag","translations":["空 旗帜"]}
+{"kind":"icon","owner":"wpf:end","source":"end","translations":["末尾"]}
+{"kind":"icon","owner":"wpf:facial-recognition-scan","source":"facial","translations":["面部"]}
+{"kind":"icon","owner":"wpf:facial-recognition-scan","source":"recognition","translations":["识别"]}
+{"kind":"icon","owner":"wpf:facial-recognition-scan","source":"scan","translations":["扫描"]}
+{"kind":"icon","owner":"wpf:facialrecognitionscan","source":"facialrecognitionscan","translations":["面部 识别 扫描"]}
+{"kind":"icon","owner":"wpf:factory","source":"factory","translations":["工厂"]}
+{"kind":"icon","owner":"wpf:fan","source":"fan","translations":["风扇"]}
+{"kind":"icon","owner":"wpf:faq","source":"faq","translations":["常见问题"]}
+{"kind":"icon","owner":"wpf:fast-forward","source":"fast","translations":["快速"]}
+{"kind":"icon","owner":"wpf:fast-forward","source":"fast-forward","translations":["快进"]}
+{"kind":"icon","owner":"wpf:fast-forward","source":"forward","translations":["前进"]}
+{"kind":"icon","owner":"wpf:fastforward","source":"fastforward","translations":["快进"]}
+{"kind":"icon","owner":"wpf:filled-flag","source":"filled","translations":["填充"]}
+{"kind":"icon","owner":"wpf:filled-flag","source":"flag","translations":["旗帜"]}
+{"kind":"icon","owner":"wpf:filledflag","source":"filledflag","translations":["实心旗帜"]}
+{"kind":"icon","owner":"wpf:fingerprint-scan","source":"fingerprint","translations":["指纹"]}
+{"kind":"icon","owner":"wpf:fingerprint-scan","source":"scan","translations":["扫描"]}
+{"kind":"icon","owner":"wpf:fingerprintscan","source":"fingerprintscan","translations":["指纹 扫描"]}
+{"kind":"icon","owner":"wpf:first","source":"first","translations":["第一个"]}
+{"kind":"icon","owner":"wpf:full-battery","source":"battery","translations":["电池"]}
+{"kind":"icon","owner":"wpf:full-battery","source":"full","translations":["满"]}
+{"kind":"icon","owner":"wpf:full-trash","source":"full","translations":["满"]}
+{"kind":"icon","owner":"wpf:full-trash","source":"trash","translations":["垃圾桶"]}
+{"kind":"icon","owner":"wpf:fullbattery","source":"fullbattery","translations":["满电电池"]}
+{"kind":"icon","owner":"wpf:fulltrash","source":"fulltrash","translations":["已满垃圾桶"]}
+{"kind":"icon","owner":"wpf:future","source":"future","translations":["未来"]}
+{"kind":"icon","owner":"wpf:geo-fence","source":"fence","translations":["栅栏"]}
+{"kind":"icon","owner":"wpf:geo-fence","source":"geo","translations":["地理"]}
+{"kind":"icon","owner":"wpf:geofence","source":"geofence","translations":["地理围栏"]}
+{"kind":"icon","owner":"wpf:ghost","source":"ghost","translations":["幽灵"]}
+{"kind":"icon","owner":"wpf:globe-earth","source":"earth","translations":["地球"]}
+{"kind":"icon","owner":"wpf:globe-earth","source":"globe","translations":["地球"]}
+{"kind":"icon","owner":"wpf:globeearth","source":"globeearth","translations":["地球 地球"]}
+{"kind":"icon","owner":"wpf:gps-receiving","source":"gps","translations":["全球定位系统"]}
+{"kind":"icon","owner":"wpf:gps-receiving","source":"receiving","translations":["接收中"]}
+{"kind":"icon","owner":"wpf:gpsreceiving","source":"gpsreceiving","translations":["全球定位系统 接收中"]}
+{"kind":"icon","owner":"wpf:group","source":"group","translations":["群组"]}
+{"kind":"icon","owner":"wpf:guitar","source":"guitar","translations":["吉他"]}
+{"kind":"icon","owner":"wpf:happy","source":"happy","translations":["开心"]}
+{"kind":"icon","owner":"wpf:headset","source":"headset","translations":["耳麦"]}
+{"kind":"icon","owner":"wpf:helicopter","source":"helicopter","translations":["直升机"]}
+{"kind":"icon","owner":"wpf:herald-trumpet","source":"herald","translations":["传令官"]}
+{"kind":"icon","owner":"wpf:herald-trumpet","source":"trumpet","translations":["小号"]}
+{"kind":"icon","owner":"wpf:heraldtrumpet","source":"heraldtrumpet","translations":["号角"]}
+{"kind":"icon","owner":"wpf:hexagon","source":"hexagon","translations":["六边形"]}
+{"kind":"icon","owner":"wpf:high-battery","source":"battery","translations":["电池"]}
+{"kind":"icon","owner":"wpf:high-battery","source":"high","translations":["高"]}
+{"kind":"icon","owner":"wpf:highbattery","source":"highbattery","translations":["高 电池"]}
+{"kind":"icon","owner":"wpf:image-file","source":"file","translations":["文件"]}
+{"kind":"icon","owner":"wpf:image-file","source":"image","translations":["图像"]}
+{"kind":"icon","owner":"wpf:imagefile","source":"imagefile","translations":["图像 文件"]}
+{"kind":"icon","owner":"wpf:in-transit","source":"in","translations":["在"]}
+{"kind":"icon","owner":"wpf:in-transit","source":"in-transit","translations":["运输中"]}
+{"kind":"icon","owner":"wpf:in-transit","source":"transit","translations":["公交"]}
+{"kind":"icon","owner":"wpf:inbox","source":"inbox","translations":["收件箱"]}
+{"kind":"icon","owner":"wpf:inspection","source":"inspection","translations":["检查"]}
+{"kind":"icon","owner":"wpf:integrated-circuit","source":"circuit","translations":["电路"]}
+{"kind":"icon","owner":"wpf:integrated-circuit","source":"integrated","translations":["集成"]}
+{"kind":"icon","owner":"wpf:integratedcircuit","source":"integratedcircuit","translations":["集成 电路"]}
+{"kind":"icon","owner":"wpf:intransit","source":"intransit","translations":["运输中"]}
+{"kind":"icon","owner":"wpf:invisible","source":"invisible","translations":["不可见"]}
+{"kind":"icon","owner":"wpf:keep-dry","source":"dry","translations":["干燥"]}
+{"kind":"icon","owner":"wpf:keep-dry","source":"keep","translations":["保留"]}
+{"kind":"icon","owner":"wpf:keepdry","source":"keepdry","translations":["保留 干燥"]}
+{"kind":"icon","owner":"wpf:key-security","source":"key","translations":["钥匙"]}
+{"kind":"icon","owner":"wpf:key-security","source":"security","translations":["安全"]}
+{"kind":"icon","owner":"wpf:keyboard","source":"keyboard","translations":["键盘"]}
+{"kind":"icon","owner":"wpf:keysecurity","source":"keysecurity","translations":["密钥安全"]}
+{"kind":"icon","owner":"wpf:last","source":"last","translations":["最后"]}
+{"kind":"icon","owner":"wpf:like","source":"like","translations":["喜欢"]}
+{"kind":"icon","owner":"wpf:lol","source":"lol","translations":["大笑"]}
+{"kind":"icon","owner":"wpf:luggage-trolley","source":"luggage","translations":["行李"]}
+{"kind":"icon","owner":"wpf:luggage-trolley","source":"trolley","translations":["手推车"]}
+{"kind":"icon","owner":"wpf:luggagetrolley","source":"luggagetrolley","translations":["行李 手推车"]}
+{"kind":"icon","owner":"wpf:mac-os","source":"os","translations":["操作系统"]}
+{"kind":"icon","owner":"wpf:maintenance","source":"maintenance","translations":["维护"]}
+{"kind":"icon","owner":"wpf:medical-doctor","source":"doctor","translations":["医生"]}
+{"kind":"icon","owner":"wpf:medical-doctor","source":"medical","translations":["医疗"]}
+{"kind":"icon","owner":"wpf:medicaldoctor","source":"medicaldoctor","translations":["医疗 医生"]}
+{"kind":"icon","owner":"wpf:message","source":"message","translations":["消息"]}
+{"kind":"icon","owner":"wpf:message-outline","source":"message","translations":["消息"]}
+{"kind":"icon","owner":"wpf:message-outline","source":"outline","translations":["轮廓"]}
+{"kind":"icon","owner":"wpf:messageoutline","source":"messageoutline","translations":["消息轮廓"]}
+{"kind":"icon","owner":"wpf:microphone","source":"microphone","translations":["麦克风"]}
+{"kind":"icon","owner":"wpf:mouse","source":"mouse","translations":["鼠标"]}
+{"kind":"icon","owner":"wpf:musical-notes","source":"musical","translations":["音乐"]}
+{"kind":"icon","owner":"wpf:musical-notes","source":"notes","translations":["音符"]}
+{"kind":"icon","owner":"wpf:musicalnotes","source":"musicalnotes","translations":["音符"]}
+{"kind":"icon","owner":"wpf:mute","source":"mute","translations":["静音"]}
+{"kind":"icon","owner":"wpf:my-topic","source":"my","translations":["我的"]}
+{"kind":"icon","owner":"wpf:my-topic","source":"topic","translations":["主题"]}
+{"kind":"icon","owner":"wpf:mytopic","source":"mytopic","translations":["我的主题"]}
+{"kind":"icon","owner":"wpf:name","source":"name","translations":["名称"]}
+{"kind":"icon","owner":"wpf:news","source":"news","translations":["新闻"]}
+{"kind":"icon","owner":"wpf:next","source":"next","translations":["下一个"]}
+{"kind":"icon","owner":"wpf:nfc-checkpoint","source":"checkpoint","translations":["检查点"]}
+{"kind":"icon","owner":"wpf:nfc-checkpoint","source":"nfc","translations":["近场通信"]}
+{"kind":"icon","owner":"wpf:nfccheckpoint","source":"nfccheckpoint","translations":["近场通信检查点"]}
+{"kind":"icon","owner":"wpf:note","source":"note","translations":["便笺"]}
+{"kind":"icon","owner":"wpf:online","source":"online","translations":["在线"]}
+{"kind":"icon","owner":"wpf:packaging","source":"packaging","translations":["包装"]}
+{"kind":"icon","owner":"wpf:paid","source":"paid","translations":["已付款"]}
+{"kind":"icon","owner":"wpf:panorama","source":"panorama","translations":["全景"]}
+{"kind":"icon","owner":"wpf:paper-clamp","source":"clamp","translations":["夹具"]}
+{"kind":"icon","owner":"wpf:paper-clamp","source":"paper","translations":["纸张"]}
+{"kind":"icon","owner":"wpf:paper-plane","source":"paper","translations":["纸张"]}
+{"kind":"icon","owner":"wpf:paper-plane","source":"plane","translations":["飞机"]}
+{"kind":"icon","owner":"wpf:paperclamp","source":"paperclamp","translations":["纸夹"]}
+{"kind":"icon","owner":"wpf:paperplane","source":"paperplane","translations":["纸飞机"]}
+{"kind":"icon","owner":"wpf:partly-cloudy-day","source":"cloudy","translations":["多云"]}
+{"kind":"icon","owner":"wpf:partly-cloudy-day","source":"day","translations":["白天"]}
+{"kind":"icon","owner":"wpf:partly-cloudy-day","source":"partly","translations":["部分"]}
+{"kind":"icon","owner":"wpf:partly-cloudy-night","source":"cloudy","translations":["多云"]}
+{"kind":"icon","owner":"wpf:partly-cloudy-night","source":"night","translations":["夜晚"]}
+{"kind":"icon","owner":"wpf:partly-cloudy-night","source":"partly","translations":["部分"]}
+{"kind":"icon","owner":"wpf:partlycloudyday","source":"partlycloudyday","translations":["部分 多云 白天"]}
+{"kind":"icon","owner":"wpf:partlycloudynight","source":"partlycloudynight","translations":["部分 多云 夜晚"]}
+{"kind":"icon","owner":"wpf:password1","source":"password1","translations":["密码"]}
+{"kind":"icon","owner":"wpf:past","source":"past","translations":["过去"]}
+{"kind":"icon","owner":"wpf:pause","source":"pause","translations":["暂停"]}
+{"kind":"icon","owner":"wpf:phone","source":"phone","translations":["电话"]}
+{"kind":"icon","owner":"wpf:phone-office","source":"office","translations":["办公室"]}
+{"kind":"icon","owner":"wpf:phone-office","source":"phone","translations":["电话"]}
+{"kind":"icon","owner":"wpf:phoneoffice","source":"phoneoffice","translations":["电话 办公室"]}
+{"kind":"icon","owner":"wpf:play","source":"play","translations":["播放"]}
+{"kind":"icon","owner":"wpf:polyline","source":"polyline","translations":["折线"]}
+{"kind":"icon","owner":"wpf:previous","source":"previous","translations":["上一个"]}
+{"kind":"icon","owner":"wpf:privacy","source":"privacy","translations":["隐私"]}
+{"kind":"icon","owner":"wpf:qr-code","source":"code","translations":["代码"]}
+{"kind":"icon","owner":"wpf:qr-code","source":"qr","translations":["二维码"]}
+{"kind":"icon","owner":"wpf:qrcode","source":"qrcode","translations":["二维码"]}
+{"kind":"icon","owner":"wpf:radio","source":"radio","translations":["收音机"]}
+{"kind":"icon","owner":"wpf:rain","source":"rain","translations":["雨"]}
+{"kind":"icon","owner":"wpf:record","source":"record","translations":["记录"]}
+{"kind":"icon","owner":"wpf:recurring-appointment","source":"appointment","translations":["预约"]}
+{"kind":"icon","owner":"wpf:recurring-appointment","source":"recurring","translations":["重复"]}
+{"kind":"icon","owner":"wpf:recurringappointment","source":"recurringappointment","translations":["重复预约"]}
+{"kind":"icon","owner":"wpf:refresh-shield","source":"refresh","translations":["刷新"]}
+{"kind":"icon","owner":"wpf:refresh-shield","source":"shield","translations":["盾牌"]}
+{"kind":"icon","owner":"wpf:refreshshield","source":"refreshshield","translations":["刷新 盾牌"]}
+{"kind":"icon","owner":"wpf:remove-image","source":"image","translations":["图像"]}
+{"kind":"icon","owner":"wpf:remove-image","source":"remove","translations":["移除"]}
+{"kind":"icon","owner":"wpf:removeimage","source":"removeimage","translations":["移除 图像"]}
+{"kind":"icon","owner":"wpf:rename","source":"rename","translations":["重命名"]}
+{"kind":"icon","owner":"wpf:renew-subscription","source":"renew","translations":["续订"]}
+{"kind":"icon","owner":"wpf:renew-subscription","source":"subscription","translations":["订阅"]}
+{"kind":"icon","owner":"wpf:renewsubscription","source":"renewsubscription","translations":["续订 订阅"]}
+{"kind":"icon","owner":"wpf:repeat","source":"repeat","translations":["重复"]}
+{"kind":"icon","owner":"wpf:restriction-shield","source":"restriction","translations":["限制"]}
+{"kind":"icon","owner":"wpf:restriction-shield","source":"shield","translations":["盾牌"]}
+{"kind":"icon","owner":"wpf:restrictionshield","source":"restrictionshield","translations":["限制 盾牌"]}
+{"kind":"icon","owner":"wpf:retro-tv","source":"retro","translations":["复古"]}
+{"kind":"icon","owner":"wpf:retro-tv","source":"tv","translations":["电视"]}
+{"kind":"icon","owner":"wpf:retrotv","source":"retrotv","translations":["复古电视"]}
+{"kind":"icon","owner":"wpf:rewind","source":"rewind","translations":["倒带"]}
+{"kind":"icon","owner":"wpf:rfid-tag","source":"rfid","translations":["射频识别"]}
+{"kind":"icon","owner":"wpf:rfid-tag","source":"tag","translations":["标签"]}
+{"kind":"icon","owner":"wpf:rfidtag","source":"rfidtag","translations":["射频识别 标签"]}
+{"kind":"icon","owner":"wpf:ruler","source":"ruler","translations":["尺子"]}
+{"kind":"icon","owner":"wpf:search","source":"search","translations":["搜索"]}
+{"kind":"icon","owner":"wpf:security-checked","source":"checked","translations":["已勾选"]}
+{"kind":"icon","owner":"wpf:security-checked","source":"security","translations":["安全"]}
+{"kind":"icon","owner":"wpf:securitychecked","source":"securitychecked","translations":["安全 已勾选"]}
+{"kind":"icon","owner":"wpf:sent","source":"sent","translations":["已发送"]}
+{"kind":"icon","owner":"wpf:settings","source":"settings","translations":["设置"]}
+{"kind":"icon","owner":"wpf:shopping-bag","source":"bag","translations":["袋子"]}
+{"kind":"icon","owner":"wpf:shopping-bag","source":"shopping","translations":["购物"]}
+{"kind":"icon","owner":"wpf:shopping-basket","source":"basket","translations":["篮子"]}
+{"kind":"icon","owner":"wpf:shopping-basket","source":"shopping","translations":["购物"]}
+{"kind":"icon","owner":"wpf:shopping-cart","source":"cart","translations":["购物车"]}
+{"kind":"icon","owner":"wpf:shopping-cart","source":"shopping","translations":["购物"]}
+{"kind":"icon","owner":"wpf:shopping-cart","source":"shopping-cart","translations":["购物车"]}
+{"kind":"icon","owner":"wpf:shoppingbag","source":"shoppingbag","translations":["购物 袋子"]}
+{"kind":"icon","owner":"wpf:shoppingbasket","source":"shoppingbasket","translations":["购物 篮子"]}
+{"kind":"icon","owner":"wpf:shoppingcart","source":"shoppingcart","translations":["购物车"]}
+{"kind":"icon","owner":"wpf:shuffle","source":"shuffle","translations":["随机播放"]}
+{"kind":"icon","owner":"wpf:shutdown","source":"shutdown","translations":["关机"]}
+{"kind":"icon","owner":"wpf:signature","source":"signature","translations":["签名"]}
+{"kind":"icon","owner":"wpf:sim-card-chip","source":"card","translations":["卡片"]}
+{"kind":"icon","owner":"wpf:sim-card-chip","source":"chip","translations":["芯片"]}
+{"kind":"icon","owner":"wpf:sim-card-chip","source":"sim","translations":["用户身份识别模块"]}
+{"kind":"icon","owner":"wpf:simcardchip","source":"simcardchip","translations":["SIM 卡芯片"]}
+{"kind":"icon","owner":"wpf:skip-to-start","source":"skip","translations":["跳过"]}
+{"kind":"icon","owner":"wpf:skip-to-start","source":"start","translations":["开始"]}
+{"kind":"icon","owner":"wpf:skip-to-start","source":"to","translations":["到"]}
+{"kind":"icon","owner":"wpf:skiptostart","source":"skiptostart","translations":["跳至开头"]}
+{"kind":"icon","owner":"wpf:snow","source":"snow","translations":["雪"]}
+{"kind":"icon","owner":"wpf:speaker","source":"speaker","translations":["扬声器"]}
+{"kind":"icon","owner":"wpf:speech-bubble","source":"bubble","translations":["气泡"]}
+{"kind":"icon","owner":"wpf:speech-bubble","source":"speech","translations":["语音"]}
+{"kind":"icon","owner":"wpf:speechbubble","source":"speechbubble","translations":["语音 气泡"]}
+{"kind":"icon","owner":"wpf:stack","source":"stack","translations":["堆叠"]}
+{"kind":"icon","owner":"wpf:stack-of-photos","source":"of","translations":["的"]}
+{"kind":"icon","owner":"wpf:stack-of-photos","source":"photos","translations":["照片"]}
+{"kind":"icon","owner":"wpf:stack-of-photos","source":"stack","translations":["堆叠"]}
+{"kind":"icon","owner":"wpf:stackofphotos","source":"stackofphotos","translations":["照片堆"]}
+{"kind":"icon","owner":"wpf:stanley-knife","source":"knife","translations":["刀"]}
+{"kind":"icon","owner":"wpf:stanley-knife","source":"stanley","translations":["史丹利"]}
+{"kind":"icon","owner":"wpf:stanleyknife","source":"stanleyknife","translations":["美工刀"]}
+{"kind":"icon","owner":"wpf:star","source":"star","translations":["星星"]}
+{"kind":"icon","owner":"wpf:statistics","source":"statistics","translations":["统计"]}
+{"kind":"icon","owner":"wpf:stop","source":"stop","translations":["停止"]}
+{"kind":"icon","owner":"wpf:sun","source":"sun","translations":["太阳"]}
+{"kind":"icon","owner":"wpf:survey","source":"survey","translations":["调查"]}
+{"kind":"icon","owner":"wpf:swiss-army-knife","source":"army","translations":["军队"]}
+{"kind":"icon","owner":"wpf:swiss-army-knife","source":"knife","translations":["刀"]}
+{"kind":"icon","owner":"wpf:swiss-army-knife","source":"swiss","translations":["瑞士"]}
+{"kind":"icon","owner":"wpf:swissarmyknife","source":"swissarmyknife","translations":["瑞士军刀"]}
+{"kind":"icon","owner":"wpf:switch-camera","source":"camera","translations":["相机"]}
+{"kind":"icon","owner":"wpf:switch-camera","source":"switch","translations":["开关"]}
+{"kind":"icon","owner":"wpf:switchcamera","source":"switchcamera","translations":["开关 相机"]}
+{"kind":"icon","owner":"wpf:timer","source":"timer","translations":["计时器"]}
+{"kind":"icon","owner":"wpf:today","source":"today","translations":["今天"]}
+{"kind":"icon","owner":"wpf:todo-list","source":"list","translations":["列表"]}
+{"kind":"icon","owner":"wpf:todo-list","source":"todo","translations":["待办"]}
+{"kind":"icon","owner":"wpf:todolist","source":"todolist","translations":["待办 列表"]}
+{"kind":"icon","owner":"wpf:unlock","source":"unlock","translations":["解锁"]}
+{"kind":"icon","owner":"wpf:unlock-2","source":"unlock","translations":["解锁"]}
+{"kind":"icon","owner":"wpf:unlock2","source":"unlock2","translations":["解锁"]}
+{"kind":"icon","owner":"wpf:user-shield","source":"shield","translations":["盾牌"]}
+{"kind":"icon","owner":"wpf:user-shield","source":"user","translations":["用户"]}
+{"kind":"icon","owner":"wpf:usershield","source":"usershield","translations":["用户 盾牌"]}
+{"kind":"icon","owner":"wpf:video-call","source":"call","translations":["呼叫"]}
+{"kind":"icon","owner":"wpf:video-call","source":"video","translations":["视频"]}
+{"kind":"icon","owner":"wpf:videocall","source":"videocall","translations":["视频 呼叫"]}
+{"kind":"icon","owner":"wpf:view-file","source":"file","translations":["文件"]}
+{"kind":"icon","owner":"wpf:view-file","source":"view","translations":["查看"]}
+{"kind":"icon","owner":"wpf:viewfile","source":"viewfile","translations":["查看 文件"]}
+{"kind":"icon","owner":"wpf:voicemail","source":"voicemail","translations":["语音邮件"]}
+{"kind":"icon","owner":"wpf:volume-down","source":"down","translations":["下"]}
+{"kind":"icon","owner":"wpf:volume-down","source":"volume","translations":["音量"]}
+{"kind":"icon","owner":"wpf:volume-up","source":"up","translations":["上"]}
+{"kind":"icon","owner":"wpf:volume-up","source":"volume","translations":["音量"]}
+{"kind":"icon","owner":"wpf:volumedown","source":"volumedown","translations":["降低音量"]}
+{"kind":"icon","owner":"wpf:volumeup","source":"volumeup","translations":["提高音量"]}
+{"kind":"icon","owner":"wpf:wedding-cake","source":"cake","translations":["蛋糕"]}
+{"kind":"icon","owner":"wpf:wedding-cake","source":"wedding","translations":["婚礼"]}
+{"kind":"icon","owner":"wpf:weddingcake","source":"weddingcake","translations":["婚礼 蛋糕"]}
+{"kind":"icon","owner":"wpf:wind-rose","source":"rose","translations":["玫瑰"]}
+{"kind":"icon","owner":"wpf:wind-rose","source":"wind","translations":["风"]}
+{"kind":"icon","owner":"wpf:windrose","source":"windrose","translations":["风 玫瑰"]}
+{"kind":"icon","owner":"wpf:worldwide-location","source":"location","translations":["位置"]}
+{"kind":"icon","owner":"wpf:worldwide-location","source":"worldwide","translations":["全球"]}
+{"kind":"icon","owner":"wpf:worldwidelocation","source":"worldwidelocation","translations":["全球 位置"]}

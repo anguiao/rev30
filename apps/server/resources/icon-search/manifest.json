@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "iconPackageVersion": "2.2.525",
-  "dataVersion": "chinese-2",
+  "dataVersion": "chinese-7",
   "files": [
     {
       "kind": "english",
@@ -15,33 +15,1193 @@
     },
     {
       "kind": "translations",
+      "path": "translations/academicons.jsonl",
+      "checksum": "bb773d717ed4011e060068680f76966363da63e347edae3de02023c50bdd0e4a"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/akar-icons.jsonl",
+      "checksum": "cbc59df5a504441e914f80384456843cf205204be22b96b5fd74aa3efe74e67e"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/ant-design.jsonl",
+      "checksum": "8e14de58c5a44a4544ecfd9d393539fe9c13210cb449707b7f098345e0dc66a2"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/arcticons.jsonl",
+      "checksum": "191070113158e25a11d4d95b84fa304b6d41573c7d95bfa13f3691758d4700e7"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/at-icons.jsonl",
+      "checksum": "86625d4d6b5b5acf5734ef8259e15e2798a5c8a109eaed0b61654b82ad98e077"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/basil.jsonl",
+      "checksum": "32b10c355880d147c762992cc248e60b299f863c5880de9150e9749133fe11a7"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/bi.jsonl",
+      "checksum": "ef39fe4e251f60c6d46cbf028530c0020b240880b02bfb4d1a10d1031bc948da"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/bitcoin-icons.jsonl",
+      "checksum": "2a008fb94bb546ff9bbe20f1d484c79f8e1ebdafbf22f04ab2f1fd2dffd02c52"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/boxicons.jsonl",
+      "checksum": "ddefe2a0119575417042777d0c600a50f8d08b57f532c4c69cc571a38ed3123e"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/bpmn.jsonl",
+      "checksum": "866121219977834d918769f7fd9ffc094aaa56c82337d5a73cc117463d2466de"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/brandico.jsonl",
+      "checksum": "56bd705abbebb41d37115491fb589de9dbe186bf50b99d09c8160eb800ac2231"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/bx.jsonl",
+      "checksum": "7e9953b46cddaafeb7711bcad5a89512a123cd773dbab015ce5cd681d824bca7"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/bxl.jsonl",
+      "checksum": "057fcf0edcd0b9db73f10fa243ade96c7a93a6a3998b984ed40972d3595b2fe6"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/bxs.jsonl",
+      "checksum": "b0a81f7fd373f124fe4b09f6fa4947dfd02854d2d3b59c161679269801951bb4"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/bytesize.jsonl",
+      "checksum": "b1dd5ccd07d847bccddfec4c20086502f5e7643898ce018429091ae584f9d3dc"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/carbon.jsonl",
+      "checksum": "c344f8da470faf7f6ee52a1093685049564c4c02fd90e25660497e54c0928acf"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/catppuccin.jsonl",
+      "checksum": "01751026ed37075fc7ca6e8df5840586d4f76a82626312ec0180fbe552493e99"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/cbi.jsonl",
+      "checksum": "febe9186347b1e2c1a306762bd62a30deee5e417ce0476b0bf7c776154ba5307"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/charm.jsonl",
+      "checksum": "75002e1e338457efd3877a78bb8f8938de699e1065b157079bd08f7e5cc44d89"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/ci.jsonl",
+      "checksum": "ac338a50129d148d894f2c2df2f3aeacd3b33a2ecd44d1f85522ca2ffffc7986"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/cib.jsonl",
+      "checksum": "55bf405c38643ff4b43843c9e0b43a3719ef37f7a1dfec45ef4ec2424f6aa64c"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/cif.jsonl",
+      "checksum": "fc836ed5fb8b5c93b903e71464eb09276c442fb60c9a94ed7a3ceb5f50d446d1"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/cil.jsonl",
+      "checksum": "5e51450121639f125b896714e24eef09297ba9fe8a7434b983944b35929b6727"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/circle-flags.jsonl",
+      "checksum": "52252b799e3e50a4624f7ce4cedab9f3ad7e4a67183bcccbb8e3cb918645277b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/circum.jsonl",
+      "checksum": "4095420adfe10ca11fbc30e7ecee28269b53dd89a37f24c85b06d223d6944b81"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/clarity.jsonl",
+      "checksum": "3e199e1e12609918b8b20263cb710a74935c963be522fc5cfe9169dc34b1dc49"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/codex.jsonl",
+      "checksum": "0abc73dace5c4286b7186362b439d7ae4a6796b2c5946a85303cfb12d280abe0"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/codicon.jsonl",
+      "checksum": "a7772eb2e05e800469ad4f61a3a5d0c79167beb8709aa774d54510d59a8c62f4"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/covid.jsonl",
+      "checksum": "7ecd10dd14b8b457153171f0598cc1e71a9eb58839d1a3a1841515bb1f172c96"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/cryptocurrency-color.jsonl",
+      "checksum": "cd85e2849fc315efb1d36f4f8b527fbc599ed935b2cda3cef265b1062b57cb5e"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/cryptocurrency.jsonl",
+      "checksum": "bcc512908706f0f472f3c201e318373bb1d32d50c641892963b237a25cfe7e0c"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/cuida.jsonl",
+      "checksum": "ceace61b6e44cb0202590fe1627b3ba1222379b540ff7da4f5dd76fa8d5fc653"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/dashicons.jsonl",
+      "checksum": "b49bc074c6496fbb858bf35dfe3a9f50ec02910c3cabb689030ed4c8aa0681ad"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/devicon-plain.jsonl",
+      "checksum": "54e135f2b1dfd7c5698c521bcf82ed80a0837de6cacc4f745bbe634bca5555e5"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/devicon.jsonl",
+      "checksum": "5223716c03b6c63e016763b306f976f767caccf83f7d5454d02f668495a1e6fb"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/dinkie-icons.jsonl",
+      "checksum": "936b6211d941777e8d7de7796c0104a3e20657104c8b6dbae4b1a8caff853265"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/duo-icons.jsonl",
+      "checksum": "d832396b52ef2d7d6ae44ed33834f7813038707e762ff34d144ebe5dbc4bbf59"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/ei.jsonl",
+      "checksum": "be61dcaff65f25327a9e699d62b5d8c083f3848bbc5a141c8203a996c27d204e"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/el.jsonl",
+      "checksum": "d381b321d581608f6d7119fd35fc7fb03d4c1d5ec699bfdb14e53d30408dc4b1"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/emojione-monotone.jsonl",
+      "checksum": "4186ac078f317adadb1ed68f8c2de48966d6f4634241aae2836a4ddf78fd7119"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/emojione-v1.jsonl",
+      "checksum": "950a49be589c96c5561860e6da465db51c7bc4f43eff903dd52cf8c217004c98"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/emojione.jsonl",
+      "checksum": "b3457e4e8ec3c6df15ff65623a2a77c7d4f020fc2eea5ccffdce85fba5e27c6b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/entypo-social.jsonl",
+      "checksum": "ef67382b606eb1442199009cc2a435040c39d898baee009072ac35ff5a587718"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/entypo.jsonl",
+      "checksum": "5c0caa0161646eb8dc43c6b1c7198cacc36507f5dcafa30e7a56b35655385ad8"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/eos-icons.jsonl",
+      "checksum": "715d2466cd8ad2f065054afb5c92ee66a3c0a2cb47abb4ddf82f8abd94788289"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/ep.jsonl",
+      "checksum": "5d66a55b35fc3c605210a9d2e22740feec1ea5b48d8590784622e60d0b9f700d"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/et.jsonl",
+      "checksum": "cebd209a252a2f9377bb4f9f1dc5f982e33630192544ceef8a28a8c5b242f2ff"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/eva.jsonl",
+      "checksum": "6163fd4fcf0b5605f954cfb8fe2b954bdc917c8938d824af7f87847c39befa11"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/f7.jsonl",
+      "checksum": "f3caf127fc89f65ec9c3e89b7e797f2f53f8be03dd6d1c8d264ba8a730b1cadc"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fa-brands.jsonl",
+      "checksum": "b2465df3869badafb5990effc02b73de9a0a1a373941b4da77141ed673e1e8ed"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fa-regular.jsonl",
+      "checksum": "0b59576754c1eb8e73c0a977ad81ea65e92a7fcd137190d52f62ff72b50f0a07"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fa-solid.jsonl",
+      "checksum": "ff04183e66c41d0731d2bdf4bd2dfdf90cf12b0a700e9a111a3b9e0a40dc3179"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fa.jsonl",
+      "checksum": "ea07345aa84857eca6d8df70a44216a02dc062282d08e40a63a0f8553980a258"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fa6-brands.jsonl",
+      "checksum": "ce8f477711c2032ea364bff317de9f0450f37c741032ec32f28a7d2b0cbeb5d4"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fa6-regular.jsonl",
+      "checksum": "922175213842871f810ec06d378b18407e118633a0cecf6a7aaf14a016094955"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fa6-solid.jsonl",
+      "checksum": "9000590344b0d8326636954620d096aa371d00fa201f5ece1b2c62b5d5ca04ab"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fa7-brands.jsonl",
+      "checksum": "64a8970c4c1fce194e5fa1b9326c89343c08a31d15a183fe31ba03f38f8d4b81"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fa7-regular.jsonl",
+      "checksum": "7a93fec512e53f9ddc532609292fcba12ab78f88730bb7c45507b26cff5401b4"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fa7-solid.jsonl",
+      "checksum": "dedde110b2df2f7a56a335e892ec99bb1c46f56dac2896372afb7da9402447cb"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fad.jsonl",
+      "checksum": "81d9c9d3eb10f71097d052ef9fff53652fc3818864d9adeb12d2c50b921df347"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/famicons.jsonl",
+      "checksum": "e857af2e75ef61b65475f957cf8eb4eebb885b8a7828c295e92376fe37cb5785"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fe.jsonl",
+      "checksum": "e54c68cdbd4bcd0e4398d40bfcd928548a58634afd670ea16349cd31e8a36082"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/feather.jsonl",
+      "checksum": "24a42302cec5f960443500e57cec4048703a0b3d7358922045b11a611a18fef1"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/file-icons.jsonl",
+      "checksum": "2dcb1550e8dc2bfaa9f9ba21320816612e56336c0037a889f4a5f2683afb618f"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/flag.jsonl",
+      "checksum": "a0976e0ae09d1ef866d481c2880aadaadcff5a6c9cdbea0b3afc225f9f721a53"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/flagpack.jsonl",
+      "checksum": "ea8023208deaabf68fa443d42374e519830152ad6996ae42707126897ff96c37"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/flat-color-icons.jsonl",
+      "checksum": "281319eb244e25d262f6d808e0bbe84da788725051c556a734911a7136d3a8d4"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/flat-ui.jsonl",
+      "checksum": "841eaa917b6903da3d6f65c456e442ff8a51606470c30cd19cc179e030445407"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/flowbite.jsonl",
+      "checksum": "81441162f40896b035575a7be6f65bd26d9c0a9d82b78a2708431550e1ee518c"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fluent-color.jsonl",
+      "checksum": "6579a7f6d12122ac236c2c89143952fc4b791061b7fbcdcf9e3d1244878aebca"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fluent-emoji-flat.jsonl",
+      "checksum": "0735b0bccc7d4b15a0cada93fba3652397072170591a54af2c6b3b433cceb5db"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fluent-emoji-high-contrast.jsonl",
+      "checksum": "e40a0046dec891e9524c3542c367a8315c2bcae70893f5cdc87a814ce0c35a6f"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fluent-emoji.jsonl",
+      "checksum": "6467f5c3fab6fb23a36077e328c931a04f540d2533de74cceb36ce6911250d32"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fluent-mdl2.jsonl",
+      "checksum": "edace96e4c779804016af7da080999d523998e09a62af48055d64a033b7e08e2"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fluent.jsonl",
+      "checksum": "edabc5d6c3d2a381bedf1887c8241142093b5f33fa4506adf56184abdc6471fa"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fontelico.jsonl",
+      "checksum": "f45c262abb2169704bfc3f2cd0deada1efeb1cedd93ef5e797cfbe88f49fe336"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fontisto.jsonl",
+      "checksum": "8159edaa05be4369c61f7a8c26c56a11602a1a2c52c57348749bffd823c128cc"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/formkit.jsonl",
+      "checksum": "84c4f35232f67a67e1cb9b48377ceca1c67c5c905e7ca012c490b7def6ba11f1"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/foundation.jsonl",
+      "checksum": "e7f7aef2da7b86efe3c9f3b75d3a8317e9f73ff3a504c1c6e2c520599a46401f"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/fxemoji.jsonl",
+      "checksum": "24735fd2bb4d731897c7da6ba90989ff008bc898b5ef292a8c2f92ffc28c7f09"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/gala.jsonl",
+      "checksum": "69a73efc416fd46cfc5eebdcc29d7bdf29f5b66c486d255b73fe2820a9edfc4d"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/game-icons.jsonl",
+      "checksum": "cf406ec0821880b178ab10e388d91e331fed388ce01f676558430c97d417afa3"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/garden.jsonl",
+      "checksum": "b432fd6d1f1926a6a394878c1714804ef9dca7e45d282afaf0a56d94aa72a9fb"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/gcp.jsonl",
+      "checksum": "1c8e680437001d223298a4dcb0a15d064aa43709f57801b6e02112f3eedb51df"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/geo.jsonl",
+      "checksum": "46e31bf4c4d61e93f23528950d3660849cdbf9d46ccc405509f5528dd066c9d8"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/gg.jsonl",
+      "checksum": "8656a500f359092f2b4c1e22c8d7d8300020c9dcd88b2fb11d5d435869fe221f"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/ginetex.jsonl",
+      "checksum": "629899040c33af3da7c0845979fa16a4f34826a7937ca160f06ae2b7df9ee047"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/gis.jsonl",
+      "checksum": "f8335875a38faedcda62f46a9fd7f42e88f10ab8f099ee501911b3f12bbd9e0c"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/glyphs-poly.jsonl",
+      "checksum": "d961d499a1ecce18ca57a46b47684c6bcb9c3a9415fc59fdfe953031b55ee7fe"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/glyphs.jsonl",
+      "checksum": "4cb7256f27e4f416691c4bfb02ede2d9ff33de7dcdb8c190f3b712682ea94ae6"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/gravity-ui.jsonl",
+      "checksum": "da2a74bcbc5c1d7db85e9c41179940bc40ced7c8809800508397305625a1734c"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/griddy-icons.jsonl",
+      "checksum": "cd78e5f1627dba3c20d37440668712a5d27623fde73a4311ed32c515bdf63f06"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/gridicons.jsonl",
+      "checksum": "63610e9ad4398aaced668be45755f72244c75ce95943f000c06634e199dc62ee"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/grommet-icons.jsonl",
+      "checksum": "911c8459341792b352e7d50bb347f89a5a1b9c860fa243da723558487865fd08"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/guidance.jsonl",
+      "checksum": "c186271696cfa119f666f9e127538a7befb1ed92f0c07f310ae7fcf96c156f2b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/healthicons.jsonl",
+      "checksum": "f0ea84203356f69f968105820a80052afa5870b49a77f6960535e3b4caa516bc"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/heroicons-outline.jsonl",
+      "checksum": "7f896eaf9f61655b67b7d28195452a242b327f0499f2d53071bdc37f39ecb64a"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/heroicons-solid.jsonl",
+      "checksum": "175976b318e4a358e0c3a9c0178ce47a9216464091b5ccdbe9d36e5fcd74d543"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/heroicons.jsonl",
+      "checksum": "c03c24eae72aaf9d7d1ff078ef2a0f4fd1b950c8caa2ebc929fd1e12cadc1dee"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/hugeicons.jsonl",
+      "checksum": "2fe48ee8017699179b88ee6066fac93c51aba8269fee0de76419c2fbc3b62f7c"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/humbleicons.jsonl",
+      "checksum": "0e5719698b9c178188616a67f6fca9eed525c00e49ad8ea81d5d4ca9b0aeb014"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/ic.jsonl",
+      "checksum": "ba4a2a42bc3b4b94556fe113f371e448e8ff7a2d99b9d7910b2c8367ca3c1873"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/icomoon-free.jsonl",
+      "checksum": "6594ba12ddf56688b161c4757305f7c99c7bd731bbd9d6d20cd78775d507b1d9"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/icon-park-outline.jsonl",
+      "checksum": "e41ddf09ee5d21756905a45d12b3b02a3d87e9a79af70ab1efb81db7c45dcb46"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/icon-park-solid.jsonl",
+      "checksum": "9450c6fbc6bc79c5b016aadd65b3dfffe8aa83223f384b59cbc8d60c9f7f3ae1"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/icon-park-twotone.jsonl",
+      "checksum": "a33b97d187314f27d32bf8734990ac6bae559c41ec4dfeb984f5a8efe8204806"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/icon-park.jsonl",
+      "checksum": "43ba19ddebe041b3302ec423d3e6e64224eaf6d30903353063d2d22136ae68aa"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/iconamoon.jsonl",
+      "checksum": "5e44cb20b46872d5ce562dde650dc192bf111e843e38bdb9a0e3d246441a0a43"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/iconmind.jsonl",
+      "checksum": "cb06f0acd3fd16a2ab3d2ca81896cd0f3c2a44684a5a5ce258472ee0e9409817"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/iconoir.jsonl",
+      "checksum": "d3d6d37c4710216a28483bfabc982a82b670dc5eb055800f5881c6c90ce9ab73"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/icons8.jsonl",
+      "checksum": "ea0606cb5ee7a0622d77356b8016481f3c9f6af253977b6968fb4d64898fecd9"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/il.jsonl",
+      "checksum": "cbf7bfd914b511df11462b0708e58e83f9f543f7100af40f193838c9fe05f2bf"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/ion.jsonl",
+      "checksum": "9ec80a3a245e3269848475bc2b6741db19e4e8640e4d295a4e9e0bd6cdb9931b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/iwwa.jsonl",
+      "checksum": "9638e2e9d23b523378cc0ba55285cb780c3f7f89bd4c22046f4dc6aa1e61618d"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/ix.jsonl",
+      "checksum": "b18ec6a4cf3ea5e077564ae450a1d38b7df60c4e64ae968c519bafbc66b4b216"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/jam.jsonl",
+      "checksum": "e9d6dcb3204e85341d146d16a12b1c45f5c41278d9830c2db10ff638cd9515b5"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/k8s.jsonl",
+      "checksum": "29f0a29e5d0da65796faecbc63e3af653e9438733db95c592c359b97846e9931"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/keyline-icons.jsonl",
+      "checksum": "841ac1e63877f8e90c091f9aa54525bdfe99c9ba82d069e7d6cc1a81f6f9388f"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/la.jsonl",
+      "checksum": "f935319aabb4e97eea06c96875267749e546fcdd75bd18ff01ab045c837c1a5b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/lets-icons.jsonl",
+      "checksum": "5fb310e98df747587fba8464e00d77ffa272c384bc3b2340ae3e6d656abbcb93"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/line-md.jsonl",
+      "checksum": "11339294f213fbfc1e52f998244c39e81ffd604c85fb4e0372d191ed6976f2d0"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/lineicons.jsonl",
+      "checksum": "ac13f5f9c3e2bf251fe45ed7ccb5c99f78747bceefe2d7fcd7fc4e060e48e49b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/logos.jsonl",
+      "checksum": "ecea3d888eb9175c726c5492b95a6fb3f41cd6a64343e849133a71a9c5dd646b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/ls.jsonl",
+      "checksum": "c6e6aec2b8448c002a6ea386b0121f1a77339c49d68b5bfc18903b967431951e"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/lsicon.jsonl",
+      "checksum": "b099cd26841d008d2e6d2d63f0a35c0e11f2f1ba35eb2a05132a15de063cb1a9"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/lucide-lab.jsonl",
+      "checksum": "276dcee2fefc6d330fc2fed998b526186c67e592d3e9e7786d3dc946b1b60c74"
+    },
+    {
+      "kind": "translations",
       "path": "translations/lucide.jsonl",
-      "checksum": "a95d4abca6194d9f9cd2b7b81864954b1c09f2dd4c0b41ea0d6477aa609d680c"
+      "checksum": "d77c68796237d8859e9a1816c80c21d038fc23a1399ee3b3554ed20f1c10ce8b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/mage.jsonl",
+      "checksum": "0f28076338d4ac0fcb7fc82902218b4308359e7c578be186c7273edb3cb1fc47"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/majesticons.jsonl",
+      "checksum": "2ee129ee96214837fc9d905c070c8bee39f1770061563411c3a66770d6884305"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/maki.jsonl",
+      "checksum": "b4480b376c1729c69c8233748054b1be08d1397a5acfb821326800e2f2f0cea2"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/map.jsonl",
+      "checksum": "491e651fd2fce50439d709981b2382e71269e400dced8b4dd3962791b74ad521"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/marketeq.jsonl",
+      "checksum": "d79fd5333be6f7835f30f6a505182c7ef6d77b46894abda552d2fb3ad817a787"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/material-icon-theme.jsonl",
+      "checksum": "b7e6830c382bb5207b344a9c131bc2ddc0c226748df64a4642b533f48d2bbd25"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/material-symbols-light.jsonl",
+      "checksum": "059d020b573374b5a67eb7af2da0fdb7c406b7ef34e182c27deac8559260c154"
     },
     {
       "kind": "translations",
       "path": "translations/material-symbols.jsonl",
-      "checksum": "0e8aa0826194abdeca3506d76136e906ab607a2a8782484450c0f18bad1fdb16"
+      "checksum": "114a8ce630f19e16cf12b16c4d56ddff8102dc43183c395888d01fd8003fa02f"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/mdi-light.jsonl",
+      "checksum": "7d4a0255185b72d3b7d5940130403db303874019678688c49e8ff67e56247afe"
     },
     {
       "kind": "translations",
       "path": "translations/mdi.jsonl",
-      "checksum": "239e401bf70d40288fb695559edffaaf44c3ed7366bad135e335bc228b2e7424"
+      "checksum": "c55bf4c72c335941776839a37656203ec89fe6b44c3bb77911b88a33ac4873fb"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/medical-icon.jsonl",
+      "checksum": "cb431e887c341d16a2e665230601f4c223d77089a8ec2a3469d8740d1ca56c21"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/memory.jsonl",
+      "checksum": "53d20a03b3df603fe581c8e91e467ace4cc36ed51a0ec98818aa39578d6e8c2d"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/meteocons.jsonl",
+      "checksum": "684cc9d973ef55535eb301b50f5b507dc5d211ec05dade92629dbfd438c2fe80"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/meteor-icons.jsonl",
+      "checksum": "a02e97a986ab1dc679df7d86c8af893ed35034852cdfc487dfbf156744841867"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/mi.jsonl",
+      "checksum": "b7f8ba3c9db112170c69e369fd02103f4e218fb211e2a869fe1f1159e822b66e"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/mingcute.jsonl",
+      "checksum": "2ca67debe63a1b591095dd0a971e07468da05a86e402b8576cd6eae2ed20e262"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/mono-icons.jsonl",
+      "checksum": "7c81a7593917d6c454a662f6da87d46329c3eb53fd95f010b04739e197a92889"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/mynaui.jsonl",
+      "checksum": "6b24ed39342a3a01e6263790408a5f5f306bd8cd4111b622eba4e39ae2f138c3"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/nimbus.jsonl",
+      "checksum": "0521b8941fe8a6670a345490ae01f347d62f350afb541fe67d4540cd92809115"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/nonicons.jsonl",
+      "checksum": "27d2cc2068759f8a6ef4509cb3e04a5ff21af7ca6ce33d1e8d82c8bdf18b070d"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/noto-v1.jsonl",
+      "checksum": "b530831b50f205f205dbcbcd1973e56bc7074af7a1fcb7da5b3d360e74b23b64"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/noto.jsonl",
+      "checksum": "e8120701fd6cd589a3022ef6eed49f5f9a2678b6c57e297d9207d875097ca11d"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/nrk.jsonl",
+      "checksum": "aa7f046e7210f683e99ed80182ced9f81fa960242837d2164c9b02ac0245864c"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/octicon.jsonl",
+      "checksum": "1364a30f37d81167b39f797b6197f567e979525457abd77af17dfe2a8b354dc3"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/oi.jsonl",
+      "checksum": "e72e455f20732e40943057b89295e1db4f989e1ae1917ee5d78955e3885c39d8"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/ooui.jsonl",
+      "checksum": "ee0d87a1fe30a92301a32b45a6f89a5d1e0dc2242ebd315c3630e55b6a6f6627"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/openmoji.jsonl",
+      "checksum": "f811dcf2d4de90e6eeefed548db61832c952186f0e8bbd31d5210de3b9c4f82b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/osmic.jsonl",
+      "checksum": "7bbf6a8214a495f7b5c31c002dc96eaa5694ed2c29b8b89f31d8d6b7bce8523f"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/oui.jsonl",
+      "checksum": "d526e35aa913c0d56ee178db648388028347fc749656a6745569b7a77150bbbf"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/pajamas.jsonl",
+      "checksum": "41de9fa016166b0fdbf0ee052e8a3df43ccaa1b0985206561d8aba358718cef8"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/pepicons-pencil.jsonl",
+      "checksum": "19bfda2d63384a30ab19dad9d49cdb2efb9f0c082c8b23efc5eedccd00f7c0de"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/pepicons-pop.jsonl",
+      "checksum": "33afc5c2a8959c2e6e5e99c3ddd3d5641e27d90a1482c05c30907dc3e70dcb69"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/pepicons-print.jsonl",
+      "checksum": "c56390f226623abb92fcef505556f7f4647482ebe2c503e44889b1f74254de11"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/pepicons.jsonl",
+      "checksum": "d249a8f9e11550b8a508971336211c2df340df93a72b638a0aa190d2f1465b02"
     },
     {
       "kind": "translations",
       "path": "translations/ph.jsonl",
-      "checksum": "55c687162bb1747db5a5ca7fd376ddbcfb54b83ecd13d931b19df87d3ba898de"
+      "checksum": "aa5d045a74c00934724247a181e0cb10a918a0f614256b2f068ffc435de5fee3"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/picon.jsonl",
+      "checksum": "5725db6c06ec8be4e4e28cd30247814de19363a6e3db6f618706b1dea0fa43a0"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/pinhead.jsonl",
+      "checksum": "5cd7eacce7e6fe43681cb30db6051bee4f8dc70eb59f43269a71a1545c2e2eb5"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/pixel.jsonl",
+      "checksum": "a91ae5f14e8d12f4fe726d312637948d43bf178d3b2701292bd187a2110c57a0"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/pixelarticons.jsonl",
+      "checksum": "5fbd25d8f855557d067bea1a8f0163f788e163f67192d84658d7ddcf01d30167"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/prime.jsonl",
+      "checksum": "f9b1a3974d774123304c8636568dda3f5c7a6ceae5059c34245f0e84e472fa8b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/proicons.jsonl",
+      "checksum": "d98a2fa690283fd5679120fb27f37e5dcc3e7b07b333a500ef9977a48343ac30"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/ps.jsonl",
+      "checksum": "7fc6f396e4d5c6f88a428f63125fb300f9407c1768e164d19d24267c8e2b8dcf"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/qlementine-icons.jsonl",
+      "checksum": "e256d7387040c0dfa65b260304fcebd7198b480cd0968884b766d38b9ba0ddc1"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/quill.jsonl",
+      "checksum": "f2927a76cb8073c590caf706d60226dffcc071bed717a4f15585f7bce9c989f8"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/radix-icons.jsonl",
+      "checksum": "2a0ea4a4b3f8c99754da502edcc6f6c3806451dfe72269769d0aae0ca56a7a0b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/raphael.jsonl",
+      "checksum": "ac232d5c5e1c92ae9f97f697bd7e9825972c516ba9a67d7db66caec39c3e99ba"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/reicon.jsonl",
+      "checksum": "0aa53b34f2bda123f17e6ce8b6e95bba05aef90c3ce535efd3b7c5b0b48e0b2a"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/ri.jsonl",
+      "checksum": "7244878e9004c65b2325ed94a7f7ebafd7f3bd865b2caf64ba4b6e96499fb72c"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/rivet-icons.jsonl",
+      "checksum": "a968ca2edce73bf7272f662e902b9fa1ca738d1dcdeb2d48e9a026ecf7c88b2d"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/roentgen.jsonl",
+      "checksum": "d27f3c7f421d7da530111806b72cfc2a57bea098144daf94eacd6a388c841515"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/selfhst.jsonl",
+      "checksum": "21bc6cf378ebcbbc0aa4e4bd7a10bb4897465be30f76286fb5c5bfa1a35d7eb6"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/si-glyph.jsonl",
+      "checksum": "a087f6ef298b61601ce3e7516538f780f97c8e72c980b7d6dcb6b9a90f3fb4a2"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/si.jsonl",
+      "checksum": "575f7d00a4e0b7650239d9824c542e32eee19ac88eebffd3e2609695665e4d42"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/sidekickicons.jsonl",
+      "checksum": "3e9aaac7b19becdadc8fe36511b8898ffe0328b2e1fab7daf039b1bc3e85ada8"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/simple-icons.jsonl",
+      "checksum": "c34af58f754072dcacfb9021309738ed300ee66398df152784ef2be9ef2b9741"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/simple-line-icons.jsonl",
+      "checksum": "c14f5d34af2959ac76b024c23e6d1c4404b214dac822df21e397ffb0518a2f0c"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/skill-icons.jsonl",
+      "checksum": "1d7126b9e2f2ccfd81da9037c56ab183a7fdcaadff1e33b53566007d09cfed5b"
     },
     {
       "kind": "translations",
       "path": "translations/solar.jsonl",
-      "checksum": "67a0b73bd56316554d4ab5e4d4a368f85eb0a5bcf3c83051066d45efdfa6d908"
+      "checksum": "f4ffc182f8fcc54f7c03f09a0a1bdd0d3a16a65e5ca80f4cc4e06da6925c1e74"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/stash.jsonl",
+      "checksum": "94cd16580a6b97fea41a0a353d7fee184503eab04eda86bc310fde1fb88e03d9"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-block.jsonl",
+      "checksum": "80e4a646bf0a9eabe8d3970b62681ea3b944cd86611f40b9a2bd5c86a800954e"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-color.jsonl",
+      "checksum": "db8a9e76081cc2cf6c9df50f18fa547cfa886f599ce80e24b97892c942e8562b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-cyber-color.jsonl",
+      "checksum": "8a2aaab384e748e865d2c2d2f2c17d3e19fc2fd3dccf6d2b59187847119ae1f9"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-cyber.jsonl",
+      "checksum": "d7dfc004f206dba208c7dc5bbe946266ab5e7a318b108c0922485c4fbefb6818"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-emojis.jsonl",
+      "checksum": "d2f619ba103fa0ef0590f7a6cc81f2d1312c7fe2111e17ee47a2bb9c139cbf92"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-flex-color.jsonl",
+      "checksum": "7016110685016b1ecb036de1fc2f0e43d51a9b2bc473329752499133dbcf14f2"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-flex.jsonl",
+      "checksum": "e792fd2fc023bd66213e8273b29ea324f0590c1d42fd4bfe5daffa7a426b576f"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-freehand-color.jsonl",
+      "checksum": "b9cb91cea9adb0a1e545edfe82e73148d42a86ace5d1185e25b268bdc318d322"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-freehand.jsonl",
+      "checksum": "1041a68b89a4a6f39e9b3226de8efd5c0b2e8846a417e037c4d06d283b8735e0"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-kameleon-color.jsonl",
+      "checksum": "a681fc8ff52440ef590b1c414e2269940e0e2c63270c7037974b28601f9cedd7"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-logos.jsonl",
+      "checksum": "fa12d4c23e41e16195bd730e6103c60084839bb3320495572dd32914f057aff9"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-pixel.jsonl",
+      "checksum": "8e79c61e7a92c0538d1bae2d7a574dd2a5e5424a0b737849517e740d7a30004b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-plump-color.jsonl",
+      "checksum": "926e04ce3396115204a53ff9e7de046c71347800fd2fde413dbf3099502d481d"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-plump.jsonl",
+      "checksum": "c82bdb8ae19d10977f670ad4487dd29acb7a42dff75d1b04a1dcb3870ca6a99d"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-sharp-color.jsonl",
+      "checksum": "d8f4407118f8eea27d92deab4cafa7a83f3d66d6db6b9b88020fb4a6d1ee5d7a"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-sharp.jsonl",
+      "checksum": "bf8d28963905fcb6038dfbc2d3464d3f1c1069c3f31fd7ec5d80e03b639f4aca"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-stickies-color.jsonl",
+      "checksum": "95abcaa9e4d3569ec3a631ed10bc4e47173600a8404d842f0bcb4bf3f0b85894"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-ultimate-color.jsonl",
+      "checksum": "fae6e715deeb760c9223f142f68ad731e8db6d31eba54b8bd4b1d1d6f709150d"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline-ultimate.jsonl",
+      "checksum": "28ed85e49541d976b377092d162cca5c8a52abdc930c93a19996b7ea2df8ad7c"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/streamline.jsonl",
+      "checksum": "a67350539fc974f5ae7a07e77d851340fc4d66274826556dec6191d5eedfec46"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/subway.jsonl",
+      "checksum": "d369eab080417ed6ade93bbe58530ec6c41610bc3659d2e74ac291300cca5c1a"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/svg-spinners.jsonl",
+      "checksum": "991ba290482277b6844a566c58dad2acfa9960750da8c2a4c2c548d2d0289420"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/system-uicons.jsonl",
+      "checksum": "736e65df2c5b850bfe6927f1961d417158bdee0ac3a3935000c7ef1c229f3cf9"
     },
     {
       "kind": "translations",
       "path": "translations/tabler.jsonl",
-      "checksum": "2bfa46de42b4db8d95ef26bffb5e8feb595e603d06c09356223563611dafa38a"
+      "checksum": "9fd503cdbe50637c0ba6e49932521886a581b41d1d8b9998229cb80c54239110"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/tdesign.jsonl",
+      "checksum": "fdb993885fd613abc465e60e209a1e7529c72056ec905ddf1aaebee272f5699b"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/teenyicons.jsonl",
+      "checksum": "d742fcfd764510adcc5b1b3c2b2a058aa7826ef1cf38b95481073c52c4ee4de0"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/temaki.jsonl",
+      "checksum": "e00ea0184ea15b3606107a82efc38d3cba65ef7561613da48dfd709f562961b5"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/thesvg-color.jsonl",
+      "checksum": "13745aebec20944253c01e634c14de3cbe28500d84c98d39ace6d05b3f0dc14a"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/thesvg.jsonl",
+      "checksum": "0e420552969c8353f10226b3f9d8c21a53d6c56526b117457c7cf28f1614835d"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/token-branded.jsonl",
+      "checksum": "07d9bd6849e7ee96f0b4c3c0659cfbd45f146f1079f3f5e26f0313627b927095"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/token.jsonl",
+      "checksum": "8d10573704562b8de6e90b817bd629d71f84d68a04997a08498593fecb049270"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/topcoat.jsonl",
+      "checksum": "d5be1a4245f92c9ec1aa1aa9623a1ebb9a153c430727a19f46ee481994096d38"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/twemoji.jsonl",
+      "checksum": "be0b0afbb4524a135297b97d181d374b969b7746180fee94c5d98b60c3aad057"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/typcn.jsonl",
+      "checksum": "34a1c3681e0a4cbdaed64d3b6732dcb550f4ed94f4eb5c6cf2f853b1069c9ee5"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/uil.jsonl",
+      "checksum": "9329ddc7929e4465d7f10d44e1af38681acf148a2730f518f942eedcbc6196ab"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/uim.jsonl",
+      "checksum": "28bd37afeae91189a0cac3f0891a6b7e1c249e786962077318c94af8644ace66"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/uis.jsonl",
+      "checksum": "6c532299d75bff34be5736699eb6b5260e0f3aad49044a32aad2b44d8909d1e4"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/uit.jsonl",
+      "checksum": "1faef39218791a06ce73a463e5635c4331e2048b676d951bd94bfad0276228fd"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/uiw.jsonl",
+      "checksum": "93f21a5ceef6f9183df62ad62c7e20229e5b4fcf078b5d85bb973dc43951c19f"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/unjs.jsonl",
+      "checksum": "84d02da1d6008f20370ee541c67f3ee7fc7ff1c2cda8d7589df1417b9e947efe"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/vaadin.jsonl",
+      "checksum": "eb2c0587556c9f502cd3ac0da2fdecca861f4fee4674290d0993148687ab9b9f"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/vadivam.jsonl",
+      "checksum": "66c06338b9e190085ec7d7fc88d8d8310bc1ae740124e1021509cef2df406eb4"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/vs.jsonl",
+      "checksum": "8eedc123e48ee759e183f32c9738a1caa468d03efd9c79fe7302e5d357eb83f6"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/vscode-icons.jsonl",
+      "checksum": "2542cb905fee49ecb2be33365ff79afa74c765480a13b811abafba36ba231c18"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/websymbol.jsonl",
+      "checksum": "e68f52ecff022f1ccb36db1c24fbc339db901e291d53bbd54c3c25a73a49321e"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/weui.jsonl",
+      "checksum": "369d30f0b52384dfd0521f4dba9df447390dc2f5f60f618a5eb3a80c6d7e2b10"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/whh.jsonl",
+      "checksum": "194ec165b05f90a58fe97397cecb3e7ff642102c2edf1957f85fe01953e54577"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/wi.jsonl",
+      "checksum": "d7443159776ea50514b5dd91bd5107466d7f536914767e8b73816c5240a3ebc1"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/wordpress.jsonl",
+      "checksum": "f2c0c019cd7e5657df8c0954d7b3ffc4c05cb3ec86ff09d51f338ba15a13ddd4"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/wpf.jsonl",
+      "checksum": "d5f22a984a56991091673ddf43c3c49e8048f3b5e4466d8aab5aa782e39091a5"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/zmdi.jsonl",
+      "checksum": "f91a0fa9e8b4ed19445e3a257388ffe0f43a234ff6764dbdb24dfb1a75dd9101"
+    },
+    {
+      "kind": "translations",
+      "path": "translations/zondicons.jsonl",
+      "checksum": "13103cc48327b2b107424ba8b0b7f398b3b08ce059d43f088720fd9e27b0455d"
     }
   ]
 }

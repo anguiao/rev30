@@ -396,6 +396,48 @@ describe('icon sets page', () => {
     expect(wrapper.text()).toContain('moon')
   })
 
+  it('preserves loaded pages when only the normalized query spelling changes', async () => {
+    vi.useFakeTimers()
+    const secondPage = {
+      ...builtinIconsResponse,
+      list: [{ ...builtinIconsResponse.list[0]!, icon: 'lucide:moon', name: 'moon' }],
+      nextCursor: null,
+    }
+    listBuiltinIconsMock.mockImplementation(({ keyword, cursor }) =>
+      Promise.resolve(
+        cursor === 'next-page'
+          ? secondPage
+          : { ...builtinIconsResponse, nextCursor: keyword === undefined ? null : 'next-page' },
+      ),
+    )
+    const { wrapper } = await mountIconSetsPage()
+    await flushPromises()
+    const input = wrapper.get('[data-test="builtin-icon-filter"] input')
+    await input.setValue('ＳＵＮ  moon')
+    await vi.advanceTimersByTimeAsync(250)
+    await flushPromises()
+    const scrollPanel = wrapper.get('[data-test="builtin-icon-scroll"] .n-scrollbar-container')
+    setElementScrollMetrics(scrollPanel.element, {
+      scrollTop: 900,
+      clientHeight: 300,
+      scrollHeight: 1100,
+    })
+    await scrollPanel.trigger('scroll')
+    await flushPromises()
+    expect(wrapper.text()).toContain('moon')
+    const previousCalls = listBuiltinIconsMock.mock.calls.length
+
+    await input.setValue('sun moon')
+    await vi.advanceTimersByTimeAsync(250)
+    await flushPromises()
+    expect(listBuiltinIconsMock).toHaveBeenCalledTimes(previousCalls)
+    expect(wrapper.text()).toContain('sun')
+    expect(wrapper.text()).toContain('moon')
+    expect(wrapper.get('[data-test="builtin-icon-scroll"] .n-scrollbar-container').element).toBe(
+      scrollPanel.element,
+    )
+  })
+
   it('drops cached extra pages when returning to an earlier search combination', async () => {
     const secondPage = {
       ...builtinIconsResponse,
@@ -591,7 +633,7 @@ describe('icon sets page', () => {
     await vi.advanceTimersByTimeAsync(1_000)
     await flushPromises()
     expect(wrapper.text()).toContain('图标搜索正在准备')
-    await vi.advanceTimersByTimeAsync(1_000)
+    await vi.advanceTimersByTimeAsync(2_000)
     await flushPromises()
     expect(wrapper.text()).toContain('users')
     expect(userSearchCalls).toBe(3)
@@ -610,6 +652,45 @@ describe('icon sets page', () => {
     await flushPromises()
     expect(pendingSearchCalls).toBe(1)
   })
+
+  it.each(['builtin', 'custom'] as const)(
+    'retries an unavailable %s search on demand',
+    async (source) => {
+      vi.useFakeTimers()
+      const unavailable = new ApiRequestError(503, '暂不可用', undefined, 'ICON_SEARCH_UNAVAILABLE')
+      listBuiltinIconsMock.mockImplementation(({ keyword }) =>
+        keyword ? Promise.reject(unavailable) : Promise.resolve(builtinIconsResponse),
+      )
+      listCustomIconsMock.mockImplementation(({ keyword }) =>
+        keyword ? Promise.reject(unavailable) : Promise.resolve(emptyCustomIconsResponse),
+      )
+      const { wrapper } = await mountIconSetsPage()
+      await flushPromises()
+      await wrapper.get(`[data-test="icon-sets-tab-${source}"]`).trigger('click')
+      await flushPromises()
+      await wrapper.get(`[data-test="${source}-icon-filter"] input`).setValue('用户')
+      await vi.advanceTimersByTimeAsync(250)
+      await flushPromises()
+      expect(wrapper.text()).toContain('图标搜索暂不可用')
+
+      listBuiltinIconsMock.mockResolvedValueOnce({ ...builtinIconsResponse, nextCursor: null })
+      listCustomIconsMock.mockResolvedValueOnce(customIconsResponse)
+      await wrapper
+        .findAll('button')
+        .find((button) => button.text() === '重试')!
+        .trigger('click')
+      await flushPromises()
+      expect(
+        source === 'builtin' ? listBuiltinIconsMock : listCustomIconsMock,
+      ).toHaveBeenLastCalledWith({
+        cursor: undefined,
+        pageSize: 80,
+        keyword: '用户',
+      })
+      expect(wrapper.text()).not.toContain('图标搜索暂不可用')
+      expect(wrapper.findAll('[data-test="icon-grid-item"]').length).toBeGreaterThan(0)
+    },
+  )
 
   it('hides custom icon rename and delete actions without update or delete permission', async () => {
     listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)

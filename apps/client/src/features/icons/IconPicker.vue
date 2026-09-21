@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useQuery } from '@pinia/colada'
-import { watchDebounced } from '@vueuse/core'
 import { Icon } from '@iconify/vue'
 import {
   NAlert,
+  NButton,
   NEmpty,
   NInput,
   NInputGroup,
@@ -12,8 +12,10 @@ import {
   NSpin,
   NTooltip,
 } from 'naive-ui'
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
+import { iconSearchKey } from './query-keys'
 import { searchIcons } from './requests'
+import { useIconSearchKeyword } from './search-keyword'
 import { useIconSearchState } from './search-state'
 
 const props = defineProps<{
@@ -30,8 +32,7 @@ const searchInputRef = useTemplateRef<InstanceType<typeof NInput>>('searchInputR
 const showPanel = ref(false)
 
 const limit = 60
-const keyword = ref('')
-const queryKeyword = ref('')
+const { keyword, queryKeyword } = useIconSearchKeyword(200)
 
 const {
   data: iconSearchData,
@@ -40,7 +41,7 @@ const {
   isLoading: isSearching,
   refetch,
 } = useQuery({
-  key: () => ['system', 'icons', 'search', queryKeyword.value, limit],
+  key: () => iconSearchKey(queryKeyword.value, limit),
   enabled: () => showPanel.value,
   placeholderData: () => ({ list: [] }),
   staleTime: 5 * 60 * 1000,
@@ -55,7 +56,7 @@ const {
 
 const results = computed(() => iconSearchData.value?.list ?? [])
 const hasSearchKeyword = computed(() => queryKeyword.value.trim().length > 0)
-const { isPreparing, isUnavailable, isOrdinaryError } = useIconSearchState({
+const { isPreparing, isUnavailable, isOrdinaryError, retry } = useIconSearchState({
   error: iconSearchError,
   asyncStatus,
   enabled: computed(() => showPanel.value && hasSearchKeyword.value),
@@ -65,20 +66,6 @@ const searchError = computed(() => (isOrdinaryError.value ? '图标搜索失败'
 const emptyDescription = computed(() =>
   hasSearchKeyword.value ? '未找到匹配图标，可尝试英文名称、图标 ID 或其他关键词' : '暂无图标',
 )
-
-watchDebounced(keyword, (nextKeyword) => (queryKeyword.value = nextKeyword), { debounce: 200 })
-watch(
-  keyword,
-  (nextKeyword) => {
-    if (nextKeyword.trim() === '') queryKeyword.value = ''
-  },
-  { flush: 'sync' },
-)
-
-function updateKeyword(nextKeyword: string) {
-  keyword.value = nextKeyword
-  if (nextKeyword.trim() === '') queryKeyword.value = ''
-}
 
 async function openPanel() {
   if (showPanel.value) {
@@ -145,12 +132,11 @@ function selectIcon(icon: string) {
 
     <div class="max-w-full">
       <NInput
+        v-model:value="keyword"
         ref="searchInputRef"
         data-test="resource-icon-search"
         clearable
         placeholder="搜索图标"
-        :value="keyword"
-        @update:value="updateKeyword"
       />
       <div class="mt-1 text-xs text-stone-500 dark:text-zinc-400">
         支持中英文名称和关键词。部分内置图标支持中文，可尝试英文名称或图标 ID。
@@ -162,6 +148,9 @@ function selectIcon(icon: string) {
 
       <NAlert v-else-if="isUnavailable" type="warning" :show-icon="false" class="mt-3">
         图标搜索暂不可用
+        <NButton size="small" text class="ml-2" :loading="isSearching" @click="retry">
+          重试
+        </NButton>
       </NAlert>
 
       <NAlert v-if="searchError" type="error" :show-icon="false" class="mt-3">

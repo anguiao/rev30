@@ -32,6 +32,7 @@ function mountPicker(value: string | null = null) {
 describe('IconPicker', () => {
   afterEach(() => {
     searchIconsMock.mockReset()
+    vi.restoreAllMocks()
     vi.useRealTimers()
   })
 
@@ -159,10 +160,119 @@ describe('IconPicker', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('图标搜索正在准备')
 
-    await vi.advanceTimersByTimeAsync(1_000)
+    await vi.advanceTimersByTimeAsync(2_000)
     await flushPromises()
     expect(wrapper.get('[data-test="resource-icon-option"]').text()).toBe('lucide:users')
     expect(searchIconsMock).toHaveBeenCalledTimes(4)
+  })
+
+  it('reuses normalized search results while preserving input and request text', async () => {
+    vi.useFakeTimers()
+    searchIconsMock.mockResolvedValue({ list: [] })
+    const wrapper = mountPicker()
+    await wrapper.get('[data-test="resource-form-icon"] input').trigger('focus')
+    await flushPromises()
+    const input = wrapper.get('[data-test="resource-icon-search"] input')
+
+    await input.setValue('  ＵＳＥＲ   ADD  ')
+    await vi.advanceTimersByTimeAsync(200)
+    await flushPromises()
+    expect(searchIconsMock).toHaveBeenLastCalledWith({ keyword: 'ＵＳＥＲ   ADD', limit: 60 })
+
+    await input.setValue('user add')
+    await vi.advanceTimersByTimeAsync(200)
+    await flushPromises()
+    expect(searchIconsMock).toHaveBeenCalledTimes(2)
+    expect((input.element as HTMLInputElement).value).toBe('user add')
+  })
+
+  it('does not share valid search results with normalized input exceeding the query limit', async () => {
+    vi.useFakeTimers()
+    searchIconsMock.mockResolvedValue({ list: [] })
+    const wrapper = mountPicker()
+    await wrapper.get('[data-test="resource-form-icon"] input').trigger('focus')
+    await flushPromises()
+    const input = wrapper.get('[data-test="resource-icon-search"] input')
+    const validKeyword = 'ﬃ'.repeat(50)
+
+    await input.setValue(validKeyword)
+    await vi.advanceTimersByTimeAsync(200)
+    await flushPromises()
+    expect(searchIconsMock).toHaveBeenLastCalledWith({ keyword: validKeyword, limit: 60 })
+
+    searchIconsMock.mockRejectedValueOnce(new ApiRequestError(400, '搜索关键词过长'))
+    await input.setValue(validKeyword.normalize('NFKC'))
+    await vi.advanceTimersByTimeAsync(200)
+    await flushPromises()
+    expect(searchIconsMock).toHaveBeenCalledTimes(3)
+    expect(wrapper.text()).toContain('图标搜索失败')
+  })
+
+  it('backs off preparing retries up to the cap and pauses while the page is hidden', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    let visibility: DocumentVisibilityState = 'visible'
+    vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility)
+    searchIconsMock
+      .mockResolvedValueOnce({ list: [] })
+      .mockRejectedValue(new ApiRequestError(503, '正在准备', undefined, 'ICON_SEARCH_PREPARING'))
+    const wrapper = mountPicker()
+    await wrapper.get('[data-test="resource-form-icon"] input').trigger('focus')
+    await flushPromises()
+    await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
+    await vi.advanceTimersByTimeAsync(200)
+    await flushPromises()
+
+    for (const delay of [800, 1_600, 3_200, 6_400, 6_400]) {
+      const previousCalls = searchIconsMock.mock.calls.length
+      await vi.advanceTimersByTimeAsync(delay - 1)
+      expect(searchIconsMock).toHaveBeenCalledTimes(previousCalls)
+      await vi.advanceTimersByTimeAsync(1)
+      await flushPromises()
+      expect(searchIconsMock).toHaveBeenCalledTimes(previousCalls + 1)
+    }
+
+    visibility = 'hidden'
+    document.dispatchEvent(new Event('visibilitychange'))
+    await flushPromises()
+    const callsBeforeHidden = searchIconsMock.mock.calls.length
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect(searchIconsMock).toHaveBeenCalledTimes(callsBeforeHidden)
+
+    visibility = 'visible'
+    document.dispatchEvent(new Event('visibilitychange'))
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(6_400)
+    await flushPromises()
+    expect(searchIconsMock).toHaveBeenCalledTimes(callsBeforeHidden + 1)
+  })
+
+  it('only retries unavailable searches when the retry button is clicked', async () => {
+    vi.useFakeTimers()
+    searchIconsMock
+      .mockResolvedValueOnce({ list: [] })
+      .mockRejectedValueOnce(
+        new ApiRequestError(503, '暂不可用', undefined, 'ICON_SEARCH_UNAVAILABLE'),
+      )
+    const wrapper = mountPicker()
+    await wrapper.get('[data-test="resource-form-icon"] input').trigger('focus')
+    await flushPromises()
+    await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
+    await vi.advanceTimersByTimeAsync(200)
+    await flushPromises()
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(searchIconsMock).toHaveBeenCalledTimes(2)
+    searchIconsMock.mockResolvedValueOnce({ list: [] })
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '重试')!
+      .trigger('click')
+    await flushPromises()
+    expect(searchIconsMock).toHaveBeenLastCalledWith({ keyword: '用户', limit: 60 })
+    expect(searchIconsMock).toHaveBeenCalledTimes(3)
+    expect(wrapper.text()).not.toContain('图标搜索暂不可用')
+    expect(wrapper.text()).toContain('未找到匹配图标')
   })
 
   it('clears preparing state immediately and distinguishes unavailable, errors, and zero results', async () => {

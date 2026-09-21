@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useInfiniteQuery, useQuery, useQueryCache } from '@pinia/colada'
-import { refDebounced, watchDebounced } from '@vueuse/core'
+import { refDebounced } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
-import { NAlert, NEmpty, NInfiniteScroll, NInput, NSpin, useMessage } from 'naive-ui'
+import { NAlert, NButton, NEmpty, NInfiniteScroll, NInput, NSpin, useMessage } from 'naive-ui'
 import type {
   BuiltinIconListResponse,
   BuiltinIconSetItem,
@@ -11,7 +11,9 @@ import type {
 import { getErrorMessage } from '../../utils/error'
 import { ApiRequestError } from '../../utils/request'
 import { resetInfiniteQuery } from './cache'
+import { iconListKey } from './query-keys'
 import { listBuiltinIcons, listBuiltinIconSets } from './requests'
+import { useIconSearchKeyword } from './search-keyword'
 import { useIconSearchState } from './search-state'
 import IconGrid from './IconGrid.vue'
 
@@ -30,7 +32,7 @@ const emptyIconSetListData: BuiltinIconSetListResponse = {
 }
 
 const setKeyword = ref('')
-const iconKeyword = ref('')
+const { keyword: iconKeyword, queryKeyword } = useIconSearchKeyword(filterDebounceMs)
 const setQueryKeyword = refDebounced(
   computed(() => {
     const keyword = setKeyword.value.trim()
@@ -39,33 +41,12 @@ const setQueryKeyword = refDebounced(
   }),
   filterDebounceMs,
 )
-const iconQueryKeyword = ref<string | undefined>()
-watchDebounced(
-  iconKeyword,
-  (value) => {
-    const keyword = value.trim()
-    iconQueryKeyword.value = keyword.length > 0 ? keyword : undefined
-  },
-  { debounce: filterDebounceMs },
-)
-watch(
-  iconKeyword,
-  (value) => {
-    if (value.trim() === '') iconQueryKeyword.value = undefined
-  },
-  { flush: 'sync' },
-)
+const iconQueryKeyword = computed(() => queryKeyword.value || undefined)
 const selectedSet = ref<BuiltinIconSetItem | null>(null)
 const selectedPrefix = computed(() => selectedSet.value?.prefix ?? null)
-const iconQueryKey = computed(() => [
-  'content',
-  'icon-sets',
-  'builtin',
-  'icons',
-  iconListPageSize,
-  iconQueryKeyword.value ?? '',
-  selectedPrefix.value ?? '',
-])
+const iconQueryKey = computed(() =>
+  iconListKey('builtin', queryKeyword.value, selectedPrefix.value, iconListPageSize),
+)
 
 watch(
   [iconQueryKey, () => props.active],
@@ -112,9 +93,7 @@ const {
 
 const setsData = computed(() => setsResponse.value ?? emptyIconSetListData)
 const icons = computed(() => (iconsResponse.value?.pages ?? []).flatMap((page) => page.list))
-const iconScrollKey = computed(
-  () => `${selectedPrefix.value ?? '__all__'}:${iconQueryKeyword.value ?? ''}:${iconListPageSize}`,
-)
+const iconScrollKey = computed(() => JSON.stringify(iconQueryKey.value))
 const setErrorMessage = computed(() =>
   setsError.value === null ? '' : getErrorMessage(setsError.value, '加载内置图标集失败'),
 )
@@ -279,6 +258,15 @@ async function copySvg(svg: string) {
           class="mx-4 mt-3"
         >
           图标搜索暂不可用
+          <NButton
+            size="small"
+            text
+            class="ml-2"
+            :loading="isLoadingIcons"
+            @click="iconSearchState.retry"
+          >
+            重试
+          </NButton>
         </NAlert>
 
         <NInfiniteScroll

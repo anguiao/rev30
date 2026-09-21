@@ -44,6 +44,10 @@ describe('icon search migration', () => {
           .filter((column) => column.tableName === tableName)
           .map(({ columnName, columnDefault }) => ({ columnName, columnDefault }))
           .sort((left, right) => left.columnName.localeCompare(right.columnName))
+      expect(comparableColumns('icon_search_documents')).toContainEqual({
+        columnName: 'primary_tokens',
+        columnDefault: "'{}'::text[]",
+      })
       expect(comparableColumns('icon_search_documents_staging')).toEqual(
         comparableColumns('icon_search_documents'),
       )

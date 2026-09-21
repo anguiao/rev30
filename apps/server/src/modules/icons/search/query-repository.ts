@@ -15,6 +15,7 @@ type SearchRow = {
   palette: boolean
   customIconId: string | null
   level: number
+  primaryMatches: number
   rank: number
   rankText: string
   preference: number
@@ -57,6 +58,13 @@ export async function searchIconDocuments(
         return { rows: [] as SearchRow[], nextCursor: null, indexVersion: state.indexVersion }
 
       const english = parsed.tokens.filter((token) => /^[a-z]+$/.test(token))
+      const chinese = parsed.tokens.filter((token) => /\p{Script=Han}/u.test(token))
+      const primaryMatches = chinese.length
+        ? sql.join(
+            chinese.map((token) => sql`(primary_tokens @> ARRAY[${token}]::text[])::integer`),
+            sql` + `,
+          )
+        : sql`0`
       const tsQueryText = english
         .map((token) => (token.length >= 2 ? `${token}:*` : token))
         .join('&')
@@ -90,14 +98,18 @@ export async function searchIconDocuments(
         const cursorFilter =
           searchCursor && level === searchCursor.level
             ? sql`AND (
-                rank < ${searchCursor.rank}::real OR
-                (rank = ${searchCursor.rank}::real AND preference < ${searchCursor.preference}) OR
-                (rank = ${searchCursor.rank}::real AND preference = ${searchCursor.preference} AND id COLLATE "C" > ${searchCursor.id})
+                primary_matches < ${searchCursor.primaryMatches} OR
+                (primary_matches = ${searchCursor.primaryMatches} AND (
+                  rank < ${searchCursor.rank}::real OR
+                  (rank = ${searchCursor.rank}::real AND preference < ${searchCursor.preference}) OR
+                  (rank = ${searchCursor.rank}::real AND preference = ${searchCursor.preference} AND id COLLATE "C" > ${searchCursor.id})
+                ))
               )`
             : sql``
         const result = await tx.execute<SearchRow>(sql`
           WITH scored AS (
             SELECT ctid AS row_id, id, ${level}::integer AS level,
+              (${primaryMatches}) AS primary_matches,
               CASE WHEN ${tsQuery} IS NULL THEN 0::real
                 ELSE ts_rank(search_vector, ${tsQuery}, 0) END AS rank,
               preference
@@ -108,15 +120,15 @@ export async function searchIconDocuments(
             SELECT *, rank::text AS "rankText" FROM scored
           ), page AS (
             SELECT * FROM serialized WHERE true ${cursorFilter}
-            ORDER BY level, rank DESC, preference DESC, id COLLATE "C" ASC
+            ORDER BY level, primary_matches DESC, rank DESC, preference DESC, id COLLATE "C" ASC
             LIMIT ${input.limit + 1 - rows.length}
           )
           SELECT document.id, document.prefix, document.name, document.source,
             document.collection, document.palette, document.custom_icon_id AS "customIconId",
-            page.level, page.rank, page."rankText", page.preference
+            page.level, page.primary_matches AS "primaryMatches", page.rank, page."rankText", page.preference
           FROM page
           INNER JOIN icon_search_documents AS document ON document.ctid = page.row_id
-          ORDER BY page.level, page.rank DESC, page.preference DESC, page.id COLLATE "C" ASC
+          ORDER BY page.level, page.primary_matches DESC, page.rank DESC, page.preference DESC, page.id COLLATE "C" ASC
         `)
         rows.push(...(Array.isArray(result) ? result : result.rows))
         if (rows.length > input.limit) break
@@ -129,6 +141,7 @@ export async function searchIconDocuments(
         resultRows.length > input.limit && last
           ? formatIconCursor(binding, {
               level: last.level,
+              primaryMatches: last.primaryMatches,
               rank: last.rankText,
               preference: last.preference,
               id: last.id,

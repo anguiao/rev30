@@ -860,6 +860,10 @@ function iconSearchDocumentColumns() {
     customIconId: uuid('custom_icon_id'),
     exactPhrases: text('exact_phrases').array().notNull(),
     fullTokens: text('full_tokens').array().notNull(),
+    primaryTokens: text('primary_tokens')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     searchVector: tsvector('search_vector').notNull(),
   }
 }

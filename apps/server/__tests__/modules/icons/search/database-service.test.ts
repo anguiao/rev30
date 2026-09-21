@@ -35,6 +35,7 @@ describe('unified icon search service', () => {
             palette: false,
             customIconId: null,
             exactPhrases: ['camera'],
+            primaryTokens: ['camera'],
             fullTokens: ['camera'],
             primaryEnglishTerms: ['camera'],
             auxiliaryEnglishTerms: [],

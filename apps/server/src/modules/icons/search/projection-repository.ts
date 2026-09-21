@@ -26,6 +26,7 @@ export async function insertDocumentBatch(executor: DbExecutor, documents: IconS
       customIconId: document.customIconId,
       exactPhrases: document.exactPhrases,
       fullTokens: document.fullTokens,
+      primaryTokens: document.primaryTokens,
       searchVector: vectorSql(document),
     })),
   )

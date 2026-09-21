@@ -252,7 +252,7 @@ export async function buildIconSearchArtifacts(options: {
     contentFingerprint,
   })
   const manifest: IconSearchRuntimeManifest = {
-    formatVersion: 2,
+    formatVersion: 3,
     iconPackageVersion: options.iconPackageVersion,
     searchDataVersion: options.maintained.dataVersion,
     rulesVersion: ICON_SEARCH_RULES_VERSION,

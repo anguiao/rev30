@@ -19,6 +19,7 @@ describe('icon search document derivation', () => {
       }),
     ).toMatchObject({
       exactPhrases: ['eye', '眼睛 不可见'],
+      primaryTokens: ['eye', '不可见', '眼睛'],
       fullTokens: ['custom', 'eye', 'private', '不可见', '眼睛'],
       primaryEnglishTerms: ['eye'],
       auxiliaryEnglishTerms: ['custom', 'private'],

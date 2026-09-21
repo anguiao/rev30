@@ -148,6 +148,7 @@ describe('custom icon search synchronization', () => {
             palette: false,
             customIconId: null,
             exactPhrases: ['logo'],
+            primaryTokens: ['logo'],
             fullTokens: ['logo'],
             primaryEnglishTerms: ['logo'],
             auxiliaryEnglishTerms: [],

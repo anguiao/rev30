@@ -246,6 +246,7 @@ describe('icon set routes', () => {
           palette: false,
           customIconId: null,
           exactPhrases: ['sun'],
+          primaryTokens: ['sun'],
           fullTokens: ['sun'],
           primaryEnglishTerms: ['sun'],
           auxiliaryEnglishTerms: [],

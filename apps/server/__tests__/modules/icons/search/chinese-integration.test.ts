@@ -46,6 +46,7 @@ const fixtureIconOwners = new Set([
   'oi:account-logout',
   'ph:user',
   'solar:calendar-linear',
+  'system-uicons:user-add',
   'simple-icons:adobe',
   'simple-icons:alipay',
   'simple-icons:apple',
@@ -77,6 +78,50 @@ beforeAll(async () => {
 })
 
 describe('maintained Chinese icon search', () => {
+  dbTest(
+    'ranks real Chinese name terms before category terms within the same tier',
+    async ({ db }) => {
+      const outputDirectory = await mkdtemp(join(tmpdir(), 'icon-search-field-ranking-'))
+      onTestFinished(() => rm(outputDirectory, { recursive: true, force: true }))
+      const owners = new Set(['mdi:account-alert', 'system-uicons:user-add'])
+      const { manifest } = await buildIconSearchArtifacts({
+        collections: [
+          {
+            prefix: 'mdi',
+            collection: 'Material Design Icons',
+            palette: false,
+            icons: ['account-alert'],
+            aliases: {},
+            categories: { 'Account / User': ['account-alert'] },
+          },
+          {
+            prefix: 'system-uicons',
+            collection: 'System UIcons',
+            palette: false,
+            icons: ['user-add'],
+            aliases: {},
+          },
+        ],
+        iconPackageVersion: 'test',
+        maintained: {
+          ...maintained,
+          english: maintained.english.filter((record) => owners.has(record.owner)),
+          translations: maintained.translations.filter(
+            (record) => record.kind === 'category' || owners.has(record.owner),
+          ),
+        },
+        outputDirectory,
+      })
+      const { documents } = await readIconSearchArtifacts(outputDirectory)
+      await replaceIconSearchDocuments(db, documents, manifest)
+      const result = await searchIconDocuments(db, { query: '用户', limit: 10 })
+      expect(result.rows.map((row) => [row.id, row.level])).toEqual([
+        ['system-uicons:user-add', 1],
+        ['mdi:account-alert', 1],
+      ])
+    },
+  )
+
   dbTest(
     'indexes reviewed brand names and components without losing variants or adding parent brands',
     async ({ db }) => {

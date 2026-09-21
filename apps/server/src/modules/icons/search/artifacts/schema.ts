@@ -67,7 +67,7 @@ const artifactFileSchema = z
 
 export const runtimeManifestSchema = z
   .object({
-    formatVersion: z.literal(2),
+    formatVersion: z.literal(3),
     iconPackageVersion: z.string().min(1),
     searchDataVersion: z.string().min(1),
     rulesVersion: z.string().min(1),
@@ -98,6 +98,7 @@ const builtinDocumentSchema = z
     customIconId: z.null(),
     exactPhrases: z.array(z.string()),
     fullTokens: z.array(z.string()),
+    primaryTokens: z.array(z.string()),
     primaryEnglishTerms: z.array(z.string()),
     auxiliaryEnglishTerms: z.array(z.string()),
   })

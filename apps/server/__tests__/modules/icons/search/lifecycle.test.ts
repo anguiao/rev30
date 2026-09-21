@@ -35,6 +35,7 @@ const document = {
   palette: false,
   customIconId: null,
   exactPhrases: ['camera'],
+  primaryTokens: ['camera'],
   fullTokens: ['camera'],
   primaryEnglishTerms: ['camera'],
   auxiliaryEnglishTerms: [],
@@ -67,7 +68,7 @@ describe('icon search lifecycle', () => {
       logger,
       installedIconPackageVersion: 'icons-v2',
       loadManifest: async () => ({
-        formatVersion: 2,
+        formatVersion: 3,
         contentFingerprint: '0'.repeat(64),
         iconPackageVersion: 'icons-v1',
         searchDataVersion: 'data-v1',
@@ -263,6 +264,7 @@ describe('icon search lifecycle', () => {
         id: `bulk:icon-${index}`,
         prefix: 'bulk',
         name: `icon-${index}`,
+        primaryTokens: ['bulk', `icon${index}`],
         fullTokens: ['bulk', `icon${index}`],
         primaryEnglishTerms: ['bulk'],
       }))
@@ -440,7 +442,7 @@ describe('icon search lifecycle', () => {
     `)
     const logger = { error: vi.fn() }
     const manifest = {
-      formatVersion: 2 as const,
+      formatVersion: 3 as const,
       contentFingerprint: '0'.repeat(64),
       iconPackageVersion: 'icons-v1',
       searchDataVersion: 'data-v2',

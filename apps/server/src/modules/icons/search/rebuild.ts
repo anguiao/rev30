@@ -32,6 +32,7 @@ async function stageDocumentBatch(
       custom_icon_id: document.customIconId,
       exact_phrases: document.exactPhrases,
       full_tokens: document.fullTokens,
+      primary_tokens: document.primaryTokens,
       primary_english_terms: document.primaryEnglishTerms.join(' '),
       auxiliary_english_terms: document.auxiliaryEnglishTerms.join(' '),
     })),
@@ -39,11 +40,11 @@ async function stageDocumentBatch(
   await executor.execute(sql`
     INSERT INTO ${sql.identifier(tableName)} (
       id, prefix, name, source, collection, palette, preference, custom_icon_id,
-      exact_phrases, full_tokens, search_vector
+      exact_phrases, full_tokens, primary_tokens, search_vector
     )
     SELECT document.id, document.prefix, document.name, document.source,
       document.collection, document.palette, document.preference, document.custom_icon_id,
-      document.exact_phrases, document.full_tokens,
+      document.exact_phrases, document.full_tokens, document.primary_tokens,
       setweight(to_tsvector('simple', document.primary_english_terms), 'A') ||
         setweight(to_tsvector('simple', document.auxiliary_english_terms), 'B')
     FROM jsonb_to_recordset(${payload}::jsonb) AS document(
@@ -57,6 +58,7 @@ async function stageDocumentBatch(
       custom_icon_id uuid,
       exact_phrases text[],
       full_tokens text[],
+      primary_tokens text[],
       primary_english_terms text,
       auxiliary_english_terms text
     )
@@ -201,10 +203,10 @@ export async function replaceBuiltinIconSearchDocuments(
         await tx.execute(sql`
           INSERT INTO ${sql.identifier(importTable)} (
             id, prefix, name, source, collection, palette, preference, custom_icon_id,
-            exact_phrases, full_tokens, search_vector
+            exact_phrases, full_tokens, primary_tokens, search_vector
           )
           SELECT id, prefix, name, source, collection, palette, preference, custom_icon_id,
-            exact_phrases, full_tokens, search_vector
+            exact_phrases, full_tokens, primary_tokens, search_vector
           FROM icon_search_documents WHERE source = 'custom'
         `)
       }

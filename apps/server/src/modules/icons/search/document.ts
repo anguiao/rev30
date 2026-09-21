@@ -10,6 +10,7 @@ export type IconSearchDocument = {
   customIconId: string | null
   exactPhrases: string[]
   fullTokens: string[]
+  primaryTokens: string[]
   primaryEnglishTerms: string[]
   auxiliaryEnglishTerms: string[]
 }
@@ -17,7 +18,11 @@ export type IconSearchDocument = {
 export function deriveIconSearchDocument(
   input: Omit<
     IconSearchDocument,
-    'exactPhrases' | 'fullTokens' | 'primaryEnglishTerms' | 'auxiliaryEnglishTerms'
+    | 'exactPhrases'
+    | 'fullTokens'
+    | 'primaryTokens'
+    | 'primaryEnglishTerms'
+    | 'auxiliaryEnglishTerms'
   > & {
     primaryPhrases: string[]
     auxiliaryPhrases: string[]
@@ -47,6 +52,7 @@ export function deriveIconSearchDocument(
       ),
     ],
     fullTokens: [...new Set([...primary, ...auxiliary].flatMap((entry) => entry.tokens))].sort(),
+    primaryTokens: [...new Set(primary.flatMap((entry) => entry.tokens))].sort(),
     primaryEnglishTerms: weighted.A,
     auxiliaryEnglishTerms: weighted.B,
   }

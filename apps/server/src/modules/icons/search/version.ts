@@ -4,7 +4,7 @@ import { deprioritizedIconPrefixes, preferredIconPrefixes } from './config'
 export const ICON_SEARCH_RULES_VERSION = createHash('sha256')
   .update(
     JSON.stringify({
-      version: 4,
+      version: 5,
       preferredPrefixes: [...preferredIconPrefixes.keys()],
       deprioritizedPrefixes: [...deprioritizedIconPrefixes].sort(),
     }),

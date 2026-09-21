@@ -6,6 +6,7 @@ import { migratePGlite } from '../../../../src/db/migrate'
 import { relations } from '../../../../src/db/relations'
 import { replaceIconSearchDocuments } from '../../../../src/modules/icons/search/rebuild'
 import { searchIconDocuments } from '../../../../src/modules/icons/search/query-repository'
+import { deriveIconSearchDocument } from '../../../../src/modules/icons/search/document'
 import { dbTest } from '../../../fixtures/database'
 import { InvalidIconCursorError } from '../../../../src/modules/icons/search/errors'
 
@@ -19,6 +20,7 @@ const fixtures = [
     palette: false,
     customIconId: null,
     exactPhrases: ['alarm-clock-off'],
+    primaryTokens: ['alarm', 'clock', 'off'],
     fullTokens: ['alarm', 'clock', 'off'],
     primaryEnglishTerms: ['alarm', 'clock', 'off'],
     auxiliaryEnglishTerms: [],
@@ -32,6 +34,7 @@ const fixtures = [
     palette: false,
     customIconId: null,
     exactPhrases: ['camera'],
+    primaryTokens: ['camera'],
     fullTokens: ['camera'],
     primaryEnglishTerms: ['camera'],
     auxiliaryEnglishTerms: [],
@@ -45,6 +48,7 @@ const fixtures = [
     palette: false,
     customIconId: null,
     exactPhrases: ['camera'],
+    primaryTokens: ['camera', 'photo'],
     fullTokens: ['camera', 'photo'],
     primaryEnglishTerms: ['camera'],
     auxiliaryEnglishTerms: ['photo'],
@@ -58,6 +62,7 @@ const fixtures = [
     palette: false,
     customIconId: null,
     exactPhrases: ['camera-box'],
+    primaryTokens: ['box', 'camera'],
     fullTokens: ['box', 'camera'],
     primaryEnglishTerms: ['box', 'camera'],
     auxiliaryEnglishTerms: [],
@@ -71,6 +76,7 @@ const fixtures = [
     palette: false,
     customIconId: null,
     exactPhrases: ['cameraman'],
+    primaryTokens: ['cameraman'],
     fullTokens: ['cameraman'],
     primaryEnglishTerms: ['cameraman'],
     auxiliaryEnglishTerms: [],
@@ -84,6 +90,7 @@ const fixtures = [
     palette: false,
     customIconId: null,
     exactPhrases: ['rotate-3d'],
+    primaryTokens: ['3d', 'rotate'],
     fullTokens: ['3d', 'rotate'],
     primaryEnglishTerms: ['rotate'],
     auxiliaryEnglishTerms: [],
@@ -97,6 +104,7 @@ const fixtures = [
     palette: false,
     customIconId: '019938cd-c937-7000-8000-000000000002',
     exactPhrases: ['hidden-eye', '眼睛', '不可见'],
+    primaryTokens: ['eye', 'hidden', '不可见', '眼睛'],
     fullTokens: ['eye', 'hidden', '不可见', '眼睛'],
     primaryEnglishTerms: ['eye', 'hidden'],
     auxiliaryEnglishTerms: [],
@@ -104,6 +112,61 @@ const fixtures = [
 ]
 
 describe('database icon search', () => {
+  dbTest(
+    'paginates Chinese primary-field priorities without changing AND matching or exact tiers',
+    async ({ db }) => {
+      const documents = [
+        { name: 'icon-a', primary: [], auxiliary: ['眼睛', '不可见'], exact: [] },
+        { name: 'icon-m', primary: ['眼睛'], auxiliary: ['不可见'], exact: [] },
+        { name: 'icon-z', primary: ['眼睛', '不可见'], auxiliary: [], exact: [] },
+        { name: 'icon-exact', primary: ['眼睛 不可见'], auxiliary: [], exact: ['眼睛 不可见'] },
+      ].map((entry) =>
+        deriveIconSearchDocument({
+          id: `test:${entry.name}`,
+          prefix: 'test',
+          name: entry.name,
+          source: 'builtin',
+          collection: 'Test',
+          palette: false,
+          customIconId: null,
+          primaryPhrases: [entry.name, ...entry.primary],
+          auxiliaryPhrases: entry.auxiliary,
+          exactPhrases: [entry.name, ...entry.exact],
+        }),
+      )
+      await replaceIconSearchDocuments(db, documents, {
+        indexVersion: 'chinese-fields',
+        iconPackageVersion: 'test',
+        searchDataVersion: 'test',
+        rulesVersion: 'test',
+      })
+      for (const query of ['眼睛 不可见', 'icon 眼睛 不可见']) {
+        const all = await searchIconDocuments(db, { query, limit: 10 })
+        expect(all.rows.map((row) => [row.id, row.primaryMatches])).toEqual([
+          ['test:icon-exact', 2],
+          ['test:icon-z', 2],
+          ['test:icon-m', 1],
+          ['test:icon-a', 0],
+        ])
+        const paged: string[] = []
+        let cursor: string | undefined
+        do {
+          const page = await searchIconDocuments(db, {
+            query,
+            limit: 1,
+            ...(cursor ? { cursor } : {}),
+          })
+          paged.push(...page.rows.map((row) => row.id))
+          cursor = page.nextCursor ?? undefined
+        } while (cursor)
+        expect(paged).toEqual(all.rows.map((row) => row.id))
+      }
+      await expect(
+        searchIconDocuments(db, { query: '眼睛 可见', limit: 10 }),
+      ).resolves.toMatchObject({ rows: [] })
+    },
+  )
+
   dbTest(
     'uses AND matching, bounded English prefixes, exact levels and filters before limit',
     async ({ db }) => {
@@ -250,6 +313,7 @@ describe('database icon search', () => {
       id: fixture.id.replace(':', ':next-'),
       name: `next-${fixture.name}`,
       exactPhrases: [`next-${fixture.name}`],
+      primaryTokens: ['next', ...fixture.fullTokens],
       fullTokens: ['next', ...fixture.fullTokens],
       primaryEnglishTerms: ['next', ...fixture.primaryEnglishTerms],
     }))

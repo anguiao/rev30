@@ -27,6 +27,7 @@ function document(input: {
     palette: false,
     customIconId: input.customIconId ?? null,
     exactPhrases: [input.name],
+    primaryTokens: [input.name],
     fullTokens: [input.name],
     primaryEnglishTerms: [input.name],
     auxiliaryEnglishTerms: [],

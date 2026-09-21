@@ -238,6 +238,8 @@ try {
     { kind: 'wide', query: 'co' },
     { kind: 'wide', query: 'icon' },
     { kind: 'chinese', query: '铃铛' },
+    { kind: 'chinese-wide', query: '用户' },
+    { kind: 'chinese-wide', query: '箭头' },
     { kind: 'mixed', query: 'lucide 铃铛' },
   ] as const
   for (const benchmarkCase of cases) {

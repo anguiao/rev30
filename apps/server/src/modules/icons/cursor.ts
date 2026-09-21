@@ -6,7 +6,7 @@ import { normalizeSearchText } from './search/text'
 import { ICON_SEARCH_RULES_VERSION } from './search/version'
 
 const cursorBase = {
-  v: z.literal(2),
+  v: z.literal(3),
   queryHash: z.string().regex(/^[a-f0-9]{64}$/),
   source: z.enum(['builtin', 'custom', 'all']),
   prefix: z.string().nullable(),
@@ -37,6 +37,7 @@ const cursorSchema = z.discriminatedUnion('mode', [
       tuple: z
         .object({
           level: z.number().int().min(0).max(2),
+          primaryMatches: z.number().int().nonnegative(),
           rank: rankSchema,
           preference: z.number().int().min(-2_147_483_648).max(2_147_483_647),
           id: completeIconIdSchema,
@@ -62,7 +63,7 @@ function queryHash(query: string): string {
 export function formatIconCursor(binding: IconCursorBinding, tuple: IconCursorTuple): string {
   return Buffer.from(
     JSON.stringify({
-      v: 2,
+      v: 3,
       mode: binding.mode,
       queryHash: queryHash(binding.query),
       source: binding.source,

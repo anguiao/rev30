@@ -5,12 +5,12 @@ import { createHash } from 'node:crypto'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import { describe, expect, it, onTestFinished } from 'vitest'
 
+import { buildIconSearchArtifacts } from '../../../../src/modules/icons/search/artifacts/builder'
+import { readIconSearchArtifacts } from '../../../../src/modules/icons/search/artifacts/reader'
 import {
-  buildIconSearchArtifacts,
-  readIconSearchArtifacts,
   type IconPackageCollection,
   type MaintainedSearchData,
-} from '../../../../src/modules/icons/search/artifacts'
+} from '../../../../src/modules/icons/search/artifacts/schema'
 
 const collection = (overrides: Partial<IconPackageCollection> = {}): IconPackageCollection => ({
   prefix: 'test',

@@ -4,11 +4,11 @@ import {
   getDefaultIconSearchArtifactDirectory,
   iterateIconSearchArtifacts,
   readIconSearchManifest,
-  type BuiltinIconSearchDocument,
-  type IconSearchRuntimeManifest,
-} from './artifacts'
+} from './artifacts/reader'
+import { type BuiltinIconSearchDocument, type IconSearchRuntimeManifest } from './artifacts/schema'
 import { ICON_SEARCH_RULES_VERSION } from './version'
-import { getCommittedIconSearchState, replaceBuiltinIconSearchDocuments } from './repository'
+import { getCommittedIconSearchState } from './index-state'
+import { replaceBuiltinIconSearchDocuments } from './rebuild'
 import { IconSearchPreparingError, IconSearchUnavailableError } from './errors'
 
 export type IconSearchTargetManifest = {

@@ -11,11 +11,11 @@ import { getIconData, iconToSVG, wrapSVGContent } from '@iconify/utils'
 import { createRequire as createPackageRequire } from 'node:module'
 import type { Db } from '../../../../db'
 import { type IconCollections, loadIconCollections } from '../../../icons/search/collections'
-import { searchIconDocuments } from '../../../icons/search/repository'
+import { searchIconDocuments } from '../../../icons/search/query-repository'
 import { assertIconSearchAvailable } from '../../../icons/search/lifecycle'
 import { normalizeSearchText } from '../../../icons/search/text'
 import { getBuiltinIconSubset } from '../../../icons/service'
-import { formatIconCursor, parseIconCursor } from '../cursor'
+import { formatIconCursor, parseIconCursor } from '../../../icons/cursor'
 
 const packageRequire = createPackageRequire(import.meta.url)
 function iconPackageVersion() {

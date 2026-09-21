@@ -16,10 +16,10 @@ import {
 import { IconSearchUnavailableError } from '../../../../src/modules/icons/search/errors'
 import {
   deleteCustomIconSearchDocument,
-  lockIconSearchWrites,
-  replaceIconSearchDocuments,
   syncCustomIconSearchDocument,
-} from '../../../../src/modules/icons/search/repository'
+} from '../../../../src/modules/icons/search/projection-repository'
+import { lockIconSearchWrites } from '../../../../src/modules/icons/search/index-state'
+import { replaceIconSearchDocuments } from '../../../../src/modules/icons/search/rebuild'
 import { ICON_SEARCH_RULES_VERSION } from '../../../../src/modules/icons/search/version'
 import { eq } from 'drizzle-orm'
 import { dbTest } from '../../../fixtures/database'

@@ -13,10 +13,10 @@ import {
   getDefaultIconSearchArtifactDirectory,
   iterateIconSearchArtifacts,
   readIconSearchManifest,
-  type IconSearchRuntimeManifest,
-} from '../../src/modules/icons/search/artifacts'
+} from '../../src/modules/icons/search/artifacts/reader'
+import { type IconSearchRuntimeManifest } from '../../src/modules/icons/search/artifacts/schema'
 import { prepareIconSearchIndex } from '../../src/modules/icons/search/lifecycle'
-import { searchIconDocuments } from '../../src/modules/icons/search/repository'
+import { searchIconDocuments } from '../../src/modules/icons/search/query-repository'
 
 type Sample = {
   phase: string

@@ -8,7 +8,7 @@ import {
   type MaintainedSearchData,
   type MaintainedTranslationRecord,
   validateMaintainedSearchData,
-} from './artifacts'
+} from './artifacts/schema'
 import { deriveSearchText } from './text'
 
 const translationSchema = z

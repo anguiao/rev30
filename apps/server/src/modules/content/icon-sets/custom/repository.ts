@@ -8,18 +8,18 @@ import type {
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
 import type { Db, DbReader } from '../../../../db'
 import { customIconSetIcons, customIconSets } from '../../../../db/schema'
-import { formatIconCursor, parseIconCursor } from '../cursor'
+import { formatIconCursor, parseIconCursor } from '../../../icons/cursor'
 import { CustomIconSetNotFoundError, toCustomIconConflictError } from './errors'
 import type { CustomIconEntry, CustomIconSetEntry, CustomIconSetRow } from './mapper'
 import type { ParsedSvgIcon } from './svg'
 import {
   deleteCustomIconSearchDocument,
   deleteCustomIconSearchDocumentsByPrefix,
-  lockIconSearchWrites,
   syncCustomIconSearchDocument,
   syncCustomIconSearchDocuments,
-  searchIconDocuments,
-} from '../../../icons/search/repository'
+} from '../../../icons/search/projection-repository'
+import { lockIconSearchWrites } from '../../../icons/search/index-state'
+import { searchIconDocuments } from '../../../icons/search/query-repository'
 import { InvalidIconCursorError } from '../../../icons/search/errors'
 
 const customIconColumns = {

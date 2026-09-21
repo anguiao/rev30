@@ -6,7 +6,7 @@ import { dbTest, type TestDatabase } from '../../../fixtures/database'
 import { customIconSetIcons, customIconSets } from '../../../../src/db/schema'
 import { createAuthMiddleware } from '../../../../src/middleware/auth'
 import { createIconSearchRoutes } from '../../../../src/modules/icons/search/routes'
-import { replaceIconSearchDocuments } from '../../../../src/modules/icons/search/repository'
+import { replaceIconSearchDocuments } from '../../../../src/modules/icons/search/rebuild'
 
 const state = {
   indexVersion: 'test',

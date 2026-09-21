@@ -1,7 +1,7 @@
 import { iconSearchQuerySchema } from '@rev30/contracts'
 import { describe, expect, it } from 'vitest'
 
-import { formatIconCursor, parseIconCursor } from '../../../../src/modules/content/icon-sets/cursor'
+import { formatIconCursor, parseIconCursor } from '../../../../src/modules/icons/cursor'
 import { InvalidIconCursorError } from '../../../../src/modules/icons/search/errors'
 
 describe('icon cursor query binding', () => {

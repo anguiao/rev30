@@ -4,16 +4,12 @@ import { join } from 'node:path'
 import { beforeAll, describe, expect, onTestFinished } from 'vitest'
 
 import { listBuiltinIcons } from '../../../../src/modules/content/icon-sets/builtin/service'
-import {
-  buildIconSearchArtifacts,
-  readIconSearchArtifacts,
-} from '../../../../src/modules/icons/search/artifacts'
+import { buildIconSearchArtifacts } from '../../../../src/modules/icons/search/artifacts/builder'
+import { readIconSearchArtifacts } from '../../../../src/modules/icons/search/artifacts/reader'
 import { createIconSearchService } from '../../../../src/modules/icons/search/service'
 import { loadMaintainedSearchData } from '../../../../src/modules/icons/search/maintenance'
-import {
-  replaceIconSearchDocuments,
-  searchIconDocuments,
-} from '../../../../src/modules/icons/search/repository'
+import { replaceIconSearchDocuments } from '../../../../src/modules/icons/search/rebuild'
+import { searchIconDocuments } from '../../../../src/modules/icons/search/query-repository'
 import { dbTest } from '../../../fixtures/database'
 
 const fixtureIconOwners = new Set([

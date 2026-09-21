@@ -9,7 +9,7 @@ import { createCustomIconSetService } from '../../../../../src/modules/content/i
 import { createCustomIconSetRepository } from '../../../../../src/modules/content/icon-sets/custom/repository'
 import { CustomIconSetNotFoundError } from '../../../../../src/modules/content/icon-sets/custom/errors'
 import { parseSvgIcon } from '../../../../../src/modules/content/icon-sets/custom/svg'
-import { replaceIconSearchDocuments } from '../../../../../src/modules/icons/search/repository'
+import { replaceIconSearchDocuments } from '../../../../../src/modules/icons/search/rebuild'
 import { startDefaultIconSearchIndexPreparation } from '../../../../../src/modules/icons/search/lifecycle'
 import { IconSearchUnavailableError } from '../../../../../src/modules/icons/search/errors'
 import { dbTest } from '../../../../fixtures/database'

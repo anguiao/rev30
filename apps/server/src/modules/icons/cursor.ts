@@ -1,9 +1,9 @@
-import { ICON_CURSOR_MAX_LENGTH } from '@rev30/contracts'
+import { completeIconIdSchema, ICON_CURSOR_MAX_LENGTH } from '@rev30/contracts'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
-import { InvalidIconCursorError } from '../../icons/search/errors'
-import { normalizeSearchText } from '../../icons/search/text'
-import { ICON_SEARCH_RULES_VERSION } from '../../icons/search/version'
+import { InvalidIconCursorError } from './search/errors'
+import { normalizeSearchText } from './search/text'
+import { ICON_SEARCH_RULES_VERSION } from './search/version'
 
 const cursorBase = {
   v: z.literal(2),
@@ -13,13 +13,6 @@ const cursorBase = {
   rulesVersion: z.string(),
   dataVersion: z.string().nullable(),
 }
-const completeIconIdSchema = z.string().refine((value) => {
-  const parts = value.split(':')
-  return (
-    parts.length === 2 &&
-    parts.every((part) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(part) && part.length <= 256)
-  )
-})
 const rankSchema = z
   .string()
   .regex(/^(?:0|[1-9]\d*)(?:\.\d+)?(?:e[+-]?\d+)?$/i)

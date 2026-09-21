@@ -2,7 +2,7 @@ import {
   getDefaultIconSearchArtifactDirectory,
   iterateIconSearchArtifacts,
   readIconSearchManifest,
-} from '../../src/modules/icons/search/artifacts'
+} from '../../src/modules/icons/search/artifacts/reader'
 
 const directory = getDefaultIconSearchArtifactDirectory()
 const manifest = await readIconSearchManifest(directory)

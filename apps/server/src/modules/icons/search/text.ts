@@ -10,10 +10,6 @@ export type SearchText = {
 
 export type EnglishTermWeight = 'A' | 'B'
 
-export function normalizeSearchText(value: string): string {
-  return value.normalize('NFKC').toLowerCase().trim().replace(/\s+/gu, ' ')
-}
-
 export function deriveSearchText(value: string): SearchText {
   const phrase = normalizeSearchText(value)
   const tokens = new Set<string>()
@@ -56,3 +52,5 @@ export function mergeWeightedEnglishTerms(
 
   return { A: [...primary].sort(), B: [...auxiliary].sort() }
 }
+import { normalizeSearchText } from '@rev30/utils'
+export { normalizeSearchText } from '@rev30/utils'

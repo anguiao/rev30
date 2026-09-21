@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { normalizeSearchText } from '@rev30/utils'
 import { hasAnyDefinedValue, pageSizeSchema } from './common'
 import { optionalQueryValue, optionalTrimmedQueryString } from './query'
 
@@ -36,17 +37,21 @@ const ICON_SEARCH_KEYWORD_MAX_LENGTH = 120
 export const ICON_CURSOR_MAX_LENGTH = 2048
 const CUSTOM_ICON_ID_PART_MAX_LENGTH = 256
 
-function isBoundedCompleteIconId(value: string) {
-  const normalized = value.normalize('NFKC').toLowerCase()
-  if (!iconifyIconNamePattern.test(normalized)) return false
-  return normalized.split(':').every((part) => part.length <= CUSTOM_ICON_ID_PART_MAX_LENGTH)
-}
+export const completeIconIdSchema = z
+  .string()
+  .regex(iconifyIconNamePattern, '图标名称无效')
+  .refine(
+    (value) => value.split(':').every((part) => part.length <= CUSTOM_ICON_ID_PART_MAX_LENGTH),
+    '图标 ID 过长',
+  )
 
 const iconSearchKeywordValueSchema = z
   .string()
   .trim()
   .refine(
-    (value) => value.length <= ICON_SEARCH_KEYWORD_MAX_LENGTH || isBoundedCompleteIconId(value),
+    (value) =>
+      value.length <= ICON_SEARCH_KEYWORD_MAX_LENGTH ||
+      completeIconIdSchema.safeParse(normalizeSearchText(value)).success,
     '搜索关键词过长',
   )
 
@@ -89,17 +94,13 @@ const customIconKeywordSchema = z
   .max(CUSTOM_ICON_KEYWORD_MAX_LENGTH, '关键词不能超过 40 个字符')
   .refine((value) => /[\p{L}\p{N}]/u.test(value.normalize('NFKC')), '关键词必须包含文字或数字')
 
-function normalizedKeywordKey(value: string) {
-  return value.normalize('NFKC').toLowerCase().trim().replace(/\s+/gu, ' ')
-}
-
 export const customIconKeywordsSchema = z
   .array(customIconKeywordSchema)
   .max(CUSTOM_ICON_KEYWORDS_MAX_ITEMS, '关键词不能超过 20 项')
   .transform((keywords) => {
     const seen = new Set<string>()
     return keywords.filter((keyword) => {
-      const key = normalizedKeywordKey(keyword)
+      const key = normalizeSearchText(keyword)
       if (seen.has(key)) return false
       seen.add(key)
       return true

@@ -286,6 +286,9 @@ importers:
       '@rev30/rich-text':
         specifier: workspace:*
         version: link:../rich-text
+      '@rev30/utils':
+        specifier: workspace:*
+        version: link:../utils
       zod:
         specifier: 'catalog:'
         version: 4.5.4

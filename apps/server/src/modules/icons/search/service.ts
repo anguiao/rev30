@@ -4,7 +4,7 @@ import { getBuiltinIconSubset } from '../service'
 import { loadIconCollections } from './collections'
 import { recommendedIconNames } from './config'
 import { assertIconSearchAvailable } from './lifecycle'
-import { searchIconDocuments } from './repository'
+import { searchIconDocuments } from './query-repository'
 import { normalizeSearchText } from './text'
 
 async function recommendedIcons(limit: number): Promise<IconSearchItem[]> {

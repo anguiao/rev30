@@ -355,7 +355,10 @@ Iconify JSON 导出维持现有标准结构，不添加私有 keywords；本次�
 | --- | --- |
 | `apps/server/scripts/icon-search/` | 支持搜索数据维护与校验；读取当前图标包基础清单，合并已保存的有效数据并生成分发产物 |
 | `apps/server/resources/icon-search/` | 纳入 Git 的英文搜索数据、中文翻译、对应关系及整体版本 manifest，允许只覆盖部分图标 |
-| `apps/server/src/modules/icons/search/` | 统一归一化、文档派生、数据库匹配排序、后台初始化与就绪状态 |
+| `apps/server/src/modules/icons/search/` | 服务端词项与文档派生；查询、业务投影、重建、索引状态分别放在独立模块，生命周期负责启动协调 |
+| `apps/server/src/modules/icons/search/artifacts/` | schema 负责产物结构，builder 负责构建，reader 负责运行时流式读取；维护数据和运行时不依赖构建模块 |
+| `apps/server/src/modules/icons/cursor.ts` | 搜索与浏览共用的游标编解码和绑定校验 |
+| `packages/utils/src/search-text.ts` | 前后端及契约共用的纯文本归一化；词项派生和数据库逻辑仍留在服务端 |
 | `apps/server/src/modules/content/icon-sets/` | 非空查询复用统一搜索，空查询从图标包或业务记录浏览，衔接分页、SVG 获取与自定义事务同步 |
 | `apps/server/src/db/` | 自定义字段、派生表、索引状态及迁移 |
 | `packages/contracts/src/icons.ts` | 字段约束、上传元数据、编辑输入、查询、游标及搜索准备状态契约 |

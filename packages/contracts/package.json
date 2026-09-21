@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@rev30/rich-text": "workspace:*",
+    "@rev30/utils": "workspace:*",
     "zod": "catalog:"
   }
 }

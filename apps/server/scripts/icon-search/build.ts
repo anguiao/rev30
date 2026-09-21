@@ -2,7 +2,7 @@ import { rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { buildIconSearchArtifacts } from '../../src/modules/icons/search/artifacts'
+import { buildIconSearchArtifacts } from '../../src/modules/icons/search/artifacts/builder'
 import { loadMaintainedSearchData } from '../../src/modules/icons/search/maintenance'
 import { loadIconPackage } from '../../src/modules/icons/search/package-source'
 

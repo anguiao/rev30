@@ -4,10 +4,8 @@ import { describe, expect, test } from 'vitest'
 import { iconSearchDocuments, iconSearchIndexState } from '../../../../src/db/schema'
 import { migratePGlite } from '../../../../src/db/migrate'
 import { relations } from '../../../../src/db/relations'
-import {
-  replaceIconSearchDocuments,
-  searchIconDocuments,
-} from '../../../../src/modules/icons/search/repository'
+import { replaceIconSearchDocuments } from '../../../../src/modules/icons/search/rebuild'
+import { searchIconDocuments } from '../../../../src/modules/icons/search/query-repository'
 import { dbTest } from '../../../fixtures/database'
 import { InvalidIconCursorError } from '../../../../src/modules/icons/search/errors'
 

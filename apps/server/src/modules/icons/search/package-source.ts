@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { dir, lookupCollection, lookupCollections } from '@iconify/json'
 
-import type { IconPackageCollection } from './artifacts'
+import { type IconPackageCollection } from './artifacts/schema'
 
 export async function loadIconPackage(): Promise<{
   version: string

@@ -207,18 +207,25 @@ export async function replaceIconSearchDocuments(
 
 export async function replaceBuiltinIconSearchDocuments(
   database: Db,
-  documents: IconSearchDocument[],
+  documents: AsyncIterable<IconSearchDocument> | Iterable<IconSearchDocument>,
   state: IconSearchStateInput,
   rebuildCustom = false,
 ) {
   try {
     await clearDocumentTable(database, importTable)
-    for (let start = 0; start < documents.length; start += importBatchSize) {
+    let batch: IconSearchDocument[] = []
+    for await (const document of documents) {
+      batch.push(document)
+      if (batch.length < importBatchSize) continue
       await database.transaction(async (tx) => {
-        await stageDocumentBatch(tx, importTable, documents.slice(start, start + importBatchSize))
+        await stageDocumentBatch(tx, importTable, batch)
       })
+      batch = []
       await setImmediate()
     }
+    await database.transaction(async (tx) => {
+      await stageDocumentBatch(tx, importTable, batch)
+    })
     await database.transaction(async (tx) => {
       await lockIconSearchWrites(tx)
       if (rebuildCustom) {

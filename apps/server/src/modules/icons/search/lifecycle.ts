@@ -20,6 +20,13 @@ export type IconSearchTargetManifest = {
 
 type RuntimeState = { status: 'ready' | 'preparing' | 'failed'; compatible: boolean }
 const runtimes = new WeakMap<object, RuntimeState>()
+type PreparationInput = {
+  manifest: IconSearchTargetManifest
+  readDocuments: () =>
+    | AsyncIterable<BuiltinIconSearchDocument>
+    | Promise<Iterable<BuiltinIconSearchDocument>>
+  onCleanupError?: (error: Error) => void
+}
 
 export function assertIconSearchAvailable(database: Db) {
   const runtime = runtimes.get(database as object)
@@ -28,14 +35,7 @@ export function assertIconSearchAvailable(database: Db) {
   throw new IconSearchUnavailableError()
 }
 
-export async function prepareIconSearchIndex(
-  database: Db,
-  input: {
-    manifest: IconSearchTargetManifest
-    readDocuments: () => Promise<BuiltinIconSearchDocument[]>
-    onCleanupError?: (error: Error) => void
-  },
-) {
+export async function prepareIconSearchIndex(database: Db, input: PreparationInput) {
   const committed = await getCommittedIconSearchState(database)
   if (committed?.indexVersion === input.manifest.indexVersion) {
     runtimes.set(database as object, { status: 'ready', compatible: true })
@@ -77,7 +77,7 @@ export function startDefaultIconSearchIndexPreparation(
     installedIconPackageVersion: string
     artifactDirectory?: string
     loadManifest?: () => Promise<IconSearchRuntimeManifest>
-    readDocuments?: () => Promise<BuiltinIconSearchDocument[]>
+    readDocuments?: PreparationInput['readDocuments']
   },
 ) {
   const directory = input.artifactDirectory ?? getDefaultIconSearchArtifactDirectory()
@@ -105,13 +105,7 @@ export function startDefaultIconSearchIndexPreparation(
           input.logger.error({ errorMessage: error.message }, 'icon search index cleanup failed')
         },
         readDocuments:
-          input.readDocuments ??
-          (async () => {
-            const documents: BuiltinIconSearchDocument[] = []
-            for await (const document of iterateIconSearchArtifacts(directory, manifest))
-              documents.push(document)
-            return documents
-          }),
+          input.readDocuments ?? (() => iterateIconSearchArtifacts(directory, manifest)),
       })
     } catch (error) {
       runtimes.set(database as object, { status: 'failed', compatible })

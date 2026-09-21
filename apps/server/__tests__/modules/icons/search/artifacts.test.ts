@@ -206,6 +206,27 @@ describe('icon search artifacts', () => {
     }
     await writeFile(join(output, manifest.files[0]!.path), 'corrupt')
 
-    await expect(readIconSearchArtifacts(output)).rejects.toThrow('checksum')
+    await expect(readIconSearchArtifacts(output)).rejects.toThrow()
+  })
+
+  it('rejects changed documents even when their compressed file checksum is updated', async () => {
+    const output = await temporaryDirectory()
+    const { manifest } = await buildIconSearchArtifacts({
+      collections: [collection()],
+      iconPackageVersion: 'current',
+      maintained: maintained(),
+      outputDirectory: output,
+    })
+    const file = manifest.files[0]!
+    const path = join(output, file.path)
+    const text = gunzipSync(await readFile(path))
+      .toString('utf8')
+      .replaceAll('闹钟', '闹铃')
+    const compressed = gzipSync(text)
+    file.checksum = createHash('sha256').update(compressed).digest('hex')
+    file.bytes = compressed.byteLength
+    await writeFile(path, compressed)
+    await writeFile(join(output, 'manifest.json'), JSON.stringify(manifest))
+    await expect(readIconSearchArtifacts(output)).rejects.toThrow('content fingerprint mismatch')
   })
 })

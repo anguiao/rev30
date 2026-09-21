@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
-import { gzipSync, gunzipSync } from 'node:zlib'
+import { createGunzip, gzipSync } from 'node:zlib'
+import { createReadStream } from 'node:fs'
+import { Transform } from 'node:stream'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -248,7 +250,6 @@ export async function buildIconSearchArtifacts(options: {
 }): Promise<{ manifest: IconSearchRuntimeManifest; excluded: ExcludedMaintainedRecord[] }> {
   validateMaintainedSearchData(options.maintained)
   const excluded: ExcludedMaintainedRecord[] = []
-  const documentsByPrefix = new Map<string, BuiltinIconSearchDocument[]>()
   const collectionByPrefix = new Map(options.collections.map((entry) => [entry.prefix, entry]))
   const collectionNamesByPrefix = new Map(
     options.collections.map((collection) => [
@@ -372,6 +373,9 @@ export async function buildIconSearchArtifacts(options: {
   }
 
   let chineseDocuments = 0
+  await mkdir(options.outputDirectory, { recursive: true })
+  const files: IconSearchRuntimeManifest['files'] = []
+  const contentHash = createHash('sha256')
   for (const collection of [...options.collections].sort((a, b) =>
     compareText(a.prefix, b.prefix),
   )) {
@@ -425,16 +429,9 @@ export async function buildIconSearchArtifacts(options: {
       documents.push(document)
       if (document.fullTokens.some((token) => /\p{Script=Han}/u.test(token))) chineseDocuments++
     }
-    documentsByPrefix.set(collection.prefix, documents)
-  }
-
-  await mkdir(options.outputDirectory, { recursive: true })
-  const files: IconSearchRuntimeManifest['files'] = []
-  const contentHash = createHash('sha256')
-  for (const [prefix, documents] of documentsByPrefix) {
     const jsonl = `${documents.map((document) => JSON.stringify(document)).join('\n')}\n`
     const compressed = gzipSync(jsonl, { level: 9 })
-    const path = `${prefix}.jsonl.gz`
+    const path = `${collection.prefix}.jsonl.gz`
     contentHash.update(`${path}\0`).update(jsonl)
     await writeFile(join(options.outputDirectory, path), compressed)
     files.push({
@@ -520,22 +517,48 @@ export async function* iterateIconSearchArtifacts(
   let total = 0
   const contentHash = createHash('sha256')
   for (const file of manifest.files) {
-    const compressed = await readFile(join(directory, file.path))
-    if (checksum(compressed) !== file.checksum)
-      throw new Error(`Icon search artifact checksum mismatch: ${file.path}`)
-    if (compressed.byteLength !== file.bytes)
-      throw new Error(`Icon search artifact size mismatch: ${file.path}`)
-    const jsonl = gunzipSync(compressed).toString('utf8')
-    contentHash.update(`${file.path}\0`).update(jsonl)
-    const lines = jsonl.split('\n').filter(Boolean)
-    if (lines.length !== file.documents)
-      throw new Error(`Icon search artifact count mismatch: ${file.path}`)
-    total += lines.length
-    for (const line of lines) {
-      const document: unknown = JSON.parse(line)
+    const compressedHash = createHash('sha256')
+    let bytes = 0
+    let count = 0
+    let buffered = ''
+    contentHash.update(`${file.path}\0`)
+    const stream = createReadStream(join(directory, file.path))
+      .compose(
+        new Transform({
+          transform(chunk: Buffer, _encoding, callback) {
+            bytes += chunk.byteLength
+            compressedHash.update(chunk)
+            callback(null, chunk)
+          },
+        }),
+      )
+      .compose(createGunzip())
+      .setEncoding('utf8')
+    for await (const chunk of stream) {
+      const text = String(chunk)
+      contentHash.update(text)
+      const lines = (buffered + text).split('\n')
+      buffered = lines.pop()!
+      for (const line of lines) {
+        if (!line) continue
+        const document: unknown = JSON.parse(line)
+        assertDocument(document)
+        count++
+        yield document
+      }
+    }
+    if (buffered) {
+      const document: unknown = JSON.parse(buffered)
       assertDocument(document)
+      count++
       yield document
     }
+    if (compressedHash.digest('hex') !== file.checksum)
+      throw new Error(`Icon search artifact checksum mismatch: ${file.path}`)
+    if (bytes !== file.bytes) throw new Error(`Icon search artifact size mismatch: ${file.path}`)
+    if (count !== file.documents)
+      throw new Error(`Icon search artifact count mismatch: ${file.path}`)
+    total += count
   }
   if (total !== manifest.counts.documents)
     throw new Error('Icon search artifact total count mismatch')

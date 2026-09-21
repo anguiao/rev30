@@ -11,7 +11,9 @@ import { createIconRoutes } from '../../src/modules/icons/routes'
 import { browseBuiltinIcons } from '../../src/modules/content/icon-sets/builtin/service'
 import {
   getDefaultIconSearchArtifactDirectory,
-  readIconSearchArtifacts,
+  iterateIconSearchArtifacts,
+  readIconSearchManifest,
+  type IconSearchRuntimeManifest,
 } from '../../src/modules/icons/search/artifacts'
 import { prepareIconSearchIndex } from '../../src/modules/icons/search/lifecycle'
 import { searchIconDocuments } from '../../src/modules/icons/search/repository'
@@ -122,23 +124,17 @@ try {
   const memoryBusinessBaseline = process.memoryUsage()
   const diskBusinessBaselineBytes = await directorySize(dataDirectory)
   async function runImport(phase: 'initial-import' | 'version-update', mixedSearch: boolean) {
-    const artifactReadStartedAt = performance.now()
-    const { manifest, documents } = await readIconSearchArtifacts(
-      getDefaultIconSearchArtifactDirectory(),
-    )
-    emit({
-      type: 'artifact-read-summary',
-      phase,
-      elapsedMs: performance.now() - artifactReadStartedAt,
-      documents: documents.length,
-      memoryAfterRead: process.memoryUsage(),
-    })
     const intervalMs = 25
     const periodic: Promise<unknown>[] = []
     let previousTick = performance.now()
     let sequence = 0
+    let peakRss = process.memoryUsage().rss
+    let peakHeapUsed = process.memoryUsage().heapUsed
     const timer = setInterval(() => {
       const startedAt = performance.now()
+      const memory = process.memoryUsage()
+      peakRss = Math.max(peakRss, memory.rss)
+      peakHeapUsed = Math.max(peakHeapUsed, memory.heapUsed)
       const scheduledDelayMs = Math.max(0, startedAt - previousTick - intervalMs)
       previousTick = startedAt
       const query = ['file', 'outline', 'co', 'icon'][sequence % 4]!
@@ -159,21 +155,35 @@ try {
       )
     }, intervalMs)
     const startedAt = performance.now()
-    await prepareIconSearchIndex(database, {
-      manifest: {
-        ...manifest,
-        indexVersion: `${manifest.indexVersion}-${phase}`,
-        searchDataVersion: `${manifest.searchDataVersion}-${phase}`,
-      },
-      readDocuments: async () => documents,
-    })
+    let manifest: IconSearchRuntimeManifest
+    let documentCount = 0
+    try {
+      const directory = getDefaultIconSearchArtifactDirectory()
+      manifest = await readIconSearchManifest(directory)
+      await prepareIconSearchIndex(database, {
+        manifest: {
+          ...manifest,
+          indexVersion: `${manifest.indexVersion}-${phase}`,
+          searchDataVersion: `${manifest.searchDataVersion}-${phase}`,
+        },
+        readDocuments: async function* () {
+          for await (const document of iterateIconSearchArtifacts(directory, manifest)) {
+            documentCount++
+            yield document
+          }
+        },
+      })
+    } finally {
+      clearInterval(timer)
+      await Promise.all(periodic)
+    }
     const elapsedMs = performance.now() - startedAt
-    clearInterval(timer)
-    await Promise.all(periodic)
     const phaseSamples = samples.filter((sample) => sample.phase === phase)
     emit({
       type: 'import-summary',
       phase,
+      peakRss,
+      peakHeapUsed,
       elapsedMs,
       periodicRequests: phaseSamples.length,
       maxScheduledDelayMs: Math.max(...phaseSamples.map((sample) => sample.scheduledDelayMs ?? 0)),
@@ -193,7 +203,7 @@ try {
           .map((sample) => sample.elapsedMs),
       ),
     })
-    return { manifest, documentCount: documents.length }
+    return { manifest, documentCount }
   }
 
   const initialImport = await runImport('initial-import', false)

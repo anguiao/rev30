@@ -5,6 +5,7 @@ import {
   customIconSetIcons,
   customIconSets,
   iconSearchDocuments,
+  iconSearchDocumentsStaging,
   iconSearchIndexState,
 } from '../../../../src/db/schema'
 import {
@@ -160,6 +161,31 @@ describe('icon search lifecycle', () => {
       'tabler:camera',
     ])
   })
+
+  dbTest(
+    'discards staged batches when the document stream fails before publication',
+    async ({ db }) => {
+      await replaceIconSearchDocuments(db, [document], state)
+      await expect(
+        prepareIconSearchIndex(db, {
+          manifest: { ...state, indexVersion: 'stream-failure' },
+          readDocuments: async function* () {
+            for (let index = 0; index < 1_001; index++) {
+              yield { ...document, id: `bulk:icon-${index}`, prefix: 'bulk', name: `icon-${index}` }
+            }
+            throw new Error('artifact checksum mismatch')
+          },
+        }),
+      ).rejects.toThrow('artifact checksum mismatch')
+      expect(await db.select().from(iconSearchDocuments)).toEqual([
+        expect.objectContaining({ id: document.id }),
+      ])
+      expect(await db.select().from(iconSearchDocumentsStaging)).toEqual([])
+      expect(await db.select().from(iconSearchIndexState)).toEqual([
+        expect.objectContaining({ indexVersion: state.indexVersion }),
+      ])
+    },
+  )
 
   dbTest('re-derives custom documents when search rules change', async ({ db }) => {
     const [set] = await db

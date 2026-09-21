@@ -1,6 +1,8 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createHash } from 'node:crypto'
+import { gunzipSync, gzipSync } from 'node:zlib'
 import { describe, expect, it, onTestFinished } from 'vitest'
 
 import {
@@ -60,6 +62,57 @@ async function temporaryDirectory() {
 }
 
 describe('icon search artifacts', () => {
+  it('changes index identity when effective translations change without a manual version bump', async () => {
+    const output = await temporaryDirectory()
+    const first = await buildIconSearchArtifacts({
+      collections: [collection()],
+      iconPackageVersion: 'current',
+      maintained: maintained(),
+      outputDirectory: output,
+    })
+    const second = await buildIconSearchArtifacts({
+      collections: [collection()],
+      iconPackageVersion: 'current',
+      maintained: maintained({
+        translations: [
+          {
+            kind: 'icon',
+            owner: 'test:alarm-clock',
+            source: 'alarm-clock',
+            translations: ['闹铃'],
+          },
+        ],
+      }),
+      outputDirectory: output,
+    })
+    expect(second.manifest.searchDataVersion).toBe(first.manifest.searchDataVersion)
+    expect(second.manifest.indexVersion).not.toBe(first.manifest.indexVersion)
+    const loaded = await readIconSearchArtifacts(output)
+    expect(loaded.documents.find((entry) => entry.id === 'test:alarm-clock')?.fullTokens).toContain(
+      '闹铃',
+    )
+  })
+
+  it('keeps the logical index identity when only compression changes', async () => {
+    const output = await temporaryDirectory()
+    const { manifest } = await buildIconSearchArtifacts({
+      collections: [collection()],
+      iconPackageVersion: 'current',
+      maintained: maintained(),
+      outputDirectory: output,
+    })
+    const file = manifest.files[0]!
+    const path = join(output, file.path)
+    const compressed = gzipSync(gunzipSync(await readFile(path)), { level: 1 })
+    file.checksum = createHash('sha256').update(compressed).digest('hex')
+    file.bytes = compressed.byteLength
+    await writeFile(path, compressed)
+    await writeFile(join(output, 'manifest.json'), JSON.stringify(manifest))
+    const loaded = await readIconSearchArtifacts(output)
+    expect(loaded.manifest.indexVersion).toBe(manifest.indexVersion)
+    expect(loaded.documents).toHaveLength(manifest.counts.documents)
+  })
+
   it('tracks package additions/removals without requiring maintenance coverage', async () => {
     const output = await temporaryDirectory()
     const result = await buildIconSearchArtifacts({

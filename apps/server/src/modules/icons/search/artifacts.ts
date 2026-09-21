@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
 
 import { deriveIconSearchDocument, type IconSearchDocument } from './document'
-import { ICON_SEARCH_RULES_VERSION, deriveSearchText } from './text'
+import { deriveSearchText } from './text'
+import { ICON_SEARCH_RULES_VERSION } from './version'
 
 export type IconPackageCollection = {
   prefix: string
@@ -72,11 +73,12 @@ const artifactFileSchema = z
 
 const runtimeManifestSchema = z
   .object({
-    formatVersion: z.literal(1),
+    formatVersion: z.literal(2),
     iconPackageVersion: z.string().min(1),
     searchDataVersion: z.string().min(1),
     rulesVersion: z.string().min(1),
     indexVersion: z.string().regex(/^[a-f0-9]{64}$/),
+    contentFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
     counts: z
       .object({
         definitions: z.int().nonnegative(),
@@ -128,8 +130,11 @@ export function deriveIconSearchIndexVersion(input: {
   iconPackageVersion: string
   searchDataVersion: string
   rulesVersion: string
+  contentFingerprint: string
 }): string {
-  return checksum(`${input.iconPackageVersion}\0${input.searchDataVersion}\0${input.rulesVersion}`)
+  return checksum(
+    `${input.iconPackageVersion}\0${input.searchDataVersion}\0${input.rulesVersion}\0${input.contentFingerprint}`,
+  )
 }
 
 function assertPlainString(value: unknown, label: string): asserts value is string {
@@ -425,10 +430,12 @@ export async function buildIconSearchArtifacts(options: {
 
   await mkdir(options.outputDirectory, { recursive: true })
   const files: IconSearchRuntimeManifest['files'] = []
+  const contentHash = createHash('sha256')
   for (const [prefix, documents] of documentsByPrefix) {
     const jsonl = `${documents.map((document) => JSON.stringify(document)).join('\n')}\n`
     const compressed = gzipSync(jsonl, { level: 9 })
     const path = `${prefix}.jsonl.gz`
+    contentHash.update(`${path}\0`).update(jsonl)
     await writeFile(join(options.outputDirectory, path), compressed)
     files.push({
       path,
@@ -437,17 +444,20 @@ export async function buildIconSearchArtifacts(options: {
       bytes: compressed.byteLength,
     })
   }
+  const contentFingerprint = contentHash.digest('hex')
   const indexVersion = deriveIconSearchIndexVersion({
     iconPackageVersion: options.iconPackageVersion,
     searchDataVersion: options.maintained.dataVersion,
     rulesVersion: ICON_SEARCH_RULES_VERSION,
+    contentFingerprint,
   })
   const manifest: IconSearchRuntimeManifest = {
-    formatVersion: 1,
+    formatVersion: 2,
     iconPackageVersion: options.iconPackageVersion,
     searchDataVersion: options.maintained.dataVersion,
     rulesVersion: ICON_SEARCH_RULES_VERSION,
     indexVersion,
+    contentFingerprint,
     counts: {
       definitions,
       aliases,
@@ -508,13 +518,16 @@ export async function* iterateIconSearchArtifacts(
 ): AsyncGenerator<BuiltinIconSearchDocument> {
   const manifest = suppliedManifest ?? (await readIconSearchManifest(directory))
   let total = 0
+  const contentHash = createHash('sha256')
   for (const file of manifest.files) {
     const compressed = await readFile(join(directory, file.path))
     if (checksum(compressed) !== file.checksum)
       throw new Error(`Icon search artifact checksum mismatch: ${file.path}`)
     if (compressed.byteLength !== file.bytes)
       throw new Error(`Icon search artifact size mismatch: ${file.path}`)
-    const lines = gunzipSync(compressed).toString('utf8').split('\n').filter(Boolean)
+    const jsonl = gunzipSync(compressed).toString('utf8')
+    contentHash.update(`${file.path}\0`).update(jsonl)
+    const lines = jsonl.split('\n').filter(Boolean)
     if (lines.length !== file.documents)
       throw new Error(`Icon search artifact count mismatch: ${file.path}`)
     total += lines.length
@@ -526,6 +539,8 @@ export async function* iterateIconSearchArtifacts(
   }
   if (total !== manifest.counts.documents)
     throw new Error('Icon search artifact total count mismatch')
+  if (contentHash.digest('hex') !== manifest.contentFingerprint)
+    throw new Error('Icon search artifact content fingerprint mismatch')
 }
 
 export async function readIconSearchArtifacts(directory: string): Promise<{

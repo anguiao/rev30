@@ -2,7 +2,8 @@ import { ICON_CURSOR_MAX_LENGTH } from '@rev30/contracts'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { InvalidIconCursorError } from '../../icons/search/errors'
-import { ICON_SEARCH_RULES_VERSION, normalizeSearchText } from '../../icons/search/text'
+import { normalizeSearchText } from '../../icons/search/text'
+import { ICON_SEARCH_RULES_VERSION } from '../../icons/search/version'
 
 const cursorBase = {
   v: z.literal(2),

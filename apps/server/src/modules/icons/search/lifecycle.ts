@@ -7,7 +7,7 @@ import {
   type BuiltinIconSearchDocument,
   type IconSearchRuntimeManifest,
 } from './artifacts'
-import { ICON_SEARCH_RULES_VERSION } from './text'
+import { ICON_SEARCH_RULES_VERSION } from './version'
 import { getCommittedIconSearchState, replaceBuiltinIconSearchDocuments } from './repository'
 import { IconSearchPreparingError, IconSearchUnavailableError } from './errors'
 

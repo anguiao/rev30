@@ -1,5 +1,3 @@
-export const ICON_SEARCH_RULES_VERSION = '3'
-
 const validCharacterPattern = /[\p{L}\p{N}]/u
 const asciiEnglishTermPattern = /^[a-z]+$/
 const boundedAsciiPhrasePattern = /^[a-z0-9]+(?:[-/]+[a-z0-9]+)+$/

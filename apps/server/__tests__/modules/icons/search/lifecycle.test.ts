@@ -19,7 +19,7 @@ import {
   replaceIconSearchDocuments,
   syncCustomIconSearchDocument,
 } from '../../../../src/modules/icons/search/repository'
-import { ICON_SEARCH_RULES_VERSION } from '../../../../src/modules/icons/search/text'
+import { ICON_SEARCH_RULES_VERSION } from '../../../../src/modules/icons/search/version'
 import { eq } from 'drizzle-orm'
 import { dbTest } from '../../../fixtures/database'
 import { migratePGlite } from '../../../../src/db/migrate'
@@ -66,7 +66,8 @@ describe('icon search lifecycle', () => {
       logger,
       installedIconPackageVersion: 'icons-v2',
       loadManifest: async () => ({
-        formatVersion: 1,
+        formatVersion: 2,
+        contentFingerprint: '0'.repeat(64),
         iconPackageVersion: 'icons-v1',
         searchDataVersion: 'data-v1',
         rulesVersion: ICON_SEARCH_RULES_VERSION,
@@ -413,7 +414,8 @@ describe('icon search lifecycle', () => {
     `)
     const logger = { error: vi.fn() }
     const manifest = {
-      formatVersion: 1 as const,
+      formatVersion: 2 as const,
+      contentFingerprint: '0'.repeat(64),
       iconPackageVersion: 'icons-v1',
       searchDataVersion: 'data-v2',
       rulesVersion: ICON_SEARCH_RULES_VERSION,

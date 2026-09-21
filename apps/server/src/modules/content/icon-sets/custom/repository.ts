@@ -17,6 +17,7 @@ import {
   deleteCustomIconSearchDocumentsByPrefix,
   lockIconSearchWrites,
   syncCustomIconSearchDocument,
+  syncCustomIconSearchDocuments,
   searchIconDocuments,
 } from '../../../icons/search/repository'
 import { InvalidIconCursorError } from '../../../icons/search/errors'
@@ -219,7 +220,13 @@ export function createCustomIconSetRepository(database: Db) {
     async updateSet(prefix: string, input: CustomIconSetUpdateInput) {
       return await withCustomIconConflictTranslation(() =>
         database.transaction(async (tx) => {
-          await lockIconSearchWrites(tx)
+          let previousName: string | undefined
+          if (input.name !== undefined) {
+            await lockIconSearchWrites(tx)
+            const current = await findActiveSetByPrefix(tx, prefix)
+            if (!current) return undefined
+            previousName = current.name
+          }
           const [updated] = await tx
             .update(customIconSets)
             .set(input)
@@ -227,13 +234,31 @@ export function createCustomIconSetRepository(database: Db) {
             .returning()
 
           if (!updated) return undefined
-          const icons = await tx
-            .select()
-            .from(customIconSetIcons)
-            .where(
-              and(eq(customIconSetIcons.setId, updated.id), isNull(customIconSetIcons.deletedAt)),
+          if (input.name !== undefined && updated.name !== previousName) {
+            const icons = await tx
+              .select({
+                id: customIconSetIcons.id,
+                name: customIconSetIcons.name,
+                palette: customIconSetIcons.palette,
+                keywords: customIconSetIcons.keywords,
+              })
+              .from(customIconSetIcons)
+              .where(
+                and(eq(customIconSetIcons.setId, updated.id), isNull(customIconSetIcons.deletedAt)),
+              )
+            await syncCustomIconSearchDocuments(
+              tx,
+              icons.map((icon) => ({
+                id: `${updated.prefix}:${icon.name}`,
+                prefix: updated.prefix,
+                name: icon.name,
+                collection: updated.name,
+                palette: icon.palette,
+                customIconId: icon.id,
+                keywords: icon.keywords,
+              })),
             )
-          for (const icon of icons) await syncIcon(tx, updated, icon)
+          }
 
           return { set: updated, iconCount: await countActiveIcons(tx, updated.id) }
         }),
@@ -405,6 +430,11 @@ export function createCustomIconSetRepository(database: Db) {
       return await withCustomIconConflictTranslation(() =>
         database.transaction(async (tx) => {
           await lockIconSearchWrites(tx)
+          const [current] = await tx
+            .select({ palette: customIconSetIcons.palette, keywords: customIconSetIcons.keywords })
+            .from(customIconSetIcons)
+            .where(and(eq(customIconSetIcons.id, iconId), isNull(customIconSetIcons.deletedAt)))
+          if (!current) return undefined
           const [updated] = await tx
             .update(customIconSetIcons)
             .set({
@@ -420,15 +450,21 @@ export function createCustomIconSetRepository(database: Db) {
           if (!updated) return undefined
           const row = await findActiveIconById(tx, updated.id)
           if (!row) return undefined
-          await syncCustomIconSearchDocument(tx, {
-            id: `${row.prefix}:${row.name}`,
-            prefix: row.prefix,
-            name: row.name,
-            collection: row.setName,
-            palette: row.palette,
-            customIconId: row.id,
-            keywords: row.keywords,
-          })
+          if (
+            current.palette !== row.palette ||
+            current.keywords.length !== row.keywords.length ||
+            current.keywords.some((keyword, index) => keyword !== row.keywords[index])
+          ) {
+            await syncCustomIconSearchDocument(tx, {
+              id: `${row.prefix}:${row.name}`,
+              prefix: row.prefix,
+              name: row.name,
+              collection: row.setName,
+              palette: row.palette,
+              customIconId: row.id,
+              keywords: row.keywords,
+            })
+          }
 
           return row
         }),

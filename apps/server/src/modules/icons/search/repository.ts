@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { setImmediate } from 'node:timers/promises'
 import type { Db, DbExecutor, DbReader } from '../../../db'
 import {
@@ -298,29 +298,46 @@ export async function lockIconSearchWrites(executor: DbExecutor) {
   await executor.execute(sql`SELECT pg_advisory_xact_lock(hashtext('icon-search-rebuild'))`)
 }
 
+type CustomIconSearchInput = {
+  id: string
+  prefix: string
+  name: string
+  collection: string
+  palette: boolean
+  customIconId: string
+  keywords: string[]
+}
+
+export async function syncCustomIconSearchDocuments(
+  executor: DbExecutor,
+  inputs: CustomIconSearchInput[],
+) {
+  for (let start = 0; start < inputs.length; start += importBatchSize) {
+    const batch = inputs.slice(start, start + importBatchSize)
+    const documents = batch.map((input) =>
+      deriveIconSearchDocument({
+        ...input,
+        source: 'custom',
+        primaryPhrases: [input.name, ...input.keywords],
+        auxiliaryPhrases: [input.prefix, input.collection],
+        exactPhrases: [input.name, ...input.keywords],
+      }),
+    )
+    await executor.delete(iconSearchDocuments).where(
+      inArray(
+        iconSearchDocuments.customIconId,
+        batch.map((input) => input.customIconId),
+      ),
+    )
+    await insertDocumentBatch(executor, documents)
+  }
+}
+
 export async function syncCustomIconSearchDocument(
   executor: DbExecutor,
-  input: {
-    id: string
-    prefix: string
-    name: string
-    collection: string
-    palette: boolean
-    customIconId: string
-    keywords: string[]
-  },
+  input: CustomIconSearchInput,
 ) {
-  const document = deriveIconSearchDocument({
-    ...input,
-    source: 'custom',
-    primaryPhrases: [input.name, ...input.keywords],
-    auxiliaryPhrases: [input.prefix, input.collection],
-    exactPhrases: [input.name, ...input.keywords],
-  })
-  await executor
-    .delete(iconSearchDocuments)
-    .where(eq(iconSearchDocuments.customIconId, input.customIconId))
-  await insertDocumentBatch(executor, [document])
+  await syncCustomIconSearchDocuments(executor, [input])
 }
 
 export async function deleteCustomIconSearchDocument(executor: DbExecutor, customIconId: string) {

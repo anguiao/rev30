@@ -48,6 +48,58 @@ describe('custom icon search synchronization', () => {
     ).resolves.toMatchObject({ list: [expect.objectContaining({ icon: 'acme:logo' })] })
   })
 
+  dbTest(
+    'updates descriptions and unchanged names without rewriting search documents',
+    async ({ db }) => {
+      const repository = createCustomIconSetRepository(db)
+      const set = await repository.createSet({ prefix: 'acme', name: 'Acme', description: null })
+      await repository.createIcon(set.set, await parseSvgIcon('Logo.svg', svg))
+      await db.execute(`
+      CREATE FUNCTION reject_icon_rewrite() RETURNS trigger AS $$
+      BEGIN RAISE EXCEPTION 'unexpected search rewrite'; END;
+      $$ LANGUAGE plpgsql
+    `)
+      await db.execute(`
+      CREATE TRIGGER reject_icon_rewrite BEFORE DELETE OR INSERT ON icon_search_documents
+      FOR EACH STATEMENT EXECUTE FUNCTION reject_icon_rewrite()
+    `)
+      await expect(repository.updateSet('acme', { description: 'First' })).resolves.toMatchObject({
+        set: { name: 'Acme', description: 'First' },
+        iconCount: 1,
+      })
+      await expect(
+        repository.updateSet('acme', { name: 'Acme', description: 'Second' }),
+      ).resolves.toMatchObject({
+        set: { name: 'Acme', description: 'Second' },
+        iconCount: 1,
+      })
+      expect(await db.select().from(iconSearchDocuments)).toEqual([
+        expect.objectContaining({ id: 'acme:logo', collection: 'Acme' }),
+      ])
+    },
+  )
+
+  dbTest(
+    'preserves search documents for visual-only replacements and synchronizes palette changes',
+    async ({ db }) => {
+      const repository = createCustomIconSetRepository(db)
+      const set = await repository.createSet({ prefix: 'acme', name: 'Acme', description: null })
+      const parsed = await parseSvgIcon('Logo.svg', svg)
+      const icon = await repository.createIcon(set.set, parsed, ['Logo'])
+      const [before] = await db.select().from(iconSearchDocuments)
+      await repository.replaceIcon(icon.id, { ...parsed, body: '<path d="M1 1h8v8H1z"/>' })
+      expect(await db.select().from(iconSearchDocuments)).toEqual([before])
+      await repository.replaceIcon(icon.id, { ...parsed, palette: !parsed.palette }, ['Brand'])
+      expect(await db.select().from(iconSearchDocuments)).toEqual([
+        expect.objectContaining({
+          palette: !parsed.palette,
+          exactPhrases: ['logo', 'brand'],
+          preference: parsed.palette ? 1 : 0,
+        }),
+      ])
+    },
+  )
+
   dbTest('re-reads the active set after taking the search write lock', async ({ db }) => {
     const repository = createCustomIconSetRepository(db)
     const stale = await repository.createSet({
@@ -176,10 +228,15 @@ describe('custom icon search synchronization', () => {
       await service.create({ prefix: 'acme', name: 'Old Name', description: null })
       await service.uploadIcons('acme', {
         duplicateStrategy: 'skip',
-        files: [{ filename: 'Logo.svg', content: svg }],
+        files: ['Logo.svg', 'Mark.svg', 'Brand.svg'].map((filename) => ({
+          filename,
+          content: svg,
+        })),
       })
       await service.update('acme', { name: 'New Name' })
       expect(await db.select().from(iconSearchDocuments)).toEqual([
+        expect.objectContaining({ collection: 'New Name' }),
+        expect.objectContaining({ collection: 'New Name' }),
         expect.objectContaining({ collection: 'New Name' }),
       ])
       await service.delete('acme')

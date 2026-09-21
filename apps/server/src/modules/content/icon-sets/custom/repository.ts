@@ -6,7 +6,7 @@ import type {
   IconSetListQuery,
 } from '@rev30/contracts'
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
-import type { Db, DbReader } from '../../../../db'
+import type { Db, DbExecutor, DbReader } from '../../../../db'
 import { customIconSetIcons, customIconSets } from '../../../../db/schema'
 import { formatIconCursor, parseIconCursor } from '../../../icons/cursor'
 import { CustomIconSetNotFoundError, toCustomIconConflictError } from './errors'
@@ -105,12 +105,11 @@ async function findActiveIconById(
 
 export function createCustomIconSetRepository(database: Db) {
   async function syncIcon(
-    executor: Parameters<Parameters<Db['transaction']>[0]>[0],
+    executor: DbExecutor,
     set: CustomIconSetRow,
     icon: typeof customIconSetIcons.$inferSelect,
   ) {
     await syncCustomIconSearchDocument(executor, {
-      id: `${set.prefix}:${icon.name}`,
       prefix: set.prefix,
       name: icon.name,
       collection: set.name,
@@ -249,7 +248,6 @@ export function createCustomIconSetRepository(database: Db) {
             await syncCustomIconSearchDocuments(
               tx,
               icons.map((icon) => ({
-                id: `${updated.prefix}:${icon.name}`,
                 prefix: updated.prefix,
                 name: icon.name,
                 collection: updated.name,
@@ -456,7 +454,6 @@ export function createCustomIconSetRepository(database: Db) {
             current.keywords.some((keyword, index) => keyword !== row.keywords[index])
           ) {
             await syncCustomIconSearchDocument(tx, {
-              id: `${row.prefix}:${row.name}`,
               prefix: row.prefix,
               name: row.name,
               collection: row.setName,
@@ -494,7 +491,6 @@ export function createCustomIconSetRepository(database: Db) {
           const row = await findActiveIconById(tx, updated.id)
           if (!row) return undefined
           await syncCustomIconSearchDocument(tx, {
-            id: `${row.prefix}:${row.name}`,
             prefix: row.prefix,
             name: row.name,
             collection: row.setName,

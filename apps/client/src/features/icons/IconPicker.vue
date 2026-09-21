@@ -15,8 +15,8 @@ import {
 import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import { iconSearchKey } from './query-keys'
 import { searchIcons } from './requests'
-import { useIconSearchKeyword } from './search-keyword'
-import { useIconSearchState } from './search-state'
+import { useIconSearchKeyword } from './useIconSearchKeyword'
+import { useIconSearchState } from './useIconSearchState'
 
 const props = defineProps<{
   value: string | null

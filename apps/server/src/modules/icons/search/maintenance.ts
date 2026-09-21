@@ -2,13 +2,8 @@ import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { isAbsolute, join, normalize } from 'node:path'
 import { z } from 'zod'
+import { normalizeSearchText } from '@rev30/utils'
 
-import {
-  type MaintainedEnglishRecord,
-  type MaintainedSearchData,
-  type MaintainedTranslationRecord,
-  validateMaintainedSearchData,
-} from './artifacts/schema'
 import { deriveSearchText } from './text'
 
 const translationSchema = z
@@ -66,6 +61,15 @@ const maintainedTranslationRecordSchema = z.discriminatedUnion('kind', [
 ])
 
 type MaintainedManifest = z.infer<typeof maintainedManifestSchema>
+
+export type MaintainedEnglishRecord = z.infer<typeof maintainedEnglishRecordSchema>
+export type MaintainedIconTranslationRecord = z.infer<typeof iconTranslationRecordSchema>
+export type MaintainedCategoryTranslationRecord = z.infer<typeof categoryTranslationRecordSchema>
+export type MaintainedTranslationRecord = z.infer<typeof maintainedTranslationRecordSchema>
+export type MaintainedSearchData = Omit<MaintainedManifest, 'files'> & {
+  english: MaintainedEnglishRecord[]
+  translations: MaintainedTranslationRecord[]
+}
 
 function checksum(value: string): string {
   return createHash('sha256').update(value).digest('hex')
@@ -125,6 +129,25 @@ export async function loadMaintainedSearchData(directory: string): Promise<Maint
     english,
     translations,
   }
-  validateMaintainedSearchData(maintained)
+  const keys = new Set<string>()
+  for (const [kind, records] of [
+    ['english', maintained.english],
+    ['translation', maintained.translations],
+  ] as const) {
+    for (const record of records) {
+      const owner =
+        typeof record.owner === 'string'
+          ? record.owner
+          : `${record.owner.prefix}\0${record.owner.category}`
+      const source = normalizeSearchText(record.source)
+      const key = `${kind}\0${record.kind}\0${owner}\0${source}`
+      if (keys.has(key)) {
+        throw new Error(
+          `Duplicate maintained record: ${owner.replace('\0', ':')} / ${record.source}`,
+        )
+      }
+      keys.add(key)
+    }
+  }
   return maintained
 }

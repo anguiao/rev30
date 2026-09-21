@@ -8,7 +8,7 @@ import { buildIconSearchArtifacts } from '../../../../src/modules/icons/search/a
 import { readIconSearchArtifacts } from '../../../../src/modules/icons/search/artifacts/reader'
 import { createIconSearchService } from '../../../../src/modules/icons/search/service'
 import { loadMaintainedSearchData } from '../../../../src/modules/icons/search/maintenance'
-import { replaceIconSearchDocuments } from '../../../../src/modules/icons/search/rebuild'
+import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
 import { searchIconDocuments } from '../../../../src/modules/icons/search/query-repository'
 import { dbTest } from '../../../fixtures/database'
 

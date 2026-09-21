@@ -1,6 +1,6 @@
 import { describe, expect } from 'vitest'
 import { createIconSearchService } from '../../../../src/modules/icons/search/service'
-import { replaceIconSearchDocuments } from '../../../../src/modules/icons/search/rebuild'
+import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
 import { IconSearchPreparingError } from '../../../../src/modules/icons/search/errors'
 import { dbTest } from '../../../fixtures/database'
 

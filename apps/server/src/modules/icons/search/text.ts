@@ -1,3 +1,5 @@
+import { normalizeSearchText } from '@rev30/utils'
+
 const validCharacterPattern = /[\p{L}\p{N}]/u
 const asciiEnglishTermPattern = /^[a-z]+$/
 const boundedAsciiPhrasePattern = /^[a-z0-9]+(?:[-/]+[a-z0-9]+)+$/
@@ -52,5 +54,3 @@ export function mergeWeightedEnglishTerms(
 
   return { A: [...primary].sort(), B: [...auxiliary].sort() }
 }
-import { normalizeSearchText } from '@rev30/utils'
-export { normalizeSearchText } from '@rev30/utils'

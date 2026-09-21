@@ -3,21 +3,28 @@ import { gzipSync } from 'node:zlib'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { deriveIconSearchDocument } from '../document'
+import type {
+  MaintainedEnglishRecord,
+  MaintainedIconTranslationRecord,
+  MaintainedCategoryTranslationRecord,
+  MaintainedSearchData,
+} from '../maintenance'
+import type { IconPackageCollection } from '../package-source'
 import { deriveSearchText } from '../text'
 import { ICON_SEARCH_RULES_VERSION } from '../version'
 import {
   checksum,
   deriveIconSearchIndexVersion,
-  validateMaintainedSearchData,
-  type IconPackageCollection,
-  type MaintainedEnglishRecord,
-  type MaintainedIconTranslationRecord,
-  type MaintainedCategoryTranslationRecord,
-  type MaintainedSearchData,
   type BuiltinIconSearchDocument,
   type IconSearchRuntimeManifest,
-  type ExcludedMaintainedRecord,
 } from './schema'
+
+type ExcludedMaintainedRecord = {
+  kind: 'english' | 'translation'
+  owner: string | MaintainedCategoryTranslationRecord['owner']
+  source: string
+  reason: string
+}
 
 function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0
@@ -51,7 +58,6 @@ export async function buildIconSearchArtifacts(options: {
   maintained: MaintainedSearchData
   outputDirectory: string
 }): Promise<{ manifest: IconSearchRuntimeManifest; excluded: ExcludedMaintainedRecord[] }> {
-  validateMaintainedSearchData(options.maintained)
   const excluded: ExcludedMaintainedRecord[] = []
   const collectionByPrefix = new Map(options.collections.map((entry) => [entry.prefix, entry]))
   const collectionNamesByPrefix = new Map(

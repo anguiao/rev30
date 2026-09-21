@@ -12,7 +12,7 @@ import { createApp } from '../../../helpers/app'
 import type { OperationLogEvent } from '../../../../src/runtime/operation-log'
 import { createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest } from '../../../fixtures/database'
-import { replaceIconSearchDocuments } from '../../../../src/modules/icons/search/rebuild'
+import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
 import { customIconSetIcons, iconSearchDocuments } from '../../../../src/db/schema'
 
 function createSvg(size: number, body: string) {

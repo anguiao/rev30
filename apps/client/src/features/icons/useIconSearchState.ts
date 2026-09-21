@@ -4,17 +4,16 @@ import { useDocumentVisibility } from '@vueuse/core'
 import { computed, watch } from 'vue'
 import { ApiRequestError } from '../../utils/request'
 
-export function getIconSearchErrorCode(error: unknown) {
-  return error instanceof ApiRequestError ? error.code : undefined
-}
-
 export function useIconSearchState(options: {
   error: Ref<Error | null>
   asyncStatus: Ref<AsyncStatus>
   enabled: ComputedRef<boolean>
   refetch: () => Promise<unknown>
 }) {
-  const errorCode = computed(() => getIconSearchErrorCode(options.error.value))
+  const errorCode = computed(() => {
+    const error = options.error.value
+    return error instanceof ApiRequestError ? error.code : undefined
+  })
   const isPreparing = computed(() => errorCode.value === 'ICON_SEARCH_PREPARING')
   const isUnavailable = computed(() => errorCode.value === 'ICON_SEARCH_UNAVAILABLE')
   const visibility = useDocumentVisibility()

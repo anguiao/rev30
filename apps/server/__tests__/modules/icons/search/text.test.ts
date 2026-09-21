@@ -1,9 +1,9 @@
+import { normalizeSearchText } from '@rev30/utils'
 import { describe, expect, it } from 'vitest'
 
 import {
   deriveSearchText,
   mergeWeightedEnglishTerms,
-  normalizeSearchText,
 } from '../../../../src/modules/icons/search/text'
 
 describe('icon search text rules', () => {

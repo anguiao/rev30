@@ -1,24 +1,20 @@
 import { sql } from 'drizzle-orm'
 import { completeIconIdSchema } from '@rev30/contracts'
 import type { Db } from '../../../db'
+import type { iconSearchDocuments } from '../../../db/schema'
 import { formatIconCursor, parseIconCursor } from '../cursor'
 import { IconSearchPreparingError, InvalidIconCursorError } from './errors'
 import { getCommittedIconSearchState } from './index-state'
-import { deriveSearchText, normalizeSearchText } from './text'
+import { deriveSearchText } from './text'
 
-type SearchRow = {
-  id: string
-  prefix: string
-  name: string
-  source: 'builtin' | 'custom'
-  collection: string
-  palette: boolean
-  customIconId: string | null
+type SearchRow = Pick<
+  typeof iconSearchDocuments.$inferSelect,
+  'id' | 'prefix' | 'name' | 'source' | 'collection' | 'palette' | 'customIconId' | 'preference'
+> & {
   level: number
   primaryMatches: number
   rank: number
   rankText: string
-  preference: number
 }
 
 function exactId(value: string) {
@@ -35,8 +31,8 @@ export async function searchIconDocuments(
     cursor?: string
   },
 ) {
-  const normalizedQuery = normalizeSearchText(input.query)
-  const parsed = deriveSearchText(normalizedQuery)
+  const parsed = deriveSearchText(input.query)
+  const normalizedQuery = parsed.phrase
   const id = exactId(normalizedQuery)
   return database.transaction(
     async (tx) => {
@@ -51,13 +47,12 @@ export async function searchIconDocuments(
         ...(input.prefix ? { prefix: input.prefix } : {}),
         dataVersion: state.indexVersion,
       }
-      const cursor = parseIconCursor(input.cursor, binding)
-      if (cursor && !('level' in cursor)) throw new InvalidIconCursorError()
-      const searchCursor = cursor && 'level' in cursor ? cursor : undefined
+      const searchCursor = parseIconCursor(input.cursor, binding)
+      if (searchCursor && !('level' in searchCursor)) throw new InvalidIconCursorError()
       if (!id && parsed.tokens.length === 0)
         return { rows: [] as SearchRow[], nextCursor: null, indexVersion: state.indexVersion }
 
-      const english = parsed.tokens.filter((token) => /^[a-z]+$/.test(token))
+      const english = parsed.englishTerms
       const chinese = parsed.tokens.filter((token) => /\p{Script=Han}/u.test(token))
       const primaryMatches = chinese.length
         ? sql.join(
@@ -134,11 +129,10 @@ export async function searchIconDocuments(
         if (rows.length > input.limit) break
       }
 
-      const resultRows = rows
-      const pageRows = resultRows.slice(0, input.limit)
+      const pageRows = rows.slice(0, input.limit)
       const last = pageRows.at(-1)
       const nextCursor =
-        resultRows.length > input.limit && last
+        rows.length > input.limit && last
           ? formatIconCursor(binding, {
               level: last.level,
               primaryMatches: last.primaryMatches,

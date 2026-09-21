@@ -15,6 +15,14 @@ export type IconSearchDocument = {
   auxiliaryEnglishTerms: string[]
 }
 
+export type CustomIconSearchInput = Pick<
+  IconSearchDocument,
+  'prefix' | 'name' | 'collection' | 'palette'
+> & {
+  customIconId: string
+  keywords: string[]
+}
+
 export function deriveIconSearchDocument(
   input: Omit<
     IconSearchDocument,
@@ -56,4 +64,15 @@ export function deriveIconSearchDocument(
     primaryEnglishTerms: weighted.A,
     auxiliaryEnglishTerms: weighted.B,
   }
+}
+
+export function deriveCustomIconSearchDocument(input: CustomIconSearchInput): IconSearchDocument {
+  return deriveIconSearchDocument({
+    ...input,
+    id: `${input.prefix}:${input.name}`,
+    source: 'custom',
+    primaryPhrases: [input.name, ...input.keywords],
+    auxiliaryPhrases: [input.prefix, input.collection],
+    exactPhrases: [input.name, ...input.keywords],
+  })
 }

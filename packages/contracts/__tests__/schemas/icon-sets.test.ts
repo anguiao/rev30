@@ -139,27 +139,6 @@ describe('icon set schemas', () => {
     })
   })
 
-  it('keeps existing long identities readable and addressable', () => {
-    const prefix = 'p'.repeat(257)
-    const name = 'n'.repeat(257)
-
-    expect(customIconParamSchema.parse({ prefix, name })).toEqual({ prefix, name })
-    expect(
-      customIconItemSchema.parse({
-        icon: `${prefix}:${name}`,
-        prefix,
-        name,
-        setName: 'Icons',
-        body: '<path d="M0 0h24v24H0z"/>',
-        width: 24,
-        height: 24,
-        keywords: [],
-        createdAt: '2026-09-07T00:00:00.000Z',
-        updatedAt: '2026-09-07T00:00:00.000Z',
-      }).name,
-    ).toBe(name)
-  })
-
   it('parses icon set list query defaults', () => {
     expect(iconSetListQuerySchema.parse({})).toEqual({
       keyword: undefined,

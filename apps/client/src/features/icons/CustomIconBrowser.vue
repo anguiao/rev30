@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useInfiniteQuery, useMutation, useQuery, useQueryCache } from '@pinia/colada'
+import { useMutation, useQuery, useQueryCache } from '@pinia/colada'
 import { refDebounced } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 import type { ButtonProps } from 'naive-ui'
@@ -17,7 +17,6 @@ import {
   useMessage,
 } from 'naive-ui'
 import type {
-  CustomIconListResponse,
   CustomIconItem,
   CustomIconSet,
   CustomIconSetListResponse,
@@ -28,13 +27,10 @@ import { useDrawer } from '../../composables/useDrawer'
 import { useAuthStore } from '../../stores/auth'
 import { saveFile } from '../../utils/download'
 import { getErrorMessage } from '../../utils/error'
-import { ApiRequestError } from '../../utils/request'
-import { refreshCustomIconCaches, resetInfiniteQuery } from './cache'
-import { iconListKey } from './query-keys'
+import { refreshCustomIconCaches } from './cache'
 import IconGrid from './IconGrid.vue'
 import IconKeywordsInput from './IconKeywordsInput.vue'
-import { useIconSearchState } from './search-state'
-import { useIconSearchKeyword } from './search-keyword'
+import { useIconList } from './useIconList'
 import {
   deleteCustomIcon,
   deleteCustomIconSet,
@@ -54,14 +50,12 @@ const queryCache = useQueryCache()
 const auth = useAuthStore()
 const filterDebounceMs = 250
 const iconScrollLoadOffset = 160
-const iconListPageSize = 80
 const emptyIconSetListData: CustomIconSetListResponse = {
   list: [],
   total: 0,
 }
 
 const setKeyword = ref('')
-const { keyword: iconKeyword, queryKeyword } = useIconSearchKeyword(filterDebounceMs)
 const setQueryKeyword = refDebounced(
   computed(() => {
     const keyword = setKeyword.value.trim()
@@ -70,23 +64,8 @@ const setQueryKeyword = refDebounced(
   }),
   filterDebounceMs,
 )
-const iconQueryKeyword = computed(() => queryKeyword.value || undefined)
 const selectedSet = ref<CustomIconSet | null>(null)
 const selectedPrefix = computed(() => selectedSet.value?.prefix ?? null)
-const iconQueryKey = computed(() =>
-  iconListKey('custom', queryKeyword.value, selectedPrefix.value, iconListPageSize),
-)
-
-watch(
-  [iconQueryKey, () => props.active],
-  ([key, active], [previousKey, wasActive]) => {
-    if (active && (!wasActive || key.some((value, index) => value !== previousKey[index]))) {
-      void resetInfiniteQuery(queryCache, key)
-    }
-  },
-  { flush: 'sync' },
-)
-
 const {
   data: setsResponse,
   error: setsError,
@@ -99,40 +78,25 @@ const {
 })
 
 const {
-  data: iconsResponse,
+  keyword: iconKeyword,
+  icons,
   error: iconsError,
-  asyncStatus: iconsAsyncStatus,
   isLoading: isLoadingIcons,
-  hasNextPage,
-  loadNextPage,
-  refetch: refetchIcons,
-} = useInfiniteQuery<CustomIconListResponse, Error, string | null>({
-  key: iconQueryKey,
-  enabled: () => props.active,
-  initialPageParam: null,
-  query: ({ pageParam }) =>
-    listCustomIcons({
-      cursor: pageParam ?? undefined,
-      pageSize: iconListPageSize,
-      keyword: iconQueryKeyword.value,
-      prefix: selectedPrefix.value ?? undefined,
-    }),
-  getNextPageParam: (lastPage) => lastPage.nextCursor,
+  hasSearchKeyword: hasIconQuery,
+  scrollKey: iconScrollKey,
+  searchState: iconSearchState,
+  loadMore: loadMoreIcons,
+} = useIconList({
+  source: 'custom',
+  active: computed(() => props.active),
+  prefix: selectedPrefix,
+  query: listCustomIcons,
 })
 
 const setsData = computed(() => setsResponse.value ?? emptyIconSetListData)
-const icons = computed(() => (iconsResponse.value?.pages ?? []).flatMap((page) => page.list))
-const iconScrollKey = computed(() => JSON.stringify(iconQueryKey.value))
 const setErrorMessage = computed(() =>
   setsError.value === null ? '' : getErrorMessage(setsError.value, '加载自定义图标集失败'),
 )
-const hasIconQuery = computed(() => iconQueryKeyword.value !== undefined)
-const iconSearchState = useIconSearchState({
-  error: iconsError,
-  asyncStatus: iconsAsyncStatus,
-  enabled: computed(() => props.active && hasIconQuery.value),
-  refetch: refetchIcons,
-})
 const iconErrorMessage = computed(() =>
   iconSearchState.isOrdinaryError.value
     ? getErrorMessage(iconsError.value, '加载自定义图标失败')
@@ -152,18 +116,6 @@ watch(setsData, (data) => {
 function selectSet(iconSet: CustomIconSet | null) {
   selectedSet.value = iconSet
 }
-
-async function loadMoreIcons() {
-  if (isLoadingIcons.value || !hasNextPage.value) return
-
-  await loadNextPage({ cancelRefetch: false })
-}
-
-watch(iconsError, (error) => {
-  if (error instanceof ApiRequestError && error.code === 'INVALID_ICON_CURSOR') {
-    void resetInfiniteQuery(queryCache, iconQueryKey.value)
-  }
-})
 
 const canEditIcon = computed(() => auth.can('content:icon-set:update'))
 const canDeleteIcon = computed(() => auth.can('content:icon-set:delete'))

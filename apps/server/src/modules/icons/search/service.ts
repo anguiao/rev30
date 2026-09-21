@@ -1,3 +1,4 @@
+import { normalizeSearchText } from '@rev30/utils'
 import type { IconSearchItem, IconSearchQuery, IconSearchResponse } from '@rev30/contracts'
 import type { Db } from '../../../db'
 import { getBuiltinIconSubset } from '../service'
@@ -5,7 +6,6 @@ import { loadIconCollections } from './collections'
 import { recommendedIconNames } from './config'
 import { assertIconSearchAvailable } from './lifecycle'
 import { searchIconDocuments } from './query-repository'
-import { normalizeSearchText } from './text'
 
 async function recommendedIcons(limit: number): Promise<IconSearchItem[]> {
   const collections = await loadIconCollections()

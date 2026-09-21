@@ -19,7 +19,7 @@ import {
   syncCustomIconSearchDocument,
 } from '../../../../src/modules/icons/search/projection-repository'
 import { lockIconSearchWrites } from '../../../../src/modules/icons/search/index-state'
-import { replaceIconSearchDocuments } from '../../../../src/modules/icons/search/rebuild'
+import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
 import { ICON_SEARCH_RULES_VERSION } from '../../../../src/modules/icons/search/version'
 import { eq } from 'drizzle-orm'
 import { dbTest } from '../../../fixtures/database'
@@ -287,7 +287,6 @@ describe('icon search lifecycle', () => {
           .set({ name: 'new-name', keywords: ['fresh'] })
           .where(eq(customIconSetIcons.id, editedIcon!.id))
         await syncCustomIconSearchDocument(tx, {
-          id: 'acme:new-name',
           prefix: 'acme',
           name: 'new-name',
           collection: 'Acme',

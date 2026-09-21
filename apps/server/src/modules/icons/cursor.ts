@@ -1,8 +1,8 @@
+import { normalizeSearchText } from '@rev30/utils'
 import { completeIconIdSchema, ICON_CURSOR_MAX_LENGTH } from '@rev30/contracts'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { InvalidIconCursorError } from './search/errors'
-import { normalizeSearchText } from './search/text'
 import { ICON_SEARCH_RULES_VERSION } from './search/version'
 
 const cursorBase = {

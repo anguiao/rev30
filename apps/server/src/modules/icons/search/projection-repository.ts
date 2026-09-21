@@ -1,10 +1,14 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import type { DbExecutor } from '../../../db'
 import { iconSearchDocuments } from '../../../db/schema'
-import { deriveIconSearchDocument, type IconSearchDocument } from './document'
+import {
+  deriveCustomIconSearchDocument,
+  type CustomIconSearchInput,
+  type IconSearchDocument,
+} from './document'
 import { documentPreference } from './ranking'
 
-export const importBatchSize = 1_000
+const batchSize = 1_000
 
 function vectorSql(document: IconSearchDocument) {
   const primary = document.primaryEnglishTerms.join(' ')
@@ -32,31 +36,13 @@ export async function insertDocumentBatch(executor: DbExecutor, documents: IconS
   )
 }
 
-type CustomIconSearchInput = {
-  id: string
-  prefix: string
-  name: string
-  collection: string
-  palette: boolean
-  customIconId: string
-  keywords: string[]
-}
-
 export async function syncCustomIconSearchDocuments(
   executor: DbExecutor,
   inputs: CustomIconSearchInput[],
 ) {
-  for (let start = 0; start < inputs.length; start += importBatchSize) {
-    const batch = inputs.slice(start, start + importBatchSize)
-    const documents = batch.map((input) =>
-      deriveIconSearchDocument({
-        ...input,
-        source: 'custom',
-        primaryPhrases: [input.name, ...input.keywords],
-        auxiliaryPhrases: [input.prefix, input.collection],
-        exactPhrases: [input.name, ...input.keywords],
-      }),
-    )
+  for (let start = 0; start < inputs.length; start += batchSize) {
+    const batch = inputs.slice(start, start + batchSize)
+    const documents = batch.map(deriveCustomIconSearchDocument)
     await executor.delete(iconSearchDocuments).where(
       inArray(
         iconSearchDocuments.customIconId,

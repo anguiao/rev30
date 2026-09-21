@@ -1,3 +1,4 @@
+import { normalizeSearchText } from '@rev30/utils'
 import type {
   CustomIconDuplicateStrategy,
   CustomIconSetCreateInput,
@@ -11,7 +12,6 @@ import type {
 import type { Db } from '../../../../db'
 import { loadIconCollections } from '../../../icons/search/collections'
 import { assertIconSearchAvailable } from '../../../icons/search/lifecycle'
-import { normalizeSearchText } from '../../../icons/search/text'
 import {
   CustomIconConflictError,
   CustomIconNotFoundError,

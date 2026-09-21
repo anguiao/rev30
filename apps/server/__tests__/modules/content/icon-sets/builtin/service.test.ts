@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { iconSetIconItemSchema } from '@rev30/contracts'
 import { dbTest } from '../../../../fixtures/database'
-import { replaceIconSearchDocuments } from '../../../../../src/modules/icons/search/rebuild'
+import { replaceIconSearchDocuments } from '../../../../fixtures/icon-search'
 
 afterEach(() => {
   vi.doUnmock('../../../../../src/modules/icons/search/collections')

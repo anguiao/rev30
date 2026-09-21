@@ -7,10 +7,8 @@ import { describe, expect, it, onTestFinished } from 'vitest'
 
 import { buildIconSearchArtifacts } from '../../../../src/modules/icons/search/artifacts/builder'
 import { readIconSearchArtifacts } from '../../../../src/modules/icons/search/artifacts/reader'
-import {
-  type IconPackageCollection,
-  type MaintainedSearchData,
-} from '../../../../src/modules/icons/search/artifacts/schema'
+import type { MaintainedSearchData } from '../../../../src/modules/icons/search/maintenance'
+import type { IconPackageCollection } from '../../../../src/modules/icons/search/package-source'
 
 const collection = (overrides: Partial<IconPackageCollection> = {}): IconPackageCollection => ({
   prefix: 'test',

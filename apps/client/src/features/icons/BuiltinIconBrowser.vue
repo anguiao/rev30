@@ -1,20 +1,12 @@
 <script setup lang="ts">
-import { useInfiniteQuery, useQuery, useQueryCache } from '@pinia/colada'
+import { useQuery } from '@pinia/colada'
 import { refDebounced } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 import { NAlert, NButton, NEmpty, NInfiniteScroll, NInput, NSpin, useMessage } from 'naive-ui'
-import type {
-  BuiltinIconListResponse,
-  BuiltinIconSetItem,
-  BuiltinIconSetListResponse,
-} from '@rev30/contracts'
+import type { BuiltinIconSetItem, BuiltinIconSetListResponse } from '@rev30/contracts'
 import { getErrorMessage } from '../../utils/error'
-import { ApiRequestError } from '../../utils/request'
-import { resetInfiniteQuery } from './cache'
-import { iconListKey } from './query-keys'
 import { listBuiltinIcons, listBuiltinIconSets } from './requests'
-import { useIconSearchKeyword } from './search-keyword'
-import { useIconSearchState } from './search-state'
+import { useIconList } from './useIconList'
 import IconGrid from './IconGrid.vue'
 
 const props = defineProps<{
@@ -22,17 +14,14 @@ const props = defineProps<{
 }>()
 
 const message = useMessage()
-const queryCache = useQueryCache()
 const filterDebounceMs = 250
 const iconScrollLoadOffset = 160
-const iconListPageSize = 80
 const emptyIconSetListData: BuiltinIconSetListResponse = {
   list: [],
   total: 0,
 }
 
 const setKeyword = ref('')
-const { keyword: iconKeyword, queryKeyword } = useIconSearchKeyword(filterDebounceMs)
 const setQueryKeyword = refDebounced(
   computed(() => {
     const keyword = setKeyword.value.trim()
@@ -41,23 +30,8 @@ const setQueryKeyword = refDebounced(
   }),
   filterDebounceMs,
 )
-const iconQueryKeyword = computed(() => queryKeyword.value || undefined)
 const selectedSet = ref<BuiltinIconSetItem | null>(null)
 const selectedPrefix = computed(() => selectedSet.value?.prefix ?? null)
-const iconQueryKey = computed(() =>
-  iconListKey('builtin', queryKeyword.value, selectedPrefix.value, iconListPageSize),
-)
-
-watch(
-  [iconQueryKey, () => props.active],
-  ([key, active], [previousKey, wasActive]) => {
-    if (active && (!wasActive || key.some((value, index) => value !== previousKey[index]))) {
-      void resetInfiniteQuery(queryCache, key)
-    }
-  },
-  { flush: 'sync' },
-)
-
 const {
   data: setsResponse,
   error: setsError,
@@ -70,40 +44,25 @@ const {
 })
 
 const {
-  data: iconsResponse,
+  keyword: iconKeyword,
+  icons,
   error: iconsError,
-  asyncStatus: iconsAsyncStatus,
   isLoading: isLoadingIcons,
-  hasNextPage,
-  loadNextPage,
-  refetch: refetchIcons,
-} = useInfiniteQuery<BuiltinIconListResponse, Error, string | null>({
-  key: iconQueryKey,
-  enabled: () => props.active,
-  initialPageParam: null,
-  query: ({ pageParam }) =>
-    listBuiltinIcons({
-      cursor: pageParam ?? undefined,
-      pageSize: iconListPageSize,
-      keyword: iconQueryKeyword.value,
-      prefix: selectedPrefix.value ?? undefined,
-    }),
-  getNextPageParam: (lastPage) => lastPage.nextCursor,
+  hasSearchKeyword: hasIconQuery,
+  scrollKey: iconScrollKey,
+  searchState: iconSearchState,
+  loadMore: loadMoreIcons,
+} = useIconList({
+  source: 'builtin',
+  active: computed(() => props.active),
+  prefix: selectedPrefix,
+  query: listBuiltinIcons,
 })
 
 const setsData = computed(() => setsResponse.value ?? emptyIconSetListData)
-const icons = computed(() => (iconsResponse.value?.pages ?? []).flatMap((page) => page.list))
-const iconScrollKey = computed(() => JSON.stringify(iconQueryKey.value))
 const setErrorMessage = computed(() =>
   setsError.value === null ? '' : getErrorMessage(setsError.value, '加载内置图标集失败'),
 )
-const hasIconQuery = computed(() => iconQueryKeyword.value !== undefined)
-const iconSearchState = useIconSearchState({
-  error: iconsError,
-  asyncStatus: iconsAsyncStatus,
-  enabled: computed(() => props.active && hasIconQuery.value),
-  refetch: refetchIcons,
-})
 const iconErrorMessage = computed(() =>
   iconSearchState.isOrdinaryError.value
     ? getErrorMessage(iconsError.value, '加载内置图标失败')
@@ -123,18 +82,6 @@ watch(setsData, (data) => {
 function selectSet(iconSet: BuiltinIconSetItem | null) {
   selectedSet.value = iconSet
 }
-
-async function loadMoreIcons() {
-  if (isLoadingIcons.value || !hasNextPage.value) return
-
-  await loadNextPage({ cancelRefetch: false })
-}
-
-watch(iconsError, (error) => {
-  if (error instanceof ApiRequestError && error.code === 'INVALID_ICON_CURSOR') {
-    void resetInfiniteQuery(queryCache, iconQueryKey.value)
-  }
-})
 
 async function copyIcon(icon: string) {
   await navigator.clipboard.writeText(icon)

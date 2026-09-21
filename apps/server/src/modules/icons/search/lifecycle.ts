@@ -6,22 +6,15 @@ import {
   readIconSearchManifest,
 } from './artifacts/reader'
 import { type BuiltinIconSearchDocument, type IconSearchRuntimeManifest } from './artifacts/schema'
-import { ICON_SEARCH_RULES_VERSION } from './version'
-import { getCommittedIconSearchState } from './index-state'
-import { replaceBuiltinIconSearchDocuments } from './rebuild'
 import { IconSearchPreparingError, IconSearchUnavailableError } from './errors'
-
-export type IconSearchTargetManifest = {
-  indexVersion: string
-  iconPackageVersion: string
-  searchDataVersion: string
-  rulesVersion: string
-}
+import { getCommittedIconSearchState, type IconSearchStateInput } from './index-state'
+import { replaceBuiltinIconSearchDocuments } from './rebuild'
+import { ICON_SEARCH_RULES_VERSION } from './version'
 
 type RuntimeState = { status: 'ready' | 'preparing' | 'failed'; compatible: boolean }
-const runtimes = new WeakMap<object, RuntimeState>()
+const runtimes = new WeakMap<Db, RuntimeState>()
 type PreparationInput = {
-  manifest: IconSearchTargetManifest
+  manifest: IconSearchStateInput
   readDocuments: () =>
     | AsyncIterable<BuiltinIconSearchDocument>
     | Promise<Iterable<BuiltinIconSearchDocument>>
@@ -29,7 +22,7 @@ type PreparationInput = {
 }
 
 export function assertIconSearchAvailable(database: Db) {
-  const runtime = runtimes.get(database as object)
+  const runtime = runtimes.get(database)
   if (!runtime || runtime.compatible) return
   if (runtime.status === 'preparing') throw new IconSearchPreparingError()
   throw new IconSearchUnavailableError()
@@ -38,7 +31,7 @@ export function assertIconSearchAvailable(database: Db) {
 export async function prepareIconSearchIndex(database: Db, input: PreparationInput) {
   const committed = await getCommittedIconSearchState(database)
   if (committed?.indexVersion === input.manifest.indexVersion) {
-    runtimes.set(database as object, { status: 'ready', compatible: true })
+    runtimes.set(database, { status: 'ready', compatible: true })
     return 'reused' as const
   }
 
@@ -47,7 +40,7 @@ export async function prepareIconSearchIndex(database: Db, input: PreparationInp
     committed.iconPackageVersion === input.manifest.iconPackageVersion &&
     committed.rulesVersion === input.manifest.rulesVersion,
   )
-  runtimes.set(database as object, { status: 'preparing', compatible })
+  runtimes.set(database, { status: 'preparing', compatible })
   try {
     const documents = await input.readDocuments()
     await replaceBuiltinIconSearchDocuments(
@@ -56,16 +49,16 @@ export async function prepareIconSearchIndex(database: Db, input: PreparationInp
       input.manifest,
       !committed || committed.rulesVersion !== input.manifest.rulesVersion,
     )
-    runtimes.set(database as object, { status: 'ready', compatible: true })
+    runtimes.set(database, { status: 'ready', compatible: true })
     return 'updated' as const
   } catch (error) {
     const current = await getCommittedIconSearchState(database)
     if (current?.indexVersion === input.manifest.indexVersion) {
       input.onCleanupError?.(error instanceof Error ? error : new Error(String(error)))
-      runtimes.set(database as object, { status: 'ready', compatible: true })
+      runtimes.set(database, { status: 'ready', compatible: true })
       return 'updated' as const
     }
-    runtimes.set(database as object, { status: 'failed', compatible })
+    runtimes.set(database, { status: 'failed', compatible })
     throw error
   }
 }
@@ -81,7 +74,7 @@ export function startDefaultIconSearchIndexPreparation(
   },
 ) {
   const directory = input.artifactDirectory ?? getDefaultIconSearchArtifactDirectory()
-  runtimes.set(database as object, { status: 'preparing', compatible: false })
+  runtimes.set(database, { status: 'preparing', compatible: false })
   const completed = (async () => {
     let compatible = false
     try {
@@ -91,7 +84,7 @@ export function startDefaultIconSearchIndexPreparation(
         committed.iconPackageVersion === input.installedIconPackageVersion &&
         committed.rulesVersion === ICON_SEARCH_RULES_VERSION,
       )
-      runtimes.set(database as object, { status: 'preparing', compatible })
+      runtimes.set(database, { status: 'preparing', compatible })
       const manifest = await (input.loadManifest?.() ?? readIconSearchManifest(directory))
       if (manifest.iconPackageVersion !== input.installedIconPackageVersion) {
         throw new Error('Icon search artifacts do not match the installed icon package')
@@ -108,7 +101,7 @@ export function startDefaultIconSearchIndexPreparation(
           input.readDocuments ?? (() => iterateIconSearchArtifacts(directory, manifest)),
       })
     } catch (error) {
-      runtimes.set(database as object, { status: 'failed', compatible })
+      runtimes.set(database, { status: 'failed', compatible })
       input.logger.error(
         { errorMessage: error instanceof Error ? error.message : String(error) },
         'icon search index preparation failed',

@@ -1,3 +1,4 @@
+import { normalizeSearchText } from '@rev30/utils'
 import { lookupCollection } from '@iconify/json'
 import type { IconifyJSON } from '@iconify/types'
 import type {
@@ -13,7 +14,6 @@ import type { Db } from '../../../../db'
 import { type IconCollections, loadIconCollections } from '../../../icons/search/collections'
 import { searchIconDocuments } from '../../../icons/search/query-repository'
 import { assertIconSearchAvailable } from '../../../icons/search/lifecycle'
-import { normalizeSearchText } from '../../../icons/search/text'
 import { getBuiltinIconSubset } from '../../../icons/service'
 import { formatIconCursor, parseIconCursor } from '../../../icons/cursor'
 

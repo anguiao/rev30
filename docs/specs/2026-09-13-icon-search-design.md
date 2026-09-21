@@ -361,19 +361,20 @@ Iconify JSON 导出维持现有标准结构，不添加私有 keywords；本次�
 | --- | --- |
 | `apps/server/scripts/icon-search/` | 支持搜索数据维护与校验；读取当前图标包基础清单，合并已保存的有效数据并生成分发产物 |
 | `apps/server/resources/icon-search/` | 纳入 Git 的英文搜索数据、中文翻译、对应关系及整体版本 manifest，允许只覆盖部分图标 |
-| `apps/server/src/modules/icons/search/` | 服务端词项与文档派生；查询、业务投影、重建、索引状态分别放在独立模块，生命周期负责启动协调 |
-| `apps/server/src/modules/icons/search/artifacts/` | schema 负责产物结构，builder 负责构建，reader 负责运行时流式读取；维护数据和运行时不依赖构建模块 |
+| `apps/server/src/modules/icons/search/` | 服务端词项与文档派生；自定义同步和重建共用文档派生；查询、业务投影、重建、索引状态分别放在独立模块，生命周期负责启动协调 |
+| `apps/server/src/modules/icons/search/maintenance.ts` | 在维护文件读取边界校验结构与重复记录，记录类型由 schema 推导；构建器直接使用已校验的数据 |
+| `apps/server/src/modules/icons/search/artifacts/` | schema 只负责运行时产物结构与版本派生，builder 负责构建，reader 负责流式读取；维护数据和运行时不依赖构建模块 |
 | `apps/server/src/modules/icons/cursor.ts` | 搜索与浏览共用的游标编解码和绑定校验 |
 | `packages/utils/src/search-text.ts` | 前后端及契约共用的纯文本归一化；词项派生和数据库逻辑仍留在服务端 |
 | `apps/server/src/modules/content/icon-sets/` | 非空查询复用统一搜索，空查询从图标包或业务记录浏览，衔接分页、SVG 获取与自定义事务同步 |
 | `apps/server/src/db/` | 自定义字段、派生表、索引状态及迁移 |
 | `packages/contracts/src/icons.ts` | 字段约束、上传元数据、编辑输入、查询、游标及搜索准备状态契约 |
-| `apps/client/src/features/icons/` | 关键词维护、分页重置、缓存失效、搜索状态提示与就绪后恢复 |
+| `apps/client/src/features/icons/` | `useIconList` 统一两个图标库的分页与游标重置；`useIconSearchKeyword`、`useIconSearchState` 供图标库和选择器共用，负责防抖、搜索状态提示与恢复；缓存失效沿用统一入口 |
 | 服务端入口及构建配置 | 从当前图标包和已保存数据准备产物并分发；启动后触发后台索引任务 |
 
 内置图标库路由通过现有 content 路由组合注入数据库/检索服务；选择器和两个 tab 不各自保留匹配逻辑。检索仓库使用现有 Db/事务类型，纯文本处理不依赖 Hono 请求上下文，路由处理鉴权、边界校验及领域错误映射。
 
-不在迁移内嵌全量数据。小型测试显式准备文档夹具，不因创建 `createApp` 就导入全量资源。仅包含 ID 的字符串游标在同一发布中由前后端统一替换为版本化游标；现有资源 ID 字段和别名加载契约继续使用。
+不在迁移内嵌全量数据。小型测试通过 `apps/server/__tests__/fixtures/icon-search.ts` 显式准备文档夹具，测试用全表替换逻辑不放入运行时代码，也不因创建 `createApp` 就导入全量资源。仅包含 ID 的字符串游标在同一发布中由前后端统一替换为版本化游标；现有资源 ID 字段和别名加载契约继续使用。
 
 实现时按需更新 README，说明元信息检索、中文翻译支持范围、自定义关键词维护、搜索数据保存与发布、图标包升级时维护数据可以滞后，以及后台准备期间的搜索行为和无需索引就绪的空查询推荐、浏览及管理，并移除 FZF 空闲释放说明。
 

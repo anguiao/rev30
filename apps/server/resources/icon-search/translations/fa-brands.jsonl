@@ -1,3 +1,16 @@
+{"kind":"category","owner":{"prefix":"fa-brands","category":"Accessibility"},"source":"Accessibility","translations":["无障碍"]}
+{"kind":"category","owner":{"prefix":"fa-brands","category":"Audio & Video"},"source":"Audio & Video","translations":["音频 视频"]}
+{"kind":"category","owner":{"prefix":"fa-brands","category":"Communication"},"source":"Communication","translations":["通信"]}
+{"kind":"category","owner":{"prefix":"fa-brands","category":"Currency"},"source":"Currency","translations":["货币"]}
+{"kind":"category","owner":{"prefix":"fa-brands","category":"Games"},"source":"Games","translations":["游戏"]}
+{"kind":"category","owner":{"prefix":"fa-brands","category":"Health"},"source":"Health","translations":["健康"]}
+{"kind":"category","owner":{"prefix":"fa-brands","category":"Images"},"source":"Images","translations":["图像"]}
+{"kind":"category","owner":{"prefix":"fa-brands","category":"Music"},"source":"Music","translations":["音乐"]}
+{"kind":"category","owner":{"prefix":"fa-brands","category":"Payments & Shopping"},"source":"Payments & Shopping","translations":["支付 购物"]}
+{"kind":"category","owner":{"prefix":"fa-brands","category":"Science Fiction"},"source":"Science Fiction","translations":["科幻"]}
+{"kind":"category","owner":{"prefix":"fa-brands","category":"Tabletop Gaming"},"source":"Tabletop Gaming","translations":["桌面游戏"]}
+{"kind":"category","owner":{"prefix":"fa-brands","category":"Users & People"},"source":"Users & People","translations":["用户 人物"]}
+{"kind":"category","owner":{"prefix":"fa-brands","category":"Vehicles"},"source":"Vehicles","translations":["车辆"]}
 {"kind":"icon","owner":"fa-brands:accessible-icon","source":"accessible-icon","translations":["accessible 图标"]}
 {"kind":"icon","owner":"fa-brands:adobe","source":"adobe","translations":["奥多比"]}
 {"kind":"icon","owner":"fa-brands:airbnb","source":"airbnb","translations":["爱彼迎"]}

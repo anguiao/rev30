@@ -1,3 +1,19 @@
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Actions"},"source":"Actions","translations":["操作"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Activities"},"source":"Activities","translations":["活动"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Audio & Video"},"source":"Audio & Video","translations":["音频 视频"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Business"},"source":"Business","translations":["商业"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Communicate"},"source":"Communicate","translations":["交流"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Hardware"},"source":"Hardware","translations":["硬件"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Home"},"source":"Home","translations":["家居"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Household"},"source":"Household","translations":["家居"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Images"},"source":"Images","translations":["图像"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Maps"},"source":"Maps","translations":["地图"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Privacy"},"source":"Privacy","translations":["隐私"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Social"},"source":"Social","translations":["社交"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Text"},"source":"Text","translations":["文本"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Transit"},"source":"Transit","translations":["交通"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"Travel"},"source":"Travel","translations":["旅行"]}
+{"kind":"category","owner":{"prefix":"material-symbols-light","category":"UI Actions"},"source":"UI Actions","translations":["界面 操作"]}
 {"kind":"icon","owner":"material-symbols-light:10k-outline","source":"outline","translations":["轮廓"]}
 {"kind":"icon","owner":"material-symbols-light:10k-outline-rounded","source":"outline","translations":["轮廓"]}
 {"kind":"icon","owner":"material-symbols-light:10k-outline-rounded","source":"rounded","translations":["圆角"]}

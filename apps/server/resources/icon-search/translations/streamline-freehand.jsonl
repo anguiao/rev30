@@ -1,3 +1,18 @@
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"Business"},"source":"Business","translations":["商业"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"ComputersDevicesElectronics"},"source":"ComputersDevicesElectronics","translations":["计算机 设备 电子产品"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"Content"},"source":"Content","translations":["内容"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"Design"},"source":"Design","translations":["设计"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"EmailMessages"},"source":"EmailMessages","translations":["电子邮件 消息"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"ImagesPhotography"},"source":"ImagesPhotography","translations":["图像 摄影"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"InterfaceEssential"},"source":"InterfaceEssential","translations":["界面 基本"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"InternetNetworksServers"},"source":"InternetNetworksServers","translations":["互联网 网络 服务器"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"MoneyPaymentsFinance"},"source":"MoneyPaymentsFinance","translations":["金钱 支付 金融"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"MusicVideoEntertainment"},"source":"MusicVideoEntertainment","translations":["音乐 视频 娱乐"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"PhonesMobileDevices"},"source":"PhonesMobileDevices","translations":["电话 移动设备"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"ProgramingAppsWebsites"},"source":"ProgramingAppsWebsites","translations":["编程 应用 网站"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"ShoppingEcommerce"},"source":"ShoppingEcommerce","translations":["购物 电子商务"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"Wayfinding"},"source":"Wayfinding","translations":["导向"]}
+{"kind":"category","owner":{"prefix":"streamline-freehand","category":"WorkOfficeCompanies"},"source":"WorkOfficeCompanies","translations":["工作 办公 公司"]}
 {"kind":"icon","owner":"streamline-freehand:accessories-remote-shutter","source":"accessories","translations":["配件"]}
 {"kind":"icon","owner":"streamline-freehand:accessories-remote-shutter","source":"remote","translations":["遥控器"]}
 {"kind":"icon","owner":"streamline-freehand:accessories-remote-shutter","source":"shutter","translations":["快门"]}

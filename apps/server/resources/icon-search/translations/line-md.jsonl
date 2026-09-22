@@ -1,3 +1,19 @@
+{"kind":"category","owner":{"prefix":"line-md","category":"Account"},"source":"Account","translations":["账户"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Alerts"},"source":"Alerts","translations":["警报"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Arrows"},"source":"Arrows","translations":["箭头"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Automotive"},"source":"Automotive","translations":["汽车"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Communication"},"source":"Communication","translations":["通信"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Editing"},"source":"Editing","translations":["编辑"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Emoji"},"source":"Emoji","translations":["表情符号"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Files and Folders"},"source":"Files and Folders","translations":["文件 文件夹"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Food and Drink"},"source":"Food and Drink","translations":["食物 饮料"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Home Automation"},"source":"Home Automation","translations":["家庭自动化"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Interface"},"source":"Interface","translations":["界面"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Maps"},"source":"Maps","translations":["地图"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Navigation"},"source":"Navigation","translations":["导航"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Social"},"source":"Social","translations":["社交"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Technology"},"source":"Technology","translations":["技术"]}
+{"kind":"category","owner":{"prefix":"line-md","category":"Weather"},"source":"Weather","translations":["天气"]}
 {"kind":"icon","owner":"line-md:account","source":"account","translations":["账户"]}
 {"kind":"icon","owner":"line-md:account-add","source":"account","translations":["账户"]}
 {"kind":"icon","owner":"line-md:account-add","source":"add","translations":["添加"]}

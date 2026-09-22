@@ -1,3 +1,19 @@
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"AudioVideo"},"source":"AudioVideo","translations":["音频 视频"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"BusinessMoney"},"source":"BusinessMoney","translations":["商业 金钱"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"ConstructionRealEstate"},"source":"ConstructionRealEstate","translations":["施工 房地产"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"CultureHolidays"},"source":"CultureHolidays","translations":["文化 节日"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"DesignImages"},"source":"DesignImages","translations":["设计 图像"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"EcologyNature"},"source":"EcologyNature","translations":["生态 自然"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"EmailPhone"},"source":"EmailPhone","translations":["电子邮件 电话"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"FamilyRomance"},"source":"FamilyRomance","translations":["家庭 爱情"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"InterfaceEssential"},"source":"InterfaceEssential","translations":["界面 基本"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"InternetWebsite"},"source":"InternetWebsite","translations":["互联网 网站"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"MapWayfinding"},"source":"MapWayfinding","translations":["地图 导向"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"SchoolScience"},"source":"SchoolScience","translations":["学校 科学"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"ShoppingShipping"},"source":"ShoppingShipping","translations":["购物 运输"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"TechnologyComputer"},"source":"TechnologyComputer","translations":["技术 计算机"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"TransportLandmark"},"source":"TransportLandmark","translations":["交通 地标"]}
+{"kind":"category","owner":{"prefix":"streamline-stickies-color","category":"TravelRating"},"source":"TravelRating","translations":["旅行 评分"]}
 {"kind":"icon","owner":"streamline-stickies-color:3d","source":"3d","translations":["三维"]}
 {"kind":"icon","owner":"streamline-stickies-color:3d-duo","source":"3d","translations":["三维"]}
 {"kind":"icon","owner":"streamline-stickies-color:3d-duo","source":"duo","translations":["双色"]}

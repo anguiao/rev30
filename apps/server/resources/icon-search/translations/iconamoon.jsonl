@@ -1,3 +1,12 @@
+{"kind":"category","owner":{"prefix":"iconamoon","category":"Arrow"},"source":"Arrow","translations":["箭头"]}
+{"kind":"category","owner":{"prefix":"iconamoon","category":"Communication"},"source":"Communication","translations":["通信"]}
+{"kind":"category","owner":{"prefix":"iconamoon","category":"Emojis"},"source":"Emojis","translations":["表情符号"]}
+{"kind":"category","owner":{"prefix":"iconamoon","category":"Files"},"source":"Files","translations":["文件"]}
+{"kind":"category","owner":{"prefix":"iconamoon","category":"General"},"source":"General","translations":["通用"]}
+{"kind":"category","owner":{"prefix":"iconamoon","category":"Interface"},"source":"Interface","translations":["界面"]}
+{"kind":"category","owner":{"prefix":"iconamoon","category":"Math"},"source":"Math","translations":["数学"]}
+{"kind":"category","owner":{"prefix":"iconamoon","category":"Media"},"source":"Media","translations":["媒体"]}
+{"kind":"category","owner":{"prefix":"iconamoon","category":"eCommerce"},"source":"eCommerce","translations":["电子商务"]}
 {"kind":"icon","owner":"iconamoon:3d","source":"3d","translations":["三维"]}
 {"kind":"icon","owner":"iconamoon:3d-bold","source":"3d","translations":["三维"]}
 {"kind":"icon","owner":"iconamoon:3d-bold","source":"bold","translations":["粗体"]}

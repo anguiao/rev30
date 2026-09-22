@@ -1,5 +1,64 @@
-{"kind":"category","owner":{"prefix":"mdi","category":"Account / User"},"source":"account","translations":["账户"]}
-{"kind":"category","owner":{"prefix":"mdi","category":"Account / User"},"source":"user","translations":["用户"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Account / User"},"source":"Account / User","translations":["账户 用户"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Agriculture"},"source":"Agriculture","translations":["农业"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Alert / Error"},"source":"Alert / Error","translations":["警报 错误"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Alpha / Numeric"},"source":"Alpha / Numeric","translations":["字母 数字"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Animal"},"source":"Animal","translations":["动物"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Arrange"},"source":"Arrange","translations":["排列"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Arrow"},"source":"Arrow","translations":["箭头"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Audio"},"source":"Audio","translations":["音频"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Automotive"},"source":"Automotive","translations":["汽车"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Banking"},"source":"Banking","translations":["银行业务"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Battery"},"source":"Battery","translations":["电池"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Brand / Logo"},"source":"Brand / Logo","translations":["品牌 标志"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Cellphone / Phone"},"source":"Cellphone / Phone","translations":["手机 电话"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Clothing"},"source":"Clothing","translations":["服装"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Cloud"},"source":"Cloud","translations":["云"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Color"},"source":"Color","translations":["颜色"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Currency"},"source":"Currency","translations":["货币"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Database"},"source":"Database","translations":["数据库"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Date / Time"},"source":"Date / Time","translations":["日期 时间"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Developer / Languages"},"source":"Developer / Languages","translations":["开发者 编程语言"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Device / Tech"},"source":"Device / Tech","translations":["设备 技术"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Drawing / Art"},"source":"Drawing / Art","translations":["绘画 艺术"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Edit / Modify"},"source":"Edit / Modify","translations":["编辑 修改"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Emoji"},"source":"Emoji","translations":["表情符号"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Files / Folders"},"source":"Files / Folders","translations":["文件 文件夹"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Food / Drink"},"source":"Food / Drink","translations":["食物 饮料"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Form"},"source":"Form","translations":["表单"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Gaming / RPG"},"source":"Gaming / RPG","translations":["游戏 角色扮演游戏"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Geographic Information System"},"source":"Geographic Information System","translations":["地理信息系统"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Hardware / Tools"},"source":"Hardware / Tools","translations":["硬件 工具"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Health / Beauty"},"source":"Health / Beauty","translations":["健康 美容"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Holiday"},"source":"Holiday","translations":["节日"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Home Automation"},"source":"Home Automation","translations":["家庭自动化"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Lock"},"source":"Lock","translations":["锁"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Math"},"source":"Math","translations":["数学"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Medical / Hospital"},"source":"Medical / Hospital","translations":["医疗 医院"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Music"},"source":"Music","translations":["音乐"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Nature"},"source":"Nature","translations":["自然"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Navigation"},"source":"Navigation","translations":["导航"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Notification"},"source":"Notification","translations":["通知"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"People / Family"},"source":"People / Family","translations":["人物 家庭"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Photography"},"source":"Photography","translations":["摄影"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Places"},"source":"Places","translations":["地点"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Printer"},"source":"Printer","translations":["打印机"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Religion"},"source":"Religion","translations":["宗教"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Science"},"source":"Science","translations":["科学"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Settings"},"source":"Settings","translations":["设置"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Shape"},"source":"Shape","translations":["形状"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Shopping"},"source":"Shopping","translations":["购物"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Social Media"},"source":"Social Media","translations":["社交媒体"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Sport"},"source":"Sport","translations":["体育"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Text / Content / Format"},"source":"Text / Content / Format","translations":["文本 内容 格式"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Tooltip"},"source":"Tooltip","translations":["工具提示"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Transportation + Flying"},"source":"Transportation + Flying","translations":["交通 航空"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Transportation + Other"},"source":"Transportation + Other","translations":["交通 其他"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Transportation + Road"},"source":"Transportation + Road","translations":["交通 道路"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Transportation + Water"},"source":"Transportation + Water","translations":["交通 水运"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Vector"},"source":"Vector","translations":["矢量"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Video / Movie"},"source":"Video / Movie","translations":["视频 电影"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"View"},"source":"View","translations":["视图"]}
+{"kind":"category","owner":{"prefix":"mdi","category":"Weather"},"source":"Weather","translations":["天气"]}
 {"kind":"icon","owner":"mdi:123-off","source":"off","translations":["关闭"]}
 {"kind":"icon","owner":"mdi:1up","source":"1up","translations":["加一命"]}
 {"kind":"icon","owner":"mdi:3d-rotation","source":"3d","translations":["三维"]}

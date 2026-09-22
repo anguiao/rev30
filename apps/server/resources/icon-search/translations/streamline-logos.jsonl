@@ -1,3 +1,24 @@
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"Blog"},"source":"Blog","translations":["博客"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"Design"},"source":"Design","translations":["设计"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"DesignerCommunities"},"source":"DesignerCommunities","translations":["设计师 社区"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"DeveloperCommunities"},"source":"DeveloperCommunities","translations":["开发者 社区"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"Development"},"source":"Development","translations":["开发"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"ECommerce"},"source":"ECommerce","translations":["电子商务"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"MailingServices"},"source":"MailingServices","translations":["邮件服务"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"MessagingVideoMeeting"},"source":"MessagingVideoMeeting","translations":["消息 视频会议"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"Music"},"source":"Music","translations":["音乐"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"OsSystems"},"source":"OsSystems","translations":["操作系统"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"Payment"},"source":"Payment","translations":["支付"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"PhotosImages"},"source":"PhotosImages","translations":["照片 图像"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"ProfessionalNetworks"},"source":"ProfessionalNetworks","translations":["职业社交网络"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"ProfessionalTools"},"source":"ProfessionalTools","translations":["专业工具"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"SearchEngine"},"source":"SearchEngine","translations":["搜索引擎"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"SocialBookmarks"},"source":"SocialBookmarks","translations":["社交书签"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"SocialMedias"},"source":"SocialMedias","translations":["社交媒体"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"Statistics"},"source":"Statistics","translations":["统计"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"Technology"},"source":"Technology","translations":["技术"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"VideoGames"},"source":"VideoGames","translations":["电子游戏"]}
+{"kind":"category","owner":{"prefix":"streamline-logos","category":"Videos"},"source":"Videos","translations":["视频"]}
 {"kind":"icon","owner":"streamline-logos:3ds-max-logo","source":"3ds-max-logo","translations":["3ds-max 标志"]}
 {"kind":"icon","owner":"streamline-logos:3ds-max-logo-block","source":"3ds-max-logo-block","translations":["3ds-max 标志 块状"]}
 {"kind":"icon","owner":"streamline-logos:3ds-max-logo-solid","source":"3ds-max-logo-solid","translations":["3ds-max 标志 实心"]}

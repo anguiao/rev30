@@ -1,3 +1,11 @@
+{"kind":"category","owner":{"prefix":"lsicon","category":"Action"},"source":"Action","translations":["操作"]}
+{"kind":"category","owner":{"prefix":"lsicon","category":"Common"},"source":"Common","translations":["通用"]}
+{"kind":"category","owner":{"prefix":"lsicon","category":"Control"},"source":"Control","translations":["控制"]}
+{"kind":"category","owner":{"prefix":"lsicon","category":"Data"},"source":"Data","translations":["数据"]}
+{"kind":"category","owner":{"prefix":"lsicon","category":"File"},"source":"File","translations":["文件"]}
+{"kind":"category","owner":{"prefix":"lsicon","category":"Navigation"},"source":"Navigation","translations":["导航"]}
+{"kind":"category","owner":{"prefix":"lsicon","category":"Notice"},"source":"Notice","translations":["提示"]}
+{"kind":"category","owner":{"prefix":"lsicon","category":"Retail"},"source":"Retail","translations":["零售"]}
 {"kind":"icon","owner":"lsicon:add-chat-filled","source":"add","translations":["添加"]}
 {"kind":"icon","owner":"lsicon:add-chat-filled","source":"chat","translations":["聊天"]}
 {"kind":"icon","owner":"lsicon:add-chat-filled","source":"filled","translations":["填充"]}

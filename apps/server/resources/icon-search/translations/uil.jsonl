@@ -1,3 +1,30 @@
+{"kind":"category","owner":{"prefix":"uil","category":"Arrows"},"source":"Arrows","translations":["箭头"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Brand Logos"},"source":"Brand Logos","translations":["品牌 标志"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Business"},"source":"Business","translations":["商业"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Chat"},"source":"Chat","translations":["聊天"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Cloud And Web"},"source":"Cloud And Web","translations":["云 网络"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Communication"},"source":"Communication","translations":["通信"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Construction"},"source":"Construction","translations":["施工"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Content"},"source":"Content","translations":["内容"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Design Tools"},"source":"Design Tools","translations":["设计 工具"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Devices"},"source":"Devices","translations":["设备"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Education"},"source":"Education","translations":["教育"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Emoji"},"source":"Emoji","translations":["表情符号"]}
+{"kind":"category","owner":{"prefix":"uil","category":"File And Folder"},"source":"File And Folder","translations":["文件 文件夹"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Location And Map"},"source":"Location And Map","translations":["位置 地图"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Medical"},"source":"Medical","translations":["医疗"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Multimedia"},"source":"Multimedia","translations":["多媒体"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Photography Tools"},"source":"Photography Tools","translations":["摄影 工具"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Security"},"source":"Security","translations":["安全"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Shape"},"source":"Shape","translations":["形状"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Shopping"},"source":"Shopping","translations":["购物"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Sign And Symbol"},"source":"Sign And Symbol","translations":["标志 符号"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Sports"},"source":"Sports","translations":["体育"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Time"},"source":"Time","translations":["时间"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Transport"},"source":"Transport","translations":["交通"]}
+{"kind":"category","owner":{"prefix":"uil","category":"User Interface"},"source":"User Interface","translations":["用户界面"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Users"},"source":"Users","translations":["用户"]}
+{"kind":"category","owner":{"prefix":"uil","category":"Weather"},"source":"Weather","translations":["天气"]}
 {"kind":"icon","owner":"uil:0-plus","source":"plus","translations":["加号"]}
 {"kind":"icon","owner":"uil:10-plus","source":"plus","translations":["加号"]}
 {"kind":"icon","owner":"uil:12-plus","source":"plus","translations":["加号"]}

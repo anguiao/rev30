@@ -1,3 +1,17 @@
+{"kind":"category","owner":{"prefix":"ci","category":"Arrow"},"source":"Arrow","translations":["箭头"]}
+{"kind":"category","owner":{"prefix":"ci","category":"Calendar"},"source":"Calendar","translations":["日历"]}
+{"kind":"category","owner":{"prefix":"ci","category":"Communication"},"source":"Communication","translations":["通信"]}
+{"kind":"category","owner":{"prefix":"ci","category":"Edit"},"source":"Edit","translations":["编辑"]}
+{"kind":"category","owner":{"prefix":"ci","category":"Environment"},"source":"Environment","translations":["环境"]}
+{"kind":"category","owner":{"prefix":"ci","category":"File"},"source":"File","translations":["文件"]}
+{"kind":"category","owner":{"prefix":"ci","category":"Interface"},"source":"Interface","translations":["界面"]}
+{"kind":"category","owner":{"prefix":"ci","category":"Media"},"source":"Media","translations":["媒体"]}
+{"kind":"category","owner":{"prefix":"ci","category":"Menu"},"source":"Menu","translations":["菜单"]}
+{"kind":"category","owner":{"prefix":"ci","category":"Navigation"},"source":"Navigation","translations":["导航"]}
+{"kind":"category","owner":{"prefix":"ci","category":"Shape"},"source":"Shape","translations":["形状"]}
+{"kind":"category","owner":{"prefix":"ci","category":"System"},"source":"System","translations":["系统"]}
+{"kind":"category","owner":{"prefix":"ci","category":"User"},"source":"User","translations":["用户"]}
+{"kind":"category","owner":{"prefix":"ci","category":"Warning"},"source":"Warning","translations":["警告"]}
 {"kind":"icon","owner":"ci:add-column","source":"add","translations":["添加"]}
 {"kind":"icon","owner":"ci:add-column","source":"column","translations":["列"]}
 {"kind":"icon","owner":"ci:add-minus-square","source":"add","translations":["添加"]}

@@ -1,7 +1,7 @@
 {
   "formatVersion": 2,
   "iconPackageVersion": "2.2.525",
-  "dataVersion": "chinese-8",
+  "dataVersion": "chinese-9",
   "files": [
     {
       "kind": "translations",
@@ -31,7 +31,7 @@
     {
       "kind": "translations",
       "path": "translations/basil.jsonl",
-      "checksum": "32b10c355880d147c762992cc248e60b299f863c5880de9150e9749133fe11a7"
+      "checksum": "20bc8f4aa73002cfa606191db87565d4d024ccaae0cdc35f8cc75964332b7201"
     },
     {
       "kind": "translations",
@@ -81,7 +81,7 @@
     {
       "kind": "translations",
       "path": "translations/carbon.jsonl",
-      "checksum": "c344f8da470faf7f6ee52a1093685049564c4c02fd90e25660497e54c0928acf"
+      "checksum": "2d56880238e08022065113ef1a3fea4632b9c9211a1ed38cfed30f03237d5237"
     },
     {
       "kind": "translations",
@@ -101,7 +101,7 @@
     {
       "kind": "translations",
       "path": "translations/ci.jsonl",
-      "checksum": "ac338a50129d148d894f2c2df2f3aeacd3b33a2ecd44d1f85522ca2ffffc7986"
+      "checksum": "76fd7b6f0cf51c43e57c7a0bd0dbd664fd5cd3b304826dadc09cabd6bcf0027b"
     },
     {
       "kind": "translations",
@@ -131,7 +131,7 @@
     {
       "kind": "translations",
       "path": "translations/clarity.jsonl",
-      "checksum": "3e199e1e12609918b8b20263cb710a74935c963be522fc5cfe9169dc34b1dc49"
+      "checksum": "a6cde050bafc256504adbec395d2ded63a048ed43464dd637475cfb386216961"
     },
     {
       "kind": "translations",
@@ -146,7 +146,7 @@
     {
       "kind": "translations",
       "path": "translations/covid.jsonl",
-      "checksum": "7ecd10dd14b8b457153171f0598cc1e71a9eb58839d1a3a1841515bb1f172c96"
+      "checksum": "35618b872982c957666e40fade3d13b2956c9047943c1bd751e73791345b66c0"
     },
     {
       "kind": "translations",
@@ -201,17 +201,17 @@
     {
       "kind": "translations",
       "path": "translations/emojione-monotone.jsonl",
-      "checksum": "4186ac078f317adadb1ed68f8c2de48966d6f4634241aae2836a4ddf78fd7119"
+      "checksum": "97aefa5d6079e80f752f1e14919ce6e14475177b559a692433bcba55e5755d80"
     },
     {
       "kind": "translations",
       "path": "translations/emojione-v1.jsonl",
-      "checksum": "950a49be589c96c5561860e6da465db51c7bc4f43eff903dd52cf8c217004c98"
+      "checksum": "1b7a17a896d4174a16d901b26cf456c1af6040fdec70b2f6280af865992d5f61"
     },
     {
       "kind": "translations",
       "path": "translations/emojione.jsonl",
-      "checksum": "b3457e4e8ec3c6df15ff65623a2a77c7d4f020fc2eea5ccffdce85fba5e27c6b"
+      "checksum": "b876a2edba2e82ef30fc80684e24d1cc8f212ae316b95fe727bb6a59b4a98153"
     },
     {
       "kind": "translations",
@@ -251,17 +251,17 @@
     {
       "kind": "translations",
       "path": "translations/fa-brands.jsonl",
-      "checksum": "b2465df3869badafb5990effc02b73de9a0a1a373941b4da77141ed673e1e8ed"
+      "checksum": "16b700b3609f5f4c6ee3d7d4bbdb46e97fbb58d0c1c717c8beef469dce9c8324"
     },
     {
       "kind": "translations",
       "path": "translations/fa-regular.jsonl",
-      "checksum": "0b59576754c1eb8e73c0a977ad81ea65e92a7fcd137190d52f62ff72b50f0a07"
+      "checksum": "0eb1888f7d1e623f219febc9bc8744e7a9822c652949867b33321cb580a8eea8"
     },
     {
       "kind": "translations",
       "path": "translations/fa-solid.jsonl",
-      "checksum": "ff04183e66c41d0731d2bdf4bd2dfdf90cf12b0a700e9a111a3b9e0a40dc3179"
+      "checksum": "ead0cf9c6637b29b7c3ffe07719182df24a9119f82d07400061e58c8b8cdd1a1"
     },
     {
       "kind": "translations",
@@ -271,32 +271,32 @@
     {
       "kind": "translations",
       "path": "translations/fa6-brands.jsonl",
-      "checksum": "ce8f477711c2032ea364bff317de9f0450f37c741032ec32f28a7d2b0cbeb5d4"
+      "checksum": "c115ac8ea449fae853de19590c7546cad43b1b477fb75e5737e4f9308cde6f88"
     },
     {
       "kind": "translations",
       "path": "translations/fa6-regular.jsonl",
-      "checksum": "922175213842871f810ec06d378b18407e118633a0cecf6a7aaf14a016094955"
+      "checksum": "ab691ac1978e0b8ec1299e0ae02f99aec065850bd5d09c2b1d388d0b23827baa"
     },
     {
       "kind": "translations",
       "path": "translations/fa6-solid.jsonl",
-      "checksum": "9000590344b0d8326636954620d096aa371d00fa201f5ece1b2c62b5d5ca04ab"
+      "checksum": "22efba2f2db491d2834f787e20565798dffd5f4511fba598bd609832fbfa1ef7"
     },
     {
       "kind": "translations",
       "path": "translations/fa7-brands.jsonl",
-      "checksum": "64a8970c4c1fce194e5fa1b9326c89343c08a31d15a183fe31ba03f38f8d4b81"
+      "checksum": "a863c5ccf16aa8e1ffdc558038bd7d25b5d0601b99c4554e0483822e21624535"
     },
     {
       "kind": "translations",
       "path": "translations/fa7-regular.jsonl",
-      "checksum": "7a93fec512e53f9ddc532609292fcba12ab78f88730bb7c45507b26cff5401b4"
+      "checksum": "22c4346a18f266f0a0911503b171ba0ed6f9af9a056337203d7b983530a48ca9"
     },
     {
       "kind": "translations",
       "path": "translations/fa7-solid.jsonl",
-      "checksum": "dedde110b2df2f7a56a335e892ec99bb1c46f56dac2896372afb7da9402447cb"
+      "checksum": "b81ec6dababe9a8cb2d601379c7397bfd9a702deb3f0cc64ddf358dc860c51f1"
     },
     {
       "kind": "translations",
@@ -346,7 +346,7 @@
     {
       "kind": "translations",
       "path": "translations/flowbite.jsonl",
-      "checksum": "81441162f40896b035575a7be6f65bd26d9c0a9d82b78a2708431550e1ee518c"
+      "checksum": "ff96e2b1ecbfba3c97771d806a32d8005932ad494e42288ec884c60e8edc209f"
     },
     {
       "kind": "translations",
@@ -356,12 +356,12 @@
     {
       "kind": "translations",
       "path": "translations/fluent-emoji-flat.jsonl",
-      "checksum": "0735b0bccc7d4b15a0cada93fba3652397072170591a54af2c6b3b433cceb5db"
+      "checksum": "6907bb106c5eb627ae4e57352e0f2842741cae9f9fe3d27a6e10325cf1f882f0"
     },
     {
       "kind": "translations",
       "path": "translations/fluent-emoji-high-contrast.jsonl",
-      "checksum": "e40a0046dec891e9524c3542c367a8315c2bcae70893f5cdc87a814ce0c35a6f"
+      "checksum": "4321969f2211748f28cd517bc6eb6a8ee98656d31074445eacd70b92924c733e"
     },
     {
       "kind": "translations",
@@ -386,7 +386,7 @@
     {
       "kind": "translations",
       "path": "translations/fontisto.jsonl",
-      "checksum": "8159edaa05be4369c61f7a8c26c56a11602a1a2c52c57348749bffd823c128cc"
+      "checksum": "c327f157edb2098c5ed5fc066a4a95691432a9327632536d3ac5563f0e6e4919"
     },
     {
       "kind": "translations",
@@ -401,7 +401,7 @@
     {
       "kind": "translations",
       "path": "translations/fxemoji.jsonl",
-      "checksum": "24735fd2bb4d731897c7da6ba90989ff008bc898b5ef292a8c2f92ffc28c7f09"
+      "checksum": "9288b8ca3128d732bf2b70d762d96be65106e58ee6f953b7ff2b81b9a8e2f32f"
     },
     {
       "kind": "translations",
@@ -436,7 +436,7 @@
     {
       "kind": "translations",
       "path": "translations/ginetex.jsonl",
-      "checksum": "629899040c33af3da7c0845979fa16a4f34826a7937ca160f06ae2b7df9ee047"
+      "checksum": "3906c1799c814e0aee1697b260002397906d1dcb66e0892bbe0ab3b8ab121248"
     },
     {
       "kind": "translations",
@@ -476,12 +476,12 @@
     {
       "kind": "translations",
       "path": "translations/guidance.jsonl",
-      "checksum": "c186271696cfa119f666f9e127538a7befb1ed92f0c07f310ae7fcf96c156f2b"
+      "checksum": "da9f2dadbe0f7e63b1bfffe01c320f8092979b9fa67aff26085486f4d001d6c0"
     },
     {
       "kind": "translations",
       "path": "translations/healthicons.jsonl",
-      "checksum": "f0ea84203356f69f968105820a80052afa5870b49a77f6960535e3b4caa516bc"
+      "checksum": "72858f8e2bdab008eb238b8c67ddf635e40370bb0ee78a2d83e6b1e400246ae3"
     },
     {
       "kind": "translations",
@@ -511,7 +511,7 @@
     {
       "kind": "translations",
       "path": "translations/ic.jsonl",
-      "checksum": "ba4a2a42bc3b4b94556fe113f371e448e8ff7a2d99b9d7910b2c8367ca3c1873"
+      "checksum": "41bb5d26188b13fcf65ede1a8c4cf6f506003752257c458dc04336c915a3a9f4"
     },
     {
       "kind": "translations",
@@ -521,37 +521,37 @@
     {
       "kind": "translations",
       "path": "translations/icon-park-outline.jsonl",
-      "checksum": "e41ddf09ee5d21756905a45d12b3b02a3d87e9a79af70ab1efb81db7c45dcb46"
+      "checksum": "cc27e61ad0a7702046ba7385540098b676538c83c4c31a48b47bad3b9e91d7d9"
     },
     {
       "kind": "translations",
       "path": "translations/icon-park-solid.jsonl",
-      "checksum": "9450c6fbc6bc79c5b016aadd65b3dfffe8aa83223f384b59cbc8d60c9f7f3ae1"
+      "checksum": "d604a828b2d5d938a36812c274556468641abbefcf8634c7a12a8467be60b9d0"
     },
     {
       "kind": "translations",
       "path": "translations/icon-park-twotone.jsonl",
-      "checksum": "a33b97d187314f27d32bf8734990ac6bae559c41ec4dfeb984f5a8efe8204806"
+      "checksum": "7b338fae190f5c7eb59b3594a03f91adf2a87c36ab7fbb831233e561d908ed61"
     },
     {
       "kind": "translations",
       "path": "translations/icon-park.jsonl",
-      "checksum": "43ba19ddebe041b3302ec423d3e6e64224eaf6d30903353063d2d22136ae68aa"
+      "checksum": "1993dc1eb0ea987ef70dab6c3dc3054dcdd54daa27079c9f8e4bd32c3c878f43"
     },
     {
       "kind": "translations",
       "path": "translations/iconamoon.jsonl",
-      "checksum": "5e44cb20b46872d5ce562dde650dc192bf111e843e38bdb9a0e3d246441a0a43"
+      "checksum": "246dc37f1a48e776a6cc0eacd9daea7fa0920e117f267682ab22c256afdc0ffb"
     },
     {
       "kind": "translations",
       "path": "translations/iconmind.jsonl",
-      "checksum": "cb06f0acd3fd16a2ab3d2ca81896cd0f3c2a44684a5a5ce258472ee0e9409817"
+      "checksum": "474414063c94cd878cb5225bcc354e3b3295220fcabca7099ea377168a7ff223"
     },
     {
       "kind": "translations",
       "path": "translations/iconoir.jsonl",
-      "checksum": "d3d6d37c4710216a28483bfabc982a82b670dc5eb055800f5881c6c90ce9ab73"
+      "checksum": "103fb265d128366febc5dee6edd3ef66607be438c425ff7ec9c88c20f3ae22f0"
     },
     {
       "kind": "translations",
@@ -596,22 +596,22 @@
     {
       "kind": "translations",
       "path": "translations/la.jsonl",
-      "checksum": "f935319aabb4e97eea06c96875267749e546fcdd75bd18ff01ab045c837c1a5b"
+      "checksum": "54d75ee9ed497a0d999f5d991cfe81d03a41ff6c07f0fe38293b13440a22729f"
     },
     {
       "kind": "translations",
       "path": "translations/lets-icons.jsonl",
-      "checksum": "5fb310e98df747587fba8464e00d77ffa272c384bc3b2340ae3e6d656abbcb93"
+      "checksum": "dfc77ad2c8fdf2f674ca6be5b41b043b2b210fc25b00e7e4aac1141140274635"
     },
     {
       "kind": "translations",
       "path": "translations/line-md.jsonl",
-      "checksum": "11339294f213fbfc1e52f998244c39e81ffd604c85fb4e0372d191ed6976f2d0"
+      "checksum": "c17fc9f00f898a7202a9cac9591c2a2bee9f8940e75e2d25d5e5ce7b0b215e84"
     },
     {
       "kind": "translations",
       "path": "translations/lineicons.jsonl",
-      "checksum": "ac13f5f9c3e2bf251fe45ed7ccb5c99f78747bceefe2d7fcd7fc4e060e48e49b"
+      "checksum": "45b440cea960f6a6f6751a0e9656b82bbade83dd99b37ed4e4615564a5da9c87"
     },
     {
       "kind": "translations",
@@ -626,7 +626,7 @@
     {
       "kind": "translations",
       "path": "translations/lsicon.jsonl",
-      "checksum": "b099cd26841d008d2e6d2d63f0a35c0e11f2f1ba35eb2a05132a15de063cb1a9"
+      "checksum": "d1d4e83f8df0e8c02e430cd543fab6effa8112ee91c171bf0a445debf06cb117"
     },
     {
       "kind": "translations",
@@ -671,12 +671,12 @@
     {
       "kind": "translations",
       "path": "translations/material-symbols-light.jsonl",
-      "checksum": "059d020b573374b5a67eb7af2da0fdb7c406b7ef34e182c27deac8559260c154"
+      "checksum": "32b4836fcbe1b85c23f5b953ef8ecffa4dcb4e327602e1cf9811b4116d435212"
     },
     {
       "kind": "translations",
       "path": "translations/material-symbols.jsonl",
-      "checksum": "114a8ce630f19e16cf12b16c4d56ddff8102dc43183c395888d01fd8003fa02f"
+      "checksum": "fe39e7658372804247cb03c6e93ab252d12cdf91f98165d191eecdf34a2bd049"
     },
     {
       "kind": "translations",
@@ -686,7 +686,7 @@
     {
       "kind": "translations",
       "path": "translations/mdi.jsonl",
-      "checksum": "c55bf4c72c335941776839a37656203ec89fe6b44c3bb77911b88a33ac4873fb"
+      "checksum": "eb7a5443107517a280faf2b21efbe639d1e58095260b5783cf8552843a12202f"
     },
     {
       "kind": "translations",
@@ -696,7 +696,7 @@
     {
       "kind": "translations",
       "path": "translations/memory.jsonl",
-      "checksum": "53d20a03b3df603fe581c8e91e467ace4cc36ed51a0ec98818aa39578d6e8c2d"
+      "checksum": "c5f67bae1a625ddbb0f4f0bf369625f98bcd6d745d22afba490d3bd3de2a69e6"
     },
     {
       "kind": "translations",
@@ -741,12 +741,12 @@
     {
       "kind": "translations",
       "path": "translations/noto-v1.jsonl",
-      "checksum": "b530831b50f205f205dbcbcd1973e56bc7074af7a1fcb7da5b3d360e74b23b64"
+      "checksum": "fe781605f8c8a8866003227e14e0d788d9fea9572c7c2e7f59bf9114f80242e9"
     },
     {
       "kind": "translations",
       "path": "translations/noto.jsonl",
-      "checksum": "e8120701fd6cd589a3022ef6eed49f5f9a2678b6c57e297d9207d875097ca11d"
+      "checksum": "79caa1190d34d47878791d30953d74bd901c106169f19b96585578ee629dbc4b"
     },
     {
       "kind": "translations",
@@ -771,7 +771,7 @@
     {
       "kind": "translations",
       "path": "translations/openmoji.jsonl",
-      "checksum": "f811dcf2d4de90e6eeefed548db61832c952186f0e8bbd31d5210de3b9c4f82b"
+      "checksum": "5c4b7063367a99ddbb1be312ecd1bec5253b5b2a681689f945825bb905573360"
     },
     {
       "kind": "translations",
@@ -851,12 +851,12 @@
     {
       "kind": "translations",
       "path": "translations/qlementine-icons.jsonl",
-      "checksum": "e256d7387040c0dfa65b260304fcebd7198b480cd0968884b766d38b9ba0ddc1"
+      "checksum": "ad5aa9845ebe127cd632d84672f2c3dabe1722ca30fef5b2c8b1bdba0ccb9258"
     },
     {
       "kind": "translations",
       "path": "translations/quill.jsonl",
-      "checksum": "f2927a76cb8073c590caf706d60226dffcc071bed717a4f15585f7bce9c989f8"
+      "checksum": "0c277d3d969c4058b5ea4c2b5703acc877bc820a503c1cbe727edc35a16f8646"
     },
     {
       "kind": "translations",
@@ -871,12 +871,12 @@
     {
       "kind": "translations",
       "path": "translations/reicon.jsonl",
-      "checksum": "0aa53b34f2bda123f17e6ce8b6e95bba05aef90c3ce535efd3b7c5b0b48e0b2a"
+      "checksum": "6883c94b05b8dc6a7cd7d4ec26c2783da53cc089a36df88b2f323e38364fa645"
     },
     {
       "kind": "translations",
       "path": "translations/ri.jsonl",
-      "checksum": "7244878e9004c65b2325ed94a7f7ebafd7f3bd865b2caf64ba4b6e96499fb72c"
+      "checksum": "6247bd20658ca3a529c7313fd1c28384987087d4521ee38fd86e3af71545a715"
     },
     {
       "kind": "translations",
@@ -926,7 +926,7 @@
     {
       "kind": "translations",
       "path": "translations/solar.jsonl",
-      "checksum": "f4ffc182f8fcc54f7c03f09a0a1bdd0d3a16a65e5ca80f4cc4e06da6925c1e74"
+      "checksum": "288c88547419e84f35c3169029d77949c641cf3502fa69b7d33242a46be7374a"
     },
     {
       "kind": "translations",
@@ -936,102 +936,102 @@
     {
       "kind": "translations",
       "path": "translations/streamline-block.jsonl",
-      "checksum": "80e4a646bf0a9eabe8d3970b62681ea3b944cd86611f40b9a2bd5c86a800954e"
+      "checksum": "01d081e311d46175dac75e029564bbf93a7f0a09030f64d6bddf78ca691c24f5"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-color.jsonl",
-      "checksum": "db8a9e76081cc2cf6c9df50f18fa547cfa886f599ce80e24b97892c942e8562b"
+      "checksum": "39427da0430d9e047c3196cd497981cfb16cd800931f0379a3e0866d26f0dc36"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-cyber-color.jsonl",
-      "checksum": "8a2aaab384e748e865d2c2d2f2c17d3e19fc2fd3dccf6d2b59187847119ae1f9"
+      "checksum": "64e78aa6200b4db1b1b4f75a5bddbacc4b10c38e90d6511aad2acf20ea62d678"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-cyber.jsonl",
-      "checksum": "d7dfc004f206dba208c7dc5bbe946266ab5e7a318b108c0922485c4fbefb6818"
+      "checksum": "f186d73ddc02ba11734182ce457f16682b3b14ec648b37851d5aa33e4c7a1059"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-emojis.jsonl",
-      "checksum": "d2f619ba103fa0ef0590f7a6cc81f2d1312c7fe2111e17ee47a2bb9c139cbf92"
+      "checksum": "73187b1322e6165b5e4f2b38917293933ad1604fc6862cd29fb32cf0e6449657"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-flex-color.jsonl",
-      "checksum": "7016110685016b1ecb036de1fc2f0e43d51a9b2bc473329752499133dbcf14f2"
+      "checksum": "5c9da297d129ee3c6fc4d9931449064f0b5376aa6019ba80dfe8ef60e60e799a"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-flex.jsonl",
-      "checksum": "e792fd2fc023bd66213e8273b29ea324f0590c1d42fd4bfe5daffa7a426b576f"
+      "checksum": "531a027af0f82d5c9092ef40bd143c2bbc5bf089cd3f9400e8291571d967f13e"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-freehand-color.jsonl",
-      "checksum": "b9cb91cea9adb0a1e545edfe82e73148d42a86ace5d1185e25b268bdc318d322"
+      "checksum": "839dc4a95635094e25f6d26cb7a51afbec7b32bd167e8d23c1638738dfd5eb12"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-freehand.jsonl",
-      "checksum": "1041a68b89a4a6f39e9b3226de8efd5c0b2e8846a417e037c4d06d283b8735e0"
+      "checksum": "010b230c945dd77aa2a50d62c23dc259713659b63fb161a35fac3430fd74a44c"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-kameleon-color.jsonl",
-      "checksum": "a681fc8ff52440ef590b1c414e2269940e0e2c63270c7037974b28601f9cedd7"
+      "checksum": "dce1a30e9a90cfdaf0f5a07791d02cccd2a1251d6fd965a94e8eba2404d37439"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-logos.jsonl",
-      "checksum": "fa12d4c23e41e16195bd730e6103c60084839bb3320495572dd32914f057aff9"
+      "checksum": "fb05d22a86fbb0f0e836b239f2da4136251b089fdcd826ea9acebb1edd4e14ce"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-pixel.jsonl",
-      "checksum": "8e79c61e7a92c0538d1bae2d7a574dd2a5e5424a0b737849517e740d7a30004b"
+      "checksum": "c3c36935bc5b4934663c98357252af23315e7c3b422bcce493b7c12fb10c5e48"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-plump-color.jsonl",
-      "checksum": "926e04ce3396115204a53ff9e7de046c71347800fd2fde413dbf3099502d481d"
+      "checksum": "07e5677e3a47ac75da7b0a51dcb048682aa03c24044cd64cdcafa7bfb9d9b713"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-plump.jsonl",
-      "checksum": "c82bdb8ae19d10977f670ad4487dd29acb7a42dff75d1b04a1dcb3870ca6a99d"
+      "checksum": "863d6624dd9f3fa4cbdbfbe36f0f0514ea0002214b8a58c08e304fef6c666627"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-sharp-color.jsonl",
-      "checksum": "d8f4407118f8eea27d92deab4cafa7a83f3d66d6db6b9b88020fb4a6d1ee5d7a"
+      "checksum": "9b30a419b840b3c618ff558c16f7ce37ff114495a7535191d81c9ed4d010c6c3"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-sharp.jsonl",
-      "checksum": "bf8d28963905fcb6038dfbc2d3464d3f1c1069c3f31fd7ec5d80e03b639f4aca"
+      "checksum": "48d040ddeac5e78281f994fca61653d8dfed3941e914c337de72529e840c3e49"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-stickies-color.jsonl",
-      "checksum": "95abcaa9e4d3569ec3a631ed10bc4e47173600a8404d842f0bcb4bf3f0b85894"
+      "checksum": "2c2b8742f86994aa9b974b74f1f8cde2b4602841f61cfe8a71aa792073b385ea"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-ultimate-color.jsonl",
-      "checksum": "fae6e715deeb760c9223f142f68ad731e8db6d31eba54b8bd4b1d1d6f709150d"
+      "checksum": "839dad943886dcba637d97da92c3c02c7f6b19635f451e9667953eab69c9dd34"
     },
     {
       "kind": "translations",
       "path": "translations/streamline-ultimate.jsonl",
-      "checksum": "28ed85e49541d976b377092d162cca5c8a52abdc930c93a19996b7ea2df8ad7c"
+      "checksum": "eaddc0b1cbfd8972c129d9214fdcc80384eefd4d171b0f5adc874c96c1c69a7d"
     },
     {
       "kind": "translations",
       "path": "translations/streamline.jsonl",
-      "checksum": "a67350539fc974f5ae7a07e77d851340fc4d66274826556dec6191d5eedfec46"
+      "checksum": "31b709c30d7a09ebf463c6abdb2067227c251a15426a28659eb89008dc4a1b6c"
     },
     {
       "kind": "translations",
@@ -1096,7 +1096,7 @@
     {
       "kind": "translations",
       "path": "translations/twemoji.jsonl",
-      "checksum": "be0b0afbb4524a135297b97d181d374b969b7746180fee94c5d98b60c3aad057"
+      "checksum": "89175a65b1bc93e63efa62404e08cd5bec2ebc2aeafe8539dea4f577477e8941"
     },
     {
       "kind": "translations",
@@ -1106,22 +1106,22 @@
     {
       "kind": "translations",
       "path": "translations/uil.jsonl",
-      "checksum": "9329ddc7929e4465d7f10d44e1af38681acf148a2730f518f942eedcbc6196ab"
+      "checksum": "914dfe656767c36ea895388a0915533ebd3465429d4b3a864795aa889275a4ff"
     },
     {
       "kind": "translations",
       "path": "translations/uim.jsonl",
-      "checksum": "28bd37afeae91189a0cac3f0891a6b7e1c249e786962077318c94af8644ace66"
+      "checksum": "4d2f917b2b2be4e12005d9d0f516f2c4a1bd65b1446a5751831a435188305642"
     },
     {
       "kind": "translations",
       "path": "translations/uis.jsonl",
-      "checksum": "6c532299d75bff34be5736699eb6b5260e0f3aad49044a32aad2b44d8909d1e4"
+      "checksum": "8f152938487b289b28038fac58cf8304271321f8ecd52639c5f09c600f261e87"
     },
     {
       "kind": "translations",
       "path": "translations/uit.jsonl",
-      "checksum": "1faef39218791a06ce73a463e5635c4331e2048b676d951bd94bfad0276228fd"
+      "checksum": "670d88ad60d9c6a71dadafbc8e0fb97db71448b479b0066396ab725915b84a3d"
     },
     {
       "kind": "translations",

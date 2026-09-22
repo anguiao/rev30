@@ -1,3 +1,10 @@
+{"kind":"category","owner":{"prefix":"quill","category":"Arrows & chevs"},"source":"Arrows & chevs","translations":["箭头 折线箭头"]}
+{"kind":"category","owner":{"prefix":"quill","category":"Email & actions"},"source":"Email & actions","translations":["电子邮件 操作"]}
+{"kind":"category","owner":{"prefix":"quill","category":"Folders"},"source":"Folders","translations":["文件夹"]}
+{"kind":"category","owner":{"prefix":"quill","category":"Inboxes"},"source":"Inboxes","translations":["收件箱"]}
+{"kind":"category","owner":{"prefix":"quill","category":"Misc"},"source":"Misc","translations":["杂项"]}
+{"kind":"category","owner":{"prefix":"quill","category":"Operations"},"source":"Operations","translations":["操作"]}
+{"kind":"category","owner":{"prefix":"quill","category":"Times & dates"},"source":"Times & dates","translations":["时间 日期"]}
 {"kind":"icon","owner":"quill:activity","source":"activity","translations":["活动"]}
 {"kind":"icon","owner":"quill:add","source":"add","translations":["添加"]}
 {"kind":"icon","owner":"quill:alarm","source":"alarm","translations":["闹钟"]}

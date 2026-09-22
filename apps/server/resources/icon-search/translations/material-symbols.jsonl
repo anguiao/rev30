@@ -1,3 +1,19 @@
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Actions"},"source":"Actions","translations":["操作"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Activities"},"source":"Activities","translations":["活动"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Audio & Video"},"source":"Audio & Video","translations":["音频 视频"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Business"},"source":"Business","translations":["商业"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Communicate"},"source":"Communicate","translations":["交流"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Hardware"},"source":"Hardware","translations":["硬件"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Home"},"source":"Home","translations":["家居"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Household"},"source":"Household","translations":["家居"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Images"},"source":"Images","translations":["图像"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Maps"},"source":"Maps","translations":["地图"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Privacy"},"source":"Privacy","translations":["隐私"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Social"},"source":"Social","translations":["社交"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Text"},"source":"Text","translations":["文本"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Transit"},"source":"Transit","translations":["交通"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"Travel"},"source":"Travel","translations":["旅行"]}
+{"kind":"category","owner":{"prefix":"material-symbols","category":"UI Actions"},"source":"UI Actions","translations":["界面 操作"]}
 {"kind":"icon","owner":"material-symbols:10k-outline","source":"outline","translations":["轮廓"]}
 {"kind":"icon","owner":"material-symbols:10k-outline-rounded","source":"outline","translations":["轮廓"]}
 {"kind":"icon","owner":"material-symbols:10k-outline-rounded","source":"rounded","translations":["圆角"]}

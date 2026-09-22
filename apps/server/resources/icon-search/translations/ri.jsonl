@@ -1,3 +1,23 @@
+{"kind":"category","owner":{"prefix":"ri","category":"Arrows"},"source":"Arrows","translations":["箭头"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Buildings"},"source":"Buildings","translations":["建筑"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Business"},"source":"Business","translations":["商业"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Communication"},"source":"Communication","translations":["通信"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Design"},"source":"Design","translations":["设计"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Development"},"source":"Development","translations":["开发"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Device"},"source":"Device","translations":["设备"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Document"},"source":"Document","translations":["文档"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Editor"},"source":"Editor","translations":["编辑器"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Finance"},"source":"Finance","translations":["金融"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Food"},"source":"Food","translations":["食物"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Game & Sports"},"source":"Game & Sports","translations":["游戏 体育"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Health & Medical"},"source":"Health & Medical","translations":["健康 医疗"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Logos"},"source":"Logos","translations":["标志"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Map"},"source":"Map","translations":["地图"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Media"},"source":"Media","translations":["媒体"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Others"},"source":"Others","translations":["其他"]}
+{"kind":"category","owner":{"prefix":"ri","category":"System"},"source":"System","translations":["系统"]}
+{"kind":"category","owner":{"prefix":"ri","category":"User & Faces"},"source":"User & Faces","translations":["用户 面孔"]}
+{"kind":"category","owner":{"prefix":"ri","category":"Weather"},"source":"Weather","translations":["天气"]}
 {"kind":"icon","owner":"ri:24-hours-fill","source":"fill","translations":["填充"]}
 {"kind":"icon","owner":"ri:24-hours-fill","source":"hours","translations":["小时"]}
 {"kind":"icon","owner":"ri:24-hours-line","source":"hours","translations":["小时"]}

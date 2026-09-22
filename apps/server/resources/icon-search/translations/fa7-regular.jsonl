@@ -1,3 +1,60 @@
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Accessibility"},"source":"Accessibility","translations":["无障碍"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Alert"},"source":"Alert","translations":["警报"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Arrows"},"source":"Arrows","translations":["箭头"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Audio & Video"},"source":"Audio & Video","translations":["音频 视频"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Automotive"},"source":"Automotive","translations":["汽车"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Buildings"},"source":"Buildings","translations":["建筑"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Business"},"source":"Business","translations":["商业"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Camping"},"source":"Camping","translations":["露营"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Charity"},"source":"Charity","translations":["慈善"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Chat"},"source":"Chat","translations":["聊天"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Chess"},"source":"Chess","translations":["国际象棋"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Code"},"source":"Code","translations":["代码"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Communication"},"source":"Communication","translations":["通信"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Computers"},"source":"Computers","translations":["计算机"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Currency"},"source":"Currency","translations":["货币"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Date & Time"},"source":"Date & Time","translations":["日期 时间"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Design"},"source":"Design","translations":["设计"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Editors"},"source":"Editors","translations":["编辑器"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Education"},"source":"Education","translations":["教育"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Emoji"},"source":"Emoji","translations":["表情符号"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Energy"},"source":"Energy","translations":["能源"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Files"},"source":"Files","translations":["文件"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Finance"},"source":"Finance","translations":["金融"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Fitness"},"source":"Fitness","translations":["健身"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Food"},"source":"Food","translations":["食物"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Fruits & Vegetables"},"source":"Fruits & Vegetables","translations":["水果 蔬菜"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Games"},"source":"Games","translations":["游戏"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Hands"},"source":"Hands","translations":["手"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Health"},"source":"Health","translations":["健康"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Hotel"},"source":"Hotel","translations":["酒店"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Household"},"source":"Household","translations":["家居"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Images"},"source":"Images","translations":["图像"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Interfaces"},"source":"Interfaces","translations":["界面"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Logistics"},"source":"Logistics","translations":["物流"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Maps"},"source":"Maps","translations":["地图"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Maritime"},"source":"Maritime","translations":["海事"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Marketing"},"source":"Marketing","translations":["营销"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Medical"},"source":"Medical","translations":["医疗"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Music"},"source":"Music","translations":["音乐"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Objects"},"source":"Objects","translations":["物品"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Payments & Shopping"},"source":"Payments & Shopping","translations":["支付 购物"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Political"},"source":"Political","translations":["政治"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Science Fiction"},"source":"Science Fiction","translations":["科幻"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Security"},"source":"Security","translations":["安全"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Shapes"},"source":"Shapes","translations":["形状"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Shopping"},"source":"Shopping","translations":["购物"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Social"},"source":"Social","translations":["社交"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Spinners"},"source":"Spinners","translations":["加载动画"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Sports"},"source":"Sports","translations":["体育"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Status"},"source":"Status","translations":["状态"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Summer"},"source":"Summer","translations":["夏季"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Toggle"},"source":"Toggle","translations":["开关"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Travel"},"source":"Travel","translations":["旅行"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Users & People"},"source":"Users & People","translations":["用户 人物"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Vehicles"},"source":"Vehicles","translations":["车辆"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Weather"},"source":"Weather","translations":["天气"]}
+{"kind":"category","owner":{"prefix":"fa7-regular","category":"Writing"},"source":"Writing","translations":["书写"]}
 {"kind":"icon","owner":"fa7-regular:address-book","source":"address","translations":["地址"]}
 {"kind":"icon","owner":"fa7-regular:address-book","source":"book","translations":["书"]}
 {"kind":"icon","owner":"fa7-regular:address-card","source":"address","translations":["地址"]}

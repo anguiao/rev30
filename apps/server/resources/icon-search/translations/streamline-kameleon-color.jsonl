@@ -1,3 +1,21 @@
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"BuildingConstruction"},"source":"BuildingConstruction","translations":["建筑 施工"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"ComputerCoding"},"source":"ComputerCoding","translations":["计算机 编程"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"Culture"},"source":"Culture","translations":["文化"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"Ecology"},"source":"Ecology","translations":["生态"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"Entertainment"},"source":"Entertainment","translations":["娱乐"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"Family"},"source":"Family","translations":["家庭"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"FoodDrink"},"source":"FoodDrink","translations":["食物 饮料"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"Health"},"source":"Health","translations":["健康"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"ImagesAudio"},"source":"ImagesAudio","translations":["图像 音频"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"InterfaceEssential"},"source":"InterfaceEssential","translations":["界面 基本"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"MapTravel"},"source":"MapTravel","translations":["地图 旅行"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"MoneyBusiness"},"source":"MoneyBusiness","translations":["金钱 商业"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"Phone"},"source":"Phone","translations":["电话"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"SchoolScience"},"source":"SchoolScience","translations":["学校 科学"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"Shopping"},"source":"Shopping","translations":["购物"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"Sport"},"source":"Sport","translations":["体育"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"UsersPeople"},"source":"UsersPeople","translations":["用户 人物"]}
+{"kind":"category","owner":{"prefix":"streamline-kameleon-color","category":"WorkOffice"},"source":"WorkOffice","translations":["工作 办公"]}
 {"kind":"icon","owner":"streamline-kameleon-color:aid-kit","source":"aid","translations":["辅助"]}
 {"kind":"icon","owner":"streamline-kameleon-color:aid-kit","source":"kit","translations":["工具包"]}
 {"kind":"icon","owner":"streamline-kameleon-color:aid-kit-duo","source":"aid","translations":["辅助"]}

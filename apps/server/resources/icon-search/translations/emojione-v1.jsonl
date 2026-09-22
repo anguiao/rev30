@@ -1,3 +1,11 @@
+{"kind":"category","owner":{"prefix":"emojione-v1","category":"Activities"},"source":"Activities","translations":["活动"]}
+{"kind":"category","owner":{"prefix":"emojione-v1","category":"Flags"},"source":"Flags","translations":["旗帜"]}
+{"kind":"category","owner":{"prefix":"emojione-v1","category":"Food"},"source":"Food","translations":["食物"]}
+{"kind":"category","owner":{"prefix":"emojione-v1","category":"Nature"},"source":"Nature","translations":["自然"]}
+{"kind":"category","owner":{"prefix":"emojione-v1","category":"Objects"},"source":"Objects","translations":["物品"]}
+{"kind":"category","owner":{"prefix":"emojione-v1","category":"People"},"source":"People","translations":["人物"]}
+{"kind":"category","owner":{"prefix":"emojione-v1","category":"Symbols"},"source":"Symbols","translations":["符号"]}
+{"kind":"category","owner":{"prefix":"emojione-v1","category":"Travel"},"source":"Travel","translations":["旅行"]}
 {"kind":"icon","owner":"emojione-v1:a-button","source":"button","translations":["按钮"]}
 {"kind":"icon","owner":"emojione-v1:ab-button","source":"button","translations":["按钮"]}
 {"kind":"icon","owner":"emojione-v1:admission-tickets","source":"admission","translations":["准入"]}

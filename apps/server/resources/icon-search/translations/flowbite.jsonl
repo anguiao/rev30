@@ -1,3 +1,15 @@
+{"kind":"category","owner":{"prefix":"flowbite","category":"Arrows"},"source":"Arrows","translations":["箭头"]}
+{"kind":"category","owner":{"prefix":"flowbite","category":"Brands"},"source":"Brands","translations":["品牌"]}
+{"kind":"category","owner":{"prefix":"flowbite","category":"E-commerce"},"source":"E-commerce","translations":["电子商务"]}
+{"kind":"category","owner":{"prefix":"flowbite","category":"Education"},"source":"Education","translations":["教育"]}
+{"kind":"category","owner":{"prefix":"flowbite","category":"Emoji"},"source":"Emoji","translations":["表情符号"]}
+{"kind":"category","owner":{"prefix":"flowbite","category":"Files Folders"},"source":"Files Folders","translations":["文件 文件夹"]}
+{"kind":"category","owner":{"prefix":"flowbite","category":"Food Beverage"},"source":"Food Beverage","translations":["食物 饮料"]}
+{"kind":"category","owner":{"prefix":"flowbite","category":"General"},"source":"General","translations":["通用"]}
+{"kind":"category","owner":{"prefix":"flowbite","category":"Media"},"source":"Media","translations":["媒体"]}
+{"kind":"category","owner":{"prefix":"flowbite","category":"Text"},"source":"Text","translations":["文本"]}
+{"kind":"category","owner":{"prefix":"flowbite","category":"User"},"source":"User","translations":["用户"]}
+{"kind":"category","owner":{"prefix":"flowbite","category":"Weather"},"source":"Weather","translations":["天气"]}
 {"kind":"icon","owner":"flowbite:add-column-after-outline","source":"add","translations":["添加"]}
 {"kind":"icon","owner":"flowbite:add-column-after-outline","source":"after","translations":["之后"]}
 {"kind":"icon","owner":"flowbite:add-column-after-outline","source":"column","translations":["列"]}

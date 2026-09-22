@@ -1,3 +1,12 @@
+{"kind":"category","owner":{"prefix":"clarity","category":"Chart"},"source":"Chart","translations":["图表"]}
+{"kind":"category","owner":{"prefix":"clarity","category":"Commerce"},"source":"Commerce","translations":["商业"]}
+{"kind":"category","owner":{"prefix":"clarity","category":"Core"},"source":"Core","translations":["核心"]}
+{"kind":"category","owner":{"prefix":"clarity","category":"Essential"},"source":"Essential","translations":["基本"]}
+{"kind":"category","owner":{"prefix":"clarity","category":"Media"},"source":"Media","translations":["媒体"]}
+{"kind":"category","owner":{"prefix":"clarity","category":"Social"},"source":"Social","translations":["社交"]}
+{"kind":"category","owner":{"prefix":"clarity","category":"Technology"},"source":"Technology","translations":["技术"]}
+{"kind":"category","owner":{"prefix":"clarity","category":"Text Edit"},"source":"Text Edit","translations":["文本 编辑"]}
+{"kind":"category","owner":{"prefix":"clarity","category":"Travel"},"source":"Travel","translations":["旅行"]}
 {"kind":"icon","owner":"clarity:accessibility-1-line","source":"accessibility","translations":["无障碍"]}
 {"kind":"icon","owner":"clarity:accessibility-1-line","source":"line","translations":["线"]}
 {"kind":"icon","owner":"clarity:accessibility-1-solid","source":"accessibility","translations":["无障碍"]}

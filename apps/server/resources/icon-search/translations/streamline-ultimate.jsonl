@@ -1,3 +1,34 @@
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"ArrowsDiagrams"},"source":"ArrowsDiagrams","translations":["箭头 图示"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"BusinessProducts"},"source":"BusinessProducts","translations":["商业 产品"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"ComputersDevicesElectronics"},"source":"ComputersDevicesElectronics","translations":["计算机 设备 电子产品"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"Content"},"source":"Content","translations":["内容"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"Design"},"source":"Design","translations":["设计"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"Emails"},"source":"Emails","translations":["电子邮件"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"EntertainmentEventsHobbies"},"source":"EntertainmentEventsHobbies","translations":["娱乐 活动 爱好"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"FilesFolders"},"source":"FilesFolders","translations":["文件 文件夹"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"FoodDrinks"},"source":"FoodDrinks","translations":["食物 饮料"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"HealthBeauty"},"source":"HealthBeauty","translations":["健康 美容"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"ImagesPhotography"},"source":"ImagesPhotography","translations":["图像 摄影"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"InterfaceEssential"},"source":"InterfaceEssential","translations":["界面 基本"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"InternetNetworksServers"},"source":"InternetNetworksServers","translations":["互联网 网络 服务器"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"Logos"},"source":"Logos","translations":["标志"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"MapsNavigation"},"source":"MapsNavigation","translations":["地图 导航"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"MessagesChatSmileys"},"source":"MessagesChatSmileys","translations":["消息 聊天 笑脸"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"MoneyPaymentsFinance"},"source":"MoneyPaymentsFinance","translations":["金钱 支付 金融"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"MusicAudio"},"source":"MusicAudio","translations":["音乐 音频"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"PhonesMobileDevices"},"source":"PhonesMobileDevices","translations":["电话 移动设备"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"ProgramingAppsWebsites"},"source":"ProgramingAppsWebsites","translations":["编程 应用 网站"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"Science"},"source":"Science","translations":["科学"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"ShippingDelivery"},"source":"ShippingDelivery","translations":["运输 配送"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"ShoppingEcommerce"},"source":"ShoppingEcommerce","translations":["购物 电子商务"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"SocialMediasRewardsRating"},"source":"SocialMediasRewardsRating","translations":["社交媒体 奖励 评分"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"Sports"},"source":"Sports","translations":["体育"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"Transportation"},"source":"Transportation","translations":["交通"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"Users"},"source":"Users","translations":["用户"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"VideoMoviesTv"},"source":"VideoMoviesTv","translations":["视频 电影 电视"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"Wayfinding"},"source":"Wayfinding","translations":["导向"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"Weather"},"source":"Weather","translations":["天气"]}
+{"kind":"category","owner":{"prefix":"streamline-ultimate","category":"WorkOfficeCompanies"},"source":"WorkOfficeCompanies","translations":["工作 办公 公司"]}
 {"kind":"icon","owner":"streamline-ultimate:a11y-accessibility-disability","source":"a11y","translations":["无障碍"]}
 {"kind":"icon","owner":"streamline-ultimate:a11y-accessibility-disability","source":"accessibility","translations":["无障碍"]}
 {"kind":"icon","owner":"streamline-ultimate:a11y-accessibility-disability","source":"disability","translations":["残障"]}

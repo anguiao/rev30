@@ -1,3 +1,10 @@
+{"kind":"category","owner":{"prefix":"carbon","category":"Actions"},"source":"Actions","translations":["操作"]}
+{"kind":"category","owner":{"prefix":"carbon","category":"Brand"},"source":"Brand","translations":["品牌"]}
+{"kind":"category","owner":{"prefix":"carbon","category":"Enterprise"},"source":"Enterprise","translations":["企业"]}
+{"kind":"category","owner":{"prefix":"carbon","category":"Organization"},"source":"Organization","translations":["组织"]}
+{"kind":"category","owner":{"prefix":"carbon","category":"Person"},"source":"Person","translations":["人物"]}
+{"kind":"category","owner":{"prefix":"carbon","category":"Planning"},"source":"Planning","translations":["规划"]}
+{"kind":"category","owner":{"prefix":"carbon","category":"Tools"},"source":"Tools","translations":["工具"]}
 {"kind":"icon","owner":"carbon:3d-cursor","source":"3d","translations":["三维"]}
 {"kind":"icon","owner":"carbon:3d-cursor","source":"cursor","translations":["光标"]}
 {"kind":"icon","owner":"carbon:3d-cursor-alt","source":"3d","translations":["三维"]}

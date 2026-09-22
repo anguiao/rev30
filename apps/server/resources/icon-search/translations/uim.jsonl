@@ -1,3 +1,16 @@
+{"kind":"category","owner":{"prefix":"uim","category":"Arrows"},"source":"Arrows","translations":["箭头"]}
+{"kind":"category","owner":{"prefix":"uim","category":"Brand Logos"},"source":"Brand Logos","translations":["品牌 标志"]}
+{"kind":"category","owner":{"prefix":"uim","category":"Business"},"source":"Business","translations":["商业"]}
+{"kind":"category","owner":{"prefix":"uim","category":"Chat"},"source":"Chat","translations":["聊天"]}
+{"kind":"category","owner":{"prefix":"uim","category":"Cloud And Web"},"source":"Cloud And Web","translations":["云 网络"]}
+{"kind":"category","owner":{"prefix":"uim","category":"Content"},"source":"Content","translations":["内容"]}
+{"kind":"category","owner":{"prefix":"uim","category":"Design Tools"},"source":"Design Tools","translations":["设计 工具"]}
+{"kind":"category","owner":{"prefix":"uim","category":"Medical"},"source":"Medical","translations":["医疗"]}
+{"kind":"category","owner":{"prefix":"uim","category":"Multimedia"},"source":"Multimedia","translations":["多媒体"]}
+{"kind":"category","owner":{"prefix":"uim","category":"Security"},"source":"Security","translations":["安全"]}
+{"kind":"category","owner":{"prefix":"uim","category":"Shape"},"source":"Shape","translations":["形状"]}
+{"kind":"category","owner":{"prefix":"uim","category":"Time"},"source":"Time","translations":["时间"]}
+{"kind":"category","owner":{"prefix":"uim","category":"User Interface"},"source":"User Interface","translations":["用户界面"]}
 {"kind":"icon","owner":"uim:adobe","source":"adobe","translations":["奥多比"]}
 {"kind":"icon","owner":"uim:adobe-alt","source":"adobe","translations":["奥多比"]}
 {"kind":"icon","owner":"uim:adobe-alt","source":"alt","translations":["变体"]}

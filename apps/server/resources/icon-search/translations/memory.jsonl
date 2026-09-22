@@ -1,3 +1,34 @@
+{"kind":"category","owner":{"prefix":"memory","category":"Account / User"},"source":"Account / User","translations":["账户 用户"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Alert / Error"},"source":"Alert / Error","translations":["警报 错误"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Alpha / Numeric"},"source":"Alpha / Numeric","translations":["字母 数字"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Animal"},"source":"Animal","translations":["动物"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Arrow"},"source":"Arrow","translations":["箭头"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Audio"},"source":"Audio","translations":["音频"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Battery"},"source":"Battery","translations":["电池"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Clothing"},"source":"Clothing","translations":["服装"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Currency"},"source":"Currency","translations":["货币"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Database"},"source":"Database","translations":["数据库"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Date / Time"},"source":"Date / Time","translations":["日期 时间"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Developer / Languages"},"source":"Developer / Languages","translations":["开发者 编程语言"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Device / Tech"},"source":"Device / Tech","translations":["设备 技术"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Drawing / Art"},"source":"Drawing / Art","translations":["绘画 艺术"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Edit / Modify"},"source":"Edit / Modify","translations":["编辑 修改"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Files / Folders"},"source":"Files / Folders","translations":["文件 文件夹"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Food / Drink"},"source":"Food / Drink","translations":["食物 饮料"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Form"},"source":"Form","translations":["表单"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Gaming / RPG"},"source":"Gaming / RPG","translations":["游戏 角色扮演游戏"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Hardware / Tools"},"source":"Hardware / Tools","translations":["硬件 工具"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Health / Beauty"},"source":"Health / Beauty","translations":["健康 美容"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Home Automation"},"source":"Home Automation","translations":["家庭自动化"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Math"},"source":"Math","translations":["数学"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Music"},"source":"Music","translations":["音乐"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Navigation"},"source":"Navigation","translations":["导航"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Notification"},"source":"Notification","translations":["通知"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Science"},"source":"Science","translations":["科学"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Shape"},"source":"Shape","translations":["形状"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Shopping"},"source":"Shopping","translations":["购物"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Text / Content / Format"},"source":"Text / Content / Format","translations":["文本 内容 格式"]}
+{"kind":"category","owner":{"prefix":"memory","category":"Tooltip"},"source":"Tooltip","translations":["工具提示"]}
 {"kind":"icon","owner":"memory:account","source":"account","translations":["账户"]}
 {"kind":"icon","owner":"memory:account-box","source":"account","translations":["账户"]}
 {"kind":"icon","owner":"memory:account-box","source":"box","translations":["盒子"]}

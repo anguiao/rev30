@@ -1,3 +1,19 @@
+{"kind":"category","owner":{"prefix":"streamline","category":"ArtificialIntelligence"},"source":"ArtificialIntelligence","translations":["人工智能"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"ComputerDevices"},"source":"ComputerDevices","translations":["计算机 设备"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"Culture"},"source":"Culture","translations":["文化"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"Entertainment"},"source":"Entertainment","translations":["娱乐"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"FoodDrink"},"source":"FoodDrink","translations":["食物 饮料"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"Health"},"source":"Health","translations":["健康"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"ImagesPhotography"},"source":"ImagesPhotography","translations":["图像 摄影"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"InterfaceEssential"},"source":"InterfaceEssential","translations":["界面 基本"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"Mail"},"source":"Mail","translations":["邮件"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"MapTravel"},"source":"MapTravel","translations":["地图 旅行"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"MoneyShopping"},"source":"MoneyShopping","translations":["金钱 购物"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"NatureEcology"},"source":"NatureEcology","translations":["自然 生态"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"Phone"},"source":"Phone","translations":["电话"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"Programming"},"source":"Programming","translations":["编程"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"Shipping"},"source":"Shipping","translations":["运输"]}
+{"kind":"category","owner":{"prefix":"streamline","category":"WorkEducation"},"source":"WorkEducation","translations":["工作 教育"]}
 {"kind":"icon","owner":"streamline:add-1","source":"add","translations":["添加"]}
 {"kind":"icon","owner":"streamline:add-1-remix","source":"add","translations":["添加"]}
 {"kind":"icon","owner":"streamline:add-1-remix","source":"remix","translations":["混合"]}

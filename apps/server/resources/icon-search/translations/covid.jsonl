@@ -1,3 +1,14 @@
+{"kind":"category","owner":{"prefix":"covid","category":"Covid 19"},"source":"Covid 19","translations":["新冠肺炎"]}
+{"kind":"category","owner":{"prefix":"covid","category":"Covid Carrier"},"source":"Covid Carrier","translations":["新冠携带者"]}
+{"kind":"category","owner":{"prefix":"covid","category":"Graph"},"source":"Graph","translations":["图表"]}
+{"kind":"category","owner":{"prefix":"covid","category":"Mutation"},"source":"Mutation","translations":["变异"]}
+{"kind":"category","owner":{"prefix":"covid","category":"Personal Hygiene"},"source":"Personal Hygiene","translations":["个人卫生"]}
+{"kind":"category","owner":{"prefix":"covid","category":"Quarantine"},"source":"Quarantine","translations":["隔离"]}
+{"kind":"category","owner":{"prefix":"covid","category":"Social Distancing"},"source":"Social Distancing","translations":["社交距离"]}
+{"kind":"category","owner":{"prefix":"covid","category":"Symptoms"},"source":"Symptoms","translations":["症状"]}
+{"kind":"category","owner":{"prefix":"covid","category":"Transmission"},"source":"Transmission","translations":["传播"]}
+{"kind":"category","owner":{"prefix":"covid","category":"Vaccine Protection"},"source":"Vaccine Protection","translations":["疫苗 保护"]}
+{"kind":"category","owner":{"prefix":"covid","category":"Virus Research"},"source":"Virus Research","translations":["病毒 研究"]}
 {"kind":"icon","owner":"covid:covid-19-virus-4","source":"covid","translations":["新冠"]}
 {"kind":"icon","owner":"covid:covid-19-virus-4","source":"virus","translations":["病毒"]}
 {"kind":"icon","owner":"covid:covid-19-virus-pandemic-1","source":"covid","translations":["新冠"]}

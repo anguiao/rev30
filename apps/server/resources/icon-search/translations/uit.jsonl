@@ -1,3 +1,17 @@
+{"kind":"category","owner":{"prefix":"uit","category":"Arrows"},"source":"Arrows","translations":["箭头"]}
+{"kind":"category","owner":{"prefix":"uit","category":"Brand Logos"},"source":"Brand Logos","translations":["品牌 标志"]}
+{"kind":"category","owner":{"prefix":"uit","category":"Business"},"source":"Business","translations":["商业"]}
+{"kind":"category","owner":{"prefix":"uit","category":"Chat"},"source":"Chat","translations":["聊天"]}
+{"kind":"category","owner":{"prefix":"uit","category":"Cloud And Web"},"source":"Cloud And Web","translations":["云 网络"]}
+{"kind":"category","owner":{"prefix":"uit","category":"Content"},"source":"Content","translations":["内容"]}
+{"kind":"category","owner":{"prefix":"uit","category":"Design Tools"},"source":"Design Tools","translations":["设计 工具"]}
+{"kind":"category","owner":{"prefix":"uit","category":"Devices"},"source":"Devices","translations":["设备"]}
+{"kind":"category","owner":{"prefix":"uit","category":"Medical"},"source":"Medical","translations":["医疗"]}
+{"kind":"category","owner":{"prefix":"uit","category":"Multimedia"},"source":"Multimedia","translations":["多媒体"]}
+{"kind":"category","owner":{"prefix":"uit","category":"Security"},"source":"Security","translations":["安全"]}
+{"kind":"category","owner":{"prefix":"uit","category":"Shape"},"source":"Shape","translations":["形状"]}
+{"kind":"category","owner":{"prefix":"uit","category":"Time"},"source":"Time","translations":["时间"]}
+{"kind":"category","owner":{"prefix":"uit","category":"User Interface"},"source":"User Interface","translations":["用户界面"]}
 {"kind":"icon","owner":"uit:adobe-alt","source":"adobe","translations":["奥多比"]}
 {"kind":"icon","owner":"uit:adobe-alt","source":"alt","translations":["变体"]}
 {"kind":"icon","owner":"uit:airplay","source":"airplay","translations":["隔空播放"]}

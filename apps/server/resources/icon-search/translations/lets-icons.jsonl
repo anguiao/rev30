@@ -1,3 +1,47 @@
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Add"},"source":"Add","translations":["添加"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Alarm"},"source":"Alarm","translations":["闹钟"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Archive"},"source":"Archive","translations":["归档"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Arhive and box"},"source":"Arhive and box","translations":["归档 箱子"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Arrow"},"source":"Arrow","translations":["箭头"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Bookmark"},"source":"Bookmark","translations":["书签"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Burger & Menu"},"source":"Burger & Menu","translations":["汉堡菜单 菜单"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Chart"},"source":"Chart","translations":["图表"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Check"},"source":"Check","translations":["勾选"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Cross"},"source":"Cross","translations":["叉号"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Date"},"source":"Date","translations":["日期"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Delivery"},"source":"Delivery","translations":["配送"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Design & Developer"},"source":"Design & Developer","translations":["设计 开发者"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Devices"},"source":"Devices","translations":["设备"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Download and Load"},"source":"Download and Load","translations":["下载 加载"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Emoji"},"source":"Emoji","translations":["表情符号"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"File Types"},"source":"File Types","translations":["文件类型"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Folder and File"},"source":"Folder and File","translations":["文件夹 文件"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Food and Drinks"},"source":"Food and Drinks","translations":["食物 饮料"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Healt and Medical"},"source":"Healt and Medical","translations":["健康 医疗"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Indicator"},"source":"Indicator","translations":["指示器"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Login"},"source":"Login","translations":["登录"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Maps  and Travel"},"source":"Maps  and Travel","translations":["地图 旅行"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Media"},"source":"Media","translations":["媒体"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Message"},"source":"Message","translations":["消息"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Multimedia Types"},"source":"Multimedia Types","translations":["多媒体类型"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Navigator"},"source":"Navigator","translations":["导航器"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Phone"},"source":"Phone","translations":["电话"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Remove"},"source":"Remove","translations":["移除"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Remove and Cancel"},"source":"Remove and Cancel","translations":["移除 取消"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Resize"},"source":"Resize","translations":["调整大小"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Secure"},"source":"Secure","translations":["安全"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Shop & Ecommerce"},"source":"Shop & Ecommerce","translations":["商店 电子商务"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Single Arrow"},"source":"Single Arrow","translations":["单箭头"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Social network"},"source":"Social network","translations":["社交网络"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Sort and Transfer"},"source":"Sort and Transfer","translations":["排序 传输"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Sport"},"source":"Sport","translations":["体育"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Study"},"source":"Study","translations":["学习"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Time"},"source":"Time","translations":["时间"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Traveling "},"source":"Traveling ","translations":["旅行"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"UI"},"source":"UI","translations":["用户界面"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"User and Group"},"source":"User and Group","translations":["用户 群组"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Visibaly"},"source":"Visibaly","translations":["可见性"]}
+{"kind":"category","owner":{"prefix":"lets-icons","category":"Weather"},"source":"Weather","translations":["天气"]}
 {"kind":"icon","owner":"lets-icons:10-light","source":"light","translations":["细体"]}
 {"kind":"icon","owner":"lets-icons:3d-box","source":"3d","translations":["三维"]}
 {"kind":"icon","owner":"lets-icons:3d-box","source":"box","translations":["盒子"]}

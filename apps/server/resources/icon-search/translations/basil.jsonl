@@ -1,3 +1,12 @@
+{"kind":"category","owner":{"prefix":"basil","category":"Brands"},"source":"Brands","translations":["品牌"]}
+{"kind":"category","owner":{"prefix":"basil","category":"Communication"},"source":"Communication","translations":["通信"]}
+{"kind":"category","owner":{"prefix":"basil","category":"Devices"},"source":"Devices","translations":["设备"]}
+{"kind":"category","owner":{"prefix":"basil","category":"Files"},"source":"Files","translations":["文件"]}
+{"kind":"category","owner":{"prefix":"basil","category":"General"},"source":"General","translations":["通用"]}
+{"kind":"category","owner":{"prefix":"basil","category":"Interface"},"source":"Interface","translations":["界面"]}
+{"kind":"category","owner":{"prefix":"basil","category":"Media"},"source":"Media","translations":["媒体"]}
+{"kind":"category","owner":{"prefix":"basil","category":"Navigation"},"source":"Navigation","translations":["导航"]}
+{"kind":"category","owner":{"prefix":"basil","category":"Status"},"source":"Status","translations":["状态"]}
 {"kind":"icon","owner":"basil:add-outline","source":"add","translations":["添加"]}
 {"kind":"icon","owner":"basil:add-outline","source":"outline","translations":["轮廓"]}
 {"kind":"icon","owner":"basil:add-solid","source":"add","translations":["添加"]}

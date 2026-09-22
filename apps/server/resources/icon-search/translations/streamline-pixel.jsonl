@@ -1,3 +1,34 @@
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"BuildingRealEstate"},"source":"BuildingRealEstate","translations":["建筑 房地产"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"Business"},"source":"Business","translations":["商业"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"CodingAppsWebsites"},"source":"CodingAppsWebsites","translations":["编程 应用 网站"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"ComputersDevicesElectronics"},"source":"ComputersDevicesElectronics","translations":["计算机 设备 电子产品"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"ContentFiles"},"source":"ContentFiles","translations":["内容 文件"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"Design"},"source":"Design","translations":["设计"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"Ecology"},"source":"Ecology","translations":["生态"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"Email"},"source":"Email","translations":["电子邮件"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"EntertainmentEventsHobbies"},"source":"EntertainmentEventsHobbies","translations":["娱乐 活动 爱好"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"FoodDrink"},"source":"FoodDrink","translations":["食物 饮料"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"HandSigns"},"source":"HandSigns","translations":["手势"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"HealthBeauty"},"source":"HealthBeauty","translations":["健康 美容"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"InterfaceEssential"},"source":"InterfaceEssential","translations":["界面 基本"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"InternetNetwork"},"source":"InternetNetwork","translations":["互联网 网络"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"Logo"},"source":"Logo","translations":["标志"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"MapNavigation"},"source":"MapNavigation","translations":["地图 导航"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"MoneyPayments"},"source":"MoneyPayments","translations":["金钱 支付"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"MusicAudio"},"source":"MusicAudio","translations":["音乐 音频"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"PetAnimals"},"source":"PetAnimals","translations":["宠物 动物"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"Phone"},"source":"Phone","translations":["电话"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"Photography"},"source":"Photography","translations":["摄影"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"Romance"},"source":"Romance","translations":["爱情"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"SchoolScience"},"source":"SchoolScience","translations":["学校 科学"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"ShoppingShipping"},"source":"ShoppingShipping","translations":["购物 运输"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"SocialRewards"},"source":"SocialRewards","translations":["社交 奖励"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"Technology"},"source":"Technology","translations":["技术"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"Transportation"},"source":"Transportation","translations":["交通"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"TravelWayfinding"},"source":"TravelWayfinding","translations":["旅行 导向"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"Users"},"source":"Users","translations":["用户"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"VideoMovies"},"source":"VideoMovies","translations":["视频 电影"]}
+{"kind":"category","owner":{"prefix":"streamline-pixel","category":"Weather"},"source":"Weather","translations":["天气"]}
 {"kind":"icon","owner":"streamline-pixel:beauty-barber-light-sign","source":"barber","translations":["理发师"]}
 {"kind":"icon","owner":"streamline-pixel:beauty-barber-light-sign","source":"beauty","translations":["美容"]}
 {"kind":"icon","owner":"streamline-pixel:beauty-barber-light-sign","source":"light","translations":["灯光"]}

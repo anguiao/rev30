@@ -1,3 +1,11 @@
+{"kind":"category","owner":{"prefix":"streamline-emojis","category":"Activity"},"source":"Activity","translations":["活动"]}
+{"kind":"category","owner":{"prefix":"streamline-emojis","category":"Animals Nature"},"source":"Animals Nature","translations":["动物 自然"]}
+{"kind":"category","owner":{"prefix":"streamline-emojis","category":"Flags"},"source":"Flags","translations":["旗帜"]}
+{"kind":"category","owner":{"prefix":"streamline-emojis","category":"Food Drink"},"source":"Food Drink","translations":["食物 饮料"]}
+{"kind":"category","owner":{"prefix":"streamline-emojis","category":"Objects"},"source":"Objects","translations":["物品"]}
+{"kind":"category","owner":{"prefix":"streamline-emojis","category":"Smiley People"},"source":"Smiley People","translations":["笑脸 人物"]}
+{"kind":"category","owner":{"prefix":"streamline-emojis","category":"Symbols"},"source":"Symbols","translations":["符号"]}
+{"kind":"category","owner":{"prefix":"streamline-emojis","category":"Travel Places"},"source":"Travel Places","translations":["旅行 地点"]}
 {"kind":"icon","owner":"streamline-emojis:airplane","source":"airplane","translations":["飞机"]}
 {"kind":"icon","owner":"streamline-emojis:alien","source":"alien","translations":["外星人"]}
 {"kind":"icon","owner":"streamline-emojis:amazed-face","source":"amazed","translations":["惊讶"]}

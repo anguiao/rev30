@@ -1,3 +1,15 @@
+{"kind":"category","owner":{"prefix":"iconmind","category":"AI"},"source":"AI","translations":["人工智能"]}
+{"kind":"category","owner":{"prefix":"iconmind","category":"Agents"},"source":"Agents","translations":["智能体"]}
+{"kind":"category","owner":{"prefix":"iconmind","category":"Analytics"},"source":"Analytics","translations":["分析"]}
+{"kind":"category","owner":{"prefix":"iconmind","category":"Automation"},"source":"Automation","translations":["自动化"]}
+{"kind":"category","owner":{"prefix":"iconmind","category":"Cloud"},"source":"Cloud","translations":["云"]}
+{"kind":"category","owner":{"prefix":"iconmind","category":"Data"},"source":"Data","translations":["数据"]}
+{"kind":"category","owner":{"prefix":"iconmind","category":"DevOps"},"source":"DevOps","translations":["开发运维"]}
+{"kind":"category","owner":{"prefix":"iconmind","category":"DevTools"},"source":"DevTools","translations":["开发工具"]}
+{"kind":"category","owner":{"prefix":"iconmind","category":"Interface"},"source":"Interface","translations":["界面"]}
+{"kind":"category","owner":{"prefix":"iconmind","category":"MCP"},"source":"MCP","translations":["模型上下文协议"]}
+{"kind":"category","owner":{"prefix":"iconmind","category":"RAG"},"source":"RAG","translations":["检索增强生成"]}
+{"kind":"category","owner":{"prefix":"iconmind","category":"Security"},"source":"Security","translations":["安全"]}
 {"kind":"icon","owner":"iconmind:a-record-duotone-bold","source":"bold","translations":["粗体"]}
 {"kind":"icon","owner":"iconmind:a-record-duotone-bold","source":"duotone","translations":["双色"]}
 {"kind":"icon","owner":"iconmind:a-record-duotone-bold","source":"record","translations":["记录"]}

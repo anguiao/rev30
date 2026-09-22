@@ -1,3 +1,9 @@
+{"kind":"category","owner":{"prefix":"fxemoji","category":"Flags"},"source":"Flags","translations":["旗帜"]}
+{"kind":"category","owner":{"prefix":"fxemoji","category":"Nature"},"source":"Nature","translations":["自然"]}
+{"kind":"category","owner":{"prefix":"fxemoji","category":"Objects"},"source":"Objects","translations":["物品"]}
+{"kind":"category","owner":{"prefix":"fxemoji","category":"People"},"source":"People","translations":["人物"]}
+{"kind":"category","owner":{"prefix":"fxemoji","category":"Places"},"source":"Places","translations":["地点"]}
+{"kind":"category","owner":{"prefix":"fxemoji","category":"Symbols"},"source":"Symbols","translations":["符号"]}
 {"kind":"icon","owner":"fxemoji:2hearts","source":"2hearts","translations":["两颗 心"]}
 {"kind":"icon","owner":"fxemoji:acorn","source":"acorn","translations":["橡子"]}
 {"kind":"icon","owner":"fxemoji:admissiontickets","source":"admissiontickets","translations":["入场券"]}

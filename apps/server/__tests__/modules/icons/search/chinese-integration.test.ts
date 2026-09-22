@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { lookupCollection } from '@iconify/json'
 import { beforeAll, describe, expect, onTestFinished } from 'vitest'
 
 import { listBuiltinIcons } from '../../../../src/modules/content/icon-sets/builtin/service'
@@ -12,7 +13,32 @@ import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
 import { searchIconDocuments } from '../../../../src/modules/icons/search/query-repository'
 import { dbTest } from '../../../fixtures/database'
 
+const fixtureCategories = [
+  {
+    prefix: 'fa6-solid',
+    category: 'Moving',
+    name: 'box-open',
+    query: '搬家',
+    unrelatedQuery: '移动',
+  },
+  {
+    prefix: 'ginetex',
+    category: 'Professional Care',
+    name: 'do-not-wet-clean',
+    query: '专业洗护',
+    unrelatedQuery: '专业护理',
+  },
+  {
+    prefix: 'qlementine-icons',
+    category: 'Instrument',
+    name: 'accordion-16',
+    query: '乐器',
+    unrelatedQuery: '仪器',
+  },
+]
+
 const fixtureIconOwners = new Set([
+  ...fixtureCategories.map(({ prefix, name }) => `${prefix}:${name}`),
   'ant-design:bold',
   'arcticons:minecraft-alt-2',
   'arcticons:google-play',
@@ -71,7 +97,11 @@ beforeAll(async () => {
     translations: allMaintained.translations.filter((record) =>
       record.kind === 'icon'
         ? fixtureIconOwners.has(record.owner)
-        : record.owner.prefix === 'mdi' && record.owner.category === 'Account / User',
+        : (record.owner.prefix === 'mdi' && record.owner.category === 'Account / User') ||
+          fixtureCategories.some(
+            ({ prefix, category }) =>
+              record.owner.prefix === prefix && record.owner.category === category,
+          ),
     ),
   }
 })
@@ -104,8 +134,8 @@ describe('maintained Chinese icon search', () => {
         iconPackageVersion: 'test',
         maintained: {
           ...maintained,
-          translations: maintained.translations.filter(
-            (record) => record.kind === 'category' || owners.has(record.owner),
+          translations: maintained.translations.filter((record) =>
+            record.kind === 'category' ? record.owner.prefix === 'mdi' : owners.has(record.owner),
           ),
         },
         outputDirectory,
@@ -119,6 +149,55 @@ describe('maintained Chinese icon search', () => {
       ])
     },
   )
+
+  dbTest('searches real category translations with their collection context', async ({ db }) => {
+    const outputDirectory = await mkdtemp(join(tmpdir(), 'icon-search-categories-'))
+    onTestFinished(() => rm(outputDirectory, { recursive: true, force: true }))
+    const collections = await Promise.all(
+      fixtureCategories.map(async ({ prefix, category, name }) => {
+        const iconSet = await lookupCollection(prefix)
+        expect(iconSet.icons).toHaveProperty(name)
+        expect(iconSet.categories?.[category]).toContain(name)
+        return {
+          prefix,
+          collection: prefix,
+          palette: false,
+          icons: [name],
+          aliases: {},
+          categories: {
+            [category]: iconSet.categories![category]!.filter((item) => item === name),
+          },
+        }
+      }),
+    )
+    const selectedIds = new Set(fixtureCategories.map(({ prefix, name }) => `${prefix}:${name}`))
+    const { manifest, excluded } = await buildIconSearchArtifacts({
+      collections,
+      iconPackageVersion: 'test',
+      maintained: {
+        ...maintained,
+        translations: maintained.translations.filter((record) =>
+          record.kind === 'icon'
+            ? selectedIds.has(record.owner)
+            : fixtureCategories.some(
+                ({ prefix, category }) =>
+                  record.owner.prefix === prefix && record.owner.category === category,
+              ),
+        ),
+      },
+      outputDirectory,
+    })
+    expect(excluded).toEqual([])
+    const { documents } = await readIconSearchArtifacts(outputDirectory)
+    await replaceIconSearchDocuments(db, documents, manifest)
+
+    for (const { prefix, name, query, unrelatedQuery } of fixtureCategories) {
+      const result = await searchIconDocuments(db, { query, limit: 10 })
+      expect(result.rows.map((row) => [row.id, row.level])).toEqual([[`${prefix}:${name}`, 1]])
+      const unrelated = await searchIconDocuments(db, { query: unrelatedQuery, limit: 10 })
+      expect(unrelated.rows).toEqual([])
+    }
+  })
 
   dbTest(
     'indexes reviewed brand names and components without losing variants or adding parent brands',

@@ -1,3 +1,8 @@
+{"kind":"category","owner":{"prefix":"ginetex","category":"Bleaching"},"source":"Bleaching","translations":["漂白"]}
+{"kind":"category","owner":{"prefix":"ginetex","category":"Drying"},"source":"Drying","translations":["干燥"]}
+{"kind":"category","owner":{"prefix":"ginetex","category":"Ironing"},"source":"Ironing","translations":["熨烫"]}
+{"kind":"category","owner":{"prefix":"ginetex","category":"Professional Care"},"source":"Professional Care","translations":["专业洗护"]}
+{"kind":"category","owner":{"prefix":"ginetex","category":"Washing"},"source":"Washing","translations":["洗涤"]}
 {"kind":"icon","owner":"ginetex:30c-fine-wash","source":"30c","translations":["30摄氏度"]}
 {"kind":"icon","owner":"ginetex:30c-fine-wash","source":"fine","translations":["精细"]}
 {"kind":"icon","owner":"ginetex:30c-fine-wash","source":"wash","translations":["清洗"]}

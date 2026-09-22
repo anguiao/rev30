@@ -1,3 +1,23 @@
+{"kind":"category","owner":{"prefix":"ic","category":"AV"},"source":"AV","translations":["音频 视频"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Action"},"source":"Action","translations":["操作"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Alert"},"source":"Alert","translations":["警报"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Communication"},"source":"Communication","translations":["通信"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Content"},"source":"Content","translations":["内容"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Device"},"source":"Device","translations":["设备"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Editor"},"source":"Editor","translations":["编辑器"]}
+{"kind":"category","owner":{"prefix":"ic","category":"File"},"source":"File","translations":["文件"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Hardware"},"source":"Hardware","translations":["硬件"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Home"},"source":"Home","translations":["家居"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Image"},"source":"Image","translations":["图像"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Maps"},"source":"Maps","translations":["地图"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Math"},"source":"Math","translations":["数学"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Navigation"},"source":"Navigation","translations":["导航"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Notification"},"source":"Notification","translations":["通知"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Places"},"source":"Places","translations":["地点"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Search"},"source":"Search","translations":["搜索"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Shopping"},"source":"Shopping","translations":["购物"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Social"},"source":"Social","translations":["社交"]}
+{"kind":"category","owner":{"prefix":"ic","category":"Toggle"},"source":"Toggle","translations":["开关"]}
 {"kind":"icon","owner":"ic:3d-rotation","source":"3d","translations":["三维"]}
 {"kind":"icon","owner":"ic:3d-rotation","source":"rotation","translations":["旋转"]}
 {"kind":"icon","owner":"ic:ac-unit","source":"ac","translations":["空调"]}

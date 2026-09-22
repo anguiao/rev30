@@ -1,3 +1,20 @@
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"ComputerDevicesProgramming"},"source":"ComputerDevicesProgramming","translations":["计算机 设备 编程"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"DatabaseNetwork"},"source":"DatabaseNetwork","translations":["数据库 网络"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"Ecology"},"source":"Ecology","translations":["生态"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"Entertainment"},"source":"Entertainment","translations":["娱乐"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"FoodDrink"},"source":"FoodDrink","translations":["食物 饮料"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"Health"},"source":"Health","translations":["健康"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"ImagesVideos"},"source":"ImagesVideos","translations":["图像 视频"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"InterfaceEssential"},"source":"InterfaceEssential","translations":["界面 基本"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"MailChatSmiley"},"source":"MailChatSmiley","translations":["邮件 聊天 笑脸"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"MapTravelWayfinding"},"source":"MapTravelWayfinding","translations":["地图 旅行 导向"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"MoneyBusiness"},"source":"MoneyBusiness","translations":["金钱 商业"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"Phone"},"source":"Phone","translations":["电话"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"SchoolScience"},"source":"SchoolScience","translations":["学校 科学"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"ShoppingShipping"},"source":"ShoppingShipping","translations":["购物 运输"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"Sport"},"source":"Sport","translations":["体育"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"Transportation"},"source":"Transportation","translations":["交通"]}
+{"kind":"category","owner":{"prefix":"streamline-cyber-color","category":"UsersPeople"},"source":"UsersPeople","translations":["用户 人物"]}
 {"kind":"icon","owner":"streamline-cyber-color:3d-glasses","source":"3d","translations":["三维"]}
 {"kind":"icon","owner":"streamline-cyber-color:3d-glasses","source":"glasses","translations":["眼镜"]}
 {"kind":"icon","owner":"streamline-cyber-color:3d-sync","source":"3d","translations":["三维"]}

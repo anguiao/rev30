@@ -1,3 +1,12 @@
+{"kind":"category","owner":{"prefix":"twemoji","category":"Activities"},"source":"Activities","translations":["活动"]}
+{"kind":"category","owner":{"prefix":"twemoji","category":"Animals & Nature"},"source":"Animals & Nature","translations":["动物 自然"]}
+{"kind":"category","owner":{"prefix":"twemoji","category":"Flags"},"source":"Flags","translations":["旗帜"]}
+{"kind":"category","owner":{"prefix":"twemoji","category":"Food & Drink"},"source":"Food & Drink","translations":["食物 饮料"]}
+{"kind":"category","owner":{"prefix":"twemoji","category":"Objects"},"source":"Objects","translations":["物品"]}
+{"kind":"category","owner":{"prefix":"twemoji","category":"People & Body"},"source":"People & Body","translations":["人物 身体"]}
+{"kind":"category","owner":{"prefix":"twemoji","category":"Smileys & Emotion"},"source":"Smileys & Emotion","translations":["笑脸 情绪"]}
+{"kind":"category","owner":{"prefix":"twemoji","category":"Symbols"},"source":"Symbols","translations":["符号"]}
+{"kind":"category","owner":{"prefix":"twemoji","category":"Travel & Places"},"source":"Travel & Places","translations":["旅行 地点"]}
 {"kind":"icon","owner":"twemoji:1st-place-medal","source":"1st","translations":["第一"]}
 {"kind":"icon","owner":"twemoji:1st-place-medal","source":"medal","translations":["奖牌"]}
 {"kind":"icon","owner":"twemoji:1st-place-medal","source":"place","translations":["地点"]}

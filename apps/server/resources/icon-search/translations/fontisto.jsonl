@@ -1,3 +1,25 @@
+{"kind":"category","owner":{"prefix":"fontisto","category":"Accessibility"},"source":"Accessibility","translations":["无障碍"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Brand"},"source":"Brand","translations":["品牌"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Browser"},"source":"Browser","translations":["浏览器"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Chart"},"source":"Chart","translations":["图表"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Currency"},"source":"Currency","translations":["货币"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Directional"},"source":"Directional","translations":["方向"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Editor"},"source":"Editor","translations":["编辑器"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Emoji"},"source":"Emoji","translations":["表情符号"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Form Control"},"source":"Form Control","translations":["表单 控件"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Gender"},"source":"Gender","translations":["性别"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Hand"},"source":"Hand","translations":["手"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Interfaces"},"source":"Interfaces","translations":["界面"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Medical"},"source":"Medical","translations":["医疗"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Payment"},"source":"Payment","translations":["支付"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Player"},"source":"Player","translations":["播放器"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Shapes"},"source":"Shapes","translations":["形状"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Shopping"},"source":"Shopping","translations":["购物"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Snowflake"},"source":"Snowflake","translations":["雪花"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Spinner"},"source":"Spinner","translations":["加载动画"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Transportation"},"source":"Transportation","translations":["交通"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Travel"},"source":"Travel","translations":["旅行"]}
+{"kind":"category","owner":{"prefix":"fontisto","category":"Weather"},"source":"Weather","translations":["天气"]}
 {"kind":"icon","owner":"fontisto:acrobat-reader","source":"reader","translations":["阅读器"]}
 {"kind":"icon","owner":"fontisto:adjust","source":"adjust","translations":["调节"]}
 {"kind":"icon","owner":"fontisto:adobe","source":"adobe","translations":["奥多比"]}

@@ -1,3 +1,9 @@
+{"kind":"category","owner":{"prefix":"streamline-block","category":"Arrows"},"source":"Arrows","translations":["箭头"]}
+{"kind":"category","owner":{"prefix":"streamline-block","category":"Commerce"},"source":"Commerce","translations":["商业"]}
+{"kind":"category","owner":{"prefix":"streamline-block","category":"InterfaceEssential"},"source":"InterfaceEssential","translations":["界面 基本"]}
+{"kind":"category","owner":{"prefix":"streamline-block","category":"Leisure"},"source":"Leisure","translations":["休闲"]}
+{"kind":"category","owner":{"prefix":"streamline-block","category":"Technology"},"source":"Technology","translations":["技术"]}
+{"kind":"category","owner":{"prefix":"streamline-block","category":"Wellness"},"source":"Wellness","translations":["身心健康"]}
 {"kind":"icon","owner":"streamline-block:arrowheads-down","source":"arrowheads","translations":["箭头"]}
 {"kind":"icon","owner":"streamline-block:arrowheads-down","source":"down","translations":["下"]}
 {"kind":"icon","owner":"streamline-block:arrowheads-down-chevron","source":"arrowheads","translations":["箭头"]}

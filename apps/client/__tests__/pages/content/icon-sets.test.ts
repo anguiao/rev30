@@ -45,7 +45,7 @@ vi.mock('../../../src/features/icons/IconUploadDrawer.vue', () => ({
   default: {
     name: 'IconUploadDrawerStub',
     props: ['show', 'prefix'],
-    emits: ['update:show', 'uploaded'],
+    emits: ['update:show'],
     template: `
       <div data-test="icon-upload-drawer" :data-show="show" :data-prefix="prefix ?? ''">
         {{ show ? '上传 SVG 图标' : '' }}

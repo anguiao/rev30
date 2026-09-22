@@ -183,9 +183,6 @@ function openUploadDrawer() {
 
   showUploadDrawer()
 }
-async function handleIconsUploaded() {
-  message.success('上传图标成功')
-}
 
 async function exportSelectedSet() {
   if (selectedSet.value === null) {
@@ -540,7 +537,6 @@ async function copySvg(svg: string) {
       v-if="hasOpenedUploadDrawer"
       v-model:show="isUploadDrawerVisible"
       :prefix="selectedPrefix"
-      @uploaded="handleIconsUploaded"
     />
 
     <NModal

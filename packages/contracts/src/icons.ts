@@ -251,22 +251,24 @@ export const customIconUpdateSchema = z
   })
   .refine(hasAnyDefinedValue, { message: '至少修改一个字段' })
 
-export const customIconUploadSkippedSchema = z.object({
-  name: iconSetNameSchema,
-  sourceFilename: z.string().min(1),
-  reason: z.literal('duplicate'),
-})
-
-export const customIconUploadFailedSchema = z.object({
-  sourceFilename: z.string().min(1),
-  message: z.string().min(1),
-})
+export const customIconUploadResultSchema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.enum(['created', 'replaced']),
+    icon: customIconItemSchema,
+  }),
+  z.object({
+    status: z.literal('skipped'),
+    name: iconSetNameSchema,
+    reason: z.literal('duplicate'),
+  }),
+  z.object({
+    status: z.literal('failed'),
+    message: z.string().min(1),
+  }),
+])
 
 export const customIconUploadResponseSchema = z.object({
-  created: customIconItemSchema.array(),
-  replaced: customIconItemSchema.array(),
-  skipped: customIconUploadSkippedSchema.array(),
-  failed: customIconUploadFailedSchema.array(),
+  results: customIconUploadResultSchema.array(),
 })
 
 export type IconDataParam = z.infer<typeof iconDataParamSchema>
@@ -295,6 +297,5 @@ export type CustomIconDuplicateStrategy = z.infer<typeof customIconDuplicateStra
 export type CustomIconKeywords = z.infer<typeof customIconKeywordsSchema>
 export type CustomIconUploadMetadata = z.infer<typeof customIconUploadMetadataSchema>
 export type CustomIconUpdateInput = z.infer<typeof customIconUpdateSchema>
-export type CustomIconUploadSkipped = z.infer<typeof customIconUploadSkippedSchema>
-export type CustomIconUploadFailed = z.infer<typeof customIconUploadFailedSchema>
+export type CustomIconUploadResult = z.infer<typeof customIconUploadResultSchema>
 export type CustomIconUploadResponse = z.infer<typeof customIconUploadResponseSchema>

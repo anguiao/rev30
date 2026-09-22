@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useMutation, useQueryCache } from '@pinia/colada'
 import {
   NAlert,
@@ -10,21 +10,20 @@ import {
   NFormItem,
   NRadio,
   NRadioGroup,
-  NText,
   NUpload,
   NUploadDragger,
-  type UploadFileInfo,
+  type UploadOnChange,
 } from 'naive-ui'
 import {
   customIconKeywordsSchema,
   type CustomIconDuplicateStrategy,
   type CustomIconUploadMetadata,
-  type CustomIconUploadResponse,
+  type CustomIconUploadResult,
 } from '@rev30/contracts'
 import { uploadCustomIcons } from './requests'
 import { getErrorMessage } from '../../utils/error'
 import { refreshCustomIconCaches } from './cache'
-import IconKeywordsInput from './IconKeywordsInput.vue'
+import IconUploadFile from './IconUploadFile.vue'
 
 const props = defineProps<{
   prefix: string | null
@@ -32,49 +31,53 @@ const props = defineProps<{
 
 const show = defineModel<boolean>('show', { required: true })
 
-const emit = defineEmits<{
-  uploaded: [result: CustomIconUploadResponse]
-}>()
+type UploadEntry = {
+  id: string
+  file: File
+  keywords: string[] | undefined
+  keywordError: string | null
+  uploading: boolean
+  result: CustomIconUploadResult | null
+}
 
 const queryCache = useQueryCache()
 const drawerSessionId = ref(0)
-
 const duplicateStrategy = ref<CustomIconDuplicateStrategy>('skip')
-const fileList = ref<UploadFileInfo[]>([])
-type FileKeywordState = {
-  keywords: string[]
-  touched: boolean
-  error: string | null
-}
-const fileKeywordStates = ref(new Map<string, FileKeywordState>())
-
+const entries = ref<UploadEntry[]>([])
 const uploadError = ref<string | null>(null)
-const uploadResult = ref<CustomIconUploadResponse | null>(null)
+const isUploading = computed(() => entries.value.some((entry) => entry.uploading))
+const pendingEntries = computed(() => entries.value.filter((entry) => entry.result === null))
+const summary = computed(() => {
+  const labels = { created: '新增', replaced: '替换', skipped: '跳过', failed: '失败' } as const
+  const parts = Object.entries(labels).flatMap(([status, label]) => {
+    const count = entries.value.filter((entry) => entry.result?.status === status).length
+    return count > 0 ? [`${label} ${count}`] : []
+  })
+  return parts.length > 0 ? parts.join(' · ') : `已选择 ${entries.value.length} 个文件`
+})
 
-const { isLoading: isUploading, ...uploadMutation } = useMutation({
-  onMutate(): { sessionId: number } {
-    return {
-      sessionId: drawerSessionId.value,
-    }
+const uploadMutation = useMutation({
+  onMutate() {
+    return { sessionId: drawerSessionId.value }
   },
   mutation: ({
     prefix,
     duplicateStrategy,
-    files,
+    items,
     metadata,
   }: {
     prefix: string
     duplicateStrategy: CustomIconDuplicateStrategy
-    files: File[]
+    items: UploadEntry[]
     metadata?: CustomIconUploadMetadata
   }) =>
     uploadCustomIcons(prefix, {
       duplicateStrategy,
-      files,
+      files: items.map((item) => item.file),
       ...(metadata === undefined ? {} : { metadata }),
     }),
-  onSuccess(result, { prefix }, { sessionId }) {
-    if (result.created.length > 0 || result.replaced.length > 0) {
+  onSuccess({ results }, { prefix, items }, { sessionId }) {
+    if (results.some((result) => result.status === 'created' || result.status === 'replaced')) {
       void refreshCustomIconCaches(queryCache)
     }
 
@@ -82,109 +85,106 @@ const { isLoading: isUploading, ...uploadMutation } = useMutation({
       return
     }
 
-    uploadResult.value = result
-    emit('uploaded', result)
-
-    if (result.failed.length === 0 && result.skipped.length === 0) {
-      show.value = false
-    }
+    items.forEach((item, index) => {
+      const result = results[index]!
+      item.result = result
+      if (result.status === 'created' || result.status === 'replaced') {
+        item.keywords = result.icon.keywords
+      }
+    })
   },
   onError(error, { prefix }, { sessionId }) {
+    // The server may have committed some files before the request failed.
+    void refreshCustomIconCaches(queryCache)
+
     if (!show.value || props.prefix !== prefix || sessionId !== drawerSessionId.value) {
       return
     }
 
     uploadError.value = getErrorMessage(error, '上传图标失败')
   },
+  onSettled(_, __, { items }) {
+    for (const item of items) item.uploading = false
+  },
 })
 
-function handleSubmit() {
+function uploadItems(items: UploadEntry[], strategy: CustomIconDuplicateStrategy) {
   const prefix = props.prefix
-  const fileItems = fileList.value.filter(
-    (item): item is UploadFileInfo & { file: File } => item.file instanceof File,
-  )
-  const files = fileItems.map((item) => item.file)
+  if (prefix === null || items.length === 0 || isUploading.value) return
 
-  if (prefix === null || files.length === 0 || isUploading.value) {
-    return
-  }
-
-  uploadError.value = null
-  uploadResult.value = null
   const metadata: CustomIconUploadMetadata = []
-  let hasEditedKeywords = false
+  let hasInvalidKeywords = false
 
-  for (const item of fileItems) {
-    const state = fileKeywordStates.value.get(item.id)
-    if (state === undefined || !state.touched) {
+  for (const item of items) {
+    if (item.keywords === undefined) {
       metadata.push({})
       continue
     }
 
-    const result = customIconKeywordsSchema.safeParse(state.keywords)
+    const result = customIconKeywordsSchema.safeParse(item.keywords)
     if (!result.success) {
-      state.error = result.error.issues[0]?.message ?? '关键词无效'
-      return
+      item.keywordError = result.error.issues[0]!.message
+      hasInvalidKeywords = true
+      continue
     }
 
-    state.keywords = result.data
-    state.error = null
-    hasEditedKeywords = true
+    item.keywords = result.data
+    item.keywordError = null
     metadata.push({ keywords: result.data })
   }
 
+  if (hasInvalidKeywords) return
+
+  uploadError.value = null
+  for (const item of items) item.uploading = true
   uploadMutation.mutate({
     prefix,
-    duplicateStrategy: duplicateStrategy.value,
-    files,
-    ...(hasEditedKeywords ? { metadata } : {}),
+    duplicateStrategy: strategy,
+    items,
+    ...(items.some((item) => item.keywords !== undefined) ? { metadata } : {}),
   })
 }
 
-function handleFileListUpdate(nextFileList: UploadFileInfo[]) {
-  const nextStates = new Map<string, FileKeywordState>()
-
-  for (const item of nextFileList) {
-    nextStates.set(
-      item.id,
-      fileKeywordStates.value.get(item.id) ?? { keywords: [], touched: false, error: null },
-    )
+function handleSubmit() {
+  if (isUploading.value) return
+  if (pendingEntries.value.length > 0) {
+    uploadItems(pendingEntries.value, duplicateStrategy.value)
+  } else if (entries.value.length > 0) {
+    show.value = false
   }
-
-  fileList.value = nextFileList
-  fileKeywordStates.value = nextStates
 }
 
-function updateKeywords(fileId: string, keywords: string[]) {
-  const state = fileKeywordStates.value.get(fileId)
-  if (state === undefined) return
+const addFile: UploadOnChange = ({ file }) => {
+  if (!(file.file instanceof File) || isUploading.value) return
 
-  state.keywords = keywords
-  state.touched = true
-  state.error = null
+  entries.value.push({
+    id: file.id,
+    file: file.file,
+    keywords: undefined,
+    keywordError: null,
+    uploading: false,
+    result: null,
+  })
 }
 
-function clearKeywords(fileId: string) {
-  updateKeywords(fileId, [])
+function removeFile(entry: UploadEntry) {
+  entries.value = entries.value.filter((item) => item.id !== entry.id)
+}
+
+function reselectFile(entry: UploadEntry, file: File) {
+  entry.file = file
+  entry.result = null
+  entry.keywordError = null
 }
 
 watch(
   () => [show.value, props.prefix] as const,
-  ([isVisible]) => {
-    if (!isVisible) {
-      return
-    }
-
+  () => {
     drawerSessionId.value += 1
     duplicateStrategy.value = 'skip'
-    fileList.value = []
-    fileKeywordStates.value = new Map()
+    entries.value = []
     uploadError.value = null
-    uploadResult.value = null
     uploadMutation.reset()
-  },
-  {
-    immediate: true,
   },
 )
 </script>
@@ -193,97 +193,115 @@ watch(
   <NDrawer
     v-model:show="show"
     placement="right"
-    :width="560"
+    width="min(560px, 100vw)"
     :mask-closable="false"
     :close-on-esc="false"
   >
-    <NDrawerContent title="上传 SVG 图标" closable>
+    <NDrawerContent title="上传 SVG 图标" :closable="!isUploading">
       <div class="flex flex-col gap-4">
-        <NAlert v-if="uploadError" type="error" :show-icon="false">
-          {{ uploadError }}
-        </NAlert>
+        <NAlert v-if="uploadError" type="error" :show-icon="false">{{ uploadError }}</NAlert>
 
         <NForm @submit.prevent="handleSubmit">
-          <NFormItem label="重复图标">
-            <NRadioGroup
-              :value="duplicateStrategy"
-              @update:value="(value) => (duplicateStrategy = value)"
-            >
-              <div class="flex gap-4">
-                <NRadio value="skip">跳过</NRadio>
-                <NRadio value="replace">替换</NRadio>
+          <NFormItem label="目标图标集">
+            <span class="break-all">{{ prefix }}</span>
+          </NFormItem>
+
+          <NFormItem label="重复处理" :label-props="{ id: 'icon-upload-duplicate-label' }">
+            <div class="w-full space-y-2">
+              <NRadioGroup
+                v-model:value="duplicateStrategy"
+                :disabled="isUploading"
+                aria-labelledby="icon-upload-duplicate-label"
+              >
+                <div class="flex gap-4">
+                  <NRadio value="skip">跳过</NRadio>
+                  <NRadio value="replace">替换</NRadio>
+                </div>
+              </NRadioGroup>
+              <div
+                v-if="
+                  duplicateStrategy === 'replace' ||
+                  entries.some((entry) => entry.result?.status === 'skipped')
+                "
+                class="text-xs text-stone-500 dark:text-zinc-400"
+              >
+                替换时，未编辑关键词则保留原值；“清空关键词”会移除原有关键词。
               </div>
-            </NRadioGroup>
+            </div>
           </NFormItem>
 
           <NFormItem label="SVG 文件">
-            <NUpload
-              accept=".svg,image/svg+xml"
-              multiple
-              :default-upload="false"
-              :file-list="fileList"
-              @update:file-list="handleFileListUpdate"
-            >
-              <NUploadDragger>
-                <div
-                  class="flex flex-col items-center gap-2 py-8 text-stone-500 dark:text-zinc-400"
-                >
-                  <span class="i-[lucide--upload] text-2xl" aria-hidden="true" />
-                  <span class="text-sm">选择 SVG 文件</span>
-                </div>
-              </NUploadDragger>
-            </NUpload>
+            <div class="flex w-full min-w-0 flex-col gap-3">
+              <NUpload
+                accept=".svg,image/svg+xml"
+                multiple
+                :default-upload="false"
+                :show-file-list="false"
+                :file-list="[]"
+                :disabled="isUploading"
+                @change="addFile"
+              >
+                <NUploadDragger v-if="entries.length === 0">
+                  <div
+                    class="flex flex-col items-center gap-2 py-8 text-stone-500 dark:text-zinc-400"
+                  >
+                    <span class="i-[lucide--upload] text-2xl" aria-hidden="true" />
+                    <span class="text-sm">点击选择或拖拽 SVG 文件到这里</span>
+                  </div>
+                </NUploadDragger>
+                <NButton v-else :disabled="isUploading">
+                  <template #icon><span class="i-[lucide--plus]" aria-hidden="true" /></template>
+                  继续添加
+                </NButton>
+              </NUpload>
+
+              <ul v-if="entries.length > 0" class="space-y-3" aria-label="上传文件">
+                <IconUploadFile
+                  v-for="entry in entries"
+                  :key="entry.id"
+                  v-model:keywords="entry.keywords"
+                  :file="entry.file"
+                  :result="entry.result"
+                  :uploading="entry.uploading"
+                  :disabled="isUploading"
+                  :keyword-error="entry.keywordError"
+                  @update:keywords="entry.keywordError = null"
+                  @remove="removeFile(entry)"
+                  @replace="uploadItems([entry], 'replace')"
+                  @reselect="(file) => reselectFile(entry, file)"
+                />
+              </ul>
+
+              <div class="text-sm text-stone-500 dark:text-zinc-400" role="status">
+                {{ summary }}
+              </div>
+            </div>
           </NFormItem>
-
-          <div v-if="fileList.length > 0" class="space-y-3">
-            <div
-              v-for="item in fileList"
-              :key="item.id"
-              data-test="icon-upload-file"
-              :data-file-id="item.id"
-              class="rounded-ui border border-stone-200 p-3 dark:border-zinc-800"
-            >
-              <div class="mb-2 truncate text-sm font-medium" :title="item.name">
-                {{ item.name }}
-              </div>
-              <div class="mb-2 text-xs text-stone-500 dark:text-zinc-400">
-                关键词（可选），最多 20 项，每项最多 40 个字符
-              </div>
-              <IconKeywordsInput
-                :model-value="fileKeywordStates.get(item.id)?.keywords ?? []"
-                @update:model-value="(keywords) => updateKeywords(item.id, keywords)"
-                @clear="clearKeywords(item.id)"
-              />
-              <div v-if="fileKeywordStates.get(item.id)?.error" class="text-error mt-1 text-xs">
-                {{ fileKeywordStates.get(item.id)?.error }}
-              </div>
-            </div>
-          </div>
-
-          <div
-            v-if="uploadResult"
-            class="rounded-md border border-stone-200 p-3 dark:border-zinc-800"
-          >
-            <div class="text-sm font-medium text-stone-900 dark:text-zinc-100">上传结果</div>
-            <div class="mt-2 flex flex-col gap-1 text-sm text-stone-600 dark:text-zinc-300">
-              <NText>新增 {{ uploadResult.created.length }}</NText>
-              <NText>替换 {{ uploadResult.replaced.length }}</NText>
-              <NText>跳过 {{ uploadResult.skipped.length }}</NText>
-              <NText>失败 {{ uploadResult.failed.length }}</NText>
-            </div>
-          </div>
         </NForm>
       </div>
 
       <template #footer>
         <div class="flex justify-end gap-3">
           <NButton
-            type="primary"
+            v-if="pendingEntries.length > 0 || entries.length === 0"
             :disabled="isUploading"
+            @click="show = false"
+          >
+            关闭
+          </NButton>
+          <NButton
+            type="primary"
+            :disabled="isUploading || entries.length === 0 || prefix === null"
             :loading="isUploading"
             @click="handleSubmit"
           >
-            上传
+            {{
+              isUploading
+                ? '上传中…'
+                : pendingEntries.length > 0
+                  ? `上传 ${pendingEntries.length} 个文件`
+                  : '完成'
+            }}
           </NButton>
         </div>
       </template>

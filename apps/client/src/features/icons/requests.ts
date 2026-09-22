@@ -135,7 +135,12 @@ export async function uploadCustomIcons(
         ...(input.metadata === undefined ? {} : { metadata: JSON.stringify(input.metadata) }),
       },
     }),
-    customIconUploadResponseSchema,
+    customIconUploadResponseSchema.refine(
+      (result) => result.results.length === input.files.length,
+      {
+        message: '上传结果数量与文件数不一致',
+      },
+    ),
   )
 }
 

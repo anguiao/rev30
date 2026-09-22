@@ -101,23 +101,23 @@ describe('custom icon set service', () => {
       ],
     })
 
-    expect(skippedDuplicate.created).toHaveLength(1)
-    expect(skippedDuplicate.created[0]).toMatchObject({
-      icon: 'acme:logo',
-      name: 'logo',
-      width: 24,
-      height: 24,
-      keywords: ['First'],
-    })
-    expect(skippedDuplicate.skipped).toEqual([
+    expect(skippedDuplicate.results).toEqual([
       {
+        status: 'created',
+        icon: expect.objectContaining({
+          icon: 'acme:logo',
+          name: 'logo',
+          width: 24,
+          height: 24,
+          keywords: ['First'],
+        }),
+      },
+      {
+        status: 'skipped',
         name: 'logo',
-        sourceFilename: 'Logo.svg',
         reason: 'duplicate',
       },
     ])
-    expect(skippedDuplicate.replaced).toEqual([])
-    expect(skippedDuplicate.failed).toEqual([])
 
     const replacedDuplicate = await service.uploadIcons('acme', {
       duplicateStrategy: 'replace',
@@ -129,20 +129,23 @@ describe('custom icon set service', () => {
       ],
     })
 
-    expect(replacedDuplicate.created).toEqual([])
-    expect(replacedDuplicate.replaced).toHaveLength(1)
-    expect(replacedDuplicate.replaced[0]).toMatchObject({
-      icon: 'acme:logo',
-      width: 32,
-      height: 32,
-      keywords: ['First'],
-    })
+    expect(replacedDuplicate.results).toEqual([
+      {
+        status: 'replaced',
+        icon: expect.objectContaining({
+          icon: 'acme:logo',
+          width: 32,
+          height: 32,
+          keywords: ['First'],
+        }),
+      },
+    ])
 
     const cleared = await service.uploadIcons('acme', {
       duplicateStrategy: 'replace',
       files: [{ filename: 'Logo.svg', content: svg(24, rect('#000')), keywords: [] }],
     })
-    expect(cleared.replaced[0]).toMatchObject({ keywords: [] })
+    expect(cleared.results).toMatchObject([{ status: 'replaced', icon: { keywords: [] } }])
   })
 
   dbTest('lists, renames, exports, and deletes icons', async ({ db: database }) => {
@@ -240,16 +243,16 @@ describe('custom icon set service', () => {
           content: svg(24, rect('#000')),
         },
         {
-          filename: 'Bad.svg',
+          filename: 'Good.svg',
           content: '<svg><script>alert(1)</script>',
         },
       ],
     })
 
-    expect(result.created.map((icon) => icon.name)).toEqual(['good'])
-    expect(result.failed).toEqual([
+    expect(result.results).toEqual([
+      { status: 'created', icon: expect.objectContaining({ name: 'good' }) },
       {
-        sourceFilename: 'Bad.svg',
+        status: 'failed',
         message: 'SVG 无效',
       },
     ])

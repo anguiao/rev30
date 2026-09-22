@@ -232,21 +232,21 @@ describe('icons request helpers', () => {
 
   it('uploads custom icons as multipart form data and parses partial results', async () => {
     const uploadResponse = {
-      created: [customIconResponse],
-      replaced: [],
-      skipped: [
+      results: [
+        { status: 'created', icon: customIconResponse },
         {
+          status: 'skipped',
           name: 'existing',
-          sourceFilename: 'existing.svg',
-          reason: 'duplicate' as const,
+          reason: 'duplicate',
         },
+        { status: 'failed', message: 'SVG 无效' },
       ],
-      failed: [{ sourceFilename: 'bad.svg', message: 'SVG 无效' }],
     }
     const fetchMock = createFetchMock(jsonResponse(uploadResponse))
     const files = [
       new File(['<svg />'], 'user-add.svg', { type: 'image/svg+xml' }),
       new File(['<svg />'], 'existing.svg', { type: 'image/svg+xml' }),
+      new File(['broken'], 'bad.svg', { type: 'image/svg+xml' }),
     ]
     useAuthStore().accessToken = 'access-token'
 
@@ -254,7 +254,7 @@ describe('icons request helpers', () => {
       uploadCustomIcons('acme', {
         duplicateStrategy: 'replace',
         files,
-        metadata: [{ keywords: ['User'] }, {}],
+        metadata: [{ keywords: ['User'] }, {}, {}],
       }),
     ).resolves.toEqual(uploadResponse)
 
@@ -267,7 +267,20 @@ describe('icons request helpers', () => {
     expect(form).toBeInstanceOf(FormData)
     expect((form as FormData).get('duplicateStrategy')).toBe('replace')
     expect((form as FormData).getAll('files')).toEqual(files)
-    expect((form as FormData).get('metadata')).toBe(JSON.stringify([{ keywords: ['User'] }, {}]))
+    expect((form as FormData).get('metadata')).toBe(
+      JSON.stringify([{ keywords: ['User'] }, {}, {}]),
+    )
+  })
+
+  it('rejects upload responses that cannot be matched to the submitted files', async () => {
+    createFetchMock(jsonResponse({ results: [] }))
+
+    await expect(
+      uploadCustomIcons('acme', {
+        duplicateStrategy: 'skip',
+        files: [new File(['<svg />'], 'logo.svg', { type: 'image/svg+xml' })],
+      }),
+    ).rejects.toThrow('上传结果数量与文件数不一致')
   })
 
   it('renames and deletes custom icons', async () => {

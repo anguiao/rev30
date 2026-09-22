@@ -16,8 +16,6 @@ import {
   customIconSetCreateSchema,
   customIconSetUpdateSchema,
   customIconDuplicateStrategySchema,
-  customIconUploadSkippedSchema,
-  customIconUploadFailedSchema,
   customIconUploadResponseSchema,
   customIconKeywordsSchema,
   customIconUploadMetadataSchema,
@@ -316,62 +314,14 @@ describe('icon set schemas', () => {
 
     expect(customIconItemSchema.parse(customIcon)).toEqual(customIcon)
 
-    expect(
-      customIconUploadSkippedSchema.parse({
-        name: 'user-add',
-        sourceFilename: 'user-add.svg',
-        reason: 'duplicate',
-      }),
-    ).toEqual({
-      name: 'user-add',
-      sourceFilename: 'user-add.svg',
-      reason: 'duplicate',
-    })
-
-    expect(
-      customIconUploadFailedSchema.parse({
-        sourceFilename: 'broken.svg',
-        message: 'Invalid SVG',
-      }),
-    ).toEqual({
-      sourceFilename: 'broken.svg',
-      message: 'Invalid SVG',
-    })
-
-    expect(
-      customIconUploadResponseSchema.parse({
-        created: [customIcon],
-        replaced: [],
-        skipped: [
-          {
-            name: 'user-old',
-            sourceFilename: 'user-old.svg',
-            reason: 'duplicate',
-          },
-        ],
-        failed: [
-          {
-            sourceFilename: 'broken.svg',
-            message: 'Invalid SVG',
-          },
-        ],
-      }),
-    ).toEqual({
-      created: [customIcon],
-      replaced: [],
-      skipped: [
-        {
-          name: 'user-old',
-          sourceFilename: 'user-old.svg',
-          reason: 'duplicate',
-        },
+    const response = {
+      results: [
+        { status: 'created', icon: customIcon },
+        { status: 'skipped', name: 'user-old', reason: 'duplicate' },
+        { status: 'failed', message: 'Invalid SVG' },
+        { status: 'replaced', icon: customIcon },
       ],
-      failed: [
-        {
-          sourceFilename: 'broken.svg',
-          message: 'Invalid SVG',
-        },
-      ],
-    })
+    }
+    expect(customIconUploadResponseSchema.parse(response)).toEqual(response)
   })
 })

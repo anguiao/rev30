@@ -109,8 +109,10 @@ describe('icon set routes', () => {
     )
     expect(uploadedResponse.status).toBe(200)
     const uploaded = (await uploadedResponse.json()) as CustomIconUploadResponse
-    expect(uploaded.created[0]).toMatchObject({ keywords: ['First Position'] })
-    expect(uploaded.replaced[0]).toMatchObject({ keywords: ['Second Position'] })
+    expect(uploaded.results).toMatchObject([
+      { status: 'created', icon: { keywords: ['First Position'] } },
+      { status: 'replaced', icon: { keywords: ['Second Position'] } },
+    ])
 
     const [before] = await db.select().from(customIconSetIcons)
     const updateResponse = await app.request(
@@ -337,13 +339,10 @@ describe('icon set routes', () => {
 
     expect(uploadResponse.status).toBe(200)
     const uploaded = (await uploadResponse.json()) as CustomIconUploadResponse
-    expect(uploaded.created).toHaveLength(1)
-    expect(uploaded.created[0]).toMatchObject({
-      icon: 'acme:logo',
-      name: 'logo',
-      keywords: [],
-    })
-    expect(uploaded.failed).toHaveLength(1)
+    expect(uploaded.results).toMatchObject([
+      { status: 'created', icon: { icon: 'acme:logo', name: 'logo', keywords: [] } },
+      { status: 'failed' },
+    ])
 
     expect(listResponse.status).toBe(200)
     const listBody = (await listResponse.json()) as CustomIconListResponse
@@ -435,9 +434,9 @@ describe('icon set routes', () => {
     })
     expect(uploaded.status).toBe(200)
     const body = (await uploaded.json()) as CustomIconUploadResponse
-    expect(body.created.map((icon) => icon.name)).toEqual([name])
-    expect(body.failed).toEqual([
-      { sourceFilename: `${name}n.svg`, message: '图标名称不能超过 256 个字符' },
+    expect(body.results).toEqual([
+      { status: 'created', icon: expect.objectContaining({ name }) },
+      { status: 'failed', message: '图标名称不能超过 256 个字符' },
     ])
 
     const iconUrl = `/api/content/icon-sets/custom/${prefix}/icons/${name}`

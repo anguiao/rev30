@@ -37,18 +37,13 @@ describe('request utils', () => {
     })
   })
 
-  it('parses icon search domain error codes', async () => {
+  it.each([
+    { status: 503, code: 'ICON_SEARCH_UNAVAILABLE', message: '暂不可用' },
+    { status: 409, code: 'RESOURCE_CONFLICT', message: '资源冲突' },
+  ])('preserves the $code response', async ({ status, code, message }) => {
     await expect(
-      parseApiError(
-        new Response(JSON.stringify({ code: 'ICON_SEARCH_UNAVAILABLE', message: '暂不可用' }), {
-          status: 503,
-        }),
-      ),
-    ).resolves.toMatchObject({
-      status: 503,
-      code: 'ICON_SEARCH_UNAVAILABLE',
-      message: '暂不可用',
-    })
+      parseApiError(new Response(JSON.stringify({ code, message }), { status })),
+    ).resolves.toMatchObject({ status, code, message })
   })
 
   it('parses structured API errors', async () => {

@@ -1,4 +1,8 @@
-import { iconSetIconListQuerySchema, iconSetListQuerySchema } from '@rev30/contracts'
+import {
+  iconErrorCodeSchema,
+  iconSetIconListQuerySchema,
+  iconSetListQuerySchema,
+} from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
 import type { AuthEnv } from '../../../../middleware/auth'
@@ -18,7 +22,10 @@ const iconSetIconListQueryValidator = zValidator(
   (result, c) => {
     if (!result.success) {
       if (result.error.issues.some((issue) => issue.path[0] === 'cursor')) {
-        return c.json({ code: 'INVALID_ICON_CURSOR' as const, message: '分页游标无效' }, 400)
+        return c.json(
+          { code: iconErrorCodeSchema.enum.INVALID_ICON_CURSOR, message: '分页游标无效' },
+          400,
+        )
       }
       return c.json({ message: '查询参数无效' }, 400)
     }

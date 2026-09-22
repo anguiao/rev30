@@ -1,4 +1,5 @@
 import type { AsyncStatus } from '@pinia/colada'
+import { iconErrorCodeSchema } from '@rev30/contracts'
 import type { ComputedRef, Ref } from 'vue'
 import { useDocumentVisibility } from '@vueuse/core'
 import { computed, watch } from 'vue'
@@ -14,8 +15,12 @@ export function useIconSearchState(options: {
     const error = options.error.value
     return error instanceof ApiRequestError ? error.code : undefined
   })
-  const isPreparing = computed(() => errorCode.value === 'ICON_SEARCH_PREPARING')
-  const isUnavailable = computed(() => errorCode.value === 'ICON_SEARCH_UNAVAILABLE')
+  const isPreparing = computed(
+    () => errorCode.value === iconErrorCodeSchema.enum.ICON_SEARCH_PREPARING,
+  )
+  const isUnavailable = computed(
+    () => errorCode.value === iconErrorCodeSchema.enum.ICON_SEARCH_UNAVAILABLE,
+  )
   const visibility = useDocumentVisibility()
   let retryAttempt = 0
 

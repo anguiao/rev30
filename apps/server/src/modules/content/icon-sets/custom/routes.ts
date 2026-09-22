@@ -3,6 +3,7 @@ import {
   customIconParamSchema,
   customIconSetCreateSchema,
   customIconSetUpdateSchema,
+  iconErrorCodeSchema,
   iconSetIconListQuerySchema,
   iconSetListQuerySchema,
   iconSetPrefixParamSchema,
@@ -40,7 +41,10 @@ const iconSetIconListQueryValidator = zValidator(
   (result, c) => {
     if (!result.success) {
       if (result.error.issues.some((issue) => issue.path[0] === 'cursor')) {
-        return c.json({ code: 'INVALID_ICON_CURSOR' as const, message: '分页游标无效' }, 400)
+        return c.json(
+          { code: iconErrorCodeSchema.enum.INVALID_ICON_CURSOR, message: '分页游标无效' },
+          400,
+        )
       }
       return c.json({ message: '查询参数无效' }, 400)
     }

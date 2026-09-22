@@ -1,5 +1,9 @@
 import { useInfiniteQuery, useQueryCache } from '@pinia/colada'
-import type { BuiltinIconListResponse, IconSetIconListQuery } from '@rev30/contracts'
+import {
+  iconErrorCodeSchema,
+  type BuiltinIconListResponse,
+  type IconSetIconListQuery,
+} from '@rev30/contracts'
 import { computed, watch, type ComputedRef } from 'vue'
 import { ApiRequestError } from '../../utils/request'
 import { resetInfiniteQuery } from './cache'
@@ -55,7 +59,10 @@ export function useIconList<TPage extends BuiltinIconListResponse>(options: {
   })
 
   watch(error, (error) => {
-    if (error instanceof ApiRequestError && error.code === 'INVALID_ICON_CURSOR') {
+    if (
+      error instanceof ApiRequestError &&
+      error.code === iconErrorCodeSchema.enum.INVALID_ICON_CURSOR
+    ) {
       void resetInfiniteQuery(queryCache, queryKey.value)
     }
   })

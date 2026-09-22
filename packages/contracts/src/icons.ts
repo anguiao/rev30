@@ -37,6 +37,12 @@ const ICON_SEARCH_KEYWORD_MAX_LENGTH = 120
 export const ICON_CURSOR_MAX_LENGTH = 2048
 const CUSTOM_ICON_ID_PART_MAX_LENGTH = 256
 
+export const iconErrorCodeSchema = z.enum([
+  'INVALID_ICON_CURSOR',
+  'ICON_SEARCH_PREPARING',
+  'ICON_SEARCH_UNAVAILABLE',
+])
+
 export const completeIconIdSchema = z
   .string()
   .regex(iconifyIconNamePattern, '图标名称无效')
@@ -265,6 +271,7 @@ export const customIconUploadResponseSchema = z.object({
 
 export type IconDataParam = z.infer<typeof iconDataParamSchema>
 export type IconDataQuery = z.infer<typeof iconDataQuerySchema>
+export type IconErrorCode = z.infer<typeof iconErrorCodeSchema>
 export type IconSearchQuery = z.infer<typeof iconSearchQuerySchema>
 export type IconSearchItem = z.infer<typeof iconSearchItemSchema>
 export type IconSearchResponse = z.infer<typeof iconSearchResponseSchema>

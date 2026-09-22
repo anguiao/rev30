@@ -370,7 +370,8 @@ Iconify JSON 导出维持现有标准结构，不添加私有 keywords；本次�
 | `packages/utils/src/search-text.ts` | 前后端及契约共用的纯文本归一化；词项派生和数据库逻辑仍留在服务端 |
 | `apps/server/src/modules/content/icon-sets/` | 非空查询复用统一搜索，空查询从图标包或业务记录浏览，衔接分页、SVG 获取与自定义事务同步 |
 | `apps/server/src/db/` | 自定义字段、派生表、索引状态及迁移 |
-| `packages/contracts/src/icons.ts` | 字段约束、上传元数据、编辑输入、查询、游标及搜索准备状态契约 |
+| `packages/contracts/src/icons.ts` | 字段约束、上传元数据、编辑输入、查询、游标及前后端共用的图标错误码 |
+| `packages/contracts/src/errors.ts` | 通用错误响应结构，`code` 作为可选字符串传递，具体业务含义由所属模块解释 |
 | `apps/client/src/features/icons/` | `useIconList` 统一两个图标库的分页与游标重置；`useIconSearchKeyword`、`useIconSearchState` 供图标库和选择器共用，负责防抖、搜索状态提示与恢复；缓存失效沿用统一入口 |
 | 服务端入口及构建配置 | 从当前图标包和已保存数据准备产物并分发；启动后触发后台索引任务 |
 

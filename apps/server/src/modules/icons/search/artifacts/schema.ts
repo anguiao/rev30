@@ -18,7 +18,7 @@ const artifactFileSchema = z
 
 export const runtimeManifestSchema = z
   .object({
-    formatVersion: z.literal(3),
+    formatVersion: z.literal(4),
     iconPackageVersion: z.string().min(1),
     searchDataVersion: z.string().min(1),
     rulesVersion: z.string().min(1),
@@ -29,7 +29,6 @@ export const runtimeManifestSchema = z
         definitions: z.int().nonnegative(),
         aliases: z.int().nonnegative(),
         documents: z.int().nonnegative(),
-        validEnglishRecords: z.int().nonnegative(),
         validTranslations: z.int().nonnegative(),
         chineseDocuments: z.int().nonnegative(),
       })

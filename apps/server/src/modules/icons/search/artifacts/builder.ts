@@ -4,7 +4,6 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { deriveIconSearchDocument } from '../document'
 import type {
-  MaintainedEnglishRecord,
   MaintainedIconTranslationRecord,
   MaintainedCategoryTranslationRecord,
   MaintainedSearchData,
@@ -20,7 +19,7 @@ import {
 } from './schema'
 
 type ExcludedMaintainedRecord = {
-  kind: 'english' | 'translation'
+  kind: 'translation'
   owner: string | MaintainedCategoryTranslationRecord['owner']
   source: string
   reason: string
@@ -44,14 +43,6 @@ function resolveAlias(
   return resolveAlias(alias.parent, icons, aliases, seen)
 }
 
-function validateEnglishRecord(record: MaintainedEnglishRecord): boolean {
-  const sourceTerms = new Set(deriveSearchText(record.source).tokens)
-  return record.terms.every((term) => {
-    const derived = deriveSearchText(term)
-    return derived.tokens.length === 1 && sourceTerms.has(derived.tokens[0]!)
-  })
-}
-
 export async function buildIconSearchArtifacts(options: {
   collections: IconPackageCollection[]
   iconPackageVersion: string
@@ -70,11 +61,8 @@ export async function buildIconSearchArtifacts(options: {
       ]),
     ]),
   )
-  const englishByIcon = new Map<string, MaintainedEnglishRecord[]>()
-  const categoriesByIcon = new Map<string, MaintainedEnglishRecord[]>()
   const translationsByIcon = new Map<string, MaintainedIconTranslationRecord[]>()
   const translationsByCategory = new Map<string, MaintainedCategoryTranslationRecord[]>()
-  let validEnglishRecords = 0
   let validTranslations = 0
   let definitions = 0
   let aliases = 0
@@ -92,34 +80,6 @@ export async function buildIconSearchArtifacts(options: {
       if (definitionNames.includes(alias))
         throw new Error(`Icon and alias conflict: ${collection.prefix}:${alias}`)
     }
-  }
-
-  for (const record of options.maintained.english) {
-    const colon = record.owner.indexOf(':')
-    const prefix = colon < 0 ? '' : record.owner.slice(0, colon)
-    const ownerName = colon < 0 ? '' : record.owner.slice(colon + 1)
-    const collection = collectionByPrefix.get(prefix)
-    const iconNames = collectionNamesByPrefix.get(prefix) ?? new Set<string>()
-    const validOwner = iconNames.has(ownerName)
-    const nameText = deriveSearchText(ownerName)
-    const sourceText = deriveSearchText(record.source)
-    const validSource =
-      record.kind === 'icon'
-        ? sourceText.phrase === nameText.phrase ||
-          (sourceText.tokens.length === 1 && nameText.tokens.includes(sourceText.phrase))
-        : Boolean(collection?.categories?.[record.source]?.includes(ownerName))
-    if (!validOwner || !validSource || !validateEnglishRecord(record)) {
-      excluded.push({
-        kind: 'english',
-        owner: record.owner,
-        source: record.source,
-        reason: 'stale owner, source, or category relationship',
-      })
-      continue
-    }
-    validEnglishRecords++
-    const target = record.kind === 'icon' ? englishByIcon : categoriesByIcon
-    target.set(record.owner, [...(target.get(record.owner) ?? []), record])
   }
 
   for (const record of options.maintained.translations) {
@@ -156,23 +116,12 @@ export async function buildIconSearchArtifacts(options: {
     const validSource =
       sourceText.phrase === categoryText.phrase ||
       (sourceText.tokens.length === 1 && categoryText.tokens.includes(sourceText.phrase))
-    const hasMaintainedRelationship = [...categoriesByIcon.values()].some((entries) =>
-      entries.some(
-        (entry) =>
-          entry.owner.startsWith(`${record.owner.prefix}:`) &&
-          entry.source === record.owner.category,
-      ),
-    )
-    if (
-      !collection?.categories?.[record.owner.category] ||
-      !validSource ||
-      !hasMaintainedRelationship
-    ) {
+    if (!collection?.categories?.[record.owner.category] || !validSource) {
       excluded.push({
         kind: 'translation',
         owner: record.owner,
         source: record.source,
-        reason: 'stale category owner, source, or relationship',
+        reason: 'stale category owner or source',
       })
       continue
     }
@@ -196,16 +145,22 @@ export async function buildIconSearchArtifacts(options: {
         throw new Error(`Cannot resolve alias ${collection.prefix}:${alias}`)
     }
 
+    const categoriesByName = new Map<string, string[]>()
+    for (const [category, members] of Object.entries(collection.categories ?? {})) {
+      for (const member of members) {
+        const categories = categoriesByName.get(member)
+        if (categories) categories.push(category)
+        else categoriesByName.set(member, [category])
+      }
+    }
+
     const documents: BuiltinIconSearchDocument[] = []
     const names = [...iconSet, ...Object.keys(collection.aliases)].sort(compareText)
     for (const name of names) {
-      const categoryEntries = categoriesByIcon.get(`${collection.prefix}:${name}`) ?? []
-      const maintainedTerms = (englishByIcon.get(`${collection.prefix}:${name}`) ?? []).flatMap(
-        (entry) => entry.terms,
-      )
+      const categories = categoriesByName.get(name) ?? []
       const iconTranslations = translationsByIcon.get(`${collection.prefix}:${name}`) ?? []
-      const categoryTranslations = categoryEntries.flatMap(
-        (entry) => translationsByCategory.get(`${collection.prefix}\0${entry.source}`) ?? [],
+      const categoryTranslations = categories.flatMap(
+        (category) => translationsByCategory.get(`${collection.prefix}\0${category}`) ?? [],
       )
       const document = deriveIconSearchDocument({
         id: `${collection.prefix}:${name}`,
@@ -215,15 +170,11 @@ export async function buildIconSearchArtifacts(options: {
         collection: collection.collection,
         palette: collection.palette,
         customIconId: null,
-        primaryPhrases: [
-          name,
-          ...maintainedTerms,
-          ...iconTranslations.flatMap((entry) => entry.translations),
-        ],
+        primaryPhrases: [name, ...iconTranslations.flatMap((entry) => entry.translations)],
         auxiliaryPhrases: [
           collection.prefix,
           collection.collection,
-          ...categoryEntries.flatMap((entry) => [entry.source, ...entry.terms]),
+          ...categories,
           ...categoryTranslations.flatMap((entry) => entry.translations),
         ],
         exactPhrases: [
@@ -258,7 +209,7 @@ export async function buildIconSearchArtifacts(options: {
     contentFingerprint,
   })
   const manifest: IconSearchRuntimeManifest = {
-    formatVersion: 3,
+    formatVersion: 4,
     iconPackageVersion: options.iconPackageVersion,
     searchDataVersion: options.maintained.dataVersion,
     rulesVersion: ICON_SEARCH_RULES_VERSION,
@@ -268,7 +219,6 @@ export async function buildIconSearchArtifacts(options: {
       definitions,
       aliases,
       documents: definitions + aliases,
-      validEnglishRecords,
       validTranslations,
       chineseDocuments,
     },

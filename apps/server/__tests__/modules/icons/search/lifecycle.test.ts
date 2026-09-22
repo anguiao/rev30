@@ -68,7 +68,7 @@ describe('icon search lifecycle', () => {
       logger,
       installedIconPackageVersion: 'icons-v2',
       loadManifest: async () => ({
-        formatVersion: 3,
+        formatVersion: 4,
         contentFingerprint: '0'.repeat(64),
         iconPackageVersion: 'icons-v1',
         searchDataVersion: 'data-v1',
@@ -78,7 +78,6 @@ describe('icon search lifecycle', () => {
           definitions: 1,
           aliases: 0,
           documents: 1,
-          validEnglishRecords: 0,
           validTranslations: 0,
           chineseDocuments: 0,
         },
@@ -441,7 +440,7 @@ describe('icon search lifecycle', () => {
     `)
     const logger = { error: vi.fn() }
     const manifest = {
-      formatVersion: 3 as const,
+      formatVersion: 4 as const,
       contentFingerprint: '0'.repeat(64),
       iconPackageVersion: 'icons-v1',
       searchDataVersion: 'data-v2',
@@ -451,7 +450,6 @@ describe('icon search lifecycle', () => {
         definitions: 1,
         aliases: 0,
         documents: 1,
-        validEnglishRecords: 0,
         validTranslations: 0,
         chineseDocuments: 0,
       },

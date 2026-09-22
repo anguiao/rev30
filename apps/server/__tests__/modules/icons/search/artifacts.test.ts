@@ -22,18 +22,9 @@ const collection = (overrides: Partial<IconPackageCollection> = {}): IconPackage
 })
 
 const maintained = (overrides: Partial<MaintainedSearchData> = {}): MaintainedSearchData => ({
-  formatVersion: 1,
+  formatVersion: 2,
   iconPackageVersion: 'old-version-is-allowed',
-  dataVersion: 'english-1',
-  english: [
-    { kind: 'icon', owner: 'test:alarm-clock', source: 'alarm-clock', terms: ['alarm', 'clock'] },
-    {
-      kind: 'category',
-      owner: 'test:member',
-      source: 'Account / User',
-      terms: ['account', 'user'],
-    },
-  ],
+  dataVersion: 'translations-1',
   translations: [
     { kind: 'icon', owner: 'test:alarm-clock', source: 'alarm-clock', translations: ['闹钟'] },
     { kind: 'icon', owner: 'test:alarm-clock', source: 'clock', translations: ['时钟'] },
@@ -154,7 +145,7 @@ describe('icon search artifacts', () => {
     expect(member.primaryEnglishTerms).not.toContain('account')
     expect(member.fullTokens).toEqual(expect.arrayContaining(['账户', '用户']))
     expect(member.exactPhrases).not.toContain('账户')
-    expect(hidden.fullTokens).not.toContain('账户')
+    expect(hidden.fullTokens).toEqual(expect.arrayContaining(['账户', '用户']))
     expect(alarm.fullTokens).not.toContain('account')
     expect(alarm.fullTokens).toEqual(expect.arrayContaining(['闹钟', '时钟']))
     expect(alarm.exactPhrases).toEqual(['alarm-clock', '闹钟'])
@@ -169,6 +160,43 @@ describe('icon search artifacts', () => {
         outputDirectory: await temporaryDirectory(),
       }),
     ).rejects.toThrow('test:broken')
+  })
+
+  it('uses every collection category while keeping translations and aliases bound to explicit members', async () => {
+    const output = await temporaryDirectory()
+    await buildIconSearchArtifacts({
+      collections: [
+        collection({
+          aliases: {
+            'listed-alias': { parent: 'member' },
+            'unlisted-alias': { parent: 'member' },
+          },
+          categories: { 'Account / User': ['hidden-item', 'member', 'listed-alias'] },
+        }),
+        collection({ prefix: 'other' }),
+      ],
+      iconPackageVersion: 'current',
+      maintained: maintained(),
+      outputDirectory: output,
+    })
+
+    const { documents } = await readIconSearchArtifacts(output)
+    const byId = new Map(documents.map((document) => [document.id, document]))
+    for (const name of ['hidden-item', 'member', 'listed-alias']) {
+      const document = byId.get(`test:${name}`)!
+      expect(document.fullTokens).toEqual(
+        expect.arrayContaining(['account', 'user', '账户', '用户']),
+      )
+      expect(document.primaryTokens).not.toContain('用户')
+      expect(document.exactPhrases).not.toContain('用户')
+    }
+    const unlistedAlias = byId.get('test:unlisted-alias')!
+    expect(unlistedAlias.fullTokens).not.toContain('account')
+    expect(unlistedAlias.fullTokens).not.toContain('用户')
+    const otherMember = byId.get('other:member')!
+    expect(otherMember.auxiliaryEnglishTerms).toEqual(expect.arrayContaining(['account', 'user']))
+    expect(otherMember.fullTokens).not.toContain('用户')
+    expect(byId.get('other:alarm-clock')!.fullTokens).not.toContain('account')
   })
 
   it('counts Chinese documents from final Han tokens', async () => {

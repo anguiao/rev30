@@ -68,7 +68,6 @@ beforeAll(async () => {
   const allMaintained = await loadMaintainedSearchData(join(process.cwd(), 'resources/icon-search'))
   maintained = {
     ...allMaintained,
-    english: allMaintained.english.filter((record) => fixtureIconOwners.has(record.owner)),
     translations: allMaintained.translations.filter((record) =>
       record.kind === 'icon'
         ? fixtureIconOwners.has(record.owner)
@@ -105,7 +104,6 @@ describe('maintained Chinese icon search', () => {
         iconPackageVersion: 'test',
         maintained: {
           ...maintained,
-          english: maintained.english.filter((record) => owners.has(record.owner)),
           translations: maintained.translations.filter(
             (record) => record.kind === 'category' || owners.has(record.owner),
           ),
@@ -161,7 +159,6 @@ describe('maintained Chinese icon search', () => {
         iconPackageVersion: 'test',
         maintained: {
           ...maintained,
-          english: maintained.english.filter((record) => selectedIds.has(record.owner)),
           translations: maintained.translations.filter(
             (record) => record.kind === 'icon' && selectedIds.has(record.owner),
           ),
@@ -285,7 +282,6 @@ describe('maintained Chinese icon search', () => {
         iconPackageVersion: 'test',
         maintained: {
           ...maintained,
-          english: maintained.english.filter((record) => selectedIds.has(record.owner)),
           translations: maintained.translations.filter(
             (record) => record.kind === 'icon' && selectedIds.has(record.owner),
           ),
@@ -326,7 +322,6 @@ describe('maintained Chinese icon search', () => {
       iconPackageVersion: 'test',
       maintained: {
         ...maintained,
-        english: maintained.english.filter((record) => selectedIds.has(record.owner)),
         translations: maintained.translations.filter(
           (record) => record.kind === 'icon' && selectedIds.has(record.owner),
         ),
@@ -380,7 +375,6 @@ describe('maintained Chinese icon search', () => {
         iconPackageVersion: 'test',
         maintained: {
           ...maintained,
-          english: maintained.english.filter((record) => selectedIds.has(record.owner)),
           translations: maintained.translations.filter(
             (record) => record.kind === 'icon' && selectedIds.has(record.owner),
           ),
@@ -438,7 +432,6 @@ describe('maintained Chinese icon search', () => {
         iconPackageVersion: 'test',
         maintained: {
           ...maintained,
-          english: maintained.english.filter((record) => selectedIds.has(record.owner)),
           translations: selectedTranslations,
         },
         outputDirectory,
@@ -468,7 +461,7 @@ describe('maintained Chinese icon search', () => {
       })
       const selectorAccounts = await selector.searchIcons({ keyword: '账户 用户', limit: 10 })
       expect(selectorAccounts).toMatchObject({
-        list: [{ icon: 'mdi:account' }, { icon: 'mdi:account-alert' }],
+        list: [{ icon: 'mdi:account' }, { icon: 'mdi:account-alert' }, { icon: 'mdi:account-box' }],
       })
       const libraryAccounts = await listBuiltinIcons(
         { keyword: '账户 用户', prefix: 'mdi', cursor: undefined, pageSize: 10 },
@@ -484,6 +477,7 @@ describe('maintained Chinese icon search', () => {
         rows: [
           { id: 'mdi:account', level: 0 },
           { id: 'mdi:account-alert', level: 1 },
+          { id: 'mdi:account-box', level: 1 },
         ],
       })
       await expect(selector.searchIcons({ keyword: '通知', limit: 10 })).resolves.toEqual({

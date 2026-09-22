@@ -13,7 +13,7 @@ const translationSchema = z
 
 const maintainedFileSchema = z
   .object({
-    kind: z.enum(['english', 'translations']),
+    kind: z.literal('translations'),
     path: z.string().min(1),
     checksum: z.string().regex(/^[a-f0-9]{64}$/),
   })
@@ -21,19 +21,10 @@ const maintainedFileSchema = z
 
 const maintainedManifestSchema = z
   .object({
-    formatVersion: z.literal(1),
+    formatVersion: z.literal(2),
     iconPackageVersion: z.string().min(1),
     dataVersion: z.string().min(1),
     files: z.array(maintainedFileSchema),
-  })
-  .strict()
-
-const maintainedEnglishRecordSchema = z
-  .object({
-    kind: z.enum(['icon', 'category']),
-    owner: z.string().min(1),
-    source: z.string().min(1),
-    terms: z.array(z.string().min(1)),
   })
   .strict()
 
@@ -62,12 +53,10 @@ const maintainedTranslationRecordSchema = z.discriminatedUnion('kind', [
 
 type MaintainedManifest = z.infer<typeof maintainedManifestSchema>
 
-export type MaintainedEnglishRecord = z.infer<typeof maintainedEnglishRecordSchema>
 export type MaintainedIconTranslationRecord = z.infer<typeof iconTranslationRecordSchema>
 export type MaintainedCategoryTranslationRecord = z.infer<typeof categoryTranslationRecordSchema>
 export type MaintainedTranslationRecord = z.infer<typeof maintainedTranslationRecordSchema>
 export type MaintainedSearchData = Omit<MaintainedManifest, 'files'> & {
-  english: MaintainedEnglishRecord[]
   translations: MaintainedTranslationRecord[]
 }
 
@@ -93,7 +82,6 @@ export async function loadMaintainedSearchData(directory: string): Promise<Maint
   const manifest = parseManifest(
     JSON.parse(await readFile(join(directory, 'manifest.json'), 'utf8')),
   )
-  const english: MaintainedEnglishRecord[] = []
   const translations: MaintainedTranslationRecord[] = []
 
   for (const file of manifest.files) {
@@ -109,45 +97,29 @@ export async function loadMaintainedSearchData(directory: string): Promise<Maint
       } catch {
         throw new Error(`Invalid JSON in ${file.path}:${index + 1}`)
       }
-      if (file.kind === 'english') {
-        const parsed = maintainedEnglishRecordSchema.safeParse(record)
-        if (!parsed.success) throw new Error(`Invalid English record in ${file.path}:${index + 1}`)
-        english.push(parsed.data)
-      } else {
-        const parsed = maintainedTranslationRecordSchema.safeParse(record)
-        if (!parsed.success)
-          throw new Error(`Invalid translation record in ${file.path}:${index + 1}`)
-        translations.push(parsed.data)
-      }
+      const parsed = maintainedTranslationRecordSchema.safeParse(record)
+      if (!parsed.success)
+        throw new Error(`Invalid translation record in ${file.path}:${index + 1}`)
+      translations.push(parsed.data)
     }
   }
 
-  const maintained: MaintainedSearchData = {
-    formatVersion: 1,
+  const keys = new Set<string>()
+  for (const record of translations) {
+    const owner =
+      typeof record.owner === 'string'
+        ? record.owner
+        : `${record.owner.prefix}\0${record.owner.category}`
+    const key = `${record.kind}\0${owner}\0${normalizeSearchText(record.source)}`
+    if (keys.has(key)) {
+      throw new Error(`Duplicate maintained record: ${owner.replace('\0', ':')} / ${record.source}`)
+    }
+    keys.add(key)
+  }
+  return {
+    formatVersion: manifest.formatVersion,
     iconPackageVersion: manifest.iconPackageVersion,
     dataVersion: manifest.dataVersion,
-    english,
     translations,
   }
-  const keys = new Set<string>()
-  for (const [kind, records] of [
-    ['english', maintained.english],
-    ['translation', maintained.translations],
-  ] as const) {
-    for (const record of records) {
-      const owner =
-        typeof record.owner === 'string'
-          ? record.owner
-          : `${record.owner.prefix}\0${record.owner.category}`
-      const source = normalizeSearchText(record.source)
-      const key = `${kind}\0${record.kind}\0${owner}\0${source}`
-      if (keys.has(key)) {
-        throw new Error(
-          `Duplicate maintained record: ${owner.replace('\0', ':')} / ${record.source}`,
-        )
-      }
-      keys.add(key)
-    }
-  }
-  return maintained
 }

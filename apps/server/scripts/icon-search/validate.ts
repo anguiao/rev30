@@ -10,7 +10,6 @@ console.log(
   JSON.stringify({
     iconPackageVersion: maintained.iconPackageVersion,
     searchDataVersion: maintained.dataVersion,
-    englishRecords: maintained.english.length,
     translationRecords: maintained.translations.length,
   }),
 )

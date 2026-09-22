@@ -241,6 +241,9 @@ try {
     { kind: 'chinese-wide', query: '用户' },
     { kind: 'chinese-wide', query: '箭头' },
     { kind: 'mixed', query: 'lucide 铃铛' },
+    { kind: 'category-english', query: 'weather' },
+    { kind: 'category-chinese', query: '交通' },
+    { kind: 'category-chinese', query: '动物' },
   ] as const
   for (const benchmarkCase of cases) {
     for (let warmup = 0; warmup < 2; warmup += 1) {

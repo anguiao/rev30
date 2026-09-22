@@ -16,15 +16,15 @@ async function temporaryDirectory() {
 
 async function writeFixture(content: string, checksum = hash(content)) {
   const directory = await temporaryDirectory()
-  await mkdir(join(directory, 'english'))
-  await writeFile(join(directory, 'english/test.jsonl'), content)
+  await mkdir(join(directory, 'translations'))
+  await writeFile(join(directory, 'translations/test.jsonl'), content)
   await writeFile(
     join(directory, 'manifest.json'),
     JSON.stringify({
-      formatVersion: 1,
+      formatVersion: 2,
       iconPackageVersion: 'older',
-      dataVersion: 'english-1',
-      files: [{ kind: 'english', path: 'english/test.jsonl', checksum }],
+      dataVersion: 'chinese-1',
+      files: [{ kind: 'translations', path: 'translations/test.jsonl', checksum }],
     }),
   )
   return directory
@@ -32,37 +32,19 @@ async function writeFixture(content: string, checksum = hash(content)) {
 
 async function writeTranslationFixture(records: unknown) {
   const content = `${(Array.isArray(records) ? records : [records]).map((record) => JSON.stringify(record)).join('\n')}\n`
-  const directory = await temporaryDirectory()
-  await mkdir(join(directory, 'translations'))
-  await writeFile(join(directory, 'translations/test.jsonl'), content)
-  await writeFile(
-    join(directory, 'manifest.json'),
-    JSON.stringify({
-      formatVersion: 1,
-      iconPackageVersion: 'older',
-      dataVersion: 'chinese-1',
-      files: [
-        {
-          kind: 'translations',
-          path: 'translations/test.jsonl',
-          checksum: hash(content),
-        },
-      ],
-    }),
-  )
-  return directory
+  return writeFixture(content)
 }
 
 describe('maintained icon search data', () => {
   it('loads a partial data set whose source package version is older', async () => {
-    const line = `${JSON.stringify({ kind: 'icon', owner: 'test:alarm', source: 'alarm', terms: ['alarm'] })}\n`
+    const line = `${JSON.stringify({ kind: 'icon', owner: 'test:alarm', source: 'alarm', translations: ['闹钟'] })}\n`
     const result = await loadMaintainedSearchData(await writeFixture(line))
-    expect(result).toMatchObject({ iconPackageVersion: 'older', dataVersion: 'english-1' })
-    expect(result.english).toHaveLength(1)
+    expect(result).toMatchObject({ iconPackageVersion: 'older', dataVersion: 'chinese-1' })
+    expect(result.translations).toHaveLength(1)
   })
 
   it('fails for damaged or conflicting maintenance files', async () => {
-    const line = `${JSON.stringify({ kind: 'icon', owner: 'test:alarm', source: 'alarm', terms: ['alarm'] })}\n`
+    const line = `${JSON.stringify({ kind: 'icon', owner: 'test:alarm', source: 'alarm', translations: ['闹钟'] })}\n`
     await expect(
       loadMaintainedSearchData(await writeFixture(line, '0'.repeat(64))),
     ).rejects.toThrow('checksum')
@@ -70,9 +52,9 @@ describe('maintained icon search data', () => {
     const duplicateDirectory = await writeFixture(`${line}${line}`)
     await expect(loadMaintainedSearchData(duplicateDirectory)).rejects.toThrow('Duplicate')
 
-    const wrongRecord = `${JSON.stringify({ kind: 'icon', owner: 'test:alarm', source: 'alarm', translations: ['闹钟'] })}\n`
+    const wrongRecord = `${JSON.stringify({ kind: 'icon', owner: 'test:alarm', source: 'alarm', translations: [123] })}\n`
     await expect(loadMaintainedSearchData(await writeFixture(wrongRecord))).rejects.toThrow(
-      'Invalid English record',
+      'Invalid translation record',
     )
   })
 

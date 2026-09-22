@@ -22,6 +22,7 @@ import IconKeywordsInput from '../../../src/features/icons/IconKeywordsInput.vue
 import { saveFile } from '../../../src/utils/download'
 import { ApiRequestError } from '../../../src/utils/request'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
+import { getDialogButton } from '../../helpers/dom'
 import { createDeferred } from '../../helpers/promise'
 
 vi.mock('../../../src/features/icons/IconSetFormDrawer.vue', () => ({
@@ -200,6 +201,19 @@ function getBodyButton(label: string) {
 
   expect(button).toBeDefined()
   return button!
+}
+
+function getIconNameInput() {
+  const input = document.body.querySelector<HTMLInputElement>('input[placeholder="请输入图标名称"]')
+  expect(input).not.toBeNull()
+  return input!
+}
+
+async function setIconName(name: string) {
+  const input = await vi.waitFor(getIconNameInput)
+  input.value = name
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  await flushPromises()
 }
 
 describe('icon sets page', () => {
@@ -729,13 +743,10 @@ describe('icon sets page', () => {
     await wrapper.get('button[aria-label="编辑图标"]').trigger('click')
     await flushPromises()
 
-    const input = document.body.querySelector(
-      'input[placeholder="请输入图标名称"]',
-    ) as HTMLInputElement | null
-    expect(input).not.toBeNull()
-    input!.value = '  mark  '
-    input!.dispatchEvent(new Event('input', { bubbles: true }))
-    wrapper.findComponent(IconKeywordsInput).vm.$emit('update:modelValue', ['  品牌  ', 'brand'])
+    await setIconName('  mark  ')
+    wrapper
+      .findComponent(IconKeywordsInput)
+      .vm.$emit('update:modelValue', ['  品牌  ', 'brand', 'BRAND'])
     await flushPromises()
     getBodyButton('保存').click()
     await flushPromises()
@@ -765,7 +776,7 @@ describe('icon sets page', () => {
     await flushPromises()
 
     expect(wrapper.findComponent(IconKeywordsInput).props('modelValue')).toEqual(['品牌'])
-    wrapper.findComponent(IconKeywordsInput).vm.$emit('clear')
+    getBodyButton('清空关键词').click()
     await flushPromises()
     getBodyButton('保存').click()
     await flushPromises()
@@ -797,11 +808,10 @@ describe('icon sets page', () => {
     expect(document.body.textContent).not.toContain('编辑图标失败')
   })
 
-  it('does not close a newly opened edit modal when an earlier edit succeeds', async () => {
-    const pendingEdit = createDeferred<CustomIconListResponse['list'][number]>()
+  it('shows icon validation feedback under each field and clears it after correction', async () => {
     listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
     listCustomIconsMock.mockResolvedValue(customIconsResponse)
-    updateCustomIconMock.mockImplementationOnce(() => pendingEdit.promise)
+    updateCustomIconMock.mockResolvedValue(customIconsResponse.list[0]!)
     const { wrapper } = await mountIconSetsPage()
     await flushPromises()
 
@@ -809,27 +819,145 @@ describe('icon sets page', () => {
     await flushPromises()
     await wrapper.get('button[aria-label="编辑图标"]').trigger('click')
     await flushPromises()
+
+    await setIconName('invalid name')
+    const keywords = wrapper.findComponent(IconKeywordsInput)
+    keywords.vm.$emit('update:modelValue', ['!!!'])
+    await flushPromises()
     getBodyButton('保存').click()
+    await flushPromises()
+
+    const nameItem = getIconNameInput().closest('.n-form-item')!
+    const keywordsItem = keywords.element.closest('.n-form-item')!
+    expect(nameItem.textContent).toContain('图标名称无效')
+    expect(keywordsItem.textContent).toContain('关键词必须包含文字或数字')
+    expect(updateCustomIconMock).not.toHaveBeenCalled()
+
+    await setIconName('mark')
+    keywords.vm.$emit('update:modelValue', ['品牌'])
+    await flushPromises()
+    expect(nameItem.textContent).not.toContain('图标名称无效')
+    expect(keywordsItem.textContent).not.toContain('关键词必须包含文字或数字')
+
+    getBodyButton('保存').click()
+    await flushPromises()
+    expect(updateCustomIconMock).toHaveBeenCalledWith('acme', 'logo', {
+      name: 'mark',
+      keywords: ['品牌'],
+    })
+  })
+
+  it.each([
+    { error: new ApiRequestError(409, '图标名称已存在', 'name'), isFieldError: true },
+    { error: new Error('保存失败，请重试'), isFieldError: false },
+  ])('keeps icon edits and allows retry after $error.message', async ({ error, isFieldError }) => {
+    listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
+    listCustomIconsMock.mockResolvedValue(customIconsResponse)
+    updateCustomIconMock
+      .mockRejectedValueOnce(error)
+      .mockResolvedValue(customIconsResponse.list[0]!)
+    const { wrapper } = await mountIconSetsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('button[aria-label="编辑图标"]').trigger('click')
+    await flushPromises()
+    await setIconName('mark')
+    getBodyButton('保存').click()
+    await flushPromises()
+
+    expect(getIconNameInput().value).toBe('mark')
+    const errorArea = isFieldError
+      ? getIconNameInput().closest('.n-form-item')
+      : document.body.querySelector('.n-drawer .n-alert')
+    expect(errorArea?.textContent).toContain(error.message)
+
+    await setIconName('new-mark')
+    getBodyButton('保存').click()
+    await flushPromises()
+    expect(updateCustomIconMock).toHaveBeenLastCalledWith('acme', 'logo', {
+      name: 'new-mark',
+      keywords: [],
+    })
+    expect(document.body.textContent).toContain('编辑图标成功')
+  })
+
+  it('confirms discarding icon edits and restores saved values when reopened', async () => {
+    const icon = { ...customIconsResponse.list[0]!, keywords: ['品牌'] }
+    listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
+    listCustomIconsMock.mockResolvedValue({ ...customIconsResponse, list: [icon] })
+    const { wrapper } = await mountIconSetsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('button[aria-label="编辑图标"]').trigger('click')
     await flushPromises()
 
     getBodyButton('取消').click()
     await flushPromises()
+    expect(document.body.textContent).not.toContain('放弃未保存的更改？')
+
     await wrapper.get('button[aria-label="编辑图标"]').trigger('click')
     await flushPromises()
-    const input = document.body.querySelector(
-      'input[placeholder="请输入图标名称"]',
-    ) as HTMLInputElement
-    input.value = 'fresh-name'
-    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await setIconName('draft-name')
+    getBodyButton('清空关键词').click()
     await flushPromises()
-
-    pendingEdit.resolve(customIconsResponse.list[0]!)
+    getBodyButton('取消').click()
     await flushPromises()
+    expect(document.body.textContent).toContain('放弃未保存的更改？')
+    getDialogButton('unsaved-changes-discard-cancel').click()
+    await flushPromises()
+    expect(getIconNameInput().value).toBe('draft-name')
+    expect(wrapper.findComponent(IconKeywordsInput).props('modelValue')).toEqual([])
 
-    expect(document.body.querySelector('input[placeholder="请输入图标名称"]')).not.toBeNull()
-    expect(input.value).toBe('fresh-name')
-    expect(document.body.textContent).not.toContain('编辑图标成功')
+    getBodyButton('取消').click()
+    await flushPromises()
+    getDialogButton('unsaved-changes-discard-confirm').click()
+    await flushPromises()
+    await wrapper.get('button[aria-label="编辑图标"]').trigger('click')
+    await flushPromises()
+    expect(getIconNameInput().value).toBe(icon.name)
+    expect(wrapper.findComponent(IconKeywordsInput).props('modelValue')).toEqual(icon.keywords)
+    expect(updateCustomIconMock).not.toHaveBeenCalled()
   })
+
+  it.each(['success', 'error'] as const)(
+    'ignores an earlier edit %s in a reopened drawer',
+    async (result) => {
+      const pendingEdit = createDeferred<CustomIconListResponse['list'][number]>()
+      listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
+      listCustomIconsMock.mockResolvedValue(customIconsResponse)
+      updateCustomIconMock.mockImplementationOnce(() => pendingEdit.promise)
+      const { wrapper } = await mountIconSetsPage()
+      await flushPromises()
+
+      await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
+      await flushPromises()
+      await wrapper.get('button[aria-label="编辑图标"]').trigger('click')
+      await flushPromises()
+      getBodyButton('保存').click()
+      await flushPromises()
+
+      getBodyButton('取消').click()
+      await flushPromises()
+      await wrapper.get('button[aria-label="编辑图标"]').trigger('click')
+      await flushPromises()
+      await setIconName('fresh-name')
+
+      if (result === 'success') {
+        pendingEdit.resolve(customIconsResponse.list[0]!)
+      } else {
+        pendingEdit.reject(new ApiRequestError(409, '旧会话错误', 'name'))
+      }
+      await flushPromises()
+
+      expect(getIconNameInput().value).toBe('fresh-name')
+      expect(document.body.textContent).not.toContain('编辑图标成功')
+      expect(document.body.textContent).not.toContain('旧会话错误')
+    },
+  )
 
   it('keeps ordinary pagination errors without resetting to the first page', async () => {
     listBuiltinIconsMock

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useMutation, useQuery, useQueryCache } from '@pinia/colada'
+import { useQuery, useQueryCache } from '@pinia/colada'
 import { refDebounced } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 import type { ButtonProps } from 'naive-ui'
@@ -7,29 +7,19 @@ import {
   NAlert,
   NButton,
   NEmpty,
-  NForm,
-  NFormItem,
   NInfiniteScroll,
   NInput,
-  NModal,
   NSpin,
   useDialog,
   useMessage,
 } from 'naive-ui'
-import type {
-  CustomIconItem,
-  CustomIconSet,
-  CustomIconSetListResponse,
-  CustomIconUpdateInput,
-} from '@rev30/contracts'
-import { customIconUpdateSchema } from '@rev30/contracts'
+import type { CustomIconItem, CustomIconSet, CustomIconSetListResponse } from '@rev30/contracts'
 import { useDrawer } from '../../composables/useDrawer'
 import { useAuthStore } from '../../stores/auth'
 import { saveFile } from '../../utils/download'
 import { getErrorMessage } from '../../utils/error'
 import { refreshCustomIconCaches } from './cache'
 import IconGrid from './IconGrid.vue'
-import IconKeywordsInput from './IconKeywordsInput.vue'
 import { useIconList } from './useIconList'
 import {
   deleteCustomIcon,
@@ -37,7 +27,6 @@ import {
   exportCustomIconSet,
   listCustomIcons,
   listCustomIconSets,
-  updateCustomIcon,
 } from './requests'
 
 const props = defineProps<{
@@ -199,65 +188,19 @@ async function exportSelectedSet() {
   }
 }
 
+const {
+  component: IconFormDrawer,
+  hasOpened: hasOpenedIconFormDrawer,
+  visible: isIconFormDrawerVisible,
+  open: showIconFormDrawer,
+} = useDrawer(() => import('./IconFormDrawer.vue'))
 const editingIcon = ref<CustomIconItem | null>(null)
-const editIconName = ref('')
-const editIconKeywords = ref<string[]>([])
-const editIconError = ref<string | null>(null)
-const editIconSessionId = ref(0)
-const { isLoading: isEditingIcon, ...editIconMutation } = useMutation({
-  mutation: ({
-    icon,
-    input,
-  }: {
-    icon: CustomIconItem
-    input: CustomIconUpdateInput
-    sessionId: number
-  }) => updateCustomIcon(icon.prefix, icon.name, input),
-  onSuccess(_, { sessionId }) {
-    void refreshCustomIconCaches(queryCache)
-
-    if (sessionId !== editIconSessionId.value || editingIcon.value === null) return
-
-    message.success('编辑图标成功')
-    editingIcon.value = null
-  },
-  onError(error, { sessionId }) {
-    if (sessionId !== editIconSessionId.value || editingIcon.value === null) return
-
-    editIconError.value = getErrorMessage(error, '编辑图标失败')
-  },
-})
-function openEditIconModal(icon: CustomIconItem) {
-  editIconSessionId.value += 1
+function openEditIconDrawer(icon: CustomIconItem) {
   editingIcon.value = icon
-  editIconName.value = icon.name
-  editIconKeywords.value = [...icon.keywords]
-  editIconError.value = null
+  showIconFormDrawer()
 }
-function closeEditIconModal() {
-  editIconSessionId.value += 1
-  editingIcon.value = null
-  editIconError.value = null
-}
-function submitEditIcon() {
-  const icon = editingIcon.value
-  const result = customIconUpdateSchema.safeParse({
-    name: editIconName.value.trim(),
-    keywords: editIconKeywords.value,
-  })
-
-  if (icon === null || isEditingIcon.value) return
-  if (!result.success) {
-    editIconError.value = result.error.issues[0]?.message ?? '图标信息无效'
-    return
-  }
-
-  editIconError.value = null
-  editIconMutation.mutate({
-    icon,
-    input: result.data,
-    sessionId: editIconSessionId.value,
-  })
+function handleIconSaved() {
+  message.success('编辑图标成功')
 }
 
 function confirmDeleteIcon(icon: CustomIconItem) {
@@ -504,7 +447,7 @@ async function copySvg(svg: string) {
               :deletable="canDeleteIcon"
               @copy="copyIcon"
               @copy-svg="copySvg"
-              @rename="openEditIconModal"
+              @rename="openEditIconDrawer"
               @delete="confirmDeleteIcon"
             />
             <NEmpty
@@ -539,28 +482,11 @@ async function copySvg(svg: string) {
       :prefix="selectedPrefix"
     />
 
-    <NModal
-      :show="editingIcon !== null"
-      preset="dialog"
-      title="编辑图标"
-      positive-text="保存"
-      negative-text="取消"
-      :positive-button-props="{ loading: isEditingIcon }"
-      @positive-click="submitEditIcon"
-      @negative-click="closeEditIconModal"
-      @close="closeEditIconModal"
-    >
-      <NForm :show-feedback="false" @submit.prevent="submitEditIcon">
-        <NAlert v-if="editIconError" type="error" :show-icon="false" class="mb-3">
-          {{ editIconError }}
-        </NAlert>
-        <NFormItem label="名称">
-          <NInput v-model:value="editIconName" placeholder="请输入图标名称" />
-        </NFormItem>
-        <NFormItem label="关键词">
-          <IconKeywordsInput v-model="editIconKeywords" @clear="editIconKeywords = []" />
-        </NFormItem>
-      </NForm>
-    </NModal>
+    <IconFormDrawer
+      v-if="hasOpenedIconFormDrawer"
+      v-model:show="isIconFormDrawerVisible"
+      :icon="editingIcon"
+      @saved="handleIconSaved"
+    />
   </div>
 </template>

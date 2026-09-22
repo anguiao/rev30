@@ -20,6 +20,7 @@ import {
   customIconKeywordsSchema,
   customIconUploadMetadataSchema,
   customIconUpdateSchema,
+  customIconFormSchema,
   CUSTOM_ICON_KEYWORD_MAX_LENGTH,
   CUSTOM_ICON_KEYWORDS_MAX_ITEMS,
 } from '../../src/icons'
@@ -108,6 +109,19 @@ describe('icon set schemas', () => {
     expectZodIssue(customIconUpdateSchema.safeParse({}), {
       path: [],
       message: '至少修改一个字段',
+    })
+  })
+
+  it('normalizes icon edit form values and requires a valid name', () => {
+    expect(customIconFormSchema.parse({ name: '  brand  ', keywords: [' Logo ', 'logo'] })).toEqual(
+      {
+        name: 'brand',
+        keywords: ['Logo'],
+      },
+    )
+    expectZodIssue(customIconFormSchema.safeParse({ name: '  ', keywords: [] }), {
+      path: ['name'],
+      message: '图标名称无效',
     })
   })
 

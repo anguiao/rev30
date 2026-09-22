@@ -244,6 +244,11 @@ export const customIconUploadMetadataItemSchema = z
   .strict()
 export const customIconUploadMetadataSchema = z.array(customIconUploadMetadataItemSchema)
 
+export const customIconFormSchema = z.object({
+  name: z.string().trim().pipe(customIconNameInputSchema),
+  keywords: customIconKeywordsSchema,
+})
+
 export const customIconUpdateSchema = z
   .object({
     name: customIconNameInputSchema.optional(),
@@ -296,6 +301,7 @@ export type CustomIconSetUpdateInput = z.infer<typeof customIconSetUpdateSchema>
 export type CustomIconDuplicateStrategy = z.infer<typeof customIconDuplicateStrategySchema>
 export type CustomIconKeywords = z.infer<typeof customIconKeywordsSchema>
 export type CustomIconUploadMetadata = z.infer<typeof customIconUploadMetadataSchema>
+export type CustomIconFormInput = z.infer<typeof customIconFormSchema>
 export type CustomIconUpdateInput = z.infer<typeof customIconUpdateSchema>
 export type CustomIconUploadResult = z.infer<typeof customIconUploadResultSchema>
 export type CustomIconUploadResponse = z.infer<typeof customIconUploadResponseSchema>

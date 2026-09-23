@@ -13,6 +13,8 @@ Rev30 是一个 TypeScript monorepo 项目，包含 Vue 客户端、Hono API、�
 
 前端 `apps/client/src/features` 按具体业务功能组织，组件、请求、标签和 composable 就近放在对应功能目录；`pages` 保留菜单分组与路由结构。跨功能复用直接引用所属功能，例如系统健康复用定时任务的运行日志抽屉与状态标签；公共展示组件和工具分别放在 `components/common` 与 `utils`。
 
+图标功能 `features/icons` 按职责分为 `browser`（浏览、分页与管理入口）、`forms`（编辑与上传）和 `search`（选择器与搜索状态）三个子目录；请求与缓存工具保留在根目录，组件测试沿用相同分组。
+
 ## 技术栈
 
 - 前端：Vue 3、Tailwind CSS v4、Naive UI、Pinia、Pinia Colada、Vue ECharts、TanStack Vue Form、`vue-router/vite`。

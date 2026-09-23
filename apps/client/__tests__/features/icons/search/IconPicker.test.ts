@@ -1,14 +1,14 @@
-import { createDeferred } from '../../helpers/promise'
+import { createDeferred } from '../../../helpers/promise'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NInput, NPopover } from 'naive-ui'
-import IconPicker from '../../../src/features/icons/IconPicker.vue'
-import { searchIcons } from '../../../src/features/icons/requests'
-import { createTestQueryHarness } from '../../helpers/colada'
-import { ApiRequestError } from '../../../src/utils/request'
+import IconPicker from '../../../../src/features/icons/search/IconPicker.vue'
+import { searchIcons } from '../../../../src/features/icons/requests'
+import { createTestQueryHarness } from '../../../helpers/colada'
+import { ApiRequestError } from '../../../../src/utils/request'
 
-vi.mock('../../../src/features/icons/requests', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/icons/requests')>()),
+vi.mock('../../../../src/features/icons/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../../src/features/icons/requests')>()),
   searchIcons: vi.fn(),
 }))
 

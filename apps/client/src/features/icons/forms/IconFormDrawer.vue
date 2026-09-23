@@ -8,13 +8,13 @@ import {
   type CustomIconFormInput,
   type CustomIconItem,
 } from '@rev30/contracts'
-import { useDrawerUnsavedChangesGuard } from '../../composables/useDrawerUnsavedChangesGuard'
-import { getErrorMessage } from '../../utils/error'
-import { formItemValidationProps, setServerFieldError } from '../../utils/form'
-import { ApiRequestError } from '../../utils/request'
-import { refreshCustomIconCaches } from './cache'
+import { useDrawerUnsavedChangesGuard } from '../../../composables/useDrawerUnsavedChangesGuard'
+import { getErrorMessage } from '../../../utils/error'
+import { formItemValidationProps, setServerFieldError } from '../../../utils/form'
+import { ApiRequestError } from '../../../utils/request'
+import { refreshCustomIconCaches } from '../cache'
 import IconKeywordsInput from './IconKeywordsInput.vue'
-import { updateCustomIcon } from './requests'
+import { updateCustomIcon } from '../requests'
 
 const props = defineProps<{
   icon: CustomIconItem | null

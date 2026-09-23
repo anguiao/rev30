@@ -25,7 +25,7 @@ import ResourceFormDrawer from '../../../src/features/resources/ResourceFormDraw
 import { createTestQueryHarness } from '../../helpers/colada'
 import { createDeferred } from '../../helpers/promise'
 
-vi.mock('../../../src/features/icons/IconPicker.vue', () => ({
+vi.mock('../../../src/features/icons/search/IconPicker.vue', () => ({
   default: defineComponent({
     name: 'IconPickerStub',
     props: {

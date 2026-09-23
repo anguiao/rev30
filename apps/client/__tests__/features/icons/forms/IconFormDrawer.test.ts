@@ -1,9 +1,9 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import type { CustomIconItem } from '@rev30/contracts'
-import IconFormDrawer from '../../../src/features/icons/IconFormDrawer.vue'
-import IconKeywordsInput from '../../../src/features/icons/IconKeywordsInput.vue'
-import { createTestQueryHarness } from '../../helpers/colada'
+import IconFormDrawer from '../../../../src/features/icons/forms/IconFormDrawer.vue'
+import IconKeywordsInput from '../../../../src/features/icons/forms/IconKeywordsInput.vue'
+import { createTestQueryHarness } from '../../../helpers/colada'
 
 const icon: CustomIconItem = {
   icon: 'acme:logo',

@@ -20,9 +20,9 @@ import {
   type CustomIconUploadMetadata,
   type CustomIconUploadResult,
 } from '@rev30/contracts'
-import { uploadCustomIcons } from './requests'
-import { getErrorMessage } from '../../utils/error'
-import { refreshCustomIconCaches } from './cache'
+import { uploadCustomIcons } from '../requests'
+import { getErrorMessage } from '../../../utils/error'
+import { refreshCustomIconCaches } from '../cache'
 import IconUploadFile from './IconUploadFile.vue'
 
 const props = defineProps<{

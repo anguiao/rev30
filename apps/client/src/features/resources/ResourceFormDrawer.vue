@@ -31,7 +31,7 @@ import {
   resourceUpdateSchema,
 } from '@rev30/contracts'
 import { createResource, getResource, getResourceTreeOptions, updateResource } from './requests'
-import IconPicker from '../icons/IconPicker.vue'
+import IconPicker from '../icons/search/IconPicker.vue'
 import { resourceTypeLabels } from './labels'
 import { statusSelectOptions } from '../../utils/status'
 import { useDrawerUnsavedChangesGuard } from '../../composables/useDrawerUnsavedChangesGuard'

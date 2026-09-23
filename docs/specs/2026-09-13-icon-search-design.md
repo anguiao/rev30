@@ -378,7 +378,10 @@ Iconify JSON 导出维持现有标准结构，不添加私有 keywords；本次�
 | `apps/server/src/db/` | 自定义字段、派生表、索引状态及迁移 |
 | `packages/contracts/src/icons.ts` | 字段约束、上传元数据、编辑输入、查询、游标及前后端共用的图标错误码 |
 | `packages/contracts/src/errors.ts` | 通用错误响应结构，`code` 作为可选字符串传递，具体业务含义由所属模块解释 |
-| `apps/client/src/features/icons/` | `useIconList` 统一两个图标库的分页与游标重置；`useIconSearchKeyword`、`useIconSearchState` 供图标库和选择器共用，负责防抖、搜索状态提示与恢复；缓存失效沿用统一入口 |
+| `apps/client/src/features/icons/browser/` | 内置和自定义图标库、图标网格；`useIconList` 统一分页与游标重置 |
+| `apps/client/src/features/icons/forms/` | 图标、图标集和上传抽屉，以及上传文件行与关键词编辑组件 |
+| `apps/client/src/features/icons/search/` | 图标选择器；`useIconSearchKeyword`、`useIconSearchState` 供图标库和选择器共用，负责防抖、搜索状态提示与恢复 |
+| `apps/client/src/features/icons/` | HTTP 请求、查询键与缓存失效入口；对应组件测试按相同子目录组织 |
 | 服务端入口及构建配置 | 从当前图标包和已保存数据准备产物并分发；启动后触发后台索引任务 |
 
 内置图标库路由通过现有 content 路由组合注入数据库/检索服务；选择器和两个 tab 不各自保留匹配逻辑。检索仓库使用现有 Db/事务类型，纯文本处理不依赖 Hono 请求上下文，路由处理鉴权、边界校验及领域错误映射。

@@ -13,8 +13,8 @@ import {
   NTooltip,
 } from 'naive-ui'
 import { computed, nextTick, ref, useTemplateRef } from 'vue'
-import { iconSearchKey } from './query-keys'
-import { searchIcons } from './requests'
+import { iconSearchKey } from '../query-keys'
+import { searchIcons } from '../requests'
 import { useIconSearchKeyword } from './useIconSearchKeyword'
 import { useIconSearchState } from './useIconSearchState'
 

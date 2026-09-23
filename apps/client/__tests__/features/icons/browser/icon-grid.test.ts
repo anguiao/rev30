@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import type { BuiltinIconListResponse, CustomIconListResponse } from '@rev30/contracts'
-import IconGrid from '../../../src/features/icons/IconGrid.vue'
+import IconGrid from '../../../../src/features/icons/browser/IconGrid.vue'
 
 const icons: BuiltinIconListResponse['list'] = [
   {

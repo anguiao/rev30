@@ -14,11 +14,11 @@ import {
   useMessage,
 } from 'naive-ui'
 import type { CustomIconItem, CustomIconSet, CustomIconSetListResponse } from '@rev30/contracts'
-import { useDrawer } from '../../composables/useDrawer'
-import { useAuthStore } from '../../stores/auth'
-import { saveFile } from '../../utils/download'
-import { getErrorMessage } from '../../utils/error'
-import { refreshCustomIconCaches } from './cache'
+import { useDrawer } from '../../../composables/useDrawer'
+import { useAuthStore } from '../../../stores/auth'
+import { saveFile } from '../../../utils/download'
+import { getErrorMessage } from '../../../utils/error'
+import { refreshCustomIconCaches } from '../cache'
 import IconGrid from './IconGrid.vue'
 import { useIconList } from './useIconList'
 import {
@@ -27,7 +27,7 @@ import {
   exportCustomIconSet,
   listCustomIcons,
   listCustomIconSets,
-} from './requests'
+} from '../requests'
 
 const props = defineProps<{
   active: boolean
@@ -114,7 +114,7 @@ const {
   hasOpened: hasOpenedIconSetDrawer,
   visible: isIconSetDrawerVisible,
   open: showIconSetDrawer,
-} = useDrawer(() => import('./IconSetFormDrawer.vue'))
+} = useDrawer(() => import('../forms/IconSetFormDrawer.vue'))
 const editingPrefix = ref<string | null>(null)
 function openCreateSetDrawer() {
   editingPrefix.value = null
@@ -163,7 +163,7 @@ const {
   hasOpened: hasOpenedUploadDrawer,
   visible: isUploadDrawerVisible,
   open: showUploadDrawer,
-} = useDrawer(() => import('./IconUploadDrawer.vue'))
+} = useDrawer(() => import('../forms/IconUploadDrawer.vue'))
 function openUploadDrawer() {
   if (selectedSet.value === null) {
     message.warning('请先选择自定义图标集')
@@ -193,7 +193,7 @@ const {
   hasOpened: hasOpenedIconFormDrawer,
   visible: isIconFormDrawerVisible,
   open: showIconFormDrawer,
-} = useDrawer(() => import('./IconFormDrawer.vue'))
+} = useDrawer(() => import('../forms/IconFormDrawer.vue'))
 const editingIcon = ref<CustomIconItem | null>(null)
 function openEditIconDrawer(icon: CustomIconItem) {
   editingIcon.value = icon

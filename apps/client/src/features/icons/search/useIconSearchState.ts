@@ -3,7 +3,7 @@ import { iconErrorCodeSchema } from '@rev30/contracts'
 import type { ComputedRef, Ref } from 'vue'
 import { useDocumentVisibility } from '@vueuse/core'
 import { computed, watch } from 'vue'
-import { ApiRequestError } from '../../utils/request'
+import { ApiRequestError } from '../../../utils/request'
 
 export function useIconSearchState(options: {
   error: Ref<Error | null>

@@ -5,21 +5,21 @@ import {
   createCustomIconSet,
   getCustomIconSet,
   updateCustomIconSet,
-} from '../../../src/features/icons/requests'
-import IconSetFormDrawer from '../../../src/features/icons/IconSetFormDrawer.vue'
-import { refreshCustomIconCaches } from '../../../src/features/icons/cache'
-import { ApiRequestError } from '../../../src/utils/request'
-import { createTestQueryHarness } from '../../helpers/colada'
-import { createDeferred } from '../../helpers/promise'
+} from '../../../../src/features/icons/requests'
+import IconSetFormDrawer from '../../../../src/features/icons/forms/IconSetFormDrawer.vue'
+import { refreshCustomIconCaches } from '../../../../src/features/icons/cache'
+import { ApiRequestError } from '../../../../src/utils/request'
+import { createTestQueryHarness } from '../../../helpers/colada'
+import { createDeferred } from '../../../helpers/promise'
 
-vi.mock('../../../src/features/icons/requests', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/icons/requests')>()),
+vi.mock('../../../../src/features/icons/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../../src/features/icons/requests')>()),
   createCustomIconSet: vi.fn(),
   getCustomIconSet: vi.fn(),
   updateCustomIconSet: vi.fn(),
 }))
 
-vi.mock('../../../src/features/icons/cache', () => ({
+vi.mock('../../../../src/features/icons/cache', () => ({
   refreshCustomIconCaches: vi.fn().mockResolvedValue(undefined),
 }))
 

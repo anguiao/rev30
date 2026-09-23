@@ -18,14 +18,14 @@ import {
   updateCustomIcon,
 } from '../../../src/features/icons/requests'
 import IconSetsPage from '../../../src/pages/index/content/icon-sets.vue'
-import IconKeywordsInput from '../../../src/features/icons/IconKeywordsInput.vue'
+import IconKeywordsInput from '../../../src/features/icons/forms/IconKeywordsInput.vue'
 import { saveFile } from '../../../src/utils/download'
 import { ApiRequestError } from '../../../src/utils/request'
 import { mountAuthRoute, session, stubPreferredDark } from '../../helpers/auth'
 import { getDialogButton } from '../../helpers/dom'
 import { createDeferred } from '../../helpers/promise'
 
-vi.mock('../../../src/features/icons/IconSetFormDrawer.vue', () => ({
+vi.mock('../../../src/features/icons/forms/IconSetFormDrawer.vue', () => ({
   default: {
     name: 'IconSetFormDrawerStub',
     props: ['show', 'prefix'],
@@ -42,7 +42,7 @@ vi.mock('../../../src/features/icons/IconSetFormDrawer.vue', () => ({
   },
 }))
 
-vi.mock('../../../src/features/icons/IconUploadDrawer.vue', () => ({
+vi.mock('../../../src/features/icons/forms/IconUploadDrawer.vue', () => ({
   default: {
     name: 'IconUploadDrawerStub',
     props: ['show', 'prefix'],

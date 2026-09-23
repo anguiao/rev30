@@ -6,19 +6,19 @@ import type {
   CustomIconUploadResponse,
   CustomIconUploadResult,
 } from '@rev30/contracts'
-import { uploadCustomIcons } from '../../../src/features/icons/requests'
-import IconUploadDrawer from '../../../src/features/icons/IconUploadDrawer.vue'
-import IconKeywordsInput from '../../../src/features/icons/IconKeywordsInput.vue'
-import { createTestQueryHarness } from '../../helpers/colada'
-import { createDeferred } from '../../helpers/promise'
-import { refreshCustomIconCaches } from '../../../src/features/icons/cache'
+import { uploadCustomIcons } from '../../../../src/features/icons/requests'
+import IconUploadDrawer from '../../../../src/features/icons/forms/IconUploadDrawer.vue'
+import IconKeywordsInput from '../../../../src/features/icons/forms/IconKeywordsInput.vue'
+import { createTestQueryHarness } from '../../../helpers/colada'
+import { createDeferred } from '../../../helpers/promise'
+import { refreshCustomIconCaches } from '../../../../src/features/icons/cache'
 
-vi.mock('../../../src/features/icons/requests', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../src/features/icons/requests')>()),
+vi.mock('../../../../src/features/icons/requests', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../../src/features/icons/requests')>()),
   uploadCustomIcons: vi.fn(),
 }))
 
-vi.mock('../../../src/features/icons/cache', () => ({
+vi.mock('../../../../src/features/icons/cache', () => ({
   refreshCustomIconCaches: vi.fn().mockResolvedValue(undefined),
 }))
 

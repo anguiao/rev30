@@ -2,8 +2,8 @@
 import { ref, type HTMLAttributes } from 'vue'
 import { NTabPane, NTabs } from 'naive-ui'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
-import BuiltinIconBrowser from '../../../features/icons/BuiltinIconBrowser.vue'
-import CustomIconBrowser from '../../../features/icons/CustomIconBrowser.vue'
+import BuiltinIconBrowser from '../../../features/icons/browser/BuiltinIconBrowser.vue'
+import CustomIconBrowser from '../../../features/icons/browser/CustomIconBrowser.vue'
 
 type IconSetsTab = 'builtin' | 'custom'
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useMutation, useQueryCache } from '@pinia/colada'
+import { isEqual } from 'lodash-es'
 import {
   NAlert,
   NButton,
@@ -21,6 +22,7 @@ import {
   type CustomIconUploadResult,
 } from '@rev30/contracts'
 import { uploadCustomIcons } from '../requests'
+import { useDrawerUnsavedChangesGuard } from '../../../composables/useDrawerUnsavedChangesGuard'
 import { getErrorMessage } from '../../../utils/error'
 import { refreshCustomIconCaches } from '../cache'
 import IconUploadItem from './IconUploadItem.vue'
@@ -35,17 +37,14 @@ type UploadEntry = {
   id: string
   file: File
   keywords: string[] | undefined
+  submittedKeywords: string[] | undefined
   keywordError: string | null
-  uploading: boolean
   result: CustomIconUploadResult | null
 }
 
 const queryCache = useQueryCache()
-const drawerSessionId = ref(0)
 const duplicateStrategy = ref<CustomIconDuplicateStrategy>('skip')
 const entries = ref<UploadEntry[]>([])
-const uploadError = ref<string | null>(null)
-const isUploading = computed(() => entries.value.some((entry) => entry.uploading))
 const pendingEntries = computed(() => entries.value.filter((entry) => entry.result === null))
 const summary = computed(() => {
   const labels = { created: '新增', replaced: '替换', skipped: '跳过', failed: '失败' } as const
@@ -56,10 +55,12 @@ const summary = computed(() => {
   return parts.length > 0 ? parts.join(' · ') : `已选择 ${entries.value.length} 个文件`
 })
 
-const uploadMutation = useMutation({
-  onMutate() {
-    return { sessionId: drawerSessionId.value }
-  },
+const {
+  isLoading: isUploading,
+  error: uploadError,
+  variables: uploadVariables,
+  ...uploadMutation
+} = useMutation({
   mutation: ({
     prefix,
     duplicateStrategy,
@@ -79,13 +80,9 @@ const uploadMutation = useMutation({
       ...(metadata.some((item) => item.keywords !== undefined) ? { metadata } : {}),
     })
   },
-  onSuccess({ results }, { prefix, items }, { sessionId }) {
+  onSuccess({ results }, { items }) {
     if (results.some((result) => result.status === 'created' || result.status === 'replaced')) {
       void refreshCustomIconCaches(queryCache)
-    }
-
-    if (!show.value || props.prefix !== prefix || sessionId !== drawerSessionId.value) {
-      return
     }
 
     items.forEach((item, index) => {
@@ -94,22 +91,15 @@ const uploadMutation = useMutation({
       if (result.status === 'created' || result.status === 'replaced') {
         item.keywords = result.icon.keywords
       }
+      item.submittedKeywords = item.keywords?.slice()
     })
   },
-  onError(error, { prefix }, { sessionId }) {
+  onError() {
     // The server may have committed some files before the request failed.
     void refreshCustomIconCaches(queryCache)
-
-    if (!show.value || props.prefix !== prefix || sessionId !== drawerSessionId.value) {
-      return
-    }
-
-    uploadError.value = getErrorMessage(error, '上传图标失败')
-  },
-  onSettled(_, __, { items }) {
-    for (const item of items) item.uploading = false
   },
 })
+const uploadingItems = computed(() => (isUploading.value ? uploadVariables.value!.items : []))
 
 function validateKeywords(items: UploadEntry[]) {
   let valid = true
@@ -136,8 +126,6 @@ function uploadItems(items: UploadEntry[], strategy: CustomIconDuplicateStrategy
   if (prefix === null || items.length === 0 || isUploading.value) return
   if (!validateKeywords(items)) return
 
-  uploadError.value = null
-  for (const item of items) item.uploading = true
   uploadMutation.mutate({
     prefix,
     duplicateStrategy: strategy,
@@ -150,7 +138,7 @@ function handleSubmit() {
   if (pendingEntries.value.length > 0) {
     uploadItems(pendingEntries.value, duplicateStrategy.value)
   } else if (entries.value.length > 0) {
-    show.value = false
+    requestClose()
   }
 }
 
@@ -161,8 +149,8 @@ const addFile: UploadOnChange = ({ file }) => {
     id: file.id,
     file: file.file,
     keywords: undefined,
+    submittedKeywords: undefined,
     keywordError: null,
-    uploading: false,
     result: null,
   })
 }
@@ -180,26 +168,39 @@ function reselectFile(entry: UploadEntry, file: File) {
 watch(
   () => [show.value, props.prefix] as const,
   () => {
-    drawerSessionId.value += 1
     duplicateStrategy.value = 'skip'
     entries.value = []
-    uploadError.value = null
     uploadMutation.reset()
   },
 )
+
+const isDirty = computed(
+  () =>
+    isUploading.value ||
+    entries.value.some(
+      (entry) => entry.result === null || !isEqual(entry.keywords, entry.submittedKeywords),
+    ),
+)
+const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
+  show,
+  isDirty,
+})
 </script>
 
 <template>
   <NDrawer
-    v-model:show="show"
+    :show="show"
     placement="right"
     width="min(560px, 100vw)"
     :mask-closable="false"
     :close-on-esc="false"
+    @update:show="handleDrawerShowUpdate"
   >
-    <NDrawerContent title="上传 SVG 图标" :closable="!isUploading">
+    <NDrawerContent title="上传 SVG 图标" closable>
       <div class="flex flex-col gap-4">
-        <NAlert v-if="uploadError" type="error" :show-icon="false">{{ uploadError }}</NAlert>
+        <NAlert v-if="uploadError" type="error" :show-icon="false">
+          {{ getErrorMessage(uploadError, '上传图标失败') }}
+        </NAlert>
 
         <NForm @submit.prevent="handleSubmit">
           <NFormItem label="目标图标集">
@@ -262,7 +263,7 @@ watch(
                   v-model:keywords="entry.keywords"
                   :file="entry.file"
                   :result="entry.result"
-                  :uploading="entry.uploading"
+                  :uploading="uploadingItems.includes(entry)"
                   :disabled="isUploading"
                   :keyword-error="entry.keywordError"
                   @update:keywords="entry.keywordError = null"
@@ -283,9 +284,8 @@ watch(
       <template #footer>
         <div class="flex justify-end gap-3">
           <NButton
-            v-if="pendingEntries.length > 0 || entries.length === 0"
-            :disabled="isUploading"
-            @click="show = false"
+            v-if="isUploading || pendingEntries.length > 0 || entries.length === 0"
+            @click="requestClose"
           >
             关闭
           </NButton>

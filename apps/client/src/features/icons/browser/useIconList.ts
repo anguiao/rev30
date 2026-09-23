@@ -2,59 +2,61 @@ import { useInfiniteQuery, useQueryCache } from '@pinia/colada'
 import {
   iconErrorCodeSchema,
   type BuiltinIconListResponse,
-  type IconSetIconListQuery,
+  type CustomIconItem,
+  type CustomIconListResponse,
+  type IconItem,
 } from '@rev30/contracts'
-import { computed, watch, type ComputedRef } from 'vue'
+import { computed, toValue, watch, type MaybeRefOrGetter } from 'vue'
 import { ApiRequestError } from '../../../utils/request'
-import { resetInfiniteQuery } from '../cache'
-import { iconListKey } from '../query-keys'
+import { iconSearchKeywordKey } from '../cache'
+import { listBuiltinIcons, listCustomIcons } from '../requests'
 import { useIconSearchKeyword } from '../search/useIconSearchKeyword'
-import { useIconSearchState } from '../search/useIconSearchState'
+import { useIconSearchRetry } from '../search/useIconSearchRetry'
 
 const pageSize = 80
 
-export function useIconList<TPage extends BuiltinIconListResponse>(options: {
-  source: 'builtin' | 'custom'
-  active: ComputedRef<boolean>
-  prefix: ComputedRef<string | null>
-  query: (input: IconSetIconListQuery) => Promise<TPage>
+export function useIconList(options: {
+  source: MaybeRefOrGetter<'builtin' | 'custom'>
+  active: MaybeRefOrGetter<boolean>
+  prefix: MaybeRefOrGetter<string | null>
 }) {
   const queryCache = useQueryCache()
-  const { keyword, queryKeyword } = useIconSearchKeyword(250)
+  const { keyword, queryKeyword } = useIconSearchKeyword()
   const hasSearchKeyword = computed(() => queryKeyword.value.length > 0)
-  const queryKey = computed(() =>
-    iconListKey(options.source, queryKeyword.value, options.prefix.value, pageSize),
-  )
+  const queryKey = computed(() => [
+    'content',
+    'icon-sets',
+    toValue(options.source),
+    'icons',
+    pageSize,
+    ...iconSearchKeywordKey(queryKeyword.value),
+    toValue(options.prefix) ?? '',
+  ])
 
-  watch(
-    [queryKey, options.active],
-    ([key, active], [previousKey, wasActive]) => {
-      if (active && (!wasActive || key.some((value, index) => value !== previousKey[index]))) {
-        void resetInfiniteQuery(queryCache, key)
-      }
+  const { data, error, isLoading, hasNextPage, loadNextPage, refetch } = useInfiniteQuery<
+    BuiltinIconListResponse | CustomIconListResponse,
+    Error,
+    string | null
+  >({
+    key: queryKey,
+    enabled: options.active,
+    initialPageParam: null,
+    query: ({ pageParam }) => {
+      const query = toValue(options.source) === 'builtin' ? listBuiltinIcons : listCustomIcons
+      return query({
+        cursor: pageParam ?? undefined,
+        pageSize,
+        keyword: queryKeyword.value || undefined,
+        prefix: toValue(options.prefix) ?? undefined,
+      })
     },
-    { flush: 'sync' },
-  )
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+  })
 
-  const { data, error, asyncStatus, isLoading, hasNextPage, loadNextPage, refetch } =
-    useInfiniteQuery<TPage, Error, string | null>({
-      key: queryKey,
-      enabled: options.active,
-      initialPageParam: null,
-      query: ({ pageParam }) =>
-        options.query({
-          cursor: pageParam ?? undefined,
-          pageSize,
-          keyword: queryKeyword.value || undefined,
-          prefix: options.prefix.value ?? undefined,
-        }),
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
-    })
-
-  const searchState = useIconSearchState({
+  const { retry } = useIconSearchRetry({
     error,
-    asyncStatus,
-    enabled: computed(() => options.active.value && hasSearchKeyword.value),
+    isLoading,
+    enabled: () => toValue(options.active) && hasSearchKeyword.value,
     refetch,
   })
 
@@ -63,7 +65,11 @@ export function useIconList<TPage extends BuiltinIconListResponse>(options: {
       error instanceof ApiRequestError &&
       error.code === iconErrorCodeSchema.enum.INVALID_ICON_CURSOR
     ) {
-      void resetInfiniteQuery(queryCache, queryKey.value)
+      const entry = queryCache.get(queryKey.value)
+      if (entry === undefined) return
+
+      queryCache.setEntryState(entry, { status: 'pending', data: undefined, error: null })
+      void Promise.allSettled([queryCache.invalidateQueries({ key: queryKey.value, exact: true })])
     }
   })
 
@@ -76,13 +82,13 @@ export function useIconList<TPage extends BuiltinIconListResponse>(options: {
   return {
     keyword,
     icons: computed(() =>
-      (data.value?.pages ?? []).flatMap<TPage['list'][number]>((page) => page.list),
+      (data.value?.pages ?? []).flatMap<IconItem | CustomIconItem>((page) => page.list),
     ),
     error,
     isLoading,
     hasSearchKeyword,
     scrollKey: computed(() => JSON.stringify(queryKey.value)),
-    searchState,
+    retry,
     loadMore,
   }
 }

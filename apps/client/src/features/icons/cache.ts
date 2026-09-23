@@ -1,36 +1,16 @@
-import type { EntryKey, QueryCache, UseQueryEntryFilter } from '@pinia/colada'
+import type { QueryCache } from '@pinia/colada'
+import { iconSearchQuerySchema } from '@rev30/contracts'
+import { normalizeSearchText } from '@rev30/utils'
 
-function resetInfiniteEntries(queryCache: QueryCache, filters: UseQueryEntryFilter) {
-  for (const entry of queryCache.getEntries(filters)) {
-    queryCache.cancel(entry)
-    queryCache.setEntryState(entry, {
-      status: 'pending',
-      data: undefined,
-      error: null,
-    })
-    queryCache.invalidate(entry)
-  }
-}
+export function iconSearchKeywordKey(keyword: string) {
+  const result = iconSearchQuerySchema.safeParse({ keyword })
 
-export async function resetInfiniteQuery(queryCache: QueryCache, key: EntryKey) {
-  const entry = queryCache.get(key)
-
-  if (entry === undefined) return
-
-  resetInfiniteEntries(queryCache, { key, exact: true })
-  await Promise.allSettled([queryCache.invalidateQueries({ key, exact: true })])
+  return result.success ? ['valid', normalizeSearchText(result.data.keyword)] : ['invalid', keyword]
 }
 
 export async function refreshCustomIconCaches(queryCache: QueryCache) {
-  const iconListFilter = {
-    key: ['content', 'icon-sets', 'custom', 'icons'],
-  } satisfies UseQueryEntryFilter
-
-  resetInfiniteEntries(queryCache, iconListFilter)
-
   await Promise.allSettled([
-    queryCache.invalidateQueries(iconListFilter),
-    queryCache.invalidateQueries({ key: ['content', 'icon-sets', 'custom', 'sets'] }),
+    queryCache.invalidateQueries({ key: ['content', 'icon-sets', 'custom'] }),
     queryCache.invalidateQueries({ key: ['system', 'icons', 'search'] }),
   ])
 }

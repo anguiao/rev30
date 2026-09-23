@@ -175,6 +175,7 @@ function setElementScrollMetrics(
   for (const [key, value] of Object.entries(metrics)) {
     Object.defineProperty(element, key, {
       configurable: true,
+      writable: key === 'scrollTop',
       value,
     })
   }
@@ -258,6 +259,11 @@ describe('icon sets page', () => {
     expect(wrapper.get('[data-test="icon-grid-item"]').text()).toContain('sun')
     expect(wrapper.get('[data-test="icon-grid-name"]').text()).toContain('sun')
     expect(listBuiltinIconsMock).toHaveBeenCalledWith({ cursor: undefined, pageSize: 80 })
+    expect(listCustomIconSetsMock).not.toHaveBeenCalled()
+    expect(listCustomIconsMock).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-test="custom-icon-set-create"]').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="编辑图标"]').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="删除图标"]').exists()).toBe(false)
 
     await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
     await flushPromises()
@@ -354,6 +360,12 @@ describe('icon sets page', () => {
 
     await wrapper.get('[data-test="icon-sets-tab-builtin"]').trigger('click')
     await flushPromises()
+    expect(
+      wrapper.get<HTMLInputElement>('[data-test="builtin-icon-filter"] input').element.value,
+    ).toBe('')
+    expect(wrapper.get('[data-test="builtin-icon-set-all"]').attributes('aria-pressed')).toBe(
+      'true',
+    )
     await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
     await flushPromises()
 
@@ -366,6 +378,52 @@ describe('icon sets page', () => {
 
     expect(wrapper.get('[data-test="icon-upload-drawer"]').attributes('data-prefix')).toBe('acme')
   })
+
+  it.each(['builtin', 'custom'] as const)(
+    'defers pending %s filters until the tab is reactivated',
+    async (source) => {
+      vi.useFakeTimers()
+      listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
+      listCustomIconsMock.mockResolvedValue(customIconsResponse)
+      const { wrapper } = await mountIconSetsPage()
+      await flushPromises()
+      if (source === 'custom') {
+        await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
+        await flushPromises()
+      }
+      const listSets = source === 'builtin' ? listBuiltinIconSetsMock : listCustomIconSetsMock
+      const listIcons = source === 'builtin' ? listBuiltinIconsMock : listCustomIconsMock
+      const setCalls = listSets.mock.calls.length
+      const iconCalls = listIcons.mock.calls.length
+
+      await wrapper.get(`[data-test="${source}-icon-set-filter"] input`).setValue('icons')
+      await wrapper.get(`[data-test="${source}-icon-filter"] input`).setValue('用户')
+      const otherSource = source === 'builtin' ? 'custom' : 'builtin'
+      await wrapper.get(`[data-test="icon-sets-tab-${otherSource}"]`).trigger('click')
+      await vi.advanceTimersByTimeAsync(250)
+      await flushPromises()
+
+      expect(listSets).toHaveBeenCalledTimes(setCalls)
+      expect(listIcons).toHaveBeenCalledTimes(iconCalls)
+
+      await wrapper.get(`[data-test="icon-sets-tab-${source}"]`).trigger('click')
+      await flushPromises()
+
+      expect(listSets).toHaveBeenLastCalledWith({ keyword: 'icons' })
+      expect(listIcons).toHaveBeenLastCalledWith({
+        cursor: undefined,
+        pageSize: 80,
+        keyword: '用户',
+      })
+      expect(
+        wrapper.get<HTMLInputElement>(`[data-test="${source}-icon-set-filter"] input`).element
+          .value,
+      ).toBe('icons')
+      expect(
+        wrapper.get<HTMLInputElement>(`[data-test="${source}-icon-filter"] input`).element.value,
+      ).toBe('用户')
+    },
+  )
 
   it('loads the next built-in icon page when the icon grid scrolls near the bottom', async () => {
     listBuiltinIconsMock
@@ -452,160 +510,68 @@ describe('icon sets page', () => {
     )
   })
 
-  it('drops cached extra pages when returning to an earlier search combination', async () => {
-    const secondPage = {
-      ...builtinIconsResponse,
-      list: [{ ...builtinIconsResponse.list[0]!, icon: 'lucide:moon', name: 'moon' }],
-      nextCursor: null,
-    }
-    const filteredPage = {
-      ...builtinIconsResponse,
-      list: [{ ...builtinIconsResponse.list[0]!, icon: 'lucide:search', name: 'search' }],
-      nextCursor: null,
-    }
-    const refreshedFirstPage = {
-      ...builtinIconsResponse,
-      list: [{ ...builtinIconsResponse.list[0]!, icon: 'lucide:star', name: 'star' }],
-      nextCursor: null,
-    }
-    let emptyFirstPageCalls = 0
-    listBuiltinIconsMock.mockImplementation(({ keyword, cursor }) => {
-      if (keyword === 'search') return Promise.resolve(filteredPage)
-      if (cursor === 'next-page') return Promise.resolve(secondPage)
+  it.each(['keyword', 'prefix', 'tab'] as const)(
+    'reuses cached pages when returning after changing %s',
+    async (filter) => {
+      vi.useFakeTimers()
+      const secondPage = {
+        ...builtinIconsResponse,
+        list: [{ ...builtinIconsResponse.list[0]!, icon: 'lucide:moon', name: 'moon' }],
+        nextCursor: null,
+      }
+      const filteredPage = {
+        ...builtinIconsResponse,
+        list: [{ ...builtinIconsResponse.list[0]!, icon: 'lucide:search', name: 'search' }],
+        nextCursor: null,
+      }
+      listBuiltinIconsMock.mockImplementation(({ keyword, prefix, cursor }) => {
+        if (keyword === 'search' || prefix === 'lucide') return Promise.resolve(filteredPage)
+        if (cursor === 'next-page') return Promise.resolve(secondPage)
+        return Promise.resolve({ ...builtinIconsResponse, nextCursor: 'next-page' })
+      })
+      const { wrapper } = await mountIconSetsPage()
+      await flushPromises()
 
-      emptyFirstPageCalls += 1
-      return Promise.resolve(
-        emptyFirstPageCalls === 1
-          ? { ...builtinIconsResponse, nextCursor: 'next-page' }
-          : refreshedFirstPage,
-      )
-    })
-    const { wrapper } = await mountIconSetsPage()
-    await flushPromises()
+      const scrollPanel = wrapper.get('[data-test="builtin-icon-scroll"] .n-scrollbar-container')
+      setElementScrollMetrics(scrollPanel.element, {
+        scrollTop: 900,
+        clientHeight: 300,
+        scrollHeight: 1100,
+      })
+      await scrollPanel.trigger('scroll')
+      await flushPromises()
+      expect(wrapper.text()).toContain('moon')
 
-    const scrollPanel = wrapper.get('[data-test="builtin-icon-scroll"] .n-scrollbar-container')
-    setElementScrollMetrics(scrollPanel.element, {
-      scrollTop: 900,
-      clientHeight: 300,
-      scrollHeight: 1100,
-    })
-    await scrollPanel.trigger('scroll')
-    await flushPromises()
-    expect(wrapper.text()).toContain('moon')
+      if (filter === 'keyword') {
+        await wrapper.get('[data-test="builtin-icon-filter"] input').setValue('search')
+        await vi.advanceTimersByTimeAsync(250)
+      } else if (filter === 'prefix') {
+        await wrapper.get('[data-test="builtin-icon-set"]').trigger('click')
+      } else {
+        await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
+      }
+      await flushPromises()
+      if (filter !== 'tab') {
+        expect(wrapper.get('[data-test="builtin-icon-scroll"]').text()).toContain('search')
+      } else {
+        expect(listCustomIconsMock).toHaveBeenCalledOnce()
+      }
+      const previousCalls = listBuiltinIconsMock.mock.calls.length
 
-    await wrapper.get('[data-test="builtin-icon-filter"] input').setValue('search')
-    await vi.waitFor(() => expect(wrapper.text()).toContain('search'))
-    await wrapper.get('[data-test="builtin-icon-filter"] input').setValue('')
-    await vi.waitFor(() => expect(wrapper.text()).toContain('star'))
+      if (filter === 'keyword') {
+        await wrapper.get('[data-test="builtin-icon-filter"] input').setValue('')
+      } else if (filter === 'prefix') {
+        await wrapper.get('[data-test="builtin-icon-set-all"]').trigger('click')
+      } else {
+        await wrapper.get('[data-test="icon-sets-tab-builtin"]').trigger('click')
+      }
+      await flushPromises()
 
-    expect(wrapper.text()).not.toContain('sun')
-    expect(wrapper.text()).not.toContain('moon')
-    expect(emptyFirstPageCalls).toBe(2)
-  })
-
-  it('drops cached extra pages when returning from a prefix to the all-icons view', async () => {
-    const secondPage = {
-      ...builtinIconsResponse,
-      list: [{ ...builtinIconsResponse.list[0]!, icon: 'tabler:moon', name: 'moon' }],
-      nextCursor: null,
-    }
-    const prefixPage = {
-      ...builtinIconsResponse,
-      list: [{ ...builtinIconsResponse.list[0]!, icon: 'lucide:search', name: 'search' }],
-      nextCursor: null,
-    }
-    const refreshedAllPage = {
-      ...builtinIconsResponse,
-      list: [{ ...builtinIconsResponse.list[0]!, icon: 'lucide:star', name: 'star' }],
-      nextCursor: null,
-    }
-    let allFirstPageCalls = 0
-    listBuiltinIconsMock.mockImplementation(({ prefix, cursor }) => {
-      if (prefix === 'lucide') return Promise.resolve(prefixPage)
-      if (cursor === 'all-next-page') return Promise.resolve(secondPage)
-
-      allFirstPageCalls += 1
-      return Promise.resolve(
-        allFirstPageCalls === 1
-          ? { ...builtinIconsResponse, nextCursor: 'all-next-page' }
-          : refreshedAllPage,
-      )
-    })
-    const { wrapper } = await mountIconSetsPage()
-    await flushPromises()
-
-    const scrollPanel = wrapper.get('[data-test="builtin-icon-scroll"] .n-scrollbar-container')
-    setElementScrollMetrics(scrollPanel.element, {
-      scrollTop: 900,
-      clientHeight: 300,
-      scrollHeight: 1100,
-    })
-    await scrollPanel.trigger('scroll')
-    await flushPromises()
-    expect(wrapper.text()).toContain('moon')
-
-    await wrapper.get('[data-test="builtin-icon-set"]').trigger('click')
-    await vi.waitFor(() => expect(wrapper.text()).toContain('search'))
-    expect(listBuiltinIconsMock).toHaveBeenLastCalledWith({
-      cursor: undefined,
-      pageSize: 80,
-      prefix: 'lucide',
-    })
-
-    await wrapper.get('[data-test="builtin-icon-set-all"]').trigger('click')
-    await vi.waitFor(() => expect(wrapper.text()).toContain('star'))
-
-    expect(listBuiltinIconsMock).toHaveBeenLastCalledWith({ cursor: undefined, pageSize: 80 })
-    expect(wrapper.text()).not.toContain('sun')
-    expect(wrapper.text()).not.toContain('moon')
-    expect(allFirstPageCalls).toBe(2)
-  })
-
-  it('drops cached extra pages when returning to the built-in tab', async () => {
-    const secondPage = {
-      ...builtinIconsResponse,
-      list: [{ ...builtinIconsResponse.list[0]!, icon: 'lucide:moon', name: 'moon' }],
-      nextCursor: null,
-    }
-    const refreshedFirstPage = {
-      ...builtinIconsResponse,
-      list: [{ ...builtinIconsResponse.list[0]!, icon: 'lucide:star', name: 'star' }],
-      nextCursor: null,
-    }
-    let firstPageCalls = 0
-    listBuiltinIconsMock.mockImplementation(({ cursor }) => {
-      if (cursor === 'next-page') return Promise.resolve(secondPage)
-
-      firstPageCalls += 1
-      return Promise.resolve(
-        firstPageCalls === 1
-          ? { ...builtinIconsResponse, nextCursor: 'next-page' }
-          : refreshedFirstPage,
-      )
-    })
-    const { wrapper } = await mountIconSetsPage()
-    await flushPromises()
-
-    const scrollPanel = wrapper.get('[data-test="builtin-icon-scroll"] .n-scrollbar-container')
-    setElementScrollMetrics(scrollPanel.element, {
-      scrollTop: 900,
-      clientHeight: 300,
-      scrollHeight: 1100,
-    })
-    await scrollPanel.trigger('scroll')
-    await flushPromises()
-    expect(wrapper.text()).toContain('moon')
-
-    await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
-    await flushPromises()
-    await wrapper.get('[data-test="icon-sets-tab-builtin"]').trigger('click')
-    await vi.waitFor(() => expect(wrapper.text()).toContain('star'))
-
-    expect(listBuiltinIconsMock).toHaveBeenLastCalledWith({ cursor: undefined, pageSize: 80 })
-    expect(wrapper.text()).not.toContain('sun')
-    expect(wrapper.text()).not.toContain('moon')
-    expect(firstPageCalls).toBe(2)
-  })
+      expect(listBuiltinIconsMock).toHaveBeenCalledTimes(previousCalls)
+      expect(wrapper.get('[data-test="builtin-icon-scroll"]').text()).toContain('sun')
+      expect(wrapper.get('[data-test="builtin-icon-scroll"]').text()).toContain('moon')
+    },
+  )
 
   it('recovers a library search after repeated preparing responses and clears to browsing', async () => {
     vi.useFakeTimers()
@@ -613,11 +579,6 @@ describe('icon sets page', () => {
     const readyPage = {
       ...builtinIconsResponse,
       list: [{ ...builtinIconsResponse.list[0]!, icon: 'lucide:users', name: 'users' }],
-      nextCursor: null,
-    }
-    const refreshedBrowsePage = {
-      ...builtinIconsResponse,
-      list: [{ ...builtinIconsResponse.list[0]!, icon: 'lucide:star', name: 'star' }],
       nextCursor: null,
     }
     let userSearchCalls = 0
@@ -634,7 +595,7 @@ describe('icon sets page', () => {
       }
 
       browseCalls += 1
-      return Promise.resolve(browseCalls === 1 ? builtinIconsResponse : refreshedBrowsePage)
+      return Promise.resolve(builtinIconsResponse)
     })
     const { wrapper } = await mountIconSetsPage()
     await flushPromises()
@@ -659,12 +620,50 @@ describe('icon sets page', () => {
 
     await wrapper.get('[data-test="builtin-icon-filter"] input').setValue('')
     await flushPromises()
-    expect(wrapper.text()).toContain('star')
-    expect(listBuiltinIconsMock).toHaveBeenLastCalledWith({ cursor: undefined, pageSize: 80 })
+    expect(wrapper.text()).toContain('sun')
+    expect(wrapper.text()).not.toContain('图标搜索正在准备')
+    expect(browseCalls).toBe(1)
 
     await vi.advanceTimersByTimeAsync(2_000)
     await flushPromises()
     expect(pendingSearchCalls).toBe(1)
+  })
+
+  it('pauses preparing retries while the tab is inactive and resumes on activation', async () => {
+    vi.useFakeTimers()
+    const preparingError = new ApiRequestError(503, '正在准备', undefined, 'ICON_SEARCH_PREPARING')
+    listBuiltinIconsMock.mockImplementation(({ keyword }) =>
+      keyword ? Promise.reject(preparingError) : Promise.resolve(builtinIconsResponse),
+    )
+    const { wrapper } = await mountIconSetsPage()
+    await flushPromises()
+
+    await wrapper.get('[data-test="builtin-icon-filter"] input').setValue('用户')
+    await vi.advanceTimersByTimeAsync(250)
+    await flushPromises()
+    expect(wrapper.text()).toContain('图标搜索正在准备')
+    await vi.advanceTimersByTimeAsync(1_000)
+    await flushPromises()
+    const callsBeforeLeaving = listBuiltinIconsMock.mock.calls.length
+    expect(callsBeforeLeaving).toBe(3)
+
+    await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(10_000)
+    await flushPromises()
+    expect(listBuiltinIconsMock).toHaveBeenCalledTimes(callsBeforeLeaving)
+
+    await wrapper.get('[data-test="icon-sets-tab-builtin"]').trigger('click')
+    await flushPromises()
+    expect(listBuiltinIconsMock).toHaveBeenCalledTimes(callsBeforeLeaving + 1)
+    expect(wrapper.text()).toContain('图标搜索正在准备')
+    expect(
+      wrapper.get<HTMLInputElement>('[data-test="builtin-icon-filter"] input').element.value,
+    ).toBe('用户')
+
+    await vi.advanceTimersByTimeAsync(1_000)
+    await flushPromises()
+    expect(listBuiltinIconsMock).toHaveBeenCalledTimes(callsBeforeLeaving + 2)
   })
 
   it.each(['builtin', 'custom'] as const)(
@@ -706,7 +705,7 @@ describe('icon sets page', () => {
     },
   )
 
-  it('hides custom icon rename and delete actions without update or delete permission', async () => {
+  it('hides custom icon edit and delete actions without update or delete permission', async () => {
     listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
     listCustomIconsMock.mockResolvedValue(customIconsResponse)
     const { wrapper } = await mountIconSetsPage({
@@ -724,22 +723,42 @@ describe('icon sets page', () => {
     expect(wrapper.find('button[aria-label="删除图标"]').exists()).toBe(false)
   })
 
-  it('edits a custom icon name and keywords and renders the refreshed icon list', async () => {
+  it('refreshes loaded pages after editing a custom icon name and keywords', async () => {
     const renamedIcon = {
       ...customIconsResponse.list[0]!,
       icon: 'acme:mark',
       name: 'mark',
     }
+    const secondPage = {
+      ...customIconsResponse,
+      list: [{ ...customIconsResponse.list[0]!, icon: 'acme:wordmark', name: 'wordmark' }],
+    }
     listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
     listCustomIconsMock
-      .mockResolvedValueOnce(customIconsResponse)
-      .mockResolvedValue({ ...customIconsResponse, list: [renamedIcon] })
+      .mockResolvedValueOnce({ ...customIconsResponse, nextCursor: 'after-logo' })
+      .mockResolvedValueOnce(secondPage)
+      .mockResolvedValueOnce({
+        ...customIconsResponse,
+        list: [renamedIcon],
+        nextCursor: 'after-mark',
+      })
+      .mockResolvedValueOnce(secondPage)
     updateCustomIconMock.mockResolvedValue(renamedIcon)
     const { wrapper } = await mountIconSetsPage()
     await flushPromises()
 
     await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
     await flushPromises()
+    const scrollPanel = wrapper.get('[data-test="custom-icon-scroll"] .n-scrollbar-container')
+    setElementScrollMetrics(scrollPanel.element, {
+      scrollTop: 900,
+      clientHeight: 300,
+      scrollHeight: 1100,
+    })
+    await scrollPanel.trigger('scroll')
+    await flushPromises()
+    expect(wrapper.text()).toContain('wordmark')
+
     await wrapper.get('button[aria-label="编辑图标"]').trigger('click')
     await flushPromises()
 
@@ -756,7 +775,14 @@ describe('icon sets page', () => {
       keywords: ['品牌', 'brand'],
     })
     expect(document.body.textContent).toContain('编辑图标成功')
-    expect(wrapper.text()).toContain('mark')
+    expect(
+      wrapper
+        .findAll('[data-test="custom-icon-scroll"] [data-test="icon-grid-name"]')
+        .map((name) => name.text()),
+    ).toEqual(['mark', 'wordmark'])
+    expect(listCustomIconsMock).toHaveBeenCalledTimes(4)
+    expect(listCustomIconsMock).toHaveBeenLastCalledWith({ cursor: 'after-mark', pageSize: 80 })
+    expect(listCustomIconSetsMock).toHaveBeenCalledTimes(2)
   })
 
   it('submits an explicit empty keyword list without changing the icon id', async () => {
@@ -978,6 +1004,53 @@ describe('icon sets page', () => {
     expect(listBuiltinIconsMock).toHaveBeenCalledTimes(2)
     expect(wrapper.text()).toContain('下一页加载失败')
     expect(wrapper.text()).toContain('sun')
+  })
+
+  it.each(['builtin', 'custom'] as const)(
+    'retries failed %s collection and icon requests',
+    async (source) => {
+      const listSets = source === 'builtin' ? listBuiltinIconSetsMock : listCustomIconSetsMock
+      const listIcons = source === 'builtin' ? listBuiltinIconsMock : listCustomIconsMock
+      listSets.mockRejectedValueOnce(new Error('图标集请求失败'))
+      listIcons.mockRejectedValueOnce(new Error('图标请求失败'))
+      if (source === 'custom') {
+        listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
+        listCustomIconsMock.mockResolvedValue(customIconsResponse)
+      }
+      const { wrapper } = await mountIconSetsPage()
+      await flushPromises()
+      if (source === 'custom') {
+        await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
+        await flushPromises()
+      }
+      expect(wrapper.text()).toContain('图标集请求失败')
+      expect(wrapper.text()).toContain('图标请求失败')
+
+      const retryButtons = wrapper.findAll('button').filter((button) => button.text() === '重试')
+      expect(retryButtons).toHaveLength(2)
+      await retryButtons[0]!.trigger('click')
+      await flushPromises()
+      expect(wrapper.text()).not.toContain('图标集请求失败')
+      expect(listSets).toHaveBeenCalledTimes(2)
+      await wrapper
+        .findAll('button')
+        .find((button) => button.text() === '重试')!
+        .trigger('click')
+      await flushPromises()
+      expect(wrapper.text()).not.toContain('图标请求失败')
+      expect(listIcons).toHaveBeenCalledTimes(2)
+      expect(wrapper.text()).toContain(source === 'builtin' ? 'sun' : 'logo')
+    },
+  )
+
+  it('reports clipboard failures without interrupting icon browsing', async () => {
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValueOnce(new Error('Permission denied'))
+    const { wrapper } = await mountIconSetsPage()
+    await flushPromises()
+    await wrapper.get('button[aria-label="复制图标名称"]').trigger('click')
+    await flushPromises()
+    expect(document.body.textContent).toContain('复制失败，请重试')
+    expect(wrapper.get('[data-test="icon-grid-name"]').text()).toBe('sun')
   })
 
   it('resets an invalid next-page cursor and refetches only the first page', async () => {

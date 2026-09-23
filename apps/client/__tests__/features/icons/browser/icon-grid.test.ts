@@ -69,12 +69,12 @@ describe('IconGrid', () => {
     expect(setName.attributes('title')).toBe('Acme Icons')
   })
 
-  it('uses explicit action buttons without emitting copy from rename or delete', async () => {
+  it('uses explicit action buttons without emitting copy from edit or delete', async () => {
     const wrapper = mount(IconGrid, {
       props: {
         icons: customIcons,
         scope: 'single',
-        renamable: true,
+        editable: true,
         deletable: true,
       },
     })
@@ -82,9 +82,9 @@ describe('IconGrid', () => {
     const item = wrapper.get('[data-test="icon-grid-item"]')
     expect(item.attributes('role')).toBeUndefined()
 
-    const renameButton = wrapper.get('button[aria-label="编辑图标"]')
-    await renameButton.trigger('click')
-    await renameButton.trigger('keydown.enter')
+    const editButton = wrapper.get('button[aria-label="编辑图标"]')
+    await editButton.trigger('click')
+    await editButton.trigger('keydown.enter')
 
     const deleteButton = wrapper.get('button[aria-label="删除图标"]')
     await deleteButton.trigger('click')
@@ -92,7 +92,7 @@ describe('IconGrid', () => {
 
     expect(wrapper.emitted('copy')).toBeUndefined()
     expect(wrapper.emitted('copySvg')).toBeUndefined()
-    expect(wrapper.emitted('rename')).toEqual([[customIcons[0]]])
+    expect(wrapper.emitted('edit')).toEqual([[customIcons[0]]])
     expect(wrapper.emitted('delete')).toEqual([[customIcons[0]]])
   })
 

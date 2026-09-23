@@ -7,11 +7,11 @@ const props = withDefaults(
   defineProps<{
     icons: TIcon[]
     scope: 'all' | 'single'
-    renamable?: boolean
+    editable?: boolean
     deletable?: boolean
   }>(),
   {
-    renamable: false,
+    editable: false,
     deletable: false,
   },
 )
@@ -19,7 +19,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   copy: [icon: string]
   copySvg: [svg: string]
-  rename: [icon: TIcon]
+  edit: [icon: TIcon]
   delete: [icon: TIcon]
 }>()
 
@@ -82,7 +82,7 @@ function getIconSvg(icon: IconItem) {
 
       <div
         data-test="icon-grid-actions"
-        class="pointer-events-none mt-0.5 flex items-center justify-center gap-0.5 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
+        class="mt-0.5 flex items-center justify-center gap-0.5 transition-opacity [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:pointer-events-auto [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"
       >
         <NButton
           quaternary
@@ -107,13 +107,13 @@ function getIconSvg(icon: IconItem) {
         </NButton>
 
         <NButton
-          v-if="renamable"
+          v-if="editable"
           quaternary
           circle
           size="tiny"
           aria-label="编辑图标"
           title="编辑"
-          @click.stop="emit('rename', icon)"
+          @click.stop="emit('edit', icon)"
         >
           <span class="i-[lucide--pencil-line] text-xs" aria-hidden="true" />
         </NButton>

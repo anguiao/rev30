@@ -85,6 +85,7 @@ describe('IconPicker', () => {
 
     const option = wrapper.get('[data-test="resource-icon-option"]')
     expect(option.attributes('aria-label')).toBe('lucide:users')
+    expect(option.attributes('aria-pressed')).toBe('false')
     expect(option.text()).toBe('lucide:users')
   })
 
@@ -112,7 +113,7 @@ describe('IconPicker', () => {
     searchIconsMock.mockClear()
 
     await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
-    await vi.advanceTimersByTimeAsync(199)
+    await vi.advanceTimersByTimeAsync(249)
     expect(searchIconsMock).not.toHaveBeenCalled()
 
     await vi.advanceTimersByTimeAsync(1)
@@ -120,7 +121,7 @@ describe('IconPicker', () => {
     expect(searchIconsMock).toHaveBeenCalledWith({ keyword: '用户', limit: 60 })
   })
 
-  it('shows the bilingual search hint and retries preparing searches until ready', async () => {
+  it('shows feedback while preparing and retries until ready', async () => {
     vi.useFakeTimers()
     const preparingError = new ApiRequestError(
       503,
@@ -148,10 +149,10 @@ describe('IconPicker', () => {
     await wrapper.get('[data-test="resource-form-icon"] input').trigger('focus')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('部分内置图标支持中文，可尝试英文名称或图标 ID')
+    expect(wrapper.find('.n-alert').exists()).toBe(false)
 
     await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
     expect(wrapper.text()).toContain('图标搜索正在准备')
     expect(wrapper.text()).not.toContain('未找到匹配图标')
@@ -163,6 +164,7 @@ describe('IconPicker', () => {
     await vi.advanceTimersByTimeAsync(2_000)
     await flushPromises()
     expect(wrapper.get('[data-test="resource-icon-option"]').text()).toBe('lucide:users')
+    expect(wrapper.find('.n-alert').exists()).toBe(false)
     expect(searchIconsMock).toHaveBeenCalledTimes(4)
   })
 
@@ -175,12 +177,12 @@ describe('IconPicker', () => {
     const input = wrapper.get('[data-test="resource-icon-search"] input')
 
     await input.setValue('  ＵＳＥＲ   ADD  ')
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
     expect(searchIconsMock).toHaveBeenLastCalledWith({ keyword: 'ＵＳＥＲ   ADD', limit: 60 })
 
     await input.setValue('user add')
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
     expect(searchIconsMock).toHaveBeenCalledTimes(2)
     expect((input.element as HTMLInputElement).value).toBe('user add')
@@ -196,16 +198,16 @@ describe('IconPicker', () => {
     const validKeyword = 'ﬃ'.repeat(50)
 
     await input.setValue(validKeyword)
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
     expect(searchIconsMock).toHaveBeenLastCalledWith({ keyword: validKeyword, limit: 60 })
 
     searchIconsMock.mockRejectedValueOnce(new ApiRequestError(400, '搜索关键词过长'))
     await input.setValue(validKeyword.normalize('NFKC'))
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
     expect(searchIconsMock).toHaveBeenCalledTimes(3)
-    expect(wrapper.text()).toContain('图标搜索失败')
+    expect(wrapper.text()).toContain('搜索关键词过长')
   })
 
   it('backs off preparing retries up to the cap and pauses while the page is hidden', async () => {
@@ -220,7 +222,7 @@ describe('IconPicker', () => {
     await wrapper.get('[data-test="resource-form-icon"] input').trigger('focus')
     await flushPromises()
     await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
 
     for (const delay of [800, 1_600, 3_200, 6_400, 6_400]) {
@@ -258,7 +260,7 @@ describe('IconPicker', () => {
     await wrapper.get('[data-test="resource-form-icon"] input').trigger('focus')
     await flushPromises()
     await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
 
     await vi.advanceTimersByTimeAsync(10_000)
@@ -288,7 +290,7 @@ describe('IconPicker', () => {
     await flushPromises()
 
     await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
     expect(wrapper.text()).toContain('图标搜索暂不可用')
     expect(wrapper.text()).not.toContain('未找到匹配图标')
@@ -304,9 +306,9 @@ describe('IconPicker', () => {
 
     searchIconsMock.mockResolvedValueOnce({ list: [] })
     await wrapper.get('[data-test="resource-icon-search"] input').setValue('missing')
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
-    expect(wrapper.text()).toContain('未找到匹配图标，可尝试英文名称、图标 ID 或其他关键词')
+    expect(wrapper.text()).toContain('未找到匹配图标，请尝试其他关键词')
   })
 
   it('stops preparing retries after the picker closes', async () => {
@@ -319,7 +321,7 @@ describe('IconPicker', () => {
     await flushPromises()
 
     await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
     expect(searchIconsMock).toHaveBeenCalledTimes(2)
 
@@ -351,7 +353,7 @@ describe('IconPicker', () => {
     searchIconsMock.mockClear()
 
     await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
     expect(searchIconsMock).toHaveBeenLastCalledWith({ keyword: '用户', limit: 60 })
 
@@ -362,7 +364,7 @@ describe('IconPicker', () => {
     await wrapper.setProps({ value: 'lucide:users' })
     await wrapper.get('[data-test="resource-form-icon"] input').trigger('focus')
     await flushPromises()
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
 
     const searchInput = wrapper.get('[data-test="resource-icon-search"] input')
@@ -384,7 +386,7 @@ describe('IconPicker', () => {
     wrapper.getComponent(NPopover).vm.$emit('clickoutside', new MouseEvent('click'))
     await flushPromises()
 
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
 
     expect(searchIconsMock).not.toHaveBeenCalled()
@@ -410,28 +412,39 @@ describe('IconPicker', () => {
     await wrapper.get('[data-test="resource-icon-option"]').trigger('click')
     expect(wrapper.emitted('update:value')?.[0]).toEqual(['lucide:users'])
 
-    wrapper.getComponent(NPopover).vm.$emit('update:show', false)
-    await flushPromises()
+    expect(wrapper.emitted('blur')).toHaveLength(1)
     await wrapper.setProps({ value: 'lucide:users' })
-    wrapper.getComponent(NInput).vm.$emit('update:value', '')
+    await wrapper.get('[data-test="resource-form-icon"]').trigger('mouseenter')
+    await wrapper.get('[data-test="resource-form-icon"] [data-clear]').trigger('click')
     await flushPromises()
 
     const emittedValues = wrapper.emitted('update:value') ?? []
     expect(emittedValues.some((args) => args[0] === null)).toBe(true)
   })
 
-  it('shows search error and keeps selected value', async () => {
-    searchIconsMock.mockRejectedValue(new Error('boom'))
+  it('shows request errors, keeps the selected value, and allows retry', async () => {
+    searchIconsMock
+      .mockRejectedValueOnce(new Error('搜索请求失败'))
+      .mockResolvedValueOnce({ list: [] })
 
     const wrapper = mountPicker('lucide:users')
     await wrapper.get('[data-test="resource-form-icon"] input').trigger('focus')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('图标搜索失败')
+    expect(wrapper.text()).toContain('搜索请求失败')
     expect(
       (wrapper.get('[data-test="resource-form-icon"] input').element as HTMLInputElement).value,
     ).toBe('lucide:users')
     expect(wrapper.find('[data-test="resource-icon-empty"]').text()).toContain('lucide:users')
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '重试')!
+      .trigger('click')
+    await flushPromises()
+    expect(searchIconsMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).not.toContain('搜索请求失败')
+    expect(wrapper.text()).toContain('暂无图标')
   })
 
   it('keeps newest search result when previous request resolves later', async () => {
@@ -463,11 +476,11 @@ describe('IconPicker', () => {
     await flushPromises()
 
     await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
 
     await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户组')
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
 
     expect(wrapper.get('[data-test="resource-icon-option"]').text()).toBe('lucide:user-check')
@@ -519,7 +532,7 @@ describe('IconPicker', () => {
     expect(searchIconsMock).toHaveBeenCalledWith({ keyword: '', limit: 60 })
 
     await wrapper.get('[data-test="resource-icon-search"] input').setValue('用户')
-    await vi.advanceTimersByTimeAsync(200)
+    await vi.advanceTimersByTimeAsync(250)
     await flushPromises()
 
     expect(searchIconsMock).toHaveBeenCalledWith({ keyword: '用户', limit: 60 })

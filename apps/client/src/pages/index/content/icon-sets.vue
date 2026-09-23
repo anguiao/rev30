@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import { ref, type HTMLAttributes } from 'vue'
-import { NTabPane, NTabs } from 'naive-ui'
+import { KeepAlive, ref } from 'vue'
+import { NTab, NTabs } from 'naive-ui'
 import { useAdminPageTitle } from '../../../composables/useAdminPageTitle'
-import BuiltinIconBrowser from '../../../features/icons/browser/BuiltinIconBrowser.vue'
-import CustomIconBrowser from '../../../features/icons/browser/CustomIconBrowser.vue'
+import IconBrowser from '../../../features/icons/browser/IconBrowser.vue'
 
 type IconSetsTab = 'builtin' | 'custom'
 
 const pageTitle = useAdminPageTitle('图标库')
 const activeTab = ref<IconSetsTab>('builtin')
-const builtinTabProps = { 'data-test': 'icon-sets-tab-builtin' } as unknown as HTMLAttributes
-const customTabProps = { 'data-test': 'icon-sets-tab-custom' } as unknown as HTMLAttributes
 </script>
 
 <template>
@@ -19,23 +16,13 @@ const customTabProps = { 'data-test': 'icon-sets-tab-custom' } as unknown as HTM
       <h1 class="text-xl font-semibold">{{ pageTitle }}</h1>
     </header>
 
-    <NTabs v-model:value="activeTab" type="line" animated>
-      <NTabPane
-        name="builtin"
-        tab="内置图标"
-        display-directive="show:lazy"
-        :tab-props="builtinTabProps"
-      >
-        <BuiltinIconBrowser :active="activeTab === 'builtin'" />
-      </NTabPane>
-      <NTabPane
-        name="custom"
-        tab="自定义图标"
-        display-directive="show:lazy"
-        :tab-props="customTabProps"
-      >
-        <CustomIconBrowser :active="activeTab === 'custom'" />
-      </NTabPane>
+    <NTabs v-model:value="activeTab" type="line" class="mb-3">
+      <NTab name="builtin" data-test="icon-sets-tab-builtin">内置图标</NTab>
+      <NTab name="custom" data-test="icon-sets-tab-custom">自定义图标</NTab>
     </NTabs>
+
+    <KeepAlive>
+      <IconBrowser :key="activeTab" :source="activeTab" />
+    </KeepAlive>
   </main>
 </template>

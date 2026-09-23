@@ -1,49 +1,27 @@
 <script setup lang="ts">
 import { useQuery } from '@pinia/colada'
 import { Icon } from '@iconify/vue'
-import {
-  NAlert,
-  NButton,
-  NEmpty,
-  NInput,
-  NInputGroup,
-  NInputGroupLabel,
-  NPopover,
-  NSpin,
-  NTooltip,
-} from 'naive-ui'
+import { NEmpty, NInput, NInputGroup, NInputGroupLabel, NPopover, NSpin, NTooltip } from 'naive-ui'
 import { computed, nextTick, ref, useTemplateRef } from 'vue'
-import { iconSearchKey } from '../query-keys'
+import { iconSearchKeywordKey } from '../cache'
 import { searchIcons } from '../requests'
 import { useIconSearchKeyword } from './useIconSearchKeyword'
-import { useIconSearchState } from './useIconSearchState'
+import { useIconSearchRetry } from './useIconSearchRetry'
+import IconSearchFeedback from './IconSearchFeedback.vue'
 
-const props = defineProps<{
-  value: string | null
-}>()
-
-const emit = defineEmits<{
-  'update:value': [value: string | null]
-  blur: []
-}>()
+const value = defineModel<string | null>('value', { required: true })
+const emit = defineEmits<{ blur: [] }>()
 
 const searchInputRef = useTemplateRef<InstanceType<typeof NInput>>('searchInputRef')
 
 const showPanel = ref(false)
 
 const limit = 60
-const { keyword, queryKeyword } = useIconSearchKeyword(200)
+const { keyword, queryKeyword } = useIconSearchKeyword()
 
-const {
-  data: iconSearchData,
-  error: iconSearchError,
-  asyncStatus,
-  isLoading: isSearching,
-  refetch,
-} = useQuery({
-  key: () => iconSearchKey(queryKeyword.value, limit),
+const { data, error, isLoading, refetch } = useQuery({
+  key: () => ['system', 'icons', 'search', ...iconSearchKeywordKey(queryKeyword.value), limit],
   enabled: () => showPanel.value,
-  placeholderData: () => ({ list: [] }),
   staleTime: 5 * 60 * 1000,
   refetchOnWindowFocus: false,
   refetchOnReconnect: false,
@@ -54,17 +32,16 @@ const {
     }),
 })
 
-const results = computed(() => iconSearchData.value?.list ?? [])
-const hasSearchKeyword = computed(() => queryKeyword.value.trim().length > 0)
-const { isPreparing, isUnavailable, isOrdinaryError, retry } = useIconSearchState({
-  error: iconSearchError,
-  asyncStatus,
-  enabled: computed(() => showPanel.value && hasSearchKeyword.value),
+const icons = computed(() => data.value?.list ?? [])
+const hasSearchKeyword = computed(() => queryKeyword.value.length > 0)
+const { retry } = useIconSearchRetry({
+  error,
+  isLoading,
+  enabled: () => showPanel.value && hasSearchKeyword.value,
   refetch,
 })
-const searchError = computed(() => (isOrdinaryError.value ? '图标搜索失败' : ''))
 const emptyDescription = computed(() =>
-  hasSearchKeyword.value ? '未找到匹配图标，可尝试英文名称、图标 ID 或其他关键词' : '暂无图标',
+  hasSearchKeyword.value ? '未找到匹配图标，请尝试其他关键词' : '暂无图标',
 )
 
 async function openPanel() {
@@ -87,7 +64,7 @@ function closePanel() {
 }
 
 function selectIcon(icon: string) {
-  emit('update:value', icon)
+  value.value = icon
   closePanel()
 }
 </script>
@@ -98,9 +75,9 @@ function selectIcon(icon: string) {
     :show="showPanel"
     placement="bottom-start"
     :width="420"
+    style="max-width: calc(100vw - 32px)"
     :show-arrow="false"
     @clickoutside="closePanel"
-    @update:show="(nextShow) => (nextShow ? void openPanel() : closePanel())"
   >
     <template #trigger>
       <NInputGroup>
@@ -119,61 +96,37 @@ function selectIcon(icon: string) {
           placeholder="未选择图标"
           @click="openPanel"
           @focus="openPanel"
-          @update:value="
-            (nextValue) => {
-              if (nextValue === '') {
-                emit('update:value', null)
-              }
-            }
-          "
+          @clear="value = null"
         />
       </NInputGroup>
     </template>
 
-    <div class="max-w-full">
+    <div class="flex max-w-full flex-col gap-3">
       <NInput
         v-model:value="keyword"
         ref="searchInputRef"
         data-test="resource-icon-search"
         clearable
-        placeholder="搜索图标"
+        placeholder="搜索图标，支持中英文"
       />
-      <div class="mt-1 text-xs text-stone-500 dark:text-zinc-400">
-        支持中英文名称和关键词。部分内置图标支持中文，可尝试英文名称或图标 ID。
-      </div>
+      <IconSearchFeedback :error="error" :loading="isLoading" @retry="retry" />
 
-      <NAlert v-if="isPreparing" type="info" :show-icon="false" class="mt-3">
-        图标搜索正在准备
-      </NAlert>
-
-      <NAlert v-else-if="isUnavailable" type="warning" :show-icon="false" class="mt-3">
-        图标搜索暂不可用
-        <NButton size="small" text class="ml-2" :loading="isSearching" @click="retry">
-          重试
-        </NButton>
-      </NAlert>
-
-      <NAlert v-if="searchError" type="error" :show-icon="false" class="mt-3">
-        {{ searchError }}
-      </NAlert>
-
-      <NSpin :show="isSearching" class="mt-3">
+      <NSpin :show="isLoading" content-class="min-h-12">
         <div
-          v-if="results.length > 0"
+          v-if="icons.length > 0"
           class="grid grid-cols-[repeat(auto-fill,minmax(32px,1fr))] justify-items-center gap-2"
         >
-          <NTooltip v-for="item in results" :key="item.icon" trigger="hover">
+          <NTooltip v-for="item in icons" :key="item.icon" trigger="hover">
             <template #trigger>
               <button
                 data-test="resource-icon-option"
                 type="button"
                 class="grid size-8 place-items-center rounded border border-transparent text-lg text-stone-500 transition-colors hover:border-primary hover:bg-stone-100 hover:text-primary focus-visible:border-primary focus-visible:bg-stone-100 focus-visible:text-primary focus-visible:outline-none dark:text-zinc-400 dark:hover:bg-zinc-800 dark:focus-visible:bg-zinc-800"
-                :class="
-                  item.icon === value
-                    ? 'border-primary bg-stone-100 text-primary dark:bg-zinc-800'
-                    : ''
-                "
+                :class="{
+                  'border-primary bg-stone-100 text-primary dark:bg-zinc-800': item.icon === value,
+                }"
                 :aria-label="item.icon"
+                :aria-pressed="item.icon === value"
                 @click="selectIcon(item.icon)"
               >
                 <Icon :icon="item.icon" class="max-h-full max-w-full" />
@@ -183,11 +136,10 @@ function selectIcon(icon: string) {
           </NTooltip>
         </div>
         <NEmpty
-          v-else-if="!isSearching && !isPreparing && !isUnavailable && !searchError"
+          v-else-if="!isLoading && error === null"
           :description="emptyDescription"
           class="py-6"
         />
-        <div v-else class="py-6" />
       </NSpin>
     </div>
   </NPopover>

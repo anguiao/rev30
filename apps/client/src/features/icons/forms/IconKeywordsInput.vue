@@ -1,23 +1,16 @@
 <script setup lang="ts">
 import { NButton, NDynamicTags } from 'naive-ui'
-import { CUSTOM_ICON_KEYWORDS_MAX_ITEMS } from '@rev30/contracts'
+import { CUSTOM_ICON_KEYWORD_MAX_LENGTH, CUSTOM_ICON_KEYWORDS_MAX_ITEMS } from '@rev30/contracts'
 
-const model = defineModel<string[]>({ required: true })
-
-const emit = defineEmits<{
-  clear: []
-}>()
-
-function clearKeywords() {
-  model.value = []
-  emit('clear')
-}
+const keywords = defineModel<string[]>({ required: true })
+defineProps<{ disabled?: boolean }>()
 </script>
 
 <template>
   <div data-test="icon-keywords-input" class="space-y-2">
     <NDynamicTags
-      v-model:value="model"
+      v-model:value="keywords"
+      :disabled="disabled"
       class="[&>div]:max-w-full"
       :max="CUSTOM_ICON_KEYWORDS_MAX_ITEMS"
       :theme-overrides="{ inputWidth: '180px' }"
@@ -31,7 +24,17 @@ function clearKeywords() {
         </NButton>
       </template>
     </NDynamicTags>
-    <NButton data-test="icon-keywords-clear" text type="primary" @click="clearKeywords">
+    <div class="text-xs text-stone-500 dark:text-zinc-400">
+      可选，最多 {{ CUSTOM_ICON_KEYWORDS_MAX_ITEMS }} 项，每项最多
+      {{ CUSTOM_ICON_KEYWORD_MAX_LENGTH }} 个字符
+    </div>
+    <NButton
+      data-test="icon-keywords-clear"
+      text
+      type="primary"
+      :disabled="disabled"
+      @click="keywords = []"
+    >
       清空关键词
     </NButton>
   </div>

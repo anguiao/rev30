@@ -38,30 +38,20 @@ const queryCache = useQueryCache()
 const drawerSessionId = ref(0)
 
 const {
-  data: formData,
+  data: formValues,
   error: formLoadError,
   isLoading,
 } = useQuery({
-  key: () => ['content', 'icon-set-form', props.prefix ?? 'create'],
-  enabled: () => show.value,
+  key: () => ['content', 'icon-set-form', props.prefix],
+  enabled: () => show.value && props.prefix !== null,
   async query() {
-    const prefix = props.prefix
-
-    if (prefix === null) {
-      return {
-        formValues: defaultFormValues,
-      }
-    }
-
-    const iconSet = await getCustomIconSet(prefix)
+    const iconSet = await getCustomIconSet(props.prefix!)
 
     return {
-      formValues: {
-        prefix: iconSet.prefix,
-        name: iconSet.name,
-        description: iconSet.description,
-      } satisfies CustomIconSetFormInput,
-    }
+      prefix: iconSet.prefix,
+      name: iconSet.name,
+      description: iconSet.description,
+    } satisfies CustomIconSetFormInput
   },
 })
 const loadError = computed(() =>
@@ -129,8 +119,10 @@ const { isLoading: isSaving, ...saveIconSetMutation } = useMutation({
   },
 })
 
+const isFormDisabled = computed(() => isLoading.value || isSaving.value || loadError.value !== null)
+
 function handleSubmit() {
-  if (isLoading.value || isSaving.value || loadError.value) {
+  if (isFormDisabled.value) {
     return
   }
 
@@ -155,9 +147,9 @@ watch(
 )
 
 watch(
-  () => [show.value, formData.value?.formValues] as const,
-  ([isVisible, formValues]) => {
-    if (!isVisible || formValues === undefined) {
+  () => [show.value, formValues.value] as const,
+  ([isVisible, values]) => {
+    if (!isVisible || values === undefined) {
       return
     }
 
@@ -165,7 +157,7 @@ watch(
       return
     }
 
-    form.reset(formValues)
+    form.reset(values)
   },
   {
     immediate: true,
@@ -183,7 +175,7 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
   <NDrawer
     :show="show"
     placement="right"
-    :width="520"
+    width="min(520px, 100vw)"
     :mask-closable="false"
     :close-on-esc="false"
     @update:show="handleDrawerShowUpdate"
@@ -198,12 +190,12 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
           {{ formError }}
         </NAlert>
 
-        <NForm @submit.prevent="handleSubmit">
+        <NForm :disabled="isFormDisabled" @submit.prevent="handleSubmit">
           <form.Field name="prefix" v-slot="{ field, state }">
             <NFormItem label="前缀" v-bind="formItemValidationProps(state.meta)">
               <NInput
                 data-test="icon-set-form-prefix"
-                :disabled="prefix !== null"
+                :disabled="prefix !== null || isFormDisabled"
                 :value="state.value"
                 placeholder="例如 acme"
                 @blur="field.handleBlur"
@@ -245,7 +237,7 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
           <NButton
             data-test="icon-set-form-submit"
             type="primary"
-            :disabled="isLoading || isSaving || loadError !== null"
+            :disabled="isFormDisabled"
             :loading="isSaving"
             @click="handleSubmit"
           >

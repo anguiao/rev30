@@ -23,7 +23,7 @@ import {
 import { uploadCustomIcons } from '../requests'
 import { getErrorMessage } from '../../../utils/error'
 import { refreshCustomIconCaches } from '../cache'
-import IconUploadFile from './IconUploadFile.vue'
+import IconUploadItem from './IconUploadItem.vue'
 
 const props = defineProps<{
   prefix: string | null
@@ -64,18 +64,21 @@ const uploadMutation = useMutation({
     prefix,
     duplicateStrategy,
     items,
-    metadata,
   }: {
     prefix: string
     duplicateStrategy: CustomIconDuplicateStrategy
     items: UploadEntry[]
-    metadata?: CustomIconUploadMetadata
-  }) =>
-    uploadCustomIcons(prefix, {
+  }) => {
+    const metadata: CustomIconUploadMetadata = items.map(({ keywords }) =>
+      keywords === undefined ? {} : { keywords },
+    )
+
+    return uploadCustomIcons(prefix, {
       duplicateStrategy,
       files: items.map((item) => item.file),
-      ...(metadata === undefined ? {} : { metadata }),
-    }),
+      ...(metadata.some((item) => item.keywords !== undefined) ? { metadata } : {}),
+    })
+  },
   onSuccess({ results }, { prefix, items }, { sessionId }) {
     if (results.some((result) => result.status === 'created' || result.status === 'replaced')) {
       void refreshCustomIconCaches(queryCache)
@@ -108,32 +111,30 @@ const uploadMutation = useMutation({
   },
 })
 
-function uploadItems(items: UploadEntry[], strategy: CustomIconDuplicateStrategy) {
-  const prefix = props.prefix
-  if (prefix === null || items.length === 0 || isUploading.value) return
-
-  const metadata: CustomIconUploadMetadata = []
-  let hasInvalidKeywords = false
+function validateKeywords(items: UploadEntry[]) {
+  let valid = true
 
   for (const item of items) {
-    if (item.keywords === undefined) {
-      metadata.push({})
-      continue
-    }
+    if (item.keywords === undefined) continue
 
     const result = customIconKeywordsSchema.safeParse(item.keywords)
     if (!result.success) {
       item.keywordError = result.error.issues[0]!.message
-      hasInvalidKeywords = true
+      valid = false
       continue
     }
 
     item.keywords = result.data
     item.keywordError = null
-    metadata.push({ keywords: result.data })
   }
 
-  if (hasInvalidKeywords) return
+  return valid
+}
+
+function uploadItems(items: UploadEntry[], strategy: CustomIconDuplicateStrategy) {
+  const prefix = props.prefix
+  if (prefix === null || items.length === 0 || isUploading.value) return
+  if (!validateKeywords(items)) return
 
   uploadError.value = null
   for (const item of items) item.uploading = true
@@ -141,7 +142,6 @@ function uploadItems(items: UploadEntry[], strategy: CustomIconDuplicateStrategy
     prefix,
     duplicateStrategy: strategy,
     items,
-    ...(items.some((item) => item.keywords !== undefined) ? { metadata } : {}),
   })
 }
 
@@ -256,7 +256,7 @@ watch(
               </NUpload>
 
               <ul v-if="entries.length > 0" class="space-y-3" aria-label="上传文件">
-                <IconUploadFile
+                <IconUploadItem
                   v-for="entry in entries"
                   :key="entry.id"
                   v-model:keywords="entry.keywords"

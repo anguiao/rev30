@@ -31,32 +31,19 @@ const emit = defineEmits<{
 const previewUrl = useObjectUrl(() => props.file)
 const previewFailed = ref(false)
 const expanded = ref(false)
-const completed = computed(
+const succeeded = computed(
   () => props.result?.status === 'created' || props.result?.status === 'replaced',
 )
-const editable = computed(() => !props.disabled && !completed.value)
-const keywordValidationProps = computed(() =>
-  props.keywordError === null
-    ? {}
-    : { feedback: props.keywordError, validationStatus: 'error' as const },
-)
+const editable = computed(() => !props.disabled && !succeeded.value)
 const status = computed(() => (props.uploading ? 'uploading' : (props.result?.status ?? 'pending')))
-const statusLabels = {
-  pending: '待上传',
-  uploading: '上传中',
-  created: '已新增',
-  replaced: '已替换',
-  skipped: '已跳过',
-  failed: '上传失败',
-}
-const statusTypes = {
-  pending: 'default',
-  uploading: 'info',
-  created: 'success',
-  replaced: 'success',
-  skipped: 'warning',
-  failed: 'error',
-} satisfies Record<typeof status.value, TagProps['type']>
+const statusTags = {
+  pending: { label: '待上传', type: 'default' },
+  uploading: { label: '上传中', type: 'info' },
+  created: { label: '已新增', type: 'success' },
+  replaced: { label: '已替换', type: 'success' },
+  skipped: { label: '已跳过', type: 'warning' },
+  failed: { label: '上传失败', type: 'error' },
+} satisfies Record<typeof status.value, { label: string; type: TagProps['type'] }>
 
 const reselectFile: UploadOnChange = ({ file }) => {
   if (file.file instanceof File && !props.disabled) emit('reselect', file.file)
@@ -95,11 +82,11 @@ watch(
         <div class="truncate text-sm font-medium" :title="file.name">{{ file.name }}</div>
         <div class="text-xs text-stone-500 dark:text-zinc-400">{{ bytes(file.size) }}</div>
       </div>
-      <NTag size="small" :type="statusTypes[status]" :bordered="false">{{
-        statusLabels[status]
+      <NTag size="small" :type="statusTags[status].type" :bordered="false">{{
+        statusTags[status].label
       }}</NTag>
       <NButton
-        v-if="!completed"
+        v-if="!succeeded"
         quaternary
         circle
         size="small"
@@ -116,7 +103,9 @@ watch(
       label="关键词（可选）"
       :show-label="expanded && editable"
       :show-feedback="keywordError !== null"
-      v-bind="keywordValidationProps"
+      v-bind="
+        keywordError === null ? {} : { feedback: keywordError, validationStatus: 'error' as const }
+      "
     >
       <div class="w-full min-w-0 space-y-2">
         <div class="flex flex-wrap items-center gap-2">
@@ -136,7 +125,7 @@ watch(
             </NTag>
           </template>
           <NButton
-            v-if="!completed"
+            v-if="!succeeded"
             text
             type="primary"
             size="small"
@@ -151,14 +140,10 @@ watch(
           <IconKeywordsInput
             :model-value="keywords ?? []"
             @update:model-value="(value) => (keywords = value)"
-            @clear="keywords = []"
           />
           <NButton v-if="keywords !== undefined" text size="small" @click="keywords = undefined"
             >恢复默认</NButton
           >
-          <div class="text-xs text-stone-500 dark:text-zinc-400">
-            可选，最多 20 项，每项最多 40 个字符
-          </div>
         </template>
       </div>
     </NFormItem>

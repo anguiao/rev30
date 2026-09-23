@@ -318,6 +318,22 @@ describe('IconUploadDrawer', () => {
     })
   })
 
+  it('submits explicitly cleared keywords even when no keyword was added', async () => {
+    uploadCustomIconsMock.mockResolvedValue(result({ status: 'replaced', icon: uploadedIcon }))
+    const wrapper = mountDrawer()
+    const file = svgFile()
+    await selectFiles(wrapper, file)
+    await clickButton(rows(wrapper)[0]!, '添加关键词')
+    await clickButton(rows(wrapper)[0]!, '清空关键词')
+    wrapper.getComponent(NRadioGroup).vm.$emit('update:value', 'replace')
+    await submitUpload(wrapper)
+    expect(uploadCustomIconsMock).toHaveBeenCalledWith('acme', {
+      duplicateStrategy: 'replace',
+      files: [file],
+      metadata: [{ keywords: [] }],
+    })
+  })
+
   it('omits untouched or restored keywords and opens invalid input before uploading', async () => {
     uploadCustomIconsMock.mockResolvedValue(
       result(

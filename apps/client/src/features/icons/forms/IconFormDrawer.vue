@@ -117,7 +117,7 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
           {{ formError }}
         </NAlert>
 
-        <NForm @submit.prevent="handleSubmit">
+        <NForm :disabled="isSaving" @submit.prevent="handleSubmit">
           <form.Field
             name="name"
             :validators="{ onChange: customIconFormSchema.shape.name }"
@@ -142,6 +142,7 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
               <IconKeywordsInput
                 class="w-full min-w-0"
                 :model-value="state.value"
+                :disabled="isSaving"
                 @update:model-value="field.handleChange"
               />
             </NFormItem>

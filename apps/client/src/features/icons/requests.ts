@@ -19,6 +19,7 @@ import {
   type CustomIconSetUpdateInput,
   type CustomIconUploadResponse,
   type CustomIconUploadMetadata,
+  type CustomIconDuplicateStrategy,
   type CustomIconUpdateInput,
   type IconSetIconListQuery,
   type IconSetListQuery,
@@ -121,7 +122,7 @@ export async function listCustomIcons(
 export async function uploadCustomIcons(
   prefix: string,
   input: {
-    duplicateStrategy: 'skip' | 'replace'
+    duplicateStrategy: CustomIconDuplicateStrategy
     files: File[]
     metadata?: CustomIconUploadMetadata
   },

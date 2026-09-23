@@ -76,8 +76,9 @@ describe('IconSetFormDrawer', () => {
     refreshCustomIconCachesMock.mockClear()
   })
 
-  it('creates an icon set with normalized form values', async () => {
-    createCustomIconSetMock.mockResolvedValue(acmeIconSet)
+  it('locks fields while creating an icon set with normalized form values', async () => {
+    const saving = createDeferred<CustomIconSet>()
+    createCustomIconSetMock.mockReturnValueOnce(saving.promise)
 
     const wrapper = mountDrawer()
     await flushPromises()
@@ -97,6 +98,12 @@ describe('IconSetFormDrawer', () => {
       name: 'Acme Icons',
       description: null,
     })
+    for (const field of wrapper.findAll('input, textarea')) {
+      expect(field.attributes('disabled')).toBe('')
+    }
+
+    saving.resolve(acmeIconSet)
+    await flushPromises()
     expect(wrapper.emitted('saved')).toHaveLength(1)
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
@@ -139,6 +146,41 @@ describe('IconSetFormDrawer', () => {
     expect(wrapper.emitted('saved')).toHaveLength(1)
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })
+
+  it.each(['loading', 'loaded'] as const)(
+    'opens a blank create form when switching from a %s icon set',
+    async (loadState) => {
+      const loading = createDeferred<CustomIconSet>()
+      const iconSet = { ...acmeIconSet, prefix: 'create' }
+      getCustomIconSetMock.mockReturnValueOnce(loading.promise)
+      const wrapper = mountDrawer({ show: true, prefix: iconSet.prefix })
+      await flushPromises()
+
+      if (loadState === 'loaded') {
+        loading.resolve(iconSet)
+        await flushPromises()
+      }
+
+      await wrapper.setProps({ prefix: null })
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('创建图标集')
+      for (const field of wrapper.findAll('input, textarea')) {
+        expect(field.element).toHaveProperty('value', '')
+        expect(field.attributes('disabled')).toBeUndefined()
+      }
+
+      const name = wrapper.get('[data-test="icon-set-form-name"] input')
+      await name.setValue('New Icons')
+      if (loadState === 'loading') {
+        loading.resolve(iconSet)
+        await flushPromises()
+      }
+
+      expect(name.element).toHaveProperty('value', 'New Icons')
+      expect(getCustomIconSetMock).toHaveBeenCalledExactlyOnceWith('create')
+    },
+  )
 
   it('rejects an oversized new prefix in the form', async () => {
     const wrapper = mountDrawer()
@@ -227,6 +269,31 @@ describe('IconSetFormDrawer', () => {
     expect(wrapper.text()).toContain('图标集保存失败')
     expect(wrapper.emitted('saved')).toBeUndefined()
     expect(wrapper.emitted('update:show')).toBeUndefined()
+  })
+
+  it('locks editable fields while loading or saving an icon set', async () => {
+    const loading = createDeferred<CustomIconSet>()
+    const saving = createDeferred<CustomIconSet>()
+    getCustomIconSetMock.mockReturnValueOnce(loading.promise)
+    updateCustomIconSetMock.mockReturnValueOnce(saving.promise)
+    const wrapper = mountDrawer({ show: true, prefix: acmeIconSet.prefix })
+    await flushPromises()
+    const name = wrapper.get('[data-test="icon-set-form-name"] input')
+    expect(name.attributes('disabled')).toBe('')
+
+    loading.resolve(acmeIconSet)
+    await flushPromises()
+    expect(name.attributes('disabled')).toBeUndefined()
+    await name.setValue('New Name')
+    await submitForm(wrapper)
+    expect(name.attributes('disabled')).toBe('')
+    expect(
+      wrapper.get('[data-test="icon-set-form-description"] textarea').attributes('disabled'),
+    ).toBe('')
+
+    saving.resolve({ ...acmeIconSet, name: 'New Name' })
+    await flushPromises()
+    expect(wrapper.emitted('saved')).toHaveLength(1)
   })
 
   it('ignores stale load responses after switching icon sets', async () => {

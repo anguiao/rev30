@@ -20,7 +20,7 @@ import {
   CustomSvgInvalidError,
 } from './errors'
 import { exportCustomIconSet } from './export'
-import { mapCustomIcon, mapCustomIconSet } from './mapper'
+import { type CustomIconSetRow, mapCustomIcon, mapCustomIconSet } from './mapper'
 import { createCustomIconSetRepository } from './repository'
 import { parseSvgIcon } from './svg'
 
@@ -46,6 +46,35 @@ export function createCustomIconSetService(database: Db) {
     }
 
     return set
+  }
+
+  async function uploadIcon(
+    set: CustomIconSetRow,
+    file: CustomIconUploadInput['files'][number],
+    duplicateStrategy: CustomIconDuplicateStrategy,
+  ): Promise<CustomIconUploadResult> {
+    const parsed = await parseSvgIcon(file.filename, file.content)
+    let existing = await repository.findIcon(set.id, parsed.name)
+    let duplicateConflict: CustomIconConflictError | undefined
+
+    if (!existing) {
+      try {
+        const created = await repository.createIcon(set, parsed, file.keywords ?? [])
+        return { status: 'created', icon: mapCustomIcon(created) }
+      } catch (error) {
+        if (!(error instanceof CustomIconConflictError)) throw error
+        duplicateConflict = error
+        existing = await repository.findIcon(set.id, parsed.name)
+      }
+    }
+
+    if (duplicateStrategy === 'skip') {
+      return { status: 'skipped', name: parsed.name, reason: 'duplicate' }
+    }
+
+    const updated = existing && (await repository.replaceIcon(existing.id, parsed, file.keywords))
+    if (!updated) throw duplicateConflict ?? new CustomIconNotFoundError()
+    return { status: 'replaced', icon: mapCustomIcon(updated) }
   }
 
   return {
@@ -116,66 +145,10 @@ export function createCustomIconSetService(database: Db) {
       const results: CustomIconUploadResult[] = []
 
       for (const file of input.files) {
-        let parsed: Awaited<ReturnType<typeof parseSvgIcon>> | undefined
-
         try {
-          parsed = await parseSvgIcon(file.filename, file.content)
-          const existing = await repository.findIcon(set.id, parsed.name)
-
-          if (existing && input.duplicateStrategy === 'skip') {
-            results.push({
-              status: 'skipped',
-              name: parsed.name,
-              reason: 'duplicate',
-            })
-            continue
-          }
-
-          if (existing) {
-            const updated = await repository.replaceIcon(existing.id, parsed, file.keywords)
-
-            if (!updated) {
-              throw new CustomIconNotFoundError()
-            }
-
-            results.push({ status: 'replaced', icon: mapCustomIcon(updated) })
-            continue
-          }
-
-          results.push({
-            status: 'created',
-            icon: mapCustomIcon(await repository.createIcon(set, parsed, file.keywords ?? [])),
-          })
+          results.push(await uploadIcon(set, file, input.duplicateStrategy))
         } catch (error) {
-          if (parsed && error instanceof CustomIconConflictError) {
-            const existing = await repository.findIcon(set.id, parsed.name)
-
-            if (input.duplicateStrategy === 'skip') {
-              results.push({
-                status: 'skipped',
-                name: parsed.name,
-                reason: 'duplicate',
-              })
-              continue
-            }
-
-            if (existing) {
-              const updated = await repository.replaceIcon(existing.id, parsed, file.keywords)
-
-              if (updated) {
-                results.push({ status: 'replaced', icon: mapCustomIcon(updated) })
-                continue
-              }
-            }
-
-            results.push({
-              status: 'failed',
-              message: error.message,
-            })
-            continue
-          }
-
-          if (error instanceof CustomSvgInvalidError) {
+          if (error instanceof CustomSvgInvalidError || error instanceof CustomIconConflictError) {
             results.push({
               status: 'failed',
               message: error.message,

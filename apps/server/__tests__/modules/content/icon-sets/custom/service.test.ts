@@ -1,4 +1,4 @@
-import { describe, expect } from 'vitest'
+import { afterEach, describe, expect, vi } from 'vitest'
 import { dbTest } from '../../../../fixtures/database'
 import {
   CustomIconConflictError,
@@ -6,7 +6,7 @@ import {
   CustomIconSetConflictError,
   CustomIconSetNotFoundError,
 } from '../../../../../src/modules/content/icon-sets/custom/errors'
-import { createCustomIconSetRepository } from '../../../../../src/modules/content/icon-sets/custom/repository'
+import * as customIconRepository from '../../../../../src/modules/content/icon-sets/custom/repository'
 import { createCustomIconSetService } from '../../../../../src/modules/content/icon-sets/custom/service'
 import { parseSvgIcon } from '../../../../../src/modules/content/icon-sets/custom/svg'
 
@@ -17,6 +17,10 @@ function svg(size: number, body: string) {
 function rect(fill: string) {
   return `<path fill="${fill}" d="M0 0h10v10H0z" />`
 }
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('custom icon set service', () => {
   dbTest(
@@ -147,6 +151,37 @@ describe('custom icon set service', () => {
     })
     expect(cleared.results).toMatchObject([{ status: 'replaced', icon: { keywords: [] } }])
   })
+
+  dbTest(
+    'applies duplicate strategies when creation conflicts after a missing lookup',
+    async ({ db }) => {
+      const repository = customIconRepository.createCustomIconSetRepository(db)
+      const set = await repository.createSet({ prefix: 'acme', name: 'Acme', description: null })
+      await repository.createIcon(set.set, await parseSvgIcon('Logo.svg', svg(24, rect('#000'))), [
+        'First',
+      ])
+
+      for (const duplicateStrategy of ['skip', 'replace'] as const) {
+        vi.spyOn(repository, 'findIcon').mockResolvedValueOnce(undefined)
+        vi.spyOn(customIconRepository, 'createCustomIconSetRepository').mockReturnValueOnce(
+          repository,
+        )
+        const service = createCustomIconSetService(db)
+        const result = await service.uploadIcons('acme', {
+          duplicateStrategy,
+          files: [{ filename: 'Logo.svg', content: svg(32, rect('#000')), keywords: ['Changed'] }],
+        })
+
+        expect(result.results).toMatchObject([
+          { status: duplicateStrategy === 'skip' ? 'skipped' : 'replaced' },
+        ])
+        expect(await repository.findIcon(set.set.id, 'logo')).toMatchObject({
+          width: duplicateStrategy === 'skip' ? 24 : 32,
+          keywords: duplicateStrategy === 'skip' ? ['First'] : ['Changed'],
+        })
+      }
+    },
+  )
 
   dbTest(
     'lists, renames, exports, and deletes icons with decimal dimensions',
@@ -345,7 +380,7 @@ describe('custom icon set service', () => {
   dbTest(
     'translates custom icon set unique constraints into domain conflicts',
     async ({ db: database }) => {
-      const repository = createCustomIconSetRepository(database)
+      const repository = customIconRepository.createCustomIconSetRepository(database)
 
       await repository.createSet({
         prefix: 'acme',
@@ -366,7 +401,7 @@ describe('custom icon set service', () => {
   dbTest(
     'translates custom icon unique constraints into domain conflicts',
     async ({ db: database }) => {
-      const repository = createCustomIconSetRepository(database)
+      const repository = customIconRepository.createCustomIconSetRepository(database)
       const set = await repository.createSet({
         prefix: 'acme',
         name: 'Acme Icons',

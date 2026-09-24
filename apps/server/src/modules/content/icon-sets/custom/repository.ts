@@ -134,23 +134,15 @@ export function createCustomIconSetRepository(database: Db) {
           : undefined,
       )
 
-      const [rows, totalRows] = await Promise.all([
-        database
-          .select()
-          .from(customIconSets)
-          .where(where)
-          .orderBy(
-            desc(customIconSets.updatedAt),
-            desc(customIconSets.createdAt),
-            asc(customIconSets.prefix),
-          ),
-        database
-          .select({
-            total: count(),
-          })
-          .from(customIconSets)
-          .where(where),
-      ])
+      const rows = await database
+        .select()
+        .from(customIconSets)
+        .where(where)
+        .orderBy(
+          desc(customIconSets.updatedAt),
+          desc(customIconSets.createdAt),
+          asc(customIconSets.prefix),
+        )
       const setIds = rows.map((row) => row.id)
       const iconCountRows =
         setIds.length === 0
@@ -176,7 +168,7 @@ export function createCustomIconSetRepository(database: Db) {
 
       return {
         list,
-        total: totalRows[0]?.total ?? 0,
+        total: list.length,
       }
     },
 

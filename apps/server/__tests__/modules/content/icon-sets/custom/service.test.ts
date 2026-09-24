@@ -148,83 +148,90 @@ describe('custom icon set service', () => {
     expect(cleared.results).toMatchObject([{ status: 'replaced', icon: { keywords: [] } }])
   })
 
-  dbTest('lists, renames, exports, and deletes icons', async ({ db: database }) => {
-    const service = createCustomIconSetService(database)
+  dbTest(
+    'lists, renames, exports, and deletes icons with decimal dimensions',
+    async ({ db: database }) => {
+      const service = createCustomIconSetService(database)
 
-    await service.create({
-      prefix: 'acme',
-      name: 'Acme Icons',
-      description: null,
-    })
-    await service.uploadIcons('acme', {
-      duplicateStrategy: 'skip',
-      files: [
-        {
-          filename: 'Logo.svg',
-          content: svg(24, rect('#000')),
-          keywords: ['Original'],
-        },
-      ],
-    })
-
-    await expect(
-      service.listIcons({ keyword: undefined, prefix: 'acme', cursor: undefined, pageSize: 80 }),
-    ).resolves.toMatchObject({
-      nextCursor: null,
-      list: [
-        {
-          icon: 'acme:logo',
-          prefix: 'acme',
-          name: 'logo',
-          setName: 'Acme Icons',
-        },
-      ],
-    })
-
-    const renamed = await service.updateIcon('acme', 'logo', { name: 'brand' })
-
-    expect(renamed).toMatchObject({
-      icon: 'acme:brand',
-      name: 'brand',
-      keywords: ['Original'],
-    })
-
-    const exported = await service.exportIconSet('acme')
-
-    expect(exported).toMatchObject({
-      prefix: 'acme',
-      aliases: {},
-      info: {
+      await service.create({
+        prefix: 'acme',
         name: 'Acme Icons',
-        total: 1,
-        author: {
-          name: 'Rev30',
-        },
-        license: {
-          title: 'Custom',
-        },
-        samples: ['brand'],
-        palette: false,
-      },
-      lastModified: expect.any(Number),
-      icons: {
-        brand: {
-          width: 24,
-          height: 24,
-        },
-      },
-    })
-    expect(JSON.stringify(exported)).not.toContain('keywords')
-    expect(exported.icons.brand?.body).toContain('currentColor')
+        description: null,
+      })
+      await service.uploadIcons('acme', {
+        duplicateStrategy: 'skip',
+        files: [
+          {
+            filename: 'Logo.svg',
+            content: `<svg viewBox="0 0 25.9 16.8">${rect('#000')}</svg>`,
+            keywords: ['Original'],
+          },
+        ],
+      })
 
-    await service.deleteIcon('acme', 'brand')
-    await expect(
-      service.listIcons({ keyword: undefined, prefix: 'acme', cursor: undefined, pageSize: 80 }),
-    ).resolves.toMatchObject({
-      nextCursor: null,
-      list: [],
-    })
-  })
+      await expect(
+        service.listIcons({ keyword: undefined, prefix: 'acme', cursor: undefined, pageSize: 80 }),
+      ).resolves.toMatchObject({
+        nextCursor: null,
+        list: [
+          {
+            icon: 'acme:logo',
+            prefix: 'acme',
+            name: 'logo',
+            setName: 'Acme Icons',
+            width: 25.9,
+            height: 16.8,
+          },
+        ],
+      })
+
+      const renamed = await service.updateIcon('acme', 'logo', { name: 'brand' })
+
+      expect(renamed).toMatchObject({
+        icon: 'acme:brand',
+        name: 'brand',
+        keywords: ['Original'],
+        width: 25.9,
+        height: 16.8,
+      })
+
+      const exported = await service.exportIconSet('acme')
+
+      expect(exported).toMatchObject({
+        prefix: 'acme',
+        aliases: {},
+        info: {
+          name: 'Acme Icons',
+          total: 1,
+          author: {
+            name: 'Rev30',
+          },
+          license: {
+            title: 'Custom',
+          },
+          samples: ['brand'],
+          palette: false,
+        },
+        lastModified: expect.any(Number),
+        icons: {
+          brand: {
+            width: 25.9,
+            height: 16.8,
+          },
+        },
+      })
+      expect(JSON.stringify(exported)).not.toContain('keywords')
+      expect(exported.icons.brand?.body).toContain('currentColor')
+
+      await service.deleteIcon('acme', 'brand')
+      await expect(
+        service.listIcons({ keyword: undefined, prefix: 'acme', cursor: undefined, pageSize: 80 }),
+      ).resolves.toMatchObject({
+        nextCursor: null,
+        list: [],
+      })
+    },
+  )
 
   dbTest('reports failed files without aborting the upload', async ({ db: database }) => {
     const service = createCustomIconSetService(database)
@@ -246,6 +253,14 @@ describe('custom icon set service', () => {
           filename: 'Good.svg',
           content: '<svg><script>alert(1)</script>',
         },
+        {
+          filename: 'Zero.svg',
+          content: `<svg viewBox="0 0 0 24">${rect('#000')}</svg>`,
+        },
+        {
+          filename: 'After.svg',
+          content: svg(24, rect('#000')),
+        },
       ],
     })
 
@@ -255,6 +270,11 @@ describe('custom icon set service', () => {
         status: 'failed',
         message: 'SVG 无效',
       },
+      {
+        status: 'failed',
+        message: 'SVG 无效',
+      },
+      { status: 'created', icon: expect.objectContaining({ name: 'after' }) },
     ])
   })
 

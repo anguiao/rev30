@@ -1,8 +1,11 @@
-import { customIconNameInputSchema } from '@rev30/contracts'
+import { customIconItemSchema, customIconNameInputSchema } from '@rev30/contracts'
 import { cleanupSVG, isEmptyColor, parseColors, runSVGO, SVG } from '@iconify/tools'
+import { iconToSVG, wrapSVGContent } from '@iconify/utils'
 import { basename } from 'node:path/posix'
 import { z } from 'zod'
 import { CustomSvgInvalidError } from './errors'
+
+const customIconDimensionsSchema = customIconItemSchema.pick({ width: true, height: true })
 
 const customIconSvgoPlugins = [
   {
@@ -72,17 +75,24 @@ export async function parseSvgIcon(filename: string, content: string): Promise<P
     }
 
     runSVGO(svg, { plugins: [...customIconSvgoPlugins] })
-    const icon = svg.getIcon()
+    const rendered = iconToSVG(svg.getIcon())
+    const [left, top, width, height] = rendered.viewBox
 
-    if (icon.body.trim() === '') {
+    if (
+      rendered.body.trim() === '' ||
+      !customIconDimensionsSchema.safeParse({ width, height }).success
+    ) {
       throw new CustomSvgInvalidError()
     }
 
     return {
       name,
-      body: icon.body,
-      width: icon.width ?? 16,
-      height: icon.height ?? 16,
+      body:
+        left === 0 && top === 0
+          ? rendered.body
+          : wrapSVGContent(rendered.body, `<g transform="translate(${-left} ${-top})">`, '</g>'),
+      width,
+      height,
       palette,
     }
   } catch (error) {

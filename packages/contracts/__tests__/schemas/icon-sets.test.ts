@@ -58,6 +58,20 @@ const customIcon = {
 }
 
 describe('icon set schemas', () => {
+  it('accepts positive decimal dimensions for custom icons', () => {
+    const icon = { ...customIcon, width: 25.9, height: 0.5 }
+    expect(customIconItemSchema.parse(icon)).toEqual(icon)
+  })
+
+  it.each(['width', 'height'] as const)('rejects non-positive custom icon %s', (dimension) => {
+    for (const value of [0, -1]) {
+      expectZodIssue(customIconItemSchema.safeParse({ ...customIcon, [dimension]: value }), {
+        code: 'too_small',
+        path: [dimension],
+      })
+    }
+  })
+
   it('normalizes and deduplicates custom icon keywords while preserving readable input', () => {
     expect(
       customIconKeywordsSchema.parse([

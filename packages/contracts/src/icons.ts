@@ -205,8 +205,8 @@ export const customIconParamSchema = iconSetPrefixParamSchema.extend({
 })
 
 export const customIconItemSchema = iconItemSchema.extend({
-  width: z.number().int().min(1),
-  height: z.number().int().min(1),
+  width: z.number().positive(),
+  height: z.number().positive(),
   keywords: customIconKeywordsSchema,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),

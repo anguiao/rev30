@@ -77,6 +77,33 @@ describe('custom icon SVG parser', () => {
     expect(icon.body).toContain('#00ff00')
   })
 
+  it.each([
+    { origin: '-12 -12', translation: '12 12' },
+    { origin: '10 5', translation: '-10 -5' },
+  ])('preserves the viewBox origin $origin', async ({ origin, translation }) => {
+    const icon = await parseSvgIcon(
+      'Offset.svg',
+      `<svg viewBox="${origin} 24 24"><circle cx="0" cy="0" r="10"/></svg>`,
+    )
+
+    expect(icon).toMatchObject({ width: 24, height: 24 })
+    expect(icon.body).toBe(
+      `<g transform="translate(${translation})"><circle r="10" fill="currentColor"/></g>`,
+    )
+  })
+
+  it.each(['0 24', '24 0', '-1 24', '24 -1'])(
+    'rejects non-positive viewBox dimensions %s',
+    async (dimensions) => {
+      await expect(
+        parseSvgIcon(
+          'Invalid.svg',
+          `<svg viewBox="0 0 ${dimensions}"><path d="M0 0h10v10H0z"/></svg>`,
+        ),
+      ).rejects.toBeInstanceOf(CustomSvgInvalidError)
+    },
+  )
+
   it('rejects invalid SVGs', async () => {
     const result = parseSvgIcon('Bad.svg', '<svg><script>alert(1)</script>')
 

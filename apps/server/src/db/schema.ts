@@ -4,6 +4,7 @@ import {
   boolean,
   check,
   customType,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -831,8 +832,8 @@ export const customIconSetIcons = pgTable(
       .references(() => customIconSets.id),
     name: text('name').notNull(),
     body: text('body').notNull(),
-    width: integer('width').notNull(),
-    height: integer('height').notNull(),
+    width: doublePrecision('width').notNull(),
+    height: doublePrecision('height').notNull(),
     palette: boolean('palette').notNull().default(false),
     keywords: text('keywords')
       .array()

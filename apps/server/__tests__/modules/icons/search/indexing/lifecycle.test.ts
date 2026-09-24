@@ -1,30 +1,38 @@
 import { PGlite } from '@electric-sql/pglite'
 import { drizzle } from 'drizzle-orm/pglite'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   customIconSetIcons,
   customIconSets,
   iconSearchDocuments,
   iconSearchDocumentsStaging,
   iconSearchIndexState,
-} from '../../../../src/db/schema'
+} from '../../../../../src/db/schema'
 import {
-  assertIconSearchAvailable,
   prepareIconSearchIndex,
-  startDefaultIconSearchIndexPreparation,
-} from '../../../../src/modules/icons/search/lifecycle'
-import { IconSearchUnavailableError } from '../../../../src/modules/icons/search/errors'
+  startIconSearchIndexPreparation,
+} from '../../../../../src/modules/icons/search/indexing/lifecycle'
+import * as artifacts from '../../../../../src/modules/icons/search/artifacts/reader'
+import {
+  IconSearchPreparingError,
+  IconSearchUnavailableError,
+} from '../../../../../src/modules/icons/errors'
 import {
   deleteCustomIconSearchDocument,
   syncCustomIconSearchDocument,
-} from '../../../../src/modules/icons/search/projection-repository'
-import { lockIconSearchWrites } from '../../../../src/modules/icons/search/index-state'
-import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
-import { ICON_SEARCH_RULES_VERSION } from '../../../../src/modules/icons/search/version'
+} from '../../../../../src/modules/icons/search/indexing/sync'
+import {
+  assertIconSearchAvailable,
+  lockIconSearchWrites,
+  setIconSearchStatus,
+} from '../../../../../src/modules/icons/search/indexing/state'
+import { replaceIconSearchDocuments } from '../../../../fixtures/icon-search'
+import { ICON_SEARCH_RULES_VERSION } from '../../../../../src/modules/icons/search/rules'
 import { eq } from 'drizzle-orm'
-import { dbTest } from '../../../fixtures/database'
-import { migratePGlite } from '../../../../src/db/migrate'
-import { relations } from '../../../../src/db/relations'
+import { dbTest } from '../../../../fixtures/database'
+import { migratePGlite } from '../../../../../src/db/migrate'
+import { relations } from '../../../../../src/db/relations'
+import { ICON_PACKAGE_VERSION } from '../../../../../src/modules/icons/builtin'
 
 const document = {
   id: 'lucide:camera',
@@ -47,45 +55,61 @@ const state = {
   rulesVersion: ICON_SEARCH_RULES_VERSION,
 }
 
+afterEach(() => {
+  setIconSearchStatus('ready')
+  vi.restoreAllMocks()
+})
+
 describe('icon search lifecycle', () => {
   dbTest('records a missing manifest as an asynchronous unavailable state', async ({ db }) => {
     const logger = { error: vi.fn() }
-    const runtime = startDefaultIconSearchIndexPreparation(db, {
-      logger,
-      loadManifest: async () => {
-        throw new Error('missing manifest')
-      },
-      installedIconPackageVersion: 'icons-v1',
-    })
-    await runtime.completed
-    expect(() => assertIconSearchAvailable(db)).toThrow(IconSearchUnavailableError)
+    vi.spyOn(artifacts, 'readIconSearchManifest').mockRejectedValueOnce(
+      new Error('missing manifest'),
+    )
+    const preparation = startIconSearchIndexPreparation(db, logger)
+    expect(assertIconSearchAvailable).toThrow(IconSearchPreparingError)
+    await preparation
+    expect(assertIconSearchAvailable).toThrow(IconSearchUnavailableError)
     expect(logger.error).toHaveBeenCalledOnce()
   })
 
+  dbTest(
+    'keeps a compatible index available while loading artifacts and after a load failure',
+    async ({ db }) => {
+      await replaceIconSearchDocuments(db, [document], state)
+      await expect(
+        prepareIconSearchIndex(db, {
+          installedIconPackageVersion: state.iconPackageVersion,
+          loadArtifacts: async () => {
+            expect(assertIconSearchAvailable).not.toThrow()
+            throw new Error('missing manifest')
+          },
+        }),
+      ).rejects.toThrow('missing manifest')
+      expect(assertIconSearchAvailable).not.toThrow()
+    },
+  )
+
   dbTest('rejects artifacts built for a different installed icon package', async ({ db }) => {
     const logger = { error: vi.fn() }
-    const runtime = startDefaultIconSearchIndexPreparation(db, {
-      logger,
-      installedIconPackageVersion: 'icons-v2',
-      loadManifest: async () => ({
-        formatVersion: 4,
-        contentFingerprint: '0'.repeat(64),
-        iconPackageVersion: 'icons-v1',
-        searchDataVersion: 'data-v1',
-        rulesVersion: ICON_SEARCH_RULES_VERSION,
-        indexVersion: 'same',
-        counts: {
-          definitions: 1,
-          aliases: 0,
-          documents: 1,
-          validTranslations: 0,
-          chineseDocuments: 0,
-        },
-        files: [],
-      }),
+    vi.spyOn(artifacts, 'readIconSearchManifest').mockResolvedValueOnce({
+      formatVersion: 4,
+      contentFingerprint: '0'.repeat(64),
+      iconPackageVersion: 'icons-v1',
+      searchDataVersion: 'data-v1',
+      rulesVersion: ICON_SEARCH_RULES_VERSION,
+      indexVersion: 'same',
+      counts: {
+        definitions: 1,
+        aliases: 0,
+        documents: 1,
+        validTranslations: 0,
+        chineseDocuments: 0,
+      },
+      files: [],
     })
-    await runtime.completed
-    expect(() => assertIconSearchAvailable(db)).toThrow(IconSearchUnavailableError)
+    await startIconSearchIndexPreparation(db, logger)
+    expect(assertIconSearchAvailable).toThrow(IconSearchUnavailableError)
     expect(logger.error).toHaveBeenCalledWith(
       { errorMessage: 'Icon search artifacts do not match the installed icon package' },
       'icon search index preparation failed',
@@ -105,7 +129,10 @@ describe('icon search lifecycle', () => {
       height: 24,
       palette: false,
     })
-    await prepareIconSearchIndex(db, { manifest: state, readDocuments: async () => [document] })
+    await prepareIconSearchIndex(db, {
+      installedIconPackageVersion: state.iconPackageVersion,
+      loadArtifacts: async () => ({ manifest: state, documents: [document] }),
+    })
     expect((await db.select().from(iconSearchDocuments)).map((row) => row.id).sort()).toEqual([
       'acme:logo',
       'lucide:camera',
@@ -114,9 +141,17 @@ describe('icon search lifecycle', () => {
 
   dbTest('reuses the same committed version without reading document artifacts', async ({ db }) => {
     await replaceIconSearchDocuments(db, [document], state)
-    const readDocuments = vi.fn()
+    const readDocuments = vi.fn(async function* () {
+      yield document
+    })
     await expect(
-      prepareIconSearchIndex(db, { manifest: { ...state, indexVersion: 'same' }, readDocuments }),
+      prepareIconSearchIndex(db, {
+        installedIconPackageVersion: state.iconPackageVersion,
+        loadArtifacts: async () => ({
+          manifest: state,
+          documents: { [Symbol.asyncIterator]: readDocuments },
+        }),
+      }),
     ).resolves.toBe('reused')
     expect(readDocuments).not.toHaveBeenCalled()
   })
@@ -138,10 +173,11 @@ describe('icon search lifecycle', () => {
       state,
     )
     await prepareIconSearchIndex(db, {
-      manifest: { ...state, indexVersion: 'data-v2-index', searchDataVersion: 'data-v2' },
-      readDocuments: async () => [
-        { ...document, id: 'tabler:camera', prefix: 'tabler', collection: 'Tabler' },
-      ],
+      installedIconPackageVersion: state.iconPackageVersion,
+      loadArtifacts: async () => ({
+        manifest: { ...state, indexVersion: 'data-v2-index', searchDataVersion: 'data-v2' },
+        documents: [{ ...document, id: 'tabler:camera', prefix: 'tabler', collection: 'Tabler' }],
+      }),
     })
     expect((await db.select().from(iconSearchDocuments)).map((row) => row.id).sort()).toEqual([
       'acme:logo',
@@ -150,10 +186,14 @@ describe('icon search lifecycle', () => {
 
     await expect(
       prepareIconSearchIndex(db, {
-        manifest: { ...state, indexVersion: 'broken', searchDataVersion: 'data-v3' },
-        readDocuments: async () => {
-          throw new Error('broken artifact')
-        },
+        installedIconPackageVersion: state.iconPackageVersion,
+        loadArtifacts: async () => ({
+          manifest: { ...state, indexVersion: 'broken', searchDataVersion: 'data-v3' },
+          documents: (function* () {
+            yield document
+            throw new Error('broken artifact')
+          })(),
+        }),
       }),
     ).rejects.toThrow('broken artifact')
     expect((await db.select().from(iconSearchDocuments)).map((row) => row.id).sort()).toEqual([
@@ -168,13 +208,21 @@ describe('icon search lifecycle', () => {
       await replaceIconSearchDocuments(db, [document], state)
       await expect(
         prepareIconSearchIndex(db, {
-          manifest: { ...state, indexVersion: 'stream-failure' },
-          readDocuments: async function* () {
-            for (let index = 0; index < 1_001; index++) {
-              yield { ...document, id: `bulk:icon-${index}`, prefix: 'bulk', name: `icon-${index}` }
-            }
-            throw new Error('artifact checksum mismatch')
-          },
+          installedIconPackageVersion: state.iconPackageVersion,
+          loadArtifacts: async () => ({
+            manifest: { ...state, indexVersion: 'stream-failure' },
+            documents: (async function* () {
+              for (let index = 0; index < 1_001; index++) {
+                yield {
+                  ...document,
+                  id: `bulk:icon-${index}`,
+                  prefix: 'bulk',
+                  name: `icon-${index}`,
+                }
+              }
+              throw new Error('artifact checksum mismatch')
+            })(),
+          }),
         }),
       ).rejects.toThrow('artifact checksum mismatch')
       expect(await db.select().from(iconSearchDocuments)).toEqual([
@@ -219,8 +267,11 @@ describe('icon search lifecycle', () => {
       { ...state, rulesVersion: 'old' },
     )
     await prepareIconSearchIndex(db, {
-      manifest: { ...state, indexVersion: 'rules-v2' },
-      readDocuments: async () => [document],
+      installedIconPackageVersion: state.iconPackageVersion,
+      loadArtifacts: async () => ({
+        manifest: { ...state, indexVersion: 'rules-v2' },
+        documents: [document],
+      }),
     })
     expect((await db.select().from(iconSearchDocuments)).map((row) => row.id).sort()).toEqual([
       'acme:current-name',
@@ -269,8 +320,11 @@ describe('icon search lifecycle', () => {
       }))
       let rebuildFinished = false
       const rebuild = prepareIconSearchIndex(db, {
-        manifest: { ...state, indexVersion: 'rebuilt' },
-        readDocuments: async () => documents,
+        installedIconPackageVersion: state.iconPackageVersion,
+        loadArtifacts: async () => ({
+          manifest: { ...state, indexVersion: 'rebuilt' },
+          documents,
+        }),
       }).then((result) => {
         rebuildFinished = true
         return result
@@ -346,10 +400,11 @@ describe('icon search lifecycle', () => {
 
     await expect(
       prepareIconSearchIndex(db, {
-        manifest: { ...state, indexVersion: 'broken-switch', searchDataVersion: 'data-v2' },
-        readDocuments: async () => [
-          { ...document, id: 'tabler:camera', prefix: 'tabler', collection: 'Tabler' },
-        ],
+        installedIconPackageVersion: state.iconPackageVersion,
+        loadArtifacts: async () => ({
+          manifest: { ...state, indexVersion: 'broken-switch', searchDataVersion: 'data-v2' },
+          documents: [{ ...document, id: 'tabler:camera', prefix: 'tabler', collection: 'Tabler' }],
+        }),
       }),
     ).rejects.toThrow()
     expect((await db.select().from(iconSearchDocuments)).map((row) => row.id).sort()).toEqual([
@@ -364,10 +419,16 @@ describe('icon search lifecycle', () => {
   dbTest(
     'keeps canonical constraints and indexes after repeated table switches',
     async ({ db }) => {
-      await prepareIconSearchIndex(db, { manifest: state, readDocuments: async () => [document] })
       await prepareIconSearchIndex(db, {
-        manifest: { ...state, indexVersion: 'second' },
-        readDocuments: async () => [document],
+        installedIconPackageVersion: state.iconPackageVersion,
+        loadArtifacts: async () => ({ manifest: state, documents: [document] }),
+      })
+      await prepareIconSearchIndex(db, {
+        installedIconPackageVersion: state.iconPackageVersion,
+        loadArtifacts: async () => ({
+          manifest: { ...state, indexVersion: 'second' },
+          documents: [document],
+        }),
       })
       const indexes = await db.execute<{ indexname: string }>(`
       SELECT indexname FROM pg_indexes
@@ -385,6 +446,54 @@ describe('icon search lifecycle', () => {
       ])
     },
   )
+
+  test('preserves the import error when staging cleanup also fails', async () => {
+    const client = await PGlite.create()
+    try {
+      await migratePGlite(client)
+      const database = drizzle({ client, relations })
+      await replaceIconSearchDocuments(database, [document], state)
+      const importError = new Error('artifact checksum mismatch')
+      const onCleanupError = vi.fn()
+
+      await expect(
+        prepareIconSearchIndex(database, {
+          installedIconPackageVersion: state.iconPackageVersion,
+          loadArtifacts: async () => ({
+            manifest: { ...state, indexVersion: 'import-and-cleanup-failed' },
+            documents: (async function* () {
+              await database.execute(`
+                CREATE FUNCTION fail_staging_cleanup() RETURNS trigger AS $$
+                BEGIN
+                  RAISE EXCEPTION 'forced cleanup failure';
+                END;
+                $$ LANGUAGE plpgsql
+              `)
+              await database.execute(`
+                CREATE TRIGGER fail_staging_cleanup
+                BEFORE DELETE ON icon_search_documents_staging
+                FOR EACH STATEMENT EXECUTE FUNCTION fail_staging_cleanup()
+              `)
+              yield document
+              throw importError
+            })(),
+          }),
+          onCleanupError,
+        }),
+      ).rejects.toBe(importError)
+
+      expect(onCleanupError).toHaveBeenCalledExactlyOnceWith(expect.any(Error))
+      expect(assertIconSearchAvailable).not.toThrow()
+      expect(await database.select().from(iconSearchDocuments)).toEqual([
+        expect.objectContaining({ id: document.id }),
+      ])
+      expect(await database.select().from(iconSearchIndexState)).toEqual([
+        expect.objectContaining({ indexVersion: state.indexVersion }),
+      ])
+    } finally {
+      await client.close()
+    }
+  })
 
   test('keeps the committed index ready when old-table cleanup fails', async () => {
     const client = await PGlite.create()
@@ -406,14 +515,15 @@ describe('icon search lifecycle', () => {
     const onCleanupError = vi.fn()
     await expect(
       prepareIconSearchIndex(database, {
-        manifest: { ...state, indexVersion: 'cleanup-failed' },
-        readDocuments: async () => [
-          { ...document, id: 'tabler:camera', prefix: 'tabler', collection: 'Tabler' },
-        ],
+        installedIconPackageVersion: state.iconPackageVersion,
+        loadArtifacts: async () => ({
+          manifest: { ...state, indexVersion: 'cleanup-failed' },
+          documents: [{ ...document, id: 'tabler:camera', prefix: 'tabler', collection: 'Tabler' }],
+        }),
         onCleanupError,
       }),
     ).resolves.toBe('updated')
-    expect(() => assertIconSearchAvailable(database)).not.toThrow()
+    expect(assertIconSearchAvailable).not.toThrow()
     expect(await database.select().from(iconSearchIndexState)).toEqual([
       expect.objectContaining({ indexVersion: 'cleanup-failed' }),
     ])
@@ -442,7 +552,7 @@ describe('icon search lifecycle', () => {
     const manifest = {
       formatVersion: 4 as const,
       contentFingerprint: '0'.repeat(64),
-      iconPackageVersion: 'icons-v1',
+      iconPackageVersion: ICON_PACKAGE_VERSION,
       searchDataVersion: 'data-v2',
       rulesVersion: ICON_SEARCH_RULES_VERSION,
       indexVersion: 'background-cleanup-failed',
@@ -455,15 +565,13 @@ describe('icon search lifecycle', () => {
       },
       files: [],
     }
-    const runtime = startDefaultIconSearchIndexPreparation(database, {
-      logger,
-      installedIconPackageVersion: 'icons-v1',
-      loadManifest: async () => manifest,
-      readDocuments: async () => [document],
+    vi.spyOn(artifacts, 'readIconSearchManifest').mockResolvedValueOnce(manifest)
+    vi.spyOn(artifacts, 'iterateIconSearchArtifacts').mockImplementationOnce(async function* () {
+      yield document
     })
-    await runtime.completed
+    await startIconSearchIndexPreparation(database, logger)
 
-    expect(() => assertIconSearchAvailable(database)).not.toThrow()
+    expect(assertIconSearchAvailable).not.toThrow()
     expect(logger.error).toHaveBeenCalledWith(
       { errorMessage: expect.stringContaining('icon_search_documents_staging') },
       'icon search index cleanup failed',

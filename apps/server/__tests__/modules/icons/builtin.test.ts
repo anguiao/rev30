@@ -1,6 +1,6 @@
 import type { IconifyJSON } from '@iconify/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getBuiltinIconSubset } from '../../../src/modules/icons/service'
+import { getBuiltinIconSubset } from '../../../src/modules/icons/builtin'
 
 const lucideIconSet: IconifyJSON = {
   prefix: 'lucide',
@@ -31,7 +31,7 @@ vi.mock('@iconify/json', () => ({
   lookupCollections: mocks.lookupCollections,
 }))
 
-describe('icon service', () => {
+describe('builtin icons', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.lookupCollections.mockResolvedValue({

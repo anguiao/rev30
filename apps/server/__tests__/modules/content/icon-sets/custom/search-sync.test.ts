@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { describe, expect, vi } from 'vitest'
+import { describe, expect } from 'vitest'
 import {
   customIconSetIcons,
   customIconSets,
@@ -10,8 +10,8 @@ import { createCustomIconSetRepository } from '../../../../../src/modules/conten
 import { CustomIconSetNotFoundError } from '../../../../../src/modules/content/icon-sets/custom/errors'
 import { parseSvgIcon } from '../../../../../src/modules/content/icon-sets/custom/svg'
 import { replaceIconSearchDocuments } from '../../../../fixtures/icon-search'
-import { startDefaultIconSearchIndexPreparation } from '../../../../../src/modules/icons/search/lifecycle'
-import { IconSearchUnavailableError } from '../../../../../src/modules/icons/search/errors'
+import { prepareIconSearchIndex } from '../../../../../src/modules/icons/search/indexing/lifecycle'
+import { IconSearchUnavailableError } from '../../../../../src/modules/icons/errors'
 import { dbTest } from '../../../../fixtures/database'
 
 const svg = '<svg viewBox="0 0 24 24"><path d="M0 0h10v10H0z" /></svg>'
@@ -31,14 +31,14 @@ describe('custom icon search synchronization', () => {
       height: 16,
       palette: false,
     })
-    const runtime = startDefaultIconSearchIndexPreparation(db, {
-      logger: { error: vi.fn() },
-      installedIconPackageVersion: 'missing',
-      loadManifest: async () => {
-        throw new Error('missing manifest')
-      },
-    })
-    await runtime.completed
+    await expect(
+      prepareIconSearchIndex(db, {
+        installedIconPackageVersion: 'missing',
+        loadArtifacts: async () => {
+          throw new Error('missing manifest')
+        },
+      }),
+    ).rejects.toThrow('missing manifest')
 
     await expect(
       service.listIcons({ keyword: 'logo', prefix: undefined, cursor: undefined, pageSize: 10 }),

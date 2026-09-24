@@ -8,7 +8,7 @@ import type {
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
 import type { Db, DbExecutor, DbReader } from '../../../../db'
 import { customIconSetIcons, customIconSets } from '../../../../db/schema'
-import { formatIconCursor, parseIconCursor } from '../../../icons/cursor'
+import { formatIconBrowseCursor, parseIconBrowseCursor } from '../../../icons/cursor'
 import { CustomIconSetNotFoundError, toCustomIconConflictError } from './errors'
 import type { CustomIconEntry, CustomIconSetEntry, CustomIconSetRow } from './mapper'
 import type { ParsedSvgIcon } from './svg'
@@ -17,10 +17,9 @@ import {
   deleteCustomIconSearchDocumentsByPrefix,
   syncCustomIconSearchDocument,
   syncCustomIconSearchDocuments,
-} from '../../../icons/search/projection-repository'
-import { lockIconSearchWrites } from '../../../icons/search/index-state'
-import { searchIconDocuments } from '../../../icons/search/query-repository'
-import { InvalidIconCursorError } from '../../../icons/search/errors'
+} from '../../../icons/search/indexing/sync'
+import { lockIconSearchWrites } from '../../../icons/search/indexing/state'
+import { searchIconDocuments } from '../../../icons/search/repository'
 
 const customIconColumns = {
   id: customIconSetIcons.id,
@@ -293,7 +292,7 @@ export function createCustomIconSetRepository(database: Db) {
       const { pageSize, keyword, prefix } = query
       if (keyword) {
         const found = await searchIconDocuments(database, {
-          query: keyword,
+          keyword,
           source: 'custom',
           ...(prefix ? { prefix } : {}),
           ...(query.cursor ? { cursor: query.cursor } : {}),
@@ -320,20 +319,17 @@ export function createCustomIconSetRepository(database: Db) {
         )
         return { list, nextCursor: found.nextCursor, pageSize }
       }
-      const cursorBinding = {
-        mode: 'browse' as const,
-        query: '',
+      const cursorOptions = {
         source: 'custom' as const,
         ...(prefix ? { prefix } : {}),
       }
-      const cursor = parseIconCursor(query.cursor, cursorBinding)
-      if (cursor && !('id' in cursor)) throw new InvalidIconCursorError()
+      const afterId = parseIconBrowseCursor(query.cursor, cursorOptions)
       const fullId = sql`${customIconSets.prefix} || ':' || ${customIconSetIcons.name}`
       const where = and(
         isNull(customIconSets.deletedAt),
         isNull(customIconSetIcons.deletedAt),
         prefix ? eq(customIconSets.prefix, prefix) : undefined,
-        cursor ? sql`${fullId} COLLATE "C" > ${cursor.id}` : undefined,
+        afterId ? sql`${fullId} COLLATE "C" > ${afterId}` : undefined,
       )
       const rows = await database
         .select(customIconColumns)
@@ -349,7 +345,7 @@ export function createCustomIconSetRepository(database: Db) {
         list,
         nextCursor:
           rows.length > pageSize && lastItem
-            ? formatIconCursor(cursorBinding, { id: `${lastItem.prefix}:${lastItem.name}` })
+            ? formatIconBrowseCursor(cursorOptions, { id: `${lastItem.prefix}:${lastItem.name}` })
             : null,
         pageSize,
       }

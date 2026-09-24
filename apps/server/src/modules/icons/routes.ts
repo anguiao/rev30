@@ -1,8 +1,10 @@
 import { iconDataParamSchema, iconDataQuerySchema } from '@rev30/contracts'
 import { zValidator } from '@hono/zod-validator'
-import { Hono } from 'hono'
+import { Hono, type MiddlewareHandler } from 'hono'
 import { cors } from 'hono/cors'
 import type { Db } from '../../db'
+import type { AuthEnv } from '../../middleware/auth'
+import { createIconSearchRoutes } from './search/routes'
 import { createIconDataService } from './service'
 
 const builtinIconDataCacheControl = 'public, max-age=604800, min-refresh=604800, immutable'
@@ -25,7 +27,7 @@ const iconQueryValidator = zValidator('query', iconDataQuerySchema, (result, c) 
   }
 })
 
-export function createIconRoutes(database: Db) {
+function createIconDataRoutes(database: Db) {
   const service = createIconDataService(database)
 
   return new Hono()
@@ -62,4 +64,10 @@ export function createIconRoutes(database: Db) {
 
       return c.body(JSON.stringify(result.subset, null, pretty ? 4 : undefined), 200)
     })
+}
+
+export function createIconRoutes(database: Db, authMiddleware: MiddlewareHandler<AuthEnv>) {
+  return new Hono()
+    .route('/search', createIconSearchRoutes(database, authMiddleware))
+    .route('/', createIconDataRoutes(database))
 }

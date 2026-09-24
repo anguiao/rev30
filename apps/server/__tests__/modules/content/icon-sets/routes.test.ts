@@ -1,10 +1,11 @@
-import type {
-  BuiltinIconListResponse,
-  BuiltinIconSetListResponse,
-  CustomIconListResponse,
-  CustomIconSet,
-  CustomIconUploadResponse,
-  IconSearchResponse,
+import {
+  ICON_CURSOR_MAX_LENGTH,
+  type BuiltinIconListResponse,
+  type BuiltinIconSetListResponse,
+  type CustomIconListResponse,
+  type CustomIconSet,
+  type CustomIconUploadResponse,
+  type IconSearchResponse,
 } from '@rev30/contracts'
 import type { IconifyJSON } from '@iconify/types'
 import { afterEach, describe, expect, vi } from 'vitest'
@@ -178,21 +179,30 @@ describe('icon set routes', () => {
     expect(await clearResponse.json()).toMatchObject({ keywords: [] })
   })
 
-  dbTest('returns the cursor domain code for invalid opaque cursors', async ({ db: database }) => {
-    const authenticated = await createSystemAccessFixture(database, {
-      accessCodes: ['content:icon-set:list'],
-      usernamePrefix: 'icon-set-invalid-cursor-user',
-    })
-    const response = await createApp(database).request(
-      '/api/content/icon-sets/builtin/icons?cursor=opaque-cursor',
-      { headers: authenticated.authHeaders },
-    )
-    expect(response.status).toBe(400)
-    expect(await response.json()).toEqual({
-      code: 'INVALID_ICON_CURSOR',
-      message: '分页游标无效',
-    })
-  })
+  dbTest(
+    'returns the cursor domain code for malformed or oversized cursors',
+    async ({ db: database }) => {
+      const authenticated = await createSystemAccessFixture(database, {
+        accessCodes: ['content:icon-set:list'],
+        usernamePrefix: 'icon-set-invalid-cursor-user',
+      })
+      const app = createApp(database)
+
+      for (const source of ['builtin', 'custom']) {
+        for (const cursor of ['opaque-cursor', 'a'.repeat(ICON_CURSOR_MAX_LENGTH + 1)]) {
+          const response = await app.request(
+            `/api/content/icon-sets/${source}/icons?cursor=${cursor}`,
+            { headers: authenticated.authHeaders },
+          )
+          expect(response.status).toBe(400)
+          expect(await response.json()).toEqual({
+            code: 'INVALID_ICON_CURSOR',
+            message: '分页游标无效',
+          })
+        }
+      }
+    },
+  )
 
   dbTest(
     'keeps non-cursor query validation errors generic when a cursor is present',

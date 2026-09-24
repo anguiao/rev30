@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { describe, expect } from 'vitest'
 import { createApp } from '../../helpers/app'
 import { customIconSetIcons, customIconSets } from '../../../src/db/schema'
+import { createAuthMiddleware } from '../../../src/middleware/auth'
 import { createIconRoutes } from '../../../src/modules/icons/routes'
 import { dbTest, type TestDatabase } from '../../fixtures/database'
 
@@ -11,7 +12,7 @@ const customIconDataCacheControl = 'public, max-age=3600'
 const missingIconDataCacheControl = 'public, max-age=60'
 
 function createIconTestApp(database: TestDatabase) {
-  return new Hono().route('/api/icons', createIconRoutes(database))
+  return new Hono().route('/api/icons', createIconRoutes(database, createAuthMiddleware(database)))
 }
 
 function expectHeaderList(response: Response, name: string, values: string[]) {

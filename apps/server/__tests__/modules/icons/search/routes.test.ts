@@ -5,7 +5,7 @@ import { createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest, type TestDatabase } from '../../../fixtures/database'
 import { customIconSetIcons, customIconSets } from '../../../../src/db/schema'
 import { createAuthMiddleware } from '../../../../src/middleware/auth'
-import { createIconSearchRoutes } from '../../../../src/modules/icons/search/routes'
+import { createIconRoutes } from '../../../../src/modules/icons/routes'
 import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
 
 const state = {
@@ -53,10 +53,7 @@ vi.mock('@iconify/json', () => ({
 }))
 
 function createIconSearchTestApp(database: TestDatabase) {
-  return new Hono().route(
-    '/api/icons/search',
-    createIconSearchRoutes(database, createAuthMiddleware(database)),
-  )
+  return new Hono().route('/api/icons', createIconRoutes(database, createAuthMiddleware(database)))
 }
 
 describe('icon search routes', () => {
@@ -84,6 +81,9 @@ describe('icon search routes', () => {
     const response = await app.request('/api/icons/search?keyword=用户&limit=20')
 
     expect(response.status).toBe(401)
+    expect(response.headers.has('access-control-allow-origin')).toBe(false)
+    expect(response.headers.has('cross-origin-resource-policy')).toBe(false)
+    expect(response.headers.has('cache-control')).toBe(false)
     expect(await response.json()).toEqual({ message: '未授权' })
   })
 
@@ -105,6 +105,9 @@ describe('icon search routes', () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toContain('application/json')
+    expect(response.headers.has('access-control-allow-origin')).toBe(false)
+    expect(response.headers.has('cross-origin-resource-policy')).toBe(false)
+    expect(response.headers.has('cache-control')).toBe(false)
     expect(body).toEqual({
       list: [
         {

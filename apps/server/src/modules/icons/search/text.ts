@@ -4,15 +4,7 @@ const validCharacterPattern = /[\p{L}\p{N}]/u
 const asciiEnglishTermPattern = /^[a-z]+$/
 const boundedAsciiPhrasePattern = /^[a-z0-9]+(?:[-/]+[a-z0-9]+)+$/
 
-export type SearchText = {
-  phrase: string
-  tokens: string[]
-  englishTerms: string[]
-}
-
-export type EnglishTermWeight = 'A' | 'B'
-
-export function deriveSearchText(value: string): SearchText {
+export function deriveSearchText(value: string) {
   const phrase = normalizeSearchText(value)
   const tokens = new Set<string>()
 
@@ -33,24 +25,4 @@ export function deriveSearchText(value: string): SearchText {
     tokens: orderedTokens,
     englishTerms: orderedTokens.filter((token) => asciiEnglishTermPattern.test(token)),
   }
-}
-
-export function mergeWeightedEnglishTerms(
-  fields: { terms: readonly string[]; weight: EnglishTermWeight }[],
-): { A: string[]; B: string[] } {
-  const primary = new Set<string>()
-  const auxiliary = new Set<string>()
-
-  for (const field of fields) {
-    for (const term of field.terms) {
-      if (field.weight === 'A') {
-        primary.add(term)
-        auxiliary.delete(term)
-      } else if (!primary.has(term)) {
-        auxiliary.add(term)
-      }
-    }
-  }
-
-  return { A: [...primary].sort(), B: [...auxiliary].sort() }
 }

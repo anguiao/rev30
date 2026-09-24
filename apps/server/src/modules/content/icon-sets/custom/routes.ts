@@ -40,7 +40,8 @@ const iconSetIconListQueryValidator = zValidator(
   iconSetIconListQuerySchema,
   (result, c) => {
     if (!result.success) {
-      if (result.error.issues.some((issue) => issue.path[0] === 'cursor')) {
+      const { fieldErrors } = z.flattenError(result.error)
+      if (fieldErrors.cursor) {
         return c.json(
           { code: iconErrorCodeSchema.enum.INVALID_ICON_CURSOR, message: '分页游标无效' },
           400,

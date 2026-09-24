@@ -5,12 +5,11 @@ import { lookupCollection } from '@iconify/json'
 import { beforeAll, describe, expect, onTestFinished } from 'vitest'
 
 import { listBuiltinIcons } from '../../../../src/modules/content/icon-sets/builtin/service'
-import { buildIconSearchArtifacts } from '../../../../src/modules/icons/search/artifacts/builder'
-import { readIconSearchArtifacts } from '../../../../src/modules/icons/search/artifacts/reader'
+import { buildIconSearchArtifacts } from '../../../../scripts/icon-search/build/generate-artifacts'
 import { createIconSearchService } from '../../../../src/modules/icons/search/service'
-import { loadMaintainedSearchData } from '../../../../src/modules/icons/search/maintenance'
-import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
-import { searchIconDocuments } from '../../../../src/modules/icons/search/query-repository'
+import { loadMaintainedSearchData } from '../../../../scripts/icon-search/build/maintenance'
+import { readIconSearchArtifacts, replaceIconSearchDocuments } from '../../../fixtures/icon-search'
+import { searchIconDocuments } from '../../../../src/modules/icons/search/repository'
 import { dbTest } from '../../../fixtures/database'
 
 const fixtureCategories = [
@@ -142,7 +141,7 @@ describe('maintained Chinese icon search', () => {
       })
       const { documents } = await readIconSearchArtifacts(outputDirectory)
       await replaceIconSearchDocuments(db, documents, manifest)
-      const result = await searchIconDocuments(db, { query: '用户', limit: 10 })
+      const result = await searchIconDocuments(db, { keyword: '用户', limit: 10 })
       expect(result.rows.map((row) => [row.id, row.level])).toEqual([
         ['system-uicons:user-add', 1],
         ['mdi:account-alert', 1],
@@ -192,9 +191,9 @@ describe('maintained Chinese icon search', () => {
     await replaceIconSearchDocuments(db, documents, manifest)
 
     for (const { prefix, name, query, unrelatedQuery } of fixtureCategories) {
-      const result = await searchIconDocuments(db, { query, limit: 10 })
+      const result = await searchIconDocuments(db, { keyword: query, limit: 10 })
       expect(result.rows.map((row) => [row.id, row.level])).toEqual([[`${prefix}:${name}`, 1]])
-      const unrelated = await searchIconDocuments(db, { query: unrelatedQuery, limit: 10 })
+      const unrelated = await searchIconDocuments(db, { keyword: unrelatedQuery, limit: 10 })
       expect(unrelated.rows).toEqual([])
     }
   })
@@ -549,10 +548,10 @@ describe('maintained Chinese icon search', () => {
       expect(libraryAccounts.list.map((item) => item.icon)).toEqual(
         selectorAccounts.list.map((item) => item.icon),
       )
-      await expect(searchIconDocuments(db, { query: '铃铛', limit: 10 })).resolves.toMatchObject({
+      await expect(searchIconDocuments(db, { keyword: '铃铛', limit: 10 })).resolves.toMatchObject({
         rows: [{ id: 'lucide:bell', level: 0 }],
       })
-      await expect(searchIconDocuments(db, { query: '账户', limit: 10 })).resolves.toMatchObject({
+      await expect(searchIconDocuments(db, { keyword: '账户', limit: 10 })).resolves.toMatchObject({
         rows: [
           { id: 'mdi:account', level: 0 },
           { id: 'mdi:account-alert', level: 1 },

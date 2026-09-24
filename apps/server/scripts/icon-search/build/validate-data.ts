@@ -1,9 +1,9 @@
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { loadMaintainedSearchData } from '../../src/modules/icons/search/maintenance'
+import { loadMaintainedSearchData } from './maintenance'
 
-const serverDirectory = join(dirname(fileURLToPath(import.meta.url)), '../..')
+const serverDirectory = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 const maintained = await loadMaintainedSearchData(join(serverDirectory, 'resources/icon-search'))
 
 console.log(

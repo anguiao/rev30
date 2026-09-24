@@ -1,10 +1,10 @@
 import {
-  getDefaultIconSearchArtifactDirectory,
+  defaultIconSearchArtifactDirectory,
   iterateIconSearchArtifacts,
   readIconSearchManifest,
-} from '../../src/modules/icons/search/artifacts/reader'
+} from '../../../src/modules/icons/search/artifacts/reader'
 
-const directory = getDefaultIconSearchArtifactDirectory()
+const directory = defaultIconSearchArtifactDirectory
 const manifest = await readIconSearchManifest(directory)
 let documents = 0
 for await (const _document of iterateIconSearchArtifacts(directory, manifest)) documents++

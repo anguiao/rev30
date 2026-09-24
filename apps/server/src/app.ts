@@ -16,7 +16,6 @@ import { createContentRoutes } from './modules/content/routes'
 import { createDemoRoutes } from './modules/demos/routes'
 import { createHealthRoutes } from './modules/health/routes'
 import { createIconRoutes } from './modules/icons/routes'
-import { createIconSearchRoutes } from './modules/icons/search/routes'
 import { createOpsRoutes } from './modules/ops/routes'
 import type { ScheduledJobService } from './modules/ops/scheduled-jobs/service'
 import { createSystemRoutes } from './modules/system/routes'
@@ -51,8 +50,7 @@ export function createApp(database: Db, options: CreateAppOptions) {
     .use('*', apiJsonBodyLimit)
     .route('/', createHealthRoutes(database))
     .route('/auth', createAuthRoutes(database, authMiddleware))
-    .route('/icons/search', createIconSearchRoutes(database, authMiddleware))
-    .route('/icons', createIconRoutes(database))
+    .route('/icons', createIconRoutes(database, authMiddleware))
     .route('/attachments', createAttachmentRoutes(database, authMiddleware))
     .route('/ops', createOpsRoutes(database, authMiddleware, options.scheduledJobService))
     .route('/system', createSystemRoutes(database, authMiddleware))

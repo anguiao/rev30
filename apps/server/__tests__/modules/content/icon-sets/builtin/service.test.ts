@@ -4,7 +4,6 @@ import { dbTest } from '../../../../fixtures/database'
 import { replaceIconSearchDocuments } from '../../../../fixtures/icon-search'
 
 afterEach(() => {
-  vi.doUnmock('../../../../../src/modules/icons/search/collections')
   vi.doUnmock('@iconify/json')
   vi.resetModules()
 })
@@ -12,7 +11,6 @@ afterEach(() => {
 describe('built-in icon browsing', () => {
   dbTest('returns package-defined positive decimal viewBox dimensions', async ({ db }) => {
     vi.resetModules()
-    vi.doUnmock('../../../../../src/modules/icons/search/collections')
     vi.doUnmock('@iconify/json')
     await replaceIconSearchDocuments(
       db,
@@ -49,7 +47,6 @@ describe('built-in icon browsing', () => {
     'returns a package-defined zero-sized viewBox without rejecting the page',
     async ({ db }) => {
       vi.resetModules()
-      vi.doUnmock('../../../../../src/modules/icons/search/collections')
       vi.doUnmock('@iconify/json')
       await replaceIconSearchDocuments(
         db,
@@ -90,7 +87,7 @@ describe('built-in icon browsing', () => {
 
   it('uses cursor pagination and excludes aliases for global browsing without a keyword', async () => {
     vi.resetModules()
-    const loadIconCollectionsMock = vi.fn().mockResolvedValue({
+    const lookupCollectionsMock = vi.fn().mockResolvedValue({
       alpha: {
         name: 'Alpha',
         total: 1,
@@ -136,10 +133,8 @@ describe('built-in icon browsing', () => {
       throw new Error(`Unexpected prefix: ${prefix}`)
     })
 
-    vi.doMock('../../../../../src/modules/icons/search/collections', () => ({
-      loadIconCollections: loadIconCollectionsMock,
-    }))
     vi.doMock('@iconify/json', () => ({
+      lookupCollections: lookupCollectionsMock,
       lookupCollection: lookupCollectionMock,
     }))
 
@@ -169,12 +164,10 @@ describe('built-in icon browsing', () => {
 
   it('sorts global browse by complete id byte order and keeps valid empty bodies', async () => {
     vi.resetModules()
-    vi.doMock('../../../../../src/modules/icons/search/collections', () => ({
-      loadIconCollections: vi
+    vi.doMock('@iconify/json', () => ({
+      lookupCollections: vi
         .fn()
         .mockResolvedValue({ fa: { name: 'FA' }, 'fa-brands': { name: 'FA Brands' } }),
-    }))
-    vi.doMock('@iconify/json', () => ({
       lookupCollection: vi.fn(async (prefix: string) => ({
         prefix,
         icons: { a: { body: '' } },
@@ -199,10 +192,8 @@ describe('built-in icon browsing', () => {
 
   dbTest('returns transformed aliases whose resolved body is empty', async ({ db }) => {
     vi.resetModules()
-    vi.doMock('../../../../../src/modules/icons/search/collections', () => ({
-      loadIconCollections: vi.fn().mockResolvedValue({ fa: { name: 'FA' } }),
-    }))
     vi.doMock('@iconify/json', () => ({
+      lookupCollections: vi.fn().mockResolvedValue({ fa: { name: 'FA' } }),
       lookupCollection: vi.fn(async () => ({
         prefix: 'fa',
         icons: { a: { body: '' } },
@@ -242,10 +233,8 @@ describe('built-in icon browsing', () => {
 
   dbTest('applies alias flips and rotations to non-square SVG output', async ({ db }) => {
     vi.resetModules()
-    vi.doMock('../../../../../src/modules/icons/search/collections', () => ({
-      loadIconCollections: vi.fn().mockResolvedValue({ fa: { name: 'FA' } }),
-    }))
     vi.doMock('@iconify/json', () => ({
+      lookupCollections: vi.fn().mockResolvedValue({ fa: { name: 'FA' } }),
       lookupCollection: vi.fn(async () => ({
         prefix: 'fa',
         icons: {

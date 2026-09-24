@@ -1,7 +1,5 @@
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
-
-import { dir, lookupCollection, lookupCollections } from '@iconify/json'
+import { lookupCollection } from '@iconify/json'
+import { ICON_PACKAGE_VERSION, loadIconCollections } from '../../../src/modules/icons/builtin'
 
 export type IconPackageCollection = {
   prefix: string
@@ -17,12 +15,7 @@ export async function loadIconPackage(): Promise<{
   version: string
   collections: IconPackageCollection[]
 }> {
-  const packageJson = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8')) as {
-    version?: unknown
-  }
-  if (typeof packageJson.version !== 'string')
-    throw new Error('Invalid @iconify/json package version')
-  const metadata = await lookupCollections()
+  const metadata = await loadIconCollections()
   const collections: IconPackageCollection[] = []
 
   for (const prefix of Object.keys(metadata).sort()) {
@@ -49,5 +42,5 @@ export async function loadIconPackage(): Promise<{
     })
   }
 
-  return { version: packageJson.version, collections }
+  return { version: ICON_PACKAGE_VERSION, collections }
 }

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, onTestFinished } from 'vitest'
 
-import { loadMaintainedSearchData } from '../../../../src/modules/icons/search/maintenance'
+import { loadMaintainedSearchData } from '../../../../scripts/icon-search/build/maintenance'
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 

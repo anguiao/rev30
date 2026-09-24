@@ -1,10 +1,7 @@
 import { normalizeSearchText } from '@rev30/utils'
 import { describe, expect, it } from 'vitest'
 
-import {
-  deriveSearchText,
-  mergeWeightedEnglishTerms,
-} from '../../../../src/modules/icons/search/text'
+import { deriveSearchText } from '../../../../src/modules/icons/search/text'
 
 describe('icon search text rules', () => {
   it('normalizes width, case and whitespace before deriving bounded terms', () => {
@@ -27,14 +24,5 @@ describe('icon search text rules', () => {
       tokens: ['用户管理', '用户', '管理', 'eye眼睛', '用户foo-bar'],
       englishTerms: [],
     })
-  })
-
-  it('deduplicates terms and preserves the highest field weight', () => {
-    expect(
-      mergeWeightedEnglishTerms([
-        { terms: ['account', 'user'], weight: 'B' },
-        { terms: ['user', 'circle'], weight: 'A' },
-      ]),
-    ).toEqual({ A: ['circle', 'user'], B: ['account'] })
   })
 })

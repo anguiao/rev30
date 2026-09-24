@@ -2,13 +2,13 @@ import { rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { buildIconSearchArtifacts } from '../../src/modules/icons/search/artifacts/builder'
-import { loadMaintainedSearchData } from '../../src/modules/icons/search/maintenance'
-import { loadIconPackage } from '../../src/modules/icons/search/package-source'
+import { buildIconSearchArtifacts } from './generate-artifacts'
+import { loadMaintainedSearchData } from './maintenance'
+import { loadIconPackage } from './package-source'
 
-const serverDirectory = join(dirname(fileURLToPath(import.meta.url)), '../..')
+const serverDirectory = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 const resourcesDirectory = join(serverDirectory, 'resources/icon-search')
-const outputDirectory = join(serverDirectory, 'generated/icon-search')
+const outputDirectory = join(serverDirectory, 'dist/icon-search')
 const startedAt = performance.now()
 
 await rm(outputDirectory, { recursive: true, force: true })

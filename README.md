@@ -15,6 +15,8 @@ Rev30 是一个 TypeScript monorepo 项目，包含 Vue 客户端、Hono API、�
 
 图标功能 `features/icons` 按职责分为 `browser`（浏览、分页与管理入口）、`forms`（编辑与上传）和 `search`（选择器、搜索反馈与重试）三个子目录。内置和自定义标签页按来源切换 `IconBrowser`，通过 `KeepAlive` 保留各自的浏览状态，查询与重试随组件激活和停用。根目录的 `requests.ts` 负责 HTTP 请求，`cache.ts` 负责关键词缓存键处理和缓存刷新。查询键直接定义在使用处，组件测试沿用相同分组。
 
+后端 `apps/server/src/modules/icons` 中，`builtin.ts` 集中处理内置图标包访问和子集缓存，`service.ts` 负责自定义图标读取与来源选择。`search` 组织查询、推荐、规则与文档派生，`search/indexing` 负责索引状态、准备、重建与自定义同步，`search/artifacts` 负责运行时产物读取和校验。`apps/server/scripts/icon-search` 中，`build` 集中组织构建入口、包扫描、翻译文件读取、产物生成，以及维护数据和产物校验；`benchmark` 组织压测入口、索引导入、搜索场景与测量工具。
+
 ## 技术栈
 
 - 前端：Vue 3、Tailwind CSS v4、Naive UI、Pinia、Pinia Colada、Vue ECharts、TanStack Vue Form、`vue-router/vite`。
@@ -36,6 +38,7 @@ Rev30 是一个 TypeScript monorepo 项目，包含 Vue 客户端、Hono API、�
 pnpm install
 cp apps/server/.env.example apps/server/.env
 pnpm --filter @rev30/server db:bootstrap
+pnpm --filter @rev30/server icon-search:build
 pnpm dev
 ```
 
@@ -52,7 +55,9 @@ pnpm dev
 
 图标选择器和内容管理图标库共用数据库派生搜索索引。内置图标的英文检索来自当前 `@iconify/json` 的完整 ID、名称、名称词、图标集信息，以及当前包中明确列出的全部逐图标分类关系。中文译文按完整词参与检索，中英文均支持空格分隔的多词 AND 查询。完整名称或译名精确命中优先；同一匹配层级内，中文名称词和自定义关键词命中优先于分类等辅助字段。当前中文维护范围覆盖锁定图标包中的全部已注册图标集，维护规则见[维护数据说明](apps/server/resources/icon-search/README.md)；未维护译文的图标仍可通过英文名称和完整 ID 查找。程序不根据图形或常识补充用途和同义词，例如 `bell` 的“铃铛”译文不会产生“通知”或“提醒”。自定义图标使用名称和用户填写的关键词，关键词不会写入 Iconify JSON 导出。
 
-服务启动后在后台准备或更新非空查询使用的搜索索引，不等待导入完成才提供 HTTP 服务。空查询推荐、内置和自定义图标浏览、自定义图标管理及已有图标展示不依赖搜索索引；已有可用索引时，搜索数据更新期间继续使用已提交版本。开发和发布构建会从当前图标包及 [`apps/server/resources/icon-search`](apps/server/resources/icon-search) 的维护数据重建压缩产物，运行时不为生成索引读取全量 `@iconify/json`。图标包升级可以先于维护数据更新：新增项随构建进入完整基础产物，索引提交后即可通过名称和 ID 检索，失效维护项会被列出并排除。
+服务启动后在后台准备或更新非空查询使用的搜索索引，不等待导入完成才提供 HTTP 服务。空查询推荐、内置和自定义图标浏览、自定义图标管理及已有图标展示不依赖搜索索引；已有可用索引时，搜索数据更新期间继续使用已提交版本。图标搜索构建会从当前图标包及 [`apps/server/resources/icon-search`](apps/server/resources/icon-search) 的维护数据重建压缩产物，运行时不为生成索引读取全量 `@iconify/json`。图标包升级可以先于维护数据更新：新增项随构建进入完整基础产物，索引提交后即可通过名称和 ID 检索，失效维护项会被列出并排除。
+
+开发和发布统一生成并读取 `apps/server/dist/icon-search`。开发命令直接启动服务。首次开发、产物缺失或损坏，或者更新图标包、翻译数据和生成规则后，手动运行 `pnpm --filter @rev30/server icon-search:build`，再启动或重启开发服务。发布构建先打包服务端代码，再生成搜索产物，产物随 `dist` 分发。服务端及其脚本以 `apps/server` 为工作目录，通过 `pnpm --filter @rev30/server` 执行命令会自动使用该目录。
 
 索引身份自动包含派生文档的内容指纹和图标集偏好配置。运行时流式解压并分批导入，全部校验通过后再发布。服务端检索查询、自定义投影同步、重建及产物构建/读取分别维护；维护文件在读取边界完成校验，自定义同步和重建共用文档派生。公共游标位于图标模块，跨端文本归一化位于 `packages/utils`，两个图标库共用前端分页与搜索恢复逻辑。
 

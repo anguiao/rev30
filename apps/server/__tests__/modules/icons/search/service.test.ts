@@ -1,13 +1,17 @@
 import { describe, expect } from 'vitest'
 import { createIconSearchService } from '../../../../src/modules/icons/search/service'
 import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
-import { IconSearchPreparingError } from '../../../../src/modules/icons/search/errors'
+import { IconSearchPreparingError } from '../../../../src/modules/icons/errors'
 import { dbTest } from '../../../fixtures/database'
 
 describe('unified icon search service', () => {
-  dbTest('serves empty-query recommendations without a committed index', async ({ db }) => {
-    const result = await createIconSearchService(db).searchIcons({ keyword: '   ', limit: 1 })
-    expect(result.list).toHaveLength(1)
+  dbTest('serves limited recommendations in order without a committed index', async ({ db }) => {
+    const result = await createIconSearchService(db).searchIcons({ keyword: '   ', limit: 3 })
+    expect(result.list.map((icon) => icon.icon)).toEqual([
+      'lucide:users',
+      'lucide:user-cog',
+      'lucide:shield-check',
+    ])
   })
 
   dbTest(

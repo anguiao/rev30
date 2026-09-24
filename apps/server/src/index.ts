@@ -4,12 +4,11 @@ import { createApp } from './app'
 import { createDb } from './db'
 import { readAttachmentConfig } from './modules/attachments/config'
 import { createAttachmentStorage } from './modules/attachments/storage'
+import { startIconSearchIndexPreparation } from './modules/icons/search/indexing/lifecycle'
 import { readScheduledJobRetentionConfig } from './modules/ops/scheduled-jobs/config'
 import { startScheduledJobs } from './modules/ops/scheduled-jobs/startup'
 import { logger } from './runtime/logger'
 import { createOperationLogRuntime } from './runtime/operation-log'
-import { startDefaultIconSearchIndexPreparation } from './modules/icons/search/lifecycle'
-import { createRequire as createPackageRequire } from 'node:module'
 import { closeServer, registerShutdownHandlers } from './runtime/shutdown'
 import { readTrustedProxyPolicy } from './runtime/trusted-proxy'
 
@@ -26,6 +25,7 @@ const scheduledJobs = await startScheduledJobs({
   retention: scheduledJobRetention,
 })
 const operationLog = createOperationLogRuntime(db, logger)
+const iconSearchPreparation = startIconSearchIndexPreparation(db, logger)
 
 const app = createApp(db, {
   logger,
@@ -50,17 +50,10 @@ const server = serve(
   },
 )
 
-const packageRequire = createPackageRequire(import.meta.url)
-const iconPackage = packageRequire('@iconify/json/package.json') as { version: string }
-const iconSearchIndex = startDefaultIconSearchIndexPreparation(db, {
-  logger,
-  installedIconPackageVersion: iconPackage.version,
-})
-
 registerShutdownHandlers(async () => {
   const results = await Promise.allSettled([closeServer(server), scheduledJobs.stop()])
   operationLog.stop()
-  await iconSearchIndex.completed
+  await iconSearchPreparation
   await closeDb()
 
   for (const result of results) {

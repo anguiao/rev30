@@ -1,10 +1,10 @@
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import { setImmediate } from 'node:timers/promises'
-import type { Db, DbExecutor } from '../../../db'
-import { customIconSetIcons, customIconSets, iconSearchIndexState } from '../../../db/schema'
-import { deriveCustomIconSearchDocument, type IconSearchDocument } from './document'
-import { lockIconSearchWrites, type IconSearchStateInput } from './index-state'
-import { documentPreference } from './ranking'
+import type { Db, DbExecutor } from '../../../../db'
+import { customIconSetIcons, customIconSets, iconSearchIndexState } from '../../../../db/schema'
+import { deriveCustomIconSearchDocument, type IconSearchDocument } from '../document'
+import { lockIconSearchWrites, type IconSearchStateInput } from './state'
+import { getIconPreference } from '../rules'
 
 const importTable = 'icon_search_documents_staging'
 const importBatchSize = 1_000
@@ -19,7 +19,7 @@ async function stageDocumentBatch(executor: DbExecutor, documents: IconSearchDoc
       source: document.source,
       collection: document.collection,
       palette: document.palette,
-      preference: documentPreference(document),
+      preference: getIconPreference(document),
       custom_icon_id: document.customIconId,
       exact_phrases: document.exactPhrases,
       full_tokens: document.fullTokens,
@@ -54,6 +54,53 @@ async function stageDocumentBatch(executor: DbExecutor, documents: IconSearchDoc
       auxiliary_english_terms text
     )
   `)
+}
+
+async function stageBuiltinDocuments(
+  database: Db,
+  documents: AsyncIterable<IconSearchDocument> | Iterable<IconSearchDocument>,
+) {
+  let batch: IconSearchDocument[] = []
+  for await (const document of documents) {
+    batch.push(document)
+    if (batch.length < importBatchSize) continue
+    await database.transaction(async (tx) => {
+      await stageDocumentBatch(tx, batch)
+    })
+    batch = []
+    await setImmediate()
+  }
+  await database.transaction(async (tx) => {
+    await stageDocumentBatch(tx, batch)
+  })
+}
+
+async function stageCustomDocuments(executor: DbExecutor, rebuildCustom: boolean) {
+  if (rebuildCustom) {
+    const customRows = await executor
+      .select({
+        customIconId: customIconSetIcons.id,
+        prefix: customIconSets.prefix,
+        name: customIconSetIcons.name,
+        collection: customIconSets.name,
+        palette: customIconSetIcons.palette,
+        keywords: customIconSetIcons.keywords,
+      })
+      .from(customIconSetIcons)
+      .innerJoin(customIconSets, eq(customIconSetIcons.setId, customIconSets.id))
+      .where(and(isNull(customIconSetIcons.deletedAt), isNull(customIconSets.deletedAt)))
+    await stageDocumentBatch(executor, customRows.map(deriveCustomIconSearchDocument))
+  } else {
+    await executor.execute(sql`
+      INSERT INTO ${sql.identifier(importTable)} (
+        id, prefix, name, source, collection, palette, preference, custom_icon_id,
+        exact_phrases, full_tokens, primary_tokens, search_vector
+      )
+      SELECT id, prefix, name, source, collection, palette, preference, custom_icon_id,
+        exact_phrases, full_tokens, primary_tokens, search_vector
+      FROM icon_search_documents WHERE source = 'custom'
+    `)
+  }
 }
 
 async function clearStagingDocuments(database: Db) {
@@ -122,50 +169,17 @@ export async function replaceBuiltinIconSearchDocuments(
   database: Db,
   documents: AsyncIterable<IconSearchDocument> | Iterable<IconSearchDocument>,
   state: IconSearchStateInput,
-  rebuildCustom = false,
+  options: {
+    rebuildCustom: boolean
+    onCleanupError?: ((error: Error) => void) | undefined
+  },
 ) {
+  await clearStagingDocuments(database)
   try {
-    await clearStagingDocuments(database)
-    let batch: IconSearchDocument[] = []
-    for await (const document of documents) {
-      batch.push(document)
-      if (batch.length < importBatchSize) continue
-      await database.transaction(async (tx) => {
-        await stageDocumentBatch(tx, batch)
-      })
-      batch = []
-      await setImmediate()
-    }
-    await database.transaction(async (tx) => {
-      await stageDocumentBatch(tx, batch)
-    })
+    await stageBuiltinDocuments(database, documents)
     await database.transaction(async (tx) => {
       await lockIconSearchWrites(tx)
-      if (rebuildCustom) {
-        const customRows = await tx
-          .select({
-            customIconId: customIconSetIcons.id,
-            prefix: customIconSets.prefix,
-            name: customIconSetIcons.name,
-            collection: customIconSets.name,
-            palette: customIconSetIcons.palette,
-            keywords: customIconSetIcons.keywords,
-          })
-          .from(customIconSetIcons)
-          .innerJoin(customIconSets, eq(customIconSetIcons.setId, customIconSets.id))
-          .where(and(isNull(customIconSetIcons.deletedAt), isNull(customIconSets.deletedAt)))
-        await stageDocumentBatch(tx, customRows.map(deriveCustomIconSearchDocument))
-      } else {
-        await tx.execute(sql`
-          INSERT INTO ${sql.identifier(importTable)} (
-            id, prefix, name, source, collection, palette, preference, custom_icon_id,
-            exact_phrases, full_tokens, primary_tokens, search_vector
-          )
-          SELECT id, prefix, name, source, collection, palette, preference, custom_icon_id,
-            exact_phrases, full_tokens, primary_tokens, search_vector
-          FROM icon_search_documents WHERE source = 'custom'
-        `)
-      }
+      await stageCustomDocuments(tx, options.rebuildCustom)
       const countResult = await tx.execute<{ total: number }>(
         sql`SELECT count(*)::integer AS total FROM ${sql.identifier(importTable)}`,
       )
@@ -180,6 +194,8 @@ export async function replaceBuiltinIconSearchDocuments(
       await swapDocumentTables(tx)
     })
   } finally {
-    await clearStagingDocuments(database)
+    await clearStagingDocuments(database).catch((error: unknown) => {
+      options.onCleanupError?.(error instanceof Error ? error : new Error(String(error)))
+    })
   }
 }

@@ -9,23 +9,21 @@ import type {
   IconSetListQuery,
 } from '@rev30/contracts'
 import { getIconData, iconToSVG, wrapSVGContent } from '@iconify/utils'
-import { createRequire as createPackageRequire } from 'node:module'
 import type { Db } from '../../../../db'
-import { type IconCollections, loadIconCollections } from '../../../icons/search/collections'
-import { searchIconDocuments } from '../../../icons/search/query-repository'
-import { assertIconSearchAvailable } from '../../../icons/search/lifecycle'
-import { getBuiltinIconSubset } from '../../../icons/service'
-import { formatIconCursor, parseIconCursor } from '../../../icons/cursor'
+import {
+  ICON_PACKAGE_VERSION,
+  getBuiltinIconSubset,
+  loadIconCollections,
+} from '../../../icons/builtin'
+import { searchIconDocuments } from '../../../icons/search/repository'
+import { assertIconSearchAvailable } from '../../../icons/search/indexing/state'
+import { formatIconBrowseCursor, parseIconBrowseCursor } from '../../../icons/cursor'
 
-const packageRequire = createPackageRequire(import.meta.url)
-function iconPackageVersion() {
-  return (packageRequire('@iconify/json/package.json') as { version: string }).version
-}
-function compareBytes(left: string, right: string) {
-  return left < right ? -1 : left > right ? 1 : 0
-}
-
-function mapIcon(iconSet: IconifyJSON, name: string): IconSetIconItem | undefined {
+function mapIcon(
+  iconSet: IconifyJSON,
+  name: string,
+  setName = iconSet.info?.name ?? iconSet.prefix,
+): IconSetIconItem | undefined {
   const icon = getIconData(iconSet, name)
   if (icon === null) return undefined
   const rendered = iconToSVG(icon)
@@ -38,40 +36,36 @@ function mapIcon(iconSet: IconifyJSON, name: string): IconSetIconItem | undefine
     icon: `${iconSet.prefix}:${name}`,
     prefix: iconSet.prefix,
     name,
-    setName: iconSet.info?.name ?? '',
+    setName,
     body,
     width,
     height,
   }
 }
 
-function binding(query: IconSetIconListQuery) {
-  return {
-    mode: 'browse' as const,
-    query: '',
+export async function browseBuiltinIcons(
+  query: IconSetIconListQuery,
+): Promise<BuiltinIconListResponse> {
+  const collections = await loadIconCollections()
+  const cursorOptions = {
     source: 'builtin' as const,
     ...(query.prefix ? { prefix: query.prefix } : {}),
-    dataVersion: iconPackageVersion(),
+    dataVersion: ICON_PACKAGE_VERSION,
   }
-}
-
-async function browse(
-  query: IconSetIconListQuery,
-  collections: IconCollections,
-): Promise<BuiltinIconListResponse> {
-  const cursor = parseIconCursor(query.cursor, binding(query))
-  const afterId = cursor && 'id' in cursor ? cursor.id : undefined
-  const prefixes = (query.prefix ? [query.prefix] : Object.keys(collections)).sort((a, b) =>
-    compareBytes(`${a}:`, `${b}:`),
-  )
+  const afterId = parseIconBrowseCursor(query.cursor, cursorOptions)
+  if (query.prefix && !collections[query.prefix])
+    return { list: [], nextCursor: null, pageSize: query.pageSize }
+  const prefixes = (query.prefix ? [query.prefix] : Object.keys(collections)).sort((a, b) => {
+    if (a === b) return 0
+    return `${a}:` < `${b}:` ? -1 : 1
+  })
   const collected: IconSetIconItem[] = []
   for (const prefix of prefixes) {
-    if (afterId && !afterId.startsWith(`${prefix}:`) && compareBytes(`${prefix}:`, afterId) < 0)
-      continue
+    if (afterId && !afterId.startsWith(`${prefix}:`) && `${prefix}:` < afterId) continue
     const iconSet = await lookupCollection(prefix)
-    for (const name of Object.keys(iconSet.icons).sort(compareBytes)) {
+    for (const name of Object.keys(iconSet.icons).sort()) {
       const id = `${prefix}:${name}`
-      if (afterId && compareBytes(id, afterId) <= 0) continue
+      if (afterId && id <= afterId) continue
       const item = mapIcon(iconSet, name)
       if (item) collected.push(item)
       if (collected.length > query.pageSize) break
@@ -84,38 +78,10 @@ async function browse(
     list,
     nextCursor:
       collected.length > query.pageSize && last
-        ? formatIconCursor(binding(query), { id: last.icon })
+        ? formatIconBrowseCursor(cursorOptions, { id: last.icon })
         : null,
     pageSize: query.pageSize,
   }
-}
-
-async function search(query: IconSetIconListQuery, database: Db): Promise<BuiltinIconListResponse> {
-  assertIconSearchAvailable(database)
-  const result = await searchIconDocuments(database, {
-    query: query.keyword!,
-    source: 'builtin',
-    ...(query.prefix ? { prefix: query.prefix } : {}),
-    ...(query.cursor ? { cursor: query.cursor } : {}),
-    limit: query.pageSize,
-  })
-  const items = new Map<string, IconSetIconItem>()
-  const collectionsById = new Map(result.rows.map((row) => [row.id, row.collection]))
-  const namesByPrefix = new Map<string, string[]>()
-  for (const row of result.rows)
-    namesByPrefix.set(row.prefix, [...(namesByPrefix.get(row.prefix) ?? []), row.name])
-  for (const [prefix, names] of namesByPrefix) {
-    const subset = await getBuiltinIconSubset(prefix, names)
-    if (!subset) continue
-    for (const name of names) {
-      const item = mapIcon(subset, name)
-      if (item) {
-        items.set(item.icon, { ...item, setName: collectionsById.get(item.icon) ?? prefix })
-      }
-    }
-  }
-  const list = result.rows.flatMap((row) => items.get(row.id) ?? [])
-  return { list, nextCursor: result.nextCursor, pageSize: query.pageSize }
 }
 
 export async function listBuiltinIconSets(
@@ -138,21 +104,35 @@ export async function listBuiltinIconSets(
   return { list, total: list.length }
 }
 
-export async function browseBuiltinIcons(
-  query: IconSetIconListQuery,
-): Promise<BuiltinIconListResponse> {
-  const collections = await loadIconCollections()
-  parseIconCursor(query.cursor, binding(query))
-  if (query.prefix && !collections[query.prefix])
-    return { list: [], nextCursor: null, pageSize: query.pageSize }
-  return browse(query, collections)
-}
-
 export async function listBuiltinIcons(
   query: IconSetIconListQuery,
   database: Db,
 ): Promise<BuiltinIconListResponse> {
   const keyword = normalizeSearchText(query.keyword ?? '')
-  if (!keyword) return browseBuiltinIcons({ ...query, keyword: '' })
-  return search({ ...query, keyword }, database)
+  if (!keyword) return browseBuiltinIcons(query)
+
+  assertIconSearchAvailable()
+  const result = await searchIconDocuments(database, {
+    keyword,
+    source: 'builtin',
+    ...(query.prefix ? { prefix: query.prefix } : {}),
+    ...(query.cursor ? { cursor: query.cursor } : {}),
+    limit: query.pageSize,
+  })
+  const namesByPrefix = new Map<string, string[]>()
+  for (const row of result.rows) {
+    const names = namesByPrefix.get(row.prefix) ?? []
+    names.push(row.name)
+    namesByPrefix.set(row.prefix, names)
+  }
+  const subsets = new Map<string, IconifyJSON>()
+  for (const [prefix, names] of namesByPrefix) {
+    const subset = await getBuiltinIconSubset(prefix, names)
+    if (subset) subsets.set(prefix, subset)
+  }
+  const list = result.rows.flatMap((row) => {
+    const subset = subsets.get(row.prefix)
+    return subset ? (mapIcon(subset, row.name, row.collection) ?? []) : []
+  })
+  return { list, nextCursor: result.nextCursor, pageSize: query.pageSize }
 }

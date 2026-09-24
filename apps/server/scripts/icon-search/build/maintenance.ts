@@ -4,7 +4,7 @@ import { isAbsolute, join, normalize } from 'node:path'
 import { z } from 'zod'
 import { normalizeSearchText } from '@rev30/utils'
 
-import { deriveSearchText } from './text'
+import { deriveSearchText } from '../../../src/modules/icons/search/text'
 
 const translationSchema = z
   .string()

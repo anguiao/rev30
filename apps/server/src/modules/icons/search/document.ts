@@ -1,48 +1,49 @@
-import { deriveSearchText, mergeWeightedEnglishTerms } from './text'
+import { z } from 'zod'
+import { deriveSearchText } from './text'
 
-export type IconSearchDocument = {
-  id: string
-  prefix: string
-  name: string
-  source: 'builtin' | 'custom'
-  collection: string
-  palette: boolean
-  customIconId: string | null
+const iconSearchMetadataSchema = z
+  .object({
+    id: z.string().min(1),
+    prefix: z.string().min(1),
+    name: z.string().min(1),
+    source: z.enum(['builtin', 'custom']),
+    collection: z.string().min(1),
+    palette: z.boolean(),
+    customIconId: z.string().nullable(),
+  })
+  .strict()
+
+export type IconSearchMetadata = z.infer<typeof iconSearchMetadataSchema>
+
+export const iconSearchDocumentSchema = iconSearchMetadataSchema.extend({
+  exactPhrases: z.array(z.string()),
+  fullTokens: z.array(z.string()),
+  primaryTokens: z.array(z.string()),
+  primaryEnglishTerms: z.array(z.string()),
+  auxiliaryEnglishTerms: z.array(z.string()),
+})
+
+export type IconSearchDocument = z.infer<typeof iconSearchDocumentSchema>
+
+type IconSearchDocumentInput = IconSearchMetadata & {
+  primaryPhrases: string[]
+  auxiliaryPhrases: string[]
   exactPhrases: string[]
-  fullTokens: string[]
-  primaryTokens: string[]
-  primaryEnglishTerms: string[]
-  auxiliaryEnglishTerms: string[]
 }
 
 export type CustomIconSearchInput = Pick<
-  IconSearchDocument,
+  IconSearchMetadata,
   'prefix' | 'name' | 'collection' | 'palette'
 > & {
   customIconId: string
   keywords: string[]
 }
 
-export function deriveIconSearchDocument(
-  input: Omit<
-    IconSearchDocument,
-    | 'exactPhrases'
-    | 'fullTokens'
-    | 'primaryTokens'
-    | 'primaryEnglishTerms'
-    | 'auxiliaryEnglishTerms'
-  > & {
-    primaryPhrases: string[]
-    auxiliaryPhrases: string[]
-    exactPhrases: string[]
-  },
-): IconSearchDocument {
+export function deriveIconSearchDocument(input: IconSearchDocumentInput): IconSearchDocument {
   const primary = input.primaryPhrases.map(deriveSearchText)
   const auxiliary = input.auxiliaryPhrases.map(deriveSearchText)
-  const weighted = mergeWeightedEnglishTerms([
-    { weight: 'A', terms: primary.flatMap((entry) => entry.englishTerms) },
-    { weight: 'B', terms: auxiliary.flatMap((entry) => entry.englishTerms) },
-  ])
+  const primaryEnglishTerms = new Set(primary.flatMap((entry) => entry.englishTerms))
+  const auxiliaryEnglishTerms = new Set(auxiliary.flatMap((entry) => entry.englishTerms))
   return {
     id: input.id,
     prefix: input.prefix,
@@ -61,8 +62,10 @@ export function deriveIconSearchDocument(
     ],
     fullTokens: [...new Set([...primary, ...auxiliary].flatMap((entry) => entry.tokens))].sort(),
     primaryTokens: [...new Set(primary.flatMap((entry) => entry.tokens))].sort(),
-    primaryEnglishTerms: weighted.A,
-    auxiliaryEnglishTerms: weighted.B,
+    primaryEnglishTerms: [...primaryEnglishTerms].sort(),
+    auxiliaryEnglishTerms: [...auxiliaryEnglishTerms]
+      .filter((term) => !primaryEnglishTerms.has(term))
+      .sort(),
   }
 }
 

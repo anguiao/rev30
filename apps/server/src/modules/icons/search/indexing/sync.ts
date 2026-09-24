@@ -1,12 +1,12 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
-import type { DbExecutor } from '../../../db'
-import { iconSearchDocuments } from '../../../db/schema'
+import type { DbExecutor } from '../../../../db'
+import { iconSearchDocuments } from '../../../../db/schema'
 import {
   deriveCustomIconSearchDocument,
   type CustomIconSearchInput,
   type IconSearchDocument,
-} from './document'
-import { documentPreference } from './ranking'
+} from '../document'
+import { getIconPreference } from '../rules'
 
 const batchSize = 1_000
 
@@ -26,7 +26,7 @@ export async function insertDocumentBatch(executor: DbExecutor, documents: IconS
       source: document.source,
       collection: document.collection,
       palette: document.palette,
-      preference: documentPreference(document),
+      preference: getIconPreference(document),
       customIconId: document.customIconId,
       exactPhrases: document.exactPhrases,
       fullTokens: document.fullTokens,

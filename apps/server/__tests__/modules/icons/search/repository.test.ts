@@ -5,10 +5,10 @@ import { iconSearchDocuments, iconSearchIndexState } from '../../../../src/db/sc
 import { migratePGlite } from '../../../../src/db/migrate'
 import { relations } from '../../../../src/db/relations'
 import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
-import { searchIconDocuments } from '../../../../src/modules/icons/search/query-repository'
+import { searchIconDocuments } from '../../../../src/modules/icons/search/repository'
 import { deriveIconSearchDocument } from '../../../../src/modules/icons/search/document'
 import { dbTest } from '../../../fixtures/database'
-import { InvalidIconCursorError } from '../../../../src/modules/icons/search/errors'
+import { InvalidIconCursorError } from '../../../../src/modules/icons/errors'
 
 const fixtures = [
   {
@@ -141,7 +141,7 @@ describe('database icon search', () => {
         rulesVersion: 'test',
       })
       for (const query of ['眼睛 不可见', 'icon 眼睛 不可见']) {
-        const all = await searchIconDocuments(db, { query, limit: 10 })
+        const all = await searchIconDocuments(db, { keyword: query, limit: 10 })
         expect(all.rows.map((row) => [row.id, row.primaryMatches])).toEqual([
           ['test:icon-exact', 2],
           ['test:icon-z', 2],
@@ -152,7 +152,7 @@ describe('database icon search', () => {
         let cursor: string | undefined
         do {
           const page = await searchIconDocuments(db, {
-            query,
+            keyword: query,
             limit: 1,
             ...(cursor ? { cursor } : {}),
           })
@@ -162,7 +162,7 @@ describe('database icon search', () => {
         expect(paged).toEqual(all.rows.map((row) => row.id))
       }
       await expect(
-        searchIconDocuments(db, { query: '眼睛 可见', limit: 10 }),
+        searchIconDocuments(db, { keyword: '眼睛 可见', limit: 10 }),
       ).resolves.toMatchObject({ rows: [] })
     },
   )
@@ -178,44 +178,44 @@ describe('database icon search', () => {
       })
 
       await expect(
-        searchIconDocuments(db, { query: 'alarm cl', limit: 10 }),
+        searchIconDocuments(db, { keyword: 'alarm cl', limit: 10 }),
       ).resolves.toMatchObject({
         rows: [{ id: 'lucide:alarm-clock-off' }],
       })
       await expect(
-        searchIconDocuments(db, { query: 'camera missing', limit: 10 }),
+        searchIconDocuments(db, { keyword: 'camera missing', limit: 10 }),
       ).resolves.toMatchObject({ rows: [] })
-      await expect(searchIconDocuments(db, { query: 'c', limit: 10 })).resolves.toMatchObject({
+      await expect(searchIconDocuments(db, { keyword: 'c', limit: 10 })).resolves.toMatchObject({
         rows: [],
       })
       await expect(
-        searchIconDocuments(db, { query: 'cam', source: 'builtin', prefix: 'tabler', limit: 1 }),
+        searchIconDocuments(db, { keyword: 'cam', source: 'builtin', prefix: 'tabler', limit: 1 }),
       ).resolves.toMatchObject({
         rows: [{ id: 'tabler:camera' }],
       })
-      const ranked = await searchIconDocuments(db, { query: 'camera', limit: 10 })
+      const ranked = await searchIconDocuments(db, { keyword: 'camera', limit: 10 })
       expect(ranked.rows.map((row) => [row.id, row.level])).toEqual([
         ['lucide:camera', 0],
         ['tabler:camera', 0],
         ['lucide:camera-box', 1],
         ['lucide:cameraman', 2],
       ])
-      await expect(searchIconDocuments(db, { query: 'cmr', limit: 10 })).resolves.toMatchObject({
+      await expect(searchIconDocuments(db, { keyword: 'cmr', limit: 10 })).resolves.toMatchObject({
         rows: [],
       })
       await expect(
-        searchIconDocuments(db, { query: '眼睛 不可见', limit: 10 }),
+        searchIconDocuments(db, { keyword: '眼睛 不可见', limit: 10 }),
       ).resolves.toMatchObject({ rows: [{ id: 'acme:hidden-eye' }] })
-      await expect(searchIconDocuments(db, { query: '可见', limit: 10 })).resolves.toMatchObject({
+      await expect(searchIconDocuments(db, { keyword: '可见', limit: 10 })).resolves.toMatchObject({
         rows: [],
       })
-      await expect(searchIconDocuments(db, { query: '3d', limit: 10 })).resolves.toMatchObject({
+      await expect(searchIconDocuments(db, { keyword: '3d', limit: 10 })).resolves.toMatchObject({
         rows: [{ id: 'lucide:rotate-3d' }],
       })
-      await expect(searchIconDocuments(db, { query: '3', limit: 10 })).resolves.toMatchObject({
+      await expect(searchIconDocuments(db, { keyword: '3', limit: 10 })).resolves.toMatchObject({
         rows: [],
       })
-      await expect(searchIconDocuments(db, { query: '!!!', limit: 10 })).resolves.toMatchObject({
+      await expect(searchIconDocuments(db, { keyword: '!!!', limit: 10 })).resolves.toMatchObject({
         rows: [],
       })
     },
@@ -231,7 +231,7 @@ describe('database icon search', () => {
         rulesVersion: '1',
       })
       const complete = await searchIconDocuments(db, {
-        query: 'camera',
+        keyword: 'camera',
         source: 'builtin',
         limit: 20,
       })
@@ -239,7 +239,7 @@ describe('database icon search', () => {
       let cursor: string | undefined
       do {
         const page = await searchIconDocuments(db, {
-          query: 'camera',
+          keyword: 'camera',
           source: 'builtin',
           limit: 1,
           ...(cursor ? { cursor } : {}),
@@ -256,20 +256,20 @@ describe('database icon search', () => {
 
       const payload = JSON.parse(
         Buffer.from(
-          (await searchIconDocuments(db, { query: 'cam', source: 'builtin', limit: 1 }))
+          (await searchIconDocuments(db, { keyword: 'cam', source: 'builtin', limit: 1 }))
             .nextCursor!,
           'base64url',
         ).toString('utf8'),
-      ) as Record<string, unknown> & { tuple: Record<string, unknown> }
-      payload.tuple.rank = 'NaN'
+      ) as Record<string, unknown> & { position: Record<string, unknown> }
+      payload.position.rank = 'NaN'
       const invalid = Buffer.from(JSON.stringify(payload)).toString('base64url')
       await expect(
-        searchIconDocuments(db, { query: 'cam', source: 'builtin', limit: 1, cursor: invalid }),
+        searchIconDocuments(db, { keyword: 'cam', source: 'builtin', limit: 1, cursor: invalid }),
       ).rejects.toBeInstanceOf(InvalidIconCursorError)
-      payload.tuple.rank = '1e999'
+      payload.position.rank = '1e999'
       await expect(
         searchIconDocuments(db, {
-          query: 'cam',
+          keyword: 'cam',
           source: 'builtin',
           limit: 1,
           cursor: Buffer.from(JSON.stringify(payload)).toString('base64url'),
@@ -277,19 +277,19 @@ describe('database icon search', () => {
       ).rejects.toBeInstanceOf(InvalidIconCursorError)
       await expect(
         searchIconDocuments(db, {
-          query: 'cam',
+          keyword: 'cam',
           source: 'custom',
           limit: 1,
-          cursor: (await searchIconDocuments(db, { query: 'cam', source: 'builtin', limit: 1 }))
+          cursor: (await searchIconDocuments(db, { keyword: 'cam', source: 'builtin', limit: 1 }))
             .nextCursor!,
         }),
       ).rejects.toBeInstanceOf(InvalidIconCursorError)
       const validCursor = (
-        await searchIconDocuments(db, { query: 'camera', source: 'builtin', limit: 1 })
+        await searchIconDocuments(db, { keyword: 'camera', source: 'builtin', limit: 1 })
       ).nextCursor!
       await expect(
         searchIconDocuments(db, {
-          query: 'camera',
+          keyword: 'camera',
           source: 'builtin',
           limit: 1,
           cursor: `${validCursor.slice(0, 2)}!${validCursor.slice(2)}`,
@@ -318,7 +318,7 @@ describe('database icon search', () => {
       primaryEnglishTerms: ['next', ...fixture.primaryEnglishTerms],
     }))
     const [result] = await Promise.all([
-      searchIconDocuments(database, { query: 'camera', limit: 20 }),
+      searchIconDocuments(database, { keyword: 'camera', limit: 20 }),
       replaceIconSearchDocuments(database, replacement, {
         indexVersion: 'index-v2',
         iconPackageVersion: 'icons-v1',

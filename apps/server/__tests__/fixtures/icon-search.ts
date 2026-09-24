@@ -4,8 +4,21 @@ import type { IconSearchDocument } from '../../src/modules/icons/search/document
 import {
   lockIconSearchWrites,
   type IconSearchStateInput,
-} from '../../src/modules/icons/search/index-state'
-import { insertDocumentBatch } from '../../src/modules/icons/search/projection-repository'
+} from '../../src/modules/icons/search/indexing/state'
+import { insertDocumentBatch } from '../../src/modules/icons/search/indexing/sync'
+import {
+  iterateIconSearchArtifacts,
+  readIconSearchManifest,
+} from '../../src/modules/icons/search/artifacts/reader'
+import type { IconSearchArtifactDocument } from '../../src/modules/icons/search/artifacts/schema'
+
+export async function readIconSearchArtifacts(directory: string) {
+  const manifest = await readIconSearchManifest(directory)
+  const documents: IconSearchArtifactDocument[] = []
+  for await (const document of iterateIconSearchArtifacts(directory, manifest))
+    documents.push(document)
+  return { manifest, documents }
+}
 
 export async function replaceIconSearchDocuments(
   database: Db,

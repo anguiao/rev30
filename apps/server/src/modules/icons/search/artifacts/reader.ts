@@ -3,16 +3,27 @@ import { createGunzip } from 'node:zlib'
 import { createReadStream } from 'node:fs'
 import { Transform } from 'node:stream'
 import { readFile } from 'node:fs/promises'
-import { dirname, isAbsolute, join, normalize } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { ICON_SEARCH_RULES_VERSION } from '../version'
+import { isAbsolute, join, normalize } from 'node:path'
+import { ICON_SEARCH_RULES_VERSION } from '../rules'
 import {
   runtimeManifestSchema,
+  artifactDocumentSchema,
   deriveIconSearchIndexVersion,
-  assertDocument,
   type IconSearchRuntimeManifest,
-  type BuiltinIconSearchDocument,
+  type IconSearchArtifactDocument,
 } from './schema'
+
+export const defaultIconSearchArtifactDirectory = join(process.cwd(), 'dist/icon-search')
+
+function parseDocument(line: string): IconSearchArtifactDocument {
+  const value: unknown = JSON.parse(line)
+  const result = artifactDocumentSchema.safeParse(value)
+  if (!result.success) throw new Error('Invalid icon search document')
+  if (result.data.id !== `${result.data.prefix}:${result.data.name}`) {
+    throw new Error(`Icon search document identity mismatch: ${result.data.id}`)
+  }
+  return result.data
+}
 
 export async function readIconSearchManifest(
   directory: string,
@@ -44,19 +55,10 @@ export async function readIconSearchManifest(
   return manifest
 }
 
-export function getDefaultIconSearchArtifactDirectory(): string {
-  const moduleDirectory = dirname(fileURLToPath(import.meta.url))
-  return import.meta.url.endsWith('.ts')
-    ? join(moduleDirectory, '../../../../../generated/icon-search')
-    : join(moduleDirectory, 'icon-search')
-}
-
 export async function* iterateIconSearchArtifacts(
   directory: string,
-  suppliedManifest?: IconSearchRuntimeManifest,
-): AsyncGenerator<BuiltinIconSearchDocument> {
-  const manifest = suppliedManifest ?? (await readIconSearchManifest(directory))
-  let total = 0
+  manifest: IconSearchRuntimeManifest,
+): AsyncGenerator<IconSearchArtifactDocument> {
   const contentHash = createHash('sha256')
   for (const file of manifest.files) {
     const compressedHash = createHash('sha256')
@@ -83,38 +85,20 @@ export async function* iterateIconSearchArtifacts(
       buffered = lines.pop()!
       for (const line of lines) {
         if (!line) continue
-        const document: unknown = JSON.parse(line)
-        assertDocument(document)
         count++
-        yield document
+        yield parseDocument(line)
       }
     }
     if (buffered) {
-      const document: unknown = JSON.parse(buffered)
-      assertDocument(document)
       count++
-      yield document
+      yield parseDocument(buffered)
     }
     if (compressedHash.digest('hex') !== file.checksum)
       throw new Error(`Icon search artifact checksum mismatch: ${file.path}`)
     if (bytes !== file.bytes) throw new Error(`Icon search artifact size mismatch: ${file.path}`)
     if (count !== file.documents)
       throw new Error(`Icon search artifact count mismatch: ${file.path}`)
-    total += count
   }
-  if (total !== manifest.counts.documents)
-    throw new Error('Icon search artifact total count mismatch')
   if (contentHash.digest('hex') !== manifest.contentFingerprint)
     throw new Error('Icon search artifact content fingerprint mismatch')
-}
-
-export async function readIconSearchArtifacts(directory: string): Promise<{
-  manifest: IconSearchRuntimeManifest
-  documents: BuiltinIconSearchDocument[]
-}> {
-  const manifest = await readIconSearchManifest(directory)
-  const documents: BuiltinIconSearchDocument[] = []
-  for await (const document of iterateIconSearchArtifacts(directory, manifest))
-    documents.push(document)
-  return { manifest, documents }
 }

@@ -28,7 +28,7 @@ type BrowseCursorPosition = z.infer<typeof browsePositionSchema>
 const searchPositionSchema = z
   .object({
     level: z.number().int().min(0).max(2),
-    primaryMatches: z.number().int().nonnegative(),
+    primaryMatches: z.int32().nonnegative(),
     rank: z
       .string()
       .regex(/^(?:0|[1-9]\d*)(?:\.\d+)?(?:e[+-]?\d+)?$/i)

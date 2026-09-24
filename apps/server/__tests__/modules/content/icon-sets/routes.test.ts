@@ -15,6 +15,7 @@ import { createSystemAccessFixture } from '../../../helpers/auth'
 import { dbTest } from '../../../fixtures/database'
 import { replaceIconSearchDocuments } from '../../../fixtures/icon-search'
 import { customIconSetIcons, iconSearchDocuments } from '../../../../src/db/schema'
+import { formatIconSearchCursor } from '../../../../src/modules/icons/cursor'
 
 function createSvg(size: number, body: string) {
   return `<svg viewBox="0 0 ${size} ${size}">${body}</svg>`
@@ -201,6 +202,43 @@ describe('icon set routes', () => {
           })
         }
       }
+    },
+  )
+
+  dbTest.for(['builtin', 'custom'] as const)(
+    'rejects out-of-range primary match counts in %s search cursors',
+    async (source, { db }) => {
+      const authenticated = await createSystemAccessFixture(db, {
+        accessCodes: ['content:icon-set:list'],
+        usernamePrefix: 'icon-set-cursor-range-user',
+      })
+      const indexVersion = 'cursor-range-test'
+      await replaceIconSearchDocuments(db, [], {
+        indexVersion,
+        iconPackageVersion: 'test',
+        searchDataVersion: 'test',
+        rulesVersion: 'test',
+      })
+      const cursor = formatIconSearchCursor(
+        { source, query: 'camera', dataVersion: indexVersion },
+        {
+          level: 0,
+          primaryMatches: 2_147_483_648,
+          rank: '0',
+          preference: 0,
+          id: 'test:camera',
+        },
+      )
+      const response = await createApp(db).request(
+        `/api/content/icon-sets/${source}/icons?keyword=camera&cursor=${cursor}`,
+        { headers: authenticated.authHeaders },
+      )
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toEqual({
+        code: 'INVALID_ICON_CURSOR',
+        message: '分页游标无效',
+      })
     },
   )
 

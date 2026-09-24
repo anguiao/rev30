@@ -33,13 +33,7 @@ const scheduledJobPathValidator = zValidator('param', scheduledJobPathSchema, (r
 
 const scheduledJobRunPathValidator = zValidator('param', scheduledJobRunPathSchema, (result, c) => {
   if (!result.success) {
-    const issue = result.error.issues[0]
-    return c.json(
-      {
-        message: issue?.path[0] === 'runId' ? '任务运行 ID 无效' : '任务键无效',
-      },
-      400,
-    )
+    return c.json({ message: '路径参数无效' }, 400)
   }
 })
 

@@ -179,13 +179,12 @@ describe('scheduled job HTTP routes', () => {
           })
         ).status,
       ).toBe(404)
-      expect(
-        (
-          await app.request(`/api/ops/scheduled-jobs/${taskKey}/runs/not-a-uuid`, {
-            headers: listOnly.authHeaders,
-          })
-        ).status,
-      ).toBe(400)
+      const invalidRunPath = await app.request(
+        `/api/ops/scheduled-jobs/${taskKey}/runs/not-a-uuid`,
+        { headers: listOnly.authHeaders },
+      )
+      expect(invalidRunPath.status).toBe(400)
+      expect(await invalidRunPath.json()).toEqual({ message: '路径参数无效' })
 
       const invalidPlan = await app.request(`/api/ops/scheduled-jobs/${taskKey}`, {
         method: 'PUT',

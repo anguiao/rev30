@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useMutation, useQueryCache } from '@pinia/colada'
 import { isEqual } from 'lodash-es'
+import { z } from 'zod'
 import {
   NAlert,
   NButton,
@@ -16,7 +17,7 @@ import {
   type UploadOnChange,
 } from 'naive-ui'
 import {
-  customIconKeywordsSchema,
+  customIconUploadMetadataItemSchema,
   type CustomIconDuplicateStrategy,
   type CustomIconUploadMetadata,
   type CustomIconUploadResult,
@@ -107,14 +108,15 @@ function validateKeywords(items: UploadEntry[]) {
   for (const item of items) {
     if (item.keywords === undefined) continue
 
-    const result = customIconKeywordsSchema.safeParse(item.keywords)
+    const result = customIconUploadMetadataItemSchema.safeParse({ keywords: item.keywords })
     if (!result.success) {
-      item.keywordError = result.error.issues[0]!.message
+      const { fieldErrors } = z.flattenError(result.error)
+      item.keywordError = fieldErrors.keywords![0]!
       valid = false
       continue
     }
 
-    item.keywords = result.data
+    item.keywords = result.data.keywords
     item.keywordError = null
   }
 

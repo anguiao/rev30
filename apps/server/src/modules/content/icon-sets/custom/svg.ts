@@ -1,6 +1,7 @@
 import { customIconNameInputSchema } from '@rev30/contracts'
 import { cleanupSVG, isEmptyColor, parseColors, runSVGO, SVG } from '@iconify/tools'
 import { basename } from 'node:path/posix'
+import { z } from 'zod'
 import { CustomSvgInvalidError } from './errors'
 
 const customIconSvgoPlugins = [
@@ -39,7 +40,8 @@ export function normalizeSvgIconName(filename: string) {
   const result = customIconNameInputSchema.safeParse(name)
 
   if (!result.success) {
-    throw new CustomSvgInvalidError(result.error.issues[0]!.message)
+    const { formErrors } = z.flattenError(result.error)
+    throw new CustomSvgInvalidError(formErrors[0]!)
   }
 
   return result.data

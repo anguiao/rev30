@@ -51,12 +51,18 @@ function renderMenuIcon(icon: string) {
     })
 }
 
-function renderInternalLabel(path: string, name: string) {
+function renderInternalLabel(
+  path: string,
+  openTarget: ResourceTreeNode['openTarget'],
+  name: string,
+) {
   return () =>
     h(
       RouterLink,
       {
         to: path,
+        target: openTarget === 'blank' ? '_blank' : undefined,
+        rel: openTarget === 'blank' ? 'noopener noreferrer' : undefined,
       },
       {
         default: () => name,
@@ -91,7 +97,7 @@ function createMenuOption(menu: ResourceTreeNode): MenuOption {
   }
 
   if (menu.path !== null) {
-    option.label = renderInternalLabel(menu.path, menu.name)
+    option.label = renderInternalLabel(menu.path, menu.openTarget, menu.name)
   } else if (menu.externalUrl !== null) {
     option.label = renderExternalLabel(menu.externalUrl, menu.openTarget, menu.name)
   } else {

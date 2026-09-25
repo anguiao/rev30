@@ -205,6 +205,31 @@ describe('admin layout', () => {
     logoutMock.mockReset()
   })
 
+  it.each(['self', 'blank'] as const)(
+    'honors the %s target for internal menus',
+    async (openTarget) => {
+      const authSession = createMenuSession()
+      const usersMenu = authSession.menus[0]!.children.find((menu) => menu.id === usersMenuId)!
+      usersMenu.openTarget = openTarget
+      const { router, wrapper } = await mountLayout({
+        initialPath: '/system/roles',
+        authSession,
+      })
+
+      const link = wrapper.get('a[href="/system/users"]')
+      expect(link.attributes('target')).toBe(openTarget === 'blank' ? '_blank' : undefined)
+      expect(link.attributes('rel')).toBe(
+        openTarget === 'blank' ? 'noopener noreferrer' : undefined,
+      )
+      link.element.addEventListener('click', (event) => event.preventDefault())
+      await link.trigger('click')
+      await flushPromises()
+      expect(router.currentRoute.value.path).toBe(
+        openTarget === 'blank' ? '/system/roles' : '/system/users',
+      )
+    },
+  )
+
   it('renders navigation, branding, user summary, and content slot', async () => {
     const { wrapper } = await mountLayout()
 

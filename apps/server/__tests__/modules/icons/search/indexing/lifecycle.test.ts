@@ -111,7 +111,7 @@ describe('icon search lifecycle', () => {
     await startIconSearchIndexPreparation(db, logger)
     expect(assertIconSearchAvailable).toThrow(IconSearchUnavailableError)
     expect(logger.error).toHaveBeenCalledWith(
-      { errorMessage: 'Icon search artifacts do not match the installed icon package' },
+      { err: new Error('Icon search artifacts do not match the installed icon package') },
       'icon search index preparation failed',
     )
   })
@@ -573,7 +573,11 @@ describe('icon search lifecycle', () => {
 
     expect(assertIconSearchAvailable).not.toThrow()
     expect(logger.error).toHaveBeenCalledWith(
-      { errorMessage: expect.stringContaining('icon_search_documents_staging') },
+      {
+        err: expect.objectContaining({
+          message: expect.stringContaining('icon_search_documents_staging'),
+        }),
+      },
       'icon search index cleanup failed',
     )
     await client.close()

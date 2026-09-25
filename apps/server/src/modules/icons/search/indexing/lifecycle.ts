@@ -73,12 +73,9 @@ export function startIconSearchIndexPreparation(database: Db, logger: Pick<Logge
       }
     },
     onCleanupError: (error) => {
-      logger.error({ errorMessage: error.message }, 'icon search index cleanup failed')
+      logger.error({ err: error }, 'icon search index cleanup failed')
     },
   }).catch((error: unknown) => {
-    logger.error(
-      { errorMessage: error instanceof Error ? error.message : String(error) },
-      'icon search index preparation failed',
-    )
+    logger.error({ err: error }, 'icon search index preparation failed')
   })
 }

@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { assert, describe, expect, it } from 'vitest'
+import { DrizzleQueryError } from 'drizzle-orm/errors'
 import { createLogger } from '../../src/runtime/logger'
+import { authPasswordCredentials } from '../../src/db/schema'
+import { dbTest } from '../fixtures/database'
 
 type LogRecord = Record<string, unknown>
 
@@ -44,6 +47,7 @@ describe('runtime logger redaction', () => {
       newPassword: 'new-password-value',
       password: 'password-value',
       passwordHash: 'password-hash-value',
+      temporaryPassword: 'temporary-password-value',
       refreshSecret: 'refresh-secret-value',
       refreshToken: 'refresh-token-value',
       refreshTokenHash: 'refresh-token-hash-value',
@@ -94,5 +98,56 @@ describe('runtime logger redaction', () => {
     expect(record.nested).toEqual(redactedValues)
     expect(record.req).toEqual({ headers: redactedHeaders })
     expect(record.res).toEqual({ headers: redactedHeaders })
+  })
+
+  it('preserves diagnostic details for non-database errors', () => {
+    for (const error of [
+      new Error('Operation failed'),
+      ...['EPERM', 'EPIPE', 'EBUSY', 'EROFS', 'ELOOP'].map((code) =>
+        Object.assign(new Error('System operation failed'), { code }),
+      ),
+    ]) {
+      const memory = createMemoryLogger()
+      memory.logger.error({ err: error, requestId: 'request-1' }, 'request failed')
+
+      expect(memory.record()).toMatchObject({
+        requestId: 'request-1',
+        err: { type: 'Error', message: error.message, stack: error.stack },
+      })
+    }
+  })
+
+  dbTest('omits SQL parameters from real database errors and nested causes', async ({ db }) => {
+    const secret = 'synthetic-sensitive-password-hash'
+    let queryError: unknown
+    try {
+      await db.transaction(async (tx) => {
+        await tx.insert(authPasswordCredentials).values({
+          userId: '00000000-0000-4000-8000-000000000001',
+          passwordHash: secret,
+        })
+      })
+    } catch (error) {
+      queryError = error
+    }
+    assert.instanceOf(queryError, DrizzleQueryError)
+
+    for (const error of [
+      queryError,
+      queryError.cause,
+      new Error('Operation failed', { cause: queryError }),
+    ]) {
+      const memory = createMemoryLogger()
+      memory.logger.error({ err: error, requestId: 'request-1' }, 'request failed')
+      const record = memory.record()
+      expect(JSON.stringify(record)).not.toContain(secret)
+      expect(record).toMatchObject({
+        requestId: 'request-1',
+        err: { type: 'DatabaseError', message: 'Database operation failed', code: '23503' },
+      })
+      expect(record.err).not.toHaveProperty('params')
+      expect(record.err).not.toHaveProperty('stack')
+      expect(record.err).not.toHaveProperty('cause')
+    }
   })
 })

@@ -209,6 +209,25 @@ describe('user schemas', () => {
     })
   })
 
+  it.each(['n', '😀'])(
+    'limits nicknames to 64 characters on create and update (%s)',
+    (character) => {
+      const nickname = character.repeat(64)
+
+      expect(userCreateSchema.parse({ username: 'ada', nickname: ` ${nickname} ` })).toMatchObject({
+        nickname,
+      })
+      expect(userUpdateSchema.parse({ nickname })).toEqual({ nickname })
+
+      for (const schema of [userCreateSchema, userUpdateSchema]) {
+        expectZodIssue(schema.safeParse({ username: 'ada', nickname: `${nickname}${character}` }), {
+          message: '昵称不能超过 64 个字符',
+          path: ['nickname'],
+        })
+      }
+    },
+  )
+
   it('accepts disabled status but rejects unknown status values', () => {
     expect(
       userCreateSchema.parse({

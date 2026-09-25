@@ -31,7 +31,7 @@ export const userUniqueFieldSchema = z.enum(userUniqueFields)
 
 const userIdSchema = uuidString('用户 ID 无效')
 export const userNameSchema = usernameInputSchema
-export const userNicknameSchema = nonBlankString('请输入昵称')
+export const userNicknameSchema = nonBlankString('请输入昵称').max(64, '昵称不能超过 64 个字符')
 export const userAvatarIdSchema = uuidString('头像 ID 无效')
 export const contactInputSchema = optionalNullableString()
 

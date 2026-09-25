@@ -152,6 +152,16 @@ describe('auth schemas', () => {
     ).toThrow()
   })
 
+  it('enforces the shared nickname limit on profile updates', () => {
+    expect(authProfileUpdateSchema.parse({ nickname: 'n'.repeat(64) })).toEqual({
+      nickname: 'n'.repeat(64),
+    })
+    expectZodIssue(authProfileUpdateSchema.safeParse({ nickname: 'n'.repeat(65) }), {
+      message: '昵称不能超过 64 个字符',
+      path: ['nickname'],
+    })
+  })
+
   it('parses password update requests', () => {
     expect(
       authPasswordUpdateSchema.parse({

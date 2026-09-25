@@ -3,6 +3,8 @@ import { readPositiveIntegerEnv } from '../../runtime/env'
 const defaultAccessExpiresInSeconds = 900
 const defaultRefreshExpiresInSeconds = 604800
 const defaultAttachmentExpiresInSeconds = 86400
+// Hono rejects cookies with a Max-Age greater than 400 days.
+const maximumCookieMaxAgeInSeconds = 400 * 24 * 60 * 60
 const developmentAccessSecret = 'rev30-development-access-secret'
 const developmentRefreshSecret = 'rev30-development-refresh-secret'
 const developmentAttachmentSecret = 'rev30-development-attachment-secret'
@@ -52,6 +54,10 @@ export function readAuthConfig(env = process.env): AuthConfig {
     'JWT_ATTACHMENT_EXPIRES_IN_SECONDS',
     defaultAttachmentExpiresInSeconds,
   )
+
+  if (refreshExpiresInSeconds > maximumCookieMaxAgeInSeconds) {
+    throw new Error('JWT_REFRESH_EXPIRES_IN_SECONDS 不能超过 400 天（Cookie 有效期限制）')
+  }
 
   if (accessExpiresInSeconds >= refreshExpiresInSeconds) {
     throw new Error('访问令牌有效期必须短于刷新令牌有效期')

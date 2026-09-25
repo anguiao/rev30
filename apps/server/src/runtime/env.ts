@@ -7,7 +7,7 @@ export function readPositiveIntegerEnv(env: NodeJS.ProcessEnv, name: string, fal
 
   const value = Number(rawValue)
 
-  if (!Number.isInteger(value) || value <= 0) {
+  if (!Number.isSafeInteger(value) || value <= 0) {
     throw new Error(`${name} 必须是正整数`)
   }
 

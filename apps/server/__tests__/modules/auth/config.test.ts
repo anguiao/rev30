@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { readAuthConfig } from '../../../src/modules/auth/config'
 
+const maximumCookieLifetimeSeconds = 400 * 24 * 60 * 60
+
 describe('auth config', () => {
   it('uses development defaults for local and test environments', () => {
     expect(readAuthConfig({ NODE_ENV: 'test' })).toMatchObject({
@@ -87,5 +89,35 @@ describe('auth config', () => {
         JWT_ACCESS_EXPIRES_IN_SECONDS: '1.5',
       }),
     ).toThrow('JWT_ACCESS_EXPIRES_IN_SECONDS 必须是正整数')
+  })
+
+  it('accepts token lifetimes at the cookie lifetime limit', () => {
+    expect(
+      readAuthConfig({
+        JWT_ACCESS_EXPIRES_IN_SECONDS: String(maximumCookieLifetimeSeconds - 1),
+        JWT_REFRESH_EXPIRES_IN_SECONDS: String(maximumCookieLifetimeSeconds),
+        JWT_ATTACHMENT_EXPIRES_IN_SECONDS: String(maximumCookieLifetimeSeconds),
+      }),
+    ).toMatchObject({
+      accessExpiresInSeconds: maximumCookieLifetimeSeconds - 1,
+      refreshExpiresInSeconds: maximumCookieLifetimeSeconds,
+      attachmentExpiresInSeconds: maximumCookieLifetimeSeconds,
+    })
+  })
+
+  it('rejects refresh token lifetimes exceeding the cookie lifetime limit', () => {
+    expect(() =>
+      readAuthConfig({
+        JWT_REFRESH_EXPIRES_IN_SECONDS: String(maximumCookieLifetimeSeconds + 1),
+      }),
+    ).toThrow('JWT_REFRESH_EXPIRES_IN_SECONDS 不能超过 400 天')
+  })
+
+  it.each([
+    'JWT_ACCESS_EXPIRES_IN_SECONDS',
+    'JWT_REFRESH_EXPIRES_IN_SECONDS',
+    'JWT_ATTACHMENT_EXPIRES_IN_SECONDS',
+  ])('rejects unsafe integer lifetimes for %s', (name) => {
+    expect(() => readAuthConfig({ [name]: '1e100' })).toThrow(`${name} 必须是正整数`)
   })
 })

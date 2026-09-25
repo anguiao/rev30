@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RichTextContentInvalidError, deriveRichTextContent } from '../../src/server'
 import { createAllRichTextServerPreset } from '../../src/server/presets/all'
+import type { RichTextJsonNode } from '../../src/core/schema'
 
 function createServerPreset() {
   return createAllRichTextServerPreset({
@@ -10,7 +11,44 @@ function createServerPreset() {
   })
 }
 
+function createNestedDocument(depth: number): RichTextJsonNode {
+  let node: RichTextJsonNode = {
+    type: 'paragraph',
+    content: [{ type: 'text', text: 'Nested content' }],
+  }
+
+  for (let level = 3; level < depth; level += 1) {
+    node = { type: 'blockquote', content: [node] }
+  }
+
+  return { type: 'doc', content: [node] }
+}
+
 describe('deriveRichTextContent', () => {
+  it('derives content at the document depth limit', () => {
+    expect(deriveRichTextContent(createNestedDocument(100), createServerPreset()).text).toBe(
+      'Nested content',
+    )
+  })
+
+  it.each([101, 2000])('rejects document depth %i before recursive rendering', (depth) => {
+    expect(() => deriveRichTextContent(createNestedDocument(depth), createServerPreset())).toThrow(
+      RichTextContentInvalidError,
+    )
+  })
+
+  it('rejects documents exceeding the node budget', () => {
+    expect(() =>
+      deriveRichTextContent(
+        {
+          type: 'doc',
+          content: Array.from({ length: 100_000 }, () => ({ type: 'paragraph' })),
+        },
+        createServerPreset(),
+      ),
+    ).toThrow(RichTextContentInvalidError)
+  })
+
   it('renders the validated ProseMirror document with the static renderer', async () => {
     vi.resetModules()
     const renderToHTMLString = vi.fn((_options: unknown) => '<p>维护通知</p>')

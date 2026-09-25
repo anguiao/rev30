@@ -4,19 +4,25 @@ import { watchEffect, type Ref } from 'vue'
 type UseDrawerUnsavedChangesGuardOptions = {
   show: Ref<boolean>
   isDirty: Readonly<Ref<boolean>>
+  isSaving: Readonly<Ref<boolean>>
 }
 
 export function useDrawerUnsavedChangesGuard({
   show,
   isDirty,
+  isSaving,
 }: UseDrawerUnsavedChangesGuardOptions) {
   const dialog = useDialog()
 
   function closeDrawer() {
+    if (isSaving.value) return
+
     show.value = false
   }
 
   function requestClose() {
+    if (isSaving.value) return
+
     if (!isDirty.value) {
       closeDrawer()
       return
@@ -52,7 +58,7 @@ export function useDrawerUnsavedChangesGuard({
   }
 
   watchEffect((onCleanup) => {
-    if (!show.value || !isDirty.value) {
+    if (!show.value || (!isDirty.value && !isSaving.value)) {
       return
     }
 

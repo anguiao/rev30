@@ -186,6 +186,7 @@ const isDirty = computed(
 const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
   show,
   isDirty,
+  isSaving: isUploading,
 })
 </script>
 
@@ -198,7 +199,7 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
     :close-on-esc="false"
     @update:show="handleDrawerShowUpdate"
   >
-    <NDrawerContent title="上传 SVG 图标" closable>
+    <NDrawerContent title="上传 SVG 图标" :closable="!isUploading">
       <div class="flex flex-col gap-4">
         <NAlert v-if="uploadError" type="error" :show-icon="false">
           {{ getErrorMessage(uploadError, '上传图标失败') }}
@@ -287,6 +288,7 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
         <div class="flex justify-end gap-3">
           <NButton
             v-if="isUploading || pendingEntries.length > 0 || entries.length === 0"
+            :disabled="isUploading"
             @click="requestClose"
           >
             关闭

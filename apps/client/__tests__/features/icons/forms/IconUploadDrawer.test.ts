@@ -1,7 +1,7 @@
 import { flushPromises, mount, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { defineComponent, h, type PropType } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { NDialogProvider, NDrawerContent, NRadioGroup, NUpload } from 'naive-ui'
+import { NDialogProvider, NDrawer, NDrawerContent, NRadioGroup, NUpload } from 'naive-ui'
 import type {
   CustomIconItem,
   CustomIconUploadResponse,
@@ -175,44 +175,34 @@ describe('IconUploadDrawer', () => {
     expect(document.body.textContent).not.toContain('放弃未保存的更改？')
   })
 
-  it.each(['header', 'footer'] as const)(
-    'confirms closing an ongoing upload from the %s without cancelling it',
-    async (control) => {
-      const pending = createDeferred<CustomIconUploadResponse>()
-      uploadCustomIconsMock.mockReturnValueOnce(pending.promise)
-      const wrapper = mountDrawer()
-      await selectFiles(wrapper, svgFile())
-      await submitUpload(wrapper)
-      const closeButton =
-        control === 'header'
-          ? wrapper.getComponent(NDrawerContent).get('[aria-label="close"]')
-          : button(wrapper, '关闭')
+  it('keeps an ongoing upload open until results and cache refresh are delivered', async () => {
+    const pending = createDeferred<CustomIconUploadResponse>()
+    uploadCustomIconsMock.mockReturnValueOnce(pending.promise)
+    const wrapper = mountDrawer()
+    await selectFiles(wrapper, svgFile())
+    await submitUpload(wrapper)
 
-      await closeButton.trigger('click')
-      await flushPromises()
-      expect(document.body.textContent).toContain('放弃未保存的更改？')
-      expect(wrapper.emitted('update:show')).toBeUndefined()
-      getDialogButton('unsaved-changes-discard-cancel').click()
-      await flushPromises()
-      expect(rows(wrapper)[0]!.text()).toContain('上传中')
-      expect(wrapper.emitted('update:show')).toBeUndefined()
+    expect(wrapper.find('[aria-label="close"]').exists()).toBe(false)
+    expect(button(wrapper, '关闭').element.disabled).toBe(true)
+    await clickButton(wrapper, '关闭')
+    wrapper.getComponent(NDrawer).vm.$emit('update:show', false)
+    await flushPromises()
+    expect(document.body.textContent).not.toContain('放弃未保存的更改？')
+    expect(wrapper.emitted('update:show')).toBeUndefined()
+    expect(rows(wrapper)[0]!.text()).toContain('上传中')
+    expect(dispatchBeforeUnload().defaultPrevented).toBe(true)
 
-      await closeButton.trigger('click')
-      await flushPromises()
-      getDialogButton('unsaved-changes-discard-confirm').click()
-      await flushPromises()
-      expect(wrapper.emitted('update:show')).toEqual([[false]])
-      await wrapper.setProps({ show: false })
-      expect(dispatchBeforeUnload().defaultPrevented).toBe(false)
+    pending.resolve(result({ status: 'created', icon: uploadedIcon }))
+    await flushPromises()
+    expect(refreshCustomIconCachesMock).toHaveBeenCalledOnce()
+    expect(uploadCustomIconsMock).toHaveBeenCalledOnce()
+    expect(rows(wrapper)[0]!.text()).toContain('已新增')
+    expect(wrapper.emitted('update:show')).toBeUndefined()
+    expect(dispatchBeforeUnload().defaultPrevented).toBe(false)
 
-      pending.resolve(result({ status: 'created', icon: uploadedIcon }))
-      await flushPromises()
-      expect(refreshCustomIconCachesMock).toHaveBeenCalledOnce()
-      expect(uploadCustomIconsMock).toHaveBeenCalledOnce()
-      await wrapper.setProps({ show: true })
-      expect(rows(wrapper)).toHaveLength(0)
-    },
-  )
+    await clickButton(wrapper, '完成')
+    expect(wrapper.emitted('update:show')).toEqual([[false]])
+  })
 
   it('keeps successful files in the same list and only uploads newly added files', async () => {
     uploadCustomIconsMock.mockResolvedValue(result({ status: 'created', icon: uploadedIcon }))
@@ -344,7 +334,7 @@ describe('IconUploadDrawer', () => {
     ['success', 'reopen'],
     ['error', 'reopen'],
   ] as const)(
-    'ignores stale %s after a %s returns to the same set',
+    'ignores stale %s after a controlled %s returns to the same set',
     async (outcome, transition) => {
       const previous = createDeferred<CustomIconUploadResponse>()
       const current = createDeferred<CustomIconUploadResponse>()
@@ -355,10 +345,6 @@ describe('IconUploadDrawer', () => {
       await selectFiles(wrapper, svgFile('old.svg'))
       await submitUpload(wrapper)
       if (transition === 'reopen') {
-        await clickButton(wrapper, '关闭')
-        getDialogButton('unsaved-changes-discard-confirm').click()
-        await flushPromises()
-        expect(wrapper.emitted('update:show')).toEqual([[false]])
         await wrapper.setProps({ show: false })
         await wrapper.setProps({ show: true })
       } else {
@@ -376,9 +362,7 @@ describe('IconUploadDrawer', () => {
       expect(rows(wrapper)[0]!.text()).toContain('current.svg')
       expect(rows(wrapper)[0]!.text()).toContain('上传中')
       expect(wrapper.text()).not.toContain('旧请求失败')
-      expect(wrapper.emitted('update:show')).toEqual(
-        transition === 'reopen' ? [[false]] : undefined,
-      )
+      expect(wrapper.emitted('update:show')).toBeUndefined()
       expect(refreshCustomIconCachesMock).toHaveBeenCalledOnce()
       current.resolve(result({ status: 'created', icon: uploadedIcon }))
       await flushPromises()
@@ -396,7 +380,7 @@ describe('IconUploadDrawer', () => {
 
     expect(wrapper.getComponent(NUpload).props('disabled')).toBe(true)
     expect(wrapper.getComponent(NRadioGroup).props('disabled')).toBe(true)
-    expect(wrapper.getComponent(NDrawerContent).props('closable')).toBe(true)
+    expect(wrapper.getComponent(NDrawerContent).props('closable')).toBe(false)
     expect(wrapper.findComponent(IconKeywordsInput).exists()).toBe(false)
     expect(
       rows(wrapper)[0]!
@@ -405,7 +389,7 @@ describe('IconUploadDrawer', () => {
     ).toBe(true)
     expect(button(wrapper, '继续添加').element.disabled).toBe(true)
     expect(button(wrapper, '上传中…').element.disabled).toBe(true)
-    expect(button(wrapper, '关闭').element.disabled).toBe(false)
+    expect(button(wrapper, '关闭').element.disabled).toBe(true)
     await clickButton(wrapper, '上传中…')
     expect(uploadCustomIconsMock).toHaveBeenCalledOnce()
 
@@ -497,8 +481,8 @@ describe('IconUploadDrawer', () => {
     expect(dispatchBeforeUnload().defaultPrevented).toBe(false)
 
     await clickButton(rows(wrapper)[0]!, '替换此项')
-    expect(wrapper.getComponent(NDrawerContent).props('closable')).toBe(true)
-    expect(button(wrapper, '关闭').element.disabled).toBe(false)
+    expect(wrapper.getComponent(NDrawerContent).props('closable')).toBe(false)
+    expect(button(wrapper, '关闭').element.disabled).toBe(true)
     expect(dispatchBeforeUnload().defaultPrevented).toBe(true)
     replacing.resolve(result({ status: 'replaced', icon: uploadedIcon }))
     await flushPromises()

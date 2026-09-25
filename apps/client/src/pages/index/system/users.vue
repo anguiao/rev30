@@ -159,7 +159,6 @@ async function invalidateUserListQueries() {
 }
 async function handleUserSaved(result?: UserCreateResponse) {
   message.success('保存系统用户成功')
-  await invalidateUserListQueries()
 
   if (result !== undefined) {
     showTemporaryPasswordDialog(
@@ -167,6 +166,8 @@ async function handleUserSaved(result?: UserCreateResponse) {
       result.temporaryPassword,
     )
   }
+
+  await invalidateUserListQueries()
 }
 
 function confirmDeleteUser(user: UserListItem) {

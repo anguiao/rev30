@@ -99,6 +99,7 @@ const isFormDirty = form.useSelector((state) => !state.isDefaultValue)
 const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
   show,
   isDirty: isFormDirty,
+  isSaving,
 })
 </script>
 
@@ -111,7 +112,7 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
     :close-on-esc="false"
     @update:show="handleDrawerShowUpdate"
   >
-    <NDrawerContent title="编辑图标" closable>
+    <NDrawerContent title="编辑图标" :closable="!isSaving">
       <div class="flex flex-col gap-4">
         <NAlert v-if="formError" type="error" :show-icon="false">
           {{ formError }}
@@ -152,7 +153,7 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <NButton @click="requestClose">取消</NButton>
+          <NButton :disabled="isSaving" @click="requestClose">取消</NButton>
           <NButton
             type="primary"
             :disabled="icon === null || isSaving"

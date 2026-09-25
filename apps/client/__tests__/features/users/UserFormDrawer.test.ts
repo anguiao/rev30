@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
-import { NSelect, NTreeSelect } from 'naive-ui'
+import { NDrawer, NSelect, NTreeSelect } from 'naive-ui'
 import {
   DEPARTMENT_STATUS_DISABLED,
   DEPARTMENT_STATUS_ENABLED,
@@ -246,6 +246,29 @@ describe('UserFormDrawer', () => {
       departmentIds: [],
       roleIds: [],
     })
+    expect(wrapper.emitted('saved')).toEqual([[userCreateResponse]])
+    expect(wrapper.emitted('update:show')).toEqual([[false]])
+  })
+
+  it('prevents dismissing a pending create and delivers the temporary password on success', async () => {
+    const pendingCreate = createDeferred<UserCreateResponse>()
+    createUserMock.mockReturnValueOnce(pendingCreate.promise)
+    const wrapper = mountDrawer({ userId: null })
+    await flushPromises()
+    await wrapper.get('[data-test="user-form-username"] input').setValue('new-user')
+    await wrapper.get('[data-test="user-form-nickname"] input').setValue('New User')
+    await submitForm(wrapper)
+
+    const cancel = wrapper.findAll('button').find((button) => button.text() === '取消')!
+    expect(cancel.attributes('disabled')).toBeDefined()
+    expect(wrapper.find('button[aria-label="close"]').exists()).toBe(false)
+    await cancel.trigger('click')
+    wrapper.getComponent(NDrawer).vm.$emit('update:show', false)
+    await flushPromises()
+    expect(wrapper.emitted('update:show')).toBeUndefined()
+
+    pendingCreate.resolve(userCreateResponse)
+    await flushPromises()
     expect(wrapper.emitted('saved')).toEqual([[userCreateResponse]])
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })

@@ -1,4 +1,5 @@
 import { getDialogButton } from '../../helpers/dom'
+import { createDeferred } from '../../helpers/promise'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiRequestError } from '../../../src/utils/request'
@@ -284,8 +285,9 @@ describe('users page', () => {
     expect(authorizedWrapper.findAll('[data-test="users-reset-password"]')).toHaveLength(1)
   })
 
-  it('opens create drawer and refetches after saving with full permissions', async () => {
-    listUsersMock.mockResolvedValue(userListResponse)
+  it('shows the created user password before the list refresh finishes', async () => {
+    const pendingList = createDeferred<UserListResponse>()
+    listUsersMock.mockResolvedValueOnce(userListResponse).mockReturnValueOnce(pendingList.promise)
     const { wrapper } = await mountUsersPage([
       'system:user:create',
       'system:department:list',
@@ -306,6 +308,10 @@ describe('users page', () => {
     expect(listUsersMock).toHaveBeenCalledTimes(2)
     expect(listUsersMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
     expect(document.body.textContent).toContain('系统用户 New User 的临时密码只会显示一次。')
+    expect(getTemporaryPasswordInput()).toHaveProperty('value', 'TempPass123')
+
+    pendingList.resolve(userListResponse)
+    await flushPromises()
     expect(getTemporaryPasswordInput()).toHaveProperty('value', 'TempPass123')
   })
 

@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { NSpin } from 'naive-ui'
+import { NDrawer, NSpin } from 'naive-ui'
 import type { CustomIconSet } from '@rev30/contracts'
 import {
   createCustomIconSet,
@@ -77,7 +77,7 @@ describe('IconSetFormDrawer', () => {
     refreshCustomIconCachesMock.mockClear()
   })
 
-  it('locks fields while creating an icon set with normalized form values', async () => {
+  it('locks editing and closing until the icon set is saved with normalized form values', async () => {
     const saving = createDeferred<CustomIconSet>()
     createCustomIconSetMock.mockReturnValueOnce(saving.promise)
 
@@ -104,8 +104,17 @@ describe('IconSetFormDrawer', () => {
       expect(field.attributes('disabled')).toBe('')
     }
 
+    expect(wrapper.find('[aria-label="close"]').exists()).toBe(false)
+    const cancel = wrapper.findAll('button').find((button) => button.text() === '取消')!
+    expect(cancel.element.disabled).toBe(true)
+    await cancel.trigger('click')
+    wrapper.getComponent(NDrawer).vm.$emit('update:show', false)
+    await flushPromises()
+    expect(wrapper.emitted('update:show')).toBeUndefined()
+
     saving.resolve(acmeIconSet)
     await flushPromises()
+    expect(refreshCustomIconCachesMock).toHaveBeenCalledOnce()
     expect(wrapper.emitted('saved')).toHaveLength(1)
     expect(wrapper.emitted('update:show')).toEqual([[false]])
   })

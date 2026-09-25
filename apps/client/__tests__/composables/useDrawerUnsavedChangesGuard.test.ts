@@ -12,6 +12,7 @@ const GuardHarness = defineComponent({
       type: Boolean,
       required: true,
     },
+    isSaving: { type: Boolean, default: false },
     isDirty: {
       type: Boolean,
       required: true,
@@ -26,6 +27,7 @@ const GuardHarness = defineComponent({
     const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
       show,
       isDirty: toRef(props, 'isDirty'),
+      isSaving: toRef(props, 'isSaving'),
     })
 
     return () =>
@@ -65,6 +67,7 @@ const TestHost = defineComponent({
       type: Boolean,
       required: true,
     },
+    isSaving: { type: Boolean, default: false },
     isDirty: {
       type: Boolean,
       required: true,
@@ -78,13 +81,16 @@ const TestHost = defineComponent({
           h(GuardHarness, {
             show: props.show,
             isDirty: props.isDirty,
+            isSaving: props.isSaving,
             'onUpdate:show': (nextShow: boolean) => emit('update:show', nextShow),
           }),
       })
   },
 })
 
-function mountGuard(props = { show: true, isDirty: false }) {
+function mountGuard(
+  props: { show: boolean; isDirty: boolean; isSaving?: boolean } = { show: true, isDirty: false },
+) {
   return mount(TestHost, {
     props,
     attachTo: document.body,
@@ -147,6 +153,30 @@ describe('useDrawerUnsavedChangesGuard', () => {
     await flushPromises()
 
     expect(wrapper.emitted('update:show')).toEqual([[false]])
+  })
+
+  it('blocks dismissal and browser unloading while a clean form is saving', async () => {
+    const wrapper = mountGuard({ show: true, isDirty: false, isSaving: true })
+    await clickAction(wrapper, '[data-test="guard-request-close"]')
+    await clickAction(wrapper, '[data-test="guard-show-update-close"]')
+    expect(wrapper.emitted('update:show')).toBeUndefined()
+    expect(dispatchBeforeUnload().defaultPrevented).toBe(true)
+
+    await wrapper.setProps({ isSaving: false })
+    await clickAction(wrapper, '[data-test="guard-request-close"]')
+    expect(wrapper.emitted('update:show')).toEqual([[false]])
+    expect(dispatchBeforeUnload().defaultPrevented).toBe(false)
+  })
+
+  it('keeps the drawer open if saving starts after the discard dialog is opened', async () => {
+    const wrapper = mountGuard({ show: true, isDirty: true })
+    await clickAction(wrapper, '[data-test="guard-request-close"]')
+
+    await wrapper.setProps({ isSaving: true })
+    getDialogButton('unsaved-changes-discard-confirm').click()
+    await flushPromises()
+
+    expect(wrapper.emitted('update:show')).toBeUndefined()
   })
 
   it('guards beforeunload only while the drawer is open and dirty', async () => {

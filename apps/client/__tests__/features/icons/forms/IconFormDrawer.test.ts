@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import { NDrawer, NDrawerContent } from 'naive-ui'
 import type { CustomIconItem } from '@rev30/contracts'
 import IconFormDrawer from '../../../../src/features/icons/forms/IconFormDrawer.vue'
 import IconKeywordsInput from '../../../../src/features/icons/forms/IconKeywordsInput.vue'
@@ -26,7 +27,7 @@ const icon: CustomIconItem = {
 }
 
 describe('IconFormDrawer', () => {
-  it('locks the name and keyword inputs until saving finishes', async () => {
+  it('locks editing and closing until saving finishes', async () => {
     const pending = createDeferred<CustomIconItem>()
     vi.mocked(updateCustomIcon).mockReturnValueOnce(pending.promise)
     const { plugins } = createTestQueryHarness()
@@ -46,6 +47,14 @@ describe('IconFormDrawer', () => {
     expect(wrapper.get('input[placeholder="请输入图标名称"]').attributes('disabled')).toBe('')
     expect(wrapper.get('button[aria-label="添加关键词"]').attributes('disabled')).toBe('')
     expect(wrapper.get('[data-test="icon-keywords-clear"]').attributes('disabled')).toBe('')
+
+    expect(wrapper.getComponent(NDrawerContent).props('closable')).toBe(false)
+    const cancel = wrapper.findAll('button').find((button) => button.text() === '取消')!
+    expect(cancel.element.disabled).toBe(true)
+    await cancel.trigger('click')
+    wrapper.getComponent(NDrawer).vm.$emit('update:show', false)
+    await flushPromises()
+    expect(wrapper.emitted('update:show')).toBeUndefined()
 
     pending.resolve({ ...icon, name: 'new-name', icon: 'acme:new-name' })
     await flushPromises()

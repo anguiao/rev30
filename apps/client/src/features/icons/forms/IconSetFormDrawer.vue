@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useMutation, useQuery, useQueryCache } from '@pinia/colada'
 import { useForm } from '@tanstack/vue-form'
-import { NAlert, NButton, NDrawer, NDrawerContent, NForm, NFormItem, NInput } from 'naive-ui'
+import { NAlert, NButton, NDrawer, NDrawerContent, NForm, NFormItem, NInput, NSpin } from 'naive-ui'
 import {
   customIconSetCreateSchema,
   customIconSetFormSchema,
@@ -190,7 +190,13 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
           {{ formError }}
         </NAlert>
 
-        <NForm :disabled="isFormDisabled" @submit.prevent="handleSubmit">
+        <NSpin v-if="prefix !== null && isLoading && formValues === undefined" />
+
+        <NForm
+          v-if="prefix === null || formValues !== undefined"
+          :disabled="isFormDisabled"
+          @submit.prevent="handleSubmit"
+        >
           <form.Field name="prefix" v-slot="{ field, state }">
             <NFormItem label="前缀" v-bind="formItemValidationProps(state.meta)">
               <NInput

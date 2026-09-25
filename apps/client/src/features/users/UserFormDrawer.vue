@@ -9,6 +9,7 @@ import {
   NDrawer,
   NDrawerContent,
   NForm,
+  NSpin,
   NFormItem,
   NInput,
   NSelect,
@@ -253,7 +254,9 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
           {{ formError }}
         </NAlert>
 
-        <NForm @submit.prevent="handleSubmit">
+        <NSpin v-if="isLoading && formData === undefined" />
+
+        <NForm v-if="formData !== undefined" @submit.prevent="handleSubmit">
           <div class="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
             <div class="space-y-0">
               <form.Field name="username" v-slot="{ field, state }">

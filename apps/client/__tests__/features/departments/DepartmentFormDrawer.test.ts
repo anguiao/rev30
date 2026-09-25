@@ -234,10 +234,7 @@ describe('DepartmentFormDrawer', () => {
     expect(wrapper.text()).toContain('network')
     expect(wrapper.get('[data-test="department-form-submit"]').attributes('disabled')).toBeDefined()
 
-    await wrapper.get('[data-test="department-form-name"] input').setValue('异常部门')
-    await wrapper.get('[data-test="department-form-code"] input').setValue('blocked-dept')
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
+    expect(wrapper.find('form').exists()).toBe(false)
 
     expect(createDepartmentMock).not.toHaveBeenCalled()
     expect(updateDepartmentMock).not.toHaveBeenCalled()
@@ -564,8 +561,7 @@ describe('DepartmentFormDrawer', () => {
     })
     await flushPromises()
 
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
+    expect(wrapper.find('form').exists()).toBe(false)
 
     expect(updateDepartmentMock).not.toHaveBeenCalled()
 

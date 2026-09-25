@@ -300,13 +300,38 @@ describe('UserFormDrawer', () => {
     expect(wrapper.text()).toContain('network')
     expect(wrapper.get('[data-test="user-form-submit"]').attributes('disabled')).toBeDefined()
 
-    await wrapper.get('[data-test="user-form-username"] input').setValue('blocked-user')
-    await wrapper.get('[data-test="user-form-nickname"] input').setValue('Blocked User')
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
+    expect(wrapper.find('form').exists()).toBe(false)
 
     expect(createUserMock).not.toHaveBeenCalled()
     expect(updateUserMock).not.toHaveBeenCalled()
+  })
+
+  it('waits for initial user details before accepting edits and preserves untouched fields', async () => {
+    const pendingUser = createDeferred<User>()
+    getUserMock.mockResolvedValue(userResponse).mockReturnValueOnce(pendingUser.promise)
+    updateUserMock.mockResolvedValue(updatedUserResponse)
+
+    const wrapper = mountDrawer()
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="user-form-nickname"] input').exists()).toBe(false)
+    expect(wrapper.get('[data-test="user-form-submit"]').attributes('disabled')).toBeDefined()
+
+    pendingUser.resolve(userResponse)
+    await flushPromises()
+    await wrapper.get('[data-test="user-form-nickname"] input').setValue('Ada Lovelace')
+    await submitForm(wrapper)
+
+    expect(updateUserMock).toHaveBeenCalledWith(userId, {
+      username: userResponse.username,
+      nickname: 'Ada Lovelace',
+      avatarId: userResponse.avatarId,
+      email: userResponse.email,
+      phone: userResponse.phone,
+      status: userResponse.status,
+      departmentIds: [departmentId],
+      roleIds: [roleId],
+    })
   })
 
   it('loads user detail, departments and roles and submits updated fields', async () => {

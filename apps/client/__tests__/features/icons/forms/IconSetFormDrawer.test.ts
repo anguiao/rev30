@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { NSpin } from 'naive-ui'
 import type { CustomIconSet } from '@rev30/contracts'
 import {
   createCustomIconSet,
@@ -84,6 +85,7 @@ describe('IconSetFormDrawer', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('创建图标集')
+    expect(wrapper.findComponent(NSpin).exists()).toBe(false)
     expect(wrapper.get('[data-test="icon-set-form-prefix"] input').attributes('disabled')).toBe(
       undefined,
     )
@@ -249,6 +251,8 @@ describe('IconSetFormDrawer', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('图标集加载失败')
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.findComponent(NSpin).exists()).toBe(false)
     expect(wrapper.get('[data-test="icon-set-form-submit"]').attributes('disabled')).toBe('')
 
     await submitForm(wrapper)
@@ -271,21 +275,29 @@ describe('IconSetFormDrawer', () => {
     expect(wrapper.emitted('update:show')).toBeUndefined()
   })
 
-  it('locks editable fields while loading or saving an icon set', async () => {
+  it('waits for initial icon set data and locks fields while saving', async () => {
     const loading = createDeferred<CustomIconSet>()
     const saving = createDeferred<CustomIconSet>()
     getCustomIconSetMock.mockReturnValueOnce(loading.promise)
     updateCustomIconSetMock.mockReturnValueOnce(saving.promise)
     const wrapper = mountDrawer({ show: true, prefix: acmeIconSet.prefix })
     await flushPromises()
-    const name = wrapper.get('[data-test="icon-set-form-name"] input')
-    expect(name.attributes('disabled')).toBe('')
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.findComponent(NSpin).exists()).toBe(true)
+    expect(wrapper.get('[data-test="icon-set-form-submit"]').attributes('disabled')).toBe('')
 
     loading.resolve(acmeIconSet)
     await flushPromises()
+    expect(wrapper.findComponent(NSpin).exists()).toBe(false)
+    const name = wrapper.get('[data-test="icon-set-form-name"] input')
     expect(name.attributes('disabled')).toBeUndefined()
+    expect(name.element).toHaveProperty('value', acmeIconSet.name)
     await name.setValue('New Name')
     await submitForm(wrapper)
+    expect(updateCustomIconSetMock).toHaveBeenCalledWith(acmeIconSet.prefix, {
+      name: 'New Name',
+      description: acmeIconSet.description,
+    })
     expect(name.attributes('disabled')).toBe('')
     expect(
       wrapper.get('[data-test="icon-set-form-description"] textarea').attributes('disabled'),

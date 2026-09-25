@@ -8,6 +8,7 @@ import {
   NDrawer,
   NDrawerContent,
   NForm,
+  NSpin,
   NFormItem,
   NInput,
   NInputNumber,
@@ -279,7 +280,9 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
           {{ formError }}
         </NAlert>
 
-        <NForm @submit.prevent="handleSubmit">
+        <NSpin v-if="isLoading && formData === undefined" />
+
+        <NForm v-if="formData !== undefined" @submit.prevent="handleSubmit">
           <form.Field name="code" v-slot="{ field, state }">
             <NFormItem label="字典编码" v-bind="formItemValidationProps(state.meta)">
               <NInput

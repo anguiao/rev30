@@ -273,10 +273,7 @@ describe('RoleFormDrawer', () => {
     expect(wrapper.text()).toContain('network')
     expect(wrapper.get('[data-test="role-form-submit"]').attributes('disabled')).toBeDefined()
 
-    await wrapper.get('[data-test="role-form-name"] input').setValue('异常角色')
-    await wrapper.get('[data-test="role-form-code"] input').setValue('blocked-role')
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
+    expect(wrapper.find('form').exists()).toBe(false)
 
     expect(createRoleMock).not.toHaveBeenCalled()
     expect(updateRoleMock).not.toHaveBeenCalled()
@@ -631,8 +628,7 @@ describe('RoleFormDrawer', () => {
     await wrapper.setProps({ show: true, roleId: secondRoleId })
     await flushPromises()
 
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
+    expect(wrapper.find('form').exists()).toBe(false)
 
     expect(updateRoleMock).not.toHaveBeenCalled()
 

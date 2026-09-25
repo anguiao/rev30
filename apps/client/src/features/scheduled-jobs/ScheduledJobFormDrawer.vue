@@ -11,6 +11,7 @@ import {
   NFormItem,
   NInput,
   NSelect,
+  NSpin,
 } from 'naive-ui'
 import {
   scheduledJobPlanUpdateInputSchema,
@@ -237,7 +238,9 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
         <NAlert v-if="loadError" type="error" :show-icon="false">{{ loadError }}</NAlert>
         <NAlert v-if="formError" type="error" :show-icon="false">{{ formError }}</NAlert>
 
-        <template v-if="formData">
+        <NSpin v-if="isLoading && formData === undefined" />
+
+        <template v-if="formData !== undefined">
           <p
             data-test="scheduled-job-form-context"
             class="text-sm text-stone-500 dark:text-zinc-400"

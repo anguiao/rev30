@@ -9,6 +9,7 @@ import {
   NDrawer,
   NDrawerContent,
   NForm,
+  NSpin,
   NFormItem,
   NInput,
   NInputNumber,
@@ -318,7 +319,9 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
           {{ formError }}
         </NAlert>
 
-        <NForm @submit.prevent="handleSubmit">
+        <NSpin v-if="isLoading && formData === undefined" />
+
+        <NForm v-if="formData !== undefined" @submit.prevent="handleSubmit">
           <form.Field name="type" v-slot="{ state }">
             <NFormItem label="类型" v-bind="formItemValidationProps(state.meta)">
               <NSelect

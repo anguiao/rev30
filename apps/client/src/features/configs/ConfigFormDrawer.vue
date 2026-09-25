@@ -10,6 +10,7 @@ import {
   NDrawer,
   NDrawerContent,
   NForm,
+  NSpin,
   NFormItem,
   NInput,
   NRadio,
@@ -294,7 +295,9 @@ const { requestClose, handleDrawerShowUpdate } = useDrawerUnsavedChangesGuard({
           </NDescriptions>
         </div>
 
-        <NForm @submit.prevent="handleSubmit">
+        <NSpin v-if="isLoading && formData === undefined" />
+
+        <NForm v-if="formData !== undefined" @submit.prevent="handleSubmit">
           <form.Field name="valueSource" v-slot="{ state }">
             <NFormItem label="来源" v-bind="formItemValidationProps(state.meta)">
               <NRadioGroup

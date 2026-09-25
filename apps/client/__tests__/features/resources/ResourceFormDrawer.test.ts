@@ -299,10 +299,7 @@ describe('ResourceFormDrawer', () => {
     expect(wrapper.text()).toContain('network')
     expect(wrapper.get('[data-test="resource-form-submit"]').attributes('disabled')).toBeDefined()
 
-    await wrapper.get('[data-test="resource-form-name"] input').setValue('异常资源')
-    await wrapper.get('[data-test="resource-form-code"] input').setValue('blocked-resource')
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
+    expect(wrapper.find('form').exists()).toBe(false)
 
     expect(createResourceMock).not.toHaveBeenCalled()
     expect(updateResourceMock).not.toHaveBeenCalled()

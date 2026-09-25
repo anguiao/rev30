@@ -12,9 +12,9 @@
     "coverage": "vitest run --pool=threads --coverage"
   },
   "dependencies": {
-    "@iconify/vue": "^5.0.1",
-    "@pinia/colada": "^1.4.4",
-    "@pinia/colada-plugin-auto-refetch": "^0.2.6",
+    "@iconify/vue": "^5.0.3",
+    "@pinia/colada": "^1.4.6",
+    "@pinia/colada-plugin-auto-refetch": "^0.2.7",
     "@rev30/contracts": "workspace:*",
     "@rev30/rich-text": "workspace:*",
     "@rev30/utils": "workspace:*",
@@ -30,7 +30,7 @@
     "naive-ui": "catalog:",
     "pinia": "^4.0.3",
     "vue": "catalog:",
-    "vue-echarts": "^8.2.0",
+    "vue-echarts": "^8.3.0",
     "vue-router": "^5.3.1",
     "zod": "catalog:"
   },
@@ -46,7 +46,7 @@
     "@vue/test-utils": "catalog:",
     "happy-dom": "catalog:",
     "tailwindcss": "^4.3.3",
-    "vite": "catalog:",
+    "vite": "8.2.2",
     "vite-plugin-vue-devtools": "^8.2.1",
     "vue-tsc": "catalog:"
   }

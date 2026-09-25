@@ -34,16 +34,16 @@
     "@iconify/json": "catalog:",
     "@iconify/tools": "^5.0.14",
     "@iconify/types": "^2.0.0",
-    "@iconify/utils": "^3.1.5",
+    "@iconify/utils": "^3.1.7",
     "@rev30/contracts": "workspace:*",
     "@rev30/rich-text": "workspace:*",
     "@rev30/utils": "workspace:*",
     "bowser": "^2.14.1",
     "bytes": "catalog:",
     "content-disposition": "^3.0.0",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.3",
     "drizzle-orm": "rc",
-    "file-type": "^22.0.2",
+    "file-type": "^22.1.1",
     "hono": "catalog:",
     "mime-types": "^3.0.2",
     "pino": "^10.3.1",
@@ -55,6 +55,6 @@
     "@types/mime-types": "^3.0.1",
     "drizzle-kit": "rc",
     "tsup": "^8.5.1",
-    "tsx": "^4.23.13"
+    "tsx": "^4.23.15"
   }
 }

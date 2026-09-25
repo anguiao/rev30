@@ -45,15 +45,18 @@ describe('compressImageFile', () => {
         drawImage: drawImageMock,
       } as unknown as CanvasRenderingContext2D
     })
-    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(
-      function (this: HTMLCanvasElement, callback, type, quality) {
-        outputType = type
-        outputQuality = quality
-        canvasWidth = this.width
-        canvasHeight = this.height
-        callback(outputBlob)
-      },
-    )
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (
+      this: HTMLCanvasElement,
+      callback,
+      type,
+      quality,
+    ) {
+      outputType = type
+      outputQuality = quality
+      canvasWidth = this.width
+      canvasHeight = this.height
+      callback(outputBlob)
+    })
   })
 
   afterEach(() => {

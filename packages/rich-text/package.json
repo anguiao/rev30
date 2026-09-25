@@ -113,7 +113,7 @@
     "@vitejs/plugin-vue": "catalog:",
     "@vue/test-utils": "catalog:",
     "happy-dom": "catalog:",
-    "vite": "catalog:",
+    "vite": "8.2.2",
     "vitest": "catalog:",
     "vue-tsc": "catalog:"
   }

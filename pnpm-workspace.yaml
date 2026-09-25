@@ -4,21 +4,21 @@ packages:
   - playgrounds/*
 
 catalog:
-  '@iconify/json': ^2.2.525
+  '@iconify/json': ^2.2.533
   '@types/bytes': ^3.1.6
-  '@vitest/coverage-v8': ^5.0.0
-  '@vitejs/plugin-vue': ^6.0.8
-  '@vue/test-utils': ^2.5.0
-  '@vueuse/core': ^14.4.0
+  '@vitest/coverage-v8': ^5.0.1
+  '@vitejs/plugin-vue': ^6.0.9
+  '@vue/test-utils': ^2.5.1
+  '@vueuse/core': ^15.0.0
   bytes: ^3.1.2
-  happy-dom: ^20.14.0
-  hono: ^4.13.7
+  happy-dom: ^20.14.5
+  hono: ^4.13.8
   naive-ui: ^2.44.1
-  vite: ^8.2.2
-  vitest: ^5.0.0
-  vue: ^3.5.42
+  vite: ^8.3.0
+  vitest: ^5.0.1
+  vue: ^3.5.43
   vue-tsc: ^3.3.11
-  zod: ^4.5.4
+  zod: ^4.6.5
 
 allowBuilds:
   esbuild: true

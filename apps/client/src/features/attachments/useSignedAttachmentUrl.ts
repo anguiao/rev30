@@ -4,8 +4,10 @@ import { useQuery } from '@pinia/colada'
 import { useTimeoutFn } from '@vueuse/core'
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 import { resolveSignedAttachmentUrl } from './requests'
+import { ApiRequestError } from '../../utils/request'
 
 const contentUrlRefreshLeadMs = 30_000
+const contentUrlRetryDelayMs = 5_000
 
 type UseSignedAttachmentUrlOptions = {
   disposition?: MaybeRefOrGetter<AttachmentDisposition | undefined>
@@ -35,7 +37,6 @@ export function useSignedAttachmentUrl(
     staleTime: 30_000,
     gcTime: 60_000,
     refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
     query: () =>
       resolveSignedAttachmentUrl(attachmentId.value!, {
         disposition: disposition.value,
@@ -62,17 +63,25 @@ export function useSignedAttachmentUrl(
   )
 
   watch(
-    expiresAt,
-    (nextExpiresAt) => {
+    [expiresAt, error, isLoading, isEnabled],
+    ([nextExpiresAt, nextError, loading, enabled]) => {
       refreshTimer.stop()
 
-      if (!nextExpiresAt) return
+      if (!enabled || loading) return
 
-      const delay = millisecondsUntil(nextExpiresAt) - contentUrlRefreshLeadMs
+      if (nextError !== null) {
+        if (nextError instanceof ApiRequestError && nextError.status < 500) return
 
-      if (delay <= 0) return
+        refreshDelay.value = contentUrlRetryDelayMs
+      } else {
+        if (!nextExpiresAt) return
 
-      refreshDelay.value = delay
+        const delay = millisecondsUntil(nextExpiresAt) - contentUrlRefreshLeadMs
+        if (delay <= 0) return
+
+        refreshDelay.value = delay
+      }
+
       refreshTimer.start()
     },
     { immediate: true },

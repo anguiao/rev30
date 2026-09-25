@@ -4,8 +4,9 @@ import {
   ATTACHMENT_READ_POLICY_AUTHENTICATED,
   type AttachmentListItem,
 } from '@rev30/contracts'
-import { NImage } from 'naive-ui'
+import { NButton, NImage } from 'naive-ui'
 import { computed, ref, watch } from 'vue'
+import { useEventListener } from '@vueuse/core'
 import { getAttachmentContentUrl } from './requests'
 import { useSignedAttachmentUrl } from './useSignedAttachmentUrl'
 
@@ -34,8 +35,23 @@ const iconClass = computed(() =>
   isImage.value ? 'i-[lucide--image] text-stone-500 dark:text-zinc-400' : 'i-[lucide--file]',
 )
 
+const hasPreviewError = computed(
+  () => isImage.value && (imageFailed.value || signedImage.error.value !== null),
+)
+
+async function retryPreview() {
+  if (props.attachment.readPolicy !== ATTACHMENT_READ_POLICY_AUTHENTICATED) {
+    await signedImage.refresh()
+  }
+  imageFailed.value = false
+}
+
+useEventListener('online', () => {
+  if (imageFailed.value && !signedImage.isLoading.value) void retryPreview()
+})
+
 watch(
-  () => props.attachment.id,
+  () => [props.attachment.id, signedImage.url.value],
   () => {
     imageFailed.value = false
   },
@@ -55,10 +71,21 @@ watch(
     class="block size-10 overflow-hidden rounded border border-stone-200 dark:border-zinc-700"
     @error="imageFailed = true"
   />
-  <span
-    v-else
-    data-test="attachments-preview-icon"
-    :class="['inline-block size-5', iconClass]"
-    aria-hidden="true"
-  />
+  <span v-else class="inline-flex items-center gap-2">
+    <span
+      data-test="attachments-preview-icon"
+      :class="['inline-block size-5', iconClass]"
+      aria-hidden="true"
+    />
+    <NButton
+      v-if="hasPreviewError"
+      text
+      size="tiny"
+      aria-label="重试预览"
+      :loading="signedImage.isLoading.value"
+      @click="retryPreview"
+    >
+      重试
+    </NButton>
+  </span>
 </template>

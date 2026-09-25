@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { computed, nextTick, ref, toValue } from 'vue'
 import {
@@ -122,6 +122,42 @@ describe('AttachmentPreviewCell', () => {
 
     expect(wrapper.find('img').exists()).toBe(false)
     expect(wrapper.find('[data-test="attachments-preview-icon"]').exists()).toBe(true)
+  })
+
+  it('allows retrying a failed authenticated image and retries again after reconnecting', async () => {
+    const wrapper = mountPreview(authenticatedImage)
+    await wrapper.get('img').trigger('error')
+    await wrapper.get('button[aria-label="重试预览"]').trigger('click')
+    expect(wrapper.get('img').attributes('src')).toBe(
+      getAttachmentContentUrl(authenticatedImage.id),
+    )
+
+    await wrapper.get('img').trigger('error')
+    window.dispatchEvent(new Event('online'))
+    await nextTick()
+    expect(wrapper.find('img').exists()).toBe(true)
+  })
+
+  it('refreshes signed URLs on retry and displays a new URL after an image error', async () => {
+    signedUrl.value = 'https://cdn.example.com/expired.png'
+    const signedState = createSignedAttachmentState()
+    signedState.refresh.mockImplementation(async () => {
+      signedError.value = null
+      signedUrl.value = 'https://cdn.example.com/retried.png'
+    })
+    useSignedAttachmentUrlMock.mockReturnValue(signedState)
+    const wrapper = mountPreview(signedImage)
+    signedError.value = new Error('Temporary network failure')
+    await nextTick()
+    await wrapper.get('button[aria-label="重试预览"]').trigger('click')
+    await flushPromises()
+    expect(signedState.refresh).toHaveBeenCalledOnce()
+    expect(wrapper.get('img').attributes('src')).toBe('https://cdn.example.com/retried.png')
+
+    await wrapper.get('img').trigger('error')
+    signedUrl.value = 'https://cdn.example.com/refreshed.png'
+    await nextTick()
+    expect(wrapper.get('img').attributes('src')).toBe('https://cdn.example.com/refreshed.png')
   })
 
   it('renders a file icon for non-image attachments without enabling signed URL loading', () => {

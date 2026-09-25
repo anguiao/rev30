@@ -8,6 +8,7 @@ import {
 } from '../../../src/features/attachments'
 import { createTestQueryHarness } from '../../helpers/colada'
 import { createDeferred } from '../../helpers/promise'
+import { ApiRequestError } from '../../../src/utils/request'
 
 vi.mock('../../../src/features/attachments/requests', () => ({
   resolveSignedAttachmentUrl: vi.fn(),
@@ -103,6 +104,88 @@ describe('useSignedAttachmentUrl', () => {
 
     expect(resolveSignedAttachmentUrlMock).toHaveBeenCalledTimes(2)
     expect(wrapper.text()).toBe('/api/attachments/1/content?token=second')
+  })
+
+  it.each([
+    ['network failure', new Error('Temporary network failure')],
+    ['server error', new ApiRequestError(503, 'Service unavailable')],
+  ])('recovers an automatic URL refresh after a %s', async (_, error) => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-29T00:00:00.000Z'))
+    resolveSignedAttachmentUrlMock
+      .mockResolvedValueOnce(resolveUrl('/first.png', '2026-05-29T00:05:00.000Z'))
+      .mockRejectedValueOnce(error)
+      .mockResolvedValueOnce(resolveUrl('/recovered.png', '2026-05-29T00:10:00.000Z'))
+    const wrapper = mountUseSignedAttachmentUrl(
+      () => useSignedAttachmentUrl(ref('11111111-1111-4111-8111-111111111111')),
+      '<span>{{ url }}</span>',
+    )
+    await flushAttachmentUrl()
+    await vi.advanceTimersByTimeAsync(270_000)
+    await flushAttachmentUrl()
+    expect(wrapper.text()).toBe('')
+    expect(resolveSignedAttachmentUrlMock).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    await flushAttachmentUrl()
+    expect(wrapper.text()).toBe('/recovered.png')
+    expect(resolveSignedAttachmentUrlMock).toHaveBeenCalledTimes(3)
+    wrapper.unmount()
+  })
+
+  it.each([403, 404])(
+    'stops retries when disabled and does not repeatedly retry HTTP %i',
+    async (status) => {
+      vi.useFakeTimers()
+      const enabled = ref(true)
+      resolveSignedAttachmentUrlMock.mockRejectedValueOnce(new Error('Temporary network failure'))
+      const wrapper = mountUseSignedAttachmentUrl(
+        () => useSignedAttachmentUrl(ref('11111111-1111-4111-8111-111111111111'), { enabled }),
+        '<span>{{ url }}</span>',
+      )
+      await flushAttachmentUrl()
+      enabled.value = false
+      await flushAttachmentUrl()
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(resolveSignedAttachmentUrlMock).toHaveBeenCalledTimes(1)
+
+      resolveSignedAttachmentUrlMock.mockRejectedValue(new ApiRequestError(status, 'Unavailable'))
+      enabled.value = true
+      await flushAttachmentUrl()
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(resolveSignedAttachmentUrlMock).toHaveBeenCalledTimes(2)
+      wrapper.unmount()
+    },
+  )
+
+  it('recovers an initial request failure on reconnect and stops pending retries on unmount', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-29T00:00:00.000Z'))
+    resolveSignedAttachmentUrlMock
+      .mockRejectedValueOnce(new Error('Offline'))
+      .mockResolvedValueOnce(resolveUrl('/reconnected.png', '2026-05-29T00:05:00.000Z'))
+      .mockRejectedValue(new Error('Offline again'))
+    const wrapper = mountUseSignedAttachmentUrl(
+      () => useSignedAttachmentUrl(ref('11111111-1111-4111-8111-111111111111')),
+      '<span>{{ url }}</span>',
+    )
+    await flushAttachmentUrl()
+    expect(wrapper.text()).toBe('')
+    expect(resolveSignedAttachmentUrlMock).toHaveBeenCalledOnce()
+
+    window.dispatchEvent(new Event('online'))
+    await flushAttachmentUrl()
+    expect(wrapper.text()).toBe('/reconnected.png')
+    expect(resolveSignedAttachmentUrlMock).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(270_000)
+    await flushAttachmentUrl()
+    expect(resolveSignedAttachmentUrlMock).toHaveBeenCalledTimes(3)
+    wrapper.unmount()
+    await vi.advanceTimersByTimeAsync(10_000)
+    window.dispatchEvent(new Event('online'))
+    await flushAttachmentUrl()
+    expect(resolveSignedAttachmentUrlMock).toHaveBeenCalledTimes(3)
   })
 
   it('does not fetch while disabled and clears existing URL', async () => {

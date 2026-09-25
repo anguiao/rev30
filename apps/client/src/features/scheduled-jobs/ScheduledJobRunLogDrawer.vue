@@ -29,6 +29,7 @@ import {
   scheduledJobTriggerSourceLabels,
 } from './labels'
 import { getErrorMessage } from '../../utils/error'
+import { ApiRequestError } from '../../utils/request'
 import { renderTableActionButton, renderTableActions } from '../../utils/ui'
 
 const props = defineProps<{
@@ -84,6 +85,7 @@ const {
   data: detail,
   error: detailError,
   isLoading: isLoadingDetail,
+  refresh: refreshDetail,
 } = useQuery<ScheduledJobRunDetail>({
   key: () => [
     'ops',
@@ -113,6 +115,25 @@ const visibleDetail = computed(() =>
 )
 const detailErrorMessage = computed(() =>
   detailError.value === null ? '' : getErrorMessage(detailError.value, '加载任务运行详情失败'),
+)
+
+watch(
+  [detailError, isLoadingDetail, show, selectedRunId],
+  ([error, loading, visible, runId], _, onCleanup) => {
+    if (
+      error === null ||
+      loading ||
+      !visible ||
+      runId === null ||
+      (error instanceof ApiRequestError && error.status < 500)
+    ) {
+      return
+    }
+
+    const retryTimer = setTimeout(() => void refreshDetail(), runDetailRefetchIntervalMs)
+
+    onCleanup(() => clearTimeout(retryTimer))
+  },
 )
 
 function selectRun(runId: string) {
@@ -233,7 +254,12 @@ const columns: DataTableColumns<ScheduledJobRunListItem> = [
         <div class="mt-1">
           <NSpin :show="isLoadingDetail">
             <div class="min-h-24">
-              <NAlert v-if="detailErrorMessage" type="error">{{ detailErrorMessage }}</NAlert>
+              <NAlert v-if="detailErrorMessage" type="error">
+                <div class="flex items-center justify-between gap-3">
+                  <span>{{ detailErrorMessage }}</span>
+                  <NButton :loading="isLoadingDetail" @click="refreshDetail()">重试</NButton>
+                </div>
+              </NAlert>
 
               <NDescriptions v-if="visibleDetail" bordered :column="1" label-placement="left">
                 <NDescriptionsItem label="运行 ID">

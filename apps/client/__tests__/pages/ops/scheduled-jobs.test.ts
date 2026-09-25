@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NInput, NPagination, NSelect } from 'naive-ui'
 import type { ScheduledJob, ScheduledJobListResponse } from '@rev30/contracts'
 import ScheduledJobsPage from '../../../src/pages/index/ops/scheduled-jobs.vue'
+import { ApiRequestError } from '../../../src/utils/request'
 import {
   cancelScheduledJob,
   executeScheduledJob,
@@ -157,6 +158,17 @@ async function mountPage(
   )
 }
 
+async function openManualRunDetail(wrapper: Awaited<ReturnType<typeof mountPage>>['wrapper']) {
+  await flushPromises()
+  await wrapper.get('[data-test="scheduled-job-execute"]').trigger('click')
+  await flushPromises()
+  getDialogButton('scheduled-job-execute-confirm').click()
+  await flushPromises()
+  await vi.waitFor(() => expect(getRunMock).toHaveBeenCalledTimes(1))
+
+  return document.querySelector<HTMLElement>('[data-test="scheduled-job-run-log-drawer"]')!
+}
+
 describe('scheduled jobs page', () => {
   beforeEach(() => {
     listMock.mockReset()
@@ -286,6 +298,100 @@ describe('scheduled jobs page', () => {
       vi.useRealTimers()
     }
   })
+
+  it('recovers running detail polling after a temporary failure and stops at completion', async () => {
+    vi.useFakeTimers()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    let wrapper: Awaited<ReturnType<typeof mountPage>>['wrapper'] | undefined
+    try {
+      listMock.mockResolvedValue(idleResponse)
+      getRunMock
+        .mockResolvedValueOnce(detail)
+        .mockRejectedValueOnce(new Error('Temporary network failure'))
+        .mockResolvedValue(completedDetail)
+      const mounted = await mountPage()
+      wrapper = mounted.wrapper
+      const drawer = await openManualRunDetail(wrapper)
+
+      await vi.advanceTimersByTimeAsync(2000)
+      await flushPromises()
+      expect(document.body.textContent).toContain('Temporary network failure')
+
+      await vi.advanceTimersByTimeAsync(2000)
+      await flushPromises()
+      expect(getRunMock).toHaveBeenCalledTimes(3)
+      expect(drawer.textContent).toContain('成功')
+      expect(drawer.textContent).not.toContain('Temporary network failure')
+      await vi.advanceTimersByTimeAsync(6000)
+      expect(getRunMock).toHaveBeenCalledTimes(3)
+    } finally {
+      wrapper?.unmount()
+      consoleError.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not automatically retry missing run details but allows a manual retry', async () => {
+    vi.useFakeTimers()
+    let wrapper: Awaited<ReturnType<typeof mountPage>>['wrapper'] | undefined
+    try {
+      listMock.mockResolvedValue(idleResponse)
+      getRunMock
+        .mockRejectedValueOnce(new ApiRequestError(404, '任务运行不存在'))
+        .mockResolvedValue(completedDetail)
+      const mounted = await mountPage()
+      wrapper = mounted.wrapper
+      const drawer = await openManualRunDetail(wrapper)
+
+      expect(drawer.textContent).toContain('任务运行不存在')
+      await vi.advanceTimersByTimeAsync(6000)
+      expect(getRunMock).toHaveBeenCalledTimes(1)
+
+      const retryButton = [...drawer.querySelectorAll('button')].find(
+        (button) => button.textContent?.trim() === '重试',
+      )!
+      retryButton.click()
+      await flushPromises()
+      expect(getRunMock).toHaveBeenCalledTimes(2)
+      expect(drawer.textContent).toContain('成功')
+      expect(drawer.textContent).not.toContain('任务运行不存在')
+    } finally {
+      wrapper?.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it.each(['close', 'back'] as const)(
+    'clears the pending detail retry when leaving through %s',
+    async (action) => {
+      vi.useFakeTimers()
+      let wrapper: Awaited<ReturnType<typeof mountPage>>['wrapper'] | undefined
+      try {
+        listMock.mockResolvedValue(idleResponse)
+        getRunMock.mockRejectedValue(new ApiRequestError(503, '服务暂不可用'))
+        const mounted = await mountPage()
+        wrapper = mounted.wrapper
+        const drawer = await openManualRunDetail(wrapper)
+        expect(drawer.textContent).toContain('服务暂不可用')
+        await vi.advanceTimersByTimeAsync(2000)
+        await flushPromises()
+        expect(getRunMock).toHaveBeenCalledTimes(2)
+
+        const leaveButton =
+          action === 'close'
+            ? drawer.querySelector<HTMLButtonElement>('[aria-label="close"]')!
+            : getDialogButton('scheduled-job-run-back')
+        leaveButton.click()
+        await flushPromises()
+        await vi.advanceTimersByTimeAsync(6000)
+
+        expect(getRunMock).toHaveBeenCalledTimes(2)
+      } finally {
+        wrapper?.unmount()
+        vi.useRealTimers()
+      }
+    },
+  )
 
   it('shows the edit drawer preview and accepts a supported Cron shortcut', async () => {
     const { wrapper } = await mountPage()

@@ -80,6 +80,8 @@ export async function parseSvgIcon(filename: string, content: string): Promise<P
 
     if (
       rendered.body.trim() === '' ||
+      !Number.isFinite(left) ||
+      !Number.isFinite(top) ||
       !customIconDimensionsSchema.safeParse({ width, height }).success
     ) {
       throw new CustomSvgInvalidError()

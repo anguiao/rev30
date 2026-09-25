@@ -104,6 +104,15 @@ describe('custom icon SVG parser', () => {
     },
   )
 
+  it.each(['Infinity 0 24 24', '1e309 0 24 24', '0 -Infinity 24 24'])(
+    'rejects non-finite viewport origins in %s',
+    async (viewBox) => {
+      await expect(
+        parseSvgIcon('Invalid.svg', `<svg viewBox="${viewBox}"><circle r="10"/></svg>`),
+      ).rejects.toBeInstanceOf(CustomSvgInvalidError)
+    },
+  )
+
   it('rejects invalid SVGs', async () => {
     const result = parseSvgIcon('Bad.svg', '<svg><script>alert(1)</script>')
 

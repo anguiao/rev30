@@ -121,6 +121,24 @@ describe('department schemas', () => {
     })
   })
 
+  it.each([-2147483648, 2147483647])('accepts the stored sort order boundary %i', (sortOrder) => {
+    expect(
+      departmentCreateSchema.parse({ name: 'Research', code: 'research', sortOrder }).sortOrder,
+    ).toBe(sortOrder)
+    expect(departmentUpdateSchema.parse({ sortOrder })).toEqual({ sortOrder })
+  })
+
+  it.each([-2147483649, 2147483648])('rejects unstorable sort order %i', (sortOrder) => {
+    expectZodIssue(
+      departmentCreateSchema.safeParse({ name: 'Research', code: 'research', sortOrder }),
+      { message: '排序必须是整数且在允许范围内', path: ['sortOrder'] },
+    )
+    expectZodIssue(departmentUpdateSchema.safeParse({ sortOrder }), {
+      message: '排序必须是整数且在允许范围内',
+      path: ['sortOrder'],
+    })
+  })
+
   it('parses list query strings', () => {
     expect(
       departmentListQuerySchema.parse({

@@ -27,4 +27,4 @@ export const usernameInputSchema = nonBlankString('请输入用户名').max(
   '用户名不能超过 64 个字符',
 )
 
-export const sortOrderInputSchema = z.number('排序必须是数字').int('排序必须是整数')
+export const sortOrderInputSchema = z.int32('排序必须是整数且在允许范围内')

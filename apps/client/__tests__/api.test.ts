@@ -174,11 +174,8 @@ describe('authFetch', () => {
     expect(getFetchCall(fetchMock).headers.has('authorization')).toBe(false)
   })
 
-  it('clears the current session and logs out for non-refreshable unauthorized responses', async () => {
-    const fetchMock = createFetchMock(
-      jsonResponse({ message: '未授权' }, { status: 401 }),
-      emptyResponse(),
-    )
+  it('clears only the local session for non-refreshable unauthorized responses', async () => {
+    const fetchMock = createFetchMock(jsonResponse({ message: '未授权' }, { status: 401 }))
     const auth = useAuthStore()
     auth.setSession(session)
 
@@ -186,22 +183,14 @@ describe('authFetch', () => {
 
     expect(response.status).toBe(401)
     expect(auth.isAuthenticated).toBe(false)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      '/api/auth/logout',
-      expect.objectContaining({
-        method: 'POST',
-      }),
-    )
-    expect(getFetchCall(fetchMock, 1).headers.get('authorization')).toBe('Bearer access-token')
+    expect(fetchMock).toHaveBeenCalledOnce()
   })
 
-  it('clears the current session and logs out when refresh is unauthorized', async () => {
+  it('does not revoke another tab session when refresh is unauthorized', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(refreshableUnauthorizedResponse())
       .mockResolvedValueOnce(jsonResponse({ message: '刷新失败' }, { status: 401 }))
-      .mockResolvedValueOnce(emptyResponse())
     vi.stubGlobal('fetch', fetchMock)
     const auth = useAuthStore()
     auth.setSession(session)
@@ -210,16 +199,10 @@ describe('authFetch', () => {
 
     expect(response.status).toBe(401)
     expect(auth.isAuthenticated).toBe(false)
-    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       '/api/auth/refresh',
-      expect.objectContaining({
-        method: 'POST',
-      }),
-    )
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      '/api/auth/logout',
       expect.objectContaining({
         method: 'POST',
       }),
@@ -250,13 +233,12 @@ describe('authFetch', () => {
     )
   })
 
-  it('clears the current session and logs out when retry remains unauthorized', async () => {
+  it('clears only the local session when retry remains unauthorized', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(refreshableUnauthorizedResponse())
       .mockResolvedValueOnce(jsonResponse(refreshedSession))
       .mockResolvedValueOnce(jsonResponse({ message: '未授权' }, { status: 401 }))
-      .mockResolvedValueOnce(emptyResponse())
     vi.stubGlobal('fetch', fetchMock)
     const auth = useAuthStore()
     auth.setSession(session)
@@ -265,13 +247,7 @@ describe('authFetch', () => {
 
     expect(response.status).toBe(401)
     expect(auth.isAuthenticated).toBe(false)
-    expect(fetchMock).toHaveBeenCalledTimes(4)
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      '/api/auth/logout',
-      expect.objectContaining({
-        method: 'POST',
-      }),
-    )
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
   it('does not log out a newer session after a stale unauthorized response', async () => {
@@ -415,6 +391,34 @@ describe('authFetch', () => {
     expect(auth.user).toEqual(newerSession.user)
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
+
+  it.each(['refresh', 'logout'] as const)(
+    'waits for another tab to rotate the shared cookie before %s',
+    async (operation) => {
+      const otherTabFinished = createDeferred<void>()
+      let cookie = 'old-refresh-cookie'
+      const lockRequest = vi.fn((_name: string, operation: () => Promise<unknown>) =>
+        otherTabFinished.promise.then(operation),
+      )
+      vi.stubGlobal('navigator', { locks: { request: lockRequest } })
+      const fetchMock = vi.fn<typeof fetch>(async () => {
+        expect(cookie).toBe('rotated-refresh-cookie')
+        return operation === 'refresh' ? jsonResponse(refreshedSession) : emptyResponse()
+      })
+      vi.stubGlobal('fetch', fetchMock)
+
+      const pending = operation === 'refresh' ? refreshAuthSession() : logoutAuthSession()
+      await vi.waitFor(() => expect(lockRequest).toHaveBeenCalledOnce())
+      expect(fetchMock).not.toHaveBeenCalled()
+
+      cookie = 'rotated-refresh-cookie'
+      otherTabFinished.resolve()
+      await expect(pending).resolves.toEqual(operation === 'refresh' ? refreshedSession : undefined)
+      expect(lockRequest.mock.calls[0]?.[0]).toBe('rev30-auth-session')
+      expect(fetchMock).toHaveBeenCalledOnce()
+      expectFetchCall(fetchMock, 0, { method: 'POST', pathname: `/api/auth/${operation}` })
+    },
+  )
 
   it('waits for an in-flight refresh before sending logout', async () => {
     const refreshResponse = createDeferred<Response>()

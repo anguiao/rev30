@@ -13,7 +13,14 @@ function createSerialExecutor() {
   let tail = Promise.resolve()
 
   return function run<T>(operation: () => Promise<T>) {
-    const result = tail.then(operation)
+    const result = tail.then(() => {
+      // Cookies are shared across tabs; rotate them under the same origin-wide lock.
+      if (typeof navigator !== 'undefined' && navigator.locks) {
+        return navigator.locks.request('rev30-auth-session', operation)
+      }
+
+      return operation()
+    })
 
     tail = result.then(
       () => undefined,
@@ -100,7 +107,7 @@ function getOrStartAutomaticRefresh(accessToken: string) {
   return refresh
 }
 
-function clearSessionAndLogout(accessToken: string) {
+function clearRejectedSession(accessToken: string) {
   const auth = useAuthStore()
 
   if (auth.accessToken !== accessToken) {
@@ -108,7 +115,6 @@ function clearSessionAndLogout(accessToken: string) {
   }
 
   auth.clearSession()
-  void logoutAuthSession(accessToken).catch(() => {})
 }
 
 function shouldRefreshAccessToken(response: Response) {
@@ -132,7 +138,7 @@ async function resolveRetryAccessToken(accessToken: string) {
     }
 
     if (error instanceof ApiRequestError && error.status === 401) {
-      clearSessionAndLogout(accessToken)
+      clearRejectedSession(accessToken)
     }
     return null
   }
@@ -169,7 +175,7 @@ export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}
   }
 
   if (!shouldRefreshAccessToken(response)) {
-    clearSessionAndLogout(requestAccessToken)
+    clearRejectedSession(requestAccessToken)
     return response
   }
 
@@ -185,7 +191,7 @@ export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}
   const retryResponse = await sendFetch(input, init, retryHeaders)
 
   if (retryResponse.status === 401) {
-    clearSessionAndLogout(retryAccessToken)
+    clearRejectedSession(retryAccessToken)
   }
 
   return retryResponse

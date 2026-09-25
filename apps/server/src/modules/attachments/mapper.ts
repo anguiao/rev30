@@ -1,4 +1,4 @@
-import type { Attachment, AttachmentListItem } from '@rev30/contracts'
+import type { Attachment, AttachmentListItem, AttachmentReference } from '@rev30/contracts'
 import { toIsoDateTime } from '@rev30/utils'
 import { attachments, systemUsers } from '../../db/schema'
 
@@ -21,9 +21,13 @@ export function toAttachment(row: AttachmentRow): Attachment {
   }
 }
 
-export function toAttachmentListItem(entry: AttachmentListEntry): AttachmentListItem {
+export function toAttachmentListItem(
+  entry: AttachmentListEntry,
+  references: AttachmentReference[],
+): AttachmentListItem {
   return {
     ...toAttachment(entry.attachment),
+    references,
     createdBy: {
       id: entry.createdBy.id,
       username: entry.createdBy.username,

@@ -97,6 +97,7 @@ pnpm dev
 - 附件读取支持两种策略：普通附件默认使用短期签名内容 URL；头像等资源可使用稳定的 `/api/attachments/:id/content` URL。
 - 稳定内容 URL 仍要求登录态，浏览器通过 `attachment_token` HttpOnly cookie 完成附件内容读取，不暴露 token 给前端 JS。
 - `usage` 是任意非空业务记录字符串，前端不维护全局 usage 常量、选项列表或文案映射。
+- 有附件列表查看权限即可在“使用位置”列看到全部未删除公告和用户头像的来源，无需额外的公告或用户查看权限。有附件删除权限即可手动删除正在使用的附件；删除后不修改业务字段，头像读取失败时回退默认头像。
 - 业务可为附件记录引用；附件清理由持久化定时任务计划管理，初始计划错峰并约每 6 小时运行一次，负责清理过期上传会话、保留超过 7 天的孤儿上传文件（包括软删除后物理删除失败的文件），以及 `cleanupPolicy=unreferenced` 且持续无引用超过 7 天的附件。
 
 临时 URL 签名密钥由 `ATTACHMENT_SIGNING_SECRET` 配置，内容访问 URL 默认有效期由 `ATTACHMENT_CONTENT_URL_TTL_SECONDS` 控制，上传会话默认有效期由 `ATTACHMENT_UPLOAD_SESSION_TTL_SECONDS` 控制。

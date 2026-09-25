@@ -53,8 +53,15 @@ export const attachmentListQuerySchema = paginationQuerySchema.extend({
   keyword: optionalKeywordSchema,
 })
 
+export const attachmentReferenceSchema = z.object({
+  sourceType: z.enum(['announcement', 'user']),
+  sourceId: uuidString('引用来源 ID 无效'),
+  label: nonBlankString(),
+})
+
 export const attachmentListItemSchema = attachmentSchema.extend({
   createdBy: attachmentCreatedBySchema,
+  references: z.array(attachmentReferenceSchema),
 })
 
 export const attachmentListResponseSchema = z.object({
@@ -115,6 +122,7 @@ export type AttachmentCreatedBy = z.infer<typeof attachmentCreatedBySchema>
 export type AttachmentListQuery = z.infer<typeof attachmentListQuerySchema>
 export type AttachmentListItem = z.infer<typeof attachmentListItemSchema>
 export type AttachmentListResponse = z.infer<typeof attachmentListResponseSchema>
+export type AttachmentReference = z.infer<typeof attachmentReferenceSchema>
 export type AttachmentTransferRequest = z.infer<typeof attachmentTransferRequestSchema>
 export type AttachmentUploadSessionCreateInput = z.infer<
   typeof attachmentUploadSessionCreateInputSchema

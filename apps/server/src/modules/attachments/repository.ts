@@ -1,7 +1,14 @@
-import type { AttachmentListQuery } from '@rev30/contracts'
-import { and, count, desc, eq, gt, ilike, isNull, or } from 'drizzle-orm'
+import type { AttachmentListQuery, AttachmentReference } from '@rev30/contracts'
+import { and, asc, count, desc, eq, gt, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
+import { unionAll } from 'drizzle-orm/pg-core'
 import type { Db } from '../../db'
-import { attachments, attachmentUploadSessions, systemUsers } from '../../db/schema'
+import {
+  announcements,
+  attachmentReferences,
+  attachments,
+  attachmentUploadSessions,
+  systemUsers,
+} from '../../db/schema'
 
 export type AttachmentUploadSessionCreateRecord = typeof attachmentUploadSessions.$inferInsert
 
@@ -58,6 +65,46 @@ export function createAttachmentRepository(database: Db) {
         page,
         pageSize,
       }
+    },
+
+    async listReferences(attachmentIds: string[]) {
+      if (attachmentIds.length === 0) {
+        return []
+      }
+
+      const sources = unionAll(
+        database
+          .select({
+            attachmentId: sql<string>`${attachmentReferences.attachmentId}`.as('attachment_id'),
+            sourceType: sql<AttachmentReference['sourceType']>`'announcement'`.as('source_type'),
+            sourceId: sql<string>`${announcements.id}`.as('source_id'),
+            label: sql<string>`${announcements.title}`.as('label'),
+          })
+          .from(attachmentReferences)
+          .innerJoin(announcements, eq(announcements.id, attachmentReferences.sourceId))
+          .where(
+            and(
+              inArray(attachmentReferences.attachmentId, attachmentIds),
+              eq(attachmentReferences.sourceType, 'announcement'),
+              eq(attachmentReferences.sourceField, 'contentJson'),
+              isNull(announcements.deletedAt),
+            ),
+          ),
+        database
+          .select({
+            attachmentId: sql<string>`${systemUsers.avatarId}`.as('attachment_id'),
+            sourceType: sql<AttachmentReference['sourceType']>`'user'`.as('source_type'),
+            sourceId: sql<string>`${systemUsers.id}`.as('source_id'),
+            label:
+              sql<string>`${systemUsers.nickname} || ' (' || ${systemUsers.username} || ')'`.as(
+                'label',
+              ),
+          })
+          .from(systemUsers)
+          .where(and(inArray(systemUsers.avatarId, attachmentIds), isNull(systemUsers.deletedAt))),
+      ).as('attachment_reference_sources')
+
+      return database.select().from(sources).orderBy(asc(sources.sourceType), asc(sources.sourceId))
     },
 
     async softDelete(id: string, deletedAt: Date) {

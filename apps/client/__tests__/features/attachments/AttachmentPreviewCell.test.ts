@@ -25,6 +25,7 @@ const authenticatedImage: AttachmentListItem = {
   size: 123,
   usage: 'avatar',
   readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+  references: [],
   createdAt: '2026-06-02T00:00:00.000Z',
   createdBy: {
     id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',

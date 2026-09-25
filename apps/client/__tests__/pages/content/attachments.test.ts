@@ -41,6 +41,7 @@ const authenticatedImage: AttachmentListItem = {
   size: 123,
   usage: 'avatar',
   readPolicy: 'authenticated',
+  references: [],
   createdAt: '2026-06-02T00:00:00.000Z',
   createdBy: {
     id: '22222222-2222-4222-8222-222222222222',
@@ -57,6 +58,7 @@ const signedImage: AttachmentListItem = {
   size: 1024,
   usage: 'custom-report',
   readPolicy: 'signed',
+  references: [],
   createdAt: '2026-05-22T00:00:00.000Z',
   createdBy: {
     id: '33333333-3333-4333-8333-333333333333',
@@ -183,5 +185,29 @@ describe('attachments page', () => {
       keyword: 'avatar',
       usage: 'custom-report',
     })
+  })
+
+  it('shows reference sources and an empty placeholder while keeping deletion available', async () => {
+    listAttachmentsMock.mockResolvedValue({
+      ...attachmentsResponse,
+      list: [
+        {
+          ...authenticatedImage,
+          references: [
+            { sourceType: 'announcement', sourceId: authenticatedImage.id, label: '版本发布公告' },
+            { sourceType: 'user', sourceId: signedImage.id, label: 'Ada (ada)' },
+          ],
+        },
+        signedImage,
+      ],
+    })
+    const { wrapper } = await mountAttachmentsPage()
+    await flushPromises()
+
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows[0]!.text()).toContain('公告图片 · 版本发布公告')
+    expect(rows[0]!.text()).toContain('用户头像 · Ada (ada)')
+    expect(rows[1]!.findAll('td').some((cell) => cell.text() === '—')).toBe(true)
+    expect(rows[0]!.get('[data-test="attachments-delete"]').attributes('disabled')).toBeUndefined()
   })
 })

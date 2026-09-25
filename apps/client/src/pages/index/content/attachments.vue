@@ -163,6 +163,25 @@ const columns: DataTableColumns<AttachmentListItem> = [
     width: 140,
   },
   {
+    title: '使用位置',
+    key: 'references',
+    minWidth: 240,
+    render: (attachment) =>
+      attachment.references.length === 0
+        ? '—'
+        : h(
+            'ul',
+            { class: 'space-y-1' },
+            attachment.references.map((reference) =>
+              h(
+                'li',
+                { key: `${reference.sourceType}:${reference.sourceId}`, class: 'break-words' },
+                `${reference.sourceType === 'announcement' ? '公告图片' : '用户头像'} · ${reference.label}`,
+              ),
+            ),
+          ),
+  },
+  {
     title: '上传人',
     key: 'createdBy',
     minWidth: 200,

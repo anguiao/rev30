@@ -10,6 +10,7 @@ import {
   ATTACHMENT_DISPOSITION_INLINE,
   type AttachmentDisposition,
   type AttachmentListQuery,
+  type AttachmentReference,
   ATTACHMENT_READ_POLICY_AUTHENTICATED,
   ATTACHMENT_READ_POLICY_SIGNED,
   type AttachmentUploadSessionCreateInput,
@@ -140,10 +141,21 @@ export function createAttachmentService(database: Db) {
   return {
     async list(query: AttachmentListQuery) {
       const result = await repository.list(query)
+      const attachmentIds = result.list.map((entry) => entry.attachment.id)
+      const references = await repository.listReferences(attachmentIds)
+      const referencesByAttachment = new Map<string, AttachmentReference[]>(
+        attachmentIds.map((id) => [id, []]),
+      )
+
+      for (const { attachmentId, ...reference } of references) {
+        referencesByAttachment.get(attachmentId)!.push(reference)
+      }
 
       return {
         ...result,
-        list: result.list.map(toAttachmentListItem),
+        list: result.list.map((entry) =>
+          toAttachmentListItem(entry, referencesByAttachment.get(entry.attachment.id)!),
+        ),
       }
     },
 

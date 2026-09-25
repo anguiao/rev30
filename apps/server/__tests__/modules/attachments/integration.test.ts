@@ -3,8 +3,17 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, vi } from 'vitest'
+import { eq } from 'drizzle-orm'
 import {
+  ANNOUNCEMENT_STATUS_ARCHIVED,
+  ANNOUNCEMENT_STATUS_DRAFT,
+  ANNOUNCEMENT_STATUS_PUBLISHED,
+  ANNOUNCEMENT_TARGET_TYPE_USER,
+  ANNOUNCEMENT_TYPE_NOTICE,
+  ANNOUNCEMENT_VISIBILITY_ALL,
+  ANNOUNCEMENT_VISIBILITY_TARGETED,
   ATTACHMENT_DISPOSITION_INLINE,
+  USER_STATUS_DISABLED,
   type AuthTokenResponse,
   type Attachment,
   type AttachmentContentUrl,
@@ -13,7 +22,14 @@ import {
   type AttachmentListResponse,
 } from '@rev30/contracts'
 import { createApp, type CreateTestAppOptions } from '../../helpers/app'
-import { authPasswordCredentials } from '../../../src/db/schema'
+import {
+  announcementReads,
+  announcements,
+  announcementTargets,
+  attachmentReferences,
+  authPasswordCredentials,
+  systemUsers,
+} from '../../../src/db/schema'
 import { hashPassword } from '../../../src/modules/auth/password'
 import {
   ATTACHMENT_MAX_SIZE_BYTES,
@@ -213,6 +229,31 @@ async function uploadAttachmentViaSession(
   return (await completeResponse.json()) as Attachment
 }
 
+async function createReferencedAnnouncement(
+  database: TestDatabase,
+  attachmentId: string,
+  input: Pick<typeof announcements.$inferInsert, 'title' | 'status' | 'visibility' | 'deletedAt'>,
+) {
+  const id = randomUUID()
+
+  await database.insert(announcements).values({
+    id,
+    type: ANNOUNCEMENT_TYPE_NOTICE,
+    contentJson: { type: 'doc', content: [{ type: 'paragraph' }] },
+    contentText: '',
+    contentHtml: '<p></p>',
+    ...input,
+  })
+  await database.insert(attachmentReferences).values({
+    attachmentId,
+    sourceType: 'announcement',
+    sourceId: id,
+    sourceField: 'contentJson',
+  })
+
+  return { sourceType: 'announcement' as const, sourceId: id, label: input.title }
+}
+
 afterEach(async () => {
   vi.restoreAllMocks()
   vi.unstubAllEnvs()
@@ -220,6 +261,108 @@ afterEach(async () => {
 })
 
 describe('attachment routes integration', () => {
+  dbTest(
+    'lists all active sources for attachment readers without marking announcements read',
+    async ({ db: database }) => {
+      const { app, authenticated } = await createAttachmentIntegrationFixture(database)
+      const reader = await createSystemAccessFixture(database, {
+        accessCodes: ['content:attachment:list'],
+      })
+      const uploaded: Attachment[] = []
+
+      for (const originalName of ['used.png', 'unused.png']) {
+        const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
+          bytes: pngBytes,
+          contentType: 'image/png',
+          originalName,
+          usage: 'reference-list',
+        })
+        uploaded.push((await completeResponse.json()) as Attachment)
+      }
+
+      const usedId = uploaded[0]!.id
+      const unusedId = uploaded[1]!.id
+      const published = await createReferencedAnnouncement(database, usedId, {
+        title: 'Public announcement',
+        status: ANNOUNCEMENT_STATUS_PUBLISHED,
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+      })
+      const targeted = await createReferencedAnnouncement(database, usedId, {
+        title: 'Other audience announcement',
+        status: ANNOUNCEMENT_STATUS_PUBLISHED,
+        visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
+      })
+      await database.insert(announcementTargets).values({
+        announcementId: targeted.sourceId,
+        targetType: ANNOUNCEMENT_TARGET_TYPE_USER,
+        targetId: authenticated.userId,
+      })
+      const draft = await createReferencedAnnouncement(database, usedId, {
+        title: 'Draft announcement',
+        status: ANNOUNCEMENT_STATUS_DRAFT,
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+      })
+      const archived = await createReferencedAnnouncement(database, usedId, {
+        title: 'Archived announcement',
+        status: ANNOUNCEMENT_STATUS_ARCHIVED,
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+      })
+      await createReferencedAnnouncement(database, usedId, {
+        title: 'Deleted announcement',
+        status: ANNOUNCEMENT_STATUS_PUBLISHED,
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+        deletedAt: new Date(),
+      })
+      await database.insert(attachmentReferences).values([
+        {
+          attachmentId: usedId,
+          sourceType: 'announcement',
+          sourceId: published.sourceId,
+          sourceField: 'summary',
+        },
+        {
+          attachmentId: usedId,
+          sourceType: 'unsupported',
+          sourceId: published.sourceId,
+          sourceField: 'contentJson',
+        },
+      ])
+      const otherUser = await createSystemUserFixture(database, {
+        username: 'other-avatar-user',
+        avatarId: usedId,
+        status: USER_STATUS_DISABLED,
+      })
+      await createSystemUserFixture(database, {
+        username: 'deleted-avatar-user',
+        avatarId: usedId,
+        deletedAt: new Date(),
+      })
+      const otherReference = {
+        sourceType: 'user',
+        sourceId: otherUser.id,
+        label: `${otherUser.nickname} (${otherUser.username})`,
+      }
+
+      const response = await app.request('/api/attachments?usage=reference-list', {
+        headers: reader.authHeaders,
+      })
+      const body = (await response.json()) as AttachmentListResponse
+
+      expect(response.status).toBe(200)
+      expect(body.total).toBe(2)
+      expect(body.list.find((item) => item.id === usedId)?.references).toEqual(
+        [published, targeted, draft, archived, otherReference].sort(
+          (left, right) =>
+            left.sourceType.localeCompare(right.sourceType) ||
+            left.sourceId.localeCompare(right.sourceId),
+        ),
+      )
+      expect(body.list.find((item) => item.id === unusedId)?.references).toEqual([])
+
+      await expect(database.select().from(announcementReads)).resolves.toEqual([])
+    },
+  )
+
   dbTest(
     'uploads metadata, creates content urls, and serves content without auth',
     async ({ db: database }) => {
@@ -317,7 +460,7 @@ describe('attachment routes integration', () => {
   )
 
   dbTest(
-    'lists active attachments with uploader summaries and keeps soft-deleted attachments out',
+    'lists active attachments and permits deletion even with announcement and avatar sources',
     async ({ db: database }) => {
       const events: OperationLogEvent[] = []
       const { app, authenticated } = await createAttachmentIntegrationFixture(database, {
@@ -347,9 +490,22 @@ describe('attachment routes integration', () => {
         },
       })
 
+      await createReferencedAnnouncement(database, uploaded.id, {
+        title: 'Referenced announcement',
+        status: ANNOUNCEMENT_STATUS_PUBLISHED,
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+      })
+      await database
+        .update(systemUsers)
+        .set({ avatarId: uploaded.id })
+        .where(eq(systemUsers.id, authenticated.userId))
+      const deleter = await createSystemAccessFixture(database, {
+        accessCodes: ['content:attachment:delete'],
+      })
+
       const deleteResponse = await app.request(`/api/attachments/${uploaded.id}`, {
         method: 'DELETE',
-        headers: authenticated.authHeaders,
+        headers: deleter.authHeaders,
       })
       expect(deleteResponse.status).toBe(204)
       expect(

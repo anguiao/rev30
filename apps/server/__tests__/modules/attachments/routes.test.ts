@@ -160,6 +160,7 @@ describe('attachment routes', () => {
       list: [
         {
           ...attachment,
+          references: [],
           createdBy: {
             id: currentUser.id,
             username: currentUser.username,

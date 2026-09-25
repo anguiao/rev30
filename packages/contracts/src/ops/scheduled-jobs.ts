@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { nonBlankString, paginationQuerySchema } from '../common'
+import { nonBlankString, paginationQuerySchema, uuidString } from '../common'
 
 export const SCHEDULED_JOB_TRIGGER_SOURCE_SCHEDULED = 'scheduled'
 export const SCHEDULED_JOB_TRIGGER_SOURCE_MANUAL = 'manual'
@@ -72,8 +72,8 @@ const scheduledJobTimezoneSchema = z
   .max(128, '时区不能超过 128 个字符')
 const scheduledJobDateTimeSchema = z.iso.datetime()
 const scheduledJobNullableDateTimeSchema = scheduledJobDateTimeSchema.nullable()
-const scheduledJobIdSchema = z.uuid('任务运行 ID 无效')
-const scheduledJobUserIdSchema = z.uuid('用户 ID 无效')
+const scheduledJobIdSchema = uuidString('任务运行 ID 无效')
+const scheduledJobUserIdSchema = uuidString('用户 ID 无效')
 const scheduledJobSnapshotStringSchema = nonBlankString('快照字段不能为空').max(
   512,
   '快照字段不能超过 512 个字符',

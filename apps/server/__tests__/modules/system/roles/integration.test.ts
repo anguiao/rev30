@@ -591,7 +591,7 @@ describe('role routes', () => {
   )
 
   dbTest(
-    'rejects child resource authorization without its parent resource',
+    'normalizes resource UUIDs before checking parent authorization',
     async ({ db: database }) => {
       const app = await createTestApp(database)
       const system = await createResource(database, {
@@ -634,7 +634,7 @@ describe('role routes', () => {
         body: JSON.stringify({
           name: 'Action Viewer',
           code: 'action-viewer',
-          resourceIds: [system.id, listUser.id],
+          resourceIds: [system.id, listUser.id.toUpperCase()],
         }),
         headers: { 'content-type': 'application/json' },
       })
@@ -648,7 +648,11 @@ describe('role routes', () => {
       const fullChain = await createRole(app, {
         name: 'User Viewer',
         code: 'user-viewer',
-        resourceIds: [system.id, userMenu.id, listUser.id],
+        resourceIds: [
+          system.id.toUpperCase(),
+          userMenu.id.toUpperCase(),
+          listUser.id.toUpperCase(),
+        ],
       })
 
       expect(fullChain.response.status).toBe(201)

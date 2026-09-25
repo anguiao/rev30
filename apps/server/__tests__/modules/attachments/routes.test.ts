@@ -27,7 +27,7 @@ import { createLogger } from '../../../src/runtime/logger'
 
 type AttachmentService = ReturnType<typeof createAttachmentService>
 
-const attachmentId = '11111111-1111-4111-8111-111111111111'
+const attachmentId = 'a1111111-1111-4111-8111-11111111111a'
 const currentUser = {
   id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
   username: 'ada',
@@ -191,7 +191,7 @@ describe('attachment routes', () => {
     })
   })
 
-  it('creates upload sessions, accepts authorized uploads, and delegates metadata routes', async () => {
+  it('normalizes upload path IDs and delegates upload and metadata routes', async () => {
     mocks.authState.accessCodes = ['content:attachment:list', 'content:attachment:delete']
     const app = createAttachmentTestApp()
     const file = new File([Uint8Array.from([0x89, 0x50, 0x4e, 0x47])], 'avatar.png', {
@@ -225,7 +225,7 @@ describe('attachment routes', () => {
     mocks.authMiddleware.mockClear()
 
     const uploadResponse = await app.request(
-      `/api/attachments/uploads/${attachmentId}/content?token=upload-token`,
+      `/api/attachments/uploads/${attachmentId.toUpperCase()}/content?token=upload-token`,
       {
         method: 'PUT',
         body: file,
@@ -240,7 +240,7 @@ describe('attachment routes', () => {
     })
 
     const completeResponse = await app.request(
-      `/api/attachments/uploads/${attachmentId}/complete`,
+      `/api/attachments/uploads/${attachmentId.toUpperCase()}/complete`,
       {
         method: 'POST',
         body: JSON.stringify({}),

@@ -5,6 +5,7 @@ import {
   optionalNullableString,
   paginationQuerySchema,
   sortOrderInputSchema,
+  uuidString,
 } from '../common'
 import { iconifyIconNamePattern } from '../icons'
 import {
@@ -37,7 +38,7 @@ export const resourceOpenTargetSchema = z.enum(
   '打开方式无效',
 )
 
-const resourceIdSchema = z.uuid('资源 ID 无效')
+const resourceIdSchema = uuidString('资源 ID 无效')
 const resourceNameSchema = nonBlankString('请输入名称')
 const resourceCodeSchema = nonBlankString('请输入权限编码')
 const optionalKeywordSchema = optionalTrimmedQueryString()

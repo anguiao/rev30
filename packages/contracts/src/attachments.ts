@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { nonBlankString, paginationQuerySchema } from './common'
+import { nonBlankString, paginationQuerySchema, uuidString } from './common'
 import { optionalQueryValue, optionalTrimmedQueryString } from './query'
 
 export const ATTACHMENT_READ_POLICY_SIGNED = 'signed'
@@ -26,7 +26,7 @@ export const attachmentDispositionSchema = z.enum(
   '读取方式无效',
 )
 
-const attachmentIdSchema = z.uuid('附件 ID 无效')
+const attachmentIdSchema = uuidString('附件 ID 无效')
 
 export const attachmentSchema = z.object({
   id: attachmentIdSchema,
@@ -43,7 +43,7 @@ const optionalUsageQuerySchema = optionalQueryValue(attachmentUsageSchema)
 const optionalKeywordSchema = optionalTrimmedQueryString()
 
 export const attachmentCreatedBySchema = z.object({
-  id: z.uuid('上传人 ID 无效'),
+  id: uuidString('上传人 ID 无效'),
   username: nonBlankString(),
   nickname: nonBlankString(),
 })
@@ -83,7 +83,7 @@ export const attachmentUploadSessionCreateInputSchema = z
   .strict()
 
 export const attachmentUploadSessionSchema = z.object({
-  uploadId: z.uuid('上传会话 ID 无效'),
+  uploadId: uuidString('上传会话 ID 无效'),
   request: attachmentTransferRequestSchema.extend({
     method: z.literal('PUT'),
   }),

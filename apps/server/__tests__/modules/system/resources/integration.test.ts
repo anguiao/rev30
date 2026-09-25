@@ -686,7 +686,7 @@ describe('resource routes', () => {
   )
 
   dbTest(
-    'updates resource fields, normalizes type-specific fields, and rejects circular moves',
+    'normalizes UUIDs when updating resource fields and rejects circular moves',
     async ({ db: database }) => {
       const app = await createTestApp(database)
       const { body: root } = await createResource(app, {
@@ -708,13 +708,14 @@ describe('resource routes', () => {
         parentId: child.id,
       })
 
-      const updateResponse = await app.request(`/api/system/resources/${child.id}`, {
+      const updateResponse = await app.request(`/api/system/resources/${child.id.toUpperCase()}`, {
         method: 'PATCH',
         body: JSON.stringify({
           type: RESOURCE_TYPE_EXTERNAL,
           name: 'User Docs',
           code: 'test-system:user-docs',
           externalUrl: ' https://example.com/users ',
+          parentId: root.id.toUpperCase(),
           sortOrder: 20,
         }),
         headers: { 'content-type': 'application/json' },
@@ -730,12 +731,13 @@ describe('resource routes', () => {
         path: null,
         externalUrl: 'https://example.com/users',
         openTarget: RESOURCE_OPEN_TARGET_BLANK,
+        parentId: root.id,
         sortOrder: 20,
       })
 
       const selfMoveResponse = await app.request(`/api/system/resources/${child.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ parentId: child.id }),
+        body: JSON.stringify({ parentId: child.id.toUpperCase() }),
         headers: { 'content-type': 'application/json' },
       })
       expect(selfMoveResponse.status).toBe(409)
@@ -743,7 +745,7 @@ describe('resource routes', () => {
 
       const descendantMoveResponse = await app.request(`/api/system/resources/${root.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ parentId: grandchild.id }),
+        body: JSON.stringify({ parentId: grandchild.id.toUpperCase() }),
         headers: { 'content-type': 'application/json' },
       })
       expect(descendantMoveResponse.status).toBe(409)

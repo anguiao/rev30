@@ -35,8 +35,8 @@ export function includeIdsQueryValue<TSchema extends z.ZodType<string>>(schema: 
         .map((item) => item.trim())
         .filter((item) => item.length > 0)
 
-      return [...new Set(values)]
+      return values
     }, z.array(schema))
     .optional()
-    .transform((value) => value ?? [])
+    .transform((value) => [...new Set(value ?? [])])
 }

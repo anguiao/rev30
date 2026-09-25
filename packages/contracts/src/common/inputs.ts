@@ -8,6 +8,10 @@ export function nonBlankString(message = '不能为空') {
   return z.string().trim().min(1, message)
 }
 
+export function uuidString(message = 'ID 无效') {
+  return z.uuid(message).toLowerCase()
+}
+
 export function optionalNullableString(message = '不能为空') {
   return z
     .union([z.string(), z.null()])

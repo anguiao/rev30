@@ -5,6 +5,7 @@ import {
   nonBlankString,
   paginationQuerySchema,
   sortOrderInputSchema,
+  uuidString,
 } from '../common'
 import {
   includeIdsQueryValue,
@@ -21,8 +22,8 @@ export const roleStatusSchema = z.literal(
   '角色状态无效',
 )
 
-const roleIdSchema = z.uuid('角色 ID 无效')
-const resourceIdSchema = z.uuid('资源 ID 无效')
+const roleIdSchema = uuidString('角色 ID 无效')
+const resourceIdSchema = uuidString('资源 ID 无效')
 const roleNameSchema = nonBlankString('请输入名称')
 const roleCodeSchema = nonBlankString('请输入编码')
 

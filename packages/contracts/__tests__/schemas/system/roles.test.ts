@@ -22,7 +22,9 @@ describe('role schemas', () => {
     const first = '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7'
     const second = '4be2dfda-2fd6-4ee5-b06b-c551328bc343'
 
-    expect(roleOptionsQuerySchema.parse({ includeIds: `${first}, ${second}, ${first}` })).toEqual({
+    expect(
+      roleOptionsQuerySchema.parse({ includeIds: `${first.toUpperCase()}, ${second}, ${first}` }),
+    ).toEqual({
       includeIds: [first, second],
     })
   })
@@ -189,7 +191,7 @@ describe('role schemas', () => {
     const result = roleCreateSchema.safeParse({
       name: 'Administrator',
       code: 'admin',
-      resourceIds: [resourceId, resourceId],
+      resourceIds: [resourceId, resourceId.toUpperCase()],
     })
 
     expectZodIssue(result, { message: '资源不能重复' })
@@ -206,10 +208,10 @@ describe('role schemas', () => {
   })
 
   it('rejects resource ids that omit required parent resources', () => {
-    const systemId = testUuid(1)
-    const userMenuId = testUuid(2)
-    const listUserId = testUuid(3)
-    const createUserId = testUuid(4)
+    const systemId = testUuid(0xa1)
+    const userMenuId = testUuid(0xa2)
+    const listUserId = testUuid(0xa3)
+    const createUserId = testUuid(0xa4)
     const schema = createRoleResourceIdsSchema([
       { id: systemId, parentId: null },
       { id: userMenuId, parentId: systemId },
@@ -217,9 +219,12 @@ describe('role schemas', () => {
       { id: createUserId, parentId: userMenuId },
     ])
 
-    expect(schema.parse([systemId, userMenuId])).toEqual([systemId, userMenuId])
+    expect(schema.parse([systemId.toUpperCase(), userMenuId.toUpperCase()])).toEqual([
+      systemId,
+      userMenuId,
+    ])
 
-    const missingDirectParent = schema.safeParse([listUserId])
+    const missingDirectParent = schema.safeParse([listUserId.toUpperCase()])
     expectZodIssue(missingDirectParent, {
       message: '子级权限资源需要包含所有上级权限资源',
     })

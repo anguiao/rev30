@@ -7,6 +7,7 @@ import {
   paginationQuerySchema,
   passwordInputSchema,
   usernameInputSchema,
+  uuidString,
 } from '../common'
 import {
   includeIdsQueryValue,
@@ -28,16 +29,16 @@ const userUniqueFields = ['username', 'email', 'phone'] as const
 export type UserUniqueField = (typeof userUniqueFields)[number]
 export const userUniqueFieldSchema = z.enum(userUniqueFields)
 
-const userIdSchema = z.uuid('用户 ID 无效')
+const userIdSchema = uuidString('用户 ID 无效')
 export const userNameSchema = usernameInputSchema
 export const userNicknameSchema = nonBlankString('请输入昵称')
-export const userAvatarIdSchema = z.uuid('头像 ID 无效')
+export const userAvatarIdSchema = uuidString('头像 ID 无效')
 export const contactInputSchema = optionalNullableString()
 
 const optionalKeywordSchema = optionalTrimmedQueryString()
 const optionalStatusQuerySchema = optionalNumericQueryValue(userStatusSchema)
-const optionalDepartmentIdQuerySchema = optionalQueryValue(z.uuid('部门 ID 无效'))
-const optionalRoleIdQuerySchema = optionalQueryValue(z.uuid('角色 ID 无效'))
+const optionalDepartmentIdQuerySchema = optionalQueryValue(uuidString('部门 ID 无效'))
+const optionalRoleIdQuerySchema = optionalQueryValue(uuidString('角色 ID 无效'))
 
 export const userSchema = z.object({
   id: userIdSchema,
@@ -61,7 +62,7 @@ export const userRoleSchema = roleSummarySchema
 
 const DEPARTMENT_IDS_MAX_LENGTH = 50
 export const departmentIdsSchema = z
-  .array(z.uuid('部门 ID 无效'))
+  .array(uuidString('部门 ID 无效'))
   .max(DEPARTMENT_IDS_MAX_LENGTH, `用户部门不能超过 ${DEPARTMENT_IDS_MAX_LENGTH} 个`)
   .superRefine(ensureUniqueItems('部门不能重复'))
 

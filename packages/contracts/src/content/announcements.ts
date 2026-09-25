@@ -5,6 +5,7 @@ import {
   nonBlankString,
   optionalNullableString,
   paginationQuerySchema,
+  uuidString,
 } from '../common'
 import { optionalQueryValue, optionalTrimmedQueryString } from '../query'
 import {
@@ -47,7 +48,7 @@ export const announcementTargetTypeSchema = z.enum(
   '可见对象类型无效',
 )
 
-const announcementIdSchema = z.uuid('通知公告 ID 无效')
+const announcementIdSchema = uuidString('通知公告 ID 无效')
 export const announcementTitleSchema = nonBlankString('请输入标题').max(
   100,
   '标题不能超过 100 个字符',
@@ -96,7 +97,7 @@ const announcementContentJsonInputSchema = z.custom<RichTextDocument>(
 )
 export const announcementTargetSchema = z.object({
   targetType: announcementTargetTypeSchema,
-  targetId: z.uuid('可见对象 ID 无效'),
+  targetId: uuidString('可见对象 ID 无效'),
 })
 
 const ANNOUNCEMENT_TARGETS_MAX_LENGTH = 200

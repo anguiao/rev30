@@ -4,6 +4,7 @@ import {
   nonBlankString,
   paginationQuerySchema,
   sortOrderInputSchema,
+  uuidString,
 } from '../common'
 import {
   includeIdsQueryValue,
@@ -19,7 +20,7 @@ export const departmentStatusSchema = z.literal(
   '部门状态无效',
 )
 
-const departmentIdSchema = z.uuid('部门 ID 无效')
+const departmentIdSchema = uuidString('部门 ID 无效')
 const departmentNameSchema = nonBlankString('请输入名称')
 const departmentCodeSchema = nonBlankString('请输入编码')
 

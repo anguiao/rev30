@@ -33,9 +33,7 @@ import {
 import { createAttachmentService } from './service'
 
 const attachmentIdParamSchema = attachmentSchema.pick({ id: true })
-const attachmentUploadSessionIdParamSchema = z.object({
-  uploadId: z.uuid(),
-})
+const attachmentUploadSessionIdParamSchema = attachmentUploadSessionSchema.pick({ uploadId: true })
 const attachmentContentQuerySchema = z.object({
   token: z.string().trim().optional(),
 })

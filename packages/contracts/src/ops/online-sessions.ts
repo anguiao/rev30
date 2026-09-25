@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { nonBlankString, paginationQuerySchema, usernameInputSchema } from '../common'
+import { nonBlankString, paginationQuerySchema, usernameInputSchema, uuidString } from '../common'
 import { optionalQueryValue } from '../query'
 import { clientIpSourceSchema, opsUserAgentSchema } from './common'
 
@@ -11,8 +11,8 @@ export const onlineSessionListQuerySchema = paginationQuerySchema.extend({
 })
 
 export const onlineSessionListItemSchema = z.object({
-  id: z.uuid('会话 ID 无效'),
-  userId: z.uuid('用户 ID 无效'),
+  id: uuidString('会话 ID 无效'),
+  userId: uuidString('用户 ID 无效'),
   username: usernameInputSchema,
   nickname: nonBlankString(),
   createdIp: z.string().nullable(),
@@ -32,7 +32,7 @@ export const onlineSessionListResponseSchema = z.object({
 })
 
 export const onlineSessionRevokePathSchema = z.object({
-  id: z.uuid('会话 ID 无效'),
+  id: uuidString('会话 ID 无效'),
 })
 
 export type OnlineSessionListQuery = z.infer<typeof onlineSessionListQuerySchema>

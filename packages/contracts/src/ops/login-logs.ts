@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { paginationQuerySchema, usernameInputSchema } from '../common'
+import { paginationQuerySchema, usernameInputSchema, uuidString } from '../common'
 import { optionalQueryValue } from '../query'
 import { clientIpSourceSchema, opsUserAgentSchema } from './common'
 
@@ -49,9 +49,9 @@ export const loginLogListQuerySchema = paginationQuerySchema
   )
 
 const loginLogListItemBaseSchema = z.object({
-  id: z.uuid('登录日志 ID 无效'),
+  id: uuidString('登录日志 ID 无效'),
   username: usernameInputSchema,
-  requestId: z.uuid('请求 ID 无效'),
+  requestId: uuidString('请求 ID 无效'),
   clientIp: z.string().nullable(),
   clientIpSource: clientIpSourceSchema,
   userAgent: opsUserAgentSchema,
@@ -60,13 +60,13 @@ const loginLogListItemBaseSchema = z.object({
 
 export const loginLogListItemSchema = z.discriminatedUnion('result', [
   loginLogListItemBaseSchema.extend({
-    userId: z.uuid('用户 ID 无效'),
+    userId: uuidString('用户 ID 无效'),
     result: z.literal(LOGIN_LOG_RESULT_SUCCESS),
     failureReason: z.null(),
-    sessionId: z.uuid('会话 ID 无效'),
+    sessionId: uuidString('会话 ID 无效'),
   }),
   loginLogListItemBaseSchema.extend({
-    userId: z.uuid('用户 ID 无效').nullable(),
+    userId: uuidString('用户 ID 无效').nullable(),
     result: z.literal(LOGIN_LOG_RESULT_FAILURE),
     failureReason: loginFailureReasonSchema,
     sessionId: z.null(),

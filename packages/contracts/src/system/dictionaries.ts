@@ -4,6 +4,7 @@ import {
   optionalNullableString,
   paginationQuerySchema,
   sortOrderInputSchema,
+  uuidString,
 } from '../common'
 import { optionalNumericQueryValue, optionalTrimmedQueryString } from '../query'
 
@@ -14,7 +15,7 @@ export const dictionaryStatusSchema = z.literal(
   '字典状态无效',
 )
 
-const dictionaryIdSchema = z.uuid('字典 ID 无效')
+const dictionaryIdSchema = uuidString('字典 ID 无效')
 const dictionaryCodeSchema = z
   .string()
   .trim()

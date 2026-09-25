@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { nonBlankString, paginationQuerySchema } from '../common'
+import { nonBlankString, paginationQuerySchema, uuidString } from '../common'
 import { optionalNumericQueryValue, optionalQueryValue } from '../query'
 import { clientIpSourceSchema, opsUserAgentSchema } from './common'
 
@@ -75,14 +75,14 @@ const httpStatusSchema = z
 export const operationLogListQuerySchema = paginationQuerySchema
   .extend({
     actorKeyword: optionalTrimmedFilterSchema,
-    actorSessionId: optionalQueryValue(z.uuid('会话 ID 无效')),
+    actorSessionId: optionalQueryValue(uuidString('会话 ID 无效')),
     module: optionalQueryValue(operationLogModuleSchema),
     action: optionalQueryValue(operationLogActionSchema),
     result: optionalQueryValue(operationLogResultSchema),
     httpStatus: optionalNumericQueryValue(httpStatusSchema),
     targetKeyword: optionalTrimmedFilterSchema,
     clientIp: optionalTrimmedFilterSchema,
-    requestId: optionalQueryValue(z.uuid('请求 ID 无效')),
+    requestId: optionalQueryValue(uuidString('请求 ID 无效')),
     occurredFrom: occurredAtQuerySchema,
     occurredTo: occurredAtQuerySchema,
   })
@@ -105,8 +105,8 @@ const operationLogTargetValueSchema = operationLogSnapshotStringSchema.nullable(
 
 const operationLogListItemBaseSchema = z
   .object({
-    id: z.uuid('操作日志 ID 无效'),
-    actorUserId: z.uuid('用户 ID 无效'),
+    id: uuidString('操作日志 ID 无效'),
+    actorUserId: uuidString('用户 ID 无效'),
     actorUsername: operationLogSnapshotStringSchema,
     actorNickname: operationLogSnapshotStringSchema,
     module: operationLogModuleSchema,
@@ -179,15 +179,15 @@ export const operationLogListResponseSchema = z
 export const operationLogDetailSchema = operationLogListItemBaseSchema
   .extend({
     actorIsAdmin: z.boolean(),
-    actorSessionId: z.uuid('会话 ID 无效'),
-    requestId: z.uuid('请求 ID 无效'),
+    actorSessionId: uuidString('会话 ID 无效'),
+    requestId: uuidString('请求 ID 无效'),
     clientIpSource: clientIpSourceSchema,
     userAgent: opsUserAgentSchema,
   })
   .superRefine(validateOperationLogRecord)
 
 export const operationLogDetailPathSchema = z.object({
-  id: z.uuid('操作日志 ID 无效'),
+  id: uuidString('操作日志 ID 无效'),
 })
 
 export type OperationLogModule = z.infer<typeof operationLogModuleSchema>

@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { type AuthTokenResponse } from '@rev30/contracts'
 import { session } from '../../helpers/session'
-import { logout, updateMyPassword, updateMyProfile } from '../../../src/features/auth/requests'
+import {
+  login,
+  logout,
+  updateMyPassword,
+  updateMyProfile,
+} from '../../../src/features/auth/requests'
 import { useAuthStore } from '../../../src/stores/auth'
 import {
   createFetchMock,
@@ -16,6 +21,17 @@ import { createTestPinia } from '../../helpers/pinia'
 describe('auth requests', () => {
   beforeEach(() => {
     createTestPinia()
+  })
+
+  it('preserves the password reminder flag in the login response', async () => {
+    const responseBody = { ...session, mustChangePassword: true }
+    const fetchMock = createFetchMock(jsonResponse(responseBody))
+
+    await expect(login({ username: 'ada', password: 'temporary-password' })).resolves.toEqual(
+      responseBody,
+    )
+    expectFetchCall(fetchMock, 0, { method: 'POST', pathname: '/api/auth/login' })
+    expectJsonBody(fetchMock, 0, { username: 'ada', password: 'temporary-password' })
   })
 
   it('logs out through the Hono RPC client', async () => {

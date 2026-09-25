@@ -1,6 +1,8 @@
 import {
+  authLoginResponseSchema,
   authTokenResponseSchema,
   type AuthLoginInput,
+  type AuthLoginResponse,
   type AuthTokenResponse,
   type AuthProfileUpdateInput,
   type AuthPasswordUpdateInput,
@@ -10,8 +12,8 @@ import {
 import { api, logoutAuthSession, refreshAuthSession } from '../../api'
 import { parseApiResponse } from '../../utils/request'
 
-export async function login(input: AuthLoginInput): Promise<AuthTokenResponse> {
-  return parseApiResponse(await api.auth.login.$post({ json: input }), authTokenResponseSchema)
+export async function login(input: AuthLoginInput): Promise<AuthLoginResponse> {
+  return parseApiResponse(await api.auth.login.$post({ json: input }), authLoginResponseSchema)
 }
 
 export async function refreshSession(): Promise<AuthTokenResponse> {

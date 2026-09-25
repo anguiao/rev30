@@ -5,7 +5,7 @@ import {
   passwordInputSchema,
   userCreateSchema,
 } from '@rev30/contracts'
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import type { z } from 'zod'
 import { createDb, type Db } from '.'
 import { hashPassword } from '../modules/auth/password'
@@ -26,27 +26,47 @@ const bootstrapAdminSchema = userCreateSchema
 type BootstrapAdminInput = z.infer<typeof bootstrapAdminSchema>
 
 export async function bootstrapAdminUser(database: Db, input: BootstrapAdminInput) {
-  const [adminRole] = await database
-    .select()
-    .from(systemRoles)
-    .where(
-      and(
-        eq(systemRoles.code, 'admin'),
-        eq(systemRoles.status, ROLE_STATUS_ENABLED),
-        isNull(systemRoles.deletedAt),
-      ),
-    )
-    .limit(1)
-
-  if (!adminRole) {
-    throw new Error('admin 角色不存在，请先执行数据库迁移')
-  }
-
-  const now = new Date()
-  const passwordHash = await hashPassword(input.password)
-
   await database.transaction(async (tx) => {
-    const [upsertedUser] = await tx
+    // Serialize bootstrap attempts before checking the global initialization marker.
+    const [adminRole] = await tx
+      .select({ id: systemRoles.id })
+      .from(systemRoles)
+      .where(
+        and(
+          eq(systemRoles.code, 'admin'),
+          eq(systemRoles.status, ROLE_STATUS_ENABLED),
+          isNull(systemRoles.deletedAt),
+        ),
+      )
+      .limit(1)
+      .for('update')
+
+    if (!adminRole) {
+      throw new Error('admin 角色不存在或不可用，请先检查数据库迁移和角色状态')
+    }
+
+    const [initializedAdmin] = await tx
+      .select({ id: systemUsers.id })
+      .from(systemUsers)
+      .where(eq(systemUsers.builtIn, true))
+      .limit(1)
+
+    if (initializedAdmin) {
+      throw new Error('系统已完成管理员初始化，不能重复执行')
+    }
+
+    const [existingUser] = await tx
+      .select({ id: systemUsers.id })
+      .from(systemUsers)
+      .where(and(eq(systemUsers.username, input.username), isNull(systemUsers.deletedAt)))
+      .limit(1)
+
+    if (existingUser) {
+      throw new Error('初始化管理员用户名已被占用')
+    }
+
+    const passwordHash = await hashPassword(input.password)
+    const [createdUser] = await tx
       .insert(systemUsers)
       .values({
         username: input.username,
@@ -57,50 +77,22 @@ export async function bootstrapAdminUser(database: Db, input: BootstrapAdminInpu
         builtIn: true,
         deletedAt: null,
       })
-      .onConflictDoUpdate({
-        target: systemUsers.username,
-        targetWhere: sql`${systemUsers.deletedAt} IS NULL`,
-        set: {
-          nickname: input.nickname,
-          email: input.email ?? null,
-          phone: input.phone ?? null,
-          status: USER_STATUS_ENABLED,
-          builtIn: true,
-          deletedAt: null,
-          updatedAt: now,
-        },
-      })
       .returning()
 
-    if (!upsertedUser) {
+    if (!createdUser) {
       throw new Error('创建初始管理员失败')
     }
 
-    await tx
-      .insert(authPasswordCredentials)
-      .values({
-        userId: upsertedUser.id,
-        passwordHash,
-        mustChangePassword: false,
-      })
-      .onConflictDoUpdate({
-        target: authPasswordCredentials.userId,
-        set: {
-          passwordHash,
-          mustChangePassword: false,
-          updatedAt: now,
-        },
-      })
+    await tx.insert(authPasswordCredentials).values({
+      userId: createdUser.id,
+      passwordHash,
+      mustChangePassword: false,
+    })
 
-    await tx
-      .insert(systemUserRoles)
-      .values({
-        userId: upsertedUser.id,
-        roleId: adminRole.id,
-      })
-      .onConflictDoNothing({
-        target: [systemUserRoles.userId, systemUserRoles.roleId],
-      })
+    await tx.insert(systemUserRoles).values({
+      userId: createdUser.id,
+      roleId: adminRole.id,
+    })
   })
 }
 
@@ -126,5 +118,5 @@ export async function bootstrapAdminFromEnv() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   await bootstrapAdminFromEnv()
 
-  console.log('初始管理员已就绪')
+  console.log('初始管理员已创建')
 }

@@ -163,6 +163,7 @@ export function createAuthService(database: Db, config: AuthConfig) {
         tokenType: 'Bearer' as const,
         expiresIn: tokens.accessExpiresIn,
         user,
+        mustChangePassword: account.credential.mustChangePassword,
         accessCodes: access.accessCodes,
         menus: access.menus,
       }

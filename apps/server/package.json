@@ -21,6 +21,7 @@
     "icon-search:verify": "tsx scripts/icon-search/build/validate-artifacts.ts",
     "icon-search:benchmark": "tsx scripts/icon-search/benchmark/index.ts",
     "db:bootstrap": "tsx src/db/bootstrap.ts",
+    "db:recover-admin": "tsx src/db/recover-admin.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",

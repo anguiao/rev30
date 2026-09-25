@@ -1,385 +1,223 @@
-import { randomUUID } from 'node:crypto'
 import {
   ROLE_STATUS_DISABLED,
   ROLE_STATUS_ENABLED,
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
 } from '@rev30/contracts'
-import { and, eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { assert, describe, expect } from 'vitest'
+import { bootstrapAdminUser } from '../../src/db/bootstrap'
 import {
   authPasswordCredentials,
   systemRoles,
   systemUserRoles,
   systemUsers,
 } from '../../src/db/schema'
-import { bootstrapAdminUser } from '../../src/db/bootstrap'
-import { verifyPassword } from '../../src/modules/auth/password'
+import { hashPassword, verifyPassword } from '../../src/modules/auth/password'
 import { dbTest } from '../fixtures/database'
+import { createSystemUserFixture } from '../helpers/system'
 
 const now = new Date('2026-05-06T00:00:00.000Z')
+const adminInput = {
+  username: 'admin',
+  password: 'secret-admin-password',
+  nickname: 'Administrator',
+  email: 'admin@example.com',
+  phone: null,
+}
 
 describe('bootstrap admin user', () => {
-  dbTest('creates an enabled admin user and binds the admin role', async ({ db: database }) => {
-    await bootstrapAdminUser(database, {
-      username: 'admin',
-      password: 'secret-admin-password',
-      nickname: 'Administrator',
-      email: null,
-      phone: null,
-    })
+  dbTest('creates an enabled admin user with a password and the admin role', async ({ db }) => {
+    await bootstrapAdminUser(db, adminInput)
 
-    const [user] = await database
-      .select()
-      .from(systemUsers)
-      .where(eq(systemUsers.username, 'admin'))
-    const [adminRole] = await database
-      .select()
-      .from(systemRoles)
-      .where(eq(systemRoles.code, 'admin'))
+    const [user] = await db.select().from(systemUsers)
+    const [adminRole] = await db.select().from(systemRoles).where(eq(systemRoles.code, 'admin'))
     assert(user, 'Expected bootstrapped admin user')
     assert(adminRole, 'Expected seeded admin role')
 
-    const bindings = await database
-      .select()
-      .from(systemUserRoles)
-      .where(and(eq(systemUserRoles.userId, user.id), eq(systemUserRoles.roleId, adminRole.id)))
-    const [credential] = await database
-      .select()
-      .from(authPasswordCredentials)
-      .where(eq(authPasswordCredentials.userId, user.id))
+    const bindings = await db.select().from(systemUserRoles)
+    const credentials = await db.select().from(authPasswordCredentials)
 
     expect(user).toMatchObject({
-      username: 'admin',
-      nickname: 'Administrator',
-      email: null,
+      username: adminInput.username,
+      nickname: adminInput.nickname,
+      email: adminInput.email,
       phone: null,
       status: USER_STATUS_ENABLED,
       builtIn: true,
       deletedAt: null,
     })
-    expect(bindings).toEqual([
-      expect.objectContaining({
-        userId: user.id,
-        roleId: adminRole.id,
-      }),
+    expect(bindings).toEqual([expect.objectContaining({ userId: user.id, roleId: adminRole.id })])
+    expect(credentials).toEqual([
+      expect.objectContaining({ userId: user.id, mustChangePassword: false }),
     ])
+    const [credential] = credentials
     assert(credential, 'Expected admin password credential')
-    await expect(verifyPassword('secret-admin-password', credential.passwordHash)).resolves.toBe(
-      true,
-    )
+    await expect(verifyPassword(adminInput.password, credential.passwordHash)).resolves.toBe(true)
   })
 
   dbTest(
-    'updates an existing admin user, updates password, and keeps a single admin binding',
-    async ({ db: database }) => {
-      await bootstrapAdminUser(database, {
-        username: 'admin',
-        password: 'first-admin-password',
-        nickname: 'Administrator',
-        email: null,
-        phone: null,
-      })
+    'rejects repeated initialization with the same or a different username',
+    async ({ db }) => {
+      await bootstrapAdminUser(db, adminInput)
+      const users = await db.select().from(systemUsers)
+      const credentials = await db.select().from(authPasswordCredentials)
+      const bindings = await db.select().from(systemUserRoles)
 
-      const [createdUser] = await database
-        .select()
-        .from(systemUsers)
-        .where(eq(systemUsers.username, 'admin'))
+      for (const username of [adminInput.username, 'another-admin']) {
+        await expect(
+          bootstrapAdminUser(db, {
+            ...adminInput,
+            username,
+            nickname: 'Replacement Admin',
+            password: 'replacement-password',
+            email: 'replacement@example.com',
+            phone: '18800000000',
+          }),
+        ).rejects.toThrow('系统已完成管理员初始化，不能重复执行')
 
-      assert(createdUser, 'Expected bootstrap user')
+        expect(await db.select().from(systemUsers)).toEqual(users)
+        expect(await db.select().from(authPasswordCredentials)).toEqual(credentials)
+        expect(await db.select().from(systemUserRoles)).toEqual(bindings)
+      }
+    },
+  )
 
-      await database
-        .update(systemUsers)
-        .set({
-          nickname: 'Old Root',
-          email: null,
-          phone: '13300000000',
-          status: USER_STATUS_DISABLED,
-          updatedAt: now,
-        })
-        .where(eq(systemUsers.id, createdUser.id))
-
-      await bootstrapAdminUser(database, {
-        username: 'admin',
-        password: 'second-admin-password',
-        nickname: 'Root',
-        email: 'root@example.com',
-        phone: null,
-      })
-
-      const [adminRole] = await database
-        .select()
-        .from(systemRoles)
-        .where(eq(systemRoles.code, 'admin'))
-      const [user] = await database
-        .select()
-        .from(systemUsers)
-        .where(eq(systemUsers.username, 'admin'))
-      assert(user, 'Expected bootstrapped admin user')
-      assert(adminRole, 'Expected seeded admin role')
-
-      const bindings = await database
-        .select()
-        .from(systemUserRoles)
-        .where(and(eq(systemUserRoles.userId, user.id), eq(systemUserRoles.roleId, adminRole.id)))
-      const [credential] = await database
-        .select()
-        .from(authPasswordCredentials)
-        .where(eq(authPasswordCredentials.userId, user.id))
-
-      expect(user).toMatchObject({
-        id: createdUser.id,
-        nickname: 'Root',
-        email: 'root@example.com',
-        phone: null,
-        status: USER_STATUS_ENABLED,
+  dbTest(
+    'does not bypass initialization when a built-in user is disabled or deleted',
+    async ({ db }) => {
+      const user = await createSystemUserFixture(db, {
+        username: 'previous-admin',
+        status: USER_STATUS_DISABLED,
         builtIn: true,
-        deletedAt: null,
       })
-      expect(bindings).toHaveLength(1)
-      assert(credential, 'Expected admin password credential')
-      await expect(verifyPassword('second-admin-password', credential.passwordHash)).resolves.toBe(
-        true,
+
+      await expect(bootstrapAdminUser(db, adminInput)).rejects.toThrow(
+        '系统已完成管理员初始化，不能重复执行',
       )
+      expect(await db.select().from(systemUsers)).toEqual([user])
+
+      const [deletedUser] = await db
+        .update(systemUsers)
+        .set({ deletedAt: now, updatedAt: now })
+        .where(eq(systemUsers.id, user.id))
+        .returning()
+
+      await expect(bootstrapAdminUser(db, adminInput)).rejects.toThrow(
+        '系统已完成管理员初始化，不能重复执行',
+      )
+      expect(await db.select().from(systemUsers)).toEqual([deletedUser])
+      expect(await db.select().from(authPasswordCredentials)).toEqual([])
+      expect(await db.select().from(systemUserRoles)).toEqual([])
     },
   )
 
-  dbTest('fails when the admin role does not exist', async ({ db: database }) => {
-    await database.delete(systemRoles).where(eq(systemRoles.code, 'admin'))
+  dbTest('does not change credentials or elevate an existing ordinary user', async ({ db }) => {
+    const user = await createSystemUserFixture(db, {
+      username: adminInput.username,
+      nickname: 'Existing User',
+      status: USER_STATUS_DISABLED,
+    })
+    const [credential] = await db
+      .insert(authPasswordCredentials)
+      .values({
+        userId: user.id,
+        passwordHash: await hashPassword('existing-user-password'),
+        mustChangePassword: true,
+      })
+      .returning()
 
-    await expect(
-      bootstrapAdminUser(database, {
-        username: 'admin',
-        password: 'secret-admin-password',
-        nickname: 'Administrator',
-        email: null,
-        phone: null,
-      }),
-    ).rejects.toThrow('admin 角色不存在，请先执行数据库迁移')
+    await expect(bootstrapAdminUser(db, adminInput)).rejects.toThrow('初始化管理员用户名已被占用')
+
+    expect(await db.select().from(systemUsers)).toEqual([user])
+    expect(await db.select().from(authPasswordCredentials)).toEqual([credential])
+    expect(await db.select().from(systemUserRoles)).toEqual([])
   })
 
-  dbTest('fails when the admin role is disabled or soft deleted', async ({ db: database }) => {
-    await database
+  dbTest('fails without creating a user when the admin role is missing', async ({ db }) => {
+    await db.delete(systemRoles).where(eq(systemRoles.code, 'admin'))
+
+    await expect(bootstrapAdminUser(db, adminInput)).rejects.toThrow(
+      'admin 角色不存在或不可用，请先检查数据库迁移和角色状态',
+    )
+
+    expect(await db.select().from(systemUsers)).toEqual([])
+    expect(await db.select().from(authPasswordCredentials)).toEqual([])
+  })
+
+  dbTest('fails when the admin role is disabled or soft deleted', async ({ db }) => {
+    await db
       .update(systemRoles)
-      .set({
-        status: ROLE_STATUS_DISABLED,
-        updatedAt: now,
-      })
+      .set({ status: ROLE_STATUS_DISABLED, updatedAt: now })
       .where(eq(systemRoles.code, 'admin'))
 
-    await expect(
-      bootstrapAdminUser(database, {
-        username: 'admin',
-        password: 'secret-admin-password',
-        nickname: 'Administrator',
-        email: null,
-        phone: null,
-      }),
-    ).rejects.toThrow('admin 角色不存在，请先执行数据库迁移')
+    await expect(bootstrapAdminUser(db, adminInput)).rejects.toThrow(
+      'admin 角色不存在或不可用，请先检查数据库迁移和角色状态',
+    )
 
-    await database
+    await db
       .update(systemRoles)
-      .set({
-        status: ROLE_STATUS_ENABLED,
-        deletedAt: now,
-        updatedAt: now,
-      })
+      .set({ status: ROLE_STATUS_ENABLED, deletedAt: now, updatedAt: now })
       .where(eq(systemRoles.code, 'admin'))
 
-    await expect(
-      bootstrapAdminUser(database, {
-        username: 'admin',
-        password: 'secret-admin-password',
-        nickname: 'Administrator',
-        email: null,
-        phone: null,
-      }),
-    ).rejects.toThrow('admin 角色不存在，请先执行数据库迁移')
+    await expect(bootstrapAdminUser(db, adminInput)).rejects.toThrow(
+      'admin 角色不存在或不可用，请先检查数据库迁移和角色状态',
+    )
+
+    expect(await db.select().from(systemUsers)).toEqual([])
+    expect(await db.select().from(authPasswordCredentials)).toEqual([])
   })
 
   dbTest(
-    'adds a password credential for an existing active user without one',
-    async ({ db: database }) => {
-      const userId = randomUUID()
+    'creates only one administrator for simultaneous initialization calls',
+    async ({ pglite }) => {
+      // Top-level transactions are required; nested savepoints share the same row locks.
+      // PGlite serializes these transactions and does not prove PostgreSQL cross-connection locking.
+      const database = pglite.database
+      const usernames = ['concurrent-admin-one', 'concurrent-admin-two']
 
-      await database.insert(systemUsers).values({
-        id: userId,
-        username: 'admin',
-        nickname: 'Legacy Admin',
-        email: 'legacy@example.com',
-        phone: '18800000000',
-        status: USER_STATUS_DISABLED,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-      })
-
-      await bootstrapAdminUser(database, {
-        username: 'admin',
-        password: 'restored-admin-password',
-        nickname: 'Administrator',
-        email: null,
-        phone: null,
-      })
-
-      const [adminRole] = await database
-        .select()
-        .from(systemRoles)
-        .where(eq(systemRoles.code, 'admin'))
-      const [user] = await database.select().from(systemUsers).where(eq(systemUsers.id, userId))
-      assert(adminRole, 'Expected seeded admin role')
-
-      const bindings = await database
-        .select()
-        .from(systemUserRoles)
-        .where(and(eq(systemUserRoles.userId, userId), eq(systemUserRoles.roleId, adminRole.id)))
-      const [credential] = await database
-        .select()
-        .from(authPasswordCredentials)
-        .where(eq(authPasswordCredentials.userId, userId))
-
-      expect(user).toMatchObject({
-        id: userId,
-        nickname: 'Administrator',
-        email: null,
-        phone: null,
-        status: USER_STATUS_ENABLED,
-        builtIn: true,
-        deletedAt: null,
-      })
-      expect(bindings).toHaveLength(1)
-      assert(credential, 'Expected admin password credential')
-      await expect(
-        verifyPassword('restored-admin-password', credential.passwordHash),
-      ).resolves.toBe(true)
-    },
-  )
-
-  dbTest(
-    'creates a new active admin user when the existing admin was soft deleted',
-    async ({ db: database }) => {
-      const deletedUserId = randomUUID()
-      const deletedAt = new Date('2026-05-01T00:00:00.000Z')
-
-      await database.insert(systemUsers).values({
-        id: deletedUserId,
-        username: 'admin',
-        nickname: 'Deleted Admin',
-        email: 'deleted-admin@example.com',
-        phone: '18800000000',
-        status: USER_STATUS_DISABLED,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt,
-      })
-
-      await bootstrapAdminUser(database, {
-        username: 'admin',
-        password: 'new-admin-password',
-        nickname: 'Administrator',
-        email: 'admin@example.com',
-        phone: null,
-      })
-
-      const users = await database
-        .select()
-        .from(systemUsers)
-        .where(eq(systemUsers.username, 'admin'))
-      const deletedUser = users.find((user) => user.id === deletedUserId)
-      const activeUser = users.find((user) => user.id !== deletedUserId)
-
-      assert(activeUser, 'Expected active admin user')
-
-      const [adminRole] = await database
-        .select()
-        .from(systemRoles)
-        .where(eq(systemRoles.code, 'admin'))
-      const [credential] = await database
-        .select()
-        .from(authPasswordCredentials)
-        .where(eq(authPasswordCredentials.userId, activeUser.id))
-      assert(adminRole, 'Expected seeded admin role')
-
-      const bindings = await database
-        .select()
-        .from(systemUserRoles)
-        .where(
-          and(eq(systemUserRoles.userId, activeUser.id), eq(systemUserRoles.roleId, adminRole.id)),
+      try {
+        const results = await Promise.allSettled(
+          usernames.map((username) => bootstrapAdminUser(database, { ...adminInput, username })),
         )
 
-      expect(users).toHaveLength(2)
-      expect(deletedUser).toMatchObject({
-        id: deletedUserId,
-        nickname: 'Deleted Admin',
-        deletedAt,
-      })
-      expect(activeUser).toMatchObject({
-        username: 'admin',
-        nickname: 'Administrator',
-        email: 'admin@example.com',
-        phone: null,
-        status: USER_STATUS_ENABLED,
-        builtIn: true,
-        deletedAt: null,
-      })
-      expect(bindings).toHaveLength(1)
-      assert(credential, 'Expected admin password credential')
-      await expect(verifyPassword('new-admin-password', credential.passwordHash)).resolves.toBe(
-        true,
-      )
-    },
-  )
+        expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
+        const failures = results.filter((result) => result.status === 'rejected')
+        expect(failures).toHaveLength(1)
+        expect(failures[0]?.reason).toEqual(new Error('系统已完成管理员初始化，不能重复执行'))
 
-  dbTest(
-    'allows simultaneous bootstrap calls without duplicate user, credential, or admin binding rows',
-    async ({ db: database }) => {
-      await expect(
-        Promise.all([
-          bootstrapAdminUser(database, {
-            username: 'admin',
-            password: 'secret-admin-password',
-            nickname: 'Administrator',
-            email: 'admin@example.com',
-            phone: null,
-          }),
-          bootstrapAdminUser(database, {
-            username: 'admin',
-            password: 'secret-admin-password',
-            nickname: 'Administrator',
-            email: 'admin@example.com',
-            phone: null,
-          }),
-        ]),
-      ).resolves.toEqual([undefined, undefined])
+        const users = await database.select().from(systemUsers)
+        const credentials = await database.select().from(authPasswordCredentials)
+        const bindings = await database.select().from(systemUserRoles)
+        const [adminRole] = await database
+          .select()
+          .from(systemRoles)
+          .where(eq(systemRoles.code, 'admin'))
 
-      const allUsers = await database
-        .select()
-        .from(systemUsers)
-        .where(eq(systemUsers.username, 'admin'))
-      const [adminRole] = await database
-        .select()
-        .from(systemRoles)
-        .where(eq(systemRoles.code, 'admin'))
-      const allCredentials = await database.select().from(authPasswordCredentials)
-      expect(allUsers).toHaveLength(1)
-      const user = allUsers[0]
-      assert(user, 'Expected bootstrapped admin user')
-      assert(adminRole, 'Expected seeded admin role')
+        expect(users).toHaveLength(1)
+        const [user] = users
+        assert(user, 'Expected bootstrapped admin user')
+        assert(adminRole, 'Expected seeded admin role')
+        expect(user.builtIn).toBe(true)
+        expect(usernames).toContain(user.username)
+        expect(credentials).toEqual([expect.objectContaining({ userId: user.id })])
+        expect(bindings).toEqual([
+          expect.objectContaining({ userId: user.id, roleId: adminRole.id }),
+        ])
+      } finally {
+        const users = await database
+          .select({ id: systemUsers.id })
+          .from(systemUsers)
+          .where(inArray(systemUsers.username, usernames))
 
-      const bindings = await database
-        .select()
-        .from(systemUserRoles)
-        .where(and(eq(systemUserRoles.userId, user.id), eq(systemUserRoles.roleId, adminRole.id)))
-
-      expect(allCredentials).toHaveLength(1)
-      expect(bindings).toHaveLength(1)
-      expect(allUsers[0]).toMatchObject({
-        username: 'admin',
-        nickname: 'Administrator',
-        email: 'admin@example.com',
-        status: USER_STATUS_ENABLED,
-        deletedAt: null,
-      })
+        for (const user of users) {
+          await database.delete(systemUserRoles).where(eq(systemUserRoles.userId, user.id))
+          await database
+            .delete(authPasswordCredentials)
+            .where(eq(authPasswordCredentials.userId, user.id))
+          await database.delete(systemUsers).where(eq(systemUsers.id, user.id))
+        }
+      }
     },
   )
 })

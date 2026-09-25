@@ -30,6 +30,10 @@ export const authTokenResponseSchema = authSessionResponseSchema.extend({
   expiresIn: z.number().int().positive(),
 })
 
+export const authLoginResponseSchema = authTokenResponseSchema.extend({
+  mustChangePassword: z.boolean(),
+})
+
 export const authProfileUpdateSchema = z
   .object({
     nickname: userNicknameSchema,
@@ -47,6 +51,7 @@ export const authPasswordUpdateSchema = z
   .strict()
 
 export type AuthLoginInput = z.infer<typeof authLoginSchema>
+export type AuthLoginResponse = z.infer<typeof authLoginResponseSchema>
 export type AuthSessionResponse = z.infer<typeof authSessionResponseSchema>
 export type AuthTokenResponse = z.infer<typeof authTokenResponseSchema>
 export type AuthProfileUpdateInput = z.infer<typeof authProfileUpdateSchema>

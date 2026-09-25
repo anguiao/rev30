@@ -119,7 +119,10 @@ describe('auth routes', () => {
     vi.clearAllMocks()
     Object.values(mocks.service).forEach((mock) => mock.mockReset())
     mocks.createAuthService.mockReturnValue(mocks.service)
-    mocks.service.login.mockResolvedValue(createSession('login-refresh-token'))
+    mocks.service.login.mockResolvedValue({
+      ...createSession('login-refresh-token'),
+      mustChangePassword: false,
+    })
     mocks.service.refresh.mockResolvedValue(createSession('rotated-refresh-token'))
     mocks.service.logout.mockResolvedValue(undefined)
     mocks.service.updateProfile.mockResolvedValue({

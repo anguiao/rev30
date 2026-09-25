@@ -14,6 +14,7 @@ import {
   type AuthTokenResponse,
   type AuthSessionResponse,
   type AuthLoginInput,
+  type AuthLoginResponse,
   type ErrorResponse,
   type User,
 } from '@rev30/contracts'
@@ -45,7 +46,7 @@ import { readAuthConfig } from '../../../src/modules/auth/config'
 import { verifyAccessToken, verifyRefreshToken } from '../../../src/modules/auth/tokens'
 import { verifyAttachmentAccessToken } from '../../../src/modules/attachments/access-token'
 
-type AuthLoginResponse = AuthTokenResponse | ErrorResponse
+type AuthLoginResult = AuthLoginResponse | ErrorResponse
 
 type TestTransaction = Parameters<Parameters<TestDatabase['transaction']>[0]>[0]
 type FixturePassword = 'old-password' | 'secret-password'
@@ -159,7 +160,7 @@ async function login(app: ReturnType<typeof createTestApp>, body: Partial<AuthLo
   })
 
   return {
-    body: (await response.json()) as AuthLoginResponse,
+    body: (await response.json()) as AuthLoginResult,
     refreshToken: getRefreshTokenCookie(response),
     response,
   }
@@ -218,7 +219,7 @@ describe('auth routes', () => {
 
     await createPasswordAccount(database)
     const { body: responseBody, response } = await login(app)
-    const body = responseBody as AuthTokenResponse
+    const body = responseBody as AuthLoginResponse
 
     expect(response.status).toBe(200)
     expect(response.headers.get('set-cookie')).toContain('refresh_token=')
@@ -226,6 +227,7 @@ describe('auth routes', () => {
     expect(body).toMatchObject({
       tokenType: 'Bearer',
       expiresIn: 900,
+      mustChangePassword: false,
       user: {
         username: 'ada',
         departments: [],
@@ -916,6 +918,10 @@ describe('auth routes', () => {
         .set({ mustChangePassword: true })
         .where(eq(authPasswordCredentials.userId, registered.body.user.id))
 
+      const temporaryLogin = await login(app, { password: 'old-password' })
+      expect(temporaryLogin.response.status).toBe(200)
+      expect(temporaryLogin.body).toMatchObject({ mustChangePassword: true })
+
       const wrongResponse = await app.request('/api/auth/me/password', {
         method: 'PATCH',
         body: JSON.stringify({
@@ -952,6 +958,10 @@ describe('auth routes', () => {
       })
       expect(credential?.mustChangePassword).toBe(false)
       expect(await verifyPassword('new-password', credential!.passwordHash)).toBe(true)
+
+      const updatedLogin = await login(app, { password: 'new-password' })
+      expect(updatedLogin.response.status).toBe(200)
+      expect(updatedLogin.body).toMatchObject({ mustChangePassword: false })
     },
   )
 

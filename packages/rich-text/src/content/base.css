@@ -80,6 +80,15 @@
   line-height: 1.7777778;
 }
 
+.rich-text-content :where(p, h1, h2, h3, h4, h5, h6) {
+  white-space: break-spaces;
+  overflow-wrap: break-word;
+}
+
+.rich-text-content :where(p, h1, h2, h3, h4, h5, h6):empty {
+  min-block-size: 1lh;
+}
+
 .rich-text-content :where(p) {
   margin-top: 1.25em;
   margin-bottom: 1.25em;

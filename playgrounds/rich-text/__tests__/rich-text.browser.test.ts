@@ -111,6 +111,58 @@ test('keeps the editor and preview within the viewport with internal scrolling',
   expect(previewScrollContainer!.scrollHeight).toBeGreaterThan(previewScrollContainer!.clientHeight)
 })
 
+test('preserves spaces and empty text blocks in editor and readonly content', async () => {
+  const paragraphText = '  first    line  '
+  const headingText = '  spaced    heading  '
+  const content: RichTextDocument = {
+    type: 'doc',
+    content: [
+      { type: 'paragraph', content: [{ type: 'text', text: paragraphText }] },
+      { type: 'paragraph' },
+      { type: 'paragraph' },
+      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: headingText }] },
+      { type: 'heading', attrs: { level: 2 } },
+      { type: 'paragraph', content: [{ type: 'text', text: 'Last paragraph' }] },
+    ],
+  }
+  const { serverPreset } = createPlaygroundPresets({ onImageError() {} })
+  const derived = deriveRichTextContent(content, serverPreset)
+  const screen = await render(RichTextContentStyleHarness, {
+    props: { document: content, html: derived.html },
+  })
+  const editor = getRequiredElement<HTMLElement>(
+    screen.getByTestId('style-editor').element(),
+    '.ProseMirror',
+  )
+  const readonlySm = screen.getByTestId('style-readonly-sm').element()
+
+  for (const container of [
+    editor,
+    readonlySm,
+    screen.getByTestId('style-readonly-base').element(),
+    screen.getByTestId('style-readonly-lg').element(),
+  ]) {
+    const paragraphs = container.querySelectorAll<HTMLElement>('p')
+    const headings = container.querySelectorAll<HTMLElement>('h2')
+
+    expect(paragraphs[0]!.innerText).toBe(paragraphText)
+    expect(headings[0]!.innerText).toBe(headingText)
+
+    for (const emptyBlock of [paragraphs[1]!, paragraphs[2]!, headings[1]!]) {
+      expect(emptyBlock.getBoundingClientRect().height).toBeCloseTo(
+        Number.parseFloat(getComputedStyle(emptyBlock).lineHeight),
+        1,
+      )
+    }
+  }
+
+  const paragraphGap = (container: ParentNode) => {
+    const paragraphs = container.querySelectorAll('p')
+    return paragraphs[2]!.getBoundingClientRect().top - paragraphs[1]!.getBoundingClientRect().top
+  }
+  expect(paragraphGap(readonlySm)).toBe(paragraphGap(editor))
+})
+
 test('applies matching editor and readonly content typography across supported sizes', async () => {
   const content = createDefaultDocument()
   const { serverPreset } = createPlaygroundPresets({ onImageError() {} })

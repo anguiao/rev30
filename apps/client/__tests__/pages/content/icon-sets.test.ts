@@ -1,4 +1,4 @@
-import { flushPromises } from '@vue/test-utils'
+import { DOMWrapper, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   AuthTokenResponse,
@@ -919,7 +919,7 @@ describe('icon sets page', () => {
     await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
     await flushPromises()
     await wrapper.get('button[aria-label="编辑图标"]').trigger('click')
-    await flushPromises()
+    await vi.waitFor(getIconNameInput)
 
     getBodyButton('取消').click()
     await flushPromises()
@@ -940,8 +940,13 @@ describe('icon sets page', () => {
 
     getBodyButton('取消').click()
     await flushPromises()
-    getDialogButton('unsaved-changes-discard-confirm').click()
+    const discardButton = new DOMWrapper(document.body)
+      .findAll('[data-test="unsaved-changes-discard-confirm"]')
+      .find((button) => button.isVisible())
+    expect(discardButton).toBeDefined()
+    await discardButton!.trigger('click')
     await flushPromises()
+    expect(wrapper.getComponent({ name: 'IconFormDrawer' }).props('show')).toBe(false)
     await wrapper.get('button[aria-label="编辑图标"]').trigger('click')
     await flushPromises()
     expect(getIconNameInput().value).toBe(icon.name)
@@ -950,7 +955,7 @@ describe('icon sets page', () => {
   })
 
   it.each(['success', 'error'] as const)(
-    'ignores an earlier edit %s in a reopened drawer',
+    'keeps saving icon edits open until the %s result is delivered',
     async (result) => {
       const pendingEdit = createDeferred<CustomIconListResponse['list'][number]>()
       listCustomIconSetsMock.mockResolvedValue(customIconSetsResponse)
@@ -962,26 +967,35 @@ describe('icon sets page', () => {
       await wrapper.get('[data-test="icon-sets-tab-custom"]').trigger('click')
       await flushPromises()
       await wrapper.get('button[aria-label="编辑图标"]').trigger('click')
-      await flushPromises()
+      await vi.waitFor(getIconNameInput)
+      await setIconName('draft-name')
       getBodyButton('保存').click()
       await flushPromises()
 
-      getBodyButton('取消').click()
+      const cancelButton = getBodyButton('取消')
+      expect(cancelButton.disabled).toBe(true)
+      cancelButton.click()
       await flushPromises()
-      await wrapper.get('button[aria-label="编辑图标"]').trigger('click')
-      await flushPromises()
-      await setIconName('fresh-name')
+      expect(wrapper.getComponent({ name: 'IconFormDrawer' }).props('show')).toBe(true)
+      expect(getIconNameInput().value).toBe('draft-name')
 
       if (result === 'success') {
         pendingEdit.resolve(customIconsResponse.list[0]!)
       } else {
-        pendingEdit.reject(new ApiRequestError(409, '旧会话错误', 'name'))
+        pendingEdit.reject(new ApiRequestError(409, '图标名称已存在', 'name'))
       }
       await flushPromises()
 
-      expect(getIconNameInput().value).toBe('fresh-name')
-      expect(document.body.textContent).not.toContain('编辑图标成功')
-      expect(document.body.textContent).not.toContain('旧会话错误')
+      if (result === 'success') {
+        expect(document.body.textContent).toContain('编辑图标成功')
+        expect(wrapper.getComponent({ name: 'IconFormDrawer' }).props('show')).toBe(false)
+      } else {
+        expect(document.body.textContent).toContain('图标名称已存在')
+        expect(getIconNameInput().value).toBe('draft-name')
+        expect(wrapper.getComponent({ name: 'IconFormDrawer' }).props('show')).toBe(true)
+        expect(getBodyButton('取消').disabled).toBe(false)
+        expect(document.body.textContent).not.toContain('编辑图标成功')
+      }
     },
   )
 

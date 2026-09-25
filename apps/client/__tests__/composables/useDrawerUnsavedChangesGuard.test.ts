@@ -1,8 +1,9 @@
 import { getDialogButton } from '../helpers/dom'
 import { flushPromises, mount } from '@vue/test-utils'
 import { NDialogProvider } from 'naive-ui'
-import { computed, defineComponent, h, toRef } from 'vue'
+import { computed, defineComponent, h, reactive, toRef } from 'vue'
 import { describe, expect, it } from 'vitest'
+import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { useDrawerUnsavedChangesGuard } from '../../src/composables/useDrawerUnsavedChangesGuard'
 
 const GuardHarness = defineComponent({
@@ -102,6 +103,34 @@ function mountGuard(
   })
 }
 
+async function mountRoutedGuard(props = { show: true, isDirty: true, isSaving: false }) {
+  const state = reactive(props)
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/before', component: { template: '<div>Previous page</div>' } },
+      {
+        path: '/edit',
+        component: defineComponent({
+          setup: () => () => h(GuardHarness, state),
+        }),
+      },
+      { path: '/after', component: { template: '<div>Next page</div>' } },
+    ],
+  })
+  await router.push('/before')
+  await router.push('/edit')
+  await router.isReady()
+
+  const wrapper = mount(
+    defineComponent({
+      setup: () => () => h(NDialogProvider, null, { default: () => h(RouterView) }),
+    }),
+    { attachTo: document.body, global: { plugins: [router], stubs: { teleport: true } } },
+  )
+  return { router, wrapper, state }
+}
+
 async function clickAction(wrapper: ReturnType<typeof mount>, selector: string) {
   await wrapper.get(selector).trigger('click')
   await flushPromises()
@@ -177,6 +206,65 @@ describe('useDrawerUnsavedChangesGuard', () => {
     await flushPromises()
 
     expect(wrapper.emitted('update:show')).toBeUndefined()
+  })
+
+  it('keeps a dirty route on cancellation and leaves only after confirming discard', async () => {
+    const { router } = await mountRoutedGuard()
+    const cancelledNavigation = router.push('/after')
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/edit')
+    getDialogButton('unsaved-changes-discard-cancel').click()
+    await cancelledNavigation
+    expect(router.currentRoute.value.path).toBe('/edit')
+
+    const confirmedNavigation = router.push('/after')
+    await flushPromises()
+    getDialogButton('unsaved-changes-discard-confirm').click()
+    await confirmedNavigation
+    expect(router.currentRoute.value.path).toBe('/after')
+  })
+
+  it('protects browser back navigation and allows clean or closed drawers to leave', async () => {
+    const { router, state } = await mountRoutedGuard()
+    router.back()
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/edit')
+    getDialogButton('unsaved-changes-discard-cancel').click()
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/edit')
+
+    state.isDirty = false
+    await router.push('/after')
+    expect(router.currentRoute.value.path).toBe('/after')
+    await router.push('/edit')
+    state.isDirty = true
+    state.show = false
+    await router.push('/before')
+    expect(router.currentRoute.value.path).toBe('/before')
+  })
+
+  it('rechecks saving when a pending discard confirmation is accepted', async () => {
+    const { router, state } = await mountRoutedGuard()
+    const navigation = router.push('/after')
+    await flushPromises()
+
+    state.isSaving = true
+    getDialogButton('unsaved-changes-discard-confirm').click()
+    await navigation
+
+    expect(router.currentRoute.value.path).toBe('/edit')
+    expect(document.body.textContent).toContain('请等待保存完成后再离开。')
+  })
+
+  it('keeps a saving route mounted until its result can be delivered', async () => {
+    const { router, state } = await mountRoutedGuard({ show: true, isDirty: false, isSaving: true })
+    await router.push('/after')
+    expect(router.currentRoute.value.path).toBe('/edit')
+    expect(document.body.textContent).toContain('请等待保存完成后再离开。')
+
+    state.isSaving = false
+    await router.push('/after')
+    expect(router.currentRoute.value.path).toBe('/after')
   })
 
   it('guards beforeunload only while the drawer is open and dirty', async () => {

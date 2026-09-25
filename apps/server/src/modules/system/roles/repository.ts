@@ -27,6 +27,7 @@ import {
   RoleMutationForbiddenError,
 } from './errors'
 import type { RoleOptionEntry, RoleResourceEntry, RoleRow } from './mapper'
+import { lockResourceTree } from '../resources/repository'
 
 const roleOptionColumns = {
   id: systemRoles.id,
@@ -336,6 +337,7 @@ export function createRoleRepository(database: Db) {
       const { resourceIds = [], ...roleInput } = input
 
       return await database.transaction(async (tx) => {
+        await lockResourceTree(tx)
         const resources = await lockValidResourceIdsOrThrow(tx, resourceIds)
         assertRoleWithinAccessScope(input.code, resources, access)
 
@@ -362,6 +364,7 @@ export function createRoleRepository(database: Db) {
       const { resourceIds, ...roleInput } = input
 
       return await database.transaction(async (tx) => {
+        await lockResourceTree(tx)
         const existingRole = await lockActiveRoleById(tx, id)
 
         if (!existingRole) {
@@ -415,6 +418,7 @@ export function createRoleRepository(database: Db) {
       const now = new Date()
 
       return await database.transaction(async (tx) => {
+        await lockResourceTree(tx)
         const role = await lockActiveRoleById(tx, id)
 
         if (!role) {

@@ -14,8 +14,8 @@ import {
   type ResourceUpdateInput,
   resourceExternalUrlSchema,
 } from '@rev30/contracts'
-import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
-import type { Db, DbReader } from '../../../db'
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
+import type { Db, DbExecutor, DbReader } from '../../../db'
 import { systemRoleResources, systemResources } from '../../../db/schema'
 import type { UserAccess } from '../../auth/access'
 import {
@@ -43,6 +43,11 @@ function resourceSortOrder() {
     desc(systemResources.createdAt),
     desc(systemResources.id),
   ] as const
+}
+
+export async function lockResourceTree(executor: DbExecutor) {
+  // Resource topology and role grants share this transaction-scoped lock before any row locks.
+  await executor.execute(sql`SELECT pg_advisory_xact_lock(hashtext('resource-tree'))`)
 }
 
 async function lockActiveResourcesByIds(executor: DbReader, ids: string[]) {
@@ -469,6 +474,7 @@ export function createResourceRepository(database: Db) {
 
     async create(input: ResourceCreateInput, access: UserAccess) {
       return await database.transaction(async (tx) => {
+        await lockResourceTree(tx)
         if (input.parentId === null) {
           if (!access.isAdmin) {
             throw new ResourceMutationForbiddenError('access-scope')
@@ -497,6 +503,7 @@ export function createResourceRepository(database: Db) {
 
     async update(id: string, input: ResourceUpdateInput, access: UserAccess) {
       return await database.transaction(async (tx) => {
+        await lockResourceTree(tx)
         const subtree = await lockActiveResourceSubtree(tx, id)
         const existing = subtree[0]
 
@@ -548,6 +555,7 @@ export function createResourceRepository(database: Db) {
       const now = new Date()
 
       return await database.transaction(async (tx) => {
+        await lockResourceTree(tx)
         const subtree = await lockActiveResourceSubtree(tx, id)
         const resource = subtree[0]
 

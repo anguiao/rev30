@@ -10,11 +10,9 @@ import { UndoRedo } from '@tiptap/extensions/undo-redo'
 import { describe, expect, it } from 'vitest'
 import { runRichTextAction } from '../../../../src/client/editor/action'
 import {
-  elementPathEditorFeature,
   resolveElementPath,
   selectElementPathItemAction,
 } from '../../../../src/features/element-path/client/editor'
-import { elementPathFeature } from '../../../../src/features/element-path/core/feature'
 import { boldFeature } from '../../../../src/features/bold/core/feature'
 import { blockquoteFeature } from '../../../../src/features/blockquote/core/feature'
 import { headingFeature } from '../../../../src/features/heading/core/feature'
@@ -68,17 +66,6 @@ function tags(editor: ReturnType<typeof createEditor>) {
 }
 
 describe('element path editor feature', () => {
-  it('declares an editor-only feature without extensions', () => {
-    expect(elementPathFeature).toMatchObject({
-      key: 'element-path',
-      editorImplementation: true,
-      serverImplementation: false,
-    })
-    expect(elementPathFeature.sharedExtensions).toBeUndefined()
-    expect(elementPathEditorFeature.feature.key).toBe('element-path')
-    expect(elementPathEditorFeature.extensions).toBeUndefined()
-  })
-
   it('resolves the selection.from path for collapsed, reverse, and cross-block text selections', () => {
     const editor = createEditor('<blockquote><p><strong>甲乙</strong></p></blockquote><p>后续</p>')
     const start = findTextPosition(editor, '甲乙', 1)
@@ -264,8 +251,9 @@ describe('element path editor feature', () => {
     if (!bold || bold.kind !== 'mark') throw new Error('Expected bold path item')
     expect(runRichTextAction(editor, selectElementPathItemAction, bold)).toBe(true)
     expect(editor.state.selection).toBeInstanceOf(TextSelection)
-    expect(editor.state.selection.from).toBe(bold.from)
-    expect(editor.state.selection.to).toBe(bold.to)
+    expect(
+      editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to),
+    ).toBe('甲乙丙')
 
     const plainPosition = findTextPosition(editor, '丁')
     editor.commands.setTextSelection(plainPosition + 1)

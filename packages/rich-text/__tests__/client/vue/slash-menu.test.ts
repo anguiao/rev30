@@ -119,6 +119,33 @@ describe('rich text slash menu model', () => {
       { key: 'insert', commands: [{ key: 'image' }] },
     ])
     expect(filterRichTextSlashMenu(groups, 'zhengwen')).toEqual([])
+    const matchingGroups = defineRichTextSlashMenu([
+      {
+        key: 'insert',
+        label: '插入',
+        commands: [imageCommand, tableCommand].map((command) => ({
+          ...command,
+          keywords: [...command.keywords, 'shared'],
+        })),
+      },
+      {
+        key: 'basic',
+        label: '基础块',
+        commands: [headingCommand, paragraphCommand].map((command) => ({
+          ...command,
+          keywords: [...command.keywords, 'shared'],
+        })),
+      },
+    ])
+    expect(
+      filterRichTextSlashMenu(matchingGroups, 'SHARED').map((group) => ({
+        key: group.key,
+        commands: group.commands.map((command) => command.key),
+      })),
+    ).toEqual([
+      { key: 'insert', commands: ['image', 'table'] },
+      { key: 'basic', commands: ['heading-1', 'paragraph'] },
+    ])
   })
 
   it('deletes a slash query and runs an action in one transaction with one-step undo', () => {

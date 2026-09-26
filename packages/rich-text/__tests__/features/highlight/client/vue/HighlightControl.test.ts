@@ -93,6 +93,9 @@ describe('HighlightControl', () => {
     expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
       'true',
     )
+    expect(wrapper.get('[data-test="rich-text-highlight-blue"]').attributes('aria-pressed')).toBe(
+      'false',
+    )
 
     editor.commands.setTextSelection({ from: 2, to: 3 })
     await flushPromises()
@@ -102,23 +105,6 @@ describe('HighlightControl', () => {
         'true',
       )
     })
-    expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
-      'false',
-    )
-  })
-
-  it('marks the current palette color as selected', async () => {
-    const editor = createEditor(
-      `<p><mark data-color="${blue.value}" style="background-color: ${blue.value}; color: inherit">维护通知</mark></p>`,
-    )
-    selectEditorText(editor)
-    const wrapper = mountControl(editor)
-
-    await openPopover(wrapper)
-
-    expect(wrapper.get('[data-test="rich-text-highlight-blue"]').attributes('aria-pressed')).toBe(
-      'true',
-    )
     expect(wrapper.get('[data-test="rich-text-highlight-yellow"]').attributes('aria-pressed')).toBe(
       'false',
     )

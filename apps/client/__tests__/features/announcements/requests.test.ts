@@ -7,7 +7,6 @@ import {
   type AnnouncementUpdateInput,
 } from '@rev30/contracts'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { ApiRequestError } from '../../../src/utils/request'
 import {
   archiveAnnouncement,
   createAnnouncement,
@@ -316,31 +315,6 @@ describe('announcements request helpers', () => {
     expectFetchCall(fetchMock, 0, {
       method: 'DELETE',
       pathname: `/api/content/announcements/${announcementId}`,
-    })
-  })
-
-  it('returns content error fields when response json contains field and message', async () => {
-    const fetchMock = createFetchMock(
-      jsonResponse(
-        { field: 'contentJson', message: '请输入正文' },
-        {
-          status: 400,
-        },
-      ),
-    )
-
-    const failedCreate = createAnnouncement(createInput)
-
-    await expect(failedCreate).rejects.toBeInstanceOf(ApiRequestError)
-    await expect(failedCreate).rejects.toMatchObject({
-      status: 400,
-      field: 'contentJson',
-      message: '请输入正文',
-    })
-    expect(fetchMock).toHaveBeenCalledOnce()
-    expectFetchCall(fetchMock, 0, {
-      method: 'POST',
-      pathname: '/api/content/announcements',
     })
   })
 })

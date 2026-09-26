@@ -192,12 +192,8 @@ describe('attachment routes', () => {
     })
   })
 
-  it('normalizes upload path IDs and delegates upload and metadata routes', async () => {
-    mocks.authState.accessCodes = ['content:attachment:list', 'content:attachment:delete']
+  it('creates upload sessions with policy defaults for the current user', async () => {
     const app = createAttachmentTestApp()
-    const file = new File([Uint8Array.from([0x89, 0x50, 0x4e, 0x47])], 'avatar.png', {
-      type: 'image/png',
-    })
 
     const sessionResponse = await app.request('/api/attachments/uploads', {
       method: 'POST',
@@ -222,8 +218,13 @@ describe('attachment routes', () => {
       contentType: 'image/png',
       userId: currentUser.id,
     })
+  })
 
-    mocks.authMiddleware.mockClear()
+  it('normalizes upload IDs and streams content without authentication middleware', async () => {
+    const file = new File([Uint8Array.from([0x89, 0x50, 0x4e, 0x47])], 'avatar.png', {
+      type: 'image/png',
+    })
+    const app = createAttachmentTestApp()
 
     const uploadResponse = await app.request(
       `/api/attachments/uploads/${attachmentId.toUpperCase()}/content?token=upload-token`,
@@ -239,6 +240,10 @@ describe('attachment routes', () => {
       token: 'upload-token',
       uploadId: attachmentId,
     })
+  })
+
+  it('normalizes completion IDs and records the upload operation before completion', async () => {
+    const app = createAttachmentTestApp()
 
     const completeResponse = await app.request(
       `/api/attachments/uploads/${attachmentId.toUpperCase()}/complete`,
@@ -264,11 +269,20 @@ describe('attachment routes', () => {
     expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.service.completeUploadSession.mock.invocationCallOrder[0]!,
     )
+  })
+
+  it('returns attachment metadata for callers with management access', async () => {
+    mocks.authState.accessCodes = ['content:attachment:list']
+    const app = createAttachmentTestApp()
 
     const detailResponse = await app.request(`/api/attachments/${attachmentId}`)
     expect(detailResponse.status).toBe(200)
     expect(await detailResponse.json()).toEqual(attachment)
     expect(mocks.service.get).toHaveBeenCalledWith(attachmentId)
+  })
+
+  it('creates signed content URLs for authenticated callers', async () => {
+    const app = createAttachmentTestApp()
 
     const contentUrlResponse = await app.request(`/api/attachments/${attachmentId}/content-url`, {
       method: 'POST',
@@ -284,6 +298,11 @@ describe('attachment routes', () => {
     expect(mocks.service.createContentUrl).toHaveBeenCalledWith(attachmentId, {
       disposition: ATTACHMENT_DISPOSITION_INLINE,
     })
+  })
+
+  it('records the delete operation before manual attachment deletion', async () => {
+    mocks.authState.accessCodes = ['content:attachment:delete']
+    const app = createAttachmentTestApp()
 
     const deleteResponse = await app.request(`/api/attachments/${attachmentId}`, {
       method: 'DELETE',
@@ -295,7 +314,7 @@ describe('attachment routes', () => {
       'content:attachment:delete',
       { targetKey: attachmentId },
     )
-    expect(mocks.recordOperation.mock.invocationCallOrder[1]).toBeLessThan(
+    expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.service.delete.mock.invocationCallOrder[0]!,
     )
   })
@@ -508,114 +527,114 @@ describe('attachment routes', () => {
     expect(await response.json()).toEqual({ message: '未授权' })
   })
 
-  it('maps attachment domain errors to route responses', async () => {
-    mocks.authState.accessCodes = ['content:attachment:list']
-    const app = createAttachmentTestApp()
-
-    mocks.service.createUploadSession.mockRejectedValueOnce(
-      new AttachmentFileTooLargeError(ATTACHMENT_MAX_SIZE_MESSAGE),
-    )
-    const tooLargeResponse = await app.request('/api/attachments/uploads', {
-      method: 'POST',
-      body: JSON.stringify({
-        originalName: 'avatar.png',
-        usage: 'general',
-        size: 4,
-      }),
-      headers: {
-        'content-type': 'application/json',
+  it.each([
+    {
+      name: 'oversized files during upload creation',
+      serviceMethod: 'createUploadSession',
+      error: new AttachmentFileTooLargeError(ATTACHMENT_MAX_SIZE_MESSAGE),
+      path: '/api/attachments/uploads',
+      request: {
+        method: 'POST',
+        body: JSON.stringify({ originalName: 'avatar.png', usage: 'general', size: 4 }),
+        headers: { 'content-type': 'application/json' },
       },
-    })
-    expect(tooLargeResponse.status).toBe(400)
-    expect(await tooLargeResponse.json()).toEqual({
+      status: 400,
       message: ATTACHMENT_MAX_SIZE_MESSAGE,
-    })
-
-    mocks.service.uploadSessionContent.mockRejectedValueOnce(new AttachmentTypeUnsupportedError())
-    const unsupportedTypeResponse = await app.request(
-      `/api/attachments/uploads/${attachmentId}/content?token=upload-token`,
-      {
+    },
+    {
+      name: 'unsupported types during content upload',
+      serviceMethod: 'uploadSessionContent',
+      error: new AttachmentTypeUnsupportedError(),
+      path: `/api/attachments/uploads/${attachmentId}/content?token=upload-token`,
+      request: {
         method: 'PUT',
         body: new File([Uint8Array.from([0x89, 0x50, 0x4e, 0x47])], 'avatar.png', {
           type: 'image/png',
         }),
       },
-    )
-    expect(unsupportedTypeResponse.status).toBe(400)
-    expect(await unsupportedTypeResponse.json()).toEqual({
+      status: 400,
       message: '不支持的文件类型',
-    })
-
-    mocks.service.uploadSessionContent.mockRejectedValueOnce(new AttachmentUploadUrlInvalidError())
-    const expiredUploadUrlResponse = await app.request(
-      `/api/attachments/uploads/${attachmentId}/content?token=expired-token`,
-      {
+    },
+    {
+      name: 'expired links during content upload',
+      serviceMethod: 'uploadSessionContent',
+      error: new AttachmentUploadUrlInvalidError(),
+      path: `/api/attachments/uploads/${attachmentId}/content?token=expired-token`,
+      request: {
         method: 'PUT',
         body: new File([Uint8Array.from([0x89, 0x50, 0x4e, 0x47])], 'avatar.png', {
           type: 'image/png',
         }),
       },
-    )
-    expect(expiredUploadUrlResponse.status).toBe(403)
-    expect(await expiredUploadUrlResponse.json()).toEqual({
+      status: 403,
       message: '上传链接已失效',
-    })
-
-    mocks.service.completeUploadSession.mockRejectedValueOnce(
-      new AttachmentUploadSessionNotReadyError(),
-    )
-    const notReadyCompleteResponse = await app.request(
-      `/api/attachments/uploads/${attachmentId}/complete`,
-      {
+    },
+    {
+      name: 'missing content during upload completion',
+      serviceMethod: 'completeUploadSession',
+      error: new AttachmentUploadSessionNotReadyError(),
+      path: `/api/attachments/uploads/${attachmentId}/complete`,
+      request: {
         method: 'POST',
         body: JSON.stringify({}),
-        headers: {
-          'content-type': 'application/json',
-        },
+        headers: { 'content-type': 'application/json' },
       },
-    )
-    expect(notReadyCompleteResponse.status).toBe(400)
-    expect(await notReadyCompleteResponse.json()).toEqual({
+      status: 400,
       message: '文件尚未上传',
-    })
-
-    mocks.service.completeUploadSession.mockRejectedValueOnce(
-      new AttachmentUploadSessionInvalidError(),
-    )
-    const expiredCompleteResponse = await app.request(
-      `/api/attachments/uploads/${attachmentId}/complete`,
-      {
+    },
+    {
+      name: 'expired sessions during upload completion',
+      serviceMethod: 'completeUploadSession',
+      error: new AttachmentUploadSessionInvalidError(),
+      path: `/api/attachments/uploads/${attachmentId}/complete`,
+      request: {
         method: 'POST',
         body: JSON.stringify({}),
-        headers: {
-          'content-type': 'application/json',
-        },
+        headers: { 'content-type': 'application/json' },
       },
-    )
-    expect(expiredCompleteResponse.status).toBe(400)
-    expect(await expiredCompleteResponse.json()).toEqual({
+      status: 400,
       message: '上传会话已失效',
-    })
-
-    mocks.service.get.mockRejectedValueOnce(new AttachmentNotFoundError())
-    const notFoundResponse = await app.request(`/api/attachments/${attachmentId}`)
-    expect(notFoundResponse.status).toBe(404)
-    expect(await notFoundResponse.json()).toEqual({ message: '附件不存在' })
-
-    mocks.service.readContent.mockRejectedValueOnce(new AttachmentContentUrlInvalidError())
-    const invalidSignedTokenResponse = await app.request(
-      `/api/attachments/${attachmentId}/content?token=expired-token`,
-    )
-    expect(invalidSignedTokenResponse.status).toBe(401)
-    expect(await invalidSignedTokenResponse.json()).toEqual({
+    },
+    {
+      name: 'missing attachments during metadata reads',
+      serviceMethod: 'get',
+      error: new AttachmentNotFoundError(),
+      path: `/api/attachments/${attachmentId}`,
+      request: { method: 'GET' },
+      status: 404,
+      message: '附件不存在',
+    },
+    {
+      name: 'invalid signed tokens during content reads',
+      serviceMethod: 'readContent',
+      error: new AttachmentContentUrlInvalidError(),
+      path: `/api/attachments/${attachmentId}/content?token=expired-token`,
+      request: { method: 'GET' },
+      status: 401,
       message: '附件链接已失效',
-    })
+    },
+    {
+      name: 'missing attachments during content reads',
+      serviceMethod: 'readContent',
+      error: new AttachmentNotFoundError(),
+      path: `/api/attachments/${attachmentId}/content?token=signed-token`,
+      request: { method: 'GET' },
+      status: 404,
+      message: '附件不存在',
+    },
+  ] as const)(
+    'maps $name to the expected HTTP response',
+    async ({ serviceMethod, error, path, request, status, message }) => {
+      if (serviceMethod === 'get') mocks.authState.accessCodes = ['content:attachment:list']
+      const app = createAttachmentTestApp()
+      const service = mocks.service[serviceMethod]
+      service.mockRejectedValueOnce(error)
 
-    mocks.service.readContent.mockRejectedValueOnce(new AttachmentNotFoundError())
-    const contentNotFoundResponse = await app.request(
-      `/api/attachments/${attachmentId}/content?token=signed-token`,
-    )
-    expect(contentNotFoundResponse.status).toBe(404)
-    expect(await contentNotFoundResponse.json()).toEqual({ message: '附件不存在' })
-  })
+      const response = await app.request(path, request)
+
+      expect(service).toHaveBeenCalledOnce()
+      expect(response.status).toBe(status)
+      expect(await response.json()).toEqual({ message })
+    },
+  )
 })

@@ -112,28 +112,14 @@ describe('app auth boundaries', () => {
         200, 200, 404, 401, 403, 404, 413,
       ])
 
+      expect(await responses[4]!.json()).toEqual({ message: '无权访问' })
+      expect(await responses[6]!.json()).toEqual({ message: '请求体过大' })
       const requestIds = responses.map(expectRequestId)
 
       expect(new Set(requestIds).size).toBe(responses.length)
       expect(operationLogReceiver).not.toHaveBeenCalled()
     },
   )
-
-  dbTest('rejects oversized JSON bodies before route parsing', async ({ db }) => {
-    const app = createApp(db)
-
-    const response = await app.request('/api/attachments/uploads', {
-      method: 'POST',
-      body: '{}',
-      headers: {
-        'content-length': String(5 * 1024 * 1024 + 1),
-        'content-type': 'application/json',
-      },
-    })
-
-    expect(response.status).toBe(413)
-    expect(await response.json()).toEqual({ message: '请求体过大' })
-  })
 
   dbTest.for(protectedAppRoutes)('requires authentication for $name', async ({ path }, { db }) => {
     const app = createApp(db)
@@ -172,20 +158,6 @@ describe('app auth boundaries', () => {
       expect(await response.json()).toEqual({ message: '未授权' })
     },
   )
-
-  dbTest('returns 403 for logged-in users without route access', async ({ db: database }) => {
-    const app = createApp(database)
-    const authenticated = await createSystemAccessFixture(database, {
-      usernamePrefix: 'app-no-access',
-    })
-
-    const response = await app.request('/api/system/users', {
-      headers: authenticated.authHeaders,
-    })
-
-    expect(response.status).toBe(403)
-    expect(await response.json()).toEqual({ message: '无权访问' })
-  })
 
   dbTest('marks expired access tokens as refreshable on system routes', async ({ db }) => {
     const app = createApp(db)

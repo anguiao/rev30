@@ -104,7 +104,9 @@ describe('scheduled job response schemas', () => {
     expect(scheduledJobTriggerSourceSchema.parse('scheduled')).toBe('scheduled')
     expect(scheduledJobTriggerSourceSchema.parse('manual')).toBe('manual')
     expect(scheduledJobTriggerSourceSchema.parse('recovery')).toBe('recovery')
-    expect(scheduledJobRunStatusSchema.parse('interrupted')).toBe('interrupted')
+    for (const status of ['running', 'success', 'failure', 'skipped', 'cancelled', 'interrupted']) {
+      expect(scheduledJobRunStatusSchema.parse(status)).toBe(status)
+    }
     expect(scheduledJobErrorCategorySchema.parse('partial_failure')).toBe('partial_failure')
     expect(scheduledJobErrorCategorySchema.parse('database')).toBe('database')
     expect(scheduledJobErrorCategorySchema.parse('storage')).toBe('storage')
@@ -187,6 +189,9 @@ describe('scheduled job response schemas', () => {
   })
 
   it('accepts only the wrapped current-run summary for cancellation responses', () => {
-    expect(scheduledJobCancelResponseSchema.safeParse(taskItem.currentRun).success).toBe(false)
+    expectZodIssue(scheduledJobCancelResponseSchema.safeParse(taskItem.currentRun), {
+      code: 'invalid_type',
+      path: ['run'],
+    })
   })
 })

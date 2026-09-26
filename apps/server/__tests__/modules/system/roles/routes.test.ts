@@ -11,15 +11,7 @@ import {
 import type { createRoleService } from '../../../../src/modules/system/roles/service'
 import type { requireAccess } from '../../../../src/middleware/access'
 import type { AuthEnv } from '../../../../src/middleware/auth'
-import {
-  BuiltInAdminRoleMutationError,
-  RoleConflictError,
-  RoleDeleteConflictError,
-  RoleInvalidResourceAssignmentError,
-  RoleInvalidResourceError,
-  RoleMutationForbiddenError,
-  RoleNotFoundError,
-} from '../../../../src/modules/system/roles/errors'
+import { RoleConflictError } from '../../../../src/modules/system/roles/errors'
 import { createRoleRoutes } from '../../../../src/modules/system/roles/routes'
 
 type RoleService = ReturnType<typeof createRoleService>
@@ -131,18 +123,48 @@ describe('role routes', () => {
     mocks.service.delete.mockResolvedValue(undefined)
   })
 
-  it('registers expected access guards for every role endpoint', () => {
-    createTestApp()
+  it.each([
+    ['', 'GET', 'system:role:list', 'list', null, 200],
+    ['/options', 'GET', 'system:role:list', 'options', null, 200],
+    [`/${roleId}`, 'GET', 'system:role:list', 'get', null, 200],
+    ['', 'POST', 'system:role:create', 'create', { name: 'Operator', code: 'operator' }, 201],
+    [`/${roleId}`, 'PATCH', 'system:role:update', 'update', { name: 'Updated Operator' }, 200],
+    [`/${roleId}`, 'DELETE', 'system:role:delete', 'delete', null, 204],
+  ] as const)(
+    'executes the required access guard for %s %s',
+    async (path, method, code, service, body, status) => {
+      mocks.requireAccess.mockImplementation((requiredAccess) => async (c, next) => {
+        if (c.req.header('x-test-access') !== requiredAccess) {
+          return c.json({ requiredAccess }, 403)
+        }
+        await next()
+      })
+      const app = createTestApp()
+      const request = {
+        method,
+        ...(body === null
+          ? {}
+          : {
+              body: JSON.stringify(body),
+              headers: { 'content-type': 'application/json' },
+            }),
+      }
 
-    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
-      'system:role:list',
-      'system:role:list',
-      'system:role:list',
-      'system:role:create',
-      'system:role:update',
-      'system:role:delete',
-    ])
-  })
+      const denied = await app.request(`/api/system/roles${path}`, request)
+      expect(denied.status).toBe(403)
+      expect(await denied.json()).toEqual({ requiredAccess: code })
+      for (const serviceMock of Object.values(mocks.service)) {
+        expect(serviceMock).not.toHaveBeenCalled()
+      }
+
+      const allowed = await app.request(`/api/system/roles${path}`, {
+        ...request,
+        headers: { ...request.headers, 'x-test-access': code },
+      })
+      expect(allowed.status).toBe(status)
+      expect(mocks.service[service]).toHaveBeenCalledOnce()
+    },
+  )
 
   it('parses list query and delegates to the role service', async () => {
     const app = createTestApp()
@@ -177,14 +199,6 @@ describe('role routes', () => {
       includeIds: [roleId],
     })
     expect(mocks.service.get).not.toHaveBeenCalled()
-  })
-
-  it('delegates detail requests by id', async () => {
-    const app = createTestApp()
-
-    const detailResponse = await app.request(`/api/system/roles/${roleId}`)
-    expect(detailResponse.status).toBe(200)
-    expect(mocks.service.get).toHaveBeenCalledWith(roleId)
   })
 
   it('delegates create requests to the role service', async () => {
@@ -281,52 +295,6 @@ describe('role routes', () => {
     expect(mocks.service.create).not.toHaveBeenCalled()
   })
 
-  it('maps invalid resource errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.create.mockRejectedValueOnce(new RoleInvalidResourceError())
-    const invalidResourceResponse = await app.request('/api/system/roles', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: 'Administrator',
-        code: 'test-admin',
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(invalidResourceResponse.status).toBe(400)
-    expect(await invalidResourceResponse.json()).toEqual({ message: '权限资源不存在' })
-  })
-
-  it('maps invalid resource assignment errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.create.mockRejectedValueOnce(
-      new RoleInvalidResourceAssignmentError('子级权限资源需要包含所有上级权限资源'),
-    )
-    const invalidAssignmentResponse = await app.request('/api/system/roles', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: 'Operator',
-        code: 'operator',
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(invalidAssignmentResponse.status).toBe(400)
-    expect(await invalidAssignmentResponse.json()).toEqual({
-      field: 'resourceIds',
-      message: '子级权限资源需要包含所有上级权限资源',
-    })
-  })
-
-  it('maps not-found errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.get.mockRejectedValueOnce(new RoleNotFoundError())
-    const notFoundResponse = await app.request(`/api/system/roles/${roleId}`)
-    expect(notFoundResponse.status).toBe(404)
-    expect(await notFoundResponse.json()).toEqual({ message: '角色不存在' })
-  })
-
   it('maps conflict errors to route responses', async () => {
     const app = createTestApp()
 
@@ -341,46 +309,5 @@ describe('role routes', () => {
       field: 'code',
       message: '编码已存在',
     })
-  })
-
-  it('maps built-in role mutation errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.update.mockRejectedValueOnce(new BuiltInAdminRoleMutationError('edit'))
-    const builtInResponse = await app.request(`/api/system/roles/${roleId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ name: 'Root Administrator' }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(builtInResponse.status).toBe(409)
-    expect(await builtInResponse.json()).toEqual({ message: '内置 admin 角色不能编辑' })
-  })
-
-  it('maps delete conflict errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.delete.mockRejectedValueOnce(new RoleDeleteConflictError())
-    const deleteResponse = await app.request(`/api/system/roles/${roleId}`, {
-      method: 'DELETE',
-    })
-    expect(deleteResponse.status).toBe(409)
-    expect(await deleteResponse.json()).toEqual({ message: '角色存在关联用户，不能删除' })
-  })
-
-  it('maps forbidden role mutations to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.create.mockRejectedValueOnce(new RoleMutationForbiddenError())
-    const response = await app.request('/api/system/roles', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: 'Privileged Role',
-        code: 'privileged-role',
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(response.status).toBe(403)
-    expect(await response.json()).toEqual({ message: '不能管理超出自身权限范围的角色' })
   })
 })

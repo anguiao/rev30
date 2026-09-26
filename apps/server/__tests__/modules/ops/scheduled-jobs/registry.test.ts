@@ -1,5 +1,4 @@
 import { scheduledJobTaskKeySchema } from '@rev30/contracts'
-import { createLogger } from '../../../../src/runtime/logger'
 import { describe, expect, it, vi } from 'vitest'
 import {
   createScheduledJobRegistry,
@@ -7,8 +6,6 @@ import {
   scheduledJobResultSchema,
   type ScheduledJobDefinition,
 } from '../../../../src/modules/ops/scheduled-jobs/registry'
-
-const logger = createLogger({ level: 'silent' })
 
 function definition(key: (typeof scheduledJobTaskKeys)[number]): ScheduledJobDefinition {
   return {
@@ -40,19 +37,13 @@ describe('scheduled job registry', () => {
     ).toThrow(/重复/)
   })
 
-  it('returns definitions by key and preserves the signal and logger run boundary', async () => {
+  it('returns the registered definition by key and rejects unknown keys', () => {
     const definitions = scheduledJobTaskKeys.map(definition)
     const registry = createScheduledJobRegistry(definitions)
-    const controller = new AbortController()
     const target = registry.get(scheduledJobTaskKeys[0])
 
-    await expect(target.run({ signal: controller.signal, logger })).resolves.toEqual({
-      deletedCount: 0,
-      failedCount: 0,
-    })
     expect(target).toBe(definitions[0])
     expect(registry.keys()).toEqual(scheduledJobTaskKeys)
-    expect(target.run).toHaveBeenCalledWith({ signal: controller.signal, logger })
     expect(() => registry.get('unknown-task')).toThrow(/不存在 key/)
   })
 

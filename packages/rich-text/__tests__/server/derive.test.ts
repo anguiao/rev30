@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { RichTextContentInvalidError, deriveRichTextContent } from '../../src/server'
 import { createAllRichTextServerPreset } from '../../src/server/presets/all'
 import type { RichTextJsonNode } from '../../src/core/schema'
@@ -47,36 +47,6 @@ describe('deriveRichTextContent', () => {
         createServerPreset(),
       ),
     ).toThrow(RichTextContentInvalidError)
-  })
-
-  it('renders the validated ProseMirror document with the static renderer', async () => {
-    vi.resetModules()
-    const renderToHTMLString = vi.fn((_options: unknown) => '<p>维护通知</p>')
-    vi.doMock('@tiptap/static-renderer/pm/html-string', () => ({ renderToHTMLString }))
-
-    try {
-      const { deriveRichTextContent: deriveRichTextContentWithMock } =
-        await import('../../src/server')
-
-      expect(
-        deriveRichTextContentWithMock(
-          {
-            type: 'doc',
-            content: [{ type: 'paragraph', content: [{ type: 'text', text: '维护通知' }] }],
-          },
-          createServerPreset(),
-        ).html,
-      ).toBe('<p>维护通知</p>')
-      expect(renderToHTMLString).toHaveBeenCalledOnce()
-      expect(renderToHTMLString).toHaveBeenCalledWith(
-        expect.objectContaining({
-          content: expect.objectContaining({ type: expect.objectContaining({ name: 'doc' }) }),
-        }),
-      )
-    } finally {
-      vi.doUnmock('@tiptap/static-renderer/pm/html-string')
-      vi.resetModules()
-    }
   })
 
   it('does not mask unexpected document assertion errors', () => {
@@ -277,6 +247,8 @@ describe('deriveRichTextContent', () => {
         },
       ],
     })
+    expect(content.html).toBe('<p>维护通知</p>')
+    expect(content.text).toBe('维护通知')
   })
 
   it('derives a valid empty document', () => {

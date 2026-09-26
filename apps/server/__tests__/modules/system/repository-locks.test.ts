@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import type { SQL } from 'drizzle-orm'
+import { PgDialect } from 'drizzle-orm/pg-core'
 import type { Db } from '../../../src/db'
 import { systemDepartments, systemUserDepartments, systemUsers } from '../../../src/db/schema'
 import { createDepartmentRepository } from '../../../src/modules/system/departments/repository'
@@ -24,7 +26,12 @@ function tableEventName(table: unknown) {
   return 'unknown'
 }
 
-function createThenableQuery<T>(events: string[], getRows: (table: unknown) => T[]) {
+function createThenableQuery<T>(
+  events: string[],
+  getRows: (table: unknown) => T[],
+  lockQueries: ReturnType<PgDialect['sqlToQuery']>[],
+) {
+  let condition: SQL | undefined
   let rows: T[] = []
   const query = {
     from(table: unknown) {
@@ -36,7 +43,8 @@ function createThenableQuery<T>(events: string[], getRows: (table: unknown) => T
     innerJoin() {
       return query
     },
-    where() {
+    where(nextCondition: SQL | undefined) {
+      condition = nextCondition
       return query
     },
     orderBy() {
@@ -47,6 +55,7 @@ function createThenableQuery<T>(events: string[], getRows: (table: unknown) => T
     },
     for(strength: string) {
       events.push(`lock:${strength}`)
+      lockQueries.push(new PgDialect().sqlToQuery(condition!))
 
       return query
     },
@@ -62,6 +71,9 @@ function createThenableQuery<T>(events: string[], getRows: (table: unknown) => T
 }
 
 function createLockTrackingDb(events: string[]) {
+  const lockQueries: ReturnType<PgDialect['sqlToQuery']>[] = []
+  const insertValues = vi.fn()
+  const updateValues = vi.fn()
   let departmentSelects = 0
   const departmentRow = {
     id: departmentId,
@@ -95,20 +107,16 @@ function createLockTrackingDb(events: string[]) {
     return []
   }
 
-  const db = {
-    transaction(operation: (tx: unknown) => Promise<unknown>) {
-      events.push('transaction')
-
-      return operation(db)
-    },
+  const tx = {
     select() {
-      return createThenableQuery(events, getSelectRows)
+      return createThenableQuery(events, getSelectRows, lockQueries)
     },
     insert(table: unknown) {
       events.push(`insert:${tableEventName(table)}`)
 
       return {
-        values() {
+        values(value: unknown) {
+          insertValues(table, value)
           return {
             returning() {
               return Promise.resolve(table === systemUsers ? [userRow] : [])
@@ -127,7 +135,8 @@ function createLockTrackingDb(events: string[]) {
       events.push(`update:${tableEventName(table)}`)
 
       return {
-        set() {
+        set(value: unknown) {
+          updateValues(table, value)
           return this
         },
         where() {
@@ -149,13 +158,22 @@ function createLockTrackingDb(events: string[]) {
     },
   }
 
-  return db as unknown as Db
+  const database = {
+    transaction(operation: (transaction: typeof tx) => Promise<unknown>) {
+      events.push('transaction')
+      return operation(tx)
+    },
+  } as unknown as Db
+
+  return { database, lockQueries, insertValues, updateValues }
 }
 
-describe('system repository locks', () => {
-  it('locks active departments before creating user department relations', async () => {
+describe('system repository lock query intent', () => {
+  // Builder mocks verify transaction usage and SQL intent, not database mutual exclusion.
+  it('requests the active department update lock through the transaction before inserting relations', async () => {
     const events: string[] = []
-    const repository = createUserRepository(createLockTrackingDb(events))
+    const { database, lockQueries, insertValues } = createLockTrackingDb(events)
+    const repository = createUserRepository(database)
 
     await repository.create(
       {
@@ -171,15 +189,29 @@ describe('system repository locks', () => {
 
     expect(events.indexOf('lock:update')).toBeGreaterThanOrEqual(0)
     expect(events.indexOf('lock:update')).toBeLessThan(events.indexOf('insert:userDepartments'))
+    expect(lockQueries).toHaveLength(1)
+    expect(lockQueries[0]?.params).toEqual([departmentId])
+    expect(lockQueries[0]?.sql).toContain('"system_departments"."id" =')
+    expect(lockQueries[0]?.sql).toContain('"system_departments"."deleted_at" is null')
+    expect(insertValues).toHaveBeenCalledWith(systemUserDepartments, [{ userId, departmentId }])
   })
 
-  it('locks the department row before soft deleting it', async () => {
+  it('requests the active department update lock through the transaction before soft deletion', async () => {
     const events: string[] = []
-    const repository = createDepartmentRepository(createLockTrackingDb(events))
+    const { database, lockQueries, updateValues } = createLockTrackingDb(events)
+    const repository = createDepartmentRepository(database)
 
     await repository.softDelete(departmentId)
 
     expect(events.indexOf('lock:update')).toBeGreaterThanOrEqual(0)
     expect(events.indexOf('lock:update')).toBeLessThan(events.indexOf('update:departments'))
+    expect(lockQueries).toHaveLength(1)
+    expect(lockQueries[0]?.params).toEqual([departmentId])
+    expect(lockQueries[0]?.sql).toContain('"system_departments"."id" =')
+    expect(lockQueries[0]?.sql).toContain('"system_departments"."deleted_at" is null')
+    expect(updateValues).toHaveBeenCalledWith(systemDepartments, {
+      deletedAt: expect.any(Date),
+      updatedAt: expect.any(Date),
+    })
   })
 })

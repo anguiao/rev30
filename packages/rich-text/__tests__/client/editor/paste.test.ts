@@ -67,8 +67,8 @@ function createEditor(
     editorFeatures: [
       baseEditorFeature,
       thirdEditorFeature,
-      firstEditorFeature,
       secondEditorFeature,
+      firstEditorFeature,
     ],
   })
 
@@ -82,13 +82,11 @@ describe('rich text paste feature integration', () => {
   it('composes HTML transforms in preset feature order', () => {
     const editor = createEditor([
       { transformHTML: (html) => html.replace('初始', '第一') },
-      { transformHTML: (html) => `${html}<!--第二-->` },
+      { transformHTML: (html) => html.replace('第一', '第二') },
       undefined,
     ])
 
-    expect(editor.view.props.transformPastedHTML?.('<p>初始</p>', editor.view)).toBe(
-      '<p>第一</p><!--第二-->',
-    )
+    expect(editor.view.props.transformPastedHTML?.('<p>初始</p>', editor.view)).toBe('<p>第二</p>')
   })
 
   it('stops handlers at the first rule that consumes the paste', () => {

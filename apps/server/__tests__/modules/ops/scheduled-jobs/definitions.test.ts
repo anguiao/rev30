@@ -86,6 +86,29 @@ describe('scheduled job definitions', () => {
       results.push(await registry.get(key).run({ signal, logger }))
     }
 
+    expect(mocks.cleanupAuthSessions).toHaveBeenCalledExactlyOnceWith(database, 1)
+    expect(mocks.cleanupAuthLoginAttemptBuckets).toHaveBeenCalledExactlyOnceWith(database, 2)
+    expect(mocks.cleanupLoginLogs).toHaveBeenCalledExactlyOnceWith(database, 3)
+    expect(mocks.cleanupOperationLogs).toHaveBeenCalledExactlyOnceWith(database, 4)
+    expect(mocks.cleanupExpiredAttachmentUploadSessions).toHaveBeenCalledExactlyOnceWith(
+      database,
+      storage,
+      { signal, logger },
+    )
+    expect(mocks.cleanupUnreferencedAttachments).toHaveBeenCalledExactlyOnceWith(
+      database,
+      storage,
+      5,
+      { signal, logger },
+    )
+    expect(mocks.cleanupOrphanedAttachmentUploads).toHaveBeenCalledExactlyOnceWith(
+      database,
+      storage,
+      5,
+      { signal, logger },
+    )
+    expect(mocks.cleanupScheduledJobRuns).toHaveBeenCalledExactlyOnceWith(database, 6)
+
     expect(results).toEqual([
       { deletedCount: 1, failedCount: 0 },
       { deletedCount: 2, failedCount: 0 },
@@ -108,7 +131,11 @@ describe('scheduled job definitions', () => {
         signal: new AbortController().signal,
         logger,
       }),
-    ).rejects.toMatchObject({ category: 'database' })
+    ).rejects.toMatchObject({
+      category: 'database',
+      message: 'Scheduled job database operation failed',
+      cause: error,
+    })
   })
 
   it('maps attachment storage-list failures to storage without exposing raw data in the summary', async () => {

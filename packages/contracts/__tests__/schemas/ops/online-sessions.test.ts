@@ -21,33 +21,32 @@ describe('online session schemas', () => {
   })
 
   it('accepts the complete online session response', () => {
-    expect(
-      onlineSessionListResponseSchema.parse({
-        list: [
-          {
-            id: testUuid(1),
-            userId: testUuid(2),
-            username: 'ada',
-            nickname: 'Ada Lovelace',
-            createdIp: null,
-            createdIpSource: 'socket',
-            userAgent: {
-              raw: 'Example/1.0',
-              browser: null,
-              operatingSystem: { name: 'Example OS', version: null },
-              deviceType: 'unknown',
-            },
-            createdAt: '2026-08-18T00:00:00.000Z',
-            lastActiveAt: '2026-08-18T00:05:00.000Z',
-            expiresAt: '2026-08-25T00:00:00.000Z',
-            isCurrent: true,
+    const input = {
+      list: [
+        {
+          id: testUuid(1),
+          userId: testUuid(2),
+          username: 'ada',
+          nickname: 'Ada Lovelace',
+          createdIp: null,
+          createdIpSource: 'socket',
+          userAgent: {
+            raw: 'Example/1.0',
+            browser: null,
+            operatingSystem: { name: 'Example OS', version: null },
+            deviceType: 'unknown',
           },
-        ],
-        total: 1,
-        page: 1,
-        pageSize: 20,
-      }),
-    ).toMatchObject({ total: 1, page: 1, pageSize: 20 })
+          createdAt: '2026-08-18T00:00:00.000Z',
+          lastActiveAt: '2026-08-18T00:05:00.000Z',
+          expiresAt: '2026-08-25T00:00:00.000Z',
+          isCurrent: true,
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+    }
+    expect(onlineSessionListResponseSchema.parse(input)).toEqual(input)
   })
 
   it.each(['desktop', 'mobile', 'tablet', 'tv', 'bot', 'unknown'])(

@@ -24,47 +24,44 @@ describe('unified icon search service', () => {
     },
   )
 
-  dbTest(
-    'maps database-ranked builtin and custom results through the selector response',
-    async ({ db }) => {
-      await replaceIconSearchDocuments(
-        db,
-        [
-          {
-            id: 'lucide:camera',
-            prefix: 'lucide',
-            name: 'camera',
-            source: 'builtin',
-            collection: 'Lucide',
-            palette: false,
-            customIconId: null,
-            exactPhrases: ['camera'],
-            primaryTokens: ['camera'],
-            fullTokens: ['camera'],
-            primaryEnglishTerms: ['camera'],
-            auxiliaryEnglishTerms: [],
-          },
-        ],
+  dbTest('maps database-ranked builtin results through the selector response', async ({ db }) => {
+    await replaceIconSearchDocuments(
+      db,
+      [
         {
-          indexVersion: 'v1',
-          iconPackageVersion: 'i1',
-          searchDataVersion: 'd1',
-          rulesVersion: '1',
+          id: 'lucide:camera',
+          prefix: 'lucide',
+          name: 'camera',
+          source: 'builtin',
+          collection: 'Lucide',
+          palette: false,
+          customIconId: null,
+          exactPhrases: ['camera'],
+          primaryTokens: ['camera'],
+          fullTokens: ['camera'],
+          primaryEnglishTerms: ['camera'],
+          auxiliaryEnglishTerms: [],
         },
-      )
-      await expect(
-        createIconSearchService(db).searchIcons({ keyword: 'cam', limit: 10 }),
-      ).resolves.toEqual({
-        list: [
-          {
-            icon: 'lucide:camera',
-            prefix: 'lucide',
-            name: 'camera',
-            collection: 'Lucide',
-            palette: false,
-          },
-        ],
-      })
-    },
-  )
+      ],
+      {
+        indexVersion: 'v1',
+        iconPackageVersion: 'i1',
+        searchDataVersion: 'd1',
+        rulesVersion: '1',
+      },
+    )
+    await expect(
+      createIconSearchService(db).searchIcons({ keyword: 'cam', limit: 10 }),
+    ).resolves.toEqual({
+      list: [
+        {
+          icon: 'lucide:camera',
+          prefix: 'lucide',
+          name: 'camera',
+          collection: 'Lucide',
+          palette: false,
+        },
+      ],
+    })
+  })
 })

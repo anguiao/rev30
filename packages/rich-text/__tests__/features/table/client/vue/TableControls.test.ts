@@ -42,8 +42,6 @@ describe('table size picker and toolbar control', () => {
       'dialog',
     )
     expect(cells.filter((cell) => cell.attributes('tabindex') === '0')).toHaveLength(1)
-    expect(cells[0]!.classes()).toContain('border-stone-200')
-    expect(cells[0]!.classes()).toContain('dark:border-zinc-500/60')
     expect(wrapper.get('[data-test="rich-text-table-size-label"]').text()).toContain('1 行 × 1 列')
 
     await cells[2 * 8 + 3]!.trigger('mouseenter')

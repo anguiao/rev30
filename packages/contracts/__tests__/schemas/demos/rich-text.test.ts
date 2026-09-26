@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { expectZodIssue } from '../../helpers/schema'
 import {
   richTextDemoPreviewInputSchema,
   richTextDemoPreviewResponseSchema,
@@ -26,8 +27,10 @@ describe('rich text demo schemas', () => {
   })
 
   it('rejects unknown preview input fields', () => {
-    expect(richTextDemoPreviewInputSchema.safeParse({ contentJson, persisted: true }).success).toBe(
-      false,
-    )
+    expectZodIssue(richTextDemoPreviewInputSchema.safeParse({ contentJson, persisted: true }), {
+      code: 'unrecognized_keys',
+      path: [],
+      keys: ['persisted'],
+    })
   })
 })

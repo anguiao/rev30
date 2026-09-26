@@ -1,6 +1,6 @@
 import { PGlite } from '@electric-sql/pglite'
 import { drizzle } from 'drizzle-orm/pglite'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import {
   customIconSetIcons,
   customIconSets,
@@ -280,7 +280,7 @@ describe('icon search lifecycle', () => {
   })
 
   dbTest(
-    'lets business reads and custom writes commit while a multi-batch rebuild is staging',
+    'includes custom edits made while artifact staging is paused between batches',
     async ({ db }) => {
       const [set] = await db
         .insert(customIconSets)
@@ -309,7 +309,7 @@ describe('icon search lifecycle', () => {
         .returning()
       await replaceIconSearchDocuments(db, [], { ...state, rulesVersion: 'old' })
 
-      const documents = Array.from({ length: 4_001 }, (_, index) => ({
+      const documents = Array.from({ length: 1_001 }, (_, index) => ({
         ...document,
         id: `bulk:icon-${index}`,
         prefix: 'bulk',
@@ -318,42 +318,62 @@ describe('icon search lifecycle', () => {
         fullTokens: ['bulk', `icon${index}`],
         primaryEnglishTerms: ['bulk'],
       }))
+      let markStaged!: () => void
+      const staged = new Promise<void>((resolve) => {
+        markStaged = resolve
+      })
+      let resumeImport!: () => void
+      const resume = new Promise<void>((resolve) => {
+        resumeImport = resolve
+      })
       let rebuildFinished = false
       const rebuild = prepareIconSearchIndex(db, {
         installedIconPackageVersion: state.iconPackageVersion,
         loadArtifacts: async () => ({
           manifest: { ...state, indexVersion: 'rebuilt' },
-          documents,
+          documents: (async function* () {
+            for (const item of documents.slice(0, 1_000)) yield item
+            markStaged()
+            await resume
+            yield documents[1_000]!
+          })(),
         }),
       }).then((result) => {
         rebuildFinished = true
         return result
       })
 
-      await new Promise<void>((resolve) => setTimeout(resolve, 0))
-      await db.execute('SELECT 1')
-      expect(rebuildFinished).toBe(false)
-      await db.transaction(async (tx) => {
-        await lockIconSearchWrites(tx)
-        await tx
-          .update(customIconSetIcons)
-          .set({ name: 'new-name', keywords: ['fresh'] })
-          .where(eq(customIconSetIcons.id, editedIcon!.id))
-        await syncCustomIconSearchDocument(tx, {
-          prefix: 'acme',
-          name: 'new-name',
-          collection: 'Acme',
-          palette: false,
-          customIconId: editedIcon!.id,
-          keywords: ['fresh'],
+      // The barrier observes staging progress on this connection, not PostgreSQL isolation.
+      await staged
+      try {
+        expect(await db.select().from(iconSearchDocumentsStaging)).toHaveLength(1_000)
+        await db.execute('SELECT 1')
+        expect(rebuildFinished).toBe(false)
+        await db.transaction(async (tx) => {
+          await lockIconSearchWrites(tx)
+          await tx
+            .update(customIconSetIcons)
+            .set({ name: 'new-name', keywords: ['fresh'] })
+            .where(eq(customIconSetIcons.id, editedIcon!.id))
+          await syncCustomIconSearchDocument(tx, {
+            prefix: 'acme',
+            name: 'new-name',
+            collection: 'Acme',
+            palette: false,
+            customIconId: editedIcon!.id,
+            keywords: ['fresh'],
+          })
+          await tx
+            .update(customIconSetIcons)
+            .set({ deletedAt: new Date() })
+            .where(eq(customIconSetIcons.id, deletedIcon!.id))
+          await deleteCustomIconSearchDocument(tx, deletedIcon!.id)
         })
-        await tx
-          .update(customIconSetIcons)
-          .set({ deletedAt: new Date() })
-          .where(eq(customIconSetIcons.id, deletedIcon!.id))
-        await deleteCustomIconSearchDocument(tx, deletedIcon!.id)
-      })
-      expect(rebuildFinished).toBe(false)
+        expect(rebuildFinished).toBe(false)
+      } finally {
+        resumeImport()
+        await rebuild
+      }
       await expect(rebuild).resolves.toBe('updated')
 
       const customRows = await db
@@ -497,6 +517,7 @@ describe('icon search lifecycle', () => {
 
   test('keeps the committed index ready when old-table cleanup fails', async () => {
     const client = await PGlite.create()
+    onTestFinished(() => client.close())
     await migratePGlite(client)
     const database = drizzle({ client, relations })
     await replaceIconSearchDocuments(database, [document], state)
@@ -528,11 +549,11 @@ describe('icon search lifecycle', () => {
       expect.objectContaining({ indexVersion: 'cleanup-failed' }),
     ])
     expect(onCleanupError).toHaveBeenCalledWith(expect.any(Error))
-    await client.close()
   })
 
   test('logs an old-table cleanup failure from background preparation', async () => {
     const client = await PGlite.create()
+    onTestFinished(() => client.close())
     await migratePGlite(client)
     const database = drizzle({ client, relations })
     await replaceIconSearchDocuments(database, [document], state)
@@ -580,6 +601,5 @@ describe('icon search lifecycle', () => {
       },
       'icon search index cleanup failed',
     )
-    await client.close()
   })
 })

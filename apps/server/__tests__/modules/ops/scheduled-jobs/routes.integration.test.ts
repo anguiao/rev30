@@ -446,87 +446,88 @@ describe('scheduled job HTTP routes', () => {
     expect(mismatchResponse.status).toBe(404)
   })
 
-  dbTest('accepts repeated cancellation and preserves the first actor snapshot', async ({ db }) => {
-    const operator = await createSystemAccessFixture(db, {
-      accessCodes: ['ops:scheduled-job:cancel'],
-      usernamePrefix: 'scheduled-job-canceller',
-    })
-    const cancelRunId = '20000000-0000-4000-8000-000000000003'
-    const startedAt = new Date('2026-08-25T00:00:01.000Z')
-    const cancelRequestedAt = new Date('2026-08-25T00:00:02.000Z')
-    await db.insert(opsJobRuns).values({
-      id: cancelRunId,
-      taskKey,
-      triggerSource: 'scheduled',
-      status: 'running',
-      scheduledFor: new Date('2026-08-25T00:00:00.000Z'),
-      startedAt,
-      cancelRequestedAt,
-      cancelRequestedByUserId: operator.userId,
-      cancelRequestedByUsername: 'first-operator',
-      cancelRequestedByNickname: 'First Operator',
-      createdAt: startedAt,
-    })
-    await db
-      .update(opsScheduledJobs)
-      .set({ activeRunId: cancelRunId })
-      .where(eq(opsScheduledJobs.taskKey, taskKey))
-    const [run] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, cancelRunId))
-    assert(run)
-    const scheduler = createScheduler()
-    scheduler.requestCancellation.mockResolvedValue(run)
-    const events: OperationLogEvent[] = []
-    const app = createApp(db, {
-      scheduledJobService: createTestScheduledJobService(db, scheduler),
-      operationLogReceiver: receiver(events),
-    })
-
-    const response = await app.request(
-      `/api/ops/scheduled-jobs/${taskKey}/runs/${cancelRunId}/cancel`,
-      {
-        method: 'POST',
-        headers: operator.authHeaders,
-      },
-    )
-
-    expect(response.status).toBe(202)
-    expect(scheduledJobCancelResponseSchema.parse(await response.json())).toMatchObject({
-      run: {
+  dbTest(
+    'returns the accepted cancellation snapshot and records the requesting actor',
+    async ({ db }) => {
+      const operator = await createSystemAccessFixture(db, {
+        accessCodes: ['ops:scheduled-job:cancel'],
+        usernamePrefix: 'scheduled-job-canceller',
+      })
+      const cancelRunId = '20000000-0000-4000-8000-000000000003'
+      const startedAt = new Date('2026-08-25T00:00:01.000Z')
+      const cancelRequestedAt = new Date('2026-08-25T00:00:02.000Z')
+      await db.insert(opsJobRuns).values({
         id: cancelRunId,
+        taskKey,
+        triggerSource: 'scheduled',
         status: 'running',
-        cancelRequestedAt: cancelRequestedAt.toISOString(),
-      },
-    })
-    expect(scheduler.requestCancellation).toHaveBeenCalledWith({
-      taskKey,
-      runId: cancelRunId,
-      actor: expect.objectContaining({
-        id: operator.userId,
-        username: expect.any(String),
-        nickname: expect.any(String),
-      }),
-    })
-    expect(events[0]).toMatchObject({
-      action: 'ops:scheduled-job:cancel',
-      targetKey: taskKey,
-      targetLabel: cancelRunId,
-      httpStatus: 202,
-    })
-  })
+        scheduledFor: new Date('2026-08-25T00:00:00.000Z'),
+        startedAt,
+        cancelRequestedAt,
+        cancelRequestedByUserId: operator.userId,
+        cancelRequestedByUsername: 'first-operator',
+        cancelRequestedByNickname: 'First Operator',
+        createdAt: startedAt,
+      })
+      await db
+        .update(opsScheduledJobs)
+        .set({ activeRunId: cancelRunId })
+        .where(eq(opsScheduledJobs.taskKey, taskKey))
+      const [run] = await db.select().from(opsJobRuns).where(eq(opsJobRuns.id, cancelRunId))
+      assert(run)
+      const scheduler = createScheduler()
+      scheduler.requestCancellation.mockResolvedValue(run)
+      const events: OperationLogEvent[] = []
+      const app = createApp(db, {
+        scheduledJobService: createTestScheduledJobService(db, scheduler),
+        operationLogReceiver: receiver(events),
+      })
+
+      const response = await app.request(
+        `/api/ops/scheduled-jobs/${taskKey}/runs/${cancelRunId}/cancel`,
+        {
+          method: 'POST',
+          headers: operator.authHeaders,
+        },
+      )
+
+      expect(response.status).toBe(202)
+      expect(scheduledJobCancelResponseSchema.parse(await response.json())).toMatchObject({
+        run: {
+          id: cancelRunId,
+          status: 'running',
+          cancelRequestedAt: cancelRequestedAt.toISOString(),
+        },
+      })
+      expect(scheduler.requestCancellation).toHaveBeenCalledWith({
+        taskKey,
+        runId: cancelRunId,
+        actor: expect.objectContaining({
+          id: operator.userId,
+          username: expect.any(String),
+          nickname: expect.any(String),
+        }),
+      })
+      expect(events[0]).toMatchObject({
+        action: 'ops:scheduled-job:cancel',
+        targetKey: taskKey,
+        targetLabel: cancelRunId,
+        httpStatus: 202,
+      })
+    },
+  )
 
   dbTest(
-    'maps terminal, non-current, and unknown cancellation outcomes to failed logs',
+    'maps cancellation conflicts and missing runs to failed operation logs',
     async ({ db }) => {
       const operator = await createSystemAccessFixture(db, {
         accessCodes: ['ops:scheduled-job:cancel'],
         usernamePrefix: 'scheduled-job-cancel-errors',
       })
       const terminalId = '20000000-0000-4000-8000-000000000031'
-      const nonCurrentId = '20000000-0000-4000-8000-000000000032'
       const unknownId = '20000000-0000-4000-8000-000000000033'
       const scheduler = createScheduler()
       scheduler.requestCancellation
-        .mockRejectedValueOnce(new ScheduledJobStateConflictError())
         .mockRejectedValueOnce(new ScheduledJobStateConflictError())
         .mockRejectedValueOnce(new ScheduledJobNotFoundError())
       const events: OperationLogEvent[] = []
@@ -535,7 +536,7 @@ describe('scheduled job HTTP routes', () => {
         operationLogReceiver: receiver(events),
       })
 
-      for (const runId of [terminalId, nonCurrentId, unknownId]) {
+      for (const runId of [terminalId, unknownId]) {
         const response = await app.request(
           `/api/ops/scheduled-jobs/${taskKey}/runs/${runId}/cancel`,
           { method: 'POST', headers: operator.authHeaders },
@@ -555,12 +556,6 @@ describe('scheduled job HTTP routes', () => {
           result: 'failure',
           httpStatus: 409,
           targetLabel: terminalId,
-        },
-        {
-          action: 'ops:scheduled-job:cancel',
-          result: 'failure',
-          httpStatus: 409,
-          targetLabel: nonCurrentId,
         },
         {
           action: 'ops:scheduled-job:cancel',

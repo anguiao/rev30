@@ -1,6 +1,6 @@
 import { PGlite } from '@electric-sql/pglite'
 import { drizzle } from 'drizzle-orm/pglite'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import { iconSearchDocuments, iconSearchIndexState } from '../../../../src/db/schema'
 import { migratePGlite } from '../../../../src/db/migrate'
 import { relations } from '../../../../src/db/relations'
@@ -222,7 +222,7 @@ describe('database icon search', () => {
   )
 
   dbTest(
-    'commits documents and their state together and returns stable cursor pages',
+    'returns stable cursor pages for the seeded index and rejects invalid cursors',
     async ({ db }) => {
       await replaceIconSearchDocuments(db, fixtures, {
         indexVersion: 'index-v1',
@@ -298,8 +298,9 @@ describe('database icon search', () => {
     },
   )
 
-  test('returns documents and index version from the same committed snapshot', async () => {
+  test('returns the current documents and index version before and after index replacement', async () => {
     const client = await PGlite.create()
+    onTestFinished(() => client.close())
     await migratePGlite(client)
     const database = drizzle({ client, relations })
     await replaceIconSearchDocuments(database, fixtures, {
@@ -317,15 +318,14 @@ describe('database icon search', () => {
       fullTokens: ['next', ...fixture.fullTokens],
       primaryEnglishTerms: ['next', ...fixture.primaryEnglishTerms],
     }))
-    const [result] = await Promise.all([
-      searchIconDocuments(database, { keyword: 'camera', limit: 20 }),
-      replaceIconSearchDocuments(database, replacement, {
-        indexVersion: 'index-v2',
-        iconPackageVersion: 'icons-v1',
-        searchDataVersion: 'data-v2',
-        rulesVersion: '1',
-      }),
-    ])
+    // One PGlite connection checks sequential state, not cross-connection isolation.
+    const result = await searchIconDocuments(database, { keyword: 'camera', limit: 20 })
+    await replaceIconSearchDocuments(database, replacement, {
+      indexVersion: 'index-v2',
+      iconPackageVersion: 'icons-v1',
+      searchDataVersion: 'data-v2',
+      rulesVersion: '1',
+    })
     expect(result).toMatchObject({
       indexVersion: 'index-v1',
       rows: [
@@ -335,6 +335,13 @@ describe('database icon search', () => {
         { id: 'lucide:cameraman' },
       ],
     })
-    await client.close()
+    const updated = await searchIconDocuments(database, { keyword: 'camera', limit: 20 })
+    expect(updated.indexVersion).toBe('index-v2')
+    expect(updated.rows.map(({ id }) => id).sort()).toEqual([
+      'lucide:next-camera',
+      'lucide:next-camera-box',
+      'lucide:next-cameraman',
+      'tabler:next-camera',
+    ])
   })
 })

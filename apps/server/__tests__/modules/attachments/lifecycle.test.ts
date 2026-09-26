@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, vi } from 'vitest'
 import { ATTACHMENT_CLEANUP_POLICY_UNREFERENCED } from '@rev30/contracts'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, type Query } from 'drizzle-orm'
+import type { PgSelect } from 'drizzle-orm/pg-core'
 import { attachmentReferences, attachments, attachmentUploadSessions } from '../../../src/db/schema'
 import {
   cleanupExpiredAttachmentUploadSessions,
@@ -868,7 +869,7 @@ function testSource(): AttachmentReferenceSource {
   }
 }
 
-function trackForUpdate<T extends object>(query: T, calls: unknown[][]): T {
+function trackForUpdate<T extends object>(query: T, calls: Query[]): T {
   return new Proxy(query, {
     get(target, property) {
       const value = Reflect.get(target, property, target)
@@ -878,8 +879,9 @@ function trackForUpdate<T extends object>(query: T, calls: unknown[][]): T {
       }
 
       return (...args: unknown[]) => {
-        if (property === 'for') {
-          calls.push(args)
+        if (property === 'then') {
+          const toSQL = Reflect.get(target, 'toSQL') as PgSelect['toSQL']
+          calls.push(toSQL.call(target))
         }
 
         const result = Reflect.apply(value, target, args)
@@ -892,7 +894,7 @@ function trackForUpdate<T extends object>(query: T, calls: unknown[][]): T {
   })
 }
 
-function createDatabaseWithForUpdateTracking(database: TestDatabase, calls: unknown[][]) {
+function createDatabaseWithForUpdateTracking(database: TestDatabase, calls: Query[]) {
   return new Proxy(database, {
     get(target, property, receiver) {
       const value = Reflect.get(target, property, receiver)
@@ -951,10 +953,10 @@ async function listSourceReferences(database: TestDatabase, source: AttachmentRe
 
 describe('attachment references', () => {
   dbTest('locks unique active attachments in stable order', async ({ db: database }) => {
-    const firstAttachmentId = randomUUID()
-    const secondAttachmentId = randomUUID()
+    const firstAttachmentId = '10000000-0000-4000-8000-000000000001'
+    const secondAttachmentId = '20000000-0000-4000-8000-000000000002'
     const sortedAttachmentIds = [firstAttachmentId, secondAttachmentId].sort()
-    const forUpdateCalls: unknown[][] = []
+    const forUpdateCalls: Query[] = []
 
     await createAttachmentRows(database, sortedAttachmentIds)
 
@@ -964,7 +966,13 @@ describe('attachment references', () => {
     )
 
     expect(locked.map((attachment) => attachment.id)).toEqual(sortedAttachmentIds)
-    expect(forUpdateCalls).toEqual([['update'], ['update']])
+    // Observe submitted lock SQL, not returned row order or PostgreSQL lock scheduling.
+    expect(forUpdateCalls.map((query) => query.params[0])).toEqual(sortedAttachmentIds)
+    for (const query of forUpdateCalls) {
+      expect(query.sql).toContain('"attachments"."id" = $1')
+      expect(query.sql).toContain('"attachments"."deleted_at" is null')
+      expect(query.sql).toMatch(/for update$/)
+    }
   })
 
   dbTest('refreshes source references with unique attachment ids', async ({ db: database }) => {
@@ -972,19 +980,17 @@ describe('attachment references', () => {
     const firstAttachmentId = randomUUID()
     const secondAttachmentId = randomUUID()
     const thirdAttachmentId = randomUUID()
-    const forUpdateCalls: unknown[][] = []
 
     await createAttachmentRows(database, [firstAttachmentId, secondAttachmentId, thirdAttachmentId])
-    await refreshAttachmentReferences(
-      createDatabaseWithForUpdateTracking(database, forUpdateCalls),
-      source,
-      [firstAttachmentId, secondAttachmentId, firstAttachmentId],
-    )
+    await refreshAttachmentReferences(database, source, [
+      firstAttachmentId,
+      secondAttachmentId,
+      firstAttachmentId,
+    ])
 
     expect((await listSourceReferences(database, source)).map((row) => row.attachmentId)).toEqual(
       [firstAttachmentId, secondAttachmentId].sort(),
     )
-    expect(forUpdateCalls).toEqual([['update'], ['update']])
 
     await refreshAttachmentReferences(database, source, [thirdAttachmentId])
 

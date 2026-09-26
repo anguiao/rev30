@@ -362,6 +362,18 @@ describe('UserFormDrawer', () => {
       ...userResponse,
       avatarId,
     }
+    getDepartmentTreeOptionsMock.mockResolvedValue(
+      departmentTreeResponse.map((department) => ({
+        ...department,
+        children: department.children.map((child) => ({
+          ...child,
+          status: DEPARTMENT_STATUS_ENABLED,
+        })),
+      })),
+    )
+    getRoleOptionsMock.mockResolvedValue(
+      roleOptionsResponse.map((role) => ({ ...role, status: ROLE_STATUS_ENABLED })),
+    )
     getUserMock.mockResolvedValue(userResponseWithAvatar)
     updateUserMock.mockResolvedValue(userResponseWithAvatar)
 
@@ -440,7 +452,11 @@ describe('UserFormDrawer', () => {
     await submitForm(wrapper)
 
     expect(updateUserMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('用户名已存在')
+    const fieldItem = wrapper
+      .get('[data-test="user-form-username"] input')
+      .element.closest('.n-form-item')
+    expect(fieldItem?.textContent).toContain('用户名已存在')
+    expect(wrapper.find('.n-alert').exists()).toBe(false)
     expect(wrapper.emitted('saved')).toBeUndefined()
   })
 
@@ -452,7 +468,11 @@ describe('UserFormDrawer', () => {
 
     await wrapper.get('[data-test="user-form-username"] input').setValue('new-user')
     await wrapper.get('[data-test="user-form-nickname"] input').setValue('New User')
-    wrapper.getComponent(NTreeSelect).vm.$emit('update:value', null)
+    const departmentSelect = wrapper.getComponent(NTreeSelect)
+    departmentSelect.vm.$emit('update:value', [departmentId])
+    await flushPromises()
+    expect(departmentSelect.props('value')).toEqual([departmentId])
+    departmentSelect.vm.$emit('update:value', null)
     await flushPromises()
 
     await submitForm(wrapper)

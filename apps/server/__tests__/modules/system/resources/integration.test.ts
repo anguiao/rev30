@@ -406,7 +406,29 @@ describe('resource routes', () => {
         code: 'test-system:department',
         parentId: root.id,
         path: '/system/departments',
+        status: RESOURCE_STATUS_DISABLED,
+      })
+      await createResource(app, {
+        type: RESOURCE_TYPE_DIRECTORY,
+        name: 'Users Directory',
+        code: 'test-system:user-directory',
+        parentId: root.id,
+        status: RESOURCE_STATUS_DISABLED,
+      })
+      await createResource(app, {
+        type: RESOURCE_TYPE_MENU,
+        name: 'Users Enabled',
+        code: 'test-system:user-enabled',
+        parentId: root.id,
+        path: '/system/users-enabled',
         status: RESOURCE_STATUS_ENABLED,
+      })
+      await createResource(app, {
+        type: RESOURCE_TYPE_MENU,
+        name: 'Users Other Parent',
+        code: 'test-system:user-other-parent',
+        path: '/system/users-other-parent',
+        status: RESOURCE_STATUS_DISABLED,
       })
 
       const listResponse = await app.request(
@@ -501,7 +523,16 @@ describe('resource routes', () => {
         sortOrder: 3,
       })
 
-      const deleteResponse = await app.request(`/api/system/resources/${disabledChild.id}`, {
+      const { body: deletedChild } = await createResource(app, {
+        type: RESOURCE_TYPE_ACTION,
+        name: 'Deleted Enabled',
+        code: 'test-system:deleted',
+        parentId: root.id,
+        status: RESOURCE_STATUS_ENABLED,
+        sortOrder: 4,
+      })
+
+      const deleteResponse = await app.request(`/api/system/resources/${deletedChild.id}`, {
         method: 'DELETE',
       })
       expect(deleteResponse.status).toBe(204)
@@ -510,6 +541,8 @@ describe('resource routes', () => {
       const body = (await response.json()) as ResourceTreeOptionsResponse
 
       expect(response.status).toBe(200)
+      expect(JSON.stringify(body)).not.toContain(disabledChild.id)
+      expect(JSON.stringify(body)).not.toContain(deletedChild.id)
       const rootNode = body.find((item) => item.id === root.id)
       expect(rootNode).toMatchObject({
         id: root.id,
@@ -759,37 +792,6 @@ describe('resource routes', () => {
       expect(await rootDetailResponse.json()).toEqual(
         expect.objectContaining({ id: root.id, parentId: null }),
       )
-    },
-  )
-
-  dbTest(
-    'defaults open target to blank when updating a resource to an external link',
-    async ({ db: database }) => {
-      const app = await createTestApp(database)
-      const { body } = await createResource(app, {
-        type: RESOURCE_TYPE_MENU,
-        name: 'Users',
-        code: 'test-system:user',
-        path: '/system/users',
-      })
-
-      const response = await app.request(`/api/system/resources/${body.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          type: RESOURCE_TYPE_EXTERNAL,
-          externalUrl: 'https://example.com/users',
-        }),
-        headers: { 'content-type': 'application/json' },
-      })
-      const responseBody = (await response.json()) as Resource
-
-      expect(response.status).toBe(200)
-      expect(responseBody).toMatchObject({
-        type: RESOURCE_TYPE_EXTERNAL,
-        path: null,
-        externalUrl: 'https://example.com/users',
-        openTarget: RESOURCE_OPEN_TARGET_BLANK,
-      })
     },
   )
 

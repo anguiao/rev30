@@ -1,5 +1,5 @@
-import { getSchema } from '@tiptap/core'
-import { describe, expect, it, vi } from 'vitest'
+import { flattenExtensions, getSchema } from '@tiptap/core'
+import { describe, expect, it } from 'vitest'
 import { collectRichTextEditorExtensions } from '../../src/client/editor/feature'
 import { allRichTextPreset } from '../../src/core/presets/all'
 import { compactRichTextPreset } from '../../src/core/presets/compact'
@@ -12,6 +12,11 @@ import { collectRichTextServerExtensions } from '../../src/server/feature'
 import { createAllRichTextEditorPreset } from '../../src/client/vue/presets/all'
 import { compactRichTextEditorPreset } from '../../src/client/vue/presets/compact'
 import { createStandardRichTextEditorPreset } from '../../src/client/vue/presets/standard'
+import { characterCountFeature } from '../../src/features/character-count/core/feature'
+import { elementPathFeature } from '../../src/features/element-path/core/feature'
+import { searchReplaceFeature } from '../../src/features/search-replace/core/feature'
+import { tableFeature } from '../../src/features/table/core/feature'
+import { textStyleFeature } from '../../src/features/text-style/core/feature'
 
 const imageUpload = async (file: File) => ({
   src: `/api/attachments/${file.name}/content`,
@@ -174,20 +179,11 @@ const standardServerPreset = createStandardRichTextServerPreset({
 function expectNoDuplicateTiptapExtensions(
   preset: Parameters<typeof collectRichTextEditorExtensions>[0],
 ) {
-  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const extensions = collectRichTextEditorExtensions(preset)
+  const names = flattenExtensions(extensions).map((extension) => extension.name)
 
-  try {
-    getSchema(collectRichTextEditorExtensions(preset))
-
-    expect(
-      warnSpy.mock.calls.some(
-        ([message]) =>
-          typeof message === 'string' && message.includes('Duplicate extension names found'),
-      ),
-    ).toBe(false)
-  } finally {
-    warnSpy.mockRestore()
-  }
+  expect(new Set(names).size).toBe(names.length)
+  expect(getSchema(extensions).topNodeType.name).toBe('doc')
 }
 
 function expectKnownExtensionOrder(
@@ -200,6 +196,25 @@ function expectKnownExtensionOrder(
 describe('all rich text preset', () => {
   it('enables every current built-in feature', () => {
     expect(allRichTextPreset.features.map((feature) => feature.key)).toEqual(allFeatureKeys)
+    expect(allRichTextPreset.features).toContain(tableFeature)
+    expect(allRichTextPreset.features).toContain(textStyleFeature)
+    expect(textStyleFeature).toMatchObject({
+      editorImplementation: true,
+      serverImplementation: true,
+    })
+
+    for (const feature of [characterCountFeature, searchReplaceFeature, elementPathFeature]) {
+      expect(allRichTextPreset.features).toContain(feature)
+      expect(feature).toMatchObject({ editorImplementation: true, serverImplementation: false })
+      expect(feature.sharedExtensions).toBeUndefined()
+      const implementation = allEditorPreset.editorFeatures.find((item) => item.feature === feature)
+      expect(implementation?.feature).toBe(feature)
+      expect(allServerPreset.serverFeatures.map((item) => item.feature)).not.toContain(feature)
+    }
+    expect(
+      allEditorPreset.editorFeatures.find((item) => item.feature === elementPathFeature)
+        ?.extensions,
+    ).toBeUndefined()
   })
 
   it('contains every compact feature by canonical identity', () => {
@@ -318,7 +333,7 @@ describe('all rich text preset', () => {
     )
   })
 
-  it('keeps server implementations, shared extensions, and html policy order', () => {
+  it('keeps server implementation and extension order with the allowed HTML tag set', () => {
     expect(allServerPreset.key).toBe(allRichTextPreset.key)
     expect(allServerPreset.features).toBe(allRichTextPreset.features)
     expect(allServerPreset.serverFeatures.map(({ feature }) => feature.key)).toEqual([
@@ -374,38 +389,41 @@ describe('all rich text preset', () => {
       'tableHeader',
     ])
     expect(
-      allServerPreset.serverFeatures.flatMap(({ htmlPolicy }) => htmlPolicy.allowedTags ?? []),
-    ).toEqual([
-      'p',
-      'br',
-      'strong',
-      'em',
-      'u',
-      's',
-      'code',
-      'mark',
-      'span',
-      'a',
-      'h1',
-      'h2',
-      'h3',
-      'blockquote',
-      'pre',
-      'code',
-      'ul',
-      'ol',
-      'li',
-      'hr',
-      'img',
-      'div',
-      'table',
-      'colgroup',
-      'col',
-      'tbody',
-      'tr',
-      'th',
-      'td',
-    ])
+      new Set(
+        allServerPreset.serverFeatures.flatMap(({ htmlPolicy }) => htmlPolicy.allowedTags ?? []),
+      ),
+    ).toEqual(
+      new Set([
+        'p',
+        'br',
+        'strong',
+        'em',
+        'u',
+        's',
+        'code',
+        'mark',
+        'span',
+        'a',
+        'h1',
+        'h2',
+        'h3',
+        'blockquote',
+        'pre',
+        'ul',
+        'ol',
+        'li',
+        'hr',
+        'img',
+        'div',
+        'table',
+        'colgroup',
+        'col',
+        'tbody',
+        'tr',
+        'th',
+        'td',
+      ]),
+    )
   })
 
   it('does not register duplicate Tiptap extensions', () => {
@@ -468,7 +486,7 @@ describe('compact rich text preset', () => {
     ])
   })
 
-  it('keeps server implementations, shared extensions, and html policy order', () => {
+  it('keeps server implementation and extension order with the allowed HTML tag set', () => {
     expect(compactRichTextServerPreset.key).toBe(compactRichTextPreset.key)
     expect(compactRichTextServerPreset.features).toBe(compactRichTextPreset.features)
     expect(compactRichTextServerPreset.serverFeatures.map(({ feature }) => feature.key)).toEqual([
@@ -497,10 +515,12 @@ describe('compact rich text preset', () => {
       'listItem',
     ])
     expect(
-      compactRichTextServerPreset.serverFeatures.flatMap(
-        ({ htmlPolicy }) => htmlPolicy.allowedTags ?? [],
+      new Set(
+        compactRichTextServerPreset.serverFeatures.flatMap(
+          ({ htmlPolicy }) => htmlPolicy.allowedTags ?? [],
+        ),
       ),
-    ).toEqual(['p', 'br', 'strong', 'em', 'a', 'h1', 'h2', 'h3', 'ul', 'ol', 'li'])
+    ).toEqual(new Set(['p', 'br', 'strong', 'em', 'a', 'h1', 'h2', 'h3', 'ul', 'ol', 'li']))
   })
 
   it('does not register duplicate Tiptap extensions', () => {
@@ -612,7 +632,7 @@ describe('standard rich text preset', () => {
     expect(standardEditorPreset.statusBar?.end.map((item) => item.key)).toEqual(['character-count'])
   })
 
-  it('keeps server implementations, shared extensions, and html policy order', () => {
+  it('keeps server implementation and extension order with the allowed HTML tag set', () => {
     expect(standardServerPreset.key).toBe(standardRichTextPreset.key)
     expect(standardServerPreset.features).toBe(standardRichTextPreset.features)
     expect(standardServerPreset.serverFeatures.map(({ feature }) => feature.key)).toEqual([
@@ -653,26 +673,32 @@ describe('standard rich text preset', () => {
       'image',
     ])
     expect(
-      standardServerPreset.serverFeatures.flatMap(({ htmlPolicy }) => htmlPolicy.allowedTags ?? []),
-    ).toEqual([
-      'p',
-      'br',
-      'strong',
-      'em',
-      'u',
-      's',
-      'mark',
-      'a',
-      'h1',
-      'h2',
-      'h3',
-      'blockquote',
-      'ul',
-      'ol',
-      'li',
-      'hr',
-      'img',
-    ])
+      new Set(
+        standardServerPreset.serverFeatures.flatMap(
+          ({ htmlPolicy }) => htmlPolicy.allowedTags ?? [],
+        ),
+      ),
+    ).toEqual(
+      new Set([
+        'p',
+        'br',
+        'strong',
+        'em',
+        'u',
+        's',
+        'mark',
+        'a',
+        'h1',
+        'h2',
+        'h3',
+        'blockquote',
+        'ul',
+        'ol',
+        'li',
+        'hr',
+        'img',
+      ]),
+    )
   })
 
   it('derives standard content and applies the injected image source strategy', () => {

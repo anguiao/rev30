@@ -171,64 +171,6 @@ describe('user routes', () => {
     },
   )
 
-  dbTest('returns a field error when a department relation does not exist', async ({ db }) => {
-    const app = await createUserCreateAccessApp(db)
-
-    const response = await app.request(
-      '/api/system/users',
-      jsonRequest(
-        {
-          username: 'invalid-department-user',
-          nickname: 'Invalid Department User',
-          email: null,
-          phone: null,
-          status: USER_STATUS_ENABLED,
-          departmentIds: ['11111111-1111-4111-8111-111111111111'],
-          roleIds: [],
-        },
-        {
-          method: 'POST',
-        },
-      ),
-    )
-    await expectJsonResponse(response, {
-      status: 400,
-      body: {
-        field: 'departmentIds',
-        message: '部门不存在',
-      },
-    })
-  })
-
-  dbTest('returns a field error when a role relation does not exist', async ({ db }) => {
-    const app = await createUserCreateAccessApp(db)
-
-    const response = await app.request(
-      '/api/system/users',
-      jsonRequest(
-        {
-          username: 'invalid-role-user',
-          nickname: 'Invalid Role User',
-          email: null,
-          phone: null,
-          status: USER_STATUS_ENABLED,
-          departmentIds: [],
-          roleIds: ['22222222-2222-4222-8222-222222222222'],
-        },
-        {
-          method: 'POST',
-        },
-      ),
-    )
-    await expectJsonResponse(response, {
-      status: 400,
-      body: {
-        field: 'roleIds',
-        message: '角色不存在',
-      },
-    })
-  })
-
   dbTest(
     'limits non-admin role assignments to the actor access scope',
     async ({ db: database }) => {
@@ -1106,6 +1048,7 @@ describe('user routes', () => {
     'rejects missing or deleted role ids on user create and update',
     async ({ db: database }) => {
       const app = await createTestApp(database)
+      const createOnlyApp = await createUserCreateAccessApp(database)
       const deletedRole = await createRole(database, {
         name: 'Deleted Role',
         code: 'deleted-role',
@@ -1115,7 +1058,7 @@ describe('user routes', () => {
       const invalidRoleIds = [deletedRole.id, missingRoleId]
 
       for (const [index, roleId] of invalidRoleIds.entries()) {
-        const createResponse = await app.request('/api/system/users', {
+        const createResponse = await createOnlyApp.request('/api/system/users', {
           method: 'POST',
           body: JSON.stringify({
             username: `invalid-role-create-user-${index}`,
@@ -1159,6 +1102,7 @@ describe('user routes', () => {
     'rejects missing or deleted department ids on user create and update',
     async ({ db: database }) => {
       const app = await createTestApp(database)
+      const createOnlyApp = await createUserCreateAccessApp(database)
       const deletedDepartment = await createDepartment(database, {
         name: 'Deleted',
         code: 'deleted',
@@ -1168,7 +1112,7 @@ describe('user routes', () => {
       const invalidDepartmentIds = [deletedDepartment.id, missingDepartmentId]
 
       for (const [index, departmentId] of invalidDepartmentIds.entries()) {
-        const createResponse = await app.request('/api/system/users', {
+        const createResponse = await createOnlyApp.request('/api/system/users', {
           method: 'POST',
           body: JSON.stringify({
             username: `invalid-create-user-${index}`,
@@ -1466,7 +1410,7 @@ describe('user routes', () => {
   )
 
   dbTest(
-    'returns conflict when concurrent creates hit the username unique index',
+    'maps competing creates to one success and one username conflict in PGlite',
     async ({ db: database }) => {
       const app = await createTestApp(database)
       const body = JSON.stringify({
@@ -1482,12 +1426,24 @@ describe('user routes', () => {
           },
         })
 
+      // One transactional PGlite fixture proves conflict mapping, not cross-connection locking.
       const responses = await Promise.all([createRaceUser(), createRaceUser()])
       const statuses = responses
         .map((response) => response.status)
         .sort((left, right) => left - right)
 
       expect(statuses).toEqual([201, 409])
+      const conflict = responses.find((response) => response.status === 409)!
+      expect(await conflict.json()).toEqual({ field: 'username', message: '用户名已存在' })
+      const stored = await database
+        .select()
+        .from(systemUsers)
+        .where(eq(systemUsers.username, 'race'))
+      expect(stored).toHaveLength(1)
+      const created = await responseJson<UserCreateResponse>(
+        responses.find((response) => response.status === 201)!,
+      )
+      expect(stored[0]?.id).toBe(created.user.id)
     },
   )
 
@@ -1530,7 +1486,7 @@ describe('user routes', () => {
   )
 
   dbTest(
-    'returns conflict when concurrent updates hit the username unique index',
+    'maps competing updates to one success and one username conflict in PGlite',
     async ({ db: database }) => {
       const app = await createTestApp(database)
       const { body: first } = await createUser(app, {
@@ -1553,12 +1509,28 @@ describe('user routes', () => {
           },
         })
 
+      // One transactional PGlite fixture proves conflict mapping, not cross-connection locking.
       const responses = await Promise.all([updateUser(first.id), updateUser(second.id)])
       const statuses = responses
         .map((response) => response.status)
         .sort((left, right) => left - right)
 
       expect(statuses).toEqual([200, 409])
+      const conflict = responses.find((response) => response.status === 409)!
+      expect(await conflict.json()).toEqual({ field: 'username', message: '用户名已存在' })
+      const stored = await database
+        .select({ id: systemUsers.id, username: systemUsers.username })
+        .from(systemUsers)
+        .where(inArray(systemUsers.id, [first.id, second.id]))
+      expect(stored).toHaveLength(2)
+      expect(stored).toEqual(
+        expect.arrayContaining(
+          [first, second].map((user, index) => ({
+            id: user.id,
+            username: responses[index]!.status === 200 ? 'shared-update-target' : user.username,
+          })),
+        ),
+      )
     },
   )
 

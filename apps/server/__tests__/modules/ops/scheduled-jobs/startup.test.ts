@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { Db } from '../../../../src/db'
 import { LocalAttachmentStorage } from '../../../../src/modules/attachments/storage'
 import { readScheduledJobRetentionConfig } from '../../../../src/modules/ops/scheduled-jobs/config'
 import { createScheduledJobDefinitions } from '../../../../src/modules/ops/scheduled-jobs/definitions'
@@ -6,7 +7,6 @@ import { ScheduledJobNotFoundError } from '../../../../src/modules/ops/scheduled
 import { createScheduledJobRepository } from '../../../../src/modules/ops/scheduled-jobs/repository'
 import { startScheduledJobs } from '../../../../src/modules/ops/scheduled-jobs/startup'
 import { createLogger } from '../../../../src/runtime/logger'
-import { dbTest } from '../../../fixtures/database'
 import { createScheduledJobRepositoryMock } from './helpers'
 
 vi.mock('../../../../src/modules/ops/scheduled-jobs/repository', () => ({
@@ -16,7 +16,7 @@ vi.mock('../../../../src/modules/ops/scheduled-jobs/repository', () => ({
 afterEach(() => vi.resetAllMocks())
 
 describe('scheduled job startup diagnostics', () => {
-  dbTest('reads diagnostics and task names through the service', async ({ db }) => {
+  it('reads diagnostics and task names through the service', async () => {
     const repository = createScheduledJobRepositoryMock({
       initialize: vi.fn(async () => ({ interruptedRuns: [], recoverableRuns: [] })),
       listDueScheduled: vi.fn(async () => []),
@@ -24,7 +24,8 @@ describe('scheduled job startup diagnostics', () => {
     })
     vi.mocked(createScheduledJobRepository).mockReturnValue(repository)
     const options = {
-      database: db,
+      // The repository factory is mocked; startup does not execute SQL.
+      database: {} as Db,
       logger: createLogger({ level: 'silent' }),
       storage: new LocalAttachmentStorage('/unused'),
       retention: readScheduledJobRetentionConfig({}),

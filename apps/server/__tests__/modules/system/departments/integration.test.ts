@@ -110,7 +110,18 @@ describe('department routes', () => {
       name: 'Sales',
       code: 'sales',
       parentId: root.id,
+      status: DEPARTMENT_STATUS_DISABLED,
+    })
+    await createDepartment(app, {
+      name: 'Engineering Enabled',
+      code: 'engineering-enabled',
+      parentId: root.id,
       status: DEPARTMENT_STATUS_ENABLED,
+    })
+    await createDepartment(app, {
+      name: 'Engineering Other Parent',
+      code: 'engineering-other-parent',
+      status: DEPARTMENT_STATUS_DISABLED,
     })
 
     const listResponse = await app.request(
@@ -199,8 +210,16 @@ describe('department routes', () => {
         sortOrder: 3,
       })
 
+      const { body: deletedChild } = await createDepartment(app, {
+        name: 'Deleted Enabled',
+        code: 'deleted',
+        parentId: root.id,
+        status: DEPARTMENT_STATUS_ENABLED,
+        sortOrder: 4,
+      })
+
       await expectJsonResponse(
-        await app.request(`/api/system/departments/${disabledChild.id}`, { method: 'DELETE' }),
+        await app.request(`/api/system/departments/${deletedChild.id}`, { method: 'DELETE' }),
         { status: 204 },
       )
 
@@ -208,6 +227,8 @@ describe('department routes', () => {
       const body = (await response.json()) as DepartmentTreeOptionsResponse
 
       expect(response.status).toBe(200)
+      expect(JSON.stringify(body)).not.toContain(disabledChild.id)
+      expect(JSON.stringify(body)).not.toContain(deletedChild.id)
       expect(body).toEqual([
         {
           id: root.id,

@@ -32,6 +32,7 @@ function validOperationLog(overrides: Partial<typeof opsOperationLogs.$inferInse
 async function expectInsertRejected(
   db: TestDatabase,
   overrides: Partial<typeof opsOperationLogs.$inferInsert>,
+  constraint: string,
 ) {
   await db.execute(sql`savepoint operation_log_constraint_check`)
 
@@ -43,7 +44,7 @@ async function expectInsertRejected(
           ...overrides,
         }),
       ),
-    ).rejects.toThrow()
+    ).rejects.toMatchObject({ cause: { constraint } })
   } finally {
     await db.execute(sql`rollback to savepoint operation_log_constraint_check`)
   }
@@ -192,25 +193,31 @@ describe('operation log migration', () => {
   dbTest('enforces request uniqueness and operation-log checks', async ({ db }) => {
     await db.insert(opsOperationLogs).values(validOperationLog())
 
-    await expectInsertRejected(db, {
-      requestId: '10000000-0000-4000-8000-000000000003',
-      targetKey: 'another-user',
-    })
-    await expectInsertRejected(db, { result: 'failure', httpStatus: 200 })
-    await expectInsertRejected(db, { result: 'success', httpStatus: 400 })
-    await expectInsertRejected(db, { module: 'auth' })
-    await expectInsertRejected(db, { clientIpSource: 'header' })
-    await expectInsertRejected(db, { durationMs: -1 })
-    await expectInsertRejected(db, { httpStatus: 99 })
-    await expectInsertRejected(db, { action: 'content:user:update' })
-    await expectInsertRejected(db, { targetType: 'role' })
-    await expectInsertRejected(db, { action: 'system:user:   ' })
-    await expectInsertRejected(db, { action: 'system:user:update:extra' })
-    await expectInsertRejected(db, { actorUsername: ' ' })
-    await expectInsertRejected(db, { actorNickname: 'a'.repeat(513) })
-    await expectInsertRejected(db, { targetKey: null, targetLabel: null })
-    await expectInsertRejected(db, { targetKey: ' ', targetLabel: null })
-    await expectInsertRejected(db, { targetKey: 'a'.repeat(513), targetLabel: null })
-    await expectInsertRejected(db, { userAgent: 'a'.repeat(513) })
+    const invalidRows = [
+      [
+        { requestId: '10000000-0000-4000-8000-000000000003', targetKey: 'another-user' },
+        'ops_operation_logs_request_id_unique',
+      ],
+      [{ result: 'failure', httpStatus: 200 }, 'ops_operation_logs_result_status_check'],
+      [{ result: 'success', httpStatus: 400 }, 'ops_operation_logs_result_status_check'],
+      [{ module: 'auth', action: 'auth:user:update' }, 'ops_operation_logs_module_check'],
+      [{ clientIpSource: 'header' }, 'ops_operation_logs_client_ip_source_check'],
+      [{ durationMs: -1 }, 'ops_operation_logs_duration_check'],
+      [{ httpStatus: 99, result: 'failure' }, 'ops_operation_logs_http_status_check'],
+      [{ action: 'content:user:update' }, 'ops_operation_logs_action_shape_check'],
+      [{ targetType: 'role' }, 'ops_operation_logs_action_shape_check'],
+      [{ action: 'system:user:   ' }, 'ops_operation_logs_action_shape_check'],
+      [{ action: 'system:user:update:extra' }, 'ops_operation_logs_action_shape_check'],
+      [{ actorUsername: ' ' }, 'ops_operation_logs_actor_snapshot_check'],
+      [{ actorNickname: 'a'.repeat(513) }, 'ops_operation_logs_actor_snapshot_check'],
+      [{ targetKey: null, targetLabel: null }, 'ops_operation_logs_target_check'],
+      [{ targetKey: ' ', targetLabel: null }, 'ops_operation_logs_target_check'],
+      [{ targetKey: 'a'.repeat(513), targetLabel: null }, 'ops_operation_logs_target_check'],
+      [{ userAgent: 'a'.repeat(513) }, 'ops_operation_logs_user_agent_length_check'],
+    ] as const
+
+    for (const [overrides, constraint] of invalidRows) {
+      await expectInsertRejected(db, overrides, constraint)
+    }
   })
 })

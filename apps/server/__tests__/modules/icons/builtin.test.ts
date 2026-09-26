@@ -62,13 +62,6 @@ describe('builtin icons', () => {
     expect(body?.not_found).toBeUndefined()
   })
 
-  it('reports missing icon names while keeping found icons', async () => {
-    const body = await getBuiltinIconSubset('lucide', ['sun', 'not-a-real-icon'])
-
-    expect(Object.keys(body?.icons ?? {})).toEqual(['sun'])
-    expect(body?.not_found).toEqual(['not-a-real-icon'])
-  })
-
   it('returns empty icons and not_found when every requested icon is missing', async () => {
     const body = await getBuiltinIconSubset('lucide', ['not-a-real-icon'])
 

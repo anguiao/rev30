@@ -14,11 +14,20 @@ describe('auth config', () => {
     })
   })
 
-  it('requires explicit secrets in production', () => {
-    expect(() => readAuthConfig({ NODE_ENV: 'production' })).toThrow(
-      '生产环境必须设置 JWT_ACCESS_SECRET',
-    )
-  })
+  it.each(['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET', 'JWT_ATTACHMENT_SECRET'] as const)(
+    'requires production secret %s independently',
+    (missing) => {
+      const env = {
+        NODE_ENV: 'production',
+        JWT_ACCESS_SECRET: 'access-secret',
+        JWT_REFRESH_SECRET: 'refresh-secret',
+        JWT_ATTACHMENT_SECRET: 'attachment-secret',
+      }
+      expect(() => readAuthConfig({ ...env, [missing]: undefined })).toThrow(
+        `生产环境必须设置 ${missing}`,
+      )
+    },
+  )
 
   it('reads secrets and expiration seconds from env', () => {
     expect(

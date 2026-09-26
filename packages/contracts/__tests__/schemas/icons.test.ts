@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { expectZodIssue } from '../helpers/schema'
 import {
   iconDataParamSchema,
   iconDataQuerySchema,
@@ -54,9 +55,11 @@ describe('icon schemas', () => {
     })
   })
 
-  it('rejects invalid icon data route params', () => {
-    expect(iconDataParamSchema.safeParse({ filename: 'Invalid.json' }).success).toBe(false)
-    expect(iconDataParamSchema.safeParse({ filename: 'lucide' }).success).toBe(false)
+  it.each(['Invalid.json', 'lucide'])('rejects invalid icon data filename %s', (filename) => {
+    expectZodIssue(iconDataParamSchema.safeParse({ filename }), {
+      message: '图标文件名无效',
+      path: ['filename'],
+    })
   })
 
   it('parses icon data query strings', () => {
@@ -84,19 +87,21 @@ describe('icon schemas', () => {
   })
 
   it('requires the icons query parameter', () => {
-    expect(iconDataQuerySchema.safeParse({}).success).toBe(false)
+    expectZodIssue(iconDataQuerySchema.safeParse({}), { code: 'invalid_type', path: ['icons'] })
   })
 
-  it('accepts Iconify Vue icon batches within the URL length budget', () => {
-    const icons = ['alpha-one', 'beta-two', 'delta-four', 'epsilon-five', 'gamma-three']
-
+  it('accepts icon data at the URL length budget', () => {
+    const icons = ['a'.repeat(249), 'b'.repeat(250)]
+    expect(icons.join(',')).toHaveLength(500)
     expect(iconDataQuerySchema.parse({ icons: icons.join(',') }).icons).toEqual(icons)
   })
 
-  it('rejects overlong and malformed icon data queries', () => {
-    expect(iconDataQuerySchema.safeParse({ icons: 'a'.repeat(501) }).success).toBe(false)
-    expect(iconDataQuerySchema.safeParse({ icons: 'sun,../secret' }).success).toBe(false)
-    expect(iconDataQuerySchema.safeParse({ icons: 'sun,,moon' }).success).toBe(false)
+  it.each([
+    ['a'.repeat(501), '图标请求过长'],
+    ['sun,../secret', '图标名称无效'],
+    ['sun,,moon', '图标名称无效'],
+  ])('rejects invalid icon data query %s', (icons, message) => {
+    expectZodIssue(iconDataQuerySchema.safeParse({ icons }), { message, path: ['icons'] })
   })
 
   it('parses icon search query defaults and trims the keyword', () => {
@@ -114,10 +119,6 @@ describe('icon schemas', () => {
       keyword: '用户',
       limit: 24,
     })
-  })
-
-  it('rejects overlong icon search keywords', () => {
-    expect(iconSearchQuerySchema.safeParse({ keyword: 'a'.repeat(121) }).success).toBe(false)
   })
 
   it('clamps icon search limits and rejects invalid limits', () => {

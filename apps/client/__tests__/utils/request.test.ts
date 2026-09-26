@@ -46,14 +46,14 @@ describe('request utils', () => {
     ).resolves.toMatchObject({ status, code, message })
   })
 
-  it('parses structured API errors', async () => {
-    await expect(
-      parseApiError(
-        new Response(JSON.stringify({ field: 'username', message: '用户名已存在' }), {
-          status: 409,
-        }),
-      ),
-    ).resolves.toMatchObject({
+  it('parses structured API errors into typed failures', async () => {
+    const failure = parseApiResponse(
+      new Response(JSON.stringify({ field: 'username', message: '用户名已存在' }), { status: 409 }),
+      z.object({ id: z.uuid() }),
+    )
+
+    await expect(failure).rejects.toBeInstanceOf(ApiRequestError)
+    await expect(failure).rejects.toMatchObject({
       status: 409,
       field: 'username',
       message: '用户名已存在',
@@ -86,7 +86,10 @@ describe('request utils', () => {
   })
 
   it('parses successful JSON responses with the provided schema', async () => {
-    const schema = z.object({ id: z.uuid(), name: z.string() })
+    const schema = z.object({
+      id: z.uuid(),
+      name: z.string().transform((name) => name.toUpperCase()),
+    })
 
     await expect(
       parseApiResponse(
@@ -100,7 +103,10 @@ describe('request utils', () => {
       ),
     ).resolves.toEqual({
       id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-      name: 'Ada',
+      name: 'ADA',
     })
+    await expect(
+      parseApiResponse(new Response(JSON.stringify({ id: 'invalid', name: 'Ada' })), schema),
+    ).rejects.toBeInstanceOf(z.ZodError)
   })
 })

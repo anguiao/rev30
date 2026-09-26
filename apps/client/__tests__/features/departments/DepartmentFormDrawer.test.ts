@@ -482,7 +482,11 @@ describe('DepartmentFormDrawer', () => {
     await submitForm(wrapper)
 
     expect(createDepartmentMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('编码已存在')
+    const fieldItem = wrapper
+      .get('[data-test="department-form-code"] input')
+      .element.closest('.n-form-item')
+    expect(fieldItem?.textContent).toContain('编码已存在')
+    expect(wrapper.find('.n-alert').exists()).toBe(false)
     expect(wrapper.emitted('saved')).toBeUndefined()
   })
 

@@ -10,7 +10,9 @@ import { createScheduledJobSchedulerStub } from '../../../helpers/app'
 
 export const observedAt = new Date('2026-09-02T00:00:00.000Z')
 
-export function createHealthTestContext(database: Db) {
+export function createHealthTestContext() {
+  // Both IO factories below are mocked; this token must never execute a database query.
+  const database = {} as Db
   const databaseResult = {
     latencyMs: 3,
     checkedAt: observedAt,

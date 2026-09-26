@@ -214,6 +214,9 @@ describe('RichTextEditor', () => {
     for (const dataTest of toolbarDataTests) {
       expect(wrapper.find(`[data-test="${dataTest}"]`).exists()).toBe(true)
     }
+    expect(wrapper.get('[data-test="rich-text-inline-code"]').attributes('aria-label')).toBe(
+      '行内代码',
+    )
     expect(wrapper.findAllComponents(NDropdown)).toHaveLength(7)
     expect(wrapper.get('[data-test="rich-text-status-bar"]').text()).toBe('p4 字')
     expect(wrapper.find('[data-test="rich-text-status-bar-start"]').exists()).toBe(true)
@@ -223,6 +226,13 @@ describe('RichTextEditor', () => {
     expect(editable.element.parentElement?.classList).toContain('rich-text-content')
     expect(editable.element.parentElement?.classList).toContain('rich-text-content--sm')
     expect(editable.text()).toContain('维护通知')
+
+    const editor = getTiptapEditor(wrapper)
+    editor.commands.setTextSelection({ from: 1, to: 5 })
+    await wrapper.get('[data-test="rich-text-inline-code"]').trigger('click')
+    expect(editor.getJSON().content?.[0]?.content).toEqual([
+      { type: 'text', text: '维护通知', marks: [{ type: 'code' }] },
+    ])
   })
 
   it('renders table semantics inside the responsive table wrapper', async () => {

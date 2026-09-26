@@ -141,15 +141,16 @@ describe('auth schemas', () => {
       phone: '13800138000',
     })
 
-    expect(() =>
-      authProfileUpdateSchema.parse({
+    expectZodIssue(
+      authProfileUpdateSchema.safeParse({
         username: 'ada',
         nickname: 'Ada',
         avatarId: null,
         email: null,
         phone: null,
       }),
-    ).toThrow()
+      { code: 'unrecognized_keys', path: [], keys: ['username'] },
+    )
   })
 
   it('enforces the shared nickname limit on profile updates', () => {
@@ -162,15 +163,15 @@ describe('auth schemas', () => {
     })
   })
 
-  it('parses password update requests', () => {
-    expect(
-      authPasswordUpdateSchema.parse({
-        currentPassword: 'old-secret',
-        newPassword: 'new-secret',
-      }),
-    ).toEqual({
-      currentPassword: 'old-secret',
-      newPassword: 'new-secret',
-    })
-  })
+  it.each(['currentPassword', 'newPassword'] as const)(
+    'enforces the password boundary for %s',
+    (field) => {
+      const input = { currentPassword: 'old-secret', newPassword: 'new-secret' }
+      expect(authPasswordUpdateSchema.parse(input)).toEqual(input)
+      expectZodIssue(authPasswordUpdateSchema.safeParse({ ...input, [field]: '' }), {
+        path: [field],
+        code: 'too_small',
+      })
+    },
+  )
 })

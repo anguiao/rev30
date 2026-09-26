@@ -110,6 +110,7 @@ describe('auth service', () => {
       service.login({ username: 'ada', password: 'secret-password' }, metadata),
     ).rejects.toBeInstanceOf(AuthLoginRateLimitedError)
     expect(repository.findActiveUserCredentialByUsername).not.toHaveBeenCalled()
+    expect(repository.recordLoginFailure).not.toHaveBeenCalled()
     expect(repository.recordRateLimitedLogin).toHaveBeenCalledWith(
       'ada',
       metadata,

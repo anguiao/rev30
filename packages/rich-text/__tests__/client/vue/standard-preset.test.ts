@@ -55,6 +55,9 @@ describe('standard rich text editor preset', () => {
     expect(runRichTextAction(marksEditor, strikeAction)).toBe(true)
     expect(marksEditor.isActive('underline')).toBe(true)
     expect(marksEditor.isActive('strike')).toBe(true)
+    expect(marksEditor.getJSON().content?.[0]?.content).toEqual([
+      { type: 'text', text: '标准正文', marks: [{ type: 'underline' }, { type: 'strike' }] },
+    ])
 
     const headingEditor = createStandardEditor()
     expect(runRichTextAction(headingEditor, headingActions[2])).toBe(true)

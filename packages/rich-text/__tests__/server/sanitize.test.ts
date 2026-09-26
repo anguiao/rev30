@@ -3,7 +3,7 @@ import { type RichTextHtmlPolicy, sanitizeRichTextHtml } from '../../src/server/
 
 describe('sanitizeRichTextHtml', () => {
   it('composes transforms targeting the same tag in policy order', () => {
-    const trimLinkPolicy: RichTextHtmlPolicy = {
+    const normalizeLinkPolicy: RichTextHtmlPolicy = {
       allowedTags: ['a'],
       allowedAttributes: {
         a: ['href', 'target', 'rel'],
@@ -14,7 +14,7 @@ describe('sanitizeRichTextHtml', () => {
             tagName,
             attribs: {
               ...attribs,
-              href: (attribs.href ?? '').trim(),
+              href: `https://${(attribs.href ?? '').trim()}`,
             },
           }),
         ],
@@ -32,6 +32,7 @@ describe('sanitizeRichTextHtml', () => {
             tagName,
             attribs: {
               ...attribs,
+              href: (attribs.href ?? '').replace('https://example.com', 'https://docs.example.com'),
               target: '_blank',
               rel: 'noopener noreferrer',
             },
@@ -41,11 +42,13 @@ describe('sanitizeRichTextHtml', () => {
     }
 
     expect(
-      sanitizeRichTextHtml('<a href=" https://example.com ">Example</a>', [
-        trimLinkPolicy,
+      sanitizeRichTextHtml('<a href=" example.com ">Example</a>', [
+        normalizeLinkPolicy,
         safeLinkPolicy,
       ]),
-    ).toBe('<a href="https://example.com" target="_blank" rel="noopener noreferrer">Example</a>')
+    ).toBe(
+      '<a href="https://docs.example.com" target="_blank" rel="noopener noreferrer">Example</a>',
+    )
   })
 
   it('scopes additional URL schemes to the configured tag', () => {

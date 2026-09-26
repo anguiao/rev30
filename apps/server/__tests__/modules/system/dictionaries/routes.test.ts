@@ -107,17 +107,54 @@ describe('dictionary routes', () => {
     mocks.service.delete.mockResolvedValue(undefined)
   })
 
-  it('registers expected access guards for every dictionary endpoint', () => {
-    createTestApp()
-
-    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
-      'system:dictionary:list',
-      'system:dictionary:list',
-      'system:dictionary:create',
+  it.each([
+    ['', 'GET', 'system:dictionary:list', 'list', null, 200],
+    [`/${dictionaryId}`, 'GET', 'system:dictionary:list', 'get', null, 200],
+    ['', 'POST', 'system:dictionary:create', 'create', { code: 'gender', name: '性别' }, 201],
+    [
+      `/${dictionaryId}`,
+      'PUT',
       'system:dictionary:update',
-      'system:dictionary:delete',
-    ])
-  })
+      'update',
+      { code: 'gender', name: '性别', description: null, status: 1, sortOrder: 0, items: [] },
+      200,
+    ],
+    [`/${dictionaryId}`, 'DELETE', 'system:dictionary:delete', 'delete', null, 204],
+  ] as const)(
+    'executes the required access guard for %s %s',
+    async (path, method, code, service, body, status) => {
+      mocks.requireAccess.mockImplementation((requiredAccess) => async (c, next) => {
+        if (c.req.header('x-test-access') !== requiredAccess) {
+          return c.json({ requiredAccess }, 403)
+        }
+        await next()
+      })
+      const app = createTestApp()
+      const request = {
+        method,
+        ...(body === null
+          ? {}
+          : {
+              body: JSON.stringify(body),
+              headers: { 'content-type': 'application/json' },
+            }),
+      }
+
+      const denied = await app.request(`/api/system/dictionaries${path}`, request)
+      expect(denied.status).toBe(403)
+      expect(await denied.json()).toEqual({ requiredAccess: code })
+      for (const serviceMock of Object.values(mocks.service)) {
+        expect(serviceMock).not.toHaveBeenCalled()
+      }
+
+      const allowed = await app.request(`/api/system/dictionaries${path}`, {
+        ...request,
+        headers: { ...request.headers, 'x-test-access': code },
+      })
+      expect(allowed.status).toBe(status)
+      expect(mocks.service[service]).toHaveBeenCalledOnce()
+    },
+  )
 
   it('parses list query and delegates to dictionary service', async () => {
     const app = createTestApp()
@@ -253,6 +290,49 @@ describe('dictionary routes', () => {
     )
   })
 
+  it.each(['POST', 'PUT'] as const)(
+    'rejects duplicate item values before %s reaches the service',
+    async (method) => {
+      const app = createTestApp()
+      const response = await app.request(
+        `/api/system/dictionaries${method === 'PUT' ? `/${dictionaryId}` : ''}`,
+        {
+          method,
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            code: 'item-value',
+            name: '字典项值',
+            description: null,
+            status: DICTIONARY_STATUS_ENABLED,
+            sortOrder: 0,
+            items: [
+              {
+                ...(method === 'PUT' ? { id: itemId } : {}),
+                label: '保留',
+                value: 'same',
+                description: null,
+                status: DICTIONARY_STATUS_ENABLED,
+                sortOrder: 0,
+              },
+              {
+                label: '重复',
+                value: 'same',
+                description: null,
+                status: DICTIONARY_STATUS_ENABLED,
+                sortOrder: 1,
+              },
+            ],
+          }),
+        },
+      )
+      expect(response.status).toBe(400)
+      expect(await response.json()).toEqual({ message: '请求体无效' })
+      expect(mocks.service.create).not.toHaveBeenCalled()
+      expect(mocks.service.update).not.toHaveBeenCalled()
+      expect(mocks.recordOperation).not.toHaveBeenCalled()
+    },
+  )
+
   it('returns validation errors before calling service', async () => {
     const app = createTestApp()
 
@@ -313,18 +393,6 @@ describe('dictionary routes', () => {
     expect(response.status).toBe(403)
     expect(mocks.recordOperation).not.toHaveBeenCalled()
     expect(mocks.service.create).not.toHaveBeenCalled()
-  })
-
-  it('matches /options static route before /:id validator', async () => {
-    const app = createTestApp()
-
-    const response = await app.request('/api/system/dictionaries/options?codes=gender')
-
-    expect(response.status).toBe(200)
-    expect(mocks.service.options).toHaveBeenCalledWith({
-      codes: ['gender'],
-    })
-    expect(mocks.service.get).not.toHaveBeenCalled()
   })
 
   it('maps dictionary domain errors to route responses', async () => {

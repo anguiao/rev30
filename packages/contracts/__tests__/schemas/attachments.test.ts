@@ -81,15 +81,12 @@ describe('attachment schemas', () => {
             username: 'ada',
             nickname: 'Ada Lovelace',
           },
-          originalName: 'avatar.png',
-          readPolicy: 'signed',
+          ...attachment,
+          createdAt: '2026-05-30T00:00:00.000Z',
+          references: [],
         },
       ],
     })
-  })
-
-  it('accepts attachment metadata responses', () => {
-    expect(attachmentSchema.parse(attachment)).toEqual(attachment)
   })
 
   it('accepts arbitrary non-blank attachment usages', () => {
@@ -140,7 +137,7 @@ describe('attachment schemas', () => {
       dispostion: ATTACHMENT_DISPOSITION_INLINE,
     })
 
-    expect(result.success).toBe(false)
+    expectZodIssue(result, { code: 'unrecognized_keys', path: [], keys: ['dispostion'] })
   })
 
   it.each([
@@ -155,14 +152,15 @@ describe('attachment schemas', () => {
   })
 
   it('rejects blank transfer request url', () => {
-    expect(
+    expectZodIssue(
       attachmentTransferRequestSchema.safeParse({
         url: '   ',
         method: 'GET',
         headers: {},
         expiresAt: '2026-05-29T00:05:00.000Z',
-      }).success,
-    ).toBe(false)
+      }),
+      { code: 'too_small', path: ['url'] },
+    )
   })
 
   it('accepts content URL responses', () => {
@@ -184,6 +182,7 @@ describe('attachment schemas', () => {
   })
 
   it('accepts upload session requests and responses', () => {
+    expect(attachmentUploadSessionCompleteInputSchema.parse({})).toEqual({})
     expect(
       attachmentUploadSessionCreateInputSchema.parse({
         originalName: 'avatar.png',
@@ -234,24 +233,25 @@ describe('attachment schemas', () => {
     })
   })
 
-  it('validates upload session input shape', () => {
-    expect(
+  it.each([
+    {
+      name: 'negative size',
+      input: { size: -1 },
+      issue: { code: 'too_small' as const, path: ['size'] },
+    },
+    {
+      name: 'unknown field',
+      input: { size: 1, extra: true },
+      issue: { code: 'unrecognized_keys' as const, path: [], keys: ['extra'] },
+    },
+  ])('rejects upload session $name', ({ input, issue }) => {
+    expectZodIssue(
       attachmentUploadSessionCreateInputSchema.safeParse({
         originalName: 'avatar.png',
         usage: 'avatar',
-        size: -1,
-      }).success,
-    ).toBe(false)
-
-    expect(
-      attachmentUploadSessionCreateInputSchema.safeParse({
-        originalName: 'avatar.png',
-        usage: 'avatar',
-        size: 1,
-        extra: true,
-      }).success,
-    ).toBe(false)
-
-    expect(attachmentUploadSessionCompleteInputSchema.parse({})).toEqual({})
+        ...input,
+      }),
+      { ...issue, path: [...issue.path] },
+    )
   })
 })

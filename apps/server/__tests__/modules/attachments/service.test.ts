@@ -385,7 +385,7 @@ describe('attachment service', () => {
   )
 
   dbTest(
-    'allows only one concurrent upload request to store session content',
+    'accepts session content only once for competing uploads on the PGlite connection',
     async ({ db: database }) => {
       const service = await createAttachmentServiceForTest(database)
       const userId = await createUser(database)
@@ -398,6 +398,7 @@ describe('attachment service', () => {
         userId,
       })
       const token = getTransferToken(session.request.url)
+      // PGlite serializes one connection; this verifies conditional state transitions.
       const uploads = await Promise.allSettled([
         service.uploadSessionContent({
           body: streamFromBytes(pngBytes),
@@ -440,7 +441,7 @@ describe('attachment service', () => {
   )
 
   dbTest(
-    'allows only one concurrent completion and keeps the created attachment readable',
+    'completes a session only once on the PGlite connection and keeps content readable',
     async ({ db: database }) => {
       const service = await createAttachmentServiceForTest(database)
       const userId = await createUser(database)
@@ -449,6 +450,7 @@ describe('attachment service', () => {
         originalName: 'avatar.png',
         userId,
       })
+      // This fixture does not establish cross-connection PostgreSQL isolation.
       const completions = await Promise.allSettled([
         service.completeUploadSession({
           uploadId: session.uploadId,
@@ -499,7 +501,7 @@ describe('attachment service', () => {
     expect(session.request.expiresAt).toBe('2026-05-29T00:01:00.000Z')
   })
 
-  dbTest('rejects completing missing or expired upload sessions', async ({ db: database }) => {
+  dbTest('rejects completing pending or expired upload sessions', async ({ db: database }) => {
     const service = await createAttachmentServiceForTest(database)
     const userId = await createUser(database)
     const session = await service.createUploadSession({
@@ -804,52 +806,6 @@ describe('attachment service', () => {
         'Content-Disposition': 'attachment; filename=notes.txt',
         'Content-Type': 'text/plain; charset=utf-8',
       })
-    },
-  )
-
-  dbTest(
-    'stores metadata and creates content URLs after upload sessions complete',
-    async ({ db: database }) => {
-      const service = await createAttachmentServiceForTest(database)
-      const userId = await createUser(database)
-
-      const attachment = await createAttachmentViaSession(service, {
-        bytes: pngBytes,
-        originalName: 'avatar.png',
-        userId,
-      })
-
-      expect(attachment).toMatchObject({
-        originalName: 'avatar.png',
-        mimeType: 'image/png',
-        extension: 'png',
-        size: pngBytes.byteLength,
-        usage: 'avatar',
-        readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
-      })
-
-      const [row] = await database.select().from(attachments)
-      expect(row).toMatchObject({
-        id: attachment.id,
-        storageProvider: 'local',
-        size: pngBytes.byteLength,
-        checksum: pngChecksum,
-        createdBy: userId,
-      })
-      expect(row?.storageKey).toMatch(/^uploads\/2026\/05\/29\/[0-9a-f-]{36}\.png$/)
-
-      const access = await service.createContentUrl(attachment.id, {
-        disposition: ATTACHMENT_DISPOSITION_INLINE,
-      })
-
-      expect(access.request).toMatchObject({
-        method: 'GET',
-        headers: {},
-        expiresAt: '2026-05-29T00:05:00.000Z',
-      })
-      expect(access.request.url).toMatch(
-        new RegExp(`^/api/attachments/${attachment.id}/content\\?token=`),
-      )
     },
   )
 
@@ -1202,6 +1158,14 @@ describe('attachment service', () => {
       const access = await service.createContentUrl(attachment.id, {
         disposition: ATTACHMENT_DISPOSITION_INLINE,
       })
+      expect(access.request).toMatchObject({
+        method: 'GET',
+        headers: {},
+        expiresAt: '2026-05-29T00:05:00.000Z',
+      })
+      expect(access.request.url).toMatch(
+        new RegExp(`^/api/attachments/${attachment.id}/content\\?token=`),
+      )
       const token = getTransferToken(access.request.url)
 
       const content = await service.readContent(attachment.id, {

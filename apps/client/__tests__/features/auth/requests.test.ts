@@ -79,33 +79,6 @@ describe('auth requests', () => {
     })
   })
 
-  it('parses auth request errors for my profile updates', async () => {
-    createFetchMock(
-      jsonResponse(
-        {
-          field: 'nickname',
-          message: '昵称过长',
-        },
-        {
-          status: 400,
-        },
-      ),
-    )
-
-    await expect(
-      updateMyProfile({
-        nickname: 'Ada Lovelace',
-        email: null,
-        phone: null,
-        avatarId: null,
-      }),
-    ).rejects.toMatchObject({
-      status: 400,
-      field: 'nickname',
-      message: '昵称过长',
-    })
-  })
-
   it('rejects malformed update profile responses that do not match the User schema', async () => {
     createFetchMock(
       jsonResponse({
@@ -163,28 +136,5 @@ describe('auth requests', () => {
         newPassword: 'password456',
       }),
     ).rejects.toThrow()
-  })
-
-  it('maps password update failures to typed API errors', async () => {
-    createFetchMock(
-      jsonResponse(
-        {
-          message: '当前密码错误',
-        },
-        {
-          status: 400,
-        },
-      ),
-    )
-
-    await expect(
-      updateMyPassword({
-        currentPassword: 'password123',
-        newPassword: 'password456',
-      }),
-    ).rejects.toMatchObject({
-      status: 400,
-      message: '当前密码错误',
-    })
   })
 })

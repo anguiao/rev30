@@ -6,7 +6,6 @@ import {
   dictionaryDetailSchema,
   dictionaryFormSchema,
   dictionaryItemSchema,
-  dictionaryListItemSchema,
   dictionaryListQuerySchema,
   dictionaryListResponseSchema,
   dictionaryOptionsQuerySchema,
@@ -99,7 +98,7 @@ describe('dictionary schemas', () => {
       ...dictionaryDetail,
       description: undefined,
     })
-    expect(result.success).toBe(false)
+    expectZodIssue(result, { code: 'invalid_union', path: ['description'] })
   })
 
   it('accepts paginated dictionary list responses', () => {
@@ -128,7 +127,7 @@ describe('dictionary schemas', () => {
       pageSize: 20,
     })
 
-    expect(result.success).toBe(false)
+    expectZodIssue(result, { code: 'invalid_union', path: ['list', 0, 'description'] })
   })
 
   it('accepts dictionary options grouped by code', () => {
@@ -230,7 +229,7 @@ describe('dictionary schemas', () => {
       name: '过长描述',
       description: tooLongDescription,
     })
-    expect(createWithLongDescription.success).toBe(false)
+    expectZodIssue(createWithLongDescription, { code: 'too_big', path: ['description'] })
 
     const updateWithLongDescription = dictionaryUpdateSchema.safeParse({
       code: 'long.description',
@@ -240,7 +239,7 @@ describe('dictionary schemas', () => {
       sortOrder: 0,
       items: [],
     })
-    expect(updateWithLongDescription.success).toBe(false)
+    expectZodIssue(updateWithLongDescription, { code: 'too_big', path: ['description'] })
   })
 
   it('accepts create and update description at the 500-character boundary', () => {
@@ -391,27 +390,27 @@ describe('dictionary schemas', () => {
     const invalidCodes = dictionaryOptionsQuerySchema.safeParse({
       codes: 'Gender',
     })
-    expectZodIssue(invalidCodes, { message: '字典编码格式无效' })
+    expectZodIssue(invalidCodes, { message: '字典编码格式无效', path: ['codes', 0] })
 
     const blankCodes = dictionaryOptionsQuerySchema.safeParse({
       codes: '',
     })
-    expect(blankCodes.success).toBe(false)
+    expectZodIssue(blankCodes, { message: '字典编码不能为空', path: ['codes'] })
 
     const nonStringCode = dictionaryOptionsQuerySchema.safeParse({
       codes: ['gender', 1],
     })
-    expect(nonStringCode.success).toBe(false)
+    expectZodIssue(nonStringCode, { code: 'invalid_type', path: ['codes', 1] })
 
     const topLevelInvalid = dictionaryOptionsQuerySchema.safeParse({
       codes: 123,
     })
-    expect(topLevelInvalid.success).toBe(false)
+    expectZodIssue(topLevelInvalid, { code: 'invalid_type', path: ['codes'] })
 
     const onlyEmptyCodes = dictionaryOptionsQuerySchema.safeParse({
       codes: ', ,',
     })
-    expect(onlyEmptyCodes.success).toBe(false)
+    expectZodIssue(onlyEmptyCodes, { message: '字典编码不能为空', path: ['codes'] })
 
     expect(
       dictionaryOptionsQuerySchema.parse({
@@ -422,65 +421,39 @@ describe('dictionary schemas', () => {
     })
   })
 
-  it('validates dictionary options response contract', () => {
-    expect(
-      dictionaryOptionsResponseSchema.safeParse({
-        gender: [
-          {
-            label: '男',
-            value: 'male',
-          },
-          {
-            label: '女',
-            value: 'female',
-          },
-        ],
-      }).success,
-    ).toBe(true)
+  it('preserves valid dictionary options response fields', () => {
+    const options = {
+      gender: [
+        { label: '男', value: 'male' },
+        { label: '女', value: 'female' },
+      ],
+    }
+    expect(dictionaryOptionsResponseSchema.parse(options)).toEqual(options)
+  })
 
-    expect(
-      dictionaryOptionsResponseSchema.safeParse({
-        Gender: [
-          {
-            label: '男',
-            value: 'male',
-          },
-        ],
-      }).success,
-    ).toBe(false)
-
-    expect(
-      dictionaryOptionsResponseSchema.safeParse({
-        gender: [
-          {
-            label: '坏值',
-            value: 'male,1',
-          },
-        ],
-      }).success,
-    ).toBe(false)
-
-    expect(
-      dictionaryOptionsResponseSchema.safeParse({
-        gender: [
-          {
-            label: '超长',
-            value: 'a'.repeat(65),
-          },
-        ],
-      }).success,
-    ).toBe(false)
-
-    expect(
-      dictionaryOptionsResponseSchema.safeParse({
-        gender: [
-          {
-            label: 'a'.repeat(65),
-            value: 'male',
-          },
-        ],
-      }).success,
-    ).toBe(false)
+  it.each([
+    {
+      input: { Gender: [{ label: '男', value: 'male' }] },
+      code: 'invalid_key' as const,
+      path: ['Gender'],
+    },
+    {
+      input: { gender: [{ label: '坏值', value: 'male,1' }] },
+      code: 'custom' as const,
+      path: ['gender', 0, 'value'],
+    },
+    {
+      input: { gender: [{ label: '超长', value: 'a'.repeat(65) }] },
+      code: 'too_big' as const,
+      path: ['gender', 0, 'value'],
+    },
+    {
+      input: { gender: [{ label: 'a'.repeat(65), value: 'male' }] },
+      code: 'too_big' as const,
+      path: ['gender', 0, 'label'],
+    },
+  ])('rejects invalid dictionary options at $path', ({ input, code, path }) => {
+    expectZodIssue(dictionaryOptionsResponseSchema.safeParse(input), { code, path })
   })
 
   it('accepts complete dictionary update fields', () => {
@@ -511,23 +484,5 @@ describe('dictionary schemas', () => {
     }
 
     expectZodIssue(dictionaryUpdateSchema.safeParse(input), { code, path: [field] })
-  })
-
-  it('validates dictionary list item structure', () => {
-    expect(
-      dictionaryListItemSchema.parse({
-        id: '11111111-1111-4111-8111-111111111111',
-        code: 'gender',
-        name: '性别',
-        description: null,
-        status: DICTIONARY_STATUS_ENABLED,
-        sortOrder: 0,
-        itemCount: 3,
-        createdAt: '2026-05-04T08:00:00.000Z',
-        updatedAt: '2026-05-04T08:00:00.000Z',
-      }),
-    ).toMatchObject({
-      itemCount: 3,
-    })
   })
 })

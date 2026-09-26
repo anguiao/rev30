@@ -23,21 +23,6 @@ function createEditor(content = '<p>维护通知</p>') {
 }
 
 describe('text style feature', () => {
-  it('declares the canonical feature contract', () => {
-    expect(textStyleFeature).toMatchObject({
-      key: 'text-style',
-      editorImplementation: true,
-      serverImplementation: true,
-    })
-    expect(textStyleFeature.sharedExtensions!().map((extension) => extension.name)).toEqual([
-      'textStyle',
-      'color',
-      'fontFamily',
-      'fontSize',
-      'lineHeight',
-    ])
-  })
-
   it.each([
     ...textColors.map((value) => ['color', value] as const),
     ...fontFamilies.map((value) => ['fontFamily', value] as const),

@@ -90,12 +90,6 @@ vi.mock('@rev30/rich-text/vue', () => ({
         }
       }
 
-      function reportImageLoadError() {
-        const image = (props.preset as RichTextEditorStubPreset).image
-
-        image?.onError?.(new Error('image load failed'))
-      }
-
       return () => [
         h(
           'button',
@@ -143,15 +137,6 @@ vi.mock('@rev30/rich-text/vue', () => ({
             onClick: () => void insertImage(),
           },
           'insert image',
-        ),
-        h(
-          'button',
-          {
-            'data-test': 'announcement-form-rich-text-image-load-error',
-            type: 'button',
-            onClick: reportImageLoadError,
-          },
-          'image load error',
         ),
       ]
     },
@@ -640,7 +625,7 @@ describe('AnnouncementFormDrawer', () => {
     )
   })
 
-  it('omits publish false when saving a draft in edit mode', async () => {
+  it('omits publish intent when saving a draft in edit mode', async () => {
     getAnnouncementMock.mockResolvedValue(announcementResponse)
     updateAnnouncementMock.mockResolvedValue(announcementResponse)
 
@@ -649,12 +634,10 @@ describe('AnnouncementFormDrawer', () => {
 
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 
-    expect(updateAnnouncementMock).toHaveBeenCalledWith(
-      announcementId,
-      expect.not.objectContaining({
-        publish: false,
-      }),
-    )
+    expect(updateAnnouncementMock).toHaveBeenCalledOnce()
+    const [savedId, payload] = updateAnnouncementMock.mock.calls[0]!
+    expect(savedId).toBe(announcementId)
+    expect(payload).not.toHaveProperty('publish')
   })
 
   it('shows a plain save action for published announcements', async () => {
@@ -775,7 +758,7 @@ describe('AnnouncementFormDrawer', () => {
     )
   })
 
-  it('shows a fixed image error without adding failed images to submitted content', async () => {
+  it('connects image upload errors to the fixed form feedback', async () => {
     createAnnouncementMock.mockResolvedValue(announcementResponse)
     uploadAttachmentMock.mockRejectedValue(new Error('upload failed'))
 
@@ -785,31 +768,6 @@ describe('AnnouncementFormDrawer', () => {
     await wrapper.get('[data-test="announcement-form-title"] input').setValue('新的维护通知')
     await selectUserTarget(wrapper)
     await wrapper.get('[data-test="announcement-form-rich-text-insert-image"]').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('上传图片失败')
-
-    await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
-
-    expect(createAnnouncementMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        contentJson: {
-          type: 'doc',
-          content: [{ type: 'paragraph' }],
-        },
-      }),
-    )
-  })
-
-  it('shows the same fixed error without submitting an image when it cannot load', async () => {
-    createAnnouncementMock.mockResolvedValue(announcementResponse)
-
-    const wrapper = mountDrawer()
-    await flushPromises()
-
-    await wrapper.get('[data-test="announcement-form-title"] input').setValue('新的维护通知')
-    await selectUserTarget(wrapper)
-    await wrapper.get('[data-test="announcement-form-rich-text-image-load-error"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.text()).toContain('上传图片失败')

@@ -20,7 +20,6 @@ import {
   announcementCreateSchema,
   announcementTargetOptionsQuerySchema,
   announcementTargetOptionsResponseSchema,
-  announcementTargetSchema,
   announcementUpdateSchema,
 } from '../../../src/content/announcements'
 import { expectZodIssue } from '../../helpers/schema'
@@ -297,18 +296,6 @@ describe('announcement schemas', () => {
     ).toMatchObject({ contentJson })
   })
 
-  it('accepts non-empty announcement content documents', () => {
-    expect(
-      announcementCreateSchema.parse({
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '维护通知',
-        contentJson,
-      }),
-    ).toMatchObject({
-      contentJson,
-    })
-  })
-
   it('accepts image-only announcement content input', () => {
     expect(
       announcementCreateSchema.parse({
@@ -482,71 +469,31 @@ describe('announcement schemas', () => {
   })
 
   it('parses my announcement list and detail schemas without editor json', () => {
-    expect(
-      announcementMyListItemSchema.parse({
-        id: announcementId,
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '列表公告',
-        summary: '列表摘要',
-        pinned: true,
-        publishedAt: '2026-05-24T10:00:00.000Z',
-      }),
-    ).toMatchObject({
+    const item = {
       id: announcementId,
-      title: '列表公告',
       type: ANNOUNCEMENT_TYPE_NOTICE,
+      title: '列表公告',
       summary: '列表摘要',
       pinned: true,
       publishedAt: '2026-05-24T10:00:00.000Z',
-    })
-
-    expect(
-      announcementMyDetailSchema.parse({
-        id: announcementId,
-        type: ANNOUNCEMENT_TYPE_NOTICE,
-        title: '详情公告',
-        summary: '详情摘要',
-        pinned: false,
-        publishedAt: '2026-05-24T10:00:00.000Z',
-        contentHtml: '<p>详情内容</p>',
-      }),
-    ).toMatchObject({
-      id: announcementId,
+    }
+    expect(announcementMyListItemSchema.parse({ ...item, contentJson })).toEqual(item)
+    const detail = {
+      ...item,
+      title: '详情公告',
+      summary: '详情摘要',
+      pinned: false,
       contentHtml: '<p>详情内容</p>',
-    })
-
+    }
+    expect(announcementMyDetailSchema.parse({ ...detail, contentJson })).toEqual(detail)
+    const nullableItem = { ...item, summary: null }
     expect(
       announcementMyListResponseSchema.parse({
-        list: [
-          {
-            id: announcementId,
-            type: ANNOUNCEMENT_TYPE_NOTICE,
-            title: '列表公告',
-            summary: null,
-            pinned: true,
-            publishedAt: '2026-05-24T10:00:00.000Z',
-          },
-        ],
+        list: [{ ...nullableItem, contentJson }],
         total: 1,
         page: 1,
         pageSize: 20,
       }),
-    ).toMatchObject({
-      total: 1,
-      pageSize: 20,
-      list: [{ title: '列表公告' }],
-    })
-  })
-
-  it('accepts role target type for announcement targets', () => {
-    expect(
-      announcementTargetSchema.parse({
-        targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
-        targetId: '44444444-4444-4444-8444-444444444444',
-      }),
-    ).toEqual({
-      targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE,
-      targetId: '44444444-4444-4444-8444-444444444444',
-    })
+    ).toEqual({ list: [nullableItem], total: 1, page: 1, pageSize: 20 })
   })
 })

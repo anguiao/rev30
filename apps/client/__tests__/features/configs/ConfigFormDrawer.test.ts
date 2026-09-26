@@ -221,7 +221,11 @@ describe('ConfigFormDrawer', () => {
     await wrapper.get('[data-test="config-form-custom-value"] input').setValue('100')
     await submitForm(wrapper)
 
-    expect(wrapper.text()).toContain('配置值必须是 1 到 20 之间的整数')
+    const fieldItem = wrapper
+      .get('[data-test="config-form-custom-value"] input')
+      .element.closest('.n-form-item')
+    expect(fieldItem?.textContent).toContain('配置值必须是 1 到 20 之间的整数')
+    expect(wrapper.find('.n-alert').exists()).toBe(false)
   })
 
   it('ignores stale mutation errors from a previous config session', async () => {

@@ -7,7 +7,6 @@ import {
   departmentTreeOptionsQuerySchema,
   departmentTreeOptionsResponseSchema,
   departmentListQuerySchema,
-  departmentSchema,
   departmentUpdateSchema,
 } from '../../../src/system/departments'
 import { expectZodIssue } from '../../helpers/schema'
@@ -24,17 +23,12 @@ describe('department schemas', () => {
     })
   })
 
-  it('parses department includeIds as empty array for blank strings or non-string values', () => {
-    expect(departmentTreeOptionsQuerySchema.parse({ includeIds: '' })).toEqual({ includeIds: [] })
-    expect(departmentTreeOptionsQuerySchema.parse({ includeIds: '   ' })).toEqual({
-      includeIds: [],
-    })
-    expect(departmentTreeOptionsQuerySchema.parse({ includeIds: {} })).toEqual({ includeIds: [] })
-  })
-
-  it('parses department includeIds query with empty object as []', () => {
-    expect(departmentTreeOptionsQuerySchema.parse({})).toEqual({ includeIds: [] })
-  })
+  it.each([{}, { includeIds: '' }, { includeIds: '   ' }, { includeIds: {} }])(
+    'normalizes empty includeIds input %j',
+    (input) => {
+      expect(departmentTreeOptionsQuerySchema.parse(input)).toEqual({ includeIds: [] })
+    },
+  )
 
   it('reports invalid department id in includeIds query', () => {
     const result = departmentTreeOptionsQuerySchema.safeParse({
@@ -80,30 +74,6 @@ describe('department schemas', () => {
         children: [{ name: 'Child', children: [{ name: 'Grandchild' }] }],
       },
     ])
-  })
-
-  it('accepts a department response with core fields', () => {
-    expect(
-      departmentSchema.parse({
-        id: 'a1f5aa2c-4f1a-4d39-9ca6-6f4f2b7c8a4a',
-        parentId: null,
-        name: 'Engineering',
-        code: 'engineering',
-        status: DEPARTMENT_STATUS_ENABLED,
-        sortOrder: 1,
-        createdAt: '2026-04-29T08:00:00.000Z',
-        updatedAt: '2026-04-29T08:00:00.000Z',
-      }),
-    ).toMatchObject({
-      id: 'a1f5aa2c-4f1a-4d39-9ca6-6f4f2b7c8a4a',
-      parentId: null,
-      name: 'Engineering',
-      code: 'engineering',
-      status: DEPARTMENT_STATUS_ENABLED,
-      sortOrder: 1,
-      createdAt: '2026-04-29T08:00:00.000Z',
-      updatedAt: '2026-04-29T08:00:00.000Z',
-    })
   })
 
   it('applies defaults for department creation', () => {
@@ -198,7 +168,14 @@ describe('department schemas', () => {
       ]),
     ).toMatchObject([
       {
+        id: 'd9e4a3b2-0b6c-47c1-84d3-c8b8af3c2a21',
+        parentId: null,
         name: 'Root',
+        code: 'root',
+        status: DEPARTMENT_STATUS_ENABLED,
+        sortOrder: 0,
+        createdAt: '2026-04-29T08:00:00.000Z',
+        updatedAt: '2026-04-29T08:00:00.000Z',
         children: [
           {
             name: 'Child',

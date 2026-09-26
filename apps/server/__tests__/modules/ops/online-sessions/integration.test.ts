@@ -110,24 +110,48 @@ describe('online session routes', () => {
       const app = createTestApp(database, reader.authHeaders)
       const target = await createSystemUserFixture(database, { username: 'Session.Target' })
       const olderId = await insertSession(database, {
+        id: '10000000-0000-4000-8000-000000000001',
         userId: target.id,
         createdIp: '198.51.100.7',
         createdAt: new Date('2026-08-18T07:00:00.000Z'),
-        lastActiveAt: new Date('2026-08-18T08:00:00.000Z'),
+        lastActiveAt: new Date('2026-08-18T09:00:00.000Z'),
         userAgent: 'unrecognized-client',
       })
       const newerId = await insertSession(database, {
+        id: '10000000-0000-4000-8000-000000000002',
         userId: target.id,
         createdIp: '198.51.100.7',
         createdAt: new Date('2026-08-18T08:30:00.000Z'),
         lastActiveAt: new Date('2026-08-18T09:00:00.000Z'),
       })
-      await insertSession(database, {
+      const tiedId = await insertSession(database, {
+        id: '10000000-0000-4000-8000-000000000003',
         userId: target.id,
+        createdIp: '198.51.100.7',
+        createdAt: new Date('2026-08-18T08:30:00.000Z'),
+        lastActiveAt: new Date('2026-08-18T09:00:00.000Z'),
+      })
+      const latestId = await insertSession(database, {
+        id: '10000000-0000-4000-8000-000000000000',
+        userId: target.id,
+        createdIp: '198.51.100.7',
+        createdAt: new Date('2026-08-18T06:00:00.000Z'),
+        lastActiveAt: new Date('2026-08-18T10:00:00.000Z'),
+      })
+      const matchingSession = {
+        userId: target.id,
+        createdIp: '198.51.100.7',
         createdAt: new Date(),
         lastActiveAt: new Date(),
-        revokedAt: new Date(),
+      }
+      await insertSession(database, { ...matchingSession, revokedAt: new Date() })
+      await insertSession(database, {
+        ...matchingSession,
+        expiresAt: new Date(Date.now() - 1_000),
       })
+      await insertSession(database, { ...matchingSession, createdIp: '198.51.100.8' })
+      const other = await createSystemUserFixture(database, { username: 'Different.Target' })
+      await insertSession(database, { ...matchingSession, userId: other.id })
 
       const response = await app.request(
         '/api/ops/sessions?username=session&createdIp=198.51.100.7&page=1&pageSize=20',
@@ -135,8 +159,8 @@ describe('online session routes', () => {
       const body = onlineSessionListResponseSchema.parse(await response.json())
 
       expect(response.status).toBe(200)
-      expect(body.total).toBe(2)
-      expect(body.list.map(({ id }) => id)).toEqual([newerId, olderId])
+      expect(body.total).toBe(4)
+      expect(body.list.map(({ id }) => id)).toEqual([latestId, tiedId, newerId, olderId])
       expect(body.list.every(({ isCurrent }) => !isCurrent)).toBe(true)
 
       const allSessions = onlineSessionListResponseSchema.parse(
@@ -314,23 +338,9 @@ describe('online session routes', () => {
     const list = await app.request('/api/ops/sessions', { headers: listOnly.authHeaders })
 
     expect(invalid.status).toBe(400)
+    expect(await invalid.json()).toEqual({ message: '会话 ID 无效' })
     expect(forbidden.status).toBe(403)
     expect(list.status).toBe(200)
     expect(events).toEqual([])
   })
-
-  dbTest(
-    'returns a contract validation error for invalid session ids',
-    async ({ db: database }) => {
-      const operator = await createSystemAccessFixture(database, {
-        accessCodes: ['ops:online-session:revoke'],
-        usernamePrefix: 'ops-validator',
-      })
-      const app = createTestApp(database, operator.authHeaders)
-
-      const invalidId = await app.request('/api/ops/sessions/not-a-uuid', { method: 'DELETE' })
-      expect(invalidId.status).toBe(400)
-      expect(await invalidId.json()).toEqual({ message: '会话 ID 无效' })
-    },
-  )
 })

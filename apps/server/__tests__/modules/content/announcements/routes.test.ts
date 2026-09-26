@@ -150,20 +150,40 @@ describe('announcement routes', () => {
     mocks.service.delete.mockResolvedValue(undefined)
   })
 
-  it('registers expected access guards for every announcement endpoint', () => {
-    createTestApp()
-
-    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
-      'content:announcement:list',
-      'content:announcement:list',
-      'content:announcement:list',
-      'content:announcement:create',
-      'content:announcement:update',
-      'content:announcement:update',
-      'content:announcement:update',
-      'content:announcement:delete',
-    ])
-  })
+  it.each([
+    { method: 'GET', path: '', access: 'list', status: 200 },
+    { method: 'GET', path: '/target-options', access: 'list', status: 200 },
+    { method: 'GET', path: `/${announcementId}`, access: 'list', status: 200 },
+    { method: 'POST', path: '', access: 'create', status: 201, body: createBody },
+    {
+      method: 'PATCH',
+      path: `/${announcementId}`,
+      access: 'update',
+      status: 200,
+      body: { title: 'Updated' },
+    },
+    { method: 'POST', path: `/${announcementId}/publish`, access: 'update', status: 204 },
+    { method: 'POST', path: `/${announcementId}/archive`, access: 'update', status: 204 },
+    { method: 'DELETE', path: `/${announcementId}`, access: 'delete', status: 204 },
+  ])(
+    'requires the $access guard on $method $path',
+    async ({ method, path, access, status, body }) => {
+      mocks.requireAccess.mockImplementation((code) => async (c, next) => {
+        if (c.req.header('x-test-access') !== code) return c.json({ message: '无权访问' }, 403)
+        await next()
+      })
+      const app = createTestApp()
+      const request = (granted: string) =>
+        app.request(`/api/content/announcements${path}`, {
+          method,
+          ...(body ? { body: JSON.stringify(body) } : {}),
+          headers: { ...jsonHeaders, 'x-test-access': granted },
+        })
+      expect((await request('content:announcement:unrelated')).status).toBe(403)
+      for (const service of Object.values(mocks.service)) expect(service).not.toHaveBeenCalled()
+      expect((await request(`content:announcement:${access}`)).status).toBe(status)
+    },
+  )
 
   it('parses list query and delegates to the announcement service', async () => {
     const app = createTestApp()
@@ -181,25 +201,6 @@ describe('announcement routes', () => {
       status: 'published',
       pinned: true,
     })
-  })
-
-  it('delegates announcement detail requests to the service', async () => {
-    const app = createTestApp()
-    const detailResponse = await app.request(`/api/content/announcements/${announcementId}`)
-
-    expect(detailResponse.status).toBe(200)
-    expect(await detailResponse.json()).toEqual(announcement)
-    expect(mocks.service.get).toHaveBeenCalledWith(announcementId)
-  })
-
-  it('delegates target option requests to the service', async () => {
-    const app = createTestApp()
-    const targetOptionsResponse = await app.request(
-      `/api/content/announcements/target-options?announcementId=${announcementId}`,
-    )
-
-    expect(targetOptionsResponse.status).toBe(200)
-    expect(mocks.service.targetOptions).toHaveBeenCalledWith({ announcementId })
   })
 
   it('normalizes default announcement create fields before delegation', async () => {
@@ -230,21 +231,6 @@ describe('announcement routes', () => {
     )
   })
 
-  it('preserves targeted announcement create fields before delegation', async () => {
-    const app = createTestApp()
-    const createTargetsResponse = await app.request('/api/content/announcements', {
-      method: 'POST',
-      body: JSON.stringify(createBodyWithTargets),
-      headers: jsonHeaders,
-    })
-
-    expect(createTargetsResponse.status).toBe(201)
-    expect(mocks.service.create).toHaveBeenCalledWith({
-      ...createBodyWithTargets,
-      publish: false,
-    })
-  })
-
   it('delegates announcement title updates to the service', async () => {
     const app = createTestApp()
     const updateResponse = await app.request(`/api/content/announcements/${announcementId}`, {
@@ -263,62 +249,6 @@ describe('announcement routes', () => {
     expect(mocks.recordOperation.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.service.update.mock.invocationCallOrder[0]!,
     )
-  })
-
-  it('delegates targeted announcement updates to the service', async () => {
-    const app = createTestApp()
-    const updateTargetsResponse = await app.request(
-      `/api/content/announcements/${announcementId}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify({
-          visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-          targets: createBodyWithTargets.targets,
-        }),
-        headers: jsonHeaders,
-      },
-    )
-
-    expect(updateTargetsResponse.status).toBe(200)
-    expect(mocks.service.update).toHaveBeenCalledWith(announcementId, {
-      visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-      targets: createBodyWithTargets.targets,
-    })
-  })
-
-  it('delegates publish requests to the service', async () => {
-    const app = createTestApp()
-    const publishResponse = await app.request(
-      `/api/content/announcements/${announcementId}/publish`,
-      {
-        method: 'POST',
-      },
-    )
-
-    expect(publishResponse.status).toBe(204)
-    expect(mocks.service.publish).toHaveBeenCalledWith(announcementId)
-  })
-
-  it('delegates archive requests to the service', async () => {
-    const app = createTestApp()
-    const archiveResponse = await app.request(
-      `/api/content/announcements/${announcementId}/archive`,
-      {
-        method: 'POST',
-      },
-    )
-
-    expect(archiveResponse.status).toBe(204)
-    expect(mocks.service.archive).toHaveBeenCalledWith(announcementId)
-  })
-
-  it('delegates delete requests to the service', async () => {
-    const app = createTestApp()
-    const deleteResponse = await app.request(`/api/content/announcements/${announcementId}`, {
-      method: 'DELETE',
-    })
-    expect(deleteResponse.status).toBe(204)
-    expect(mocks.service.delete).toHaveBeenCalledWith(announcementId)
   })
 
   it('returns validation errors before calling service methods', async () => {
@@ -361,6 +291,18 @@ describe('announcement routes', () => {
     expect(createInvalidContentResponse.status).toBe(400)
     expect(await createInvalidContentResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.create).not.toHaveBeenCalled()
+
+    const missingTargetsResponse = await app.request(
+      `/api/content/announcements/${announcementId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ visibility: ANNOUNCEMENT_VISIBILITY_TARGETED, targets: [] }),
+        headers: jsonHeaders,
+      },
+    )
+    expect(missingTargetsResponse.status).toBe(400)
+    expect(await missingTargetsResponse.json()).toEqual({ message: '请求体无效' })
+    expect(mocks.service.update).not.toHaveBeenCalled()
 
     const publishFalseOnlyResponse = await app.request(
       `/api/content/announcements/${announcementId}`,

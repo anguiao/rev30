@@ -15,7 +15,6 @@ import {
   resourceTreeOptionsResponseSchema,
   resourceListQuerySchema,
   resourceListResponseSchema,
-  resourceSchema,
   resourceUpdateSchema,
 } from '../../../src/system/resources'
 import type { Resource } from '../../../src/system/resources'
@@ -33,15 +32,12 @@ describe('resource schemas', () => {
     })
   })
 
-  it('parses resource includeIds as empty array for blank strings or non-string values', () => {
-    expect(resourceTreeOptionsQuerySchema.parse({ includeIds: '' })).toEqual({ includeIds: [] })
-    expect(resourceTreeOptionsQuerySchema.parse({ includeIds: '   ' })).toEqual({ includeIds: [] })
-    expect(resourceTreeOptionsQuerySchema.parse({ includeIds: {} })).toEqual({ includeIds: [] })
-  })
-
-  it('parses resource includeIds query with empty object as []', () => {
-    expect(resourceTreeOptionsQuerySchema.parse({})).toEqual({ includeIds: [] })
-  })
+  it.each([{}, { includeIds: '' }, { includeIds: '   ' }, { includeIds: {} }])(
+    'normalizes empty includeIds input %j',
+    (input) => {
+      expect(resourceTreeOptionsQuerySchema.parse(input)).toEqual({ includeIds: [] })
+    },
+  )
 
   it('reports invalid resource id in includeIds query', () => {
     const result = resourceTreeOptionsQuerySchema.safeParse({
@@ -80,33 +76,6 @@ describe('resource schemas', () => {
         children: [{ code: 'system:user:create' }],
       },
     ])
-  })
-
-  it('accepts a resource response with menu fields', () => {
-    expect(
-      resourceSchema.parse({
-        id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-        parentId: null,
-        type: RESOURCE_TYPE_MENU,
-        name: 'Users',
-        code: 'system:user',
-        path: '/system/users',
-        externalUrl: null,
-        openTarget: RESOURCE_OPEN_TARGET_SELF,
-        icon: 'lucide:users',
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
-        sortOrder: 10,
-        createdAt: '2026-05-04T08:00:00.000Z',
-        updatedAt: '2026-05-04T08:00:00.000Z',
-      }),
-    ).toMatchObject({
-      type: RESOURCE_TYPE_MENU,
-      code: 'system:user',
-      path: '/system/users',
-      externalUrl: null,
-      openTarget: RESOURCE_OPEN_TARGET_SELF,
-    })
   })
 
   it('applies defaults and normalizes nullable fields for directories and actions', () => {
@@ -351,7 +320,11 @@ describe('resource schemas', () => {
       pageSize: 10,
       list: [
         {
+          type: RESOURCE_TYPE_MENU,
           code: 'system:user',
+          path: '/system/users',
+          externalUrl: null,
+          openTarget: RESOURCE_OPEN_TARGET_SELF,
         },
       ],
     })
@@ -431,33 +404,22 @@ describe('resource schemas', () => {
     })
   })
 
-  it('forcibly normalizes directory openTarget to self', () => {
-    expect(
-      resourceCreateSchema.parse({
-        type: RESOURCE_TYPE_DIRECTORY,
-        name: 'System',
-        code: 'system',
-        openTarget: RESOURCE_OPEN_TARGET_BLANK,
-      }),
-    ).toMatchObject({
-      type: RESOURCE_TYPE_DIRECTORY,
-      openTarget: RESOURCE_OPEN_TARGET_SELF,
-    })
-  })
-
-  it('forcibly normalizes action openTarget to self', () => {
-    expect(
-      resourceCreateSchema.parse({
-        type: RESOURCE_TYPE_ACTION,
-        name: 'Export',
-        code: 'system:user:export',
-        openTarget: RESOURCE_OPEN_TARGET_BLANK,
-      }),
-    ).toMatchObject({
-      type: RESOURCE_TYPE_ACTION,
-      openTarget: RESOURCE_OPEN_TARGET_SELF,
-    })
-  })
+  it.each([RESOURCE_TYPE_DIRECTORY, RESOURCE_TYPE_ACTION])(
+    'normalizes %s openTarget to self',
+    (type) => {
+      expect(
+        resourceCreateSchema.parse({
+          type,
+          name: 'System',
+          code: 'system',
+          openTarget: RESOURCE_OPEN_TARGET_BLANK,
+        }),
+      ).toMatchObject({
+        type,
+        openTarget: RESOURCE_OPEN_TARGET_SELF,
+      })
+    },
+  )
 
   it('requires at least one resource update field', () => {
     const result = resourceUpdateSchema.safeParse({})

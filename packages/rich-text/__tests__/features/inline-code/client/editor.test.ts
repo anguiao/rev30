@@ -5,7 +5,6 @@ import { describe, expect, it } from 'vitest'
 import { canRunRichTextAction, runRichTextAction } from '../../../../src/client/editor/action'
 import { inlineCodeAction } from '../../../../src/features/inline-code/client/editor'
 import { inlineCodeFeature } from '../../../../src/features/inline-code/core/feature'
-import { inlineCodeActionItem } from '../../../../src/features/inline-code/client/editor'
 import { createTestEditor } from '../../../helpers/editor'
 
 function createEditor() {
@@ -53,13 +52,5 @@ describe('inline code feature', () => {
 
     expect(editor.commands.keyboardShortcut('Mod-e')).toBe(true)
     expect(editor.isActive('code')).toBe(true)
-  })
-
-  it('provides the Chinese action item', () => {
-    expect(inlineCodeActionItem).toMatchObject({
-      action: inlineCodeAction,
-      label: '行内代码',
-      icon: 'i-[lucide--code]',
-    })
   })
 })

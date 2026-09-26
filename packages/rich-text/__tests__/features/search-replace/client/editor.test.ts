@@ -73,12 +73,6 @@ function dispatchModF(editor: ReturnType<typeof createEditor>) {
 }
 
 describe('search replace editor feature', () => {
-  it('provides the search-replace extension', () => {
-    expect(searchReplaceEditorFeature.extensions!().map((extension) => extension.name)).toEqual([
-      'searchReplace',
-    ])
-  })
-
   it('finds literal Chinese and ASCII text case-insensitively by default', () => {
     const editor = createEditor('<p>维护 ABC abc a.c</p>')
 
@@ -219,7 +213,12 @@ describe('search replace editor feature', () => {
     const editor = createEditor('<p>abc ABC</p><p>abc</p>')
 
     openAndSearch(editor, 'abc')
+    const documentChanged = vi.fn()
+    editor.on('transaction', ({ transaction }) => {
+      if (transaction.docChanged) documentChanged()
+    })
     expect(runRichTextAction(editor, replaceAllSearchMatchesAction, 'X')).toBe(true)
+    expect(documentChanged).toHaveBeenCalledOnce()
     expect(editor.getHTML()).toBe('<p>X X</p><p>X</p>')
     expect(getSearchReplaceState(editor)).toMatchObject({ matches: [], currentIndex: -1 })
 

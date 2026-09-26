@@ -8,12 +8,8 @@ import type { recordOperation } from '../../../../src/middleware/operation-log'
 import type { AuthEnv } from '../../../../src/middleware/auth'
 import { createUserRoutes } from '../../../../src/modules/system/users/routes'
 import {
-  BuiltInUserMutationError,
   UserConflictError,
-  UserInvalidDepartmentError,
-  UserInvalidRoleError,
   UserMutationForbiddenError,
-  UserNotFoundError,
 } from '../../../../src/modules/system/users/errors'
 
 type UserService = ReturnType<typeof createUserService>
@@ -106,19 +102,49 @@ describe('user routes', () => {
     mocks.service.delete.mockResolvedValue(undefined)
   })
 
-  it('registers expected access guards for every user endpoint', () => {
-    createTestApp()
+  it.each([
+    ['', 'GET', 'system:user:list', 'list', null, 200],
+    ['/options', 'GET', 'system:user:list', 'options', null, 200],
+    [`/${userId}`, 'GET', 'system:user:list', 'get', null, 200],
+    ['', 'POST', 'system:user:create', 'create', { username: 'ada', nickname: 'Ada' }, 201],
+    [`/${userId}`, 'PATCH', 'system:user:update', 'update', { nickname: 'Updated Ada' }, 200],
+    [`/${userId}`, 'DELETE', 'system:user:delete', 'delete', null, 204],
+    [`/${userId}/password/reset`, 'POST', 'system:user:reset-password', 'resetPassword', null, 200],
+  ] as const)(
+    'executes the required access guard for %s %s',
+    async (path, method, code, service, body, status) => {
+      mocks.requireAccess.mockImplementation((requiredAccess) => async (c, next) => {
+        if (c.req.header('x-test-access') !== requiredAccess) {
+          return c.json({ requiredAccess }, 403)
+        }
+        await next()
+      })
+      const app = createTestApp()
+      const request = {
+        method,
+        ...(body === null
+          ? {}
+          : {
+              body: JSON.stringify(body),
+              headers: { 'content-type': 'application/json' },
+            }),
+      }
 
-    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
-      'system:user:list',
-      'system:user:list',
-      'system:user:create',
-      'system:user:reset-password',
-      'system:user:list',
-      'system:user:update',
-      'system:user:delete',
-    ])
-  })
+      const denied = await app.request(`/api/system/users${path}`, request)
+      expect(denied.status).toBe(403)
+      expect(await denied.json()).toEqual({ requiredAccess: code })
+      for (const serviceMock of Object.values(mocks.service)) {
+        expect(serviceMock).not.toHaveBeenCalled()
+      }
+
+      const allowed = await app.request(`/api/system/users${path}`, {
+        ...request,
+        headers: { ...request.headers, 'x-test-access': code },
+      })
+      expect(allowed.status).toBe(status)
+      expect(mocks.service[service]).toHaveBeenCalledOnce()
+    },
+  )
 
   it('parses list query and delegates to the user service', async () => {
     const app = createTestApp()
@@ -203,14 +229,6 @@ describe('user routes', () => {
         mocks.recordOperation.mock.calls.map(([, action, target]) => ({ action, target })),
       ),
     ).not.toMatch(/avatar|email|phone|department|role|temporary-password/)
-  })
-
-  it('delegates detail requests by id', async () => {
-    const app = createTestApp()
-
-    const detailResponse = await app.request(`/api/system/users/${userId}`)
-    expect(detailResponse.status).toBe(200)
-    expect(mocks.service.get).toHaveBeenCalledWith(userId)
   })
 
   it('delegates update requests by id', async () => {
@@ -370,61 +388,6 @@ describe('user routes', () => {
       field: 'username',
       message: '用户名已存在',
     })
-  })
-
-  it('maps invalid department errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.create.mockRejectedValueOnce(new UserInvalidDepartmentError())
-    const departmentResponse = await app.request('/api/system/users', {
-      method: 'POST',
-      body: JSON.stringify({
-        username: 'grace',
-        nickname: 'Grace Hopper',
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(departmentResponse.status).toBe(400)
-    expect(await departmentResponse.json()).toEqual({
-      field: 'departmentIds',
-      message: '部门不存在',
-    })
-  })
-
-  it('maps invalid role errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.update.mockRejectedValueOnce(new UserInvalidRoleError())
-    const roleResponse = await app.request(`/api/system/users/${userId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ nickname: 'Updated Ada' }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(roleResponse.status).toBe(400)
-    expect(await roleResponse.json()).toEqual({
-      field: 'roleIds',
-      message: '角色不存在',
-    })
-  })
-
-  it('maps not-found errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.get.mockRejectedValueOnce(new UserNotFoundError())
-    const notFoundResponse = await app.request(`/api/system/users/${userId}`)
-    expect(notFoundResponse.status).toBe(404)
-    expect(await notFoundResponse.json()).toEqual({ message: '用户不存在' })
-  })
-
-  it('maps built-in user mutation errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.delete.mockRejectedValueOnce(new BuiltInUserMutationError('delete'))
-    const builtInResponse = await app.request(`/api/system/users/${userId}`, {
-      method: 'DELETE',
-    })
-    expect(builtInResponse.status).toBe(409)
-    expect(await builtInResponse.json()).toEqual({ message: '内置用户不能删除' })
   })
 
   it('maps forbidden user mutations to route responses', async () => {

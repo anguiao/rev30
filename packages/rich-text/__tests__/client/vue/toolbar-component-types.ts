@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/core'
+import type { Editor } from '@tiptap/vue-3'
 import { highlightFeature } from '../../../src/features/highlight/core/feature'
 import HighlightControl from '../../../src/features/highlight/client/vue/HighlightControl.vue'
 import { linkFeature } from '../../../src/features/link/core/feature'

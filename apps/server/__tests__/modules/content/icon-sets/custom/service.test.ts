@@ -161,6 +161,10 @@ describe('custom icon set service', () => {
         'First',
       ])
 
+      await expect(
+        repository.createIcon(set.set, await parseSvgIcon('Logo.svg', svg(24, rect('#000')))),
+      ).rejects.toBeInstanceOf(CustomIconConflictError)
+
       for (const duplicateStrategy of ['skip', 'replace'] as const) {
         vi.spyOn(repository, 'findIcon').mockResolvedValueOnce(undefined)
         vi.spyOn(customIconRepository, 'createCustomIconSetRepository').mockReturnValueOnce(
@@ -395,24 +399,6 @@ describe('custom icon set service', () => {
           description: null,
         }),
       ).rejects.toBeInstanceOf(CustomIconSetConflictError)
-    },
-  )
-
-  dbTest(
-    'translates custom icon unique constraints into domain conflicts',
-    async ({ db: database }) => {
-      const repository = customIconRepository.createCustomIconSetRepository(database)
-      const set = await repository.createSet({
-        prefix: 'acme',
-        name: 'Acme Icons',
-        description: null,
-      })
-      const parsedIcon = await parseSvgIcon('Logo.svg', svg(24, rect('#000')))
-
-      await repository.createIcon(set.set, parsedIcon)
-      await expect(repository.createIcon(set.set, parsedIcon)).rejects.toBeInstanceOf(
-        CustomIconConflictError,
-      )
     },
   )
 })

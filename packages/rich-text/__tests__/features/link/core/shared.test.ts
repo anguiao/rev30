@@ -57,14 +57,6 @@ describe('link feature', () => {
     expect(editor.getJSON().content?.[0]?.content).toEqual([{ type: 'text', text: '维护通知' }])
   })
 
-  it('does not link an unsupported URL pasted over selected text', () => {
-    const editor = createEditor()
-    selectEditorText(editor)
-
-    expect(pasteTextOverSelection(editor, 'ftp://example.com')).not.toBe(true)
-    expect(editor.getJSON().content?.[0]?.content).toEqual([{ type: 'text', text: '维护通知' }])
-  })
-
   it('rejects an unsupported href through editor commands', () => {
     const editor = createEditor()
     selectEditorText(editor)

@@ -510,7 +510,11 @@ describe('ResourceFormDrawer', () => {
     await submitForm(wrapper)
 
     expect(createResourceMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('权限编码已存在')
+    const fieldItem = wrapper
+      .get('[data-test="resource-form-code"] input')
+      .element.closest('.n-form-item')
+    expect(fieldItem?.textContent).toContain('权限编码已存在')
+    expect(wrapper.find('.n-alert').exists()).toBe(false)
     expect(wrapper.emitted('saved')).toBeUndefined()
   })
 

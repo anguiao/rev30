@@ -2,9 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { assert, describe, expect } from 'vitest'
 import { eq } from 'drizzle-orm'
 import {
-  RESOURCE_OPEN_TARGET_SELF,
   RESOURCE_STATUS_DISABLED,
-  RESOURCE_STATUS_ENABLED,
   RESOURCE_TYPE_ACTION,
   RESOURCE_TYPE_DIRECTORY,
   RESOURCE_TYPE_EXTERNAL,
@@ -27,101 +25,12 @@ import {
 import { createUserAccessService } from '../../../src/modules/auth/access'
 
 const now = new Date('2026-05-06T00:00:00.000Z')
-const opsResourceId = '10000000-0000-4000-8000-000000000300'
 
 async function createRole(database: TestDatabase, code: string) {
   return createSystemRoleFixture(database, { name: code, code })
 }
 
 describe('user access service', () => {
-  dbTest(
-    'grants the seeded enabled ops resources to administrators without role bindings',
-    async ({ db: database }) => {
-      const [opsResource] = await database
-        .select()
-        .from(systemResources)
-        .where(eq(systemResources.id, opsResourceId))
-
-      if (!opsResource) {
-        throw new Error('Expected seeded ops resource')
-      }
-
-      const childResources = await database
-        .select()
-        .from(systemResources)
-        .where(eq(systemResources.parentId, opsResourceId))
-      const roleResourceBindings = await database
-        .select()
-        .from(systemRoleResources)
-        .where(eq(systemRoleResources.resourceId, opsResourceId))
-      const [adminRole] = await database
-        .select()
-        .from(systemRoles)
-        .where(eq(systemRoles.code, 'admin'))
-
-      if (!adminRole) {
-        throw new Error('Expected seeded admin role')
-      }
-
-      const user = await createSystemUserFixture(database, { username: 'ops-admin' })
-
-      await database.insert(systemUserRoles).values({
-        userId: user.id,
-        roleId: adminRole.id,
-        createdAt: now,
-      })
-
-      const access = await createUserAccessService(database).resolveUserAccess(user.id)
-
-      expect(opsResource).toMatchObject({
-        id: opsResourceId,
-        parentId: null,
-        type: RESOURCE_TYPE_DIRECTORY,
-        name: '运维管理',
-        code: 'ops',
-        path: null,
-        externalUrl: null,
-        openTarget: RESOURCE_OPEN_TARGET_SELF,
-        icon: 'lucide:activity',
-        hidden: false,
-        status: RESOURCE_STATUS_ENABLED,
-        sortOrder: 300,
-        deletedAt: null,
-      })
-      expect(opsResource.createdAt).toBeInstanceOf(Date)
-      expect(opsResource.updatedAt).toBeInstanceOf(Date)
-      expect(childResources.map((resource) => resource.code).sort()).toEqual([
-        'ops:login-log',
-        'ops:online-session',
-        'ops:operation-log',
-        'ops:scheduled-job',
-        'ops:system-health',
-      ])
-      expect(roleResourceBindings).toEqual([])
-      expect(adminRole.status).toBe(ROLE_STATUS_ENABLED)
-      expect(access.isAdmin).toBe(true)
-      expect(access.accessCodes).toEqual(
-        expect.arrayContaining([
-          'ops',
-          'ops:login-log',
-          'ops:login-log:list',
-          'ops:online-session',
-          'ops:online-session:list',
-          'ops:online-session:revoke',
-          'ops:operation-log',
-          'ops:operation-log:list',
-          'ops:system-health',
-          'ops:system-health:list',
-        ]),
-      )
-      expect(access.menus.find((node) => node.code === 'ops')?.children).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ code: 'ops:system-health', path: '/ops/system-health' }),
-        ]),
-      )
-    },
-  )
-
   dbTest(
     'collects access codes and menus from enabled roles and resources',
     async ({ db: database }) => {
@@ -305,6 +214,25 @@ describe('user access service', () => {
       expect(access.accessCodes).toContain('system:user')
       const customSystemMenu = access.menus.find((node) => node.code === `${prefix}-system`)
       expect(customSystemMenu?.children).toEqual([])
+      expect(access.accessCodes).toEqual(
+        expect.arrayContaining([
+          'ops',
+          'ops:login-log',
+          'ops:login-log:list',
+          'ops:online-session',
+          'ops:online-session:list',
+          'ops:online-session:revoke',
+          'ops:operation-log',
+          'ops:operation-log:list',
+          'ops:system-health',
+          'ops:system-health:list',
+        ]),
+      )
+      expect(access.menus.find((node) => node.code === 'ops')?.children).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'ops:system-health', path: '/ops/system-health' }),
+        ]),
+      )
     },
   )
 

@@ -129,22 +129,63 @@ describe('table editor actions', () => {
   })
 
   it('adds and deletes rows and columns through the native table commands', () => {
-    const editor = createEditor()
-    runRichTextAction(editor, insertTableAction, 2, 2)
+    const editor = createTableEditor([
+      [tableCell('tableCell', 'A'), tableCell('tableCell', 'B')],
+      [tableCell('tableCell', 'C'), tableCell('tableCell', 'D')],
+    ])
+    const selectCell = (row: number, column: number) =>
+      editor.commands.setTextSelection(getTableCellPosition(editor, row, column) + 2)
+    const cellTexts = () =>
+      getTable(editor).content.content.map((row) =>
+        row.content.content.map((cell) => cell.textContent),
+      )
 
+    selectCell(0, 0)
     expect(runRichTextAction(editor, addRowBeforeAction)).toBe(true)
-    expect(getTable(editor).childCount).toBe(3)
+    expect(cellTexts()).toEqual([
+      ['', ''],
+      ['A', 'B'],
+      ['C', 'D'],
+    ])
+    selectCell(1, 0)
     expect(runRichTextAction(editor, addRowAfterAction)).toBe(true)
-    expect(getTable(editor).childCount).toBe(4)
+    expect(cellTexts()).toEqual([
+      ['', ''],
+      ['A', 'B'],
+      ['', ''],
+      ['C', 'D'],
+    ])
+    selectCell(1, 0)
     expect(runRichTextAction(editor, addColumnBeforeAction)).toBe(true)
-    expect(getTable(editor).firstChild?.childCount).toBe(3)
+    expect(cellTexts()).toEqual([
+      ['', '', ''],
+      ['', 'A', 'B'],
+      ['', '', ''],
+      ['', 'C', 'D'],
+    ])
+    selectCell(1, 1)
     expect(runRichTextAction(editor, addColumnAfterAction)).toBe(true)
-    expect(getTable(editor).firstChild?.childCount).toBe(4)
+    expect(cellTexts()).toEqual([
+      ['', '', '', ''],
+      ['', 'A', '', 'B'],
+      ['', '', '', ''],
+      ['', 'C', '', 'D'],
+    ])
 
+    selectCell(1, 1)
     expect(runRichTextAction(editor, deleteRowAction)).toBe(true)
-    expect(getTable(editor).childCount).toBe(3)
+    expect(cellTexts()).toEqual([
+      ['', '', '', ''],
+      ['', '', '', ''],
+      ['', 'C', '', 'D'],
+    ])
+    selectCell(2, 1)
     expect(runRichTextAction(editor, deleteColumnAction)).toBe(true)
-    expect(getTable(editor).firstChild?.childCount).toBe(3)
+    expect(cellTexts()).toEqual([
+      ['', '', ''],
+      ['', '', ''],
+      ['', '', 'D'],
+    ])
   })
 
   it('disables deleting the final row or column without deleting the table', () => {
@@ -555,7 +596,9 @@ describe('table editor actions', () => {
 
   it('keeps native table keyboard navigation and history undo available', () => {
     const editor = createEditor()
-    runRichTextAction(editor, insertTableAction, 1, 1)
+    runRichTextAction(editor, insertTableAction, 1, 2)
+    expect(editor.commands.goToNextCell()).toBe(true)
+    expect(editor.state.selection.from).toBe(getTableCellPosition(editor, 0, 1) + 2)
     expect(editor.commands.goToNextCell()).toBe(false)
     expect(editor.commands.undo()).toBe(true)
     expect(editor.getJSON()).toMatchObject({ content: [{ type: 'paragraph' }] })

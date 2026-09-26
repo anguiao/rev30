@@ -237,7 +237,7 @@ describe('auth routes', () => {
     expect(body.accessCodes).toEqual([])
     expect(body.menus).toEqual([])
     expect(body).not.toHaveProperty('refreshToken')
-    expect(body).not.toHaveProperty('attachmentToken')
+    expect(body).not.toHaveProperty('attachmentAccessToken')
     expect(body).not.toHaveProperty('sessionId')
     const refreshToken = requireRefreshToken(getRefreshTokenCookie(response))
     const attachmentToken = response.headers
@@ -610,7 +610,10 @@ describe('auth routes', () => {
       expect(refreshResponse.headers.get('set-cookie')).toContain('refresh_token=')
       expect(refreshResponse.headers.get('set-cookie')).toContain('attachment_token=')
       expect(refreshBody).not.toHaveProperty('refreshToken')
-      expect(refreshBody).not.toHaveProperty('attachmentToken')
+      expect(refreshBody).not.toHaveProperty('attachmentAccessToken')
+      expect(refreshBody.user.id).toBe(registered.body.user.id)
+      expect(refreshBody.user.departments).toEqual([])
+      expect(refreshBody.user.roles).toEqual([])
       expect(refreshBody.accessCodes).toEqual([])
       expect(refreshBody.menus).toEqual([])
       expect(newRefreshToken).toEqual(expect.any(String))
@@ -649,7 +652,7 @@ describe('auth routes', () => {
   )
 
   dbTest(
-    'atomically consumes a refresh token when concurrent requests race',
+    'consumes a refresh token once for competing requests on the PGlite connection',
     async ({ db: database }) => {
       const app = createTestApp(database)
       const registered = await createLoggedInAccount(app, database)
@@ -662,6 +665,7 @@ describe('auth routes', () => {
           },
         })
 
+      // PGlite serializes one connection; this checks one-time consumption, not cross-connection isolation.
       const responses = await Promise.all([refresh(), refresh()])
 
       expect(
@@ -699,31 +703,6 @@ describe('auth routes', () => {
           revokedAt: null,
         },
       ])
-    },
-  )
-
-  dbTest(
-    'refreshes from the refresh cookie when no body token is provided',
-    async ({ db: database }) => {
-      const app = createTestApp(database)
-      const registered = await createLoggedInAccount(app, database)
-
-      const refreshResponse = await app.request('/api/auth/refresh', {
-        method: 'POST',
-        headers: {
-          cookie: `refresh_token=${registered.refreshToken}`,
-        },
-      })
-      const refreshBody = (await refreshResponse.json()) as AuthTokenResponse
-
-      expect(refreshResponse.status).toBe(200)
-      expect(refreshBody.user.id).toBe(registered.body.user.id)
-      expect(refreshBody.accessCodes).toEqual([])
-      expect(refreshBody.menus).toEqual([])
-      expect(refreshBody.user.departments).toEqual([])
-      expect(refreshBody.user.roles).toEqual([])
-      expect(refreshBody).not.toHaveProperty('refreshToken')
-      expect(getRefreshTokenCookie(refreshResponse)).not.toBe(registered.refreshToken)
     },
   )
 
@@ -1089,17 +1068,20 @@ describe('auth routes', () => {
     },
   )
 
-  dbTest(
-    'revokes all refresh sessions after a password change when the refresh cookie is missing',
-    async ({ db: database }) => {
+  dbTest.for([
+    { name: 'missing', headers: {} },
+    { name: 'invalid', headers: { cookie: 'refresh_token=invalid-refresh-token' } },
+  ])(
+    'revokes old sessions after a password change with a $name refresh cookie',
+    async ({ name, headers }, { db: database }) => {
       const app = createTestApp(database)
       const registered = await createLoggedInAccount(app, database, {
         password: 'old-password',
-        username: 'password-revoke-missing-cookie',
-        nickname: 'Password Revoke Missing Cookie',
+        username: `password-revoke-${name}-cookie`,
+        nickname: `Password Revoke ${name} Cookie`,
       })
       const secondSession = await login(app, {
-        username: 'password-revoke-missing-cookie',
+        username: `password-revoke-${name}-cookie`,
         password: 'old-password',
       })
 
@@ -1110,64 +1092,8 @@ describe('auth routes', () => {
           newPassword: 'new-password',
         }),
         headers: {
+          ...headers,
           authorization: `Bearer ${registered.body.accessToken}`,
-          'content-type': 'application/json',
-        },
-      })
-
-      expect(response.status).toBe(200)
-
-      const sessions = await database.query.authSessions.findMany({
-        where: { userId: registered.body.user.id },
-      })
-      expect(sessions.filter((session) => session.revokedAt === null)).toHaveLength(1)
-      expect(
-        sessions
-          .filter((session) => session.revokedAt !== null)
-          .every((session) => session.revocationReason === 'password_changed'),
-      ).toBe(true)
-
-      const firstRefreshResponse = await app.request('/api/auth/refresh', {
-        method: 'POST',
-        headers: {
-          cookie: `refresh_token=${requireRefreshToken(registered.refreshToken)}`,
-        },
-      })
-      expect(firstRefreshResponse.status).toBe(401)
-
-      const secondRefreshResponse = await app.request('/api/auth/refresh', {
-        method: 'POST',
-        headers: {
-          cookie: `refresh_token=${requireRefreshToken(secondSession.refreshToken)}`,
-        },
-      })
-      expect(secondRefreshResponse.status).toBe(401)
-    },
-  )
-
-  dbTest(
-    'revokes all refresh sessions after a password change when the refresh cookie is invalid',
-    async ({ db: database }) => {
-      const app = createTestApp(database)
-      const registered = await createLoggedInAccount(app, database, {
-        password: 'old-password',
-        username: 'password-revoke-invalid-cookie',
-        nickname: 'Password Revoke Invalid Cookie',
-      })
-      const secondSession = await login(app, {
-        username: 'password-revoke-invalid-cookie',
-        password: 'old-password',
-      })
-
-      const response = await app.request('/api/auth/me/password', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          currentPassword: 'old-password',
-          newPassword: 'new-password',
-        }),
-        headers: {
-          authorization: `Bearer ${registered.body.accessToken}`,
-          cookie: 'refresh_token=invalid-refresh-token',
           'content-type': 'application/json',
         },
       })

@@ -100,36 +100,43 @@ describe('custom icon search synchronization', () => {
     },
   )
 
-  dbTest('re-reads the active set after taking the search write lock', async ({ db }) => {
-    const repository = createCustomIconSetRepository(db)
-    const stale = await repository.createSet({
-      prefix: 'acme',
-      name: 'Old Name',
-      description: null,
-    })
-    await db
-      .update(customIconSets)
-      .set({ name: 'Current Name' })
-      .where(eq(customIconSets.id, stale.set.id))
-
-    const parsed = await parseSvgIcon('Logo.svg', svg)
-    await repository.createIcon(stale.set, parsed)
-    expect(await db.select().from(iconSearchDocuments)).toEqual([
-      expect.objectContaining({ id: 'acme:logo', collection: 'Current Name' }),
-    ])
-
-    const deleted = await repository.createSet({ prefix: 'gone', name: 'Gone', description: null })
-    await repository.softDeleteSet('gone')
-    await expect(repository.createIcon(deleted.set, parsed)).rejects.toBeInstanceOf(
-      CustomIconSetNotFoundError,
-    )
-    expect(
+  dbTest(
+    'uses current set data and rejects deleted sets when given a stale set object',
+    async ({ db }) => {
+      const repository = createCustomIconSetRepository(db)
+      const stale = await repository.createSet({
+        prefix: 'acme',
+        name: 'Old Name',
+        description: null,
+      })
       await db
-        .select()
-        .from(customIconSetIcons)
-        .where(eq(customIconSetIcons.setId, deleted.set.id)),
-    ).toEqual([])
-  })
+        .update(customIconSets)
+        .set({ name: 'Current Name' })
+        .where(eq(customIconSets.id, stale.set.id))
+
+      const parsed = await parseSvgIcon('Logo.svg', svg)
+      await repository.createIcon(stale.set, parsed)
+      expect(await db.select().from(iconSearchDocuments)).toEqual([
+        expect.objectContaining({ id: 'acme:logo', collection: 'Current Name' }),
+      ])
+
+      const deleted = await repository.createSet({
+        prefix: 'gone',
+        name: 'Gone',
+        description: null,
+      })
+      await repository.softDeleteSet('gone')
+      await expect(repository.createIcon(deleted.set, parsed)).rejects.toBeInstanceOf(
+        CustomIconSetNotFoundError,
+      )
+      expect(
+        await db
+          .select()
+          .from(customIconSetIcons)
+          .where(eq(customIconSetIcons.setId, deleted.set.id)),
+      ).toEqual([])
+    },
+  )
 
   dbTest(
     'rolls back the business write when derived document synchronization fails',
@@ -193,7 +200,7 @@ describe('custom icon search synchronization', () => {
   })
 
   dbTest(
-    'creates, renames, replaces and deletes derived documents in the business transaction',
+    'creates, renames and deletes derived documents with their business records',
     async ({ db }) => {
       const service = createCustomIconSetService(db)
       await service.create({ prefix: 'acme', name: 'Acme Icons', description: null })

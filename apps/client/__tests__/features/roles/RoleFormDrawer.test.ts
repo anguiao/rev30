@@ -221,7 +221,7 @@ describe('RoleFormDrawer', () => {
     wrapper
       .get('[data-test="role-form-resources"]')
       .getComponent(NTree)
-      .vm.$emit('update:checkedKeys', [directoryResourceId, actionResourceId])
+      .vm.$emit('update:checkedKeys', [directoryResourceId, secondActionResourceId])
     await flushPromises()
 
     await submitForm(wrapper)
@@ -231,7 +231,7 @@ describe('RoleFormDrawer', () => {
       code: 'operator',
       status: ROLE_STATUS_ENABLED,
       sortOrder: 2,
-      resourceIds: [directoryResourceId, actionResourceId],
+      resourceIds: [directoryResourceId, secondActionResourceId],
     })
     expect(wrapper.emitted('saved')).toHaveLength(1)
     expect(wrapper.emitted('update:show')).toEqual([[false]])
@@ -318,7 +318,7 @@ describe('RoleFormDrawer', () => {
     wrapper
       .get('[data-test="role-form-resources"]')
       .getComponent(NTree)
-      .vm.$emit('update:checkedKeys', [actionResourceId])
+      .vm.$emit('update:checkedKeys', [secondActionResourceId])
     expect(wrapper.text()).not.toContain('子级权限资源需要包含所有上级权限资源')
 
     await submitForm(wrapper)
@@ -328,7 +328,7 @@ describe('RoleFormDrawer', () => {
       code: 'operator',
       status: ROLE_STATUS_ENABLED,
       sortOrder: 0,
-      resourceIds: [directoryResourceId, actionResourceId],
+      resourceIds: [directoryResourceId, secondActionResourceId],
     })
     expect(wrapper.emitted('saved')).toHaveLength(1)
   })
@@ -433,7 +433,11 @@ describe('RoleFormDrawer', () => {
     await submitForm(wrapper)
 
     expect(createRoleMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('编码已存在')
+    const fieldItem = wrapper
+      .get('[data-test="role-form-code"] input')
+      .element.closest('.n-form-item')
+    expect(fieldItem?.textContent).toContain('编码已存在')
+    expect(wrapper.find('.n-alert').exists()).toBe(false)
     expect(wrapper.emitted('saved')).toBeUndefined()
   })
 

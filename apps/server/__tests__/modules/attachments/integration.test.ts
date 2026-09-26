@@ -466,6 +466,18 @@ describe('attachment routes integration', () => {
       const { app, authenticated } = await createAttachmentIntegrationFixture(database, {
         operationLogReceiver: createOperationLogReceiver(events),
       })
+      for (const input of [
+        { originalName: 'avatar-other-usage.png', usage: 'general' },
+        { originalName: 'portrait.png', usage: 'avatar' },
+      ]) {
+        const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
+          bytes: pngBytes,
+          contentType: 'image/png',
+          ...input,
+        })
+        expect(completeResponse.status).toBe(201)
+      }
+      events.length = 0
       const { completeResponse } = await uploadAttachmentThroughSession(app, authenticated, {
         bytes: pngBytes,
         contentType: 'image/png',
@@ -481,6 +493,7 @@ describe('attachment routes integration', () => {
 
       expect(listResponse.status).toBe(200)
       expect(listBody.total).toBe(1)
+      expect(listBody.list.map((item) => item.id)).toEqual([uploaded.id])
       expect(listBody.list[0]).toMatchObject({
         id: uploaded.id,
         originalName: 'avatar.png',
@@ -673,6 +686,8 @@ describe('attachment routes integration', () => {
       expect(response.headers.get('cache-control')).toBe('private, max-age=300')
       expect(blankTokenResponse.status).toBe(200)
       expect(blankTokenResponse.headers.get('cache-control')).toBe('private, max-age=300')
+      expect(new Uint8Array(await response.arrayBuffer())).toEqual(pngBytes)
+      expect(new Uint8Array(await blankTokenResponse.arrayBuffer())).toEqual(pngBytes)
     },
   )
 

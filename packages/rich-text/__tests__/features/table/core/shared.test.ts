@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { baseFeature } from '../../../../src/features/base/core/feature'
 import { headingFeature } from '../../../../src/features/heading/core/feature'
 import { tableFeature } from '../../../../src/features/table/core/feature'
-import { allRichTextPreset } from '../../../../src/core/presets/all'
 import { createTestEditor } from '../../../helpers/editor'
 
 function createExtensions() {
@@ -177,9 +176,5 @@ describe('table shared feature', () => {
     { colspan: 1, rowspan: 1, colwidth: null, align: 'justify' },
   ])('rejects invalid table JSON attrs: %o', (attrs) => {
     expect(() => schema.nodeFromJSON(tableDocument(attrs)).check()).toThrow()
-  })
-
-  it('belongs to the all preset', () => {
-    expect(allRichTextPreset.features).toContain(tableFeature)
   })
 })

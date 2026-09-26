@@ -275,6 +275,11 @@ describe('role routes', () => {
       await createRole(app, {
         name: 'Operator',
         code: 'operator',
+        status: ROLE_STATUS_ENABLED,
+      })
+      await createRole(app, {
+        name: 'Disabled Administrator',
+        code: 'test-admin-disabled',
         status: ROLE_STATUS_DISABLED,
       })
       const activeUserId = randomUUID()

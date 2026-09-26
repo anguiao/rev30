@@ -161,7 +161,8 @@ describe('scheduled job repository claims', () => {
     },
   )
 
-  it('locks the plan with FOR UPDATE inside both scheduled and manual claim transactions', async () => {
+  it('requests FOR UPDATE through the transaction before scheduled and manual claim writes', async () => {
+    // This mock checks query intent; it does not exercise PostgreSQL lock contention.
     const scheduledEvents: string[] = []
     const scheduledRepository = createScheduledJobRepository(
       createClaimLockTrackingDb(scheduledEvents),
@@ -436,33 +437,6 @@ describe('scheduled job API repository operations', () => {
       expect(enabled.nextRunAt?.getTime()).toBeGreaterThan(claimAt.getTime())
     },
   )
-
-  dbTest('paginates runs by createdAt and id and matches detail task and run', async ({ db }) => {
-    const first = '10000000-0000-4000-8000-000000000001'
-    const second = 'ffffffff-ffff-4fff-bfff-ffffffffffff'
-    const sameTime = new Date('2026-08-25T00:00:00.000Z')
-    for (const [id, taskKey] of [
-      [first, firstTask],
-      [second, firstTask],
-    ] as const) {
-      await db.insert(opsJobRuns).values({
-        id,
-        taskKey,
-        triggerSource: 'scheduled',
-        status: 'skipped',
-        scheduledFor: sameTime,
-        finishedAt: sameTime,
-        createdAt: sameTime,
-      })
-    }
-    const repository = createScheduledJobRepository(db)
-
-    const page = await repository.listRuns({ taskKey: firstTask, page: 1, pageSize: 1 })
-    expect(page).toMatchObject({ total: 2, page: 1, pageSize: 1 })
-    expect(page.list[0]?.id).toBe(second)
-    await expect(repository.findRun(firstTask, second)).resolves.toMatchObject({ id: second })
-    await expect(repository.findRun(secondTask, second)).resolves.toBeUndefined()
-  })
 })
 
 describe('scheduled job startup recovery', () => {

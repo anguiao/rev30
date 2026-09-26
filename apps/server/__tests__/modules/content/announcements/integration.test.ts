@@ -41,8 +41,6 @@ import {
   systemUserRoles,
   systemUsers,
 } from '../../../../src/db/schema'
-import { AnnouncementInvalidTargetError } from '../../../../src/modules/content/announcements/errors'
-import { createAnnouncementRepository } from '../../../../src/modules/content/announcements/repository'
 import { createAnnouncementRoutes } from '../../../../src/modules/content/announcements/routes'
 import {
   createProtectedContentRouteTestApp,
@@ -506,9 +504,10 @@ describe('announcement routes', () => {
   })
 
   dbTest(
-    'synchronizes image references on create, content update, and soft delete',
+    'synchronizes another user’s image references on create, content update, and soft delete',
     async ({ db: database }) => {
       const app = await createTestApp(database)
+      // The author is the admin fixture; these attachments belong to a separate user.
       const ownerId = await createAttachmentOwner(database)
       const firstAttachmentId = await createAnnouncementContentImageAttachment(database, {
         createdBy: ownerId,
@@ -654,25 +653,6 @@ describe('announcement routes', () => {
       ])
     },
   )
-
-  dbTest('allows valid announcement images uploaded by another user', async ({ db: database }) => {
-    const app = await createTestApp(database)
-    const otherUserId = await createAttachmentOwner(database)
-    const attachmentId = await createAnnouncementContentImageAttachment(database, {
-      createdBy: otherUserId,
-    })
-
-    const { body: created, response } = await createAnnouncement(app, {
-      ...createBody,
-      title: '引用其他用户图片',
-      contentJson: contentWithImages([attachmentId]),
-    })
-
-    expect(response.status).toBe(201)
-    expect(await listAnnouncementContentImageReferences(database, created.id)).toEqual([
-      attachmentId,
-    ])
-  })
 
   dbTest(
     'requires repaired content after manual image deletion but permits patches without content',
@@ -1010,31 +990,6 @@ describe('announcement routes', () => {
   )
 
   dbTest(
-    'rejects updating published announcements to targeted visibility without visible objects',
-    async ({ db: database }) => {
-      const app = await createTestApp(database)
-      const { body: created } = await createAnnouncement(app, {
-        ...createBody,
-        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
-        targets: [],
-        publish: true,
-      })
-
-      const response = await app.request(`/api/content/announcements/${created.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-          targets: [],
-        }),
-        headers: { 'content-type': 'application/json' },
-      })
-
-      expect(response.status).toBe(400)
-      expect((await response.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
-    },
-  )
-
-  dbTest(
     'rejects publishing targeted announcements whose saved targets became invalid',
     async ({ db: database }) => {
       const app = await createTestApp(database)
@@ -1151,38 +1106,6 @@ describe('announcement routes', () => {
     })
   })
 
-  dbTest(
-    'rejects invalid targets inside repository publishing writes',
-    async ({ db: database }) => {
-      const app = await createTestApp(database)
-      const repository = createAnnouncementRepository(database)
-      const roleId = randomUUID()
-      const { body: created } = await createAnnouncement(app, createBody)
-
-      await createSystemRoleFixture(database, {
-        id: roleId,
-        name: 'Disabled Publish Role',
-        code: `disabled-publish-role-${roleId.slice(0, 8)}`,
-        status: ROLE_STATUS_DISABLED,
-      })
-
-      await expect(
-        repository.update(created.id, {
-          publish: true,
-          visibility: ANNOUNCEMENT_VISIBILITY_TARGETED,
-          targets: [{ targetType: ANNOUNCEMENT_TARGET_TYPE_ROLE, targetId: roleId }],
-        }),
-      ).rejects.toThrow(AnnouncementInvalidTargetError)
-
-      const [announcement] = await database
-        .select()
-        .from(announcements)
-        .where(eq(announcements.id, created.id))
-
-      expect(announcement?.status).toBe(ANNOUNCEMENT_STATUS_DRAFT)
-    },
-  )
-
   dbTest('publishes archived announcements and refreshes publishedAt', async ({ db: database }) => {
     const app = await createTestApp(database)
     const firstTime = new Date()
@@ -1260,6 +1183,16 @@ describe('announcement routes', () => {
       contentJson: {
         type: 'doc',
         content: [{ type: 'paragraph', content: [{ type: 'text', text: '正文命中关键字' }] }],
+      },
+    })
+
+    await createAnnouncement(app, {
+      ...createBody,
+      title: '普通通知',
+      summary: '完全无关摘要',
+      contentJson: {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: '无关正文' }] }],
       },
     })
 

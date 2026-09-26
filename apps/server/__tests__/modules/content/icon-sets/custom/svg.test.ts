@@ -38,7 +38,28 @@ describe('custom icon SVG parser', () => {
       palette: false,
     })
     expect(icon.body).toContain('currentColor')
-    expect(icon.body).not.toContain('<script')
+  })
+
+  it.each([
+    ['script', '<script>alert(1)</script>'],
+    ['external reference', '<use href="https://example.com/icon.svg#x"/>'],
+  ])('rejects a valid SVG containing a %s', async (_name, unsafeElement) => {
+    await expect(
+      parseSvgIcon(
+        'Unsafe.svg',
+        `<svg viewBox="0 0 24 24">${unsafeElement}<path d="M0 0h24v24H0z"/></svg>`,
+      ),
+    ).rejects.toBeInstanceOf(CustomSvgInvalidError)
+  })
+
+  it('removes event handlers while preserving safe SVG geometry', async () => {
+    const icon = await parseSvgIcon(
+      'Safe.svg',
+      '<svg viewBox="0 0 24 24"><path onload="alert(1)" d="M0 0h24v24H0z"/></svg>',
+    )
+    expect(icon.body).toContain('<path')
+    expect(icon.body).not.toMatch(/onload|alert/)
+    expect(icon).toMatchObject({ width: 24, height: 24, palette: false })
   })
 
   it('parses stroke-only single color SVGs as currentColor icons', async () => {

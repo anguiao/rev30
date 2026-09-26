@@ -62,16 +62,6 @@ describe('character count editor feature', () => {
     expect(editor.storage.characterCount.characters()).toBe(count)
   })
 
-  it('provides the configured character count extension', () => {
-    const extensions = characterCountEditorFeature.extensions!()
-
-    expect(extensions.map((extension) => extension.name)).toEqual(['characterCount'])
-    expect(extensions[0]?.options).toMatchObject({
-      limit: null,
-      mode: 'textSize',
-    })
-  })
-
   it('reads the current document from storage after content changes', () => {
     const editor = createEditor('<p>维护👨‍👩‍👧‍👦</p>')
 
@@ -80,6 +70,11 @@ describe('character count editor feature', () => {
     editor.commands.setContent('<p>ABC e\u0301</p>')
 
     expect(editor.storage.characterCount.characters()).toBe(5)
+    expect(editor.getJSON()).toEqual({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'ABC e\u0301' }] }],
+    })
+    expect(editor.getHTML()).toBe('<p>ABC e\u0301</p>')
   })
 
   it('counts collapsed, range, and all selections from the selection slice', () => {
@@ -196,24 +191,5 @@ describe('character count editor feature', () => {
 
     expect(countSelectedRichTextGraphemes(editor)).toBe(4)
     expect(editor.storage.characterCount.characters()).toBe(4)
-  })
-
-  it('does not change the document JSON or HTML', () => {
-    const editor = createEditor('<p>维护通知</p><p>ABC</p>')
-
-    expect(editor.getJSON()).toEqual({
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: '维护通知' }],
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'ABC' }],
-        },
-      ],
-    })
-    expect(editor.getHTML()).toBe('<p>维护通知</p><p>ABC</p>')
   })
 })

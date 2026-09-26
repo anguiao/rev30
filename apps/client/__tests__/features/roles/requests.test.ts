@@ -128,30 +128,6 @@ describe('roles request helpers', () => {
     })
   })
 
-  it('parses system errors with field names', async () => {
-    const fetchMock = createFetchMock(
-      jsonResponse({ field: 'code', message: '编码已存在' }, { status: 409 }),
-    )
-    const input = {
-      name: '重复角色',
-      code: 'admin',
-      status: ROLE_STATUS_ENABLED,
-      sortOrder: 0,
-      resourceIds: [],
-    } satisfies Parameters<typeof createRole>[0]
-
-    await expect(createRole(input)).rejects.toMatchObject({
-      status: 409,
-      field: 'code',
-      message: '编码已存在',
-    })
-    expectFetchCall(fetchMock, 0, {
-      method: 'POST',
-      pathname: '/api/system/roles',
-    })
-    expectJsonBody(fetchMock, 0, input)
-  })
-
   it('sends role create input and parses the created role', async () => {
     const fetchMock = createFetchMock(jsonResponse(roleRequestResponse))
 

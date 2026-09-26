@@ -421,42 +421,59 @@ describe('scheduled job scheduler', () => {
       'scheduled job runner failed',
     )
     expect(context.runner.run).toHaveBeenCalledOnce()
+    expect(context.scheduler.diagnostics().automaticRunning).toBe(0)
+
+    context.due.push({ taskKey: secondTask, nextRunAt: now, activeRunId: null })
+    context.scheduler.wake()
+    await flush()
+    expect(context.runner.run).toHaveBeenCalledTimes(2)
+    expect(context.runner.run).toHaveBeenLastCalledWith(
+      expect.objectContaining({ taskKey: secondTask, runId: 'run-2' }),
+    )
+    expect(context.scheduler.diagnostics().automaticRunning).toBe(1)
   })
 
   it('dispatches manual claims and reports overlaps without consuming automatic slots', async () => {
     const context = setup()
-    context.due.splice(0)
     context.scheduler.start([])
     await flush()
+    expect(context.scheduler.diagnostics().automaticRunning).toBe(2)
+    expect(context.runner.run).toHaveBeenCalledTimes(2)
 
-    await expect(context.scheduler.runManual({ taskKey: firstTask, actor })).resolves.toEqual({
+    await expect(context.scheduler.runManual({ taskKey: thirdTask, actor })).resolves.toEqual({
       runId,
       blockedByRunId: null,
       scheduledFor: null,
     })
     expect(context.runner.run).toHaveBeenCalledWith(
-      expect.objectContaining({ taskKey: firstTask, runId, triggerSource: 'manual' }),
+      expect.objectContaining({ taskKey: thirdTask, runId, triggerSource: 'manual' }),
     )
+
+    expect(context.scheduler.diagnostics().automaticRunning).toBe(2)
+    expect(context.runner.run).toHaveBeenCalledTimes(3)
+    expect(context.due.map(({ taskKey }) => taskKey)).toEqual([thirdTask])
 
     context.repository.claimManual.mockResolvedValueOnce({
       runId: 'skipped-run',
       blockedByRunId: 'active-run',
       scheduledFor: null,
     })
-    await expect(context.scheduler.runManual({ taskKey: firstTask, actor })).resolves.toMatchObject(
+    await expect(context.scheduler.runManual({ taskKey: thirdTask, actor })).resolves.toMatchObject(
       {
         blockedByRunId: 'active-run',
       },
     )
     expect(context.logger.info).toHaveBeenCalledWith(
       expect.objectContaining({
-        taskKey: firstTask,
+        taskKey: thirdTask,
         runId: 'skipped-run',
         triggerSource: 'manual',
         executorId,
       }),
       'scheduled job skipped',
     )
+    expect(context.runner.run).toHaveBeenCalledTimes(3)
+    expect(context.scheduler.diagnostics().automaticRunning).toBe(2)
   })
 
   it('propagates manual claim errors', async () => {
@@ -487,12 +504,25 @@ describe('scheduled job scheduler', () => {
     const context = setup()
     context.runner.abort.mockReturnValueOnce(true).mockReturnValueOnce(false)
 
-    await context.scheduler.requestCancellation({ taskKey: firstTask, runId, actor })
-    expect(context.runner.abort).toHaveBeenCalledWith(runId)
+    const committed = deferred<typeof cancellationRun>()
+    context.repository.requestCancellation.mockReturnValueOnce(committed.promise)
+    const pending = context.scheduler.requestCancellation({ taskKey: firstTask, runId, actor })
+    await flush()
+    expect(context.runner.abort).not.toHaveBeenCalled()
+    committed.resolve(cancellationRun)
+    await pending
+    expect(context.runner.abort).toHaveBeenCalledExactlyOnceWith(runId)
     expect(context.logger.info).toHaveBeenCalledWith(
       expect.objectContaining({ taskKey: firstTask, runId, triggerSource: 'manual', executorId }),
       'scheduled job cancellation requested',
     )
+
+    const failure = new Error('cancellation write failed')
+    context.repository.requestCancellation.mockRejectedValueOnce(failure)
+    await expect(
+      context.scheduler.requestCancellation({ taskKey: firstTask, runId, actor }),
+    ).rejects.toBe(failure)
+    expect(context.runner.abort).toHaveBeenCalledTimes(1)
 
     context.repository.requestCancellation.mockResolvedValueOnce({
       ...cancellationRun,
@@ -516,7 +546,10 @@ describe('scheduled job scheduler', () => {
 
   it('clears its timer and stops automatic claims without aborting active runs', async () => {
     const context = setup()
-    context.due.splice(0)
+    context.due.splice(1)
+    const active = deferred<undefined>()
+    context.runner.run.mockReturnValueOnce(active.promise)
+    context.runner.stop.mockReturnValueOnce(active.promise)
     context.repository.findNextScheduledAt.mockResolvedValue(new Date(now.getTime() + 10_000))
     context.scheduler.start([])
     await flush()
@@ -531,12 +564,20 @@ describe('scheduled job scheduler', () => {
       nextWakeAt: null,
     })
     expect(vi.getTimerCount()).toBe(0)
+    expect(context.scheduler.diagnostics().automaticRunning).toBe(1)
+    expect(context.runner.abort).not.toHaveBeenCalled()
+    let stopped = false
+    void stop.then(() => {
+      stopped = true
+    })
     context.due.push({ taskKey: firstTask, nextRunAt: now, activeRunId: null })
     context.scheduler.wake()
     await vi.advanceTimersByTimeAsync(10_000)
-    expect(context.repository.claimScheduled).not.toHaveBeenCalled()
-
+    expect(context.repository.claimScheduled).toHaveBeenCalledTimes(1)
+    expect(stopped).toBe(false)
+    active.resolve(undefined)
     await stop
+    expect(stopped).toBe(true)
     expect(context.runner.stop).toHaveBeenCalledOnce()
     expect(context.runner.abort).not.toHaveBeenCalled()
   })

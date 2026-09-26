@@ -76,46 +76,45 @@ describe('login log schemas', () => {
     const sessionId = testUuid(3)
     const requestId = testUuid(4)
 
-    expect(
-      loginLogListResponseSchema.parse({
-        list: [
-          {
-            id,
-            userId,
-            username: 'ada',
-            result: 'success',
-            failureReason: null,
-            sessionId,
-            requestId,
-            clientIp: '192.0.2.1',
-            clientIpSource: 'x-forwarded-for',
-            userAgent: {
-              raw: 'Example/1.0',
-              browser: { name: 'Example', version: null },
-              operatingSystem: null,
-              deviceType: 'desktop',
-            },
-            createdAt: '2026-08-18T00:00:00.000Z',
+    const input = {
+      list: [
+        {
+          id,
+          userId,
+          username: 'ada',
+          result: 'success',
+          failureReason: null,
+          sessionId,
+          requestId,
+          clientIp: '192.0.2.1',
+          clientIpSource: 'x-forwarded-for',
+          userAgent: {
+            raw: 'Example/1.0',
+            browser: { name: 'Example', version: null },
+            operatingSystem: null,
+            deviceType: 'desktop',
           },
-          {
-            id: testUuid(5),
-            userId: null,
-            username: 'unknown',
-            result: 'failure',
-            failureReason: 'invalid_credentials',
-            sessionId: null,
-            requestId: testUuid(6),
-            clientIp: null,
-            clientIpSource: 'unavailable',
-            userAgent: null,
-            createdAt: '2026-08-17T00:00:00.000Z',
-          },
-        ],
-        total: 2,
-        page: 1,
-        pageSize: 20,
-      }),
-    ).toMatchObject({ total: 2, page: 1, pageSize: 20 })
+          createdAt: '2026-08-18T00:00:00.000Z',
+        },
+        {
+          id: testUuid(5),
+          userId: null,
+          username: 'unknown',
+          result: 'failure',
+          failureReason: 'invalid_credentials',
+          sessionId: null,
+          requestId: testUuid(6),
+          clientIp: null,
+          clientIpSource: 'unavailable',
+          userAgent: null,
+          createdAt: '2026-08-17T00:00:00.000Z',
+        },
+      ],
+      total: 2,
+      page: 1,
+      pageSize: 20,
+    }
+    expect(loginLogListResponseSchema.parse(input)).toEqual(input)
   })
 
   it('rejects unknown device types in responses', () => {

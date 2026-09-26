@@ -140,12 +140,16 @@ describe('table server feature', () => {
 
   it.each([
     ['heading', [{ type: 'heading', attrs: { level: 1 } }]],
-    ['list', [{ type: 'bulletList', content: [] }]],
+    [
+      'list',
+      [{ type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph' }] }] }],
+    ],
     ['code block', [{ type: 'codeBlock', content: [{ type: 'text', text: 'x' }] }]],
     ['image', [{ type: 'image', attrs: { src: 'https://example.com/x' } }]],
     ['horizontal rule', [{ type: 'horizontalRule' }]],
     ['nested table', [table([[cell()]])]],
   ])('rejects %s in a cell', (_name, content) => {
+    expect(() => deriveRichTextContent({ type: 'doc', content }, preset)).not.toThrow()
     expect(() =>
       deriveRichTextContent(
         {
@@ -200,12 +204,14 @@ describe('table server feature', () => {
   })
 
   it('rejects a table that exceeds the grid slot limit before mapping', () => {
+    const tableMapGet = vi.spyOn(TableMap, 'get')
     const rows = Array.from({ length: 101 }, () => Array.from({ length: 100 }, () => cell()))
 
     expectDocumentInvalidError(
       () => deriveRichTextContent({ type: 'doc', content: [table(rows)] }, preset),
       'Table exceeds the grid slot limit',
     )
+    expect(tableMapGet).not.toHaveBeenCalled()
   })
 
   it('rejects tables that collectively exceed the document resource limit before mapping', () => {

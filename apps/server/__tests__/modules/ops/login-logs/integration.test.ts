@@ -56,15 +56,29 @@ describe('login log routes', () => {
           result: 'failure',
           failureReason: 'rate_limited',
           requestId: randomUUID(),
-          clientIpSource: 'unavailable',
+          clientIp: '203.0.113.10',
+          clientIpSource: 'socket',
           createdAt: new Date('2026-08-18T10:00:00.000Z'),
         },
       ])
 
-      const response = await app.request(
-        '/api/ops/login-logs?username=ALICE&clientIp=203.0.113.10&occurredFrom=2026-08-18T07%3A00%3A00.000Z&occurredTo=2026-08-18T10%3A00%3A00.000Z&page=1&pageSize=1',
-        { headers: authorized.authHeaders },
+      await database.insert(opsLoginLogs).values(
+        [
+          { clientIp: '203.0.113.11', createdAt: new Date('2026-08-18T09:00:00.000Z') },
+          { clientIp: '203.0.113.10', createdAt: new Date('2026-08-18T06:59:59.999Z') },
+          { clientIp: '203.0.113.10', createdAt: new Date('2026-08-18T10:00:00.001Z') },
+        ].map((sample) => ({
+          ...sample,
+          username: 'alice.target',
+          result: 'failure' as const,
+          failureReason: 'invalid_credentials' as const,
+          requestId: randomUUID(),
+          clientIpSource: 'socket' as const,
+        })),
       )
+      const query =
+        '/api/ops/login-logs?username=ALICE&clientIp=203.0.113.10&occurredFrom=2026-08-18T07%3A00%3A00.000Z&occurredTo=2026-08-18T10%3A00%3A00.000Z&pageSize=1'
+      const response = await app.request(`${query}&page=1`, { headers: authorized.authHeaders })
       const body = loginLogListResponseSchema.parse(await response.json())
 
       expect(response.status).toBe(200)
@@ -78,6 +92,13 @@ describe('login log routes', () => {
           userAgent: null,
         }),
       ])
+      const secondPageResponse = await app.request(`${query}&page=2`, {
+        headers: authorized.authHeaders,
+      })
+      expect(secondPageResponse.status).toBe(200)
+      const secondPage = loginLogListResponseSchema.parse(await secondPageResponse.json())
+      expect(secondPage).toMatchObject({ total: 2, page: 2, pageSize: 1 })
+      expect(secondPage.list.map(({ id }) => id)).toEqual([firstId])
       expect(Object.keys(body.list[0] ?? {}).sort()).toEqual([
         'clientIp',
         'clientIpSource',

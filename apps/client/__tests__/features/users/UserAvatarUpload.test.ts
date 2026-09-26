@@ -59,6 +59,8 @@ describe('UserAvatarUpload', () => {
 
     const fileOne = new File(['png1'], 'avatar1.png', { type: 'image/png' })
     const fileTwo = new File(['png2'], 'avatar2.png', { type: 'image/png' })
+    const compressedFile = new File(['compressed'], 'avatar.webp', { type: 'image/webp' })
+    compressImageFileMock.mockResolvedValue(compressedFile)
     const pendingUpload = createDeferred<Awaited<ReturnType<typeof uploadAttachment>>>()
     uploadAttachmentMock.mockReturnValueOnce(pendingUpload.promise)
 
@@ -86,7 +88,7 @@ describe('UserAvatarUpload', () => {
       maxDimension: 512,
       quality: 0.82,
     })
-    expect(uploadAttachmentMock).toHaveBeenCalledWith(fileOne, {
+    expect(uploadAttachmentMock).toHaveBeenCalledWith(compressedFile, {
       usage: 'avatar',
       readPolicy: 'authenticated',
     })

@@ -494,6 +494,10 @@ describe('image editor paste', () => {
     expect(event.defaultPrevented).toBe(true)
     const dialog = new DOMWrapper(document.body)
     expect(dialog.find('[data-test="rich-text-image-dialog-content"]').exists()).toBe(true)
+    expect(dialog.find('[data-test="rich-text-image-preview"]').exists()).toBe(true)
+    expect(
+      dialog.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
+    ).toBeUndefined()
 
     await uploadSelectedFile(dialog)
 
@@ -646,16 +650,6 @@ describe('ImageDialog', () => {
     ).toBeDefined()
   })
 
-  it('initializes an insert candidate from an editor-pasted image file', () => {
-    const imageFile = new File(['image'], 'pasted.png', { type: 'image/png' })
-    const wrapper = mountDialog(vi.fn(), vi.fn(), undefined, imageFile)
-
-    expect(wrapper.find('[data-test="rich-text-image-preview"]').exists()).toBe(true)
-    expect(
-      wrapper.get('[data-test="rich-text-image-upload-action"]').attributes('disabled'),
-    ).toBeUndefined()
-  })
-
   it('initializes a replacement candidate from an editor-pasted image file', async () => {
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:replacement')
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
@@ -740,21 +734,6 @@ describe('ImageDialog', () => {
     expect(wrapper.emitted('cancel')?.at(-1)).toEqual([])
   })
 
-  it('reports upload errors and does not confirm an image', async () => {
-    const uploadError = new Error('Upload failed')
-    const upload = vi.fn(async () => {
-      throw uploadError
-    })
-    const onError = vi.fn()
-    const wrapper = mountDialog(upload, onError)
-
-    await chooseFile(new File(['image'], 'broken.png', { type: 'image/png' }))
-    await uploadSelectedFile(wrapper)
-
-    expect(onError).toHaveBeenCalledWith(uploadError)
-    expect(wrapper.emitted('confirm')).toBeUndefined()
-  })
-
   it('keeps the insert candidate when its upload fails', async () => {
     const uploadError = new Error('Upload failed')
     const upload = vi.fn(async () => {
@@ -768,6 +747,7 @@ describe('ImageDialog', () => {
     await uploadSelectedFile(wrapper)
 
     expect(onError).toHaveBeenCalledWith(uploadError)
+    expect(wrapper.emitted('confirm')).toBeUndefined()
     expect(
       wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
     ).toBeDefined()

@@ -47,31 +47,28 @@ describe('rich text demo routes', () => {
     expect(await forbiddenResponse.json()).toEqual({ message: '无权访问' })
   })
 
-  dbTest(
-    'returns server-derived JSON, text, and HTML without creating a resource',
-    async ({ db: database }) => {
-      const authenticated = await createSystemAccessFixture(database, {
-        accessCodes: ['demo:rich-text:preview'],
-        usernamePrefix: 'rich-text-demo-preview',
-      })
-      const app = createApp(database)
+  dbTest('returns server-derived JSON, text, and HTML', async ({ db: database }) => {
+    const authenticated = await createSystemAccessFixture(database, {
+      accessCodes: ['demo:rich-text:preview'],
+      usernamePrefix: 'rich-text-demo-preview',
+    })
+    const app = createApp(database)
 
-      const response = await app.request('/api/demos/rich-text/preview', {
-        method: 'POST',
-        body: JSON.stringify(previewBody),
-        headers: {
-          ...authenticated.authHeaders,
-          'content-type': 'application/json',
-        },
-      })
+    const response = await app.request('/api/demos/rich-text/preview', {
+      method: 'POST',
+      body: JSON.stringify(previewBody),
+      headers: {
+        ...authenticated.authHeaders,
+        'content-type': 'application/json',
+      },
+    })
 
-      expect(response.status).toBe(200)
-      const body = (await response.json()) as RichTextDemoPreviewResponse
-      expect(body.contentText).toBe('组件演示')
-      expect(body.contentHtml).toBe('<p><u>组件演示</u></p>')
-      expect(body.contentJson).toMatchObject(previewBody.contentJson)
-    },
-  )
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as RichTextDemoPreviewResponse
+    expect(body.contentText).toBe('组件演示')
+    expect(body.contentHtml).toBe('<p><u>组件演示</u></p>')
+    expect(body.contentJson).toMatchObject(previewBody.contentJson)
+  })
 
   dbTest('maps invalid all-preset content to the contentJson field', async ({ db: database }) => {
     const authenticated = await createSystemAccessFixture(database, {
@@ -120,5 +117,19 @@ describe('rich text demo routes', () => {
 
     expect(response.status).toBe(413)
     expect(await response.json()).toEqual({ message: '请求体过大' })
+
+    const json = JSON.stringify(previewBody)
+    const boundaryBody =
+      json + ' '.repeat(RICH_TEXT_DEMO_PREVIEW_MAX_BODY_SIZE_BYTES - Buffer.byteLength(json))
+    const sendBody = (body: string) =>
+      app.request('/api/demos/rich-text/preview', {
+        method: 'POST',
+        body,
+        headers: { ...authenticated.authHeaders, 'content-type': 'application/json' },
+      })
+    expect((await sendBody(boundaryBody)).status).toBe(200)
+    const oversized = await sendBody(`${boundaryBody} `)
+    expect(oversized.status).toBe(413)
+    expect(await oversized.json()).toEqual({ message: '请求体过大' })
   })
 })

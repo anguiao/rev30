@@ -168,7 +168,7 @@ describe('auth routes', () => {
     expect(loginResponse.headers.get('set-cookie')).toContain('refresh_token=')
     expect(loginResponse.headers.get('set-cookie')).toContain('attachment_token=')
     expect(loginBody).not.toHaveProperty('refreshToken')
-    expect(loginBody).not.toHaveProperty('attachmentToken')
+    expect(loginBody).not.toHaveProperty('attachmentAccessToken')
     expect(mocks.service.login).toHaveBeenCalledWith(
       {
         username: 'ada',
@@ -220,7 +220,7 @@ describe('auth routes', () => {
     expect(refreshResponse.headers.get('set-cookie')).toContain('refresh_token=')
     expect(refreshResponse.headers.get('set-cookie')).toContain('attachment_token=')
     expect(refreshBody).not.toHaveProperty('refreshToken')
-    expect(refreshBody).not.toHaveProperty('attachmentToken')
+    expect(refreshBody).not.toHaveProperty('attachmentAccessToken')
     expect(mocks.service.refresh).toHaveBeenCalledWith('old-refresh-token', undefined)
   })
 
@@ -307,31 +307,7 @@ describe('auth routes', () => {
     })
   })
 
-  it('delegates profile updates for the authenticated user', async () => {
-    const app = createTestApp()
-    const avatarId = '44444444-4444-4444-8444-444444444444'
-
-    const profileResponse = await app.request('/api/auth/me/profile', {
-      method: 'PATCH',
-      body: JSON.stringify({
-        nickname: 'Updated Nickname',
-        avatarId,
-        email: 'updated@example.com',
-        phone: null,
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(profileResponse.status).toBe(200)
-    expect(mocks.service.updateProfile).toHaveBeenCalledWith(authUser.id, {
-      nickname: 'Updated Nickname',
-      avatarId,
-      email: 'updated@example.com',
-      phone: null,
-    })
-  })
-
-  it('delegates password updates with the current refresh cookie', async () => {
+  it('updates the current session password and keeps cookie tokens out of JSON', async () => {
     const app = createTestApp()
 
     const passwordResponse = await app.request('/api/auth/me/password', {
@@ -342,11 +318,20 @@ describe('auth routes', () => {
       }),
       headers: {
         'content-type': 'application/json',
-        cookie: 'refresh_token=current-refresh-token',
       },
     })
 
     expect(passwordResponse.status).toBe(200)
+    const body = await passwordResponse.json()
+    expect(body).not.toHaveProperty('refreshToken')
+    expect(body).not.toHaveProperty('attachmentAccessToken')
+    expect(body).toMatchObject({ accessToken: 'password-refresh-token-access-token' })
+    expect(passwordResponse.headers.get('set-cookie')).toContain(
+      'refresh_token=password-refresh-token',
+    )
+    expect(passwordResponse.headers.get('set-cookie')).toContain(
+      'attachment_token=password-refresh-token-attachment-token',
+    )
     expect(mocks.service.updatePassword).toHaveBeenCalledWith(
       authUser.id,
       '5dfc90f3-9d4d-40f2-a8b9-f7d1863e5ad0',

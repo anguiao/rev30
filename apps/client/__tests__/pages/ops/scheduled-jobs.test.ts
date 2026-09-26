@@ -203,6 +203,28 @@ describe('scheduled jobs page', () => {
     expect(wrapper.findAll('[data-test="scheduled-job-edit"]')).toHaveLength(1)
     expect(wrapper.findAll('[data-test="scheduled-job-execute"]')).toHaveLength(0)
     expect(wrapper.findAll('[data-test="scheduled-job-cancel"]')).toHaveLength(0)
+    wrapper.unmount()
+
+    for (const [code, selector, jobs] of [
+      ['update', 'edit', idleResponse],
+      ['execute', 'execute', idleResponse],
+      ['cancel', 'cancel', response],
+    ] as const) {
+      listMock.mockResolvedValue(jobs)
+      for (const granted of [false, true]) {
+        const { wrapper: permissionWrapper } = await mountPage([
+          'ops:scheduled-job:list',
+          ...(granted ? [`ops:scheduled-job:${code}`] : []),
+        ])
+        await flushPromises()
+        for (const action of ['edit', 'execute', 'cancel']) {
+          expect(permissionWrapper.find(`[data-test="scheduled-job-${action}"]`).exists()).toBe(
+            granted && action === selector,
+          )
+        }
+        permissionWrapper.unmount()
+      }
+    }
   })
 
   it('formats the next run in the configured task timezone', async () => {

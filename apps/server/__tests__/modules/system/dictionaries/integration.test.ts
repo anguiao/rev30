@@ -502,69 +502,6 @@ describe('dictionary routes', () => {
   )
 
   dbTest(
-    'rejects duplicate dictionary item values on create and update',
-    async ({ db: database }) => {
-      const app = await createTestApp(database)
-      const { body: created } = await createDictionary(app, {
-        code: 'item-value',
-        name: '字典项值',
-        items: [
-          { label: '旧值', value: 'legacy' },
-          { label: '保留', value: 'keep' },
-        ],
-      })
-      const keepItem = created.items.find((item) => item.value === 'keep')
-      expect(keepItem).toBeDefined()
-
-      const duplicateCreate = await app.request('/api/system/dictionaries', {
-        method: 'POST',
-        body: JSON.stringify({
-          code: 'item-value-2',
-          name: '字典项值2',
-          items: [
-            { label: 'A', value: 'same' },
-            { label: 'B', value: 'same' },
-          ],
-        }),
-        headers: { 'content-type': 'application/json' },
-      })
-      expect(duplicateCreate.status).toBe(400)
-      expect((await duplicateCreate.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
-
-      const duplicatePut = await app.request(`/api/system/dictionaries/${created.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          code: 'item-value',
-          name: '字典项值',
-          description: null,
-          status: DICTIONARY_STATUS_ENABLED,
-          sortOrder: 0,
-          items: [
-            {
-              id: keepItem!.id,
-              label: '保留',
-              value: 'keep',
-              description: null,
-              status: DICTIONARY_STATUS_ENABLED,
-              sortOrder: 0,
-            },
-            {
-              label: '重复',
-              value: 'keep',
-              description: null,
-              status: DICTIONARY_STATUS_ENABLED,
-              sortOrder: 1,
-            },
-          ],
-        }),
-        headers: { 'content-type': 'application/json' },
-      })
-      expect(duplicatePut.status).toBe(400)
-      expect((await duplicatePut.json()) as ErrorResponse).toEqual({ message: '请求体无效' })
-    },
-  )
-
-  dbTest(
     'cascades soft delete from dictionary type to its undeleted items',
     async ({ db: database }) => {
       const app = await createTestApp(database)

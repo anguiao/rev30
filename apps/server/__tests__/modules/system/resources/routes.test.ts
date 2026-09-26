@@ -14,16 +14,6 @@ import {
 import type { createResourceService } from '../../../../src/modules/system/resources/service'
 import type { requireAccess } from '../../../../src/middleware/access'
 import type { AuthEnv } from '../../../../src/middleware/auth'
-import {
-  ResourceConflictError,
-  ResourceDeleteConflictError,
-  ResourceInvalidParentError,
-  ResourceInvalidTypeFieldsError,
-  ResourceMoveConflictError,
-  ResourceMutationForbiddenError,
-  ResourceNotFoundError,
-  ResourceRoleAuthorizationConflictError,
-} from '../../../../src/modules/system/resources/errors'
 import { createResourceRoutes } from '../../../../src/modules/system/resources/routes'
 
 type ResourceService = ReturnType<typeof createResourceService>
@@ -126,19 +116,56 @@ describe('resource routes', () => {
     mocks.service.delete.mockResolvedValue(undefined)
   })
 
-  it('registers expected access guards for every resource endpoint', () => {
-    createTestApp()
-
-    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
-      'system:resource:list',
-      'system:resource:list',
-      'system:resource:list',
-      'system:resource:list',
+  it.each([
+    ['', 'GET', 'system:resource:list', 'list', null, 200],
+    ['/tree', 'GET', 'system:resource:list', 'tree', null, 200],
+    ['/options/tree', 'GET', 'system:resource:list', 'treeOptions', null, 200],
+    [`/${resourceId}`, 'GET', 'system:resource:list', 'get', null, 200],
+    [
+      '',
+      'POST',
       'system:resource:create',
-      'system:resource:update',
-      'system:resource:delete',
-    ])
-  })
+      'create',
+      { type: 'directory', name: 'System', code: 'test-system' },
+      201,
+    ],
+    [`/${resourceId}`, 'PATCH', 'system:resource:update', 'update', { name: 'Settings' }, 200],
+    [`/${resourceId}`, 'DELETE', 'system:resource:delete', 'delete', null, 204],
+  ] as const)(
+    'executes the required access guard for %s %s',
+    async (path, method, code, service, body, status) => {
+      mocks.requireAccess.mockImplementation((requiredAccess) => async (c, next) => {
+        if (c.req.header('x-test-access') !== requiredAccess) {
+          return c.json({ requiredAccess }, 403)
+        }
+        await next()
+      })
+      const app = createTestApp()
+      const request = {
+        method,
+        ...(body === null
+          ? {}
+          : {
+              body: JSON.stringify(body),
+              headers: { 'content-type': 'application/json' },
+            }),
+      }
+
+      const denied = await app.request(`/api/system/resources${path}`, request)
+      expect(denied.status).toBe(403)
+      expect(await denied.json()).toEqual({ requiredAccess: code })
+      for (const serviceMock of Object.values(mocks.service)) {
+        expect(serviceMock).not.toHaveBeenCalled()
+      }
+
+      const allowed = await app.request(`/api/system/resources${path}`, {
+        ...request,
+        headers: { ...request.headers, 'x-test-access': code },
+      })
+      expect(allowed.status).toBe(status)
+      expect(mocks.service[service]).toHaveBeenCalledOnce()
+    },
+  )
 
   it('parses list query and delegates to the resource service', async () => {
     const app = createTestApp()
@@ -157,25 +184,21 @@ describe('resource routes', () => {
     })
   })
 
-  it('delegates tree requests to the resource service', async () => {
-    const app = createTestApp()
+  it.each([[[]], [[resourceId]]])(
+    'parses tree options includeIds %j without routing to detail',
+    async (includeIds) => {
+      const app = createTestApp()
 
-    const treeResponse = await app.request('/api/system/resources/tree')
-    expect(treeResponse.status).toBe(200)
-    expect(mocks.service.tree).toHaveBeenCalledWith()
-  })
-
-  it('parses tree options query and delegates to the resource service', async () => {
-    const app = createTestApp()
-
-    const optionsResponse = await app.request(
-      `/api/system/resources/options/tree?includeIds=${resourceId}`,
-    )
-    expect(optionsResponse.status).toBe(200)
-    expect(mocks.service.treeOptions).toHaveBeenCalledWith({
-      includeIds: [resourceId],
-    })
-  })
+      const optionsResponse = await app.request(
+        `/api/system/resources/options/tree${includeIds.length ? `?includeIds=${includeIds.join(',')}` : ''}`,
+      )
+      expect(optionsResponse.status).toBe(200)
+      expect(mocks.service.treeOptions).toHaveBeenCalledWith({
+        includeIds,
+      })
+      expect(mocks.service.get).not.toHaveBeenCalled()
+    },
+  )
 
   it('returns tree options query validation errors before calling the resource service', async () => {
     const app = createTestApp()
@@ -184,23 +207,6 @@ describe('resource routes', () => {
     expect(optionsResponse.status).toBe(400)
     expect(await optionsResponse.json()).toEqual({ message: '查询参数无效' })
     expect(mocks.service.treeOptions).not.toHaveBeenCalled()
-  })
-
-  it('matches static /options/tree before dynamic /:id route', async () => {
-    const app = createTestApp()
-
-    const optionsResponse = await app.request('/api/system/resources/options/tree')
-    expect(optionsResponse.status).toBe(200)
-    expect(mocks.service.treeOptions).toHaveBeenCalledWith({ includeIds: [] })
-    expect(mocks.service.get).not.toHaveBeenCalled()
-  })
-
-  it('delegates detail requests by id', async () => {
-    const app = createTestApp()
-
-    const detailResponse = await app.request(`/api/system/resources/${resourceId}`)
-    expect(detailResponse.status).toBe(200)
-    expect(mocks.service.get).toHaveBeenCalledWith(resourceId)
   })
 
   it('delegates create requests to the resource service', async () => {
@@ -288,125 +294,5 @@ describe('resource routes', () => {
     expect(createResponse.status).toBe(400)
     expect(await createResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.create).not.toHaveBeenCalled()
-  })
-
-  it('maps invalid final type field errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.update.mockRejectedValueOnce(
-      new ResourceInvalidTypeFieldsError('内部菜单路径不能为空', 'path'),
-    )
-    const invalidTypeResponse = await app.request(`/api/system/resources/${resourceId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ name: 'Users' }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(invalidTypeResponse.status).toBe(400)
-    expect(await invalidTypeResponse.json()).toEqual({
-      field: 'path',
-      message: '内部菜单路径不能为空',
-    })
-  })
-
-  it('maps invalid parent errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.create.mockRejectedValueOnce(new ResourceInvalidParentError())
-    const invalidParentResponse = await app.request('/api/system/resources', {
-      method: 'POST',
-      body: JSON.stringify({
-        type: RESOURCE_TYPE_DIRECTORY,
-        name: 'System',
-        code: 'test-system',
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(invalidParentResponse.status).toBe(400)
-    expect(await invalidParentResponse.json()).toEqual({ message: '上级权限资源不存在' })
-  })
-
-  it('maps not-found errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.get.mockRejectedValueOnce(new ResourceNotFoundError())
-    const notFoundResponse = await app.request(`/api/system/resources/${resourceId}`)
-    expect(notFoundResponse.status).toBe(404)
-    expect(await notFoundResponse.json()).toEqual({ message: '权限资源不存在' })
-  })
-
-  it('maps conflict errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.update.mockRejectedValueOnce(new ResourceConflictError())
-    const conflictResponse = await app.request(`/api/system/resources/${resourceId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ code: 'test-system' }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(conflictResponse.status).toBe(409)
-    expect(await conflictResponse.json()).toEqual({ message: '权限编码已存在' })
-  })
-
-  it('maps move conflict errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.update.mockRejectedValueOnce(new ResourceMoveConflictError())
-    const moveResponse = await app.request(`/api/system/resources/${resourceId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ parentId: resourceId }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(moveResponse.status).toBe(409)
-    expect(await moveResponse.json()).toEqual({ message: '不能移动到自己或子级权限资源下' })
-  })
-
-  it('maps delete conflict errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.delete.mockRejectedValueOnce(new ResourceDeleteConflictError())
-    const deleteResponse = await app.request(`/api/system/resources/${resourceId}`, {
-      method: 'DELETE',
-    })
-    expect(deleteResponse.status).toBe(409)
-    expect(await deleteResponse.json()).toEqual({ message: '权限资源存在子级权限资源，不能删除' })
-  })
-
-  it('maps role authorization conflict errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.delete.mockRejectedValueOnce(new ResourceRoleAuthorizationConflictError())
-    const roleAuthorizationResponse = await app.request(`/api/system/resources/${resourceId}`, {
-      method: 'DELETE',
-    })
-    expect(roleAuthorizationResponse.status).toBe(409)
-    expect(await roleAuthorizationResponse.json()).toEqual({
-      message: '权限资源存在角色授权，不能删除',
-    })
-  })
-
-  it('maps forbidden resource mutations to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.update.mockRejectedValueOnce(new ResourceMutationForbiddenError('code'))
-    const response = await app.request(`/api/system/resources/${resourceId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ code: 'system:user:delete' }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(response.status).toBe(403)
-    expect(await response.json()).toEqual({ message: '非管理员不能修改权限编码' })
-
-    mocks.service.update.mockRejectedValueOnce(new ResourceMutationForbiddenError('access-scope'))
-    const subtreeResponse = await app.request(`/api/system/resources/${resourceId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: RESOURCE_STATUS_DISABLED }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(subtreeResponse.status).toBe(403)
-    expect(await subtreeResponse.json()).toEqual({
-      message: '不能管理超出自身权限范围的资源',
-    })
   })
 })

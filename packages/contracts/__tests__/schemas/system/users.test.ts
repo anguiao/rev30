@@ -3,7 +3,6 @@ import {
   USER_STATUS_DISABLED,
   USER_STATUS_ENABLED,
   userCreateSchema,
-  userOptionSchema,
   userOptionsQuerySchema,
   userOptionsResponseSchema,
   userCreateResponseSchema,
@@ -24,15 +23,12 @@ describe('user schemas', () => {
     })
   })
 
-  it('parses includeIds as empty array for blank strings or non-string values', () => {
-    expect(userOptionsQuerySchema.parse({ includeIds: '' })).toEqual({ includeIds: [] })
-    expect(userOptionsQuerySchema.parse({ includeIds: '   ' })).toEqual({ includeIds: [] })
-    expect(userOptionsQuerySchema.parse({ includeIds: {} })).toEqual({ includeIds: [] })
-  })
-
-  it('parses includeIds query with empty object as []', () => {
-    expect(userOptionsQuerySchema.parse({})).toEqual({ includeIds: [] })
-  })
+  it.each([{}, { includeIds: '' }, { includeIds: '   ' }, { includeIds: {} }])(
+    'normalizes empty includeIds input %j',
+    (input) => {
+      expect(userOptionsQuerySchema.parse(input)).toEqual({ includeIds: [] })
+    },
+  )
 
   it('reports invalid user id in includeIds query', () => {
     const result = userOptionsQuerySchema.safeParse({
@@ -40,26 +36,6 @@ describe('user schemas', () => {
     })
 
     expectZodIssue(result, { message: '用户 ID 无效', path: ['includeIds', 1] })
-  })
-
-  it('accepts lightweight user options response', () => {
-    expect(
-      userOptionsResponseSchema.parse([
-        {
-          id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-          username: 'ada',
-          nickname: 'Ada Lovelace',
-          status: USER_STATUS_ENABLED,
-        },
-      ]),
-    ).toMatchObject([
-      {
-        id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-        username: 'ada',
-        nickname: 'Ada Lovelace',
-        status: USER_STATUS_ENABLED,
-      },
-    ])
   })
 
   it('accepts nullable avatar ids in user responses and inputs', () => {
@@ -108,20 +84,24 @@ describe('user schemas', () => {
   })
 
   it('parses user options with field selection', () => {
-    const result = userOptionSchema.parse({
-      id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-      username: 'ada',
-      nickname: 'Ada Lovelace',
-      status: USER_STATUS_ENABLED,
-      roles: [],
-    })
+    const result = userOptionsResponseSchema.parse([
+      {
+        id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        username: 'ada',
+        nickname: 'Ada Lovelace',
+        status: USER_STATUS_ENABLED,
+        roles: [],
+      },
+    ])
 
-    expect(result).toEqual({
-      id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-      username: 'ada',
-      nickname: 'Ada Lovelace',
-      status: USER_STATUS_ENABLED,
-    })
+    expect(result).toEqual([
+      {
+        id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        username: 'ada',
+        nickname: 'Ada Lovelace',
+        status: USER_STATUS_ENABLED,
+      },
+    ])
   })
 
   it('accepts a user response with nullable email and phone', () => {

@@ -4,7 +4,6 @@ import {
   iconSetIconListQuerySchema,
   iconSetListQuerySchema,
   iconSetPrefixParamSchema,
-  iconSetIconItemSchema,
   builtinIconSetListResponseSchema,
   builtinIconListResponseSchema,
   customIconSetSchema,
@@ -165,13 +164,9 @@ describe('icon set schemas', () => {
     })
   })
 
-  it('parses icon set list query defaults', () => {
-    expect(iconSetListQuerySchema.parse({})).toEqual({
-      keyword: undefined,
-    })
-  })
-
-  it('parses icon set icon list query values', () => {
+  it('parses icon set and icon list query values', () => {
+    expect(iconSetListQuerySchema.parse({})).toEqual({ keyword: undefined })
+    expect(iconSetListQuerySchema.parse({ keyword: '  brand  ' })).toEqual({ keyword: 'brand' })
     expect(
       iconSetIconListQuerySchema.parse({
         keyword: ' user ',
@@ -196,13 +191,14 @@ describe('icon set schemas', () => {
       prefix: 'brand-icons',
       name: 'user-add',
     })
-  })
-
-  it('rejects invalid icon set route params', () => {
-    expect(iconSetPrefixParamSchema.safeParse({ prefix: 'Lucide' }).success).toBe(false)
-    expect(
-      customIconParamSchema.safeParse({ prefix: 'brand-icons', name: '../user' }).success,
-    ).toBe(false)
+    expectZodIssue(iconSetPrefixParamSchema.safeParse({ prefix: 'Lucide' }), {
+      message: '图标集前缀无效',
+      path: ['prefix'],
+    })
+    expectZodIssue(customIconParamSchema.safeParse({ prefix: 'brand-icons', name: '../user' }), {
+      message: '图标名称无效',
+      path: ['name'],
+    })
   })
 
   it('validates custom icon set create and update inputs', () => {
@@ -314,33 +310,10 @@ describe('icon set schemas', () => {
   it('validates duplicate handling and upload responses', () => {
     expect(customIconDuplicateStrategySchema.parse('skip')).toBe('skip')
     expect(customIconDuplicateStrategySchema.parse('replace')).toBe('replace')
-    expect(customIconDuplicateStrategySchema.safeParse('overwrite').success).toBe(false)
-
-    expect(customIconUpdateSchema.parse({ name: 'user-add' })).toEqual({
-      name: 'user-add',
+    expectZodIssue(customIconDuplicateStrategySchema.safeParse('overwrite'), {
+      message: '重复处理策略无效',
+      path: [],
     })
-
-    expect(
-      iconSetIconItemSchema.parse({
-        icon: 'brand-icons:user-add',
-        prefix: 'brand-icons',
-        name: 'user-add',
-        setName: 'Brand Icons',
-        body: '<path d="M0 0h24v24H0z"/>',
-        width: 24,
-        height: 24,
-      }),
-    ).toEqual({
-      icon: 'brand-icons:user-add',
-      prefix: 'brand-icons',
-      name: 'user-add',
-      setName: 'Brand Icons',
-      body: '<path d="M0 0h24v24H0z"/>',
-      width: 24,
-      height: 24,
-    })
-
-    expect(customIconItemSchema.parse(customIcon)).toEqual(customIcon)
 
     const response = {
       results: [

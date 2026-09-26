@@ -6,13 +6,6 @@ import {
   DEPARTMENT_STATUS_DISABLED,
   type Department,
 } from '@rev30/contracts'
-import {
-  DepartmentConflictError,
-  DepartmentDeleteConflictError,
-  DepartmentInvalidParentError,
-  DepartmentMoveConflictError,
-  DepartmentNotFoundError,
-} from '../../../../src/modules/system/departments/errors'
 import type { createDepartmentService } from '../../../../src/modules/system/departments/service'
 import type { requireAccess } from '../../../../src/middleware/access'
 import { createDepartmentRoutes } from '../../../../src/modules/system/departments/routes'
@@ -84,19 +77,63 @@ describe('department routes', () => {
     mocks.service.delete.mockResolvedValue(undefined)
   })
 
-  it('registers expected access guards for every department endpoint', () => {
-    createTestApp()
-
-    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
-      'system:department:list',
-      'system:department:list',
-      'system:department:list',
-      'system:department:list',
+  it.each([
+    ['', 'GET', 'system:department:list', 'list', null, 200],
+    ['/tree', 'GET', 'system:department:list', 'tree', null, 200],
+    ['/options/tree', 'GET', 'system:department:list', 'treeOptions', null, 200],
+    [`/${departmentId}`, 'GET', 'system:department:list', 'get', null, 200],
+    [
+      '',
+      'POST',
       'system:department:create',
+      'create',
+      { name: 'Engineering', code: 'engineering' },
+      201,
+    ],
+    [
+      `/${departmentId}`,
+      'PATCH',
       'system:department:update',
-      'system:department:delete',
-    ])
-  })
+      'update',
+      { name: 'Platform Engineering' },
+      200,
+    ],
+    [`/${departmentId}`, 'DELETE', 'system:department:delete', 'delete', null, 204],
+  ] as const)(
+    'executes the required access guard for %s %s',
+    async (path, method, code, service, body, status) => {
+      mocks.requireAccess.mockImplementation((requiredAccess) => async (c, next) => {
+        if (c.req.header('x-test-access') !== requiredAccess) {
+          return c.json({ requiredAccess }, 403)
+        }
+        await next()
+      })
+      const app = createTestApp()
+      const request = {
+        method,
+        ...(body === null
+          ? {}
+          : {
+              body: JSON.stringify(body),
+              headers: { 'content-type': 'application/json' },
+            }),
+      }
+
+      const denied = await app.request(`/api/system/departments${path}`, request)
+      expect(denied.status).toBe(403)
+      expect(await denied.json()).toEqual({ requiredAccess: code })
+      for (const serviceMock of Object.values(mocks.service)) {
+        expect(serviceMock).not.toHaveBeenCalled()
+      }
+
+      const allowed = await app.request(`/api/system/departments${path}`, {
+        ...request,
+        headers: { ...request.headers, 'x-test-access': code },
+      })
+      expect(allowed.status).toBe(status)
+      expect(mocks.service[service]).toHaveBeenCalledOnce()
+    },
+  )
 
   it('parses list query and delegates to the department service', async () => {
     const app = createTestApp()
@@ -114,25 +151,21 @@ describe('department routes', () => {
     })
   })
 
-  it('delegates tree requests to the department service', async () => {
-    const app = createTestApp()
+  it.each([[[]], [[departmentId]]])(
+    'parses tree options includeIds %j without routing to detail',
+    async (includeIds) => {
+      const app = createTestApp()
 
-    const treeResponse = await app.request('/api/system/departments/tree')
-    expect(treeResponse.status).toBe(200)
-    expect(mocks.service.tree).toHaveBeenCalledWith()
-  })
-
-  it('parses tree options query and delegates to the department service', async () => {
-    const app = createTestApp()
-
-    const optionsResponse = await app.request(
-      `/api/system/departments/options/tree?includeIds=${departmentId}`,
-    )
-    expect(optionsResponse.status).toBe(200)
-    expect(mocks.service.treeOptions).toHaveBeenCalledWith({
-      includeIds: [departmentId],
-    })
-  })
+      const optionsResponse = await app.request(
+        `/api/system/departments/options/tree${includeIds.length ? `?includeIds=${includeIds.join(',')}` : ''}`,
+      )
+      expect(optionsResponse.status).toBe(200)
+      expect(mocks.service.treeOptions).toHaveBeenCalledWith({
+        includeIds,
+      })
+      expect(mocks.service.get).not.toHaveBeenCalled()
+    },
+  )
 
   it('returns tree options query validation errors before calling the department service', async () => {
     const app = createTestApp()
@@ -141,23 +174,6 @@ describe('department routes', () => {
     expect(optionsResponse.status).toBe(400)
     expect(await optionsResponse.json()).toEqual({ message: '查询参数无效' })
     expect(mocks.service.treeOptions).not.toHaveBeenCalled()
-  })
-
-  it('matches static /options/tree before dynamic /:id route', async () => {
-    const app = createTestApp()
-
-    const optionsResponse = await app.request('/api/system/departments/options/tree')
-    expect(optionsResponse.status).toBe(200)
-    expect(mocks.service.treeOptions).toHaveBeenCalledWith({ includeIds: [] })
-    expect(mocks.service.get).not.toHaveBeenCalled()
-  })
-
-  it('delegates detail requests by id', async () => {
-    const app = createTestApp()
-
-    const detailResponse = await app.request(`/api/system/departments/${departmentId}`)
-    expect(detailResponse.status).toBe(200)
-    expect(mocks.service.get).toHaveBeenCalledWith(departmentId)
   })
 
   it('delegates create requests to the department service', async () => {
@@ -179,30 +195,6 @@ describe('department routes', () => {
       status: DEPARTMENT_STATUS_ENABLED,
       sortOrder: 0,
     })
-  })
-
-  it('delegates update requests by id', async () => {
-    const app = createTestApp()
-
-    const updateResponse = await app.request(`/api/system/departments/${departmentId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ name: 'Platform Engineering' }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(updateResponse.status).toBe(200)
-    expect(mocks.service.update).toHaveBeenCalledWith(departmentId, {
-      name: 'Platform Engineering',
-    })
-  })
-
-  it('delegates delete requests by id', async () => {
-    const app = createTestApp()
-
-    const deleteResponse = await app.request(`/api/system/departments/${departmentId}`, {
-      method: 'DELETE',
-    })
-    expect(deleteResponse.status).toBe(204)
-    expect(mocks.service.delete).toHaveBeenCalledWith(departmentId)
   })
 
   it('returns query validation errors before calling the department service', async () => {
@@ -234,72 +226,5 @@ describe('department routes', () => {
     expect(createResponse.status).toBe(400)
     expect(await createResponse.json()).toEqual({ message: '请求体无效' })
     expect(mocks.service.create).not.toHaveBeenCalled()
-  })
-
-  it('maps invalid parent errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.create.mockRejectedValueOnce(new DepartmentInvalidParentError())
-    const invalidParentResponse = await app.request('/api/system/departments', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: 'Engineering',
-        code: 'engineering',
-      }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(invalidParentResponse.status).toBe(400)
-    expect(await invalidParentResponse.json()).toEqual({ message: '上级部门不存在' })
-  })
-
-  it('maps not-found errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.get.mockRejectedValueOnce(new DepartmentNotFoundError())
-    const notFoundResponse = await app.request(`/api/system/departments/${departmentId}`)
-    expect(notFoundResponse.status).toBe(404)
-    expect(await notFoundResponse.json()).toEqual({ message: '部门不存在' })
-  })
-
-  it('maps conflict errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.update.mockRejectedValueOnce(new DepartmentConflictError())
-    const conflictResponse = await app.request(`/api/system/departments/${departmentId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ code: 'engineering' }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(conflictResponse.status).toBe(409)
-    expect(await conflictResponse.json()).toEqual({
-      field: 'code',
-      message: '编码已存在',
-    })
-  })
-
-  it('maps move conflict errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.update.mockRejectedValueOnce(new DepartmentMoveConflictError())
-    const moveResponse = await app.request(`/api/system/departments/${departmentId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ parentId: departmentId }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(moveResponse.status).toBe(409)
-    expect(await moveResponse.json()).toEqual({ message: '不能移动到自己或子部门下' })
-  })
-
-  it('maps delete conflict errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.delete.mockRejectedValueOnce(
-      new DepartmentDeleteConflictError('部门存在关联用户，不能删除'),
-    )
-    const deleteResponse = await app.request(`/api/system/departments/${departmentId}`, {
-      method: 'DELETE',
-    })
-    expect(deleteResponse.status).toBe(409)
-    expect(await deleteResponse.json()).toEqual({ message: '部门存在关联用户，不能删除' })
   })
 })

@@ -25,8 +25,10 @@ function createEditor(content: string) {
 describe('rich text quick bar resolution', () => {
   it('resolves feature quick bars in declaration order before text selections', () => {
     const editor = createEditor('<p>context</p>')
+    editor.commands.setTextSelection({ from: 1, to: 4 })
     const component = defineComponent(() => () => null)
     const quickBar = defineRichTextQuickBar({
+      textControls: allPreset.quickBar!.textControls!,
       featureBars: [
         richTextFeatureQuickBar({
           feature: baseFeature,
@@ -48,6 +50,10 @@ describe('rich text quick bar resolution', () => {
       quickBar: {
         feature: { key: 'base' },
       },
+    })
+    expect(resolveRichTextQuickBar(editor, { ...quickBar, featureBars: [] })).toEqual({
+      type: 'text',
+      controls: quickBar.textControls,
     })
   })
 

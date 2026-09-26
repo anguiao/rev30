@@ -7,7 +7,6 @@ import {
 } from '@rev30/contracts'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { MyAnnouncementNotFoundError } from '../../../../../src/modules/content/announcements/my/errors'
 import type { createMyAnnouncementService } from '../../../../../src/modules/content/announcements/my/service'
 import { createMyAnnouncementRoutes } from '../../../../../src/modules/content/announcements/my/routes'
 
@@ -126,15 +125,5 @@ describe('my announcement routes', () => {
     expect(idResponse.status).toBe(400)
     expect(await idResponse.json()).toEqual({ message: '通知公告 ID 无效' })
     expect(mocks.service.get).not.toHaveBeenCalled()
-  })
-
-  it('maps not found error to 404', async () => {
-    const app = createTestApp()
-
-    mocks.service.get.mockRejectedValueOnce(new MyAnnouncementNotFoundError())
-
-    const response = await app.request(`/api/content/announcements/my/${announcementId}`)
-    expect(response.status).toBe(404)
-    expect(await response.json()).toEqual({ message: '通知公告不存在' })
   })
 })

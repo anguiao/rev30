@@ -24,17 +24,17 @@ function mountPath(editor: ReturnType<typeof createEditor>) {
 describe('ElementPathStatusBarItem', () => {
   it('renders model tags with accessible labels and excludes attributes', async () => {
     const editor = createEditor()
-    editor.commands.setTextSelection(2)
+    editor.commands.setTextSelection(3)
     const wrapper = mountPath(editor)
     await flushPromises()
 
     const root = wrapper.get('[data-test="rich-text-element-path"]')
     const items = wrapper.findAll<HTMLButtonElement>('[data-rich-text-toolbar-item]')
 
-    expect(items.map((item) => item.text())).toEqual(['p', 'strong'])
+    expect(items.map((item) => item.text())).toEqual(['p', 'a'])
     expect(items.map((item) => item.attributes('aria-label'))).toEqual([
       '选择 p 元素',
-      '选择 strong 元素',
+      '选择 a 元素',
     ])
     expect(wrapper.html()).not.toContain('https://private.example')
     expect(wrapper.html()).not.toContain('href')

@@ -18,7 +18,7 @@ type FlatNode = {
   type?: string
 }
 
-const items: FlatNode[] = [
+const items: readonly Readonly<FlatNode>[] = [
   {
     id: 'root',
     parentId: null,
@@ -51,10 +51,15 @@ const items: FlatNode[] = [
   },
 ]
 
-const tree = arrayToTree(items)
+function createTree() {
+  return arrayToTree(items)
+}
 
 describe('tree utils', () => {
   it('converts arrays to trees and preserves sibling order', () => {
+    const snapshot = structuredClone(items)
+    const tree = createTree()
+    expect(items).toEqual(snapshot)
     expect(tree).toEqual([
       {
         ...items[0],
@@ -78,10 +83,12 @@ describe('tree utils', () => {
   })
 
   it('converts trees back to arrays without children fields', () => {
+    const tree = createTree()
     expect(treeToArray(tree)).toEqual(items)
   })
 
   it('keeps ancestors when a child node matches', () => {
+    const tree = createTree()
     const rootNode = tree[0]!
     const engineeringNode = rootNode.children[0]!
     const platformNode = engineeringNode.children[0]!
@@ -103,6 +110,7 @@ describe('tree utils', () => {
   })
 
   it('filters by multiple predicates without mutating original tree', () => {
+    const tree = createTree()
     const rootNode = tree[0]!
     const engineeringNode = rootNode.children[0]!
     const platformNode = engineeringNode.children[0]!
@@ -132,6 +140,7 @@ describe('tree utils', () => {
   })
 
   it('counts all visible nodes in a filtered tree', () => {
+    const tree = createTree()
     const filtered = filterTree(tree, {
       matches: (node) => node.name.includes('平台组'),
     })
@@ -140,6 +149,7 @@ describe('tree utils', () => {
   })
 
   it('prunes matching nodes with their descendants without mutating original tree', () => {
+    const tree = createTree()
     const rootNode = tree[0]!
     const financeNode = rootNode.children[1]!
     const snapshot = structuredClone(tree)
@@ -158,6 +168,7 @@ describe('tree utils', () => {
   })
 
   it('checks whether a tree node is a leaf', () => {
+    const tree = createTree()
     expect(isLeafInTree(tree, 'root')).toBe(false)
     expect(isLeafInTree(tree, 'engineering')).toBe(false)
     expect(isLeafInTree(tree, 'platform')).toBe(true)
@@ -165,6 +176,7 @@ describe('tree utils', () => {
   })
 
   it('adds ancestor keys when checking a child node', () => {
+    const tree = createTree()
     expect(normalizeTreeCheckedKeys(tree, ['platform'], [])).toEqual([
       'root',
       'engineering',
@@ -173,6 +185,7 @@ describe('tree utils', () => {
   })
 
   it('removes descendant keys when unchecking a parent node', () => {
+    const tree = createTree()
     expect(
       normalizeTreeCheckedKeys(
         tree,
@@ -183,6 +196,7 @@ describe('tree utils', () => {
   })
 
   it('keeps parent keys when unchecking a child node', () => {
+    const tree = createTree()
     expect(
       normalizeTreeCheckedKeys(tree, ['root', 'engineering'], ['root', 'engineering', 'platform']),
     ).toEqual(['root', 'engineering'])

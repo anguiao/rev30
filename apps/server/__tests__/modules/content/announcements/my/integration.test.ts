@@ -137,6 +137,21 @@ describe('my announcement integration', () => {
         publishedAt: new Date('2026-05-19T00:00:00.000Z'),
       })
 
+      await insertAnnouncement(database, {
+        title: '普通通知',
+        summary: '普通摘要',
+        contentText: '普通正文',
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+        type: ANNOUNCEMENT_TYPE_NOTICE,
+      })
+      await insertAnnouncement(database, {
+        title: '维护周报',
+        summary: '维护摘要',
+        contentText: '维护正文',
+        visibility: ANNOUNCEMENT_VISIBILITY_ALL,
+        type: ANNOUNCEMENT_TYPE_BULLETIN,
+      })
+
       const listResponse = await app.request(
         '/api/content/announcements/my?page=1&pageSize=10&keyword=维护&type=notice',
       )

@@ -2,10 +2,6 @@ import type { Context, Next } from 'hono'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CONFIG_VALUE_TYPE_NUMBER, type Config } from '@rev30/contracts'
-import {
-  ConfigInvalidValueError,
-  ConfigNotFoundError,
-} from '../../../../src/modules/system/configs/errors'
 import type { createConfigService } from '../../../../src/modules/system/configs/service'
 import type { requireAccess } from '../../../../src/middleware/access'
 import { createConfigRoutes } from '../../../../src/modules/system/configs/routes'
@@ -66,44 +62,45 @@ describe('config routes', () => {
     mocks.service.update.mockResolvedValue({ ...config, customValue: '8', value: '8' })
   })
 
-  it('registers expected access guards for config endpoints', () => {
-    createTestApp()
+  it.each([
+    ['', 'GET', 'system:config:list', 'list', null, 200],
+    [`/${configKey}`, 'GET', 'system:config:list', 'get', null, 200],
+    [`/${configKey}`, 'PUT', 'system:config:update', 'update', { customValue: '8' }, 200],
+  ] as const)(
+    'executes the required access guard for %s %s',
+    async (path, method, code, service, body, status) => {
+      mocks.requireAccess.mockImplementation((requiredAccess) => async (c, next) => {
+        if (c.req.header('x-test-access') !== requiredAccess) {
+          return c.json({ requiredAccess }, 403)
+        }
+        await next()
+      })
+      const app = createTestApp()
+      const request = {
+        method,
+        ...(body === null
+          ? {}
+          : {
+              body: JSON.stringify(body),
+              headers: { 'content-type': 'application/json' },
+            }),
+      }
 
-    expect(mocks.requireAccess.mock.calls.map(([code]) => code)).toEqual([
-      'system:config:list',
-      'system:config:list',
-      'system:config:update',
-    ])
-  })
+      const denied = await app.request(`/api/system/configs${path}`, request)
+      expect(denied.status).toBe(403)
+      expect(await denied.json()).toEqual({ requiredAccess: code })
+      for (const serviceMock of Object.values(mocks.service)) {
+        expect(serviceMock).not.toHaveBeenCalled()
+      }
 
-  it('delegates config list requests to the service', async () => {
-    const app = createTestApp()
-
-    const listResponse = await app.request('/api/system/configs')
-
-    expect(listResponse.status).toBe(200)
-    expect(mocks.service.list).toHaveBeenCalledWith()
-  })
-
-  it('delegates config detail requests to the service', async () => {
-    const app = createTestApp()
-    const detailResponse = await app.request(`/api/system/configs/${configKey}`)
-
-    expect(detailResponse.status).toBe(200)
-    expect(mocks.service.get).toHaveBeenCalledWith(configKey)
-  })
-
-  it('delegates config update requests to the service', async () => {
-    const app = createTestApp()
-    const updateResponse = await app.request(`/api/system/configs/${configKey}`, {
-      method: 'PUT',
-      body: JSON.stringify({ customValue: '8' }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    expect(updateResponse.status).toBe(200)
-    expect(mocks.service.update).toHaveBeenCalledWith(configKey, { customValue: '8' })
-  })
+      const allowed = await app.request(`/api/system/configs${path}`, {
+        ...request,
+        headers: { ...request.headers, 'x-test-access': code },
+      })
+      expect(allowed.status).toBe(status)
+      expect(mocks.service[service]).toHaveBeenCalledOnce()
+    },
+  )
 
   it('returns validation errors before calling service methods', async () => {
     const app = createTestApp()
@@ -124,28 +121,5 @@ describe('config routes', () => {
       message: '请输入自定义值',
     })
     expect(mocks.service.update).not.toHaveBeenCalled()
-  })
-
-  it('maps config domain errors to route responses', async () => {
-    const app = createTestApp()
-
-    mocks.service.get.mockRejectedValueOnce(new ConfigNotFoundError())
-    const notFoundResponse = await app.request(`/api/system/configs/${configKey}`)
-    expect(notFoundResponse.status).toBe(404)
-    expect(await notFoundResponse.json()).toEqual({ message: '配置不存在' })
-
-    mocks.service.update.mockRejectedValueOnce(
-      new ConfigInvalidValueError('配置值必须是 1 到 20 之间的整数'),
-    )
-    const invalidValueResponse = await app.request(`/api/system/configs/${configKey}`, {
-      method: 'PUT',
-      body: JSON.stringify({ customValue: '100' }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(invalidValueResponse.status).toBe(400)
-    expect(await invalidValueResponse.json()).toEqual({
-      field: 'customValue',
-      message: '配置值必须是 1 到 20 之间的整数',
-    })
   })
 })

@@ -7,10 +7,8 @@ import {
   roleListQuerySchema,
   roleListResponseSchema,
   createRoleResourceIdsSchema,
-  roleOptionSchema,
   roleOptionsQuerySchema,
   roleOptionsResponseSchema,
-  roleResourceSchema,
   roleSchema,
   roleUpdateSchema,
 } from '../../../src/system/roles'
@@ -29,15 +27,12 @@ describe('role schemas', () => {
     })
   })
 
-  it('parses includeIds as empty array for blank strings or non-string values', () => {
-    expect(roleOptionsQuerySchema.parse({ includeIds: '' })).toEqual({ includeIds: [] })
-    expect(roleOptionsQuerySchema.parse({ includeIds: '   ' })).toEqual({ includeIds: [] })
-    expect(roleOptionsQuerySchema.parse({ includeIds: {} })).toEqual({ includeIds: [] })
-  })
-
-  it('parses includeIds query with empty object as []', () => {
-    expect(roleOptionsQuerySchema.parse({})).toEqual({ includeIds: [] })
-  })
+  it.each([{}, { includeIds: '' }, { includeIds: '   ' }, { includeIds: {} }])(
+    'normalizes empty includeIds input %j',
+    (input) => {
+      expect(roleOptionsQuerySchema.parse(input)).toEqual({ includeIds: [] })
+    },
+  )
 
   it('reports invalid role id in includeIds query', () => {
     const result = roleOptionsQuerySchema.safeParse({
@@ -47,17 +42,18 @@ describe('role schemas', () => {
     expectZodIssue(result, { message: '角色 ID 无效', path: ['includeIds', 1] })
   })
 
-  it('accepts lightweight role options response', () => {
-    expect(
-      roleOptionsResponseSchema.parse([
-        {
-          id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-          name: 'Administrator',
-          code: 'admin',
-          status: ROLE_STATUS_ENABLED,
-        },
-      ]),
-    ).toMatchObject([
+  it('parses role options with field selection', () => {
+    const result = roleOptionsResponseSchema.parse([
+      {
+        id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+        name: 'Administrator',
+        code: 'admin',
+        status: ROLE_STATUS_ENABLED,
+        resources: [],
+      },
+    ])
+
+    expect(result).toEqual([
       {
         id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
         name: 'Administrator',
@@ -67,39 +63,20 @@ describe('role schemas', () => {
     ])
   })
 
-  it('parses role options with field selection', () => {
-    const result = roleOptionSchema.parse({
-      id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-      name: 'Administrator',
-      code: 'admin',
-      status: ROLE_STATUS_ENABLED,
-      resources: [],
-    })
-
-    expect(result).toEqual({
-      id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-      name: 'Administrator',
-      code: 'admin',
-      status: ROLE_STATUS_ENABLED,
-    })
-  })
-
   it('accepts role list items with user counts and no resources', () => {
-    expect(
-      roleListItemSchema.parse({
-        id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
-        name: 'Administrator',
-        code: 'admin',
-        status: ROLE_STATUS_ENABLED,
-        sortOrder: 10,
-        userCount: 2,
-        createdAt: '2026-05-04T08:00:00.000Z',
-        updatedAt: '2026-05-04T08:00:00.000Z',
-      }),
-    ).toMatchObject({
+    const item = {
+      id: '8f34c0b7-f7c0-4905-a7f5-3b6d2512f6b7',
+      name: 'Administrator',
       code: 'admin',
+      status: ROLE_STATUS_ENABLED,
+      sortOrder: 10,
       userCount: 2,
-    })
+      createdAt: '2026-05-04T08:00:00.000Z',
+      updatedAt: '2026-05-04T08:00:00.000Z',
+    }
+    expect(roleListItemSchema.parse({ ...item, resources: [{ code: 'system:user' }] })).toEqual(
+      item,
+    )
   })
 
   it('accepts role details with resource summaries', () => {
@@ -129,23 +106,20 @@ describe('role schemas', () => {
       }),
     ).toMatchObject({
       code: 'admin',
-      resources: [{ code: 'system:user' }, { code: 'system:user:create' }],
-    })
-  })
-
-  it('accepts role resource summaries', () => {
-    expect(
-      roleResourceSchema.parse({
-        id: '4be2dfda-2fd6-4ee5-b06b-c551328bc343',
-        name: 'Users',
-        code: 'system:user',
-        type: RESOURCE_TYPE_MENU,
-      }),
-    ).toEqual({
-      id: '4be2dfda-2fd6-4ee5-b06b-c551328bc343',
-      name: 'Users',
-      code: 'system:user',
-      type: RESOURCE_TYPE_MENU,
+      resources: [
+        {
+          id: '4be2dfda-2fd6-4ee5-b06b-c551328bc343',
+          name: 'Users',
+          code: 'system:user',
+          type: RESOURCE_TYPE_MENU,
+        },
+        {
+          id: '875dd9cb-488b-43d7-a55f-6db070a8e83f',
+          name: 'Create User',
+          code: 'system:user:create',
+          type: RESOURCE_TYPE_ACTION,
+        },
+      ],
     })
   })
 

@@ -1,6 +1,6 @@
 # Rev30
 
-Rev30 是一个 TypeScript monorepo 项目，包含 Vue 客户端、Hono API、共享接口契约与工具包，以及基于 Drizzle 的认证和系统管理基础能力。
+Rev30 是一个 TypeScript monorepo，包含 Vue 客户端、Hono API、共享契约与工具包，提供认证、系统管理、内容管理和运维管理能力。
 
 ## 目录结构
 
@@ -11,11 +11,7 @@ Rev30 是一个 TypeScript monorepo 项目，包含 Vue 客户端、Hono API、�
 - `packages/utils`：前后端共用的纯 TypeScript 工具函数。
 - `playgrounds/*`：仅供本地开发、展示和实验的私有 package，不属于生产应用；当前包含 `playgrounds/rich-text`。
 
-前端 `apps/client/src/features` 按具体业务功能组织，组件、请求、标签和 composable 就近放在对应功能目录；`pages` 保留菜单分组与路由结构。跨功能复用直接引用所属功能，例如系统健康复用定时任务的运行日志抽屉与状态标签；公共展示组件和工具分别放在 `components/common` 与 `utils`。
-
-图标功能 `features/icons` 按职责分为 `browser`（浏览、分页与管理入口）、`forms`（编辑与上传）和 `search`（选择器、搜索反馈与重试）三个子目录。内置和自定义标签页按来源切换 `IconBrowser`，通过 `KeepAlive` 保留各自的浏览状态，查询与重试随组件激活和停用。根目录的 `requests.ts` 负责 HTTP 请求，`cache.ts` 负责关键词缓存键处理和缓存刷新。查询键直接定义在使用处，组件测试沿用相同分组。
-
-后端 `apps/server/src/modules/icons` 中，`builtin.ts` 集中处理内置图标包访问和子集缓存，`service.ts` 负责自定义图标读取与来源选择。`search` 组织查询、推荐、规则与文档派生，`search/indexing` 负责索引状态、准备、重建与自定义同步，`search/artifacts` 负责运行时产物读取和校验。`apps/server/scripts/icon-search` 中，`build` 集中组织构建入口、包扫描、翻译文件读取、产物生成，以及维护数据和产物校验；`benchmark` 组织压测入口、索引导入、搜索场景与测量工具。
+前端业务代码按功能放在 `apps/client/src/features`，页面路由由 `apps/client/src/pages` 的文件结构生成。
 
 ## 技术栈
 
@@ -23,16 +19,9 @@ Rev30 是一个 TypeScript monorepo 项目，包含 Vue 客户端、Hono API、�
 - 服务端：Hono、Drizzle、PGlite（开发）/ PostgreSQL（生产）、Hono typed client。
 - 工程化：pnpm workspace、TypeScript、Vitest、oxlint、oxfmt。
 
-## 当前项目进度
-
-- 已完成基础 monorepo 结构，包含 Vue 客户端、Hono 服务端、共享接口契约和通用工具包。
-- 当前业务核心包含稳定认证会话、登录态恢复、登录日志、在线会话与操作日志运维、权限资源访问码授权、内置系统资源、一次性管理员初始化及应急恢复、管理员新增/重置系统用户密码、个人资料和密码维护能力，以及私有通用附件上传基础能力。
-- 当前后端新增 Iconify API 兼容图标服务，可从 `@iconify/json` 按需读取全部已安装图标集，供后续 `@iconify/vue` 默认 provider 接入。
-- 内容管理新增图标库页面，可浏览内置图标集、使用中英文组合查询，并维护带自定义关键词的 SVG 图标集；上传时在同一文件列表中编辑关键词、查看逐项结果和处理重复或失败项。自定义图标可导出 Iconify JSON 并接入运行时图标加载。
-- 组件演示新增富文本页面，使用完整 preset 验证编辑器交互、代码语言选择与高亮、文档表格、base64 图片、服务端 JSON 规范化、纯文本提取和安全 HTML 派生，全程不持久化演示正文。
-- 当前前端后台管理壳层使用 Naive UI 菜单，由服务端菜单资源驱动，并支持 `v-can` 按钮级权限显示；系统配置页支持通用参数配置的新增、编辑、删除、筛选、分页和类型化值编辑；数据字典页已完成字典类型管理和字典项编辑；通知公告管理已支持草稿、发布、归档流转、可见范围配置、standard 富文本正文与内部附件图片，登录用户可从侧边栏入口查看自己可见的已发布通知公告；用户头像上传与回显、内容管理下的附件资源列表和删除管理已可用；登录用户可通过 `GET /api/system/dictionaries/options` 一次按多个 `codes` 获取字典选项；个人设置入口位于后台侧边栏用户区域，不占用菜单资源。
-
 ## 本地开发
+
+首次运行先复制服务端环境文件，并在执行 `db:bootstrap` 前确认 `BOOTSTRAP_ADMIN_*` 账号信息；本地认证密钥也建议改成非默认值。`db:bootstrap` 只需执行一次。
 
 ```bash
 pnpm install
@@ -44,83 +33,55 @@ pnpm dev
 
 服务端默认监听 `http://localhost:3000`，客户端默认监听 `http://localhost:3200`。
 
-开发环境不需要 `DATABASE_URL`，默认使用 `.pglite/dev` 并自动应用迁移。数据库基线为 PostgreSQL 18+；当前 PGlite 版本基于 PostgreSQL 18，表主键默认使用数据库内置 `uuidv7()` 生成。部署到 PostgreSQL 时设置 `NODE_ENV=production` 和 `DATABASE_URL`，并使用 PostgreSQL 18 或更高版本。
+开发环境默认使用 `.pglite/dev` 并自动应用迁移，不需要 `DATABASE_URL`。生产环境使用 PostgreSQL 18 或更高版本，并设置 `NODE_ENV=production` 和 `DATABASE_URL`。
 
 客户端 IP 默认只使用 socket IP。只有实际受控的反向代理或负载均衡器出口 IP/CIDR 才应配置到 `TRUSTED_PROXY_CIDRS`；这些代理必须覆盖客户端传入的 `X-Forwarded-For`，或按规范向现有链追加其直连来源地址，不能原样信任客户端传入的整条链。正式值由部署系统注入。
 
-服务端环境变量可从 `apps/server/.env.example` 复制起步；执行 bootstrap 前，请先在 `apps/server/.env` 中确认或修改 `BOOTSTRAP_ADMIN_*` 账号信息，认证相关密钥在本地也建议改成非默认值。
 通用附件默认使用本地私有存储，文件目录由 `ATTACHMENT_STORAGE_DIR` 控制，默认 `.attachments/dev`。
+
+## 运行与运维
 
 ### 图标搜索
 
-图标选择器和内容管理图标库共用数据库派生搜索索引。内置图标的英文检索来自当前 `@iconify/json` 的完整 ID、名称、名称词、图标集信息，以及当前包中明确列出的全部逐图标分类关系。中文译文按完整词参与检索，中英文均支持空格分隔的多词 AND 查询。完整名称或译名精确命中优先；同一匹配层级内，中文名称词和自定义关键词命中优先于分类等辅助字段。当前中文维护范围覆盖锁定图标包中的全部已注册图标集，维护规则见[维护数据说明](apps/server/resources/icon-search/README.md)；未维护译文的图标仍可通过英文名称和完整 ID 查找。程序不根据图形或常识补充用途和同义词，例如 `bell` 的“铃铛”译文不会产生“通知”或“提醒”。自定义图标使用名称和用户填写的关键词，关键词不会写入 Iconify JSON 导出。
+图标选择器和内容管理图标库共用数据库搜索索引。内置图标数据来自 `@iconify/json` 和[中文维护数据](apps/server/resources/icon-search/README.md)，自定义图标使用名称及关键词参与搜索。
 
-服务启动后在后台准备或更新非空查询使用的搜索索引，不等待导入完成才提供 HTTP 服务。空查询推荐、内置和自定义图标浏览、自定义图标管理及已有图标展示不依赖搜索索引；已有可用索引时，搜索数据更新期间继续使用已提交版本。图标搜索构建会从当前图标包及 [`apps/server/resources/icon-search`](apps/server/resources/icon-search) 的维护数据重建压缩产物，运行时不为生成索引读取全量 `@iconify/json`。图标包升级可以先于维护数据更新：新增项随构建进入完整基础产物，索引提交后即可通过名称和 ID 检索，失效维护项会被列出并排除。
+首次开发、搜索产物缺失，或图标包及维护数据变更后，运行 `pnpm --filter @rev30/server icon-search:build` 并重启服务；发布构建会自动生成搜索产物。索引更新需要交换 `icon_search_documents` 与 `icon_search_documents_staging` 及其索引，生产数据库连接角色必须拥有这些对象。
 
-开发和发布统一生成并读取 `apps/server/dist/icon-search`。开发命令直接启动服务。首次开发、产物缺失或损坏，或者更新图标包、翻译数据和生成规则后，手动运行 `pnpm --filter @rev30/server icon-search:build`，再启动或重启开发服务。发布构建先打包服务端代码，再生成搜索产物，产物随 `dist` 分发。服务端及其脚本以 `apps/server` 为工作目录，通过 `pnpm --filter @rev30/server` 执行命令会自动使用该目录。
+### 系统配置
 
-索引身份自动包含派生文档的内容指纹和图标集偏好配置。运行时流式解压并分批导入，全部校验通过后再发布。服务端检索查询、自定义投影同步、重建及产物构建/读取分别维护；维护文件在读取边界完成校验，自定义同步和重建共用文档派生。公共游标位于图标模块，跨端文本归一化位于 `packages/utils`，两个图标库共用前端分页与搜索恢复逻辑。
+配置项由[代码注册表](apps/server/src/modules/system/configs/registry.ts)定义，数据库仅保存自定义覆盖值。系统配置页支持按配置键、名称和说明筛选，以及编辑自定义值或恢复默认值；恢复默认值会清除数据库中的覆盖记录。
 
-索引更新通过事务交换 `icon_search_documents` 与 `icon_search_documents_staging` 两张派生表及其索引。生产数据库连接角色必须拥有这两张表和相关索引，普通的数据增删改查权限不足以执行交换。当前性能验证以本地 PGlite 为开发基线；生产 PostgreSQL 仍需在目标环境按实际连接和机器配置复测。
+### 健康检查
 
-### 公共健康探针
+公开探针 `GET /api/health/live` 检查进程和 HTTP 路由；`GET /api/health/ready` 检查数据库，失败时返回 `503`。两个接口无需登录，均设置 `Cache-Control: no-store`；部署探针客户端应设置请求超时。
 
-`GET /api/health/live` 仅证明进程与 HTTP 路由可响应，返回 `200 / alive`，不访问业务依赖。`GET /api/health/ready` 只执行数据库轻量查询，成功返回 `200 / ready`，失败返回 `503 / not_ready`；附件存储与调度器不影响 readiness。两个公开接口均设置 `Cache-Control: no-store`，不要求登录、不登记操作日志，并保留 `X-Request-Id`。
+运维系统健康页面 `/ops/system-health` 展示当前实例、数据库、附件存储及定时任务状态，并提供任务统计和最近异常，要求 `ops:system-health:list` 权限。页面只展示当前响应实例，不提供集群视图；关联运行日志另需 `ops:scheduled-job:list` 权限。
 
-旧 `GET /api/health` 已删除。部署探针客户端应设置请求超时；数据库连接失败沿用现有客户端配置传播。
+### 认证会话与审计
 
-### 系统健康管理
+登录会创建数据库会话；退出、修改或重置密码、停用或删除用户、管理员强制下线后，关联令牌在下一次认证检查时失效。短期签名附件 URL 独立于会话撤销。
 
-运维系统健康页面位于 `/ops/system-health`。受保护的 `GET /api/ops/system-health` 返回实例和依赖快照，`GET /api/ops/system-health/job-statistics` 返回任务统计及最近异常；两者均要求 `ops:system-health:list`，设置 `Cache-Control: no-store`，不登记操作日志。菜单与页面访问沿用菜单资源授权；迁移只创建资源，不自动授权普通角色。
+运维页面 `/ops/login-logs`、`/ops/online-sessions` 和 `/ops/operation-logs` 分别提供登录日志、在线会话管理和业务操作日志。菜单资源由迁移创建，不自动授权普通角色；接口仍按各自访问码校验权限。
 
-页面区分当前响应实例的运行时间、内存、数据库和附件存储探测、调度器内存状态，以及数据库共享的运行中任务和明显积压（启用任务超过计划时刻 60 秒）。它不提供集群视图。数据库不可用为不健康，存储不可用、调度停止、查询退避或明显积压为降级；历史失败不影响当前健康状态。
+会话、登录日志、操作日志和附件清理由数据库持久化的定时任务计划管理；保留期等参数见 [`apps/server/.env.example`](apps/server/.env.example)。
 
-任务图表展示上海自然日的近 7 日运行结果、近 30 日状态及失败分类、成功平均耗时 Top 5，并提供最近异常的日志入口。按当前留存日志统计，已清理记录不计入统计；保留期沿用 `OPS_JOB_RUN_RETENTION_MS`，不保证窗口内历史完整。关联日志沿用 `ops:scheduled-job:list` 权限，仅有系统健康权限时抽屉可能显示 `403`。
+### 附件
 
-页面可见时每 10 秒更新快照、每 60 秒更新统计；进入、恢复可见及手动刷新时立即更新两者。失败后保留各自最后成功数据和时间并继续重试，隐藏或卸载后停止自动刷新。浏览器只在当前页面内保存最近 10 分钟、最多 61 个快照点，固定 10 秒槽内替换；存储趋势只记录实际变化的探测时间。不可用与已知采样空档显示断点，不补零或插值。页面刷新、卸载或实例启动时间变化后清空趋势，不写入服务端、持久 store 或浏览器存储。
+附件上传依次创建上传会话、使用临时 PUT URL 上传、完成登记。普通附件使用短期签名内容 URL；头像等资源可使用要求登录态的稳定内容 URL。上传会话和签名内容 URL 的有效期由系统配置控制，签名密钥由 `ATTACHMENT_SIGNING_SECRET` 配置。
 
-### 认证会话与登录审计
-
-每次登录会创建一条带稳定 `sid` 的数据库会话。access、refresh 和 authenticated 附件读取令牌都绑定该会话；refresh 只轮换同一行的 token hash，并将会话有效期滑动到当前时间后 7 天。退出、修改或重置密码、停用或删除用户，以及管理员强制下线后，目标会话的三类令牌都会在下一次认证检查时失效。短期 signed 附件内容 URL 仍是独立能力链接，不受会话撤销影响。
-
-运维菜单提供 `/ops/login-logs` 和 `/ops/online-sessions`：前者查询成功、凭据无效、账号停用和限流四类登录结果，后者查询有效会话并允许有权限的管理员强制下线非当前会话。接口和页面分别使用 `ops:login-log:list`、`ops:online-session:list` 与 `ops:online-session:revoke` 权限；迁移只创建资源，不自动授权普通角色。
-
-操作日志页面位于 `/ops/operation-logs`，支持筛选列表和按需加载详情，记录显式登记的后台业务写操作与指定业务导出，不记录登录、个人操作或维护任务。列表和详情都要求精确权限 `ops:operation-log:list`；迁移创建对应菜单与动作资源，但不自动授权普通角色。操作日志事件通过有界异步 FIFO 以 fail-open 方式写入，不保证零丢失或与业务事务一致。
-
-认证会话、登录尝试桶、登录日志、操作日志和附件清理由数据库持久化的定时任务计划管理，不再使用进程内 cleanup interval。自然到期会话在清理时删除，撤销会话超过 7 天后删除，登录日志保留 90 天；业务保留期仍分别由 `AUTH_REVOKED_SESSION_RETENTION_MS`、`AUTH_LOGIN_ATTEMPT_RETENTION_MS`、`OPS_LOGIN_LOG_RETENTION_MS`、`OPS_OPERATION_LOG_RETENTION_MS` 和 `ATTACHMENT_CLEANUP_RETENTION_MS` 控制，设为 `0` 的语义仅适用于前四项。
-
-任务运行日志默认保留 90 天，由 `OPS_JOB_RUN_RETENTION_MS` 控制。定时任务计划、启停和执行由运维定时任务功能管理。
-
-本次数据库迁移会删除旧的 `auth_refresh_tokens`，不把旧 refresh 记录转换为会话。旧 access、refresh 和附件读取令牌也没有 `sid`，部署后会按无效令牌处理；已有用户需要重新登录。
-
-- 附件上传使用数据库持久化的上传会话：先创建上传会话，再通过临时 PUT URL 上传文件，最后 complete 写入附件元数据；后续阶段可由不同服务实例处理。
-- 附件读取支持两种策略：普通附件默认使用短期签名内容 URL；头像等资源可使用稳定的 `/api/attachments/:id/content` URL。
-- 稳定内容 URL 仍要求登录态，浏览器通过 `attachment_token` HttpOnly cookie 完成附件内容读取，不暴露 token 给前端 JS。
-- `usage` 是任意非空业务记录字符串，前端不维护全局 usage 常量、选项列表或文案映射。
-- 有附件列表查看权限即可在“使用位置”列看到全部未删除公告和用户头像的来源，无需额外的公告或用户查看权限。有附件删除权限即可手动删除正在使用的附件；删除后不修改业务字段，头像读取失败时回退默认头像。
-- 业务可为附件记录引用；附件清理由持久化定时任务计划管理，初始计划错峰并约每 6 小时运行一次，负责清理过期上传会话、保留超过 7 天的孤儿上传文件（包括软删除后物理删除失败的文件），以及 `cleanupPolicy=unreferenced` 且持续无引用超过 7 天的附件。
-
-临时 URL 签名密钥由 `ATTACHMENT_SIGNING_SECRET` 配置，内容访问 URL 默认有效期由 `ATTACHMENT_CONTENT_URL_TTL_SECONDS` 控制，上传会话默认有效期由 `ATTACHMENT_UPLOAD_SESSION_TTL_SECONDS` 控制。
-
-系统资源和 `admin` 角色由迁移写入；初始管理员用户通过 `pnpm --filter @rev30/server db:bootstrap` 显式创建，账号信息从 `apps/server/.env` 中的 `BOOTSTRAP_ADMIN_*` 环境变量读取。
+附件列表会显示公告图片和用户头像的使用位置。有附件删除权限的用户可以删除正在使用的附件；删除不会改写业务记录，头像读取失败时显示默认头像。附件清理由定时任务处理。
 
 ### 管理员初始化与应急恢复
 
-`db:bootstrap` 只用于首次初始化。只要数据库中已有内置用户记录（包括停用或软删除的记录），命令就会拒绝再次执行；更换 `BOOTSTRAP_ADMIN_USERNAME` 也不能重新初始化。已有普通同名账号不会被覆盖或提升为管理员。初始化通过事务和管理员角色行锁串行执行，用户、密码凭据和角色绑定一起创建。
+系统资源和 `admin` 角色由迁移写入；初始管理员由 `pnpm --filter @rev30/server db:bootstrap` 创建，账号信息读取 `BOOTSTRAP_ADMIN_*` 环境变量。该命令仅用于首次初始化：数据库已有内置用户记录时会拒绝再次执行，不会覆盖或提升同名普通用户。
 
-知道原密码时，在个人设置中修改密码；普通用户忘记密码时，由有权限的管理员在用户管理中重置。内置管理员继续受用户管理的修改、删除和重置保护。
-
-内置管理员忘记密码时，由具备服务器及数据库管理权限的运维人员，在目标环境的交互式终端执行：
+知道原密码时可在个人设置中修改；普通用户忘记密码时，由有权限的管理员在用户管理中重置。内置管理员忘记密码时，由具备服务器及数据库管理权限的运维人员在目标环境的交互式终端执行：
 
 ```bash
 pnpm --filter @rev30/server db:recover-admin --username admin
 ```
 
-命令使用服务端现有数据库配置；生产环境须设置 `NODE_ENV=production` 和 `DATABASE_URL`，开发环境使用配置的 PGlite 数据目录。输入目标用户名确认后，仅为已启用、未删除且仍持有有效 `admin` 角色的内置管理员生成随机临时密码。命令不创建账号、不启用账号、不修改资料或角色，也不读取 `BOOTSTRAP_ADMIN_PASSWORD`。密码更新和全部旧会话撤销在同一事务内完成，沿用现有密码重置的改密标记。
-
-临时密码仅在终端显示一次，不支持重定向输出；若未保存，可重新运行恢复命令生成新的临时密码。命令将开始、成功、失败或取消事件写入 stderr 的结构化运维日志，包含目标账号、操作系统账号、主机和时间，成功时包含目标用户 ID，不记录密码。运维日志由运行环境留存，不混入以登录用户为操作人的业务操作日志。
-
-使用临时密码登录成功后，页面会提醒及时修改密码，可选择“去修改”打开个人设置，或选择“稍后”继续使用。该提醒也适用于用户管理中新建或重置密码的账号；仅在登录时显示，刷新页面不会重复弹出，改密后再次登录不再提醒。
+恢复命令只接受已启用、未删除且持有有效 `admin` 角色的内置管理员。确认账号后生成随机临时密码，仅在终端显示一次，并在同一事务中撤销旧会话；登录后页面会提醒修改密码。
 
 ## 常用命令
 
@@ -130,17 +91,17 @@ pnpm dev:server
 pnpm dev:client
 pnpm dev:playground:rich-text
 pnpm --filter @rev30/rich-text-playground exec playwright install chromium
+pnpm check
 pnpm test
 pnpm coverage
 pnpm typecheck
 pnpm lint:check
 pnpm format:check
 pnpm build
-pnpm --filter @rev30/server db:bootstrap
 pnpm --filter @rev30/server db:generate
 pnpm --filter @rev30/server db:migrate
 ```
 
-`pnpm coverage` 会串行生成五个测试 package 各自的 V8 终端摘要和 HTML 报告；覆盖率用于诊断盲区，不设置全局门槛，也不包含在 `pnpm check` 中。单包可使用 `pnpm --filter <pkg> coverage`，定向测试使用 `pnpm --filter <pkg> test <package-relative-test-file>`。
+`pnpm coverage` 生成各测试 package 的 V8 覆盖率报告，不包含在 `pnpm check` 中。单包和定向测试分别使用 `pnpm --filter <pkg> coverage`、`pnpm --filter <pkg> test <package-relative-test-file>`。
 
 富文本 Playground 默认监听 `http://localhost:3210`；Chromium 浏览器测试首次运行前执行一次安装命令即可。

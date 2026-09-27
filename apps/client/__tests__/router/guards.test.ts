@@ -77,6 +77,7 @@ function createTestRouter() {
         ],
       },
       { path: '/403', component: { template: '<main>No access</main>' } },
+      { path: '/404', component: { template: '<main>Not found</main>' } },
       { path: '/login', component: { template: '<main>Login</main>' } },
     ],
   })
@@ -666,7 +667,7 @@ describe('auth guards', () => {
     expect(router.currentRoute.value.fullPath).toBe('/403')
   })
 
-  it('does not allow an unregistered route even when its exact path is in the menu tree', async () => {
+  it('redirects an unregistered route to not found even when its path is in the menu tree', async () => {
     const auth = useAuthStore()
     auth.setSession(
       createSession([
@@ -682,7 +683,35 @@ describe('auth guards', () => {
 
     await router.push('/system/missing')
 
+    expect(router.currentRoute.value.fullPath).toBe('/404')
+  })
+
+  it('redirects an unknown URL to not found while keeping registered inaccessible routes forbidden', async () => {
+    const auth = useAuthStore()
+    auth.setSession(createSession([]))
+    const router = createTestRouter()
+
+    await router.push('/missing-page')
+    expect(router.currentRoute.value.fullPath).toBe('/404')
+
+    await router.push('/system/users')
     expect(router.currentRoute.value.fullPath).toBe('/403')
+  })
+
+  it('keeps the not found page after session permissions refresh', async () => {
+    const auth = useAuthStore()
+    auth.setSession(createSession([]))
+    const router = createTestRouter()
+
+    await router.push('/missing-page')
+    auth.setSession({
+      ...createSession([]),
+      accessToken: 'refreshed-access-token',
+    })
+    await nextTick()
+
+    expect(replaceLocationMock).not.toHaveBeenCalled()
+    expect(router.currentRoute.value.fullPath).toBe('/404')
   })
 
   it('redirects authenticated users to the forbidden page when no internal menu is available', async () => {

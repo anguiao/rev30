@@ -30,8 +30,8 @@ describe('forbidden page', () => {
   it('renders the no access result page', async () => {
     const { wrapper } = await mountForbiddenPage()
 
-    expect(wrapper.text()).toContain('暂无可访问功能')
-    expect(wrapper.text()).toContain('当前账号还没有可进入的后台页面，请联系管理员分配权限。')
+    expect(wrapper.text()).toContain('无权访问')
+    expect(wrapper.text()).toContain('当前账号无权访问此页面，请联系管理员分配权限。')
     expect(wrapper.get('[data-test="forbidden-logout"]').text()).toContain('退出登录')
   })
 

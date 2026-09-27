@@ -9,6 +9,7 @@ import { resolveRedirectTarget } from './redirect'
 
 const authRoutePaths = new Set(['/login'])
 const accountRoutePaths = new Set(['/account/settings', '/account/announcements'])
+const errorRoutePaths = new Set(['/403', '/404'])
 
 function findDefaultRoutePath(
   menus: ResourceTreeNode[],
@@ -54,7 +55,7 @@ function canKeepCurrentRoute(to: RouteLocationNormalized, accessibleRoutePaths: 
     authRoutePaths.has(to.path) ||
     accountRoutePaths.has(to.path) ||
     to.path === '/' ||
-    to.path === '/403' ||
+    errorRoutePaths.has(to.path) ||
     hasRouteAccess(to, accessibleRoutePaths)
   )
 }
@@ -105,7 +106,11 @@ export function installAuthGuards(router: Router, pinia: Pinia) {
       return { path: getAuthenticatedEntryPath(router, auth.visibleMenus) }
     }
 
-    if (accountRoutePaths.has(to.path) || to.path === '/403') {
+    if (to.matched.length === 0) {
+      return { path: '/404' }
+    }
+
+    if (accountRoutePaths.has(to.path) || errorRoutePaths.has(to.path)) {
       return true
     }
 

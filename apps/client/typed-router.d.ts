@@ -157,6 +157,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/404': RouteRecordInfo<
+      '/404',
+      '/404',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/login': RouteRecordInfo<
       '/login',
       '/login',
@@ -340,6 +347,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/403.vue': {
       routes:
         | '/403'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/404.vue': {
+      routes:
+        | '/404'
       views:
         | never
       pathParamNames:

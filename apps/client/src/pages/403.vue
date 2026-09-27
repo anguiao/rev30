@@ -25,8 +25,8 @@ function handleLogout() {
 <template>
   <ErrorPage
     status="403"
-    title="暂无可访问功能"
-    description="当前账号还没有可进入的后台页面，请联系管理员分配权限。"
+    title="无权访问"
+    description="当前账号无权访问此页面，请联系管理员分配权限。"
   >
     <template #footer>
       <NButton

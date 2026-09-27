@@ -446,7 +446,7 @@ describe('auth guards', () => {
     expect(router.currentRoute.value.fullPath).toBe('/system/roles')
   })
 
-  it('falls back to forbidden when every visible menu path is unregistered', async () => {
+  it('falls back to account settings when every visible menu path is unregistered', async () => {
     const auth = useAuthStore()
     auth.setSession(
       createSession([
@@ -462,7 +462,27 @@ describe('auth guards', () => {
 
     await router.push('/')
 
-    expect(router.currentRoute.value.fullPath).toBe('/403')
+    expect(router.currentRoute.value.fullPath).toBe('/account/settings')
+  })
+
+  it('falls back to account settings when all menus are hidden', async () => {
+    const auth = useAuthStore()
+    auth.setSession(
+      createSession([
+        createMenuNode({
+          code: 'system:user',
+          name: 'Users',
+          type: RESOURCE_TYPE_MENU,
+          path: '/system/users',
+          hidden: true,
+        }),
+      ]),
+    )
+    const router = createTestRouter()
+
+    await router.push('/')
+
+    expect(router.currentRoute.value.fullPath).toBe('/account/settings')
   })
 
   it('skips hidden menus when choosing the authenticated entry route', async () => {
@@ -714,22 +734,14 @@ describe('auth guards', () => {
     expect(router.currentRoute.value.fullPath).toBe('/404')
   })
 
-  it('redirects authenticated users to the forbidden page when no internal menu is available', async () => {
+  it('redirects authenticated users without menus to account settings after login', async () => {
     const auth = useAuthStore()
-    auth.setSession(
-      createSession([
-        createMenuNode({
-          code: 'system',
-          name: 'System',
-          type: RESOURCE_TYPE_DIRECTORY,
-        }),
-      ]),
-    )
+    auth.setSession(createSession([]))
     const router = createTestRouter()
 
     await router.push('/login')
 
-    expect(router.currentRoute.value.fullPath).toBe('/403')
+    expect(router.currentRoute.value.fullPath).toBe('/account/settings')
   })
 
   it('allows authenticated users without menus to access account settings', async () => {

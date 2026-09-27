@@ -33,7 +33,7 @@ function findDefaultRoutePath(
 function getAuthenticatedEntryPath(router: Router, menus: ResourceTreeNode[]) {
   const registeredRoutePaths = new Set(router.getRoutes().map((route) => route.path))
 
-  return findDefaultRoutePath(menus, registeredRoutePaths) ?? '/403'
+  return findDefaultRoutePath(menus, registeredRoutePaths) ?? '/account/settings'
 }
 
 function hasRouteAccess(to: RouteLocationNormalized, accessibleRoutePaths: readonly string[]) {

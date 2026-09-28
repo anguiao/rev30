@@ -23,6 +23,13 @@ export type SearchableMenu = {
   parentNames: string[]
 }
 
+export function getMenuLinkTargetAttributes(openTarget: ResourceTreeNode['openTarget']) {
+  return {
+    target: openTarget === 'blank' ? '_blank' : undefined,
+    rel: openTarget === 'blank' ? 'noopener noreferrer' : undefined,
+  }
+}
+
 export function getSearchableMenus(menus: ResourceTreeNode[]): SearchableMenu[] {
   const items: SearchableMenu[] = []
 

@@ -5,7 +5,7 @@ import { treeToArray } from '@rev30/utils'
 import { computed, h, ref, watch } from 'vue'
 import { NEmpty, NMenu, type MenuOption } from 'naive-ui'
 import { RouterLink, useRoute } from 'vue-router'
-import { findMenuMatch, type MenuMatch } from '../../../utils/menu'
+import { findMenuMatch, getMenuLinkTargetAttributes, type MenuMatch } from '../../../utils/menu'
 
 const props = defineProps<{
   collapsed: boolean
@@ -61,8 +61,7 @@ function renderInternalLabel(
       RouterLink,
       {
         to: path,
-        target: openTarget === 'blank' ? '_blank' : undefined,
-        rel: openTarget === 'blank' ? 'noopener noreferrer' : undefined,
+        ...getMenuLinkTargetAttributes(openTarget),
       },
       {
         default: () => name,
@@ -80,8 +79,7 @@ function renderExternalLabel(
       'a',
       {
         href: url,
-        target: openTarget === 'blank' ? '_blank' : undefined,
-        rel: openTarget === 'blank' ? 'noopener noreferrer' : undefined,
+        ...getMenuLinkTargetAttributes(openTarget),
       },
       name,
     )

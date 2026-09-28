@@ -3,11 +3,13 @@ import type { ResourceTreeNode } from '@rev30/contracts'
 import { defineComponent, nextTick, ref } from 'vue'
 import { NConfigProvider } from 'naive-ui'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import MenuSearchDialog from '../../../src/components/admin/navigation/MenuSearchDialog.vue'
 import { session } from '../../helpers/auth'
 
 const usersMenu = session.menus[0]!.children[0]!
+const scrollIntoViewMock = vi.fn()
+const scrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView')
 
 function menu(overrides: Partial<ResourceTreeNode> & Pick<ResourceTreeNode, 'id' | 'name'>) {
   return { ...usersMenu, path: null, icon: null, children: [], ...overrides }
@@ -66,7 +68,16 @@ function options() {
 
 describe('menu search dialog', () => {
   beforeEach(() => {
-    Element.prototype.scrollIntoView = vi.fn()
+    scrollIntoViewMock.mockClear()
+    Element.prototype.scrollIntoView = scrollIntoViewMock
+  })
+
+  afterEach(() => {
+    if (scrollIntoViewDescriptor) {
+      Object.defineProperty(Element.prototype, 'scrollIntoView', scrollIntoViewDescriptor)
+    } else {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+    }
   })
 
   it('shows all navigable menus, filters by name, and resets after reopening', async () => {
@@ -92,6 +103,9 @@ describe('menu search dialog', () => {
     await nextTick()
     expect(document.body.textContent).toContain('未找到匹配的菜单')
     expect(input().getAttribute('aria-activedescendant')).toBeNull()
+    input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await flushPromises()
+    expect(show.value).toBe(true)
 
     show.value = false
     await flushPromises()
@@ -117,6 +131,7 @@ describe('menu search dialog', () => {
     input().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     await nextTick()
     expect(options()[0]?.getAttribute('aria-selected')).toBe('true')
+    expect(scrollIntoViewMock).toHaveBeenCalled()
 
     input().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
@@ -153,5 +168,36 @@ describe('menu search dialog', () => {
     link.click()
     await nextTick()
     expect(show.value).toBe(false)
+  })
+
+  it('keeps internal blank targets and modified clicks as browser links', async () => {
+    const { router, show, availableMenus } = await mountDialog([
+      menu({ id: 'new-window', name: '新窗口', path: '/operation-log', openTarget: 'blank' }),
+    ])
+    const link = document.body.querySelector<HTMLAnchorElement>('a[href="/operation-log"]')!
+    expect(link.target).toBe('_blank')
+    expect(link.rel).toBe('noopener noreferrer')
+    const preventDefault = (event: MouseEvent) => event.preventDefault()
+    link.addEventListener('click', preventDefault)
+    link.click()
+    await flushPromises()
+    expect(show.value).toBe(false)
+    expect(router.currentRoute.value.path).toBe('/login-log')
+    link.removeEventListener('click', preventDefault)
+
+    availableMenus.value = [menu({ id: 'same-window', name: '当前窗口', path: '/operation-log' })]
+    show.value = true
+    await flushPromises()
+    const modifiedClick = new MouseEvent('click', {
+      button: 0,
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    document.body
+      .querySelector<HTMLAnchorElement>('a[href="/operation-log"]')!
+      .dispatchEvent(modifiedClick)
+    expect(modifiedClick.defaultPrevented).toBe(false)
+    expect(router.currentRoute.value.path).toBe('/login-log')
   })
 })

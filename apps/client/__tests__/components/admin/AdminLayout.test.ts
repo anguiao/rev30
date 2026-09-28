@@ -4,7 +4,7 @@ import type { AuthTokenResponse } from '@rev30/contracts'
 import { defineComponent } from 'vue'
 import { NConfigProvider, NDialogProvider, dateZhCN, zhCN } from 'naive-ui'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AdminLayout from '../../../src/components/admin/AdminLayout.vue'
 import { logout } from '../../../src/features/auth'
 import { useAuthStore } from '../../../src/stores/auth'
@@ -192,6 +192,7 @@ async function mountLayout(options?: { initialPath?: string; authSession?: AuthT
     {
       global: {
         plugins: [...plugins, router],
+        stubs: { transition: false },
       },
     },
   )
@@ -203,6 +204,10 @@ describe('admin layout', () => {
   beforeEach(() => {
     stubPreferredDark(false)
     logoutMock.mockReset()
+  })
+
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'platform')
   })
 
   it.each(['self', 'blank'] as const)(
@@ -426,5 +431,110 @@ describe('admin layout', () => {
     expect(logoutMock).toHaveBeenCalledTimes(1)
     expect(auth.isAuthenticated).toBe(false)
     expect(router.currentRoute.value.fullPath).toBe('/system/users')
+  })
+
+  it('opens search in expanded and collapsed sidebars and omits hidden menus', async () => {
+    const { wrapper } = await mountLayout()
+    const trigger = wrapper.get('aside button[aria-label="搜索菜单"]')
+
+    expect(trigger.text()).toContain('搜索菜单')
+    await trigger.trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(document.body.querySelector('[role="combobox"]'))
+    expect(document.body.querySelector('[role="dialog"] a[href="/system/users"]')).not.toBeNull()
+    expect(document.body.querySelector('[role="dialog"] a[href="/system/audit-log"]')).toBeNull()
+
+    document.body.querySelector<HTMLButtonElement>('button[aria-label="关闭搜索"]')!.click()
+    await flushPromises()
+    await wrapper.get('[data-test="admin-sidebar-toggle"]').trigger('click')
+    expect(trigger.text()).not.toContain('搜索菜单')
+    expect(trigger.attributes('title')).toContain('搜索菜单')
+    await trigger.trigger('click')
+    await flushPromises()
+    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull()
+  })
+
+  it('uses the platform shortcut, keeps an open query, and restores focus on Escape', async () => {
+    Object.defineProperty(navigator, 'platform', { configurable: true, value: 'MacIntel' })
+    const { wrapper } = await mountLayout()
+    const trigger = wrapper.get('aside button[aria-label="搜索菜单"]')
+    expect(trigger.text()).toContain('⌘K')
+
+    const ordinaryInput = document.createElement('input')
+    document.body.append(ordinaryInput)
+    ordinaryInput.focus()
+    ordinaryInput.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true, cancelable: true }),
+    )
+    await flushPromises()
+    const searchInput = document.body.querySelector<HTMLInputElement>('[role="combobox"]')!
+    expect(document.activeElement).toBe(searchInput)
+    searchInput.value = '日志'
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushPromises()
+
+    document.body.querySelector<HTMLButtonElement>('button[aria-label="关闭搜索"]')!.focus()
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true, cancelable: true }),
+    )
+    await flushPromises()
+    expect(document.activeElement).toBe(searchInput)
+    expect(searchInput.value).toBe('日志')
+
+    searchInput.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }),
+    )
+    await flushPromises()
+    expect(document.activeElement).toBe(ordinaryInput)
+  })
+
+  it('ignores handled, repeating, composing, editable, and modal shortcuts', async () => {
+    Object.defineProperty(navigator, 'platform', { configurable: true, value: 'Win32' })
+    const { wrapper } = await mountLayout()
+    expect(wrapper.get('aside button[aria-label="搜索菜单"]').text()).toContain('Ctrl+K')
+
+    const input = document.createElement('input')
+    document.body.append(input)
+    const keydown = (options: KeyboardEventInit = {}) =>
+      new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, ...options })
+
+    const handled = keydown({ cancelable: true })
+    handled.preventDefault()
+    input.dispatchEvent(handled)
+    input.dispatchEvent(keydown({ repeat: true }))
+    input.dispatchEvent(keydown({ isComposing: true }))
+    await flushPromises()
+    expect(document.body.querySelector('[role="combobox"]')).toBeNull()
+
+    const editor = document.createElement('div')
+    editor.setAttribute('contenteditable', 'true')
+    const child = document.createElement('span')
+    editor.append(child)
+    document.body.append(editor)
+    child.dispatchEvent(keydown())
+    await flushPromises()
+    expect(document.body.querySelector('[role="combobox"]')).toBeNull()
+
+    const modal = document.createElement('div')
+    modal.setAttribute('role', 'dialog')
+    modal.append(input)
+    document.body.append(modal)
+    input.dispatchEvent(keydown())
+    await flushPromises()
+    expect(document.body.querySelector('[role="combobox"]')).toBeNull()
+
+    modal.remove()
+    document.body.append(input)
+    input.dispatchEvent(keydown())
+    await flushPromises()
+    expect(document.body.querySelector('[role="combobox"]')).not.toBeNull()
+
+    document.body.querySelector<HTMLButtonElement>('button[aria-label="关闭搜索"]')!.click()
+    await flushPromises()
+    const textarea = document.createElement('textarea')
+    document.body.append(textarea)
+    textarea.dispatchEvent(keydown())
+    await flushPromises()
+    expect(document.body.querySelector('[role="combobox"]')).not.toBeNull()
   })
 })

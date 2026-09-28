@@ -18,6 +18,35 @@ export type MenuMatch = {
   breadcrumbItems: MenuMatchItem[]
 }
 
+export type SearchableMenu = {
+  menu: ResourceTreeNode
+  parentNames: string[]
+}
+
+export function getSearchableMenus(menus: ResourceTreeNode[]): SearchableMenu[] {
+  const items: SearchableMenu[] = []
+
+  function visit(currentMenus: ResourceTreeNode[], parentNames: string[]) {
+    for (const menu of currentMenus) {
+      if (menu.path !== null || menu.externalUrl !== null) {
+        items.push({ menu, parentNames })
+      }
+
+      visit(menu.children, [...parentNames, menu.name])
+    }
+  }
+
+  visit(menus, [])
+  return items
+}
+
+export function filterSearchableMenus(items: SearchableMenu[], query: string): SearchableMenu[] {
+  const needle = query.trim().toLowerCase()
+  return needle === ''
+    ? items
+    : items.filter(({ menu }) => menu.name.toLowerCase().includes(needle))
+}
+
 export function findMenuMatch(menus: ResourceTreeNode[], currentPath: string): MenuMatch | null {
   let match: MenuMatch | null = null
   let matchedScore: MenuPathMatchScore | null = null

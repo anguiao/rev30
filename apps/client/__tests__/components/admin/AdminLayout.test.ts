@@ -120,7 +120,25 @@ function createMenuSession(): AuthTokenResponse {
             sortOrder: 2,
             createdAt: '2026-05-01T00:00:00.000Z',
             updatedAt: '2026-05-01T00:00:00.000Z',
-            children: [],
+            children: [
+              {
+                id: 'c280d9d0-0da0-4149-a364-c6b302f42dab',
+                parentId: auditLogMenuId,
+                type: 'menu',
+                name: '隐藏子项',
+                code: 'system:department:list',
+                path: '/system/departments',
+                externalUrl: null,
+                openTarget: 'self',
+                icon: null,
+                hidden: false,
+                status: 1,
+                sortOrder: 0,
+                createdAt: '2026-05-01T00:00:00.000Z',
+                updatedAt: '2026-05-01T00:00:00.000Z',
+                children: [],
+              },
+            ],
           },
           {
             id: externalDocsMenuId,
@@ -443,6 +461,7 @@ describe('admin layout', () => {
     expect(document.activeElement).toBe(document.body.querySelector('[role="combobox"]'))
     expect(document.body.querySelector('[role="dialog"] a[href="/system/users"]')).not.toBeNull()
     expect(document.body.querySelector('[role="dialog"] a[href="/system/audit-log"]')).toBeNull()
+    expect(document.body.querySelector('[role="dialog"] a[href="/system/departments"]')).toBeNull()
 
     document.body.querySelector<HTMLButtonElement>('button[aria-label="关闭搜索"]')!.click()
     await flushPromises()

@@ -227,4 +227,29 @@ describe('menu search helpers', () => {
     expect(filterSearchableMenus(sameNames, '')).toEqual(sameNames)
     expect(filterSearchableMenus(sameNames, '   ')).toEqual(sameNames)
   })
+
+  it('keeps identical names as separate results with different ancestors', () => {
+    const duplicates = getSearchableMenus([
+      createMenu({
+        id: 'operations',
+        name: '运维管理',
+        children: [createMenu({ id: 'operations-log', name: '日志', path: '/operations/log' })],
+      }),
+      createMenu({
+        id: 'system',
+        name: '系统管理',
+        children: [createMenu({ id: 'system-log', name: '日志', path: '/system/log' })],
+      }),
+    ])
+
+    expect(
+      filterSearchableMenus(duplicates, '日志').map(({ menu, parentNames }) => ({
+        id: menu.id,
+        parentNames,
+      })),
+    ).toEqual([
+      { id: 'operations-log', parentNames: ['运维管理'] },
+      { id: 'system-log', parentNames: ['系统管理'] },
+    ])
+  })
 })

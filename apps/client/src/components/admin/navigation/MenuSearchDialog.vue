@@ -141,7 +141,7 @@ function handleKeydown(event: KeyboardEvent) {
           :aria-activedescendant="
             selectedId === null ? undefined : `menu-search-result-${selectedId}`
           "
-          type="search"
+          type="text"
           placeholder="搜索菜单"
           class="min-w-0 flex-1 bg-transparent py-4 text-sm text-current outline-none placeholder:text-stone-400 dark:placeholder:text-zinc-500"
           @keydown="handleKeydown"

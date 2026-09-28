@@ -9,7 +9,10 @@ import { session } from '../../helpers/auth'
 
 const usersMenu = session.menus[0]!.children[0]!
 const scrollIntoViewMock = vi.fn()
-const scrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView')
+const scrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
+  Element.prototype,
+  'scrollIntoView',
+)
 
 function menu(overrides: Partial<ResourceTreeNode> & Pick<ResourceTreeNode, 'id' | 'name'>) {
   return { ...usersMenu, path: null, icon: null, children: [], ...overrides }
@@ -122,7 +125,10 @@ describe('menu search dialog', () => {
 
   it('cycles selection and closes before a guarded internal navigation', async () => {
     const { show, router } = await mountDialog()
-    const guard = vi.fn(() => false)
+    const guard = vi.fn(() => {
+      expect(document.activeElement).not.toBe(input())
+      return false
+    })
     router.beforeEach(guard)
 
     input().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
@@ -139,6 +145,17 @@ describe('menu search dialog', () => {
     expect(show.value).toBe(false)
     expect(guard).toHaveBeenCalled()
     expect(router.currentRoute.value.path).toBe('/login-log')
+  })
+
+  it('navigates to the selected internal menu with the router', async () => {
+    const { router, show } = await mountDialog()
+
+    input().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await flushPromises()
+
+    expect(show.value).toBe(false)
+    expect(router.currentRoute.value.path).toBe('/operation-log')
   })
 
   it('leaves selection and navigation untouched during composition', async () => {

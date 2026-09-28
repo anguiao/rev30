@@ -5,7 +5,7 @@ Rev30 是一个 TypeScript monorepo，包含 Vue 客户端、Hono API、共享�
 ## 目录结构
 
 - `apps/server`：Node.js + Hono + Drizzle API，提供健康检查、认证、系统管理、内容管理和组件演示接口。
-- `apps/client`：Vue 3 + Vite 前端，包含登录、后台管理壳层，以及系统管理、内容管理、运维管理和组件演示页面，通过 `/api` 代理调用服务端。
+- `apps/client`：Vue 3 + Vite 前端，包含登录、后台管理壳层，以及系统管理、内容管理、运维管理和组件演示页面；后台侧栏支持菜单搜索及 Ctrl/Cmd+K 快捷导航，通过 `/api` 代理调用服务端。
 - `packages/contracts`：前后端共用的 zod schema、请求/响应契约和 TypeScript 类型。
 - `packages/rich-text`：跨端复用的 Tiptap feature、preset、Vue 编辑器和服务端内容派生能力。
 - `packages/utils`：前后端共用的纯 TypeScript 工具函数。

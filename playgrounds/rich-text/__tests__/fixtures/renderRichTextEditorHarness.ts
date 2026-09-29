@@ -5,6 +5,7 @@ import RichTextEditorHarness from './RichTextEditorHarness.vue'
 
 export interface RichTextEditorHarnessOptions {
   readonly initialDisabled?: boolean
+  readonly realTransitions?: boolean
 }
 
 export function renderRichTextEditorHarness(
@@ -12,6 +13,7 @@ export function renderRichTextEditorHarness(
   options: RichTextEditorHarnessOptions = {},
 ) {
   return render(RichTextEditorHarness, {
+    ...(options.realTransitions ? { global: { stubs: { transition: false } } } : {}),
     props: {
       ...(options.initialDisabled === undefined
         ? {}

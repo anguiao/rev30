@@ -98,5 +98,5 @@ test('round-trips a Data URL image with native copy and paste shortcuts', async 
   expect(imageSources).toHaveLength(2)
   expect(imageSources[0]).toMatch(/^data:image\/png;base64,/)
   expect(imageSources[1]).toBe(imageSources[0])
-  await expect.element(screen.getByRole('dialog', { name: '图片' })).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('dialog', { name: '插入图片' })).not.toBeInTheDocument()
 })

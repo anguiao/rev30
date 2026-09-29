@@ -120,7 +120,8 @@ defineExpose({ focusSearch })
         :type="isSelected(image.src) ? 'primary' : 'default'"
         :secondary="isSelected(image.src)"
         :disabled="disabled || (atLimit && !isSelected(image.src))"
-        class="h-auto min-w-0 p-2"
+        class="min-w-0 p-2"
+        style="height: auto"
         @click="select(image)"
       >
         <span class="flex min-w-0 flex-col gap-1">

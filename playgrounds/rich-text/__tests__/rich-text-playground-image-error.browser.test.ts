@@ -8,12 +8,15 @@ test('keeps image errors through normal edits until restoring the example', asyn
   const toolbar = screen.getByRole('toolbar', { name: '格式工具栏', exact: true })
   await toolbar.getByRole('button', { name: '图片', exact: true }).click()
 
-  const dialog = screen.getByRole('dialog', { name: '图片' })
+  const dialog = screen.getByRole('dialog', { name: '插入图片' })
   await expect.element(dialog).toBeVisible()
   const fileInput = dialog.getByTestId('rich-text-image-file-input').element()
-  await userEvent.upload(fileInput, new File(['not an image'], 'notes.txt', { type: 'text/plain' }))
-  await expect.element(dialog.getByTestId('rich-text-image-upload-action')).toBeEnabled()
-  await dialog.getByTestId('rich-text-image-upload-action').click()
+  const gifBytes = Uint8Array.from(atob('R0lGODlhAQABAAD/ACwAAAAAAQABAAACAUwAOw=='), (char) =>
+    char.charCodeAt(0),
+  )
+  await userEvent.upload(fileInput, new File([gifBytes], 'unsupported.gif', { type: 'image/gif' }))
+  await expect.element(dialog.getByRole('button', { name: '上传并插入 1 张' })).toBeEnabled()
+  await dialog.getByTestId('rich-text-image-confirm').click()
   await expect
     .element(screen.getByTestId('image-error'))
     .toMatchTextContent('仅支持 JPEG、PNG 和 WebP 图片')

@@ -30,6 +30,12 @@ import '@rev30/rich-text/content/presets/compact.css'
 
 `@rev30/rich-text/vue/presets/all`、`@rev30/rich-text/vue/presets/compact` 和 `@rev30/rich-text/vue/presets/standard` 会自动导入各自的内容 CSS。`@rev30/rich-text/presets/*`、`@rev30/rich-text/server` 和 `@rev30/rich-text/server/presets/*` 保持无 CSS 副作用。
 
+## 图片插入配置
+
+`all` 和 `standard` Vue editor preset 的 `image` 配置必须提供 `upload(file)`，在用户最终确认后返回可持久使用的 `{ src }`。可选的 `listLibraryImages({ keyword?, page, pageSize })` 返回 `{ list, total, page, pageSize }`；`list` 中每项包含稳定的 `src` 和展示用 `name`。省略该回调时，图片弹窗不显示图片库入口。可通过 `onError(error)` 接收预览或上传错误。
+
+插入弹窗允许本地图片与图片库图片混选，最多 20 张；每张图片可分别设置说明和尺寸、移除或调整顺序。选择本地图片时只在浏览器中生成预览；最终确认才调用 `upload`，全部图片就绪后按列表顺序一次插入。编辑正文中已有图片时保持单张编辑。图库查询使用服务端分页，首版固定每页 20 张；调用方负责按当前业务用途和权限筛选图片，并提供可长期引用的内容 URL。
+
 可在容器或祖先上通过以下变量覆盖颜色：
 
 - `--rich-text-content-body-color`

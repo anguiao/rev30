@@ -17,7 +17,9 @@ pnpm --filter @rev30/rich-text-playground exec playwright install chromium
 pnpm --filter @rev30/rich-text-playground test:browser
 ```
 
-开发服务器默认监听 `http://localhost:3210`。`test:browser` 是 headless Chromium suite，包含 preset smoke、真实 Selection/focus、clipboard、布局/键盘、表格合并/表头/对齐/列宽拖动/禁用状态和图片文件输入契约；Chromium binary 首次运行前安装一次。
+开发服务器默认监听 `http://localhost:3210`。`test:browser` 是 headless Chromium suite，包含 preset smoke、真实 Selection/focus、clipboard、布局/键盘、表格合并/表头/对齐/列宽拖动/禁用状态和图片选择、上传、图库混选与撤销重做契约；Chromium binary 首次运行前安装一次。
+
+图片库是纯前端静态适配器，提供 21 张可读取的 PNG Data URL 图片，用于验证搜索和跨页选择。它不调用业务 API，也不持久化图片或文档；本地图片仍在最终确认后转换为 Data URL。
 
 需要只运行派生错误回归时：
 

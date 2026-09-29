@@ -16,6 +16,8 @@ import {
   announcementListItemSchema,
   announcementListQuerySchema,
   announcementListResponseSchema,
+  announcementImageOptionsQuerySchema,
+  announcementImageOptionsResponseSchema,
   announcementSchema,
   announcementCreateSchema,
   announcementTargetOptionsQuerySchema,
@@ -48,6 +50,44 @@ const imageOnlyContentJson = {
 }
 
 describe('announcement schemas', () => {
+  it('parses announcement image option queries and attachment metadata responses', () => {
+    expect(announcementImageOptionsQuerySchema.parse({})).toEqual({ page: 1, pageSize: 20 })
+    expect(
+      announcementImageOptionsQuerySchema.parse({
+        keyword: '  Cover  ',
+        page: '2',
+        pageSize: '5',
+      }),
+    ).toEqual({ keyword: 'Cover', page: 2, pageSize: 5 })
+    expect(announcementImageOptionsQuerySchema.parse({ keyword: '   ' })).toEqual({
+      page: 1,
+      pageSize: 20,
+    })
+    expectZodIssue(announcementImageOptionsQuerySchema.safeParse({ pageSize: '101' }), {
+      message: '每页数量不能超过 100',
+      path: ['pageSize'],
+    })
+
+    const attachment = {
+      id: announcementId,
+      originalName: 'Cover.png',
+      mimeType: 'image/png',
+      extension: 'png',
+      size: 42,
+      usage: 'announcement-content-image',
+      readPolicy: 'authenticated',
+      createdAt: '2026-05-24T09:00:00.000Z',
+    }
+    expect(
+      announcementImageOptionsResponseSchema.parse({
+        list: [attachment],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+      }),
+    ).toEqual({ list: [attachment], total: 1, page: 1, pageSize: 20 })
+  })
+
   it('accepts detail and list response shapes', () => {
     const announcement = {
       id: announcementId,

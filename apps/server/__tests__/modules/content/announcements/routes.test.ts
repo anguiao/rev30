@@ -17,7 +17,7 @@ import {
   AnnouncementNotFoundError,
   AnnouncementVisibilityTargetRequiredError,
 } from '../../../../src/modules/content/announcements/errors'
-import type { requireAccess } from '../../../../src/middleware/access'
+import type { requireAccess, requireAnyAccess } from '../../../../src/middleware/access'
 import { createAnnouncementRoutes } from '../../../../src/modules/content/announcements/routes'
 
 const announcementId = '11111111-1111-4111-8111-111111111111'
@@ -99,6 +99,7 @@ const mocks = vi.hoisted(() => {
     create: vi.fn(),
     delete: vi.fn(),
     get: vi.fn(),
+    listImageOptions: vi.fn(),
     list: vi.fn(),
     publish: vi.fn(),
     targetOptions: vi.fn(),
@@ -110,12 +111,14 @@ const mocks = vi.hoisted(() => {
     createAnnouncementService: vi.fn(() => service),
     recordOperation: vi.fn(),
     requireAccess: vi.fn<typeof requireAccess>(() => accessMiddleware),
+    requireAnyAccess: vi.fn<typeof requireAnyAccess>(() => accessMiddleware),
     service,
   }
 })
 
 vi.mock('../../../../src/middleware/access', () => ({
   requireAccess: mocks.requireAccess,
+  requireAnyAccess: mocks.requireAnyAccess,
 }))
 
 vi.mock('../../../../src/modules/content/announcements/service', () => ({
@@ -135,8 +138,10 @@ describe('announcement routes', () => {
     vi.clearAllMocks()
     Object.values(mocks.service).forEach((mock) => mock.mockReset())
     mocks.requireAccess.mockReturnValue(mocks.accessMiddleware)
+    mocks.requireAnyAccess.mockReturnValue(mocks.accessMiddleware)
     mocks.createAnnouncementService.mockReturnValue(mocks.service)
     mocks.service.list.mockResolvedValue(listResponse)
+    mocks.service.listImageOptions.mockResolvedValue({ list: [], total: 0, page: 1, pageSize: 20 })
     mocks.service.get.mockResolvedValue(announcement)
     mocks.service.targetOptions.mockResolvedValue({
       users: [],

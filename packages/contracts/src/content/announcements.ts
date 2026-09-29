@@ -8,6 +8,7 @@ import {
   uuidString,
 } from '../common'
 import { optionalQueryValue, optionalTrimmedQueryString } from '../query'
+import { attachmentSchema } from '../attachments'
 import {
   departmentTreeOptionsResponseSchema,
   roleOptionsResponseSchema,
@@ -147,6 +148,17 @@ export const announcementListQuerySchema = paginationQuerySchema.extend({
   pinned: optionalPinnedQuerySchema,
 })
 
+export const announcementImageOptionsQuerySchema = paginationQuerySchema.extend({
+  keyword: optionalKeywordSchema,
+})
+
+export const announcementImageOptionsResponseSchema = z.object({
+  list: z.array(attachmentSchema),
+  total: z.number().int().min(0),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1),
+})
+
 const announcementFormBaseSchema = z.object({
   type: announcementTypeSchema,
   title: announcementTitleSchema,
@@ -252,6 +264,10 @@ export type Announcement = z.infer<typeof announcementSchema>
 export type AnnouncementReadStats = z.infer<typeof announcementReadStatsSchema>
 export type AnnouncementListItem = z.infer<typeof announcementListItemSchema>
 export type AnnouncementListQuery = z.infer<typeof announcementListQuerySchema>
+export type AnnouncementImageOptionsQuery = z.infer<typeof announcementImageOptionsQuerySchema>
+export type AnnouncementImageOptionsResponse = z.infer<
+  typeof announcementImageOptionsResponseSchema
+>
 export type AnnouncementVisibility = z.infer<typeof announcementVisibilitySchema>
 export type AnnouncementTargetType = z.infer<typeof announcementTargetTypeSchema>
 export type AnnouncementTarget = z.infer<typeof announcementTargetSchema>

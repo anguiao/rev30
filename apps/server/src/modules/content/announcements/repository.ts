@@ -2,6 +2,7 @@ import type {
   AnnouncementReadStats,
   AnnouncementTarget,
   AnnouncementCreateInput,
+  AnnouncementImageOptionsQuery,
   AnnouncementListQuery,
   AnnouncementVisibility,
   AnnouncementUpdateInput,
@@ -30,6 +31,8 @@ import {
   ilike,
   inArray,
   isNull,
+  like,
+  ne,
   or,
   sql,
 } from 'drizzle-orm'
@@ -371,6 +374,38 @@ async function countAnnouncementReadStatsByIds(executor: DbReader, announcementI
 
 export function createAnnouncementRepository(database: Db) {
   return {
+    async listImageOptions(query: AnnouncementImageOptionsQuery) {
+      const { page, pageSize, keyword } = query
+      const where = and(
+        isNull(attachments.deletedAt),
+        eq(attachments.usage, CONTENT_IMAGE_USAGE),
+        eq(attachments.readPolicy, ATTACHMENT_READ_POLICY_AUTHENTICATED),
+        eq(attachments.cleanupPolicy, ATTACHMENT_CLEANUP_POLICY_UNREFERENCED),
+        like(attachments.mimeType, 'image/%'),
+        ne(attachments.mimeType, 'image/svg+xml'),
+        keyword
+          ? sql<boolean>`strpos(lower(${attachments.originalName}), lower(${keyword})) > 0`
+          : undefined,
+      )
+      const [list, totalRows] = await Promise.all([
+        database
+          .select()
+          .from(attachments)
+          .where(where)
+          .orderBy(desc(attachments.createdAt), desc(attachments.id))
+          .limit(pageSize)
+          .offset((page - 1) * pageSize),
+        database.select({ total: count() }).from(attachments).where(where),
+      ])
+
+      return {
+        list,
+        total: totalRows[0]?.total ?? 0,
+        page,
+        pageSize,
+      }
+    },
+
     async list(query: AnnouncementListQuery) {
       const { page, pageSize, keyword, type, status, pinned } = query
       const keywordFilter = keyword ? `%${keyword}%` : undefined

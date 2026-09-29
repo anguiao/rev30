@@ -4,7 +4,7 @@ import { defineComponent, nextTick, ref } from 'vue'
 import { NConfigProvider } from 'naive-ui'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import MenuSearchDialog from '../../../src/components/admin/navigation/MenuSearchDialog.vue'
+import AdminMenuSearchDialog from '../../../src/components/admin/navigation/AdminMenuSearchDialog.vue'
 import { session } from '../../helpers/auth'
 
 const usersMenu = session.menus[0]!.children[0]!
@@ -49,10 +49,10 @@ async function mountDialog(initialMenus = menus) {
 
   const wrapper = mount(
     defineComponent({
-      components: { MenuSearchDialog, NConfigProvider },
+      components: { AdminMenuSearchDialog, NConfigProvider },
       setup: () => ({ show, availableMenus }),
       template:
-        '<NConfigProvider><MenuSearchDialog v-model:show="show" :menus="availableMenus" /></NConfigProvider>',
+        '<NConfigProvider><AdminMenuSearchDialog v-model:show="show" :menus="availableMenus" /></NConfigProvider>',
     }),
     { global: { plugins: [router], stubs: { transition: false } } },
   )
@@ -122,6 +122,34 @@ describe('menu search dialog', () => {
     await nextTick()
     expect(document.body.textContent).toContain('暂无可访问菜单')
   })
+
+  it.each(['', '日志'])(
+    'preserves selection when only surrounding whitespace changes in query "%s"',
+    async (initialQuery) => {
+      await mountDialog()
+      input().value = initialQuery
+      input().dispatchEvent(new Event('input', { bubbles: true }))
+      await nextTick()
+      input().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await nextTick()
+      expect(options()[1]?.getAttribute('aria-selected')).toBe('true')
+
+      for (const query of [` ${initialQuery}`, `${initialQuery}  `, initialQuery]) {
+        input().value = query
+        input().dispatchEvent(new Event('input', { bubbles: true }))
+        await nextTick()
+
+        expect(options()[1]?.getAttribute('aria-selected')).toBe('true')
+        expect(input().getAttribute('aria-activedescendant')).toBe(options()[1]?.id)
+      }
+
+      input().value = initialQuery === '' ? '日志' : ''
+      input().dispatchEvent(new Event('input', { bubbles: true }))
+      await nextTick()
+      expect(options()[0]?.getAttribute('aria-selected')).toBe('true')
+      expect(input().getAttribute('aria-activedescendant')).toBe(options()[0]?.id)
+    },
+  )
 
   it('cycles selection and closes before a guarded internal navigation', async () => {
     const { show, router } = await mountDialog()

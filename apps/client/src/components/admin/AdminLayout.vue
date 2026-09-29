@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { useStorage } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import AdminBreadcrumb from './navigation/AdminBreadcrumb.vue'
-import MenuSearchDialog from './navigation/MenuSearchDialog.vue'
+import AdminMenuSearchDialog from './navigation/AdminMenuSearchDialog.vue'
+import { useMenuSearch } from './navigation/useMenuSearch'
 import AdminSidebar from './sidebar/AdminSidebar.vue'
 
 const auth = useAuthStore()
@@ -12,52 +13,6 @@ const { menus, visibleMenus } = storeToRefs(auth)
 
 const ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY = 'admin-sidebar-collapsed'
 const isSidebarCollapsed = useStorage(ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY, false)
-const isMenuSearchOpen = ref(false)
-const menuSearchDialog = ref<InstanceType<typeof MenuSearchDialog> | null>(null)
-const usesMacShortcut = navigator.platform.startsWith('Mac')
-const shortcutLabel = usesMacShortcut ? '⌘K' : 'Ctrl+K'
-
-function openMenuSearch() {
-  if (isMenuSearchOpen.value) {
-    menuSearchDialog.value?.focusInput()
-    return
-  }
-
-  isMenuSearchOpen.value = true
-}
-
-function handleShortcut(event: KeyboardEvent) {
-  if (
-    event.defaultPrevented ||
-    event.repeat ||
-    event.isComposing ||
-    event.key.toLowerCase() !== 'k' ||
-    event.altKey ||
-    event.shiftKey ||
-    (usesMacShortcut ? !event.metaKey || event.ctrlKey : !event.ctrlKey || event.metaKey)
-  ) {
-    return
-  }
-
-  if (!isMenuSearchOpen.value) {
-    const target = event.target
-    if (
-      (target instanceof Element &&
-        target.closest(
-          '[contenteditable="true"], [contenteditable=""], [contenteditable="plaintext-only"]',
-        )) ||
-      document.querySelector('[role="dialog"], [role="alertdialog"]')
-    ) {
-      return
-    }
-  }
-
-  event.preventDefault()
-  openMenuSearch()
-}
-
-onMounted(() => window.addEventListener('keydown', handleShortcut))
-onUnmounted(() => window.removeEventListener('keydown', handleShortcut))
 
 function toggleSidebarCollapsed() {
   isSidebarCollapsed.value = !isSidebarCollapsed.value
@@ -67,6 +22,8 @@ const sidebarWidth = computed(() => (isSidebarCollapsed.value ? '60px' : '256px'
 const shellStyle = computed(() => ({
   '--admin-sidebar-width': sidebarWidth.value,
 }))
+
+const { isMenuSearchOpen, menuSearchDialog, shortcutLabel, openMenuSearch } = useMenuSearch()
 </script>
 
 <template>
@@ -88,7 +45,7 @@ const shellStyle = computed(() => ({
         <slot />
       </main>
     </div>
-    <MenuSearchDialog
+    <AdminMenuSearchDialog
       ref="menuSearchDialog"
       v-model:show="isMenuSearchOpen"
       :menus="visibleMenus"

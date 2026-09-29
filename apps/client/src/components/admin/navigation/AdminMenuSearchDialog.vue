@@ -19,18 +19,53 @@ const emit = defineEmits<{
   'update:show': [show: boolean]
 }>()
 
-const router = useRouter()
-const inputRef = ref<HTMLInputElement | null>(null)
 const query = ref('')
-const selectedIndex = ref(-1)
-const isComposing = ref(false)
+const normalizedQuery = computed(() => query.value.trim().toLowerCase())
 const searchableMenus = computed(() => getSearchableMenus(props.menus))
-const results = computed(() => filterSearchableMenus(searchableMenus.value, query.value))
+const results = computed(() => filterSearchableMenus(searchableMenus.value, normalizedQuery.value))
+
+const selectedIndex = ref(-1)
 const selectedId = computed(() => results.value[selectedIndex.value]?.menu.id ?? null)
 
 watch(results, (items) => {
   selectedIndex.value = items.length === 0 ? -1 : 0
 })
+
+function selectedOption() {
+  const id = selectedId.value
+  return id === null ? null : document.getElementById(`menu-search-result-${id}`)
+}
+
+async function moveSelection(direction: number) {
+  if (results.value.length === 0) return
+
+  selectedIndex.value =
+    (selectedIndex.value + direction + results.value.length) % results.value.length
+  await nextTick()
+  selectedOption()?.scrollIntoView({ block: 'nearest' })
+}
+
+const isComposing = ref(false)
+
+function handleKeydown(event: KeyboardEvent) {
+  if (event.isComposing || isComposing.value) return
+
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    void moveSelection(event.key === 'ArrowDown' ? 1 : -1)
+  } else if (event.key === 'Enter') {
+    event.preventDefault()
+    selectedOption()?.querySelector('a')?.click()
+  }
+}
+
+const inputRef = ref<HTMLInputElement | null>(null)
+
+function focusInput() {
+  inputRef.value?.focus()
+}
+
+defineExpose({ focusInput })
 
 watch(
   () => props.show,
@@ -46,15 +81,11 @@ watch(
   { immediate: true },
 )
 
-function focusInput() {
-  inputRef.value?.focus()
-}
-
-defineExpose({ focusInput })
-
 function close() {
   emit('update:show', false)
 }
+
+const router = useRouter()
 
 function menuHref(menu: ResourceTreeNode) {
   return menu.path !== null ? router.resolve(menu.path).href : menu.externalUrl!
@@ -80,32 +111,6 @@ function handleLinkClick(event: MouseEvent, menu: ResourceTreeNode) {
   }
 
   close()
-}
-
-function selectedOption() {
-  const id = selectedId.value
-  return id === null ? null : document.getElementById(`menu-search-result-${id}`)
-}
-
-async function moveSelection(direction: number) {
-  if (results.value.length === 0) return
-
-  selectedIndex.value =
-    (selectedIndex.value + direction + results.value.length) % results.value.length
-  await nextTick()
-  selectedOption()?.scrollIntoView({ block: 'nearest' })
-}
-
-function handleKeydown(event: KeyboardEvent) {
-  if (event.isComposing || isComposing.value) return
-
-  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-    event.preventDefault()
-    void moveSelection(event.key === 'ArrowDown' ? 1 : -1)
-  } else if (event.key === 'Enter') {
-    event.preventDefault()
-    selectedOption()?.querySelector('a')?.click()
-  }
 }
 </script>
 

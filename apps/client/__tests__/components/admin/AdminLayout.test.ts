@@ -421,11 +421,18 @@ describe('admin layout', () => {
   })
 
   it('keeps the session when logout confirmation is cancelled', async () => {
+    Object.defineProperty(navigator, 'platform', { configurable: true, value: 'Win32' })
     const { router, wrapper } = await mountLayout()
     const auth = useAuthStore()
 
     await wrapper.get('[data-test="admin-logout"]').trigger('click')
     await flushPromises()
+
+    getDialogButton('admin-logout-cancel').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true }),
+    )
+    await flushPromises()
+    expect(document.body.querySelector('[role="combobox"]')).toBeNull()
 
     getDialogButton('admin-logout-cancel').click()
     await flushPromises()
@@ -507,6 +514,30 @@ describe('admin layout', () => {
     expect(document.activeElement).toBe(ordinaryInput)
   })
 
+  it.each(['false', null])(
+    'opens search from a non-modal dialog input with aria-modal=%s',
+    async (ariaModal) => {
+      Object.defineProperty(navigator, 'platform', { configurable: true, value: 'Win32' })
+      await mountLayout()
+
+      const panel = document.createElement('div')
+      panel.setAttribute('role', 'dialog')
+      if (ariaModal !== null) panel.setAttribute('aria-modal', ariaModal)
+      const input = document.createElement('input')
+      panel.append(input)
+      document.body.append(panel)
+      input.focus()
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true }),
+      )
+      await flushPromises()
+
+      const searchInput = document.body.querySelector('[role="combobox"]')
+      expect(searchInput).not.toBeNull()
+      expect(document.activeElement).toBe(searchInput)
+    },
+  )
+
   it('ignores handled, repeating, composing, editable, and modal shortcuts', async () => {
     Object.defineProperty(navigator, 'platform', { configurable: true, value: 'Win32' })
     const { wrapper } = await mountLayout()
@@ -536,6 +567,7 @@ describe('admin layout', () => {
 
     const modal = document.createElement('div')
     modal.setAttribute('role', 'dialog')
+    modal.setAttribute('aria-modal', 'true')
     modal.append(input)
     document.body.append(modal)
     input.dispatchEvent(keydown())

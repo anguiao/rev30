@@ -263,9 +263,7 @@ export function useImageCandidates(options: ImageCandidatesOptions) {
   }
 
   function removeLibraryImage(src: string) {
-    const index = candidates.value.findIndex(
-      (item) => item.source === 'library' && item.src === src,
-    )
+    const index = candidates.value.findIndex((item) => item.src === src)
     if (index !== -1) remove(index)
   }
 

@@ -87,6 +87,12 @@ function file(name: string) {
 function mountDialog(
   options: {
     upload?: (file: File) => Promise<{ src: string }>
+    listLibraryImages?: (query: { keyword?: string; page: number; pageSize: number }) => Promise<{
+      list: { src: string; name: string }[]
+      total: number
+      page: number
+      pageSize: number
+    }>
     initialImageFiles?: File[]
     existingImage?: { src: string; alt: string | null; width: number | null; height: number | null }
     onError?: (error: unknown) => void
@@ -96,6 +102,10 @@ function mountDialog(
     global: { stubs: { teleport: true } },
     props: { upload: options.upload ?? vi.fn(), ...options },
   })
+}
+
+function libraryResult(list: { src: string; name: string }[], page = 1, total = list.length) {
+  return { list, total, page, pageSize: 20 }
 }
 
 async function chooseFiles(files: File[]) {
@@ -353,6 +363,285 @@ describe('ImageDialog batch insertion', () => {
     expect(event.defaultPrevented).toBe(true)
     expect(wrapper.text()).toContain('请选择图片文件')
     expect(objectUrls.create).not.toHaveBeenCalled()
+  })
+})
+
+describe('ImageDialog image library', () => {
+  it('hides the library without a provider and mixes local and library images without uploading early', async () => {
+    const localOnly = mountDialog()
+    expect(localOnly.find('[data-test="rich-text-image-library-open"]').exists()).toBe(false)
+    localOnly.unmount()
+
+    const upload = vi.fn(async () => ({ src: '/images/local.png' }))
+    const listLibraryImages = vi.fn(async () =>
+      libraryResult([{ src: '/images/shared.png', name: '共享图片.png' }]),
+    )
+    const wrapper = mountDialog({ upload, listLibraryImages })
+    await chooseFiles([file('local.png')])
+    PreviewImage.finish('blob:image-1', 600, 300)
+    await flushPromises()
+    await wrapper.get('[data-test="rich-text-image-alt"] input').setValue('本地说明')
+    const focus = vi.spyOn(HTMLInputElement.prototype, 'focus')
+    await wrapper.get('[data-test="rich-text-image-library-open"]').trigger('click')
+    await flushPromises()
+    expect(listLibraryImages).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
+    expect(focus.mock.contexts).toContain(
+      wrapper.get('[data-test="rich-text-image-library-search"] input').element,
+    )
+    expect(wrapper.find('[data-test="rich-text-image-alt"]').exists()).toBe(false)
+    expect(
+      wrapper.get('[data-test="rich-text-image-library-option"]').attributes('aria-selected'),
+    ).toBe('false')
+    await wrapper.get('[data-test="rich-text-image-library-option"]').trigger('click')
+    PreviewImage.finish('/images/shared.png', 400, 200)
+    await flushPromises()
+    expect(
+      wrapper.get('[data-test="rich-text-image-library-option"]').attributes('aria-selected'),
+    ).toBe('true')
+    expect(wrapper.text()).toContain('已选择 2 / 20 张')
+    expect(upload).not.toHaveBeenCalled()
+    await wrapper.get('[data-test="rich-text-image-library-option"]').trigger('click')
+    expect(wrapper.text()).toContain('已选择 1 / 20 张')
+    await wrapper.get('[data-test="rich-text-image-library-option"]').trigger('click')
+    PreviewImage.finish('/images/shared.png', 400, 200)
+    await flushPromises()
+    await wrapper.get('[data-test="rich-text-image-library-back"]').trigger('click')
+    await wrapper.findAll('[data-test="rich-text-image-candidate"]')[0]!.trigger('click')
+    expect(
+      (wrapper.get('[data-test="rich-text-image-alt"] input').element as HTMLInputElement).value,
+    ).toBe('本地说明')
+  })
+
+  it('keeps cross-page selection and ignores an obsolete search response', async () => {
+    const first = deferred<ReturnType<typeof libraryResult>>()
+    const later = deferred<ReturnType<typeof libraryResult>>()
+    const listLibraryImages = vi
+      .fn()
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(later.promise)
+      .mockResolvedValue(libraryResult([{ src: '/images/page-2.png', name: '第二页.png' }], 2, 21))
+    const wrapper = mountDialog({ listLibraryImages })
+    await wrapper.get('[data-test="rich-text-image-library-open"]').trigger('click')
+    const search = wrapper.get('[data-test="rich-text-image-library-search"] input')
+    await search.setValue('  FoO  ')
+    await search.trigger('compositionstart')
+    await wrapper.get('[data-test="rich-text-image-library-submit"]').trigger('click')
+    expect(listLibraryImages).toHaveBeenCalledTimes(1)
+    const composingEnter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
+    Object.defineProperty(composingEnter, 'isComposing', { value: true })
+    search.element.dispatchEvent(composingEnter)
+    await flushPromises()
+    expect(listLibraryImages).toHaveBeenCalledTimes(1)
+    await search.trigger('compositionend')
+    await wrapper.get('[data-test="rich-text-image-library-submit"]').trigger('click')
+    expect(listLibraryImages).toHaveBeenLastCalledWith({ keyword: 'FoO', page: 1, pageSize: 20 })
+    later.resolve(libraryResult([{ src: '/images/first.png', name: '搜索结果.png' }], 1, 21))
+    await flushPromises()
+    first.resolve(libraryResult([{ src: '/images/stale.png', name: '过时结果.png' }]))
+    await flushPromises()
+    expect(wrapper.text()).toContain('搜索结果.png')
+    expect(wrapper.text()).not.toContain('过时结果.png')
+    await wrapper.get('[data-test="rich-text-image-library-option"]').trigger('click')
+    PreviewImage.finish('/images/first.png')
+    await flushPromises()
+    await wrapper.get('[data-test="rich-text-image-library-next"]').trigger('click')
+    await flushPromises()
+    expect(listLibraryImages).toHaveBeenLastCalledWith({ keyword: 'FoO', page: 2, pageSize: 20 })
+    expect(wrapper.text()).toContain('第二页.png')
+    expect(wrapper.text()).toContain('已选择 1 / 20 张')
+    await wrapper.get('[data-test="rich-text-image-library-back"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-image-library-open"]').trigger('click')
+    expect(listLibraryImages).toHaveBeenCalledTimes(3)
+    expect(wrapper.text()).toContain('第二页.png')
+    expect(
+      (
+        wrapper.get('[data-test="rich-text-image-library-search"] input')
+          .element as HTMLInputElement
+      ).value,
+    ).toBe('  FoO  ')
+    await wrapper
+      .get('[data-test="rich-text-image-library-search"] input')
+      .trigger('keydown', { key: 'Enter' })
+    expect(listLibraryImages).toHaveBeenLastCalledWith({ keyword: 'FoO', page: 1, pageSize: 20 })
+  })
+
+  it('allows removing a selected card at the twenty-image limit', async () => {
+    const listLibraryImages = vi.fn(async () =>
+      libraryResult([{ src: '/images/extra.png', name: '额外.png' }]),
+    )
+    const wrapper = mountDialog({ listLibraryImages })
+    await chooseFiles(Array.from({ length: 20 }, (_, index) => file(`${index}.png`)))
+    await wrapper.get('[data-test="rich-text-image-library-open"]').trigger('click')
+    await flushPromises()
+    expect(
+      wrapper.get('[data-test="rich-text-image-library-option"]').attributes('disabled'),
+    ).toBeDefined()
+    expect(wrapper.text()).toContain('已选择 20 张图片，请先移除再添加')
+    await wrapper.get('[data-test="rich-text-image-library-back"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-image-remove"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-image-library-open"]').trigger('click')
+    expect(
+      wrapper.get('[data-test="rich-text-image-library-option"]').attributes('disabled'),
+    ).toBeUndefined()
+    await wrapper.get('[data-test="rich-text-image-library-option"]').trigger('click')
+    expect(wrapper.text()).toContain('已选择 20 / 20 张')
+    expect(
+      wrapper.get('[data-test="rich-text-image-library-option"]').attributes('aria-selected'),
+    ).toBe('true')
+    await wrapper.get('[data-test="rich-text-image-library-option"]').trigger('click')
+    expect(wrapper.text()).toContain('已选择 19 / 20 张')
+  })
+
+  it('retries reading a selected library image without uploading', async () => {
+    const upload = vi.fn()
+    const listLibraryImages = vi.fn(async () =>
+      libraryResult([{ src: '/images/broken.png', name: '图片.png' }]),
+    )
+    const wrapper = mountDialog({ upload, listLibraryImages })
+    await wrapper.get('[data-test="rich-text-image-library-open"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-test="rich-text-image-library-option"]').trigger('click')
+    PreviewImage.fail('/images/broken.png')
+    await flushPromises()
+    await wrapper.get('[data-test="rich-text-image-library-back"]').trigger('click')
+    expect(wrapper.text()).toContain('图片读取失败')
+    await wrapper.get('[data-test="rich-text-image-retry"]').trigger('click')
+    PreviewImage.finish('/images/broken.png', 300, 150)
+    await flushPromises()
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    expect(upload).not.toHaveBeenCalled()
+    expect(wrapper.emitted('confirm')?.at(-1)?.[0]).toMatchObject([
+      { src: '/images/broken.png', alt: '图片.png', width: 300, height: 150 },
+    ])
+  })
+
+  it('treats a successful local upload with the same URL as a selected library card', async () => {
+    const upload = vi.fn(async (selected: File) => {
+      if (selected.name === 'other.png') throw new Error('offline')
+      return { src: '/images/shared.png' }
+    })
+    const listLibraryImages = vi.fn(async () =>
+      libraryResult([{ src: '/images/shared.png', name: '已上传.png' }]),
+    )
+    const wrapper = mountDialog({ upload, listLibraryImages })
+    await chooseFiles([file('shared.png'), file('other.png')])
+    PreviewImage.finish('blob:image-1')
+    PreviewImage.finish('blob:image-2')
+    await flushPromises()
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+    PreviewImage.finish('/images/shared.png')
+    await flushPromises()
+    expect(wrapper.emitted('confirm')).toBeUndefined()
+
+    await wrapper.get('[data-test="rich-text-image-library-open"]').trigger('click')
+    await flushPromises()
+    expect(
+      wrapper.get('[data-test="rich-text-image-library-option"]').attributes('aria-selected'),
+    ).toBe('true')
+    await wrapper.get('[data-test="rich-text-image-library-option"]').trigger('click')
+    expect(wrapper.text()).toContain('已选择 1 / 20 张')
+    expect(
+      wrapper.get('[data-test="rich-text-image-library-option"]').attributes('aria-selected'),
+    ).toBe('false')
+  })
+
+  it('shows failure, retries, and distinguishes an empty library from no search results', async () => {
+    const listLibraryImages = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(libraryResult([]))
+      .mockResolvedValueOnce(libraryResult([]))
+    const wrapper = mountDialog({ listLibraryImages })
+    await wrapper.get('[data-test="rich-text-image-library-open"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('图片库加载失败')
+    await wrapper.get('[data-test="rich-text-image-library-retry"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('暂无可用图片')
+    await wrapper.get('[data-test="rich-text-image-library-search"] input').setValue('不存在')
+    await wrapper.get('[data-test="rich-text-image-library-submit"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('未找到匹配的图片')
+  })
+
+  it('locks library navigation and retry while a local image is uploading', async () => {
+    const pendingUpload = deferred<{ src: string }>()
+    const upload = vi.fn(() => pendingUpload.promise)
+    const listLibraryImages = vi.fn(async () => {
+      throw new Error('offline')
+    })
+    const wrapper = mountDialog({ upload, listLibraryImages })
+    await chooseFiles([file('local.png')])
+    PreviewImage.finish('blob:image-1')
+    await flushPromises()
+    await wrapper.get('[data-test="rich-text-image-library-open"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('图片库加载失败')
+
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    await flushPromises()
+    expect(upload).toHaveBeenCalledOnce()
+    expect(
+      wrapper.get('[data-test="rich-text-image-library-back"]').attributes('disabled'),
+    ).toBeDefined()
+    expect(
+      wrapper.get('[data-test="rich-text-image-library-retry"]').attributes('disabled'),
+    ).toBeDefined()
+    await wrapper.get('[data-test="rich-text-image-library-back"]').trigger('click')
+    await wrapper.get('[data-test="rich-text-image-library-retry"]').trigger('click')
+    expect(wrapper.find('[data-test="rich-text-image-library-search"]').exists()).toBe(true)
+    expect(listLibraryImages).toHaveBeenCalledOnce()
+
+    await wrapper.get('[data-test="rich-text-image-cancel"]').trigger('click')
+    pendingUpload.resolve({ src: '/images/local.png' })
+    await flushPromises()
+  })
+
+  it('applies an editing replacement only on confirmation and ignores a late query after closing', async () => {
+    const pending = deferred<ReturnType<typeof libraryResult>>()
+    const listLibraryImages = vi
+      .fn()
+      .mockResolvedValueOnce(libraryResult([{ src: '/images/replacement.png', name: '替换.png' }]))
+      .mockReturnValueOnce(pending.promise)
+    const wrapper = mountDialog({
+      existingImage: { src: '/images/original.png', alt: '原说明', width: 500, height: 250 },
+      listLibraryImages,
+    })
+    PreviewImage.finish('/images/original.png', 1000, 500)
+    await flushPromises()
+    await wrapper.get('[data-test="rich-text-image-library-open"]').trigger('click')
+    await flushPromises()
+    expect(
+      wrapper
+        .get('[data-test="rich-text-image-library-options"]')
+        .attributes('aria-multiselectable'),
+    ).toBe('false')
+    await wrapper.get('[data-test="rich-text-image-library-option"]').trigger('click')
+    expect(wrapper.find('[data-test="rich-text-image-library-search"]').exists()).toBe(false)
+    expect(wrapper.emitted('confirm')).toBeUndefined()
+    PreviewImage.finish('/images/replacement.png', 800, 800)
+    await flushPromises()
+    expect(
+      (wrapper.get('[data-test="rich-text-image-alt"] input').element as HTMLInputElement).value,
+    ).toBe('原说明')
+    expect(
+      (wrapper.get('[data-test="rich-text-image-width"] input').element as HTMLInputElement).value,
+    ).toBe('500')
+    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
+    expect(wrapper.emitted('confirm')?.at(-1)?.[0]).toMatchObject({
+      src: '/images/replacement.png',
+      alt: '原说明',
+      width: 500,
+      height: 500,
+    })
+
+    const another = mountDialog({ listLibraryImages })
+    await another.get('[data-test="rich-text-image-library-open"]').trigger('click')
+    await another.get('[data-test="rich-text-image-cancel"]').trigger('click')
+    pending.resolve(libraryResult([{ src: '/images/late.png', name: '迟到.png' }]))
+    await flushPromises()
+    expect(another.text()).not.toContain('迟到.png')
   })
 })
 

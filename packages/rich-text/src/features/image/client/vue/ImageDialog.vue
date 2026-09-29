@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { useDropZone, useFileDialog } from '@vueuse/core'
 import { NButton, NModal } from 'naive-ui'
-import { computed, nextTick, onMounted, useTemplateRef, watch, type Ref } from 'vue'
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch, type Ref } from 'vue'
 import { useRichTextThemeStyle } from '../../../../client/vue/theme'
 import type { RichTextImageAttrs } from '../editor'
 import ImageCandidateDetails from './ImageCandidateDetails.vue'
+import ImageLibraryPanel from './ImageLibraryPanel.vue'
 import { useImageCandidates, type ImageCandidate } from './useImageCandidates'
+import { useImageLibrary, type ListRichTextLibraryImages } from './useImageLibrary'
 
 const props = defineProps<{
   upload: (file: File) => Promise<{ src: string }>
+  listLibraryImages?: ListRichTextLibraryImages
   existingImage?: RichTextImageAttrs | undefined
   initialImageFiles?: File[] | undefined
 }>()
@@ -25,10 +28,18 @@ const session = useImageCandidates({
   initialImageFiles: props.initialImageFiles,
   onError: (error) => emit('error', error),
 })
+const library = useImageLibrary(props.listLibraryImages)
+const view = ref<'details' | 'library'>('details')
+const isComposing = ref(false)
+const selectedSrcs = computed(() =>
+  session.candidates.value.flatMap((candidate) => (candidate.src === null ? [] : [candidate.src])),
+)
+const atLimit = computed(() => session.candidates.value.length >= 20)
 const richTextThemeStyle = useRichTextThemeStyle()
 const dialogContentRef = useTemplateRef<HTMLElement>('dialogContentRef')
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 const dropZoneRef = useTemplateRef<HTMLElement>('dropZoneRef')
+const libraryPanelRef = useTemplateRef<InstanceType<typeof ImageLibraryPanel>>('libraryPanelRef')
 
 const { open: openFileDialog, onChange: onFileDialogChange } = useFileDialog({
   accept: 'image/*',
@@ -37,7 +48,7 @@ const { open: openFileDialog, onChange: onFileDialogChange } = useFileDialog({
   reset: true,
 })
 onFileDialogChange((files) => {
-  if (files !== null) session.addLocalFiles(Array.from(files))
+  if (files !== null) addLocalFiles(Array.from(files))
 })
 
 const { isOverDropZone } = useDropZone(dropZoneRef, {
@@ -45,9 +56,45 @@ const { isOverDropZone } = useDropZone(dropZoneRef, {
   preventDefaultForUnhandled: true,
   checkValidity: () => !session.isUploading.value,
   onDrop(files) {
-    if (files !== null) session.addLocalFiles(files)
+    if (files !== null) addLocalFiles(files)
   },
 })
+
+function addLocalFiles(files: File[]) {
+  const previousId = session.selectedId.value
+  session.addLocalFiles(files)
+  if (session.selectedId.value !== previousId) view.value = 'details'
+}
+
+function openLibrary() {
+  if (session.isUploading.value) return
+  view.value = 'library'
+  library.open()
+  void nextTick(() => libraryPanelRef.value?.focusSearch())
+}
+
+function showDetails() {
+  if (session.isUploading.value) return
+  view.value = 'details'
+  void nextTick(focusCurrent)
+}
+
+function selectLibraryImage(image: { src: string; name: string }) {
+  if (session.isUploading.value) return
+  if (session.isEditing) {
+    session.addLibraryImage(image)
+    showDetails()
+    return
+  }
+  if (selectedSrcs.value.includes(image.src)) session.removeLibraryImage(image.src)
+  else session.addLibraryImage(image)
+}
+
+function selectCandidate(id: number) {
+  if (session.isUploading.value) return
+  session.select(id)
+  showDetails()
+}
 
 const confirmLabel = computed(() => {
   if (session.isEditing) {
@@ -78,10 +125,11 @@ function handlePaste(event: ClipboardEvent) {
     return
   }
   event.preventDefault()
-  session.addLocalFiles(Array.from(files))
+  addLocalFiles(Array.from(files))
 }
 
 function focusCurrent() {
+  if (view.value === 'library') return
   const selector =
     session.selected.value === null
       ? '[data-test="rich-text-image-file"]'
@@ -99,13 +147,14 @@ watch(
 onMounted(() => void nextTick(focusCurrent))
 
 function handleKeydown(event: KeyboardEvent) {
-  if (event.key !== 'Escape' || event.isComposing) return
+  if (event.key !== 'Escape' || event.isComposing || isComposing.value) return
   event.preventDefault()
   event.stopPropagation()
   cancel()
 }
 
 function cancel() {
+  library.dispose()
   session.dispose()
   emit('cancel')
 }
@@ -130,32 +179,38 @@ async function confirm() {
     @update:show="cancel"
     @after-enter="focusCurrent"
     @keydown="handleKeydown"
+    @compositionstart="isComposing = true"
+    @compositionend="isComposing = false"
   >
     <div
       ref="dialogContentRef"
       data-test="rich-text-image-dialog-content"
       class="flex max-h-[calc(100dvh-10rem)] min-h-0 flex-col gap-3"
     >
-      <div
-        v-if="!session.isEditing && session.candidates.value.length > 0"
-        class="flex items-center justify-between gap-2"
-      >
-        <NButton
-          data-test="rich-text-image-file"
-          :disabled="session.isUploading.value"
-          @click="openFileDialog()"
-          >添加本地图片</NButton
-        >
-        <span data-test="rich-text-image-count" class="text-sm"
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap gap-2">
+          <NButton
+            v-if="session.candidates.value.length > 0 || view === 'library'"
+            data-test="rich-text-image-file"
+            :disabled="session.isUploading.value"
+            @click="openFileDialog()"
+            >{{ session.isEditing ? '替换图片' : '添加本地图片' }}</NButton
+          >
+          <NButton
+            v-if="listLibraryImages !== undefined"
+            data-test="rich-text-image-library-open"
+            :disabled="session.isUploading.value"
+            :type="view === 'library' ? 'primary' : 'default'"
+            :secondary="view === 'library'"
+            @click="openLibrary"
+            >图片库</NButton
+          >
+        </div>
+        <span
+          v-if="!session.isEditing && session.candidates.value.length > 0"
+          data-test="rich-text-image-count"
+          class="text-sm"
           >已选择 {{ session.candidates.value.length }} / 20 张</span
-        >
-      </div>
-      <div v-if="session.isEditing && session.selected.value !== null" class="flex justify-start">
-        <NButton
-          data-test="rich-text-image-file"
-          :disabled="session.isUploading.value"
-          @click="openFileDialog()"
-          >替换图片</NButton
         >
       </div>
       <input
@@ -177,7 +232,7 @@ async function confirm() {
         @paste="handlePaste"
       >
         <div
-          v-if="session.candidates.value.length === 0"
+          v-if="session.candidates.value.length === 0 && view === 'details'"
           class="flex min-h-44 flex-col items-center justify-center gap-2 rounded-(--rich-text-theme-border-radius) border border-dashed border-(--rich-text-theme-input-border-color) p-4 text-center"
         >
           <NButton
@@ -192,13 +247,23 @@ async function confirm() {
         <div
           v-else
           class="grid min-h-0 grid-cols-1 gap-4 md:grid-cols-[minmax(12rem,15rem)_minmax(0,1fr)]"
-          :class="session.candidates.value.length === 1 ? 'md:grid-cols-1' : ''"
+          :class="
+            session.isEditing ||
+            (session.candidates.value.length === 1 && view === 'details') ||
+            session.candidates.value.length === 0
+              ? 'md:grid-cols-1'
+              : ''
+          "
         >
           <div
-            v-if="!session.isEditing && session.candidates.value.length > 1"
+            v-if="
+              !session.isEditing &&
+              (session.candidates.value.length > 1 ||
+                (view === 'library' && session.candidates.value.length > 0))
+            "
             data-test="rich-text-image-candidate-list"
             role="listbox"
-            aria-label="插入顺序"
+            :aria-label="view === 'library' ? '已选图片' : '插入顺序'"
             class="max-h-64 overflow-y-auto rounded-(--rich-text-theme-border-radius) border border-(--rich-text-theme-input-border-color) p-1 md:max-h-[min(55dvh,28rem)]"
           >
             <NButton
@@ -211,7 +276,7 @@ async function confirm() {
               class="mb-1 w-full justify-start text-left"
               :type="candidate.id === session.selectedId.value ? 'primary' : 'default'"
               :secondary="candidate.id === session.selectedId.value"
-              @click="session.select(candidate.id)"
+              @click="selectCandidate(candidate.id)"
             >
               <span class="flex min-w-0 items-center gap-2">
                 <img :src="candidate.previewSrc" alt="" class="size-9 shrink-0 object-cover" />
@@ -220,7 +285,10 @@ async function confirm() {
               </span>
             </NButton>
           </div>
-          <div v-if="session.selected.value !== null" class="flex min-w-0 flex-col gap-3">
+          <div
+            v-if="view === 'details' && session.selected.value !== null"
+            class="flex min-w-0 flex-col gap-3"
+          >
             <div class="flex flex-wrap items-center justify-between gap-2">
               <strong class="min-w-0 truncate text-sm">{{ session.selected.value.name }}</strong>
               <div v-if="!session.isEditing" class="flex flex-wrap gap-1">
@@ -288,6 +356,26 @@ async function confirm() {
               @retry-read="session.retryRead"
             />
           </div>
+          <ImageLibraryPanel
+            v-if="view === 'library'"
+            ref="libraryPanelRef"
+            :library="library"
+            :selected-srcs="selectedSrcs"
+            :is-editing="session.isEditing"
+            :at-limit="atLimit"
+            :disabled="session.isUploading.value"
+            @select="selectLibraryImage"
+          >
+            <template v-if="session.selected.value !== null" #back>
+              <NButton
+                data-test="rich-text-image-library-back"
+                size="small"
+                :disabled="session.isUploading.value"
+                @click="showDetails"
+                >返回图片设置</NButton
+              >
+            </template>
+          </ImageLibraryPanel>
         </div>
       </div>
 

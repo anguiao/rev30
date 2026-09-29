@@ -13,9 +13,13 @@ import { imageFeature } from '../../core/feature'
 import ImageDialog from './ImageDialog.vue'
 import ImageQuickBar from './ImageQuickBar.vue'
 import ImageToolbarControl from './ImageToolbarControl.vue'
+import type { ListRichTextLibraryImages } from './useImageLibrary'
+
+export type { RichTextImageLibraryQuery, RichTextImageLibraryResult } from './useImageLibrary'
 
 export interface RichTextImageUploadOptions {
   readonly upload: (file: File) => Promise<{ src: string }>
+  readonly listLibraryImages?: ListRichTextLibraryImages
   readonly onError?: (error: unknown) => void
 }
 
@@ -58,6 +62,7 @@ function openImageDialog(
     editor,
     props: {
       upload: options.upload,
+      listLibraryImages: options.listLibraryImages,
       existingImage: image ?? undefined,
       initialImageFiles,
       onCancel: cancelDialog,

@@ -46,6 +46,7 @@ import {
   createAnnouncement,
   getAnnouncement,
   getAnnouncementTargetOptions,
+  listAnnouncementImageOptions,
   updateAnnouncement,
 } from './requests'
 import { announcementTypeSelectOptions, announcementVisibilityOptions } from './labels'
@@ -184,8 +185,19 @@ async function uploadAnnouncementContentImage(file: File) {
 const editorPreset = createStandardRichTextEditorPreset({
   image: {
     upload: uploadAnnouncementContentImage,
+    async listLibraryImages(query) {
+      const options = await listAnnouncementImageOptions(query)
+
+      return {
+        ...options,
+        list: options.list.map((attachment) => ({
+          src: getAttachmentContentUrl(attachment.id),
+          name: attachment.originalName,
+        })),
+      }
+    },
     onError() {
-      formError.value = '上传图片失败'
+      formError.value = '处理图片失败'
     },
   },
 })

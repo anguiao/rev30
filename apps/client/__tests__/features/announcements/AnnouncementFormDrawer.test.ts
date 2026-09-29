@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { NDialogProvider, NRadioGroup, NSelect, NTreeSelect } from 'naive-ui'
 import { defineComponent, h, type PropType } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { StandardRichTextEditorPresetOptions } from '@rev30/rich-text/vue/presets/standard'
 import { getErrorMessage } from '../../../src/utils/error'
 import { ApiRequestError } from '../../../src/utils/request'
 import {
@@ -31,6 +32,7 @@ import {
   createAnnouncement,
   getAnnouncement,
   getAnnouncementTargetOptions,
+  listAnnouncementImageOptions,
   updateAnnouncement,
 } from '../../../src/features/announcements/requests'
 import AnnouncementFormDrawer from '../../../src/features/announcements/AnnouncementFormDrawer.vue'
@@ -162,19 +164,17 @@ vi.mock('../../../src/features/announcements/requests', async (importOriginal) =
   createAnnouncement: vi.fn(),
   getAnnouncement: vi.fn(),
   getAnnouncementTargetOptions: vi.fn(),
+  listAnnouncementImageOptions: vi.fn(),
   updateAnnouncement: vi.fn(),
 }))
 
 const { createStandardRichTextEditorPresetMock } = vi.hoisted(() => ({
-  createStandardRichTextEditorPresetMock: vi.fn((options: { image: unknown }) => ({
+  createStandardRichTextEditorPresetMock: vi.fn((options: StandardRichTextEditorPresetOptions) => ({
     image: options.image,
   })),
 }))
 
-type RichTextImageOptions = {
-  upload: (file: File) => Promise<{ src: string }>
-  onError?: (error: unknown) => void
-}
+type RichTextImageOptions = StandardRichTextEditorPresetOptions['image']
 
 type RichTextEditorStubPreset = {
   image?: RichTextImageOptions
@@ -187,6 +187,8 @@ const compressImageFileMock = vi.mocked(compressImageFile)
 const getAnnouncementMock = vi.mocked(getAnnouncement)
 
 const getAnnouncementTargetOptionsMock = vi.mocked(getAnnouncementTargetOptions)
+
+const listAnnouncementImageOptionsMock = vi.mocked(listAnnouncementImageOptions)
 
 const getErrorMessageMock = vi.mocked(getErrorMessage)
 
@@ -376,6 +378,7 @@ describe('AnnouncementFormDrawer', () => {
     compressImageFileMock.mockImplementation(async (file) => file)
     getAnnouncementMock.mockReset()
     getAnnouncementTargetOptionsMock.mockReset()
+    listAnnouncementImageOptionsMock.mockReset()
     getErrorMessageMock.mockClear()
     updateAnnouncementMock.mockReset()
     uploadAttachmentMock.mockReset()
@@ -758,7 +761,64 @@ describe('AnnouncementFormDrawer', () => {
     )
   })
 
-  it('connects image upload errors to the fixed form feedback', async () => {
+  it('maps announcement image options to stable library images', async () => {
+    const attachmentId = '55555555-5555-4555-8555-555555555555'
+    listAnnouncementImageOptionsMock.mockResolvedValue({
+      list: [
+        {
+          id: attachmentId,
+          originalName: 'Shared cover.png',
+          mimeType: 'image/png',
+          extension: 'png',
+          size: 42,
+          usage: 'announcement-content-image',
+          readPolicy: ATTACHMENT_READ_POLICY_AUTHENTICATED,
+          createdAt: '2026-05-20T07:00:00.000Z',
+        },
+      ],
+      total: 1,
+      page: 2,
+      pageSize: 20,
+    })
+    const wrapper = mountDrawer()
+    await flushPromises()
+    const preset = wrapper
+      .getComponent({ name: 'RichTextEditorStub' })
+      .props('preset') as RichTextEditorStubPreset
+    const listLibraryImages = preset.image?.listLibraryImages
+    if (!listLibraryImages) throw new Error('Expected announcement image library')
+
+    const result = await listLibraryImages({ keyword: 'Shared', page: 2, pageSize: 20 })
+
+    expect(listAnnouncementImageOptionsMock).toHaveBeenCalledWith({
+      keyword: 'Shared',
+      page: 2,
+      pageSize: 20,
+    })
+    expect(result).toEqual({
+      list: [{ src: `/api/attachments/${attachmentId}/content`, name: 'Shared cover.png' }],
+      total: 1,
+      page: 2,
+      pageSize: 20,
+    })
+    expect(uploadAttachmentMock).not.toHaveBeenCalled()
+  })
+
+  it('shows generic form feedback when a library image preview fails', async () => {
+    const wrapper = mountDrawer()
+    await flushPromises()
+    const preset = wrapper
+      .getComponent({ name: 'RichTextEditorStub' })
+      .props('preset') as RichTextEditorStubPreset
+
+    preset.image?.onError?.(new Error('library image preview failed'))
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('处理图片失败')
+    expect(uploadAttachmentMock).not.toHaveBeenCalled()
+  })
+
+  it('connects image upload errors to generic form feedback', async () => {
     createAnnouncementMock.mockResolvedValue(announcementResponse)
     uploadAttachmentMock.mockRejectedValue(new Error('upload failed'))
 
@@ -770,7 +830,7 @@ describe('AnnouncementFormDrawer', () => {
     await wrapper.get('[data-test="announcement-form-rich-text-insert-image"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('上传图片失败')
+    expect(wrapper.text()).toContain('处理图片失败')
 
     await clickAction(wrapper, '[data-test="announcement-form-save-draft"]')
 

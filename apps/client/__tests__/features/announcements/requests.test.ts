@@ -14,6 +14,7 @@ import {
   getAnnouncement,
   getAnnouncementTargetOptions,
   getMyAnnouncement,
+  listAnnouncementImageOptions,
   listAnnouncements,
   listMyAnnouncements,
   publishAnnouncement,
@@ -85,6 +86,49 @@ beforeEach(() => {
 })
 
 describe('announcements request helpers', () => {
+  it('lists announcement image options and parses attachment metadata', async () => {
+    const attachment = {
+      id: '55555555-5555-4555-8555-555555555555',
+      originalName: 'Cover.png',
+      mimeType: 'image/png',
+      extension: 'png',
+      size: 42,
+      usage: 'announcement-content-image',
+      readPolicy: 'authenticated',
+      createdAt: '2026-05-20T07:00:00.000Z',
+    }
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        list: [{ ...attachment, createdBy: { username: 'other' } }],
+        total: 1,
+        page: 2,
+        pageSize: 20,
+      }),
+    )
+
+    const result = await listAnnouncementImageOptions({ keyword: 'Cover', page: 2, pageSize: 20 })
+
+    expect(result).toEqual({ list: [attachment], total: 1, page: 2, pageSize: 20 })
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/content/announcements/image-options',
+      query: { keyword: 'Cover', page: '2', pageSize: '20' },
+    })
+  })
+
+  it('rejects malformed announcement image option responses', async () => {
+    createFetchMock(
+      jsonResponse({
+        list: [{ id: announcementId, originalName: '' }],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+      }),
+    )
+
+    await expect(listAnnouncementImageOptions({ page: 1, pageSize: 20 })).rejects.toThrow()
+  })
+
   it('lists announcements with query params and parses response', async () => {
     const fetchMock = createFetchMock(
       jsonResponse({

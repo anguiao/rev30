@@ -563,6 +563,48 @@ describe('announcement routes', () => {
   )
 
   dbTest(
+    'keeps shared image references independent across announcements',
+    async ({ db: database }) => {
+      const app = await createTestApp(database)
+      const ownerId = await createAttachmentOwner(database)
+      const attachmentId = await createAnnouncementContentImageAttachment(database, {
+        createdBy: ownerId,
+      })
+      const { body: first, response: firstResponse } = await createAnnouncement(app, {
+        ...createBody,
+        title: '重复使用共享图片的公告',
+        contentJson: contentWithImages([attachmentId, attachmentId]),
+      })
+      const { body: second, response: secondResponse } = await createAnnouncement(app, {
+        ...createBody,
+        title: '使用共享图片的另一篇公告',
+        contentJson: contentWithImages([attachmentId]),
+      })
+
+      expect(firstResponse.status).toBe(201)
+      expect(secondResponse.status).toBe(201)
+      expect(await listAnnouncementContentImageReferences(database, first.id)).toEqual([
+        attachmentId,
+      ])
+      expect(await listAnnouncementContentImageReferences(database, second.id)).toEqual([
+        attachmentId,
+      ])
+
+      const removeResponse = await app.request(`/api/content/announcements/${first.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ contentJson: contentWithImages([]) }),
+        headers: { 'content-type': 'application/json' },
+      })
+
+      expect(removeResponse.status).toBe(200)
+      expect(await listAnnouncementContentImageReferences(database, first.id)).toEqual([])
+      expect(await listAnnouncementContentImageReferences(database, second.id)).toEqual([
+        attachmentId,
+      ])
+    },
+  )
+
+  dbTest(
     'returns a content field error and rolls back invalid image reference writes',
     async ({ db: database }) => {
       const app = await createTestApp(database)

@@ -82,34 +82,35 @@ export function transformPastedImageHtml(html: string) {
   return template.innerHTML
 }
 
-export function getPastedImageFile(event: ClipboardEvent) {
+export function getPastedImageFiles(event: ClipboardEvent) {
   const clipboardData = event.clipboardData
   if (clipboardData === null) {
-    return null
+    return []
   }
 
+  const images: File[] = []
   for (let index = 0; index < clipboardData.files.length; index += 1) {
     const file = clipboardData.files.item(index)
 
     if (file?.type.startsWith('image/')) {
-      return file
+      images.push(file)
     }
   }
 
-  return null
+  return images
 }
 
-const imagePicker = defineRichTextInteraction<typeof imageFeature, File | undefined>(
+const imagePicker = defineRichTextInteraction<typeof imageFeature, File[] | undefined>(
   imageFeature,
   'pick-image',
 )
 
-export function openImagePicker(editor: Editor, initialImageFile?: File) {
-  imagePicker.request(editor, initialImageFile)
+export function openImagePicker(editor: Editor, initialImageFiles?: File[]) {
+  imagePicker.request(editor, initialImageFiles)
 }
 
 export function defineImagePickerHandler(
-  handle: (editor: Editor, initialImageFile?: File) => void,
+  handle: (editor: Editor, initialImageFiles?: File[]) => void,
 ) {
   return imagePicker.defineHandler(handle)
 }
@@ -130,13 +131,13 @@ export const imagePasteRule: RichTextPasteRule = {
     return transformPastedImageHtml(html)
   },
   handlePaste({ editor, event, slice }) {
-    const imageFile = getPastedImageFile(event)
+    const imageFiles = getPastedImageFiles(event)
 
-    if (imageFile === null || hasImageNode(slice)) {
+    if (imageFiles.length === 0 || hasImageNode(slice)) {
       return false
     }
 
-    openImagePicker(editor, imageFile)
+    openImagePicker(editor, imageFiles)
     return true
   },
 }

@@ -10,7 +10,7 @@ import { runRichTextAction } from '../../../../src/client/editor/action'
 import { collectRichTextEditorExtensions } from '../../../../src/client/editor/feature'
 import {
   defineImagePickerHandler,
-  getPastedImageFile,
+  getPastedImageFiles,
   imageEditorFeature,
   imagePasteRule,
   insertImageAction,
@@ -191,15 +191,15 @@ describe('image paste rule', () => {
     }
   })
 
-  it('selects the first image file while skipping other clipboard files', () => {
+  it('selects all image files in clipboard order while skipping other files', () => {
     const textFile = new File(['text'], 'note.txt', { type: 'text/plain' })
     const firstImage = new File(['first'], 'first.png', { type: 'image/png' })
     const secondImage = new File(['second'], 'second.jpg', { type: 'image/jpeg' })
 
     expect(
-      getPastedImageFile(createClipboardEvent({ files: [textFile, firstImage, secondImage] })),
-    ).toBe(firstImage)
-    expect(getPastedImageFile(createClipboardEvent({ files: [textFile] }))).toBeNull()
+      getPastedImageFiles(createClipboardEvent({ files: [textFile, firstImage, secondImage] })),
+    ).toEqual([firstImage, secondImage])
+    expect(getPastedImageFiles(createClipboardEvent({ files: [textFile] }))).toEqual([])
   })
 
   it('opens the image picker unless the parsed slice already contains an image', () => {
@@ -231,7 +231,7 @@ describe('image paste rule', () => {
         slice: emptySlice,
       }),
     ).toBe(true)
-    expect(openPicker).toHaveBeenCalledWith(editor, imageFile)
+    expect(openPicker).toHaveBeenCalledWith(editor, [imageFile])
 
     expect(
       imagePasteRule.handlePaste?.({
@@ -256,5 +256,32 @@ describe('image paste rule', () => {
       }),
     ).toBe(true)
     expect(openPicker).toHaveBeenCalledTimes(2)
+  })
+
+  it('passes all pasted image files to the picker without truncating the batch', () => {
+    const openPicker = vi.fn()
+    const preset = defineRichTextPreset({ key: 'image-paste-batch', features: [imageFeature] })
+    const editorPreset = defineRichTextEditorPreset(preset, {
+      editorFeatures: [imageEditorFeature],
+      interactionHandlers: [defineImagePickerHandler(openPicker)],
+    })
+    const editor = createTestEditor({
+      extensions: [Document, Paragraph, Text, ...collectRichTextEditorExtensions(editorPreset)],
+      content: '<p></p>',
+    })
+    const files = [
+      new File(['first'], 'first.png', { type: 'image/png' }),
+      new File(['text'], 'notes.txt', { type: 'text/plain' }),
+      new File(['second'], 'second.png', { type: 'image/png' }),
+    ]
+
+    expect(
+      imagePasteRule.handlePaste?.({
+        editor,
+        event: createClipboardEvent({ files }),
+        slice: editor.state.selection.content(),
+      }),
+    ).toBe(true)
+    expect(openPicker).toHaveBeenCalledWith(editor, [files[0], files[2]])
   })
 })

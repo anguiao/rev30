@@ -34,17 +34,32 @@ describe('standard rich text editor preset', () => {
       src: `/api/attachments/${file.name}/content`,
     }))
     const editor = createStandardEditor(upload)
+    vi.stubGlobal(
+      'Image',
+      class {
+        onload: (() => void) | null = null
+        naturalWidth = 800
+        naturalHeight = 400
+        set src(value: string) {
+          if (value !== '') queueMicrotask(() => this.onload?.())
+        }
+      },
+    )
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:notice')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
 
-    openImagePicker(editor, imageFile)
+    openImagePicker(editor, [imageFile])
     await flushPromises()
 
     const dialog = new DOMWrapper(document.body)
-    await dialog.get('[data-test="rich-text-image-upload-action"]').trigger('click')
+    await dialog.get('[data-test="rich-text-image-confirm"]').trigger('click')
     await flushPromises()
 
     expect(upload).toHaveBeenCalledWith(imageFile)
-
-    await dialog.get('[data-test="rich-text-image-cancel"]').trigger('click')
+    expect(editor.getJSON().content?.[0]).toMatchObject({
+      type: 'image',
+      attrs: { src: '/api/attachments/notice.png/content' },
+    })
   })
 
   it('runs its enabled formatting and block commands', () => {

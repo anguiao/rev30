@@ -5,7 +5,7 @@ import { richTextToolbarComponent } from '../../../../client/vue/toolbar'
 import {
   defineImagePickerHandler,
   getSelectedImageAttrs,
-  insertImageAction,
+  insertImagesAction,
   type RichTextImageAttrs,
   updateImageAction,
 } from '../editor'
@@ -22,15 +22,17 @@ export interface RichTextImageUploadOptions {
 function openImageDialog(
   editor: Editor,
   options: RichTextImageUploadOptions,
-  initialImageFile?: File,
+  initialImageFiles?: File[],
 ) {
   const selection = editor.state.selection
   const image = getSelectedImageAttrs(editor.state.selection)
-  const action = image === null ? insertImageAction : updateImageAction
   let renderer: VueRenderer
   let reportError = options.onError
+  let active = true
 
   function closeDialog() {
+    if (!active) return
+    active = false
     reportError = undefined
     editor.off('destroy', closeDialog)
     renderer.destroy()
@@ -38,13 +40,16 @@ function openImageDialog(
 
   function cancelDialog() {
     closeDialog()
-    editor.commands.focus()
+    if (!editor.isDestroyed) editor.commands.focus()
   }
 
-  function confirmDialog(attrs: RichTextImageAttrs) {
+  function confirmDialog(attrs: RichTextImageAttrs | RichTextImageAttrs[]) {
+    if (!active || editor.isDestroyed) return
     editor.commands.command((props) => {
       props.tr.setSelection(selection)
-      return action.command(props, attrs)
+      return Array.isArray(attrs)
+        ? insertImagesAction.command(props, attrs)
+        : updateImageAction.command(props, attrs)
     })
     closeDialog()
   }
@@ -54,7 +59,7 @@ function openImageDialog(
     props: {
       upload: options.upload,
       existingImage: image ?? undefined,
-      initialImageFile,
+      initialImageFiles,
       onCancel: cancelDialog,
       onConfirm: confirmDialog,
       onError: (error: unknown) => reportError?.(error),
@@ -64,8 +69,8 @@ function openImageDialog(
 }
 
 export function createImagePickerHandler(options: RichTextImageUploadOptions) {
-  return defineImagePickerHandler((editor, initialImageFile) =>
-    openImageDialog(editor, options, initialImageFile),
+  return defineImagePickerHandler((editor, initialImageFiles) =>
+    openImageDialog(editor, options, initialImageFiles),
   )
 }
 

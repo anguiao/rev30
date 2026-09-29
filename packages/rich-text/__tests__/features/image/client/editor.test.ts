@@ -14,6 +14,7 @@ import {
   imageEditorFeature,
   imagePasteRule,
   insertImageAction,
+  insertImagesAction,
   transformPastedImageHtml,
   updateImageAction,
 } from '../../../../src/features/image/client/editor'
@@ -33,12 +34,74 @@ function createEditor(
   content: Parameters<typeof createTestEditor>[0]['content'] = '<p></p><p>后续正文</p>',
 ) {
   return createTestEditor({
-    extensions: [Document, Paragraph, Text, UndoRedo, ...imageFeature.sharedExtensions!()],
+    extensions: [
+      Document,
+      Paragraph,
+      Text,
+      UndoRedo,
+      ...imageFeature.sharedExtensions!(),
+      ...imageEditorFeature.extensions!(),
+    ],
     content,
   })
 }
 
 describe('image editor actions', () => {
+  it('inserts an ordered batch at the selection in one transaction and restores replaced text on undo', () => {
+    const editor = createEditor('<p>前需替换后</p><p>尾段</p>')
+    const originalHtml = editor.getHTML()
+    const images = [
+      imageAttrs,
+      { src: '/images/second.png', alt: '', width: 320, height: 180 },
+      { src: '/images/third.png', alt: null, width: null, height: null },
+    ]
+    editor.commands.setTextSelection({ from: 2, to: 5 })
+    const onTransaction = vi.fn()
+    editor.on('transaction', onTransaction)
+
+    expect(runRichTextAction(editor, insertImagesAction, images)).toBe(true)
+
+    expect(onTransaction.mock.calls.filter(([event]) => event.transaction.docChanged)).toHaveLength(
+      1,
+    )
+    expect(editor.getJSON().content).toMatchObject([
+      { type: 'paragraph', content: [{ type: 'text', text: '前' }] },
+      ...images.map((attrs) => ({ type: 'image', attrs })),
+      { type: 'paragraph', content: [{ type: 'text', text: '后' }] },
+      { type: 'paragraph', content: [{ type: 'text', text: '尾段' }] },
+    ])
+
+    expect(editor.commands.undo()).toBe(true)
+    expect(editor.getHTML()).toBe(originalHtml)
+    expect(editor.commands.redo()).toBe(true)
+    expect(editor.getJSON().content?.slice(1, 4)).toMatchObject(
+      images.map((attrs) => ({ type: 'image', attrs })),
+    )
+  })
+
+  it('keeps a batch separate from adjacent typing before and after it', () => {
+    const editor = createEditor('<p>起终</p>')
+    editor.commands.setTextSelection(2)
+    expect(editor.commands.insertContent('前')).toBe(true)
+    const beforeBatchHtml = editor.getHTML()
+
+    expect(runRichTextAction(editor, insertImagesAction, [imageAttrs])).toBe(true)
+    const afterBatchHtml = editor.getHTML()
+    expect(afterBatchHtml).not.toBe(beforeBatchHtml)
+
+    const followingParagraphStart =
+      editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize
+    editor.commands.setTextSelection(followingParagraphStart + 1)
+    expect(editor.commands.insertContent('后')).toBe(true)
+
+    expect(editor.commands.undo()).toBe(true)
+    expect(editor.getHTML()).toBe(afterBatchHtml)
+    expect(editor.commands.undo()).toBe(true)
+    expect(editor.getHTML()).toBe(beforeBatchHtml)
+    expect(editor.commands.undo()).toBe(true)
+    expect(editor.getHTML()).toBe('<p>起终</p>')
+  })
+
   it('inserts and selects the image in one transaction', () => {
     const editor = createEditor()
     const onTransaction = vi.fn()

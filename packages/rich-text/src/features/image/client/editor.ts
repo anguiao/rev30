@@ -1,7 +1,7 @@
-import type { Editor } from '@tiptap/core'
+import { Extension, type Editor } from '@tiptap/core'
 import { closeHistory } from '@tiptap/pm/history'
 import type { Slice } from '@tiptap/pm/model'
-import { NodeSelection, type Selection } from '@tiptap/pm/state'
+import { NodeSelection, Plugin, PluginKey, type Selection } from '@tiptap/pm/state'
 import { defineRichTextAction, defineRichTextActionItem } from '../../../client/editor/action'
 import { defineRichTextEditorFeature } from '../../../client/editor/feature'
 import { defineRichTextInteraction } from '../../../client/editor/interaction'
@@ -153,6 +153,49 @@ export const insertImageAction = defineRichTextAction(imageFeature, {
       .run(),
 })
 
+export const insertImagesAction = defineRichTextAction(imageFeature, {
+  key: 'insert-images',
+  command: ({ chain }, images: RichTextImageAttrs[]) => {
+    if (images.length === 0) {
+      return false
+    }
+
+    return chain()
+      .focus()
+      .command(({ commands, tr }) => {
+        const inserted = commands.insertContent(images.map((attrs) => ({ type: 'image', attrs })))
+
+        if (inserted) {
+          closeHistory(tr)
+          tr.setMeta(imageBatchHistoryKey, true)
+        }
+
+        return inserted
+      })
+      .run()
+  },
+})
+
+const imageBatchHistoryKey = new PluginKey('imageBatchHistory')
+
+const imageBatchHistoryExtension = Extension.create({
+  name: 'imageBatchHistory',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: imageBatchHistoryKey,
+        appendTransaction(transactions, _oldState, newState) {
+          if (transactions.some((transaction) => transaction.getMeta(imageBatchHistoryKey))) {
+            return closeHistory(newState.tr)
+          }
+
+          return null
+        },
+      }),
+    ]
+  },
+})
+
 export const updateImageAction = defineRichTextAction(imageFeature, {
   key: 'update-image',
   command: ({ chain, tr }, attrs: Partial<RichTextImageAttrs>) => {
@@ -165,6 +208,7 @@ export const updateImageAction = defineRichTextAction(imageFeature, {
 })
 
 export const imageEditorFeature = defineRichTextEditorFeature(imageFeature, {
+  extensions: () => [imageBatchHistoryExtension],
   interactions: [imagePicker],
   pasteRule: imagePasteRule,
 })

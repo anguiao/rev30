@@ -28,7 +28,7 @@ export interface ImageCandidate {
   uploadState: UploadState
 }
 
-interface ImageCandidatesOptions {
+interface ImageDialogSessionOptions {
   readonly upload: (file: File) => Promise<{ src: string }>
   readonly existingImage?: RichTextImageAttrs | undefined
   readonly initialImageFiles?: readonly File[] | undefined
@@ -78,7 +78,7 @@ function validSize(value: number | null) {
   return value !== null && Number.isInteger(value) && value > 0
 }
 
-export function useImageCandidates(options: ImageCandidatesOptions) {
+export function useImageDialogSession(options: ImageDialogSessionOptions) {
   const isEditing = options.existingImage !== undefined
   const candidates = ref<ImageCandidate[]>([])
   const selectedId = ref<number | null>(null)

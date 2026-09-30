@@ -1,5 +1,5 @@
 import { onUnmounted, ref } from 'vue'
-import type { ImageLibraryItem } from './useImageCandidates'
+import type { ImageLibraryItem } from './useImageDialogSession'
 
 export interface RichTextImageLibraryQuery {
   readonly keyword?: string

@@ -77,11 +77,8 @@ test('replaces selected text with reordered local images in one undo step', asyn
     fixtureImageFile('first.png'),
     fixtureImageFile('second.png'),
   ])
-  await expect
-    .element(dialog.getByTestId('rich-text-image-count'))
-    .toHaveTextContent('已选择 2 / 20 张')
   await dialog
-    .getByRole('listbox', { name: '插入顺序' })
+    .getByRole('listbox', { name: '已选图片' })
     .getByRole('option', { name: /second.png/ })
     .click()
   await dialog.getByRole('button', { name: '前移图片' }).click()

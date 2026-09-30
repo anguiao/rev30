@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { useDropZone, useFileDialog } from '@vueuse/core'
-import { NButton, NModal } from 'naive-ui'
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch, type Ref } from 'vue'
+import { NButton, NDropdown, NModal, NText, useThemeVars, type DropdownOption } from 'naive-ui'
+import { computed, h, nextTick, onMounted, ref, useTemplateRef, watch, type Ref } from 'vue'
+import { useRichTextDropdownTrigger } from '../../../../client/vue/interactions/dropdown'
 import { useRichTextThemeStyle } from '../../../../client/vue/theme'
 import type { RichTextImageAttrs } from '../editor'
-import ImageCandidateDetails from './ImageCandidateDetails.vue'
+import ImagePropertiesPanel from './ImagePropertiesPanel.vue'
 import ImageLibraryPanel from './ImageLibraryPanel.vue'
-import { useImageCandidates, type ImageCandidate } from './useImageCandidates'
+import { useImageDialogSession, type ImageCandidate } from './useImageDialogSession'
 import { useImageLibrary, type ListRichTextLibraryImages } from './useImageLibrary'
 
 const props = defineProps<{
@@ -22,7 +23,7 @@ const emit = defineEmits<{
   error: [error: unknown]
 }>()
 
-const session = useImageCandidates({
+const session = useImageDialogSession({
   upload: props.upload,
   existingImage: props.existingImage,
   initialImageFiles: props.initialImageFiles,
@@ -36,10 +37,34 @@ const selectedSrcs = computed(() =>
 )
 const atLimit = computed(() => session.candidates.value.length >= 20)
 const richTextThemeStyle = useRichTextThemeStyle()
+const themeVars = useThemeVars()
 const dialogContentRef = useTemplateRef<HTMLElement>('dialogContentRef')
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 const dropZoneRef = useTemplateRef<HTMLElement>('dropZoneRef')
 const libraryPanelRef = useTemplateRef<InstanceType<typeof ImageLibraryPanel>>('libraryPanelRef')
+const { show: showSourceMenu, handleTriggerKeydown } = useRichTextDropdownTrigger(
+  session.isUploading,
+)
+const sourceLabel = session.isEditing ? '替换图片' : '添加图片'
+const sourceOptions = computed<DropdownOption[]>(() => [
+  {
+    key: 'local',
+    label: '从本地选择',
+    icon: () => h('span', { class: 'i-[lucide--folder-open] inline-block', 'aria-hidden': 'true' }),
+    props: { role: 'menuitem' },
+  },
+  ...(props.listLibraryImages === undefined
+    ? []
+    : [
+        {
+          key: 'library',
+          label: '从图片库选择',
+          icon: () =>
+            h('span', { class: 'i-[lucide--images] inline-block', 'aria-hidden': 'true' }),
+          props: { role: 'menuitem' },
+        },
+      ]),
+])
 
 const { open: openFileDialog, onChange: onFileDialogChange } = useFileDialog({
   accept: 'image/*',
@@ -73,6 +98,11 @@ function openLibrary() {
   void nextTick(() => libraryPanelRef.value?.focusSearch())
 }
 
+function selectSource(key: string | number) {
+  if (key === 'local') openFileDialog()
+  else if (key === 'library') openLibrary()
+}
+
 function showDetails() {
   if (session.isUploading.value) return
   view.value = 'details'
@@ -101,6 +131,7 @@ const confirmLabel = computed(() => {
     return session.localToUploadCount.value > 0 ? '上传并应用' : '应用'
   }
   const count = session.candidates.value.length
+  if (count === 0) return '插入'
   return session.localToUploadCount.value > 0 ? `上传并插入 ${count} 张` : `插入 ${count} 张`
 })
 
@@ -150,6 +181,10 @@ function handleKeydown(event: KeyboardEvent) {
   if (event.key !== 'Escape' || event.isComposing || isComposing.value) return
   event.preventDefault()
   event.stopPropagation()
+  if (showSourceMenu.value) {
+    showSourceMenu.value = false
+    return
+  }
   cancel()
 }
 
@@ -172,8 +207,11 @@ async function confirm() {
     preset="card"
     :title="session.isEditing ? '编辑图片' : '插入图片'"
     :aria-label="session.isEditing ? '编辑图片' : '插入图片'"
-    class="rich-text-theme w-[calc(100vw-32px)] max-w-4xl"
-    :style="richTextThemeStyle"
+    class="rich-text-theme"
+    :style="[richTextThemeStyle, { width: '680px' }]"
+    :content-style="{ padding: 0 }"
+    :footer-style="{ padding: '16px 24px' }"
+    :segmented="{ footer: true }"
     :mask-closable="false"
     :close-on-esc="false"
     @update:show="cancel"
@@ -182,36 +220,30 @@ async function confirm() {
     @compositionstart="isComposing = true"
     @compositionend="isComposing = false"
   >
-    <div
-      ref="dialogContentRef"
-      data-test="rich-text-image-dialog-content"
-      class="flex max-h-[calc(100dvh-10rem)] min-h-0 flex-col gap-3"
-    >
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="flex flex-wrap gap-2">
-          <NButton
-            v-if="session.candidates.value.length > 0 || view === 'library'"
-            data-test="rich-text-image-file"
-            :disabled="session.isUploading.value"
-            @click="openFileDialog()"
-            >{{ session.isEditing ? '替换图片' : '添加本地图片' }}</NButton
-          >
-          <NButton
-            v-if="listLibraryImages !== undefined"
-            data-test="rich-text-image-library-open"
-            :disabled="session.isUploading.value"
-            :type="view === 'library' ? 'primary' : 'default'"
-            :secondary="view === 'library'"
-            @click="openLibrary"
-            >图片库</NButton
-          >
-        </div>
-        <span
-          v-if="!session.isEditing && session.candidates.value.length > 0"
-          data-test="rich-text-image-count"
-          class="text-sm"
-          >已选择 {{ session.candidates.value.length }} / 20 张</span
+    <div ref="dialogContentRef" data-test="rich-text-image-dialog-content">
+      <div class="flex h-[50px] items-center px-6 pb-4">
+        <NDropdown
+          v-model:show="showSourceMenu"
+          trigger="click"
+          placement="bottom-start"
+          :to="false"
+          :options="sourceOptions"
+          :disabled="session.isUploading.value"
+          :menu-props="() => ({ role: 'menu', 'aria-label': sourceLabel })"
+          @select="selectSource"
         >
+          <NButton
+            data-test="rich-text-image-source"
+            :disabled="session.isUploading.value"
+            aria-haspopup="menu"
+            :aria-expanded="showSourceMenu"
+            @keydown="handleTriggerKeydown"
+          >
+            <template #icon><span class="i-[lucide--plus]" aria-hidden="true" /></template>
+            {{ sourceLabel }}
+            <span class="ml-2 i-[lucide--chevron-down] text-xs" aria-hidden="true" />
+          </NButton>
+        </NDropdown>
       </div>
       <input
         ref="fileInput"
@@ -225,172 +257,210 @@ async function confirm() {
       <div
         ref="dropZoneRef"
         data-test="rich-text-image-drop-zone"
-        class="min-h-0 overflow-y-auto rounded-(--rich-text-theme-border-radius)"
-        :class="
-          isOverDropZone ? 'outline-2 outline-(--rich-text-theme-primary-color) outline-solid' : ''
-        "
+        class="grid h-[460px] grid-rows-[minmax(0,1fr)] border-t border-(--rich-text-theme-input-divider-color)"
+        :class="[
+          session.isEditing ? 'grid-cols-1' : 'grid-cols-[11rem_minmax(0,1fr)]',
+          isOverDropZone ? 'outline-2 outline-(--rich-text-theme-primary-color) outline-solid' : '',
+        ]"
         @paste="handlePaste"
       >
         <div
-          v-if="session.candidates.value.length === 0 && view === 'details'"
-          class="flex min-h-44 flex-col items-center justify-center gap-2 rounded-(--rich-text-theme-border-radius) border border-dashed border-(--rich-text-theme-input-border-color) p-4 text-center"
+          v-if="!session.isEditing"
+          class="flex min-h-0 flex-col gap-2 border-r border-(--rich-text-theme-input-divider-color) p-2"
+          :style="{ backgroundColor: themeVars.actionColor }"
         >
-          <NButton
-            data-test="rich-text-image-file"
-            :disabled="session.isUploading.value"
-            @click="openFileDialog()"
-            >点击选择或拖入图片</NButton
-          >
-          <span class="text-sm">最多选择 20 张图片，支持粘贴</span>
-          <span class="text-sm">尚未选择图片</span>
-        </div>
-        <div
-          v-else
-          class="grid min-h-0 grid-cols-1 gap-4 md:grid-cols-[minmax(12rem,15rem)_minmax(0,1fr)]"
-          :class="
-            session.isEditing ||
-            (session.candidates.value.length === 1 && view === 'details') ||
-            session.candidates.value.length === 0
-              ? 'md:grid-cols-1'
-              : ''
-          "
-        >
+          <NText depth="3" class="shrink-0 px-2 pt-1 text-xs">已选图片</NText>
           <div
-            v-if="
-              !session.isEditing &&
-              (session.candidates.value.length > 1 ||
-                (view === 'library' && session.candidates.value.length > 0))
-            "
             data-test="rich-text-image-candidate-list"
             role="listbox"
-            :aria-label="view === 'library' ? '已选图片' : '插入顺序'"
-            class="max-h-64 overflow-y-auto rounded-(--rich-text-theme-border-radius) border border-(--rich-text-theme-input-border-color) p-1 md:max-h-[min(55dvh,28rem)]"
+            aria-label="已选图片"
+            class="grid min-h-0 flex-1 auto-rows-max gap-1 overflow-y-auto"
           >
             <NButton
-              v-for="(candidate, index) in session.candidates.value"
+              v-for="candidate in session.candidates.value"
               :key="candidate.id"
               data-test="rich-text-image-candidate"
               role="option"
+              block
               :aria-selected="candidate.id === session.selectedId.value"
+              :title="candidate.name"
               :disabled="session.isUploading.value"
-              class="mb-1 w-full justify-start text-left"
+              class="image-candidate-button min-w-0"
+              style="height: auto; padding: 8px"
               :type="candidate.id === session.selectedId.value ? 'primary' : 'default'"
               :secondary="candidate.id === session.selectedId.value"
+              :quaternary="candidate.id !== session.selectedId.value"
               @click="selectCandidate(candidate.id)"
             >
-              <span class="flex min-w-0 items-center gap-2">
-                <img :src="candidate.previewSrc" alt="" class="size-9 shrink-0 object-cover" />
-                <span class="min-w-0 truncate">{{ index + 1 }} {{ candidate.name }}</span>
-                <span class="shrink-0 text-xs">{{ statusLabel(candidate) }}</span>
+              <span
+                class="grid w-full min-w-0 grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-2 text-left"
+              >
+                <img
+                  :src="candidate.previewSrc"
+                  alt=""
+                  class="size-9 rounded-(--rich-text-theme-border-radius) object-cover"
+                />
+                <span class="flex min-w-0 flex-col gap-1">
+                  <span class="truncate text-xs">{{ candidate.name }}</span>
+                  <span
+                    class="text-xs"
+                    :class="
+                      candidate.uploadState === 'error' || candidate.readState === 'error'
+                        ? 'text-(--rich-text-theme-error-color)'
+                        : 'text-(--rich-text-theme-muted-text-color)'
+                    "
+                    >{{ statusLabel(candidate) }}</span
+                  >
+                </span>
               </span>
             </NButton>
           </div>
-          <div
-            v-if="view === 'details' && session.selected.value !== null"
-            class="flex min-w-0 flex-col gap-3"
-          >
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <strong class="min-w-0 truncate text-sm">{{ session.selected.value.name }}</strong>
-              <div v-if="!session.isEditing" class="flex flex-wrap gap-1">
-                <NButton
-                  v-if="session.candidates.value.length > 1"
-                  data-test="rich-text-image-move-up"
-                  size="small"
-                  aria-label="前移图片"
-                  :disabled="
-                    session.isUploading.value ||
-                    session.candidates.value[0]?.id === session.selectedId.value
-                  "
-                  @click="
-                    session.move(
-                      session.candidates.value.findIndex(
-                        (item) => item.id === session.selectedId.value,
-                      ),
-                      -1,
-                    )
-                  "
-                  >前移</NButton
-                >
-                <NButton
-                  v-if="session.candidates.value.length > 1"
-                  data-test="rich-text-image-move-down"
-                  size="small"
-                  aria-label="后移图片"
-                  :disabled="
-                    session.isUploading.value ||
-                    session.candidates.value.at(-1)?.id === session.selectedId.value
-                  "
-                  @click="
-                    session.move(
-                      session.candidates.value.findIndex(
-                        (item) => item.id === session.selectedId.value,
-                      ),
-                      1,
-                    )
-                  "
-                  >后移</NButton
-                >
-                <NButton
-                  data-test="rich-text-image-remove"
-                  size="small"
-                  aria-label="移除图片"
-                  :disabled="session.isUploading.value"
-                  @click="
-                    session.remove(
-                      session.candidates.value.findIndex(
-                        (item) => item.id === session.selectedId.value,
-                      ),
-                    )
-                  "
-                  >移除</NButton
-                >
-              </div>
-            </div>
-            <ImageCandidateDetails
-              :candidate="session.selected.value"
-              :disabled="session.isUploading.value"
-              @update-alt="session.updateAlt"
-              @update-width="session.updateWidth"
-              @update-height="session.updateHeight"
-              @reset-size="session.resetSize"
-              @retry-read="session.retryRead"
-            />
-          </div>
-          <ImageLibraryPanel
-            v-if="view === 'library'"
-            ref="libraryPanelRef"
-            :library="library"
-            :selected-srcs="selectedSrcs"
-            :is-editing="session.isEditing"
-            :at-limit="atLimit"
-            :disabled="session.isUploading.value"
-            @select="selectLibraryImage"
-          >
-            <template v-if="session.selected.value !== null" #back>
-              <NButton
-                data-test="rich-text-image-library-back"
-                size="small"
-                :disabled="session.isUploading.value"
-                @click="showDetails"
-                >返回图片设置</NButton
-              >
-            </template>
-          </ImageLibraryPanel>
         </div>
+        <div
+          v-if="session.candidates.value.length === 0 && view === 'details'"
+          class="flex min-h-0 min-w-0 items-center justify-center p-5"
+        >
+          <NButton
+            data-test="rich-text-image-file"
+            block
+            dashed
+            class="max-w-sm"
+            aria-label="点击选择或拖入图片"
+            style="height: 180px"
+            :disabled="session.isUploading.value"
+            @click="openFileDialog()"
+          >
+            <span class="flex flex-col items-center gap-3 py-6 whitespace-normal">
+              <span class="i-[lucide--image-plus] size-8" aria-hidden="true" />
+              <span>点击选择或拖入图片</span>
+              <NText depth="3" class="text-xs">一次最多选择 20 张图片，支持粘贴</NText>
+            </span>
+          </NButton>
+        </div>
+        <div
+          v-if="view === 'details' && session.selected.value !== null"
+          class="flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto p-5"
+        >
+          <div class="flex h-7 shrink-0 items-center justify-between gap-2">
+            <NText class="min-w-0 truncate text-sm" :title="session.selected.value.name">
+              {{ session.selected.value.name }}
+            </NText>
+            <div v-if="!session.isEditing" class="flex shrink-0 gap-1">
+              <NButton
+                v-if="session.candidates.value.length > 1"
+                data-test="rich-text-image-move-up"
+                size="small"
+                quaternary
+                style="--n-padding: 0 6px"
+                title="前移图片"
+                aria-label="前移图片"
+                :disabled="
+                  session.isUploading.value ||
+                  session.candidates.value[0]?.id === session.selectedId.value
+                "
+                @click="
+                  session.move(
+                    session.candidates.value.findIndex(
+                      (item) => item.id === session.selectedId.value,
+                    ),
+                    -1,
+                  )
+                "
+              >
+                <span class="i-[lucide--arrow-up]" aria-hidden="true" />
+              </NButton>
+              <NButton
+                v-if="session.candidates.value.length > 1"
+                data-test="rich-text-image-move-down"
+                size="small"
+                quaternary
+                style="--n-padding: 0 6px"
+                title="后移图片"
+                aria-label="后移图片"
+                :disabled="
+                  session.isUploading.value ||
+                  session.candidates.value.at(-1)?.id === session.selectedId.value
+                "
+                @click="
+                  session.move(
+                    session.candidates.value.findIndex(
+                      (item) => item.id === session.selectedId.value,
+                    ),
+                    1,
+                  )
+                "
+              >
+                <span class="i-[lucide--arrow-down]" aria-hidden="true" />
+              </NButton>
+              <NButton
+                data-test="rich-text-image-remove"
+                size="small"
+                quaternary
+                style="--n-padding: 0 6px"
+                title="移除图片"
+                aria-label="移除图片"
+                :disabled="session.isUploading.value"
+                @click="
+                  session.remove(
+                    session.candidates.value.findIndex(
+                      (item) => item.id === session.selectedId.value,
+                    ),
+                  )
+                "
+              >
+                <span class="i-[lucide--trash-2]" aria-hidden="true" />
+              </NButton>
+            </div>
+          </div>
+          <ImagePropertiesPanel
+            :candidate="session.selected.value"
+            :disabled="session.isUploading.value"
+            @update-alt="session.updateAlt"
+            @update-width="session.updateWidth"
+            @update-height="session.updateHeight"
+            @reset-size="session.resetSize"
+            @retry-read="session.retryRead"
+          />
+        </div>
+        <ImageLibraryPanel
+          v-if="view === 'library'"
+          ref="libraryPanelRef"
+          class="p-5"
+          :library="library"
+          :selected-srcs="selectedSrcs"
+          :is-editing="session.isEditing"
+          :at-limit="atLimit"
+          :disabled="session.isUploading.value"
+          @select="selectLibraryImage"
+        >
+          <template #back>
+            <NButton
+              data-test="rich-text-image-library-back"
+              size="small"
+              text
+              type="primary"
+              :disabled="session.isUploading.value"
+              @click="showDetails"
+            >
+              <template #icon><span class="i-[lucide--arrow-left]" aria-hidden="true" /></template>
+              返回
+            </NButton>
+          </template>
+        </ImageLibraryPanel>
       </div>
-
-      <div
-        v-if="session.message.value"
-        data-test="rich-text-image-error"
-        role="alert"
-        class="text-sm text-(--rich-text-theme-error-color)"
-      >
-        {{ session.message.value }}
-      </div>
-      <div
-        class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-(--rich-text-theme-input-border-color) pt-3"
-      >
-        <span class="text-sm" role="status">
+    </div>
+    <template #footer>
+      <div class="flex h-10 items-center justify-between gap-3">
+        <NText
+          v-if="session.message.value"
+          data-test="rich-text-image-error"
+          type="error"
+          role="alert"
+          class="min-w-0 flex-1 text-xs"
+        >
+          {{ session.message.value }}
+        </NText>
+        <NText v-else depth="3" class="min-w-0 flex-1 text-xs" role="status">
           <template v-if="session.isUploading.value">上传中，请稍候</template>
           <template v-else-if="session.localToUploadCount.value > 0"
             >{{ session.localToUploadCount.value }} 张本地图片待上传</template
@@ -398,8 +468,8 @@ async function confirm() {
           <template v-else-if="!session.isEditing && session.candidates.value.length === 0"
             >尚未选择图片</template
           >
-        </span>
-        <div class="flex gap-2">
+        </NText>
+        <div class="ml-auto flex shrink-0 gap-2">
           <NButton data-test="rich-text-image-cancel" @click="cancel">取消</NButton>
           <NButton
             data-test="rich-text-image-confirm"
@@ -411,6 +481,12 @@ async function confirm() {
           >
         </div>
       </div>
-    </div>
+    </template>
   </NModal>
 </template>
+
+<style scoped>
+.image-candidate-button :deep(.n-button__content) {
+  width: 100%;
+}
+</style>

@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@source '../node_modules/@rev30/rich-text';
+@source '../../../packages/rich-text/src';
 @plugin '@iconify/tailwind4' {
   prefix: 'i';
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { NButton, NInput, type InputInst } from 'naive-ui'
+import { NButton, NInput, NText, type InputInst } from 'naive-ui'
 import { ref, useTemplateRef } from 'vue'
-import type { ImageLibraryItem } from './useImageCandidates'
+import type { ImageLibraryItem } from './useImageDialogSession'
 import type { useImageLibrary } from './useImageLibrary'
 
 const props = defineProps<{
@@ -55,15 +55,15 @@ defineExpose({ focusSearch })
 </script>
 
 <template>
-  <section class="flex min-w-0 flex-col gap-3" aria-label="图片库">
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <strong class="text-sm">图片库</strong>
+  <section class="flex min-h-0 min-w-0 flex-col gap-3" aria-label="图片库">
+    <div class="flex h-7 shrink-0 items-center justify-between gap-2">
+      <NText class="text-sm">图片库</NText>
       <slot name="back" />
     </div>
-    <div v-if="atLimit && !isEditing" role="status" class="text-sm">
+    <div v-if="atLimit && !isEditing" role="status" class="shrink-0 text-sm">
       已选择 20 张图片，请先移除再添加
     </div>
-    <div class="flex flex-wrap gap-2">
+    <div class="flex shrink-0 gap-2">
       <NInput
         ref="searchRef"
         data-test="rich-text-image-library-search"
@@ -77,15 +77,29 @@ defineExpose({ focusSearch })
         @compositionend="composing = false"
         @keydown="handleSearchKeydown"
       />
-      <NButton data-test="rich-text-image-library-submit" :disabled="disabled" @click="submitSearch"
-        >搜索</NButton
+      <NButton
+        data-test="rich-text-image-library-submit"
+        aria-label="搜索"
+        title="搜索"
+        :disabled="disabled"
+        @click="submitSearch"
       >
+        <template #icon><span class="i-[lucide--search]" aria-hidden="true" /></template>
+      </NButton>
     </div>
 
-    <div v-if="library.isLoading.value" role="status" class="py-8 text-center text-sm">
+    <div
+      v-if="library.isLoading.value"
+      role="status"
+      class="flex min-h-0 flex-1 items-center justify-center text-sm"
+    >
       正在加载图片
     </div>
-    <div v-else-if="library.isError.value" role="alert" class="flex items-center gap-2 py-6">
+    <div
+      v-else-if="library.isError.value"
+      role="alert"
+      class="flex min-h-0 flex-1 items-center justify-center gap-2 text-sm"
+    >
       <span>图片库加载失败</span>
       <NButton
         data-test="rich-text-image-library-retry"
@@ -98,7 +112,7 @@ defineExpose({ focusSearch })
     <div
       v-else-if="library.result.value?.list.length === 0"
       role="status"
-      class="py-8 text-center text-sm"
+      class="flex min-h-0 flex-1 items-center justify-center text-sm"
     >
       {{ library.keyword.value === '' ? '暂无可用图片' : '未找到匹配的图片' }}
     </div>
@@ -108,7 +122,7 @@ defineExpose({ focusSearch })
       role="listbox"
       aria-label="图片库"
       :aria-multiselectable="!isEditing"
-      class="grid max-h-[min(45dvh,25rem)] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3"
+      class="grid min-h-0 flex-1 auto-rows-max grid-cols-2 gap-3 overflow-y-auto"
     >
       <NButton
         v-for="image in library.result.value.list"
@@ -117,46 +131,62 @@ defineExpose({ focusSearch })
         role="option"
         :aria-selected="isSelected(image.src)"
         :aria-label="image.name"
+        :title="image.name"
         :type="isSelected(image.src) ? 'primary' : 'default'"
         :secondary="isSelected(image.src)"
         :disabled="disabled || (atLimit && !isSelected(image.src))"
-        class="min-w-0 p-2"
-        style="height: auto"
+        class="image-library-card min-w-0 overflow-hidden"
+        style="height: auto; padding: 0"
         @click="select(image)"
       >
-        <span class="flex min-w-0 flex-col gap-1">
-          <img :src="image.src" alt="" class="h-24 w-full object-contain" />
-          <span class="truncate text-sm">{{ image.name }}</span>
-          <span class="text-xs">{{ isSelected(image.src) ? '已选择' : '选择' }}</span>
+        <span class="flex w-full min-w-0 flex-col">
+          <span class="flex h-24 items-center justify-center bg-(--rich-text-theme-input-color)">
+            <img :src="image.src" alt="" class="h-full w-full object-contain" />
+          </span>
+          <span class="flex min-w-0 items-center justify-between gap-2 px-3 py-2">
+            <span class="truncate text-xs">{{ image.name }}</span>
+            <span
+              class="size-4 shrink-0"
+              :class="isSelected(image.src) ? 'i-[lucide--square-check]' : 'i-[lucide--square]'"
+              aria-hidden="true"
+            />
+          </span>
         </span>
       </NButton>
     </div>
 
-    <div
-      v-if="library.result.value !== null && library.result.value.total > 0"
-      class="flex flex-wrap items-center justify-between gap-2 text-sm"
-    >
-      <span>第 {{ library.page.value }} 页 · 共 {{ library.result.value.total }} 张</span>
-      <div class="flex gap-2">
-        <NButton
-          data-test="rich-text-image-library-previous"
-          size="small"
-          :disabled="disabled || library.isLoading.value || library.page.value <= 1"
-          @click="previousPage"
-          >上一页</NButton
-        >
-        <NButton
-          data-test="rich-text-image-library-next"
-          size="small"
-          :disabled="
-            disabled ||
-            library.isLoading.value ||
-            library.page.value * 20 >= library.result.value.total
-          "
-          @click="nextPage"
-          >下一页</NButton
-        >
-      </div>
+    <div class="flex h-7 shrink-0 items-center justify-between gap-2">
+      <template v-if="library.result.value !== null && library.result.value.total > 0">
+        <NText depth="3" class="text-xs">
+          第 {{ library.page.value }} 页 · 共 {{ library.result.value.total }} 张
+        </NText>
+        <div class="flex gap-2">
+          <NButton
+            data-test="rich-text-image-library-previous"
+            size="small"
+            :disabled="disabled || library.isLoading.value || library.page.value <= 1"
+            @click="previousPage"
+            >上一页</NButton
+          >
+          <NButton
+            data-test="rich-text-image-library-next"
+            size="small"
+            :disabled="
+              disabled ||
+              library.isLoading.value ||
+              library.page.value * 20 >= library.result.value.total
+            "
+            @click="nextPage"
+            >下一页</NButton
+          >
+        </div>
+      </template>
     </div>
   </section>
 </template>
+
+<style scoped>
+.image-library-card :deep(.n-button__content) {
+  width: 100%;
+}
+</style>

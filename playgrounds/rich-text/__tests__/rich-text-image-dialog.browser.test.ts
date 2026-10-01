@@ -101,6 +101,7 @@ test('keeps the dialog and sidebar stable across selection, library and error st
   await dialog.getByRole('button', { name: '添加图片', exact: true }).click()
   await dialog.getByRole('menuitem', { name: '从图片库选择', exact: true }).click()
   await expect.element(dialog.getByRole('textbox', { name: '搜索图片名称' })).toHaveValue('library')
+  await expect.element(dialog.getByRole('textbox', { name: '搜索图片名称' })).toHaveFocus()
   expect(listLibraryImages).toHaveBeenCalledTimes(3)
   await libraryOption.click()
   await expect.element(dialog.getByRole('button', { name: '插入 1 张' })).toBeEnabled()

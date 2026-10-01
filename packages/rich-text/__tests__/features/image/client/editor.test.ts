@@ -13,7 +13,6 @@ import {
   getPastedImageFiles,
   imageEditorFeature,
   imagePasteRule,
-  insertImageAction,
   insertImagesAction,
   transformPastedImageHtml,
   updateImageAction,
@@ -107,7 +106,7 @@ describe('image editor actions', () => {
     const onTransaction = vi.fn()
     editor.on('transaction', onTransaction)
 
-    expect(runRichTextAction(editor, insertImageAction, imageAttrs)).toBe(true)
+    expect(runRichTextAction(editor, insertImagesAction, [imageAttrs])).toBe(true)
 
     expect(onTransaction).toHaveBeenCalledTimes(1)
     expect(onTransaction.mock.calls[0]?.[0].transaction).toMatchObject({
@@ -158,7 +157,7 @@ describe('image editor actions', () => {
       editor
         .chain()
         .deleteRange({ from: 1, to: 4 })
-        .command((props) => insertImageAction.command(props, imageAttrs))
+        .command((props) => insertImagesAction.command(props, [imageAttrs]))
         .run(),
     ).toBe(true)
 

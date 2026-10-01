@@ -1,5 +1,9 @@
-import { onUnmounted, ref } from 'vue'
-import type { ImageLibraryItem } from './useImageDialogSession'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+
+export interface ImageLibraryItem {
+  readonly src: string
+  readonly name: string
+}
 
 export interface RichTextImageLibraryQuery {
   readonly keyword?: string
@@ -20,47 +24,53 @@ export type ListRichTextLibraryImages = (
 
 const pageSize = 20
 
-export function useImageLibrary(listImages: ListRichTextLibraryImages | undefined) {
+export function useImageLibrary(listImages: ListRichTextLibraryImages) {
   const searchDraft = ref('')
   const keyword = ref('')
   const page = ref(1)
   const result = ref<RichTextImageLibraryResult | null>(null)
   const isLoading = ref(false)
   const isError = ref(false)
-  let opened = false
+  const hasPreviousPage = computed(() => !isLoading.value && page.value > 1)
+  const hasNextPage = computed(
+    () => !isLoading.value && result.value !== null && page.value * pageSize < result.value.total,
+  )
+
   let disposed = false
   let requestId = 0
 
   async function query() {
-    if (listImages === undefined || disposed) return
+    if (disposed) {
+      return
+    }
+
     const currentRequest = ++requestId
     isLoading.value = true
     isError.value = false
     result.value = null
+
     try {
       const response = await listImages({
         ...(keyword.value === '' ? {} : { keyword: keyword.value }),
         page: page.value,
         pageSize,
       })
-      if (disposed || currentRequest !== requestId) return
+      if (disposed || currentRequest !== requestId) {
+        return
+      }
+
       result.value = response
     } catch {
-      if (disposed || currentRequest !== requestId) return
+      if (disposed || currentRequest !== requestId) {
+        return
+      }
+
       isError.value = true
     } finally {
-      if (!disposed && currentRequest === requestId) isLoading.value = false
+      if (!disposed && currentRequest === requestId) {
+        isLoading.value = false
+      }
     }
-  }
-
-  function open() {
-    if (opened) return
-    opened = true
-    void query()
-  }
-
-  function setSearchDraft(value: string) {
-    searchDraft.value = value
   }
 
   function submitSearch() {
@@ -70,14 +80,19 @@ export function useImageLibrary(listImages: ListRichTextLibraryImages | undefine
   }
 
   function previousPage() {
-    if (isLoading.value || page.value <= 1) return
+    if (!hasPreviousPage.value) {
+      return
+    }
+
     page.value -= 1
     void query()
   }
 
   function nextPage() {
-    if (isLoading.value || result.value === null || page.value * pageSize >= result.value.total)
+    if (!hasNextPage.value) {
       return
+    }
+
     page.value += 1
     void query()
   }
@@ -87,6 +102,7 @@ export function useImageLibrary(listImages: ListRichTextLibraryImages | undefine
     requestId += 1
   }
 
+  onMounted(() => void query())
   onUnmounted(dispose)
 
   return {
@@ -96,12 +112,11 @@ export function useImageLibrary(listImages: ListRichTextLibraryImages | undefine
     result,
     isLoading,
     isError,
-    open,
-    setSearchDraft,
+    hasPreviousPage,
+    hasNextPage,
     submitSearch,
     previousPage,
     nextPage,
     retry: query,
-    dispose,
   }
 }

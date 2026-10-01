@@ -40,7 +40,7 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals())
 
-describe('ImageDialog editor integration', () => {
+describe('image picker editor integration', () => {
   it('inserts ordered images at the captured editor selection in one confirmation', async () => {
     const upload = vi.fn(async (selected: File) => ({ src: `/images/${selected.name}` }))
     const editor = createEditor('<p>前需替换后</p>', upload)

@@ -105,13 +105,11 @@ const imagePicker = defineRichTextInteraction<typeof imageFeature, File[] | unde
   'pick-image',
 )
 
-export function openImagePicker(editor: Editor, initialImageFiles?: File[]) {
-  imagePicker.request(editor, initialImageFiles)
+export function openImagePicker(editor: Editor, pastedFiles?: File[]) {
+  imagePicker.request(editor, pastedFiles)
 }
 
-export function defineImagePickerHandler(
-  handle: (editor: Editor, initialImageFiles?: File[]) => void,
-) {
+export function defineImagePickerHandler(handle: (editor: Editor, pastedFiles?: File[]) => void) {
   return imagePicker.defineHandler(handle)
 }
 
@@ -141,18 +139,6 @@ export const imagePasteRule: RichTextPasteRule = {
     return true
   },
 }
-
-export const insertImageAction = defineRichTextAction(imageFeature, {
-  key: 'insert-image',
-  command: ({ chain }, attrs: RichTextImageAttrs) =>
-    chain()
-      .focus()
-      .command(({ commands, tr }) => {
-        closeHistory(tr)
-        return commands.insertContent({ type: 'image', attrs })
-      })
-      .run(),
-})
 
 export const insertImagesAction = defineRichTextAction(imageFeature, {
   key: 'insert-images',

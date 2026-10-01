@@ -1,156 +1,32 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
-import type { UseDropZoneOptions, UseFileDialogOptions } from '@vueuse/core'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import ImageDialog from '../../../../../src/features/image/client/vue/ImageDialog.vue'
-import { createClipboardEvent, createFileList } from '../../../../helpers/clipboard'
+import { describe, expect, it, vi } from 'vitest'
+import { appendTestElement } from '../../../../../helpers/editor'
+import {
+  PreviewImage,
+  objectUrls,
+  picker,
+  deferred,
+  file,
+  libraryResult,
+  selectSource,
+  chooseFiles,
+  dropFiles,
+  pasteFiles,
+} from '../../../../../helpers/image-dialog'
+import ImageBatchInsertDialog from '../../../../../../src/features/image/client/vue/insert/ImageBatchInsertDialog.vue'
+import type { ImageUpload } from '../../../../../../src/features/image/client/vue/shared/draft'
+import type { RichTextImageLibraryResult } from '../../../../../../src/features/image/client/vue'
 
-type FileDialogChangeHandler = (files: FileList | null) => void
-const picker = vi.hoisted(() => ({
-  open: vi.fn(),
-  fileOptions: [] as UseFileDialogOptions[],
-  fileChanges: [] as FileDialogChangeHandler[],
-  dropOptions: [] as UseDropZoneOptions[],
-}))
-const objectUrls = { create: vi.fn(), revoke: vi.fn() }
-
-vi.mock('@vueuse/core', async (importOriginal) => {
-  const vueuse = await importOriginal<typeof import('@vueuse/core')>()
-  return {
-    ...vueuse,
-    useFileDialog: vi.fn((options: UseFileDialogOptions) => {
-      picker.fileOptions.push(options)
-      return {
-        files: { value: null },
-        open: picker.open,
-        reset: vi.fn(),
-        onChange: (handler: FileDialogChangeHandler) => picker.fileChanges.push(handler),
-      }
-    }),
-    useDropZone: vi.fn((_target: unknown, options: UseDropZoneOptions) => {
-      picker.dropOptions.push(options)
-      return { files: { value: null }, isOverDropZone: { value: false } }
-    }),
-  }
-})
-
-class PreviewImage {
-  static pending: PreviewImage[] = []
-  onload: (() => void) | null = null
-  onerror: (() => void) | null = null
-  naturalWidth = 0
-  naturalHeight = 0
-  private value = ''
-
-  set src(value: string) {
-    this.value = value
-    if (value !== '') PreviewImage.pending.push(this)
-  }
-
-  get src() {
-    return this.value
-  }
-
-  static finish(src: string, width = 800, height = 400) {
-    const image = PreviewImage.pending.find((entry) => entry.src === src)
-    if (image === undefined) throw new Error(`No pending image: ${src}`)
-    PreviewImage.pending.splice(PreviewImage.pending.indexOf(image), 1)
-    image.naturalWidth = width
-    image.naturalHeight = height
-    image.onload?.()
-  }
-
-  static fail(src: string) {
-    const image = PreviewImage.pending.find((entry) => entry.src === src)
-    if (image === undefined) throw new Error(`No pending image: ${src}`)
-    PreviewImage.pending.splice(PreviewImage.pending.indexOf(image), 1)
-    image.onerror?.()
-  }
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((done) => {
-    resolve = done
-  })
-  return { promise, resolve }
-}
-
-function file(name: string) {
-  return new File(['image'], name, { type: 'image/png' })
-}
-
-function mountDialog(
-  options: {
-    upload?: (file: File) => Promise<{ src: string }>
-    listLibraryImages?: (query: { keyword?: string; page: number; pageSize: number }) => Promise<{
-      list: { src: string; name: string }[]
-      total: number
-      page: number
-      pageSize: number
-    }>
-    initialImageFiles?: File[]
-    existingImage?: { src: string; alt: string | null; width: number | null; height: number | null }
-    onError?: (error: unknown) => void
-  } = {},
-) {
-  return mount(ImageDialog, {
+type DialogProps = InstanceType<typeof ImageBatchInsertDialog>['$props']
+function mountDialog(options: Omit<DialogProps, 'upload'> & { upload?: ImageUpload } = {}) {
+  return mount(ImageBatchInsertDialog, {
+    attachTo: appendTestElement('div'),
     global: { stubs: { teleport: true } },
-    props: { upload: options.upload ?? vi.fn(), ...options },
+    props: { upload: vi.fn(), ...options },
   })
 }
 
-function libraryResult(list: { src: string; name: string }[], page = 1, total = list.length) {
-  return { list, total, page, pageSize: 20 }
-}
-
-async function selectSource(wrapper: ReturnType<typeof mountDialog>, label: string) {
-  await wrapper.get('[data-test="rich-text-image-source"]').trigger('click')
-  const option = wrapper.findAll('[role="menuitem"]').find((item) => item.text() === label)
-  expect(option).toBeDefined()
-  await option!.trigger('click')
-}
-
-async function chooseFiles(files: File[]) {
-  const change = picker.fileChanges.at(-1)
-  if (change === undefined) throw new Error('File picker is not registered')
-  change(createFileList(files))
-  await nextTick()
-}
-
-async function dropFiles(files: File[]) {
-  const onDrop = picker.dropOptions.at(-1)?.onDrop
-  if (onDrop === undefined) throw new Error('Drop zone is not registered')
-  onDrop(files, new DragEvent('drop'))
-  await nextTick()
-}
-
-async function pasteFiles(files: File[], target: Element) {
-  const event = createClipboardEvent({ files })
-  target.dispatchEvent(event)
-  await nextTick()
-  return event
-}
-
-beforeEach(() => {
-  picker.open.mockReset()
-  PreviewImage.pending = []
-  let nextUrl = 0
-  objectUrls.create.mockReset().mockImplementation(() => `blob:image-${++nextUrl}`)
-  objectUrls.revoke.mockReset()
-  vi.spyOn(URL, 'createObjectURL').mockImplementation(objectUrls.create)
-  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(objectUrls.revoke)
-  vi.stubGlobal('Image', PreviewImage)
-})
-
-afterEach(() => {
-  picker.fileOptions.length = 0
-  picker.fileChanges.length = 0
-  picker.dropOptions.length = 0
-  vi.unstubAllGlobals()
-})
-
-describe('ImageDialog batch insertion', () => {
+describe('ImageBatchInsertDialog', () => {
   it('starts empty, reads selected files locally and uploads only on final confirmation', async () => {
     const upload = vi.fn(async (selected: File) => ({ src: `/images/${selected.name}` }))
     const wrapper = mountDialog({ upload })
@@ -370,9 +246,7 @@ describe('ImageDialog batch insertion', () => {
     expect(wrapper.text()).toContain('请选择图片文件')
     expect(objectUrls.create).not.toHaveBeenCalled()
   })
-})
 
-describe('ImageDialog image library', () => {
   it('hides the library without a provider and mixes local and library images without uploading early', async () => {
     const localOnly = mountDialog()
     await localOnly.get('[data-test="rich-text-image-source"]').trigger('click')
@@ -386,6 +260,7 @@ describe('ImageDialog image library', () => {
       libraryResult([{ src: '/images/shared.png', name: '共享图片.png' }]),
     )
     const wrapper = mountDialog({ upload, listLibraryImages })
+    expect(listLibraryImages).not.toHaveBeenCalled()
     await chooseFiles([file('local.png')])
     PreviewImage.finish('blob:image-1', 600, 300)
     await flushPromises()
@@ -422,8 +297,8 @@ describe('ImageDialog image library', () => {
   })
 
   it('keeps cross-page selection and ignores an obsolete search response', async () => {
-    const first = deferred<ReturnType<typeof libraryResult>>()
-    const later = deferred<ReturnType<typeof libraryResult>>()
+    const first = deferred<RichTextImageLibraryResult>()
+    const later = deferred<RichTextImageLibraryResult>()
     const listLibraryImages = vi
       .fn()
       .mockReturnValueOnce(first.promise)
@@ -459,6 +334,7 @@ describe('ImageDialog image library', () => {
     expect(wrapper.text()).toContain('第二页.png')
     expect(wrapper.findAll('[data-test="rich-text-image-candidate"]')).toHaveLength(1)
     await wrapper.get('[data-test="rich-text-image-library-back"]').trigger('click')
+    expect(wrapper.find('[data-test="rich-text-image-library-search"]').exists()).toBe(false)
     await selectSource(wrapper, '从图片库选择')
     expect(listLibraryImages).toHaveBeenCalledTimes(3)
     expect(wrapper.text()).toContain('第二页.png')
@@ -611,162 +487,11 @@ describe('ImageDialog image library', () => {
     ).toBeDefined()
     await wrapper.get('[data-test="rich-text-image-library-back"]').trigger('click')
     await wrapper.get('[data-test="rich-text-image-library-retry"]').trigger('click')
-    expect(wrapper.find('[data-test="rich-text-image-library-search"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="rich-text-image-library-search"]').isVisible()).toBe(true)
     expect(listLibraryImages).toHaveBeenCalledOnce()
 
     await wrapper.get('[data-test="rich-text-image-cancel"]').trigger('click')
     pendingUpload.resolve({ src: '/images/local.png' })
     await flushPromises()
-  })
-
-  it('applies an editing replacement only on confirmation and ignores a late query after closing', async () => {
-    const pending = deferred<ReturnType<typeof libraryResult>>()
-    const listLibraryImages = vi
-      .fn()
-      .mockResolvedValueOnce(libraryResult([{ src: '/images/replacement.png', name: '替换.png' }]))
-      .mockReturnValueOnce(pending.promise)
-    const wrapper = mountDialog({
-      existingImage: { src: '/images/original.png', alt: '原说明', width: 500, height: 250 },
-      listLibraryImages,
-    })
-    PreviewImage.finish('/images/original.png', 1000, 500)
-    await flushPromises()
-    expect(wrapper.get('[data-test="rich-text-image-source"]').text()).toBe('替换图片')
-    await selectSource(wrapper, '从图片库选择')
-    await flushPromises()
-    expect(
-      wrapper
-        .get('[data-test="rich-text-image-library-options"]')
-        .attributes('aria-multiselectable'),
-    ).toBe('false')
-    await wrapper.get('[data-test="rich-text-image-library-option"]').trigger('click')
-    expect(wrapper.find('[data-test="rich-text-image-library-search"]').exists()).toBe(false)
-    expect(wrapper.emitted('confirm')).toBeUndefined()
-    PreviewImage.finish('/images/replacement.png', 800, 800)
-    await flushPromises()
-    expect(
-      (wrapper.get('[data-test="rich-text-image-alt"] input').element as HTMLInputElement).value,
-    ).toBe('原说明')
-    expect(
-      (wrapper.get('[data-test="rich-text-image-width"] input').element as HTMLInputElement).value,
-    ).toBe('500')
-    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
-    expect(wrapper.emitted('confirm')?.at(-1)?.[0]).toMatchObject({
-      src: '/images/replacement.png',
-      alt: '原说明',
-      width: 500,
-      height: 500,
-    })
-
-    const another = mountDialog({ listLibraryImages })
-    await selectSource(another, '从图片库选择')
-    await another.get('[data-test="rich-text-image-cancel"]').trigger('click')
-    pending.resolve(libraryResult([{ src: '/images/late.png', name: '迟到.png' }]))
-    await flushPromises()
-    expect(another.text()).not.toContain('迟到.png')
-  })
-})
-
-describe('ImageDialog editing', () => {
-  it('preserves both existing display dimensions when they differ from the natural ratio', async () => {
-    const wrapper = mountDialog({
-      existingImage: { src: '/images/original.png', alt: '裁切展示', width: 600, height: 100 },
-    })
-    PreviewImage.finish('/images/original.png', 1000, 500)
-    await flushPromises()
-    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
-
-    expect(wrapper.emitted('confirm')?.at(-1)?.[0]).toMatchObject({
-      src: '/images/original.png',
-      alt: '裁切展示',
-      width: 600,
-      height: 100,
-    })
-  })
-
-  it('keeps an empty description when editing an image without alt text', async () => {
-    const wrapper = mountDialog({
-      existingImage: { src: '/images/original.png', alt: null, width: 500, height: 250 },
-    })
-    PreviewImage.finish('/images/original.png', 1000, 500)
-    await flushPromises()
-    expect(
-      (wrapper.get('[data-test="rich-text-image-alt"] input').element as HTMLInputElement).value,
-    ).toBe('')
-    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
-    expect(wrapper.emitted('confirm')?.at(-1)?.[0]).toMatchObject({ alt: '' })
-  })
-
-  it('preserves the current alt and display width until a local replacement is applied', async () => {
-    const upload = vi.fn(async () => ({ src: '/images/replacement.png' }))
-    const wrapper = mountDialog({
-      upload,
-      existingImage: { src: '/images/original.png', alt: '原说明', width: 500, height: 250 },
-    })
-    PreviewImage.finish('/images/original.png', 1000, 500)
-    await flushPromises()
-    await chooseFiles([file('replacement.png')])
-    expect(upload).not.toHaveBeenCalled()
-    PreviewImage.finish('blob:image-1', 800, 800)
-    await flushPromises()
-    expect(
-      (wrapper.get('[data-test="rich-text-image-alt"] input').element as HTMLInputElement).value,
-    ).toBe('原说明')
-    expect(
-      (wrapper.get('[data-test="rich-text-image-width"] input').element as HTMLInputElement).value,
-    ).toBe('500')
-    expect(wrapper.get('[data-test="rich-text-image-confirm"]').text()).toContain('上传并应用')
-    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
-    await flushPromises()
-    PreviewImage.finish('/images/replacement.png', 800, 800)
-    await flushPromises()
-    expect(wrapper.emitted('confirm')?.at(-1)?.[0]).toMatchObject({
-      src: '/images/replacement.png',
-      alt: '原说明',
-      width: 500,
-      height: 500,
-    })
-  })
-
-  it('rejects multiple pasted replacement images and leaves the current candidate intact', async () => {
-    const wrapper = mountDialog({
-      existingImage: { src: '/images/original.png', alt: '原说明', width: 500, height: 250 },
-    })
-    await dropFiles([file('one.png'), file('two.png')])
-    expect(wrapper.text()).toContain('请选择一张图片')
-    expect(objectUrls.create).not.toHaveBeenCalled()
-    const event = await pasteFiles(
-      [file('one.png'), file('two.png')],
-      wrapper.get('[data-test="rich-text-image-drop-zone"]').element,
-    )
-    expect(event.defaultPrevented).toBe(true)
-    expect(objectUrls.create).not.toHaveBeenCalled()
-    await chooseFiles([file('one.png'), file('two.png')])
-    expect(wrapper.text()).toContain('请选择一张图片')
-    expect(objectUrls.create).not.toHaveBeenCalled()
-  })
-
-  it('uses the replacement natural size when the original image has no display width', async () => {
-    const upload = vi.fn(async () => ({ src: '/images/replacement.png' }))
-    const wrapper = mountDialog({
-      upload,
-      existingImage: { src: '/images/original.png', alt: '原说明', width: null, height: 250 },
-    })
-    PreviewImage.finish('/images/original.png', 1000, 500)
-    await flushPromises()
-    await chooseFiles([file('replacement.png')])
-    PreviewImage.finish('blob:image-1', 800, 400)
-    await flushPromises()
-    await wrapper.get('[data-test="rich-text-image-confirm"]').trigger('click')
-    await flushPromises()
-    PreviewImage.finish('/images/replacement.png', 800, 400)
-    await flushPromises()
-
-    expect(wrapper.emitted('confirm')?.at(-1)?.[0]).toMatchObject({
-      src: '/images/replacement.png',
-      alt: '原说明',
-      width: 800,
-      height: 400,
-    })
   })
 })

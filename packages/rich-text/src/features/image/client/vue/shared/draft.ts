@@ -71,7 +71,7 @@ function fittedWidth(height: number, size: { width: number; height: number }) {
   return Math.max(1, Math.round((height * size.width) / size.height))
 }
 
-function validSize(value: number | null) {
+export function isValidSize(value: number | null) {
   return value !== null && Number.isInteger(value) && value > 0
 }
 
@@ -88,7 +88,7 @@ function createImageDraft(
     uploadState: file === null ? 'uploaded' : 'pending',
   })
   const isReady = computed(
-    () => state.readState === 'ready' && validSize(state.width) && validSize(state.height),
+    () => state.readState === 'ready' && isValidSize(state.width) && isValidSize(state.height),
   )
   const needsUpload = computed(() => file !== null && state.src === null)
 

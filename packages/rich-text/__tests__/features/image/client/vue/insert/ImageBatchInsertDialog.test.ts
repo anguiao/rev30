@@ -124,6 +124,42 @@ describe('ImageBatchInsertDialog', () => {
     expect(wrapper.find('[aria-label="点击选择或拖入图片"]').exists()).toBe(true)
   })
 
+  it.each(['width', 'height'] as const)(
+    'identifies an invalid %s after switching images and clears the error when corrected',
+    async (dimension) => {
+      const wrapper = mountDialog()
+      await chooseFiles([file('first.png'), file('second.png')])
+      expect(wrapper.text()).not.toContain('尺寸无效')
+      expect(wrapper.text()).not.toContain('请输入大于 0 的整数')
+      PreviewImage.finish('blob:image-1', 800, 400)
+      PreviewImage.finish('blob:image-2', 400, 400)
+      await flushPromises()
+
+      const candidates = wrapper.findAll('[role="option"]')
+      const confirm = wrapper.get('[data-test="rich-text-image-confirm"]')
+      await candidates[1]!.trigger('click')
+      const input = wrapper.get(`[data-test="rich-text-image-${dimension}"] input`)
+      await input.setValue('')
+      await input.trigger('blur')
+      expect(candidates[1]!.text()).toContain('尺寸无效')
+      expect(candidates[0]!.text()).not.toContain('尺寸无效')
+      expect(wrapper.text()).toContain('请输入大于 0 的整数')
+      expect(confirm.attributes('disabled')).toBeDefined()
+
+      await candidates[0]!.trigger('click')
+      expect(candidates[1]!.text()).toContain('尺寸无效')
+      expect(wrapper.text()).not.toContain('请输入大于 0 的整数')
+      expect(confirm.attributes('disabled')).toBeDefined()
+
+      await candidates[1]!.trigger('click')
+      await input.setValue('200')
+      await input.trigger('blur')
+      expect(wrapper.text()).not.toContain('尺寸无效')
+      expect(wrapper.text()).not.toContain('请输入大于 0 的整数')
+      expect(confirm.attributes('disabled')).toBeUndefined()
+    },
+  )
+
   it('continues after upload failure, keeps successful results and retries only unfinished uploads', async () => {
     const upload = vi.fn(async (selected: File) => {
       if (selected.name === 'first.png' && upload.mock.calls.length === 1) throw new Error('failed')

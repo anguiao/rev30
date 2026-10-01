@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import type { RichTextImageAttrs } from '../../editor'
 import ImagePickerDialog from '../shared/ImagePickerDialog.vue'
 import ImagePropertiesPanel from '../shared/ImagePropertiesPanel.vue'
-import type { ImageDraftState, ImageUpload } from '../shared/draft'
+import { isValidSize, type ImageDraftState, type ImageUpload } from '../shared/draft'
 import { maxImageCandidates, useImageBatchInsertSession } from './useImageBatchInsertSession'
 import type { ListRichTextLibraryImages } from '../shared/useImageLibrary'
 
@@ -78,9 +78,17 @@ function handleSelect(image: ImageDraftState) {
   showLibrary.value = false
 }
 
+function hasInvalidSize(image: ImageDraftState) {
+  return image.readState === 'ready' && (!isValidSize(image.width) || !isValidSize(image.height))
+}
+
 function getStatusLabel(image: ImageDraftState) {
   if (image.uploadState === 'uploading') {
     return '上传中'
+  }
+
+  if (hasInvalidSize(image)) {
+    return '尺寸无效'
   }
 
   if (image.uploadState === 'error') {
@@ -180,7 +188,9 @@ async function handleConfirm() {
                 <span
                   class="text-xs"
                   :class="
-                    candidate.uploadState === 'error' || candidate.readState === 'error'
+                    candidate.uploadState === 'error' ||
+                    candidate.readState === 'error' ||
+                    hasInvalidSize(candidate)
                       ? 'text-(--rich-text-theme-error-color)'
                       : 'text-(--rich-text-theme-muted-text-color)'
                   "

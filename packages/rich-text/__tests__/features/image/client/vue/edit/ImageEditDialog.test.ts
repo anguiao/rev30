@@ -97,6 +97,30 @@ describe('ImageEditDialog', () => {
     })
   })
 
+  it('explains an invalid size and enables applying after restoring the original size', async () => {
+    const wrapper = mountDialog({
+      existingImage: { src: '/images/original.png', alt: '原说明', width: 500, height: 250 },
+    })
+    PreviewImage.finish('/images/original.png', 1000, 500)
+    await flushPromises()
+    const input = wrapper.get('[data-test="rich-text-image-height"] input')
+    await input.setValue('')
+    await input.trigger('blur')
+    expect(wrapper.text()).toContain('请输入大于 0 的整数')
+    expect(
+      wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
+    ).toBeDefined()
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '恢复原尺寸')!
+      .trigger('click')
+    expect(wrapper.text()).not.toContain('请输入大于 0 的整数')
+    expect(
+      wrapper.get('[data-test="rich-text-image-confirm"]').attributes('disabled'),
+    ).toBeUndefined()
+  })
+
   it('keeps an empty description when editing an image without alt text', async () => {
     const wrapper = mountDialog({
       existingImage: { src: '/images/original.png', alt: null, width: 500, height: 250 },

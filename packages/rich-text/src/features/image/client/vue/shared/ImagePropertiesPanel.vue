@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { NButton, NFormItem, NImage, NInput, NInputNumber, NText } from 'naive-ui'
 import { computed } from 'vue'
-import type { ImageDraftState } from './draft'
+import { isValidSize, type ImageDraftState } from './draft'
 
 const props = defineProps<{
   image: ImageDraftState
@@ -17,6 +17,12 @@ const emit = defineEmits<{
 }>()
 
 const isDisabled = computed(() => props.disabled || props.image.readState !== 'ready')
+const isWidthInvalid = computed(
+  () => props.image.readState === 'ready' && !isValidSize(props.image.width),
+)
+const isHeightInvalid = computed(
+  () => props.image.readState === 'ready' && !isValidSize(props.image.height),
+)
 </script>
 
 <template>
@@ -66,8 +72,13 @@ const isDisabled = computed(() => props.disabled || props.image.readState !== 'r
           @update:value="emit('updateAlt', $event)"
         />
       </NFormItem>
-      <div class="grid grid-cols-2 gap-3">
-        <NFormItem label="宽度（px）" :show-feedback="false">
+      <div class="grid grid-cols-2 items-start gap-3">
+        <NFormItem
+          label="宽度（px）"
+          :show-feedback="isWidthInvalid"
+          v-bind="isWidthInvalid ? { validationStatus: 'error' } : {}"
+          feedback="请输入大于 0 的整数"
+        >
           <NInputNumber
             data-test="rich-text-image-width"
             class="w-full"
@@ -78,7 +89,12 @@ const isDisabled = computed(() => props.disabled || props.image.readState !== 'r
             @update:value="emit('updateWidth', $event)"
           />
         </NFormItem>
-        <NFormItem label="高度（px）" :show-feedback="false">
+        <NFormItem
+          label="高度（px）"
+          :show-feedback="isHeightInvalid"
+          v-bind="isHeightInvalid ? { validationStatus: 'error' } : {}"
+          feedback="请输入大于 0 的整数"
+        >
           <NInputNumber
             data-test="rich-text-image-height"
             class="w-full"

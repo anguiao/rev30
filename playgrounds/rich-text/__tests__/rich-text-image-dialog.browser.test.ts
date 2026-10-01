@@ -109,6 +109,32 @@ test('keeps the dialog and sidebar stable across selection, library and error st
   await expect.element(dialog.getByRole('button', { name: '恢复原尺寸' })).toBeVisible()
   expect(layout()).toEqual(initialLayout)
 
+  const widthInput = dialog.getByTestId('rich-text-image-width').getByRole('textbox')
+  await widthInput.fill('')
+  await dialog.getByTestId('rich-text-image-alt').getByRole('textbox').click()
+  await expect
+    .element(candidates.getByRole('option', { name: /library.png/ }))
+    .toMatchTextContent('尺寸无效')
+  await expect.element(dialog.getByText('请输入大于 0 的整数', { exact: true })).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: '插入 1 张' })).toBeDisabled()
+  expect(widthInput.element().getBoundingClientRect().top).toBe(
+    dialog
+      .getByTestId('rich-text-image-height')
+      .getByRole('textbox')
+      .element()
+      .getBoundingClientRect().top,
+  )
+  expect(layout()).toEqual(initialLayout)
+  await dialog.getByRole('button', { name: '恢复原尺寸' }).click()
+  await expect
+    .element(candidates.getByRole('option', { name: /library.png/ }))
+    .not.toMatchTextContent('尺寸无效')
+  await expect
+    .element(dialog.getByText('请输入大于 0 的整数', { exact: true }))
+    .not.toBeInTheDocument()
+  await expect.element(dialog.getByRole('button', { name: '插入 1 张' })).toBeEnabled()
+  expect(layout()).toEqual(initialLayout)
+
   const fileInput = dialog.getByTestId('rich-text-image-file-input').element()
   await userEvent.upload(
     fileInput,

@@ -7,6 +7,8 @@ import {
   attachmentCleanupPolicySchema,
   attachmentContentUrlInputSchema,
   attachmentContentUrlSchema,
+  attachmentImageListQuerySchema,
+  attachmentImageListResponseSchema,
   attachmentListQuerySchema,
   attachmentListResponseSchema,
   attachmentReadPolicySchema,
@@ -31,6 +33,50 @@ const attachment = {
 }
 
 describe('attachment schemas', () => {
+  it('parses attachment image list queries and attachment metadata responses', () => {
+    expect(attachmentImageListQuerySchema.parse({})).toEqual({ page: 1, pageSize: 20 })
+    expect(
+      attachmentImageListQuerySchema.parse({
+        keyword: '  Cover  ',
+        page: '2',
+        pageSize: '5',
+        usage: ' article-cover ',
+      }),
+    ).toEqual({
+      keyword: 'Cover',
+      page: 2,
+      pageSize: 5,
+      usage: 'article-cover',
+    })
+    expect(attachmentImageListQuerySchema.parse({ keyword: ' ', usage: ' ' })).toEqual({
+      page: 1,
+      pageSize: 20,
+    })
+    expectZodIssue(attachmentImageListQuerySchema.safeParse({ pageSize: '101' }), {
+      message: '每页数量不能超过 100',
+      path: ['pageSize'],
+    })
+
+    const attachment = {
+      id: '11111111-1111-4111-8111-111111111111',
+      originalName: 'Cover.png',
+      mimeType: 'image/png',
+      extension: 'png',
+      size: 42,
+      usage: 'announcement-content-image',
+      readPolicy: 'authenticated',
+      createdAt: '2026-05-24T09:00:00.000Z',
+    }
+    expect(
+      attachmentImageListResponseSchema.parse({
+        list: [attachment],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+      }),
+    ).toEqual({ list: [attachment], total: 1, page: 1, pageSize: 20 })
+  })
+
   it('parses attachment list queries and responses', () => {
     expect(
       attachmentListQuerySchema.parse({

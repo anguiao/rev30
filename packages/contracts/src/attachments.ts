@@ -53,6 +53,16 @@ export const attachmentListQuerySchema = paginationQuerySchema.extend({
   keyword: optionalKeywordSchema,
 })
 
+// Lists active raster images readable by all authenticated users.
+export const attachmentImageListQuerySchema = attachmentListQuerySchema
+
+export const attachmentImageListResponseSchema = z.object({
+  list: z.array(attachmentSchema),
+  total: z.number().int().min(0),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1),
+})
+
 export const attachmentReferenceSchema = z.object({
   sourceType: z.enum(['announcement', 'user']),
   sourceId: uuidString('引用来源 ID 无效'),
@@ -120,6 +130,8 @@ export type AttachmentDisposition = z.infer<typeof attachmentDispositionSchema>
 export type Attachment = z.infer<typeof attachmentSchema>
 export type AttachmentCreatedBy = z.infer<typeof attachmentCreatedBySchema>
 export type AttachmentListQuery = z.infer<typeof attachmentListQuerySchema>
+export type AttachmentImageListQuery = z.infer<typeof attachmentImageListQuerySchema>
+export type AttachmentImageListResponse = z.infer<typeof attachmentImageListResponseSchema>
 export type AttachmentListItem = z.infer<typeof attachmentListItemSchema>
 export type AttachmentListResponse = z.infer<typeof attachmentListResponseSchema>
 export type AttachmentReference = z.infer<typeof attachmentReferenceSchema>

@@ -1,5 +1,24 @@
-import type { AttachmentListQuery, AttachmentReference } from '@rev30/contracts'
-import { and, asc, count, desc, eq, gt, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
+import {
+  ATTACHMENT_READ_POLICY_AUTHENTICATED,
+  type AttachmentImageListQuery,
+  type AttachmentListQuery,
+  type AttachmentReference,
+} from '@rev30/contracts'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  ilike,
+  inArray,
+  isNull,
+  like,
+  ne,
+  or,
+  sql,
+} from 'drizzle-orm'
 import { unionAll } from 'drizzle-orm/pg-core'
 import type { Db } from '../../db'
 import {
@@ -52,6 +71,37 @@ export function createAttachmentRepository(database: Db) {
           })
           .from(attachments)
           .innerJoin(systemUsers, eq(systemUsers.id, attachments.createdBy))
+          .where(where)
+          .orderBy(desc(attachments.createdAt), desc(attachments.id))
+          .limit(pageSize)
+          .offset((page - 1) * pageSize),
+        database.select({ total: count() }).from(attachments).where(where),
+      ])
+
+      return {
+        list,
+        total: totalRows[0]?.total ?? 0,
+        page,
+        pageSize,
+      }
+    },
+
+    async listImages(query: AttachmentImageListQuery) {
+      const { page, pageSize, usage, keyword } = query
+      const where = and(
+        isNull(attachments.deletedAt),
+        eq(attachments.readPolicy, ATTACHMENT_READ_POLICY_AUTHENTICATED),
+        like(attachments.mimeType, 'image/%'),
+        ne(attachments.mimeType, 'image/svg+xml'),
+        usage === undefined ? undefined : eq(attachments.usage, usage),
+        keyword
+          ? sql<boolean>`strpos(lower(${attachments.originalName}), lower(${keyword})) > 0`
+          : undefined,
+      )
+      const [list, totalRows] = await Promise.all([
+        database
+          .select()
+          .from(attachments)
           .where(where)
           .orderBy(desc(attachments.createdAt), desc(attachments.id))
           .limit(pageSize)

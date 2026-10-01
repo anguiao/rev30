@@ -1,6 +1,7 @@
 import {
   ATTACHMENT_DISPOSITION_ATTACHMENT,
   attachmentContentUrlSchema,
+  attachmentImageListResponseSchema,
   attachmentListResponseSchema,
   attachmentSchema,
   attachmentUploadSessionSchema,
@@ -8,6 +9,8 @@ import {
   type AttachmentCleanupPolicy,
   type AttachmentContentUrl,
   type AttachmentContentUrlInput,
+  type AttachmentImageListQuery,
+  type AttachmentImageListResponse,
   type AttachmentListQuery,
   type AttachmentListResponse,
   type AttachmentReadPolicy,
@@ -97,6 +100,17 @@ export async function listAttachments(query: AttachmentListQuery): Promise<Attac
       query: normalizeRequestQuery(query),
     }),
     attachmentListResponseSchema,
+  )
+}
+
+export async function listAttachmentImages(
+  query: AttachmentImageListQuery,
+): Promise<AttachmentImageListResponse> {
+  return parseApiResponse(
+    await api.attachments.images.$get({
+      query: normalizeRequestQuery(query),
+    }),
+    attachmentImageListResponseSchema,
   )
 }
 

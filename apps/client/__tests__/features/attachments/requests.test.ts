@@ -5,6 +5,7 @@ import {
   deleteAttachment,
   getAttachment,
   getAttachmentContentUrl,
+  listAttachmentImages,
   listAttachments,
   resolveSignedAttachmentUrl,
   uploadAttachment,
@@ -135,6 +136,59 @@ describe('attachment request helpers', () => {
       pathname: `/api/attachments/${attachmentId}/content-url`,
     })
     expectJsonBody(fetchMock, 0, { disposition: ATTACHMENT_DISPOSITION_INLINE })
+  })
+
+  it('lists attachment images and parses attachment metadata', async () => {
+    const attachment = {
+      id: '55555555-5555-4555-8555-555555555555',
+      originalName: 'Cover.png',
+      mimeType: 'image/png',
+      extension: 'png',
+      size: 42,
+      usage: 'announcement-content-image',
+      readPolicy: 'authenticated',
+      createdAt: '2026-05-20T07:00:00.000Z',
+    }
+    const fetchMock = createFetchMock(
+      jsonResponse({
+        list: [{ ...attachment, createdBy: { username: 'other' } }],
+        total: 1,
+        page: 2,
+        pageSize: 20,
+      }),
+    )
+
+    const result = await listAttachmentImages({
+      keyword: 'Cover',
+      page: 2,
+      pageSize: 20,
+      usage: 'announcement-content-image',
+    })
+
+    expect(result).toEqual({ list: [attachment], total: 1, page: 2, pageSize: 20 })
+    expectFetchCall(fetchMock, 0, {
+      method: 'GET',
+      pathname: '/api/attachments/images',
+      query: {
+        keyword: 'Cover',
+        page: '2',
+        pageSize: '20',
+        usage: 'announcement-content-image',
+      },
+    })
+  })
+
+  it('rejects malformed attachment image list responses', async () => {
+    createFetchMock(
+      jsonResponse({
+        list: [{ id: attachmentId, originalName: '' }],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+      }),
+    )
+
+    await expect(listAttachmentImages({ page: 1, pageSize: 20 })).rejects.toThrow()
   })
 
   it('lists attachment resources with filters', async () => {

@@ -1,12 +1,9 @@
 import {
   type AnnouncementCreateInput,
-  type AnnouncementImageOptionsQuery,
   type AnnouncementListQuery,
   type AnnouncementTargetOptionsQuery,
   type AnnouncementUpdateInput,
   announcementCreateSchema,
-  announcementImageOptionsQuerySchema,
-  announcementImageOptionsResponseSchema,
   announcementListQuerySchema,
   announcementSchema,
   announcementTargetOptionsQuerySchema,
@@ -15,7 +12,7 @@ import {
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import type { Db } from '../../../db'
-import { requireAccess, requireAnyAccess } from '../../../middleware/access'
+import { requireAccess } from '../../../middleware/access'
 import type { AuthEnv } from '../../../middleware/auth'
 import { recordOperation, type OperationLogEnv } from '../../../middleware/operation-log'
 import type { RequestContextEnv } from '../../../middleware/request-context'
@@ -34,9 +31,6 @@ const announcementIdParamSchema = announcementSchema.pick({ id: true })
 const announcementListRequestQuerySchema = announcementListQuerySchema
   .optional()
   .transform((query) => query ?? announcementListQuerySchema.parse({}))
-const announcementImageOptionsRequestQuerySchema = announcementImageOptionsQuerySchema
-  .optional()
-  .transform((query) => query ?? announcementImageOptionsQuerySchema.parse({}))
 
 const announcementIdValidator = zValidator('param', announcementIdParamSchema, (result, c) => {
   if (!result.success) {
@@ -47,16 +41,6 @@ const announcementIdValidator = zValidator('param', announcementIdParamSchema, (
 const announcementListQueryValidator = zValidator(
   'query',
   announcementListRequestQuerySchema,
-  (result, c) => {
-    if (!result.success) {
-      return c.json({ message: '查询参数无效' }, 400)
-    }
-  },
-)
-
-const announcementImageOptionsQueryValidator = zValidator(
-  'query',
-  announcementImageOptionsRequestQuerySchema,
   (result, c) => {
     if (!result.success) {
       return c.json({ message: '查询参数无效' }, 400)
@@ -141,18 +125,6 @@ export function createAnnouncementRoutes(database: Db) {
         const query: AnnouncementTargetOptionsQuery = c.req.valid('query')
 
         return c.json(await service.targetOptions(query))
-      },
-    )
-    .get(
-      '/image-options',
-      requireAnyAccess('content:announcement:create', 'content:announcement:update'),
-      announcementImageOptionsQueryValidator,
-      async (c) => {
-        const query: AnnouncementImageOptionsQuery = c.req.valid('query')
-
-        return c.json(
-          announcementImageOptionsResponseSchema.parse(await service.listImageOptions(query)),
-        )
       },
     )
     .get('/:id', requireAccess('content:announcement:list'), announcementIdValidator, async (c) => {

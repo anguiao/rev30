@@ -1,6 +1,5 @@
 import type {
   AnnouncementCreateInput,
-  AnnouncementImageOptionsQuery,
   AnnouncementListQuery,
   AnnouncementTarget,
   AnnouncementTargetOptionsQuery,
@@ -15,7 +14,6 @@ import {
   ANNOUNCEMENT_TARGET_TYPE_USER,
 } from '@rev30/contracts'
 import type { Db } from '../../../db'
-import { toAttachment } from '../../attachments/mapper'
 import { createDepartmentService } from '../../system/departments/service'
 import { createRoleService } from '../../system/roles/service'
 import { createUserService } from '../../system/users/service'
@@ -36,15 +34,6 @@ export function createAnnouncementService(database: Db) {
   const userService = createUserService(database)
 
   return {
-    async listImageOptions(query: AnnouncementImageOptionsQuery) {
-      const result = await repository.listImageOptions(query)
-
-      return {
-        ...result,
-        list: result.list.map(toAttachment),
-      }
-    },
-
     async list(query: AnnouncementListQuery) {
       const result = await repository.list(query)
 

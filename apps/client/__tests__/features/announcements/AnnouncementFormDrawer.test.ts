@@ -27,12 +27,15 @@ import {
   type TiptapDocument,
   type UserOptionsResponse,
 } from '@rev30/contracts'
-import { compressImageFile, uploadAttachment } from '../../../src/features/attachments'
+import {
+  compressImageFile,
+  listAttachmentImages,
+  uploadAttachment,
+} from '../../../src/features/attachments'
 import {
   createAnnouncement,
   getAnnouncement,
   getAnnouncementTargetOptions,
-  listAnnouncementImageOptions,
   updateAnnouncement,
 } from '../../../src/features/announcements/requests'
 import AnnouncementFormDrawer from '../../../src/features/announcements/AnnouncementFormDrawer.vue'
@@ -152,6 +155,7 @@ vi.mock('../../../src/features/attachments/imageCompression', async (importOrigi
 
 vi.mock('../../../src/features/attachments/requests', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/features/attachments/requests')>()),
+  listAttachmentImages: vi.fn(),
   uploadAttachment: vi.fn(),
 }))
 
@@ -164,7 +168,6 @@ vi.mock('../../../src/features/announcements/requests', async (importOriginal) =
   createAnnouncement: vi.fn(),
   getAnnouncement: vi.fn(),
   getAnnouncementTargetOptions: vi.fn(),
-  listAnnouncementImageOptions: vi.fn(),
   updateAnnouncement: vi.fn(),
 }))
 
@@ -188,7 +191,7 @@ const getAnnouncementMock = vi.mocked(getAnnouncement)
 
 const getAnnouncementTargetOptionsMock = vi.mocked(getAnnouncementTargetOptions)
 
-const listAnnouncementImageOptionsMock = vi.mocked(listAnnouncementImageOptions)
+const listAttachmentImagesMock = vi.mocked(listAttachmentImages)
 
 const getErrorMessageMock = vi.mocked(getErrorMessage)
 
@@ -378,7 +381,7 @@ describe('AnnouncementFormDrawer', () => {
     compressImageFileMock.mockImplementation(async (file) => file)
     getAnnouncementMock.mockReset()
     getAnnouncementTargetOptionsMock.mockReset()
-    listAnnouncementImageOptionsMock.mockReset()
+    listAttachmentImagesMock.mockReset()
     getErrorMessageMock.mockClear()
     updateAnnouncementMock.mockReset()
     uploadAttachmentMock.mockReset()
@@ -761,9 +764,9 @@ describe('AnnouncementFormDrawer', () => {
     )
   })
 
-  it('maps announcement image options to stable library images', async () => {
+  it('filters attachment images for announcements and maps stable library URLs', async () => {
     const attachmentId = '55555555-5555-4555-8555-555555555555'
-    listAnnouncementImageOptionsMock.mockResolvedValue({
+    listAttachmentImagesMock.mockResolvedValue({
       list: [
         {
           id: attachmentId,
@@ -790,10 +793,11 @@ describe('AnnouncementFormDrawer', () => {
 
     const result = await listLibraryImages({ keyword: 'Shared', page: 2, pageSize: 20 })
 
-    expect(listAnnouncementImageOptionsMock).toHaveBeenCalledWith({
+    expect(listAttachmentImagesMock).toHaveBeenCalledWith({
       keyword: 'Shared',
       page: 2,
       pageSize: 20,
+      usage: 'announcement-content-image',
     })
     expect(result).toEqual({
       list: [{ src: `/api/attachments/${attachmentId}/content`, name: 'Shared cover.png' }],

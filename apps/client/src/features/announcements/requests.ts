@@ -1,5 +1,4 @@
 import {
-  announcementImageOptionsResponseSchema,
   announcementListResponseSchema,
   announcementMyDetailSchema,
   announcementMyListResponseSchema,
@@ -7,8 +6,6 @@ import {
   announcementTargetOptionsResponseSchema,
   type Announcement,
   type AnnouncementCreateInput,
-  type AnnouncementImageOptionsQuery,
-  type AnnouncementImageOptionsResponse,
   type AnnouncementListQuery,
   type AnnouncementListResponse,
   type AnnouncementMyDetail,
@@ -19,17 +16,6 @@ import {
 } from '@rev30/contracts'
 import { api } from '../../api'
 import { assertApiResponseOk, normalizeRequestQuery, parseApiResponse } from '../../utils/request'
-
-export async function listAnnouncementImageOptions(
-  query: AnnouncementImageOptionsQuery,
-): Promise<AnnouncementImageOptionsResponse> {
-  return parseApiResponse(
-    await api.content.announcements['image-options'].$get({
-      query: normalizeRequestQuery(query),
-    }),
-    announcementImageOptionsResponseSchema,
-  )
-}
 
 export async function listAnnouncements(
   query: AnnouncementListQuery,

@@ -9,6 +9,7 @@ import {
   ATTACHMENT_DISPOSITION_ATTACHMENT,
   ATTACHMENT_DISPOSITION_INLINE,
   type AttachmentDisposition,
+  type AttachmentImageListQuery,
   type AttachmentListQuery,
   type AttachmentReference,
   ATTACHMENT_READ_POLICY_AUTHENTICATED,
@@ -156,6 +157,15 @@ export function createAttachmentService(database: Db) {
         list: result.list.map((entry) =>
           toAttachmentListItem(entry, referencesByAttachment.get(entry.attachment.id)!),
         ),
+      }
+    },
+
+    async listImages(query: AttachmentImageListQuery) {
+      const result = await repository.listImages(query)
+
+      return {
+        ...result,
+        list: result.list.map(toAttachment),
       }
     },
 

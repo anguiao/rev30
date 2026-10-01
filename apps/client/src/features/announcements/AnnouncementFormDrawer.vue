@@ -46,11 +46,15 @@ import {
   createAnnouncement,
   getAnnouncement,
   getAnnouncementTargetOptions,
-  listAnnouncementImageOptions,
   updateAnnouncement,
 } from './requests'
 import { announcementTypeSelectOptions, announcementVisibilityOptions } from './labels'
-import { compressImageFile, getAttachmentContentUrl, uploadAttachment } from '../attachments'
+import {
+  compressImageFile,
+  getAttachmentContentUrl,
+  listAttachmentImages,
+  uploadAttachment,
+} from '../attachments'
 import { useDrawerUnsavedChangesGuard } from '../../composables/useDrawerUnsavedChangesGuard'
 import { getErrorMessage } from '../../utils/error'
 import { formItemValidationProps, setServerFieldError } from '../../utils/form'
@@ -186,11 +190,14 @@ const editorPreset = createStandardRichTextEditorPreset({
   image: {
     upload: uploadAnnouncementContentImage,
     async listLibraryImages(query) {
-      const options = await listAnnouncementImageOptions(query)
+      const result = await listAttachmentImages({
+        ...query,
+        usage: 'announcement-content-image',
+      })
 
       return {
-        ...options,
-        list: options.list.map((attachment) => ({
+        ...result,
+        list: result.list.map((attachment) => ({
           src: getAttachmentContentUrl(attachment.id),
           name: attachment.originalName,
         })),

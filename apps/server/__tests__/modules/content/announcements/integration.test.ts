@@ -504,7 +504,7 @@ describe('announcement routes', () => {
   })
 
   dbTest(
-    'synchronizes another user’s image references on create, content update, and soft delete',
+    'synchronizes shared image references across cleanup policies on create, update, and delete',
     async ({ db: database }) => {
       const app = await createTestApp(database)
       // The author is the admin fixture; these attachments belong to a separate user.
@@ -515,9 +515,11 @@ describe('announcement routes', () => {
       })
       const secondAttachmentId = await createAnnouncementContentImageAttachment(database, {
         createdBy: ownerId,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
       })
       const replacementAttachmentId = await createAnnouncementContentImageAttachment(database, {
         createdBy: ownerId,
+        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
       })
 
       const { body: created, response: createResponse } = await createAnnouncement(app, {
@@ -617,10 +619,6 @@ describe('announcement routes', () => {
         createdBy: ownerId,
         readPolicy: ATTACHMENT_READ_POLICY_SIGNED,
       })
-      const manualCleanupAttachmentId = await createAnnouncementContentImageAttachment(database, {
-        createdBy: ownerId,
-        cleanupPolicy: ATTACHMENT_CLEANUP_POLICY_MANUAL,
-      })
       const svgAttachmentId = await createAnnouncementContentImageAttachment(database, {
         createdBy: ownerId,
         mimeType: 'image/svg+xml',
@@ -636,7 +634,6 @@ describe('announcement routes', () => {
       const invalidAttachmentIds = [
         invalidUsageAttachmentId,
         signedAttachmentId,
-        manualCleanupAttachmentId,
         svgAttachmentId,
         pdfAttachmentId,
         softDeletedAttachmentId,
